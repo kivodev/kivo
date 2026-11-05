@@ -63,6 +63,11 @@ msgstr "Audio"
 msgid "Continue in browser"
 msgstr "Continue in browser"
 
+#: src/features/user/CreditsDialog.tsx
+#: src/features/user/LicensesDialog.tsx
+msgid "Open source licenses"
+msgstr "Open source licenses"
+
 #: src/features/admin/PlayCards.tsx
 msgid "{clock} ahead, waiting for the player"
 msgstr "{clock} ahead, waiting for the player"
@@ -1626,6 +1631,10 @@ msgstr "Read the full description"
 msgid "Chapter {0} of {1}"
 msgstr "Chapter {0} of {1}"
 
+#: src/features/user/CreditsDialog.tsx
+msgid "This product uses the TMDB API but is not endorsed or certified by TMDB."
+msgstr "This product uses the TMDB API but is not endorsed or certified by TMDB."
+
 #: src/features/admin/TasksScreen.tsx
 msgid "Next run"
 msgstr "Next run"
@@ -1990,6 +1999,7 @@ msgid "More actions for {name}"
 msgstr "More actions for {name}"
 
 #: src/features/browse/LibraryScreen.tsx
+#: src/features/user/SettingsScreen.tsx
 msgid "View"
 msgstr "View"
 
@@ -2156,6 +2166,11 @@ msgstr "{count, plural, one {# episode} other {# episodes}}"
 msgid "Nightly tasks run {start} to {end}"
 msgstr "Nightly tasks run {start} to {end}"
 
+#: src/features/user/CreditsDialog.tsx
+#: src/features/user/SettingsScreen.tsx
+msgid "Credits"
+msgstr "Credits"
+
 #: src/features/browse/FavoritesScreen.tsx
 #: src/features/detail/WorkRows.tsx
 msgid "Extras"
@@ -2172,6 +2187,10 @@ msgstr "Signed-in devices"
 #: src/features/detail/BookDetail.tsx
 msgid "Play from {title}"
 msgstr "Play from {title}"
+
+#: src/features/user/CreditsDialog.tsx
+msgid "Audiobook metadata from {audnexus}"
+msgstr "Audiobook metadata from {audnexus}"
 
 #: src/features/detail/EpisodeDetail.tsx
 msgid "Season {seasonNumber}"
@@ -2688,6 +2707,7 @@ msgstr "Use a full address starting with http:// or https://."
 #: src/components/Skeleton.tsx
 #: src/features/detail/DetailSkeleton.tsx
 #: src/features/history/HistoryScreen.tsx
+#: src/features/user/LicensesDialog.tsx
 msgid "Loading…"
 msgstr "Loading…"
 
@@ -2870,6 +2890,10 @@ msgstr "Narrators"
 #: src/features/user/SettingsScreen.tsx
 msgid "Auto"
 msgstr "Auto"
+
+#: src/features/user/CreditsDialog.tsx
+msgid "Transcoding by {jellyfinFfmpeg} (GPL)"
+msgstr "Transcoding by {jellyfinFfmpeg} (GPL)"
 
 #. placeholder {0}: cast.device ?? ""
 #: src/features/player/CastButton.tsx
@@ -3854,6 +3878,8 @@ msgstr "Clear all"
 #: src/features/admin/ChooseArtworkDialog.tsx
 #: src/features/admin/ShowFilesDialog.tsx
 #: src/features/detail/Overview.tsx
+#: src/features/user/CreditsDialog.tsx
+#: src/features/user/LicensesDialog.tsx
 msgid "Close"
 msgstr "Close"
 

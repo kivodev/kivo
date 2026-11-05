@@ -2,7 +2,7 @@ import KivoCore
 import KivoUI
 import SwiftUI
 
-/// About: the app's and the server's versions.
+/// About: the app's and the server's versions, then Credits.
 struct AboutView: View {
     @Environment(ServerModel.self) private var server
     @State private var serverVersion: String?
@@ -26,6 +26,11 @@ struct AboutView: View {
                     LabeledContent(String(localized: "Server version"), value: serverVersion ?? "")
                 }
             }
+            Section {
+                NavigationLink { CreditsView() } label: {
+                    Text(String(localized: "Credits"))
+                }
+            }
         }
         .navigationTitle(String(localized: "About"))
         .toolbarTitleDisplayMode(.inline)
@@ -39,5 +44,35 @@ struct AboutView: View {
         } catch {
             failure = error.problemSentence
         }
+    }
+}
+
+/// Credits, from About: TMDB's logo and the notice its API terms ask for, then Audnexus and jellyfin-ffmpeg,
+/// then Open source licenses.
+private struct CreditsView: View {
+    var body: some View {
+        Form {
+            Section {
+                VStack(alignment: .leading, spacing: 8) {
+                    Image("TMDBLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 12)
+                        .accessibilityLabel(Text(verbatim: "TMDB"))
+                    Text(String(localized: "This product uses the TMDB API but is not endorsed or certified by TMDB."))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 4)
+                Text(String(localized: "Audiobook metadata from Audnexus"))
+                Text(String(localized: "Transcoding by jellyfin-ffmpeg (GPL)"))
+            }
+            Section {
+                NavigationLink { LicensesView() } label: {
+                    Text(String(localized: "Open source licenses"))
+                }
+            }
+        }
+        .navigationTitle(String(localized: "Credits"))
+        .toolbarTitleDisplayMode(.inline)
     }
 }

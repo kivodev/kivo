@@ -1,0 +1,23 @@
+{
+  "//": "What the apps ship that no package manager reports: Google's Cast SDK, under Google's terms; CLDR's language names (shared/display), under Unicode's license; and the libraries in MPVKit's prebuilt libass for the iPhone, whose package names only its build scripts' license. Each app lists the entries naming it under Open source licenses, after the packages its build reports. text, when there is one, is a file beside this one.",
+  "terms": [
+    {
+      "name": "Google Cast SDK",
+      "license": "Google Cast SDK Additional Developer Terms of Service",
+      "url": "https://developers.google.com/cast/docs/terms",
+      "apps": ["web", "apple"]
+    },
+    {
+      "name": "Unicode CLDR",
+      "license": "Unicode License v3",
+      "url": "https://www.unicode.org/license.txt",
+      "text": "unicode-license.txt",
+      "apps": ["web", "android", "apple"]
+    },
+    { "name": "libass", "license": "ISC", "url": "https://github.com/libass/libass/blob/master/COPYING", "apps": ["apple"] },
+    { "name": "FreeType", "license": "FTL", "url": "https://gitlab.freedesktop.org/freetype/freetype/-/blob/master/docs/FTL.TXT", "apps": ["apple"] },
+    { "name": "HarfBuzz", "license": "MIT", "url": "https://github.com/harfbuzz/harfbuzz/blob/main/COPYING", "apps": ["apple"] },
+    { "name": "FriBidi", "license": "LGPL-2.1-or-later", "url": "https://github.com/fribidi/fribidi/blob/master/COPYING", "apps": ["apple"] },
+    { "name": "libunibreak", "license": "Zlib", "url": "https://github.com/adah1972/libunibreak/blob/master/LICENCE", "apps": ["apple"] }
+  ]
+}

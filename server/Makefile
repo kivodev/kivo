@@ -5,6 +5,7 @@ DEADCODE    := go run golang.org/x/tools/cmd/deadcode@v0.51.0
 DUPL        := go run github.com/mibk/dupl@v1.1.0
 GOCYCLO     := go run github.com/fzipp/gocyclo/cmd/gocyclo@v0.6.0
 GOCOGNIT    := go run github.com/uudashr/gocognit/cmd/gocognit@v1.2.1
+GO_LICENSES := go run github.com/google/go-licenses/v2@v2.0.1
 # The OpenAPI tools run at pinned versions through npx (Node 20 or later).
 OPENAPI_TS  := npx --yes openapi-typescript@7.13.0
 REDOCLY     := REDOCLY_TELEMETRY=off REDOCLY_SUPPRESS_UPDATE_NOTICE=true npx --yes @redocly/cli@2.53.3
@@ -26,7 +27,30 @@ GO_FILES    := cmd internal $(wildcard web/*.go)
 
 include ceilings.mk
 
-.PHONY: build test budget lint ceilings ceilings-server ceilings-web ceilings-clients generate fmt check-generated web
+.PHONY: build test budget lint ceilings ceilings-server ceilings-web ceilings-clients generate fmt check-generated web notices
+
+# bin/THIRD-PARTY-NOTICES.txt, which the image ships: packaging's notices
+# with the Dockerfile's jellyfin-ffmpeg, each Go module in the build with its
+# license (go-licenses), Go's own (its link where a distribution's Go has no
+# LICENSE file), then CLDR's Unicode license. The Windows build
+# writes its own the same way (packaging/windows/build.ps1). A module whose
+# license go-licenses can't read fails it. go-licenses doesn't know MIT-0,
+# go-sqlite3-wasm's license, so that module's LICENSE is added as it is.
+FFMPEG_VERSION := $(shell sed -n 's/^ARG JELLYFIN_FFMPEG=//p' Dockerfile)
+SQLITE_WASM    := github.com/ncruces/go-sqlite3-wasm/v6
+notices:
+	@mkdir -p bin
+	set -e; { \
+		sed 's/{ffmpeg}/$(FFMPEG_VERSION)/g' packaging/THIRD-PARTY-NOTICES.txt; \
+		$(GO_LICENSES) report ./cmd/kivo --ignore github.com/mmcdole/kivo --ignore $(SQLITE_WASM) --template packaging/go-licenses.tpl; \
+		printf '\n%s\n%s (MIT-0)\n\n' '================================================================================' "$$(go list -m $(SQLITE_WASM))"; \
+		cat "$$(go list -m -f '{{.Dir}}' $(SQLITE_WASM))/LICENSE"; \
+		printf '\n%s\nThe Go standard library, %s (BSD-3-Clause)\n\n' '================================================================================' "$$(go env GOVERSION)"; \
+		cat "$$(go env GOROOT)/LICENSE" 2>/dev/null || echo 'https://go.dev/LICENSE'; \
+		printf '\n%s\nUnicode CLDR\n\n' '================================================================================'; \
+		cat ../shared/credits/unicode-license.txt; \
+	} > bin/THIRD-PARTY-NOTICES.txt.tmp
+	mv bin/THIRD-PARTY-NOTICES.txt.tmp bin/THIRD-PARTY-NOTICES.txt
 
 build:
 	CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o bin/kivo ./cmd/kivo

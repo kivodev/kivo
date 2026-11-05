@@ -14,6 +14,22 @@ plugins {
     id("com.android.kotlin.multiplatform.library")
     id("co.touchlab.skie")
     id("app.cash.sqldelight")
+    // The libraries the iPhone app links through KivoCore, with their licenses, for its Open source
+    // licenses page: build/aboutlibraries/ios.json, which clients/apple/scripts/build-core.sh exports.
+    id("com.mikepenz.aboutlibraries.plugin")
+}
+
+aboutLibraries {
+    collect {
+        includeTargets = true
+    }
+    export {
+        outputFile = layout.buildDirectory.file("aboutlibraries/ios.json").get().asFile
+        excludeFields.addAll("developers", "funding", "scm", "description", "organization", "website")
+    }
+    library {
+        duplicationMode = com.mikepenz.aboutlibraries.plugin.DuplicateMode.MERGE
+    }
 }
 
 val ktorVersion = "3.5.1"

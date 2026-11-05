@@ -4,6 +4,9 @@
 plugins {
     id("com.android.application")
     kotlin("plugin.compose")
+    // Writes res/raw/aboutlibraries.json with each build: the app's libraries and :core's, with their
+    // licenses, for Settings › About › Credits › Open source licenses.
+    id("com.mikepenz.aboutlibraries.plugin.android")
 }
 
 val media3Version = "1.11.1"
@@ -24,6 +27,28 @@ abstract class ComposeTokens : JavaExec() {
         args(tokens.get().asFile.path, file.path, "com.mmcdole.kivo.android.theme")
         super.exec()
     }
+}
+
+/** Copies shared/credits (terms.json and the texts it names) into the app's assets, for the licenses page. */
+abstract class CreditsAssets : DefaultTask() {
+    @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val credits: DirectoryProperty
+
+    @get:OutputDirectory
+    abstract val output: DirectoryProperty
+
+    @TaskAction
+    fun copy() {
+        val into = output.get().dir("credits").asFile
+        into.deleteRecursively()
+        credits.get().asFile.copyRecursively(into)
+    }
+}
+
+val creditsAssets = tasks.register<CreditsAssets>("creditsAssets") {
+    credits.set(rootDir.resolve("../shared/credits"))
+    output.set(layout.buildDirectory.dir("generated/credits"))
 }
 
 val tokensTool = configurations.create("tokensTool")
@@ -96,11 +121,31 @@ composeCompiler {
 androidComponents {
     onVariants { variant ->
         variant.sources.kotlin?.addGeneratedSourceDirectory(composeTokens, ComposeTokens::output)
+        variant.sources.assets?.addGeneratedSourceDirectory(creditsAssets, CreditsAssets::output)
+    }
+}
+
+aboutLibraries {
+    export {
+        // Only what the page shows.
+        excludeFields.addAll("developers", "funding", "scm", "description", "organization", "website")
+    }
+    license {
+        // A library under a license not named here fails the build.
+        strictMode = com.mikepenz.aboutlibraries.plugin.StrictMode.FAIL
+        allowedLicenses.addAll("Apache-2.0", "MIT", "BSD-2-Clause", "BSD-3-Clause", "ISC")
+        // Jellyfin's build of Media3's FFmpeg decoder.
+        allowedLicensesMap = mapOf("GPL-3.0-only" to listOf("org.jellyfin.media3"))
+    }
+    library {
+        duplicationMode = com.mikepenz.aboutlibraries.plugin.DuplicateMode.MERGE
     }
 }
 
 dependencies {
     implementation(project(":core"))
+    // Reads res/raw/aboutlibraries.json.
+    implementation("com.mikepenz:aboutlibraries-core:15.3.0")
 
     implementation(platform("androidx.compose:compose-bom:2026.09.00"))
     implementation("androidx.compose.ui:ui")

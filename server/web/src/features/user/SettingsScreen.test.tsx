@@ -1,9 +1,21 @@
 import { act, waitFor, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { bookIds } from "@/api/mocks/books";
 import { deviceSettings } from "@/lib/deviceSettings";
 import { renderApp, screen } from "@/test/render";
 import { http, mockId, mockIds, problem, sent, serveMockApi, server } from "@/test/server";
+
+// The build's licenses.js, which the dev server and the tests don't have.
+vi.mock("./licenses", () => ({
+  loadLicenses: async () => [
+    { name: "react", version: "19.3.0", license: "MIT", text: "MIT License\n\nCopyright (c) Meta Platforms, Inc." },
+    {
+      name: "Google Cast SDK",
+      license: "Google Cast SDK Additional Developer Terms of Service",
+      url: "https://developers.google.com/cast/docs/terms",
+    },
+  ],
+}));
 
 afterEach(() => {
   localStorage.clear();
@@ -74,6 +86,61 @@ describe("Settings", () => {
     expect(screen.getByRole("button", { name: /Subtitle background/ })).toHaveAccessibleName(/Shadow/);
     expect(screen.getByRole("button", { name: /Theme/ })).toHaveAccessibleName(/Dark/);
     expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
+  });
+
+  it("opens the credits for TMDB, Audnexus and jellyfin-ffmpeg from About's Credits row", async () => {
+    serveMockApi();
+    const { user } = renderApp("/settings");
+    const about = await screen.findByRole("region", { name: "About" });
+    expect(within(about).getByText("Credits")).toBeInTheDocument();
+    expect(within(about).queryByText(/TMDB API/)).not.toBeInTheDocument();
+    await user.click(within(about).getByRole("button", { name: "View" }));
+
+    const credits = await screen.findByRole("dialog", { name: "Credits" });
+    expect(within(credits).getByRole("img", { name: "TMDB" })).toHaveAttribute("src", "tmdb.svg");
+    expect(within(credits).getByRole("link", { name: "TMDB" })).toHaveAttribute("href", "https://www.themoviedb.org");
+    expect(
+      within(credits).getByText("This product uses the TMDB API but is not endorsed or certified by TMDB."),
+    ).toBeInTheDocument();
+    expect(within(credits).getByText(/^Audiobook metadata from/)).toHaveTextContent("Audiobook metadata from Audnexus");
+    expect(within(credits).getByRole("link", { name: "Audnexus" })).toHaveAttribute(
+      "href",
+      "https://github.com/laxamentumtech/audnexus",
+    );
+    expect(within(credits).getByText(/^Transcoding by/)).toHaveTextContent("Transcoding by jellyfin-ffmpeg (GPL)");
+    expect(within(credits).getByRole("link", { name: "jellyfin-ffmpeg" })).toHaveAttribute(
+      "href",
+      "https://github.com/jellyfin/jellyfin-ffmpeg",
+    );
+
+    await user.click(within(credits).getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Credits" })).not.toBeInTheDocument());
+  });
+
+  it("lists the build's open source licenses from Credits, each package's text under it", async () => {
+    serveMockApi();
+    const { user } = renderApp("/settings");
+    const about = await screen.findByRole("region", { name: "About" });
+    await user.click(within(about).getByRole("button", { name: "View" }));
+    const credits = await screen.findByRole("dialog", { name: "Credits" });
+    await user.click(within(credits).getByRole("button", { name: "Open source licenses" }));
+
+    const licenses = await screen.findByRole("dialog", { name: "Open source licenses" });
+    expect(await within(licenses).findByText("19.3.0")).toBeInTheDocument();
+    const react = within(licenses).getByText("react").closest("details");
+    if (!react) throw new Error("no details for react");
+    expect(within(react).getByText("MIT")).toBeInTheDocument();
+    await user.click(within(react).getByText("react"));
+    expect(react).toHaveAttribute("open");
+    expect(within(react).getByText(/Copyright \(c\) Meta Platforms/)).toBeVisible();
+    expect(within(licenses).getByRole("link", { name: /Google Cast SDK/ })).toHaveAttribute(
+      "href",
+      "https://developers.google.com/cast/docs/terms",
+    );
+
+    await user.click(within(licenses).getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Open source licenses" })).not.toBeInTheDocument());
+    expect(screen.getByRole("dialog", { name: "Credits" })).toBeInTheDocument();
   });
 
   it("saves each user change to the server as it's made", async () => {

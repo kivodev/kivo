@@ -34,6 +34,7 @@ import { TvFocusGroup, useTvFocusable } from "@/tv/focus";
 import { TvControl } from "@/tv/forms/TvControl";
 import { currentTvFocus, focusTv, isTvFocusIn } from "@/tv/spatial";
 import { ChangePasswordDialog } from "./ChangePasswordDialog";
+import { CreditsDialog } from "./CreditsDialog";
 import { LibraryOrder, LibraryPins } from "./LibraryOrder";
 import { Sessions, SignOutHereButton } from "./Sessions";
 import { TvVersions } from "./TvVersions";
@@ -480,6 +481,7 @@ function AboutSection() {
           </SettingsRow>
         </SettingsCard>
       )}
+      <CreditsRow />
       {/* There is no admin area on TV; this is how to reach it from a browser. */}
       {isTv && address && (
         <SettingsCard
@@ -496,6 +498,21 @@ function AboutSection() {
       )}
       {isPackaged && <PackagedChangeServer server={info.name} />}
     </SettingsSection>
+  );
+}
+
+/** About's Credits row, which opens the credits. */
+function CreditsRow() {
+  const [open, setOpen] = useState(false);
+  return (
+    <SettingsCard>
+      <SettingsRow label={<Trans>Credits</Trans>}>
+        <Button size="sm" onPress={() => setOpen(true)}>
+          <Trans>View</Trans>
+        </Button>
+      </SettingsRow>
+      <CreditsDialog isOpen={open} onClose={() => setOpen(false)} />
+    </SettingsCard>
   );
 }
 

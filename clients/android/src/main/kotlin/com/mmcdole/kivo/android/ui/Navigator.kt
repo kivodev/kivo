@@ -26,6 +26,15 @@ sealed interface Screen {
     /** One group of settings, opened from Settings. */
     data class SettingsPage(val group: SettingsGroup) : Screen
 
+    /** Credits, opened from About. */
+    data object Credits : Screen
+
+    /** Open source licenses, opened from Credits. */
+    data object Licenses : Screen
+
+    /** One license's text, opened from Open source licenses; [id] is its library's. */
+    data class LicenseText(val id: String) : Screen
+
     data class Library(val id: String) : Destination
 
     /** The user's favorites, a row for each kind. */

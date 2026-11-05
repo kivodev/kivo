@@ -1,9 +1,0 @@
-Kivo is licensed under the GNU Affero General Public License v3.0. Its
-source is at https://github.com/kivodev/kivo.
-
-Kivo comes with jellyfin-ffmpeg {ffmpeg} (ffmpeg\ffmpeg.exe and
-ffmpeg\ffprobe.exe), a build of FFmpeg that includes components licensed
-under the GNU General Public License, so the build as a whole is under the
-GPL. Kivo runs it as a separate program. Its source and license are at
-https://github.com/jellyfin/jellyfin-ffmpeg/releases/tag/v{ffmpeg}, and
-FFmpeg's at https://ffmpeg.org.

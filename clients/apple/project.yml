@@ -81,6 +81,19 @@ targets:
     platform: iOS
     sources:
       - path: Kivo
+      # Open source licenses' other sources: the core's libraries, which
+      # scripts/build-core.sh exports with the core, and the terms no
+      # package manager reports, with their texts.
+      - path: Frameworks/KivoCore-licenses.json
+        optional: true
+        buildPhase: resources
+      - path: ../../shared/credits
+        type: folder
+        buildPhase: resources
+    postBuildScripts:
+      - name: Open source licenses
+        script: '"$SRCROOT/scripts/licenses.sh"'
+        basedOnDependencyAnalysis: false
     preBuildScripts:
       - name: Check the build number
         script: |

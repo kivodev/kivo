@@ -57,6 +57,11 @@ class NavigatorTest {
         navigator.open(Screen.Settings)
         navigator.push(Screen.SettingsPage(SettingsGroup.About))
         assertEquals(Screen.Settings, navigator.destination)
+
+        // About's Credits, a page further down.
+        navigator.push(Screen.Credits)
+        assertEquals(Screen.Settings, navigator.destination)
+        assertEquals(Back.Pop, navigator.back)
     }
 
     @Test

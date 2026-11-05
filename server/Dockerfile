@@ -22,6 +22,10 @@ ARG VERSION=dev
 RUN CGO_ENABLED=0 go build -trimpath -tags webui \
     -ldflags "-s -w -X main.version=${VERSION}" \
     -o /out/kivo ./cmd/kivo
+# The notices for what's in the image: jellyfin-ffmpeg, the Go modules and
+# CLDR (make notices).
+COPY shared/credits/ /shared/credits/
+RUN make notices
 
 FROM debian:trixie-slim
 ARG TARGETARCH=amd64
@@ -78,6 +82,8 @@ RUN set -eu; \
     apt-get install -y --no-install-recommends /tmp/jellyfin-ffmpeg.deb ca-certificates tzdata util-linux mesa-va-drivers; \
     rm -rf /var/lib/apt/lists/* /tmp/jellyfin-ffmpeg.deb
 COPY --from=server /out/kivo /usr/local/bin/kivo
+COPY LICENSE /usr/share/doc/kivo/LICENSE
+COPY --from=server /src/bin/THIRD-PARTY-NOTICES.txt /usr/share/doc/kivo/THIRD-PARTY-NOTICES.txt
 COPY server/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 ENV KIVO_DATA_DIR=/data \
     KIVO_CACHE_DIR=/cache \
