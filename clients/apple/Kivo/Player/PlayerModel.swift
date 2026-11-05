@@ -118,6 +118,10 @@ final class PlayerModel: PlayerChoices, Scrubbable {
         workId = target.workId
         offline = target.downloadId != nil
         downloadSource = nil
+        // Playback audio, so the video plays with the silent switch on and
+        // Picture in Picture and AirPlay are allowed. Set on every play, as
+        // the system can reset it.
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
         load(workId: target.workId)
         tasks.append(Task { [weak self, engine, server] in
             do {
@@ -525,6 +529,13 @@ final class PlayerModel: PlayerChoices, Scrubbable {
             self.tellOverlayShows()
             self.server.playerShown = false
         }
+        pictureInPictureEvents.failedToStart = { [weak self] error in
+            NSLog("Kivo: Picture in Picture didn't start: \(error)")
+            guard let self, self.pictureInPictureActive else { return }
+            self.pictureInPictureActive = false
+            self.tellOverlayShows()
+            self.server.playerShown = true
+        }
         pictureInPictureEvents.didStop = { [weak self] in
             guard let self else { return }
             self.pictureInPictureActive = false
@@ -610,11 +621,16 @@ enum PlayerSheet: String, Identifiable {
 /// Picture in Picture's delegate, forwarding to the player model.
 private final class PictureInPictureEvents: NSObject, AVPictureInPictureControllerDelegate {
     var willStart: () -> Void = {}
+    var failedToStart: (Error) -> Void = { _ in }
     var didStop: () -> Void = {}
     var restore: (@escaping (Bool) -> Void) -> Void = { $0(false) }
 
     func pictureInPictureControllerWillStartPictureInPicture(_ controller: AVPictureInPictureController) {
         willStart()
+    }
+
+    func pictureInPictureController(_ controller: AVPictureInPictureController, failedToStartPictureInPictureWithError error: Error) {
+        failedToStart(error)
     }
 
     func pictureInPictureControllerDidStopPictureInPicture(_ controller: AVPictureInPictureController) {

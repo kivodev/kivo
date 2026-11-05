@@ -1,4 +1,3 @@
-import AVFoundation
 import KivoCore
 import KivoUI
 import Observation
@@ -85,9 +84,6 @@ final class AppModel {
         connectivity = Connectivity(core: core)
         self.core = core
         display = core.display
-        // Playback audio, so video and books play with the silent switch on,
-        // and Picture in Picture and AirPlay are allowed.
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
     }
 
     /// Restores the last server signed in to, or goes to sign-in, once the
