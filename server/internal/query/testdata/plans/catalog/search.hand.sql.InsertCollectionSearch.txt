@@ -1,0 +1,1 @@
+SEARCH collection USING COVERING INDEX sqlite_autoindex_collection_1 (id=?)

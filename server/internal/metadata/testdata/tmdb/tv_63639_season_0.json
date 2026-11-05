@@ -1,0 +1,10 @@
+{
+  "season_number": 0,
+  "name": "Specials",
+  "overview": "",
+  "air_date": "2016-01-01",
+  "poster_path": null,
+  "episodes": [
+    {"id": 9001, "name": "Behind the Expanse", "overview": "", "air_date": "2016-01-01", "season_number": 0, "episode_number": 1, "still_path": null, "crew": [], "guest_stars": []}
+  ]
+}

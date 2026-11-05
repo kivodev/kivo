@@ -1,0 +1,1 @@
+SEARCH track_choice USING PRIMARY KEY (user_id=? AND series_id=?)

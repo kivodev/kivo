@@ -1,0 +1,6 @@
+SEARCH w USING INDEX work_root (root_id=?)
+SEARCH vw USING COVERING INDEX media_version_work_work (work_id=?)
+CORRELATED SCALAR SUBQUERY 1
+  SEARCH p USING INDEX media_file_version (version_id=?)
+SEARCH f USING INDEX media_file_version (version_id=?)
+USE TEMP B-TREE FOR DISTINCT

@@ -1,0 +1,240 @@
+# Naming fixtures Kivo parses differently, one per line:
+# source<TAB>name<TAB>reason. TestFixtures fails on a failure missing here
+# and on a line here that passes, so the list stays exact.
+#
+# Pass rate: 797 of 1014 (78.6%); the test logs the current figure.
+#
+# What the fixtures are checked on (fixtures_test.go):
+# - Only fields a Guess models: title, year, season, episodes, and for
+#   anitomy also group, checksum, revision, specials and split letters.
+#   Codecs, sources, languages, anitomy's type, volume and part are ignored.
+# - Titles compare as Key with spaces removed, since the fixtures disagree
+#   on punctuation and case.
+# - A guessit fixture with no type and no season or episode passes if either
+#   a movies or a shows library parses it: a real library declares its kind.
+# - anitomy's group is checked only when the name starts with [Group];
+#   identification doesn't use groups, and trailing ones read as titles.
+# - anitomy lists a range by its ends ("13", "15"), so only the ends compare.
+#
+# Most entries fall into a few groups: season packs (Kivo parses single
+# files), names with '/' (a path separator to Parse), non-English season
+# and episode words, and anime OP/ED/volume/cour tokens. The fixtures are
+# torrent release names, which are messier than library file names.
+
+ptt	All of Us Are Dead . 2022 . S01 EP #1.2.mkv	"#1.2" reads as episode 1 and a .2 special
+ptt	BBC Indian Ocean with Simon Reeve 5of6 Sri Lanka to Bangladesh.avi	"N of M" numbering; Kivo doesn't read part counts
+ptt	Das Boot Miniseries Original Uncut-Reevel Cd2 Of 3.avi	"N of M" numbering; Kivo doesn't read part counts
+ptt	Prehistoric park.3iz6.Supercroc.DVDRip.Xvid.avi	"N of M" numbering; Kivo doesn't read part counts
+ptt	Witches Of Salem - 2Of4 - Road To Hell - Gr.mkv	"N of M" numbering; Kivo doesn't read part counts
+ptt	Witches Of Salem - 2Of4 - Road To Hell - Great Mysteries Of The World	"N of M" numbering; Kivo doesn't read part counts
+ptt	Sons of Anarchy Sn4 Ep14 HD-TV - To Be, Act 2, By Cool Release	"Sn4" isn't a season form Kivo reads
+ptt	The.Man.In.The.High.Castle1x01.HDTV.XviD[www.DivxTotaL.com].avi	1x01 glued to the title; Kivo needs a separator before it, so 720x480-style tokens inside words don't match
+thcolin	Friday.The.13th.Part.III.3D.1982.iNTERNAL.BDRip.x264-MARS	3D stays in the title, as in Saw 3D
+ptt	Jurassic.World.Dominion.CUSTOM.EXTENDED.2022.2160p.MULTi.VF2.UHD.Blu-ray.REMUX.HDR.DoVi.HEVC.DTS-X.DTS-HDHRA.7.1-MOONLY.mkv	CUSTOM isn't a release tag Kivo knows; it's also a title word
+ptt	Top Gear - 3x05 - 2003.11.23.avi	the parser reads a date before 1x02, so the air date wins
+ptt	Grimm.INTEGRAL.MULTI.COMPLETE.BLURAY-BMTH	INTEGRAL isn't a release tag Kivo knows
+anitomy	[Deep] Tegami Bachi (REVERSE) - Letter Bee - 29 (04) [5203142B].mkv	Kivo reads the absolute number; anitomy prefers the per-season one in brackets
+anitomy	[(´• ω •`)] Nintama Rantarou - S23E1821 - Buddhist Priest-sama is a Ninja.mkv	NFKC changes the acute accent in the group name; matching uses NFKC
+ptt	UFC.247.PPV.Jones.vs.Reyes.HDTV.x264-PUNCH[TGx]	PPV is a release tag, so the title ends before the bout name
+ptt	[KH] Sword Art Online II - 14.5 - Debriefing.mkv	a decimal such as 14.5 is a special; the fixture reads the whole number
+ptt	2008 The Incredible Hulk Feature Film.mp4	a leading bare year stays in the title, so numeric titles such as 2001 A Space Odyssey survive
+anitomy	Byousoku 5 Centimeter [Blu-Ray][1920x1080 H.264][2.0ch AAC][SOFTSUBS]	a number inside the title reads as the episode; anime titles with numbers are ambiguous without a dash before the episode
+anitomy	The iDOLM@STER 765 Pro to Iu Monogatari.mkv	a number inside the title reads as the episode; anime titles with numbers are ambiguous without a dash before the episode
+anitomy	[Ayu]_Kiddy_Grade_2_-_Pilot_[H264_AC3][650B731B].mkv	a number inside the title reads as the episode; anime titles with numbers are ambiguous without a dash before the episode
+anitomy	[BluDragon] Blue Submarine No.6 (DVD, R2, Dual Audio) V3	a number inside the title reads as the episode; anime titles with numbers are ambiguous without a dash before the episode
+anitomy	[FB] Crayon Shin-Chan Movie 2 The Secret of Buri Buri Kingdom [DivX5 AC3] 1994 [852X480] V2.avi	a number inside the title reads as the episode; anime titles with numbers are ambiguous without a dash before the episode
+anitomy	[KAF-TEAM]_One_Piece_Movie_9_vostfr_HD.avi	a number inside the title reads as the episode; anime titles with numbers are ambiguous without a dash before the episode
+anitomy	[Ruri]No.6 01 [720p][H264][A956075C].mkv	a number inside the title reads as the episode; anime titles with numbers are ambiguous without a dash before the episode
+ptt	Too Many Cooks _ Adult Swim.mp4	an underscore is a space, so the channel name stays in the title
+anitomy	Diamond no Ace Second Season OVA - 01	anime OP/ED/SP/PV/OVA token glued to a number; Kivo doesn't model these extra types
+anitomy	[Asenshi] Rozen Maiden 3 - PV [CA57F300].mkv	anime OP/ED/SP/PV/OVA token glued to a number; Kivo doesn't model these extra types
+anitomy	[CMS] Magical☆Star Kanon 100% OVA[DVD][E9F43685].mkv	anime OP/ED/SP/PV/OVA token glued to a number; Kivo doesn't model these extra types
+anitomy	[Coalgirls]_Bakemonogatari_OP4a_(1280x720_Blu-Ray_FLAC)_[327A2375].mkv	creditless OP/ED: Kivo files it as an extra rather than an OP/ED type
+anitomy	[Coalgirls]_Fate_Zero_OVA3.5_(1280x720_Blu-ray_FLAC)_[5F5AD026].mkv	anime OP/ED/SP/PV/OVA token glued to a number; Kivo doesn't model these extra types
+anitomy	[Coalgirls]_Toradora_ED2_(704x480_DVD_AAC)_[3B65D1E6].mkv	creditless OP/ED: Kivo files it as an extra rather than an OP/ED type
+anitomy	[FFF] Seirei Tsukai no Blade Dance - SP01 [BD][720p-AAC][F1FF8588].mkv	anime OP/ED/SP/PV/OVA token glued to a number; Kivo doesn't model these extra types
+anitomy	[Some-Stuffs]_Jojo's_Bizarre_Adventure_Diamond_is_Unbreakable_NCOP1a_(1920x1080_Blu-Ray_FLAC)_[343E8357].mkv	creditless OP/ED: Kivo files it as an extra rather than an OP/ED type
+anitomy	[UTW]_Accel_World_-_EX01_[BD][h264-720p_AAC][3E56EE18].mkv	anime OP/ED/SP/PV/OVA token glued to a number; Kivo doesn't model these extra types
+anitomy	[ADF] Love Live! Nijigasaki Gakuen School Idol Doukoukai Kanketsu-hen -Parte 1- (BD 1280x720 AAC 5.1+2.0)	anime cour or part marker; identify maps cours through the provider's absolute order
+anitomy	[Anime Time] Bleach: Thousand-Year Blood War (Cour 3) (2024) [1080p][HEVC 10bit x265][AAC][Multi Sub] (Bleach Season 17 - Bleach Sennen Kessen hen) [Batch]	anime cour or part marker; identify maps cours through the provider's absolute order
+anitomy	[Erai-raws] NieR-Automata Ver1_1a Part 2 - 03 [1080p][Multiple Subtitle][AAF0612D].mkv	anime cour or part marker; identify maps cours through the provider's absolute order
+anitomy	[Erai-raws] Spy x Family Cour 2 - 01 ~ 13 [1080p][Multiple Subtitle]	anime cour or part marker; identify maps cours through the provider's absolute order
+anitomy	[Erai-raws] Vanitas no Karte 2nd Cour - 01 [1080p][Multiple Subtitle][DE38A9CD].mkv	anime cour or part marker; identify maps cours through the provider's absolute order
+anitomy	[Judas] Sword Art Online S3 P2 - 01.mkv	anime cour or part marker; identify maps cours through the provider's absolute order
+anitomy	[NanakoRaws] Bleach - Sennen Kessen-hen cour 2 (1080p)	anime cour or part marker; identify maps cours through the provider's absolute order
+anitomy	[Nishi-Taku] Tamayura ~graduation photo~ Movie Part 1 [BD][720p][98965607].mkv	anime cour or part marker; identify maps cours through the provider's absolute order
+ptt	Heidi Audio Latino DVDRip [cap. 3 Al 18]	audio language words ("Audio Latino") aren't release tags Kivo knows
+anitomy	[Himatsubushi]_Sora_no_Woto_-_01_-_H264_-_720p_-_E83AD672.mkv	checksum without brackets; Kivo reads a CRC only in [] or ()
+anitomy	[SubDESU-H] Swing out Sisters Complete Version (720p x264 8bit AC3) [3ABD57E6].mp4	collection or pack name; its extra words stay in the title
+ptt	Dragon Ball Z (Complete Series) [1080p] [MP4] [English Audio]	collection or pack name; its extra words stay in the title
+ptt	Game of Thrones - The Complete Season 3 [HDTV]	collection or pack name; its extra words stay in the title
+ptt	Naruto Collection [DB 1080p][ Dual Audio ][ English & Arabic Sub ]	collection or pack name; its extra words stay in the title
+ptt	X-Men Complete 13 Movie Collection Sci-Fi 2000 - 2020 Eng Rus Multi-Subs 1080p [H264-mp4]	collection or pack name; its extra words stay in the title
+ptt	The Amazing World of Gumball - 103, 104 - The Third - The Debt.mkv	comma-separated episode list; Kivo reads +, & and ranges
+anitomy	Attack on Titan - Episode 3 - A Dim Light Amid Despair / Humanity's Comeback, Part 1	contains '/', which separates folders in a library path
+go-ptn	Guardians of the Galaxy (CamRip / 2014)	contains '/', which separates folders in a library path
+go-ptn	Teenage Mutant Ninja Turtles (HdRip / 2014)	contains '/', which separates folders in a library path
+go-ptn	Teenage Mutant Ninja Turtles (unknown_release_type / 2014)	contains '/', which separates folders in a library path
+ptn	Guardians of the Galaxy (CamRip / 2014)	contains '/', which separates folders in a library path
+ptn	Teenage Mutant Ninja Turtles (HdRip / 2014)	contains '/', which separates folders in a library path
+ptn	Teenage Mutant Ninja Turtles (unknown_release_type / 2014)	contains '/', which separates folders in a library path
+ptt	Discovery. Парни с Юкона / Yokon Men [06х01-08] (2017) HDTVRip от GeneralFilm | P1	contains '/', which separates folders in a library path
+ptt	Game of Thrones / Сезон: 1-8 / Серии: 1-73 из 73 [2011-2019, США, BDRip 1080p] MVO (LostFilm)	contains '/', which separates folders in a library path
+ptt	Seizoen 22 - Zon & Maan Ultra Legendes/afl.18 Je ogen op de bal houden!.mp4	contains '/', which separates folders in a library path
+ptt	Stargate Atlantis ALL Seasons - S01 / S02 / S03 / S04 / S05	contains '/', which separates folders in a library path
+ptt	[BenjiD] Quan Zhi Gao Shou (The King’s Avatar) / Full-Time Master S01 (01 - 12) [1080p x265] [Soft sub] V2	contains '/', which separates folders in a library path
+ptt	[SweetSub][Mutafukaz / MFKZ][Movie][BDRip][1080P][AVC 8bit][简体内嵌]	contains '/', which separates folders in a library path
+ptt	[neoHEVC] Student Council's Discretion / Seitokai no Ichizon [Season 1] [BD 1080p x265 HEVC AAC]	contains '/', which separates folders in a library path
+ptt	Американские животные / American Animals (Барт Лэйтон / Bart Layton) [2018, Великобритания, США, драма, криминал, BDRip] MVO (СВ Студия)	contains '/', which separates folders in a library path
+ptt	Бастер / Buster (Дэвид Грин / David Green) [1988, Великобритания, Комедия, мелодрама, драма, приключения, криминал, биография, DVDRip]	contains '/', which separates folders in a library path
+ptt	Викинги / Vikings / Сезон: 5 / Серии: 5 из 20 [2017, WEB-DL 1080p] MVO	contains '/', which separates folders in a library path
+ptt	Властелин колец: Кольца власти (S1E1-8 of 8) / The Lord of the Rings: The Rings of Power (2022) WEB-DL	contains '/', which separates folders in a library path
+ptt	Греческая смоковница / Griechische Feigen / The Fruit Is Ripe (Зиги Ротемунд / Sigi Rothemund (as Siggi Götz)) [1976, Германия (ФРГ), эротика, комедия, приключения, DVDRip] 2 VO	contains '/', which separates folders in a library path
+ptt	Греческая смоковница / The fruit is ripe / Griechische Feigen (Siggi Götz) [1976, Германия, Эротическая комедия, DVDRip]	contains '/', which separates folders in a library path
+ptt	Друзья / Friends / Сезон: 1, 2 / Серии: 1-24 из 24 [1994-1999, США, BDRip 720p] MVO	contains '/', which separates folders in a library path
+ptt	Сезон 5/Серия 11.mkv	contains '/', which separates folders in a library path
+ptt	Черное зеркало / Black Mirror / Сезон 4 / Серии 1-6 (6) [2017, США, WEBRip 1080p] MVO + Eng Sub	contains '/', which separates folders in a library path
+ptt	【4月/悠哈璃羽字幕社】[UHA-WINGS][不要输！恶之军团][Makeruna!! Aku no Gundan!][04][1080p AVC_AAC][简繁外挂][sc_tc]	contains '/', which separates folders in a library path
+ptt	【喵萌奶茶屋】★01月新番★[別對映像研出手！/Eizouken ni wa Te wo Dasu na!/映像研には手を出すな！][01][1080p][繁體]	contains '/', which separates folders in a library path
+thcolin	Faster, Pussycat ! Kill ! Kill !. 1965.Russ Meyer.VOSTFR.Blu-Ray 720p.Liosaa (RU) / Popo	contains '/', which separates folders in a library path
+anitomy	「K」 Image Blu-ray WHITE & BLACK - Main (BD 1280x720 AVC AAC).mp4	corner brackets aren't brackets to Kivo
+anitomy	[EroGaKi-Team]_Nurse_Witch_Komugi-chan_Magikarte_02.5_[902BB314].mkv	decimal special without a dash before it; a bare 2.5 is as likely a title's version number
+ptt	【喵萌奶茶屋】★01月新番★[Rebirth][01][720p][简体][招募翻译]	decoration between bracketed segments; Kivo picks a bracketed title only when the name is all brackets
+thcolin	Kiss the blood off my hands - (Norman FOSTER) - 1948 - VOSTFR - Dvdrip-x264 - kerfiche	director's name in brackets before the year stays in the title
+ptt	www 1TamilBlasters tel - Migration (2023) [English - 720p HQ HDRip - x264 - [DD5 1  (192Kbps) + AAC] - 850MB - ESub] mkv	download-site prefix without a dot or bracket; Kivo strips only www.site.tld - and bracketed site names
+ptt	www TamilBlasters tel - Sonic the Hedgehog 2 (2022) English 720p HDRip x264 AAC 800MB ESubs mkv	download-site prefix without a dot or bracket; Kivo strips only www.site.tld - and bracketed site names
+anitomy	37 [Ruberia]_Death_Note_-_37v2_[FINAL]_[XviD][6FA7D273].avi	group after a leading number; Kivo reads a group only at the start
+anitomy	EvoBot.[Watakushi]_Akuma_no_Riddle_-_01v2_[720p][69A307A2].mkv	group after a prefix; Kivo reads a group only at the start
+anitomy	[B-G_&_m.3.3.w]_Myself_Yourself_12.DVD(H.264_DD2.0)_[CB2B37F1].mkv	group kept as written; anitomy turns its underscores into spaces
+anitomy	[0x539] Somali and the Forest Spirit - S01E01 (WEB 1080p Hi10P AAC) [BB7C6531].mkv	group named like a 0x539 episode; Kivo keeps NxNN-looking brackets in the name
+go-ptn	Pure.UK.S01E01.720p.HDTV.x264-KETTLE.mkv	keeps the country code, which tells versions of a show apart
+go-ptn	The.Catch.US.S01E03.720p.HDTV.X264-DIMENSION	keeps the country code, which tells versions of a show apart
+ptt	The.Office.UK.S01.1080P.BLURAY.REMUX.AVC.DD5.1-NOGRP	keeps the country code, which tells versions of a show apart
+ptt	The.Witcher.US.S01.INTERNAL.1080p.WEB.x264-STRiFE	keeps the country code, which tells versions of a show apart
+thcolin	Anflug.Alpha.1.German.1971.COMPLETE.PAL.DVDR-MOViEiT	language written in title case; only capitalised scene tags end a title, so titles such as The French Connection survive
+thcolin	Angriff.der.Urzeitmonster.German.2006.COMPLETE.PAL.DVDR-MOViEiT	language written in title case; only capitalised scene tags end a title, so titles such as The French Connection survive
+thcolin	Edge.of.Tomorrow.3D.HOU.German.DL.1080p.BluRay.x264-EXQUiSiTE	language written in title case; only capitalised scene tags end a title, so titles such as The French Connection survive
+thcolin	Ein.Leben.fuer.den.Tod.German.2010.LD.DVDRip.XviD-KLASSiGER	language written in title case; only capitalised scene tags end a title, so titles such as The French Connection survive
+thcolin	Free.Birds.Esst.uns.an.einem.anderen.Tag.3D.HSBS.German.DL.1080p.BluRay.x264-EXQUiSiTE	language written in title case; only capitalised scene tags end a title, so titles such as The French Connection survive
+thcolin	Noah.German.2014.LD.1080p.BluRay.x264-HCS	language written in title case; only capitalised scene tags end a title, so titles such as The French Connection survive
+thcolin	Nurse.3D.2013.German.DL.720p.BluRay.x264-PussyFoot	language written in title case; only capitalised scene tags end a title, so titles such as The French Connection survive
+thcolin	Tammy.Voll.abgefahren.German.DL.AC3.Dubbed.720p.WebHD.h264-PsO	language written in title case; only capitalised scene tags end a title, so titles such as The French Connection survive
+thcolin	The.Purge.Anarchy.German.DL.AC3.Dubbed.1080p.BluRay.x264-Pleaders	language written in title case; only capitalised scene tags end a title, so titles such as The French Connection survive
+anitomy	01 - Land of Visible Pain.mkv	name starts with the episode number; Kivo reads that only inside a season folder (Jellyfin)
+anitomy	05 - Hidan no Aria - Butei Charter Article 1 - [UTW](E7724B68).mkv	name starts with the episode number; Kivo reads that only inside a season folder (Jellyfin)
+ptt	004 - Male Unbonding - [DVD].avi	name starts with the episode number; Kivo reads that only inside a season folder (Jellyfin)
+ptt	02 The Invitation.mp4	name starts with the episode number; Kivo reads that only inside a season folder (Jellyfin)
+ptt	102 - The Invitation.avi	name starts with the episode number; Kivo reads that only inside a season folder (Jellyfin)
+ptt	512 - Airport '07.avi	name starts with the episode number; Kivo reads that only inside a season folder (Jellyfin)
+ptt	523 23.mp4	name starts with the episode number; Kivo reads that only inside a season folder (Jellyfin)
+ptt	611-612 - Desperate Measures, Means & Ends.mp4	name starts with the episode number; Kivo reads that only inside a season folder (Jellyfin)
+anitomy	Detective-Conan-656 Professor's Video Site (Part 1)	number joined to the title by a dash; only a space, dot, underscore, bracket or # starts a bare number
+ptt	Adventure Time 10 th season	ordinal split from its suffix ("10 th")
+anitomy	Bubblegum Crisis (BDRip 1440x1080p x265 HEVC TrueHD, AAC 2.0x)(Dual Audio)[sxales](v2)	revision written apart from the episode number; Kivo reads v2 only right after the number
+anitomy	Howl's_Moving_Castle_(2004)_[1080p,BluRay,flac,dts,x264]_-_THORA v2.mkv	revision written apart from the episode number; Kivo reads v2 only right after the number
+anitomy	[NinjaPanda] Tiger & Bunny #01 All's well that ends well. (v3, 1080p Hi10P, DA AAC) [4A9AB85F].mkv	revision written apart from the episode number; Kivo reads v2 only right after the number
+ptt	2-06. Девичья сила.mkv	season and episode as two bare numbers; ambiguous with ranges and decimals, so Kivo doesn't guess
+ptt	4-13 Cursed (HD)	season and episode as two bare numbers; ambiguous with ranges and decimals, so Kivo doesn't guess
+ptt	4-13 Cursed (HD).m4v	season and episode as two bare numbers; ambiguous with ranges and decimals, so Kivo doesn't guess
+ptt	Desperate Housewives - Episode 1.22 - Goodbye for now.avi	season and episode as two bare numbers; ambiguous with ranges and decimals, so Kivo doesn't guess
+ptt	Dragon Ball [5.134] Preliminary Peril.mp4	season and episode as two bare numbers; ambiguous with ranges and decimals, so Kivo doesn't guess
+ptt	My Little Pony FiM - 6.01 - No Second Prances.mkv	season and episode as two bare numbers; ambiguous with ranges and decimals, so Kivo doesn't guess
+ptt	Ozk.02.09.avi	season and episode as two bare numbers; ambiguous with ranges and decimals, so Kivo doesn't guess
+ptt	Ozk.02.10.F.avi	season and episode as two bare numbers; ambiguous with ranges and decimals, so Kivo doesn't guess
+ptt	[5.01] Weight Loss.avi	season and episode as two bare numbers; ambiguous with ranges and decimals, so Kivo doesn't guess
+ptt	office_03_19.avi	season and episode as two bare numbers; ambiguous with ranges and decimals, so Kivo doesn't guess
+ptt	wwe.nxt.uk.11.26.mkv	season and episode as two bare numbers; ambiguous with ranges and decimals, so Kivo doesn't guess
+ptt	Доктор Хаус 03-20.mkv	season and episode as two bare numbers; ambiguous with ranges and decimals, so Kivo doesn't guess
+ptt	Комиссар Рекс 11-13.avi	season and episode as two bare numbers; ambiguous with ranges and decimals, so Kivo doesn't guess
+ptt	[HR] Boku no Hero Academia 87 (S4-24) [1080p HEVC Multi-Subs] HR-GZ	season and episode only in a bracket after the absolute number
+ptt	Tokyo Ghoul Root A - 07 [S2-07] [Eng Sub] 480p [email protected]	season given only in a bracket after the episode
+anitomy	Episode 14 Ore no Imouto ga Konnani Kawaii Wake ga Nai. (saison 2) VOSTFR	season or episode marked with a non-English word; Kivo reads the English forms Plex, Jellyfin and Sonarr document
+anitomy	[POPGO] Mobile Suit Gundam The Witch from Mercury 機動戦士ガンダム 水星の魔女 第01話 「魔女と花嫁」 Webrip 1080p HEVC	season or episode marked with a non-English word; Kivo reads the English forms Plex, Jellyfin and Sonarr document
+anitomy	呪術廻戦 第2期 01話	season or episode marked with a non-English word; Kivo reads the English forms Plex, Jellyfin and Sonarr document
+ptt	2 сезон 24 серия.avi	season or episode marked with a non-English word; Kivo reads the English forms Plex, Jellyfin and Sonarr document
+ptt	2. Discovery-Kak_ustroena_Vselennaya.(2.sezon_8.serii.iz.8).2012.XviD.HDTVRip.Krasnodarka	season or episode marked with a non-English word; Kivo reads the English forms Plex, Jellyfin and Sonarr document
+ptt	3 сезон	season or episode marked with a non-English word; Kivo reads the English forms Plex, Jellyfin and Sonarr document
+ptt	30 M0N3D4S ESP T01XE08.mkv	season or episode marked with a non-English word; Kivo reads the English forms Plex, Jellyfin and Sonarr document
+ptt	3Âº Temporada Bob esponja Pt-Br	season or episode marked with a non-English word; Kivo reads the English forms Plex, Jellyfin and Sonarr document
+ptt	Anatomia De Grey - Temporada 19 [HDTV][Castellano][www.AtomoHD.nu].avi	season or episode marked with a non-English word; Kivo reads the English forms Plex, Jellyfin and Sonarr document
+ptt	Elementar 3º Temporada Dublado	season or episode marked with a non-English word; Kivo reads the English forms Plex, Jellyfin and Sonarr document
+ptt	Eu, a Patroa e as Crianças  4° Temporada Completa - HDTV - Dublado	season or episode marked with a non-English word; Kivo reads the English forms Plex, Jellyfin and Sonarr document
+ptt	Juego de Tronos - Temp.2 [ALTA DEFINICION 720p][Cap.209][Spanish].mkv	season or episode marked with a non-English word; Kivo reads the English forms Plex, Jellyfin and Sonarr document
+ptt	Los Simpsons Temp 7 DVDrip Espanol De Espana	season or episode marked with a non-English word; Kivo reads the English forms Plex, Jellyfin and Sonarr document
+ptt	My Little Pony - A Amizade é Mágica - T02E22.mp4	season or episode marked with a non-English word; Kivo reads the English forms Plex, Jellyfin and Sonarr document
+ptt	Otchayannie.domochozyaiki.(8.sez.21.ser.iz.23).2012.XviD.HDTVRip.avi	season or episode marked with a non-English word; Kivo reads the English forms Plex, Jellyfin and Sonarr document
+ptt	Tajny.sledstvija.(2.sezon.12.serija.iz.12).2002.XviD.DVDRip.avi	season or episode marked with a non-English word; Kivo reads the English forms Plex, Jellyfin and Sonarr document
+ptt	Tajny.sledstviya-20.01.serya.WEB-DL.(1080p).by.lunkin.mkv	season or episode marked with a non-English word; Kivo reads the English forms Plex, Jellyfin and Sonarr document
+ptt	Teen Wolf - 04ª Temporada 720p	season or episode marked with a non-English word; Kivo reads the English forms Plex, Jellyfin and Sonarr document
+ptt	The.White.Lotus.2.Sezon.7.Bölüm.2021.1080p.BLUTV.WEB-DL.AAC2.0.H.264-TURG.mkv	season or episode marked with a non-English word; Kivo reads the English forms Plex, Jellyfin and Sonarr document
+ptt	Vikings 3 Temporada 720p	season or episode marked with a non-English word; Kivo reads the English forms Plex, Jellyfin and Sonarr document
+ptt	Zvezdnie.Voiny.Voina.Klonov.3.sezon.22.seria.iz.22.XviD.HDRip.avi	season or episode marked with a non-English word; Kivo reads the English forms Plex, Jellyfin and Sonarr document
+ptt	{WWW.BLUDV.TV} Love, Death & Robots - 1ª Temporada Completa 2019 (1080p) Acesse o ORIGINAL WWW.BLUDV.TV	season or episode marked with a non-English word; Kivo reads the English forms Plex, Jellyfin and Sonarr document
+ptt	Интерны. Сезон №9. Серия №180.avi	season or episode marked with a non-English word; Kivo reads the English forms Plex, Jellyfin and Sonarr document
+ptt	Леди Баг и Супер-Кот – Сезон 3, Эпизод 21 – Кукловод 2 [1080p].mkv	season or episode marked with a non-English word; Kivo reads the English forms Plex, Jellyfin and Sonarr document
+ptt	Проклятие острова ОУК_ 5-й сезон 09-я серия_ Прорыв Дэна.avi	season or episode marked with a non-English word; Kivo reads the English forms Plex, Jellyfin and Sonarr document
+ptt	Разрушители легенд. MythBusters. Сезон 15. Эпизод 09. Скрытая угроза (2015).avi	season or episode marked with a non-English word; Kivo reads the English forms Plex, Jellyfin and Sonarr document
+anitomy	School Rumble Complete S01-S02 + OVA [576p] [x264] [Dual-Audio] [Eng-Subs]	season pack: Kivo parses single files, and a file has one season
+anitomy	[Anime Time] Sword Art Online (S01+S02+S03+S04+Alternative+Movies+Specials+OVAs) [BD] [Dual Audio][1080p][HEVC 10bit x265][AAC][Eng Sub] [Batch] (SAO) (Aria of a Starless Night+Gun Gale Online+Ordinal Scale+Alicization+War of Underworld+EX+Offline)	season pack: Kivo parses single files, and a file has one season
+anitomy	[Sokudo] Dragon Ball S01-S03 001-068 [1080p BD AV1][dual audio]	season pack: Kivo parses single files, and a file has one season
+anitomy	[Sokudo] Mashle - S01-S02 v4 [1080p BD AV1][Dual Audio]	season pack: Kivo parses single files, and a file has one season
+anitomy	[Trix] Kimetsu no Yaiba S01-05 [Dual Audio] [Multi Subs] (BD 720p AV1) - Demon Slayer VOSTFR (Batch)	season pack: Kivo parses single files, and a file has one season
+ptt	24 Season 1-8 Complete with Subtitles	season pack: Kivo parses single files, and a file has one season
+ptt	Boondocks, The - Seasons 1 + 2	season pack: Kivo parses single files, and a file has one season
+ptt	Breaking Bad Complete Season 1 , 2 , 3, 4 ,5 ,1080p HEVC	season pack: Kivo parses single files, and a file has one season
+ptt	Coupling Season 1 - 4 Complete DVDRip - x264 - MKV by RiddlerA	season pack: Kivo parses single files, and a file has one season
+ptt	Doctor Who S01--S07--Complete with holiday episodes	season pack: Kivo parses single files, and a file has one season
+ptt	Friends.Complete.Series.S01-S10.720p.BluRay.2CH.x265.HEVC-PSA	season pack: Kivo parses single files, and a file has one season
+ptt	Futurama Season 1 2 3 4 5 6 7 + 4 Movies - threesixtyp	season pack: Kivo parses single files, and a file has one season
+ptt	Futurama.COMPLETE.S01-S07.720p.BluRay.x265-HETeam	season pack: Kivo parses single files, and a file has one season
+ptt	Game Of Thrones - Season 1 to 6 (Eng Subs)	season pack: Kivo parses single files, and a file has one season
+ptt	Game Of Thrones Complete Season 1,2,3,4,5,6,7 406p mkv + Subs	season pack: Kivo parses single files, and a file has one season
+ptt	Game of Thrones 1ª a 8ª Temporada Completa [720p-1080p] [BluRay] [DUAL]	season pack: Kivo parses single files, and a file has one season
+ptt	House MD All Seasons (1-8) 720p Ultra-Compressed	season pack: Kivo parses single files, and a file has one season
+ptt	How I Met Your Mother Season 1, 2, 3, 4, 5, & 6 + Extras DVDRip	season pack: Kivo parses single files, and a file has one season
+ptt	Naruto Shippuden Season 1:11	season pack: Kivo parses single files, and a file has one season
+ptt	Once Upon a Time [S01-07] (2011-2017) WEB-DLRip by Generalfilm	season pack: Kivo parses single files, and a file has one season
+ptt	Perdidos: Lost: Castellano: Temporadas 1 2 3 4 5 6 (Serie Com	season pack: Kivo parses single files, and a file has one season
+ptt	Skam.S01-S02-S03.SweSub.720p.WEB-DL.H264	season pack: Kivo parses single files, and a file has one season
+ptt	Skins Season S01-S07 COMPLETE UK Soundtrack 720p WEB-DL	season pack: Kivo parses single files, and a file has one season
+ptt	South Park Complete Seasons 1: 11	season pack: Kivo parses single files, and a file has one season
+ptt	Stargate Atlantis Complete (Season 1 2 3 4 5) 720p HEVC x265	season pack: Kivo parses single files, and a file has one season
+ptt	Swamp People - Season 1 to 6 Plus Specials - 720P - HDTV - X265-HEVC - O69	season pack: Kivo parses single files, and a file has one season
+ptt	Swamp People 2010 Seasons 1 to 15 Complete 720p WEB x264 [i_c]	season pack: Kivo parses single files, and a file has one season
+ptt	Teen Titans Season 1-5	season pack: Kivo parses single files, and a file has one season
+ptt	The Boondocks Season 1, 2 & 3	season pack: Kivo parses single files, and a file has one season
+ptt	The Boondocks Seasons 1-4 MKV	season pack: Kivo parses single files, and a file has one season
+ptt	The Expanse Complete Seasons 01 & 02 1080p	season pack: Kivo parses single files, and a file has one season
+ptt	The Simpsons Season 20 21 22 23 24 25 26 27 - threesixtyp	season pack: Kivo parses single files, and a file has one season
+ptt	The Sopranos: The Complete Series (Season 1,2,3,4,5&6) + Extras	season pack: Kivo parses single files, and a file has one season
+ptt	The Walking Dead [Temporadas 1 & 2 Completas Em HDTV E Legena	season pack: Kivo parses single files, and a file has one season
+ptt	The.O.C.Seasons.01-04.AMZN.1080p.10bit.x265.hevc-Bearfish	season pack: Kivo parses single files, and a file has one season
+ptt	The.Office.US.S01-09.COMPLETE.SERIES.1080P.BLURAY.X265-HIQVE	season pack: Kivo parses single files, and a file has one season
+ptt	Trailer Park Boys S01-S10 + Movies + Specials + Extras [Ultimate Collection]-CAPTAiN	season pack: Kivo parses single files, and a file has one season
+ptt	Travelers - Seasons 1 and 2 - Mp4 x264 AC3 1080p	season pack: Kivo parses single files, and a file has one season
+ptt	True Blood Season 1, 2, 3, 4, 5 & 6 + Extras BDRip TSV	season pack: Kivo parses single files, and a file has one season
+ptt	[F-D] Fairy Tail Season 1 -6 + Extras [480P][Dual-Audio]	season pack: Kivo parses single files, and a file has one season
+anitomy	Piano no Mori 2 (TV)	season written without an S or a season word; Kivo doesn't guess which number is the season
+ptt	Vikkatakavi 01E06.mkv	season written without an S or a season word; Kivo doesn't guess which number is the season
+anitomy	[Jumonji-Giri]_[Shinsen-Subs][ASF]_D.C.II_Da_Capo_II_Ep01_(a1fc58a7).mkv	several leading groups; Kivo takes one
+ptt	321 - Family Guy Viewer Mail #1.avi	the episode-word rule reads #1 before the absolute number
+thcolin	Blue. Valentine 2010 French DvDRip Xvid-FwD	the fixture's expected value is a quirk of the upstream parser
+thcolin	La.French.2014.FRENCH.BRRip.x264.AC3-DesTroY	the fixture's expected value is a quirk of the upstream parser
+go-ptn	Jack.And.The.Cuckoo-Clock.Heart.2013.BRRip XViD	the fixture's expected value is a quirk of the upstream parser (ptn expects the full title)
+anitomy	[Juuni.Kokki]-(Les.12.Royaumes)-[Ep.24]-[x264+OGG]-[JAP+FR+Sub.FR]-[Chap]-[AzF].mkv	the leading bracket holds the title, not a group; Kivo reads a leading bracket as the group
+anitomy	[Keroro].148.[Xvid.mp3].[FE68D5F1].avi	the leading bracket holds the title, not a group; Kivo reads a leading bracket as the group
+anitomy	[Mobile Suit Gundam Seed Destiny HD REMASTER][07][Big5][720p][AVC_AAC][encoded by SEED].mp4	the leading bracket holds the title, not a group; Kivo reads a leading bracket as the group
+go-ptn	[04x01] The Noose	the title comes after the episode marker; Kivo takes the text before it
+ptt	3 Миссия невыполнима 3 2006г. BDRip 1080p.mkv	title in two scripts; Kivo keeps both and leaves the choice to search's alternative titles
+ptt	[Seed-Raws] 劇場版 ペンギン・ハイウェイ Penguin Highway The Movie (BD 1280x720 AVC AACx4 [5.1+2.0+2.0+2.0]).mp4	title in two scripts; Kivo keeps both and leaves the choice to search's alternative titles
+ptt	[www.arabp2p.net]_-_تركي مترجم ومدبلج Last.Call.for.Istanbul.2023.1080p.NF.WEB-DL.DDP5.1.H.264.MKV.torrent	title in two scripts; Kivo keeps both and leaves the choice to search's alternative titles
+ptt	О мышах и людях (Of Mice and Men) 1992 BDRip 1080p.mkv	title in two scripts; Kivo keeps both and leaves the choice to search's alternative titles
+ptt	【高清影视之家发布 www.hdbthd.com】奥本海默 杜比视界版本 高码版 国英多音轨 中文字幕 .oppenheimer.2023.2160p.hq.web-dl.h265.dv.ddp5.1.2audio-dreamhd	title in two scripts; Kivo keeps both and leaves the choice to search's alternative titles
+ptt	抓娃娃 Successor.2024.TC1080P.国语中字	title in two scripts; Kivo keeps both and leaves the choice to search's alternative titles
+ptt	超能警探.Memorist.S01E01.2160p.WEB-DL.H265.AAC-FLTTH.mkv	title in two scripts; Kivo keeps both and leaves the choice to search's alternative titles
+anitomy	Mahoutsukai Reimeiki E06v1.5 [1080p][AAC][JapDub][GerEngSub][Web-DL].mkv	v1.5 reads as revision 1 and a .5 special; fractional revisions aren't a convention Kivo follows
+anitomy	[DmonHiro] Magi - The Labyrinth Of Magic - Vol.1v2 (BD, 720p)	volume number; Kivo doesn't model volumes
+anitomy	[EveTaku] AKB0048 Vol.03 - Making of Kibou-ni-Tsuite Music Video (BDRip 1080i H.264-Hi10P FLAC)[C09462E2]	volume number; Kivo doesn't model volumes
+anitomy	[GS] Classroom Crisis Vol.1&2 (BD 1080p 10bit FLAC)	volume number; Kivo doesn't model volumes
+anitomy	[Harunatsu] Classroom Crisis - Vol.1 [BD 720p-AAC]	volume number; Kivo doesn't model volumes
+anitomy	[tlacatlc6] Natsume Yuujinchou Shi Vol. 1v2 & Vol. 2 (BD 1280x720 x264 AAC)	volume number; Kivo doesn't model volumes

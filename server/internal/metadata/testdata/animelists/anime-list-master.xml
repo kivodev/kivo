@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<anime-list>
+  <anime anidbid="69" tvdbid="81797" defaulttvdbseason="a" episodeoffset="" tmdbid="" imdbid="">
+    <name>One Piece</name>
+  </anime>
+  <anime anidbid="3651" tvdbid="79604" defaulttvdbseason="1" episodeoffset="" tmdbtv="30983" imdbid="tt0988824">
+    <name>Suzumiya Haruhi no Yuuutsu</name>
+  </anime>
+  <anime anidbid="10376" tvdbid="267440" defaulttvdbseason="2" episodeoffset="12" tmdbid="" imdbid="">
+    <name>Shingeki no Kyojin (2017)</name>
+    <mapping-list>
+      <mapping anidbseason="0" tvdbseason="0">;1-5;</mapping>
+    </mapping-list>
+  </anime>
+  <anime anidbid="5975" tvdbid="movie" defaulttvdbseason="1" tmdbid="12429" imdbid="tt0876563,tt0000001">
+    <name>Gake no Ue no Ponyo</name>
+  </anime>
+  <anime anidbid="99999" tvdbid="unknown" defaulttvdbseason="1" tmdbid="" imdbid="">
+    <name>Nobody Knows</name>
+  </anime>
+</anime-list>

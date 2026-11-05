@@ -1,0 +1,2 @@
+SEARCH f USING INDEX media_file_hash (size=? AND edge_hash=?)
+SEARCH r USING INDEX sqlite_autoindex_library_folder_1 (id=?)

@@ -1,0 +1,2 @@
+[h264_qsv @ 0x55e9a0c3f540] Error initializing an internal MFX session: unsupported (-3)
+[vost#0:0/h264_qsv @ 0x55e9a0c3e1c0] [enc:h264_qsv @ 0x55e9a0c40a80] Error while opening encoder - maybe incorrect parameters such as bit_rate, rate, width or height.

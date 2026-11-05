@@ -1,0 +1,2 @@
+SEARCH i USING INDEX sqlite_autoindex_invite_2 (token_hash=?)
+SEARCH u USING INDEX sqlite_autoindex_user_1 (id=?)

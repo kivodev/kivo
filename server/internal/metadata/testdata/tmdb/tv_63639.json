@@ -1,0 +1,35 @@
+{
+  "id": 63639,
+  "name": "The Expanse",
+  "original_name": "The Expanse",
+  "original_language": "en",
+  "overview": "A thriller set two hundred years in the future following the case of a missing young woman who brings a hardened detective and a rogue ship's captain together.",
+  "first_air_date": "2015-12-14",
+  "status": "Ended",
+  "vote_average": 8.2,
+  "vote_count": 4321,
+  "genres": [{"id": 10765, "name": "Sci-Fi & Fantasy"}, {"id": 18, "name": "Drama"}],
+  "networks": [{"id": 77, "name": "Syfy"}, {"id": 1024, "name": "Prime Video"}],
+  "seasons": [
+    {"season_number": 2, "name": "Season 2", "episode_count": 2},
+    {"season_number": 0, "name": "Specials", "episode_count": 1},
+    {"season_number": 1, "name": "Season 1", "episode_count": 2}
+  ],
+  "alternative_titles": {"results": [{"iso_3166_1": "DE", "title": "The Expanse - Die Serie"}]},
+  "content_ratings": {"results": [{"iso_3166_1": "DE", "rating": "16"}, {"iso_3166_1": "US", "rating": "TV-14"}]},
+  "credits": {
+    "cast": [
+      {"name": "Steven Strait", "character": "James Holden", "order": 0},
+      {"name": "Dominique Tipper", "character": "Naomi Nagata", "order": 1}
+    ],
+    "crew": []
+  },
+  "external_ids": {"imdb_id": "tt3230854", "tvdb_id": 280619},
+  "images": {
+    "backdrops": [{"file_path": "/expanse-backdrop.jpg", "iso_639_1": null, "vote_average": 5.5}],
+    "logos": [{"file_path": "/expanse-logo.png", "iso_639_1": "en", "vote_average": 5.1}],
+    "posters": [{"file_path": "/expanse-poster.jpg", "iso_639_1": "en", "vote_average": 5.6}]
+  },
+  "keywords": {"results": [{"id": 3, "name": "space"}]},
+  "translations": {"translations": []}
+}

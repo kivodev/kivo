@@ -1,0 +1,22 @@
+# oapi-codegen configuration for openapi.yaml; run by `go generate`.
+# The generated package sits under api/internal so its types can't leave api.
+package: gen
+output: internal/gen/gen.go
+generate:
+  models: true
+  std-http-server: true
+  strict-server: true
+output-options:
+  name-normalizer: ToCamelCaseWithInitialisms
+  # Media, images and the WebSocket are hand-written handlers: they stream
+  # with http.ServeContent or hijack the connection.
+  exclude-tags: [media, images, events]
+  # Keep the WebSocket frame and preview-manifest schemas those handlers send.
+  skip-prune: true
+compatibility:
+  # An enum's constants are named for their type, HomeRowKindFavorites, so two
+  # enums can share a value.
+  always-prefix-enum-values: true
+  # Work, the spec's one allOf, embeds WorkSummary rather than repeating its
+  # fields.
+  old-merge-schemas: true

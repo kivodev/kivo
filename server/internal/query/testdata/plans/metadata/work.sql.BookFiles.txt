@@ -1,0 +1,8 @@
+SEARCH f USING INDEX media_file_version (version_id=?)
+SCALAR SUBQUERY 3
+  SEARCH vw USING COVERING INDEX media_version_work_work (work_id=?)
+SEARCH r USING INDEX sqlite_autoindex_library_folder_1 (id=?)
+CORRELATED SCALAR SUBQUERY 1
+  SEARCH t USING INDEX sqlite_autoindex_media_track_2 (file_id=?)
+CORRELATED SCALAR SUBQUERY 2
+  SEARCH t USING INDEX sqlite_autoindex_media_track_2 (file_id=?)

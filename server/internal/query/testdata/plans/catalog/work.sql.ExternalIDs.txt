@@ -1,0 +1,1 @@
+SEARCH work_external_id USING PRIMARY KEY (work_id=?)

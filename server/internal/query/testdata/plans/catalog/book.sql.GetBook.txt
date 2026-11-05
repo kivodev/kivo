@@ -1,0 +1,1 @@
+SEARCH book USING PRIMARY KEY (work_id=?)

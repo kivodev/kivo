@@ -1,0 +1,1 @@
+SEARCH user USING INDEX sqlite_autoindex_user_1 (id=?)

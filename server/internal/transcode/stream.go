@@ -1,0 +1,288 @@
+package transcode
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"math"
+	"os"
+	"path/filepath"
+	"sync"
+	"time"
+
+	"github.com/mmcdole/kivo/internal/media"
+)
+
+// Stream is one play's transcode: a planned playlist, the segments on
+// disk, and at most one running job.
+type Stream struct {
+	t         *Transcoder
+	spec      Spec
+	plan      []span
+	dir       string
+	playlists map[string][]byte
+	fileCues  [][]media.Cue // each text track's cues when it's read from a file, read as the stream opens
+
+	mu        sync.Mutex
+	done      []bool          // whether each segment is on disk
+	initDone  []bool          // whether each part's init segment is on disk
+	initReady []chan struct{} // each is closed once its part's init segment is on disk
+	job       *job            // nil when no job is running
+	closed    bool
+	idle      *time.Timer
+	jobs      sync.WaitGroup // tracks every started job until it exits
+	started   int            // the number of jobs started, used to number their scratch files
+}
+
+// Playlist returns one of the stream's playlists: PlaylistName, or one of
+// the playlists it names.
+func (s *Stream) Playlist(name string) ([]byte, error) {
+	b, ok := s.playlists[name]
+	if !ok {
+		return nil, fmt.Errorf("%w: playlist %s", ErrNotFound, name)
+	}
+	s.Touch()
+	return b, nil
+}
+
+// Segment returns the path of a segment (a video segment, a text segment,
+// or an init segment) once it's on disk. It returns at once if the segment
+// is already there. It waits if the running job is about to write it. For
+// a far seek, it restarts the job at that segment. Every text track's
+// segment is written along with its video, so text segments behave the
+// same way.
+func (s *Stream) Segment(ctx context.Context, name string) (string, error) {
+	s.Touch()
+	if p, ok := parseInit(name); ok && p < len(s.spec.Parts) {
+		return s.init(ctx, name, p)
+	}
+	i, text, ok := parseSegment(name)
+	if !ok || i >= len(s.plan) || text >= len(s.spec.Text) {
+		return "", fmt.Errorf("%w: segment %s", ErrNotFound, name)
+	}
+	path := s.path
+	if text >= 0 {
+		path = func(i int) string { return s.textPath(text, i) }
+	}
+	for {
+		s.mu.Lock()
+		if s.closed {
+			s.mu.Unlock()
+			return "", fmt.Errorf("%w: segment %s", ErrClosed, name)
+		}
+		s.readLocked(i)
+		if s.done[i] {
+			s.mu.Unlock()
+			return path(i), nil
+		}
+		j := s.job
+		if j != nil && j.failed() {
+			s.mu.Unlock()
+			return "", j.err
+		}
+		if j == nil || j.ended() || i < j.next || i > j.next+nearSegments {
+			j = s.startLocked(i)
+		}
+		ch := j.waitLocked(i)
+		s.mu.Unlock()
+
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+		case <-ch:
+		}
+		s.mu.Lock()
+		done, replaced := s.done[i], s.job != j
+		s.mu.Unlock()
+		switch {
+		case done:
+			return path(i), nil
+		case !replaced && j.err != nil && !stopped(j.err):
+			return "", j.err
+		}
+		// The job was replaced (by a far seek elsewhere or an idle kill),
+		// or it ended without this segment, so look again.
+	}
+}
+
+// nearSegments is how many segments ahead of a running job a request may
+// be and still wait for the job rather than restart it. A seek this close
+// is cheaper to wait out than to restart.
+const nearSegments = 3
+
+// init returns the path of part p's init segment once it's on disk. If no
+// job is running in the part, it starts one at the part's start. name is
+// the requested segment, which errors name.
+func (s *Stream) init(ctx context.Context, name string, p int) (string, error) {
+	for {
+		s.mu.Lock()
+		if s.closed {
+			s.mu.Unlock()
+			return "", fmt.Errorf("%w: segment %s", ErrClosed, name)
+		}
+		if s.initDone[p] {
+			s.mu.Unlock()
+			return filepath.Join(s.dir, initName(p)), nil
+		}
+		j := s.job
+		if j != nil && j.failed() {
+			s.mu.Unlock()
+			return "", j.err
+		}
+		if j == nil || j.ended() || s.plan[j.from].Part != p {
+			j = s.startLocked(s.firstOf(p))
+		}
+		s.mu.Unlock()
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+		case <-s.initReady[p]:
+		case <-j.exited:
+			s.mu.Lock()
+			failed := s.job == j && !s.initDone[p] && j.err != nil && !stopped(j.err)
+			s.mu.Unlock()
+			if failed {
+				return "", j.err
+			}
+		}
+	}
+}
+
+// Touch marks the stream active by resetting the idle timer. Heartbeats
+// call it.
+func (s *Stream) Touch() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.closed {
+		s.idle.Reset(idleTimeout)
+	}
+}
+
+// Job describes the stream's job.
+func (s *Stream) Job() JobInfo {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	j := s.job
+	if j == nil {
+		return JobInfo{}
+	}
+	info := JobInfo{State: JobRunning, From: j.from, Next: j.next, Encoded: s.at(j.next)}
+	if w := j.workingLocked(); j.next > j.from && w > 0 {
+		info.Speed = float64(s.at(j.next)-s.at(j.from)) / float64(w)
+	}
+	switch {
+	case j.failed():
+		info.State, info.Err = JobFailed, j.err
+	case j.ended():
+		info.State = JobDone
+	case j.paused:
+		info.State = JobPaused
+	}
+	if j.out != nil {
+		info.Diagnostics = j.out.Diagnostics()
+	}
+	return info
+}
+
+// Close kills the job and removes the stream's segments. It waits until
+// every job the stream started, including stopped ones, has exited.
+func (s *Stream) Close() {
+	s.mu.Lock()
+	s.closed = true
+	s.idle.Stop()
+	s.stopLocked()
+	s.mu.Unlock()
+	s.jobs.Wait()
+	_ = os.RemoveAll(s.dir)
+}
+
+// idleStop kills the job of a stream that has had no request for
+// idleTimeout, whether the job is paused or not. The stream stays, and its
+// next request starts a new job.
+func (s *Stream) idleStop() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.stopLocked()
+}
+
+func (s *Stream) path(i int) string { return filepath.Join(s.dir, segmentName(i)) }
+
+// textPath is the path of text track k's segment i.
+func (s *Stream) textPath(k, i int) string { return filepath.Join(s.dir, textName(k, i)) }
+
+// textSpan is the span that text segment i's cues are cut to, on the
+// source's timestamps. It's normally the segment's own span. For the last
+// segment of a part it runs from the segment's start to the end of time,
+// so it includes any cue running past the end of the video.
+func (s *Stream) textSpan(i int) (from, to time.Duration) {
+	sp := s.plan[i]
+	from = sp.Start + s.spec.Parts[sp.Part].Start
+	if i+1 == len(s.plan) || s.plan[i+1].Part != sp.Part {
+		return from, math.MaxInt64
+	}
+	return from, from + sp.Duration
+}
+
+// firstOf returns the index of part p's first segment.
+func (s *Stream) firstOf(p int) int {
+	for i, sp := range s.plan {
+		if sp.Part == p {
+			return i
+		}
+	}
+	return len(s.plan)
+}
+
+// startLocked replaces the running job with one starting at segment i.
+func (s *Stream) startLocked(i int) *job {
+	s.stopLocked()
+	ctx, cancel := context.WithCancel(context.Background())
+	s.started++
+	j := &job{
+		seq: s.started, from: i, next: i, reading: i, ready: map[int]chan struct{}{},
+		first: make(chan struct{}), cancel: cancel, exited: make(chan struct{}), began: time.Now(),
+	}
+	s.job = j
+	s.jobs.Go(func() { s.run(ctx, j) })
+	return j
+}
+
+// stopLocked cancels the running job, if any.
+func (s *Stream) stopLocked() {
+	if s.job != nil {
+		s.job.cancel()
+		s.job = nil
+	}
+}
+
+// readLocked records a request for segment i. It resumes a paused job once
+// the player has caught up with it.
+func (s *Stream) readLocked(i int) {
+	j := s.job
+	if j == nil || i < j.from {
+		return
+	}
+	j.reading = max(j.reading, i)
+	if j.paused && s.leadLocked(j) < resumeLead {
+		if err := j.out.Resume(); err != nil {
+			slog.Debug("transcode: can't resume the job", "err", err)
+		}
+		j.paused, j.began = false, time.Now()
+	}
+}
+
+// leadLocked is how far the job has encoded beyond the furthest segment the
+// player has asked for.
+func (s *Stream) leadLocked(j *job) time.Duration {
+	return s.at(j.next) - s.at(j.reading)
+}
+
+// at is where segment i starts on the parts' timeline. Past the last
+// segment, it's the end of the timeline.
+func (s *Stream) at(i int) time.Duration {
+	if i >= len(s.plan) {
+		last := s.plan[len(s.plan)-1]
+		return last.At + last.Duration
+	}
+	return s.plan[i].At
+}

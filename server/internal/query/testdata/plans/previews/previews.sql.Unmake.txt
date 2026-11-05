@@ -1,0 +1,1 @@
+SEARCH preview_file USING PRIMARY KEY (file_id=?)

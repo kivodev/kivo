@@ -1,0 +1,267 @@
+import KivoCore
+import KivoUI
+import SwiftUI
+
+/// The row under a page's hero: the primary button, accent coloured, and
+/// any round button [primary] puts beside it, such as Play from Beginning,
+/// with a second line under it that says what it plays, then Favorite and
+/// Mark as Watched as neutral round buttons, and any [extra], such as
+/// Download. Where the primary button's label doesn't fit beside the
+/// round buttons, it takes the whole width with the round buttons under it.
+/// In a wide window the row keeps to the leading edge.
+struct ActionRow<Primary: View, Extra: View>: View {
+    let work: WorkDetail
+    var secondary: String?
+    @ViewBuilder let primary: () -> Primary
+    @ViewBuilder var extra: () -> Extra
+    @Environment(\.kivoPalette) private var palette
+    @Environment(\.wide) private var wide
+
+    var body: some View {
+        VStack(alignment: wide ? .leading : .center, spacing: KivoTokens.spacing * 2) {
+            ActionRowLayout(spacing: KivoTokens.spacing * 3, leading: wide) {
+                primary()
+                roundButtons
+            }
+            if let secondary {
+                Text(secondary)
+                    .font(.footnote)
+                    .foregroundStyle(palette.textMuted)
+                    .multilineTextAlignment(wide ? .leading : .center)
+                    .frame(maxWidth: .infinity, alignment: wide ? .leading : .center)
+            }
+        }
+        .controlSize(.large)
+        .wideWidth(KivoTokens.Container.form, wide: wide)
+        .wideWidth(.infinity, wide: wide)
+    }
+
+    @ViewBuilder private var roundButtons: some View {
+        UserStateButtons(work: work)
+        extra()
+    }
+}
+
+/// The action row's buttons: the first subview, the primary button, then
+/// the round buttons. In one row the primary button takes the width the
+/// round buttons leave, where its label fits; otherwise it takes the whole
+/// width with the round buttons under it, centred or on the leading edge.
+///
+/// It measures each button once at its ideal size and reports no
+/// alignment guides of its own, so the stacks around it don't ask down
+/// through every button for theirs. A ViewThatFits of the two arrangements
+/// measures both, over and over through those guides, and on iOS 27 the
+/// row's layout as the player turns the screen runs until the watchdog
+/// ends the app.
+struct ActionRowLayout: Layout {
+    let spacing: CGFloat
+    let leading: Bool
+
+    struct Measured {
+        var primary: CGSize
+        var buttons: [CGSize]
+
+        /// The round buttons side by side.
+        func buttonsWidth(spacing: CGFloat) -> CGFloat {
+            buttons.map(\.width).reduce(0, +) + spacing * CGFloat(max(0, buttons.count - 1))
+        }
+
+        var buttonsHeight: CGFloat { buttons.map(\.height).max() ?? 0 }
+
+        /// What the round buttons and the gap before them take beside the primary button.
+        func beside(spacing: CGFloat) -> CGFloat {
+            buttons.isEmpty ? 0 : spacing + buttonsWidth(spacing: spacing)
+        }
+
+        func fitsInRow(width: CGFloat, spacing: CGFloat) -> Bool {
+            primary.width + beside(spacing: spacing) <= width
+        }
+    }
+
+    func makeCache(subviews: Subviews) -> Measured {
+        Measured(
+            primary: subviews.first?.sizeThatFits(.unspecified) ?? .zero,
+            buttons: subviews.dropFirst().map { $0.sizeThatFits(.unspecified) }
+        )
+    }
+
+    func updateCache(_ cache: inout Measured, subviews: Subviews) {
+        cache = makeCache(subviews: subviews)
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Measured) -> CGSize {
+        guard let primary = subviews.first else { return .zero }
+        let width = proposal.width ?? cache.primary.width + cache.beside(spacing: spacing)
+        if cache.fitsInRow(width: width, spacing: spacing) {
+            let primaryWidth = width - cache.beside(spacing: spacing)
+            let height = primary.sizeThatFits(ProposedViewSize(width: primaryWidth, height: nil)).height
+            return CGSize(width: width, height: max(height, cache.buttonsHeight))
+        }
+        let height = primary.sizeThatFits(ProposedViewSize(width: width, height: nil)).height
+        let under = cache.buttons.isEmpty ? 0 : spacing + cache.buttonsHeight
+        return CGSize(width: max(width, cache.buttonsWidth(spacing: spacing)), height: height + under)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Measured) {
+        guard let primary = subviews.first else { return }
+        let buttons = Array(subviews.dropFirst())
+        if cache.fitsInRow(width: bounds.width, spacing: spacing) {
+            let primaryWidth = bounds.width - cache.beside(spacing: spacing)
+            primary.place(at: CGPoint(x: bounds.minX, y: bounds.midY), anchor: .leading,
+                          proposal: ProposedViewSize(width: primaryWidth, height: nil))
+            var x = bounds.minX + primaryWidth + spacing
+            for (button, size) in zip(buttons, cache.buttons) {
+                button.place(at: CGPoint(x: x, y: bounds.midY), anchor: .leading, proposal: ProposedViewSize(size))
+                x += size.width + spacing
+            }
+            return
+        }
+        let primaryHeight = primary.sizeThatFits(ProposedViewSize(width: bounds.width, height: nil)).height
+        primary.place(at: CGPoint(x: bounds.minX, y: bounds.minY), anchor: .topLeading,
+                      proposal: ProposedViewSize(width: bounds.width, height: primaryHeight))
+        let rowWidth = cache.buttonsWidth(spacing: spacing)
+        var x = leading ? bounds.minX : bounds.midX - rowWidth / 2
+        let y = bounds.minY + primaryHeight + spacing + cache.buttonsHeight / 2
+        for (button, size) in zip(buttons, cache.buttons) {
+            button.place(at: CGPoint(x: x, y: y), anchor: .leading, proposal: ProposedViewSize(size))
+            x += size.width + spacing
+        }
+    }
+}
+
+extension ActionRow where Extra == EmptyView {
+    init(work: WorkDetail, secondary: String? = nil, @ViewBuilder primary: @escaping () -> Primary) {
+        self.init(work: work, secondary: secondary, primary: primary, extra: { EmptyView() })
+    }
+}
+
+/// The primary button: ▶ and a short label, never truncated.
+struct PlayButton: View {
+    let label: String
+    var identifier = "play"
+    let action: () -> Void
+    @Environment(\.kivoPalette) private var palette
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: KivoTokens.spacing * 2) {
+                Image(systemName: "play.fill")
+                Text(label)
+                    .lineLimit(1)
+                    .fixedSize()
+            }
+            .font(.headline)
+            // A list tints its buttons' text with the accent, which is this button's fill.
+            .foregroundStyle(palette.onAccent)
+            .frame(maxWidth: .infinity)
+        }
+        .accessibilityLabel(Text(label))
+        .buttonStyle(.borderedProminent)
+        .buttonBorderShape(.capsule)
+        .accessibilityIdentifier(identifier)
+    }
+}
+
+/// Play from Beginning, a round button beside Resume.
+struct RestartButton: View {
+    let action: () -> Void
+    @Environment(\.kivoPalette) private var palette
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "arrow.counterclockwise")
+                .roundButtonSymbol()
+                .accessibilityLabel(Text("Play from beginning"))
+        }
+        .buttonStyle(.bordered)
+        .buttonBorderShape(.circle)
+        .tint(palette.text)
+        .accessibilityIdentifier("play-from-beginning")
+    }
+}
+
+/// Favorite and Mark as Watched, as on every detail page: round, neutral buttons.
+struct UserStateButtons: View {
+    let work: WorkDetail
+    @Environment(ServerModel.self) private var server
+    @Environment(\.kivoPalette) private var palette
+
+    var body: some View {
+        let favorite = work.userState?.favorite == true
+        let played = work.userState?.played == true
+        // The buttons show the state the server's events send back, so a
+        // write that fails leaves them as they were.
+        Button {
+            Task { _ = try? await server.session.library.setFavorite(workId: work.id, favorite: !favorite) }
+        } label: {
+            Image(systemName: favorite ? "heart.fill" : "heart")
+                .roundButtonSymbol()
+                .contentTransition(.symbolEffect(.replace))
+                .accessibilityLabel(favorite ? Text("Remove from favorites") : Text("Favorite"))
+        }
+        .buttonStyle(.bordered)
+        .buttonBorderShape(.circle)
+        .tint(palette.text)
+        .sensoryFeedback(.success, trigger: favorite)
+        .accessibilityIdentifier("favorite")
+        Button {
+            Task { _ = try? await server.session.library.setPlayed(workId: work.id, played: !played) }
+        } label: {
+            Image(systemName: played ? "checkmark.circle.fill" : "checkmark.circle")
+                .roundButtonSymbol()
+                .contentTransition(.symbolEffect(.replace))
+                .accessibilityLabel(Text(Words.markPlayed(!played, kind: work.kind)))
+        }
+        .buttonStyle(.bordered)
+        .buttonBorderShape(.circle)
+        .tint(palette.text)
+        .sensoryFeedback(.success, trigger: played)
+        .accessibilityIdentifier("watched")
+    }
+}
+
+/// A round button's symbol, at the size every one has, which grows with the text size.
+private struct RoundButtonSymbol: ViewModifier {
+    @ScaledMetric(relativeTo: .headline) private var side = 24.0
+
+    func body(content: Content) -> some View {
+        content.font(.headline).frame(width: side, height: side)
+    }
+}
+
+extension View {
+    /// A round button's symbol, at the size every one has.
+    func roundButtonSymbol() -> some View {
+        modifier(RoundButtonSymbol())
+    }
+
+    /// A text button's label, tall enough to tap: 44 points at least.
+    func tapTarget() -> some View {
+        frame(minHeight: 44).contentShape(Rectangle())
+    }
+
+    /// The list row of a page's actions, under its hero.
+    func actionRowInsets() -> some View {
+        detailRow(EdgeInsets(top: 4, leading: 20, bottom: 12, trailing: 20))
+    }
+}
+
+/// An ``ActionRow``'s skeleton: the primary button's capsule and
+/// [roundButtons] circles, each the size of the button it stands for.
+struct ActionRowSkeleton: View {
+    let roundButtons: Int
+
+    var body: some View {
+        HStack(spacing: KivoTokens.spacing * 3) {
+            PlayButton(label: String(localized: "Play")) {}
+                .skeleton(Capsule())
+            ForEach(0..<roundButtons, id: \.self) { _ in
+                Button {} label: { Image(systemName: "heart").roundButtonSymbol() }
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.circle)
+                    .skeleton(Circle())
+            }
+        }
+        .controlSize(.large)
+    }
+}

@@ -1,0 +1,4 @@
+[h264_nvenc @ 0x55d5c6e0a940] OpenEncodeSessionEx failed: incompatible client key (21): (no details)
+[h264_nvenc @ 0x55d5c6e0a940] No capable devices found
+[vost#0:0/h264_nvenc @ 0x55d5c6e0a6c0] [enc:h264_nvenc @ 0x55d5c6e0b100] Error while opening encoder - maybe incorrect parameters such as bit_rate, rate, width or height.
+[vost#0:0/h264_nvenc @ 0x55d5c6e0a6c0] Task finished with error code: -22 (Invalid argument)

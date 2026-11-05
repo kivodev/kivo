@@ -1,0 +1,74 @@
+{
+  "total_pages": 1,
+  "total_count": 5,
+  "page": 1,
+  "data": [
+    {
+      "id": "9001",
+      "type": "subtitle",
+      "attributes": {
+        "subtitle_id": "9001",
+        "language": "en",
+        "download_count": 52000,
+        "hearing_impaired": false,
+        "foreign_parts_only": false,
+        "release": "Dune.Part.One.2021.1080p.WEB-DL",
+        "moviehash_match": false,
+        "files": [{"file_id": 7001, "file_name": "Dune.Part.One.2021.1080p.WEB-DL.srt"}]
+      }
+    },
+    {
+      "id": "9002",
+      "type": "subtitle",
+      "attributes": {
+        "subtitle_id": "9002",
+        "language": "en",
+        "download_count": 900,
+        "hearing_impaired": true,
+        "foreign_parts_only": false,
+        "release": "Dune.2021.2160p.UHD.BluRay.REMUX",
+        "moviehash_match": true,
+        "files": [{"file_id": 7002, "file_name": "Dune.2021.2160p.UHD.BluRay.REMUX.srt"}]
+      }
+    },
+    {
+      "id": "9003",
+      "type": "subtitle",
+      "attributes": {
+        "subtitle_id": "9003",
+        "language": "en",
+        "download_count": 99000,
+        "hearing_impaired": false,
+        "foreign_parts_only": true,
+        "release": "Dune.2021.Forced",
+        "moviehash_match": false,
+        "files": [{"file_id": 7003, "file_name": "Dune.2021.forced.srt"}]
+      }
+    },
+    {
+      "id": "9005",
+      "type": "subtitle",
+      "attributes": {
+        "subtitle_id": "9005",
+        "language": "en",
+        "download_count": 80000,
+        "hearing_impaired": true,
+        "foreign_parts_only": false,
+        "release": "Dune.2021.1080p.BluRay.SDH",
+        "moviehash_match": false,
+        "files": [{"file_id": 7005, "file_name": "Dune.2021.1080p.BluRay.SDH.srt"}]
+      }
+    },
+    {
+      "id": "9004",
+      "type": "subtitle",
+      "attributes": {
+        "subtitle_id": "9004",
+        "language": "en",
+        "download_count": 5,
+        "release": "no files",
+        "files": []
+      }
+    }
+  ]
+}

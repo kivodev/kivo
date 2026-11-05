@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>classNames</key>
+	<dict>
+		<key>LibrarySwitchTests</key>
+		<dict>
+			<key>testSwitchingLibraries()</key>
+			<dict>
+				<key>com.apple.dt.XCTMetric_OSSignpost-Switch cards.duration</key>
+				<dict>
+					<key>baselineAverage</key>
+					<real>0.05</real>
+					<key>baselineIntegrationDisplayName</key>
+					<string>Local Baseline</string>
+					<key>maxPercentRegression</key>
+					<real>40</real>
+					<key>maxPercentRelativeStandardDeviation</key>
+					<real>25</real>
+				</dict>
+				<key>com.apple.dt.XCTMetric_OSSignpost-Switch title.duration</key>
+				<dict>
+					<key>baselineAverage</key>
+					<real>0.05</real>
+					<key>baselineIntegrationDisplayName</key>
+					<string>Local Baseline</string>
+					<key>maxPercentRegression</key>
+					<real>40</real>
+					<key>maxPercentRelativeStandardDeviation</key>
+					<real>25</real>
+				</dict>
+			</dict>
+		</dict>
+	</dict>
+</dict>
+</plist>

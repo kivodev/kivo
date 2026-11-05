@@ -1,0 +1,11 @@
+searches:
+  movie "Blade Runner" 1982
+  movie "Blade Runner" 1982
+episode lists:
+works:
+movie "Blade Runner" 1982 {tmdb:78}
+  = Blade Runner (1982)/Blade Runner (1982).mkv
+movie "Blade Runner" 1982 edition="Final Cut" {tmdb:78}
+  = Blade Runner (1982) {edition-Final Cut}/Blade Runner (1982) {edition-Final Cut} 4K.mkv
+  = Blade Runner (1982) {edition-Final Cut}/Blade Runner (1982) {edition-Final Cut}.mkv
+  = Blade Runner (1982) {edition-Final Cut}/Blade Runner (1982) {edition-Workprint}.mkv edition="Workprint"

@@ -1,0 +1,1 @@
+SEARCH book_series_book USING PRIMARY KEY (series_id=? AND work_id=?)

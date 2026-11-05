@@ -1,0 +1,1 @@
+SEARCH library USING INDEX sqlite_autoindex_library_1 (id=?)

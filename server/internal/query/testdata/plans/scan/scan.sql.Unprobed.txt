@@ -1,0 +1,3 @@
+SEARCH r USING INDEX library_folder_library (library_id=?)
+SEARCH f USING INDEX media_file_behind (folder_id=?)
+USE TEMP B-TREE FOR ORDER BY

@@ -1,0 +1,11 @@
+{
+  "season_number": 2,
+  "name": "Season 2",
+  "overview": "",
+  "air_date": "2017-02-01",
+  "poster_path": "/expanse-s2-poster.jpg",
+  "episodes": [
+    {"id": 2001, "name": "Safe", "overview": "", "air_date": "2017-02-01", "season_number": 2, "episode_number": 1, "still_path": null, "crew": [], "guest_stars": []},
+    {"id": 2002, "name": "Doors & Corners", "overview": "", "air_date": "2017-02-01", "season_number": 2, "episode_number": 2, "still_path": null, "crew": [], "guest_stars": []}
+  ]
+}

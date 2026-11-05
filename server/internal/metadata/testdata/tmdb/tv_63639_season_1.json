@@ -1,0 +1,21 @@
+{
+  "season_number": 1,
+  "name": "Season 1",
+  "overview": "Two hundred years in the future, the solar system is colonized.",
+  "air_date": "2015-12-14",
+  "poster_path": "/expanse-s1-poster.jpg",
+  "episodes": [
+    {
+      "id": 1001, "name": "Dulcinea", "overview": "Detective Miller is assigned to find a missing girl.",
+      "air_date": "2015-12-14", "season_number": 1, "episode_number": 1, "still_path": "/expanse-s1e1.jpg",
+      "crew": [{"name": "Terry McDonough", "job": "Director"}, {"name": "Mark Fergus", "job": "Writer"}],
+      "guest_stars": [{"name": "Florence Faivre", "character": "Julie Mao", "order": 0}]
+    },
+    {
+      "id": 1002, "name": "The Big Empty", "overview": "Holden and the crew are stranded.",
+      "air_date": "2015-12-15", "season_number": 1, "episode_number": 2, "still_path": "/expanse-s1e2.jpg",
+      "vote_average": 7.6, "vote_count": 40,
+      "crew": [], "guest_stars": []
+    }
+  ]
+}

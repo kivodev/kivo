@@ -1,0 +1,8 @@
+CO-ROUTINE sub
+  SETUP
+    SEARCH w USING COVERING INDEX sqlite_autoindex_work_1 (id=?)
+  RECURSIVE STEP
+    SCAN sub
+    SEARCH w USING INDEX work_children (parent_id=?)
+SCAN sub
+SEARCH w USING INDEX sqlite_autoindex_work_1 (id=?)

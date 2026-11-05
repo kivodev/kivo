@@ -1,0 +1,258 @@
+package query
+
+import (
+	"context"
+	"database/sql"
+	"slices"
+
+	"github.com/mmcdole/kivo/internal/catalog"
+	"github.com/mmcdole/kivo/internal/id"
+	"github.com/mmcdole/kivo/internal/users"
+)
+
+// rowLimit is how many summaries a Home row holds.
+const rowLimit = 20
+
+// RowKind is what a Home row shows.
+type RowKind string
+
+// The Home rows.
+const (
+	// RowContinueWatching is what to keep watching, most recently played
+	// first. It holds the videos in progress other than episodes, and each
+	// series' episode up next. It includes works that can't play right now
+	// (see WorkSummary.Unavailable).
+	RowContinueWatching RowKind = "continueWatching"
+	// RowFavorites is the works the user marked.
+	RowFavorites RowKind = "favorites"
+	// RowRecentlyAdded is one pinned library's newest works. A show's
+	// episodes added close together are bundled into one summary (see
+	// bundles).
+	RowRecentlyAdded RowKind = "recentlyAdded"
+	// RowContinueListening is the books in progress in the user's pinned
+	// libraries, ordered as in Continue Watching.
+	RowContinueListening RowKind = "continueListening"
+	// RowContinueSeries is the next book of each book series in which the
+	// user has finished a book, in the user's pinned libraries. A series
+	// with a book in Continue Listening is left out.
+	RowContinueSeries RowKind = "continueSeries"
+)
+
+// HomeRow is one Home row. Library is set only on a Recently Added row,
+// with the library's name and kind.
+type HomeRow struct {
+	Kind    RowKind
+	Library Library
+	Items   []WorkSummary
+}
+
+// Home rows. Provisional works appear in Recently Added but never in
+// Continue Watching or collections.
+
+// continueWatching lists what to keep watching, most recently played first.
+// It holds the movies and other videos played past the Continue Watching
+// floor (userstate keeps resumable), and each series' episode up next,
+// ordered by when the user last played an episode of the series. A work
+// whose files can't be reached right now stays in the row, marked
+// unavailable.
+var continueWatching = stmt("ContinueWatching", `
+WITH followed (series, at) AS (
+  SELECT fw.root_id, max(fu.last_played_at)
+  FROM user_state fu JOIN work fw ON fw.id = fu.work_id
+  WHERE fu.user_id = @user AND (fu.played OR fu.resumable) AND fu.last_played_at IS NOT NULL AND fw.kind = 'episode'
+  GROUP BY fw.root_id
+),
+picks (work, at) AS (
+  SELECT pu.work_id, pu.last_played_at
+  FROM user_state pu JOIN work pw ON pw.id = pu.work_id
+  WHERE pu.user_id = @user AND pu.resumable AND pw.kind NOT IN ('episode', 'book')
+  UNION ALL
+  SELECT `+upNext("f.series")+`, f.at FROM followed f
+)
+SELECT `+summaryColumns+`
+FROM picks p
+JOIN work w ON w.id = p.work
+LEFT JOIN user_state us ON us.user_id = @user AND us.work_id = w.id
+WHERE NOT w.provisional
+  AND NOT (SELECT r.provisional FROM work r WHERE r.id = w.root_id)
+  AND `+visible+`
+ORDER BY p.at DESC, w.id
+LIMIT @limit`)
+
+// continueListening lists the books in progress, chosen and ordered as
+// ContinueWatching does its videos.
+var continueListening = stmt("ContinueListening", `
+SELECT `+summaryColumns+`
+FROM user_state us
+JOIN work w ON w.id = us.work_id
+WHERE us.user_id = @user AND us.resumable AND NOT w.provisional
+  AND w.kind = 'book'
+  AND `+notHidden+`
+  AND `+visible+`
+ORDER BY us.last_played_at DESC, us.work_id
+LIMIT @limit`)
+
+// continueSeries lists the next book of each book series in which the user
+// has finished a book, most recently finished first. The next book is the
+// first one after the furthest finished book by position. A series with a
+// book in progress is left to Continue Listening. A series with nothing
+// after the finished book has no row.
+var continueSeries = stmt("ContinueSeries", `
+WITH finished (series, at, position) AS (
+  SELECT fb.series_id, max(fu.last_played_at), max(fb.position_num)
+  FROM user_state fu JOIN book_series_book fb ON fb.work_id = fu.work_id
+  WHERE fu.user_id = @user AND fu.played AND fb.position_num IS NOT NULL
+  GROUP BY fb.series_id
+)
+SELECT `+summaryColumns+`
+FROM finished f
+JOIN work w ON w.id = (
+  SELECT nb.work_id FROM book_series_book nb
+  WHERE nb.series_id = f.series AND nb.position_num > f.position
+    AND EXISTS (SELECT 1 FROM work_library nl WHERE nl.work_id = nb.work_id)
+  ORDER BY nb.position_num, nb.work_id
+  LIMIT 1)
+LEFT JOIN user_state us ON us.user_id = @user AND us.work_id = w.id
+WHERE NOT w.provisional
+  AND NOT EXISTS (
+    SELECT 1 FROM book_series_book pb JOIN user_state pu ON pu.user_id = @user AND pu.work_id = pb.work_id AND pu.resumable
+    WHERE pb.series_id = f.series)
+  AND `+visible+`
+ORDER BY f.at DESC, w.id
+LIMIT @limit`)
+
+// recentlyAdded lists a library's newest 1,000 additions, newest first, for
+// Home to bundle into summaries. Each row is a playable work with its season
+// and series. Reading only the newest additions keeps the read small. A scan that
+// adds more than that at once still shows the newest of them first.
+var recentlyAdded = stmt("RecentlyAdded", `
+SELECT w.id, w.kind, w.parent_id, w.root_id, ra.added_at, w.sort_title,
+  coalesce(s.sort_title, ''), r.sort_title, r.provisional
+FROM (SELECT x.work_id, x.added_at FROM work_library x WHERE x.library_id = @library
+      ORDER BY x.added_at DESC LIMIT 1000) ra
+JOIN work w ON w.id = ra.work_id
+JOIN work r ON r.id = w.root_id
+LEFT JOIN work s ON s.id = w.parent_id
+WHERE w.kind IN ('movie', 'episode', 'video', 'book')
+  AND `+visible+`
+ORDER BY ra.added_at DESC, w.id`)
+
+// Home returns the Home rows that have summaries, read from one snapshot.
+// Watching rows come first and listening rows last. Continue Watching,
+// Favorites and each video library's Recently Added come first, in the
+// user's library order. Continue Listening, Continue Series and each
+// audiobooks library's Recently Added follow.
+func (s *Service) Home(ctx context.Context, v users.Viewer) ([]HomeRow, error) {
+	vw := viewerOf(v)
+	var watching, listening, continueBooks, favorites []WorkSummary
+	var videosAdded, booksAdded []HomeRow
+	err := s.db.Read(ctx, func(tx *sql.Tx) error {
+		libs, err := rowsOf(ctx, tx, libraryList, vw.args(), scanLibrary)
+		if err != nil {
+			return err
+		}
+		// The book rows read only the user's pinned audiobooks libraries,
+		// so they use the Viewer narrowed to those libraries.
+		var pinnedBooks []id.ID
+		for _, lib := range libs {
+			if lib.Pinned && lib.Kind == catalog.Audiobooks {
+				pinnedBooks = append(pinnedBooks, lib.ID)
+			}
+		}
+		books := vw
+		books.all = false
+		books.libraries = id.Set(pinnedBooks...)
+
+		limit := sql.Named("limit", rowLimit)
+		if watching, err = summaries(ctx, tx, continueWatching, vw.args(limit)); err != nil {
+			return err
+		}
+		if listening, err = summaries(ctx, tx, continueListening, books.args(limit)); err != nil {
+			return err
+		}
+		next, err := summaries(ctx, tx, continueSeries, books.args(limit))
+		if err != nil {
+			return err
+		}
+		// A book in two series that both lead to it shows once.
+		seen := map[id.ID]bool{}
+		continueBooks = slices.DeleteFunc(next, func(c WorkSummary) bool {
+			dup := seen[c.ID]
+			seen[c.ID] = true
+			return dup
+		})
+
+		for _, lib := range libs {
+			if !lib.Pinned {
+				continue
+			}
+			added, err := rowsOf(ctx, tx, recentlyAdded, vw.args(sql.Named("library", lib.ID)), func(r scanner, a *addition) error {
+				return r.Scan(&a.ID, &a.Kind, &a.ParentID, &a.RootID, &a.AddedAt, &a.SortTitle,
+					&a.SeasonSortTitle, &a.SeriesSortTitle, &a.SeriesProvisional)
+			})
+			if err != nil {
+				return err
+			}
+			items, err := bundleSummaries(ctx, tx, vw, bundles(added))
+			if err != nil {
+				return err
+			}
+			row := HomeRow{Kind: RowRecentlyAdded, Library: Library{ID: lib.ID, Name: lib.Name, Kind: lib.Kind}, Items: items}
+			if lib.Kind == catalog.Audiobooks {
+				booksAdded = append(booksAdded, row)
+			} else {
+				videosAdded = append(videosAdded, row)
+			}
+		}
+
+		favorites, err = summaries(ctx, tx, favoritesPage, vw.args(sql.Named("kind", nil), sql.Named("offset", 0), limit))
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	rows := []HomeRow{{Kind: RowContinueWatching, Items: watching}, {Kind: RowFavorites, Items: favorites}}
+	rows = append(rows, videosAdded...)
+	rows = append(rows, HomeRow{Kind: RowContinueListening, Items: listening}, HomeRow{Kind: RowContinueSeries, Items: continueBooks})
+	rows = append(rows, booksAdded...)
+	rows = slices.DeleteFunc(rows, func(r HomeRow) bool { return len(r.Items) == 0 })
+	lists := make([][]WorkSummary, len(rows))
+	for i, r := range rows {
+		lists[i] = r.Items
+	}
+	if err := s.decorate(ctx, vw, lists...); err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+// bundleSummaries reads the summaries of a library's "Recently Added"
+// bundles, in their order, up to rowLimit. A bundle the Viewer may not see
+// is skipped, and the next bundles are read in its place.
+func bundleSummaries(ctx context.Context, q querier, vw viewer, bs []bundle) ([]WorkSummary, error) {
+	items := []WorkSummary{}
+	for len(bs) > 0 && len(items) < rowLimit {
+		batch := bs[:min(rowLimit-len(items), len(bs))]
+		bs = bs[len(batch):]
+		ids := make([]id.ID, len(batch))
+		for i, b := range batch {
+			ids[i] = b.work
+		}
+		byWork, err := summariesByID(ctx, q, vw, ids)
+		if err != nil {
+			return nil, err
+		}
+		for _, b := range batch {
+			c, ok := byWork[b.work]
+			if !ok {
+				continue
+			}
+			c.Bundled = b.episodes
+			if b.unmatched {
+				c.MatchState = Unmatched
+			}
+			items = append(items, c)
+		}
+	}
+	return items, nil
+}

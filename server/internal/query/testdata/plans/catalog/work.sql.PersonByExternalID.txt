@@ -1,0 +1,1 @@
+SEARCH person_external_id USING PRIMARY KEY (provider=? AND kind=? AND ext_id=?)

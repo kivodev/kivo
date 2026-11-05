@@ -1,0 +1,10 @@
+{
+  "name": "chromecast",
+  "private": true,
+  "version": "0.3.0",
+  "type": "module",
+  "description": "A Google Cast Web Receiver for a self-hosted media server, served as static files with no build.",
+  "scripts": {
+    "test": "node --test \"test/*.test.js\""
+  }
+}

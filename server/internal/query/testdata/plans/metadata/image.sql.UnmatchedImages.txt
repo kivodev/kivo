@@ -1,0 +1,2 @@
+SEARCH w USING INDEX work_root (root_id=?)
+SEARCH i USING INDEX image_work (work_id=?)

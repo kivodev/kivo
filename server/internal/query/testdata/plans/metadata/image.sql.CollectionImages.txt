@@ -1,0 +1,2 @@
+SEARCH c USING INDEX sqlite_autoindex_collection_2 (key=?)
+SEARCH i USING INDEX image_collection (collection_id=?)

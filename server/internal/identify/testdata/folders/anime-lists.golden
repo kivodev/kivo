@@ -1,0 +1,10 @@
+searches:
+episode lists:
+  37854/aired
+  37854/absolute
+works:
+series "One Piece" 1999 {tmdb:37854}
+  season "Season 1" S01
+  season "Season 2" S02
+    episode "Buggy" S02E02 {tmdb:37854-2-2}
+      = Wan Pisu [anidb-69]/[Group] Wan Pisu - 005.mkv

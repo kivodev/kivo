@@ -1,0 +1,10 @@
+// Settings for both configurations of every target (project.yml).
+
+// The app's bundle identifier: a placeholder until it's registered.
+KIVO_BUNDLE_ID = com.kivo.player
+
+// Signing is automatic, with the team in Signing.local.xcconfig, which
+// isn't committed: copy Signing.local.xcconfig.example and fill it in.
+CODE_SIGN_STYLE = Automatic
+DEVELOPMENT_TEAM =
+#include? "Signing.local.xcconfig"

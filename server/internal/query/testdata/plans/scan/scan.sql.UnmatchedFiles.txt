@@ -1,0 +1,3 @@
+SEARCH f USING INDEX sqlite_autoindex_media_file_2 (folder_id=?)
+SEARCH vw USING PRIMARY KEY (version_id=?)
+SEARCH w USING INDEX sqlite_autoindex_work_1 (id=?)

@@ -1,0 +1,1 @@
+SEARCH play_event USING COVERING INDEX play_event_work (work_id=?)

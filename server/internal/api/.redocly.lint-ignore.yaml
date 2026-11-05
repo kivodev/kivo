@@ -1,0 +1,44 @@
+# The descriptions rule/fixed-values-enum finds that list values of an open
+# set, or examples, rather than a fixed one, and the operations with no 4xx
+# answer; make lint reads this beside redocly.yaml.
+openapi.yaml:
+  rule/fixed-values-enum:
+    # Examples of an open set: an accelerator's ID and name, a content
+    # rating, a credit's role, a provider's kind, codecs, an encoder, and a
+    # log attribute's value.
+    - '#/components/schemas/Accelerator/properties/id/description'
+    - '#/components/schemas/Accelerator/properties/name/description'
+    - '#/components/schemas/WorkSummary/properties/contentRating/description'
+    - '#/components/schemas/Credit/properties/role/description'
+    - '#/components/schemas/ExternalId/properties/kind/description'
+    - '#/components/schemas/VideoEntry/properties/codec/description'
+    - '#/components/schemas/AudioEntry/properties/codec/description'
+    - '#/components/schemas/SubtitleEntry/properties/codec/description'
+    - '#/components/schemas/PlayTrack/properties/codec/description'
+    - '#/components/schemas/TrackTranscode/properties/encoder/description'
+    - '#/components/schemas/ClientDevice/properties/app/description'
+    - '#/components/schemas/ClientDevice/properties/deviceModel/description'
+    - '#/components/schemas/LogAttr/properties/value/description'
+    # Forms rather than values: a code's characters, a letter, a position, a
+    # date, and an ordering that may name an episode group.
+    - '#/components/schemas/DeviceCode/properties/code/description'
+    - '#/components/schemas/LetterStart/properties/letter/description'
+    - '#/components/schemas/BookSeriesRef/properties/position/description'
+    - '#/components/schemas/BookSeriesUpdate/properties/position/description'
+    - '#/components/schemas/BookInfo/properties/releaseDate/description'
+    - '#/components/schemas/WorkUpdate/properties/book/properties/releaseDate/description'
+    - '#/components/schemas/SeriesInfo/properties/ordering/description'
+    - '#/components/schemas/WorkUpdate/properties/series/properties/ordering/description'
+    # A track's ID or off.
+    - '#/components/schemas/PlayCreate/properties/subtitleTrackId/description'
+    - '#/components/schemas/PlayUpdate/properties/subtitleTrackId/description'
+    - '#/components/schemas/PlayTrack/properties/trackId/description'
+    - '#/components/schemas/DownloadCreate/properties/subtitleTrackId/description'
+    - '#/components/schemas/DownloadEstimateItem/properties/subtitleTrackId/description'
+    # Not strings: the values named are other fields'.
+    - '#/components/schemas/Problem/properties/retryAfterSeconds/description'
+    - '#/components/schemas/UserStateUpdate/properties/positionMs/description'
+  operation-4xx-response:
+    # Neither takes input or credentials, so neither refuses a request.
+    - '#/paths/~1healthz/get/responses'
+    - '#/paths/~1api~1v1~1setup/get/responses'

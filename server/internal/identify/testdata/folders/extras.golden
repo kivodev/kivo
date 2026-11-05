@@ -1,0 +1,12 @@
+searches:
+  movie "Dune" 2021
+episode lists:
+works:
+movie "Dune" 2021 {tmdb:438631}
+  = Dune (2021)/Dune (2021).mkv
+  extra "Dune" [featurette]
+    = Dune (2021)/Dune (2021)-featurette.mkv
+  extra "Making Arrakis" [behindthescenes]
+    = Dune (2021)/Behind The Scenes/Making Arrakis.mkv
+  extra "Official Trailer" [trailer]
+    = Dune (2021)/Trailers/Official Trailer.mkv

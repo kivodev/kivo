@@ -1,0 +1,54 @@
+# browser, SubRip: stream, transcode
+video    1   selected delivery=stream codec=h264 reason=videoCodecUnsupported limit=codec:h264,vp9:hevc transcode=1920x1080@20000000
+audio    2   selected delivery=stream codec=aac reason=audioCodecUnsupported limit=codec:aac,mp3,opus:eac3 transcode=6ch@384000
+audio    3  
+subtitle 14  selected delivery=stream codec=webvtt
+subtitle 15  delivery=external codec=ass
+subtitle 16  reason=subtitleCodecUnsupported
+subtitle 19  delivery=stream codec=webvtt
+subtitle 0   delivery=none
+# AVPlayer, PGS: stream, transcode
+video    1   selected delivery=stream codec=h264 reason=subtitleCodecUnsupported transcode=1920x1080@20000000
+audio    2   selected delivery=stream codec=eac3 reason=subtitleCodecUnsupported
+audio    3  
+subtitle 14 
+subtitle 15 
+subtitle 16  selected delivery=burn reason=subtitleCodecUnsupported
+subtitle 19 
+subtitle 0  
+# AVPlayer in picture-in-picture, the external SubRip: stream, directStream
+video    1   selected delivery=stream codec=hevc hdr=dolbyVision reason=containerUnsupported limit=containers:mp4:mkv
+audio    2   selected delivery=stream codec=eac3 reason=containerUnsupported limit=containers:mp4:mkv
+audio    3  
+subtitle 14  delivery=stream codec=webvtt
+subtitle 15  reason=subtitleCodecUnsupported
+subtitle 16  reason=subtitleCodecUnsupported
+subtitle 19  selected delivery=stream codec=webvtt
+subtitle 0   delivery=none
+# Android TV, styled ASS, reading from the file: file, directPlay
+video    1   selected delivery=file codec=hevc hdr=hdr10
+audio    2   selected delivery=file codec=eac3
+audio    3   delivery=file codec=truehd
+subtitle 14  delivery=file codec=subrip
+subtitle 15  selected delivery=file codec=ass
+subtitle 16  delivery=file codec=hdmv_pgs_subtitle
+subtitle 19  delivery=external codec=webvtt
+subtitle 0   delivery=none
+# Android TV, off: file, directPlay
+video    1   selected delivery=file codec=hevc hdr=hdr10
+audio    2   selected delivery=file codec=eac3
+audio    3   reason=trackSelectionUnsupported
+subtitle 14  reason=subtitlePreparing
+subtitle 15  reason=subtitleCodecUnsupported
+subtitle 16  delivery=external codec=hdmv_pgs_subtitle
+subtitle 19  delivery=external codec=webvtt
+subtitle 0   selected delivery=none
+# Android TV, 4 Mbps remote: stream, transcode
+video    1   selected delivery=stream codec=h264 reason=remoteQualityLimit transcode=1280x720@3616000
+audio    2   selected delivery=stream codec=eac3 reason=remoteQualityLimit
+audio    3  
+subtitle 14  delivery=stream codec=webvtt
+subtitle 15  reason=subtitleCodecUnsupported
+subtitle 16  delivery=external codec=hdmv_pgs_subtitle
+subtitle 19  delivery=stream codec=webvtt
+subtitle 0   selected delivery=none

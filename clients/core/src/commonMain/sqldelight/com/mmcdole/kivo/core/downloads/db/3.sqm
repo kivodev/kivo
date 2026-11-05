@@ -1,0 +1,3 @@
+-- A conversion's time left is in milliseconds, as the server says it.
+ALTER TABLE download RENAME COLUMN remaining_seconds TO remaining_ms;
+UPDATE download SET remaining_ms = remaining_ms * 1000 WHERE remaining_ms IS NOT NULL;

@@ -1,0 +1,10 @@
+# XcodeGen writes the project; only the performance tests' baselines are kept.
+Kivo.xcodeproj/*
+!Kivo.xcodeproj/xcshareddata/
+Kivo.xcodeproj/xcshareddata/*
+!Kivo.xcodeproj/xcshareddata/xcbaselines/
+Kivo/Info.plist
+Frameworks/
+KivoUI/Generated/
+Config/Signing.local.xcconfig
+build/

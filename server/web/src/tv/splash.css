@@ -1,0 +1,47 @@
+/*
+ * The TV build's splash, from the moment the page loads until the first
+ * screen shows (TvSplash, and the copy in index.html that the build puts
+ * in #root). The server's CSP allows only the origin's own stylesheets, so
+ * it is a file, linked from the TV build's index.html alone, which the
+ * build folds into that build's stylesheet. It is unlayered: declaring a
+ * layer here, ahead of index.css, would put that layer first in the app's
+ * order.
+ */
+[data-part="tv-splash"] {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--spacing) * 10);
+  background: var(--color-bg);
+}
+
+[data-part="tv-splash"] img {
+  width: calc(var(--spacing) * 32);
+  height: calc(var(--spacing) * 32);
+  border-radius: var(--radius-lg);
+}
+
+[data-part="tv-splash-spinner"] {
+  width: calc(var(--spacing) * 10);
+  height: calc(var(--spacing) * 10);
+  border: calc(var(--spacing) * 1) solid var(--color-border);
+  border-top-color: var(--color-accent);
+  border-radius: var(--radius-full);
+  animation: tv-splash-spin 1s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-part="tv-splash-spinner"] {
+    animation-duration: 3s;
+  }
+}
+
+@keyframes tv-splash-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}

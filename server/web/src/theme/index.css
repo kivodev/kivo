@@ -1,0 +1,611 @@
+/*
+ * Kivo's stylesheet. Every rule lives in a named cascade layer, so a
+ * stylesheet loaded after this one, unlayered, wins without !important.
+ */
+@layer kivo.theme, kivo.base, kivo.components, kivo.utilities;
+
+@import "tailwindcss/theme.css" layer(kivo.theme);
+@import "tailwindcss/preflight.css" layer(kivo.base);
+@import "tailwindcss/utilities.css" layer(kivo.utilities);
+@import "./tokens.css";
+
+@source "../";
+
+@custom-variant light (&:where([data-theme="light"], [data-theme="light"] *));
+
+/*
+ * Hover styles apply only where a pointer can hover. The TV build (data-tv
+ * on the root) shows none, on purpose: a remote moves focus, and a pointer
+ * resting on a card must not look like focus.
+ */
+@custom-variant hover {
+  @media (hover: hover) {
+    &:where(:root:not([data-tv]) *):hover {
+      @slot;
+    }
+  }
+}
+
+/*
+ * The phone layout, with the bottom bar: a narrow screen, or a touch screen
+ * as short as a phone turned sideways. Everything else is wide, with the
+ * sidebar.
+ */
+@custom-variant phone (@media (width < 40rem) or ((height < 32rem) and (pointer: coarse)));
+@custom-variant wide (@media (width >= 40rem) and ((height >= 32rem) or (not (pointer: coarse))));
+
+/*
+ * Three lines of the element's own text, held for a clamped block. The lh
+ * unit is Chromium 109's, a version past the TV build's minimum, so three
+ * base lines come first for an engine that drops it.
+ */
+@utility min-h-3lh {
+  min-height: calc(3 * var(--text-base--line-height));
+  min-height: 3lh;
+}
+
+/* A person's initials, sized to the round tile they fill. */
+@utility text-initials {
+  font-size: 30cqw;
+  line-height: 1;
+}
+
+/*
+ * On a touch screen, a hit area at least 44 px square centred on a smaller
+ * control, which keeps its looks.
+ */
+@utility touch-target {
+  @media (pointer: coarse) {
+    &:not(.absolute, .fixed, .sticky) {
+      position: relative;
+    }
+
+    &::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: max(100%, calc(var(--spacing) * 11));
+      height: max(100%, calc(var(--spacing) * 11));
+      translate: -50% -50%;
+    }
+  }
+}
+
+/*
+ * The letter rail's place, fixed in the window so scrolling never moves it:
+ * under the library's header row, the whole alphabet's height at most, else
+ * down to the window's bottom, or to the bottom bar in the phone layout. The
+ * small viewport height doesn't change as Safari's toolbar shows and hides.
+ */
+@utility letter-rail-band {
+  --rail-top: calc(var(--layout-safe-area-top) + var(--spacing) * 20);
+  --rail-bottom: calc(var(--spacing) * 4);
+  top: var(--rail-top);
+  height: min(calc(var(--spacing) * 135), calc(100svh - var(--rail-top) - var(--rail-bottom)));
+
+  @variant phone {
+    --rail-bottom: calc(var(--spacing) * 4 + var(--layout-bottom-bar-inset));
+  }
+}
+
+/*
+ * A window too short for the band to hold every letter at a legible size,
+ * such as a phone turned sideways: 27 letters of 1rem, the band's top and
+ * bottom, and the bottom bar in the phone layout.
+ */
+@custom-variant rail-short (@media (height < 33rem) or ((width < 40rem) and (height < 37rem)));
+
+/*
+ * The TV build's layout, keyed on data-tv on the root, which the TV build
+ * sets as it starts. It's declared after the other variants, so its styles
+ * win over theirs.
+ */
+@custom-variant tv (&:where(:root[data-tv] *));
+
+/* No callout on a long press, which opens Kivo's own menu instead. */
+@utility touch-callout-none {
+  -webkit-touch-callout: none;
+}
+
+/*
+ * On TV, how many cards a row or grid fits across, as --tv-across: six
+ * posters or squares, or three landscape cards (see --layout-tv-*-across).
+ */
+@utility tv-across-poster {
+  --tv-across: var(--layout-tv-poster-across);
+}
+
+@utility tv-across-landscape {
+  --tv-across: var(--layout-tv-landscape-across);
+}
+
+/* A grid of --tv-across equal columns. */
+@utility tv-grid-cols {
+  grid-template-columns: repeat(var(--tv-across), minmax(0, 1fr));
+}
+
+/*
+ * A card's width in a row of --tv-across cards, with the row's gap between
+ * them, which TV grids share. It's wide enough that a focused card's lift
+ * and glow stay clear of the cards beside it.
+ */
+@utility tv-card-width {
+  width: calc((100% - (var(--tv-across) - 1) * var(--layout-tv-row-gap)) / var(--tv-across));
+}
+
+/* A scroller without a visible scrollbar, for rows of cards. */
+@utility scrollbar-hidden {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer kivo.base {
+  html,
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #root {
+    min-height: 100dvh;
+  }
+
+  /*
+   * dvh came with Chromium 108, the TV build's minimum, but some builds of
+   * it keep it behind a flag. A screen's whole height stands in for it
+   * there, as a TV's window never changes size.
+   */
+  @supports not (height: 1dvh) {
+    #root,
+    .min-h-dvh {
+      min-height: var(--layout-screen-height-fallback);
+    }
+
+    .tv\:h-dvh:where(:root[data-tv] *) {
+      height: var(--layout-screen-height-fallback);
+    }
+  }
+
+  :focus-visible {
+    outline: var(--layout-focus-ring-width) solid var(--color-focus);
+    outline-offset: var(--layout-focus-ring-offset);
+  }
+
+  /*
+   * On TV focus is always shown. A remote never has a pointer to hide it
+   * for. What the TV build's focus moves between has its own look below;
+   * anything else gets the ring.
+   */
+  :root[data-tv] :focus {
+    outline: var(--layout-focus-ring-width) solid var(--color-focus);
+    outline-offset: var(--layout-focus-ring-offset);
+  }
+
+  /*
+   * What the TV build's focus moves between has no ring, and reads from
+   * across a room all the same: a card's artwork lifts on a soft glow, and
+   * a control, a field or a row turns white with dark text, as the rail's
+   * and the settings menu's entries do with their own classes. Only scale,
+   * opacity and a card's caption's translate ease as focus moves, which a
+   * TV draws without painting the page again; colours change at once. A shape follows what it wraps
+   * (TvFocusable, focus.tsx), its first child: rounded as a button by
+   * default, a pill around a pill, a circle around a person's photo.
+   */
+  :root[data-tv] [data-tv-focus],
+  :root[data-tv] [data-tv-ring] {
+    border-radius: var(--radius-md);
+  }
+
+  /* The page scrolls a focused item clear of the overscan, never to the screen's edge. */
+  :root[data-tv] [data-tv-focus] {
+    scroll-margin-block: var(--layout-tv-overscan-y);
+  }
+
+  :root[data-tv] :is([data-tv-focus], [data-tv-ring]):has(> .rounded-full:first-child) {
+    border-radius: var(--radius-full);
+  }
+
+  :root[data-tv] :is([data-tv-focus], [data-tv-ring]):has(> .rounded-lg:first-child) {
+    border-radius: var(--radius-lg);
+  }
+
+  :root[data-tv] :is([data-tv-focus], [data-tv-ring]):has(> .rounded-sm:first-child) {
+    border-radius: var(--radius-sm);
+  }
+
+  :root[data-tv] :is([data-tv-focus], [data-tv-face]):focus {
+    outline: none;
+  }
+
+  /*
+   * A focused card, as on Apple TV: its artwork (the element marked
+   * data-tv-ring) grows, lit by a glow around it and a sheen across its top
+   * over a deep shadow, all on a layer of its own that fades in. The caption
+   * below moves down clear of it at its own size, so it stays sharp. Every
+   * card marks its artwork.
+   */
+  :root[data-tv] [data-tv-ring] {
+    position: relative;
+    transition: scale var(--duration-fade) var(--ease-out);
+  }
+
+  /*
+   * A card whose focus animates is on a compositor layer while it does, and
+   * any card painted after it that overlaps it, glow and all, would need a
+   * layer of its own too, each of which a TV rasterizes in software. So the
+   * focused card is raised above every other, and one losing focus stays
+   * raised until its animation ends, so neither is ever beneath another.
+   */
+  :root[data-tv] [data-tv-focus="card"] {
+    z-index: 0;
+    transition: z-index 0s linear var(--duration-fade);
+  }
+
+  :root[data-tv] [data-tv-focus="card"]:focus {
+    z-index: 10;
+    transition: none;
+  }
+
+  :root[data-tv] [data-tv-ring]::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: var(--shadow-tv-card-focus);
+    opacity: 0;
+    pointer-events: none;
+    /*
+     * Hidden as well as transparent when its card isn't focused, once it
+     * has faded out: a transparent glow still counts toward its card's
+     * bounds, as far past the artwork as it reaches, so each card would
+     * overlap its neighbours, and one on a layer would put the rest on
+     * layers of their own.
+     */
+    visibility: hidden;
+    transition:
+      opacity var(--duration-fade) var(--ease-out),
+      visibility 0s linear var(--duration-fade);
+  }
+
+  :root[data-tv] [data-tv-ring] ~ * {
+    transition: translate var(--duration-fade) var(--ease-out);
+  }
+
+  /*
+   * A library's grid and each of Home's rows light their focused card with
+   * one glow of their own (tv/focusGlow.tsx) that slides from card to card
+   * on the compositor, rather than each card's, which would be rasterized
+   * again on each press.
+   */
+  :root[data-tv] [data-tv-glows] [data-tv-ring]::after {
+    display: none;
+  }
+
+  :root[data-tv] :is([data-part="tv-glow"], [data-part="tv-sheen"]) {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    opacity: 0;
+    will-change: transform;
+    transition:
+      transform var(--duration-fade) var(--ease-out),
+      opacity var(--duration-fade) var(--ease-out);
+  }
+
+  /* Beneath the focused card, which is raised to 10, and above the rest. */
+  :root[data-tv] [data-part="tv-glow"] {
+    z-index: 5;
+    box-shadow: var(--shadow-tv-card-focus-glow);
+  }
+
+  :root[data-tv] [data-part="tv-sheen"] {
+    z-index: 20;
+    box-shadow: var(--shadow-tv-card-focus-sheen);
+  }
+
+  :root[data-tv] :is([data-part="tv-glow"], [data-part="tv-sheen"])[data-shown] {
+    opacity: 1;
+  }
+
+  :root[data-tv] [data-tv-focus="card"]:focus [data-tv-ring] {
+    scale: var(--tv-card-focus-scale);
+  }
+
+  :root[data-tv] [data-tv-focus="card"]:focus [data-tv-ring]::after {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity var(--duration-fade) var(--ease-out);
+  }
+
+  :root[data-tv] [data-tv-focus="card"]:focus [data-tv-ring] ~ * {
+    translate: 0 var(--layout-tv-card-caption-shift);
+  }
+
+  /*
+   * A row whose cards have moved along hides the card before its first
+   * whole one, which would otherwise show beside the rail, in the room the
+   * row leaves for the glow (Row.tsx).
+   */
+  :root[data-tv] [data-tv-scrolled] {
+    mask-image: linear-gradient(
+      to right,
+      transparent calc(var(--layout-tv-row-bleed) - var(--layout-tv-row-gap)),
+      var(--color-bg) var(--layout-tv-row-bleed)
+    );
+  }
+
+  /*
+   * A row as wide as the page, such as an episode, a chapter or a setting,
+   * doesn't scale, which would push it past the page's margins. It lights
+   * up instead. The page scrolls to keep a row's worth of the list in view
+   * past it, not only the overscan.
+   */
+  :root[data-tv] [data-tv-focus="row"] {
+    position: relative;
+    scroll-margin-block: var(--layout-tv-list-reveal-margin);
+  }
+
+  :root[data-tv] [data-tv-focus="row"]:focus {
+    z-index: 1;
+  }
+
+  /*
+   * The rail opens by widening its panel from the icons' column as the
+   * screen dims and the names fade in (TvRail.tsx). Only a transform and
+   * opacity animate, which the TV composites; the icons stay where they are.
+   */
+  @keyframes tv-rail-widen {
+    from {
+      opacity: 0;
+      scale: 0.3 1;
+    }
+  }
+
+  @keyframes tv-fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  /* The names wait until the panel is wide enough to hold them. */
+  @keyframes tv-rail-names {
+    0%,
+    40% {
+      opacity: 0;
+    }
+  }
+
+  :root[data-tv] [data-part="tv-rail-panel"] {
+    transform-origin: left;
+    animation: tv-rail-widen var(--duration-glide) var(--ease-out);
+  }
+
+  :root[data-tv] [data-part="tv-rail-scrim"] {
+    animation: tv-fade-in var(--duration-glide) var(--ease-out);
+  }
+
+  :root[data-tv] [data-part="tv-rail-label"] {
+    animation: tv-rail-names var(--duration-glide) var(--ease-out);
+  }
+
+  /* biome-ignore-start lint/complexity/noImportantStyles: reduced motion must win over every component's transition. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0s !important;
+      animation-duration: 0s !important;
+      scroll-behavior: auto !important;
+    }
+  }
+  /* biome-ignore-end lint/complexity/noImportantStyles: see above. */
+}
+
+/*
+ * On TV a focused control, field or row turns white with dark text. It's in
+ * the utilities layer, more specific than any class, so it wins over the
+ * colours of the control's own classes, as focus should.
+ *
+ * What lights up is the control itself, never the wrapper that takes focus
+ * (TvFocusable's data-tv-wrap), which may be wider: a wrapper's first
+ * child, or the element inside marked data-tv-face where the wrapper says
+ * data-tv-face="inside", or a control that takes focus itself and says
+ * data-tv-face, or data-tv-face="row" for a list's row that takes focus
+ * itself, as a player menu's rows do, which lights without growing. A field
+ * lights its input alone, not its label, and a row lights whole. Each takes the light theme's colours (the lit set,
+ * tokens.ts), so its own classes' text and icons stay legible on the
+ * white; a control's label and a primary control's fill are dark on it.
+ * The rail's and the settings menu's entries keep their own fill
+ * (data-tv-fill).
+ */
+@layer kivo.utilities {
+  :root[data-tv] :is([data-tv-face], [data-tv-focus="button"][data-tv-wrap]:not([data-tv-face]) > :first-child) {
+    transition: scale var(--duration-fade) var(--ease-out);
+  }
+
+  :root[data-tv]
+    :is(
+      [data-tv-face=""]:focus,
+      [data-tv-focus="button"][data-tv-wrap]:not([data-tv-face]):focus > :first-child,
+      [data-tv-face="inside"]:focus [data-tv-face=""],
+      [data-tv-focus="field"]:focus :is(input, textarea),
+      [data-tv-focus="row"]:focus,
+      [data-tv-face="row"]:focus
+    ) {
+    --color-surface: var(--color-tv-lit-surface);
+    --color-surface-raised: var(--color-tv-lit-surface-raised);
+    --color-surface-hover: var(--color-tv-lit-surface-hover);
+    --color-border: var(--color-tv-lit-border);
+    --color-text: var(--color-tv-lit-text);
+    --color-text-muted: var(--color-tv-lit-text-muted);
+    --color-text-subtle: var(--color-tv-lit-text-subtle);
+    --color-accent: var(--color-tv-lit-accent);
+    --color-accent-hover: var(--color-tv-lit-accent-hover);
+    --color-on-accent: var(--color-tv-lit-on-accent);
+    --color-danger: var(--color-tv-lit-danger);
+    --color-placeholder: var(--color-tv-lit-placeholder);
+    --color-on-placeholder: var(--color-tv-lit-on-placeholder);
+    --color-progress-track: var(--color-tv-lit-progress-track);
+    /* The player's controls are white over the video, and dark lit, a switch's track among them. */
+    --color-on-player: var(--color-tv-lit-text);
+    --color-on-player-muted: var(--color-tv-lit-text-muted);
+    --color-player-track: var(--color-tv-lit-progress-track);
+    background-color: var(--color-surface-raised);
+    border-color: transparent;
+  }
+
+  /* Text without a colour class of its own is dark too; one with a class, such as a destructive button's red, keeps it. */
+  :where(
+    :root[data-tv]
+      :is(
+        [data-tv-face=""]:focus,
+        [data-tv-focus="button"][data-tv-wrap]:not([data-tv-face]):focus > :first-child,
+        [data-tv-face="inside"]:focus [data-tv-face=""],
+        [data-tv-focus="field"]:focus :is(input, textarea),
+        [data-tv-focus="row"]:focus,
+        [data-tv-face="row"]:focus
+      )
+  ) {
+    color: var(--color-text);
+  }
+
+  /* A control grows a little; its label, muted or on the accent at rest, is dark on the white. */
+  :root[data-tv]
+  :is(
+    [data-tv-face=""]:focus,
+    [data-tv-focus="button"][data-tv-wrap]:not([data-tv-face]):focus > :first-child,
+    [data-tv-face="inside"]:focus [data-tv-face=""]
+  ) {
+    --color-text-muted: var(--color-tv-lit-text);
+    --color-on-accent: var(--color-tv-lit-text);
+    scale: var(--tv-focus-scale);
+  }
+}
+
+/*
+ * Text subtitles the browser draws (WebVTT and streamed tracks) in the
+ * size and background of this device's settings, which the player sets on itself. Sizes
+ * scale the browser's own cue size; styled ASS and PGS keep their looks.
+ */
+@layer kivo.components {
+  [data-subtitle-size="small"] video::cue {
+    font-size: 75%;
+  }
+
+  [data-subtitle-size="large"] video::cue {
+    font-size: 135%;
+  }
+
+  [data-subtitle-background="none"] video::cue,
+  [data-subtitle-background="shadow"] video::cue {
+    background-color: transparent;
+  }
+
+  [data-subtitle-background="shadow"] video::cue {
+    text-shadow: var(--shadow-subtitle);
+  }
+
+  [data-subtitle-background="box"] video::cue {
+    background-color: var(--color-subtitle-box);
+  }
+
+  /*
+   * On TV they sit inside the bottom of the safe area, and rise above the
+   * controls while those show (PlayerScreen sets the lift), with a little
+   * room above the scrub bar's thumb, as on Apple TV.
+   * ::cue can't move a cue, so the box the browser lays the cues out in
+   * moves, which Chromium names as a pseudo-element of the video.
+   */
+  :root[data-tv] [data-part="player"] video::-webkit-media-text-track-container {
+    transform: translateY(calc(-1 * var(--layout-tv-overscan-y)));
+    transition: transform var(--duration-fade) var(--ease-out);
+  }
+
+  :root[data-tv] [data-part="player"][data-controls="shown"] video::-webkit-media-text-track-container {
+    transform: translateY(calc(-1 * var(--player-cue-lift, var(--layout-tv-overscan-y)) - var(--spacing) * 4));
+  }
+
+  /*
+   * Its subtitles, which the browser can't draw by AVPlay's time, are drawn
+   * as the browser draws a cue: lines centred at the bottom, white, in a
+   * dark box unless the subtitle settings say otherwise, inside the safe
+   * area and above the controls while they show.
+   */
+  [data-part="avplay-cues"] {
+    position: absolute;
+    inset-inline: 0;
+    bottom: var(--layout-tv-overscan-y);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: var(--text-2xl);
+    line-height: var(--text-2xl--line-height);
+    color: var(--color-on-player);
+    text-align: center;
+    white-space: pre-line;
+    transition: transform var(--duration-fade) var(--ease-out);
+  }
+
+  [data-subtitle-size="small"] [data-part="avplay-cues"] {
+    font-size: calc(var(--text-2xl) * 0.75);
+  }
+
+  [data-subtitle-size="large"] [data-part="avplay-cues"] {
+    font-size: calc(var(--text-2xl) * 1.35);
+  }
+
+  [data-part="player"][data-controls="shown"] [data-part="avplay-cues"] {
+    transform: translateY(
+      calc(var(--layout-tv-overscan-y) - var(--player-cue-lift, var(--layout-tv-overscan-y)) - var(--spacing) * 4)
+    );
+  }
+
+  [data-part="avplay-cue"] {
+    padding-inline: calc(var(--spacing) * 2);
+    background-color: var(--color-subtitle-box);
+  }
+
+  [data-subtitle-background="none"] [data-part="avplay-cue"],
+  [data-subtitle-background="shadow"] [data-part="avplay-cue"] {
+    background-color: transparent;
+  }
+
+  [data-subtitle-background="shadow"] [data-part="avplay-cue"] {
+    text-shadow: var(--shadow-subtitle);
+  }
+}
+
+@layer kivo.utilities {
+  /*
+   * Samsung's native player (features/player/avplay.ts) draws the picture
+   * on a plane beneath the page, which shows only where the page is
+   * transparent. While it plays, the page and the player are, and the app
+   * but the player is hidden. Menus and dialogs, which open beside the app
+   * rather than in it, still show; the player's own controls and scrims draw over
+   * the picture as they would over the video element. They're utilities,
+   * so they win over the player's own background utility.
+   */
+  :root[data-avplay],
+  :root[data-avplay] body,
+  :root[data-avplay] [data-part="player"],
+  :root[data-avplay] [data-part="player"] video {
+    background: transparent;
+  }
+
+  :root[data-avplay] #root {
+    visibility: hidden;
+  }
+
+  :root[data-avplay] [data-part="player"] {
+    visibility: visible;
+  }
+}

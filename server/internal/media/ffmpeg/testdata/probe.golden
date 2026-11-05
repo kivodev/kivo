@@ -1,0 +1,1 @@
+ffprobe -hide_banner -loglevel error -print_format json -show_format -show_streams -show_chapters -protocol_whitelist file -i 'file:/media/Movies/Alien (1979)/Alien.mkv'

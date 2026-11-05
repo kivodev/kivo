@@ -1,0 +1,240 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": {
+    "includes": ["**", "!dist", "!mock-public", "!src/api/schema.d.ts", "!src/theme/tokens.css", "!src/i18n/locales"]
+  },
+  "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 120 },
+  "css": { "parser": { "tailwindDirectives": true } },
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "correctness": {
+        "useExhaustiveDependencies": "error",
+        "useHookAtTopLevel": "error"
+      },
+      "style": {
+        "noRestrictedGlobals": {
+          "level": "error",
+          "options": {
+            "deniedGlobals": {
+              "fetch": "No hand-written fetch calls: use the generated client through @/api.",
+              "XMLHttpRequest": "No hand-written requests: use the generated client through @/api.",
+              "WebSocket": "The event socket lives in src/api/live.ts.",
+              "localStorage": "Keep things in the browser through @/lib/storage.",
+              "sessionStorage": "Keep things in the browser through @/lib/storage."
+            }
+          }
+        },
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "paths": {
+              "@tanstack/react-query": {
+                "importNames": ["useQueryClient"],
+                "message": "The cache is written only in src/api: each mutation there says what it invalidates."
+              },
+              "openapi-fetch": "Only src/api/client.ts talks to openapi-fetch; use the query options in @/api.",
+              "openapi-react-query": "Only src/api/client.ts creates the query bindings; use the query options in @/api.",
+              "msw": "MSW is for tests and mocks only."
+            },
+            "patterns": [
+              {
+                "group": ["../*", "../**"],
+                "message": "Import across folders with the @/ alias, so the layering rules can see it."
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["src/i18n/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["@/app/**", "@/routes/**", "@/features/**", "@/components/**", "@/lib/**", "@/api/**"],
+                    "message": "Layering: i18n is the bottom layer and imports no other layer."
+                  },
+                  { "group": ["../*", "../**"], "message": "Import across folders with the @/ alias." }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/api/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "msw": "MSW is for tests and mocks only."
+                },
+                "patterns": [
+                  {
+                    "group": [
+                      "@/app/**",
+                      "@/routes/**",
+                      "@/features/**",
+                      "@/components/**",
+                      "@/lib/**",
+                      "!@/lib/browser"
+                    ],
+                    "message": "Layering: api imports only i18n, and the user agent's reading in lib/browser."
+                  },
+                  { "group": ["../*", "../**"], "message": "Import across folders with the @/ alias." }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/components/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "openapi-fetch": "Components never fetch.",
+                  "openapi-react-query": "Components never fetch.",
+                  "@tanstack/react-query": "Components never fetch: they take data and actions as props.",
+                  "msw": "MSW is for tests and mocks only."
+                },
+                "patterns": [
+                  {
+                    "group": ["@/app/**", "@/routes/**", "@/features/**", "@/lib/**"],
+                    "message": "Layering: components import only api types and i18n."
+                  },
+                  {
+                    "group": ["@/api/*", "!@/api/schemas", "!@/api/images", "!@/api/problem"],
+                    "message": "Components never fetch: only @/api/schemas, @/api/images and @/api/problem may be imported."
+                  },
+                  { "group": ["../*", "../**"], "message": "Import across folders with the @/ alias." }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/lib/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "openapi-fetch": "lib never fetches.",
+                  "openapi-react-query": "lib never fetches.",
+                  "@tanstack/react-query": "lib never fetches.",
+                  "msw": "MSW is for tests and mocks only."
+                },
+                "patterns": [
+                  {
+                    "group": ["@/app/**", "@/routes/**", "@/features/**", "@/components/**"],
+                    "message": "Layering: lib imports only api types and i18n."
+                  },
+                  {
+                    "group": ["@/api/*", "!@/api/schemas"],
+                    "message": "lib never fetches: only @/api/schemas may be imported."
+                  },
+                  { "group": ["../*", "../**"], "message": "Import across folders with the @/ alias." }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/features/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@tanstack/react-query": {
+                    "importNames": ["useQueryClient"],
+                    "message": "The cache is written only in src/api: each mutation there says what it invalidates."
+                  },
+                  "openapi-fetch": "Use the query options in @/api.",
+                  "openapi-react-query": "Use the query options in @/api.",
+                  "react-aria-components": {
+                    "importNames": ["Form"],
+                    "message": "A form takes one of two shapes: SubmitForm, or a settings page's SettingsForm with its save bar."
+                  },
+                  "msw": "MSW is for tests and mocks only."
+                },
+                "patterns": [
+                  {
+                    "group": ["@/app/**", "@/routes/**"],
+                    "message": "Layering: features sit below routes and the app."
+                  },
+                  { "group": ["../*", "../**"], "message": "Features are flat: import their own files with ./." }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/routes/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@tanstack/react-query": {
+                    "importNames": ["useQueryClient"],
+                    "message": "The cache is written only in src/api: each mutation there says what it invalidates."
+                  },
+                  "openapi-fetch": "Use the query options in @/api.",
+                  "openapi-react-query": "Use the query options in @/api.",
+                  "msw": "MSW is for tests and mocks only."
+                },
+                "patterns": [{ "group": ["../*", "../**"], "message": "Import across folders with the @/ alias." }]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/api/client.ts"],
+      "linter": { "rules": { "style": { "noRestrictedImports": "off" } } }
+    },
+    {
+      "includes": ["src/api/live.ts", "src/lib/storage.ts"],
+      "linter": { "rules": { "style": { "noRestrictedGlobals": "off" } } }
+    },
+    {
+      "includes": ["src/api/mocks/**", "src/test/**", "**/*.test.ts", "**/*.test.tsx", "scripts/**", "*.config.ts"],
+      "linter": { "rules": { "style": { "noRestrictedImports": "off", "noRestrictedGlobals": "off" } } }
+    }
+  ]
+}

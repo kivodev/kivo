@@ -1,0 +1,1 @@
+SEARCH download USING INDEX sqlite_autoindex_download_1 (id=?)

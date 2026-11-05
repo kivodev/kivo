@@ -1,0 +1,3 @@
+SEARCH provider_cache USING INTEGER PRIMARY KEY (rowid=?)
+LIST SUBQUERY 1
+  SEARCH p USING COVERING INDEX provider_cache_expires (expires_at<?)

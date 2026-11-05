@@ -1,0 +1,18 @@
+GET /api/v1/setup: 200
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' www.gstatic.com; worker-src 'self' blob:; media-src 'self' blob: data:; img-src 'self' data: blob:; connect-src 'self'; style-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'
+  Referrer-Policy: no-referrer
+  X-Content-Type-Options: nosniff
+  Content-Type: application/json
+  Cache-Control: no-store
+GET /: 200
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' www.gstatic.com; worker-src 'self' blob:; media-src 'self' blob: data:; img-src 'self' data: blob:; connect-src 'self'; style-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'
+  Referrer-Policy: no-referrer
+  X-Content-Type-Options: nosniff
+  Content-Type: text/html; charset=utf-8
+  Cache-Control: no-cache
+GET /api/v1/no-such-route: 404
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' www.gstatic.com; worker-src 'self' blob:; media-src 'self' blob: data:; img-src 'self' data: blob:; connect-src 'self'; style-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'
+  Referrer-Policy: no-referrer
+  X-Content-Type-Options: nosniff
+  Content-Type: application/problem+json
+  Cache-Control: no-store

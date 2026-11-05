@@ -1,0 +1,2 @@
+-- Downloads aren't removed when the work is finished any more.
+ALTER TABLE download DROP COLUMN remove_when_finished;

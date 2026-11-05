@@ -1,0 +1,3 @@
+SCAN v
+CORRELATED SCALAR SUBQUERY 1
+  SEARCH p USING COVERING INDEX media_file_version (version_id=?)

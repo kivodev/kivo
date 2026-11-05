@@ -1,0 +1,1 @@
+SEARCH user_library USING PRIMARY KEY (user_id=?)

@@ -1,0 +1,7 @@
+.git
+clients/
+server/bin/
+server/web/node_modules/
+server/web/dist/
+**/*_test.go
+**/testdata/

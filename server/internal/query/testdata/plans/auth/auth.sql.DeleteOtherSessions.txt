@@ -1,0 +1,3 @@
+SEARCH session USING INDEX session_user (user_id=?)
+SEARCH download USING COVERING INDEX download_session (session_id=?)
+SEARCH cast_token USING COVERING INDEX cast_token_session (session_id=?)

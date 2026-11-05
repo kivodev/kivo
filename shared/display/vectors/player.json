@@ -1,0 +1,83 @@
+{
+  "skipMarker": [
+    {
+      "about": "Skip shows as playback enters a marker, on its own until it expires, then with the controls, and goes as playback leaves",
+      "markers": [
+        { "kind": "intro", "startMs": 60000, "endMs": 150000, "source": "chapter" },
+        { "kind": "credits", "startMs": 1200000, "endMs": 1300000, "source": "chapter" }
+      ],
+      "steps": [
+        { "positionMs": 10000, "controls": false, "upNext": false, "shows": null },
+        { "positionMs": 61000, "controls": false, "upNext": false, "shows": 60000 },
+        { "positionMs": 65000, "controls": true, "upNext": false, "shows": 60000 },
+        { "expire": true },
+        { "positionMs": 70000, "controls": false, "upNext": false, "shows": null },
+        { "positionMs": 71000, "controls": true, "upNext": false, "shows": 60000 },
+        { "positionMs": 149999, "controls": true, "upNext": false, "shows": 60000 },
+        { "positionMs": 150000, "controls": true, "upNext": false, "shows": null }
+      ]
+    },
+    {
+      "about": "Skip hides the button for its marker until playback leaves it; a seek back into the marker shows it again",
+      "markers": [{ "kind": "intro", "startMs": 60000, "endMs": 150000, "source": "chapter" }],
+      "steps": [
+        { "positionMs": 61000, "controls": false, "upNext": false, "shows": 60000 },
+        { "skip": true },
+        { "positionMs": 62000, "controls": true, "upNext": false, "shows": null },
+        { "positionMs": 160000, "controls": false, "upNext": false, "shows": null },
+        { "positionMs": 61000, "controls": false, "upNext": false, "shows": 60000 }
+      ]
+    },
+    {
+      "about": "Skip Credits gives way to up next",
+      "markers": [{ "kind": "credits", "startMs": 1200000, "endMs": 1300000, "source": "chapter" }],
+      "steps": [
+        { "positionMs": 1210000, "controls": false, "upNext": false, "shows": 1200000 },
+        { "positionMs": 1211000, "controls": true, "upNext": true, "shows": null },
+        { "positionMs": 1212000, "controls": false, "upNext": false, "shows": 1200000 }
+      ]
+    },
+    {
+      "about": "A marker entered after another starts its own time, whatever the last one's",
+      "markers": [
+        { "kind": "intro", "startMs": 60000, "endMs": 150000, "source": "chapter" },
+        { "kind": "credits", "startMs": 150000, "endMs": 160000, "source": "chapter" }
+      ],
+      "steps": [
+        { "positionMs": 61000, "controls": false, "upNext": false, "shows": 60000 },
+        { "expire": true },
+        { "positionMs": 149000, "controls": false, "upNext": false, "shows": null },
+        { "positionMs": 151000, "controls": false, "upNext": false, "shows": 150000 }
+      ]
+    },
+    {
+      "about": "A recap has Skip; a kind the app doesn't know, or a marker under 3 seconds, has none",
+      "markers": [
+        { "kind": "recap", "startMs": 0, "endMs": 45000, "source": "chapter" },
+        { "kind": "sponsor", "startMs": 60000, "endMs": 120000, "source": "chapter" },
+        { "kind": "intro", "startMs": 120000, "endMs": 122999, "source": "chapter" }
+      ],
+      "steps": [
+        { "positionMs": 1000, "controls": false, "upNext": false, "shows": 0 },
+        { "positionMs": 61000, "controls": true, "upNext": false, "shows": null },
+        { "positionMs": 121000, "controls": true, "upNext": false, "shows": null }
+      ]
+    }
+  ],
+  "upNextAt": [
+    [599999, null],
+    [600000, 570000],
+    [1320000, 1290000],
+    [2399999, 2369999],
+    [2400000, 2365000],
+    [2999999, 2964999],
+    [3000000, 2960000],
+    [7200000, 7160000]
+  ],
+  "upNextAtCredits": [
+    { "about": "Final credits bring up next at their start", "durationMs": 1440000, "markers": [{ "kind": "credits", "startMs": 1320000, "endMs": 1410000, "source": "chapter", "final": true }], "at": 1320000 },
+    { "about": "Credits followed by more of the episode don't", "durationMs": 1440000, "markers": [{ "kind": "credits", "startMs": 1320000, "endMs": 1380000, "source": "chapter" }], "at": 1410000 },
+    { "about": "Credits shorter than the fixed lead don't delay it", "durationMs": 1440000, "markers": [{ "kind": "credits", "startMs": 1425000, "endMs": 1440000, "source": "chapter", "final": true }], "at": 1410000 },
+    { "about": "An episode under 10 minutes has none", "durationMs": 540000, "markers": [{ "kind": "credits", "startMs": 480000, "endMs": 540000, "source": "chapter", "final": true }], "at": null }
+  ]
+}

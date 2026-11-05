@@ -1,0 +1,2837 @@
+{
+  "authors library:Audiobooks": {
+    "Items": [
+      {
+        "ID": "person:Andy Weir",
+        "Name": "Andy Weir",
+        "Books": 1,
+        "Photo": null
+      },
+      {
+        "ID": "person:James S. A. Corey",
+        "Name": "James S. A. Corey",
+        "Books": 2,
+        "Photo": null
+      }
+    ],
+    "Total": 2,
+    "Letters": [
+      {
+        "Letter": "A",
+        "Offset": 0
+      },
+      {
+        "Letter": "J",
+        "Offset": 1
+      }
+    ]
+  },
+  "browse library:Audiobooks": {
+    "Items": [
+      {
+        "ID": "book:The Churn",
+        "Kind": "book",
+        "Title": "The Churn",
+        "SortTitle": "Churn",
+        "Parent": "none",
+        "Root": "none",
+        "SeriesTitle": "",
+        "Year": 2014,
+        "Number": 0,
+        "ParentNumber": 0,
+        "NumberEnd": 0,
+        "ReleaseDate": "2014",
+        "ExtraType": "",
+        "Edition": "",
+        "Duration": 3600000000000,
+        "Added": "<time>",
+        "Images": {
+          "Poster": null,
+          "Backdrop": null,
+          "Still": null,
+          "Logo": null
+        },
+        "MatchState": "matched",
+        "Unavailable": false,
+        "Unplayed": 0,
+        "Bundled": 0,
+        "Episodes": 0,
+        "Overview": "",
+        "Community": null,
+        "ContentRating": "",
+        "Userstate": {
+          "Played": false,
+          "PlayCount": 0,
+          "Position": 0,
+          "Version": "none",
+          "Favorite": false,
+          "Rating": null,
+          "LastPlayed": "0001-01-01T00:00:00Z"
+        },
+        "Book": {
+          "Authors": [
+            {
+              "ID": "person:James S. A. Corey",
+              "Name": "James S. A. Corey"
+            }
+          ],
+          "Narrators": [
+            {
+              "ID": "person:Ray Porter",
+              "Name": "Ray Porter"
+            }
+          ],
+          "Series": [
+            {
+              "ID": "bookSeries:The Expanse",
+              "Name": "The Expanse",
+              "Position": "1.5",
+              "Primary": true
+            }
+          ]
+        },
+        "Library": "library:Audiobooks",
+        "Path": ""
+      },
+      {
+        "ID": "book:Leviathan Wakes",
+        "Kind": "book",
+        "Title": "Leviathan Wakes",
+        "SortTitle": "Leviathan Wakes",
+        "Parent": "none",
+        "Root": "none",
+        "SeriesTitle": "",
+        "Year": 2011,
+        "Number": 0,
+        "ParentNumber": 0,
+        "NumberEnd": 0,
+        "ReleaseDate": "2011",
+        "ExtraType": "",
+        "Edition": "",
+        "Duration": 7200000000000,
+        "Added": "<time>",
+        "Images": {
+          "Poster": null,
+          "Backdrop": null,
+          "Still": null,
+          "Logo": null
+        },
+        "MatchState": "matched",
+        "Unavailable": false,
+        "Unplayed": 0,
+        "Bundled": 0,
+        "Episodes": 0,
+        "Overview": "",
+        "Community": null,
+        "ContentRating": "",
+        "Userstate": {
+          "Played": false,
+          "PlayCount": 0,
+          "Position": 0,
+          "Version": "none",
+          "Favorite": false,
+          "Rating": null,
+          "LastPlayed": "0001-01-01T00:00:00Z"
+        },
+        "Book": {
+          "Authors": [
+            {
+              "ID": "person:James S. A. Corey",
+              "Name": "James S. A. Corey"
+            }
+          ],
+          "Narrators": [
+            {
+              "ID": "<id>",
+              "Name": "Jefferson Mays"
+            }
+          ],
+          "Series": [
+            {
+              "ID": "bookSeries:The Expanse",
+              "Name": "The Expanse",
+              "Position": "1",
+              "Primary": true
+            }
+          ]
+        },
+        "Library": "library:Audiobooks",
+        "Path": ""
+      },
+      {
+        "ID": "book:Project Hail Mary",
+        "Kind": "book",
+        "Title": "Project Hail Mary",
+        "SortTitle": "Project Hail Mary",
+        "Parent": "none",
+        "Root": "none",
+        "SeriesTitle": "",
+        "Year": 2021,
+        "Number": 0,
+        "ParentNumber": 0,
+        "NumberEnd": 0,
+        "ReleaseDate": "2021-05-04",
+        "ExtraType": "",
+        "Edition": "",
+        "Duration": 3600000000000,
+        "Added": "<time>",
+        "Images": {
+          "Poster": null,
+          "Backdrop": null,
+          "Still": null,
+          "Logo": null
+        },
+        "MatchState": "matched",
+        "Unavailable": false,
+        "Unplayed": 0,
+        "Bundled": 0,
+        "Episodes": 0,
+        "Overview": "",
+        "Community": null,
+        "ContentRating": "",
+        "Userstate": {
+          "Played": false,
+          "PlayCount": 0,
+          "Position": 0,
+          "Version": "none",
+          "Favorite": false,
+          "Rating": null,
+          "LastPlayed": "0001-01-01T00:00:00Z"
+        },
+        "Book": {
+          "Authors": [
+            {
+              "ID": "person:Andy Weir",
+              "Name": "Andy Weir"
+            }
+          ],
+          "Narrators": [
+            {
+              "ID": "person:Ray Porter",
+              "Name": "Ray Porter"
+            }
+          ],
+          "Series": null
+        },
+        "Library": "library:Audiobooks",
+        "Path": ""
+      }
+    ],
+    "Total": 3,
+    "Letters": [
+      {
+        "Letter": "C",
+        "Offset": 0
+      },
+      {
+        "Letter": "L",
+        "Offset": 1
+      },
+      {
+        "Letter": "P",
+        "Offset": 2
+      }
+    ]
+  },
+  "browse library:Audiobooks by author": {
+    "Items": [
+      {
+        "ID": "book:Project Hail Mary",
+        "Kind": "book",
+        "Title": "Project Hail Mary",
+        "SortTitle": "Project Hail Mary",
+        "Parent": "none",
+        "Root": "none",
+        "SeriesTitle": "",
+        "Year": 2021,
+        "Number": 0,
+        "ParentNumber": 0,
+        "NumberEnd": 0,
+        "ReleaseDate": "2021-05-04",
+        "ExtraType": "",
+        "Edition": "",
+        "Duration": 3600000000000,
+        "Added": "<time>",
+        "Images": {
+          "Poster": null,
+          "Backdrop": null,
+          "Still": null,
+          "Logo": null
+        },
+        "MatchState": "matched",
+        "Unavailable": false,
+        "Unplayed": 0,
+        "Bundled": 0,
+        "Episodes": 0,
+        "Overview": "",
+        "Community": null,
+        "ContentRating": "",
+        "Userstate": {
+          "Played": false,
+          "PlayCount": 0,
+          "Position": 0,
+          "Version": "none",
+          "Favorite": false,
+          "Rating": null,
+          "LastPlayed": "0001-01-01T00:00:00Z"
+        },
+        "Book": {
+          "Authors": [
+            {
+              "ID": "person:Andy Weir",
+              "Name": "Andy Weir"
+            }
+          ],
+          "Narrators": [
+            {
+              "ID": "person:Ray Porter",
+              "Name": "Ray Porter"
+            }
+          ],
+          "Series": null
+        },
+        "Library": "library:Audiobooks",
+        "Path": ""
+      },
+      {
+        "ID": "book:The Churn",
+        "Kind": "book",
+        "Title": "The Churn",
+        "SortTitle": "Churn",
+        "Parent": "none",
+        "Root": "none",
+        "SeriesTitle": "",
+        "Year": 2014,
+        "Number": 0,
+        "ParentNumber": 0,
+        "NumberEnd": 0,
+        "ReleaseDate": "2014",
+        "ExtraType": "",
+        "Edition": "",
+        "Duration": 3600000000000,
+        "Added": "<time>",
+        "Images": {
+          "Poster": null,
+          "Backdrop": null,
+          "Still": null,
+          "Logo": null
+        },
+        "MatchState": "matched",
+        "Unavailable": false,
+        "Unplayed": 0,
+        "Bundled": 0,
+        "Episodes": 0,
+        "Overview": "",
+        "Community": null,
+        "ContentRating": "",
+        "Userstate": {
+          "Played": false,
+          "PlayCount": 0,
+          "Position": 0,
+          "Version": "none",
+          "Favorite": false,
+          "Rating": null,
+          "LastPlayed": "0001-01-01T00:00:00Z"
+        },
+        "Book": {
+          "Authors": [
+            {
+              "ID": "person:James S. A. Corey",
+              "Name": "James S. A. Corey"
+            }
+          ],
+          "Narrators": [
+            {
+              "ID": "person:Ray Porter",
+              "Name": "Ray Porter"
+            }
+          ],
+          "Series": [
+            {
+              "ID": "bookSeries:The Expanse",
+              "Name": "The Expanse",
+              "Position": "1.5",
+              "Primary": true
+            }
+          ]
+        },
+        "Library": "library:Audiobooks",
+        "Path": ""
+      },
+      {
+        "ID": "book:Leviathan Wakes",
+        "Kind": "book",
+        "Title": "Leviathan Wakes",
+        "SortTitle": "Leviathan Wakes",
+        "Parent": "none",
+        "Root": "none",
+        "SeriesTitle": "",
+        "Year": 2011,
+        "Number": 0,
+        "ParentNumber": 0,
+        "NumberEnd": 0,
+        "ReleaseDate": "2011",
+        "ExtraType": "",
+        "Edition": "",
+        "Duration": 7200000000000,
+        "Added": "<time>",
+        "Images": {
+          "Poster": null,
+          "Backdrop": null,
+          "Still": null,
+          "Logo": null
+        },
+        "MatchState": "matched",
+        "Unavailable": false,
+        "Unplayed": 0,
+        "Bundled": 0,
+        "Episodes": 0,
+        "Overview": "",
+        "Community": null,
+        "ContentRating": "",
+        "Userstate": {
+          "Played": false,
+          "PlayCount": 0,
+          "Position": 0,
+          "Version": "none",
+          "Favorite": false,
+          "Rating": null,
+          "LastPlayed": "0001-01-01T00:00:00Z"
+        },
+        "Book": {
+          "Authors": [
+            {
+              "ID": "person:James S. A. Corey",
+              "Name": "James S. A. Corey"
+            }
+          ],
+          "Narrators": [
+            {
+              "ID": "<id>",
+              "Name": "Jefferson Mays"
+            }
+          ],
+          "Series": [
+            {
+              "ID": "bookSeries:The Expanse",
+              "Name": "The Expanse",
+              "Position": "1",
+              "Primary": true
+            }
+          ]
+        },
+        "Library": "library:Audiobooks",
+        "Path": ""
+      }
+    ],
+    "Total": 3,
+    "Letters": null
+  },
+  "browse library:Audiobooks narrated by Ray Porter": {
+    "Items": [
+      {
+        "ID": "book:The Churn",
+        "Kind": "book",
+        "Title": "The Churn",
+        "SortTitle": "Churn",
+        "Parent": "none",
+        "Root": "none",
+        "SeriesTitle": "",
+        "Year": 2014,
+        "Number": 0,
+        "ParentNumber": 0,
+        "NumberEnd": 0,
+        "ReleaseDate": "2014",
+        "ExtraType": "",
+        "Edition": "",
+        "Duration": 3600000000000,
+        "Added": "<time>",
+        "Images": {
+          "Poster": null,
+          "Backdrop": null,
+          "Still": null,
+          "Logo": null
+        },
+        "MatchState": "matched",
+        "Unavailable": false,
+        "Unplayed": 0,
+        "Bundled": 0,
+        "Episodes": 0,
+        "Overview": "",
+        "Community": null,
+        "ContentRating": "",
+        "Userstate": {
+          "Played": false,
+          "PlayCount": 0,
+          "Position": 0,
+          "Version": "none",
+          "Favorite": false,
+          "Rating": null,
+          "LastPlayed": "0001-01-01T00:00:00Z"
+        },
+        "Book": {
+          "Authors": [
+            {
+              "ID": "person:James S. A. Corey",
+              "Name": "James S. A. Corey"
+            }
+          ],
+          "Narrators": [
+            {
+              "ID": "person:Ray Porter",
+              "Name": "Ray Porter"
+            }
+          ],
+          "Series": [
+            {
+              "ID": "bookSeries:The Expanse",
+              "Name": "The Expanse",
+              "Position": "1.5",
+              "Primary": true
+            }
+          ]
+        },
+        "Library": "library:Audiobooks",
+        "Path": ""
+      },
+      {
+        "ID": "book:Project Hail Mary",
+        "Kind": "book",
+        "Title": "Project Hail Mary",
+        "SortTitle": "Project Hail Mary",
+        "Parent": "none",
+        "Root": "none",
+        "SeriesTitle": "",
+        "Year": 2021,
+        "Number": 0,
+        "ParentNumber": 0,
+        "NumberEnd": 0,
+        "ReleaseDate": "2021-05-04",
+        "ExtraType": "",
+        "Edition": "",
+        "Duration": 3600000000000,
+        "Added": "<time>",
+        "Images": {
+          "Poster": null,
+          "Backdrop": null,
+          "Still": null,
+          "Logo": null
+        },
+        "MatchState": "matched",
+        "Unavailable": false,
+        "Unplayed": 0,
+        "Bundled": 0,
+        "Episodes": 0,
+        "Overview": "",
+        "Community": null,
+        "ContentRating": "",
+        "Userstate": {
+          "Played": false,
+          "PlayCount": 0,
+          "Position": 0,
+          "Version": "none",
+          "Favorite": false,
+          "Rating": null,
+          "LastPlayed": "0001-01-01T00:00:00Z"
+        },
+        "Book": {
+          "Authors": [
+            {
+              "ID": "person:Andy Weir",
+              "Name": "Andy Weir"
+            }
+          ],
+          "Narrators": [
+            {
+              "ID": "person:Ray Porter",
+              "Name": "Ray Porter"
+            }
+          ],
+          "Series": null
+        },
+        "Library": "library:Audiobooks",
+        "Path": ""
+      }
+    ],
+    "Total": 2,
+    "Letters": [
+      {
+        "Letter": "C",
+        "Offset": 0
+      },
+      {
+        "Letter": "P",
+        "Offset": 1
+      }
+    ]
+  },
+  "browse library:Movies": {
+    "Items": [
+      {
+        "ID": "movie:Toy Story",
+        "Kind": "movie",
+        "Title": "Toy Story",
+        "SortTitle": "Toy Story",
+        "Parent": "none",
+        "Root": "none",
+        "SeriesTitle": "",
+        "Year": 1995,
+        "Number": 0,
+        "ParentNumber": 0,
+        "NumberEnd": 0,
+        "ReleaseDate": "",
+        "ExtraType": "",
+        "Edition": "",
+        "Duration": 7200000000000,
+        "Added": "<time>",
+        "Images": {
+          "Poster": null,
+          "Backdrop": null,
+          "Still": null,
+          "Logo": null
+        },
+        "MatchState": "matched",
+        "Unavailable": false,
+        "Unplayed": 0,
+        "Bundled": 0,
+        "Episodes": 0,
+        "Overview": "",
+        "Community": {
+          "Rating": 8,
+          "Votes": 18000
+        },
+        "ContentRating": "G",
+        "Userstate": {
+          "Played": false,
+          "PlayCount": 0,
+          "Position": 0,
+          "Version": "none",
+          "Favorite": false,
+          "Rating": null,
+          "LastPlayed": "0001-01-01T00:00:00Z"
+        },
+        "Book": null,
+        "Library": "library:Movies",
+        "Path": ""
+      },
+      {
+        "ID": "movie:Toy Story 2",
+        "Kind": "movie",
+        "Title": "Toy Story 2",
+        "SortTitle": "Toy Story 2",
+        "Parent": "none",
+        "Root": "none",
+        "SeriesTitle": "",
+        "Year": 1999,
+        "Number": 0,
+        "ParentNumber": 0,
+        "NumberEnd": 0,
+        "ReleaseDate": "",
+        "ExtraType": "",
+        "Edition": "",
+        "Duration": 7200000000000,
+        "Added": "<time>",
+        "Images": {
+          "Poster": null,
+          "Backdrop": null,
+          "Still": null,
+          "Logo": null
+        },
+        "MatchState": "matched",
+        "Unavailable": false,
+        "Unplayed": 0,
+        "Bundled": 0,
+        "Episodes": 0,
+        "Overview": "",
+        "Community": {
+          "Rating": 7.6,
+          "Votes": 14000
+        },
+        "ContentRating": "G",
+        "Userstate": {
+          "Played": false,
+          "PlayCount": 0,
+          "Position": 0,
+          "Version": "none",
+          "Favorite": false,
+          "Rating": null,
+          "LastPlayed": "0001-01-01T00:00:00Z"
+        },
+        "Book": null,
+        "Library": "library:Movies",
+        "Path": ""
+      }
+    ],
+    "Total": 2,
+    "Letters": [
+      {
+        "Letter": "T",
+        "Offset": 0
+      }
+    ]
+  },
+  "browse library:Private": {
+    "Items": [
+      {
+        "ID": "movie:Secret",
+        "Kind": "movie",
+        "Title": "Secret",
+        "SortTitle": "Secret",
+        "Parent": "none",
+        "Root": "none",
+        "SeriesTitle": "",
+        "Year": 2001,
+        "Number": 0,
+        "ParentNumber": 0,
+        "NumberEnd": 0,
+        "ReleaseDate": "",
+        "ExtraType": "",
+        "Edition": "",
+        "Duration": 7200000000000,
+        "Added": "<time>",
+        "Images": {
+          "Poster": null,
+          "Backdrop": null,
+          "Still": null,
+          "Logo": null
+        },
+        "MatchState": "matched",
+        "Unavailable": false,
+        "Unplayed": 0,
+        "Bundled": 0,
+        "Episodes": 0,
+        "Overview": "",
+        "Community": null,
+        "ContentRating": "G",
+        "Userstate": {
+          "Played": false,
+          "PlayCount": 0,
+          "Position": 0,
+          "Version": "none",
+          "Favorite": false,
+          "Rating": null,
+          "LastPlayed": "0001-01-01T00:00:00Z"
+        },
+        "Book": null,
+        "Library": "library:Private",
+        "Path": ""
+      }
+    ],
+    "Total": 1,
+    "Letters": [
+      {
+        "Letter": "S",
+        "Offset": 0
+      }
+    ]
+  },
+  "browse library:Shows": {
+    "Items": [
+      {
+        "ID": "series:Bluey",
+        "Kind": "series",
+        "Title": "Bluey",
+        "SortTitle": "Bluey",
+        "Parent": "none",
+        "Root": "none",
+        "SeriesTitle": "",
+        "Year": 0,
+        "Number": 0,
+        "ParentNumber": 0,
+        "NumberEnd": 0,
+        "ReleaseDate": "",
+        "ExtraType": "",
+        "Edition": "",
+        "Duration": 0,
+        "Added": "<time>",
+        "Images": {
+          "Poster": null,
+          "Backdrop": null,
+          "Still": null,
+          "Logo": null
+        },
+        "MatchState": "matched",
+        "Unavailable": false,
+        "Unplayed": 4,
+        "Bundled": 0,
+        "Episodes": 0,
+        "Overview": "",
+        "Community": null,
+        "ContentRating": "G",
+        "Userstate": {
+          "Played": false,
+          "PlayCount": 0,
+          "Position": 0,
+          "Version": "none",
+          "Favorite": false,
+          "Rating": null,
+          "LastPlayed": "0001-01-01T00:00:00Z"
+        },
+        "Book": null,
+        "Library": "library:Shows",
+        "Path": ""
+      }
+    ],
+    "Total": 1,
+    "Letters": [
+      {
+        "Letter": "B",
+        "Offset": 0
+      }
+    ]
+  },
+  "children season:Bluey 1": [
+    {
+      "ID": "episode:Bluey 1x01",
+      "Kind": "episode",
+      "Title": "Magic Xylophone / Hospital",
+      "SortTitle": "Magic Xylophone",
+      "Parent": "season:Bluey 1",
+      "Root": "series:Bluey",
+      "SeriesTitle": "Bluey",
+      "Year": 0,
+      "Number": 1,
+      "ParentNumber": 1,
+      "NumberEnd": 2,
+      "ReleaseDate": "",
+      "ExtraType": "",
+      "Edition": "",
+      "Duration": 840000000000,
+      "Added": "<time>",
+      "Images": {
+        "Poster": null,
+        "Backdrop": null,
+        "Still": null,
+        "Logo": null
+      },
+      "MatchState": "matched",
+      "Unavailable": false,
+      "Unplayed": 0,
+      "Bundled": 0,
+      "Episodes": 0,
+      "Overview": "",
+      "Community": null,
+      "ContentRating": "",
+      "Userstate": {
+        "Played": false,
+        "PlayCount": 0,
+        "Position": 0,
+        "Version": "none",
+        "Favorite": false,
+        "Rating": null,
+        "LastPlayed": "0001-01-01T00:00:00Z"
+      },
+      "Book": null,
+      "Library": "library:Shows",
+      "Path": ""
+    },
+    {
+      "ID": "episode:Bluey 1x03",
+      "Kind": "episode",
+      "Title": "Episode 3",
+      "SortTitle": "Episode 3",
+      "Parent": "season:Bluey 1",
+      "Root": "series:Bluey",
+      "SeriesTitle": "Bluey",
+      "Year": 0,
+      "Number": 3,
+      "ParentNumber": 1,
+      "NumberEnd": 0,
+      "ReleaseDate": "",
+      "ExtraType": "",
+      "Edition": "",
+      "Duration": 1500000000000,
+      "Added": "<time>",
+      "Images": {
+        "Poster": null,
+        "Backdrop": null,
+        "Still": null,
+        "Logo": null
+      },
+      "MatchState": "matched",
+      "Unavailable": false,
+      "Unplayed": 0,
+      "Bundled": 0,
+      "Episodes": 0,
+      "Overview": "",
+      "Community": null,
+      "ContentRating": "",
+      "Userstate": {
+        "Played": false,
+        "PlayCount": 0,
+        "Position": 0,
+        "Version": "none",
+        "Favorite": false,
+        "Rating": null,
+        "LastPlayed": "0001-01-01T00:00:00Z"
+      },
+      "Book": null,
+      "Library": "library:Shows",
+      "Path": ""
+    }
+  ],
+  "children season:The Expanse 1": "error: not found",
+  "children series:Bluey": [
+    {
+      "ID": "season:Bluey 1",
+      "Kind": "season",
+      "Title": "Season 1",
+      "SortTitle": "Season 1",
+      "Parent": "series:Bluey",
+      "Root": "series:Bluey",
+      "SeriesTitle": "Bluey",
+      "Year": 0,
+      "Number": 1,
+      "ParentNumber": 0,
+      "NumberEnd": 0,
+      "ReleaseDate": "",
+      "ExtraType": "",
+      "Edition": "",
+      "Duration": 0,
+      "Added": "<time>",
+      "Images": {
+        "Poster": null,
+        "Backdrop": null,
+        "Still": null,
+        "Logo": null
+      },
+      "MatchState": "matched",
+      "Unavailable": false,
+      "Unplayed": 3,
+      "Bundled": 0,
+      "Episodes": 2,
+      "Overview": "",
+      "Community": null,
+      "ContentRating": "",
+      "Userstate": {
+        "Played": false,
+        "PlayCount": 0,
+        "Position": 0,
+        "Version": "none",
+        "Favorite": false,
+        "Rating": null,
+        "LastPlayed": "0001-01-01T00:00:00Z"
+      },
+      "Book": null,
+      "Library": "library:Shows",
+      "Path": ""
+    },
+    {
+      "ID": "season:Bluey 0",
+      "Kind": "season",
+      "Title": "Season 0",
+      "SortTitle": "Season 0",
+      "Parent": "series:Bluey",
+      "Root": "series:Bluey",
+      "SeriesTitle": "Bluey",
+      "Year": 0,
+      "Number": 0,
+      "ParentNumber": 0,
+      "NumberEnd": 0,
+      "ReleaseDate": "",
+      "ExtraType": "",
+      "Edition": "",
+      "Duration": 0,
+      "Added": "<time>",
+      "Images": {
+        "Poster": null,
+        "Backdrop": null,
+        "Still": null,
+        "Logo": null
+      },
+      "MatchState": "matched",
+      "Unavailable": false,
+      "Unplayed": 1,
+      "Bundled": 0,
+      "Episodes": 1,
+      "Overview": "",
+      "Community": null,
+      "ContentRating": "",
+      "Userstate": {
+        "Played": false,
+        "PlayCount": 0,
+        "Position": 0,
+        "Version": "none",
+        "Favorite": false,
+        "Rating": null,
+        "LastPlayed": "0001-01-01T00:00:00Z"
+      },
+      "Book": null,
+      "Library": "library:Shows",
+      "Path": ""
+    }
+  ],
+  "collection collection:Toy Story": {
+    "Collection": {
+      "ID": "collection:Toy Story",
+      "Name": "Toy Story Collection",
+      "Source": "provider",
+      "Items": 2,
+      "Images": {
+        "Poster": null,
+        "Backdrop": null,
+        "Still": null,
+        "Logo": null
+      }
+    },
+    "Items": [
+      {
+        "ID": "movie:Toy Story",
+        "Kind": "movie",
+        "Title": "Toy Story",
+        "SortTitle": "Toy Story",
+        "Parent": "none",
+        "Root": "none",
+        "SeriesTitle": "",
+        "Year": 1995,
+        "Number": 0,
+        "ParentNumber": 0,
+        "NumberEnd": 0,
+        "ReleaseDate": "",
+        "ExtraType": "",
+        "Edition": "",
+        "Duration": 7200000000000,
+        "Added": "<time>",
+        "Images": {
+          "Poster": null,
+          "Backdrop": null,
+          "Still": null,
+          "Logo": null
+        },
+        "MatchState": "matched",
+        "Unavailable": false,
+        "Unplayed": 0,
+        "Bundled": 0,
+        "Episodes": 0,
+        "Overview": "",
+        "Community": {
+          "Rating": 8,
+          "Votes": 18000
+        },
+        "ContentRating": "G",
+        "Userstate": {
+          "Played": false,
+          "PlayCount": 0,
+          "Position": 0,
+          "Version": "none",
+          "Favorite": false,
+          "Rating": null,
+          "LastPlayed": "0001-01-01T00:00:00Z"
+        },
+        "Book": null,
+        "Library": "library:Movies",
+        "Path": ""
+      },
+      {
+        "ID": "movie:Toy Story 2",
+        "Kind": "movie",
+        "Title": "Toy Story 2",
+        "SortTitle": "Toy Story 2",
+        "Parent": "none",
+        "Root": "none",
+        "SeriesTitle": "",
+        "Year": 1999,
+        "Number": 0,
+        "ParentNumber": 0,
+        "NumberEnd": 0,
+        "ReleaseDate": "",
+        "ExtraType": "",
+        "Edition": "",
+        "Duration": 7200000000000,
+        "Added": "<time>",
+        "Images": {
+          "Poster": null,
+          "Backdrop": null,
+          "Still": null,
+          "Logo": null
+        },
+        "MatchState": "matched",
+        "Unavailable": false,
+        "Unplayed": 0,
+        "Bundled": 0,
+        "Episodes": 0,
+        "Overview": "",
+        "Community": {
+          "Rating": 7.6,
+          "Votes": 14000
+        },
+        "ContentRating": "G",
+        "Userstate": {
+          "Played": false,
+          "PlayCount": 0,
+          "Position": 0,
+          "Version": "none",
+          "Favorite": false,
+          "Rating": null,
+          "LastPlayed": "0001-01-01T00:00:00Z"
+        },
+        "Book": null,
+        "Library": "library:Movies",
+        "Path": ""
+      }
+    ]
+  },
+  "collections library:Movies": {
+    "Items": [
+      {
+        "ID": "collection:Toy Story",
+        "Name": "Toy Story Collection",
+        "Source": "provider",
+        "Items": 2,
+        "Images": {
+          "Poster": null,
+          "Backdrop": null,
+          "Still": null,
+          "Logo": null
+        }
+      }
+    ],
+    "Total": 1,
+    "Letters": null
+  },
+  "detail book:Leviathan Wakes": {
+    "Summary": {
+      "ID": "book:Leviathan Wakes",
+      "Kind": "book",
+      "Title": "Leviathan Wakes",
+      "SortTitle": "Leviathan Wakes",
+      "Parent": "none",
+      "Root": "none",
+      "SeriesTitle": "",
+      "Year": 2011,
+      "Number": 0,
+      "ParentNumber": 0,
+      "NumberEnd": 0,
+      "ReleaseDate": "2011",
+      "ExtraType": "",
+      "Edition": "",
+      "Duration": 7200000000000,
+      "Added": "<time>",
+      "Images": {
+        "Poster": null,
+        "Backdrop": null,
+        "Still": null,
+        "Logo": null
+      },
+      "MatchState": "matched",
+      "Unavailable": false,
+      "Unplayed": 0,
+      "Bundled": 0,
+      "Episodes": 0,
+      "Overview": "",
+      "Community": null,
+      "ContentRating": "",
+      "Userstate": {
+        "Played": false,
+        "PlayCount": 0,
+        "Position": 0,
+        "Version": "none",
+        "Favorite": false,
+        "Rating": null,
+        "LastPlayed": "0001-01-01T00:00:00Z"
+      },
+      "Book": {
+        "Authors": [
+          {
+            "ID": "person:James S. A. Corey",
+            "Name": "James S. A. Corey"
+          }
+        ],
+        "Narrators": [
+          {
+            "ID": "<id>",
+            "Name": "Jefferson Mays"
+          }
+        ],
+        "Series": [
+          {
+            "ID": "bookSeries:The Expanse",
+            "Name": "The Expanse",
+            "Position": "1",
+            "Primary": true
+          }
+        ]
+      },
+      "Library": "library:Audiobooks",
+      "Path": ""
+    },
+    "OriginalTitle": "",
+    "Overview": "",
+    "ContentRating": "",
+    "OriginalLanguage": "",
+    "Genres": null,
+    "Companies": null,
+    "Credits": [
+      {
+        "Person": "person:James S. A. Corey",
+        "Name": "James S. A. Corey",
+        "Role": "author",
+        "Character": "",
+        "Photo": null
+      },
+      {
+        "Person": "<id>",
+        "Name": "Jefferson Mays",
+        "Role": "narrator",
+        "Character": "",
+        "Photo": null
+      }
+    ],
+    "ExternalIDs": null,
+    "LockedFields": null,
+    "Versions": [
+      {
+        "ID": "version:Leviathan Wakes",
+        "Library": "library:Audiobooks",
+        "Edition": "",
+        "Duration": 7200000000000,
+        "Size": 2147483648,
+        "Unavailable": false,
+        "Parts": [
+          {
+            "File": "file:James S. A. Corey/The Expanse/Book 1 - Leviathan Wakes/Part 1.mp3",
+            "Name": "Part 1.mp3",
+            "Path": "",
+            "Size": 1073741824,
+            "Duration": 3600000000000,
+            "Container": "mov,mp4,m4a,3gp,3g2,mj2",
+            "Bitrate": 64000,
+            "Unavailable": false,
+            "Chapters": null
+          },
+          {
+            "File": "file:James S. A. Corey/The Expanse/Book 1 - Leviathan Wakes/Part 2.mp3",
+            "Name": "Part 2.mp3",
+            "Path": "",
+            "Size": 1073741824,
+            "Duration": 3600000000000,
+            "Container": "mov,mp4,m4a,3gp,3g2,mj2",
+            "Bitrate": 64000,
+            "Unavailable": false,
+            "Chapters": null
+          }
+        ],
+        "Works": [
+          "book:Leviathan Wakes"
+        ],
+        "Tracks": [
+          {
+            "ID": "<id>",
+            "Type": "audio",
+            "Source": "embedded",
+            "Codec": "aac",
+            "Language": "",
+            "Title": "",
+            "Default": true,
+            "Forced": false,
+            "HearingImpaired": false,
+            "Channels": 2,
+            "ChannelLayout": "",
+            "Width": 0,
+            "Height": 0,
+            "Range": "",
+            "DolbyVisionProfile": 0,
+            "Profile": "",
+            "Commentary": false
+          }
+        ],
+        "Chapters": 3,
+        "ChapterList": [
+          {
+            "Start": 0,
+            "End": 600000000000,
+            "Title": "Opening Credits"
+          },
+          {
+            "Start": 600000000000,
+            "End": 3600000000000,
+            "Title": "Chapter 1"
+          },
+          {
+            "Start": 3600000000000,
+            "End": 7200000000000,
+            "Title": "Part 2"
+          }
+        ]
+      }
+    ],
+    "Extras": [],
+    "Collections": null,
+    "Children": 0,
+    "NextUp": null,
+    "PreviousEpisode": "none",
+    "NextEpisode": "none",
+    "Book": {
+      "Subtitle": "",
+      "Publisher": "",
+      "Language": "",
+      "ReleaseDate": "2011",
+      "Abridged": null
+    }
+  },
+  "detail episode:Bluey 1x01": {
+    "Summary": {
+      "ID": "episode:Bluey 1x01",
+      "Kind": "episode",
+      "Title": "Magic Xylophone / Hospital",
+      "SortTitle": "Magic Xylophone",
+      "Parent": "season:Bluey 1",
+      "Root": "series:Bluey",
+      "SeriesTitle": "Bluey",
+      "Year": 0,
+      "Number": 1,
+      "ParentNumber": 1,
+      "NumberEnd": 2,
+      "ReleaseDate": "",
+      "ExtraType": "",
+      "Edition": "",
+      "Duration": 840000000000,
+      "Added": "<time>",
+      "Images": {
+        "Poster": null,
+        "Backdrop": null,
+        "Still": null,
+        "Logo": null
+      },
+      "MatchState": "matched",
+      "Unavailable": false,
+      "Unplayed": 0,
+      "Bundled": 0,
+      "Episodes": 0,
+      "Overview": "",
+      "Community": null,
+      "ContentRating": "",
+      "Userstate": {
+        "Played": false,
+        "PlayCount": 0,
+        "Position": 0,
+        "Version": "none",
+        "Favorite": false,
+        "Rating": null,
+        "LastPlayed": "0001-01-01T00:00:00Z"
+      },
+      "Book": null,
+      "Library": "library:Shows",
+      "Path": ""
+    },
+    "OriginalTitle": "",
+    "Overview": "",
+    "ContentRating": "G",
+    "OriginalLanguage": "",
+    "Genres": null,
+    "Companies": null,
+    "Credits": null,
+    "ExternalIDs": null,
+    "LockedFields": null,
+    "Versions": [
+      {
+        "ID": "version:Bluey 1x01-02",
+        "Library": "library:Shows",
+        "Edition": "",
+        "Duration": 840000000000,
+        "Size": 1073741824,
+        "Unavailable": false,
+        "Parts": [
+          {
+            "File": "file:Bluey 1x01-02",
+            "Name": "Bluey S01E01-E02.mkv",
+            "Path": "",
+            "Size": 1073741824,
+            "Duration": 840000000000,
+            "Container": "matroska",
+            "Bitrate": 8000000,
+            "Unavailable": false,
+            "Chapters": null
+          }
+        ],
+        "Works": [
+          "episode:Bluey 1x01",
+          "episode:Bluey 1x02"
+        ],
+        "Tracks": null,
+        "Chapters": 0,
+        "ChapterList": null
+      }
+    ],
+    "Extras": [],
+    "Collections": null,
+    "Children": 0,
+    "NextUp": null,
+    "PreviousEpisode": "none",
+    "NextEpisode": "episode:Bluey 1x03",
+    "Book": null
+  },
+  "detail movie:Blade Runner": "error: not found",
+  "detail movie:Dune": "error: not found",
+  "detail movie:Secret": {
+    "Summary": {
+      "ID": "movie:Secret",
+      "Kind": "movie",
+      "Title": "Secret",
+      "SortTitle": "Secret",
+      "Parent": "none",
+      "Root": "none",
+      "SeriesTitle": "",
+      "Year": 2001,
+      "Number": 0,
+      "ParentNumber": 0,
+      "NumberEnd": 0,
+      "ReleaseDate": "",
+      "ExtraType": "",
+      "Edition": "",
+      "Duration": 7200000000000,
+      "Added": "<time>",
+      "Images": {
+        "Poster": null,
+        "Backdrop": null,
+        "Still": null,
+        "Logo": null
+      },
+      "MatchState": "matched",
+      "Unavailable": false,
+      "Unplayed": 0,
+      "Bundled": 0,
+      "Episodes": 0,
+      "Overview": "",
+      "Community": null,
+      "ContentRating": "G",
+      "Userstate": {
+        "Played": false,
+        "PlayCount": 0,
+        "Position": 0,
+        "Version": "none",
+        "Favorite": false,
+        "Rating": null,
+        "LastPlayed": "0001-01-01T00:00:00Z"
+      },
+      "Book": null,
+      "Library": "library:Private",
+      "Path": ""
+    },
+    "OriginalTitle": "",
+    "Overview": "",
+    "ContentRating": "G",
+    "OriginalLanguage": "",
+    "Genres": null,
+    "Companies": null,
+    "Credits": null,
+    "ExternalIDs": null,
+    "LockedFields": null,
+    "Versions": [
+      {
+        "ID": "version:movie:Secret",
+        "Library": "library:Private",
+        "Edition": "",
+        "Duration": 7200000000000,
+        "Size": 1073741824,
+        "Unavailable": false,
+        "Parts": [
+          {
+            "File": "file:movie:Secret",
+            "Name": "Secret (2001) 6.mkv",
+            "Path": "",
+            "Size": 1073741824,
+            "Duration": 7200000000000,
+            "Container": "matroska",
+            "Bitrate": 8000000,
+            "Unavailable": false,
+            "Chapters": null
+          }
+        ],
+        "Works": [
+          "movie:Secret"
+        ],
+        "Tracks": null,
+        "Chapters": 0,
+        "ChapterList": null
+      }
+    ],
+    "Extras": [],
+    "Collections": null,
+    "Children": 0,
+    "NextUp": null,
+    "PreviousEpisode": "none",
+    "NextEpisode": "none",
+    "Book": null
+  },
+  "detail movie:Toy Story": {
+    "Summary": {
+      "ID": "movie:Toy Story",
+      "Kind": "movie",
+      "Title": "Toy Story",
+      "SortTitle": "Toy Story",
+      "Parent": "none",
+      "Root": "none",
+      "SeriesTitle": "",
+      "Year": 1995,
+      "Number": 0,
+      "ParentNumber": 0,
+      "NumberEnd": 0,
+      "ReleaseDate": "",
+      "ExtraType": "",
+      "Edition": "",
+      "Duration": 7200000000000,
+      "Added": "<time>",
+      "Images": {
+        "Poster": null,
+        "Backdrop": null,
+        "Still": null,
+        "Logo": null
+      },
+      "MatchState": "matched",
+      "Unavailable": false,
+      "Unplayed": 0,
+      "Bundled": 0,
+      "Episodes": 0,
+      "Overview": "",
+      "Community": {
+        "Rating": 8,
+        "Votes": 18000
+      },
+      "ContentRating": "G",
+      "Userstate": {
+        "Played": false,
+        "PlayCount": 0,
+        "Position": 0,
+        "Version": "none",
+        "Favorite": false,
+        "Rating": null,
+        "LastPlayed": "0001-01-01T00:00:00Z"
+      },
+      "Book": null,
+      "Library": "library:Movies",
+      "Path": ""
+    },
+    "OriginalTitle": "",
+    "Overview": "",
+    "ContentRating": "G",
+    "OriginalLanguage": "",
+    "Genres": null,
+    "Companies": null,
+    "Credits": null,
+    "ExternalIDs": null,
+    "LockedFields": null,
+    "Versions": [
+      {
+        "ID": "version:movie:Toy Story",
+        "Library": "library:Movies",
+        "Edition": "",
+        "Duration": 7200000000000,
+        "Size": 1073741824,
+        "Unavailable": false,
+        "Parts": [
+          {
+            "File": "file:movie:Toy Story",
+            "Name": "Toy Story (1995) 3.mkv",
+            "Path": "",
+            "Size": 1073741824,
+            "Duration": 7200000000000,
+            "Container": "matroska",
+            "Bitrate": 8000000,
+            "Unavailable": false,
+            "Chapters": null
+          }
+        ],
+        "Works": [
+          "movie:Toy Story"
+        ],
+        "Tracks": null,
+        "Chapters": 0,
+        "ChapterList": null
+      }
+    ],
+    "Extras": [],
+    "Collections": [
+      {
+        "ID": "collection:Toy Story",
+        "Name": "Toy Story Collection",
+        "Source": "provider",
+        "Items": 2,
+        "Images": {
+          "Poster": null,
+          "Backdrop": null,
+          "Still": null,
+          "Logo": null
+        }
+      }
+    ],
+    "Children": 0,
+    "NextUp": null,
+    "PreviousEpisode": "none",
+    "NextEpisode": "none",
+    "Book": null
+  },
+  "detail series:Bluey": {
+    "Summary": {
+      "ID": "series:Bluey",
+      "Kind": "series",
+      "Title": "Bluey",
+      "SortTitle": "Bluey",
+      "Parent": "none",
+      "Root": "none",
+      "SeriesTitle": "",
+      "Year": 0,
+      "Number": 0,
+      "ParentNumber": 0,
+      "NumberEnd": 0,
+      "ReleaseDate": "",
+      "ExtraType": "",
+      "Edition": "",
+      "Duration": 0,
+      "Added": "<time>",
+      "Images": {
+        "Poster": null,
+        "Backdrop": null,
+        "Still": null,
+        "Logo": null
+      },
+      "MatchState": "matched",
+      "Unavailable": false,
+      "Unplayed": 4,
+      "Bundled": 0,
+      "Episodes": 0,
+      "Overview": "",
+      "Community": null,
+      "ContentRating": "G",
+      "Userstate": {
+        "Played": false,
+        "PlayCount": 0,
+        "Position": 0,
+        "Version": "none",
+        "Favorite": false,
+        "Rating": null,
+        "LastPlayed": "0001-01-01T00:00:00Z"
+      },
+      "Book": null,
+      "Library": "library:Shows",
+      "Path": ""
+    },
+    "OriginalTitle": "",
+    "Overview": "",
+    "ContentRating": "G",
+    "OriginalLanguage": "",
+    "Genres": null,
+    "Companies": null,
+    "Credits": null,
+    "ExternalIDs": null,
+    "LockedFields": null,
+    "Versions": null,
+    "Extras": [],
+    "Collections": null,
+    "Children": 2,
+    "NextUp": {
+      "ID": "episode:Bluey 1x01",
+      "Kind": "episode",
+      "Title": "Magic Xylophone / Hospital",
+      "SortTitle": "Magic Xylophone",
+      "Parent": "season:Bluey 1",
+      "Root": "series:Bluey",
+      "SeriesTitle": "Bluey",
+      "Year": 0,
+      "Number": 1,
+      "ParentNumber": 1,
+      "NumberEnd": 2,
+      "ReleaseDate": "",
+      "ExtraType": "",
+      "Edition": "",
+      "Duration": 840000000000,
+      "Added": "<time>",
+      "Images": {
+        "Poster": null,
+        "Backdrop": null,
+        "Still": null,
+        "Logo": null
+      },
+      "MatchState": "matched",
+      "Unavailable": false,
+      "Unplayed": 0,
+      "Bundled": 0,
+      "Episodes": 0,
+      "Overview": "",
+      "Community": null,
+      "ContentRating": "",
+      "Userstate": {
+        "Played": false,
+        "PlayCount": 0,
+        "Position": 0,
+        "Version": "none",
+        "Favorite": false,
+        "Rating": null,
+        "LastPlayed": "0001-01-01T00:00:00Z"
+      },
+      "Book": null,
+      "Library": "library:Shows",
+      "Path": ""
+    },
+    "PreviousEpisode": "none",
+    "NextEpisode": "none",
+    "Book": null
+  },
+  "detail series:The Expanse": "error: not found",
+  "facets library:Audiobooks": {
+    "Genres": [
+      "Science Fiction"
+    ],
+    "ContentRatings": [],
+    "Years": [
+      2011,
+      2014,
+      2021
+    ],
+    "Narrators": [
+      {
+        "ID": "<id>",
+        "Name": "Jefferson Mays"
+      },
+      {
+        "ID": "person:Ray Porter",
+        "Name": "Ray Porter"
+      }
+    ],
+    "Resolutions": [],
+    "Ranges": [],
+    "Collections": false
+  },
+  "home": [
+    {
+      "Kind": "recentlyAdded",
+      "Library": {
+        "ID": "library:Movies",
+        "Name": "Movies",
+        "Kind": "movies",
+        "Pinned": false,
+        "Items": 0
+      },
+      "Items": [
+        {
+          "ID": "movie:Toy Story 2",
+          "Kind": "movie",
+          "Title": "Toy Story 2",
+          "SortTitle": "Toy Story 2",
+          "Parent": "none",
+          "Root": "none",
+          "SeriesTitle": "",
+          "Year": 1999,
+          "Number": 0,
+          "ParentNumber": 0,
+          "NumberEnd": 0,
+          "ReleaseDate": "",
+          "ExtraType": "",
+          "Edition": "",
+          "Duration": 7200000000000,
+          "Added": "<time>",
+          "Images": {
+            "Poster": null,
+            "Backdrop": null,
+            "Still": null,
+            "Logo": null
+          },
+          "MatchState": "matched",
+          "Unavailable": false,
+          "Unplayed": 0,
+          "Bundled": 0,
+          "Episodes": 0,
+          "Overview": "",
+          "Community": {
+            "Rating": 7.6,
+            "Votes": 14000
+          },
+          "ContentRating": "G",
+          "Userstate": {
+            "Played": false,
+            "PlayCount": 0,
+            "Position": 0,
+            "Version": "none",
+            "Favorite": false,
+            "Rating": null,
+            "LastPlayed": "0001-01-01T00:00:00Z"
+          },
+          "Book": null,
+          "Library": "library:Movies",
+          "Path": ""
+        },
+        {
+          "ID": "movie:Toy Story",
+          "Kind": "movie",
+          "Title": "Toy Story",
+          "SortTitle": "Toy Story",
+          "Parent": "none",
+          "Root": "none",
+          "SeriesTitle": "",
+          "Year": 1995,
+          "Number": 0,
+          "ParentNumber": 0,
+          "NumberEnd": 0,
+          "ReleaseDate": "",
+          "ExtraType": "",
+          "Edition": "",
+          "Duration": 7200000000000,
+          "Added": "<time>",
+          "Images": {
+            "Poster": null,
+            "Backdrop": null,
+            "Still": null,
+            "Logo": null
+          },
+          "MatchState": "matched",
+          "Unavailable": false,
+          "Unplayed": 0,
+          "Bundled": 0,
+          "Episodes": 0,
+          "Overview": "",
+          "Community": {
+            "Rating": 8,
+            "Votes": 18000
+          },
+          "ContentRating": "G",
+          "Userstate": {
+            "Played": false,
+            "PlayCount": 0,
+            "Position": 0,
+            "Version": "none",
+            "Favorite": false,
+            "Rating": null,
+            "LastPlayed": "0001-01-01T00:00:00Z"
+          },
+          "Book": null,
+          "Library": "library:Movies",
+          "Path": ""
+        }
+      ]
+    },
+    {
+      "Kind": "recentlyAdded",
+      "Library": {
+        "ID": "library:Shows",
+        "Name": "Shows",
+        "Kind": "shows",
+        "Pinned": false,
+        "Items": 0
+      },
+      "Items": [
+        {
+          "ID": "series:Bluey",
+          "Kind": "series",
+          "Title": "Bluey",
+          "SortTitle": "Bluey",
+          "Parent": "none",
+          "Root": "none",
+          "SeriesTitle": "",
+          "Year": 0,
+          "Number": 0,
+          "ParentNumber": 0,
+          "NumberEnd": 0,
+          "ReleaseDate": "",
+          "ExtraType": "",
+          "Edition": "",
+          "Duration": 0,
+          "Added": "<time>",
+          "Images": {
+            "Poster": null,
+            "Backdrop": null,
+            "Still": null,
+            "Logo": null
+          },
+          "MatchState": "matched",
+          "Unavailable": false,
+          "Unplayed": 4,
+          "Bundled": 4,
+          "Episodes": 0,
+          "Overview": "",
+          "Community": null,
+          "ContentRating": "G",
+          "Userstate": {
+            "Played": false,
+            "PlayCount": 0,
+            "Position": 0,
+            "Version": "none",
+            "Favorite": false,
+            "Rating": null,
+            "LastPlayed": "0001-01-01T00:00:00Z"
+          },
+          "Book": null,
+          "Library": "library:Shows",
+          "Path": ""
+        }
+      ]
+    },
+    {
+      "Kind": "recentlyAdded",
+      "Library": {
+        "ID": "library:Private",
+        "Name": "Private",
+        "Kind": "movies",
+        "Pinned": false,
+        "Items": 0
+      },
+      "Items": [
+        {
+          "ID": "movie:Secret",
+          "Kind": "movie",
+          "Title": "Secret",
+          "SortTitle": "Secret",
+          "Parent": "none",
+          "Root": "none",
+          "SeriesTitle": "",
+          "Year": 2001,
+          "Number": 0,
+          "ParentNumber": 0,
+          "NumberEnd": 0,
+          "ReleaseDate": "",
+          "ExtraType": "",
+          "Edition": "",
+          "Duration": 7200000000000,
+          "Added": "<time>",
+          "Images": {
+            "Poster": null,
+            "Backdrop": null,
+            "Still": null,
+            "Logo": null
+          },
+          "MatchState": "matched",
+          "Unavailable": false,
+          "Unplayed": 0,
+          "Bundled": 0,
+          "Episodes": 0,
+          "Overview": "",
+          "Community": null,
+          "ContentRating": "G",
+          "Userstate": {
+            "Played": false,
+            "PlayCount": 0,
+            "Position": 0,
+            "Version": "none",
+            "Favorite": false,
+            "Rating": null,
+            "LastPlayed": "0001-01-01T00:00:00Z"
+          },
+          "Book": null,
+          "Library": "library:Private",
+          "Path": ""
+        }
+      ]
+    },
+    {
+      "Kind": "recentlyAdded",
+      "Library": {
+        "ID": "library:Audiobooks",
+        "Name": "Audiobooks",
+        "Kind": "audiobooks",
+        "Pinned": false,
+        "Items": 0
+      },
+      "Items": [
+        {
+          "ID": "book:The Churn",
+          "Kind": "book",
+          "Title": "The Churn",
+          "SortTitle": "Churn",
+          "Parent": "none",
+          "Root": "none",
+          "SeriesTitle": "",
+          "Year": 2014,
+          "Number": 0,
+          "ParentNumber": 0,
+          "NumberEnd": 0,
+          "ReleaseDate": "2014",
+          "ExtraType": "",
+          "Edition": "",
+          "Duration": 3600000000000,
+          "Added": "<time>",
+          "Images": {
+            "Poster": null,
+            "Backdrop": null,
+            "Still": null,
+            "Logo": null
+          },
+          "MatchState": "matched",
+          "Unavailable": false,
+          "Unplayed": 0,
+          "Bundled": 0,
+          "Episodes": 0,
+          "Overview": "",
+          "Community": null,
+          "ContentRating": "",
+          "Userstate": {
+            "Played": false,
+            "PlayCount": 0,
+            "Position": 0,
+            "Version": "none",
+            "Favorite": false,
+            "Rating": null,
+            "LastPlayed": "0001-01-01T00:00:00Z"
+          },
+          "Book": {
+            "Authors": [
+              {
+                "ID": "person:James S. A. Corey",
+                "Name": "James S. A. Corey"
+              }
+            ],
+            "Narrators": [
+              {
+                "ID": "person:Ray Porter",
+                "Name": "Ray Porter"
+              }
+            ],
+            "Series": [
+              {
+                "ID": "bookSeries:The Expanse",
+                "Name": "The Expanse",
+                "Position": "1.5",
+                "Primary": true
+              }
+            ]
+          },
+          "Library": "library:Audiobooks",
+          "Path": ""
+        },
+        {
+          "ID": "book:Leviathan Wakes",
+          "Kind": "book",
+          "Title": "Leviathan Wakes",
+          "SortTitle": "Leviathan Wakes",
+          "Parent": "none",
+          "Root": "none",
+          "SeriesTitle": "",
+          "Year": 2011,
+          "Number": 0,
+          "ParentNumber": 0,
+          "NumberEnd": 0,
+          "ReleaseDate": "2011",
+          "ExtraType": "",
+          "Edition": "",
+          "Duration": 7200000000000,
+          "Added": "<time>",
+          "Images": {
+            "Poster": null,
+            "Backdrop": null,
+            "Still": null,
+            "Logo": null
+          },
+          "MatchState": "matched",
+          "Unavailable": false,
+          "Unplayed": 0,
+          "Bundled": 0,
+          "Episodes": 0,
+          "Overview": "",
+          "Community": null,
+          "ContentRating": "",
+          "Userstate": {
+            "Played": false,
+            "PlayCount": 0,
+            "Position": 0,
+            "Version": "none",
+            "Favorite": false,
+            "Rating": null,
+            "LastPlayed": "0001-01-01T00:00:00Z"
+          },
+          "Book": {
+            "Authors": [
+              {
+                "ID": "person:James S. A. Corey",
+                "Name": "James S. A. Corey"
+              }
+            ],
+            "Narrators": [
+              {
+                "ID": "<id>",
+                "Name": "Jefferson Mays"
+              }
+            ],
+            "Series": [
+              {
+                "ID": "bookSeries:The Expanse",
+                "Name": "The Expanse",
+                "Position": "1",
+                "Primary": true
+              }
+            ]
+          },
+          "Library": "library:Audiobooks",
+          "Path": ""
+        },
+        {
+          "ID": "book:Project Hail Mary",
+          "Kind": "book",
+          "Title": "Project Hail Mary",
+          "SortTitle": "Project Hail Mary",
+          "Parent": "none",
+          "Root": "none",
+          "SeriesTitle": "",
+          "Year": 2021,
+          "Number": 0,
+          "ParentNumber": 0,
+          "NumberEnd": 0,
+          "ReleaseDate": "2021-05-04",
+          "ExtraType": "",
+          "Edition": "",
+          "Duration": 3600000000000,
+          "Added": "<time>",
+          "Images": {
+            "Poster": null,
+            "Backdrop": null,
+            "Still": null,
+            "Logo": null
+          },
+          "MatchState": "matched",
+          "Unavailable": false,
+          "Unplayed": 0,
+          "Bundled": 0,
+          "Episodes": 0,
+          "Overview": "",
+          "Community": null,
+          "ContentRating": "",
+          "Userstate": {
+            "Played": false,
+            "PlayCount": 0,
+            "Position": 0,
+            "Version": "none",
+            "Favorite": false,
+            "Rating": null,
+            "LastPlayed": "0001-01-01T00:00:00Z"
+          },
+          "Book": {
+            "Authors": [
+              {
+                "ID": "person:Andy Weir",
+                "Name": "Andy Weir"
+              }
+            ],
+            "Narrators": [
+              {
+                "ID": "person:Ray Porter",
+                "Name": "Ray Porter"
+              }
+            ],
+            "Series": null
+          },
+          "Library": "library:Audiobooks",
+          "Path": ""
+        }
+      ]
+    }
+  ],
+  "libraries": [
+    {
+      "ID": "library:Movies",
+      "Name": "Movies",
+      "Kind": "movies",
+      "Pinned": true,
+      "Items": 2
+    },
+    {
+      "ID": "library:Shows",
+      "Name": "Shows",
+      "Kind": "shows",
+      "Pinned": true,
+      "Items": 1
+    },
+    {
+      "ID": "library:Private",
+      "Name": "Private",
+      "Kind": "movies",
+      "Pinned": true,
+      "Items": 1
+    },
+    {
+      "ID": "library:Movies 4K",
+      "Name": "Movies 4K",
+      "Kind": "movies",
+      "Pinned": true,
+      "Items": 0
+    },
+    {
+      "ID": "library:Audiobooks",
+      "Name": "Audiobooks",
+      "Kind": "audiobooks",
+      "Pinned": true,
+      "Items": 3
+    }
+  ],
+  "person person:Denis Villeneuve": "error: not found",
+  "person person:James S. A. Corey": {
+    "ID": "person:James S. A. Corey",
+    "Name": "James S. A. Corey",
+    "Overview": "",
+    "Photo": null,
+    "Roots": [],
+    "Series": [
+      {
+        "ID": "bookSeries:The Expanse",
+        "Name": "The Expanse",
+        "Books": [
+          {
+            "ID": "book:Leviathan Wakes",
+            "Kind": "book",
+            "Title": "Leviathan Wakes",
+            "SortTitle": "Leviathan Wakes",
+            "Parent": "none",
+            "Root": "none",
+            "SeriesTitle": "",
+            "Year": 2011,
+            "Number": 0,
+            "ParentNumber": 0,
+            "NumberEnd": 0,
+            "ReleaseDate": "2011",
+            "ExtraType": "",
+            "Edition": "",
+            "Duration": 7200000000000,
+            "Added": "<time>",
+            "Images": {
+              "Poster": null,
+              "Backdrop": null,
+              "Still": null,
+              "Logo": null
+            },
+            "MatchState": "matched",
+            "Unavailable": false,
+            "Unplayed": 0,
+            "Bundled": 0,
+            "Episodes": 0,
+            "Overview": "",
+            "Community": null,
+            "ContentRating": "",
+            "Userstate": {
+              "Played": false,
+              "PlayCount": 0,
+              "Position": 0,
+              "Version": "none",
+              "Favorite": false,
+              "Rating": null,
+              "LastPlayed": "0001-01-01T00:00:00Z"
+            },
+            "Book": {
+              "Authors": [
+                {
+                  "ID": "person:James S. A. Corey",
+                  "Name": "James S. A. Corey"
+                }
+              ],
+              "Narrators": [
+                {
+                  "ID": "<id>",
+                  "Name": "Jefferson Mays"
+                }
+              ],
+              "Series": [
+                {
+                  "ID": "bookSeries:The Expanse",
+                  "Name": "The Expanse",
+                  "Position": "1",
+                  "Primary": true
+                }
+              ]
+            },
+            "Library": "library:Audiobooks",
+            "Path": ""
+          },
+          {
+            "ID": "book:The Churn",
+            "Kind": "book",
+            "Title": "The Churn",
+            "SortTitle": "Churn",
+            "Parent": "none",
+            "Root": "none",
+            "SeriesTitle": "",
+            "Year": 2014,
+            "Number": 0,
+            "ParentNumber": 0,
+            "NumberEnd": 0,
+            "ReleaseDate": "2014",
+            "ExtraType": "",
+            "Edition": "",
+            "Duration": 3600000000000,
+            "Added": "<time>",
+            "Images": {
+              "Poster": null,
+              "Backdrop": null,
+              "Still": null,
+              "Logo": null
+            },
+            "MatchState": "matched",
+            "Unavailable": false,
+            "Unplayed": 0,
+            "Bundled": 0,
+            "Episodes": 0,
+            "Overview": "",
+            "Community": null,
+            "ContentRating": "",
+            "Userstate": {
+              "Played": false,
+              "PlayCount": 0,
+              "Position": 0,
+              "Version": "none",
+              "Favorite": false,
+              "Rating": null,
+              "LastPlayed": "0001-01-01T00:00:00Z"
+            },
+            "Book": {
+              "Authors": [
+                {
+                  "ID": "person:James S. A. Corey",
+                  "Name": "James S. A. Corey"
+                }
+              ],
+              "Narrators": [
+                {
+                  "ID": "person:Ray Porter",
+                  "Name": "Ray Porter"
+                }
+              ],
+              "Series": [
+                {
+                  "ID": "bookSeries:The Expanse",
+                  "Name": "The Expanse",
+                  "Position": "1.5",
+                  "Primary": true
+                }
+              ]
+            },
+            "Library": "library:Audiobooks",
+            "Path": ""
+          }
+        ]
+      }
+    ],
+    "Standalone": null,
+    "Narrated": []
+  },
+  "person person:Ray Porter": {
+    "ID": "person:Ray Porter",
+    "Name": "Ray Porter",
+    "Overview": "",
+    "Photo": null,
+    "Roots": [],
+    "Series": null,
+    "Standalone": null,
+    "Narrated": [
+      {
+        "ID": "book:The Churn",
+        "Kind": "book",
+        "Title": "The Churn",
+        "SortTitle": "Churn",
+        "Parent": "none",
+        "Root": "none",
+        "SeriesTitle": "",
+        "Year": 2014,
+        "Number": 0,
+        "ParentNumber": 0,
+        "NumberEnd": 0,
+        "ReleaseDate": "2014",
+        "ExtraType": "",
+        "Edition": "",
+        "Duration": 3600000000000,
+        "Added": "<time>",
+        "Images": {
+          "Poster": null,
+          "Backdrop": null,
+          "Still": null,
+          "Logo": null
+        },
+        "MatchState": "matched",
+        "Unavailable": false,
+        "Unplayed": 0,
+        "Bundled": 0,
+        "Episodes": 0,
+        "Overview": "",
+        "Community": null,
+        "ContentRating": "",
+        "Userstate": {
+          "Played": false,
+          "PlayCount": 0,
+          "Position": 0,
+          "Version": "none",
+          "Favorite": false,
+          "Rating": null,
+          "LastPlayed": "0001-01-01T00:00:00Z"
+        },
+        "Book": {
+          "Authors": [
+            {
+              "ID": "person:James S. A. Corey",
+              "Name": "James S. A. Corey"
+            }
+          ],
+          "Narrators": [
+            {
+              "ID": "person:Ray Porter",
+              "Name": "Ray Porter"
+            }
+          ],
+          "Series": [
+            {
+              "ID": "bookSeries:The Expanse",
+              "Name": "The Expanse",
+              "Position": "1.5",
+              "Primary": true
+            }
+          ]
+        },
+        "Library": "library:Audiobooks",
+        "Path": ""
+      },
+      {
+        "ID": "book:Project Hail Mary",
+        "Kind": "book",
+        "Title": "Project Hail Mary",
+        "SortTitle": "Project Hail Mary",
+        "Parent": "none",
+        "Root": "none",
+        "SeriesTitle": "",
+        "Year": 2021,
+        "Number": 0,
+        "ParentNumber": 0,
+        "NumberEnd": 0,
+        "ReleaseDate": "2021-05-04",
+        "ExtraType": "",
+        "Edition": "",
+        "Duration": 3600000000000,
+        "Added": "<time>",
+        "Images": {
+          "Poster": null,
+          "Backdrop": null,
+          "Still": null,
+          "Logo": null
+        },
+        "MatchState": "matched",
+        "Unavailable": false,
+        "Unplayed": 0,
+        "Bundled": 0,
+        "Episodes": 0,
+        "Overview": "",
+        "Community": null,
+        "ContentRating": "",
+        "Userstate": {
+          "Played": false,
+          "PlayCount": 0,
+          "Position": 0,
+          "Version": "none",
+          "Favorite": false,
+          "Rating": null,
+          "LastPlayed": "0001-01-01T00:00:00Z"
+        },
+        "Book": {
+          "Authors": [
+            {
+              "ID": "person:Andy Weir",
+              "Name": "Andy Weir"
+            }
+          ],
+          "Narrators": [
+            {
+              "ID": "person:Ray Porter",
+              "Name": "Ray Porter"
+            }
+          ],
+          "Series": null
+        },
+        "Library": "library:Audiobooks",
+        "Path": ""
+      }
+    ]
+  },
+  "search Bl": {
+    "Works": [
+      {
+        "ID": "series:Bluey",
+        "Kind": "series",
+        "Title": "Bluey",
+        "SortTitle": "Bluey",
+        "Parent": "none",
+        "Root": "none",
+        "SeriesTitle": "",
+        "Year": 0,
+        "Number": 0,
+        "ParentNumber": 0,
+        "NumberEnd": 0,
+        "ReleaseDate": "",
+        "ExtraType": "",
+        "Edition": "",
+        "Duration": 0,
+        "Added": "<time>",
+        "Images": {
+          "Poster": null,
+          "Backdrop": null,
+          "Still": null,
+          "Logo": null
+        },
+        "MatchState": "matched",
+        "Unavailable": false,
+        "Unplayed": 4,
+        "Bundled": 0,
+        "Episodes": 0,
+        "Overview": "",
+        "Community": null,
+        "ContentRating": "G",
+        "Userstate": {
+          "Played": false,
+          "PlayCount": 0,
+          "Position": 0,
+          "Version": "none",
+          "Favorite": false,
+          "Rating": null,
+          "LastPlayed": "0001-01-01T00:00:00Z"
+        },
+        "Book": null,
+        "Library": "library:Shows",
+        "Path": ""
+      }
+    ],
+    "People": [],
+    "Collections": []
+  },
+  "search Toy": {
+    "Works": [
+      {
+        "ID": "movie:Toy Story",
+        "Kind": "movie",
+        "Title": "Toy Story",
+        "SortTitle": "Toy Story",
+        "Parent": "none",
+        "Root": "none",
+        "SeriesTitle": "",
+        "Year": 1995,
+        "Number": 0,
+        "ParentNumber": 0,
+        "NumberEnd": 0,
+        "ReleaseDate": "",
+        "ExtraType": "",
+        "Edition": "",
+        "Duration": 7200000000000,
+        "Added": "<time>",
+        "Images": {
+          "Poster": null,
+          "Backdrop": null,
+          "Still": null,
+          "Logo": null
+        },
+        "MatchState": "matched",
+        "Unavailable": false,
+        "Unplayed": 0,
+        "Bundled": 0,
+        "Episodes": 0,
+        "Overview": "",
+        "Community": {
+          "Rating": 8,
+          "Votes": 18000
+        },
+        "ContentRating": "G",
+        "Userstate": {
+          "Played": false,
+          "PlayCount": 0,
+          "Position": 0,
+          "Version": "none",
+          "Favorite": false,
+          "Rating": null,
+          "LastPlayed": "0001-01-01T00:00:00Z"
+        },
+        "Book": null,
+        "Library": "library:Movies",
+        "Path": ""
+      },
+      {
+        "ID": "movie:Toy Story 2",
+        "Kind": "movie",
+        "Title": "Toy Story 2",
+        "SortTitle": "Toy Story 2",
+        "Parent": "none",
+        "Root": "none",
+        "SeriesTitle": "",
+        "Year": 1999,
+        "Number": 0,
+        "ParentNumber": 0,
+        "NumberEnd": 0,
+        "ReleaseDate": "",
+        "ExtraType": "",
+        "Edition": "",
+        "Duration": 7200000000000,
+        "Added": "<time>",
+        "Images": {
+          "Poster": null,
+          "Backdrop": null,
+          "Still": null,
+          "Logo": null
+        },
+        "MatchState": "matched",
+        "Unavailable": false,
+        "Unplayed": 0,
+        "Bundled": 0,
+        "Episodes": 0,
+        "Overview": "",
+        "Community": {
+          "Rating": 7.6,
+          "Votes": 14000
+        },
+        "ContentRating": "G",
+        "Userstate": {
+          "Played": false,
+          "PlayCount": 0,
+          "Position": 0,
+          "Version": "none",
+          "Favorite": false,
+          "Rating": null,
+          "LastPlayed": "0001-01-01T00:00:00Z"
+        },
+        "Book": null,
+        "Library": "library:Movies",
+        "Path": ""
+      }
+    ],
+    "People": [],
+    "Collections": [
+      {
+        "ID": "collection:Toy Story",
+        "Name": "Toy Story Collection",
+        "Source": "provider",
+        "Items": 2,
+        "Images": {
+          "Poster": null,
+          "Backdrop": null,
+          "Still": null,
+          "Logo": null
+        }
+      }
+    ]
+  },
+  "search blade": {
+    "Works": [],
+    "People": [],
+    "Collections": []
+  },
+  "search weir": {
+    "Works": [
+      {
+        "ID": "book:Project Hail Mary",
+        "Kind": "book",
+        "Title": "Project Hail Mary",
+        "SortTitle": "Project Hail Mary",
+        "Parent": "none",
+        "Root": "none",
+        "SeriesTitle": "",
+        "Year": 2021,
+        "Number": 0,
+        "ParentNumber": 0,
+        "NumberEnd": 0,
+        "ReleaseDate": "2021-05-04",
+        "ExtraType": "",
+        "Edition": "",
+        "Duration": 3600000000000,
+        "Added": "<time>",
+        "Images": {
+          "Poster": null,
+          "Backdrop": null,
+          "Still": null,
+          "Logo": null
+        },
+        "MatchState": "matched",
+        "Unavailable": false,
+        "Unplayed": 0,
+        "Bundled": 0,
+        "Episodes": 0,
+        "Overview": "",
+        "Community": null,
+        "ContentRating": "",
+        "Userstate": {
+          "Played": false,
+          "PlayCount": 0,
+          "Position": 0,
+          "Version": "none",
+          "Favorite": false,
+          "Rating": null,
+          "LastPlayed": "0001-01-01T00:00:00Z"
+        },
+        "Book": {
+          "Authors": [
+            {
+              "ID": "person:Andy Weir",
+              "Name": "Andy Weir"
+            }
+          ],
+          "Narrators": [
+            {
+              "ID": "person:Ray Porter",
+              "Name": "Ray Porter"
+            }
+          ],
+          "Series": null
+        },
+        "Library": "library:Audiobooks",
+        "Path": ""
+      }
+    ],
+    "People": [
+      {
+        "ID": "person:Andy Weir",
+        "Name": "Andy Weir",
+        "Photo": null,
+        "Role": "author",
+        "Roots": 1
+      }
+    ],
+    "Collections": []
+  },
+  "search zendaya": {
+    "Works": [],
+    "People": [],
+    "Collections": []
+  },
+  "series bookSeries:The Expanse": {
+    "ID": "bookSeries:The Expanse",
+    "Name": "The Expanse",
+    "Books": [
+      {
+        "ID": "book:Leviathan Wakes",
+        "Kind": "book",
+        "Title": "Leviathan Wakes",
+        "SortTitle": "Leviathan Wakes",
+        "Parent": "none",
+        "Root": "none",
+        "SeriesTitle": "",
+        "Year": 2011,
+        "Number": 0,
+        "ParentNumber": 0,
+        "NumberEnd": 0,
+        "ReleaseDate": "2011",
+        "ExtraType": "",
+        "Edition": "",
+        "Duration": 7200000000000,
+        "Added": "<time>",
+        "Images": {
+          "Poster": null,
+          "Backdrop": null,
+          "Still": null,
+          "Logo": null
+        },
+        "MatchState": "matched",
+        "Unavailable": false,
+        "Unplayed": 0,
+        "Bundled": 0,
+        "Episodes": 0,
+        "Overview": "",
+        "Community": null,
+        "ContentRating": "",
+        "Userstate": {
+          "Played": false,
+          "PlayCount": 0,
+          "Position": 0,
+          "Version": "none",
+          "Favorite": false,
+          "Rating": null,
+          "LastPlayed": "0001-01-01T00:00:00Z"
+        },
+        "Book": {
+          "Authors": [
+            {
+              "ID": "person:James S. A. Corey",
+              "Name": "James S. A. Corey"
+            }
+          ],
+          "Narrators": [
+            {
+              "ID": "<id>",
+              "Name": "Jefferson Mays"
+            }
+          ],
+          "Series": [
+            {
+              "ID": "bookSeries:The Expanse",
+              "Name": "The Expanse",
+              "Position": "1",
+              "Primary": true
+            }
+          ]
+        },
+        "Library": "library:Audiobooks",
+        "Path": ""
+      },
+      {
+        "ID": "book:The Churn",
+        "Kind": "book",
+        "Title": "The Churn",
+        "SortTitle": "Churn",
+        "Parent": "none",
+        "Root": "none",
+        "SeriesTitle": "",
+        "Year": 2014,
+        "Number": 0,
+        "ParentNumber": 0,
+        "NumberEnd": 0,
+        "ReleaseDate": "2014",
+        "ExtraType": "",
+        "Edition": "",
+        "Duration": 3600000000000,
+        "Added": "<time>",
+        "Images": {
+          "Poster": null,
+          "Backdrop": null,
+          "Still": null,
+          "Logo": null
+        },
+        "MatchState": "matched",
+        "Unavailable": false,
+        "Unplayed": 0,
+        "Bundled": 0,
+        "Episodes": 0,
+        "Overview": "",
+        "Community": null,
+        "ContentRating": "",
+        "Userstate": {
+          "Played": false,
+          "PlayCount": 0,
+          "Position": 0,
+          "Version": "none",
+          "Favorite": false,
+          "Rating": null,
+          "LastPlayed": "0001-01-01T00:00:00Z"
+        },
+        "Book": {
+          "Authors": [
+            {
+              "ID": "person:James S. A. Corey",
+              "Name": "James S. A. Corey"
+            }
+          ],
+          "Narrators": [
+            {
+              "ID": "person:Ray Porter",
+              "Name": "Ray Porter"
+            }
+          ],
+          "Series": [
+            {
+              "ID": "bookSeries:The Expanse",
+              "Name": "The Expanse",
+              "Position": "1.5",
+              "Primary": true
+            }
+          ]
+        },
+        "Library": "library:Audiobooks",
+        "Path": ""
+      }
+    ]
+  },
+  "series library:Audiobooks": {
+    "Items": [
+      {
+        "ID": "bookSeries:The Expanse",
+        "Name": "The Expanse",
+        "Books": 2,
+        "Images": {
+          "Poster": null,
+          "Backdrop": null,
+          "Still": null,
+          "Logo": null
+        }
+      }
+    ],
+    "Total": 1,
+    "Letters": [
+      {
+        "Letter": "E",
+        "Offset": 0
+      }
+    ]
+  }
+}

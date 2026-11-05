@@ -1,0 +1,1 @@
+SEARCH person_external_id USING COVERING INDEX person_external_id_person (person_id=?)

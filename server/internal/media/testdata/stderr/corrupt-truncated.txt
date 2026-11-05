@@ -1,0 +1,2 @@
+[mov,mp4,m4a,3gp,3g2,mj2 @ 0x5855391442c0] error reading header
+file:truncated.mp4: End of file

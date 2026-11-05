@@ -1,0 +1,1 @@
+SEARCH library_folder USING INDEX sqlite_autoindex_library_folder_1 (id=?)

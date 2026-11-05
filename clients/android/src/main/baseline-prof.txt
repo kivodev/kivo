@@ -1,0 +1,4 @@
+# The app's own code, with the core's and the API's, compiled ahead of time,
+# so the first scrolls and screens don't run interpreted. The libraries ship their own.
+HSPLcom/mmcdole/kivo/**->**(**)**
+Lcom/mmcdole/kivo/**;

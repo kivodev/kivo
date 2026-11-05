@@ -1,0 +1,13 @@
+searches:
+episode lists:
+works:
+movie "Dune" 2021 {tmdb:438631}
+  = Arrakis {tmdb-438631}/Arrakis.mkv
+movie "Dune" 2021 {tmdb:438631}
+  = Some Folder/Some Movie.mkv
+movie "Heat" 1995 {tmdb:949}
+  = Other Folder/Other.mkv
+movie "Ponyo" 2008 {tmdb:12429}
+  = Ghibli/Gake [anidb-5975].mkv
+movie "Unknown" provisional
+  = Unknown {anidb-1}/Unknown.mkv

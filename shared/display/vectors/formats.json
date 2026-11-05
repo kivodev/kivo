@@ -1,0 +1,97 @@
+{
+  "bitrate": [
+    [9800000, "9.8 Mb/s"],
+    [20000000, "20 Mb/s"],
+    [8000000, "8 Mb/s"],
+    [720000, "0.7 Mb/s"],
+    [640000, "0.6 Mb/s"],
+    [1050000, "1.1 Mb/s"],
+    [9949999, "9.9 Mb/s"],
+    [9950000, "10 Mb/s"],
+    [12400000, "12 Mb/s"],
+    [12500000, "13 Mb/s"],
+    [49999, "0 Mb/s"],
+    [50000, "0.1 Mb/s"],
+    [0, "0 Mb/s"],
+    [1234567890, "1,235 Mb/s"]
+  ],
+  "size": [
+    [58000000000, "58 GB"],
+    [5100000000, "5.1 GB"],
+    [1800000000, "1.8 GB"],
+    [4200000000, "4.2 GB"],
+    [7230000000, "7.2 GB"],
+    [9960000000, "10 GB"],
+    [1000000000, "1 GB"],
+    [1234000000000, "1,234 GB"],
+    [999999999, "1,000 MB"],
+    [900000000, "900 MB"],
+    [120000000, "120 MB"],
+    [2400000, "2.4 MB"],
+    [1000000, "1 MB"],
+    [300000, "300 KB"],
+    [2450, "2.5 KB"],
+    [0, "0 KB"]
+  ],
+  "runtime": [
+    [9960000, "2h 46m"],
+    [2880000, "48m"],
+    [7200000, "2h"],
+    [7170000, "2h"],
+    [58200000, "16h 10m"],
+    [89999, "1m"],
+    [90000, "2m"],
+    [29999, "1m"],
+    [0, "1m"],
+    [-5000, "1m"]
+  ],
+  "timeLeft": [
+    [1080000, "18 min left"],
+    [1800000, "30 min left"],
+    [3569999, "59 min left"],
+    [3570000, "1 hr left"],
+    [5640000, "1 hr 34 min left"],
+    [7200000, "2 hr left"],
+    [29100000, "8 hr 5 min left"],
+    [60000000, "16 hr 40 min left"],
+    [10000, "1 min left"],
+    [0, "1 min left"]
+  ],
+  "clock": [
+    [4323000, "1:12:03"],
+    [245000, "4:05"],
+    [1330000, "22:10"],
+    [3599999, "59:59"],
+    [36000000, "10:00:00"],
+    [999, "0:00"],
+    [0, "0:00"],
+    [-5000, "0:00"]
+  ],
+  "episodeCode": [
+    [{ "seasonNumber": 3, "number": 4 }, "S3 · E4"],
+    [{ "seasonNumber": 2, "number": 5 }, "S2 · E5"],
+    [{ "seasonNumber": 1, "number": 1, "endNumber": 2 }, "S1 · E1 to E2"],
+    [{ "seasonNumber": 1, "number": 1, "endNumber": 1 }, "S1 · E1"],
+    [{ "seasonNumber": 12, "number": 104, "endNumber": 106 }, "S12 · E104 to E106"],
+    [{ "seasonNumber": 0, "number": 3 }, "S0 · E3"]
+  ],
+  "rung": [
+    [{ "bitrateBps": 20000000, "height": 1080 }, "1080p · 20 Mb/s"],
+    [{ "bitrateBps": 12000000, "height": 1080 }, "1080p · 12 Mb/s"],
+    [{ "bitrateBps": 8000000, "height": 1080 }, "1080p · 8 Mb/s"],
+    [{ "bitrateBps": 4000000, "height": 720 }, "720p · 4 Mb/s"],
+    [{ "bitrateBps": 2000000, "height": 480 }, "480p · 2 Mb/s"],
+    [{ "bitrateBps": 1000000, "height": 360 }, "360p · 1 Mb/s"],
+    [{ "bitrateBps": 720000, "height": 360 }, "360p · 0.7 Mb/s"]
+  ],
+  "quality": [
+    [{ "quality": "auto" }, "Auto"],
+    [{ "quality": "auto", "sourceBps": 20000000 }, "Auto"],
+    [{ "quality": "original" }, "Original"],
+    [{ "quality": "original", "sourceBps": 20000000 }, "Original · 20 Mb/s"],
+    [{ "quality": "original", "sourceBps": 9830000 }, "Original · 9.8 Mb/s"],
+    [{ "quality": 8000000, "rung": { "bitrateBps": 8000000, "height": 1080 } }, "1080p · 8 Mb/s"],
+    [{ "quality": 8000000, "rung": { "bitrateBps": 8000000, "height": 1080 }, "sourceBps": 20000000 }, "1080p · 8 Mb/s"],
+    [{ "quality": 3000000 }, "3 Mb/s"]
+  ]
+}

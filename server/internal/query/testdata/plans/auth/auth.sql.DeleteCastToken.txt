@@ -1,0 +1,1 @@
+SEARCH cast_token USING INDEX sqlite_autoindex_cast_token_1 (id=?)

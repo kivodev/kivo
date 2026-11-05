@@ -1,0 +1,6 @@
+[h264_nvenc @ 0x5d3f41abf680] InitializeEncoder failed: invalid param (8): Frame Dimension less than the minimum supported value.
+[vost#0:0/h264_nvenc @ 0x5d3f41abac00] [enc:h264_nvenc @ 0x5d3f41a25600] Error while opening encoder - maybe incorrect parameters such as bit_rate, rate, width or height.
+[vf#0:0 @ 0x5d3f41a81b80] Error sending frames to consumers: Invalid argument
+[vf#0:0 @ 0x5d3f41a81b80] Task finished with error code: -22 (Invalid argument)
+[vost#0:0/h264_nvenc @ 0x5d3f41abac00] [enc:h264_nvenc @ 0x5d3f41a25600] Could not open encoder before EOF
+[out#0/mp4 @ 0x5d3f41abf580] Nothing was written into output file, because at least one of its streams received no packets.

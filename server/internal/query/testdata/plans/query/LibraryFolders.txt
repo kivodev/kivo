@@ -1,0 +1,6 @@
+SCAN f USING INDEX library_folder_library
+SEARCH l USING INDEX sqlite_autoindex_library_1 (id=?)
+LIST SUBQUERY 1
+  SCAN json_each VIRTUAL TABLE INDEX 1:
+  CREATE BLOOM FILTER
+USE TEMP B-TREE FOR LAST TERM OF ORDER BY

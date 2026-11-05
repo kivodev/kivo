@@ -1,0 +1,7 @@
+CO-ROUTINE up
+  SETUP
+    SEARCH w USING INDEX sqlite_autoindex_work_1 (id=?)
+  RECURSIVE STEP
+    SCAN up
+    SEARCH w USING INDEX sqlite_autoindex_work_1 (id=?)
+SCAN up

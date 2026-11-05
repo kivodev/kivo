@@ -1,0 +1,18 @@
+searches:
+  series "The Daily Show" 0
+episode lists:
+  2224/aired
+  2224/aired
+  2224/aired
+  2224/aired
+  2224/aired
+  2224/aired
+works:
+series "The Daily Show" 1996 {tmdb:2224}
+  season "Season 2024" S2024
+    episode "2024-02-14" S2024 provisional
+      = The Daily Show/The Daily Show 2024-02-14.mkv
+    episode "Jon Stewart" S2024E01 {tmdb:2224-2024-1}
+      = The Daily Show/The Daily Show 2024-02-12.mkv
+    episode "Jordan Klepper" S2024E02 {tmdb:2224-2024-2}
+      = The Daily Show/The Daily Show 2024-02-13.mkv

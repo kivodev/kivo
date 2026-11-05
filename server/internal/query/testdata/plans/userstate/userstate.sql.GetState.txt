@@ -1,0 +1,1 @@
+SEARCH user_state USING PRIMARY KEY (user_id=? AND work_id=?)

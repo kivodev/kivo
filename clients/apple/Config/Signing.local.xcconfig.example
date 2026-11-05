@@ -1,0 +1,7 @@
+// Copy to Signing.local.xcconfig (not committed) and set your team: the
+// 10-character Team ID in Xcode › Settings › Accounts, or on
+// developer.apple.com under Membership details.
+DEVELOPMENT_TEAM = ABCDE12345
+
+// A bundle identifier of your own, if com.kivo.player is taken on your team.
+// KIVO_BUNDLE_ID = com.example.kivo

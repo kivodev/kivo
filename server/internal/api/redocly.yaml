@@ -1,0 +1,59 @@
+# Lint rules for openapi.yaml, run by `make lint`.
+extends:
+  - recommended-strict
+
+rules:
+  paths-kebab-case: error
+  operation-4xx-problem-details-rfc7807: error
+  no-invalid-media-type-examples: error
+  # Media and image routes are public to the browser but credentialed by the
+  # play's ID or same-origin cookie, so security: [] is deliberate.
+  security-defined: error
+
+  rule/access-level:
+    subject:
+      type: Operation
+      property: x-kivo-access
+    assertions:
+      defined: true
+      enum: [public, signedIn, viewer, cast, admin, play]
+    message: Every operation needs x-kivo-access, one of public, signedIn, viewer, cast, admin or play.
+
+  rule/operation-id-camel-case:
+    subject:
+      type: Operation
+      property: operationId
+    assertions:
+      casing: camelCase
+    message: operationIds are verbNoun camelCase.
+
+  rule/property-camel-case:
+    subject:
+      type: SchemaProperties
+    assertions:
+      casing: camelCase
+    message: JSON field names are camelCase.
+
+  # A value with a fixed set of options is an enum, which the generated
+  # clients and the server's handlers type. The rule finds a plain string
+  # whose description lists values in code spans ("`a`, `b` or `c`");
+  # .redocly.lint-ignore.yaml allows the open sets, such as codecs.
+  rule/fixed-values-enum:
+    subject:
+      type: Schema
+      property: description
+    where:
+      - subject:
+          type: Schema
+        assertions:
+          disallowed: [enum, properties, items, allOf, oneOf, anyOf, $ref]
+    assertions:
+      notPattern: /`[^`]+`(,|, or|, and| or| and) `[^`]+`/
+    message: A string whose description lists its values is an enum.
+
+  rule/no-put:
+    subject:
+      type: PathItem
+    assertions:
+      disallowed: [put]
+    message: Edits are PATCH; there is no PUT.

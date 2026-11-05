@@ -1,0 +1,2 @@
+SCAN library
+USE TEMP B-TREE FOR ORDER BY

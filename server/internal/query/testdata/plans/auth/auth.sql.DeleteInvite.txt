@@ -1,0 +1,2 @@
+SEARCH invite USING INDEX sqlite_autoindex_invite_1 (id=?)
+SEARCH invite_library USING PRIMARY KEY (invite_id=?)

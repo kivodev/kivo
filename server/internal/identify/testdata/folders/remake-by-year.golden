@@ -1,0 +1,13 @@
+searches:
+  movie "The Thing" 1982
+  movie "The Thing" 2011
+  movie "Dune" 2020
+  movie "Dune" 0
+episode lists:
+works:
+movie "Dune" 2021 {tmdb:438631}
+  = Dune (2020)/Dune.mkv
+movie "The Thing" 1982 {tmdb:1091}
+  = The Thing (1982)/The Thing (1982).mkv
+movie "The Thing" 2011 {tmdb:60935}
+  = The Thing (2011)/The Thing.mkv

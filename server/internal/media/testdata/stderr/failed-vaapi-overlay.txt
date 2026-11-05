@@ -1,0 +1,10 @@
+[in#0/matroska,webm @ 0x55c9bcc10040] Could not find codec parameters for stream 4 (Subtitle: hdmv_pgs_subtitle (pgssub)): unspecified size
+Consider increasing the value for the 'analyzeduration' (0) and 'probesize' (5000000) options
+[overlay_vaapi @ 0x14ed700056c0] The overlay image exceeds the scope of the main image, will crop the overlay image according based on the main image.
+[Parsed_overlay_vaapi_3 @ 0x14ed700084c0] Failed to render parameter buffer: 18 (invalid parameter).
+[fc#0 @ 0x55c9bcefa340] Error while add the frame to buffer source(Input/output error).
+[fc#0 @ 0x55c9bcefa340] Error requesting a frame from the filtergraph: Input/output error
+[fc#0 @ 0x55c9bcefa340] Error sending frames to consumers: Input/output error
+[fc#0 @ 0x55c9bcefa340] Task finished with error code: -5 (Input/output error)
+[vost#0:0/h264_qsv @ 0x55c9bcbbcc40] [enc:h264_qsv @ 0x55c9bcc3e0c0] Could not open encoder before EOF
+[out#0/mp4 @ 0x55c9bcc77800] Nothing was written into output file, because at least one of its streams received no packets.

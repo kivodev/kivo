@@ -1,0 +1,348 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The app's own words, in English. Methods, reasons, problems, track names, bitrates, sizes, runtimes, episode
+     codes and quality choices come from the core's display tables, in language_tag's language. A translation adds
+     values-<lang>/strings.xml with its own language_tag. -->
+<resources>
+    <string name="app_name">Kivo</string>
+    <string name="language_tag" translatable="false">en</string>
+
+    <!-- States -->
+    <string name="loading">Loading…</string>
+    <string name="couldnt_load">Couldn\'t load this.</string>
+    <string name="try_again">Try again</string>
+    <string name="retry_now">Retry now</string>
+    <string name="change_server">Change server</string>
+    <string name="unreachable_title">Can\'t reach %1$s.</string>
+    <string name="unreachable_retrying">Retrying in %1$d s…</string>
+
+    <!-- Sign-in -->
+    <string name="sign_in_title">Sign in</string>
+    <string name="looking_for_servers">Looking for servers on this network…</string>
+    <string name="no_servers_found">No servers found. Enter the address, or find it on a signed-in phone under Settings › Link a device.</string>
+    <string name="local_network_why">Finding your server needs access to this network.</string>
+    <string name="local_network_refused">Without access to this network, enter the server\'s address.</string>
+    <string name="continue_">Continue</string>
+    <string name="choose_server">Choose a server.</string>
+    <string name="enter_address">Enter address</string>
+    <string name="server_address">Server address</string>
+    <string name="address_hint">Such as 192.168.1.20, nas:8484 or https://kivo.example.com</string>
+    <string name="address_unreachable">No server found at that address.</string>
+    <string name="connect">Connect</string>
+    <string name="connecting">Connecting…</string>
+    <string name="back">Back</string>
+    <string name="sign_in_to_kivo_on">Sign in to Kivo on “%1$s”</string>
+    <string name="link_code_scan">Scan with the Kivo app on your phone, or open</string>
+    <string name="link_code_enter">and enter:</string>
+    <string name="sign_in_declined">Sign-in was declined.</string>
+    <string name="couldnt_get_sign_in_code">Couldn\'t get a sign-in code.</string>
+    <string name="sign_in_with_password">Sign in with password instead</string>
+    <string name="sign_in_to">Sign in to %1$s</string>
+    <string name="username">Username</string>
+    <string name="password">Password</string>
+    <string name="sign_in">Sign in</string>
+    <string name="signing_in">Signing in…</string>
+
+    <!-- The rail and Home -->
+    <string name="search">Search</string>
+    <string name="home">Home</string>
+    <string name="more_libraries">More libraries</string>
+    <string name="settings">Settings</string>
+    <string name="row_continue_watching">Continue Watching</string>
+    <string name="row_favorites">Favorites</string>
+    <string name="row_recently_added">Recently Added</string>
+    <string name="row_recently_added_in">Recently Added in %1$s</string>
+
+    <!-- Favorites -->
+    <string name="favorites_movies">Movies</string>
+    <string name="favorites_shows">Shows</string>
+    <string name="favorites_episodes">Episodes</string>
+    <string name="favorites_seasons">Seasons</string>
+    <string name="favorites_videos">Videos</string>
+    <string name="favorites_extras">Extras</string>
+    <string name="favorites_of">Favorites · %1$s</string>
+    <string name="see_all">See all</string>
+    <string name="favorites_empty">No favorites yet.</string>
+    <string name="favorites_empty_sentence">Press and hold OK on anything and choose Add to favorites.</string>
+    <plurals name="count_episodes">
+        <item quantity="one">%1$s episode</item>
+        <item quantity="other">%1$s episodes</item>
+    </plurals>
+    <plurals name="count_seasons">
+        <item quantity="one">%1$s season</item>
+        <item quantity="other">%1$s seasons</item>
+    </plurals>
+    <plurals name="count_extras">
+        <item quantity="one">%1$s extra</item>
+        <item quantity="other">%1$s extras</item>
+    </plurals>
+    <string name="empty_no_libraries_admin">No libraries</string>
+    <string name="empty_no_libraries_admin_sentence">Add libraries in the web app. They appear here as they\'re scanned.</string>
+    <string name="empty_no_libraries">No libraries</string>
+    <string name="empty_no_libraries_sentence">Ask an admin for access.</string>
+    <string name="empty_nothing_yet">Nothing here yet</string>
+    <string name="empty_nothing_yet_sentence">Items appear here as libraries are scanned.</string>
+    <string name="exit_kivo">Exit Kivo?</string>
+    <string name="no">No</string>
+    <string name="yes">Yes</string>
+
+    <!-- Cards -->
+    <string name="badge_identifying">Identifying</string>
+    <string name="badge_unmatched">Unmatched</string>
+    <plurals name="episodes">
+        <item quantity="one">%1$d episode</item>
+        <item quantity="other">%1$d episodes</item>
+    </plurals>
+    <plurals name="items">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
+    <plurals name="movies">
+        <item quantity="one">%1$d movie</item>
+        <item quantity="other">%1$d movies</item>
+    </plurals>
+    <plurals name="seasons">
+        <item quantity="one">%1$d season</item>
+        <item quantity="other">%1$d seasons</item>
+    </plurals>
+
+    <!-- Library -->
+    <string name="sort">Sort</string>
+    <string name="sort_title">Title</string>
+    <string name="sort_added">Date added</string>
+    <string name="sort_last_episode_added">Last episode added</string>
+    <string name="sort_release">Release date</string>
+    <string name="sort_rating">Rating</string>
+    <string name="empty_library">Nothing in this library yet.</string>
+    <string name="sort_short_title">A–Z</string>
+    <string name="sort_short_added">Recently added</string>
+    <string name="sort_short_last_episode_added">Last episode added</string>
+    <string name="sort_short_release">Newest</string>
+    <string name="sort_short_rating">Top rated</string>
+    <string name="section_videos">Videos</string>
+    <plurals name="count_movies">
+        <item quantity="one">%1$s movie</item>
+        <item quantity="other">%1$s movies</item>
+    </plurals>
+    <plurals name="count_shows">
+        <item quantity="one">%1$s show</item>
+        <item quantity="other">%1$s shows</item>
+    </plurals>
+    <plurals name="count_videos">
+        <item quantity="one">%1$s video</item>
+        <item quantity="other">%1$s videos</item>
+    </plurals>
+    <plurals name="count_collections">
+        <item quantity="one">%1$s collection</item>
+        <item quantity="other">%1$s collections</item>
+    </plurals>
+    <string name="filter">Filter</string>
+    <string name="played_state">Watch status</string>
+    <string name="any">Any</string>
+    <string name="unplayed">Unwatched</string>
+    <string name="filter_in_progress">In progress</string>
+    <string name="played">Watched</string>
+    <string name="favorites">Favorites</string>
+    <string name="resolution">Resolution</string>
+    <string name="dynamic_range">Dynamic range</string>
+    <string name="clear_filters">Clear filters</string>
+    <!-- "No unwatched movies": the watch status, then what the library lists. -->
+    <string name="empty_played">No %1$s %2$s</string>
+    <string name="empty_filters">No %1$s match these filters</string>
+    <string name="state_unplayed">unwatched</string>
+    <string name="state_in_progress">in-progress</string>
+    <string name="state_played">watched</string>
+    <string name="noun_movies">movies</string>
+    <string name="noun_shows">shows</string>
+    <string name="noun_videos">videos</string>
+
+    <!-- Detail pages -->
+    <string name="play">Play</string>
+    <string name="resume">Resume</string>
+    <string name="resume_at">Resume %1$s</string>
+    <string name="ends_at">Ends at %1$s</string>
+    <string name="play_from_beginning">Play from beginning</string>
+    <string name="file_missing">This file is missing</string>
+    <string name="add_favorite">Add to favorites</string>
+    <string name="remove_favorite">Remove from favorites</string>
+    <string name="mark_played">Mark as watched</string>
+    <string name="mark_unplayed">Mark as unwatched</string>
+    <plurals name="mark_episodes_played">
+        <item quantity="one">Mark %1$d episode as watched?</item>
+        <item quantity="other">Mark %1$d episodes as watched?</item>
+    </plurals>
+    <string name="cancel">Cancel</string>
+    <string name="version">Version</string>
+    <string name="version_missing">%1$s (missing)</string>
+    <string name="audio">Audio</string>
+    <string name="subtitles">Subtitles</string>
+    <string name="audio_and_subtitles">Audio &amp; Subtitles</string>
+    <string name="dialogue_boost">Dialogue boost</string>
+    <string name="automatic">Automatic</string>
+    <string name="automatic_track">Automatic (%1$s)</string>
+    <string name="more_actions">More actions</string>
+    <string name="off">Off</string>
+    <!-- Subtitle search: the row under Subtitles that opens it, the panel's title, its rows' flag and its states. -->
+    <string name="search_subtitles">Search subtitles…</string>
+    <string name="search_subtitles_title">Search Subtitles</string>
+    <string name="exact_match">Exact match</string>
+    <string name="no_subtitles_found">No subtitles found</string>
+    <string name="subtitle_downloading">Downloading…</string>
+    <string name="cast">Cast</string>
+    <string name="extras">Extras</string>
+    <string name="collections">Collections</string>
+    <string name="play_episode">Play S%1$d E%2$d</string>
+    <string name="years_range">%1$d to %2$d</string>
+    <string name="season_n">Season %1$d</string>
+    <string name="specials">Specials</string>
+    <string name="episodes">Episodes</string>
+    <string name="previous_episode">Previous episode</string>
+    <string name="next_episode">Next episode</string>
+    <string name="go_to_series">Go to series</string>
+    <string name="go_to_library">Go to library</string>
+
+    <!-- Search -->
+    <string name="search_prompt">Type to search every library.</string>
+    <string name="no_results_for">No results for “%1$s”.</string>
+    <string name="clear_search">Clear search</string>
+    <string name="results_movies">Movies</string>
+    <string name="results_shows">Shows</string>
+    <string name="results_episodes">Episodes</string>
+    <string name="results_videos">Other videos</string>
+    <string name="results_people">People</string>
+    <string name="role_actor">Actor</string>
+    <string name="role_director">Director</string>
+    <string name="role_writer">Writer</string>
+    <string name="role_author">Author</string>
+    <string name="role_narrator">Narrator</string>
+    <string name="person_titles">%1$s · %2$s</string>
+    <plurals name="titles">
+        <item quantity="one">%1$d title</item>
+        <item quantity="other">%1$d titles</item>
+    </plurals>
+    <string name="person_nothing_to_watch">No titles available</string>
+    <string name="key_space">Space</string>
+
+    <!-- Settings (the web's SettingsScreen) -->
+    <string name="settings_account">Account</string>
+    <string name="settings_playback">Playback</string>
+    <string name="settings_libraries">Home &amp; libraries</string>
+    <string name="settings_about">About</string>
+    <string name="scope_all_devices">All your devices</string>
+    <string name="couldnt_save">Couldn\'t save. %1$s</string>
+    <string name="retry">Retry</string>
+    <string name="signed_in_to">Signed in to %1$s</string>
+    <string name="switch_account">Switch account</string>
+    <string name="switch_account_confirm">Switch account?</string>
+    <string name="switch_account_help">Signs out this TV and shows a sign-in code.</string>
+    <string name="change_server_confirm">Change server?</string>
+    <string name="change_server_help">Signs out this TV and looks for servers.</string>
+    <string name="sign_out_this_tv_confirm">Sign out this TV?</string>
+    <string name="audio_language">Audio language</string>
+    <string name="audio_language_original">Original language</string>
+    <string name="show_subtitles">Show subtitles</string>
+    <string name="subtitles_none">Off</string>
+    <string name="subtitles_forced">Only forced</string>
+    <string name="subtitles_forced_detail">For the parts in another language</string>
+    <string name="subtitles_smart">Foreign audio only</string>
+    <string name="subtitles_smart_detail">When the audio isn\'t in your subtitle language</string>
+    <string name="subtitles_always">Always</string>
+    <string name="subtitle_language">Subtitle language</string>
+    <string name="subtitle_language_default">Server default</string>
+    <string name="remember_tracks">Remember choices per show</string>
+    <string name="autoplay_next">Play next episode automatically</string>
+    <string name="no_libraries_yet">No libraries yet</string>
+    <string name="move_up">Move up</string>
+    <string name="move_down">Move down</string>
+    <string name="this_tv">This TV</string>
+    <string name="sign_out">Sign out</string>
+    <string name="link_a_device">Link a device</string>
+    <string name="link_a_device_help">Enter the code the other device shows.</string>
+    <string name="code">Code</string>
+    <string name="link_code_didnt_work">That code didn\'t work. Check the other device for a new one.</string>
+    <string name="allow_sign_in_as">Allow %1$s to sign in as %2$s?</string>
+    <string name="on_home_network">On your home network</string>
+    <string name="not_on_home_network">Not on your home network</string>
+    <string name="just_now">Just now</string>
+    <string name="link_not_nearby_warning">This device isn\'t on your home network. Only allow it if it\'s yours and you started signing in on it just now.</string>
+    <string name="dont_allow">Don\'t allow</string>
+    <string name="allow">Allow</string>
+    <string name="device_signed_in">%1$s is signed in</string>
+    <string name="device_not_signed_in">%1$s wasn\'t signed in</string>
+    <string name="done">Done</string>
+    <string name="platform_android_tv">Android TV</string>
+    <string name="platform_apple_tv">Apple TV</string>
+    <string name="platform_iphone">iPhone</string>
+    <string name="platform_ipad">iPad</string>
+    <string name="platform_android_phone">Android phone</string>
+    <string name="platform_browser">Browser</string>
+    <string name="display">Display</string>
+    <string name="limited_by_server">Limited to %1$s by the server.</string>
+    <string name="home_quality">Local network quality</string>
+    <string name="remote_quality">Remote quality</string>
+    <string name="subtitle_size">Subtitle size</string>
+    <string name="size_small">Small</string>
+    <string name="size_medium">Medium</string>
+    <string name="size_large">Large</string>
+    <string name="subtitle_background">Subtitle background</string>
+    <string name="background_none">None</string>
+    <string name="background_shadow">Shadow</string>
+    <string name="background_box">Box</string>
+    <string name="frame_rate_matching">Frame-rate matching</string>
+    <string name="passthrough">Passthrough</string>
+    <string name="passthrough_help">Sends Dolby and DTS audio to the TV or receiver to decode.</string>
+    <string name="passthrough_auto">Auto</string>
+    <string name="passthrough_auto_detail">Send what the TV or receiver says it takes</string>
+    <string name="passthrough_off">Off</string>
+    <string name="passthrough_off_detail">Decode everything on this device</string>
+    <string name="max_audio_channels">Maximum audio channels</string>
+    <string name="dialogue_boost_help">Makes speech clearer and evens out loud scenes, playing some audio as AAC.</string>
+    <string name="channels_auto">Auto</string>
+    <string name="channels_auto_detail">What the TV or receiver reports</string>
+    <string name="channels_stereo">Stereo</string>
+    <string name="app_version">App version</string>
+    <string name="server_version">Server version</string>
+    <string name="manage_from_browser_help">Scan with your phone, or open on a computer:</string>
+    <string name="next">Next</string>
+    <string name="signing_in_as">As %1$s</string>
+
+    <!-- The player -->
+    <string name="pause">Pause</string>
+    <string name="back_10">Back 10 seconds</string>
+    <string name="forward_30">Forward 30 seconds</string>
+    <string name="playback_settings">Playback Settings</string>
+    <string name="quality">Quality</string>
+    <string name="speed">Speed</string>
+    <string name="speed_normal">Normal</string>
+    <string name="speed_rate">%1$s×</string>
+    <string name="stream_info">Stream info</string>
+    <string name="skip_intro">Skip Intro</string>
+    <string name="skip_recap">Skip Recap</string>
+    <string name="skip_credits">Skip Credits</string>
+    <string name="up_next">Up next</string>
+    <string name="still_watching">Still watching?</string>
+    <string name="playing_in">Playing in %1$d s</string>
+    <string name="hide">Hide</string>
+    <string name="watch_credits">Watch credits</string>
+    <string name="play_now">Play now</string>
+    <string name="auto_detail">Based on connection speed and limits</string>
+    <string name="limited_for_play">Limited to %1$s for this play</string>
+    <string name="info_playback">Playback</string>
+    <string name="info_container">Container</string>
+    <string name="info_video">Video</string>
+    <string name="info_delivery">Delivery</string>
+    <string name="info_bitrate">Bitrate</string>
+    <string name="info_file">File</string>
+    <string name="info_local">Local</string>
+    <string name="info_remote">Remote</string>
+    <string name="info_to_hls">%1$s → HLS stream</string>
+    <string name="info_cant_play_container">This device can\'t play %1$s files.</string>
+    <string name="info_original_under">Original (%1$s is under the %2$s limit)</string>
+    <string name="info_limited_to">Limited to %1$s</string>
+    <string name="info_why">Why: %1$s</string>
+    <string name="info_limit">%1$s %2$s; this device: %3$s</string>
+    <string name="info_limit_undeclared">%1$s %2$s</string>
+    <string name="couldnt_play">Couldn\'t play this.</string>
+    <string name="stream_limit_title">Stream limit reached</string>
+    <string name="playback_stopped">Playback was stopped.</string>
+    <string name="play_another_version">Play another version</string>
+</resources>

@@ -1,0 +1,10 @@
+{
+  "page": 1,
+  "results": [
+    {"id": 438631, "title": "Dune", "original_title": "Dune", "release_date": "2021-09-15", "popularity": 95.1},
+    {"id": 841, "title": "Dune", "original_title": "Dune", "release_date": "1984-12-14", "popularity": 30.4},
+    {"id": 1, "title": "Unreleased Dune", "original_title": "Dune", "release_date": "", "popularity": 0.6}
+  ],
+  "total_pages": 1,
+  "total_results": 3
+}

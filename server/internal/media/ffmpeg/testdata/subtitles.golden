@@ -1,0 +1,1 @@
+ffmpeg -hide_banner -nostats -loglevel warning -nostdin -y -protocol_whitelist file -i file:/media/Anime/Show/01.mkv -map 0:2 -c:s copy -f ass file:/cache/2.ass -map 0:3 -c:s srt -f srt file:/cache/3.srt -map 0:4 -c:s copy -f sup file:/cache/4.sup

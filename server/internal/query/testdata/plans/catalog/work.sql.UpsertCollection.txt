@@ -1,0 +1,2 @@
+SEARCH image USING COVERING INDEX image_collection (collection_id=?)
+SEARCH collection_work USING PRIMARY KEY (collection_id=?)

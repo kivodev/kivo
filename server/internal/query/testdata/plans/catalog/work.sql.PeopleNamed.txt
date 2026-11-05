@@ -1,0 +1,1 @@
+SEARCH person USING INDEX person_name (name=?)

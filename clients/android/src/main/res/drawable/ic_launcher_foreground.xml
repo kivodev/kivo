@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The launcher icon's mark, the Facet K: a stem and two facets in three tints of the accent, inside the adaptive icon's safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="1.0"
+        android:scaleY="1.0"
+        android:translateX="20.250"
+        android:translateY="22.000">
+        <path
+            android:fillColor="#FF8B9CFF"
+            android:pathData="M14,10h7a2,2 0,0 1,2 2v40a2,2 0,0 1,-2 2h-7a2,2 0,0 1,-2 -2v-40a2,2 0,0 1,2 -2z" />
+        <path
+            android:fillColor="#FFC5CEFF"
+            android:strokeColor="#FFC5CEFF"
+            android:strokeWidth="2"
+            android:strokeLineJoin="round"
+            android:pathData="M27,10H48L27,31Z" />
+        <path
+            android:fillColor="#FF5B6CF0"
+            android:strokeColor="#FF5B6CF0"
+            android:strokeWidth="2"
+            android:strokeLineJoin="round"
+            android:pathData="M29,36L36,29L55,54H43Z" />
+    </group>
+</vector>

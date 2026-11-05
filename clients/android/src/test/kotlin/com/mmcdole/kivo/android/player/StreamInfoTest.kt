@@ -1,0 +1,110 @@
+package com.mmcdole.kivo.android.player
+
+import com.mmcdole.kivo.api.models.AudioTrackInfo
+import com.mmcdole.kivo.api.models.CapabilityMismatch
+import com.mmcdole.kivo.api.models.PlayStarted
+import com.mmcdole.kivo.api.models.PlayPart
+import com.mmcdole.kivo.api.models.PlayTrack
+import com.mmcdole.kivo.api.models.QualityRequest
+import com.mmcdole.kivo.api.models.SubtitleTrackInfo
+import com.mmcdole.kivo.api.models.Track
+import com.mmcdole.kivo.api.models.TrackTranscode
+import com.mmcdole.kivo.api.models.Version
+import com.mmcdole.kivo.api.models.VersionPart
+import com.mmcdole.kivo.api.models.VideoTrackInfo
+import com.mmcdole.kivo.core.display.Display
+import com.mmcdole.kivo.core.player.Subtitles
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class StreamInfoTest {
+    private val display = Display.forLocale("en")
+    private val words = StreamInfoWords(
+        playback = "Playback", container = "Container", video = "Video", audio = "Audio", subtitles = "Subtitles",
+        quality = "QualityRequest", delivery = "Delivery", bitrate = "Bitrate", off = "Off", hls = "HLS", file = "File",
+        local = "Local", remote = "Remote",
+        toHls = { "$it → HLS stream" },
+        cantPlayContainer = { "This device can't play $it files." },
+        originalUnder = { file, cap -> "Original ($file is under the $cap limit)" },
+        limitedTo = { "Limited to $it" },
+        limit = { "${it.field} ${it.actual}; this device: ${it.declared}" },
+    )
+
+    private val version = Version(
+        id = "v", available = true, durationMs = 60_000, sizeBytes = 1, parts = listOf(VersionPart("f", "film.mkv", 60_000, 1)),
+        tracks = listOf(
+            Track("tv", "video", "hevc", true, video = VideoTrackInfo(3840, 2160, resolution = "4k", profile = "Main 10", hdr = "hdr10")),
+            Track("ta", "audio", "truehd", true, language = "eng", audio = AudioTrackInfo(8, "7.1")),
+            Track("ts", "subtitle", "ass", false, language = "eng", subtitle = SubtitleTrackInfo("embedded")),
+        ),
+        workIds = listOf("w"), container = "matroska,webm", bitrateBps = 30_000_000, resolution = "4k", hdr = "hdr10",
+    )
+
+    private val play = PlayStarted(
+        id = "s", workId = "w", versionId = "v", startMs = 0, durationMs = 60_000, local = true,
+        delivery = "stream",
+        url = "plays/s/hls/index.m3u8",
+        tracks = listOf(
+            PlayTrack("tv", "video", selected = true, delivery = "stream", codec = "hevc", hdr = "hdr10", reason = "containerUnsupported"),
+            PlayTrack(
+                "ta", "audio", selected = true, delivery = "stream", codec = "aac", transcode = TrackTranscode(channels = 6),
+                reason = "audioChannelsUnsupported", mismatch = CapabilityMismatch("maxChannels", "8", "6"),
+            ),
+            PlayTrack("ts", "subtitle", selected = true, delivery = "stream", codec = "webvtt", reason = "subtitlePreparing"),
+            PlayTrack("off", "subtitle", delivery = "none"),
+        ),
+        parts = listOf(PlayPart(60_000)), chapters = emptyList(), bitrateBps = 9_000_000,
+    )
+
+    @Test
+    fun aDirectStreamSaysWhatEachTrackDoesAndWhy() {
+        val rows = streamInfo(play, version, null, "ts", display, words)
+        assertEquals(
+            listOf(
+                InfoRow("Playback", "Direct Stream"),
+                InfoRow("Container", "MKV → HLS stream", "This device can't play MKV files."),
+                InfoRow("Video", "Direct Stream · HEVC Main 10 4K HDR10"),
+                InfoRow(
+                    "Audio",
+                    "Transcode · English · TrueHD 7.1 · Default → AAC 5.1",
+                    "The audio has more channels than this device plays. (maxChannels 8; this device: 6)",
+                ),
+                InfoRow("Subtitles", "English · Plain · Embedded", "The file's subtitles are being prepared, so they're carried in the stream or burned in for now."),
+                InfoRow("Delivery", "HLS · Local"),
+                InfoRow("Bitrate", "9 Mb/s"),
+            ),
+            rows,
+        )
+    }
+
+    @Test
+    fun aLimitTheFileIsUnderPlaysTheOriginalAndSaysSo() {
+        val direct = play.copy(
+            delivery = "file",
+            url = "plays/s/files/0",
+            tracks = listOf(PlayTrack("tv", "video", selected = true, delivery = "file", index = 0), PlayTrack("off", "subtitle", selected = true, delivery = "none")),
+            bitrateBps = null,
+        )
+        val rows = streamInfo(direct, version.copy(bitrateBps = 4_000_000), QualityRequest("limit", maxBitrateBps = 8_000_000), Subtitles.OFF, display, words)
+        assertEquals(
+            listOf(
+                InfoRow("Playback", "Direct Play"),
+                InfoRow("Video", "Direct Play · HEVC Main 10 4K HDR10"),
+                InfoRow("Subtitles", "Off"),
+                InfoRow("QualityRequest", "Original (4 Mb/s is under the 8 Mb/s limit)"),
+                InfoRow("Delivery", "File · Local"),
+            ),
+            rows,
+        )
+    }
+
+    @Test
+    fun aSubtitleChosenSinceSaysHowItShows() {
+        val withFile = play.copy(
+            tracks = play.tracks + PlayTrack("tx", "subtitle", delivery = "external", codec = "ass", url = "plays/s/subtitles/x.ass"),
+        )
+        val styled = version.copy(tracks = version.tracks + Track("tx", "subtitle", "ass", false, language = "fre", subtitle = SubtitleTrackInfo("external")))
+        val rows = streamInfo(withFile, styled, null, "tx", display, words)
+        assertEquals(InfoRow("Subtitles", "French · Styled (ASS) · External"), rows.single { it.label == "Subtitles" })
+    }
+}

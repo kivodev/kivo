@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>Kivo</Name>
+  <Repository>ghcr.io/kivodev/kivo:latest</Repository>
+  <Network>host</Network>
+  <Privileged>false</Privileged>
+  <Overview>Kivo, a self-hosted media server. Host networking lets apps find it on your network; on a bridge network, type the address instead.</Overview>
+  <Category>MediaServer:Video</Category>
+  <WebUI>http://[IP]:[PORT:8484]/</WebUI>
+  <ExtraParams>--device=/dev/dri</ExtraParams>
+  <Config Name="Web UI port" Target="KIVO_LISTEN" Default=":8484" Mode="" Description="Address and port Kivo listens on." Type="Variable" Display="always" Required="false" Mask="false">:8484</Config>
+  <Config Name="Config" Target="/config" Default="/mnt/user/appdata/kivo/config" Mode="rw" Description="server.toml, if you use one; environment variables work instead." Type="Path" Display="advanced" Required="true" Mask="false">/mnt/user/appdata/kivo/config</Config>
+  <Config Name="Data" Target="/data" Default="/mnt/user/appdata/kivo/data" Mode="rw" Description="The database, uploaded artwork and backups. Keep it on a local disk or cache pool, never a share." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/kivo/data</Config>
+  <Config Name="Cache" Target="/cache" Default="/mnt/user/appdata/kivo/cache" Mode="rw" Description="Artwork, previews and transcode segments. Safe to delete." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/kivo/cache</Config>
+  <Config Name="Media" Target="/media" Default="/mnt/user/media" Mode="ro" Description="Your media. Kivo never writes here." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/media</Config>
+  <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="User ID to run as." Type="Variable" Display="advanced" Required="true" Mask="false">99</Config>
+  <Config Name="PGID" Target="PGID" Default="100" Mode="" Description="Group ID to run as." Type="Variable" Display="advanced" Required="true" Mask="false">100</Config>
+  <Config Name="UMASK" Target="UMASK" Default="022" Mode="" Description="Permissions mask for files Kivo creates." Type="Variable" Display="advanced" Required="false" Mask="false">022</Config>
+  <Config Name="Base path" Target="KIVO_BASE_PATH" Default="" Mode="" Description="Serve under a subpath such as /kivo, behind a reverse proxy." Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+  <Config Name="Trusted proxies" Target="KIVO_TRUSTED_PROXIES" Default="" Mode="" Description="Comma-separated addresses or ranges of your reverse proxy, so client addresses come through." Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+</Container>

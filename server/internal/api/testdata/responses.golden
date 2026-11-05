@@ -1,0 +1,3543 @@
+GET /api/v1/libraries/<id1>/works
+200
+{
+  "items": [
+    {
+      "addedAt": "<time>",
+      "available": true,
+      "durationMs": 7200000,
+      "id": "<id2>",
+      "images": {},
+      "kind": "movie",
+      "libraryId": "<id1>",
+      "matchState": "matched",
+      "title": "Heatwave Seeded",
+      "userState": {
+        "favorite": false,
+        "playCount": 0,
+        "played": false
+      },
+      "year": 1995
+    },
+    {
+      "addedAt": "<time>",
+      "available": true,
+      "id": "<id3>",
+      "images": {},
+      "kind": "series",
+      "libraryId": "<id1>",
+      "matchState": "matched",
+      "series": {
+        "unplayedCount": 1
+      },
+      "title": "Seeded Series",
+      "userState": {
+        "favorite": false,
+        "playCount": 0,
+        "played": false
+      }
+    }
+  ],
+  "letters": [
+    {
+      "letter": "H",
+      "offset": 0
+    },
+    {
+      "letter": "S",
+      "offset": 1
+    }
+  ],
+  "total": 2
+}
+
+
+GET /api/v1/libraries/<id1>/works?limit=1
+200
+{
+  "items": [
+    {
+      "addedAt": "<time>",
+      "available": true,
+      "durationMs": 7200000,
+      "id": "<id2>",
+      "images": {},
+      "kind": "movie",
+      "libraryId": "<id1>",
+      "matchState": "matched",
+      "title": "Heatwave Seeded",
+      "userState": {
+        "favorite": false,
+        "playCount": 0,
+        "played": false
+      },
+      "year": 1995
+    }
+  ],
+  "letters": [
+    {
+      "letter": "H",
+      "offset": 0
+    },
+    {
+      "letter": "S",
+      "offset": 1
+    }
+  ],
+  "total": 2
+}
+
+
+GET /api/v1/libraries/<id1>/works?limit=0
+400
+{
+  "code": "invalidRequest",
+  "detail": "limit is out of range",
+  "errors": [
+    {
+      "code": "outOfRange",
+      "field": "limit"
+    }
+  ],
+  "requestId": "<request>",
+  "status": 400,
+  "title": "Bad Request",
+  "type": "about:blank"
+}
+
+
+GET /api/v1/libraries/<id1>/works?offset=1&yearFrom=1990&yearTo=2030
+200
+{
+  "items": [],
+  "total": 1
+}
+
+
+GET /api/v1/libraries/<id1>/works?yearFrom=2000&yearTo=1999
+400
+{
+  "code": "invalidRequest",
+  "detail": "invalid request",
+  "errors": [
+    {
+      "code": "outOfRange",
+      "field": "yearTo"
+    }
+  ],
+  "requestId": "<request>",
+  "status": 400,
+  "title": "Bad Request",
+  "type": "about:blank"
+}
+
+
+GET /api/v1/libraries/<id4>/authors
+200
+{
+  "items": [
+    {
+      "id": "<id5>",
+      "name": "James S. A. Corey",
+      "role": "author",
+      "workCount": 1
+    }
+  ],
+  "letters": [
+    {
+      "letter": "J",
+      "offset": 0
+    }
+  ],
+  "total": 1
+}
+
+
+GET /api/v1/libraries/<id4>/book-series
+200
+{
+  "items": [],
+  "letters": [],
+  "total": 0
+}
+
+
+GET /api/v1/libraries/<id4>/collections
+200
+{
+  "items": [],
+  "total": 0
+}
+
+
+GET /api/v1/libraries/<id6>/collections
+404
+{
+  "code": "notFound",
+  "detail": "not found",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+GET /api/v1/works/<id3>/children
+200
+{
+  "items": [
+    {
+      "addedAt": "<time>",
+      "available": true,
+      "id": "<id7>",
+      "images": {},
+      "kind": "season",
+      "libraryId": "<id1>",
+      "matchState": "matched",
+      "season": {
+        "episodeCount": 1,
+        "number": 1,
+        "seriesId": "<id3>",
+        "seriesTitle": "Seeded Series",
+        "unplayedCount": 1
+      },
+      "title": "Season 1",
+      "userState": {
+        "favorite": false,
+        "playCount": 0,
+        "played": false
+      }
+    }
+  ]
+}
+
+
+GET /api/v1/works/<id8>/children
+404
+{
+  "code": "notFound",
+  "detail": "not found",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+GET /api/v1/collections/<id9>
+404
+{
+  "code": "notFound",
+  "detail": "not found",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+GET /api/v1/unmatched-works
+200
+{
+  "items": []
+}
+
+
+GET /api/v1/unmatched-works
+403
+{
+  "code": "forbidden",
+  "requestId": "<request>",
+  "status": 403,
+  "title": "Forbidden",
+  "type": "about:blank"
+}
+
+
+GET /api/v1/favorites?kind=movie&offset=0&limit=5
+200
+{
+  "items": [],
+  "total": 0
+}
+
+
+GET /api/v1/works/<id2>
+200
+{
+  "addedAt": "<time>",
+  "available": true,
+  "durationMs": 7200000,
+  "id": "<id2>",
+  "images": {},
+  "kind": "movie",
+  "libraryId": "<id1>",
+  "matchState": "matched",
+  "title": "Heatwave Seeded",
+  "userState": {
+    "favorite": false,
+    "playCount": 0,
+    "played": false
+  },
+  "year": 1995,
+  "collections": [],
+  "credits": [],
+  "externalIds": [],
+  "extras": [],
+  "genres": [],
+  "lockedFields": [],
+  "remembersTracks": false,
+  "sortTitle": "Heatwave Seeded",
+  "studios": [],
+  "versions": [
+    {
+      "audioTrackId": "<id10>",
+      "available": true,
+      "bitrateBps": 8000000,
+      "chapterCount": 3,
+      "container": "mov,mp4,m4a,3gp,3g2,mj2",
+      "durationMs": 7200000,
+      "id": "<id11>",
+      "libraryId": "<id1>",
+      "markers": [
+        {
+          "endMs": 7200000,
+          "final": true,
+          "kind": "credits",
+          "source": "chapter",
+          "startMs": 6600000
+        }
+      ],
+      "parts": [
+        {
+          "durationMs": 7200000,
+          "fileId": "<id12>",
+          "name": "Heatwave Seeded (1995) 1.mkv",
+          "sizeBytes": 1073741824
+        }
+      ],
+      "resolution": "1080p",
+      "sizeBytes": 1073741824,
+      "tracks": [
+        {
+          "codec": "h264",
+          "default": false,
+          "id": "<id13>",
+          "type": "video",
+          "video": {
+            "height": 1080,
+            "profile": "High",
+            "resolution": "1080p",
+            "width": 1920
+          }
+        },
+        {
+          "audio": {
+            "channels": 2
+          },
+          "codec": "aac",
+          "default": true,
+          "id": "<id10>",
+          "type": "audio"
+        }
+      ],
+      "workIds": [
+        "<id2>"
+      ]
+    }
+  ]
+}
+
+
+GET /api/v1/search?q=hea
+200
+{
+  "collections": [],
+  "people": [],
+  "works": [
+    {
+      "addedAt": "<time>",
+      "available": true,
+      "durationMs": 7200000,
+      "id": "<id2>",
+      "images": {},
+      "kind": "movie",
+      "libraryId": "<id1>",
+      "matchState": "matched",
+      "title": "Heatwave Seeded",
+      "userState": {
+        "favorite": false,
+        "playCount": 0,
+        "played": false
+      },
+      "year": 1995
+    }
+  ]
+}
+
+
+GET /api/v1/works/<id2>
+404
+{
+  "code": "notFound",
+  "detail": "not found",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+PATCH /api/v1/works/<id2>
+200
+{
+  "addedAt": "<time>",
+  "available": true,
+  "durationMs": 7200000,
+  "id": "<id2>",
+  "images": {},
+  "kind": "movie",
+  "libraryId": "<id1>",
+  "matchState": "matched",
+  "title": "Heat",
+  "userState": {
+    "favorite": false,
+    "playCount": 0,
+    "played": false
+  },
+  "year": 1996,
+  "collections": [],
+  "credits": [],
+  "externalIds": [],
+  "extras": [],
+  "genres": [],
+  "lockedFields": [
+    "overview",
+    "title",
+    "year"
+  ],
+  "overview": "A heist.",
+  "remembersTracks": false,
+  "sortTitle": "Heat",
+  "studios": [],
+  "versions": [
+    {
+      "audioTrackId": "<id10>",
+      "available": true,
+      "bitrateBps": 8000000,
+      "chapterCount": 3,
+      "container": "mov,mp4,m4a,3gp,3g2,mj2",
+      "durationMs": 7200000,
+      "id": "<id11>",
+      "libraryId": "<id1>",
+      "markers": [
+        {
+          "endMs": 7200000,
+          "final": true,
+          "kind": "credits",
+          "source": "chapter",
+          "startMs": 6600000
+        }
+      ],
+      "parts": [
+        {
+          "durationMs": 7200000,
+          "fileId": "<id12>",
+          "name": "Heatwave Seeded (1995) 1.mkv",
+          "sizeBytes": 1073741824
+        }
+      ],
+      "resolution": "1080p",
+      "sizeBytes": 1073741824,
+      "tracks": [
+        {
+          "codec": "h264",
+          "default": false,
+          "id": "<id13>",
+          "type": "video",
+          "video": {
+            "height": 1080,
+            "profile": "High",
+            "resolution": "1080p",
+            "width": 1920
+          }
+        },
+        {
+          "audio": {
+            "channels": 2
+          },
+          "codec": "aac",
+          "default": true,
+          "id": "<id10>",
+          "type": "audio"
+        }
+      ],
+      "workIds": [
+        "<id2>"
+      ]
+    }
+  ]
+}
+
+
+PATCH /api/v1/works/<id2>
+200
+{
+  "addedAt": "<time>",
+  "available": true,
+  "contentRating": "R",
+  "durationMs": 7200000,
+  "id": "<id2>",
+  "images": {},
+  "kind": "movie",
+  "libraryId": "<id1>",
+  "matchState": "matched",
+  "title": "Heat",
+  "userState": {
+    "favorite": false,
+    "playCount": 0,
+    "played": false
+  },
+  "year": 1996,
+  "collections": [],
+  "credits": [],
+  "externalIds": [],
+  "extras": [],
+  "genres": [],
+  "lockedFields": [
+    "contentRating",
+    "overview",
+    "title",
+    "year"
+  ],
+  "overview": "A heist.",
+  "remembersTracks": false,
+  "sortTitle": "Heat",
+  "studios": [],
+  "versions": [
+    {
+      "audioTrackId": "<id10>",
+      "available": true,
+      "bitrateBps": 8000000,
+      "chapterCount": 3,
+      "container": "mov,mp4,m4a,3gp,3g2,mj2",
+      "durationMs": 7200000,
+      "id": "<id11>",
+      "libraryId": "<id1>",
+      "markers": [
+        {
+          "endMs": 7200000,
+          "final": true,
+          "kind": "credits",
+          "source": "chapter",
+          "startMs": 6600000
+        }
+      ],
+      "parts": [
+        {
+          "durationMs": 7200000,
+          "fileId": "<id12>",
+          "name": "Heatwave Seeded (1995) 1.mkv",
+          "sizeBytes": 1073741824
+        }
+      ],
+      "resolution": "1080p",
+      "sizeBytes": 1073741824,
+      "tracks": [
+        {
+          "codec": "h264",
+          "default": false,
+          "id": "<id13>",
+          "type": "video",
+          "video": {
+            "height": 1080,
+            "profile": "High",
+            "resolution": "1080p",
+            "width": 1920
+          }
+        },
+        {
+          "audio": {
+            "channels": 2
+          },
+          "codec": "aac",
+          "default": true,
+          "id": "<id10>",
+          "type": "audio"
+        }
+      ],
+      "workIds": [
+        "<id2>"
+      ]
+    }
+  ]
+}
+
+
+PATCH /api/v1/works/<id2>
+400
+{
+  "code": "invalidRequest",
+  "detail": "not a content rating of the content rating country",
+  "errors": [
+    {
+      "code": "invalid",
+      "field": "contentRating"
+    }
+  ],
+  "requestId": "<request>",
+  "status": 400,
+  "title": "Bad Request",
+  "type": "about:blank"
+}
+
+
+PATCH /api/v1/works/<id2>
+200
+{
+  "addedAt": "<time>",
+  "available": true,
+  "durationMs": 7200000,
+  "id": "<id2>",
+  "images": {},
+  "kind": "movie",
+  "libraryId": "<id1>",
+  "matchState": "matched",
+  "title": "Heat",
+  "userState": {
+    "favorite": false,
+    "playCount": 0,
+    "played": false
+  },
+  "year": 1996,
+  "collections": [],
+  "credits": [],
+  "externalIds": [],
+  "extras": [],
+  "genres": [],
+  "lockedFields": [
+    "contentRating",
+    "overview",
+    "title",
+    "year"
+  ],
+  "overview": "A heist.",
+  "remembersTracks": false,
+  "sortTitle": "Heat",
+  "studios": [],
+  "versions": [
+    {
+      "audioTrackId": "<id10>",
+      "available": true,
+      "bitrateBps": 8000000,
+      "chapterCount": 3,
+      "container": "mov,mp4,m4a,3gp,3g2,mj2",
+      "durationMs": 7200000,
+      "id": "<id11>",
+      "libraryId": "<id1>",
+      "markers": [
+        {
+          "endMs": 7200000,
+          "final": true,
+          "kind": "credits",
+          "source": "chapter",
+          "startMs": 6600000
+        }
+      ],
+      "parts": [
+        {
+          "durationMs": 7200000,
+          "fileId": "<id12>",
+          "name": "Heatwave Seeded (1995) 1.mkv",
+          "sizeBytes": 1073741824
+        }
+      ],
+      "resolution": "1080p",
+      "sizeBytes": 1073741824,
+      "tracks": [
+        {
+          "codec": "h264",
+          "default": false,
+          "id": "<id13>",
+          "type": "video",
+          "video": {
+            "height": 1080,
+            "profile": "High",
+            "resolution": "1080p",
+            "width": 1920
+          }
+        },
+        {
+          "audio": {
+            "channels": 2
+          },
+          "codec": "aac",
+          "default": true,
+          "id": "<id10>",
+          "type": "audio"
+        }
+      ],
+      "workIds": [
+        "<id2>"
+      ]
+    }
+  ]
+}
+
+
+PATCH /api/v1/works/<id2>
+200
+{
+  "addedAt": "<time>",
+  "available": true,
+  "durationMs": 7200000,
+  "id": "<id2>",
+  "images": {},
+  "kind": "movie",
+  "libraryId": "<id1>",
+  "matchState": "matched",
+  "title": "Heat",
+  "userState": {
+    "favorite": false,
+    "playCount": 0,
+    "played": false
+  },
+  "year": 1996,
+  "collections": [],
+  "credits": [],
+  "externalIds": [],
+  "extras": [],
+  "genres": [
+    "Crime"
+  ],
+  "lockedFields": [
+    "contentRating",
+    "genres",
+    "overview",
+    "studios",
+    "title",
+    "year"
+  ],
+  "overview": "A heist.",
+  "remembersTracks": false,
+  "sortTitle": "Heat",
+  "studios": [
+    "Warner"
+  ],
+  "versions": [
+    {
+      "audioTrackId": "<id10>",
+      "available": true,
+      "bitrateBps": 8000000,
+      "chapterCount": 3,
+      "container": "mov,mp4,m4a,3gp,3g2,mj2",
+      "durationMs": 7200000,
+      "id": "<id11>",
+      "libraryId": "<id1>",
+      "markers": [
+        {
+          "endMs": 7200000,
+          "final": true,
+          "kind": "credits",
+          "source": "chapter",
+          "startMs": 6600000
+        }
+      ],
+      "parts": [
+        {
+          "durationMs": 7200000,
+          "fileId": "<id12>",
+          "name": "Heatwave Seeded (1995) 1.mkv",
+          "sizeBytes": 1073741824
+        }
+      ],
+      "resolution": "1080p",
+      "sizeBytes": 1073741824,
+      "tracks": [
+        {
+          "codec": "h264",
+          "default": false,
+          "id": "<id13>",
+          "type": "video",
+          "video": {
+            "height": 1080,
+            "profile": "High",
+            "resolution": "1080p",
+            "width": 1920
+          }
+        },
+        {
+          "audio": {
+            "channels": 2
+          },
+          "codec": "aac",
+          "default": true,
+          "id": "<id10>",
+          "type": "audio"
+        }
+      ],
+      "workIds": [
+        "<id2>"
+      ]
+    }
+  ]
+}
+
+
+PATCH /api/v1/works/<id2>
+400
+{
+  "code": "invalidRequest",
+  "detail": "invalid",
+  "requestId": "<request>",
+  "status": 400,
+  "title": "Bad Request",
+  "type": "about:blank"
+}
+
+
+PATCH /api/v1/works/<id2>
+403
+{
+  "code": "forbidden",
+  "requestId": "<request>",
+  "status": 403,
+  "title": "Forbidden",
+  "type": "about:blank"
+}
+
+
+PATCH /api/v1/works/<id14>
+404
+{
+  "code": "notFound",
+  "detail": "not found",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+PATCH /api/v1/works/<id3>
+400
+{
+  "code": "invalidRequest",
+  "detail": "an ordering is aired, dvd, absolute or group:\u003cID\u003e",
+  "errors": [
+    {
+      "code": "invalid",
+      "field": "/series/ordering"
+    }
+  ],
+  "requestId": "<request>",
+  "status": 400,
+  "title": "Bad Request",
+  "type": "about:blank"
+}
+
+
+PATCH /api/v1/works/<id3>
+400
+{
+  "code": "invalidRequest",
+  "detail": "TMDb lists no episode group 5e5b7b4f for this series",
+  "errors": [
+    {
+      "code": "unknownEpisodeGroup",
+      "field": "/series/ordering"
+    }
+  ],
+  "requestId": "<request>",
+  "status": 400,
+  "title": "Bad Request",
+  "type": "about:blank"
+}
+
+
+PATCH /api/v1/works/<id3>
+200
+{
+  "addedAt": "<time>",
+  "available": true,
+  "id": "<id3>",
+  "images": {},
+  "kind": "series",
+  "libraryId": "<id1>",
+  "matchState": "matched",
+  "series": {
+    "nextUp": {
+      "addedAt": "<time>",
+      "available": true,
+      "episode": {
+        "number": 1,
+        "seasonId": "<id7>",
+        "seasonNumber": 1,
+        "seriesId": "<id3>",
+        "seriesTitle": "Seeded Series"
+      },
+      "id": "<id15>",
+      "images": {},
+      "kind": "episode",
+      "libraryId": "<id1>",
+      "matchState": "matched",
+      "title": "Episode 1",
+      "userState": {
+        "favorite": false,
+        "playCount": 0,
+        "played": false
+      }
+    },
+    "seasonCount": 1,
+    "unplayedCount": 1
+  },
+  "title": "Seeded Series",
+  "userState": {
+    "favorite": false,
+    "playCount": 0,
+    "played": false
+  },
+  "collections": [],
+  "credits": [],
+  "externalIds": [],
+  "extras": [],
+  "genres": [],
+  "lockedFields": [
+    "title"
+  ],
+  "sortTitle": "Seeded Series",
+  "studios": [],
+  "versions": []
+}
+
+
+PATCH /api/v1/works/<id15>
+200
+{
+  "addedAt": "<time>",
+  "available": true,
+  "episode": {
+    "airDate": "2001-02-03",
+    "number": 1,
+    "seasonId": "<id7>",
+    "seasonNumber": 1,
+    "seriesId": "<id3>",
+    "seriesTitle": "Seeded Series"
+  },
+  "id": "<id15>",
+  "images": {},
+  "kind": "episode",
+  "libraryId": "<id1>",
+  "matchState": "matched",
+  "title": "Episode 1",
+  "userState": {
+    "favorite": false,
+    "playCount": 0,
+    "played": false
+  },
+  "collections": [],
+  "credits": [],
+  "externalIds": [],
+  "extras": [],
+  "genres": [],
+  "lockedFields": [
+    "episode.airDate"
+  ],
+  "remembersTracks": true,
+  "sortTitle": "Episode 1",
+  "studios": [],
+  "versions": [
+    {
+      "available": true,
+      "durationMs": 0,
+      "id": "<id16>",
+      "libraryId": "<id1>",
+      "markers": [],
+      "parts": [
+        {
+          "durationMs": 0,
+          "fileId": "<id17>",
+          "name": "S01E01 2.mkv",
+          "sizeBytes": 1073741824
+        }
+      ],
+      "sizeBytes": 1073741824,
+      "tracks": [],
+      "workIds": [
+        "<id15>"
+      ]
+    }
+  ]
+}
+
+
+PATCH /api/v1/works/<id18>
+200
+{
+  "addedAt": "<time>",
+  "available": true,
+  "book": {
+    "authors": [
+      {
+        "id": "<id5>",
+        "name": "James S. A. Corey"
+      }
+    ],
+    "narrators": [
+      {
+        "id": "<id19>",
+        "name": "Jefferson Mays"
+      }
+    ],
+    "publisher": "Orbit",
+    "releaseDate": "2011-06-02",
+    "series": [
+      {
+        "id": "<id20>",
+        "name": "The Expanse",
+        "position": "1",
+        "primary": true
+      }
+    ],
+    "subtitle": "Expanse 1"
+  },
+  "id": "<id18>",
+  "images": {},
+  "kind": "book",
+  "libraryId": "<id4>",
+  "matchState": "matched",
+  "title": "Leviathan Wakes",
+  "userState": {
+    "favorite": false,
+    "playCount": 0,
+    "played": false
+  },
+  "year": 2011,
+  "collections": [],
+  "credits": [
+    {
+      "name": "James S. A. Corey",
+      "personId": "<id5>",
+      "role": "author"
+    },
+    {
+      "name": "Jefferson Mays",
+      "personId": "<id19>",
+      "role": "narrator"
+    }
+  ],
+  "externalIds": [
+    {
+      "id": "B0058ZZZ5A",
+      "kind": "book",
+      "provider": "audible"
+    }
+  ],
+  "extras": [],
+  "genres": [],
+  "lockedFields": [
+    "book.asin",
+    "book.authors",
+    "book.narrators",
+    "book.publisher",
+    "book.releaseDate",
+    "book.series",
+    "book.subtitle"
+  ],
+  "remembersTracks": false,
+  "sortTitle": "Leviathan Wakes",
+  "studios": [
+    "Orbit"
+  ],
+  "versions": [
+    {
+      "available": true,
+      "durationMs": 0,
+      "id": "<id21>",
+      "libraryId": "<id4>",
+      "parts": [
+        {
+          "durationMs": 0,
+          "fileId": "<id22>",
+          "name": "a.m4b",
+          "sizeBytes": 1073741824
+        }
+      ],
+      "sizeBytes": 1073741824,
+      "tracks": [],
+      "workIds": [
+        "<id18>"
+      ]
+    }
+  ]
+}
+
+
+PATCH /api/v1/works/<id18>
+200
+{
+  "addedAt": "<time>",
+  "available": true,
+  "book": {
+    "authors": [
+      {
+        "id": "<id5>",
+        "name": "James S. A. Corey"
+      }
+    ],
+    "narrators": [
+      {
+        "id": "<id19>",
+        "name": "Jefferson Mays"
+      }
+    ],
+    "releaseDate": "2011-06-02",
+    "series": [
+      {
+        "id": "<id20>",
+        "name": "The Expanse",
+        "position": "1",
+        "primary": true
+      }
+    ],
+    "subtitle": "Expanse 1"
+  },
+  "id": "<id18>",
+  "images": {},
+  "kind": "book",
+  "libraryId": "<id4>",
+  "matchState": "matched",
+  "title": "Leviathan Wakes",
+  "userState": {
+    "favorite": false,
+    "playCount": 0,
+    "played": false
+  },
+  "year": 2011,
+  "collections": [],
+  "credits": [
+    {
+      "name": "James S. A. Corey",
+      "personId": "<id5>",
+      "role": "author"
+    },
+    {
+      "name": "Jefferson Mays",
+      "personId": "<id19>",
+      "role": "narrator"
+    }
+  ],
+  "externalIds": [
+    {
+      "id": "B0058ZZZ5A",
+      "kind": "book",
+      "provider": "audible"
+    }
+  ],
+  "extras": [],
+  "genres": [],
+  "lockedFields": [
+    "book.asin",
+    "book.authors",
+    "book.narrators",
+    "book.publisher",
+    "book.releaseDate",
+    "book.series",
+    "book.subtitle"
+  ],
+  "remembersTracks": false,
+  "sortTitle": "Leviathan Wakes",
+  "studios": [],
+  "versions": [
+    {
+      "available": true,
+      "durationMs": 0,
+      "id": "<id21>",
+      "libraryId": "<id4>",
+      "parts": [
+        {
+          "durationMs": 0,
+          "fileId": "<id22>",
+          "name": "a.m4b",
+          "sizeBytes": 1073741824
+        }
+      ],
+      "sizeBytes": 1073741824,
+      "tracks": [],
+      "workIds": [
+        "<id18>"
+      ]
+    }
+  ]
+}
+
+
+PATCH /api/v1/works
+200
+{
+  "items": [
+    {
+      "addedAt": "<time>",
+      "available": true,
+      "book": {
+        "authors": [
+          {
+            "id": "<id5>",
+            "name": "James S. A. Corey"
+          }
+        ],
+        "narrators": [
+          {
+            "id": "<id19>",
+            "name": "Jefferson Mays"
+          }
+        ],
+        "series": [
+          {
+            "id": "<id20>",
+            "name": "The Expanse",
+            "position": "1",
+            "primary": true
+          }
+        ]
+      },
+      "id": "<id18>",
+      "images": {},
+      "kind": "book",
+      "libraryId": "<id4>",
+      "matchState": "matched",
+      "title": "Leviathan Wakes",
+      "userState": {
+        "favorite": false,
+        "playCount": 0,
+        "played": false
+      },
+      "year": 2011
+    }
+  ]
+}
+
+
+PATCH /api/v1/works
+400
+{
+  "code": "invalidRequest",
+  "detail": "only books are edited together",
+  "errors": [
+    {
+      "code": "notABook",
+      "field": "/workIds"
+    }
+  ],
+  "requestId": "<request>",
+  "status": 400,
+  "title": "Bad Request",
+  "type": "about:blank"
+}
+
+
+PATCH /api/v1/works/<id2>/user-state
+200
+{
+  "favorite": true,
+  "playCount": 0,
+  "played": false
+}
+
+
+PATCH /api/v1/works/<id2>/user-state
+400
+{
+  "code": "invalidRequest",
+  "detail": "an offline position needs positionMs, playedAt and versionId",
+  "errors": [
+    {
+      "code": "required",
+      "field": "/playedAt"
+    },
+    {
+      "code": "required",
+      "field": "/versionId"
+    }
+  ],
+  "requestId": "<request>",
+  "status": 400,
+  "title": "Bad Request",
+  "type": "about:blank"
+}
+
+
+PATCH /api/v1/works/<id2>/user-state
+400
+{
+  "code": "invalidRequest",
+  "detail": "positionMs is negative",
+  "errors": [
+    {
+      "code": "outOfRange",
+      "field": "/positionMs"
+    }
+  ],
+  "requestId": "<request>",
+  "status": 400,
+  "title": "Bad Request",
+  "type": "about:blank"
+}
+
+
+PATCH /api/v1/works/<id2>/user-state
+404
+{
+  "code": "notFound",
+  "detail": "not found",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+GET /api/v1/works/<id2>/matches?provider=audible
+400
+{
+  "code": "invalidRequest",
+  "detail": "the provider is tmdb",
+  "errors": [
+    {
+      "code": "invalid",
+      "field": "provider"
+    }
+  ],
+  "requestId": "<request>",
+  "status": 400,
+  "title": "Bad Request",
+  "type": "about:blank"
+}
+
+
+GET /api/v1/works/<id15>/matches?provider=tmdb&query=tmdb-0
+503
+{
+  "code": "providerUnavailable",
+  "detail": "provider unavailable",
+  "requestId": "<request>",
+  "status": 503,
+  "title": "Service Unavailable",
+  "type": "about:blank"
+}
+
+
+GET /api/v1/works/<id18>/matches?provider=tmdb
+400
+{
+  "code": "invalidRequest",
+  "detail": "the provider is audible",
+  "errors": [
+    {
+      "code": "invalid",
+      "field": "provider"
+    }
+  ],
+  "requestId": "<request>",
+  "status": 400,
+  "title": "Bad Request",
+  "type": "about:blank"
+}
+
+
+GET /api/v1/works/<id18>/matches?query=B0058ZZZ5A
+503
+{
+  "code": "providerUnavailable",
+  "detail": "provider unavailable",
+  "requestId": "<request>",
+  "status": 503,
+  "title": "Service Unavailable",
+  "type": "about:blank"
+}
+
+
+GET /api/v1/works/<id23>/matches
+404
+{
+  "code": "notFound",
+  "detail": "not found",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+POST /api/v1/works/<id2>/match
+400
+{
+  "code": "invalidRequest",
+  "detail": "unknown match",
+  "errors": [
+    {
+      "code": "invalid",
+      "field": "/matchId"
+    }
+  ],
+  "requestId": "<request>",
+  "status": 400,
+  "title": "Bad Request",
+  "type": "about:blank"
+}
+
+
+POST /api/v1/works/<id2>/match
+503
+{
+  "code": "providerUnavailable",
+  "detail": "provider unavailable",
+  "requestId": "<request>",
+  "status": 503,
+  "title": "Service Unavailable",
+  "type": "about:blank"
+}
+
+
+POST /api/v1/works/<id18>/match
+400
+{
+  "code": "invalidRequest",
+  "detail": "a book matches an Audible book",
+  "errors": [
+    {
+      "code": "invalid",
+      "field": "/matchId"
+    }
+  ],
+  "requestId": "<request>",
+  "status": 400,
+  "title": "Bad Request",
+  "type": "about:blank"
+}
+
+
+POST /api/v1/works/<id18>/match
+200
+{
+  "addedAt": "<time>",
+  "available": true,
+  "book": {
+    "authors": [
+      {
+        "id": "<id5>",
+        "name": "James S. A. Corey"
+      }
+    ],
+    "narrators": [
+      {
+        "id": "<id19>",
+        "name": "Jefferson Mays"
+      }
+    ],
+    "releaseDate": "2011-06-02",
+    "series": [
+      {
+        "id": "<id20>",
+        "name": "The Expanse",
+        "position": "1",
+        "primary": true
+      }
+    ],
+    "subtitle": "Expanse 1"
+  },
+  "id": "<id18>",
+  "images": {},
+  "kind": "book",
+  "libraryId": "<id4>",
+  "matchState": "matched",
+  "title": "Leviathan Wakes",
+  "userState": {
+    "favorite": false,
+    "playCount": 0,
+    "played": false
+  },
+  "year": 2011,
+  "collections": [],
+  "credits": [
+    {
+      "name": "James S. A. Corey",
+      "personId": "<id5>",
+      "role": "author"
+    },
+    {
+      "name": "Jefferson Mays",
+      "personId": "<id19>",
+      "role": "narrator"
+    }
+  ],
+  "externalIds": [
+    {
+      "id": "B0058ZZZ5A",
+      "kind": "book",
+      "provider": "audible"
+    }
+  ],
+  "extras": [],
+  "genres": [
+    "Science Fiction"
+  ],
+  "lockedFields": [
+    "book.asin",
+    "book.authors",
+    "book.narrators",
+    "book.publisher",
+    "book.releaseDate",
+    "book.series",
+    "book.subtitle",
+    "genres"
+  ],
+  "remembersTracks": false,
+  "sortTitle": "Leviathan Wakes",
+  "studios": [],
+  "versions": [
+    {
+      "available": true,
+      "durationMs": 0,
+      "id": "<id21>",
+      "libraryId": "<id4>",
+      "parts": [
+        {
+          "durationMs": 0,
+          "fileId": "<id22>",
+          "name": "a.m4b",
+          "sizeBytes": 1073741824
+        }
+      ],
+      "sizeBytes": 1073741824,
+      "tracks": [],
+      "workIds": [
+        "<id18>"
+      ]
+    }
+  ]
+}
+
+
+POST /api/v1/works/<id24>/match
+404
+{
+  "code": "notFound",
+  "detail": "not found",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+POST /api/v1/works/<id15>/unmatch
+400
+{
+  "code": "invalidRequest",
+  "detail": "invalid",
+  "requestId": "<request>",
+  "status": 400,
+  "title": "Bad Request",
+  "type": "about:blank"
+}
+
+
+POST /api/v1/works/<id25>/unmatch
+404
+{
+  "code": "notFound",
+  "detail": "not found",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+POST /api/v1/works/<id2>/refresh-metadata
+202
+{}
+
+
+POST /api/v1/works/<id26>/refresh-metadata
+404
+{
+  "code": "notFound",
+  "detail": "not found",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+GET /api/v1/content-ratings
+200
+{
+  "items": [
+    {
+      "age": 0,
+      "name": "G"
+    },
+    {
+      "age": 10,
+      "name": "PG"
+    },
+    {
+      "age": 13,
+      "name": "PG-13"
+    },
+    {
+      "age": 17,
+      "name": "R"
+    },
+    {
+      "age": 18,
+      "name": "NC-17"
+    },
+    {
+      "age": 0,
+      "name": "TV-Y"
+    },
+    {
+      "age": 7,
+      "name": "TV-Y7"
+    },
+    {
+      "age": 0,
+      "name": "TV-G"
+    },
+    {
+      "age": 10,
+      "name": "TV-PG"
+    },
+    {
+      "age": 14,
+      "name": "TV-14"
+    },
+    {
+      "age": 17,
+      "name": "TV-MA"
+    }
+  ]
+}
+
+
+GET /api/v1/content-ratings?workId=<id2>
+200
+{
+  "items": [
+    {
+      "age": 0,
+      "name": "G"
+    },
+    {
+      "age": 10,
+      "name": "PG"
+    },
+    {
+      "age": 13,
+      "name": "PG-13"
+    },
+    {
+      "age": 17,
+      "name": "R"
+    },
+    {
+      "age": 18,
+      "name": "NC-17"
+    },
+    {
+      "age": 0,
+      "name": "TV-Y"
+    },
+    {
+      "age": 7,
+      "name": "TV-Y7"
+    },
+    {
+      "age": 0,
+      "name": "TV-G"
+    },
+    {
+      "age": 10,
+      "name": "TV-PG"
+    },
+    {
+      "age": 14,
+      "name": "TV-14"
+    },
+    {
+      "age": 17,
+      "name": "TV-MA"
+    }
+  ]
+}
+
+
+GET /api/v1/content-ratings?workId=<id2>
+404
+{
+  "code": "notFound",
+  "detail": "not found",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+GET /api/v1/works/<id2>/artwork
+200
+{
+  "items": []
+}
+
+
+GET /api/v1/works/<id2>/artwork?limit=1&after=bogus
+200
+{
+  "items": []
+}
+
+
+GET /api/v1/works/<id27>/artwork
+404
+{
+  "code": "notFound",
+  "detail": "not found",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+POST /api/v1/works/<id28>/artwork/<id29>/select
+404
+{
+  "code": "notFound",
+  "detail": "not found",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+GET /api/v1/libraries
+200
+{
+  "items": [
+    {
+      "folders": [
+        {
+          "id": "<id30>",
+          "path": "<tmp>",
+          "reachable": true
+        }
+      ],
+      "id": "<id1>",
+      "kind": "movies",
+      "markers": "never",
+      "name": "Seeded Films",
+      "pinned": true,
+      "previews": "nightly",
+      "refreshDays": 0,
+      "scan": {
+        "libraryId": "<id1>",
+        "state": "scanning"
+      },
+      "subtitles": "nightlyAndAdded",
+      "unmatchedCount": 0,
+      "useLocalMetadata": false,
+      "workCount": 2
+    },
+    {
+      "folders": [
+        {
+          "id": "<id31>",
+          "path": "/media/audiobooks3",
+          "reachable": true
+        }
+      ],
+      "id": "<id4>",
+      "kind": "audiobooks",
+      "markers": "never",
+      "name": "audiobooks 3",
+      "pinned": true,
+      "previews": "never",
+      "refreshDays": 0,
+      "scan": {
+        "libraryId": "<id4>",
+        "state": "idle"
+      },
+      "subtitles": "never",
+      "unmatchedCount": 0,
+      "useLocalMetadata": false,
+      "workCount": 1
+    }
+  ]
+}
+
+
+GET /api/v1/libraries
+200
+{
+  "items": [
+    {
+      "id": "<id1>",
+      "kind": "movies",
+      "name": "Seeded Films",
+      "pinned": true,
+      "workCount": 2
+    },
+    {
+      "id": "<id4>",
+      "kind": "audiobooks",
+      "name": "audiobooks 3",
+      "pinned": true,
+      "workCount": 1
+    }
+  ]
+}
+
+
+GET /api/v1/libraries
+200
+{
+  "items": []
+}
+
+
+GET /api/v1/libraries?limit=1&after=bogus
+200
+{
+  "items": [
+    {
+      "folders": [
+        {
+          "id": "<id30>",
+          "path": "<tmp>",
+          "reachable": true
+        }
+      ],
+      "id": "<id1>",
+      "kind": "movies",
+      "markers": "never",
+      "name": "Seeded Films",
+      "pinned": true,
+      "previews": "nightly",
+      "refreshDays": 0,
+      "scan": {
+        "libraryId": "<id1>",
+        "state": "scanning"
+      },
+      "subtitles": "nightlyAndAdded",
+      "unmatchedCount": 0,
+      "useLocalMetadata": false,
+      "workCount": 2
+    },
+    {
+      "folders": [
+        {
+          "id": "<id31>",
+          "path": "/media/audiobooks3",
+          "reachable": true
+        }
+      ],
+      "id": "<id4>",
+      "kind": "audiobooks",
+      "markers": "never",
+      "name": "audiobooks 3",
+      "pinned": true,
+      "previews": "never",
+      "refreshDays": 0,
+      "scan": {
+        "libraryId": "<id4>",
+        "state": "idle"
+      },
+      "subtitles": "never",
+      "unmatchedCount": 0,
+      "useLocalMetadata": false,
+      "workCount": 1
+    }
+  ]
+}
+
+
+GET /api/v1/libraries/<id1>
+200
+{
+  "folders": [
+    {
+      "id": "<id30>",
+      "path": "<tmp>",
+      "reachable": true
+    }
+  ],
+  "id": "<id1>",
+  "kind": "movies",
+  "markers": "never",
+  "name": "Seeded Films",
+  "pinned": true,
+  "previews": "nightly",
+  "refreshDays": 0,
+  "scan": {
+    "libraryId": "<id1>",
+    "state": "scanning"
+  },
+  "subtitles": "nightlyAndAdded",
+  "unmatchedCount": 0,
+  "useLocalMetadata": false,
+  "workCount": 2
+}
+
+
+GET /api/v1/libraries/<id1>
+404
+{
+  "code": "notFound",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+GET /api/v1/libraries/<id1>/facets
+200
+{
+  "collections": false,
+  "contentRatings": [],
+  "dynamicRanges": [],
+  "genres": [
+    "Crime"
+  ],
+  "narrators": [],
+  "resolutions": [
+    "1080p"
+  ],
+  "years": [
+    1996
+  ]
+}
+
+
+POST /api/v1/libraries
+201
+{
+  "folders": [
+    {
+      "id": "<id32>",
+      "path": "<tmp>",
+      "reachable": true
+    }
+  ],
+  "id": "<id33>",
+  "kind": "shows",
+  "markers": "nightlyAndAdded",
+  "name": "Shows",
+  "pinned": true,
+  "previews": "never",
+  "refreshDays": 30,
+  "scan": {
+    "libraryId": "<id33>",
+    "state": "scanning"
+  },
+  "subtitles": "nightlyAndAdded",
+  "unmatchedCount": 0,
+  "useLocalMetadata": true,
+  "workCount": 0
+}
+
+
+PATCH /api/v1/libraries/<id33>
+200
+{
+  "folders": [
+    {
+      "id": "<id32>",
+      "path": "<tmp>",
+      "reachable": true
+    }
+  ],
+  "id": "<id33>",
+  "kind": "shows",
+  "markers": "nightlyAndAdded",
+  "name": "TV",
+  "pinned": true,
+  "previews": "never",
+  "refreshDays": 30,
+  "scan": {
+    "libraryId": "<id33>",
+    "state": "scanning"
+  },
+  "subtitles": "nightlyAndAdded",
+  "unmatchedCount": 0,
+  "useLocalMetadata": false,
+  "workCount": 0
+}
+
+
+POST /api/v1/libraries/<id33>/scan
+202
+{}
+
+
+POST /api/v1/libraries/<id33>/scan
+202
+{}
+
+
+GET /api/v1/libraries/<id33>
+200
+{
+  "folders": [
+    {
+      "id": "<id32>",
+      "path": "<tmp>",
+      "reachable": true
+    }
+  ],
+  "id": "<id33>",
+  "kind": "shows",
+  "markers": "nightlyAndAdded",
+  "name": "TV",
+  "pinned": true,
+  "previews": "never",
+  "refreshDays": 30,
+  "scan": {
+    "libraryId": "<id33>",
+    "state": "scanning"
+  },
+  "subtitles": "nightlyAndAdded",
+  "unmatchedCount": 0,
+  "useLocalMetadata": false,
+  "workCount": 0
+}
+
+
+POST /api/v1/libraries/<id33>/stop-scan
+204
+
+
+POST /api/v1/libraries/<id33>/refresh-metadata
+202
+{
+  "queued": 0
+}
+
+
+POST /api/v1/libraries/<id34>/refresh-metadata
+404
+{
+  "code": "notFound",
+  "detail": "not found",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+POST /api/v1/libraries/<id35>/scan
+404
+{
+  "code": "notFound",
+  "detail": "not found",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+POST /api/v1/libraries/<id36>/stop-scan
+404
+{
+  "code": "notFound",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+DELETE /api/v1/libraries/<id33>
+202
+{}
+
+
+DELETE /api/v1/libraries/<id37>
+404
+{
+  "code": "notFound",
+  "detail": "not found",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+GET /api/v1/tasks
+200
+{
+  "items": [
+    {
+      "failedCount": 0,
+      "id": "scan-libraries",
+      "nextRunAt": "<time>",
+      "nightly": false,
+      "pendingCount": 0,
+      "progress": {
+        "done": 0,
+        "total": 0
+      },
+      "running": true,
+      "section": "library",
+      "stoppable": true
+    },
+    {
+      "id": "prune-gone-files",
+      "nextRunAt": "<time>",
+      "nightly": true,
+      "pendingCount": 0,
+      "running": false,
+      "section": "library",
+      "stoppable": false
+    },
+    {
+      "failedCount": 0,
+      "id": "refresh-metadata",
+      "nightly": true,
+      "pendingCount": 5,
+      "progress": {
+        "done": 0,
+        "total": 0
+      },
+      "running": true,
+      "section": "library",
+      "stoppable": true
+    },
+    {
+      "id": "prune-provider-cache",
+      "nextRunAt": "<time>",
+      "nightly": true,
+      "pendingCount": 0,
+      "running": false,
+      "section": "maintenance",
+      "stoppable": false
+    },
+    {
+      "failedCount": 0,
+      "id": "make-previews",
+      "nextRunAt": "<time>",
+      "nightly": true,
+      "pendingCount": 1,
+      "running": false,
+      "section": "library",
+      "stoppable": false
+    },
+    {
+      "id": "prune-previews",
+      "nextRunAt": "<time>",
+      "nightly": true,
+      "pendingCount": 0,
+      "running": false,
+      "section": "maintenance",
+      "stoppable": false
+    },
+    {
+      "failedCount": 0,
+      "id": "find-markers",
+      "nightly": true,
+      "pendingCount": 0,
+      "running": false,
+      "section": "library",
+      "stoppable": false
+    },
+    {
+      "id": "prune-markers",
+      "nextRunAt": "<time>",
+      "nightly": true,
+      "pendingCount": 0,
+      "running": false,
+      "section": "maintenance",
+      "stoppable": false
+    },
+    {
+      "failedCount": 0,
+      "id": "extract-subtitles",
+      "nextRunAt": "<time>",
+      "nightly": true,
+      "pendingCount": 0,
+      "running": false,
+      "section": "library",
+      "stoppable": false
+    },
+    {
+      "id": "prune-subtitles",
+      "nextRunAt": "<time>",
+      "nightly": true,
+      "pendingCount": 0,
+      "running": false,
+      "section": "maintenance",
+      "stoppable": false
+    },
+    {
+      "id": "prepare-downloads",
+      "nightly": false,
+      "pendingCount": 0,
+      "running": false,
+      "section": "activity",
+      "stoppable": false
+    },
+    {
+      "id": "prune-downloads",
+      "nextRunAt": "<time>",
+      "nightly": true,
+      "pendingCount": 0,
+      "running": false,
+      "section": "maintenance",
+      "stoppable": false
+    },
+    {
+      "id": "library-changes",
+      "nightly": false,
+      "pendingCount": 0,
+      "progress": {
+        "done": 0,
+        "total": 0
+      },
+      "running": true,
+      "section": "activity",
+      "stoppable": false
+    }
+  ]
+}
+
+
+POST /api/v1/tasks/make-previews/run
+204
+
+
+POST /api/v1/tasks/make-previews/stop
+204
+
+
+POST /api/v1/tasks/prepare-downloads/stop
+409
+{
+  "code": "notStoppable",
+  "detail": "this task's work isn't stopped midway",
+  "requestId": "<request>",
+  "status": 409,
+  "title": "Conflict",
+  "type": "about:blank"
+}
+
+
+POST /api/v1/tasks/library-changes/run
+404
+{
+  "code": "notFound",
+  "detail": "task not found",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+POST /api/v1/tasks/nope/run
+404
+{
+  "code": "notFound",
+  "detail": "task not found",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+GET /api/v1/tasks/refresh-metadata/failures
+200
+{
+  "items": []
+}
+
+
+GET /api/v1/tasks/prune-previews/failures
+404
+{
+  "code": "notFound",
+  "detail": "task not found",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+POST /api/v1/tasks/refresh-metadata/retry
+204
+
+
+POST /api/v1/tasks/refresh-metadata/retry?item=bogus
+204
+
+
+GET /api/v1/directories?path=<tmp>
+200
+{
+  "items": [
+    {
+      "name": "a",
+      "path": "<tmp>/a"
+    },
+    {
+      "name": "b",
+      "path": "<tmp>/b"
+    }
+  ]
+}
+
+
+GET /api/v1/directories?path=relative
+400
+{
+  "code": "invalidRequest",
+  "detail": "path must be absolute",
+  "errors": [
+    {
+      "code": "invalid",
+      "field": "path"
+    }
+  ],
+  "requestId": "<request>",
+  "status": 400,
+  "title": "Bad Request",
+  "type": "about:blank"
+}
+
+
+GET /api/v1/directories?path=<tmp>/nope
+404
+{
+  "code": "notFound",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+POST /api/v1/plays
+201
+{
+  "bitrateBps": 8000000,
+  "chapters": [
+    {
+      "endMs": 180000,
+      "startMs": 0,
+      "title": "Opening Credits"
+    },
+    {
+      "endMs": 6600000,
+      "startMs": 180000,
+      "title": "Film"
+    },
+    {
+      "endMs": 7200000,
+      "startMs": 6600000,
+      "title": "End Credits"
+    }
+  ],
+  "delivery": "file",
+  "dialogueBoost": {
+    "cost": "videoTranscode",
+    "enabled": false
+  },
+  "durationMs": 7200000,
+  "id": "<id38>",
+  "local": false,
+  "markers": [
+    {
+      "endMs": 7200000,
+      "final": true,
+      "kind": "credits",
+      "source": "chapter",
+      "startMs": 6600000
+    }
+  ],
+  "parts": [
+    {
+      "durationMs": 7200000,
+      "url": "plays/<id38>/files/0"
+    }
+  ],
+  "previews": {
+    "ready": false
+  },
+  "startMs": 5000,
+  "tracks": [
+    {
+      "codec": "h264",
+      "delivery": "file",
+      "index": 0,
+      "selected": true,
+      "trackId": "<id13>",
+      "type": "video"
+    },
+    {
+      "codec": "aac",
+      "delivery": "file",
+      "index": 1,
+      "selected": true,
+      "trackId": "<id10>",
+      "type": "audio"
+    },
+    {
+      "delivery": "none",
+      "selected": true,
+      "trackId": "off",
+      "type": "subtitle"
+    }
+  ],
+  "url": "plays/<id38>/files/0",
+  "versionId": "<id11>",
+  "workId": "<id2>"
+}
+
+
+POST /api/v1/plays
+400
+{
+  "code": "invalidRequest",
+  "detail": "subtitleTrackId: a track ID or off",
+  "errors": [
+    {
+      "code": "invalid",
+      "field": "/subtitleTrackId"
+    }
+  ],
+  "requestId": "<request>",
+  "status": 400,
+  "title": "Bad Request",
+  "type": "about:blank"
+}
+
+
+POST /api/v1/plays
+201
+{
+  "bitrateBps": 8000000,
+  "chapters": [
+    {
+      "endMs": 180000,
+      "startMs": 0,
+      "title": "Opening Credits"
+    },
+    {
+      "endMs": 6600000,
+      "startMs": 180000,
+      "title": "Film"
+    },
+    {
+      "endMs": 7200000,
+      "startMs": 6600000,
+      "title": "End Credits"
+    }
+  ],
+  "delivery": "file",
+  "dialogueBoost": {
+    "cost": "videoTranscode",
+    "enabled": false
+  },
+  "durationMs": 7200000,
+  "id": "<id39>",
+  "local": false,
+  "markers": [
+    {
+      "endMs": 7200000,
+      "final": true,
+      "kind": "credits",
+      "source": "chapter",
+      "startMs": 6600000
+    }
+  ],
+  "parts": [
+    {
+      "durationMs": 7200000,
+      "url": "plays/<id39>/files/0"
+    }
+  ],
+  "previews": {
+    "ready": false
+  },
+  "startMs": 0,
+  "tracks": [
+    {
+      "codec": "h264",
+      "delivery": "file",
+      "index": 0,
+      "selected": true,
+      "trackId": "<id13>",
+      "type": "video"
+    },
+    {
+      "codec": "aac",
+      "delivery": "file",
+      "index": 1,
+      "selected": true,
+      "trackId": "<id10>",
+      "type": "audio"
+    },
+    {
+      "delivery": "none",
+      "selected": true,
+      "trackId": "off",
+      "type": "subtitle"
+    }
+  ],
+  "url": "plays/<id39>/files/0",
+  "versionId": "<id11>",
+  "workId": "<id2>"
+}
+
+
+POST /api/v1/plays
+404
+{
+  "code": "notFound",
+  "detail": "not found",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+PATCH /api/v1/plays/<id38>
+204
+
+
+PATCH /api/v1/plays/<id38>
+400
+{
+  "code": "invalidRequest",
+  "detail": "subtitleTrackId: a track ID or off",
+  "errors": [
+    {
+      "code": "invalid",
+      "field": "/subtitleTrackId"
+    }
+  ],
+  "requestId": "<request>",
+  "status": 400,
+  "title": "Bad Request",
+  "type": "about:blank"
+}
+
+
+PATCH /api/v1/plays/<id38>
+404
+{
+  "code": "notFound",
+  "detail": "no such play",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+GET /api/v1/plays
+200
+{
+  "items": [
+    {
+      "address": "192.0.2.1",
+      "bandwidthBps": 9000000,
+      "bitrateBps": 8000000,
+      "clientName": "test",
+      "delivery": "file",
+      "durationMs": 7200000,
+      "id": "<id38>",
+      "local": false,
+      "positionMs": 60000,
+      "seekToFirstFrameMs": [
+        250
+      ],
+      "sourceTracks": [
+        {
+          "codec": "h264",
+          "default": false,
+          "id": "<id13>",
+          "type": "video",
+          "video": {
+            "height": 1080,
+            "profile": "High",
+            "resolution": "1080p",
+            "width": 1920
+          }
+        },
+        {
+          "audio": {
+            "channels": 2
+          },
+          "codec": "aac",
+          "default": true,
+          "id": "<id10>",
+          "type": "audio"
+        }
+      ],
+      "startedAt": "<time>",
+      "state": "paused",
+      "title": "Heat",
+      "tracks": [
+        {
+          "codec": "h264",
+          "delivery": "file",
+          "index": 0,
+          "selected": true,
+          "trackId": "<id13>",
+          "type": "video"
+        },
+        {
+          "codec": "aac",
+          "delivery": "file",
+          "index": 1,
+          "selected": true,
+          "trackId": "<id10>",
+          "type": "audio"
+        },
+        {
+          "delivery": "none",
+          "selected": true,
+          "trackId": "off",
+          "type": "subtitle"
+        }
+      ],
+      "userId": "<id40>",
+      "username": "friend",
+      "versionId": "<id11>",
+      "work": {
+        "addedAt": "<time>",
+        "available": true,
+        "durationMs": 7200000,
+        "id": "<id2>",
+        "images": {},
+        "kind": "movie",
+        "libraryId": "<id1>",
+        "matchState": "matched",
+        "title": "Heat",
+        "userState": {
+          "favorite": true,
+          "playCount": 0,
+          "played": false
+        },
+        "year": 1996
+      },
+      "workId": "<id2>"
+    },
+    {
+      "address": "192.0.2.1",
+      "bitrateBps": 8000000,
+      "clientName": "Test",
+      "delivery": "file",
+      "durationMs": 7200000,
+      "id": "<id39>",
+      "local": false,
+      "positionMs": 0,
+      "sourceTracks": [
+        {
+          "codec": "h264",
+          "default": false,
+          "id": "<id13>",
+          "type": "video",
+          "video": {
+            "height": 1080,
+            "profile": "High",
+            "resolution": "1080p",
+            "width": 1920
+          }
+        },
+        {
+          "audio": {
+            "channels": 2
+          },
+          "codec": "aac",
+          "default": true,
+          "id": "<id10>",
+          "type": "audio"
+        }
+      ],
+      "startedAt": "<time>",
+      "state": "playing",
+      "title": "Heat",
+      "tracks": [
+        {
+          "codec": "h264",
+          "delivery": "file",
+          "index": 0,
+          "selected": true,
+          "trackId": "<id13>",
+          "type": "video"
+        },
+        {
+          "codec": "aac",
+          "delivery": "file",
+          "index": 1,
+          "selected": true,
+          "trackId": "<id10>",
+          "type": "audio"
+        },
+        {
+          "delivery": "none",
+          "selected": true,
+          "trackId": "off",
+          "type": "subtitle"
+        }
+      ],
+      "userId": "<id41>",
+      "username": "admin",
+      "versionId": "<id11>",
+      "work": {
+        "addedAt": "<time>",
+        "available": true,
+        "durationMs": 7200000,
+        "id": "<id2>",
+        "images": {},
+        "kind": "movie",
+        "libraryId": "<id1>",
+        "matchState": "matched",
+        "title": "Heat",
+        "userState": {
+          "favorite": true,
+          "playCount": 0,
+          "played": false
+        },
+        "year": 1996
+      },
+      "workId": "<id2>"
+    }
+  ]
+}
+
+
+GET /api/v1/plays/<id38>
+200
+{
+  "address": "192.0.2.1",
+  "bandwidthBps": 9000000,
+  "bitrateBps": 8000000,
+  "clientName": "test",
+  "delivery": "file",
+  "durationMs": 7200000,
+  "id": "<id38>",
+  "local": false,
+  "positionMs": 60000,
+  "seekToFirstFrameMs": [
+    250
+  ],
+  "sourceTracks": [
+    {
+      "codec": "h264",
+      "default": false,
+      "id": "<id13>",
+      "type": "video",
+      "video": {
+        "height": 1080,
+        "profile": "High",
+        "resolution": "1080p",
+        "width": 1920
+      }
+    },
+    {
+      "audio": {
+        "channels": 2
+      },
+      "codec": "aac",
+      "default": true,
+      "id": "<id10>",
+      "type": "audio"
+    }
+  ],
+  "startedAt": "<time>",
+  "state": "paused",
+  "title": "Heat",
+  "tracks": [
+    {
+      "codec": "h264",
+      "delivery": "file",
+      "index": 0,
+      "selected": true,
+      "trackId": "<id13>",
+      "type": "video"
+    },
+    {
+      "codec": "aac",
+      "delivery": "file",
+      "index": 1,
+      "selected": true,
+      "trackId": "<id10>",
+      "type": "audio"
+    },
+    {
+      "delivery": "none",
+      "selected": true,
+      "trackId": "off",
+      "type": "subtitle"
+    }
+  ],
+  "userId": "<id40>",
+  "username": "friend",
+  "versionId": "<id11>",
+  "work": {
+    "addedAt": "<time>",
+    "available": true,
+    "durationMs": 7200000,
+    "id": "<id2>",
+    "images": {},
+    "kind": "movie",
+    "libraryId": "<id1>",
+    "matchState": "matched",
+    "title": "Heat",
+    "userState": {
+      "favorite": true,
+      "playCount": 0,
+      "played": false
+    },
+    "year": 1996
+  },
+  "workId": "<id2>"
+}
+
+
+GET /api/v1/plays/<id38>
+403
+{
+  "code": "forbidden",
+  "requestId": "<request>",
+  "status": 403,
+  "title": "Forbidden",
+  "type": "about:blank"
+}
+
+
+GET /api/v1/plays/<id42>
+404
+{
+  "code": "notFound",
+  "detail": "no such play",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+POST /api/v1/plays/<id38>/stop
+400
+{
+  "code": "invalidRequest",
+  "detail": "message: at most 500 characters",
+  "errors": [
+    {
+      "code": "tooLarge",
+      "field": "/message"
+    }
+  ],
+  "requestId": "<request>",
+  "status": 400,
+  "title": "Bad Request",
+  "type": "about:blank"
+}
+
+
+POST /api/v1/plays/<id38>/stop
+404
+{
+  "code": "notFound",
+  "detail": "no such play",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+POST /api/v1/plays/<id38>/fallback
+409
+{
+  "code": "notPlayable",
+  "detail": "not playable on this client",
+  "reason": "transcodeFailed",
+  "requestId": "<request>",
+  "status": 409,
+  "title": "Conflict",
+  "type": "about:blank"
+}
+
+
+GET /api/v1/plays
+200
+{
+  "items": [
+    {
+      "address": "192.0.2.1",
+      "bitrateBps": 8000000,
+      "clientName": "Test",
+      "delivery": "file",
+      "durationMs": 7200000,
+      "id": "<id39>",
+      "local": false,
+      "positionMs": 0,
+      "sourceTracks": [
+        {
+          "codec": "h264",
+          "default": false,
+          "id": "<id13>",
+          "type": "video",
+          "video": {
+            "height": 1080,
+            "profile": "High",
+            "resolution": "1080p",
+            "width": 1920
+          }
+        },
+        {
+          "audio": {
+            "channels": 2
+          },
+          "codec": "aac",
+          "default": true,
+          "id": "<id10>",
+          "type": "audio"
+        }
+      ],
+      "startedAt": "<time>",
+      "state": "playing",
+      "title": "Heat",
+      "tracks": [
+        {
+          "codec": "h264",
+          "delivery": "file",
+          "index": 0,
+          "selected": true,
+          "trackId": "<id13>",
+          "type": "video"
+        },
+        {
+          "codec": "aac",
+          "delivery": "file",
+          "index": 1,
+          "selected": true,
+          "trackId": "<id10>",
+          "type": "audio"
+        },
+        {
+          "delivery": "none",
+          "selected": true,
+          "trackId": "off",
+          "type": "subtitle"
+        }
+      ],
+      "userId": "<id41>",
+      "username": "admin",
+      "versionId": "<id11>",
+      "work": {
+        "addedAt": "<time>",
+        "available": true,
+        "durationMs": 7200000,
+        "id": "<id2>",
+        "images": {},
+        "kind": "movie",
+        "libraryId": "<id1>",
+        "matchState": "matched",
+        "title": "Heat",
+        "userState": {
+          "favorite": true,
+          "playCount": 0,
+          "played": false
+        },
+        "year": 1996
+      },
+      "workId": "<id2>"
+    }
+  ]
+}
+
+
+POST /api/v1/plays/<id39>/stop
+204
+
+
+POST /api/v1/plays/<id38>/stop
+404
+{
+  "code": "notFound",
+  "detail": "no such play",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+POST /api/v1/plays
+201
+{
+  "bitrateBps": 8000000,
+  "chapters": [
+    {
+      "endMs": 180000,
+      "startMs": 0,
+      "title": "Opening Credits"
+    },
+    {
+      "endMs": 6600000,
+      "startMs": 180000,
+      "title": "Film"
+    },
+    {
+      "endMs": 7200000,
+      "startMs": 6600000,
+      "title": "End Credits"
+    }
+  ],
+  "delivery": "file",
+  "dialogueBoost": {
+    "cost": "videoTranscode",
+    "enabled": false
+  },
+  "durationMs": 7200000,
+  "id": "<id43>",
+  "local": false,
+  "markers": [
+    {
+      "endMs": 7200000,
+      "final": true,
+      "kind": "credits",
+      "source": "chapter",
+      "startMs": 6600000
+    }
+  ],
+  "parts": [
+    {
+      "durationMs": 7200000,
+      "url": "plays/<id43>/files/0"
+    }
+  ],
+  "previews": {
+    "ready": false
+  },
+  "startMs": 0,
+  "tracks": [
+    {
+      "codec": "h264",
+      "delivery": "file",
+      "index": 0,
+      "selected": true,
+      "trackId": "<id13>",
+      "type": "video"
+    },
+    {
+      "codec": "aac",
+      "delivery": "file",
+      "index": 1,
+      "selected": true,
+      "trackId": "<id10>",
+      "type": "audio"
+    },
+    {
+      "delivery": "none",
+      "selected": true,
+      "trackId": "off",
+      "type": "subtitle"
+    }
+  ],
+  "url": "plays/<id43>/files/0",
+  "versionId": "<id11>",
+  "workId": "<id2>"
+}
+
+
+POST /api/v1/plays/<id43>/stop
+204
+
+
+GET /api/v1/home
+200
+{
+  "rows": [
+    {
+      "id": "continueWatching",
+      "items": [
+        {
+          "addedAt": "<time>",
+          "available": true,
+          "durationMs": 7200000,
+          "id": "<id2>",
+          "images": {},
+          "kind": "movie",
+          "libraryId": "<id1>",
+          "matchState": "matched",
+          "title": "Heat",
+          "userState": {
+            "favorite": true,
+            "lastPlayedAt": "<time>",
+            "playCount": 0,
+            "played": false,
+            "positionMs": 600000,
+            "versionId": "<id11>"
+          },
+          "year": 1996
+        }
+      ],
+      "kind": "continueWatching"
+    },
+    {
+      "id": "favorites",
+      "items": [
+        {
+          "addedAt": "<time>",
+          "available": true,
+          "durationMs": 7200000,
+          "id": "<id2>",
+          "images": {},
+          "kind": "movie",
+          "libraryId": "<id1>",
+          "matchState": "matched",
+          "title": "Heat",
+          "userState": {
+            "favorite": true,
+            "lastPlayedAt": "<time>",
+            "playCount": 0,
+            "played": false,
+            "positionMs": 600000,
+            "versionId": "<id11>"
+          },
+          "year": 1996
+        }
+      ],
+      "kind": "favorites"
+    },
+    {
+      "id": "recentlyAdded:<id1>",
+      "items": [
+        {
+          "addedAt": "<time>",
+          "available": true,
+          "episode": {
+            "airDate": "2001-02-03",
+            "number": 1,
+            "seasonId": "<id7>",
+            "seasonNumber": 1,
+            "seriesId": "<id3>",
+            "seriesTitle": "Seeded Series"
+          },
+          "id": "<id15>",
+          "images": {},
+          "kind": "episode",
+          "libraryId": "<id1>",
+          "matchState": "matched",
+          "title": "Episode 1",
+          "userState": {
+            "favorite": false,
+            "playCount": 0,
+            "played": false
+          }
+        },
+        {
+          "addedAt": "<time>",
+          "available": true,
+          "durationMs": 7200000,
+          "id": "<id2>",
+          "images": {},
+          "kind": "movie",
+          "libraryId": "<id1>",
+          "matchState": "matched",
+          "title": "Heat",
+          "userState": {
+            "favorite": true,
+            "lastPlayedAt": "<time>",
+            "playCount": 0,
+            "played": false,
+            "positionMs": 600000,
+            "versionId": "<id11>"
+          },
+          "year": 1996
+        }
+      ],
+      "kind": "recentlyAdded",
+      "library": {
+        "id": "<id1>",
+        "kind": "movies",
+        "name": "Seeded Films"
+      }
+    },
+    {
+      "id": "recentlyAdded:<id4>",
+      "items": [
+        {
+          "addedAt": "<time>",
+          "available": true,
+          "book": {
+            "authors": [
+              {
+                "id": "<id5>",
+                "name": "James S. A. Corey"
+              }
+            ],
+            "narrators": [
+              {
+                "id": "<id19>",
+                "name": "Jefferson Mays"
+              }
+            ],
+            "series": [
+              {
+                "id": "<id20>",
+                "name": "The Expanse",
+                "position": "1",
+                "primary": true
+              }
+            ]
+          },
+          "id": "<id18>",
+          "images": {},
+          "kind": "book",
+          "libraryId": "<id4>",
+          "matchState": "matched",
+          "title": "Leviathan Wakes",
+          "userState": {
+            "favorite": false,
+            "playCount": 0,
+            "played": false
+          },
+          "year": 2011
+        }
+      ],
+      "kind": "recentlyAdded",
+      "library": {
+        "id": "<id4>",
+        "kind": "audiobooks",
+        "name": "audiobooks 3"
+      }
+    }
+  ]
+}
+
+
+GET /api/v1/home
+200
+{
+  "rows": [
+    {
+      "id": "recentlyAdded:<id1>",
+      "items": [
+        {
+          "addedAt": "<time>",
+          "available": true,
+          "episode": {
+            "airDate": "2001-02-03",
+            "number": 1,
+            "seasonId": "<id7>",
+            "seasonNumber": 1,
+            "seriesId": "<id3>",
+            "seriesTitle": "Seeded Series"
+          },
+          "id": "<id15>",
+          "images": {},
+          "kind": "episode",
+          "libraryId": "<id1>",
+          "matchState": "matched",
+          "title": "Episode 1",
+          "userState": {
+            "favorite": false,
+            "playCount": 0,
+            "played": false
+          }
+        },
+        {
+          "addedAt": "<time>",
+          "available": true,
+          "durationMs": 7200000,
+          "id": "<id2>",
+          "images": {},
+          "kind": "movie",
+          "libraryId": "<id1>",
+          "matchState": "matched",
+          "title": "Heat",
+          "userState": {
+            "favorite": false,
+            "lastPlayedAt": "<time>",
+            "playCount": 0,
+            "played": false,
+            "versionId": "<id11>"
+          },
+          "year": 1996
+        }
+      ],
+      "kind": "recentlyAdded",
+      "library": {
+        "id": "<id1>",
+        "kind": "movies",
+        "name": "Seeded Films"
+      }
+    },
+    {
+      "id": "recentlyAdded:<id4>",
+      "items": [
+        {
+          "addedAt": "<time>",
+          "available": true,
+          "book": {
+            "authors": [
+              {
+                "id": "<id5>",
+                "name": "James S. A. Corey"
+              }
+            ],
+            "narrators": [
+              {
+                "id": "<id19>",
+                "name": "Jefferson Mays"
+              }
+            ],
+            "series": [
+              {
+                "id": "<id20>",
+                "name": "The Expanse",
+                "position": "1",
+                "primary": true
+              }
+            ]
+          },
+          "id": "<id18>",
+          "images": {},
+          "kind": "book",
+          "libraryId": "<id4>",
+          "matchState": "matched",
+          "title": "Leviathan Wakes",
+          "userState": {
+            "favorite": false,
+            "playCount": 0,
+            "played": false
+          },
+          "year": 2011
+        }
+      ],
+      "kind": "recentlyAdded",
+      "library": {
+        "id": "<id4>",
+        "kind": "audiobooks",
+        "name": "audiobooks 3"
+      }
+    }
+  ]
+}
+
+
+GET /api/v1/home
+200
+{
+  "rows": []
+}
+
+
+GET /api/v1/activity?show=plays&limit=1
+200
+{
+  "items": [
+    {
+      "id": "<id44>",
+      "kind": "playStarted",
+      "occurredAt": "<time>",
+      "play": {
+        "clientName": "Test",
+        "local": false,
+        "userId": "<id41>",
+        "username": "admin",
+        "work": {
+          "kind": "movie",
+          "title": "Heat",
+          "workId": "<id2>"
+        }
+      }
+    }
+  ],
+  "next": "<ms>.<id44>"
+}
+
+
+GET /api/v1/activity?show=plays&limit=1&after=<ms>.<id44>
+200
+{
+  "items": [
+    {
+      "id": "<id45>",
+      "kind": "playStarted",
+      "occurredAt": "<time>",
+      "play": {
+        "clientName": "Test",
+        "local": false,
+        "userId": "<id41>",
+        "username": "admin",
+        "work": {
+          "kind": "movie",
+          "title": "Heat",
+          "workId": "<id2>"
+        }
+      }
+    }
+  ],
+  "next": "<ms>.<id45>"
+}
+
+
+GET /api/v1/activity?show=nope
+200
+{
+  "items": [
+    {
+      "id": "<id44>",
+      "kind": "playStarted",
+      "occurredAt": "<time>",
+      "play": {
+        "clientName": "Test",
+        "local": false,
+        "userId": "<id41>",
+        "username": "admin",
+        "work": {
+          "kind": "movie",
+          "title": "Heat",
+          "workId": "<id2>"
+        }
+      }
+    },
+    {
+      "id": "<id45>",
+      "kind": "playStarted",
+      "occurredAt": "<time>",
+      "play": {
+        "clientName": "Test",
+        "local": false,
+        "userId": "<id41>",
+        "username": "admin",
+        "work": {
+          "kind": "movie",
+          "title": "Heat",
+          "workId": "<id2>"
+        }
+      }
+    },
+    {
+      "id": "<id46>",
+      "kind": "playStarted",
+      "occurredAt": "<time>",
+      "play": {
+        "clientName": "test",
+        "local": false,
+        "userId": "<id40>",
+        "username": "friend",
+        "work": {
+          "kind": "movie",
+          "title": "Heat",
+          "workId": "<id2>"
+        }
+      }
+    }
+  ]
+}
+
+
+GET /api/v1/activity?after=bogus
+400
+{
+  "code": "invalidRequest",
+  "detail": "the cursor is invalid",
+  "errors": [
+    {
+      "code": "invalid",
+      "field": "after"
+    }
+  ],
+  "requestId": "<request>",
+  "status": 400,
+  "title": "Bad Request",
+  "type": "about:blank"
+}
+
+
+GET /api/v1/activity
+403
+{
+  "code": "forbidden",
+  "requestId": "<request>",
+  "status": 403,
+  "title": "Forbidden",
+  "type": "about:blank"
+}
+
+
+GET /api/v1/logs?after=bogus
+400
+{
+  "code": "invalidRequest",
+  "detail": "the cursor is invalid",
+  "errors": [
+    {
+      "code": "invalid",
+      "field": "after"
+    }
+  ],
+  "requestId": "<request>",
+  "status": 400,
+  "title": "Bad Request",
+  "type": "about:blank"
+}
+
+
+GET /api/v1/logs?limit=0
+400
+{
+  "code": "invalidRequest",
+  "detail": "limit is out of range",
+  "errors": [
+    {
+      "code": "outOfRange",
+      "field": "limit"
+    }
+  ],
+  "requestId": "<request>",
+  "status": 400,
+  "title": "Bad Request",
+  "type": "about:blank"
+}
+
+
+GET /api/v1/logs?level=nope
+400
+{
+  "code": "invalidRequest",
+  "detail": "unknown level",
+  "errors": [
+    {
+      "code": "invalid",
+      "field": "level"
+    }
+  ],
+  "requestId": "<request>",
+  "status": 400,
+  "title": "Bad Request",
+  "type": "about:blank"
+}
+
+

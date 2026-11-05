@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The Samsung TV app: the web client's TV build packaged into the app, in www/,
+     which package.sh fills from server/web's packaged build. Nothing of it loads from the server
+     but data, artwork and media. Tizen 8 (2024 TVs, Chromium 108) is the oldest engine the TV
+     build runs on. -->
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets"
+        id="https://github.com/mmcdole/kivo/clients/tizen" version="0.3.0" viewmodes="maximized"> <!-- x-release-please-version -->
+    <tizen:application id="kivoplayer.Kivo" package="kivoplayer" required_version="8.0"/>
+    <name>Kivo</name>
+    <icon src="icon.png"/>
+    <content src="www/index.html"/>
+    <feature name="http://tizen.org/feature/screen.size.normal.1080.1920"/>
+    <!-- Network access to any origin: the server is whatever address is typed on the TV, any LAN IP,
+         hostname or public domain, and the list is fixed when the app is packaged. There is no
+         allow-navigation: the app never leaves its own page. -->
+    <access origin="*"/>
+    <!-- The page's policy (its meta, from server/web/vite.config.ts) again, as Tizen applies its own
+         too, and its default would block the player's blob: media. package.sh checks they match. -->
+    <tizen:content-security-policy>default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; connect-src https: http: wss: ws:; img-src 'self' https: http: data: blob:; media-src https: http: blob: data:; style-src 'self'; object-src 'self'; base-uri 'none'</tizen:content-security-policy>
+    <tizen:privilege name="http://tizen.org/privilege/internet"/>
+    <!-- The media keys, registered while the player is on screen (src/tv/tizen.ts). -->
+    <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
+    <!-- webapis.productinfo, for the panel's resolution in the capability report. -->
+    <tizen:privilege name="http://developer.samsung.com/privilege/productinfo"/>
+    <!-- Samsung's native player (webapis.avplay) needs no privilege on TVs from 2015 on; it draws
+         through an <object type="application/avplayer">, which object-src 'self' above allows. -->
+    <tizen:profile name="tv-samsung"/>
+    <tizen:setting screen-orientation="landscape" context-menu="disable" background-support="disable"
+                   encryption="disable" install-location="auto" hwkey-event="enable"/>
+</widget>

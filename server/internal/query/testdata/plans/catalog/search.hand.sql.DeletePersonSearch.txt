@@ -1,0 +1,3 @@
+SCAN person_fts VIRTUAL TABLE INDEX 0:=
+SCALAR SUBQUERY 1
+  SEARCH person USING COVERING INDEX sqlite_autoindex_person_1 (id=?)

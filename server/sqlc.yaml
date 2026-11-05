@@ -1,0 +1,298 @@
+# One block per package with queries: the shared schema (store's migrations),
+# the package's own queries, generated into internal/<pkg>/dbq.
+version: "2"
+# Columns that hold 0 or 1 are bools in Go, in every package.
+overrides:
+  go:
+    overrides:
+      - column: book_series_book.is_primary
+        go_type: bool
+      - column: image.chosen
+        go_type: bool
+      - column: invite.all_libraries
+        go_type: bool
+      - column: library.use_local_metadata
+        go_type: bool
+      - column: media_marker.final
+        go_type: bool
+      - column: library_folder.reachable
+        go_type: bool
+      - column: play_event.completed
+        go_type: bool
+      - column: scan_folder.full_requested
+        go_type: bool
+      - column: user.all_libraries
+        go_type: bool
+      - column: user.downloads_allowed
+        go_type: bool
+      - column: user.disabled
+        go_type: bool
+      - column: user.admin
+        go_type: bool
+      - column: user.block_unrated
+        go_type: bool
+      - column: user.remember_tracks
+        go_type: bool
+      - column: user.autoplay_next
+        go_type: bool
+      - column: user_library.pinned
+        go_type: bool
+      - column: user_state.played
+        go_type: bool
+      - column: user_state.resumable
+        go_type: bool
+      - column: user_state.favorite
+        go_type: bool
+      - column: work.provisional
+        go_type: bool
+      - column: work.locked
+        go_type: bool
+      - column: work_library.is_root
+        go_type: bool
+      - column: book.abridged
+        go_type:
+          import: database/sql
+          type: NullBool
+sql:
+  - engine: sqlite
+    schema: internal/store/migrations
+    queries: internal/config/queries
+    gen:
+      go:
+        package: dbq
+        out: internal/config/dbq
+        omit_unused_structs: true
+  - engine: sqlite
+    schema: internal/store/migrations
+    queries: internal/activity/queries
+    gen:
+      go:
+        package: dbq
+        out: internal/activity/dbq
+        omit_unused_structs: true
+        overrides:
+          - db_type: BLOB
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+  - engine: sqlite
+    schema: internal/store/migrations
+    queries: internal/tasks/queries
+    gen:
+      go:
+        package: dbq
+        out: internal/tasks/dbq
+        omit_unused_structs: true
+  - engine: sqlite
+    schema: internal/store/migrations
+    queries: # search.hand.sql is hand-written: sqlc can't parse FTS5
+      - internal/catalog/queries/library.sql
+      - internal/catalog/queries/file.sql
+      - internal/catalog/queries/version.sql
+      - internal/catalog/queries/work.sql
+      - internal/catalog/queries/book.sql
+      - internal/catalog/queries/invariants.sql
+    gen:
+      go:
+        package: dbq
+        out: internal/catalog/dbq
+        omit_unused_structs: true
+        overrides:
+          - db_type: BLOB
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+          - db_type: BLOB
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+            nullable: true
+          - column: media_file.edge_hash
+            go_type:
+              type: "[]byte"
+          - column: media_track.is_default
+            go_type: bool
+          - column: media_track.forced
+            go_type: bool
+          - column: media_track.hearing_impaired
+            go_type: bool
+  - engine: sqlite
+    schema: internal/store/migrations
+    queries: internal/users/queries
+    gen:
+      go:
+        package: dbq
+        out: internal/users/dbq
+        omit_unused_structs: true
+        overrides:
+          - column: user.id
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+          - column: user.invited_by
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+            nullable: true
+          - column: library_grant.user_id
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+          - column: library_grant.library_id
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+          - column: user_library.user_id
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+          - column: user_library.library_id
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+  - engine: sqlite
+    schema: internal/store/migrations
+    queries: internal/auth/queries
+    gen:
+      go:
+        package: dbq
+        out: internal/auth/dbq
+        omit_unused_structs: true
+        overrides:
+          - column: user.id
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+          - column: credential.id
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+          - column: credential.user_id
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+          - column: session.id
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+          - column: session.user_id
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+          - column: cast_token.id
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+          - column: cast_token.session_id
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+          - column: invite.id
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+          - column: invite.created_by
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+          - column: invite.used_by
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+            nullable: true
+          - column: invite_library.invite_id
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+          - column: invite_library.library_id
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+          - column: audit.id
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+          - column: audit.user_id
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+            nullable: true
+          - column: audit.session_id
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+            nullable: true
+          - column: audit.api_key_id
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+            nullable: true
+          - column: api_key.id
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+          - column: api_key.created_by
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+  - engine: sqlite
+    schema: internal/store/migrations
+    queries: internal/userstate/queries
+    gen:
+      go:
+        package: dbq
+        out: internal/userstate/dbq
+        omit_unused_structs: true
+        overrides:
+          - db_type: BLOB
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+          - db_type: BLOB
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+            nullable: true
+  - engine: sqlite
+    schema: internal/store/migrations
+    queries: internal/scan/queries
+    gen:
+      go:
+        package: dbq
+        out: internal/scan/dbq
+        omit_unused_structs: true
+        overrides:
+          - db_type: BLOB
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+          - db_type: BLOB
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+            nullable: true
+  - engine: sqlite
+    schema: internal/store/migrations
+    queries: internal/metadata/queries
+    gen:
+      go:
+        package: dbq
+        out: internal/metadata/dbq
+        omit_unused_structs: true
+        overrides:
+          - db_type: BLOB
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+          - db_type: BLOB
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+            nullable: true
+          - column: provider_cache.body
+            go_type:
+              type: "[]byte"
+  - engine: sqlite
+    schema: internal/store/migrations
+    queries: internal/identify/queries
+    gen:
+      go:
+        package: dbq
+        out: internal/identify/dbq
+        omit_unused_structs: true
+        overrides:
+          - db_type: BLOB
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+          - db_type: BLOB
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+            nullable: true
+  - engine: sqlite
+    schema: internal/store/migrations
+    queries: internal/markers/queries
+    gen:
+      go:
+        package: dbq
+        out: internal/markers/dbq
+        omit_unused_structs: true
+        overrides:
+          - db_type: BLOB
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+          - db_type: BLOB
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+            nullable: true
+  - engine: sqlite
+    schema: internal/store/migrations
+    queries: internal/previews/queries
+    gen:
+      go:
+        package: dbq
+        out: internal/previews/dbq
+        omit_unused_structs: true
+        overrides:
+          - db_type: BLOB
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+          - db_type: BLOB
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+            nullable: true
+  - engine: sqlite
+    schema: internal/store/migrations
+    queries: internal/subtitles/queries
+    gen:
+      go:
+        package: dbq
+        out: internal/subtitles/dbq
+        omit_unused_structs: true
+        overrides:
+          - db_type: BLOB
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+          - db_type: BLOB
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+            nullable: true
+  - engine: sqlite
+    schema: internal/store/migrations
+    queries: internal/playback/queries
+    gen:
+      go:
+        package: dbq
+        out: internal/playback/dbq
+        omit_unused_structs: true
+        overrides:
+          - db_type: BLOB
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+          - db_type: BLOB
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+            nullable: true

@@ -1,0 +1,41 @@
+SEARCH w USING INDEX sqlite_autoindex_work_1 (id=?)
+SEARCH t USING INDEX sqlite_autoindex_work_1 (id=?)
+SEARCH w USING INDEX sqlite_autoindex_work_1 (id=?)
+SEARCH d USING INDEX sqlite_autoindex_work_1 (id=?)
+LIST SUBQUERY 3
+  MERGE (UNION)
+    LEFT
+      MERGE (UNION)
+        LEFT
+          SCAN CONSTANT ROW
+        RIGHT
+          SEARCH d USING INDEX work_root (root_id=?)
+          USE TEMP B-TREE FOR ORDER BY
+    RIGHT
+      SEARCH d USING INDEX work_children (parent_id=?)
+      USE TEMP B-TREE FOR ORDER BY
+REUSE LIST SUBQUERY 3
+SEARCH vw USING COVERING INDEX media_version_work_work (work_id=?)
+CORRELATED SCALAR SUBQUERY 4
+  SEARCH f2 USING INDEX media_file_version (version_id=?)
+CORRELATED SCALAR SUBQUERY 7
+  SEARCH f USING INDEX media_file_version (version_id=?)
+  CORRELATED SCALAR SUBQUERY 8
+    SEARCH vw USING COVERING INDEX media_version_work_work (work_id=?)
+    CORRELATED SCALAR SUBQUERY 9
+      SEARCH g USING INDEX media_file_version (version_id=?)
+CORRELATED SCALAR SUBQUERY 10
+  SEARCH vw USING COVERING INDEX media_version_work_work (work_id=?)
+  CORRELATED SCALAR SUBQUERY 12
+    SEARCH g USING INDEX media_file_version (version_id=?)
+  SEARCH p USING INDEX media_file_version (version_id=? AND part=?)
+  SEARCH t USING INDEX sqlite_autoindex_media_track_2 (file_id=?)
+CORRELATED SCALAR SUBQUERY 13
+  SEARCH vw USING COVERING INDEX media_version_work_work (work_id=?)
+  CORRELATED SCALAR SUBQUERY 14
+    SEARCH g USING INDEX media_file_version (version_id=?)
+  SEARCH p USING INDEX media_file_version (version_id=? AND part=?)
+  SEARCH t USING INDEX sqlite_autoindex_media_track_2 (file_id=?)
+CORRELATED SCALAR SUBQUERY 15
+  SEARCH c USING PRIMARY KEY (work_id=? AND role=?)
+  SEARCH p USING INDEX sqlite_autoindex_person_1 (id=?)

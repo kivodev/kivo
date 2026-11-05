@@ -1,0 +1,22 @@
+name: release-please
+
+# Keeps a release PR open on main with the next version, worked out from the
+# Conventional Commit titles merged since the last release. Merging that PR
+# tags the release and writes its notes to GitHub Releases.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v5.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: .github/release-please-config.json
+          manifest-file: .github/.release-please-manifest.json

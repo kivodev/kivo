@@ -1,0 +1,19 @@
+{
+  "asin": "B00B5HZGUG",
+  "authors": [{"asin": "B00G0WYW92", "name": "Andy Weir"}],
+  "description": "Six days ago, astronaut Mark Watney became one of the first people to walk on Mars.",
+  "formatType": "unabridged",
+  "genres": [
+    {"asin": "18580606011", "name": "Science Fiction & Fantasy", "type": "genre"},
+    {"asin": "18580628011", "name": "Science Fiction", "type": "tag"}
+  ],
+  "image": "https://m.media-amazon.com/images/I/91BVnKiBaVL.jpg",
+  "language": "english",
+  "narrators": [{"name": "R. C. Bray"}],
+  "publisherName": "Podium Audio",
+  "region": "us",
+  "releaseDate": "2013-03-22T00:00:00.000Z",
+  "runtimeLengthMin": "653",
+  "summary": "<p>Six days ago, astronaut Mark Watney became one of the first people to walk on Mars.</p>",
+  "title": "The Martian"
+}

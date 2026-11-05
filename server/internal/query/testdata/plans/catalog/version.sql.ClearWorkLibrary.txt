@@ -1,0 +1,1 @@
+SEARCH work_library USING COVERING INDEX work_library_work (work_id=?)

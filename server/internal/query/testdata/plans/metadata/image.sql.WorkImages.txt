@@ -1,0 +1,1 @@
+SEARCH image USING INDEX image_work (work_id=?)

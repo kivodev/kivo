@@ -1,0 +1,160 @@
+-- The download store: what the device keeps to play with no server, and where
+-- each download is on its way here. Times are Unix milliseconds.
+
+-- A download of one version of one work for one user on one server. Its
+-- files are under the store's folder in one of its own, named by its id.
+CREATE TABLE download (
+  id TEXT NOT NULL PRIMARY KEY,
+  server_id TEXT NOT NULL,
+  account_id TEXT NOT NULL,
+  -- The server's download while the server keeps one: until every file is
+  -- here and checked, when the server is told to forget it.
+  remote_id TEXT,
+  work_id TEXT NOT NULL,
+  -- What was asked: the version (null: the server's choice), the audio
+  -- and subtitle tracks (null: by preference; 'off'), and the quality.
+  asked_version TEXT,
+  asked_audio TEXT,
+  asked_subtitle TEXT,
+  quality TEXT NOT NULL,
+  -- queued and converting are on the server, downloading on the way here,
+  -- or paused there by the user, then ready, or failed with a reason.
+  state TEXT NOT NULL,
+  queue_position INTEGER,
+  progress REAL,
+  remaining_ms INTEGER,
+  reason TEXT,
+  -- The server's download as JSON: its version, delivery, decision, parts,
+  -- subtitles and chapters, what playing it offline needs.
+  plan TEXT NOT NULL,
+  -- The work as JSON, to show it offline, and its title, kind and place in
+  -- its series for the list.
+  work TEXT NOT NULL,
+  title TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  series_id TEXT,
+  series_title TEXT,
+  season INTEGER,
+  episode INTEGER,
+  size_bytes INTEGER NOT NULL,
+  created_at INTEGER NOT NULL,
+  completed_at INTEGER,
+  -- Where offline play last left it.
+  position_ms INTEGER
+);
+CREATE INDEX download_server ON download (server_id, created_at);
+
+-- One file of a download: a part, a subtitle, a font or its artwork.
+CREATE TABLE download_file (
+  download_id TEXT NOT NULL REFERENCES download (id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  role TEXT NOT NULL,
+  -- Relative to the API root, as the server gives it.
+  url TEXT NOT NULL,
+  size_bytes INTEGER,
+  etag TEXT,
+  sha256 TEXT,
+  -- waiting, transferring or done.
+  state TEXT NOT NULL,
+  received_bytes INTEGER NOT NULL DEFAULT 0,
+  -- Fetches that failed their check.
+  rejected INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (download_id, name)
+);
+
+-- The progress outbox: the latest offline position of each work, until the
+-- server has it.
+CREATE TABLE outbox (
+  server_id TEXT NOT NULL,
+  account_id TEXT NOT NULL,
+  work_id TEXT NOT NULL,
+  version_id TEXT NOT NULL,
+  position_ms INTEGER NOT NULL,
+  at INTEGER NOT NULL,
+  PRIMARY KEY (server_id, account_id, work_id)
+);
+
+-- Each server's last availability check, and how many downloads it deleted
+-- that the list hasn't said yet.
+CREATE TABLE server_check (
+  server_id TEXT NOT NULL PRIMARY KEY,
+  checked_at INTEGER NOT NULL,
+  removed INTEGER NOT NULL DEFAULT 0
+);
+
+insertDownload:
+INSERT INTO download VALUES ?;
+
+downloads:
+SELECT * FROM download WHERE server_id = ? ORDER BY created_at DESC;
+
+download:
+SELECT * FROM download WHERE id = ?;
+
+setServerState:
+UPDATE download SET state = ?, queue_position = ?, progress = ?, remaining_ms = ?, reason = ?, plan = ?, size_bytes = ?
+WHERE id = ?;
+
+setRemote:
+UPDATE download SET remote_id = ? WHERE id = ?;
+
+setState:
+UPDATE download SET state = ?, reason = ? WHERE id = ?;
+
+setCompleted:
+UPDATE download SET state = 'ready', reason = NULL, completed_at = ? WHERE id = ?;
+
+setPosition:
+UPDATE download SET position_ms = ? WHERE id = ?;
+
+deleteDownload:
+DELETE FROM download WHERE id = ?;
+
+insertFile:
+INSERT OR REPLACE INTO download_file VALUES ?;
+
+files:
+SELECT * FROM download_file WHERE download_id = ? ORDER BY role, name;
+
+everyFile:
+SELECT * FROM download_file;
+
+setFileState:
+UPDATE download_file SET state = ?, received_bytes = ? WHERE download_id = ? AND name = ?;
+
+rejectFile:
+UPDATE download_file SET state = 'waiting', received_bytes = 0, rejected = rejected + 1 WHERE download_id = ? AND name = ?;
+
+deleteFile:
+DELETE FROM download_file WHERE download_id = ? AND name = ?;
+
+deleteFiles:
+DELETE FROM download_file WHERE download_id = ?;
+
+-- The newer of what's kept and what's recorded wins.
+record:
+INSERT OR REPLACE INTO outbox (server_id, account_id, work_id, version_id, position_ms, at)
+SELECT :server_id, :account_id, :work_id, :version_id, :position_ms, :at
+WHERE NOT EXISTS (SELECT 1 FROM outbox WHERE server_id = :server_id AND account_id = :account_id AND work_id = :work_id AND at > :at);
+
+outbox:
+SELECT * FROM outbox WHERE server_id = ? ORDER BY at;
+
+sent:
+DELETE FROM outbox WHERE server_id = ? AND account_id = ? AND work_id = ? AND at = ?;
+
+clearOutbox:
+DELETE FROM outbox WHERE server_id = ?;
+
+serverCheck:
+SELECT * FROM server_check WHERE server_id = ?;
+
+checked:
+INSERT OR REPLACE INTO server_check (server_id, checked_at, removed)
+VALUES (:server_id, :checked_at, :removed + coalesce((SELECT removed FROM server_check WHERE server_id = :server_id), 0));
+
+deletionsSeen:
+UPDATE server_check SET removed = 0 WHERE server_id = ?;
+
+forgetServer:
+DELETE FROM server_check WHERE server_id = ?;

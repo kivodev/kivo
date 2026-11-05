@@ -1,0 +1,5 @@
+Stream map '' matches no streams.
+To ignore this, add a trailing '?' to the map.
+Failed to set value '0:7' for option 'map': Invalid argument
+Error parsing options for output file pipe:1.
+Error opening output files: Invalid argument

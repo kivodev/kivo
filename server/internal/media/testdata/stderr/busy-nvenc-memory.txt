@@ -1,0 +1,2 @@
+[hevc_nvenc @ 0x5581f3a4b2c0] OpenEncodeSessionEx failed: out of memory (10): (no details)
+[vost#0:0/hevc_nvenc @ 0x5581f3a4a8c0] [enc:hevc_nvenc @ 0x5581f3a4c040] Error while opening encoder - maybe incorrect parameters such as bit_rate, rate, width or height.

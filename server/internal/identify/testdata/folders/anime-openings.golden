@@ -1,0 +1,14 @@
+searches:
+  series "Serial Experiments Lain" 0
+  series "Serial Experiments Lain" 0
+  series "Serial Experiments Lain" 0
+episode lists:
+works:
+series "Serial Experiments Lain" provisional
+  season "Season 1" S01
+    episode "Episode 1" S01E01 provisional
+      = Serial Experiments Lain/Serial Experiments Lain 01 - Weird.mkv
+  extra "Serial Experiments Lain ED" [other]
+    = Serial Experiments Lain/Serial Experiments Lain ED.mkv
+  extra "Serial Experiments Lain OP" [other]
+    = Serial Experiments Lain/Serial Experiments Lain OP [v2].mkv

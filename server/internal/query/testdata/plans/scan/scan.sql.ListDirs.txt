@@ -1,0 +1,1 @@
+SEARCH scan_dir USING PRIMARY KEY (folder_id=?)

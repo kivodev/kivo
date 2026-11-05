@@ -1,0 +1,35 @@
+COMPOUND QUERY
+  LEFT-MOST SUBQUERY
+    SEARCH f USING INDEX sqlite_autoindex_media_file_1 (id=?)
+    LIST SUBQUERY 3
+      CO-ROUTINE (subquery-2)
+        SCAN CONSTANT ROW
+      SCAN (subquery-2)
+      SCAN json_each VIRTUAL TABLE INDEX 1:
+    SEARCH w USING INDEX sqlite_autoindex_work_1 (id=?) LEFT-JOIN
+    CORRELATED SCALAR SUBQUERY 1
+      SEARCH vw USING PRIMARY KEY (version_id=?)
+      USE TEMP B-TREE FOR ORDER BY
+    SEARCH s USING INDEX sqlite_autoindex_work_1 (id=?) LEFT-JOIN
+  UNION ALL
+    SEARCH w USING INDEX sqlite_autoindex_work_1 (id=?)
+    LIST SUBQUERY 6
+      CO-ROUTINE (subquery-5)
+        SCAN CONSTANT ROW
+      SCAN (subquery-5)
+      SCAN json_each VIRTUAL TABLE INDEX 1:
+    SEARCH s USING INDEX sqlite_autoindex_work_1 (id=?) LEFT-JOIN
+  UNION ALL
+    SEARCH r USING INDEX sqlite_autoindex_library_folder_1 (id=?)
+    LIST SUBQUERY 9
+      CO-ROUTINE (subquery-8)
+        SCAN CONSTANT ROW
+      SCAN (subquery-8)
+      SCAN json_each VIRTUAL TABLE INDEX 1:
+  UNION ALL
+    SEARCH l USING INDEX sqlite_autoindex_library_1 (id=?)
+    LIST SUBQUERY 12
+      CO-ROUTINE (subquery-11)
+        SCAN CONSTANT ROW
+      SCAN (subquery-11)
+      SCAN json_each VIRTUAL TABLE INDEX 1:

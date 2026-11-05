@@ -1,0 +1,7 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": ["lingui.config.ts", "src/tv/splash.css"],
+  "ignore": ["mock-public/**"],
+  "ignoreBinaries": ["go"],
+  "project": ["**", "!src/test/screens.ts"]
+}

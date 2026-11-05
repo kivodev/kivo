@@ -1,0 +1,11 @@
+/*
+ * Inter, the app's typeface (--font-sans), for the TV build, which a TV
+ * has no copy of: its own sans-serif stood in, without a semibold, so
+ * titles looked light. The files are in the build, beside the page, which
+ * both the server's policy and the packaged app's allow (default-src
+ * 'self'), and nothing loads from elsewhere. Each script's subset loads
+ * only once a screen shows its characters. Linked from the TV build's
+ * index.html alone (vite.config.ts); the web build keeps a font the
+ * device has.
+ */
+@import "@fontsource-variable/inter/wght.css";

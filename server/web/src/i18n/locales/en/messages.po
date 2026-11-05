@@ -1,0 +1,3943 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-09 12:46-0500\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en\n"
+
+#: src/features/admin/EditBookForm.tsx
+#: src/features/detail/BookDetail.tsx
+msgid "Publisher"
+msgstr "Publisher"
+
+#: src/features/admin/problemActions.ts
+msgid "See the test encode error in Logs."
+msgstr "See the test encode error in Logs."
+
+#: src/components/PersonCard.tsx
+#: src/features/browse/FilterPanel.tsx
+msgid "Narrator"
+msgstr "Narrator"
+
+#: src/features/player/VolumeControl.tsx
+msgid "Volume"
+msgstr "Volume"
+
+#: src/features/user/Sessions.tsx
+msgid "Sign out this TV?"
+msgstr "Sign out this TV?"
+
+#: src/features/admin/FixMatchDialog.tsx
+msgid "Choose {name}"
+msgstr "Choose {name}"
+
+#: src/features/browse/useBrowseLabels.ts
+msgid "In progress"
+msgstr "In progress"
+
+#: src/features/player/SkipControls.tsx
+#: src/features/player/Transport.tsx
+msgid "Back 10 seconds"
+msgstr "Back 10 seconds"
+
+#: src/features/admin/UserScreen.tsx
+#: src/features/user/ChangePasswordDialog.tsx
+msgid "New password"
+msgstr "New password"
+
+#: src/components/TrackPicker.tsx
+#: src/features/admin/PlayCards.tsx
+#: src/features/player/AudioSubtitlesMenu.tsx
+#: src/features/player/StreamInfo.tsx
+#: src/features/user/SettingsScreen.tsx
+msgid "Audio"
+msgstr "Audio"
+
+#: src/features/auth/LinkScreen.tsx
+msgid "Continue in browser"
+msgstr "Continue in browser"
+
+#: src/features/admin/PlayCards.tsx
+msgid "{clock} ahead, waiting for the player"
+msgstr "{clock} ahead, waiting for the player"
+
+#: src/components/SettingsLayout.tsx
+#: src/features/user/Sessions.tsx
+msgid "This browser"
+msgstr "This browser"
+
+#: src/features/admin/ActivityList.tsx
+#: src/features/admin/OverviewScreen.tsx
+#: src/features/admin/runNotices.ts
+msgid "{name} failed"
+msgstr "{name} failed"
+
+#: src/features/admin/useAdminLabels.ts
+msgid "Converting"
+msgstr "Converting"
+
+#: src/features/player/CastButton.tsx
+msgid "Disconnect"
+msgstr "Disconnect"
+
+#: src/features/admin/useAdminLabels.ts
+msgid "Clean up activity"
+msgstr "Clean up activity"
+
+#: src/features/libraries/AddLibraryForm.tsx
+msgid "Audiobooks"
+msgstr "Audiobooks"
+
+#: src/features/browse/WorkCard.tsx
+#: src/features/detail/DetailMenu.tsx
+msgid "Go to series"
+msgstr "Go to series"
+
+#: src/features/browse/FavoritesScreen.tsx
+msgid "No favorites yet."
+msgstr "No favorites yet."
+
+#: src/features/admin/useAdminLabels.ts
+msgid "Remove missing files"
+msgstr "Remove missing files"
+
+#: src/features/libraries/EditLibraryForm.tsx
+msgid "Items from {removed} are removed from the library. Files on disk aren't touched. Adding the folder again restores the items and their watch state."
+msgstr "Items from {removed} are removed from the library. Files on disk aren't touched. Adding the folder again restores the items and their watch state."
+
+#: src/components/TrackPicker.tsx
+msgid "Automatic ({plays})"
+msgstr "Automatic ({plays})"
+
+#: src/components/deviceCode.ts
+msgid "iPad"
+msgstr "iPad"
+
+#: src/features/admin/EditBookForm.tsx
+#: src/features/browse/useBrowseLabels.ts
+msgid "Release date"
+msgstr "Release date"
+
+#: src/features/auth/SignInScreen.tsx
+msgid "Sign-in was declined. Here's a new code."
+msgstr "Sign-in was declined. Here's a new code."
+
+#: src/features/admin/useAdminLabels.ts
+msgid "Removing"
+msgstr "Removing"
+
+#: src/features/admin/PlayCards.tsx
+msgid "Can't show {hdr}"
+msgstr "Can't show {hdr}"
+
+#: src/features/player/NowPlaying.tsx
+msgid "Next chapter"
+msgstr "Next chapter"
+
+#: src/features/admin/PlayCards.tsx
+msgid "Stop stream…"
+msgstr "Stop stream…"
+
+#. placeholder {0}: formats.join(", ")
+#: src/features/admin/TranscodingScreen.tsx
+msgid "Decodes {0}"
+msgstr "Decodes {0}"
+
+#: src/components/deviceCode.ts
+#: src/features/user/Sessions.tsx
+msgid "Browser"
+msgstr "Browser"
+
+#: src/features/browse/CountLine.tsx
+msgid "Recently added"
+msgstr "Recently added"
+
+#: src/components/ModalDialog.tsx
+msgid "Discard changes?"
+msgstr "Discard changes?"
+
+#: src/features/detail/WorkRows.tsx
+msgid "Featurettes"
+msgstr "Featurettes"
+
+#. placeholder {0}: codecs.join(", ")
+#: src/features/admin/TranscodingScreen.tsx
+msgid "Encodes {0}"
+msgstr "Encodes {0}"
+
+#: src/components/SettingsLayout.tsx
+msgid "All your devices"
+msgstr "All your devices"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Always"
+msgstr "Always"
+
+#: src/features/admin/ItemAdminMenu.tsx
+#: src/features/admin/UnmatchedScreen.tsx
+#: src/features/browse/FilterPanel.tsx
+msgid "Match"
+msgstr "Match"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Shadow"
+msgstr "Shadow"
+
+#: src/features/user/Sessions.tsx
+msgid "Signs out all other browsers and apps. This browser stays signed in."
+msgstr "Signs out all other browsers and apps. This browser stays signed in."
+
+#. placeholder {0}: work.series?.seasonCount ?? seasons.length
+#: src/features/detail/SeriesDetail.tsx
+msgid "{0, plural, one {# season} other {# seasons}}"
+msgstr "{0, plural, one {# season} other {# seasons}}"
+
+#: src/features/admin/userFields.tsx
+msgid "Select at least one library."
+msgstr "Select at least one library."
+
+#: src/features/admin/useAdminLabels.ts
+msgid "Generating"
+msgstr "Generating"
+
+#: src/features/player/PlayerError.tsx
+msgid "Stream limit reached"
+msgstr "Stream limit reached"
+
+#: src/features/user/Sessions.tsx
+msgid "Sign {name} out everywhere?"
+msgstr "Sign {name} out everywhere?"
+
+#: src/features/player/NowPlaying.tsx
+msgid "Close Now Playing"
+msgstr "Close Now Playing"
+
+#. placeholder {0}: nextUp.episode?.seasonNumber
+#. placeholder {1}: nextUp.episode?.number
+#: src/features/detail/SeriesDetail.tsx
+msgid "Play S{0} E{1}"
+msgstr "Play S{0} E{1}"
+
+#: src/features/auth/LinkScreen.tsx
+msgid "You can close this page."
+msgstr "You can close this page."
+
+#: src/features/auth/InviteScreen.tsx
+#: src/features/setup/SetupWizard.tsx
+msgid "Create account"
+msgstr "Create account"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Light"
+msgstr "Light"
+
+#: src/features/admin/ProblemsScreen.tsx
+msgid "Dismiss"
+msgstr "Dismiss"
+
+#: src/features/auth/AddressScreen.tsx
+msgid "Open"
+msgstr "Open"
+
+#: src/tv/ExitDialog.tsx
+msgid "No"
+msgstr "No"
+
+#: src/features/admin/ApiKeysScreen.tsx
+msgid "For example, Home Assistant."
+msgstr "For example, Home Assistant."
+
+#: src/features/search/SearchScreen.tsx
+msgid "People"
+msgstr "People"
+
+#: src/features/browse/FavoritesScreen.tsx
+msgid "Items you mark with ♥ appear here."
+msgstr "Items you mark with ♥ appear here."
+
+#: src/features/admin/useAdminLabels.ts
+msgid "Matching"
+msgstr "Matching"
+
+#: src/features/setup/SetupWizard.tsx
+msgid "Set up later"
+msgstr "Set up later"
+
+#: src/features/browse/LibraryScreen.tsx
+msgid "List"
+msgstr "List"
+
+#: src/features/auth/LinkScreen.tsx
+msgid "Shown on the device you're signing in."
+msgstr "Shown on the device you're signing in."
+
+#: src/features/detail/Overview.tsx
+msgid "More"
+msgstr "More"
+
+#: src/features/admin/MissingFilesScreen.tsx
+msgid "Missing files"
+msgstr "Missing files"
+
+#: src/features/admin/FixMatchDialog.tsx
+msgid "Matches"
+msgstr "Matches"
+
+#: src/features/admin/UserScreen.tsx
+msgid "Block unrated items"
+msgstr "Block unrated items"
+
+#: src/features/detail/BookSeriesScreen.tsx
+#: src/features/detail/PersonScreen.tsx
+#: src/features/detail/RenameDialog.tsx
+#: src/features/user/Sessions.tsx
+msgid "Rename"
+msgstr "Rename"
+
+#: src/features/admin/useAdminLabels.ts
+msgid "Optimize database"
+msgstr "Optimize database"
+
+#. placeholder {0}: version.chapterCount
+#: src/features/detail/BookDetail.tsx
+msgid "{0, plural, one {# chapter} other {# chapters}}"
+msgstr "{0, plural, one {# chapter} other {# chapters}}"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Remote quality"
+msgstr "Remote quality"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Subtitle language"
+msgstr "Subtitle language"
+
+#: src/features/admin/UnmatchedScreen.tsx
+msgid "Fix match for {title}"
+msgstr "Fix match for {title}"
+
+#: src/features/player/SubtitleSearch.tsx
+msgid "SDH"
+msgstr "SDH"
+
+#: src/features/admin/EditFieldsDialog.tsx
+#: src/features/admin/FixMatchDialog.tsx
+msgid "Year"
+msgstr "Year"
+
+#: src/features/admin/problemActions.ts
+msgid "Free up space on the cache disk."
+msgstr "Free up space on the cache disk."
+
+#: src/features/admin/problemActions.ts
+msgid "If this repeats, update the driver or choose another accelerator."
+msgstr "If this repeats, update the driver or choose another accelerator."
+
+#: src/features/admin/ChooseArtworkDialog.tsx
+msgid "Uploaded"
+msgstr "Uploaded"
+
+#: src/features/admin/problemActions.ts
+msgid "See who tried in Activity. If it wasn't them, change the user's password."
+msgstr "See who tried in Activity. If it wasn't them, change the user's password."
+
+#: src/features/admin/TranscodingScreen.tsx
+msgid "Decoding on CPU"
+msgstr "Decoding on CPU"
+
+#: src/features/player/UpNextCard.tsx
+msgid "Still watching?"
+msgstr "Still watching?"
+
+#: src/features/browse/CountLine.tsx
+msgid "movies"
+msgstr "movies"
+
+#: src/features/player/CastButton.tsx
+msgid "Cast, connecting"
+msgstr "Cast, connecting"
+
+#: src/features/admin/PlayCards.tsx
+msgid "Can't show {codec}"
+msgstr "Can't show {codec}"
+
+#: src/features/admin/ActivityList.tsx
+msgid "{episodes} of {series} added to {library}"
+msgstr "{episodes} of {series} added to {library}"
+
+#: src/features/admin/ItemAdminMenu.tsx
+msgid "Show files"
+msgstr "Show files"
+
+#: src/features/admin/useAdminLabels.ts
+msgid "Extracting subtitles"
+msgstr "Extracting subtitles"
+
+#: src/app/AppShell.tsx
+msgid "Account menu for {name}"
+msgstr "Account menu for {name}"
+
+#: src/features/detail/WorkRows.tsx
+msgid "Scenes"
+msgstr "Scenes"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Small"
+msgstr "Small"
+
+#. placeholder {0}: signIn.error.retryAfterSeconds
+#: src/features/auth/SignInScreen.tsx
+msgid "{0, plural, one {Too many attempts. Try again in # second.} other {Too many attempts. Try again in # seconds.}}"
+msgstr "{0, plural, one {Too many attempts. Try again in # second.} other {Too many attempts. Try again in # seconds.}}"
+
+#: src/features/admin/SettingsForm.tsx
+msgid "This value isn't valid."
+msgstr "This value isn't valid."
+
+#: src/features/detail/BookShelf.tsx
+msgid "Book {position}"
+msgstr "Book {position}"
+
+#: src/features/admin/PlayCards.tsx
+msgid "{clock} ahead"
+msgstr "{clock} ahead"
+
+#: src/features/admin/OverviewScreen.tsx
+msgid "{failed, plural, one {{name} failed for # title} other {{name} failed for # titles}}"
+msgstr "{failed, plural, one {{name} failed for # title} other {{name} failed for # titles}}"
+
+#: src/features/admin/FixMatchDialog.tsx
+msgid "Match: {title}"
+msgstr "Match: {title}"
+
+#: src/features/admin/TasksScreen.tsx
+msgid "Failed <0/>"
+msgstr "Failed <0/>"
+
+#: src/features/browse/CountLine.tsx
+msgid "videos"
+msgstr "videos"
+
+#: src/features/user/Sessions.tsx
+msgid "Web browser"
+msgstr "Web browser"
+
+#: src/features/admin/PlayCards.tsx
+msgid "{title}, {who}"
+msgstr "{title}, {who}"
+
+#: src/features/player/StreamInfo.tsx
+msgid "Bitrate"
+msgstr "Bitrate"
+
+#: src/features/admin/AdminLayout.tsx
+#: src/features/admin/ApiKeysScreen.tsx
+msgid "API keys"
+msgstr "API keys"
+
+#: src/features/admin/OverviewScreen.tsx
+#: src/features/admin/problemActions.ts
+msgid "Review"
+msgstr "Review"
+
+#: src/features/auth/SignInScreen.tsx
+msgid "Sign in"
+msgstr "Sign in"
+
+#: src/features/admin/PlayCards.tsx
+msgid "More channels than this device plays"
+msgstr "More channels than this device plays"
+
+#: src/features/setup/SetupWizard.tsx
+msgid "Language for titles and descriptions. Country for content ratings."
+msgstr "Language for titles and descriptions. Country for content ratings."
+
+#: src/features/admin/NetworkSettingsScreen.tsx
+msgid "Address used by apps and invite links outside the local network."
+msgstr "Address used by apps and invite links outside the local network."
+
+#: src/features/admin/AdminLayout.tsx
+#: src/features/admin/EditFieldsDialog.tsx
+#: src/features/admin/OverviewScreen.tsx
+msgid "Overview"
+msgstr "Overview"
+
+#: src/components/deviceCode.ts
+msgid "Android TV"
+msgstr "Android TV"
+
+#: src/features/browse/LibraryScreen.tsx
+msgid "Items appear here as the library's folders are scanned."
+msgstr "Items appear here as the library's folders are scanned."
+
+#: src/features/admin/AddUserButton.tsx
+#: src/features/admin/CreateInviteButton.tsx
+#: src/features/admin/TranscodingScreen.tsx
+#: src/features/admin/UserScreen.tsx
+msgid "Limits"
+msgstr "Limits"
+
+#: src/features/admin/AdminLayout.tsx
+#: src/features/admin/TasksScreen.tsx
+msgid "Maintenance"
+msgstr "Maintenance"
+
+#: src/features/admin/TranscodingScreen.tsx
+msgid "Permission denied for the device."
+msgstr "Permission denied for the device."
+
+#: src/features/admin/LibrarySettingsScreen.tsx
+#: src/features/setup/SetupWizard.tsx
+msgid "Metadata"
+msgstr "Metadata"
+
+#: src/features/browse/BatchEditDialog.tsx
+#: src/features/browse/LibraryScreen.tsx
+msgid "{count, plural, one {Edit # book} other {Edit # books}}"
+msgstr "{count, plural, one {Edit # book} other {Edit # books}}"
+
+#: src/app/AppShell.tsx
+#: src/components/SettingsLayout.tsx
+#: src/features/admin/TaskScreen.tsx
+#: src/features/auth/SignInScreen.tsx
+#: src/features/user/Sessions.tsx
+#: src/features/user/SettingsScreen.tsx
+msgid "Retry"
+msgstr "Retry"
+
+#: src/features/admin/PlayCards.tsx
+msgid "Can't play this frame rate"
+msgstr "Can't play this frame rate"
+
+#: src/features/admin/EditBookForm.tsx
+msgid "A year, YYYY-MM or YYYY-MM-DD."
+msgstr "A year, YYYY-MM or YYYY-MM-DD."
+
+#. placeholder {0}: collection.items.length
+#: src/features/detail/CollectionScreen.tsx
+msgid "{0, plural, one {# item} other {# items}}"
+msgstr "{0, plural, one {# item} other {# items}}"
+
+#: src/features/admin/ChooseArtworkDialog.tsx
+msgid "Still"
+msgstr "Still"
+
+#: src/features/setup/SetupWizard.tsx
+msgid "Kivo is ready"
+msgstr "Kivo is ready"
+
+#. placeholder {0}: formatRuntime(work.durationMs - position)
+#: src/features/detail/BookDetail.tsx
+msgid "{0} left"
+msgstr "{0} left"
+
+#: src/features/admin/AdminLayout.tsx
+msgid "Admin pages"
+msgstr "Admin pages"
+
+#: src/features/admin/ChooseArtworkDialog.tsx
+msgid "Upload image"
+msgstr "Upload image"
+
+#. placeholder {0}: status.text
+#: src/features/auth/AddressScreen.tsx
+msgid "{0} answered, but it isn't a Kivo server. Check the address and port, and that the server is up to date."
+msgstr "{0} answered, but it isn't a Kivo server. Check the address and port, and that the server is up to date."
+
+#: src/features/libraries/FoldersField.tsx
+msgid "Remove {f}"
+msgstr "Remove {f}"
+
+#: src/components/CopyField.tsx
+msgid "Copied"
+msgstr "Copied"
+
+#: src/i18n/playback.ts
+msgid "{kind} ({codec})"
+msgstr "{kind} ({codec})"
+
+#: src/features/libraries/FolderPicker.tsx
+msgid "Add this folder"
+msgstr "Add this folder"
+
+#: src/features/admin/ApiKeysScreen.tsx
+#: src/features/detail/RenameDialog.tsx
+#: src/features/libraries/AddLibraryForm.tsx
+#: src/features/libraries/EditLibraryForm.tsx
+#: src/features/user/Sessions.tsx
+msgid "Name"
+msgstr "Name"
+
+#: src/features/admin/LogsScreen.tsx
+msgid "Warnings"
+msgstr "Warnings"
+
+#: src/components/TranscodeDiagnostics.tsx
+#: src/features/admin/TaskScreen.tsx
+msgid "Failed"
+msgstr "Failed"
+
+#. placeholder {0}: user.username
+#: src/features/admin/UserScreen.tsx
+msgid "Set {0}'s password"
+msgstr "Set {0}'s password"
+
+#: src/features/browse/WorkCard.tsx
+msgid "{added, plural, one {# episode} other {# episodes}}"
+msgstr "{added, plural, one {# episode} other {# episodes}}"
+
+#: src/features/admin/ManageLibrariesScreen.tsx
+msgid "Metadata and artwork are downloaded again for every item. Fields edited by hand are kept."
+msgstr "Metadata and artwork are downloaded again for every item. Fields edited by hand are kept."
+
+#: src/features/history/HistoryScreen.tsx
+msgid "User"
+msgstr "User"
+
+#. placeholder {0}: formatClock(positionMs)
+#. placeholder {0}: work.title
+#: src/features/browse/WorkCard.tsx
+#: src/features/detail/PlaybackControls.tsx
+msgid "Resume {0}"
+msgstr "Resume {0}"
+
+#: src/features/admin/AddUserButton.tsx
+#: src/features/admin/UserScreen.tsx
+#: src/features/auth/InviteScreen.tsx
+#: src/features/auth/SignInScreen.tsx
+#: src/features/setup/SetupWizard.tsx
+msgid "Username"
+msgstr "Username"
+
+#: src/features/admin/PlayCards.tsx
+msgid "Can't play this sample rate"
+msgstr "Can't play this sample rate"
+
+#: src/features/admin/EditFieldsDialog.tsx
+msgid "Unrated"
+msgstr "Unrated"
+
+#: src/features/admin/ManageLibrariesScreen.tsx
+msgid "Scanned {ago}"
+msgstr "Scanned {ago}"
+
+#: src/features/auth/SignInScreen.tsx
+msgid "On a signed-in device, scan the QR code, or open Link a device and enter this code."
+msgstr "On a signed-in device, scan the QR code, or open Link a device and enter this code."
+
+#: src/features/search/SearchScreen.tsx
+msgid "View unmatched items"
+msgstr "View unmatched items"
+
+#. placeholder {0}: work.title
+#: src/features/browse/WorkCard.tsx
+#: src/features/detail/DetailMenu.tsx
+msgid "More actions for {0}"
+msgstr "More actions for {0}"
+
+#: src/features/user/TvVersions.tsx
+msgid "Server version"
+msgstr "Server version"
+
+#: src/features/admin/MissingFilesScreen.tsx
+msgid "Forget"
+msgstr "Forget"
+
+#: src/features/admin/GeneralSettingsScreen.tsx
+msgid "From opensubtitles.com. Required for subtitle downloads."
+msgstr "From opensubtitles.com. Required for subtitle downloads."
+
+#: src/features/admin/ChooseArtworkDialog.tsx
+msgid "Loading artwork…"
+msgstr "Loading artwork…"
+
+#: src/features/admin/EditFieldsDialog.tsx
+msgid "Edit {title}"
+msgstr "Edit {title}"
+
+#: src/features/detail/EpisodeDetail.tsx
+#: src/features/player/Transport.tsx
+msgid "Next episode"
+msgstr "Next episode"
+
+#: src/features/admin/ActivityScreen.tsx
+msgid "Show"
+msgstr "Show"
+
+#. placeholder {0}: formatBitrate(remoteQualityCapBps)
+#: src/features/admin/userFields.tsx
+msgid "Remote up to {0}"
+msgstr "Remote up to {0}"
+
+#: src/features/admin/ChooseArtworkDialog.tsx
+msgid "{label} choices"
+msgstr "{label} choices"
+
+#: src/features/admin/AddUserButton.tsx
+#: src/features/admin/UserScreen.tsx
+#: src/features/auth/InviteScreen.tsx
+#: src/features/auth/SignInScreen.tsx
+#: src/features/setup/SetupWizard.tsx
+#: src/features/user/SettingsScreen.tsx
+msgid "Password"
+msgstr "Password"
+
+#: src/features/auth/LinkScreen.tsx
+msgid "On your home network"
+msgstr "On your home network"
+
+#: src/features/admin/PlayCards.tsx
+msgid "Sending"
+msgstr "Sending"
+
+#: src/features/browse/useBrowseLabels.ts
+msgid "From {from}"
+msgstr "From {from}"
+
+#: src/features/admin/TranscodingScreen.tsx
+msgid "No usable GPU. Video is transcoded on the CPU."
+msgstr "No usable GPU. Video is transcoded on the CPU."
+
+#: src/features/admin/GeneralSettingsScreen.tsx
+msgid "OpenSubtitles API key"
+msgstr "OpenSubtitles API key"
+
+#: src/features/admin/ApiKeysScreen.tsx
+msgid "Apps and scripts using this key stop working immediately."
+msgstr "Apps and scripts using this key stop working immediately."
+
+#: src/features/admin/PlayCards.tsx
+msgid "Waiting for the player"
+msgstr "Waiting for the player"
+
+#: src/features/admin/ItemAdminMenu.tsx
+#: src/features/admin/UnmatchedScreen.tsx
+msgid "Fix match"
+msgstr "Fix match"
+
+#: src/features/browse/CountLine.tsx
+msgid "{count, plural, one {# collection} other {# collections}}"
+msgstr "{count, plural, one {# collection} other {# collections}}"
+
+#: src/features/admin/UserScreen.tsx
+msgid "Setting a password signs you out everywhere else."
+msgstr "Setting a password signs you out everywhere else."
+
+#: src/features/libraries/EditLibraryForm.tsx
+msgid "Cover images next to the books."
+msgstr "Cover images next to the books."
+
+#: src/features/detail/EpisodeDetail.tsx
+#: src/features/detail/SeriesDetail.tsx
+msgid "Specials"
+msgstr "Specials"
+
+#: src/features/libraries/EditLibraryForm.tsx
+msgid "Use local artwork"
+msgstr "Use local artwork"
+
+#: src/features/admin/EditBookForm.tsx
+msgid "Subtitle"
+msgstr "Subtitle"
+
+#: src/app/AppShell.tsx
+#: src/app/tv/TvRail.tsx
+#: src/features/admin/FixMatchDialog.tsx
+#: src/features/search/SearchScreen.tsx
+msgid "Search"
+msgstr "Search"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Appearance"
+msgstr "Appearance"
+
+#: src/features/admin/UserScreen.tsx
+#: src/features/user/SettingsScreen.tsx
+msgid "Account"
+msgstr "Account"
+
+#: src/features/admin/MissingFilesScreen.tsx
+msgid "Forget all"
+msgstr "Forget all"
+
+#: src/features/browse/CountLine.tsx
+#: src/features/browse/useBrowseLabels.ts
+msgid "Last episode added"
+msgstr "Last episode added"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "To manage this server, open this address in a browser."
+msgstr "To manage this server, open this address in a browser."
+
+#: src/features/admin/GeneralSettingsScreen.tsx
+msgid "Raises the daily download limit."
+msgstr "Raises the daily download limit."
+
+#. placeholder {0}: formatBitrate(source)
+#. placeholder {1}: formatBitrate(cap)
+#: src/features/player/StreamInfo.tsx
+msgid "Original ({0} is under the {1} limit)"
+msgstr "Original ({0} is under the {1} limit)"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Medium"
+msgstr "Medium"
+
+#: src/features/player/ScrubBar.tsx
+msgid "Seek"
+msgstr "Seek"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Subtitle background"
+msgstr "Subtitle background"
+
+#: src/features/detail/EpisodeList.tsx
+msgid "Play S{season} E{number}: {title}"
+msgstr "Play S{season} E{number}: {title}"
+
+#: src/features/admin/UnmatchedScreen.tsx
+msgid "Match {title}"
+msgstr "Match {title}"
+
+#: src/features/user/Sessions.tsx
+msgid "Sign out {device}"
+msgstr "Sign out {device}"
+
+#: src/features/admin/LibrarySettingsScreen.tsx
+msgid "Network shares may not report changes. All libraries are also scanned every 12 hours."
+msgstr "Network shares may not report changes. All libraries are also scanned every 12 hours."
+
+#: src/features/browse/FavoritesScreen.tsx
+#: src/features/detail/SeriesDetail.tsx
+#: src/features/search/SearchScreen.tsx
+msgid "Episodes"
+msgstr "Episodes"
+
+#: src/features/detail/BookDetail.tsx
+msgid "Released"
+msgstr "Released"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Episodes use the audio and subtitle tracks last chosen for the show."
+msgstr "Episodes use the audio and subtitle tracks last chosen for the show."
+
+#: src/components/trackLabels.ts
+msgid "{label} (downmix)"
+msgstr "{label} (downmix)"
+
+#: src/features/admin/UserScreen.tsx
+msgid "Disable account"
+msgstr "Disable account"
+
+#: src/components/TrackPicker.tsx
+#: src/features/admin/TranscodingScreen.tsx
+#: src/features/player/StreamInfo.tsx
+#: src/features/user/SettingsScreen.tsx
+msgid "Off"
+msgstr "Off"
+
+#: src/features/admin/EditBookForm.tsx
+msgid "Primary series"
+msgstr "Primary series"
+
+#: src/features/admin/ApiKeysScreen.tsx
+#: src/features/user/Sessions.tsx
+msgid "Last used {ago}"
+msgstr "Last used {ago}"
+
+#: src/features/admin/MissingFilesScreen.tsx
+msgid "Forget {path}?"
+msgstr "Forget {path}?"
+
+#: src/features/detail/EpisodeList.tsx
+msgid "Resume S{season} E{number}: {title}"
+msgstr "Resume S{season} E{number}: {title}"
+
+#: src/features/admin/ActivityScreen.tsx
+msgid "Sign-ins"
+msgstr "Sign-ins"
+
+#: src/features/admin/UserScreen.tsx
+msgid "Set password"
+msgstr "Set password"
+
+#: src/features/admin/ProblemsScreen.tsx
+msgid "Dismiss {message}"
+msgstr "Dismiss {message}"
+
+#. placeholder {0}: library.name
+#: src/features/browse/LibraryScreen.tsx
+msgid "{0} is empty."
+msgstr "{0} is empty."
+
+#: src/features/browse/useBrowseLabels.ts
+msgid "{from}s"
+msgstr "{from}s"
+
+#: src/features/browse/WorkCard.tsx
+#: src/features/detail/EpisodeList.tsx
+msgid "Identifying"
+msgstr "Identifying"
+
+#: src/components/deviceCode.ts
+msgid "Android phone"
+msgstr "Android phone"
+
+#: src/features/admin/FixMatchDialog.tsx
+msgid "Score {score}"
+msgstr "Score {score}"
+
+#: src/features/player/castProtocol.ts
+msgid "The TV's receiver is older than the server."
+msgstr "The TV's receiver is older than the server."
+
+#: src/features/admin/TaskProgress.tsx
+msgid "{left} left"
+msgstr "{left} left"
+
+#: src/features/admin/PlayCards.tsx
+msgid "Can't play this level"
+msgstr "Can't play this level"
+
+#: src/features/admin/ChooseArtworkDialog.tsx
+msgid "Choose artwork for {title}"
+msgstr "Choose artwork for {title}"
+
+#: src/features/auth/LinkScreen.tsx
+msgid "{name} is signed in as {username}. You can close this page."
+msgstr "{name} is signed in as {username}. You can close this page."
+
+#: src/features/libraries/EditLibraryForm.tsx
+msgid "Every 90 days"
+msgstr "Every 90 days"
+
+#: src/features/player/PlayerOverlays.tsx
+msgid "Skip Intro"
+msgstr "Skip Intro"
+
+#: src/app/AppShell.tsx
+#: src/features/auth/LinkScreen.tsx
+#: src/features/user/Sessions.tsx
+msgid "Link a device"
+msgstr "Link a device"
+
+#: src/features/detail/BookDetail.tsx
+msgid "By <0/>"
+msgstr "By <0/>"
+
+#: src/features/detail/BookDetail.tsx
+#: src/features/player/NowPlaying.tsx
+msgid "Chapters"
+msgstr "Chapters"
+
+#: src/features/browse/WorkCard.tsx
+#: src/features/detail/DetailMenu.tsx
+msgid "Go to library"
+msgstr "Go to library"
+
+#: src/features/auth/SignInScreen.tsx
+msgid "or"
+msgstr "or"
+
+#: src/components/ModalDialog.tsx
+#: src/components/SaveBar.tsx
+msgid "Discard"
+msgstr "Discard"
+
+#: src/features/admin/ActivityList.tsx
+#: src/features/admin/OverviewScreen.tsx
+msgid "Fix"
+msgstr "Fix"
+
+#: src/features/admin/useAdminLabels.ts
+msgid "Refreshing"
+msgstr "Refreshing"
+
+#: src/features/admin/problemActions.ts
+msgid "Re-enter the provider's API key in General settings."
+msgstr "Re-enter the provider's API key in General settings."
+
+#: src/features/browse/CountLine.tsx
+msgid "collections"
+msgstr "collections"
+
+#: src/features/browse/useBrowseLabels.ts
+msgid "Unwatched"
+msgstr "Unwatched"
+
+#: src/features/libraries/AddLibraryButton.tsx
+msgid "Add a library"
+msgstr "Add a library"
+
+#: src/features/browse/LibrariesScreen.tsx
+#: src/features/browse/LibrarySwitcher.tsx
+msgid "Pinned libraries"
+msgstr "Pinned libraries"
+
+#: src/features/admin/LogsScreen.tsx
+msgid "Info"
+msgstr "Info"
+
+#: src/features/player/CastButton.tsx
+msgid "TV volume"
+msgstr "TV volume"
+
+#: src/features/admin/LibrarySettingsScreen.tsx
+#: src/features/admin/ManageLibrariesScreen.tsx
+msgid "Scanning"
+msgstr "Scanning"
+
+#: src/features/admin/EditBookForm.tsx
+msgid "Series name"
+msgstr "Series name"
+
+#: src/features/admin/UserScreen.tsx
+msgid "Delete"
+msgstr "Delete"
+
+#: src/features/admin/UserScreen.tsx
+msgid "Disable"
+msgstr "Disable"
+
+#: src/features/admin/TasksScreen.tsx
+msgid "Progress"
+msgstr "Progress"
+
+#: src/features/admin/ActivityList.tsx
+msgid "{count, plural, one {# failed sign-in for {user}} other {# failed sign-ins for {user}}}"
+msgstr "{count, plural, one {# failed sign-in for {user}} other {# failed sign-ins for {user}}}"
+
+#: src/features/player/PlaybackSettingsMenu.tsx
+msgid "Normal"
+msgstr "Normal"
+
+#: src/features/browse/FilterPanel.tsx
+msgid "Filters"
+msgstr "Filters"
+
+#: src/features/player/PlayerError.tsx
+msgid "Play another version"
+msgstr "Play another version"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Play next episode automatically"
+msgstr "Play next episode automatically"
+
+#: src/features/browse/FilterPanel.tsx
+msgid "Watch status"
+msgstr "Watch status"
+
+#: src/features/admin/ShowFilesDialog.tsx
+msgid "Loading files…"
+msgstr "Loading files…"
+
+#: src/features/admin/TasksScreen.tsx
+#: src/features/libraries/EditLibraryForm.tsx
+msgid "Nightly"
+msgstr "Nightly"
+
+#: src/components/trackLabels.ts
+msgid "{name} (missing)"
+msgstr "{name} (missing)"
+
+#: src/features/browse/LibraryScreen.tsx
+msgid "Grid"
+msgstr "Grid"
+
+#: src/features/home/HomeScreen.tsx
+msgid "Recently Added"
+msgstr "Recently Added"
+
+#: src/features/admin/ActivityList.tsx
+msgid "{count, plural, one {# failed sign-in for an unknown user} other {# failed sign-ins for an unknown user}}"
+msgstr "{count, plural, one {# failed sign-in for an unknown user} other {# failed sign-ins for an unknown user}}"
+
+#: src/features/libraries/EditLibraryForm.tsx
+msgid "Prepared ahead of the first play."
+msgstr "Prepared ahead of the first play."
+
+#: src/features/admin/ActivityList.tsx
+msgid "{user} started {name}"
+msgstr "{user} started {name}"
+
+#: src/features/browse/CountLine.tsx
+msgid "{count, plural, one {# series} other {# series}}"
+msgstr "{count, plural, one {# series} other {# series}}"
+
+#: src/app/AppShell.tsx
+#: src/app/tv/TvRail.tsx
+msgid "Main"
+msgstr "Main"
+
+#: src/features/player/NowPlaying.tsx
+#: src/features/player/PlaybackSettingsMenu.tsx
+msgid "{s}×"
+msgstr "{s}×"
+
+#: src/features/player/PlaybackSettingsMenu.tsx
+#: src/features/player/StreamInfo.tsx
+#: src/features/user/SettingsScreen.tsx
+msgid "Quality"
+msgstr "Quality"
+
+#: src/features/admin/PlayCards.tsx
+#: src/features/player/StreamInfo.tsx
+msgid "Local"
+msgstr "Local"
+
+#: src/features/admin/ChooseArtworkDialog.tsx
+msgid "Poster"
+msgstr "Poster"
+
+#: src/features/browse/CountLine.tsx
+msgid "shows"
+msgstr "shows"
+
+#: src/features/admin/FixMatchDialog.tsx
+msgid "No matches. Try a different title or remove the year."
+msgstr "No matches. Try a different title or remove the year."
+
+#: src/components/ConfirmDialog.tsx
+#: src/components/SubmitForm.tsx
+#: src/features/browse/LibraryScreen.tsx
+msgid "Cancel"
+msgstr "Cancel"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Signed in to {server}"
+msgstr "Signed in to {server}"
+
+#: src/features/admin/MissingFilesScreen.tsx
+msgid "Watch state is kept. Nothing on disk is deleted."
+msgstr "Watch state is kept. Nothing on disk is deleted."
+
+#: src/components/Row.tsx
+msgid "Previous"
+msgstr "Previous"
+
+#: src/features/admin/ApiKeysScreen.tsx
+msgid "Never used"
+msgstr "Never used"
+
+#: src/features/admin/CreateInviteButton.tsx
+msgid "Uses this browser's address. For links that work outside the local network, set a public URL in {network}."
+msgstr "Uses this browser's address. For links that work outside the local network, set a public URL in {network}."
+
+#: src/features/auth/LinkScreen.tsx
+msgid "This device isn't on your home network. Only allow it if it's yours and you started signing in on it just now."
+msgstr "This device isn't on your home network. Only allow it if it's yours and you started signing in on it just now."
+
+#: src/features/admin/TasksScreen.tsx
+msgid "to"
+msgstr "to"
+
+#: src/components/TrackPicker.tsx
+#: src/features/admin/TranscodingScreen.tsx
+msgid "Automatic"
+msgstr "Automatic"
+
+#: src/features/browse/LibraryScreen.tsx
+#: src/features/search/SearchScreen.tsx
+msgid "Collections"
+msgstr "Collections"
+
+#: src/features/player/PlaybackSettingsMenu.tsx
+msgid "Playback Settings"
+msgstr "Playback Settings"
+
+#: src/components/TranscodeDiagnostics.tsx
+#: src/features/admin/ApiKeysScreen.tsx
+#: src/features/admin/CreateInviteButton.tsx
+msgid "Done"
+msgstr "Done"
+
+#: src/features/admin/EditBookForm.tsx
+#: src/features/browse/BatchEditDialog.tsx
+#: src/features/browse/LibraryScreen.tsx
+msgid "Authors"
+msgstr "Authors"
+
+#: src/features/admin/TranscodingScreen.tsx
+msgid "HDR tone mapping on CPU"
+msgstr "HDR tone mapping on CPU"
+
+#: src/features/browse/FilterPanel.tsx
+msgid "Dynamic range"
+msgstr "Dynamic range"
+
+#: src/features/auth/AddressScreen.tsx
+msgid "Address"
+msgstr "Address"
+
+#: src/features/browse/CountLine.tsx
+msgid "Newest"
+msgstr "Newest"
+
+#: src/features/admin/TranscodingScreen.tsx
+msgid "Hardware acceleration is off. Video is transcoded on the CPU."
+msgstr "Hardware acceleration is off. Video is transcoded on the CPU."
+
+#: src/features/admin/ActivityList.tsx
+msgid "{user} finished {name}"
+msgstr "{user} finished {name}"
+
+#: src/features/admin/TasksScreen.tsx
+#: src/features/admin/useAdminLabels.ts
+msgid "Intro and credits"
+msgstr "Intro and credits"
+
+#: src/features/admin/UsersScreen.tsx
+msgid "Disabled"
+msgstr "Disabled"
+
+#: src/components/TranscodeDiagnostics.tsx
+msgid "exit code {exitCode}"
+msgstr "exit code {exitCode}"
+
+#: src/features/admin/MissingFilesScreen.tsx
+msgid "Missing files are kept for 30 days. A moved or restored file keeps its watch state."
+msgstr "Missing files are kept for 30 days. A moved or restored file keeps its watch state."
+
+#: src/features/admin/OverviewScreen.tsx
+msgid "{playing} playing"
+msgstr "{playing} playing"
+
+#: src/features/admin/OverviewScreen.tsx
+msgid "{gone, plural, one {# missing file} other {# missing files}}"
+msgstr "{gone, plural, one {# missing file} other {# missing files}}"
+
+#: src/features/admin/useAdminLabels.ts
+msgid "Reading files"
+msgstr "Reading files"
+
+#: src/features/browse/CountLine.tsx
+msgid "No {noun} match these filters"
+msgstr "No {noun} match these filters"
+
+#: src/features/admin/ChooseArtworkDialog.tsx
+msgid "Local file"
+msgstr "Local file"
+
+#: src/features/admin/ActivityScreen.tsx
+msgid "Today"
+msgstr "Today"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "None"
+msgstr "None"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Show subtitles"
+msgstr "Show subtitles"
+
+#: src/features/detail/PlaybackControls.tsx
+#: src/features/player/PlaybackSettingsMenu.tsx
+#: src/features/user/SettingsScreen.tsx
+#: src/features/user/TvVersions.tsx
+msgid "Version"
+msgstr "Version"
+
+#: src/features/libraries/FolderPicker.tsx
+msgid "Folder path"
+msgstr "Folder path"
+
+#: src/features/admin/ManageLibrariesScreen.tsx
+#: src/features/admin/userFields.tsx
+#: src/features/home/HomeScreen.tsx
+msgid "No libraries"
+msgstr "No libraries"
+
+#: src/features/user/Sessions.tsx
+msgid "No signed-in devices"
+msgstr "No signed-in devices"
+
+#. placeholder {0}: collection.name
+#: src/features/detail/WorkRows.tsx
+msgid "Part of {0}"
+msgstr "Part of {0}"
+
+#: src/features/detail/WorkRows.tsx
+msgid "Other extras"
+msgstr "Other extras"
+
+#: src/features/admin/UserScreen.tsx
+msgid "Make admin and save"
+msgstr "Make admin and save"
+
+#: src/features/browse/FavoritesScreen.tsx
+msgid "{count, plural, one {# extra} other {# extras}}"
+msgstr "{count, plural, one {# extra} other {# extras}}"
+
+#: src/app/AppShell.tsx
+#: src/app/tv/TvRail.tsx
+#: src/features/browse/LibrariesScreen.tsx
+#: src/features/browse/LibrarySwitcher.tsx
+msgid "More libraries"
+msgstr "More libraries"
+
+#: src/features/browse/useBrowseLabels.ts
+msgid "Runtime"
+msgstr "Runtime"
+
+#: src/features/admin/TranscodingScreen.tsx
+msgid "Best available accelerator"
+msgstr "Best available accelerator"
+
+#: src/features/admin/ItemAdminMenu.tsx
+#: src/features/admin/ManageLibrariesScreen.tsx
+msgid "Edit"
+msgstr "Edit"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "When the audio isn't in your subtitle language"
+msgstr "When the audio isn't in your subtitle language"
+
+#: src/features/admin/userFields.tsx
+msgid "Server's limit"
+msgstr "Server's limit"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Remember choices per show"
+msgstr "Remember choices per show"
+
+#: src/features/admin/PlayCards.tsx
+msgid "Can't play this profile"
+msgstr "Can't play this profile"
+
+#: src/features/browse/CountLine.tsx
+#: src/features/browse/FavoritesScreen.tsx
+msgid "{count, plural, one {# book} other {# books}}"
+msgstr "{count, plural, one {# book} other {# books}}"
+
+#. placeholder {0}: library.name
+#: src/features/browse/LibraryScreen.tsx
+msgid "{0} can't be reached. Nothing has been removed."
+msgstr "{0} can't be reached. Nothing has been removed."
+
+#: src/features/detail/EpisodeList.tsx
+msgid "Loading episodes…"
+msgstr "Loading episodes…"
+
+#: src/features/auth/LinkScreen.tsx
+#: src/features/player/PlayerError.tsx
+msgid "Code"
+msgstr "Code"
+
+#: src/features/admin/AdminLayout.tsx
+#: src/features/admin/LibrarySettingsScreen.tsx
+#: src/features/admin/TasksScreen.tsx
+msgid "Library"
+msgstr "Library"
+
+#: src/features/admin/TranscodingScreen.tsx
+msgid "Subtitle burn-in on CPU"
+msgstr "Subtitle burn-in on CPU"
+
+#: src/features/libraries/EditLibraryForm.tsx
+msgid ".nfo files and artwork next to the media."
+msgstr ".nfo files and artwork next to the media."
+
+#: src/components/PersonCard.tsx
+msgid "Writer"
+msgstr "Writer"
+
+#: src/features/admin/ScanLine.tsx
+msgid "about {left} left"
+msgstr "about {left} left"
+
+#: src/features/player/castProtocol.ts
+msgid "Update the server to cast to this TV."
+msgstr "Update the server to cast to this TV."
+
+#: src/features/admin/TranscodingScreen.tsx
+msgid "No GPU found. Video is transcoded on the CPU. To use a GPU, pass it to the container."
+msgstr "No GPU found. Video is transcoded on the CPU. To use a GPU, pass it to the container."
+
+#: src/features/detail/PersonScreen.tsx
+msgid "Standalone books"
+msgstr "Standalone books"
+
+#: src/features/browse/CountLine.tsx
+msgid "Sort"
+msgstr "Sort"
+
+#: src/features/admin/ActivityList.tsx
+msgid "{failed} failed"
+msgstr "{failed} failed"
+
+#: src/features/admin/OverviewScreen.tsx
+msgid "Needs attention"
+msgstr "Needs attention"
+
+#. placeholder {0}: formatTimeOfDay(play.startedAt)
+#: src/features/admin/PlayCards.tsx
+msgid "Started {0}"
+msgstr "Started {0}"
+
+#: src/features/admin/PlayCards.tsx
+msgid "Quality set on this device"
+msgstr "Quality set on this device"
+
+#: src/app/AppShell.tsx
+#: src/features/user/Sessions.tsx
+msgid "Sign out"
+msgstr "Sign out"
+
+#: src/features/admin/PlayCards.tsx
+msgid "Show diagnostics"
+msgstr "Show diagnostics"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Theme"
+msgstr "Theme"
+
+#: src/features/admin/UserScreen.tsx
+msgid "Set password…"
+msgstr "Set password…"
+
+#: src/features/auth/AddressScreen.tsx
+msgid "That isn't an address."
+msgstr "That isn't an address."
+
+#: src/features/admin/ManageLibrariesScreen.tsx
+#: src/features/admin/UserScreen.tsx
+msgid "Delete {name}?"
+msgstr "Delete {name}?"
+
+#: src/features/admin/ChooseArtworkDialog.tsx
+msgid "The image is over 25 MB."
+msgstr "The image is over 25 MB."
+
+#: src/features/browse/CountLine.tsx
+msgid "books"
+msgstr "books"
+
+#: src/features/admin/useAdminLabels.ts
+msgid "Downloads"
+msgstr "Downloads"
+
+#: src/features/browse/FilterPanel.tsx
+msgid "Resolution"
+msgstr "Resolution"
+
+#: src/features/admin/ActivityScreen.tsx
+#: src/features/admin/MissingFilesScreen.tsx
+#: src/features/admin/UnmatchedScreen.tsx
+#: src/features/history/HistoryScreen.tsx
+msgid "Show more"
+msgstr "Show more"
+
+#: src/components/PersonCard.tsx
+msgid "Actor"
+msgstr "Actor"
+
+#: src/features/detail/PersonScreen.tsx
+msgid "Narrated"
+msgstr "Narrated"
+
+#: src/features/admin/ManageLibrariesScreen.tsx
+msgid "{n, plural, one {# book} other {# books}}"
+msgstr "{n, plural, one {# book} other {# books}}"
+
+#: src/features/home/HomeScreen.tsx
+msgid "Continue Watching"
+msgstr "Continue Watching"
+
+#: src/features/admin/NetworkSettingsScreen.tsx
+msgid "Leave empty to use private address ranges. Other addresses are remote."
+msgstr "Leave empty to use private address ranges. Other addresses are remote."
+
+#: src/features/home/HomeScreen.tsx
+msgid "Continue Series"
+msgstr "Continue Series"
+
+#. placeholder {0}: formatBitrate(cap)
+#: src/features/player/PlaybackSettingsMenu.tsx
+msgid "Limited to {0} for this play"
+msgstr "Limited to {0} for this play"
+
+#: src/features/admin/ApiKeysScreen.tsx
+msgid "Create an API key"
+msgstr "Create an API key"
+
+#: src/features/admin/ActivityList.tsx
+msgid "{videos} added to {library}"
+msgstr "{videos} added to {library}"
+
+#: src/features/admin/ApiKeysScreen.tsx
+msgid "This key has admin access. Send it in an <0>Authorization: Bearer</0> header. It won't be shown again."
+msgstr "This key has admin access. Send it in an <0>Authorization: Bearer</0> header. It won't be shown again."
+
+#: src/features/admin/UserScreen.tsx
+msgid "Enable account"
+msgstr "Enable account"
+
+#: src/features/admin/problemActions.ts
+msgid "In Transcoding settings, choose Automatic or an accelerator that passed testing."
+msgstr "In Transcoding settings, choose Automatic or an accelerator that passed testing."
+
+#: src/features/admin/EditFieldsDialog.tsx
+msgid "Sort title"
+msgstr "Sort title"
+
+#: src/features/admin/PlayCards.tsx
+msgid "Burned-in subtitles"
+msgstr "Burned-in subtitles"
+
+#: src/features/libraries/EditLibraryForm.tsx
+msgid "Remove and save"
+msgstr "Remove and save"
+
+#: src/features/admin/CreateInviteButton.tsx
+msgid "Invite someone"
+msgstr "Invite someone"
+
+#. placeholder {0}: formatBitrate(cap)
+#: src/features/player/StreamInfo.tsx
+msgid "Limited to {0}"
+msgstr "Limited to {0}"
+
+#: src/features/admin/ActivityList.tsx
+msgid "{user} signed in"
+msgstr "{user} signed in"
+
+#: src/features/browse/CountLine.tsx
+msgid "No {state} {noun}"
+msgstr "No {state} {noun}"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Unchecked libraries are hidden from the sidebar and Home."
+msgstr "Unchecked libraries are hidden from the sidebar and Home."
+
+#: src/features/admin/userFields.tsx
+msgid "Simultaneous streams"
+msgstr "Simultaneous streams"
+
+#: src/features/admin/TasksScreen.tsx
+msgid "Schedule"
+msgstr "Schedule"
+
+#: src/features/admin/UserScreen.tsx
+msgid "Users ›"
+msgstr "Users ›"
+
+#: src/features/admin/CreateInviteButton.tsx
+msgid "1 day"
+msgstr "1 day"
+
+#: src/features/user/ChangePasswordDialog.tsx
+msgid "Change password"
+msgstr "Change password"
+
+#: src/features/admin/PlayCards.tsx
+msgid "Stop {title} for {user}?"
+msgstr "Stop {title} for {user}?"
+
+#: src/features/admin/PlayCards.tsx
+msgid "Not the file's default track"
+msgstr "Not the file's default track"
+
+#: src/features/auth/LinkScreen.tsx
+msgid "{name} wasn't signed in"
+msgstr "{name} wasn't signed in"
+
+#: src/features/browse/CountLine.tsx
+msgid "in-progress"
+msgstr "in-progress"
+
+#: src/features/setup/SetupWizard.tsx
+msgid "Create the admin account"
+msgstr "Create the admin account"
+
+#: src/features/admin/ChooseArtworkDialog.tsx
+msgid "Background"
+msgstr "Background"
+
+#: src/features/player/StreamInfo.tsx
+#: src/features/user/SettingsScreen.tsx
+msgid "Playback"
+msgstr "Playback"
+
+#: src/features/admin/AdminLayout.tsx
+#: src/features/admin/TaskScreen.tsx
+#: src/features/admin/TasksScreen.tsx
+msgid "Tasks"
+msgstr "Tasks"
+
+#: src/features/admin/NetworkSettingsScreen.tsx
+msgid "Public URL"
+msgstr "Public URL"
+
+#. placeholder {0}: book.title
+#: src/features/player/MiniPlayer.tsx
+msgid "Now Playing: {0}"
+msgstr "Now Playing: {0}"
+
+#: src/features/admin/OverviewScreen.tsx
+#: src/features/browse/FavoritesScreen.tsx
+#: src/features/home/HomeScreen.tsx
+msgid "See all"
+msgstr "See all"
+
+#: src/features/detail/EpisodeDetail.tsx
+#: src/features/player/Transport.tsx
+msgid "Previous episode"
+msgstr "Previous episode"
+
+#: src/features/admin/ApiKeysScreen.tsx
+#: src/features/admin/UsersScreen.tsx
+msgid "Revoke"
+msgstr "Revoke"
+
+#: src/features/player/PlaybackSettingsMenu.tsx
+#: src/features/user/SettingsScreen.tsx
+msgid "Based on connection speed and limits"
+msgstr "Based on connection speed and limits"
+
+#: src/features/user/Sessions.tsx
+msgid "Sign out {name}?"
+msgstr "Sign out {name}?"
+
+#: src/features/admin/PlayCards.tsx
+msgid "More reference frames than this device plays"
+msgstr "More reference frames than this device plays"
+
+#: src/components/CopyField.tsx
+msgid "Press Ctrl+C to copy."
+msgstr "Press Ctrl+C to copy."
+
+#: src/features/admin/CreateInviteButton.tsx
+msgid "Network settings"
+msgstr "Network settings"
+
+#. placeholder {0}: index + 1
+#. placeholder {1}: chapters.length
+#: src/features/player/NowPlaying.tsx
+msgid "Chapter {0} of {1}"
+msgstr "Chapter {0} of {1}"
+
+#: src/features/admin/TasksScreen.tsx
+msgid "Next run"
+msgstr "Next run"
+
+#: src/features/auth/LinkScreen.tsx
+msgid "Allow"
+msgstr "Allow"
+
+#: src/features/libraries/AddLibraryButton.tsx
+#: src/features/libraries/AddLibraryForm.tsx
+msgid "Add library"
+msgstr "Add library"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Change password…"
+msgstr "Change password…"
+
+#: src/features/admin/useAdminLabels.ts
+msgid "Clean up subtitles"
+msgstr "Clean up subtitles"
+
+#: src/components/CopyField.tsx
+msgid "Copy"
+msgstr "Copy"
+
+#: src/features/admin/PlayCards.tsx
+msgid "Hide diagnostics"
+msgstr "Hide diagnostics"
+
+#: src/features/admin/ItemAdminMenu.tsx
+msgid "Unmatch {title}?"
+msgstr "Unmatch {title}?"
+
+#: src/features/admin/GeneralSettingsScreen.tsx
+msgid "Required if a username is set."
+msgstr "Required if a username is set."
+
+#: src/features/player/AudioSubtitlesMenu.tsx
+#: src/features/player/PlaybackSettingsMenu.tsx
+msgid "Audio & Subtitles"
+msgstr "Audio & Subtitles"
+
+#: src/components/TranscodeDiagnostics.tsx
+msgid "Error output"
+msgstr "Error output"
+
+#. placeholder {0}: work.title
+#: src/features/browse/WorkCard.tsx
+msgid "Play {0}"
+msgstr "Play {0}"
+
+#: src/features/admin/ChooseArtworkDialog.tsx
+msgid "Current"
+msgstr "Current"
+
+#: src/features/admin/ActivityScreen.tsx
+msgid "Added"
+msgstr "Added"
+
+#: src/app/ConnectionBanner.tsx
+msgid "Reload"
+msgstr "Reload"
+
+#: src/features/player/PlayerOverlays.tsx
+msgid "Picture in picture"
+msgstr "Picture in picture"
+
+#: src/app/RouteStates.tsx
+#: src/features/auth/SignInScreen.tsx
+#: src/features/user/SettingsScreen.tsx
+msgid "Change server"
+msgstr "Change server"
+
+#: src/features/home/HomeScreen.tsx
+msgid "Nothing here yet"
+msgstr "Nothing here yet"
+
+#: src/features/libraries/FoldersField.tsx
+msgid "Folders"
+msgstr "Folders"
+
+#: src/features/libraries/EditLibraryForm.tsx
+msgid "Intro and credits markers"
+msgstr "Intro and credits markers"
+
+#: src/features/admin/UnmatchedScreen.tsx
+#: src/features/browse/useBrowseLabels.ts
+#: src/features/browse/WorkCard.tsx
+#: src/features/detail/EpisodeList.tsx
+msgid "Unmatched"
+msgstr "Unmatched"
+
+#: src/features/libraries/FolderPicker.tsx
+msgid "Up one folder"
+msgstr "Up one folder"
+
+#: src/features/auth/SignInScreen.tsx
+msgid "Getting a code…"
+msgstr "Getting a code…"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Original"
+msgstr "Original"
+
+#: src/components/deviceCode.ts
+msgid "Apple TV"
+msgstr "Apple TV"
+
+#: src/components/Row.tsx
+#: src/features/setup/SetupWizard.tsx
+msgid "Next"
+msgstr "Next"
+
+#: src/features/admin/ManageLibrariesScreen.tsx
+msgid "Scan"
+msgstr "Scan"
+
+#: src/app/AppShell.tsx
+#: src/app/tv/TvRail.tsx
+msgid "Home"
+msgstr "Home"
+
+#: src/features/admin/PlayCards.tsx
+msgid "Message to the viewer (optional)"
+msgstr "Message to the viewer (optional)"
+
+#: src/features/browse/FavoritesScreen.tsx
+#: src/features/browse/LibraryScreen.tsx
+#: src/features/detail/PersonScreen.tsx
+#: src/features/libraries/AddLibraryForm.tsx
+#: src/features/search/SearchScreen.tsx
+msgid "Shows"
+msgstr "Shows"
+
+#: src/features/detail/BookDetail.tsx
+msgid "Narrated by <0/>"
+msgstr "Narrated by <0/>"
+
+#: src/features/admin/useAdminLabels.ts
+msgid "Clean up intro and credits"
+msgstr "Clean up intro and credits"
+
+#: src/features/admin/UserScreen.tsx
+msgid "Make {name} an admin?"
+msgstr "Make {name} an admin?"
+
+#: src/features/auth/LinkScreen.tsx
+msgid "That code didn't work. Check the other device for a new one."
+msgstr "That code didn't work. Check the other device for a new one."
+
+#: src/features/admin/useAdminLabels.ts
+msgid "Optimizing"
+msgstr "Optimizing"
+
+#: src/features/browse/FavoritesScreen.tsx
+#: src/features/browse/LibraryScreen.tsx
+#: src/features/detail/PersonScreen.tsx
+#: src/features/libraries/AddLibraryForm.tsx
+#: src/features/search/SearchScreen.tsx
+msgid "Movies"
+msgstr "Movies"
+
+#: src/features/detail/PlaybackControls.tsx
+#: src/features/player/AudioSubtitlesMenu.tsx
+msgid "Search subtitles…"
+msgstr "Search subtitles…"
+
+#: src/features/browse/CountLine.tsx
+msgid "Author A–Z"
+msgstr "Author A–Z"
+
+#: src/features/admin/FixMatchDialog.tsx
+msgid "Runtime: {runtime}"
+msgstr "Runtime: {runtime}"
+
+#: src/features/admin/FixMatchDialog.tsx
+msgid "Or a provider ID, such as tmdb-438631."
+msgstr "Or a provider ID, such as tmdb-438631."
+
+#: src/features/admin/problemActions.ts
+msgid "See the fix in Transcoding settings."
+msgstr "See the fix in Transcoding settings."
+
+#: src/features/admin/ChooseArtworkDialog.tsx
+msgid "Logo"
+msgstr "Logo"
+
+#: src/features/browse/CountLine.tsx
+#: src/features/browse/FavoritesScreen.tsx
+msgid "{count, plural, one {# movie} other {# movies}}"
+msgstr "{count, plural, one {# movie} other {# movies}}"
+
+#: src/features/player/CastButton.tsx
+#: src/features/player/MiniPlayer.tsx
+#: src/features/player/NowPlaying.tsx
+#: src/features/player/Transport.tsx
+msgid "Pause"
+msgstr "Pause"
+
+#: src/features/player/CastRemote.tsx
+#: src/features/player/PlayerError.tsx
+#: src/features/player/PlayerOverlays.tsx
+#: src/features/setup/SetupWizard.tsx
+msgid "Back"
+msgstr "Back"
+
+#: src/features/user/Sessions.tsx
+msgid "You will need to sign in again."
+msgstr "You will need to sign in again."
+
+#: src/features/admin/PlayCards.tsx
+msgid "Larger than this device plays"
+msgstr "Larger than this device plays"
+
+#: src/features/admin/LibrarySettingsScreen.tsx
+msgid "Scan when files change"
+msgstr "Scan when files change"
+
+#: src/features/admin/ManageLibrariesScreen.tsx
+msgid "The library's items are removed. Files on disk aren't touched. Watch history returns if a title is added again."
+msgstr "The library's items are removed. Files on disk aren't touched. Watch history returns if a title is added again."
+
+#: src/features/admin/ManageLibrariesScreen.tsx
+msgid "Refresh all metadata"
+msgstr "Refresh all metadata"
+
+#: src/features/player/PlayerOverlays.tsx
+msgid "Exit full screen"
+msgstr "Exit full screen"
+
+#: src/features/player/UpNextCard.tsx
+msgid "Playing in {seconds} s"
+msgstr "Playing in {seconds} s"
+
+#: src/features/admin/EditBookForm.tsx
+#: src/features/admin/EditFieldsDialog.tsx
+#: src/features/browse/BatchEditDialog.tsx
+msgid "Genres"
+msgstr "Genres"
+
+#: src/components/TrackPicker.tsx
+msgid "Remembered for this show"
+msgstr "Remembered for this show"
+
+#: src/features/admin/ApiKeysScreen.tsx
+msgid "API key"
+msgstr "API key"
+
+#: src/features/admin/problemActions.ts
+msgid "Set a working tmdb_key in server.toml or KIVO_TMDB_KEY, then restart the server."
+msgstr "Set a working tmdb_key in server.toml or KIVO_TMDB_KEY, then restart the server."
+
+#: src/features/admin/TranscodingScreen.tsx
+msgid "Test encode failed."
+msgstr "Test encode failed."
+
+#: src/features/admin/UserScreen.tsx
+msgid "Admins can manage all libraries, users and settings."
+msgstr "Admins can manage all libraries, users and settings."
+
+#: src/features/libraries/EditLibraryForm.tsx
+msgid "Every 60 days"
+msgstr "Every 60 days"
+
+#: src/features/player/castProtocol.ts
+#: src/features/player/CastRemote.tsx
+msgid "Can't reach the server."
+msgstr "Can't reach the server."
+
+#: src/components/ServerAddress.tsx
+msgid "QR code of the server address"
+msgstr "QR code of the server address"
+
+#: src/features/admin/OverviewScreen.tsx
+msgid "Now playing"
+msgstr "Now playing"
+
+#: src/features/admin/AdminLayout.tsx
+#: src/features/admin/TranscodingScreen.tsx
+msgid "Transcoding"
+msgstr "Transcoding"
+
+#: src/features/admin/LibrarySettingsScreen.tsx
+msgid "From 50% to 100%."
+msgstr "From 50% to 100%."
+
+#: src/features/admin/ActivityList.tsx
+msgid "{admin} added {user}"
+msgstr "{admin} added {user}"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Home & libraries"
+msgstr "Home & libraries"
+
+#: src/features/player/StreamInfo.tsx
+msgid "File"
+msgstr "File"
+
+#: src/features/admin/PlayCards.tsx
+msgid "Direct Play is off on this device"
+msgstr "Direct Play is off on this device"
+
+#: src/features/admin/ItemAdminMenu.tsx
+msgid "Choose artwork"
+msgstr "Choose artwork"
+
+#: src/features/admin/ManageLibrariesScreen.tsx
+msgid "Edit {name}"
+msgstr "Edit {name}"
+
+#: src/features/admin/ChooseArtworkDialog.tsx
+msgid "Choose a JPEG, PNG or WebP image."
+msgstr "Choose a JPEG, PNG or WebP image."
+
+#: src/features/admin/UserScreen.tsx
+msgid "Audiobooks aren't affected."
+msgstr "Audiobooks aren't affected."
+
+#: src/features/admin/LogsScreen.tsx
+msgid "Search the log"
+msgstr "Search the log"
+
+#: src/features/libraries/EditLibraryForm.tsx
+#: src/features/user/SettingsScreen.tsx
+msgid "Server default"
+msgstr "Server default"
+
+#: src/features/browse/useBrowseLabels.ts
+#: src/features/detail/SeriesDetail.tsx
+#: src/features/history/HistoryScreen.tsx
+msgid "Watched"
+msgstr "Watched"
+
+#: src/features/player/PlaybackSettingsMenu.tsx
+#: src/features/player/StreamInfo.tsx
+msgid "Stream info"
+msgstr "Stream info"
+
+#: src/features/admin/AddUserButton.tsx
+#: src/features/admin/UserScreen.tsx
+#: src/features/auth/InviteScreen.tsx
+#: src/features/setup/SetupWizard.tsx
+#: src/features/user/ChangePasswordDialog.tsx
+msgid "At least 8 characters."
+msgstr "At least 8 characters."
+
+#. placeholder {0}: version.parts.length
+#: src/features/detail/BookDetail.tsx
+msgid "{0, plural, one {# file} other {# files}}"
+msgstr "{0, plural, one {# file} other {# files}}"
+
+#: src/features/admin/LibrarySettingsScreen.tsx
+msgid "Watch state"
+msgstr "Watch state"
+
+#: src/features/admin/PlayCards.tsx
+msgid "Can't stream {codec}"
+msgstr "Can't stream {codec}"
+
+#: src/features/admin/ManageLibrariesScreen.tsx
+msgid "More actions for {name}"
+msgstr "More actions for {name}"
+
+#: src/features/browse/LibraryScreen.tsx
+msgid "View"
+msgstr "View"
+
+#: src/features/admin/FixMatchDialog.tsx
+msgid "Or an ASIN, such as B08G9PRS1K."
+msgstr "Or an ASIN, such as B08G9PRS1K."
+
+#: src/features/libraries/EditLibraryForm.tsx
+msgid "Every 30 days"
+msgstr "Every 30 days"
+
+#: src/app/ConnectionBanner.tsx
+msgid "Can't reach {server}. Reconnecting…"
+msgstr "Can't reach {server}. Reconnecting…"
+
+#: src/features/admin/UsersScreen.tsx
+msgid "Expires {expires}"
+msgstr "Expires {expires}"
+
+#: src/app/ConnectionBanner.tsx
+msgid "Can't reach the server. Reconnecting…"
+msgstr "Can't reach the server. Reconnecting…"
+
+#: src/features/admin/useAdminLabels.ts
+msgid "Cleaning up"
+msgstr "Cleaning up"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Large"
+msgstr "Large"
+
+#: src/features/browse/BatchEditDialog.tsx
+msgid "Empty fields aren't changed."
+msgstr "Empty fields aren't changed."
+
+#: src/features/admin/LibrarySettingsScreen.tsx
+#: src/features/libraries/EditLibraryForm.tsx
+#: src/features/setup/SetupWizard.tsx
+msgid "Certification country"
+msgstr "Certification country"
+
+#: src/components/LoadError.tsx
+#: src/features/player/CastRemote.tsx
+#: src/features/player/PlayerError.tsx
+msgid "Try again"
+msgstr "Try again"
+
+#: src/features/admin/TranscodingScreen.tsx
+msgid "CPU only"
+msgstr "CPU only"
+
+#: src/features/player/NowPlaying.tsx
+msgid "Seek in the chapter"
+msgstr "Seek in the chapter"
+
+#. placeholder {0}: p.workCount
+#. placeholder {0}: person.works.length
+#: src/features/detail/PersonScreen.tsx
+#: src/features/search/SearchScreen.tsx
+msgid "{0, plural, one {# title} other {# titles}}"
+msgstr "{0, plural, one {# title} other {# titles}}"
+
+#: src/features/player/StreamInfo.tsx
+msgid "This device can't play {container} files."
+msgstr "This device can't play {container} files."
+
+#. placeholder {0}: formatClock(ahead)
+#: src/features/admin/PlayCards.tsx
+msgid "{0} ahead"
+msgstr "{0} ahead"
+
+#: src/features/admin/UserScreen.tsx
+msgid "The account, watch history and progress are permanently deleted."
+msgstr "The account, watch history and progress are permanently deleted."
+
+#: src/features/admin/TranscodingScreen.tsx
+msgid "Uses {best}"
+msgstr "Uses {best}"
+
+#: src/features/player/PlayerError.tsx
+msgid "Couldn't play this."
+msgstr "Couldn't play this."
+
+#: src/features/admin/EditBookForm.tsx
+#: src/features/browse/BatchEditDialog.tsx
+#: src/features/browse/LibraryScreen.tsx
+msgid "Series"
+msgstr "Series"
+
+#: src/features/admin/GeneralSettingsScreen.tsx
+msgid "Enter a name."
+msgstr "Enter a name."
+
+#. placeholder {0}: formatBitrate(play.bandwidthBps)
+#: src/features/admin/PlayCards.tsx
+msgid "{0} available"
+msgstr "{0} available"
+
+#: src/components/TranscodeDiagnostics.tsx
+msgid "Job"
+msgstr "Job"
+
+#: src/features/admin/ManageLibrariesScreen.tsx
+msgid "{n, plural, one {# show} other {# shows}}"
+msgstr "{n, plural, one {# show} other {# shows}}"
+
+#: src/features/admin/LibrarySettingsScreen.tsx
+msgid "Played threshold"
+msgstr "Played threshold"
+
+#: src/features/admin/EditBookForm.tsx
+#: src/features/admin/EditFieldsDialog.tsx
+#: src/features/browse/BatchEditDialog.tsx
+msgid "Separated by commas."
+msgstr "Separated by commas."
+
+#: src/features/admin/ActivityScreen.tsx
+msgid "Nothing yet"
+msgstr "Nothing yet"
+
+#: src/features/admin/TranscodingScreen.tsx
+msgid "Not found"
+msgstr "Not found"
+
+#: src/features/libraries/AddLibraryForm.tsx
+msgid "Kind"
+msgstr "Kind"
+
+#: src/features/setup/SetupWizard.tsx
+msgid "Scanning libraries. Items appear on Home as they're found."
+msgstr "Scanning libraries. Items appear on Home as they're found."
+
+#: src/features/admin/EditFieldsDialog.tsx
+msgid "Original title"
+msgstr "Original title"
+
+#: src/features/admin/PlayCards.tsx
+msgid "Same"
+msgstr "Same"
+
+#: src/features/admin/EditBookForm.tsx
+#: src/features/browse/BatchEditDialog.tsx
+msgid "One per line, in order."
+msgstr "One per line, in order."
+
+#: src/features/admin/LibrarySettingsScreen.tsx
+msgid "Libraries can override these."
+msgstr "Libraries can override these."
+
+#: src/features/player/NowPlaying.tsx
+#: src/features/player/PlaybackSettingsMenu.tsx
+msgid "Speed"
+msgstr "Speed"
+
+#: src/components/Chip.tsx
+msgid "Remove filter {label}"
+msgstr "Remove filter {label}"
+
+#: src/features/browse/FavoritesScreen.tsx
+msgid "{count, plural, one {# episode} other {# episodes}}"
+msgstr "{count, plural, one {# episode} other {# episodes}}"
+
+#: src/features/admin/TasksScreen.tsx
+msgid "Nightly tasks run {start} to {end}"
+msgstr "Nightly tasks run {start} to {end}"
+
+#: src/features/browse/FavoritesScreen.tsx
+#: src/features/detail/WorkRows.tsx
+msgid "Extras"
+msgstr "Extras"
+
+#: src/features/admin/ApiKeysScreen.tsx
+msgid "Let scripts and integrations such as Home Assistant access the server."
+msgstr "Let scripts and integrations such as Home Assistant access the server."
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Signed-in devices"
+msgstr "Signed-in devices"
+
+#: src/features/detail/BookDetail.tsx
+msgid "Play from {title}"
+msgstr "Play from {title}"
+
+#: src/features/detail/EpisodeDetail.tsx
+msgid "Season {seasonNumber}"
+msgstr "Season {seasonNumber}"
+
+#: src/features/user/Sessions.tsx
+msgid "App"
+msgstr "App"
+
+#: src/features/admin/TaskButtons.tsx
+msgid "Run {name} now"
+msgstr "Run {name} now"
+
+#: src/features/admin/UserScreen.tsx
+msgid "{name} is signed out everywhere and can't sign in until enabled again."
+msgstr "{name} is signed out everywhere and can't sign in until enabled again."
+
+#: src/tv/keyboard/GridKeyboard.tsx
+msgid "Keyboard"
+msgstr "Keyboard"
+
+#: src/features/admin/useAdminLabels.ts
+msgid "Analyzing"
+msgstr "Analyzing"
+
+#: src/features/admin/PlayCards.tsx
+msgid "Can't play this codec tag"
+msgstr "Can't play this codec tag"
+
+#: src/features/player/StreamInfo.tsx
+msgid "Container"
+msgstr "Container"
+
+#: src/features/browse/CountLine.tsx
+msgid "Recently played"
+msgstr "Recently played"
+
+#: src/features/browse/FilterPanel.tsx
+msgid "Any"
+msgstr "Any"
+
+#: src/features/admin/UserScreen.tsx
+msgid "Access"
+msgstr "Access"
+
+#: src/features/browse/CountLine.tsx
+msgid "watched"
+msgstr "watched"
+
+#: src/features/browse/WorkCard.tsx
+#: src/features/detail/PlaybackControls.tsx
+msgid "Play from beginning"
+msgstr "Play from beginning"
+
+#: src/features/admin/TasksScreen.tsx
+msgid "Preview thumbnails at once"
+msgstr "Preview thumbnails at once"
+
+#: src/features/admin/PlayCards.tsx
+msgid "Can't play {codec}"
+msgstr "Can't play {codec}"
+
+#: src/features/player/CastButton.tsx
+msgid "Stop casting"
+msgstr "Stop casting"
+
+#: src/features/admin/PlayCards.tsx
+msgid "Connection too slow"
+msgstr "Connection too slow"
+
+#: src/features/admin/ChooseArtworkDialog.tsx
+msgid "Artwork type"
+msgstr "Artwork type"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "No libraries yet"
+msgstr "No libraries yet"
+
+#: src/features/admin/MissingFilesScreen.tsx
+msgid "Other libraries"
+msgstr "Other libraries"
+
+#: src/features/admin/ActivityList.tsx
+msgid "{user} joined from an invite"
+msgstr "{user} joined from an invite"
+
+#: src/features/detail/BookDetail.tsx
+#: src/features/detail/PlaybackControls.tsx
+msgid "This file is missing"
+msgstr "This file is missing"
+
+#. placeholder {0}: invite.data.invitedBy
+#. placeholder {1}: invite.data.serverName
+#: src/features/auth/InviteScreen.tsx
+msgid "{0} invited you to Kivo on {1}"
+msgstr "{0} invited you to Kivo on {1}"
+
+#: src/features/admin/EditBookForm.tsx
+#: src/features/admin/EditFieldsDialog.tsx
+#: src/features/admin/FixMatchDialog.tsx
+#: src/features/browse/useBrowseLabels.ts
+msgid "Title"
+msgstr "Title"
+
+#: src/features/detail/RenameDialog.tsx
+msgid "Using an existing name merges the two. The new name is kept through rescans."
+msgstr "Using an existing name merges the two. The new name is kept through rescans."
+
+#: src/features/admin/ManageLibrariesScreen.tsx
+msgid "Refresh all metadata for {name}?"
+msgstr "Refresh all metadata for {name}?"
+
+#: src/features/admin/TaskScreen.tsx
+msgid "Retry all"
+msgstr "Retry all"
+
+#: src/features/browse/CountLine.tsx
+#: src/features/browse/FavoritesScreen.tsx
+msgid "{count, plural, one {# show} other {# shows}}"
+msgstr "{count, plural, one {# show} other {# shows}}"
+
+#. placeholder {0}: open.season?.unplayedCount ?? 0
+#: src/features/detail/SeriesDetail.tsx
+msgid "Mark {0} episodes as watched?"
+msgstr "Mark {0} episodes as watched?"
+
+#: src/features/auth/LinkScreen.tsx
+msgid "Not on your home network"
+msgstr "Not on your home network"
+
+#: src/features/admin/FixMatchDialog.tsx
+msgid "Choose"
+msgstr "Choose"
+
+#: src/features/browse/FilterPanel.tsx
+msgid "Genre"
+msgstr "Genre"
+
+#: src/features/admin/UserScreen.tsx
+msgid "Highest content rating"
+msgstr "Highest content rating"
+
+#: src/features/admin/PlayCards.tsx
+msgid "Bitrate higher than this device plays"
+msgstr "Bitrate higher than this device plays"
+
+#: src/features/browse/FilterPanel.tsx
+msgid "Filter, some on"
+msgstr "Filter, some on"
+
+#: src/features/admin/UserScreen.tsx
+msgid "Only admin. Make another user an admin first."
+msgstr "Only admin. Make another user an admin first."
+
+#: src/features/admin/EditBookForm.tsx
+msgid "Add series"
+msgstr "Add series"
+
+#: src/features/admin/useAdminLabels.ts
+msgid "Clean up metadata cache"
+msgstr "Clean up metadata cache"
+
+#: src/features/player/SkipControls.tsx
+#: src/features/player/Transport.tsx
+msgid "Forward 30 seconds"
+msgstr "Forward 30 seconds"
+
+#: src/features/admin/ManageLibrariesScreen.tsx
+#: src/features/browse/GroupCard.tsx
+msgid "{n, plural, one {# movie} other {# movies}}"
+msgstr "{n, plural, one {# movie} other {# movies}}"
+
+#: src/features/admin/LogsScreen.tsx
+#: src/features/player/SubtitleSearch.tsx
+msgid "Download"
+msgstr "Download"
+
+#: src/features/admin/userFields.tsx
+msgid "All libraries"
+msgstr "All libraries"
+
+#: src/features/admin/TasksScreen.tsx
+msgid "Intro and credits at once"
+msgstr "Intro and credits at once"
+
+#: src/i18n/playback.ts
+msgid "{field}: {actual}, none declared"
+msgstr "{field}: {actual}, none declared"
+
+#: src/features/admin/problemActions.ts
+msgid "Raise fs.inotify.max_user_watches on the host to watch every folder."
+msgstr "Raise fs.inotify.max_user_watches on the host to watch every folder."
+
+#: src/features/admin/runNotices.ts
+msgid "{name} finished"
+msgstr "{name} finished"
+
+#: src/components/endsAt.ts
+msgid "Ends at {time}"
+msgstr "Ends at {time}"
+
+#: src/components/PersonCard.tsx
+msgid "Director"
+msgstr "Director"
+
+#: src/features/admin/ManageLibrariesScreen.tsx
+msgid "Delete library"
+msgstr "Delete library"
+
+#: src/features/player/castProtocol.ts
+msgid "This can't be played on this TV."
+msgstr "This can't be played on this TV."
+
+#: src/features/admin/MissingFilesScreen.tsx
+msgid "No missing files"
+msgstr "No missing files"
+
+#: src/features/admin/ApiKeysScreen.tsx
+msgid "Create key"
+msgstr "Create key"
+
+#: src/features/auth/InviteScreen.tsx
+msgid "This invite link has expired, was already used or was revoked. Ask for a new link."
+msgstr "This invite link has expired, was already used or was revoked. Ask for a new link."
+
+#: src/features/admin/ShowFilesDialog.tsx
+msgid "Files of {title}"
+msgstr "Files of {title}"
+
+#: src/features/admin/ActivityList.tsx
+msgid "{user} signed in on {device}"
+msgstr "{user} signed in on {device}"
+
+#: src/features/player/PlayerError.tsx
+msgid "View diagnostics"
+msgstr "View diagnostics"
+
+#: src/features/admin/EditBookForm.tsx
+msgid "Description"
+msgstr "Description"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Couldn't save. {problem}"
+msgstr "Couldn't save. {problem}"
+
+#: src/features/admin/TranscodingScreen.tsx
+msgid "Simultaneous video transcodes"
+msgstr "Simultaneous video transcodes"
+
+#: src/features/admin/UserScreen.tsx
+msgid "Not available for your own account."
+msgstr "Not available for your own account."
+
+#: src/features/admin/ApiKeysScreen.tsx
+msgid "Revoke {name}?"
+msgstr "Revoke {name}?"
+
+#. placeholder {0}: author.workCount
+#. placeholder {0}: series.bookCount
+#. placeholder {0}: series.items.length
+#: src/features/browse/GroupCard.tsx
+#: src/features/detail/BookSeriesScreen.tsx
+msgid "{0, plural, one {# book} other {# books}}"
+msgstr "{0, plural, one {# book} other {# books}}"
+
+#: src/features/admin/UsersScreen.tsx
+msgid "Revoke this invite link?"
+msgstr "Revoke this invite link?"
+
+#: src/features/user/Sessions.tsx
+msgid "{name} has to sign in again."
+msgstr "{name} has to sign in again."
+
+#: src/app/AppShell.tsx
+#: src/features/admin/AddUserButton.tsx
+#: src/features/admin/AdminLayout.tsx
+#: src/features/admin/CreateInviteButton.tsx
+#: src/features/admin/ManageLibrariesScreen.tsx
+#: src/features/admin/userFields.tsx
+#: src/features/browse/LibrariesScreen.tsx
+#: src/features/browse/LibrarySwitcher.tsx
+#: src/features/user/LibraryOrder.tsx
+msgid "Libraries"
+msgstr "Libraries"
+
+#: src/features/browse/FilterPanel.tsx
+msgid "Filter"
+msgstr "Filter"
+
+#: src/features/admin/TasksScreen.tsx
+#: src/features/admin/useAdminLabels.ts
+#: src/features/libraries/EditLibraryForm.tsx
+msgid "Preview thumbnails"
+msgstr "Preview thumbnails"
+
+#: src/features/player/UpNextCard.tsx
+msgid "Watch credits"
+msgstr "Watch credits"
+
+#: src/features/admin/LogsScreen.tsx
+msgid "Level"
+msgstr "Level"
+
+#: src/tv/Splash.tsx
+msgid "Kivo is starting"
+msgstr "Kivo is starting"
+
+#: src/features/browse/FavoritesScreen.tsx
+msgid "{count, plural, one {# season} other {# seasons}}"
+msgstr "{count, plural, one {# season} other {# seasons}}"
+
+#: src/features/admin/problemActions.ts
+msgid "Enter an OpenSubtitles API key in General settings, or turn off subtitle downloads for the library."
+msgstr "Enter an OpenSubtitles API key in General settings, or turn off subtitle downloads for the library."
+
+#. placeholder {0}: status.text
+#: src/features/auth/AddressScreen.tsx
+msgid "Opening {0}…"
+msgstr "Opening {0}…"
+
+#. placeholder {0}: status.text
+#: src/features/auth/AddressScreen.tsx
+msgid "{0} is a Kivo server that isn't set up yet. Set it up in a browser, then press Open."
+msgstr "{0} is a Kivo server that isn't set up yet. Set it up in a browser, then press Open."
+
+#: src/features/admin/PlayCards.tsx
+msgid "Bandwidth"
+msgstr "Bandwidth"
+
+#: src/features/admin/PlayCards.tsx
+msgid "Stop stream"
+msgstr "Stop stream"
+
+#: src/features/browse/BatchEditDialog.tsx
+msgid "Keep current"
+msgstr "Keep current"
+
+#: src/features/admin/GeneralSettingsScreen.tsx
+msgid "Saved. Enter a new password to replace it."
+msgstr "Saved. Enter a new password to replace it."
+
+#: src/features/admin/AdminLayout.tsx
+#: src/features/admin/NetworkSettingsScreen.tsx
+msgid "Network"
+msgstr "Network"
+
+#: src/features/player/SubtitleSearch.tsx
+msgid "Search subtitles"
+msgstr "Search subtitles"
+
+#: src/features/admin/ManageLibrariesScreen.tsx
+msgid "{n, plural, one {# video} other {# videos}}"
+msgstr "{n, plural, one {# video} other {# videos}}"
+
+#: src/features/auth/LinkScreen.tsx
+msgid "Just now"
+msgstr "Just now"
+
+#: src/features/admin/LogsScreen.tsx
+msgid "Debug"
+msgstr "Debug"
+
+#: src/features/admin/TranscodingScreen.tsx
+msgid "Hardware acceleration"
+msgstr "Hardware acceleration"
+
+#: src/app/AppShell.tsx
+#: src/features/admin/AdminLayout.tsx
+#: src/features/admin/UserScreen.tsx
+#: src/features/history/HistoryScreen.tsx
+msgid "Watch history"
+msgstr "Watch history"
+
+#: src/features/player/PlayerOverlays.tsx
+msgid "Full screen"
+msgstr "Full screen"
+
+#: src/features/admin/ProblemsScreen.tsx
+msgid "Problems"
+msgstr "Problems"
+
+#: src/features/admin/MissingFilesScreen.tsx
+msgid "Files that reappear are treated as new. Watch state is kept. Nothing on disk is deleted."
+msgstr "Files that reappear are treated as new. Watch state is kept. Nothing on disk is deleted."
+
+#: src/features/admin/LibrarySettingsScreen.tsx
+msgid "Progress at which a title is marked played."
+msgstr "Progress at which a title is marked played."
+
+#: src/features/admin/CreateInviteButton.tsx
+msgid "30 days"
+msgstr "30 days"
+
+#: src/features/admin/UserScreen.tsx
+msgid "Enable"
+msgstr "Enable"
+
+#: src/features/browse/WorkCard.tsx
+#: src/features/detail/WatchToggles.tsx
+msgid "Add to favorites"
+msgstr "Add to favorites"
+
+#: src/features/admin/userFields.tsx
+msgid "{maxStreams, plural, one {Up to # stream} other {Up to # streams}}"
+msgstr "{maxStreams, plural, one {Up to # stream} other {Up to # streams}}"
+
+#: src/features/admin/problemActions.ts
+msgid "Turn hardware acceleration back on in Transcoding settings."
+msgstr "Turn hardware acceleration back on in Transcoding settings."
+
+#: src/features/setup/SetupWizard.tsx
+msgid "Signed in as {username}."
+msgstr "Signed in as {username}."
+
+#: src/components/LoadError.tsx
+msgid "This page doesn't exist."
+msgstr "This page doesn't exist."
+
+#: src/features/admin/EditBookForm.tsx
+msgid "series"
+msgstr "series"
+
+#: src/features/admin/ApiKeysScreen.tsx
+msgid "Revoke {name}"
+msgstr "Revoke {name}"
+
+#: src/features/player/NowPlaying.tsx
+msgid "Now Playing"
+msgstr "Now Playing"
+
+#: src/features/browse/WorkCard.tsx
+msgid "Mark {unplayedEpisodes} episodes as watched?"
+msgstr "Mark {unplayedEpisodes} episodes as watched?"
+
+#: src/features/setup/SetupWizard.tsx
+msgid "Add libraries"
+msgstr "Add libraries"
+
+#: src/features/search/SearchScreen.tsx
+msgid "Search failed."
+msgstr "Search failed."
+
+#: src/features/admin/EditFieldsDialog.tsx
+#: src/features/browse/FilterPanel.tsx
+msgid "Content rating"
+msgstr "Content rating"
+
+#: src/features/player/StreamInfo.tsx
+msgid "{container} → HLS stream"
+msgstr "{container} → HLS stream"
+
+#: src/features/user/ChangePasswordDialog.tsx
+msgid "Current password"
+msgstr "Current password"
+
+#: src/features/admin/ApiKeysScreen.tsx
+msgid "No API keys"
+msgstr "No API keys"
+
+#: src/tv/keyboard/GridKeyboard.tsx
+msgid "Space"
+msgstr "Space"
+
+#: src/features/detail/RenameDialog.tsx
+msgid "Rename {name}"
+msgstr "Rename {name}"
+
+#: src/features/admin/NetworkSettingsScreen.tsx
+msgid "Use address ranges such as 192.168.1.0/24, separated by commas."
+msgstr "Use address ranges such as 192.168.1.0/24, separated by commas."
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Original language"
+msgstr "Original language"
+
+#: src/app/AppShell.tsx
+msgid "Admin, with open problems"
+msgstr "Admin, with open problems"
+
+#: src/features/admin/problemActions.ts
+msgid "Re-enter the OpenSubtitles username and password in General settings."
+msgstr "Re-enter the OpenSubtitles username and password in General settings."
+
+#: src/features/admin/GeneralSettingsScreen.tsx
+msgid "Server name"
+msgstr "Server name"
+
+#: src/features/admin/TasksScreen.tsx
+msgid "Files at once"
+msgstr "Files at once"
+
+#. placeholder {0}: index + 1
+#. placeholder {1}: steps.length
+#: src/features/setup/SetupWizard.tsx
+msgid "Step {0} of {1}"
+msgstr "Step {0} of {1}"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Dark"
+msgstr "Dark"
+
+#: src/features/detail/WorkRows.tsx
+msgid "Shorts"
+msgstr "Shorts"
+
+#: src/features/admin/NetworkSettingsScreen.tsx
+msgid "Use a full address starting with http:// or https://."
+msgstr "Use a full address starting with http:// or https://."
+
+#: src/components/Skeleton.tsx
+#: src/features/detail/DetailSkeleton.tsx
+#: src/features/history/HistoryScreen.tsx
+msgid "Loading…"
+msgstr "Loading…"
+
+#: src/features/admin/useAdminLabels.ts
+msgid "Clean up downloads"
+msgstr "Clean up downloads"
+
+#: src/features/admin/ScanLine.tsx
+#: src/features/admin/TaskProgress.tsx
+msgid "{done} of {total}"
+msgstr "{done} of {total}"
+
+#: src/features/admin/TasksScreen.tsx
+msgid "Nightly end"
+msgstr "Nightly end"
+
+#: src/features/history/HistoryScreen.tsx
+msgid "Stopped at {at}"
+msgstr "Stopped at {at}"
+
+#: src/features/admin/useAdminLabels.ts
+msgid "Back up database"
+msgstr "Back up database"
+
+#: src/features/player/UpNextCard.tsx
+msgid "Play now"
+msgstr "Play now"
+
+#: src/features/search/SearchScreen.tsx
+msgid "Search titles and people"
+msgstr "Search titles and people"
+
+#: src/features/admin/ManageLibrariesScreen.tsx
+msgid "Not scanned yet"
+msgstr "Not scanned yet"
+
+#: src/features/admin/TranscodingScreen.tsx
+msgid "Install the driver on the host. For NVIDIA, use the NVIDIA container runtime."
+msgstr "Install the driver on the host. For NVIDIA, use the NVIDIA container runtime."
+
+#: src/features/admin/TasksScreen.tsx
+msgid "Task"
+msgstr "Task"
+
+#: src/features/admin/ItemAdminMenu.tsx
+#: src/features/admin/useAdminLabels.ts
+#: src/features/libraries/EditLibraryForm.tsx
+msgid "Refresh metadata"
+msgstr "Refresh metadata"
+
+#: src/features/admin/problemActions.ts
+msgid "Move the symlink targets into the library folder, or remove the symlinks."
+msgstr "Move the symlink targets into the library folder, or remove the symlinks."
+
+#: src/features/admin/UserScreen.tsx
+msgid "Devices"
+msgstr "Devices"
+
+#: src/features/admin/LogsScreen.tsx
+msgid "No log lines match."
+msgstr "No log lines match."
+
+#: src/features/browse/CountLine.tsx
+msgid "{count, plural, one {# author} other {# authors}}"
+msgstr "{count, plural, one {# author} other {# authors}}"
+
+#: src/features/browse/useBrowseLabels.ts
+msgid "Narrated by {name}"
+msgstr "Narrated by {name}"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Subtitle size"
+msgstr "Subtitle size"
+
+#: src/features/admin/ActivityScreen.tsx
+msgid "Plays"
+msgstr "Plays"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Change server?"
+msgstr "Change server?"
+
+#: src/features/admin/UsersScreen.tsx
+msgid "The link stops working immediately."
+msgstr "The link stops working immediately."
+
+#: src/features/admin/ManageLibrariesScreen.tsx
+msgid "Scan {name}"
+msgstr "Scan {name}"
+
+#. placeholder {0}: formatTimes(speed)
+#: src/features/admin/PlayCards.tsx
+msgid "{0} realtime"
+msgstr "{0} realtime"
+
+#: src/features/admin/TasksScreen.tsx
+msgid "Nightly window"
+msgstr "Nightly window"
+
+#: src/features/admin/ActivityList.tsx
+#: src/features/admin/PlayCards.tsx
+#: src/features/player/StreamInfo.tsx
+msgid "Remote"
+msgstr "Remote"
+
+#: src/features/admin/EditBookForm.tsx
+msgid "Book"
+msgstr "Book"
+
+#: src/features/admin/useAdminLabels.ts
+msgid "Clean up preview thumbnails"
+msgstr "Clean up preview thumbnails"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Based on this device's audio output"
+msgstr "Based on this device's audio output"
+
+#: src/features/admin/TranscodingScreen.tsx
+msgid "Driver not found."
+msgstr "Driver not found."
+
+#: src/features/browse/WorkCard.tsx
+#: src/features/detail/SeriesDetail.tsx
+#: src/features/detail/WatchToggles.tsx
+msgid "Mark as watched"
+msgstr "Mark as watched"
+
+#: src/features/admin/TasksScreen.tsx
+#: src/features/libraries/EditLibraryForm.tsx
+msgid "Never"
+msgstr "Never"
+
+#: src/features/admin/ItemAdminMenu.tsx
+msgid "More actions for {title}"
+msgstr "More actions for {title}"
+
+#: src/features/admin/CreateInviteButton.tsx
+msgid "Invite link"
+msgstr "Invite link"
+
+#: src/features/user/Sessions.tsx
+msgid "Sign out everywhere else"
+msgstr "Sign out everywhere else"
+
+#: src/features/admin/limitOptions.ts
+#: src/features/admin/NetworkSettingsScreen.tsx
+#: src/features/admin/UserScreen.tsx
+msgid "No limit"
+msgstr "No limit"
+
+#: src/features/admin/NetworkSettingsScreen.tsx
+msgid "For users without a limit of their own."
+msgstr "For users without a limit of their own."
+
+#: src/features/admin/PlayCards.tsx
+msgid "OS {version}"
+msgstr "OS {version}"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Audio language"
+msgstr "Audio language"
+
+#: src/features/admin/TaskButtons.tsx
+msgid "Stop {name}?"
+msgstr "Stop {name}?"
+
+#: src/features/player/VolumeControl.tsx
+msgid "Mute"
+msgstr "Mute"
+
+#: src/features/admin/EditBookForm.tsx
+#: src/features/browse/BatchEditDialog.tsx
+msgid "Narrators"
+msgstr "Narrators"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Auto"
+msgstr "Auto"
+
+#. placeholder {0}: cast.device ?? ""
+#: src/features/player/CastButton.tsx
+#: src/features/player/CastRemote.tsx
+msgid "Casting to {0}"
+msgstr "Casting to {0}"
+
+#: src/features/browse/LibraryScreen.tsx
+msgid "Select"
+msgstr "Select"
+
+#: src/features/admin/UnmatchedScreen.tsx
+msgid "Nothing unmatched"
+msgstr "Nothing unmatched"
+
+#: src/components/TranscodeDiagnostics.tsx
+msgid "Running"
+msgstr "Running"
+
+#: src/features/browse/useBrowseLabels.ts
+msgid "Date added"
+msgstr "Date added"
+
+#: src/features/admin/CreateInviteButton.tsx
+msgid "7 days"
+msgstr "7 days"
+
+#: src/features/browse/FavoritesScreen.tsx
+msgid "Videos"
+msgstr "Videos"
+
+#. placeholder {0}: work.title
+#: src/features/browse/WorkCard.tsx
+msgid "Actions for {0}"
+msgstr "Actions for {0}"
+
+#: src/features/player/PlayerOverlays.tsx
+msgid "Skip Recap"
+msgstr "Skip Recap"
+
+#: src/features/player/VolumeControl.tsx
+msgid "Unmute"
+msgstr "Unmute"
+
+#. placeholder {0}: d.bitDepth
+#: src/features/admin/TranscodingScreen.tsx
+msgid "{name} {0}-bit"
+msgstr "{name} {0}-bit"
+
+#: src/features/admin/TranscodingScreen.tsx
+msgid "Pass /dev/dri, or the NVIDIA devices, to the container."
+msgstr "Pass /dev/dri, or the NVIDIA devices, to the container."
+
+#: src/features/admin/TranscodingScreen.tsx
+msgid "Testing accelerators…"
+msgstr "Testing accelerators…"
+
+#: src/features/browse/WorkCard.tsx
+#: src/features/detail/WatchToggles.tsx
+msgid "Mark as unwatched"
+msgstr "Mark as unwatched"
+
+#: src/features/admin/OverviewScreen.tsx
+msgid "Nothing playing"
+msgstr "Nothing playing"
+
+#: src/features/admin/ManageLibrariesScreen.tsx
+msgid "Started. View progress in <0>Tasks</0>."
+msgstr "Started. View progress in <0>Tasks</0>."
+
+#: src/components/LetterRail.tsx
+msgid "Jump to letter"
+msgstr "Jump to letter"
+
+#: src/features/libraries/LibrarySetup.tsx
+msgid "Add the folders that hold your movies and shows. You can skip this and add libraries later."
+msgstr "Add the folders that hold your movies and shows. You can skip this and add libraries later."
+
+#: src/components/deviceCode.ts
+msgid "iPhone"
+msgstr "iPhone"
+
+#: src/features/admin/MissingFilesScreen.tsx
+msgid "Forget {path}"
+msgstr "Forget {path}"
+
+#: src/features/admin/TaskScreen.tsx
+msgid "Retry {title}"
+msgstr "Retry {title}"
+
+#: src/features/player/NowPlaying.tsx
+msgid "Previous chapter"
+msgstr "Previous chapter"
+
+#: src/features/player/SubtitleSearch.tsx
+msgid "Searching…"
+msgstr "Searching…"
+
+#. placeholder {0}: work.year
+#: src/features/detail/SeriesDetail.tsx
+msgid "{0} to {years}"
+msgstr "{0} to {years}"
+
+#: src/components/SaveBar.tsx
+msgid "Unsaved changes"
+msgstr "Unsaved changes"
+
+#: src/features/auth/InviteScreen.tsx
+msgid "This invite link doesn't work"
+msgstr "This invite link doesn't work"
+
+#: src/features/detail/WorkRows.tsx
+msgid "Interviews"
+msgstr "Interviews"
+
+#: src/features/admin/ActivityScreen.tsx
+#: src/features/admin/GeneralSettingsScreen.tsx
+msgid "Server"
+msgstr "Server"
+
+#: src/features/player/StreamInfo.tsx
+msgid "Delivery"
+msgstr "Delivery"
+
+#: src/features/admin/ActivityList.tsx
+msgid "{name} added to {library}"
+msgstr "{name} added to {library}"
+
+#: src/features/admin/GeneralSettingsScreen.tsx
+msgid "OpenSubtitles password"
+msgstr "OpenSubtitles password"
+
+#: src/components/TranscodeDiagnostics.tsx
+msgid "Command"
+msgstr "Command"
+
+#: src/features/admin/PlayCards.tsx
+msgid "Can't play non-square pixels"
+msgstr "Can't play non-square pixels"
+
+#: src/features/auth/SignInScreen.tsx
+msgid "Sign in with another device"
+msgstr "Sign in with another device"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Foreign audio only"
+msgstr "Foreign audio only"
+
+#: src/features/admin/TaskButtons.tsx
+msgid "Stop {name}"
+msgstr "Stop {name}"
+
+#: src/features/admin/problemActions.ts
+msgid "Check that the disk or share is mounted, then scan the library again."
+msgstr "Check that the disk or share is mounted, then scan the library again."
+
+#: src/features/player/UpNextCard.tsx
+msgid "Up next"
+msgstr "Up next"
+
+#: src/features/detail/WorkRows.tsx
+msgid "Behind the Scenes"
+msgstr "Behind the Scenes"
+
+#: src/features/admin/UsersScreen.tsx
+msgid "Pending invites"
+msgstr "Pending invites"
+
+#: src/features/admin/FixMatchDialog.tsx
+#: src/features/player/NowPlaying.tsx
+msgid "By {authors}"
+msgstr "By {authors}"
+
+#: src/features/admin/TranscodingScreen.tsx
+msgid "Add the server user to the device's group (usually render or video)."
+msgstr "Add the server user to the device's group (usually render or video)."
+
+#: src/features/admin/AdminLayout.tsx
+#: src/features/admin/UsersScreen.tsx
+msgid "Users"
+msgstr "Users"
+
+#: src/features/user/Sessions.tsx
+msgid "Signs {name} out of all browsers and apps. API keys keep working."
+msgstr "Signs {name} out of all browsers and apps. API keys keep working."
+
+#: src/features/browse/WorkCard.tsx
+#: src/features/detail/WatchToggles.tsx
+msgid "Remove from favorites"
+msgstr "Remove from favorites"
+
+#: src/features/admin/EditBookForm.tsx
+msgid "Primary"
+msgstr "Primary"
+
+#: src/features/browse/BatchEditDialog.tsx
+msgid "Position in the series"
+msgstr "Position in the series"
+
+#: src/features/admin/ProblemsScreen.tsx
+msgid "No problems"
+msgstr "No problems"
+
+#: src/features/libraries/FolderPicker.tsx
+msgid "No folders inside."
+msgstr "No folders inside."
+
+#: src/features/auth/LinkScreen.tsx
+msgid "Allow {name} to sign in as {username}?"
+msgstr "Allow {name} to sign in as {username}?"
+
+#: src/features/browse/WorkCard.tsx
+#: src/features/detail/BookDetail.tsx
+#: src/features/detail/PlaybackControls.tsx
+#: src/features/player/CastButton.tsx
+#: src/features/player/MiniPlayer.tsx
+#: src/features/player/NowPlaying.tsx
+#: src/features/player/PlayerError.tsx
+#: src/features/player/Transport.tsx
+msgid "Play"
+msgstr "Play"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Local network quality"
+msgstr "Local network quality"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Change…"
+msgstr "Change…"
+
+#: src/features/admin/EditFieldsDialog.tsx
+msgid "Studios"
+msgstr "Studios"
+
+#: src/features/admin/PlayCards.tsx
+#: src/features/player/CastButton.tsx
+msgid "Playing"
+msgstr "Playing"
+
+#: src/components/TrackPicker.tsx
+#: src/features/admin/GeneralSettingsScreen.tsx
+#: src/features/admin/PlayCards.tsx
+#: src/features/libraries/EditLibraryForm.tsx
+#: src/features/player/PlayerVideo.tsx
+#: src/features/player/StreamInfo.tsx
+#: src/features/user/SettingsScreen.tsx
+msgid "Subtitles"
+msgstr "Subtitles"
+
+#: src/components/SaveBar.tsx
+#: src/features/admin/EditBookForm.tsx
+#: src/features/admin/EditFieldsDialog.tsx
+#: src/features/browse/BatchEditDialog.tsx
+#: src/features/libraries/EditLibraryForm.tsx
+#: src/features/user/Sessions.tsx
+msgid "Save"
+msgstr "Save"
+
+#: src/features/browse/FavoritesScreen.tsx
+#: src/features/browse/LibraryScreen.tsx
+#: src/features/detail/PersonScreen.tsx
+#: src/features/search/SearchScreen.tsx
+msgid "Books"
+msgstr "Books"
+
+#: src/features/admin/GeneralSettingsScreen.tsx
+msgid "OpenSubtitles username"
+msgstr "OpenSubtitles username"
+
+#: src/features/libraries/EditLibraryForm.tsx
+msgid "Use local metadata"
+msgstr "Use local metadata"
+
+#: src/features/admin/FixMatchDialog.tsx
+msgid "Fix match: {title}"
+msgstr "Fix match: {title}"
+
+#: src/features/setup/SetupWizard.tsx
+msgid "Streaming works on your local network. Set up remote access later in Network settings."
+msgstr "Streaming works on your local network. Set up remote access later in Network settings."
+
+#: src/features/user/SettingsScreen.tsx
+msgid "This TV will be signed out of {server}."
+msgstr "This TV will be signed out of {server}."
+
+#: src/features/user/TvVersions.tsx
+msgid "App version"
+msgstr "App version"
+
+#: src/components/FieldLabel.tsx
+msgid "{label} (locked)"
+msgstr "{label} (locked)"
+
+#: src/features/browse/CountLine.tsx
+msgid "Top rated"
+msgstr "Top rated"
+
+#: src/features/player/castProtocol.ts
+#: src/features/player/PlayerError.tsx
+msgid "Playback was stopped."
+msgstr "Playback was stopped."
+
+#: src/features/home/HomeScreen.tsx
+msgid "Recently Added in {name}"
+msgstr "Recently Added in {name}"
+
+#: src/app/AppShell.tsx
+#: src/app/tv/TvRail.tsx
+#: src/features/admin/AdminLayout.tsx
+#: src/features/user/SettingsScreen.tsx
+msgid "Settings"
+msgstr "Settings"
+
+#: src/features/home/HomeScreen.tsx
+msgid "Items appear here as libraries are scanned."
+msgstr "Items appear here as libraries are scanned."
+
+#: src/features/auth/LinkScreen.tsx
+msgid "Open in the Kivo app"
+msgstr "Open in the Kivo app"
+
+#: src/features/admin/ItemAdminMenu.tsx
+msgid "Removes metadata and artwork until it's matched again. Watch history is kept."
+msgstr "Removes metadata and artwork until it's matched again. Watch history is kept."
+
+#: src/features/browse/CountLine.tsx
+msgid "A–Z"
+msgstr "A–Z"
+
+#. placeholder {0}: library.name
+#: src/features/user/LibraryOrder.tsx
+msgid "Pinned: {0}"
+msgstr "Pinned: {0}"
+
+#. placeholder {0}: formatRuntime(Math.max(0, durationMs - positionMs))
+#: src/features/player/NowPlaying.tsx
+msgid "{0} left in the book"
+msgstr "{0} left in the book"
+
+#: src/features/user/Sessions.tsx
+msgid "Sign out everywhere"
+msgstr "Sign out everywhere"
+
+#: src/features/admin/ChooseArtworkDialog.tsx
+msgid "No artwork available. Upload an image."
+msgstr "No artwork available. Upload an image."
+
+#. placeholder {0}: added.count
+#. placeholder {0}: work.season.episodeCount
+#: src/features/admin/ActivityList.tsx
+#: src/features/browse/WorkCard.tsx
+msgid "{0, plural, one {# episode} other {# episodes}}"
+msgstr "{0, plural, one {# episode} other {# episodes}}"
+
+#: src/app/AppShell.tsx
+#: src/features/admin/AdminLayout.tsx
+#: src/features/admin/UserScreen.tsx
+#: src/features/admin/UsersScreen.tsx
+msgid "Admin"
+msgstr "Admin"
+
+#: src/features/detail/SeriesDetail.tsx
+msgid "Mark season as unwatched"
+msgstr "Mark season as unwatched"
+
+#: src/features/auth/LinkScreen.tsx
+msgid "This device is signing in to another server. You're signed in to {serverName}."
+msgstr "This device is signing in to another server. You're signed in to {serverName}."
+
+#: src/features/browse/LibraryScreen.tsx
+msgid "Clear filters"
+msgstr "Clear filters"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Limited to {capped} by the server."
+msgstr "Limited to {capped} by the server."
+
+#: src/features/user/SettingsScreen.tsx
+msgid "For the parts in another language"
+msgstr "For the parts in another language"
+
+#: src/features/history/HistoryScreen.tsx
+msgid "All users"
+msgstr "All users"
+
+#: src/features/admin/AddUserButton.tsx
+msgid "Add user"
+msgstr "Add user"
+
+#: src/features/admin/MissingFilesScreen.tsx
+msgid "Missing since {missingSince}"
+msgstr "Missing since {missingSince}"
+
+#. placeholder {0}: status.text
+#: src/features/auth/AddressScreen.tsx
+msgid "Couldn't connect securely to {0}. Check the address, that the server is running and that the TV trusts its certificate, or type http:// before the address to connect without encryption."
+msgstr "Couldn't connect securely to {0}. Check the address, that the server is running and that the TV trusts its certificate, or type http:// before the address to connect without encryption."
+
+#: src/features/admin/PlayCards.tsx
+msgid "Remote quality limit"
+msgstr "Remote quality limit"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Only forced"
+msgstr "Only forced"
+
+#: src/features/libraries/FolderPicker.tsx
+msgid "Loading folders…"
+msgstr "Loading folders…"
+
+#: src/features/admin/LogsScreen.tsx
+msgid "Errors"
+msgstr "Errors"
+
+#: src/features/player/castProtocol.ts
+msgid "Signed out on the TV."
+msgstr "Signed out on the TV."
+
+#: src/features/admin/UserScreen.tsx
+msgid "Parental controls"
+msgstr "Parental controls"
+
+#: src/features/admin/TaskScreen.tsx
+msgid "Nothing failed"
+msgstr "Nothing failed"
+
+#: src/features/admin/ManageLibrariesScreen.tsx
+#: src/features/admin/useAdminLabels.ts
+msgid "Scan all libraries"
+msgstr "Scan all libraries"
+
+#: src/features/admin/ItemAdminMenu.tsx
+msgid "Unmatch"
+msgstr "Unmatch"
+
+#: src/features/admin/LogsScreen.tsx
+msgid "Debug lines appear when the server's log level is debug."
+msgstr "Debug lines appear when the server's log level is debug."
+
+#: src/components/LoadError.tsx
+#: src/features/auth/LinkScreen.tsx
+#: src/features/setup/SetupWizard.tsx
+msgid "Go to Home"
+msgstr "Go to Home"
+
+#: src/features/auth/LinkScreen.tsx
+msgid "Show server address"
+msgstr "Show server address"
+
+#: src/features/admin/NetworkSettingsScreen.tsx
+msgid "Local network"
+msgstr "Local network"
+
+#: src/features/detail/WorkRows.tsx
+msgid "Trailers"
+msgstr "Trailers"
+
+#: src/components/TranscodeDiagnostics.tsx
+#: src/features/admin/PlayCards.tsx
+#: src/features/player/CastButton.tsx
+msgid "Paused"
+msgstr "Paused"
+
+#: src/features/detail/BookDetail.tsx
+msgid "Book {position} of {link}"
+msgstr "Book {position} of {link}"
+
+#: src/features/admin/OverviewScreen.tsx
+msgid "Details"
+msgstr "Details"
+
+#: src/features/history/HistoryScreen.tsx
+msgid "No watch history"
+msgstr "No watch history"
+
+#: src/features/admin/useAdminLabels.ts
+msgid "Extract subtitles"
+msgstr "Extract subtitles"
+
+#: src/features/browse/FilterPanel.tsx
+msgid "Decade"
+msgstr "Decade"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Makes speech clearer and evens out loud scenes, playing some audio as AAC."
+msgstr "Makes speech clearer and evens out loud scenes, playing some audio as AAC."
+
+#: src/features/user/SettingsScreen.tsx
+msgid "About"
+msgstr "About"
+
+#: src/features/admin/TranscodingScreen.tsx
+msgid "Device not found."
+msgstr "Device not found."
+
+#: src/features/browse/WorkCard.tsx
+#: src/features/detail/BookDetail.tsx
+msgid "Resume"
+msgstr "Resume"
+
+#: src/features/search/SearchScreen.tsx
+msgid "Clear search"
+msgstr "Clear search"
+
+#: src/features/auth/SignInScreen.tsx
+msgid "Sign in with password"
+msgstr "Sign in with password"
+
+#: src/features/admin/PlayCards.tsx
+msgid "The viewer can resume from where it stopped."
+msgstr "The viewer can resume from where it stopped."
+
+#: src/components/PersonCard.tsx
+#: src/features/admin/FixMatchDialog.tsx
+#: src/features/browse/useBrowseLabels.ts
+msgid "Author"
+msgstr "Author"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Maximum audio channels"
+msgstr "Maximum audio channels"
+
+#: src/features/admin/OverviewScreen.tsx
+msgid "Scanning {name}"
+msgstr "Scanning {name}"
+
+#: src/features/browse/CountLine.tsx
+#: src/features/browse/FavoritesScreen.tsx
+msgid "{count, plural, one {# video} other {# videos}}"
+msgstr "{count, plural, one {# video} other {# videos}}"
+
+#: src/features/libraries/FolderPicker.tsx
+msgid "Browse server folders or enter a path"
+msgstr "Browse server folders or enter a path"
+
+#: src/features/search/SearchScreen.tsx
+msgid "No results for “{query}”."
+msgstr "No results for “{query}”."
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Box"
+msgstr "Box"
+
+#: src/app/AppShell.tsx
+msgid "Couldn't sign out. {signOutProblem}"
+msgstr "Couldn't sign out. {signOutProblem}"
+
+#: src/features/browse/CountLine.tsx
+msgid "Shortest"
+msgstr "Shortest"
+
+#: src/features/admin/ManageLibrariesScreen.tsx
+msgid "A folder can't be reached"
+msgstr "A folder can't be reached"
+
+#: src/features/player/UpNextCard.tsx
+msgid "Hide"
+msgstr "Hide"
+
+#: src/features/admin/useAdminLabels.ts
+msgid "Finding files"
+msgstr "Finding files"
+
+#: src/features/browse/CountLine.tsx
+msgid "unwatched"
+msgstr "unwatched"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Connect this TV to another server."
+msgstr "Connect this TV to another server."
+
+#: src/features/player/PlayerError.tsx
+msgid "Player"
+msgstr "Player"
+
+#: src/features/admin/OverviewScreen.tsx
+msgid "{unmatched, plural, one {# unmatched} other {# unmatched}}"
+msgstr "{unmatched, plural, one {# unmatched} other {# unmatched}}"
+
+#. placeholder {0}: row.why
+#: src/features/player/StreamInfo.tsx
+msgid "Why: {0}"
+msgstr "Why: {0}"
+
+#: src/features/admin/PlayCards.tsx
+#: src/features/player/StreamInfo.tsx
+msgid "Video"
+msgstr "Video"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Styled subtitles keep their own look."
+msgstr "Styled subtitles keep their own look."
+
+#: src/features/player/SubtitleSearch.tsx
+msgid "No subtitles found"
+msgstr "No subtitles found"
+
+#: src/features/admin/ShowFilesDialog.tsx
+msgid "Missing"
+msgstr "Missing"
+
+#: src/features/admin/NetworkSettingsScreen.tsx
+#: src/features/setup/SetupWizard.tsx
+msgid "Remote access"
+msgstr "Remote access"
+
+#: src/features/search/SearchScreen.tsx
+msgid "Search your libraries by title, person or collection"
+msgstr "Search your libraries by title, person or collection"
+
+#: src/features/admin/CreateInviteButton.tsx
+msgid "Create link"
+msgstr "Create link"
+
+#: src/features/admin/PlayCards.tsx
+msgid "Can't play interlaced video"
+msgstr "Can't play interlaced video"
+
+#: src/features/detail/WorkRows.tsx
+msgid "Cast & Crew"
+msgstr "Cast & Crew"
+
+#: src/features/user/ChangePasswordDialog.tsx
+msgid "Sign out other devices"
+msgstr "Sign out other devices"
+
+#: src/features/setup/SetupWizard.tsx
+msgid "Language"
+msgstr "Language"
+
+#: src/features/admin/useAdminLabels.ts
+msgid "Preparing"
+msgstr "Preparing"
+
+#: src/features/admin/AdminLayout.tsx
+#: src/features/admin/LogsScreen.tsx
+msgid "Logs"
+msgstr "Logs"
+
+#: src/features/detail/PersonScreen.tsx
+#: src/features/libraries/AddLibraryForm.tsx
+#: src/features/search/SearchScreen.tsx
+msgid "Other videos"
+msgstr "Other videos"
+
+#. placeholder {0}: s.name || t`series`
+#: src/features/admin/EditBookForm.tsx
+msgid "Remove {0}"
+msgstr "Remove {0}"
+
+#: src/features/admin/TaskButtons.tsx
+msgid "Run now"
+msgstr "Run now"
+
+#: src/features/admin/ChooseArtworkDialog.tsx
+msgid "Current: {line}"
+msgstr "Current: {line}"
+
+#: src/features/admin/ManageLibrariesScreen.tsx
+#: src/features/browse/GroupCard.tsx
+msgid "{n, plural, one {# item} other {# items}}"
+msgstr "{n, plural, one {# item} other {# items}}"
+
+#: src/features/admin/AdminLayout.tsx
+msgid "Manage"
+msgstr "Manage"
+
+#: src/features/player/PlayerOverlays.tsx
+msgid "Skip Credits"
+msgstr "Skip Credits"
+
+#: src/features/admin/OverviewScreen.tsx
+msgid "{failed, plural, one {{name} failed for # file} other {{name} failed for # files}}"
+msgstr "{failed, plural, one {{name} failed for # file} other {{name} failed for # files}}"
+
+#: src/features/admin/PlayCards.tsx
+msgid "Source"
+msgstr "Source"
+
+#: src/features/player/CastButton.tsx
+msgid "Continue on this computer"
+msgstr "Continue on this computer"
+
+#: src/features/admin/AdminLayout.tsx
+#: src/features/admin/GeneralSettingsScreen.tsx
+msgid "General"
+msgstr "General"
+
+#. placeholder {0}: unreachable.join(", ")
+#: src/features/admin/ManageLibrariesScreen.tsx
+msgid "Can't reach {0}"
+msgstr "Can't reach {0}"
+
+#: src/features/admin/UserScreen.tsx
+msgid "Setting a password signs {name} out everywhere."
+msgstr "Setting a password signs {name} out everywhere."
+
+#. placeholder {0}: i + 1
+#: src/features/detail/BookDetail.tsx
+#: src/features/player/NowPlaying.tsx
+msgid "Chapter {0}"
+msgstr "Chapter {0}"
+
+#. placeholder {0}: kindTitle(kind)
+#: src/features/browse/FavoritesScreen.tsx
+msgid "Favorites · {0}"
+msgstr "Favorites · {0}"
+
+#: src/features/admin/OverviewScreen.tsx
+msgid "Working now"
+msgstr "Working now"
+
+#: src/features/admin/ActivityScreen.tsx
+msgid "Everything"
+msgstr "Everything"
+
+#: src/features/search/SearchScreen.tsx
+msgid "Search: {q}"
+msgstr "Search: {q}"
+
+#: src/features/admin/FixMatchDialog.tsx
+msgid "No matches. Try a different title or author."
+msgstr "No matches. Try a different title or author."
+
+#: src/features/admin/NetworkSettingsScreen.tsx
+#: src/features/admin/userFields.tsx
+msgid "Remote streaming limit"
+msgstr "Remote streaming limit"
+
+#: src/features/admin/TasksScreen.tsx
+msgid "Last run"
+msgstr "Last run"
+
+#: src/features/admin/useAdminLabels.ts
+msgid "Library changes"
+msgstr "Library changes"
+
+#: src/features/admin/PlayCards.tsx
+#: src/features/player/AudioSubtitlesMenu.tsx
+#: src/features/user/SettingsScreen.tsx
+msgid "Dialogue boost"
+msgstr "Dialogue boost"
+
+#: src/features/auth/AddressScreen.tsx
+msgid "Your Kivo server's address"
+msgstr "Your Kivo server's address"
+
+#: src/components/SettingsLayout.tsx
+msgid "This TV"
+msgstr "This TV"
+
+#: src/features/libraries/EditLibraryForm.tsx
+msgid "Nightly and when media is added"
+msgstr "Nightly and when media is added"
+
+#: src/app/AppShell.tsx
+#: src/app/tv/TvRail.tsx
+#: src/features/browse/FavoritesScreen.tsx
+#: src/features/browse/LibrariesScreen.tsx
+#: src/features/browse/LibrarySwitcher.tsx
+#: src/features/browse/useBrowseLabels.ts
+#: src/features/home/HomeScreen.tsx
+msgid "Favorites"
+msgstr "Favorites"
+
+#. placeholder {0}: added.count
+#: src/features/admin/ActivityList.tsx
+msgid "{0, plural, one {# video} other {# videos}}"
+msgstr "{0, plural, one {# video} other {# videos}}"
+
+#: src/features/browse/FavoritesScreen.tsx
+#: src/features/detail/SeriesDetail.tsx
+msgid "Seasons"
+msgstr "Seasons"
+
+#: src/features/detail/SeriesDetail.tsx
+msgid "Mark season as watched"
+msgstr "Mark season as watched"
+
+#: src/features/browse/BatchEditDialog.tsx
+#: src/tv/keyboard/GridKeyboard.tsx
+msgid "Clear"
+msgstr "Clear"
+
+#: src/features/detail/SeriesDetail.tsx
+msgid "Season"
+msgstr "Season"
+
+#: src/features/admin/LibrarySettingsScreen.tsx
+#: src/features/libraries/EditLibraryForm.tsx
+msgid "Metadata language"
+msgstr "Metadata language"
+
+#: src/features/player/CastButton.tsx
+msgid "Cast"
+msgstr "Cast"
+
+#: src/features/admin/PlayCards.tsx
+msgid "Transcoder"
+msgstr "Transcoder"
+
+#: src/features/player/MiniPlayer.tsx
+#: src/features/player/NowPlaying.tsx
+msgid "Stop listening"
+msgstr "Stop listening"
+
+#: src/features/admin/FixMatchDialog.tsx
+#: src/features/player/NowPlaying.tsx
+msgid "Narrated by {narrators}"
+msgstr "Narrated by {narrators}"
+
+#: src/features/auth/LinkScreen.tsx
+msgid "Continue"
+msgstr "Continue"
+
+#: src/features/admin/TranscodingScreen.tsx
+msgid "Update the driver, then restart the server."
+msgstr "Update the driver, then restart the server."
+
+#: src/features/admin/ActivityScreen.tsx
+#: src/features/admin/AdminLayout.tsx
+#: src/features/admin/OverviewScreen.tsx
+#: src/features/admin/TasksScreen.tsx
+msgid "Activity"
+msgstr "Activity"
+
+#. placeholder {0}: removedFolders.length
+#: src/features/libraries/EditLibraryForm.tsx
+msgid "{0, plural, one {Remove # folder?} other {Remove # folders?}}"
+msgstr "{0, plural, one {Remove # folder?} other {Remove # folders?}}"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Display"
+msgstr "Display"
+
+#: src/features/admin/ManageLibrariesScreen.tsx
+#: src/features/home/HomeScreen.tsx
+msgid "Add a folder of movies, shows, videos or audiobooks."
+msgstr "Add a folder of movies, shows, videos or audiobooks."
+
+#: src/features/detail/Overview.tsx
+msgid "Less"
+msgstr "Less"
+
+#: src/features/admin/useAdminLabels.ts
+msgid "Extracting"
+msgstr "Extracting"
+
+#: src/features/admin/PlayCards.tsx
+msgid "Repackaged for this device"
+msgstr "Repackaged for this device"
+
+#: src/components/LoadError.tsx
+msgid "Couldn't load this page."
+msgstr "Couldn't load this page."
+
+#: src/features/admin/PlayCards.tsx
+msgid "{label} (hw)"
+msgstr "{label} (hw)"
+
+#: src/features/admin/ActivityScreen.tsx
+msgid "Yesterday"
+msgstr "Yesterday"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Settings sections"
+msgstr "Settings sections"
+
+#: src/features/admin/ApiKeysScreen.tsx
+msgid "Created {created}"
+msgstr "Created {created}"
+
+#: src/features/browse/CountLine.tsx
+#: src/features/browse/useBrowseLabels.ts
+msgid "My rating"
+msgstr "My rating"
+
+#: src/app/ConnectionBanner.tsx
+msgid "The server was updated. Reload to use the new version."
+msgstr "The server was updated. Reload to use the new version."
+
+#: src/tv/ExitDialog.tsx
+msgid "Exit"
+msgstr "Exit"
+
+#: src/i18n/playback.ts
+msgid "{field}: {actual}, declared {declared}"
+msgstr "{field}: {actual}, declared {declared}"
+
+#: src/features/admin/NetworkSettingsScreen.tsx
+msgid "Local networks"
+msgstr "Local networks"
+
+#: src/features/admin/ManageLibrariesScreen.tsx
+#: src/features/admin/PlayCards.tsx
+#: src/features/admin/TaskButtons.tsx
+msgid "Stop"
+msgstr "Stop"
+
+#: src/features/home/HomeScreen.tsx
+msgid "Ask an admin for access."
+msgstr "Ask an admin for access."
+
+#: src/features/admin/PlayCards.tsx
+msgid "Can't play this bit depth"
+msgstr "Can't play this bit depth"
+
+#: src/features/admin/CreateInviteButton.tsx
+msgid "Expires after"
+msgstr "Expires after"
+
+#: src/features/admin/CreateInviteButton.tsx
+msgid "Anyone with this link can create one account. It won't be shown again."
+msgstr "Anyone with this link can create one account. It won't be shown again."
+
+#: src/features/player/CastButton.tsx
+msgid "Keep playing on the TV"
+msgstr "Keep playing on the TV"
+
+#: src/features/browse/BatchEditDialog.tsx
+msgid "Replaces each book's series with this one."
+msgstr "Replaces each book's series with this one."
+
+#: src/features/admin/TranscodingScreen.tsx
+msgid "Accelerator"
+msgstr "Accelerator"
+
+#: src/features/user/LibraryOrder.tsx
+msgid "Pinned: {name}"
+msgstr "Pinned: {name}"
+
+#: src/features/detail/WatchToggles.tsx
+msgid "Mark {cascadeCount} episodes as watched?"
+msgstr "Mark {cascadeCount} episodes as watched?"
+
+#: src/features/detail/PersonScreen.tsx
+msgid "{written, plural, one {# book} other {# books}}"
+msgstr "{written, plural, one {# book} other {# books}}"
+
+#: src/features/player/CastButton.tsx
+#: src/features/player/CastRemote.tsx
+#: src/features/player/PlayerOverlays.tsx
+msgid "Loading"
+msgstr "Loading"
+
+#: src/features/player/PlayerError.tsx
+msgid "Limit"
+msgstr "Limit"
+
+#: src/features/admin/AddUserButton.tsx
+msgid "Add a user"
+msgstr "Add a user"
+
+#: src/features/player/SubtitleSearch.tsx
+msgid "Forced"
+msgstr "Forced"
+
+#: src/features/user/Sessions.tsx
+msgid "Sign out everywhere else?"
+msgstr "Sign out everywhere else?"
+
+#: src/features/auth/SignInScreen.tsx
+msgid "QR code to link this browser"
+msgstr "QR code to link this browser"
+
+#: src/features/browse/LibraryScreen.tsx
+msgid "Clear all"
+msgstr "Clear all"
+
+#: src/components/ModalDialog.tsx
+#: src/components/Toast.tsx
+#: src/features/admin/ChooseArtworkDialog.tsx
+#: src/features/admin/ShowFilesDialog.tsx
+msgid "Close"
+msgstr "Close"
+
+#: src/features/admin/OverviewScreen.tsx
+msgid "{count} transcoding"
+msgstr "{count} transcoding"
+
+#: src/features/browse/useBrowseLabels.ts
+msgid "Rating"
+msgstr "Rating"
+
+#: src/tv/keyboard/GridKeyboard.tsx
+msgid "Backspace"
+msgstr "Backspace"
+
+#: src/features/admin/EditBookForm.tsx
+msgid "ASIN"
+msgstr "ASIN"
+
+#: src/features/admin/UserScreen.tsx
+msgid "Disable {name}?"
+msgstr "Disable {name}?"
+
+#: src/features/libraries/EditLibraryForm.tsx
+msgid "Also sets the Audible store used for book metadata."
+msgstr "Also sets the Audible store used for book metadata."
+
+#: src/features/browse/useBrowseLabels.ts
+msgid "Until {to}"
+msgstr "Until {to}"
+
+#: src/features/admin/MissingFilesScreen.tsx
+msgid "Forget every missing file?"
+msgstr "Forget every missing file?"
+
+#: src/features/player/SubtitleSearch.tsx
+msgid "Exact match"
+msgstr "Exact match"
+
+#: src/features/admin/UserScreen.tsx
+msgid "Delete account"
+msgstr "Delete account"
+
+#: src/features/admin/useAdminLabels.ts
+msgid "Backing up"
+msgstr "Backing up"
+
+#: src/features/detail/WorkRows.tsx
+msgid "Deleted Scenes"
+msgstr "Deleted Scenes"
+
+#: src/app/ConnectionBanner.tsx
+msgid "Retry now"
+msgstr "Retry now"
+
+#: src/features/admin/TasksScreen.tsx
+msgid "Nightly start"
+msgstr "Nightly start"
+
+#: src/features/auth/AddressScreen.tsx
+msgid "Waking the server…"
+msgstr "Waking the server…"
+
+#: src/features/admin/PlayCards.tsx
+msgid "Stop {title} for {user}"
+msgstr "Stop {title} for {user}"
+
+#: src/features/admin/CreateInviteButton.tsx
+msgid "Create invite link"
+msgstr "Create invite link"
+
+#: src/tv/ExitDialog.tsx
+msgid "Exit Kivo?"
+msgstr "Exit Kivo?"
+
+#: src/features/admin/problemActions.ts
+msgid "Move the data folder to a local disk."
+msgstr "Move the data folder to a local disk."
+
+#: src/features/home/HomeScreen.tsx
+msgid "Continue Listening"
+msgstr "Continue Listening"
+
+#: src/features/auth/LinkScreen.tsx
+msgid "Don't allow"
+msgstr "Don't allow"
+
+#: src/features/admin/userFields.tsx
+msgid "Includes libraries added later."
+msgstr "Includes libraries added later."
+
+#: src/features/browse/LibraryScreen.tsx
+msgid "Library sections"
+msgstr "Library sections"
+
+#: src/features/auth/LinkScreen.tsx
+msgid "{name} is signed in"
+msgstr "{name} is signed in"
+
+#: src/features/browse/useBrowseLabels.ts
+msgid "Last played"
+msgstr "Last played"
+
+#. placeholder {0}: status.text
+#: src/features/auth/AddressScreen.tsx
+msgid "Can't reach {0}. Check the address and that the server is running."
+msgstr "Can't reach {0}. Check the address and that the server is running."
+
+#: src/features/admin/ItemAdminMenu.tsx
+msgid "Refreshing…"
+msgstr "Refreshing…"
+
+#: src/features/auth/AddressScreen.tsx
+msgid "Connecting without encryption. Press Open to continue."
+msgstr "Connecting without encryption. Press Open to continue."

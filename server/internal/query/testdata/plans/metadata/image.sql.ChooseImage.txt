@@ -1,0 +1,1 @@
+SEARCH image USING INDEX sqlite_autoindex_image_1 (id=?)

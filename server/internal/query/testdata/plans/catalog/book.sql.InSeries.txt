@@ -1,0 +1,3 @@
+SCAN CONSTANT ROW
+SCALAR SUBQUERY 1
+  SEARCH book_series_book USING PRIMARY KEY (series_id=? AND work_id=?)

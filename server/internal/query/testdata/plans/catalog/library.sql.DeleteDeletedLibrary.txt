@@ -1,0 +1,11 @@
+SEARCH d USING INDEX sqlite_autoindex_library_1 (id=?)
+CORRELATED SCALAR SUBQUERY 1
+  SEARCH r USING COVERING INDEX library_folder_library (library_id=?)
+SEARCH work_folder USING PRIMARY KEY (library_id=?)
+SEARCH match USING PRIMARY KEY (library_id=?)
+SEARCH work_library USING PRIMARY KEY (library_id=?)
+SCAN work
+SEARCH library_folder USING COVERING INDEX library_folder_library (library_id=?)
+SCAN invite_library
+SCAN user_library
+SCAN library_grant

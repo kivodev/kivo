@@ -1,0 +1,1 @@
+SEARCH book_series_book USING INDEX book_series_book_work (work_id=?)

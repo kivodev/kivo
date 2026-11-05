@@ -1,0 +1,17 @@
+{
+  "asin": "B073H9PF2D",
+  "authors": [{"asin": "B004AQ8ZQ8", "name": "James S. A. Corey"}],
+  "description": "Humanity has colonized the solar system.",
+  "formatType": "unabridged",
+  "genres": [{"asin": "18580606011", "name": "Science Fiction & Fantasy", "type": "genre"}],
+  "image": "https://m.media-amazon.com/images/I/A1mMDEAfvsL.jpg",
+  "language": "english",
+  "narrators": [{"name": "Jefferson Mays"}],
+  "publisherName": "Recorded Books",
+  "region": "us",
+  "releaseDate": "2011-06-15T00:00:00.000Z",
+  "runtimeLengthMin": 1206,
+  "seriesPrimary": {"asin": "B073H9X6WM", "name": "The Expanse", "position": "1"},
+  "summary": "<p>Humanity has colonized the solar system.</p>",
+  "title": "Leviathan Wakes"
+}

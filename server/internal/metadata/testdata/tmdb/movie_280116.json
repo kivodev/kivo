@@ -1,0 +1,24 @@
+{
+  "id": 280116,
+  "imdb_id": "tt3700410",
+  "original_language": "ta",
+  "original_title": "அரண்மனை",
+  "overview": "A family gathers at their ancestral palace, where a spirit has been waiting for them.",
+  "release_date": "2014-09-19",
+  "status": "Released",
+  "title": "Aranmanai",
+  "genres": [{"id": 27, "name": "Horror"}, {"id": 35, "name": "Comedy"}],
+  "alternative_titles": {"titles": []},
+  "credits": {"cast": [], "crew": []},
+  "external_ids": {"imdb_id": "tt3700410"},
+  "images": {
+    "backdrops": [
+      {"file_path": "/aranmanai-backdrop.jpg", "iso_639_1": null, "vote_average": 5.3, "width": 1920, "height": 1080}
+    ],
+    "logos": [],
+    "posters": []
+  },
+  "keywords": {"keywords": []},
+  "release_dates": {"results": []},
+  "translations": {"translations": []}
+}

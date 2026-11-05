@@ -1,0 +1,5 @@
+SEARCH session USING INTEGER PRIMARY KEY (rowid=?)
+LIST SUBQUERY 1
+  SEARCH s USING COVERING INDEX session_browser_used (last_used_at<?)
+SEARCH download USING COVERING INDEX download_session (session_id=?)
+SEARCH cast_token USING COVERING INDEX cast_token_session (session_id=?)

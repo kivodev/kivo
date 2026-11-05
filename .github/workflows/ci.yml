@@ -1,0 +1,112 @@
+name: ci
+
+# Run by hand (Actions › ci › Run workflow, or `gh workflow run ci`); the
+# same checks run locally before each merge.
+on:
+  workflow_dispatch:
+
+jobs:
+  server:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.mod
+      # For the OpenAPI lint and the TypeScript client generator, run with npx.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      # For openapi-generator, which make generate runs for the Kotlin client.
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      # The end-to-end test (cmd/kivo) and media's real-ffmpeg tests need it.
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - run: make build
+      - run: make lint
+      # Dead code, clones, complexity and duplicated lines in the Go code and
+      # the SQL, each held at its ceiling in server/ceilings.mk.
+      - run: make ceilings-server
+      - run: make test
+        env:
+          KIVO_FFMPEG: /usr/bin/ffmpeg
+      # Shared runners vary too much to hold millisecond budgets, so here the
+      # read budgets are a report; make budget on real hardware enforces them.
+      - run: make budget
+        continue-on-error: true
+        env:
+          KIVO_BUDGET_SCALE: "3"
+      - run: make check-generated
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: server/web/package-lock.json
+      # TODO: Playwright against the real server and the test corpus.
+      - run: make web
+      # Unused code, import cycles and duplicated lines in the web client, each
+      # held at its ceiling in server/ceilings.mk.
+      - run: make ceilings-web
+
+  # The native apps' generated client, their shared core and the theme
+  # generator pass their tests on the JVM; the Android app builds, passes
+  # lint and its unit tests, and its debug APK is kept as an artifact. The
+  # runner's Android SDK builds the core's Android target and the app.
+  clients:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: clients
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v5
+      # :core:jvmTest holds the core's package rules (ArchTest).
+      - run: ./gradlew :api:jvmTest :core:jvmTest :tokens:test
+      # The core's public API against its dump in core/api, the JVM's and
+      # the Apple klibs': `./gradlew :core:updateKotlinAbi` when a change is
+      # meant.
+      - run: ./gradlew :core:checkKotlinAbi
+      # The apps' boundary with the core, each count held at its ceiling in
+      # server/ceilings.mk.
+      - run: make -C ../server ceilings-clients
+      # The core's Apple code compiles here too; only linking the
+      # XCFramework needs a Mac.
+      - run: ./gradlew :core:compileKotlinIosArm64 :core:compileKotlinTvosArm64
+      - run: ./gradlew :android:assembleDebug :android:testDebugUnitTest :android:lintDebug
+      - uses: actions/upload-artifact@v7
+        with:
+          name: kivo-android-debug
+          path: clients/android/build/outputs/apk/debug/android-debug.apk
+
+  # The Cast receiver's logic under a stand-in for the Cast framework. It has
+  # no dependencies and no build.
+  chromecast:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: clients/chromecast
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: npm ci
+      - run: npm test

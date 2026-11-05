@@ -1,0 +1,39 @@
+searches:
+  series "The Expanse" 2015
+episode lists:
+  63639/aired
+  63639/aired
+  63639/aired
+  63639/aired
+  63639/aired
+  63639/aired
+  63639/aired
+  63639/aired
+  63639/aired
+  63639/aired
+  63639/aired
+  63639/aired
+  63639/aired
+  63639/aired
+  63639/aired
+  63639/aired
+works:
+series "The Expanse" 2015 {tmdb:63639}
+  season "Specials" S00
+    episode "Pinball" S00E01 {tmdb:63639-0-1}
+      = The Expanse (2015)/Specials/The Expanse - S00E01.mkv
+  season "Season 1" S01
+    episode "Dulcinea" S01E01 {tmdb:63639-1-1}
+      = The Expanse (2015)/Season 01/The Expanse - S01E01 - Dulcinea.mkv
+    episode "The Big Empty" S01E02 {tmdb:63639-1-2}
+      = The Expanse (2015)/Season 01/The Expanse - S01E02.mkv
+      = The Expanse (2015)/Season 01/The.Expanse.S01E02.1080p.mkv
+    episode "Episode 9" S01E09 provisional
+      = The Expanse (2015)/Season 01/The Expanse - S01E09.mkv
+    extra "Season One Recap" [featurette]
+      = The Expanse (2015)/Season 01/Featurettes/Season One Recap.mkv
+  season "Season 2" S02
+    episode "Safe" S02E01 {tmdb:63639-2-1}
+      = The Expanse (2015)/Season 2/S02E01.mkv
+  extra "Inside the Expanse" [other]
+    = The Expanse (2015)/Extras/Inside the Expanse.mkv

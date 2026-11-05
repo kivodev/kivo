@@ -1,0 +1,23 @@
+CO-ROUTINE page
+  SEARCH wl USING INDEX work_library_title ((library_id,sort_title,work_id)>(?,?,?))
+  SEARCH w USING INDEX sqlite_autoindex_work_1 (id=?)
+  CORRELATED SCALAR SUBQUERY 3
+    SEARCH vr USING INDEX sqlite_autoindex_work_1 (id=?)
+  SEARCH vl EXISTS USING COVERING INDEX work_library_work (work_id=?)
+  LIST SUBQUERY 2
+    SCAN json_each VIRTUAL TABLE INDEX 1:
+    CREATE BLOOM FILTER
+  SEARCH l USING INDEX sqlite_autoindex_library_1 (id=?)
+  LIST SUBQUERY 1
+    SCAN json_each VIRTUAL TABLE INDEX 1:
+    CREATE BLOOM FILTER
+SCAN p
+SEARCH f USING INDEX sqlite_autoindex_media_file_1 (id=?) LEFT-JOIN
+CORRELATED SCALAR SUBQUERY 6
+  SEARCH d USING INDEX work_root (root_id=?)
+  SEARCH dv USING COVERING INDEX media_version_work_work (work_id=?)
+  SEARCH df USING INDEX media_file_version (version_id=?)
+  SEARCH dr USING INDEX sqlite_autoindex_library_folder_1 (id=?)
+  USE TEMP B-TREE FOR ORDER BY
+SEARCH r USING INDEX sqlite_autoindex_library_folder_1 (id=?) LEFT-JOIN
+USE TEMP B-TREE FOR LAST TERM OF ORDER BY

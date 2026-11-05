@@ -1,0 +1,1 @@
+SEARCH session USING INDEX session_user (user_id=?)

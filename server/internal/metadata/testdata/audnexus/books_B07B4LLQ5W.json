@@ -1,0 +1,15 @@
+{
+  "asin": "B07B4LLQ5W",
+  "authors": [{"asin": "B004AQ8ZQ8", "name": "James S. A. Corey"}],
+  "formatType": "unabridged",
+  "genres": [{"asin": "18580606011", "name": "Science Fiction & Fantasy", "type": "genre"}],
+  "language": "english",
+  "narrators": [{"name": "Jefferson Mays"}],
+  "publisherName": "Recorded Books",
+  "region": "us",
+  "releaseDate": "2012-06-26T00:00:00.000Z",
+  "runtimeLengthMin": 1263,
+  "seriesPrimary": {"asin": "B073H9X6WM", "name": "The Expanse", "position": 2},
+  "summary": "<p>We are not alone.</p>",
+  "title": "Caliban's War"
+}

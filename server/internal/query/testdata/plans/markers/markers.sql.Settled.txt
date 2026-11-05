@@ -1,0 +1,4 @@
+SCAN CONSTANT ROW
+SCALAR SUBQUERY 1
+  SEARCH x USING PRIMARY KEY (file_id=?)
+  SEARCH f USING INDEX sqlite_autoindex_media_file_1 (id=?)

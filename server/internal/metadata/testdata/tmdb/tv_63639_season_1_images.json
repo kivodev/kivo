@@ -1,0 +1,7 @@
+{
+  "id": 3001,
+  "posters": [
+    {"file_path": "/expanse-s1-poster.jpg", "iso_639_1": "en", "vote_average": 5.4, "width": 1000, "height": 1500},
+    {"file_path": "/expanse-s1-poster-de.jpg", "iso_639_1": "de", "vote_average": 5.6, "width": 1000, "height": 1500}
+  ]
+}

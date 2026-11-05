@@ -1,0 +1,8 @@
+{
+  "id": 63639,
+  "results": [
+    {"id": "5e5b7b4f1b7c4c0013a1d3f2", "name": "DVD Order", "type": 3, "episode_count": 4, "group_count": 2},
+    {"id": "5f00000000000000000000aa", "name": "Story arcs", "type": 5, "episode_count": 4, "group_count": 1},
+    {"id": "5f00000000000000000000bb", "name": "Specials", "type": 2, "episode_count": 0, "group_count": 1}
+  ]
+}

@@ -1,0 +1,1 @@
+SEARCH match USING PRIMARY KEY (library_id=? AND subject=?)

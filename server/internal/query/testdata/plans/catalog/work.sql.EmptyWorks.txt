@@ -1,0 +1,5 @@
+SCAN w USING COVERING INDEX sqlite_autoindex_work_1
+CORRELATED SCALAR SUBQUERY 1
+  SEARCH vw USING COVERING INDEX media_version_work_work (work_id=?)
+CORRELATED SCALAR SUBQUERY 2
+  SEARCH c USING COVERING INDEX work_children (parent_id=?)

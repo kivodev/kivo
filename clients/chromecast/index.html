@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cast receiver</title>
+<script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap">
+<link rel="stylesheet" href="receiver.css">
+</head>
+<body>
+<video id="video"></video>
+<div id="art" class="layer"></div>
+<div id="low" class="layer hidden"></div>
+
+<div id="launch" class="layer">
+  <img class="wordmark" src="lockup.svg" alt="Kivo">
+  <div class="spinner"></div>
+</div>
+
+<div id="idle" class="layer hidden">
+  <img class="wordmark" src="lockup.svg" alt="Kivo">
+  <div id="dots"></div>
+</div>
+
+<div id="loading" class="bar hidden">
+  <div class="row">
+    <div class="spinner big"></div>
+    <div class="text-col">
+      <div class="title"></div>
+      <div class="sub muted"></div>
+    </div>
+  </div>
+</div>
+
+<div id="paused" class="bar hidden">
+  <div class="row">
+    <div class="glyph">
+      <svg class="pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="5.8" y="4.2" width="4.4" height="15.6" rx="1.3" fill="currentColor"/><rect x="13.8" y="4.2" width="4.4" height="15.6" rx="1.3" fill="currentColor"/></svg>
+      <div class="spinner big"></div>
+    </div>
+    <div class="text-col">
+      <div class="title"></div>
+      <div class="sub muted"></div>
+    </div>
+    <img class="wordmark" src="lockup.svg" alt="Kivo">
+  </div>
+  <div class="scrub"><i></i></div>
+  <div class="times"><span class="at"></span><span class="left"></span></div>
+</div>
+
+<div id="error" class="bar hidden">
+  <div class="row">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.4 4.1 2.6 18a1.8 1.8 0 0 0 1.6 2.7h15.6a1.8 1.8 0 0 0 1.6-2.7L13.6 4.1a1.8 1.8 0 0 0-3.2 0z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 9.2v5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><circle cx="12" cy="17.2" r="1.1" fill="currentColor"/></svg>
+    <div class="text-col">
+      <div class="line"></div>
+      <div class="sub muted"></div>
+    </div>
+  </div>
+</div>
+
+<div id="upnext" class="hidden">
+  <img alt="">
+  <div class="text">
+    <div class="line muted"></div>
+    <div class="title"></div>
+  </div>
+  <div class="count"></div>
+</div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

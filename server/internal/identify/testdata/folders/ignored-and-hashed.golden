@@ -1,0 +1,11 @@
+searches:
+  movie "Heat" 1995
+  movie "Blade Runner" 1982
+episode lists:
+works:
+movie "0123456789abcdef0123456789abcdef" provisional
+  = 0123456789abcdef0123456789abcdef.mkv
+movie "Blade Runner" 1982 {tmdb:78}
+  = Blade Runner (1982)/a1b2c3d4e5f60718293a4b5c6d7e8f90.mkv
+movie "Heat" 1995 {tmdb:949}
+  = Heat (1995)/Heat (1995).mkv

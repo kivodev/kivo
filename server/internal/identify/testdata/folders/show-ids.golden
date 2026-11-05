@@ -1,0 +1,13 @@
+searches:
+  series "Loose Show" 0
+episode lists:
+  1437/aired
+works:
+series "Firefly" 2002 {tmdb:1437}
+  season "Season 1" S01
+    episode "Serenity" S01E04 {tmdb:1437-1-4}
+      = Serenity Series {tvdb-78874}/S01E04.mkv
+series "Loose Show" provisional
+  season "Season 1" S01
+    episode "Episode 1" S01E01 provisional
+      = Loose.Show.S01E01.mkv

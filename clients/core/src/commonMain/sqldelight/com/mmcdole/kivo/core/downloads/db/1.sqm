@@ -1,0 +1,3 @@
+-- A download plays offline for as long as it's kept: when the server last
+-- said the user may have it isn't kept any more.
+ALTER TABLE download DROP COLUMN checked_at;
