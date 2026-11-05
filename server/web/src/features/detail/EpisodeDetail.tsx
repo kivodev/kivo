@@ -7,9 +7,10 @@ import { buttonClass } from "@/components/Button";
 import { Icon } from "@/components/Icon";
 import { episodeCode } from "@/features/browse/WorkCard";
 import { formatDate, formatRuntime } from "@/i18n/format";
+import { isTv } from "@/tv/flag";
 import { TvFocusable } from "@/tv/focus";
 import { communityRating, DetailHeader } from "./DetailHeader";
-import { EpisodeList } from "./EpisodeList";
+import { EpisodeList, EpisodeShelf } from "./EpisodeList";
 import { PlayActions, PlaybackPickers, useResumeParts } from "./PlaybackControls";
 import { WorkRows } from "./WorkRows";
 
@@ -18,7 +19,9 @@ type Props = { work: WorkDetail };
 /**
  * An episode's page. It shows the still, the series link, "S2 · E5 ·
  * Title", previous and next, the movie page's controls, then the rest of
- * its season.
+ * its season. On TV, as in the Apple app's wide layout, the title stands
+ * alone with the code at the head of its details, and the season is a row
+ * of cards that opens on this episode; Play has focus as the page opens.
  */
 export function EpisodeDetail({ work }: Props) {
   const { t } = useLingui();
@@ -33,12 +36,18 @@ export function EpisodeDetail({ work }: Props) {
   const episodeCount = seasons.data?.items.find((s) => s.id === episode?.seasonId)?.season?.episodeCount;
   const code = episodeCode(work);
   const seasonNumber = episode?.seasonNumber ?? 0;
+  // A TV heads the page with the episode's title and starts its details
+  // with the code, as the Apple app's wide layout does.
   const meta = [
+    isTv ? code : undefined,
     episode?.airDate ? formatDate(episode.airDate) : undefined,
     work.durationMs ? formatRuntime(work.durationMs) : undefined,
     communityRating(work),
     work.contentRating,
   ].filter(Boolean);
+  const seasonHeading = (
+    <h2 className="text-lg font-semibold">{seasonNumber === 0 ? t`Specials` : t`Season ${seasonNumber}`}</h2>
+  );
 
   return (
     <div data-part="detail" data-kind="episode">
@@ -66,7 +75,7 @@ export function EpisodeDetail({ work }: Props) {
           )
         }
         heading={
-          code ? (
+          code && !isTv ? (
             <>
               <span className="text-text-muted">{code} ·</span> {work.title}
             </>
@@ -82,8 +91,14 @@ export function EpisodeDetail({ work }: Props) {
       </DetailHeader>
       {episode?.seasonId && (
         <section className="flex flex-col gap-4 px-4 pb-10 sm:px-8 tv:relative">
-          <h2 className="text-lg font-semibold">{seasonNumber === 0 ? t`Specials` : t`Season ${seasonNumber}`}</h2>
-          <EpisodeList seasonId={episode.seasonId} currentId={work.id} count={episodeCount} />
+          {isTv ? (
+            <EpisodeShelf seasonId={episode.seasonId} currentId={work.id} entry={work.id} header={seasonHeading} />
+          ) : (
+            <>
+              {seasonHeading}
+              <EpisodeList seasonId={episode.seasonId} currentId={work.id} count={episodeCount} />
+            </>
+          )}
         </section>
       )}
       <WorkRows work={work} />

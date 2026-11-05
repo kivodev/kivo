@@ -5,6 +5,7 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useEffectEvent,
   useId,
   useLayoutEffect,
   useRef,
@@ -21,7 +22,15 @@ import { revealTvCard, revealTvRow, settleTvTrack, tvCardClass } from "./tvLayou
 const tvLayout = tokens.tv.web.layout;
 
 type Props<T> = {
-  title: ReactNode;
+  /** The row's heading. Without one, `header` heads the row. */
+  title?: ReactNode;
+  /**
+   * Heads the row in place of its title line, outside the row's focus group,
+   * for a heading with controls of its own, such as a season's watched
+   * check, which then take focus apart from the cards. On TV the page
+   * scrolls the row to the top of the screen with it.
+   */
+  header?: ReactNode;
   /** A link beside the title, such as to the whole library. */
   action?: ReactNode;
   /** Landscape rows hold fewer, wider cards. Square cards are as wide as posters. */
@@ -45,6 +54,12 @@ type Props<T> = {
    * fit half as many.
    */
   tvAcross?: number;
+  /**
+   * On TV, the key of the card Up or Down enters the row on from outside it,
+   * rather than the nearest, and which the row opens showing, such as a
+   * series' Next Up.
+   */
+  enterOn?: string;
 };
 
 /**
@@ -69,6 +84,8 @@ export function Row<T>({
   focusKey: givenKey,
   autoFocus = false,
   tvAcross,
+  header,
+  enterOn,
 }: Props<T>) {
   const { t } = useLingui();
   const generatedKey = useId();
@@ -113,16 +130,24 @@ export function Row<T>({
 
   // On TV the track keeps its place through new cards, so it's put back
   // where it belongs once they change, before they show, and as the row's
-  // width changes with the window's.
+  // width changes with the window's. Without a focused card it shows the
+  // one it enters on, which a screen still hidden as it opens can't lay out
+  // until it shows and the row first takes its width.
   const cards = items.map(itemKey).join("\n");
+  const settle = useEffectEvent(() => {
+    const entry = enterOn
+      ? list.current?.querySelector(`[data-tv-focus-key="${CSS.escape(`card:${focusKey}:${enterOn}`)}"]`)
+      : null;
+    settleTvTrack(list.current, entry?.closest("li"));
+  });
   // biome-ignore lint/correctness/useExhaustiveDependencies: the track settles when its cards change.
   useLayoutEffect(() => {
-    if (isTv) settleTvTrack(list.current);
-  }, [cards, seeAll]);
+    if (isTv) settle();
+  }, [cards, seeAll, enterOn]);
   useEffect(() => {
     const el = list.current;
     if (!el || !isTv) return;
-    const resized = new ResizeObserver(() => settleTvTrack(el));
+    const resized = new ResizeObserver(() => settle());
     resized.observe(el);
     return () => resized.disconnect();
   }, []);
@@ -139,16 +164,15 @@ export function Row<T>({
     revealTvRow(section.current);
   };
 
-  return (
-    // Scrolling to the row on TV leaves the overscan above it.
-    <section
-      ref={section}
-      data-part="row"
-      data-row={id}
-      className="flex min-w-0 flex-col gap-3 tv:scroll-mt-(--layout-tv-overscan-y)"
+  const cardsGroup = (
+    <TvFocusGroup
+      focusKey={`row:${focusKey}`}
+      enterOn={enterOn && `card:${focusKey}:${enterOn}`}
+      line
+      className="flex min-w-0 flex-col gap-3"
     >
-      <TvFocusGroup focusKey={`row:${focusKey}`} line className="flex min-w-0 flex-col gap-3">
-        {/* The buttons keep their place while hidden, so showing them never moves the title, its link or the row. */}
+      {header === undefined && (
+        // The buttons keep their place while hidden, so showing them never moves the title, its link or the row.
         <div className="flex min-h-10 items-center justify-between gap-4">
           <h2 className="min-w-0 truncate text-lg font-semibold text-text">{title}</h2>
           <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
@@ -169,75 +193,95 @@ export function Row<T>({
             </div>
           </div>
         </div>
-        {/*
-         * On TV the cards are clipped past the row, by the bleed above, below
-         * and on the left, so the focused card's lift and glow aren't cut off
-         * at its edges. On the right they run on to the screen's edge, past
-         * the page's padding and the overscan, as TV apps' rows do, so the
-         * next card shows as more to come. The cards move along on their
-         * track (revealTvCard), which keeps the focused one clear of the
-         * overscan; the part of the card before the first whole one that the
-         * bleed would show beside the rail is hidden (data-tv-scrolled). The
-         * cards are sized to fit `--tv-across` across the row, the row's gap
-         * apart, which leaves a focused card's lift and glow clear of the
-         * cards beside it.
-         */}
-        <div className="tv:-my-(--layout-tv-row-bleed) tv:-mr-(--layout-tv-row-end) tv:-ml-(--layout-tv-row-bleed) tv:overflow-clip tv:py-(--layout-tv-row-bleed) tv:pr-(--layout-tv-row-end) tv:pl-(--layout-tv-row-bleed)">
-          {/* On TV one glow lights the focused card, riding the track as it slides (tv/focusGlow.tsx). */}
-          <ul
-            ref={list}
-            data-part="row-cards"
-            data-tv-glows={isTv || undefined}
-            onScroll={isTv ? undefined : measure}
-            onFocus={onGlowFocus}
-            onBlur={onGlowBlur}
-            style={narrow}
-            className={`-mx-1 flex snap-x scroll-px-1 gap-4 overflow-x-auto px-1 pb-2 scrollbar-hidden tv:relative tv:mx-0 tv:snap-none tv:gap-(--layout-tv-row-gap) tv:overflow-visible tv:px-0 tv:transition-transform tv:duration-(--duration-glide) tv:ease-out ${across}`}
-          >
-            {items.map((item, i) => {
-              const key = itemKey(item);
-              return (
-                <li key={key} className={`shrink-0 snap-start ${width} tv:tv-card-width`}>
-                  <TvFocusable
-                    focusKey={`card:${focusKey}:${key}`}
-                    kind="card"
-                    autoFocus={autoFocus && i === 0}
-                    scroll="none"
-                    onFocus={reveal}
-                    className={tvCardClass}
-                  >
-                    {renderItem(item)}
-                  </TvFocusable>
-                </li>
-              );
-            })}
-            {seeAll && (
-              <li className="shrink-0 snap-start tv:tv-card-width">
+      )}
+      {/*
+       * On TV the cards are clipped past the row, by the bleed above, below
+       * and on the left, so the focused card's lift and glow aren't cut off
+       * at its edges. On the right they run on to the screen's edge, past
+       * the page's padding and the overscan, as TV apps' rows do, so the
+       * next card shows as more to come. The cards move along on their
+       * track (revealTvCard), which keeps the focused one clear of the
+       * overscan; the part of the card before the first whole one that the
+       * bleed would show beside the rail is hidden (data-tv-scrolled). The
+       * cards are sized to fit `--tv-across` across the row, the row's gap
+       * apart, which leaves a focused card's lift and glow clear of the
+       * cards beside it.
+       */}
+      <div className="tv:-my-(--layout-tv-row-bleed) tv:-mr-(--layout-tv-row-end) tv:-ml-(--layout-tv-row-bleed) tv:overflow-clip tv:py-(--layout-tv-row-bleed) tv:pr-(--layout-tv-row-end) tv:pl-(--layout-tv-row-bleed)">
+        {/* On TV one glow lights the focused card, riding the track as it slides (tv/focusGlow.tsx). */}
+        <ul
+          ref={list}
+          data-part="row-cards"
+          data-tv-glows={isTv || undefined}
+          onScroll={isTv ? undefined : measure}
+          onFocus={onGlowFocus}
+          onBlur={onGlowBlur}
+          style={narrow}
+          className={`-mx-1 flex snap-x scroll-px-1 gap-4 overflow-x-auto px-1 pb-2 scrollbar-hidden tv:relative tv:mx-0 tv:snap-none tv:gap-(--layout-tv-row-gap) tv:overflow-visible tv:px-0 tv:transition-transform tv:duration-(--duration-glide) tv:ease-out ${across}`}
+        >
+          {items.map((item, i) => {
+            const key = itemKey(item);
+            return (
+              <li key={key} className={`shrink-0 snap-start ${width} tv:tv-card-width`}>
                 <TvFocusable
-                  focusKey={`card:${focusKey}:see-all`}
+                  focusKey={`card:${focusKey}:${key}`}
                   kind="card"
+                  autoFocus={autoFocus && i === 0}
                   scroll="none"
                   onFocus={reveal}
                   className={tvCardClass}
                 >
-                  <div
-                    data-part="see-all"
-                    data-tv-ring
-                    className={`flex items-center justify-center rounded-md border border-border bg-surface-raised text-text ${shape === "landscape" ? "aspect-landscape" : shape === "square" ? "aspect-square" : "aspect-poster"}`}
-                  >
-                    {action}
-                  </div>
+                  {renderItem(item)}
                 </TvFocusable>
               </li>
-            )}
-            {glows && (
-              <li aria-hidden data-tv-glow-host className="contents">
-                {glows}
-              </li>
-            )}
-          </ul>
+            );
+          })}
+          {seeAll && (
+            <li className="shrink-0 snap-start tv:tv-card-width">
+              <TvFocusable
+                focusKey={`card:${focusKey}:see-all`}
+                kind="card"
+                scroll="none"
+                onFocus={reveal}
+                className={tvCardClass}
+              >
+                <div
+                  data-part="see-all"
+                  data-tv-ring
+                  className={`flex items-center justify-center rounded-md border border-border bg-surface-raised text-text ${shape === "landscape" ? "aspect-landscape" : shape === "square" ? "aspect-square" : "aspect-poster"}`}
+                >
+                  {action}
+                </div>
+              </TvFocusable>
+            </li>
+          )}
+          {glows && (
+            <li aria-hidden data-tv-glow-host className="contents">
+              {glows}
+            </li>
+          )}
+        </ul>
+      </div>
+    </TvFocusGroup>
+  );
+
+  return (
+    // Scrolling to the row on TV leaves the overscan above it.
+    <section
+      ref={section}
+      data-part="row"
+      data-row={id}
+      className="flex min-w-0 flex-col gap-3 tv:scroll-mt-(--layout-tv-overscan-y)"
+    >
+      {/* A header and the cards are one block, which a TV measures as the row's content (revealTvRow). */}
+      {header === undefined ? (
+        cardsGroup
+      ) : (
+        <div className="flex min-w-0 flex-col gap-3">
+          {header}
+          {cardsGroup}
         </div>
-      </TvFocusGroup>
+      )}
     </section>
   );
 }

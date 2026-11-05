@@ -3218,9 +3218,11 @@ msgid "No artwork available. Upload an image."
 msgstr "No artwork available. Upload an image."
 
 #. placeholder {0}: added.count
+#. placeholder {0}: open.season.episodeCount
 #. placeholder {0}: work.season.episodeCount
 #: src/features/admin/ActivityList.tsx
 #: src/features/browse/WorkCard.tsx
+#: src/features/detail/SeriesDetail.tsx
 msgid "{0, plural, one {# episode} other {# episodes}}"
 msgstr "{0, plural, one {# episode} other {# episodes}}"
 

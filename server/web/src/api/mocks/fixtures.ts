@@ -964,7 +964,16 @@ export function createMockApi(): MockApi {
       [mockIds.vacation]: { ...vacation, items: summaries(vacationVideos) },
     },
     works,
-    children: Object.fromEntries(Object.entries(children).map(([id, ids]) => [id, summaries(ids)])),
+    // A season's episodes carry their synopses, as the server lists them.
+    children: Object.fromEntries(
+      Object.entries(children).map(([id, ids]) => [
+        id,
+        summaries(ids).map((s) => {
+          const overview = works[s.id]?.overview;
+          return s.episode && overview ? { ...s, episode: { ...s.episode, overview } } : s;
+        }),
+      ]),
+    ),
     home: {
       rows: [
         {

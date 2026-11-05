@@ -464,8 +464,24 @@ test.describe("Detail", () => {
     await expectFocus(page, { key: "play", name: "Resume" });
     await press(page, "ArrowDown");
     await expectFocus(page, { key: "season:", name: "S3" });
-    await pressUntil(page, "ArrowDown", (f) => f.key?.startsWith("episode:") ?? false, 3);
-    expect((await focusOf(page)).name).toContain("E3");
+    await pressUntil(page, "ArrowDown", (f) => f.key?.startsWith("card:episodes:") ?? false, 3);
+    expect((await focusOf(page)).name).toContain("3. Episode 3");
+  });
+
+  test("OK on an episode opens its page with Play focused, and Back returns to that episode", async ({ page }) => {
+    await page.goto(`/works/${expanse}`);
+    await expectFocus(page, { key: "play", name: "Resume" });
+    await pressUntil(page, "ArrowDown", (f) => f.key?.startsWith("card:episodes:") ?? false, 3);
+    await press(page, "ArrowRight");
+    await expectFocus(page, { key: "card:episodes:", name: "4. Reload" });
+    const episode = (await focusOf(page)).key;
+    await press(page, "Enter");
+    await expect(page).toHaveURL(/\/works\/0190a000-0000-7000-8000-000000000518$/);
+    await expectFocus(page, { key: "play", name: "Play" });
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Reload");
+    await back(page);
+    await expect(page).toHaveURL(new RegExp(`/works/${expanse}`));
+    await expectFocus(page, { key: episode ?? "" });
   });
 
   test("a hero's backdrop fills the screen's width and top, fading into the page", async ({ page }) => {
@@ -488,12 +504,13 @@ test.describe("Detail", () => {
     expect((backdrop?.x ?? 0) + (backdrop?.width ?? 0)).toBeGreaterThanOrEqual(1920);
   });
 
-  test("a series' first episode starts on the first screen", async ({ page }) => {
+  test("a series' episodes start on the first screen", async ({ page }) => {
     await page.goto(`/works/${expanse}`);
     await expectFocus(page, { key: "play" });
-    await expect(page.locator('[data-part="episode-list"] li').first()).toBeVisible();
-    const first = await page.locator('[data-part="episode-list"] li').first().boundingBox();
-    expect((first?.y ?? 0) + (first?.height ?? 0)).toBeLessThanOrEqual(1080 - (await overscan(page)).y);
+    const still = page.locator('[data-row="episodes"] [data-part="still"]').first();
+    await expect(still).toBeVisible();
+    const first = await still.boundingBox();
+    expect(first?.y ?? 1080).toBeLessThanOrEqual(1080 - (await overscan(page)).y - 200);
   });
 
   test("a title without artwork still has a hero the height of one with it", async ({ page }) => {

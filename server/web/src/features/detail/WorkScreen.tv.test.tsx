@@ -1,7 +1,8 @@
 import { fireEvent, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { locationOf, renderApp, screen } from "@/test/render";
-import { mockIds, serveMockApi } from "@/test/server";
+import { mockId, mockIds, serveMockApi } from "@/test/server";
+import { focusTv } from "@/tv/spatial";
 import { stopTv } from "@/tv/start";
 
 const focused = () => document.activeElement?.getAttribute("data-tv-focus-key");
@@ -77,6 +78,74 @@ describe("Detail page on TV", () => {
     press("Enter");
     await waitFor(() => expect(router.state.location.pathname).toBe(`/watch/${mockIds.dunePartTwo}`));
     expect(router.state.location.search).toMatchObject({ from: "start" });
+  });
+
+  it("shows a series' open season as a row of episode cards under its heading and episode count", async () => {
+    serveMockApi();
+    renderApp(`/works/${mockIds.expanse}`);
+    await waitFor(() => expect(focused()).toBe("play"));
+    const shelf = await waitFor(() => {
+      const row = document.querySelector<HTMLElement>('[data-row="episodes"]');
+      expect(row?.querySelectorAll('[data-part="episode-card"]')).toHaveLength(10);
+      return row as HTMLElement;
+    });
+    expect(within(shelf).getByRole("heading", { name: "Season 3" })).toBeInTheDocument();
+    expect(within(shelf).getByText("10 episodes")).toBeInTheDocument();
+    // The number and title, then the time left in one in progress, or the runtime before the synopsis.
+    const cards = [...shelf.querySelectorAll('[data-part="episode-card"]')];
+    expect(cards[2]).toHaveTextContent("3. Episode 314 min left");
+    expect(cards[3]).toHaveTextContent("4. Reload44m · Holden races to stop an asteroid before it reaches Earth.");
+    // A card opens the episode's page; nothing on it plays straight away.
+    expect(within(cards[3] as HTMLElement).getByRole("link")).toHaveAttribute(
+      "href",
+      `/works/${mockIds.expanseReload}`,
+    );
+    expect(shelf.querySelector('[data-part="episode-play"]')).toBeNull();
+    // Up or Down enters the row on Next Up.
+    expect(shelf.querySelector(`[data-tv-group="row:episodes"]`)).toHaveAttribute(
+      "data-tv-enter",
+      `card:episodes:${mockId(1303)}`,
+    );
+  });
+
+  it("opens an episode's page with OK on its card, with Play focused, and Back returns to the card", async () => {
+    serveMockApi();
+    const { router } = renderApp(`/works/${mockIds.expanse}`);
+    await waitFor(() => expect(focused()).toBe("play"));
+    const card = `card:episodes:${mockIds.expanseReload}`;
+    await waitFor(() => expect(document.querySelector(`[data-tv-focus-key="${card}"]`)).not.toBeNull());
+    focusTv(card);
+    await waitFor(() => expect(focused()).toBe(card));
+    press("Enter");
+    await waitFor(() => expect(locationOf(router)).toBe(`/works/${mockIds.expanseReload}`));
+    await waitFor(() => expect(focused()).toBe("play"));
+    // The episode's own title heads it, with its code first in the details.
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/^Reload$/);
+    expect(document.querySelector('[data-part="detail-header"]')).toHaveTextContent(/S3 · E4 · .+ · 44m/);
+    // The rest of its season, opening on it with its title in the accent.
+    const current = document.querySelector('[data-row="episodes"] [data-current]');
+    expect(current).toHaveTextContent("4. Reload");
+    expect(document.querySelector(`[data-tv-group="row:episodes"]`)).toHaveAttribute(
+      "data-tv-enter",
+      `card:episodes:${mockIds.expanseReload}`,
+    );
+    fireEvent.keyDown(window, { key: "XF86Back" });
+    await waitFor(() => expect(locationOf(router)).toBe(`/works/${mockIds.expanse}`));
+    await waitFor(() => expect(focused()).toBe(card));
+  });
+
+  it("opens the next episode's page from the season's row with its Play focused, though the card's key is on both pages", async () => {
+    serveMockApi();
+    const { router } = renderApp(`/works/${mockIds.expanseReload}`);
+    await waitFor(() => expect(focused()).toBe("play"));
+    const next = `card:episodes:${mockId(1305)}`;
+    await waitFor(() => expect(document.querySelector(`[data-tv-focus-key="${next}"]`)).not.toBeNull());
+    focusTv(next);
+    await waitFor(() => expect(focused()).toBe(next));
+    press("Enter");
+    await waitFor(() => expect(locationOf(router)).toBe(`/works/${mockId(1305)}`));
+    await waitFor(() => expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/^Episode 5$/));
+    await waitFor(() => expect(focused()).toBe("play"));
   });
 
   it("opens Play's link with OK", async () => {
