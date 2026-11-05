@@ -2,7 +2,7 @@ import KivoCore
 import KivoUI
 import SwiftUI
 
-/// About: the app's and the server's versions, with the credits under them.
+/// About: the app's and the server's versions, then Credits.
 struct AboutView: View {
     @Environment(ServerModel.self) private var server
     @State private var serverVersion: String?
@@ -25,29 +25,16 @@ struct AboutView: View {
                 } else {
                     LabeledContent(String(localized: "Server version"), value: serverVersion ?? "")
                 }
-            } footer: {
-                credits
+            }
+            Section {
+                NavigationLink { CreditsView() } label: {
+                    Text(String(localized: "Credits"))
+                }
             }
         }
         .navigationTitle(String(localized: "About"))
         .toolbarTitleDisplayMode(.inline)
         .task { await load() }
-    }
-
-    /// Where the metadata and the transcoder come from: TMDB's logo and the notice its API terms ask for, then Audnexus and jellyfin-ffmpeg.
-    private var credits: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Image("TMDBLogo")
-                .resizable()
-                .scaledToFit()
-                .frame(height: 10)
-                .accessibilityLabel(Text(verbatim: "TMDB"))
-                .padding(.bottom, 2)
-            Text(String(localized: "This product uses the TMDB API but is not endorsed or certified by TMDB."))
-            Text(String(localized: "Audiobook metadata from Audnexus"))
-            Text(String(localized: "Transcoding by jellyfin-ffmpeg (GPL)"))
-        }
-        .padding(.top, 12)
     }
 
     private func load() async {
@@ -57,5 +44,29 @@ struct AboutView: View {
         } catch {
             failure = error.problemSentence
         }
+    }
+}
+
+/// Credits, from About: TMDB's logo and the notice its API terms ask for, then Audnexus and jellyfin-ffmpeg.
+private struct CreditsView: View {
+    var body: some View {
+        Form {
+            Section {
+                VStack(alignment: .leading, spacing: 8) {
+                    Image("TMDBLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 12)
+                        .accessibilityLabel(Text(verbatim: "TMDB"))
+                    Text(String(localized: "This product uses the TMDB API but is not endorsed or certified by TMDB."))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 4)
+                Text(String(localized: "Audiobook metadata from Audnexus"))
+                Text(String(localized: "Transcoding by jellyfin-ffmpeg (GPL)"))
+            }
+        }
+        .navigationTitle(String(localized: "Credits"))
+        .toolbarTitleDisplayMode(.inline)
     }
 }

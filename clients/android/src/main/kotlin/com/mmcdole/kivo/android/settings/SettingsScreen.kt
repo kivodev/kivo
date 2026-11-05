@@ -92,7 +92,7 @@ fun SettingsScreen(session: ServerSession, navigator: Navigator) {
 
 /** One group's page, opened from Settings. */
 @Composable
-fun SettingsPageScreen(session: ServerSession, group: SettingsGroup) {
+fun SettingsPageScreen(session: ServerSession, group: SettingsGroup, navigator: Navigator) {
     when (group) {
         SettingsGroup.Account -> AccountPage(session)
         SettingsGroup.Playback -> PlaybackPage(session)
@@ -101,7 +101,7 @@ fun SettingsPageScreen(session: ServerSession, group: SettingsGroup) {
         SettingsGroup.Quality -> QualityPage(session)
         SettingsGroup.Display -> DisplayPage(session)
         SettingsGroup.Libraries -> LibrariesPage(session)
-        SettingsGroup.About -> AboutPage(session)
+        SettingsGroup.About -> AboutPage(session, navigator)
     }
 }
 

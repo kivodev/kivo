@@ -3,7 +3,6 @@ package com.mmcdole.kivo.android.settings
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -11,11 +10,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
@@ -28,7 +26,8 @@ import com.mmcdole.kivo.android.theme.Kivo
 import com.mmcdole.kivo.android.theme.TvType
 import com.mmcdole.kivo.android.ui.Choice
 import com.mmcdole.kivo.core.Load
-import com.mmcdole.kivo.android.ui.QrCode
+import com.mmcdole.kivo.android.ui.Navigator
+import com.mmcdole.kivo.android.ui.Screen
 import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.android.ui.focusKey
 import com.mmcdole.kivo.android.ui.display
@@ -182,66 +181,61 @@ class AboutViewModel(private val session: ServerSession) : ViewModel() {
 }
 
 /**
- * About: this app's version and the server's, rows that take no focus, and
- * under them the server's address with a QR code, to manage it from a browser.
+ * About: this app's version, the server's and its address, rows that take
+ * no focus, then Credits, which opens the credits.
  */
 @Composable
-internal fun AboutPage(session: ServerSession) {
+internal fun AboutPage(session: ServerSession, navigator: Navigator) {
     val model = viewModel { AboutViewModel(session) }
     val memory = rememberFocusMemory()
     val server = model.server
-    SettingsPage(
-        SettingsGroup.About,
-        memory,
-        initial = null,
-        readOnly = server !is Load.Failed,
-    ) {
+    SettingsPage(SettingsGroup.About, memory, initial = "credits".takeIf { server !is Load.Failed }) {
         item { InfoRow(stringResource(R.string.app_version), BuildConfig.VERSION_NAME) }
         when (server) {
             Load.Loading -> Unit
             is Load.Failed -> item { LoadFailed(server.problem, model::load) }
             is Load.Loaded -> item { InfoRow(stringResource(R.string.server_version), server.value.version) }
         }
-        // The credits sit beside the address: the page doesn't scroll, and under it they'd run off the screen.
-        item {
-            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(Kivo.space(12))) {
-                ServerAddress(server.getOrNull()?.let(::serverAddress) ?: session.session.baseUrl)
-                Credits()
-            }
+        item(key = "server") {
+            val address = server.getOrNull()?.let(::serverAddress) ?: session.session.baseUrl
+            InfoRow(stringResource(R.string.server), address.substringAfter("://"))
+        }
+        // Keyed, so focus stays on it as the server version arrives above it.
+        item(key = "credits") {
+            ActionRow(
+                stringResource(R.string.credits),
+                { navigator.push(Screen.Credits) },
+                Modifier.focusKey(memory, "credits").testTag("credits"),
+                opensPage = true,
+            )
         }
     }
 }
 
-/** Where the metadata and the transcoder come from: TMDB's logo and the notice its API terms ask for, then Audnexus and jellyfin-ffmpeg. */
-@Composable
-private fun Credits() {
-    Column(verticalArrangement = Arrangement.spacedBy(Kivo.space(1))) {
-        Image(
-            painterResource(R.drawable.tmdb_logo),
-            stringResource(R.string.tmdb),
-            Modifier.padding(bottom = Kivo.space(1)).height(Kivo.space(3)),
-        )
-        Text(stringResource(R.string.tmdb_notice), style = TvType.small, color = Kivo.colors.textMuted)
-        Text(stringResource(R.string.credit_audnexus), style = TvType.small, color = Kivo.colors.textMuted)
-        Text(stringResource(R.string.credit_jellyfin_ffmpeg), style = TvType.small, color = Kivo.colors.textMuted)
-    }
-}
-
 /**
- * The server's address, for a phone to find the server or a browser to
- * manage it: its public URL when it has one, else its first local URL.
+ * The server's address, for a browser to manage it: its public URL when it
+ * has one, else its first local URL.
  */
 private fun serverAddress(info: ServerInfo): String? = info.publicUrl ?: info.localUrls?.firstOrNull()
 
-/** The server's address [url] as a QR code and as text. */
+/**
+ * Credits, opened from About: TMDB's logo and the notice its API terms ask
+ * for, then Audnexus and jellyfin-ffmpeg. Nothing on it takes focus.
+ */
 @Composable
-private fun ServerAddress(url: String) {
-    Column(Modifier.padding(start = Kivo.space(4), top = Kivo.space(6)), verticalArrangement = Arrangement.spacedBy(Kivo.space(3))) {
-        Text(stringResource(R.string.server_address), style = TvType.heading, color = Kivo.colors.text)
-        QrCode(url, 160.dp)
-        Column {
-            Text(stringResource(R.string.manage_from_browser_help), style = TvType.body, color = Kivo.colors.textMuted)
-            Text(url.substringAfter("://"), style = TvType.bodyStrong, color = Kivo.colors.text)
+internal fun CreditsPage() {
+    SettingsList(stringResource(R.string.credits), rememberFocusMemory(), initial = null, readOnly = true) {
+        item {
+            Column(Modifier.padding(start = Kivo.space(4)), verticalArrangement = Arrangement.spacedBy(Kivo.space(2))) {
+                Image(
+                    painterResource(R.drawable.tmdb_logo),
+                    stringResource(R.string.tmdb),
+                    Modifier.padding(bottom = Kivo.space(2)).height(Kivo.space(4)),
+                )
+                Text(stringResource(R.string.tmdb_notice), style = TvType.body, color = Kivo.colors.textMuted)
+                Text(stringResource(R.string.credit_audnexus), style = TvType.body, color = Kivo.colors.textMuted)
+                Text(stringResource(R.string.credit_jellyfin_ffmpeg), style = TvType.body, color = Kivo.colors.textMuted)
+            }
         }
     }
 }

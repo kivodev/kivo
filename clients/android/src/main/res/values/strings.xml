@@ -300,7 +300,8 @@
     <string name="channels_stereo">Stereo</string>
     <string name="app_version">App version</string>
     <string name="server_version">Server version</string>
-    <string name="manage_from_browser_help">Scan with your phone, or open on a computer:</string>
+    <string name="server">Server</string>
+    <string name="credits">Credits</string>
     <string name="tmdb">TMDB</string>
     <string name="tmdb_notice">This product uses the TMDB API but is not endorsed or certified by TMDB.</string>
     <string name="credit_audnexus">Audiobook metadata from Audnexus</string>

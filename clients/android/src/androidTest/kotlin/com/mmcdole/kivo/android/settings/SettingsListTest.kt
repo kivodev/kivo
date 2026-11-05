@@ -13,6 +13,7 @@ import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performKeyInput
@@ -29,7 +30,7 @@ import kotlin.test.assertEquals
 
 // Settings' list and its panels: a row's line shows under it, a page with
 // nothing to press keeps its rows out of focus, switches flip, a setting's
-// choices mark the current one, and a sign-out asks first.
+// choices mark the current one, a sign-out asks first, and the credits show.
 
 @RunWith(AndroidJUnit4::class)
 class SettingsListTest {
@@ -71,6 +72,21 @@ class SettingsListTest {
         compose.onNodeWithText("App version").requestFocus()
         compose.onNodeWithText("App version").assertIsNotFocused()
         compose.onNode(isFocused()).assertExists()
+    }
+
+    @Test
+    fun theCreditsShowTmdbsLogoAndNoticeAndTakeFocusAsAPage() {
+        compose.setContent {
+            KivoTheme {
+                CreditsPage()
+            }
+        }
+        compose.onNodeWithText("Credits").assertExists()
+        compose.onNodeWithContentDescription("TMDB").assertExists()
+        compose.onNodeWithText("This product uses the TMDB API but is not endorsed or certified by TMDB.").assertExists()
+        compose.onNodeWithText("Audiobook metadata from Audnexus").assertExists()
+        compose.onNodeWithText("Transcoding by jellyfin-ffmpeg (GPL)").assertExists()
+        compose.waitUntil(5_000) { runCatching { compose.onNode(isFocused()).assertExists() }.isSuccess }
     }
 
     @Test
