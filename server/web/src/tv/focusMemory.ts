@@ -47,7 +47,13 @@ export function expectTvScreen(entry: string) {
   };
   leftOn = undefined;
   holdStrayTvKeys(holdKeysMs);
-  settleTvFocus();
+  // A screen Back returns to has often rendered its items from cached data
+  // by the time the router says it has arrived, though the browser hasn't
+  // drawn it yet. Its card then takes focus at once, so the screen is first
+  // drawn with its row, the page and the glow on the card, rather than for
+  // a frame without them and then moving there.
+  if (pending.key && tvFocusExists(pending.key)) resolve();
+  else settleTvFocus();
 }
 
 /**
