@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
@@ -49,6 +50,8 @@ import com.mmcdole.kivo.android.ui.CardShape
 import com.mmcdole.kivo.android.ui.EmptyState
 import com.mmcdole.kivo.android.ui.Failed
 import com.mmcdole.kivo.android.ui.FocusRail
+import com.mmcdole.kivo.android.ui.LocalContinueWatchingMenu
+import com.mmcdole.kivo.android.ui.LocalWorkMenu
 import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.android.ui.Loader
 import com.mmcdole.kivo.android.ui.with
@@ -188,38 +191,41 @@ private fun Rows(ui: HomeUi, navigator: Navigator) {
                         // Continue Watching is the frames where you stopped.
                         val landscape = row.kind == "continueWatching" || library?.kind == "videos"
                         val shape = if (landscape) CardShape.Landscape else CardShape.Poster
+                        val menu = if (row.kind == "continueWatching") LocalContinueWatchingMenu.current else LocalWorkMenu.current
                         Column {
                             RowTitle(rowTitle(row, library), Modifier.padding(bottom = 12.dp))
-                            CardRow {
-                                items(row.items, key = { it.id }) { work ->
-                                    val key = "${row.id}/${work.id}"
-                                    WorkCard(
-                                        work = work,
-                                        shape = shape,
-                                        width = cardWidth(shape),
-                                        onClick = { navigator.push(Screen.Work(work.id)) },
-                                        modifier = Modifier
-                                            .focusKey(memory, key)
-                                            .onFocusChanged {
-                                                if (it.isFocused) {
-                                                    atFirst = key == firstKey
-                                                    focused.value = work
-                                                }
-                                            },
-                                    )
-                                }
-                                // Favorites ends in a card that opens the Favorites page.
-                                if (row.kind == "favorites") {
-                                    item(key = "all") {
-                                        SeeAllCard(
-                                            detail = null,
+                            CompositionLocalProvider(LocalWorkMenu provides menu) {
+                                CardRow {
+                                    items(row.items, key = { it.id }) { work ->
+                                        val key = "${row.id}/${work.id}"
+                                        WorkCard(
+                                            work = work,
                                             shape = shape,
                                             width = cardWidth(shape),
-                                            onClick = { navigator.push(Screen.Favorites) },
+                                            onClick = { navigator.push(Screen.Work(work.id)) },
                                             modifier = Modifier
-                                                .focusKey(memory, "${row.id}/all")
-                                                .onFocusChanged { if (it.isFocused) atFirst = false },
+                                                .focusKey(memory, key)
+                                                .onFocusChanged {
+                                                    if (it.isFocused) {
+                                                        atFirst = key == firstKey
+                                                        focused.value = work
+                                                    }
+                                                },
                                         )
+                                    }
+                                    // Favorites ends in a card that opens the Favorites page.
+                                    if (row.kind == "favorites") {
+                                        item(key = "all") {
+                                            SeeAllCard(
+                                                detail = null,
+                                                shape = shape,
+                                                width = cardWidth(shape),
+                                                onClick = { navigator.push(Screen.Favorites) },
+                                                modifier = Modifier
+                                                    .focusKey(memory, "${row.id}/all")
+                                                    .onFocusChanged { if (it.isFocused) atFirst = false },
+                                            )
+                                        }
                                     }
                                 }
                             }

@@ -193,4 +193,8 @@ class SessionLibrary internal constructor(
 
     @Throws(Exception::class)
     suspend fun setFavorite(workId: String, favorite: Boolean): UserState = userState.setFavorite(workId, favorite)
+
+    /** Takes a work out of Continue Watching or Continue Listening until it's played again; an episode takes its series. */
+    @Throws(Exception::class)
+    suspend fun removeFromContinue(workId: String) = userState.removeFromContinue(workId)
 }

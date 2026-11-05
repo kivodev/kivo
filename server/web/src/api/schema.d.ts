@@ -1150,6 +1150,31 @@ export interface paths {
         patch: operations["updateWorkUserState"];
         trace?: never;
     };
+    "/api/v1/works/{id}/user-state/remove-from-continue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Remove from Continue Watching
+         * @description Takes the work out of the caller's Continue Watching or Continue
+         *     Listening row on Home. The position and played state are kept. An
+         *     episode or season takes its series out. The work comes back the
+         *     next time the caller plays it, or for a series any of its episodes.
+         */
+        post: operations["removeFromContinue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/works/{id}/matches": {
         parameters: {
             query?: never;
@@ -7152,6 +7177,29 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Error"];
+        };
+    };
+    removeFromContinue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
             default: components["responses"]["Error"];

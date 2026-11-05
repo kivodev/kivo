@@ -95,6 +95,7 @@ export function HomeScreen() {
           : row.library?.kind === "audiobooks" || bookRows.has(row.kind)
             ? "square"
             : "poster";
+        const continueRow = row.kind === "continueWatching" || row.kind === "continueListening" ? row.kind : undefined;
         return (
           <Row
             key={row.id}
@@ -114,7 +115,7 @@ export function HomeScreen() {
             shape={shape}
             items={row.items}
             itemKey={(w) => w.id}
-            renderItem={(w) => <WorkCard work={w} shape={shape} />}
+            renderItem={(w) => <WorkCard work={w} shape={shape} continueRow={continueRow} />}
             action={
               row.kind === "favorites" && isTv ? (
                 <Link to="/favorites" className="text-sm font-semibold text-text">

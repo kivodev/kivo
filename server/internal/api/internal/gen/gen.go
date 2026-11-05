@@ -6062,6 +6062,9 @@ type ServerInterface interface {
 	// UpdateWorkUserState Update user state
 	// (PATCH /api/v1/works/{id}/user-state)
 	UpdateWorkUserState(w http.ResponseWriter, r *http.Request, id ID)
+	// RemoveFromContinue Remove from Continue Watching
+	// (POST /api/v1/works/{id}/user-state/remove-from-continue)
+	RemoveFromContinue(w http.ResponseWriter, r *http.Request, id ID)
 	// GetHealth Get health
 	// (GET /healthz)
 	GetHealth(w http.ResponseWriter, r *http.Request)
@@ -9146,6 +9149,32 @@ func (siw *ServerInterfaceWrapper) UpdateWorkUserState(w http.ResponseWriter, r 
 	handler.ServeHTTP(w, r)
 }
 
+// RemoveFromContinue operation middleware
+func (siw *ServerInterfaceWrapper) RemoveFromContinue(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RemoveFromContinue(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetHealth operation middleware
 func (siw *ServerInterfaceWrapper) GetHealth(w http.ResponseWriter, r *http.Request) {
 
@@ -9342,6 +9371,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/api/v1/works/{id}", wrapper.UpdateWork)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/works/{id}/children", wrapper.ListWorkChildren)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/api/v1/works/{id}/user-state", wrapper.UpdateWorkUserState)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/works/{id}/user-state/remove-from-continue", wrapper.RemoveFromContinue)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/works/{id}/matches", wrapper.ListWorkMatches)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/works/{id}/match", wrapper.MatchWork)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/works/{id}/unmatch", wrapper.UnmatchWork)
@@ -18701,6 +18731,71 @@ func (response UpdateWorkUserStatedefaultApplicationProblemPlusJSONResponse) Vis
 	return err
 }
 
+type RemoveFromContinueRequestObject struct {
+	ID ID `json:"id"`
+}
+
+type RemoveFromContinueResponseObject interface {
+	VisitRemoveFromContinueResponse(w http.ResponseWriter) error
+}
+
+type RemoveFromContinue204Response struct {
+}
+
+func (response RemoveFromContinue204Response) VisitRemoveFromContinueResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type RemoveFromContinue401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response RemoveFromContinue401ApplicationProblemPlusJSONResponse) VisitRemoveFromContinueResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveFromContinue404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response RemoveFromContinue404ApplicationProblemPlusJSONResponse) VisitRemoveFromContinueResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveFromContinuedefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response RemoveFromContinuedefaultApplicationProblemPlusJSONResponse) VisitRemoveFromContinueResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetHealthRequestObject struct {
 }
 
@@ -19065,6 +19160,9 @@ type StrictServerInterface interface {
 	// UpdateWorkUserState Update user state
 	// (PATCH /api/v1/works/{id}/user-state)
 	UpdateWorkUserState(ctx context.Context, request UpdateWorkUserStateRequestObject) (UpdateWorkUserStateResponseObject, error)
+	// RemoveFromContinue Remove from Continue Watching
+	// (POST /api/v1/works/{id}/user-state/remove-from-continue)
+	RemoveFromContinue(ctx context.Context, request RemoveFromContinueRequestObject) (RemoveFromContinueResponseObject, error)
 	// GetHealth Get health
 	// (GET /healthz)
 	GetHealth(ctx context.Context, request GetHealthRequestObject) (GetHealthResponseObject, error)
@@ -22123,6 +22221,32 @@ func (sh *strictHandler) UpdateWorkUserState(w http.ResponseWriter, r *http.Requ
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateWorkUserStateResponseObject); ok {
 		if err := validResponse.VisitUpdateWorkUserStateResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RemoveFromContinue operation middleware
+func (sh *strictHandler) RemoveFromContinue(w http.ResponseWriter, r *http.Request, id ID) {
+	var request RemoveFromContinueRequestObject
+
+	request.ID = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RemoveFromContinue(ctx, request.(RemoveFromContinueRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RemoveFromContinue")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RemoveFromContinueResponseObject); ok {
+		if err := validResponse.VisitRemoveFromContinueResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

@@ -94,6 +94,33 @@ func (s *Service) Update(ctx context.Context, v users.Viewer, work id.ID, c Chan
 	})
 }
 
+// RemoveFromContinue takes a work the Viewer can see out of the Viewer's
+// user's Continue Watching or Continue Listening, keeping its position and
+// played state. An episode or season takes its whole series out. The work
+// comes back with the next play of it, or of any episode of the series.
+func (s *Service) RemoveFromContinue(ctx context.Context, v users.Viewer, work id.ID) error {
+	if err := s.deps.Catalog.Visible(ctx, v, work); err != nil {
+		return err
+	}
+	w, err := s.deps.Catalog.Work(ctx, work)
+	if err != nil {
+		return err
+	}
+	target := work
+	if w.Kind == catalog.KindEpisode || w.Kind == catalog.KindSeason {
+		target = w.Root
+	}
+	user := v.User()
+	return s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
+		err := dbq.New(tx).RemoveFromContinue(ctx, dbq.RemoveFromContinueParams{UserID: user, WorkID: target, At: time.Now().UnixMilli()})
+		if err != nil {
+			return err
+		}
+		s.changed(tx, user, distinct([]id.ID{work, target})...)
+		return nil
+	})
+}
+
 // distinct returns ids without repeats, keeping the first of each.
 func distinct(ids []id.ID) []id.ID {
 	seen := make(map[id.ID]bool, len(ids))

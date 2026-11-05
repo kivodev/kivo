@@ -145,6 +145,30 @@ describe("Home", () => {
     expect(sent("PATCH", `/works/${mockIds.dunePartTwo}/user-state`)[0]?.body).toEqual({ played: true });
   });
 
+  it("removes a card from Continue Watching and Continue Listening from its menu, and only there", async () => {
+    serveMockApi();
+    const { user } = renderApp("/");
+    await screen.findByRole("heading", { name: "Continue Watching" });
+    const watching = document.querySelector('[data-row="continueWatching"]') as HTMLElement;
+    await user.click(within(watching).getByRole("button", { name: "More actions for Dune: Part Two" }));
+    await user.click(screen.getByRole("menuitem", { name: "Remove from Continue Watching" }));
+    await waitFor(() =>
+      expect(sent("POST", `/works/${mockIds.dunePartTwo}/user-state/remove-from-continue`)).toHaveLength(1),
+    );
+    await waitFor(() =>
+      expect(within(watching).queryByRole("button", { name: "More actions for Dune: Part Two" })).toBeNull(),
+    );
+
+    const listening = document.querySelector('[data-row="continueListening"]') as HTMLElement;
+    await user.click(within(listening).getAllByRole("button", { name: /^More actions for/ })[0] as HTMLElement);
+    expect(screen.getByRole("menuitem", { name: "Remove from Continue Listening" })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+
+    const favorites = document.querySelector('[data-row="favorites"]') as HTMLElement;
+    await user.click(within(favorites).getAllByRole("button", { name: /^More actions for/ })[0] as HTMLElement);
+    expect(screen.queryByRole("menuitem", { name: /^Remove from Continue/ })).toBeNull();
+  });
+
   it("opens a card's menu on a long press, without opening the card", async () => {
     serveMockApi();
     const { user, router } = renderApp("/");
@@ -170,6 +194,7 @@ describe("Home", () => {
       "Play from beginning",
       "Mark as watched",
       "Add to favorites",
+      "Remove from Continue Watching",
       "Go to series",
       "Go to library",
     ]);

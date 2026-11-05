@@ -162,6 +162,7 @@
     <string name="file_missing">This file is missing</string>
     <string name="add_favorite">Add to favorites</string>
     <string name="remove_favorite">Remove from favorites</string>
+    <string name="remove_from_continue_watching">Remove from Continue Watching</string>
     <string name="mark_played">Mark as watched</string>
     <string name="mark_unplayed">Mark as unwatched</string>
     <plurals name="mark_episodes_played">

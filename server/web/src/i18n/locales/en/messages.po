@@ -2589,6 +2589,10 @@ msgstr "series"
 msgid "Revoke {name}"
 msgstr "Revoke {name}"
 
+#: src/features/browse/WorkCard.tsx
+msgid "Remove from Continue Watching"
+msgstr "Remove from Continue Watching"
+
 #: src/features/player/NowPlaying.tsx
 msgid "Now Playing"
 msgstr "Now Playing"
@@ -3110,6 +3114,10 @@ msgstr "Subtitles"
 #: src/features/user/Sessions.tsx
 msgid "Save"
 msgstr "Save"
+
+#: src/features/browse/WorkCard.tsx
+msgid "Remove from Continue Listening"
+msgstr "Remove from Continue Listening"
 
 #: src/features/browse/FavoritesScreen.tsx
 #: src/features/browse/LibraryScreen.tsx

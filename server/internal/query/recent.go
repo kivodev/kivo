@@ -15,13 +15,13 @@ import (
 const runGap = 24 * time.Hour
 
 // addition is a row of RecentlyAdded: a work the library added, with its
-// season's and series' sort titles.
+// season's and series' sort titles, and whether the user played it.
 type addition struct {
 	ID, ParentID, RootID                        id.ID
 	Kind                                        catalog.WorkKind
 	AddedAt                                     int64
 	SortTitle, SeasonSortTitle, SeriesSortTitle string
-	SeriesProvisional                           bool
+	SeriesProvisional, Played                   bool
 }
 
 // bundle is a "Recently Added" summary before its summary is read.
@@ -34,6 +34,7 @@ type bundle struct {
 	// are never provisional themselves, so the summary takes its series'
 	// state.
 	unmatched bool
+	played    bool // the user played every work the summary covers
 }
 
 // bundles groups a library's newest additions into "Recently Added"
@@ -45,6 +46,9 @@ type bundle struct {
 // within one season becomes the season's summary, and a run across seasons
 // becomes the series' summary.
 //
+// A summary whose works the user has all played is left out, so a show's
+// older run onto the same summary can take its place.
+//
 // Summaries are ordered by their newest addition, then title, then ID, so
 // a batch added together reads alphabetically.
 func bundles(rows []addition) []bundle {
@@ -54,7 +58,7 @@ func bundles(rows []addition) []bundle {
 	var out []bundle
 	seen := map[id.ID]bool{}
 	add := func(b bundle) {
-		if !seen[b.work] { // skip a show's older run that lands on a summary already added
+		if !b.played && !seen[b.work] { // skip a show's older run that lands on a summary already added
 			seen[b.work] = true
 			out = append(out, b)
 		}
@@ -69,7 +73,7 @@ func bundles(rows []addition) []bundle {
 			}
 			episodes[r.RootID] = append(episodes[r.RootID], r)
 		default:
-			add(bundle{work: r.ID, at: r.AddedAt, sortTitle: r.SortTitle})
+			add(bundle{work: r.ID, at: r.AddedAt, sortTitle: r.SortTitle, played: r.Played})
 		}
 	}
 	for _, show := range shows {
@@ -92,14 +96,15 @@ func bundles(rows []addition) []bundle {
 // newest first.
 func episodeRun(eps []addition) bundle {
 	first := eps[0]
+	played := !slices.ContainsFunc(eps, func(e addition) bool { return !e.Played })
 	if len(eps) == 1 {
-		return bundle{work: first.ID, at: first.AddedAt, sortTitle: first.SortTitle}
+		return bundle{work: first.ID, at: first.AddedAt, sortTitle: first.SortTitle, played: played}
 	}
 	for _, e := range eps[1:] {
 		if e.ParentID != first.ParentID {
-			return bundle{work: first.RootID, at: first.AddedAt, sortTitle: first.SeriesSortTitle, episodes: len(eps)}
+			return bundle{work: first.RootID, at: first.AddedAt, sortTitle: first.SeriesSortTitle, episodes: len(eps), played: played}
 		}
 	}
 	return bundle{work: first.ParentID, at: first.AddedAt, sortTitle: first.SeasonSortTitle, episodes: len(eps),
-		unmatched: first.SeriesProvisional}
+		unmatched: first.SeriesProvisional, played: played}
 }

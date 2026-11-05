@@ -20,6 +20,8 @@ struct HomeView: View {
     private static let top = KivoTokens.spacing * 2
     /// The rows the skeleton shows: Continue Watching's stills and two rows of posters.
     private static let skeletonStyles: [CardStyle] = [.landscape, .poster, .poster]
+    /// The rows a card's long press can remove it from.
+    private static let continueRows: Set<String> = ["continueWatching", "continueListening"]
 
     var body: some View {
         SkeletonGate(loaded: home != nil || failure != nil || server.unreachable) {
@@ -38,6 +40,7 @@ struct HomeView: View {
                         LazyVStack(alignment: .leading, spacing: Self.rowSpacing) {
                             ForEach(home.rows, id: \.id) { row in
                                 BrowseRow(title: title(of: row), items: row.items, style: Self.fixedStyle(row.kind), more: more(of: row))
+                                    .environment(\.continueRow, Self.continueRows.contains(row.kind) ? row.kind : nil)
                             }
                         }
                         .padding(.top, Self.top)

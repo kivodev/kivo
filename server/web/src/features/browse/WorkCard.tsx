@@ -3,7 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { type MouseEvent, useRef, useState } from "react";
 import { mergeProps, useLongPress } from "react-aria";
 import type { UserStateUpdate, WorkSummary } from "@/api/schemas";
-import { useUpdateUserState } from "@/api/works";
+import { useRemoveFromContinue, useUpdateUserState } from "@/api/works";
 import { Artwork, type ArtworkShape, cardDensity } from "@/components/Artwork";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Icon } from "@/components/Icon";
@@ -135,6 +135,8 @@ type Props = {
   width?: number;
   /** Whether the card is in its library's own grid, which has no Go to library. */
   inLibrary?: boolean;
+  /** The Home row the card is in, when its menu can remove it from that row. */
+  continueRow?: "continueWatching" | "continueListening";
 };
 
 const aspects: Record<ArtworkShape, string> = {
@@ -149,17 +151,19 @@ const aspects: Record<ArtworkShape, string> = {
  * videos and the Continue Watching row, and square for books. An episode's
  * card uses its series, with the episode's code on the artwork.
  *
- * The card's menu plays it, marks it played or favorite for you, and goes
- * to its series and to the first library it's in. Pointing at the card
+ * The card's menu plays it, marks it played or favorite for you, removes it
+ * from Continue Watching or Continue Listening in those rows, and goes to
+ * its series and to the first library it's in. Pointing at the card
  * dims the artwork under a Play button, with the ⋯ menu at the bottom
  * right. A right-click or a long press opens the same menu. A touch screen
  * shows the ⋯ alone. On TV the card is only a link, which its row or grid
  * focuses: nothing hovers, and a remote's OK opens it.
  */
-export function WorkCard({ work, shape, width, inLibrary = false }: Props) {
+export function WorkCard({ work, shape, width, inLibrary = false, continueRow }: Props) {
   const { t } = useLingui();
   const navigate = useNavigate();
   const update = useUpdateUserState();
+  const remove = useRemoveFromContinue();
   const setState = (body: UserStateUpdate) => update.mutate({ params: { path: { id: work.id } }, body });
   const libraryId = inLibrary ? undefined : work.libraryId;
   const [confirming, setConfirming] = useState(false);
@@ -303,6 +307,13 @@ export function WorkCard({ work, shape, width, inLibrary = false }: Props) {
           <MenuItem onAction={() => setState({ favorite: !favorite })}>
             {favorite ? t`Remove from favorites` : t`Add to favorites`}
           </MenuItem>
+          {continueRow && (
+            <MenuItem onAction={() => remove.mutate({ params: { path: { id: work.id } } })}>
+              {continueRow === "continueListening"
+                ? t`Remove from Continue Listening`
+                : t`Remove from Continue Watching`}
+            </MenuItem>
+          )}
           {work.episode && (
             <MenuItem
               href={{

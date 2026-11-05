@@ -20,16 +20,17 @@ type TrackChoice struct {
 }
 
 type UserState struct {
-	UserID       id.ID
-	WorkID       id.ID
-	Played       bool
-	PlayCount    int64
-	PositionMs   int64
-	Resumable    bool
-	Favorite     bool
-	Rating       sql.NullInt64
-	LastPlayedAt sql.NullInt64
-	UpdatedAt    int64
-	FavoritedAt  sql.NullInt64
-	VersionID    id.ID
+	UserID            id.ID
+	WorkID            id.ID
+	Played            bool
+	PlayCount         int64
+	PositionMs        int64
+	Resumable         bool
+	Favorite          bool
+	Rating            sql.NullInt64
+	LastPlayedAt      sql.NullInt64
+	UpdatedAt         int64
+	FavoritedAt       sql.NullInt64
+	VersionID         id.ID
+	ContinueRemovedAt sql.NullInt64
 }

@@ -10,6 +10,7 @@ struct WorkActions: View {
     @Environment(ServerModel.self) private var server
     @Environment(\.openWork) private var openWork
     @Environment(\.currentLibraryId) private var currentLibraryId
+    @Environment(\.continueRow) private var continueRow
 
     @ViewBuilder var body: some View {
         if work.playable {
@@ -44,6 +45,18 @@ struct WorkActions: View {
                 favorite ? String(localized: "Remove from favorites") : String(localized: "Favorite"),
                 systemImage: favorite ? "heart.slash" : "heart"
             )
+        }
+        if let continueRow {
+            Button {
+                Haptics.success()
+                Task { try? await server.session.library.removeFromContinue(workId: work.id) }
+            } label: {
+                SwiftUI.Label(
+                    continueRow == "continueListening"
+                        ? String(localized: "Remove from Continue Listening") : String(localized: "Remove from Continue Watching"),
+                    systemImage: "xmark.circle"
+                )
+            }
         }
         if showsSeries, let episode = work.episode {
             Button {

@@ -317,6 +317,9 @@ extension EnvironmentValues {
     @Entry var openWork = OpenWork { _ in }
     /// The library a screen shows, so a long press doesn't offer to go to it.
     @Entry var currentLibraryId: String?
+    /// The Home row a card is in, Continue Watching or Continue Listening,
+    /// so a long press offers to remove it from that row.
+    @Entry var continueRow: String?
     /// The window has the wider grids and pages: a regular-width iPad's, which
     /// also has the sidebar, where Favorites and each library are tabs, or an
     /// unfolded iPhone Duo's, which keeps its tab bar.

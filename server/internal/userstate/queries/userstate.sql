@@ -45,6 +45,12 @@ ON CONFLICT (user_id, work_id) DO UPDATE SET
 INSERT INTO user_state (user_id, work_id, favorite, updated_at) VALUES (@user_id, @work_id, 0, @at)
 ON CONFLICT (user_id, work_id) DO UPDATE SET favorite = 0, favorited_at = NULL, updated_at = excluded.updated_at;
 
+-- name: RemoveFromContinue :exec
+-- Leaves updated_at alone, so an offline position from before the removal
+-- still applies.
+INSERT INTO user_state (user_id, work_id, continue_removed_at, updated_at) VALUES (@user_id, @work_id, CAST(@at AS INTEGER), @at)
+ON CONFLICT (user_id, work_id) DO UPDATE SET continue_removed_at = excluded.continue_removed_at;
+
 -- name: SetRating :exec
 INSERT INTO user_state (user_id, work_id, rating, updated_at) VALUES (@user_id, @work_id, @rating, @at)
 ON CONFLICT (user_id, work_id) DO UPDATE SET rating = excluded.rating, updated_at = excluded.updated_at;
