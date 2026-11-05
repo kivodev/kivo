@@ -8,10 +8,8 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -264,13 +262,12 @@ func wire(ctx context.Context, boot config.Bootstrap, logs *health.Logs, bus *ev
 func logTool(ctx context.Context, path string) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	out, err := exec.CommandContext(ctx, path, "-hide_banner", "-version").Output()
+	v, err := ffmpeg.Version(ctx, path)
 	if err != nil {
 		slog.WarnContext(ctx, "kivo: can't run "+filepath.Base(path)+"; probing and playback will fail", "path", path, "err", err)
 		return
 	}
-	first, _, _ := strings.Cut(string(out), "\n")
-	slog.InfoContext(ctx, "kivo: using "+filepath.Base(path), "path", path, "version", strings.TrimSpace(first))
+	slog.InfoContext(ctx, "kivo: using "+filepath.Base(path), "path", path, "version", v)
 }
 
 // settingsChanged tells the watcher when file watching is turned on or off,

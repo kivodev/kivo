@@ -180,6 +180,18 @@ func run(ctx context.Context, op string, fallback error, bin string, args []stri
 	return out, nil
 }
 
+// Version returns the first line of bin -version, such as "ffmpeg version
+// 8.1.3-Jellyfin". bin runs as every other call does, with no console
+// window on Windows.
+func Version(ctx context.Context, bin string) (string, error) {
+	out, err := run(ctx, "check version", media.ErrUnsupported, bin, []string{"-hide_banner", "-version"}, spawn{})
+	if err != nil {
+		return "", err
+	}
+	first, _, _ := strings.Cut(string(out), "\n")
+	return strings.TrimSpace(first), nil
+}
+
 // lines passes each whole line written to it to fn.
 type lines struct {
 	fn      func(string)

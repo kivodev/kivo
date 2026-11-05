@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
@@ -47,7 +46,7 @@ func (r *Runner) Sample(ctx context.Context, req media.SampleRequest) (media.Sam
 // once.
 func (r *Runner) Chromaprint(ctx context.Context) bool {
 	r.chromaprintOnce.Do(func() {
-		out, err := exec.CommandContext(ctx, r.ffmpeg, "-hide_banner", "-h", "muxer=chromaprint").CombinedOutput()
+		out, err := run(ctx, "check chromaprint", media.ErrUnsupported, r.ffmpeg, []string{"-hide_banner", "-h", "muxer=chromaprint"}, spawn{})
 		r.chromaprint = err == nil && bytes.Contains(out, []byte("fp_format")) && bytes.Contains(out, []byte("raw"))
 	})
 	return r.chromaprint
