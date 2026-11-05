@@ -1,0 +1,24 @@
+Kivo is licensed under the GNU Affero General Public License v3.0. Its
+source is at https://github.com/kivodev/kivo.
+
+Kivo comes with jellyfin-ffmpeg {ffmpeg}, a build of FFmpeg that includes
+components licensed under the GNU General Public License, so the build as
+a whole is under the GPL. Kivo runs it as a separate program. Its source
+and license are at
+https://github.com/jellyfin/jellyfin-ffmpeg/releases/tag/v{ffmpeg}, and
+FFmpeg's at https://ffmpeg.org.
+
+Kivo's names for languages, scripts and regions are from the Unicode
+Common Locale Data Repository (CLDR), https://cldr.unicode.org, under the
+Unicode License v3, which is at the end of this file.
+
+The server asks these services for data, under their terms:
+
+- TMDB, for movies and shows. This product uses the TMDB API but is not
+  endorsed or certified by TMDB. https://www.themoviedb.org/api-terms-of-use
+- Audnexus, for audiobooks: https://github.com/laxamentumtech/audnexus
+- The Anime-Lists mapping of AniDB to TMDB, which states no license:
+  https://github.com/Anime-Lists/anime-lists
+
+The Go modules built into Kivo follow, each with its license, as
+go-licenses reports them.

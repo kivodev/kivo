@@ -49,11 +49,36 @@ if ((Get-FileHash -Algorithm SHA256 $zip).Hash -ne $ffmpegSha256) {
 Expand-Archive -Path $zip -DestinationPath "$stage\ffmpeg"
 Remove-Item $zip
 
-# The texts are rewritten with Windows line endings, for the installer's
-# pages and Notepad.
+# The notices, as make notices writes them for the image: packaging's, with
+# this jellyfin-ffmpeg, each Go module in the Windows build with its license
+# (go-licenses, with GOOS still windows, so the tray's modules are in it),
+# go-sqlite3-wasm's MIT-0, which go-licenses doesn't know, Go's own, and
+# CLDR's Unicode license. The texts are rewritten with Windows line endings,
+# for the installer's pages and Notepad.
+$rule = '=' * 80
+$sqliteWasm = 'github.com/ncruces/go-sqlite3-wasm/v6'
+Push-Location $server
+try {
+    $modules = go run github.com/google/go-licenses/v2@v2.0.1 report ./cmd/kivo --ignore github.com/mmcdole/kivo --ignore $sqliteWasm --template packaging/go-licenses.tpl
+    $sqliteWasmName = go list -m $sqliteWasm
+    $sqliteWasmDir = go list -m -f '{{.Dir}}' $sqliteWasm
+    $goRoot = go env GOROOT
+    $goVersion = go env GOVERSION
+} finally {
+    Pop-Location
+}
+$notices = @(
+    (Get-Content "$server\packaging\THIRD-PARTY-NOTICES.txt") -replace '\{ffmpeg\}', $ffmpegVersion
+    $modules
+    '', $rule, "$sqliteWasmName (MIT-0)", ''
+    Get-Content "$sqliteWasmDir\LICENSE"
+    '', $rule, "The Go standard library, $goVersion (BSD-3-Clause)", ''
+    Get-Content "$goRoot\LICENSE"
+    '', $rule, 'Unicode CLDR', ''
+    Get-Content "$server\..\shared\credits\unicode-license.txt"
+)
 Get-Content "$server\..\LICENSE" | Set-Content "$stage\LICENSE.txt"
-(Get-Content "$PSScriptRoot\THIRD-PARTY-NOTICES.txt") -replace '\{ffmpeg\}', $ffmpegVersion |
-    Set-Content "$stage\THIRD-PARTY-NOTICES.txt"
+$notices | Set-Content "$stage\THIRD-PARTY-NOTICES.txt"
 Copy-Item "$server\cmd\kivo\kivo.ico" $stage
 
 # Signing goes here: kivo.exe and kivow.exe now, and the installer through iscc's SignTool.

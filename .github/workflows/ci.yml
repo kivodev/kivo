@@ -43,6 +43,8 @@ jobs:
         env:
           KIVO_BUDGET_SCALE: "3"
       - run: make check-generated
+      # THIRD-PARTY-NOTICES.txt, which the image and the Windows build ship.
+      - run: make notices
 
   # The server's Go tests on Windows. There's no ffmpeg here, so the tests
   # that need it skip.

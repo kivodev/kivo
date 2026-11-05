@@ -1,7 +1,8 @@
 #!/bin/bash
 # Builds what the Swift code compiles against, with Gradle: KivoUI's tokens
 # (KivoUI/Generated/Tokens.swift) and the Kotlin core as
-# Frameworks/KivoCore.xcframework, Debug or Release as Xcode's
+# Frameworks/KivoCore.xcframework, with its libraries' licenses beside it
+# (KivoCore-licenses.json), Debug or Release as Xcode's
 # CONFIGURATION says (Debug when run by hand). Xcode runs it from the
 # KivoCore aggregate target before every build; Gradle skips what's
 # current, so it costs seconds unless the core changed.
@@ -29,7 +30,7 @@ fi
 export JAVA_HOME
 
 cd "$clients"
-./gradlew --console=plain :tokens:swiftTokens ":core:assembleKivoCore${variant}XCFramework"
+./gradlew --console=plain :tokens:swiftTokens ":core:assembleKivoCore${variant}XCFramework" :core:exportLibraryDefinitions
 
 lower="$(echo "$variant" | tr '[:upper:]' '[:lower:]')"
 framework="$apple/Frameworks/KivoCore.xcframework"
@@ -43,3 +44,7 @@ changed="$(/usr/bin/rsync -a --delete --itemize-changes "$clients/core/build/XCF
 if [ -n "$changed" ]; then
     find "$framework" -exec touch {} +
 fi
+
+# The core's libraries and their licenses, for Open source licenses
+# (Kivo/Settings/LicensesView.swift), which the app bundles.
+cp "$clients/core/build/aboutlibraries/ios.json" "$apple/Frameworks/KivoCore-licenses.json"

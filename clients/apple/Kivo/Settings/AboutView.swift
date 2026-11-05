@@ -47,7 +47,8 @@ struct AboutView: View {
     }
 }
 
-/// Credits, from About: TMDB's logo and the notice its API terms ask for, then Audnexus and jellyfin-ffmpeg.
+/// Credits, from About: TMDB's logo and the notice its API terms ask for, then Audnexus and jellyfin-ffmpeg,
+/// then Open source licenses.
 private struct CreditsView: View {
     var body: some View {
         Form {
@@ -64,6 +65,11 @@ private struct CreditsView: View {
                 .padding(.vertical, 4)
                 Text(String(localized: "Audiobook metadata from Audnexus"))
                 Text(String(localized: "Transcoding by jellyfin-ffmpeg (GPL)"))
+            }
+            Section {
+                NavigationLink { LicensesView() } label: {
+                    Text(String(localized: "Open source licenses"))
+                }
             }
         }
         .navigationTitle(String(localized: "Credits"))
