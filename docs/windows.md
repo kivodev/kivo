@@ -1,6 +1,6 @@
 # Running on Windows
 
-Native Windows builds are in progress ([#9](https://github.com/kivodev/kivo/issues/9)). For now, Windows transcodes on the CPU.
+Native Windows builds are in progress ([#9](https://github.com/kivodev/kivo/issues/9)).
 
 ## With the installer
 
@@ -35,6 +35,10 @@ Kivo keeps everything in `%ProgramData%\Kivo` (usually `C:\ProgramData\Kivo`):
 `KIVO_*` environment variables and `server.toml` override these as they do on Linux.
 
 Kivo runs as you, so it can read your mapped drives and network shares.
+
+## Hardware transcoding
+
+Kivo transcodes on an NVIDIA GPU with NVENC when the NVIDIA driver is installed. It finds the GPU through `nvidia-smi`, which comes with the driver, and tests it when it starts. Intel Quick Sync and AMD GPUs aren't supported on Windows yet, so on those PCs Kivo transcodes on the CPU.
 
 ## Admin commands
 
