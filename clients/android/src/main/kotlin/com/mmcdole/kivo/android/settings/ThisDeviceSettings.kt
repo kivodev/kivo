@@ -1,14 +1,19 @@
 package com.mmcdole.kivo.android.settings
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -197,7 +202,28 @@ internal fun AboutPage(session: ServerSession) {
             is Load.Failed -> item { LoadFailed(server.problem, model::load) }
             is Load.Loaded -> item { InfoRow(stringResource(R.string.server_version), server.value.version) }
         }
-        item { ServerAddress(server.getOrNull()?.let(::serverAddress) ?: session.session.baseUrl) }
+        // The credits sit beside the address: the page doesn't scroll, and under it they'd run off the screen.
+        item {
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(Kivo.space(12))) {
+                ServerAddress(server.getOrNull()?.let(::serverAddress) ?: session.session.baseUrl)
+                Credits()
+            }
+        }
+    }
+}
+
+/** Where the metadata and the transcoder come from: TMDB's logo and the notice its API terms ask for, then Audnexus and jellyfin-ffmpeg. */
+@Composable
+private fun Credits() {
+    Column(verticalArrangement = Arrangement.spacedBy(Kivo.space(1))) {
+        Image(
+            painterResource(R.drawable.tmdb_logo),
+            stringResource(R.string.tmdb),
+            Modifier.padding(bottom = Kivo.space(1)).height(Kivo.space(3)),
+        )
+        Text(stringResource(R.string.tmdb_notice), style = TvType.small, color = Kivo.colors.textMuted)
+        Text(stringResource(R.string.credit_audnexus), style = TvType.small, color = Kivo.colors.textMuted)
+        Text(stringResource(R.string.credit_jellyfin_ffmpeg), style = TvType.small, color = Kivo.colors.textMuted)
     }
 }
 

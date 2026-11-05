@@ -86,6 +86,20 @@ describe("Settings on TV", () => {
     expect(screen.queryByText("Change server")).not.toBeInTheDocument();
   });
 
+  it("credits TMDB, Audnexus and jellyfin-ffmpeg in About as plain text", async () => {
+    serveMockApi();
+    renderApp("/settings");
+    await openSection("about", "About");
+    const about = screen.getByRole("region", { name: "About" });
+    expect(within(about).getByRole("img", { name: "TMDB" })).toBeInTheDocument();
+    expect(
+      within(about).getByText("This product uses the TMDB API but is not endorsed or certified by TMDB."),
+    ).toBeInTheDocument();
+    expect(within(about).getByText("Audiobook metadata from Audnexus")).toBeInTheDocument();
+    expect(within(about).getByText("Transcoding by jellyfin-ffmpeg (GPL)")).toBeInTheDocument();
+    expect(within(about).queryByRole("link")).not.toBeInTheDocument();
+  });
+
   it("flips a switch with OK", async () => {
     serveMockApi();
     renderApp("/settings");

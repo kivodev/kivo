@@ -19,6 +19,10 @@ cp app-icon.svg "$root/server/web/public/icon.svg"
 magick "$root/server/web/public/icon-512.png" -define icon:auto-resize=256,64,48,32,24,16 "$root/server/cmd/kivo/kivo.ico"
 # The web client's logo, served beside the icons (Logo.tsx).
 for f in lockup lockup-light mark mark-light; do cp "$f.svg" "$root/server/web/public/$f.svg"; done
+# TMDB's logo, for the credit in Settings › About. It's TMDB's, kept as
+# they publish it. Android draws it from a vector drawable of the same path
+# (clients/android/src/main/res/drawable/tmdb_logo.xml).
+cp tmdb.svg "$root/server/web/public/tmdb.svg"
 # TV launchers put the icon on a card of their own, often wider than it is
 # tall, so the TV's icon is the mark alone on a clear ground (tv-icon.svg).
 rsvg-convert -w 512 tv-icon.svg -o "$root/clients/tizen/icon.png"
@@ -30,6 +34,7 @@ assets="$root/clients/apple/Kivo/Resources/Assets.xcassets"
 cp lockup-light.svg "$assets/Logo.imageset/Logo-light.svg"
 cp lockup.svg "$assets/Logo.imageset/Logo-dark.svg"
 sed 's|viewBox="0 0 64 64"|width="144" height="144" viewBox="0.5 0 64 64"|' mark.svg >"$assets/LaunchMark.imageset/LaunchMark.svg"
+cp tmdb.svg "$assets/TMDBLogo.imageset/TMDBLogo.svg"
 
 # The App Store refuses an app icon with an alpha channel.
 ios="$root/clients/apple/Kivo/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png"
