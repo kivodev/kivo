@@ -248,16 +248,6 @@ func TestCastCORS(t *testing.T) {
 	if w.Header().Get("Access-Control-Allow-Origin") != "" {
 		t.Errorf("home from another origin: %v", w.Header())
 	}
-	// Migration (cast-receiver-move): remove once the Cast console points at cast.kivo.watch.
-	for _, origin := range []string{"https://cast.kivo.watch", "https://mattmcdole.com"} {
-		if code, h := send(preflight("/api/v1/plays", "POST", origin, "authorization")); code != http.StatusNoContent || h.Get("Access-Control-Allow-Origin") != origin {
-			t.Errorf("preflight from %s: %d %v", origin, code, h)
-		}
-		w = e.do("GET", "/api/v1/home", cast, nil, "Origin", origin)
-		if w.Header().Get("Access-Control-Allow-Origin") != origin {
-			t.Errorf("home from %s: %v", origin, w.Header())
-		}
-	}
 	if code, h := send(preflight("/api/v1/plays", "POST", "https://cast.kivo.watch.evil.example", "authorization")); code != http.StatusForbidden || h.Get("Access-Control-Allow-Origin") != "" {
 		t.Errorf("preflight from a lookalike origin: %d %v", code, h)
 	}
