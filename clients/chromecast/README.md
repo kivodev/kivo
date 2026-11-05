@@ -32,7 +32,6 @@ device's `Kivo-OS-Version` and `Kivo-Device-Model` from its user agent.
   `src/config.js`: the parts.
 - `src/legacy.js`: protocol 2, for senders and servers that still speak it.
 - `test/`: the logic, under a stand-in for the Cast framework.
-- `deploy.sh`: publishes the page (below).
 
 The page uses only relative URLs, so it works at any path on any host.
 
@@ -52,17 +51,9 @@ Node 20 or later; no dependencies. CI's `chromecast` job runs them.
 
 ## Deploy
 
-```sh
-KIVO_CAST_DEPLOY=user@host:path bash deploy.sh
-```
-
-`deploy.sh` runs the tests, then copies `index.html`, `receiver.css`,
-`lockup.svg` and `src/` with rsync over SSH to the target in
-`KIVO_CAST_DEPLOY`, the folder the host serves at the receiver URL over
-HTTPS. Files on the target the receiver no longer has are deleted, except
-`.htaccess` and `.well-known/`. Arguments go to rsync, so `--dry-run` shows
-what would change. The host and its credentials stay out of the repository:
-the target comes from the environment and the login from your SSH setup.
+The `chromecast` workflow publishes `index.html`, `receiver.css`,
+`lockup.svg` and `src/` to GitHub Pages whenever this folder changes on
+`main`, after the tests pass.
 
 Moving the receiver to another URL also changes the server's
 `castReceiverOrigin` (in `server/internal/api/cors.go`) and the app's
