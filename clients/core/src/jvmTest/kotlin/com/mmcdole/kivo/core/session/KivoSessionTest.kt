@@ -11,6 +11,7 @@ import com.mmcdole.kivo.api.models.QualityRequest
 import com.mmcdole.kivo.api.models.QualityRung
 import com.mmcdole.kivo.api.models.ServerInfo
 import com.mmcdole.kivo.api.models.Session
+import com.mmcdole.kivo.api.models.SubtitleMode
 import com.mmcdole.kivo.api.models.UserLimits
 import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.api.models.WorkImages
@@ -75,7 +76,7 @@ private val ladder = listOf(QualityRung(20_000_000, 1080), QualityRung(8_000_000
 private fun info(id: String, name: String = id, localUrls: List<String>? = null) =
     ServerInfo(id, name, "1.0", localUrls = localUrls, qualityLadder = ladder)
 
-private val anna = CurrentUser("u1", "anna", admin = false, limits = UserLimits(), playback = PlaybackPreferences("smart", true, true, 1.0))
+private val anna = CurrentUser("u1", "anna", admin = false, limits = UserLimits(), playback = PlaybackPreferences(SubtitleMode.Smart, true, true, 1.0))
 
 /** Servers by host: what each answers, by method and path, and every request they saw as "host METHOD path". */
 private class Servers {

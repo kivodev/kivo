@@ -257,15 +257,13 @@ private struct TrackChoices: View {
     var body: some View {
         let audio = TrackPicker(
             kind: .audio,
-            tracks: version?.tracks.filter { $0.type == "audio" } ?? [],
-            display: server.display,
+            tracks: version?.tracks.filter { $0.type == .audio } ?? [],
             selection: $audioTrackId,
             automatic: version?.audioTrackId
         )
         let subtitles = TrackPicker(
             kind: .subtitles,
-            tracks: version?.tracks.filter { $0.type == "subtitle" } ?? [],
-            display: server.display,
+            tracks: version?.tracks.filter { $0.type == .subtitle } ?? [],
             selection: $subtitleTrackId,
             automatic: version?.subtitleTrackId ?? Subtitles.shared.OFF,
             search: SubtitleSearch.shared.offered(version: version, offline: false) ? { searching = true } : nil
@@ -279,7 +277,7 @@ private struct TrackChoices: View {
                         choice(String(localized: "Version"), systemImage: "film", value: versionName) {
                             Picker(String(localized: "Version"), selection: Binding(get: { version?.id ?? "" }, set: { versionId = $0 })) {
                                 ForEach(work.versions, id: \.id) { version in
-                                    Text("\(server.display.versionName(version: version)) · \(Display.app.size(bytes: version.sizeBytes))").tag(version.id)
+                                    Text("\(version.name) · \(Display.app.size(bytes: version.sizeBytes))").tag(version.id)
                                 }
                             }
                         }
@@ -324,7 +322,7 @@ private struct TrackChoices: View {
     }
 
     private var versionName: String {
-        version.map { server.display.versionName(version: $0) } ?? ""
+        version?.name ?? ""
     }
 
     private func choice<Content: View>(_ title: String, systemImage: String, value: String, @ViewBuilder content: () -> Content) -> some View {

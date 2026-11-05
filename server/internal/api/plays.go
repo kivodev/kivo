@@ -402,6 +402,7 @@ func playInfo(pl playback.Play, w query.WorkSummary) gen.Play {
 	for _, t := range pl.Subtitles {
 		*info.SourceTracks = append(*info.SourceTracks, subtitleFileTrack(t))
 	}
+	named(*info.SourceTracks)
 	if j := pl.Transcode; j.State != "" || j.Diagnostics.Command != "" {
 		info.Transcode = &gen.TranscodeInfo{
 			State: optAs[gen.TranscodeState](j.State), Command: opt(j.Diagnostics.Command), Stderr: opt(j.Diagnostics.Stderr),

@@ -4,9 +4,11 @@ import com.mmcdole.kivo.api.models.Capabilities
 import com.mmcdole.kivo.api.models.FileCapabilities
 import com.mmcdole.kivo.api.models.Chapter
 import com.mmcdole.kivo.api.models.CurrentUser
+import com.mmcdole.kivo.api.models.PlayDelivery
 import com.mmcdole.kivo.api.models.PlayStarted
 import com.mmcdole.kivo.api.models.PlayPart
 import com.mmcdole.kivo.api.models.PlaybackPreferences
+import com.mmcdole.kivo.api.models.SubtitleMode
 import com.mmcdole.kivo.api.models.UserLimits
 import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.api.models.WorkImages
@@ -46,7 +48,7 @@ private fun play(id: String, startMs: Int) = PlayStarted(
     startMs = startMs,
     durationMs = 1_200_000,
     local = true,
-    delivery = "file",
+    delivery = PlayDelivery.File,
     url = "plays/$id/media",
     tracks = emptyList(),
     parts = listOf(PlayPart(600_000, "plays/$id/parts/0"), PlayPart(600_000, "plays/$id/parts/1")),
@@ -100,8 +102,8 @@ private class Harness(val scope: TestScope, startMs: Int = 0) {
     )
 
     init {
-        server.on("GET", "/api/v1/users/me") { json(CurrentUser.serializer(), CurrentUser("u1", "anna", false, UserLimits(), PlaybackPreferences("smart", true, true, 1.25))) }
-        server.on("PATCH", "/api/v1/users/me") { json(CurrentUser.serializer(), CurrentUser("u1", "anna", false, UserLimits(), PlaybackPreferences("smart", true, true, 1.5))) }
+        server.on("GET", "/api/v1/users/me") { json(CurrentUser.serializer(), CurrentUser("u1", "anna", false, UserLimits(), PlaybackPreferences(SubtitleMode.Smart, true, true, 1.25))) }
+        server.on("PATCH", "/api/v1/users/me") { json(CurrentUser.serializer(), CurrentUser("u1", "anna", false, UserLimits(), PlaybackPreferences(SubtitleMode.Smart, true, true, 1.5))) }
         server.on("POST", START) { json(PlayStarted.serializer(), play("s1", startMs), HttpStatusCode.Created) }
         server.on("PATCH", "$START/s1") { empty() }
         server.on("POST", "$START/s1/stop") { empty() }

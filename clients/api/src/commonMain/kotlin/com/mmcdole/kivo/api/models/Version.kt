@@ -42,6 +42,7 @@ import kotlinx.serialization.encoding.*
  * @param parts 
  * @param tracks 
  * @param workIds The works this version covers, in order; more than one for a multi-episode file.
+ * @param name Its name in a version picker: its edition, then its video's resolution and HDR (\"Final Cut · 4K HDR\", \"1080p\", \"4K Dolby Vision\"), or \"Audio\" without video. 
  * @param edition The cut its files' edition tag names, such as `Final Cut`; absent for an untagged version. 
  * @param resolution Its video's resolution class; absent without video.
  * @param hdr Its video's HDR format; absent for SDR or without video.
@@ -74,6 +75,9 @@ data class Version (
 
     /* The works this version covers, in order; more than one for a multi-episode file. */
     @SerialName(value = "workIds") @Required val workIds: kotlin.collections.List<kotlin.String>,
+
+    /* Its name in a version picker: its edition, then its video's resolution and HDR (\"Final Cut · 4K HDR\", \"1080p\", \"4K Dolby Vision\"), or \"Audio\" without video.  */
+    @SerialName(value = "name") @Required val name: kotlin.String,
 
     /* The cut its files' edition tag names, such as `Final Cut`; absent for an untagged version.  */
     @SerialName(value = "edition") val edition: kotlin.String? = null,

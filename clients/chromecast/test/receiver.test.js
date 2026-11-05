@@ -84,6 +84,7 @@ test('a LOAD starts the play as the token, with the device capabilities, and pla
   assert.equal(req.media.tracks.length, 1);
   assert.equal(req.media.tracks[0].trackContentId, 'http://192.0.2.10:8484/api/v1/plays/play-1/subtitles/s1.vtt');
   assert.equal(req.media.tracks[0].language, 'en');
+  assert.equal(req.media.tracks[0].name, 'English · SDH');
   assert.equal(req.media.metadata.seriesTitle, 'The Expanse');
   assert.deepEqual(req.media.metadata.images, [{ url: 'https://sender.example/art.jpg' }]);
   assert.deepEqual(req.media.customData, { protocol: 3 }); // the token is gone, so status can't echo it

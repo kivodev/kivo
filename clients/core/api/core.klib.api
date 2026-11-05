@@ -1720,7 +1720,7 @@ final class com.mmcdole.kivo.core.session/SessionAccount { // com.mmcdole.kivo.c
     final suspend fun setLibraries(kotlin.collections/List<com.mmcdole.kivo.api.models/LibraryChoice>): com.mmcdole.kivo.api.models/CurrentUser // com.mmcdole.kivo.core.session/SessionAccount.setLibraries|setLibraries(kotlin.collections.List<com.mmcdole.kivo.api.models.LibraryChoice>){}[0]
     final suspend fun setRememberTracks(kotlin/Boolean): com.mmcdole.kivo.api.models/CurrentUser // com.mmcdole.kivo.core.session/SessionAccount.setRememberTracks|setRememberTracks(kotlin.Boolean){}[0]
     final suspend fun setSubtitleLanguage(kotlin/String?): com.mmcdole.kivo.api.models/CurrentUser // com.mmcdole.kivo.core.session/SessionAccount.setSubtitleLanguage|setSubtitleLanguage(kotlin.String?){}[0]
-    final suspend fun setSubtitleMode(kotlin/String): com.mmcdole.kivo.api.models/CurrentUser // com.mmcdole.kivo.core.session/SessionAccount.setSubtitleMode|setSubtitleMode(kotlin.String){}[0]
+    final suspend fun setSubtitleMode(com.mmcdole.kivo.api.models/SubtitleMode): com.mmcdole.kivo.api.models/CurrentUser // com.mmcdole.kivo.core.session/SessionAccount.setSubtitleMode|setSubtitleMode(com.mmcdole.kivo.api.models.SubtitleMode){}[0]
     final suspend fun signOutEverywhereElse() // com.mmcdole.kivo.core.session/SessionAccount.signOutEverywhereElse|signOutEverywhereElse(){}[0]
     final suspend fun signOutSession(kotlin/String) // com.mmcdole.kivo.core.session/SessionAccount.signOutSession|signOutSession(kotlin.String){}[0]
     final suspend fun updatePlayback(com.mmcdole.kivo.api.models/PlaybackPreferencesUpdate): com.mmcdole.kivo.api.models/CurrentUser // com.mmcdole.kivo.core.session/SessionAccount.updatePlayback|updatePlayback(com.mmcdole.kivo.api.models.PlaybackPreferencesUpdate){}[0]
@@ -1837,7 +1837,7 @@ final class com.mmcdole.kivo.core.session/VideoPlayer { // com.mmcdole.kivo.core
     final fun chooseSubtitle(kotlin/String) // com.mmcdole.kivo.core.session/VideoPlayer.chooseSubtitle|chooseSubtitle(kotlin.String){}[0]
     final fun chooseVersion(kotlin/String) // com.mmcdole.kivo.core.session/VideoPlayer.chooseVersion|chooseVersion(kotlin.String){}[0]
     final fun dispose() // com.mmcdole.kivo.core.session/VideoPlayer.dispose|dispose(){}[0]
-    final fun downloadSource(com.mmcdole.kivo.core.display/Display): com.mmcdole.kivo.core.downloads/DownloadSource? // com.mmcdole.kivo.core.session/VideoPlayer.downloadSource|downloadSource(com.mmcdole.kivo.core.display.Display){}[0]
+    final fun downloadSource(): com.mmcdole.kivo.core.downloads/DownloadSource? // com.mmcdole.kivo.core.session/VideoPlayer.downloadSource|downloadSource(){}[0]
     final fun handOver() // com.mmcdole.kivo.core.session/VideoPlayer.handOver|handOver(){}[0]
     final fun hideControls() // com.mmcdole.kivo.core.session/VideoPlayer.hideControls|hideControls(){}[0]
     final fun hideUpNext() // com.mmcdole.kivo.core.session/VideoPlayer.hideUpNext|hideUpNext(){}[0]
@@ -2110,7 +2110,7 @@ final object com.mmcdole.kivo.core.player/PictureInPicture { // com.mmcdole.kivo
 }
 
 final object com.mmcdole.kivo.core.player/PlayTracks { // com.mmcdole.kivo.core.player/PlayTracks|null[0]
-    final fun selected(com.mmcdole.kivo.api.models/PlayStarted, kotlin/String): kotlin/String? // com.mmcdole.kivo.core.player/PlayTracks.selected|selected(com.mmcdole.kivo.api.models.PlayStarted;kotlin.String){}[0]
+    final fun selected(com.mmcdole.kivo.api.models/PlayStarted, com.mmcdole.kivo.api.models/TrackType): kotlin/String? // com.mmcdole.kivo.core.player/PlayTracks.selected|selected(com.mmcdole.kivo.api.models.PlayStarted;com.mmcdole.kivo.api.models.TrackType){}[0]
     final fun show(com.mmcdole.kivo.api.models/PlayStarted, kotlin/String): com.mmcdole.kivo.core.player/TrackShow // com.mmcdole.kivo.core.player/PlayTracks.show|show(com.mmcdole.kivo.api.models.PlayStarted;kotlin.String){}[0]
     final fun show(kotlin.collections/List<com.mmcdole.kivo.api.models/PlayTrack>, kotlin/String): com.mmcdole.kivo.core.player/TrackShow // com.mmcdole.kivo.core.player/PlayTracks.show|show(kotlin.collections.List<com.mmcdole.kivo.api.models.PlayTrack>;kotlin.String){}[0]
 }
@@ -2122,6 +2122,9 @@ final object com.mmcdole.kivo.core.player/Subtitles { // com.mmcdole.kivo.core.p
 
 final const val com.mmcdole.kivo.core.discovery/SERVICE_TYPE // com.mmcdole.kivo.core.discovery/SERVICE_TYPE|{}SERVICE_TYPE[0]
     final fun <get-SERVICE_TYPE>(): kotlin/String // com.mmcdole.kivo.core.discovery/SERVICE_TYPE.<get-SERVICE_TYPE>|<get-SERVICE_TYPE>(){}[0]
+
+final val com.mmcdole.kivo.core.display/pickerName // com.mmcdole.kivo.core.display/pickerName|@com.mmcdole.kivo.api.models.Track{}pickerName[0]
+    final fun (com.mmcdole.kivo.api.models/Track).<get-pickerName>(): com.mmcdole.kivo.core.display/TrackName // com.mmcdole.kivo.core.display/pickerName.<get-pickerName>|<get-pickerName>@com.mmcdole.kivo.api.models.Track(){}[0]
 
 final fun (com.mmcdole.kivo.api.models/EpisodeInfo).com.mmcdole.kivo.core.data/isoAirDate(): kotlin/String? // com.mmcdole.kivo.core.data/isoAirDate|isoAirDate@com.mmcdole.kivo.api.models.EpisodeInfo(){}[0]
 final fun (com.mmcdole.kivo.api.models/WorkDetail).com.mmcdole.kivo.core.data/defaultVersion(): com.mmcdole.kivo.api.models/Version? // com.mmcdole.kivo.core.data/defaultVersion|defaultVersion@com.mmcdole.kivo.api.models.WorkDetail(){}[0]
@@ -2142,9 +2145,6 @@ final fun (com.mmcdole.kivo.core.display/Display).com.mmcdole.kivo.core.display/
 final fun (com.mmcdole.kivo.core.display/Display).com.mmcdole.kivo.core.display/runtime(kotlin/Long): kotlin/String // com.mmcdole.kivo.core.display/runtime|runtime@com.mmcdole.kivo.core.display.Display(kotlin.Long){}[0]
 final fun (com.mmcdole.kivo.core.display/Display).com.mmcdole.kivo.core.display/size(kotlin/Long): kotlin/String // com.mmcdole.kivo.core.display/size|size@com.mmcdole.kivo.core.display.Display(kotlin.Long){}[0]
 final fun (com.mmcdole.kivo.core.display/Display).com.mmcdole.kivo.core.display/timeLeft(kotlin/Long): kotlin/String // com.mmcdole.kivo.core.display/timeLeft|timeLeft@com.mmcdole.kivo.core.display.Display(kotlin.Long){}[0]
-final fun (com.mmcdole.kivo.core.display/Display).com.mmcdole.kivo.core.display/trackDetail(com.mmcdole.kivo.api.models/Track): kotlin/String // com.mmcdole.kivo.core.display/trackDetail|trackDetail@com.mmcdole.kivo.core.display.Display(com.mmcdole.kivo.api.models.Track){}[0]
-final fun (com.mmcdole.kivo.core.display/Display).com.mmcdole.kivo.core.display/trackNames(kotlin.collections/List<com.mmcdole.kivo.api.models/Track>): kotlin.collections/Map<kotlin/String, com.mmcdole.kivo.core.display/TrackName> // com.mmcdole.kivo.core.display/trackNames|trackNames@com.mmcdole.kivo.core.display.Display(kotlin.collections.List<com.mmcdole.kivo.api.models.Track>){}[0]
-final fun (com.mmcdole.kivo.core.display/Display).com.mmcdole.kivo.core.display/versionName(com.mmcdole.kivo.api.models/Version): kotlin/String // com.mmcdole.kivo.core.display/versionName|versionName@com.mmcdole.kivo.core.display.Display(com.mmcdole.kivo.api.models.Version){}[0]
 final fun (com.mmcdole.kivo.core.display/Display).com.mmcdole.kivo.core.downloads/downloadFailure(kotlin/String): kotlin/String // com.mmcdole.kivo.core.downloads/downloadFailure|downloadFailure@com.mmcdole.kivo.core.display.Display(kotlin.String){}[0]
 final fun (com.mmcdole.kivo.core.display/Display).com.mmcdole.kivo.core.downloads/downloadProblem(kotlin/Throwable): kotlin/String // com.mmcdole.kivo.core.downloads/downloadProblem|downloadProblem@com.mmcdole.kivo.core.display.Display(kotlin.Throwable){}[0]
 final fun (com.mmcdole.kivo.core.display/Display).com.mmcdole.kivo.core.downloads/downloadQuality(kotlin/String): kotlin/String // com.mmcdole.kivo.core.downloads/downloadQuality|downloadQuality@com.mmcdole.kivo.core.display.Display(kotlin.String){}[0]

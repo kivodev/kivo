@@ -4590,6 +4590,14 @@ type Track struct {
 	// Forced Subtitles only, marked as forced (they show only lines in another language than the audio); absent when not.
 	Forced *bool `json:"forced,omitempty"`
 
+	// FullName The track in full, for stream info: a video's codec, profile,
+	// resolution and HDR ("HEVC Main 10 4K Dolby Vision"); audio's
+	// language, flags, format and channels, and Default ("English ·
+	// E-AC-3 5.1 · Default"); a subtitle's language, flags, codec and
+	// where it lives ("English · SDH · SRT · External"); then the
+	// title in quotes.
+	FullName string `json:"fullName"`
+
 	// HearingImpaired Marked as for the deaf and hard of hearing (SDH); absent when not.
 	HearingImpaired *bool `json:"hearingImpaired,omitempty"`
 
@@ -4601,6 +4609,18 @@ type Track struct {
 
 	// Language A BCP 47 tag.
 	Language *string `json:"language,omitempty"`
+
+	// Name Its name in a track picker, from its facts and never its title:
+	// a video's codec, resolution and HDR ("HEVC 4K HDR10"); else
+	// the language, marked when it's the original beside a dub
+	// ("Japanese [Original]"), the flags ("English · SDH"), audio's
+	// channels and any lossless or premium format ("English · 7.1 ·
+	// TrueHD Atmos"), and where a downloaded subtitle came from
+	// ("English · OpenSubtitles"). Tracks of one type in the same list
+	// whose name and title are both alike add their codec, then where
+	// a subtitle file lives, and are numbered last. A picker shows the
+	// title under it.
+	Name string `json:"name"`
 
 	// Original Audio only: in the work's original language, as the metadata
 	// provider gives it, where the work also has audio in another
@@ -4829,8 +4849,13 @@ type Version struct {
 
 	// Markers An episode's or a movie's markers on the version's timeline, as a
 	// play of it has them; absent for other kinds.
-	Markers *[]Marker     `json:"markers,omitempty"`
-	Parts   []VersionPart `json:"parts"`
+	Markers *[]Marker `json:"markers,omitempty"`
+
+	// Name Its name in a version picker: its edition, then its video's
+	// resolution and HDR ("Final Cut · 4K HDR", "1080p", "4K Dolby
+	// Vision"), or "Audio" without video.
+	Name  string        `json:"name"`
+	Parts []VersionPart `json:"parts"`
 
 	// Resolution Its video's resolution class; absent without video.
 	Resolution *Resolution `json:"resolution,omitempty"`

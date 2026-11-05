@@ -373,6 +373,8 @@ describe("Episode page", () => {
       codec: "subrip",
       language: "en",
       default: false,
+      name: "English",
+      fullName: "English · SRT · External",
       subtitle: { source: "external" },
     });
     renderApp(`/works/${mockIds.expanseReload}`);

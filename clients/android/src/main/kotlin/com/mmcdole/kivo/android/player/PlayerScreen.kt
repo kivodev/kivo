@@ -113,7 +113,6 @@ import com.mmcdole.kivo.core.display.episodeCode
 import com.mmcdole.kivo.core.display.quality
 import com.mmcdole.kivo.core.display.qualityMenu
 import com.mmcdole.kivo.core.display.size
-import com.mmcdole.kivo.core.display.versionName
 import com.mmcdole.kivo.android.ui.KivoButton
 import com.mmcdole.kivo.android.ui.KivoIcon
 import com.mmcdole.kivo.android.ui.KeyAction
@@ -132,6 +131,7 @@ import com.mmcdole.kivo.android.ui.display
 import com.mmcdole.kivo.api.models.Chapter
 import com.mmcdole.kivo.api.models.CapabilityMismatch
 import com.mmcdole.kivo.api.models.PlayStarted
+import com.mmcdole.kivo.api.models.TrackType
 import com.mmcdole.kivo.core.player.MarkerKind
 import com.mmcdole.kivo.core.player.SkipMarker
 import com.mmcdole.kivo.core.player.UpNext
@@ -185,7 +185,7 @@ fun PlayerScreen(session: ServerSession, args: Screen.Player, navigator: Navigat
 
     // Frame-rate matching, from the version's video track.
     val activity = LocalActivity.current
-    val frameRate = version?.tracks?.firstOrNull { it.type == "video" }?.video?.frameRate
+    val frameRate = version?.tracks?.firstOrNull { it.type == TrackType.Video }?.video?.frameRate
     val matching = model.screen?.matchesFrameRate == true
     DisposableEffect(activity, frameRate, matching) {
         val matcher = activity?.let(::FrameRateMatcher)
@@ -874,10 +874,10 @@ private fun tracksPanelShows(model: PlayerViewModel, play: PlayStarted): Boolean
 private fun trackChoices(model: PlayerViewModel, play: PlayStarted): TrackChoices {
     val version = model.version(play)
     val tracks = version?.tracks.orEmpty()
-    val audio = tracks.filter { it.type == "audio" }
+    val audio = tracks.filter { it.type == TrackType.Audio }
     return TrackChoices(
         audio = audio,
-        subtitles = tracks.filter { it.type == "subtitle" },
+        subtitles = tracks.filter { it.type == TrackType.Subtitle },
         audioSelected = model.audio ?: audio.firstOrNull { it.default }?.id ?: audio.firstOrNull()?.id,
         subtitleSelected = model.subtitle,
         searchable = SubtitleSearch.offered(version),
@@ -903,10 +903,8 @@ private fun Menus(
     when (menu) {
         PlayerMenu.Tracks -> {
             val tracks = trackChoices(model, play)
-            val display = LocalSession.current.graph.display
             TracksPanel(
                 tracks = tracks,
-                display = display,
                 // The player has no Automatic, so a choice is always a track or Off.
                 onAudio = { if (it != null && it != model.audio) model.chooseAudio(it) },
                 onSubtitle = { if (it != null && it != tracks.subtitleSelected) model.chooseSubtitle(it) },
@@ -959,7 +957,7 @@ private fun SettingsMenu(model: PlayerViewModel, play: PlayStarted, focused: Pla
         if (tracksPanelShows(model, play)) add(Choice(PlayerMenu.Tracks.name, stringResource(R.string.audio_and_subtitles)))
         add(Choice(PlayerMenu.Quality.name, stringResource(R.string.quality), quality.choices.firstOrNull { it.id == quality.selected }?.label))
         if (versions.size > 1) {
-            add(Choice(PlayerMenu.Version.name, stringResource(R.string.version), versions.firstOrNull { it.id == play.versionId }?.let(display::versionName)))
+            add(Choice(PlayerMenu.Version.name, stringResource(R.string.version), versions.firstOrNull { it.id == play.versionId }?.name))
         }
         add(Choice(PlayerMenu.Speed.name, stringResource(R.string.speed), speedLabel(model.speed)))
         add(Choice(PlayerMenu.Info.name, stringResource(R.string.stream_info)))
@@ -1024,10 +1022,10 @@ private fun VersionMenu(model: PlayerViewModel, play: PlayStarted, onBack: () ->
     val display = LocalSession.current.graph.display
     val missing = stringResource(R.string.version_missing)
     val choices = model.work?.versions.orEmpty().map { v ->
-        val codec = v.tracks.firstOrNull { it.type == "video" }?.let { display.codec(it.codec) }
+        val codec = v.tracks.firstOrNull { it.type == TrackType.Video }?.let { display.codec(it.codec) }
         Choice(
             v.id,
-            display.versionName(v).let { if (v.available) it else missing.format(it) },
+            if (v.available) v.name else missing.format(v.name),
             listOfNotNull(codec, display.size(v.sizeBytes)).joinToString(" · "),
             enabled = v.available,
         )

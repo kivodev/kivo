@@ -2,13 +2,16 @@ package com.mmcdole.kivo.android.player
 
 import com.mmcdole.kivo.api.models.AudioTrackInfo
 import com.mmcdole.kivo.api.models.CapabilityMismatch
+import com.mmcdole.kivo.api.models.PlayDelivery
 import com.mmcdole.kivo.api.models.PlayStarted
 import com.mmcdole.kivo.api.models.PlayPart
 import com.mmcdole.kivo.api.models.PlayTrack
 import com.mmcdole.kivo.api.models.QualityRequest
 import com.mmcdole.kivo.api.models.SubtitleTrackInfo
 import com.mmcdole.kivo.api.models.Track
+import com.mmcdole.kivo.api.models.TrackDelivery
 import com.mmcdole.kivo.api.models.TrackTranscode
+import com.mmcdole.kivo.api.models.TrackType
 import com.mmcdole.kivo.api.models.Version
 import com.mmcdole.kivo.api.models.VersionPart
 import com.mmcdole.kivo.api.models.VideoTrackInfo
@@ -33,25 +36,25 @@ class StreamInfoTest {
     private val version = Version(
         id = "v", available = true, durationMs = 60_000, sizeBytes = 1, parts = listOf(VersionPart("f", "film.mkv", 60_000, 1)),
         tracks = listOf(
-            Track("tv", "video", "hevc", true, video = VideoTrackInfo(3840, 2160, resolution = "4k", profile = "Main 10", hdr = "hdr10")),
-            Track("ta", "audio", "truehd", true, language = "eng", audio = AudioTrackInfo(8, "7.1")),
-            Track("ts", "subtitle", "ass", false, language = "eng", subtitle = SubtitleTrackInfo("embedded")),
+            Track("tv", TrackType.Video, "hevc", true, "HEVC 4K HDR10", "HEVC Main 10 4K HDR10", video = VideoTrackInfo(3840, 2160, resolution = "4k", profile = "Main 10", hdr = "hdr10")),
+            Track("ta", TrackType.Audio, "truehd", true, "English · 7.1 · TrueHD", "English · TrueHD 7.1 · Default", language = "eng", audio = AudioTrackInfo(8, "7.1")),
+            Track("ts", TrackType.Subtitle, "ass", false, "English", "English · ASS · Embedded", language = "eng", subtitle = SubtitleTrackInfo("embedded")),
         ),
-        workIds = listOf("w"), container = "matroska,webm", bitrateBps = 30_000_000, resolution = "4k", hdr = "hdr10",
+        workIds = listOf("w"), name = "4K HDR", container = "matroska,webm", bitrateBps = 30_000_000, resolution = "4k", hdr = "hdr10",
     )
 
     private val play = PlayStarted(
         id = "s", workId = "w", versionId = "v", startMs = 0, durationMs = 60_000, local = true,
-        delivery = "stream",
+        delivery = PlayDelivery.Stream,
         url = "plays/s/hls/index.m3u8",
         tracks = listOf(
-            PlayTrack("tv", "video", selected = true, delivery = "stream", codec = "hevc", hdr = "hdr10", reason = "containerUnsupported"),
+            PlayTrack("tv", TrackType.Video, selected = true, delivery = TrackDelivery.Stream, codec = "hevc", hdr = "hdr10", reason = "containerUnsupported"),
             PlayTrack(
-                "ta", "audio", selected = true, delivery = "stream", codec = "aac", transcode = TrackTranscode(channels = 6),
+                "ta", TrackType.Audio, selected = true, delivery = TrackDelivery.Stream, codec = "aac", transcode = TrackTranscode(channels = 6),
                 reason = "audioChannelsUnsupported", mismatch = CapabilityMismatch("maxChannels", "8", "6"),
             ),
-            PlayTrack("ts", "subtitle", selected = true, delivery = "stream", codec = "webvtt", reason = "subtitlePreparing"),
-            PlayTrack("off", "subtitle", delivery = "none"),
+            PlayTrack("ts", TrackType.Subtitle, selected = true, delivery = TrackDelivery.Stream, codec = "webvtt", reason = "subtitlePreparing"),
+            PlayTrack("off", TrackType.Subtitle, delivery = TrackDelivery.None),
         ),
         parts = listOf(PlayPart(60_000)), chapters = emptyList(), bitrateBps = 9_000_000,
     )
@@ -80,9 +83,9 @@ class StreamInfoTest {
     @Test
     fun aLimitTheFileIsUnderPlaysTheOriginalAndSaysSo() {
         val direct = play.copy(
-            delivery = "file",
+            delivery = PlayDelivery.File,
             url = "plays/s/files/0",
-            tracks = listOf(PlayTrack("tv", "video", selected = true, delivery = "file", index = 0), PlayTrack("off", "subtitle", selected = true, delivery = "none")),
+            tracks = listOf(PlayTrack("tv", TrackType.Video, selected = true, delivery = TrackDelivery.File, index = 0), PlayTrack("off", TrackType.Subtitle, selected = true, delivery = TrackDelivery.None)),
             bitrateBps = null,
         )
         val rows = streamInfo(direct, version.copy(bitrateBps = 4_000_000), QualityRequest("limit", maxBitrateBps = 8_000_000), Subtitles.OFF, display, words)
@@ -101,9 +104,9 @@ class StreamInfoTest {
     @Test
     fun aSubtitleChosenSinceSaysHowItShows() {
         val withFile = play.copy(
-            tracks = play.tracks + PlayTrack("tx", "subtitle", delivery = "external", codec = "ass", url = "plays/s/subtitles/x.ass"),
+            tracks = play.tracks + PlayTrack("tx", TrackType.Subtitle, delivery = TrackDelivery.External, codec = "ass", url = "plays/s/subtitles/x.ass"),
         )
-        val styled = version.copy(tracks = version.tracks + Track("tx", "subtitle", "ass", false, language = "fre", subtitle = SubtitleTrackInfo("external")))
+        val styled = version.copy(tracks = version.tracks + Track("tx", TrackType.Subtitle, "ass", false, "French", "French · ASS · External", language = "fre", subtitle = SubtitleTrackInfo("external")))
         val rows = streamInfo(withFile, styled, null, "tx", display, words)
         assertEquals(InfoRow("Subtitles", "French · Styled (ASS) · External"), rows.single { it.label == "Subtitles" })
     }

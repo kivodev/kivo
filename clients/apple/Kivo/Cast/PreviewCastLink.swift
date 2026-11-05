@@ -183,19 +183,19 @@ final class PreviewCastLink: CastLink {
         let audio = status["audioTrackId"] as? String
         let subtitle = status["subtitleTrackId"] as? String ?? "off"
         var tracks: [[String: Any]] = (version?.tracks ?? []).compactMap { track in
-            var entry: [String: Any] = ["trackId": track.id, "type": track.type]
+            var entry: [String: Any] = ["trackId": track.id, "type": track.type.value]
             switch track.type {
-            case "video":
+            case .video:
                 entry["delivery"] = "file"
                 entry["selected"] = true
-            case "audio":
+            case .audio:
                 entry["delivery"] = "file"
                 if track.id == audio { entry["selected"] = true }
-            case "subtitle":
+            case .subtitle:
                 entry["delivery"] = "stream"
                 entry["codec"] = "webvtt"
                 if track.id == subtitle { entry["selected"] = true }
-            default:
+            case .unknown:
                 return nil
             }
             return entry

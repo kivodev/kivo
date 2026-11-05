@@ -308,6 +308,7 @@ GET /api/v1/works/<id2>
           "startMs": 6600000
         }
       ],
+      "name": "1080p",
       "parts": [
         {
           "durationMs": 7200000,
@@ -322,7 +323,9 @@ GET /api/v1/works/<id2>
         {
           "codec": "h264",
           "default": false,
+          "fullName": "H.264 High 1080p",
           "id": "<id13>",
+          "name": "H.264 1080p",
           "type": "video",
           "video": {
             "height": 1080,
@@ -337,7 +340,9 @@ GET /api/v1/works/<id2>
           },
           "codec": "aac",
           "default": true,
+          "fullName": "Unknown language · AAC Stereo · Default",
           "id": "<id10>",
+          "name": "Unknown language · Stereo",
           "type": "audio"
         }
       ],
@@ -439,6 +444,7 @@ PATCH /api/v1/works/<id2>
           "startMs": 6600000
         }
       ],
+      "name": "1080p",
       "parts": [
         {
           "durationMs": 7200000,
@@ -453,7 +459,9 @@ PATCH /api/v1/works/<id2>
         {
           "codec": "h264",
           "default": false,
+          "fullName": "H.264 High 1080p",
           "id": "<id13>",
+          "name": "H.264 1080p",
           "type": "video",
           "video": {
             "height": 1080,
@@ -468,7 +476,9 @@ PATCH /api/v1/works/<id2>
           },
           "codec": "aac",
           "default": true,
+          "fullName": "Unknown language · AAC Stereo · Default",
           "id": "<id10>",
+          "name": "Unknown language · Stereo",
           "type": "audio"
         }
       ],
@@ -533,6 +543,7 @@ PATCH /api/v1/works/<id2>
           "startMs": 6600000
         }
       ],
+      "name": "1080p",
       "parts": [
         {
           "durationMs": 7200000,
@@ -547,7 +558,9 @@ PATCH /api/v1/works/<id2>
         {
           "codec": "h264",
           "default": false,
+          "fullName": "H.264 High 1080p",
           "id": "<id13>",
+          "name": "H.264 1080p",
           "type": "video",
           "video": {
             "height": 1080,
@@ -562,7 +575,9 @@ PATCH /api/v1/works/<id2>
           },
           "codec": "aac",
           "default": true,
+          "fullName": "Unknown language · AAC Stereo · Default",
           "id": "<id10>",
+          "name": "Unknown language · Stereo",
           "type": "audio"
         }
       ],
@@ -644,6 +659,7 @@ PATCH /api/v1/works/<id2>
           "startMs": 6600000
         }
       ],
+      "name": "1080p",
       "parts": [
         {
           "durationMs": 7200000,
@@ -658,7 +674,9 @@ PATCH /api/v1/works/<id2>
         {
           "codec": "h264",
           "default": false,
+          "fullName": "H.264 High 1080p",
           "id": "<id13>",
+          "name": "H.264 1080p",
           "type": "video",
           "video": {
             "height": 1080,
@@ -673,7 +691,9 @@ PATCH /api/v1/works/<id2>
           },
           "codec": "aac",
           "default": true,
+          "fullName": "Unknown language · AAC Stereo · Default",
           "id": "<id10>",
+          "name": "Unknown language · Stereo",
           "type": "audio"
         }
       ],
@@ -743,6 +763,7 @@ PATCH /api/v1/works/<id2>
           "startMs": 6600000
         }
       ],
+      "name": "1080p",
       "parts": [
         {
           "durationMs": 7200000,
@@ -757,7 +778,9 @@ PATCH /api/v1/works/<id2>
         {
           "codec": "h264",
           "default": false,
+          "fullName": "H.264 High 1080p",
           "id": "<id13>",
+          "name": "H.264 1080p",
           "type": "video",
           "video": {
             "height": 1080,
@@ -772,7 +795,9 @@ PATCH /api/v1/works/<id2>
           },
           "codec": "aac",
           "default": true,
+          "fullName": "Unknown language · AAC Stereo · Default",
           "id": "<id10>",
+          "name": "Unknown language · Stereo",
           "type": "audio"
         }
       ],
@@ -953,6 +978,7 @@ PATCH /api/v1/works/<id15>
       "id": "<id16>",
       "libraryId": "<id1>",
       "markers": [],
+      "name": "Audio",
       "parts": [
         {
           "durationMs": 0,
@@ -1055,6 +1081,7 @@ PATCH /api/v1/works/<id18>
       "durationMs": 0,
       "id": "<id21>",
       "libraryId": "<id4>",
+      "name": "Audio",
       "parts": [
         {
           "durationMs": 0,
@@ -1154,6 +1181,7 @@ PATCH /api/v1/works/<id18>
       "durationMs": 0,
       "id": "<id21>",
       "libraryId": "<id4>",
+      "name": "Audio",
       "parts": [
         {
           "durationMs": 0,
@@ -1501,6 +1529,7 @@ POST /api/v1/works/<id18>/match
       "durationMs": 0,
       "id": "<id21>",
       "libraryId": "<id4>",
+      "name": "Audio",
       "parts": [
         {
           "durationMs": 0,
@@ -2577,7 +2606,9 @@ GET /api/v1/plays
         {
           "codec": "h264",
           "default": false,
+          "fullName": "H.264 High 1080p",
           "id": "<id13>",
+          "name": "H.264 1080p",
           "type": "video",
           "video": {
             "height": 1080,
@@ -2592,7 +2623,9 @@ GET /api/v1/plays
           },
           "codec": "aac",
           "default": true,
+          "fullName": "Unknown language · AAC Stereo · Default",
           "id": "<id10>",
+          "name": "Unknown language · Stereo",
           "type": "audio"
         }
       ],
@@ -2658,7 +2691,9 @@ GET /api/v1/plays
         {
           "codec": "h264",
           "default": false,
+          "fullName": "H.264 High 1080p",
           "id": "<id13>",
+          "name": "H.264 1080p",
           "type": "video",
           "video": {
             "height": 1080,
@@ -2673,7 +2708,9 @@ GET /api/v1/plays
           },
           "codec": "aac",
           "default": true,
+          "fullName": "Unknown language · AAC Stereo · Default",
           "id": "<id10>",
+          "name": "Unknown language · Stereo",
           "type": "audio"
         }
       ],
@@ -2749,7 +2786,9 @@ GET /api/v1/plays/<id38>
     {
       "codec": "h264",
       "default": false,
+      "fullName": "H.264 High 1080p",
       "id": "<id13>",
+      "name": "H.264 1080p",
       "type": "video",
       "video": {
         "height": 1080,
@@ -2764,7 +2803,9 @@ GET /api/v1/plays/<id38>
       },
       "codec": "aac",
       "default": true,
+      "fullName": "Unknown language · AAC Stereo · Default",
       "id": "<id10>",
+      "name": "Unknown language · Stereo",
       "type": "audio"
     }
   ],
@@ -2902,7 +2943,9 @@ GET /api/v1/plays
         {
           "codec": "h264",
           "default": false,
+          "fullName": "H.264 High 1080p",
           "id": "<id13>",
+          "name": "H.264 1080p",
           "type": "video",
           "video": {
             "height": 1080,
@@ -2917,7 +2960,9 @@ GET /api/v1/plays
           },
           "codec": "aac",
           "default": true,
+          "fullName": "Unknown language · AAC Stereo · Default",
           "id": "<id10>",
+          "name": "Unknown language · Stereo",
           "type": "audio"
         }
       ],

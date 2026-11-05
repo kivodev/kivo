@@ -86,7 +86,7 @@ final class AVPlayerEngine: NSObject, PlayerEngine {
     func load(play: PlayStarted, events: any PlayerEngineEvents) {
         reset()
         self.events = events
-        hls = play.delivery == "stream"
+        hls = play.delivery == .stream
         let start = Int64(play.startMs)
         if hls {
             parts = [mediaURL(play.url)]

@@ -45,7 +45,7 @@ protocol PlayerChoices: AnyObject {
 struct StreamInfo {
     let tracks: [PlayTrack]
     /// `stream` or `file`; nil on a cast, which only the TV knows.
-    let delivery: String?
+    let delivery: PlayDelivery?
     let local: Bool
     let bitrateBps: Int64?
     /// Where a download playing came from.

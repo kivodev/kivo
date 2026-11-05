@@ -77,6 +77,11 @@ import okio.FileSystem
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
 import com.mmcdole.kivo.api.models.Download as ServerDownload
+import com.mmcdole.kivo.api.models.DownloadDelivery
+import com.mmcdole.kivo.api.models.PlayDelivery
+import com.mmcdole.kivo.api.models.SubtitleMode
+import com.mmcdole.kivo.api.models.TrackDelivery
+import com.mmcdole.kivo.api.models.TrackType
 
 // The download store and its state machine against Ktor's mock engine, a
 // transport the tests drive, and a real SQLite store and folder: transfers
@@ -107,20 +112,20 @@ private fun download(
     queuePosition: Int? = null,
     progress: Double? = null,
     remaining: Int? = null,
-    delivery: String = "conversion",
+    delivery: DownloadDelivery = DownloadDelivery.Conversion,
 ) = ServerDownload(
     id = id, workId = "w1", versionId = "v1", quality = "high", state = state, delivery = delivery,
-    durationMs = 7_200_000, sizeBytes = movie.size.toLong(), sizeExact = state == "ready" || delivery == "file",
+    durationMs = 7_200_000, sizeBytes = movie.size.toLong(), sizeExact = state == "ready" || delivery == DownloadDelivery.File,
     parts = listOf(
         DownloadPart(
             durationMs = 7_200_000, url = "downloads/$id/files/0", contentType = "video/mp4",
             sizeBytes = movie.size.toLong().takeIf { state == "ready" }, etag = "\"${sha(movie)}\"".takeIf { state == "ready" },
-            sha256 = sha(movie).takeIf { state == "ready" && delivery == "conversion" },
+            sha256 = sha(movie).takeIf { state == "ready" && delivery == DownloadDelivery.Conversion },
         ),
     ),
     tracks = listOf(
-        PlayTrack("t3", "subtitle", selected = true, delivery = "external", codec = "webvtt", url = "downloads/$id/subtitles/t3.vtt"),
-        PlayTrack("off", "subtitle", delivery = "none"),
+        PlayTrack("t3", TrackType.Subtitle, selected = true, delivery = TrackDelivery.External, codec = "webvtt", url = "downloads/$id/subtitles/t3.vtt"),
+        PlayTrack("off", TrackType.Subtitle, delivery = TrackDelivery.None),
     ),
     chapters = emptyList(),
     markers = listOf(com.mmcdole.kivo.api.models.Marker("credits", 6_600_000, 7_200_000, "chapter", final = true)),
@@ -201,13 +206,13 @@ private class Harness(
                     listOf(
                         DownloadEstimate(
                             "w1", playable = true,
-                            options = listOf(DownloadOption("high", movie.size.toLong(), false, "conversion"), DownloadOption("original", 20_000_000_000, true, "file")),
+                            options = listOf(DownloadOption("high", movie.size.toLong(), false, DownloadDelivery.Conversion), DownloadOption("original", 20_000_000_000, true, DownloadDelivery.File)),
                         ),
                     ),
                 ),
             )
         }
-        server.on("GET", "/api/v1/users/me") { json(CurrentUser.serializer(), CurrentUser("u1", "anna", false, UserLimits(), PlaybackPreferences("forced", true, true, 1.0))) }
+        server.on("GET", "/api/v1/users/me") { json(CurrentUser.serializer(), CurrentUser("u1", "anna", false, UserLimits(), PlaybackPreferences(SubtitleMode.Forced, true, true, 1.0))) }
         server.on("GET", "/api/v1/works/w1") { respond(WORK, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json")) }
         server.on("POST", "/api/v1/downloads") { json(ServerDownload.serializer(), remote, HttpStatusCode.Created) }
         server.on("GET", "/api/v1/downloads/d1") { json(ServerDownload.serializer(), remote) }
@@ -481,19 +486,19 @@ class DownloadsTest {
         h.arriveAll()
         h.server.on("GET", "/api/v1/works/w1") { problem(HttpStatusCode.ServiceUnavailable, "unavailable") }
         val started = h.downloads.offline(id).plays.start(com.mmcdole.kivo.api.models.PlayCreate("w1", caps))
-        assertEquals("file", started.delivery)
+        assertEquals(PlayDelivery.File, started.delivery)
         assertEquals("file://" + File(h.disk.folder, "$id/part-0.mp4").path, started.url)
         assertEquals("file://" + File(h.disk.folder, "$id/part-0.mp4").path, started.parts.single().url)
         val subtitle = TrackShow.External("t3", "file://" + File(h.disk.folder, "$id/subtitle-t3.vtt").path, "webvtt", emptyList())
         assertEquals(subtitle, PlayTracks.show(started, "t3"))
-        assertEquals("t3", PlayTracks.selected(started, "subtitle"))
+        assertEquals("t3", PlayTracks.selected(started, TrackType.Subtitle))
         assertEquals(6_600_000, started.markers?.single()?.startMs, "its markers are the plan's, as saved at download")
 
         // A subtitle chosen on the detail page shows where the download has
         // it: off does, a track that didn't come with it doesn't.
         val plays = h.downloads.offline(id).plays
-        assertEquals("off", PlayTracks.selected(plays.start(com.mmcdole.kivo.api.models.PlayCreate("w1", caps, subtitleTrackId = "off")), "subtitle"))
-        assertEquals("t3", PlayTracks.selected(plays.start(com.mmcdole.kivo.api.models.PlayCreate("w1", caps, subtitleTrackId = "t9")), "subtitle"))
+        assertEquals("off", PlayTracks.selected(plays.start(com.mmcdole.kivo.api.models.PlayCreate("w1", caps, subtitleTrackId = "off")), TrackType.Subtitle))
+        assertEquals("t3", PlayTracks.selected(plays.start(com.mmcdole.kivo.api.models.PlayCreate("w1", caps, subtitleTrackId = "t9")), TrackType.Subtitle))
     }
 
     @Test
@@ -509,11 +514,11 @@ class DownloadsTest {
         for ((url, bytes) in files) h.server.on("GET", "/api/v1/$url") { serve(it, bytes) }
         h.remote = download().copy(
             tracks = listOf(
-                PlayTrack("t3", "subtitle", selected = true, delivery = "external", codec = "webvtt", url = "downloads/d1/subtitles/t3.vtt"),
-                PlayTrack("t4", "subtitle", delivery = "external", codec = "ass", url = "downloads/d1/subtitles/t4.ass", fonts = listOf("fonts/f1")),
-                PlayTrack("t5", "subtitle", delivery = "external", codec = "hdmv_pgs_subtitle", url = "downloads/d1/subtitles/t5.sup"),
-                PlayTrack("t6", "subtitle", delivery = "external", codec = "webvtt", url = "downloads/d1/subtitles/t6.vtt"),
-                PlayTrack("off", "subtitle", delivery = "none"),
+                PlayTrack("t3", TrackType.Subtitle, selected = true, delivery = TrackDelivery.External, codec = "webvtt", url = "downloads/d1/subtitles/t3.vtt"),
+                PlayTrack("t4", TrackType.Subtitle, delivery = TrackDelivery.External, codec = "ass", url = "downloads/d1/subtitles/t4.ass", fonts = listOf("fonts/f1")),
+                PlayTrack("t5", TrackType.Subtitle, delivery = TrackDelivery.External, codec = "hdmv_pgs_subtitle", url = "downloads/d1/subtitles/t5.sup"),
+                PlayTrack("t6", TrackType.Subtitle, delivery = TrackDelivery.External, codec = "webvtt", url = "downloads/d1/subtitles/t6.vtt"),
+                PlayTrack("off", TrackType.Subtitle, delivery = TrackDelivery.None),
             ),
         )
         h.connect()
@@ -533,8 +538,8 @@ class DownloadsTest {
         assertTrue(shown.all { it.url.startsWith("file://" + File(h.disk.folder, id).path) }, "each from its file here")
         assertEquals(listOf("file://" + File(h.disk.folder, "$id/font-f1").path), shown[1].fonts)
         val plays = h.downloads.offline(id).plays
-        assertEquals("t5", PlayTracks.selected(plays.start(com.mmcdole.kivo.api.models.PlayCreate("w1", caps, subtitleTrackId = "t5")), "subtitle"), "the PGS track")
-        assertEquals("t4", PlayTracks.selected(plays.start(com.mmcdole.kivo.api.models.PlayCreate("w1", caps, subtitleTrackId = "t4")), "subtitle"), "the styled one")
+        assertEquals("t5", PlayTracks.selected(plays.start(com.mmcdole.kivo.api.models.PlayCreate("w1", caps, subtitleTrackId = "t5")), TrackType.Subtitle), "the PGS track")
+        assertEquals("t4", PlayTracks.selected(plays.start(com.mmcdole.kivo.api.models.PlayCreate("w1", caps, subtitleTrackId = "t4")), TrackType.Subtitle), "the styled one")
     }
 
     @Test
@@ -546,11 +551,11 @@ class DownloadsTest {
         // For a client that draws PGS but no WebVTT: the text tracks in the file, the PGS a file of its own.
         h.remote = download().copy(
             tracks = listOf(
-                PlayTrack("t1", "video", selected = true, delivery = "stream", codec = "h264", transcode = TrackTranscode(1920, 1080, 8_000_000, encoder = "CPU")),
-                PlayTrack("t3", "subtitle", selected = true, delivery = "file", codec = "mov_text", index = 2),
-                PlayTrack("t4", "subtitle", delivery = "file", codec = "mov_text", index = 3),
-                PlayTrack("t5", "subtitle", delivery = "external", codec = "hdmv_pgs_subtitle", url = "downloads/d1/subtitles/t5.sup"),
-                PlayTrack("off", "subtitle", delivery = "none"),
+                PlayTrack("t1", TrackType.Video, selected = true, delivery = TrackDelivery.Stream, codec = "h264", transcode = TrackTranscode(1920, 1080, 8_000_000, encoder = "CPU")),
+                PlayTrack("t3", TrackType.Subtitle, selected = true, delivery = TrackDelivery.File, codec = "mov_text", index = 2),
+                PlayTrack("t4", TrackType.Subtitle, delivery = TrackDelivery.File, codec = "mov_text", index = 3),
+                PlayTrack("t5", TrackType.Subtitle, delivery = TrackDelivery.External, codec = "hdmv_pgs_subtitle", url = "downloads/d1/subtitles/t5.sup"),
+                PlayTrack("off", TrackType.Subtitle, delivery = TrackDelivery.None),
             ),
         )
         h.connect()
@@ -563,20 +568,20 @@ class DownloadsTest {
         assertEquals(listOf<TrackShow>(TrackShow.File(2), TrackShow.File(3)), listOf("t3", "t4").map { PlayTracks.show(started, it) })
         assertTrue(PlayTracks.show(started, "t5") is TrackShow.External)
         assertEquals(TrackTranscode(1920, 1080), started.tracks.first().transcode, "what the video became, without how")
-        assertEquals("file", started.tracks.first().delivery)
-        assertEquals("t4", PlayTracks.selected(plays.start(com.mmcdole.kivo.api.models.PlayCreate("w1", caps, subtitleTrackId = "t4")), "subtitle"))
+        assertEquals(TrackDelivery.File, started.tracks.first().delivery)
+        assertEquals("t4", PlayTracks.selected(plays.start(com.mmcdole.kivo.api.models.PlayCreate("w1", caps, subtitleTrackId = "t4")), TrackType.Subtitle))
     }
 
     @Test
     fun aSubtitleBurnedIntoADownloadStaysAndNothingElseShows() {
         val tracks = offlineTracks(
             listOf(
-                PlayTrack("t3", "subtitle", selected = true, delivery = "burn"),
-                PlayTrack("t4", "subtitle"),
-                PlayTrack("off", "subtitle"),
+                PlayTrack("t3", TrackType.Subtitle, selected = true, delivery = TrackDelivery.Burn),
+                PlayTrack("t4", TrackType.Subtitle),
+                PlayTrack("off", TrackType.Subtitle),
             ),
         ) { it }
-        val play = PlayStarted("p", "w1", "v1", 0, 1, true, "file", "file:///0.mp4", tracks, emptyList(), emptyList())
+        val play = PlayStarted("p", "w1", "v1", 0, 1, true, PlayDelivery.File, "file:///0.mp4", tracks, emptyList(), emptyList())
         assertEquals(TrackShow.Burned, PlayTracks.show(play, "t3"))
         assertEquals(TrackShow.NewPlay, PlayTracks.show(play, "t4"))
         assertEquals(TrackShow.NewPlay, PlayTracks.show(play, "off"))
@@ -586,8 +591,8 @@ class DownloadsTest {
     fun offShowsWhenTheChosenSubtitleFileDidntCome() {
         val tracks = offlineTracks(
             listOf(
-                PlayTrack("t3", "subtitle", selected = true, delivery = "external", codec = "webvtt", url = "downloads/d1/subtitles/t3.vtt"),
-                PlayTrack("off", "subtitle", delivery = "none"),
+                PlayTrack("t3", TrackType.Subtitle, selected = true, delivery = TrackDelivery.External, codec = "webvtt", url = "downloads/d1/subtitles/t3.vtt"),
+                PlayTrack("off", TrackType.Subtitle, delivery = TrackDelivery.None),
             ),
         ) { null }
         assertEquals(listOf<Boolean?>(null, true), tracks.map { it.selected })
@@ -672,31 +677,30 @@ class DownloadsTest {
     }
 
     /** The plan's tracks for an HEVC 1080p source with 5.1 AC-3, as the server makes them for [delivery]. */
-    private fun plannedTracks(delivery: String) = if (delivery == "conversion") {
+    private fun plannedTracks(delivery: DownloadDelivery) = if (delivery == DownloadDelivery.Conversion) {
         listOf(
             PlayTrack(
-                "t1", "video", selected = true, delivery = "stream", codec = "h264", reason = "downloadQuality",
+                "t1", TrackType.Video, selected = true, delivery = TrackDelivery.Stream, codec = "h264", reason = "downloadQuality",
                 transcode = TrackTranscode(1280, 720, 4_000_000, encoder = "CPU"),
             ),
-            PlayTrack("t2", "audio", selected = true, delivery = "stream", codec = "aac", reason = "downloadQuality", transcode = TrackTranscode(channels = 2)),
-            PlayTrack("t3", "subtitle", selected = true, delivery = "external", codec = "webvtt", url = "downloads/d1/subtitles/t3.vtt"),
+            PlayTrack("t2", TrackType.Audio, selected = true, delivery = TrackDelivery.Stream, codec = "aac", reason = "downloadQuality", transcode = TrackTranscode(channels = 2)),
+            PlayTrack("t3", TrackType.Subtitle, selected = true, delivery = TrackDelivery.External, codec = "webvtt", url = "downloads/d1/subtitles/t3.vtt"),
         )
     } else {
         listOf(
-            PlayTrack("t1", "video", selected = true, delivery = "file", codec = "hevc", index = 0),
-            PlayTrack("t2", "audio", selected = true, delivery = "file", codec = "ac3", index = 1),
-            PlayTrack("t3", "subtitle", selected = true, delivery = "external", codec = "webvtt", url = "downloads/d1/subtitles/t3.vtt"),
+            PlayTrack("t1", TrackType.Video, selected = true, delivery = TrackDelivery.File, codec = "hevc", index = 0),
+            PlayTrack("t2", TrackType.Audio, selected = true, delivery = TrackDelivery.File, codec = "ac3", index = 1),
+            PlayTrack("t3", TrackType.Subtitle, selected = true, delivery = TrackDelivery.External, codec = "webvtt", url = "downloads/d1/subtitles/t3.vtt"),
         )
     }
 
     /** A download of [delivery] played offline: the play and its Source line. */
-    private suspend fun TestScope.playOffline(delivery: String, quality: String): Pair<PlayStarted, DownloadSource> {
+    private suspend fun TestScope.playOffline(delivery: DownloadDelivery, quality: String): Pair<PlayStarted, DownloadSource> {
         val h = Harness(this)
         h.remote = download(delivery = delivery).copy(quality = quality, tracks = plannedTracks(delivery))
-        // Saved as the server sent it before tracks were named from facts.
-        val version = """{"id":"v1","label":"1080p HEVC","available":true,"durationMs":7200000,"sizeBytes":20000000000,"parts":[],"workIds":["w1"],
-            "tracks":[{"id":"t1","type":"video","codec":"hevc","default":true,"displayTitle":"1080p HEVC","video":{"width":1920,"height":1080}},
-            {"id":"t2","type":"audio","codec":"ac3","default":true,"displayTitle":"English (AC3 5.1)","audio":{"channels":6}}]}"""
+        val version = """{"id":"v1","name":"1080p","available":true,"durationMs":7200000,"sizeBytes":20000000000,"parts":[],"workIds":["w1"],
+            "tracks":[{"id":"t1","type":"video","codec":"hevc","default":true,"name":"HEVC","fullName":"HEVC","video":{"width":1920,"height":1080}},
+            {"id":"t2","type":"audio","codec":"ac3","default":true,"name":"English · 5.1","fullName":"English · AC-3 5.1 · Default","audio":{"channels":6}}]}"""
         val work = WORK.replace(""""versions":[]""", """"versions":[$version]""")
         h.server.on("GET", "/api/v1/works/w1") { respond(work, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json")) }
         h.connect()
@@ -705,16 +709,16 @@ class DownloadsTest {
         h.arriveAll()
         h.server.on("GET", "/api/v1/works/w1") { problem(HttpStatusCode.ServiceUnavailable, "unavailable") }
         val play = h.downloads.offline(id)
-        return play.plays.start(com.mmcdole.kivo.api.models.PlayCreate("w1", caps)) to play.source(Display.forLocale("en"))
+        return play.plays.start(com.mmcdole.kivo.api.models.PlayCreate("w1", caps)) to play.source()
     }
 
     @Test
     fun aDownloadedOriginalPlaysDirectlyAsItsSource() = runTest {
-        val (started, source) = playOffline("file", "original")
+        val (started, source) = playOffline(DownloadDelivery.File, "original")
         val en = Display.forLocale("en")
         assertEquals("Direct Play", en.method(started))
         val (video, audio) = started.tracks
-        assertEquals(listOf("file", "file"), listOf(video.delivery, audio.delivery))
+        assertEquals(listOf(TrackDelivery.File, TrackDelivery.File), listOf(video.delivery, audio.delivery))
         assertEquals(listOf("hevc", "ac3"), listOf(video.codec, audio.codec), "the source's tracks are the file's")
         assertEquals(listOf(0, 1), listOf(video.index, audio.index))
         assertEquals(listOf(null, null), listOf(video.reason, audio.reason))
@@ -724,7 +728,7 @@ class DownloadsTest {
 
     @Test
     fun aDownloadedConversionPlaysDirectlyAsWhatItBecame() = runTest {
-        val (started, source) = playOffline("conversion", "standard")
+        val (started, source) = playOffline(DownloadDelivery.Conversion, "standard")
         val en = Display.forLocale("en")
         assertEquals("Direct Play", en.method(started))
         val (video, audio) = started.tracks
@@ -782,6 +786,20 @@ class DownloadsTest {
         assertNotNull(h.downloads.playable("w1"), "it plays from its files")
         assertEquals("""{"state":"queued","delivery":"conversion","sizeExact":false}""", withSizeExact("""{"state":"queued","delivery":"conversion"}"""))
         assertEquals("""{"delivery":"file","sizeExact":true}""", withSizeExact("""{"delivery":"file"}"""))
+    }
+
+    @Test
+    fun aWorkStoredBeforeTracksWereNamedReadsWithPlainNames() {
+        val stored = """{"versions":[{"id":"v1","edition":"Final Cut","tracks":[{"id":"t1","type":"video","codec":"hevc"},
+            {"id":"t2","type":"audio","codec":"ac3","language":"eng"}]},{"id":"v2","resolution":"4k","tracks":[]}]}"""
+        assertEquals(
+            """{"versions":[{"id":"v1","edition":"Final Cut","tracks":[{"id":"t1","type":"video","codec":"hevc","name":"HEVC","fullName":"HEVC"},""" +
+                """{"id":"t2","type":"audio","codec":"ac3","language":"eng","name":"English","fullName":"English"}],"name":"Final Cut"},""" +
+                """{"id":"v2","resolution":"4k","tracks":[],"name":"4K"}]}""",
+            withTrackNames(stored),
+        )
+        val named = """{"versions":[{"id":"v1","name":"1080p","tracks":[]}]}"""
+        assertEquals(named, withTrackNames(named))
     }
 
     @Test

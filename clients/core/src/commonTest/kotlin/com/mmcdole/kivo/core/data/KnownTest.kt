@@ -101,7 +101,7 @@ class KnownTest {
 
     @Test
     fun aPositionResumesOnlyOnItsEditionsVersions() {
-        fun version(id: String, edition: String? = null) = Version(id, true, 1, 1, emptyList(), emptyList(), emptyList(), edition = edition)
+        fun version(id: String, edition: String? = null) = Version(id, true, 1, 1, emptyList(), emptyList(), emptyList(), "", edition = edition)
         val work = work("w1", "Blade Runner", emptyList(), emptyList()).copy(
             versions = listOf(version("theatrical"), version("theatrical4k"), version("final", "Final Cut")),
             userState = UserState(played = false, favorite = false, playCount = 0, positionMs = 600_000, versionId = "theatrical"),
@@ -115,7 +115,7 @@ class KnownTest {
 
     @Test
     fun thePageSelectsTheVersionLastPlayedElseTheFirst() {
-        fun version(id: String) = Version(id, true, 1, 1, emptyList(), emptyList(), emptyList())
+        fun version(id: String) = Version(id, true, 1, 1, emptyList(), emptyList(), emptyList(), "")
         val fresh = work("w1", "Blade Runner", emptyList(), emptyList()).copy(versions = listOf(version("first"), version("second")))
         assertEquals("first", fresh.defaultVersion()?.id, "none played")
         val played = fresh.copy(userState = UserState(played = false, favorite = false, playCount = 1, positionMs = 0, versionId = "second"))

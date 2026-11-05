@@ -2,7 +2,7 @@ import { i18n } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import type { Track } from "@/api/schemas";
 import { type Option, Select } from "./Select";
-import { trackNames, trackOptions } from "./trackLabels";
+import { trackOptions } from "./trackLabels";
 
 /** The choice that leaves the track to the server, which picks by the user's settings. */
 export const automaticTrack = "automatic";
@@ -57,7 +57,7 @@ export function trackChoices({
       ? undefined
       : automatic === offId
         ? i18n._(msg`Off`)
-        : trackNames(tracks).get(automatic)?.name;
+        : tracks.find((t) => t.id === automatic)?.name;
   const automaticLabel = plays ? i18n._(msg`Automatic (${plays})`) : i18n._(msg`Automatic`);
   return {
     label: kind === "audio" ? i18n._(msg`Audio`) : i18n._(msg`Subtitles`),

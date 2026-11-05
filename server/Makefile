@@ -95,6 +95,7 @@ APP_TIMERS    := '\b(delay\(|Task\.sleep|asyncAfter|Timer\.|withTimeout)'
 # Numbers formatted, and units and time left worded, by the apps themselves.
 APP_FORMATS   := '\b(NumberFormat|MeasureFormat)\.|NumberFormatter\(|ByteCountFormatter|DateComponentsFormatter|String\(format:|%02l?d|Mb/s|min left'
 comma         := ,
+space         := $(subst ,, )
 
 # ceiling prints a count and fails when it's over its ceiling:
 # $(call ceiling,name,ceiling,command printing the count).
@@ -114,6 +115,10 @@ jscpd = rm -rf bin/jscpd && $(JSCPD) --silent --min-tokens 50 --reporters json -
 # decode a value a later server adds. A named enum is a component schema
 # whose enum list starts at its schema's top level.
 KOTLIN_OPEN_ENUMS := /^  schemas:/ { s = 1 } s && /^      enum: \[/ { skip = 1 } skip { if (/\]/) skip = 0; next } { print }
+# The enums the apps branch on are hand-written in OpenEnums.kt instead,
+# with an Unknown case for a value a later server adds.
+KOTLIN_ENUMS := TrackType TrackDelivery PlayDelivery DownloadDelivery SubtitleMode
+KOTLIN_ENUM_MAPPINGS := $(subst $(space),$(comma),$(foreach e,$(KOTLIN_ENUMS),$(e)=com.mmcdole.kivo.api.models.$(e)))
 
 # sqlc.yaml has a block per package with a queries/ folder; query runs its own
 # statements through database/sql.
@@ -127,6 +132,7 @@ generate: $(OPENAPI_GENERATOR)
 	awk '$(KOTLIN_OPEN_ENUMS)' internal/api/openapi.yaml > bin/openapi-kotlin.yaml
 	java -jar $(OPENAPI_GENERATOR) generate -g kotlin --library multiplatform \
 		-i bin/openapi-kotlin.yaml -o $(KOTLIN_API) \
+		--schema-mappings=$(KOTLIN_ENUM_MAPPINGS) \
 		--additional-properties=packageName=com.mmcdole.kivo.api,dateLibrary=kotlinx-datetime,omitGradleWrapper=true
 
 $(OPENAPI_GENERATOR):

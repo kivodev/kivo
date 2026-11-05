@@ -1,5 +1,6 @@
 package com.mmcdole.kivo.android.settings
 
+import com.mmcdole.kivo.api.models.SubtitleMode
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -194,14 +195,16 @@ internal fun SubtitlesPage(session: ServerSession) {
             item {
                 val title = stringResource(R.string.show_subtitles)
                 val modes = listOf(
-                    Choice("none", stringResource(R.string.subtitles_none)),
-                    Choice("forced", stringResource(R.string.subtitles_forced), stringResource(R.string.subtitles_forced_detail)),
-                    Choice("smart", stringResource(R.string.subtitles_smart), stringResource(R.string.subtitles_smart_detail)),
-                    Choice("always", stringResource(R.string.subtitles_always)),
+                    Choice(SubtitleMode.None.value, stringResource(R.string.subtitles_none)),
+                    Choice(SubtitleMode.Forced.value, stringResource(R.string.subtitles_forced), stringResource(R.string.subtitles_forced_detail)),
+                    Choice(SubtitleMode.Smart.value, stringResource(R.string.subtitles_smart), stringResource(R.string.subtitles_smart_detail)),
+                    Choice(SubtitleMode.Always.value, stringResource(R.string.subtitles_always)),
                 )
                 Column {
-                    SettingRow(title, modes.firstOrNull { it.id == playback.subtitleMode }?.label.orEmpty(), {
-                        pick(Picking(title, modes, playback.subtitleMode) { model.update("subtitleMode", PlaybackPreferencesUpdate(subtitleMode = it)) })
+                    SettingRow(title, modes.firstOrNull { it.id == playback.subtitleMode.value }?.label.orEmpty(), {
+                        pick(Picking(title, modes, playback.subtitleMode.value) { id ->
+                            model.update("subtitleMode", PlaybackPreferencesUpdate(subtitleMode = SubtitleMode.entries.first { it.value == id }))
+                        })
                     }, Modifier.focusKey(memory, "subtitleMode"))
                     SaveFailed(model.saves.on("subtitleMode"))
                 }
@@ -214,7 +217,7 @@ internal fun SubtitlesPage(session: ServerSession) {
                         pick(Picking(title, listOf(Choice("", serverDefault)) + languages, playback.subtitleLanguage.orEmpty()) {
                             model.update("subtitleLanguage", PlaybackPreferencesUpdate(subtitleLanguage = it))
                         })
-                    }, Modifier.focusKey(memory, "subtitleLanguage"), enabled = playback.subtitleMode != "none")
+                    }, Modifier.focusKey(memory, "subtitleLanguage"), enabled = playback.subtitleMode != SubtitleMode.None)
                     SaveFailed(model.saves.on("subtitleLanguage"))
                 }
             }

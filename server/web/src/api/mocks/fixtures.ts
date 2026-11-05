@@ -59,6 +59,8 @@ const subtitle = (source: SubtitleTrackInfo["source"]): SubtitleTrackInfo => ({ 
 const tracks4k: Track[] = [
   {
     id: "4k-video",
+    name: "HEVC 4K HDR10",
+    fullName: "HEVC Main 10 4K HDR10",
     type: "video",
     codec: "hevc",
     default: false,
@@ -66,6 +68,8 @@ const tracks4k: Track[] = [
   },
   {
     id: "4k-audio-en",
+    name: "English · 7.1 · TrueHD",
+    fullName: "English · TrueHD 7.1 · Default",
     type: "audio",
     codec: "truehd",
     language: "en",
@@ -74,6 +78,8 @@ const tracks4k: Track[] = [
   },
   {
     id: "4k-audio-fr",
+    name: "French · 5.1",
+    fullName: "French · AC-3 5.1",
     type: "audio",
     codec: "ac3",
     language: "fr",
@@ -82,6 +88,8 @@ const tracks4k: Track[] = [
   },
   {
     id: "4k-sub-en",
+    name: "English",
+    fullName: "English · SRT · External",
     type: "subtitle",
     codec: "subrip",
     language: "en",
@@ -90,6 +98,8 @@ const tracks4k: Track[] = [
   },
   {
     id: "4k-sub-en-sdh",
+    name: "English · SDH",
+    fullName: "English · SDH · PGS · Embedded",
     type: "subtitle",
     codec: "hdmv_pgs_subtitle",
     language: "en",
@@ -99,6 +109,8 @@ const tracks4k: Track[] = [
   },
   {
     id: "4k-sub-fr-forced",
+    name: "French · Forced",
+    fullName: "French · Forced · ASS · Embedded",
     type: "subtitle",
     codec: "ass",
     language: "fr",
@@ -111,6 +123,8 @@ const tracks4k: Track[] = [
 const tracks1080: Track[] = [
   {
     id: "1080-video",
+    name: "H.264 1080p",
+    fullName: "H.264 High 1080p",
     type: "video",
     codec: "h264",
     default: false,
@@ -118,6 +132,8 @@ const tracks1080: Track[] = [
   },
   {
     id: "1080-audio-en",
+    name: "English · 2.0",
+    fullName: "English · AAC 2.0 · Default",
     type: "audio",
     codec: "aac",
     language: "en",
@@ -130,7 +146,7 @@ function version(
   id: string,
   workId: string,
   libraryId: string,
-  /** The file's name without its extension. */
+  /** The file's name without its extension, which is also the version's. */
   name: string,
   durationMs: number,
   tracks: Track[],
@@ -141,6 +157,7 @@ function version(
   const video = tracks.find((t) => t.type === "video")?.video;
   return {
     id,
+    name,
     resolution: video?.resolution,
     hdr: video?.hdr,
     available: true,
@@ -469,10 +486,12 @@ export function createMockApi(): MockApi {
       theatrical,
       {
         ...version(next(), mockIds.bladeRunner, mockIds.movies, "4K HDR", 117 * minute, tracks4k, 40e9),
+        name: "Final Cut · 4K HDR",
         edition: "Final Cut",
       },
       {
         ...version(next(), mockIds.bladeRunner, mockIds.movies, "1080p", 117 * minute, tracks1080, 14e9),
+        name: "Final Cut · 1080p",
         edition: "Final Cut",
       },
     ],
@@ -1257,6 +1276,8 @@ export function createMockApi(): MockApi {
     ],
     addedSubtitle: {
       id: "downloaded-en",
+      name: "English · OpenSubtitles",
+      fullName: "English · SRT · Downloaded",
       type: "subtitle",
       codec: "subrip",
       language: "en",

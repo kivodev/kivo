@@ -25,8 +25,10 @@ import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.session.MediaSession
 import com.mmcdole.kivo.android.ServerSession
+import com.mmcdole.kivo.api.models.PlayDelivery
 import com.mmcdole.kivo.api.models.PlayStarted
 import com.mmcdole.kivo.api.models.PlayTrack
+import com.mmcdole.kivo.api.models.TrackDelivery
 import com.mmcdole.kivo.core.caps.AudioSettings
 import com.mmcdole.kivo.core.caps.PassthroughMode
 import com.mmcdole.kivo.core.player.Markers
@@ -256,7 +258,7 @@ class Media3Engine(
 
     /** The play's subtitle files the app draws, in a format Media3 takes. */
     private fun externalTracksOf(play: PlayStarted): List<PlayTrack> =
-        play.tracks.filter { it.delivery == "external" && it.url != null && it.codec in externalTypes }
+        play.tracks.filter { it.delivery == TrackDelivery.External && it.url != null && it.codec in externalTypes }
 
     /** One item per part for direct play, else the HLS playlist; the play's subtitle files ride on the first. */
     private fun mediaItems(play: PlayStarted, externals: List<PlayTrack>): List<MediaItem> {
@@ -267,7 +269,7 @@ class Media3Engine(
                 .setSelectionFlags(0)
                 .build()
         }
-        if (play.delivery == "stream") {
+        if (play.delivery == PlayDelivery.Stream) {
             return listOf(
                 MediaItem.Builder()
                     .setUri(this.session.session.mediaUrl(play.url))

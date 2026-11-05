@@ -44,11 +44,11 @@ struct PlaybackSettingsSheet: View {
                     }
                     if let work = model.work, work.versions.count > 1, !model.offline {
                         NavigationLink {
-                            ChoiceList(title: String(localized: "Version"), items: work.versions, id: \.id, label: { "\(model.display.versionName(version: $0)) · \(Display.app.size(bytes: $0.sizeBytes))" }, chosen: { $0.id == model.version?.id }) {
+                            ChoiceList(title: String(localized: "Version"), items: work.versions, id: \.id, label: { "\($0.name) · \(Display.app.size(bytes: $0.sizeBytes))" }, chosen: { $0.id == model.version?.id }) {
                                 model.chooseVersion($0.id)
                             }
                         } label: {
-                            LabeledContent(String(localized: "Version"), value: model.version.map { model.display.versionName(version: $0) } ?? "")
+                            LabeledContent(String(localized: "Version"), value: model.version?.name ?? "")
                         }
                     }
                     NavigationLink {

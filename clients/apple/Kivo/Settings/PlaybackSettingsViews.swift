@@ -95,10 +95,10 @@ struct SubtitleSettingsView: View {
                 Picker(String(localized: "Show subtitles"), selection: save.binding(playback.subtitleMode) { mode in
                     try await server.session.account.setSubtitleMode(mode: mode)
                 }) {
-                    Text("Off").tag("none")
-                    Text("Only forced").tag("forced")
-                    Text("Foreign audio only").tag("smart")
-                    Text("Always").tag("always")
+                    Text("Off").tag(SubtitleMode.none)
+                    Text("Only forced").tag(SubtitleMode.forced)
+                    Text("Foreign audio only").tag(SubtitleMode.smart)
+                    Text("Always").tag(SubtitleMode.always)
                 }
                 Picker(String(localized: "Subtitle language"), selection: save.binding(playback.subtitleLanguage) { language in
                     try await server.session.account.setSubtitleLanguage(language: language)
@@ -106,7 +106,7 @@ struct SubtitleSettingsView: View {
                     Text("Server default").tag(String?.none)
                     languageOptions(selected: playback.subtitleLanguage)
                 }
-                .disabled(playback.subtitleMode == "none")
+                .disabled(playback.subtitleMode == SubtitleMode.none)
             } header: {
                 AccountHeading()
             }

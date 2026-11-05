@@ -5,6 +5,7 @@ import com.mmcdole.kivo.api.models.CurrentUser
 import com.mmcdole.kivo.api.models.PlaybackPreferences
 import com.mmcdole.kivo.api.models.DeviceCode
 import com.mmcdole.kivo.api.models.Session
+import com.mmcdole.kivo.api.models.SubtitleMode
 import com.mmcdole.kivo.api.models.UserLimits
 import com.mmcdole.kivo.api.result
 import com.mmcdole.kivo.core.FakeServer
@@ -25,7 +26,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 
-private val anna = CurrentUser("u1", "anna", admin = false, limits = UserLimits(), playback = PlaybackPreferences("forced", true, true, 1.0))
+private val anna = CurrentUser("u1", "anna", admin = false, limits = UserLimits(), playback = PlaybackPreferences(SubtitleMode.Forced, true, true, 1.0))
 
 private val code = DeviceCode("ABC234", "secret-1", Instant.fromEpochSeconds(1_800_000_000), 2, "http://kivo.test/link?code=ABC234&server=server-1")
 

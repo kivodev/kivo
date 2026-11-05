@@ -3,6 +3,7 @@ package com.mmcdole.kivo.core.data
 import com.mmcdole.kivo.api.models.FileSubtitleAdd
 import com.mmcdole.kivo.api.models.SubtitleResult
 import com.mmcdole.kivo.api.models.Track
+import com.mmcdole.kivo.api.models.TrackType
 import com.mmcdole.kivo.api.models.Version
 import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.api.result
@@ -63,7 +64,7 @@ object SubtitleSearch {
  * null for a version without video or without a file, which has none.
  */
 internal val Version.subtitleSearchFile: String?
-    get() = parts.firstOrNull()?.fileId?.takeIf { tracks.any { it.type == "video" } }
+    get() = parts.firstOrNull()?.fileId?.takeIf { tracks.any { it.type == TrackType.Video } }
 
 /** [track] in [versionId]'s tracks, in place of one with its ID, so a track just downloaded shows before the work is read again. */
 fun WorkDetail.withTrack(versionId: String, track: Track): WorkDetail = copy(

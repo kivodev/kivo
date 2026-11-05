@@ -179,7 +179,7 @@ export function Select<T extends string>({
             >
               <Text slot="label">{o.label}</Text>
               {o.detail && (
-                <Text slot="description" className="text-xs font-normal text-text-muted">
+                <Text slot="description" className="line-clamp-2 text-xs font-normal text-text-muted">
                   {o.detail}
                 </Text>
               )}

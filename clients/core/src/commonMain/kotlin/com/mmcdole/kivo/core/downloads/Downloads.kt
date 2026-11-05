@@ -49,6 +49,8 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import com.mmcdole.kivo.api.models.Download as ServerDownload
+import com.mmcdole.kivo.api.models.DownloadDelivery
+import com.mmcdole.kivo.api.models.TrackDelivery
 import com.mmcdole.kivo.core.downloads.db.Download as Row
 import com.mmcdole.kivo.core.downloads.db.Download_file as FileRow
 
@@ -434,7 +436,7 @@ internal class Downloads(
             // The availability check catching up may have deleted it.
             row = row(id) ?: throw NoSuchElementException("download $id is no longer available")
         }
-        val work = kivoJson.decodeFromString(WorkDetail.serializer(), row.work)
+        val work = kivoJson.decodeFromString(WorkDetail.serializer(), withTrackNames(row.work))
         val position = row.position_ms ?: work.userState?.positionMs?.toLong() ?: 0
         val plan = plan(row)
         return OfflinePlay(this, id, startedOffline(row, plan, work, position), work, plan)
@@ -445,7 +447,7 @@ internal class Downloads(
         val s = server.value ?: return null
         val row = withContext(background) { q.downloads(s.connection.serverId).executeAsList() }
             .firstOrNull { it.work_id == workId && it.state == READY } ?: return null
-        return kivoJson.decodeFromString(WorkDetail.serializer(), row.work)
+        return kivoJson.decodeFromString(WorkDetail.serializer(), withTrackNames(row.work))
     }
 
 
@@ -592,7 +594,7 @@ internal class Downloads(
             authors = authorsOf(row), quality = LegacyDownloadQuality.current(row.quality),
             durationMs = plan?.durationMs?.toLong(),
             sizeBytes = row.size_bytes, sizeExact = status == DownloadStatus.Ready || plan?.sizeExact == true,
-            prepared = plan?.delivery == "conversion", status = status,
+            prepared = plan?.delivery == DownloadDelivery.Conversion, status = status,
             artworkPath = artwork(ARTWORK_NAME), posterPath = artwork(POSTER_NAME),
             createdAtMs = row.created_at,
         )
@@ -602,7 +604,7 @@ internal class Downloads(
     private fun authorsOf(row: Row): String? = if (row.kind != "book") {
         null
     } else {
-        kivoJson.decodeFromString(WorkDetail.serializer(), row.work).book?.authors?.takeIf { it.isNotEmpty() }?.joinToString(", ") { it.name }
+        kivoJson.decodeFromString(WorkDetail.serializer(), withTrackNames(row.work)).book?.authors?.takeIf { it.isNotEmpty() }?.joinToString(", ") { it.name }
     }
 
     /** The files of a download the server has ready: its parts, its subtitle files, their fonts. */
@@ -610,7 +612,7 @@ internal class Downloads(
         d.parts.forEachIndexed { i, p ->
             add(FileRow(id, "part-$i.${extension(p.contentType)}", PART, p.url, p.sizeBytes, p.etag, p.sha256, WAITING, 0, 0))
         }
-        for (sub in d.tracks.filter { it.delivery == "external" }) {
+        for (sub in d.tracks.filter { it.delivery == TrackDelivery.External }) {
             val url = sub.url ?: continue
             add(FileRow(id, subtitleName(sub.trackId, sub.codec.orEmpty()), SUBTITLE, url, null, null, null, WAITING, 0, 0))
             for (font in sub.fonts.orEmpty()) add(FileRow(id, fontName(font), FONT, font, null, null, null, WAITING, 0, 0))

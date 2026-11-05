@@ -510,7 +510,7 @@ private struct PlayerErrorView: View {
                     if let work = model.work, work.versions.count > 1 {
                         Menu(String(localized: "Play another version")) {
                             ForEach(work.versions, id: \.id) { version in
-                                Button(model.display.versionName(version: version)) { model.chooseVersion(version.id) }
+                                Button(version.name) { model.chooseVersion(version.id) }
                             }
                         }
                         .buttonStyle(PlayerPillStyle(prominent: false))

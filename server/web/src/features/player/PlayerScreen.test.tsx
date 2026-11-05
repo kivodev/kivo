@@ -25,9 +25,18 @@ const dunePartTwoMs = resumeMs + 93 * minute + 57_000;
 /** The play that Dune: Part Two starts with. It plays the 1080p version directly. */
 const dunePlay = (api: MockApi) => api.starts[mockIds.dunePartTwo] as PlayStarted;
 
-/** An embedded subtitle track. */
-function embedded(id: string, codec: string, language: string): Track {
-  return { id, type: "subtitle", codec, language, default: false, subtitle: { source: "embedded" } };
+/** An embedded subtitle track, named as the server names it. */
+function embedded(id: string, codec: string, language: string, name: string): Track {
+  return {
+    id,
+    type: "subtitle",
+    codec,
+    language,
+    default: false,
+    name,
+    fullName: name,
+    subtitle: { source: "embedded" },
+  };
 }
 
 /** Gives Dune's 1080p version these tracks too. Its play lists them, each taking a new play. */
@@ -401,9 +410,11 @@ describe("Player", () => {
         title: "Commentary by director Ron Underwood",
         commentary: true,
         default: false,
+        name: "English · Commentary · 2.0",
+        fullName: "English · AC-3 2.0 · “Commentary by director Ron Underwood”",
         audio: { channels: 2, layout: "2.0" },
       },
-      embedded("t3", "subrip", "chi"),
+      embedded("t3", "subrip", "chi", "Chinese"),
     ]);
     const { user } = renderApp(`/watch/${mockIds.dunePartTwo}`);
     await playing();
@@ -425,6 +436,8 @@ describe("Player", () => {
         codec: "aac",
         language: "fr",
         default: false,
+        name: "French · 2.0",
+        fullName: "French · AAC 2.0",
         audio: { channels: 2, layout: "2.0" },
       },
     ]);
@@ -451,6 +464,8 @@ describe("Player", () => {
         codec: "aac",
         language: "fr",
         default: false,
+        name: "French · 2.0",
+        fullName: "French · AAC 2.0",
         audio: { channels: 2, layout: "2.0" },
       },
     ]);
@@ -466,7 +481,7 @@ describe("Player", () => {
 
   it("starts a new play at the position for a subtitle choice without a delivery", async () => {
     const api = serveMockApi();
-    withTracks(api, [embedded("t3", "subrip", "en")]);
+    withTracks(api, [embedded("t3", "subrip", "en", "English")]);
     const { user } = renderApp(`/watch/${mockIds.dunePartTwo}`);
     await playing();
     nextPlaysShow(api, "t3", "stream");
@@ -484,7 +499,7 @@ describe("Player", () => {
 
   it("burns in a subtitle through a new play, and takes another new play to turn it off", async () => {
     const api = serveMockApi();
-    withTracks(api, [embedded("t3", "dvd_subtitle", "en")]);
+    withTracks(api, [embedded("t3", "dvd_subtitle", "en", "English")]);
     const { user } = renderApp(`/watch/${mockIds.dunePartTwo}`);
     await playing();
     nextPlaysShow(api, "t3", "burn");
@@ -611,7 +626,7 @@ describe("Player", () => {
 
   it("draws a subtitle chosen during playback from its file, and shows it in the stream info", async () => {
     const api = serveMockApi();
-    withTracks(api, [embedded("t3", "subrip", "en")]);
+    withTracks(api, [embedded("t3", "subrip", "en", "English")]);
     deliver(api, external("t3"));
     const { user } = renderApp(`/watch/${mockIds.dunePartTwo}`);
     await playing();
@@ -660,7 +675,7 @@ describe("Player", () => {
 
   it("asks for no external subtitles in picture-in-picture, starting a new play for one shown and another on leaving if it was burned in", async () => {
     const api = serveMockApi();
-    withTracks(api, [embedded("t3", "ass", "ja")]);
+    withTracks(api, [embedded("t3", "ass", "ja", "Japanese")]);
     deliver(api, { ...external("t3"), codec: "ass", url: "plays/play/subtitles/t3.ass" });
     const { user } = renderApp(`/watch/${mockIds.dunePartTwo}`);
     await playing();

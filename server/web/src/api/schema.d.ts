@@ -3892,6 +3892,12 @@ export interface components {
             /** @description The works this version covers, in order; more than one for a multi-episode file. */
             workIds: components["schemas"]["ID"][];
             /**
+             * @description Its name in a version picker: its edition, then its video's
+             *     resolution and HDR ("Final Cut · 4K HDR", "1080p", "4K Dolby
+             *     Vision"), or "Audio" without video.
+             */
+            name: string;
+            /**
              * @description Chapters on the version's timeline: each part's own, and for a
              *     part of several with none, the part itself, as a book of
              *     per-chapter files has them. A part's chapters are left out
@@ -3939,6 +3945,28 @@ export interface components {
              */
             title?: string;
             default: boolean;
+            /**
+             * @description Its name in a track picker, from its facts and never its title:
+             *     a video's codec, resolution and HDR ("HEVC 4K HDR10"); else
+             *     the language, marked when it's the original beside a dub
+             *     ("Japanese [Original]"), the flags ("English · SDH"), audio's
+             *     channels and any lossless or premium format ("English · 7.1 ·
+             *     TrueHD Atmos"), and where a downloaded subtitle came from
+             *     ("English · OpenSubtitles"). Tracks of one type in the same list
+             *     whose name and title are both alike add their codec, then where
+             *     a subtitle file lives, and are numbered last. A picker shows the
+             *     title under it.
+             */
+            name: string;
+            /**
+             * @description The track in full, for stream info: a video's codec, profile,
+             *     resolution and HDR ("HEVC Main 10 4K Dolby Vision"); audio's
+             *     language, flags, format and channels, and Default ("English ·
+             *     E-AC-3 5.1 · Default"); a subtitle's language, flags, codec and
+             *     where it lives ("English · SDH · SRT · External"); then the
+             *     title in quotes.
+             */
+            fullName: string;
             /** @description Subtitles only, marked as forced (they show only lines in another language than the audio); absent when not. */
             forced?: boolean;
             /** @description Marked as for the deaf and hard of hearing (SDH); absent when not. */

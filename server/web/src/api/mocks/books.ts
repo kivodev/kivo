@@ -60,6 +60,7 @@ function bookVersion(id: string, workId: string, files: [string, number][], chap
   const durationMs = files.reduce((n, [, d]) => n + d, 0);
   return {
     id,
+    name: "Audio",
     available: true,
     libraryId: bookIds.audiobooks,
     container: "mov,mp4,m4a,3gp,3g2,mj2",
@@ -76,6 +77,8 @@ function bookVersion(id: string, workId: string, files: [string, number][], chap
     tracks: [
       {
         id: `${id}-audio`,
+        name: "Unknown language · 2.0",
+        fullName: "Unknown language · AAC 2.0 · Default",
         type: "audio",
         codec: "aac",
         default: true,

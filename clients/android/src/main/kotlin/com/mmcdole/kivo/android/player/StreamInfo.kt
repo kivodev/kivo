@@ -1,15 +1,16 @@
 package com.mmcdole.kivo.android.player
 
 import com.mmcdole.kivo.api.models.CapabilityMismatch
+import com.mmcdole.kivo.api.models.PlayDelivery
 import com.mmcdole.kivo.api.models.PlayStarted
 import com.mmcdole.kivo.api.models.PlayTrack
 import com.mmcdole.kivo.api.models.QualityRequest
+import com.mmcdole.kivo.api.models.TrackDelivery
+import com.mmcdole.kivo.api.models.TrackType
 import com.mmcdole.kivo.api.models.Version
 import com.mmcdole.kivo.core.display.Display
 import com.mmcdole.kivo.core.display.bitrate
 import com.mmcdole.kivo.core.display.delivered
-import com.mmcdole.kivo.core.display.trackDetail
-import com.mmcdole.kivo.core.display.trackNames
 import com.mmcdole.kivo.core.player.Subtitles
 
 /** One line of the stream info overlay, with why it isn't direct. */
@@ -61,49 +62,48 @@ fun streamInfo(
     display: Display,
     words: StreamInfoWords,
 ): List<InfoRow> {
-    fun sourceLabel(t: PlayTrack): String? = version?.tracks?.firstOrNull { it.id == t.trackId }?.let(display::trackDetail)
+    fun sourceLabel(t: PlayTrack): String? = version?.tracks?.firstOrNull { it.id == t.trackId }?.fullName
     fun outputLabel(t: PlayTrack): String? {
         if (t.transcode == null) return null
         val out = display.delivered(t)
-        return listOfNotNull(out, t.transcode?.encoder.takeIf { t.type == "video" }).joinToString(" · ")
+        return listOfNotNull(out, t.transcode?.encoder.takeIf { t.type == TrackType.Video }).joinToString(" · ")
     }
     fun why(t: PlayTrack): String? {
         val reason = t.reason?.takeIf { it != "containerUnsupported" } ?: return null
         return display.reason(reason) + (t.mismatch?.let { " (${words.limit(it)})" } ?: "")
     }
-    val names = mapOf("video" to words.video, "audio" to words.audio)
+    val names = mapOf(TrackType.Video to words.video, TrackType.Audio to words.audio)
     val selected = play.tracks.filter { it.selected == true }
 
     val rows = mutableListOf(InfoRow(words.playback, display.method(play)))
     // Repackaging is the container's doing, said once on its own row.
     val container = version?.container?.let(display::container)
-    if (play.delivery == "stream" && container != null) {
+    if (play.delivery == PlayDelivery.Stream && container != null) {
         val repackaged = selected.any { it.reason == "containerUnsupported" }
         rows += InfoRow(words.container, words.toHls(container), if (repackaged) words.cantPlayContainer(container) else null)
     }
     for (t in selected) {
-        if (t.type == "subtitle") continue
+        if (t.type == TrackType.Subtitle) continue
         // A file's track with what it became is a download's conversion, which is what the file holds.
-        val what = if (t.delivery == "file" && t.transcode != null) outputLabel(t).orEmpty()
+        val what = if (t.delivery == TrackDelivery.File && t.transcode != null) outputLabel(t).orEmpty()
         else listOfNotNull(sourceLabel(t), outputLabel(t)).joinToString(" → ")
         val method = display.method(t)
         rows += InfoRow(
-            names[t.type] ?: t.type,
+            names[t.type] ?: t.type.value,
             if (what.isEmpty()) method else "$method · $what",
-            why(t).takeIf { t.delivery != "file" },
+            why(t).takeIf { t.delivery != TrackDelivery.File },
         )
     }
 
-    val shown = play.tracks.firstOrNull { it.type == "subtitle" && it.trackId == subtitleTrackId }
+    val shown = play.tracks.firstOrNull { it.type == TrackType.Subtitle && it.trackId == subtitleTrackId }
     if (subtitleTrackId == Subtitles.OFF || shown == null) {
         rows += InfoRow(words.subtitles, words.off)
     } else {
         val track = version?.tracks?.firstOrNull { it.id == subtitleTrackId }
         // A styled track shown plain doesn't name its codec: "Plain (ASS)" would read as styled.
-        val plainStyled = track != null && track.codec in styledCodecs && shown.delivery != "burn" && shown.codec !in styledCodecs
+        val plainStyled = track != null && track.codec in styledCodecs && shown.delivery != TrackDelivery.Burn && shown.codec !in styledCodecs
         val kind = display.subtitleKind(shown) + (if (track != null && !plainStyled) " (${display.codec(track.codec)})" else "")
-        val name = track?.let { display.trackNames(listOf(it)).getValue(it.id).name }
-        val value = listOfNotNull(name, kind, track?.subtitle?.source?.let(display::subtitleSource)).joinToString(" · ")
+        val value = listOfNotNull(track?.name, kind, track?.subtitle?.source?.let(display::subtitleSource)).joinToString(" · ")
         rows += InfoRow(words.subtitles, value, why(shown))
     }
 
@@ -116,7 +116,7 @@ fun streamInfo(
             if (!limited && source != null && source <= cap) words.originalUnder(display.bitrate(source), display.bitrate(cap)) else words.limitedTo(display.bitrate(cap)),
         )
     }
-    rows += InfoRow(words.delivery, listOf(if (play.delivery == "stream") words.hls else words.file, if (play.local) words.local else words.remote).joinToString(" · "))
+    rows += InfoRow(words.delivery, listOf(if (play.delivery == PlayDelivery.Stream) words.hls else words.file, if (play.local) words.local else words.remote).joinToString(" · "))
     play.bitrateBps?.let { rows += InfoRow(words.bitrate, display.bitrate(it)) }
     return rows
 }

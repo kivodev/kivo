@@ -44,7 +44,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.tracing.trace
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.ClickableSurfaceDefaults
@@ -113,6 +112,7 @@ import com.mmcdole.kivo.api.models.EpisodeInfo
 import com.mmcdole.kivo.api.models.CollectionSummary
 import com.mmcdole.kivo.api.models.ImageRef
 import com.mmcdole.kivo.api.models.Track
+import com.mmcdole.kivo.api.models.TrackType
 import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.RequestProblem
@@ -128,8 +128,6 @@ import com.mmcdole.kivo.core.display.episodeCode
 import com.mmcdole.kivo.core.display.runtime
 import com.mmcdole.kivo.core.display.size
 import com.mmcdole.kivo.core.display.timeLeft
-import com.mmcdole.kivo.core.display.trackNames
-import com.mmcdole.kivo.core.display.versionName
 import com.mmcdole.kivo.core.player.Subtitles
 
 /**
@@ -430,8 +428,8 @@ private fun Pickers(read: WorkDetail, choices: Choices, onChange: (Choices) -> U
     val work = downloaded.fold(read) { w, (versionId, track) -> w.withTrack(versionId, track) }
     val version = work.selectedVersion(choices.versionId) ?: return
     val tracks = TrackChoices(
-        audio = version.tracks.filter { it.type == "audio" },
-        subtitles = version.tracks.filter { it.type == "subtitle" },
+        audio = version.tracks.filter { it.type == TrackType.Audio },
+        subtitles = version.tracks.filter { it.type == TrackType.Subtitle },
         audioSelected = choices.audioTrackId,
         subtitleSelected = choices.subtitleTrackId,
         searchable = SubtitleSearch.offered(version),
@@ -445,16 +443,16 @@ private fun Pickers(read: WorkDetail, choices: Choices, onChange: (Choices) -> U
     // Each picker's text lines up with the title above; its focus background reaches past it.
     Row(Modifier.offset(x = -Kivo.space(3)), horizontalArrangement = Arrangement.spacedBy(Kivo.space(2))) {
         if (work.versions.size > 1) {
-            ValueRow(stringResource(R.string.version), display.versionName(version), { open = Picker.Version }, Modifier.widthIn(max = 220.dp))
+            ValueRow(stringResource(R.string.version), version.name, { open = Picker.Version }, Modifier.widthIn(max = 220.dp))
         }
         if (tracks.choosable) {
             // What plays: the track chosen, else the one Automatic plays.
-            val audioNames = remember(tracks.audio, display) { trace("Tracks:names") { display.trackNames(tracks.audio) } }
-            val subtitleNames = remember(tracks.subtitles, display) { trace("Tracks:names") { display.trackNames(tracks.subtitles) } }
+            val audio = choices.audioTrackId ?: automatic.audio
             val subtitle = choices.subtitleTrackId ?: automatic.subtitle
             val value = listOfNotNull(
-                audioNames[choices.audioTrackId ?: automatic.audio]?.name.takeIf { tracks.audio.size > 1 },
-                (if (subtitle == Subtitles.OFF) offLabel else subtitleNames[subtitle]?.name).takeIf { tracks.subtitles.isNotEmpty() || tracks.searchable },
+                tracks.audio.firstOrNull { it.id == audio }?.name.takeIf { tracks.audio.size > 1 },
+                (if (subtitle == Subtitles.OFF) offLabel else tracks.subtitles.firstOrNull { it.id == subtitle }?.name)
+                    .takeIf { tracks.subtitles.isNotEmpty() || tracks.searchable },
             ).joinToString(" / ")
             ValueRow(stringResource(R.string.audio_and_subtitles), value, { open = Picker.Tracks }, Modifier.widthIn(max = 420.dp).testTag("tracks"))
         }
@@ -463,8 +461,8 @@ private fun Pickers(read: WorkDetail, choices: Choices, onChange: (Choices) -> U
         Picker.Version -> ChoicePanel(
             title = stringResource(R.string.version),
             choices = work.versions.map { v ->
-                val codec = v.tracks.firstOrNull { it.type == "video" }?.let { display.codec(it.codec) }
-                val name = display.versionName(v)
+                val codec = v.tracks.firstOrNull { it.type == TrackType.Video }?.let { display.codec(it.codec) }
+                val name = v.name
                 Choice(v.id, if (v.available) name else missingLabel.format(name), listOfNotNull(codec, display.size(v.sizeBytes)).joinToString(" · "))
             },
             selected = version.id,
@@ -476,7 +474,6 @@ private fun Pickers(read: WorkDetail, choices: Choices, onChange: (Choices) -> U
         )
         Picker.Tracks -> TracksPanel(
             tracks = tracks,
-            display = display,
             automatic = automatic,
             onAudio = { onChange(choices.copy(audioTrackId = it)) },
             onSubtitle = { onChange(choices.copy(subtitleTrackId = it)) },

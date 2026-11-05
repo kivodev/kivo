@@ -5,7 +5,7 @@ import SwiftUI
 /// Audio & Subtitles, the panel the player's speech-bubble button and
 /// Playback settings' row open: Audio with the Dialogue boost switch above
 /// its tracks, and Subtitles with Off, each track by its short name
-/// (`trackNames`) and the ones playing checked, and where the play's
+/// (`pickerName`) and the ones playing checked, and where the play's
 /// subtitles can be searched for, Search subtitles last, which shows even
 /// without a subtitle track and pushes the search. Where the panel is wide
 /// they're two lists side by side that each scroll on their own, else two
@@ -52,25 +52,23 @@ struct TracksPanel: View {
 
     /// The audio tracks to choose, with more than one; a download has the one it kept.
     private func audioRows(_ version: Version) -> [TrackRow] {
-        let audio = version.tracks.filter { $0.type == "audio" && model.offers($0) }
+        let audio = version.tracks.filter { $0.type == .audio && model.offers($0) }
         guard audio.count > 1 else { return [] }
-        let names = model.display.trackNames(tracks: audio)
         return audio.map { track in
-            TrackRow(id: track.id, name: names[track.id], chosen: track.id == model.audioTrackId) { model.chooseAudio(track.id) }
+            TrackRow(id: track.id, name: track.pickerName, chosen: track.id == model.audioTrackId) { model.chooseAudio(track.id) }
         }
     }
 
     /// Off and the subtitle tracks; a download has the ones it kept. Off alone where there are none to choose but a search.
     private func subtitleRows(_ version: Version) -> [TrackRow] {
-        let subtitles = version.tracks.filter { $0.type == "subtitle" && model.offers($0) }
+        let subtitles = version.tracks.filter { $0.type == .subtitle && model.offers($0) }
         guard !subtitles.isEmpty || model.searchesSubtitles else { return [] }
-        let names = model.display.trackNames(tracks: subtitles)
         let off = Subtitles.shared.OFF
         let offRow = TrackRow(id: off, name: TrackName(name: String(localized: "Off"), note: nil), chosen: model.subtitle == off) {
             model.chooseSubtitle(off)
         }
         return [offRow] + subtitles.map { track in
-            TrackRow(id: track.id, name: names[track.id], chosen: model.subtitle == track.id) { model.chooseSubtitle(track.id) }
+            TrackRow(id: track.id, name: track.pickerName, chosen: model.subtitle == track.id) { model.chooseSubtitle(track.id) }
         }
     }
 }

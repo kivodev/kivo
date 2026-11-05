@@ -807,9 +807,7 @@ public final class com/mmcdole/kivo/core/display/TrackName {
 
 public final class com/mmcdole/kivo/core/display/TrackNamesKt {
 	public static final fun delivered (Lcom/mmcdole/kivo/core/display/Display;Lcom/mmcdole/kivo/api/models/PlayTrack;)Ljava/lang/String;
-	public static final fun trackDetail (Lcom/mmcdole/kivo/core/display/Display;Lcom/mmcdole/kivo/api/models/Track;)Ljava/lang/String;
-	public static final fun trackNames (Lcom/mmcdole/kivo/core/display/Display;Ljava/util/List;)Ljava/util/Map;
-	public static final fun versionName (Lcom/mmcdole/kivo/core/display/Display;Lcom/mmcdole/kivo/api/models/Version;)Ljava/lang/String;
+	public static final fun getPickerName (Lcom/mmcdole/kivo/api/models/Track;)Lcom/mmcdole/kivo/core/display/TrackName;
 }
 
 public final class com/mmcdole/kivo/core/display/TrackWords {
@@ -1294,7 +1292,7 @@ public final class com/mmcdole/kivo/core/player/PictureInPicture {
 
 public final class com/mmcdole/kivo/core/player/PlayTracks {
 	public static final field INSTANCE Lcom/mmcdole/kivo/core/player/PlayTracks;
-	public final fun selected (Lcom/mmcdole/kivo/api/models/PlayStarted;Ljava/lang/String;)Ljava/lang/String;
+	public final fun selected (Lcom/mmcdole/kivo/api/models/PlayStarted;Lcom/mmcdole/kivo/api/models/TrackType;)Ljava/lang/String;
 	public final fun show (Lcom/mmcdole/kivo/api/models/PlayStarted;Ljava/lang/String;)Lcom/mmcdole/kivo/core/player/TrackShow;
 	public final fun show (Ljava/util/List;Ljava/lang/String;)Lcom/mmcdole/kivo/core/player/TrackShow;
 }
@@ -1625,7 +1623,7 @@ public final class com/mmcdole/kivo/core/session/SessionAccount {
 	public final fun setLibraries (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun setRememberTracks (ZLkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun setSubtitleLanguage (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
-	public final fun setSubtitleMode (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun setSubtitleMode (Lcom/mmcdole/kivo/api/models/SubtitleMode;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun signOutEverywhereElse (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun signOutSession (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun updatePlayback (Lcom/mmcdole/kivo/api/models/PlaybackPreferencesUpdate;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
@@ -1727,7 +1725,7 @@ public final class com/mmcdole/kivo/core/session/VideoPlayer {
 	public final fun chooseSubtitle (Ljava/lang/String;)V
 	public final fun chooseVersion (Ljava/lang/String;)V
 	public final fun dispose ()V
-	public final fun downloadSource (Lcom/mmcdole/kivo/core/display/Display;)Lcom/mmcdole/kivo/core/downloads/DownloadSource;
+	public final fun downloadSource ()Lcom/mmcdole/kivo/core/downloads/DownloadSource;
 	public final fun getController ()Lcom/mmcdole/kivo/core/play/PlayController;
 	public final fun getUi ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun handOver ()V

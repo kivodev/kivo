@@ -81,7 +81,7 @@ final class AVPlayerEngineTests: XCTestCase {
             startMs: 0,
             durationMs: 1_000,
             local: true,
-            delivery: "file",
+            delivery: .file,
             url: url,
             tracks: [],
             parts: [PlayPart(durationMs: 1_000, url: nil)],

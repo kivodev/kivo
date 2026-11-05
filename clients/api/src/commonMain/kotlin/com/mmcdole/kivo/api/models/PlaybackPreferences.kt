@@ -31,7 +31,7 @@ import kotlinx.serialization.encoding.*
 /**
  * How the user's plays start, when the request doesn't choose tracks. An episode starts with the languages last chosen for its series when `rememberTracks` is on. 
  *
- * @param subtitleMode When subtitles show: `none` never; `forced` a forced track in the audio's language; `smart` full subtitles in the subtitle language when the audio isn't in it, else as `forced`; `always` full subtitles in the subtitle language, else as `forced`. 
+ * @param subtitleMode 
  * @param rememberTracks Whether an episode starts with the audio and subtitle languages last chosen for its series, and choosing tracks for an episode remembers them. Off, each episode starts from these preferences. 
  * @param autoplayNext Whether up next plays the next episode by itself, counting down near the end of an episode. Off, up next shows the next episode without counting down, and playback stops at the end. 
  * @param bookSpeed The speed books play at, which the audio player sets; 1 is normal. Video always plays at normal speed. 
@@ -42,8 +42,7 @@ import kotlinx.serialization.encoding.*
 
 data class PlaybackPreferences (
 
-    /* When subtitles show: `none` never; `forced` a forced track in the audio's language; `smart` full subtitles in the subtitle language when the audio isn't in it, else as `forced`; `always` full subtitles in the subtitle language, else as `forced`.  */
-    @SerialName(value = "subtitleMode") @Required val subtitleMode: kotlin.String,
+    @SerialName(value = "subtitleMode") @Required val subtitleMode: com.mmcdole.kivo.api.models.SubtitleMode,
 
     /* Whether an episode starts with the audio and subtitle languages last chosen for its series, and choosing tracks for an episode remembers them. Off, each episode starts from these preferences.  */
     @SerialName(value = "rememberTracks") @Required val rememberTracks: kotlin.Boolean,
