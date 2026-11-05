@@ -2,6 +2,7 @@ import { fireEvent, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { locationOf, renderApp } from "@/test/render";
 import { mockIds, serveMockApi } from "@/test/server";
+import { scrollPage } from "@/tv/glide";
 import { stopTv } from "@/tv/start";
 
 const movies = `/libraries/${mockIds.movies}`;
@@ -122,5 +123,22 @@ describe("Library grid on TV", () => {
     // Left goes back to the grid.
     press("ArrowLeft");
     await waitFor(() => expect(focused()).toMatch(/^card:grid:/));
+  });
+  it("keeps the letter rail fixed to the window after a glide moved the content it shows in", async () => {
+    serveMockApi();
+    const { router } = renderApp("/");
+    await waitFor(() => expect(focused()).toMatch(/^card:/));
+    // Home's glide moves the screen's content as a whole, which keeps the layer it's given.
+    scrollPage(500, "smooth");
+    const content = document.querySelector<HTMLElement>('[data-part="tv-content"]');
+    expect(content?.style.willChange).toBe("transform");
+    await router.navigate({ href: movies });
+    await waitFor(() => expect(document.querySelector('[data-part="letter-rail"]')).not.toBeNull());
+    // Content still on a layer would hold the fixed rail in place of the
+    // window, and the rail would run the grid's whole height.
+    for (let el = document.querySelector('[data-part="letter-rail"]')?.parentElement; el; el = el.parentElement) {
+      expect(el.style.willChange, el.dataset.part ?? el.tagName).toBe("");
+      expect(el.style.transform, el.dataset.part ?? el.tagName).toBe("");
+    }
   });
 });

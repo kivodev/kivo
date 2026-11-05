@@ -31,6 +31,32 @@ export function pageScrollTarget(): number {
   return window.scrollY;
 }
 
+/**
+ * The elements a glide has moved. Each keeps its layer, and so its
+ * will-change, until it's no longer one that moves: an element with
+ * will-change: transform holds anything fixed inside it in place of the
+ * window, so one fixed to the screen that shows up inside it later, as the
+ * letter rail does in the content group Home glided, would stretch over the
+ * whole page and scroll with it.
+ */
+const moved = new Set<HTMLElement>();
+
+function release(el: HTMLElement) {
+  el.style.willChange = "";
+  el.style.transition = "";
+  el.style.transform = "";
+  moved.delete(el);
+}
+
+/**
+ * Lets go of the elements a glide moved around `fixed`, an element fixed to
+ * the screen, so it's fixed to the window again. It's called as one mounts,
+ * before the next glide would find it.
+ */
+export function releaseAround(fixed: Element) {
+  for (const el of moved) if (el.contains(fixed)) release(el);
+}
+
 /** The elements in root that move with the page, and none that's fixed to the screen. */
 function movers(root: Element): HTMLElement[] {
   const out: HTMLElement[] = [];
@@ -64,12 +90,14 @@ export function scrollPage(to: number, motion: "smooth" | "instant") {
   const target = Math.min(Math.max(to, 0), max);
   const root = document.getElementById("main") ?? document.querySelector("main");
   const moving = root ? movers(root) : [];
+  for (const el of moved) if (!moving.includes(el)) release(el);
+  for (const el of moving) moved.add(el);
   // Where the page shows now: where it's scrolled, less how far the content shows below that.
   const shown = window.scrollY - (moving[0] ? offsetOf(moving[0]) : 0);
   if (Math.abs(target - window.scrollY) >= 1) window.scrollTo({ top: target, behavior: "instant" });
   const from = motion === "smooth" ? target - shown : 0;
   for (const el of moving) {
-    // Its own layer for good, so the compositor moves it without painting it again.
+    // Its own layer for as long as it moves with the page, so the compositor moves it without painting it again.
     el.style.willChange = "transform";
     el.style.transition = "none";
     el.style.transform = `translateY(${from}px)`;
