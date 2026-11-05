@@ -74,6 +74,8 @@ import com.mmcdole.kivo.android.library.LibraryScreen
 import com.mmcdole.kivo.android.player.PlayerScreen
 import com.mmcdole.kivo.android.search.SearchScreen
 import com.mmcdole.kivo.android.settings.CreditsPage
+import com.mmcdole.kivo.android.settings.LicenseTextPage
+import com.mmcdole.kivo.android.settings.LicensesPage
 import com.mmcdole.kivo.android.settings.SettingsPageScreen
 import com.mmcdole.kivo.android.settings.SettingsScreen
 import com.mmcdole.kivo.android.theme.Kivo
@@ -204,7 +206,9 @@ fun MainScreen(session: ServerSession, onExit: () -> Unit) {
                             Screen.Search -> SearchScreen(session, navigator)
                             Screen.Settings -> SettingsScreen(session, navigator)
                             is Screen.SettingsPage -> SettingsPageScreen(session, target.group, navigator)
-                            Screen.Credits -> CreditsPage()
+                            Screen.Credits -> CreditsPage(navigator)
+                            Screen.Licenses -> LicensesPage(navigator)
+                            is Screen.LicenseText -> LicenseTextPage(target.id)
                             is Screen.Library -> LibraryScreen(session, target.id, navigator)
                             Screen.Favorites -> FavoritesScreen(session, navigator)
                             is Screen.FavoritesGrid -> FavoritesGridScreen(session, target.kind, navigator)

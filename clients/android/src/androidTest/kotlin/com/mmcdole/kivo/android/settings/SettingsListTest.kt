@@ -11,17 +11,22 @@ import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotFocused
+import androidx.compose.ui.test.hasScrollToNodeAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.requestFocus
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.mmcdole.kivo.android.theme.KivoTheme
 import com.mmcdole.kivo.android.ui.Choice
+import com.mmcdole.kivo.android.ui.Navigator
+import com.mmcdole.kivo.android.ui.Screen
 import com.mmcdole.kivo.android.ui.rememberFocusMemory
 import org.junit.Rule
 import org.junit.Test
@@ -75,10 +80,11 @@ class SettingsListTest {
     }
 
     @Test
-    fun theCreditsShowTmdbsLogoAndNoticeAndTakeFocusAsAPage() {
+    fun theCreditsShowTmdbsLogoAndNoticeWithFocusOnOpenSourceLicenses() {
+        val navigator = Navigator()
         compose.setContent {
             KivoTheme {
-                CreditsPage()
+                CreditsPage(navigator)
             }
         }
         compose.onNodeWithText("Credits").assertExists()
@@ -86,7 +92,29 @@ class SettingsListTest {
         compose.onNodeWithText("This product uses the TMDB API but is not endorsed or certified by TMDB.").assertExists()
         compose.onNodeWithText("Audiobook metadata from Audnexus").assertExists()
         compose.onNodeWithText("Transcoding by jellyfin-ffmpeg (GPL)").assertExists()
-        compose.waitUntil(5_000) { runCatching { compose.onNode(isFocused()).assertExists() }.isSuccess }
+        compose.waitUntil(5_000) { runCatching { compose.onNodeWithTag("licenses").assertIsFocused() }.isSuccess }
+        ok(compose.onNodeWithTag("licenses"))
+        assertEquals(Screen.Licenses, navigator.current.screen)
+    }
+
+    @Test
+    fun theLicensesListTheAppsLibrariesAndOpenALicensesText() {
+        val navigator = Navigator()
+        compose.setContent {
+            KivoTheme {
+                LicensesPage(navigator)
+            }
+        }
+        compose.waitUntil(5_000) { runCatching { compose.onNodeWithText("Open source licenses").assertExists() }.isSuccess }
+        // A library of the app's, one of :core's, and CLDR's terms after them, in a lazy list, so each is scrolled to first.
+        compose.waitUntil(10_000) { runCatching { compose.onNode(isFocused()).assertExists() }.isSuccess }
+        for (tag in listOf("license:androidx.media3:media3-exoplayer", "license:io.ktor:ktor-client-core", "license:Unicode CLDR")) {
+            compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasTestTag(tag))
+            compose.onNodeWithTag(tag).assertExists()
+        }
+        compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasTestTag("license:io.ktor:ktor-client-core"))
+        ok(compose.onNodeWithTag("license:io.ktor:ktor-client-core"))
+        assertEquals(Screen.LicenseText("io.ktor:ktor-client-core"), navigator.current.screen)
     }
 
     @Test

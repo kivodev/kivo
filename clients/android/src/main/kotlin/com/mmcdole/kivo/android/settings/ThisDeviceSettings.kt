@@ -220,11 +220,13 @@ private fun serverAddress(info: ServerInfo): String? = info.publicUrl ?: info.lo
 
 /**
  * Credits, opened from About: TMDB's logo and the notice its API terms ask
- * for, then Audnexus and jellyfin-ffmpeg. Nothing on it takes focus.
+ * for, then Audnexus and jellyfin-ffmpeg. Under them, Open source
+ * licenses, which takes focus, opens the app's.
  */
 @Composable
-internal fun CreditsPage() {
-    SettingsList(stringResource(R.string.credits), rememberFocusMemory(), initial = null, readOnly = true) {
+internal fun CreditsPage(navigator: Navigator) {
+    val memory = rememberFocusMemory()
+    SettingsList(stringResource(R.string.credits), memory, initial = "licenses") {
         item {
             Column(Modifier.padding(start = Kivo.space(4)), verticalArrangement = Arrangement.spacedBy(Kivo.space(2))) {
                 Image(
@@ -236,6 +238,14 @@ internal fun CreditsPage() {
                 Text(stringResource(R.string.credit_audnexus), style = TvType.body, color = Kivo.colors.textMuted)
                 Text(stringResource(R.string.credit_jellyfin_ffmpeg), style = TvType.body, color = Kivo.colors.textMuted)
             }
+        }
+        item {
+            ActionRow(
+                stringResource(R.string.open_source_licenses),
+                { navigator.push(Screen.Licenses) },
+                Modifier.padding(top = Kivo.space(4)).focusKey(memory, "licenses").testTag("licenses"),
+                opensPage = true,
+            )
         }
     }
 }
