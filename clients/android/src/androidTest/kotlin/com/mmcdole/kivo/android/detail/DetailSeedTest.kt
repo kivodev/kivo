@@ -186,7 +186,7 @@ class DetailSeedTest {
             id = "movie", kind = "movie", title = "Heat", matchState = "matched", available = true,
             images = WorkImages(backdrop = backdrop), genres = listOf("Crime"), studios = emptyList(), credits = emptyList(),
             externalIds = emptyList(),
-            versions = listOf(Version("version", true, 10_200_000, 1_000, listOf(VersionPart("file", "heat.mkv", 10_200_000, 1_000)), emptyList(), listOf("movie"))),
+            versions = listOf(Version("version", true, 10_200_000, 1_000, listOf(VersionPart("file", "heat.mkv", 10_200_000, 1_000)), emptyList(), listOf("movie"), "1080p")),
             extras = emptyList(), collections = emptyList(), year = 1995, durationMs = 10_200_000, communityRating = 8.3,
             communityVotes = 9000, contentRating = "R", overview = "A heist.", libraryId = "library",
         )

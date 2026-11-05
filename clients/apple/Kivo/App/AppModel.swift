@@ -63,8 +63,6 @@ final class AppModel {
     init(transport: BackgroundTransport) {
         let directory = URL.applicationSupportDirectory
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        // The language the app's text is in.
-        let language = Bundle.main.preferredLocalizations.first ?? "en"
         #if DEBUG
         // UI tests launch the app with the client ID it signs in as.
         let clientId = ProcessInfo.processInfo.environment["KIVO_CLIENT_ID"]
@@ -75,7 +73,6 @@ final class AppModel {
         device = AppleDevice(
             directory: directory.path(percentEncoded: false),
             name: AppleIdentity.modelName,
-            language: language,
             identity: AppleIdentity.current,
             clientId: clientId,
             subtitles: Self.subtitles,

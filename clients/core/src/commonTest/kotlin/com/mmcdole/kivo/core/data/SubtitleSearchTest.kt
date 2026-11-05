@@ -75,7 +75,7 @@ class SubtitleSearchTest {
 
     @Test
     fun namesAResultByLanguageAndFlagsWithItsReleaseUnder() {
-        val en = Display.forLocale("en")
+        val en = Display()
         assertEquals(
             TrackName("English · Exact match · SDH", "Dune.2021.2160p.UHD.BluRay"),
             en.subtitleResultName(result("a", hashMatch = true, sdh = true, release = "Dune.2021.2160p.UHD.BluRay"), "Exact match"),

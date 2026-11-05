@@ -21,7 +21,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class StreamInfoTest {
-    private val display = Display.forLocale("en")
+    private val display = Display()
     private val words = StreamInfoWords(
         playback = "Playback", container = "Container", video = "Video", audio = "Audio", subtitles = "Subtitles",
         quality = "QualityRequest", delivery = "Delivery", bitrate = "Bitrate", off = "Off", hls = "HLS", file = "File",

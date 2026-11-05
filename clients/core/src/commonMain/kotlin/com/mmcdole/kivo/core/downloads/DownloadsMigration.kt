@@ -34,7 +34,7 @@ internal fun withTrackNames(work: String): String {
     val json = kivoJson.parseToJsonElement(work) as? JsonObject ?: return work
     val versions = json["versions"] as? JsonArray ?: return work
     if (versions.all { it !is JsonObject || "name" in it }) return work
-    val display = Display.forLocale("en")
+    val display = Display()
     fun JsonObject.text(key: String) = (this[key] as? JsonPrimitive)?.contentOrNull
     fun track(t: JsonObject): JsonObject {
         if ("name" in t) return t

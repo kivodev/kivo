@@ -9,7 +9,7 @@ import XCTest
 /// only why when it failed. A show counts each of its episodes the same.
 @MainActor
 final class DownloadWordsTests: XCTestCase {
-    private let display = Display.companion.forLocale(tag: "en")
+    private let display = Display()
 
     private func item(
         _ status: any DownloadStatus, kind: String = "movie", season: Int? = nil, episode: Int? = nil,

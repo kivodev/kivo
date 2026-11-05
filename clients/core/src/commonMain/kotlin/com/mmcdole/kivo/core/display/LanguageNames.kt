@@ -6,7 +6,7 @@ import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 
 /**
- * CLDR's names for languages, scripts and regions in one locale, as
+ * CLDR's names for languages, scripts and regions, as
  * Intl.DisplayNames gives them, with the pattern and separator that join
  * a language to its script and region.
  */
@@ -53,11 +53,7 @@ internal data class LanguageNames(
             json.decodeFromString(MapSerializer(String.serializer(), String.serializer()), DisplayJson.LANGUAGE_ALIASES)
         }
 
-        private val tables: Map<String, Lazy<LanguageNames>> = DisplayJson.languages.mapValues { (_, text) ->
-            lazy { json.decodeFromString(serializer(), text) }
-        }
-
-        fun forLocale(locale: String): LanguageNames = (tables[locale] ?: tables.getValue("en")).value
+        val table: LanguageNames by lazy { json.decodeFromString(serializer(), DisplayJson.LANGUAGES) }
 
         /** A tag's language, script and region in their canonical case; null for anything else, such as a variant. */
         private fun split(tag: String): Triple<String, String, String>? {

@@ -26,7 +26,7 @@ export function playMethod(tracks: readonly Delivered[]): Method | undefined {
 
 /** "Styled", "Plain", "Image" or "Burned in", with the source's codec when given: "Styled (ASS)". */
 export function subtitleLabel(track: Pick<Delivered, "delivery" | "codec">, codec?: string): string {
-  const kinds = display().subtitleKinds;
+  const kinds = display.subtitleKinds;
   const kind =
     track.delivery === "burn"
       ? kinds.burn
@@ -45,13 +45,12 @@ export function trackLabel(track: Delivered): string {
 
 /** "Direct Play", "Direct Stream" or "Transcode". Unknown methods show as sent. */
 export function methodLabel(method: string): string {
-  return lookup(display().methods, method) ?? method;
+  return lookup(display.methods, method) ?? method;
 }
 
-/** A sentence for a playback reason code, in the active locale. */
+/** A sentence for a playback reason code. */
 export function describeReason(code: string): string {
-  const d = display();
-  return lookup(d.reasons, code) ?? d.unknownReason;
+  return lookup(display.reasons, code) ?? display.unknownReason;
 }
 
 /** The capability a track failed, for diagnostics: "maxLevel: 5.1, declared 4.1". */
@@ -71,5 +70,5 @@ export function mismatchLabel({
 
 /** Where a subtitle track lives: "Embedded", "External" (a file beside the video) or "Downloaded". */
 export function subtitleSource(source: string): string | undefined {
-  return lookup(display().tracks.sources, source);
+  return lookup(display.tracks.sources, source);
 }

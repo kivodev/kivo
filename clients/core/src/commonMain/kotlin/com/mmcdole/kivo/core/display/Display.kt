@@ -8,7 +8,7 @@ import com.mmcdole.kivo.api.models.TrackType
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-/** The words for tracks, from a locale's display table. */
+/** The words for tracks, from the display table. */
 @Serializable
 data class TrackWords(
     val unknownLanguage: String,
@@ -30,7 +30,7 @@ data class TrackWords(
 data class TrackFlags(val forced: String, val hearingImpaired: String, val commentary: String, val original: String)
 
 @Serializable
-internal data class LocaleTable(
+internal data class WordsTable(
     val methods: Map<String, String>,
     val subtitleKinds: Map<String, String>,
     val reasons: Map<String, String>,
@@ -55,7 +55,7 @@ internal data class LocaleTable(
     val downloads: DownloadWords,
 )
 
-/** The locale's decimal and grouping separators. */
+/** The decimal and grouping separators. */
 @Serializable
 internal data class NumberWords(val decimal: String, val group: String)
 
@@ -124,17 +124,24 @@ private val json = Json { ignoreUnknownKeys = true }
 
 internal val media: MediaTable by lazy { json.decodeFromString(MediaTable.serializer(), DisplayJson.MEDIA) }
 
+private val words: WordsTable by lazy { json.decodeFromString(WordsTable.serializer(), DisplayJson.WORDS) }
+
+private val STYLED_CODECS = setOf("ass", "ssa")
+private val IMAGE_CODECS = setOf("hdmv_pgs_subtitle", "pgs", "dvd_subtitle")
+
 /**
  * How playback is put in words, from the display tables the server and the
  * web client share (`shared/display`), generated into the core: methods,
- * subtitle kinds, reason texts, dialogue boost costs, track words and language
- * names per locale, and codec, container, channel, resolution and HDR names
- * for every locale. The server names tracks and versions; bitrates, sizes,
+ * subtitle kinds, reason texts, dialogue boost costs, track words, language
+ * names, and codec, container, channel, resolution and HDR names. The server names tracks and versions; bitrates, sizes,
  * runtimes, episode codes, quality choices and problems are put in words
  * here ([bitrate], [problem]), so every app says them alike. Each screen's
  * own words stay in its platform's resources.
  */
-class Display private constructor(internal val table: LocaleTable, internal val languages: LanguageNames) {
+class Display {
+    internal val table: WordsTable = words
+    internal val languages: LanguageNames = LanguageNames.table
+
     val tracks: TrackWords get() = table.tracks
 
     /** "Direct Play", "Direct Stream" or "Transcode"; an unknown method as sent. */
@@ -205,25 +212,4 @@ class Display private constructor(internal val table: LocaleTable, internal val 
 
     /** A language tag in words, "English", "Chinese (Traditional)"; "Unknown language" for none. */
     fun language(tag: String?): String = languages.name(tag, table.tracks.unknownLanguage)
-
-    companion object {
-        private val STYLED_CODECS = setOf("ass", "ssa")
-        private val IMAGE_CODECS = setOf("hdmv_pgs_subtitle", "pgs", "dvd_subtitle")
-
-        private val tables: Map<String, Lazy<Display>> = DisplayJson.locales.mapValues { (locale, text) ->
-            lazy { Display(json.decodeFromString(LocaleTable.serializer(), text), LanguageNames.forLocale(locale)) }
-        }
-
-        /** The locales with a display table. */
-        val locales: Set<String> get() = tables.keys
-
-        /**
-         * The table for a BCP 47 language tag, by its language (`fr-CA` is
-         * `fr`), else English.
-         */
-        fun forLocale(tag: String): Display {
-            val language = tag.substringBefore('-').substringBefore('_').lowercase()
-            return (tables[language] ?: tables.getValue("en")).value
-        }
-    }
 }

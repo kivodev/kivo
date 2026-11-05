@@ -6,12 +6,11 @@ import { describeReason } from "./playback";
 // `network` is the client's own code for a request that got no answer.
 
 /**
- * A sentence for a problem code, in the active locale. A code this version
+ * A sentence for a problem code. A code this version
  * doesn't know says that something went wrong.
  */
 export function describeProblem(code: string): string {
-  const d = display();
-  return lookup(d.problems, code) ?? d.unknownProblem;
+  return lookup(display.problems, code) ?? display.unknownProblem;
 }
 
 /**
@@ -20,7 +19,7 @@ export function describeProblem(code: string): string {
  * server knows.
  */
 export function describeSubtitleFailure(code: string, time?: string): string {
-  const words = display().subtitleSearch;
+  const words = display.subtitleSearch;
   switch (code) {
     case "notConfigured":
       return words.notConfigured;
@@ -37,8 +36,7 @@ export function describeSubtitleFailure(code: string, time?: string): string {
 
 /** A play stopped elsewhere, by another device or an admin, with the admin's message if there is one. */
 export function describePlayStopped(message?: string): string {
-  const d = display();
-  return message ? d.adminStopped.replace("{message}", message) : d.playStopped;
+  return message ? display.adminStopped.replace("{message}", message) : display.playStopped;
 }
 
 /** Why a play failed. It is the server's reason for a refused play, or else the play's problem. */

@@ -8,7 +8,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class TrackNamesTest {
-    private val en = Display.forLocale("en")
+    private val en = Display()
 
     @Test
     fun aPickerShowsTheServersNameWithTheTitleUnderIt() {
@@ -31,6 +31,6 @@ class TrackNamesTest {
         assertEquals("Chinese (Traditional, Taiwan)", en.language("zh-Hant-TW"))
         assertEquals("American English", en.language("en-US"))
         assertEquals("Unknown language", en.language(null))
-        assertEquals("Langue inconnue", Display.forLocale("fr").language("und"))
+        assertEquals("Unknown language", en.language("und"))
     }
 }

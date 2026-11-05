@@ -32,7 +32,6 @@ class AndroidDevice(context: Context) : Device {
     override val identity: ClientIdentity = AndroidIdentity(context)
 
     /** The language the app shows: the one its strings resolved to. */
-    override val language: String = context.getString(R.string.language_tag)
 
     override val preferences: DataStore<Preferences> =
         PreferenceDataStoreFactory.create { File(context.filesDir, "datastore/kivo.preferences_pb") }

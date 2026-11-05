@@ -31,11 +31,14 @@ import com.mmcdole.kivo.api.models.Marker
 import com.mmcdole.kivo.api.models.DialogueBoost
 import com.mmcdole.kivo.api.models.PlayCreate
 import com.mmcdole.kivo.api.models.EpisodeInfo
+import com.mmcdole.kivo.api.models.PlayDelivery
 import com.mmcdole.kivo.api.models.PlayPart
 import com.mmcdole.kivo.api.models.PlayTrack
 import com.mmcdole.kivo.api.models.PlayStarted
 import com.mmcdole.kivo.api.models.ServerInfo
 import com.mmcdole.kivo.api.models.Track
+import com.mmcdole.kivo.api.models.TrackDelivery
+import com.mmcdole.kivo.api.models.TrackType
 import com.mmcdole.kivo.api.models.Version
 import com.mmcdole.kivo.api.models.VersionPart
 import com.mmcdole.kivo.api.models.WorkDetail
@@ -333,9 +336,9 @@ class PlayerHarness(private val compose: ComposeContentTestRule, private val clo
 
         /** Two audio tracks, so Audio & Subtitles has a choice. */
         val tracks = listOf(
-            Track("video", "video", "h264", true, "1080p H.264"),
-            Track("english", "audio", "aac", true, "English"),
-            Track("french", "audio", "aac", false, "French"),
+            Track("video", TrackType.Video, "h264", true, "H.264 1080p", "H.264 1080p · Default"),
+            Track("english", TrackType.Audio, "aac", true, "English", "English · Default"),
+            Track("french", TrackType.Audio, "aac", false, "French", "French"),
         )
 
         fun episode(id: String, number: Int, previousId: String?, nextId: String?) = WorkDetail(
@@ -359,6 +362,7 @@ class PlayerHarness(private val compose: ComposeContentTestRule, private val clo
                     parts = listOf(VersionPart("$id-file", "$id.mkv", DURATION_MS, 1_000_000_000)),
                     tracks = tracks,
                     workIds = listOf(id),
+                    name = "1080p",
                 ),
             ),
             extras = emptyList(),
@@ -374,9 +378,9 @@ class PlayerHarness(private val compose: ComposeContentTestRule, private val clo
             startMs = startMs,
             durationMs = DURATION_MS,
             local = true,
-            delivery = "file",
+            delivery = PlayDelivery.File,
             url = "plays/play/files/0",
-            tracks = listOf(PlayTrack("english", "audio", selected = true, delivery = "file", index = 1)),
+            tracks = listOf(PlayTrack("english", TrackType.Audio, selected = true, delivery = TrackDelivery.File, index = 1)),
             parts = listOf(PlayPart(DURATION_MS)),
             chapters = chapters,
             markers = markers,

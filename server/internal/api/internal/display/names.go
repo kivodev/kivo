@@ -189,6 +189,7 @@ func quality(v gen.Version) string {
 
 // baseName is the language, marked as the original beside a dub, and the
 // flags that matter: "English", "Japanese [Original]", "English · SDH".
+// Forced only matters for subtitles, so audio never says it.
 func baseName(t gen.Track) []string {
 	lang := language(t.Language)
 	if deref(t.Original) {
@@ -198,7 +199,7 @@ func baseName(t gen.Track) []string {
 	if deref(t.HearingImpaired) {
 		out = append(out, tracks.Flags.HearingImpaired)
 	}
-	if deref(t.Forced) {
+	if deref(t.Forced) && t.Type == gen.TrackTypeSubtitle {
 		out = append(out, tracks.Flags.Forced)
 	}
 	if deref(t.Commentary) {

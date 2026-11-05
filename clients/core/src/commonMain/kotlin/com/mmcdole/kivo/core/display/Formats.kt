@@ -6,7 +6,7 @@ import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.core.settings.Quality
 
 // Numbers the API sends as integers (bitrates in bits per second, sizes in
-// bytes, durations in milliseconds) in the locale's words. Every value is
+// bytes, durations in milliseconds) in the display table's words. Every value is
 // rounded half up in integers, a decimal shown only under 10.
 
 /** A bitrate in megabits per second: "9.8 Mb/s", "20 Mb/s". */

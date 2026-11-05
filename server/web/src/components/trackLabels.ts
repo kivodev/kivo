@@ -22,15 +22,15 @@ export function containerName(container: string | undefined): string | undefined
 }
 
 /**
- * A language tag in words, in `locale`, which defaults to the active one.
+ * A language tag in words, in English, as the shared tables name it.
  * A dialect uses its own name ("American English"). Otherwise the name is
  * the language with its script and region ("Chinese (Traditional,
  * Taiwan)"). An ISO 639-2 code is read as its language ("eng" is English).
  * A missing tag, und or "null" is the display table's unknown language. A
  * tag that Intl has no name for shows as written.
  */
-export function languageName(tag: string | undefined, locale: string = i18n.locale): string {
-  const unknown = display().tracks.unknownLanguage;
+export function languageName(tag: string | undefined): string {
+  const unknown = display.tracks.unknownLanguage;
   if (!hasLanguage(tag)) return unknown;
   const [first = "", ...rest] = tag.split(/[-_]/);
   const language = first.toLowerCase();
@@ -38,7 +38,7 @@ export function languageName(tag: string | undefined, locale: string = i18n.loca
   const canonical = alias ? (rest.length > 0 ? [alias.split("-")[0], ...rest] : [alias]) : [language, ...rest];
   if (canonical[0] === "und") return unknown;
   try {
-    return new Intl.DisplayNames([locale], { type: "language", fallback: "none" }).of(canonical.join("-")) ?? tag;
+    return new Intl.DisplayNames(["en"], { type: "language", fallback: "none" }).of(canonical.join("-")) ?? tag;
   } catch {
     // A malformed tag, which Intl rejects, shows as written too.
     return tag;
@@ -47,7 +47,7 @@ export function languageName(tag: string | undefined, locale: string = i18n.loca
 
 /** "Mono", "Stereo", "5.1" or "7.1" for a channel count, or else the count in words. */
 export function channelLayout(channels: number): string {
-  return lookup(media.channels, String(channels)) ?? display().tracks.channels.replace("{channels}", String(channels));
+  return lookup(media.channels, String(channels)) ?? display.tracks.channels.replace("{channels}", String(channels));
 }
 
 /**
@@ -79,7 +79,7 @@ export function hdrName(hdr: string): string {
 
 /** The language, marked as the original beside a dub, and the flags that matter: "English", "Japanese [Original]", "English · SDH". */
 function baseName(t: Track): string[] {
-  const flags = display().tracks.flags;
+  const flags = display.tracks.flags;
   const language = languageName(t.language);
   const parts = [t.original ? `${language} [${flags.original}]` : language];
   if (t.hearingImpaired) parts.push(flags.hearingImpaired);

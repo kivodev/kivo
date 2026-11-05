@@ -140,7 +140,6 @@ private object Identity : ClientIdentity {
 private class TestDevice(withDownloads: Boolean) : Device {
     override val name = "Living Room"
     override val identity = Identity
-    override val language = "en"
     override val preferences = MemoryPreferences()
     override val secureStore = MemoryStore()
     override val capabilities = Probe()

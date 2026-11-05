@@ -12,21 +12,13 @@ import com.mmcdole.kivo.core.settings.Quality
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 class DisplayTest {
-    private val en = Display.forLocale("en-US")
-
-    @Test
-    fun readsTheSharedTablesForEachLocale() {
-        assertTrue("en" in Display.locales && "fr" in Display.locales)
-        assertEquals("Direct Stream", en.method("directStream"))
-        assertEquals("Flux direct", Display.forLocale("fr-CA").method("directStream"))
-        assertEquals("Direct Stream", Display.forLocale("de").method("directStream"), "English for a locale without a table")
-    }
+    private val en = Display()
 
     @Test
     fun fallsBackAsTheWebClientDoes() {
+        assertEquals("Direct Stream", en.method("directStream"))
         assertEquals("somethingNew", en.method("somethingNew"))
         assertEquals("This version of Kivo doesn't know why.", en.reason("somethingNew"))
         assertEquals("The audio has more channels than this device plays.", en.reason("audioChannelsUnsupported"))
@@ -71,17 +63,6 @@ class DisplayTest {
         assertEquals("Transcode", en.method(play(PlayTrack("v1", TrackType.Video, selected = true, delivery = TrackDelivery.Stream, transcode = TrackTranscode(1280, 720)))))
         assertEquals("Transcode", en.method(play(transcoded)), "without video, the audio's")
         assertEquals("Direct Stream", en.method(play(PlayTrack("v2", TrackType.Video, delivery = TrackDelivery.Stream, transcode = TrackTranscode(1280, 720)))), "only a selected track counts")
-    }
-
-    /** English's formats are in the shared vectors (VectorsTest); another locale has its own words and separators. */
-    @Test
-    fun formatsInTheLocalesWordsAndSeparators() {
-        val fr = Display.forLocale("fr")
-        assertEquals("9,8 Mbit/s", fr.bitrate(9_800_000))
-        assertEquals("1 234 Go", fr.size(1_234_000_000_000))
-        assertEquals("2 h 46 min", fr.runtime(9_960_000))
-        assertEquals("1 h 34 min restantes", fr.timeLeft(5_640_000))
-        assertEquals("2 h restantes", fr.timeLeft(7_200_000))
     }
 
     @Test

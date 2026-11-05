@@ -16,7 +16,7 @@ import (
 
 var (
 	//go:embed en.json
-	localeJSON []byte
+	wordsJSON []byte
 	//go:embed media.json
 	mediaJSON []byte
 	//go:embed languages.json
@@ -25,7 +25,7 @@ var (
 	aliasesJSON []byte
 )
 
-// words are the locale table's words for tracks.
+// words are the display table's words for tracks.
 type words struct {
 	UnknownLanguage string `json:"unknownLanguage"`
 	Default         string `json:"default"`
@@ -41,7 +41,7 @@ type words struct {
 	AudioOnly      string            `json:"audioOnly"`
 }
 
-// mediaNames are the names of codecs and formats, the same in every locale.
+// mediaNames are the names of codecs and formats.
 type mediaNames struct {
 	Codecs       map[string]string `json:"codecs"`
 	Channels     map[string]string `json:"channels"`
@@ -55,7 +55,7 @@ type mediaNames struct {
 var (
 	tracks = decode[struct {
 		Tracks words `json:"tracks"`
-	}](localeJSON).Tracks
+	}](wordsJSON).Tracks
 	media     = decode[mediaNames](mediaJSON)
 	languages = decode[languageNames](languagesJSON)
 	aliases   = decode[map[string]string](aliasesJSON)

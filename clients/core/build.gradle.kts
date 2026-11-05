@@ -20,35 +20,26 @@ val ktorVersion = "3.5.1"
 val sqldelightVersion = "2.4.1"
 
 /**
- * Writes the shared display tables (shared/display: one table per locale
- * and media.json, and languages/: each locale's language names and the
- * tag aliases) into a Kotlin object as JSON text, which display parses,
- * so the tables have one source and need no resource loading on any target.
+ * Writes the shared display tables (shared/display: en.json, media.json, and
+ * languages/: the language names and the tag aliases) into a Kotlin object
+ * as JSON text, which display parses, so the tables have one source and need
+ * no resource loading on any target.
  */
 abstract class DisplayTables : DefaultTask() {
-    @get:InputFiles
-    @get:PathSensitive(PathSensitivity.NAME_ONLY)
-    abstract val tables: ConfigurableFileCollection
-
-    @get:InputFiles
-    @get:PathSensitive(PathSensitivity.NAME_ONLY)
-    abstract val languages: ConfigurableFileCollection
+    @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val tables: DirectoryProperty
 
     @get:OutputDirectory
     abstract val output: DirectoryProperty
 
     @TaskAction
     fun write() {
-        fun literal(json: String) = "\"" + json
+        fun literal(path: String) = "\"" + tables.get().file(path).asFile.readText()
             .replace("\\", "\\\\")
             .replace("\"", "\\\"")
             .replace("\$", "\\\$")
             .replace("\n", "\\n") + "\""
-        val files = tables.files.sortedBy { it.name }
-        val media = files.single { it.name == "media.json" }
-        val locales = files.filter { it != media }
-        val languageFiles = languages.files.sortedBy { it.name }
-        val aliases = languageFiles.single { it.name == "aliases.json" }
         val out = output.get().file("com/mmcdole/kivo/core/display/DisplayJson.kt").asFile
         out.parentFile.mkdirs()
         out.writeText(
@@ -57,14 +48,10 @@ abstract class DisplayTables : DefaultTask() {
                 appendLine("package com.mmcdole.kivo.core.display")
                 appendLine()
                 appendLine("internal object DisplayJson {")
-                appendLine("    val locales: Map<String, String> = mapOf(")
-                for (file in locales) appendLine("        \"${file.nameWithoutExtension}\" to ${literal(file.readText())},")
-                appendLine("    )")
-                appendLine("    const val MEDIA: String = ${literal(media.readText())}")
-                appendLine("    val languages: Map<String, String> = mapOf(")
-                for (file in languageFiles - aliases) appendLine("        \"${file.nameWithoutExtension}\" to ${literal(file.readText())},")
-                appendLine("    )")
-                appendLine("    const val LANGUAGE_ALIASES: String = ${literal(aliases.readText())}")
+                appendLine("    const val WORDS: String = ${literal("en.json")}")
+                appendLine("    const val MEDIA: String = ${literal("media.json")}")
+                appendLine("    const val LANGUAGES: String = ${literal("languages/en.json")}")
+                appendLine("    const val LANGUAGE_ALIASES: String = ${literal("languages/aliases.json")}")
                 appendLine("}")
             },
         )
@@ -72,8 +59,7 @@ abstract class DisplayTables : DefaultTask() {
 }
 
 val displayTables = tasks.register<DisplayTables>("displayTables") {
-    tables.from(fileTree(rootDir.resolve("../shared/display")) { include("*.json") })
-    languages.from(fileTree(rootDir.resolve("../shared/display/languages")) { include("*.json") })
+    tables.set(rootDir.resolve("../shared/display"))
     output.set(layout.buildDirectory.dir("generated/display"))
 }
 

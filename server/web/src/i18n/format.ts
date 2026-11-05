@@ -63,13 +63,13 @@ function inHours(ms: number, inMinutes: string, inWholeHours: string, inHoursMin
 
 /** A runtime, such as "2h 46m", "48m" or "2h". */
 export function formatRuntime(ms: number): string {
-  const words = display().durations;
+  const words = display.durations;
   return inHours(ms, words.minutes, words.hours, words.hoursMinutes);
 }
 
 /** Time left, such as "18 min left", "1 hr 34 min left" or "2 hr left". */
 export function formatTimeLeft(ms: number): string {
-  const words = display().durations;
+  const words = display.durations;
   return inHours(ms, words.minutesLeft, words.hoursLeft, words.hoursMinutesLeft);
 }
 
@@ -116,7 +116,7 @@ export function formatClock(ms: number): string {
 
 /** A file size, such as "58 GB", "5.1 GB", "700 MB" or "300 KB". */
 export function formatSize(bytes: number): string {
-  const sizes = display().sizes;
+  const sizes = display.sizes;
   if (bytes >= 1e9) return fill(sizes.gigabytes, { n: scaled(bytes, 1e9) });
   if (bytes >= 1e6) return fill(sizes.megabytes, { n: scaled(bytes, 1e6) });
   return fill(sizes.kilobytes, { n: scaled(bytes, 1e3) });
@@ -124,13 +124,13 @@ export function formatSize(bytes: number): string {
 
 /** A bitrate, such as "8 Mb/s" or "9.8 Mb/s". */
 export function formatBitrate(bps: number): string {
-  return fill(display().bitrate, { n: scaled(bps, 1e6) });
+  return fill(display.bitrate, { n: scaled(bps, 1e6) });
 }
 
 /** An episode's place, such as "S3 · E4", or "S1 · E1 to E2" for a file holding several. */
 export function formatEpisodeCode(episode: { seasonNumber: number; number: number; endNumber?: number }): string {
   const { seasonNumber, number, endNumber } = episode;
-  const words = display().episodeCode;
+  const words = display.episodeCode;
   const place = { season: String(seasonNumber), episode: String(number) };
   return endNumber !== undefined && endNumber !== number
     ? fill(words.range, { ...place, end: String(endNumber) })
@@ -141,7 +141,7 @@ type Rung = { bitrateBps: number; height: number };
 
 /** A rung of the quality ladder, by its height and bitrate, such as "1080p · 8 Mb/s". */
 export function formatRung({ bitrateBps, height }: Rung): string {
-  return fill(display().quality.rung, { height: String(height), bitrate: formatBitrate(bitrateBps) });
+  return fill(display.quality.rung, { height: String(height), bitrate: formatBitrate(bitrateBps) });
 }
 
 /**
@@ -154,7 +154,7 @@ export function formatRung({ bitrateBps, height }: Rung): string {
  *    ladder has no rung for it.
  */
 export function formatQuality(quality: "auto" | "original" | number, rung?: Rung, sourceBps?: number): string {
-  const words = display().quality;
+  const words = display.quality;
   if (quality === "auto") return words.auto;
   if (quality === "original") {
     return sourceBps === undefined ? words.original : fill(words.originalAt, { bitrate: formatBitrate(sourceBps) });

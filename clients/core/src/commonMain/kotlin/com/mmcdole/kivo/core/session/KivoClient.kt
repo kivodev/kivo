@@ -108,8 +108,8 @@ class KivoClient internal constructor(
 
     internal suspend fun clientId(): String = clientIds.get()
 
-    /** The display tables for the app's language, else English. */
-    val display: Display = Display.forLocale(device.language)
+    /** The display tables. */
+    val display: Display = Display()
 
     /** From the platform's background transfers: how a transfer is going. Any thread. */
     fun transferChanged(event: TransferEvent) {

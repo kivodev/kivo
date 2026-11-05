@@ -76,6 +76,11 @@ func TestNames(t *testing.T) {
 			[]string{"English · Forced", "English", "English · Commentary · 2.0", "English · Mono"},
 		},
 		{
+			"Forced on subtitles only, audio told apart by codec",
+			names(with(audio("ac3", "eng", 2, "2.0"), func(t *gen.Track) { t.Forced = ptr(true) }), audio("aac", "eng", 2, "2.0")),
+			[]string{"English · 2.0 · AC-3", "English · 2.0 · AAC"},
+		},
+		{
 			"an embedded subtitle beside a file, then numbers",
 			names(subtitle("subrip", "eng", embedded), subtitle("subrip", "eng", external),
 				subtitle("subrip", "fre", embedded), subtitle("subrip", "fre", embedded), subtitle("ass", "fre", embedded)),

@@ -705,7 +705,7 @@ public final class com/mmcdole/kivo/core/discovery/FoundServer {
 }
 
 public final class com/mmcdole/kivo/core/display/Display {
-	public static final field Companion Lcom/mmcdole/kivo/core/display/Display$Companion;
+	public fun <init> ()V
 	public final fun channels (I)Ljava/lang/String;
 	public final fun channels (Ljava/lang/String;I)Ljava/lang/String;
 	public final fun codec (Ljava/lang/String;)Ljava/lang/String;
@@ -721,11 +721,6 @@ public final class com/mmcdole/kivo/core/display/Display {
 	public final fun resolution (Ljava/lang/String;)Ljava/lang/String;
 	public final fun subtitleKind (Lcom/mmcdole/kivo/api/models/PlayTrack;)Ljava/lang/String;
 	public final fun subtitleSource (Ljava/lang/String;)Ljava/lang/String;
-}
-
-public final class com/mmcdole/kivo/core/display/Display$Companion {
-	public final fun forLocale (Ljava/lang/String;)Lcom/mmcdole/kivo/core/display/Display;
-	public final fun getLocales ()Ljava/util/Set;
 }
 
 public final class com/mmcdole/kivo/core/display/FormatsKt {
@@ -1480,7 +1475,6 @@ public abstract interface class com/mmcdole/kivo/core/session/Device {
 	public abstract fun getCapabilities ()Lcom/mmcdole/kivo/core/caps/CapabilityProbe;
 	public fun getDownloads ()Lcom/mmcdole/kivo/core/session/DownloadDevice;
 	public abstract fun getIdentity ()Lcom/mmcdole/kivo/core/auth/ClientIdentity;
-	public abstract fun getLanguage ()Ljava/lang/String;
 	public abstract fun getName ()Ljava/lang/String;
 	public fun getPlatform ()Ljava/lang/String;
 	public abstract fun getPreferences ()Landroidx/datastore/core/DataStore;

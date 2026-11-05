@@ -17,6 +17,7 @@ import com.mmcdole.kivo.android.theme.KivoTheme
 import com.mmcdole.kivo.api.models.AudioTrackInfo
 import com.mmcdole.kivo.api.models.SubtitleTrackInfo
 import com.mmcdole.kivo.api.models.Track
+import com.mmcdole.kivo.api.models.TrackType
 import com.mmcdole.kivo.core.display.Display
 import com.mmcdole.kivo.core.player.Subtitles
 import org.junit.Rule
@@ -37,18 +38,20 @@ class TracksPanelTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private fun audio(id: String, codec: String, title: String, channels: Int, layout: String, commentary: Boolean = false) =
-        Track(id, "audio", codec, id == "a1", language = "eng", title = title, commentary = commentary.takeIf { it }, audio = AudioTrackInfo(channels, layout))
+    private fun audio(id: String, name: String, codec: String, title: String, channels: Int, layout: String, commentary: Boolean = false) =
+        Track(id, TrackType.Audio, codec, id == "a1", name, name, language = "eng", title = title, commentary = commentary.takeIf { it }, audio = AudioTrackInfo(channels, layout))
 
     private fun subtitle(id: String, language: String, title: String? = null) =
-        Track(id, "subtitle", "hdmv_pgs_subtitle", false, language = language, title = title, subtitle = SubtitleTrackInfo("embedded"))
+        Display().language(language).let { name ->
+            Track(id, TrackType.Subtitle, "hdmv_pgs_subtitle", false, name, name, language = language, title = title, subtitle = SubtitleTrackInfo("embedded"))
+        }
 
     private val audio = listOf(
-        audio("a1", "eac3", "E-AC3 DD+5.1 1024kbs", 6, "5.1"),
-        audio("a2", "eac3", "E-AC3 DD+4.0 1024kbs Surround Mix", 4, "4.0"),
-        audio("a3", "flac", "Flac 2.0 Original Stereo Audio 627 kb/s", 2, "2.0"),
-        audio("a4", "ac3", "Commentary by director Ron Underwood", 2, "2.0", commentary = true),
-        audio("a5", "ac3", "Commentary by Jonathan Melville", 2, "2.0", commentary = true),
+        audio("a1", "English · 5.1", "eac3", "E-AC3 DD+5.1 1024kbs", 6, "5.1"),
+        audio("a2", "English · 4.0", "eac3", "E-AC3 DD+4.0 1024kbs Surround Mix", 4, "4.0"),
+        audio("a3", "English · 2.0 · FLAC", "flac", "Flac 2.0 Original Stereo Audio 627 kb/s", 2, "2.0"),
+        audio("a4", "English · Commentary · 2.0", "ac3", "Commentary by director Ron Underwood", 2, "2.0", commentary = true),
+        audio("a5", "English · Commentary · 2.0", "ac3", "Commentary by Jonathan Melville", 2, "2.0", commentary = true),
     )
 
     private val subtitles = listOf("eng", "eng", "jpn", "fre", "ita", "ger", "spa", "dut", "chi", "dan", "fin", "gre", "nor", "ice", "kor", "por", "swe", "chi")
@@ -62,7 +65,6 @@ class TracksPanelTest {
             KivoTheme {
                 TracksPanel(
                     tracks = TrackChoices(audio, subtitles, playing, subtitle),
-                    display = Display.forLocale("en"),
                     onAudio = { chosen += it },
                     onSubtitle = { chosen += it },
                     onDismiss = { closed = true },
@@ -149,7 +151,6 @@ class TracksPanelTest {
             KivoTheme {
                 TracksPanel(
                     tracks = TrackChoices(audio.take(1), emptyList(), "a1", Subtitles.OFF, searchable = true),
-                    display = Display.forLocale("en"),
                     onAudio = { chosen += it },
                     onSubtitle = { chosen += it },
                     onDismiss = { closed = true },

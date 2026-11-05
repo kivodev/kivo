@@ -715,7 +715,7 @@ class DownloadsTest {
     @Test
     fun aDownloadedOriginalPlaysDirectlyAsItsSource() = runTest {
         val (started, source) = playOffline(DownloadDelivery.File, "original")
-        val en = Display.forLocale("en")
+        val en = Display()
         assertEquals("Direct Play", en.method(started))
         val (video, audio) = started.tracks
         assertEquals(listOf(TrackDelivery.File, TrackDelivery.File), listOf(video.delivery, audio.delivery))
@@ -729,7 +729,7 @@ class DownloadsTest {
     @Test
     fun aDownloadedConversionPlaysDirectlyAsWhatItBecame() = runTest {
         val (started, source) = playOffline(DownloadDelivery.Conversion, "standard")
-        val en = Display.forLocale("en")
+        val en = Display()
         assertEquals("Direct Play", en.method(started))
         val (video, audio) = started.tracks
         assertEquals("Direct Play", en.method(video))
@@ -1326,7 +1326,7 @@ class DownloadsTest {
 
     @Test
     fun qualitiesAreNamedByPurpose() {
-        val en = Display.forLocale("en")
+        val en = Display()
         assertEquals("High", en.downloadQuality("high"))
         assertEquals("Standard", en.downloadQuality("standard"))
         assertEquals("Original", en.downloadQuality("original"))
@@ -1335,7 +1335,7 @@ class DownloadsTest {
     // Migration (downloads): remove after every client has updated past this release.
     @Test
     fun anEarlierVersionsQualityIsNamedAsItsQualityNow() {
-        val en = Display.forLocale("en")
+        val en = Display()
         assertEquals("High", en.downloadQuality("1080p-high"))
         assertEquals("Standard", en.downloadQuality("480p"))
     }

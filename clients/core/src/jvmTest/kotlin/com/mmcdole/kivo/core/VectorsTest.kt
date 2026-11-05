@@ -51,7 +51,7 @@ import kotlin.test.assertTrue
  */
 class VectorsTest {
     private val json = Json { ignoreUnknownKeys = true }
-    private val en = Display.forLocale("en")
+    private val en = Display()
 
     private fun vectors(name: String): JsonObject =
         json.parseToJsonElement(File("../../shared/display/vectors/$name.json").readText()).jsonObject
