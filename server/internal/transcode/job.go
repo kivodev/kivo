@@ -173,6 +173,11 @@ func (s *Stream) produce(ctx context.Context, j *job) error {
 			return err
 		}
 		i := s.segmentOf(j, part, cur, seg)
+		if i < j.from {
+			// A copied job's input seek can land on a keyframe in the
+			// segment before its first. That segment would be incomplete.
+			continue
+		}
 		if i != cur {
 			if f != nil {
 				if err := finish(); err != nil {

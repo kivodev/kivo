@@ -59,6 +59,7 @@ type fakeMedia struct {
 	cues      []media.Cue     // the text track; each cue is read along with the fragment it starts in
 	start     time.Duration   // the source's first timestamp, which copied cue times include
 	lost      []time.Duration // keyframes a job from the start doesn't emit, because its plan is wrong there
+	early     time.Duration   // how far before a copied job's start its input seek lands
 
 	mu       sync.Mutex
 	requests []media.TranscodeRequest
@@ -109,7 +110,7 @@ func (m *fakeMedia) starts(req media.TranscodeRequest) []time.Duration {
 	var out []time.Duration
 	if req.Video.Codec == media.Copy {
 		for _, k := range m.keys {
-			if k.Time >= req.Start && !(req.Start == 0 && slices.Contains(m.lost, k.Time)) {
+			if k.Time >= req.Start-m.early && !(req.Start == 0 && slices.Contains(m.lost, k.Time)) {
 				out = append(out, k.Time)
 			}
 		}
@@ -403,6 +404,39 @@ func TestSeeks(t *testing.T) {
 		// Behind the new job and not on disk, the job restarts there too.
 		if _, err := s.Segment(ctx, "40.m4s"); err != nil || len(m.jobs()) != 3 {
 			t.Fatalf("a seek back past the disk: %v, %d jobs", err, len(m.jobs()))
+		}
+	})
+}
+
+func TestSeekLandingInThePreviousSegment(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		// The input seek lands on the keyframe before the job's start, so
+		// the job's first fragment belongs to the segment before it.
+		m := &fakeMedia{early: 2 * time.Second}
+		tr, spec := fixture(t, m)
+		s, err := tr.Open(ctx, spec, 8*time.Minute)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer s.Close()
+		for _, name := range []string{"80.m4s", "81.m4s"} {
+			if _, err := s.Segment(ctx, name); err != nil {
+				t.Fatalf("segment %s: %v", name, err)
+			}
+		}
+		if got := read(t, s.path(80)); got != "[8m0s][8m2s][8m4s]" {
+			t.Fatalf("segment 80 = %q", got)
+		}
+		if n := len(m.jobs()); n != 1 {
+			t.Fatalf("%d jobs", n)
+		}
+		// The job leaves the segment before its first alone, since it
+		// has only that segment's last fragment.
+		s.mu.Lock()
+		done := s.done[79]
+		s.mu.Unlock()
+		if done {
+			t.Fatal("segment 79 was written from its last fragment")
 		}
 	})
 }
