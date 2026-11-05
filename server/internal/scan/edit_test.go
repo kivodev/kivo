@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/mmcdole/kivo/internal/catalog"
+	"github.com/mmcdole/kivo/internal/catalog/catalogtest"
 	"github.com/mmcdole/kivo/internal/id"
 )
 
@@ -20,7 +21,7 @@ func TestEditLibraryScansAddedFolders(t *testing.T) {
 	h.folders["/b"] = newMemFS()
 	h.folders["/b"].write("B/b.mkv", "b", old)
 
-	err := h.s.EditLibrary(ctx, l.ID, catalog.LibraryChange{Name: new("Films"), Folders: &[]string{"/a", "/b"}})
+	err := h.s.EditLibrary(ctx, l.ID, catalog.LibraryChange{Name: new("Films"), Folders: &[]string{catalogtest.Abs("/a"), catalogtest.Abs("/b")}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +34,7 @@ func TestEditLibraryScansAddedFolders(t *testing.T) {
 	}
 	var added id.ID
 	for _, r := range l.Folders {
-		if r.Path == "/b" {
+		if r.Path == catalogtest.Abs("/b") {
 			added = r.ID
 		}
 	}
@@ -70,7 +71,7 @@ func TestEditLibraryRemovesDroppedFolders(t *testing.T) {
 	h.scanLibrary(l.ID)
 	h.tasks.reset()
 
-	if err := h.s.EditLibrary(ctx, l.ID, catalog.LibraryChange{Folders: &[]string{"/a"}}); err != nil {
+	if err := h.s.EditLibrary(ctx, l.ID, catalog.LibraryChange{Folders: &[]string{catalogtest.Abs("/a")}}); err != nil {
 		t.Fatal(err)
 	}
 	if got := h.tasks.of(catalog.TaskLibraryChanges); !slices.Equal(got, []id.ID{b}) {
@@ -101,7 +102,7 @@ func TestScanStopsWhenItsFolderIsDropped(t *testing.T) {
 	fsys.write("B/b.mkv", "y", old)
 	fsys.onList = func(dir string) {
 		if dir == "B" {
-			if err := h.s.EditLibrary(ctx, l.ID, catalog.LibraryChange{Folders: &[]string{"/a"}}); err != nil {
+			if err := h.s.EditLibrary(ctx, l.ID, catalog.LibraryChange{Folders: &[]string{catalogtest.Abs("/a")}}); err != nil {
 				t.Error(err)
 			}
 		}

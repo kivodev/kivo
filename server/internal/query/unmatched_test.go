@@ -9,6 +9,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/mmcdole/kivo/internal/catalog/catalogtest"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/query"
 	"github.com/mmcdole/kivo/internal/users"
@@ -29,7 +30,7 @@ func TestUnmatched(t *testing.T) {
 	if !slices.Equal(ids(p.Items), want) || p.Next != "" {
 		t.Fatalf("Unmatched = %v (next %q), want %v", ids(p.Items), p.Next, want)
 	}
-	paths := []string{"/media/Movies/some.film.2023.mkv", fmt.Sprintf("/media/Shows/Show %v", h.unmatchedShow)}
+	paths := []string{catalogtest.Abs("/media/Movies/some.film.2023.mkv"), catalogtest.Abs(fmt.Sprintf("/media/Shows/Show %v", h.unmatchedShow))}
 	for i, c := range p.Items {
 		if c.Path != paths[i] || c.MatchState != query.Unmatched || c.Library.IsZero() {
 			t.Errorf("%s: path %q, match %s, library %v; want path %q", h.names[c.ID], c.Path, c.MatchState, c.Library, paths[i])

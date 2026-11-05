@@ -116,12 +116,18 @@ var (
 	uuidPattern   = regexp.MustCompile(`"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"`)
 	timePattern   = regexp.MustCompile(`"\d{4}-\d\d-\d\dT[^"]*"`)
 	cursorPattern = regexp.MustCompile(`"Next": "[^"]+"`)
+	// A Windows path is written as the golden files have it: with / and no
+	// drive.
+	winPath = regexp.MustCompile(`"[A-Z]:\\\\[^"]*"`)
 )
 
 func (h *household) normalize(b []byte) []byte {
 	for id, name := range h.names {
 		b = bytes.ReplaceAll(b, []byte(`"`+id.String()+`"`), []byte(`"`+name+`"`))
 	}
+	b = winPath.ReplaceAllFunc(b, func(p []byte) []byte {
+		return bytes.ReplaceAll(append([]byte(`"`), p[3:]...), []byte(`\\`), []byte("/"))
+	})
 	b = uuidPattern.ReplaceAll(b, []byte(`"<id>"`))
 	b = timePattern.ReplaceAllFunc(b, func(m []byte) []byte {
 		if string(m) == `"0001-01-01T00:00:00Z"` {

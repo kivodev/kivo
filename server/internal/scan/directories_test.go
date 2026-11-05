@@ -10,7 +10,7 @@ import (
 
 // Directories lists a directory's subdirectories, linked ones too, without
 // hidden ones or files. A relative path is invalid, and a missing one is
-// not found. The picker starts at /.
+// not found. The picker starts at a root it can list: / or a drive.
 func TestDirectories(t *testing.T) {
 	var s *Scanner
 	dir := t.TempDir()
@@ -38,7 +38,11 @@ func TestDirectories(t *testing.T) {
 	if _, found, err := s.Directories(filepath.Join(dir, "nope")); found || err != nil {
 		t.Errorf("missing: %v %v", found, err)
 	}
-	if starts := s.PickerStarts(); len(starts) == 0 || starts[0].Path != "/" {
-		t.Errorf("picker starts %v", starts)
+	starts := s.PickerStarts()
+	if len(starts) == 0 || filepath.Dir(starts[0].Path) != starts[0].Path {
+		t.Fatalf("picker starts %v", starts)
+	}
+	if _, found, err := s.Directories(starts[0].Path); !found || err != nil {
+		t.Errorf("listing %s: %v %v", starts[0].Path, found, err)
 	}
 }

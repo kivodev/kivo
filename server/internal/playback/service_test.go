@@ -1314,7 +1314,7 @@ func TestSubtitles(t *testing.T) {
 	}
 	// The external SRT, burned in on request, is drawn from its file.
 	_, err = f.svc.Start(ctx, f.p, f.v, StartRequest{Work: m.Work, Caps: browser, ClientIP: lan, SubtitleTrack: &forced, Settings: Settings{BurnSubtitles: true}})
-	if b := f.media.last().BurnIn; err != nil || b == nil || b.Path != "/media/movies1/Heat (1995)/Heat.en.forced.srt" {
+	if b := f.media.last().BurnIn; err != nil || b == nil || b.Path != catalogtest.Abs("/media/movies1/Heat (1995)/Heat.en.forced.srt") {
 		t.Fatalf("an external SRT burned in: %+v %v", b, err)
 	}
 	// The embedded SRT, burned in on request before it's extracted, goes

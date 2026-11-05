@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -503,6 +504,9 @@ func TestSnapshotAndBackup(t *testing.T) {
 // server stopped, it puts the snapshot in place of the database and its
 // WAL.
 func TestRestore(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows can't replace the database while Restore holds its lock (#9)")
+	}
 	ctx := context.Background()
 	db, path := testDB(t, basic)
 	insert := func(name string) {

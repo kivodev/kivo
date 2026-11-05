@@ -17,6 +17,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 
 	"github.com/mmcdole/kivo/internal/catalog"
+	"github.com/mmcdole/kivo/internal/catalog/catalogtest"
 	"github.com/mmcdole/kivo/internal/config"
 	"github.com/mmcdole/kivo/internal/health"
 	"github.com/mmcdole/kivo/internal/id"
@@ -405,7 +406,7 @@ func TestProbeAsksForPreviewsAsTheLibrarySays(t *testing.T) {
 	for path, schedule := range map[string]catalog.Schedule{"/nightly": catalog.Nightly, "/added": catalog.NightlyAndAdded} {
 		h.folders[path] = newMemFS()
 		h.folders[path].write("A/a.mkv", "data", old)
-		lib, err := h.s.AddLibrary(ctx, catalog.LibraryInput{Name: path, Kind: catalog.Movies, Folders: []string{path}, Previews: schedule})
+		lib, err := h.s.AddLibrary(ctx, catalog.LibraryInput{Name: path, Kind: catalog.Movies, Folders: []string{catalogtest.Abs(path)}, Previews: schedule})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -831,21 +832,21 @@ func TestWatcherTakesUpLibraryChangesAtOnce(t *testing.T) {
 
 		l := h.library(catalog.Movies, "/m")
 		synctest.Wait()
-		if !slices.Contains(fake.added, "/m") {
+		if !slices.Contains(fake.added, catalogtest.Abs("/m")) {
 			t.Fatalf("watches %v after adding a library; want its folder", fake.added)
 		}
 		h.folders["/n"] = newMemFS()
-		if err := h.s.EditLibrary(ctx, l.ID, catalog.LibraryChange{Folders: &[]string{"/n"}}); err != nil {
+		if err := h.s.EditLibrary(ctx, l.ID, catalog.LibraryChange{Folders: &[]string{catalogtest.Abs("/n")}}); err != nil {
 			t.Fatal(err)
 		}
 		synctest.Wait()
-		if !slices.Contains(fake.added, "/n") {
+		if !slices.Contains(fake.added, catalogtest.Abs("/n")) {
 			t.Fatalf("watches %v after adding a folder; want it", fake.added)
 		}
 		h.clearRequests()
 
-		fake.events <- fsnotify.Event{Name: "/n/new.mkv", Op: fsnotify.Create}
-		fake.events <- fsnotify.Event{Name: "/m/gone.mkv", Op: fsnotify.Create} // the dropped folder
+		fake.events <- fsnotify.Event{Name: catalogtest.Abs("/n/new.mkv"), Op: fsnotify.Create}
+		fake.events <- fsnotify.Event{Name: catalogtest.Abs("/m/gone.mkv"), Op: fsnotify.Create} // the dropped folder
 		time.Sleep(quiet + time.Millisecond)
 		synctest.Wait()
 		lib, err := h.b.Catalog.Library(ctx, l.ID)
@@ -902,21 +903,21 @@ func TestWatcherScansEachDirectoryOnceQuiet(t *testing.T) {
 		go func() { done <- h.s.Watch(wctx) }()
 		defer func() { stop(); <-done }()
 		synctest.Wait()
-		if !slices.Contains(fake.added, "/m/A") {
+		if !slices.Contains(fake.added, catalogtest.Abs("/m/A")) {
 			t.Fatalf("watches %v; want the scanned directory, from scan_dir", fake.added)
 		}
 
 		// During a slow copy, every event restarts the directory's 5
 		// seconds, with no limit, so nothing is requested while it goes on.
 		for range 20 {
-			fake.events <- fsnotify.Event{Name: "/m/A/b.mkv", Op: fsnotify.Write}
+			fake.events <- fsnotify.Event{Name: catalogtest.Abs("/m/A/b.mkv"), Op: fsnotify.Write}
 			time.Sleep(4 * time.Second)
 		}
 		synctest.Wait()
 		if got := h.scanRequests(); len(got) != 0 {
 			t.Fatalf("requested %v before the directory went quiet", got)
 		}
-		fake.events <- fsnotify.Event{Name: "/m/.b.mkv.tmp", Op: fsnotify.Create} // hidden: ignored
+		fake.events <- fsnotify.Event{Name: catalogtest.Abs("/m/.b.mkv.tmp"), Op: fsnotify.Create} // hidden: ignored
 		time.Sleep(time.Second + time.Millisecond)
 		synctest.Wait()
 		if got, want := h.scanRequests(), []string{m.String() + " A"}; !slices.Equal(got, want) {
@@ -925,7 +926,7 @@ func TestWatcherScansEachDirectoryOnceQuiet(t *testing.T) {
 		h.clearRequests()
 
 		// .ignore is hidden, but it changes what the directory holds.
-		fake.events <- fsnotify.Event{Name: "/m/A/.ignore", Op: fsnotify.Remove}
+		fake.events <- fsnotify.Event{Name: catalogtest.Abs("/m/A/.ignore"), Op: fsnotify.Remove}
 		time.Sleep(quiet + time.Millisecond)
 		synctest.Wait()
 		if got, want := h.scanRequests(), []string{m.String() + " A"}; !slices.Equal(got, want) {
@@ -935,9 +936,9 @@ func TestWatcherScansEachDirectoryOnceQuiet(t *testing.T) {
 
 		// Each directory has its own wait. A folder's own entries scan the
 		// folder.
-		fake.events <- fsnotify.Event{Name: "/m/A/c.mkv", Op: fsnotify.Create}
+		fake.events <- fsnotify.Event{Name: catalogtest.Abs("/m/A/c.mkv"), Op: fsnotify.Create}
 		time.Sleep(3 * time.Second)
-		fake.events <- fsnotify.Event{Name: "/m/new.mkv", Op: fsnotify.Create}
+		fake.events <- fsnotify.Event{Name: catalogtest.Abs("/m/new.mkv"), Op: fsnotify.Create}
 		time.Sleep(2*time.Second + time.Millisecond)
 		synctest.Wait()
 		if got, want := h.scanRequests(), []string{m.String() + " A"}; !slices.Equal(got, want) {

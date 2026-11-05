@@ -94,7 +94,7 @@ func TestLibraryLifecycle(t *testing.T) {
 	var lib id.ID
 	b.Write(func(ctx context.Context, tx *store.Tx) error {
 		l, err := b.Catalog.CreateLibrary(ctx, tx, catalog.LibraryInput{
-			Name: "Movies", Kind: catalog.Movies, Folders: []string{"/a", "/b/"}, UseLocalMetadata: true,
+			Name: "Movies", Kind: catalog.Movies, Folders: []string{catalogtest.Abs("/a"), catalogtest.Abs("/b/")}, UseLocalMetadata: true,
 		})
 		lib = l.ID
 		return err
@@ -103,7 +103,7 @@ func TestLibraryLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(l.Folders) != 2 || l.Folders[1].Path != "/b" || l.Previews != catalog.Nightly || !l.UseLocalMetadata {
+	if len(l.Folders) != 2 || l.Folders[1].Path != catalogtest.Abs("/b") || l.Previews != catalog.Nightly || !l.UseLocalMetadata {
 		t.Fatalf("library %+v", l)
 	}
 
@@ -113,14 +113,14 @@ func TestLibraryLifecycle(t *testing.T) {
 	var added, removed []catalog.Folder
 	b.Write(func(ctx context.Context, tx *store.Tx) error {
 		var err error
-		added, removed, err = b.Catalog.UpdateLibrary(ctx, tx, lib, catalog.LibraryChange{Name: new("Films"), Folders: &[]string{"/a", "/c"}})
+		added, removed, err = b.Catalog.UpdateLibrary(ctx, tx, lib, catalog.LibraryChange{Name: new("Films"), Folders: &[]string{catalogtest.Abs("/a"), catalogtest.Abs("/c")}})
 		return err
 	})
-	if len(added) != 1 || added[0].Path != "/c" || len(removed) != 1 || removed[0].Path != "/b" {
+	if len(added) != 1 || added[0].Path != catalogtest.Abs("/c") || len(removed) != 1 || removed[0].Path != catalogtest.Abs("/b") {
 		t.Fatalf("added folders %+v, removed %+v", added, removed)
 	}
 	l, _ = b.Catalog.Library(ctx, lib)
-	if l.Name != "Films" || len(l.Folders) != 2 || l.Folders[1].Path != "/c" {
+	if l.Name != "Films" || len(l.Folders) != 2 || l.Folders[1].Path != catalogtest.Abs("/c") {
 		t.Fatalf("library %+v", l)
 	}
 	if _, err := b.Catalog.Folder(ctx, removed[0].ID); !errors.Is(err, catalog.ErrNotFound) {
@@ -158,7 +158,7 @@ func TestLibraryLifecycle(t *testing.T) {
 		t.Fatalf("the work must stay for its watch state: %v", err)
 	}
 	b.Write(func(ctx context.Context, tx *store.Tx) error {
-		l, err := b.Catalog.CreateLibrary(ctx, tx, catalog.LibraryInput{Name: "Movies", Kind: catalog.Movies, Folders: []string{"/a"}})
+		l, err := b.Catalog.CreateLibrary(ctx, tx, catalog.LibraryInput{Name: "Movies", Kind: catalog.Movies, Folders: []string{catalogtest.Abs("/a")}})
 		lib = l.ID
 		return err
 	})
@@ -171,7 +171,7 @@ func TestLibraryLifecycle(t *testing.T) {
 		t.Fatalf("an edit leaving no folder: %v", err)
 	}
 	for _, in := range []catalog.LibraryInput{
-		{Name: "x", Kind: "music", Folders: []string{"/a"}},
+		{Name: "x", Kind: "music", Folders: []string{catalogtest.Abs("/a")}},
 		{Name: "x", Kind: catalog.Movies},
 		{Name: "x", Kind: catalog.Movies, Folders: []string{"relative"}},
 	} {
@@ -808,7 +808,7 @@ func TestSubjects(t *testing.T) {
 	}
 	want := map[id.ID]string{
 		movie.File: "Dune", movie.Work: "Dune", episode.File: "Severance · S2 · E3",
-		unmatched: "New/new.mkv", movies: "/media/movies1", showsLib: "shows 2",
+		unmatched: "New/new.mkv", movies: catalogtest.Abs("/media/movies1"), showsLib: "shows 2",
 	}
 	if len(got) != len(want) {
 		t.Errorf("got %v, want %v", got, want)
@@ -994,7 +994,7 @@ func TestRemovalsListLibrariesThenFolders(t *testing.T) {
 	b.Write(func(ctx context.Context, tx *store.Tx) error {
 		for i, name := range []string{"a", "b"} {
 			l, err := b.Catalog.CreateLibrary(ctx, tx, catalog.LibraryInput{
-				Name: name, Kind: catalog.Movies, Folders: []string{"/" + name + "1", "/" + name + "2"},
+				Name: name, Kind: catalog.Movies, Folders: []string{catalogtest.Abs("/" + name + "1"), catalogtest.Abs("/" + name + "2")},
 			})
 			if err != nil {
 				return err
@@ -1009,7 +1009,7 @@ func TestRemovalsListLibrariesThenFolders(t *testing.T) {
 	var removed []catalog.Folder
 	b.Write(func(ctx context.Context, tx *store.Tx) error {
 		var err error
-		_, removed, err = b.Catalog.UpdateLibrary(ctx, tx, libs[1].ID, catalog.LibraryChange{Folders: &[]string{"/b1"}})
+		_, removed, err = b.Catalog.UpdateLibrary(ctx, tx, libs[1].ID, catalog.LibraryChange{Folders: &[]string{catalogtest.Abs("/b1")}})
 		return err
 	})
 	b.Write(func(ctx context.Context, tx *store.Tx) error { return b.Catalog.MarkDeleting(ctx, tx, libs[0].ID) })
@@ -1023,7 +1023,7 @@ func TestRemovalsListLibrariesThenFolders(t *testing.T) {
 		t.Fatalf("removals %v after both", got)
 	}
 	remove(t, b, id.New()) // an item that is already removed counts as done
-	if l, err := b.Catalog.Library(ctx, libs[1].ID); err != nil || len(l.Folders) != 1 || l.Folders[0].Path != "/b1" {
+	if l, err := b.Catalog.Library(ctx, libs[1].ID); err != nil || len(l.Folders) != 1 || l.Folders[0].Path != catalogtest.Abs("/b1") {
 		t.Fatalf("the library kept %+v, %v", l, err)
 	}
 }
@@ -1035,7 +1035,7 @@ func TestRemovingAFolderResumes(t *testing.T) {
 	var l catalog.Library
 	b.Write(func(ctx context.Context, tx *store.Tx) error {
 		var err error
-		l, err = b.Catalog.CreateLibrary(ctx, tx, catalog.LibraryInput{Name: "Movies", Kind: catalog.Movies, Folders: []string{"/a", "/b"}})
+		l, err = b.Catalog.CreateLibrary(ctx, tx, catalog.LibraryInput{Name: "Movies", Kind: catalog.Movies, Folders: []string{catalogtest.Abs("/a"), catalogtest.Abs("/b")}})
 		return err
 	})
 	folder := l.Folders[1].ID
@@ -1043,7 +1043,7 @@ func TestRemovingAFolderResumes(t *testing.T) {
 	b.BulkFiles(folder, "Films", n)
 	heat := b.Movie(folder, "Heat", 1995)
 	b.Write(func(ctx context.Context, tx *store.Tx) error {
-		_, _, err := b.Catalog.UpdateLibrary(ctx, tx, l.ID, catalog.LibraryChange{Folders: &[]string{"/a"}})
+		_, _, err := b.Catalog.UpdateLibrary(ctx, tx, l.ID, catalog.LibraryChange{Folders: &[]string{catalogtest.Abs("/a")}})
 		return err
 	})
 

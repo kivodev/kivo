@@ -21,6 +21,10 @@ func killGroup(cmd *exec.Cmd) error {
 	return err
 }
 
+// contain does nothing. Ending the process with the server is prepare's
+// job here.
+func contain(*os.Process) {}
+
 // backgroundNice is the nice value of background processes. It is the
 // value nice(1) sets by default.
 const backgroundNice = 10

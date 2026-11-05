@@ -5,6 +5,7 @@ import (
 	"maps"
 	"net"
 	"net/netip"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -91,6 +92,9 @@ func TestLANIfaces(t *testing.T) {
 // itself, answers a query for the service type, and says goodbye when it
 // stops.
 func TestAdvertise(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the announcement doesn't reach this test's socket on Windows (#9)")
+	}
 	ifaces := lanIfaces(interfaces())
 	if len(ifaces) == 0 {
 		t.Skip("no LAN interface with multicast")

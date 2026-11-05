@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/fs"
 	"path"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -210,7 +211,7 @@ func (p *fakeProber) Probe(_ context.Context, path string) (media.ProbeResult, e
 	if p.hook != nil {
 		p.hook(path)
 	}
-	name := path[strings.LastIndex(path, "/")+1:]
+	name := filepath.Base(path)
 	p.mu.Lock()
 	p.probed = append(p.probed, name)
 	err := cmp.Or(p.bad[name], p.err)
@@ -309,6 +310,7 @@ func newHarness(t *testing.T) *harness {
 		Catalog: h.b.Catalog, Tasks: h.tasks, Prober: h.prob, Settings: settings, Identifier: h, Previews: noPreviews{}, Subtitles: noSubtitles{},
 	}, Options{
 		OpenFolder: func(p string) (fs.FS, func() error, error) {
+			p = filepath.ToSlash(strings.TrimPrefix(p, filepath.VolumeName(p))) // as the test named it
 			if h.down[p] || h.folders[p] == nil {
 				return nil, nil, errors.New("no such device")
 			}
@@ -362,14 +364,17 @@ func (h *harness) Reidentify(ctx context.Context, tx *store.Tx, files []id.ID) e
 }
 
 // library adds a library over the given folder paths, each backed by a memFS.
+// The folders are named /like/this, and made absolute for the OS.
 func (h *harness) library(kind catalog.LibraryKind, paths ...string) catalog.Library {
 	h.t.Helper()
-	for _, p := range paths {
+	abs := make([]string, len(paths))
+	for i, p := range paths {
 		if h.folders[p] == nil {
 			h.folders[p] = newMemFS()
 		}
+		abs[i] = catalogtest.Abs(p)
 	}
-	lib, err := h.s.AddLibrary(context.Background(), catalog.LibraryInput{Name: "L " + paths[0], Kind: kind, Folders: paths})
+	lib, err := h.s.AddLibrary(context.Background(), catalog.LibraryInput{Name: "L " + paths[0], Kind: kind, Folders: abs})
 	if err != nil {
 		h.t.Fatal(err)
 	}

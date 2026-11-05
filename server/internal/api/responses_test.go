@@ -49,9 +49,12 @@ func (tr *transcript) do(method, path, token string, body any) map[string]any {
 var (
 	uuidPattern = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
 	timePattern = regexp.MustCompile(`\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})`)
-	tmpPattern  = regexp.MustCompile(regexp.QuoteMeta(os.TempDir()) + `/[^"/]+/\d+`)
-	msPattern   = regexp.MustCompile(`"(remainingMs|ageMs)": \d+`)
-	reqPattern  = regexp.MustCompile(`"requestId": "[0-9a-f]+"`)
+	tmpPattern  = regexp.MustCompile(regexp.QuoteMeta(slashed(os.TempDir())) + `/[^"/]+/\d+`)
+	// A Windows path, in JSON or a request line, is written as the golden
+	// file has it: with / and no drive.
+	winPath    = regexp.MustCompile(`[A-Z]:\\[^"\n]*`)
+	msPattern  = regexp.MustCompile(`"(remainingMs|ageMs)": \d+`)
+	reqPattern = regexp.MustCompile(`"requestId": "[0-9a-f]+"`)
 	// An activity cursor is an event's time in milliseconds and its ID.
 	activityCursor = regexp.MustCompile(`\b\d{13}\.(<id\d+>)`)
 	// An opaque cursor is base64-encoded JSON that holds IDs.
@@ -77,11 +80,15 @@ func (tr *transcript) String() string {
 		return names[u]
 	})
 	s = timePattern.ReplaceAllString(s, "<time>")
+	s = winPath.ReplaceAllStringFunc(s, func(p string) string { return slashed(strings.ReplaceAll(p, `\\`, `\`)) })
 	s = tmpPattern.ReplaceAllString(s, "<tmp>")
 	s = reqPattern.ReplaceAllString(s, `"requestId": "<request>"`)
 	s = activityCursor.ReplaceAllString(s, `<ms>.$1`)
 	return msPattern.ReplaceAllString(s, `"$1": <ms>`)
 }
+
+// slashed is an absolute path written with / and no drive.
+func slashed(p string) string { return filepath.ToSlash(strings.TrimPrefix(p, filepath.VolumeName(p))) }
 
 // TestResponses keeps the status and body of the work, library, task,
 // home, directory, play and paging endpoints in a golden file.

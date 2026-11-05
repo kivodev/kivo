@@ -1,0 +1,4 @@
+# LF on every platform, so golden files, the API spec and scripts read the
+# same in a Windows checkout. Batch files stay as committed, with CRLF.
+* text=auto eol=lf
+*.bat -text
