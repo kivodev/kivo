@@ -230,12 +230,14 @@ func videoCases() []videoCase {
 // file per backend.
 func TestGoldenVideoArgv(t *testing.T) {
 	for _, tt := range []struct {
+		name string
 		b    *backend
 		node string
 	}{
-		{software, ""}, {vaapi, "/dev/dri/renderD128"}, {qsv, "/dev/dri/renderD128"}, {nvenc, "0"}, {videoToolbox, ""},
+		{"software", software, ""}, {"vaapi", vaapi, "/dev/dri/renderD128"}, {"qsv", qsv, "/dev/dri/renderD128"},
+		{"qsv-d3d11", qsvD3D11, "1"}, {"nvenc", nvenc, "0"}, {"videotoolbox", videoToolbox, ""},
 	} {
-		t.Run(string(tt.b.kind), func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			var got strings.Builder
 			for _, c := range videoCases() {
 				if c.fixed && tt.b == software {
@@ -252,7 +254,7 @@ func TestGoldenVideoArgv(t *testing.T) {
 				}
 				fmt.Fprintf(&got, "# %s\n%s\n", c.name, quote(append([]string{"ffmpeg"}, args...)))
 			}
-			checkGolden(t, "video-"+string(tt.b.kind), got.String())
+			checkGolden(t, "video-"+tt.name, got.String())
 		})
 	}
 }
@@ -269,7 +271,7 @@ func TestStreamsFillUpToTheCap(t *testing.T) {
 		}
 		return ""
 	}
-	for _, b := range []*backend{software, vaapi, qsv, nvenc, videoToolbox} {
+	for _, b := range []*backend{software, vaapi, qsv, qsvD3D11, nvenc, videoToolbox} {
 		for _, c := range []media.Codec{media.H264, media.HEVC} {
 			for _, f := range []media.Fidelity{media.FidelityHigh, media.FidelityStandard} {
 				req := media.TranscodeRequest{Path: "/m/a.mkv", SegmentDuration: 6 * time.Second, Source: sdr1080,

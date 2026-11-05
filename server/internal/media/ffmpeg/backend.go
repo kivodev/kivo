@@ -26,8 +26,8 @@ type backend struct {
 	// decode has the decoder leave frames on the device.
 	decode []string
 	// scale resizes frames on the device to w×h, or keeps their size when
-	// w is zero. It converts them to 8-bit when to8 is set. It returns ""
-	// when there is nothing to do.
+	// w is zero. It converts them to 8-bit when to8 is set. It may return
+	// "" when there is nothing to do.
 	scale func(w, h int, to8 bool) string
 	// toneMap converts HDR frames to 8-bit SDR.
 	toneMap string
@@ -158,6 +158,35 @@ var (
 		forcedIDR: []string{"-forced_idr", "1"},
 	}
 
+	// qsvD3D11 is Quick Sync on Windows, where it runs on a D3D11 adapter,
+	// named by its DXGI index. Video is decoded with D3D11VA, then mapped
+	// to Quick Sync, where it is scaled and drawn on. The encoders are
+	// qsv's.
+	qsvD3D11 = &backend{
+		kind: media.QSV,
+		init: func(node string) []string {
+			return []string{"-init_hw_device", "d3d11va=dx11:" + node, "-init_hw_device", "qsv=qs@dx11", "-filter_hw_device", "qs"}
+		},
+		// The decoder's D3D11 frames are allocated once, with extra frames
+		// for each decoding thread, so two threads keep that allocation
+		// small.
+		decode: []string{"-hwaccel", "d3d11va", "-hwaccel_device", "dx11", "-hwaccel_output_format", "d3d11", "-threads", "2"},
+		scale:  vppQSV,
+		// vppQSV has mapped the frames to Quick Sync, so they are mapped
+		// back to it after OpenCL.
+		toneMap:   "hwmap=derive_device=opencl:mode=read,tonemap_opencl=" + toneMapTo + ":format=nv12,hwmap=derive_device=qsv:mode=write:reverse=1,format=qsv",
+		overlay:   "overlay_qsv=eof_action=pass:repeatlast=0",
+		subUpload: "format=bgra,hwupload=derive_device=qsv:extra_hw_frames=64",
+		// The encoders take frames from the CPU as they are.
+		upload:    "format=nv12",
+		encoders:  qsv.encoders,
+		vbr:       qsv.vbr,
+		gop:       qsv.gop,
+		aim:       qsv.aim,
+		quality:   qsv.quality,
+		forcedIDR: qsv.forcedIDR,
+	}
+
 	// nvenc decodes and filters with CUDA. Frames from the CPU are uploaded
 	// too, so the encoder runs on the frames' GPU.
 	nvenc = &backend{
@@ -231,6 +260,18 @@ func scaleOnDevice(filter string) func(w, h int, to8 bool) string {
 		}
 		return filter + "=" + strings.Join(opts, ":")
 	}
+}
+
+// vppQSV maps D3D11 frames to Quick Sync and runs them through its video
+// processor, which resizes them to w×h unless w is zero, and converts them
+// to 8-bit when to8 is set. The processor runs even with nothing to do, so
+// the encoder never holds the decoder's frames: the decoder's pool is
+// fixed, and an encoder working ahead would drain it.
+func vppQSV(w, h int, to8 bool) string {
+	if f := scaleOnDevice("vpp_qsv")(w, h, to8); f != "" {
+		return "hwmap=derive_device=qsv," + f + ":passthrough=0"
+	}
+	return "hwmap=derive_device=qsv,vpp_qsv=passthrough=0"
 }
 
 // closedGOP closes GOPs, for an encoder that cuts no keyframes at scene
