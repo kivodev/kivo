@@ -1621,6 +1621,10 @@ msgstr "Press Ctrl+C to copy."
 msgid "Network settings"
 msgstr "Network settings"
 
+#: src/features/detail/Overview.tsx
+msgid "Read the full description"
+msgstr "Read the full description"
+
 #. placeholder {0}: index + 1
 #. placeholder {1}: chapters.length
 #: src/features/player/NowPlaying.tsx
@@ -2952,6 +2956,10 @@ msgstr "Testing accelerators…"
 msgid "Mark as unwatched"
 msgstr "Mark as unwatched"
 
+#: src/features/detail/EpisodeList.tsx
+msgid "Viewing"
+msgstr "Viewing"
+
 #: src/features/admin/OverviewScreen.tsx
 msgid "Nothing playing"
 msgstr "Nothing playing"
@@ -3242,9 +3250,11 @@ msgid "No artwork available. Upload an image."
 msgstr "No artwork available. Upload an image."
 
 #. placeholder {0}: added.count
+#. placeholder {0}: open.season.episodeCount
 #. placeholder {0}: work.season.episodeCount
 #: src/features/admin/ActivityList.tsx
 #: src/features/browse/WorkCard.tsx
+#: src/features/detail/SeriesDetail.tsx
 msgid "{0, plural, one {# episode} other {# episodes}}"
 msgstr "{0, plural, one {# episode} other {# episodes}}"
 
@@ -3867,6 +3877,7 @@ msgstr "Clear all"
 #: src/components/Toast.tsx
 #: src/features/admin/ChooseArtworkDialog.tsx
 #: src/features/admin/ShowFilesDialog.tsx
+#: src/features/detail/Overview.tsx
 #: src/features/user/CreditsDialog.tsx
 #: src/features/user/LicensesDialog.tsx
 msgid "Close"

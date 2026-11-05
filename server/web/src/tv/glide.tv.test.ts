@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { pageScrollTarget, scrollPage } from "./glide";
+import { pageScrollTarget, releaseAround, scrollPage } from "./glide";
 
 let y = 0;
 
@@ -97,4 +97,32 @@ it("jumps at once for a held key's repeat, ending any glide", () => {
 it("stops at the page's end", () => {
   scrollPage(50_000, "smooth");
   expect(pageScrollTarget()).toBe(10_000 - 1080);
+});
+
+/** Content that a glide moved as a whole, as Home is, before a screen with a rail fixed to the screen shows in it. */
+function glideContentWithoutRail() {
+  document.body.innerHTML = `
+    <main id="main">
+      <div id="content"><div id="grid"></div></div>
+    </main>`;
+  scrollPage(500, "smooth");
+  expect(el("content").style.willChange).toBe("transform");
+  el("content").insertAdjacentHTML("beforeend", '<div id="rail-box"><div id="rail" class="fixed"></div></div>');
+}
+
+it("lets go of the content around an element fixed to the screen as it mounts, so it's fixed to the window again", () => {
+  glideContentWithoutRail();
+  releaseAround(el("rail"));
+  expect(el("content").style.willChange).toBe("");
+  expect(el("content").style.transform).toBe("");
+  expect(el("content").style.transition).toBe("");
+});
+
+it("lets go of an element that no longer moves as a whole, moving the elements in it instead", () => {
+  glideContentWithoutRail();
+  scrollPage(800, "smooth");
+  expect(el("content").style.willChange).toBe("");
+  expect(el("content").style.transform).toBe("");
+  expect(el("grid").style.willChange).toBe("transform");
+  expect(el("rail").style.transform).toBe("");
 });

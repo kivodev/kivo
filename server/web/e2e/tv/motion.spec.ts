@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { expectFocus, focusOf, overscan, press, pressUntil } from "./remote";
+import { back, expectFocus, focusOf, overscan, press, pressUntil } from "./remote";
 
 // How the TV build moves what's on screen: a row's cards glide to the
 // focused card over a quarter of a second, on a transform the TV composites
@@ -203,4 +203,49 @@ test("the rail glides open", async ({ page }) => {
   expect(running.length, "the rail and the scrim animate in").toBeGreaterThan(0);
   expect(Math.max(...running)).toBeGreaterThanOrEqual(200);
   expect((await focusOf(page)).part).toBe("tv-rail-entry");
+});
+
+type BackFrame = { home: boolean; key?: string; x: number; glow?: number };
+
+test("Back to Home draws the card it opened focused from the first frame, its row moved along and its glow on it", async ({
+  page,
+}) => {
+  await toLongRow(page);
+  for (let i = 0; i < 7; i++) await press(page, "ArrowRight");
+  await page.waitForTimeout(400);
+  const from = (await focusOf(page)).key;
+  await press(page, "Enter");
+  await expectFocus(page, { key: "play" });
+  await page.waitForTimeout(400);
+  // Each frame from Back on: what has focus, where its row's cards are and
+  // where its row's glow shows.
+  await page.evaluate(() => {
+    const w = window as unknown as { __back: BackFrame[] };
+    w.__back = [];
+    const start = performance.now();
+    const read = () => {
+      const focused = document.activeElement as HTMLElement | null;
+      const cards = focused?.closest("ul");
+      const glow = cards?.querySelector<HTMLElement>('[data-part="tv-glow"]');
+      w.__back.push({
+        home: location.pathname === "/",
+        key: focused?.dataset.tvFocusKey,
+        x: cards ? new DOMMatrixReadOnly(getComputedStyle(cards).transform).m41 : 0,
+        glow: glow ? new DOMMatrixReadOnly(getComputedStyle(glow).transform).m41 : undefined,
+      });
+      if (performance.now() - start < 600) requestAnimationFrame(read);
+    };
+    requestAnimationFrame(read);
+  });
+  await back(page);
+  await page.waitForTimeout(700);
+  const home = (await page.evaluate(() => (window as unknown as { __back: BackFrame[] }).__back)).filter((f) => f.home);
+  const last = home.at(-1);
+  expect(home.length).toBeGreaterThan(5);
+  expect(last?.key).toBe(from);
+  expect(last?.x, "the row is still moved along to the card").toBeLessThan(-100);
+  const show = (f: BackFrame) => `${f.key?.slice(-4)} ${Math.round(f.x)} ${Math.round(f.glow ?? -1)}`;
+  // Every frame Home draws has the card focused, its row where it ends and
+  // the glow on it, rather than the row's start or the glow sliding there.
+  for (const f of home) expect(f, `frames after Back: ${home.map(show).join(", ")}`).toEqual(last);
 });

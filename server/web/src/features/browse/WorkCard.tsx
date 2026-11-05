@@ -32,7 +32,7 @@ export function cardStatus(work: WorkSummary): Status | undefined {
  * card or on a card with an episode code, because the code sits
  * bottom-left.
  */
-function StatusBadge({ status, right }: { status: Status; right: boolean }) {
+export function StatusBadge({ status, right }: { status: Status; right: boolean }) {
   return (
     <span
       data-part="badge"
@@ -46,7 +46,7 @@ function StatusBadge({ status, right }: { status: Status; right: boolean }) {
 }
 
 /** The top-right corner, with a played check or a series' unplayed episode count. */
-function Corner({ work }: { work: WorkSummary }) {
+export function Corner({ work }: { work: WorkSummary }) {
   const unplayed = work.series?.unplayedCount ?? work.season?.unplayedCount;
   if (unplayed !== undefined && unplayed > 0) {
     return (

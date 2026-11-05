@@ -209,6 +209,33 @@ describe("TV focus", () => {
     await waitFor(() => expect(focused()).toBe("b:2"));
   });
 
+  it("restores focus before the screen is drawn when the card is there as Back arrives, rather than a task later", async () => {
+    const view = render(<Rows />);
+    focusTv("b:2");
+    await waitFor(() => expect(focused()).toBe("b:2"));
+    rememberTvFocus("entry-1");
+    // The work's page it opened had focus on its Play.
+    view.rerender(
+      <TvFocusGroup focusKey={TV_CONTENT}>
+        <TvFocusable focusKey="play">
+          <button type="button">Play</button>
+        </TvFocusable>
+      </TvFocusGroup>,
+    );
+    focusTv("play");
+    await waitFor(() => expect(focused()).toBe("play"));
+    view.rerender(<Rows />);
+    vi.useFakeTimers({ toFake: ["setTimeout", "requestAnimationFrame"] });
+    try {
+      expectTvScreen("entry-1");
+      // Norigin focuses in promises, which settle before the next frame; no task or frame runs.
+      for (let i = 0; i < 20; i++) await Promise.resolve();
+      expect(focused()).toBe("b:2");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("doesn't take focus back from the rail for a screen that arrives after the rail was opened", async () => {
     const rail = (
       <TvFocusGroup focusKey={TV_RAIL}>

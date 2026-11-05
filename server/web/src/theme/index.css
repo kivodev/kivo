@@ -44,6 +44,21 @@
   min-height: 3lh;
 }
 
+/* A TV's long description: as many characters a line as still read easily across a room, and its More. */
+@utility max-w-prose-tv {
+  max-width: calc(var(--container-prose) * 1.1);
+}
+
+@utility min-h-2lh {
+  min-height: calc(2 * var(--text-sm--line-height));
+  min-height: 2lh;
+}
+
+@utility min-h-7lh {
+  min-height: calc(7 * var(--text-base--line-height));
+  min-height: 7lh;
+}
+
 /* A person's initials, sized to the round tile they fill. */
 @utility text-initials {
   font-size: 30cqw;
@@ -328,6 +343,60 @@
 
   :root[data-tv] [data-tv-focus="card"]:focus [data-tv-ring] ~ * {
     translate: 0 var(--layout-tv-card-caption-shift);
+  }
+
+  /*
+   * An episode card's two stops (EpisodeList.tsx). On the still its play mark
+   * shows. On its text the still rests, with the shared glow hidden rather
+   * than moved, and the text lights up as a button does: flat colours on one
+   * card's caption, with nothing to rasterize again but that.
+   */
+  :root[data-tv] [data-part="episode-play-hint"] {
+    display: none;
+  }
+
+  :root[data-tv] [data-tv-focus="card"]:focus [data-part="episode-play-hint"] {
+    display: flex;
+  }
+
+  :root[data-tv] [data-part="episode-card"][data-current] [data-tv-ring] {
+    box-shadow: 0 0 0 calc(var(--spacing) * 0.5) var(--color-accent);
+  }
+
+  :root[data-tv] [data-tv-card-text] [data-tv-focus="card"]:focus [data-part="episode-play-hint"] {
+    display: none;
+  }
+
+  :root[data-tv] [data-tv-card-text] [data-tv-focus="card"]:focus [data-tv-ring] {
+    scale: 1;
+  }
+
+  :root[data-tv] [data-tv-card-text] [data-tv-focus="card"]:focus [data-tv-ring] ~ * {
+    translate: 0 0;
+  }
+
+  :root[data-tv] [data-tv-card-text] :is([data-part="tv-glow"], [data-part="tv-sheen"])[data-shown] {
+    opacity: 0;
+  }
+
+  :root[data-tv] [data-tv-card-text] [data-tv-focus="card"]:focus [data-part="episode-text"] {
+    --color-text: var(--color-tv-lit-text);
+    --color-text-muted: var(--color-tv-lit-text-muted);
+    --color-accent: var(--color-tv-lit-accent);
+    background-color: var(--color-tv-lit-surface-raised);
+    /* A solid spread, no blur, gives the text room without moving it. */
+    box-shadow: 0 0 0 var(--spacing) var(--color-tv-lit-surface-raised);
+  }
+
+  /* A description that opens its full text, ringed rather than lit, so it stays readable. */
+  :root[data-tv] [data-part="overview-open"]:focus {
+    outline: calc(var(--spacing) * 0.5) solid var(--color-focus);
+    outline-offset: 0;
+  }
+
+  /* The full text in its panel, leaving the panel's title and Close on the screen. */
+  :root[data-tv] [data-part="overview-full-text"] {
+    max-height: calc(100dvh - var(--spacing) * 56);
   }
 
   /*

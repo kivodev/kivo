@@ -126,7 +126,12 @@ export function PlayButton({ workId, positionMs, search = {}, label = <Trans>Pla
   );
 }
 
-export function PlaybackPickers({ work }: { work: WorkDetail }) {
+/**
+ * The version, audio and subtitle pickers. As `chips` they're buttons that
+ * sit in the hero's row of buttons, as focus moves along it with them, as on
+ * a TV's episode page.
+ */
+export function PlaybackPickers({ work, chips = false }: { work: WorkDetail; chips?: boolean }) {
   const { t } = useLingui();
   const [search, setSearch] = useDetailSearch();
   const version = selectedVersion(work, search.version);
@@ -157,53 +162,54 @@ export function PlaybackPickers({ work }: { work: WorkDetail }) {
     extra: canSearch ? [{ id: searchSubtitles, label: t`Search subtitles…` }] : [],
   } as const;
 
-  return (
-    <TvFocusGroup focusKey="pickers">
-      <div data-part="pickers" className="flex flex-wrap gap-x-6 gap-y-1">
-        {work.versions.length > 1 && (
-          <TvFocusable focusKey="version" face="inside">
-            <Select
-              variant="inline"
-              part="version-picker"
-              label={t`Version`}
-              options={work.versions.map(versionOption)}
-              selected={version?.id ?? ""}
-              onChange={pickVersion}
-            />
-          </TvFocusable>
-        )}
-        {trackChoices(audio) && (
-          <TvFocusable focusKey="audio" face="inside">
-            <TrackPicker
-              {...audio}
-              selected={search.audio ?? automaticTrack}
-              onChange={(id) => pickTrack("audio", id)}
-            />
-          </TvFocusable>
-        )}
-        {trackChoices(subtitle) && (
-          <TvFocusable focusKey="subtitle" face="inside">
-            <TrackPicker
-              {...subtitle}
-              selected={search.subtitle ?? automaticTrack}
-              onChange={(id) => (id === searchSubtitles ? setSearching(true) : pickTrack("subtitle", id))}
-            />
-          </TvFocusable>
-        )}
-        {canSearch && (
-          <Suspense fallback={null}>
-            <SubtitleSearch
-              fileId={fileId}
-              isOpen={searching}
-              onClose={() => setSearching(false)}
-              onDownloaded={(trackId) => {
-                setSearching(false);
-                pickTrack("subtitle", trackId);
-              }}
-            />
-          </Suspense>
-        )}
-      </div>
-    </TvFocusGroup>
+  const pickers = (
+    <div data-part="pickers" className={chips ? "contents" : "flex flex-wrap gap-x-6 gap-y-1"}>
+      {work.versions.length > 1 && (
+        <TvFocusable focusKey="version" face="inside">
+          <Select
+            variant={chips ? "chip" : "inline"}
+            part="version-picker"
+            label={t`Version`}
+            options={work.versions.map(versionOption)}
+            selected={version?.id ?? ""}
+            onChange={pickVersion}
+          />
+        </TvFocusable>
+      )}
+      {trackChoices(audio) && (
+        <TvFocusable focusKey="audio" face="inside">
+          <TrackPicker
+            {...audio}
+            chip={chips}
+            selected={search.audio ?? automaticTrack}
+            onChange={(id) => pickTrack("audio", id)}
+          />
+        </TvFocusable>
+      )}
+      {trackChoices(subtitle) && (
+        <TvFocusable focusKey="subtitle" face="inside">
+          <TrackPicker
+            {...subtitle}
+            chip={chips}
+            selected={search.subtitle ?? automaticTrack}
+            onChange={(id) => (id === searchSubtitles ? setSearching(true) : pickTrack("subtitle", id))}
+          />
+        </TvFocusable>
+      )}
+      {canSearch && (
+        <Suspense fallback={null}>
+          <SubtitleSearch
+            fileId={fileId}
+            isOpen={searching}
+            onClose={() => setSearching(false)}
+            onDownloaded={(trackId) => {
+              setSearching(false);
+              pickTrack("subtitle", trackId);
+            }}
+          />
+        </Suspense>
+      )}
+    </div>
   );
+  return chips ? pickers : <TvFocusGroup focusKey="pickers">{pickers}</TvFocusGroup>;
 }

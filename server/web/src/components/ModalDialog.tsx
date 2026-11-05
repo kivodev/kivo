@@ -112,7 +112,13 @@ export function ModalDialog({
               </div>
             </div>
             {placement === "side" && (
-              <Button variant="ghost" size="icon" aria-label={t`Close`} className="-mt-2 -mr-3" onPress={dismiss}>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={t`Close`}
+                className="-mt-2 -mr-3 tv:hidden"
+                onPress={dismiss}
+              >
                 <Icon name="close" />
               </Button>
             )}

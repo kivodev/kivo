@@ -88,6 +88,12 @@ type TvFocusableProps = FocusableOptions & {
    * item whose row or grid scrolls itself.
    */
   scroll?: "nearest" | "none";
+  /**
+   * Down passes over it to what's below, and only Up lands on it, for a
+   * small control between a line of items and the row it heads, such as a
+   * season's watched check.
+   */
+  skipDown?: boolean;
   /** Its data-part, on TV only. */
   part?: string;
   /** Its classes, on TV only. */
@@ -121,6 +127,7 @@ function TvFocusableItem({
   face,
   autoFocus,
   scroll,
+  skipDown,
   part,
   className,
   children,
@@ -139,6 +146,7 @@ function TvFocusableItem({
       data-tv-face={face}
       data-tv-autofocus={autoFocus || undefined}
       data-tv-scroll={scroll}
+      data-tv-skip-down={skipDown || undefined}
       data-part={part}
       className={className}
     >
@@ -179,6 +187,13 @@ type TvFocusGroupProps = {
    * shows. Without it, or while it isn't there, the nearest.
    */
   enterOn?: string;
+  /**
+   * Whether Up or Down coming back into the group returns to the item focus
+   * last left it from, and `enterOn` until there's been one, as Up from a
+   * row returns to the hero's button you came from. The key is kept on the
+   * element, so moving along the group renders nothing.
+   */
+  returns?: boolean;
   /** Keeps focus inside in these directions, or all of them, as in a dialog. */
   trap?: boolean | TvDirection[];
   /** Runs as focus moves into the group or out of it. */
@@ -234,6 +249,7 @@ function TvFocusGroupItem({
   remember = true,
   preferredChild,
   enterOn,
+  returns = false,
   trap = false,
   onFocusWithin,
   takesStrayFocus = false,
@@ -269,6 +285,14 @@ function TvFocusGroupItem({
     <FocusContext.Provider value={focusKey}>
       <Element
         ref={ref as RefObject<HTMLDivElement>}
+        onFocus={
+          returns
+            ? (e) => {
+                const key = (e.target as Element).closest<HTMLElement>("[data-tv-focusable]")?.dataset.tvFocusKey;
+                if (key) e.currentTarget.dataset.tvEnter = key;
+              }
+            : undefined
+        }
         aria-label={label}
         data-tv-group={focusKey}
         data-tv-enter={enterOn}

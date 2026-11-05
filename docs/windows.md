@@ -38,7 +38,11 @@ Kivo runs as you, so it can read your mapped drives and network shares.
 
 ## Hardware transcoding
 
-Kivo transcodes on an NVIDIA GPU with NVENC when the NVIDIA driver is installed. It finds the GPU through `nvidia-smi`, which comes with the driver, and tests it when it starts. Intel Quick Sync and AMD GPUs aren't supported on Windows yet, so on those PCs Kivo transcodes on the CPU.
+Kivo transcodes on an NVIDIA GPU with NVENC when the NVIDIA driver is installed. It finds the GPU through `nvidia-smi`, which comes with the driver.
+
+It transcodes on an Intel GPU with Quick Sync, through D3D11. HDR is tone-mapped with OpenCL, which comes with Intel's driver.
+
+Kivo tests each GPU when it starts, and anything a GPU fails runs on the CPU instead. AMD GPUs aren't supported on Windows yet, so on those PCs Kivo transcodes on the CPU.
 
 ## Admin commands
 

@@ -3,6 +3,7 @@
 // focuses the same card, once it's on screen again. A screen opened anew
 // focuses its initial item: the one marked autoFocus, else its first.
 
+import { releaseGlides } from "./glide";
 import {
   currentTvFocus,
   focusTv,
@@ -22,25 +23,42 @@ const restoreWaitMs = 1000;
 const holdKeysMs = 5000;
 
 const remembered = new Map<string, string>();
-let pending: { key?: string; since: number; fromRail: boolean } | undefined;
+let pending: { key?: string; since: number; fromRail: boolean; leftOn?: string; fromPlayer: boolean } | undefined;
 let timer: ReturnType<typeof setTimeout> | undefined;
+// The item focused as the last screen was left. The next screen may have an
+// item of the same key, as every detail page has Play, and focus still on
+// that key is the last screen's, not one the next screen chose.
+let leftOn: string | undefined;
 
 /** Remembers the focused item of the screen being left, if focus is on it rather than in the rail. */
 export function rememberTvFocus(entry: string) {
   const key = currentTvFocus();
+  leftOn = key;
   if (key && isTvFocusIn(key, TV_CONTENT)) remembered.set(entry, key);
 }
 
 /** A screen is opening at a history entry: focus what was focused there, or the screen's initial item. */
-export function expectTvScreen(entry: string) {
+export function expectTvScreen(entry: string, fromPlayer = false) {
   const current = currentTvFocus();
   pending = {
     key: remembered.get(entry),
     since: Date.now(),
     fromRail: current !== undefined && isTvFocusIn(current, TV_RAIL),
+    leftOn,
+    fromPlayer,
   };
+  leftOn = undefined;
+  releaseGlides();
   holdStrayTvKeys(holdKeysMs);
-  settleTvFocus();
+  // A screen Back returns to has often rendered its items from cached data
+  // by the time the router says it has arrived, though the browser hasn't
+  // drawn it yet. Its card then takes focus at once, so the screen is first
+  // drawn with its row, the page and the glow on the card, rather than for
+  // a frame without them and then moving there.
+  // Back from the player arrives while focus is still paused for it, and
+  // the shell settles it as the pause lifts.
+  if (pending.key && tvFocusExists(pending.key) && !isTvPaused()) resolve();
+  else settleTvFocus();
 }
 
 /**
@@ -87,9 +105,12 @@ function resolve() {
   // The screen focused something itself, or the person moved focus to the
   // rail while it loaded, as Back does: a screen that arrives late doesn't
   // take focus back from the open rail. The rail keeps focus only while
-  // it chose this screen, which then takes focus from it.
+  // it chose this screen, which then takes focus from it. Focus left on the
+  // last screen's item, by its key, isn't this screen's choice, nor is focus
+  // found on return from the player, whose keys were all its own.
   const current = currentTvFocus();
-  if (current && (!pending.fromRail || !isTvFocusIn(current, TV_RAIL))) {
+  const chosen = current && current !== pending.leftOn && !pending.fromPlayer;
+  if (chosen && (!pending.fromRail || !isTvFocusIn(current, TV_RAIL))) {
     settled();
     return;
   }
