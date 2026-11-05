@@ -63,6 +63,11 @@ msgstr "Audio"
 msgid "Continue in browser"
 msgstr "Continue in browser"
 
+#: src/features/user/CreditsDialog.tsx
+#: src/features/user/LicensesDialog.tsx
+msgid "Open source licenses"
+msgstr "Open source licenses"
+
 #: src/features/admin/PlayCards.tsx
 msgid "{clock} ahead, waiting for the player"
 msgstr "{clock} ahead, waiting for the player"
@@ -2698,6 +2703,7 @@ msgstr "Use a full address starting with http:// or https://."
 #: src/components/Skeleton.tsx
 #: src/features/detail/DetailSkeleton.tsx
 #: src/features/history/HistoryScreen.tsx
+#: src/features/user/LicensesDialog.tsx
 msgid "Loading…"
 msgstr "Loading…"
 
@@ -3862,6 +3868,7 @@ msgstr "Clear all"
 #: src/features/admin/ChooseArtworkDialog.tsx
 #: src/features/admin/ShowFilesDialog.tsx
 #: src/features/user/CreditsDialog.tsx
+#: src/features/user/LicensesDialog.tsx
 msgid "Close"
 msgstr "Close"
 

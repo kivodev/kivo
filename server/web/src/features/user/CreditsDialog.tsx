@@ -1,17 +1,21 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { Button } from "@/components/Button";
 import { ModalDialog } from "@/components/ModalDialog";
 import { isTv } from "@/tv/flag";
 import { TvDialogButton } from "@/tv/forms/dialog";
+import { TvControl } from "@/tv/forms/TvControl";
+import { LicensesDialog } from "./LicensesDialog";
 
 /**
  * Credits, from Settings › About: TMDB's logo and the notice its API terms
  * ask for, then Audnexus and jellyfin-ffmpeg. Each name opens its site,
- * except on TV, where there's nowhere to open it.
+ * except on TV, where there's nowhere to open it. Under them, Open source
+ * licenses opens the build's.
  */
 export function CreditsDialog({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { t } = useLingui();
+  const [licenses, setLicenses] = useState(false);
   const link = (href: string, children: ReactNode) =>
     isTv ? (
       children
@@ -36,7 +40,13 @@ export function CreditsDialog({ isOpen, onClose }: { isOpen: boolean; onClose: (
         <p>
           <Trans>Transcoding by {jellyfinFfmpeg} (GPL)</Trans>
         </p>
+        <TvControl focusKey="credits:licenses">
+          <Button variant="ghost" size="sm" className="-mx-3 mt-3" onPress={() => setLicenses(true)}>
+            <Trans>Open source licenses</Trans>
+          </Button>
+        </TvControl>
       </div>
+      <LicensesDialog isOpen={licenses} onClose={() => setLicenses(false)} />
       <div className="mt-5 flex justify-end">
         {isTv ? (
           <TvDialogButton focusKey="tv:credits:close" autoFocus onPress={onClose}>

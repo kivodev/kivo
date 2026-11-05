@@ -1,10 +1,11 @@
-import { readFileSync, rmSync } from "node:fs";
+import { readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { lingui } from "@lingui/vite-plugin";
 import babel from "@rolldown/plugin-babel";
 import tailwindcss from "@tailwindcss/vite";
 import react, { reactCompilerPreset } from "@vitejs/plugin-react";
+import license, { type Dependency } from "rollup-plugin-license";
 import type { Plugin } from "vite";
 import { defineConfig } from "vitest/config";
 
@@ -179,6 +180,98 @@ function mockWorker(): Plugin {
   };
 }
 
+type Credit = { name: string; version?: string; license: string; url?: string; text?: string };
+
+/** The package in node_modules that file is in, if it's in one. */
+function packageOf(file: string): string | undefined {
+  const parts = file.split(/(?:^|[\\/])node_modules[\\/]/);
+  const rest = parts.length > 1 ? parts[parts.length - 1]?.split(/[\\/]/) : undefined;
+  if (!rest?.[0]) return undefined;
+  return rest[0].startsWith("@") ? `${rest[0]}/${rest[1]}` : rest[0];
+}
+
+/** A package's license as its package.json and license file give it, for one only a stylesheet brings in. */
+function stylesheetPackage(name: string): Credit {
+  const dir = fileURLToPath(new URL(`./node_modules/${name}/`, import.meta.url));
+  const pkg = JSON.parse(readFileSync(join(dir, "package.json"), "utf8")) as { version?: string; license?: string };
+  if (!pkg.license) throw new Error(`kivo-licenses: ${name} has no license`);
+  const file = readdirSync(dir).find((f) => /^(licen[cs]e|copying)/i.test(f));
+  return {
+    name,
+    version: pkg.version,
+    license: pkg.license,
+    text: file ? readFileSync(join(dir, file), "utf8") : undefined,
+  };
+}
+
+/**
+ * The open source licenses Settings › About › Credits lists
+ * (src/features/user/licenses.ts): each package in the bundle, the ones its
+ * code imports as rollup-plugin-license finds them and the ones only a
+ * stylesheet brings in, such as the TV's Inter, from their assets. Then the
+ * player's fonts (their OFL.txt) and the terms the bundle can't report
+ * (shared/credits/terms.json). It's licenses.js beside index.html, a module
+ * the page imports only when the list opens, so the packaged app, whose
+ * policy allows no fetch of its own files, reads it as it does the rest of
+ * its code. A package without a license fails the build.
+ */
+function openSourceLicenses(): Plugin[] {
+  const read = (path: string) => readFileSync(path, "utf8");
+  const fonts = fileURLToPath(new URL("./src/features/player/fonts/OFL.txt", import.meta.url));
+  const terms = JSON.parse(read(join(shared, "credits/terms.json"))) as {
+    terms: (Credit & { apps: string[] })[];
+  };
+  let imported: Credit[] = [];
+  return [
+    {
+      ...(license({
+        thirdParty: {
+          allow: { test: (d) => d.license !== null, failOnUnlicensed: true, failOnViolation: true },
+          output: (dependencies: Dependency[]) => {
+            imported = dependencies.map((d) => ({
+              name: d.name ?? "",
+              version: d.version ?? undefined,
+              license: d.license ?? "",
+              text: [d.licenseText, d.noticeText].filter(Boolean).join("\n\n") || undefined,
+            }));
+          },
+        },
+      }) as unknown as Plugin),
+      apply: "build",
+    },
+    {
+      name: "kivo-licenses",
+      apply: "build",
+      generateBundle(_, bundle) {
+        const names = new Set(imported.map((c) => c.name));
+        const styled = new Set(
+          Object.values(bundle)
+            .flatMap((file) => (file.type === "asset" ? file.originalFileNames : []))
+            .map(packageOf)
+            .filter((name): name is string => name !== undefined && !names.has(name)),
+        );
+        const credits: Credit[] = [
+          ...[...imported, ...[...styled].map(stylesheetPackage)].sort((a, b) => a.name.localeCompare(b.name)),
+          { name: "Kivo Fallback (Arimo, Noto Sans JP)", license: "OFL-1.1", text: read(fonts) },
+          ...terms.terms
+            .filter((t) => t.apps.includes("web"))
+            .map(({ name, license, url, text }) => ({
+              name,
+              license,
+              url,
+              text: text ? read(join(shared, "credits", text)) : undefined,
+            })),
+        ];
+        this.emitFile({
+          type: "asset",
+          fileName: "licenses.js",
+          source: `export default ${JSON.stringify(credits)};\n`,
+        });
+      },
+    },
+  ];
+}
+
 export default defineConfig({
   // Relative asset URLs: the server sets <base href> to its base path, so the
   // same build works at / and behind a reverse proxy at /kivo. The packaged
@@ -197,6 +290,7 @@ export default defineConfig({
     ...(packaged ? [packagedPage()] : []),
     ...(tv && !packaged ? [packagedOnly()] : []),
     ...(process.env.KIVO_MOCK === "1" ? [mockWorker()] : []),
+    openSourceLicenses(),
   ],
   resolve: {
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)), "@shared": shared },

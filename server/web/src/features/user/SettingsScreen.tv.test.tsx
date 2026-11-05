@@ -6,6 +6,10 @@ import { focusTv } from "@/tv/spatial";
 import { stopTv } from "@/tv/start";
 
 vi.mock("@/tv/exit", () => ({ exitApp: vi.fn() }));
+// The build's licenses.js, which the dev server and the tests don't have.
+vi.mock("./licenses", () => ({
+  loadLicenses: async () => [{ name: "react", version: "19.3.0", license: "MIT", text: "MIT License" }],
+}));
 
 const focused = () => document.activeElement?.getAttribute("data-tv-focus-key");
 const press = (key: string) => {
@@ -110,6 +114,34 @@ describe("Settings on TV", () => {
     back();
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Credits" })).not.toBeInTheDocument());
     await waitFor(() => expect(focused()).toBe(key));
+  });
+
+  it("lists the open source licenses from Credits as rows, without their text, and Back returns to Credits", async () => {
+    serveMockApi();
+    renderApp("/settings");
+    await openSection("about", "About");
+    const about = screen.getByRole("region", { name: "About" });
+    const row = within(about).getByRole("button", { name: "View" });
+    const key = row.closest<HTMLElement>("[data-tv-focusable]")?.dataset.tvFocusKey ?? "";
+    focusTv(key);
+    await waitFor(() => expect(focused()).toBe(key));
+    press("Enter");
+    await screen.findByRole("dialog", { name: "Credits" });
+    await waitFor(() => expect(focused()).toBe("tv:credits:close"));
+    focusTv("credits:licenses");
+    await waitFor(() => expect(focused()).toBe("credits:licenses"));
+    press("Enter");
+
+    const licenses = await screen.findByRole("dialog", { name: "Open source licenses" });
+    await waitFor(() => expect(focused()).toBe("tv:licenses:close"));
+    expect(await within(licenses).findByText("react")).toBeInTheDocument();
+    expect(within(licenses).getByText("MIT")).toBeInTheDocument();
+    expect(within(licenses).queryByText("MIT License")).not.toBeInTheDocument();
+
+    back();
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Open source licenses" })).not.toBeInTheDocument());
+    expect(screen.getByRole("dialog", { name: "Credits" })).toBeInTheDocument();
+    await waitFor(() => expect(focused()).toBe("credits:licenses"));
   });
 
   it("flips a switch with OK", async () => {
