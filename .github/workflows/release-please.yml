@@ -3,10 +3,12 @@ name: release-please
 # Keeps a release PR open on main with the next version, worked out from the
 # Conventional Commit titles merged since the last release. Merging that PR
 # tags the release and writes its notes to GitHub Releases, then the server
-# image is published to ghcr.io/kivodev/kivo. A release made with
-# GITHUB_TOKEN starts no other workflow, so the image job lives here.
+# image is published to ghcr.io/kivodev/kivo and the Windows installer and
+# zip are attached to the release. A release made with GITHUB_TOKEN starts
+# no other workflow, so those jobs live here.
 #
-# Run it by hand with a tag (v0.3.1) to publish that release's image again.
+# Run it by hand with a tag (v0.3.1) to publish that release's image and
+# Windows files again.
 on:
   push:
     branches: [main]
@@ -98,3 +100,52 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # The Windows installer and portable zip, attached to the release. The
+  # runner image comes with Inno Setup.
+  windows:
+    needs: release-please
+    if: >-
+      !cancelled() && (github.event_name == 'workflow_dispatch' ||
+      needs.release-please.outputs.release_created == 'true')
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - id: release
+        env:
+          TAG: ${{ inputs.tag || needs.release-please.outputs.tag_name }}
+        run: |
+          if ! printf '%s' "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::not a release tag: $TAG"
+            exit 1
+          fi
+          {
+            echo "tag=$TAG"
+            echo "version=${TAG#v}"
+          } >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ steps.release.outputs.tag }}
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.mod
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: server/web/package-lock.json
+      - run: ./server/packaging/windows/build.ps1 -Version ${{ steps.release.outputs.version }}
+        shell: pwsh
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: >-
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber
+          "server/bin/windows/Kivo-Setup-$VERSION.exe"
+          "server/bin/windows/kivo-$VERSION-windows-amd64.zip"

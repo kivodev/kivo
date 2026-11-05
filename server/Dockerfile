@@ -65,6 +65,8 @@ RUN set -eu; \
     apt-get purge -y --auto-remove curl; \
     cd /; \
     rm -rf /tmp/intel-opencl /var/lib/apt/lists/*
+# packaging/windows/build.ps1 bundles this version too, and pins its
+# Windows zip's hash, which needs updating with it.
 ARG JELLYFIN_FFMPEG=8.1.3-1
 ARG JELLYFIN_FFMPEG_SHA256_amd64=fbef9f81a53e175194e3f67832618a86111f7bd37197df21a5d748c34289f9c0
 ARG JELLYFIN_FFMPEG_SHA256_arm64=4af743bd776eda082d40c851a4201e51a77a258145dd6ebe164dade39b35b2d0
