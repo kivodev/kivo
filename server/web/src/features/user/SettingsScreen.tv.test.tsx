@@ -86,18 +86,30 @@ describe("Settings on TV", () => {
     expect(screen.queryByText("Change server")).not.toBeInTheDocument();
   });
 
-  it("credits TMDB, Audnexus and jellyfin-ffmpeg in About as plain text", async () => {
+  it("opens the credits from About's Credits row with OK, as plain text, and Back closes them", async () => {
     serveMockApi();
     renderApp("/settings");
     await openSection("about", "About");
     const about = screen.getByRole("region", { name: "About" });
-    expect(within(about).getByRole("img", { name: "TMDB" })).toBeInTheDocument();
+    const row = within(about).getByRole("button", { name: "View" });
+    const key = row.closest<HTMLElement>("[data-tv-focusable]")?.dataset.tvFocusKey ?? "";
+    focusTv(key);
+    await waitFor(() => expect(focused()).toBe(key));
+    press("Enter");
+
+    const credits = await screen.findByRole("dialog", { name: "Credits" });
+    await waitFor(() => expect(focused()).toBe("tv:credits:close"));
+    expect(within(credits).getByRole("img", { name: "TMDB" })).toBeInTheDocument();
     expect(
-      within(about).getByText("This product uses the TMDB API but is not endorsed or certified by TMDB."),
+      within(credits).getByText("This product uses the TMDB API but is not endorsed or certified by TMDB."),
     ).toBeInTheDocument();
-    expect(within(about).getByText("Audiobook metadata from Audnexus")).toBeInTheDocument();
-    expect(within(about).getByText("Transcoding by jellyfin-ffmpeg (GPL)")).toBeInTheDocument();
-    expect(within(about).queryByRole("link")).not.toBeInTheDocument();
+    expect(within(credits).getByText("Audiobook metadata from Audnexus")).toBeInTheDocument();
+    expect(within(credits).getByText("Transcoding by jellyfin-ffmpeg (GPL)")).toBeInTheDocument();
+    expect(within(credits).queryByRole("link")).not.toBeInTheDocument();
+
+    back();
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Credits" })).not.toBeInTheDocument());
+    await waitFor(() => expect(focused()).toBe(key));
   });
 
   it("flips a switch with OK", async () => {

@@ -1622,7 +1622,7 @@ msgstr "Network settings"
 msgid "Chapter {0} of {1}"
 msgstr "Chapter {0} of {1}"
 
-#: src/features/user/SettingsScreen.tsx
+#: src/features/user/CreditsDialog.tsx
 msgid "This product uses the TMDB API but is not endorsed or certified by TMDB."
 msgstr "This product uses the TMDB API but is not endorsed or certified by TMDB."
 
@@ -1990,6 +1990,7 @@ msgid "More actions for {name}"
 msgstr "More actions for {name}"
 
 #: src/features/browse/LibraryScreen.tsx
+#: src/features/user/SettingsScreen.tsx
 msgid "View"
 msgstr "View"
 
@@ -2156,6 +2157,11 @@ msgstr "{count, plural, one {# episode} other {# episodes}}"
 msgid "Nightly tasks run {start} to {end}"
 msgstr "Nightly tasks run {start} to {end}"
 
+#: src/features/user/CreditsDialog.tsx
+#: src/features/user/SettingsScreen.tsx
+msgid "Credits"
+msgstr "Credits"
+
 #: src/features/browse/FavoritesScreen.tsx
 #: src/features/detail/WorkRows.tsx
 msgid "Extras"
@@ -2173,7 +2179,7 @@ msgstr "Signed-in devices"
 msgid "Play from {title}"
 msgstr "Play from {title}"
 
-#: src/features/user/SettingsScreen.tsx
+#: src/features/user/CreditsDialog.tsx
 msgid "Audiobook metadata from {audnexus}"
 msgstr "Audiobook metadata from {audnexus}"
 
@@ -2875,7 +2881,7 @@ msgstr "Narrators"
 msgid "Auto"
 msgstr "Auto"
 
-#: src/features/user/SettingsScreen.tsx
+#: src/features/user/CreditsDialog.tsx
 msgid "Transcoding by {jellyfinFfmpeg} (GPL)"
 msgstr "Transcoding by {jellyfinFfmpeg} (GPL)"
 
@@ -3855,6 +3861,7 @@ msgstr "Clear all"
 #: src/components/Toast.tsx
 #: src/features/admin/ChooseArtworkDialog.tsx
 #: src/features/admin/ShowFilesDialog.tsx
+#: src/features/user/CreditsDialog.tsx
 msgid "Close"
 msgstr "Close"
 

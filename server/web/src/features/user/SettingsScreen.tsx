@@ -34,6 +34,7 @@ import { TvFocusGroup, useTvFocusable } from "@/tv/focus";
 import { TvControl } from "@/tv/forms/TvControl";
 import { currentTvFocus, focusTv, isTvFocusIn } from "@/tv/spatial";
 import { ChangePasswordDialog } from "./ChangePasswordDialog";
+import { CreditsDialog } from "./CreditsDialog";
 import { LibraryOrder, LibraryPins } from "./LibraryOrder";
 import { Sessions, SignOutHereButton } from "./Sessions";
 import { TvVersions } from "./TvVersions";
@@ -480,7 +481,7 @@ function AboutSection() {
           </SettingsRow>
         </SettingsCard>
       )}
-      <Credits />
+      <CreditsRow />
       {/* There is no admin area on TV; this is how to reach it from a browser. */}
       {isTv && address && (
         <SettingsCard
@@ -500,36 +501,18 @@ function AboutSection() {
   );
 }
 
-/**
- * Where the metadata and the transcoder come from: TMDB's logo and the
- * notice its API terms ask for, then Audnexus and jellyfin-ffmpeg. Each
- * name opens its site, except on TV, where there's nowhere to open it.
- */
-function Credits() {
-  const link = (href: string, children: ReactNode) =>
-    isTv ? (
-      children
-    ) : (
-      <a href={href} target="_blank" rel="noreferrer" className="text-text hover:underline">
-        {children}
-      </a>
-    );
-  const tmdb = <img src="tmdb.svg" alt="TMDB" width={273} height={36} className="h-3 w-auto tv:h-4" />;
-  const audnexus = link("https://github.com/laxamentumtech/audnexus", "Audnexus");
-  const jellyfinFfmpeg = link("https://github.com/jellyfin/jellyfin-ffmpeg", "jellyfin-ffmpeg");
+/** About's Credits row, which opens the credits. */
+function CreditsRow() {
+  const [open, setOpen] = useState(false);
   return (
-    <div data-part="credits" className="flex flex-col items-start gap-1 text-sm text-text-muted">
-      <span className="mb-1">{link("https://www.themoviedb.org", tmdb)}</span>
-      <p>
-        <Trans>This product uses the TMDB API but is not endorsed or certified by TMDB.</Trans>
-      </p>
-      <p>
-        <Trans>Audiobook metadata from {audnexus}</Trans>
-      </p>
-      <p>
-        <Trans>Transcoding by {jellyfinFfmpeg} (GPL)</Trans>
-      </p>
-    </div>
+    <SettingsCard>
+      <SettingsRow label={<Trans>Credits</Trans>}>
+        <Button size="sm" onPress={() => setOpen(true)}>
+          <Trans>View</Trans>
+        </Button>
+      </SettingsRow>
+      <CreditsDialog isOpen={open} onClose={() => setOpen(false)} />
+    </SettingsCard>
   );
 }
 

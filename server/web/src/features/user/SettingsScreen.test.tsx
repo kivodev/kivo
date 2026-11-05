@@ -76,25 +76,33 @@ describe("Settings", () => {
     expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
   });
 
-  it("credits TMDB, Audnexus and jellyfin-ffmpeg in About", async () => {
+  it("opens the credits for TMDB, Audnexus and jellyfin-ffmpeg from About's Credits row", async () => {
     serveMockApi();
-    renderApp("/settings");
+    const { user } = renderApp("/settings");
     const about = await screen.findByRole("region", { name: "About" });
-    expect(within(about).getByRole("img", { name: "TMDB" })).toHaveAttribute("src", "tmdb.svg");
-    expect(within(about).getByRole("link", { name: "TMDB" })).toHaveAttribute("href", "https://www.themoviedb.org");
+    expect(within(about).getByText("Credits")).toBeInTheDocument();
+    expect(within(about).queryByText(/TMDB API/)).not.toBeInTheDocument();
+    await user.click(within(about).getByRole("button", { name: "View" }));
+
+    const credits = await screen.findByRole("dialog", { name: "Credits" });
+    expect(within(credits).getByRole("img", { name: "TMDB" })).toHaveAttribute("src", "tmdb.svg");
+    expect(within(credits).getByRole("link", { name: "TMDB" })).toHaveAttribute("href", "https://www.themoviedb.org");
     expect(
-      within(about).getByText("This product uses the TMDB API but is not endorsed or certified by TMDB."),
+      within(credits).getByText("This product uses the TMDB API but is not endorsed or certified by TMDB."),
     ).toBeInTheDocument();
-    expect(within(about).getByText(/^Audiobook metadata from/)).toHaveTextContent("Audiobook metadata from Audnexus");
-    expect(within(about).getByRole("link", { name: "Audnexus" })).toHaveAttribute(
+    expect(within(credits).getByText(/^Audiobook metadata from/)).toHaveTextContent("Audiobook metadata from Audnexus");
+    expect(within(credits).getByRole("link", { name: "Audnexus" })).toHaveAttribute(
       "href",
       "https://github.com/laxamentumtech/audnexus",
     );
-    expect(within(about).getByText(/^Transcoding by/)).toHaveTextContent("Transcoding by jellyfin-ffmpeg (GPL)");
-    expect(within(about).getByRole("link", { name: "jellyfin-ffmpeg" })).toHaveAttribute(
+    expect(within(credits).getByText(/^Transcoding by/)).toHaveTextContent("Transcoding by jellyfin-ffmpeg (GPL)");
+    expect(within(credits).getByRole("link", { name: "jellyfin-ffmpeg" })).toHaveAttribute(
       "href",
       "https://github.com/jellyfin/jellyfin-ffmpeg",
     );
+
+    await user.click(within(credits).getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Credits" })).not.toBeInTheDocument());
   });
 
   it("saves each user change to the server as it's made", async () => {
