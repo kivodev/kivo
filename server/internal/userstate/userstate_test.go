@@ -672,6 +672,46 @@ func TestOfflineProgressAppliesOnlyWhenNewer(t *testing.T) {
 	}
 }
 
+// Removing a work from Continue Watching keeps its position and played
+// state, and tells the user's clients. An episode marks its series.
+func TestRemoveFromContinue(t *testing.T) {
+	f := newFixture(t)
+	m := f.movie("Heat", 2*time.Hour)
+	f.play(id.New(), m.Version, 30*time.Minute)
+	f.told()
+	if err := f.s.RemoveFromContinue(ctx, f.viewer(), m.Work); err != nil {
+		t.Fatal(err)
+	}
+	if st := f.state(f.user, m.Work); st.PositionMs != (30*time.Minute).Milliseconds() || !st.Resumable {
+		t.Errorf("after removing: %+v, want the position kept", st)
+	}
+	if pos, _ := f.s.Resume(ctx, f.user, m.Work, m.Version); pos != 30*time.Minute {
+		t.Errorf("resumes at %v after removing", pos)
+	}
+	if got := f.told(); len(got) != 1 || !slices.Equal(got[0].works, []id.ID{m.Work}) {
+		t.Errorf("told %+v; want Heat", got)
+	}
+
+	a, _ := f.episodes(time.Hour)
+	f.play(id.New(), a.Version, time.Hour)
+	f.told()
+	if err := f.s.RemoveFromContinue(ctx, f.viewer(), a.Work); err != nil {
+		t.Fatal(err)
+	}
+	series := mustParent(t, f, mustParent(t, f, a.Work))
+	var marked id.ID
+	err := f.b.DB.Reader().QueryRow(`SELECT work_id FROM user_state WHERE user_id = ? AND continue_removed_at IS NOT NULL AND work_id <> ?`, f.user, m.Work).Scan(&marked)
+	if err != nil || marked != series {
+		t.Errorf("marked %v (%v), want the series %v", marked, err, series)
+	}
+	if st := f.state(f.user, a.Work); !st.Played || st.PlayCount != 1 {
+		t.Errorf("the episode after removing: %+v, want it played", st)
+	}
+	if got := f.told(); len(got) != 1 || !slices.Equal(got[0].works, []id.ID{a.Work, series}) {
+		t.Errorf("told %+v; want the episode and its series", got)
+	}
+}
+
 // A position before the Continue Watching floor starts again from the
 // beginning, because the pages show Play for it, not Resume.
 func TestResumeBelowFloorStartsOver(t *testing.T) {

@@ -25,6 +25,9 @@ import kotlinx.coroutines.launch
 /** Opens a work's menu: what a long press of OK, or the Menu key, on its card or row does. */
 val LocalWorkMenu = staticCompositionLocalOf<(WorkSummary) -> Unit> { {} }
 
+/** Opens the menu of a card in Home's Continue Watching, which can also remove it from the row. */
+val LocalContinueWatchingMenu = staticCompositionLocalOf<(WorkSummary) -> Unit> { {} }
+
 /** The Menu key on this card or row opens [work]'s menu. */
 fun Modifier.menuKey(work: WorkSummary, open: (WorkSummary) -> Unit): Modifier = onKeyEvent { event ->
     if (event.key.nativeKeyCode != KeyEvent.KEYCODE_MENU) return@onKeyEvent false
@@ -35,18 +38,23 @@ fun Modifier.menuKey(work: WorkSummary, open: (WorkSummary) -> Unit): Modifier =
 /**
  * Gives the screens under it a work's menu: Play or Resume,
  * Play from beginning once there's progress, Mark as watched or unwatched, Add
- * to or Remove from favorites, Go to series for an episode (except on its
- * series' page), and Go to library outside a library's grid.
+ * to or Remove from favorites, Remove from Continue Watching in that row,
+ * Go to series for an episode (except on its series' page), and Go to
+ * library outside a library's grid.
  */
 @Composable
 fun WorkMenuHost(session: ServerSession, navigator: Navigator, content: @Composable () -> Unit) {
-    var open by remember { mutableStateOf<WorkSummary?>(null) }
-    CompositionLocalProvider(LocalWorkMenu provides { open = it }, content = content)
-    open?.let { work -> WorkMenu(work, session, navigator) { open = null } }
+    var open by remember { mutableStateOf<Pair<WorkSummary, Boolean>?>(null) }
+    CompositionLocalProvider(
+        LocalWorkMenu provides { open = it to false },
+        LocalContinueWatchingMenu provides { open = it to true },
+        content = content,
+    )
+    open?.let { (work, continueWatching) -> WorkMenu(work, continueWatching, session, navigator) { open = null } }
 }
 
 @Composable
-private fun WorkMenu(work: WorkSummary, session: ServerSession, navigator: Navigator, onClose: () -> Unit) {
+private fun WorkMenu(work: WorkSummary, continueWatching: Boolean, session: ServerSession, navigator: Navigator, onClose: () -> Unit) {
     val screen = navigator.current.screen
     val playable = work.available && work.kind in setOf("movie", "episode", "video", "extra")
     val started = work.userState?.positionMs != null
@@ -61,6 +69,7 @@ private fun WorkMenu(work: WorkSummary, session: ServerSession, navigator: Navig
         }
         add(Choice("played", stringResource(if (played) R.string.mark_unplayed else R.string.mark_played)))
         add(Choice("favorite", stringResource(if (favorite) R.string.remove_favorite else R.string.add_favorite)))
+        if (continueWatching) add(Choice("removeFromContinue", stringResource(R.string.remove_from_continue_watching)))
         if (seriesId != null && (screen as? Screen.Work)?.id != seriesId) add(Choice("series", stringResource(R.string.go_to_series)))
         if (screen !is Screen.Library && libraryId != null) add(Choice("library", stringResource(R.string.go_to_library)))
     }
@@ -87,6 +96,7 @@ private fun WorkMenu(work: WorkSummary, session: ServerSession, navigator: Navig
                 "fromStart" -> navigator.push(Screen.Player(work.id, fromStart = true))
                 "played" -> act { session.session.library.setPlayed(work.id, !played) }
                 "favorite" -> act { session.session.library.setFavorite(work.id, !favorite) }
+                "removeFromContinue" -> act { session.session.library.removeFromContinue(work.id) }
                 "series" -> work.episode?.let { navigator.push(Screen.Work(it.seriesId, it)) }
                 "library" -> libraryId?.let { navigator.open(Screen.Library(it)) }
             }

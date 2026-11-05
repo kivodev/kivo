@@ -1723,6 +1723,26 @@ paths:
         "404": {$ref: "#/components/responses/NotFound"}
         default: {$ref: "#/components/responses/Error"}
 
+  /api/v1/works/{id}/user-state/remove-from-continue:
+    parameters:
+      - {$ref: "#/components/parameters/ID"}
+    post:
+      operationId: removeFromContinue
+      summary: Remove from Continue Watching
+      description: |
+        Takes the work out of the caller's Continue Watching or Continue
+        Listening row on Home. The position and played state are kept. An
+        episode or season takes its series out. The work comes back the
+        next time the caller plays it, or for a series any of its episodes.
+      tags: [works]
+      x-kivo-access: viewer
+      responses:
+        "204":
+          description: Removed.
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        default: {$ref: "#/components/responses/Error"}
+
   /api/v1/works/{id}/matches:
     parameters:
       - {$ref: "#/components/parameters/ID"}

@@ -268,6 +268,14 @@ export function useUpdateUserState() {
   });
 }
 
+/** Take a work out of Continue Watching or Continue Listening, for you. */
+export function useRemoveFromContinue() {
+  const queryClient = useQueryClient();
+  return $api.useMutation("post", "/api/v1/works/{id}/user-state/remove-from-continue", {
+    onSuccess: () => invalidatePaths(queryClient, [apiPaths.home]),
+  });
+}
+
 /**
  * Replaces a work's user state wherever the cache holds it, on its detail
  * page and its card in every list. Returns the kinds of the copies it

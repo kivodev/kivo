@@ -523,6 +523,38 @@ open class WorksApi : ApiClient {
 
 
     /**
+     * Remove from Continue Watching
+     * Takes the work out of the caller&#39;s Continue Watching or Continue Listening row on Home. The position and played state are kept. An episode or season takes its series out. The work comes back the next time the caller plays it, or for a series any of its episodes. 
+     * @param id 
+     * @return void
+     */
+    open suspend fun removeFromContinue(id: kotlin.String): HttpResponse<Unit> {
+
+        val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.POST,
+            "/api/v1/works/{id}/user-state/remove-from-continue".replace("{" + "id" + "}", "$id"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
      * Search works
      * Searches works, people and collections across the libraries the user sees. Matches words: runs of letters and digits, without case or diacritics, so \&quot;spider man\&quot; finds Spider-Man. Every word must match a whole word, except the last, which matches the start of one, as the query is typed. A query with no words finds nothing. Works match by their titles, alternative titles or the people credited on them, and come best first: a title that is the query (a leading \&quot;The\&quot;, \&quot;A\&quot; or \&quot;An\&quot; ignored), then one starting with it, one holding it as a phrase, one holding its words, then alternative titles, then people only; within each, the most voted first. Clients group them by kind. People match by name, ranked the same way, then by credits, and collections by name, ranked the same way; a collection is found when the profile sees one of its root works. There&#39;s no fuzzy matching, and text without spaces between words, such as Japanese, matches only from its start. &#x60;limit&#x60; applies to works, people and collections each. 
      * @param q 

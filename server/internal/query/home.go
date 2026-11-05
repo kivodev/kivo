@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"slices"
+	"time"
 
 	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/id"
@@ -13,6 +14,11 @@ import (
 // rowLimit is how many summaries a Home row holds.
 const rowLimit = 20
 
+// seriesStaleAfter is how long a series' next episode or book stays in
+// Continue Watching or Continue Series after the user's last play in the
+// series, unless the series gained an episode or book since that play.
+const seriesStaleAfter = 365 * 24 * time.Hour
+
 // RowKind is what a Home row shows.
 type RowKind string
 
@@ -21,20 +27,22 @@ const (
 	// RowContinueWatching is what to keep watching, most recently played
 	// first. It holds the videos in progress other than episodes, and each
 	// series' episode up next. It includes works that can't play right now
-	// (see WorkSummary.Unavailable).
+	// (see WorkSummary.Unavailable), and leaves out what the user removed
+	// from it and hasn't played since.
 	RowContinueWatching RowKind = "continueWatching"
 	// RowFavorites is the works the user marked.
 	RowFavorites RowKind = "favorites"
-	// RowRecentlyAdded is one pinned library's newest works. A show's
-	// episodes added close together are bundled into one summary (see
-	// bundles).
+	// RowRecentlyAdded is one pinned library's newest works that the user
+	// hasn't played. A show's episodes added close together are bundled
+	// into one summary (see bundles).
 	RowRecentlyAdded RowKind = "recentlyAdded"
 	// RowContinueListening is the books in progress in the user's pinned
 	// libraries, ordered as in Continue Watching.
 	RowContinueListening RowKind = "continueListening"
 	// RowContinueSeries is the next book of each book series in which the
 	// user has finished a book, in the user's pinned libraries. A series
-	// with a book in Continue Listening is left out.
+	// with a book in Continue Listening is left out, and so is one gone
+	// stale (see seriesStaleAfter).
 	RowContinueSeries RowKind = "continueSeries"
 )
 
@@ -55,19 +63,29 @@ type HomeRow struct {
 // ordered by when the user last played an episode of the series. A work
 // whose files can't be reached right now stays in the row, marked
 // unavailable.
+//
+// A work the user removed is left out until it's played again, and a
+// series until any of its episodes is. A series also goes once it's
+// stale: last played before @stale_before, with no episode added since.
 var continueWatching = stmt("ContinueWatching", `
-WITH followed (series, at) AS (
-  SELECT fw.root_id, max(fu.last_played_at)
+WITH followed (series, at, last) AS (
+  SELECT fw.root_id, max(fu.last_played_at) FILTER (WHERE fu.played OR fu.resumable), max(fu.last_played_at)
   FROM user_state fu JOIN work fw ON fw.id = fu.work_id
-  WHERE fu.user_id = @user AND (fu.played OR fu.resumable) AND fu.last_played_at IS NOT NULL AND fw.kind = 'episode'
+  WHERE fu.user_id = @user AND fu.last_played_at IS NOT NULL AND fw.kind = 'episode'
   GROUP BY fw.root_id
 ),
 picks (work, at) AS (
   SELECT pu.work_id, pu.last_played_at
   FROM user_state pu JOIN work pw ON pw.id = pu.work_id
   WHERE pu.user_id = @user AND pu.resumable AND pw.kind NOT IN ('episode', 'book')
+    AND `+notRemoved("pu")+`
   UNION ALL
   SELECT `+upNext("f.series")+`, f.at FROM followed f
+  WHERE f.at IS NOT NULL
+    AND NOT EXISTS (SELECT 1 FROM user_state ru WHERE ru.user_id = @user AND ru.work_id = f.series AND ru.continue_removed_at >= f.last)
+    AND (f.last >= @stale_before OR EXISTS (
+      SELECT 1 FROM work ne JOIN work_library nl ON nl.work_id = ne.id
+      WHERE ne.root_id = f.series AND ne.kind = 'episode' AND nl.added_at > f.last))
 )
 SELECT `+summaryColumns+`
 FROM picks p
@@ -87,6 +105,7 @@ FROM user_state us
 JOIN work w ON w.id = us.work_id
 WHERE us.user_id = @user AND us.resumable AND NOT w.provisional
   AND w.kind = 'book'
+  AND `+notRemoved("us")+`
   AND `+notHidden+`
   AND `+visible+`
 ORDER BY us.last_played_at DESC, us.work_id
@@ -96,12 +115,15 @@ LIMIT @limit`)
 // has finished a book, most recently finished first. The next book is the
 // first one after the furthest finished book by position. A series with a
 // book in progress is left to Continue Listening. A series with nothing
-// after the finished book has no row.
+// after the finished book has no row. A series is stale, and left out,
+// when the user last played a book of it before @stale_before and no book
+// was added to it since.
 var continueSeries = stmt("ContinueSeries", `
-WITH finished (series, at, position) AS (
-  SELECT fb.series_id, max(fu.last_played_at), max(fb.position_num)
+WITH finished (series, at, position, last) AS (
+  SELECT fb.series_id, max(fu.last_played_at) FILTER (WHERE fu.played), max(fb.position_num) FILTER (WHERE fu.played),
+    max(fu.last_played_at)
   FROM user_state fu JOIN book_series_book fb ON fb.work_id = fu.work_id
-  WHERE fu.user_id = @user AND fu.played AND fb.position_num IS NOT NULL
+  WHERE fu.user_id = @user AND fb.position_num IS NOT NULL
   GROUP BY fb.series_id
 )
 SELECT `+summaryColumns+`
@@ -117,25 +139,37 @@ WHERE NOT w.provisional
   AND NOT EXISTS (
     SELECT 1 FROM book_series_book pb JOIN user_state pu ON pu.user_id = @user AND pu.work_id = pb.work_id AND pu.resumable
     WHERE pb.series_id = f.series)
+  AND (f.last >= @stale_before OR EXISTS (
+    SELECT 1 FROM book_series_book ab JOIN work_library al ON al.work_id = ab.work_id
+    WHERE ab.series_id = f.series AND al.added_at > f.last))
   AND `+visible+`
 ORDER BY f.at DESC, w.id
 LIMIT @limit`)
 
 // recentlyAdded lists a library's newest 1,000 additions, newest first, for
 // Home to bundle into summaries. Each row is a playable work with its season
-// and series. Reading only the newest additions keeps the read small. A scan that
-// adds more than that at once still shows the newest of them first.
+// and series, and whether the user played it. Reading only the newest
+// additions keeps the read small. A scan that adds more than that at once
+// still shows the newest of them first.
 var recentlyAdded = stmt("RecentlyAdded", `
 SELECT w.id, w.kind, w.parent_id, w.root_id, ra.added_at, w.sort_title,
-  coalesce(s.sort_title, ''), r.sort_title, r.provisional
+  coalesce(s.sort_title, ''), r.sort_title, r.provisional, coalesce(us.played, 0)
 FROM (SELECT x.work_id, x.added_at FROM work_library x WHERE x.library_id = @library
       ORDER BY x.added_at DESC LIMIT 1000) ra
 JOIN work w ON w.id = ra.work_id
 JOIN work r ON r.id = w.root_id
 LEFT JOIN work s ON s.id = w.parent_id
+LEFT JOIN user_state us ON us.user_id = @user AND us.work_id = w.id
 WHERE w.kind IN ('movie', 'episode', 'video', 'book')
   AND `+visible+`
 ORDER BY ra.added_at DESC, w.id`)
+
+// notRemoved keeps the user's state u for a work unless the user removed the
+// work from Continue Watching or Continue Listening and hasn't played it
+// since.
+func notRemoved(u string) string {
+	return "(" + u + ".continue_removed_at IS NULL OR " + u + ".continue_removed_at < " + u + ".last_played_at)"
+}
 
 // Home returns the Home rows that have summaries, read from one snapshot.
 // Watching rows come first and listening rows last. Continue Watching,
@@ -164,13 +198,14 @@ func (s *Service) Home(ctx context.Context, v users.Viewer) ([]HomeRow, error) {
 		books.libraries = id.Set(pinnedBooks...)
 
 		limit := sql.Named("limit", rowLimit)
-		if watching, err = summaries(ctx, tx, continueWatching, vw.args(limit)); err != nil {
+		stale := sql.Named("stale_before", time.Now().Add(-seriesStaleAfter).UnixMilli())
+		if watching, err = summaries(ctx, tx, continueWatching, vw.args(limit, stale)); err != nil {
 			return err
 		}
 		if listening, err = summaries(ctx, tx, continueListening, books.args(limit)); err != nil {
 			return err
 		}
-		next, err := summaries(ctx, tx, continueSeries, books.args(limit))
+		next, err := summaries(ctx, tx, continueSeries, books.args(limit, stale))
 		if err != nil {
 			return err
 		}
@@ -188,7 +223,7 @@ func (s *Service) Home(ctx context.Context, v users.Viewer) ([]HomeRow, error) {
 			}
 			added, err := rowsOf(ctx, tx, recentlyAdded, vw.args(sql.Named("library", lib.ID)), func(r scanner, a *addition) error {
 				return r.Scan(&a.ID, &a.Kind, &a.ParentID, &a.RootID, &a.AddedAt, &a.SortTitle,
-					&a.SeasonSortTitle, &a.SeriesSortTitle, &a.SeriesProvisional)
+					&a.SeasonSortTitle, &a.SeriesSortTitle, &a.SeriesProvisional, &a.Played)
 			})
 			if err != nil {
 				return err

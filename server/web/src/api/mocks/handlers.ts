@@ -311,6 +311,13 @@ export function createHandlers(api: MockApi) {
       if (played !== undefined && (work.kind === "series" || work.kind === "season")) mark(params.id, played);
       return response(200).json(work.userState);
     }),
+    http.post("/api/v1/works/{id}/user-state/remove-from-continue", ({ params, response }) => {
+      for (const row of api.home.rows) {
+        if (row.kind === "continueWatching" || row.kind === "continueListening")
+          row.items = row.items.filter((w) => w.id !== params.id);
+      }
+      return response(204).empty();
+    }),
     ...(["/api/v1/works/{id}/match", "/api/v1/works/{id}/unmatch"] as const).map((path) =>
       http.post(path, ({ params, response }) => {
         const work = api.works[params.id];

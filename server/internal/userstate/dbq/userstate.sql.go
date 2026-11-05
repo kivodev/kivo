@@ -90,7 +90,7 @@ func (q *Queries) Episodes(ctx context.Context, workID id.ID) ([]id.ID, error) {
 }
 
 const getState = `-- name: GetState :one
-SELECT user_id, work_id, played, play_count, position_ms, resumable, favorite, rating, last_played_at, updated_at, favorited_at, version_id FROM user_state WHERE user_id = ?1 AND work_id = ?2
+SELECT user_id, work_id, played, play_count, position_ms, resumable, favorite, rating, last_played_at, updated_at, favorited_at, version_id, continue_removed_at FROM user_state WHERE user_id = ?1 AND work_id = ?2
 `
 
 type GetStateParams struct {
@@ -114,6 +114,7 @@ func (q *Queries) GetState(ctx context.Context, arg GetStateParams) (UserState, 
 		&i.UpdatedAt,
 		&i.FavoritedAt,
 		&i.VersionID,
+		&i.ContinueRemovedAt,
 	)
 	return i, err
 }
@@ -312,6 +313,24 @@ func (q *Queries) RemoveFavorite(ctx context.Context, arg RemoveFavoriteParams) 
 	return err
 }
 
+const removeFromContinue = `-- name: RemoveFromContinue :exec
+INSERT INTO user_state (user_id, work_id, continue_removed_at, updated_at) VALUES (?1, ?2, CAST(?3 AS INTEGER), ?3)
+ON CONFLICT (user_id, work_id) DO UPDATE SET continue_removed_at = excluded.continue_removed_at
+`
+
+type RemoveFromContinueParams struct {
+	UserID id.ID
+	WorkID id.ID
+	At     int64
+}
+
+// Leaves updated_at alone, so an offline position from before the removal
+// still applies.
+func (q *Queries) RemoveFromContinue(ctx context.Context, arg RemoveFromContinueParams) error {
+	_, err := q.db.ExecContext(ctx, removeFromContinue, arg.UserID, arg.WorkID, arg.At)
+	return err
+}
+
 const saveFinished = `-- name: SaveFinished :exec
 INSERT INTO user_state (user_id, work_id, played, play_count, position_ms, resumable, version_id, last_played_at, updated_at)
 VALUES (?1, ?2, 1, 1, 0, 0, ?3, CAST(?4 AS INTEGER), ?4)
@@ -452,7 +471,7 @@ func (q *Queries) SetTrackChoice(ctx context.Context, arg SetTrackChoiceParams) 
 }
 
 const statesOfWork = `-- name: StatesOfWork :many
-SELECT user_id, work_id, played, play_count, position_ms, resumable, favorite, rating, last_played_at, updated_at, favorited_at, version_id FROM user_state WHERE work_id = ?1
+SELECT user_id, work_id, played, play_count, position_ms, resumable, favorite, rating, last_played_at, updated_at, favorited_at, version_id, continue_removed_at FROM user_state WHERE work_id = ?1
 `
 
 func (q *Queries) StatesOfWork(ctx context.Context, workID id.ID) ([]UserState, error) {
@@ -477,6 +496,7 @@ func (q *Queries) StatesOfWork(ctx context.Context, workID id.ID) ([]UserState, 
 			&i.UpdatedAt,
 			&i.FavoritedAt,
 			&i.VersionID,
+			&i.ContinueRemovedAt,
 		); err != nil {
 			return nil, err
 		}

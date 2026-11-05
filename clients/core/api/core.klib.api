@@ -1764,6 +1764,7 @@ final class com.mmcdole.kivo.core.session/SessionLibrary { // com.mmcdole.kivo.c
     final fun work(kotlin/String): kotlinx.coroutines.flow/Flow<com.mmcdole.kivo.core/Load<com.mmcdole.kivo.api.models/WorkDetail>> // com.mmcdole.kivo.core.session/SessionLibrary.work|work(kotlin.String){}[0]
     final suspend fun gridPage(com.mmcdole.kivo.core.data/GridQuery, kotlin/Int, kotlin/Int): com.mmcdole.kivo.api.models/WorkSummaryPage // com.mmcdole.kivo.core.session/SessionLibrary.gridPage|gridPage(com.mmcdole.kivo.core.data.GridQuery;kotlin.Int;kotlin.Int){}[0]
     final suspend fun hasCollections(kotlin/String): kotlin/Boolean // com.mmcdole.kivo.core.session/SessionLibrary.hasCollections|hasCollections(kotlin.String){}[0]
+    final suspend fun removeFromContinue(kotlin/String) // com.mmcdole.kivo.core.session/SessionLibrary.removeFromContinue|removeFromContinue(kotlin.String){}[0]
     final suspend fun search(kotlin/String, kotlin/Int?): com.mmcdole.kivo.api.models/SearchResults // com.mmcdole.kivo.core.session/SessionLibrary.search|search(kotlin.String;kotlin.Int?){}[0]
     final suspend fun setFavorite(kotlin/String, kotlin/Boolean): com.mmcdole.kivo.api.models/UserState // com.mmcdole.kivo.core.session/SessionLibrary.setFavorite|setFavorite(kotlin.String;kotlin.Boolean){}[0]
     final suspend fun setPlayed(kotlin/String, kotlin/Boolean): com.mmcdole.kivo.api.models/UserState // com.mmcdole.kivo.core.session/SessionLibrary.setPlayed|setPlayed(kotlin.String;kotlin.Boolean){}[0]

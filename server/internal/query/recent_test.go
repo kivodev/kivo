@@ -58,6 +58,15 @@ func (sh *show) episode(season, episode int, ago time.Duration) id.ID {
 	return w
 }
 
+// play marks works played by the user.
+func (s *shelf) play(works ...id.ID) {
+	for i, r := range s.rows {
+		if slices.Contains(works, r.ID) {
+			s.rows[i].Played = true
+		}
+	}
+}
+
 // got renders bundles as "name" or "name ×N".
 func (s *shelf) got() []string {
 	var out []string
@@ -167,6 +176,26 @@ func TestBundles(t *testing.T) {
 			sh.episode(1, 2, time.Minute)
 		},
 		want: []string{"Alien", "Mad Men S1 ×2", "Zodiac"}, // the season's summary by its title, "Season 1"
+	}, {
+		name: "played works are left out, and a bundle only once all of it is",
+		build: func(s *shelf) {
+			s.play(s.movie("Dune", 0))
+			s.movie("Arrival", time.Hour)
+			a, b := s.show("Andor"), s.show("Bluey")
+			s.play(a.episode(1, 1, time.Minute), a.episode(1, 2, 2*time.Minute))
+			s.play(b.episode(1, 1, time.Minute))
+			b.episode(1, 2, 2*time.Minute)
+		},
+		want: []string{"Bluey S1 ×2", "Arrival"},
+	}, {
+		name: "a show's older run takes the place of a played one on the same summary",
+		build: func(s *shelf) {
+			sh := s.show("Lost")
+			s.play(sh.episode(1, 3, 0), sh.episode(1, 2, time.Minute))
+			sh.episode(1, 1, 3*24*time.Hour)
+			sh.episode(1, 5, 3*24*time.Hour+time.Minute)
+		},
+		want: []string{"Lost S1 ×2"},
 	}} {
 		t.Run(tt.name, func(t *testing.T) {
 			s := newShelf()

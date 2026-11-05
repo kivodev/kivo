@@ -170,6 +170,13 @@ func (h *handlers) UpdateWorkUserState(ctx context.Context, req gen.UpdateWorkUs
 	return gen.UpdateWorkUserState200JSONResponse(userState(st)), nil
 }
 
+func (h *handlers) RemoveFromContinue(ctx context.Context, req gen.RemoveFromContinueRequestObject) (gen.RemoveFromContinueResponseObject, error) {
+	if err := h.deps.Userstate.RemoveFromContinue(ctx, callerOf(ctx).viewer, req.ID); err != nil {
+		return nil, err
+	}
+	return gen.RemoveFromContinue204Response{}, nil
+}
+
 func (h *handlers) ListWorkMatches(ctx context.Context, req gen.ListWorkMatchesRequestObject) (gen.ListWorkMatchesResponseObject, error) {
 	p := req.Params
 	s := identify.MatchSearch{Provider: optAs[string](deref(p.Provider)), Query: p.Query, Year: p.Year, Author: p.Author}
