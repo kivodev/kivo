@@ -263,7 +263,7 @@ func (h *household) watch() {
 func (h *household) library(name string, kind catalog.LibraryKind) (lib, folder id.ID) {
 	h.t.Helper()
 	h.b.Write(func(ctx context.Context, tx *store.Tx) error {
-		l, err := h.b.Catalog.CreateLibrary(ctx, tx, catalog.LibraryInput{Name: name, Kind: kind, Folders: []string{"/media/" + name}})
+		l, err := h.b.Catalog.CreateLibrary(ctx, tx, catalog.LibraryInput{Name: name, Kind: kind, Folders: []string{catalogtest.Abs("/media/" + name)}})
 		lib, folder = l.ID, l.Folders[0].ID
 		return err
 	})

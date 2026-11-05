@@ -827,7 +827,7 @@ func TestDirectories(t *testing.T) {
 	if len(page.Items) != 2 || page.Items[0]["name"] != "a" || page.Items[1]["path"] != filepath.Join(dir, "b") {
 		t.Errorf("listing %+v", page)
 	}
-	if roots := decode[list](t, e.do("GET", "/api/v1/directories", e.adminToken, nil)); len(roots.Items) == 0 || roots.Items[0]["path"] != "/" {
+	if roots := decode[list](t, e.do("GET", "/api/v1/directories", e.adminToken, nil)); len(roots.Items) == 0 || roots.Items[0]["path"] != filepath.Dir(roots.Items[0]["path"].(string)) {
 		t.Errorf("roots %+v", roots)
 	}
 	if w := e.do("GET", "/api/v1/directories?path=relative", e.adminToken, nil); w.Code != http.StatusBadRequest {

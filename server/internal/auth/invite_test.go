@@ -10,6 +10,7 @@ import (
 	"github.com/mmcdole/kivo/internal/store"
 
 	"github.com/mmcdole/kivo/internal/catalog"
+	"github.com/mmcdole/kivo/internal/catalog/catalogtest"
 	"github.com/mmcdole/kivo/internal/events"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/users"
@@ -19,7 +20,7 @@ func (f *fixture) library(name string) id.ID {
 	f.t.Helper()
 	var lib id.ID
 	err := f.db.Write(context.Background(), func(ctx context.Context, tx *store.Tx) error {
-		l, err := catalog.New(f.db, events.NewBus()).CreateLibrary(ctx, tx, catalog.LibraryInput{Name: name, Kind: catalog.Movies, Folders: []string{"/media/" + name}})
+		l, err := catalog.New(f.db, events.NewBus()).CreateLibrary(ctx, tx, catalog.LibraryInput{Name: name, Kind: catalog.Movies, Folders: []string{catalogtest.Abs("/media/" + name)}})
 		lib = l.ID
 		return err
 	})

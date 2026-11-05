@@ -15,6 +15,8 @@ render 512 "$root/server/web/public/icon-512.png"
 render 192 "$root/server/web/public/icon-192.png"
 render 180 "$root/server/web/public/apple-touch-icon.png"
 cp app-icon.svg "$root/server/web/public/icon.svg"
+# The Windows tray and installer icon.
+magick "$root/server/web/public/icon-512.png" -define icon:auto-resize=256,64,48,32,24,16 "$root/server/cmd/kivo/kivo.ico"
 # The web client's logo, served beside the icons (Logo.tsx).
 for f in lockup lockup-light mark mark-light; do cp "$f.svg" "$root/server/web/public/$f.svg"; done
 # TV launchers put the icon on a card of their own, often wider than it is

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/mmcdole/kivo/internal/catalog"
+	"github.com/mmcdole/kivo/internal/catalog/catalogtest"
 	"github.com/mmcdole/kivo/internal/events"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/query"
@@ -164,11 +165,11 @@ func generate(t *testing.T, db *store.DB) (movies, shows, moviesFolder id.ID) {
 	cat := catalog.New(db, events.NewBus())
 	var showsFolder id.ID
 	err := db.Write(context.Background(), func(ctx context.Context, tx *store.Tx) error {
-		m, err := cat.CreateLibrary(ctx, tx, catalog.LibraryInput{Name: "Movies", Kind: catalog.Movies, Folders: []string{"/m"}})
+		m, err := cat.CreateLibrary(ctx, tx, catalog.LibraryInput{Name: "Movies", Kind: catalog.Movies, Folders: []string{catalogtest.Abs("/m")}})
 		if err != nil {
 			return err
 		}
-		sh, err := cat.CreateLibrary(ctx, tx, catalog.LibraryInput{Name: "Shows", Kind: catalog.Shows, Folders: []string{"/s"}})
+		sh, err := cat.CreateLibrary(ctx, tx, catalog.LibraryInput{Name: "Shows", Kind: catalog.Shows, Folders: []string{catalogtest.Abs("/s")}})
 		if err != nil {
 			return err
 		}

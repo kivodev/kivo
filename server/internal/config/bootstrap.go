@@ -44,16 +44,19 @@ type Bootstrap struct {
 	UpdateCheck bool `toml:"update_check"`
 }
 
+// DefaultPath is where server.toml is read from when no path is given.
+func DefaultPath() string { return filepath.Join(home(), "config", "server.toml") }
+
 // DefaultBootstrap is used for every key that neither the file nor the
 // environment sets.
 func DefaultBootstrap() Bootstrap {
 	return Bootstrap{
 		Listen:      []string{":8484"},
-		DataDir:     "data",
-		CacheDir:    "cache",
-		BackupDir:   "backups",
-		FFmpeg:      "ffmpeg",
-		FFprobe:     "ffprobe",
+		DataDir:     filepath.Join(home(), "data"),
+		CacheDir:    filepath.Join(home(), "cache"),
+		BackupDir:   filepath.Join(home(), "backups"),
+		FFmpeg:      tool("ffmpeg"),
+		FFprobe:     tool("ffprobe"),
 		LogLevel:    "info",
 		LogFormat:   "text",
 		Audible:     true,

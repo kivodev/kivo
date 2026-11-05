@@ -142,7 +142,7 @@ func TestGoldenArgv(t *testing.T) {
 			if slices.Contains([]string{"probe", "attachments"}, tt.name) {
 				tool = "ffprobe"
 			}
-			checkGolden(t, tt.name, quote(append([]string{tool}, args...))+"\n")
+			checkGolden(t, tt.name, quote(append([]string{tool}, slashed(args)...))+"\n")
 			again, _ := tt.args()
 			if quote(again) != quote(args) {
 				t.Error("the same request gave a different argv")
@@ -439,4 +439,16 @@ func TestStereoDownmix(t *testing.T) {
 			t.Errorf("%d to %d channels: dialogue downmix %v, want %v: %q", c.source, c.out, got, c.mixed, args)
 		}
 	}
+}
+
+// slashed writes the file: paths in args with /, as the golden files have
+// them, whatever separator the OS joined them with.
+func slashed(args []string) []string {
+	out := slices.Clone(args)
+	for i, a := range out {
+		if p, ok := strings.CutPrefix(a, "file:"); ok {
+			out[i] = "file:" + filepath.ToSlash(p)
+		}
+	}
+	return out
 }

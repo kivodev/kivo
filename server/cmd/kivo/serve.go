@@ -75,13 +75,15 @@ func serve(configPath string) error {
 	if err != nil {
 		return err
 	}
-	bus := events.NewBus()
-	defer bus.Close()
-	logs := setupLogging(boot, bus)
-	slog.Info("kivo: starting", "version", version)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	return run(ctx, boot, logs, bus)
+	return inTray(ctx, boot, func(ctx context.Context) error {
+		bus := events.NewBus()
+		defer bus.Close()
+		logs := setupLogging(boot, bus)
+		slog.Info("kivo: starting", "version", version)
+		return run(ctx, boot, logs, bus)
+	})
 }
 
 // logLines is how many recent log lines are kept for admins to read.

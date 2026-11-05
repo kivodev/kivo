@@ -13,6 +13,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+
+	"github.com/mmcdole/kivo/internal/config"
 )
 
 // version is set at build time with -ldflags "-X main.version=…".
@@ -21,6 +23,7 @@ var version = "dev"
 func main() {
 	if err := command(os.Args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, "kivo:", err)
+		alert(err)
 		os.Exit(1)
 	}
 }
@@ -31,7 +34,7 @@ func command(args []string) error {
 		cmd, args = args[0], args[1:]
 	}
 	fs := flag.NewFlagSet("kivo "+cmd, flag.ContinueOnError)
-	configPath := fs.String("config", "config/server.toml", "path to server.toml")
+	configPath := fs.String("config", config.DefaultPath(), "path to server.toml")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}

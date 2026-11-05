@@ -26,7 +26,7 @@ Coming soon:
 
 ## Server
 
-The server runs in Docker on Linux. Native builds for Linux and Windows are coming soon.
+The server runs in Docker on Linux. Native Windows builds are in progress ([#9](https://github.com/kivodev/kivo/issues/9)), see [running on Windows](docs/windows.md). Native Linux builds are coming soon.
 
 ```sh
 docker run -d --name kivo \

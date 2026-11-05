@@ -95,6 +95,7 @@ func start(ctx context.Context, op, bin string, args []string, how spawn) (*proc
 	if err := cmd.Start(); err != nil {
 		return fail(err)
 	}
+	contain(cmd.Process)
 	if how.background {
 		// Set the priority as soon as the process exists, before it starts
 		// any threads, which inherit it.

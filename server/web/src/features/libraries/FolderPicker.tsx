@@ -8,11 +8,14 @@ import { Button } from "@/components/Button";
 import { Icon } from "@/components/Icon";
 import { describeProblem } from "@/i18n/problems";
 
+// parentOf is the folder above path, or undefined above a root, where the
+// picker lists where it starts. A Windows server's paths have a drive and
+// backslashes, and the parent of C:\Movies is C:\.
 function parentOf(path: string): string | undefined {
-  const trimmed = path.replace(/\/+$/, "");
-  const i = trimmed.lastIndexOf("/");
-  if (i <= 0) return trimmed === "" ? undefined : "/";
-  return trimmed.slice(0, i);
+  const trimmed = path.replace(/[\\/]+$/, "");
+  const i = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
+  if (i < 0) return undefined;
+  return trimmed.slice(0, i === 0 || trimmed[i - 1] === ":" ? i + 1 : i);
 }
 
 /**

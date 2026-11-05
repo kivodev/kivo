@@ -8,6 +8,7 @@ import (
 	"github.com/mmcdole/kivo/internal/store"
 
 	"github.com/mmcdole/kivo/internal/catalog"
+	"github.com/mmcdole/kivo/internal/catalog/catalogtest"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/query"
 	"github.com/mmcdole/kivo/internal/users"
@@ -28,7 +29,7 @@ func TestVisibleAgreesWithCanSeeWork(t *testing.T) {
 	var clipsFolder id.ID
 	h.b.Write(func(ctx context.Context, tx *store.Tx) error {
 		l, err := h.b.Catalog.CreateLibrary(ctx, tx, catalog.LibraryInput{
-			Name: "Clips", Kind: catalog.Videos, Folders: []string{"/media/Clips"},
+			Name: "Clips", Kind: catalog.Videos, Folders: []string{catalogtest.Abs("/media/Clips")},
 		})
 		clipsFolder = l.Folders[0].ID
 		return err

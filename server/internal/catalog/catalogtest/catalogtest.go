@@ -5,6 +5,7 @@ package catalogtest
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -50,6 +51,16 @@ func (b *Builder) Write(fn func(ctx context.Context, tx *store.Tx) error) {
 	}
 }
 
+// Abs returns p, a slash-separated path from the root, as an absolute path
+// here: unchanged where / is a root, and on drive C: on Windows. Tests name
+// library folders with it, since a folder must be absolute.
+func Abs(p string) string {
+	if filepath.IsAbs(p) {
+		return p
+	}
+	return "C:" + filepath.FromSlash(p)
+}
+
 // Library makes a library of kind (catalog.Movies, Shows or Videos) with one
 // folder, and returns the library and the folder.
 func (b *Builder) Library(kind catalog.LibraryKind) (lib, folder id.ID) {
@@ -57,7 +68,7 @@ func (b *Builder) Library(kind catalog.LibraryKind) (lib, folder id.ID) {
 	b.n++
 	b.Write(func(ctx context.Context, tx *store.Tx) error {
 		l, err := b.Catalog.CreateLibrary(ctx, tx, catalog.LibraryInput{
-			Name: fmt.Sprintf("%s %d", kind, b.n), Kind: kind, Folders: []string{fmt.Sprintf("/media/%s%d", kind, b.n)},
+			Name: fmt.Sprintf("%s %d", kind, b.n), Kind: kind, Folders: []string{Abs(fmt.Sprintf("/media/%s%d", kind, b.n))},
 		})
 		lib, folder = l.ID, l.Folders[0].ID
 		return err

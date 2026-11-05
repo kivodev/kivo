@@ -44,6 +44,21 @@ jobs:
           KIVO_BUDGET_SCALE: "3"
       - run: make check-generated
 
+  # The server's Go tests on Windows. There's no ffmpeg here, so the tests
+  # that need it skip.
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.mod
+      - run: go test ./cmd/... ./internal/... ./web
+
   web:
     runs-on: ubuntu-latest
     defaults:
