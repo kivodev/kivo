@@ -54,7 +54,7 @@ final class PictureInPictureTests: XCTestCase {
         let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let core = KivoClient(device: AppleDevice(
-            directory: directory.path(percentEncoded: false), name: "Test", language: "en", identity: AppleIdentity.current,
+            directory: directory.path(percentEncoded: false), name: "Test", identity: AppleIdentity.current,
             clientId: nil, subtitles: AppModel.subtitles, trackSelection: true, transport: NoTransport()
         ))
         session = try await core.restore(server: SavedServer(id: "pip-test", name: "PiP test", addresses: [address]))

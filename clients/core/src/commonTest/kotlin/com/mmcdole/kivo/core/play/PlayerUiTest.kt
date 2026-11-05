@@ -1,6 +1,7 @@
 package com.mmcdole.kivo.core.play
 
 import com.mmcdole.kivo.api.models.Marker
+import com.mmcdole.kivo.api.models.PlayDelivery
 import com.mmcdole.kivo.api.models.PlayPart
 import com.mmcdole.kivo.api.models.PlayStarted
 import com.mmcdole.kivo.core.player.Autoplay
@@ -37,7 +38,7 @@ private val episode = PlayStarted(
     startMs = 0,
     durationMs = DURATION_MS,
     local = true,
-    delivery = "file",
+    delivery = PlayDelivery.File,
     url = "plays/p1/media",
     tracks = emptyList(),
     parts = listOf(PlayPart(DURATION_MS)),

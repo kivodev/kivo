@@ -13,15 +13,7 @@ import { ModalDialog, useDismissal } from "@/components/ModalDialog";
 import { SubmitForm } from "@/components/SubmitForm";
 import { TextField } from "@/components/TextField";
 import { TranscodeDiagnostics } from "@/components/TranscodeDiagnostics";
-import {
-  codecName,
-  hdrName,
-  output,
-  trackBrief,
-  trackChange,
-  trackDetail,
-  transcodeOutput,
-} from "@/components/trackLabels";
+import { codecName, hdrName, output, trackBrief, trackChange, transcodeOutput } from "@/components/trackLabels";
 import { episodeCode } from "@/features/browse/WorkCard";
 import { formatBitrate, formatClock, formatTimeOfDay, formatTimes } from "@/i18n/format";
 import { describeReason, methodLabel, mismatchLabel, playMethod } from "@/i18n/playback";
@@ -89,7 +81,7 @@ function labelOf(play: Play, track: PlayTrack): string | undefined {
   const out = transcodeOutput(track);
   if (out) return output(out);
   const source = sourceOf(play, track);
-  return source && trackDetail(source);
+  return source?.fullName;
 }
 
 /** How far a transcode has encoded ahead of the viewer, if at all. */

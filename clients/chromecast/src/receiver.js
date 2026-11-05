@@ -270,7 +270,7 @@ export class Receiver {
       t.subtype = m.TextTrackType.SUBTITLES;
       const info = this.trackInfo(s.trackId);
       if (info?.language) t.language = info.language;
-      t.name = info?.title || info?.language || `Subtitles ${castId}`;
+      t.name = info?.name || info?.language || `Subtitles ${castId}`;
       tracks.push(t);
       this.textTracks.set(castId, s.trackId);
       if (s.trackId === subtitle) active = castId;

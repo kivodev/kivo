@@ -3,6 +3,7 @@ package com.mmcdole.kivo.core.session
 import com.mmcdole.kivo.api.models.CurrentUser
 import com.mmcdole.kivo.api.models.LibraryChoice
 import com.mmcdole.kivo.api.models.PlaybackPreferencesUpdate
+import com.mmcdole.kivo.api.models.SubtitleMode
 import com.mmcdole.kivo.core.player.Autoplay
 import com.mmcdole.kivo.core.settings.UserSettings
 import kotlinx.coroutines.CancellationException
@@ -35,7 +36,7 @@ class SessionAccount internal constructor(
 
     /** `none`, `forced`, `smart` or `always`. */
     @Throws(Exception::class)
-    suspend fun setSubtitleMode(mode: String): CurrentUser = updatePlayback(PlaybackPreferencesUpdate(subtitleMode = mode))
+    suspend fun setSubtitleMode(mode: SubtitleMode): CurrentUser = updatePlayback(PlaybackPreferencesUpdate(subtitleMode = mode))
 
     /** The preferred subtitle language (BCP 47), or null for the server's metadata language. */
     @Throws(Exception::class)

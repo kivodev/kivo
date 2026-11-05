@@ -3,6 +3,7 @@ package com.mmcdole.kivo.core.auth
 import com.mmcdole.kivo.api.models.CurrentUser
 import com.mmcdole.kivo.api.models.PlaybackPreferences
 import com.mmcdole.kivo.api.models.ServerInfo
+import com.mmcdole.kivo.api.models.SubtitleMode
 import com.mmcdole.kivo.api.models.UserLimits
 import com.mmcdole.kivo.api.result
 import com.mmcdole.kivo.core.MemoryPreferences
@@ -33,7 +34,7 @@ import kotlin.test.assertEquals
 private const val LOCAL = "http://192.168.1.20:8484"
 private const val PUBLIC = "https://kivo.example.com"
 
-private val anna = CurrentUser("u1", "anna", admin = false, limits = UserLimits(), playback = PlaybackPreferences("smart", true, true, 1.0))
+private val anna = CurrentUser("u1", "anna", admin = false, limits = UserLimits(), playback = PlaybackPreferences(SubtitleMode.Smart, true, true, 1.0))
 
 /** The server at each address that's up, on the test's clock, and every request as "host path". */
 private class Addresses(scope: TestScope) {

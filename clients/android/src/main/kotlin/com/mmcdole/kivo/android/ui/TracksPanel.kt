@@ -23,17 +23,15 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.tracing.trace
 import androidx.tv.material3.DenseListItem
 import androidx.tv.material3.Text
 import com.mmcdole.kivo.android.R
 import com.mmcdole.kivo.android.theme.Kivo
 import com.mmcdole.kivo.android.theme.TvType
 import com.mmcdole.kivo.api.models.Track
+import com.mmcdole.kivo.core.display.pickerName
 import com.mmcdole.kivo.core.data.SubtitleSearch
-import com.mmcdole.kivo.core.display.Display
 import com.mmcdole.kivo.core.display.TrackName
-import com.mmcdole.kivo.core.display.trackNames
 import com.mmcdole.kivo.core.player.Subtitles
 
 /**
@@ -59,7 +57,7 @@ data class AutomaticTracks(val audio: String?, val subtitle: String)
  * Audio & Subtitles, the panel at the right of the screen that the player's
  * button and the detail page's row open, wide enough for two columns: the
  * Dialogue boost switch, where the play has one, and the audio tracks; and
- * Off and the subtitle tracks. Each track goes by its name ([trackNames]),
+ * Off and the subtitle tracks. Each track goes by its name ([pickerName]),
  * with the file's own title under it where it says more; the ones chosen
  * are ticked and the others dimmed. Where [TrackChoices.searchable],
  * Subtitles shows even without a track and ends in "Search subtitles…",
@@ -72,7 +70,6 @@ data class AutomaticTracks(val audio: String?, val subtitle: String)
 @Composable
 fun TracksPanel(
     tracks: TrackChoices,
-    display: Display,
     onAudio: (String?) -> Unit,
     onSubtitle: (String?) -> Unit,
     onDismiss: () -> Unit,
@@ -81,8 +78,6 @@ fun TracksPanel(
     onDialogueBoost: (Boolean) -> Unit = {},
     onSearch: () -> Unit = {},
 ) {
-    val audioNames = remember(tracks.audio, display) { trace("Tracks:names") { display.trackNames(tracks.audio) } }
-    val subtitleNames = remember(tracks.subtitles, display) { trace("Tracks:names") { display.trackNames(tracks.subtitles) } }
     val off = TrackName(stringResource(R.string.off))
     val automaticName = stringResource(R.string.automatic)
     val automaticTrack = stringResource(R.string.automatic_track)
@@ -92,19 +87,19 @@ fun TracksPanel(
     val audio = buildList {
         if (dialogueBoost != null) add(TrackRow.Boost(dialogueBoost, onDialogueBoost))
         if (tracks.audio.size > 1) {
-            if (automatic != null) add(automaticRow("automatic-audio", audioNames[automatic.audio], tracks.audioSelected == null, onAudio))
-            tracks.audio.forEach { add(TrackRow.Choice(it.id, it.id, audioNames.getValue(it.id), it.id == tracks.audioSelected, onAudio)) }
+            if (automatic != null) add(automaticRow("automatic-audio", tracks.audio.firstOrNull { it.id == automatic.audio }?.pickerName, tracks.audioSelected == null, onAudio))
+            tracks.audio.forEach { add(TrackRow.Choice(it.id, it.id, it.pickerName, it.id == tracks.audioSelected, onAudio)) }
         }
     }
     val subtitles = buildList {
         if (tracks.subtitles.isNotEmpty() || tracks.searchable) {
             if (automatic != null && tracks.subtitles.isNotEmpty()) {
-                val plays = if (automatic.subtitle == Subtitles.OFF) off else subtitleNames[automatic.subtitle]
+                val plays = if (automatic.subtitle == Subtitles.OFF) off else tracks.subtitles.firstOrNull { it.id == automatic.subtitle }?.pickerName
                 add(automaticRow("automatic-subtitle", plays, tracks.subtitleSelected == null, onSubtitle))
             }
             add(TrackRow.Choice(Subtitles.OFF, Subtitles.OFF, off, tracks.subtitleSelected == Subtitles.OFF, onSubtitle))
             tracks.subtitles.forEach {
-                add(TrackRow.Choice(it.id, it.id, subtitleNames.getValue(it.id), it.id == tracks.subtitleSelected, onSubtitle))
+                add(TrackRow.Choice(it.id, it.id, it.pickerName, it.id == tracks.subtitleSelected, onSubtitle))
             }
             if (tracks.searchable) add(TrackRow.Search(onSearch))
         }

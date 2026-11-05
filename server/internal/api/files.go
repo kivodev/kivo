@@ -86,7 +86,7 @@ func (h *handlers) AddFileSubtitle(ctx context.Context, req gen.AddFileSubtitleR
 	if err != nil {
 		return nil, err
 	}
-	return gen.AddFileSubtitle200JSONResponse(subtitleFileTrack(d.Track)), nil
+	return gen.AddFileSubtitle200JSONResponse(named([]gen.Track{subtitleFileTrack(d.Track)})[0]), nil
 }
 
 // mediaFile is a file on the wire, for "Show files" and "Missing files".
@@ -95,7 +95,7 @@ func mediaFile(f query.File) gen.MediaFile {
 		ID: f.ID, LibraryID: f.Library, Path: f.Path, SizeBytes: f.Size, ModifiedAt: f.Modified, Status: gen.MediaFileStatus(catalog.FilePresent),
 		Container: opt(f.Container), DurationMs: opt(ms(f.Duration)), BitrateBps: opt(int64(f.Bitrate)),
 		VersionID: opt(f.Version), Title: opt(f.Title), WorkID: opt(f.Work),
-		Tracks: append(each(f.Tracks, catalogTrack), each(f.SubtitleFiles, subtitleFileTrack)...),
+		Tracks: named(append(each(f.Tracks, catalogTrack), each(f.SubtitleFiles, subtitleFileTrack)...)),
 	}
 	if !f.Version.IsZero() {
 		out.Part = ptr(f.Part)

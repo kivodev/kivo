@@ -45,7 +45,7 @@ import kotlinx.serialization.encoding.*
  * @param state What the player is doing, as the last heartbeat reported it.
  * @param local 
  * @param positionMs Where playback is, as the last heartbeat reported it.
- * @param delivery How a play's media is fetched: `file` is the original, each part's `url` with range requests; `stream` is the HLS playlist at `url`. 
+ * @param delivery 
  * @param tracks Every track of the version and the subtitle choice `off`, as `PlayStarted.tracks` gives them.
  * @param work The work's summary, with its artwork; absent for a work the admin may not see.
  * @param versionId A UUIDv7.
@@ -87,8 +87,7 @@ data class Play (
     /* Where playback is, as the last heartbeat reported it. */
     @SerialName(value = "positionMs") @Required val positionMs: kotlin.Int,
 
-    /* How a play's media is fetched: `file` is the original, each part's `url` with range requests; `stream` is the HLS playlist at `url`.  */
-    @SerialName(value = "delivery") @Required val delivery: kotlin.String,
+    @SerialName(value = "delivery") @Required val delivery: com.mmcdole.kivo.api.models.PlayDelivery,
 
     /* Every track of the version and the subtitle choice `off`, as `PlayStarted.tracks` gives them. */
     @SerialName(value = "tracks") @Required val tracks: kotlin.collections.List<PlayTrack>,

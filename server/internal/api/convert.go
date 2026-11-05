@@ -7,6 +7,7 @@ import (
 
 	openapi_types "github.com/oapi-codegen/runtime/types"
 
+	"github.com/mmcdole/kivo/internal/api/internal/display"
 	"github.com/mmcdole/kivo/internal/api/internal/gen"
 	"github.com/mmcdole/kivo/internal/auth"
 	"github.com/mmcdole/kivo/internal/catalog"
@@ -234,6 +235,13 @@ func track(trackID id.ID, m media.Track, source string) gen.Track {
 		out.Subtitle = &gen.SubtitleTrackInfo{Source: gen.SubtitleSource(source)}
 	}
 	return out
+}
+
+// named sets the names of ts, which tell apart the tracks of one type
+// among them, and returns it.
+func named(ts []gen.Track) []gen.Track {
+	display.NameTracks(ts)
+	return ts
 }
 
 // subtitleFileTrack is a subtitle file on the wire.

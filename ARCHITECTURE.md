@@ -91,11 +91,11 @@ Several of these rules are enforced by tests in `internal/archtest` rather than 
 
 `server/internal/api/openapi.yaml` is the contract between the server and every client. The server generates its request and response types from it with oapi-codegen, and also embeds the spec at run time: each operation's access level is declared there (`x-kivo-access`), and the server refuses to start if an operation lacks one. The web client gets TypeScript types from it with openapi-typescript (`server/web/src/api/schema.d.ts`), and the native apps get a Kotlin client from openapi-generator (`clients/api`). Generated code is committed and checked in CI, so a change to the spec shows up as a change to every client.
 
-The contract is long-lived and grows by addition. Clients treat enum values as open strings and ignore fields they don't know, so an older app keeps working against a newer server.
+The contract is long-lived and grows by addition. Clients treat enum values as open strings and ignore fields they don't know, so an older app keeps working against a newer server. The few enums the native apps branch on (a track's type, its delivery, a play's and a download's delivery, the subtitle mode) are Kotlin enums with an `Unknown` case for a value they don't know.
 
 ### The shared Kotlin core
 
-The native apps are two UI codebases on one Kotlin Multiplatform core (`clients/core`). Everything that must behave the same on every device lives there: the server connection and sign-in, server discovery, the play protocol, capability reports, the library repositories, live events, downloads, settings and the words used for tracks and formats. The core imports no UI toolkit and no player; each platform implements a handful of small interfaces (the device, the player engine, book audio, the capability probe, download transport and secure storage).
+The native apps are two UI codebases on one Kotlin Multiplatform core (`clients/core`). Everything that must behave the same on every device lives there: the server connection and sign-in, server discovery, the play protocol, capability reports, the library repositories, live events, downloads, settings and the words used for formats. The core imports no UI toolkit and no player; each platform implements a handful of small interfaces (the device, the player engine, book audio, the capability probe, download transport and secure storage).
 
 Apps reach the core through two objects in its `session` package: `KivoClient`, one per app, and `KivoSession`, one per signed-in server. Reads are exposed as flows that refresh themselves when live events say something changed. The core talks to the server through the generated `:api` module over Ktor, and keeps downloads in a SQLDelight database. Swift sees the core through SKIE, so suspend functions become `async throws` and flows become async sequences.
 
@@ -107,7 +107,7 @@ Apps reach the core through two objects in its `session` package: `KivoClient`, 
 - **Samsung TV** (`clients/tizen`). The web client's TV build packaged into a Tizen web app, so the app's code ships in the package and only data, artwork and media come from the server. It keeps an app session's token rather than a cookie, and uses Samsung's own player for direct play.
 - **Cast receiver** (`clients/chromecast`). A Google Cast Web Receiver: a static page with no build step, no server address and no secret in it. One hosted copy serves every Kivo server, since each cast names its own server.
 
-Design tokens (`shared/tokens.json`) are generated into each client's theme. Display tables (`shared/display/`: names of codecs, languages, playback reasons and so on) are shared by the web client and the Kotlin core, and shared test vectors keep their wording identical.
+Design tokens (`shared/tokens.json`) are generated into each client's theme. Display tables (`shared/display/`: names of codecs, languages, playback reasons and so on) are shared by the server, the web client and the Kotlin core, and shared test vectors keep their wording identical. The server names tracks and versions from them (`Track.name`, `Track.fullName`, `Version.name`), and clients show those names as sent.
 
 ## How things work
 

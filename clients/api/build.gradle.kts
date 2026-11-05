@@ -1,8 +1,8 @@
 // :api, the generated client: models and one suspend call
 // per operation, over Ktor and kotlinx.serialization. Its sources are written
 // by `make generate` in server/ and never edited; this build file, the
-// generator's ignore list, EventStreamMessage.kt and ProblemException.kt are
-// hand-written.
+// generator's ignore list, EventStreamMessage.kt, OpenEnums.kt and
+// ProblemException.kt are hand-written.
 plugins {
     kotlin("multiplatform")
     kotlin("plugin.serialization")

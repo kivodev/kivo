@@ -9,6 +9,7 @@ import com.mmcdole.kivo.api.models.PlayStarted
 import com.mmcdole.kivo.api.models.PlayCreate
 import com.mmcdole.kivo.api.models.PlayStop
 import com.mmcdole.kivo.api.models.QualityRequest
+import com.mmcdole.kivo.api.models.TrackType
 import com.mmcdole.kivo.core.player.PictureInPicture
 import com.mmcdole.kivo.core.player.PlayTracks
 import com.mmcdole.kivo.core.player.PlayerError
@@ -328,8 +329,8 @@ class PlayController internal constructor(
      * selected by its index, as it may not be the file's default.
      */
     private fun showTracks(play: PlayStarted) {
-        val subtitle = shownSubtitle ?: PlayTracks.selected(play, "subtitle") ?: Subtitles.OFF
-        val audio = shownAudio ?: PlayTracks.selected(play, "audio")
+        val subtitle = shownSubtitle ?: PlayTracks.selected(play, TrackType.Subtitle) ?: Subtitles.OFF
+        val audio = shownAudio ?: PlayTracks.selected(play, TrackType.Audio)
         val show = PlayTracks.show(play, subtitle)
         dispatch(PlayerAction.Shown(audio, subtitle, show))
         engine.showSubtitle(show)

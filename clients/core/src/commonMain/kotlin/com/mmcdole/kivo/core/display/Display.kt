@@ -1,11 +1,14 @@
 package com.mmcdole.kivo.core.display
 
+import com.mmcdole.kivo.api.models.PlayDelivery
 import com.mmcdole.kivo.api.models.PlayStarted
 import com.mmcdole.kivo.api.models.PlayTrack
+import com.mmcdole.kivo.api.models.TrackDelivery
+import com.mmcdole.kivo.api.models.TrackType
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-/** The words for tracks, from a locale's display table. */
+/** The words for tracks, from the display table. */
 @Serializable
 data class TrackWords(
     val unknownLanguage: String,
@@ -27,7 +30,7 @@ data class TrackWords(
 data class TrackFlags(val forced: String, val hearingImpaired: String, val commentary: String, val original: String)
 
 @Serializable
-internal data class LocaleTable(
+internal data class WordsTable(
     val methods: Map<String, String>,
     val subtitleKinds: Map<String, String>,
     val reasons: Map<String, String>,
@@ -52,7 +55,7 @@ internal data class LocaleTable(
     val downloads: DownloadWords,
 )
 
-/** The locale's decimal and grouping separators. */
+/** The decimal and grouping separators. */
 @Serializable
 internal data class NumberWords(val decimal: String, val group: String)
 
@@ -113,7 +116,6 @@ internal data class MediaTable(
     val layouts: Map<String, String>,
     val resolutions: Map<String, String>,
     val hdr: Map<String, String>,
-    val versionHdr: Map<String, String>,
     /** A lossless or premium audio format by its codec, or its codec and profile ("truehd atmos"). */
     val premiumAudio: Map<String, String>,
 )
@@ -122,17 +124,24 @@ private val json = Json { ignoreUnknownKeys = true }
 
 internal val media: MediaTable by lazy { json.decodeFromString(MediaTable.serializer(), DisplayJson.MEDIA) }
 
+private val words: WordsTable by lazy { json.decodeFromString(WordsTable.serializer(), DisplayJson.WORDS) }
+
+private val STYLED_CODECS = setOf("ass", "ssa")
+private val IMAGE_CODECS = setOf("hdmv_pgs_subtitle", "pgs", "dvd_subtitle")
+
 /**
  * How playback is put in words, from the display tables the server and the
  * web client share (`shared/display`), generated into the core: methods,
- * subtitle kinds, reason texts, dialogue boost costs, track words and language
- * names per locale, and codec, container, channel, resolution and HDR names
- * for every locale. Tracks are named from their facts ([trackNames],
- * [trackDetail]); bitrates, sizes, runtimes, episode codes, quality choices
- * and problems are put in words here too ([bitrate], [problem]), so every app
- * says them alike. Each screen's own words stay in its platform's resources.
+ * subtitle kinds, reason texts, dialogue boost costs, track words, language
+ * names, and codec, container, channel, resolution and HDR names. The server names tracks and versions; bitrates, sizes,
+ * runtimes, episode codes, quality choices and problems are put in words
+ * here ([bitrate], [problem]), so every app says them alike. Each screen's
+ * own words stay in its platform's resources.
  */
-class Display private constructor(internal val table: LocaleTable, internal val languages: LanguageNames) {
+class Display {
+    internal val table: WordsTable = words
+    internal val languages: LanguageNames = LanguageNames.table
+
     val tracks: TrackWords get() = table.tracks
 
     /** "Direct Play", "Direct Stream" or "Transcode"; an unknown method as sent. */
@@ -140,15 +149,15 @@ class Display private constructor(internal val table: LocaleTable, internal val 
 
     /** How [play] is delivered, by its selected video, or without video its audio: "Direct Play", "Direct Stream" or "Transcode". */
     fun method(play: PlayStarted): String {
-        val main = play.tracks.firstOrNull { it.type == "video" && it.selected == true }
-            ?: play.tracks.firstOrNull { it.type == "audio" && it.selected == true }
-        return main?.let(::method) ?: method(if (play.delivery == "file") "directPlay" else "directStream")
+        val main = play.tracks.firstOrNull { it.type == TrackType.Video && it.selected == true }
+            ?: play.tracks.firstOrNull { it.type == TrackType.Audio && it.selected == true }
+        return main?.let(::method) ?: method(if (play.delivery == PlayDelivery.File) "directPlay" else "directStream")
     }
 
     /** How [track] of a play is delivered: Direct Play from the file, Transcode when it's encoded, else Direct Stream. */
     fun method(track: PlayTrack): String = method(
         when {
-            track.delivery == "file" -> "directPlay"
+            track.delivery == TrackDelivery.File -> "directPlay"
             track.transcode != null -> "transcode"
             else -> "directStream"
         },
@@ -168,7 +177,7 @@ class Display private constructor(internal val table: LocaleTable, internal val 
     fun subtitleKind(track: PlayTrack): String {
         val kinds = table.subtitleKinds
         val kind = when {
-            track.delivery == "burn" -> "burn"
+            track.delivery == TrackDelivery.Burn -> "burn"
             track.codec in STYLED_CODECS -> "ass"
             track.codec in IMAGE_CODECS -> "pgs"
             else -> "vtt"
@@ -201,30 +210,6 @@ class Display private constructor(internal val table: LocaleTable, internal val 
     /** An HDR format: "HDR10", "HLG", "Dolby Vision". */
     fun hdr(hdr: String): String = media.hdr[hdr] ?: hdr
 
-    /** An HDR format as a version's name says it: "HDR", "Dolby Vision". */
-    internal fun versionHdr(hdr: String): String = media.versionHdr[hdr] ?: hdr(hdr)
-
     /** A language tag in words, "English", "Chinese (Traditional)"; "Unknown language" for none. */
     fun language(tag: String?): String = languages.name(tag, table.tracks.unknownLanguage)
-
-    companion object {
-        private val STYLED_CODECS = setOf("ass", "ssa")
-        private val IMAGE_CODECS = setOf("hdmv_pgs_subtitle", "pgs", "dvd_subtitle")
-
-        private val tables: Map<String, Lazy<Display>> = DisplayJson.locales.mapValues { (locale, text) ->
-            lazy { Display(json.decodeFromString(LocaleTable.serializer(), text), LanguageNames.forLocale(locale)) }
-        }
-
-        /** The locales with a display table. */
-        val locales: Set<String> get() = tables.keys
-
-        /**
-         * The table for a BCP 47 language tag, by its language (`fr-CA` is
-         * `fr`), else English.
-         */
-        fun forLocale(tag: String): Display {
-            val language = tag.substringBefore('-').substringBefore('_').lowercase()
-            return (tables[language] ?: tables.getValue("en")).value
-        }
-    }
 }

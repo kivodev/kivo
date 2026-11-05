@@ -8,14 +8,16 @@ import com.mmcdole.kivo.api.models.PlayPart
 import com.mmcdole.kivo.api.models.PlayStop
 import com.mmcdole.kivo.api.models.PlayTrack
 import com.mmcdole.kivo.api.models.WorkDetail
-import com.mmcdole.kivo.core.display.Display
-import com.mmcdole.kivo.core.display.trackDetail
 import com.mmcdole.kivo.core.downloads.db.Download
 import com.mmcdole.kivo.core.play.PlaySource
 import com.mmcdole.kivo.core.player.PlayTracks
 import com.mmcdole.kivo.core.player.Subtitles
 import com.mmcdole.kivo.core.player.TrackShow
 import com.mmcdole.kivo.api.models.Download as ServerDownload
+import com.mmcdole.kivo.api.models.DownloadDelivery
+import com.mmcdole.kivo.api.models.PlayDelivery
+import com.mmcdole.kivo.api.models.TrackDelivery
+import com.mmcdole.kivo.api.models.TrackType
 
 /**
  * A download playing with no server: [plays] gives the player its files here,
@@ -33,11 +35,11 @@ internal class OfflinePlay internal constructor(
     val plays: PlaySource = Plays(play)
 
     /** Where the file playing came from, for the stream info's "Source" line. */
-    fun source(display: Display): DownloadSource {
-        if (plan.delivery != "conversion") return DownloadSource(null)
-        val video = plan.tracks.firstOrNull { it.type == "video" && it.selected == true }
+    fun source(): DownloadSource {
+        if (plan.delivery != DownloadDelivery.Conversion) return DownloadSource(null)
+        val video = plan.tracks.firstOrNull { it.type == TrackType.Video && it.selected == true }
         val from = work.versions.firstOrNull { it.id == plan.versionId }?.tracks?.firstOrNull { it.id == video?.trackId }
-        return DownloadSource(from?.let(display::trackDetail))
+        return DownloadSource(from?.fullName)
     }
 
     private inner class Plays(private val play: PlayStarted) : PlaySource {
@@ -55,7 +57,7 @@ internal class OfflinePlay internal constructor(
                 TrackShow.NewPlay, TrackShow.Burned -> started
                 else -> started.copy(
                     tracks = started.tracks.map { track ->
-                        if (track.type != "subtitle") track else track.copy(selected = true.takeIf { track.trackId == chosen })
+                        if (track.type != TrackType.Subtitle) track else track.copy(selected = true.takeIf { track.trackId == chosen })
                     },
                 )
             }
@@ -108,7 +110,7 @@ internal fun Downloads.startedOffline(row: Download, plan: ServerDownload, work:
         startMs = positionMs.coerceIn(0, plan.durationMs.toLong()).toInt(),
         durationMs = plan.durationMs,
         local = true,
-        delivery = "file",
+        delivery = PlayDelivery.File,
         url = partUrls.first(),
         tracks = offlineTracks(plan.tracks, local),
         parts = plan.parts.mapIndexed { i, p -> PlayPart(durationMs = p.durationMs, url = partUrls[i]) },
@@ -126,10 +128,10 @@ internal fun Downloads.startedOffline(row: Download, plan: ServerDownload, work:
  */
 internal fun offlineTracks(tracks: List<PlayTrack>, local: (String) -> String?): List<PlayTrack> {
     val offline = tracks.map { t ->
-        val media = t.type != SUBTITLE && t.selected == true
+        val media = t.type != TrackType.Subtitle && t.selected == true
         when {
-            media -> t.copy(delivery = "file", reason = null, mismatch = null, transcode = t.transcode?.copy(bitrateBps = null, encoder = null))
-            t.delivery == "external" -> {
+            media -> t.copy(delivery = TrackDelivery.File, reason = null, mismatch = null, transcode = t.transcode?.copy(bitrateBps = null, encoder = null))
+            t.delivery == TrackDelivery.External -> {
                 val url = t.url?.let(local)
                 if (url == null) {
                     t.copy(delivery = null, selected = null, url = null, fonts = null)
@@ -137,15 +139,13 @@ internal fun offlineTracks(tracks: List<PlayTrack>, local: (String) -> String?):
                     t.copy(url = url, fonts = t.fonts?.mapNotNull(local))
                 }
             }
-            t.delivery == "stream" -> t.copy(delivery = null, selected = null)
+            t.delivery == TrackDelivery.Stream -> t.copy(delivery = null, selected = null)
             else -> t
         }
     }
-    if (offline.any { it.type == SUBTITLE && it.selected == true }) return offline
+    if (offline.any { it.type == TrackType.Subtitle && it.selected == true }) return offline
     return offline.map { if (it.trackId == Subtitles.OFF && it.delivery != null) it.copy(selected = true) else it }
 }
-
-private const val SUBTITLE = "subtitle"
 
 /** A `file://` URL for an absolute path, each segment escaped. */
 internal fun fileUrl(path: String): String = "file://" + path.split('/').joinToString("/") { segment ->

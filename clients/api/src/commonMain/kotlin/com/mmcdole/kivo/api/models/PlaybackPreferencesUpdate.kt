@@ -33,7 +33,7 @@ import kotlinx.serialization.encoding.*
  *
  * @param audioLanguage 
  * @param subtitleLanguage 
- * @param subtitleMode When subtitles show: `none` never; `forced` a forced track in the audio's language; `smart` full subtitles in the subtitle language when the audio isn't in it, else as `forced`; `always` full subtitles in the subtitle language, else as `forced`. 
+ * @param subtitleMode 
  * @param rememberTracks 
  * @param autoplayNext 
  * @param bookSpeed 
@@ -46,8 +46,7 @@ data class PlaybackPreferencesUpdate (
 
     @SerialName(value = "subtitleLanguage") val subtitleLanguage: kotlin.String? = null,
 
-    /* When subtitles show: `none` never; `forced` a forced track in the audio's language; `smart` full subtitles in the subtitle language when the audio isn't in it, else as `forced`; `always` full subtitles in the subtitle language, else as `forced`.  */
-    @SerialName(value = "subtitleMode") val subtitleMode: kotlin.String? = null,
+    @SerialName(value = "subtitleMode") val subtitleMode: com.mmcdole.kivo.api.models.SubtitleMode? = null,
 
     @SerialName(value = "rememberTracks") val rememberTracks: kotlin.Boolean? = null,
 

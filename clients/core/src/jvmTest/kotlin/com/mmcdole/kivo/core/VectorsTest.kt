@@ -4,15 +4,13 @@ import com.mmcdole.kivo.api.models.Chapter
 import com.mmcdole.kivo.api.models.EpisodeInfo
 import com.mmcdole.kivo.api.models.Marker
 import com.mmcdole.kivo.api.models.QualityRung
-import com.mmcdole.kivo.api.models.Track
 import com.mmcdole.kivo.api.models.PlayTrack
 import com.mmcdole.kivo.api.models.TrackTranscode
-import com.mmcdole.kivo.api.models.Version
+import com.mmcdole.kivo.api.models.TrackType
 import com.mmcdole.kivo.core.data.SubtitleSearchProblem
 import com.mmcdole.kivo.core.data.problem
 import com.mmcdole.kivo.core.display.Display
 import com.mmcdole.kivo.core.display.QualityOption
-import com.mmcdole.kivo.core.display.TrackName
 import com.mmcdole.kivo.core.display.bitrate
 import com.mmcdole.kivo.core.display.clock
 import com.mmcdole.kivo.core.display.episodeCode
@@ -23,9 +21,6 @@ import com.mmcdole.kivo.core.display.rung
 import com.mmcdole.kivo.core.display.runtime
 import com.mmcdole.kivo.core.display.size
 import com.mmcdole.kivo.core.display.timeLeft
-import com.mmcdole.kivo.core.display.trackDetail
-import com.mmcdole.kivo.core.display.trackNames
-import com.mmcdole.kivo.core.display.versionName
 import com.mmcdole.kivo.core.play.PlayerFailure
 import com.mmcdole.kivo.core.play.failure
 import com.mmcdole.kivo.core.player.SkipShow
@@ -56,7 +51,7 @@ import kotlin.test.assertTrue
  */
 class VectorsTest {
     private val json = Json { ignoreUnknownKeys = true }
-    private val en = Display.forLocale("en")
+    private val en = Display()
 
     private fun vectors(name: String): JsonObject =
         json.parseToJsonElement(File("../../shared/display/vectors/$name.json").readText()).jsonObject
@@ -134,25 +129,14 @@ class VectorsTest {
     @Test
     fun tracks() {
         val tracks = vectors("tracks")
-        for (picker in tracks.getValue("pickers").jsonArray.map { it.jsonObject }) {
-            val list = picker.getValue("tracks").jsonArray.map { it.decode(Track.serializer()) }
-            val expected = picker.getValue("names").jsonArray.map { name ->
-                val (n, note) = name.jsonArray
-                TrackName(n.jsonPrimitive.content, note.jsonPrimitive.takeIf { it.isString }?.content)
-            }
-            val names = en.trackNames(list)
-            assertEquals(expected, list.map { names.getValue(it.id) }, "names of ${list.map { it.id }}")
-        }
         tracks.cases("languages") { en.language(it.jsonPrimitive.content) }
-        tracks.cases("details") { en.trackDetail(it.decode(Track.serializer())) }
-        tracks.cases("versions") { en.versionName(it.decode(Version.serializer())) }
         // A track as delivered: a vector's width or channels is its transcode's.
         tracks.cases("outputs") {
             val o = it.jsonObject
             val width = o["width"]?.jsonPrimitive?.int
             val channels = o["channels"]?.jsonPrimitive?.int
             val transcode = if (width != null || channels != null) TrackTranscode(width, o["height"]?.jsonPrimitive?.int, channels = channels) else null
-            en.delivered(PlayTrack("t", "video", codec = o.getValue("codec").jsonPrimitive.content, transcode = transcode))
+            en.delivered(PlayTrack("t", TrackType.Video, codec = o.getValue("codec").jsonPrimitive.content, transcode = transcode))
         }
     }
 

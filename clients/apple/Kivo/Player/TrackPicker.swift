@@ -3,7 +3,7 @@ import SwiftUI
 
 /// The detail page's audio or subtitle menu: Automatic first, named after
 /// the track a play starts with, Off for subtitles, then each track by its
-/// short name (`trackNames`) with what its title adds under it, and for
+/// short name (`pickerName`) with its title under it, and for
 /// subtitles that can be searched for, Search subtitles last, which calls
 /// [search]. It shows only with more than one track to choose, Off and
 /// one, or a search.
@@ -12,7 +12,6 @@ struct TrackPicker: View {
 
     let kind: Kind
     let tracks: [Track]
-    let names: [String: TrackName]
     /// A track's ID, `off`, or nil for Automatic.
     @Binding var selection: String?
     /// The track Automatic plays, `off`, or nil for none.
@@ -20,10 +19,9 @@ struct TrackPicker: View {
     /// Opens the subtitle search; nil where there's none.
     let search: (() -> Void)?
 
-    init(kind: Kind, tracks: [Track], display: Display, selection: Binding<String?>, automatic: String?, search: (() -> Void)? = nil) {
+    init(kind: Kind, tracks: [Track], selection: Binding<String?>, automatic: String?, search: (() -> Void)? = nil) {
         self.kind = kind
         self.tracks = tracks
-        names = display.trackNames(tracks: tracks)
         _selection = selection
         self.automatic = automatic
         self.search = search
@@ -53,8 +51,8 @@ struct TrackPicker: View {
                     }
                     ForEach(tracks, id: \.id) { track in
                         Button {} label: {
-                            Text(names[track.id]?.name ?? "")
-                            if let note = names[track.id]?.note { Text(note) }
+                            Text(track.pickerName.name)
+                            if let note = track.pickerName.note { Text(note).lineLimit(2) }
                         }
                         .tag(String?.some(track.id))
                     }
@@ -74,6 +72,6 @@ struct TrackPicker: View {
 
     private func name(_ id: String?) -> String? {
         if id == Subtitles.shared.OFF { return String(localized: "Off") }
-        return id.flatMap { names[$0]?.name }
+        return id.flatMap { id in tracks.first { $0.id == id }?.name }
     }
 }

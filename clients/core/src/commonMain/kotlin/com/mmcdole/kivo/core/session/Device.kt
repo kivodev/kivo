@@ -29,9 +29,6 @@ interface Device {
     /** What the app runs on, as its sessions say: the identity's platform. */
     val platform: String get() = identity.platform
 
-    /** The BCP 47 tag of the language the app shows, which picks its display tables. */
-    val language: String
-
     /** The app's preferences, which hold the saved servers, this device's settings and who each session is for. */
     val preferences: DataStore<Preferences>
 

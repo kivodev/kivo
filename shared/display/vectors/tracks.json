@@ -349,7 +349,7 @@
         {"id": "t112", "type": "audio", "codec": "ac3", "default": false, "language": "jpn", "title": "AC3 2.0 192kbps Mono", "audio": {"channels": 2, "layout": "2.0"}}
       ],
       "names": [
-        ["English · Forced · 2.0", "AC3 2.0 192kbps Stereo"],
+        ["English · 2.0", "AC3 2.0 192kbps Stereo"],
         ["Japanese · 2.0", "AC3 2.0 192kbps Mono"]
       ]
     },
@@ -431,7 +431,7 @@
         {"id": "t141", "type": "audio", "codec": "flac", "default": false, "language": "jpn", "title": "2.0ch FLAC 24bit", "audio": {"channels": 2, "layout": "2.0"}}
       ],
       "names": [
-        ["English · Forced · 5.1 · FLAC", "5.1ch FLAC 24bit"],
+        ["English · 5.1 · FLAC", "5.1ch FLAC 24bit"],
         ["Japanese · 2.0 · FLAC", "2.0ch FLAC 24bit"]
       ]
     },
@@ -1073,7 +1073,7 @@
         {"id": "t333", "type": "audio", "codec": "ac3", "default": false, "language": "jpn", "title": "AC3 2.0 192kbps Mono", "audio": {"channels": 2, "layout": "2.0"}}
       ],
       "names": [
-        ["English · Forced · 2.0", "AC3 2.0 192kbps Stereo"],
+        ["English · 2.0", "AC3 2.0 192kbps Stereo"],
         ["Japanese · 2.0", "AC3 2.0 192kbps Mono"]
       ]
     },
@@ -1209,7 +1209,7 @@
         {"id": "t380", "type": "audio", "codec": "ac3", "default": false, "language": "jpn", "title": "AC3 2.0 192kbps Mono", "audio": {"channels": 2, "layout": "2.0"}}
       ],
       "names": [
-        ["English · Forced · 2.0", "AC3 2.0 192kbps Stereo"],
+        ["English · 2.0", "AC3 2.0 192kbps Stereo"],
         ["Japanese · 2.0", "AC3 2.0 192kbps Mono"]
       ]
     },
@@ -1333,7 +1333,7 @@
         {"id": "t412", "type": "audio", "codec": "ac3", "default": false, "language": "jpn", "title": "AC3 2.0 192kbps Mono", "audio": {"channels": 2, "layout": "2.0"}}
       ],
       "names": [
-        ["English · Forced · 2.0", "AC3 2.0 192kbps Stereo"],
+        ["English · 2.0", "AC3 2.0 192kbps Stereo"],
         ["Japanese · 2.0", "AC3 2.0 192kbps Mono"]
       ]
     },
@@ -1455,7 +1455,7 @@
         {"id": "t455", "type": "audio", "codec": "ac3", "default": false, "language": "jpn", "title": "AC3 2.0 192kbps Mono", "audio": {"channels": 2, "layout": "2.0"}}
       ],
       "names": [
-        ["English · Forced · 2.0", "AC3 2.0 192kbps Stereo"],
+        ["English · 2.0", "AC3 2.0 192kbps Stereo"],
         ["Japanese · 2.0", "AC3 2.0 192kbps Mono"]
       ]
     },
@@ -1465,7 +1465,7 @@
         {"id": "t457", "type": "audio", "codec": "ac3", "default": false, "language": "jpn", "title": "AC3 2.0 192kbps Mono", "audio": {"channels": 2, "layout": "2.0"}}
       ],
       "names": [
-        ["English · Forced · 2.0", "AC3 2.0 192kbps Stereo"],
+        ["English · 2.0", "AC3 2.0 192kbps Stereo"],
         ["Japanese · 2.0", "AC3 2.0 192kbps Mono"]
       ]
     },
@@ -1537,7 +1537,7 @@
         {"id": "t472", "type": "audio", "codec": "ac3", "default": false, "language": "jpn", "title": "AC3 2.0 192kbps Mono", "audio": {"channels": 2, "layout": "2.0"}}
       ],
       "names": [
-        ["English · Forced · 2.0", "AC3 2.0 192kbps Stereo"],
+        ["English · 2.0", "AC3 2.0 192kbps Stereo"],
         ["Japanese · 2.0", "AC3 2.0 192kbps Mono"]
       ]
     },
@@ -2353,6 +2353,7 @@
     [{"id": "t33", "type": "audio", "codec": "aac", "default": true, "language": "eng", "title": "AAC", "audio": {"channels": 2, "layout": "2.0"}}, "English · AAC 2.0 · Default · “AAC”"],
     [{"id": "t34", "type": "audio", "codec": "aac", "default": false, "language": "jpn", "title": "AAC", "audio": {"channels": 6, "layout": "5.1"}}, "Japanese · AAC 5.1 · “AAC”"],
     [{"id": "t35", "type": "audio", "codec": "dts", "default": true, "language": "kor", "audio": {"channels": 6, "layout": "5.1"}}, "Korean · DTS 5.1 · Default"],
+    [{"id": "t111", "type": "audio", "codec": "ac3", "default": true, "language": "eng", "title": "AC3 2.0 192kbps Stereo", "forced": true, "audio": {"channels": 2, "layout": "2.0"}}, "English · AC-3 2.0 · Default · “AC3 2.0 192kbps Stereo”"],
     [{"id": "t36", "type": "audio", "codec": "aac", "default": false, "language": "kor", "title": "Commentary #1 by director Park Chan-wook", "commentary": true, "audio": {"channels": 2, "layout": "2.0"}}, "Korean · Commentary · AAC 2.0 · “Commentary #1 by director Park Chan-wook”"],
     [{"id": "t37", "type": "audio", "codec": "aac", "default": false, "language": "kor", "title": "Commentary #2 by director Park Chan-wook and cinematographer Jung Jung-hoon", "commentary": true, "audio": {"channels": 2, "layout": "2.0"}}, "Korean · Commentary · AAC 2.0 · “Commentary #2 by director Park Chan-wook and cinematographer Jung Jung-hoon”"],
     [{"id": "t38", "type": "audio", "codec": "aac", "default": false, "language": "kor", "title": "Commentary #3 by director Park Chan-wook, and actors Choi Min-sik, Yu Ji-tae, Kang Hye-jung", "commentary": true, "audio": {"channels": 2, "layout": "2.0"}}, "Korean · Commentary · AAC 2.0 · “Commentary #3 by director Park Chan-wook, and actors Choi Min-sik, Yu Ji-tae, Kang Hye-jung”"],

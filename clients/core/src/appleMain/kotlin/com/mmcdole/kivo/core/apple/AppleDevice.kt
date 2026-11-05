@@ -26,8 +26,7 @@ import okio.Path.Companion.toPath
  *
  * [directory] is the app's Application Support folder, which holds the
  * app's preferences, the download store and the downloads; [name] is the
- * device's name; [language] is the BCP 47 tag of the language the app
- * shows; [identity] is the app and device as every request says them, its
+ * device's name; [identity] is the app and device as every request says them, its
  * platform `iPhone` or `iPad`; [clientId], when given, is the client ID it
  * signs in with in place of this install's own, as UI tests launch the app
  * with; [subtitles] are the subtitles the app shows,
@@ -39,7 +38,6 @@ import okio.Path.Companion.toPath
 class AppleDevice(
     directory: String,
     override val name: String,
-    override val language: String,
     override val identity: ClientIdentity,
     clientId: String?,
     subtitles: List<SubtitleEntry>,

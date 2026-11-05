@@ -34,7 +34,7 @@ import kotlinx.serialization.encoding.*
  * One choice of a play: a track of its version, or the subtitle choice `off`, and how it shows. 
  *
  * @param trackId A track's `id`, or `off`.
- * @param type A track's type.
+ * @param type 
  * @param selected True for the tracks the play shows; absent otherwise.
  * @param delivery Absent when choosing it starts a new play.
  * @param codec The codec it's delivered as, such as `hevc`, `aac` or `webvtt`.
@@ -53,14 +53,13 @@ data class PlayTrack (
     /* A track's `id`, or `off`. */
     @SerialName(value = "trackId") @Required val trackId: kotlin.String,
 
-    /* A track's type. */
-    @SerialName(value = "type") @Required val type: kotlin.String,
+    @SerialName(value = "type") @Required val type: com.mmcdole.kivo.api.models.TrackType,
 
     /* True for the tracks the play shows; absent otherwise. */
     @SerialName(value = "selected") val selected: kotlin.Boolean? = null,
 
     /* Absent when choosing it starts a new play. */
-    @SerialName(value = "delivery") val delivery: kotlin.String? = null,
+    @SerialName(value = "delivery") val delivery: com.mmcdole.kivo.api.models.TrackDelivery? = null,
 
     /* The codec it's delivered as, such as `hevc`, `aac` or `webvtt`. */
     @SerialName(value = "codec") val codec: kotlin.String? = null,

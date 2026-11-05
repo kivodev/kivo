@@ -1,0 +1,168 @@
+{
+  "methods": {
+    "directPlay": "Direct Play",
+    "directStream": "Direct Stream",
+    "transcode": "Transcode"
+  },
+  "subtitleKinds": {
+    "ass": "Styled",
+    "vtt": "Plain",
+    "pgs": "Image",
+    "burn": "Burned in"
+  },
+  "reasons": {
+    "containerUnsupported": "This device can't play the file's container.",
+    "videoCodecUnsupported": "This device can't play the video codec.",
+    "videoCodecTagUnsupported": "This device can't play the video's codec tag.",
+    "videoProfileUnsupported": "This device can't play this video's profile.",
+    "videoLevelUnsupported": "This device can't play this video's level.",
+    "videoBitDepthUnsupported": "This device can't play this video's bit depth.",
+    "videoHdrUnsupported": "This device can't show this video's HDR format.",
+    "videoResolutionUnsupported": "The video is larger than this device plays.",
+    "videoFramerateUnsupported": "This device can't play this video's frame rate.",
+    "videoBitrateUnsupported": "The video's bitrate is higher than this device plays.",
+    "videoRefFramesUnsupported": "The video uses more reference frames than this device plays.",
+    "videoInterlacedUnsupported": "This device can't play interlaced video.",
+    "videoAnamorphicUnsupported": "This device can't play video with non-square pixels.",
+    "audioCodecUnsupported": "This device can't play the audio codec.",
+    "audioChannelsUnsupported": "The audio has more channels than this device plays.",
+    "audioSampleRateUnsupported": "This device can't play the audio's sample rate.",
+    "audioBitDepthUnsupported": "This device can't play the audio's bit depth.",
+    "audioProfileUnsupported": "This device can't play the audio's profile.",
+    "subtitleCodecUnsupported": "This device can't show these subtitles.",
+    "trackSelectionUnsupported": "This device plays only the file's default audio track.",
+    "streamCodecUnsupported": "This device plays the codec from the file, but not in a stream.",
+    "directPlayDisabled": "Direct Play is turned off on this device.",
+    "burnSubtitlesEnabled": "Subtitles are set to always be burned in.",
+    "clientQualityLimit": "The quality chosen on this device.",
+    "remoteQualityLimit": "Your account's remote quality limit.",
+    "bandwidthLimit": "The connection is too slow for the original.",
+    "dialogueBoost": "The audio is re-encoded to boost dialogue.",
+    "keyframeIndexMissing": "The file's keyframe index doesn't allow streaming its video as it is.",
+    "subtitlePreparing": "The file's subtitles are being prepared, so they're carried in the stream or burned in for now.",
+    "fallback": "Retrying as a transcode after playback failed.",
+    "downloadQuality": "The original is larger than the download quality chosen.",
+    "acceleratorFailed": "The accelerator failed.",
+    "noAccelerator": "Hardware acceleration is off on the server.",
+    "acceleratorUnsupported": "The server's accelerator can't convert this video.",
+    "noTracks": "The file has nothing to play.",
+    "fileUnplayable": "This device can't play the file, and can't play a stream of it.",
+    "subtitleUnplayable": "These picture subtitles can't be shown on this device.",
+    "transcodeFailed": "The server couldn't convert this video.",
+    "transcodeLimit": "The server is converting as many videos as it's allowed to.",
+    "storageFull": "The server's transcode storage is full.",
+    "sourceUnreadable": "The server couldn't read the file.",
+    "subtitlesUnavailable": "The server couldn't prepare the subtitles.",
+    "planUnreadable": "This download needs to be prepared again.",
+    "downloadsNotAllowed": "Downloads aren't allowed for this account."
+  },
+  "unknownReason": "This version of Kivo doesn't know why.",
+  "dialogueBoostCosts": {
+    "audioAsAac": "Plays the audio as AAC while on",
+    "videoTranscode": "Converts the video and audio while on"
+  },
+  "tracks": {
+    "unknownLanguage": "Unknown language",
+    "default": "Default",
+    "flags": {
+      "forced": "Forced",
+      "hearingImpaired": "SDH",
+      "commentary": "Commentary",
+      "original": "Original"
+    },
+    "channels": "{channels} channels",
+    "sources": {
+      "embedded": "Embedded",
+      "external": "External",
+      "downloaded": "Downloaded"
+    },
+    "downloadedFrom": "OpenSubtitles",
+    "audioOnly": "Audio"
+  },
+  "numbers": {
+    "decimal": ".",
+    "group": ","
+  },
+  "bitrate": "{n} Mb/s",
+  "sizes": {
+    "gigabytes": "{n} GB",
+    "megabytes": "{n} MB",
+    "kilobytes": "{n} KB"
+  },
+  "durations": {
+    "hours": "{hours}h",
+    "minutes": "{minutes}m",
+    "hoursMinutes": "{hours}h {minutes}m",
+    "minutesLeft": "{minutes} min left",
+    "hoursLeft": "{hours} hr left",
+    "hoursMinutesLeft": "{hours} hr {minutes} min left"
+  },
+  "episodeCode": {
+    "one": "S{season} · E{episode}",
+    "range": "S{season} · E{episode} to E{end}"
+  },
+  "quality": {
+    "auto": "Auto",
+    "original": "Original",
+    "originalAt": "Original · {bitrate}",
+    "rung": "{height}p · {bitrate}"
+  },
+  "problems": {
+    "network": "Can't reach the server. Check your connection and try again.",
+    "invalidRequest": "Something in the form isn't right.",
+    "unauthenticated": "Your session has ended. Sign in again.",
+    "invalidCredentials": "Wrong username or password.",
+    "wrongPassword": "That isn't your current password.",
+    "forbidden": "You don't have access to this.",
+    "crossOrigin": "This request was blocked because it came from another site.",
+    "denied": "Sign-in was declined on the other device.",
+    "notFound": "This doesn't exist, or you don't have access to it.",
+    "expired": "This has expired or was already used.",
+    "conflict": "That can't be done right now.",
+    "notStoppable": "This work always finishes once it starts.",
+    "alreadySetUp": "This server is already set up. Sign in instead.",
+    "nameTaken": "That username is taken.",
+    "lastAdmin": "There must always be at least one admin.",
+    "ownUser": "You can't do that to your own account.",
+    "fileStillPresent": "This file is still on disk, so it can't be removed from the library.",
+    "kindMismatch": "Only movies and shows can be matched.",
+    "throttled": "Too many attempts. Try again later.",
+    "rateLimited": "Too many requests. Wait a moment and try again.",
+    "providerUnavailable": "The metadata provider isn't answering. Try again later.",
+    "notConfigured": "This feature isn't configured on the server.",
+    "quotaUsed": "The server's daily download limit is used up.",
+    "streamLimit": "Stream limit reached for this account. Stop another stream and try again.",
+    "notPlayable": "This can't be played on this device.",
+    "noFallback": "Can't play on this device, even with transcoding.",
+    "playEnded": "Playback was stopped.",
+    "transcodeBusy": "The server can't start another transcode right now. Try again shortly.",
+    "transcodeFailed": "The server couldn't convert this video.",
+    "notReady": "This isn't ready yet. Try again in a moment.",
+    "rangeNotSatisfiable": "Part of this file couldn't be read. Try again.",
+    "internal": "Something went wrong on the server."
+  },
+  "unknownProblem": "Something went wrong.",
+  "playStopped": "It was stopped on another device or by an admin.",
+  "adminStopped": "An admin stopped it: “{message}”",
+  "subtitleSearch": {
+    "notConfigured": "Subtitle search isn't set up on this server.",
+    "quotaUsed": "The server's subtitle downloads are used up.",
+    "quotaUsedUntil": "The server's subtitle downloads are used up. More at {time}.",
+    "notFound": "That subtitle is no longer available.",
+    "providerUnavailable": "OpenSubtitles isn't answering. Try again later."
+  },
+  "downloads": {
+    "qualities": {
+      "original": "Original",
+      "high": "High",
+      "standard": "Standard"
+    },
+    "failures": {
+      "notEnoughSpace": "Not enough space",
+      "checkFailed": "Didn't finish",
+      "notPlayable": "Can't play here"
+    },
+    "notEnoughSpace": "Not enough space. Free {size} or remove downloads.",
+    "refused": "This can't be downloaded to this device."
+  }
+}

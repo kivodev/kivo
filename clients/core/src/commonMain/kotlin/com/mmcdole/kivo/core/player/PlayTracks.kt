@@ -2,6 +2,8 @@ package com.mmcdole.kivo.core.player
 
 import com.mmcdole.kivo.api.models.PlayStarted
 import com.mmcdole.kivo.api.models.PlayTrack
+import com.mmcdole.kivo.api.models.TrackDelivery
+import com.mmcdole.kivo.api.models.TrackType
 
 // How the player shows each choice of a play. The server says it per track
 // in the play's tracks: a choice with a delivery shows at once as that
@@ -47,13 +49,12 @@ object Subtitles {
 /** What a play's tracks say: which show, and how a choice shows. */
 object PlayTracks {
     /**
-     * The track of [type] (`video`, `audio` or `subtitle`) that [play]
-     * shows: for subtitles a track's ID or [Subtitles.OFF]; null when it
-     * has no track of the type.
+     * The track of [type] that [play] shows: for subtitles a track's ID
+     * or [Subtitles.OFF]; null when it has no track of the type.
      */
-    fun selected(play: PlayStarted, type: String): String? =
+    fun selected(play: PlayStarted, type: TrackType): String? =
         play.tracks.firstOrNull { it.type == type && it.selected == true }?.trackId
-            ?: Subtitles.OFF.takeIf { type == SUBTITLE }
+            ?: Subtitles.OFF.takeIf { type == TrackType.Subtitle }
 
     /** How the player shows [trackId] of [play], a track's ID or [Subtitles.OFF]. */
     fun show(play: PlayStarted, trackId: String): TrackShow = show(play.tracks, trackId)
@@ -62,18 +63,18 @@ object PlayTracks {
     fun show(tracks: List<PlayTrack>, trackId: String): TrackShow {
         val track = tracks.firstOrNull { it.trackId == trackId } ?: return TrackShow.NewPlay
         return when (track.delivery) {
-            "file" -> track.index?.let { TrackShow.File(it) } ?: TrackShow.NewPlay
-            "stream" -> TrackShow.Stream(trackId, tracks.filter { it.type == track.type && it.delivery == "stream" }.indexOf(track))
-            "external" -> track.url?.let { TrackShow.External(trackId, it, track.codec.orEmpty(), track.fonts.orEmpty()) } ?: TrackShow.NewPlay
-            "burn" -> TrackShow.Burned
-            "none" -> TrackShow.Off
-            else -> TrackShow.NewPlay
+            TrackDelivery.File -> track.index?.let { TrackShow.File(it) } ?: TrackShow.NewPlay
+            TrackDelivery.Stream ->
+                TrackShow.Stream(trackId, tracks.filter { it.type == track.type && it.delivery == TrackDelivery.Stream }.indexOf(track))
+            TrackDelivery.External ->
+                track.url?.let { TrackShow.External(trackId, it, track.codec.orEmpty(), track.fonts.orEmpty()) } ?: TrackShow.NewPlay
+            TrackDelivery.Burn -> TrackShow.Burned
+            TrackDelivery.None -> TrackShow.Off
+            TrackDelivery.Unknown, null -> TrackShow.NewPlay
         }
     }
 
-    internal fun delivery(play: PlayStarted, trackId: String): String? = play.tracks.firstOrNull { it.trackId == trackId }?.delivery
-
-    private const val SUBTITLE = "subtitle"
+    internal fun delivery(play: PlayStarted, trackId: String): TrackDelivery? = play.tracks.firstOrNull { it.trackId == trackId }?.delivery
 }
 
 /**
@@ -87,9 +88,9 @@ object PlayTracks {
 object PictureInPicture {
     /** Whether entering takes a new play: the subtitle showing, [subtitleTrackId] of [play], is a file the app draws. */
     fun enteringNeedsNewPlay(play: PlayStarted, subtitleTrackId: String): Boolean =
-        PlayTracks.delivery(play, subtitleTrackId) == "external"
+        PlayTracks.delivery(play, subtitleTrackId) == TrackDelivery.External
 
     /** Whether leaving takes a new play: [play], started in picture-in-picture, burned in [subtitleTrackId]. */
     fun leavingNeedsNewPlay(play: PlayStarted, subtitleTrackId: String): Boolean =
-        PlayTracks.delivery(play, subtitleTrackId) == "burn"
+        PlayTracks.delivery(play, subtitleTrackId) == TrackDelivery.Burn
 }

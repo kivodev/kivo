@@ -4,6 +4,7 @@ import com.mmcdole.kivo.api.models.CurrentUser
 import com.mmcdole.kivo.api.models.PlaybackPreferences
 import com.mmcdole.kivo.api.models.ServerInfo
 import com.mmcdole.kivo.api.models.ServerProof
+import com.mmcdole.kivo.api.models.SubtitleMode
 import com.mmcdole.kivo.api.models.UserLimits
 import com.mmcdole.kivo.api.result
 import com.mmcdole.kivo.core.MemoryPreferences
@@ -42,7 +43,7 @@ private const val PUBLIC = "https://kivo.example.com"
 /** A session token, 32 bytes base64url, as the server issues them. */
 private val TOKEN = Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(32) { it.toByte() })
 
-private val anna = CurrentUser("u1", "anna", admin = false, limits = UserLimits(), playback = PlaybackPreferences("smart", true, true, 1.0))
+private val anna = CurrentUser("u1", "anna", admin = false, limits = UserLimits(), playback = PlaybackPreferences(SubtitleMode.Smart, true, true, 1.0))
 
 /** How the plain-HTTP address answers a probe: as the server, or as one of the impostors. */
 private enum class Answer { Server, WrongMac, NoProof, NotLocal, OtherHost }

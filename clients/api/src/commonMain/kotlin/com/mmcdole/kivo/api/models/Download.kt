@@ -40,7 +40,7 @@ import kotlinx.serialization.encoding.*
  * @param versionId A UUIDv7.
  * @param quality The quality asked for, `original` for a book.
  * @param state Where a download is: `queued` waiting in line on the server (`queuePosition` says where); `preparing` its subtitles or conversion being made (`progress` and `remainingMs` say how far); `ready` to fetch each part's `url`, and each subtitle's; `failed` (`reason` says why, and `retry` asks again). 
- * @param delivery What a download fetches: the original `file`, or a `conversion`, an MP4 per part made for the download. 
+ * @param delivery 
  * @param tracks Every track of the version, and the subtitle choice `off`, as a play gives them (`PlayStarted.tracks`), for playing the download offline. A track inside the downloaded file has delivery `file` and its stream index in that file: in a conversion the video, the audio, then each text track it carries, the chosen one first. A subtitle delivered `external` is fetched with the download, at `url`, once the download is ready; one that couldn't be extracted has no delivery. A choice without a delivery isn't in the download. 
  * @param durationMs 
  * @param sizeBytes Every part's bytes. Exact when `sizeExact`; until a conversion is ready, an estimate from the quality's cap, which a grainy title can exceed. 
@@ -73,8 +73,7 @@ data class Download (
     /* Where a download is: `queued` waiting in line on the server (`queuePosition` says where); `preparing` its subtitles or conversion being made (`progress` and `remainingMs` say how far); `ready` to fetch each part's `url`, and each subtitle's; `failed` (`reason` says why, and `retry` asks again).  */
     @SerialName(value = "state") @Required val state: kotlin.String,
 
-    /* What a download fetches: the original `file`, or a `conversion`, an MP4 per part made for the download.  */
-    @SerialName(value = "delivery") @Required val delivery: kotlin.String,
+    @SerialName(value = "delivery") @Required val delivery: com.mmcdole.kivo.api.models.DownloadDelivery,
 
     /* Every track of the version, and the subtitle choice `off`, as a play gives them (`PlayStarted.tracks`), for playing the download offline. A track inside the downloaded file has delivery `file` and its stream index in that file: in a conversion the video, the audio, then each text track it carries, the chosen one first. A subtitle delivered `external` is fetched with the download, at `url`, once the download is ready; one that couldn't be extracted has no delivery. A choice without a delivery isn't in the download.  */
     @SerialName(value = "tracks") @Required val tracks: kotlin.collections.List<PlayTrack>,

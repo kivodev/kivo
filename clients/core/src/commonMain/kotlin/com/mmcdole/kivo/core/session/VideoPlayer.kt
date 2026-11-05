@@ -1,6 +1,5 @@
 package com.mmcdole.kivo.core.session
 
-import com.mmcdole.kivo.core.display.Display
 import com.mmcdole.kivo.core.downloads.DownloadSource
 import com.mmcdole.kivo.core.downloads.OfflinePlay
 import com.mmcdole.kivo.core.play.PlayController
@@ -114,7 +113,7 @@ class VideoPlayer internal constructor(
     }
 
     /** Where the file playing came from, for the stream info's "Source" line; null for the server's play. */
-    fun downloadSource(display: Display): DownloadSource? = offline?.source(display)
+    fun downloadSource(): DownloadSource? = offline?.source()
 
     /** The play [play] starts. */
     internal suspend fun request(

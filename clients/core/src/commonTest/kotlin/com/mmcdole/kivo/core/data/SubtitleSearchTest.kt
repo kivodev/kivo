@@ -5,6 +5,7 @@ import com.mmcdole.kivo.api.models.SubtitleResult
 import com.mmcdole.kivo.api.models.SubtitleResultList
 import com.mmcdole.kivo.api.models.SubtitleTrackInfo
 import com.mmcdole.kivo.api.models.Track
+import com.mmcdole.kivo.api.models.TrackType
 import com.mmcdole.kivo.api.models.Version
 import com.mmcdole.kivo.api.models.VersionPart
 import com.mmcdole.kivo.api.models.WorkDetail
@@ -25,10 +26,10 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class SubtitleSearchTest {
-    private val video = Track("t-video", "video", "hevc", true)
+    private val video = Track("t-video", TrackType.Video, "hevc", true, "HEVC", "HEVC")
 
     private fun version(tracks: List<Track> = listOf(video), parts: List<VersionPart> = listOf(VersionPart("f1", "Dune.mkv", 1, 1))) =
-        Version("v1", true, 1, 1, parts, tracks, listOf("w1"))
+        Version("v1", true, 1, 1, parts, tracks, listOf("w1"), "")
 
     private fun result(id: String, hashMatch: Boolean = false, forced: Boolean = false, sdh: Boolean = false, release: String? = null) =
         SubtitleResult(id, "en", 10, hashMatch, forced, sdh, release)
@@ -39,7 +40,7 @@ class SubtitleSearchTest {
         server.on("GET", "/api/v1/files/f1/subtitle-results") {
             json(SubtitleResultList.serializer(), SubtitleResultList(listOf(result("b", hashMatch = true), result("a"))))
         }
-        val added = Track("t-new", "subtitle", "subrip", false, language = "en", subtitle = SubtitleTrackInfo("downloaded"))
+        val added = Track("t-new", TrackType.Subtitle, "subrip", false, "English", "English", language = "en", subtitle = SubtitleTrackInfo("downloaded"))
         server.on("POST", "/api/v1/files/f1/subtitles") { json(Track.serializer(), added) }
         val search = SubtitleSearcher(server.connection())
 
@@ -53,7 +54,7 @@ class SubtitleSearchTest {
     fun aSearchIsOfferedForAServerVideoEvenWithoutSubtitleTracks() {
         assertTrue(SubtitleSearch.offered(version()))
         assertFalse(SubtitleSearch.offered(version(), offline = true), "a download playing from its files")
-        assertFalse(SubtitleSearch.offered(version(tracks = listOf(Track("a", "audio", "aac", true)))), "audio alone")
+        assertFalse(SubtitleSearch.offered(version(tracks = listOf(Track("a", TrackType.Audio, "aac", true, "", "")))), "audio alone")
         assertFalse(SubtitleSearch.offered(version(parts = emptyList())))
         assertFalse(SubtitleSearch.offered(null))
     }
@@ -66,7 +67,7 @@ class SubtitleSearchTest {
             genres = emptyList(), studios = emptyList(), credits = emptyList(), externalIds = emptyList(),
             versions = listOf(version(), other), extras = emptyList(), collections = emptyList(),
         )
-        val added = Track("t-new", "subtitle", "subrip", false, subtitle = SubtitleTrackInfo("downloaded"))
+        val added = Track("t-new", TrackType.Subtitle, "subrip", false, "", "", subtitle = SubtitleTrackInfo("downloaded"))
         val shown = work.withTrack("v1", added).withTrack("v1", added)
         assertEquals(listOf(video, added), shown.versions[0].tracks)
         assertEquals(listOf(video), shown.versions[1].tracks)
@@ -74,7 +75,7 @@ class SubtitleSearchTest {
 
     @Test
     fun namesAResultByLanguageAndFlagsWithItsReleaseUnder() {
-        val en = Display.forLocale("en")
+        val en = Display()
         assertEquals(
             TrackName("English · Exact match · SDH", "Dune.2021.2160p.UHD.BluRay"),
             en.subtitleResultName(result("a", hashMatch = true, sdh = true, release = "Dune.2021.2160p.UHD.BluRay"), "Exact match"),

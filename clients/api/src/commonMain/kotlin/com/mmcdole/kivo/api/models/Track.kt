@@ -35,9 +35,11 @@ import kotlinx.serialization.encoding.*
  * An audio, video or subtitle track. Kind-specific data is under its type's name.
  *
  * @param id The track's ID; chooses it in a play request. An embedded track keeps its ID while its file is unchanged, and a subtitle file keeps its own while it stays at its path, so adding or removing one never changes another track's ID. 
- * @param type A track's type.
+ * @param type 
  * @param codec 
  * @param default 
+ * @param name Its name in a track picker, from its facts and never its title: a video's codec, resolution and HDR (\"HEVC 4K HDR10\"); else the language, marked when it's the original beside a dub (\"Japanese [Original]\"), the flags (\"English · SDH\"), audio's channels and any lossless or premium format (\"English · 7.1 · TrueHD Atmos\"), and where a downloaded subtitle came from (\"English · OpenSubtitles\"). Tracks of one type in the same list whose name and title are both alike add their codec, then where a subtitle file lives, and are numbered last. A picker shows the title under it. 
+ * @param fullName The track in full, for stream info: a video's codec, profile, resolution and HDR (\"HEVC Main 10 4K Dolby Vision\"); audio's language, flags, format and channels, and Default (\"English · E-AC-3 5.1 · Default\"); a subtitle's language, flags, codec and where it lives (\"English · SDH · SRT · External\"); then the title in quotes. 
  * @param language A BCP 47 tag.
  * @param title The track's title as the file gives it, such as \"Commentary by the director\" or \"Signs & Songs\"; for a `downloaded` subtitle, the release OpenSubtitles says it was made for, such as `Modern.Family.S03E16.480p.BluRay.x264-mSD`. 
  * @param forced Subtitles only, marked as forced (they show only lines in another language than the audio); absent when not.
@@ -55,12 +57,17 @@ data class Track (
     /* The track's ID; chooses it in a play request. An embedded track keeps its ID while its file is unchanged, and a subtitle file keeps its own while it stays at its path, so adding or removing one never changes another track's ID.  */
     @SerialName(value = "id") @Required val id: kotlin.String,
 
-    /* A track's type. */
-    @SerialName(value = "type") @Required val type: kotlin.String,
+    @SerialName(value = "type") @Required val type: com.mmcdole.kivo.api.models.TrackType,
 
     @SerialName(value = "codec") @Required val codec: kotlin.String,
 
     @SerialName(value = "default") @Required val default: kotlin.Boolean,
+
+    /* Its name in a track picker, from its facts and never its title: a video's codec, resolution and HDR (\"HEVC 4K HDR10\"); else the language, marked when it's the original beside a dub (\"Japanese [Original]\"), the flags (\"English · SDH\"), audio's channels and any lossless or premium format (\"English · 7.1 · TrueHD Atmos\"), and where a downloaded subtitle came from (\"English · OpenSubtitles\"). Tracks of one type in the same list whose name and title are both alike add their codec, then where a subtitle file lives, and are numbered last. A picker shows the title under it.  */
+    @SerialName(value = "name") @Required val name: kotlin.String,
+
+    /* The track in full, for stream info: a video's codec, profile, resolution and HDR (\"HEVC Main 10 4K Dolby Vision\"); audio's language, flags, format and channels, and Default (\"English · E-AC-3 5.1 · Default\"); a subtitle's language, flags, codec and where it lives (\"English · SDH · SRT · External\"); then the title in quotes.  */
+    @SerialName(value = "fullName") @Required val fullName: kotlin.String,
 
     /* A BCP 47 tag. */
     @SerialName(value = "language") val language: kotlin.String? = null,

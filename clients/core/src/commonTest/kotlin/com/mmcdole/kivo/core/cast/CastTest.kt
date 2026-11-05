@@ -144,7 +144,7 @@ class CastTest {
         assertEquals("w1", status.workId)
         assertEquals("w2", status.nextWorkId)
         assertEquals("v1", status.versionId)
-        assertEquals("Direct Stream", Display.forLocale("en").method(status.tracks.first()))
+        assertEquals("Direct Stream", Display().method(status.tracks.first()))
         assertEquals(true, status.dialogueBoost?.enabled)
         assertEquals("a1", status.audioTrackId)
         assertEquals(Subtitles.OFF, status.subtitleTrackId)

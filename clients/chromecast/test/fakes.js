@@ -175,7 +175,7 @@ export const episode = {
   id: WORK, kind: 'episode', title: 'Reload', durationMs: 45 * 60000,
   episode: { seasonNumber: 3, number: 4, seriesTitle: 'The Expanse', seriesId: 'series', nextId: NEXT },
   images: { still: { id: 'img-still' }, backdrop: { id: 'img-back' } },
-  versions: [{ id: 'v1', container: 'matroska,webm', tracks: [{ id: 's1', type: 'subtitle', language: 'en', title: 'English' }] }],
+  versions: [{ id: 'v1', container: 'matroska,webm', tracks: [{ id: 's1', type: 'subtitle', language: 'en', name: 'English · SDH', fullName: 'English · SDH · SRT · External' }] }],
 };
 
 export const nextEpisode = {

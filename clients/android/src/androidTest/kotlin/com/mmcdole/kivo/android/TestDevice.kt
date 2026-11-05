@@ -11,7 +11,6 @@ import java.io.File
 class TestDevice(context: Context, preferences: File) : Device {
     override val name = "Test TV"
     override val identity = AndroidIdentity(context)
-    override val language = "en"
     override val preferences = PreferenceDataStoreFactory.create { preferences }
     override val secureStore: SecureStore = MemoryStore()
     override val capabilities = AndroidCapabilityProbe(context)

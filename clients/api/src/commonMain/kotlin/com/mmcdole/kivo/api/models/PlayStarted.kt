@@ -44,7 +44,7 @@ import kotlinx.serialization.encoding.*
  * @param startMs Where playback starts on the version's timeline. Seek here once metadata has loaded (Safari ignores an earlier seek).
  * @param durationMs 
  * @param local Whether the client is on a local network.
- * @param delivery How a play's media is fetched: `file` is the original, each part's `url` with range requests; `stream` is the HLS playlist at `url`. 
+ * @param delivery 
  * @param url For `file`, the first part; for `stream`, the multivariant playlist.
  * @param tracks Every track of the version, and the subtitle choice `off`.
  * @param parts The version's parts in order; positions are on their joined timeline.
@@ -77,8 +77,7 @@ data class PlayStarted (
     /* Whether the client is on a local network. */
     @SerialName(value = "local") @Required val local: kotlin.Boolean,
 
-    /* How a play's media is fetched: `file` is the original, each part's `url` with range requests; `stream` is the HLS playlist at `url`.  */
-    @SerialName(value = "delivery") @Required val delivery: kotlin.String,
+    @SerialName(value = "delivery") @Required val delivery: com.mmcdole.kivo.api.models.PlayDelivery,
 
     /* For `file`, the first part; for `stream`, the multivariant playlist. */
     @SerialName(value = "url") @Required val url: kotlin.String,

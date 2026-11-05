@@ -4,11 +4,14 @@ import com.mmcdole.kivo.api.models.Capabilities
 import com.mmcdole.kivo.api.models.FileCapabilities
 import com.mmcdole.kivo.api.models.PlayStarted
 import com.mmcdole.kivo.api.models.Play
+import com.mmcdole.kivo.api.models.PlayDelivery
 import com.mmcdole.kivo.api.models.PlayPart
 import com.mmcdole.kivo.api.models.PlayTrack
 import com.mmcdole.kivo.api.models.QualityRequest
 import com.mmcdole.kivo.api.models.ServerInfo
 import com.mmcdole.kivo.api.models.SubtitleEntry
+import com.mmcdole.kivo.api.models.TrackDelivery
+import com.mmcdole.kivo.api.models.TrackType
 import com.mmcdole.kivo.core.FakeServer
 import com.mmcdole.kivo.core.auth.PICK_REST
 import com.mmcdole.kivo.core.auth.ServerConnection
@@ -44,7 +47,7 @@ import kotlin.time.Duration.Companion.seconds
 
 private const val START = "/api/v1/plays"
 
-private fun play(id: String, startMs: Int = 0, delivery: String = "file", tracks: List<PlayTrack> = emptyList()) = PlayStarted(
+private fun play(id: String, startMs: Int = 0, delivery: PlayDelivery = PlayDelivery.File, tracks: List<PlayTrack> = emptyList()) = PlayStarted(
     id = id,
     workId = "w1",
     versionId = "v1",
@@ -60,13 +63,13 @@ private fun play(id: String, startMs: Int = 0, delivery: String = "file", tracks
 
 /** A direct play's tracks: the file's two audio tracks, a subtitle in it, one drawn as a file, one only a new play shows, and off. */
 private fun fileTracks(subtitle: String = "off") = listOf(
-    PlayTrack("a1", "audio", selected = true, delivery = "file", index = 1),
-    PlayTrack("a2", "audio", delivery = "file", index = 2),
-    PlayTrack("a3", "audio"),
-    PlayTrack("t4", "subtitle", delivery = "file", index = 3),
-    PlayTrack("t5", "subtitle", delivery = "external", codec = "hdmv_pgs_subtitle", url = "plays/s1/subtitles/5.sup"),
-    PlayTrack("t6", "subtitle"),
-    PlayTrack("off", "subtitle", delivery = "none"),
+    PlayTrack("a1", TrackType.Audio, selected = true, delivery = TrackDelivery.File, index = 1),
+    PlayTrack("a2", TrackType.Audio, delivery = TrackDelivery.File, index = 2),
+    PlayTrack("a3", TrackType.Audio),
+    PlayTrack("t4", TrackType.Subtitle, delivery = TrackDelivery.File, index = 3),
+    PlayTrack("t5", TrackType.Subtitle, delivery = TrackDelivery.External, codec = "hdmv_pgs_subtitle", url = "plays/s1/subtitles/5.sup"),
+    PlayTrack("t6", TrackType.Subtitle),
+    PlayTrack("off", TrackType.Subtitle, delivery = TrackDelivery.None),
 ).map { if (it.trackId == subtitle) it.copy(selected = true) else it }
 
 private val capabilities = Capabilities(
@@ -201,7 +204,7 @@ class PlayControllerTest {
     @Test
     fun failedMediaFallsBackOnceThenShowsTheError() = runTest {
         val h = Harness(this)
-        h.answerStarts(play("s1", delivery = "stream"))
+        h.answerStarts(play("s1", delivery = PlayDelivery.Stream))
         h.acceptBeats("s1")
         h.acceptBeats("s2")
         h.server.on("POST", "$START/s1/fallback") { json(PlayStarted.serializer(), play("s2", startMs = 42_000), HttpStatusCode.Created) }
@@ -445,11 +448,11 @@ class PlayControllerTest {
     fun whileASubtitleIsBurnedInEveryOtherChoiceStartsANewPlay() = runTest {
         val h = Harness(this)
         val burned = listOf(
-            PlayTrack("t4", "subtitle", selected = true, delivery = "burn", reason = "burnSubtitlesEnabled"),
-            PlayTrack("t5", "subtitle", reason = "burnSubtitlesEnabled"),
-            PlayTrack("off", "subtitle"),
+            PlayTrack("t4", TrackType.Subtitle, selected = true, delivery = TrackDelivery.Burn, reason = "burnSubtitlesEnabled"),
+            PlayTrack("t5", TrackType.Subtitle, reason = "burnSubtitlesEnabled"),
+            PlayTrack("off", TrackType.Subtitle),
         )
-        h.answerStarts(play("s1", delivery = "stream", tracks = burned), play("s2"))
+        h.answerStarts(play("s1", delivery = PlayDelivery.Stream, tracks = burned), play("s2"))
         h.acceptBeats("s1")
         h.controller.play(PlayRequest("w1"))
         runCurrent()
@@ -465,13 +468,13 @@ class PlayControllerTest {
     fun aStreamedSubtitleIsTheRenditionAtItsPlaceAmongTheStreamedOnes() = runTest {
         val h = Harness(this)
         val streamed = listOf(
-            PlayTrack("v1", "video", selected = true, delivery = "stream"),
-            PlayTrack("t4", "subtitle", delivery = "stream", codec = "webvtt"),
-            PlayTrack("t5", "subtitle", delivery = "external", codec = "ass", url = "plays/s1/subtitles/5.ass", fonts = listOf("fonts/f1")),
-            PlayTrack("t6", "subtitle", selected = true, delivery = "stream", codec = "webvtt"),
-            PlayTrack("off", "subtitle", delivery = "none"),
+            PlayTrack("v1", TrackType.Video, selected = true, delivery = TrackDelivery.Stream),
+            PlayTrack("t4", TrackType.Subtitle, delivery = TrackDelivery.Stream, codec = "webvtt"),
+            PlayTrack("t5", TrackType.Subtitle, delivery = TrackDelivery.External, codec = "ass", url = "plays/s1/subtitles/5.ass", fonts = listOf("fonts/f1")),
+            PlayTrack("t6", TrackType.Subtitle, selected = true, delivery = TrackDelivery.Stream, codec = "webvtt"),
+            PlayTrack("off", TrackType.Subtitle, delivery = TrackDelivery.None),
         )
-        h.answerStarts(play("s1", delivery = "stream", tracks = streamed))
+        h.answerStarts(play("s1", delivery = PlayDelivery.Stream, tracks = streamed))
         h.acceptBeats("s1")
         h.controller.play(PlayRequest("w1"))
         runCurrent()
@@ -485,8 +488,8 @@ class PlayControllerTest {
     fun aSubtitleTheAppDrawsPlaysAgainWithoutFilesInPictureInPictureAndAgainWithThemOnLeaving() = runTest {
         val h = Harness(this)
         val inPip = listOf(
-            PlayTrack("t5", "subtitle", selected = true, delivery = "burn", reason = "subtitleCodecUnsupported"),
-            PlayTrack("off", "subtitle"),
+            PlayTrack("t5", TrackType.Subtitle, selected = true, delivery = TrackDelivery.Burn, reason = "subtitleCodecUnsupported"),
+            PlayTrack("off", TrackType.Subtitle),
         )
         h.answerStarts(play("s1", tracks = fileTracks(subtitle = "t5")), play("s2", startMs = 90_000, tracks = inPip), play("s3"))
         h.acceptBeats("s1")
@@ -518,7 +521,7 @@ class PlayControllerTest {
     @Test
     fun aSubtitleInTheStreamNeedsNoNewPlayInPictureInPictureNorOnLeaving() = runTest {
         val h = Harness(this)
-        h.answerStarts(play("s1", tracks = listOf(PlayTrack("t4", "subtitle", selected = true, delivery = "stream"))))
+        h.answerStarts(play("s1", tracks = listOf(PlayTrack("t4", TrackType.Subtitle, selected = true, delivery = TrackDelivery.Stream))))
         h.acceptBeats("s1")
         h.controller.play(PlayRequest("w1"))
         runCurrent()
@@ -533,7 +536,7 @@ class PlayControllerTest {
     @Test
     fun aBurnedSubtitleThePlayDidntBurnForPictureInPictureStaysOnLeaving() = runTest {
         val h = Harness(this)
-        h.answerStarts(play("s1", tracks = listOf(PlayTrack("t4", "subtitle", selected = true, delivery = "burn"))))
+        h.answerStarts(play("s1", tracks = listOf(PlayTrack("t4", TrackType.Subtitle, selected = true, delivery = TrackDelivery.Burn))))
         h.acceptBeats("s1")
         h.controller.play(PlayRequest("w1"))
         runCurrent()

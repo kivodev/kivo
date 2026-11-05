@@ -5,7 +5,7 @@ import type { MediaFile, WorkDetail } from "@/api/schemas";
 import { Button } from "@/components/Button";
 import { FormError } from "@/components/FormError";
 import { ModalDialog } from "@/components/ModalDialog";
-import { containerName, trackDetail, versionName } from "@/components/trackLabels";
+import { containerName } from "@/components/trackLabels";
 import { formatBitrate, formatRuntime, formatSize } from "@/i18n/format";
 
 type Props = { work: WorkDetail; isOpen: boolean; onClose: () => void };
@@ -43,7 +43,7 @@ function FileList({ work }: { work: WorkDetail }) {
   const groups = [
     ...work.versions.map((v) => ({
       id: v.id,
-      label: versionName(v),
+      label: v.name,
       files: items.filter((f) => f.versionId === v.id),
     })),
     { id: "", label: undefined, files: items.filter((f) => f.versionId === undefined || !known.has(f.versionId)) },
@@ -82,7 +82,7 @@ function FileRow({ file }: { file: MediaFile }) {
       {file.tracks.length > 0 && (
         <ul className="flex flex-col text-xs text-text-muted">
           {file.tracks.map((track) => (
-            <li key={track.id}>{trackDetail(track)}</li>
+            <li key={track.id}>{track.fullName}</li>
           ))}
         </ul>
       )}

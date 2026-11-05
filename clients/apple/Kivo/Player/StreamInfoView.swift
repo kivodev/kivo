@@ -40,13 +40,13 @@ struct StreamInfoView: View {
         let version = model.version
         let source = { (id: String) in version?.tracks.first { $0.id == id } }
         let selected = play.tracks.filter { $0.selected?.boolValue == true }
-        let main = selected.first { $0.type == "video" } ?? selected.first { $0.type == "audio" }
+        let main = selected.first { $0.type == .video } ?? selected.first { $0.type == .audio }
         var rows = [
             Row(label: String(localized: "Playback"), value: main.map { display.method(track: $0) } ?? display.method(method: "directPlay")),
             Row(label: String(localized: "Source"), value: sourceValue),
         ]
 
-        if play.delivery == "stream", let container = version?.container {
+        if play.delivery == .stream, let container = version?.container {
             let name = display.container(container: container)
             let repackaged = selected.contains { $0.reason == "containerUnsupported" }
             rows.append(Row(
@@ -56,20 +56,20 @@ struct StreamInfoView: View {
             ))
         }
 
-        for track in selected where track.type != "subtitle" {
-            let from = source(track.trackId).map { display.trackDetail(track: $0) }
+        for track in selected where track.type != .subtitle {
+            let from = source(track.trackId)?.fullName
             let output = track.transcode.map { transcode in
-                [display.delivered(track: track), track.type == "video" ? transcode.encoder : nil].compactMap { $0 }.joined(separator: " · ")
+                [display.delivered(track: track), track.type == .video ? transcode.encoder : nil].compactMap { $0 }.joined(separator: " · ")
             }
             // A file's track with what it became is a download's conversion, which is what the file holds.
-            let what = track.delivery == "file" && output != nil
+            let what = track.delivery == .file && output != nil
                 ? output ?? ""
                 : [from, output].compactMap { $0 }.joined(separator: " → ")
             let method = display.method(track: track)
             rows.append(Row(
-                label: track.type == "video" ? String(localized: "Video") : String(localized: "Audio"),
+                label: track.type == .video ? String(localized: "Video") : String(localized: "Audio"),
                 value: what.isEmpty ? method : "\(method) · \(what)",
-                why: track.delivery == "file" ? nil : why(track)
+                why: track.delivery == .file ? nil : why(track)
             ))
         }
 
@@ -88,7 +88,7 @@ struct StreamInfoView: View {
         rows.append(Row(
             label: String(localized: "Delivery"),
             value: [
-                play.delivery.map { $0 == "stream" ? "HLS" : String(localized: "File") },
+                play.delivery.map { $0 == .stream ? "HLS" : String(localized: "File") },
                 play.local ? String(localized: "Local") : String(localized: "Remote"),
             ].compactMap { $0 }.joined(separator: " · ")
         ))
@@ -111,18 +111,17 @@ struct StreamInfoView: View {
     /// The subtitle showing, as the play delivers it.
     private func subtitleRow(play: StreamInfo, track: Track?) -> Row {
         let label = String(localized: "Subtitles")
-        guard model.subtitle != Subtitles.shared.OFF, let shown = play.tracks.first(where: { $0.type == "subtitle" && $0.trackId == model.subtitle }) else {
+        guard model.subtitle != Subtitles.shared.OFF, let shown = play.tracks.first(where: { $0.type == .subtitle && $0.trackId == model.subtitle }) else {
             return Row(label: label, value: String(localized: "Off"))
         }
         let display = model.display
         let styled = ["ass", "ssa"]
         // A styled track shown plain doesn't name its codec: "Plain (ASS)" would read as styled.
-        let plainStyled = track.map { styled.contains($0.codec) } == true && shown.delivery != "burn" && !styled.contains(shown.codec ?? "")
+        let plainStyled = track.map { styled.contains($0.codec) } == true && shown.delivery != .burn && !styled.contains(shown.codec ?? "")
         var kind = display.subtitleKind(track: shown)
         if let track, !plainStyled { kind += " (\(display.codec(codec: track.codec)))" }
         let source = track?.subtitle.flatMap { display.subtitleSource(source: $0.source) }
-        let name = track.flatMap { display.trackNames(tracks: [$0])[$0.id]?.name }
-        let value = [name, kind, source].compactMap { $0 }.joined(separator: " · ")
+        let value = [track?.name, kind, source].compactMap { $0 }.joined(separator: " · ")
         if model.offline {
             // A download's subtitle is as the server prepared it; the streaming reason doesn't apply.
             return Row(label: label, value: value, note: downloadedNote(shown.delivery))
@@ -131,10 +130,10 @@ struct StreamInfoView: View {
     }
 
     /// How a download holds its subtitle: burned into the conversion, a text track of its file, or a file beside it.
-    private func downloadedNote(_ delivery: String?) -> String {
+    private func downloadedNote(_ delivery: TrackDelivery?) -> String {
         switch delivery {
-        case "burn": String(localized: "Burned in at download")
-        case "file": String(localized: "A text track in the downloaded file")
+        case .burn: String(localized: "Burned in at download")
+        case .file: String(localized: "A text track in the downloaded file")
         default: String(localized: "A subtitle file downloaded with it")
         }
     }

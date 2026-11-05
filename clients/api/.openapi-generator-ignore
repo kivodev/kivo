@@ -1,10 +1,12 @@
 # What openapi-generator leaves alone in clients/api: the hand-written build
-# file, EventStreamMessage (the generator can't do oneOf) and
-# ProblemException, and the docs, tests and Gradle files it would add.
+# file, EventStreamMessage (the generator can't do oneOf), OpenEnums (the
+# enums the apps branch on) and ProblemException, and the docs, tests and
+# Gradle files it would add.
 build.gradle.kts
 settings.gradle.kts
 README.md
 docs/**
 src/test/**
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/EventStreamMessage.kt
+src/commonMain/kotlin/com/mmcdole/kivo/api/models/OpenEnums.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/ProblemException.kt

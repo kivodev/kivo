@@ -1,10 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The app's own words, in English. Methods, reasons, problems, track names, bitrates, sizes, runtimes, episode
-     codes and quality choices come from the core's display tables, in language_tag's language. A translation adds
-     values-<lang>/strings.xml with its own language_tag. -->
+<!-- The app's own words. Methods, reasons, problems, bitrates, sizes, runtimes, episode codes and quality choices
+     come from the core's display tables. -->
 <resources>
     <string name="app_name">Kivo</string>
-    <string name="language_tag" translatable="false">en</string>
 
     <!-- States -->
     <string name="loading">Loading…</string>

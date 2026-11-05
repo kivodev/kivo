@@ -119,13 +119,13 @@ final class PlayerModel: PlayerChoices, Scrubbable {
         offline = target.downloadId != nil
         downloadSource = nil
         load(workId: target.workId)
-        tasks.append(Task { [weak self, engine, server, display] in
+        tasks.append(Task { [weak self, engine, server] in
             do {
                 let player: KivoCore.VideoPlayer
                 var source: DownloadSource?
                 if let downloadId = target.downloadId {
                     player = try await server.session.playback.offlinePlayer(engine: engine, downloadId: downloadId)
-                    source = player.downloadSource(display: display)
+                    source = player.downloadSource()
                 } else {
                     player = server.session.playback.videoPlayer(engine: engine)
                 }

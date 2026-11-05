@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mmcdole/kivo/internal/api/internal/display"
 	"github.com/mmcdole/kivo/internal/api/internal/gen"
 	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/id"
@@ -332,7 +333,7 @@ func versions(d query.WorkDetail, tracks playback.Preferred, marks map[id.ID][]m
 }
 
 // version is a technical version on the wire. It lists the works it
-// covers and its video's resolution and HDR format. Audio tracks in the
+// covers, its name and its video's resolution and HDR format. Audio tracks in the
 // work's original language are marked as original.
 func version(v query.Version, original string) gen.Version {
 	out := gen.Version{
@@ -357,6 +358,8 @@ func version(v query.Version, original string) gen.Version {
 		}
 		out.Tracks = append(out.Tracks, gt)
 	}
+	named(out.Tracks)
+	out.Name = display.VersionName(out)
 	for _, c := range v.ChapterList {
 		out.Chapters = ptr(append(deref(out.Chapters), gen.Chapter{StartMs: ms(c.Start), EndMs: ms(c.End), Title: opt(c.Title)}))
 	}
