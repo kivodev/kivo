@@ -3,6 +3,7 @@
 // focuses the same card, once it's on screen again. A screen opened anew
 // focuses its initial item: the one marked autoFocus, else its first.
 
+import { releaseGlides } from "./glide";
 import {
   currentTvFocus,
   focusTv,
@@ -46,6 +47,7 @@ export function expectTvScreen(entry: string) {
     leftOn,
   };
   leftOn = undefined;
+  releaseGlides();
   holdStrayTvKeys(holdKeysMs);
   // A screen Back returns to has often rendered its items from cached data
   // by the time the router says it has arrived, though the browser hasn't

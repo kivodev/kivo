@@ -478,3 +478,18 @@ test("the player route keeps the keys: the app's focus and Back stand down", asy
   await expect(page).toHaveURL(/\/works\//);
   await expectFocus(page, { key: "play" });
 });
+
+test("Search fills the screen after Home has glided", async ({ page }) => {
+  // The page's glide leaves will-change on the content around Search, which on TV is fixed to the screen.
+  await page.goto("/");
+  await expectFocus(page, { key: "card:" });
+  await press(page, "ArrowDown");
+  await page.waitForTimeout(400);
+  await pressUntil(page, "ArrowLeft", (f) => f.key?.startsWith("rail:") ?? false, 10);
+  await pressUntil(page, "ArrowUp", (f) => f.key === "rail:search", 4);
+  await press(page, "Enter");
+  const box = await page.locator('[data-part="search-keyboard"]').boundingBox();
+  expect(box?.y ?? -1).toBeGreaterThanOrEqual(0);
+  expect((box?.height ?? 0) + (box?.y ?? 0)).toBeLessThanOrEqual(1080);
+  expect(box?.height ?? 0).toBeGreaterThan(500);
+});

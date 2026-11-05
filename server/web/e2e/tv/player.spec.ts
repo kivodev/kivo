@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
-import { back, expectFocus, press } from "./remote";
+import { back, expectFocus, press, pressUntil } from "./remote";
 
 // The TV player with only a remote, playing real media: the mock's playable
 // scenario plays a ten-minute file, with two audio tracks and subtitles
@@ -371,4 +371,20 @@ test("Skip Intro takes focus over hidden controls, lit, and OK skips past the in
   await press(page, "Enter");
   await expect.poll(() => video(page).evaluate((v: HTMLVideoElement) => v.currentTime)).toBeGreaterThanOrEqual(150);
   expect(await controls(page)).toBe("hidden");
+});
+
+test("a play started after the page has glided fills the screen, with its controls on it", async ({ page }) => {
+  // The page's glide leaves will-change on the content around the player, which
+  // would hold the fixed player in place of the window: no height, and its
+  // controls off the top of the screen.
+  await page.goto("/works/0190a000-0000-7000-8000-0000000000c8?mock=playable");
+  await expectFocus(page, { key: "play" });
+  await pressUntil(page, "ArrowDown", (f) => f.key?.startsWith("card:episodes:") ?? false, 4);
+  await press(page, "Enter");
+  const player = page.locator('[data-part="player"]');
+  await expect.poll(async () => (await player.boundingBox())?.height).toBe(1080);
+  await press(page, "ArrowUp");
+  const controls = await page.locator('[data-part="player-controls"]').boundingBox();
+  expect(controls?.y ?? 0).toBeGreaterThan(540);
+  expect((controls?.y ?? 0) + (controls?.height ?? 0)).toBeLessThanOrEqual(1080);
 });

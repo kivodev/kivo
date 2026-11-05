@@ -57,6 +57,17 @@ export function releaseAround(fixed: Element) {
   for (const el of moved) if (el.contains(fixed)) release(el);
 }
 
+/**
+ * Lets go of every element a glide moved, as a new screen arrives: the last
+ * screen's glide is over, and anything fixed on the new one, such as the
+ * player, which would have no height and its controls off the screen, or
+ * Search, is fixed to the window again. A screen's own glides take the
+ * elements back as they start.
+ */
+export function releaseGlides() {
+  for (const el of Array.from(moved)) release(el);
+}
+
 /** The elements in root that move with the page, and none that's fixed to the screen. */
 function movers(root: Element): HTMLElement[] {
   const out: HTMLElement[] = [];
