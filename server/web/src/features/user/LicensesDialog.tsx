@@ -2,6 +2,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/Button";
 import { FormError } from "@/components/FormError";
+import { Icon } from "@/components/Icon";
 import { ModalDialog } from "@/components/ModalDialog";
 import { isTv } from "@/tv/flag";
 import { TvDialogButton } from "@/tv/forms/dialog";
@@ -81,9 +82,13 @@ function WebRow({ credit }: { credit: Credit }) {
     );
   }
   return (
-    <details className="rounded-md open:bg-surface">
-      <summary className="cursor-pointer rounded-md px-3 py-2 hover:bg-surface-hover">
+    <details className="group rounded-md open:bg-surface">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-md px-3 py-2 hover:bg-surface-hover [&::-webkit-details-marker]:hidden">
         <Heading credit={credit} />
+        <Icon
+          name="chevronDown"
+          className="size-4 shrink-0 text-text-muted transition-transform group-open:rotate-180"
+        />
       </summary>
       <pre className="max-h-80 overflow-auto px-3 pb-3 font-mono text-xs whitespace-pre-wrap text-text-muted">
         {credit.text}
