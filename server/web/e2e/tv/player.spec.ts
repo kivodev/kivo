@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
-import { back, expectFocus, press, pressUntil } from "./remote";
+import { back, expectFocus, focusOf, press, pressUntil } from "./remote";
 
 // The TV player with only a remote, playing real media: the mock's playable
 // scenario plays a ten-minute file, with two audio tracks and subtitles
@@ -387,4 +387,24 @@ test("a play started after the page has glided fills the screen, with its contro
   const controls = await page.locator('[data-part="player-controls"]').boundingBox();
   expect(controls?.y ?? 0).toBeGreaterThan(540);
   expect((controls?.y ?? 0) + (controls?.height ?? 0)).toBeLessThanOrEqual(1080);
+});
+
+test("Back from a play started on an episode's card returns to that card", async ({ page }) => {
+  await page.goto("/works/0190a000-0000-7000-8000-0000000000c8?mock=playable");
+  await expectFocus(page, { key: "play" });
+  await pressUntil(page, "ArrowDown", (f) => f.key?.startsWith("card:episodes:") ?? false, 4);
+  await press(page, "ArrowRight");
+  await expectFocus(page, { key: "card:episodes:", name: "4. Reload" });
+  const card = (await focusOf(page)).key;
+  await press(page, "Enter");
+  await expect(page).toHaveURL(/\/watch\//);
+  await expect.poll(() => video(page).evaluate((v: HTMLVideoElement) => v.currentTime)).toBeGreaterThan(1);
+  // The first Back shows the controls if they've hidden; with them up it leaves.
+  await expect
+    .poll(async () => {
+      await back(page);
+      return new URL(page.url()).pathname.startsWith("/works/");
+    })
+    .toBe(true);
+  await expectFocus(page, { key: card ?? "" });
 });

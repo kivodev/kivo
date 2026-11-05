@@ -23,7 +23,7 @@ const restoreWaitMs = 1000;
 const holdKeysMs = 5000;
 
 const remembered = new Map<string, string>();
-let pending: { key?: string; since: number; fromRail: boolean; leftOn?: string } | undefined;
+let pending: { key?: string; since: number; fromRail: boolean; leftOn?: string; fromPlayer: boolean } | undefined;
 let timer: ReturnType<typeof setTimeout> | undefined;
 // The item focused as the last screen was left. The next screen may have an
 // item of the same key, as every detail page has Play, and focus still on
@@ -38,13 +38,14 @@ export function rememberTvFocus(entry: string) {
 }
 
 /** A screen is opening at a history entry: focus what was focused there, or the screen's initial item. */
-export function expectTvScreen(entry: string) {
+export function expectTvScreen(entry: string, fromPlayer = false) {
   const current = currentTvFocus();
   pending = {
     key: remembered.get(entry),
     since: Date.now(),
     fromRail: current !== undefined && isTvFocusIn(current, TV_RAIL),
     leftOn,
+    fromPlayer,
   };
   leftOn = undefined;
   releaseGlides();
@@ -54,7 +55,9 @@ export function expectTvScreen(entry: string) {
   // drawn it yet. Its card then takes focus at once, so the screen is first
   // drawn with its row, the page and the glow on the card, rather than for
   // a frame without them and then moving there.
-  if (pending.key && tvFocusExists(pending.key)) resolve();
+  // Back from the player arrives while focus is still paused for it, and
+  // the shell settles it as the pause lifts.
+  if (pending.key && tvFocusExists(pending.key) && !isTvPaused()) resolve();
   else settleTvFocus();
 }
 
@@ -103,9 +106,11 @@ function resolve() {
   // rail while it loaded, as Back does: a screen that arrives late doesn't
   // take focus back from the open rail. The rail keeps focus only while
   // it chose this screen, which then takes focus from it. Focus left on the
-  // last screen's item, by its key, isn't this screen's choice.
+  // last screen's item, by its key, isn't this screen's choice, nor is focus
+  // found on return from the player, whose keys were all its own.
   const current = currentTvFocus();
-  if (current && current !== pending.leftOn && (!pending.fromRail || !isTvFocusIn(current, TV_RAIL))) {
+  const chosen = current && current !== pending.leftOn && !pending.fromPlayer;
+  if (chosen && (!pending.fromRail || !isTvFocusIn(current, TV_RAIL))) {
     settled();
     return;
   }
