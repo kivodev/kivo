@@ -84,7 +84,7 @@ export function SeriesDetail({ work }: Props) {
         </div>
       )}
       {seasons.length > 1 && (
-        <TvFocusable focusKey="season-played">
+        <TvFocusable focusKey="season-played" skipDown>
           <Button
             size="icon"
             variant="ghost"

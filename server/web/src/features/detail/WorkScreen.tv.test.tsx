@@ -95,7 +95,7 @@ describe("Detail page on TV", () => {
     const cards = [...shelf.querySelectorAll('[data-part="episode-card"]')];
     expect(cards[2]).toHaveTextContent("3. Episode 314 min left");
     expect(cards[3]).toHaveTextContent("4. Reload44m · Holden races to stop an asteroid before it reaches Earth.");
-    // A card opens the episode's page; nothing on it plays straight away.
+    // A card's one link is the episode's page; its still's OK plays by the row's key handler.
     expect(within(cards[3] as HTMLElement).getByRole("link")).toHaveAttribute(
       "href",
       `/works/${mockIds.expanseReload}`,
@@ -108,7 +108,7 @@ describe("Detail page on TV", () => {
     );
   });
 
-  it("opens an episode's page with OK on its card, with Play focused, and Back returns to the card", async () => {
+  it("plays an episode with OK on its still", async () => {
     serveMockApi();
     const { router } = renderApp(`/works/${mockIds.expanse}`);
     await waitFor(() => expect(focused()).toBe("play"));
@@ -116,6 +116,34 @@ describe("Detail page on TV", () => {
     await waitFor(() => expect(document.querySelector(`[data-tv-focus-key="${card}"]`)).not.toBeNull());
     focusTv(card);
     await waitFor(() => expect(focused()).toBe(card));
+    press("Enter");
+    await waitFor(() => expect(locationOf(router)).toBe(`/watch/${mockIds.expanseReload}`));
+  });
+
+  it("plays the focused episode with the remote's Play button, from either stop", async () => {
+    serveMockApi();
+    const { router } = renderApp(`/works/${mockIds.expanse}`);
+    await waitFor(() => expect(focused()).toBe("play"));
+    const card = `card:episodes:${mockIds.expanseReload}`;
+    await waitFor(() => expect(document.querySelector(`[data-tv-focus-key="${card}"]`)).not.toBeNull());
+    focusTv(card);
+    await waitFor(() => expect(focused()).toBe(card));
+    press("ArrowDown");
+    await waitFor(() => expect(document.querySelector("[data-tv-card-text]")).not.toBeNull());
+    fireEvent.keyDown(document.activeElement as Element, { key: "MediaPlayPause", keyCode: 10252 });
+    await waitFor(() => expect(locationOf(router)).toBe(`/watch/${mockIds.expanseReload}`));
+  });
+
+  it("opens an episode's page with OK on its text, with Play focused, and Back returns to the card", async () => {
+    serveMockApi();
+    const { router } = renderApp(`/works/${mockIds.expanse}`);
+    await waitFor(() => expect(focused()).toBe("play"));
+    const card = `card:episodes:${mockIds.expanseReload}`;
+    await waitFor(() => expect(document.querySelector(`[data-tv-focus-key="${card}"]`)).not.toBeNull());
+    focusTv(card);
+    await waitFor(() => expect(focused()).toBe(card));
+    press("ArrowDown");
+    await waitFor(() => expect(document.querySelector("[data-tv-card-text]")).not.toBeNull());
     press("Enter");
     await waitFor(() => expect(locationOf(router)).toBe(`/works/${mockIds.expanseReload}`));
     await waitFor(() => expect(focused()).toBe("play"));
@@ -142,6 +170,8 @@ describe("Detail page on TV", () => {
     await waitFor(() => expect(document.querySelector(`[data-tv-focus-key="${next}"]`)).not.toBeNull());
     focusTv(next);
     await waitFor(() => expect(focused()).toBe(next));
+    press("ArrowDown");
+    await waitFor(() => expect(document.querySelector("[data-tv-card-text]")).not.toBeNull());
     press("Enter");
     await waitFor(() => expect(locationOf(router)).toBe(`/works/${mockId(1305)}`));
     await waitFor(() => expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/^Episode 5$/));

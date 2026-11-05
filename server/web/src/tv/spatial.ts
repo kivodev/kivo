@@ -71,7 +71,7 @@ function groupOf(el: Element, groupKey: string): Element | null {
   return el.closest(`[data-tv-group="${groupKey}"]`);
 }
 
-type Candidate = { key: string; dy: number; dx: number };
+type Candidate = { key: string; dy: number; dx: number; stops?: boolean };
 
 // The focusables in a group that show, by how far below (Down) or above
 // (Up) the focused item they are, and how far from its column. The focused
@@ -95,13 +95,20 @@ function candidatesIn(group: Element | null, from: HTMLElement, r: DOMRect, key:
   const candidates: Candidate[] = [];
   let best = Number.POSITIVE_INFINITY;
   const measure = (el: HTMLElement) => {
+    if (key === "down" && el.hasAttribute("data-tv-skip-down")) return;
     const e = el.getBoundingClientRect();
     if (e.width === 0 && e.height === 0) return;
     const dy = key === "down" ? e.top - r.bottom : r.top - e.bottom;
     if (dy < -overlap) return;
     const below = Math.max(dy, 0);
     best = Math.min(best, below);
-    candidates.push({ key: el.dataset.tvFocusKey as string, dy: below, dx: Math.abs(e.left + e.width / 2 - centre) });
+    candidates.push({
+      key: el.dataset.tvFocusKey as string,
+      dy: below,
+      dx: Math.abs(e.left + e.width / 2 - centre),
+      // Up lands on it from anywhere along the row below, as Down passes over it.
+      stops: key === "up" && el.hasAttribute("data-tv-skip-down"),
+    });
   };
 
   const rows = new Map<Element, HTMLElement[]>();
@@ -139,7 +146,10 @@ function candidatesIn(group: Element | null, from: HTMLElement, r: DOMRect, key:
 // The nearest line, then the item in it nearest the focused one's column.
 function nearest(candidates: Candidate[], r: DOMRect): string | undefined {
   if (candidates.length === 0) return undefined;
-  const line = Math.min(...candidates.map((c) => c.dy)) + r.height / 2;
+  const closest = Math.min(...candidates.map((c) => c.dy));
+  const stop = candidates.find((c) => c.stops && c.dy === closest);
+  if (stop) return stop.key;
+  const line = closest + r.height / 2;
   return candidates.filter((c) => c.dy <= line).sort((a, b) => a.dx - b.dx)[0]?.key;
 }
 

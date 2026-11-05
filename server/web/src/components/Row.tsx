@@ -60,6 +60,8 @@ type Props<T> = {
    * series' Next Up.
    */
   enterOn?: string;
+  /** On TV, what OK and the arrows do on a card, for a card that does more than open what it links to. */
+  cardFocus?: (item: T) => { onPress?: () => void; onArrow?: (direction: string) => boolean };
 };
 
 /**
@@ -86,6 +88,7 @@ export function Row<T>({
   tvAcross,
   header,
   enterOn,
+  cardFocus,
 }: Props<T>) {
   const { t } = useLingui();
   const generatedKey = useId();
@@ -230,6 +233,7 @@ export function Row<T>({
                   scroll="none"
                   onFocus={reveal}
                   className={tvCardClass}
+                  {...cardFocus?.(item)}
                 >
                   {renderItem(item)}
                 </TvFocusable>

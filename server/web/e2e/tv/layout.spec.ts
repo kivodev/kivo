@@ -468,14 +468,16 @@ test.describe("Detail", () => {
     expect((await focusOf(page)).name).toContain("3. Episode 3");
   });
 
-  test("OK on an episode opens its page with Play focused, and Back returns to that episode", async ({ page }) => {
+  test("OK on an episode's text opens its page with Play focused, and Back returns to that episode", async ({
+    page,
+  }) => {
     await page.goto(`/works/${expanse}`);
     await expectFocus(page, { key: "play", name: "Resume" });
     await pressUntil(page, "ArrowDown", (f) => f.key?.startsWith("card:episodes:") ?? false, 3);
     await press(page, "ArrowRight");
     await expectFocus(page, { key: "card:episodes:", name: "4. Reload" });
     const episode = (await focusOf(page)).key;
-    await press(page, "Enter");
+    await press(page, "ArrowDown", "Enter");
     await expect(page).toHaveURL(/\/works\/0190a000-0000-7000-8000-000000000518$/);
     await expectFocus(page, { key: "play", name: "Play" });
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Reload");

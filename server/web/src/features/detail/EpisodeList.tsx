@@ -1,7 +1,7 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { type CSSProperties, type KeyboardEvent, type ReactNode, useRef } from "react";
 import type { WorkSummary } from "@/api/schemas";
 import { workQueries } from "@/api/works";
 import { Artwork, cardDensity } from "@/components/Artwork";
@@ -9,6 +9,7 @@ import { Icon } from "@/components/Icon";
 import { ProgressBar } from "@/components/ProgressBar";
 import { Row } from "@/components/Row";
 import { Corner, cardStatus, StatusBadge } from "@/features/browse/WorkCard";
+import { keyName } from "@/features/player/keys";
 import { formatRuntime, formatTimeLeft } from "@/i18n/format";
 
 /** An episode's number, such as "3", or "1–2" for a multi-episode file. */
@@ -154,28 +155,85 @@ type ShelfProps = {
  * a row of cards, each its still with the progress bar and a check once
  * watched, then "4. Reload", and the runtime, or the time left in the
  * accent, before two lines of its synopsis. A season with no synopses
- * keeps its cards a line shorter. OK on a card opens the episode's page,
- * whose own Play plays it. The header heads the row, so the page scrolls
- * it into view with the cards.
+ * keeps its cards a line shorter. The header heads the row, so the page
+ * scrolls it into view with the cards.
+ *
+ * A card has two stops, as a touch screen's still and text are two targets:
+ * focus lands on the still, where OK or the remote's Play plays the episode,
+ * and Down moves to its text, where OK opens its page. Left and Right stay
+ * on the same stop, so descriptions can be read along the row. It's one
+ * focusable a card, and which stop is one attribute on the shelf that the
+ * stylesheet reads, so changing stop renders nothing and moving along the
+ * row measures nothing more.
  */
 export function EpisodeShelf({ seasonId, currentId, entry, header }: ShelfProps) {
   const episodes = useQuery({ ...workQueries.children(seasonId), placeholderData: (prev) => prev });
+  const navigate = useNavigate();
+  const shelf = useRef<HTMLDivElement>(null);
+  const onText = () => shelf.current?.hasAttribute("data-tv-card-text") === true;
+  const moveToText = (on: boolean) => shelf.current?.toggleAttribute("data-tv-card-text", on);
 
   if (episodes.isPending) return <EpisodeShelfSkeleton header={header} />;
   const items = episodes.data?.items ?? [];
   const lines = items.some((w) => synopsisOf(w)) ? 2 : 1;
+  const play = (w: WorkSummary) => void navigate({ to: "/watch/$workId", params: { workId: w.id } });
+  // The page shows the card's title and still while it loads.
+  const open = (w: WorkSummary) =>
+    void navigate({ to: "/works/$workId", params: { workId: w.id }, state: { work: w } });
+  const cardFocus = (w: WorkSummary) => ({
+    onPress: () => (onText() || !w.available ? open(w) : play(w)),
+    onArrow: (direction: string) => {
+      if (direction === "down" && !onText()) {
+        moveToText(true);
+        return false;
+      }
+      if (direction === "up" && onText()) {
+        moveToText(false);
+        return false;
+      }
+      return true;
+    },
+  });
+  const onKeyDown = (e: KeyboardEvent) => {
+    const key = keyName(e, true);
+    if (key !== "MediaPlay" && key !== "MediaPlayPause") return;
+    const focused = (e.target as Element).closest<HTMLElement>("[data-tv-focusable]")?.dataset.tvFocusKey;
+    const w = items.find((it) => `card:episodes:${it.id}` === focused);
+    if (!w?.available) return;
+    e.preventDefault();
+    e.stopPropagation();
+    play(w);
+  };
   return (
-    <Row
-      id="episodes"
-      header={header}
-      shape="landscape"
-      items={items}
-      itemKey={(w) => w.id}
-      enterOn={entry !== undefined && items.some((w) => w.id === entry) ? entry : undefined}
-      renderItem={(w) => <EpisodeCard episode={w} lines={lines} current={w.id === currentId} />}
-    />
+    // biome-ignore lint/a11y/noStaticElementInteractions: it only hears the remote's Play on the card focused inside.
+    <div
+      ref={shelf}
+      onKeyDown={onKeyDown}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) moveToText(false);
+      }}
+    >
+      <Row
+        id="episodes"
+        header={header}
+        shape="landscape"
+        items={items}
+        itemKey={(w) => w.id}
+        enterOn={entry !== undefined && items.some((w) => w.id === entry) ? entry : undefined}
+        tvAcross={shelfAcross * 2}
+        cardFocus={cardFocus}
+        renderItem={(w) => <EpisodeCard episode={w} lines={lines} current={w.id === currentId} />}
+      />
+    </div>
   );
 }
+
+/**
+ * How many of a shelf's cards fit across: one more than other landscape
+ * rows, so its row and its header fit under an episode's details without
+ * the page scrolling, and each still has fewer pixels for a TV to draw.
+ */
+const shelfAcross = 4;
 
 /** The shelf's place while its season's episodes load: its header, if any, over a screen's width of cards. */
 export function EpisodeShelfSkeleton({ header }: { header?: ReactNode }) {
@@ -185,8 +243,12 @@ export function EpisodeShelfSkeleton({ header }: { header?: ReactNode }) {
       <span className="sr-only">
         <Trans>Loading episodes…</Trans>
       </span>
-      <ul aria-hidden="true" className="flex gap-(--layout-tv-row-gap) tv-across-landscape">
-        {[0, 1, 2].map((i) => (
+      <ul
+        aria-hidden="true"
+        style={{ "--tv-across": shelfAcross } as CSSProperties}
+        className="flex gap-(--layout-tv-row-gap)"
+      >
+        {[0, 1, 2, 3].map((i) => (
           <li key={i} className="flex shrink-0 flex-col gap-2 tv-card-width">
             <div className="aspect-landscape animate-pulse rounded-md bg-placeholder" />
             <div className="h-6 w-1/2 rounded-sm bg-placeholder" />
@@ -215,7 +277,6 @@ function EpisodeCard({ episode: w, lines, current }: { episode: WorkSummary; lin
 
   return (
     <div data-part="episode-card" data-current={current || undefined} className="flex min-w-0 flex-col gap-2">
-      {/* The page shows the card's title and still while it loads. */}
       <Link
         to="/works/$workId"
         params={{ workId: w.id }}
@@ -227,7 +288,7 @@ function EpisodeCard({ episode: w, lines, current }: { episode: WorkSummary; lin
             image={w.images.still ?? w.images.backdrop}
             title={w.title}
             shape="landscape"
-            width={520}
+            width={400}
             density={cardDensity}
             part="still"
             className="relative shadow-card"
@@ -236,12 +297,26 @@ function EpisodeCard({ episode: w, lines, current }: { episode: WorkSummary; lin
           </Artwork>
           <Corner work={w} />
           {status && <StatusBadge status={status} right />}
+          {current && (
+            <span className="absolute bottom-3 left-2 rounded-sm bg-bg px-2 text-xs font-semibold text-text">
+              <Trans>Viewing</Trans>
+            </span>
+          )}
+          {w.available && (
+            <span
+              aria-hidden="true"
+              data-part="episode-play-hint"
+              className="absolute inset-0 m-auto size-16 items-center justify-center rounded-full bg-scrim text-text"
+            >
+              <Icon name="play" />
+            </span>
+          )}
         </div>
-        <div className="flex min-w-0 flex-col gap-1">
+        <div data-part="episode-text" className="-mx-2 flex min-w-0 flex-col gap-1 rounded-md px-2">
           <div className={`truncate text-sm font-semibold ${current ? "text-accent" : "text-text"}`}>
             {episodeRange(w)}. {w.title}
           </div>
-          <p className={`text-sm text-text-muted ${lines === 2 ? "line-clamp-2 min-h-16" : "truncate"}`}>
+          <p className={`text-sm text-text-muted ${lines === 2 ? "line-clamp-2 min-h-2lh" : "truncate"}`}>
             {time && <span className={`font-medium ${left ? "text-accent" : "text-text"}`}>{time}</span>}
             {time && synopsis ? " · " : ""}
             {synopsis}

@@ -29,6 +29,14 @@ type Props = {
   onPlayFromStart?: () => void;
   /** Pickers under the actions. */
   children?: ReactNode;
+  /** On TV, buttons after the primary one in the row of actions, such as the track pickers. */
+  actions?: ReactNode;
+  /**
+   * On TV, a hero as wide as the screen with room for a long overview, as
+   * short as its contents, so the row below it shows on the first screen
+   * without the page scrolling.
+   */
+  tvWide?: boolean;
   /** How many episodes marking played covers, so a series or season can ask first. */
   cascadeCount?: number;
   /**
@@ -97,6 +105,8 @@ export function DetailHeader({
   playing,
   onPlayFromStart,
   children,
+  actions,
+  tvWide = false,
   cascadeCount = 0,
   holdOverview = false,
 }: Props) {
@@ -120,17 +130,26 @@ export function DetailHeader({
           if (within) window.scrollTo({ top: 0, behavior: tvMotion() });
         }}
       >
-        <div data-part="detail-header" className="flex max-w-prose flex-col gap-4 px-4 pt-16 pb-8 sm:px-8">
+        <div
+          data-part="detail-header"
+          className={`flex flex-col gap-4 px-4 pb-8 sm:px-8 ${tvWide ? "tv:gap-2 tv:pt-0 tv:pb-4" : "max-w-prose pt-16"}`}
+        >
           {eyebrow}
-          <h1 className="line-clamp-2 text-3xl font-bold text-text">{heading ?? labelledTitle(work)}</h1>
+          <h1 className={`${tvWide ? "tv:line-clamp-1" : ""} line-clamp-2 text-3xl font-bold text-text`}>
+            {heading ?? labelledTitle(work)}
+          </h1>
           {meta ?? <MetaLine work={work} />}
           <div className="flex flex-col gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              {primary}
-              {onPlayFromStart && <PlayFromStartButton onPress={onPlayFromStart} />}
-              <WatchToggles work={work} cascadeCount={cascadeCount} />
-              <DetailMenu work={work} />
-            </div>
+            {/* Up from below returns to the button you came from, or Play. */}
+            <TvFocusGroup focusKey="hero-actions" enterOn="play" returns>
+              <div className="flex flex-wrap items-center gap-2">
+                {primary}
+                {onPlayFromStart && <PlayFromStartButton onPress={onPlayFromStart} />}
+                {actions}
+                <WatchToggles work={work} cascadeCount={cascadeCount} />
+                <DetailMenu work={work} />
+              </div>
+            </TvFocusGroup>
             {playing && (
               <p data-part="playing" className="truncate text-sm text-text-muted">
                 {playing}
@@ -138,7 +157,17 @@ export function DetailHeader({
             )}
           </div>
           {children}
-          {(work.overview || holdOverview) && <Overview text={work.overview} lines={3} hold={holdOverview} />}
+          {(work.overview || holdOverview) && (
+            <div className={tvWide ? "tv:max-w-prose-tv" : ""}>
+              <Overview
+                text={work.overview}
+                lines={3}
+                hold={holdOverview}
+                tvLines={tvWide ? 7 : 3}
+                title={work.title}
+              />
+            </div>
+          )}
         </div>
       </TvFocusGroup>
     </section>

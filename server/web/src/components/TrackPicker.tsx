@@ -30,6 +30,8 @@ export type TrackChoices = {
   /** "Remembered for this show", on an episode whose choices are kept. */
   description: string | undefined;
   options: Option[];
+  /** What Automatic plays, by name, such as "English 5.1" or "Off". */
+  plays: string | undefined;
 };
 
 /**
@@ -63,6 +65,7 @@ export function trackChoices({
     label: kind === "audio" ? i18n._(msg`Audio`) : i18n._(msg`Subtitles`),
     description: remembered ? i18n._(msg`Remembered for this show`) : undefined,
     options: [...(automatic !== undefined ? [{ id: automaticTrack, label: automaticLabel }] : []), ...choices],
+    plays,
   };
 }
 
@@ -70,18 +73,21 @@ type Props = Choices & {
   /** A track's ID, `offId`, or `automaticTrack`. */
   selected: string;
   onChange: (id: string) => void;
+  /** A button in a row of them, saying what plays, rather than a labelled dropdown. */
+  chip?: boolean;
 };
 
 /**
  * The detail page's audio or subtitle picker, as a labelled dropdown. The
  * player lists the same choices in its menu.
  */
-export function TrackPicker({ selected, onChange, ...choices }: Props) {
+export function TrackPicker({ selected, onChange, chip = false, ...choices }: Props) {
   const picker = trackChoices(choices);
   if (!picker) return null;
   return (
     <Select
-      variant="inline"
+      variant={chip ? "chip" : "inline"}
+      value={chip && selected === automaticTrack ? picker.plays : undefined}
       part={`${choices.kind}-picker`}
       label={picker.label}
       options={picker.options}
