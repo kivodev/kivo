@@ -31,7 +31,8 @@ UI tests.
 Gradle 9.8.1, Kotlin 2.4.0 with its Kotlin/Native toolchain, SKIE 0.10.15,
 Nuke 13.2.0, the Google Cast SDK 4.8.6 (Google's Swift package) and libass 0.17.5
 (MPVKit's prebuilt libass-build, with FreeType, HarfBuzz and FriBidi) are pinned
-in the repository and download themselves.
+in the repository and download themselves, as does LicensePlist 3.28.3, which
+lists the Swift packages' licenses for Settings › About › Credits.
 
 ## 2. Set the signing team
 
