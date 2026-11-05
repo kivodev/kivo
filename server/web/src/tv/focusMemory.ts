@@ -22,12 +22,17 @@ const restoreWaitMs = 1000;
 const holdKeysMs = 5000;
 
 const remembered = new Map<string, string>();
-let pending: { key?: string; since: number; fromRail: boolean } | undefined;
+let pending: { key?: string; since: number; fromRail: boolean; leftOn?: string } | undefined;
 let timer: ReturnType<typeof setTimeout> | undefined;
+// The item focused as the last screen was left. The next screen may have an
+// item of the same key, as every detail page has Play, and focus still on
+// that key is the last screen's, not one the next screen chose.
+let leftOn: string | undefined;
 
 /** Remembers the focused item of the screen being left, if focus is on it rather than in the rail. */
 export function rememberTvFocus(entry: string) {
   const key = currentTvFocus();
+  leftOn = key;
   if (key && isTvFocusIn(key, TV_CONTENT)) remembered.set(entry, key);
 }
 
@@ -38,7 +43,9 @@ export function expectTvScreen(entry: string) {
     key: remembered.get(entry),
     since: Date.now(),
     fromRail: current !== undefined && isTvFocusIn(current, TV_RAIL),
+    leftOn,
   };
+  leftOn = undefined;
   holdStrayTvKeys(holdKeysMs);
   settleTvFocus();
 }
@@ -87,9 +94,10 @@ function resolve() {
   // The screen focused something itself, or the person moved focus to the
   // rail while it loaded, as Back does: a screen that arrives late doesn't
   // take focus back from the open rail. The rail keeps focus only while
-  // it chose this screen, which then takes focus from it.
+  // it chose this screen, which then takes focus from it. Focus left on the
+  // last screen's item, by its key, isn't this screen's choice.
   const current = currentTvFocus();
-  if (current && (!pending.fromRail || !isTvFocusIn(current, TV_RAIL))) {
+  if (current && current !== pending.leftOn && (!pending.fromRail || !isTvFocusIn(current, TV_RAIL))) {
     settled();
     return;
   }
