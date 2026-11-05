@@ -39,21 +39,25 @@ type Bootstrap struct {
 	// Audible, when off, describes books from their files alone and never
 	// asks Audible or Audnexus. The end-to-end tests run that way.
 	Audible bool `toml:"audible"`
+	// UpdateCheck, when off, never asks GitHub whether a newer release is
+	// out, and admins see no notice of one.
+	UpdateCheck bool `toml:"update_check"`
 }
 
 // DefaultBootstrap is used for every key that neither the file nor the
 // environment sets.
 func DefaultBootstrap() Bootstrap {
 	return Bootstrap{
-		Listen:    []string{":8484"},
-		DataDir:   "data",
-		CacheDir:  "cache",
-		BackupDir: "backups",
-		FFmpeg:    "ffmpeg",
-		FFprobe:   "ffprobe",
-		LogLevel:  "info",
-		LogFormat: "text",
-		Audible:   true,
+		Listen:      []string{":8484"},
+		DataDir:     "data",
+		CacheDir:    "cache",
+		BackupDir:   "backups",
+		FFmpeg:      "ffmpeg",
+		FFprobe:     "ffprobe",
+		LogLevel:    "info",
+		LogFormat:   "text",
+		Audible:     true,
+		UpdateCheck: true,
 	}
 }
 

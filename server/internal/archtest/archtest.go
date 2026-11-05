@@ -48,7 +48,7 @@ type layer struct {
 var layers = []layer{
 	{"helpers", []string{"fault", "id", "events", "health", "keylock", "atomicfile", "egress"}},
 	{"domain", []string{"store", "config", "media", "discovery", "tasks", "users", "auth", "catalog", "activity",
-		"query", "metadata", "userstate"}},
+		"query", "metadata", "userstate", "release"}},
 	{"features", []string{"scan", "identify", "previews", "subtitles", "markers", "transcode", "playback"}},
 	{"api", []string{"api"}},
 }

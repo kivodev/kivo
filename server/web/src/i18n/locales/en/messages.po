@@ -47,6 +47,10 @@ msgstr "Back 10 seconds"
 msgid "New password"
 msgstr "New password"
 
+#: src/features/admin/OverviewScreen.tsx
+msgid "Release notes"
+msgstr "Release notes"
+
 #: src/components/TrackPicker.tsx
 #: src/features/admin/PlayCards.tsx
 #: src/features/player/AudioSubtitlesMenu.tsx
@@ -233,6 +237,7 @@ msgstr "Create account"
 msgid "Light"
 msgstr "Light"
 
+#: src/features/admin/OverviewScreen.tsx
 #: src/features/admin/ProblemsScreen.tsx
 msgid "Dismiss"
 msgstr "Dismiss"
@@ -2748,6 +2753,10 @@ msgstr "{count, plural, one {# author} other {# authors}}"
 #: src/features/browse/useBrowseLabels.ts
 msgid "Narrated by {name}"
 msgstr "Narrated by {name}"
+
+#: src/features/admin/OverviewScreen.tsx
+msgid "Kivo {version} is available"
+msgstr "Kivo {version} is available"
 
 #: src/features/user/SettingsScreen.tsx
 msgid "Subtitle size"

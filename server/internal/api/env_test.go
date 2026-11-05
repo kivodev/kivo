@@ -39,6 +39,7 @@ import (
 	"github.com/mmcdole/kivo/internal/playback"
 	"github.com/mmcdole/kivo/internal/previews"
 	"github.com/mmcdole/kivo/internal/query"
+	"github.com/mmcdole/kivo/internal/release"
 	"github.com/mmcdole/kivo/internal/scan"
 	"github.com/mmcdole/kivo/internal/subtitles"
 	"github.com/mmcdole/kivo/internal/tasks"
@@ -211,7 +212,13 @@ const (
 type serving struct {
 	Options
 	BasePath, Version string
+	Newer             release.Release // the newer release, if its version is set
 }
+
+// newer is the release checker's answer.
+type newer release.Release
+
+func (n newer) Newer() (release.Release, bool) { return release.Release(n), n.Version != "" }
 
 func newEnv(t *testing.T, o serving) *env {
 	t.Helper()
@@ -262,7 +269,7 @@ func newEnv(t *testing.T, o serving) *env {
 			e.d.Tasks.Add(task)
 		}
 	}
-	e.d.Version, e.d.BasePath = o.Version, o.BasePath
+	e.d.Version, e.d.BasePath, e.d.Release = o.Version, o.BasePath, newer(o.Newer)
 	e.d.Discovery = discovery.New(discovery.Deps{Settings: settings, Version: o.Version, Listen: []string{":8484", "127.0.0.1:9000"}, BasePath: o.BasePath})
 	e.reported = &reported{}
 	e.d.Problems = health.NewRegistry([]health.Reporter{e.d.Scan, e.d.Playback, e.reported}, e.d.Events, health.RegistryOptions{})

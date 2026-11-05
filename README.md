@@ -44,6 +44,7 @@ Then open `http://<server>:8484` to create an admin account and add libraries.
 - Keep `/data` on a local disk, not a network share.
 - `--device /dev/dri` enables hardware transcoding on Intel and AMD GPUs. Without it, Kivo transcodes on the CPU.
 - Host networking lets the apps discover the server on your network.
+- Once a day Kivo asks GitHub for its latest release, sending nothing about your server, so admins see when a new one is out. Set `KIVO_UPDATE_CHECK=false` (or `update_check = false` in `server.toml`) to turn it off.
 
 See also: [reverse proxy setup](docs/reverse-proxy.md), [resetting a password](docs/reset-password.md).
 

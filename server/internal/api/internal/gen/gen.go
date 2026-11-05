@@ -3434,6 +3434,15 @@ type NameUpdate struct {
 	Name string `json:"name"`
 }
 
+// NewRelease A Kivo release newer than the running server.
+type NewRelease struct {
+	// URL Its release notes.
+	URL string `json:"url"`
+
+	// Version Such as `0.5.0`.
+	Version string `json:"version"`
+}
+
 // ParentalControls defines model for ParentalControls.
 type ParentalControls struct {
 	// BlockUnrated Hides video with no content rating: movies, series with their
@@ -4163,6 +4172,9 @@ type ServerInfo struct {
 
 	// Name The server's name, from the `serverName` setting.
 	Name string `json:"name"`
+
+	// NewRelease Admins only, once the daily check finds a release newer than `version`.
+	NewRelease *NewRelease `json:"newRelease,omitempty"`
 
 	// Proof With `challenge` and the `probeId` of a session the server holds.
 	Proof *ServerProof `json:"proof,omitempty"`

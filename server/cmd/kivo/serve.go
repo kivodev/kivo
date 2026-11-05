@@ -32,6 +32,7 @@ import (
 	"github.com/mmcdole/kivo/internal/playback"
 	"github.com/mmcdole/kivo/internal/previews"
 	"github.com/mmcdole/kivo/internal/query"
+	"github.com/mmcdole/kivo/internal/release"
 	"github.com/mmcdole/kivo/internal/scan"
 	"github.com/mmcdole/kivo/internal/store"
 	"github.com/mmcdole/kivo/internal/subtitles"
@@ -65,6 +66,7 @@ type server struct {
 	ffmpeg     *ffmpeg.Runner
 	problems   *health.Registry
 	discovery  *discovery.Responder
+	release    *release.Checker
 	api        *api.Server
 }
 
@@ -121,6 +123,7 @@ func run(ctx context.Context, boot config.Bootstrap, logs *health.Logs, bus *eve
 		"problems": s.problems.Run,
 		"playback": s.playback.Run,
 		"watcher":  s.scanner.Watch,
+		"release":  s.release.Run,
 	}
 	var wg sync.WaitGroup
 	errs := make(chan error, len(runners)+len(boot.Listen)) // one slot per runner and listener, so no send ever blocks
@@ -240,11 +243,12 @@ func wire(ctx context.Context, boot config.Bootstrap, logs *health.Logs, bus *ev
 	s.discovery = discovery.New(discovery.Deps{
 		Settings: s.settings, Version: version, Listen: boot.Listen, TLS: boot.TLSCert != "", BasePath: boot.BasePath,
 	})
+	s.release = release.New(release.Options{Version: version, Check: boot.UpdateCheck})
 	s.api, err = api.New(api.Deps{
 		Users: s.users, Auth: s.auth, Activity: s.activity, Query: s.query, Playback: s.playback,
 		Scan: s.scanner, Identify: s.identifier, Metadata: s.metadata, Userstate: s.userstate,
 		Catalog: s.catalog, Subtitles: s.subtitles, Markers: s.markers, Events: bus, Tasks: s.runner, Problems: s.problems, Logs: logs,
-		Settings: s.settings, Discovery: s.discovery, Accelerators: s.ffmpeg, Version: version, BasePath: boot.BasePath,
+		Settings: s.settings, Discovery: s.discovery, Accelerators: s.ffmpeg, Version: version, Release: s.release, BasePath: boot.BasePath,
 	}, api.Options{TrustedProxies: boot.TrustedPrefixes(), Logger: slog.Default(), Web: web.Files()})
 	if err != nil {
 		return nil, fmt.Errorf("set up the API: %w", err)

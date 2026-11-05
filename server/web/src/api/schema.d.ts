@@ -66,7 +66,7 @@ export interface paths {
          *     sign-in under `id`, which stays the same across restarts and address
          *     changes, and tries a local URL first and the public one elsewhere.
          *     Signed in, it also gets the quality ladder every client's quality
-         *     menu shows.
+         *     menu shows, and an admin gets a newer release once one is out.
          *
          *     An app that holds a session sends `challenge` and `probeId` before
          *     it trusts a plain-HTTP address with its token, and the server
@@ -2678,6 +2678,15 @@ export interface components {
             qualityLadder?: components["schemas"]["QualityRung"][];
             /** @description With `challenge` and the `probeId` of a session the server holds. */
             proof?: components["schemas"]["ServerProof"];
+            /** @description Admins only, once the daily check finds a release newer than `version`. */
+            newRelease?: components["schemas"]["NewRelease"];
+        };
+        /** @description A Kivo release newer than the running server. */
+        NewRelease: {
+            /** @description Such as `0.5.0`. */
+            version: string;
+            /** @description Its release notes. */
+            url: string;
         };
         /**
          * @description The server's proof, to an app that holds one of its sessions, of
