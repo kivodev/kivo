@@ -477,6 +477,17 @@ test.describe("Detail", () => {
     expect((backdrop?.x ?? 0) + (backdrop?.width ?? 0)).toBeGreaterThanOrEqual(1920);
   });
 
+  test("while the page loads, its backdrop already fills the screen's width and top", async ({ page }) => {
+    await page.goto("/?delay=1500");
+    await expectFocus(page, { key: firstCard });
+    await press(page, "Enter");
+    await expect(page.locator('[aria-busy="true"] [data-part="hero"]')).toBeVisible();
+    const backdrop = await page.locator('[aria-busy="true"] [data-part="hero-backdrop"]').boundingBox();
+    expect(backdrop?.x).toBeLessThanOrEqual(0);
+    expect(backdrop?.y).toBeLessThanOrEqual(0);
+    expect((backdrop?.x ?? 0) + (backdrop?.width ?? 0)).toBeGreaterThanOrEqual(1920);
+  });
+
   test("a series' first episode starts on the first screen", async ({ page }) => {
     await page.goto(`/works/${expanse}`);
     await expectFocus(page, { key: "play" });
