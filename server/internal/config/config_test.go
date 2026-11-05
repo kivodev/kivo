@@ -53,7 +53,7 @@ func TestBootstrapMissingFileUsesDefaults(t *testing.T) {
 }
 
 func TestBootstrapEnvironmentWins(t *testing.T) {
-	p := writeFile(t, "data_dir = \"/from/file\"\ncache_dir = \"/cache\"\n")
+	p := writeFile(t, "data_dir = \"/from/file\"\ncache_dir = \"/cache\"\nupdate_check = false\n")
 	env := map[string]string{
 		"KIVO_DATA_DIR":        "/from/env",
 		"KIVO_LISTEN":          ":1, :2",
@@ -74,6 +74,9 @@ func TestBootstrapEnvironmentWins(t *testing.T) {
 	if b.Audible {
 		t.Error("KIVO_AUDIBLE=false left Audible on")
 	}
+	if b.UpdateCheck {
+		t.Error("update_check = false left UpdateCheck on")
+	}
 	if b.BasePath != "/kivo" {
 		t.Errorf("base path = %q, want /kivo", b.BasePath)
 	}
@@ -92,7 +95,7 @@ func TestEveryBootstrapKeyHasAnEnvironmentVariable(t *testing.T) {
 	_ = applyEnv(&b, func(k string) (string, bool) { seen[k] = true; return "", false })
 	for _, k := range []string{"KIVO_LISTEN", "KIVO_BASE_PATH", "KIVO_TLS_CERT", "KIVO_TLS_KEY", "KIVO_TRUSTED_PROXIES",
 		"KIVO_DATA_DIR", "KIVO_CACHE_DIR", "KIVO_BACKUP_DIR", "KIVO_FFMPEG", "KIVO_FFPROBE", "KIVO_LOG_LEVEL", "KIVO_LOG_FORMAT", "KIVO_AUDIBLE",
-		"KIVO_TMDB_KEY"} {
+		"KIVO_TMDB_KEY", "KIVO_UPDATE_CHECK"} {
 		if !seen[k] {
 			t.Errorf("%s is never read", k)
 		}

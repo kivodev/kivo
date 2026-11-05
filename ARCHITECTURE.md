@@ -64,7 +64,7 @@ The server's packages live under `server/internal`, one component per package, a
  api        HTTP, WebSocket, authentication, access, health pages
  features   scan  identify  previews  subtitles  markers  transcode  playback
  domain     store  config  media  discovery  tasks  users  auth  catalog
-            activity  query  metadata  userstate
+            activity  query  metadata  userstate  release
  helpers    fault  id  events  health  keylock  atomicfile  egress
 ```
 
@@ -83,6 +83,7 @@ The main components:
 - **`users`**, **`auth`** and **`userstate`** hold accounts and permissions, credentials and sessions, and watch state.
 - **`query`** answers every read the UI needs, filtered by the caller's permissions.
 - **`tasks`** runs all background work, and **`events`** fans out live-update hints.
+- **`release`** checks once a day whether a newer Kivo release is out, for the admin's notice.
 - **`api`** exposes it all over HTTP and WebSocket. It runs no SQL and holds no domain logic.
 
 Several of these rules are enforced by tests in `internal/archtest` rather than left to review: the layering, that only `egress` makes outbound requests, and that each component writes only the tables and columns it owns.

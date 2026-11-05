@@ -23,6 +23,7 @@
 
 package com.mmcdole.kivo.api.models
 
+import com.mmcdole.kivo.api.models.NewRelease
 import com.mmcdole.kivo.api.models.QualityRung
 import com.mmcdole.kivo.api.models.ServerProof
 
@@ -41,6 +42,7 @@ import kotlinx.serialization.encoding.*
  * @param publicUrl Signed in, when one is set (the `publicUrl` setting), the address to use away from home.
  * @param qualityLadder Signed in: the quality menu's fixed ladder, highest first, which the quality menu, Home and remote quality and a user's remote limit offer below Auto and Original. A rung is chosen by sending its bitrate as a `limit` quality's `maxBitrateBps`. 
  * @param proof With `challenge` and the `probeId` of a session the server holds.
+ * @param newRelease Admins only, once the daily check finds a release newer than `version`.
  */
 @Serializable
 
@@ -67,7 +69,10 @@ data class ServerInfo (
     @SerialName(value = "qualityLadder") val qualityLadder: kotlin.collections.List<QualityRung>? = null,
 
     /* With `challenge` and the `probeId` of a session the server holds. */
-    @SerialName(value = "proof") val proof: ServerProof? = null
+    @SerialName(value = "proof") val proof: ServerProof? = null,
+
+    /* Admins only, once the daily check finds a release newer than `version`. */
+    @SerialName(value = "newRelease") val newRelease: NewRelease? = null
 
 ) {
 

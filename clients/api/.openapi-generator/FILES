@@ -130,6 +130,7 @@ src/commonMain/kotlin/com/mmcdole/kivo/api/models/MediaFileFeed.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/MediaFileList.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/MovieInfo.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/NameUpdate.kt
+src/commonMain/kotlin/com/mmcdole/kivo/api/models/NewRelease.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/ParentalControls.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/PasswordChange.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/PendingDevice.kt

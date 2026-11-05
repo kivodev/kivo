@@ -1,5 +1,7 @@
 import { waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import type { MockApi } from "@/api/mocks/api";
+import { serverQueries } from "@/api/server";
 import { locationOf, renderApp, screen } from "@/test/render";
 import { mockId, scenarios, sendEvent, serveMockApi } from "@/test/server";
 
@@ -49,6 +51,41 @@ describe("Admin entry", () => {
     renderApp("/admin");
     expect(await screen.findByRole("heading", { name: "This page doesn't exist." })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /^Admin/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("New release", () => {
+  const out = (version: string) => (api: MockApi) => {
+    api.server.newRelease = { version, url: `https://github.com/kivodev/kivo/releases/tag/v${version}` };
+  };
+
+  it("tells admins, links its release notes, and stays dismissed until the next one", async () => {
+    const api = serveMockApi(out("1.1.0"));
+    const first = renderApp("/admin");
+    expect(await screen.findByText("Kivo 1.1.0 is available")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Release notes" })).toHaveAttribute(
+      "href",
+      "https://github.com/kivodev/kivo/releases/tag/v1.1.0",
+    );
+    await first.user.click(screen.getByRole("button", { name: "Dismiss" }));
+    expect(screen.queryByText("Kivo 1.1.0 is available")).toBeNull();
+    first.unmount();
+
+    const second = renderApp("/admin");
+    await waitFor(() => expect(second.queryClient.getQueryData(serverQueries.info().queryKey)).toBeDefined());
+    expect(screen.queryByText(/is available$/)).toBeNull();
+    second.unmount();
+
+    out("1.2.0")(api);
+    renderApp("/admin");
+    expect(await screen.findByText("Kivo 1.2.0 is available")).toBeInTheDocument();
+  });
+
+  it("isn't shown to viewers, who have no admin area", async () => {
+    serveMockApi(scenarios.viewer, out("1.1.0"));
+    renderApp("/admin");
+    expect(await screen.findByRole("heading", { name: "This page doesn't exist." })).toBeInTheDocument();
+    expect(screen.queryByText(/is available$/)).toBeNull();
   });
 });
 

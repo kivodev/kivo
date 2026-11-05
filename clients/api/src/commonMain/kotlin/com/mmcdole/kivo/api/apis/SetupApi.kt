@@ -97,7 +97,7 @@ open class SetupApi : ApiClient {
 
     /**
      * Get server info
-     * The server&#39;s ID, name and version, and for a signed-in client its addresses and quality ladder. Signed out, only &#x60;id&#x60;, &#x60;name&#x60; and &#x60;version&#x60;. A client keeps its sign-in under &#x60;id&#x60;, which stays the same across restarts and address changes, and tries a local URL first and the public one elsewhere. Signed in, it also gets the quality ladder every client&#39;s quality menu shows.  An app that holds a session sends &#x60;challenge&#x60; and &#x60;probeId&#x60; before it trusts a plain-HTTP address with its token, and the server answers with its &#x60;proof&#x60; that it holds that session. 
+     * The server&#39;s ID, name and version, and for a signed-in client its addresses and quality ladder. Signed out, only &#x60;id&#x60;, &#x60;name&#x60; and &#x60;version&#x60;. A client keeps its sign-in under &#x60;id&#x60;, which stays the same across restarts and address changes, and tries a local URL first and the public one elsewhere. Signed in, it also gets the quality ladder every client&#39;s quality menu shows, and an admin gets a newer release once one is out.  An app that holds a session sends &#x60;challenge&#x60; and &#x60;probeId&#x60; before it trusts a plain-HTTP address with its token, and the server answers with its &#x60;proof&#x60; that it holds that session. 
      * @param challenge 16 to 64 random bytes, new for each probe, base64url without padding. (optional)
      * @param probeId The app&#39;s session&#39;s probe ID, base64url without padding: the first 16 bytes of SHA-256(\&quot;kivo-probe-id\&quot; ‖ SHA-256(token)).  (optional)
      * @return ServerInfo

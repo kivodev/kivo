@@ -14,8 +14,10 @@ import (
 
 	"github.com/coder/websocket"
 
+	"github.com/mmcdole/kivo/internal/api/internal/gen"
 	"github.com/mmcdole/kivo/internal/auth"
 	"github.com/mmcdole/kivo/internal/config"
+	"github.com/mmcdole/kivo/internal/release"
 )
 
 // A TV starts a code, and a signed-in user looks it up and approves it.
@@ -554,6 +556,24 @@ func TestServerInfo(t *testing.T) {
 	}
 	if got := decode[map[string]any](t, e.do("GET", "/api/v1/server", e.adminToken, nil)); len(got) != 4 {
 		t.Errorf("revoked token: %v", got)
+	}
+}
+
+// The newer release is in an admin's server info only.
+func TestServerInfoNewRelease(t *testing.T) {
+	e := newEnv(t, serving{Version: "0.4.0", Newer: release.Release{Version: "0.5.0", URL: "https://github.com/kivodev/kivo/releases/tag/v0.5.0"}})
+	got := decode[gen.ServerInfo](t, e.do("GET", "/api/v1/server", e.adminToken, nil)).NewRelease
+	if want := (gen.NewRelease{Version: "0.5.0", URL: "https://github.com/kivodev/kivo/releases/tag/v0.5.0"}); got == nil || *got != want {
+		t.Errorf("admin: %+v, want %+v", got, want)
+	}
+	for who, token := range map[string]string{"signed out": "", "not an admin": e.nobodyToken} {
+		if got := decode[gen.ServerInfo](t, e.do("GET", "/api/v1/server", token, nil)).NewRelease; got != nil {
+			t.Errorf("%s: %+v", who, got)
+		}
+	}
+	e = newEnv(t, serving{Version: "0.4.0"})
+	if got := decode[gen.ServerInfo](t, e.do("GET", "/api/v1/server", e.adminToken, nil)).NewRelease; got != nil {
+		t.Errorf("none out: %+v", got)
 	}
 }
 

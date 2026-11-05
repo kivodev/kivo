@@ -2,17 +2,21 @@ import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useQueries, useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { activityQueries } from "@/api/activity";
 import { fileQueries } from "@/api/files";
 import { libraryQueries } from "@/api/libraries";
 import { playQueries } from "@/api/playback";
 import { problemQueries } from "@/api/problems";
 import type { Play } from "@/api/schemas";
+import { serverQueries } from "@/api/server";
 import { taskQueries } from "@/api/tasks";
+import { Banner } from "@/components/Banner";
+import { Button } from "@/components/Button";
 import { Section } from "@/components/Section";
 import { formatBitrate, formatCount } from "@/i18n/format";
 import { playMethod } from "@/i18n/playback";
+import { readStored, writeStored } from "@/lib/storage";
 import { ActivityList } from "./ActivityList";
 import { AdminList, AdminListItem, AdminPage } from "./AdminPage";
 import { PlayCards } from "./PlayCards";
@@ -21,6 +25,43 @@ import { ScanLine } from "./ScanLine";
 import { useAdminLabels } from "./useAdminLabels";
 
 const actionLink = "shrink-0 text-sm font-semibold text-accent hover:underline";
+
+// The release whose notice this browser dismissed.
+const dismissedReleaseKey = "kivo.dismissedRelease";
+
+/**
+ * A newer Kivo release, as the server's daily check found it, with its
+ * release notes. Dismissing it hides it until the next one.
+ */
+function NewRelease() {
+  const release = useQuery(serverQueries.info()).data?.newRelease;
+  const [dismissed, setDismissed] = useState(() => readStored(dismissedReleaseKey));
+  if (!release || release.version === dismissed) return null;
+  const version = release.version;
+  return (
+    <Banner
+      action={
+        <>
+          <a href={release.url} target="_blank" rel="noreferrer" className={actionLink}>
+            <Trans>Release notes</Trans>
+          </a>
+          <Button
+            size="sm"
+            variant="ghost"
+            onPress={() => {
+              writeStored(dismissedReleaseKey, version);
+              setDismissed(version);
+            }}
+          >
+            <Trans>Dismiss</Trans>
+          </Button>
+        </>
+      }
+    >
+      <Trans>Kivo {version} is available</Trans>
+    </Banner>
+  );
+}
 
 type Attention = { key: string; tone: "danger" | "warning"; text: ReactNode; action: ReactNode };
 
@@ -256,13 +297,15 @@ function LatestActivity() {
 }
 
 /**
- * The admin home, in one column. It shows what's playing, what's working,
- * what needs attention, and the latest activity.
+ * The admin home, in one column. It shows a newer release when one is out,
+ * then what's playing, what's working, what needs attention, and the latest
+ * activity.
  */
 export function OverviewScreen() {
   const { t } = useLingui();
   return (
     <AdminPage page="overview" title={t`Overview`}>
+      <NewRelease />
       <NowPlaying />
       <WorkingNow />
       <NeedsAttention />

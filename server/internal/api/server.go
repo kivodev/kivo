@@ -11,7 +11,8 @@ import (
 )
 
 // GetServer returns the server's info. Anyone may see the basics. A
-// signed-in client also gets what it needs to reach the server and play.
+// signed-in client also gets what it needs to reach the server and play,
+// and an admin gets the newer release, if one is out.
 func (h *handlers) GetServer(ctx context.Context, req gen.GetServerRequestObject) (gen.GetServerResponseObject, error) {
 	out := h.serverInfo()
 	proof, err := h.proof(ctx, req.Params)
@@ -32,6 +33,15 @@ func (h *handlers) GetServer(ctx context.Context, req gen.GetServerRequestObject
 		ladder = append(ladder, gen.QualityRung{BitrateBps: int64(r.Bitrate), Height: r.Height})
 	}
 	out.QualityLadder = &ladder
+	if r, ok := h.deps.Release.Newer(); ok {
+		v, err := h.viewerOf(ctx, callerOf(ctx).Caller)
+		if err != nil {
+			return nil, err
+		}
+		if v.Admin() {
+			out.NewRelease = &gen.NewRelease{Version: r.Version, URL: r.URL}
+		}
+	}
 	return gen.GetServer200JSONResponse(out), nil
 }
 
