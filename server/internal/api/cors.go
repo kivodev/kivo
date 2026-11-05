@@ -11,16 +11,9 @@ import (
 // another host changes this and nothing else on the server.
 const castReceiverOrigin = "https://cast.kivo.watch"
 
-// castReceiverOrigins are the origins the receiver's routes answer.
-var castReceiverOrigins = []string{
-	castReceiverOrigin,
-	// Migration (cast-receiver-move): remove once the Cast console points at cast.kivo.watch.
-	"https://mattmcdole.com",
-}
-
 // isReceiverOrigin reports whether origin serves the Cast receiver.
 func isReceiverOrigin(origin string) bool {
-	return slices.Contains(castReceiverOrigins, origin)
+	return origin == castReceiverOrigin
 }
 
 // preflightMaxAge is how long, in seconds, a browser may keep a preflight's
