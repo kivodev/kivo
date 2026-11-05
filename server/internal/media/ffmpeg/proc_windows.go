@@ -4,15 +4,23 @@ import (
 	"os"
 	"os/exec"
 	"sync"
+	"syscall"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
 )
 
-// prepare leaves exec's default cancellation, which is a plain kill.
-// Windows has no process group to signal, and ffmpeg starts no children of
-// its own.
-func prepare(*exec.Cmd) {}
+// prepare starts the process without a console window. Without it, a
+// console program started by kivow.exe, which has no console, opens a
+// window of its own. It leaves exec's default cancellation, which is a
+// plain kill. Windows has no process group to signal, and ffmpeg starts no
+// children of its own.
+func prepare(cmd *exec.Cmd) {
+	if cmd.SysProcAttr == nil {
+		cmd.SysProcAttr = &syscall.SysProcAttr{}
+	}
+	cmd.SysProcAttr.CreationFlags |= windows.CREATE_NO_WINDOW
+}
 
 // job is a job object that kills every process in it when it closes.
 // Windows closes it when the server exits, however it exits. It is zero if

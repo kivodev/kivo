@@ -19,8 +19,10 @@ import (
 // no GPU and lacks the bundled build's filters, so tests that need them
 // skip.
 
-// hdr10Encode encodes 10-bit HEVC tagged as HDR10, with one keyframe.
-var hdr10Encode = []string{"-pix_fmt", "yuv420p10le", "-c:v", "libx265", "-preset", "ultrafast",
+// hdr10Encode encodes 10-bit HEVC tagged as HDR10, with one keyframe. The
+// frames are tagged too, because the encoder takes its colors from them,
+// and a lavfi source's are unknown.
+var hdr10Encode = []string{"-vf", "setparams=color_primaries=bt2020:color_trc=smpte2084:colorspace=bt2020nc", "-pix_fmt", "yuv420p10le", "-c:v", "libx265", "-preset", "ultrafast",
 	"-x265-params", "log-level=error:keyint=1000:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc",
 	"-color_primaries", "bt2020", "-color_trc", "smpte2084", "-colorspace", "bt2020nc"}
 
@@ -147,8 +149,7 @@ func TestRealBurnInText(t *testing.T) {
 		t.Skip("this ffmpeg has no libass")
 	}
 	m, dir := realMedia(t), corpusDir(t)
-	// A name that needs escaping at both levels of a filter graph.
-	subs := filepath.Join(t.TempDir(), `Don't panic: [part 1], a;b\c.srt`)
+	subs := filepath.Join(t.TempDir(), escapedName)
 	if err := os.WriteFile(subs, []byte("1\n00:00:00,000 --> 00:00:30,000\nKivo\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}

@@ -39,3 +39,15 @@ func TestProcessIsInTheKillOnCloseJob(t *testing.T) {
 		t.Errorf("process %d isn't in the job, which holds %v", p.cmd.Process.Pid, list.pids[:list.listed])
 	}
 }
+
+// A process the server starts gets no console window.
+func TestProcessHasNoConsoleWindow(t *testing.T) {
+	p, err := start(t.Context(), "test", "ping.exe", []string{"-n", "1", "127.0.0.1"}, spawn{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer p.close()
+	if a := p.cmd.SysProcAttr; a == nil || a.CreationFlags&windows.CREATE_NO_WINDOW == 0 {
+		t.Errorf("the process is started without CREATE_NO_WINDOW: %+v", a)
+	}
+}
