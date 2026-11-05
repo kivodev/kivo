@@ -98,14 +98,15 @@ export function revealTvCard(track: HTMLElement | null, card: HTMLElement | null
  * resizes: the offset kept from before could leave the focused card off
  * the screen, or show empty track past the last card. The focused card,
  * kept through the change, shows as an arrow to it would show it; without
- * one the track moves back no further than its last card needs. It moves
- * at once, since nothing was pressed.
+ * one, the card the row opens on does, such as a series' Next Up, else the
+ * track moves back no further than its last card needs. It moves at once,
+ * since nothing was pressed.
  */
-export function settleTvTrack(track: HTMLElement | null) {
+export function settleTvTrack(track: HTMLElement | null, opensOn?: HTMLElement | null) {
   if (!track) return;
   const was = offsets.get(track) ?? 0;
   const focused = document.activeElement;
-  const card = focused instanceof HTMLElement && track.contains(focused) ? focused.closest("li") : null;
+  const card = focused instanceof HTMLElement && track.contains(focused) ? focused.closest("li") : (opensOn ?? null);
   const to = card ? reach(track, card, was) : Math.min(was, furthest(track));
   if (to !== was) move(track, to, false);
 }

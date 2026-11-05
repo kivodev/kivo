@@ -614,6 +614,15 @@ export function createMockApi(): MockApi {
     ),
     ...season(expanse, mockId(210), 0, numbered(2), 1001),
   ]);
+  // An episode whose overview is longer than its page has room for.
+  Object.assign(works[mockId(1305)] as WorkDetail, {
+    overview: [
+      "Holden and the crew of the Rocinante pick up a distress call from a freighter that shouldn't be anywhere near the Belt, and what they find aboard it changes what they thought they knew about the attack on Eros. Naomi works through the night to keep the reactor stable while Amos goes looking for the people who sold them out, and Alex learns that the only way home runs straight through a Martian blockade.",
+      "On Earth, Avasarala spends every favour she has left to keep the fleet from firing first, and discovers that someone inside her own office has been reading her messages for months. On Mars, Bobbie's search for the truth about her squad puts her at odds with her own command, and the one person who believes her is the last person she should trust.",
+      "With hours left and every ship on Earth's side out of range, the crew must choose between saving the people closest to them and saving everyone else. Meanwhile, Prax follows a lead on his daughter that takes him far from anyone who could help him, and Fred Johnson has to decide how much he is willing to reveal to the people who have never trusted him.",
+      "As the fleet's signals go dark one by one, the Rocinante's crew learn that the freighter's distress call was never meant for them, and that whoever sent it knew exactly who would answer. Naomi finds the message buried in the ship's logs, and has to decide whether to tell the others what it says before they reach the blockade, or carry it alone until it's too late for anyone to turn back.",
+    ].join("\n\n"),
+  });
   Object.assign(works[mockIds.expanseReload] as WorkDetail, {
     overview: "Holden races to stop an asteroid before it reaches Earth.",
     communityRating: 8.4,
@@ -964,7 +973,16 @@ export function createMockApi(): MockApi {
       [mockIds.vacation]: { ...vacation, items: summaries(vacationVideos) },
     },
     works,
-    children: Object.fromEntries(Object.entries(children).map(([id, ids]) => [id, summaries(ids)])),
+    // A season's episodes carry their synopses, as the server lists them.
+    children: Object.fromEntries(
+      Object.entries(children).map(([id, ids]) => [
+        id,
+        summaries(ids).map((s) => {
+          const overview = works[s.id]?.overview;
+          return s.episode && overview ? { ...s, episode: { ...s.episode, overview } } : s;
+        }),
+      ]),
+    ),
     home: {
       rows: [
         {

@@ -291,15 +291,16 @@ test("a setting's whole row takes focus and lights up, and Down goes to the next
   expect((await focusOf(page)).key).toMatch(/^setting:/);
 });
 
-test("a focused episode row turns white", async ({ page }) => {
+test("a focused episode card lifts its still, as other cards do", async ({ page }) => {
   await home(page);
   // The Expanse, among Favorites: Down lands on whichever card is nearest.
   await press(page, "ArrowDown");
   await pressUntil(page, "ArrowRight", (f) => f.name?.includes("The Expanse") ?? false);
   await press(page, "Enter");
   await expectFocus(page, { key: "play" });
-  await pressUntil(page, "ArrowDown", (f) => f.key?.startsWith("episode:") ?? false);
-  await expect.poll(async () => (await styleOf(focused(page), "background-color"))["background-color"]).toBe(white);
+  await pressUntil(page, "ArrowDown", (f) => f.key?.startsWith("card:episodes:") ?? false);
+  const ring = focused(page).locator("[data-tv-ring]");
+  await expect.poll(async () => (await styleOf(ring, "scale")).scale).toBe("1.1");
 });
 
 test("with reduced motion, focus changes at once: the lift and the glow don't ease", async ({ page }) => {

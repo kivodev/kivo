@@ -10,7 +10,7 @@ import { useBookPlayer } from "@/features/player/useBookPlayer";
 import { useTvShellBack } from "@/tv/back";
 import { ExitDialog } from "@/tv/ExitDialog";
 import { TvFocusGroup } from "@/tv/focus";
-import { expectTvScreen, firstTvFocusIn, rememberTvFocus } from "@/tv/focusMemory";
+import { expectTvScreen, firstTvFocusIn, rememberTvFocus, settleTvFocus } from "@/tv/focusMemory";
 import { currentTvFocus, focusTv, isTvFocusIn, leaveTvDock, pauseTv, TV_CONTENT, TV_RAIL } from "@/tv/spatial";
 import { type RailKey, railKeys, TvRail, useGoToDestination } from "./TvRail";
 
@@ -126,6 +126,8 @@ export function TvShell() {
 
   useEffect(() => {
     pauseTv(playing);
+    // Back from the player arrived while focus was paused for it, so its focus is still to be restored.
+    if (!playing) settleTvFocus();
     return () => pauseTv(false);
   }, [playing]);
 
@@ -154,7 +156,7 @@ export function TvShell() {
       if (e.pathChanged && e.fromLocation) rememberTvFocus(entryOf(e.fromLocation));
     });
     const arrived = router.subscribe("onResolved", (e) => {
-      if (e.pathChanged) expectTvScreen(entryOf(e.toLocation));
+      if (e.pathChanged) expectTvScreen(entryOf(e.toLocation), e.fromLocation?.pathname.startsWith("/watch/"));
     });
     return () => {
       leaving();

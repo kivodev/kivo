@@ -1,9 +1,10 @@
 import { useLingui } from "@lingui/react/macro";
-import { type CSSProperties, useEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useFocusRing } from "react-aria";
 import type { LetterStart } from "@/api/schemas";
 import { isTv } from "@/tv/flag";
 import { TvFocusable } from "@/tv/focus";
+import { releaseAround } from "@/tv/glide";
 
 const railLetters = ["#", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"] as const;
 export type RailLetter = (typeof railLetters)[number];
@@ -63,6 +64,12 @@ export function LetterRail({ letters, onJump, onScrub, current }: Props) {
   // The letter a remote's Up and Down have picked, which OK jumps to.
   const [pick, setPick] = useState<RailLetter>();
   useEffect(() => () => cancelAnimationFrame(frame.current), []);
+  // On TV the content around the rail may still hold the layer a glide on
+  // another screen gave it, which would hold the rail in place of the window.
+  const rail = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (isTv && rail.current) releaseAround(rail.current);
+  }, []);
 
   // Jump at most once a frame, to the latest letter, and not at all while
   // the letter stays the same.
@@ -107,6 +114,7 @@ export function LetterRail({ letters, onJump, onScrub, current }: Props) {
 
   const slider = (
     <div
+      ref={rail}
       role="slider"
       tabIndex={isTv ? -1 : 0}
       data-part="letter-rail"

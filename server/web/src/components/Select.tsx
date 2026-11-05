@@ -10,6 +10,7 @@ import {
   Text,
 } from "react-aria-components";
 import { useTvBack } from "@/tv/back";
+import { buttonClass } from "./Button";
 import { FieldLabel, type FieldVariant } from "./FieldLabel";
 import { Icon } from "./Icon";
 import { Popover } from "./Popover";
@@ -30,9 +31,10 @@ export type Option = {
  * - `settings`, the default: a settings row's select, as wide as its longest option;
  * - `form`: a form field under its label, for dialogs;
  * - `inline`: its label, then the choice in bold, like the detail page's audio picker;
- * - `compact`: a word or two in running text, like the browse page's sort.
+ * - `compact`: a word or two in running text, like the browse page's sort;
+ * - `chip`: a button in a row of them, saying its label and choice, like the TV episode page's audio picker.
  */
-type Variant = FieldVariant | "inline" | "compact";
+type Variant = FieldVariant | "inline" | "compact" | "chip";
 
 const looks: Record<Variant, { select: string; trigger: string; chevron: string; popover: string }> = {
   settings: {
@@ -63,6 +65,12 @@ const looks: Record<Variant, { select: string; trigger: string; chevron: string;
       "-mx-1 inline-flex items-center gap-0.5 rounded-sm px-1 font-semibold touch-target text-text-muted hover:text-text",
     chevron: "",
     popover: "min-w-48",
+  },
+  chip: {
+    select: "inline-flex min-w-0",
+    trigger: `${buttonClass("secondary")} max-w-prose`,
+    chevron: "text-text-muted",
+    popover: "min-w-(--trigger-width)",
   },
 };
 
@@ -135,13 +143,13 @@ export function Select<T extends string>({
     >
       {variant === "form" && label !== undefined && <FieldLabel label={label} locked={locked} />}
       {variant === "inline" && <Label className="text-sm text-text-muted">{label}</Label>}
-      {variant === "compact" && <Label className="sr-only">{label}</Label>}
+      {(variant === "compact" || variant === "chip") && <Label className="sr-only">{label}</Label>}
       <AriaButton
         // A compact select sits in a line of text, and an inline one beside
         // its label, which take focus with it on TV; the button alone lights
         // up (TvFocusable's face). A select's first child is a hidden part of
         // its own, so a wrapper can't light that.
-        data-tv-face={variant === "compact" || variant === "inline" ? "" : undefined}
+        data-tv-face={variant === "compact" || variant === "inline" || variant === "chip" ? "" : undefined}
         className={`${look.trigger} ${tvHeight} cursor-pointer data-disabled:cursor-default`}
       >
         {settings ? (
@@ -158,11 +166,15 @@ export function Select<T extends string>({
         ) : (
           // The trigger names the choice. Its second line shows only in the
           // open list.
-          <SelectValue className="truncate">{({ selectedText }) => value ?? selectedText}</SelectValue>
+          <SelectValue className="truncate">
+            {({ selectedText }) =>
+              variant === "chip" ? `${label}: ${value ?? selectedText}` : (value ?? selectedText)
+            }
+          </SelectValue>
         )}
         <Icon name="chevronDown" className={`size-4 shrink-0 ${look.chevron}`} />
       </AriaButton>
-      {description && (
+      {description && variant !== "chip" && (
         <Text slot="description" className="w-full text-xs text-text-muted">
           {description}
         </Text>

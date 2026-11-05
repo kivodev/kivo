@@ -31,6 +31,29 @@ function layoutBox(ring: HTMLElement, group: HTMLElement) {
   return { x, y, width: ring.offsetWidth, height: ring.offsetHeight };
 }
 
+// The frame each layer waits on to move by transition again, so a layer
+// shown again before then waits on its own frames rather than the last's.
+const waits = new WeakMap<HTMLElement, number>();
+
+/** Gives the layer back its transitions once the next frame has drawn it where it is. */
+function afterFrame(layer: HTMLElement) {
+  const wait = waits.get(layer);
+  if (wait !== undefined) cancelAnimationFrame(wait);
+  // A frame's callbacks run before it draws, so the second is after the first draws.
+  waits.set(
+    layer,
+    requestAnimationFrame(() =>
+      waits.set(
+        layer,
+        requestAnimationFrame(() => {
+          waits.delete(layer);
+          layer.style.transitionProperty = "";
+        }),
+      ),
+    ),
+  );
+}
+
 /**
  * The shared glow of a group of cards: its two layers, to render inside the
  * group's element, and the focus handlers for that element. On the web it
@@ -56,17 +79,20 @@ export function useFocusGlow(groupRef: RefObject<HTMLElement | null>) {
     const radius = getComputedStyle(ring).borderRadius;
     for (const layer of layers()) {
       const shown = layer.hasAttribute("data-shown");
-      // Shown afresh, it starts on the card rather than sliding from the last.
-      if (!shown) layer.style.transition = "none";
+      // Shown afresh, it starts on the card, fading in there, rather than
+      // sliding from the last card or from the group's corner, as on a
+      // screen Back returns to. Its transform doesn't transition until a
+      // frame has drawn it there: forcing the style at once didn't hold in
+      // Chromium as a screen mounted, and the glow slid in from the left.
+      if (!shown) {
+        layer.style.transitionProperty = "opacity";
+        afterFrame(layer);
+      }
       layer.style.width = `${box.width}px`;
       layer.style.height = `${box.height}px`;
       layer.style.borderRadius = radius;
       layer.style.transform = `translate(${box.x}px, ${box.y}px) scale(var(--tv-card-focus-scale))`;
-      if (!shown) {
-        void layer.offsetWidth;
-        layer.style.transition = "";
-        layer.setAttribute("data-shown", "");
-      }
+      if (!shown) layer.setAttribute("data-shown", "");
     }
   };
 

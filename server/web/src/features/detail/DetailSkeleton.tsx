@@ -2,8 +2,9 @@ import { Trans } from "@lingui/react/macro";
 import { getRouteApi, useLocation } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import type { WorkSummary } from "@/api/schemas";
-import { Artwork } from "@/components/Artwork";
 import { episodeCode, labelledTitle } from "@/features/browse/WorkCard";
+import { isTv } from "@/tv/flag";
+import { HeroBackdrop } from "./DetailHeader";
 
 const workRoute = getRouteApi("/authed/works/$workId");
 
@@ -36,14 +37,12 @@ export function DetailSkeleton({ work, failure }: Props) {
           <Trans>Loading…</Trans>
         </span>
       )}
-      <section data-part="hero" className="relative isolate min-h-(--layout-hero-min-height) overflow-hidden">
-        {image && (
-          <div className="absolute inset-0 -z-10">
-            <Artwork image={image} title="" shape="landscape" width={1920} corners="none" className="size-full" />
-            <div className="absolute inset-0 bg-linear-to-r from-scrim via-scrim to-scrim-soft" />
-            <div className="absolute inset-0 bg-linear-to-t from-bg to-transparent" />
-          </div>
-        )}
+      <section
+        data-part="hero"
+        className="relative isolate min-h-(--layout-hero-min-height) overflow-hidden tv:overflow-visible"
+      >
+        {/* The loaded hero's own backdrop, so on TV it fills the screen from the first frame, as it will after. */}
+        {(image || isTv) && <HeroBackdrop image={image} />}
         <div className="flex max-w-prose flex-col gap-4 px-4 pt-16 pb-8 sm:px-8">
           {work ? (
             <h1 className="line-clamp-2 text-3xl font-bold text-text">
@@ -72,7 +71,8 @@ export function DetailSkeleton({ work, failure }: Props) {
           )}
         </div>
       </section>
-      {failure}
+      {/* Positioned, so it's drawn over the backdrop. */}
+      {failure && <div className="tv:relative">{failure}</div>}
     </div>
   );
 }
