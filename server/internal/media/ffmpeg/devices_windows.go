@@ -3,6 +3,7 @@ package ffmpeg
 import (
 	"context"
 	"os/exec"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -14,12 +15,17 @@ import (
 // accelerator test.
 const smiTimeout = 10 * time.Second
 
-// findDevices lists the NVIDIA GPUs that nvidia-smi reports. nvidia-smi
+// findDevices lists the NVIDIA GPUs that nvidia-smi reports, and the Intel
+// GPUs that DXGI lists for Quick Sync.
+func (r *Runner) findDevices() ([]foundDevice, []media.AcceleratorProblem) {
+	found, problems := findNVIDIA()
+	return append(found, intelDevices(adapters())...), problems
+}
+
+// findNVIDIA lists the NVIDIA GPUs that nvidia-smi reports. nvidia-smi
 // comes with the NVIDIA driver, so a PC without the driver lists nothing.
 // Each GPU is reached through CUDA by its index.
-//
-// Intel Quick Sync and AMD AMF aren't found on Windows.
-func (r *Runner) findDevices() ([]foundDevice, []media.AcceleratorProblem) {
+func findNVIDIA() ([]foundDevice, []media.AcceleratorProblem) {
 	smi, err := exec.LookPath("nvidia-smi.exe")
 	if err != nil {
 		return nil, nil
@@ -32,6 +38,25 @@ func (r *Runner) findDevices() ([]foundDevice, []media.AcceleratorProblem) {
 			Reason: media.NoDriver, Detail: "nvidia-smi can't reach the NVIDIA driver: " + err.Error()}}
 	}
 	return nvidiaDevices(string(out)), nil
+}
+
+// intelVendor is Intel's PCI vendor ID.
+const intelVendor = 0x8086
+
+// intelDevices offers each Intel adapter for Quick Sync, by its DXGI index.
+// Two would share a name, so they're told apart by index.
+func intelDevices(list []adapter) []foundDevice {
+	list = slices.DeleteFunc(slices.Clone(list), func(a adapter) bool { return a.vendor != intelVendor })
+	var found []foundDevice
+	for _, a := range list {
+		idx := strconv.Itoa(a.index)
+		name := "Intel Quick Sync (QSV)"
+		if len(list) > 1 {
+			name += " (" + idx + ")"
+		}
+		found = append(found, foundDevice{b: qsvD3D11, node: idx, name: name})
+	}
+	return found
 }
 
 // nvidiaDevices reads nvidia-smi's GPU indexes, one per line. Two GPUs
