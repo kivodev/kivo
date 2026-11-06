@@ -209,6 +209,25 @@ describe("TV focus", () => {
     await waitFor(() => expect(onPlay).toHaveBeenCalledOnce());
   });
 
+  it("scrolls back to the top when the card Back returns to is gone and the screen's first card takes focus", async () => {
+    const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+    const view = render(<Rows />);
+    focusTv("b:2");
+    await waitFor(() => expect(focused()).toBe("b:2"));
+    rememberTvFocus("entry-1");
+    view.unmount();
+    render(
+      <TvFocusGroup focusKey={TV_CONTENT}>
+        <TvFocusable focusKey="first" kind="card" autoFocus>
+          <button type="button">First</button>
+        </TvFocusable>
+      </TvFocusGroup>,
+    );
+    expectTvScreen("entry-1");
+    await waitFor(() => expect(focused()).toBe("first"), { timeout: 2000 });
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: "instant" });
+  });
+
   it("restores focus to the card a screen was left from when Back returns to it", async () => {
     const view = render(<Rows />);
     focusTv("b:2");

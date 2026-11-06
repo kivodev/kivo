@@ -94,10 +94,9 @@ export function firstTvFocusIn(groupKey: string): string | undefined {
   return group?.querySelector<HTMLElement>("[data-tv-focusable]")?.dataset.tvFocusKey;
 }
 
-function initialFocus(): string | undefined {
+function markedFocus(): string | undefined {
   const group = document.querySelector(`[data-tv-group="${CSS.escape(TV_CONTENT)}"]`);
-  const marked = group?.querySelector<HTMLElement>("[data-tv-focusable][data-tv-autofocus]");
-  return marked?.dataset.tvFocusKey ?? firstTvFocusIn(TV_CONTENT);
+  return group?.querySelector<HTMLElement>("[data-tv-focusable][data-tv-autofocus]")?.dataset.tvFocusKey;
 }
 
 function resolve() {
@@ -125,9 +124,12 @@ function resolve() {
     timer = setTimeout(resolve, restoreWaitMs - waited);
     return;
   }
-  const initial = initialFocus();
+  const marked = markedFocus();
+  const initial = marked ?? firstTvFocusIn(TV_CONTENT);
   if (initial) {
     settled();
+    // The screen stayed scrolled to a card that's gone, and a grid's first card doesn't scroll itself into view.
+    if (key && marked) window.scrollTo({ top: 0, behavior: "instant" });
     focusTv(initial);
   }
 }
