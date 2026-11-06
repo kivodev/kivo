@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
-import { back, expectFocus, focusOf, press, pressUntil } from "./remote";
+import { back, expectFocus, focusOf, overscan, press, pressUntil } from "./remote";
 
 // The TV player with only a remote, playing real media: the mock's playable
 // scenario plays a ten-minute file, with two audio tracks and subtitles
@@ -317,11 +317,53 @@ test("Playback Settings: Down moves along its rows, Right opens a list on its ch
   await expectFocus(page, { name: /^Quality/ });
   await press(page, "ArrowRight");
   await expectFocus(page, { name: /^Auto/ });
+  // The list takes the menu's place, under a row of its name.
+  await expect(page.getByRole("menu")).toHaveCount(1);
+  await expect(page.getByRole("menu", { name: "Quality" }).getByRole("menuitem", { name: "Quality" })).toBeVisible();
   await back(page);
+  await expectFocus(page, { name: /^Quality/ });
+  // Left goes back as Back does, and so does OK on the list's first row.
+  await press(page, "Enter");
+  await expectFocus(page, { name: /^Auto/ });
+  await press(page, "ArrowLeft");
+  await expectFocus(page, { name: /^Quality/ });
+  await press(page, "Enter", "ArrowUp");
+  await expectFocus(page, { name: /^Quality$/ });
+  await press(page, "Enter");
   await expectFocus(page, { name: /^Quality/ });
   await back(page);
   await expect(page.getByRole("menu")).toHaveCount(0);
   await expectFocus(page, { name: "Playback Settings" });
+});
+
+test("the player's menus and their lists stay inside the safe area, above the buttons", async ({ page }) => {
+  await playDune(page);
+  const safe = await overscan(page);
+  const gear = await page.getByRole("button", { name: "Playback Settings" }).boundingBox();
+  const inside = async (name: string) => {
+    const box = await page.getByRole("menu", { name }).locator("xpath=ancestor::*[@data-trigger][1]").boundingBox();
+    expect(box, `${name}`).not.toBeNull();
+    if (!box) return;
+    expect(box.y, `${name}'s top`).toBeGreaterThanOrEqual(safe.y);
+    expect(box.y + box.height, `${name}'s bottom`).toBeLessThanOrEqual(gear?.y ?? 0);
+    expect(box.y + box.height, `${name}'s bottom`).toBeLessThanOrEqual(1080 - safe.y);
+    expect(box.x + box.width, `${name}'s right`).toBeLessThanOrEqual(1920 - safe.x);
+  };
+  await press(page, "ArrowRight", "ArrowRight", "ArrowRight", "Enter");
+  await expectFocus(page, { name: "Audio & Subtitles" });
+  await inside("Playback Settings");
+  for (const [row, list] of [
+    [/^Quality/, "Quality"],
+    [/^Version/, "Version"],
+    [/^Speed/, "Speed"],
+  ] as const) {
+    await pressUntil(page, "ArrowDown", (f) => row.test(f.name));
+    await press(page, "ArrowRight");
+    await expect(page.getByRole("menu", { name: list })).toBeVisible();
+    await inside(list);
+    await back(page);
+    await expectFocus(page, { name: row });
+  }
 });
 
 test("Back closes the menu, then hides the controls, then leaves for the detail page on Play", async ({ page }) => {
