@@ -27,6 +27,7 @@ type job struct {
 	err        error        // set before exited closes
 	out        media.Output // nil until ffmpeg has started
 	paused     bool
+	passed     bool // the job went past a segment without writing it, which has been logged
 	// worked and began track the time ffmpeg has spent working, to measure
 	// its speed. worked is the time before the last pause. began is when
 	// the current stretch of work started, and is zero while paused.
@@ -119,6 +120,7 @@ func (s *Stream) produce(ctx context.Context, j *job) error {
 	part := s.plan[j.from].Part
 	req := media.TranscodeRequest{
 		Path: s.spec.Parts[part].Path, Start: s.plan[j.from].Start, SegmentDuration: gridSegment,
+		Seek:       s.seek(j),
 		VideoTrack: s.spec.VideoTrack, Source: s.spec.Source, Video: s.spec.Video, Audio: s.spec.Audio,
 		BurnIn: s.spec.BurnIn, Accelerator: s.spec.Accelerator,
 	}
@@ -174,9 +176,9 @@ func (s *Stream) produce(ctx context.Context, j *job) error {
 		}
 		i := s.segmentOf(j, part, cur, seg)
 		if i < j.from {
-			// A copied job's input seek can land on a keyframe in the
-			// segment before its first. That segment would be incomplete.
-			continue
+			// A copied job's output begins at its first segment's
+			// keyframe, so this would be a fragment of the segment before.
+			return fmt.Errorf("%w: a fragment at %v is before segment %d", media.ErrSourceCorrupt, seg.Start, j.from)
 		}
 		if i != cur {
 			if f != nil {
@@ -213,6 +215,17 @@ func (s *Stream) produce(ctx context.Context, j *job) error {
 		return finish()
 	}
 	return nil
+}
+
+// seek is where a copied job's input seek goes, just past the keyframe its
+// first segment begins at (media.TranscodeRequest's Seek). Encoded video
+// seeks to its start.
+func (s *Stream) seek(j *job) time.Duration {
+	if s.spec.encoded() {
+		return 0
+	}
+	sp := s.plan[j.from]
+	return seekPast(s.spec.Parts[sp.Part], sp.Start)
 }
 
 // segmentOf returns the planned segment of part p that a fragment belongs

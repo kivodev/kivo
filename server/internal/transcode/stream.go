@@ -48,7 +48,9 @@ func (s *Stream) Playlist(name string) ([]byte, error) {
 // Segment returns the path of a segment (a video segment, a text segment,
 // or an init segment) once it's on disk. It returns at once if the segment
 // is already there. It waits if the running job is about to write it. For
-// a far seek, it restarts the job at that segment. Every text track's
+// a far seek, it restarts the job at that segment. A job that began at the
+// segment and went past it without writing it fails the request with
+// ErrJobFailed, rather than starting again. Every text track's
 // segment is written along with its video, so text segments behave the
 // same way.
 func (s *Stream) Segment(ctx context.Context, name string) (string, error) {
@@ -76,9 +78,9 @@ func (s *Stream) Segment(ctx context.Context, name string) (string, error) {
 			return path(i), nil
 		}
 		j := s.job
-		if j != nil && j.failed() {
+		if err := s.refusedLocked(j, i); err != nil {
 			s.mu.Unlock()
-			return "", j.err
+			return "", err
 		}
 		if j == nil || j.ended() || i < j.next || i > j.next+nearSegments {
 			j = s.startLocked(i)
@@ -103,6 +105,30 @@ func (s *Stream) Segment(ctx context.Context, name string) (string, error) {
 		// The job was replaced (by a far seek elsewhere or an idle kill),
 		// or it ended without this segment, so look again.
 	}
+}
+
+// refusedLocked returns why segment i can't come from the stream's job j:
+// the job's own failure, or that j began at i and went past it without
+// writing it. Starting a job at i again would only do the same, so the
+// request fails and playback can fall back. A job that began before i and
+// went past it is started again at i, once, since a job that seeks there
+// may yet write it. It returns nil when j may still write i, or a new job
+// may start at it.
+func (s *Stream) refusedLocked(j *job, i int) error {
+	switch {
+	case j == nil:
+		return nil
+	case j.failed():
+		return j.err
+	case i == j.from && i < j.next && !stopped(j.err):
+		if !j.passed {
+			j.passed = true
+			slog.Warn("transcode: job passed a segment without writing it", "stream", filepath.Base(s.dir),
+				"file", s.spec.Parts[s.plan[i].Part].ID, "segment", i, "from", j.from, "next", j.next)
+		}
+		return fmt.Errorf("%w: segment %d was passed by the job from segment %d", ErrJobFailed, i, j.from)
+	}
+	return nil
 }
 
 // nearSegments is how many segments ahead of a running job a request may

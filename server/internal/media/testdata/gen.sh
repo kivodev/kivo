@@ -61,6 +61,12 @@ remux="-copyts -map 0:v:0 -map 0:a:0 -c copy -map_metadata -1 -map_chapters -1 -
 	-movflags +frag_keyframe+empty_moov+default_base_moof+frag_discont -f mp4"
 $ff -ss 2.4 -i h264.mkv $remux remux-h264.mp4
 $ff -i hevc.mkv $remux remux-hevc.mp4
+# The same seek with the audio encoded to E-AC-3, which takes delay_moov.
+# ffmpeg's seek lands on the keyframe at 1.6 s, and delay_moov runs its
+# first fragment on past the one at 2.4 s, to the one at 4 s.
+$ff -ss 2.4 -copyts -i h264.mkv -map 0:v:0 -c:v copy -map 0:a:0 -c:a eac3 -b:a 32k -map_metadata -1 -map_chapters -1 \
+	-max_muxing_queue_size 2048 -avoid_negative_ts disabled -output_ts_offset 10 -use_editlist 0 \
+	-movflags +frag_keyframe+empty_moov+delay_moov+default_base_moof+frag_discont -f mp4 remux-merged.mp4
 
 # What a hardware-test encode writes, for the fake ffmpeg to replay: a
 # 5-second clip from 1 s, with keyframes on a 1-second grid, and with

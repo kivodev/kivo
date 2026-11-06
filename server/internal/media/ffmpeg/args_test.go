@@ -34,7 +34,7 @@ func TestGoldenArgv(t *testing.T) {
 				Video: video, Audio: []media.AudioOut{copyAudio(1)}}, nil)
 		}},
 		{"remux-seek", func() ([]string, error) {
-			return transcodeArgs(media.TranscodeRequest{Path: "/media/a.mkv", Start: 754208 * time.Millisecond,
+			return transcodeArgs(media.TranscodeRequest{Path: "/media/a.mkv", Start: 754208 * time.Millisecond, Seek: 754708 * time.Millisecond,
 				SegmentDuration: 6 * time.Second, VideoTrack: 1, Video: video,
 				Audio: []media.AudioOut{copyAudio(2), copyAudio(4)}}, nil)
 		}},
@@ -203,8 +203,9 @@ type videoCase struct {
 func videoCases() []videoCase {
 	stereo := []media.AudioOut{{Track: 1, Out: media.AudioRendition{Codec: media.AAC, Channels: 2, Bitrate: 192000}}}
 	req := func(src media.Track, v media.VideoRendition) media.TranscodeRequest {
-		return media.TranscodeRequest{Path: "/media/Movies/Film.mkv", Start: 756 * time.Second, SegmentDuration: 6 * time.Second,
-			Source: src, Video: v, Audio: stereo}
+		// Seek is only for copied video, so encoded video seeks to Start.
+		return media.TranscodeRequest{Path: "/media/Movies/Film.mkv", Start: 756 * time.Second, Seek: 756500 * time.Millisecond,
+			SegmentDuration: 6 * time.Second, Source: src, Video: v, Audio: stereo}
 	}
 	h264 := media.VideoRendition{Codec: media.H264, Width: 1280, Height: 720, Bitrate: 4_000_000}
 	hevc := media.VideoRendition{Codec: media.HEVC, Width: 1920, Height: 1080, Bitrate: 8_000_000, HDR: media.ToneMap}

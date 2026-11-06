@@ -47,7 +47,13 @@ func transcodeArgs(req media.TranscodeRequest, dev *device) ([]string, error) {
 	args = video.appendInputOptions(args)
 	// Copied timestamps keep segments on the source's timeline, which is
 	// the timeline the playlist was written for, wherever the job starts.
-	if req.Start > 0 {
+	// A copied seek past Start lands on Start's keyframe. Without accurate
+	// seeking, the audio and text then begin there too, rather than at the
+	// seek.
+	switch {
+	case seeksPast(req):
+		args = append(args, "-noaccurate_seek", "-ss", seconds(req.Seek))
+	case req.Start > 0:
 		args = append(args, "-ss", seconds(req.Start))
 	}
 	args = appendInput(append(args, "-copyts"), req.Path)
@@ -62,6 +68,12 @@ func transcodeArgs(req media.TranscodeRequest, dev *device) ([]string, error) {
 		args = appendCues(args, t)
 	}
 	return args, nil
+}
+
+// seeksPast reports whether a request seeks copied video past its start,
+// as media.TranscodeRequest's Seek describes.
+func seeksPast(req media.TranscodeRequest) bool {
+	return req.Seek > 0 && req.Video.Codec == media.Copy
 }
 
 // appendAudio adds output audio stream i.

@@ -24,13 +24,21 @@ const tolerance = time.Millisecond
 // requested start. A fragment that begins before the start is held until
 // the next fragment shows whether it contains the start. Otherwise each
 // segment is returned as soon as its fragment is complete.
+//
+// A Splitter that cuts is given a start on a keyframe of the lead track,
+// and its first segment begins there. A held fragment that contains the
+// start, because ffmpeg ran the fragment it began with on past it, is cut
+// at that keyframe rather than returned whole.
 type Splitter struct {
 	r     io.Reader
 	start time.Duration
+	cut   bool
+	near  time.Duration // how close to start a fragment begins to count as beginning there
 
 	init    []byte
-	lead    *track // the track whose fragments make segments, which is video if there is any
-	carry   []byte // boxes read since the last segment, such as styp or a fragment without video
+	lead    *track            // the track whose fragments make segments, which is video if there is any
+	tracks  map[uint32]*track // every track by its ID, read only by a Splitter that cuts
+	carry   []byte            // boxes read since the last segment, such as styp or a fragment without video
 	held    *media.Segment
 	reached bool // a segment at or after start has been seen
 	queue   []media.Segment
@@ -39,9 +47,15 @@ type Splitter struct {
 }
 
 // NewSplitter reads ffmpeg's output from r. Segments begin with the one
-// that contains start.
-func NewSplitter(r io.Reader, start time.Duration) *Splitter {
-	return &Splitter{r: r, start: start, last: -1 << 63}
+// that contains start. With cut, start is a keyframe of the lead track, and
+// segments begin there: a fragment that begins earlier but runs past it is
+// cut at it, and output with no keyframe at start is an error.
+func NewSplitter(r io.Reader, start time.Duration, cut bool) *Splitter {
+	near := tolerance
+	if cut {
+		near = cutSlack
+	}
+	return &Splitter{r: r, start: start, cut: cut, near: near, last: -1 << 63}
 }
 
 // Init returns the initialization segment, reading it first if needed. An
@@ -96,6 +110,9 @@ func (s *Splitter) readInit(b []byte) ([]byte, error) {
 	if s.lead == nil {
 		return nil, corrupt("mp4: no tracks")
 	}
+	if s.tracks, err = s.trackTimings(moov); err != nil {
+		return nil, err
+	}
 	retag := false
 	for _, trak := range moov.Traks {
 		if trak.Mdia == nil || trak.Mdia.Minf == nil || trak.Mdia.Minf.Stbl == nil || trak.Mdia.Minf.Stbl.Stsd == nil {
@@ -133,8 +150,9 @@ func (s *Splitter) Next() (seg media.Segment, err error) {
 				return media.Segment{}, io.EOF
 			}
 			// The start lies in the last fragment.
-			s.queue = append(s.queue, *s.held)
-			s.held = nil
+			if err := s.release(); err != nil {
+				return media.Segment{}, s.fail(err)
+			}
 			break
 		}
 		if err != nil {
@@ -147,7 +165,9 @@ func (s *Splitter) Next() (seg media.Segment, err error) {
 		if len(s.carry) > 0 {
 			data, s.carry = append(s.carry, data...), nil
 		}
-		s.place(media.Segment{Start: start, Data: data})
+		if err := s.place(media.Segment{Start: start, Data: data}); err != nil {
+			return media.Segment{}, s.fail(err)
+		}
 	}
 	seg = s.queue[0]
 	s.queue = s.queue[1:]
@@ -156,19 +176,37 @@ func (s *Splitter) Next() (seg media.Segment, err error) {
 
 // place queues a complete fragment. A fragment that begins before the
 // requested start is held or dropped instead.
-func (s *Splitter) place(seg media.Segment) {
+func (s *Splitter) place(seg media.Segment) error {
 	switch {
 	case s.reached:
-		s.queue = append(s.queue, seg)
 	case seg.Start >= s.start-tolerance:
-		if s.held != nil && seg.Start > s.start+tolerance {
-			s.queue = append(s.queue, *s.held)
+		if s.held != nil && seg.Start > s.start+s.near {
+			if err := s.release(); err != nil {
+				return err
+			}
 		}
 		s.held, s.reached = nil, true
-		s.queue = append(s.queue, seg)
 	default:
 		s.held = &seg // replaces a held fragment that ended before the start
+		return nil
 	}
+	s.queue = append(s.queue, seg)
+	return nil
+}
+
+// release queues the held fragment, which contains the start. A Splitter
+// that cuts queues it from the start's keyframe on.
+func (s *Splitter) release() error {
+	seg := *s.held
+	s.held = nil
+	if s.cut {
+		var err error
+		if seg.Data, seg.Start, err = s.cutAt(seg.Data, s.start); err != nil {
+			return err
+		}
+	}
+	s.queue = append(s.queue, seg)
+	return nil
 }
 
 // readFragment reads boxes through the next mdat. It returns the
@@ -219,7 +257,7 @@ func (s *Splitter) fragmentStart(b []byte) (time.Duration, bool, error) {
 		return 0, false, corrupt("mp4: bad moof")
 	}
 	for smp := range s.lead.samples(moof) {
-		start := s.lead.pts(smp.dts, smp.CompositionTimeOffset) - media.TimestampOffset
+		start := s.lead.onTimeline(smp.dts, smp.CompositionTimeOffset)
 		if start <= s.last {
 			return 0, false, corrupt("mp4: fragment at %v follows %v", start, s.last)
 		}

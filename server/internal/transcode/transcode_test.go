@@ -59,7 +59,18 @@ type fakeMedia struct {
 	cues      []media.Cue     // the text track; each cue is read along with the fragment it starts in
 	start     time.Duration   // the source's first timestamp, which copied cue times include
 	lost      []time.Duration // keyframes a job from the start doesn't emit, because its plan is wrong there
-	early     time.Duration   // how far before a copied job's start its input seek lands
+	// early is ffmpeg's margin for B-frames: a copied job's input seek
+	// (its Seek, or else its Start) lands on the last keyframe at or
+	// before the seek less early.
+	early time.Duration
+	// swallow is how far past where a copied job's seek lands its first
+	// fragment runs. ffmpeg's delay_moov, which AC-3 and E-AC-3 output
+	// need, cuts the first fragment only at the second keyframe, so the
+	// keyframes it spans don't start fragments of their own. The fake
+	// doesn't cut fragments, as the media package does for a job with a
+	// Seek, so a fragment it begins before Start stays before it.
+	swallow time.Duration
+	missing []time.Duration // keyframes no job emits, as if the media went past them
 
 	mu       sync.Mutex
 	requests []media.TranscodeRequest
@@ -109,8 +120,10 @@ func (m *fakeMedia) pacing() (pauses, resumes int) {
 func (m *fakeMedia) starts(req media.TranscodeRequest) []time.Duration {
 	var out []time.Duration
 	if req.Video.Codec == media.Copy {
+		from := m.landing(req)
 		for _, k := range m.keys {
-			if k.Time >= req.Start-m.early && !(req.Start == 0 && slices.Contains(m.lost, k.Time)) {
+			swallowed := req.Start > 0 && k.Time > from && k.Time < from+m.swallow
+			if k.Time >= from && !swallowed && !slices.Contains(m.missing, k.Time) && !(req.Start == 0 && slices.Contains(m.lost, k.Time)) {
 				out = append(out, k.Time)
 			}
 		}
@@ -120,6 +133,24 @@ func (m *fakeMedia) starts(req media.TranscodeRequest) []time.Duration {
 		out = append(out, t+time.Duration(n)*m.drift)
 	}
 	return out
+}
+
+// landing is the keyframe a copied job's input seek lands on.
+func (m *fakeMedia) landing(req media.TranscodeRequest) time.Duration {
+	if req.Start == 0 {
+		return 0
+	}
+	seek := req.Start
+	if req.Seek > 0 {
+		seek = req.Seek
+	}
+	var at time.Duration
+	for _, k := range m.keys {
+		if k.Time <= seek-m.early {
+			at = k.Time
+		}
+	}
+	return at
 }
 
 type fakeOutput struct {
@@ -408,11 +439,38 @@ func TestSeeks(t *testing.T) {
 	})
 }
 
-func TestSeekLandingInThePreviousSegment(t *testing.T) {
+// bframeMargin is how far before its seek ffmpeg's input seek looks for a
+// keyframe, for video with B-frames.
+const bframeMargin = 3 * time.Second / 23
+
+func TestSeekPast(t *testing.T) {
+	s := func(f float64) time.Duration { return time.Duration(f * float64(time.Second)) }
+	keys := []media.Keyframe{{Time: 0}, {Time: s(10.427)}, {Time: s(20.854)}, {Time: s(21.4)}, {Time: s(31.8)}}
+	f := FileRef{Duration: s(32.2), Keyframes: keys}
+	for _, tt := range []struct {
+		name string
+		k    time.Duration
+		want time.Duration
+	}{
+		{"a normal GOP seeks maxSeekPast past its keyframe", s(10.427), s(10.927)},
+		{"a GOP under a second seeks halfway through it", s(20.854), s(21.127)},
+		{"the last keyframe seeks halfway to the end", s(31.8), s(32.0)},
+		{"the start doesn't seek", 0, 0},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := seekPast(f, tt.k); got != tt.want {
+				t.Fatalf("seekPast(%v) = %v, want %v", tt.k, got, tt.want)
+			}
+		})
+	}
+}
+
+// A copied job seeks just past its first keyframe, so ffmpeg's margin for
+// B-frames brings the seek back to that keyframe rather than to the one
+// before, and the first segment holds its own fragments.
+func TestSeekLandsOnTheFirstSegmentsKeyframe(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		// The input seek lands on the keyframe before the job's start, so
-		// the job's first fragment belongs to the segment before it.
-		m := &fakeMedia{early: 2 * time.Second}
+		m := &fakeMedia{early: bframeMargin}
 		tr, spec := fixture(t, m)
 		s, err := tr.Open(ctx, spec, 8*time.Minute)
 		if err != nil {
@@ -424,19 +482,101 @@ func TestSeekLandingInThePreviousSegment(t *testing.T) {
 				t.Fatalf("segment %s: %v", name, err)
 			}
 		}
+		jobs := m.jobs()
+		if len(jobs) != 1 || jobs[0].Start != 8*time.Minute || jobs[0].Seek != 8*time.Minute+maxSeekPast {
+			t.Fatalf("jobs %+v, want one from 8m0s seeking to 8m0.5s", jobs)
+		}
 		if got := read(t, s.path(80)); got != "[8m0s][8m2s][8m4s]" {
+			t.Fatalf("segment 80 = %q", got)
+		}
+		s.mu.Lock()
+		done := s.done[79]
+		s.mu.Unlock()
+		if done {
+			t.Fatal("segment 79 was written")
+		}
+	})
+}
+
+// With delay_moov, ffmpeg runs its first fragment on past the keyframe
+// after the one it begins with. Seeking to the first segment's keyframe,
+// that fragment holds the whole first segment, which is written from it.
+// A seek to the keyframe itself would have landed on the one before, and
+// the fragment would have begun in the segment before.
+func TestSeekLandingEarlyInOneFragment(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m := &fakeMedia{early: bframeMargin, swallow: 6 * time.Second}
+		tr, spec := fixture(t, m)
+		s, err := tr.Open(ctx, spec, 8*time.Minute)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer s.Close()
+		c, cancel := context.WithTimeout(ctx, time.Minute)
+		defer cancel()
+		if _, err := s.Segment(c, "80.m4s"); err != nil {
+			t.Fatalf("segment 80: %v after %d jobs", err, len(m.jobs()))
+		}
+		if got := read(t, s.path(80)); got != "[8m0s]" {
 			t.Fatalf("segment 80 = %q", got)
 		}
 		if n := len(m.jobs()); n != 1 {
 			t.Fatalf("%d jobs", n)
 		}
-		// The job leaves the segment before its first alone, since it
-		// has only that segment's last fragment.
-		s.mu.Lock()
-		done := s.done[79]
-		s.mu.Unlock()
-		if done {
-			t.Fatal("segment 79 was written from its last fragment")
+	})
+}
+
+// A fragment from before the job's first segment fails the job rather than
+// filling the segment before.
+func TestFragmentBeforeTheFirstSegmentFailsTheJob(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m := &fakeMedia{early: 2 * time.Second}
+		tr, spec := fixture(t, m)
+		s, err := tr.Open(ctx, spec, 8*time.Minute)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer s.Close()
+		c, cancel := context.WithTimeout(ctx, time.Minute)
+		defer cancel()
+		if _, err := s.Segment(c, "80.m4s"); !errors.Is(err, ErrJobFailed) {
+			t.Fatalf("segment 80: %v, want ErrJobFailed", err)
+		}
+		if n := len(m.jobs()); n != 1 {
+			t.Fatalf("%d jobs", n)
+		}
+	})
+}
+
+// A job that goes past a segment without writing it fails the request for
+// it at once. Starting a job there again would only go past it again.
+func TestPassedSegmentFailsFast(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m := &fakeMedia{early: bframeMargin, missing: []time.Duration{480 * time.Second, 482 * time.Second, 484 * time.Second}}
+		tr, spec := fixture(t, m)
+		s, err := tr.Open(ctx, spec, 8*time.Minute)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer s.Close()
+		c, cancel := context.WithTimeout(ctx, time.Minute)
+		defer cancel()
+		start := time.Now()
+		if _, err := s.Segment(c, "80.m4s"); !errors.Is(err, ErrJobFailed) {
+			t.Fatalf("segment 80: %v, want ErrJobFailed", err)
+		}
+		// Segment 81's three fragments, and the next one, which closes it.
+		if got := time.Since(start); got != 4*m.pace {
+			t.Fatalf("failed after %v, want %v", got, 4*m.pace)
+		}
+		if _, err := s.Segment(c, "80.m4s"); !errors.Is(err, ErrJobFailed) {
+			t.Fatalf("segment 80 again: %v, want ErrJobFailed", err)
+		}
+		if n := len(m.jobs()); n != 1 {
+			t.Fatalf("%d jobs", n)
+		}
+		if _, err := s.Segment(c, "81.m4s"); err != nil {
+			t.Fatalf("segment 81: %v", err)
 		}
 	})
 }
