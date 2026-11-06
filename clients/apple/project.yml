@@ -145,6 +145,9 @@ targets:
         CFBundleDevelopmentRegion: en
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # The app uses only the system's HTTPS, so App Store Connect needs no
+        # export compliance answer for each build.
+        ITSAppUsesNonExemptEncryption: false
         # The Facet K centred on the dark background. LaunchMark.svg is
         # shared/brand/mark.svg at 144 pt (the K about 104 pt tall),
         # re-centred on its art.
