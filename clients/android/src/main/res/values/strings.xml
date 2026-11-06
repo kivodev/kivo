@@ -138,6 +138,11 @@
     <string name="filter_in_progress">In progress</string>
     <string name="played">Watched</string>
     <string name="favorites">Favorites</string>
+    <string name="decade">Decade</string>
+    <!-- A decade by its first year: "1990s". -->
+    <string name="decade_label">%1$ds</string>
+    <string name="genre">Genre</string>
+    <string name="content_rating">Content rating</string>
     <string name="resolution">Resolution</string>
     <string name="dynamic_range">Dynamic range</string>
     <string name="clear_filters">Clear filters</string>

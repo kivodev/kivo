@@ -34,6 +34,39 @@ class GridMemoryTest {
     }
 
     @Test
+    fun theSamsungFiltersComeBackAsTheyWereKept() {
+        val choice = GridChoice(
+            GridQuery(
+                "lib1",
+                sort = "title",
+                genres = listOf("Action & Adventure", "Sci-Fi, Fantasy"),
+                yearFrom = 1990,
+                yearTo = 1999,
+                contentRatings = listOf("PG-13", "TV-MA"),
+            ),
+        )
+        assertEquals(choice, decodeGrid("lib1", encodeGrid(choice)))
+    }
+
+    @Test
+    fun theSamsungFiltersCountAsFiltersAndClear() {
+        val query = GridQuery("lib1", sort = "title")
+        listOf(
+            query.copy(genres = listOf("Drama")),
+            query.copy(yearFrom = 1990, yearTo = 1999),
+            query.copy(contentRatings = listOf("PG")),
+        ).forEach {
+            assertTrue(it.filtered)
+            assertEquals(query, it.unfiltered())
+        }
+    }
+
+    @Test
+    fun yearsGroupIntoDecadesNewestFirst() {
+        assertEquals(listOf(2020, 2010, 1990), decadesOf(listOf(1994, 2011, 2019, 2024, 1999)))
+    }
+
+    @Test
     fun nothingKeptOpensOnTheTitlesByTitle() {
         assertEquals(titles("lib1"), decodeGrid("lib1", ""))
     }

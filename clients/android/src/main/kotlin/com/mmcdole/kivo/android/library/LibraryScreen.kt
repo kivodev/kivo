@@ -40,7 +40,6 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import com.mmcdole.kivo.android.ui.Lit
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.nativeKeyCode
@@ -67,24 +66,28 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.mmcdole.kivo.android.R
 import com.mmcdole.kivo.android.ServerSession
+import com.mmcdole.kivo.android.main.RailWidth
 import com.mmcdole.kivo.android.theme.Kivo
 import com.mmcdole.kivo.android.theme.KivoTokens
 import com.mmcdole.kivo.android.theme.TvType
 import com.mmcdole.kivo.android.ui.CardGap
 import com.mmcdole.kivo.android.ui.CardShape
-import com.mmcdole.kivo.android.ui.CollectionCard
+import com.mmcdole.kivo.android.ui.ChipChoices
 import com.mmcdole.kivo.android.ui.Choice
-import com.mmcdole.kivo.android.ui.ChoicePanel
+import com.mmcdole.kivo.android.ui.ChoiceList
+import com.mmcdole.kivo.android.ui.CollectionCard
 import com.mmcdole.kivo.android.ui.EmptyState
 import com.mmcdole.kivo.android.ui.Failed
 import com.mmcdole.kivo.android.ui.InlineFailed
 import com.mmcdole.kivo.android.ui.KivoButton
 import com.mmcdole.kivo.android.ui.KivoIcon
 import com.mmcdole.kivo.android.ui.KivoIconView
+import com.mmcdole.kivo.android.ui.Lit
+import com.mmcdole.kivo.android.ui.MenuPopup
 import com.mmcdole.kivo.android.ui.Navigator
-import com.mmcdole.kivo.android.ui.Screen
 import com.mmcdole.kivo.android.ui.SafeEdge
 import com.mmcdole.kivo.android.ui.SafeTop
+import com.mmcdole.kivo.android.ui.Screen
 import com.mmcdole.kivo.android.ui.SkeletonCard
 import com.mmcdole.kivo.android.ui.SkeletonGate
 import com.mmcdole.kivo.android.ui.SkeletonLine
@@ -100,8 +103,8 @@ import com.mmcdole.kivo.core.data.GridPager
 import com.mmcdole.kivo.core.data.GridPages
 import com.mmcdole.kivo.core.data.GridPages.Companion.RAIL_LETTERS
 import com.mmcdole.kivo.core.data.GridQuery
-import kotlinx.coroutines.launch
 import java.text.NumberFormat
+import kotlinx.coroutines.launch
 
 /**
  * A library's grid behind the screen: the section, sort and
@@ -271,6 +274,13 @@ private val LibraryPadding = PaddingValues(start = ContentStart, top = TitleTop,
 /** How much further down the grid starts for its section tabs. */
 private val SectionsHeight = 38.5.dp
 
+/** The filter menu, under the Filter button, as wide as the Samsung TV app's. */
+private val FilterMenuTop = 72.dp
+private val FilterMenuWidth = 560.dp
+
+/** The sort menu, under the count line that opens it. */
+private val SortMenuWidth = 280.dp
+
 /** The room a long library name leaves at the screen's margin for Filter beside it. */
 private val FilterRoom = 96.dp
 
@@ -384,16 +394,21 @@ private fun Header(model: LibraryViewModel, choice: GridChoice, library: Library
     when (panel) {
         HeaderPanel.Sort -> {
             val sorts = sortsOf(library)
-            ChoicePanel(
-                title = stringResource(R.string.sort),
-                choices = sorts.map { Choice(it, sortName(it)) },
-                selected = query.sort,
-                onSelect = { id ->
-                    panel = null
-                    sorts.firstOrNull { it == id }?.let { model.choose(query.copy(sort = it)) }
-                },
+            MenuPopup(
                 onDismiss = { panel = null },
-            )
+                alignment = Alignment.TopStart,
+                margin = PaddingValues(start = RailWidth + ContentStart, top = GridTop + if (sections) SectionsHeight else 0.dp, bottom = SafeTop),
+                width = SortMenuWidth,
+            ) {
+                ChoiceList(
+                    choices = sorts.map { Choice(it, sortName(it)) },
+                    selected = query.sort,
+                    onSelect = { id ->
+                        panel = null
+                        sorts.firstOrNull { it == id }?.let { model.choose(query.copy(sort = it)) }
+                    },
+                )
+            }
         }
         HeaderPanel.Filter -> FilterPanel(model, query, onClose = { panel = null })
         null -> Unit
@@ -501,7 +516,7 @@ private fun FilterButton(filtered: Boolean, modifier: Modifier = Modifier, onCli
 }
 
 /**
- * The filters, as the web's and the iPhone's: the played
+ * The filters, as the Samsung TV app's: the decade, genre and content rating with the played
  * state, Favorites, and the resolutions and HDR formats the library has.
  * Each applies as it's chosen, and the panel stays open; Clear filters
  * turns them all off and closes it.
@@ -510,6 +525,9 @@ private fun FilterButton(filtered: Boolean, modifier: Modifier = Modifier, onCli
 private fun FilterPanel(model: LibraryViewModel, query: GridQuery, onClose: () -> Unit) {
     val facets = model.facets
     val playedState = stringResource(R.string.played_state)
+    val decade = stringResource(R.string.decade)
+    val genre = stringResource(R.string.genre)
+    val contentRating = stringResource(R.string.content_rating)
     val resolution = stringResource(R.string.resolution)
     val dynamicRange = stringResource(R.string.dynamic_range)
     val choices = buildList {
@@ -517,47 +535,67 @@ private fun FilterPanel(model: LibraryViewModel, query: GridQuery, onClose: () -
         add(Choice("played:${GridValues.UNPLAYED}", stringResource(R.string.unplayed), section = playedState))
         add(Choice("played:${GridValues.IN_PROGRESS}", stringResource(R.string.filter_in_progress), section = playedState))
         add(Choice("played:${GridValues.PLAYED}", stringResource(R.string.played), section = playedState))
-        add(Choice("favorite", stringResource(R.string.favorites), section = ""))
         facets?.let { f ->
+            add(Choice("decade:", stringResource(R.string.any), section = decade))
+            decadesOf(f.years).forEach { add(Choice("decade:$it", stringResource(R.string.decade_label, it), section = decade)) }
+            f.genres.forEach { add(Choice("genre:$it", it, section = genre)) }
+            f.contentRatings.forEach { add(Choice("contentRating:$it", it, section = contentRating)) }
             GridValues.resolutions.filter { it in f.resolutions }
                 .forEach { add(Choice("resolution:$it", resolutionLabel(it), section = resolution)) }
             GridValues.dynamicRanges.filter { it in f.dynamicRanges }
                 .forEach { add(Choice("dynamicRange:$it", dynamicRangeLabel(it), section = dynamicRange)) }
         }
+        add(Choice("favorite", stringResource(R.string.favorites), section = ""))
         if (query.filtered) add(Choice("clear", stringResource(R.string.clear_filters), section = " "))
     }
     val ticked = buildSet {
         add("played:${query.played.orEmpty()}")
         if (query.favorite) add("favorite")
+        add("decade:${query.yearFrom ?: ""}")
+        query.genres?.forEach { add("genre:$it") }
+        query.contentRatings?.forEach { add("contentRating:$it") }
         query.resolutions?.forEach { add("resolution:$it") }
         query.dynamicRanges?.forEach { add("dynamicRange:$it") }
     }
-    ChoicePanel(
-        title = stringResource(R.string.filter),
-        choices = choices,
-        selected = null,
-        ticked = ticked,
-        onSelect = { id ->
-            val (kind, value) = id.split(':', limit = 2).let { it[0] to it.getOrElse(1) { "" } }
-            when (kind) {
-                "played" -> model.choose(query.copy(played = value.takeIf { it in GridValues.playedStates }))
-                "favorite" -> model.choose(query.copy(favorite = !query.favorite))
-                "resolution" -> {
-                    val now = query.resolutions.orEmpty()
-                    model.choose(query.copy(resolutions = (if (value in now) now - value else now + value).ifEmpty { null }))
-                }
-                "dynamicRange" -> {
-                    val now = query.dynamicRanges.orEmpty()
-                    model.choose(query.copy(dynamicRanges = (if (value in now) now - value else now + value).ifEmpty { null }))
-                }
-                "clear" -> {
-                    onClose()
-                    model.choose(query.unfiltered())
-                }
+    val select = { id: String ->
+        val (kind, value) = id.split(':', limit = 2).let { it[0] to it.getOrElse(1) { "" } }
+        when (kind) {
+            "played" -> model.choose(query.copy(played = value.takeIf { it in GridValues.playedStates }))
+            "favorite" -> model.choose(query.copy(favorite = !query.favorite))
+            "decade" -> {
+                val from = value.toIntOrNull()
+                model.choose(query.copy(yearFrom = from, yearTo = from?.plus(9)))
             }
-        },
+            "genre" -> {
+                val now = query.genres.orEmpty()
+                model.choose(query.copy(genres = (if (value in now) now - value else now + value).ifEmpty { null }))
+            }
+            "contentRating" -> {
+                val now = query.contentRatings.orEmpty()
+                model.choose(query.copy(contentRatings = (if (value in now) now - value else now + value).ifEmpty { null }))
+            }
+            "resolution" -> {
+                val now = query.resolutions.orEmpty()
+                model.choose(query.copy(resolutions = (if (value in now) now - value else now + value).ifEmpty { null }))
+            }
+            "dynamicRange" -> {
+                val now = query.dynamicRanges.orEmpty()
+                model.choose(query.copy(dynamicRanges = (if (value in now) now - value else now + value).ifEmpty { null }))
+            }
+            "clear" -> {
+                onClose()
+                model.choose(query.unfiltered())
+            }
+        }
+    }
+    MenuPopup(
         onDismiss = onClose,
-    )
+        alignment = Alignment.TopEnd,
+        margin = PaddingValues(top = FilterMenuTop, end = SafeEdge, bottom = SafeTop),
+        width = FilterMenuWidth,
+    ) {
+        ChipChoices(choices, ticked, select)
+    }
 }
 
 /** A library while its first page loads: its name, the count line and a row of cards. */

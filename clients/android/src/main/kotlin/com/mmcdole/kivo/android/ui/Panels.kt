@@ -1,12 +1,16 @@
 package com.mmcdole.kivo.android.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,29 +20,33 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.nativeKeyCode
@@ -101,61 +109,162 @@ fun ChoicePanel(
     ticked: Set<String> = setOfNotNull(selected),
     marker: ChoiceMarker = ChoiceMarker.Tick,
 ) {
-    val colors = Kivo.colors
     SidePanel(title, onDismiss) {
-        val initial = remember { FocusRequester() }
-        // A list of choices scrolls only as far as the focused one needs.
-        KeepInView {
-            LazyColumn(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(Kivo.space(1))) {
-                itemsIndexed(choices, key = { _, c -> c.id }) { index, choice ->
-                    val isSelected = choice.id in ticked
-                    val focusFirst = choice.id == selected || (selected == null || choices.none { it.id == selected }) && index == 0
-                    Column {
-                        if (choice.section != null && choices.getOrNull(index - 1)?.section != choice.section) {
-                            // A section apart; a blank name sets it apart without a heading.
-                            if (index > 0) Spacer(Modifier.height(Kivo.space(4)))
-                            if (choice.section.isNotBlank()) {
-                                Text(
-                                    choice.section,
-                                    style = TvType.smallStrong,
-                                    color = colors.onPlayerMuted,
-                                    modifier = Modifier.padding(start = Kivo.space(3), bottom = Kivo.space(1)),
+        ChoiceList(choices, selected, onSelect, footer, ticked, marker)
+    }
+}
+
+/** A [ChoicePanel]'s list, the current choice focused first, for whichever panel holds it. */
+@Composable
+fun ColumnScope.ChoiceList(
+    choices: List<Choice>,
+    selected: String?,
+    onSelect: (String) -> Unit,
+    footer: String? = null,
+    ticked: Set<String> = setOfNotNull(selected),
+    marker: ChoiceMarker = ChoiceMarker.Tick,
+) {
+    val colors = Kivo.colors
+    val initial = remember { FocusRequester() }
+    // A list of choices scrolls only as far as the focused one needs.
+    KeepInView {
+        LazyColumn(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(Kivo.space(1))) {
+            itemsIndexed(choices, key = { _, c -> c.id }) { index, choice ->
+                val isSelected = choice.id in ticked
+                val focusFirst = choice.id == selected || (selected == null || choices.none { it.id == selected }) && index == 0
+                Column {
+                    if (choice.section != null && choices.getOrNull(index - 1)?.section != choice.section) {
+                        // A section apart; a blank name sets it apart without a heading.
+                        if (index > 0) Spacer(Modifier.height(Kivo.space(4)))
+                        if (choice.section.isNotBlank()) {
+                            Text(
+                                choice.section,
+                                style = TvType.smallStrong,
+                                color = colors.onPlayerMuted,
+                                modifier = Modifier.padding(start = Kivo.space(3), bottom = Kivo.space(1)),
+                            )
+                        }
+                    }
+                    ListItem(
+                        selected = isSelected,
+                        enabled = choice.enabled,
+                        onClick = { onSelect(choice.id) },
+                        modifier = if (focusFirst) Modifier.focusRequester(initial) else Modifier,
+                        headlineContent = { Text(choice.label, style = TvType.bodyStrong) },
+                        supportingContent = choice.detail?.let { { Text(it, style = TvType.small) } },
+                        leadingContent = if (marker == ChoiceMarker.Tick) {
+                            { Box(Modifier.size(20.dp)) { if (isSelected && choice.switch == null) KivoIconView(KivoIcon.Check, size = 20.dp) } }
+                        } else {
+                            null
+                        },
+                        trailingContent = when {
+                            choice.switch != null -> {
+                                { SettingSwitch(choice.switch, choice.enabled) }
+                            }
+                            marker == ChoiceMarker.Radio -> {
+                                { RadioButton(selected = isSelected, onClick = null, enabled = choice.enabled) }
+                            }
+                            else -> null
+                        },
+                        colors = ListItemStyle.colors(content = colors.onPlayer, disabled = colors.onPlayerMuted),
+                        shape = ListItemStyle.shape(),
+                        scale = ListItemStyle.scale(),
+                        border = ListItemStyle.border(),
+                    )
+                }
+            }
+        }
+    }
+    if (footer != null) Text(footer, style = TvType.small, color = colors.onPlayerMuted, modifier = Modifier.padding(start = Kivo.space(4), top = Kivo.space(3)))
+    LaunchedEffect(Unit) { focusWhenPlaced(initial) }
+}
+
+/**
+ * A menu raised over what opened it and no larger than it needs, at [alignment]
+ * of the screen less [margin], as the Samsung TV app's Filter and Sort are.
+ * Closed by Back, and focus returns to the control that opened it.
+ */
+@Composable
+fun MenuPopup(
+    onDismiss: () -> Unit,
+    alignment: Alignment,
+    margin: PaddingValues,
+    width: Dp,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val colors = Kivo.colors
+    val keys = rememberPanelKeys()
+    val shape = RoundedCornerShape(KivoTokens.Radius.lg)
+    Dialog(onDismissRequest = onDismiss, properties = panelProperties()) {
+        Box(Modifier.fillMaxSize().padding(margin), contentAlignment = alignment) {
+            Column(
+                Modifier
+                    .onPreviewKeyEvent { keys.dispatch(it.nativeKeyEvent) }
+                    .width(width)
+                    .background(colors.surfaceRaised, shape)
+                    .border(1.dp, colors.border, shape)
+                    .padding(MenuPadding),
+                content = content,
+            )
+        }
+    }
+}
+
+private val MenuPadding = 14.dp
+private val ChipGroupGap = 17.dp
+private val ChipGap = 7.dp
+private val MenuChipHeight = 26.dp
+
+/**
+ * [choices] as chips that wrap, grouped under their sections' headings, each of [ticked] outlined,
+ * in a menu; it scrolls when they don't all fit, and stays open as they're chosen.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun ColumnScope.ChipChoices(choices: List<Choice>, ticked: Set<String>, onSelect: (String) -> Unit) {
+    val colors = Kivo.colors
+    val initial = remember { FocusRequester() }
+    val scope = rememberCoroutineScope()
+    val groups = remember(choices) {
+        buildList<MutableList<Choice>> {
+            choices.forEach { if (lastOrNull()?.first()?.section == it.section) last() += it else add(mutableListOf(it)) }
+        }
+    }
+    KeepInView {
+        Column(
+            Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(ChipGroupGap),
+        ) {
+            groups.forEach { group ->
+                // Moving into a group brings its heading into view along with the chip.
+                val requester = remember { BringIntoViewRequester() }
+                Column(
+                    Modifier
+                        .bringIntoViewRequester(requester)
+                        .onFocusChanged { if (it.hasFocus) scope.launch { requester.bringIntoView() } },
+                    verticalArrangement = Arrangement.spacedBy(ChipGap),
+                ) {
+                    group.first().section?.takeIf { it.isNotBlank() }?.let {
+                        Text(it.uppercase(), style = TvType.smallStrong, color = colors.textMuted)
+                    }
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(ChipGap), verticalArrangement = Arrangement.spacedBy(ChipGap)) {
+                        group.forEach { choice ->
+                            key(choice.id) {
+                                Chip(
+                                    label = choice.label,
+                                    current = choice.id in ticked,
+                                    onClick = { onSelect(choice.id) },
+                                    modifier = if (choice === choices.first()) Modifier.focusRequester(initial) else Modifier,
+                                    height = MenuChipHeight,
                                 )
                             }
                         }
-                        ListItem(
-                            selected = isSelected,
-                            enabled = choice.enabled,
-                            onClick = { onSelect(choice.id) },
-                            modifier = if (focusFirst) Modifier.focusRequester(initial) else Modifier,
-                            headlineContent = { Text(choice.label, style = TvType.bodyStrong) },
-                            supportingContent = choice.detail?.let { { Text(it, style = TvType.small) } },
-                            leadingContent = if (marker == ChoiceMarker.Tick) {
-                                { Box(Modifier.size(20.dp)) { if (isSelected && choice.switch == null) KivoIconView(KivoIcon.Check, size = 20.dp) } }
-                            } else {
-                                null
-                            },
-                            trailingContent = when {
-                                choice.switch != null -> {
-                                    { SettingSwitch(choice.switch, choice.enabled) }
-                                }
-                                marker == ChoiceMarker.Radio -> {
-                                    { RadioButton(selected = isSelected, onClick = null, enabled = choice.enabled) }
-                                }
-                                else -> null
-                            },
-                            colors = ListItemStyle.colors(content = colors.onPlayer, disabled = colors.onPlayerMuted),
-                            shape = ListItemStyle.shape(),
-                            scale = ListItemStyle.scale(),
-                            border = ListItemStyle.border(),
-                        )
                     }
                 }
             }
         }
-        if (footer != null) Text(footer, style = TvType.small, color = colors.onPlayerMuted, modifier = Modifier.padding(start = Kivo.space(4), top = Kivo.space(3)))
-        LaunchedEffect(Unit) { focusWhenPlaced(initial) }
     }
+    LaunchedEffect(Unit) { focusWhenPlaced(initial) }
 }
 
 /** A setting's on-or-off switch, flipped by choosing what holds it, so it takes no input of its own. */
