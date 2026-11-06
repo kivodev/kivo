@@ -103,9 +103,9 @@ val LocalArtworkShown = staticCompositionLocalOf<State<Boolean>> { mutableStateO
 val LocalCardLight = staticCompositionLocalOf<State<Float>> { mutableFloatStateOf(1f) }
 
 /**
- * Whether [WorkCard]s show their captions yet, for a list whose rows or lines are built as it scrolls: measuring
- * a row's text costs as much as the rest of building it, so rows passing under a held key skip it,
- * with the captions' room kept. Null shows them at once, in only the room they need.
+ * Whether [WorkCard]s show their captions and played badges yet, for a list whose rows or lines are built as it
+ * scrolls: measuring a row's text costs as much as the rest of building it, so rows passing under a held key skip
+ * it, with the captions' room kept. Null shows them at once, in only the room they need.
  */
 val LocalCaptionsShown = staticCompositionLocalOf<State<Boolean>?> { null }
 
@@ -509,32 +509,7 @@ private fun Modifier.innerShadows(shape: Shape, shadows: List<Shadow>): Modifier
 internal fun BoxScope.CardOverlays(work: WorkSummary, shape: CardShape, showCode: Boolean = true) {
     val colors = Kivo.colors
     val landscape = shape == CardShape.Landscape
-    val unplayed = work.series?.unplayedCount ?: work.season?.unplayedCount
-    if (unplayed != null && unplayed > 0) {
-        Text(
-            unplayed.toString(),
-            style = TvType.smallStrong,
-            color = colors.onAccent,
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(Kivo.space(2))
-                .widthIn(min = 24.dp)
-                .clip(RoundedCornerShape(KivoTokens.Radius.full))
-                .background(colors.accent)
-                .padding(horizontal = Kivo.space(1)),
-        )
-    } else if (work.userState?.played == true) {
-        Box(
-            Modifier
-                .align(Alignment.TopEnd)
-                .padding(Kivo.space(2))
-                .size(24.dp)
-                .clip(RoundedCornerShape(KivoTokens.Radius.full))
-                .background(colors.accent),
-            contentAlignment = Alignment.Center,
-        ) { KivoIconView(KivoIcon.Check, size = 16.dp, tint = colors.onAccent) }
-    }
+    PlayedBadge(work)
     val code = work.episode?.takeIf { showCode }?.let(display::episodeCode)
     if (code != null) {
         // A poster has no dark frame to sit on, so there the code is a badge.
@@ -573,6 +548,42 @@ internal fun BoxScope.CardOverlays(work: WorkSummary, shape: CardShape, showCode
         )
     }
     progressOf(work)?.let { ProgressBar(it, Modifier.align(Alignment.BottomCenter)) }
+}
+
+/**
+ * A card's unplayed count or played check, shown with its captions ([LocalCaptionsShown]): a line of shows' counts
+ * costs a held key more than the rest of the line. Apart from [CardOverlays], so its arriving recomposes only it.
+ */
+@Composable
+private fun BoxScope.PlayedBadge(work: WorkSummary) {
+    if (LocalCaptionsShown.current?.value == false) return
+    val colors = Kivo.colors
+    val unplayed = work.series?.unplayedCount ?: work.season?.unplayedCount
+    if (unplayed != null && unplayed > 0) {
+        Text(
+            unplayed.toString(),
+            style = TvType.smallStrong,
+            color = colors.onAccent,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(Kivo.space(2))
+                .widthIn(min = 24.dp)
+                .clip(RoundedCornerShape(KivoTokens.Radius.full))
+                .background(colors.accent)
+                .padding(horizontal = Kivo.space(1)),
+        )
+    } else if (work.userState?.played == true) {
+        Box(
+            Modifier
+                .align(Alignment.TopEnd)
+                .padding(Kivo.space(2))
+                .size(24.dp)
+                .clip(RoundedCornerShape(KivoTokens.Radius.full))
+                .background(colors.accent),
+            contentAlignment = Alignment.Center,
+        ) { KivoIconView(KivoIcon.Check, size = 16.dp, tint = colors.onAccent) }
+    }
 }
 
 /** The share of a work played, for its progress bar; null when it isn't in progress. */
