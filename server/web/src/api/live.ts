@@ -221,7 +221,7 @@ function openSocket(token: string | undefined): WebSocket {
   return new WebSocket(eventsUrl(), ["kivo", `kivo-bearer.${token}`]);
 }
 
-export function eventsUrl(): string {
+function eventsUrl(): string {
   const url = new URL(apiBaseUrl() + apiPaths.events);
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   return url.href;
