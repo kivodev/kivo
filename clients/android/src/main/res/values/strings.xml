@@ -28,12 +28,10 @@
     <string name="connect">Connect</string>
     <string name="connecting">Connecting…</string>
     <string name="back">Back</string>
-    <string name="sign_in_to_kivo_on">Sign in to Kivo on “%1$s”</string>
-    <string name="link_code_scan">Scan with the Kivo app on your phone, or open</string>
-    <string name="link_code_enter">and enter:</string>
+    <string name="link_code_hint">On a signed-in device, scan the QR code, or open Link a device and enter this code.</string>
     <string name="sign_in_declined">Sign-in was declined.</string>
     <string name="couldnt_get_sign_in_code">Couldn\'t get a sign-in code.</string>
-    <string name="sign_in_with_password">Sign in with password instead</string>
+    <string name="sign_in_with_password">Sign in with password</string>
     <string name="sign_in_to">Sign in to %1$s</string>
     <string name="username">Username</string>
     <string name="password">Password</string>
@@ -81,7 +79,7 @@
     <string name="empty_nothing_yet_sentence">Items appear here as libraries are scanned.</string>
     <string name="exit_kivo">Exit Kivo?</string>
     <string name="no">No</string>
-    <string name="yes">Yes</string>
+    <string name="exit">Exit</string>
 
     <!-- Cards -->
     <string name="badge_identifying">Identifying</string>
@@ -140,6 +138,11 @@
     <string name="filter_in_progress">In progress</string>
     <string name="played">Watched</string>
     <string name="favorites">Favorites</string>
+    <string name="decade">Decade</string>
+    <!-- A decade by its first year: "1990s". -->
+    <string name="decade_label">%1$ds</string>
+    <string name="genre">Genre</string>
+    <string name="content_rating">Content rating</string>
     <string name="resolution">Resolution</string>
     <string name="dynamic_range">Dynamic range</string>
     <string name="clear_filters">Clear filters</string>
@@ -179,6 +182,10 @@
     <string name="automatic">Automatic</string>
     <string name="automatic_track">Automatic (%1$s)</string>
     <string name="more_actions">More actions</string>
+    <!-- At the end of a description that doesn't fit: OK opens the full text. -->
+    <string name="more">More</string>
+    <!-- A picker among the episode page's buttons: "Audio: English 5.1". -->
+    <string name="picker_value">%1$s: %2$s</string>
     <string name="off">Off</string>
     <!-- Subtitle search: the row under Subtitles that opens it, the panel's title, its rows' flag and its states. -->
     <string name="search_subtitles">Search subtitles…</string>
@@ -192,6 +199,10 @@
     <string name="play_episode">Play S%1$d E%2$d</string>
     <string name="years_range">%1$d to %2$d</string>
     <string name="season_n">Season %1$d</string>
+    <!-- A season's pill on its series' page. -->
+    <string name="season_short">S%1$d</string>
+    <!-- On the card of the episode whose page this is. -->
+    <string name="viewing">Viewing</string>
     <string name="specials">Specials</string>
     <string name="episodes">Episodes</string>
     <string name="previous_episode">Previous episode</string>
@@ -220,6 +231,7 @@
     </plurals>
     <string name="person_nothing_to_watch">No titles available</string>
     <string name="key_space">Space</string>
+    <string name="key_clear">Clear</string>
 
     <!-- Settings (the web's SettingsScreen) -->
     <string name="settings_account">Account</string>
@@ -346,6 +358,8 @@
     <string name="info_why">Why: %1$s</string>
     <string name="info_limit">%1$s %2$s; this device: %3$s</string>
     <string name="info_limit_undeclared">%1$s %2$s</string>
+    <string name="info_limit_channels">%1$s channels; this device plays %2$s</string>
+    <string name="info_limit_channels_undeclared">%1$s channels</string>
     <string name="couldnt_play">Couldn\'t play this.</string>
     <string name="stream_limit_title">Stream limit reached</string>
     <string name="playback_stopped">Playback was stopped.</string>

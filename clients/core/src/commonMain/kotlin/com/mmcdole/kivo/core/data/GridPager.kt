@@ -199,7 +199,10 @@ class GridPager<T : Any> internal constructor(
         far.sortedByDescending { abs(it - middle) }.take(over).forEach { pages.remove(it) }
     }
 
+    /** Publishes the grid as read so far, unless it's as last published, as when a client asks again for pages it has. */
     private fun publish() {
+        val shown = mutableState.value
+        if (shown.total == total && shown.letters == letters && shown.pages == pages) return
         mutableState.value = GridPages(total, letters, pages.toMap(), pageSize)
     }
 

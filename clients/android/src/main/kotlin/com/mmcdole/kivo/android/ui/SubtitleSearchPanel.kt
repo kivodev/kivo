@@ -118,7 +118,7 @@ fun SubtitleSearchPanel(
                             } else {
                                 null
                             },
-                            colors = ListItemStyle.colors(content = colors.onPlayer, focused = colors.onPlayer, disabled = colors.onPlayerMuted),
+                            colors = ListItemStyle.colors(content = colors.onPlayer, disabled = colors.onPlayerMuted),
                             shape = ListItemStyle.shape(),
                             scale = ListItemStyle.scale(),
                             border = ListItemStyle.border(),

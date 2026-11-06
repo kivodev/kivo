@@ -7,6 +7,8 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,9 +17,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,6 +41,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -43,6 +49,7 @@ import androidx.tv.material3.Text
 import com.mmcdole.kivo.android.AppGraph
 import com.mmcdole.kivo.android.R
 import com.mmcdole.kivo.android.theme.Kivo
+import com.mmcdole.kivo.android.theme.KivoTokens
 import com.mmcdole.kivo.android.theme.TvType
 import com.mmcdole.kivo.android.ui.EmptyState
 import com.mmcdole.kivo.android.ui.FocusOnOpen
@@ -95,14 +102,13 @@ fun SignInScreen(graph: AppGraph, server: SavedServer?) {
     }
 
     // A form sits at the top, clear of the keyboard, which opens over the lower half of the screen.
-    val alignment = if (step is Step.Code) Alignment.Center else Alignment.TopStart
-    Box(Modifier.fillMaxSize().padding(horizontal = 96.dp, vertical = 48.dp), contentAlignment = alignment) {
+    val alignment = if (step is Step.Code) Alignment.Center else Alignment.TopCenter
+    Box(Modifier.fillMaxSize().padding(top = if (step is Step.Code) 0.dp else FormTop), contentAlignment = alignment) {
         when (val s = step) {
-            Step.Finding -> Finding(graph, onChoose = { step = Step.Code(it) }, onAddress = { step = Step.Address })
-            Step.Address -> Address(graph, onFound = { step = Step.Code(it) }, onBack = { step = Step.Finding })
+            Step.Finding -> FormPanel { Finding(graph, onChoose = { step = Step.Code(it) }, onAddress = { step = Step.Address }) }
+            Step.Address -> FormPanel { Address(graph, onFound = { step = Step.Code(it) }, onBack = { step = Step.Finding }) }
             is Step.Code -> key(s.server) {
                 LinkCode(
-                    deviceName = graph.name,
                     serverName = s.server.info.name,
                     link = { graph.core.signInByLink(s.server, graph.name) },
                     onSignedIn = { graph.open(it) },
@@ -110,7 +116,7 @@ fun SignInScreen(graph: AppGraph, server: SavedServer?) {
                     onChangeServer = { step = Step.Finding },
                 )
             }
-            is Step.Password -> Password(graph, s.server, onBack = { step = Step.Code(s.server) })
+            is Step.Password -> FormPanel { Password(graph, s.server, onBack = { step = Step.Code(s.server) }) }
         }
     }
 }
@@ -233,14 +239,14 @@ private fun Address(graph: AppGraph, onFound: (FoundServer) -> Unit, onBack: () 
 }
 
 /**
- * The sign-in code: a QR code of its link, the link's address and the code,
- * until a signed-in device answers it. [link] starts a device code; a code
+ * The sign-in code, in a panel: the logo, the heading, how to use it and the
+ * code, with Sign in with password below, focused on arrival, and a QR code
+ * of its link at the right, until a signed-in device answers it. [link] starts a device code; a code
  * that expires is replaced, and one denied says so over its replacement.
  * [onSignedIn] opens the server's session once a code is approved.
  */
 @Composable
 internal fun LinkCode(
-    deviceName: String,
     serverName: String,
     link: () -> Flow<LinkProgress>,
     onSignedIn: suspend (KivoSession) -> Unit,
@@ -284,35 +290,46 @@ internal fun LinkCode(
         return
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(Kivo.space(6))) {
-        Column {
+    val code = waiting
+    Row(
+        Modifier
+            .width(CodePanelWidth)
+            .heightIn(min = CodePanelHeight)
+            .signInPanel()
+            .padding(CodePanelPadding),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.width(CodeStepsWidth)) {
             Lockup(Modifier.padding(bottom = LockupGap))
-            Text(stringResource(R.string.sign_in_to_kivo_on, deviceName), style = TvType.title, color = Kivo.colors.text)
+            Text(stringResource(R.string.sign_in_title), style = TvType.title, color = Kivo.colors.text)
+            Spacer(Modifier.height(CodeStepsGap))
             if (declined) {
                 Text(stringResource(R.string.sign_in_declined), style = TvType.body, color = Kivo.colors.danger, modifier = Modifier.testTag("signInDeclined"))
+                Spacer(Modifier.height(CodeStepsGap))
             }
-        }
-        val code = waiting
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (code != null) QrCode(code.linkUrl, QrSize)
-            Spacer(Modifier.width(Kivo.space(12)))
-            Column(verticalArrangement = Arrangement.spacedBy(Kivo.space(2))) {
+            Text(stringResource(R.string.link_code_hint), style = TvType.body, color = Kivo.colors.textMuted)
+            Spacer(Modifier.height(CodeStepsGap))
+            // While the code is on its way its place is kept, so nothing moves as it arrives.
+            Box(Modifier.height(CodeHeight), contentAlignment = Alignment.CenterStart) {
                 if (code == null) {
                     Text(stringResource(R.string.loading), style = TvType.body, color = Kivo.colors.textMuted)
                 } else {
-                    Text(stringResource(R.string.link_code_scan), style = TvType.item, color = Kivo.colors.textMuted)
-                    Text(code.linkUrl.substringBefore('?').substringAfter("://"), style = TvType.heading, color = Kivo.colors.text)
-                    Spacer(Modifier.height(Kivo.space(2)))
-                    Text(stringResource(R.string.link_code_enter), style = TvType.item, color = Kivo.colors.textMuted)
-                    Text(groupedCode(code.code), style = TvType.display, color = Kivo.colors.accent, modifier = Modifier.testTag("linkCode"))
-                    Text(serverName, style = TvType.small, color = Kivo.colors.textSubtle)
+                    Text(groupedCode(code.code), style = CodeStyle, color = Kivo.colors.text, maxLines = 1, modifier = Modifier.testTag("linkCode"))
                 }
             }
+            Box(Modifier.height(CodeActionsGap), contentAlignment = Alignment.CenterStart) {
+                Text(serverName, style = TvType.small, color = Kivo.colors.textSubtle, maxLines = 1)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(Kivo.space(3))) {
+                KivoButton(stringResource(R.string.sign_in_with_password), onPassword, Modifier.focusRequester(password).height(CodeActionHeight).widthIn(min = PasswordWidth))
+                KivoButton(stringResource(R.string.change_server), onChangeServer, Modifier.height(CodeActionHeight))
+            }
         }
-        Spacer(Modifier.height(Kivo.space(2)))
-        Row(horizontalArrangement = Arrangement.spacedBy(Kivo.space(3))) {
-            KivoButton(stringResource(R.string.sign_in_with_password), onPassword, Modifier.focusRequester(password))
-            KivoButton(stringResource(R.string.change_server), onChangeServer)
+        Spacer(Modifier.width(CodeQrGap))
+        if (code != null) {
+            QrCode(code.linkUrl, QrSize)
+        } else {
+            Box(Modifier.size(QrSize).background(Kivo.colors.surfaceRaised, RoundedCornerShape(KivoTokens.Radius.md)))
         }
     }
     FocusOnOpen(password)
@@ -384,14 +401,67 @@ private fun Lockup(modifier: Modifier = Modifier) {
     Image(painterResource(R.drawable.logo_lockup), stringResource(R.string.app_name), modifier.height(LockupHeight))
 }
 
+/** A panel of the sign-in steps: the surface, its edge and its corners, flat. */
+@Composable
+private fun Modifier.signInPanel(): Modifier {
+    val shape = RoundedCornerShape(KivoTokens.Radius.lg)
+    return background(Kivo.colors.surface, shape).border(1.dp, Kivo.colors.border, shape)
+}
+
+/** A form's panel, under [FormTop]. */
+@Composable
+private fun FormPanel(content: @Composable () -> Unit) {
+    Box(Modifier.width(FormWidth).signInPanel().padding(FormPadding)) { content() }
+}
+
+/** How far a form's panel sits from the top of the screen. */
+private val FormTop = 24.dp
+
+/** A form's panel's width. */
+private val FormWidth = 640.dp
+
+/** A form's panel's padding, smaller than the code's, to leave a form clear of the keyboard. */
+private val FormPadding = 32.dp
+
 /** The logo's height, read from across the room without outweighing the title. */
-private val LockupHeight = Kivo.space(9)
+private val LockupHeight = 24.5.dp
 
 /** The space between the logo and the title under it. */
-private val LockupGap = Kivo.space(6)
+private val LockupGap = 21.dp
+
+// The code's panel on the TV canvas, a dp being two of the Samsung TV app's pixels.
+
+/** The code's panel's size: the same whether the code has come yet or not; a declined code's line can grow it. */
+private val CodePanelWidth = 785.dp
+private val CodePanelHeight = 370.5.dp
+private val CodePanelPadding = 42.5.dp
+
+/** The column of the logo, the heading, the steps and the actions. */
+private val CodeStepsWidth = 420.dp
+
+/** The gap between the heading, each step and the code. */
+private val CodeStepsGap = 21.dp
+
+/** The code's line. */
+private val CodeHeight = 44.dp
+
+/** The code in monospace, so its letters and digits can't be mistaken for each other across the room. */
+private val CodeStyle = TvType.display.copy(fontFamily = FontFamily.Monospace, fontWeight = KivoTokens.FontWeights.semibold)
+
+/** The gap between the code and the actions under it, which holds the server's name. */
+private val CodeActionsGap = 42.dp
+
+/** The actions' height. */
+private val CodeActionHeight = 42.dp
+
+/** Sign in with password's width at least. */
+private val PasswordWidth = 184.dp
+
+/** The gap between the steps and the QR code. */
+private val CodeQrGap = 56.dp
 
 /** The sign-in code's QR code's size: big enough to scan from a seat across the room. */
-private val QrSize = 240.dp
+private val QrSize = 224.dp
 
 /** The saved server answers at none of its addresses: retrying, with Retry now and Change server. */
 @Composable

@@ -4,7 +4,7 @@ import android.graphics.Bitmap
 import android.util.LruCache
 import android.view.KeyEvent as AndroidKeyEvent
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
@@ -23,23 +23,28 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.draw.innerShadow
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.key.key
@@ -60,8 +65,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.tv.material3.Card
-import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
@@ -78,6 +81,11 @@ import com.mmcdole.kivo.api.models.MovieInfo
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.display.episodeCode
 import com.mmcdole.kivo.core.display.timeLeft
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 
 /** The signed-in server, for artwork and media URLs. */
@@ -85,6 +93,51 @@ val LocalSession = staticCompositionLocalOf<ServerSession> { error("no server se
 
 /** Whether artwork may load: until it may, it shows its blurhash, as for cards a list is scrolling past. */
 val LocalArtworkShown = staticCompositionLocalOf<State<Boolean>> { mutableStateOf(true) }
+
+/**
+ * How much of a focused card's light shows, from 0 to 1. A screen whose
+ * focus a held key moves turns it off until focus rests, then fades it
+ * back: a Chromecast with Google TV can't draw a card's blurs at a held
+ * key's pace, and a layer with no alpha isn't drawn at all.
+ */
+val LocalCardLight = staticCompositionLocalOf<State<Float>> { mutableFloatStateOf(1f) }
+
+/**
+ * Whether [WorkCard]s show their captions and played badges yet, for a list whose rows or lines are built as it
+ * scrolls: measuring a row's text costs as much as the rest of building it, so rows passing under a held key skip
+ * it, with the captions' room kept. Null shows them at once, in only the room they need.
+ */
+val LocalCaptionsShown = staticCompositionLocalOf<State<Boolean>?> { null }
+
+/** How long focus stays on a card before it counts as resting. */
+private const val FOCUS_REST_MS = 300L
+
+/**
+ * A [LocalCardLight] for a list of cards, whose [focused] card it follows: it goes out at once as focus moves on
+ * before resting, as with a held key, and fades in as focus rests. Read only to place the light, so it recomposes
+ * nothing as it moves.
+ */
+@Composable
+fun rememberCardLight(focused: () -> Any?): State<Float> {
+    val follow = rememberUpdatedState(focused)
+    val browsing = remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        var resting = true
+        // The first card to take focus isn't a move.
+        snapshotFlow { follow.value() }.filterNotNull().drop(1).collectLatest {
+            if (!resting) browsing.value = true
+            resting = false
+            delay(FOCUS_REST_MS)
+            browsing.value = false
+            resting = true
+        }
+    }
+    val light = remember { Animatable(1f) }
+    LaunchedEffect(Unit) {
+        snapshotFlow { browsing.value }.collectLatest { if (it) light.snapTo(0f) else light.animateTo(1f, fadeSpec()) }
+    }
+    return remember { light.asState() }
+}
 
 /** A card's shape: poster for movies, series and collections, and episodes in Favorites; landscape for episodes and videos; square for books. */
 enum class CardShape(val aspect: Float) {
@@ -122,7 +175,7 @@ private val CardArtworkMaxWidth = 400.dp
 
 /** What [Artwork] shows in its frame: the image over its blurhash, or without one the title. */
 @Composable
-private fun ArtworkImage(image: ImageRef?, title: String, width: Dp) {
+internal fun ArtworkImage(image: ImageRef?, title: String, width: Dp) {
     if (image == null) {
         Text(
             title,
@@ -167,7 +220,7 @@ private fun ArtworkImage(image: ImageRef?, title: String, width: Dp) {
 }
 
 /** Blurhashes decoded once each, small, as the same artwork shows again and again while lists scroll. */
-private object BlurhashCache {
+internal object BlurhashCache {
     private const val SIZE = 32
     private val bitmaps = LruCache<String, ImageBitmap>(256)
 
@@ -202,7 +255,7 @@ fun labelledTitle(title: String, movie: MovieInfo?): String = movie?.edition?.le
  * The card for a work, the same everywhere it appears: artwork
  * with progress, a played check or unplayed count, an episode's code, at
  * most one status badge; the title and a line under it.
- * Focus adds nothing but the ring and scale. A long press of OK, or the
+ * Focus adds nothing but the light and scale. A long press of OK, or the
  * Menu key, opens its menu. A null [work], one still loading, is the bare
  * card: focusable, so a grid scrolls on into it, and keeping focus as its
  * work arrives.
@@ -217,25 +270,41 @@ fun WorkCard(
 ) {
     val menu = LocalWorkMenu.current
     val title = work?.let(::cardTitle).orEmpty()
-    Column(Modifier.width(width)) {
+    val focus = rememberCardFocus()
+    Column(Modifier.width(width).raisedOnFocus()) {
         CardSurface(
             onClick = onClick,
             onLongClick = work?.let { { menu(it) } },
             modifier = (if (work == null) modifier.testTag("placeholder") else modifier.menuKey(work, menu).testTag("card:${work.title}"))
                 .aspectRatio(shape.aspect),
+            focus = focus,
         ) {
             if (work != null) {
                 ArtworkImage(cardImage(work, shape), title, width)
                 CardOverlays(work, shape)
             }
         }
-        if (work != null) {
-            val colors = Kivo.colors
-            Spacer(Modifier.height(CaptionGap))
-            Text(title, style = TvType.smallStrong, color = colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            cardSubtitle(work)?.let {
-                Text(it, style = TvType.small, color = colors.textMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
+        if (work != null) WorkCaption(work, title, focus)
+    }
+}
+
+/** Apart from [WorkCard], so its captions arriving recomposes only them. */
+@Composable
+private fun WorkCaption(work: WorkSummary, title: String, focus: CardFocus) {
+    val shown = LocalCaptionsShown.current
+    val room = shown?.let {
+        with(LocalDensity.current) { CaptionGap + TvType.smallStrong.lineHeight.toDp() + TvType.small.lineHeight.toDp() }
+    }
+    if (shown?.value == false) {
+        Spacer(Modifier.height(room!!))
+        return
+    }
+    val colors = Kivo.colors
+    Column(Modifier.cardCaption(focus).then(if (room != null) Modifier.height(room) else Modifier)) {
+        Spacer(Modifier.height(CaptionGap))
+        Text(title, style = TvType.smallStrong, color = colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        cardSubtitle(work)?.let {
+            Text(it, style = TvType.small, color = colors.textMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -247,20 +316,24 @@ fun WorkCard(
  */
 @Composable
 fun CollectionCard(collection: CollectionSummary?, width: Dp, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Column(Modifier.width(width)) {
+    val focus = rememberCardFocus()
+    Column(Modifier.width(width).raisedOnFocus()) {
         CardSurface(
             onClick = onClick,
             onLongClick = null,
             modifier = (if (collection == null) modifier.testTag("placeholder") else modifier.testTag("card:${collection.name}"))
                 .aspectRatio(CardShape.Poster.aspect),
+            focus = focus,
         ) {
             if (collection != null) ArtworkImage(collection.images.poster, collection.name, width)
         }
         if (collection != null) {
             val colors = Kivo.colors
-            Spacer(Modifier.height(CaptionGap))
-            Text(collection.name, style = TvType.smallStrong, color = colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(collectionCount(collection.workCount, collection.source), style = TvType.small, color = colors.textMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Column(Modifier.cardCaption(focus)) {
+                Spacer(Modifier.height(CaptionGap))
+                Text(collection.name, style = TvType.smallStrong, color = colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(collectionCount(collection.workCount, collection.source), style = TvType.small, color = colors.textMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
         }
     }
 }
@@ -277,7 +350,7 @@ fun collectionCount(count: Int, source: String?): String =
 @Composable
 fun SeeAllCard(detail: String?, shape: CardShape, width: Dp, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val colors = Kivo.colors
-    CardSurface(onClick = onClick, onLongClick = null, modifier = modifier.width(width).aspectRatio(shape.aspect).testTag("seeAll")) {
+    CardSurface(onClick = onClick, onLongClick = null, modifier = modifier.raisedOnFocus().width(width).aspectRatio(shape.aspect).testTag("seeAll")) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(Kivo.space(2))) {
             Text(stringResource(R.string.see_all), style = TvType.smallStrong, color = colors.text, textAlign = TextAlign.Center)
             if (detail != null) {
@@ -287,54 +360,107 @@ fun SeeAllCard(detail: String?, shape: CardShape, width: Dp, onClick: () -> Unit
     }
 }
 
+/** A card's corners. */
+private val CardCorners = RoundedCornerShape(KivoTokens.Radius.md)
+
 /**
- * A card's face, as the TV's own cards behave: focus grows it and rings
- * it, OK clicks it as it comes up, and holding OK long-clicks it instead.
- * Its content is clipped to the card's corners, over the placeholder
- * colour. Focus and the scale change only how it's drawn, so neither
- * recomposes it.
+ * A card's focus, which its face and its caption share: how far its light
+ * has come on, from 0 to 1, which the glow, the sheen and the caption's
+ * shift follow, and its scale, which an OK press dips. Both ease as the
+ * web TV's do and are read only as the card is drawn, so focus moving
+ * recomposes nothing.
+ */
+@Stable
+class CardFocus internal constructor(private val scope: CoroutineScope, private val rests: () -> Boolean = { false }) {
+    internal val light = Animatable(0f)
+    internal val scale = Animatable(1f)
+    private var focused = false
+
+    /** Whether OK held on the card long-clicked, so its release doesn't click as well. */
+    internal var longPressed = false
+
+    internal fun focus(on: Boolean) {
+        if (on == focused) return
+        focused = on
+        settle()
+    }
+
+    /** Eases to how the card looks now: lit and grown with focus, unless it [rests] with focus on a stop of its own. */
+    internal fun settle() {
+        val lit = focused && !rests()
+        ease(light, if (lit) 1f else 0f)
+        scaleTo(if (lit) KivoTokens.Tv.cardFocusScale else 1f)
+    }
+
+    /** Back up from an OK press's dip, to the size it has with focus. */
+    internal fun scaleUp() = scaleTo(if (rests()) 1f else KivoTokens.Tv.cardFocusScale)
+
+    internal fun scaleTo(target: Float, millis: Int = KivoTokens.Duration.fadeMs) = ease(scale, target, millis)
+
+    private fun ease(value: Animatable<Float, AnimationVector1D>, target: Float, millis: Int = KivoTokens.Duration.fadeMs) {
+        scope.launch { value.animateTo(target, tween(millis, easing = KivoTokens.Ease.out)) }
+    }
+}
+
+@Composable
+fun rememberCardFocus(): CardFocus {
+    val scope = rememberCoroutineScope()
+    return remember { CardFocus(scope) }
+}
+
+/** A card's focus for a card with a second stop: while [rests], focus leaves its face as it is without focus. */
+@Composable
+internal fun rememberCardFocus(rests: () -> Boolean): CardFocus {
+    val scope = rememberCoroutineScope()
+    return remember { CardFocus(scope, rests) }
+}
+
+/** A card's caption, which moves down clear of the focused card's grown artwork, at its own size so it stays sharp. */
+fun Modifier.cardCaption(focus: CardFocus): Modifier = graphicsLayer {
+    translationY = KivoTokens.Tv.cardCaptionShift.toPx() * focus.light.value
+}
+
+/**
+ * A card's face, as the web TV's cards behave: focus grows it, lit by a
+ * glow around it over a deep shadow and a sheen across its top; OK clicks
+ * it as it comes up, and holding OK long-clicks it instead. Its content is
+ * clipped to [shape], over the placeholder colour. Give the card's whole
+ * column [raisedOnFocus], so the glow lies over its neighbours, and its
+ * caption [cardCaption] with the same [focus].
  */
 @Composable
-private fun CardSurface(
+internal fun CardSurface(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    shape: Shape = CardCorners,
+    focus: CardFocus = rememberCardFocus(),
     content: @Composable BoxScope.() -> Unit,
 ) {
     val colors = Kivo.colors
-    val scope = rememberCoroutineScope()
-    val scale = remember { Animatable(1f) }
-    val state = remember { CardState() }
-    fun scaleTo(target: Float, millis: Int) {
-        scope.launch { scale.animateTo(target, tween(millis, easing = LinearOutSlowInEasing)) }
-    }
     Box(
         modifier
-            .onFocusChanged {
-                if (it.isFocused == state.focused) return@onFocusChanged
-                state.focused = it.isFocused
-                if (it.isFocused) scaleTo(KivoTokens.Tv.cardFocusScale, 300) else scaleTo(1f, 500)
-            }
+            .onFocusChanged { focus.focus(it.isFocused) }
             .onKeyEvent { event ->
                 if (event.key.nativeKeyCode !in OkKeys) return@onKeyEvent false
                 val key = event.nativeKeyEvent
                 when {
                     key.action == AndroidKeyEvent.ACTION_DOWN && key.repeatCount == 0 -> {
                         // A long press's release goes to the menu it opened, so each press starts afresh.
-                        state.longPressed = false
-                        scaleTo(1f, 120)
+                        focus.longPressed = false
+                        focus.scaleTo(1f, PressMs)
                     }
                     key.action == AndroidKeyEvent.ACTION_DOWN && key.repeatCount == 1 && onLongClick != null -> {
-                        state.longPressed = true
-                        scaleTo(KivoTokens.Tv.cardFocusScale, 300)
+                        focus.longPressed = true
+                        focus.scaleUp()
                         onLongClick()
                     }
                     key.action == AndroidKeyEvent.ACTION_UP -> {
-                        if (!state.longPressed) {
-                            scaleTo(KivoTokens.Tv.cardFocusScale, 300)
+                        if (!focus.longPressed) {
+                            focus.scaleUp()
                             onClick()
                         }
-                        state.longPressed = false
+                        focus.longPressed = false
                     }
                 }
                 true
@@ -346,63 +472,50 @@ private fun CardSurface(
             }
             .focusable()
             .graphicsLayer {
-                scaleX = scale.value
-                scaleY = scale.value
-            }
-            .drawWithContent {
-                drawContent()
-                if (state.focused) {
-                    drawRoundRect(
-                        colors.focus,
-                        cornerRadius = CornerRadius(KivoTokens.Radius.md.toPx()),
-                        style = Stroke(KivoTokens.Tv.focusRingWidth.toPx()),
-                    )
-                }
-            }
-            .clip(RoundedCornerShape(KivoTokens.Radius.md))
-            .background(colors.placeholder),
-        contentAlignment = Alignment.Center,
-        content = content,
-    )
+                scaleX = focus.scale.value
+                scaleY = focus.scale.value
+            },
+    ) {
+        // The light is drawn once, each blur rendered to a bitmap Compose keeps for the card's size and shape, and
+        // fades on its layer's alpha alone, so it costs the GPU a few bitmap draws and the main thread nothing.
+        val light = LocalCardLight.current
+        Box(Modifier.matchParentSize().cardLight(focus, light).dropShadows(shape, CardGlow))
+        Box(Modifier.fillMaxSize().clip(shape).background(colors.placeholder), contentAlignment = Alignment.Center, content = content)
+        Box(Modifier.matchParentSize().cardLight(focus, light).innerShadows(shape, KivoTokens.Tv.CardFocus.sheen))
+    }
 }
 
-/** Whether a card has focus, which draws its ring, and whether OK held on it long-clicked. */
-private class CardState {
-    var focused by mutableStateOf(false)
-    var longPressed = false
+/** The web TV's glow and deep shadow behind a focused card, the glow's alpha 0.38 to its 0.32. */
+private val CardGlow = KivoTokens.Tv.CardFocus.glow.let { (glow, shadow) ->
+    listOf(Shadow(radius = glow.radius, color = glow.color.copy(alpha = 0.38f), spread = glow.spread, offset = glow.offset), shadow)
 }
+
+/** How long an OK press takes to dip a card. */
+private const val PressMs = 120
+
+/**
+ * A layer of a card's light, as on as the card's focus and as the screen's [light] allows. Its alpha falls on each
+ * shadow drawn, not on a buffer of them all.
+ */
+private fun Modifier.cardLight(focus: CardFocus, light: State<Float>): Modifier = graphicsLayer {
+    alpha = focus.light.value * light.value
+    compositingStrategy = CompositingStrategy.ModulateAlpha
+}
+
+/** [shadows] behind this, the first on top. */
+private fun Modifier.dropShadows(shape: Shape, shadows: List<Shadow>): Modifier =
+    shadows.asReversed().fold(this) { modifier, shadow -> modifier.dropShadow(shape, shadow) }
+
+/** [shadows] inside this, the first on top. */
+private fun Modifier.innerShadows(shape: Shape, shadows: List<Shadow>): Modifier =
+    shadows.asReversed().fold(this) { modifier, shadow -> modifier.innerShadow(shape, shadow) }
 
 @Composable
-private fun BoxScope.CardOverlays(work: WorkSummary, shape: CardShape) {
+internal fun BoxScope.CardOverlays(work: WorkSummary, shape: CardShape, showCode: Boolean = true) {
     val colors = Kivo.colors
     val landscape = shape == CardShape.Landscape
-    val unplayed = work.series?.unplayedCount ?: work.season?.unplayedCount
-    if (unplayed != null && unplayed > 0) {
-        Text(
-            unplayed.toString(),
-            style = TvType.smallStrong,
-            color = colors.onAccent,
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(Kivo.space(2))
-                .widthIn(min = 24.dp)
-                .clip(RoundedCornerShape(KivoTokens.Radius.full))
-                .background(colors.accent)
-                .padding(horizontal = Kivo.space(1)),
-        )
-    } else if (work.userState?.played == true) {
-        Box(
-            Modifier
-                .align(Alignment.TopEnd)
-                .padding(Kivo.space(2))
-                .size(24.dp)
-                .clip(RoundedCornerShape(KivoTokens.Radius.full))
-                .background(colors.accent),
-            contentAlignment = Alignment.Center,
-        ) { KivoIconView(KivoIcon.Check, size = 16.dp, tint = colors.onAccent) }
-    }
-    val code = work.episode?.let(display::episodeCode)
+    PlayedBadge(work)
+    val code = work.episode?.takeIf { showCode }?.let(display::episodeCode)
     if (code != null) {
         // A poster has no dark frame to sit on, so there the code is a badge.
         Text(
@@ -440,6 +553,42 @@ private fun BoxScope.CardOverlays(work: WorkSummary, shape: CardShape) {
         )
     }
     progressOf(work)?.let { ProgressBar(it, Modifier.align(Alignment.BottomCenter)) }
+}
+
+/**
+ * A card's unplayed count or played check, shown with its captions ([LocalCaptionsShown]): a line of shows' counts
+ * costs a held key more than the rest of the line. Apart from [CardOverlays], so its arriving recomposes only it.
+ */
+@Composable
+private fun BoxScope.PlayedBadge(work: WorkSummary) {
+    if (LocalCaptionsShown.current?.value == false) return
+    val colors = Kivo.colors
+    val unplayed = work.series?.unplayedCount ?: work.season?.unplayedCount
+    if (unplayed != null && unplayed > 0) {
+        Text(
+            unplayed.toString(),
+            style = TvType.smallStrong,
+            color = colors.onAccent,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(Kivo.space(2))
+                .widthIn(min = 24.dp)
+                .clip(RoundedCornerShape(KivoTokens.Radius.full))
+                .background(colors.accent)
+                .padding(horizontal = Kivo.space(1)),
+        )
+    } else if (work.userState?.played == true) {
+        Box(
+            Modifier
+                .align(Alignment.TopEnd)
+                .padding(Kivo.space(2))
+                .size(24.dp)
+                .clip(RoundedCornerShape(KivoTokens.Radius.full))
+                .background(colors.accent),
+            contentAlignment = Alignment.Center,
+        ) { KivoIconView(KivoIcon.Check, size = 16.dp, tint = colors.onAccent) }
+    }
 }
 
 /** The share of a work played, for its progress bar; null when it isn't in progress. */
@@ -495,19 +644,24 @@ fun RowTitle(text: String, modifier: Modifier = Modifier) {
     Text(text, style = TvType.large, color = Kivo.colors.text, modifier = modifier.fillMaxWidth())
 }
 
+private val PersonCardWidth = 112.dp
+
 /** A person's round photo or initial, name and [detail], such as their character or "Actor · 23 titles"; it opens their page. */
 @Composable
 fun PersonCard(name: String, image: ImageRef?, detail: String?, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Column(Modifier.width(112.dp)) {
-        Card(
+    val focus = rememberCardFocus()
+    Column(Modifier.width(PersonCardWidth).raisedOnFocus()) {
+        CardSurface(
             onClick = onClick,
-            modifier = modifier,
-            shape = CardDefaults.shape(RoundedCornerShape(KivoTokens.Radius.full)),
-            border = CardDefaults.border(focusedBorder = focusRing(RoundedCornerShape(KivoTokens.Radius.full))),
-            scale = CardDefaults.scale(focusedScale = KivoTokens.Tv.cardFocusScale),
-        ) { Artwork(image, name.take(1), 1f, 112.dp, corners = KivoTokens.Radius.full) }
-        Text(name, style = TvType.smallStrong, color = Kivo.colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = Kivo.space(2)))
-        detail?.let { Text(it, style = TvType.small, color = Kivo.colors.textMuted, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            onLongClick = null,
+            modifier = modifier.aspectRatio(1f),
+            shape = RoundedCornerShape(KivoTokens.Radius.full),
+            focus = focus,
+        ) { Artwork(image, name.take(1), 1f, PersonCardWidth, corners = KivoTokens.Radius.full) }
+        Column(Modifier.cardCaption(focus)) {
+            Text(name, style = TvType.smallStrong, color = Kivo.colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = Kivo.space(2)))
+            detail?.let { Text(it, style = TvType.small, color = Kivo.colors.textMuted, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        }
     }
 }
 

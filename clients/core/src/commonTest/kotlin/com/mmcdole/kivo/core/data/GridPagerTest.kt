@@ -25,6 +25,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
 
@@ -136,6 +137,18 @@ class GridPagerTest {
         paged.load(1_300, 1_379)
         runCurrent()
         assertEquals(4, library.asked().size, "pages read are kept")
+    }
+
+    @Test
+    fun askingAgainForPagesItHasPublishesNothing() = runTest {
+        val library = library()
+        val paged = library.paged()
+        runCurrent()
+        paged.load(0, 59)
+        val shown = paged.state.value
+        paged.load(10, 50)
+        runCurrent()
+        assertSame(shown, paged.state.value)
     }
 
     @Test

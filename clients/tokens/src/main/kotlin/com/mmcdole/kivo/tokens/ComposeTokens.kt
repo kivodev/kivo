@@ -11,7 +11,9 @@ import kotlinx.serialization.json.jsonPrimitive
 // Android TV lays out at 960 by 540 dp, so two to a dp. Colours keep their
 // alpha. Tokens only CSS can use (fonts, shadows, breakpoints, containers,
 // grid templates) are left out: the apps use the platform's sans-serif, as
-// the web's font stack does on Android.
+// the web's font stack does on Android. The exception is a focused TV
+// card's light, which the TV app draws as the web TV does: it reads the web
+// TV's shadows and caption shift rather than keep copies that could drift.
 
 /** The Kotlin source of the Compose tokens, in [packageName]. */
 fun composeTokens(tokensJson: String, packageName: String): String {
@@ -28,7 +30,9 @@ fun composeTokens(tokensJson: String, packageName: String): String {
         appendLine()
         appendLine("import androidx.compose.animation.core.CubicBezierEasing")
         appendLine("import androidx.compose.ui.graphics.Color")
+        appendLine("import androidx.compose.ui.graphics.shadow.Shadow")
         appendLine("import androidx.compose.ui.text.font.FontWeight")
+        appendLine("import androidx.compose.ui.unit.DpOffset")
         appendLine("import androidx.compose.ui.unit.TextUnit")
         appendLine("import androidx.compose.ui.unit.dp")
         appendLine("import androidx.compose.ui.unit.sp")
@@ -85,6 +89,14 @@ fun composeTokens(tokensJson: String, packageName: String): String {
         appendLine("        val focusRingWidth = ${canvasDp(tv.string("focusRingWidth"))}")
         appendLine("        const val focusScale = ${tv.string("focusScale").toFloat()}f")
         appendLine("        const val cardFocusScale = ${tv.string("cardFocusScale").toFloat()}f")
+        val web = tv.obj("web")
+        appendLine("        val cardCaptionShift = ${canvasDp(web.obj("layout").string("cardCaptionShift"))}")
+        appendLine()
+        appendLine("        /** A focused card's light: a glow over a deep shadow behind its artwork and a sheen across its top inside it, each list's first on top. */")
+        appendLine("        object CardFocus {")
+        appendLine("            val glow = ${shadows(web.obj("shadow").string("cardFocusGlow"), inset = false)}")
+        appendLine("            val sheen = ${shadows(web.obj("shadow").string("cardFocusSheen"), inset = true)}")
+        appendLine("        }")
         appendLine()
         textObject("Text", tv.obj("text"), ::canvasSp, indent = "        ")
         appendLine("    }")
@@ -119,8 +131,24 @@ private fun colors(set: JsonObject): String = buildString {
 
 private val lengthPattern = Regex("""^-?[0-9.]+(rem|px)$""")
 
+/**
+ * A CSS box-shadow list on the TV canvas as Compose shadows, in its order.
+ * Compose's radius is the blur's, as in CSS. [inset] says which kind the
+ * list must hold, as the app draws the two apart.
+ */
+internal fun shadows(css: String, inset: Boolean): String = css.split(",").joinToString(", ", "listOf(", ")") { shadow ->
+    val parts = shadow.trim().split(Regex("""\s+"""))
+    require(("inset" in parts) == inset) { "expected only ${if (inset) "inset" else "outer"} shadows: $css" }
+    val values = parts - "inset"
+    val lengths = values.dropLast(1)
+    require(lengths.size in 2..4) { "not a shadow: $shadow" }
+    val (x, y, blur, spread) = lengths + List(4 - lengths.size) { "0" }
+    "Shadow(radius = ${canvasDp(blur)}, color = ${color(values.last())}, spread = ${canvasDp(spread)}, offset = DpOffset(${canvasDp(x)}, ${canvasDp(y)}))"
+}
+
 /** CSS pixels: a rem is 16, a pixel one. */
 private fun cssPixels(length: String): Double = when {
+    length == "0" -> 0.0
     length.endsWith("rem") -> length.removeSuffix("rem").toDouble() * 16
     length.endsWith("px") -> length.removeSuffix("px").toDouble()
     else -> error("not a length: $length")

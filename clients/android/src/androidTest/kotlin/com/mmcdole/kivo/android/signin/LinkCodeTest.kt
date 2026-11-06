@@ -64,7 +64,7 @@ class LinkCodeTest {
 
     private fun show(link: () -> Flow<LinkProgress>, onSignedIn: suspend (KivoSession) -> Unit = {}) {
         compose.setContent {
-            KivoTheme { LinkCode("Living Room", "Basement", link, onSignedIn, onPassword = {}, onChangeServer = {}) }
+            KivoTheme { LinkCode("Basement", link, onSignedIn, onPassword = {}, onChangeServer = {}) }
         }
     }
 

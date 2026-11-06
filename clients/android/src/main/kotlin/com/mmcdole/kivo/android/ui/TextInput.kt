@@ -6,6 +6,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -20,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -36,6 +39,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.PlatformImeOptions
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Text
 import com.mmcdole.kivo.android.theme.Kivo
 import com.mmcdole.kivo.android.theme.KivoTokens
@@ -64,6 +69,9 @@ fun TextInput(
     onNext: (() -> Unit)? = null,
     keyboardSide: Alignment.Horizontal? = null,
     capitalization: KeyboardCapitalization = KeyboardCapitalization.None,
+    labelShown: Boolean = true,
+    icon: KivoIcon? = null,
+    minHeight: Dp = Dp.Unspecified,
 ) {
     val colors = Kivo.colors
     val focusManager = LocalFocusManager.current
@@ -71,18 +79,21 @@ fun TextInput(
     var field by remember { mutableStateOf(TextFieldValue(value, TextRange(value.length))) }
     if (field.text != value) field = TextFieldValue(value, TextRange(value.length))
     Column(modifier.fillMaxWidth()) {
-        Text(label, style = TvType.small, color = colors.textMuted, modifier = Modifier.padding(bottom = Kivo.space(1)))
+        if (labelShown) Text(label, style = TvType.small, color = colors.textMuted, modifier = Modifier.padding(bottom = Kivo.space(1)))
+        // Focused, the field alone is lit, white with dark text, as a control is; its label stays as it is.
+        val shown = if (focused) KivoTokens.light else colors
         Box(
             Modifier
                 .fillMaxWidth()
-                .background(colors.surfaceRaised, RoundedCornerShape(KivoTokens.Radius.md))
-                .border(
-                    if (focused) KivoTokens.Tv.focusRingWidth else KivoTokens.Layout.focusRingWidth / 2,
-                    if (focused) colors.focus else colors.border,
-                    RoundedCornerShape(KivoTokens.Radius.md),
-                )
-                .padding(horizontal = Kivo.space(3), vertical = Kivo.space(2)),
+                .heightIn(min = minHeight)
+                .background(shown.surfaceRaised, RoundedCornerShape(KivoTokens.Radius.md))
+                .border(KivoTokens.Layout.focusRingWidth / 2, if (focused) Color.Transparent else colors.border, RoundedCornerShape(KivoTokens.Radius.md))
+                .padding(start = if (icon != null) 40.dp else Kivo.space(3), end = Kivo.space(3), top = Kivo.space(2), bottom = Kivo.space(2)),
+            contentAlignment = Alignment.CenterStart,
         ) {
+            if (icon != null) {
+                KivoIconView(icon, Modifier.align(Alignment.CenterStart).offset(x = (-28).dp), size = 20.dp, tint = shown.textMuted)
+            }
             BasicTextField(
                 value = field,
                 onValueChange = {
@@ -90,8 +101,8 @@ fun TextInput(
                     if (it.text != value) onValueChange(it.text)
                 },
                 singleLine = true,
-                textStyle = TvType.body.copy(color = colors.text),
-                cursorBrush = SolidColor(colors.accent),
+                textStyle = TvType.body.copy(color = shown.text),
+                cursorBrush = SolidColor(shown.accent),
                 visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
                 keyboardOptions = KeyboardOptions(
                     capitalization = capitalization,

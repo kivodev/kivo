@@ -6,13 +6,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -27,12 +25,13 @@ import com.mmcdole.kivo.android.library.GridTop
 import com.mmcdole.kivo.android.library.PagedGrid
 import com.mmcdole.kivo.android.library.gridCardWidth
 import com.mmcdole.kivo.android.library.gridColumns
+import com.mmcdole.kivo.android.library.scrollsWith
 import com.mmcdole.kivo.android.theme.Kivo
 import com.mmcdole.kivo.android.theme.TvType
 import com.mmcdole.kivo.android.ui.CardGap
 import com.mmcdole.kivo.android.ui.Failed
 import com.mmcdole.kivo.android.ui.Navigator
-import com.mmcdole.kivo.android.ui.SafeTop
+import com.mmcdole.kivo.android.ui.SafeEdge
 import com.mmcdole.kivo.android.ui.SkeletonCard
 import com.mmcdole.kivo.android.ui.SkeletonGate
 import com.mmcdole.kivo.android.ui.SkeletonLine
@@ -52,8 +51,8 @@ class FavoritesGridViewModel(session: ServerSession, kind: String) : ViewModel()
     }
 }
 
-/** Where the grid sits beside the rail, as a library's does. */
-private val GridPadding = PaddingValues(start = 24.dp, top = SafeTop, end = 12.dp)
+/** Where the title and count line sit, as a library's do. */
+private val HeadingPadding = PaddingValues(start = 24.dp, top = 39.5.dp, end = SafeEdge)
 
 /**
  * Every favorite of one kind, most recently marked first: the
@@ -72,44 +71,41 @@ fun FavoritesGridScreen(session: ServerSession, kind: String, navigator: Navigat
     }
     val shape = favoriteShape(kind)
     SkeletonGate(pages.total, { GridSkeleton(kind) }) { total ->
-        Column(Modifier.fillMaxSize().padding(GridPadding)) {
-            GridHeading(kind)
-            if (total == 0) {
+        if (total == 0) {
+            Column(Modifier.fillMaxSize().padding(HeadingPadding)) {
+                GridHeading(kind)
                 FavoritesEmpty()
-            } else {
-                Text(
-                    favoritesCount(kind, total),
-                    style = TvType.body,
-                    color = Kivo.colors.textMuted,
-                    modifier = Modifier.padding(top = Kivo.space(2)),
-                )
-                val grid = rememberSaveable(saver = LazyListState.Saver) { LazyListState() }
+            }
+        } else {
+            val grid = rememberSaveable(saver = LazyListState.Saver) { LazyListState() }
+            Box(Modifier.fillMaxSize()) {
                 PagedGrid(model.paged, grid, shape, navigator)
+                // The title and count line scroll away with the grid.
+                Column(Modifier.scrollsWith(grid).padding(HeadingPadding)) {
+                    GridHeading(kind)
+                    Text(favoritesCount(kind, total), style = TvType.small, color = Kivo.colors.textMuted, modifier = Modifier.padding(top = 13.dp))
+                }
             }
         }
     }
 }
 
-/** "Favorites · Movies", at a library's title's height. */
+/** "Favorites · Movies". */
 @Composable
 private fun GridHeading(kind: String) {
-    Box(Modifier.height(44.dp), contentAlignment = Alignment.CenterStart) {
-        Text(
-            stringResource(R.string.favorites_of, favoritesTitle(kind)),
-            style = TvType.heading,
-            color = Kivo.colors.text,
-        )
-    }
+    Text(stringResource(R.string.favorites_of, favoritesTitle(kind)), style = TvType.title, color = Kivo.colors.text)
 }
 
 /** The grid while its first page loads: the title, the count line and a line of cards. */
 @Composable
 private fun GridSkeleton(kind: String) {
     val shape = favoriteShape(kind)
-    Column(Modifier.fillMaxSize().padding(GridPadding)) {
-        GridHeading(kind)
-        SkeletonLine(180.dp, TvType.body, Modifier.padding(top = Kivo.space(2)))
-        Row(Modifier.padding(top = GridTop), horizontalArrangement = Arrangement.spacedBy(CardGap)) {
+    Box(Modifier.fillMaxSize()) {
+        Column(Modifier.padding(HeadingPadding)) {
+            GridHeading(kind)
+            SkeletonLine(180.dp, TvType.small, Modifier.padding(top = 13.dp))
+        }
+        Row(Modifier.padding(start = 24.dp, top = GridTop), horizontalArrangement = Arrangement.spacedBy(CardGap)) {
             repeat(gridColumns(shape)) { SkeletonCard(shape, gridCardWidth(shape)) }
         }
     }

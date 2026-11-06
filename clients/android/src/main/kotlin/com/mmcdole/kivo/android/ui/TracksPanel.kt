@@ -4,6 +4,7 @@ import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,6 +23,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.DenseListItem
 import androidx.tv.material3.Text
@@ -54,18 +56,8 @@ val TrackChoices.choosable: Boolean get() = audio.size > 1 || subtitles.isNotEmp
 data class AutomaticTracks(val audio: String?, val subtitle: String)
 
 /**
- * Audio & Subtitles, the panel at the right of the screen that the player's
- * button and the detail page's row open, wide enough for two columns: the
- * Dialogue boost switch, where the play has one, and the audio tracks; and
- * Off and the subtitle tracks. Each track goes by its name ([pickerName]),
- * with the file's own title under it where it says more; the ones chosen
- * are ticked and the others dimmed. Where [TrackChoices.searchable],
- * Subtitles shows even without a track and ends in "Search subtitles…",
- * which calls [onSearch]. Before a play, [automatic] heads each
- * column with Automatic, named after the track it plays, and a choice of it
- * is null. Each column scrolls on its own and opens scrolled to its ticked
- * row; Left and Right move between them, entering one on its ticked row.
- * It opens on the audio, stays open as tracks are chosen, and Back closes it.
+ * Audio & Subtitles, the panel at the right of the screen that the detail
+ * page's row opens, as [TrackColumns] are, under its title. Back closes it.
  */
 @Composable
 fun TracksPanel(
@@ -73,6 +65,44 @@ fun TracksPanel(
     onAudio: (String?) -> Unit,
     onSubtitle: (String?) -> Unit,
     onDismiss: () -> Unit,
+    automatic: AutomaticTracks? = null,
+    onSearch: () -> Unit = {},
+) {
+    SidePanel(stringResource(R.string.audio_and_subtitles), onDismiss, width = PanelWidth) {
+        TrackColumns(tracks, onAudio, onSubtitle, automatic = automatic, onSearch = onSearch)
+    }
+}
+
+/** The width of a [MenuPopup] of [TrackColumns] in [columns] columns, as [TrackChoices.columns] counts them. */
+fun tracksMenuWidth(columns: Int): Dp = if (columns > 1) TracksMenuWidth else TracksMenuColumn
+
+/** How many columns [TrackColumns] shows: the audio, where there's a choice or [dialogueBoost], and the subtitles, where there's a track or a search. */
+fun TrackChoices.columns(dialogueBoost: Boolean?): Int =
+    listOf(dialogueBoost != null || audio.size > 1, subtitles.isNotEmpty() || searchable).count { it }
+
+private val TracksMenuWidth = 560.dp
+private val TracksMenuColumn = 280.dp
+
+/**
+ * Audio & Subtitles' two columns, as the detail page's panel and, in a
+ * [MenuPopup] ([menu]), the player's menu show them: the Dialogue boost
+ * switch, where the play has one, and the audio tracks; and Off and the
+ * subtitle tracks. Each track goes by its name ([pickerName]), with the
+ * file's own title under it where it says more; the ones chosen are ticked
+ * and the others dimmed. Where [TrackChoices.searchable], Subtitles shows
+ * even without a track and ends in "Search subtitles…", which calls
+ * [onSearch]. Before a play, [automatic] heads each column with Automatic,
+ * named after the track it plays, and a choice of it is null. Each column
+ * scrolls on its own under its heading and opens scrolled to its ticked
+ * row; Left and Right move between them, entering one on its ticked row.
+ * Focus starts on the audio, and stays as tracks are chosen.
+ */
+@Composable
+fun ColumnScope.TrackColumns(
+    tracks: TrackChoices,
+    onAudio: (String?) -> Unit,
+    onSubtitle: (String?) -> Unit,
+    menu: Boolean = false,
     automatic: AutomaticTracks? = null,
     dialogueBoost: Boolean? = null,
     onDialogueBoost: (Boolean) -> Unit = {},
@@ -107,16 +137,16 @@ fun TracksPanel(
     val audioTitle = stringResource(R.string.audio)
     val subtitlesTitle = stringResource(R.string.subtitles)
     val start = remember { FocusRequester() }
-    SidePanel(stringResource(R.string.audio_and_subtitles), onDismiss, width = PanelWidth) {
-        Row(Modifier.weight(1f, fill = false), horizontalArrangement = Arrangement.spacedBy(Kivo.space(6))) {
-            if (audio.isNotEmpty()) TrackColumn(audioTitle, audio, start, Modifier.weight(1f).testTag("audio-column"))
-            if (subtitles.isNotEmpty()) {
-                TrackColumn(subtitlesTitle, subtitles, if (audio.isEmpty()) start else null, Modifier.weight(1f).testTag("subtitle-column"))
-            }
+    Row(Modifier.weight(1f, fill = false), horizontalArrangement = Arrangement.spacedBy(if (menu) MenuColumnGap else Kivo.space(6))) {
+        if (audio.isNotEmpty()) TrackColumn(audioTitle, audio, start, menu, Modifier.weight(1f).testTag("audio-column"))
+        if (subtitles.isNotEmpty()) {
+            TrackColumn(subtitlesTitle, subtitles, if (audio.isEmpty()) start else null, menu, Modifier.weight(1f).testTag("subtitle-column"))
         }
     }
     LaunchedEffect(Unit) { focusWhenPlaced(start) }
 }
+
+private val MenuColumnGap = 12.dp
 
 /** A row of Audio & Subtitles: the Dialogue boost switch, a track, Off or Automatic, [ticked] when it's chosen, or Search subtitles. */
 private sealed interface TrackRow {
@@ -153,7 +183,7 @@ private val PanelWidth = 640.dp
  * when given, focuses.
  */
 @Composable
-private fun TrackColumn(title: String, rows: List<TrackRow>, focusFirst: FocusRequester?, modifier: Modifier) {
+private fun TrackColumn(title: String, rows: List<TrackRow>, focusFirst: FocusRequester?, menu: Boolean, modifier: Modifier) {
     val ticked = rows.indexOfFirst { it.ticked }
     val state = rememberLazyListState(initialFirstVisibleItemIndex = (ticked - 2).coerceAtLeast(0))
     val entry = focusFirst ?: remember { FocusRequester() }
@@ -163,7 +193,7 @@ private fun TrackColumn(title: String, rows: List<TrackRow>, focusFirst: FocusRe
             title,
             style = TvType.smallStrong,
             color = Kivo.colors.onPlayerMuted,
-            modifier = Modifier.padding(start = Kivo.space(3), bottom = Kivo.space(2)),
+            modifier = if (menu) Modifier.padding(start = 8.dp, top = 4.dp, bottom = 4.dp) else Modifier.padding(start = Kivo.space(3), bottom = Kivo.space(2)),
         )
         KeepInView {
             LazyColumn(
@@ -171,17 +201,43 @@ private fun TrackColumn(title: String, rows: List<TrackRow>, focusFirst: FocusRe
                     .focusProperties { onEnter = { if (ticked >= 0) entry.requestFocus() } }
                     .focusGroup(),
                 state = state,
-                contentPadding = PaddingValues(bottom = Kivo.space(6)),
+                contentPadding = PaddingValues(bottom = if (menu) 0.dp else Kivo.space(6)),
             ) {
                 items(rows.size, key = { rows[it].key }) { i ->
                     val focus = if (i == target) Modifier.focusRequester(entry) else Modifier
-                    when (val row = rows[i]) {
-                        is TrackRow.Boost -> BoostRow(row, focus)
-                        is TrackRow.Choice -> ChoiceRow(row, focus)
-                        is TrackRow.Search -> SearchRow(row, focus)
+                    val row = rows[i]
+                    if (menu) {
+                        MenuTrackRow(row, focus)
+                    } else {
+                        when (row) {
+                            is TrackRow.Boost -> BoostRow(row, focus)
+                            is TrackRow.Choice -> ChoiceRow(row, focus)
+                            is TrackRow.Search -> SearchRow(row, focus)
+                        }
                     }
                 }
             }
+        }
+    }
+}
+
+/** A row of the menu's columns: a track ticked or dimmed, Search subtitles, or the Dialogue boost switch at its end. */
+@Composable
+private fun MenuTrackRow(row: TrackRow, modifier: Modifier) {
+    val tick: @Composable () -> Unit = { if (row.ticked) KivoIconView(KivoIcon.Check, size = MenuTick) }
+    when (row) {
+        is TrackRow.Choice -> MenuRow(
+            row.name.name,
+            { if (!row.ticked) row.choose(row.value) },
+            modifier.testTag("track:${row.key}"),
+            detail = row.name.note,
+            strong = row.ticked,
+            dimmed = !row.ticked,
+            leading = tick,
+        )
+        is TrackRow.Search -> MenuRow(stringResource(R.string.search_subtitles), row.open, modifier.testTag("track:${row.key}"), leading = tick)
+        is TrackRow.Boost -> MenuRow(stringResource(R.string.dialogue_boost), { row.switch(!row.on) }, modifier.testTag("dialogue-boost"), leading = tick) {
+            SettingSwitch(row.on)
         }
     }
 }
@@ -198,7 +254,7 @@ private fun ChoiceRow(row: TrackRow.Choice, modifier: Modifier) {
         },
         supportingContent = row.name.note?.let { { Text(it, style = TvType.small, maxLines = 1, overflow = TextOverflow.Ellipsis) } },
         leadingContent = { Box(Modifier.size(24.dp)) { if (row.ticked) KivoIconView(KivoIcon.Check, size = 24.dp) } },
-        colors = ListItemStyle.colors(content = if (row.ticked) colors.onPlayer else colors.onPlayerMuted, focused = colors.onPlayer),
+        colors = ListItemStyle.colors(content = if (row.ticked) colors.onPlayer else colors.onPlayerMuted),
         shape = ListItemStyle.shape(),
         scale = ListItemStyle.scale(),
         border = ListItemStyle.border(),
@@ -215,7 +271,7 @@ private fun SearchRow(row: TrackRow.Search, modifier: Modifier) {
         modifier = modifier.testTag("track:${row.key}"),
         headlineContent = { Text(stringResource(R.string.search_subtitles), style = TvType.body, maxLines = 1) },
         leadingContent = { Spacer(Modifier.width(24.dp)) },
-        colors = ListItemStyle.colors(content = colors.onPlayer, focused = colors.onPlayer),
+        colors = ListItemStyle.colors(content = colors.onPlayer),
         shape = ListItemStyle.shape(),
         scale = ListItemStyle.scale(),
         border = ListItemStyle.border(),
@@ -233,7 +289,7 @@ private fun BoostRow(row: TrackRow.Boost, modifier: Modifier) {
         headlineContent = { Text(stringResource(R.string.dialogue_boost), style = TvType.body) },
         leadingContent = { Spacer(Modifier.width(24.dp)) },
         trailingContent = { SettingSwitch(row.on) },
-        colors = ListItemStyle.colors(content = colors.onPlayer, focused = colors.onPlayer),
+        colors = ListItemStyle.colors(content = colors.onPlayer),
         shape = ListItemStyle.shape(),
         scale = ListItemStyle.scale(),
         border = ListItemStyle.border(),

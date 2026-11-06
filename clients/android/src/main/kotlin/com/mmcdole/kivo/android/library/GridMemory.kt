@@ -6,6 +6,8 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.mmcdole.kivo.android.ApiNamingMigration
 import com.mmcdole.kivo.core.data.GridQuery
+import java.net.URLDecoder
+import java.net.URLEncoder
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -72,6 +74,9 @@ fun encodeGrid(choice: GridChoice): String {
         query.sort?.let { "sort=$it" },
         query.played?.let { "played=$it" },
         "favorite=1".takeIf { query.favorite },
+        query.yearFrom?.let { "decade=$it" },
+        query.genres?.takeIf { it.isNotEmpty() }?.let { "genre=" + encodeNames(it) },
+        query.contentRatings?.takeIf { it.isNotEmpty() }?.let { "contentRating=" + encodeNames(it) },
         query.resolutions?.takeIf { it.isNotEmpty() }?.let { "resolution=" + it.joinToString(",") },
         query.dynamicRanges?.takeIf { it.isNotEmpty() }?.let { "dynamicRange=" + it.joinToString(",") },
     ).joinToString("&")
@@ -84,11 +89,16 @@ fun decodeGrid(libraryId: String, text: String): GridChoice {
         text.split('&').mapNotNull { part -> part.split('=', limit = 2).takeIf { it.size == 2 }?.let { it[0] to it[1] } }.toMap(),
     )
     fun list(key: String) = values[key]?.split(',').orEmpty()
+    val decade = values["decade"]?.toIntOrNull()
     val query = GridQuery(
         libraryId = libraryId,
         sort = values["sort"]?.takeIf { it in GridValues.sorts } ?: GridValues.TITLE,
         played = values["played"]?.takeIf { it in GridValues.playedStates },
         favorite = values["favorite"] == "1",
+        yearFrom = decade,
+        yearTo = decade?.plus(9),
+        genres = decodeNames(values["genre"]),
+        contentRatings = decodeNames(values["contentRating"]),
         resolutions = GridValues.resolutions.filter { it in list("resolution") }.ifEmpty { null },
         dynamicRanges = GridValues.dynamicRanges.filter { it in list("dynamicRange") }.ifEmpty { null },
     )
@@ -97,10 +107,28 @@ fun decodeGrid(libraryId: String, text: String): GridChoice {
 
 /** Whether a filter narrows the works. */
 val GridQuery.filtered: Boolean
-    get() = played != null || favorite || !resolutions.isNullOrEmpty() || !dynamicRanges.isNullOrEmpty()
+    get() = played != null || favorite || yearFrom != null || !genres.isNullOrEmpty() || !contentRatings.isNullOrEmpty() ||
+        !resolutions.isNullOrEmpty() || !dynamicRanges.isNullOrEmpty()
 
 /** The query without its filters, keeping its sort. */
-fun GridQuery.unfiltered(): GridQuery = copy(played = null, favorite = false, resolutions = null, dynamicRanges = null)
+fun GridQuery.unfiltered(): GridQuery = copy(
+    played = null,
+    favorite = false,
+    yearFrom = null,
+    yearTo = null,
+    genres = null,
+    contentRatings = null,
+    resolutions = null,
+    dynamicRanges = null,
+)
+
+/** The decades a library's [years] fall in, newest first. */
+fun decadesOf(years: List<Int>): List<Int> = years.map { it - it % 10 }.distinct().sortedDescending()
+
+// Genres can hold the "&" and "," that separate a saved grid's parts, as "Action & Adventure" does.
+private fun encodeNames(names: List<String>) = names.joinToString(",") { URLEncoder.encode(it, "UTF-8") }
+
+private fun decodeNames(text: String?) = text?.split(',')?.map { URLDecoder.decode(it, "UTF-8") }?.ifEmpty { null }
 
 /** The grid [libraryId] showed last, among the [saved] grids, else its works by title. */
 fun gridChoice(saved: Map<String, GridChoice>, libraryId: String): GridChoice = saved[libraryId] ?: decodeGrid(libraryId, "")

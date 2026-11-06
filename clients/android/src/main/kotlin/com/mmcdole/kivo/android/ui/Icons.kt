@@ -27,7 +27,7 @@ enum class KivoIcon(val path: String, val stroke: Float = 2f) {
     Video("M3 6h13v12H3zM16 10l5-3v10l-5-3"),
     Folder("M3 6h6l2 2h10v11H3z"),
     Book("M5 4.5A1.5 1.5 0 0 1 6.5 3H20v15H6.5A1.5 1.5 0 0 0 5 19.5zM5 19.5A1.5 1.5 0 0 0 6.5 21H20v-3M9 7h7"),
-    Play("M7 4.5v15l12-7.5z"),
+    Play("M7 4.5v15l12-7.5z", stroke = 2.5f),
     Pause("M8 5v14M16 5v14"),
     Replay("M3 12a9 9 0 1 0 3-6.7M3 4v5h5"),
     Forward("M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"),

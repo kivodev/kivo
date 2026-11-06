@@ -81,8 +81,9 @@ jobs:
 
   # The native apps' generated client, their shared core and the theme
   # generator pass their tests on the JVM; the Android app builds, passes
-  # lint and its unit tests, and its debug APK is kept as an artifact. The
-  # runner's Android SDK builds the core's Android target and the app.
+  # lint and its unit tests, and its release APK, the one that ships, is kept
+  # as an artifact. The runner's Android SDK builds the core's Android target
+  # and the app.
   clients:
     runs-on: ubuntu-latest
     defaults:
@@ -107,11 +108,27 @@ jobs:
       # The core's Apple code compiles here too; only linking the
       # XCFramework needs a Mac.
       - run: ./gradlew :core:compileKotlinIosArm64 :core:compileKotlinTvosArm64
-      - run: ./gradlew :android:assembleDebug :android:testDebugUnitTest :android:lintDebug
+      # The release build is signed with the debug key, so it installs over
+      # the TVs' installs only when that key is the one they have: the
+      # ANDROID_DEBUG_KEYSTORE secret, the build machine's
+      # ~/.android/debug.keystore in base64. Without it the runner makes a
+      # new key each run, and its APK installs only after the old app, and
+      # its sign-in, is uninstalled.
+      - name: Debug key
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_DEBUG_KEYSTORE }}
+        run: |
+          if [ -z "$KEYSTORE" ]; then
+            echo "::warning::No ANDROID_DEBUG_KEYSTORE secret: this APK is signed with a new key and won't install over the TVs' installs"
+          else
+            mkdir -p ~/.android
+            printf '%s' "$KEYSTORE" | base64 -d > ~/.android/debug.keystore
+          fi
+      - run: ./gradlew :android:assembleRelease :android:testDebugUnitTest :android:lintDebug
       - uses: actions/upload-artifact@v7
         with:
-          name: kivo-android-debug
-          path: clients/android/build/outputs/apk/debug/android-debug.apk
+          name: kivo-android-release
+          path: clients/android/build/outputs/apk/release/android-release.apk
 
   # The Cast receiver's logic under a stand-in for the Cast framework. It has
   # no dependencies and no build.

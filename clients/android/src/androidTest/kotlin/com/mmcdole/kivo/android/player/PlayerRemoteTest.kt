@@ -36,7 +36,7 @@ class PlayerRemoteTest {
 
     /** Lets the controls hide, as they do 3 seconds after the last input while playing. */
     private fun hideControls() {
-        player.advance(3_100)
+        player.advance(5_100)
         assertFalse(player.controlsShown)
     }
 
@@ -446,18 +446,54 @@ class PlayerRemoteTest {
     }
 
     @Test
-    fun controlsHideAfterThreeSecondsWhilePlayingOnly() { // R29
+    fun theGearsMenuStandsOverTheButtonsAtTheGearsEnd() {
         player.open(MIDDLE_MS)
-        player.advance(2_900)
+        openSettings()
+        val last = player.row(string(R.string.stream_info)).fetchSemanticsNode().boundsInWindow
+        val gear = gear().fetchSemanticsNode().boundsInWindow
+        assertTrue(last.bottom < gear.top, "the menu stands above the buttons")
+        assertTrue(last.right <= gear.right && last.right > gear.left, "and ends at the gear's right edge")
+        assertTrue(player.controlsShown)
+    }
+
+    @Test
+    fun qualityOpensInTheMenusPlaceAndGoesBackToItsRow() {
+        player.open(MIDDLE_MS)
+        openSettings()
+        // Right opens the list as OK does, on what's playing, under a row of its name.
+        player.press(KeyEvent.KEYCODE_DPAD_DOWN)
+        player.press(KeyEvent.KEYCODE_DPAD_RIGHT)
+        player.waitFor { player.focused(player.text("Auto")) }
+        player.node("menu-back").assertExists()
+        player.row(string(R.string.stream_info)).assertDoesNotExist()
+        // Left goes back to Playback Settings on Quality's row.
+        player.press(KeyEvent.KEYCODE_DPAD_LEFT)
+        player.waitFor { player.focused(player.row(string(R.string.quality))) }
+        player.node("menu-back").assertDoesNotExist()
+        // So does OK on the row of its name, and then Back closes the menu.
+        player.press(KeyEvent.KEYCODE_DPAD_CENTER)
+        player.waitFor { player.focused(player.text("Auto")) }
+        player.press(KeyEvent.KEYCODE_DPAD_UP)
+        player.press(KeyEvent.KEYCODE_DPAD_CENTER)
+        player.waitFor { player.focused(player.row(string(R.string.quality))) }
+        player.press(KeyEvent.KEYCODE_BACK)
+        player.waitFor { player.focused(gear()) }
+        assertTrue(player.controlsShown)
+    }
+
+    @Test
+    fun controlsHideAfterFiveSecondsWhilePlayingOnly() { // R29
+        player.open(MIDDLE_MS)
+        player.advance(4_900)
         assertTrue(player.controlsShown)
         player.advance(200)
         assertFalse(player.controlsShown)
         player.press(KeyEvent.KEYCODE_MEDIA_PAUSE)
-        player.advance(5_000)
+        player.advance(6_000)
         assertTrue(player.controlsShown)
         player.press(KeyEvent.KEYCODE_MEDIA_PLAY)
         player.press(KeyEvent.KEYCODE_INFO)
-        player.advance(5_000)
+        player.advance(6_000)
         assertTrue(player.controlsShown)
     }
 

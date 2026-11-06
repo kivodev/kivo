@@ -43,6 +43,25 @@ class ComposeTokensTest {
     }
 
     @Test
+    fun aFocusedCardsLightIsTheWebTvs() {
+        val source = composeTokens(shared, "com.example")
+        assertContains(source, "val cardCaptionShift = 8.dp")
+        assertContains(
+            source,
+            "val glow = listOf(Shadow(radius = 20.dp, color = Color(0x52FFFFFF), spread = 2.dp, offset = DpOffset(0.dp, 0.dp)), " +
+                "Shadow(radius = 28.dp, color = Color(0xF2000000), spread = -6.dp, offset = DpOffset(0.dp, 14.dp)))",
+        )
+        assertContains(source, "val sheen = listOf(Shadow(radius = 24.dp, color = Color(0x2EFFFFFF), spread = -16.dp, offset = DpOffset(0.dp, 32.dp)))")
+    }
+
+    @Test
+    fun shadowsOfTheWrongKindAreRefused() {
+        assertEquals("listOf(Shadow(radius = 2.dp, color = Color(0xFF000000), spread = 0.dp, offset = DpOffset(1.dp, 1.dp)))", shadows("2px 2px 4px #000000", inset = false))
+        assertFailsWith<IllegalArgumentException> { shadows("inset 0 2px 4px #000000", inset = false) }
+        assertFailsWith<IllegalArgumentException> { shadows("0 2px 4px #000000", inset = true) }
+    }
+
+    @Test
     fun aLightThemeMissingAColourIsRefused() {
         val broken = shared.replace("\"surface-raised\": \"#ffffff\",", "")
         assertFailsWith<IllegalArgumentException> { composeTokens(broken, "com.example") }
