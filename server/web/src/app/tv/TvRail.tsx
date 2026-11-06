@@ -8,7 +8,7 @@ import type { Library } from "@/api/schemas";
 import { Icon } from "@/components/Icon";
 import { LibraryKindIcon } from "@/components/LibraryKindIcon";
 import { TvFocusGroup, useTvFocusable } from "@/tv/focus";
-import { firstTvFocusIn } from "@/tv/focusMemory";
+import { firstTvFocusIn, lastTvFocusIn } from "@/tv/focusMemory";
 import { focusTv, TV_CONTENT, TV_RAIL } from "@/tv/spatial";
 
 /** The focus key of a rail entry: `rail:search`, `rail:home`, `rail:library:<id>`, `rail:more`. */
@@ -240,6 +240,17 @@ export function TvRail({ marked }: { marked: RailKey }) {
       return railArrow(direction);
     },
   };
+  // Up from Settings enters the libraries at the last one: Norigin goes by where they're laid out, and picks the first.
+  const settingsRail: RailState = {
+    open,
+    onArrow: (direction) => {
+      const last = direction === "up" ? lastTvFocusIn("tv:rail:libraries") : undefined;
+      if (!last) return rail.onArrow(direction);
+      rail.onArrow(direction);
+      focusTv(last);
+      return false;
+    },
+  };
   const shows = (key: RailKey) => open || marked === key || chosen === key;
 
   return (
@@ -331,7 +342,7 @@ export function TvRail({ marked }: { marked: RailKey }) {
           railKey={railKeys.settings}
           link={{ to: "/settings" }}
           current={marked === railKeys.settings}
-          rail={rail}
+          rail={settingsRail}
           onChoose={setChosen}
           icon={<Icon name="settings" className="size-8 shrink-0" />}
           label={<Trans>Settings</Trans>}

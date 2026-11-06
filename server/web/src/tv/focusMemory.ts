@@ -88,6 +88,12 @@ export function forgetFocus() {
   remembered.clear();
 }
 
+/** The last focusable in a group in the page's order. */
+export function lastTvFocusIn(groupKey: string): string | undefined {
+  const group = document.querySelector(`[data-tv-group="${CSS.escape(groupKey)}"]`);
+  return Array.from(group?.querySelectorAll<HTMLElement>("[data-tv-focusable]") ?? []).at(-1)?.dataset.tvFocusKey;
+}
+
 /** The first focusable in a group in the page's order, its top-left item. */
 export function firstTvFocusIn(groupKey: string): string | undefined {
   const group = document.querySelector(`[data-tv-group="${CSS.escape(groupKey)}"]`);
