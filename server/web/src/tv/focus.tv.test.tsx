@@ -198,6 +198,17 @@ describe("TV focus", () => {
     await waitFor(() => expect(onPlay).toHaveBeenCalledOnce());
   });
 
+  it("acts on OK once for a held press, ignoring its repeats", async () => {
+    const onPlay = vi.fn();
+    render(<Rows onPlay={onPlay} />);
+    focusTv("a:2");
+    await waitFor(() => expect(focused()).toBe("a:2"));
+    fireEvent.keyDown(document.activeElement ?? window, { key: "Enter", repeat: true });
+    expect(onPlay).not.toHaveBeenCalled();
+    press("Enter");
+    await waitFor(() => expect(onPlay).toHaveBeenCalledOnce());
+  });
+
   it("restores focus to the card a screen was left from when Back returns to it", async () => {
     const view = render(<Rows />);
     focusTv("b:2");
