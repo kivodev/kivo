@@ -54,14 +54,13 @@ export function usePlayerMenus(keys: KeyDispatcher) {
 }
 
 /**
- * Closes the list that has focus, such as Playback Settings' Quality, as
- * the arrow back towards its menu does there, whether it opened beside the
- * menu or in its place, so Back goes back a list at a time. It returns
- * whether a list had focus.
+ * Closes the submenu that has focus, such as Playback Settings' Quality, as
+ * the arrow back towards its menu does there, so Back goes back a list at a
+ * time. It returns whether a submenu had focus.
  */
 function closeSubmenu(): boolean {
   const focused = document.activeElement;
-  if (!focused?.closest('[data-trigger="SubmenuTrigger"], [data-submenu]')) return false;
+  if (!focused?.closest('[data-trigger="SubmenuTrigger"]')) return false;
   const key = getComputedStyle(focused).direction === "rtl" ? "ArrowRight" : "ArrowLeft";
   for (const type of ["keydown", "keyup"]) {
     focused.dispatchEvent(new KeyboardEvent(type, { key, bubbles: true, cancelable: true }));

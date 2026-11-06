@@ -6,7 +6,7 @@ import { Button, Menu, MenuSection, MenuTrigger, Popover } from "react-aria-comp
 import { subtitlesOff } from "@/api/playback";
 import type { DialogueBoost, PlayStarted, Version } from "@/api/schemas";
 import { Icon } from "@/components/Icon";
-import { MenuHeading, OptionItem, playerButton, playerMenuPadding, SwitchItem } from "@/components/PlayerMenu";
+import { MenuHeading, OptionItem, playerButton, SwitchItem } from "@/components/PlayerMenu";
 import { type TrackChoices, trackChoices } from "@/components/TrackPicker";
 
 /** The Subtitles section's last item. */
@@ -101,7 +101,6 @@ export function AudioSubtitlesMenu({
       </Button>
       <Popover
         placement="top end"
-        containerPadding={playerMenuPadding()}
         className={`flex flex-col rounded-md bg-player-panel p-1 shadow-overlay outline-none ${twoColumns ? "w-160 max-md:w-80" : "w-80"}`}
       >
         {/* The columns' own arrows go before the menu's, which would go through them as one list. */}
