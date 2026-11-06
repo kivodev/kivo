@@ -1,39 +1,49 @@
 package com.mmcdole.kivo.android.detail
 
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.updateTransition
-import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.foundation.background
+import android.view.KeyEvent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.nativeKeyCode
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -44,17 +54,16 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.tv.material3.Card
-import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.mmcdole.kivo.android.R
 import com.mmcdole.kivo.android.ServerSession
+import com.mmcdole.kivo.android.main.RailWidth
 import com.mmcdole.kivo.android.theme.Kivo
 import com.mmcdole.kivo.android.theme.KivoTokens
 import com.mmcdole.kivo.android.theme.TvType
-import com.mmcdole.kivo.android.ui.Artwork
+import com.mmcdole.kivo.android.ui.Backdrop
 import com.mmcdole.kivo.android.ui.CardGap
 import com.mmcdole.kivo.android.ui.CardRow
 import com.mmcdole.kivo.android.ui.CardShape
@@ -69,6 +78,7 @@ import com.mmcdole.kivo.android.ui.TrackChoices
 import com.mmcdole.kivo.android.ui.TracksPanel
 import com.mmcdole.kivo.android.ui.choosable
 import com.mmcdole.kivo.android.ui.Chip
+import com.mmcdole.kivo.android.ui.ControlLabel
 import com.mmcdole.kivo.android.ui.CollectionCard
 import com.mmcdole.kivo.android.ui.collectionCount
 import com.mmcdole.kivo.android.ui.Failed
@@ -90,23 +100,27 @@ import com.mmcdole.kivo.android.ui.SkeletonLine
 import com.mmcdole.kivo.android.ui.Navigator
 import com.mmcdole.kivo.android.ui.PersonCard
 import com.mmcdole.kivo.android.ui.PosterWidth
-import com.mmcdole.kivo.android.ui.ProgressBar
 import com.mmcdole.kivo.android.ui.RowTitle
 import com.mmcdole.kivo.android.ui.SafeEdge
+import com.mmcdole.kivo.android.ui.SafeTop
 import com.mmcdole.kivo.android.ui.Screen
 import com.mmcdole.kivo.android.ui.ValueRow
 import com.mmcdole.kivo.android.ui.WorkCard
 import com.mmcdole.kivo.android.ui.LocalSession
 import com.mmcdole.kivo.android.ui.Overview
-import com.mmcdole.kivo.android.ui.LocalWorkMenu
-import com.mmcdole.kivo.android.ui.menuKey
-import com.mmcdole.kivo.android.ui.fadeSpec
 import com.mmcdole.kivo.android.ui.display
 import com.mmcdole.kivo.android.ui.focusKey
-import com.mmcdole.kivo.android.ui.focusRing
+import com.mmcdole.kivo.android.ui.EpisodeCardRow
+import com.mmcdole.kivo.android.ui.EpisodeCardRowSkeleton
+import com.mmcdole.kivo.android.ui.FocusBleed
+import com.mmcdole.kivo.android.ui.Lit
+import com.mmcdole.kivo.android.ui.LocalCardLight
+import com.mmcdole.kivo.android.ui.rememberCardLight
+import com.mmcdole.kivo.android.ui.rememberOneMovePerFrame
+import com.mmcdole.kivo.android.ui.rowEntry
+import com.mmcdole.kivo.android.ui.rowPlace
+import com.mmcdole.kivo.android.ui.raisedOnFocus
 import com.mmcdole.kivo.android.ui.formatRating
-import com.mmcdole.kivo.android.ui.overlay
-import com.mmcdole.kivo.android.ui.progressOf
 import com.mmcdole.kivo.android.ui.rememberFocusMemory
 import com.mmcdole.kivo.api.models.EpisodeInfo
 import com.mmcdole.kivo.api.models.CollectionSummary
@@ -201,55 +215,172 @@ private fun Pending(page: Page) {
     }
 }
 
-/** The page's frame: the backdrop at the top, darkened at the left and fading into the background. */
+/** The D-pad keys that move focus. */
+private val MoveKeys = setOf(KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT)
+
+/** How long focus stays before a card's light comes back on. */
+
+/**
+ * The page's frame: the backdrop across the whole screen, under the rail,
+ * darkened at the left so text reads on any artwork and fading into the
+ * background. A held key moves focus at most once a frame, and a focused
+ * card's light goes out as focus moves on before resting, as on Home.
+ */
 @Composable
 private fun DetailFrame(backdrop: ImageRef?, content: @Composable () -> Unit) {
     val colors = Kivo.colors
-    Box(Modifier.fillMaxSize()) {
+    val moves = remember { mutableIntStateOf(0) }
+    val dropMove = rememberOneMovePerFrame()
+    val light = rememberCardLight { moves.intValue }
+    Box(
+        Modifier
+            .fillMaxSize()
+            .onPreviewKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown || event.key.nativeKeyCode !in MoveKeys) return@onPreviewKeyEvent false
+                moves.intValue++
+                dropMove()
+            },
+    ) {
         if (backdrop != null) {
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .overlay(
-                        Brush.horizontalGradient(listOf(colors.scrim, colors.scrim, colors.scrimSoft)),
-                        Brush.verticalGradient(listOf(Color.Transparent, colors.bg)),
+            val layers = remember(colors) {
+                listOf(
+                    Brush.horizontalGradient(
+                        0f to colors.bg.copy(alpha = 0.95f),
+                        0.5f to colors.bg.copy(alpha = 0.92f),
+                        0.72f to colors.bg.copy(alpha = 0.75f),
+                        1f to colors.scrimSoft,
                     ),
-            ) {
-                Artwork(backdrop, "", KivoTokens.Aspect.landscape, 880.dp, Modifier.fillMaxWidth(), corners = 0.dp)
+                    // Solid by the foot of the screen, where a season's captions are.
+                    Brush.verticalGradient(0f to colors.bg.copy(alpha = 0f), 0.85f to colors.bg),
+                )
             }
+            Backdrop(backdrop, BackdropWidth, layers, Modifier.underRail())
         }
-        content()
+        CompositionLocalProvider(LocalCardLight provides light, content = content)
     }
+}
+
+/** A backdrop's width: the whole TV canvas, so it's decoded for the pixels it covers. */
+private val BackdropWidth = 960.dp
+
+/**
+ * Lays this out from the screen's left edge rather than from where the screen
+ * starts, beside the rail, which is drawn over it. Nothing above a page clips,
+ * and this only places it, so it costs no layer.
+ */
+private fun Modifier.underRail(): Modifier = layout { measurable, constraints ->
+    val rail = RailWidth.roundToPx()
+    val width = constraints.maxWidth + rail
+    val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
+    layout(constraints.maxWidth, placeable.height) { placeable.place(-rail, 0) }
 }
 
 /**
- * A detail page's list: what takes focus sits [top] from the top of the
- * screen, where the page's title starts, as the rows move under it; focus
- * in the hero keeps the whole hero in view.
+ * A detail page's list, its title [top] from the top of the screen. What
+ * takes focus comes to rest [pivot] from there as the rows move under it, far
+ * enough down to show a row's title above its cards; focus in the hero keeps
+ * the whole hero in view.
  */
 @Composable
-private fun DetailList(top: Dp, content: LazyListScope.() -> Unit) {
-    RowsHoldPlace(top) {
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 24.dp, top = top, end = SafeEdge, bottom = SafeEdge), content = content)
+private fun DetailList(top: Dp, pivot: Dp = top, bottom: Dp = SafeEdge, content: LazyListScope.() -> Unit) {
+    RowsHoldPlace(pivot) {
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 24.dp, top = top, bottom = bottom), content = content)
     }
 }
 
-/** The hero's text: the title, its lines and the overview, three lines at most, which OK opens in full. */
+// A hero's measures, from the Samsung TV app's at a dp to two of its pixels.
+
+/** Where a movie's or series' title starts. */
+private val HeroTop = 72.dp
+
+/** The gap between a movie's or series' hero's parts, and half of it, which an episode's are, and under the buttons. */
+private val HeroGap = 14.dp
+private val HeroGapTight = 7.dp
+
+/** What a series' list leaves below its last row, so its episodes can come up to the screen's top. */
+private val SeriesRoomBelow = 300.dp
+
+/** A hero's buttons. */
+private val ButtonHeight = 35.dp
+private val ButtonPadding = PaddingValues(horizontal = 14.dp)
+
+/** A line of a hero's details. */
+private val MetaHeight = 16.dp
+
+/** A line of a description. */
+private val OverviewLine = 20.dp
+
+/**
+ * How wide a movie's or series' title and description go, and an episode's,
+ * which has the screen's width up to its right margin, where a season's fourth
+ * card ends.
+ */
+private val HeroWidth = 518.dp
+private val WideWidth = 808.dp
+
+/** An episode's description: its text, and its block, which leaves room for More. */
+private val EpisodeTextWidth = 532.dp
+private val EpisodeBlockWidth = 616.dp
+
+/** A season's row: its pills, and its cards under its heading. */
+private val PillHeight = 31.5.dp
+private val CardsUnderHeading = 10.5.dp
+
+/** A row's title's gap to its room for focus, and the gaps above a row. */
+private val RowTitleGap = 7.5.dp
+private val RowGap = 19.dp
+
+/** A hero's title, in display type. */
 @Composable
-private fun HeroText(eyebrow: (@Composable () -> Unit)?, heading: String, meta: String, overview: String?) {
+private fun HeroTitle(text: String, maxLines: Int = 2, width: Dp = HeroWidth) {
+    Text(text, style = TvType.display, color = Kivo.colors.text, maxLines = maxLines, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = width))
+}
+
+/** A line of a hero's details, which holds its place when it's empty. */
+@Composable
+private fun HeroLine(text: String) {
+    Text(text, style = TvType.small, color = Kivo.colors.textMuted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.height(MetaHeight))
+}
+
+/**
+ * A hero's description, holding its [lines] whatever its length; while the
+ * page is read, its lines to come or why it couldn't be read.
+ */
+@Composable
+private fun OverviewSlot(
+    hero: HeroLevels,
+    page: Page,
+    title: String,
+    text: String?,
+    lines: Int = 3,
+    width: Dp = HeroWidth,
+    textWidth: Dp = 470.dp,
+) {
+    Box(Modifier.heightIn(min = OverviewLine * lines)) {
+        if (!text.isNullOrBlank()) {
+            Overview(
+                title,
+                text,
+                Modifier.focusKey(hero.memory, HeroLevels.OVERVIEW),
+                lines = lines,
+                width = width,
+                textWidth = textWidth,
+                onClamped = { hero.overviewStops = it },
+            )
+        } else {
+            Pending(page)
+        }
+    }
+}
+
+/** The title and line of a collection's hero. */
+@Composable
+private fun HeroText(heading: String, meta: String) {
     val colors = Kivo.colors
     Column(Modifier.widthIn(max = 600.dp), verticalArrangement = Arrangement.spacedBy(Kivo.space(2))) {
-        eyebrow?.invoke()
         Text(heading, style = TvType.title, color = colors.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
         if (meta.isNotEmpty()) Text(meta, style = TvType.body, color = colors.textMuted)
-        if (!overview.isNullOrBlank()) OverviewText(heading, overview)
     }
-}
-
-/** An overview whose text lines up with the title above; its focus background reaches past it. */
-@Composable
-private fun OverviewText(title: String, text: String) {
-    Overview(title, text, Modifier.offset(x = -Kivo.space(3)).widthIn(max = 640.dp))
 }
 
 /** The details line: year, runtime, community rating, content rating and, once read, genres. */
@@ -264,26 +395,32 @@ private fun metaLine(head: WorkSummary, work: WorkDetail?, display: Display): St
 @Composable
 private fun MovieDetail(model: DetailViewModel, page: Page, navigator: Navigator) {
     val memory = rememberFocusMemory()
+    val hero = rememberHeroLevels(memory)
+    hero.levels = false
     var choices by rememberChoices()
     val head = page.head
     val work = page.work
     DetailFrame(head.images.backdrop) {
-        DetailList(top = 120.dp) {
+        DetailList(top = HeroTop) {
             item {
-                Column(Modifier.bringsTopIntoView(), verticalArrangement = Arrangement.spacedBy(Kivo.space(5))) {
-                    HeroText(null, labelledTitle(head.title, head.movie), metaLine(head, work, display), null)
-                    Column {
-                        ActionRow(model, head, work, choices, memory, navigator)
-                        TimeLeft(head.userState?.positionMs, head.durationMs)
+                Column(Modifier.bringsTopIntoView()) {
+                    HeroTitle(labelledTitle(head.title, head.movie))
+                    Spacer(Modifier.height(HeroGap))
+                    HeroLine(metaLine(head, work, display))
+                    Spacer(Modifier.height(HeroGap))
+                    ActionRow(model, head, work, choices, hero, navigator)
+                    Spacer(Modifier.height(HeroGapTight))
+                    TimeLeft(head.userState?.positionMs, head.durationMs)
+                    Spacer(Modifier.height(HeroGap))
+                    // Two lines of pickers' room, as the Samsung TV app's wrap, so the description holds its place.
+                    Box(Modifier.heightIn(min = 66.5.dp)) {
+                        if (work != null) Pickers(work, choices, hero) { choices = it }
                     }
-                    if (work != null) {
-                        Pickers(work, choices) { choices = it }
-                        work.overview?.takeIf { it.isNotBlank() }?.let { OverviewText(work.title, it) }
-                    }
-                    Pending(page)
+                    Spacer(Modifier.height(HeroGap))
+                    OverviewSlot(hero, page, head.title, work?.overview)
                 }
             }
-            if (work != null) extraRows(work, memory, navigator)
+            if (work != null) extraRows(work, memory, navigator, firstTop = 24.dp)
         }
     }
     LaunchedEffect(Unit) { memory.restore(if (playable(head, work, choices)) "play" else "favorite") }
@@ -298,10 +435,9 @@ private fun playable(head: WorkSummary, work: WorkDetail?, choices: Choices) = i
 
 /**
  * Play or Resume with the time, and beside Resume a round Play from
- * beginning; then Favorite, Played and the ⋯ menu; "This file is
+ * beginning; then [chips], Favorite, Played and the ⋯ menu; "This file is
  * missing" in Play's place when no version can play. They work from the
  * card before the page is read.
- * [before] and [after] are the episode page's Previous and Next.
  */
 @Composable
 private fun ActionRow(
@@ -309,10 +445,9 @@ private fun ActionRow(
     work: WorkSummary,
     read: WorkDetail?,
     choices: Choices,
-    memory: FocusMemory,
+    hero: HeroLevels,
     navigator: Navigator,
-    before: (@Composable () -> Unit)? = null,
-    after: (@Composable () -> Unit)? = null,
+    chips: (@Composable () -> Unit)? = null,
 ) {
     val played = work.userState?.played == true
     val favorite = work.userState?.favorite == true
@@ -321,51 +456,66 @@ private fun ActionRow(
     fun play(fromStart: Boolean) = navigator.push(
         Screen.Player(work.id, read?.selectedVersion(choices.versionId)?.id ?: choices.versionId, choices.audioTrackId, choices.subtitleTrackId, fromStart),
     )
-    Row(horizontalArrangement = Arrangement.spacedBy(Kivo.space(3)), verticalAlignment = Alignment.CenterVertically) {
-        before?.invoke()
+    Row(Modifier.heroButtons(hero), horizontalArrangement = Arrangement.spacedBy(HeroGapTight), verticalAlignment = Alignment.CenterVertically) {
         if (!playable) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 KivoIconView(KivoIcon.Alert, tint = Kivo.colors.warning)
                 Text(stringResource(R.string.file_missing), style = TvType.bodyStrong, color = Kivo.colors.warning, modifier = Modifier.padding(start = Kivo.space(2)))
             }
         } else {
-            KivoButton(
-                text = if (position != null) stringResource(R.string.resume_at, display.clock(position.toLong())) else stringResource(R.string.play),
-                onClick = { play(fromStart = false) },
-                icon = KivoIcon.Play,
-                primary = true,
-                modifier = Modifier.focusKey(memory, "play").testTag("play"),
-            )
-            if (position != null) RestartButton(memory) { play(fromStart = true) }
+            PlayButton(if (position != null) stringResource(R.string.resume_at, display.clock(position.toLong())) else stringResource(R.string.play), hero) { play(fromStart = false) }
+            if (position != null) RestartButton(hero) { play(fromStart = true) }
         }
-        IconButton(
+        chips?.invoke()
+        HeroIconButton(
             KivoIcon.Heart,
             stringResource(if (favorite) R.string.remove_favorite else R.string.add_favorite),
-            { model.setFavorite(work.id, !favorite) },
-            Modifier.focusKey(memory, "favorite"),
-            on = favorite,
-        )
-        IconButton(
+            hero,
+            "favorite",
+            favorite,
+        ) { model.setFavorite(work.id, !favorite) }
+        HeroIconButton(
             KivoIcon.Check,
             stringResource(if (played) R.string.mark_unplayed else R.string.mark_played),
-            { model.setPlayed(work.id, !played) },
-            Modifier.focusKey(memory, "played"),
-            on = played,
-        )
-        MoreButton(work, memory, navigator)
-        after?.invoke()
+            hero,
+            "played",
+            played,
+        ) { model.setPlayed(work.id, !played) }
+        MoreButton(work, hero, navigator)
     }
 }
 
-/** Play from beginning, a round button beside Resume. */
+/** A hero's Play or Resume. */
 @Composable
-private fun RestartButton(memory: FocusMemory, onClick: () -> Unit) {
-    IconButton(KivoIcon.Replay, stringResource(R.string.play_from_beginning), onClick, Modifier.focusKey(memory, "restart").testTag("restart"))
+private fun PlayButton(text: String, hero: HeroLevels, onClick: () -> Unit) {
+    OfferButton(hero, "play")
+    KivoButton(
+        text = text,
+        onClick = onClick,
+        icon = KivoIcon.Play,
+        primary = true,
+        modifier = Modifier.heroButton(hero, "play").height(ButtonHeight).testTag("play"),
+        contentPadding = ButtonPadding,
+    )
+}
+
+/** One of a hero's small buttons, the button [key] of its row. */
+@Composable
+private fun HeroIconButton(icon: KivoIcon, label: String, hero: HeroLevels, key: String, on: Boolean = false, onClick: () -> Unit) {
+    OfferButton(hero, key)
+    IconButton(icon, label, onClick, Modifier.heroButton(hero, key), on = on, size = ButtonHeight, corners = KivoTokens.Radius.md)
+}
+
+/** Play from beginning, beside Resume. */
+@Composable
+private fun RestartButton(hero: HeroLevels, onClick: () -> Unit) {
+    OfferButton(hero, "restart")
+    IconButton(KivoIcon.Replay, stringResource(R.string.play_from_beginning), onClick, Modifier.heroButton(hero, "restart").testTag("restart"), size = ButtonHeight, corners = KivoTokens.Radius.md)
 }
 
 /** The hero's ⋯: Go to series for an episode, and Go to library. */
 @Composable
-private fun MoreButton(work: WorkSummary, memory: FocusMemory, navigator: Navigator) {
+private fun MoreButton(work: WorkSummary, hero: HeroLevels, navigator: Navigator) {
     var open by remember { mutableStateOf(false) }
     val seriesId = work.episode?.seriesId
     val libraryId = work.libraryId
@@ -374,7 +524,7 @@ private fun MoreButton(work: WorkSummary, memory: FocusMemory, navigator: Naviga
         if (libraryId != null) add(Choice("library", stringResource(R.string.go_to_library)))
     }
     if (choices.isEmpty()) return
-    IconButton(KivoIcon.More, stringResource(R.string.more_actions), { open = true }, Modifier.focusKey(memory, "more"))
+    HeroIconButton(KivoIcon.More, stringResource(R.string.more_actions), hero, "more") { open = true }
     if (open) {
         ChoicePanel(
             title = work.title,
@@ -395,14 +545,14 @@ private fun MoreButton(work: WorkSummary, memory: FocusMemory, navigator: Naviga
 /** "1 hr 34 min left · Ends at 9:42 PM" under the buttons once a work is started, else when it would end. */
 @Composable
 private fun TimeLeft(positionMs: Int?, durationMs: Int?) {
-    if (durationMs == null) return
+    HeroLine(if (durationMs == null) "" else timeLeftLine(positionMs, durationMs))
+}
+
+/** The time left once a work is started and when it would end, each second as the clock moves. */
+@Composable
+private fun timeLeftLine(positionMs: Int?, durationMs: Int): String {
     val leftMs = (durationMs - (positionMs ?: 0)).toLong()
-    Text(
-        listOfNotNull(display.timeLeft(leftMs).takeIf { positionMs != null }, endsAt(leftMs)).joinToString(" · "),
-        style = TvType.body,
-        color = Kivo.colors.textMuted,
-        modifier = Modifier.padding(top = Kivo.space(2)),
-    )
+    return listOfNotNull(display.timeLeft(leftMs).takeIf { positionMs != null }, endsAt(leftMs)).joinToString(" · ")
 }
 
 @Composable
@@ -420,10 +570,13 @@ private enum class Picker { Version, Tracks, SubtitleSearch }
  * column, named after the track the server says a play starts with. A
  * version change resets the track choices, whose IDs belong to one file.
  * Its subtitle search chooses the subtitle it downloads for the next play,
- * which shows among the tracks until the work is read again with it.
+ * which shows among the tracks until the work is read again with it. As
+ * [chips] they're buttons of the hero's row, "Audio: English 5.1" and
+ * "Subtitles: Off", saying what plays where Automatic is chosen, as on an
+ * episode's page.
  */
 @Composable
-private fun Pickers(read: WorkDetail, choices: Choices, onChange: (Choices) -> Unit) {
+private fun Pickers(read: WorkDetail, choices: Choices, hero: HeroLevels, chips: Boolean = false, onChange: (Choices) -> Unit) {
     var downloaded by remember(read) { mutableStateOf(emptyList<Pair<String, Track>>()) }
     val work = downloaded.fold(read) { w, (versionId, track) -> w.withTrack(versionId, track) }
     val version = work.selectedVersion(choices.versionId) ?: return
@@ -440,21 +593,28 @@ private fun Pickers(read: WorkDetail, choices: Choices, onChange: (Choices) -> U
     val missingLabel = stringResource(R.string.version_missing)
     val display = LocalSession.current.graph.display
 
-    // Each picker's text lines up with the title above; its focus background reaches past it.
-    Row(Modifier.offset(x = -Kivo.space(3)), horizontalArrangement = Arrangement.spacedBy(Kivo.space(2))) {
-        if (work.versions.size > 1) {
-            ValueRow(stringResource(R.string.version), version.name, { open = Picker.Version }, Modifier.widthIn(max = 220.dp))
-        }
+    // What plays: the track chosen, else the one Automatic plays.
+    val audio = choices.audioTrackId ?: automatic.audio
+    val subtitle = choices.subtitleTrackId ?: automatic.subtitle
+    val audioValue = tracks.audio.firstOrNull { it.id == audio }?.name.takeIf { tracks.audio.size > 1 }
+    val subtitleValue = (if (subtitle == Subtitles.OFF) offLabel else tracks.subtitles.firstOrNull { it.id == subtitle }?.name)
+        .takeIf { tracks.subtitles.isNotEmpty() || tracks.searchable }
+    if (chips) {
+        if (work.versions.size > 1) PickerChip(stringResource(R.string.version), version.name, hero, "version") { open = Picker.Version }
         if (tracks.choosable) {
-            // What plays: the track chosen, else the one Automatic plays.
-            val audio = choices.audioTrackId ?: automatic.audio
-            val subtitle = choices.subtitleTrackId ?: automatic.subtitle
-            val value = listOfNotNull(
-                tracks.audio.firstOrNull { it.id == audio }?.name.takeIf { tracks.audio.size > 1 },
-                (if (subtitle == Subtitles.OFF) offLabel else tracks.subtitles.firstOrNull { it.id == subtitle }?.name)
-                    .takeIf { tracks.subtitles.isNotEmpty() || tracks.searchable },
-            ).joinToString(" / ")
-            ValueRow(stringResource(R.string.audio_and_subtitles), value, { open = Picker.Tracks }, Modifier.widthIn(max = 420.dp).testTag("tracks"))
+            audioValue?.let { PickerChip(stringResource(R.string.audio), it, hero, "audio") { open = Picker.Tracks } }
+            subtitleValue?.let { PickerChip(stringResource(R.string.subtitles), it, hero, "subtitles") { open = Picker.Tracks } }
+        }
+    } else {
+        // Each picker's text lines up with the title above; its focus background reaches past it.
+        Row(Modifier.offset(x = -Kivo.space(3)), horizontalArrangement = Arrangement.spacedBy(Kivo.space(2))) {
+            if (work.versions.size > 1) {
+                ValueRow(stringResource(R.string.version), version.name, { open = Picker.Version }, Modifier.widthIn(max = 220.dp))
+            }
+            if (tracks.choosable) {
+                val value = listOfNotNull(audioValue, subtitleValue).joinToString(" / ")
+                ValueRow(stringResource(R.string.audio_and_subtitles), value, { open = Picker.Tracks }, Modifier.widthIn(max = 420.dp).testTag("tracks"))
+            }
         }
     }
     when (open) {
@@ -498,52 +658,52 @@ private fun Pickers(read: WorkDetail, choices: Choices, onChange: (Choices) -> U
     }
 }
 
-/** Cast, extras and collections under the hero; rows with nothing in them are left out. */
-private fun androidx.compose.foundation.lazy.LazyListScope.extraRows(work: WorkDetail, memory: FocusMemory, navigator: Navigator) {
+/** A picker among a hero's buttons. */
+@Composable
+private fun PickerChip(label: String, value: String, hero: HeroLevels, key: String, onClick: () -> Unit) {
+    OfferButton(hero, key)
+    KivoButton(
+        text = stringResource(R.string.picker_value, label, value),
+        onClick = onClick,
+        modifier = Modifier.heroButton(hero, key).height(ButtonHeight).widthIn(max = 160.dp),
+        contentPadding = ButtonPadding,
+    )
+}
+
+/** Cast, extras and collections under the hero, the first [firstTop] under it; rows with nothing in them are left out. */
+private fun LazyListScope.extraRows(work: WorkDetail, memory: FocusMemory, navigator: Navigator, firstTop: Dp = RowGap) {
+    var top = firstTop
+    fun nextTop() = top.also { top = RowGap }
     val cast = work.credits.filter { it.role == "actor" }.take(20)
     if (cast.isNotEmpty()) {
-        item {
-            Column(Modifier.padding(top = Kivo.space(8))) {
-                RowTitle(stringResource(R.string.cast), Modifier.padding(bottom = Kivo.space(3)))
-                CardRow {
-                    items(cast, key = { it.personId + (it.character ?: "") }) { credit ->
-                        PersonCard(credit.name, credit.photo, credit.character, { navigator.push(Screen.Person(credit.personId)) }, Modifier.focusKey(memory, "cast/${credit.personId}"))
-                    }
-                }
+        extraRow(R.string.cast, nextTop()) {
+            items(cast, key = { it.personId + (it.character ?: "") }) { credit ->
+                PersonCard(credit.name, credit.photo, credit.character, { navigator.push(Screen.Person(credit.personId)) }, Modifier.focusKey(memory, "cast/${credit.personId}"))
             }
         }
     }
-    cardRow(R.string.extras, work.extras, CardShape.Landscape, memory, navigator)
+    if (work.extras.isNotEmpty()) {
+        extraRow(R.string.extras, nextTop()) {
+            items(work.extras, key = { it.id }) { w ->
+                WorkCard(w, CardShape.Landscape, LandscapeWidth, { navigator.push(Screen.Work(w.id)) }, Modifier.focusKey(memory, "row/${w.id}"))
+            }
+        }
+    }
     if (work.collections.isNotEmpty()) {
-        item {
-            Column(Modifier.padding(top = Kivo.space(8))) {
-                RowTitle(stringResource(R.string.collections), Modifier.padding(bottom = Kivo.space(3)))
-                CardRow {
-                    items(work.collections, key = { it.id }) { c ->
-                        CollectionCard(c, PosterWidth, { navigator.push(Screen.Collection(c.id)) }, Modifier.focusKey(memory, "row/${c.id}"))
-                    }
-                }
+        extraRow(R.string.collections, nextTop()) {
+            items(work.collections, key = { it.id }) { c ->
+                CollectionCard(c, PosterWidth, { navigator.push(Screen.Collection(c.id)) }, Modifier.focusKey(memory, "row/${c.id}"))
             }
         }
     }
 }
 
-private fun androidx.compose.foundation.lazy.LazyListScope.cardRow(
-    title: Int,
-    works: List<WorkSummary>,
-    shape: CardShape,
-    memory: FocusMemory,
-    navigator: Navigator,
-) {
-    if (works.isEmpty()) return
-    item {
-        Column(Modifier.padding(top = Kivo.space(8))) {
-            RowTitle(stringResource(title), Modifier.padding(bottom = Kivo.space(3)))
-            CardRow {
-                items(works, key = { it.id }) { w ->
-                    WorkCard(w, shape, if (shape == CardShape.Landscape) LandscapeWidth else PosterWidth, { navigator.push(Screen.Work(w.id)) }, Modifier.focusKey(memory, "row/${w.id}"))
-                }
-            }
+/** A titled row under a hero, raised with its focused card, so the card's glow lies over the row below. */
+private fun LazyListScope.extraRow(title: Int, top: Dp, cards: LazyListScope.() -> Unit) {
+    item(key = title) {
+        Column(Modifier.raisedOnFocus().padding(top = top)) {
+            RowTitle(stringResource(title), Modifier.padding(bottom = RowTitleGap))
+            CardRow(Modifier.rowPlace(), content = cards)
         }
     }
 }
@@ -552,17 +712,22 @@ private fun androidx.compose.foundation.lazy.LazyListScope.cardRow(
 @Composable
 private fun seasonName(number: Int?) = if (number == 0) stringResource(R.string.specials) else stringResource(R.string.season_n, number ?: 1)
 
+/** A season's pill: "S3", or "Specials" for season 0. */
+@Composable
+private fun seasonLabel(number: Int?) = if (number == 0) stringResource(R.string.specials) else stringResource(R.string.season_short, number ?: 1)
+
 /**
  * A series: Next Up as the primary action, the season strip
- * (none for a single season), and the open season's episodes, opening on
+ * (none for a single season), and the open season's episodes as a row of
+ * cards that opens on Next Up, opening on
  * the season whose page this is, or Go to series' [episode]'s, else the
  * season holding Next Up, as [Seasons.openSeason] picks. Its seasons
  * are read with the series; until they're in, placeholders hold their place.
  */
-@OptIn(ExperimentalAnimationApi::class)
 @Composable
 private fun SeriesDetail(model: DetailViewModel, page: Page, seasonId: String?, episode: EpisodeInfo?, navigator: Navigator) {
     val memory = rememberFocusMemory()
+    val hero = rememberHeroLevels(memory)
     val head = page.head
     val work = page.work
     val seasonsLoader = model.children(head.id)
@@ -574,13 +739,14 @@ private fun SeriesDetail(model: DetailViewModel, page: Page, seasonId: String?, 
     val open = seasons?.let { listed ->
         listed.firstOrNull { it.id == chosen } ?: Seasons.openSeason(listed, seasonId, episode, nextUp?.episode, seriesRead = work != null || page.problem != null)
     }
-    // The season on screen keeps its rows until the chosen one's episodes are ready.
+    // The season on screen keeps its row until the chosen one's episodes are ready.
     var shown by remember { mutableStateOf<Pair<WorkSummary, List<WorkSummary>>?>(null) }
     val episodesLoader = open?.let { model.children(it.id) }
     val episodesState = episodesLoader?.state?.collectAsStateWithLifecycle()?.value
     val episodes = episodesState?.getOrNull()
     if (open != null && episodes != null && shown != (open to episodes)) shown = open to episodes
     var confirming by remember { mutableStateOf(false) }
+    var confirmingSeason by remember { mutableStateOf<WorkSummary?>(null) }
 
     val series = work?.series ?: head.series
     val years = series?.lastAirYear?.takeIf { it != head.year }
@@ -595,96 +761,100 @@ private fun SeriesDetail(model: DetailViewModel, page: Page, seasonId: String?, 
     val favorite = head.userState?.favorite == true
     val server = LocalSession.current.session.baseUrl
 
+    val pills = remember { FocusRequester() }
+    val cards = remember { FocusRequester() }
+    val strip = seasons != null && seasons.size > 1
+    val current = shown
+    // Focus can be sent to the cards only while they're there, as a failure may stand in their place.
+    val cardsShown = current != null && episodesState?.problemOrNull() == null
+    val toCards = { if (cardsShown) cards else FocusRequester.Default }
+    hero.below = if (strip) pills else cards.takeIf { cardsShown }
+
     DetailFrame(head.images.backdrop) {
-        DetailList(top = 120.dp) {
+        DetailList(top = HeroTop, bottom = SeriesRoomBelow) {
             item {
-                Column(Modifier.bringsTopIntoView(), verticalArrangement = Arrangement.spacedBy(Kivo.space(5))) {
-                    HeroText(null, head.title, meta, work?.overview)
-                    if (work == null && page.problem == null) Pending(page)
-                    Column {
-                        Row(horizontalArrangement = Arrangement.spacedBy(Kivo.space(3)), verticalAlignment = Alignment.CenterVertically) {
-                            // Until the series is read, the button holds Next Up's place, and focus, as Play.
-                            if (nextUp != null || work == null) {
-                                val e = nextUp?.episode
-                                val position = nextUp?.userState?.positionMs
-                                KivoButton(
-                                    text = when {
-                                        nextUp == null -> stringResource(R.string.play)
-                                        position != null -> stringResource(R.string.resume_at, display.clock(position.toLong()))
-                                        else -> stringResource(R.string.play_episode, e?.seasonNumber ?: 0, e?.number ?: 0)
-                                    },
-                                    onClick = { nextUp?.let { navigator.push(Screen.Player(it.id)) } },
-                                    icon = KivoIcon.Play,
-                                    primary = true,
-                                    modifier = Modifier.focusKey(memory, "play").testTag("play"),
-                                )
-                                nextUp?.takeIf { it.userState?.positionMs != null }?.let { RestartButton(memory) { navigator.push(Screen.Player(it.id, fromStart = true)) } }
-                            }
-                            IconButton(KivoIcon.Heart, stringResource(if (favorite) R.string.remove_favorite else R.string.add_favorite), { model.setFavorite(head.id, !favorite) }, Modifier.focusKey(memory, "favorite"), on = favorite)
-                            IconButton(
-                                KivoIcon.Check,
-                                stringResource(if (played) R.string.mark_unplayed else R.string.mark_played),
-                                { if (played) model.setPlayed(head.id, false) else confirming = true },
-                                Modifier.focusKey(memory, "played"),
-                                on = played,
-                            )
-                            MoreButton(head, memory, navigator)
+                Column(Modifier.bringsTopIntoView()) {
+                    HeroTitle(head.title)
+                    Spacer(Modifier.height(HeroGap))
+                    HeroLine(meta)
+                    Spacer(Modifier.height(HeroGap))
+                    Row(Modifier.heroButtons(hero), horizontalArrangement = Arrangement.spacedBy(HeroGapTight), verticalAlignment = Alignment.CenterVertically) {
+                        // Until the series is read, the button holds Next Up's place, and focus, as Play.
+                        if (nextUp != null || work == null) {
+                            val e = nextUp?.episode
+                            val position = nextUp?.userState?.positionMs
+                            PlayButton(
+                                when {
+                                    nextUp == null -> stringResource(R.string.play)
+                                    position != null -> stringResource(R.string.resume_at, display.clock(position.toLong()))
+                                    else -> stringResource(R.string.play_episode, e?.seasonNumber ?: 0, e?.number ?: 0)
+                                },
+                                hero,
+                            ) { nextUp?.let { navigator.push(Screen.Player(it.id)) } }
+                            nextUp?.takeIf { it.userState?.positionMs != null }?.let { RestartButton(hero) { navigator.push(Screen.Player(it.id, fromStart = true)) } }
                         }
-                        // What the button plays: "S3 · E4 · Reload · 30 min left".
-                        if (nextUp != null) {
-                            val left = nextUp.userState?.positionMs?.let { p -> nextUp.durationMs?.let { d -> display.timeLeft((d - p).toLong()) } }
-                            Text(
-                                listOfNotNull(nextUp.episode?.let(display::episodeCode), nextUp.title, left).joinToString(" · "),
-                                style = TvType.body,
-                                color = Kivo.colors.textMuted,
-                                modifier = Modifier.padding(top = Kivo.space(2)),
-                            )
+                        HeroIconButton(KivoIcon.Heart, stringResource(if (favorite) R.string.remove_favorite else R.string.add_favorite), hero, "favorite", favorite) { model.setFavorite(head.id, !favorite) }
+                        HeroIconButton(KivoIcon.Check, stringResource(if (played) R.string.mark_unplayed else R.string.mark_played), hero, "played", played) {
+                            if (played) model.setPlayed(head.id, false) else confirming = true
                         }
+                        MoreButton(head, hero, navigator)
                     }
-                    if (page.problem != null) Pending(page)
+                    Spacer(Modifier.height(HeroGapTight))
+                    // What the button plays: "S3 · E4 · Reload · 30 min left".
+                    val left = nextUp?.userState?.positionMs?.let { p -> nextUp.durationMs?.let { d -> display.timeLeft((d - p).toLong()) } }
+                    HeroLine(if (nextUp == null) "" else listOfNotNull(nextUp.episode?.let(display::episodeCode), nextUp.title, left).joinToString(" · "))
+                    Spacer(Modifier.height(HeroGap))
+                    OverviewSlot(hero, page, head.title, work?.overview)
+                    // Room for its focus outline, and enough that it's wholly off the screen with the episodes at the top.
+                    Spacer(Modifier.height(24.dp))
                 }
             }
             val seasonsProblem = seasonsState.problemOrNull()
-            when {
-                seasonsProblem != null -> item {
-                    InlineFailed(seasonsProblem, server, seasonsLoader::retry, Modifier.padding(top = Kivo.space(8)))
-                }
-                // As many seasons as the series is known to have; a single season has no strip.
-                seasons == null && (series?.seasonCount ?: 0) > 1 -> item {
-                    Row(Modifier.padding(top = Kivo.space(8)), horizontalArrangement = Arrangement.spacedBy(Kivo.space(2))) {
-                        repeat(minOf(series?.seasonCount ?: 0, PLACEHOLDERS)) { SkeletonBlock(Modifier.width(120.dp).height(40.dp), radius = KivoTokens.Radius.full) }
-                    }
-                }
-                seasons != null && seasons.size > 1 -> item {
-                    CardRow(Modifier.padding(top = Kivo.space(8)), spacing = Kivo.space(2)) {
-                        items(seasons, key = { it.id }) { s ->
-                            SeasonChip(s, s.id == open?.id, Modifier.focusKey(memory, "season/${s.id}")) { chosen = s.id }
-                        }
-                    }
-                }
-            }
             val episodesProblem = episodesState?.problemOrNull()
-            val current = shown
-            when {
-                episodesProblem != null -> item(key = "episodes") {
-                    InlineFailed(episodesProblem, server, episodesLoader::retry, Modifier.padding(top = Kivo.space(6)))
-                }
-                current != null -> item(key = "episodes") {
-                    updateTransition(current, label = "season").Crossfade(animationSpec = fadeSpec(), contentKey = { it.first.id }) { (season, episodes) ->
-                        Column(Modifier.padding(top = Kivo.space(6))) {
-                            EpisodesTitle(if (seasons.orEmpty().size > 1) seasonName(season.season?.number) else stringResource(R.string.episodes))
-                            EpisodeRows(episodes, null, memory, navigator)
-                        }
-                    }
-                }
-                seasonsProblem == null && seasons?.isEmpty() != true -> item(key = "episodes") {
-                    Column(Modifier.padding(top = Kivo.space(6))) {
+            if (seasonsProblem != null) {
+                item { InlineFailed(seasonsProblem, server, seasonsLoader::retry) }
+            } else if (seasons?.isEmpty() != true) {
+                item(key = "episodes") {
+                    // Its strip, heading and cards come to the screen's top together, the hero wholly away rather than half.
+                    val above = with(LocalDensity.current) { (SafeTop - HeroTop).toPx() }
+                    Column(Modifier.bringsTopIntoView(above).raisedOnFocus()) {
                         when {
-                            seasons?.size == 1 -> EpisodesTitle(stringResource(R.string.episodes))
-                            open != null -> EpisodesTitle(seasonName(open.season?.number))
-                            else -> SkeletonLine(160.dp, TvType.large, Modifier.padding(bottom = Kivo.space(2)))
+                            strip -> {
+                                SeasonStrip(seasons.orEmpty(), open, memory, pills, toCards) { chosen = it }
+                                Spacer(Modifier.height(CardsUnderHeading))
+                            }
+                            // As many seasons as the series is known to have; a single season has no strip.
+                            seasons == null && (series?.seasonCount ?: 0) > 1 -> {
+                                Row(horizontalArrangement = Arrangement.spacedBy(HeroGapTight)) {
+                                    repeat(minOf(series?.seasonCount ?: 0, PLACEHOLDERS)) { SkeletonBlock(Modifier.width(60.dp).height(PillHeight), radius = KivoTokens.Radius.full) }
+                                }
+                                Spacer(Modifier.height(CardsUnderHeading))
+                            }
                         }
-                        EpisodeRowsSkeleton(open?.season?.episodeCount)
+                        val heading = current?.first ?: open
+                        SeasonHeading(heading, strip, memory, pills, toCards) { season ->
+                            when {
+                                season.userState?.played == true -> model.setPlayed(season.id, false)
+                                (season.season?.unplayedCount ?: 0) > 1 -> confirmingSeason = season
+                                else -> model.setPlayed(season.id, true)
+                            }
+                        }
+                        when {
+                            episodesProblem != null -> InlineFailed(episodesProblem, server, episodesLoader::retry, Modifier.padding(top = CardsUnderHeading))
+                            current != null -> key(current.first.id) {
+                                EpisodeCardRow(
+                                    current.second,
+                                    entry = nextUp?.id,
+                                    currentId = null,
+                                    memory = memory,
+                                    group = cards,
+                                    navigator = navigator,
+                                    modifier = Modifier.rowPlace(top = FocusBleed - CardsUnderHeading),
+                                    up = { if (strip) memory.requester(SeasonPlayedKey) else FocusRequester.Default },
+                                )
+                            }
+                            else -> EpisodeCardRowSkeleton(Modifier.padding(top = CardsUnderHeading))
+                        }
                     }
                 }
             }
@@ -704,6 +874,19 @@ private fun SeriesDetail(model: DetailViewModel, page: Page, seasonId: String?, 
             onDismiss = { confirming = false },
         )
     }
+    confirmingSeason?.let { season ->
+        val count = season.season?.unplayedCount ?: 0
+        ChoicePanel(
+            title = pluralStringResource(R.plurals.mark_episodes_played, count, count),
+            choices = listOf(Choice("no", stringResource(R.string.cancel)), Choice("yes", stringResource(R.string.mark_played))),
+            selected = "no",
+            onSelect = {
+                confirmingSeason = null
+                if (it == "yes") model.setPlayed(season.id, true)
+            },
+            onDismiss = { confirmingSeason = null },
+        )
+    }
     LaunchedEffect(Unit) { memory.restore(if (nextUp != null || work == null) "play" else "favorite") }
     if (work != null && nextUp == null) LaunchedEffect(Unit) { memory.replaced("play", "favorite") }
 }
@@ -711,31 +894,80 @@ private fun SeriesDetail(model: DetailViewModel, page: Page, seasonId: String?, 
 /** Placeholders shown at most for a list being read: about as many as fit on the screen. */
 private const val PLACEHOLDERS = 6
 
-@Composable
-private fun EpisodesTitle(text: String) {
-    Text(text, style = TvType.large, color = Kivo.colors.text, modifier = Modifier.padding(bottom = Kivo.space(2)))
-}
+/** The focus key of the open season's watched check. */
+private const val SeasonPlayedKey = "season-played"
 
-/** A season's episode rows while they're read: as many as it has, of those that fit, else a few. */
+/**
+ * The seasons as pills, the open one outlined in the accent. Focus comes in
+ * on the open one, and Down from any goes to [below], past the watched check.
+ */
 @Composable
-private fun EpisodeRowsSkeleton(count: Int?) {
-    Column(verticalArrangement = Arrangement.spacedBy(Kivo.space(2))) {
-        repeat(minOf(count ?: 3, PLACEHOLDERS)) {
-            Row(Modifier.padding(Kivo.space(1)), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Kivo.space(4))) {
-                SkeletonBlock(Modifier.width(KivoTokens.Layout.stillWidth).aspectRatio(KivoTokens.Aspect.landscape))
-                Column(Modifier.padding(Kivo.space(3))) {
-                    SkeletonLine(320.dp, TvType.bodyStrong)
-                    SkeletonLine(120.dp, TvType.small)
+private fun SeasonStrip(seasons: List<WorkSummary>, open: WorkSummary?, memory: FocusMemory, group: FocusRequester, below: () -> FocusRequester, onOpen: (String) -> Unit) {
+    val state = rememberLazyListState()
+    Box(
+        Modifier
+            .rowPlace(top = FocusBleed, bottom = FocusBleed)
+            .focusRequester(group)
+            .focusProperties {
+                onEnter = {
+                    val shown = state.layoutInfo.visibleItemsInfo.mapNotNull { it.key as? String }
+                    rowEntry(shown, null, open?.id)?.let { memory.requester("season/$it").requestFocus() }
                 }
             }
+            .focusGroup(),
+    ) {
+        CardRow(spacing = HeroGapTight, state = state) {
+            items(seasons, key = { it.id }) { s ->
+                SeasonChip(s, s.id == open?.id, Modifier.focusProperties { down = below() }.focusKey(memory, "season/${s.id}")) { onOpen(s.id) }
+            }
+        }
+    }
+}
+
+/**
+ * The open season's name, with its watched check when there's a strip above
+ * it, which Up from the cards lands on, and how many episodes it has at the
+ * right.
+ */
+@Composable
+private fun SeasonHeading(season: WorkSummary?, strip: Boolean, memory: FocusMemory, pills: FocusRequester, below: () -> FocusRequester, onPlayed: (WorkSummary) -> Unit) {
+    val colors = Kivo.colors
+    Row(Modifier.width(WideWidth).height(ButtonHeight), verticalAlignment = Alignment.CenterVertically) {
+        when {
+            !strip && season != null -> Text(stringResource(R.string.episodes), style = TvType.large, color = colors.text)
+            season != null -> Text(seasonName(season.season?.number), style = TvType.large, color = colors.text)
+            else -> SkeletonLine(160.dp, TvType.large)
+        }
+        if (strip && season != null) {
+            val played = season.userState?.played == true
+            Spacer(Modifier.width(HeroGapTight))
+            IconButton(
+                KivoIcon.Check,
+                stringResource(if (played) R.string.mark_unplayed else R.string.mark_played),
+                { onPlayed(season) },
+                Modifier
+                    .focusProperties {
+                        up = pills
+                        down = below()
+                    }
+                    .focusKey(memory, SeasonPlayedKey),
+                on = played,
+                size = ButtonHeight,
+                corners = KivoTokens.Radius.md,
+                container = Color.Transparent,
+            )
+        }
+        Spacer(Modifier.weight(1f))
+        season?.season?.episodeCount?.let {
+            Text(pluralStringResource(R.plurals.episodes, it, it), style = TvType.small, color = colors.textMuted)
         }
     }
 }
 
 @Composable
 private fun SeasonChip(season: WorkSummary, current: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    val colors = Kivo.colors
-    Chip(seasonName(season.season?.number), current, onClick, modifier) {
+    Chip(seasonLabel(season.season?.number), current, onClick, modifier, height = PillHeight) {
+        val colors = Kivo.colors
         val unplayed = season.season?.unplayedCount ?: 0
         if (season.userState?.played == true) {
             KivoIconView(KivoIcon.Check, Modifier.padding(start = Kivo.space(2)), size = 16.dp, tint = colors.accent)
@@ -745,156 +977,65 @@ private fun SeasonChip(season: WorkSummary, current: Boolean, modifier: Modifier
     }
 }
 
-/** A season's episodes as rows: the still plays it (resuming one in progress), the rest of the row opens its page. */
-@Composable
-private fun EpisodeRows(episodes: List<WorkSummary>, currentId: String?, memory: FocusMemory, navigator: Navigator) {
-    Column(verticalArrangement = Arrangement.spacedBy(Kivo.space(2))) {
-        for (episode in episodes) {
-            EpisodeRow(episode, episode.id == currentId, memory, navigator)
-        }
-    }
-}
-
-@Composable
-private fun EpisodeRow(episode: WorkSummary, current: Boolean, memory: FocusMemory, navigator: Navigator) {
-    val colors = Kivo.colors
-    val menu = LocalWorkMenu.current
-    val e = episode.episode
-    val number = if (e?.endNumber != null && e.endNumber != e.number) "E${e.number}–${e.endNumber}" else "E${e?.number ?: ""}"
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .background(if (current) colors.surfaceRaised else Color.Transparent, RoundedCornerShape(KivoTokens.Radius.md))
-            .padding(Kivo.space(1)),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Kivo.space(4)),
-    ) {
-        Card(
-            onClick = { navigator.push(Screen.Player(episode.id)) },
-            onLongClick = { menu(episode) },
-            modifier = Modifier.width(KivoTokens.Layout.stillWidth).focusKey(memory, "still/${episode.id}").menuKey(episode, menu).testTag("play:${episode.title}"),
-            shape = CardDefaults.shape(RoundedCornerShape(KivoTokens.Radius.md)),
-            border = CardDefaults.border(focusedBorder = focusRing()),
-            scale = CardDefaults.scale(focusedScale = KivoTokens.Tv.cardFocusScale),
-        ) {
-            Box {
-                Artwork(episode.images.still, episode.title, KivoTokens.Aspect.landscape, KivoTokens.Layout.stillWidth)
-                Box(Modifier.align(Alignment.Center).size(36.dp).background(colors.playerScrim, RoundedCornerShape(KivoTokens.Radius.full)), contentAlignment = Alignment.Center) {
-                    KivoIconView(KivoIcon.Play, size = 18.dp, tint = colors.onPlayer)
-                }
-                progressOf(episode)?.let { ProgressBar(it, Modifier.align(Alignment.BottomCenter)) }
-            }
-        }
-        Surface(
-            onClick = { navigator.push(Screen.Work(episode.id)) },
-            onLongClick = { menu(episode) },
-            modifier = Modifier.weight(1f).heightIn(min = 64.dp).focusKey(memory, "episode/${episode.id}").menuKey(episode, menu),
-            shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(KivoTokens.Radius.md)),
-            colors = ClickableSurfaceDefaults.colors(
-                containerColor = Color.Transparent,
-                contentColor = colors.text,
-                focusedContainerColor = colors.surfaceHover,
-                focusedContentColor = colors.text,
-            ),
-            border = ClickableSurfaceDefaults.border(focusedBorder = focusRing()),
-            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        ) {
-            Row(Modifier.padding(Kivo.space(3)), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("$number  ${episode.title}", style = TvType.bodyStrong, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    val left = episode.userState?.positionMs?.let { p -> episode.durationMs?.let { d -> display.timeLeft((d - p).toLong()) } }
-                    val line = listOfNotNull(
-                        episode.durationMs?.let { display.runtime(it.toLong()) },
-                        left,
-                        when (episode.matchState) {
-                            "unmatched" -> stringResource(R.string.badge_unmatched)
-                            "identifying" -> stringResource(R.string.badge_identifying)
-                            else -> null
-                        },
-                    ).joinToString(" · ")
-                    if (line.isNotEmpty()) Text(line, style = TvType.small, color = colors.textMuted)
-                }
-                if (episode.userState?.played == true) KivoIconView(KivoIcon.Check, size = 20.dp, tint = colors.accent)
-            }
-        }
-    }
-}
-
 /**
- * An episode: its still behind it, the series title leading back
- * to the series, "S3 · E4 · Reload", Play or Resume with Previous and Next
- * reached by Left and Right on that row, and its season listed below.
+ * An episode: its still behind it, one screen that doesn't scroll to reach
+ * its season. The series' name, leading back to the series; its title on one
+ * line and "S3 · E4 · date · runtime · Ends at"; Play or Resume with the track
+ * pickers along its row; up to six lines of description; and its season's
+ * row of cards, opening on this episode, whose neighbours are a move away.
  */
 @Composable
 private fun EpisodeDetail(model: DetailViewModel, page: Page, navigator: Navigator) {
     val memory = rememberFocusMemory()
+    val hero = rememberHeroLevels(memory)
     var choices by rememberChoices()
     val head = page.head
     val work = page.work
     val e = head.episode
-    val heading = listOfNotNull(
-        e?.let(display::episodeCode),
-        head.title,
-    ).joinToString(" · ")
-    val meta = listOfNotNull(
-        e?.airDate?.let { java.time.LocalDate.parse(it.toString()).format(java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.MEDIUM)) },
-        head.durationMs?.let { display.runtime(it.toLong()) },
-        head.communityRating?.let { "★ ${formatRating(it)}" },
-        head.contentRating,
-    ).joinToString(" · ")
-    // Previous and Next are known once the episode is read.
-    val links = work?.episode
+    val cards = remember { FocusRequester() }
+    // All of it stays where it opened, wherever focus moves in it, its season's row too.
+    val atRest = with(LocalDensity.current) { (SafeTop - HeroTop).toPx() }
     DetailFrame(head.images.still ?: head.images.backdrop) {
-        DetailList(top = 96.dp) {
+        DetailList(top = SafeTop, pivot = HeroTop) {
             item {
-                Column(Modifier.bringsTopIntoView(), verticalArrangement = Arrangement.spacedBy(Kivo.space(5))) {
-                    HeroText(
-                        eyebrow = e?.let {
-                            {
-                                KivoButton(it.seriesTitle, { navigator.push(Screen.Work(it.seriesId, it)) }, Modifier.focusKey(memory, "series"))
-                            }
-                        },
-                        heading = heading,
-                        meta = meta,
-                        overview = null,
-                    )
-                    Column {
-                        ActionRow(
-                            model, head, work, choices, memory, navigator,
-                            before = links?.previousId?.let { id ->
-                                { IconButton(KivoIcon.ChevronLeft, stringResource(R.string.previous_episode), { navigator.replaceWork(id) }, Modifier.focusKey(memory, "previous")) }
-                            },
-                            after = links?.nextId?.let { id ->
-                                { IconButton(KivoIcon.ChevronRight, stringResource(R.string.next_episode), { navigator.replaceWork(id) }, Modifier.focusKey(memory, "next")) }
-                            },
-                        )
-                        TimeLeft(head.userState?.positionMs, head.durationMs)
+                Column(Modifier.bringsTopIntoView(atRest)) {
+                    Box(Modifier.height(20.dp)) {
+                        e?.let { SeriesLink(it, hero, navigator) }
                     }
-                    if (work != null) {
-                        Pickers(work, choices) { choices = it }
-                        work.overview?.takeIf { it.isNotBlank() }?.let { OverviewText(work.title, it) }
-                    }
-                    Pending(page)
-                }
-            }
-            val seasonId = e?.seasonId
-            if (seasonId != null) {
-                item(key = "episodes") {
-                    val loader = model.children(seasonId)
-                    val state = loader.state.collectAsStateWithLifecycle().value
-                    val episodes = state.getOrNull()
-                    val problem = state.problemOrNull()
-                    Column {
+                    Spacer(Modifier.height(HeroGapTight))
+                    HeroTitle(head.title, maxLines = 1, width = WideWidth)
+                    Spacer(Modifier.height(HeroGapTight))
+                    EpisodeLine(head)
+                    Spacer(Modifier.height(HeroGapTight))
+                    ActionRow(model, head, work, choices, hero, navigator, chips = {
+                        if (work != null) Pickers(work, choices, hero, chips = true) { choices = it }
+                    })
+                    Spacer(Modifier.height(HeroGap))
+                    OverviewSlot(hero, page, head.title, work?.overview, lines = 5, width = EpisodeBlockWidth, textWidth = EpisodeTextWidth)
+                    Spacer(Modifier.height(HeroGap))
+                    e?.seasonId?.let { seasonId ->
+                        val loader = model.children(seasonId)
+                        val state = loader.state.collectAsStateWithLifecycle().value
+                        val episodes = state.getOrNull()
+                        val problem = state.problemOrNull()
+                        hero.below = cards.takeIf { episodes != null }
                         Text(
                             if (e.seasonNumber == 0) stringResource(R.string.specials) else stringResource(R.string.season_n, e.seasonNumber),
                             style = TvType.large,
                             color = Kivo.colors.text,
-                            modifier = Modifier.padding(top = Kivo.space(8), bottom = Kivo.space(2)),
                         )
                         when {
-                            episodes != null -> EpisodeRows(episodes, head.id, memory, navigator)
-                            problem != null -> InlineFailed(problem, LocalSession.current.session.baseUrl, loader::retry)
-                            else -> EpisodeRowsSkeleton(model.known(seasonId)?.season?.episodeCount)
+                            episodes != null -> EpisodeCardRow(
+                                episodes,
+                                entry = head.id,
+                                currentId = head.id,
+                                memory = memory,
+                                group = cards,
+                                navigator = navigator,
+                                modifier = Modifier.rowPlace(top = FocusBleed - CardsUnderHeading),
+                            )
+                            problem != null -> InlineFailed(problem, LocalSession.current.session.baseUrl, loader::retry, Modifier.padding(top = CardsUnderHeading))
+                            else -> EpisodeCardRowSkeleton(Modifier.padding(top = CardsUnderHeading))
                         }
                     }
                 }
@@ -905,8 +1046,47 @@ private fun EpisodeDetail(model: DetailViewModel, page: Page, navigator: Navigat
     LaunchedEffect(Unit) { memory.restore(if (playable(head, work, choices)) "play" else "favorite") }
 }
 
-/** Previous and Next replace the episode page, so Back still goes where it came from. */
-private fun Navigator.replaceWork(id: String) = replace(Screen.Work(id))
+/** The series' name over an episode's title: its own stop, leading back to the series, lit with focus. */
+@Composable
+private fun SeriesLink(episode: EpisodeInfo, hero: HeroLevels, navigator: Navigator) {
+    val colors = Kivo.colors
+    Surface(
+        onClick = { navigator.push(Screen.Work(episode.seriesId, episode)) },
+        modifier = Modifier
+            .offset(x = -SeriesLinkPadding)
+            .focusProperties { down = hero.buttons }
+            .focusKey(hero.memory, "series"),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(KivoTokens.Radius.sm)),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = Color.Transparent,
+            contentColor = colors.text,
+            focusedContainerColor = Lit.container,
+            focusedContentColor = Lit.content,
+        ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+    ) {
+        Text(episode.seriesTitle, style = ControlLabel, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = SeriesLinkPadding))
+    }
+}
+
+/** How far the series' name's focus reaches past its text, which lines up with the title. */
+private val SeriesLinkPadding = 6.dp
+
+/** An episode's details, "S3 · E4 · Feb 4, 2017 · 44m · ★ 8.5 · TV-14 · Ends at 4:57 PM"; only this follows the clock. */
+@Composable
+private fun EpisodeLine(head: WorkSummary) {
+    val e = head.episode
+    HeroLine(
+        listOfNotNull(
+            e?.let(display::episodeCode),
+            e?.airDate?.let { java.time.LocalDate.parse(it.toString()).format(java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.MEDIUM)) },
+            head.durationMs?.let { display.runtime(it.toLong()) },
+            head.communityRating?.let { "★ ${formatRating(it)}" },
+            head.contentRating,
+            head.durationMs?.let { timeLeftLine(head.userState?.positionMs, it) },
+        ).joinToString(" · "),
+    )
+}
 
 /** A collection's page's read, refetched as the libraries or played marks change. */
 class CollectionViewModel(session: ServerSession, id: String) : ViewModel() {
@@ -942,7 +1122,7 @@ fun CollectionScreen(session: ServerSession, id: String, navigator: Navigator) {
             DetailList(top = 120.dp) {
                 item {
                     val count = members?.size ?: seed?.workCount ?: 0
-                    HeroText(null, title, collectionCount(count, collection?.source ?: seed?.source), null)
+                    HeroText(title, collectionCount(count, collection?.source ?: seed?.source))
                 }
                 item {
                     when {

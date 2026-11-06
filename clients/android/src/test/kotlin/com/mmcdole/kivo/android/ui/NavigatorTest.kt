@@ -1,6 +1,5 @@
 package com.mmcdole.kivo.android.ui
 
-import com.mmcdole.kivo.android.settings.SettingsGroup
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -23,10 +22,10 @@ class NavigatorTest {
     }
 
     @Test
-    fun aSettingsPageGoesBackToSettingsThenTheRail() {
+    fun creditsGoBackToSettingsThenTheRail() {
         val navigator = Navigator()
         navigator.open(Screen.Settings)
-        navigator.push(Screen.SettingsPage(SettingsGroup.Account))
+        navigator.push(Screen.Credits)
         assertEquals(Back.Pop, navigator.back)
 
         navigator.pop()
@@ -55,9 +54,6 @@ class NavigatorTest {
         assertEquals(Screen.Search, navigator.destination)
 
         navigator.open(Screen.Settings)
-        navigator.push(Screen.SettingsPage(SettingsGroup.About))
-        assertEquals(Screen.Settings, navigator.destination)
-
         // About's Credits, a page further down.
         navigator.push(Screen.Credits)
         assertEquals(Screen.Settings, navigator.destination)

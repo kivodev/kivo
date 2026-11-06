@@ -17,6 +17,12 @@ class SettingsTest {
     }
 
     @Test
+    fun displayIsListedOnlyWhereTheSystemDoesntMatchFrameRates() {
+        assertEquals(SettingsGroup.entries, settingsGroups(systemMatches = false))
+        assertEquals(SettingsGroup.entries - SettingsGroup.Display, settingsGroups(systemMatches = true))
+    }
+
+    @Test
     fun movingALibraryPassesOverTheOnesTheTvDoesntList() {
         val all = listOf(library("movies"), library("books", "audiobooks"), library("shows", "shows"), library("home", "videos"))
 

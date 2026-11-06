@@ -12,8 +12,8 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.darkColorScheme
 
 // The TV interface's theme, from the generated tokens (KivoTokens,
-// shared/tokens.json): the dark colour set, the TV type scale and the focus
-// ring. Screens read colours from Kivo.colors, which has every colour token;
+// shared/tokens.json): the dark colour set, the TV type scale and the lit
+// colours of what has focus. Screens read colours from Kivo.colors, which has every colour token;
 // tv-material's components get the same colours through its scheme.
 
 private val LocalKivoColors = staticCompositionLocalOf { KivoTokens.dark }
@@ -44,6 +44,16 @@ object TvType {
 
     /** Something to read from across the room, such as a sign-in code. */
     val display = style(KivoTokens.Tv.Text.display, KivoTokens.FontWeights.bold)
+}
+
+/**
+ * [content] in the light theme's colours while [lit]: what a focused
+ * control holds, dark on its white, as the web TV's lit set, so a muted
+ * line or an accent stays legible there.
+ */
+@Composable
+fun LitColors(lit: Boolean, content: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalKivoColors provides if (lit) KivoTokens.light else LocalKivoColors.current, content = content)
 }
 
 @Composable

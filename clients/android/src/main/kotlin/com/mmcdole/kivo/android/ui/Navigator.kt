@@ -8,10 +8,9 @@ import androidx.compose.runtime.saveable.SaveableStateHolder
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
-import com.mmcdole.kivo.android.settings.SettingsGroup
 import com.mmcdole.kivo.api.models.EpisodeInfo
 
-/** The TV interface's screens: the rail's destinations, the favorites' grids, settings' pages, detail pages and the player. */
+/** The TV interface's screens: the rail's destinations, the favorites' grids, detail pages and the player. */
 sealed interface Screen {
     /** A screen the rail opens. */
     sealed interface Destination : Screen
@@ -20,11 +19,8 @@ sealed interface Screen {
 
     data object Search : Destination
 
-    /** Settings: a row for each group. */
+    /** Settings: its sections, and the focused one's settings beside them. */
     data object Settings : Destination
-
-    /** One group of settings, opened from Settings. */
-    data class SettingsPage(val group: SettingsGroup) : Screen
 
     /** Credits, opened from About. */
     data object Credits : Screen
@@ -84,8 +80,8 @@ enum class Back {
 }
 
 /**
- * The back stack. The rail's destinations sit on Home; detail pages, a
- * settings page and the player stack above. Back from a destination opens
+ * The back stack. The rail's destinations sit on Home; detail pages,
+ * Credits and the player stack above. Back from a destination opens
  * the rail and Back at Home asks to leave ([back]). Each entry keeps its
  * saved state (scroll and focus) and view models until it's popped, so Back
  * returns to the exact card it left from.

@@ -2,6 +2,7 @@ package com.mmcdole.kivo.android.library
 
 import android.view.KeyEvent
 import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
@@ -9,9 +10,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -38,13 +39,14 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.Color
+import com.mmcdole.kivo.android.ui.Lit
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -52,11 +54,16 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.tv.material3.Border
+import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.mmcdole.kivo.android.R
 import com.mmcdole.kivo.android.ServerSession
@@ -66,13 +73,14 @@ import com.mmcdole.kivo.android.theme.TvType
 import com.mmcdole.kivo.android.ui.CardGap
 import com.mmcdole.kivo.android.ui.CardShape
 import com.mmcdole.kivo.android.ui.CollectionCard
-import com.mmcdole.kivo.android.ui.Chip
 import com.mmcdole.kivo.android.ui.Choice
 import com.mmcdole.kivo.android.ui.ChoicePanel
 import com.mmcdole.kivo.android.ui.EmptyState
 import com.mmcdole.kivo.android.ui.Failed
 import com.mmcdole.kivo.android.ui.InlineFailed
 import com.mmcdole.kivo.android.ui.KivoButton
+import com.mmcdole.kivo.android.ui.KivoIcon
+import com.mmcdole.kivo.android.ui.KivoIconView
 import com.mmcdole.kivo.android.ui.Navigator
 import com.mmcdole.kivo.android.ui.Screen
 import com.mmcdole.kivo.android.ui.SafeEdge
@@ -82,10 +90,12 @@ import com.mmcdole.kivo.android.ui.SkeletonGate
 import com.mmcdole.kivo.android.ui.SkeletonLine
 import com.mmcdole.kivo.android.ui.fadeSpec
 import com.mmcdole.kivo.android.ui.focusWhenPlaced
+import com.mmcdole.kivo.android.ui.rememberFocusMemory
 import com.mmcdole.kivo.api.models.CollectionSummary
 import com.mmcdole.kivo.api.models.Library
 import com.mmcdole.kivo.api.models.LibraryFacets
 import com.mmcdole.kivo.api.models.WorkSummary
+import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.data.GridPager
 import com.mmcdole.kivo.core.data.GridPages
 import com.mmcdole.kivo.core.data.GridPages.Companion.RAIL_LETTERS
@@ -113,6 +123,10 @@ class LibraryViewModel(private val session: ServerSession, private val libraryId
     var facets by mutableStateOf<LibraryFacets?>(null)
         private set
 
+    /** Whether that read has answered, or failed, so whether the sections show is known. */
+    var facetsRead by mutableStateOf(false)
+        private set
+
     /**
      * The grid on screen replaced another and focus stays where it was,
      * such as on Sort; a grid that replaced the empty state's Clear filters
@@ -125,7 +139,10 @@ class LibraryViewModel(private val session: ServerSession, private val libraryId
 
     init {
         viewModelScope.launch {
-            session.session.library.facets(libraryId).collect { load -> load.getOrNull()?.let { facets = it } }
+            session.session.library.facets(libraryId).collect { load ->
+                load.getOrNull()?.let { facets = it }
+                if (load !is Load.Loading) facetsRead = true
+            }
         }
     }
 
@@ -242,16 +259,34 @@ private fun resolutionLabel(r: String) = when (r) {
 
 private fun dynamicRangeLabel(range: String) = if (range == GridValues.DOLBY_VISION) "Dolby Vision" else "HDR"
 
-/** Where the grid sits beside the rail. */
-private val LibraryPadding = PaddingValues(start = 24.dp, top = SafeTop, end = 12.dp)
+/** Where the library's title starts. */
+private val TitleTop = 39.5.dp
+
+/** How far in from the rail's edge a screen's content starts. */
+private val ContentStart = 24.dp
+
+/** Where a library's name sits when it's all there is. */
+private val LibraryPadding = PaddingValues(start = ContentStart, top = TitleTop, end = SafeEdge)
+
+/** How much further down the grid starts for its section tabs. */
+private val SectionsHeight = 38.5.dp
+
+/** The room a long library name leaves at the screen's margin for Filter beside it. */
+private val FilterRoom = 96.dp
+
+/** The letter rail's width: the web's token is the web's own. */
+internal val LetterRailWidth = 42.dp
+
+/** Where the letter rail's top sits, below the Filter button. */
+private val LetterRailTop = 83.5.dp
 
 /**
- * A library's grid: the library's name with its sections
- * (Collections when it has any), Sort and Filter, which gets a dot while
- * any filter is on; the count line, "237 movies · A–Z"; posters, or
- * landscape cards for other videos; and the letter rail at the right for
- * the title sort, reached with Right from the last column. Channel Up and
- * Down page the grid.
+ * A library's grid: the library's name and Filter, which gets a dot while
+ * any filter is on; its sections (Collections when it has any); the count
+ * line, "237 movies · A–Z", which opens Sort; posters, or landscape cards
+ * for other videos; and the letter rail at the right for the title sort,
+ * reached with Right from the last column, which stays put as the rest
+ * scrolls. Channel Up and Down page the grid.
  */
 @Composable
 fun LibraryScreen(session: ServerSession, libraryId: String, navigator: Navigator) {
@@ -268,90 +303,81 @@ fun LibraryScreen(session: ServerSession, libraryId: String, navigator: Navigato
         } else {
             // The library's name stays, with why its grid couldn't be read.
             Column(Modifier.fillMaxSize().padding(LibraryPadding)) {
-                Text(library.name, style = TvType.heading, color = Kivo.colors.text)
-                InlineFailed(failed, session.session.baseUrl, model::retry, Modifier.padding(top = GridTop), focus = true)
+                Text(library.name, style = TvType.title, color = Kivo.colors.text)
+                InlineFailed(failed, session.session.baseUrl, model::retry, Modifier.padding(top = Kivo.space(4)), focus = true)
             }
         }
         return
     }
-    if (pages.total != null) model.shown = true
+    // The grid's place depends on whether the sections show, so it waits to know.
+    if (pages.total != null && model.facetsRead) model.shown = true
     SkeletonGate(Unit.takeIf { model.shown }, { LibrarySkeleton(library) }) {
         val choice = model.choice
-        val query = choice.query
-        val total = pages.total
-        Column(Modifier.fillMaxSize().padding(LibraryPadding)) {
-            Header(model, choice, library)
-            // Another section, sort or filter's count and cards show placeholders until its first page arrives.
-            if (total == null) {
-                SkeletonLine(180.dp, TvType.body, Modifier.padding(top = Kivo.space(2)))
-            } else {
-                Text(
-                    listOfNotNull(
-                        countNoun(total, choice.section, library),
-                        query.sort?.takeIf { choice.section == Section.Titles }?.let { sortShort(it) },
-                    ).joinToString(" · "),
-                    style = TvType.body,
-                    color = Kivo.colors.textMuted,
-                    modifier = Modifier.padding(top = Kivo.space(2)),
-                )
-            }
+        val sections = hasSections(model, choice)
+        val top = GridTop + if (sections) SectionsHeight else 0.dp
+        // Kept here, for the header to scroll with the grid on screen.
+        val list = rememberSaveable(shownGrid, saver = LazyListState.Saver) { LazyListState() }
+        Box(Modifier.fillMaxSize()) {
             // A new section, sort or filter's grid fades in over the one it replaces.
-            Crossfade(shownGrid to choice, animationSpec = fadeSpec(), label = "grid") { (grid, gridChoice) ->
+            Crossfade(Triple(shownGrid, choice, list), animationSpec = fadeSpec(), label = "grid") { (grid, gridChoice, gridList) ->
                 val gridPages by grid.pager.state.collectAsStateWithLifecycle()
                 if (gridPages.total == null) {
-                    SkeletonCards(library, gridChoice)
+                    SkeletonCards(library, gridChoice, top)
                 } else {
-                    GridWithRail(grid, gridPages, gridChoice, library, navigator, model, onClearFilters = { model.choose(query.unfiltered(), keepFocus = false) })
+                    GridWithRail(grid, gridList, gridPages, gridChoice, library, navigator, model, top, onClearFilters = { model.choose(choice.query.unfiltered(), keepFocus = false) })
                 }
             }
+            Header(model, choice, library, sections, pages.total, list)
         }
     }
 }
 
+/** Whether the library's sections show: when it has collections to show beside its works. */
+private fun hasSections(model: LibraryViewModel, choice: GridChoice) =
+    model.facets?.collections == true || choice.section == Section.Collections
+
 /** The panel the header has open. */
 private enum class HeaderPanel { Sort, Filter }
 
-/** The library's name, its sections, and Sort and Filter for its works. */
+/**
+ * The library's name and Filter, its sections, and the count line, which opens
+ * Sort for its works. It scrolls with the [grid], back to the top as it takes focus.
+ */
 @Composable
-private fun Header(model: LibraryViewModel, choice: GridChoice, library: Library?) {
+private fun Header(model: LibraryViewModel, choice: GridChoice, library: Library?, sections: Boolean, total: Int?, grid: LazyListState) {
     var panel by remember { mutableStateOf<HeaderPanel?>(null) }
     val query = choice.query
-    val hasCollections = model.facets?.collections == true || choice.section == Section.Collections
-    // Clear of overscan at the right, where the letter rail below reaches nearer the edge.
-    Row(Modifier.padding(end = SafeEdge - 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Kivo.space(3))) {
-        Text(library?.name.orEmpty(), style = TvType.heading, color = Kivo.colors.text, modifier = Modifier.padding(end = Kivo.space(3)))
-        if (hasCollections) {
-            val titles = stringResource(
-                when (library?.kind) {
-                    "movies" -> R.string.results_movies
-                    "shows" -> R.string.results_shows
-                    else -> R.string.section_videos
-                },
-            )
-            Chip(titles, choice.section == Section.Titles, { model.choose(choice.copy(section = Section.Titles)) }, Modifier.testTag("section:titles"))
-            Chip(
-                stringResource(R.string.collections),
-                choice.section == Section.Collections,
-                { model.choose(choice.copy(section = Section.Collections)) },
-                Modifier.testTag("section:collections"),
-            )
-        }
-        Spacer(Modifier.weight(1f))
-        if (choice.section == Section.Titles) {
-            KivoButton(stringResource(R.string.sort), { panel = HeaderPanel.Sort }, Modifier.testTag("sort"))
-            Box {
-                KivoButton(stringResource(R.string.filter), { panel = HeaderPanel.Filter }, Modifier.testTag("filter"))
-                // A dot while any filter is on.
-                if (query.filtered) {
-                    Box(
-                        Modifier
-                            .align(Alignment.TopEnd)
-                            .offset(x = (-6).dp, y = 6.dp)
-                            .size(10.dp)
-                            .background(Kivo.colors.accent, RoundedCornerShape(KivoTokens.Radius.full)),
+    val scope = rememberCoroutineScope()
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .scrollsWith(grid)
+            .onFocusChanged { if (it.hasFocus) scope.launch { grid.scrollToItem(0) } },
+    ) {
+        Column(Modifier.padding(start = ContentStart, top = TitleTop, end = SafeEdge + FilterRoom)) {
+            Text(library?.name.orEmpty(), style = TvType.title, color = Kivo.colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (sections) {
+                Row(Modifier.padding(top = 13.dp), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    val titles = stringResource(
+                        when (library?.kind) {
+                            "movies" -> R.string.results_movies
+                            "shows" -> R.string.results_shows
+                            else -> R.string.section_videos
+                        },
+                    )
+                    SectionTab(titles, choice.section == Section.Titles, { model.choose(choice.copy(section = Section.Titles)) }, Modifier.testTag("section:titles"))
+                    SectionTab(
+                        stringResource(R.string.collections),
+                        choice.section == Section.Collections,
+                        { model.choose(choice.copy(section = Section.Collections)) },
+                        Modifier.testTag("section:collections"),
                     )
                 }
             }
+            CountLine(choice, library, total, Modifier.padding(top = if (sections) 10.5.dp else 13.dp)) { panel = HeaderPanel.Sort }
+        }
+        if (choice.section == Section.Titles) {
+            FilterButton(query.filtered, Modifier.align(Alignment.TopEnd).padding(top = 40.5.dp, end = SafeEdge)) { panel = HeaderPanel.Filter }
         }
     }
 
@@ -371,6 +397,106 @@ private fun Header(model: LibraryViewModel, choice: GridChoice, library: Library
         }
         HeaderPanel.Filter -> FilterPanel(model, query, onClose = { panel = null })
         null -> Unit
+    }
+}
+
+/** A section's tab: a pill, filled with the accent while it's the one showing. */
+@Composable
+private fun SectionTab(label: String, current: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = Kivo.colors
+    Surface(
+        onClick = onClick,
+        modifier = modifier.height(28.dp),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(KivoTokens.Radius.full)),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = if (current) colors.accent else colors.surfaceRaised,
+            contentColor = if (current) colors.onAccent else colors.textMuted,
+            focusedContainerColor = Lit.container,
+            focusedContentColor = Lit.content,
+        ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = KivoTokens.Tv.focusScale),
+    ) {
+        Box(Modifier.height(28.dp).padding(horizontal = 14.dp), contentAlignment = Alignment.Center) {
+            Text(label, style = TvType.smallStrong, maxLines = 1)
+        }
+    }
+}
+
+/**
+ * The count line, "237 movies · A–Z", one control that opens Sort, its words
+ * in line with the title above; a section with no sort just says how many.
+ * Until the first page arrives it's a placeholder.
+ */
+@Composable
+private fun CountLine(choice: GridChoice, library: Library?, total: Int?, modifier: Modifier = Modifier, onSort: () -> Unit) {
+    val colors = Kivo.colors
+    val count = total?.let { countNoun(it, choice.section, library) }
+    if (choice.section != Section.Titles) {
+        if (count != null) {
+            Text(count, style = TvType.small, color = colors.textMuted, modifier = modifier)
+        } else {
+            SkeletonLine(180.dp, TvType.small, modifier)
+        }
+        return
+    }
+    Box(modifier) {
+        Surface(
+            onClick = onSort,
+            modifier = Modifier.offset(x = (-8).dp, y = (-2).dp).testTag("sort"),
+            shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(KivoTokens.Radius.sm)),
+            colors = ClickableSurfaceDefaults.colors(
+                containerColor = Color.Transparent,
+                contentColor = colors.textMuted,
+                focusedContainerColor = Lit.container,
+                focusedContentColor = Lit.content,
+            ),
+            scale = ClickableSurfaceDefaults.scale(focusedScale = KivoTokens.Tv.focusScale),
+        ) {
+            Row(Modifier.padding(horizontal = 8.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (count != null) Text(count, style = TvType.small) else SkeletonLine(120.dp, TvType.small)
+                Text(" · ", style = TvType.small)
+                Text(choice.query.sort?.let { sortShort(it) }.orEmpty(), style = TvType.smallStrong)
+                KivoIconView(KivoIcon.ChevronDown, Modifier.padding(start = 3.dp), size = 14.dp)
+            }
+        }
+    }
+}
+
+/** Filter, at the top right; a dot while any filter is on. */
+@Composable
+private fun FilterButton(filtered: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val colors = Kivo.colors
+    Box(modifier) {
+        Surface(
+            onClick = onClick,
+            modifier = Modifier.height(28.dp).testTag("filter"),
+            shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(KivoTokens.Radius.md)),
+            colors = ClickableSurfaceDefaults.colors(
+                containerColor = colors.surfaceRaised,
+                contentColor = colors.text,
+                focusedContainerColor = Lit.container,
+                focusedContentColor = Lit.content,
+            ),
+            border = ClickableSurfaceDefaults.border(
+                border = Border(BorderStroke(1.dp, colors.border), shape = RoundedCornerShape(KivoTokens.Radius.md)),
+                focusedBorder = Border.None,
+            ),
+            scale = ClickableSurfaceDefaults.scale(focusedScale = KivoTokens.Tv.focusScale),
+        ) {
+            Row(Modifier.height(28.dp).padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.filter), style = TvType.body, maxLines = 1)
+                KivoIconView(KivoIcon.ChevronDown, Modifier.padding(start = 6.dp), size = 16.dp)
+            }
+        }
+        if (filtered) {
+            Box(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 3.dp, y = (-3).dp)
+                    .size(10.dp)
+                    .background(colors.accent, RoundedCornerShape(KivoTokens.Radius.full)),
+            )
+        }
     }
 }
 
@@ -437,24 +563,24 @@ private fun FilterPanel(model: LibraryViewModel, query: GridQuery, onClose: () -
 /** A library while its first page loads: its name, the count line and a row of cards. */
 @Composable
 private fun LibrarySkeleton(library: Library?) {
-    Column(Modifier.fillMaxSize().padding(LibraryPadding)) {
-        Box(Modifier.height(44.dp), contentAlignment = Alignment.CenterStart) {
+    Box(Modifier.fillMaxSize()) {
+        Column(Modifier.padding(LibraryPadding)) {
             if (library != null) {
-                Text(library.name, style = TvType.heading, color = Kivo.colors.text)
+                Text(library.name, style = TvType.title, color = Kivo.colors.text)
             } else {
-                SkeletonLine(200.dp, TvType.heading)
+                SkeletonLine(200.dp, TvType.title)
             }
+            SkeletonLine(180.dp, TvType.small, Modifier.padding(top = 13.dp))
         }
-        SkeletonLine(180.dp, TvType.body, Modifier.padding(top = Kivo.space(2)))
-        SkeletonCards(library, null)
+        SkeletonCards(library, null, GridTop)
     }
 }
 
-/** A line of placeholder cards, in the grid's shape for [choice]. */
+/** A line of placeholder cards, in the grid's shape for [choice], [top] down the screen. */
 @Composable
-private fun SkeletonCards(library: Library?, choice: GridChoice?) {
+private fun SkeletonCards(library: Library?, choice: GridChoice?, top: Dp) {
     val shape = gridShape(library, choice)
-    Row(Modifier.padding(top = GridTop), horizontalArrangement = Arrangement.spacedBy(CardGap)) {
+    Row(Modifier.padding(start = ContentStart, top = top), horizontalArrangement = Arrangement.spacedBy(CardGap)) {
         repeat(gridColumns(shape)) { SkeletonCard(shape, gridCardWidth(shape)) }
     }
 }
@@ -466,59 +592,88 @@ private fun gridShape(library: Library?, choice: GridChoice?) =
 @Composable
 private fun GridWithRail(
     shown: LibraryGrid,
+    grid: LazyListState,
     pages: GridPages<*>,
     choice: GridChoice,
     library: Library?,
     navigator: Navigator,
     model: LibraryViewModel,
+    top: Dp,
     onClearFilters: () -> Unit,
 ) {
     val total = pages.total ?: 0
     val query = choice.query
-    val grid = rememberSaveable(saver = LazyListState.Saver) { LazyListState() }
     val scope = rememberCoroutineScope()
     if (total == 0) {
         if (choice.section == Section.Titles && query.filtered) {
             val clear = remember { FocusRequester() }
-            EmptyState(emptyFiltered(query, library), null) {
+            EmptyState(emptyFiltered(query, library), null, Modifier.padding(top = top)) {
                 KivoButton(stringResource(R.string.clear_filters), onClearFilters, Modifier.focusRequester(clear), primary = true)
             }
             LaunchedEffect(Unit) { if (model.replaced) model.replaced = false else focusWhenPlaced(clear) }
         } else {
-            EmptyState(stringResource(R.string.empty_library), null)
+            EmptyState(stringResource(R.string.empty_library), null, Modifier.padding(top = top))
         }
         return
     }
     val shape = gridShape(library, choice)
     val columns = gridColumns(shape)
+    val memory = rememberFocusMemory()
     // A grid replacing another leaves focus where it is, such as on Sort.
     val takesFocus = {
         val replaced = model.replaced
         model.replaced = false
         !replaced
     }
-    Row(Modifier.fillMaxSize()) {
+    val density = LocalDensity.current
+    Box(Modifier.fillMaxSize()) {
         when (shown) {
-            is LibraryGrid.Works -> PagedGrid(shown.pager, grid, shape, navigator, Modifier.weight(1f), takesFocus)
-            is LibraryGrid.Collections -> PagedCards(shown.pager, grid, shape, { it.id }, Modifier.weight(1f), takesFocus) { c, width, cardModifier ->
+            is LibraryGrid.Works -> PagedGrid(shown.pager, grid, shape, navigator, top = top, memory = memory, takesFocus = takesFocus)
+            is LibraryGrid.Collections -> PagedCards(shown.pager, grid, shape, { it.id }, top = top, memory = memory, takesFocus = takesFocus) { c, width, cardModifier ->
                 CollectionCard(c, width, { if (c != null) navigator.push(Screen.Collection(c.id)) }, cardModifier)
             }
         }
         if (pages.letters.isNotEmpty()) {
             val current by remember(pages) { derivedStateOf { pages.letterAt(grid.firstVisibleItemIndex * columns) } }
-            LetterRail(current) { letter -> scope.launch { grid.scrollToItem(pages.letterOffset(letter) / columns) } }
+            // The item the rail last jumped to, which Left from it goes back to.
+            val jumpedTo = remember { IntArray(1) { NOT_JUMPED } }
+            LetterRail(
+                current,
+                onEnter = { jumpedTo[0] = NOT_JUMPED },
+                onJump = { letter ->
+                    val offset = pages.letterOffset(letter)
+                    jumpedTo[0] = offset
+                    scope.launch { grid.scrollToLine(offset / columns, with(density) { top.roundToPx() }, with(density) { SafeTop.roundToPx() }) }
+                },
+                onLeft = {
+                    val offset = jumpedTo[0]
+                    if (offset != NOT_JUMPED) scope.launch { focusWhenPlaced { shown.itemKey(offset)?.let(memory::requester) } }
+                    offset != NOT_JUMPED
+                },
+                modifier = Modifier.align(Alignment.TopEnd).padding(top = LetterRailTop, end = SafeEdge),
+            )
         }
     }
+}
+
+/** The rail hasn't jumped since it took focus. */
+private const val NOT_JUMPED = -1
+
+/** The focus key of the item at [index], once its page is read. */
+private fun LibraryGrid.itemKey(index: Int): String? = when (this) {
+    is LibraryGrid.Works -> pager.state.value.item(index)?.id
+    is LibraryGrid.Collections -> pager.state.value.item(index)?.id
 }
 
 /**
  * The letter rail: Up and Down move through the letters, OK jumps; the top
  * row's letter is marked. One focusable element draws every letter, the
- * highlighted one raised in the focus ring while the rail has focus; it
- * takes focus at the marked letter. Up from the first letter leaves it.
+ * highlighted one in a lit pill while the rail has focus; it takes focus at
+ * the marked letter. Up from the first letter leaves it, and so does Left:
+ * [onLeft] says it took focus back to the grid itself, else the nearest card does.
  */
 @Composable
-private fun LetterRail(current: String?, onJump: (String) -> Unit) {
+private fun LetterRail(current: String?, onEnter: () -> Unit, onJump: (String) -> Unit, onLeft: () -> Boolean, modifier: Modifier = Modifier) {
     val colors = Kivo.colors
     val style = TvType.smallStrong.copy(lineHeight = TvType.small.fontSize)
     val measurer = rememberTextMeasurer(cacheSize = 0)
@@ -526,18 +681,19 @@ private fun LetterRail(current: String?, onJump: (String) -> Unit) {
     var focused by remember { mutableStateOf(false) }
     var highlighted by remember { mutableIntStateOf(0) }
     val letter = RAIL_LETTERS[highlighted]
-    val ring = KivoTokens.Tv.focusRingWidth
-    val radius = KivoTokens.Radius.sm
-    // The letters share the rail's height, as tall as the grid beside it.
+    // The letters share the rail's height, down to the overscan.
     Box(
-        Modifier
-            .width(KivoTokens.Layout.railWidth)
+        modifier
+            .width(LetterRailWidth)
             .fillMaxHeight()
-            .padding(top = 20.dp, bottom = 12.dp)
+            .padding(bottom = SafeTop)
             .testTag("letters")
             .semantics { contentDescription = letter }
             .onFocusChanged {
-                if (it.isFocused && !focused) highlighted = RAIL_LETTERS.indexOf(current).coerceAtLeast(0)
+                if (it.isFocused && !focused) {
+                    highlighted = RAIL_LETTERS.indexOf(current).coerceAtLeast(0)
+                    onEnter()
+                }
                 focused = it.isFocused
             }
             .onKeyEvent { event ->
@@ -552,6 +708,7 @@ private fun LetterRail(current: String?, onJump: (String) -> Unit) {
                         if (down && highlighted < RAIL_LETTERS.lastIndex) highlighted++
                         true
                     }
+                    KeyEvent.KEYCODE_DPAD_LEFT -> down && onLeft()
                     KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> {
                         if (event.type == KeyEventType.KeyUp) onJump(RAIL_LETTERS[highlighted])
                         true
@@ -567,19 +724,9 @@ private fun LetterRail(current: String?, onJump: (String) -> Unit) {
                     val layout = layouts[i]
                     val origin = Offset((size.width - layout.size.width) / 2, top + (slot - layout.size.height) / 2)
                     if (focused && i == highlighted) {
-                        scale(FocusedLetterScale, pivot = Offset(size.width / 2, top + slot / 2)) {
-                            val corner = CornerRadius(radius.toPx())
-                            drawRoundRect(colors.surfaceHover, Offset(0f, top), Size(size.width, slot), corner)
-                            val inset = ring.toPx() / 2
-                            drawRoundRect(
-                                colors.focus,
-                                Offset(inset, top + inset),
-                                Size(size.width - inset * 2, slot - inset * 2),
-                                corner,
-                                style = Stroke(ring.toPx()),
-                            )
-                            drawText(layout, colors.text, origin)
-                        }
+                        val pill = LetterPillWidth.toPx()
+                        drawRoundRect(Lit.container, Offset((size.width - pill) / 2, top), Size(pill, slot), CornerRadius(slot / 2))
+                        drawText(layout, Lit.content, origin)
                     } else {
                         drawText(layout, if (RAIL_LETTERS[i] == current) colors.accent else colors.textMuted, origin)
                     }
@@ -588,5 +735,5 @@ private fun LetterRail(current: String?, onJump: (String) -> Unit) {
     )
 }
 
-/** How much the focused letter grows. */
-private const val FocusedLetterScale = 1.2f
+/** How wide the focused letter's pill is. */
+private val LetterPillWidth = 35.dp

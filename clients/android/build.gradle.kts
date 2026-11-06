@@ -7,6 +7,7 @@ plugins {
     // Writes res/raw/aboutlibraries.json with each build: the app's libraries and :core's, with their
     // licenses, for Settings › About › Credits › Open source licenses.
     id("com.mikepenz.aboutlibraries.plugin.android")
+    id("androidx.baselineprofile")
 }
 
 val media3Version = "1.11.1"
@@ -84,18 +85,16 @@ android {
     }
 
     buildTypes {
+        // The build that ships: shrunk and optimized by R8, with the baseline profile, and signed
+        // with the debug key the TVs' installs already have, so it installs over them, a debug
+        // build too, without signing anyone out. The baseline profile plugin adds two builds of
+        // it, both profileable and signed the same: nonMinifiedRelease, which :benchmark's
+        // BaselineProfileGenerator runs against, and benchmarkRelease, which the benchmarks measure.
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-        }
-        // The release build signed with the debug key and profileable, so it installs over a
-        // debug build and can be measured on a device.
-        create("benchmark") {
-            initWith(getByName("release"))
             signingConfig = signingConfigs.getByName("debug")
-            matchingFallbacks += "release"
-            isProfileable = true
         }
     }
 
@@ -112,6 +111,14 @@ android {
 
 kotlin {
     jvmToolchain(21)
+}
+
+// The release build's profiles, from :benchmark's BaselineProfileGenerator, are kept in
+// src/release/generated/baselineProfiles: baseline-prof.txt for the code compiled ahead of time
+// and startup-prof.txt, by which R8 puts the code startup runs first in the first dex file.
+// src/main/baseline-prof.txt, written by hand, is merged in beside them.
+baselineProfile {
+    dexLayoutOptimization = true
 }
 
 composeCompiler {
@@ -175,6 +182,8 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-compose:$coilVersion")
     implementation("io.coil-kt.coil3:coil-network-ktor3:$coilVersion")
     implementation("com.google.zxing:core:3.5.4")
+
+    baselineProfile(project(":benchmark"))
 
     testImplementation(kotlin("test-junit"))
     testImplementation("junit:junit:4.13.2")

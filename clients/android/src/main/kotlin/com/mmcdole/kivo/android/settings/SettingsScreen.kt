@@ -1,39 +1,56 @@
 package com.mmcdole.kivo.android.settings
 
+import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
+import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ListItem
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.mmcdole.kivo.android.R
 import com.mmcdole.kivo.android.ServerSession
 import com.mmcdole.kivo.android.player.systemMatchesFrameRate
 import com.mmcdole.kivo.android.theme.Kivo
+import com.mmcdole.kivo.android.theme.KivoTokens
 import com.mmcdole.kivo.android.theme.TvType
 import com.mmcdole.kivo.android.ui.Choice
 import com.mmcdole.kivo.android.ui.ChoiceMarker
@@ -43,11 +60,12 @@ import com.mmcdole.kivo.android.ui.KivoButton
 import com.mmcdole.kivo.android.ui.KivoIcon
 import com.mmcdole.kivo.android.ui.KivoIconView
 import com.mmcdole.kivo.android.ui.ListItemStyle
+import com.mmcdole.kivo.android.ui.Lit
+import com.mmcdole.kivo.android.ui.LitOnFocus
 import com.mmcdole.kivo.android.ui.SettingSwitch
 import com.mmcdole.kivo.android.ui.Navigator
 import com.mmcdole.kivo.android.ui.SafeEdge
 import com.mmcdole.kivo.android.ui.SafeTop
-import com.mmcdole.kivo.android.ui.Screen
 import com.mmcdole.kivo.android.ui.display
 import com.mmcdole.kivo.android.ui.focusKey
 import com.mmcdole.kivo.android.ui.focusWhenPlaced
@@ -55,75 +73,230 @@ import com.mmcdole.kivo.android.ui.rememberFocusMemory
 import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.core.display.problem
 
-/** Settings' groups, in the order Settings lists them, each with its icon. */
-enum class SettingsGroup(@param:StringRes val title: Int, val icon: KivoIcon) {
-    Account(R.string.settings_account, KivoIcon.Person),
-    Playback(R.string.settings_playback, KivoIcon.Play),
-    Audio(R.string.audio, KivoIcon.Volume),
-    Subtitles(R.string.subtitles, KivoIcon.SpeechBubble),
-    Quality(R.string.quality, KivoIcon.Gauge),
-    Display(R.string.display, KivoIcon.Tv),
-    Libraries(R.string.settings_libraries, KivoIcon.Home),
-    About(R.string.settings_about, KivoIcon.Info),
+/** Settings' groups, in the order Settings lists them. */
+enum class SettingsGroup(@param:StringRes val title: Int) {
+    Account(R.string.settings_account),
+    Playback(R.string.settings_playback),
+    Audio(R.string.audio),
+    Subtitles(R.string.subtitles),
+    Quality(R.string.quality),
+    Display(R.string.display),
+    Libraries(R.string.settings_libraries),
+    About(R.string.settings_about),
 }
 
+/** The groups a device lists: Display holds frame-rate matching alone, which the system decides from Android 12. */
+internal fun settingsGroups(systemMatches: Boolean): List<SettingsGroup> =
+    SettingsGroup.entries.filter { it != SettingsGroup.Display || !systemMatches }
+
+// Settings on the TV canvas, a dp being two of the Samsung TV app's pixels.
+
+/** How far both panes' titles sit from the top of the screen. */
+private val PanesTop = 37.dp
+
+/** The sections' column, after the 24 dp every screen starts in from the rail. */
+private val SectionsWidth = 210.dp
+
+/** A section's height. */
+private val SectionHeight = 35.dp
+
+/** The gap between sections. */
+private val SectionGap = 3.5.dp
+
+/** A section's text in from its edge. */
+private val SectionInset = 14.dp
+
+/** The gap under the Settings title. */
+private val SectionsTitleGap = 14.dp
+
+/** The Settings title's height, [TvType.title]'s line. */
+private val SectionsTitleHeight = 30.dp
+
+/** From the sections' column to the line between the panes. */
+private val DividerStart = 35.dp
+
+/** From the line between the panes to the settings pane. */
+private val PaneStart = 34.5.dp
+
+/** The settings pane's width. */
+private val PaneWidth = 543.5.dp
+
+/** The gap under a pane's title, which with the rows' gap puts its first row where the Samsung TV app's card starts. */
+private val PaneTitleGap = 10.dp
+
 /**
- * Settings: a row for each group, each opening the group's page, one level
- * down. Account shows who's signed in.
+ * Whether focus belongs in the settings pane, rather than on the sections
+ * beside it: only then does a pane take focus for its rows as they arrive.
+ * Outside the panes, as in a test of one page, it always may.
  */
+private val LocalPaneActive = compositionLocalOf { true }
+
+/** Settings: its sections, and the settings of the one focused there beside them. */
 @Composable
 fun SettingsScreen(session: ServerSession, navigator: Navigator) {
-    val memory = rememberFocusMemory()
-    val user by session.session.user.collectAsStateWithLifecycle()
-    SettingsList(stringResource(R.string.settings), memory, initial = SettingsGroup.Account.name) {
-        // Display holds frame-rate matching alone, which the system decides from Android 12.
-        items(SettingsGroup.entries.filter { it != SettingsGroup.Display || !systemMatchesFrameRate }, key = { it.name }) { group ->
-            ActionRow(
-                stringResource(group.title),
-                { navigator.push(Screen.SettingsPage(group)) },
-                Modifier.focusKey(memory, group.name).testTag("settings:${group.name}"),
-                supporting = user?.username.takeIf { group == SettingsGroup.Account },
-                icon = group.icon,
-                opensPage = true,
-            )
+    val groups = remember { settingsGroups(systemMatchesFrameRate) }
+    SettingsPanes(groups) { group ->
+        when (group) {
+            SettingsGroup.Account -> AccountPage(session)
+            SettingsGroup.Playback -> PlaybackPage(session)
+            SettingsGroup.Audio -> AudioPage(session)
+            SettingsGroup.Subtitles -> SubtitlesPage(session)
+            SettingsGroup.Quality -> QualityPage(session)
+            SettingsGroup.Display -> DisplayPage(session)
+            SettingsGroup.Libraries -> LibrariesPage(session)
+            SettingsGroup.About -> AboutPage(session, navigator)
         }
     }
 }
 
-/** One group's page, opened from Settings. */
+/**
+ * The sections in a list and, beside them, the [pane] of the one focused
+ * there, the only one composed; each keeps its focused row and scroll, and
+ * its view models stay with the screen, so coming back to one reads nothing
+ * again. Moving along the sections shows each; Right or OK goes into the
+ * pane; Left and Back come back to the section, and Back from there goes on
+ * to the shell's Back. Up and Down stop at each pane's ends. The first
+ * section has focus on arrival, and Back from a page opened in a pane, as
+ * Credits is, returns to its row.
+ */
 @Composable
-fun SettingsPageScreen(session: ServerSession, group: SettingsGroup, navigator: Navigator) {
-    when (group) {
-        SettingsGroup.Account -> AccountPage(session)
-        SettingsGroup.Playback -> PlaybackPage(session)
-        SettingsGroup.Audio -> AudioPage(session)
-        SettingsGroup.Subtitles -> SubtitlesPage(session)
-        SettingsGroup.Quality -> QualityPage(session)
-        SettingsGroup.Display -> DisplayPage(session)
-        SettingsGroup.Libraries -> LibrariesPage(session)
-        SettingsGroup.About -> AboutPage(session, navigator)
+internal fun SettingsPanes(groups: List<SettingsGroup>, pane: @Composable (SettingsGroup) -> Unit) {
+    val colors = Kivo.colors
+    val sections = rememberFocusMemory()
+    val panes = rememberSaveableStateHolder()
+    var shown by rememberSaveable { mutableStateOf(groups.first()) }
+    var inPane by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) { if (!inPane) focusWhenPlaced(sections.requester(shown.name)) }
+    BackHandler(enabled = inPane) {
+        inPane = false
+        sections.requester(shown.name).requestFocus()
+    }
+
+    Row(Modifier.fillMaxSize().padding(start = 24.dp)) {
+        Column(
+            Modifier
+                .padding(top = PanesTop)
+                .width(SectionsWidth)
+                .focusProperties {
+                    onEnter = { sections.requester(shown.name).requestFocus() }
+                    onExit = {
+                        when (requestedFocusDirection) {
+                            FocusDirection.Up, FocusDirection.Down -> cancelFocusChange()
+                            FocusDirection.Right -> {
+                                // The pane takes focus itself, on the row it had, as soon as it has one.
+                                cancelFocusChange()
+                                inPane = true
+                            }
+                        }
+                    }
+                }
+                .focusGroup(),
+            verticalArrangement = Arrangement.spacedBy(SectionGap),
+        ) {
+            Text(
+                stringResource(R.string.settings),
+                style = TvType.title,
+                color = colors.text,
+                modifier = Modifier.padding(bottom = SectionsTitleGap),
+            )
+            for (group in groups) {
+                SectionEntry(
+                    stringResource(group.title),
+                    shown = group == shown,
+                    onClick = { inPane = true },
+                    modifier = Modifier
+                        .focusKey(sections, group.name)
+                        .onFocusChanged {
+                            if (it.isFocused) {
+                                shown = group
+                                inPane = false
+                            }
+                        }
+                        .testTag("settings:${group.name}"),
+                )
+            }
+        }
+        Box(
+            Modifier
+                .padding(start = DividerStart, top = PanesTop)
+                .width(1.dp)
+                .height(SectionsTitleHeight + SectionsTitleGap + (SectionHeight + SectionGap) * groups.size)
+                .background(colors.border),
+        )
+        Box(
+            Modifier
+                .padding(start = PaneStart)
+                .width(PaneWidth)
+                .fillMaxHeight()
+                .focusProperties {
+                    onExit = {
+                        when (requestedFocusDirection) {
+                            FocusDirection.Left -> sections.requester(shown.name).requestFocus()
+                            FocusDirection.Up, FocusDirection.Down, FocusDirection.Right -> cancelFocusChange()
+                        }
+                    }
+                }
+                .focusGroup(),
+        ) {
+            CompositionLocalProvider(LocalPaneActive provides inPane) {
+                panes.SaveableStateProvider(shown.name) { pane(shown) }
+            }
+        }
+    }
+}
+
+/** A section in the list: lit while focused, and marked while its settings are the ones [shown] beside it. */
+@Composable
+private fun SectionEntry(label: String, shown: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = Kivo.colors
+    Surface(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth().height(SectionHeight),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(KivoTokens.Radius.md)),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = if (shown) colors.surfaceHover else Color.Transparent,
+            contentColor = if (shown) colors.text else colors.textMuted,
+            focusedContainerColor = Lit.container,
+            focusedContentColor = Lit.content,
+            pressedContainerColor = Lit.container,
+            pressedContentColor = Lit.content,
+        ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+    ) {
+        Box(Modifier.fillMaxSize().padding(start = SectionInset), contentAlignment = Alignment.CenterStart) {
+            Text(label, style = TvType.body.copy(fontWeight = KivoTokens.FontWeights.medium), maxLines = 1)
+        }
     }
 }
 
 /**
- * A group's page: its title, then its rows; a settings page heads its rows
- * with whose they are ([AllDevicesHeading], [ThisTvHeading]). Focus starts
- * on [initial] once the page has it, or returns to the row focused last. A
- * page with nothing to press ([readOnly]), such as About, takes focus as a
- * whole.
+ * A group's pane: its title, then its rows; a pane heads its rows with whose
+ * they are ([AllDevicesHeading], [ThisTvHeading]). While focus belongs in the
+ * pane it goes to [initial] once the pane has it, or returns to the row
+ * focused last.
  */
 @Composable
 internal fun SettingsPage(
     group: SettingsGroup,
     memory: FocusMemory,
     initial: String?,
-    readOnly: Boolean = false,
     content: LazyListScope.() -> Unit,
 ) {
-    SettingsList(stringResource(group.title), memory, initial, readOnly, content)
+    val active = LocalPaneActive.current
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(top = PanesTop, bottom = SafeEdge),
+        verticalArrangement = Arrangement.spacedBy(Kivo.space(1)),
+    ) {
+        item {
+            Text(stringResource(group.title), style = TvType.heading, color = Kivo.colors.text, modifier = Modifier.padding(bottom = PaneTitleGap))
+        }
+        content()
+    }
+    LaunchedEffect(initial, active) { if (active) memory.restore(initial) }
 }
 
-/** Settings' list: [title] and the rows beside the rail; a setting's choices open in a panel at the right. */
+/** A page opened from a pane, such as Credits: [title] and its rows beside the rail; a setting's choices open in a panel at the right. */
 @Composable
 internal fun SettingsList(
     title: String,
@@ -176,9 +349,9 @@ internal fun SubTitle(title: String) {
 }
 
 /**
- * A settings row: a list item with the focus ring every control shows, its
+ * A settings row: a list item, lit when focused as every control is, its
  * [label], an optional line under it ([supporting]), and [trailing] content
- * at its end.
+ * at its end, all in the light theme's colours while lit.
  */
 @Composable
 private fun SettingItem(
@@ -187,23 +360,28 @@ private fun SettingItem(
     modifier: Modifier,
     enabled: Boolean = true,
     supporting: String? = null,
-    leading: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
-    val colors = Kivo.colors
+    val interactions = remember { MutableInteractionSource() }
     ListItem(
         selected = false,
         onClick = onClick,
         enabled = enabled,
         modifier = modifier.fillMaxWidth(),
         headlineContent = { Text(label, style = TvType.item, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        supportingContent = supporting?.let { { Text(it, style = TvType.small, color = colors.textMuted, maxLines = 1, overflow = TextOverflow.Ellipsis) } },
-        leadingContent = leading?.let { { it() } },
-        trailingContent = trailing,
+        supportingContent = supporting?.let {
+            {
+                LitOnFocus(interactions) {
+                    Text(it, style = TvType.small, color = Kivo.colors.textMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        },
+        trailingContent = trailing?.let { { LitOnFocus(interactions, it) } },
         colors = ListItemStyle.colors(),
         shape = ListItemStyle.shape(),
         scale = ListItemStyle.scale(),
         border = ListItemStyle.border(),
+        interactionSource = interactions,
     )
 }
 
@@ -218,7 +396,6 @@ internal fun ActionRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     supporting: String? = null,
-    icon: KivoIcon? = null,
     opensPage: Boolean = false,
 ) {
     SettingItem(
@@ -226,7 +403,6 @@ internal fun ActionRow(
         onClick,
         modifier,
         supporting = supporting,
-        leading = icon?.let { { KivoIconView(it, size = 24.dp) } },
         trailing = if (opensPage) {
             { KivoIconView(KivoIcon.ChevronRight, size = 20.dp) }
         } else {
@@ -298,7 +474,7 @@ internal fun SaveFailed(failed: FailedSave?) {
     }
 }
 
-/** A page's read that failed: "Couldn't load this." with the reason, and Retry, which takes focus. */
+/** A page's read that failed: "Couldn't load this." with the reason, and Retry, which takes focus while focus belongs in the pane. */
 @Composable
 internal fun LoadFailed(problem: RequestProblem, onRetry: () -> Unit) {
     val retry = remember { FocusRequester() }
@@ -309,7 +485,8 @@ internal fun LoadFailed(problem: RequestProblem, onRetry: () -> Unit) {
             KivoButton(stringResource(R.string.retry), onRetry, Modifier.focusRequester(retry).testTag("retryLoad"))
         }
     }
-    LaunchedEffect(problem) { focusWhenPlaced(retry) }
+    val active = LocalPaneActive.current
+    LaunchedEffect(problem, active) { if (active) focusWhenPlaced(retry) }
 }
 
 /** A setting being chosen: its title, choices and what picking one does. */

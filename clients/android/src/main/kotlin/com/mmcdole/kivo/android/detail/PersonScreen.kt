@@ -93,7 +93,7 @@ private fun PersonSkeleton() {
     }
 }
 
-private val PersonPadding = PaddingValues(start = 32.dp, top = SafeTop, end = SafeEdge, bottom = SafeEdge)
+private val PersonPadding = PaddingValues(start = 24.dp, top = SafeTop, bottom = SafeEdge)
 
 /** The page from [heading]; its rows once [person] is read, a row's placeholder until then, or why it couldn't be read. */
 @Composable
@@ -112,7 +112,7 @@ private fun Person(heading: Heading, person: Person?, problem: RequestProblem?, 
             verticalArrangement = Arrangement.spacedBy(Kivo.space(8)),
         ) {
             item {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Kivo.space(6))) {
+                Row(Modifier.padding(end = SafeEdge), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Kivo.space(6))) {
                     Artwork(heading.image, heading.name.take(1), 1f, 160.dp, Modifier.size(160.dp), corners = KivoTokens.Radius.full)
                     Text(heading.name, style = TvType.title, color = Kivo.colors.text)
                 }

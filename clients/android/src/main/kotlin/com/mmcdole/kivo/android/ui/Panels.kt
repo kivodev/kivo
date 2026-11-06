@@ -17,21 +17,28 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.takeOrElse
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.nativeKeyCode
@@ -40,18 +47,20 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.tracing.trace
-import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ListItem
 import androidx.tv.material3.RadioButton
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Switch
 import androidx.tv.material3.SwitchDefaults
 import androidx.tv.material3.Text
+import com.mmcdole.kivo.android.R
 import com.mmcdole.kivo.android.theme.Kivo
 import com.mmcdole.kivo.android.theme.KivoTokens
 import com.mmcdole.kivo.android.theme.TvType
@@ -174,6 +183,9 @@ internal fun SettingSwitch(checked: Boolean, enabled: Boolean = true) {
  */
 enum class ChoiceMarker { Tick, Radio, None }
 
+/** What a [SidePanel] is drawn on, where it isn't the usual panel colour: the player's are opaque, as bright video would show through. */
+val LocalPanelSurface = staticCompositionLocalOf { Color.Unspecified }
+
 /** A panel at the right of the screen over what opened it, [width] wide, with its title, closed by Back: a list of choices, a long text or a form. */
 @Composable
 fun SidePanel(
@@ -183,6 +195,7 @@ fun SidePanel(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val colors = Kivo.colors
+    val surface = LocalPanelSurface.current.takeOrElse { colors.playerPanel }
     // A press that began before the panel opened, such as the OK held to open it, doesn't reach its choices.
     val keys = rememberPanelKeys()
     Dialog(onDismissRequest = onDismiss, properties = panelProperties()) {
@@ -193,7 +206,7 @@ fun SidePanel(
                     .onPreviewKeyEvent { keys.dispatch(it.nativeKeyEvent) }
                     .fillMaxHeight()
                     .width(width)
-                    .background(colors.playerPanel)
+                    .background(surface)
                     .padding(start = Kivo.space(6), top = SafeTop, end = SafeEdge, bottom = SafeTop),
             ) {
                 Text(title, style = TvType.heading, color = colors.text)
@@ -236,27 +249,76 @@ fun TextPanel(title: String, text: String, onDismiss: () -> Unit) {
 }
 
 /**
- * An overview, three lines at most: focusable, so OK opens it in full
- * ([TextPanel]).
+ * An overview, its paragraphs run together for the most text in [lines]
+ * lines, [textWidth] wide. When it doesn't fit, the whole block, [width]
+ * wide, is one stop with a plain outline and a small More at the end of its
+ * last line, and OK opens it in full ([TextPanel]), paragraphs and all; when
+ * it fits it takes no focus. [onClamped] hears which, for what moves focus
+ * around it. Focus shows only in the outline's drawing, so it recomposes
+ * nothing.
  */
 @Composable
-fun Overview(title: String, text: String, modifier: Modifier = Modifier) {
+fun Overview(
+    title: String,
+    text: String,
+    modifier: Modifier = Modifier,
+    lines: Int = 3,
+    width: Dp = 518.dp,
+    textWidth: Dp = 470.dp,
+    onClamped: (Boolean) -> Unit = {},
+) {
     var open by remember { mutableStateOf(false) }
+    var clamped by remember(text) { mutableStateOf(false) }
+    val focused = remember { mutableStateOf(false) }
     val colors = Kivo.colors
-    Surface(
-        onClick = { open = true },
-        modifier = modifier.testTag("overview"),
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(KivoTokens.Radius.md)),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color.Transparent,
-            contentColor = colors.text,
-            focusedContainerColor = colors.surfaceHover,
-            focusedContentColor = colors.text,
-        ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        border = ClickableSurfaceDefaults.border(focusedBorder = focusRing()),
+    val shown = remember(text) { oneLine(text) }
+    Box(
+        modifier
+            .width(width)
+            .testTag("overview")
+            .onFocusChanged { focused.value = it.isFocused }
+            .onKeyEvent { event ->
+                if (event.key.nativeKeyCode !in OkKeys) return@onKeyEvent false
+                if (event.type == KeyEventType.KeyUp) open = true
+                true
+            }
+            .semantics { if (clamped) onClick { open = true; true } }
+            .focusable(enabled = clamped)
+            .drawBehind {
+                if (!focused.value) return@drawBehind
+                val across = OverviewOutlineX.toPx()
+                val down = OverviewOutlineY.toPx()
+                drawRoundRect(
+                    colors.focus,
+                    topLeft = Offset(-across, -down),
+                    size = Size(size.width + across * 2, size.height + down * 2),
+                    cornerRadius = CornerRadius(KivoTokens.Radius.md.toPx()),
+                    style = Stroke(KivoTokens.Tv.focusRingWidth.toPx()),
+                )
+            },
     ) {
-        Text(text, style = TvType.body, maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = Kivo.space(3), vertical = Kivo.space(2)))
+        Text(
+            shown,
+            style = TvType.body,
+            color = colors.textMuted,
+            maxLines = lines,
+            minLines = lines,
+            overflow = TextOverflow.Ellipsis,
+            onTextLayout = {
+                if (clamped != it.didOverflowHeight) {
+                    clamped = it.didOverflowHeight
+                    onClamped(clamped)
+                }
+            },
+            modifier = Modifier.width(textWidth),
+        )
+        if (clamped) {
+            Text(stringResource(R.string.more), style = TvType.smallStrong, color = colors.text, modifier = Modifier.align(Alignment.BottomEnd))
+        }
     }
     if (open) TextPanel(title, text) { open = false }
 }
+
+/** How far a focused overview's outline stands clear of its text, across and down. */
+private val OverviewOutlineX = 10.5.dp
+private val OverviewOutlineY = 3.5.dp

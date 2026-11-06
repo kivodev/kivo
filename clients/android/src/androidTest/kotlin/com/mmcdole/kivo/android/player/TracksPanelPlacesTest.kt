@@ -46,7 +46,7 @@ class TracksPanelPlacesTest {
     fun thePlayerOpensTheSamePanelWithDialogueBoost() {
         harness.open(MIDDLE_MS)
         // Down from hidden controls lands on Audio & Subtitles.
-        harness.advance(3_100)
+        harness.advance(5_100)
         harness.press(KeyEvent.KEYCODE_DPAD_DOWN)
         harness.press(KeyEvent.KEYCODE_DPAD_CENTER)
         panelOpens()

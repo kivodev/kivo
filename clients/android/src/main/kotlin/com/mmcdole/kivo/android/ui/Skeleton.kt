@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -107,9 +108,14 @@ fun SkeletonCard(shape: CardShape, width: Dp, modifier: Modifier = Modifier) {
 
 /** A row's skeleton: its title and as many cards as fit, laid out as a row of cards is. */
 @Composable
-fun SkeletonRow(shape: CardShape, width: Dp = cardWidth(shape), count: Int = if (shape == CardShape.Landscape) 4 else 6) {
+fun SkeletonRow(
+    shape: CardShape,
+    width: Dp = cardWidth(shape),
+    count: Int = if (shape == CardShape.Landscape) 4 else 6,
+    titlePadding: PaddingValues = PaddingValues(bottom = 12.dp),
+) {
     Column {
-        SkeletonLine(160.dp, TvType.large, Modifier.padding(bottom = 12.dp))
+        SkeletonLine(160.dp, TvType.large, Modifier.padding(titlePadding))
         Row(Modifier.padding(vertical = FocusBleed), horizontalArrangement = Arrangement.spacedBy(CardGap)) {
             repeat(count) { SkeletonCard(shape, width) }
         }

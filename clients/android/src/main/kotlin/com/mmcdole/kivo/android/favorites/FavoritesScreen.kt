@@ -1,20 +1,26 @@
+@file:OptIn(ExperimentalFoundationApi::class)
+
 package com.mmcdole.kivo.android.favorites
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -25,6 +31,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.Text
 import com.mmcdole.kivo.android.R
 import com.mmcdole.kivo.android.ServerSession
+import com.mmcdole.kivo.android.home.RowCardsBelow
+import com.mmcdole.kivo.android.home.RowGap
+import com.mmcdole.kivo.android.home.RowTitlePadding
 import com.mmcdole.kivo.android.theme.Kivo
 import com.mmcdole.kivo.android.theme.TvType
 import com.mmcdole.kivo.android.ui.CardRow
@@ -37,11 +46,8 @@ import com.mmcdole.kivo.android.ui.Loader
 import com.mmcdole.kivo.android.ui.all
 import com.mmcdole.kivo.android.ui.map
 import com.mmcdole.kivo.android.ui.Navigator
-import com.mmcdole.kivo.android.ui.RowCardsTop
 import com.mmcdole.kivo.android.ui.RowTitle
-import com.mmcdole.kivo.android.ui.RowsHoldPlace
 import com.mmcdole.kivo.android.ui.SafeEdge
-import com.mmcdole.kivo.android.ui.SafeTop
 import com.mmcdole.kivo.android.ui.Screen
 import com.mmcdole.kivo.android.ui.SeeAllCard
 import com.mmcdole.kivo.android.ui.SkeletonGate
@@ -49,6 +55,7 @@ import com.mmcdole.kivo.android.ui.SkeletonRow
 import com.mmcdole.kivo.android.ui.WorkCard
 import com.mmcdole.kivo.android.ui.cardWidth
 import com.mmcdole.kivo.android.ui.focusKey
+import com.mmcdole.kivo.android.ui.raisedOnFocus
 import com.mmcdole.kivo.android.ui.rememberFocusMemory
 import com.mmcdole.kivo.api.models.WorkSummaryPage
 import kotlinx.coroutines.flow.combine
@@ -114,15 +121,19 @@ fun favoritesCount(kind: String, count: Int): String {
     return pluralStringResource(plural, count, NumberFormat.getIntegerInstance().format(count))
 }
 
-/** The screen's padding beside the rail. */
-private val FavoritesPadding = PaddingValues(start = 24.dp, top = SafeTop)
+/** Where the screen's title starts. */
+private val TitleTop = 39.5.dp
 
-/** The screen's title, at a library's title's height. */
+/** The screen's padding beside the rail. */
+private val FavoritesPadding = PaddingValues(start = 24.dp, top = TitleTop, end = SafeEdge)
+
+/** The gap between the screen's title and its first row. */
+private val TitleGap = 37.5.dp
+
+/** The screen's title. */
 @Composable
-private fun FavoritesHeading() {
-    Box(Modifier.height(44.dp).padding(end = SafeEdge), contentAlignment = Alignment.CenterStart) {
-        Text(stringResource(R.string.favorites), style = TvType.heading, color = Kivo.colors.text)
-    }
+private fun FavoritesHeading(modifier: Modifier = Modifier) {
+    Text(stringResource(R.string.favorites), style = TvType.title, color = Kivo.colors.text, modifier = modifier)
 }
 
 /**
@@ -139,13 +150,13 @@ fun FavoritesScreen(session: ServerSession, navigator: Navigator) {
     when (val s = state) {
         is Load.Failed -> Failed(s.problem, session.session.baseUrl, model.rows::retry, session.graph::changeServer)
         else -> SkeletonGate(s.getOrNull(), { FavoritesSkeleton() }) { rows ->
-            Column(Modifier.fillMaxSize().padding(FavoritesPadding)) {
-                FavoritesHeading()
-                if (rows.isEmpty()) {
+            if (rows.isEmpty()) {
+                Column(Modifier.fillMaxSize().padding(FavoritesPadding)) {
+                    FavoritesHeading()
                     FavoritesEmpty()
-                } else {
-                    Rows(rows, navigator)
                 }
+            } else {
+                Rows(rows, navigator)
             }
         }
     }
@@ -163,37 +174,52 @@ fun FavoritesEmpty() {
 private fun FavoritesSkeleton() {
     Column(Modifier.fillMaxSize().padding(FavoritesPadding)) {
         FavoritesHeading()
-        Column(Modifier.padding(top = RowsTop), verticalArrangement = Arrangement.spacedBy(RowGap)) {
-            SkeletonRow(CardShape.Poster)
-            SkeletonRow(CardShape.Poster)
+        Column(Modifier.padding(top = TitleGap), verticalArrangement = Arrangement.spacedBy(RowGap)) {
+            SkeletonRow(CardShape.Poster, titlePadding = RowTitlePadding)
+            SkeletonRow(CardShape.Poster, titlePadding = RowTitlePadding)
         }
     }
 }
 
-/** The gap between rows, as Home's. */
-private val RowGap = 28.dp
+/** Where a focused row's cards stay as the rows move under it, under the screen's top; as Home's. */
+private val FocusedCardsTop = 37.dp + RowCardsBelow
 
-/** The gap between the screen's title and its first row's. */
-private val RowsTop = 12.dp
+/** Where the first row's cards stay while it has focus, with the title above them. */
+private val FirstCardsTop = TitleTop + 30.dp + TitleGap + RowCardsBelow
+
+/** Keeps a focused row's cards [rest] from the list's top, or [first] while the first row has focus. */
+private class RowsSpec(private val first: Float, private val rest: Float, private val inFirst: () -> Boolean) : BringIntoViewSpec {
+    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float = offset - if (inFirst()) first else rest
+}
+
+/** A plain flag for where focus is, read as the list scrolls, so moving it recomposes nothing. */
+private class FirstRow(var focused: Boolean = true)
 
 @Composable
 private fun Rows(rows: List<FavoriteRow>, navigator: Navigator) {
     val memory = rememberFocusMemory()
     val list = rememberLazyListState()
     val first = rows.first().let { "${it.kind}/${it.page.items.first().id}" }
-    RowsHoldPlace(RowCardsTop) {
+    val firstKind = rows.first().kind
+    val firstRow = remember { FirstRow() }
+    val density = LocalDensity.current
+    val spec = remember(density) { with(density) { RowsSpec(FirstCardsTop.toPx(), FocusedCardsTop.toPx()) { firstRow.focused } } }
+    CompositionLocalProvider(LocalBringIntoViewSpec provides spec) {
         LazyColumn(
             state = list,
-            modifier = Modifier.fillMaxSize().padding(top = RowsTop),
-            contentPadding = PaddingValues(end = SafeEdge, bottom = SafeEdge),
+            modifier = Modifier.fillMaxSize(),
+            // The rows run to the screen's edge. Below them is room for the last to come up to where a focused row stays.
+            contentPadding = PaddingValues(start = 24.dp, top = TitleTop, bottom = 250.dp),
             verticalArrangement = Arrangement.spacedBy(RowGap),
         ) {
+            item(key = "title") { FavoritesHeading(Modifier.padding(bottom = TitleGap - RowGap)) }
             items(rows, key = { it.kind }) { row ->
                 val shape = favoriteShape(row.kind)
                 val width = cardWidth(shape)
                 val grid = Screen.FavoritesGrid(row.kind)
-                Column {
-                    RowTitle(favoritesTitle(row.kind), Modifier.padding(bottom = 12.dp))
+                // Raised with its focused card, so the card's glow lies over the row below.
+                Column(Modifier.raisedOnFocus().onFocusChanged { if (it.hasFocus) firstRow.focused = row.kind == firstKind }) {
+                    RowTitle(favoritesTitle(row.kind), Modifier.padding(RowTitlePadding))
                     CardRow {
                         items(row.page.items, key = { it.id }) { work ->
                             WorkCard(

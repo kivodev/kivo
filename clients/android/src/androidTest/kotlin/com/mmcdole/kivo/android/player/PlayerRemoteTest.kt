@@ -36,7 +36,7 @@ class PlayerRemoteTest {
 
     /** Lets the controls hide, as they do 3 seconds after the last input while playing. */
     private fun hideControls() {
-        player.advance(3_100)
+        player.advance(5_100)
         assertFalse(player.controlsShown)
     }
 
@@ -446,18 +446,18 @@ class PlayerRemoteTest {
     }
 
     @Test
-    fun controlsHideAfterThreeSecondsWhilePlayingOnly() { // R29
+    fun controlsHideAfterFiveSecondsWhilePlayingOnly() { // R29
         player.open(MIDDLE_MS)
-        player.advance(2_900)
+        player.advance(4_900)
         assertTrue(player.controlsShown)
         player.advance(200)
         assertFalse(player.controlsShown)
         player.press(KeyEvent.KEYCODE_MEDIA_PAUSE)
-        player.advance(5_000)
+        player.advance(6_000)
         assertTrue(player.controlsShown)
         player.press(KeyEvent.KEYCODE_MEDIA_PLAY)
         player.press(KeyEvent.KEYCODE_INFO)
-        player.advance(5_000)
+        player.advance(6_000)
         assertTrue(player.controlsShown)
     }
 

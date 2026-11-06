@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -38,14 +40,16 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import com.mmcdole.kivo.android.R
+import com.mmcdole.kivo.android.main.RailWidth
 import com.mmcdole.kivo.android.ServerSession
+import com.mmcdole.kivo.android.home.RowCardsBelow
+import com.mmcdole.kivo.android.home.RowTitlePadding
 import com.mmcdole.kivo.android.theme.Kivo
 import com.mmcdole.kivo.android.theme.KivoTokens
 import com.mmcdole.kivo.android.theme.TvType
 import com.mmcdole.kivo.android.ui.CardRow
 import com.mmcdole.kivo.android.ui.CardShape
 import com.mmcdole.kivo.android.ui.CollectionCard
-import com.mmcdole.kivo.android.ui.RowCardsTop
 import com.mmcdole.kivo.android.ui.RowsHoldPlace
 import com.mmcdole.kivo.android.ui.EmptyState
 import com.mmcdole.kivo.android.ui.FocusMemory
@@ -60,11 +64,10 @@ import com.mmcdole.kivo.android.ui.SafeTop
 import com.mmcdole.kivo.android.ui.Screen
 import com.mmcdole.kivo.android.ui.TextInput
 import com.mmcdole.kivo.android.ui.WorkCard
-import com.mmcdole.kivo.android.ui.LandscapeWidth
-import com.mmcdole.kivo.android.ui.PosterWidth
 import com.mmcdole.kivo.android.ui.display
 import com.mmcdole.kivo.android.ui.focusKey
-import com.mmcdole.kivo.android.ui.focusRing
+import com.mmcdole.kivo.android.ui.Lit
+import com.mmcdole.kivo.android.ui.raisedOnFocus
 import com.mmcdole.kivo.android.ui.rememberFocusMemory
 import com.mmcdole.kivo.android.ui.roleLabel
 import com.mmcdole.kivo.api.models.SearchResults
@@ -75,6 +78,36 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+/** The keyboard column's width: six keys across. */
+private val KeyboardWidth = 275.dp
+
+/** The gap between the keyboard and the results. */
+private val ColumnGap = 28.dp
+
+/** How far in the results start in their column, which leaves a focused card's glow clear of the keyboard. */
+private val ResultsStart = 14.dp
+
+/** Where the results' cards start on the screen. */
+internal val ResultsLeft = RailWidth + 24.dp + KeyboardWidth + ColumnGap + ResultsStart
+
+/** What the results say when there are none, centred inside the screen's margin. */
+private val InsideMargin = Modifier.padding(end = SafeEdge)
+
+/** The gap between the results' rows. */
+private val ResultRowGap = 12.dp
+
+internal val ResultPosterWidth = 101.dp
+
+internal val ResultLandscapeWidth = 231.dp
+
+/** A key's size, and the gap between keys. */
+private val KeyWidth = 40.dp
+private val KeyHeight = 38.5.dp
+private val KeyGap = 7.dp
+
+/** The keys in the last line, which share the keyboard's width. */
+private fun lastLineKeyWidth(keys: Int) = (KeyboardWidth - KeyGap * (keys - 1)) / keys
+
 /** Search's rows of works, always in this order under People, by the kinds they hold; the TV shows no books. */
 private enum class ResultRow(val title: Int, val kinds: Set<String>, val shape: CardShape) {
     Movies(R.string.results_movies, setOf("movie"), CardShape.Poster),
@@ -83,8 +116,8 @@ private enum class ResultRow(val title: Int, val kinds: Set<String>, val shape: 
     Videos(R.string.results_videos, setOf("video", "extra"), CardShape.Landscape),
     ;
 
-    /** A poster as wide as everywhere else; a landscape card smaller than a row's, so more of the results show. */
-    val cardWidth get() = if (shape == CardShape.Landscape) LandscapeWidth * 0.85f else PosterWidth
+    /** Four posters or two landscape cards across the results. */
+    val cardWidth get() = if (shape == CardShape.Landscape) ResultLandscapeWidth else ResultPosterWidth
 }
 
 /** Search, opening on the last search typed while this server is open, searched again at once. */
@@ -145,36 +178,41 @@ class SearchViewModel(private val session: ServerSession) : ViewModel() {
 fun SearchScreen(session: ServerSession, navigator: Navigator) {
     val model = viewModel { SearchViewModel(session) }
     val memory = rememberFocusMemory()
-    Row(Modifier.fillMaxSize().padding(start = 24.dp, top = SafeTop, end = 0.dp)) {
-        Column(Modifier.width(264.dp), verticalArrangement = Arrangement.spacedBy(Kivo.space(4))) {
+    Row(Modifier.fillMaxSize().padding(start = 24.dp, top = SafeTop, bottom = SafeTop)) {
+        Column(Modifier.width(KeyboardWidth), verticalArrangement = Arrangement.spacedBy(21.dp)) {
             TextInput(
                 label = stringResource(R.string.search),
                 value = model.query,
                 onValueChange = model::type,
+                labelShown = false,
+                icon = KivoIcon.Search,
+                minHeight = 43.dp,
             )
             GridKeyboard(model.query, model::type, memory)
         }
-        Box(Modifier.weight(1f).fillMaxSize()) {
+        Spacer(Modifier.width(ColumnGap))
+        // Its rows run on to the screen's edge, scrolling inside themselves.
+        Box(Modifier.weight(1f).fillMaxHeight()) {
             val results = model.results
             val failed = model.failed
             when {
-                failed != null -> EmptyState(stringResource(R.string.couldnt_load), display.problem(failed)) {
+                failed != null -> EmptyState(stringResource(R.string.couldnt_load), display.problem(failed), InsideMargin) {
                     KivoButton(stringResource(R.string.try_again), model::retry, Modifier.testTag("tryAgain"), primary = true)
                 }
-                results == null -> EmptyState(stringResource(R.string.search_prompt), null)
-                results.works.isEmpty() && results.people.isEmpty() && results.collections.isEmpty() && !model.searching -> EmptyState(stringResource(R.string.no_results_for, model.query), null) {
+                results == null -> EmptyState(stringResource(R.string.search_prompt), null, InsideMargin)
+                results.works.isEmpty() && results.people.isEmpty() && results.collections.isEmpty() && !model.searching -> EmptyState(stringResource(R.string.no_results_for, model.query), null, InsideMargin) {
                     KivoButton(stringResource(R.string.clear_search), { model.type("") })
                 }
-                else -> RowsHoldPlace(RowCardsTop) {
+                else -> RowsHoldPlace(RowCardsBelow) {
                     LazyColumn(
-                        Modifier.fillMaxSize().alpha(if (model.searching) 0.5f else 1f),
-                        contentPadding = PaddingValues(start = 32.dp, end = SafeEdge, bottom = SafeEdge),
-                        verticalArrangement = Arrangement.spacedBy(24.dp),
+                        Modifier.fillMaxSize().alpha(if (model.searching) 0.6f else 1f),
+                        contentPadding = PaddingValues(start = ResultsStart),
+                        verticalArrangement = Arrangement.spacedBy(ResultRowGap),
                     ) {
                         if (results.people.isNotEmpty()) {
                             item(key = "people") {
-                                Column {
-                                    RowTitle(stringResource(R.string.results_people), Modifier.padding(bottom = 12.dp))
+                                Column(Modifier.raisedOnFocus()) {
+                                    RowTitle(stringResource(R.string.results_people), Modifier.padding(RowTitlePadding))
                                     CardRow {
                                         items(results.people, key = { it.id }) { person ->
                                             val titles = pluralStringResource(R.plurals.titles, person.workCount, person.workCount)
@@ -194,8 +232,8 @@ fun SearchScreen(session: ServerSession, navigator: Navigator) {
                             val works = results.works.filter { it.kind in row.kinds }
                             if (works.isEmpty()) continue
                             item(key = row.name) {
-                                Column {
-                                    RowTitle(stringResource(row.title), Modifier.padding(bottom = 12.dp))
+                                Column(Modifier.raisedOnFocus()) {
+                                    RowTitle(stringResource(row.title), Modifier.padding(RowTitlePadding))
                                     CardRow {
                                         items(works, key = { it.id }) { work ->
                                             WorkCard(work, row.shape, row.cardWidth, { navigator.push(Screen.Work(work.id)) }, Modifier.focusKey(memory, work.id))
@@ -206,11 +244,11 @@ fun SearchScreen(session: ServerSession, navigator: Navigator) {
                         }
                         if (results.collections.isNotEmpty()) {
                             item(key = "collections") {
-                                Column {
-                                    RowTitle(stringResource(R.string.collections), Modifier.padding(bottom = 12.dp))
+                                Column(Modifier.raisedOnFocus()) {
+                                    RowTitle(stringResource(R.string.collections), Modifier.padding(RowTitlePadding))
                                     CardRow {
                                         items(results.collections, key = { it.id }) { c ->
-                                            CollectionCard(c, PosterWidth, { navigator.push(Screen.Collection(c.id)) }, Modifier.focusKey(memory, "collection/${c.id}"))
+                                            CollectionCard(c, ResultPosterWidth, { navigator.push(Screen.Collection(c.id)) }, Modifier.focusKey(memory, "collection/${c.id}"))
                                         }
                                     }
                                 }
@@ -222,14 +260,14 @@ fun SearchScreen(session: ServerSession, navigator: Navigator) {
         }
     }
     // The grid keyboard first, so the platform keyboard opens only when the field is chosen.
-    LaunchedEffect(Unit) { memory.restore("key/A") }
+    LaunchedEffect(Unit) { memory.restore("key/a") }
 }
 
-private val keys = ('A'..'Z').map { it.toString() } + ('1'..'9').map { it.toString() } + "0"
+private val keys = (('a'..'z') + ('0'..'9')).map { it.toString() }
 
 /**
- * The on-screen grid keyboard: letters, digits, space and delete, and the
- * microphone where the TV has voice input, which searches for what's said.
+ * The on-screen grid keyboard: letters, digits, space, delete and clear, and
+ * the microphone where the TV has voice input, which searches for what's said.
  */
 @Composable
 private fun GridKeyboard(query: String, onType: (String) -> Unit, memory: FocusMemory) {
@@ -238,18 +276,19 @@ private fun GridKeyboard(query: String, onType: (String) -> Unit, memory: FocusM
     val listen = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.let(onType)
     }
-    Column(verticalArrangement = Arrangement.spacedBy(Kivo.space(1))) {
+    Column(verticalArrangement = Arrangement.spacedBy(KeyGap)) {
         for (row in keys.chunked(6)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(Kivo.space(1))) {
-                for (key in row) Key(Modifier.width(40.dp).focusKey(memory, "key/$key"), key) { onType(query + key.lowercase()) }
+            Row(horizontalArrangement = Arrangement.spacedBy(KeyGap)) {
+                for (key in row) Key(Modifier.width(KeyWidth).focusKey(memory, "key/$key"), key) { onType(query + key) }
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(Kivo.space(1))) {
-            val narrow = if (voice != null) 62.dp else 128.dp
-            Key(Modifier.width(128.dp).focusKey(memory, "key/space"), stringResource(R.string.key_space)) { onType("$query ") }
-            Key(Modifier.width(narrow).focusKey(memory, "key/delete"), null, KivoIcon.ChevronLeft, tag = "delete") { onType(query.dropLast(1)) }
+        Row(horizontalArrangement = Arrangement.spacedBy(KeyGap)) {
+            val width = lastLineKeyWidth(if (voice != null) 4 else 3)
+            Key(Modifier.width(width).focusKey(memory, "key/space"), stringResource(R.string.key_space)) { onType("$query ") }
+            Key(Modifier.width(width).focusKey(memory, "key/delete"), null, KivoIcon.ChevronLeft, tag = "delete") { onType(query.dropLast(1)) }
+            Key(Modifier.width(width).focusKey(memory, "key/clear"), stringResource(R.string.key_clear)) { onType("") }
             if (voice != null) {
-                Key(Modifier.width(narrow).focusKey(memory, "key/voice"), null, KivoIcon.Mic, tag = "voice") { listen.launch(voice) }
+                Key(Modifier.width(width).focusKey(memory, "key/voice"), null, KivoIcon.Mic, tag = "voice") { listen.launch(voice) }
             }
         }
     }
@@ -264,19 +303,18 @@ private fun Key(modifier: Modifier, label: String?, icon: KivoIcon? = null, tag:
     val colors = Kivo.colors
     Surface(
         onClick = onClick,
-        modifier = modifier.height(36.dp).testTag("key:${tag ?: label}"),
+        modifier = modifier.height(KeyHeight).testTag("key:${tag ?: label}"),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(KivoTokens.Radius.sm)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = colors.surface,
             contentColor = colors.text,
-            focusedContainerColor = colors.surfaceHover,
-            focusedContentColor = colors.text,
+            focusedContainerColor = Lit.container,
+            focusedContentColor = Lit.content,
         ),
-        border = ClickableSurfaceDefaults.border(focusedBorder = focusRing()),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.1f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = KivoTokens.Tv.focusScale),
     ) {
-        Box(Modifier.fillMaxWidth().height(36.dp), contentAlignment = Alignment.Center) {
-            if (icon != null) KivoIconView(icon, size = 18.dp) else Text(label.orEmpty(), style = TvType.smallStrong)
+        Box(Modifier.fillMaxWidth().height(KeyHeight), contentAlignment = Alignment.Center) {
+            if (icon != null) KivoIconView(icon, size = 18.dp) else Text(label.orEmpty(), style = TvType.bodyStrong, maxLines = 1)
         }
     }
 }

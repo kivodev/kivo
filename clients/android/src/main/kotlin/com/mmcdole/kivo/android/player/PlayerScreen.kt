@@ -56,6 +56,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
@@ -115,9 +116,12 @@ import com.mmcdole.kivo.core.display.qualityMenu
 import com.mmcdole.kivo.core.display.size
 import com.mmcdole.kivo.android.ui.KivoButton
 import com.mmcdole.kivo.android.ui.KivoIcon
+import com.mmcdole.kivo.android.ui.SafeEdge
+import com.mmcdole.kivo.android.ui.SafeTop
 import com.mmcdole.kivo.android.ui.KeyAction
 import com.mmcdole.kivo.android.ui.KivoIconView
 import com.mmcdole.kivo.android.ui.LocalKeyDispatcher
+import com.mmcdole.kivo.android.ui.LocalPanelSurface
 import com.mmcdole.kivo.android.ui.LocalSession
 import com.mmcdole.kivo.android.ui.Navigator
 import com.mmcdole.kivo.android.ui.OkKeys
@@ -126,6 +130,7 @@ import com.mmcdole.kivo.android.ui.Screen
 import com.mmcdole.kivo.android.ui.rememberKeyDispatcher
 import com.mmcdole.kivo.android.ui.rememberPanelKeys
 import com.mmcdole.kivo.android.ui.focusRing
+import com.mmcdole.kivo.android.ui.Lit
 import com.mmcdole.kivo.android.ui.focusWhenPlaced
 import com.mmcdole.kivo.android.ui.display
 import com.mmcdole.kivo.api.models.Chapter
@@ -149,11 +154,11 @@ import kotlinx.coroutines.delay
 private const val SCRUB_COMMIT_MS = 1_000L
 
 /** The controls hide this long after the last key while playing. */
-private const val CONTROLS_HIDE_MS = 3_000L
+private const val CONTROLS_HIDE_MS = 5_000L
 
 /**
  * The player: the video with its subtitles, controls that show on
- * any input and hide after 3 seconds while playing, the remote map,
+ * any input and hide after 5 seconds while playing, the remote map,
  * Audio & Subtitles, Playback Settings and the stream info, Skip Intro, Recap and Credits, up next
  * for episodes, and the error with its recovery actions.
  */
@@ -398,10 +403,12 @@ fun PlayerScreen(session: ServerSession, args: Screen.Player, navigator: Navigat
                 onPrevious = model::playPrevious,
                 onNext = video::playNext,
                 onMenu = ::openMenu,
+                covered = menu != null && current != null,
             )
         }
 
-        Column(Modifier.align(Alignment.BottomEnd).padding(end = 48.dp, bottom = 150.dp), horizontalAlignment = Alignment.End) {
+        // Above the scrub bar, in from the screen's cropped edges as the controls are.
+        Column(Modifier.align(Alignment.BottomEnd).padding(end = SafeEdge, bottom = SafeTop + 91.dp), horizontalAlignment = Alignment.End) {
             if (showUpNext) {
                 UpNext(model, ui.upNext, playNow)
                 Spacer(Modifier.height(Kivo.space(3)))
@@ -423,8 +430,8 @@ fun PlayerScreen(session: ServerSession, args: Screen.Player, navigator: Navigat
 
     // While a choice starts a new play, the state keeps the play it replaces, so the open panel and its focus stay put.
     if (current != null && !failed) {
-        // The menus' windows hand their keys to the player's dispatcher.
-        CompositionLocalProvider(LocalKeyDispatcher provides keys) {
+        // The menus' windows hand their keys to the player's dispatcher, and stand opaque over the video.
+        CompositionLocalProvider(LocalKeyDispatcher provides keys, LocalPanelSurface provides Kivo.colors.playerPanel.copy(alpha = 1f)) {
             Menus(model, current, menu, onOpen = ::openMenu, onBack = { menus = menus.dropLast(1) }, onClose = { menus = emptyList() })
         }
     }
@@ -480,6 +487,12 @@ private fun Video(player: LoadedPlayer?, size: SubtitleSize?, background: Subtit
     )
 }
 
+/**
+ * The title and the transport, inside the margins of a TV that crops its
+ * edges, over gradients that run to the screen's. While a panel [covered]s
+ * them they aren't drawn, but stay in place, so focus goes back to the button
+ * that opened it.
+ */
 @Composable
 private fun Controls(
     title: String,
@@ -503,18 +516,19 @@ private fun Controls(
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onMenu: (PlayerMenu) -> Unit,
+    covered: Boolean,
 ) {
     val colors = Kivo.colors
     val live = state.live
-    Box(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize().drawWithContent { if (!covered) drawContent() }) {
         Row(
             Modifier
                 .fillMaxWidth()
                 .background(Brush.verticalGradient(listOf(colors.playerScrim, Color.Transparent)))
-                .padding(horizontal = 48.dp, vertical = 27.dp),
+                .padding(horizontal = SafeEdge, vertical = SafeTop),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(title, style = TvType.heading, color = colors.onPlayer, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Text(title, style = TvType.large, color = colors.onPlayer, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             // When the video ends at the speed it plays at, from the position.
             val durationMs = play?.durationMs?.toLong() ?: 0
             if (durationMs > 0) {
@@ -531,8 +545,8 @@ private fun Controls(
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .background(Brush.verticalGradient(listOf(Color.Transparent, colors.playerScrim)))
-                .padding(start = 48.dp, end = 48.dp, top = 64.dp, bottom = 27.dp),
-            verticalArrangement = Arrangement.spacedBy(Kivo.space(3)),
+                .padding(start = SafeEdge, end = SafeEdge, top = 28.dp, bottom = SafeTop),
+            verticalArrangement = Arrangement.spacedBy(7.dp),
         ) {
             // The time played and the time left either side of the bar.
             val duration = play?.durationMs?.toLong() ?: 0
@@ -553,7 +567,7 @@ private fun Controls(
                 Row(
                     Modifier.align(Alignment.Center),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Kivo.space(2)),
+                    horizontalArrangement = Arrangement.spacedBy(7.dp),
                 ) {
                     if (hasEpisodes) PlayerButton(KivoIcon.Previous, stringResource(R.string.previous_episode), onPrevious, enabled = hasPrevious)
                     PlayerButton(KivoIcon.Replay, stringResource(R.string.back_10), onBack, enabled = live)
@@ -563,20 +577,20 @@ private fun Controls(
                         onToggle,
                         Modifier.focusRequester(playButton),
                         enabled = live,
-                        size = 60.dp,
+                        size = 49.dp,
                     )
                     PlayerButton(KivoIcon.Forward, stringResource(R.string.forward_30), onForward, enabled = live)
                     if (hasEpisodes) PlayerButton(KivoIcon.Next, stringResource(R.string.next_episode), onNext, enabled = hasNext)
                 }
                 if (play != null) {
-                    Row(Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                         // Down from hidden controls lands on Audio & Subtitles, or on the gear without it.
                         if (hasTracks) {
-                            PlayerTextButton(
+                            PlayerButton(
+                                KivoIcon.SpeechBubble,
                                 stringResource(R.string.audio_and_subtitles),
                                 { onMenu(PlayerMenu.Tracks) },
                                 Modifier.focusRequester(tracksButton),
-                                icon = KivoIcon.SpeechBubble,
                             )
                         }
                         PlayerButton(
@@ -613,8 +627,12 @@ private fun ScrubBar(
     var focused by remember { mutableStateOf(false) }
     val shown = target ?: positionMs
     val fraction = if (durationMs > 0) (shown.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
+    // The times' room depends only on the duration, so the bar's length holds as they tick.
+    val hours = if (durationMs >= HOUR_MS) TimeHoursWidth else 0.dp
+    val playedWidth = PlayedWidth + hours
+    val leftWidth = LeftWidth + hours
     Column {
-        BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = TimeWidth).height(28.dp)) {
+        BoxWithConstraints(Modifier.fillMaxWidth().padding(start = playedWidth, end = leftWidth).height(28.dp)) {
             val scrubbing = target
             if (scrubbing != null) {
                 val chapter = Markers.chapterAt(chapters, scrubbing)?.title
@@ -640,11 +658,11 @@ private fun ScrubBar(
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(display.clock(shown), style = TvType.body, color = colors.onPlayer, modifier = Modifier.width(TimeWidth))
+            Text(display.clock(shown), style = TvType.body, color = colors.onPlayer, maxLines = 1, modifier = Modifier.width(playedWidth))
             Box(
                 modifier
                     .weight(1f)
-                    .height(20.dp)
+                    .height(21.dp)
                     .testTag("scrub")
                     .onFocusChanged { focused = it.isFocused }
                     .onKeyEvent { event ->
@@ -688,14 +706,23 @@ private fun ScrubBar(
                 style = TvType.body,
                 color = colors.onPlayer,
                 textAlign = TextAlign.End,
-                modifier = Modifier.width(TimeWidth),
+                maxLines = 1,
+                modifier = Modifier.width(leftWidth),
             )
         }
     }
 }
 
-/** Room for a time beside the scrub bar, "1:12:03" at most. */
-private val TimeWidth = 80.dp
+/** Room for the time played beside the scrub bar, with the gap to it: "59:59" at most. */
+private val PlayedWidth = 40.5.dp
+
+/** Room for the time left beside the scrub bar, with the gap to it: "−59:59" at most. */
+private val LeftWidth = 48.5.dp
+
+/** More room for each time when a video's an hour or longer: "1:12:03". */
+private val TimeHoursWidth = 16.dp
+
+private const val HOUR_MS = 3_600_000L
 
 /** One preview frame, cut from its sprite sheet at the size it was made. */
 @Composable
@@ -731,55 +758,27 @@ private fun PreviewFrame(frame: SpriteFrame) {
 }
 
 @Composable
-private fun PlayerButton(icon: KivoIcon, label: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, size: Dp = 48.dp) {
+private fun PlayerButton(icon: KivoIcon, label: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, size: Dp = 35.dp) {
     val colors = Kivo.colors
     Surface(
         onClick = onClick,
         enabled = enabled,
         modifier = modifier.size(size).testTag(label),
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(if (size > 48.dp) KivoTokens.Radius.full else KivoTokens.Radius.md)),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(if (size > 35.dp) KivoTokens.Radius.full else KivoTokens.Radius.md)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.Transparent,
             contentColor = colors.onPlayer,
-            focusedContainerColor = colors.playerTrack,
-            focusedContentColor = colors.onPlayer,
+            focusedContainerColor = Lit.container,
+            focusedContentColor = Lit.content,
             disabledContainerColor = Color.Transparent,
             disabledContentColor = colors.onPlayerMuted.copy(alpha = 0.5f),
         ),
         border = ClickableSurfaceDefaults.border(
-            focusedBorder = focusRing(RoundedCornerShape(if (size > 48.dp) KivoTokens.Radius.full else KivoTokens.Radius.md)),
+            focusedDisabledBorder = focusRing(RoundedCornerShape(if (size > 35.dp) KivoTokens.Radius.full else KivoTokens.Radius.md)),
         ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = KivoTokens.Tv.focusScale),
     ) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { KivoIconView(icon, size = size * 0.55f, contentDescription = label) }
-    }
-}
-
-/** A control named in words, readable across the room, with an [icon] before them where it has one. */
-@Composable
-private fun PlayerTextButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, icon: KivoIcon? = null) {
-    val colors = Kivo.colors
-    Surface(
-        onClick = onClick,
-        modifier = modifier.height(48.dp).testTag(text),
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(KivoTokens.Radius.md)),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color.Transparent,
-            contentColor = colors.onPlayer,
-            focusedContainerColor = colors.playerTrack,
-            focusedContentColor = colors.onPlayer,
-        ),
-        border = ClickableSurfaceDefaults.border(focusedBorder = focusRing()),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = KivoTokens.Tv.focusScale),
-    ) {
-        Row(
-            Modifier.height(48.dp).padding(horizontal = Kivo.space(3)),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Kivo.space(2)),
-        ) {
-            icon?.let { KivoIconView(it, size = 24.dp) }
-            Text(text, style = TvType.bodyStrong)
-        }
     }
 }
 
@@ -1067,7 +1066,18 @@ private fun speedLabel(speed: Float): String =
 private fun limitWords(): (CapabilityMismatch) -> String {
     val declared = stringResource(R.string.info_limit)
     val undeclared = stringResource(R.string.info_limit_undeclared)
-    return { limit -> limit.declared?.let { declared.format(limit.field, limit.actual, it) } ?: undeclared.format(limit.field, limit.actual) }
+    val channels = stringResource(R.string.info_limit_channels)
+    val channelsUndeclared = stringResource(R.string.info_limit_channels_undeclared)
+    return { limit ->
+        // Channels read as words; other limits go by the name the server gives them.
+        val device = limit.declared
+        when {
+            limit.field == "maxChannels" && device != null -> channels.format(limit.actual, device)
+            limit.field == "maxChannels" -> channelsUndeclared.format(limit.actual)
+            device != null -> declared.format(limit.field, limit.actual, device)
+            else -> undeclared.format(limit.field, limit.actual)
+        }
+    }
 }
 
 @Composable
@@ -1106,8 +1116,8 @@ private fun StreamInfoPanel(model: PlayerViewModel, play: PlayStarted, onClose: 
                     .onPreviewKeyEvent { keys.dispatch(it.nativeKeyEvent) }
                     .width(420.dp)
                     .fillMaxSize()
-                    .background(Kivo.colors.playerPanel)
-                    .padding(Kivo.space(6))
+                    .background(LocalPanelSurface.current)
+                    .padding(start = Kivo.space(6), top = SafeTop, end = SafeEdge, bottom = SafeTop)
                     .focusRequester(focus)
                     .focusable()
                     .testTag("stream-info"),

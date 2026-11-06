@@ -42,6 +42,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.translate
@@ -57,6 +58,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
@@ -76,7 +78,6 @@ import com.mmcdole.kivo.android.search.SearchScreen
 import com.mmcdole.kivo.android.settings.CreditsPage
 import com.mmcdole.kivo.android.settings.LicenseTextPage
 import com.mmcdole.kivo.android.settings.LicensesPage
-import com.mmcdole.kivo.android.settings.SettingsPageScreen
 import com.mmcdole.kivo.android.settings.SettingsScreen
 import com.mmcdole.kivo.android.theme.Kivo
 import com.mmcdole.kivo.android.theme.KivoTokens
@@ -84,6 +85,7 @@ import com.mmcdole.kivo.android.theme.TvType
 import com.mmcdole.kivo.android.ui.Back
 import com.mmcdole.kivo.android.ui.Choice
 import com.mmcdole.kivo.android.ui.ChoicePanel
+import com.mmcdole.kivo.android.ui.KivoButton
 import com.mmcdole.kivo.android.ui.KivoIcon
 import com.mmcdole.kivo.android.ui.KivoIconView
 import com.mmcdole.kivo.android.ui.LocalFocusRail
@@ -92,13 +94,18 @@ import com.mmcdole.kivo.android.ui.RemoteKeys
 import com.mmcdole.kivo.android.ui.Screen
 import com.mmcdole.kivo.android.ui.WorkMenuHost
 import com.mmcdole.kivo.android.ui.fadeSpec
-import com.mmcdole.kivo.android.ui.focusRing
+import com.mmcdole.kivo.android.ui.focusWhenPlaced
+import com.mmcdole.kivo.android.ui.panelProperties
+import com.mmcdole.kivo.android.ui.rememberPanelKeys
 import com.mmcdole.kivo.api.models.Library
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.withTimeoutOrNull
 
-/** Where the rail starts the content, past its collapsed width. */
-val RailWidth = KivoTokens.Layout.sidebarCollapsedWidth + 8.dp
+/** The rail's width with only its icons showing, which keeps them clear of a TV's cropped edge. */
+private val RailClosedWidth = KivoTokens.Layout.sidebarCollapsedWidth
+
+/** Where the rail leaves the content, whose screens start a further 24 dp in. */
+val RailWidth = RailClosedWidth + 8.dp
 
 /** The rail's width with its labels showing. */
 private val RailOpenWidth = 272.dp
@@ -109,8 +116,14 @@ private val RailInset = 16.dp
 /** The open rail's corners. */
 private val RailCorner = 16.dp
 
+/** A rail item's height, at which seven libraries show with Search, Home, Favorites and Settings. */
+private val RailItemHeight = 40.dp
+
+/** The room above and below the rail's items, clear of a TV's cropped edges. */
+private val RailPaddingY = 24.dp
+
 /** A rail item's width without its label: its icon's place. */
-private val RailIconWidth = KivoTokens.Layout.sidebarCollapsedWidth - 16.dp
+private val RailIconWidth = RailClosedWidth - 16.dp
 
 /** The libraries the TV shows: every kind but audiobooks. */
 fun tvLibraries(libraries: List<Library>) = libraries.filter { it.kind != "audiobooks" }
@@ -205,7 +218,6 @@ fun MainScreen(session: ServerSession, onExit: () -> Unit) {
                             Screen.Home -> HomeScreen(session, navigator)
                             Screen.Search -> SearchScreen(session, navigator)
                             Screen.Settings -> SettingsScreen(session, navigator)
-                            is Screen.SettingsPage -> SettingsPageScreen(session, target.group, navigator)
                             Screen.Credits -> CreditsPage(navigator)
                             Screen.Licenses -> LicensesPage(navigator)
                             is Screen.LicenseText -> LicenseTextPage(target.id)
@@ -243,14 +255,19 @@ fun MainScreen(session: ServerSession, onExit: () -> Unit) {
             RailItem(KivoIcon.Home, stringResource(R.string.home), destination == Screen.Home) { go(Screen.Home) }
             RailItem(KivoIcon.Heart, stringResource(R.string.favorites), destination == Screen.Favorites) { go(Screen.Favorites) }
             RailSeparator()
-            RailLibraries {
-                for (library in libraries.filter { it.pinned }) {
+            RailLibraries { first, last ->
+                val pinned = libraries.filter { it.pinned }
+                val count = pinned.size + if (others.isEmpty()) 0 else 1
+                fun end(index: Int) = Modifier
+                    .then(if (index == 0) Modifier.focusRequester(first) else Modifier)
+                    .then(if (index == count - 1) Modifier.focusRequester(last) else Modifier)
+                pinned.forEachIndexed { index, library ->
                     val target = Screen.Library(library.id)
-                    RailItem(libraryIcon(library.kind), library.name, destination == target) { go(target) }
+                    RailItem(libraryIcon(library.kind), library.name, destination == target, end(index)) { go(target) }
                 }
                 if (others.isNotEmpty()) {
                     val current = others.any { destination == Screen.Library(it.id) }
-                    RailItem(KivoIcon.More, stringResource(R.string.more_libraries), current) { choosingLibrary = true }
+                    RailItem(KivoIcon.More, stringResource(R.string.more_libraries), current, end(count - 1)) { choosingLibrary = true }
                 }
             }
             RailItem(KivoIcon.Settings, stringResource(R.string.settings), destination == Screen.Settings) { go(Screen.Settings) }
@@ -258,13 +275,10 @@ fun MainScreen(session: ServerSession, onExit: () -> Unit) {
     }
 
     if (exiting) {
-        ChoicePanel(
-            title = stringResource(R.string.exit_kivo),
-            choices = listOf(Choice("no", stringResource(R.string.no)), Choice("yes", stringResource(R.string.yes))),
-            selected = "no",
-            onSelect = {
+        ExitDialog(
+            onExit = {
                 exiting = false
-                if (it == "yes") onExit()
+                onExit()
             },
             onDismiss = { exiting = false },
         )
@@ -281,6 +295,35 @@ fun MainScreen(session: ServerSession, onExit: () -> Unit) {
             },
             onDismiss = { choosingLibrary = false },
         )
+    }
+}
+
+/** "Exit Kivo?" in the middle of the screen, with No focused first; No or Back stays in the app. */
+@Composable
+internal fun ExitDialog(onExit: () -> Unit, onDismiss: () -> Unit) {
+    val no = remember { FocusRequester() }
+    // A press that began before the dialog opened, such as the Back that opened it, doesn't reach its buttons.
+    val keys = rememberPanelKeys()
+    Dialog(onDismissRequest = onDismiss, properties = panelProperties()) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(
+                Modifier
+                    .onPreviewKeyEvent { keys.dispatch(it.nativeKeyEvent) }
+                    .width(392.dp)
+                    .background(Kivo.colors.surfaceRaised, RoundedCornerShape(KivoTokens.Radius.lg))
+                    .padding(35.dp),
+            ) {
+                Text(stringResource(R.string.exit_kivo), style = TvType.heading, color = Kivo.colors.text)
+                Row(
+                    Modifier.align(Alignment.End).padding(top = 35.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    KivoButton(stringResource(R.string.no), onDismiss, Modifier.focusRequester(no).height(38.dp).testTag("exit:no"))
+                    KivoButton(stringResource(R.string.exit), onExit, Modifier.height(38.dp).testTag("exit:yes"))
+                }
+            }
+        }
+        LaunchedEffect(Unit) { focusWhenPlaced(no) }
     }
 }
 
@@ -378,28 +421,32 @@ private fun Rail(
                 alpha = reveal.value
                 compositingStrategy = CompositingStrategy.ModulateAlpha
             }
-            .background(colors.scrim.copy(alpha = 0.5f)),
+            .background(colors.scrim),
     )
     Column(
         Modifier
-            .width(if (wide) RailOpenWidth else KivoTokens.Layout.sidebarCollapsedWidth)
+            .width(if (wide) RailOpenWidth else RailClosedWidth)
             .fillMaxHeight()
             .graphicsLayer()
             .drawWithContent {
                 val inset = RailInset.toPx() * reveal.value
-                val shown = lerp(KivoTokens.Layout.sidebarCollapsedWidth.toPx(), size.width, reveal.value)
+                val shown = lerp(RailClosedWidth.toPx(), size.width, reveal.value)
                 val corner = RailCorner.toPx() * reveal.value
-                drawRoundRect(
-                    colors.surface,
-                    topLeft = Offset(inset, inset),
-                    size = Size(shown, size.height - inset * 2),
-                    cornerRadius = CornerRadius(corner),
-                )
+                // Closed, the rail is its icons alone, over the screen's backdrop; its panel shows as it opens.
+                if (reveal.value > 0f) {
+                    drawRoundRect(
+                        colors.surface,
+                        topLeft = Offset(inset, inset),
+                        size = Size(shown, size.height - inset * 2),
+                        cornerRadius = CornerRadius(corner),
+                        alpha = reveal.value,
+                    )
+                }
                 translate(left = inset) {
                     clipRect(right = shown) { this@drawWithContent.drawContent() }
                 }
             }
-            .padding(horizontal = 8.dp, vertical = RailInset + 16.dp)
+            .padding(horizontal = 8.dp, vertical = RailPaddingY)
             .onFocusChanged {
                 open = it.hasFocus
                 if (!open) waiting = false
@@ -430,13 +477,33 @@ private fun Rail(
 /**
  * The rail's libraries, filling the space between the items above and the
  * last item, and scrolling when they don't fit, with the focused item kept
- * in view.
+ * in view. Down into them lands on the [first] item and Up into them on the
+ * [last]. Focus moves by where items are laid out, in view or not, so with
+ * the list left scrolled, Down from Favorites would pass over the items
+ * scrolled up level with it, and Up from Settings over those scrolled down
+ * level with it.
  */
 @Composable
-private fun RailScope.RailLibraries(items: @Composable RailScope.() -> Unit) {
+private fun RailScope.RailLibraries(items: @Composable RailScope.(first: FocusRequester, last: FocusRequester) -> Unit) {
     val rail = this
-    Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        RailScope(this, rail.selected, rail.wide, rail).items()
+    val first = remember { FocusRequester() }
+    val last = remember { FocusRequester() }
+    Column(
+        Modifier
+            .weight(1f)
+            .focusProperties {
+                onEnter = {
+                    when (requestedFocusDirection) {
+                        FocusDirection.Down -> first.requestFocus()
+                        FocusDirection.Up -> last.requestFocus()
+                    }
+                }
+            }
+            .focusGroup()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        RailScope(this, rail.selected, rail.wide, rail).items(first, last)
     }
 }
 
@@ -453,28 +520,30 @@ private fun RailScope.RailSeparator() {
 }
 
 @Composable
-private fun RailScope.RailItem(icon: KivoIcon, label: String, current: Boolean, onClick: () -> Unit) {
+private fun RailScope.RailItem(icon: KivoIcon, label: String, current: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val colors = Kivo.colors
     val wide = wide
     Surface(
         onClick = onClick,
-        modifier = Modifier
+        modifier = modifier
             .then(if (current) Modifier.focusRequester(selected) else Modifier)
             .then(if (wide) Modifier.fillMaxWidth() else Modifier.width(RailIconWidth))
-            .height(48.dp)
+            .height(RailItemHeight)
             .testTag("rail:$label"),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(KivoTokens.Radius.md)),
+        // As the web TV's open rail: the focused entry fills with the text colour, its icon and name dark on it.
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = if (current) colors.surfaceRaised else colors.surface,
+            containerColor = if (current && wide) colors.surfaceRaised else Color.Transparent,
             contentColor = if (current) colors.accent else colors.textMuted,
-            focusedContainerColor = colors.surfaceHover,
-            focusedContentColor = if (current) colors.accent else colors.text,
+            focusedContainerColor = colors.text,
+            focusedContentColor = colors.bg,
         ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        border = ClickableSurfaceDefaults.border(focusedBorder = focusRing()),
     ) {
         Row(Modifier.fillMaxHeight(), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.width(RailIconWidth), contentAlignment = Alignment.Center) { KivoIconView(icon, size = 22.dp) }
+            Box(Modifier.width(RailIconWidth), contentAlignment = Alignment.Center) {
+                KivoIconView(icon, size = 22.dp)
+            }
             if (wide) Text(label, style = TvType.bodyStrong, maxLines = 1)
         }
     }

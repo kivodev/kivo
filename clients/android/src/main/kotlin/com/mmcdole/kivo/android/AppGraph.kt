@@ -13,6 +13,7 @@ import com.mmcdole.kivo.core.session.Device
 import com.mmcdole.kivo.core.session.KivoClient
 import com.mmcdole.kivo.core.session.KivoSession
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -81,7 +82,15 @@ class AppGraph(val context: Context, device: Device = AndroidDevice(context)) {
     fun reach(server: SavedServer) {
         mutableState.value = AppState.Starting
         scope.launch {
-            val session = core.restore(server)
+            var session = core.restore(server)
+            // The network may still be waking as the app starts, so it's only unreachable once it's stayed so.
+            repeat(REACH_RETRIES) {
+                if (session.unreachable.value) {
+                    session.close()
+                    delay(REACH_RETRY_MS)
+                    session = core.restore(server)
+                }
+            }
             when {
                 session.unreachable.value -> {
                     session.close()
@@ -121,3 +130,7 @@ class AppGraph(val context: Context, device: Device = AndroidDevice(context)) {
 
 /** How long a browse for servers looks. */
 private val FIND_TIME = 3.seconds
+
+/** How many more times opening a server tries before saying it can't be reached, and how long it waits between. */
+private const val REACH_RETRIES = 2
+private const val REACH_RETRY_MS = 1500L

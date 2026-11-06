@@ -227,6 +227,9 @@ class LibraryGridTest {
         repeat(RAIL_LETTERS.indexOf("M") - RAIL_LETTERS.indexOf("A")) { press(KeyEvent.KEYCODE_DPAD_DOWN) }
         press(KeyEvent.KEYCODE_DPAD_CENTER)
         waitFor(10_000) { shows("card:${name(m.offset)}") }
+        // Left goes back to the letter's first item rather than the nearest card.
+        press(KeyEvent.KEYCODE_DPAD_LEFT)
+        waitFor(10_000) { focusedTag() == "card:${name(m.offset)}" }
     }
 
     /** Another sort from Sort: its works show in their order, and focus stays on Sort, the grid taking none. */
