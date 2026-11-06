@@ -14,7 +14,12 @@ DEADCODE_MAX     := 0
 # the interface their tests stand in for, as consumers own their interfaces.
 # api's handlers for an audiobooks library's authors and book series read
 # alike, each a page with its letters, differing in their types only.
-DUPL_MAX         := 24
+# api's thin handlers that call a service and answer with no body (delete
+# an API key, a session, a download, remove from continue watching, run a
+# task) read alike in two groups, and so do its get and rename handlers
+# for a book series and a person, each with its own generated request and
+# response types, which no shared helper would make clearer.
+DUPL_MAX         := 26
 # Go functions with a cyclomatic complexity over 15 (gocyclo).
 GOCYCLO_MAX      := 45
 # Go functions with a cognitive complexity over 20 (gocognit). identify's
@@ -41,8 +46,11 @@ JSCPD_SQL_MAX    := 10
 JSCPD_WEB_MAX    := 96
 # The web client's unused files, dependencies, exports and types (knip).
 KNIP_MAX         := 0
-# Import cycles in the web client (madge).
-MADGE_CYCLES_MAX := 0
+# Import cycles in the web client (madge). The player's engine loads the
+# TV's AVPlay engine with a dynamic import, to keep it out of the web
+# bundle, and avplay.ts implements engine.ts's Engine, so the two import
+# each other, though not as the page loads.
+MADGE_CYCLES_MAX := 1
 # The apps' calls on the generated API or the HTTP client, which belong in
 # the core's session.
 APP_API_CALLS_MAX := 0

@@ -44,7 +44,7 @@ export type ServerProbe = { result: "kivo"; id: string; version: string } | { re
  * connect. A gateway saying the server is down counts as no answer, as a
  * request that got none or ran out of time does.
  */
-export async function probeServer(baseUrl: string): Promise<ServerProbe> {
+async function probeServer(baseUrl: string): Promise<ServerProbe> {
   let answer: Awaited<ReturnType<typeof ask>>;
   try {
     answer = await ask(baseUrl);
