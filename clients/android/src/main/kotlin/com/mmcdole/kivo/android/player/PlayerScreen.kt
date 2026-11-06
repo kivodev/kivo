@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -49,6 +50,9 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -74,11 +78,15 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
@@ -102,10 +110,15 @@ import com.mmcdole.kivo.android.ui.Artwork
 import com.mmcdole.kivo.android.ui.labelledTitle
 import com.mmcdole.kivo.android.ui.Choice
 import com.mmcdole.kivo.android.ui.ChoiceMarker
-import com.mmcdole.kivo.android.ui.ChoicePanel
+import com.mmcdole.kivo.android.ui.ChoiceList
+import com.mmcdole.kivo.android.ui.MenuPopup
+import com.mmcdole.kivo.android.ui.menuAbove
+import com.mmcdole.kivo.android.ui.menuWidth
 import com.mmcdole.kivo.android.ui.SubtitleSearchPanel
 import com.mmcdole.kivo.android.ui.TrackChoices
-import com.mmcdole.kivo.android.ui.TracksPanel
+import com.mmcdole.kivo.android.ui.TrackColumns
+import com.mmcdole.kivo.android.ui.columns
+import com.mmcdole.kivo.android.ui.tracksMenuWidth
 import com.mmcdole.kivo.android.ui.choosable
 import com.mmcdole.kivo.android.ui.endsAt
 import com.mmcdole.kivo.core.display.bitrate
@@ -212,9 +225,10 @@ fun PlayerScreen(session: ServerSession, args: Screen.Player, navigator: Navigat
     val video = model.video
     val ui by video.ui.collectAsStateWithLifecycle()
     val visible = ui.controlsShown
-    // The panels open over the video, the one showing last: Back goes to the one before it.
+    // The menus and panels open over the video, the one showing last: Back goes to the one before it.
     var menus by remember { mutableStateOf(emptyList<PlayerMenu>()) }
     val menu = menus.lastOrNull()
+    val anchors = remember { MenuAnchors() }
     val root = remember { FocusRequester() }
     val scrubBar = remember { FocusRequester() }
     val playButton = remember { FocusRequester() }
@@ -225,7 +239,7 @@ fun PlayerScreen(session: ServerSession, args: Screen.Player, navigator: Navigat
     val showUpNext = model.next != null && ui.upNext.shows
     val stillWatching = showUpNext && ui.upNext.phase == UpNextPhase.StillWatching
     val marker = ui.skipMarker
-    // A panel open holds the controls up and up next's countdown.
+    // A menu or panel open holds the controls up and up next's countdown.
     LaunchedEffect(menu != null) { video.setMenuOpen(open = menu != null) }
 
     fun reveal(focus: FocusRequester? = null) {
@@ -320,8 +334,8 @@ fun PlayerScreen(session: ServerSession, args: Screen.Player, navigator: Navigat
     }
 
     /**
-     * Opens [opened] from its button or over the panel whose row opened it:
-     * a panel's window takes focus, so the press that opened it ends there.
+     * Opens [opened] from its button, or from the row of the menu it opens in:
+     * it takes focus, so the press that opened it ends there.
      */
     fun openMenu(opened: PlayerMenu) {
         keys.focusMoved()
@@ -403,7 +417,8 @@ fun PlayerScreen(session: ServerSession, args: Screen.Player, navigator: Navigat
                 onPrevious = model::playPrevious,
                 onNext = video::playNext,
                 onMenu = ::openMenu,
-                covered = menu != null && current != null,
+                anchors = anchors,
+                covered = (menu == PlayerMenu.Info || menu == PlayerMenu.SubtitleSearch) && current != null,
             )
         }
 
@@ -432,7 +447,7 @@ fun PlayerScreen(session: ServerSession, args: Screen.Player, navigator: Navigat
     if (current != null && !failed) {
         // The menus' windows hand their keys to the player's dispatcher, and stand opaque over the video.
         CompositionLocalProvider(LocalKeyDispatcher provides keys, LocalPanelSurface provides Kivo.colors.playerPanel.copy(alpha = 1f)) {
-            Menus(model, current, menu, onOpen = ::openMenu, onBack = { menus = menus.dropLast(1) }, onClose = { menus = emptyList() })
+            Menus(model, current, menus, anchors, onOpen = ::openMenu, onBack = { menus = menus.dropLast(1) }, onClose = { menus = emptyList() })
         }
     }
 }
@@ -489,7 +504,8 @@ private fun Video(player: LoadedPlayer?, size: SubtitleSize?, background: Subtit
 
 /**
  * The title and the transport, inside the margins of a TV that crops its
- * edges, over gradients that run to the screen's. While a panel [covered]s
+ * edges, over gradients that run to the screen's. The menus rise from the
+ * buttons' row, whose place [anchors] keeps. While a panel [covered]s
  * them they aren't drawn, but stay in place, so focus goes back to the button
  * that opened it.
  */
@@ -516,6 +532,7 @@ private fun Controls(
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onMenu: (PlayerMenu) -> Unit,
+    anchors: MenuAnchors,
     covered: Boolean,
 ) {
     val colors = Kivo.colors
@@ -563,7 +580,7 @@ private fun Controls(
                 onOk = { if (!onCommitScrub() && !state.ended) onToggle() },
             )
             // The transport in the middle; Audio & Subtitles and Playback Settings at the right.
-            Box(Modifier.fillMaxWidth()) {
+            Box(Modifier.fillMaxWidth().onGloballyPositioned { anchors.rowTop = it.boundsInWindow().top }) {
                 Row(
                     Modifier.align(Alignment.Center),
                     verticalAlignment = Alignment.CenterVertically,
@@ -590,14 +607,14 @@ private fun Controls(
                                 KivoIcon.SpeechBubble,
                                 stringResource(R.string.audio_and_subtitles),
                                 { onMenu(PlayerMenu.Tracks) },
-                                Modifier.focusRequester(tracksButton),
+                                Modifier.focusRequester(tracksButton).onGloballyPositioned { anchors.tracksEnd = it.boundsInWindow().right },
                             )
                         }
                         PlayerButton(
                             KivoIcon.Settings,
                             stringResource(R.string.playback_settings),
                             { onMenu(PlayerMenu.Settings) },
-                            if (hasTracks) Modifier else Modifier.focusRequester(tracksButton),
+                            (if (hasTracks) Modifier else Modifier.focusRequester(tracksButton)).onGloballyPositioned { anchors.settingsEnd = it.boundsInWindow().right },
                         )
                     }
                 }
@@ -856,9 +873,9 @@ private fun Spinner(modifier: Modifier = Modifier) {
 }
 
 /**
- * A panel the player opens over the video: Audio & Subtitles and the
- * subtitle search its row opens, Playback Settings and the Quality, Version
- * and Speed lists its rows open, or the stream info overlay.
+ * What the player opens over the video: the menus of Audio & Subtitles and
+ * Playback Settings and the Quality, Version and Speed lists its rows open,
+ * or the panels of the subtitle search and Stream info.
  */
 private enum class PlayerMenu { Tracks, SubtitleSearch, Settings, Quality, Version, Speed, Info }
 
@@ -884,35 +901,27 @@ private fun trackChoices(model: PlayerViewModel, play: PlayStarted): TrackChoice
 }
 
 /**
- * The panel open over the video, [menu]: [onOpen] opens another over it,
- * [onBack] goes back to the one before it, and [onClose] closes them all,
- * as choosing a quality, version or speed does.
+ * What's open over the video, the last of [menus]: the subtitle search or
+ * Stream info, in a panel, or else a menu raised over the controls from the
+ * button that opened the first of them ([anchors]), whose contents each one
+ * opened from it replaces in place. [onOpen] opens another, [onBack] goes
+ * back to the one before it, and [onClose] closes them all, as choosing a
+ * quality, version or speed does.
  */
 @Composable
 private fun Menus(
     model: PlayerViewModel,
     play: PlayStarted,
-    menu: PlayerMenu?,
+    menus: List<PlayerMenu>,
+    anchors: MenuAnchors,
     onOpen: (PlayerMenu) -> Unit,
     onBack: () -> Unit,
     onClose: () -> Unit,
 ) {
-    // The Playback Settings row whose list was open last, focused as the panel comes back.
+    // The Playback Settings row whose list was open last, focused as the menu comes back to it.
     var lastRow by remember { mutableStateOf<PlayerMenu?>(null) }
-    when (menu) {
-        PlayerMenu.Tracks -> {
-            val tracks = trackChoices(model, play)
-            TracksPanel(
-                tracks = tracks,
-                // The player has no Automatic, so a choice is always a track or Off.
-                onAudio = { if (it != null && it != model.audio) model.chooseAudio(it) },
-                onSubtitle = { if (it != null && it != tracks.subtitleSelected) model.chooseSubtitle(it) },
-                onDismiss = onBack,
-                dialogueBoost = play.dialogueBoost?.enabled,
-                onDialogueBoost = model::boostDialogue,
-                onSearch = { onOpen(PlayerMenu.SubtitleSearch) },
-            )
-        }
+    when (val menu = menus.lastOrNull()) {
+        null -> Unit
         // A subtitle chosen here plays at once, and Audio & Subtitles shows it chosen.
         PlayerMenu.SubtitleSearch -> SubtitleSearchPanel(
             display = LocalSession.current.graph.display,
@@ -923,53 +932,124 @@ private fun Menus(
             },
             onDismiss = onBack,
         )
-        PlayerMenu.Settings -> SettingsMenu(model, play, lastRow, onBack) { row ->
-            lastRow = row
-            if (row == PlayerMenu.Info) {
-                onClose()
-                onOpen(PlayerMenu.Info)
-            } else {
-                onOpen(row)
+        PlayerMenu.Info -> StreamInfoPanel(model, play, onBack)
+        else -> {
+            val tracks = trackChoices(model, play)
+            val boost = play.dialogueBoost?.enabled
+            val quality = qualityChoices(model, play)
+            val versions = versionChoices(model)
+            val speeds = Speeds.map { Choice(it.toString(), speedLabel(it)) }
+            val settings = settingsRows(model, play, quality)
+            // Playback Settings keeps one width through its lists; Audio & Subtitles is as wide as its columns.
+            val settingsWidth = menuWidth(
+                settings to ChoiceMarker.None,
+                quality.choices to ChoiceMarker.Tick,
+                versions to ChoiceMarker.Tick,
+                speeds to ChoiceMarker.Tick,
+                padding = PlayerMenuPadding,
+            )
+            MenuPopup(
+                onDismiss = onBack,
+                alignment = Alignment.BottomEnd,
+                margin = anchors.above(menus.first()),
+                width = if (menu == PlayerMenu.Tracks) tracksMenuWidth(tracks.columns(boost)) else settingsWidth,
+                maxHeight = PlayerMenuMaxHeight,
+                padding = PlayerMenuPadding,
+            ) {
+                key(menu) {
+                    when (menu) {
+                        PlayerMenu.Tracks -> TrackColumns(
+                            tracks = tracks,
+                            // The player has no Automatic, so a choice is always a track or Off.
+                            onAudio = { if (it != null && it != model.audio) model.chooseAudio(it) },
+                            onSubtitle = { if (it != null && it != tracks.subtitleSelected) model.chooseSubtitle(it) },
+                            menu = true,
+                            dialogueBoost = boost,
+                            onDialogueBoost = model::boostDialogue,
+                            onSearch = { onOpen(PlayerMenu.SubtitleSearch) },
+                        )
+                        PlayerMenu.Settings -> ChoiceList(
+                            choices = settings,
+                            selected = lastRow?.name,
+                            ticked = emptySet(),
+                            marker = ChoiceMarker.None,
+                            menu = true,
+                            onSelect = { id ->
+                                val row = PlayerMenu.valueOf(id)
+                                lastRow = row
+                                if (row == PlayerMenu.Info) {
+                                    onClose()
+                                    onOpen(PlayerMenu.Info)
+                                } else {
+                                    onOpen(row)
+                                }
+                            },
+                        )
+                        // A list a row opens heads itself with a row of the row's name that goes back to it.
+                        PlayerMenu.Quality -> ChoiceList(quality.choices, quality.selected, menu = true, back = stringResource(R.string.quality), onBack = onBack, onSelect = { id ->
+                            onClose()
+                            if (id != quality.selected) model.chooseQuality(Quality.of(id))
+                        })
+                        PlayerMenu.Version -> ChoiceList(versions, play.versionId, menu = true, back = stringResource(R.string.version), onBack = onBack, onSelect = { id ->
+                            onClose()
+                            if (id != play.versionId) model.chooseVersion(id)
+                        })
+                        PlayerMenu.Speed -> ChoiceList(speeds, model.speed.toString(), menu = true, back = stringResource(R.string.speed), onBack = onBack, onSelect = { id ->
+                            onClose()
+                            model.chooseSpeed(id.toFloat())
+                        })
+                        else -> Unit
+                    }
+                }
             }
         }
-        PlayerMenu.Quality -> QualityMenu(model, play, onBack, onClose)
-        PlayerMenu.Version -> VersionMenu(model, play, onBack, onClose)
-        PlayerMenu.Speed -> SpeedMenu(model, onBack, onClose)
-        PlayerMenu.Info -> StreamInfoPanel(model, play, onBack)
-        null -> Unit
+    }
+}
+
+/** The player's menus' padding, and the tallest they stand. */
+private val PlayerMenuPadding = 7.dp
+private val PlayerMenuMaxHeight = 392.dp
+
+/**
+ * Where the player's menus rise from, in the window's pixels: the top of
+ * the controls' row of buttons, and the right edge of each button that
+ * opens a menu.
+ */
+@Stable
+private class MenuAnchors {
+    var rowTop by mutableFloatStateOf(0f)
+    var tracksEnd by mutableFloatStateOf(0f)
+    var settingsEnd by mutableFloatStateOf(0f)
+
+    /** A menu's margin over the row, at the end of the button that opens [opener]. */
+    @Composable
+    fun above(opener: PlayerMenu): PaddingValues {
+        val window = LocalWindowInfo.current.containerSize
+        return with(LocalDensity.current) {
+            menuAbove(rowTop.toDp(), (if (opener == PlayerMenu.Tracks) tracksEnd else settingsEnd).toDp(), DpSize(window.width.toDp(), window.height.toDp()))
+        }
     }
 }
 
 /**
- * Playback Settings, the gear's panel: Audio & Subtitles (when it has
- * something), Quality, Version (with several), Speed and Stream info, each
- * with its current value; a row opens its list, Audio & Subtitles that
- * panel, and Stream info the overlay in its place. [focused] is the row to
- * focus first, the one whose list was open.
+ * Playback Settings, the gear's menu: Audio & Subtitles (when it has
+ * something), Quality, Version (with several), Speed and Stream info.
+ * Quality, Version and Speed show what's playing and open their lists in
+ * the menu's place; Audio & Subtitles opens its columns there, and Stream
+ * info the panel in the menu's place.
  */
 @Composable
-private fun SettingsMenu(model: PlayerViewModel, play: PlayStarted, focused: PlayerMenu?, onDismiss: () -> Unit, onRow: (PlayerMenu) -> Unit) {
-    val quality = qualityChoices(model, play)
+private fun settingsRows(model: PlayerViewModel, play: PlayStarted, quality: QualityChoices): List<Choice> {
     val versions = model.work?.versions.orEmpty()
-    val display = LocalSession.current.graph.display
-    val rows = buildList {
+    return buildList {
         if (tracksPanelShows(model, play)) add(Choice(PlayerMenu.Tracks.name, stringResource(R.string.audio_and_subtitles)))
-        add(Choice(PlayerMenu.Quality.name, stringResource(R.string.quality), quality.choices.firstOrNull { it.id == quality.selected }?.label))
+        add(Choice(PlayerMenu.Quality.name, stringResource(R.string.quality), value = quality.choices.firstOrNull { it.id == quality.selected }?.label, opens = true))
         if (versions.size > 1) {
-            add(Choice(PlayerMenu.Version.name, stringResource(R.string.version), versions.firstOrNull { it.id == play.versionId }?.name))
+            add(Choice(PlayerMenu.Version.name, stringResource(R.string.version), value = versions.firstOrNull { it.id == play.versionId }?.name, opens = true))
         }
-        add(Choice(PlayerMenu.Speed.name, stringResource(R.string.speed), speedLabel(model.speed)))
+        add(Choice(PlayerMenu.Speed.name, stringResource(R.string.speed), value = speedLabel(model.speed), opens = true))
         add(Choice(PlayerMenu.Info.name, stringResource(R.string.stream_info)))
     }
-    ChoicePanel(
-        title = stringResource(R.string.playback_settings),
-        choices = rows,
-        selected = focused?.name,
-        ticked = emptySet(),
-        marker = ChoiceMarker.None,
-        onSelect = { onRow(PlayerMenu.valueOf(it)) },
-        onDismiss = onDismiss,
-    )
 }
 
 /** Quality's choices for [play], and the one it plays at. */
@@ -1000,27 +1080,12 @@ private fun qualityChoices(model: PlayerViewModel, play: PlayStarted): QualityCh
     return QualityChoices(choices, selected)
 }
 
-@Composable
-private fun QualityMenu(model: PlayerViewModel, play: PlayStarted, onBack: () -> Unit, onClose: () -> Unit) {
-    val quality = qualityChoices(model, play)
-    ChoicePanel(
-        title = stringResource(R.string.quality),
-        choices = quality.choices,
-        selected = quality.selected,
-        onSelect = { id ->
-            onClose()
-            if (id != quality.selected) model.chooseQuality(Quality.of(id))
-        },
-        onDismiss = onBack,
-    )
-}
-
 /** The work's versions, a missing one disabled, each with its video codec and size. */
 @Composable
-private fun VersionMenu(model: PlayerViewModel, play: PlayStarted, onBack: () -> Unit, onClose: () -> Unit) {
+private fun versionChoices(model: PlayerViewModel): List<Choice> {
     val display = LocalSession.current.graph.display
     val missing = stringResource(R.string.version_missing)
-    val choices = model.work?.versions.orEmpty().map { v ->
+    return model.work?.versions.orEmpty().map { v ->
         val codec = v.tracks.firstOrNull { it.type == TrackType.Video }?.let { display.codec(it.codec) }
         Choice(
             v.id,
@@ -1029,31 +1094,6 @@ private fun VersionMenu(model: PlayerViewModel, play: PlayStarted, onBack: () ->
             enabled = v.available,
         )
     }
-    ChoicePanel(
-        title = stringResource(R.string.version),
-        choices = choices,
-        selected = play.versionId,
-        onSelect = { id ->
-            onClose()
-            if (id != play.versionId) model.chooseVersion(id)
-        },
-        onDismiss = onBack,
-    )
-}
-
-/** The speeds, from 0.5× to 2×, the one playing ticked. */
-@Composable
-private fun SpeedMenu(model: PlayerViewModel, onBack: () -> Unit, onClose: () -> Unit) {
-    ChoicePanel(
-        title = stringResource(R.string.speed),
-        choices = Speeds.map { Choice(it.toString(), speedLabel(it)) },
-        selected = model.speed.toString(),
-        onSelect = { id ->
-            onClose()
-            model.chooseSpeed(id.toFloat())
-        },
-        onDismiss = onBack,
-    )
 }
 
 /** "Normal" for 1, else the rate: "0.5×", "1.25×", "2×". */

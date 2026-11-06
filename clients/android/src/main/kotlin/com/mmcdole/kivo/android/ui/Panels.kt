@@ -11,6 +11,10 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
@@ -58,13 +63,18 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.tracing.trace
+import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ListItem
+import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.RadioButton
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Switch
 import androidx.tv.material3.SwitchDefaults
 import androidx.tv.material3.Text
@@ -78,7 +88,9 @@ import kotlinx.coroutines.launch
  * One choice of a [ChoicePanel], under its [section]'s heading when it has
  * one; a blank name sets a section apart without one. A choice with a
  * [switch] is a setting that is on or off, shown by a switch at its end
- * rather than the panel's marker.
+ * rather than the panel's marker. In a menu, a choice's [value] shows at its
+ * end, and one that [opens] another list ends in a chevron, and Right opens
+ * it as OK does.
  */
 data class Choice(
     val id: String,
@@ -87,6 +99,8 @@ data class Choice(
     val enabled: Boolean = true,
     val section: String? = null,
     val switch: Boolean? = null,
+    val value: String? = null,
+    val opens: Boolean = false,
 )
 
 /**
@@ -114,7 +128,13 @@ fun ChoicePanel(
     }
 }
 
-/** A [ChoicePanel]'s list, the current choice focused first, for whichever panel holds it. */
+/**
+ * A [ChoicePanel]'s list, the current choice focused first and scrolled to
+ * with two rows above it, for whichever panel holds it. In a [MenuPopup]
+ * ([menu]) its rows are a menu's ([MenuRow]), and a list opened from
+ * another's row starts with a row of [back]'s name that returns to it, as
+ * Left does.
+ */
 @Composable
 fun ColumnScope.ChoiceList(
     choices: List<Choice>,
@@ -123,15 +143,40 @@ fun ColumnScope.ChoiceList(
     footer: String? = null,
     ticked: Set<String> = setOfNotNull(selected),
     marker: ChoiceMarker = ChoiceMarker.Tick,
+    menu: Boolean = false,
+    back: String? = null,
+    onBack: () -> Unit = {},
 ) {
     val colors = Kivo.colors
     val initial = remember { FocusRequester() }
+    val first = choices.indexOfFirst { it.id == selected }.coerceAtLeast(0)
+    val above = if (back != null) 1 else 0
+    val state = rememberLazyListState(initialFirstVisibleItemIndex = (first + above - 2).coerceAtLeast(0))
     // A list of choices scrolls only as far as the focused one needs.
     KeepInView {
-        LazyColumn(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(Kivo.space(1))) {
+        LazyColumn(
+            Modifier
+                .weight(1f, fill = false)
+                .onKeyEvent { event ->
+                    val left = back != null && event.key.nativeKeyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT
+                    if (left && event.type == KeyEventType.KeyDown) onBack()
+                    left
+                },
+            state = state,
+            verticalArrangement = Arrangement.spacedBy(if (menu) 0.dp else Kivo.space(1)),
+        ) {
+            if (back != null) {
+                item(key = "back") {
+                    MenuRow(back, onBack, Modifier.testTag("menu-back"), leading = { KivoIconView(KivoIcon.ChevronLeft, size = MenuTick) })
+                }
+            }
             itemsIndexed(choices, key = { _, c -> c.id }) { index, choice ->
                 val isSelected = choice.id in ticked
-                val focusFirst = choice.id == selected || (selected == null || choices.none { it.id == selected }) && index == 0
+                val focus = if (index == first) Modifier.focusRequester(initial) else Modifier
+                if (menu) {
+                    MenuChoice(choice, isSelected, marker, focus) { onSelect(choice.id) }
+                    return@itemsIndexed
+                }
                 Column {
                     if (choice.section != null && choices.getOrNull(index - 1)?.section != choice.section) {
                         // A section apart; a blank name sets it apart without a heading.
@@ -149,7 +194,7 @@ fun ColumnScope.ChoiceList(
                         selected = isSelected,
                         enabled = choice.enabled,
                         onClick = { onSelect(choice.id) },
-                        modifier = if (focusFirst) Modifier.focusRequester(initial) else Modifier,
+                        modifier = focus,
                         headlineContent = { Text(choice.label, style = TvType.bodyStrong) },
                         supportingContent = choice.detail?.let { { Text(it, style = TvType.small) } },
                         leadingContent = if (marker == ChoiceMarker.Tick) {
@@ -179,10 +224,130 @@ fun ColumnScope.ChoiceList(
     LaunchedEffect(Unit) { focusWhenPlaced(initial) }
 }
 
+/** A [ChoiceList]'s choice in a menu: ticked, or with its value and a chevron where it opens another list, or with its switch. */
+@Composable
+private fun MenuChoice(choice: Choice, ticked: Boolean, marker: ChoiceMarker, modifier: Modifier, onClick: () -> Unit) {
+    MenuRow(
+        choice.label,
+        onClick,
+        modifier.onKeyEvent { event ->
+            val right = choice.opens && event.key.nativeKeyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT
+            if (right && event.type == KeyEventType.KeyDown) onClick()
+            right
+        },
+        detail = choice.detail,
+        strong = ticked,
+        enabled = choice.enabled,
+        leading = if (marker == ChoiceMarker.Tick) {
+            { if (ticked && choice.switch == null) KivoIconView(KivoIcon.Check, size = MenuTick) }
+        } else {
+            null
+        },
+    ) {
+        choice.value?.let { Text(it, style = TvType.small, color = LocalContentColor.current.copy(alpha = MutedAlpha), maxLines = 1) }
+        if (choice.opens) KivoIconView(KivoIcon.ChevronRight, size = MenuTick)
+        choice.switch?.let { SettingSwitch(it, choice.enabled) }
+    }
+}
+
+/**
+ * A menu's row, [MenuRowHeight] high on one line: its [label], after
+ * [leading]'s column where it has one, such as a tick, an optional [detail]
+ * line under it, and [trailing] at its end. Focused, it's lit as the other
+ * controls are; [dimmed], its content is muted at rest, as a menu of tracks
+ * dims the ones not chosen.
+ */
+@Composable
+fun MenuRow(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    detail: String? = null,
+    strong: Boolean = false,
+    dimmed: Boolean = false,
+    enabled: Boolean = true,
+    leading: (@Composable () -> Unit)? = null,
+    trailing: @Composable RowScope.() -> Unit = {},
+) {
+    val colors = Kivo.colors
+    val shape = RoundedCornerShape(KivoTokens.Radius.md)
+    Surface(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier.fillMaxWidth(),
+        shape = ClickableSurfaceDefaults.shape(shape),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = Color.Transparent,
+            contentColor = if (dimmed) colors.onPlayerMuted else colors.onPlayer,
+            focusedContainerColor = Lit.container,
+            focusedContentColor = Lit.content,
+            pressedContainerColor = Lit.container,
+            pressedContentColor = Lit.content,
+            disabledContainerColor = Color.Transparent,
+            disabledContentColor = colors.onPlayerMuted,
+        ),
+        border = ClickableSurfaceDefaults.border(focusedDisabledBorder = focusRing(shape)),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+    ) {
+        Row(
+            Modifier
+                .heightIn(min = MenuRowHeight)
+                .padding(horizontal = MenuRowPadding, vertical = if (detail != null) 5.dp else 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MenuRowGap),
+        ) {
+            if (leading != null) Box(Modifier.size(MenuTick), contentAlignment = Alignment.Center) { leading() }
+            Column(Modifier.weight(1f)) {
+                Text(label, style = if (strong) TvType.smallStrong else TvType.small, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (detail != null) {
+                    Text(detail, style = TvType.small, color = LocalContentColor.current.copy(alpha = MutedAlpha), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            trailing()
+        }
+    }
+}
+
+/**
+ * The width a menu of [lists]' rows takes, each list with its marker's
+ * column or none, so the menu keeps it as one list replaces another: as
+ * wide as its widest row, from [MenuMinWidth] to [MenuMaxWidth], and the
+ * menu's [padding] either side.
+ */
+@Composable
+fun menuWidth(vararg lists: Pair<List<Choice>, ChoiceMarker>, padding: Dp = MenuPadding): Dp {
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    fun text(it: String) = with(density) { measurer.measure(it, TvType.smallStrong, maxLines = 1).size.width.toDp() }
+    val widest = lists.maxOfOrNull { (choices, marker) ->
+        choices.maxOfOrNull { choice ->
+            val leading = if (marker == ChoiceMarker.Tick) MenuTick + MenuRowGap else 0.dp
+            val trailing = listOfNotNull(choice.value?.let(::text), MenuTick.takeIf { choice.opens }).fold(0.dp) { sum, it -> sum + MenuRowGap + it }
+            MenuRowPadding * 2 + leading + maxOf(text(choice.label), choice.detail?.let(::text) ?: 0.dp) + trailing
+        } ?: 0.dp
+    } ?: 0.dp
+    return widest.coerceIn(MenuMinWidth, MenuMaxWidth) + padding * 2
+}
+
+/** A menu's narrowest and widest, inside its padding. */
+private val MenuMinWidth = 200.dp
+private val MenuMaxWidth = 360.dp
+
+/** A menu row's height on one line, its tick's size, the room at its ends and between its parts. */
+private val MenuRowHeight = 30.dp
+internal val MenuTick = 10.dp
+private val MenuRowPadding = 8.dp
+private val MenuRowGap = 6.dp
+
+/** A muted line's alpha over its row's content colour, so it reads on a lit row too. */
+private const val MutedAlpha = 0.7f
+
 /**
  * A menu raised over what opened it and no larger than it needs, at [alignment]
- * of the screen less [margin], as the Samsung TV app's Filter and Sort are.
- * Closed by Back, and focus returns to the control that opened it.
+ * of the screen less [margin], as the Samsung TV app's Filter and Sort are,
+ * and no taller than [maxHeight]; what it holds scrolls inside it. It stands
+ * on [LocalPanelSurface] where there is one. Closed by Back, and focus
+ * returns to the control that opened it.
  */
 @Composable
 fun MenuPopup(
@@ -190,9 +355,12 @@ fun MenuPopup(
     alignment: Alignment,
     margin: PaddingValues,
     width: Dp,
+    maxHeight: Dp = Dp.Infinity,
+    padding: Dp = MenuPadding,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val colors = Kivo.colors
+    val surface = LocalPanelSurface.current.takeOrElse { colors.surfaceRaised }
     val keys = rememberPanelKeys()
     val shape = RoundedCornerShape(KivoTokens.Radius.lg)
     Dialog(onDismissRequest = onDismiss, properties = panelProperties()) {
@@ -201,14 +369,32 @@ fun MenuPopup(
                 Modifier
                     .onPreviewKeyEvent { keys.dispatch(it.nativeKeyEvent) }
                     .width(width)
-                    .background(colors.surfaceRaised, shape)
+                    .heightIn(max = maxHeight)
+                    .background(surface, shape)
                     .border(1.dp, colors.border, shape)
-                    .padding(MenuPadding),
+                    .padding(padding),
                 content = content,
             )
         }
     }
 }
+
+/**
+ * Where a menu opened from a button stands, as [MenuPopup]'s margin at the
+ * screen's bottom end: its bottom [MenuLift] above [rowTop], the top of the
+ * button's row, so the row and what's above it stay in view; its end at
+ * [end], the button's right edge, but no nearer the screen's edge than
+ * [SafeEdge]; and its top no higher than [SafeTop]. Both are from the
+ * screen's top left, and [screen] is its size.
+ */
+fun menuAbove(rowTop: Dp, end: Dp, screen: DpSize): PaddingValues = PaddingValues(
+    top = SafeTop,
+    end = maxOf(SafeEdge, screen.width - end),
+    bottom = (screen.height - rowTop + MenuLift).coerceAtLeast(0.dp),
+)
+
+/** How far a menu stands clear of the row of buttons it opens from. */
+private val MenuLift = 8.dp
 
 private val MenuPadding = 14.dp
 private val ChipGroupGap = 17.dp

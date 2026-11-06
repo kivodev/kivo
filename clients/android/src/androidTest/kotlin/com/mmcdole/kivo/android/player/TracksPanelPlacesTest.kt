@@ -12,9 +12,10 @@ import org.junit.runner.RunWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-// The title page's Audio & Subtitles row and the player's button open one
-// panel, TracksPanel, its audio column marking it: with Automatic heading the
-// column before a play, and Dialogue boost above the tracks in a play.
+// The title page's Audio & Subtitles row opens its panel, and the player's
+// button its menu, both of TrackColumns, the audio column marking them: with
+// Automatic heading the column before a play, and Dialogue boost above the
+// tracks in a play.
 
 @RunWith(AndroidJUnit4::class)
 class TracksPanelPlacesTest {
@@ -32,7 +33,7 @@ class TracksPanelPlacesTest {
     private fun panelOpens() = harness.waitFor { harness.shows(harness.node("audio-column")) }
 
     @Test
-    fun theDetailPageOpensThePlayersPanelWithAutomatic() {
+    fun theDetailPageOpensItsPanelWithAutomatic() {
         harness.openDetailPage()
         harness.node("tracks").requestFocus()
         harness.press(KeyEvent.KEYCODE_DPAD_CENTER)
@@ -43,7 +44,7 @@ class TracksPanelPlacesTest {
     }
 
     @Test
-    fun thePlayerOpensTheSamePanelWithDialogueBoost() {
+    fun thePlayerOpensItsMenuWithDialogueBoost() {
         harness.open(MIDDLE_MS)
         // Down from hidden controls lands on Audio & Subtitles.
         harness.advance(5_100)

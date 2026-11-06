@@ -1,6 +1,8 @@
 package com.mmcdole.kivo.android.ui
 
 import android.view.KeyEvent
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
@@ -11,6 +13,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.pressKey
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.mmcdole.kivo.android.theme.KivoTheme
@@ -25,12 +28,13 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import kotlin.test.assertEquals
 
-// Audio & Subtitles on the TV with a film's many tracks: focus starts on the
-// audio playing, Right and Left enter the other column on its ticked row, Up
-// and Down move within a column, OK chooses, Back closes, and each column
-// opens scrolled to its ticked row. Before a play, Automatic heads each
-// column, named after what it plays. A searchable version's Subtitles shows
-// even without a track, ending in Search subtitles.
+// Audio & Subtitles on the TV with a film's many tracks, in the player's
+// menu and the detail page's panel: focus starts on the audio playing, Right
+// and Left enter the other column on its ticked row, Up and Down move within
+// a column, OK chooses, Back closes, and each column opens scrolled to its
+// ticked row. Before a play, Automatic heads each column, named after what
+// it plays. A searchable version's Subtitles shows even without a track,
+// ending in Search subtitles.
 
 @RunWith(AndroidJUnit4::class)
 @OptIn(ExperimentalTestApi::class)
@@ -60,17 +64,18 @@ class TracksPanelTest {
     private val chosen = mutableListOf<String?>()
     private var closed = false
 
+    /** The detail page's panel before a play, with [automatic]; else the player's menu, with Dialogue boost. */
     private fun open(subtitle: String? = Subtitles.OFF, playing: String? = "a1", automatic: AutomaticTracks? = null) {
+        val tracks = TrackChoices(audio, subtitles, playing, subtitle)
         compose.setContent {
             KivoTheme {
-                TracksPanel(
-                    tracks = TrackChoices(audio, subtitles, playing, subtitle),
-                    onAudio = { chosen += it },
-                    onSubtitle = { chosen += it },
-                    onDismiss = { closed = true },
-                    automatic = automatic,
-                    dialogueBoost = false.takeIf { automatic == null },
-                )
+                if (automatic != null) {
+                    TracksPanel(tracks, onAudio = { chosen += it }, onSubtitle = { chosen += it }, onDismiss = { closed = true }, automatic = automatic)
+                } else {
+                    MenuPopup(onDismiss = { closed = true }, alignment = Alignment.BottomEnd, margin = PaddingValues(48.dp), width = tracksMenuWidth(tracks.columns(false)), maxHeight = 392.dp) {
+                        TrackColumns(tracks, onAudio = { chosen += it }, onSubtitle = { chosen += it }, menu = true, dialogueBoost = false)
+                    }
+                }
             }
         }
     }
