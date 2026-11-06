@@ -284,6 +284,17 @@ class LibraryGridTest {
         waitFor { focusedTag() == card }
     }
 
+    /** Down from the count line, which stands over the grid's list, goes back to the grid's cards. */
+    @Test
+    fun downFromTheCountLineFocusesACard() {
+        open()
+        waitFor { focusedTag() == "card:${name(0)}" }
+        press(KeyEvent.KEYCODE_DPAD_UP)
+        waitFor { focusedTag() == "sort" }
+        press(KeyEvent.KEYCODE_DPAD_DOWN)
+        waitFor { focusedTag() == "card:${name(0)}" }
+    }
+
     /** A kind's favorites open on their first cards with the first focused, and Down to the last line fills it in. */
     @Test
     fun favoritesOpenOnTheirFirstCardsAndFillInToTheLast() {

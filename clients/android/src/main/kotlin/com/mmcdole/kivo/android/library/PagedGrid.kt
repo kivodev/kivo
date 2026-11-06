@@ -4,6 +4,7 @@ package com.mmcdole.kivo.android.library
 
 import android.view.KeyEvent
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.gestures.BringIntoViewSpec
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
@@ -29,6 +30,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -130,7 +133,8 @@ fun PagedGrid(
     top: Dp = GridTop,
     memory: FocusMemory = rememberFocusMemory(),
     takesFocus: () -> Boolean = { true },
-) = PagedCards(paged, grid, shape, { it.id }, modifier, top, memory, takesFocus, prepare = { prepareCard(it, shape) }) { work, width, cardModifier ->
+    entry: FocusRequester = remember { FocusRequester() },
+) = PagedCards(paged, grid, shape, { it.id }, modifier, top, memory, takesFocus, entry, prepare = { prepareCard(it, shape) }) { work, width, cardModifier ->
     WorkCard(work, shape, width, { if (work != null) navigator.push(Screen.Work(work.id)) }, cardModifier)
 }
 
@@ -143,7 +147,8 @@ fun PagedGrid(
  * while its page is read; [prepare] readies an item's card off the main
  * thread before it shows. It fills the screen's height, its first line [top]
  * down, leaving that room for a header that [scrollsWith] it; a focused card
- * scrolls only as far as shows its line.
+ * scrolls only as far as shows its line. [entry] moves focus into its cards, for a header over it: focus search
+ * from there passes the grid over, as it starts above the header rather than below.
  */
 @Composable
 fun <T : Any> PagedCards(
@@ -155,6 +160,7 @@ fun <T : Any> PagedCards(
     top: Dp = GridTop,
     memory: FocusMemory = rememberFocusMemory(),
     takesFocus: () -> Boolean = { true },
+    entry: FocusRequester = remember { FocusRequester() },
     prepare: (T) -> Unit = {},
     card: @Composable (item: T?, width: Dp, modifier: Modifier) -> Unit,
 ) {
@@ -209,6 +215,8 @@ fun <T : Any> PagedCards(
                 .offset(x = -RowBleed)
                 .width(GridWidth + RowBleed * 2)
                 .fillMaxHeight()
+                .focusRequester(entry)
+                .focusGroup()
                 .onPreviewKeyEvent { event ->
                     if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                     when (event.key.nativeKeyCode) {

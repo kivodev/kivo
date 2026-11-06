@@ -36,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
@@ -330,6 +331,7 @@ fun LibraryScreen(session: ServerSession, libraryId: String, navigator: Navigato
         val top = GridTop + if (sections) SectionsHeight else 0.dp
         // Kept here, for the header to scroll with the grid on screen.
         val list = rememberSaveable(shownGrid, saver = LazyListState.Saver) { LazyListState() }
+        val gridEntry = remember { FocusRequester() }
         Box(Modifier.fillMaxSize()) {
             // A new section, sort or filter's grid fades in over the one it replaces. What's under the fade saves its
             // state by the content key, so the list stays out of it: it's a new object each time it's restored.
@@ -341,10 +343,10 @@ fun LibraryScreen(session: ServerSession, libraryId: String, navigator: Navigato
                 if (gridPages.total == null) {
                     SkeletonCards(library, gridChoice, top)
                 } else {
-                    GridWithRail(grid, gridList, gridPages, gridChoice, library, navigator, model, top, onClearFilters = { model.choose(choice.query.unfiltered(), keepFocus = false) })
+                    GridWithRail(grid, gridList, gridPages, gridChoice, library, navigator, model, top, gridEntry, onClearFilters = { model.choose(choice.query.unfiltered(), keepFocus = false) })
                 }
             }
-            Header(model, choice, library, sections, pages.total, list)
+            Header(model, choice, library, sections, pages.total, list, gridEntry, letterRail = pages.letters.isNotEmpty())
         }
     }
 }
@@ -358,13 +360,26 @@ private enum class HeaderPanel { Sort, Filter }
 
 /**
  * The library's name and Filter, its sections, and the count line, which opens
- * Sort for its works. It scrolls with the [grid], back to the top as it takes focus.
+ * Sort for its works. It scrolls with the [grid], back to the top as it takes focus. Down from
+ * it goes to the grid by [gridEntry], or from Filter to the letter rail below it where there is one.
  */
 @Composable
-private fun Header(model: LibraryViewModel, choice: GridChoice, library: Library?, sections: Boolean, total: Int?, grid: LazyListState) {
+private fun Header(
+    model: LibraryViewModel,
+    choice: GridChoice,
+    library: Library?,
+    sections: Boolean,
+    total: Int?,
+    grid: LazyListState,
+    gridEntry: FocusRequester,
+    letterRail: Boolean,
+) {
     var panel by remember { mutableStateOf<HeaderPanel?>(null) }
     val query = choice.query
     val scope = rememberCoroutineScope()
+    val downToGrid = Modifier.focusProperties { down = gridEntry }
+    // Over Collections' grid there's no Sort between the tabs and the cards.
+    val tabs = if (choice.section == Section.Collections) downToGrid else Modifier
     Box(
         Modifier
             .fillMaxWidth()
@@ -382,19 +397,19 @@ private fun Header(model: LibraryViewModel, choice: GridChoice, library: Library
                             else -> R.string.section_videos
                         },
                     )
-                    SectionTab(titles, choice.section == Section.Titles, { model.choose(choice.copy(section = Section.Titles)) }, Modifier.testTag("section:titles"))
+                    SectionTab(titles, choice.section == Section.Titles, { model.choose(choice.copy(section = Section.Titles)) }, tabs.testTag("section:titles"))
                     SectionTab(
                         stringResource(R.string.collections),
                         choice.section == Section.Collections,
                         { model.choose(choice.copy(section = Section.Collections)) },
-                        Modifier.testTag("section:collections"),
+                        tabs.testTag("section:collections"),
                     )
                 }
             }
-            CountLine(choice, library, total, Modifier.padding(top = if (sections) 10.5.dp else 13.dp)) { panel = HeaderPanel.Sort }
+            CountLine(choice, library, total, gridEntry, Modifier.padding(top = if (sections) 10.5.dp else 13.dp)) { panel = HeaderPanel.Sort }
         }
         if (choice.section == Section.Titles) {
-            FilterButton(query.filtered, Modifier.align(Alignment.TopEnd).padding(top = 40.5.dp, end = SafeEdge)) { panel = HeaderPanel.Filter }
+            FilterButton(query.filtered, (if (letterRail) Modifier else downToGrid).align(Alignment.TopEnd).padding(top = 40.5.dp, end = SafeEdge)) { panel = HeaderPanel.Filter }
         }
     }
 
@@ -450,7 +465,7 @@ private fun SectionTab(label: String, current: Boolean, onClick: () -> Unit, mod
  * Until the first page arrives it's a placeholder.
  */
 @Composable
-private fun CountLine(choice: GridChoice, library: Library?, total: Int?, modifier: Modifier = Modifier, onSort: () -> Unit) {
+private fun CountLine(choice: GridChoice, library: Library?, total: Int?, gridEntry: FocusRequester, modifier: Modifier = Modifier, onSort: () -> Unit) {
     val colors = Kivo.colors
     val count = total?.let { countNoun(it, choice.section, library) }
     if (choice.section != Section.Titles) {
@@ -464,7 +479,7 @@ private fun CountLine(choice: GridChoice, library: Library?, total: Int?, modifi
     Box(modifier) {
         Surface(
             onClick = onSort,
-            modifier = Modifier.offset(x = (-8).dp, y = (-2).dp).testTag("sort"),
+            modifier = Modifier.offset(x = (-8).dp, y = (-2).dp).focusProperties { down = gridEntry }.testTag("sort"),
             shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(KivoTokens.Radius.sm)),
             colors = ClickableSurfaceDefaults.colors(
                 containerColor = Color.Transparent,
@@ -644,6 +659,7 @@ private fun GridWithRail(
     navigator: Navigator,
     model: LibraryViewModel,
     top: Dp,
+    entry: FocusRequester,
     onClearFilters: () -> Unit,
 ) {
     val total = pages.total ?: 0
@@ -673,8 +689,8 @@ private fun GridWithRail(
     val density = LocalDensity.current
     Box(Modifier.fillMaxSize()) {
         when (shown) {
-            is LibraryGrid.Works -> PagedGrid(shown.pager, grid, shape, navigator, top = top, memory = memory, takesFocus = takesFocus)
-            is LibraryGrid.Collections -> PagedCards(shown.pager, grid, shape, { it.id }, top = top, memory = memory, takesFocus = takesFocus) { c, width, cardModifier ->
+            is LibraryGrid.Works -> PagedGrid(shown.pager, grid, shape, navigator, top = top, memory = memory, takesFocus = takesFocus, entry = entry)
+            is LibraryGrid.Collections -> PagedCards(shown.pager, grid, shape, { it.id }, top = top, memory = memory, takesFocus = takesFocus, entry = entry) { c, width, cardModifier ->
                 CollectionCard(c, width, { if (c != null) navigator.push(Screen.Collection(c.id)) }, cardModifier)
             }
         }
