@@ -48,6 +48,7 @@ import com.mmcdole.kivo.android.ui.GridPosterWidth
 import com.mmcdole.kivo.android.ui.LandscapeColumns
 import com.mmcdole.kivo.android.ui.LandscapeGridWidth
 import com.mmcdole.kivo.android.ui.LocalArtworkShown
+import com.mmcdole.kivo.android.ui.LocalCaptionsShown
 import com.mmcdole.kivo.android.ui.LocalCardLight
 import com.mmcdole.kivo.android.ui.Navigator
 import com.mmcdole.kivo.android.ui.PosterColumns
@@ -223,28 +224,30 @@ fun <T : Any> PagedCards(
         ) {
             items(count = lines) { line ->
                 // A line's artwork loads once it's on screen and the grid has settled, or it has stayed on screen a
-                // while, so lines that scroll past aren't fetched and decoded.
+                // while, so lines that scroll past aren't fetched and decoded. A line built while the grid scrolls
+                // has its captions then too, as measuring them costs a held key more than the rest of the line.
                 val settled = remember { mutableStateOf(false) }
+                val captions = remember { mutableStateOf(!grid.isScrollInProgress) }
                 LaunchedEffect(Unit) {
                     snapshotFlow { grid.layoutInfo.visibleItemsInfo.any { it.index == line } }.first { it }
                     withTimeoutOrNull(ArtworkDwellMs) { grid.awaitSettled() }
                     settled.value = true
+                    captions.value = true
                 }
-                CompositionLocalProvider(LocalArtworkShown provides settled, LocalCardLight provides cardLight) {
+                CompositionLocalProvider(LocalArtworkShown provides settled, LocalCaptionsShown provides captions, LocalCardLight provides cardLight) {
                     // The line and the column of the focused card are raised too, so its glow lies over the lines and cards around it.
                     Row(Modifier.raisedOnFocus(), horizontalArrangement = Arrangement.spacedBy(CardGap)) {
                         for (index in line * columns until line * columns + columns) {
                             val item = pages.item(index)
+                            val itemKey = item?.let(key)
+                            // The same modifier while the card's item is, so a page arriving recomposes only its own cards.
+                            val cardModifier = remember(index, itemKey) {
+                                Modifier
+                                    .onFocusChanged { if (it.isFocused) focused = index }
+                                    .then(if (itemKey != null) Modifier.focusKey(memory, itemKey) else Modifier)
+                            }
                             Box(Modifier.weight(1f).raisedOnFocus(), contentAlignment = Alignment.TopCenter) {
-                                if (index < total) {
-                                    card(
-                                        item,
-                                        width,
-                                        Modifier
-                                            .onFocusChanged { if (it.isFocused) focused = index }
-                                            .then(if (item != null) Modifier.focusKey(memory, key(item)) else Modifier),
-                                    )
-                                }
+                                if (index < total) card(item, width, cardModifier)
                             }
                         }
                     }

@@ -103,7 +103,7 @@ val LocalArtworkShown = staticCompositionLocalOf<State<Boolean>> { mutableStateO
 val LocalCardLight = staticCompositionLocalOf<State<Float>> { mutableFloatStateOf(1f) }
 
 /**
- * Whether [WorkCard]s show their captions yet, for a list whose rows are built as it scrolls: measuring
+ * Whether [WorkCard]s show their captions yet, for a list whose rows or lines are built as it scrolls: measuring
  * a row's text costs as much as the rest of building it, so rows passing under a held key skip it,
  * with the captions' room kept. Null shows them at once, in only the room they need.
  */
