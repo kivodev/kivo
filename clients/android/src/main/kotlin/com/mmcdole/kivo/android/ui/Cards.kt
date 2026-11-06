@@ -479,10 +479,15 @@ internal fun CardSurface(
         // The light is drawn once, each blur rendered to a bitmap Compose keeps for the card's size and shape, and
         // fades on its layer's alpha alone, so it costs the GPU a few bitmap draws and the main thread nothing.
         val light = LocalCardLight.current
-        Box(Modifier.matchParentSize().cardLight(focus, light).dropShadows(shape, KivoTokens.Tv.CardFocus.glow))
+        Box(Modifier.matchParentSize().cardLight(focus, light).dropShadows(shape, CardGlow))
         Box(Modifier.fillMaxSize().clip(shape).background(colors.placeholder), contentAlignment = Alignment.Center, content = content)
         Box(Modifier.matchParentSize().cardLight(focus, light).innerShadows(shape, KivoTokens.Tv.CardFocus.sheen))
     }
+}
+
+/** The web TV's glow and deep shadow behind a focused card, the glow's alpha 0.38 to its 0.32. */
+private val CardGlow = KivoTokens.Tv.CardFocus.glow.let { (glow, shadow) ->
+    listOf(Shadow(radius = glow.radius, color = glow.color.copy(alpha = 0.38f), spread = glow.spread, offset = glow.offset), shadow)
 }
 
 /** How long an OK press takes to dip a card. */
