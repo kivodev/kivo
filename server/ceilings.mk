@@ -16,9 +16,10 @@ DEADCODE_MAX     := 0
 # alike, each a page with its letters, differing in their types only.
 # api's thin handlers that call a service and answer with no body (delete
 # an API key, a session, a download, remove from continue watching, run a
-# task) read alike in two groups, each its own generated request and
+# task) read alike in two groups, and so do its get and rename handlers
+# for a book series and a person, each with its own generated request and
 # response types, which no shared helper would make clearer.
-DUPL_MAX         := 25
+DUPL_MAX         := 26
 # Go functions with a cyclomatic complexity over 15 (gocyclo).
 GOCYCLO_MAX      := 45
 # Go functions with a cognitive complexity over 20 (gocognit). identify's

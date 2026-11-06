@@ -106,7 +106,8 @@ ceilings-clients:
 	@$(call ceiling,app player timers,$(APP_PLAYER_TIMERS_MAX),$(call app_lines,$(APP_TIMERS),$(APP_PLAYERS)))
 	@$(call ceiling,app formats,$(APP_FORMATS_MAX),$(call app_lines,$(APP_FORMATS),$(APP_SOURCES)))
 
-GO_SOURCES    = $(shell grep -rL --include='*.go' --exclude='*_test.go' '^// Code generated' $(GO_FILES))
+# Sorted, since dupl's and jscpd's counts depend on the order of the files.
+GO_SOURCES    = $(sort $(shell grep -rL --include='*.go' --exclude='*_test.go' '^// Code generated' $(GO_FILES)))
 WEB_EXCLUDED := **/*.test.ts,**/*.test.tsx,**/src/test/**,**/src/api/mocks/**,**/src/api/schema.d.ts,**/src/i18n/locales/**
 KNIP_COUNT    := let n = 0; for (const f of JSON.parse(require("fs").readFileSync(0)).issues) for (const [k, v] of Object.entries(f)) if (k !== "file") n += Object.keys(v).length; console.log(n)
 APP_SOURCES   := ../clients/android/src/main ../clients/apple/Kivo ../clients/apple/KivoUI
