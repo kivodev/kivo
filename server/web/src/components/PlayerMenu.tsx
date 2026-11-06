@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Header, MenuItem } from "react-aria-components";
 import { Icon } from "@/components/Icon";
 import type { Option } from "@/components/Select";
+import { isTv } from "@/tv/flag";
 
 /** Controls over video. They are light on dark in every theme. */
 export const playerButton = {
@@ -15,6 +16,18 @@ export const playerButton = {
 /** The popover over the video for a player menu or the stream info. */
 export const playerPanel =
   "max-h-96 w-max min-w-56 max-w-(--layout-player-panel-width) overflow-auto rounded-md bg-player-panel p-1 shadow-overlay outline-none";
+
+/**
+ * How far a player menu's popover keeps from the screen's edges: on a TV,
+ * inside the overscan a TV may crop, the larger of its two sides; elsewhere
+ * the popover's own default.
+ */
+export function playerMenuPadding(): number | undefined {
+  if (!isTv) return undefined;
+  const root = getComputedStyle(document.documentElement);
+  const side = (name: string) => Number.parseFloat(root.getPropertyValue(name)) || 0;
+  return Math.max(side("--layout-tv-overscan-x"), side("--layout-tv-overscan-y"));
+}
 
 const menuItem =
   "flex cursor-pointer items-center gap-3 rounded-sm px-3 py-2 text-sm text-on-player outline-none data-disabled:cursor-default data-disabled:opacity-50 data-focused:bg-player-track";
@@ -117,10 +130,40 @@ export function RowItem({
   onAction?: () => void;
 }) {
   return (
-    <MenuItem id={id} textValue={label} onAction={onAction} data-tv-face="row" className={menuItem}>
+    <MenuItem
+      id={id}
+      textValue={label}
+      onAction={onAction}
+      // A list it opens in the menu's place keeps the menu open.
+      shouldCloseOnSelect={submenu ? false : undefined}
+      data-tv-face="row"
+      className={menuItem}
+    >
       <span className="flex-1">{label}</span>
       {value && <span className="text-on-player-muted">{value}</span>}
       {submenu && <Icon name="chevronRight" className="size-4 shrink-0 text-on-player-muted" />}
+    </MenuItem>
+  );
+}
+
+/**
+ * A list's first row, "‹ Quality", where it opens in its menu's place: it
+ * goes back to the menu. Its label, `labelId`, names the list.
+ */
+export function BackItem({ label, labelId, onAction }: { label: string; labelId: string; onAction: () => void }) {
+  return (
+    <MenuItem
+      id="back"
+      textValue={label}
+      onAction={onAction}
+      shouldCloseOnSelect={false}
+      data-tv-face="row"
+      className={menuItem}
+    >
+      <Icon name="chevronLeft" className="size-4 shrink-0" />
+      <span id={labelId} className="flex-1">
+        {label}
+      </span>
     </MenuItem>
   );
 }

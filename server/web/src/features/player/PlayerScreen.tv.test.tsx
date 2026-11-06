@@ -156,6 +156,53 @@ describe("Player on a TV remote", () => {
     expect(screen.queryByRole("button", { name: "Back" })).not.toBeInTheDocument();
   });
 
+  it("opens Playback Settings' lists in its place, under a row of the list's name that goes back, as Left and Back do", async () => {
+    serveMockApi();
+    const { user } = renderApp(`/watch/${mockIds.dunePartTwo}`);
+    await playing();
+    await waitFor(() => expect(pause()).toHaveFocus());
+    await user.keyboard("{ArrowRight}{ArrowRight}{ArrowRight}{Enter}");
+    const settings = await screen.findByRole("menu", { name: "Playback Settings" });
+    await waitFor(() => expect(within(settings).getByRole("menuitem", { name: "Audio & Subtitles" })).toHaveFocus());
+    await user.keyboard("{ArrowDown}{Enter}");
+    // One menu, the list in Playback Settings' place, on its choice.
+    const quality = await screen.findByRole("menu", { name: "Quality" });
+    expect(screen.getAllByRole("menu")).toHaveLength(1);
+    await waitFor(() => expect(within(quality).getByRole("menuitemradio", { name: /^Auto/ })).toHaveFocus());
+    await user.keyboard("{ArrowLeft}");
+    const back = await screen.findByRole("menu", { name: "Playback Settings" });
+    await waitFor(() => expect(within(back).getByRole("menuitem", { name: /^Quality/ })).toHaveFocus());
+
+    await user.keyboard("{ArrowDown}{ArrowDown}{ArrowRight}");
+    const speed = await screen.findByRole("menu", { name: "Speed" });
+    await waitFor(() => expect(within(speed).getByRole("menuitemradio", { name: "Normal" })).toHaveFocus());
+    await user.keyboard("{GoBack}");
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole("menu", { name: "Playback Settings" })).getByRole("menuitem", { name: /^Speed/ }),
+      ).toHaveFocus(),
+    );
+    // OK on the list's first row goes back too.
+    await user.keyboard("{ArrowUp}{Enter}");
+    const version = await screen.findByRole("menu", { name: "Version" });
+    const chosen = within(version).getByRole("menuitemradio", { checked: true });
+    await waitFor(() => expect(chosen).toHaveFocus());
+    const above = within(version).getAllByRole("menuitemradio").indexOf(chosen) + 1;
+    await user.keyboard(`${"{ArrowUp}".repeat(above)}{Enter}`);
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole("menu", { name: "Playback Settings" })).getByRole("menuitem", { name: /^Version/ }),
+      ).toHaveFocus(),
+    );
+
+    // Choosing from a list applies it and closes the menu.
+    await user.keyboard("{ArrowDown}{Enter}");
+    await screen.findByRole("menu", { name: "Speed" });
+    await user.keyboard("{ArrowDown}{ArrowDown}{Enter}");
+    expect(video().playbackRate).toBe(1.5);
+    await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
+  }, 15_000);
+
   it("moves between Up next's buttons over hidden controls", async () => {
     serveMockApi((api) => {
       const play = api.starts[mockIds.expanseReload];
