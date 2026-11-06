@@ -10,6 +10,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.ViewRootForTest
 import androidx.compose.ui.semantics.SemanticsNode
@@ -27,6 +28,7 @@ import com.mmcdole.kivo.android.theme.KivoTheme
 import com.mmcdole.kivo.android.ui.LocalSession
 import com.mmcdole.kivo.android.ui.Navigator
 import com.mmcdole.kivo.android.ui.PosterColumns
+import com.mmcdole.kivo.android.ui.Screen
 import com.mmcdole.kivo.api.infrastructure.ApiClient
 import com.mmcdole.kivo.api.models.LetterStart
 import com.mmcdole.kivo.api.models.Library
@@ -37,6 +39,7 @@ import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.api.models.CollectionSummaryPage
 import com.mmcdole.kivo.api.models.WorkSummaryPage
 import com.mmcdole.kivo.core.auth.SavedServer
+import com.mmcdole.kivo.core.data.GridQuery
 import com.mmcdole.kivo.core.data.GridPages.Companion.RAIL_LETTERS
 import com.mmcdole.kivo.core.session.KivoClient
 import io.ktor.client.engine.mock.MockEngine
@@ -49,6 +52,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.KSerializer
 import org.junit.After
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
@@ -65,8 +69,8 @@ import kotlin.test.assertTrue
 // its first cards with the first focused; holding Down keeps a card focused
 // and on screen at every frame, placeholder or not, and once let go the
 // cards on screen fill in, focus staying on its card; the letter rail jumps
-// to a letter's works. The screen is read from its semantics on the main
-// thread.
+// to a letter's works; Back from a work's page returns focus to its card. The
+// screen is read from its semantics on the main thread.
 
 @RunWith(AndroidJUnit4::class)
 class LibraryGridTest {
@@ -116,6 +120,12 @@ class LibraryGridTest {
             }
             else -> respond("""{"status":404,"code":"notFound"}""", HttpStatusCode.NotFound, headersOf(HttpHeaders.ContentType, "application/problem+json"))
         }
+    }
+
+    /** A library opens as it was left, and that's kept on the device between tests and runs, as the sort test leaves it. */
+    @Before
+    fun forgetTheGrid() = runBlocking {
+        (context.applicationContext as KivoApp).graph.savedGrids.save(GridChoice(GridQuery("lib")))
     }
 
     @After
@@ -250,6 +260,28 @@ class LibraryGridTest {
         SystemClock.sleep(500)
         assertEquals("sort", focusedTag(), "focus stayed on Sort")
         assertTrue(!shows("letters"), "no letter rail by date added")
+    }
+
+    /** Back from a work's page focuses the card it opened from, with its line scrolled well past the first. */
+    @Test
+    fun backFromAWorkFocusesItsCard() {
+        lateinit var shown: Navigator
+        open { session, navigator ->
+            shown = navigator
+            navigator.Host(rememberSaveableStateHolder()) { target ->
+                if (target !is Screen.Work) LibraryScreen(session, "lib", navigator)
+            }
+        }
+        waitFor { focusedTag()?.startsWith("card:") == true }
+        val first = focusedTag()
+        repeat(8) { press(KeyEvent.KEYCODE_DPAD_DOWN) }
+        SystemClock.sleep(1_000)
+        val card = assertNotNull(focusedTag())
+        assertTrue(card != first, "focus moved down the grid")
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        waitFor { !shows(card) }
+        onMain { shown.pop() }
+        waitFor { focusedTag() == card }
     }
 
     /** A kind's favorites open on their first cards with the first focused, and Down to the last line fills it in. */

@@ -2,6 +2,8 @@ package com.mmcdole.kivo.android.library
 
 import android.view.KeyEvent
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
@@ -298,6 +300,7 @@ private val LetterRailTop = 83.5.dp
  * reached with Right from the last column, which stays put as the rest
  * scrolls. Channel Up and Down page the grid.
  */
+@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun LibraryScreen(session: ServerSession, libraryId: String, navigator: Navigator) {
     val model = viewModel(key = libraryId) { LibraryViewModel(session, libraryId) }
@@ -328,8 +331,12 @@ fun LibraryScreen(session: ServerSession, libraryId: String, navigator: Navigato
         // Kept here, for the header to scroll with the grid on screen.
         val list = rememberSaveable(shownGrid, saver = LazyListState.Saver) { LazyListState() }
         Box(Modifier.fillMaxSize()) {
-            // A new section, sort or filter's grid fades in over the one it replaces.
-            Crossfade(Triple(shownGrid, choice, list), animationSpec = fadeSpec(), label = "grid") { (grid, gridChoice, gridList) ->
+            // A new section, sort or filter's grid fades in over the one it replaces. What's under the fade saves its
+            // state by the content key, so the list stays out of it: it's a new object each time it's restored.
+            updateTransition(Triple(shownGrid, choice, list), label = "grid").Crossfade(
+                animationSpec = fadeSpec(),
+                contentKey = { (grid, gridChoice) -> grid to gridChoice },
+            ) { (grid, gridChoice, gridList) ->
                 val gridPages by grid.pager.state.collectAsStateWithLifecycle()
                 if (gridPages.total == null) {
                     SkeletonCards(library, gridChoice, top)
