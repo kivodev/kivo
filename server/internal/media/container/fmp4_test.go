@@ -14,7 +14,7 @@ import (
 
 func split(t *testing.T, data []byte, start time.Duration) ([]byte, []media.Segment, error) {
 	t.Helper()
-	s := NewSplitter(bytes.NewReader(data), start)
+	s := NewSplitter(bytes.NewReader(data), start, false)
 	init, err := s.Init()
 	if err != nil {
 		return nil, nil, err
@@ -114,7 +114,7 @@ func TestSplitterTruncated(t *testing.T) {
 }
 
 func TestSplitterNoOutput(t *testing.T) {
-	_, err := NewSplitter(bytes.NewReader(nil), 0).Init()
+	_, err := NewSplitter(bytes.NewReader(nil), 0, false).Init()
 	if !errors.Is(err, media.ErrSourceCorrupt) {
 		t.Fatalf("err = %v, want ErrSourceCorrupt", err)
 	}

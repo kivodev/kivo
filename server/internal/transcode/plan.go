@@ -79,6 +79,29 @@ func planKeyframes(duration time.Duration, keys []media.Keyframe) []span {
 	return append(out, span{Start: start, Duration: duration - start, At: start})
 }
 
+// maxSeekPast is the furthest past its first keyframe a copied job's input
+// seek goes.
+const maxSeekPast = 500 * time.Millisecond
+
+// seekPast returns where a copied job that begins at keyframe k of file f
+// seeks its input: halfway to the next keyframe, or the end of the file,
+// and no more than maxSeekPast past k. ffmpeg seeks to the last keyframe at
+// or before that time, which is k, where a seek to k itself can land on
+// the keyframe before. It returns zero for a job from the file's start,
+// which doesn't seek.
+func seekPast(f FileRef, k time.Duration) time.Duration {
+	if k <= 0 {
+		return 0
+	}
+	next := f.Duration
+	for _, key := range f.Keyframes {
+		if key.Time > k {
+			next = min(next, key.Time)
+		}
+	}
+	return k + max(0, min(maxSeekPast, (next-k)/2))
+}
+
 // segmentAt returns the planned segment containing t on the joined timeline.
 func segmentAt(plan []span, t time.Duration) int {
 	i := 0
