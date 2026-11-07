@@ -1,8 +1,21 @@
-import { waitFor, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, waitFor, within } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import type { MockApi } from "@/api/mocks/api";
 import { renderApp, screen } from "@/test/render";
 import { mockIds, serveMockApi } from "@/test/server";
+
+const cardRendered = vi.hoisted(() => vi.fn());
+
+vi.mock("./WorkCard", async (original) => {
+  const actual = await original<typeof import("./WorkCard")>();
+  return {
+    ...actual,
+    WorkCard: (props: Parameters<typeof actual.WorkCard>[0]) => {
+      cardRendered();
+      return actual.WorkCard(props);
+    },
+  };
+});
 
 /** Marks the sample's first episode as a favorite, alongside Dune and The Expanse. */
 function favoriteEpisode(api: MockApi) {
@@ -52,6 +65,18 @@ describe("Favorites", () => {
     await user.click(within(row("series")).getByRole("link", { name: "Shows" }));
     await waitFor(() => expect(router.state.location.pathname).toBe("/favorites/series"));
     expect(await screen.findByText("1 show")).toBeInTheDocument();
+  });
+
+  it("doesn't draw a kind's grid cards again as the range it reads changes", async () => {
+    serveMockApi();
+    renderApp("/favorites/movie");
+    await screen.findByText("Dune");
+    await waitFor(() => expect(document.querySelector('[data-part="grid"]')).not.toBeNull());
+    await new Promise((settled) => setTimeout(settled, 300));
+    cardRendered.mockClear();
+    fireEvent.scroll(window);
+    await new Promise((settled) => setTimeout(settled, 500));
+    expect(cardRendered).not.toHaveBeenCalled();
   });
 
   it("drops a work unmarked from its card's menu", async () => {

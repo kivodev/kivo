@@ -67,6 +67,19 @@ describe("TV shell", () => {
     await waitFor(() => expect(locationOf(router)).toBe("/"));
   });
 
+  it("enters the libraries at the last one with Up from Settings", async () => {
+    serveMockApi(scenarios.unpinned);
+    renderApp("/settings");
+    const nav = await rail();
+    await waitFor(() => expect(document.title).toBe("Settings – Kivo"));
+    back();
+    const settings = within(nav).getByRole("link", { name: "Settings" });
+    await waitFor(() => expect(settings).toHaveFocus());
+    const more = await within(nav).findByRole("button", { name: "More libraries" });
+    fireEvent.keyDown(settings, { key: "ArrowUp" });
+    await waitFor(() => expect(more).toHaveFocus());
+  });
+
   it("marks More libraries on a library that isn't pinned, and opens the rest of the libraries under it", async () => {
     serveMockApi(scenarios.unpinned);
     renderApp(`/libraries/${mockIds.videos}`);

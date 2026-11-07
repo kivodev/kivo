@@ -263,6 +263,8 @@ class TvLayoutAdapter implements LayoutAdapter {
       if (own === capture || focusHandles(e.target, keyNames[key]) || !noriginActsOn(e.target)) return;
       e.preventDefault();
       e.stopPropagation();
+      // A held OK presses once: its repeats would press whatever the first press opened.
+      if (key === "enter" && e.repeat) return;
       const vertical = verticalTarget(e.target, key);
       if (vertical === undefined) {
         const from = e.target instanceof Element ? e.target.closest("[data-tv-focusable]") : null;

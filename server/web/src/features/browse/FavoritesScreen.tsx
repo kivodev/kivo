@@ -1,7 +1,7 @@
 import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import type { FavoriteKind, WorkSummary } from "@/api/schemas";
 import { favoriteKinds, gridPageSize, workQueries } from "@/api/works";
 import type { ArtworkShape } from "@/components/Artwork";
@@ -161,6 +161,10 @@ export function FavoritesGridScreen() {
   const title = t`Favorites · ${kindTitle(kind)}`;
   useDocumentTitle(title);
   const shape = favoriteShape(kind);
+  const renderCard = useCallback(
+    (work: WorkSummary, width: number) => <WorkCard work={work} shape={shape} width={width} />,
+    [shape],
+  );
   const read = useQuery(workQueries.favoritesPage(kind, 0));
   const first = read.data;
   const total = first ? (first.total ?? first.items.length) : 0;
@@ -206,7 +210,7 @@ export function FavoritesGridScreen() {
           shape={shape}
           view="grid"
           onRangeChange={setRange}
-          renderCard={(work, width) => <WorkCard work={work} shape={shape} width={width} />}
+          renderCard={renderCard}
           renderListRow={() => null}
         />
       )}
