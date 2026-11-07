@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The phone interface's own words. -->
+<resources>
+    <string name="phones_coming">Kivo for phones is coming</string>
+</resources>

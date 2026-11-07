@@ -22,7 +22,7 @@ import struct
 CLIENTS = pathlib.Path(__file__).resolve().parent.parent
 OUTPUTS = [
     CLIENTS / "apple/KivoTests/Fixtures/pgs-sample.sup",
-    CLIENTS / "android/src/androidTest/assets/pgs/pgs-sample.sup",
+    CLIENTS / "android/tv/src/androidTest/assets/pgs/pgs-sample.sup",
 ]
 
 WIDTH, HEIGHT = 1920, 1080

@@ -1,5 +1,5 @@
 // :tokens, the theme generators: shared/tokens.json to Compose and SwiftUI.
-// :android runs its main at build time, and the Xcode build runs swiftTokens
+// :android:tv and :android:mobile run its main at build time, and the Xcode build runs swiftTokens
 // (through clients/apple/scripts/build-core.sh), so the themes are never
 // stale and nothing generated is committed.
 plugins {

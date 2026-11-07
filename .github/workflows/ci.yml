@@ -124,11 +124,14 @@ jobs:
             mkdir -p ~/.android
             printf '%s' "$KEYSTORE" | base64 -d > ~/.android/debug.keystore
           fi
-      - run: ./gradlew :android:assembleRelease :android:testDebugUnitTest :android:lintDebug
+      - run: >-
+          ./gradlew :android:app:assembleRelease :android:app:lintDebug
+          :android:app:testDebugUnitTest :android:tv:testDebugUnitTest :android:platform:testDebugUnitTest
+          :android:tv:compileDebugAndroidTestKotlin
       - uses: actions/upload-artifact@v7
         with:
           name: kivo-android-release
-          path: clients/android/build/outputs/apk/release/android-release.apk
+          path: clients/android/app/build/outputs/apk/release/app-release.apk
 
   # The Cast receiver's logic under a stand-in for the Cast framework. It has
   # no dependencies and no build.

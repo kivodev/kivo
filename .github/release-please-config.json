@@ -20,7 +20,7 @@
       "package-name": "kivo",
       "skip-changelog": true,
       "extra-files": [
-        "clients/android/build.gradle.kts",
+        "clients/android/app/build.gradle.kts",
         "clients/apple/project.yml",
         "clients/tizen/config.xml",
         "clients/chromecast/src/config.js",
