@@ -1,7 +1,7 @@
 #!/bin/sh
 # Renders every raster icon from app-icon.svg, the one source for the app
 # icon on each platform but the TV. Android draws its icons from vector drawables made
-# from the same mark (clients/android/src/main/res/drawable). Needs
+# from the same mark (clients/android/app/src/main/res/drawable). Needs
 # rsvg-convert (librsvg) and ImageMagick: brew install librsvg imagemagick.
 set -eu
 cd "$(dirname "$0")"
@@ -21,7 +21,7 @@ magick "$root/server/web/public/icon-512.png" -define icon:auto-resize=256,64,48
 for f in lockup lockup-light mark mark-light; do cp "$f.svg" "$root/server/web/public/$f.svg"; done
 # TMDB's logo, for the credit in Settings › About. It's TMDB's, kept as
 # they publish it. Android draws it from a vector drawable of the same path
-# (clients/android/src/main/res/drawable/tmdb_logo.xml).
+# (clients/android/tv/src/main/res/drawable/tmdb_logo.xml).
 cp tmdb.svg "$root/server/web/public/tmdb.svg"
 # TV launchers put the icon on a card of their own, often wider than it is
 # tall, so the TV's icon is the mark alone on a clear ground (tv-icon.svg).

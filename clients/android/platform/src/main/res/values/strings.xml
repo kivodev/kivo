@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The words the app's manifest and both its interfaces use. -->
+<resources>
+    <string name="app_name">Kivo</string>
+</resources>

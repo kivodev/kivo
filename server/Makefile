@@ -110,12 +110,12 @@ ceilings-clients:
 GO_SOURCES    = $(sort $(shell grep -rL --include='*.go' --exclude='*_test.go' '^// Code generated' $(GO_FILES)))
 WEB_EXCLUDED := **/*.test.ts,**/*.test.tsx,**/src/test/**,**/src/api/mocks/**,**/src/api/schema.d.ts,**/src/i18n/locales/**
 KNIP_COUNT    := let n = 0; for (const f of JSON.parse(require("fs").readFileSync(0)).issues) for (const [k, v] of Object.entries(f)) if (k !== "file") n += Object.keys(v).length; console.log(n)
-APP_SOURCES   := ../clients/android/src/main ../clients/apple/Kivo ../clients/apple/KivoUI
+APP_SOURCES   := $(wildcard ../clients/android/*/src/main) ../clients/apple/Kivo ../clients/apple/KivoUI
 # The core's session wiring, as an app would build it: its constructors.
 APP_WIRING    := '\b(ServerConnection|LiveEvents|SignIn|Discovery|ServerList|ClientId|DeviceSettingsStore|Bandwidth|CapabilityReport|ServerPlays|PlayController|CastSender|UserSettings|LinkDevice|SubtitleSearcher|[A-Z][A-Za-z]*Repository)\('
 CORE_SOURCES  := $(wildcard ../clients/core/src/*Main)
 # The apps' video players, and the waits a timed rule would need.
-APP_PLAYERS   := ../clients/android/src/main/kotlin/com/mmcdole/kivo/android/player ../clients/apple/Kivo/Player
+APP_PLAYERS   := $(wildcard ../clients/android/*/src/main/kotlin/com/mmcdole/kivo/android/player) ../clients/apple/Kivo/Player
 APP_TIMERS    := '\b(delay\(|Task\.sleep|asyncAfter|Timer\.|withTimeout)'
 # Numbers formatted, and units and time left worded, by the apps themselves.
 APP_FORMATS   := '\b(NumberFormat|MeasureFormat)\.|NumberFormatter\(|ByteCountFormatter|DateComponentsFormatter|String\(format:|%02l?d|Mb/s|min left'

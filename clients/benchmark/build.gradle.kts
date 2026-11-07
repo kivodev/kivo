@@ -10,20 +10,20 @@
 // emulator. On a TV, from clients/, with S the TV's adb serial:
 //
 // Profiles, on Android 14 or later (BaselineProfileGenerator says why):
-//   ./gradlew :android:assembleNonMinifiedRelease :benchmark:assembleNonMinifiedRelease
-//   adb -s $S install -r android/build/outputs/apk/nonMinifiedRelease/android-nonMinifiedRelease.apk
+//   ./gradlew :android:app:assembleNonMinifiedRelease :benchmark:assembleNonMinifiedRelease
+//   adb -s $S install -r android/app/build/outputs/apk/nonMinifiedRelease/app-nonMinifiedRelease.apk
 //   adb -s $S install -r benchmark/build/outputs/apk/nonMinifiedRelease/benchmark-nonMinifiedRelease.apk
 //   adb -s $S shell am instrument -w -e class com.mmcdole.kivo.benchmark.BaselineProfileGenerator \
 //     [-e library <its name on the rail>] com.mmcdole.kivo.benchmark/androidx.test.runner.AndroidJUnitRunner
 //   D=/sdcard/Android/media/com.mmcdole.kivo.benchmark
-//   adb -s $S pull $D/BaselineProfileGenerator_browse-baseline-prof.txt android/src/release/generated/baselineProfiles/baseline-prof.txt
-//   adb -s $S pull $D/BaselineProfileGenerator_startup-startup-prof.txt android/src/release/generated/baselineProfiles/startup-prof.txt
+//   adb -s $S pull $D/BaselineProfileGenerator_browse-baseline-prof.txt android/app/src/release/generated/baselineProfiles/baseline-prof.txt
+//   adb -s $S pull $D/BaselineProfileGenerator_startup-startup-prof.txt android/app/src/release/generated/baselineProfiles/startup-prof.txt
 // then build and install the release build as below.
 //
 // Benchmarks: install the build to measure, then its profile, which a
 // sideloaded APK only gets when profileinstaller runs, then compile it:
-//   ./gradlew :android:assembleBenchmarkRelease :benchmark:assembleBenchmarkRelease
-//   adb -s $S install -r android/build/outputs/apk/benchmarkRelease/android-benchmarkRelease.apk
+//   ./gradlew :android:app:assembleBenchmarkRelease :benchmark:assembleBenchmarkRelease
+//   adb -s $S install -r android/app/build/outputs/apk/benchmarkRelease/app-benchmarkRelease.apk
 //   adb -s $S install -r benchmark/build/outputs/apk/benchmarkRelease/benchmark-benchmarkRelease.apk
 //   adb -s $S shell am broadcast -a androidx.profileinstaller.action.INSTALL_PROFILE \
 //     com.mmcdole.kivo/androidx.profileinstaller.ProfileInstallReceiver   (result=1: installed, 2: already)
@@ -50,7 +50,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    targetProjectPath = ":android"
+    targetProjectPath = ":android:app"
     experimentalProperties["android.experimental.self-instrumenting"] = true
 }
 
