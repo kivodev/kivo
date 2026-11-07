@@ -11,14 +11,19 @@ plugins {
     id("androidx.baselineprofile")
 }
 
-// The build number, which every request names in the app's version: -PbuildNumber when a release stamps one, else
-// the commit count, so each build of a later commit is told apart.
-val buildNumber: Int = providers.gradleProperty("buildNumber").orNull?.toInt()
-    ?: providers.exec {
-        commandLine("git", "rev-list", "--count", "HEAD")
-        isIgnoreExitValue = true
-    }.standardOutput.asText.get().trim().toIntOrNull()
-    ?: 1
+// The app's version, which release-please stamps, and its build number, which every request names in the app's
+// version with it: -PbuildNumber when a build stamps one, else 0.
+val appVersion = "0.3.0" // x-release-please-version
+val buildNumber: Int = providers.gradleProperty("buildNumber").orNull?.toInt() ?: 0
+
+// versionCode = (major * 10000 + minor * 100 + patch) * 1000 + buildNumber, so 0.3.0 build 12 is 300012. It rises
+// with each version and each build of one, and stays under Play's 2100000000 while major is under 210.
+val appVersionCode: Int = run {
+    val (major, minor, patch) = appVersion.split(".").map(String::toInt)
+    require(minor < 100 && patch < 100) { "version $appVersion: minor and patch must be under 100" }
+    require(buildNumber in 0..999) { "buildNumber $buildNumber: must be 0 to 999" }
+    (major * 10000 + minor * 100 + patch) * 1000 + buildNumber
+}
 
 android {
     namespace = "com.mmcdole.kivo.android"
@@ -28,8 +33,8 @@ android {
         applicationId = "com.mmcdole.kivo"
         minSdk = 26
         targetSdk = 37
-        versionCode = buildNumber
-        versionName = "0.3.0 ($buildNumber)" // x-release-please-version
+        versionCode = appVersionCode
+        versionName = "$appVersion ($buildNumber)"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
