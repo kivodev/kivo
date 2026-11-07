@@ -165,7 +165,7 @@ class SessionLibrary internal constructor(
     /** A library's collections, by name, read again in place as the library changes. */
     fun pagedCollections(libraryId: String): GridPager<CollectionSummary> =
         paged("collections $libraryId", grid.changes(libraryId), seen::readCollections) { offset, limit ->
-            grid.collections(libraryId, offset, limit).let { GridPage(it.items, it.total, null) }
+            grid.collections(libraryId, offset, limit).let { GridPage(it.items, it.total, it.letters) }
         }
 
     /** An audiobooks library's authors, by name, read again in place as the library changes. */

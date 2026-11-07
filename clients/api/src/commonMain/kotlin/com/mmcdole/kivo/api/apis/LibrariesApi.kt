@@ -305,7 +305,7 @@ open class LibrariesApi : ApiClient {
 
     /**
      * List library collections
-     * A movies library&#39;s movie collections, or a videos library&#39;s folders, that have a root work in the library the user sees, by name. A grid, paged by &#x60;offset&#x60;, with &#x60;total&#x60; on every page. 
+     * A movies library&#39;s movie collections, or a videos library&#39;s folders, that have a root work in the library the user sees, by name. A grid, paged by &#x60;offset&#x60;, with &#x60;total&#x60; on every page; the first page (offset 0) also has &#x60;letters&#x60;. 
      * @param id 
      * @param offset How many items to skip from the start. (optional)
      * @param limit Page size. The default and the most a page holds depend on the listing. (optional)

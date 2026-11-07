@@ -238,7 +238,9 @@ func TestBrowseByLastEpisodeAdded(t *testing.T) {
 }
 
 // TestCollectionsSortByName checks that collections sort as works do,
-// without a leading article: "A Christmas Story Collection" under C.
+// without a leading article: "A Christmas Story Collection" under C. The
+// first page says where each letter starts, by the sort name, and later
+// pages don't.
 func TestCollectionsSortByName(t *testing.T) {
 	h := newHousehold(t)
 	christmas := h.movie(h.moviesFolder, "A Christmas Story", 1983, rankPG)
@@ -256,11 +258,14 @@ func TestCollectionsSortByName(t *testing.T) {
 	if !slices.Equal(got, want) {
 		t.Errorf("collections %v, want %v", got, want)
 	}
+	if got, want := starts(p.Letters), "B0 C1 T2"; got != want || p.Total != 3 {
+		t.Errorf("letters %s of %d, want %s of 3", got, p.Total, want)
+	}
 	p, err = h.q.Collections(ctx, h.admin, h.movies, query.GridOptions{Offset: 1, Limit: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(p.Items) != 1 || p.Items[0].Name != want[1] || p.Total != 3 {
+	if len(p.Items) != 1 || p.Items[0].Name != want[1] || p.Total != 3 || p.Letters != nil {
 		t.Errorf("offset 1, limit 1: %+v", p)
 	}
 }

@@ -29,7 +29,7 @@ import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
 
 /**
- * Where a letter of a grid's letter rail starts, in the grid's order. A work files under the first character of its sort title, so leading articles are skipped, and a person or series under the first character of their sort name: `A` to `Z`, or `#` for digits and anything else. A letter is listed once, at its first item; letters without items are left out. 
+ * Where a letter of a grid's letter rail starts, in the grid's order. A work files under the first character of its sort title, so leading articles are skipped, and a person, series or collection under the first character of their sort name: `A` to `Z`, or `#` for digits and anything else. A letter is listed once, at its first item; letters without items are left out. 
  *
  * @param letter `A` to `Z`, or `#`.
  * @param offset The index of the letter's first item in the grid.

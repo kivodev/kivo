@@ -244,10 +244,15 @@ export function createHandlers(api: MockApi) {
         letters: start === 0 && byTitle ? lettersOf(items.map((w) => w.title)) : undefined,
       });
     }),
+    // A library's collections, by name, with letters.
     http.get("/api/v1/libraries/{id}/collections", ({ params, query, response }) => {
       const items = api.collections[params.id] ?? [];
       const { start, end } = pageOf(query.get("offset"), query.get("limit"), items.length);
-      return response(200).json({ items: items.slice(start, end), total: items.length });
+      return response(200).json({
+        items: items.slice(start, end),
+        total: items.length,
+        letters: start === 0 ? lettersOf(items.map((c) => c.name)) : undefined,
+      });
     }),
     // An audiobooks library's authors and series, by name, with letters.
     http.get("/api/v1/libraries/{id}/authors", ({ query, response }) => {

@@ -2351,7 +2351,10 @@ type CollectionSummary struct {
 // CollectionSummaryPage defines model for CollectionSummaryPage.
 type CollectionSummaryPage struct {
 	Items []CollectionSummary `json:"items"`
-	Total int                 `json:"total"`
+
+	// Letters On the first page (offset 0). See `LetterStart`.
+	Letters *[]LetterStart `json:"letters,omitempty"`
+	Total   int            `json:"total"`
 }
 
 // ContentRating defines model for ContentRating.
@@ -3034,8 +3037,8 @@ type KeyframePlacement string
 
 // LetterStart Where a letter of a grid's letter rail starts, in the grid's order.
 // A work files under the first character of its sort title, so
-// leading articles are skipped, and a person or series under the
-// first character of their sort name: `A` to `Z`, or `#` for digits
+// leading articles are skipped, and a person, series or collection
+// under the first character of their sort name: `A` to `Z`, or `#` for digits
 // and anything else. A letter is listed once, at its first item;
 // letters without items are left out.
 type LetterStart struct {

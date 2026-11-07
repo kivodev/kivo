@@ -15,7 +15,9 @@ import Observation
 /// which of the quick filters the library has anything for: its
 /// collections, 4K, HDR and Dolby Vision. Whether it has collections is
 /// kept on the device, so its chips are there from the first frame; the
-/// first time, it comes with the first page.
+/// first time, it comes with the first page. Opened sorted one way for
+/// once, it starts from the works in that sort with no filters, and keeps
+/// nothing on the device.
 @MainActor
 @Observable
 final class GridModel {
@@ -143,12 +145,16 @@ final class GridModel {
     @ObservationIgnored private var running = false
     @ObservationIgnored private var hasRun = false
     @ObservationIgnored private let session: KivoSession
+    /// Whether the tab, sort and filters chosen are kept for the library on the device.
+    @ObservationIgnored private let keeps: Bool
 
     /// Opens [library] with the tab, sort and filters this device last used
-    /// in it, and its first page if it was seen lately.
-    init(library: Library, session: KivoSession) {
+    /// in it, or with its works in [sort] alone for once, and its first page
+    /// if it was seen lately.
+    init(library: Library, session: KivoSession, sort: String? = nil) {
         self.library = library
         self.session = session
+        keeps = sort == nil
         let books = library.kind == "audiobooks"
         sorts = books ? [
             Sort(value: "title", label: String(localized: "Title"), direction: String(localized: "A to Z")),
@@ -172,9 +178,13 @@ final class GridModel {
             Played(value: "inProgress", label: String(localized: "In progress")),
             Played(value: "played", label: books ? String(localized: "Finished") : String(localized: "Watched")),
         ]
-        var saved = UserDefaults.standard.dictionary(forKey: Self.stateKey(library)) as? [String: String] ?? [:]
+        var saved: [String: String] = if let sort {
+            ["sort": sort]
+        } else {
+            UserDefaults.standard.dictionary(forKey: Self.stateKey(library)) as? [String: String] ?? [:]
+        }
         // Migration (api-naming): remove after every client has updated past this release.
-        if let migrated = ApiNamingMigration.gridState(saved) {
+        if sort == nil, let migrated = ApiNamingMigration.gridState(saved) {
             saved = migrated
             UserDefaults.standard.set(saved, forKey: Self.stateKey(library))
         }
@@ -353,18 +363,21 @@ final class GridModel {
     }
 
     /// The tab, sort or filters changed: the device keeps them for the
-    /// library, and the grid starts again from the top once the first page
-    /// arrives, at once if it was seen lately.
+    /// library, unless it was opened sorted for once, and the grid starts
+    /// again from the top once the first page arrives, at once if it was
+    /// seen lately.
     func reload() {
-        var state = [
-            "sort": query.sort.value,
-            "favorites": String(query.onlyFavorites),
-            "resolutions": query.resolutions.sorted().joined(separator: ","),
-            "dynamicRanges": query.dynamicRanges.sorted().joined(separator: ","),
-        ]
-        state["tab"] = query.tab.rawValue
-        state["played"] = query.played.value
-        UserDefaults.standard.set(state, forKey: Self.stateKey(library))
+        if keeps {
+            var state = [
+                "sort": query.sort.value,
+                "favorites": String(query.onlyFavorites),
+                "resolutions": query.resolutions.sorted().joined(separator: ","),
+                "dynamicRanges": query.dynamicRanges.sorted().joined(separator: ","),
+            ]
+            state["tab"] = query.tab.rawValue
+            state["played"] = query.played.value
+            UserDefaults.standard.set(state, forKey: Self.stateKey(library))
+        }
         let old = paged
         paged = Self.pager(query, of: library, session: session)
         old.close()

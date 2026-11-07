@@ -24,6 +24,7 @@
 package com.mmcdole.kivo.api.models
 
 import com.mmcdole.kivo.api.models.CollectionSummary
+import com.mmcdole.kivo.api.models.LetterStart
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
@@ -34,6 +35,7 @@ import kotlinx.serialization.encoding.*
  *
  * @param items 
  * @param total 
+ * @param letters On the first page (offset 0). See `LetterStart`.
  */
 @Serializable
 
@@ -41,7 +43,10 @@ data class CollectionSummaryPage (
 
     @SerialName(value = "items") @Required val items: kotlin.collections.List<CollectionSummary>,
 
-    @SerialName(value = "total") @Required val total: kotlin.Int
+    @SerialName(value = "total") @Required val total: kotlin.Int,
+
+    /* On the first page (offset 0). See `LetterStart`. */
+    @SerialName(value = "letters") val letters: kotlin.collections.List<LetterStart>? = null
 
 ) {
 
