@@ -80,7 +80,7 @@ android {
         minSdk = 26
         targetSdk = 37
         versionCode = buildNumber
-        versionName = "0.3.0 ($buildNumber)" // x-release-please-version
+        versionName = "0.4.0 ($buildNumber)" // x-release-please-version
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
