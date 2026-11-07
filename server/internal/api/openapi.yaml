@@ -1397,8 +1397,9 @@ paths:
       summary: List library collections
       description: |
         A movies library's movie collections, or a videos library's
-        folders, that have a root work in the library the user sees, by name.
-        A grid, paged by `offset`, with `total` on every page.
+        folders, that have a root work in the library the user sees, by
+        name. A grid, paged by `offset`, with `total` on every page; the
+        first page (offset 0) also has `letters`.
       tags: [libraries]
       x-kivo-access: viewer
       parameters:
@@ -5065,6 +5066,10 @@ components:
           type: array
           items: {$ref: "#/components/schemas/CollectionSummary"}
         total: {type: integer}
+        letters:
+          type: array
+          description: On the first page (offset 0). See `LetterStart`.
+          items: {$ref: "#/components/schemas/LetterStart"}
 
     CollectionSource:
       type: string
@@ -5322,8 +5327,8 @@ components:
       description: |
         Where a letter of a grid's letter rail starts, in the grid's order.
         A work files under the first character of its sort title, so
-        leading articles are skipped, and a person or series under the
-        first character of their sort name: `A` to `Z`, or `#` for digits
+        leading articles are skipped, and a person, series or collection
+        under the first character of their sort name: `A` to `Z`, or `#` for digits
         and anything else. A letter is listed once, at its first item;
         letters without items are left out.
       required: [letter, offset]

@@ -125,7 +125,7 @@ func (h *handlers) ListLibraryCollections(ctx context.Context, req gen.ListLibra
 	if err != nil {
 		return nil, err
 	}
-	return gen.ListLibraryCollections200JSONResponse{Items: each(g.Items, collectionSummary), Total: g.Total}, nil
+	return gen.ListLibraryCollections200JSONResponse{Items: each(g.Items, collectionSummary), Total: g.Total, Letters: letterStarts(g.Letters)}, nil
 }
 
 // ListLibraryAuthors is a page of an audiobooks library's authors.

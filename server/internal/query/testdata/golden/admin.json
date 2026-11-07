@@ -1517,7 +1517,12 @@
       }
     ],
     "Total": 1,
-    "Letters": null
+    "Letters": [
+      {
+        "Letter": "T",
+        "Offset": 0
+      }
+    ]
   },
   "detail book:Leviathan Wakes": {
     "Summary": {

@@ -166,6 +166,7 @@ GET /api/v1/libraries/<id4>/collections
 200
 {
   "items": [],
+  "letters": [],
   "total": 0
 }
 

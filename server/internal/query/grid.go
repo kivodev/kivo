@@ -51,10 +51,11 @@ func (s *Service) summaryPage(ctx context.Context, vw viewer, items []WorkSummar
 	return gridPage(items, total, letters), nil
 }
 
-// Letter is where a letter starts in a grid sorted by title, or in an
-// audiobooks library's "Authors" or "Series" list. Works file under the first
-// character of their sort title, so leading articles are skipped. People
-// and series file under the first character of their sort name. The
+// Letter is where a letter starts in a grid sorted by title, in a
+// library's "Collections" list, or in an audiobooks library's "Authors" or
+// "Series" list. Works file under the first character of their sort title,
+// so leading articles are skipped. People, series and collections file
+// under the first character of their sort name. The
 // letters are A to Z, with # for anything else. Each letter is listed once,
 // at its first row in the list's order.
 type Letter struct {
@@ -62,8 +63,8 @@ type Letter struct {
 	Offset int
 }
 
-// letterCount is a row of BrowseLetters, AuthorLetters or
-// BookSeriesLetters. It counts how many of a list's rows start with one
+// letterCount is a row of BrowseLetters, CollectionLetters, AuthorLetters
+// or BookSeriesLetters. It counts how many of a list's rows start with one
 // character, given as a code point, or 0 for an empty name.
 type letterCount struct {
 	Initial int64

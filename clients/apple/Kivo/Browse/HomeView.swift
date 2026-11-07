@@ -122,9 +122,18 @@ struct HomeView: View {
         if self.home != home { self.home = home }
     }
 
-    /// What a row's heading opens: Favorites' opens the Favorites page.
+    /// What a row's heading opens: Favorites' opens the Favorites page, and
+    /// Recently Added's opens its library sorted by date added, over Home.
     private func more(of row: HomeRow) -> (() -> Void)? {
-        row.kind == "favorites" ? { server.showFavorites() } : nil
+        switch row.kind {
+        case "favorites":
+            return { server.showFavorites() }
+        case "recentlyAdded":
+            guard let library = server.library(of: row.library?.id) else { return nil }
+            return { server.paths[.home, default: []].append(.library(library, sort: "addedAt")) }
+        default:
+            return nil
+        }
     }
 
     private func title(of row: HomeRow) -> String {

@@ -304,7 +304,7 @@ export function LibraryScreen() {
           page={(i) => workQueries.collectionsPage(library.id, i)}
           view="grid"
           shape={shape}
-          letterSort={false}
+          letterSort
           oneFilter={false}
           renderCard={(c, width) => <CollectionCard collection={c} shape={shape} width={width} />}
         />

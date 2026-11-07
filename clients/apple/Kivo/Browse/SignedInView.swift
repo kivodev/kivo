@@ -274,6 +274,8 @@ struct BrowseStack<Root: View>: View {
                             }
                         case .favorites(let kind):
                             FavoritesGrid(kind: kind, session: server.session)
+                        case .library(let library, let sort):
+                            LibraryView(library: library, server: server, sort: sort)
                         case .librariesPage(let page):
                             LibrariesPageView(page: page)
                                 .onAppear { server.open(page) }
@@ -300,6 +302,8 @@ enum Route: Hashable {
     case work(WorkRoute)
     /// All of one kind's favorites, in a grid.
     case favorites(FavoriteKind)
+    /// A library's works in one sort, for once, as Recently Added's heading opens them.
+    case library(Library, sort: String)
     /// A library or Favorites, opened from the Libraries tab's list of them.
     case librariesPage(LibrariesPage)
 }

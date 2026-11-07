@@ -503,10 +503,16 @@ var inCollection = `SELECT count(*) FROM collection_work cw JOIN work w ON w.id 
       AND EXISTS (SELECT 1 FROM work_library cl WHERE cl.library_id = @library AND cl.work_id = w.id)
       AND ` + visible
 
-var collectionsCount = stmt("CollectionsCount", `
-SELECT count(*)
+// collectionLetters counts the collections with a visible work in the
+// library by the first character of their sort name, for the list's letter
+// rail. The character is a code point, or 0 for an empty name. The groups
+// come in the list's order, and the counts add up to the list's total.
+var collectionLetters = stmt("CollectionLetters", `
+SELECT coalesce(unicode(c.sort_name), 0) AS initial, count(*) AS n
 FROM collection c
-WHERE (`+inCollection+`) > 0`)
+WHERE (`+inCollection+`) > 0
+GROUP BY 1
+ORDER BY 1`)
 
 // collections lists the collections with a visible work in the library, by
 // sort name, with how many of their works the Viewer sees.
@@ -550,15 +556,17 @@ func (s *Service) Collections(ctx context.Context, v users.Viewer, lib id.ID, o 
 	}
 	vw := viewerOf(v)
 	var items []Collection
+	var letters []Letter
 	total := 0
 	err = s.db.Read(ctx, func(tx *sql.Tx) error {
 		if err := library(ctx, tx, vw, lib); err != nil {
 			return notFound(err)
 		}
-		if err := rowOf(ctx, tx, collectionsCount, vw.args(sql.Named("library", lib)), &total); err != nil {
+		// The letters' counts add up to the total.
+		var err error
+		if letters, total, err = rail(ctx, tx, collectionLetters, vw.args(sql.Named("library", lib)), o); err != nil {
 			return err
 		}
-		var err error
 		items, err = rowsOf(ctx, tx, collections, vw.args(sql.Named("library", lib),
 			sql.Named("offset", o.Offset), sql.Named("limit", limit)), scanCollection)
 		return err
@@ -569,7 +577,7 @@ func (s *Service) Collections(ctx context.Context, v users.Viewer, lib id.ID, o 
 	if err := s.withCollectionImages(ctx, vw, items); err != nil {
 		return GridPage[Collection]{}, err
 	}
-	return gridPage(items, total, nil), nil
+	return gridPage(items, total, letters), nil
 }
 
 // Collection returns a collection's page, read from one snapshot. The page

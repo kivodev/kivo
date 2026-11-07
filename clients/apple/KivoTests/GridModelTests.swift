@@ -6,8 +6,9 @@ import XCTest
 /// A library's grid against a server on localhost with 3,000 works: its
 /// first page brings the count and letters, the cards on screen load their
 /// pages, a refresh reads them again in place, a library seen lately shows
-/// at once, another sort shows its own order, and a first page that can't
-/// be read says why.
+/// at once, another sort shows its own order, a sort for once leaves the
+/// library's kept choices alone, and a first page that can't be read says
+/// why.
 @MainActor
 final class GridModelTests: XCTestCase {
     private static let total = 3000
@@ -182,6 +183,22 @@ final class GridModelTests: XCTestCase {
         XCTAssertNil(grid.total, "its placeholders until its first page arrives, not the grid before")
         XCTAssertNil(grid.item(at: 0))
         try await until("its first page arrives") { grid.total == Self.total }
+    }
+
+    func testASortForOnceOpensWithoutFiltersAndKeepsNothing() async throws {
+        UserDefaults.standard.set(["tab": "collections", "sort": "title", "played": "unplayed"], forKey: "grid.lib")
+        let grid = GridModel(library: library, session: session, sort: "addedAt")
+        let run = Task { await grid.run() }
+        defer { run.cancel() }
+        await grid.ready()
+        XCTAssertEqual(grid.shown.tab, .titles)
+        XCTAssertEqual(grid.shown.sort.value, "addedAt")
+        XCTAssertFalse(grid.shown.filtered, "none of the kept filters")
+        XCTAssertEqual(grid.item(at: 0)?.title, Self.name(Self.total - 1), "newest first")
+        grid.query.onlyFavorites = true
+        grid.reload()
+        let kept = UserDefaults.standard.dictionary(forKey: "grid.lib") as? [String: String]
+        XCTAssertEqual(kept, ["tab": "collections", "sort": "title", "played": "unplayed"], "the library's own choices stay")
     }
 
     func testAFlingReadsOnlyThePagesWhereItComesToRest() async throws {

@@ -4,9 +4,10 @@ import SwiftUI
 
 /// A library: its name as a large title (``libraryTitle(_:)``), chips for its sections, the filters that are on as chips that
 /// turn them off, the count with the sort, and the grid, with the letter
-/// scrubber on the title sort. Sort and Filter are in the top bar. The
-/// title and chips show from the first frame, with the grid's first page
-/// when it was seen lately, else the grid's skeleton until it arrives.
+/// scrubber on the title sort and on the sections listed by name. Sort and
+/// Filter are in the top bar. The title and chips show from the first
+/// frame, with the grid's first page when it was seen lately, else the
+/// grid's skeleton until it arrives.
 struct LibraryView: View {
     @State private var model: GridModel
     @Environment(ServerModel.self) private var server
@@ -21,17 +22,17 @@ struct LibraryView: View {
     @State private var jumped: String?
     @State private var prefetcher = CardPrefetcher()
 
-    init(library: Library, server: ServerModel) {
-        _model = State(initialValue: GridModel(library: library, session: server.session))
+    /// Opens [library] as this device last left it, or with its works in [sort] for once.
+    init(library: Library, server: ServerModel, sort: String? = nil) {
+        _model = State(initialValue: GridModel(library: library, session: server.session, sort: sort))
     }
 
     /// Whether the grid showing is one the scrubber goes with: the works by
-    /// title, or the Authors or Series tab. Collections have no letters.
+    /// title, or the Collections, Authors or Series tab, which are by name.
     private var takesScrubber: Bool {
         switch model.shown.tab {
         case .titles: model.shown.sort.value == "title"
-        case .authors, .bookSeries: true
-        case .collections: false
+        case .collections, .authors, .bookSeries: true
         }
     }
 
