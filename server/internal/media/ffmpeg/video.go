@@ -282,11 +282,8 @@ func (p *videoPlan) graph() string {
 		sub = append(sub, fmt.Sprintf("alphasrc=s=%dx%d:r=%s:start=%s", p.w, p.h, frameRate(p.fps), seconds(p.in.start)),
 			"format=yuva420p", "subtitles="+p.subtitleOptions()+":alpha=1")
 	} else {
-		// An image subtitle's frames are their own canvas, often the full
-		// 1920x1080 of a film whose picture is cropped to 1920x800. overlay
-		// needs them at the picture's size, so they're always scaled to it.
 		from = "[0:" + strconv.Itoa(burn.Track) + "]"
-		sub = append(sub, fmt.Sprintf("scale=w=%d:h=%d", p.w, p.h))
+		sub = append(sub, fitCanvas(burn.Width, burn.Height, p.w, p.h)...)
 	}
 	if p.onDevice {
 		sub = append(sub, f.subUpload)
@@ -306,6 +303,28 @@ func (p *videoPlan) frames() []string {
 		fs = append(fs, "fps="+p.rate)
 	}
 	return fs
+}
+
+// fitCanvas sizes an image subtitle's frames, which are their own sw×sh
+// canvas, to the w×h picture, as overlay needs. A canvas of the picture's
+// shape is scaled to it. Any other, such as the full 1920x1080 of a film
+// whose picture is cropped to 1920x800, is scaled to the picture's height,
+// keeping its shape, then centred on a transparent canvas the picture's
+// width, or cropped to it when wider. A canvas of unknown size is scaled
+// to the picture, because ffmpeg then makes it the video's size.
+func fitCanvas(sw, sh, w, h int) []string {
+	fit := fmt.Sprintf("scale=w=%d:h=%d", w, h)
+	if sw <= 0 || sh <= 0 {
+		return []string{fit}
+	}
+	fw := max(2, (sw*h/sh+1)&^1) // the canvas's width at the picture's height, made even
+	switch {
+	case fw > w+2:
+		return []string{fmt.Sprintf("scale=w=%d:h=%d", fw, h), fmt.Sprintf("crop=w=%d:h=%d", w, h)}
+	case fw < w-2:
+		return []string{fmt.Sprintf("scale=w=%d:h=%d", fw, h), fmt.Sprintf("pad=w=%d:h=%d:x=%d:y=0:color=black@0", w, h, (w-fw)/2)}
+	}
+	return []string{fit}
 }
 
 // colorParams returns the filter that sets the color properties of a

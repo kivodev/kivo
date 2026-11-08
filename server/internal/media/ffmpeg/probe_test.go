@@ -41,8 +41,8 @@ func TestParseProbe(t *testing.T) {
 func TestParseProbeTracks(t *testing.T) {
 	// Fields as ffprobe prints them for a Dolby Vision profile 8.1 file
 	// with an interlaced anamorphic second video, 24-bit audio describing
-	// the picture, a forced
-	// subtitle and an attached cover.
+	// the picture, a forced subtitle, a PGS subtitle with its canvas and an
+	// attached cover.
 	b := []byte(`{"format": {"format_name": "matroska,webm"}, "streams": [
 		{"index": 0, "codec_type": "video", "codec_name": "hevc", "profile": "Main 10", "level": 153,
 		 "codec_tag_string": "hvc1", "refs": 1, "field_order": "progressive", "sample_aspect_ratio": "1:1",
@@ -58,6 +58,7 @@ func TestParseProbeTracks(t *testing.T) {
 		 "avg_frame_rate": "30000/1001"},
 		{"index": 2, "codec_type": "subtitle", "codec_name": "subrip",
 		 "disposition": {"forced": 1, "hearing_impaired": 1}, "tags": {"language": "eng", "title": "Forced"}},
+		{"index": 7, "codec_type": "subtitle", "codec_name": "hdmv_pgs_subtitle", "width": 1920, "height": 1080},
 		{"index": 3, "codec_type": "video", "codec_name": "mjpeg", "width": 600, "height": 900,
 		 "pix_fmt": "yuvj444p", "bits_per_raw_sample": "8", "avg_frame_rate": "0/0", "r_frame_rate": "90000/1",
 		 "color_transfer": "arib-std-b67", "disposition": {"attached_pic": 1}},
@@ -77,6 +78,7 @@ func TestParseProbeTracks(t *testing.T) {
 		{Index: 6, Kind: media.Video, Codec: "mpeg2video", Width: 720, Height: 480, BitDepth: 8, FrameRate: 30000.0 / 1001,
 			Range: media.SDR, References: 1, Interlaced: true, Anamorphic: true, PixelFormat: "yuv420p"},
 		{Index: 2, Kind: media.Subtitle, Codec: "subrip", Language: "eng", Title: "Forced", Forced: true, HearingImpaired: true},
+		{Index: 7, Kind: media.Subtitle, Codec: "hdmv_pgs_subtitle", Width: 1920, Height: 1080},
 		{Index: 3, Kind: media.Video, Codec: "mjpeg", AttachedPicture: true,
 			Width: 600, Height: 900, BitDepth: 8, FrameRate: 90000, Range: media.HLG, PixelFormat: "yuvj444p"},
 		{Index: 4, Kind: media.Attachment, Codec: "ttf"},

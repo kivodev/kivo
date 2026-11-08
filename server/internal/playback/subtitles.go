@@ -156,7 +156,12 @@ func (s *Service) burnIn(ctx context.Context, c *choice, t TrackDecision) (*medi
 	}
 	src := c.input.Source.Subtitle
 	if !formatOf(src.Codec).Text() {
-		return &media.SubtitleRef{Track: t.Index}, nil, nil
+		ref := &media.SubtitleRef{Track: t.Index}
+		if st, ok := embeddedSubtitle(f, t.Track); ok {
+			mt := probed(st)
+			ref.Width, ref.Height = mt.Width, mt.Height
+		}
+		return ref, nil, nil
 	}
 	format := media.VTT
 	if formatOf(src.Codec) == media.ASS {

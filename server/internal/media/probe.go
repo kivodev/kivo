@@ -67,6 +67,8 @@ type Track struct {
 	// AttachedPicture marks cover art stored as a video track.
 	AttachedPicture bool `json:"attached_picture,omitempty"`
 
+	// Width and Height are a video's picture, or an image subtitle's
+	// canvas.
 	Width     int          `json:"width,omitempty"`
 	Height    int          `json:"height,omitempty"`
 	BitDepth  int          `json:"bit_depth,omitempty"` // for audio too, when the codec records it

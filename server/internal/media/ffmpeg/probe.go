@@ -132,8 +132,11 @@ func parseProbe(b []byte) (media.ProbeResult, error) {
 		if t.Kind == media.Audio {
 			t.BitDepth = atoi(s.BitsPerRawSample)
 		}
-		if t.Kind == media.Video {
+		switch t.Kind {
+		case media.Video:
 			videoFacts(&t, s)
+		case media.Subtitle:
+			t.Width, t.Height = s.Width, s.Height
 		}
 		res.Tracks = append(res.Tracks, t)
 	}
