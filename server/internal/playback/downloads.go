@@ -129,7 +129,8 @@ type preparation struct {
 // that needs work on the server (a conversion, or a subtitle to prepare)
 // is queued, and the queue survives restarts. Other downloads are ready at
 // once. Asking again for the same download, as an app does when an answer
-// was lost, returns the same download.
+// was lost or its user tapped twice, returns the same download, however
+// close together the asks arrive.
 func (s *Service) Download(ctx context.Context, p auth.Caller, v users.Viewer, r DownloadRequest) (DownloadStatus, error) {
 	if p.Session.IsZero() {
 		return DownloadStatus{}, ErrNotFound // a download belongs to a session, and an API key has none
@@ -168,8 +169,38 @@ func (s *Service) Download(ctx context.Context, p auth.Caller, v users.Viewer, r
 	} else {
 		row.SettledAt = sql.NullInt64{Int64: now.UnixMilli(), Valid: true}
 	}
+	stored, inserted, err := s.storeDownload(ctx, row, prepare)
+	if err != nil {
+		return DownloadStatus{}, err
+	}
+	if !inserted {
+		return s.status(ctx, stored)
+	}
+	slog.InfoContext(ctx, "playback: download", "work", r.Work, "version", c.version.ID, "client", p.Name, "quality", c.input.Quality.Name,
+		"delivery", c.decision.Delivery, "summary", c.decision.Summary(), "prepare", prepare)
+	if prepare {
+		s.queueMoved(ctx)
+	}
+	return s.status(ctx, row)
+}
+
+// storeDownload stores a new download, and asks for its preparation when
+// it needs it, unless the same download was stored while this one was
+// planned. Writes take turns, so the first stored is the one, and it's
+// returned instead.
+func (s *Service) storeDownload(ctx context.Context, row dbq.Download, prepare bool) (stored dbq.Download, inserted bool, err error) {
+	stored = row
 	err = s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
-		if err := dbq.New(tx).InsertDownload(ctx, dbq.InsertDownloadParams{
+		q := dbq.New(tx)
+		same, err := q.SameDownload(ctx, dbq.SameDownloadParams{SessionID: row.SessionID, WorkID: row.WorkID, Request: row.Request})
+		if err == nil {
+			stored = same
+			return nil
+		}
+		if !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		if err := q.InsertDownload(ctx, dbq.InsertDownloadParams{
 			ID: row.ID, UserID: row.UserID, SessionID: row.SessionID, WorkID: row.WorkID, VersionID: row.VersionID, Request: row.Request, Plan: row.Plan,
 			State: row.State, CreatedAt: row.CreatedAt, QueuedAt: row.QueuedAt, SettledAt: row.SettledAt,
 		}); err != nil {
@@ -178,17 +209,10 @@ func (s *Service) Download(ctx context.Context, p auth.Caller, v users.Viewer, r
 		if prepare {
 			s.enqueue(tx, row.ID)
 		}
+		inserted = true
 		return nil
 	})
-	if err != nil {
-		return DownloadStatus{}, err
-	}
-	slog.InfoContext(ctx, "playback: download", "work", r.Work, "version", c.version.ID, "client", p.Name, "quality", c.input.Quality.Name,
-		"delivery", c.decision.Delivery, "summary", c.decision.Summary(), "prepare", prepare)
-	if prepare {
-		s.queueMoved(ctx)
-	}
-	return s.status(ctx, row)
+	return stored, inserted, err
 }
 
 // downloader checks that a viewer may download a work. The viewer must see

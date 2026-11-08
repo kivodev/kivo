@@ -7,7 +7,8 @@ import SwiftUI
 /// long press lists every quality with its size, "1080p · 8 Mb/s" over
 /// "~3.6 GB", exact where the original goes as it is, the setting's
 /// checked; a book downloads its original. Once asked for, it shows where
-/// the download is: a ring while it comes, a check when it's ready, a
+/// the download is: a dashed ring while the server is asked, and taps wait
+/// for its answer, then a ring while it comes, a check when it's ready, a
 /// warning when it failed, and its menu says so, with Pause or Resume
 /// while it comes, Retry when it failed, and Remove Download.
 struct DownloadButton: View {
@@ -51,6 +52,10 @@ struct DownloadButton: View {
                     }
                 } label: {
                     DownloadGlyph(item: item)
+                }
+            } else if server.asking.contains(work.id) {
+                Button {} label: {
+                    DownloadGlyph(item: nil, asking: true)
                 }
             } else if let estimate, !estimate.playable {
                 Button {
@@ -127,16 +132,22 @@ struct DownloadButton: View {
     }
 }
 
-/// The button's glyph: an arrow to download, a ring filling with how much
+/// The button's glyph: an arrow to download, a dashed ring while it's
+/// asked for, a ring filling with how much
 /// of the whole job is done (dashed while the server has it, an arrow in
 /// it while paused), a check when it's ready, a warning when it failed.
 private struct DownloadGlyph: View {
     let item: DownloadItem?
+    var asking = false
     @Environment(\.kivoPalette) private var palette
 
     var body: some View {
         Group {
             switch item.map({ onEnum(of: $0.status) }) {
+            case nil where asking:
+                DownloadRing(value: 0, dashed: true)
+                    .padding(2)
+                    .accessibilityLabel(Text("Waiting on the server"))
             case nil:
                 Image(systemName: "arrow.down.circle")
                     .accessibilityLabel(Text("Download"))

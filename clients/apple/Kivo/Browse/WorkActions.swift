@@ -86,6 +86,7 @@ struct WorkActions: View {
                     } label: {
                         SwiftUI.Label(String(localized: "Download"), systemImage: "arrow.down.circle")
                     }
+                    .disabled(server.asking.contains(work.id))
                 }
             }
         }
