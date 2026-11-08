@@ -633,6 +633,46 @@ func TestADownloadMovesToTheSubtitleThatReplacedItsOwn(t *testing.T) {
 	}
 }
 
+func TestAskingForTheSameDownloadAtOnceKeepsOne(t *testing.T) {
+	f := newFixture(t, 0)
+	f.downloads()
+	book := f.b.Work(catalog.WorkInput{Kind: catalog.KindBook, Title: "Dune"})
+	file := f.b.File(f.folder, "Dune/Dune.m4b")
+	f.b.Version([]id.ID{file}, book)
+	f.probeWith(file, "mp4", 20*time.Hour, 64_000, media.Track{Index: 0, Kind: media.Audio, Codec: "aac", Channels: 2, Default: true})
+	f.onDisk(file, "the book")
+
+	// Taps that reach the server together, before any has its answer: the
+	// database is busy writing while they arrive, so each looks for the
+	// download before any has stored it.
+	const taps = 3
+	var mu sync.Mutex
+	ids := map[id.ID]bool{}
+	var wg sync.WaitGroup
+	if err := f.b.DB.Write(ctx, func(context.Context, *store.Tx) error {
+		for range taps {
+			wg.Go(func() {
+				d, err := f.download(book, "")
+				if err != nil {
+					t.Error(err)
+					return
+				}
+				mu.Lock()
+				ids[d.ID] = true
+				mu.Unlock()
+			})
+		}
+		time.Sleep(200 * time.Millisecond)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	wg.Wait()
+	if len(ids) != 1 {
+		t.Fatalf("%d taps made %d downloads", taps, len(ids))
+	}
+}
+
 func TestDownloadRefusals(t *testing.T) {
 	f := newFixture(t, 0)
 	f.downloads()

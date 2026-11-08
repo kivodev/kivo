@@ -47,6 +47,8 @@ import io.ktor.http.content.OutgoingContent
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -290,6 +292,23 @@ class DownloadsTest {
         assertNotNull(item.artworkPath)
         assertEquals(1, h.server.to("DELETE", "/api/v1/downloads/d1").size, "the device has it: the server forgets its copy")
         assertContentEquals(movie, File(h.disk.folder, "$id/part-0.mp4").readBytes())
+    }
+
+    @Test
+    fun tappingDownloadAgainWhileTheFirstIsAskedForKeepsOneDownload() = runTest {
+        val h = Harness(this)
+        h.connect()
+        // Three taps before the server has answered the first: each asks while
+        // the others are still waiting on the estimate, the user and the work.
+        val ids = List(3) { async { h.downloads.download(DownloadRequest("w1")) } }.awaitAll()
+        advanceUntilIdle()
+
+        val rows = h.downloads.items.first()
+        assertEquals(
+            listOf(1, 1, 1),
+            listOf(rows.size, ids.toSet().size, h.server.to("POST", "/api/v1/downloads").size),
+            "one download of the work, every tap given it, the server asked once",
+        )
     }
 
     @Test
