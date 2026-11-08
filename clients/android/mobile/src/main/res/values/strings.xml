@@ -32,7 +32,6 @@
     <string name="mobile_tab_favorites">Favorites</string>
     <string name="mobile_tab_downloads">Downloads</string>
     <string name="mobile_tab_search">Search</string>
-    <string name="mobile_cast">Cast</string>
 
     <!-- Problems -->
     <string name="mobile_cant_reach">Can\'t reach %1$s.</string>
@@ -267,8 +266,85 @@
     <string name="mobile_no_favorites_sentence">Items you mark with ♥ appear here.</string>
 
     <!-- Downloads -->
-    <string name="mobile_downloads_coming">Downloads are coming</string>
-    <string name="mobile_downloads_coming_sentence">Movies and episodes you download will be here to watch offline.</string>
+    <string name="mobile_no_downloads">No downloads</string>
+    <string name="mobile_no_downloads_sentence">Downloaded books and videos appear here for offline playback.</string>
+    <string name="mobile_specials">Specials</string>
+    <string name="mobile_download_queued">Queued</string>
+    <string name="mobile_download_preparing">Preparing</string>
+    <string name="mobile_download_downloading">Downloading</string>
+    <string name="mobile_download_waiting_wifi">Waiting for Wi-Fi</string>
+    <string name="mobile_download_waiting_server">Waiting for server</string>
+    <string name="mobile_download_offline">Offline</string>
+    <string name="mobile_download_paused">Paused</string>
+    <string name="mobile_download_percent">%1$s · %2$d%%</string>
+    <string name="mobile_downloaded">Downloaded</string>
+    <string name="mobile_download_failed">Download failed</string>
+    <string name="mobile_pause_download">Pause download</string>
+    <string name="mobile_resume_download">Resume download</string>
+    <string name="mobile_remove_download">Remove download</string>
+    <string name="mobile_download_named">Download %1$s</string>
+    <string name="mobile_download_series">Download series</string>
+    <string name="mobile_up_to_size">Up to %1$s</string>
+    <string name="mobile_storage_line">%1$s used · %2$s free</string>
+    <string name="mobile_delete">Delete</string>
+    <string name="mobile_ok">OK</string>
+    <plurals name="mobile_download_episodes_size">
+        <item quantity="one">%1$,d episode · %2$s</item>
+        <item quantity="other">%1$,d episodes · %2$s</item>
+    </plurals>
+    <plurals name="mobile_downloads_removed">
+        <item quantity="one">%1$,d download removed: no longer available.</item>
+        <item quantity="other">%1$,d downloads removed: no longer available.</item>
+    </plurals>
+    <plurals name="mobile_delete_episodes">
+        <item quantity="one">Delete %1$,d episode (%2$s)?</item>
+        <item quantity="other">Delete %1$,d episodes (%2$s)?</item>
+    </plurals>
+    <plurals name="mobile_episodes_to_download">
+        <item quantity="one">%1$,d episode to download.</item>
+        <item quantity="other">%1$,d episodes to download.</item>
+    </plurals>
+
+    <!-- Cast -->
+    <string name="mobile_casting_to">Casting to %1$s</string>
+    <string name="mobile_stop_casting">Stop casting</string>
+    <string name="mobile_continue_on_phone">Continue on this phone</string>
+    <string name="mobile_disconnect">Disconnect</string>
+    <string name="mobile_keep_playing_on_tv">Keep playing on the TV</string>
+    <string name="mobile_cast_unreachable">Can\'t reach the server.</string>
+    <string name="mobile_cast_signed_out">Signed out on the TV.</string>
+    <string name="mobile_cast_server_outdated">Update the server to cast to this TV.</string>
+    <string name="mobile_cast_receiver_outdated">The TV\'s receiver is older than the server.</string>
+    <string name="mobile_cast_not_playable">This can\'t be played on this TV.</string>
+
+    <!-- Link a device -->
+    <string name="mobile_link_device">Link a device</string>
+    <string name="mobile_scan_hint">Scan the QR code on the other device.</string>
+    <string name="mobile_enter_code_instead">Enter code instead</string>
+    <string name="mobile_scan_instead">Scan the QR code instead</string>
+    <string name="mobile_code">Code</string>
+    <string name="mobile_code_hint">Codes are six letters and digits.</string>
+    <string name="mobile_not_a_code">That isn\'t a code. Codes are six letters and digits.</string>
+    <string name="mobile_code_failed">That code didn\'t work. Check the other device for a new one.</string>
+    <string name="mobile_allow_question">Allow %1$s to sign in as %2$s?</string>
+    <string name="mobile_not_home_warning">This device isn\'t on your home network. Allow it only if it\'s yours and you just started signing in on it.</string>
+    <string name="mobile_allow">Allow</string>
+    <string name="mobile_dont_allow">Don\'t allow</string>
+    <string name="mobile_device_signed_in">%1$s is signed in</string>
+    <string name="mobile_device_not_signed_in">%1$s wasn\'t signed in</string>
+    <string name="mobile_signing_in_to_named">This device is signing in to %1$s.</string>
+    <string name="mobile_signing_in_to_other">This device is signing in to another server.</string>
+    <string name="mobile_other_server_hint">You\'re signed in to %1$s. Sign in to that server here to link it.</string>
+    <string name="mobile_done">Done</string>
+    <string name="mobile_on_home_network">On your home network</string>
+    <string name="mobile_not_on_home_network">Not on your home network</string>
+    <string name="mobile_just_now">Just now</string>
+    <string name="mobile_platform_android_tv">Android TV</string>
+    <string name="mobile_platform_apple_tv">Apple TV</string>
+    <string name="mobile_platform_iphone">iPhone</string>
+    <string name="mobile_platform_ipad">iPad</string>
+    <string name="mobile_platform_android_phone">Android phone</string>
+    <string name="mobile_platform_browser">Browser</string>
 
     <!-- Settings -->
     <string name="mobile_settings">Settings</string>
@@ -286,4 +362,63 @@
     <string name="mobile_tmdb_notice">This product uses the TMDB API but is not endorsed or certified by TMDB.</string>
     <string name="mobile_credit_audnexus">Audiobook metadata from Audnexus</string>
     <string name="mobile_credit_jellyfin_ffmpeg">Transcoding by jellyfin-ffmpeg (GPL)</string>
+    <string name="mobile_settings_playback">Playback</string>
+    <string name="mobile_your_account">Your account</string>
+    <string name="mobile_your_account_note">On every app and browser you sign in on</string>
+    <string name="mobile_this_device">This device</string>
+    <string name="mobile_this_device_note">On this phone only</string>
+    <string name="mobile_couldnt_save">Couldn\'t save. %1$s</string>
+    <string name="mobile_account">Account</string>
+    <string name="mobile_change_password">Change password</string>
+    <string name="mobile_current_password">Current password</string>
+    <string name="mobile_new_password">New password</string>
+    <string name="mobile_password_length">At least 8 characters.</string>
+    <string name="mobile_wrong_password">That isn\'t your current password.</string>
+    <string name="mobile_sign_out_other_devices">Sign out other devices</string>
+    <string name="mobile_signed_in_devices">Signed-in devices</string>
+    <string name="mobile_sign_out_everywhere_else">Sign out everywhere else</string>
+    <string name="mobile_sign_out_everywhere_else_title">Sign out everywhere else?</string>
+    <string name="mobile_stays_signed_in">This phone stays signed in.</string>
+    <string name="mobile_sign_out_named">Sign out %1$s?</string>
+    <string name="mobile_sign_in_again">%1$s has to sign in again.</string>
+    <string name="mobile_web_browser">Web browser</string>
+    <string name="mobile_app">App</string>
+    <string name="mobile_last_used">Last used %1$s</string>
+    <string name="mobile_autoplay_next">Play next episode automatically</string>
+    <string name="mobile_remember_tracks">Remember choices per show</string>
+    <string name="mobile_remember_tracks_note">Episodes use the tracks last chosen for the show.</string>
+    <string name="mobile_audio_language">Audio language</string>
+    <string name="mobile_original_language">Original language</string>
+    <string name="mobile_max_channels">Maximum audio channels</string>
+    <string name="mobile_max_channels_note">Audio with more channels is mixed down on the server.</string>
+    <string name="mobile_auto">Auto</string>
+    <string name="mobile_stereo">Stereo</string>
+    <string name="mobile_dialogue_boost_note">Makes speech clearer and evens out loud scenes, playing some audio as AAC.</string>
+    <string name="mobile_show_subtitles">Show subtitles</string>
+    <string name="mobile_subtitles_forced">Only forced</string>
+    <string name="mobile_subtitles_smart">Foreign audio only</string>
+    <string name="mobile_subtitles_always">Always</string>
+    <string name="mobile_subtitle_language">Subtitle language</string>
+    <string name="mobile_server_default">Server default</string>
+    <string name="mobile_subtitle_size">Size</string>
+    <string name="mobile_small">Small</string>
+    <string name="mobile_medium">Medium</string>
+    <string name="mobile_large">Large</string>
+    <string name="mobile_subtitle_background">Background</string>
+    <string name="mobile_background_none">None</string>
+    <string name="mobile_background_shadow">Shadow</string>
+    <string name="mobile_background_box">Box</string>
+    <string name="mobile_styled_subtitles_note">Styled subtitles keep their own look.</string>
+    <string name="mobile_local_quality">Local network quality</string>
+    <string name="mobile_remote_quality">Remote quality</string>
+    <string name="mobile_remote_cap">Limited to %1$s by the server.</string>
+    <string name="mobile_download_quality">Quality</string>
+    <string name="mobile_cellular_downloads">Allow mobile data downloads</string>
+    <string name="mobile_cellular_downloads_note">Otherwise downloads wait for Wi-Fi.</string>
+    <string name="mobile_storage_used">Storage used</string>
+    <string name="mobile_delete_all_downloads">Delete all downloads</string>
+    <string name="mobile_delete_all_downloads_title">Delete all downloads on this phone?</string>
+    <string name="mobile_libraries_note">Libraries turned off are hidden from Home and listed with the rest in Libraries.</string>
+    <string name="mobile_move_up">Move up</string>
+    <string name="mobile_move_down">Move down</string>
 </resources>

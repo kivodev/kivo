@@ -2,6 +2,9 @@ package com.mmcdole.kivo.android.mobile.detail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mmcdole.kivo.android.mobile.downloads.DownloadTarget
+import com.mmcdole.kivo.android.mobile.downloads.DownloadUiState
+import com.mmcdole.kivo.android.mobile.downloads.WorkDownloads
 import com.mmcdole.kivo.android.mobile.ui.WorkMarks
 import com.mmcdole.kivo.api.models.EpisodeInfo
 import com.mmcdole.kivo.api.models.WorkDetail
@@ -11,6 +14,7 @@ import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.core.data.Seasons
 import com.mmcdole.kivo.core.data.summary
 import com.mmcdole.kivo.core.session.KivoSession
+import com.mmcdole.kivo.core.settings.DownloadQuality
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,6 +48,8 @@ data class DetailUiState(
     /** The episodes of that season, or of an episode's own season. */
     val episodes: Load<List<WorkSummary>>? = null,
     val choices: TrackChoices = TrackChoices(),
+    /** The work's download, and a season's or series' episodes to download; null on a device that keeps none. */
+    val download: DownloadUiState? = null,
 )
 
 /**
@@ -52,7 +58,9 @@ data class DetailUiState(
  * the one open, or an episode's season's episodes. A season's page is its
  * series', open on that season: one known as a season reads its series at
  * once, and one that isn't reads the season, then its series. Go to series
- * asks for the season [seasonId] or [seasonNumber] names.
+ * asks for the season [seasonId] or [seasonNumber] names. On a device that
+ * keeps downloads, the work's download, at the download quality [setting]
+ * unless another is chosen.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class DetailViewModel(
@@ -60,6 +68,7 @@ class DetailViewModel(
     id: String,
     seasonId: String? = null,
     seasonNumber: Int? = null,
+    setting: Flow<DownloadQuality?> = flowOf(null),
 ) : ViewModel() {
     private val library = session.library
     private val known = library.known(id)
@@ -112,21 +121,35 @@ class DetailViewModel(
         .distinctUntilChanged()
         .flatMapLatest { season -> if (season == null) flowOf(null) else library.children(season).onStart { emit(Load.Loading) } }
 
+    /** The work's download: a movie's, episode's, video's or book's, with the version and tracks chosen here. */
+    val downloads: WorkDownloads? = session.downloads?.let { downloads ->
+        val target = combine(work, choices) { load, c ->
+            load.getOrNull()?.takeIf { it.kind != "series" && it.kind != "season" }?.let {
+                DownloadTarget(it.id, it.kind == "book", c.versionId, c.audioTrackId, c.subtitleTrackId)
+            }
+        }
+        WorkDownloads(downloads, library, target, setting, viewModelScope)
+    }
+
     /** What a list read of the page's work: a season's series as its card names it. */
     private fun seed(): WorkSummary? = known?.season?.let { library.known(it.seriesId) } ?: known?.takeIf { it.season == null }
 
-    val state: StateFlow<DetailUiState> = combine(work, seasons, openSeason, episodes, choices) { work, seasons, season, episodes, choices ->
-        val read = work.getOrNull()?.takeIf { it.kind != "season" }
-        DetailUiState(
-            head = read?.summary() ?: seed(),
-            work = read,
-            problem = work.problemOrNull(),
-            seasons = seasons?.getOrNull(),
-            season = season,
-            episodes = episodes,
-            choices = choices,
-        )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DetailUiState(head = seed()))
+    val state: StateFlow<DetailUiState> = combine(
+        combine(work, seasons, openSeason, episodes, choices) { work, seasons, season, episodes, choices ->
+            val read = work.getOrNull()?.takeIf { it.kind != "season" }
+            DetailUiState(
+                head = read?.summary() ?: seed(),
+                work = read,
+                problem = work.problemOrNull(),
+                seasons = seasons?.getOrNull(),
+                season = season,
+                episodes = episodes,
+                choices = choices,
+            )
+        },
+        downloads?.state ?: flowOf(null),
+    ) { state, download -> state.copy(download = download) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DetailUiState(head = seed()))
 
     fun chooseSeason(id: String) {
         chosenSeason.value = id

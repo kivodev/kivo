@@ -2,4 +2,8 @@
 <!-- The words the app's manifest and both its interfaces use. -->
 <resources>
     <string name="app_name">Kivo</string>
+    <!-- A phone's download notification. -->
+    <string name="downloads_channel">Downloads</string>
+    <string name="downloading">Downloading</string>
+    <string name="downloading_percent">Downloading · %1$d%%</string>
 </resources>

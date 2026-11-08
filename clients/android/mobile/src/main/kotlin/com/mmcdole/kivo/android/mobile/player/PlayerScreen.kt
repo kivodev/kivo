@@ -39,11 +39,19 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
+import androidx.media3.ui.SubtitleView
+import androidx.compose.ui.graphics.toArgb
+import com.mmcdole.kivo.android.mobile.theme.KivoTokens
+import com.mmcdole.kivo.android.settings.ScreenSettings
+import com.mmcdole.kivo.android.settings.SubtitleBackground
+import com.mmcdole.kivo.android.settings.SubtitleSize
 import com.mmcdole.kivo.android.ServerSession
 import com.mmcdole.kivo.android.mobile.R
 import com.mmcdole.kivo.android.mobile.app.MobileNav
 import com.mmcdole.kivo.android.mobile.app.PlayerRoute
+import com.mmcdole.kivo.android.mobile.cast.LocalCast
 import com.mmcdole.kivo.android.mobile.theme.space
 import com.mmcdole.kivo.android.mobile.ui.display
 import com.mmcdole.kivo.android.player.LoadedPlayer
@@ -79,7 +87,7 @@ private const val BURST_MS = 900L
  */
 @Composable
 fun PlayerScreen(session: ServerSession, route: PlayerRoute, nav: MobileNav) {
-    val model = viewModel { PlayerViewModel(session.session, route, PlayerViewModel.engineFor(session)) }
+    val model = viewModel { PlayerViewModel(session.session, route, { session.readyDownload(it)?.id }, PlayerViewModel.engineFor(session)) }
     val state by model.state.collectAsStateWithLifecycle()
     val playback = state.playback
     val live = playback.live
@@ -99,6 +107,16 @@ fun PlayerScreen(session: ServerSession, route: PlayerRoute, nav: MobileNav) {
     val pictureInPicture = pictureInPictureOffered()
     if (pictureInPicture) PictureInPicture(live && !playback.paused, aspect, model::togglePlay, model::setPictureInPicture)
 
+    // A TV connected while this plays: the TV carries on from here, and the remote takes the player's place.
+    val cast = LocalCast.current
+    if (cast != null) {
+        LaunchedEffect(cast) {
+            cast.connections.collect {
+                val handoff = model.handOff() ?: return@collect
+                if (cast.cast(handoff)) nav.replacePlayerWithRemote()
+            }
+        }
+    }
     LaunchedEffect(Unit) {
         for (exit in model.exits) {
             when (exit) {
@@ -128,7 +146,8 @@ fun PlayerScreen(session: ServerSession, route: PlayerRoute, nav: MobileNav) {
             .background(Color.Black)
             .onGloballyPositioned { anchors.origin = it.boundsInRoot() },
     ) {
-        Video(state.surface)
+        val screen by session.graph.screenSettings.values.collectAsStateWithLifecycle(ScreenSettings())
+        Video(state.surface, screen)
         if (state.pictureInPicture) return@Box
 
         var burst by remember { mutableStateOf<Burst?>(null) }
@@ -252,10 +271,15 @@ private fun VideoGestures(onTap: () -> Unit, onSkip: (forward: Boolean) -> Unit,
     )
 }
 
-/** The video and its subtitles: Media3's view, with the system's caption style for plain subtitles and libass over it for styled ones. */
+/**
+ * The video and its subtitles: Media3's view, plain subtitles in the size
+ * and background Settings › Subtitles chose on this phone, and libass over
+ * it for styled ones, which keep their own look.
+ */
 @OptIn(UnstableApi::class)
 @Composable
-private fun Video(player: LoadedPlayer?) {
+private fun Video(player: LoadedPlayer?, screen: ScreenSettings) {
+    val box = KivoTokens.dark.subtitleBox.toArgb()
     AndroidView(
         modifier = Modifier.fillMaxSize(),
         factory = { context ->
@@ -263,8 +287,6 @@ private fun Video(player: LoadedPlayer?) {
                 useController = false
                 resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
                 setShutterBackgroundColor(AndroidColor.BLACK)
-                subtitleView?.setUserDefaultStyle()
-                subtitleView?.setUserDefaultTextSize()
             }
         },
         update = { view ->
@@ -275,6 +297,25 @@ private fun Video(player: LoadedPlayer?) {
                     if (subtitles.getChildAt(i) is AssSubtitleView) subtitles.removeViewAt(i)
                 }
                 player?.let { subtitles.addView(AssSubtitleView(view.context, it.ass)) }
+            }
+            view.subtitleView?.apply {
+                setFractionalTextSize(
+                    when (screen.subtitleSize) {
+                        SubtitleSize.Small -> 0.045f
+                        SubtitleSize.Large -> 0.07f
+                        SubtitleSize.Medium -> SubtitleView.DEFAULT_TEXT_SIZE_FRACTION
+                    },
+                )
+                setStyle(
+                    CaptionStyleCompat(
+                        AndroidColor.WHITE,
+                        if (screen.subtitleBackground == SubtitleBackground.Box) box else AndroidColor.TRANSPARENT,
+                        AndroidColor.TRANSPARENT,
+                        if (screen.subtitleBackground == SubtitleBackground.Shadow) CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW else CaptionStyleCompat.EDGE_TYPE_NONE,
+                        AndroidColor.BLACK,
+                        null,
+                    ),
+                )
             }
         },
     )

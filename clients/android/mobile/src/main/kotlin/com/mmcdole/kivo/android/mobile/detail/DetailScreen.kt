@@ -39,7 +39,10 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -73,16 +76,23 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.flow.map
 import com.mmcdole.kivo.android.ServerSession
 import com.mmcdole.kivo.android.mobile.R
 import com.mmcdole.kivo.android.mobile.app.MobileNav
 import com.mmcdole.kivo.android.mobile.app.PersonRoute
+import com.mmcdole.kivo.android.mobile.app.PlayerRoute
+import com.mmcdole.kivo.android.mobile.downloads.DownloadActions
+import com.mmcdole.kivo.android.mobile.downloads.DownloadBadge
+import com.mmcdole.kivo.android.mobile.downloads.DownloadButton
+import com.mmcdole.kivo.android.mobile.downloads.EpisodesSheet
+import com.mmcdole.kivo.android.mobile.downloads.WorkDownloads
 import com.mmcdole.kivo.android.mobile.app.handle
 import com.mmcdole.kivo.android.mobile.theme.LocalKivo
 import com.mmcdole.kivo.android.mobile.theme.space
 import com.mmcdole.kivo.android.mobile.ui.Artwork
 import com.mmcdole.kivo.android.mobile.ui.CardCorners
-import com.mmcdole.kivo.android.mobile.ui.CastButton
+import com.mmcdole.kivo.android.mobile.cast.CastButton
 import com.mmcdole.kivo.android.mobile.ui.Failed
 import com.mmcdole.kivo.android.mobile.ui.NamedCard
 import com.mmcdole.kivo.android.mobile.ui.ProgressBar
@@ -108,6 +118,7 @@ import com.mmcdole.kivo.core.display.pickerName
 import com.mmcdole.kivo.core.display.runtime
 import com.mmcdole.kivo.core.display.size
 import com.mmcdole.kivo.core.display.timeLeft
+import com.mmcdole.kivo.core.downloads.DownloadStatus
 import com.mmcdole.kivo.core.player.Subtitles
 
 /**
@@ -118,7 +129,7 @@ import com.mmcdole.kivo.core.player.Subtitles
  */
 @Composable
 fun DetailScreen(session: ServerSession, id: String, seasonId: String?, seasonNumber: Int?, nav: MobileNav) {
-    val model = viewModel { DetailViewModel(session.session, id, seasonId, seasonNumber) }
+    val model = viewModel { DetailViewModel(session.session, id, seasonId, seasonNumber, session.graph.core.settings.map { it.downloadQuality }) }
     val state by model.state.collectAsStateWithLifecycle()
     val head = state.head
     val problem = state.problem
@@ -148,7 +159,7 @@ private fun DetailPage(head: WorkSummary, state: DetailUiState, model: DetailVie
             item(key = "art") { Backdrop(head) }
             item(key = "hero") { Hero(head, state.work, nav) }
             item(key = "actions") {
-                if (head.kind == "series") SeriesActions(head, state.work, model, nav) else PlayActions(head, state, model, nav)
+                if (head.kind == "series") SeriesActions(head, state, model, nav) else PlayActions(head, state, model, nav)
             }
             if (head.kind != "series") item(key = "tracks") { state.work?.let { TrackRows(it, state.choices, model) } }
             item(key = "overview") { Overview(head.episode?.overview ?: state.work?.overview) }
@@ -249,11 +260,13 @@ private fun PlayActions(head: WorkSummary, state: DetailUiState, model: DetailVi
     val available = if (work == null) head.available else work.available && work.selectedVersion(choices.versionId)?.available == true
     val position = if (work != null) work.resumeAt(choices.versionId) else head.userState?.positionMs
     val book = head.kind == "book"
-    // A book plays in the book player; a video in the player, with the version and tracks chosen here.
-    fun play(fromStart: Boolean) = if (book) {
-        nav.play(head, fromStart)
-    } else {
-        nav.play(head.id, fromStart, choices.versionId, choices.audioTrackId, choices.subtitleTrackId)
+    // A book plays in the book player, from its download when it has one; a video its download when it's ready, with the
+    // subtitle chosen here where the download has it, else in the player with the version and tracks chosen here.
+    val ready = state.download?.item?.takeIf { it.status == DownloadStatus.Ready }
+    fun play(fromStart: Boolean) = when {
+        book -> nav.play(head, fromStart)
+        ready != null -> nav.play(PlayerRoute(head.id, fromStart, subtitleTrackId = choices.subtitleTrackId, downloadId = ready.id))
+        else -> nav.play(head.id, fromStart, choices.versionId, choices.audioTrackId, choices.subtitleTrackId)
     }
     Column(Modifier.padding(horizontal = space(4), vertical = space(4)), verticalArrangement = Arrangement.spacedBy(space(3))) {
         if (available) {
@@ -275,14 +288,15 @@ private fun PlayActions(head: WorkSummary, state: DetailUiState, model: DetailVi
                 Text(stringResource(R.string.mobile_file_missing), color = LocalKivo.current.warning, style = MaterialTheme.typography.titleSmall)
             }
         }
-        ActionRow(head, model, startOver = if (available && position != null) ({ play(fromStart = true) }) else null)
+        ActionRow(head, state, model, startOver = if (available && position != null) ({ play(fromStart = true) }) else null)
+        state.download?.let { download -> Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { DownloadBadge(download) } }
     }
 }
 
 /** A series' Play: its next episode, or Resume it; its title under. Favorite and Watched beside. */
 @Composable
-private fun SeriesActions(head: WorkSummary, work: WorkDetail?, model: DetailViewModel, nav: MobileNav) {
-    val next = work?.series?.nextUp
+private fun SeriesActions(head: WorkSummary, state: DetailUiState, model: DetailViewModel, nav: MobileNav) {
+    val next = state.work?.series?.nextUp
     Column(Modifier.padding(horizontal = space(4), vertical = space(4)), verticalArrangement = Arrangement.spacedBy(space(3))) {
         if (next != null) {
             val position = next.userState?.positionMs
@@ -296,7 +310,7 @@ private fun SeriesActions(head: WorkSummary, work: WorkDetail?, model: DetailVie
             ) { nav.play(next.id) }
             Text(next.title, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        ActionRow(head, model, startOver = next?.takeIf { it.userState?.positionMs != null }?.let { { nav.play(it.id, fromStart = true) } })
+        ActionRow(head, state, model, startOver = next?.takeIf { it.userState?.positionMs != null }?.let { { nav.play(it.id, fromStart = true) } })
     }
 }
 
@@ -315,15 +329,29 @@ private fun PlayButton(label: String, onClick: () -> Unit) {
     }
 }
 
-/** Play from beginning, Download (with downloads, later), Favorite and Watched, an icon over a word each. */
+/**
+ * Play from beginning, Download, Favorite and Watched, an icon over a word
+ * each; a series' Download offers the season open or the whole series. On a
+ * device without downloads there's no Download.
+ */
 @Composable
-private fun ActionRow(head: WorkSummary, model: DetailViewModel, startOver: (() -> Unit)?) {
+private fun ActionRow(head: WorkSummary, state: DetailUiState, model: DetailViewModel, startOver: (() -> Unit)?) {
     val favorite = head.userState?.favorite == true
     val played = head.userState?.played == true
+    val download = state.download
+    val downloads = model.downloads
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
         if (head.kind != "series") {
             RoundAction(Icons.Default.Replay, stringResource(R.string.mobile_start_over), "startOver", enabled = startOver != null) { startOver?.invoke() }
-            RoundAction(Icons.Default.Download, stringResource(R.string.mobile_download), "download", enabled = false) {}
+            if (download != null && downloads != null && state.work?.available == true) {
+                DownloadButton(
+                    download,
+                    book = head.kind == "book",
+                    DownloadActions(downloads::download, { downloads.pause() }, { downloads.resume() }, { downloads.retry() }, { downloads.remove() }, downloads::problemSeen),
+                )
+            }
+        } else if (download != null && downloads != null) {
+            SeriesDownload(state, downloads)
         }
         RoundAction(
             if (favorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
@@ -367,6 +395,46 @@ private fun RoundAction(
     ) {
         Icon(icon, description, tint = color)
         Text(label, style = MaterialTheme.typography.labelMedium, color = color, modifier = Modifier.padding(top = space(1)))
+    }
+}
+
+/** A series' Download: the season open, or the whole series, each opening the episodes sheet. */
+@Composable
+private fun SeriesDownload(state: DetailUiState, downloads: WorkDownloads) {
+    var open by remember { mutableStateOf(false) }
+    val seasons = state.seasons.orEmpty()
+    Box {
+        RoundAction(Icons.Default.Download, stringResource(R.string.mobile_download), "download", enabled = seasons.isNotEmpty()) { open = true }
+        DropdownMenu(open, onDismissRequest = { open = false }) {
+            state.season?.let { season ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.mobile_download_named, season.title)) },
+                    onClick = {
+                        open = false
+                        downloads.chooseEpisodes(season, seasons)
+                    },
+                    modifier = Modifier.testTag("downloadSeason"),
+                )
+            }
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.mobile_download_series)) },
+                onClick = {
+                    open = false
+                    downloads.chooseEpisodes(null, seasons)
+                },
+                modifier = Modifier.testTag("downloadSeries"),
+            )
+        }
+    }
+    state.download?.let { download ->
+        EpisodesSheet(download, onPick = downloads::downloadEpisodes, onDismiss = downloads::closeEpisodes)
+        download.problem?.let { problem ->
+            AlertDialog(
+                onDismissRequest = downloads::problemSeen,
+                text = { Text(problem) },
+                confirmButton = { TextButton(onClick = downloads::problemSeen) { Text(stringResource(R.string.mobile_ok)) } },
+            )
+        }
     }
 }
 

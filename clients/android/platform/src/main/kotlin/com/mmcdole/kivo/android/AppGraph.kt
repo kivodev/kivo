@@ -3,6 +3,8 @@ package com.mmcdole.kivo.android
 import android.content.Context
 import androidx.annotation.RawRes
 import com.mmcdole.kivo.android.discovery.NsdServiceBrowser
+import com.mmcdole.kivo.android.downloads.DownloadRefresh
+import com.mmcdole.kivo.android.downloads.WorkTransport
 import com.mmcdole.kivo.android.discovery.servers
 import com.mmcdole.kivo.android.library.SavedGrids
 import com.mmcdole.kivo.android.player.SessionPlayers
@@ -10,6 +12,7 @@ import com.mmcdole.kivo.android.settings.ScreenSettingsStore
 import com.mmcdole.kivo.core.auth.SavedServer
 import com.mmcdole.kivo.core.discovery.FoundServer
 import com.mmcdole.kivo.core.display.Display
+import com.mmcdole.kivo.core.downloads.DownloadStatus
 import com.mmcdole.kivo.core.session.Device
 import com.mmcdole.kivo.core.session.KivoClient
 import com.mmcdole.kivo.core.session.KivoSession
@@ -45,9 +48,9 @@ interface HasAppGraph {
 }
 
 /**
- * Everything the app holds for its whole life: the core on this TV, the
- * browse for servers on the network, this TV's own settings and saved grids,
- * and where the app is. Screens get what they need from here and from [ServerSession];
+ * Everything the app holds for its whole life: the core on this device, the
+ * browse for servers on the network, a phone's download transfers, this
+ * device's own settings and saved grids, and where the app is. Screens get what they need from here and from [ServerSession];
  * the core never calls back into the app.
  */
 class AppGraph(
@@ -63,6 +66,12 @@ class AppGraph(
     val scope = MainScope()
 
     val core = KivoClient(device)
+
+    /** A phone's download transfers, which tell the core how they go; null on a TV. */
+    val transport: WorkTransport? = (device as? AndroidDevice)?.transport?.also { transport ->
+        transport.events = core::transferChanged
+        transport.titleOf = { id -> (state.value as? AppState.SignedIn)?.session?.downloads?.value?.firstOrNull { it.id == id }?.title }
+    }
 
     /** This TV's name, such as "Living Room": its sessions' name. */
     val name: String = device.name
@@ -86,6 +95,9 @@ class AppGraph(
 
     /** A work a link asked to open, such as a Watch Next program's, until the signed-in screens show it. */
     val opening = MutableStateFlow<String?>(null)
+
+    /** A `kivo://link` link to answer in a phone's Link a device, until it shows it. */
+    val linking = MutableStateFlow<String?>(null)
 
     private val mutableState = MutableStateFlow<AppState>(AppState.Starting)
     val state: StateFlow<AppState> = mutableState.asStateFlow()
@@ -138,6 +150,15 @@ class AppGraph(
                 onLeft()
             }
         }
+    }
+
+    /**
+     * The app left the foreground: with a download the server is still
+     * preparing, the downloads' refresh is asked for, to start it once it's ready.
+     */
+    fun leftForeground() {
+        val downloads = (state.value as? AppState.SignedIn)?.session?.downloads?.value ?: return
+        if (downloads.any { it.status is DownloadStatus.Queued || it.status is DownloadStatus.Converting }) DownloadRefresh.schedule(context)
     }
 
     /** Leaves the signed-in server for the sign-in screens, choosing a server again. */

@@ -92,7 +92,7 @@ import com.mmcdole.kivo.android.mobile.ui.PageTopBar
 import com.mmcdole.kivo.android.mobile.ui.WorkCard
 import com.mmcdole.kivo.android.mobile.ui.WorkMenu
 import com.mmcdole.kivo.android.mobile.ui.WorkMenuHost
-import com.mmcdole.kivo.android.mobile.ui.CastButton
+import com.mmcdole.kivo.android.mobile.cast.CastButton
 import com.mmcdole.kivo.android.mobile.ui.display
 import com.mmcdole.kivo.core.data.GridQuery
 import kotlinx.coroutines.launch

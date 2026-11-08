@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Cast
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -24,12 +23,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mmcdole.kivo.android.mobile.R
-
-/** Cast, which comes later: its place in the top bar. */
-@Composable
-fun CastButton() {
-    IconButton(onClick = {}, enabled = false) { Icon(Icons.Default.Cast, stringResource(R.string.mobile_cast)) }
-}
+import com.mmcdole.kivo.android.mobile.cast.CastButton
 
 /** The signed-in user's initial on an accent circle, opening Settings. */
 @Composable

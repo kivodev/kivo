@@ -22,6 +22,7 @@ import com.mmcdole.kivo.core.play.PlayerUi
 import com.mmcdole.kivo.core.player.Markers
 import com.mmcdole.kivo.core.session.KivoSession
 import com.mmcdole.kivo.core.session.ScrubPreviews
+import com.mmcdole.kivo.core.session.VideoPlayer
 import com.mmcdole.kivo.core.settings.Quality
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
@@ -53,6 +54,8 @@ data class PlayerUiState(
     val previews: ScrubPreviews? = null,
     /** In picture in picture, where only the video shows. */
     val pictureInPicture: Boolean = false,
+    /** Playing a download from its files, with no server. */
+    val offline: Boolean = false,
 ) {
     /** The version playing, once the work is read. */
     val version: Version? get() = work?.versions?.firstOrNull { it.id == playback.play?.versionId }
@@ -72,28 +75,39 @@ sealed interface PlayerExit {
  * episode for up next, the quality ladder, the speed, the scrub thumbnails
  * and whether it's in picture in picture, where the app can't draw
  * subtitles, so the core plays them burned in. The engine is made by
- * [engineOf], given what to call with each loaded player.
+ * [engineOf], given what to call with each loaded player. A route with a
+ * download plays it from its files, through the core's offline player, as
+ * the work was downloaded; the next episode plays its download when
+ * [readyDownload] has one ready.
  */
 class PlayerViewModel(
     private val session: KivoSession,
     private val route: PlayerRoute,
+    private val readyDownload: (workId: String) -> String? = { null },
     engineOf: (onPlayer: (LoadedPlayer?) -> Unit) -> VideoEngine,
 ) : ViewModel() {
-    private val mutableState = MutableStateFlow(PlayerUiState())
+    private val mutableState = MutableStateFlow(PlayerUiState(offline = route.downloadId != null))
     val state: StateFlow<PlayerUiState> = mutableState.asStateFlow()
 
     private val engine = engineOf { player -> mutableState.update { it.copy(surface = player) } }
-    private val video = session.playback.videoPlayer(engine)
-    private val controller = video.controller
+
+    /** The core's player, once it's made: at once from the server, or once a download's play is read. */
+    private var video: VideoPlayer? = null
 
     val exits = Channel<PlayerExit>(Channel.BUFFERED)
 
     init {
         viewModelScope.launch {
-            video.play(route.workId, route.versionId, route.audioTrackId, route.subtitleTrackId, positionMs = if (route.fromStart) 0 else null)
+            val player = if (route.downloadId == null) {
+                session.playback.videoPlayer(engine)
+            } else {
+                // A download that can't play now, such as one the availability check just removed, closes the player.
+                quietly { session.playback.offlinePlayer(engine, route.downloadId) } ?: return@launch run { exits.trySend(PlayerExit.Back) }
+            }
+            video = player
+            follow(player)
+            player.play(route.workId, route.versionId, route.audioTrackId, route.subtitleTrackId, positionMs = route.positionMs ?: if (route.fromStart) 0 else null)
         }
-        viewModelScope.launch { controller.state.collect { s -> mutableState.update { it.copy(playback = s) } } }
-        viewModelScope.launch { video.ui.collect { ui -> mutableState.update { it.copy(overlay = ui) } } }
         viewModelScope.launch {
             val ladder = quietly { session.playback.qualityLadder() } ?: return@launch // Quality offers Auto and Original.
             mutableState.update { it.copy(ladder = ladder) }
@@ -107,16 +121,27 @@ class PlayerViewModel(
                 .setArtist(episode?.let { "${it.seriesTitle} · ${display.episodeCode(it)}" })
                 .build()
             if (episode != null) {
-                video.setHasNextEpisode(hasNext = episode.nextId != null)
-                engine.playNext = video::playNext.takeIf { episode.nextId != null }
                 engine.playPrevious = ::playPrevious.takeIf { episode.previousId != null }
                 episode.nextId?.let { id -> fetch(id)?.let { next -> mutableState.update { it.copy(next = next) } } }
             }
         }
-        // Done, the player goes where the core says: the next episode, the series or back.
+    }
+
+    /** Follows [player]: its play, what shows over it, where it goes once done, and its scrub thumbnails. */
+    private fun follow(player: VideoPlayer) {
+        val controller = player.controller
+        viewModelScope.launch { controller.state.collect { s -> mutableState.update { it.copy(playback = s) } } }
+        viewModelScope.launch { player.ui.collect { ui -> mutableState.update { it.copy(overlay = ui) } } }
+        // Up next, once the work says whether there's a next episode.
         viewModelScope.launch {
-            video.ui.map { it.end }.distinctUntilChanged().collect { end ->
-                exitAt(end, state.value.work?.episode)?.let(exits::trySend)
+            val episode = state.first { it.work != null }.work?.episode ?: return@launch
+            player.setHasNextEpisode(hasNext = episode.nextId != null)
+            engine.playNext = player::playNext.takeIf { episode.nextId != null }
+        }
+        // Done, the player goes where the core says: the next episode, its download when it's ready, the series or back.
+        viewModelScope.launch {
+            player.ui.map { it.end }.distinctUntilChanged().collect { end ->
+                exitAt(end, state.value.work?.episode, readyDownload)?.let(exits::trySend)
             }
         }
         // Scrub thumbnails, when the play says they're ready.
@@ -129,59 +154,71 @@ class PlayerViewModel(
         }
     }
 
-    private suspend fun fetch(id: String): WorkDetail? = session.library.work(id).first { it !is Load.Loading }.getOrNull()
+    /** A work as it was downloaded, when it is, then as the server has it. */
+    private suspend fun fetch(id: String): WorkDetail? = session.playback.playableWork(id).first { it !is Load.Loading }.getOrNull()
+
+    /**
+     * What plays now, to carry on with on a TV a Cast session just connected
+     * to: the work with its version and tracks, from where it is. The play here stops.
+     */
+    fun handOff(): PlayerRoute? {
+        val playback = state.value.playback
+        val play = playback.play ?: return null
+        video?.controller?.stopOnExit()
+        return PlayerRoute(play.workId, versionId = play.versionId, audioTrackId = playback.audioTrackId, subtitleTrackId = playback.subtitleTrackId, positionMs = playback.positionMs)
+    }
 
     fun togglePlay() {
-        video.userActivity()
-        controller.togglePlay()
+        video?.userActivity()
+        video?.controller?.togglePlay()
     }
 
     fun seek(positionMs: Long) {
-        video.userActivity()
-        controller.seek(positionMs)
+        video?.userActivity()
+        video?.controller?.seek(positionMs)
     }
 
     /** Back 10 or forward 30 seconds from the controls, which show. */
     fun skip(deltaMs: Long) {
-        video.showControls()
-        controller.skip(deltaMs)
+        video?.showControls()
+        video?.controller?.skip(deltaMs)
     }
 
     /** A double tap's skip on one side of the video: someone is watching, and the controls stay as they are. */
     fun nudge(forward: Boolean) {
-        video.userActivity()
-        controller.skip(if (forward) Markers.FORWARD_MS else -Markers.BACK_MS)
+        video?.userActivity()
+        video?.controller?.skip(if (forward) Markers.FORWARD_MS else -Markers.BACK_MS)
     }
 
     /** A tap on the video: the controls hide while playing, and show otherwise. */
-    fun toggleControls() = video.toggleControls()
+    fun toggleControls() = video?.toggleControls()
 
-    fun showControls() = video.showControls()
+    fun showControls() = video?.showControls()
 
-    fun hideControls() = video.hideControls()
+    fun hideControls() = video?.hideControls()
 
     /** A popup opened over the controls, holding them up and up next's countdown; or it closed. */
-    fun setMenuOpen(open: Boolean) = video.setMenuOpen(open)
+    fun setMenuOpen(open: Boolean) = video?.setMenuOpen(open)
 
     /** A finger is on the scrub bar, holding the controls up; or it let go. */
-    fun setScrubbing(held: Boolean) = video.setScrubbing(held)
+    fun setScrubbing(held: Boolean) = video?.setScrubbing(held)
 
-    fun skipMarker() = video.skipMarker()
+    fun skipMarker() = video?.skipMarker()
 
-    fun playNext() = video.playNext()
+    fun playNext() = video?.playNext()
 
-    fun hideUpNext() = video.hideUpNext()
+    fun hideUpNext() = video?.hideUpNext()
 
-    fun chooseAudio(trackId: String) = video.chooseAudio(trackId)
+    fun chooseAudio(trackId: String) = video?.chooseAudio(trackId)
 
-    fun chooseSubtitle(trackId: String) = video.chooseSubtitle(trackId)
+    fun chooseSubtitle(trackId: String) = video?.chooseSubtitle(trackId)
 
-    fun chooseQuality(quality: Quality) = video.chooseQuality(quality)
+    fun chooseQuality(quality: Quality) = video?.chooseQuality(quality)
 
-    fun chooseVersion(versionId: String) = video.chooseVersion(versionId)
+    fun chooseVersion(versionId: String) = video?.chooseVersion(versionId)
 
     /** Switches the dialogue boost, kept for later plays, playing on from the position with it. */
-    fun boostDialogue(on: Boolean) = video.boostDialogue(on)
+    fun boostDialogue(on: Boolean) = video?.boostDialogue(on)
 
     /** How fast this video plays; the next starts at normal. */
     fun chooseSpeed(speed: Float) {
@@ -196,16 +233,16 @@ class PlayerViewModel(
      */
     fun setPictureInPicture(active: Boolean) {
         mutableState.update { it.copy(pictureInPicture = active) }
-        video.setOverlayVisible(!active)
+        video?.setOverlayVisible(!active)
     }
 
     /** The app went to the background or the screen locked, outside picture in picture: the play stops. */
-    fun stopOnExit() = controller.stopOnExit()
+    fun stopOnExit() = video?.controller?.stopOnExit()
 
     /** Back in front: the play starts again where it stopped. */
-    fun restore() = controller.restore()
+    fun restore() = video?.controller?.restore()
 
-    fun retry() = controller.retry()
+    fun retry() = video?.controller?.retry()
 
     private fun playPrevious() {
         val previousId = state.value.work?.episode?.previousId ?: return
@@ -213,7 +250,7 @@ class PlayerViewModel(
     }
 
     override fun onCleared() {
-        video.dispose()
+        video?.dispose()
         engine.unload()
     }
 
@@ -233,9 +270,13 @@ class PlayerViewModel(
     }
 }
 
-/** Where the player goes at the core's [end] of [episode]'s play, or of anything else's when it's null; null while it plays on. */
-internal fun exitAt(end: PlayerEnd?, episode: EpisodeInfo?): PlayerExit? = when (end) {
-    PlayerEnd.PlayNext -> episode?.nextId?.let { PlayerExit.Replace(PlayerRoute(it)) }
+/**
+ * Where the player goes at the core's [end] of [episode]'s play, or of
+ * anything else's when it's null; null while it plays on. The next episode
+ * plays its download when [readyDownload] has one ready.
+ */
+internal fun exitAt(end: PlayerEnd?, episode: EpisodeInfo?, readyDownload: (String) -> String? = { null }): PlayerExit? = when (end) {
+    PlayerEnd.PlayNext -> episode?.nextId?.let { PlayerExit.Replace(PlayerRoute(it, downloadId = readyDownload(it))) }
     PlayerEnd.Series -> episode?.let { PlayerExit.Replace(WorkRoute(it.seriesId)) }
     PlayerEnd.Close -> PlayerExit.Back
     null -> null

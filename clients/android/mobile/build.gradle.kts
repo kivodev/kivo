@@ -1,5 +1,6 @@
 // :android:mobile, the Android app's phone screens: Material 3 over
-// :android:platform.
+// :android:platform, with the phone's Google Cast sender and QR code scanner,
+// both in Google Play services.
 plugins {
     id("com.android.library")
     kotlin("plugin.compose")
@@ -9,6 +10,7 @@ plugins {
 
 val lifecycleVersion = "2.11.0"
 val coilVersion = "3.6.3"
+val cameraVersion = "1.6.2"
 
 /** Runs :tokens, writing the Compose tokens from shared/tokens.json. */
 abstract class ComposeTokens : JavaExec() {
@@ -87,14 +89,25 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-compose:$coilVersion")
     // The player's video surface and subtitles.
     implementation("androidx.media3:media3-ui:1.11.1")
-    // The sign-in code's link as a QR code.
+    // The sign-in code's link as a QR code, and reading the QR codes Link a device scans.
     implementation("com.google.zxing:core:3.5.4")
+    // Casting to a TV: Google's Cast sender and its MediaRouteButton.
+    implementation("com.google.android.gms:play-services-cast-framework:22.3.1")
+    implementation("androidx.mediarouter:mediarouter:1.8.1")
+    // The AppCompat theme the Cast button and its dialogs draw in.
+    implementation("androidx.appcompat:appcompat:1.7.1")
+    // Link a device's camera, whose frames ZXing reads QR codes in.
+    implementation("androidx.camera:camera-camera2:$cameraVersion")
+    implementation("androidx.camera:camera-lifecycle:$cameraVersion")
+    implementation("androidx.camera:camera-view:$cameraVersion")
 
     // The view models' tests: the core against Ktor's mock engine, on the JVM.
     testImplementation(kotlin("test-junit"))
     testImplementation("junit:junit:4.13.2")
     testImplementation("io.ktor:ktor-client-mock:3.5.1")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
+    // The download store, in SQLite on the JVM.
+    testImplementation("app.cash.sqldelight:sqlite-driver:2.4.1")
 
     // Navigation, the letter rail and the long-press sheet, on a device or emulator.
     androidTestImplementation(platform("androidx.compose:compose-bom:2026.09.00"))

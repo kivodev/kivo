@@ -104,7 +104,7 @@ Apps reach the core through two objects in its `session` package: `KivoClient`, 
 
 - **Web** (`server/web`). React and TypeScript, built with Vite, with TanStack Router and Query, hls.js for streams, and JASSUB and libpgs for styled and image subtitles. It holds every admin screen as well as the viewing app, and it's embedded into the server binary at build time. A TV build of the same code (`VITE_KIVO_TV=1`) adds remote-control focus navigation for television screens.
 - **iPhone and iPad** (`clients/apple`). SwiftUI, with AVPlayer for playback, its own overlay for styled and image subtitles, background downloads, AirPlay, Picture in Picture, and a Google Cast sender. The project is generated from `project.yml` with XcodeGen.
-- **Android TV and Google TV** (`clients/android`). Jetpack Compose with Compose for TV, and Media3 for playback. It runs on Fire TV too. One APK in four modules: `app` (the application and its one activity, which picks the TV or phone interface at launch), `tv` (the TV screens), `mobile` (the phone screens) and `platform` (the core's Android implementations, such as the Media3 engine and the capability probe, and the state both interfaces share).
+- **Android TV and Google TV** (`clients/android`). Jetpack Compose with Compose for TV, and Media3 for playback. It runs on Fire TV too. One APK in four modules: `app` (the application and its one activity, which picks the TV or phone interface at launch), `tv` (the TV screens), `mobile` (the phone screens, with downloads and a Google Cast sender) and `platform` (the core's Android implementations, such as the Media3 engine, the capability probe and the downloads' transfers on WorkManager, and the state both interfaces share).
 - **Samsung TV** (`clients/tizen`). The web client's TV build packaged into a Tizen web app, so the app's code ships in the package and only data, artwork and media come from the server. It keeps an app session's token rather than a cookie, and uses Samsung's own player for direct play.
 - **Cast receiver** (`clients/chromecast`). A Google Cast Web Receiver: a static page with no build step, no server address and no secret in it. One hosted copy serves every Kivo server, since each cast names its own server.
 
@@ -187,7 +187,7 @@ Every track carries a reason code for its rung, named for the capability or limi
 
 ### Downloads
 
-The iPhone and iPad apps download books, movies and episodes to play without the server. A download is one version of one work, at one of three tiers:
+The iPhone, iPad and Android phone apps download books, movies and episodes to play without the server. A download is one version of one work, at one of three tiers:
 
 - **Original.** The file as it is, when the device plays it.
 - **High.** A 1080p conversion aimed at a quality suitable for any screen, keeping surround audio.

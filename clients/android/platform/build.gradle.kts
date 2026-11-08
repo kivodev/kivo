@@ -1,6 +1,6 @@
 // :android:platform, what the Android app's screens share and draw nothing
 // of: the core's Android implementations (the device, the Media3 engine with
-// libass, the capability probe), the app's graph and signed-in session,
+// libass, the capability probe, the downloads' transfers on WorkManager), the app's graph and signed-in session,
 // discovery, the saved grids and settings, and the credits. The Compose compiler runs here
 // only so the screens' modules see these classes' stability.
 plugins {
@@ -74,6 +74,10 @@ dependencies {
     // Reads res/raw/aboutlibraries.json, which the app's build writes, for the open source licenses.
     implementation("com.mikepenz:aboutlibraries-core:15.3.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
+
+    // A phone's downloads: their store in SQLite, and their transfers in the background.
+    implementation("app.cash.sqldelight:android-driver:2.4.1")
+    implementation("androidx.work:work-runtime-ktx:2.12.0")
 
     api("io.coil-kt.coil3:coil:$coilVersion")
     implementation("io.coil-kt.coil3:coil-network-ktor3:$coilVersion")

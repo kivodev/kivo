@@ -93,8 +93,12 @@ aboutLibraries {
         // A library under a license not named here fails the build.
         strictMode = com.mikepenz.aboutlibraries.plugin.StrictMode.FAIL
         allowedLicenses.addAll("Apache-2.0", "MIT", "BSD-2-Clause", "BSD-3-Clause", "ISC")
-        // Jellyfin's build of Media3's FFmpeg decoder.
-        allowedLicensesMap = mapOf("GPL-3.0-only" to listOf("org.jellyfin.media3"))
+        // Jellyfin's build of Media3's FFmpeg decoder; on a phone, Google Play services' Cast sender,
+        // which the app uses only where Google Play services is.
+        allowedLicensesMap = mapOf(
+            "GPL-3.0-only" to listOf("org.jellyfin.media3"),
+            "ASDKL" to listOf("com.google.android.gms"),
+        )
     }
     library {
         duplicationMode = com.mikepenz.aboutlibraries.plugin.DuplicateMode.MERGE
@@ -108,6 +112,8 @@ dependencies {
     implementation(platform("androidx.compose:compose-bom:2026.09.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.activity:activity-compose:1.13.0")
+    // The activity is a fragment activity, for the phone's Cast button's device list.
+    implementation("androidx.fragment:fragment-ktx:1.8.9")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.11.0")
     // The phone's playback service and its media session.
     implementation("androidx.media3:media3-session:1.11.1")
