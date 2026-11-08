@@ -235,13 +235,13 @@ private fun PopupRow(
 private val PanelShape = RoundedCornerShape(KivoTokens.Radius.lg)
 private val PanelPadding = 6.dp
 
-/** A row's height on one line, its icons, the room at its ends and between its parts. */
-private val RowHeight = 30.dp
-private val RowIcon = 14.dp
+/** A row's height on one line, a touch target's, its icons, the room at its ends and between its parts. */
+private val RowHeight = 48.dp
+private val RowIcon = 16.dp
 private val RowPadding = 8.dp
 private val RowGap = 6.dp
 private val RowShape = RoundedCornerShape(KivoTokens.Radius.md)
-private val RowText = TextStyle(fontSize = 12.sp, lineHeight = 16.sp)
+private val RowText = TextStyle(fontSize = 14.sp, lineHeight = 20.sp)
 private val Muted = KivoTokens.dark.onPlayerMuted
 
 /** How far a popup stands clear of its button, and how near the screen's edges it comes. */
