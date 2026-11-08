@@ -44,9 +44,18 @@ func format(t media.Track) media.VideoFormat {
 }
 
 // decodes reports whether d decodes src on the device. Interlaced video is
-// decoded by the CPU, which deinterlaces it.
+// decoded by the CPU, which deinterlaces it. So is video whose chroma isn't
+// 4:2:0, because the devices' decoders don't take it, and ffmpeg would
+// decode it on the CPU anyway and hand its frames to the device's filters.
 func (d *device) decodes(src media.Track) bool {
-	return d.decoders[format(src)] && !src.Interlaced
+	return d.decoders[format(src)] && !src.Interlaced && chroma420(src.PixelFormat)
+}
+
+// chroma420 reports whether a pixel format, as ffmpeg names it, has 4:2:0
+// chroma. An unknown format counts as 4:2:0.
+func chroma420(pixFmt string) bool {
+	return pixFmt == "" || strings.Contains(pixFmt, "420") ||
+		strings.HasPrefix(pixFmt, "nv12") || strings.HasPrefix(pixFmt, "nv21") || strings.HasPrefix(pixFmt, "p01")
 }
 
 // videoIn is what a request asks of its video.
@@ -171,7 +180,13 @@ func (p *videoPlan) appendInputOptions(args []string) []string {
 	if p.onDevice {
 		// Rotating would need a filter on the CPU. Files from phones,
 		// which carry rotation, play directly anyway.
-		args = append(append(args, p.dev.b.decode...), "-noautorotate") // a flag, because "-autorotate 0" makes "0" an output file
+		args = append(args, p.dev.b.decode...)
+		if src := p.in.source; src.Codec == media.H264 && src.Profile == "Baseline" {
+			// The decoders take Constrained Baseline. Baseline's extra
+			// tools are rare in practice, so it's decoded as that.
+			args = append(args, "-hwaccel_flags", "+allow_profile_mismatch")
+		}
+		args = append(args, "-noautorotate") // a flag, because "-autorotate 0" makes "0" an output file
 	}
 	if p.stripDV {
 		args = append(args, "-bsf:"+strconv.Itoa(p.in.track), stripDolbyVision)

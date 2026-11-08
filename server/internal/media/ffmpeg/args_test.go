@@ -221,8 +221,12 @@ func videoCases() []videoCase {
 		{name: "frame-rate-cap", req: req(sdr60, media.VideoRendition{Codec: media.H264, FrameRate: 30, Bitrate: 3_000_000})},
 		{name: "fixed-gop", req: req(sdr1080, h264), fixed: true},
 		{name: "cpu-decode-full-size", req: req(av1Source, full)},
-		// Interlaced video is decoded and deinterlaced on the CPU.
+		// Interlaced video and 4:2:2 are decoded on the CPU. Interlaced
+		// video is deinterlaced there.
 		{name: "interlaced", req: req(with(sdr1080, func(t *media.Track) { t.Interlaced = true }), h264)},
+		{name: "chroma-422", req: req(with(sdr1080, func(t *media.Track) { t.PixelFormat = "yuv422p" }), h264)},
+		// Baseline H.264 is decoded on the device as Constrained Baseline.
+		{name: "h264-baseline", req: req(with(sdr1080, func(t *media.Track) { t.Profile = "Baseline" }), h264)},
 	}
 	cases[3].req.BurnIn = &media.SubtitleRef{Track: 4}
 	cases[4].req.BurnIn = &media.SubtitleRef{Path: "/data/cache/subtitles/01J/3.ass", Fonts: "/data/cache/subtitles/01J/fonts"}

@@ -155,6 +155,7 @@ func videoFacts(t *media.Track, s probeStream) {
 	t.References = s.Refs
 	t.Interlaced = s.FieldOrder != "" && s.FieldOrder != "progressive" && s.FieldOrder != "unknown"
 	t.Anamorphic = anamorphic(s.SampleAspect)
+	t.PixelFormat = s.PixFmt
 	t.FrameRate = rate(s.AvgFrameRate)
 	if t.FrameRate == 0 {
 		t.FrameRate = rate(s.RFrameRate)

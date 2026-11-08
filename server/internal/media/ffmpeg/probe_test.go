@@ -25,7 +25,7 @@ func TestParseProbe(t *testing.T) {
 		Bitrate:   23340,
 		Tracks: []media.Track{
 			{Index: 0, Kind: media.Video, Codec: media.H264, Profile: "Main", Level: 10,
-				Width: 64, Height: 64, BitDepth: 8, FrameRate: 10, Range: media.SDR, References: 1},
+				Width: 64, Height: 64, BitDepth: 8, FrameRate: 10, Range: media.SDR, References: 1, PixelFormat: "yuv420p"},
 			{Index: 1, Kind: media.Audio, Codec: media.AAC, Profile: "LC", Channels: 1, ChannelLayout: "mono", SampleRate: 8000},
 		},
 		Chapters: []media.Chapter{
@@ -71,14 +71,14 @@ func TestParseProbeTracks(t *testing.T) {
 	want := []media.Track{
 		{Index: 0, Kind: media.Video, Codec: media.HEVC, Profile: "Main 10", Level: 153, Default: true,
 			Width: 3840, Height: 2160, BitDepth: 10, FrameRate: 24000.0 / 1001, Range: media.HDR10, DolbyVisionProfile: 8,
-			DolbyVisionCompat: 1, Tag: "hvc1", References: 1},
+			DolbyVisionCompat: 1, Tag: "hvc1", References: 1, PixelFormat: "yuv420p10le"},
 		{Index: 1, Kind: media.Audio, Codec: "eac3", Language: "eng", Bitrate: 640000, VisualImpaired: true,
 			Channels: 6, ChannelLayout: "5.1(side)", SampleRate: 48000, BitDepth: 24},
 		{Index: 6, Kind: media.Video, Codec: "mpeg2video", Width: 720, Height: 480, BitDepth: 8, FrameRate: 30000.0 / 1001,
-			Range: media.SDR, References: 1, Interlaced: true, Anamorphic: true},
+			Range: media.SDR, References: 1, Interlaced: true, Anamorphic: true, PixelFormat: "yuv420p"},
 		{Index: 2, Kind: media.Subtitle, Codec: "subrip", Language: "eng", Title: "Forced", Forced: true, HearingImpaired: true},
 		{Index: 3, Kind: media.Video, Codec: "mjpeg", AttachedPicture: true,
-			Width: 600, Height: 900, BitDepth: 8, FrameRate: 90000, Range: media.HLG},
+			Width: 600, Height: 900, BitDepth: 8, FrameRate: 90000, Range: media.HLG, PixelFormat: "yuvj444p"},
 		{Index: 4, Kind: media.Attachment, Codec: "ttf"},
 		{Index: 5, Kind: media.Data, Codec: "bin_data"},
 	}

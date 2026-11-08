@@ -83,7 +83,8 @@ type Track struct {
 	Tag               string `json:"tag,omitempty"`             // the codec tag, such as "hvc1" or "hev1"; empty when unknown
 	References        int    `json:"references,omitempty"`      // the reference frames it may use, when the codec records them
 	Interlaced        bool   `json:"interlaced,omitempty"`
-	Anamorphic        bool   `json:"anamorphic,omitempty"` // its pixels aren't square
+	Anamorphic        bool   `json:"anamorphic,omitempty"`   // its pixels aren't square
+	PixelFormat       string `json:"pixel_format,omitempty"` // as ffmpeg names it, such as "yuv420p10le"
 
 	Channels      int    `json:"channels,omitempty"`
 	ChannelLayout string `json:"channel_layout,omitempty"` // such as "5.1(side)" or "stereo"
