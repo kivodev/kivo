@@ -188,8 +188,14 @@ func (p *videoPlan) appendOutput(args []string) []string {
 		}
 		return args
 	}
-	args = append(args, "-filter_complex", p.graph(), "-map", "[v]",
-		"-c:v", p.encoder, "-profile:v", p.profile)
+	args = append(args, "-filter_complex", p.graph(), "-map", "[v]")
+	if p.onDevice {
+		// A change of size or format mid-stream would otherwise have ffmpeg
+		// add a scaler to the graph's end, which can't take the device's
+		// frames.
+		args = append(args, "-noautoscale")
+	}
+	args = append(args, "-c:v", p.encoder, "-profile:v", p.profile)
 	args = append(args, p.rateControl...)
 	if p.dev.b == qsv && p.onDevice && p.toneMap && p.dev.kernel.hangsQSVAfterOpenCL() {
 		args = append(args, "-async_depth", "1")
