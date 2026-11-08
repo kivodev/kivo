@@ -71,4 +71,12 @@ class LinkDeviceViewModelTest : CoreTest() {
         assertIs<LinkMessage.CodeFailed>(awaitValue(model.state) { it.message == LinkMessage.CodeFailed }.message)
         assertEquals(LinkStep.Enter, model.state.value.step)
     }
+
+    @Test
+    fun withACameraItOpensOnTheScannerAndEnterCodeInsteadSwitchesToTyping() {
+        val model = LinkDeviceViewModel(signIn(), flowOf(emptyList()), null, camera = true)
+        assertEquals(LinkStep.Scan, model.state.value.step)
+        model.show(LinkStep.Enter)
+        assertEquals(LinkStep.Enter, model.state.value.step)
+    }
 }

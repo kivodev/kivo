@@ -37,7 +37,8 @@ class LinkDeviceFlowTest {
             KivoMobileTheme {
                 LinkDeviceContent(
                     state,
-                    scan = null,
+                    camera = false,
+                    onShow = {},
                     onLookUp = {
                         looked += it
                         state = state.copy(step = LinkStep.Confirm("K7Q2M9", tv))
@@ -69,7 +70,7 @@ class LinkDeviceFlowTest {
     fun aCodeThatDidntWorkSaysSo() {
         rule.setContent {
             KivoMobileTheme {
-                LinkDeviceContent(LinkUiState(message = LinkMessage.CodeFailed), scan = {}, onLookUp = {}, onAnswer = {}, onDone = {})
+                LinkDeviceContent(LinkUiState(message = LinkMessage.CodeFailed), camera = true, onShow = {}, onLookUp = {}, onAnswer = {}, onDone = {})
             }
         }
         rule.onNodeWithTag("scan").assertIsDisplayed()

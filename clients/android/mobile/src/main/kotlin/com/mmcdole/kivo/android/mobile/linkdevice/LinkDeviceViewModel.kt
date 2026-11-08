@@ -20,7 +20,10 @@ import kotlinx.coroutines.launch
 
 /** Where Link a device is. */
 sealed interface LinkStep {
-    /** Scanning the other device's QR code, or typing its code. */
+    /** Scanning the other device's QR code with the camera. */
+    data object Scan : LinkStep
+
+    /** Typing the other device's code. */
     data object Enter : LinkStep
 
     /** The code is for another server, [name] when this app has signed in to it. */
@@ -41,9 +44,6 @@ sealed interface LinkMessage {
     /** No device waits on the code: unknown, expired or answered. */
     data object CodeFailed : LinkMessage
 
-    /** The scanner couldn't open. */
-    data object ScanFailed : LinkMessage
-
     data class Problem(val sentence: String) : LinkMessage
 }
 
@@ -62,10 +62,17 @@ data class LinkUiState(
  * signing it in as this user. A code for another server, as its QR code
  * says, is said so. [servers] are those this app has signed in to, to name
  * that server; [initial] is a code or link to look up at once, as a
- * `kivo://link` link carries.
+ * `kivo://link` link carries. It opens on the camera when [camera] says
+ * there's one, else on the typed code.
  */
-class LinkDeviceViewModel(private val session: KivoSession, private val servers: Flow<List<SavedServer>>, initial: String?) : ViewModel() {
-    private val mutableState = MutableStateFlow(LinkUiState(username = session.user.value?.username.orEmpty(), serverName = session.savedServer.value.name))
+class LinkDeviceViewModel(private val session: KivoSession, private val servers: Flow<List<SavedServer>>, initial: String?, camera: Boolean = false) : ViewModel() {
+    private val mutableState = MutableStateFlow(
+        LinkUiState(
+            step = if (camera) LinkStep.Scan else LinkStep.Enter,
+            username = session.user.value?.username.orEmpty(),
+            serverName = session.savedServer.value.name,
+        ),
+    )
     val state: StateFlow<LinkUiState> = mutableState.asStateFlow()
 
     init {
@@ -101,13 +108,9 @@ class LinkDeviceViewModel(private val session: KivoSession, private val servers:
         }
     }
 
-    fun scanFailed() {
-        mutableState.update { it.copy(message = LinkMessage.ScanFailed) }
-    }
-
-    /** Back to the code, as Enter another code does. */
-    fun again() {
-        mutableState.update { it.copy(step = LinkStep.Enter, message = null) }
+    /** Enter code instead, or Scan the QR code instead. */
+    fun show(step: LinkStep) {
+        mutableState.update { it.copy(step = step, message = null) }
     }
 
     private fun run(call: suspend () -> Unit) {

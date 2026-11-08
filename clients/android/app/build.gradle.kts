@@ -93,12 +93,11 @@ aboutLibraries {
         // A library under a license not named here fails the build.
         strictMode = com.mikepenz.aboutlibraries.plugin.StrictMode.FAIL
         allowedLicenses.addAll("Apache-2.0", "MIT", "BSD-2-Clause", "BSD-3-Clause", "ISC")
-        // Jellyfin's build of Media3's FFmpeg decoder; on a phone, Google Play services' Cast sender and QR code scanner,
+        // Jellyfin's build of Media3's FFmpeg decoder; on a phone, Google Play services' Cast sender,
         // which the app uses only where Google Play services is.
         allowedLicensesMap = mapOf(
             "GPL-3.0-only" to listOf("org.jellyfin.media3"),
-            "ASDKL" to listOf("com.google.android.gms", "com.google.android.odml"),
-            "ML Kit Terms of Service" to listOf("com.google.android.gms", "com.google.mlkit"),
+            "ASDKL" to listOf("com.google.android.gms"),
         )
     }
     library {

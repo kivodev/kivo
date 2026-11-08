@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- One APK for Android TV, Google TV, Fire TV and phones. It runs
-     without a touch screen, and lists itself on the TV launchers with its
+     without a touch screen or camera, and lists itself on the TV launchers with its
      banner and on a phone's with its icon. Servers on the home network are plain HTTP, so cleartext is
      allowed. Nothing is backed up: allowBackup before Android 12, the
      extraction rules after. Continue Watching goes to the
@@ -25,6 +25,8 @@
          notification, which the phone asks to show as the first download starts. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- A phone's Link a device, scanning a TV's QR code, asked for as the scanner opens. -->
+    <uses-permission android:name="android.permission.CAMERA" />
 
     <!-- Voice input for Search, where the TV has it. -->
     <queries>
@@ -38,6 +40,12 @@
         android:required="false" />
     <uses-feature
         android:name="android.hardware.touchscreen"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.camera.autofocus"
         android:required="false" />
 
     <application

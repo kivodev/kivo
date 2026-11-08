@@ -319,14 +319,13 @@
 
     <!-- Link a device -->
     <string name="mobile_link_device">Link a device</string>
-    <string name="mobile_scan_qr_code">Scan the QR code</string>
     <string name="mobile_scan_hint">Scan the QR code on the other device.</string>
-    <string name="mobile_or_enter_code">Or enter its code</string>
+    <string name="mobile_enter_code_instead">Enter code instead</string>
+    <string name="mobile_scan_instead">Scan the QR code instead</string>
     <string name="mobile_code">Code</string>
     <string name="mobile_code_hint">Codes are six letters and digits.</string>
     <string name="mobile_not_a_code">That isn\'t a code. Codes are six letters and digits.</string>
     <string name="mobile_code_failed">That code didn\'t work. Check the other device for a new one.</string>
-    <string name="mobile_scan_failed">Couldn\'t open the scanner. Enter the code instead.</string>
     <string name="mobile_allow_question">Allow %1$s to sign in as %2$s?</string>
     <string name="mobile_not_home_warning">This device isn\'t on your home network. Allow it only if it\'s yours and you just started signing in on it.</string>
     <string name="mobile_allow">Allow</string>
