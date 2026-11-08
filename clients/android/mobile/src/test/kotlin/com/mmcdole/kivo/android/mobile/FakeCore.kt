@@ -16,11 +16,11 @@ import com.mmcdole.kivo.core.caps.CapabilityProbe
 import com.mmcdole.kivo.core.caps.Measured
 import com.mmcdole.kivo.core.discovery.FoundServer
 import com.mmcdole.kivo.core.downloads.DownloadTransport
-import com.mmcdole.kivo.core.downloads.androidDownloads
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.mmcdole.kivo.core.session.Device
 import com.mmcdole.kivo.core.session.KivoClient
 import com.mmcdole.kivo.core.session.KivoSession
+import com.mmcdole.kivo.core.session.androidDownloads
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
 import io.ktor.client.engine.mock.respond

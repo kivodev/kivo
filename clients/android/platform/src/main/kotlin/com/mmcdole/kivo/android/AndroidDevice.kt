@@ -14,9 +14,9 @@ import com.mmcdole.kivo.core.auth.ClientIdentity
 import com.mmcdole.kivo.core.auth.KeystoreSecureStore
 import com.mmcdole.kivo.core.auth.SecureStore
 import com.mmcdole.kivo.core.caps.CapabilityProbe
-import com.mmcdole.kivo.core.downloads.androidDownloads
 import com.mmcdole.kivo.core.session.Device
 import com.mmcdole.kivo.core.session.DownloadDevice
+import com.mmcdole.kivo.core.session.androidDownloads
 import java.io.File
 
 /**
