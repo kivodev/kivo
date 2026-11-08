@@ -67,6 +67,8 @@ type Track struct {
 	// AttachedPicture marks cover art stored as a video track.
 	AttachedPicture bool `json:"attached_picture,omitempty"`
 
+	// Width and Height are a video's picture, or an image subtitle's
+	// canvas.
 	Width     int          `json:"width,omitempty"`
 	Height    int          `json:"height,omitempty"`
 	BitDepth  int          `json:"bit_depth,omitempty"` // for audio too, when the codec records it
@@ -83,7 +85,8 @@ type Track struct {
 	Tag               string `json:"tag,omitempty"`             // the codec tag, such as "hvc1" or "hev1"; empty when unknown
 	References        int    `json:"references,omitempty"`      // the reference frames it may use, when the codec records them
 	Interlaced        bool   `json:"interlaced,omitempty"`
-	Anamorphic        bool   `json:"anamorphic,omitempty"` // its pixels aren't square
+	Anamorphic        bool   `json:"anamorphic,omitempty"`   // its pixels aren't square
+	PixelFormat       string `json:"pixel_format,omitempty"` // as ffmpeg names it, such as "yuv420p10le"
 
 	Channels      int    `json:"channels,omitempty"`
 	ChannelLayout string `json:"channel_layout,omitempty"` // such as "5.1(side)" or "stereo"

@@ -187,3 +187,61 @@ func TestRealBurnInText(t *testing.T) {
 	init, segs := transcode(t, m, req)
 	checkSegments(t, init, segs, grid(6*time.Second, 6*time.Second, 30*time.Second))
 }
+
+// TestRealInterlaced transcodes interlaced H.264 from its start and from a
+// later segment, and checks that the output is progressive.
+func TestRealInterlaced(t *testing.T) {
+	ffmpegBin, _ := realTools(t)
+	m := realMedia(t)
+	dir := t.TempDir()
+	path := filepath.Join(dir, "interlaced.mkv")
+	out, err := exec.Command(ffmpegBin, "-hide_banner", "-loglevel", "error",
+		"-f", "lavfi", "-i", "testsrc2=size=320x240:rate=50:duration=8", "-vf", "tinterlace=4",
+		"-c:v", "libx264", "-preset", "ultrafast", "-flags", "+ilme+ildct", "-x264-params", "keyint=50", path).CombinedOutput()
+	if err != nil {
+		t.Fatal(err, string(out))
+	}
+	src := videoTrack(t, m, path)
+	if !src.Interlaced {
+		t.Fatal("the source doesn't probe as interlaced")
+	}
+	for _, start := range []time.Duration{0, 2 * time.Second} {
+		t.Run(fmt.Sprintf("from %v", start), func(t *testing.T) {
+			req := media.TranscodeRequest{Path: path, Start: start, SegmentDuration: 2 * time.Second, Source: src,
+				Video: media.VideoRendition{Codec: media.H264, Bitrate: 500_000}}
+			init, segs := transcode(t, m, req)
+			checkSegments(t, init, segs, grid(start, 2*time.Second, 8*time.Second))
+			b := bytes.Clone(init)
+			for _, s := range segs {
+				b = append(b, s.Data...)
+			}
+			mp4Path := filepath.Join(dir, "out.mp4")
+			if err := os.WriteFile(mp4Path, b, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if inter, prog := combing(t, mp4Path); prog < 4*inter {
+				t.Errorf("idet finds %d interlaced and %d progressive frames, want nearly all progressive", inter, prog)
+			}
+		})
+	}
+}
+
+// combing counts path's frames that look interlaced and progressive to
+// ffmpeg's idet filter, which judges the picture rather than its flags.
+func combing(t *testing.T, path string) (interlaced, progressive int) {
+	t.Helper()
+	ffmpegBin, _ := realTools(t)
+	out, err := exec.Command(ffmpegBin, "-hide_banner", "-i", path, "-vf", "idet", "-f", "null", "-").CombinedOutput()
+	if err != nil {
+		t.Fatal(err, string(out))
+	}
+	var tff, bff int
+	for line := range strings.Lines(string(out)) {
+		if _, stats, ok := strings.Cut(line, "Multi frame detection:"); ok {
+			if _, err := fmt.Sscanf(strings.Join(strings.Fields(stats), " "), "TFF: %d BFF: %d Progressive: %d", &tff, &bff, &progressive); err != nil {
+				t.Fatal(err, line)
+			}
+		}
+	}
+	return tff + bff, progressive
+}

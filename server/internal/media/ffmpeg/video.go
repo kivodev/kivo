@@ -14,6 +14,10 @@ import (
 // HDR10 base layer.
 const stripDolbyVision = "dovi_rpu=strip=1"
 
+// deinterlace turns each frame of interlaced video into one progressive
+// frame, at the same rate, whichever field the frame says comes first.
+const deinterlace = "bwdif=mode=send_frame:parity=auto:deint=all"
+
 // device is one encoding device, either an accelerator or the CPU, with
 // what its test passed. The video pipeline reads only this and the request.
 type device struct {
@@ -37,6 +41,21 @@ func untestedCPU() *device {
 // format returns the source format a track's decoder sees.
 func format(t media.Track) media.VideoFormat {
 	return media.VideoFormat{Codec: t.Codec, BitDepth: max(t.BitDepth, 8)}
+}
+
+// decodes reports whether d decodes src on the device. Interlaced video is
+// decoded by the CPU, which deinterlaces it. So is video whose chroma isn't
+// 4:2:0, because the devices' decoders don't take it, and ffmpeg would
+// decode it on the CPU anyway and hand its frames to the device's filters.
+func (d *device) decodes(src media.Track) bool {
+	return d.decoders[format(src)] && !src.Interlaced && chroma420(src.PixelFormat)
+}
+
+// chroma420 reports whether a pixel format, as ffmpeg names it, has 4:2:0
+// chroma. An unknown format counts as 4:2:0.
+func chroma420(pixFmt string) bool {
+	return pixFmt == "" || strings.Contains(pixFmt, "420") ||
+		strings.HasPrefix(pixFmt, "nv12") || strings.HasPrefix(pixFmt, "nv21") || strings.HasPrefix(pixFmt, "p01")
 }
 
 // videoIn is what a request asks of its video.
@@ -145,7 +164,7 @@ func planVideo(in videoIn, dev *device) (*videoPlan, error) {
 	q := dev.b.quality[v.Fidelity][v.Codec]
 	p.rateControl = dev.b.rateControl(in.rate, v.Codec, v.Bitrate, q)
 
-	p.onDevice = dev.b != software && dev.decoders[format(src)] &&
+	p.onDevice = dev.b != software && dev.decodes(src) &&
 		(!p.toneMap || dev.toneMap) && (in.burnIn == nil || dev.burnIn)
 	return p, nil
 }
@@ -161,7 +180,13 @@ func (p *videoPlan) appendInputOptions(args []string) []string {
 	if p.onDevice {
 		// Rotating would need a filter on the CPU. Files from phones,
 		// which carry rotation, play directly anyway.
-		args = append(append(args, p.dev.b.decode...), "-noautorotate") // a flag, because "-autorotate 0" makes "0" an output file
+		args = append(args, p.dev.b.decode...)
+		if src := p.in.source; src.Codec == media.H264 && src.Profile == "Baseline" {
+			// The decoders take Constrained Baseline. Baseline's extra
+			// tools are rare in practice, so it's decoded as that.
+			args = append(args, "-hwaccel_flags", "+allow_profile_mismatch")
+		}
+		args = append(args, "-noautorotate") // a flag, because "-autorotate 0" makes "0" an output file
 	}
 	if p.stripDV {
 		args = append(args, "-bsf:"+strconv.Itoa(p.in.track), stripDolbyVision)
@@ -178,8 +203,14 @@ func (p *videoPlan) appendOutput(args []string) []string {
 		}
 		return args
 	}
-	args = append(args, "-filter_complex", p.graph(), "-map", "[v]",
-		"-c:v", p.encoder, "-profile:v", p.profile)
+	args = append(args, "-filter_complex", p.graph(), "-map", "[v]")
+	if p.onDevice {
+		// A change of size or format mid-stream would otherwise have ffmpeg
+		// add a scaler to the graph's end, which can't take the device's
+		// frames.
+		args = append(args, "-noautoscale")
+	}
+	args = append(args, "-c:v", p.encoder, "-profile:v", p.profile)
 	args = append(args, p.rateControl...)
 	if p.dev.b == qsv && p.onDevice && p.toneMap && p.dev.kernel.hangsQSVAfterOpenCL() {
 		args = append(args, "-async_depth", "1")
@@ -210,17 +241,15 @@ func (p *videoPlan) appendKeyframes(args []string) []string {
 }
 
 // graph returns the filter graph from the source's video to [v], the
-// encoder's input. It sets the color properties, frame rate, size and tone
-// mapping, then draws the subtitle, then adds whatever the encoder needs.
+// encoder's input. It sets the color properties, deinterlaces, caps the
+// frame rate, sets the size and tone-maps, then draws the subtitle, then
+// adds whatever the encoder needs.
 func (p *videoPlan) graph() string {
 	f := software
 	if p.onDevice {
 		f = p.dev.b
 	}
-	main := []string{colorParams(p.in.source, p.toneMap)}
-	if p.rate != "" {
-		main = append(main, "fps="+p.rate)
-	}
+	main := p.frames()
 	w := 0
 	if p.resize {
 		w = p.w
@@ -253,16 +282,49 @@ func (p *videoPlan) graph() string {
 		sub = append(sub, fmt.Sprintf("alphasrc=s=%dx%d:r=%s:start=%s", p.w, p.h, frameRate(p.fps), seconds(p.in.start)),
 			"format=yuva420p", "subtitles="+p.subtitleOptions()+":alpha=1")
 	} else {
-		// An image subtitle's frames are their own canvas, often the full
-		// 1920x1080 of a film whose picture is cropped to 1920x800. overlay
-		// needs them at the picture's size, so they're always scaled to it.
 		from = "[0:" + strconv.Itoa(burn.Track) + "]"
-		sub = append(sub, fmt.Sprintf("scale=w=%d:h=%d", p.w, p.h))
+		sub = append(sub, fitCanvas(burn.Width, burn.Height, p.w, p.h)...)
 	}
 	if p.onDevice {
 		sub = append(sub, f.subUpload)
 	}
 	return in + chain(main) + "[main];" + from + chain(sub) + "[sub];[main][sub]" + chain(append([]string{f.overlay}, last...)) + "[v]"
+}
+
+// frames returns the filters that make the source's frames the frames the
+// rest of the graph works on: their color properties, progressive, at the
+// output frame rate.
+func (p *videoPlan) frames() []string {
+	fs := []string{colorParams(p.in.source, p.toneMap)}
+	if p.in.source.Interlaced {
+		fs = append(fs, deinterlace) // only on the CPU, as decodes says
+	}
+	if p.rate != "" {
+		fs = append(fs, "fps="+p.rate)
+	}
+	return fs
+}
+
+// fitCanvas sizes an image subtitle's frames, which are their own sw×sh
+// canvas, to the w×h picture, as overlay needs. A canvas of the picture's
+// shape is scaled to it. Any other, such as the full 1920x1080 of a film
+// whose picture is cropped to 1920x800, is scaled to the picture's height,
+// keeping its shape, then centred on a transparent canvas the picture's
+// width, or cropped to it when wider. A canvas of unknown size is scaled
+// to the picture, because ffmpeg then makes it the video's size.
+func fitCanvas(sw, sh, w, h int) []string {
+	fit := fmt.Sprintf("scale=w=%d:h=%d", w, h)
+	if sw <= 0 || sh <= 0 {
+		return []string{fit}
+	}
+	fw := max(2, (sw*h/sh+1)&^1) // the canvas's width at the picture's height, made even
+	switch {
+	case fw > w+2:
+		return []string{fmt.Sprintf("scale=w=%d:h=%d", fw, h), fmt.Sprintf("crop=w=%d:h=%d", w, h)}
+	case fw < w-2:
+		return []string{fmt.Sprintf("scale=w=%d:h=%d", fw, h), fmt.Sprintf("pad=w=%d:h=%d:x=%d:y=0:color=black@0", w, h, (w-fw)/2)}
+	}
+	return []string{fit}
 }
 
 // colorParams returns the filter that sets the color properties of a

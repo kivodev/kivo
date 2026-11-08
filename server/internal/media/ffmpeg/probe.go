@@ -132,8 +132,11 @@ func parseProbe(b []byte) (media.ProbeResult, error) {
 		if t.Kind == media.Audio {
 			t.BitDepth = atoi(s.BitsPerRawSample)
 		}
-		if t.Kind == media.Video {
+		switch t.Kind {
+		case media.Video:
 			videoFacts(&t, s)
+		case media.Subtitle:
+			t.Width, t.Height = s.Width, s.Height
 		}
 		res.Tracks = append(res.Tracks, t)
 	}
@@ -155,6 +158,7 @@ func videoFacts(t *media.Track, s probeStream) {
 	t.References = s.Refs
 	t.Interlaced = s.FieldOrder != "" && s.FieldOrder != "progressive" && s.FieldOrder != "unknown"
 	t.Anamorphic = anamorphic(s.SampleAspect)
+	t.PixelFormat = s.PixFmt
 	t.FrameRate = rate(s.AvgFrameRate)
 	if t.FrameRate == 0 {
 		t.FrameRate = rate(s.RFrameRate)

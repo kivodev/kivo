@@ -179,6 +179,8 @@ var (
 		FrameRate: 24, Range: media.HDR10, DolbyVisionProfile: 7}
 	av1Source = media.Track{Index: 0, Kind: media.Video, Codec: "av1", BitDepth: 10, Width: 1920, Height: 800,
 		FrameRate: 25, Range: media.SDR}
+	scope = media.Track{Index: 0, Kind: media.Video, Codec: media.H264, BitDepth: 8, Width: 1920, Height: 800,
+		FrameRate: 24000.0 / 1001, Range: media.SDR}
 	sdr60 = media.Track{Index: 0, Kind: media.Video, Codec: media.H264, BitDepth: 8, Width: 1280, Height: 720,
 		FrameRate: 60, Range: media.SDR}
 )
@@ -221,11 +223,27 @@ func videoCases() []videoCase {
 		{name: "frame-rate-cap", req: req(sdr60, media.VideoRendition{Codec: media.H264, FrameRate: 30, Bitrate: 3_000_000})},
 		{name: "fixed-gop", req: req(sdr1080, h264), fixed: true},
 		{name: "cpu-decode-full-size", req: req(av1Source, full)},
+		// Interlaced video and 4:2:2 are decoded on the CPU. Interlaced
+		// video is deinterlaced there.
+		{name: "interlaced", req: req(with(sdr1080, func(t *media.Track) { t.Interlaced = true }), h264)},
+		{name: "chroma-422", req: req(with(sdr1080, func(t *media.Track) { t.PixelFormat = "yuv422p" }), h264)},
+		// Baseline H.264 is decoded on the device as Constrained Baseline.
+		{name: "h264-baseline", req: req(with(sdr1080, func(t *media.Track) { t.Profile = "Baseline" }), h264)},
+		// A 1920x1080 image subtitle over a 1920x800 picture keeps its
+		// shape.
+		{name: "burn-in-image-scope", req: req(scope, h264)},
 	}
-	cases[3].req.BurnIn = &media.SubtitleRef{Track: 4}
+	cases[3].req.BurnIn = &media.SubtitleRef{Track: 4, Width: 1920, Height: 1080}
+	cases[len(cases)-1].req.BurnIn = &media.SubtitleRef{Track: 4, Width: 1920, Height: 1080}
 	cases[4].req.BurnIn = &media.SubtitleRef{Path: "/data/cache/subtitles/01J/3.ass", Fonts: "/data/cache/subtitles/01J/fonts"}
 	cases[4].req.Start = 0
 	return cases
+}
+
+// with returns a copy of t changed by f.
+func with(t media.Track, f func(*media.Track)) media.Track {
+	f(&t)
+	return t
 }
 
 // TestGoldenVideoArgv pins every video request on every backend, one golden
@@ -377,6 +395,27 @@ func TestFit(t *testing.T) {
 	for _, tt := range tests {
 		if w, h := fit(tt.w, tt.h, tt.maxW, tt.maxH); w != tt.wantW || h != tt.wantH {
 			t.Errorf("fit(%d×%d in %d×%d) = %d×%d, want %d×%d", tt.w, tt.h, tt.maxW, tt.maxH, w, h, tt.wantW, tt.wantH)
+		}
+	}
+}
+
+// TestFitCanvas checks how an image subtitle's canvas is fitted to the
+// picture: scaled to it when their shapes match, and otherwise scaled to
+// its height and centred or cropped.
+func TestFitCanvas(t *testing.T) {
+	for _, tt := range []struct {
+		sw, sh, w, h int
+		want         string
+	}{
+		{1920, 1080, 1280, 720, "scale=w=1280:h=720"},
+		{1920, 1080, 852, 480, "scale=w=852:h=480"}, // rounding to even isn't a change of shape
+		{0, 0, 1280, 532, "scale=w=1280:h=532"},     // unknown
+		{1920, 1080, 1920, 800, "scale=w=1422:h=800,pad=w=1920:h=800:x=249:y=0:color=black@0"},
+		{1920, 1080, 1280, 532, "scale=w=946:h=532,pad=w=1280:h=532:x=167:y=0:color=black@0"},
+		{1920, 1080, 1440, 1080, "scale=w=1920:h=1080,crop=w=1440:h=1080"},
+	} {
+		if got := strings.Join(fitCanvas(tt.sw, tt.sh, tt.w, tt.h), ","); got != tt.want {
+			t.Errorf("%d×%d over %d×%d: %s, want %s", tt.sw, tt.sh, tt.w, tt.h, got, tt.want)
 		}
 	}
 }

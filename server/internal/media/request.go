@@ -108,6 +108,9 @@ type SubtitleRef struct {
 	Track int    // the image subtitle's Index from Probe, read when Path is empty
 	Path  string // the text subtitle file
 	Fonts string // a directory of the fonts the text subtitle uses, gathered from the font store
+	// Width and Height are the image subtitle's canvas, from Probe, or
+	// zero when unknown.
+	Width, Height int
 }
 
 // Accelerator names the accelerator that encodes video, as Capabilities
