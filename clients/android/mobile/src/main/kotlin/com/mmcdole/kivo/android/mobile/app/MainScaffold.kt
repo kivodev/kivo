@@ -29,10 +29,12 @@ import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffo
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldLayout
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -57,7 +59,14 @@ import com.mmcdole.kivo.android.mobile.detail.BookSeriesScreen
 import com.mmcdole.kivo.android.mobile.detail.CollectionScreen
 import com.mmcdole.kivo.android.mobile.detail.DetailScreen
 import com.mmcdole.kivo.android.mobile.detail.PersonScreen
+import com.mmcdole.kivo.android.mobile.cast.CastMiniController
+import com.mmcdole.kivo.android.mobile.cast.CastRemoteScreen
+import com.mmcdole.kivo.android.mobile.cast.CastViewModel
+import com.mmcdole.kivo.android.mobile.cast.GoogleCastLink
+import com.mmcdole.kivo.android.mobile.cast.LocalCast
 import com.mmcdole.kivo.android.mobile.downloads.DownloadsScreen
+import com.mmcdole.kivo.android.mobile.downloads.ShowDownloadsScreen
+import com.mmcdole.kivo.android.mobile.linkdevice.LinkDeviceScreen
 import com.mmcdole.kivo.android.mobile.favorites.FavoritesGridScreen
 import com.mmcdole.kivo.android.mobile.favorites.FavoritesScreen
 import com.mmcdole.kivo.android.mobile.home.HomeScreen
@@ -66,7 +75,17 @@ import com.mmcdole.kivo.android.mobile.library.LibraryScreen
 import com.mmcdole.kivo.android.mobile.library.libraryIcon
 import com.mmcdole.kivo.android.mobile.player.PlayerScreen
 import com.mmcdole.kivo.android.mobile.search.SearchScreen
+import com.mmcdole.kivo.android.mobile.settings.AboutScreen
+import com.mmcdole.kivo.android.mobile.settings.AccountScreen
+import com.mmcdole.kivo.android.mobile.settings.AudioSettingsScreen
+import com.mmcdole.kivo.android.mobile.settings.ChangePasswordScreen
 import com.mmcdole.kivo.android.mobile.settings.CreditsScreen
+import com.mmcdole.kivo.android.mobile.settings.DownloadSettingsScreen
+import com.mmcdole.kivo.android.mobile.settings.LibrariesSettingsScreen
+import com.mmcdole.kivo.android.mobile.settings.PlaybackSettingsScreen
+import com.mmcdole.kivo.android.mobile.settings.QualitySettingsScreen
+import com.mmcdole.kivo.android.mobile.settings.SessionsScreen
+import com.mmcdole.kivo.android.mobile.settings.SubtitleSettingsScreen
 import com.mmcdole.kivo.android.mobile.settings.LicenseScreen
 import com.mmcdole.kivo.android.mobile.settings.LicensesScreen
 import com.mmcdole.kivo.android.mobile.settings.SettingsScreen
@@ -74,6 +93,7 @@ import com.mmcdole.kivo.api.models.Library
 import com.mmcdole.kivo.core.session.KivoSession
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
@@ -88,22 +108,33 @@ class MainViewModel(session: KivoSession) : ViewModel() {
  * Signed in: the navigation suite, a bottom bar on a phone and a rail with
  * the pinned libraries under the destinations on a tablet, over the
  * destinations' screens, each tab with its own back stack, and the mini
- * player above the bar while a book is loaded. The player and Now Playing
- * take the whole screen.
+ * player above the bar while a book is loaded, or the cast's while
+ * something plays on a TV. The player, Now Playing and the cast's remote
+ * take the whole screen. A `kivo://link` link opens Link a device.
  */
 @Composable
 fun MainScaffold(session: ServerSession) {
     val controller = rememberNavController()
+    val context = LocalContext.current
     val mini = viewModel { MiniPlayerViewModel(session.books.model) }
-    val nav = remember(controller) { MobileNav(controller, playBook = mini::play) }
+    val cast = viewModel { CastViewModel(session.session, GoogleCastLink.available(context.applicationContext)) }
+    val nav = remember(controller) { MobileNav(controller, playBook = mini::play, readyDownload = { session.readyDownload(it)?.id }, cast = cast::cast) }
     val entry by controller.currentBackStackEntryAsState()
     LaunchedEffect(entry) { nav.follow(entry) }
+    LaunchedEffect(Unit) {
+        session.graph.linking.filterNotNull().collect { link ->
+            session.graph.linking.value = null
+            nav.open(LinkDeviceRoute(link))
+        }
+    }
+    val casting by cast.state.collectAsStateWithLifecycle()
     val current = nav.tab
     val model = viewModel { MainViewModel(session.session) }
     val pinned by model.pinned.collectAsStateWithLifecycle()
     val book by mini.state.collectAsStateWithLifecycle()
     val destination = entry?.destination
-    val fullScreen = destination != null && (destination.hasRoute(PlayerRoute::class) || destination.hasRoute(NowPlayingRoute::class))
+    val fullScreen = destination != null &&
+        (destination.hasRoute(PlayerRoute::class) || destination.hasRoute(NowPlayingRoute::class) || destination.hasRoute(CastRemoteRoute::class))
     val type = if (fullScreen) NavigationSuiteType.None else NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(currentWindowAdaptiveInfo())
 
     NavigationSuiteScaffoldLayout(
@@ -122,13 +153,17 @@ fun MainScaffold(session: ServerSession) {
             NavigationSuiteType.None -> WindowInsets(0)
             else -> WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)
         }
-        Column(Modifier.fillMaxSize()) {
-            NavHost(controller, startDestination = HomeTab, modifier = Modifier.weight(1f).fillMaxWidth().consumeWindowInsets(suiteInsets)) {
-                tabs(session, nav)
-                pages(session, nav)
-            }
-            if (book.shown && !fullScreen) {
-                MiniPlayer(book, onOpen = { nav.open(NowPlayingRoute) }, onBack = mini::skipBack, onToggle = mini::togglePlay)
+        CompositionLocalProvider(LocalCast provides cast.takeIf { it.offered }) {
+            Column(Modifier.fillMaxSize()) {
+                NavHost(controller, startDestination = HomeTab, modifier = Modifier.weight(1f).fillMaxWidth().consumeWindowInsets(suiteInsets)) {
+                    tabs(session, nav)
+                    pages(session, nav, cast)
+                }
+                when {
+                    fullScreen -> Unit
+                    casting.active -> CastMiniController(cast, onOpen = { nav.open(CastRemoteRoute) })
+                    book.shown -> MiniPlayer(book, onOpen = { nav.open(NowPlayingRoute) }, onBack = mini::skipBack, onToggle = mini::togglePlay)
+                }
             }
         }
     }
@@ -203,7 +238,7 @@ private fun NavGraphBuilder.tabs(session: ServerSession, nav: MobileNav) {
         composable<FavoritesRoute> { FavoritesScreen(session, nav) }
     }
     navigation<DownloadsTab>(startDestination = DownloadsRoute) {
-        composable<DownloadsRoute> { DownloadsScreen() }
+        composable<DownloadsRoute> { DownloadsScreen(session, nav) }
     }
     navigation<SearchTab>(startDestination = SearchRoute) {
         composable<SearchRoute> { SearchScreen(session, nav) }
@@ -211,7 +246,7 @@ private fun NavGraphBuilder.tabs(session: ServerSession, nav: MobileNav) {
 }
 
 /** The pages any tab opens, on that tab's back stack. */
-private fun NavGraphBuilder.pages(session: ServerSession, nav: MobileNav) {
+private fun NavGraphBuilder.pages(session: ServerSession, nav: MobileNav, cast: CastViewModel) {
     composable<LibraryRoute> { val r = it.toRoute<LibraryRoute>(); LibraryScreen(session, r.id, r.sort, nav) }
     composable<WorkRoute> { val r = it.toRoute<WorkRoute>(); DetailScreen(session, r.id, r.seasonId, r.seasonNumber, nav) }
     composable<CollectionRoute> { CollectionScreen(session, it.toRoute<CollectionRoute>().id, nav) }
@@ -224,4 +259,26 @@ private fun NavGraphBuilder.pages(session: ServerSession, nav: MobileNav) {
     composable<CreditsRoute> { CreditsScreen(nav) }
     composable<LicensesRoute> { LicensesScreen(nav) }
     composable<LicenseRoute> { LicenseScreen(it.toRoute<LicenseRoute>().id, nav) }
+    composable<ShowDownloadsRoute> { val r = it.toRoute<ShowDownloadsRoute>(); ShowDownloadsScreen(session, r.seriesId, r.title, nav) }
+    composable<LinkDeviceRoute> { LinkDeviceScreen(session, it.toRoute<LinkDeviceRoute>().link, nav) }
+    composable<CastRemoteRoute> {
+        val state by cast.state.collectAsStateWithLifecycle()
+        // Once nothing plays on the TV, or it's let go, the remote closes.
+        LaunchedEffect(state.active) { if (!state.active) nav.back() }
+        CastRemoteScreen(cast, onClose = nav::back, onContinueHere = nav::replaceCastRemote)
+    }
+    composable<SettingsPageRoute> {
+        when (it.toRoute<SettingsPageRoute>().page) {
+            SettingsPage.Account -> AccountScreen(session, nav)
+            SettingsPage.Devices -> SessionsScreen(session, nav)
+            SettingsPage.ChangePassword -> ChangePasswordScreen(session, nav)
+            SettingsPage.Playback -> PlaybackSettingsScreen(session, nav)
+            SettingsPage.Audio -> AudioSettingsScreen(session, nav)
+            SettingsPage.Subtitles -> SubtitleSettingsScreen(session, nav)
+            SettingsPage.Quality -> QualitySettingsScreen(session, nav)
+            SettingsPage.Downloads -> DownloadSettingsScreen(session, nav)
+            SettingsPage.Libraries -> LibrariesSettingsScreen(session, nav)
+            SettingsPage.About -> AboutScreen(session, nav)
+        }
+    }
 }

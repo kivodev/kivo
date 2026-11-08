@@ -3,10 +3,10 @@ package com.mmcdole.kivo.android
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -20,9 +20,11 @@ import kotlinx.coroutines.launch
  * The one activity, showing the TV interface on a TV and the phone's
  * elsewhere. Live events run only while it's in the foreground:
  * the socket closes in the background, and opening it again
- * on return refetches what's on screen.
+ * on return refetches what's on screen; the downloads catch up as it comes
+ * back. A fragment activity, as the phone's Cast button opens its device
+ * list as a dialog fragment. A `kivo://link` link opens Link a device on a phone.
  */
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val graph = (application as KivoApp).graph
@@ -30,7 +32,11 @@ class MainActivity : ComponentActivity() {
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                graph.state.collectLatest { state -> (state as? AppState.SignedIn)?.session?.session?.runLiveEvents() }
+                graph.state.collectLatest { state ->
+                    val signedIn = (state as? AppState.SignedIn)?.session ?: return@collectLatest
+                    signedIn.syncDownloads()
+                    signedIn.session.runLiveEvents()
+                }
             }
         }
 
@@ -45,13 +51,21 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStop() {
+        super.onStop()
+        (application as KivoApp).graph.leftForeground()
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         open(intent)
     }
 
-    /** A Watch Next program's link: its work's page, once signed in. */
+    /** A Watch Next program's link: its work's page, once signed in; a `kivo://link` link: Link a device, with its code. */
     private fun open(intent: Intent?) {
-        WatchNext.workOf(intent?.data)?.let { (application as KivoApp).graph.opening.value = it }
+        val graph = (application as KivoApp).graph
+        val uri = intent?.data
+        WatchNext.workOf(uri)?.let { graph.opening.value = it }
+        if (uri?.scheme == "kivo" && uri.host == "link") graph.linking.value = uri.toString()
     }
 }

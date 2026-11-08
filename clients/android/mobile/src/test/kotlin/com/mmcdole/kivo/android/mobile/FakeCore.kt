@@ -15,6 +15,9 @@ import com.mmcdole.kivo.core.caps.AudioSink
 import com.mmcdole.kivo.core.caps.CapabilityProbe
 import com.mmcdole.kivo.core.caps.Measured
 import com.mmcdole.kivo.core.discovery.FoundServer
+import com.mmcdole.kivo.core.downloads.DownloadTransport
+import com.mmcdole.kivo.core.downloads.androidDownloads
+import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.mmcdole.kivo.core.session.Device
 import com.mmcdole.kivo.core.session.KivoClient
 import com.mmcdole.kivo.core.session.KivoSession
@@ -113,7 +116,8 @@ private class Memory : SecureStore {
     }
 }
 
-class TestDevice(dir: File) : Device {
+/** A phone in a test; with [transport], one that keeps downloads, its store in SQLite in memory and its files in [dir]. */
+class TestDevice(dir: File, transport: DownloadTransport? = null) : Device {
     override val name = "Test phone"
     override val identity = object : ClientIdentity {
         override val app = "kivo-android"
@@ -128,6 +132,9 @@ class TestDevice(dir: File) : Device {
         override suspend fun measure() = Measured(containers = listOf("mp4"), hls = true, video = emptyList(), audio = emptyList(), subtitles = emptyList())
 
         override fun audioSink() = AudioSink()
+    }
+    override val downloads = transport?.let {
+        androidDownloads(File(dir, "downloads").path, it) { schema -> JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY).also { driver -> schema.create(driver) } }
     }
 }
 
@@ -148,7 +155,13 @@ open class CoreTest {
         Dispatchers.setMain(main)
     }
 
-    val client: KivoClient by lazy { KivoClient(TestDevice(dir), server.engine) }
+    /** The device's download transfers, for a test of downloads; none otherwise, as on a TV. */
+    open val transport: DownloadTransport? get() = null
+
+    /** Where the device keeps its preferences and downloads. */
+    val folder: File get() = dir
+
+    val client: KivoClient by lazy { KivoClient(TestDevice(dir, transport), server.engine) }
 
     fun signIn(): KivoSession = runBlocking { client.signIn(FoundServer(SERVER, ServerInfo("s1", "Den", "1.0")), "anna", "pw", "Phone") }
         .also { sessions += it }
@@ -173,6 +186,13 @@ open class CoreTest {
         Dispatchers.resetMain()
         main.close()
         dir.deleteRecursively()
+    }
+}
+
+/** Returns once [ok] holds, as of something the test records, asking again every few milliseconds for a few seconds. */
+fun waitFor(ok: () -> Boolean) = runBlocking {
+    withTimeout(5_000) {
+        while (!ok()) delay(10)
     }
 }
 

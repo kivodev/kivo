@@ -1,5 +1,6 @@
 package com.mmcdole.kivo.android.mobile.app
 
+import androidx.annotation.Keep
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
@@ -25,6 +26,7 @@ import com.mmcdole.kivo.android.mobile.ui.WorkAction
 import com.mmcdole.kivo.android.mobile.ui.WorkMarks
 import com.mmcdole.kivo.api.models.EpisodeInfo
 import com.mmcdole.kivo.api.models.WorkSummary
+import com.mmcdole.kivo.core.downloads.DownloadItem
 import kotlinx.serialization.Serializable
 
 // The phone's destinations, type-safe: each tab is a graph with its first
@@ -67,9 +69,10 @@ import kotlinx.serialization.Serializable
 @Serializable data class FavoritesGridRoute(val kind: String)
 
 /**
- * The video player, full screen: [workId] from where it was left, or from
- * the start; with the version and tracks a work's page chose, or the
- * server's where they're null.
+ * The video player, full screen: [workId] from where it was left, from the
+ * start, or from [positionMs]; with the version and tracks a work's page
+ * chose, or the server's where they're null; from its download [downloadId]
+ * on the phone rather than the server, when it's given.
  */
 @Serializable data class PlayerRoute(
     val workId: String,
@@ -77,7 +80,24 @@ import kotlinx.serialization.Serializable
     val versionId: String? = null,
     val audioTrackId: String? = null,
     val subtitleTrackId: String? = null,
+    val downloadId: String? = null,
+    val positionMs: Long? = null,
 )
+
+/** A show's downloaded episodes. */
+@Serializable data class ShowDownloadsRoute(val seriesId: String, val title: String)
+
+/** The remote for what plays on the TV, full screen. */
+@Serializable data object CastRemoteRoute
+
+/** Link a device; with [link], the code a `kivo://link` link carries. */
+@Serializable data class LinkDeviceRoute(val link: String? = null)
+
+/** A page of Settings; kept by name, as its route names it. */
+@Keep
+enum class SettingsPage { Account, Devices, ChangePassword, Playback, Audio, Subtitles, Quality, Downloads, Libraries, About }
+
+@Serializable data class SettingsPageRoute(val page: SettingsPage)
 
 /** The book playing, full screen over the tabs. */
 @Serializable data object NowPlayingRoute
@@ -101,9 +121,16 @@ enum class Tab(val graph: Any, val root: Any, @param:StringRes val label: Int, v
 
 /**
  * Where the screens go, over the app's navigation: pages pushed on the
- * current tab's back stack, the tabs, and back.
+ * current tab's back stack, the tabs, and back. A video plays its download
+ * when [readyDownload] has one ready, and on the TV instead while one is
+ * connected ([cast] taking it, which opens the remote).
  */
-class MobileNav(private val nav: NavHostController, private val playBook: (workId: String, fromStart: Boolean) -> Unit = { _, _ -> }) {
+class MobileNav(
+    private val nav: NavHostController,
+    private val playBook: (workId: String, fromStart: Boolean) -> Unit = { _, _ -> },
+    private val readyDownload: (workId: String) -> String? = { null },
+    private val cast: (PlayerRoute) -> Boolean = { false },
+) {
     /** The tab showing: the one chosen last, or the one whose first screen back has come to. */
     var tab by mutableStateOf(Tab.Home)
         private set
@@ -121,18 +148,38 @@ class MobileNav(private val nav: NavHostController, private val playBook: (workI
     /** An episode's series, on the episode's season. */
     fun openSeries(episode: EpisodeInfo) = open(WorkRoute(episode.seriesId, episode.seasonId, episode.seasonNumber))
 
-    /** Plays a video in the player, with the version and tracks a work's page chose. */
+    /** Plays a video from the server in the player, with the version and tracks a work's page chose. */
     fun play(workId: String, fromStart: Boolean = false, versionId: String? = null, audioTrackId: String? = null, subtitleTrackId: String? = null) =
-        open(PlayerRoute(workId, fromStart, versionId, audioTrackId, subtitleTrackId))
+        play(PlayerRoute(workId, fromStart, versionId, audioTrackId, subtitleTrackId))
 
-    /** Plays [work]: a book in the book player, which the mini player shows; anything else in the player. */
+    /** Plays [route] in the player, or on the TV while one is connected, its remote opening. */
+    fun play(route: PlayerRoute) {
+        if (cast(route)) open(CastRemoteRoute) else open(route)
+    }
+
+    /** Plays [work]: a book in the book player, which the mini player shows; a video from its download when it's ready, else from the server. */
     fun play(work: WorkSummary, fromStart: Boolean = false) {
-        if (work.kind == "book") playBook(work.id, fromStart) else play(work.id, fromStart)
+        if (work.kind == "book") playBook(work.id, fromStart) else play(PlayerRoute(work.id, fromStart, downloadId = readyDownload(work.id)))
+    }
+
+    /** Plays a ready download from its files: a book in the book player, a video in the player. */
+    fun playDownload(item: DownloadItem) {
+        if (item.kind == "book") playBook(item.workId, false) else play(PlayerRoute(item.workId, downloadId = item.id))
     }
 
     /** [route] in Now Playing's place, as Go to book opens the book's page. */
     fun replaceNowPlaying(route: Any) = nav.navigate(route) {
         popUpTo<NowPlayingRoute> { inclusive = true }
+    }
+
+    /** The player in the cast remote's place, carrying on here from where the TV was. */
+    fun replaceCastRemote(route: PlayerRoute) = nav.navigate(route) {
+        popUpTo<CastRemoteRoute> { inclusive = true }
+    }
+
+    /** The cast remote in the player's place, as the play here carries on on a TV. */
+    fun replacePlayerWithRemote() = nav.navigate(CastRemoteRoute) {
+        popUpTo<PlayerRoute> { inclusive = true }
     }
 
     /** [route] in the player's place: the next episode's player, or the series' page after its last. */

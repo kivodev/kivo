@@ -1,5 +1,6 @@
 // :android:mobile, the Android app's phone screens: Material 3 over
-// :android:platform.
+// :android:platform, with the phone's Google Cast sender and QR code scanner,
+// both in Google Play services.
 plugins {
     id("com.android.library")
     kotlin("plugin.compose")
@@ -89,12 +90,21 @@ dependencies {
     implementation("androidx.media3:media3-ui:1.11.1")
     // The sign-in code's link as a QR code.
     implementation("com.google.zxing:core:3.5.4")
+    // Casting to a TV: Google's Cast sender and its MediaRouteButton.
+    implementation("com.google.android.gms:play-services-cast-framework:22.3.1")
+    implementation("androidx.mediarouter:mediarouter:1.8.1")
+    // The AppCompat theme the Cast button and its dialogs draw in.
+    implementation("androidx.appcompat:appcompat:1.7.1")
+    // Link a device's QR code, read by Google's scanner, which needs no camera permission.
+    implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
 
     // The view models' tests: the core against Ktor's mock engine, on the JVM.
     testImplementation(kotlin("test-junit"))
     testImplementation("junit:junit:4.13.2")
     testImplementation("io.ktor:ktor-client-mock:3.5.1")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
+    // The download store, in SQLite on the JVM.
+    testImplementation("app.cash.sqldelight:sqlite-driver:2.4.1")
 
     // Navigation, the letter rail and the long-press sheet, on a device or emulator.
     androidTestImplementation(platform("androidx.compose:compose-bom:2026.09.00"))

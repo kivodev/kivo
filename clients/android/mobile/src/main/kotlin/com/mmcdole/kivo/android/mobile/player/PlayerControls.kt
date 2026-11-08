@@ -28,7 +28,6 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Cast
 import androidx.compose.material.icons.filled.Forward30
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Pause
@@ -79,6 +78,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import com.mmcdole.kivo.android.mobile.R
+import com.mmcdole.kivo.android.mobile.cast.CastButton
 import com.mmcdole.kivo.android.mobile.theme.KivoTokens
 import com.mmcdole.kivo.android.mobile.theme.space
 import com.mmcdole.kivo.android.mobile.ui.Artwork
@@ -112,7 +112,7 @@ class MenuAnchors {
 
 /**
  * The top row over the video: Close, the title with an episode's series
- * and code under it, then Cast (with M3) and Picture in picture.
+ * and code under it, then Cast and Picture in picture.
  */
 @Composable
 fun PlayerTopRow(work: WorkDetail?, onClose: () -> Unit, onPictureInPicture: (() -> Unit)?, modifier: Modifier = Modifier) {
@@ -137,8 +137,7 @@ fun PlayerTopRow(work: WorkDetail?, onClose: () -> Unit, onPictureInPicture: (()
                 )
             }
         }
-        // Casting comes later; the button holds its place.
-        PlayerIcon(Icons.Default.Cast, stringResource(R.string.mobile_cast), {}, enabled = false)
+        CastButton()
         if (onPictureInPicture != null) PlayerIcon(Icons.Default.PictureInPictureAlt, stringResource(R.string.mobile_picture_in_picture), onPictureInPicture)
     }
 }

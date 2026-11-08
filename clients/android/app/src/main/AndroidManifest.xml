@@ -4,7 +4,8 @@
      banner and on a phone's with its icon. Servers on the home network are plain HTTP, so cleartext is
      allowed. Nothing is backed up: allowBackup before Android 12, the
      extraction rules after. Continue Watching goes to the
-     launcher's Watch Next row, each opening its work by a kivo://work link. -->
+     launcher's Watch Next row, each opening its work by a kivo://work link.
+     A phone's kivo://link link, from a TV's sign-in QR code, opens Link a device. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
@@ -20,6 +21,10 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- A phone's downloads, coming in WorkManager's foreground service with a progress
+         notification, which the phone asks to show as the first download starts. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- Voice input for Search, where the TV has it. -->
     <queries>
@@ -66,6 +71,13 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:scheme="kivo" android:host="work" />
+            </intent-filter>
+            <!-- A TV's sign-in link opens Link a device on a phone. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="kivo" android:host="link" />
             </intent-filter>
         </activity>
 

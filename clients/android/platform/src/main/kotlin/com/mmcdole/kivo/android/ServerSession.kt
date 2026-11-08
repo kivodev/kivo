@@ -6,12 +6,15 @@ import coil3.network.ktor3.KtorNetworkFetcherFactory
 import com.mmcdole.kivo.android.books.BookPlayback
 import com.mmcdole.kivo.android.library.GridChoice
 import com.mmcdole.kivo.api.models.Library
+import com.mmcdole.kivo.core.downloads.DownloadItem
+import com.mmcdole.kivo.core.downloads.DownloadStatus
 import com.mmcdole.kivo.core.session.KivoSession
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.job
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -21,9 +24,9 @@ import okio.Path.Companion.toOkioPath
 import java.io.File
 
 /**
- * The signed-in server as the TV's screens keep it: the core's [session]
+ * The signed-in server as the app's screens keep it: the core's [session]
  * session, and what the screens keep beside it while it's open, the image
- * loader, the library grids' choices and the last search. Made when the app signs in or reaches its server,
+ * loader, the library grids' choices, the last search and a phone's downloads. Made when the app signs in or reaches its server,
  * and dropped on sign-out.
  */
 class ServerSession(val graph: AppGraph, val session: KivoSession, savedGrids: Map<String, GridChoice>) {
@@ -59,6 +62,27 @@ class ServerSession(val graph: AppGraph, val session: KivoSession, savedGrids: M
                 .build()
         }
         .build()
+
+    /** This server's downloads on the device, newest first, kept while it's open; none on a TV. */
+    val downloads: StateFlow<List<DownloadItem>> =
+        session.downloads?.items?.stateIn(scope, SharingStarted.Eagerly, emptyList()) ?: MutableStateFlow(emptyList())
+
+    /** [workId]'s download when it's ready to play here; null otherwise. */
+    fun readyDownload(workId: String): DownloadItem? = downloads.value.firstOrNull { it.workId == workId && it.status == DownloadStatus.Ready }
+
+    /** Brings the downloads up to date with the server, as the app comes to the foreground. */
+    fun syncDownloads() {
+        val downloads = session.downloads ?: return
+        scope.launch {
+            try {
+                downloads.sync()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // The next sync tries again.
+            }
+        }
+    }
 
     private val bookPlayback = lazy { BookPlayback(this) }
 
