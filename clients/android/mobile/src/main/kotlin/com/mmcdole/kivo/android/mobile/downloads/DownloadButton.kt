@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.mmcdole.kivo.android.mobile.R
 import com.mmcdole.kivo.android.mobile.theme.space
+import com.mmcdole.kivo.android.mobile.ui.ActionLabel
 import com.mmcdole.kivo.android.mobile.ui.display
 import com.mmcdole.kivo.api.models.DownloadOption
 import com.mmcdole.kivo.core.display.size
@@ -82,7 +83,7 @@ class DownloadActions(
  * what can be done with it. The first download asks to show its notification.
  */
 @Composable
-fun DownloadButton(state: DownloadUiState, book: Boolean, actions: DownloadActions) {
+fun DownloadButton(state: DownloadUiState, book: Boolean, actions: DownloadActions, modifier: Modifier = Modifier) {
     var sheet by remember { mutableStateOf(false) }
     var refused by remember { mutableStateOf<String?>(null) }
     val ask = rememberNotificationAsk()
@@ -90,7 +91,7 @@ fun DownloadButton(state: DownloadUiState, book: Boolean, actions: DownloadActio
     val estimate = state.estimate
     val label = stringResource(R.string.mobile_download)
     Column(
-        Modifier
+        modifier
             .widthIn(min = 72.dp)
             .clip(MaterialTheme.shapes.medium)
             .clickable(enabled = !state.asking) {
@@ -109,7 +110,7 @@ fun DownloadButton(state: DownloadUiState, book: Boolean, actions: DownloadActio
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) { Glyph(state) }
-        Text(label, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = space(1)))
+        ActionLabel(label, MaterialTheme.colorScheme.onSurface, Modifier.padding(top = space(1)))
     }
     if (sheet) {
         if (item == null) {

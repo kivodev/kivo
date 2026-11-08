@@ -51,12 +51,13 @@ import com.mmcdole.kivo.android.mobile.ui.CollectionCard
 import com.mmcdole.kivo.android.mobile.ui.Failed
 import com.mmcdole.kivo.android.mobile.ui.Message
 import com.mmcdole.kivo.android.mobile.ui.NamedCard
-import com.mmcdole.kivo.android.mobile.ui.RowPosterWidth
 import com.mmcdole.kivo.android.mobile.ui.WorkCard
 import com.mmcdole.kivo.android.mobile.ui.WorkMenu
 import com.mmcdole.kivo.android.mobile.ui.WorkMenuHost
 import com.mmcdole.kivo.android.mobile.ui.roleName
+import com.mmcdole.kivo.android.mobile.ui.CardShape
 import com.mmcdole.kivo.android.mobile.ui.rowCardWidth
+import com.mmcdole.kivo.android.mobile.ui.wideWidth
 import com.mmcdole.kivo.android.mobile.ui.shapeOf
 import com.mmcdole.kivo.api.models.SearchResults
 import com.mmcdole.kivo.api.models.WorkSummary
@@ -76,7 +77,7 @@ fun SearchScreen(session: ServerSession, nav: MobileNav) {
         OutlinedTextField(
             value = state.query,
             onValueChange = model::setQuery,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = space(4), vertical = space(2)).focusRequester(focus).testTag("searchField"),
+            modifier = Modifier.padding(horizontal = space(4), vertical = space(2)).wideWidth().fillMaxWidth().focusRequester(focus).testTag("searchField"),
             placeholder = { Text(stringResource(R.string.mobile_search_hint)) },
             leadingIcon = { Icon(Icons.Default.Search, null) },
             trailingIcon = {
@@ -137,7 +138,7 @@ private fun Results(results: SearchResults, nav: MobileNav, openMenu: (WorkMenu)
         if (results.collections.isNotEmpty()) {
             item(key = "collections") {
                 Section(stringResource(R.string.mobile_collections)) {
-                    items(results.collections, key = { it.id }) { c -> CollectionCard(c, RowPosterWidth, { nav.open(CollectionRoute(c.id)) }) }
+                    items(results.collections, key = { it.id }) { c -> CollectionCard(c, rowCardWidth(CardShape.Poster), { nav.open(CollectionRoute(c.id)) }) }
                 }
             }
         }

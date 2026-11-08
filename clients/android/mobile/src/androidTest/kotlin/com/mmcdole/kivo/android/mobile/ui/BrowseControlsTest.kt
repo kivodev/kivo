@@ -2,13 +2,19 @@ package com.mmcdole.kivo.android.mobile.ui
 
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.unit.dp
@@ -24,7 +30,7 @@ import org.junit.runner.RunWith
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-// The letter rail and a card's long-press sheet, drawn alone.
+// The letter rail and a card, with what TalkBack has of them, and a card's long-press sheet, drawn alone.
 
 @RunWith(AndroidJUnit4::class)
 class BrowseControlsTest {
@@ -47,6 +53,28 @@ class BrowseControlsTest {
         rule.setContent { KivoMobileTheme { LetterRail(letters, "A", { jumps += it }, Modifier.height(250.dp)) } }
         rule.onNodeWithTag("letters").performTouchInput { swipeDown(startY = 2f, endY = height - 2f, durationMillis = 600) }
         rule.runOnIdle { assertEquals(letters, jumps) }
+    }
+
+    @Test
+    fun talkBackHasTheRailAsOneAdjustableControl() {
+        val jumps = mutableListOf<String>()
+        rule.setContent { KivoMobileTheme { LetterRail(letters, "B", { jumps += it }, Modifier.height(250.dp)) } }
+        rule.onNodeWithTag("letters")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf("Jump to letter")))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "B"))
+            .performSemanticsAction(SemanticsActions.SetProgress) { it(3f) }
+        rule.runOnIdle { assertEquals(listOf("D"), jumps) }
+    }
+
+    @Test
+    fun talkBackReadsACardsTitleLineAndProgressAsOne() {
+        val work = WorkSummary(
+            id = "m1", kind = "movie", title = "Charade", matchState = "matched", available = true, images = WorkImages(), year = 1963,
+            durationMs = 100_000, userState = UserState(played = false, favorite = false, playCount = 0, positionMs = 30_000),
+        )
+        rule.setContent { KivoMobileTheme { WorkCard(work, CardShape.Poster, 116.dp, onClick = {}, onLongClick = null) } }
+        rule.onNodeWithTag("card:Charade").assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf("Charade, 1963, 30% watched")))
+        rule.onAllNodesWithText("Charade").assertCountEquals(0)
     }
 
     @Test

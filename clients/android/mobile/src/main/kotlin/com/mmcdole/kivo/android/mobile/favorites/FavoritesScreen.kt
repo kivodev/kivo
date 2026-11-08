@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -35,6 +36,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -44,10 +47,11 @@ import com.mmcdole.kivo.android.mobile.R
 import com.mmcdole.kivo.android.mobile.app.FavoritesGridRoute
 import com.mmcdole.kivo.android.mobile.app.MobileNav
 import com.mmcdole.kivo.android.mobile.app.handle
-import com.mmcdole.kivo.android.mobile.library.GridGap
+import com.mmcdole.kivo.android.mobile.library.gridCardWidth
 import com.mmcdole.kivo.android.mobile.library.PagedGrid
 import com.mmcdole.kivo.android.mobile.library.gridColumns
 import com.mmcdole.kivo.android.mobile.theme.space
+import com.mmcdole.kivo.android.mobile.ui.LocalWide
 import com.mmcdole.kivo.android.mobile.ui.CardShape
 import com.mmcdole.kivo.android.mobile.ui.Failed
 import com.mmcdole.kivo.android.mobile.ui.Loading
@@ -94,7 +98,12 @@ fun FavoritesScreen(session: ServerSession, nav: MobileNav) {
                                 val shape = favoriteShape(row.kind)
                                 Column(Modifier.padding(top = space(4))) {
                                     Row(
-                                        Modifier.fillMaxWidth().clickable { nav.open(FavoritesGridRoute(row.kind)) }.padding(horizontal = space(4), vertical = space(2)),
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .clickable { nav.open(FavoritesGridRoute(row.kind)) }
+                                            .heightIn(min = 48.dp)
+                                            .padding(horizontal = space(4), vertical = space(2))
+                                            .semantics(mergeDescendants = true) { heading() },
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         Text(favoritesTitle(row.kind), style = MaterialTheme.typography.titleMedium)
@@ -128,8 +137,9 @@ fun FavoritesGridScreen(session: ServerSession, kind: String, nav: MobileNav) {
         val shape = favoriteShape(kind)
         BoxWithConstraints(Modifier.padding(padding).fillMaxSize()) {
             val width = maxWidth - space(8)
-            val columns = gridColumns(width, shape)
-            val cardWidth = (width - GridGap * (columns - 1)) / columns
+            val wide = LocalWide.current
+            val columns = gridColumns(width, shape, wide)
+            val cardWidth = gridCardWidth(width, columns, wide)
             val problem = pages.problem
             when {
                 problem != null -> Failed(problem, stringResource(R.string.mobile_couldnt_load_favorites), "", { scope.launch { model.refresh() } })

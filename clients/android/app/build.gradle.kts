@@ -25,6 +25,14 @@ val appVersionCode: Int = run {
     (major * 10000 + minor * 100 + patch) * 1000 + buildNumber
 }
 
+// The upload key Google Play takes the app bundle with, when a build has one: from gradle.properties
+// (kivo.upload.storeFile and the rest, in ~/.gradle/gradle.properties, never the project's) or the
+// environment (KIVO_UPLOAD_STORE_FILE and the rest). Without it the release build is signed with the
+// debug key. docs/android-play.md says how the key is made.
+fun uploadSetting(property: String, variable: String): String? =
+    providers.gradleProperty("kivo.upload.$property").orElse(providers.environmentVariable("KIVO_UPLOAD_$variable")).orNull
+val uploadStoreFile = uploadSetting("storeFile", "STORE_FILE")
+
 android {
     namespace = "com.mmcdole.kivo.android"
     compileSdk = 37
@@ -38,17 +46,29 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        if (uploadStoreFile != null) {
+            create("upload") {
+                storeFile = file(uploadStoreFile)
+                storePassword = uploadSetting("storePassword", "STORE_PASSWORD")
+                keyAlias = uploadSetting("keyAlias", "KEY_ALIAS")
+                keyPassword = uploadSetting("keyPassword", "KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
-        // The build that ships: shrunk and optimized by R8, with the baseline profile, and signed
-        // with the debug key the TVs' installs already have, so it installs over them, a debug
-        // build too, without signing anyone out. The baseline profile plugin adds two builds of
-        // it, both profileable and signed the same: nonMinifiedRelease, which :benchmark's
-        // BaselineProfileGenerator runs against, and benchmarkRelease, which the benchmarks measure.
+        // The build that ships: shrunk and optimized by R8, with the baseline profile. Signed with
+        // the upload key when there is one, for Google Play; else with the debug key the TVs'
+        // installs already have, so it installs over them, a debug build too, without signing
+        // anyone out. The baseline profile plugin adds two builds of it, both profileable and
+        // signed the same: nonMinifiedRelease, which :benchmark's profile generators run against,
+        // and benchmarkRelease, which the benchmarks measure.
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName(if (uploadStoreFile != null) "upload" else "debug")
         }
     }
 

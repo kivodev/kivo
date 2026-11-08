@@ -33,6 +33,7 @@ import com.mmcdole.kivo.android.mobile.R
 import com.mmcdole.kivo.android.mobile.app.LibraryRoute
 import com.mmcdole.kivo.android.mobile.app.MobileNav
 import com.mmcdole.kivo.android.mobile.theme.space
+import com.mmcdole.kivo.android.mobile.ui.wideWidth
 import com.mmcdole.kivo.android.mobile.ui.Failed
 import com.mmcdole.kivo.android.mobile.ui.Loading
 import com.mmcdole.kivo.android.mobile.ui.Message
@@ -65,7 +66,7 @@ fun LibrariesScreen(session: ServerSession, nav: MobileNav) {
                 Failed(problem, stringResource(R.string.mobile_couldnt_load_libraries), state.serverName, model::retry, Modifier.padding(padding))
             pinned == null -> Loading(Modifier.padding(padding))
             pinned.isEmpty() && state.more.isEmpty() -> Message(stringResource(R.string.mobile_no_libraries), stringResource(R.string.mobile_no_libraries_sentence), Modifier.padding(padding))
-            else -> LazyColumn(Modifier.fillMaxSize().testTag("libraries"), contentPadding = padding) {
+            else -> LazyColumn(Modifier.wideWidth().fillMaxSize().testTag("libraries"), contentPadding = padding) {
                 items(pinned, key = { it.id }) { LibraryRow(it, nav) }
                 if (state.more.isNotEmpty()) {
                     item(key = "more") {

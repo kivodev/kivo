@@ -20,15 +20,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mmcdole.kivo.android.mobile.R
 import com.mmcdole.kivo.android.mobile.cast.CastButton
 
-/** The signed-in user's initial on an accent circle, opening Settings. */
+/** The signed-in user's initial on an accent circle, opening Settings; Account to TalkBack. */
 @Composable
 fun AvatarButton(initial: String, onClick: () -> Unit) {
-    IconButton(onClick = onClick, modifier = Modifier.testTag("avatar")) {
+    val label = stringResource(R.string.mobile_account)
+    IconButton(onClick = onClick, modifier = Modifier.testTag("avatar").clearAndSetSemantics { contentDescription = label; role = Role.Button; onClick { onClick(); true } }) {
         Box(Modifier.size(32.dp).background(MaterialTheme.colorScheme.primary, CircleShape), contentAlignment = Alignment.Center) {
             Text(initial, color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.labelLarge)
         }

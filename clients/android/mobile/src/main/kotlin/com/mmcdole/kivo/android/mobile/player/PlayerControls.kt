@@ -70,6 +70,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.setProgress
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -189,7 +195,7 @@ fun PlayerBottomBar(
                 )
             }
             Row(Modifier.align(Alignment.Center), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(space(6))) {
-                PlayerIcon(Icons.Default.Replay10, stringResource(R.string.mobile_back_10), { onSkip(-Markers.BACK_MS) }, enabled = live, size = 44.dp)
+                PlayerIcon(Icons.Default.Replay10, stringResource(R.string.mobile_back_10), { onSkip(-Markers.BACK_MS) }, enabled = live, size = 48.dp)
                 PlayerIcon(
                     if (playback.paused) Icons.Default.PlayArrow else Icons.Default.Pause,
                     stringResource(if (playback.paused) R.string.mobile_play else R.string.mobile_pause),
@@ -198,7 +204,7 @@ fun PlayerBottomBar(
                     size = 56.dp,
                     tag = "playPause",
                 )
-                PlayerIcon(Icons.Default.Forward30, stringResource(R.string.mobile_forward_30), { onSkip(Markers.FORWARD_MS) }, enabled = live, size = 44.dp)
+                PlayerIcon(Icons.Default.Forward30, stringResource(R.string.mobile_forward_30), { onSkip(Markers.FORWARD_MS) }, enabled = live, size = 48.dp)
             }
             if (play != null) {
                 Row(Modifier.align(Alignment.CenterEnd)) {
@@ -245,13 +251,27 @@ private fun ScrubBar(
     val fraction = if (durationMs > 0) (shown.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
     val scrubbing by rememberUpdatedState(onScrubbing)
     val seek by rememberUpdatedState(onSeek)
+    val label = stringResource(R.string.mobile_playback_position)
+    val value = stringResource(R.string.mobile_time_of, display.clock(shown), display.clock(durationMs))
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(display.clock(shown), style = MaterialTheme.typography.labelMedium, color = colors.onPlayer, modifier = Modifier.widthIn(min = 44.dp))
+        Text(display.clock(shown), style = MaterialTheme.typography.labelMedium, color = colors.onPlayer, modifier = Modifier.widthIn(min = 44.dp).clearAndSetSemantics {})
         BoxWithConstraints(
             Modifier
                 .weight(1f)
-                .height(32.dp)
+                .height(48.dp)
                 .testTag("scrub")
+                // TalkBack's one control for the bar: swiping up or down moves it ten seconds.
+                .clearAndSetSemantics {
+                    contentDescription = label
+                    stateDescription = value
+                    if (enabled && durationMs > 0) {
+                        progressBarRangeInfo = ProgressBarRangeInfo(shown.toFloat(), 0f..durationMs.toFloat(), steps = (durationMs / Markers.BACK_MS).toInt().coerceAtLeast(0))
+                        setProgress { ms ->
+                            seek(ms.toLong().coerceIn(0, durationMs))
+                            true
+                        }
+                    }
+                }
                 .pointerInput(durationMs, enabled) {
                     if (!enabled || durationMs <= 0) return@pointerInput
                     fun at(x: Float) = (x / size.width * durationMs).toLong().coerceIn(0, durationMs)
@@ -294,7 +314,7 @@ private fun ScrubBar(
             style = MaterialTheme.typography.labelMedium,
             color = colors.onPlayer,
             textAlign = TextAlign.End,
-            modifier = Modifier.widthIn(min = 52.dp),
+            modifier = Modifier.widthIn(min = 52.dp).clearAndSetSemantics {},
         )
     }
 }
@@ -361,7 +381,7 @@ fun PlayerIcon(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    size: Dp = 44.dp,
+    size: Dp = 48.dp,
     tag: String? = null,
 ) {
     IconButton(

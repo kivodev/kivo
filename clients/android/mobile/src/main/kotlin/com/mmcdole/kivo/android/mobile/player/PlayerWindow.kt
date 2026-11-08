@@ -26,22 +26,24 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.mmcdole.kivo.android.mobile.R
+import com.mmcdole.kivo.android.mobile.ui.LocalWide
 
 /**
- * The player's hold on the window while it shows: landscape whichever way
- * the phone is turned, the system bars hidden until a swipe from an edge
- * brings them back for a moment, and the screen kept on while [awake];
- * all as they were once it goes.
+ * The player's hold on the window while it shows: on a phone, landscape
+ * whichever way it's turned (a wide window keeps the way it's held), the
+ * system bars hidden until a swipe from an edge brings them back for a
+ * moment, and the screen kept on while [awake]; all as they were once it goes.
  */
 @Composable
 fun PlayerWindow(awake: Boolean) {
     val activity = LocalActivity.current ?: return
     val view = LocalView.current
+    val wide = LocalWide.current
     DisposableEffect(activity) {
         val bars = WindowCompat.getInsetsController(activity.window, activity.window.decorView)
         // The first player to come keeps what to put back, and the last to go puts it back.
         if (Held.players++ == 0) Held.orientation = activity.requestedOrientation
-        activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        if (!wide) activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         bars.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         bars.hide(WindowInsetsCompat.Type.systemBars())
         onDispose {

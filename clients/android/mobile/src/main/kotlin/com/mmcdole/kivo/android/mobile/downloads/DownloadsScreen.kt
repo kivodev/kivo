@@ -51,6 +51,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -64,6 +66,7 @@ import com.mmcdole.kivo.android.mobile.app.MobileNav
 import com.mmcdole.kivo.android.mobile.app.ShowDownloadsRoute
 import com.mmcdole.kivo.android.mobile.theme.LocalKivo
 import com.mmcdole.kivo.android.mobile.theme.space
+import com.mmcdole.kivo.android.mobile.ui.wideWidth
 import com.mmcdole.kivo.android.mobile.ui.CardCorners
 import com.mmcdole.kivo.android.mobile.ui.Loading
 import com.mmcdole.kivo.android.mobile.ui.Message
@@ -132,7 +135,7 @@ fun DownloadsList(state: DownloadsUiState, actions: RowActions) {
                 listOfNotNull(stringResource(R.string.mobile_no_downloads_sentence), notice).joinToString("\n\n"),
                 Modifier.padding(padding),
             )
-            else -> LazyColumn(Modifier.fillMaxSize().testTag("downloads"), contentPadding = padding) {
+            else -> LazyColumn(Modifier.wideWidth().fillMaxSize().testTag("downloads"), contentPadding = padding) {
                 notice?.let { item(key = "deleted") { Note(it) } }
                 section(R.string.mobile_books, state.books, actions)
                 section(R.string.mobile_movies, state.movies, actions)
@@ -160,7 +163,7 @@ fun ShowDownloadsScreen(session: ServerSession, seriesId: String, title: String,
     LaunchedEffect(state.empty) { if (state.empty) nav.back() }
     val actions = rowActions(model, nav)
     Scaffold(topBar = { PageTopBar(title, nav::back) }) { padding ->
-        LazyColumn(Modifier.fillMaxSize().testTag("showDownloads"), contentPadding = padding) {
+        LazyColumn(Modifier.wideWidth().fillMaxSize().testTag("showDownloads"), contentPadding = padding) {
             for (season in state.seasons) {
                 val heading = if (season.season == 0) R.string.mobile_specials else null
                 item(key = "season:${season.season}") {
@@ -266,7 +269,7 @@ private fun DownloadRow(item: DownloadItem, model: RowActions, numbered: Boolean
 @Composable
 private fun RowEnd(item: DownloadItem, model: RowActions) {
     val progress = DownloadWords.progress(item)
-    Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+    Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
         when (val status = item.status) {
             is DownloadStatus.Downloading -> RingButton(progress, Icons.Default.Pause, stringResource(R.string.mobile_pause_download), "pause") { model.pause(item.id) }
             is DownloadStatus.Waiting -> if (status.reason == WaitReason.Turn) {
@@ -286,8 +289,9 @@ private fun RowEnd(item: DownloadItem, model: RowActions) {
 
 @Composable
 private fun RingButton(progress: DownloadProgress?, center: ImageVector, label: String, tag: String, onClick: () -> Unit) {
-    IconButton(onClick = onClick, Modifier.testTag(tag)) {
-        if (progress != null) ProgressRing(progress, center = center) else Icon(center, label)
+    // The ring says the state; the button says what it does.
+    IconButton(onClick = onClick, Modifier.testTag(tag).semantics { contentDescription = label }) {
+        if (progress != null) ProgressRing(progress, center = center) else Icon(center, null)
     }
 }
 
