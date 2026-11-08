@@ -46,6 +46,7 @@ describe("planEvent", () => {
   it("maps libraryChanged to Home, the library list, and those libraries' grids, filters and letters", () => {
     expect(planEvent({ type: "event", kind: "libraryChanged", libraryIds: [lib] })).toEqual([
       { kind: "invalidate", path: apiPaths.home },
+      { kind: "invalidate", path: apiPaths.homeRows },
       { kind: "invalidate", path: apiPaths.favorites },
       { kind: "invalidate", path: apiPaths.libraries },
       { kind: "invalidate", path: apiPaths.library, scope: { ids: [lib] } },
@@ -54,6 +55,13 @@ describe("planEvent", () => {
       { kind: "invalidate", path: apiPaths.libraryCollections, scope: { ids: [lib] } },
       { kind: "invalidate", path: apiPaths.libraryAuthors, scope: { ids: [lib] } },
       { kind: "invalidate", path: apiPaths.libraryBookSeries, scope: { ids: [lib] } },
+    ]);
+  });
+
+  it("maps homeChanged to Home and its layout", () => {
+    expect(planEvent({ type: "event", kind: "homeChanged" })).toEqual([
+      { kind: "invalidate", path: apiPaths.home },
+      { kind: "invalidate", path: apiPaths.homeRows },
     ]);
   });
 

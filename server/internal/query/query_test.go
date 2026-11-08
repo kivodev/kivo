@@ -124,6 +124,7 @@ var (
 func (h *household) normalize(b []byte) []byte {
 	for id, name := range h.names {
 		b = bytes.ReplaceAll(b, []byte(`"`+id.String()+`"`), []byte(`"`+name+`"`))
+		b = bytes.ReplaceAll(b, []byte(`:`+id.String()+`"`), []byte(`:`+name+`"`))
 	}
 	b = winPath.ReplaceAllFunc(b, func(p []byte) []byte {
 		return bytes.ReplaceAll(append([]byte(`"`), p[3:]...), []byte(`\\`), []byte("/"))

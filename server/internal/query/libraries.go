@@ -15,8 +15,8 @@ type Library struct {
 	ID   id.ID
 	Name string
 	Kind catalog.LibraryKind
-	// Pinned is whether the user shows the library in the sidebar and on
-	// Home. Every library is pinned until the user chooses otherwise (see
+	// Pinned is whether the user shows the library in the sidebar. Every
+	// library is pinned until the user chooses otherwise (see
 	// users.SetLibraries).
 	Pinned bool
 	Items  int // how many works the library's grid shows the Viewer

@@ -33,7 +33,7 @@ import kotlinx.serialization.encoding.*
 /**
  * 
  *
- * @param id Stable per row, such as `recentlyAdded:<libraryId>`.
+ * @param id Stable per row: the kind, or `recentlyAdded:<libraryId>`. 
  * @param kind What a Home row shows: `continueWatching` what to watch on with, videos in progress and each series' episode up next; `continueListening` books in progress; `recentlyAdded` a library's newest works; `favorites` the works the user marked. Skip kinds you don't know. 
  * @param items 
  * @param library For `recentlyAdded`, the library.
@@ -42,7 +42,7 @@ import kotlinx.serialization.encoding.*
 
 data class HomeRow (
 
-    /* Stable per row, such as `recentlyAdded:<libraryId>`. */
+    /* Stable per row: the kind, or `recentlyAdded:<libraryId>`.  */
     @SerialName(value = "id") @Required val id: kotlin.String,
 
     /* What a Home row shows: `continueWatching` what to watch on with, videos in progress and each series' episode up next; `continueListening` books in progress; `recentlyAdded` a library's newest works; `favorites` the works the user marked. Skip kinds you don't know.  */

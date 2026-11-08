@@ -7,6 +7,8 @@ import com.mmcdole.kivo.api.models.BookSeriesSummary
 import com.mmcdole.kivo.api.models.Collection
 import com.mmcdole.kivo.api.models.CollectionSummary
 import com.mmcdole.kivo.api.models.Home
+import com.mmcdole.kivo.api.models.HomeRowChange
+import com.mmcdole.kivo.api.models.HomeRowInfo
 import com.mmcdole.kivo.api.models.Library
 import com.mmcdole.kivo.api.models.LibraryFacets
 import com.mmcdole.kivo.api.models.Person
@@ -67,7 +69,27 @@ class SessionLibrary internal constructor(
 
     private val seen = Known()
 
-    fun home(): Flow<Load<Home>> = reachability.load(HomeRepository(connection, invalidations).home().onEach(seen::read))
+    private val homeLayout = HomeRepository(connection, invalidations)
+
+    fun home(): Flow<Load<Home>> = reachability.load(homeLayout.home().onEach(seen::read))
+
+    /** Home's rows of one `HomeRowKind`, shown or not. */
+    fun home(kind: String): Flow<Load<Home>> = reachability.load(homeLayout.home(kind))
+
+    /** Every row of Home, in order, shown or not, read again as the layout changes. */
+    fun homeRows(): Flow<Load<List<HomeRowInfo>>> = reachability.load(homeLayout.rows())
+
+    /**
+     * Sets the rows' order and which are shown, rows left out following the
+     * listed ones; the layout as the server has it. [homeRows] reads it
+     * again from the live event.
+     */
+    @Throws(Exception::class)
+    suspend fun setHomeRows(rows: List<HomeRowChange>): List<HomeRowInfo> = homeLayout.setRows(rows)
+
+    /** Forgets the order and hidden rows; the layout as the server has it. */
+    @Throws(Exception::class)
+    suspend fun resetHomeRows(): List<HomeRowInfo> = homeLayout.resetRows()
 
     /** The first page of one `WorkKind`'s favorites, [limit] long or the server's page, most recently marked first; its `total` says whether there are any. */
     fun favorites(kind: String, limit: Int?): Flow<Load<WorkSummaryPage>> =

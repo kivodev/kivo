@@ -451,6 +451,7 @@ func (e EncoderCodec) Valid() bool {
 const (
 	EventKindActivityChanged  EventKind = "activityChanged"
 	EventKindDownloadsChanged EventKind = "downloadsChanged"
+	EventKindHomeChanged      EventKind = "homeChanged"
 	EventKindLibraryChanged   EventKind = "libraryChanged"
 	EventKindLogsChanged      EventKind = "logsChanged"
 	EventKindPlayEnded        EventKind = "playEnded"
@@ -467,6 +468,8 @@ func (e EventKind) Valid() bool {
 	case EventKindActivityChanged:
 		return true
 	case EventKindDownloadsChanged:
+		return true
+	case EventKindHomeChanged:
 		return true
 	case EventKindLibraryChanged:
 		return true
@@ -2809,6 +2812,8 @@ type EventKind string
 //   - `playEnded` (`playId`, `message`): the user's play was stopped
 //     by an admin or another client, or expired; `message` is the
 //     admin's words to the viewer, if any.
+//   - `homeChanged`: the user's Home layout changed on another client:
+//     refetch Home and the layout.
 //   - `downloadsChanged`: the user's downloads on the server moved:
 //     in line, in their preparation (at most every 10 seconds), or to
 //     ready or failed. Refetch the downloads that aren't ready.
@@ -2939,7 +2944,7 @@ type Home struct {
 
 // HomeRow defines model for HomeRow.
 type HomeRow struct {
-	// ID Stable per row, such as `recentlyAdded:<libraryId>`.
+	// ID Stable per row: the kind, or `recentlyAdded:<libraryId>`.
 	ID    string        `json:"id"`
 	Items []WorkSummary `json:"items"`
 
@@ -2954,12 +2959,46 @@ type HomeRow struct {
 	Library *LibraryRef `json:"library,omitempty"`
 }
 
+// HomeRowChange defines model for HomeRowChange.
+type HomeRowChange struct {
+	ID    string `json:"id"`
+	Shown bool   `json:"shown"`
+}
+
+// HomeRowInfo A row of the user's Home layout, as the editor lists it.
+type HomeRowInfo struct {
+	// ID As `HomeRow.id`.
+	ID string `json:"id"`
+
+	// Kind What a Home row shows: `continueWatching` what to watch on with,
+	// videos in progress and each series' episode up next;
+	// `continueListening` books in progress; `recentlyAdded` a library's
+	// newest works; `favorites` the works the user marked. Skip kinds you
+	// don't know.
+	Kind HomeRowKind `json:"kind"`
+
+	// Library For `recentlyAdded`, the library.
+	Library *LibraryRef `json:"library,omitempty"`
+	Shown   bool        `json:"shown"`
+}
+
+// HomeRowInfoList defines model for HomeRowInfoList.
+type HomeRowInfoList struct {
+	Items []HomeRowInfo `json:"items"`
+}
+
 // HomeRowKind What a Home row shows: `continueWatching` what to watch on with,
 // videos in progress and each series' episode up next;
 // `continueListening` books in progress; `recentlyAdded` a library's
 // newest works; `favorites` the works the user marked. Skip kinds you
 // don't know.
 type HomeRowKind string
+
+// HomeRowsUpdate defines model for HomeRowsUpdate.
+type HomeRowsUpdate struct {
+	// Items The rows, in the order wanted, each shown or hidden.
+	Items []HomeRowChange `json:"items"`
+}
 
 // ID A UUIDv7.
 type ID = id.ID
@@ -3070,9 +3109,9 @@ type Library struct {
 	MetadataLanguage *string `json:"metadataLanguage,omitempty"`
 	Name             string  `json:"name"`
 
-	// Pinned Pinned by the user: shown in its sidebar and with a Recently
-	// Added row on Home. Every library is until the user
-	// chooses; search finds works in every library either way.
+	// Pinned Pinned by the user: shown in its sidebar. Every library is
+	// until the user chooses; search finds works in every library
+	// either way.
 	Pinned bool `json:"pinned"`
 
 	// Previews When a library processes its media: its preview thumbnails made, its
@@ -3118,7 +3157,7 @@ type LibraryChoice struct {
 	// ID A UUIDv7.
 	ID ID `json:"id"`
 
-	// Pinned Shown in the sidebar and with a Recently Added row on Home.
+	// Pinned Shown in the sidebar.
 	Pinned bool `json:"pinned"`
 }
 
@@ -5291,6 +5330,12 @@ type ListFileSubtitleResultsParams struct {
 	Language *[]string `form:"language,omitempty" json:"language,omitempty"`
 }
 
+// GetHomeParams defines parameters for GetHome.
+type GetHomeParams struct {
+	// Kind Only the rows of these kinds, shown or not.
+	Kind *[]HomeRowKind `form:"kind,omitempty" json:"kind,omitempty"`
+}
+
 // ListLibraryAuthorsParams defines parameters for ListLibraryAuthors.
 type ListLibraryAuthorsParams struct {
 	// Offset How many items to skip from the start.
@@ -5494,6 +5539,9 @@ type EstimateDownloadsJSONRequestBody = DownloadEstimateRequest
 
 // AddFileSubtitleJSONRequestBody defines body for AddFileSubtitle for application/json ContentType.
 type AddFileSubtitleJSONRequestBody = FileSubtitleAdd
+
+// UpdateHomeRowsJSONRequestBody defines body for UpdateHomeRows for application/json ContentType.
+type UpdateHomeRowsJSONRequestBody = HomeRowsUpdate
 
 // AcceptInviteLinkJSONRequestBody defines body for AcceptInviteLink for application/json ContentType.
 type AcceptInviteLinkJSONRequestBody = SessionCreate
@@ -5846,7 +5894,16 @@ type ServerInterface interface {
 	AddFileSubtitle(w http.ResponseWriter, r *http.Request, id ID)
 	// GetHome Get Home rows
 	// (GET /api/v1/home)
-	GetHome(w http.ResponseWriter, r *http.Request)
+	GetHome(w http.ResponseWriter, r *http.Request, params GetHomeParams)
+	// ListHomeRows List Home rows
+	// (GET /api/v1/home/rows)
+	ListHomeRows(w http.ResponseWriter, r *http.Request)
+	// UpdateHomeRows Change the Home layout
+	// (PATCH /api/v1/home/rows)
+	UpdateHomeRows(w http.ResponseWriter, r *http.Request)
+	// ResetHomeRows Reset the Home layout
+	// (POST /api/v1/home/rows/reset)
+	ResetHomeRows(w http.ResponseWriter, r *http.Request)
 	// GetInviteLink Get invite link
 	// (GET /api/v1/invite-links/{token})
 	GetInviteLink(w http.ResponseWriter, r *http.Request, token InviteToken)
@@ -6962,8 +7019,69 @@ func (siw *ServerInterfaceWrapper) AddFileSubtitle(w http.ResponseWriter, r *htt
 // GetHome operation middleware
 func (siw *ServerInterfaceWrapper) GetHome(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetHomeParams
+
+	// ------------- Optional query parameter "kind" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "kind", r.URL.Query(), &params.Kind, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "kind"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "kind", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetHome(w, r)
+		siw.Handler.GetHome(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListHomeRows operation middleware
+func (siw *ServerInterfaceWrapper) ListHomeRows(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListHomeRows(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateHomeRows operation middleware
+func (siw *ServerInterfaceWrapper) UpdateHomeRows(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateHomeRows(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ResetHomeRows operation middleware
+func (siw *ServerInterfaceWrapper) ResetHomeRows(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ResetHomeRows(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -9375,6 +9493,9 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/libraries/{id}/stop-scan", wrapper.StopLibraryScan)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/libraries/{id}/refresh-metadata", wrapper.RefreshLibraryMetadata)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/home", wrapper.GetHome)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/home/rows", wrapper.ListHomeRows)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/api/v1/home/rows", wrapper.UpdateHomeRows)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/home/rows/reset", wrapper.ResetHomeRows)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/favorites", wrapper.ListFavorites)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/api/v1/works", wrapper.UpdateWorks)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/works/{id}", wrapper.GetWork)
@@ -12194,6 +12315,7 @@ func (response AddFileSubtitledefaultApplicationProblemPlusJSONResponse) VisitAd
 }
 
 type GetHomeRequestObject struct {
+	Params GetHomeParams
 }
 
 type GetHomeResponseObject interface {
@@ -12210,6 +12332,22 @@ func (response GetHome200JSONResponse) VisitGetHomeResponse(w http.ResponseWrite
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetHome400ApplicationProblemPlusJSONResponse struct {
+	BadRequestApplicationProblemPlusJSONResponse
+}
+
+func (response GetHome400ApplicationProblemPlusJSONResponse) VisitGetHomeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -12236,6 +12374,185 @@ type GetHomedefaultApplicationProblemPlusJSONResponse struct {
 }
 
 func (response GetHomedefaultApplicationProblemPlusJSONResponse) VisitGetHomeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListHomeRowsRequestObject struct {
+}
+
+type ListHomeRowsResponseObject interface {
+	VisitListHomeRowsResponse(w http.ResponseWriter) error
+}
+
+type ListHomeRows200JSONResponse HomeRowInfoList
+
+func (response ListHomeRows200JSONResponse) VisitListHomeRowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListHomeRows401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response ListHomeRows401ApplicationProblemPlusJSONResponse) VisitListHomeRowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListHomeRowsdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ListHomeRowsdefaultApplicationProblemPlusJSONResponse) VisitListHomeRowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateHomeRowsRequestObject struct {
+	Body *UpdateHomeRowsJSONRequestBody
+}
+
+type UpdateHomeRowsResponseObject interface {
+	VisitUpdateHomeRowsResponse(w http.ResponseWriter) error
+}
+
+type UpdateHomeRows200JSONResponse HomeRowInfoList
+
+func (response UpdateHomeRows200JSONResponse) VisitUpdateHomeRowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateHomeRows400ApplicationProblemPlusJSONResponse struct {
+	BadRequestApplicationProblemPlusJSONResponse
+}
+
+func (response UpdateHomeRows400ApplicationProblemPlusJSONResponse) VisitUpdateHomeRowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateHomeRows401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response UpdateHomeRows401ApplicationProblemPlusJSONResponse) VisitUpdateHomeRowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateHomeRowsdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response UpdateHomeRowsdefaultApplicationProblemPlusJSONResponse) VisitUpdateHomeRowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResetHomeRowsRequestObject struct {
+}
+
+type ResetHomeRowsResponseObject interface {
+	VisitResetHomeRowsResponse(w http.ResponseWriter) error
+}
+
+type ResetHomeRows200JSONResponse HomeRowInfoList
+
+func (response ResetHomeRows200JSONResponse) VisitResetHomeRowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResetHomeRows401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response ResetHomeRows401ApplicationProblemPlusJSONResponse) VisitResetHomeRowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResetHomeRowsdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ResetHomeRowsdefaultApplicationProblemPlusJSONResponse) VisitResetHomeRowsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
@@ -18945,6 +19262,15 @@ type StrictServerInterface interface {
 	// GetHome Get Home rows
 	// (GET /api/v1/home)
 	GetHome(ctx context.Context, request GetHomeRequestObject) (GetHomeResponseObject, error)
+	// ListHomeRows List Home rows
+	// (GET /api/v1/home/rows)
+	ListHomeRows(ctx context.Context, request ListHomeRowsRequestObject) (ListHomeRowsResponseObject, error)
+	// UpdateHomeRows Change the Home layout
+	// (PATCH /api/v1/home/rows)
+	UpdateHomeRows(ctx context.Context, request UpdateHomeRowsRequestObject) (UpdateHomeRowsResponseObject, error)
+	// ResetHomeRows Reset the Home layout
+	// (POST /api/v1/home/rows/reset)
+	ResetHomeRows(ctx context.Context, request ResetHomeRowsRequestObject) (ResetHomeRowsResponseObject, error)
 	// GetInviteLink Get invite link
 	// (GET /api/v1/invite-links/{token})
 	GetInviteLink(ctx context.Context, request GetInviteLinkRequestObject) (GetInviteLinkResponseObject, error)
@@ -20123,8 +20449,10 @@ func (sh *strictHandler) AddFileSubtitle(w http.ResponseWriter, r *http.Request,
 }
 
 // GetHome operation middleware
-func (sh *strictHandler) GetHome(w http.ResponseWriter, r *http.Request) {
+func (sh *strictHandler) GetHome(w http.ResponseWriter, r *http.Request, params GetHomeParams) {
 	var request GetHomeRequestObject
+
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetHome(ctx, request.(GetHomeRequestObject))
@@ -20139,6 +20467,85 @@ func (sh *strictHandler) GetHome(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetHomeResponseObject); ok {
 		if err := validResponse.VisitGetHomeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListHomeRows operation middleware
+func (sh *strictHandler) ListHomeRows(w http.ResponseWriter, r *http.Request) {
+	var request ListHomeRowsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListHomeRows(ctx, request.(ListHomeRowsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListHomeRows")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListHomeRowsResponseObject); ok {
+		if err := validResponse.VisitListHomeRowsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateHomeRows operation middleware
+func (sh *strictHandler) UpdateHomeRows(w http.ResponseWriter, r *http.Request) {
+	var request UpdateHomeRowsRequestObject
+
+	var body UpdateHomeRowsJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateHomeRows(ctx, request.(UpdateHomeRowsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateHomeRows")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateHomeRowsResponseObject); ok {
+		if err := validResponse.VisitUpdateHomeRowsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ResetHomeRows operation middleware
+func (sh *strictHandler) ResetHomeRows(w http.ResponseWriter, r *http.Request) {
+	var request ResetHomeRowsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ResetHomeRows(ctx, request.(ResetHomeRowsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ResetHomeRows")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ResetHomeRowsResponseObject); ok {
+		if err := validResponse.VisitResetHomeRowsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

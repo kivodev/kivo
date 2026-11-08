@@ -67,7 +67,7 @@ describe("Settings", () => {
     expect(headings("Subtitles")).toEqual(["All your devices", "This browser"]);
     expect(headings("Quality")).toEqual(["This browser"]);
     expect(headings("Appearance")).toEqual(["This browser"]);
-    expect(headings("Home & libraries")).toEqual(["All your devices"]);
+    expect(headings("Home & libraries")).toEqual(["Home", "Libraries"]);
     const account = screen.getByRole("region", { name: "Account" });
     expect(within(account).getByText("anna")).toBeInTheDocument();
     expect(within(account).getByText("Signed in to Living room")).toBeInTheDocument();
@@ -289,6 +289,28 @@ describe("Settings", () => {
         ids([mockIds.movies, true], [mockIds.shows, true], [bookIds.audiobooks, true], [mockIds.videos, false]),
       ]),
     );
+  });
+
+  it("hides a Home row, reorders by the handle's keyboard drag, and resets", async () => {
+    serveMockApi();
+    const { user } = renderApp("/settings");
+    const order = await screen.findByRole("grid", { name: "Home rows" });
+    const rows = () =>
+      within(order)
+        .getAllByRole("row")
+        .map((r) => r.textContent);
+    expect(rows()[0]).toContain("Continue Watching");
+
+    await user.click(within(order).getByRole("switch", { name: "Shown: Continue Watching" }));
+    await waitFor(() =>
+      expect(sent("PATCH", "/home/rows").at(-1)?.body).toMatchObject({
+        items: expect.arrayContaining([{ id: "continueWatching", shown: false }]),
+      }),
+    );
+
+    await user.click(screen.getByRole("button", { name: "Reset" }));
+    await waitFor(() => expect(sent("POST", "/home/rows/reset")).toHaveLength(1));
+    await waitFor(() => expect(within(order).getByRole("switch", { name: "Shown: Continue Watching" })).toBeChecked());
   });
 
   it("says on the row when the server refuses a change, puts the saved value back, and retries", async () => {

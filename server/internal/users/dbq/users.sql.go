@@ -48,6 +48,15 @@ func (q *Queries) DeleteGrants(ctx context.Context, userID id.ID) error {
 	return err
 }
 
+const deleteHomeRows = `-- name: DeleteHomeRows :exec
+DELETE FROM user_home_row WHERE user_id = ?1
+`
+
+func (q *Queries) DeleteHomeRows(ctx context.Context, userID id.ID) error {
+	_, err := q.db.ExecContext(ctx, deleteHomeRows, userID)
+	return err
+}
+
 const deleteLibraryOrder = `-- name: DeleteLibraryOrder :exec
 DELETE FROM user_library WHERE user_id = ?1
 `
@@ -162,6 +171,27 @@ type InsertGrantParams struct {
 
 func (q *Queries) InsertGrant(ctx context.Context, arg InsertGrantParams) error {
 	_, err := q.db.ExecContext(ctx, insertGrant, arg.UserID, arg.LibraryID)
+	return err
+}
+
+const insertHomeRow = `-- name: InsertHomeRow :exec
+INSERT INTO user_home_row (user_id, row_id, position, shown) VALUES (?1, ?2, ?3, ?4)
+`
+
+type InsertHomeRowParams struct {
+	UserID   id.ID
+	RowID    string
+	Position sql.NullInt64
+	Shown    bool
+}
+
+func (q *Queries) InsertHomeRow(ctx context.Context, arg InsertHomeRowParams) error {
+	_, err := q.db.ExecContext(ctx, insertHomeRow,
+		arg.UserID,
+		arg.RowID,
+		arg.Position,
+		arg.Shown,
+	)
 	return err
 }
 

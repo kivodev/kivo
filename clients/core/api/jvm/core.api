@@ -1655,6 +1655,8 @@ public final class com/mmcdole/kivo/core/session/SessionLibrary {
 	public final fun gridPage (Lcom/mmcdole/kivo/core/data/GridQuery;IILkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun hasCollections (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun home ()Lkotlinx/coroutines/flow/Flow;
+	public final fun home (Ljava/lang/String;)Lkotlinx/coroutines/flow/Flow;
+	public final fun homeRows ()Lkotlinx/coroutines/flow/Flow;
 	public final fun known (Ljava/lang/String;)Lcom/mmcdole/kivo/api/models/WorkSummary;
 	public final fun knownBookSeries (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/Heading;
 	public final fun knownCollection (Ljava/lang/String;)Lcom/mmcdole/kivo/api/models/CollectionSummary;
@@ -1668,8 +1670,10 @@ public final class com/mmcdole/kivo/core/session/SessionLibrary {
 	public final fun person (Ljava/lang/String;)Lkotlinx/coroutines/flow/Flow;
 	public final fun removeFromContinue (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun rereadLibraries ()V
+	public final fun resetHomeRows (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun search (Ljava/lang/String;Ljava/lang/Integer;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun setFavorite (Ljava/lang/String;ZLkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun setHomeRows (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun setPlayed (Ljava/lang/String;ZLkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun work (Ljava/lang/String;)Lkotlinx/coroutines/flow/Flow;
 }

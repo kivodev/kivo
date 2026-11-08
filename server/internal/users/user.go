@@ -11,6 +11,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/mmcdole/kivo/internal/events"
 	"github.com/mmcdole/kivo/internal/fault"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/store"
@@ -42,13 +43,14 @@ var (
 
 // Service manages users and their grants.
 type Service struct {
-	db *store.DB
-	q  *dbq.Queries
+	db  *store.DB
+	q   *dbq.Queries
+	bus *events.Bus
 }
 
-// New returns a Service over db.
-func New(db *store.DB) *Service {
-	return &Service{db: db, q: dbq.New(db.Reader())}
+// New returns a Service over db that publishes its events on bus.
+func New(db *store.DB, bus *events.Bus) *Service {
+	return &Service{db: db, q: dbq.New(db.Reader()), bus: bus}
 }
 
 // User is a person who signs in.

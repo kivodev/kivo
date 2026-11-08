@@ -1627,6 +1627,7 @@
   "facets library:Audiobooks": "error: not found",
   "home": [
     {
+      "ID": "continueWatching",
       "Kind": "continueWatching",
       "Library": {
         "ID": "none",
@@ -1774,6 +1775,7 @@
       ]
     },
     {
+      "ID": "favorites",
       "Kind": "favorites",
       "Library": {
         "ID": "none",
@@ -1833,6 +1835,7 @@
       ]
     },
     {
+      "ID": "recentlyAdded:library:Movies",
       "Kind": "recentlyAdded",
       "Library": {
         "ID": "library:Movies",
@@ -2121,6 +2124,7 @@
       ]
     },
     {
+      "ID": "recentlyAdded:library:Shows",
       "Kind": "recentlyAdded",
       "Library": {
         "ID": "library:Shows",

@@ -228,9 +228,10 @@ func newEnv(t *testing.T, o serving) *env {
 	if err != nil {
 		t.Fatal(err)
 	}
+	bus := events.NewBus()
 	e.d = Deps{
-		Catalog: e.b.Catalog, Users: users.New(db), Query: query.New(db), Settings: settings,
-		Tasks: tasks.New(db, settings, events.NewBus(), tasks.Options{}), Events: events.NewBus(),
+		Catalog: e.b.Catalog, Users: users.New(db, bus), Query: query.New(db), Settings: settings,
+		Tasks: tasks.New(db, settings, events.NewBus(), tasks.Options{}), Events: bus,
 		Logs: health.NewLogs(1000, events.NewBus()),
 	}
 	e.asks = &asks{r: e.d.Tasks, by: map[string][]id.ID{}}

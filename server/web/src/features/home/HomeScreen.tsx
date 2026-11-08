@@ -1,7 +1,7 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { homeQueries } from "@/api/home";
+import { homeQueries, homeRowKinds } from "@/api/home";
 import { libraryQueries } from "@/api/libraries";
 import type { HomeRow } from "@/api/schemas";
 import { useIsAdmin } from "@/api/users";
@@ -15,8 +15,8 @@ import { WorkCard } from "@/features/browse/WorkCard";
 import { AddLibraryButton } from "@/features/libraries/AddLibraryButton";
 import { isTv } from "@/tv/flag";
 import { useTvEmptyScreen } from "@/tv/focus";
+import { useHomeRowTitle } from "./rowTitle";
 
-const knownRows = new Set<HomeRow["kind"]>(["continueWatching", "continueListening", "recentlyAdded", "favorites"]);
 /** Rows of books, whose covers are square. */
 const bookRows = new Set<HomeRow["kind"]>(["continueListening"]);
 
@@ -30,8 +30,9 @@ export function HomeScreen() {
   const isAdmin = useIsAdmin();
   useDocumentTitle(undefined);
   const home = useQuery(homeQueries.rows());
+  const rowTitle = useHomeRowTitle();
   const libraries = useSuspenseQuery(libraryQueries.list()).data.items;
-  const rows = (home.data?.rows ?? []).filter((r) => knownRows.has(r.kind));
+  const rows = (home.data?.rows ?? []).filter((r) => homeRowKinds.has(r.kind));
   // A screen with nothing to focus hands focus to the rail.
   useTvEmptyScreen(libraries.length === 0 || (home.data !== undefined && rows.length === 0));
 
@@ -50,21 +51,6 @@ export function HomeScreen() {
   if (!home.data) {
     return home.isError ? <LoadError error={home.error} onRetry={() => void home.refetch()} /> : <HomeSkeleton />;
   }
-
-  const rowTitle = (row: HomeRow): string => {
-    switch (row.kind) {
-      case "continueWatching":
-        return t`Continue Watching`;
-      case "continueListening":
-        return t`Continue Listening`;
-      case "favorites":
-        return t`Favorites`;
-      default: {
-        const name = row.library?.name;
-        return name ? t`Recently Added in ${name}` : t`Recently Added`;
-      }
-    }
-  };
 
   return (
     // On TV the last row reaches on down the screen, so the page can scroll

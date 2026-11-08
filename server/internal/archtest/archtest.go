@@ -79,7 +79,7 @@ var owns = map[string][]string{
 	"tasks":    {"task"},
 	"activity": {"activity"},
 	"config":   {"setting"},
-	"users":    {"user", "library_grant", "user_library"},
+	"users":    {"user", "library_grant", "user_library", "user_home_row"},
 	"auth":     {"credential", "session", "api_key", "cast_token", "audit", "invite", "invite_library"},
 	"catalog": {"library", "library_folder", "media_file", "media_track", "media_chapter", "media_attachment", "work", "work_library",
 		"work_external_id", "media_version", "media_version_work", "person", "person_external_id", "credit", "genre", "work_genre",

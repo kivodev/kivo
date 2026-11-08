@@ -27,7 +27,7 @@ type fixture struct {
 
 func newFixture(t *testing.T) *fixture {
 	db := storetest.New(t)
-	return &fixture{t: t, db: db, s: New(db)}
+	return &fixture{t: t, db: db, s: New(db, nil)}
 }
 
 // libraries creates n libraries for grants to name.

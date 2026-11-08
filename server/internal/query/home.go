@@ -1,9 +1,11 @@
 package query
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/mmcdole/kivo/internal/catalog"
@@ -32,22 +34,36 @@ const (
 	RowContinueWatching RowKind = "continueWatching"
 	// RowFavorites is the works the user marked.
 	RowFavorites RowKind = "favorites"
-	// RowRecentlyAdded is one pinned library's newest works that the user
+	// RowRecentlyAdded is one library's newest works that the user
 	// hasn't played. A show's episodes added close together are bundled
 	// into one summary (see bundles).
 	RowRecentlyAdded RowKind = "recentlyAdded"
-	// RowContinueListening is the books in progress in the user's pinned
-	// libraries, ordered as in Continue Watching.
+	// RowContinueListening is the books in progress, ordered as in Continue
+	// Watching.
 	RowContinueListening RowKind = "continueListening"
 )
 
 // HomeRow is one Home row. Library is set only on a Recently Added row,
 // with the library's name and kind.
 type HomeRow struct {
+	ID      string
 	Kind    RowKind
 	Library Library
 	Items   []WorkSummary
 }
+
+// HomeRowInfo is a row of a user's Home layout, as the editor lists it.
+type HomeRowInfo struct {
+	ID      string
+	Kind    RowKind
+	Library Library
+	Shown   bool
+}
+
+// homeRowStates reads what the user stored about their Home rows.
+var homeRowStates = stmt("HomeRowStates", `
+-- viewer-filter: user
+SELECT row_id, position, shown FROM user_home_row WHERE user_id = @user`)
 
 // Home rows. Provisional works appear in Recently Added but never in
 // Continue Watching or collections.
@@ -131,75 +147,220 @@ func notRemoved(u string) string {
 	return "(" + u + ".continue_removed_at IS NULL OR " + u + ".continue_removed_at < " + u + ".last_played_at)"
 }
 
-// Home returns the Home rows that have summaries, read from one snapshot.
-// Watching rows come first and listening rows last. Continue Watching,
-// Favorites and each video library's Recently Added come first, in the
-// user's library order. Continue Listening and each audiobooks library's
-// Recently Added follow.
-func (s *Service) Home(ctx context.Context, v users.Viewer) ([]HomeRow, error) {
-	vw := viewerOf(v)
-	var watching, listening, favorites []WorkSummary
-	var videosAdded, booksAdded []HomeRow
+// rowID is a row's ID: its kind, followed by the library's ID for a
+// Recently Added row.
+func rowID(kind RowKind, lib id.ID) string {
+	if lib.IsZero() {
+		return string(kind)
+	}
+	return string(kind) + ":" + lib.String()
+}
+
+// ValidRowID reports whether s is well formed as a row's ID, whether or
+// not the row exists.
+func ValidRowID(s string) bool {
+	kind, rest, cut := strings.Cut(s, ":")
+	if !cut {
+		return s == string(RowContinueWatching) || s == string(RowContinueListening) || s == string(RowFavorites)
+	}
+	if kind != string(RowRecentlyAdded) {
+		return false
+	}
+	_, err := id.Parse(rest)
+	return err == nil
+}
+
+// defaultRows lists every row of a user's Home in the default order, each
+// shown: Continue Watching, Favorites and each video library's Recently
+// Added, in the user's library order, then Continue Listening and each
+// audiobooks library's Recently Added.
+func defaultRows(libs []Library) []HomeRowInfo {
+	rows := []HomeRowInfo{
+		{ID: rowID(RowContinueWatching, id.ID{}), Kind: RowContinueWatching, Shown: true},
+		{ID: rowID(RowFavorites, id.ID{}), Kind: RowFavorites, Shown: true},
+	}
+	var books []HomeRowInfo
+	for _, lib := range libs {
+		row := HomeRowInfo{ID: rowID(RowRecentlyAdded, lib.ID), Kind: RowRecentlyAdded, Shown: true,
+			Library: Library{ID: lib.ID, Name: lib.Name, Kind: lib.Kind}}
+		if lib.Kind == catalog.Audiobooks {
+			books = append(books, row)
+		} else {
+			rows = append(rows, row)
+		}
+	}
+	rows = append(rows, HomeRowInfo{ID: rowID(RowContinueListening, id.ID{}), Kind: RowContinueListening, Shown: true})
+	return append(rows, books...)
+}
+
+// rowState is what the user stored about a row.
+type rowState struct {
+	position sql.NullInt64
+	shown    bool
+}
+
+// arrange applies the user's stored state to the default rows. On a Home
+// not arranged, the rows keep the default order and a stored row its shown.
+// On an arranged Home, rows with a position come first in order. A row with
+// none follows, keeping its stored shown, and with nothing stored it's shown
+// only if it's a library's: a new library joins the end shown, and a row of
+// a new kind joins off.
+func arrange(rows []HomeRowInfo, states map[string]rowState) []HomeRowInfo {
+	arranged := false
+	for _, st := range states {
+		arranged = arranged || st.position.Valid
+	}
+	for i := range rows {
+		st, ok := states[rows[i].ID]
+		switch {
+		case ok:
+			rows[i].Shown = st.shown
+		case arranged:
+			rows[i].Shown = rows[i].Kind == RowRecentlyAdded
+		}
+	}
+	if !arranged {
+		return rows
+	}
+	position := func(r HomeRowInfo) (int64, bool) {
+		st, ok := states[r.ID]
+		return st.position.Int64, ok && st.position.Valid
+	}
+	slices.SortStableFunc(rows, func(a, b HomeRowInfo) int {
+		pa, oka := position(a)
+		pb, okb := position(b)
+		switch {
+		case oka && okb:
+			return cmp.Compare(pa, pb)
+		case oka:
+			return -1
+		case okb:
+			return 1
+		default:
+			return 0
+		}
+	})
+	return rows
+}
+
+// layout returns every row of the user's Home in order, shown or not.
+func layout(ctx context.Context, tx *sql.Tx, vw viewer) ([]HomeRowInfo, error) {
+	libs, err := rowsOf(ctx, tx, libraryList, vw.args(), scanLibrary)
+	if err != nil {
+		return nil, err
+	}
+	type stored struct {
+		id string
+		rowState
+	}
+	rows, err := rowsOf(ctx, tx, homeRowStates, vw.args(), func(r scanner, s *stored) error {
+		return r.Scan(&s.id, &s.position, &s.shown)
+	})
+	if err != nil {
+		return nil, err
+	}
+	states := make(map[string]rowState, len(rows))
+	for _, r := range rows {
+		states[r.id] = r.rowState
+	}
+	return arrange(defaultRows(libs), states), nil
+}
+
+// HomeRows returns every row of the user's Home in order, shown or not,
+// including rows with no works.
+func (s *Service) HomeRows(ctx context.Context, v users.Viewer) ([]HomeRowInfo, error) {
+	var out []HomeRowInfo
 	err := s.db.Read(ctx, func(tx *sql.Tx) error {
-		libs, err := rowsOf(ctx, tx, libraryList, vw.args(), scanLibrary)
-		if err != nil {
-			return err
-		}
-		// Continue Listening reads only the user's pinned audiobooks
-		// libraries, so it uses the Viewer narrowed to those libraries.
-		var pinnedBooks []id.ID
-		for _, lib := range libs {
-			if lib.Pinned && lib.Kind == catalog.Audiobooks {
-				pinnedBooks = append(pinnedBooks, lib.ID)
-			}
-		}
-		books := vw
-		books.all = false
-		books.libraries = id.Set(pinnedBooks...)
-
-		limit := sql.Named("limit", rowLimit)
-		stale := sql.Named("stale_before", time.Now().Add(-seriesStaleAfter).UnixMilli())
-		if watching, err = summaries(ctx, tx, continueWatching, vw.args(limit, stale)); err != nil {
-			return err
-		}
-		if listening, err = summaries(ctx, tx, continueListening, books.args(limit)); err != nil {
-			return err
-		}
-
-		for _, lib := range libs {
-			if !lib.Pinned {
-				continue
-			}
-			added, err := rowsOf(ctx, tx, recentlyAdded, vw.args(sql.Named("library", lib.ID)), func(r scanner, a *addition) error {
-				return r.Scan(&a.ID, &a.Kind, &a.ParentID, &a.RootID, &a.AddedAt, &a.SortTitle,
-					&a.SeasonSortTitle, &a.SeriesSortTitle, &a.SeriesProvisional, &a.Played)
-			})
-			if err != nil {
-				return err
-			}
-			items, err := bundleSummaries(ctx, tx, vw, bundles(added))
-			if err != nil {
-				return err
-			}
-			row := HomeRow{Kind: RowRecentlyAdded, Library: Library{ID: lib.ID, Name: lib.Name, Kind: lib.Kind}, Items: items}
-			if lib.Kind == catalog.Audiobooks {
-				booksAdded = append(booksAdded, row)
-			} else {
-				videosAdded = append(videosAdded, row)
-			}
-		}
-
-		favorites, err = summaries(ctx, tx, favoritesPage, vw.args(sql.Named("kind", nil), sql.Named("offset", 0), limit))
+		var err error
+		out, err = layout(ctx, tx, viewerOf(v))
 		return err
 	})
 	if err != nil {
 		return nil, err
 	}
-	rows := []HomeRow{{Kind: RowContinueWatching, Items: watching}, {Kind: RowFavorites, Items: favorites}}
-	rows = append(rows, videosAdded...)
-	rows = append(rows, HomeRow{Kind: RowContinueListening, Items: listening})
-	rows = append(rows, booksAdded...)
-	rows = slices.DeleteFunc(rows, func(r HomeRow) bool { return len(r.Items) == 0 })
+	return out, nil
+}
+
+// ArrangedHomeRows returns the user's whole layout with changes applied:
+// the listed rows in their order, and the others after them in the order
+// they're in, keeping their shown. A row that no longer exists is left out.
+func (s *Service) ArrangedHomeRows(ctx context.Context, v users.Viewer, changes []users.HomeRow) ([]users.HomeRow, error) {
+	current, err := s.HomeRows(ctx, v)
+	if err != nil {
+		return nil, err
+	}
+	known := make(map[string]bool, len(current))
+	for _, r := range current {
+		known[r.ID] = true
+	}
+	out := make([]users.HomeRow, 0, len(current))
+	listed := make(map[string]bool, len(changes))
+	for _, c := range changes {
+		if known[c.ID] {
+			out = append(out, c)
+			listed[c.ID] = true
+		}
+	}
+	for _, r := range current {
+		if !listed[r.ID] {
+			out = append(out, users.HomeRow{ID: r.ID, Shown: r.Shown})
+		}
+	}
+	return out, nil
+}
+
+// rowItems reads the summaries of a Home row.
+func rowItems(ctx context.Context, tx *sql.Tx, vw viewer, r HomeRowInfo) ([]WorkSummary, error) {
+	limit := sql.Named("limit", rowLimit)
+	switch r.Kind {
+	case RowContinueWatching:
+		stale := sql.Named("stale_before", time.Now().Add(-seriesStaleAfter).UnixMilli())
+		return summaries(ctx, tx, continueWatching, vw.args(limit, stale))
+	case RowContinueListening:
+		return summaries(ctx, tx, continueListening, vw.args(limit))
+	case RowFavorites:
+		return summaries(ctx, tx, favoritesPage, vw.args(sql.Named("kind", nil), sql.Named("offset", 0), limit))
+	case RowRecentlyAdded:
+		added, err := rowsOf(ctx, tx, recentlyAdded, vw.args(sql.Named("library", r.Library.ID)), func(rs scanner, a *addition) error {
+			return rs.Scan(&a.ID, &a.Kind, &a.ParentID, &a.RootID, &a.AddedAt, &a.SortTitle,
+				&a.SeasonSortTitle, &a.SeriesSortTitle, &a.SeriesProvisional, &a.Played)
+		})
+		if err != nil {
+			return nil, err
+		}
+		return bundleSummaries(ctx, tx, vw, bundles(added))
+	}
+	return nil, nil
+}
+
+// Home returns the Home rows that have summaries, in the user's layout,
+// read from one snapshot. It returns the shown rows, or with kinds the
+// rows of those kinds, shown or not.
+func (s *Service) Home(ctx context.Context, v users.Viewer, kinds ...RowKind) ([]HomeRow, error) {
+	vw := viewerOf(v)
+	var rows []HomeRow
+	err := s.db.Read(ctx, func(tx *sql.Tx) error {
+		all, err := layout(ctx, tx, vw)
+		if err != nil {
+			return err
+		}
+		for _, r := range all {
+			if len(kinds) > 0 && !slices.Contains(kinds, r.Kind) || len(kinds) == 0 && !r.Shown {
+				continue
+			}
+			items, err := rowItems(ctx, tx, vw, r)
+			if err != nil {
+				return err
+			}
+			if len(items) > 0 {
+				rows = append(rows, HomeRow{ID: r.ID, Kind: r.Kind, Library: r.Library, Items: items})
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
 	lists := make([][]WorkSummary, len(rows))
 	for i, r := range rows {
 		lists[i] = r.Items

@@ -20,7 +20,7 @@
   "detail series:Bluey": "error: not found",
   "detail series:The Expanse": "error: not found",
   "facets library:Audiobooks": "error: not found",
-  "home": [],
+  "home": null,
   "libraries": [],
   "person person:Denis Villeneuve": "error: not found",
   "person person:James S. A. Corey": "error: not found",

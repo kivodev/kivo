@@ -32,7 +32,7 @@ import kotlinx.serialization.encoding.*
  * 
  *
  * @param id A UUIDv7.
- * @param pinned Shown in the sidebar and with a Recently Added row on Home.
+ * @param pinned Shown in the sidebar.
  */
 @Serializable
 
@@ -41,7 +41,7 @@ data class LibraryChoice (
     /* A UUIDv7. */
     @SerialName(value = "id") @Required val id: kotlin.String,
 
-    /* Shown in the sidebar and with a Recently Added row on Home. */
+    /* Shown in the sidebar. */
     @SerialName(value = "pinned") @Required val pinned: kotlin.Boolean
 
 ) {

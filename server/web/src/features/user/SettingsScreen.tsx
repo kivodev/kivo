@@ -1,6 +1,7 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { type ReactNode, Suspense, useState } from "react";
+import { homeQueries, homeRowKinds, useResetHomeRows, useSaveHomeRows } from "@/api/home";
 import { libraryQueries, useSaveLibraries } from "@/api/libraries";
 import { errorCode } from "@/api/problem";
 import type { PlaybackPreferencesUpdate, SubtitleMode } from "@/api/schemas";
@@ -35,6 +36,7 @@ import { TvControl } from "@/tv/forms/TvControl";
 import { currentTvFocus, focusTv, isTvFocusIn } from "@/tv/spatial";
 import { ChangePasswordDialog } from "./ChangePasswordDialog";
 import { CreditsDialog } from "./CreditsDialog";
+import { HomeRowOrder, HomeRowsTv } from "./HomeRowsEditor";
 import { LibraryOrder, LibraryPins } from "./LibraryOrder";
 import { Sessions, SignOutHereButton } from "./Sessions";
 import { TvVersions } from "./TvVersions";
@@ -424,6 +426,44 @@ function AppearanceSection({ device, change }: DeviceProps) {
   );
 }
 
+function HomeRowsCard() {
+  const { t } = useLingui();
+  const rows = useSuspenseQuery(homeQueries.layout()).data.items.filter((r) => homeRowKinds.has(r.kind));
+  const saving = useSaveHomeRows();
+  const reset = useResetHomeRows();
+  const error = saving.error ?? reset.error;
+  const problem = error ? describeProblem(errorCode(error)) : undefined;
+  return (
+    <SettingsCard
+      scope="account"
+      title={<Trans>Home</Trans>}
+      footer={
+        problem ? (
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span role="alert" className="text-danger">
+              {t`Couldn't save. ${problem}`}
+            </span>
+            <TvControl focusKey="home-rows:retry">
+              <Button size="sm" variant="ghost" onPress={() => saving.retry(rows)}>
+                <Trans>Retry</Trans>
+              </Button>
+            </TvControl>
+          </span>
+        ) : undefined
+      }
+    >
+      {isTv ? <HomeRowsTv rows={rows} onChange={saving.save} /> : <HomeRowOrder rows={rows} onChange={saving.save} />}
+      <SettingsRow label={<Trans>Reset Home</Trans>}>
+        <TvControl focusKey="home-rows:reset">
+          <Button size="sm" variant="ghost" onPress={() => reset.mutate({})}>
+            <Trans>Reset</Trans>
+          </Button>
+        </TvControl>
+      </SettingsRow>
+    </SettingsCard>
+  );
+}
+
 function LibrariesSection() {
   const { t } = useLingui();
   const libraries = useSuspenseQuery(libraryQueries.list()).data.items;
@@ -431,9 +471,11 @@ function LibrariesSection() {
   const problem = saving.isError ? describeProblem(errorCode(saving.error)) : undefined;
   return (
     <SettingsSection id="libraries" title={<Trans>Home & libraries</Trans>}>
+      <HomeRowsCard />
       {libraries.length > 0 ? (
         <SettingsCard
           scope="account"
+          title={<Trans>Libraries</Trans>}
           footer={
             problem ? (
               <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -447,7 +489,7 @@ function LibrariesSection() {
                 </TvControl>
               </span>
             ) : (
-              <Trans>Unchecked libraries are hidden from the sidebar and Home.</Trans>
+              <Trans>Unchecked libraries are hidden from the sidebar.</Trans>
             )
           }
         >

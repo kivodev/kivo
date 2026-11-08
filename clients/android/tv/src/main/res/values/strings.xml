@@ -240,6 +240,9 @@
     <string name="settings_account">Account</string>
     <string name="settings_playback">Playback</string>
     <string name="settings_libraries">Home &amp; libraries</string>
+    <string name="settings_home_rows">Home</string>
+    <string name="settings_reset_home">Reset Home</string>
+    <string name="settings_sidebar_libraries">Libraries</string>
     <string name="settings_about">About</string>
     <string name="scope_all_devices">All your devices</string>
     <string name="couldnt_save">Couldn\'t save. %1$s</string>

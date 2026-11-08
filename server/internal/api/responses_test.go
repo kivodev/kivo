@@ -255,6 +255,10 @@ func TestResponses(t *testing.T) {
 	tr.do("GET", "/api/v1/home", admin, nil)
 	tr.do("GET", "/api/v1/home", friendToken, nil)
 	tr.do("GET", "/api/v1/home", nobody, nil)
+	tr.do("GET", "/api/v1/home?kind=recentlyAdded", admin, nil)
+	tr.do("GET", "/api/v1/home/rows", friendToken, nil)
+	tr.do("PATCH", "/api/v1/home/rows", friendToken, map[string]any{"items": []map[string]any{{"id": "continueWatching", "shown": false}}})
+	tr.do("POST", "/api/v1/home/rows/reset", friendToken, nil)
 
 	// Activity lists the plays above, a page at a time.
 	page := tr.do("GET", "/api/v1/activity?show=plays&limit=1", admin, nil)

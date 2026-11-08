@@ -11,6 +11,7 @@ import type {
   CurrentUser,
   Directory,
   Home,
+  HomeRowInfo,
   Invite,
   InviteLink,
   Library,
@@ -87,6 +88,8 @@ export type MockApi = {
   /** A series' seasons and a season's episodes. */
   children: Record<string, WorkSummary[]>;
   home: Home;
+  /** Home's layout once it's been changed. */
+  homeLayout?: HomeRowInfo[];
   /** Search results, whatever was searched. */
   search: WorkSummary[];
   /** The people search finds, whatever was searched. */

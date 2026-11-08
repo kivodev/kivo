@@ -31,6 +31,8 @@ import com.mmcdole.kivo.api.models.Collection
 import com.mmcdole.kivo.api.models.ContentRatingList
 import com.mmcdole.kivo.api.models.FixMatchRequest
 import com.mmcdole.kivo.api.models.Home
+import com.mmcdole.kivo.api.models.HomeRowInfoList
+import com.mmcdole.kivo.api.models.HomeRowsUpdate
 import com.mmcdole.kivo.api.models.MatchList
 import com.mmcdole.kivo.api.models.NameUpdate
 import com.mmcdole.kivo.api.models.Person
@@ -142,11 +144,12 @@ open class WorksApi : ApiClient {
 
     /**
      * Get Home rows
-     * The user&#39;s Home rows. Empty rows are left out. 
+     * The user&#39;s Home rows that are shown, in the user&#39;s order, on every client. With &#x60;kind&#x60;, the rows of those kinds, shown or not. Empty rows are left out. A hidden row is left out for a Cast device too. 
+     * @param kind Only the rows of these kinds, shown or not. (optional)
      * @return Home
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getHome(): HttpResponse<Home> {
+    open suspend fun getHome(kind: kotlin.collections.List<kotlin.String>? = null): HttpResponse<Home> {
 
         val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
 
@@ -154,6 +157,7 @@ open class WorksApi : ApiClient {
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
+        kind?.apply { localVariableQuery["kind"] = toMultiValue(this, "multi") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
         val localVariableConfig = RequestConfig<kotlin.Any?>(
@@ -297,6 +301,38 @@ open class WorksApi : ApiClient {
         val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.GET,
             "/api/v1/favorites",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
+     * List Home rows
+     * Every row of the user&#39;s Home, in order, shown or not, including rows with no works. For the Home &amp; Libraries editor. 
+     * @return HomeRowInfoList
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun listHomeRows(): HttpResponse<HomeRowInfoList> {
+
+        val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/api/v1/home/rows",
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -555,6 +591,38 @@ open class WorksApi : ApiClient {
 
 
     /**
+     * Reset the Home layout
+     * Forgets the user&#39;s order and hidden rows, so Home returns to the default order with every built-in row shown. A &#x60;homeChanged&#x60; event tells the user&#39;s other clients. 
+     * @return HomeRowInfoList
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun resetHomeRows(): HttpResponse<HomeRowInfoList> {
+
+        val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.POST,
+            "/api/v1/home/rows/reset",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
      * Search works
      * Searches works, people and collections across the libraries the user sees. Matches words: runs of letters and digits, without case or diacritics, so \&quot;spider man\&quot; finds Spider-Man. Every word must match a whole word, except the last, which matches the start of one, as the query is typed. A query with no words finds nothing. Works match by their titles, alternative titles or the people credited on them, and come best first: a title that is the query (a leading \&quot;The\&quot;, \&quot;A\&quot; or \&quot;An\&quot; ignored), then one starting with it, one holding it as a phrase, one holding its words, then alternative titles, then people only; within each, the most voted first. Clients group them by kind. People match by name, ranked the same way, then by credits, and collections by name, ranked the same way; a collection is found when the profile sees one of its root works. There&#39;s no fuzzy matching, and text without spaces between words, such as Japanese, matches only from its start. &#x60;limit&#x60; applies to works, people and collections each. 
      * @param q 
@@ -677,6 +745,39 @@ open class WorksApi : ApiClient {
         val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.PATCH,
             "/api/v1/book-series/{id}".replace("{" + "id" + "}", "$id"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return jsonRequest(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+
+    /**
+     * Change the Home layout
+     * Places the listed rows first, in the order given. A row left out keeps whether it&#39;s shown and follows the listed rows. A well-formed &#x60;id&#x60; of a row that no longer exists is ignored; a malformed or repeated &#x60;id&#x60; is &#x60;400&#x60;. A Home once changed here is arranged: a new library&#39;s Recently Added row joins the end shown, and a row of a new built-in kind joins off. A &#x60;homeChanged&#x60; event tells the user&#39;s other clients. 
+     * @param homeRowsUpdate 
+     * @return HomeRowInfoList
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun updateHomeRows(homeRowsUpdate: HomeRowsUpdate): HttpResponse<HomeRowInfoList> {
+
+        val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
+
+        val localVariableBody = homeRowsUpdate
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.PATCH,
+            "/api/v1/home/rows",
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,

@@ -1751,6 +1751,8 @@ final class com.mmcdole.kivo.core.session/SessionLibrary { // com.mmcdole.kivo.c
     final fun favorites(kotlin/String, kotlin/Int?): kotlinx.coroutines.flow/Flow<com.mmcdole.kivo.core/Load<com.mmcdole.kivo.api.models/WorkSummaryPage>> // com.mmcdole.kivo.core.session/SessionLibrary.favorites|favorites(kotlin.String;kotlin.Int?){}[0]
     final fun favoritesCount(): kotlinx.coroutines.flow/Flow<com.mmcdole.kivo.core/Load<kotlin/Int>> // com.mmcdole.kivo.core.session/SessionLibrary.favoritesCount|favoritesCount(){}[0]
     final fun home(): kotlinx.coroutines.flow/Flow<com.mmcdole.kivo.core/Load<com.mmcdole.kivo.api.models/Home>> // com.mmcdole.kivo.core.session/SessionLibrary.home|home(){}[0]
+    final fun home(kotlin/String): kotlinx.coroutines.flow/Flow<com.mmcdole.kivo.core/Load<com.mmcdole.kivo.api.models/Home>> // com.mmcdole.kivo.core.session/SessionLibrary.home|home(kotlin.String){}[0]
+    final fun homeRows(): kotlinx.coroutines.flow/Flow<com.mmcdole.kivo.core/Load<kotlin.collections/List<com.mmcdole.kivo.api.models/HomeRowInfo>>> // com.mmcdole.kivo.core.session/SessionLibrary.homeRows|homeRows(){}[0]
     final fun known(kotlin/String): com.mmcdole.kivo.api.models/WorkSummary? // com.mmcdole.kivo.core.session/SessionLibrary.known|known(kotlin.String){}[0]
     final fun knownBookSeries(kotlin/String): com.mmcdole.kivo.core.data/Heading? // com.mmcdole.kivo.core.session/SessionLibrary.knownBookSeries|knownBookSeries(kotlin.String){}[0]
     final fun knownCollection(kotlin/String): com.mmcdole.kivo.api.models/CollectionSummary? // com.mmcdole.kivo.core.session/SessionLibrary.knownCollection|knownCollection(kotlin.String){}[0]
@@ -1767,8 +1769,10 @@ final class com.mmcdole.kivo.core.session/SessionLibrary { // com.mmcdole.kivo.c
     final suspend fun gridPage(com.mmcdole.kivo.core.data/GridQuery, kotlin/Int, kotlin/Int): com.mmcdole.kivo.api.models/WorkSummaryPage // com.mmcdole.kivo.core.session/SessionLibrary.gridPage|gridPage(com.mmcdole.kivo.core.data.GridQuery;kotlin.Int;kotlin.Int){}[0]
     final suspend fun hasCollections(kotlin/String): kotlin/Boolean // com.mmcdole.kivo.core.session/SessionLibrary.hasCollections|hasCollections(kotlin.String){}[0]
     final suspend fun removeFromContinue(kotlin/String) // com.mmcdole.kivo.core.session/SessionLibrary.removeFromContinue|removeFromContinue(kotlin.String){}[0]
+    final suspend fun resetHomeRows(): kotlin.collections/List<com.mmcdole.kivo.api.models/HomeRowInfo> // com.mmcdole.kivo.core.session/SessionLibrary.resetHomeRows|resetHomeRows(){}[0]
     final suspend fun search(kotlin/String, kotlin/Int?): com.mmcdole.kivo.api.models/SearchResults // com.mmcdole.kivo.core.session/SessionLibrary.search|search(kotlin.String;kotlin.Int?){}[0]
     final suspend fun setFavorite(kotlin/String, kotlin/Boolean): com.mmcdole.kivo.api.models/UserState // com.mmcdole.kivo.core.session/SessionLibrary.setFavorite|setFavorite(kotlin.String;kotlin.Boolean){}[0]
+    final suspend fun setHomeRows(kotlin.collections/List<com.mmcdole.kivo.api.models/HomeRowChange>): kotlin.collections/List<com.mmcdole.kivo.api.models/HomeRowInfo> // com.mmcdole.kivo.core.session/SessionLibrary.setHomeRows|setHomeRows(kotlin.collections.List<com.mmcdole.kivo.api.models.HomeRowChange>){}[0]
     final suspend fun setPlayed(kotlin/String, kotlin/Boolean): com.mmcdole.kivo.api.models/UserState // com.mmcdole.kivo.core.session/SessionLibrary.setPlayed|setPlayed(kotlin.String;kotlin.Boolean){}[0]
 }
 

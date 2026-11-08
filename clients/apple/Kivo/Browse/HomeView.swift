@@ -42,7 +42,7 @@ struct HomeView: View {
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: Self.rowSpacing) {
                             ForEach(rows, id: \.id) { row in
-                                BrowseRow(title: title(of: row), items: row.items, style: Self.fixedStyle(row.kind), more: more(of: row))
+                                BrowseRow(title: homeRowTitle(kind: row.kind, libraryName: row.library?.name), items: row.items, style: Self.fixedStyle(row.kind), more: more(of: row))
                                     .environment(\.continueRow, Self.continueRows.contains(row.kind) ? row.kind : nil)
                             }
                         }
@@ -139,17 +139,19 @@ struct HomeView: View {
         }
     }
 
-    private func title(of row: HomeRow) -> String {
-        switch row.kind {
-        case "continueWatching": String(localized: "Continue Watching")
-        case "continueListening": String(localized: "Continue Listening")
-        case "favorites": String(localized: "Favorites")
-        default:
-            if let library = server.libraries.first(where: { $0.id == row.library?.id }) {
-                String(localized: "Recently Added in \(library.name)")
-            } else {
-                String(localized: "Recently Added")
-            }
+}
+
+/// A Home row's heading, the same on Home and in Settings.
+func homeRowTitle(kind: String, libraryName: String?) -> String {
+    switch kind {
+    case "continueWatching": String(localized: "Continue Watching")
+    case "continueListening": String(localized: "Continue Listening")
+    case "favorites": String(localized: "Favorites")
+    default:
+        if let libraryName {
+            String(localized: "Recently Added in \(libraryName)")
+        } else {
+            String(localized: "Recently Added")
         }
     }
 }

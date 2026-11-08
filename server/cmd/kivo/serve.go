@@ -188,7 +188,7 @@ func wire(ctx context.Context, boot config.Bootstrap, logs *health.Logs, bus *ev
 	s.activity = activity.New(db, bus)
 	s.runner = tasks.New(db, s.settings, bus, tasks.Options{Ended: s.activity.TaskRunEnded})
 	s.catalog = catalog.New(db, bus)
-	s.users = users.New(db)
+	s.users = users.New(db, bus)
 	s.auth = auth.New(db, auth.Deps{Users: s.users, Settings: s.settings, Activity: s.activity})
 	s.query = query.New(db)
 	s.userstate = userstate.New(db, userstate.Deps{Catalog: s.catalog, Settings: s.settings, Activity: s.activity, Events: bus})

@@ -19,6 +19,7 @@ export const apiPaths = {
   libraryAuthors: "/api/v1/libraries/{id}/authors",
   libraryBookSeries: "/api/v1/libraries/{id}/book-series",
   home: "/api/v1/home",
+  homeRows: "/api/v1/home/rows",
   favorites: "/api/v1/favorites",
   work: "/api/v1/works/{id}",
   workChildren: "/api/v1/works/{id}/children",

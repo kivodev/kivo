@@ -54,6 +54,7 @@ export function planEvent(event: EventMessage): CacheOp[] {
       const ids = event.libraryIds ?? [];
       return [
         invalidate(apiPaths.home),
+        invalidate(apiPaths.homeRows),
         invalidate(apiPaths.favorites),
         invalidate(apiPaths.libraries),
         invalidate(apiPaths.library, { ids }),
@@ -61,6 +62,8 @@ export function planEvent(event: EventMessage): CacheOp[] {
         ...libraryGridPaths.map((path) => invalidate(path, { ids })),
       ];
     }
+    case "homeChanged":
+      return [invalidate(apiPaths.home), invalidate(apiPaths.homeRows)];
     case "userStateChanged":
       // Cards everywhere show the state, and Home's rows and Favorites follow it.
       return workViews(event.workIds);

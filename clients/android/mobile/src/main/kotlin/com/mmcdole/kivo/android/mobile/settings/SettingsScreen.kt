@@ -95,7 +95,7 @@ fun SettingsScreen(session: ServerSession, nav: MobileNav) {
             item { SettingRow(stringResource(R.string.mobile_subtitles), "subtitles") { page(SettingsPage.Subtitles) } }
             item { SettingRow(stringResource(R.string.mobile_quality), "quality") { page(SettingsPage.Quality) } }
             if (session.session.downloads != null) item { SettingRow(stringResource(R.string.mobile_tab_downloads), "downloads") { page(SettingsPage.Downloads) } }
-            item { SettingRow(stringResource(R.string.mobile_tab_libraries), "libraries") { page(SettingsPage.Libraries) } }
+            item { SettingRow(stringResource(R.string.mobile_settings_home_libraries), "libraries") { page(SettingsPage.Libraries) } }
             item { HorizontalDivider(Modifier.padding(vertical = space(2))) }
             item { SettingRow(stringResource(R.string.mobile_about), "about") { page(SettingsPage.About) } }
         }

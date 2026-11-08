@@ -142,6 +142,9 @@ internal sealed interface Invalidation {
     /** The user's downloads moved on the server: in line, in their preparation, or to ready or failed. */
     data object DownloadsChanged : Invalidation
 
+    /** The user's Home layout changed on another client: Home and the editor. */
+    data object HomeChanged : Invalidation
+
     /** Events may have been missed (a reconnect, a resync, a new server version): refetch everything visible. */
     data object Everything : Invalidation
 }
@@ -162,5 +165,6 @@ private fun invalidationOf(event: EventMessage): Invalidation? = when (event.kin
     "userStateChanged" -> Invalidation.UserStateChanged(event.workIds.orEmpty())
     "playEnded" -> event.playId?.let { Invalidation.PlayEnded(it, event.message) }
     "downloadsChanged" -> Invalidation.DownloadsChanged
+    "homeChanged" -> Invalidation.HomeChanged
     else -> null
 }

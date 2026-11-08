@@ -2,11 +2,19 @@ import { HttpResponse, ws } from "msw";
 import { createOpenApiHttp } from "openapi-msw";
 import { apiPaths } from "../paths";
 import type { paths } from "../schema";
-import type { EventMessage, LetterStart, PlayCreate, PlayStarted, PlayTrack, Problem } from "../schemas";
+import type { EventMessage, HomeRowInfo, LetterStart, PlayCreate, PlayStarted, PlayTrack, Problem } from "../schemas";
 import { type MockApi, summaryOf } from "./api";
 
 /** MSW's handlers, typed by the spec, for tests that answer a request themselves. */
 export const http = createOpenApiHttp<paths>({ baseUrl: "*" });
+
+/** The rows of Home's layout, the mock's stored ones or every row shown. */
+function homeLayout(api: MockApi): HomeRowInfo[] {
+  return (
+    api.homeLayout ??
+    api.home.rows.map(({ id, kind, library }) => ({ id, kind, ...(library ? { library } : {}), shown: true }))
+  );
+}
 
 export function problem(status: number, code: Problem["code"], extra: Partial<Problem> = {}): HttpResponse<Problem> {
   return HttpResponse.json(
@@ -221,6 +229,19 @@ export function createHandlers(api: MockApi) {
     http.post("/api/v1/libraries/{id}/refresh-metadata", ({ response }) => response(202).json({})),
 
     http.get("/api/v1/home", ({ response }) => response(200).json(api.home)),
+    http.get("/api/v1/home/rows", ({ response }) => response(200).json({ items: homeLayout(api) })),
+    http.patch("/api/v1/home/rows", async ({ request, response }) => {
+      const byId = new Map(homeLayout(api).map((r) => [r.id, r]));
+      api.homeLayout = (await request.json()).items.flatMap(({ id, shown }) => {
+        const row = byId.get(id);
+        return row ? [{ ...row, shown }] : [];
+      });
+      return response(200).json({ items: homeLayout(api) });
+    }),
+    http.post("/api/v1/home/rows/reset", ({ response }) => {
+      api.homeLayout = undefined;
+      return response(200).json({ items: homeLayout(api) });
+    }),
     // The works marked a favorite, of one kind or every kind, as a grid
     // paged by offset.
     http.get("/api/v1/favorites", ({ query, response }) => {

@@ -1699,6 +1699,7 @@
   },
   "home": [
     {
+      "ID": "recentlyAdded:library:Movies",
       "Kind": "recentlyAdded",
       "Library": {
         "ID": "library:Movies",
@@ -1805,6 +1806,7 @@
       ]
     },
     {
+      "ID": "recentlyAdded:library:Shows",
       "Kind": "recentlyAdded",
       "Library": {
         "ID": "library:Shows",
@@ -1861,6 +1863,7 @@
       ]
     },
     {
+      "ID": "recentlyAdded:library:Private",
       "Kind": "recentlyAdded",
       "Library": {
         "ID": "library:Private",
@@ -1917,6 +1920,7 @@
       ]
     },
     {
+      "ID": "recentlyAdded:library:Audiobooks",
       "Kind": "recentlyAdded",
       "Library": {
         "ID": "library:Audiobooks",

@@ -125,7 +125,7 @@ private fun Rows(rows: List<HomeRowUi>, nav: MobileNav, onFavorites: () -> Unit,
                 else -> null
             }
             Column {
-                RowHeading(rowTitle(row), opens)
+                RowHeading(rowTitle(row.kind, row.libraryName), opens)
                 LazyRow(
                     state = rowState(row.items.firstOrNull()?.id),
                     contentPadding = PaddingValues(horizontal = SideMargin),
@@ -186,11 +186,11 @@ private fun RowHeading(title: String, onClick: (() -> Unit)?) {
 }
 
 @Composable
-private fun rowTitle(row: HomeRowUi): String = when (row.kind) {
+internal fun rowTitle(kind: String, libraryName: String?): String = when (kind) {
     CONTINUE_WATCHING -> stringResource(R.string.mobile_row_continue_watching)
     "continueListening" -> stringResource(R.string.mobile_row_continue_listening)
     "favorites" -> stringResource(R.string.mobile_row_favorites)
-    else -> row.libraryName?.let { stringResource(R.string.mobile_row_recently_added_in, it) } ?: stringResource(R.string.mobile_row_recently_added)
+    else -> libraryName?.let { stringResource(R.string.mobile_row_recently_added_in, it) } ?: stringResource(R.string.mobile_row_recently_added)
 }
 
 /** Home while it loads: a row of landscape cards, then two of posters. */

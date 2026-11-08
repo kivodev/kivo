@@ -1001,11 +1001,66 @@ export interface paths {
         };
         /**
          * Get Home rows
-         * @description The user's Home rows. Empty rows are left out.
+         * @description The user's Home rows that are shown, in the user's order, on every
+         *     client. With `kind`, the rows of those kinds, shown or not. Empty
+         *     rows are left out. A hidden row is left out for a Cast device too.
          */
         get: operations["getHome"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/home/rows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Home rows
+         * @description Every row of the user's Home, in order, shown or not, including
+         *     rows with no works. For the Home & Libraries editor.
+         */
+        get: operations["listHomeRows"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change the Home layout
+         * @description Places the listed rows first, in the order given. A row left out
+         *     keeps whether it's shown and follows the listed rows. A well-formed
+         *     `id` of a row that no longer exists is ignored; a malformed or
+         *     repeated `id` is `400`. A Home once changed here is arranged: a new
+         *     library's Recently Added row joins the end shown, and a row of a
+         *     new built-in kind joins off. A `homeChanged` event tells the user's
+         *     other clients.
+         */
+        patch: operations["updateHomeRows"];
+        trace?: never;
+    };
+    "/api/v1/home/rows/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset the Home layout
+         * @description Forgets the user's order and hidden rows, so Home returns to the
+         *     default order with every built-in row shown. A `homeChanged` event
+         *     tells the user's other clients.
+         */
+        post: operations["resetHomeRows"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3060,7 +3115,7 @@ export interface components {
         };
         LibraryChoice: {
             id: components["schemas"]["ID"];
-            /** @description Shown in the sidebar and with a Recently Added row on Home. */
+            /** @description Shown in the sidebar. */
             pinned: boolean;
         };
         /** @description A user, as admins see it. */
@@ -3237,9 +3292,9 @@ export interface components {
             id: components["schemas"]["ID"];
             name: string;
             /**
-             * @description Pinned by the user: shown in its sidebar and with a Recently
-             *     Added row on Home. Every library is until the user
-             *     chooses; search finds works in every library either way.
+             * @description Pinned by the user: shown in its sidebar. Every library is
+             *     until the user chooses; search finds works in every library
+             *     either way.
              */
             pinned: boolean;
             kind: components["schemas"]["LibraryKind"];
@@ -3415,12 +3470,32 @@ export interface components {
             rows: components["schemas"]["HomeRow"][];
         };
         HomeRow: {
-            /** @description Stable per row, such as `recentlyAdded:<libraryId>`. */
+            /** @description Stable per row: the kind, or `recentlyAdded:<libraryId>`. */
             id: string;
             kind: components["schemas"]["HomeRowKind"];
             /** @description For `recentlyAdded`, the library. */
             library?: components["schemas"]["LibraryRef"];
             items: components["schemas"]["WorkSummary"][];
+        };
+        /** @description A row of the user's Home layout, as the editor lists it. */
+        HomeRowInfo: {
+            /** @description As `HomeRow.id`. */
+            id: string;
+            kind: components["schemas"]["HomeRowKind"];
+            /** @description For `recentlyAdded`, the library. */
+            library?: components["schemas"]["LibraryRef"];
+            shown: boolean;
+        };
+        HomeRowInfoList: {
+            items: components["schemas"]["HomeRowInfo"][];
+        };
+        HomeRowsUpdate: {
+            /** @description The rows, in the order wanted, each shown or hidden. */
+            items: components["schemas"]["HomeRowChange"][];
+        };
+        HomeRowChange: {
+            id: string;
+            shown: boolean;
         };
         /** @description A library as a row or list names it. */
         LibraryRef: {
@@ -5326,6 +5401,8 @@ export interface components {
          *     - `playEnded` (`playId`, `message`): the user's play was stopped
          *       by an admin or another client, or expired; `message` is the
          *       admin's words to the viewer, if any.
+         *     - `homeChanged`: the user's Home layout changed on another client:
+         *       refetch Home and the layout.
          *     - `downloadsChanged`: the user's downloads on the server moved:
          *       in line, in their preparation (at most every 10 seconds), or to
          *       ready or failed. Refetch the downloads that aren't ready.
@@ -5361,7 +5438,7 @@ export interface components {
          * @description What an event says changed. Skip kinds you don't know.
          * @enum {string}
          */
-        EventKind: "workChanged" | "libraryChanged" | "userStateChanged" | "playEnded" | "downloadsChanged" | "tasksChanged" | "playsChanged" | "problemsChanged" | "logsChanged" | "activityChanged";
+        EventKind: "workChanged" | "libraryChanged" | "userStateChanged" | "homeChanged" | "playEnded" | "downloadsChanged" | "tasksChanged" | "playsChanged" | "problemsChanged" | "logsChanged" | "activityChanged";
         /** @description The client fell behind and events were dropped. Treat every live-kept query as stale and refetch; a fresh `snapshot` follows. */
         ResyncMessage: {
             /**
@@ -7004,7 +7081,10 @@ export interface operations {
     };
     getHome: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Only the rows of these kinds, shown or not. */
+                kind?: components["schemas"]["HomeRowKind"][];
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -7018,6 +7098,78 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Home"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Error"];
+        };
+    };
+    listHomeRows: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The layout. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HomeRowInfoList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Error"];
+        };
+    };
+    updateHomeRows: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HomeRowsUpdate"];
+            };
+        };
+        responses: {
+            /** @description The layout. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HomeRowInfoList"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Error"];
+        };
+    };
+    resetHomeRows: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The layout. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HomeRowInfoList"];
                 };
             };
             401: components["responses"]["Unauthorized"];

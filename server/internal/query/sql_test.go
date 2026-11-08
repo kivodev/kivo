@@ -133,7 +133,11 @@ func TestViewerFilter(t *testing.T) {
 			if strings.HasPrefix(st.sql[at:], "-- viewer-filter: libraries") {
 				kind, open = "libraries", at+strings.Index(st.sql[at:], "(")
 			}
-			if got := squeeze(group(st.sql, open)); got != canonical[kind] {
+			if strings.HasPrefix(st.sql[at:], "-- viewer-filter: user") {
+				if !strings.Contains(st.sql, "user_id = @user") {
+					t.Errorf("%s: read of the user's own rows doesn't name @user", st.name)
+				}
+			} else if got := squeeze(group(st.sql, open)); got != canonical[kind] {
 				t.Errorf("%s: viewer predicate differs from the canonical one:\n%s", st.name, got)
 			}
 			n++

@@ -37,6 +37,8 @@ overrides:
         go_type: bool
       - column: user_library.pinned
         go_type: bool
+      - column: user_home_row.shown
+        go_type: bool
       - column: user_state.played
         go_type: bool
       - column: user_state.resumable
@@ -131,6 +133,8 @@ sql:
           - column: user_library.user_id
             go_type: github.com/mmcdole/kivo/internal/id.ID
           - column: user_library.library_id
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+          - column: user_home_row.user_id
             go_type: github.com/mmcdole/kivo/internal/id.ID
   - engine: sqlite
     schema: internal/store/migrations

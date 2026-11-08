@@ -33,6 +33,10 @@ msgstr "Sign out this TV?"
 msgid "Choose {name}"
 msgstr "Choose {name}"
 
+#: src/features/user/SettingsScreen.tsx
+msgid "Reset Home"
+msgstr "Reset Home"
+
 #: src/features/browse/useBrowseLabels.ts
 msgid "In progress"
 msgstr "In progress"
@@ -210,6 +214,10 @@ msgstr "Select at least one library."
 #: src/features/admin/useAdminLabels.ts
 msgid "Generating"
 msgstr "Generating"
+
+#: src/features/user/HomeRowsEditor.tsx
+msgid "Shown: {name}"
+msgstr "Shown: {name}"
 
 #: src/features/player/PlayerError.tsx
 msgid "Stream limit reached"
@@ -1055,7 +1063,7 @@ msgstr "{name} (missing)"
 msgid "Grid"
 msgstr "Grid"
 
-#: src/features/home/HomeScreen.tsx
+#: src/features/home/rowTitle.ts
 msgid "Recently Added"
 msgstr "Recently Added"
 
@@ -1368,6 +1376,10 @@ msgstr "No GPU found. Video is transcoded on the CPU. To use a GPU, pass it to t
 msgid "Standalone books"
 msgstr "Standalone books"
 
+#: src/features/user/SettingsScreen.tsx
+msgid "Unchecked libraries are hidden from the sidebar."
+msgstr "Unchecked libraries are hidden from the sidebar."
+
 #: src/features/browse/CountLine.tsx
 msgid "Sort"
 msgstr "Sort"
@@ -1450,7 +1462,7 @@ msgstr "Narrated"
 msgid "{n, plural, one {# book} other {# books}}"
 msgstr "{n, plural, one {# book} other {# books}}"
 
-#: src/features/home/HomeScreen.tsx
+#: src/features/home/rowTitle.ts
 msgid "Continue Watching"
 msgstr "Continue Watching"
 
@@ -1511,10 +1523,6 @@ msgstr "{user} signed in"
 #: src/features/browse/CountLine.tsx
 msgid "No {state} {noun}"
 msgstr "No {state} {noun}"
-
-#: src/features/user/SettingsScreen.tsx
-msgid "Unchecked libraries are hidden from the sidebar and Home."
-msgstr "Unchecked libraries are hidden from the sidebar and Home."
 
 #: src/features/admin/userFields.tsx
 msgid "Simultaneous streams"
@@ -1750,6 +1758,7 @@ msgstr "Scan"
 
 #: src/app/AppShell.tsx
 #: src/app/tv/TvRail.tsx
+#: src/features/user/SettingsScreen.tsx
 msgid "Home"
 msgstr "Home"
 
@@ -2022,6 +2031,10 @@ msgstr "Can't reach the server. Reconnecting…"
 #: src/features/admin/useAdminLabels.ts
 msgid "Cleaning up"
 msgstr "Cleaning up"
+
+#: src/features/user/HomeRowsEditor.tsx
+msgid "Move down: {name}"
+msgstr "Move down: {name}"
 
 #: src/features/user/SettingsScreen.tsx
 msgid "Large"
@@ -2469,6 +2482,7 @@ msgstr "{name} has to sign in again."
 #: src/features/browse/LibrariesScreen.tsx
 #: src/features/browse/LibrarySwitcher.tsx
 #: src/features/user/LibraryOrder.tsx
+#: src/features/user/SettingsScreen.tsx
 msgid "Libraries"
 msgstr "Libraries"
 
@@ -2497,6 +2511,10 @@ msgstr "Kivo is starting"
 #: src/features/browse/FavoritesScreen.tsx
 msgid "{count, plural, one {# season} other {# seasons}}"
 msgstr "{count, plural, one {# season} other {# seasons}}"
+
+#: src/features/user/SettingsScreen.tsx
+msgid "Reset"
+msgstr "Reset"
 
 #: src/features/admin/problemActions.ts
 msgid "Enter an OpenSubtitles API key in General settings, or turn off subtitle downloads for the library."
@@ -3167,6 +3185,10 @@ msgstr "Books"
 msgid "OpenSubtitles username"
 msgstr "OpenSubtitles username"
 
+#: src/features/user/HomeRowsEditor.tsx
+msgid "Move up: {name}"
+msgstr "Move up: {name}"
+
 #: src/features/libraries/EditLibraryForm.tsx
 msgid "Use local metadata"
 msgstr "Use local metadata"
@@ -3200,7 +3222,7 @@ msgstr "Top rated"
 msgid "Playback was stopped."
 msgstr "Playback was stopped."
 
-#: src/features/home/HomeScreen.tsx
+#: src/features/home/rowTitle.ts
 msgid "Recently Added in {name}"
 msgstr "Recently Added in {name}"
 
@@ -3661,7 +3683,7 @@ msgstr "Nightly and when media is added"
 #: src/features/browse/LibrariesScreen.tsx
 #: src/features/browse/LibrarySwitcher.tsx
 #: src/features/browse/useBrowseLabels.ts
-#: src/features/home/HomeScreen.tsx
+#: src/features/home/rowTitle.ts
 msgid "Favorites"
 msgstr "Favorites"
 
@@ -3849,6 +3871,10 @@ msgstr "Loading"
 msgid "Limit"
 msgstr "Limit"
 
+#: src/features/user/HomeRowsEditor.tsx
+msgid "Home rows"
+msgstr "Home rows"
+
 #: src/features/admin/AddUserButton.tsx
 msgid "Add a user"
 msgstr "Add a user"
@@ -3955,7 +3981,7 @@ msgstr "Exit Kivo?"
 msgid "Move the data folder to a local disk."
 msgstr "Move the data folder to a local disk."
 
-#: src/features/home/HomeScreen.tsx
+#: src/features/home/rowTitle.ts
 msgid "Continue Listening"
 msgstr "Continue Listening"
 

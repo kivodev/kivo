@@ -108,6 +108,71 @@ func TestMigrationExternalSubtitles(t *testing.T) {
 	}
 }
 
+// 0059 hides the Recently Added rows of unpinned libraries, and Continue
+// Listening for a user with audiobooks libraries, every one unpinned. A
+// library with no user_library row counts as pinned, and a user's other
+// rows stay out of the new table.
+func TestMigrationHomeRows(t *testing.T) {
+	ctx := context.Background()
+	db, path := testDB(t, through(t, "_continue_removed.sql"))
+	err := db.Write(ctx, func(ctx context.Context, tx *Tx) error {
+		_, err := tx.ExecContext(ctx, `
+			INSERT INTO user (id, username, admin, all_libraries, created_at) VALUES
+				(x'a1', 'unpinned', 0, 1, 1),
+				(x'a2', 'someleft', 0, 1, 1),
+				(x'a3', 'granted', 0, 0, 1),
+				(x'a4', 'nobooks', 0, 0, 1),
+				(x'a5', 'allpinned', 0, 1, 1);
+			INSERT INTO library (id, name, kind, created_at) VALUES
+				(x'b1000000000000000000000000000000', 'Movies', 'movies', 1),
+				(x'b2000000000000000000000000000000', 'Books', 'audiobooks', 2),
+				(x'b3000000000000000000000000000000', 'More Books', 'audiobooks', 3);
+			INSERT INTO library_grant (user_id, library_id) VALUES (x'a3', x'b2000000000000000000000000000000'), (x'a3', x'b1000000000000000000000000000000');
+			INSERT INTO user_library (user_id, library_id, position, pinned) VALUES
+				(x'a1', x'b1000000000000000000000000000000', 0, 0), (x'a1', x'b2000000000000000000000000000000', 1, 0), (x'a1', x'b3000000000000000000000000000000', 2, 0),
+				(x'a2', x'b2000000000000000000000000000000', 0, 0),
+				(x'a3', x'b1000000000000000000000000000000', 0, 1), (x'a3', x'b2000000000000000000000000000000', 1, 0);`)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+
+	up, err := open(ctx, path, embeddedMigrations(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer up.Close()
+	rows, err := up.Reader().QueryContext(ctx, `
+		SELECT hex(user_id), row_id, position IS NULL, shown FROM user_home_row ORDER BY user_id, row_id`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for rows.Next() {
+		var u, r string
+		var null, shown int
+		if err := rows.Scan(&u, &r, &null, &shown); err != nil {
+			t.Fatal(err)
+		}
+		got = append(got, fmt.Sprintf("%s %s %d %d", u, r, null, shown))
+	}
+	rows.Close()
+	want := []string{
+		"A1 continueListening 1 0",
+		"A1 recentlyAdded:b1000000-0000-0000-0000-000000000000 1 0",
+		"A1 recentlyAdded:b2000000-0000-0000-0000-000000000000 1 0",
+		"A1 recentlyAdded:b3000000-0000-0000-0000-000000000000 1 0",
+		"A2 recentlyAdded:b2000000-0000-0000-0000-000000000000 1 0",
+		"A3 continueListening 1 0",
+		"A3 recentlyAdded:b2000000-0000-0000-0000-000000000000 1 0",
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("user_home_row after 0059:\n%q\nwant\n%q", got, want)
+	}
+}
+
 // 0057 makes the problem codes problemRaised events keep camelCase, in
 // their codes and their problems' IDs, and leaves other events and codes
 // as they were.

@@ -1,7 +1,9 @@
 package com.mmcdole.kivo.android.settings
 
 import com.mmcdole.kivo.android.main.tvLibraries
+import com.mmcdole.kivo.api.models.HomeRowInfo
 import com.mmcdole.kivo.api.models.Library
+import com.mmcdole.kivo.api.models.LibraryRef
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -20,6 +22,17 @@ class SettingsTest {
     fun displayIsListedOnlyWhereTheSystemDoesntMatchFrameRates() {
         assertEquals(SettingsGroup.entries, settingsGroups(systemMatches = false))
         assertEquals(SettingsGroup.entries - SettingsGroup.Display, settingsGroups(systemMatches = true))
+    }
+
+    @Test
+    fun movingARowPassesOverTheOnesTheTvDoesntList() {
+        val watching = HomeRowInfo("continueWatching", "continueWatching", true)
+        val listening = HomeRowInfo("continueListening", "continueListening", true)
+        val shows = HomeRowInfo("recentlyAdded:shows", "recentlyAdded", true, LibraryRef("shows", "Shows", "shows"))
+        val all = listOf(watching, listening, shows)
+
+        assertEquals(listOf(shows, listening, watching), movedRow(all, "recentlyAdded:shows", -1))
+        assertEquals(all, movedRow(all, "continueWatching", -1))
     }
 
     @Test

@@ -411,7 +411,7 @@ func TestHomeRows(t *testing.T) {
 // finds the rest.
 func TestPinnedLibraries(t *testing.T) {
 	h := newHousehold(t)
-	us := users.New(h.b.DB)
+	us := users.New(h.b.DB, nil)
 	type entry struct {
 		lib    id.ID
 		pinned bool
@@ -441,8 +441,8 @@ func TestPinnedLibraries(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(recentlyAdded(home)) != 1 || recentlyAdded(home)[0].Library.ID != h.shows {
-		t.Errorf("Recently Added rows = %+v, want Shows only", recentlyAdded(home))
+	if ra := recentlyAdded(home); len(ra) != 2 || ra[0].Library.ID != h.shows || ra[1].Library.ID != h.movies {
+		t.Errorf("Recently Added rows = %+v, want Shows then Movies: order by library order, regardless of pins", ra)
 	}
 	if got, _ := h.q.Search(ctx, h.friend, "blade runner", 0); !slices.Equal(ids(got.Works), []id.ID{h.bladeRunner.Work}) {
 		t.Errorf("Search finds %v in a library that isn't pinned", ids(got.Works))
@@ -528,12 +528,12 @@ func TestBookRows(t *testing.T) {
 	if home := rows(h.friend); len(row(home, query.RowContinueListening)) != 0 {
 		t.Errorf("the friend's Continue Listening: %v", ids(row(home, query.RowContinueListening)))
 	}
-	// An audiobooks library that isn't pinned has no Continue Listening.
-	if err := users.New(h.b.DB).EditPreferences(ctx, h.admin, users.PreferencesChange{Libraries: &[]users.LibraryChoice{{Library: h.books}}}); err != nil {
+	// Pins don't hide Continue Listening.
+	if err := users.New(h.b.DB, nil).EditPreferences(ctx, h.admin, users.PreferencesChange{Libraries: &[]users.LibraryChoice{{Library: h.books}}}); err != nil {
 		t.Fatal(err)
 	}
-	if home := rows(h.admin); len(row(home, query.RowContinueListening)) != 0 {
-		t.Errorf("Continue Listening without a pinned audiobooks library: %v", ids(row(home, query.RowContinueListening)))
+	if home := rows(h.admin); len(row(home, query.RowContinueListening)) == 0 {
+		t.Error("Continue Listening is off for an audiobooks library that isn't pinned")
 	}
 }
 

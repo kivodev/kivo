@@ -28,6 +28,7 @@ export type LibraryScanStatus = Schemas["LibraryScanStatus"];
 export type ScanProgress = Schemas["ScanProgress"];
 export type Home = Schemas["Home"];
 export type HomeRow = Schemas["HomeRow"];
+export type HomeRowInfo = Schemas["HomeRowInfo"];
 export type WorkSummary = Schemas["WorkSummary"];
 export type LetterStart = Schemas["LetterStart"];
 export type CollectionSummary = Schemas["CollectionSummary"];

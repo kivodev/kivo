@@ -48,6 +48,12 @@ DELETE FROM user_library
 WHERE user_library.user_id = @user_id
   AND library_id NOT IN (SELECT g.library_id FROM library_grant g WHERE g.user_id = @user_id);
 
+-- name: DeleteHomeRows :exec
+DELETE FROM user_home_row WHERE user_id = @user_id;
+
+-- name: InsertHomeRow :exec
+INSERT INTO user_home_row (user_id, row_id, position, shown) VALUES (@user_id, @row_id, @position, @shown);
+
 -- name: DeleteLibraryOrder :exec
 DELETE FROM user_library WHERE user_id = @user_id;
 

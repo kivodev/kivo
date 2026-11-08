@@ -44,7 +44,7 @@ struct SettingsView: View {
                     Text(String(localized: "Appearance"))
                 }
                 NavigationLink { LibrariesSettingsView() } label: {
-                    Text(String(localized: "Libraries"))
+                    Text(String(localized: "Home & Libraries"))
                 }
             }
             Section {

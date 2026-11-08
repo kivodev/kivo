@@ -3398,6 +3398,246 @@ GET /api/v1/home
 }
 
 
+GET /api/v1/home?kind=recentlyAdded
+200
+{
+  "rows": [
+    {
+      "id": "recentlyAdded:<id1>",
+      "items": [
+        {
+          "addedAt": "<time>",
+          "available": true,
+          "episode": {
+            "airDate": "2001-02-03",
+            "number": 1,
+            "seasonId": "<id7>",
+            "seasonNumber": 1,
+            "seriesId": "<id3>",
+            "seriesTitle": "Seeded Series"
+          },
+          "id": "<id15>",
+          "images": {},
+          "kind": "episode",
+          "libraryId": "<id1>",
+          "matchState": "matched",
+          "title": "Episode 1",
+          "userState": {
+            "favorite": false,
+            "playCount": 0,
+            "played": false
+          }
+        },
+        {
+          "addedAt": "<time>",
+          "available": true,
+          "durationMs": 7200000,
+          "id": "<id2>",
+          "images": {},
+          "kind": "movie",
+          "libraryId": "<id1>",
+          "matchState": "matched",
+          "title": "Heat",
+          "userState": {
+            "favorite": true,
+            "lastPlayedAt": "<time>",
+            "playCount": 0,
+            "played": false,
+            "positionMs": 600000,
+            "versionId": "<id11>"
+          },
+          "year": 1996
+        }
+      ],
+      "kind": "recentlyAdded",
+      "library": {
+        "id": "<id1>",
+        "kind": "movies",
+        "name": "Seeded Films"
+      }
+    },
+    {
+      "id": "recentlyAdded:<id4>",
+      "items": [
+        {
+          "addedAt": "<time>",
+          "available": true,
+          "book": {
+            "authors": [
+              {
+                "id": "<id5>",
+                "name": "James S. A. Corey"
+              }
+            ],
+            "narrators": [
+              {
+                "id": "<id19>",
+                "name": "Jefferson Mays"
+              }
+            ],
+            "series": [
+              {
+                "id": "<id20>",
+                "name": "The Expanse",
+                "position": "1",
+                "primary": true
+              }
+            ]
+          },
+          "id": "<id18>",
+          "images": {},
+          "kind": "book",
+          "libraryId": "<id4>",
+          "matchState": "matched",
+          "title": "Leviathan Wakes",
+          "userState": {
+            "favorite": false,
+            "playCount": 0,
+            "played": false
+          },
+          "year": 2011
+        }
+      ],
+      "kind": "recentlyAdded",
+      "library": {
+        "id": "<id4>",
+        "kind": "audiobooks",
+        "name": "audiobooks 3"
+      }
+    }
+  ]
+}
+
+
+GET /api/v1/home/rows
+200
+{
+  "items": [
+    {
+      "id": "continueWatching",
+      "kind": "continueWatching",
+      "shown": true
+    },
+    {
+      "id": "favorites",
+      "kind": "favorites",
+      "shown": true
+    },
+    {
+      "id": "recentlyAdded:<id1>",
+      "kind": "recentlyAdded",
+      "library": {
+        "id": "<id1>",
+        "kind": "movies",
+        "name": "Seeded Films"
+      },
+      "shown": true
+    },
+    {
+      "id": "continueListening",
+      "kind": "continueListening",
+      "shown": true
+    },
+    {
+      "id": "recentlyAdded:<id4>",
+      "kind": "recentlyAdded",
+      "library": {
+        "id": "<id4>",
+        "kind": "audiobooks",
+        "name": "audiobooks 3"
+      },
+      "shown": true
+    }
+  ]
+}
+
+
+PATCH /api/v1/home/rows
+200
+{
+  "items": [
+    {
+      "id": "continueWatching",
+      "kind": "continueWatching",
+      "shown": false
+    },
+    {
+      "id": "favorites",
+      "kind": "favorites",
+      "shown": true
+    },
+    {
+      "id": "recentlyAdded:<id1>",
+      "kind": "recentlyAdded",
+      "library": {
+        "id": "<id1>",
+        "kind": "movies",
+        "name": "Seeded Films"
+      },
+      "shown": true
+    },
+    {
+      "id": "continueListening",
+      "kind": "continueListening",
+      "shown": true
+    },
+    {
+      "id": "recentlyAdded:<id4>",
+      "kind": "recentlyAdded",
+      "library": {
+        "id": "<id4>",
+        "kind": "audiobooks",
+        "name": "audiobooks 3"
+      },
+      "shown": true
+    }
+  ]
+}
+
+
+POST /api/v1/home/rows/reset
+200
+{
+  "items": [
+    {
+      "id": "continueWatching",
+      "kind": "continueWatching",
+      "shown": true
+    },
+    {
+      "id": "favorites",
+      "kind": "favorites",
+      "shown": true
+    },
+    {
+      "id": "recentlyAdded:<id1>",
+      "kind": "recentlyAdded",
+      "library": {
+        "id": "<id1>",
+        "kind": "movies",
+        "name": "Seeded Films"
+      },
+      "shown": true
+    },
+    {
+      "id": "continueListening",
+      "kind": "continueListening",
+      "shown": true
+    },
+    {
+      "id": "recentlyAdded:<id4>",
+      "kind": "recentlyAdded",
+      "library": {
+        "id": "<id4>",
+        "kind": "audiobooks",
+        "name": "audiobooks 3"
+      },
+      "shown": true
+    }
+  ]
+}
+
+
 GET /api/v1/activity?show=plays&limit=1
 200
 {

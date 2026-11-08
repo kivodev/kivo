@@ -1545,15 +1545,89 @@ paths:
       operationId: getHome
       summary: Get Home rows
       description: |
-        The user's Home rows. Empty rows are left out.
+        The user's Home rows that are shown, in the user's order, on every
+        client. With `kind`, the rows of those kinds, shown or not. Empty
+        rows are left out. A hidden row is left out for a Cast device too.
       tags: [works]
       x-kivo-access: cast
+      parameters:
+        - name: kind
+          in: query
+          description: Only the rows of these kinds, shown or not.
+          schema:
+            type: array
+            items: {$ref: "#/components/schemas/HomeRowKind"}
       responses:
         "200":
           description: Home.
           content:
             application/json:
               schema: {$ref: "#/components/schemas/Home"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/home/rows:
+    get:
+      operationId: listHomeRows
+      summary: List Home rows
+      description: |
+        Every row of the user's Home, in order, shown or not, including
+        rows with no works. For the Home & Libraries editor.
+      tags: [works]
+      x-kivo-access: viewer
+      responses:
+        "200":
+          description: The layout.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/HomeRowInfoList"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        default: {$ref: "#/components/responses/Error"}
+    patch:
+      operationId: updateHomeRows
+      summary: Change the Home layout
+      description: |
+        Places the listed rows first, in the order given. A row left out
+        keeps whether it's shown and follows the listed rows. A well-formed
+        `id` of a row that no longer exists is ignored; a malformed or
+        repeated `id` is `400`. A Home once changed here is arranged: a new
+        library's Recently Added row joins the end shown, and a row of a
+        new built-in kind joins off. A `homeChanged` event tells the user's
+        other clients.
+      tags: [works]
+      x-kivo-access: viewer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/HomeRowsUpdate"}
+      responses:
+        "200":
+          description: The layout.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/HomeRowInfoList"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/home/rows/reset:
+    post:
+      operationId: resetHomeRows
+      summary: Reset the Home layout
+      description: |
+        Forgets the user's order and hidden rows, so Home returns to the
+        default order with every built-in row shown. A `homeChanged` event
+        tells the user's other clients.
+      tags: [works]
+      x-kivo-access: viewer
+      responses:
+        "200":
+          description: The layout.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/HomeRowInfoList"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         default: {$ref: "#/components/responses/Error"}
 
@@ -4271,7 +4345,7 @@ components:
         id: {$ref: "#/components/schemas/ID"}
         pinned:
           type: boolean
-          description: Shown in the sidebar and with a Recently Added row on Home.
+          description: Shown in the sidebar.
 
     User:
       type: object
@@ -4509,9 +4583,9 @@ components:
         pinned:
           type: boolean
           description: |
-            Pinned by the user: shown in its sidebar and with a Recently
-            Added row on Home. Every library is until the user
-            chooses; search finds works in every library either way.
+            Pinned by the user: shown in its sidebar. Every library is
+            until the user chooses; search finds works in every library
+            either way.
         kind: {$ref: "#/components/schemas/LibraryKind"}
         workCount:
           type: integer
@@ -4772,7 +4846,8 @@ components:
       properties:
         id:
           type: string
-          description: Stable per row, such as `recentlyAdded:<libraryId>`.
+          description: |
+            Stable per row: the kind, or `recentlyAdded:<libraryId>`.
         kind: {$ref: "#/components/schemas/HomeRowKind"}
         library:
           $ref: "#/components/schemas/LibraryRef"
@@ -4780,6 +4855,44 @@ components:
         items:
           type: array
           items: {$ref: "#/components/schemas/WorkSummary"}
+
+    HomeRowInfo:
+      type: object
+      description: A row of the user's Home layout, as the editor lists it.
+      required: [id, kind, shown]
+      properties:
+        id:
+          type: string
+          description: As `HomeRow.id`.
+        kind: {$ref: "#/components/schemas/HomeRowKind"}
+        library:
+          $ref: "#/components/schemas/LibraryRef"
+          description: For `recentlyAdded`, the library.
+        shown: {type: boolean}
+
+    HomeRowInfoList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: {$ref: "#/components/schemas/HomeRowInfo"}
+
+    HomeRowsUpdate:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          description: The rows, in the order wanted, each shown or hidden.
+          items: {$ref: "#/components/schemas/HomeRowChange"}
+
+    HomeRowChange:
+      type: object
+      required: [id, shown]
+      properties:
+        id: {type: string}
+        shown: {type: boolean}
 
     LibraryRef:
       type: object
@@ -7419,6 +7532,8 @@ components:
         - `playEnded` (`playId`, `message`): the user's play was stopped
           by an admin or another client, or expired; `message` is the
           admin's words to the viewer, if any.
+        - `homeChanged`: the user's Home layout changed on another client:
+          refetch Home and the layout.
         - `downloadsChanged`: the user's downloads on the server moved:
           in line, in their preparation (at most every 10 seconds), or to
           ready or failed. Refetch the downloads that aren't ready.
@@ -7455,7 +7570,7 @@ components:
     EventKind:
       type: string
       description: What an event says changed. Skip kinds you don't know.
-      enum: [workChanged, libraryChanged, userStateChanged, playEnded, downloadsChanged,
+      enum: [workChanged, libraryChanged, userStateChanged, homeChanged, playEnded, downloadsChanged,
         tasksChanged, playsChanged, problemsChanged, logsChanged, activityChanged]
 
     ResyncMessage:

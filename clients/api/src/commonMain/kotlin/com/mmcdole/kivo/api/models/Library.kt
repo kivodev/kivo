@@ -35,7 +35,7 @@ import kotlinx.serialization.encoding.*
  *
  * @param id A UUIDv7.
  * @param name 
- * @param pinned Pinned by the user: shown in its sidebar and with a Recently Added row on Home. Every library is until the user chooses; search finds works in every library either way. 
+ * @param pinned Pinned by the user: shown in its sidebar. Every library is until the user chooses; search finds works in every library either way. 
  * @param kind What a library holds. Skip kinds you don't know.
  * @param workCount Top-level works the user can see.
  * @param folders 
@@ -58,7 +58,7 @@ data class Library (
 
     @SerialName(value = "name") @Required val name: kotlin.String,
 
-    /* Pinned by the user: shown in its sidebar and with a Recently Added row on Home. Every library is until the user chooses; search finds works in every library either way.  */
+    /* Pinned by the user: shown in its sidebar. Every library is until the user chooses; search finds works in every library either way.  */
     @SerialName(value = "pinned") @Required val pinned: kotlin.Boolean,
 
     /* What a library holds. Skip kinds you don't know. */

@@ -422,7 +422,7 @@ func (h *household) collectionOf(work id.ID) id.ID {
 // library.
 func (h *household) viewer(name string, u users.NewUser) users.Viewer {
 	h.t.Helper()
-	svc := users.New(h.b.DB)
+	svc := users.New(h.b.DB, nil)
 	u.Username = name
 	if len(u.Grants.Libraries) == 0 {
 		u.Grants.All = true
@@ -439,7 +439,7 @@ func (h *household) viewer(name string, u users.NewUser) users.Viewer {
 
 func (h *household) mustViewer(user id.ID) users.Viewer {
 	h.t.Helper()
-	v, err := users.New(h.b.DB).Viewer(context.Background(), user)
+	v, err := users.New(h.b.DB, nil).Viewer(context.Background(), user)
 	if err != nil {
 		h.t.Fatal(err)
 	}

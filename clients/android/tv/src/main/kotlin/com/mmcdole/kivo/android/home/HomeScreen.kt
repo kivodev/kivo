@@ -89,7 +89,7 @@ data class HomeUi(val rows: List<ShownRow>, val libraries: List<Library>)
 data class ShownRow(val row: HomeRow, val library: Library?, val shape: CardShape)
 
 /** The row kinds the TV shows: no book rows, and no kind it doesn't know. */
-private val tvRows = setOf("continueWatching", "recentlyAdded", "favorites")
+internal val tvRows = setOf("continueWatching", "recentlyAdded", "favorites")
 
 /**
  * The [rows] the TV shows, among the [libraries] it shows: empty rows and
@@ -269,7 +269,7 @@ private fun Rows(ui: HomeUi, navigator: Navigator) {
                 val menu = if (row.kind == "continueWatching") LocalContinueWatchingMenu.current else LocalWorkMenu.current
                 // Raised with its focused card, so the card's glow lies over the row below.
                 Column(Modifier.raisedOnFocus()) {
-                    RowTitle(rowTitle(row, library), Modifier.padding(RowTitlePadding))
+                    RowTitle(rowTitle(row.kind, library?.name), Modifier.padding(RowTitlePadding))
                     CompositionLocalProvider(LocalWorkMenu provides menu, LocalArtworkShown provides artwork, LocalCaptionsShown provides captions, LocalCardLight provides cardLight) {
                         CardRow(state = cards) {
                             items(row.items, key = { it.id }, contentType = { shape }) { work ->
@@ -313,8 +313,8 @@ private fun Rows(ui: HomeUi, navigator: Navigator) {
 }
 
 @Composable
-private fun rowTitle(row: HomeRow, library: Library?): String = when (row.kind) {
+internal fun rowTitle(kind: String, libraryName: String?): String = when (kind) {
     "continueWatching" -> stringResource(R.string.row_continue_watching)
     "favorites" -> stringResource(R.string.row_favorites)
-    else -> library?.let { stringResource(R.string.row_recently_added_in, it.name) } ?: stringResource(R.string.row_recently_added)
+    else -> libraryName?.let { stringResource(R.string.row_recently_added_in, it) } ?: stringResource(R.string.row_recently_added)
 }

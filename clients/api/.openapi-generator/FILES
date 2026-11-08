@@ -102,6 +102,10 @@ src/commonMain/kotlin/com/mmcdole/kivo/api/models/FixMatchRequest.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/Health.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/Home.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/HomeRow.kt
+src/commonMain/kotlin/com/mmcdole/kivo/api/models/HomeRowChange.kt
+src/commonMain/kotlin/com/mmcdole/kivo/api/models/HomeRowInfo.kt
+src/commonMain/kotlin/com/mmcdole/kivo/api/models/HomeRowInfoList.kt
+src/commonMain/kotlin/com/mmcdole/kivo/api/models/HomeRowsUpdate.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/ImageRef.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/Invite.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/InviteCreate.kt
