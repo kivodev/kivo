@@ -71,9 +71,14 @@ const toneMapTo = "tonemap=bt2390:desat=0:peak=100:t=bt709:m=bt709:p=bt709"
 var (
 	software = &backend{
 		kind: media.Software,
+		// A scaler is always there, even with nothing to resize, so any
+		// pixel format conversion happens in it, after colorParams. Without
+		// it, ffmpeg adds its own scaler wherever it likes, which after a
+		// seek is ahead of colorParams, on frames still tagged with a matrix
+		// such as YCgCo that it can't convert.
 		scale: func(w, h int, _ bool) string {
 			if w == 0 {
-				return ""
+				return "scale"
 			}
 			return fmt.Sprintf("scale=w=%d:h=%d", w, h)
 		},

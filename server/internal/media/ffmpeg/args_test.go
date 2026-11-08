@@ -220,6 +220,7 @@ func videoCases() []videoCase {
 		{name: "cpu-decode", req: req(av1Source, h264)},
 		{name: "frame-rate-cap", req: req(sdr60, media.VideoRendition{Codec: media.H264, FrameRate: 30, Bitrate: 3_000_000})},
 		{name: "fixed-gop", req: req(sdr1080, h264), fixed: true},
+		{name: "cpu-decode-full-size", req: req(av1Source, full)},
 	}
 	cases[3].req.BurnIn = &media.SubtitleRef{Track: 4}
 	cases[4].req.BurnIn = &media.SubtitleRef{Path: "/data/cache/subtitles/01J/3.ass", Fonts: "/data/cache/subtitles/01J/fonts"}
