@@ -424,12 +424,14 @@ async function hlsJsEngine(
     networkRetries = 0;
   });
   hls.on(Hls.Events.ERROR, (_event, data) => {
-    if (!data.fatal) return;
+    const status = data.type === Hls.ErrorTypes.NETWORK_ERROR ? (data.response?.code ?? 0) : 0;
+    // A 500 is the server's answer that the transcode failed, so it fails at once rather than after hls.js's own
+    // retries, which would get the same answer.
+    if (!data.fatal && status !== 500) return;
     // A network error that outlasted hls.js's own retries loads again where it stopped, up to three times in a row:
     // the connection dropped, and the media isn't at fault, so it doesn't fall back to a transcode. An answer from
     // the server with an HTTP error status ends the play, as loading again would get the same answer.
     if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-      const status = data.response?.code ?? 0;
       if (status < 400 && networkRetries < maxNetworkRetries) {
         networkRetries++;
         hls.startLoad();

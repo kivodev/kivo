@@ -327,11 +327,11 @@ describe("hls.js", () => {
     fakeHls.subtitleTracks = [];
   });
 
-  const networkError = (response?: { code: number }) =>
+  const networkError = (response?: { code: number }, fatal = true, details = "fragLoadError") =>
     fakeHls.handlers.get("hlsError")?.("hlsError", {
-      fatal: true,
+      fatal,
       type: "networkError",
-      details: "fragLoadError",
+      details,
       response,
     });
 
@@ -392,6 +392,29 @@ describe("hls.js", () => {
       code: "networkError",
       detail: "hls.js networkError fragLoadError (HTTP 404)",
     });
+  });
+
+  it("fails on a segment or playlist answered with a 500 without waiting for hls.js's retries", async () => {
+    vi.stubGlobal("MediaSource", { isTypeSupported: () => true });
+    for (const details of ["fragLoadError", "levelLoadError"]) {
+      const { events, engine } = attach(hlsPlay);
+      await engine;
+      networkError({ code: 500 }, false, details);
+      expect(events.onFailure).toHaveBeenCalledWith({
+        code: "networkError",
+        detail: `hls.js networkError ${details} (HTTP 500)`,
+      });
+    }
+  });
+
+  it("leaves other errors hls.js retries to its retries", async () => {
+    vi.stubGlobal("MediaSource", { isTypeSupported: () => true });
+    const { events, engine } = attach(hlsPlay);
+    await engine;
+    fakeHls.loads = 0;
+    for (const code of [0, 502, 503, 504]) networkError({ code }, false);
+    expect(fakeHls.loads).toBe(0);
+    expect(events.onFailure).not.toHaveBeenCalled();
   });
 
   it("keeps a TV's back buffer by the bitrate of the level it switches to", async () => {

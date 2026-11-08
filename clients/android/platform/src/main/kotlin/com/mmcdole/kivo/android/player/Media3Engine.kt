@@ -14,6 +14,7 @@ import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.audio.AudioCapabilities
@@ -396,7 +397,7 @@ class Media3Engine(
         override fun onPlayerError(error: PlaybackException) {
             if (failed) return
             failed = true
-            events?.onFailure(PlayerError(failureCode(error.errorCode), "${error.errorCodeName}: ${error.message}"))
+            events?.onFailure(PlayerError(failureCode(error.errorCode, error.cause), "${error.errorCodeName}: ${error.message}"))
         }
     }
 }
@@ -414,6 +415,16 @@ private fun id(group: Tracks.Group): String? = group.getTrackFormat(0).id?.subst
  * number or MP4's track ID, which muxers number from 1 in stream order.
  */
 private fun fileTrack(group: Tracks.Group, index: Int): Boolean = id(group) == (index + 1).toString()
+
+/**
+ * A video play's Media3 error, and its cause, as the fallback request's
+ * codes. A 500 is the server's answer that the transcode failed, which
+ * loading the same play again would get again, so it's the media's failure
+ * and not the network's.
+ */
+@OptIn(UnstableApi::class)
+fun failureCode(errorCode: Int, cause: Throwable?): String =
+    if ((cause as? HttpDataSource.InvalidResponseCodeException)?.responseCode == 500) "mediaSourceError" else failureCode(errorCode)
 
 /** A Media3 error as the fallback request's codes. */
 fun failureCode(errorCode: Int): String = when (errorCode) {

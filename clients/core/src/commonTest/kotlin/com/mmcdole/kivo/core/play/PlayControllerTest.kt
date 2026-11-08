@@ -202,12 +202,14 @@ class PlayControllerTest {
     }
 
     @Test
-    fun failedMediaFallsBackOnceThenShowsTheError() = runTest {
+    fun failedMediaFallsBackTwiceThenShowsTheError() = runTest {
         val h = Harness(this)
         h.answerStarts(play("s1", delivery = PlayDelivery.Stream))
         h.acceptBeats("s1")
         h.acceptBeats("s2")
+        h.acceptBeats("s3")
         h.server.on("POST", "$START/s1/fallback") { json(PlayStarted.serializer(), play("s2", startMs = 42_000), HttpStatusCode.Created) }
+        h.server.on("POST", "$START/s2/fallback") { json(PlayStarted.serializer(), play("s3", startMs = 42_000), HttpStatusCode.Created) }
 
         h.controller.play(PlayRequest("w1"))
         runCurrent()
@@ -229,15 +231,41 @@ class PlayControllerTest {
         h.engine.current.onPlaying()
         assertEquals(false, h.controller.state.value.adjusting)
 
-        // A second failure in the same play shows the error and stops the play.
+        // A second failure falls back again, to the CPU.
+        h.engine.fail()
+        runCurrent()
+        assertEquals(1, h.server.to("POST", "$START/s2/fallback").size)
+        assertEquals(listOf("s1", "s2", "s3"), h.engine.loads.map { it.id })
+        h.engine.current.onReady()
+
+        // A third failure in the same play shows the error and stops the play.
         h.engine.fail()
         runCurrent()
         assertEquals(1, h.server.to("POST", "$START/s1/fallback").size)
-        assertTrue(h.server.to("POST", "$START/s2/fallback").isEmpty())
-        assertEquals(1, h.stops("s2").size)
+        assertEquals(1, h.server.to("POST", "$START/s2/fallback").size)
+        assertTrue(h.server.to("POST", "$START/s3/fallback").isEmpty())
+        assertEquals(1, h.stops("s3").size)
         assertEquals(PlayerStatus.Error, h.controller.state.value.status)
         assertEquals(PlayerFailure.Problem("noFallback"), h.controller.state.value.failure)
         assertEquals(1, h.engine.unloads)
+    }
+
+    @Test
+    fun theServersNoFallbackEndsTheLadder() = runTest {
+        val h = Harness(this)
+        h.answerStarts(play("s1", delivery = PlayDelivery.Stream))
+        h.acceptBeats("s1")
+        h.server.on("POST", "$START/s1/fallback") { problem(HttpStatusCode.Conflict, "noFallback") }
+
+        h.controller.play(PlayRequest("w1"))
+        runCurrent()
+        h.engine.current.onReady()
+        h.engine.fail()
+        runCurrent()
+
+        assertEquals(1, h.server.to("POST", "$START/s1/fallback").size)
+        assertEquals(PlayerStatus.Error, h.controller.state.value.status)
+        assertEquals(PlayerFailure.Problem("noFallback"), h.controller.state.value.failure)
     }
 
     @Test

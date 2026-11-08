@@ -34,8 +34,8 @@ import kotlin.time.TimeSource
  * reported in the heartbeats, or by a new play at the position),
  * heartbeats every 10 seconds and on pause, seek and end, loads the media
  * again where it was once the server answers when it got no
- * answer, retries once as a transcode through the fallback request when
- * media fails otherwise (never for a book, [canFallBack] false), starts
+ * answer, retries as a transcode through the fallback request, up to
+ * [MAX_FALLBACKS] times, when media fails otherwise (never for a book, [canFallBack] false), starts
  * again at the position when the server has forgotten the play (a 404),
  * and stops the play when the player goes away. Every start, fallback and teardown bumps a generation, so late
  * answers to earlier ones are dropped. Its [plays] are the server's, or for a
@@ -69,8 +69,8 @@ class PlayController internal constructor(
     private var waiting = false
     private var lastPositionMs = 0L
 
-    /** Whether this play has fallen back already: it does once, and a second failure shows the error. */
-    private var fellBack = false
+    /** The fallbacks since the play started: a failure after the last one shows the error. */
+    private var fallbacks = 0
 
     /** A subtitle shown without a new play, a track's ID or `off`, for the heartbeats. */
     private var shownSubtitle: String? = null
@@ -107,7 +107,7 @@ class PlayController internal constructor(
         shownSubtitle = null
         shownAudio = null
         playWithoutExternal = !askExternal
-        fellBack = false
+        fallbacks = 0
         reconnected = false
         request.positionMs?.let { lastPositionMs = it }
         dispatch(PlayerAction.Start)
@@ -439,19 +439,19 @@ class PlayController internal constructor(
     }
 
     /**
-     * Media failed. The first time in a play, the server ends the play and
-     * retries it as a transcode, which plays from the same position, its
-     * media replacing the failed media; the second time, the player shows
-     * the error. A book's player has no transcode to try, and shows that
-     * it can't play.
+     * Media failed. The server ends the play and retries it as a transcode,
+     * which plays from the same position, its media replacing the failed
+     * media, until it has nothing left to try or the play has fallen back
+     * [MAX_FALLBACKS] times; then the player shows the error. A book's
+     * player has no transcode to try, and shows that it can't play.
      */
     private fun fallBack(failure: PlayerError) {
         val play = current ?: return
         val positionMs = positionMs()
         val generation = ++generation
         release(keepMedia = true)
-        val retry = canFallBack && !fellBack
-        fellBack = true
+        val retry = canFallBack && fallbacks < MAX_FALLBACKS
+        if (retry) fallbacks++
         if (retry) dispatch(PlayerAction.Fallback(failure.detail))
         scope.launch {
             try {
@@ -541,6 +541,9 @@ class PlayController internal constructor(
 
 /** The failure of media that got no answer, in the fallback request's codes. */
 private const val NETWORK_ERROR = "networkError"
+
+/** How many times a play falls back: direct play to a transcode on an accelerator, then to one on the CPU. */
+private const val MAX_FALLBACKS = 2
 
 /** How often a play reports its position while playing. */
 internal val HEARTBEAT_INTERVAL = 10.seconds

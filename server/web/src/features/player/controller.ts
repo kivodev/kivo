@@ -9,8 +9,8 @@ import type { PlayerAction, PlayerFailure } from "./reducer";
 
 // PlayerController runs the play behind the player. It starts plays and
 // attaches their media. It sends a heartbeat every 10 seconds and on pause,
-// seek and end. When media fails, it retries once as a transcode through the
-// fallback request. A play in picture-in-picture asks for no external
+// seek and end. When media fails, it retries as a transcode through the
+// fallback request, up to maxFallbacks times. A play in picture-in-picture asks for no external
 // subtitles, since nothing drawn over the video shows there, and entering or
 // leaving it starts a new play when the subtitle needs one to show. It stops
 // the play when the player goes away. It is plain
@@ -18,6 +18,8 @@ import type { PlayerAction, PlayerFailure } from "./reducer";
 // reducer's actions.
 
 const heartbeatMs = 10_000;
+/** How many times a play falls back: direct play to a transcode on an accelerator, then to one on the CPU. */
+const maxFallbacks = 2;
 
 /** What to play: the route's choices, or the player's own on a switch. */
 export type PlayRequest = {
@@ -64,8 +66,8 @@ export class PlayerController {
   #seekStartedAt: number | undefined;
   #waiting = false;
   #lastPositionMs = 0;
-  /** Whether this play has already fallen back. It falls back once, and a second failure shows the error. */
-  #fellBack = false;
+  /** The fallbacks since the play started. A failure after the last one shows the error. */
+  #fallbacks = 0;
   /** Whether a failure is retried as a transcode. Books aren't, because they play directly or not at all. */
   readonly #canFallBack: boolean;
   /** The subtitle shown from the media itself, kept across fallbacks and reloads. */
@@ -159,7 +161,7 @@ export class PlayerController {
     this.#startPaused = paused;
     this.#shownSubtitle = undefined;
     this.#shownAudio = undefined;
-    this.#fellBack = false;
+    this.#fallbacks = 0;
     const pictureInPicture = this.#inPictureInPicture();
     if (request.positionMs !== undefined) this.#lastPositionMs = request.positionMs;
     this.#dispatch({ type: "start" });
@@ -434,10 +436,11 @@ export class PlayerController {
   }
 
   /**
-   * Handles a media failure. On the first failure in a play, the server ends
-   * the play and retries it as a transcode from the same position. On the
-   * second, the player shows the error. A book's player has no transcode to
-   * try, so it shows that the book can't play.
+   * Handles a media failure. The server ends the play and retries it as a
+   * transcode from the same position, first on an accelerator and then on
+   * the CPU, until it has nothing left to try or the play has fallen back
+   * maxFallbacks times. Then the player shows the error. A book's player has
+   * no transcode to try, so it shows that the book can't play.
    */
   async #fallBack(failure: EngineFailure): Promise<void> {
     const play = this.#play;
@@ -445,8 +448,8 @@ export class PlayerController {
     const positionMs = Math.round(this.positionMs());
     this.#release();
     const generation = ++this.#generation;
-    const retry = this.#canFallBack && !this.#fellBack;
-    this.#fellBack = true;
+    const retry = this.#canFallBack && this.#fallbacks < maxFallbacks;
+    if (retry) this.#fallbacks++;
     if (retry) this.#dispatch({ type: "fallback", detail: failure.detail });
     try {
       if (!retry) {
