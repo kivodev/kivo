@@ -14,6 +14,10 @@ import (
 // HDR10 base layer.
 const stripDolbyVision = "dovi_rpu=strip=1"
 
+// deinterlace turns each frame of interlaced video into one progressive
+// frame, at the same rate, whichever field the frame says comes first.
+const deinterlace = "bwdif=mode=send_frame:parity=auto:deint=all"
+
 // device is one encoding device, either an accelerator or the CPU, with
 // what its test passed. The video pipeline reads only this and the request.
 type device struct {
@@ -37,6 +41,12 @@ func untestedCPU() *device {
 // format returns the source format a track's decoder sees.
 func format(t media.Track) media.VideoFormat {
 	return media.VideoFormat{Codec: t.Codec, BitDepth: max(t.BitDepth, 8)}
+}
+
+// decodes reports whether d decodes src on the device. Interlaced video is
+// decoded by the CPU, which deinterlaces it.
+func (d *device) decodes(src media.Track) bool {
+	return d.decoders[format(src)] && !src.Interlaced
 }
 
 // videoIn is what a request asks of its video.
@@ -145,7 +155,7 @@ func planVideo(in videoIn, dev *device) (*videoPlan, error) {
 	q := dev.b.quality[v.Fidelity][v.Codec]
 	p.rateControl = dev.b.rateControl(in.rate, v.Codec, v.Bitrate, q)
 
-	p.onDevice = dev.b != software && dev.decoders[format(src)] &&
+	p.onDevice = dev.b != software && dev.decodes(src) &&
 		(!p.toneMap || dev.toneMap) && (in.burnIn == nil || dev.burnIn)
 	return p, nil
 }
@@ -210,17 +220,15 @@ func (p *videoPlan) appendKeyframes(args []string) []string {
 }
 
 // graph returns the filter graph from the source's video to [v], the
-// encoder's input. It sets the color properties, frame rate, size and tone
-// mapping, then draws the subtitle, then adds whatever the encoder needs.
+// encoder's input. It sets the color properties, deinterlaces, caps the
+// frame rate, sets the size and tone-maps, then draws the subtitle, then
+// adds whatever the encoder needs.
 func (p *videoPlan) graph() string {
 	f := software
 	if p.onDevice {
 		f = p.dev.b
 	}
-	main := []string{colorParams(p.in.source, p.toneMap)}
-	if p.rate != "" {
-		main = append(main, "fps="+p.rate)
-	}
+	main := p.frames()
 	w := 0
 	if p.resize {
 		w = p.w
@@ -263,6 +271,20 @@ func (p *videoPlan) graph() string {
 		sub = append(sub, f.subUpload)
 	}
 	return in + chain(main) + "[main];" + from + chain(sub) + "[sub];[main][sub]" + chain(append([]string{f.overlay}, last...)) + "[v]"
+}
+
+// frames returns the filters that make the source's frames the frames the
+// rest of the graph works on: their color properties, progressive, at the
+// output frame rate.
+func (p *videoPlan) frames() []string {
+	fs := []string{colorParams(p.in.source, p.toneMap)}
+	if p.in.source.Interlaced {
+		fs = append(fs, deinterlace) // only on the CPU, as decodes says
+	}
+	if p.rate != "" {
+		fs = append(fs, "fps="+p.rate)
+	}
+	return fs
 }
 
 // colorParams returns the filter that sets the color properties of a

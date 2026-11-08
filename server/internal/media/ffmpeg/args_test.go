@@ -221,11 +221,19 @@ func videoCases() []videoCase {
 		{name: "frame-rate-cap", req: req(sdr60, media.VideoRendition{Codec: media.H264, FrameRate: 30, Bitrate: 3_000_000})},
 		{name: "fixed-gop", req: req(sdr1080, h264), fixed: true},
 		{name: "cpu-decode-full-size", req: req(av1Source, full)},
+		// Interlaced video is decoded and deinterlaced on the CPU.
+		{name: "interlaced", req: req(with(sdr1080, func(t *media.Track) { t.Interlaced = true }), h264)},
 	}
 	cases[3].req.BurnIn = &media.SubtitleRef{Track: 4}
 	cases[4].req.BurnIn = &media.SubtitleRef{Path: "/data/cache/subtitles/01J/3.ass", Fonts: "/data/cache/subtitles/01J/fonts"}
 	cases[4].req.Start = 0
 	return cases
+}
+
+// with returns a copy of t changed by f.
+func with(t media.Track, f func(*media.Track)) media.Track {
+	f(&t)
+	return t
 }
 
 // TestGoldenVideoArgv pins every video request on every backend, one golden
