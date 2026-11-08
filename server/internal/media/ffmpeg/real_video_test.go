@@ -144,6 +144,33 @@ func TestRealToneMap(t *testing.T) {
 	checkSegments(t, init, segs, grid(2*time.Second, 2*time.Second, 8*time.Second))
 }
 
+// TestRealYCgCoSeek transcodes 10-bit H.264 tagged with the YCgCo matrix,
+// which swscale can't convert, from the start and from a later segment.
+// colorParams retags its frames as BT.709 so a conversion after it works.
+// A start past zero adds -ss, so ffmpeg puts a trim filter in front of the
+// graph, and the conversion to 8 bits must not land before colorParams.
+func TestRealYCgCoSeek(t *testing.T) {
+	ffmpegBin, _ := realTools(t)
+	m := realMedia(t)
+	path := filepath.Join(t.TempDir(), "ycgco.mkv")
+	out, err := exec.Command(ffmpegBin, "-hide_banner", "-loglevel", "error",
+		"-f", "lavfi", "-i", "testsrc2=size=320x180:rate=24:duration=8",
+		"-pix_fmt", "yuv420p10le", "-c:v", "libx264", "-preset", "ultrafast",
+		"-x264-params", "keyint=48:colormatrix=YCgCo", path).CombinedOutput()
+	if err != nil {
+		t.Fatal(err, string(out))
+	}
+	src := videoTrack(t, m, path)
+	for _, start := range []time.Duration{0, 2 * time.Second} {
+		t.Run(fmt.Sprintf("from %v", start), func(t *testing.T) {
+			req := media.TranscodeRequest{Path: path, Start: start, SegmentDuration: 2 * time.Second, Source: src,
+				Video: media.VideoRendition{Codec: media.H264, Bitrate: 500_000}}
+			init, segs := transcode(t, m, req)
+			checkSegments(t, init, segs, grid(start, 2*time.Second, 8*time.Second))
+		})
+	}
+}
+
 func TestRealBurnInText(t *testing.T) {
 	if !hasFilter(t, "subtitles") {
 		t.Skip("this ffmpeg has no libass")
