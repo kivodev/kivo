@@ -2,8 +2,11 @@ package query
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"slices"
+
+	"github.com/mmcdole/kivo/internal/id"
 )
 
 // A grid is a listing that a client shows as a grid and can load at any
@@ -85,6 +88,37 @@ func rail(ctx context.Context, q querier, counts statement, args []any, o GridOp
 		letters = nil
 	}
 	return letters, total, nil
+}
+
+// nameList reads a page of one of a library's lists by name, from one
+// snapshot: it checks that the Viewer sees the library, reads the letters
+// and total from counts, and reads the page from list with scan.
+func nameList[T any](ctx context.Context, s *Service, vw viewer, lib id.ID, o GridOptions,
+	counts, list statement, scan func(scanner, *T) error) (GridPage[T], error) {
+	limit, err := o.limit()
+	if err != nil {
+		return GridPage[T]{}, err
+	}
+	var items []T
+	var letters []Letter
+	total := 0
+	err = s.db.Read(ctx, func(tx *sql.Tx) error {
+		if err := library(ctx, tx, vw, lib); err != nil {
+			return notFound(err)
+		}
+		// The letters' counts add up to the total.
+		var err error
+		if letters, total, err = rail(ctx, tx, counts, vw.args(sql.Named("library", lib)), o); err != nil {
+			return err
+		}
+		items, err = rowsOf(ctx, tx, list, vw.args(sql.Named("library", lib),
+			sql.Named("offset", o.Offset), sql.Named("limit", limit)), scan)
+		return err
+	})
+	if err != nil {
+		return GridPage[T]{}, err
+	}
+	return gridPage(items, total, letters), nil
 }
 
 // railLetters turns a list's counts by first character, in the list's

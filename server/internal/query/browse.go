@@ -550,34 +550,15 @@ ORDER BY coalesce(w.year, 0), w.sort_title, w.id`)
 // Collections returns a page of the collections with works in a library that
 // the Viewer sees, by name.
 func (s *Service) Collections(ctx context.Context, v users.Viewer, lib id.ID, o GridOptions) (GridPage[Collection], error) {
-	limit, err := o.limit()
-	if err != nil {
-		return GridPage[Collection]{}, err
-	}
 	vw := viewerOf(v)
-	var items []Collection
-	var letters []Letter
-	total := 0
-	err = s.db.Read(ctx, func(tx *sql.Tx) error {
-		if err := library(ctx, tx, vw, lib); err != nil {
-			return notFound(err)
-		}
-		// The letters' counts add up to the total.
-		var err error
-		if letters, total, err = rail(ctx, tx, collectionLetters, vw.args(sql.Named("library", lib)), o); err != nil {
-			return err
-		}
-		items, err = rowsOf(ctx, tx, collections, vw.args(sql.Named("library", lib),
-			sql.Named("offset", o.Offset), sql.Named("limit", limit)), scanCollection)
-		return err
-	})
+	g, err := nameList(ctx, s, vw, lib, o, collectionLetters, collections, scanCollection)
 	if err != nil {
 		return GridPage[Collection]{}, err
 	}
-	if err := s.withCollectionImages(ctx, vw, items); err != nil {
+	if err := s.withCollectionImages(ctx, vw, g.Items); err != nil {
 		return GridPage[Collection]{}, err
 	}
-	return gridPage(items, total, letters), nil
+	return g, nil
 }
 
 // Collection returns a collection's page, read from one snapshot. The page

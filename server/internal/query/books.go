@@ -240,72 +240,25 @@ LIMIT @limit OFFSET @offset`)
 // Authors returns a page of the people who wrote the books in an
 // audiobooks library that the Viewer sees, by sort name.
 func (s *Service) Authors(ctx context.Context, v users.Viewer, lib id.ID, o GridOptions) (GridPage[Author], error) {
-	limit, err := o.limit()
-	if err != nil {
-		return GridPage[Author]{}, err
-	}
-	vw := viewerOf(v)
-	var items []Author
-	var letters []Letter
-	total := 0
-	err = s.db.Read(ctx, func(tx *sql.Tx) error {
-		if err := library(ctx, tx, vw, lib); err != nil {
-			return notFound(err)
-		}
-		// The letters' counts add up to the total.
-		var err error
-		if letters, total, err = rail(ctx, tx, authorLetters, vw.args(sql.Named("library", lib)), o); err != nil {
-			return err
-		}
-		items, err = rowsOf(ctx, tx, authors, vw.args(sql.Named("library", lib),
-			sql.Named("offset", o.Offset), sql.Named("limit", limit)),
-			func(r scanner, a *Author) error {
-				var p photo
-				err := r.Scan(append([]any{&a.ID, &a.Name, &a.Books}, p.dest()...)...)
-				a.Photo = p.image()
-				return err
-			})
+	return nameList(ctx, s, viewerOf(v), lib, o, authorLetters, authors, func(r scanner, a *Author) error {
+		var p photo
+		err := r.Scan(append([]any{&a.ID, &a.Name, &a.Books}, p.dest()...)...)
+		a.Photo = p.image()
 		return err
 	})
-	if err != nil {
-		return GridPage[Author]{}, err
-	}
-	return gridPage(items, total, letters), nil
 }
 
 // SeriesList returns a page of the series of the books in an
 // audiobooks library that the Viewer sees, by sort name, each with its
 // first book's cover.
 func (s *Service) SeriesList(ctx context.Context, v users.Viewer, lib id.ID, o GridOptions) (GridPage[SeriesSummary], error) {
-	limit, err := o.limit()
-	if err != nil {
-		return GridPage[SeriesSummary]{}, err
-	}
 	vw := viewerOf(v)
-	var items []SeriesSummary
 	var firsts []WorkSummary // each series' first book, for its cover
-	var letters []Letter
-	total := 0
-	err = s.db.Read(ctx, func(tx *sql.Tx) error {
-		if err := library(ctx, tx, vw, lib); err != nil {
-			return notFound(err)
-		}
-		// The letters' counts add up to the total.
-		var err error
-		if letters, total, err = rail(ctx, tx, bookSeriesLetters, vw.args(sql.Named("library", lib)), o); err != nil {
-			return err
-		}
-		return each(ctx, tx, bookSeriesList, vw.args(sql.Named("library", lib),
-			sql.Named("offset", o.Offset), sql.Named("limit", limit)),
-			func(r scanner) error {
-				var c SeriesSummary
-				var first WorkSummary
-				if err := r.Scan(&c.ID, &c.Name, &c.Books, &first.ID); err != nil {
-					return err
-				}
-				items, firsts = append(items, c), append(firsts, first)
-				return nil
-			})
+	g, err := nameList(ctx, s, vw, lib, o, bookSeriesLetters, bookSeriesList, func(r scanner, c *SeriesSummary) error {
+		var first WorkSummary
+		err := r.Scan(&c.ID, &c.Name, &c.Books, &first.ID)
+		firsts = append(firsts, first)
+		return err
 	})
 	if err != nil {
 		return GridPage[SeriesSummary]{}, err
@@ -313,10 +266,10 @@ func (s *Service) SeriesList(ctx context.Context, v users.Viewer, lib id.ID, o G
 	if err := s.withImages(ctx, vw, firsts); err != nil {
 		return GridPage[SeriesSummary]{}, err
 	}
-	for i := range items {
-		items[i].Images = firsts[i].Images
+	for i := range g.Items {
+		g.Items[i].Images = firsts[i].Images
 	}
-	return gridPage(items, total, letters), nil
+	return g, nil
 }
 
 // personOne reads a person credited on a work the Viewer sees, with their

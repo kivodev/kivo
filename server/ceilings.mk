@@ -12,19 +12,20 @@ DEADCODE_MAX     := 0
 # subtitles' prunes forget the results lost from the cache alike.
 # metadata and subtitles each declare the egress client's Get and Post as
 # the interface their tests stand in for, as consumers own their interfaces.
-# api's handlers for an audiobooks library's authors and book series read
-# alike, each a page with its letters, differing in their types only.
+# api's handlers for a library's collections and an audiobooks library's
+# authors and book series read alike, each a page with its letters,
+# differing in their generated types only; dupl counts the three twice.
 # api's thin handlers that call a service and answer with no body (delete
 # an API key, a session, a download, remove from continue watching, run a
 # task) read alike in two groups, and so do its get and rename handlers
 # for a book series and a person, each with its own generated request and
 # response types, which no shared helper would make clearer.
-DUPL_MAX         := 26
+DUPL_MAX         := 27
 # Go functions with a cyclomatic complexity over 15 (gocyclo).
 GOCYCLO_MAX      := 45
 # Go functions with a cognitive complexity over 20 (gocognit). identify's
 # search is one of them at 21: its searches in turn, then the lookup.
-GOCOGNIT_MAX     := 54
+GOCOGNIT_MAX     := 53
 # api handlers, the operations' and the media routes', with a cognitive
 # complexity over 15 (gocognit). A handler parses its request in place,
 # calls the service that owns the answer and converts it: a few optional
@@ -37,11 +38,11 @@ API_HANDLERS_MAX := 0
 # dupl's, kept alike on purpose, with the start of an item that reads its
 # file and how it settled, and the prune that forgets lost results, and
 # the SQL count their result rows' queries.
-# The Go count also holds query's library lists, Authors, SeriesList and
-# Collections, which check the library and read its letters alike.
+# The Go count also holds query's Browse and nameList, which check the
+# library and read its letters alike.
 # The web count holds General and Network settings' identical imports, and
 # Edit and Edit book's forms, which open alike with the title field.
-JSCPD_GO_MAX     := 220
+JSCPD_GO_MAX     := 212
 JSCPD_SQL_MAX    := 10
 JSCPD_WEB_MAX    := 96
 # The web client's unused files, dependencies, exports and types (knip).
