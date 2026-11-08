@@ -291,17 +291,18 @@ describe("Player", () => {
     expect(video().hasAttribute("src")).toBe(false);
   });
 
-  it("retries once as a transcode after a decode error, and offers recovery when that fails too", async () => {
+  it("retries twice as a transcode after a decode error, and offers recovery when those fail too", async () => {
     serveMockApi();
     const { user } = renderApp(`/watch/${mockIds.dunePartTwo}`);
     await playing();
     Object.defineProperty(video(), "error", { configurable: true, value: { code: 3, message: "decode" } });
     video().dispatchEvent(new Event("error"));
-    // The retry is HLS, which nothing plays here: the second failure shows
+    // The retries are HLS, which nothing plays here: the third failure shows
     // the error without asking again.
     const alert = await screen.findByRole("alert");
     expect(sent("POST", "/plays/{id}/fallback").map((r) => r.body)).toEqual([
       { code: "mediaDecodeError", positionMs: resumeMs, detail: expect.any(String) },
+      { code: "unsupported", positionMs: resumeMs, detail: expect.any(String) },
     ]);
     // The stop says what failed, so the server logs the failure that ended playback.
     await waitFor(() => expect(stops()).toHaveLength(1));
@@ -319,6 +320,18 @@ describe("Player", () => {
     await user.click(within(alert).getByRole("button", { name: "Try again" }));
     await playing();
     expect(plays()).toHaveLength(2);
+  });
+
+  it("shows the error when the server has nothing left to fall back to", async () => {
+    serveMockApi();
+    server.use(http.post("/api/v1/plays/{id}/fallback", () => problem(409, "noFallback")));
+    renderApp(`/watch/${mockIds.dunePartTwo}`);
+    await playing();
+    Object.defineProperty(video(), "error", { configurable: true, value: { code: 3, message: "decode" } });
+    video().dispatchEvent(new Event("error"));
+    const alert = await screen.findByRole("alert");
+    expect(sent("POST", "/plays/{id}/fallback")).toHaveLength(1);
+    expect(within(alert).getByText("Can't play on this device, even with transcoding.")).toBeInTheDocument();
   });
 
   it("keeps web error actions keyboard-accessible and Escape on the player", async () => {
