@@ -85,6 +85,8 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:$lifecycleVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
     implementation("io.coil-kt.coil3:coil-compose:$coilVersion")
+    // The player's video surface and subtitles.
+    implementation("androidx.media3:media3-ui:1.11.1")
     // The sign-in code's link as a QR code.
     implementation("com.google.zxing:core:3.5.4")
 

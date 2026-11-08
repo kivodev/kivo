@@ -5,6 +5,7 @@ import androidx.annotation.RawRes
 import com.mmcdole.kivo.android.discovery.NsdServiceBrowser
 import com.mmcdole.kivo.android.discovery.servers
 import com.mmcdole.kivo.android.library.SavedGrids
+import com.mmcdole.kivo.android.player.SessionPlayers
 import com.mmcdole.kivo.android.settings.ScreenSettingsStore
 import com.mmcdole.kivo.core.auth.SavedServer
 import com.mmcdole.kivo.core.discovery.FoundServer
@@ -73,6 +74,9 @@ class AppGraph(
 
     /** This TV's settings that only the app's screens follow, kept in the app's preferences. */
     val screenSettings = ScreenSettingsStore(device.preferences)
+
+    /** The player the phone's media session controls, which the app's playback service follows. */
+    val sessionPlayers = SessionPlayers(scope)
 
     /** Browses for servers on the local network by DNS-SD. */
     private val browser = NsdServiceBrowser(context)

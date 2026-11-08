@@ -18,7 +18,22 @@ object GridValues {
     const val LAST_EPISODE_ADDED_AT = "lastEpisodeAddedAt"
     const val RELEASE_DATE = "releaseDate"
     const val RATING = "rating"
-    val sorts = listOf(TITLE, ADDED_AT, LAST_EPISODE_ADDED_AT, RELEASE_DATE, RATING)
+    const val RUNTIME = "runtime"
+    const val LAST_PLAYED_AT = "lastPlayedAt"
+    const val AUTHOR = "author"
+    val sorts = listOf(TITLE, ADDED_AT, LAST_EPISODE_ADDED_AT, RELEASE_DATE, RATING, RUNTIME, LAST_PLAYED_AT, AUTHOR)
+
+    /**
+     * The sorts a library of [kind] offers, in the menu's order: an
+     * audiobooks library's by title, author, date added and release date;
+     * any other's by title, date added, the last episode added for shows,
+     * release date, rating, runtime and last played.
+     */
+    fun sortsOf(kind: String?): List<String> = when (kind) {
+        "audiobooks" -> listOf(TITLE, AUTHOR, ADDED_AT, RELEASE_DATE)
+        "shows" -> listOf(TITLE, ADDED_AT, LAST_EPISODE_ADDED_AT, RELEASE_DATE, RATING, RUNTIME, LAST_PLAYED_AT)
+        else -> listOf(TITLE, ADDED_AT, RELEASE_DATE, RATING, RUNTIME, LAST_PLAYED_AT)
+    }
 
     const val UNPLAYED = "unplayed"
     const val IN_PROGRESS = "inProgress"

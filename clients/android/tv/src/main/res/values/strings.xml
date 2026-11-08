@@ -106,12 +106,17 @@
     <string name="sort_last_episode_added">Last episode added</string>
     <string name="sort_release">Release date</string>
     <string name="sort_rating">Rating</string>
+    <string name="sort_runtime">Runtime</string>
+    <string name="sort_last_played">Last played</string>
+    <string name="sort_author">Author</string>
     <string name="empty_library">Nothing in this library yet.</string>
     <string name="sort_short_title">A–Z</string>
     <string name="sort_short_added">Recently added</string>
     <string name="sort_short_last_episode_added">Last episode added</string>
     <string name="sort_short_release">Newest</string>
     <string name="sort_short_rating">Top rated</string>
+    <string name="sort_short_runtime">Shortest</string>
+    <string name="sort_short_last_played">Recently played</string>
     <string name="section_videos">Videos</string>
     <plurals name="count_movies">
         <item quantity="one">%1$s movie</item>

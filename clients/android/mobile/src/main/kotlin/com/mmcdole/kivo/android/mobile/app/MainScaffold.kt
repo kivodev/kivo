@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -40,6 +41,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -48,6 +50,9 @@ import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.mmcdole.kivo.android.ServerSession
+import com.mmcdole.kivo.android.mobile.books.MiniPlayer
+import com.mmcdole.kivo.android.mobile.books.MiniPlayerViewModel
+import com.mmcdole.kivo.android.mobile.books.NowPlayingScreen
 import com.mmcdole.kivo.android.mobile.detail.BookSeriesScreen
 import com.mmcdole.kivo.android.mobile.detail.CollectionScreen
 import com.mmcdole.kivo.android.mobile.detail.DetailScreen
@@ -59,6 +64,7 @@ import com.mmcdole.kivo.android.mobile.home.HomeScreen
 import com.mmcdole.kivo.android.mobile.library.LibrariesScreen
 import com.mmcdole.kivo.android.mobile.library.LibraryScreen
 import com.mmcdole.kivo.android.mobile.library.libraryIcon
+import com.mmcdole.kivo.android.mobile.player.PlayerScreen
 import com.mmcdole.kivo.android.mobile.search.SearchScreen
 import com.mmcdole.kivo.android.mobile.settings.CreditsScreen
 import com.mmcdole.kivo.android.mobile.settings.LicenseScreen
@@ -81,18 +87,24 @@ class MainViewModel(session: KivoSession) : ViewModel() {
 /**
  * Signed in: the navigation suite, a bottom bar on a phone and a rail with
  * the pinned libraries under the destinations on a tablet, over the
- * destinations' screens, each tab with its own back stack.
+ * destinations' screens, each tab with its own back stack, and the mini
+ * player above the bar while a book is loaded. The player and Now Playing
+ * take the whole screen.
  */
 @Composable
 fun MainScaffold(session: ServerSession) {
     val controller = rememberNavController()
-    val nav = remember(controller) { MobileNav(controller) }
+    val mini = viewModel { MiniPlayerViewModel(session.books.model) }
+    val nav = remember(controller) { MobileNav(controller, playBook = mini::play) }
     val entry by controller.currentBackStackEntryAsState()
     LaunchedEffect(entry) { nav.follow(entry) }
     val current = nav.tab
     val model = viewModel { MainViewModel(session.session) }
     val pinned by model.pinned.collectAsStateWithLifecycle()
-    val type = NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(currentWindowAdaptiveInfo())
+    val book by mini.state.collectAsStateWithLifecycle()
+    val destination = entry?.destination
+    val fullScreen = destination != null && (destination.hasRoute(PlayerRoute::class) || destination.hasRoute(NowPlayingRoute::class))
+    val type = if (fullScreen) NavigationSuiteType.None else NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(currentWindowAdaptiveInfo())
 
     NavigationSuiteScaffoldLayout(
         layoutType = type,
@@ -105,11 +117,19 @@ fun MainScaffold(session: ServerSession) {
         },
     ) {
         // The bar or rail keeps clear of the system bars on its own side, so the screens beside it don't again.
-        val side = if (type == NavigationSuiteType.NavigationRail) WindowInsetsSides.Start else WindowInsetsSides.Bottom
-        val suiteInsets = WindowInsets.safeDrawing.only(side)
-        NavHost(controller, startDestination = HomeTab, modifier = Modifier.fillMaxSize().consumeWindowInsets(suiteInsets)) {
-            tabs(session, nav)
-            pages(session, nav)
+        val suiteInsets = when (type) {
+            NavigationSuiteType.NavigationRail -> WindowInsets.safeDrawing.only(WindowInsetsSides.Start)
+            NavigationSuiteType.None -> WindowInsets(0)
+            else -> WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)
+        }
+        Column(Modifier.fillMaxSize()) {
+            NavHost(controller, startDestination = HomeTab, modifier = Modifier.weight(1f).fillMaxWidth().consumeWindowInsets(suiteInsets)) {
+                tabs(session, nav)
+                pages(session, nav)
+            }
+            if (book.shown && !fullScreen) {
+                MiniPlayer(book, onOpen = { nav.open(NowPlayingRoute) }, onBack = mini::skipBack, onToggle = mini::togglePlay)
+            }
         }
     }
 }
@@ -198,7 +218,8 @@ private fun NavGraphBuilder.pages(session: ServerSession, nav: MobileNav) {
     composable<PersonRoute> { PersonScreen(session, it.toRoute<PersonRoute>().id, nav) }
     composable<BookSeriesRoute> { BookSeriesScreen(session, it.toRoute<BookSeriesRoute>().id, nav) }
     composable<FavoritesGridRoute> { FavoritesGridScreen(session, it.toRoute<FavoritesGridRoute>().kind, nav) }
-    composable<PlayerRoute> { PlayerPlaceholder(nav) }
+    composable<PlayerRoute> { PlayerScreen(session, it.toRoute<PlayerRoute>(), nav) }
+    composable<NowPlayingRoute> { NowPlayingScreen(session, nav) }
     composable<SettingsRoute> { SettingsScreen(session, nav) }
     composable<CreditsRoute> { CreditsScreen(nav) }
     composable<LicensesRoute> { LicensesScreen(nav) }

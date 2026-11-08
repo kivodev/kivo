@@ -249,11 +249,17 @@ private fun PlayActions(head: WorkSummary, state: DetailUiState, model: DetailVi
     val available = if (work == null) head.available else work.available && work.selectedVersion(choices.versionId)?.available == true
     val position = if (work != null) work.resumeAt(choices.versionId) else head.userState?.positionMs
     val book = head.kind == "book"
+    // A book plays in the book player; a video in the player, with the version and tracks chosen here.
+    fun play(fromStart: Boolean) = if (book) {
+        nav.play(head, fromStart)
+    } else {
+        nav.play(head.id, fromStart, choices.versionId, choices.audioTrackId, choices.subtitleTrackId)
+    }
     Column(Modifier.padding(horizontal = space(4), vertical = space(4)), verticalArrangement = Arrangement.spacedBy(space(3))) {
         if (available) {
             PlayButton(
                 if (position != null && !book) stringResource(R.string.mobile_resume_at, display.clock(position.toLong())) else stringResource(if (position != null) R.string.mobile_resume else R.string.mobile_play),
-            ) { nav.play(head.id) }
+            ) { play(fromStart = false) }
             val duration = head.durationMs
             if (duration != null) {
                 val left = (duration - (position ?: 0)).toLong()
@@ -269,7 +275,7 @@ private fun PlayActions(head: WorkSummary, state: DetailUiState, model: DetailVi
                 Text(stringResource(R.string.mobile_file_missing), color = LocalKivo.current.warning, style = MaterialTheme.typography.titleSmall)
             }
         }
-        ActionRow(head, model, startOver = if (available && position != null) ({ nav.play(head.id, fromStart = true) }) else null)
+        ActionRow(head, model, startOver = if (available && position != null) ({ play(fromStart = true) }) else null)
     }
 }
 

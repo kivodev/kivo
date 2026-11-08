@@ -66,8 +66,21 @@ import kotlinx.serialization.Serializable
 /** One kind's favorites as a grid. */
 @Serializable data class FavoritesGridRoute(val kind: String)
 
-/** The player's place until it comes. */
-@Serializable data class PlayerRoute(val workId: String, val fromStart: Boolean = false)
+/**
+ * The video player, full screen: [workId] from where it was left, or from
+ * the start; with the version and tracks a work's page chose, or the
+ * server's where they're null.
+ */
+@Serializable data class PlayerRoute(
+    val workId: String,
+    val fromStart: Boolean = false,
+    val versionId: String? = null,
+    val audioTrackId: String? = null,
+    val subtitleTrackId: String? = null,
+)
+
+/** The book playing, full screen over the tabs. */
+@Serializable data object NowPlayingRoute
 
 @Serializable data object SettingsRoute
 
@@ -90,7 +103,7 @@ enum class Tab(val graph: Any, val root: Any, @param:StringRes val label: Int, v
  * Where the screens go, over the app's navigation: pages pushed on the
  * current tab's back stack, the tabs, and back.
  */
-class MobileNav(private val nav: NavHostController) {
+class MobileNav(private val nav: NavHostController, private val playBook: (workId: String, fromStart: Boolean) -> Unit = { _, _ -> }) {
     /** The tab showing: the one chosen last, or the one whose first screen back has come to. */
     var tab by mutableStateOf(Tab.Home)
         private set
@@ -108,7 +121,24 @@ class MobileNav(private val nav: NavHostController) {
     /** An episode's series, on the episode's season. */
     fun openSeries(episode: EpisodeInfo) = open(WorkRoute(episode.seriesId, episode.seasonId, episode.seasonNumber))
 
-    fun play(workId: String, fromStart: Boolean = false) = open(PlayerRoute(workId, fromStart))
+    /** Plays a video in the player, with the version and tracks a work's page chose. */
+    fun play(workId: String, fromStart: Boolean = false, versionId: String? = null, audioTrackId: String? = null, subtitleTrackId: String? = null) =
+        open(PlayerRoute(workId, fromStart, versionId, audioTrackId, subtitleTrackId))
+
+    /** Plays [work]: a book in the book player, which the mini player shows; anything else in the player. */
+    fun play(work: WorkSummary, fromStart: Boolean = false) {
+        if (work.kind == "book") playBook(work.id, fromStart) else play(work.id, fromStart)
+    }
+
+    /** [route] in Now Playing's place, as Go to book opens the book's page. */
+    fun replaceNowPlaying(route: Any) = nav.navigate(route) {
+        popUpTo<NowPlayingRoute> { inclusive = true }
+    }
+
+    /** [route] in the player's place: the next episode's player, or the series' page after its last. */
+    fun replacePlayer(route: Any) = nav.navigate(route) {
+        popUpTo<PlayerRoute> { inclusive = true }
+    }
 
     fun back() {
         nav.popBackStack()
@@ -141,8 +171,8 @@ class MobileNav(private val nav: NavHostController) {
 /** Does a card's [action] on [work]: playing and Go to series here, the marks by [marks]. */
 fun MobileNav.handle(action: WorkAction, work: WorkSummary, marks: WorkMarks) {
     when (action) {
-        WorkAction.Play -> play(work.id)
-        WorkAction.PlayFromStart -> play(work.id, fromStart = true)
+        WorkAction.Play -> play(work)
+        WorkAction.PlayFromStart -> play(work, fromStart = true)
         WorkAction.GoToSeries -> work.episode?.let(::openSeries)
         else -> marks.apply(action, work)
     }
