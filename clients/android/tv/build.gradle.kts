@@ -25,28 +25,6 @@ abstract class ComposeTokens : JavaExec() {
     }
 }
 
-/** Copies shared/credits (terms.json and the texts it names) into the app's assets, for the licenses page. */
-abstract class CreditsAssets : DefaultTask() {
-    @get:InputDirectory
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val credits: DirectoryProperty
-
-    @get:OutputDirectory
-    abstract val output: DirectoryProperty
-
-    @TaskAction
-    fun copy() {
-        val into = output.get().dir("credits").asFile
-        into.deleteRecursively()
-        credits.get().asFile.copyRecursively(into)
-    }
-}
-
-val creditsAssets = tasks.register<CreditsAssets>("creditsAssets") {
-    credits.set(rootDir.resolve("../shared/credits"))
-    output.set(layout.buildDirectory.dir("generated/credits"))
-}
-
 val tokensTool = configurations.create("tokensTool")
 dependencies { tokensTool(project(":tokens")) }
 
@@ -82,14 +60,11 @@ composeCompiler {
 androidComponents {
     onVariants { variant ->
         variant.sources.kotlin?.addGeneratedSourceDirectory(composeTokens, ComposeTokens::output)
-        variant.sources.assets?.addGeneratedSourceDirectory(creditsAssets, CreditsAssets::output)
     }
 }
 
 dependencies {
     implementation(project(":android:platform"))
-    // Reads res/raw/aboutlibraries.json, which the app's build writes.
-    implementation("com.mikepenz:aboutlibraries-core:15.3.0")
 
     implementation(platform("androidx.compose:compose-bom:2026.09.00"))
     implementation("androidx.compose.ui:ui")

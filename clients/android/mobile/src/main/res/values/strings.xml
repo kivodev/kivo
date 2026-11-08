@@ -1,5 +1,239 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The phone interface's own words. -->
+<!-- The phone interface's own words. Formats, runtimes, episode codes and problems come from the core's display tables. -->
 <resources>
-    <string name="phones_coming">Kivo for phones is coming</string>
+    <!-- Sign in -->
+    <string name="mobile_sign_in">Sign in</string>
+    <string name="mobile_sign_in_to">Sign in to %1$s</string>
+    <string name="mobile_signing_in">Signing in…</string>
+    <string name="mobile_sign_in_another_device">Sign in with another device</string>
+    <string name="mobile_another_device_hint">Approve a code on a device that\'s signed in.</string>
+    <string name="mobile_last_signed_in">Last signed in</string>
+    <string name="mobile_on_this_network">On this network</string>
+    <string name="mobile_looking_for_servers">Looking for servers on this network…</string>
+    <string name="mobile_no_servers_found">No servers found. Enter the address, or find it on a signed-in device under Settings › Link a device.</string>
+    <string name="mobile_local_network_refused">Without access to this network, enter the server\'s address.</string>
+    <string name="mobile_enter_address">Enter address</string>
+    <string name="mobile_address_hint">192.168.1.20 or kivo.example.com</string>
+    <string name="mobile_continue_">Continue</string>
+    <string name="mobile_connecting">Connecting…</string>
+    <string name="mobile_no_server_at_address">No server found at that address.</string>
+    <string name="mobile_cant_reach_saved">Can\'t reach %1$s. Check your connection or enter its address.</string>
+    <string name="mobile_username">Username</string>
+    <string name="mobile_password">Password</string>
+    <string name="mobile_link_code_hint">On a device that\'s signed in, open Settings › Link a device and scan this code, or enter it.</string>
+    <string name="mobile_sign_in_declined">Sign-in was declined.</string>
+    <string name="mobile_couldnt_get_code">Couldn\'t get a sign-in code</string>
+    <string name="mobile_try_again">Try again</string>
+    <string name="mobile_back">Back</string>
+
+    <!-- Navigation -->
+    <string name="mobile_tab_home">Home</string>
+    <string name="mobile_tab_libraries">Libraries</string>
+    <string name="mobile_tab_favorites">Favorites</string>
+    <string name="mobile_tab_downloads">Downloads</string>
+    <string name="mobile_tab_search">Search</string>
+    <string name="mobile_cast">Cast</string>
+
+    <!-- Problems -->
+    <string name="mobile_cant_reach">Can\'t reach %1$s.</string>
+    <string name="mobile_retrying">Check your connection. Retrying automatically.</string>
+    <string name="mobile_cant_reach_saved_sentence">Check your connection, or choose another server.</string>
+    <string name="mobile_retry">Retry</string>
+    <string name="mobile_couldnt_load_home">Couldn\'t load Home.</string>
+    <string name="mobile_couldnt_load_libraries">Couldn\'t load your libraries.</string>
+    <string name="mobile_couldnt_load_library">Couldn\'t load this library.</string>
+    <string name="mobile_couldnt_load_page">Couldn\'t load this page.</string>
+    <string name="mobile_couldnt_load_season">Couldn\'t load this season.</string>
+    <string name="mobile_couldnt_load_favorites">Couldn\'t load Favorites.</string>
+    <string name="mobile_search_failed">Search failed.</string>
+
+    <!-- Home -->
+    <string name="mobile_row_continue_watching">Continue Watching</string>
+    <string name="mobile_row_continue_listening">Continue Listening</string>
+    <string name="mobile_row_continue_series">Continue Series</string>
+    <string name="mobile_row_favorites">Favorites</string>
+    <string name="mobile_row_recently_added">Recently Added</string>
+    <string name="mobile_row_recently_added_in">Recently Added in %1$s</string>
+    <string name="mobile_nothing_yet">Nothing here yet</string>
+    <string name="mobile_nothing_yet_sentence">Items appear here as libraries are scanned.</string>
+
+    <!-- A card's actions -->
+    <string name="mobile_play">Play</string>
+    <string name="mobile_resume">Resume</string>
+    <string name="mobile_resume_at">Resume %1$s</string>
+    <string name="mobile_play_episode">Play S%1$d E%2$d</string>
+    <string name="mobile_play_from_beginning">Play from beginning</string>
+    <string name="mobile_start_over">Start over</string>
+    <string name="mobile_mark_watched">Mark as watched</string>
+    <string name="mobile_mark_unwatched">Mark as unwatched</string>
+    <string name="mobile_mark_finished">Mark as finished</string>
+    <string name="mobile_mark_unfinished">Mark as unfinished</string>
+    <string name="mobile_add_favorite">Favorite</string>
+    <string name="mobile_remove_favorite">Remove from favorites</string>
+    <string name="mobile_remove_from_continue_watching">Remove from Continue Watching</string>
+    <string name="mobile_remove_from_continue_listening">Remove from Continue Listening</string>
+    <string name="mobile_go_to_series">Go to series</string>
+
+    <!-- Libraries -->
+    <string name="mobile_more_libraries">More libraries</string>
+    <string name="mobile_no_libraries">No libraries</string>
+    <string name="mobile_no_libraries_sentence">Libraries you can see appear here.</string>
+    <string name="mobile_tab_movies">Movies</string>
+    <string name="mobile_tab_shows">Shows</string>
+    <string name="mobile_tab_videos">Videos</string>
+    <string name="mobile_tab_books">Books</string>
+    <string name="mobile_collections">Collections</string>
+    <string name="mobile_authors">Authors</string>
+    <string name="mobile_series">Series</string>
+    <string name="mobile_filter">Filter</string>
+    <string name="mobile_remove_filter">Remove filter</string>
+    <string name="mobile_clear_filters">Clear filters</string>
+    <string name="mobile_show">Show</string>
+    <string name="mobile_all">All</string>
+    <string name="mobile_unwatched">Unwatched</string>
+    <string name="mobile_not_started">Not started</string>
+    <string name="mobile_in_progress">In progress</string>
+    <string name="mobile_watched">Watched</string>
+    <string name="mobile_finished">Finished</string>
+    <string name="mobile_favorites">Favorites</string>
+    <string name="mobile_resolution">Resolution</string>
+    <string name="mobile_dynamic_range">Dynamic range</string>
+    <string name="mobile_hdr">HDR</string>
+    <string name="mobile_dolby_vision">Dolby Vision</string>
+    <string name="mobile_sort_by">Sort by</string>
+    <string name="mobile_sort_title">Title</string>
+    <string name="mobile_sort_added">Date added</string>
+    <string name="mobile_sort_last_episode_added">Last episode added</string>
+    <string name="mobile_sort_release">Release date</string>
+    <string name="mobile_sort_rating">Rating</string>
+    <string name="mobile_a_to_z">A to Z</string>
+    <string name="mobile_newest_first">Newest first</string>
+    <string name="mobile_highest_first">Highest first</string>
+    <string name="mobile_sort_short_title">A–Z</string>
+    <string name="mobile_sort_short_added">Recently added</string>
+    <string name="mobile_sort_short_release">Newest</string>
+    <string name="mobile_sort_short_rating">Top rated</string>
+    <string name="mobile_noun_movies">movies</string>
+    <string name="mobile_noun_shows">shows</string>
+    <string name="mobile_noun_videos">videos</string>
+    <string name="mobile_noun_books">books</string>
+    <string name="mobile_empty_played">No %1$s %2$s</string>
+    <string name="mobile_empty_filters">No %1$s match these filters</string>
+    <string name="mobile_nothing_here">Nothing here yet.</string>
+
+    <!-- Counts -->
+    <plurals name="mobile_count_movies">
+        <item quantity="one">%1$,d movie</item>
+        <item quantity="other">%1$,d movies</item>
+    </plurals>
+    <plurals name="mobile_count_shows">
+        <item quantity="one">%1$,d show</item>
+        <item quantity="other">%1$,d shows</item>
+    </plurals>
+    <plurals name="mobile_count_videos">
+        <item quantity="one">%1$,d video</item>
+        <item quantity="other">%1$,d videos</item>
+    </plurals>
+    <plurals name="mobile_count_books">
+        <item quantity="one">%1$,d book</item>
+        <item quantity="other">%1$,d books</item>
+    </plurals>
+    <plurals name="mobile_count_collections">
+        <item quantity="one">%1$,d collection</item>
+        <item quantity="other">%1$,d collections</item>
+    </plurals>
+    <plurals name="mobile_count_authors">
+        <item quantity="one">%1$,d author</item>
+        <item quantity="other">%1$,d authors</item>
+    </plurals>
+    <plurals name="mobile_count_series">
+        <item quantity="one">%1$,d series</item>
+        <item quantity="other">%1$,d series</item>
+    </plurals>
+    <plurals name="mobile_count_seasons">
+        <item quantity="one">%1$,d season</item>
+        <item quantity="other">%1$,d seasons</item>
+    </plurals>
+    <plurals name="mobile_count_episodes">
+        <item quantity="one">%1$,d episode</item>
+        <item quantity="other">%1$,d episodes</item>
+    </plurals>
+    <plurals name="mobile_count_items">
+        <item quantity="one">%1$,d item</item>
+        <item quantity="other">%1$,d items</item>
+    </plurals>
+    <plurals name="mobile_count_titles">
+        <item quantity="one">%1$,d title</item>
+        <item quantity="other">%1$,d titles</item>
+    </plurals>
+
+    <!-- Detail -->
+    <string name="mobile_rating">★ %1$.1f</string>
+    <string name="mobile_years_range">%1$d to %2$d</string>
+    <string name="mobile_ends_at">Ends at %1$s</string>
+    <string name="mobile_file_missing">This file is missing</string>
+    <string name="mobile_download">Download</string>
+    <string name="mobile_favorite">Favorite</string>
+    <string name="mobile_version">Version</string>
+    <string name="mobile_audio">Audio</string>
+    <string name="mobile_subtitles">Subtitles</string>
+    <string name="mobile_automatic">Automatic</string>
+    <string name="mobile_automatic_named">Automatic (%1$s)</string>
+    <string name="mobile_off">Off</string>
+    <string name="mobile_more">More</string>
+    <string name="mobile_less">Less</string>
+    <string name="mobile_season_n">Season %1$d</string>
+    <string name="mobile_seasons">Seasons</string>
+    <plurals name="mobile_n_unwatched">
+        <item quantity="one">%1$,d unwatched</item>
+        <item quantity="other">%1$,d unwatched</item>
+    </plurals>
+    <string name="mobile_cast_and_crew">Cast &amp; Crew</string>
+    <string name="mobile_role_actor">Actor</string>
+    <string name="mobile_role_director">Director</string>
+    <string name="mobile_role_writer">Writer</string>
+    <string name="mobile_role_author">Author</string>
+    <string name="mobile_role_narrator">Narrator</string>
+    <string name="mobile_movies">Movies</string>
+    <string name="mobile_shows">Shows</string>
+    <string name="mobile_episodes">Episodes</string>
+    <string name="mobile_other_videos">Other videos</string>
+    <string name="mobile_videos">Videos</string>
+    <string name="mobile_extras">Extras</string>
+    <string name="mobile_books">Books</string>
+    <string name="mobile_other_books">Other books</string>
+    <string name="mobile_narrated">Narrated</string>
+    <string name="mobile_player_coming">Player comes in M2</string>
+
+    <!-- Search -->
+    <string name="mobile_search_hint">Movies, shows, episodes, people</string>
+    <string name="mobile_search_empty">Search movies, shows, books and people</string>
+    <string name="mobile_no_results">No results for “%1$s”.</string>
+    <string name="mobile_clear_search">Clear search</string>
+    <string name="mobile_people">People</string>
+
+    <!-- Favorites -->
+    <string name="mobile_no_favorites">No favorites yet.</string>
+    <string name="mobile_no_favorites_sentence">Items you mark with ♥ appear here.</string>
+
+    <!-- Downloads -->
+    <string name="mobile_downloads_coming">Downloads are coming</string>
+    <string name="mobile_downloads_coming_sentence">Movies and episodes you download will be here to watch offline.</string>
+
+    <!-- Settings -->
+    <string name="mobile_settings">Settings</string>
+    <string name="mobile_change_server">Change server</string>
+    <string name="mobile_sign_out">Sign out</string>
+    <string name="mobile_sign_out_title">Sign out of this device?</string>
+    <string name="mobile_cancel">Cancel</string>
+    <string name="mobile_about">About</string>
+    <string name="mobile_app_version">App version</string>
+    <string name="mobile_server_version">Server version</string>
+    <string name="mobile_server_version_failed">Couldn\'t read the server version. Retry</string>
+    <string name="mobile_credits">Credits</string>
+    <string name="mobile_open_source_licenses">Open source licenses</string>
+    <string name="mobile_tmdb">TMDB</string>
+    <string name="mobile_tmdb_notice">This product uses the TMDB API but is not endorsed or certified by TMDB.</string>
+    <string name="mobile_credit_audnexus">Audiobook metadata from Audnexus</string>
+    <string name="mobile_credit_jellyfin_ffmpeg">Transcoding by jellyfin-ffmpeg (GPL)</string>
 </resources>
