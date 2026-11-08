@@ -84,13 +84,15 @@ val LocalCast = staticCompositionLocalOf<CastViewModel?> { null }
 
 /**
  * The Cast button: Google's MediaRouteButton, in the top bar's colour,
- * which shows only while Cast devices are found, opens Google's list of them
- * and, connected, its controller for the TV. Without Google Play services
- * there's none.
+ * which shows only while Cast devices are found, as Cast's state says,
+ * opens Google's list of them and, connected, its controller for the TV.
+ * Without Google Play services there's none.
  */
 @Composable
 fun CastButton(modifier: Modifier = Modifier) {
-    if (LocalCast.current?.offered != true) return
+    val cast = LocalCast.current?.takeIf { it.offered } ?: return
+    val state by cast.state.collectAsStateWithLifecycle()
+    if (state.link == LinkState.Unavailable) return
     AndroidView(
         factory = { context ->
             MediaRouteButton(ContextThemeWrapper(context, CAST_THEME)).also {
