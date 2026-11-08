@@ -93,6 +93,11 @@
     <string name="mobile_not_started">Not started</string>
     <string name="mobile_in_progress">In progress</string>
     <string name="mobile_watched">Watched</string>
+    <string name="mobile_percent_watched">%1$d%% watched</string>
+    <string name="mobile_jump_to_letter">Jump to letter</string>
+    <string name="mobile_playback_position">Playback position</string>
+    <string name="mobile_chapter_position">Chapter position</string>
+    <string name="mobile_time_of">%1$s of %2$s</string>
     <string name="mobile_finished">Finished</string>
     <string name="mobile_favorites">Favorites</string>
     <string name="mobile_resolution">Resolution</string>

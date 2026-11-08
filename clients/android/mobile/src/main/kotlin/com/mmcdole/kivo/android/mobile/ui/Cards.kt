@@ -28,9 +28,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.mmcdole.kivo.android.mobile.R
+import com.mmcdole.kivo.android.mobile.theme.KivoTokens
 import com.mmcdole.kivo.android.mobile.theme.LocalKivo
 import com.mmcdole.kivo.android.mobile.theme.space
 import com.mmcdole.kivo.api.models.CollectionSummary
@@ -40,11 +47,13 @@ import com.mmcdole.kivo.api.models.WorkSummary
 /** A poster's corners, as the design has them. */
 val CardCorners = RoundedCornerShape(10.dp)
 
-/** A card's widths in a row: landscape and the rest. */
-val RowLandscapeWidth = 260.dp
-val RowPosterWidth = 116.dp
-
-fun rowCardWidth(shape: CardShape): Dp = if (shape == CardShape.Landscape) RowLandscapeWidth else RowPosterWidth
+/** A card's width in a row: landscape and the rest, a wide window's the shared tokens' grid widths. */
+@Composable
+fun rowCardWidth(shape: CardShape): Dp = when {
+    !LocalWide.current -> if (shape == CardShape.Landscape) 260.dp else 116.dp
+    shape == CardShape.Landscape -> KivoTokens.Layout.landscapeMinWidth * 1.25f
+    else -> KivoTokens.Layout.posterMinWidth
+}
 
 /** The artwork a card of [shape] shows of [work]: a frame for landscape, else the poster. */
 fun cardImage(work: WorkSummary, shape: CardShape): ImageRef? = with(work.images) {
@@ -89,7 +98,14 @@ fun WorkCard(
                 .fillMaxWidth()
                 .aspectRatio(shape.aspect)
                 .clip(CardCorners)
-                .then(if (work != null) Modifier.tapAndHold(onClick, onLongClick).testTag("card:${work.title}") else Modifier),
+                .then(
+                    if (work != null) {
+                        val label = cardLabel(work)
+                        Modifier.tapAndHold(onClick, onLongClick).semantics { contentDescription = label }.testTag("card:${work.title}")
+                    } else {
+                        Modifier
+                    },
+                ),
         ) {
             if (work == null) {
                 Box(Modifier.matchParentSize().background(LocalKivo.current.placeholder))
@@ -103,12 +119,32 @@ fun WorkCard(
     }
 }
 
-/** A card's caption under its artwork: the title, and the line under it, which keeps its room. */
+/**
+ * What TalkBack reads for a work's card, whose artwork is the one element
+ * the card is to it: the title and the line under it, then whether it's
+ * watched or a series' unwatched count, and how far in it is.
+ */
+@Composable
+private fun cardLabel(work: WorkSummary): String {
+    val unplayed = work.series?.unplayedCount ?: work.season?.unplayedCount
+    return listOfNotNull(
+        cardTitle(work),
+        cardCaption(work),
+        when {
+            unplayed != null && unplayed > 0 -> pluralStringResource(R.plurals.mobile_n_unwatched, unplayed, unplayed)
+            work.userState?.played == true || unplayed == 0 -> stringResource(R.string.mobile_watched)
+            else -> null
+        },
+        progressOf(work)?.let { stringResource(R.string.mobile_percent_watched, (it * 100).toInt()) },
+    ).joinToString(", ")
+}
+
+/** A card's caption under its artwork: the title, and the line under it, which keeps its room. TalkBack reads them with the artwork. */
 @Composable
 fun Caption(title: String?, detail: String?, lines: Int) {
     Text(
         title.orEmpty(),
-        Modifier.padding(top = space(2)),
+        Modifier.padding(top = space(2)).clearAndSetSemantics {},
         style = MaterialTheme.typography.bodyMedium,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
@@ -116,6 +152,7 @@ fun Caption(title: String?, detail: String?, lines: Int) {
     if (lines > 1) {
         Text(
             detail.orEmpty(),
+            Modifier.clearAndSetSemantics {},
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
@@ -163,7 +200,13 @@ fun CollectionCard(collection: CollectionSummary?, width: Dp, onClick: () -> Uni
                 .fillMaxWidth()
                 .aspectRatio(CardShape.Poster.aspect)
                 .clip(CardCorners)
-                .then(if (collection != null) Modifier.tapAndHold(onClick, null) else Modifier),
+                .then(
+                    if (collection != null) {
+                        Modifier.tapAndHold(onClick, null).semantics { contentDescription = "${collection.name}, ${collection.workCount}" }
+                    } else {
+                        Modifier
+                    },
+                ),
         ) {
             Artwork(collection?.images?.poster, width, Modifier.matchParentSize())
         }
@@ -188,7 +231,13 @@ fun NamedCard(
                 .fillMaxWidth()
                 .aspectRatio(1f)
                 .clip(if (round) CircleShape else CardCorners)
-                .then(if (name != null) Modifier.tapAndHold(onClick, null) else Modifier),
+                .then(
+                    if (name != null) {
+                        Modifier.tapAndHold(onClick, null).semantics { contentDescription = listOfNotNull(name, detail).joinToString(", ") }
+                    } else {
+                        Modifier
+                    },
+                ),
         ) {
             Artwork(image, width, Modifier.matchParentSize())
             if (image == null && name != null) {
@@ -200,9 +249,10 @@ fun NamedCard(
                 )
             }
         }
-        Text(name.orEmpty(), Modifier.padding(top = space(2)), style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(name.orEmpty(), Modifier.padding(top = space(2)).clearAndSetSemantics {}, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(
             detail.orEmpty(),
+            Modifier.clearAndSetSemantics {},
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,

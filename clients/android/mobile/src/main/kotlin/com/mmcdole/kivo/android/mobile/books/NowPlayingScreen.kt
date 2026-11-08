@@ -68,6 +68,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.setProgress
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -222,11 +228,25 @@ private fun ChapterSeek(progress: BookProgress?, chapters: List<Chapter>, onSeek
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+        val label = stringResource(R.string.mobile_chapter_position)
+        val value = display.clock(elapsed)
         BoxWithConstraints(
             Modifier
                 .fillMaxWidth()
-                .height(32.dp)
+                .height(48.dp)
                 .testTag("chapterSeek")
+                // TalkBack's one control for the bar: swiping up or down moves it ten seconds through the chapter.
+                .clearAndSetSemantics {
+                    contentDescription = label
+                    stateDescription = value
+                    if (progress != null && duration > 0) {
+                        progressBarRangeInfo = ProgressBarRangeInfo(elapsed.toFloat(), 0f..duration.toFloat(), steps = (duration / 10_000).toInt().coerceAtLeast(0))
+                        setProgress { ms ->
+                            seek(progress.chapterIndex, ms.toLong().coerceIn(0, duration))
+                            true
+                        }
+                    }
+                }
                 .pointerInput(progress?.chapterIndex, duration) {
                     if (progress == null || duration <= 0) return@pointerInput
                     val chapter = progress.chapterIndex
@@ -255,7 +275,7 @@ private fun ChapterSeek(progress: BookProgress?, chapters: List<Chapter>, onSeek
         }
         Row(Modifier.fillMaxWidth()) {
             val muted = MaterialTheme.colorScheme.onSurfaceVariant
-            Text(display.clock(elapsed), style = MaterialTheme.typography.labelMedium, color = muted)
+            Text(display.clock(elapsed), Modifier.clearAndSetSemantics {}, style = MaterialTheme.typography.labelMedium, color = muted)
             Spacer(Modifier.weight(1f))
             Text("−" + display.clock(duration - elapsed), style = MaterialTheme.typography.labelMedium, color = muted)
         }

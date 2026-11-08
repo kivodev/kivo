@@ -55,6 +55,7 @@ import com.mmcdole.kivo.android.mobile.app.MobileNav
 import com.mmcdole.kivo.android.mobile.app.SettingsPage
 import com.mmcdole.kivo.android.mobile.app.SettingsPageRoute
 import com.mmcdole.kivo.android.mobile.theme.space
+import com.mmcdole.kivo.android.mobile.ui.wideWidth
 import com.mmcdole.kivo.android.mobile.ui.Loading
 import com.mmcdole.kivo.android.mobile.ui.PageTopBar
 import com.mmcdole.kivo.android.settings.AppCredits
@@ -73,7 +74,7 @@ fun SettingsScreen(session: ServerSession, nav: MobileNav) {
     val state by model.state.collectAsStateWithLifecycle()
     fun page(page: SettingsPage) = nav.open(SettingsPageRoute(page))
     Scaffold(topBar = { PageTopBar(stringResource(R.string.mobile_settings), nav::back) }) { padding ->
-        LazyColumn(Modifier.fillMaxSize().testTag("settings"), contentPadding = padding) {
+        LazyColumn(Modifier.wideWidth().fillMaxSize().testTag("settings"), contentPadding = padding) {
             item {
                 ListItem(
                     headlineContent = { Text(state.username, style = MaterialTheme.typography.titleMedium) },
@@ -155,7 +156,7 @@ fun LicensesScreen(nav: MobileNav) {
         if (list == null) {
             Loading(Modifier.padding(padding))
         } else {
-            LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
+            LazyColumn(Modifier.wideWidth().fillMaxSize(), contentPadding = padding) {
                 items(list, key = { it.id }) { credit ->
                     ListItem(
                         headlineContent = { Text(credit.name) },
@@ -177,7 +178,7 @@ fun LicenseScreen(id: String, nav: MobileNav) {
     val model = viewModel { LicensesViewModel { AppCredits.get(context) } }
     val credit = model.state.collectAsStateWithLifecycle().value?.firstOrNull { it.id == id }
     Scaffold(topBar = { PageTopBar(credit?.name.orEmpty(), nav::back) }) { padding ->
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = space(4), end = space(4), top = padding.calculateTopPadding(), bottom = space(8))) {
+        LazyColumn(Modifier.wideWidth().fillMaxSize(), contentPadding = PaddingValues(start = space(4), end = space(4), top = padding.calculateTopPadding(), bottom = space(8))) {
             item { Text(credit?.text.orEmpty(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
     }
@@ -188,7 +189,7 @@ fun LicenseScreen(id: String, nav: MobileNav) {
 @Composable
 internal fun SettingsList(title: String, nav: MobileNav, tag: String, content: LazyListScope.() -> Unit) {
     Scaffold(topBar = { PageTopBar(title, nav::back) }) { padding ->
-        LazyColumn(Modifier.fillMaxSize().testTag(tag), contentPadding = padding, content = content)
+        LazyColumn(Modifier.wideWidth().fillMaxSize().testTag(tag), contentPadding = padding, content = content)
     }
 }
 

@@ -14,20 +14,35 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mmcdole.kivo.android.mobile.theme.KivoTokens
 import com.mmcdole.kivo.android.mobile.ui.CardShape
+import com.mmcdole.kivo.android.mobile.ui.LocalWide
 import com.mmcdole.kivo.core.data.GridPager
 import com.mmcdole.kivo.core.data.GridPages
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
-/** The gap between a grid's cards, across and down. */
-val GridGap = 10.dp
+/** The gap between a grid's cards across, a [wide] window's the shared tokens' gap, and down. */
+fun gridGap(wide: Boolean): Dp = if (wide) KivoTokens.Layout.gridGap else 10.dp
 val GridLineGap = 16.dp
 
-/** Cards across [width] for [shape]: landscape at least 170 dp wide and two across, the rest 104 dp and three. */
-fun gridColumns(width: Dp, shape: CardShape): Int =
-    if (shape == CardShape.Landscape) maxOf(2, ((width + GridGap) / (170.dp + GridGap)).toInt()) else maxOf(3, ((width + GridGap) / (104.dp + GridGap)).toInt())
+/**
+ * Cards across [width] for [shape]: landscape at least 170 dp wide and two
+ * across, the rest 104 dp and three; in a [wide] window, as many as fit at
+ * the shared tokens' widths, so a tablet has more columns rather than bigger cards.
+ */
+fun gridColumns(width: Dp, shape: CardShape, wide: Boolean = false): Int {
+    val gap = gridGap(wide)
+    val (fewest, narrowest) = when {
+        shape == CardShape.Landscape -> 2 to if (wide) KivoTokens.Layout.landscapeMinWidth else 170.dp
+        else -> 3 to if (wide) KivoTokens.Layout.posterMinWidth else 104.dp
+    }
+    return maxOf(fewest, ((width + gap) / (narrowest + gap)).toInt())
+}
+
+/** A card's width in a grid of [columns] across [width]. */
+fun gridCardWidth(width: Dp, columns: Int, wide: Boolean): Dp = (width - gridGap(wide) * (columns - 1)) / columns
 
 /** How far past the screen the pages of a grid are read: lines ahead of a fling, and behind. */
 private const val LinesAhead = 8
@@ -63,7 +78,7 @@ fun <T : Any> PagedGrid(
         state = state,
         modifier = modifier.testTag("grid"),
         contentPadding = contentPadding,
-        horizontalArrangement = Arrangement.spacedBy(GridGap),
+        horizontalArrangement = Arrangement.spacedBy(gridGap(LocalWide.current)),
         verticalArrangement = Arrangement.spacedBy(GridLineGap),
     ) {
         items(count = pages.total ?: 0, key = { it }, contentType = { 0 }) { index ->

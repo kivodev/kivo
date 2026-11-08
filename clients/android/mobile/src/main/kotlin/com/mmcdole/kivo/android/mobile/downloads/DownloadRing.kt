@@ -22,6 +22,8 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -66,12 +68,16 @@ fun DownloadRing(
     }
 }
 
-/** [progress]'s ring: dashed while it's in line, turning while the server prepares it with nothing to measure yet, grey while it waits or is paused. */
+/**
+ * [progress]'s ring: dashed while it's in line, turning while the server prepares it with nothing to measure yet,
+ * grey while it waits or is paused. TalkBack reads its state, "Downloading · 52%".
+ */
 @Composable
 fun ProgressRing(progress: DownloadProgress, modifier: Modifier = Modifier, center: ImageVector? = null, size: Dp = 28.dp) {
+    val state = words(progress)
     DownloadRing(
         progress.fraction,
-        modifier,
+        modifier.semantics { contentDescription = state },
         active = progress.active,
         dashed = progress.stage == Stage.Queued,
         center = center,

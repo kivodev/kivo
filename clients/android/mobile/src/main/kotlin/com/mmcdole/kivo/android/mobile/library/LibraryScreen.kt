@@ -83,6 +83,7 @@ import com.mmcdole.kivo.android.mobile.app.MobileNav
 import com.mmcdole.kivo.android.mobile.app.PersonRoute
 import com.mmcdole.kivo.android.mobile.app.handle
 import com.mmcdole.kivo.android.mobile.theme.space
+import com.mmcdole.kivo.android.mobile.ui.LocalWide
 import com.mmcdole.kivo.android.mobile.ui.CardShape
 import com.mmcdole.kivo.android.mobile.ui.CollectionCard
 import com.mmcdole.kivo.android.mobile.ui.Failed
@@ -245,8 +246,9 @@ private fun Grid(state: LibraryUiState, model: LibraryViewModel, nav: MobileNav,
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val endPad = if (rail) LetterRailWidth + space(1) else space(4)
         val width = maxWidth - space(4) - endPad
-        val columns = gridColumns(width, state.shape)
-        val cardWidth = (width - GridGap * (columns - 1)) / columns
+        val wide = LocalWide.current
+        val columns = gridColumns(width, state.shape, wide)
+        val cardWidth = gridCardWidth(width, columns, wide)
         PullToRefreshBox(
             isRefreshing = refreshing,
             onRefresh = {
@@ -329,7 +331,7 @@ private fun SkeletonGrid(columns: Int, shape: CardShape, cardWidth: Dp, padding:
     LazyVerticalGrid(
         columns = GridCells.Fixed(columns),
         contentPadding = padding,
-        horizontalArrangement = Arrangement.spacedBy(GridGap),
+        horizontalArrangement = Arrangement.spacedBy(gridGap(LocalWide.current)),
         verticalArrangement = Arrangement.spacedBy(GridLineGap),
         userScrollEnabled = false,
     ) {

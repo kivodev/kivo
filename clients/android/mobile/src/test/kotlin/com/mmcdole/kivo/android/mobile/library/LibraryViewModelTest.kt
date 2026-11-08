@@ -97,5 +97,7 @@ class LibraryViewModelTest : CoreTest() {
         assertEquals(3, gridColumns(androidx.compose.ui.unit.Dp(340f), CardShape.Poster))
         assertEquals(2, gridColumns(androidx.compose.ui.unit.Dp(340f), CardShape.Landscape))
         assertEquals(10, gridColumns(androidx.compose.ui.unit.Dp(1130f), CardShape.Poster))
+        assertEquals(6, gridColumns(androidx.compose.ui.unit.Dp(1130f), CardShape.Poster, wide = true))
+        assertEquals(4, gridColumns(androidx.compose.ui.unit.Dp(1130f), CardShape.Landscape, wide = true))
     }
 }

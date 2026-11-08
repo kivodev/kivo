@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -69,10 +70,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -88,10 +93,16 @@ import com.mmcdole.kivo.android.mobile.downloads.DownloadButton
 import com.mmcdole.kivo.android.mobile.downloads.EpisodesSheet
 import com.mmcdole.kivo.android.mobile.downloads.WorkDownloads
 import com.mmcdole.kivo.android.mobile.app.handle
+import com.mmcdole.kivo.android.mobile.theme.KivoTokens
 import com.mmcdole.kivo.android.mobile.theme.LocalKivo
 import com.mmcdole.kivo.android.mobile.theme.space
+import com.mmcdole.kivo.android.mobile.ui.ActionLabel
 import com.mmcdole.kivo.android.mobile.ui.Artwork
 import com.mmcdole.kivo.android.mobile.ui.CardCorners
+import com.mmcdole.kivo.android.mobile.ui.CardShape
+import com.mmcdole.kivo.android.mobile.ui.LocalWide
+import com.mmcdole.kivo.android.mobile.ui.rowCardWidth
+import com.mmcdole.kivo.android.mobile.ui.wideWidth
 import com.mmcdole.kivo.android.mobile.cast.CastButton
 import com.mmcdole.kivo.android.mobile.ui.Failed
 import com.mmcdole.kivo.android.mobile.ui.NamedCard
@@ -149,14 +160,21 @@ fun DetailScreen(session: ServerSession, id: String, seasonId: String?, seasonNu
     }
 }
 
+/**
+ * In a wide window the art is shorter for its width, and the hero, actions
+ * and rows under it keep to the leading edge at a readable width, with a
+ * season's episodes a shelf of cards.
+ */
 @Composable
 private fun DetailPage(head: WorkSummary, state: DetailUiState, model: DetailViewModel, nav: MobileNav, openMenu: (WorkMenu) -> Unit) {
     val list = rememberLazyListState()
     val titleShown by remember { derivedStateOf { list.firstVisibleItemIndex > 1 } }
     val seasonHeading = stringResource(R.string.mobile_season_n, head.episode?.seasonNumber ?: 0)
-    Box(Modifier.fillMaxSize()) {
+    val wide = LocalWide.current
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val artHeight = if (wide) minOf(maxWidth * 9f / 16f, maxHeight * 0.55f) else null
         LazyColumn(Modifier.fillMaxSize().testTag("detail"), state = list) {
-            item(key = "art") { Backdrop(head) }
+            item(key = "art") { Backdrop(head, artHeight) }
             item(key = "hero") { Hero(head, state.work, nav) }
             item(key = "actions") {
                 if (head.kind == "series") SeriesActions(head, state, model, nav) else PlayActions(head, state, model, nav)
@@ -203,12 +221,12 @@ private fun BackButton(nav: MobileNav) {
     }
 }
 
-/** The artwork, 16:9 under the status bar, fading into the page at its foot. */
+/** The artwork, 16:10 under the status bar, or [height] high, fading into the page at its foot. */
 @Composable
-private fun Backdrop(head: WorkSummary) {
+private fun Backdrop(head: WorkSummary, height: Dp?) {
     val image = with(head.images) { if (head.kind == "episode" || head.kind == "video") still ?: backdrop ?: poster else backdrop ?: poster }
     val bg = MaterialTheme.colorScheme.background
-    Box(Modifier.fillMaxWidth().aspectRatio(16f / 10f)) {
+    Box(Modifier.fillMaxWidth().then(if (height != null) Modifier.height(height) else Modifier.aspectRatio(16f / 10f))) {
         Artwork(image, 960.dp, Modifier.matchParentSize())
         Box(Modifier.matchParentSize().background(Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.45f), 0.3f to Color.Transparent, 0.7f to Color.Transparent, 1f to bg)))
     }
@@ -217,18 +235,24 @@ private fun Backdrop(head: WorkSummary) {
 /** The title, an episode's series over it, and the details line. */
 @Composable
 private fun Hero(head: WorkSummary, work: WorkDetail?, nav: MobileNav) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = space(4)), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(space(1))) {
+    val wide = LocalWide.current
+    val align = if (wide) TextAlign.Start else TextAlign.Center
+    Column(
+        Modifier.padding(horizontal = space(4)).wideWidth().fillMaxWidth(),
+        horizontalAlignment = if (wide) Alignment.Start else Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(space(1)),
+    ) {
         head.episode?.let { episode ->
             TextButton(onClick = { nav.openSeries(episode) }) { Text(episode.seriesTitle) }
         }
         Text(
             labelledTitle(head.title, head.movie),
-            style = MaterialTheme.typography.headlineMedium,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.testTag("title"),
+            style = if (wide) MaterialTheme.typography.displaySmall else MaterialTheme.typography.headlineMedium,
+            textAlign = align,
+            modifier = Modifier.testTag("title").semantics { heading() },
         )
         val meta = metaLine(head, work)
-        if (meta.isNotEmpty()) Text(meta, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        if (meta.isNotEmpty()) Text(meta, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = align)
     }
 }
 
@@ -268,7 +292,7 @@ private fun PlayActions(head: WorkSummary, state: DetailUiState, model: DetailVi
         ready != null -> nav.play(PlayerRoute(head.id, fromStart, subtitleTrackId = choices.subtitleTrackId, downloadId = ready.id))
         else -> nav.play(head.id, fromStart, choices.versionId, choices.audioTrackId, choices.subtitleTrackId)
     }
-    Column(Modifier.padding(horizontal = space(4), vertical = space(4)), verticalArrangement = Arrangement.spacedBy(space(3))) {
+    Column(Modifier.padding(horizontal = space(4), vertical = space(4)).wideWidth(KivoTokens.Container.form), verticalArrangement = Arrangement.spacedBy(space(3))) {
         if (available) {
             PlayButton(
                 if (position != null && !book) stringResource(R.string.mobile_resume_at, display.clock(position.toLong())) else stringResource(if (position != null) R.string.mobile_resume else R.string.mobile_play),
@@ -289,7 +313,9 @@ private fun PlayActions(head: WorkSummary, state: DetailUiState, model: DetailVi
             }
         }
         ActionRow(head, state, model, startOver = if (available && position != null) ({ play(fromStart = true) }) else null)
-        state.download?.let { download -> Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { DownloadBadge(download) } }
+        state.download?.let { download ->
+            Box(Modifier.fillMaxWidth(), contentAlignment = if (LocalWide.current) Alignment.CenterStart else Alignment.Center) { DownloadBadge(download) }
+        }
     }
 }
 
@@ -297,7 +323,7 @@ private fun PlayActions(head: WorkSummary, state: DetailUiState, model: DetailVi
 @Composable
 private fun SeriesActions(head: WorkSummary, state: DetailUiState, model: DetailViewModel, nav: MobileNav) {
     val next = state.work?.series?.nextUp
-    Column(Modifier.padding(horizontal = space(4), vertical = space(4)), verticalArrangement = Arrangement.spacedBy(space(3))) {
+    Column(Modifier.padding(horizontal = space(4), vertical = space(4)).wideWidth(KivoTokens.Container.form), verticalArrangement = Arrangement.spacedBy(space(3))) {
         if (next != null) {
             val position = next.userState?.positionMs
             val episode = next.episode
@@ -340,29 +366,34 @@ private fun ActionRow(head: WorkSummary, state: DetailUiState, model: DetailView
     val played = head.userState?.played == true
     val download = state.download
     val downloads = model.downloads
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = if (LocalWide.current) Arrangement.spacedBy(space(3)) else Arrangement.SpaceEvenly) {
+        // At most an even share each, so large text wraps under its icon rather than running into the next.
+        val cell = Modifier.weight(1f, fill = false)
         if (head.kind != "series") {
-            RoundAction(Icons.Default.Replay, stringResource(R.string.mobile_start_over), "startOver", enabled = startOver != null) { startOver?.invoke() }
+            RoundAction(Icons.Default.Replay, stringResource(R.string.mobile_start_over), "startOver", cell, enabled = startOver != null) { startOver?.invoke() }
             if (download != null && downloads != null && state.work?.available == true) {
                 DownloadButton(
                     download,
                     book = head.kind == "book",
                     DownloadActions(downloads::download, { downloads.pause() }, { downloads.resume() }, { downloads.retry() }, { downloads.remove() }, downloads::problemSeen),
+                    cell,
                 )
             }
         } else if (download != null && downloads != null) {
-            SeriesDownload(state, downloads)
+            SeriesDownload(state, downloads, cell)
         }
         RoundAction(
             if (favorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
             stringResource(R.string.mobile_favorite),
             "favorite",
+            cell,
             on = favorite,
         ) { model.setFavorite(head, !favorite) }
         RoundAction(
             if (played) Icons.Default.CheckCircle else Icons.Outlined.CheckCircle,
             stringResource(if (head.kind == "book") R.string.mobile_finished else R.string.mobile_watched),
             "watched",
+            cell,
             on = played,
             description = markPlayedLabel(played, head.kind),
         ) { model.setPlayed(head, !played) }
@@ -374,6 +405,7 @@ private fun RoundAction(
     icon: ImageVector,
     label: String,
     tag: String,
+    modifier: Modifier = Modifier,
     enabled: Boolean = true,
     on: Boolean = false,
     description: String = label,
@@ -385,7 +417,7 @@ private fun RoundAction(
         else -> MaterialTheme.colorScheme.onSurface
     }
     Column(
-        Modifier
+        modifier
             .widthIn(min = 72.dp)
             .clip(MaterialTheme.shapes.medium)
             .clickable(enabled = enabled, onClick = onClick)
@@ -394,16 +426,17 @@ private fun RoundAction(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Icon(icon, description, tint = color)
-        Text(label, style = MaterialTheme.typography.labelMedium, color = color, modifier = Modifier.padding(top = space(1)))
+        // TalkBack reads the description, which says what a tap does, in the word's place.
+        ActionLabel(label, color, Modifier.padding(top = space(1)).then(if (description != label) Modifier.clearAndSetSemantics {} else Modifier))
     }
 }
 
 /** A series' Download: the season open, or the whole series, each opening the episodes sheet. */
 @Composable
-private fun SeriesDownload(state: DetailUiState, downloads: WorkDownloads) {
+private fun SeriesDownload(state: DetailUiState, downloads: WorkDownloads, modifier: Modifier) {
     var open by remember { mutableStateOf(false) }
     val seasons = state.seasons.orEmpty()
-    Box {
+    Box(modifier) {
         RoundAction(Icons.Default.Download, stringResource(R.string.mobile_download), "download", enabled = seasons.isNotEmpty()) { open = true }
         DropdownMenu(open, onDismissRequest = { open = false }) {
             state.season?.let { season ->
@@ -457,7 +490,7 @@ private fun TrackRows(work: WorkDetail, choices: TrackChoices, model: DetailView
     val off = stringResource(R.string.mobile_off)
     fun audioName(id: String?) = audio.firstOrNull { it.id == id }?.name
     fun subtitleName(id: String?) = if (id == Subtitles.OFF) off else subtitles.firstOrNull { it.id == id }?.name
-    Column(Modifier.padding(bottom = space(2))) {
+    Column(Modifier.padding(bottom = space(2)).wideWidth()) {
         if (work.versions.size > 1) TrackRow(stringResource(R.string.mobile_version), version.name, "version") { open = Picker.Version }
         if (audio.size > 1) {
             TrackRow(stringResource(R.string.mobile_audio), audioName(choices.audioTrackId) ?: automatic, "audio") { open = Picker.Audio }
@@ -539,7 +572,7 @@ private fun PickerSheet(title: String, choices: List<Choice>, selected: String?,
 private fun Overview(text: String?) {
     if (text.isNullOrBlank()) return
     var expanded by rememberSaveable { mutableStateOf(false) }
-    Column(Modifier.padding(horizontal = space(4), vertical = space(2)).animateContentSize()) {
+    Column(Modifier.padding(horizontal = space(4), vertical = space(2)).wideWidth().animateContentSize()) {
         Text(text, style = MaterialTheme.typography.bodyMedium, maxLines = if (expanded) Int.MAX_VALUE else 3, overflow = TextOverflow.Ellipsis)
         TextButton(onClick = { expanded = !expanded }, contentPadding = PaddingValues(0.dp)) {
             Text(stringResource(if (expanded) R.string.mobile_less else R.string.mobile_more))
@@ -553,7 +586,7 @@ private fun LazyListScope.seasonItems(state: DetailUiState, model: DetailViewMod
     val season = state.season
     item(key = "seasons") {
         var open by remember { mutableStateOf(false) }
-        Row(Modifier.padding(horizontal = space(2), vertical = space(2)), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(horizontal = space(2), vertical = space(2)).wideWidth(), verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = { open = true }, enabled = seasons.size > 1, modifier = Modifier.testTag("seasonPicker")) {
                 Text(season?.title.orEmpty(), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
                 if (seasons.size > 1) Icon(Icons.Default.ArrowDropDown, null)
@@ -583,20 +616,92 @@ private fun LazyListScope.seasonItems(state: DetailUiState, model: DetailViewMod
 private fun LazyListScope.episodeItems(heading: String, state: DetailUiState, current: String, nav: MobileNav, openMenu: (WorkMenu) -> Unit) {
     item(key = "seasonHeading") {
         HorizontalDivider(Modifier.padding(top = space(4)))
-        Text(heading, Modifier.padding(horizontal = space(4), vertical = space(3)), style = MaterialTheme.typography.titleMedium)
+        Text(heading, Modifier.padding(horizontal = space(4), vertical = space(3)).semantics { heading() }, style = MaterialTheme.typography.titleMedium)
     }
     episodeRows(state, current, nav, openMenu)
 }
 
+/** A season's episodes: rows, or in a wide window a shelf of cards opening on [current], else Next Up. */
 private fun LazyListScope.episodeRows(state: DetailUiState, current: String?, nav: MobileNav, openMenu: (WorkMenu) -> Unit) {
     when (val episodes = state.episodes) {
-        is Load.Loaded -> items(episodes.value, key = { "e" + it.id }, contentType = { "episode" }) { episode ->
-            EpisodeRow(episode, episode.id == current, { nav.openWork(episode) }, { openMenu(WorkMenu(episode)) })
+        is Load.Loaded -> {
+            item(key = "shelf", contentType = "shelf") {
+                if (LocalWide.current) EpisodeShelf(episodes.value, current, current ?: state.work?.series?.nextUp?.id, nav, openMenu)
+            }
+            items(episodes.value, key = { "e" + it.id }, contentType = { "episode" }) { episode ->
+                if (!LocalWide.current) EpisodeRow(episode, episode.id == current, { nav.openWork(episode) }, { openMenu(WorkMenu(episode)) })
+            }
         }
         is Load.Failed -> item(key = "episodesFailed") {
             Text(stringResource(R.string.mobile_couldnt_load_season), Modifier.padding(space(4)), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         else -> items(3, key = { "skeleton$it" }) { EpisodeSkeleton() }
+    }
+}
+
+/** A wide window's season: a row of episode cards, scrolled to [focus]. */
+@Composable
+private fun EpisodeShelf(episodes: List<WorkSummary>, current: String?, focus: String?, nav: MobileNav, openMenu: (WorkMenu) -> Unit) {
+    val start = episodes.indexOfFirst { it.id == focus }.coerceAtLeast(0)
+    val shelf = rememberLazyListState(initialFirstVisibleItemIndex = start)
+    LazyRow(state = shelf, contentPadding = PaddingValues(horizontal = space(4), vertical = space(2)), horizontalArrangement = Arrangement.spacedBy(space(3))) {
+        items(episodes, key = { it.id }) { episode ->
+            EpisodeCard(episode, episode.id == current, { nav.openWork(episode) }, { openMenu(WorkMenu(episode)) })
+        }
+    }
+}
+
+/** An episode on the shelf: its frame with progress and a check once watched, "1. Title", the time, and two lines of synopsis. */
+@Composable
+private fun EpisodeCard(episode: WorkSummary, current: Boolean, onClick: () -> Unit, onLongClick: () -> Unit) {
+    val width = rowCardWidth(CardShape.Landscape)
+    Column(
+        Modifier
+            .width(width)
+            .clip(CardCorners)
+            .tapAndHold(onClick, onLongClick)
+            .semantics(mergeDescendants = true) {}
+            .testTag("episode:${episode.title}"),
+    ) {
+        Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(CardCorners)) {
+            Artwork(episode.images.still ?: episode.images.backdrop, width, Modifier.matchParentSize())
+            if (episode.userState?.played == true) {
+                Icon(
+                    Icons.Default.CheckCircle,
+                    stringResource(R.string.mobile_watched),
+                    Modifier.align(Alignment.TopEnd).padding(6.dp),
+                    tint = Color.White,
+                )
+            }
+            progressOf(episode)?.let { ProgressBar(it, Modifier.align(Alignment.BottomCenter)) }
+        }
+        EpisodeLines(episode, current, Modifier.padding(top = space(2)))
+        episode.episode?.overview?.let {
+            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+/** An episode's number and title, in the accent when it's the page's, then its runtime or time left. */
+@Composable
+private fun EpisodeLines(episode: WorkSummary, current: Boolean, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        val number = episode.episode?.let { e -> e.endNumber?.takeIf { it != e.number }?.let { "${e.number}–$it" } ?: e.number.toString() }
+        Text(
+            listOfNotNull(number, episode.title).joinToString(". "),
+            style = MaterialTheme.typography.titleSmall,
+            color = if (current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        val position = episode.userState?.positionMs
+        val duration = episode.durationMs
+        val time = when {
+            duration != null && position != null -> display.timeLeft((duration - position).toLong())
+            duration != null -> display.runtime(duration.toLong())
+            else -> null
+        }
+        time?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
 
@@ -607,6 +712,7 @@ private fun EpisodeRow(episode: WorkSummary, current: Boolean, onClick: () -> Un
         Modifier
             .fillMaxWidth()
             .tapAndHold(onClick, onLongClick)
+            .semantics(mergeDescendants = true) {}
             .padding(horizontal = space(4), vertical = space(2))
             .testTag("episode:${episode.title}"),
     ) {
@@ -615,24 +721,7 @@ private fun EpisodeRow(episode: WorkSummary, current: Boolean, onClick: () -> Un
                 Artwork(episode.images.still ?: episode.images.backdrop, 128.dp, Modifier.matchParentSize())
                 progressOf(episode)?.let { ProgressBar(it, Modifier.align(Alignment.BottomCenter)) }
             }
-            Column(Modifier.weight(1f)) {
-                val number = episode.episode?.let { e -> e.endNumber?.takeIf { it != e.number }?.let { "${e.number}–$it" } ?: e.number.toString() }
-                Text(
-                    listOfNotNull(number, episode.title).joinToString(". "),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = if (current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                val position = episode.userState?.positionMs
-                val duration = episode.durationMs
-                val time = when {
-                    duration != null && position != null -> display.timeLeft((duration - position).toLong())
-                    duration != null -> display.runtime(duration.toLong())
-                    else -> null
-                }
-                time?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            }
+            EpisodeLines(episode, current, Modifier.weight(1f))
             if (episode.userState?.played == true) Icon(Icons.Default.CheckCircle, stringResource(R.string.mobile_watched), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         episode.episode?.overview?.let {
@@ -653,7 +742,7 @@ private fun EpisodeSkeleton() {
 @Composable
 private fun CreditsRow(credits: List<Credit>, nav: MobileNav) {
     Column(Modifier.padding(top = space(4))) {
-        Text(stringResource(R.string.mobile_cast_and_crew), Modifier.padding(horizontal = space(4), vertical = space(2)), style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.mobile_cast_and_crew), Modifier.padding(horizontal = space(4), vertical = space(2)).semantics { heading() }, style = MaterialTheme.typography.titleMedium)
         LazyRow(contentPadding = PaddingValues(horizontal = space(4)), horizontalArrangement = Arrangement.spacedBy(space(3))) {
             items(credits, key = { it.personId + it.role + it.character.orEmpty() }) { credit ->
                 NamedCard(credit.name, credit.character ?: roleName(credit.role), credit.photo, 80.dp, round = true, { nav.open(PersonRoute(credit.personId)) })

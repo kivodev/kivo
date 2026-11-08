@@ -40,7 +40,9 @@ import com.mmcdole.kivo.android.mobile.app.MobileNav
 import com.mmcdole.kivo.android.mobile.app.SettingsPage
 import com.mmcdole.kivo.android.mobile.app.SettingsPageRoute
 import com.mmcdole.kivo.android.mobile.linkdevice.platformName
+import com.mmcdole.kivo.android.mobile.theme.KivoTokens
 import com.mmcdole.kivo.android.mobile.theme.space
+import com.mmcdole.kivo.android.mobile.ui.wideWidth
 import com.mmcdole.kivo.android.mobile.ui.PageTopBar
 import com.mmcdole.kivo.android.mobile.ui.sentence
 import com.mmcdole.kivo.core.Load
@@ -184,7 +186,7 @@ fun ChangePasswordScreen(session: ServerSession, nav: MobileNav) {
     val ready = current.isNotEmpty() && password.length >= ChangePasswordViewModel.MINIMUM_LENGTH && !state.changing
     Scaffold(topBar = { PageTopBar(stringResource(R.string.mobile_change_password), nav::back) }) { padding ->
         Column(
-            Modifier.padding(padding).verticalScroll(rememberScrollState()).padding(space(4)).testTag("changePasswordPage"),
+            Modifier.padding(padding).verticalScroll(rememberScrollState()).padding(space(4)).wideWidth(KivoTokens.Container.form).testTag("changePasswordPage"),
             verticalArrangement = Arrangement.spacedBy(space(3)),
         ) {
             OutlinedTextField(

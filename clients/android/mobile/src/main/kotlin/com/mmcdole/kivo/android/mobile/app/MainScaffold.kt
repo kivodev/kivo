@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.HorizontalDivider
@@ -21,6 +22,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.NavigationRailItemDefaults
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuite
@@ -35,9 +37,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -89,6 +93,7 @@ import com.mmcdole.kivo.android.mobile.settings.SubtitleSettingsScreen
 import com.mmcdole.kivo.android.mobile.settings.LicenseScreen
 import com.mmcdole.kivo.android.mobile.settings.LicensesScreen
 import com.mmcdole.kivo.android.mobile.settings.SettingsScreen
+import com.mmcdole.kivo.android.mobile.ui.LocalWide
 import com.mmcdole.kivo.api.models.Library
 import com.mmcdole.kivo.core.session.KivoSession
 import kotlinx.coroutines.flow.SharingStarted
@@ -110,7 +115,8 @@ class MainViewModel(session: KivoSession) : ViewModel() {
  * destinations' screens, each tab with its own back stack, and the mini
  * player above the bar while a book is loaded, or the cast's while
  * something plays on a TV. The player, Now Playing and the cast's remote
- * take the whole screen. A `kivo://link` link opens Link a device.
+ * take the whole screen. The window that has the rail has the wide
+ * layouts too ([LocalWide]). A `kivo://link` link opens Link a device.
  */
 @Composable
 fun MainScaffold(session: ServerSession) {
@@ -135,7 +141,8 @@ fun MainScaffold(session: ServerSession) {
     val destination = entry?.destination
     val fullScreen = destination != null &&
         (destination.hasRoute(PlayerRoute::class) || destination.hasRoute(NowPlayingRoute::class) || destination.hasRoute(CastRemoteRoute::class))
-    val type = if (fullScreen) NavigationSuiteType.None else NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(currentWindowAdaptiveInfo())
+    val suite = NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(currentWindowAdaptiveInfo())
+    val type = if (fullScreen) NavigationSuiteType.None else suite
 
     NavigationSuiteScaffoldLayout(
         layoutType = type,
@@ -153,7 +160,7 @@ fun MainScaffold(session: ServerSession) {
             NavigationSuiteType.None -> WindowInsets(0)
             else -> WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)
         }
-        CompositionLocalProvider(LocalCast provides cast.takeIf { it.offered }) {
+        CompositionLocalProvider(LocalCast provides cast.takeIf { it.offered }, LocalWide provides (suite == NavigationSuiteType.NavigationRail)) {
             Column(Modifier.fillMaxSize()) {
                 NavHost(controller, startDestination = HomeTab, modifier = Modifier.weight(1f).fillMaxWidth().consumeWindowInsets(suiteInsets)) {
                     tabs(session, nav)
@@ -184,7 +191,7 @@ private fun Bar(current: Tab, nav: MobileNav, type: NavigationSuiteType) {
                 selected = tab == current,
                 onClick = { nav.select(tab) },
                 icon = { Icon(if (tab == current) tab.selectedIcon else tab.icon, null) },
-                label = { Text(stringResource(tab.label)) },
+                label = { BarLabel(stringResource(tab.label)) },
                 modifier = Modifier.testTag("tab:${tab.name}"),
                 colors = itemColors,
             )
@@ -204,7 +211,7 @@ private fun Rail(current: Tab, pinned: List<Library>, nav: MobileNav) {
                     selected = tab == current,
                     onClick = { nav.select(tab) },
                     icon = { Icon(if (tab == current) tab.selectedIcon else tab.icon, null) },
-                    label = { Text(stringResource(tab.label)) },
+                    label = { BarLabel(stringResource(tab.label)) },
                     colors = colors,
                     modifier = Modifier.testTag("tab:${tab.name}"),
                 )
@@ -216,7 +223,7 @@ private fun Rail(current: Tab, pinned: List<Library>, nav: MobileNav) {
                         selected = false,
                         onClick = { nav.openLibrary(library.id) },
                         icon = { Icon(libraryIcon(library.kind), null) },
-                        label = { Text(library.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        label = { BarLabel(library.name) },
                         colors = colors,
                         modifier = Modifier.testTag("rail:${library.name}"),
                     )
@@ -225,6 +232,22 @@ private fun Rail(current: Tab, pinned: List<Library>, nav: MobileNav) {
         }
     }
 }
+
+/**
+ * A bar or rail item's label, on one line, its text growing with the font
+ * size only to 1.3 times, as the bar's room doesn't, and smaller where a
+ * long word still doesn't fit; TalkBack reads it whole.
+ */
+@Composable
+private fun BarLabel(text: String) {
+    val density = LocalDensity.current
+    CompositionLocalProvider(LocalDensity provides Density(density.density, density.fontScale.coerceAtMost(MaxBarFontScale))) {
+        val style = LocalTextStyle.current
+        Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis, autoSize = TextAutoSize.StepBased(minFontSize = style.fontSize * 0.75f, maxFontSize = style.fontSize))
+    }
+}
+
+private const val MaxBarFontScale = 1.3f
 
 /** Each tab's graph and first screen. */
 private fun NavGraphBuilder.tabs(session: ServerSession, nav: MobileNav) {

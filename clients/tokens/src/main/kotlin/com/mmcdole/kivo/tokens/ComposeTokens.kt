@@ -70,6 +70,8 @@ fun composeTokens(tokensJson: String, packageName: String): String {
         appendLine()
         lengthObject("Layout", tokens.obj("layout"))
         appendLine()
+        lengthObject("Container", tokens.obj("container"))
+        appendLine()
         appendLine("    object Duration {")
         for ((key, value) in tokens.obj("duration")) {
             appendLine("        const val ${name(key)}Ms = ${value.jsonPrimitive.content.removeSuffix("ms").toInt()}")
