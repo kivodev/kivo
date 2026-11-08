@@ -12,8 +12,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material.icons.Icons
@@ -27,6 +29,8 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -120,6 +124,7 @@ private fun Rows(rows: List<HomeRowUi>, nav: MobileNav, onFavorites: () -> Unit,
             Column {
                 RowHeading(rowTitle(row), opens)
                 LazyRow(
+                    state = rowState(row.items.firstOrNull()?.id),
                     contentPadding = PaddingValues(horizontal = SideMargin),
                     horizontalArrangement = Arrangement.spacedBy(CardGap),
                 ) {
@@ -139,6 +144,26 @@ private fun Rows(rows: List<HomeRowUi>, nav: MobileNav, onFavorites: () -> Unit,
         }
     }
 }
+
+/**
+ * A row's scroll, which keeps a card that arrives at the row's start in
+ * view while the row sits at its start, rather than holding on to the card
+ * that was first, as a keyed row otherwise does; [first] is the first card's ID.
+ */
+@Composable
+private fun rowState(first: String?): LazyListState {
+    val state = rememberLazyListState()
+    val seen = remember { FirstCard(first) }
+    if (first != seen.id) {
+        seen.id = first
+        val atStart = Snapshot.withoutReadObservation { state.firstVisibleItemIndex == 0 && state.firstVisibleItemScrollOffset == 0 }
+        if (atStart) state.requestScrollToItem(0)
+    }
+    return state
+}
+
+/** The first card a row last showed, kept across compositions without drawing anything when it changes. */
+private class FirstCard(var id: String?)
 
 /** A row's heading; a chevron after it when it opens a page. */
 @Composable

@@ -106,13 +106,20 @@
     <string name="mobile_sort_last_episode_added">Last episode added</string>
     <string name="mobile_sort_release">Release date</string>
     <string name="mobile_sort_rating">Rating</string>
+    <string name="mobile_sort_runtime">Runtime</string>
+    <string name="mobile_sort_last_played">Last played</string>
+    <string name="mobile_sort_author">Author</string>
     <string name="mobile_a_to_z">A to Z</string>
     <string name="mobile_newest_first">Newest first</string>
     <string name="mobile_highest_first">Highest first</string>
+    <string name="mobile_shortest_first">Shortest first</string>
+    <string name="mobile_most_recent_first">Most recent first</string>
     <string name="mobile_sort_short_title">A–Z</string>
     <string name="mobile_sort_short_added">Recently added</string>
     <string name="mobile_sort_short_release">Newest</string>
     <string name="mobile_sort_short_rating">Top rated</string>
+    <string name="mobile_sort_short_runtime">Shortest</string>
+    <string name="mobile_sort_short_last_played">Recently played</string>
     <string name="mobile_noun_movies">movies</string>
     <string name="mobile_noun_shows">shows</string>
     <string name="mobile_noun_videos">videos</string>
@@ -203,7 +210,50 @@
     <string name="mobile_books">Books</string>
     <string name="mobile_other_books">Other books</string>
     <string name="mobile_narrated">Narrated</string>
-    <string name="mobile_player_coming">Player comes in M2</string>
+    <!-- Player -->
+    <string name="mobile_close">Close</string>
+    <string name="mobile_picture_in_picture">Picture in picture</string>
+    <string name="mobile_pause">Pause</string>
+    <string name="mobile_back_10">Back 10 seconds</string>
+    <string name="mobile_forward_30">Forward 30 seconds</string>
+    <string name="mobile_skipped_back">−%1$d s</string>
+    <string name="mobile_skipped_forward">+%1$d s</string>
+    <string name="mobile_audio_and_subtitles">Audio &amp; Subtitles</string>
+    <string name="mobile_playback_settings">Playback Settings</string>
+    <string name="mobile_quality">Quality</string>
+    <string name="mobile_speed">Speed</string>
+    <string name="mobile_speed_normal">Normal</string>
+    <string name="mobile_speed_rate">%1$s×</string>
+    <string name="mobile_dialogue_boost">Dialogue boost</string>
+    <string name="mobile_version_missing">%1$s (missing)</string>
+    <string name="mobile_skip_intro">Skip Intro</string>
+    <string name="mobile_skip_recap">Skip Recap</string>
+    <string name="mobile_skip_credits">Skip Credits</string>
+    <string name="mobile_up_next">Up next</string>
+    <string name="mobile_still_watching">Still watching?</string>
+    <string name="mobile_playing_in">Playing in %1$d s</string>
+    <string name="mobile_hide">Hide</string>
+    <string name="mobile_watch_credits">Watch credits</string>
+    <string name="mobile_play_now">Play now</string>
+    <string name="mobile_couldnt_play">Couldn\'t play this.</string>
+    <string name="mobile_stream_limit_title">Stream limit reached</string>
+    <string name="mobile_playback_stopped">Playback was stopped.</string>
+
+    <!-- Books -->
+    <string name="mobile_now_playing">Now Playing</string>
+    <string name="mobile_open_now_playing">Opens Now Playing</string>
+    <string name="mobile_chapter_number">Chapter %1$d</string>
+    <string name="mobile_mini_line">Chapter %1$d · %2$s</string>
+    <string name="mobile_book_line">Chapter %1$d of %2$d · %3$s left in the book</string>
+    <string name="mobile_previous_chapter">Previous chapter</string>
+    <string name="mobile_next_chapter">Next chapter</string>
+    <string name="mobile_chapters">Chapters</string>
+    <string name="mobile_sleep_timer">Sleep timer</string>
+    <string name="mobile_sleep_minutes">%1$d minutes</string>
+    <string name="mobile_end_of_chapter">End of chapter</string>
+    <string name="mobile_stop_listening">Stop listening</string>
+    <string name="mobile_go_to_book">Go to book</string>
+    <string name="mobile_read_by">read by %1$s</string>
 
     <!-- Search -->
     <string name="mobile_search_hint">Movies, shows, episodes, people</string>

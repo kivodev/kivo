@@ -5,7 +5,6 @@ import androidx.annotation.OptIn
 import androidx.core.net.toUri
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
-import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
@@ -67,7 +66,9 @@ data class LoadedPlayer(val player: ExoPlayer, val ass: AssHandler)
  * focus, pausing for a call and ducking under a notification, and has a
  * media session, so the Assistant's pause and resume, Google TV's Now
  * Playing and media keys from HDMI-CEC or Bluetooth reach it; its previous
- * and next play the episodes either side.
+ * and next play the episodes either side. The session is the engine's own,
+ * or with [sessions] the app's, which the player is offered to as it loads
+ * and withdrawn from as it unloads.
  *
  * Everything runs on the main thread, which is ExoPlayer's application
  * thread and the controller's.
@@ -79,9 +80,11 @@ class Media3Engine(
     private val scope: CoroutineScope,
     private val settings: suspend () -> Pair<AudioSettings, Boolean>,
     private val onPlayer: (LoadedPlayer?) -> Unit,
+    private val sessions: SessionPlayers? = null,
 ) : VideoEngine {
     private var loaded: LoadedPlayer? = null
     private var mediaSession: MediaSession? = null
+    private var withdraw: (() -> Unit)? = null
     private var sessionPlayer: SessionPlayer? = null
 
     override var metadata: MediaMetadata = MediaMetadata.EMPTY
@@ -149,7 +152,11 @@ class Media3Engine(
             built.player.prepare()
             val forSession = SessionPlayer(built.player, { playPrevious }, { playNext })
             sessionPlayer = forSession
-            mediaSession = MediaSession.Builder(context, forSession).build()
+            if (sessions != null) {
+                withdraw = sessions.offer(forSession)
+            } else {
+                mediaSession = MediaSession.Builder(context, forSession).build()
+            }
             loaded = built
             applySubtitle()
             applyAudio()
@@ -168,6 +175,8 @@ class Media3Engine(
         ticker?.cancel()
         mediaSession?.release()
         mediaSession = null
+        withdraw?.invoke()
+        withdraw = null
         sessionPlayer = null
         loaded?.let {
             it.player.release()
@@ -416,81 +425,6 @@ fun failureCode(errorCode: Int): String = when (errorCode) {
     in 4000..4999, in 5000..5999 -> "mediaDecodeError"
     in 2000..2999 -> "networkError"
     else -> "mediaSourceError"
-}
-
-/**
- * The player as the media session offers it: previous and next play the
- * episode before and after ([previous] and [next]), offered only while
- * there is one, rather than moving between a play's parts or starting the
- * video over.
- */
-@OptIn(UnstableApi::class)
-private class SessionPlayer(
-    player: Player,
-    private val previous: () -> (() -> Unit)?,
-    private val next: () -> (() -> Unit)?,
-) : ForwardingPlayer(player) {
-    /** The session's listeners, each told the commands this player offers rather than the wrapped player's. */
-    private val listeners = mutableMapOf<Player.Listener, Player.Listener>()
-
-    override fun addListener(listener: Player.Listener) {
-        val offered = Offered(listener)
-        listeners[listener] = offered
-        super.addListener(offered)
-    }
-
-    override fun removeListener(listener: Player.Listener) {
-        listeners.remove(listener)?.let { super.removeListener(it) }
-    }
-
-    /** Tells the session what it offers now that an episode either side is known or gone. */
-    fun episodesChanged() {
-        listeners.values.toList().forEach { it.onAvailableCommandsChanged(availableCommands) }
-    }
-
-    private inner class Offered(private val listener: Player.Listener) : Player.Listener by listener {
-        override fun onAvailableCommandsChanged(availableCommands: Player.Commands) =
-            listener.onAvailableCommandsChanged(this@SessionPlayer.availableCommands)
-    }
-
-    override fun getAvailableCommands(): Player.Commands = super.getAvailableCommands().buildUpon()
-        .removeAll(*Previous, *Next)
-        .addIf(Player.COMMAND_SEEK_TO_PREVIOUS, previous() != null)
-        .addIf(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM, previous() != null)
-        .addIf(Player.COMMAND_SEEK_TO_NEXT, next() != null)
-        .addIf(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM, next() != null)
-        .build()
-
-    override fun isCommandAvailable(command: Int): Boolean = when (command) {
-        in Previous -> previous() != null
-        in Next -> next() != null
-        else -> super.isCommandAvailable(command)
-    }
-
-    override fun hasPreviousMediaItem(): Boolean = previous() != null
-
-    override fun hasNextMediaItem(): Boolean = next() != null
-
-    override fun seekToPrevious() {
-        previous()?.invoke()
-    }
-
-    override fun seekToPreviousMediaItem() {
-        previous()?.invoke()
-    }
-
-    override fun seekToNext() {
-        next()?.invoke()
-    }
-
-    override fun seekToNextMediaItem() {
-        next()?.invoke()
-    }
-
-    private companion object {
-        val Previous = intArrayOf(Player.COMMAND_SEEK_TO_PREVIOUS, Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
-        val Next = intArrayOf(Player.COMMAND_SEEK_TO_NEXT, Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
-    }
 }
 
 /**

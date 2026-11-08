@@ -26,7 +26,13 @@ import io.ktor.client.request.HttpResponseData
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -145,9 +151,25 @@ open class CoreTest {
     val client: KivoClient by lazy { KivoClient(TestDevice(dir), server.engine) }
 
     fun signIn(): KivoSession = runBlocking { client.signIn(FoundServer(SERVER, ServerInfo("s1", "Den", "1.0")), "anna", "pw", "Phone") }
+        .also { sessions += it }
+
+    private val sessions = mutableListOf<KivoSession>()
+    private val viewModels = ViewModelStore()
+
+    /** [make]'s view model, cleared as the test ends, as a screen's is as it goes: for one whose work outlives a test otherwise, such as a play. */
+    inline fun <reified T : ViewModel> held(noinline make: () -> T): T =
+        ViewModelProvider.create(heldStore(), viewModelFactory { initializer { make() } })[T::class]
+
+    fun heldStore(): ViewModelStore = viewModels
 
     @org.junit.After
     fun tearDown() {
+        // What the test started stops on the main thread before the next test takes it.
+        runBlocking(Dispatchers.Main) {
+            viewModels.clear()
+            sessions.forEach { it.close() }
+            delay(200)
+        }
         Dispatchers.resetMain()
         main.close()
         dir.deleteRecursively()

@@ -3,6 +3,7 @@ package com.mmcdole.kivo.android
 import coil3.ImageLoader
 import coil3.disk.DiskCache
 import coil3.network.ktor3.KtorNetworkFetcherFactory
+import com.mmcdole.kivo.android.books.BookPlayback
 import com.mmcdole.kivo.android.library.GridChoice
 import com.mmcdole.kivo.api.models.Library
 import com.mmcdole.kivo.core.session.KivoSession
@@ -59,6 +60,11 @@ class ServerSession(val graph: AppGraph, val session: KivoSession, savedGrids: M
         }
         .build()
 
+    private val bookPlayback = lazy { BookPlayback(this) }
+
+    /** The phone's book player, made as it's first wanted. */
+    val books: BookPlayback by bookPlayback
+
     init {
         // Who the app is signed in as, read as the server opens; the stored user shows until it answers.
         graph.scope.launch {
@@ -84,6 +90,7 @@ class ServerSession(val graph: AppGraph, val session: KivoSession, savedGrids: M
     }
 
     fun close() {
+        if (bookPlayback.isInitialized()) books.close()
         scope.cancel()
         images.shutdown()
         session.close()

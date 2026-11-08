@@ -190,12 +190,8 @@ sealed interface LibraryGrid {
     class Collections(override val pager: GridPager<CollectionSummary>) : LibraryGrid
 }
 
-/**
- * The sorts the TV offers, with the title sort's letter rail; a
- * shows library also sorts by its last episode added.
- */
-private fun sortsOf(library: Library?) =
-    GridValues.sorts.filter { it != GridValues.LAST_EPISODE_ADDED_AT || library?.kind == "shows" }
+/** The sorts the TV offers for [library], as every app offers them, with the title sort's letter rail. */
+private fun sortsOf(library: Library?) = GridValues.sortsOf(library?.kind)
 
 @Composable
 private fun sortName(sort: String) = stringResource(
@@ -204,6 +200,9 @@ private fun sortName(sort: String) = stringResource(
         GridValues.LAST_EPISODE_ADDED_AT -> R.string.sort_last_episode_added
         GridValues.RELEASE_DATE -> R.string.sort_release
         GridValues.RATING -> R.string.sort_rating
+        GridValues.RUNTIME -> R.string.sort_runtime
+        GridValues.LAST_PLAYED_AT -> R.string.sort_last_played
+        GridValues.AUTHOR -> R.string.sort_author
         else -> R.string.sort_title
     },
 )
@@ -216,6 +215,9 @@ private fun sortShort(sort: String) = stringResource(
         GridValues.LAST_EPISODE_ADDED_AT -> R.string.sort_short_last_episode_added
         GridValues.RELEASE_DATE -> R.string.sort_short_release
         GridValues.RATING -> R.string.sort_short_rating
+        GridValues.RUNTIME -> R.string.sort_short_runtime
+        GridValues.LAST_PLAYED_AT -> R.string.sort_short_last_played
+        GridValues.AUTHOR -> R.string.sort_author
         else -> R.string.sort_short_title
     },
 )

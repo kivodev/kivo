@@ -2,6 +2,7 @@ package com.mmcdole.kivo.android.mobile.library
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,8 +44,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -52,12 +57,19 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -84,6 +96,7 @@ import com.mmcdole.kivo.android.mobile.ui.CastButton
 import com.mmcdole.kivo.android.mobile.ui.display
 import com.mmcdole.kivo.core.data.GridQuery
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 /**
  * A library: its tabs, the filters on as chips, the count line that opens
@@ -108,11 +121,22 @@ fun LibraryScreen(session: ServerSession, libraryId: String, oneOffSort: String?
             }
         },
     ) { padding ->
-        Column(Modifier.padding(padding).fillMaxSize()) {
-            Header(state, model) { sheet = "sort" }
+        // The header scrolls away with the grid, and comes back as soon as it scrolls back.
+        val header = remember { QuickReturn() }
+        LaunchedEffect(state.grid) { header.offset = 0f }
+        Box(Modifier.padding(padding).fillMaxSize().clipToBounds().nestedScroll(header)) {
+            val top = with(LocalDensity.current) { header.height.toDp() }
             WorkMenuHost({ action, work -> nav.handle(action, work, model.marks) }) { openMenu ->
-                Grid(state, model, nav, openMenu)
+                Grid(state, model, nav, openMenu, top)
             }
+            Header(
+                state,
+                model,
+                Modifier
+                    .onSizeChanged { header.height = it.height }
+                    .offset { IntOffset(0, header.offset.roundToInt()) }
+                    .background(MaterialTheme.colorScheme.background),
+            ) { sheet = "sort" }
         }
     }
     when (sheet) {
@@ -131,10 +155,27 @@ private fun FilterButton(filtered: Boolean, onClick: () -> Unit) {
     }
 }
 
+/**
+ * A header over a grid that scrolls away as the grid scrolls on and comes
+ * back as it scrolls back, [height] high and moved [offset] up: it takes
+ * what the grid scrolls after the top bar takes its share, without
+ * consuming any.
+ */
+@Stable
+private class QuickReturn : NestedScrollConnection {
+    var height by mutableIntStateOf(0)
+    var offset by mutableFloatStateOf(0f)
+
+    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+        offset = (offset + available.y).coerceIn(-height.toFloat(), 0f)
+        return Offset.Zero
+    }
+}
+
 /** The tabs and the filters on, as chips, then the count line. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun Header(state: LibraryUiState, model: LibraryViewModel, onSort: () -> Unit) {
+private fun Header(state: LibraryUiState, model: LibraryViewModel, modifier: Modifier, onSort: () -> Unit) = Column(modifier.fillMaxWidth()) {
     val query = state.query
     val chips = activeFilters(query)
     if (state.tabs.size > 1 || chips.isNotEmpty()) {
@@ -180,18 +221,20 @@ private fun Header(state: LibraryUiState, model: LibraryViewModel, onSort: () ->
     }
 }
 
+/** The grid, its first row [top] down, under the header. */
 @Composable
-private fun Grid(state: LibraryUiState, model: LibraryViewModel, nav: MobileNav, openMenu: (WorkMenu) -> Unit) {
+private fun Grid(state: LibraryUiState, model: LibraryViewModel, nav: MobileNav, openMenu: (WorkMenu) -> Unit, top: Dp) {
     val grid = state.grid
     val pages by grid.pager.state.collectAsStateWithLifecycle()
     val problem = pages.problem
     val total = pages.total
+    val under = Modifier.padding(top = top)
     when {
-        problem != null -> return Failed(problem, stringResource(R.string.mobile_couldnt_load_library), state.library?.name.orEmpty(), model::retry)
-        total == 0 && state.tab == LibraryTab.Titles && state.query.filtered -> return Message(emptyFiltered(state), null) {
+        problem != null -> return Failed(problem, stringResource(R.string.mobile_couldnt_load_library), state.library?.name.orEmpty(), model::retry, under)
+        total == 0 && state.tab == LibraryTab.Titles && state.query.filtered -> return Message(emptyFiltered(state), null, under) {
             Button(onClick = model::clearFilters) { Text(stringResource(R.string.mobile_clear_filters)) }
         }
-        total == 0 -> return Message(stringResource(R.string.mobile_nothing_here), null)
+        total == 0 -> return Message(stringResource(R.string.mobile_nothing_here), null, under)
     }
     // Each grid keeps its own scroll, across a page opened from it; a new tab, sort or filter starts at the top.
     val list = rememberSaveable(grid, saver = LazyGridState.Saver) { LazyGridState() }
@@ -215,7 +258,7 @@ private fun Grid(state: LibraryUiState, model: LibraryViewModel, nav: MobileNav,
             },
             modifier = Modifier.fillMaxSize(),
         ) {
-            val padding = PaddingValues(start = space(4), end = endPad, top = space(1), bottom = space(6))
+            val padding = PaddingValues(start = space(4), end = endPad, top = top + space(1), bottom = space(6))
             if (total == null) {
                 SkeletonGrid(columns, state.shape, cardWidth, padding)
             } else {
@@ -223,12 +266,20 @@ private fun Grid(state: LibraryUiState, model: LibraryViewModel, nav: MobileNav,
             }
         }
         if (rail && total != null) {
-            val current by remember(pages) { derivedStateOf { pages.letterAt(list.firstVisibleItemIndex) } }
+            // A letter tapped stays lit, wherever the grid can scroll to, until the grid is scrolled by hand.
+            var tapped by remember(pages) { mutableStateOf<String?>(null) }
+            LaunchedEffect(list) {
+                list.interactionSource.interactions.collect { if (it is DragInteraction.Start) tapped = null }
+            }
+            val current by remember(pages) { derivedStateOf { tapped ?: pages.letterAt(list.firstVisibleItemIndex) } }
             LetterRail(
                 letters,
                 current,
-                onLetter = { letter -> scope.launch { list.scrollToItem(pages.letterOffset(letter)) } },
-                modifier = Modifier.align(Alignment.TopEnd).padding(vertical = space(2)),
+                onLetter = { letter ->
+                    tapped = letter
+                    scope.launch { list.scrollToItem(pages.letterOffset(letter)) }
+                },
+                modifier = Modifier.align(Alignment.TopEnd).padding(top = top + space(2), bottom = space(2)),
             )
         }
     }
@@ -286,15 +337,12 @@ private fun SkeletonGrid(columns: Int, shape: CardShape, cardWidth: Dp, padding:
     }
 }
 
-/** The sorts a library offers: by its last episode added for a shows library. */
-private fun sortsOf(kind: String?) = GridValues.sorts.filter { it != GridValues.LAST_EPISODE_ADDED_AT || kind == "shows" }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SortSheet(state: LibraryUiState, onSort: (String) -> Unit, onDismiss: () -> Unit) {
     ModalBottomSheet(onDismissRequest = onDismiss, modifier = Modifier.testTag("sortSheet")) {
         Text(stringResource(R.string.mobile_sort_by), Modifier.padding(horizontal = space(6), vertical = space(2)), style = MaterialTheme.typography.titleMedium)
-        for (sort in sortsOf(state.library?.kind)) {
+        for (sort in GridValues.sortsOf(state.library?.kind)) {
             ListItem(
                 headlineContent = { Text(sortName(sort)) },
                 supportingContent = { Text(sortDirection(sort)) },
@@ -438,6 +486,9 @@ private fun sortName(sort: String?) = stringResource(
         GridValues.LAST_EPISODE_ADDED_AT -> R.string.mobile_sort_last_episode_added
         GridValues.RELEASE_DATE -> R.string.mobile_sort_release
         GridValues.RATING -> R.string.mobile_sort_rating
+        GridValues.RUNTIME -> R.string.mobile_sort_runtime
+        GridValues.LAST_PLAYED_AT -> R.string.mobile_sort_last_played
+        GridValues.AUTHOR -> R.string.mobile_sort_author
         else -> R.string.mobile_sort_title
     },
 )
@@ -447,6 +498,8 @@ private fun sortDirection(sort: String?) = stringResource(
     when (sort) {
         GridValues.RATING -> R.string.mobile_highest_first
         GridValues.ADDED_AT, GridValues.LAST_EPISODE_ADDED_AT, GridValues.RELEASE_DATE -> R.string.mobile_newest_first
+        GridValues.RUNTIME -> R.string.mobile_shortest_first
+        GridValues.LAST_PLAYED_AT -> R.string.mobile_most_recent_first
         else -> R.string.mobile_a_to_z
     },
 )
@@ -459,6 +512,9 @@ private fun sortShort(sort: String?) = stringResource(
         GridValues.LAST_EPISODE_ADDED_AT -> R.string.mobile_sort_last_episode_added
         GridValues.RELEASE_DATE -> R.string.mobile_sort_short_release
         GridValues.RATING -> R.string.mobile_sort_short_rating
+        GridValues.RUNTIME -> R.string.mobile_sort_short_runtime
+        GridValues.LAST_PLAYED_AT -> R.string.mobile_sort_short_last_played
+        GridValues.AUTHOR -> R.string.mobile_sort_author
         else -> R.string.mobile_sort_short_title
     },
 )

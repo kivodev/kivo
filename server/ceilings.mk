@@ -69,8 +69,9 @@ SWIFT_KT_MAX      := 0
 # Waits in the apps' video players: the core's VideoPlayer runs the player's
 # timed rules (Skip, up next, autoplay), and these are the screens' own: the
 # controls' hiding on each app, the TV's scrub commit, the engine's position
-# polling, the phone's turn to landscape and its double-tap ripple.
-APP_PLAYER_TIMERS_MAX := 6
+# polling, the phone's turn to landscape and its double-tap ripple, and the
+# Android media session's short hold on a player between a play's players.
+APP_PLAYER_TIMERS_MAX := 7
 # Numbers the apps format themselves: the core's Display words bitrates,
 # sizes, runtimes, time left, clocks, episode codes, quality choices and
 # problems, and these are the rest: counts, ratings and speeds.

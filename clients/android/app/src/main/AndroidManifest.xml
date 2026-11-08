@@ -15,6 +15,11 @@
     <!-- Hearing the network change, to reach the server at the address that
          answers on the new one. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- The phone's playback service: a book, or a video in picture in picture, playing on with the
+         screen off or the app in the background, with its media notification. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <!-- Voice input for Search, where the TV has it. -->
     <queries>
@@ -46,7 +51,8 @@
             android:name=".MainActivity"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenLayout|screenSize|smallestScreenSize|uiMode|density"
             android:exported="true"
-            android:launchMode="singleTask">
+            android:launchMode="singleTask"
+            android:supportsPictureInPicture="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
@@ -62,6 +68,16 @@
                 <data android:scheme="kivo" android:host="work" />
             </intent-filter>
         </activity>
+
+        <!-- The phone's media session, which the notification, lock screen and headphones reach. -->
+        <service
+            android:name=".PlaybackService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
 
         <!-- The Watch Next row's artwork, which the launcher reads. -->
         <provider

@@ -109,6 +109,8 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.activity:activity-compose:1.13.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.11.0")
+    // The phone's playback service and its media session.
+    implementation("androidx.media3:media3-session:1.11.1")
     // Installs the baseline profile where no app store does, as on a sideloaded TV.
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")
 

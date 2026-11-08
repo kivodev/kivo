@@ -17,6 +17,14 @@ class GridMemoryTest {
     private fun titles(libraryId: String, query: GridQuery = GridQuery(libraryId, sort = "title")) = GridChoice(query)
 
     @Test
+    fun eachLibrarysSortsAreTheOnesEveryAppOffers() {
+        assertEquals(listOf("title", "author", "addedAt", "releaseDate"), GridValues.sortsOf("audiobooks"))
+        assertEquals(listOf("title", "addedAt", "lastEpisodeAddedAt", "releaseDate", "rating", "runtime", "lastPlayedAt"), GridValues.sortsOf("shows"))
+        assertEquals(listOf("title", "addedAt", "releaseDate", "rating", "runtime", "lastPlayedAt"), GridValues.sortsOf("movies"))
+        assertEquals("runtime", decodeGrid("lib1", "sort=runtime").query.sort)
+    }
+
+    @Test
     fun aGridComesBackAsItWasKept() {
         val choice = GridChoice(
             GridQuery(
