@@ -26,6 +26,8 @@ const RESUME_REWIND_S = 5;
 const BACKDROP_WIDTH = 1920;
 const STILL_WIDTH = 640;
 const IDLE_BACKDROPS = 6;
+/** How many times a play falls back: direct play to a transcode on an accelerator, then to one on the CPU. */
+const MAX_FALLBACKS = 2;
 
 /** What the TV says for an error, by the status's error code. */
 const errorLines = {
@@ -75,7 +77,7 @@ export class Receiver {
     this.durationMs = 0;
     this.error = undefined;
     this.errorMessage = '';
-    this.fellBack = false;
+    this.fallbacks = 0; // since the work's play started
     this.lastContact = 0;
     this.unreachable = false;
     this.restartWhenReachable = false;
@@ -147,7 +149,7 @@ export class Receiver {
     await this.endPlay('replaced');
     this.clearError();
     this.clearTimer('idleTimer');
-    this.fellBack = false;
+    this.fallbacks = 0;
     this.autoplayRun = Number.isInteger(custom.autoplayCount) ? custom.autoplayCount : 0;
     this.ui.loading({ title: req.media?.metadata?.title || '', sub: '', image: undefined });
     try {
@@ -209,7 +211,7 @@ export class Receiver {
     this.durationMs = started.durationMs;
     this.positionMs = started.startMs;
     this.shownSubtitle = undefined;
-    this.fellBack = this.fellBack && sameWork;
+    if (!sameWork) this.fallbacks = 0;
     if (!sameWork) {
       this.upNext = upnext.hidden;
       this.next = undefined;
@@ -522,8 +524,10 @@ export class Receiver {
   }
 
   /**
-   * The player failed. With the server reachable, the play falls back once
-   * to a transcode at the position; after that, it can't play here.
+   * The player failed. With the server reachable, the play falls back to a
+   * transcode at the position, first on an accelerator and then on the CPU,
+   * until the server has nothing left to try or it has fallen back
+   * MAX_FALLBACKS times; after that, it can't play here.
    */
   async onMediaError(e) {
     const play = this.started;
@@ -550,11 +554,11 @@ export class Receiver {
       this.checkReachable();
       return;
     }
-    if (this.fellBack) return this.fail('playbackFailed');
-    this.fellBack = true;
+    if (this.fallbacks >= MAX_FALLBACKS) return this.fail('playbackFailed');
+    this.fallbacks++;
     try {
       const started = await this.server.fallback(play.id, {
-        positionMs: Math.round(this.currentMs()), code: failureCode(e.detailedErrorCode), detail: String(e.detailedErrorCode || ''),
+        positionMs: Math.round(this.currentMs()), code: failureCode(e.detailedErrorCode, e.error), detail: String(e.detailedErrorCode || ''),
       });
       this.adopt(started, this.work);
       await this.loadStarted(started);
@@ -943,12 +947,31 @@ function renditionCarries(rendition, trackId) {
   return Object.values(rendition).includes(trackId) || Object.values(rendition.customData || {}).includes(trackId);
 }
 
-/** The fallback code for the player's error, by the framework's detailed code. */
-export function failureCode(detailed) {
+/**
+ * The fallback code for the player's error, by the framework's detailed code
+ * and the player's own error. A 500 is the server's answer that the
+ * transcode failed, which loading the same play again would get again, so
+ * it's the media's failure and not the network's.
+ */
+export function failureCode(detailed, error) {
+  if (httpStatus(error) === 500) return 'mediaSourceError';
   if (detailed === 103) return 'mediaDecodeError';
   if (detailed === 105) return 'unsupported';
   if (detailed === 104 || (detailed >= 300 && detailed < 400)) return 'networkError';
   return 'mediaSourceError';
+}
+
+/**
+ * The HTTP status of a request that failed with one, from Shaka's
+ * BAD_HTTP_STATUS error (its data is the URL, then the status), as the
+ * framework passes it on or nested in the error it caused.
+ */
+function httpStatus(error) {
+  if (!error || typeof error !== 'object') return undefined;
+  const code = error.shakaErrorCode ?? error.code;
+  const data = error.shakaErrorData ?? error.data;
+  if (code === 1001 && Array.isArray(data)) return data[1];
+  return Array.isArray(data) ? data.map(httpStatus).find((s) => s !== undefined) : undefined;
 }
 
 function safeParse(s) {

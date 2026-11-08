@@ -247,4 +247,9 @@ test('helpers', () => {
   assert.equal(failureCode(105), 'unsupported');
   assert.equal(failureCode(311), 'networkError');
   assert.equal(failureCode(110), 'mediaSourceError');
+  const status = (code) => ({ shakaErrorCode: 1001, shakaErrorData: ['https://h/s/12.m4s', code, '', {}, 1] });
+  assert.equal(failureCode(301, status(500)), 'mediaSourceError');
+  assert.equal(failureCode(312, { shakaErrorCode: 6007, shakaErrorData: [{ code: 1001, data: ['https://h/i.m3u8', 500] }] }), 'mediaSourceError');
+  for (const code of [404, 502, 503, 504]) assert.equal(failureCode(301, status(code)), 'networkError');
+  assert.equal(failureCode(301, { shakaErrorCode: 1002, shakaErrorData: ['https://h/s/12.m4s'] }), 'networkError');
 });

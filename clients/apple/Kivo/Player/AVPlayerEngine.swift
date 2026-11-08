@@ -171,7 +171,7 @@ final class AVPlayerEngine: NSObject, PlayerEngine {
                 self?.partEnded()
             },
             center.addObserver(forName: AVPlayerItem.failedToPlayToEndTimeNotification, object: item, queue: .main) { [weak self] note in
-                self?.fail(note.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error)
+                self?.fail(note.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error, in: note.object as? AVPlayerItem)
             },
         ]
         player.replaceCurrentItem(with: item)
@@ -208,7 +208,7 @@ final class AVPlayerEngine: NSObject, PlayerEngine {
                 begin()
             }
         case .failed:
-            fail(item.error)
+            fail(item.error, in: item)
         default:
             break
         }
@@ -249,11 +249,29 @@ final class AVPlayerEngine: NSObject, PlayerEngine {
     // MARK: Failure
 
     /// Media failed: once per load, in the fallback request's codes.
-    private func fail(_ error: Error?) {
+    private func fail(_ error: Error?, in item: AVPlayerItem?) {
         guard !failed, let events else { return }
         failed = true
         let ns = error as NSError?
-        events.onFailure(failure: PlayerError(code: Self.failureCode(ns), detail: Self.detail(ns)))
+        let logged = item?.errorLog()?.events.map { NSError(domain: $0.errorDomain, code: $0.errorStatusCode) } ?? []
+        events.onFailure(failure: PlayerError(code: Self.failureCode(ns, logged: logged), detail: Self.detail(ns)))
+    }
+
+    /// The item's error, and the errors it logged on the way, as the
+    /// fallback request's codes. A 500 is the server's answer that the
+    /// transcode failed, which loading the same play again would get again,
+    /// so it's the media's failure and not the network's. AVPlayer retries a
+    /// segment's 500 for about 30 seconds, logging each, then fails with
+    /// "resource unavailable" over it; a playlist's fails the item at once,
+    /// with the 500 underneath.
+    static func failureCode(_ error: NSError?, logged: [NSError]) -> String {
+        let chain = error.map { Array(sequence(first: $0) { $0.userInfo[NSUnderlyingErrorKey] as? NSError }) } ?? []
+        return (logged + chain).contains(where: isServerError) ? "mediaSourceError" : failureCode(error)
+    }
+
+    /// CoreMedia's code for an HTTP 500 answer; 502 to 504 are -16848 to -16850.
+    private static func isServerError(_ error: NSError) -> Bool {
+        error.domain == "CoreMediaErrorDomain" && error.code == -16847
     }
 
     private static func failureCode(_ error: NSError?) -> String {
