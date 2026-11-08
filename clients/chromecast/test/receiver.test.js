@@ -431,9 +431,9 @@ test('a sender\'s Stop saves the position and goes idle with the user\'s backdro
   assert.equal(ui.last.urls.length, 2);
 });
 
-test('a media error falls back once, then says it can\'t play', async (t) => {
+test('a media error falls back twice, then says it can\'t play', async (t) => {
   const { r, player, srv, ui } = setup(t, {
-    'POST plays/[^/]+/fallback': ({ path }) => [201, started({ id: `fb-${path}`, url: 'plays/fb/hls/index.m3u8' })],
+    'POST plays/[^/]+/fallback': ({ path }) => [201, started({ id: `fb-${path.split('/')[1]}`, url: 'plays/fb/hls/index.m3u8' })],
   });
   await player.senderLoad(senderLoad());
   player.state = 'PLAYING';
@@ -443,8 +443,32 @@ test('a media error falls back once, then says it can\'t play', async (t) => {
   assert.deepEqual(fb.body, { positionMs: 30000, code: 'mediaDecodeError', detail: '103' });
   assert.equal(player.loads.at(-1).media.contentUrl, 'http://192.0.2.10:8484/api/v1/plays/fb/hls/index.m3u8');
   await r.onMediaError({ detailedErrorCode: 103 });
+  assert.deepEqual(srv.requests.filter((q) => q.path.endsWith('/fallback')).map((q) => q.path), ['plays/play-1/fallback', 'plays/fb-play-1/fallback']);
+  assert.notEqual(ui.screen, 'error');
+  await r.onMediaError({ detailedErrorCode: 103 });
+  assert.equal(srv.requests.filter((q) => q.path.endsWith('/fallback')).length, 2);
   assert.equal(ui.screen, 'error');
   assert.equal(ui.last.line, "This can't be played on this TV.");
+});
+
+test('the server having no fallback left ends the cast', async (t) => {
+  const { r, player, ui } = setup(t, {
+    'POST plays/[^/]+/fallback': () => [409, { code: 'noFallback' }],
+  });
+  await player.senderLoad(senderLoad());
+  await r.onMediaError({ detailedErrorCode: 103 });
+  assert.equal(ui.screen, 'error');
+  assert.equal(r.error, 'noFallback');
+});
+
+test('a 500 on a segment falls back as the media\'s failure', async (t) => {
+  const { r, player, srv } = setup(t, {
+    'POST plays/[^/]+/fallback': () => [201, started({ id: 'fb', url: 'plays/fb/hls/index.m3u8' })],
+  });
+  await player.senderLoad(senderLoad());
+  await r.onMediaError({ detailedErrorCode: 301, error: { shakaErrorCode: 1001, shakaErrorData: ['http://192.0.2.10:8484/s/12.m4s', 500, '', {}, 1] } });
+  const fb = srv.requests.find((q) => q.path.endsWith('/fallback'));
+  assert.equal(fb.body.code, 'mediaSourceError');
 });
 
 test('a failure the framework reports twice falls back once and plays the fallback', async (t) => {

@@ -10,9 +10,10 @@ no server address and no secret; each cast names its server.
 A sender's LOAD names the work, the server (its ID and the addresses to try)
 and a short-lived cast token. The receiver picks the address that answers as
 that server, measures what the device decodes, starts the play itself as the
-token's user, and plays it. It sends the play's heartbeats, falls back once
-when playback fails, starts a new play for a track, quality or boost change,
-and runs up next, so a cast goes on when the phone that started it is gone.
+token's user, and plays it. It sends the play's heartbeats, falls back to a
+transcode up to twice when playback fails, starts a new play for a track,
+quality or boost change, and runs up next, so a cast goes on when the phone
+that started it is gone.
 The token goes only in the `Authorization` header; it never appears in a URL,
 a log or the media status senders read.
 
