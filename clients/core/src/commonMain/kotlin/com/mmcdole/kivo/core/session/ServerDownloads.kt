@@ -17,6 +17,9 @@ class SessionDownloads internal constructor(private val downloads: Downloads) {
     /** This server's downloads on the device, newest first. */
     val items: Flow<List<DownloadItem>> = downloads.items.catch { emit(emptyList()) }
 
+    /** The works being asked of the server now, before their downloads are listed: a download button shows it's waiting. */
+    val asking: Flow<Set<String>> = downloads.asking.catch { emit(emptySet()) }
+
     /** How many downloads the availability checks deleted, until [deletionsSeen]. */
     val deleted: Flow<Int> = downloads.deleted.catch { emit(0) }
 

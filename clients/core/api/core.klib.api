@@ -1723,6 +1723,8 @@ final class com.mmcdole.kivo.core.session/SessionCast { // com.mmcdole.kivo.core
 }
 
 final class com.mmcdole.kivo.core.session/SessionDownloads { // com.mmcdole.kivo.core.session/SessionDownloads|null[0]
+    final val asking // com.mmcdole.kivo.core.session/SessionDownloads.asking|{}asking[0]
+        final fun <get-asking>(): kotlinx.coroutines.flow/Flow<kotlin.collections/Set<kotlin/String>> // com.mmcdole.kivo.core.session/SessionDownloads.asking.<get-asking>|<get-asking>(){}[0]
     final val deleted // com.mmcdole.kivo.core.session/SessionDownloads.deleted|{}deleted[0]
         final fun <get-deleted>(): kotlinx.coroutines.flow/Flow<kotlin/Int> // com.mmcdole.kivo.core.session/SessionDownloads.deleted.<get-deleted>|<get-deleted>(){}[0]
     final val items // com.mmcdole.kivo.core.session/SessionDownloads.items|{}items[0]

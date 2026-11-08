@@ -43,6 +43,8 @@ final class ServerModel {
     private(set) var sidebar = false
     /// This server's downloads on the device, newest first.
     private(set) var downloads: [DownloadItem] = []
+    /// The works whose downloads are being asked of the server, before they're listed.
+    private(set) var asking: Set<String> = []
     /// How many downloads the availability check deleted, until Downloads says so.
     private(set) var deletedDownloads: Int32 = 0
     /// Why a download asked for from a long press couldn't start, until it's said.
@@ -89,6 +91,11 @@ final class ServerModel {
             tasks.append(Task { [weak self] in
                 for await downloads in onDevice.items {
                     self?.downloads = downloads
+                }
+            })
+            tasks.append(Task { [weak self] in
+                for await asking in onDevice.asking {
+                    self?.asking = asking
                 }
             })
             tasks.append(Task { [weak self] in

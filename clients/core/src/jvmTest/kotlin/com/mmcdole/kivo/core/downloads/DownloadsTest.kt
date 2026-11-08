@@ -300,7 +300,17 @@ class DownloadsTest {
         h.connect()
         // Three taps before the server has answered the first: each asks while
         // the others are still waiting on the estimate, the user and the work.
-        val ids = List(3) { async { h.downloads.download(DownloadRequest("w1")) } }.awaitAll()
+        val created = CompletableDeferred<Unit>()
+        h.server.on("POST", "/api/v1/downloads") {
+            created.await()
+            json(ServerDownload.serializer(), h.remote, HttpStatusCode.Created)
+        }
+        val taps = List(3) { async { h.downloads.download(DownloadRequest("w1")) } }
+        runCurrent()
+        assertEquals(setOf("w1"), h.downloads.asking.first(), "the button shows it's waiting at once")
+        assertNull(h.item(), "nothing stored before the server answers")
+        created.complete(Unit)
+        val ids = taps.awaitAll()
         advanceUntilIdle()
 
         val rows = h.downloads.items.first()
@@ -309,6 +319,13 @@ class DownloadsTest {
             listOf(rows.size, ids.toSet().size, h.server.to("POST", "/api/v1/downloads").size),
             "one download of the work, every tap given it, the server asked once",
         )
+        assertEquals(emptySet(), h.downloads.asking.first())
+
+        // With one download of it here, the server forgets its copy once, and nothing asks for it again.
+        h.arriveAll()
+        assertEquals(DownloadStatus.Ready, h.item()?.status)
+        assertEquals(1, h.server.to("DELETE", "/api/v1/downloads/d1").size)
+        assertEquals(1, h.server.to("POST", "/api/v1/downloads").size)
     }
 
     @Test

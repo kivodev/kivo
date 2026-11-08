@@ -22,9 +22,12 @@ import com.mmcdole.kivo.core.settings.DeviceSettings
 import com.mmcdole.kivo.core.settings.DownloadQuality
 import com.mmcdole.kivo.core.settings.LegacyDownloadQuality
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,6 +37,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -101,6 +105,9 @@ internal class Downloads(
     private val lock = Mutex()
     private val server = MutableStateFlow<DownloadServer?>(null)
 
+    /** The works being asked for now, each with the download it's becoming; changed under [lock]. */
+    private val inFlight = MutableStateFlow<Map<String, Deferred<String>>>(emptyMap())
+
     private val transfers = Transfers(
         q, lock, disk, transport, server, settings, scope, now, background,
         reread = ::reread,
@@ -129,6 +136,9 @@ internal class Downloads(
             }
         }
     }
+
+    /** The works being asked of the server now, before their downloads are listed. */
+    val asking: Flow<Set<String>> = inFlight.map { it.keys }
 
     /** How many downloads the last checks deleted because the user may no longer have them, until [deletionsSeen]. */
     val deleted: Flow<Int> = server.flatMapLatest { s ->
@@ -253,9 +263,29 @@ internal class Downloads(
      * one asked again). Refused with [NotEnoughSpaceException] when the
      * estimate wouldn't fit beside the downloads under way, or
      * [DownloadRefusedException] when the server can't make it for this app.
+     * Asked again while it's being asked for, it's the same download.
      * Returns the download's ID.
      */
     suspend fun download(request: DownloadRequest): String {
+        val work = request.workId
+        val mine = CompletableDeferred<String>()
+        val pending = lock.withLock {
+            val asked = inFlight.value[work]
+            if (asked == null) inFlight.update { it + (work to mine) }
+            asked
+        }
+        if (pending != null) return pending.await()
+        try {
+            return ask(request).also { mine.complete(it) }
+        } catch (e: Throwable) {
+            mine.completeExceptionally(e)
+            throw e
+        } finally {
+            withContext(NonCancellable) { lock.withLock { inFlight.update { it - work } } }
+        }
+    }
+
+    private suspend fun ask(request: DownloadRequest): String {
         val s = attached()
         val c = s.connection
         q.downloads(c.serverId).executeAsList().firstOrNull { it.work_id == request.workId }?.let {
@@ -278,7 +308,10 @@ internal class Downloads(
         val created = create(s, request, quality.value)
         val id = randomId()
         val episode = work.episode
-        lock.withLock {
+        // A download of this work stored meanwhile stays; the server's copy asked for here goes, unless it's the same one.
+        val existing = lock.withLock {
+            val stored = q.downloads(c.serverId).executeAsList().firstOrNull { it.work_id == work.id }
+            if (stored != null) return@withLock stored
             q.insertDownload(
                 Row(
                     id = id, server_id = c.serverId, account_id = user, remote_id = created.id, work_id = work.id,
@@ -293,6 +326,11 @@ internal class Downloads(
             )
             artwork(work)?.let { q.insertFile(fileRow(id, ARTWORK, ARTWORK_NAME, it)) }
             poster(work)?.let { q.insertFile(fileRow(id, ARTWORK, POSTER_NAME, it)) }
+            null
+        }
+        if (existing != null) {
+            if (existing.remote_id != created.id) quietly { c.downloads.deleteDownload(created.id).check() }
+            return existing.id
         }
         apply(id, created)
         transfers.startTransfers(id)

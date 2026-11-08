@@ -1634,6 +1634,7 @@ public final class com/mmcdole/kivo/core/session/SessionDownloads {
 	public final fun deletionsSeen ()V
 	public final fun download (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lcom/mmcdole/kivo/core/settings/DownloadQuality;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun estimates (Ljava/util/List;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun getAsking ()Lkotlinx/coroutines/flow/Flow;
 	public final fun getDeleted ()Lkotlinx/coroutines/flow/Flow;
 	public final fun getItems ()Lkotlinx/coroutines/flow/Flow;
 	public final fun pause (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
