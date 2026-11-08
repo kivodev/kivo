@@ -1,7 +1,8 @@
 -- users ----------------------------------------------------------------------
 -- Each account's Home layout: where each of its rows goes and whether it
 -- shows. A Home is arranged once any row has a position. row_id is the row's
--- id: `continueWatching`, `continueListening` or `recentlyAdded:<library>`.
+-- id: `continueWatching`, `continueListening`, `favorites` or
+-- `recentlyAdded:<library>`.
 CREATE TABLE user_home_row (
   user_id  BLOB NOT NULL REFERENCES user (id) ON DELETE CASCADE,
   row_id   TEXT NOT NULL,
@@ -10,7 +11,7 @@ CREATE TABLE user_home_row (
   PRIMARY KEY (user_id, row_id)
 ) STRICT, WITHOUT ROWID;
 
--- An unpinned library's Recently Added row is hidden, as pins used to decide.
+-- An unpinned library's Recently Added row is hidden.
 INSERT INTO user_home_row (user_id, row_id, position, shown)
 SELECT ul.user_id,
   'recentlyAdded:' || lower(substr(hex(ul.library_id), 1, 8) || '-' || substr(hex(ul.library_id), 9, 4) || '-' ||

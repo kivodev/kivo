@@ -175,6 +175,13 @@ func TestHomeRowsPublishHomeChanged(t *testing.T) {
 	if m := read(t, actx, admin); m["kind"] != "homeChanged" {
 		t.Errorf("admin got %v; want homeChanged after an update", m)
 	}
+	// The library order sets Recently Added's order on a Home not arranged.
+	if w := e.do("PATCH", "/api/v1/users/me", e.adminToken, map[string]any{"libraries": []map[string]any{}}); w.Code != http.StatusOK {
+		t.Fatalf("libraries: %d %s", w.Code, w.Body.String())
+	}
+	if m := read(t, actx, admin); m["kind"] != "homeChanged" {
+		t.Errorf("admin got %v; want homeChanged after a library order", m)
+	}
 	e.d.Events.Publish(events.Event{Kind: events.PlayEnded, Scope: events.Scope{User: e.nobody}, Data: playback.Ended{Play: id.New()}})
 	if m := read(t, octx, other); m["kind"] != "playEnded" {
 		t.Errorf("another user got %v; want no homeChanged", m)

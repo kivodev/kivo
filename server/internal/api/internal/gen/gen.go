@@ -2812,8 +2812,9 @@ type EventKind string
 //   - `playEnded` (`playId`, `message`): the user's play was stopped
 //     by an admin or another client, or expired; `message` is the
 //     admin's words to the viewer, if any.
-//   - `homeChanged`: the user's Home layout changed on another client:
-//     refetch Home and the layout.
+//   - `homeChanged`: the user's Home layout or library order changed;
+//     every client of the user gets it, the one that made the change
+//     too. Refetch Home and the layout.
 //   - `downloadsChanged`: the user's downloads on the server moved:
 //     in line, in their preparation (at most every 10 seconds), or to
 //     ready or failed. Refetch the downloads that aren't ready.

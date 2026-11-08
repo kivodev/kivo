@@ -592,7 +592,7 @@ open class WorksApi : ApiClient {
 
     /**
      * Reset the Home layout
-     * Forgets the user&#39;s order and hidden rows, so Home returns to the default order with every built-in row shown. A &#x60;homeChanged&#x60; event tells the user&#39;s other clients. 
+     * Forgets the user&#39;s order and hidden rows, so Home returns to the default order with every built-in row shown. A &#x60;homeChanged&#x60; event tells the user&#39;s clients. 
      * @return HomeRowInfoList
      */
     @Suppress("UNCHECKED_CAST")
@@ -761,7 +761,7 @@ open class WorksApi : ApiClient {
 
     /**
      * Change the Home layout
-     * Places the listed rows first, in the order given. A row left out keeps whether it&#39;s shown and follows the listed rows. A well-formed &#x60;id&#x60; of a row that no longer exists is ignored; a malformed or repeated &#x60;id&#x60; is &#x60;400&#x60;. A Home once changed here is arranged: a new library&#39;s Recently Added row joins the end shown, and a row of a new built-in kind joins off. A &#x60;homeChanged&#x60; event tells the user&#39;s other clients. 
+     * Places the listed rows first, in the order given. A row left out keeps whether it&#39;s shown and follows the listed rows. A well-formed &#x60;id&#x60; of a row that no longer exists is ignored; a malformed or repeated &#x60;id&#x60; is &#x60;400&#x60;. A Home once changed here is arranged: a new library&#39;s Recently Added row joins the end shown, and a row of a new built-in kind joins off. A &#x60;homeChanged&#x60; event tells the user&#39;s clients. 
      * @param homeRowsUpdate 
      * @return HomeRowInfoList
      */

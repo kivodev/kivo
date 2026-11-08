@@ -580,7 +580,7 @@ func (e *env) viewer() users.Viewer {
 // viewerOf returns a user's Viewer.
 func (e *env) viewerOf(user id.ID) users.Viewer {
 	e.t.Helper()
-	v, err := users.New(e.b.DB, nil).Viewer(ctx, user)
+	v, err := users.New(e.b.DB, events.NewBus()).Viewer(ctx, user)
 	if err != nil {
 		e.t.Fatal(err)
 	}
@@ -588,7 +588,7 @@ func (e *env) viewerOf(user id.ID) users.Viewer {
 }
 
 func (e *env) newUser(name string) id.ID {
-	u := users.New(e.b.DB, nil)
+	u := users.New(e.b.DB, events.NewBus())
 	var p id.ID
 	e.b.Write(func(ctx context.Context, tx *store.Tx) error {
 		user, err := u.CreateUser(ctx, tx, users.NewUser{Username: name, Grants: users.Grants{All: true}})

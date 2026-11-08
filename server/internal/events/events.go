@@ -50,8 +50,8 @@ const (
 	// ProblemsChanged says the open problems changed. It is admin-only.
 	// Data is the number of open problems, as an int.
 	ProblemsChanged Kind = "problemsChanged"
-	// HomeChanged says a user's Home layout changed. It is scoped to the
-	// user.
+	// HomeChanged says a user's Home layout or library order changed. It is
+	// scoped to the user.
 	HomeChanged Kind = "homeChanged"
 	// LogsChanged says the server logged lines at Info or above. It is
 	// admin-only.

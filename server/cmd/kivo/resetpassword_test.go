@@ -53,7 +53,7 @@ func newPasswordServer(t *testing.T) *passwordServer {
 	if err != nil {
 		t.Fatal(err)
 	}
-	u := users.New(db, nil)
+	u := users.New(db, events.NewBus())
 	s := &passwordServer{t: t, config: cfg, auth: auth.New(db, auth.Deps{Users: u, Settings: settings, Activity: activity.New(db, events.NewBus())})}
 	home := netip.MustParseAddr("192.168.1.2")
 	admin, err := s.auth.Setup(ctx, auth.SignInRequest{Username: "admin", Password: oldPassword, RemoteIP: home})

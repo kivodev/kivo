@@ -37,7 +37,7 @@ data class HomeUiState(
 )
 
 /** The row kinds the phone shows. */
-private val shownKinds = setOf(CONTINUE_WATCHING, CONTINUE_LISTENING, "recentlyAdded", "favorites")
+internal val shownKinds = setOf(CONTINUE_WATCHING, CONTINUE_LISTENING, "recentlyAdded", "favorites")
 
 /** The rows Home shows of [rows]: the kinds it knows, with items, each with its library among [libraries]. */
 fun shownRows(rows: List<HomeRow>, libraries: List<Library>): List<HomeRowUi> {

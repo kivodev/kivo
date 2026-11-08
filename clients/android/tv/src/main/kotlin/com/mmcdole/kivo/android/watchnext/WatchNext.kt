@@ -75,7 +75,7 @@ object WatchNext {
         // The server didn't answer: the row stays as it was until the next refresh.
         val home = read.getOrNull() ?: return
         // A work in progress continues; a series' next episode is next.
-        val wanted = home.rows.flatMap { it.items }.map {
+        val wanted = home.rows.filter { it.kind == "continueWatching" }.flatMap { it.items }.map {
             it to if (it.userState?.positionMs != null) WatchNextPrograms.WATCH_NEXT_TYPE_CONTINUE else WatchNextPrograms.WATCH_NEXT_TYPE_NEXT
         }
         val unique = wanted.distinctBy { it.first.id }

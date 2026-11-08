@@ -278,7 +278,7 @@ func newFixture(t *testing.T, floor uint64) *fixture {
 	f := &fixture{t: t, b: catalogtest.New(t), media: &instantMedia{busy: map[media.Accelerator]bool{}}, accel: &fakeAccelerators{}, requested: &requests{}, bus: events.NewBus()}
 	f.sub = f.bus.Subscribe(func(events.Scope) bool { return true })
 	t.Cleanup(f.sub.Close)
-	f.users = users.New(f.b.DB, nil)
+	f.users = users.New(f.b.DB, events.NewBus())
 	var err error
 	if f.cfg, err = config.Open(ctx, f.b.DB, config.Options{}); err != nil {
 		t.Fatal(err)

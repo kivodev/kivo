@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { bookIds } from "@/api/mocks/books";
 import { deviceSettings } from "@/lib/deviceSettings";
 import { renderApp, screen } from "@/test/render";
-import { http, mockId, mockIds, problem, sent, serveMockApi, server } from "@/test/server";
+import { http, mockId, mockIds, problem, sendEvent, sent, serveMockApi, server } from "@/test/server";
 
 // The build's licenses.js, which the dev server and the tests don't have.
 vi.mock("./licenses", () => ({
@@ -311,6 +311,57 @@ describe("Settings", () => {
     await user.click(screen.getByRole("button", { name: "Reset" }));
     await waitFor(() => expect(sent("POST", "/home/rows/reset")).toHaveLength(1));
     await waitFor(() => expect(within(order).getByRole("switch", { name: "Shown: Continue Watching" })).toBeChecked());
+  });
+
+  it("keeps a Home row where it was put while its save is in flight, whatever the live events say", async () => {
+    serveMockApi();
+    let release = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const hold = http.patch("/api/v1/home/rows", async ({ response }) => {
+      await held;
+      return response(200).json({ items: [] });
+    });
+    server.use(hold);
+    const { user } = renderApp("/settings");
+    const order = await screen.findByRole("grid", { name: "Home rows" });
+    const cw = () => within(order).getByRole("switch", { name: "Shown: Continue Watching" });
+    await waitFor(() => expect(cw()).toBeChecked());
+    const reads = sent("GET", "/home/rows").length;
+
+    await user.click(cw());
+    await waitFor(() => expect(cw()).not.toBeChecked());
+    await act(async () => {
+      sendEvent({ type: "event", kind: "homeChanged" });
+      await new Promise((resolve) => setTimeout(resolve, 1100));
+    });
+    expect(cw()).not.toBeChecked();
+    expect(sent("GET", "/home/rows")).toHaveLength(reads);
+
+    release();
+    await waitFor(() => expect(sent("GET", "/home/rows").length).toBeGreaterThan(reads));
+  });
+
+  it("retries a refused reset, not an earlier save, and a successful reset clears a save's failure", async () => {
+    serveMockApi();
+    server.use(http.patch("/api/v1/home/rows", () => problem(500, "internal")));
+    const { user } = renderApp("/settings");
+    const order = await screen.findByRole("grid", { name: "Home rows" });
+    await user.click(within(order).getByRole("switch", { name: "Shown: Continue Watching" }));
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Reset" }));
+    await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
+    const patches = sent("PATCH", "/home/rows").length;
+
+    server.use(http.post("/api/v1/home/rows/reset", () => problem(500, "internal")));
+    await user.click(screen.getByRole("button", { name: "Reset" }));
+    const resets = sent("POST", "/home/rows/reset").length;
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(sent("POST", "/home/rows/reset").length).toBeGreaterThan(resets));
+    expect(sent("PATCH", "/home/rows")).toHaveLength(patches);
   });
 
   it("says on the row when the server refuses a change, puts the saved value back, and retries", async () => {

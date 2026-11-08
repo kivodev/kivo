@@ -112,6 +112,9 @@ func (s *Service) EditPreferences(ctx context.Context, v Viewer, c PreferencesCh
 	if err != nil {
 		return err
 	}
+	if c.Libraries != nil {
+		s.publishHomeChanged(v)
+	}
 	return nil
 }
 

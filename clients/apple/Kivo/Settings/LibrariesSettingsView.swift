@@ -16,13 +16,10 @@ struct LibrariesSettingsView: View {
     @State private var failure: String?
     @State private var retrying: (() -> Void)?
 
-    /// The row kinds this app shows; a kind it doesn't know is left out of the editor.
-    private static let knownRows: Set<String> = ["continueWatching", "continueListening", "recentlyAdded", "favorites"]
-
     var body: some View {
         List {
             Section {
-                ForEach(rows.filter { Self.knownRows.contains($0.kind) }, id: \.id) { row in
+                ForEach(rows.filter { HomeView.knownRows.contains($0.kind) }, id: \.id) { row in
                     Toggle(isOn: Binding(
                         get: { row.shown },
                         set: { shown in
@@ -34,10 +31,10 @@ struct LibrariesSettingsView: View {
                     }
                 }
                 .onMove { from, to in
-                    var visible = rows.filter { Self.knownRows.contains($0.kind) }
+                    var visible = rows.filter { HomeView.knownRows.contains($0.kind) }
                     visible.move(fromOffsets: from, toOffset: to)
                     var next = visible.makeIterator()
-                    rows = rows.map { Self.knownRows.contains($0.kind) ? next.next() ?? $0 : $0 }
+                    rows = rows.map { HomeView.knownRows.contains($0.kind) ? next.next() ?? $0 : $0 }
                     saveRows()
                 }
             } header: {

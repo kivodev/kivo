@@ -95,7 +95,7 @@ func (f *fixture) setThreshold(v float64) {
 }
 
 func (f *fixture) newUser(name string) id.ID {
-	u := users.New(f.b.DB, nil)
+	u := users.New(f.b.DB, events.NewBus())
 	var p id.ID
 	f.b.Write(func(ctx context.Context, tx *store.Tx) error {
 		user, err := u.CreateUser(ctx, tx, users.NewUser{Username: name, Grants: users.Grants{All: true}})
@@ -107,7 +107,7 @@ func (f *fixture) newUser(name string) id.ID {
 
 // viewer is the Viewer of the fixture's user.
 func (f *fixture) viewer() users.Viewer {
-	v, err := users.New(f.b.DB, nil).Viewer(ctx, f.user)
+	v, err := users.New(f.b.DB, events.NewBus()).Viewer(ctx, f.user)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -540,7 +540,7 @@ func TestMergeEpisodeUnionsState(t *testing.T) {
 	}
 	favorited := f.state(f.user, a.Work).FavoritedAt
 	second := f.newUser("ben")
-	ben, err := users.New(f.b.DB, nil).Viewer(ctx, second)
+	ben, err := users.New(f.b.DB, events.NewBus()).Viewer(ctx, second)
 	if err != nil {
 		t.Fatal(err)
 	}

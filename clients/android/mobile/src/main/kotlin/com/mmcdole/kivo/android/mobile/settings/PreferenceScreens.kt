@@ -35,6 +35,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mmcdole.kivo.android.ServerSession
 import com.mmcdole.kivo.android.mobile.R
 import com.mmcdole.kivo.android.mobile.home.rowTitle
+import com.mmcdole.kivo.android.mobile.home.shownKinds
 import com.mmcdole.kivo.android.mobile.app.MobileNav
 import com.mmcdole.kivo.android.mobile.library.libraryIcon
 import com.mmcdole.kivo.android.mobile.theme.space
@@ -271,15 +272,17 @@ fun LibrariesSettingsScreen(session: ServerSession, nav: MobileNav) {
     val heading = stringResource(R.string.mobile_settings_home_section)
     val librariesHeading = stringResource(R.string.mobile_tab_libraries)
     val note = stringResource(R.string.mobile_libraries_note)
+    val rows = state.rows.filter { it.kind in shownKinds }
     SettingsList(stringResource(R.string.mobile_settings_home_libraries), nav, "librariesSettings") {
         item { Label(heading) }
-        itemsIndexed(state.rows, key = { _, row -> row.id }) { index, row ->
+        state.rowsFailure?.let { item { FailureRow(it, model::loadRows) } }
+        itemsIndexed(rows, key = { _, row -> row.id }) { index, row ->
             OrderedSwitch(
                 name = rowTitle(row.kind, row.library?.name),
                 checked = row.shown,
                 tag = "show:${row.id}",
                 canMoveUp = index > 0,
-                canMoveDown = index < state.rows.lastIndex,
+                canMoveDown = index < rows.lastIndex,
                 onCheck = { model.show(row.id, it) },
                 onMove = { model.moveRow(row.id, it) },
             )

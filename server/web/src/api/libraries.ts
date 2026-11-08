@@ -57,7 +57,7 @@ export function useSaveLibraries() {
   const queryClient = useQueryClient();
   const refetch = (path: ApiPath) => queryClient.invalidateQueries({ queryKey: pathKey(path) });
   const mutation = $api.useMutation("patch", "/api/v1/users/me", {
-    onSuccess: () => refetch(apiPaths.home),
+    onSuccess: () => Promise.all([refetch(apiPaths.home), refetch(apiPaths.homeRows)]),
     onError: () => refetch(apiPaths.libraries),
   });
   const save = (libraries: Library[]) => {

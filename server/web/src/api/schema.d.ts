@@ -545,8 +545,9 @@ export interface paths {
          * @description Changes the caller's preferences.
          *     Every client of the user gets the change: playback applies the
          *     languages, subtitle mode and `rememberTracks` to the next play, and
-         *     `libraries` orders the library list and Home. A
-         *     library the user doesn't see, or one listed twice, is `400`.
+         *     `libraries` orders the library list, and Recently Added on a Home
+         *     that isn't arranged. A library the user doesn't see, or one listed
+         *     twice, is `400`.
          */
         patch: operations["updateCurrentUser"];
         trace?: never;
@@ -1040,7 +1041,7 @@ export interface paths {
          *     repeated `id` is `400`. A Home once changed here is arranged: a new
          *     library's Recently Added row joins the end shown, and a row of a
          *     new built-in kind joins off. A `homeChanged` event tells the user's
-         *     other clients.
+         *     clients.
          */
         patch: operations["updateHomeRows"];
         trace?: never;
@@ -1058,7 +1059,7 @@ export interface paths {
          * Reset the Home layout
          * @description Forgets the user's order and hidden rows, so Home returns to the
          *     default order with every built-in row shown. A `homeChanged` event
-         *     tells the user's other clients.
+         *     tells the user's clients.
          */
         post: operations["resetHomeRows"];
         delete?: never;
@@ -5401,8 +5402,9 @@ export interface components {
          *     - `playEnded` (`playId`, `message`): the user's play was stopped
          *       by an admin or another client, or expired; `message` is the
          *       admin's words to the viewer, if any.
-         *     - `homeChanged`: the user's Home layout changed on another client:
-         *       refetch Home and the layout.
+         *     - `homeChanged`: the user's Home layout or library order changed;
+         *       every client of the user gets it, the one that made the change
+         *       too. Refetch Home and the layout.
          *     - `downloadsChanged`: the user's downloads on the server moved:
          *       in line, in their preparation (at most every 10 seconds), or to
          *       ready or failed. Refetch the downloads that aren't ready.

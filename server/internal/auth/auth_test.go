@@ -38,7 +38,7 @@ type fixture struct {
 
 func newFixture(t *testing.T) *fixture {
 	db := storetest.New(t)
-	u := users.New(db, nil)
+	u := users.New(db, events.NewBus())
 	settings, err := config.Open(context.Background(), db, config.Options{})
 	if err != nil {
 		t.Fatal(err)

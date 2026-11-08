@@ -8,6 +8,7 @@ import com.mmcdole.kivo.android.mobile.refuse
 import com.mmcdole.kivo.android.mobile.reply
 import com.mmcdole.kivo.android.settings.ScreenSettingsStore
 import com.mmcdole.kivo.android.settings.SubtitleSize
+import com.mmcdole.kivo.api.models.HomeRowInfo
 import com.mmcdole.kivo.api.models.CurrentUser
 import com.mmcdole.kivo.api.models.Library
 import com.mmcdole.kivo.api.models.LibraryList
@@ -120,5 +121,16 @@ class SettingsViewModelsTest : CoreTest() {
         val state = model.state.value
         assertEquals(listOf("l2", "l1"), state.libraries.map { it.id })
         assertTrue(sent.last().contains("""[{"id":"l2","pinned":true},{"id":"l1","pinned":true}]"""), sent.last())
+    }
+
+    @Test
+    fun movingAHomeRowPassesOverKindsThePhoneDoesntList() {
+        val watching = HomeRowInfo("continueWatching", "continueWatching", true)
+        val unknown = HomeRowInfo("later", "aKindFromLater", true)
+        val recent = HomeRowInfo("recentlyAdded:a", "recentlyAdded", true)
+        val all = listOf(watching, unknown, recent)
+
+        assertEquals(listOf(recent, unknown, watching), movedRow(all, "recentlyAdded:a", -1))
+        assertEquals(all, movedRow(all, "continueWatching", -1))
     }
 }

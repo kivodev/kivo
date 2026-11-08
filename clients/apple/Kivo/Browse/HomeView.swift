@@ -23,7 +23,7 @@ struct HomeView: View {
     /// The rows a card's long press can remove it from.
     private static let continueRows: Set<String> = ["continueWatching", "continueListening"]
     /// The row kinds this app shows; a kind it doesn't know is skipped.
-    private static let knownRows: Set<String> = continueRows.union(["recentlyAdded", "favorites"])
+    static let knownRows: Set<String> = continueRows.union(["recentlyAdded", "favorites"])
 
     var body: some View {
         SkeletonGate(loaded: home != nil || failure != nil || server.unreachable) {

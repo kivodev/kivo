@@ -249,7 +249,7 @@ func generate(t *testing.T, db *store.DB) (movies, shows, moviesFolder id.ID) {
 // and 50 favorites, and is partway through 100 series.
 func budgetViewer(t *testing.T, db *store.DB) users.Viewer {
 	t.Helper()
-	svc := users.New(db, nil)
+	svc := users.New(db, events.NewBus())
 	var user id.ID
 	err := db.Write(context.Background(), func(ctx context.Context, tx *store.Tx) error {
 		u, err := svc.CreateUser(ctx, tx, users.NewUser{Username: "admin", Admin: true, Grants: users.Grants{All: true}})

@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mmcdole/kivo/internal/events"
 	"github.com/mmcdole/kivo/internal/store"
 
 	"github.com/mmcdole/kivo/internal/catalog"
@@ -411,7 +412,7 @@ func TestHomeRows(t *testing.T) {
 // finds the rest.
 func TestPinnedLibraries(t *testing.T) {
 	h := newHousehold(t)
-	us := users.New(h.b.DB, nil)
+	us := users.New(h.b.DB, events.NewBus())
 	type entry struct {
 		lib    id.ID
 		pinned bool
@@ -529,7 +530,7 @@ func TestBookRows(t *testing.T) {
 		t.Errorf("the friend's Continue Listening: %v", ids(row(home, query.RowContinueListening)))
 	}
 	// Pins don't hide Continue Listening.
-	if err := users.New(h.b.DB, nil).EditPreferences(ctx, h.admin, users.PreferencesChange{Libraries: &[]users.LibraryChoice{{Library: h.books}}}); err != nil {
+	if err := users.New(h.b.DB, events.NewBus()).EditPreferences(ctx, h.admin, users.PreferencesChange{Libraries: &[]users.LibraryChoice{{Library: h.books}}}); err != nil {
 		t.Fatal(err)
 	}
 	if home := rows(h.admin); len(row(home, query.RowContinueListening)) == 0 {

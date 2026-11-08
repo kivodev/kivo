@@ -4,7 +4,7 @@ import { type ReactNode, Suspense, useState } from "react";
 import { homeQueries, homeRowKinds, useResetHomeRows, useSaveHomeRows } from "@/api/home";
 import { libraryQueries, useSaveLibraries } from "@/api/libraries";
 import { errorCode } from "@/api/problem";
-import type { PlaybackPreferencesUpdate, SubtitleMode } from "@/api/schemas";
+import type { HomeRowInfo, PlaybackPreferencesUpdate, SubtitleMode } from "@/api/schemas";
 import { serverQueries, useQualityLadder } from "@/api/server";
 import { useChangeServer } from "@/api/session";
 import { currentUserQueries, useUpdateCurrentUser } from "@/api/users";
@@ -433,6 +433,9 @@ function HomeRowsCard() {
   const reset = useResetHomeRows();
   const error = saving.error ?? reset.error;
   const problem = error ? describeProblem(errorCode(error)) : undefined;
+  const save = (next: HomeRowInfo[]) => saving.save(next, reset.reset);
+  const resetHome = () => reset.mutate({}, { onSuccess: () => saving.reset() });
+  const retry = () => (reset.isError ? resetHome() : saving.retry(reset.reset));
   return (
     <SettingsCard
       scope="account"
@@ -444,7 +447,7 @@ function HomeRowsCard() {
               {t`Couldn't save. ${problem}`}
             </span>
             <TvControl focusKey="home-rows:retry">
-              <Button size="sm" variant="ghost" onPress={() => saving.retry(rows)}>
+              <Button size="sm" variant="ghost" onPress={retry}>
                 <Trans>Retry</Trans>
               </Button>
             </TvControl>
@@ -452,10 +455,10 @@ function HomeRowsCard() {
         ) : undefined
       }
     >
-      {isTv ? <HomeRowsTv rows={rows} onChange={saving.save} /> : <HomeRowOrder rows={rows} onChange={saving.save} />}
+      {isTv ? <HomeRowsTv rows={rows} onChange={save} /> : <HomeRowOrder rows={rows} onChange={save} />}
       <SettingsRow label={<Trans>Reset Home</Trans>}>
         <TvControl focusKey="home-rows:reset">
-          <Button size="sm" variant="ghost" onPress={() => reset.mutate({})}>
+          <Button size="sm" variant="ghost" onPress={resetHome}>
             <Trans>Reset</Trans>
           </Button>
         </TvControl>
