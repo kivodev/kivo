@@ -49,7 +49,6 @@
     <!-- Home -->
     <string name="mobile_row_continue_watching">Continue Watching</string>
     <string name="mobile_row_continue_listening">Continue Listening</string>
-    <string name="mobile_row_continue_series">Continue Series</string>
     <string name="mobile_row_favorites">Favorites</string>
     <string name="mobile_row_recently_added">Recently Added</string>
     <string name="mobile_row_recently_added_in">Recently Added in %1$s</string>

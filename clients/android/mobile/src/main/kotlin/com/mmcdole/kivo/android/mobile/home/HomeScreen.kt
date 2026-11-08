@@ -189,7 +189,6 @@ private fun RowHeading(title: String, onClick: (() -> Unit)?) {
 private fun rowTitle(row: HomeRowUi): String = when (row.kind) {
     CONTINUE_WATCHING -> stringResource(R.string.mobile_row_continue_watching)
     "continueListening" -> stringResource(R.string.mobile_row_continue_listening)
-    "continueSeries" -> stringResource(R.string.mobile_row_continue_series)
     "favorites" -> stringResource(R.string.mobile_row_favorites)
     else -> row.libraryName?.let { stringResource(R.string.mobile_row_recently_added_in, it) } ?: stringResource(R.string.mobile_row_recently_added)
 }

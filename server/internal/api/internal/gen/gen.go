@@ -654,7 +654,6 @@ func (e HealthStatus) Valid() bool {
 // Defines values for HomeRowKind.
 const (
 	HomeRowKindContinueListening HomeRowKind = "continueListening"
-	HomeRowKindContinueSeries    HomeRowKind = "continueSeries"
 	HomeRowKindContinueWatching  HomeRowKind = "continueWatching"
 	HomeRowKindFavorites         HomeRowKind = "favorites"
 	HomeRowKindRecentlyAdded     HomeRowKind = "recentlyAdded"
@@ -664,8 +663,6 @@ const (
 func (e HomeRowKind) Valid() bool {
 	switch e {
 	case HomeRowKindContinueListening:
-		return true
-	case HomeRowKindContinueSeries:
 		return true
 	case HomeRowKindContinueWatching:
 		return true
@@ -2948,10 +2945,9 @@ type HomeRow struct {
 
 	// Kind What a Home row shows: `continueWatching` what to watch on with,
 	// videos in progress and each series' episode up next;
-	// `continueListening` books in progress; `continueSeries` the next book of each book series
-	// the user has finished a book of; `recentlyAdded` a library's newest
-	// works; `favorites` the works the user marked. Skip kinds you don't
-	// know.
+	// `continueListening` books in progress; `recentlyAdded` a library's
+	// newest works; `favorites` the works the user marked. Skip kinds you
+	// don't know.
 	Kind HomeRowKind `json:"kind"`
 
 	// Library For `recentlyAdded`, the library.
@@ -2960,10 +2956,9 @@ type HomeRow struct {
 
 // HomeRowKind What a Home row shows: `continueWatching` what to watch on with,
 // videos in progress and each series' episode up next;
-// `continueListening` books in progress; `continueSeries` the next book of each book series
-// the user has finished a book of; `recentlyAdded` a library's newest
-// works; `favorites` the works the user marked. Skip kinds you don't
-// know.
+// `continueListening` books in progress; `recentlyAdded` a library's
+// newest works; `favorites` the works the user marked. Skip kinds you
+// don't know.
 type HomeRowKind string
 
 // ID A UUIDv7.

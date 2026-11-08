@@ -22,6 +22,8 @@ struct HomeView: View {
     private static let skeletonStyles: [CardStyle] = [.landscape, .poster, .poster]
     /// The rows a card's long press can remove it from.
     private static let continueRows: Set<String> = ["continueWatching", "continueListening"]
+    /// The row kinds this app shows; a kind it doesn't know is skipped.
+    private static let knownRows: Set<String> = continueRows.union(["recentlyAdded", "favorites"])
 
     var body: some View {
         SkeletonGate(loaded: home != nil || failure != nil || server.unreachable) {
@@ -29,7 +31,8 @@ struct HomeView: View {
                 MessageView(String(localized: "Couldn't load Home."), sentence: failure.sentence)
                     .frame(maxHeight: .infinity)
             } else if let home {
-                if home.rows.isEmpty {
+                let rows = home.rows.filter { Self.knownRows.contains($0.kind) }
+                if rows.isEmpty {
                     MessageView(
                         String(localized: "Nothing here yet"),
                         sentence: String(localized: "Items appear here as libraries are scanned.")
@@ -38,7 +41,7 @@ struct HomeView: View {
                 } else {
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: Self.rowSpacing) {
-                            ForEach(home.rows, id: \.id) { row in
+                            ForEach(rows, id: \.id) { row in
                                 BrowseRow(title: title(of: row), items: row.items, style: Self.fixedStyle(row.kind), more: more(of: row))
                                     .environment(\.continueRow, Self.continueRows.contains(row.kind) ? row.kind : nil)
                             }
@@ -140,15 +143,13 @@ struct HomeView: View {
         switch row.kind {
         case "continueWatching": String(localized: "Continue Watching")
         case "continueListening": String(localized: "Continue Listening")
-        case "continueSeries": String(localized: "Continue Series")
         case "favorites": String(localized: "Favorites")
-        case "recentlyAdded":
+        default:
             if let library = server.libraries.first(where: { $0.id == row.library?.id }) {
                 String(localized: "Recently Added in \(library.name)")
             } else {
                 String(localized: "Recently Added")
             }
-        default: ""
         }
     }
 }

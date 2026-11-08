@@ -3431,13 +3431,12 @@ export interface components {
         /**
          * @description What a Home row shows: `continueWatching` what to watch on with,
          *     videos in progress and each series' episode up next;
-         *     `continueListening` books in progress; `continueSeries` the next book of each book series
-         *     the user has finished a book of; `recentlyAdded` a library's newest
-         *     works; `favorites` the works the user marked. Skip kinds you don't
-         *     know.
+         *     `continueListening` books in progress; `recentlyAdded` a library's
+         *     newest works; `favorites` the works the user marked. Skip kinds you
+         *     don't know.
          * @enum {string}
          */
-        HomeRowKind: "continueWatching" | "continueListening" | "continueSeries" | "recentlyAdded" | "favorites";
+        HomeRowKind: "continueWatching" | "continueListening" | "recentlyAdded" | "favorites";
         /**
          * @description The summary of a work, the same everywhere it appears. Kind-specific
          *     data is under the kind's name.

@@ -14,9 +14,9 @@ import (
 // rowLimit is how many summaries a Home row holds.
 const rowLimit = 20
 
-// seriesStaleAfter is how long a series' next episode or book stays in
-// Continue Watching or Continue Series after the user's last play in the
-// series, unless the series gained an episode or book since that play.
+// seriesStaleAfter is how long a series' next episode stays in Continue
+// Watching after the user's last play in the series, unless the series
+// gained an episode since that play.
 const seriesStaleAfter = 365 * 24 * time.Hour
 
 // RowKind is what a Home row shows.
@@ -39,11 +39,6 @@ const (
 	// RowContinueListening is the books in progress in the user's pinned
 	// libraries, ordered as in Continue Watching.
 	RowContinueListening RowKind = "continueListening"
-	// RowContinueSeries is the next book of each book series in which the
-	// user has finished a book, in the user's pinned libraries. A series
-	// with a book in Continue Listening is left out, and so is one gone
-	// stale (see seriesStaleAfter).
-	RowContinueSeries RowKind = "continueSeries"
 )
 
 // HomeRow is one Home row. Library is set only on a Recently Added row,
@@ -111,41 +106,6 @@ WHERE us.user_id = @user AND us.resumable AND NOT w.provisional
 ORDER BY us.last_played_at DESC, us.work_id
 LIMIT @limit`)
 
-// continueSeries lists the next book of each book series in which the user
-// has finished a book, most recently finished first. The next book is the
-// first one after the furthest finished book by position. A series with a
-// book in progress is left to Continue Listening. A series with nothing
-// after the finished book has no row. A series is stale, and left out,
-// when the user last played a book of it before @stale_before and no book
-// was added to it since.
-var continueSeries = stmt("ContinueSeries", `
-WITH finished (series, at, position, last) AS (
-  SELECT fb.series_id, max(fu.last_played_at) FILTER (WHERE fu.played), max(fb.position_num) FILTER (WHERE fu.played),
-    max(fu.last_played_at)
-  FROM user_state fu JOIN book_series_book fb ON fb.work_id = fu.work_id
-  WHERE fu.user_id = @user AND fb.position_num IS NOT NULL
-  GROUP BY fb.series_id
-)
-SELECT `+summaryColumns+`
-FROM finished f
-JOIN work w ON w.id = (
-  SELECT nb.work_id FROM book_series_book nb
-  WHERE nb.series_id = f.series AND nb.position_num > f.position
-    AND EXISTS (SELECT 1 FROM work_library nl WHERE nl.work_id = nb.work_id)
-  ORDER BY nb.position_num, nb.work_id
-  LIMIT 1)
-LEFT JOIN user_state us ON us.user_id = @user AND us.work_id = w.id
-WHERE NOT w.provisional
-  AND NOT EXISTS (
-    SELECT 1 FROM book_series_book pb JOIN user_state pu ON pu.user_id = @user AND pu.work_id = pb.work_id AND pu.resumable
-    WHERE pb.series_id = f.series)
-  AND (f.last >= @stale_before OR EXISTS (
-    SELECT 1 FROM book_series_book ab JOIN work_library al ON al.work_id = ab.work_id
-    WHERE ab.series_id = f.series AND al.added_at > f.last))
-  AND `+visible+`
-ORDER BY f.at DESC, w.id
-LIMIT @limit`)
-
 // recentlyAdded lists a library's newest 1,000 additions, newest first, for
 // Home to bundle into summaries. Each row is a playable work with its season
 // and series, and whether the user played it. Reading only the newest
@@ -174,19 +134,19 @@ func notRemoved(u string) string {
 // Home returns the Home rows that have summaries, read from one snapshot.
 // Watching rows come first and listening rows last. Continue Watching,
 // Favorites and each video library's Recently Added come first, in the
-// user's library order. Continue Listening, Continue Series and each
-// audiobooks library's Recently Added follow.
+// user's library order. Continue Listening and each audiobooks library's
+// Recently Added follow.
 func (s *Service) Home(ctx context.Context, v users.Viewer) ([]HomeRow, error) {
 	vw := viewerOf(v)
-	var watching, listening, continueBooks, favorites []WorkSummary
+	var watching, listening, favorites []WorkSummary
 	var videosAdded, booksAdded []HomeRow
 	err := s.db.Read(ctx, func(tx *sql.Tx) error {
 		libs, err := rowsOf(ctx, tx, libraryList, vw.args(), scanLibrary)
 		if err != nil {
 			return err
 		}
-		// The book rows read only the user's pinned audiobooks libraries,
-		// so they use the Viewer narrowed to those libraries.
+		// Continue Listening reads only the user's pinned audiobooks
+		// libraries, so it uses the Viewer narrowed to those libraries.
 		var pinnedBooks []id.ID
 		for _, lib := range libs {
 			if lib.Pinned && lib.Kind == catalog.Audiobooks {
@@ -205,17 +165,6 @@ func (s *Service) Home(ctx context.Context, v users.Viewer) ([]HomeRow, error) {
 		if listening, err = summaries(ctx, tx, continueListening, books.args(limit)); err != nil {
 			return err
 		}
-		next, err := summaries(ctx, tx, continueSeries, books.args(limit, stale))
-		if err != nil {
-			return err
-		}
-		// A book in two series that both lead to it shows once.
-		seen := map[id.ID]bool{}
-		continueBooks = slices.DeleteFunc(next, func(c WorkSummary) bool {
-			dup := seen[c.ID]
-			seen[c.ID] = true
-			return dup
-		})
 
 		for _, lib := range libs {
 			if !lib.Pinned {
@@ -248,7 +197,7 @@ func (s *Service) Home(ctx context.Context, v users.Viewer) ([]HomeRow, error) {
 	}
 	rows := []HomeRow{{Kind: RowContinueWatching, Items: watching}, {Kind: RowFavorites, Items: favorites}}
 	rows = append(rows, videosAdded...)
-	rows = append(rows, HomeRow{Kind: RowContinueListening, Items: listening}, HomeRow{Kind: RowContinueSeries, Items: continueBooks})
+	rows = append(rows, HomeRow{Kind: RowContinueListening, Items: listening})
 	rows = append(rows, booksAdded...)
 	rows = slices.DeleteFunc(rows, func(r HomeRow) bool { return len(r.Items) == 0 })
 	lists := make([][]WorkSummary, len(rows))

@@ -1458,10 +1458,6 @@ msgstr "Continue Watching"
 msgid "Leave empty to use private address ranges. Other addresses are remote."
 msgstr "Leave empty to use private address ranges. Other addresses are remote."
 
-#: src/features/home/HomeScreen.tsx
-msgid "Continue Series"
-msgstr "Continue Series"
-
 #. placeholder {0}: formatBitrate(cap)
 #: src/features/player/PlaybackSettingsMenu.tsx
 msgid "Limited to {0} for this play"

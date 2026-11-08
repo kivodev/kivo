@@ -16,7 +16,6 @@ describe("Home", () => {
       "Recently Added in TV Shows",
       "Recently Added in Home Videos",
       "Continue Listening",
-      "Continue Series",
       "Recently Added in Audiobooks",
     ]);
     const continueRow = document.querySelector('[data-row="continueWatching"]') as HTMLElement;
@@ -36,17 +35,13 @@ describe("Home", () => {
     await waitFor(() => expect(router.state.location.pathname).toBe("/favorites"));
   });
 
-  it("shows books in progress and the next book of a series as square covers, with the time left", async () => {
+  it("shows books in progress as square covers, with the time left", async () => {
     serveMockApi();
     renderApp("/");
     await screen.findByRole("heading", { name: "Continue Listening" });
     const listening = document.querySelector('[data-row="continueListening"]') as HTMLElement;
     expect(within(listening).getByText("Andy Weir · 8 hr 5 min left")).toBeInTheDocument();
-    const series = document.querySelector('[data-row="continueSeries"]') as HTMLElement;
-    expect(within(series).getByText("The Churn")).toBeInTheDocument();
-    for (const row of [listening, series]) {
-      expect(row.querySelector('[data-part="cover"], .aspect-square')).not.toBeNull();
-    }
+    expect(listening.querySelector('[data-part="cover"], .aspect-square')).not.toBeNull();
   });
 
   it("lists pinned libraries in the sidebar, and the rest under More libraries", async () => {

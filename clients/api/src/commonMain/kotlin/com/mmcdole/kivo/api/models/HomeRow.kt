@@ -34,7 +34,7 @@ import kotlinx.serialization.encoding.*
  * 
  *
  * @param id Stable per row, such as `recentlyAdded:<libraryId>`.
- * @param kind What a Home row shows: `continueWatching` what to watch on with, videos in progress and each series' episode up next; `continueListening` books in progress; `continueSeries` the next book of each book series the user has finished a book of; `recentlyAdded` a library's newest works; `favorites` the works the user marked. Skip kinds you don't know. 
+ * @param kind What a Home row shows: `continueWatching` what to watch on with, videos in progress and each series' episode up next; `continueListening` books in progress; `recentlyAdded` a library's newest works; `favorites` the works the user marked. Skip kinds you don't know. 
  * @param items 
  * @param library For `recentlyAdded`, the library.
  */
@@ -45,7 +45,7 @@ data class HomeRow (
     /* Stable per row, such as `recentlyAdded:<libraryId>`. */
     @SerialName(value = "id") @Required val id: kotlin.String,
 
-    /* What a Home row shows: `continueWatching` what to watch on with, videos in progress and each series' episode up next; `continueListening` books in progress; `continueSeries` the next book of each book series the user has finished a book of; `recentlyAdded` a library's newest works; `favorites` the works the user marked. Skip kinds you don't know.  */
+    /* What a Home row shows: `continueWatching` what to watch on with, videos in progress and each series' episode up next; `continueListening` books in progress; `recentlyAdded` a library's newest works; `favorites` the works the user marked. Skip kinds you don't know.  */
     @SerialName(value = "kind") @Required val kind: kotlin.String,
 
     @SerialName(value = "items") @Required val items: kotlin.collections.List<WorkSummary>,

@@ -239,11 +239,7 @@ export function addBooks(
     items: [hailMary, churn].map(summaryOf),
   };
   // The book rows come after every video row, as the server orders them.
-  api.home.rows.push(
-    { id: "continueListening", kind: "continueListening", items: [summaryOf(hailMary)] },
-    { id: "continueSeries", kind: "continueSeries", items: [summaryOf(churn)] },
-    recent,
-  );
+  api.home.rows.push({ id: "continueListening", kind: "continueListening", items: [summaryOf(hailMary)] }, recent);
   api.facets[library.id] = {
     genres: ["Science Fiction"],
     contentRatings: [],

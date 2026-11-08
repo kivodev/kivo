@@ -16,15 +16,9 @@ import { AddLibraryButton } from "@/features/libraries/AddLibraryButton";
 import { isTv } from "@/tv/flag";
 import { useTvEmptyScreen } from "@/tv/focus";
 
-const knownRows = new Set<HomeRow["kind"]>([
-  "continueWatching",
-  "continueListening",
-  "continueSeries",
-  "recentlyAdded",
-  "favorites",
-]);
+const knownRows = new Set<HomeRow["kind"]>(["continueWatching", "continueListening", "recentlyAdded", "favorites"]);
 /** Rows of books, whose covers are square. */
-const bookRows = new Set<HomeRow["kind"]>(["continueListening", "continueSeries"]);
+const bookRows = new Set<HomeRow["kind"]>(["continueListening"]);
 
 /**
  * Home. It shows the rows the server sends that have cards, skipping kinds this client doesn't know.
@@ -63,8 +57,6 @@ export function HomeScreen() {
         return t`Continue Watching`;
       case "continueListening":
         return t`Continue Listening`;
-      case "continueSeries":
-        return t`Continue Series`;
       case "favorites":
         return t`Favorites`;
       default: {

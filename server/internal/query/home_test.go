@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/query"
 	"github.com/mmcdole/kivo/internal/store"
@@ -95,14 +94,13 @@ func TestRemoveFromContinue(t *testing.T) {
 }
 
 // TestStaleSeries checks that a series' next episode leaves Continue
-// Watching, and a book series' next book leaves Continue Series, a year
-// after the user last played in the series. An episode or book added since
-// that play keeps it. Movies and books in progress stay however old.
+// Watching a year after the user last played in the series. An episode
+// added since that play keeps it. Movies and books in progress stay however
+// old.
 func TestStaleSeries(t *testing.T) {
 	h := newHousehold(t)
 	h.play(h.admin, h.dune.Version, 40*time.Minute)
 	h.play(h.admin, h.expanse1.Version, 24*time.Minute)
-	h.play(h.admin, h.versionOf(h.leviathan), 2*time.Hour-time.Minute)
 	h.play(h.admin, h.versionOf(h.hailMary), 30*time.Minute)
 	// Everything in the household was added long before the plays.
 	h.b.Write(func(ctx context.Context, tx *store.Tx) error {
@@ -118,13 +116,13 @@ func TestStaleSeries(t *testing.T) {
 			return err
 		})
 	}
-	check := func(name string, watching, listening, series []id.ID) {
+	check := func(name string, watching, listening []id.ID) {
 		t.Helper()
 		home := h.home(h.admin)
 		for _, r := range []struct {
 			kind query.RowKind
 			want []id.ID
-		}{{query.RowContinueWatching, watching}, {query.RowContinueListening, listening}, {query.RowContinueSeries, series}} {
+		}{{query.RowContinueWatching, watching}, {query.RowContinueListening, listening}} {
 			if got := ids(row(home, r.kind)); !slices.Equal(got, r.want) {
 				t.Errorf("%s: %s %v, want %v", name, r.kind, got, r.want)
 			}
@@ -132,17 +130,12 @@ func TestStaleSeries(t *testing.T) {
 	}
 
 	playedAgo(364)
-	check("364 days", []id.ID{h.dune.Work, h.expanse2.Work}, []id.ID{h.hailMary}, []id.ID{h.churn})
+	check("364 days", []id.ID{h.dune.Work, h.expanse2.Work}, []id.ID{h.hailMary})
 	playedAgo(366)
-	check("366 days", []id.ID{h.dune.Work}, []id.ID{h.hailMary}, nil)
+	check("366 days", []id.ID{h.dune.Work}, []id.ID{h.hailMary})
 
 	h.b.Episode(h.showsFolder, h.expanse, 2, 1)
-	h.book([]string{"James S. A. Corey/The Expanse/Book 2 - Caliban's War/Caliban's War.m4b"}, catalog.WorkMetadata{
-		Title: "Caliban's War", Year: 2012,
-		Book: &catalog.BookMetadata{Authors: []string{"James S. A. Corey"}, Series: []catalog.SeriesRef{{
-			Key: catalog.LocalSeriesKey("James S. A. Corey", "The Expanse"), Name: "The Expanse", Position: "2", Primary: true}}},
-	})
-	check("added since", []id.ID{h.dune.Work, h.expanse2.Work}, []id.ID{h.hailMary}, []id.ID{h.churn})
+	check("added since", []id.ID{h.dune.Work, h.expanse2.Work}, []id.ID{h.hailMary})
 }
 
 // TestRecentlyAddedPlayed checks that Recently Added leaves out what the

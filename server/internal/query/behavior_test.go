@@ -490,9 +490,7 @@ func TestPinnedLibraries(t *testing.T) {
 }
 
 // TestBookRows checks Continue Listening, and that books in progress are
-// kept out of Continue Watching. It also checks Continue Series, which
-// shows the next book of a series with a finished book until a book of the
-// series is in progress.
+// kept out of Continue Watching.
 func TestBookRows(t *testing.T) {
 	h := newHousehold(t)
 	h.watch()
@@ -519,31 +517,23 @@ func TestBookRows(t *testing.T) {
 	if _, ok := find(row(home, query.RowContinueWatching), h.hailMary); ok {
 		t.Error("a book in Continue Watching")
 	}
-	if want := []id.ID{h.churn}; !slices.Equal(ids(row(home, query.RowContinueSeries)), want) {
-		t.Errorf("Continue Series = %v, want %v", ids(row(home, query.RowContinueSeries)), want)
-	}
 
-	// Once started, the next book moves to Continue Listening.
+	// A book joins Continue Listening once it's started.
 	h.play(h.admin, version(h.churn), 10*time.Minute)
 	home = rows(h.admin)
 	if want := []id.ID{h.churn, h.hailMary}; !slices.Equal(ids(row(home, query.RowContinueListening)), want) {
 		t.Errorf("Continue Listening = %v, want %v", ids(row(home, query.RowContinueListening)), want)
 	}
-	if len(row(home, query.RowContinueSeries)) != 0 {
-		t.Errorf("Continue Series = %v with the next book in progress", ids(row(home, query.RowContinueSeries)))
-	}
 	// The friend has no audiobooks library.
-	if home := rows(h.friend); len(row(home, query.RowContinueListening)) != 0 || len(row(home, query.RowContinueSeries)) != 0 {
-		t.Errorf("the friend's book rows: %v, %v", ids(row(home, query.RowContinueListening)), ids(row(home, query.RowContinueSeries)))
+	if home := rows(h.friend); len(row(home, query.RowContinueListening)) != 0 {
+		t.Errorf("the friend's Continue Listening: %v", ids(row(home, query.RowContinueListening)))
 	}
-	// An audiobooks library that isn't pinned has no book rows.
-	h.play(h.admin, version(h.leviathan), 2*time.Hour-time.Minute)
-	h.play(h.admin, version(h.churn), 4*time.Hour) // finished, so The Expanse has a next book again
+	// An audiobooks library that isn't pinned has no Continue Listening.
 	if err := users.New(h.b.DB).EditPreferences(ctx, h.admin, users.PreferencesChange{Libraries: &[]users.LibraryChoice{{Library: h.books}}}); err != nil {
 		t.Fatal(err)
 	}
-	if home := rows(h.admin); len(row(home, query.RowContinueListening)) != 0 || len(row(home, query.RowContinueSeries)) != 0 {
-		t.Errorf("book rows without a pinned audiobooks library: %v, %v", ids(row(home, query.RowContinueListening)), ids(row(home, query.RowContinueSeries)))
+	if home := rows(h.admin); len(row(home, query.RowContinueListening)) != 0 {
+		t.Errorf("Continue Listening without a pinned audiobooks library: %v", ids(row(home, query.RowContinueListening)))
 	}
 }
 
