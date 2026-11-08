@@ -1,14 +1,17 @@
 package com.mmcdole.kivo.android
 
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.mmcdole.kivo.android.main.TvRoot
-import com.mmcdole.kivo.android.mobile.MobileRoot
+import com.mmcdole.kivo.android.mobile.app.MobileRoot
 import com.mmcdole.kivo.android.watchnext.WatchNext
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -32,10 +35,12 @@ class MainActivity : ComponentActivity() {
         }
 
         val ui = chooseUi(this)
+        // The phone's screens draw behind the system bars.
+        if (ui == Ui.Mobile) enableEdgeToEdge(SystemBarStyle.dark(Color.TRANSPARENT), SystemBarStyle.dark(Color.TRANSPARENT))
         setContent {
             when (ui) {
                 Ui.Tv -> TvRoot(graph, onExit = ::finish)
-                Ui.Mobile -> MobileRoot()
+                Ui.Mobile -> MobileRoot(graph)
             }
         }
     }

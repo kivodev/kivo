@@ -1,0 +1,162 @@
+package com.mmcdole.kivo.android.mobile.library
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.mmcdole.kivo.android.library.GridChoice
+import com.mmcdole.kivo.android.library.SavedGrids
+import com.mmcdole.kivo.android.library.Section
+import com.mmcdole.kivo.android.library.gridChoice
+import com.mmcdole.kivo.android.library.unfiltered
+import com.mmcdole.kivo.android.mobile.ui.CardShape
+import com.mmcdole.kivo.android.mobile.ui.WorkMarks
+import com.mmcdole.kivo.api.models.BookSeriesSummary
+import com.mmcdole.kivo.api.models.CollectionSummary
+import com.mmcdole.kivo.api.models.Library
+import com.mmcdole.kivo.api.models.LibraryFacets
+import com.mmcdole.kivo.api.models.PersonSummary
+import com.mmcdole.kivo.api.models.WorkSummary
+import com.mmcdole.kivo.core.Load
+import com.mmcdole.kivo.core.data.GridPager
+import com.mmcdole.kivo.core.data.GridQuery
+import com.mmcdole.kivo.core.session.KivoSession
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+
+/** A library's tabs: its works, its collections, and an audiobooks library's authors and book series. */
+enum class LibraryTab { Titles, Collections, Authors, Series }
+
+/** The grid a tab shows, over its pager. */
+sealed interface LibraryGrid {
+    val pager: GridPager<*>
+
+    class Works(override val pager: GridPager<WorkSummary>) : LibraryGrid
+
+    class Collections(override val pager: GridPager<CollectionSummary>) : LibraryGrid
+
+    class Authors(override val pager: GridPager<PersonSummary>) : LibraryGrid
+
+    class Series(override val pager: GridPager<BookSeriesSummary>) : LibraryGrid
+}
+
+data class LibraryUiState(
+    /** The library, once the libraries are read. */
+    val library: Library?,
+    val tab: LibraryTab,
+    /** The tabs on offer: just the works' when there's nothing beside them. */
+    val tabs: List<LibraryTab>,
+    /** The works' sort and filters. */
+    val query: GridQuery,
+    val grid: LibraryGrid,
+    /** What the library offers to filter by, once read. */
+    val facets: LibraryFacets?,
+) {
+    val shape: CardShape get() = gridShape(library?.kind, tab)
+}
+
+/** A tab's cards: authors and series square, collections posters, and works by the library's kind. */
+fun gridShape(kind: String?, tab: LibraryTab): CardShape = when {
+    tab == LibraryTab.Authors || tab == LibraryTab.Series -> CardShape.Square
+    tab == LibraryTab.Collections -> CardShape.Poster
+    kind == "audiobooks" -> CardShape.Square
+    kind == "videos" -> CardShape.Landscape
+    else -> CardShape.Poster
+}
+
+/** The tabs a library of [kind] offers: an audiobooks library its authors and series, another its collections when it has any. */
+fun tabsOf(kind: String?, facets: LibraryFacets?, tab: LibraryTab): List<LibraryTab> = when {
+    kind == "audiobooks" -> listOf(LibraryTab.Titles, LibraryTab.Authors, LibraryTab.Series)
+    facets?.collections == true || tab == LibraryTab.Collections -> listOf(LibraryTab.Titles, LibraryTab.Collections)
+    else -> listOf(LibraryTab.Titles)
+}
+
+/**
+ * A library's grid: the tab, sort and filters this device last used in it,
+ * kept as they change; with a [oneOffSort], as from Recently Added's
+ * heading, the works in that sort with no filters, keeping nothing. A new
+ * tab, sort or filter shows a new grid at once, its placeholders until its
+ * first page comes, and the one it replaces stops reading.
+ */
+class LibraryViewModel(
+    private val session: KivoSession,
+    private val savedGrids: SavedGrids,
+    saved: Map<String, GridChoice>,
+    private val libraryId: String,
+    private val oneOffSort: String? = null,
+) : ViewModel() {
+    private val initial = if (oneOffSort != null) GridChoice(GridQuery(libraryId, sort = oneOffSort)) else gridChoice(saved, libraryId)
+
+    private val choice = MutableStateFlow(initial.query to if (initial.section == Section.Collections) LibraryTab.Collections else LibraryTab.Titles)
+    private val grid = MutableStateFlow(gridOf(choice.value.second, choice.value.first))
+
+    val marks = WorkMarks(session.library, viewModelScope)
+
+    val state: StateFlow<LibraryUiState> = combine(
+        choice,
+        grid,
+        session.library.libraries().onStart { emit(Load.Loading) },
+        session.library.facets(libraryId).onStart { emit(Load.Loading) },
+    ) { (query, tab), grid, libraries, facets ->
+        val library = libraries.getOrNull()?.firstOrNull { it.id == libraryId }
+        val read = facets.getOrNull()
+        LibraryUiState(library, tab, tabsOf(library?.kind, read, tab), query, grid, read)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryUiState(null, choice.value.second, listOf(choice.value.second), choice.value.first, grid.value, null))
+
+    fun chooseTab(tab: LibraryTab) = choose(choice.value.first, tab)
+
+    fun chooseQuery(query: GridQuery) = choose(query, choice.value.second)
+
+    fun clearFilters() = chooseQuery(choice.value.first.unfiltered())
+
+    /** Reads the grid again in place, as a pull to refresh does; returns once its first page answers. */
+    suspend fun refresh() {
+        try {
+            grid.value.pager.refresh()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // The grid shows why.
+        }
+    }
+
+    fun retry() {
+        viewModelScope.launch { refresh() }
+    }
+
+    private fun choose(query: GridQuery, tab: LibraryTab) {
+        if (query to tab == choice.value) return
+        choice.value = query to tab
+        val old = grid.value
+        grid.value = gridOf(tab, query)
+        old.pager.close()
+        // The works' and collections' choice is kept; a one-off sort keeps nothing.
+        if (oneOffSort == null && (tab == LibraryTab.Titles || tab == LibraryTab.Collections)) {
+            val kept = GridChoice(query, if (tab == LibraryTab.Collections) Section.Collections else Section.Titles)
+            viewModelScope.launch {
+                try {
+                    savedGrids.save(kept)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    // The grid still shows; it just isn't kept.
+                }
+            }
+        }
+    }
+
+    private fun gridOf(tab: LibraryTab, query: GridQuery): LibraryGrid = when (tab) {
+        LibraryTab.Titles -> LibraryGrid.Works(session.library.pagedWorks(query))
+        LibraryTab.Collections -> LibraryGrid.Collections(session.library.pagedCollections(libraryId))
+        LibraryTab.Authors -> LibraryGrid.Authors(session.library.pagedAuthors(libraryId))
+        LibraryTab.Series -> LibraryGrid.Series(session.library.pagedBookSeries(libraryId))
+    }
+
+    override fun onCleared() {
+        grid.value.pager.close()
+    }
+}
