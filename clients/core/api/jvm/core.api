@@ -1673,13 +1673,13 @@ public final class com/mmcdole/kivo/core/session/SessionLibrary {
 	public final fun person (Ljava/lang/String;)Lkotlinx/coroutines/flow/Flow;
 	public final fun removeFromContinue (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun removeFromList (Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
-	public final fun renameList (Ljava/lang/String;Ljava/lang/String;Lcom/mmcdole/kivo/api/models/WorkQuery;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
-	public static synthetic fun renameList$default (Lcom/mmcdole/kivo/core/session/SessionLibrary;Ljava/lang/String;Ljava/lang/String;Lcom/mmcdole/kivo/api/models/WorkQuery;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
 	public final fun rereadLibraries ()V
 	public final fun resetHomeRows (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun search (Ljava/lang/String;Ljava/lang/Integer;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun setHomeRows (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun setPlayed (Ljava/lang/String;ZLkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun updateList (Ljava/lang/String;Ljava/lang/String;Lcom/mmcdole/kivo/api/models/WorkQuery;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun updateList$default (Lcom/mmcdole/kivo/core/session/SessionLibrary;Ljava/lang/String;Ljava/lang/String;Lcom/mmcdole/kivo/api/models/WorkQuery;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
 	public final fun work (Ljava/lang/String;)Lkotlinx/coroutines/flow/Flow;
 	public final fun workFieldValues (Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun workFields (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;

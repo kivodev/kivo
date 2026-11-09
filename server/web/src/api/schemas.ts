@@ -29,6 +29,7 @@ export type ScanProgress = Schemas["ScanProgress"];
 export type Home = Schemas["Home"];
 export type HomeRow = Schemas["HomeRow"];
 export type WorkList = Schemas["WorkList"];
+export type ListRef = Schemas["ListRef"];
 export type WorkListList = Schemas["WorkListList"];
 export type HomeRowInfo = Schemas["HomeRowInfo"];
 export type WorkSummary = Schemas["WorkSummary"];

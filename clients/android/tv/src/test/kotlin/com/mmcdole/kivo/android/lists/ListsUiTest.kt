@@ -1,7 +1,11 @@
 package com.mmcdole.kivo.android.lists
 
+import com.mmcdole.kivo.android.tv.R
+import com.mmcdole.kivo.api.models.FieldError
 import com.mmcdole.kivo.api.models.WorkImages
 import com.mmcdole.kivo.api.models.WorkList
+import com.mmcdole.kivo.api.models.WorkListSmart
+import com.mmcdole.kivo.api.models.WorkQuery
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.api.models.WorkSummaryPage
 import kotlin.test.Test
@@ -22,6 +26,17 @@ class ListsUiTest {
         assertEquals(myList, ui.myList)
         assertEquals(listOf("m1"), ui.works.items.map { it.id })
         assertEquals(listOf(made), ui.lists)
+    }
+
+    @Test
+    fun anEmptyListSaysWhy() {
+        val manual = WorkList("d", "Date Night", "manual", builtIn = false, workCount = 0)
+        val rules = WorkListSmart(WorkQuery(listOf("movie")))
+        val smart = WorkList("s", "90s comedies", "smart", builtIn = false, workCount = 0, smart = rules)
+        val broken = smart.copy(smart = rules.copy(errors = listOf(FieldError("genre", "unknownField"))))
+        assertEquals(R.string.list_empty, emptyListMessage(manual))
+        assertEquals(R.string.list_nothing_matches, emptyListMessage(smart))
+        assertEquals(R.string.list_rules_broken, emptyListMessage(broken))
     }
 
     @Test

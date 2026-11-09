@@ -1,6 +1,8 @@
 import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import type { WorkField, WorkKind } from "@/api/schemas";
+import type { SortKey, WorkField, WorkKind } from "@/api/schemas";
+
+type SortDirection = NonNullable<SortKey["direction"]>;
 
 /** Words for a query's fields, operators and kinds. A field's label falls back to the catalog's name. */
 export function useSmartLabels() {
@@ -54,13 +56,25 @@ export function useSmartLabels() {
     season: t`Seasons`,
     episode: t`Episodes`,
     extra: t`Extras`,
-    video: t`Other videos`,
+    video: t`Videos`,
     book: t`Books`,
+  };
+  const sortOrder = (field: WorkField, direction: SortDirection) => {
+    if (field.type === "date") return direction === "asc" ? t`oldest first` : t`newest first`;
+    if (field.type === "text") return direction === "desc" ? t`Z to A` : t`A to Z`;
+    if (field.unit === "ms") return direction === "asc" ? t`shortest first` : t`longest first`;
+    return direction === "asc" ? t`lowest first` : t`highest first`;
   };
   return {
     field: (field: WorkField) => fields[field.field] ?? field.name,
     op: (op: string, type: WorkField["type"]) => (type === "date" ? dateOps[op] : numberOps[op]) ?? ops[op] ?? op,
     kind: (kind: WorkKind) => kinds[kind],
+    /** A sort as the Sort row names it: "Rating, highest first". */
+    sort: (field: WorkField, direction: SortDirection) => {
+      const name = fields[field.field] ?? field.name;
+      const order = sortOrder(field, direction);
+      return t`${name}, ${order}`;
+    },
     duration: (value: string) => {
       const count = Number(value.slice(1, -1));
       switch (value.at(-1)) {

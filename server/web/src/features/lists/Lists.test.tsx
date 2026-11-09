@@ -36,7 +36,7 @@ describe("Lists", () => {
       api.lists = api.lists.filter((l) => l.builtIn);
     });
     renderApp("/lists");
-    expect(await screen.findByText("No lists yet")).toBeInTheDocument();
+    expect(await screen.findByText("Nothing in your lists yet.")).toBeInTheDocument();
   });
 
   it("refetches on a listsChanged event", async () => {
@@ -77,7 +77,7 @@ describe("A list's page", () => {
     const card = (await screen.findAllByRole("link", { name: /^The Expanse/ }))[0] as HTMLElement;
     expect(screen.queryByRole("button", { name: "More actions for My List" })).toBeNull();
     fireEvent.contextMenu(card);
-    await user.click(await screen.findByRole("menuitem", { name: "Remove from this list" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Remove from My List" }));
     await waitFor(() => expect(sent("DELETE", `/lists/${mockIds.myList}/works/${mockIds.expanse}`)).toHaveLength(1));
     expect(await screen.findByText("1 title")).toBeInTheDocument();
   });
@@ -92,7 +92,7 @@ describe("A list's page", () => {
     await user.clear(name);
     await user.paste("my list");
     await user.click(within(dialog).getByRole("button", { name: "Rename" }));
-    expect(await within(dialog).findByText("A list with that name already exists.")).toBeInTheDocument();
+    expect(await within(dialog).findByText("You already have a list with that name.")).toBeInTheDocument();
     await user.clear(name);
     await user.paste("Road Trip");
     await user.click(within(dialog).getByRole("button", { name: "Rename" }));
@@ -159,6 +159,6 @@ describe("Add to List", () => {
     await user.click(await within(dialog).findByRole("button", { name: "New List" }));
     await user.type(within(dialog).getByRole("textbox", { name: /Name/ }), "date night");
     await user.click(within(dialog).getByRole("button", { name: "Create" }));
-    expect(await within(dialog).findByText("A list with that name already exists.")).toBeInTheDocument();
+    expect(await within(dialog).findByText("You already have a list with that name.")).toBeInTheDocument();
   });
 });

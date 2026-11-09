@@ -10,9 +10,11 @@ export type DraftRule = { key: number; field: string; op: string; values: string
 export type DraftGroup = { key: number; match: Match; rules: DraftRule[] };
 
 /**
- * A query as the builder edits it. The root's `anyOf` library rule is the
- * Libraries row, and each rule and group has a key for its row. maxWorks,
- * collapse and further sort keys aren't edited and are saved as they were.
+ * A query as the builder edits it. A root matching all has its `anyOf`
+ * library rule as the Libraries row; a root matching any keeps it among its
+ * rules, since a row would AND it. Each rule and group has a key for its row.
+ * maxWorks, collapse and further sort keys aren't edited and are saved as
+ * they were.
  */
 export type Draft = {
   name: string;
@@ -40,7 +42,7 @@ export function blankRule(field: WorkField): DraftRule {
 
 /** A group holding one blank rule. */
 export function blankGroup(field: WorkField): DraftGroup {
-  return { key: newKey(), match: "all", rules: [blankRule(field)] };
+  return { key: newKey(), match: "any", rules: [blankRule(field)] };
 }
 
 /** Why a saved query can't be edited here, if it can't. */
@@ -58,12 +60,13 @@ export function rulesOf(query: WorkQuery): Rule[] {
 
 export function draftOf(name: string, query: WorkQuery): Draft {
   const rules = query.where?.rules ?? [];
-  const libraries = rules.find((r) => r.field === libraryField && r.op === "anyOf");
+  const match = query.where?.match ?? "all";
+  const libraries = match === "all" ? rules.find((r) => r.field === libraryField && r.op === "anyOf") : undefined;
   return {
     name,
     kinds: query.kinds,
     libraries: libraries?.values ?? [],
-    match: query.where?.match ?? "all",
+    match,
     rules: rules.filter((r) => r !== libraries).map(draftRule),
     groups: (query.where?.groups ?? []).map((g) => ({
       key: newKey(),

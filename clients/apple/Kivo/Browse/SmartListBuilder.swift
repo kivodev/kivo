@@ -103,7 +103,7 @@ struct SmartListBuilder: View {
         Task {
             do {
                 if let list {
-                    _ = try await server.session.library.renameList(id: list.id, name: name, query: query)
+                    _ = try await server.session.library.updateList(id: list.id, name: name, query: query)
                 } else {
                     let made = try await server.session.library.createSmartList(name: name, query: query)
                     server.paths[server.tab, default: []].append(made.route)
@@ -160,7 +160,7 @@ private struct SmartListForm: View {
                 }
                 .onDelete { draft.rules.remove(atOffsets: $0) }
                 addRule { draft.rules.append($0) }
-                Button(String(localized: "Add Group")) { draft.groups.append(GroupDraft()) }
+                Button(String(localized: "Add Group")) { draft.groups.append(GroupDraft(rules: blankRule.map { [$0] } ?? [])) }
                     .accessibilityIdentifier("add-group")
             } header: {
                 Text(draft.match == "any" ? String(localized: "Match Any of These") : String(localized: "Match All of These"))
@@ -246,11 +246,16 @@ private struct SmartListForm: View {
         .accessibilityIdentifier("rule:\(rule.field)")
     }
 
-    /// Add Rule: a rule on the first field the kinds offer, opened at once.
+    /// A rule on the first field the kinds offer, its values not chosen yet.
+    private var blankRule: RuleDraft? {
+        guard let field = offeredFields(keeping: nil).first, let op = field.ops.first else { return nil }
+        return RuleDraft(field: field.field, op: op.op, arity: Int(op.arity), values: RulePage.slots(for: Int(op.arity)))
+    }
+
+    /// Add Rule: a blank rule, opened at once.
     private func addRule(_ add: @escaping (RuleDraft) -> Void) -> some View {
         Button(String(localized: "Add Rule")) {
-            guard let field = offeredFields(keeping: nil).first, let op = field.ops.first else { return }
-            let rule = RuleDraft(field: field.field, op: op.op, arity: Int(op.arity), values: RulePage.slots(for: Int(op.arity)))
+            guard let rule = blankRule else { return }
             add(rule)
             editing = rule.id
         }
@@ -275,20 +280,22 @@ private struct SmartListForm: View {
         .accessibilityIdentifier("group-match")
     }
 
-    /// The sorts: each sortable field at its own direction, the saved one
-    /// if it isn't among them, and Random.
+    /// The sorts: each sortable field the kinds offer, and the one saved,
+    /// in either direction, its own first, and Random.
     private var sortPicker: some View {
         let current = draft.sort.first
         let currentTag = current.map { key in
             key.field == SmartListWords.randomSort ? key.field : "\(key.field):\(direction(of: key))"
         } ?? "title:asc"
-        var choices: [(tag: String, label: String, keys: [SortKey])] = fields.filter(\.sortable).map { field in
-            let way = field.defaultDirection ?? "asc"
-            return ("\(field.field):\(way)", SmartListWords.sort(field, direction: way), [SortKey(field: field.field, direction: nil)])
-        }
-        if let current, !choices.contains(where: { $0.tag == currentTag }), let field = fields.first(where: { $0.field == current.field }) {
-            choices.insert((currentTag, SmartListWords.sort(field, direction: direction(of: current)), draft.sort), at: 0)
-        }
+        let chosenField = current?.field ?? "title"
+        var choices: [(tag: String, label: String, keys: [SortKey])] = fields
+            .filter { $0.sortable && ($0.field == chosenField || !Set($0.kinds).isDisjoint(with: draft.kinds)) }
+            .flatMap { field -> [(tag: String, label: String, keys: [SortKey])] in
+                let own = field.defaultDirection ?? "asc"
+                return [own, own == "asc" ? "desc" : "asc"].map { way in
+                    ("\(field.field):\(way)", SmartListWords.sort(field, direction: way), [SortKey(field: field.field, direction: way)])
+                }
+            }
         choices.append((SmartListWords.randomSort, String(localized: "Random"), [SortKey(field: SmartListWords.randomSort, direction: nil)]))
         return Picker(String(localized: "Sort"), selection: Binding(
             get: { currentTag },

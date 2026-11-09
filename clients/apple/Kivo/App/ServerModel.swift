@@ -21,6 +21,8 @@ final class ServerModel {
     private(set) var libraries: [Library] = []
     /// The user's lists of the kinds this app knows, My List first.
     private(set) var lists: [WorkList] = []
+    /// Why the lists couldn't be read, when the server refused it.
+    private(set) var listsFailure: RequestProblem?
     /// The server isn't answering reads, which retry until it does.
     private(set) var unreachable = false
     /// The base URL the server is reached at now, which artwork follows.
@@ -73,6 +75,7 @@ final class ServerModel {
         reloadLibraries()
         tasks.append(Task { [weak self, session] in
             for await load in session.library.lists() {
+                if let problem = load.problemOrNull(), !problem.isUnreachable { self?.listsFailure = problem }
                 guard let lists = load.getOrNull() as? [WorkList] else { continue }
                 self?.lists = lists.filter { $0.kind == "manual" || $0.kind == "smart" }
             }

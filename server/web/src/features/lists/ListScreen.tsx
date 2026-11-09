@@ -36,13 +36,13 @@ export function ListScreen() {
   const { listId } = listRoute.useParams();
   const list = useQuery(listQueries.detail(listId));
   useDocumentTitle(list.data?.name ?? t`Lists`);
-  const manual = list.data?.kind === "manual";
+  const manual = list.data?.kind === "manual" ? list.data : undefined;
   const smart = list.data?.smart;
   const renderCard = useCallback(
     (work: WorkSummary, width: number) => (
-      <WorkCard work={work} shape={workShape(work.kind)} width={width} listId={manual ? listId : undefined} />
+      <WorkCard work={work} shape={workShape(work.kind)} width={width} list={manual} />
     ),
-    [listId, manual],
+    [manual],
   );
   const read = useQuery(workQueries.listPage(listId, 0));
   const first = read.data;
@@ -95,7 +95,11 @@ export function ListScreen() {
       ) : total === 0 ? (
         <EmptyState
           title={
-            smart?.errors ? t`These rules no longer work` : smart ? t`Nothing matches yet` : t`Nothing on this list yet`
+            smart?.errors
+              ? t`These rules no longer work`
+              : smart
+                ? t`Nothing matches yet`
+                : t`Nothing in this list yet.`
           }
         >
           {smart?.errors ? (

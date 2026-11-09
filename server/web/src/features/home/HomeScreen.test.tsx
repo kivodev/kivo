@@ -168,6 +168,29 @@ describe("Home", () => {
     expect(screen.queryByRole("menuitem", { name: /^Remove from Continue/ })).toBeNull();
   });
 
+  it("takes a card off a manual list's row, and doesn't offer it on a smart list's", async () => {
+    serveMockApi((api) => {
+      const row = api.home.rows.find((r) => r.kind === "list");
+      if (row) api.home.rows.push({ ...row, id: `list:${mockIds.sciFi}`, list: { id: mockIds.sciFi, name: "Sci-fi" } });
+    });
+    const { user } = renderApp("/");
+    await screen.findByRole("heading", { name: "My List" });
+    const rows = () => document.querySelectorAll<HTMLElement>('[data-row="list"]');
+    const openMenu = async (row: HTMLElement | undefined) => {
+      await user.click(
+        within(row as HTMLElement).getAllByRole("button", { name: /^More actions for/ })[0] as HTMLElement,
+      );
+      await screen.findByRole("menu");
+    };
+    await openMenu(rows()[1]);
+    expect(screen.queryByRole("menuitem", { name: /^Remove from/ })).toBeNull();
+    await user.keyboard("{Escape}");
+
+    await openMenu(rows()[0]);
+    await user.click(await screen.findByRole("menuitem", { name: "Remove from My List" }));
+    await waitFor(() => expect(sent("DELETE", `/lists/${mockIds.myList}/works/${mockIds.dune}`)).toHaveLength(1));
+  });
+
   it("opens a card's menu on a long press, without opening the card", async () => {
     serveMockApi();
     const { user, router } = renderApp("/");

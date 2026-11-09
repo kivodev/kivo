@@ -6,7 +6,7 @@ import SwiftUI
 /// then every library the user sees, in their order, each pinned or not.
 /// Pinned libraries are first in the Libraries menu, in this order; the
 /// rest are under More libraries. Each change is sent at once; a refused
-/// one says why, with Retry.
+/// one says why, with Retry, as does a refused read of Home's rows.
 struct LibrariesSettingsView: View {
     @Environment(ServerModel.self) private var server
     /// Every row of Home, in order.
@@ -15,6 +15,9 @@ struct LibrariesSettingsView: View {
     @State private var pinned: Set<String> = []
     @State private var failure: String?
     @State private var retrying: (() -> Void)?
+    /// Why Home's rows couldn't be read, when the server refused it.
+    @State private var rowsFailure: RequestProblem?
+    @State private var rowsAttempt = 0
 
     var body: some View {
         List {
@@ -39,6 +42,11 @@ struct LibrariesSettingsView: View {
                 }
             } header: {
                 Text("Home")
+            }
+            if let rowsFailure {
+                Section {
+                    FailureRow(message: String(localized: "Couldn't load Home. \(rowsFailure.sentence)"), retry: { rowsAttempt += 1 })
+                }
             }
             Section {
                 Button("Reset Home") { reset() }
@@ -77,9 +85,14 @@ struct LibrariesSettingsView: View {
             order = server.libraries
             pinned = Set(server.libraries.filter(\.pinned).map(\.id))
         }
-        .task {
+        .task(id: rowsAttempt) {
             for await load in server.session.library.homeRows() {
-                if let read = load.getOrNull() as? [HomeRowInfo] { rows = read }
+                if let read = load.getOrNull() as? [HomeRowInfo] {
+                    rows = read
+                    rowsFailure = nil
+                } else if let problem = load.problemOrNull(), !problem.isUnreachable {
+                    rowsFailure = problem
+                }
             }
         }
     }

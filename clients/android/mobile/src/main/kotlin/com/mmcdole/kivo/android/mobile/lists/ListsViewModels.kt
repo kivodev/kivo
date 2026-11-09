@@ -26,6 +26,8 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 /** The list kinds the phone shows; others are skipped. */
 private const val MANUAL = "manual"
@@ -134,7 +136,7 @@ class ListViewModel(private val session: KivoSession, private val listId: String
     }
 
     /** Renames the list; why not, or null once it's done. */
-    suspend fun rename(name: String): RequestProblem? = attempt { session.library.renameList(listId, name) }
+    suspend fun rename(name: String): RequestProblem? = attempt { session.library.updateList(listId, name, null) }
 
     /** Deletes the list; why not, or null once it's done. */
     suspend fun delete(): RequestProblem? = attempt { session.library.deleteList(listId) }
@@ -147,17 +149,41 @@ class ListViewModel(private val session: KivoSession, private val listId: String
 /** One of the chooser's rows: a list, and whether the work is on it. */
 data class ListChoice(val list: WorkList, val holding: Boolean)
 
-/** Add to List: every list the work can go on, ticked when it's on it, adding and removing as they're tapped. */
+/** Add to List: every list the work can go on, ticked when it's on it, a tap adding or removing it at once; a write that fails puts the row back and says why. */
 class AddToListViewModel(private val session: KivoSession, private val workId: String) : ViewModel() {
-    private val marks = WorkMarks(session.library, viewModelScope)
+    /** The lists holding the work, as read and as tapped since; null until read. */
+    private val held = MutableStateFlow<Set<String>?>(null)
+
+    private val mutableProblem = MutableStateFlow<RequestProblem?>(null)
+
+    /** Why the last tap was refused, until it's dismissed. */
+    val problem: StateFlow<RequestProblem?> = mutableProblem
+
+    private val work = session.library.work(workId).onEach { load ->
+        load.getOrNull()?.let { read -> held.value = read.listIds.orEmpty().toSet() }
+    }
 
     /** The lists, My List first, with the work's marks; null until both are read. */
-    val choices: StateFlow<List<ListChoice>?> = combine(session.library.lists(), session.library.work(workId)) { lists, work ->
-        val held = work.getOrNull()?.listIds.orEmpty()
-        lists.getOrNull()?.filter { it.kind == MANUAL }?.map { ListChoice(it, it.id in held) }
+    val choices: StateFlow<List<ListChoice>?> = combine(session.library.lists(), work, held) { lists, _, held ->
+        if (held == null) null else lists.getOrNull()?.filter { it.kind == MANUAL }?.map { ListChoice(it, it.id in held) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    fun toggle(choice: ListChoice) = marks.setOnList(choice.list.id, workId, !choice.holding)
+    fun toggle(choice: ListChoice) {
+        val id = choice.list.id
+        val adding = !choice.holding
+        held.update { if (adding) it.orEmpty() + id else it.orEmpty() - id }
+        viewModelScope.launch {
+            val failure = attempt { if (adding) session.library.addToList(id, workId) else session.library.removeFromList(id, workId) }
+            if (failure != null) {
+                held.update { if (adding) it.orEmpty() - id else it.orEmpty() + id }
+                mutableProblem.value = failure
+            }
+        }
+    }
+
+    fun dismissProblem() {
+        mutableProblem.value = null
+    }
 
     /** Makes a list with the work on it; why not, or null once it's done. */
     suspend fun create(name: String): RequestProblem? = attempt {

@@ -185,7 +185,7 @@ src/commonMain/kotlin/com/mmcdole/kivo/api/models/SessionUpdate.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/Settings.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/SettingsUpdate.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/SetupState.kt
-src/commonMain/kotlin/com/mmcdole/kivo/api/models/SmartRules.kt
+src/commonMain/kotlin/com/mmcdole/kivo/api/models/SmartQuery.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/SnapshotMessage.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/SortKey.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/SubtitleEntry.kt

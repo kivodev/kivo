@@ -150,7 +150,7 @@ describe("The smart list builder", () => {
     const row = () => dialog.querySelector("[data-part=rule]") as HTMLElement;
     await choose(user, within(row()).getByRole("button", { name: /Field/ }), "Title");
     await user.type(within(row()).getByRole("textbox", { name: "Title" }), "dune");
-    await choose(user, within(dialog).getAllByRole("button", { name: /Match/ })[1] as HTMLElement, "Any");
+    await choose(user, within(dialog).getByRole("button", { name: /Match/ }), "All");
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
     await waitFor(() => expect(sent("POST", "/lists")).toHaveLength(1));
     expect(sent("POST", "/lists")[0]?.body).toEqual({
@@ -160,7 +160,7 @@ describe("The smart list builder", () => {
           kinds: ["movie"],
           where: {
             match: "all",
-            groups: [{ match: "any", rules: [{ field: "title", op: "contains", values: ["dune"] }] }],
+            groups: [{ match: "all", rules: [{ field: "title", op: "contains", values: ["dune"] }] }],
           },
         },
       },
@@ -172,9 +172,103 @@ describe("The smart list builder", () => {
     const { user } = renderApp("/lists");
     const dialog = await openBuilder(user);
     await user.click(await within(dialog).findByRole("button", { name: "Add Group" }));
-    expect(within(dialog).getAllByRole("button", { name: /Match/ })).toHaveLength(2);
-    await user.click(within(dialog).getByRole("button", { name: "Remove rule" }));
     expect(within(dialog).getAllByRole("button", { name: /Match/ })).toHaveLength(1);
+    await user.click(within(dialog).getByRole("button", { name: "Remove rule" }));
+    expect(within(dialog).queryAllByRole("button", { name: /Match/ })).toHaveLength(0);
+  });
+
+  it("starts a new group at Match Any, and doesn't let the root's match be picked", async () => {
+    serveMockApi();
+    const { user } = renderApp("/lists");
+    const dialog = await openBuilder(user);
+    expect(await within(dialog).findByText("Match All of These")).toBeInTheDocument();
+    expect(within(dialog).queryByRole("button", { name: /Match/ })).toBeNull();
+    await user.click(within(dialog).getByRole("button", { name: "Add Group" }));
+    expect(within(dialog).getByRole("button", { name: /Match/ })).toHaveTextContent("Any");
+    expect(dialog.querySelectorAll("[data-part=rule]")).toHaveLength(1);
+  });
+
+  it("shows a saved root matching any as it is, its library rule among the rules", async () => {
+    serveMockApi((api) =>
+      savedQuery(api, (q) => {
+        q.where = {
+          match: "any",
+          rules: [
+            { field: "library", op: "anyOf", values: [mockIds.movies] },
+            { field: "genre", op: "anyOf", values: ["Comedy"] },
+          ],
+        };
+      }),
+    );
+    const { user } = renderApp(`/lists/${mockIds.sciFi}`);
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(await within(dialog).findByText("Match Any of These")).toBeInTheDocument();
+    expect(within(dialog).queryByRole("button", { name: /^Libraries:/ })).toBeNull();
+    expect(dialog.querySelectorAll("[data-part=rule]")).toHaveLength(2);
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(sent("PATCH", `/lists/${mockIds.sciFi}`)).toHaveLength(1));
+    expect(sent("PATCH", `/lists/${mockIds.sciFi}`)[0]?.body).toMatchObject({
+      smart: {
+        query: {
+          where: {
+            match: "any",
+            rules: [
+              { field: "library", op: "anyOf", values: [mockIds.movies] },
+              { field: "genre", op: "anyOf", values: ["Comedy"] },
+            ],
+          },
+        },
+      },
+    });
+  });
+
+  it("offers each sort in both directions, and saves the one chosen", async () => {
+    serveMockApi();
+    const { user } = renderApp("/lists");
+    const dialog = await openBuilder(user);
+    await user.type(await within(dialog).findByRole("textbox", { name: /Name/ }), "Worst");
+    await user.click(within(dialog).getByRole("button", { name: /Sort/ }));
+    for (const name of [
+      "Title, A to Z",
+      "Title, Z to A",
+      "Rating, highest first",
+      "Rating, lowest first",
+      "Runtime, shortest first",
+      "Runtime, longest first",
+      "Date added, newest first",
+      "Date added, oldest first",
+    ]) {
+      expect(await screen.findByRole("option", { name })).toBeInTheDocument();
+    }
+    await user.click(screen.getByRole("option", { name: "Rating, lowest first" }));
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(sent("POST", "/lists")).toHaveLength(1));
+    expect(sent("POST", "/lists")[0]?.body).toMatchObject({
+      smart: { query: { sort: [{ field: "rating", direction: "asc" }] } },
+    });
+  });
+
+  it("offers only the sorts of the chosen kinds, dropping one that no longer fits", async () => {
+    serveMockApi((api) => {
+      const runtime = api.workFields.find((f) => f.field === "runtimeMs");
+      if (runtime) runtime.kinds = ["movie"];
+    });
+    const { user } = renderApp("/lists");
+    const dialog = await openBuilder(user);
+    const sort = await within(dialog).findByRole("button", { name: /Sort/ });
+    await choose(user, sort, "Runtime, longest first");
+    expect(sort).toHaveTextContent("Runtime, longest first");
+
+    await user.click(within(dialog).getByRole("button", { name: "Show: Movies" }));
+    await user.click(await screen.findByRole("checkbox", { name: "Shows" }));
+    await user.click(screen.getByRole("checkbox", { name: "Movies" }));
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => expect(sort).toHaveTextContent("Title, A to Z"));
+    await user.click(sort);
+    expect(await screen.findByRole("option", { name: "Rating, highest first" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /^Runtime/ })).toBeNull();
   });
 
   it("offers only sortable fields, and saves random alone", async () => {
@@ -183,8 +277,8 @@ describe("The smart list builder", () => {
     const dialog = await openBuilder(user);
     await user.type(await within(dialog).findByRole("textbox", { name: /Name/ }), "Shuffle");
     await user.click(within(dialog).getByRole("button", { name: /Sort/ }));
-    expect(await screen.findByRole("option", { name: "Rating" })).toBeInTheDocument();
-    expect(screen.queryByRole("option", { name: "Genre" })).toBeNull();
+    expect(await screen.findByRole("option", { name: "Rating, highest first" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /^Genre/ })).toBeNull();
     await user.click(screen.getByRole("option", { name: "Random" }));
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
     await waitFor(() => expect(sent("POST", "/lists")).toHaveLength(1));
@@ -197,7 +291,7 @@ describe("The smart list builder", () => {
     const dialog = await openBuilder(user);
     await user.type(await within(dialog).findByRole("textbox", { name: /Name/ }), "date night");
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
-    expect(await within(dialog).findByText("A list with that name already exists.")).toBeInTheDocument();
+    expect(await within(dialog).findByText("You already have a list with that name.")).toBeInTheDocument();
   });
 
   it("refuses a query of a newer version, saying so", async () => {
@@ -263,7 +357,7 @@ describe("A smart list's page", () => {
     const card = (await screen.findAllByRole("link", { name: /^Dune/ }))[0] as HTMLElement;
     fireEvent.contextMenu(card);
     expect(await screen.findByRole("menu")).toBeInTheDocument();
-    expect(screen.queryByRole("menuitem", { name: "Remove from this list" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Remove from Sci-fi" })).toBeNull();
     await user.keyboard("{Escape}");
 
     await user.click(screen.getByRole("button", { name: "More actions for Sci-fi" }));
@@ -271,6 +365,57 @@ describe("A smart list's page", () => {
     await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Delete" }));
     await waitFor(() => expect(router.state.location.pathname).toBe("/lists"));
     expect(sent("DELETE", `/lists/${mockIds.sciFi}`)).toHaveLength(1);
+  });
+
+  it("reads its rules: values with or, units, durations, set rules and groups", async () => {
+    serveMockApi((api) =>
+      savedQuery(api, (q) => {
+        q.where = {
+          match: "all",
+          rules: [
+            { field: "library", op: "anyOf", values: [mockIds.movies] },
+            { field: "genre", op: "anyOf", values: ["Comedy", "Drama"] },
+            { field: "genre", op: "noneOf", values: ["Horror", "Sport"] },
+            { field: "runtimeMs", op: "gte", values: ["5400000"] },
+            { field: "year", op: "isNotSet" },
+            { field: "rating", op: "isSet" },
+            { field: "addedAt", op: "within", values: ["P30D"] },
+          ],
+          groups: [
+            {
+              match: "any",
+              rules: [
+                { field: "year", op: "between", values: ["1990", "1999"] },
+                { field: "title", op: "contains", values: ["dune"] },
+              ],
+            },
+            {
+              match: "all",
+              rules: [
+                { field: "rating", op: "gte", values: ["7"] },
+                { field: "year", op: "lte", values: ["2000"] },
+              ],
+            },
+          ],
+        };
+      }),
+    );
+    renderApp(`/lists/${mockIds.sciFi}`);
+    expect(
+      await screen.findByText(
+        "2 movies. Comedy or Drama, no Horror or Sport, Runtime at least 90 min, Year isn't set, Rating is set, " +
+          "Date added in the last 30 days, (Year 1990 to 1999 or Title contains dune), (Rating at least 7 and Year at most 2000)",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("says when it has nothing in it, a manual list's words", async () => {
+    serveMockApi((api) => {
+      const list = api.lists.find((l) => l.id === mockIds.dateNight);
+      if (list) list.workIds = [];
+    });
+    renderApp(`/lists/${mockIds.dateNight}`);
+    expect(await screen.findByText("Nothing in this list yet.")).toBeInTheDocument();
   });
 
   it("renames without sending the query", async () => {

@@ -16,6 +16,8 @@ struct AddToListView: View {
     @State private var naming = false
     @State private var newName = ""
     @State private var problem: String?
+    /// Whether the name prompt comes back, with what was typed, once a taken name is said.
+    @State private var namingAgain = false
 
     var body: some View {
         NavigationStack {
@@ -48,7 +50,12 @@ struct AddToListView: View {
         .presentationDetents([.medium, .large])
         .listNameAlert(String(localized: "New List"), isPresented: $naming, name: $newName, confirm: String(localized: "Create"), save: create)
         .alert(problem ?? "", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
-            Button(String(localized: "OK"), role: .cancel) {}
+            Button(String(localized: "OK"), role: .cancel) {
+                if namingAgain {
+                    namingAgain = false
+                    naming = true
+                }
+            }
         }
         .task {
             for await load in server.session.library.work(id: workId) {
@@ -112,6 +119,7 @@ struct AddToListView: View {
                 try await server.session.library.addToList(listId: list.id, workId: workId)
                 held.insert(list.id)
             } catch {
+                namingAgain = error.problemCode == "nameTaken"
                 problem = error.listNameSentence
             }
         }

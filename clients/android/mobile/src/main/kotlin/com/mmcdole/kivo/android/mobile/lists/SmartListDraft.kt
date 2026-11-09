@@ -43,7 +43,7 @@ data class RuleDraft(
     internal fun toRule() = Rule(field, op, values.ifEmpty { null })
 }
 
-/** A group of rules the root holds; Add Group starts one matching any. */
+/** A group of rules the root holds; Add Group starts one matching any, with one blank rule. */
 data class GroupDraft(
     val match: String = "any",
     val rules: List<RuleDraft> = emptyList(),

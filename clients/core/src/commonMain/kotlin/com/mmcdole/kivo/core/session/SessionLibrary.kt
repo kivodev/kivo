@@ -116,9 +116,9 @@ class SessionLibrary internal constructor(
     @Throws(Exception::class)
     suspend fun createSmartList(name: String, query: WorkQuery): WorkList = listWorks.create(name, query)
 
-    /** Renames a list and, for a smart list, replaces its rules with [query] when given. */
+    /** Renames a list when [name] is given and, for a smart list, replaces its rules with [query] when given, as one change. */
     @Throws(Exception::class)
-    suspend fun renameList(id: String, name: String, query: WorkQuery? = null): WorkList = listWorks.update(id, name, query)
+    suspend fun updateList(id: String, name: String?, query: WorkQuery? = null): WorkList = listWorks.update(id, name, query)
 
     /** How many works [query] selects, for a builder's live count. */
     @Throws(Exception::class)

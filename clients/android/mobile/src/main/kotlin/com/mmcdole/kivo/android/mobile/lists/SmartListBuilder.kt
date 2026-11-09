@@ -258,16 +258,18 @@ private fun GroupHeader(match: String, onMatch: (String) -> Unit) {
     }
 }
 
-/** The sorts: each sortable field at its own direction, the saved one if it isn't among them, and Random. */
+/** The sorts the kinds allow: each sortable field in both directions, its own first, the saved one if it isn't among them, and Random. */
 @Composable
 private fun SortRow(draft: SmartListDraft, fields: List<WorkField>, model: SmartListBuilderViewModel) {
     fun direction(key: SortKey) = key.direction ?: fields.firstOrNull { it.field == key.field }?.defaultDirection ?: "asc"
     val current = draft.sort.firstOrNull()
     val currentTag = current?.let { key -> if (key.field == RANDOM_SORT) key.field else "${key.field}:${direction(key)}" } ?: "title:asc"
     val choices = buildList {
-        for (field in fields.filter { it.sortable }) {
+        for (field in offeredFields(fields, draft.kinds, current?.field).filter { it.sortable }) {
             val way = field.defaultDirection ?: "asc"
+            val other = if (way == "asc") "desc" else "asc"
             add(Triple("${field.field}:$way", sortName(field, way), listOf(SortKey(field.field))))
+            add(Triple("${field.field}:$other", sortName(field, other), listOf(SortKey(field.field, other))))
         }
         val saved = current?.let { key -> fields.firstOrNull { it.field == key.field } }
         if (current != null && saved != null && none { it.first == currentTag }) add(0, Triple(currentTag, sortName(saved, direction(current)), draft.sort))

@@ -119,6 +119,15 @@ class SmartListDraftTest {
     }
 
     @Test
+    fun theSortsAreTheKindsOwnAndTheOneAlreadyChosen() {
+        val rating = field("rating", "number", null).copy(sortable = true)
+        val pages = field("pages", "number", null).copy(kinds = listOf("book"), sortable = true)
+        val sorts = { kept: String? -> offeredFields(listOf(rating, pages), listOf("movie"), kept).filter { it.sortable }.map { it.field } }
+        assertEquals(listOf("rating"), sorts(null))
+        assertEquals(listOf("rating", "pages"), sorts("pages"))
+    }
+
+    @Test
     fun aNewerVersionIsRefused() {
         assertTrue(refusesEditing(WorkQuery(listOf("movie"), version = 2), fields))
         assertFalse(refusesEditing(WorkQuery(listOf("movie"), version = 1), fields))

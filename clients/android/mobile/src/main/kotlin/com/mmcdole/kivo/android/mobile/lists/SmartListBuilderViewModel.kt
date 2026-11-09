@@ -164,7 +164,12 @@ class SmartListBuilderViewModel(
 
     fun changeRule(id: String, change: (RuleDraft) -> RuleDraft) = changeDraft { it.changingRule(id, change) }
 
-    fun addGroup() = changeDraft { it.copy(groups = it.groups + GroupDraft()) }
+    /** A new group matching any, with a new rule opened at once. */
+    fun addGroup() {
+        val group = GroupDraft()
+        changeDraft { it.copy(groups = it.groups + group) }
+        addRule(group.id)
+    }
 
     fun removeGroup(id: String) = changeDraft { draft -> draft.copy(groups = draft.groups.filter { it.id != id }) }
 
@@ -194,7 +199,7 @@ class SmartListBuilderViewModel(
             try {
                 val trimmed = draft.name.trim()
                 if (listId != null) {
-                    session.library.renameList(listId, trimmed, draft.query)
+                    session.library.updateList(listId, trimmed, draft.query)
                     onSaved(null)
                 } else {
                     onSaved(session.library.createSmartList(trimmed, draft.query))

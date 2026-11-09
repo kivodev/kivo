@@ -23,7 +23,7 @@ func listOf(l query.List) gen.WorkList {
 }
 
 // savedQuery checks a request's rules and returns them as stored JSON.
-func savedQuery(smart *gen.SmartRules) (*string, error) {
+func savedQuery(smart *gen.SmartQuery) (*string, error) {
 	if smart == nil {
 		return nil, nil
 	}
@@ -48,11 +48,11 @@ func (h *handlers) ListLists(ctx context.Context, _ gen.ListListsRequestObject) 
 
 func (h *handlers) CreateList(ctx context.Context, req gen.CreateListRequestObject) (gen.CreateListResponseObject, error) {
 	v := callerOf(ctx).viewer
-	query, err := savedQuery(req.Body.Smart)
+	saved, err := savedQuery(req.Body.Smart)
 	if err != nil {
 		return nil, err
 	}
-	listID, err := h.deps.Users.CreateList(ctx, v, req.Body.Name, query)
+	listID, err := h.deps.Users.CreateList(ctx, v, req.Body.Name, saved)
 	if err != nil {
 		return nil, err
 	}
@@ -73,17 +73,12 @@ func (h *handlers) GetList(ctx context.Context, req gen.GetListRequestObject) (g
 
 func (h *handlers) UpdateList(ctx context.Context, req gen.UpdateListRequestObject) (gen.UpdateListResponseObject, error) {
 	v := callerOf(ctx).viewer
-	if req.Body.Name != nil {
-		if err := h.deps.Users.RenameList(ctx, v, req.ID, *req.Body.Name); err != nil {
-			return nil, err
-		}
-	}
-	query, err := savedQuery(req.Body.Smart)
+	saved, err := savedQuery(req.Body.Smart)
 	if err != nil {
 		return nil, err
 	}
-	if query != nil {
-		if err := h.deps.Users.SetListQuery(ctx, v, req.ID, *query); err != nil {
+	if req.Body.Name != nil || saved != nil {
+		if err := h.deps.Users.UpdateList(ctx, v, req.ID, req.Body.Name, saved); err != nil {
 			return nil, err
 		}
 	}

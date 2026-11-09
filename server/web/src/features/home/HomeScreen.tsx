@@ -3,6 +3,7 @@ import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { homeQueries, homeRowKinds } from "@/api/home";
 import { libraryQueries } from "@/api/libraries";
+import { listQueries } from "@/api/lists";
 import type { HomeRow } from "@/api/schemas";
 import { useIsAdmin } from "@/api/users";
 import { useDocumentTitle } from "@/components/documentTitle";
@@ -32,6 +33,8 @@ export function HomeScreen() {
   const home = useQuery(homeQueries.rows());
   const rowTitle = useHomeRowTitle();
   const libraries = useSuspenseQuery(libraryQueries.list()).data.items;
+  // A row names its list without its kind, and only a manual list's works can be taken off it.
+  const manualLists = useQuery({ ...listQueries.all(), enabled: !isTv }).data?.items.filter((l) => l.kind === "manual");
   const rows = (home.data?.rows ?? []).filter((r) => homeRowKinds.has(r.kind));
   // A screen with nothing to focus hands focus to the rail.
   useTvEmptyScreen(libraries.length === 0 || (home.data !== undefined && rows.length === 0));
@@ -89,6 +92,7 @@ export function HomeScreen() {
             : "poster";
         const continueRow = row.kind === "continueWatching" || row.kind === "continueListening" ? row.kind : undefined;
         const list = row.kind === "list" ? row.list : undefined;
+        const manual = manualLists?.some((l) => l.id === list?.id) ? list : undefined;
         return (
           <Row
             key={row.id}
@@ -112,7 +116,9 @@ export function HomeScreen() {
             shape={shape}
             items={row.items}
             itemKey={(w) => w.id}
-            renderItem={(w) => <WorkCard work={w} shape={list ? workShape(w.kind) : shape} continueRow={continueRow} />}
+            renderItem={(w) => (
+              <WorkCard work={w} shape={list ? workShape(w.kind) : shape} continueRow={continueRow} list={manual} />
+            )}
             action={
               list && isTv ? (
                 <Link to="/lists/$listId" params={{ listId: list.id }} className="text-sm font-semibold text-text">

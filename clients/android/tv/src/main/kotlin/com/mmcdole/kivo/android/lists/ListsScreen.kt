@@ -252,7 +252,7 @@ private fun Sections(ui: ListsUi, navigator: Navigator) {
     LaunchedEffect(Unit) { memory.restore(first) }
 }
 
-/** A list the user made, or a smart list: its name and count on a tile, saying which it is. */
+/** A list the user made, or a smart list: its name on a tile, saying which it is. */
 @Composable
 private fun ListTile(list: WorkList, modifier: Modifier, onClick: () -> Unit) {
     val colors = Kivo.colors

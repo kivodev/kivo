@@ -66,7 +66,7 @@ export function ListsScreen() {
         {!ready && failed && <LoadError error={failed.error} onRetry={() => void failed.refetch()} />}
         {!ready && !failed && <RowsSkeleton />}
         {empty && (
-          <EmptyState title={t`No lists yet`}>
+          <EmptyState title={t`Nothing in your lists yet.`}>
             <Trans>Titles you add to My List or to a list of your own appear here.</Trans>
           </EmptyState>
         )}

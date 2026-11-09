@@ -36,7 +36,7 @@ import kotlinx.serialization.encoding.*
  */
 @Serializable
 
-data class SmartRules (
+data class SmartQuery (
 
     @SerialName(value = "query") @Required val query: WorkQuery
 

@@ -14,7 +14,7 @@ import {
 } from "react-aria-components";
 import { useCreateList, useUpdateList } from "@/api/lists";
 import { errorCode } from "@/api/problem";
-import type { WorkField, WorkKind, WorkQuery } from "@/api/schemas";
+import type { SortKey, WorkField, WorkKind, WorkQuery } from "@/api/schemas";
 import { workQueryQueries } from "@/api/workQuery";
 import { Button } from "@/components/Button";
 import { CheckBox } from "@/components/CheckBox";
@@ -153,12 +153,24 @@ function Builder({ fields, listId, name = "", query, onClose }: Props & { fields
     }
   };
   const librariesField = fieldOf("library");
-  const chosenSort = draft.sort[0]?.field ?? "title";
+  const firstSort = draft.sort[0] ?? { field: "title" };
+  const defaultDirection = (field?: WorkField) => field?.defaultDirection ?? "asc";
+  const chosenSort =
+    firstSort.field === "random"
+      ? "random"
+      : `${firstSort.field}:${firstSort.direction ?? defaultDirection(fieldOf(firstSort.field))}`;
   const sortOptions = [
     ...fields
-      .filter((f) => f.sortable && (f.field === chosenSort || f.kinds.some((k) => draft.kinds.includes(k))))
-      .map((f) => ({ id: f.field, label: labels.field(f) })),
-    { id: "random", label: t`Random` },
+      .filter((f) => f.sortable && (f.field === firstSort.field || f.kinds.some((k) => draft.kinds.includes(k))))
+      .flatMap((f) => {
+        const usual = defaultDirection(f);
+        return [usual, usual === "asc" ? ("desc" as const) : ("asc" as const)].map((direction) => ({
+          id: `${f.field}:${direction}`,
+          label: labels.sort(f, direction),
+          key: { field: f.field, direction },
+        }));
+      }),
+    { id: "random", label: t`Random`, key: { field: "random" } },
   ];
   const total = count.data?.total ?? 0;
   const noun = countOfKinds(total, draft.kinds);
@@ -181,7 +193,7 @@ function Builder({ fields, listId, name = "", query, onClose }: Props & { fields
         autoComplete="off"
         isRequired
         autoFocus
-        errorMessage={taken ? t`A list with that name already exists.` : undefined}
+        errorMessage={taken ? t`You already have a list with that name.` : undefined}
       />
       <div className={settingsCardClass}>
         <PickerRow label={t`Show`}>
@@ -191,11 +203,15 @@ function Builder({ fields, listId, name = "", query, onClose }: Props & { fields
             options={offered.map((k) => ({ id: k, label: labels.kind(k) }))}
             selected={draft.kinds}
             onChange={(next) => {
-              if (next.length > 0) setDraft((d) => ({ ...d, kinds: next as WorkKind[] }));
+              if (next.length === 0) return;
+              const kinds = next as WorkKind[];
+              const fits = (key: SortKey) =>
+                key.field === "random" || fieldOf(key.field)?.kinds.some((k) => kinds.includes(k));
+              setDraft((d) => ({ ...d, kinds, sort: d.sort.filter(fits) }));
             }}
           />
         </PickerRow>
-        {librariesField && (
+        {librariesField && draft.match === "all" && (
           <PickerRow label={t`Libraries`}>
             <ValuePicker
               label={t`Libraries`}
@@ -210,7 +226,6 @@ function Builder({ fields, listId, name = "", query, onClose }: Props & { fields
       <RuleCard
         labels={labels}
         match={draft.match}
-        onMatch={(match) => setDraft((d) => ({ ...d, match }))}
         rules={draft.rules}
         onRules={(rules) => setDraft((d) => ({ ...d, rules }))}
         available={available}
@@ -253,7 +268,10 @@ function Builder({ fields, listId, name = "", query, onClose }: Props & { fields
             label={t`Sort`}
             options={sortOptions}
             selected={chosenSort}
-            onChange={(field) => setDraft((d) => ({ ...d, sort: [{ field }] }))}
+            onChange={(id) => {
+              const chosen = sortOptions.find((o) => o.id === id);
+              if (chosen) setDraft((d) => ({ ...d, sort: [chosen.key] }));
+            }}
           />
         </PickerRow>
       </div>
@@ -275,7 +293,7 @@ function PickerRow({ label, children }: { label: string; children: ReactNode }) 
   );
 }
 
-/** A list of rules, its match, Add Rule, and whatever ends the card. */
+/** A list of rules, its match, Add Rule, and whatever ends the card. The match is a picker when it has `onMatch`. */
 function RuleCard({
   labels,
   match,
@@ -288,7 +306,7 @@ function RuleCard({
 }: {
   labels: SmartLabels;
   match: Draft["match"];
-  onMatch: (match: Draft["match"]) => void;
+  onMatch?: (match: Draft["match"]) => void;
   rules: DraftRule[];
   onRules: (rules: DraftRule[]) => void;
   available: (current?: string) => WorkField[];
@@ -299,20 +317,28 @@ function RuleCard({
   return (
     <section className="flex flex-col gap-1.5">
       <h3 className="flex items-center gap-1 pl-4 text-sm font-semibold text-text-muted">
-        <Trans>
-          Match{" "}
-          <Select
-            variant="compact"
-            label={t`Match`}
-            options={[
-              { id: "all", label: t`All` },
-              { id: "any", label: t`Any` },
-            ]}
-            selected={match}
-            onChange={onMatch}
-          />{" "}
-          of These
-        </Trans>
+        {!onMatch ? (
+          match === "any" ? (
+            <Trans>Match Any of These</Trans>
+          ) : (
+            <Trans>Match All of These</Trans>
+          )
+        ) : (
+          <Trans>
+            Match{" "}
+            <Select
+              variant="compact"
+              label={t`Match`}
+              options={[
+                { id: "all", label: t`All` },
+                { id: "any", label: t`Any` },
+              ]}
+              selected={match}
+              onChange={onMatch}
+            />{" "}
+            of These
+          </Trans>
+        )}
       </h3>
       <div className={settingsCardClass}>
         {rules.map((rule) => (

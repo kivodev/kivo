@@ -19,6 +19,11 @@ public enum CardStyle: Sendable {
         }
     }
 
+    /// The shape a work's card takes in a list: an episode's is a poster.
+    public static func listed(_ work: WorkSummary) -> CardStyle {
+        work.kind == "episode" ? .poster : of(work)
+    }
+
     public var aspect: CGFloat {
         switch self {
         case .poster: KivoTokens.Aspect.poster

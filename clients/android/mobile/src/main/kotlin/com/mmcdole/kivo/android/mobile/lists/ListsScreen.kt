@@ -86,7 +86,7 @@ import com.mmcdole.kivo.android.mobile.ui.WorkMenu
 import com.mmcdole.kivo.android.mobile.ui.WorkMenuHost
 import com.mmcdole.kivo.android.mobile.ui.cardImage
 import com.mmcdole.kivo.android.mobile.ui.sentence
-import com.mmcdole.kivo.android.mobile.ui.shapeOf
+import com.mmcdole.kivo.android.mobile.ui.listShapeOf
 import com.mmcdole.kivo.api.models.ListRef
 import com.mmcdole.kivo.api.models.WorkList
 import com.mmcdole.kivo.api.models.WorkListSmart
@@ -180,7 +180,7 @@ private fun ListsContent(state: ListsUiState, library: SessionLibrary, nav: Mobi
         }
         if (manual.isNotEmpty()) {
             item(key = "manual") {
-                ListsSection(stringResource(R.string.mobile_tab_lists), manual, library, nav) { pluralStringResource(R.plurals.mobile_count_titles, it.workCount, it.workCount) }
+                ListsSection(stringResource(R.string.mobile_your_lists), manual, library, nav) { pluralStringResource(R.plurals.mobile_count_titles, it.workCount, it.workCount) }
             }
         }
         if (state.smart.isNotEmpty()) {
@@ -307,7 +307,7 @@ fun ListScreen(session: ServerSession, id: String, name: String, nav: MobileNav)
                                 PagedGrid(model.pager, grid, columns, PaddingValues(horizontal = space(4), vertical = space(2))) { _, work ->
                                     WorkCard(
                                         work,
-                                        work?.let(::shapeOf) ?: CardShape.Poster,
+                                        work?.let(::listShapeOf) ?: CardShape.Poster,
                                         cardWidth,
                                         { if (work != null) nav.openWork(work) },
                                         { if (work != null) openMenu(WorkMenu(work, list = list?.takeIf { it.isManual }?.let { ListRef(id, title) })) },
@@ -335,7 +335,7 @@ fun ListScreen(session: ServerSession, id: String, name: String, nav: MobileNav)
         AlertDialog(
             onDismissRequest = { deleting = false },
             title = { Text(stringResource(R.string.mobile_delete_named, title)) },
-            text = problem?.let { failure -> { Text(sentence(failure)) } },
+            text = { Text(problem?.let { sentence(it) } ?: stringResource(R.string.mobile_delete_list_note)) },
             confirmButton = {
                 TextButton(onClick = {
                     scope.launch {
@@ -379,8 +379,8 @@ private fun ListMenu(onRename: () -> Unit, onDelete: () -> Unit) {
     Box {
         IconButton(onClick = { open = true }, modifier = Modifier.testTag("listMenu")) { Icon(Icons.Default.MoreVert, stringResource(R.string.mobile_more)) }
         DropdownMenu(open, onDismissRequest = { open = false }) {
-            DropdownMenuItem(text = { Text(stringResource(R.string.mobile_rename_list)) }, onClick = { open = false; onRename() }, modifier = Modifier.testTag("renameList"))
-            DropdownMenuItem(text = { Text(stringResource(R.string.mobile_delete_list)) }, onClick = { open = false; onDelete() }, modifier = Modifier.testTag("deleteList"))
+            DropdownMenuItem(text = { Text(stringResource(R.string.mobile_rename)) }, onClick = { open = false; onRename() }, modifier = Modifier.testTag("renameList"))
+            DropdownMenuItem(text = { Text(stringResource(R.string.mobile_delete)) }, onClick = { open = false; onDelete() }, modifier = Modifier.testTag("deleteList"))
         }
     }
 }
@@ -438,12 +438,13 @@ private fun ListNameDialog(
 internal fun nameProblem(problem: RequestProblem): String =
     if (problem.code == "nameTaken") stringResource(R.string.mobile_list_name_taken) else sentence(problem)
 
-/** Add to List: New List, then every list ticked when the work's on it, adding and removing as they're tapped. */
+/** Add to List: New List, then every list ticked when the work's on it, a tap adding or removing it at once; a refused tap goes back and says why. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddToListSheet(session: ServerSession, workId: String, onDismiss: () -> Unit) {
     val model = viewModel(key = "addToList/$workId") { AddToListViewModel(session.session, workId) }
     val choices by model.choices.collectAsStateWithLifecycle()
+    val problem by model.problem.collectAsStateWithLifecycle()
     var naming by rememberSaveable { mutableStateOf(false) }
     ModalBottomSheet(onDismissRequest = onDismiss, modifier = Modifier.testTag("addToListSheet")) {
         Text(
@@ -478,6 +479,13 @@ fun AddToListSheet(session: ServerSession, workId: String, onDismiss: () -> Unit
             confirm = stringResource(R.string.mobile_create),
             onSubmit = model::create,
             onDone = { naming = false },
+        )
+    }
+    problem?.let { failure ->
+        AlertDialog(
+            onDismissRequest = model::dismissProblem,
+            text = { Text(sentence(failure)) },
+            confirmButton = { TextButton(onClick = model::dismissProblem) { Text(stringResource(R.string.mobile_ok)) } },
         )
     }
 }

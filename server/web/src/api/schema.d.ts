@@ -1084,7 +1084,10 @@ export interface paths {
         put?: never;
         /**
          * Create a list
-         * @description A new list starts off Home; Home & Libraries in Settings puts it on. A name in use is `409` with code
+         * @description Makes a manual list, or with `smart` a smart list that runs the
+         *     rules; its kind is fixed. Rules are validated: `400` with pointers
+         *     such as `/smart/query/where/rules/0/op`. A new list starts off
+         *     Home; Home & Libraries in Settings puts it on. A name in use is `409` with code
          *     `nameTaken`; a user has at most 100 lists, past which it is `409`
          *     with code `conflict`. A `listsChanged` event tells the user's
          *     clients.
@@ -1119,9 +1122,10 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Rename a list
-         * @description My List can't be renamed, and `smart` is refused on a manual list:
-         *     `409` with code `conflict`. A name in use is `409` with code
+         * Update a list
+         * @description Renames the list, replaces a smart list's rules, or both, in one
+         *     change. My List can't be changed, and `smart` is refused on a manual
+         *     list: `409` with code `conflict`. A name in use is `409` with code
          *     `nameTaken`. Invalid rules are `400` with pointers such as
          *     `/smart/query/where/rules/0/op`. A `listsChanged` event tells the
          *     user's clients.
@@ -3786,18 +3790,18 @@ export interface components {
             query: components["schemas"]["WorkQuery"];
             errors?: components["schemas"]["FieldError"][];
         };
-        SmartRules: {
+        SmartQuery: {
             query: components["schemas"]["WorkQuery"];
         };
         ListCreate: {
             name: string;
             /** @description Makes a smart list, which runs the rules; without it, a manual list. */
-            smart?: components["schemas"]["SmartRules"];
+            smart?: components["schemas"]["SmartQuery"];
         };
         ListUpdate: {
             name?: string;
             /** @description Replaces a smart list's rules; a manual list has none. */
-            smart?: components["schemas"]["SmartRules"];
+            smart?: components["schemas"]["SmartQuery"];
         };
         ListWorkAdd: {
             workId: components["schemas"]["ID"];

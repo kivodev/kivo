@@ -12,6 +12,7 @@ struct BrowseRow: View {
     var more: (() -> Void)?
     @Environment(\.kivoPalette) private var palette
     @Environment(\.wide) private var wide
+    @Environment(\.currentList) private var currentList
 
     static let headingSpacing = KivoTokens.spacing * 2.5
     static let inset = KivoTokens.spacing * 4
@@ -48,7 +49,7 @@ struct BrowseRow: View {
                 // mixed shapes is as tall as its tallest card. A row holds at most 20.
                 HStack(alignment: .top, spacing: KivoTokens.spacing * 3) {
                     ForEach(items, id: \.id) { work in
-                        let style = style ?? CardStyle.of(work)
+                        let style = style ?? (currentList == nil ? CardStyle.of(work) : CardStyle.listed(work))
                         WorkLink(work: work) {
                             WorkCard(work, style: style, width: Self.cardWidth(style, wide: wide))
                         }

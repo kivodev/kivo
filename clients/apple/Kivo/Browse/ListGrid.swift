@@ -16,6 +16,8 @@ struct ListGrid: View {
     @State private var newName = ""
     @State private var confirmingDelete = false
     @State private var problem: String?
+    /// Whether the rename prompt comes back, with what was typed, once a taken name is said.
+    @State private var renamingAgain = false
     @State private var editingRules = false
     /// A smart list's rules in a line, once its fields and values are read.
     @State private var rulesLine: String?
@@ -62,7 +64,7 @@ struct ListGrid: View {
                                     Group {
                                         if let work = model.work(at: index) {
                                             WorkLink(work: work) {
-                                                WorkCard(work, width: layout.cardWidth, caption: layout.caption)
+                                                WorkCard(work, style: CardStyle.listed(work), width: layout.cardWidth, caption: layout.caption)
                                             }
                                         } else {
                                             SkeletonCard(style: .poster, width: layout.cardWidth)
@@ -117,13 +119,20 @@ struct ListGrid: View {
                 }
             }
         }
-        .listNameAlert(String(localized: "Rename List"), isPresented: $renaming, name: $newName, confirm: String(localized: "Save"), save: rename)
+        .listNameAlert(String(localized: "Rename List"), isPresented: $renaming, name: $newName, confirm: String(localized: "Rename"), save: rename)
         .alert(String(localized: "Delete \(title)?"), isPresented: $confirmingDelete) {
             Button(String(localized: "Delete"), role: .destructive) { delete() }
             Button(String(localized: "Cancel"), role: .cancel) {}
+        } message: {
+            Text("The titles stay in your libraries.")
         }
         .alert(problem ?? "", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
-            Button(String(localized: "OK"), role: .cancel) {}
+            Button(String(localized: "OK"), role: .cancel) {
+                if renamingAgain {
+                    renamingAgain = false
+                    renaming = true
+                }
+            }
         }
         .sheet(isPresented: $editingRules) {
             if let current { SmartListBuilder(editing: current) }
@@ -156,18 +165,16 @@ struct ListGrid: View {
                 MessageView(String(localized: "Nothing matches these rules yet."))
             }
         } else {
-            MessageView(
-                String(localized: "No titles yet."),
-                sentence: String(localized: "Titles you add to this list appear here.")
-            )
+            MessageView(String(localized: "Nothing in this list yet."))
         }
     }
 
     private func rename(_ name: String) {
         Task {
             do {
-                _ = try await server.session.library.renameList(id: list.id, name: name, query: nil)
+                _ = try await server.session.library.updateList(id: list.id, name: name, query: nil)
             } catch {
+                renamingAgain = error.problemCode == "nameTaken"
                 problem = error.listNameSentence
             }
         }

@@ -1,6 +1,7 @@
 import { act, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { bookIds } from "@/api/mocks/books";
+import type { HomeRowInfo } from "@/api/schemas";
 import { deviceSettings } from "@/lib/deviceSettings";
 import { renderApp, screen } from "@/test/render";
 import { http, mockId, mockIds, problem, sent, serveMockApi, server } from "@/test/server";
@@ -311,6 +312,42 @@ describe("Settings", () => {
     await user.click(screen.getByRole("button", { name: "Reset" }));
     await waitFor(() => expect(sent("POST", "/home/rows/reset")).toHaveLength(1));
     await waitFor(() => expect(within(order).getByRole("switch", { name: "Shown: Continue Watching" })).toBeChecked());
+  });
+
+  it("sends every Home row, a kind it doesn't know keeping its slot when a shown row moves", async () => {
+    let shownIds: string[] = [];
+    serveMockApi((api) => {
+      const layout: HomeRowInfo[] = api.home.rows.map((row) => ({
+        id: row.id,
+        kind: row.kind,
+        ...(row.library ? { library: row.library } : {}),
+        ...(row.list ? { list: row.list } : {}),
+        shown: true,
+      }));
+      shownIds = layout.map((r) => r.id);
+      layout.splice(1, 0, { id: "future", kind: "future" as HomeRowInfo["kind"], shown: true });
+      api.homeLayout = layout;
+    });
+    const { user } = renderApp("/settings");
+    const order = await screen.findByRole("grid", { name: "Home rows" });
+    const handles = within(order).getAllByRole("row");
+    expect(handles).toHaveLength(shownIds.length);
+    expect(within(order).queryByText(/future/)).toBeNull();
+
+    // My List's handle, up past its own place and above Continue Watching.
+    const focused = () => document.activeElement?.getAttribute("aria-label");
+    act(() => handles[0]?.focus());
+    await user.keyboard("{ArrowDown}{ArrowRight}");
+    expect(focused()).toBe("Drag My List");
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(focused()).toBe("Insert between My List and Recently Added in Movies"));
+    await user.keyboard("{ArrowUp}{ArrowUp}{Enter}");
+    await waitFor(() => expect(sent("PATCH", "/home/rows")).toHaveLength(1));
+
+    const [first, second, ...rest] = shownIds as [string, string, ...string[]];
+    expect(sent("PATCH", "/home/rows")[0]?.body).toEqual({
+      items: [second, "future", first, ...rest].map((id) => ({ id, shown: true })),
+    });
   });
 
   it("retries a refused reset, not an earlier save, and a successful reset clears a save's failure", async () => {

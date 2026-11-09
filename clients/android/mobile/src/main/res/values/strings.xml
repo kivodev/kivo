@@ -275,11 +275,12 @@
     <string name="mobile_create">Create</string>
     <string name="mobile_rename">Rename</string>
     <string name="mobile_rename_list">Rename List</string>
-    <string name="mobile_delete_list">Delete List</string>
+    <string name="mobile_delete_list_note">The titles stay in your libraries.</string>
     <string name="mobile_delete_named">Delete %1$s?</string>
     <string name="mobile_new_list_menu">New</string>
 
     <!-- Smart lists -->
+    <string name="mobile_your_lists">Your Lists</string>
     <string name="mobile_smart_lists">Smart Lists</string>
     <string name="mobile_smart_new">New Smart List</string>
     <string name="mobile_smart_edit">Edit Smart List</string>
@@ -324,7 +325,8 @@
     <string name="mobile_smart_to">to</string>
     <string name="mobile_smart_or">or</string>
     <string name="mobile_smart_no">no %1$s</string>
-    <string name="mobile_smart_has">has %1$s</string>
+    <string name="mobile_smart_rule_is_set">%1$s is set</string>
+    <string name="mobile_smart_rule_is_not_set">%1$s isn\'t set</string>
     <string name="mobile_smart_sort_named">%1$s, %2$s</string>
     <string name="mobile_smart_a_to_z">A to Z</string>
     <string name="mobile_smart_z_to_a">Z to A</string>

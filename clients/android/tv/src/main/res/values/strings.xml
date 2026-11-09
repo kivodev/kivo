@@ -46,9 +46,11 @@
     <string name="row_recently_added_in">Recently Added in %1$s</string>
 
     <!-- Lists -->
-    <string name="your_lists">Your lists</string>
+    <string name="your_lists">Your Lists</string>
     <string name="lists_empty">Nothing in your lists yet.</string>
     <string name="list_empty">Nothing in this list yet.</string>
+    <string name="list_nothing_matches">Nothing matches these rules.</string>
+    <string name="list_rules_broken">These rules no longer work.</string>
     <string name="lists_empty_sentence">Add something to My List from its page.</string>
     <string name="add_to_my_list">Add to My List</string>
     <string name="remove_from_my_list">Remove from My List</string>

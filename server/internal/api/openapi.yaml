@@ -1648,7 +1648,10 @@ paths:
       operationId: createList
       summary: Create a list
       description: |
-        A new list starts off Home; Home & Libraries in Settings puts it on. A name in use is `409` with code
+        Makes a manual list, or with `smart` a smart list that runs the
+        rules; its kind is fixed. Rules are validated: `400` with pointers
+        such as `/smart/query/where/rules/0/op`. A new list starts off
+        Home; Home & Libraries in Settings puts it on. A name in use is `409` with code
         `nameTaken`; a user has at most 100 lists, past which it is `409`
         with code `conflict`. A `listsChanged` event tells the user's
         clients.
@@ -1689,10 +1692,11 @@ paths:
         default: {$ref: "#/components/responses/Error"}
     patch:
       operationId: updateList
-      summary: Rename a list
+      summary: Update a list
       description: |
-        My List can't be renamed, and `smart` is refused on a manual list:
-        `409` with code `conflict`. A name in use is `409` with code
+        Renames the list, replaces a smart list's rules, or both, in one
+        change. My List can't be changed, and `smart` is refused on a manual
+        list: `409` with code `conflict`. A name in use is `409` with code
         `nameTaken`. Invalid rules are `400` with pointers such as
         `/smart/query/where/rules/0/op`. A `listsChanged` event tells the
         user's clients.
@@ -5308,7 +5312,7 @@ components:
           type: array
           items: {$ref: "#/components/schemas/FieldError"}
 
-    SmartRules:
+    SmartQuery:
       type: object
       required: [query]
       properties:
@@ -5320,7 +5324,7 @@ components:
       properties:
         name: {type: string, minLength: 1, maxLength: 64}
         smart:
-          $ref: "#/components/schemas/SmartRules"
+          $ref: "#/components/schemas/SmartQuery"
           description: Makes a smart list, which runs the rules; without it, a manual list.
 
     ListUpdate:
@@ -5328,7 +5332,7 @@ components:
       properties:
         name: {type: string, minLength: 1, maxLength: 64}
         smart:
-          $ref: "#/components/schemas/SmartRules"
+          $ref: "#/components/schemas/SmartQuery"
           description: Replaces a smart list's rules; a manual list has none.
 
     ListWorkAdd:

@@ -220,11 +220,11 @@ func TestSmartLists(t *testing.T) {
 		t.Errorf("removing from a smart list: %v", err)
 	}
 	mine := h.lists(h.admin)[0].ID
-	if err := us.SetListQuery(ctx, h.admin, mine, `{}`); !errors.Is(err, users.ErrListBuiltIn) {
+	if err := us.UpdateList(ctx, h.admin, mine, nil, new(`{}`)); !errors.Is(err, users.ErrListBuiltIn) {
 		t.Errorf("My List's rules: %v", err)
 	}
 	manual, _ := us.CreateList(ctx, h.admin, "Manual", nil)
-	if err := us.SetListQuery(ctx, h.admin, manual, `{}`); !errors.Is(err, users.ErrListKind) {
+	if err := us.UpdateList(ctx, h.admin, manual, nil, new(`{}`)); !errors.Is(err, users.ErrListKind) {
 		t.Errorf("rules on a manual list: %v", err)
 	}
 
@@ -237,7 +237,7 @@ func TestSmartLists(t *testing.T) {
 	capped := toyStory
 	capped.MaxWorks = &one
 	saved, _ := capped.Saved()
-	if err := us.SetListQuery(ctx, h.admin, list, saved); err != nil {
+	if err := us.UpdateList(ctx, h.admin, list, nil, &saved); err != nil {
 		t.Fatal(err)
 	}
 	h.arrange(us, h.admin, users.HomeRow{ID: row, Shown: true})
@@ -276,6 +276,27 @@ func TestSmartLists(t *testing.T) {
 	}
 }
 
+// The kind filter narrows the capped set; it doesn't reach past the cap.
+func TestSmartListKindFilterKeepsTheCap(t *testing.T) {
+	h := newHousehold(t)
+	us := users.New(h.b.DB, events.NewBus())
+	cap := 1
+	q := query.WorkQuery{Kinds: []catalog.WorkKind{catalog.KindMovie, catalog.KindBook}, Sort: []query.SortKey{{Field: "title"}}, MaxWorks: &cap}
+	list := h.smartList(us, h.admin, "One", q)
+	all, err := h.q.ListWorks(ctx, h.admin, list, nil, query.GridOptions{})
+	if err != nil || all.Total != 1 {
+		t.Fatalf("capped: %d, %v", all.Total, err)
+	}
+	other := catalog.KindBook
+	if all.Items[0].Kind == catalog.KindBook {
+		other = catalog.KindMovie
+	}
+	p, err := h.q.ListWorks(ctx, h.admin, list, []catalog.WorkKind{other}, query.GridOptions{})
+	if err != nil || p.Total != 0 {
+		t.Errorf("the other kind reached past the cap: %d, %v", p.Total, err)
+	}
+}
+
 func TestSmartListRandomIsSeededByList(t *testing.T) {
 	h := newHousehold(t)
 	us := users.New(h.b.DB, events.NewBus())
@@ -311,7 +332,7 @@ func TestListsCRUDAndHome(t *testing.T) {
 	if _, err := us.CreateList(ctx, h.friend, " padded", nil); err == nil {
 		t.Error("a padded name was accepted")
 	}
-	if err := us.RenameList(ctx, h.friend, date, "Road Trip"); err != nil {
+	if err := us.UpdateList(ctx, h.friend, date, new("Road Trip"), nil); err != nil {
 		t.Fatal(err)
 	}
 

@@ -4,7 +4,7 @@ import com.mmcdole.kivo.api.check
 import com.mmcdole.kivo.api.models.ListCreate
 import com.mmcdole.kivo.api.models.ListUpdate
 import com.mmcdole.kivo.api.models.ListWorkAdd
-import com.mmcdole.kivo.api.models.SmartRules
+import com.mmcdole.kivo.api.models.SmartQuery
 import com.mmcdole.kivo.api.models.WorkField
 import com.mmcdole.kivo.api.models.WorkFieldValue
 import com.mmcdole.kivo.api.models.WorkQuery
@@ -41,10 +41,10 @@ internal class ListsRepository(private val connection: ServerConnection, private
     fun changes(): Flow<Unit> = invalidations.filter(::mayChange).map { }
 
     suspend fun create(name: String, query: WorkQuery? = null): WorkList =
-        connection.works.createList(ListCreate(name, query?.let(::SmartRules))).result()
+        connection.works.createList(ListCreate(name, query?.let(::SmartQuery))).result()
 
     suspend fun update(id: String, name: String?, query: WorkQuery? = null): WorkList =
-        connection.works.updateList(id, ListUpdate(name, query?.let(::SmartRules))).result()
+        connection.works.updateList(id, ListUpdate(name, query?.let(::SmartQuery))).result()
 
     /** How many works [query] selects: the first page's total, read one summary long. */
     suspend fun countMatching(query: WorkQuery): Int =

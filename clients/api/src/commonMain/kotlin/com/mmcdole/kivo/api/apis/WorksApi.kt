@@ -119,7 +119,7 @@ open class WorksApi : ApiClient {
 
     /**
      * Create a list
-     * A new list starts off Home; Home &amp; Libraries in Settings puts it on. A name in use is &#x60;409&#x60; with code &#x60;nameTaken&#x60;; a user has at most 100 lists, past which it is &#x60;409&#x60; with code &#x60;conflict&#x60;. A &#x60;listsChanged&#x60; event tells the user&#39;s clients. 
+     * Makes a manual list, or with &#x60;smart&#x60; a smart list that runs the rules; its kind is fixed. Rules are validated: &#x60;400&#x60; with pointers such as &#x60;/smart/query/where/rules/0/op&#x60;. A new list starts off Home; Home &amp; Libraries in Settings puts it on. A name in use is &#x60;409&#x60; with code &#x60;nameTaken&#x60;; a user has at most 100 lists, past which it is &#x60;409&#x60; with code &#x60;conflict&#x60;. A &#x60;listsChanged&#x60; event tells the user&#39;s clients. 
      * @param listCreate 
      * @return WorkList
      */
@@ -1100,8 +1100,8 @@ open class WorksApi : ApiClient {
 
 
     /**
-     * Rename a list
-     * My List can&#39;t be renamed, and &#x60;smart&#x60; is refused on a manual list: &#x60;409&#x60; with code &#x60;conflict&#x60;. A name in use is &#x60;409&#x60; with code &#x60;nameTaken&#x60;. Invalid rules are &#x60;400&#x60; with pointers such as &#x60;/smart/query/where/rules/0/op&#x60;. A &#x60;listsChanged&#x60; event tells the user&#39;s clients. 
+     * Update a list
+     * Renames the list, replaces a smart list&#39;s rules, or both, in one change. My List can&#39;t be changed, and &#x60;smart&#x60; is refused on a manual list: &#x60;409&#x60; with code &#x60;conflict&#x60;. A name in use is &#x60;409&#x60; with code &#x60;nameTaken&#x60;. Invalid rules are &#x60;400&#x60; with pointers such as &#x60;/smart/query/where/rules/0/op&#x60;. A &#x60;listsChanged&#x60; event tells the user&#39;s clients. 
      * @param id 
      * @param listUpdate 
      * @return WorkList

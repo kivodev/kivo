@@ -69,45 +69,38 @@ func (s *Service) CreateList(ctx context.Context, v Viewer, name string, query *
 	return list, nil
 }
 
-// RenameList renames one of v's user's lists. My List keeps its name.
-func (s *Service) RenameList(ctx context.Context, v Viewer, list id.ID, name string) error {
-	if err := checkListName(name); err != nil {
-		return err
+// UpdateList renames one of v's user's lists, when name is set, and
+// replaces a smart list's rules with query, a WorkQuery as JSON, when query
+// is set, in one transaction. My List can't be changed and a manual list
+// has no rules.
+func (s *Service) UpdateList(ctx context.Context, v Viewer, list id.ID, name, query *string) error {
+	if name != nil {
+		if err := checkListName(*name); err != nil {
+			return err
+		}
 	}
 	err := s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
 		q := dbq.New(tx)
-		if err := changeableList(ctx, q, v, list); err != nil {
-			return err
-		}
-		err := q.RenameList(ctx, dbq.RenameListParams{ID: list, Name: name})
-		if store.IsUnique(err) {
-			return fmt.Errorf("%w: %q", ErrListNameTaken, name)
-		}
-		return err
-	})
-	if err != nil {
-		return err
-	}
-	s.publishListsChanged(v)
-	return nil
-}
-
-// SetListQuery replaces a smart list's rules with query, a WorkQuery as
-// JSON. A manual list has none.
-func (s *Service) SetListQuery(ctx context.Context, v Viewer, list id.ID, query string) error {
-	err := s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
-		q := dbq.New(tx)
-		if err := changeableList(ctx, q, v, list); err != nil {
-			return err
-		}
-		l, err := q.GetList(ctx, dbq.GetListParams{ID: list, UserID: v.user})
+		l, err := changeableList(ctx, q, v, list)
 		if err != nil {
 			return err
 		}
-		if !l.Smart {
+		if query != nil && !l.Smart {
 			return ErrListKind
 		}
-		return q.SetListQuery(ctx, dbq.SetListQueryParams{ID: list, Query: nullableString(&query)})
+		if name != nil {
+			err := q.RenameList(ctx, dbq.RenameListParams{ID: list, Name: *name})
+			if store.IsUnique(err) {
+				return fmt.Errorf("%w: %q", ErrListNameTaken, *name)
+			}
+			if err != nil {
+				return err
+			}
+		}
+		if query != nil {
+			return q.SetListQuery(ctx, dbq.SetListQueryParams{ID: list, Query: nullableString(query)})
+		}
+		return nil
 	})
 	if err != nil {
 		return err
@@ -120,7 +113,7 @@ func (s *Service) SetListQuery(ctx context.Context, v Viewer, list id.ID, query 
 func (s *Service) DeleteList(ctx context.Context, v Viewer, list id.ID) error {
 	err := s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
 		q := dbq.New(tx)
-		if err := changeableList(ctx, q, v, list); err != nil {
+		if _, err := changeableList(ctx, q, v, list); err != nil {
 			return err
 		}
 		return q.DeleteList(ctx, list)
@@ -147,18 +140,18 @@ func nullableString(s *string) sql.NullString {
 }
 
 // changeableList checks that list is the user's and isn't My List.
-func changeableList(ctx context.Context, q *dbq.Queries, v Viewer, list id.ID) error {
+func changeableList(ctx context.Context, q *dbq.Queries, v Viewer, list id.ID) (dbq.GetListRow, error) {
 	l, err := q.GetList(ctx, dbq.GetListParams{ID: list, UserID: v.user})
 	if errors.Is(err, sql.ErrNoRows) {
-		return fmt.Errorf("%w: %s", ErrListNotFound, list)
+		return l, fmt.Errorf("%w: %s", ErrListNotFound, list)
 	}
 	if err != nil {
-		return err
+		return l, err
 	}
 	if l.BuiltIn {
-		return ErrListBuiltIn
+		return l, ErrListBuiltIn
 	}
-	return nil
+	return l, nil
 }
 
 // checkListName refuses a list name that is empty, too long, padded with

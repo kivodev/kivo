@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
@@ -41,6 +42,8 @@ import com.mmcdole.kivo.android.ui.SkeletonLine
 import com.mmcdole.kivo.android.ui.WorkCard
 import com.mmcdole.kivo.android.ui.cardShapeOf
 import com.mmcdole.kivo.android.ui.prepareCard
+import com.mmcdole.kivo.api.models.WorkList
+import com.mmcdole.kivo.core.Load
 import kotlinx.coroutines.launch
 
 /** The kinds the TV shows of a list: no books, which aren't on the TV. */
@@ -72,6 +75,7 @@ private val HeadingPadding = PaddingValues(start = 24.dp, top = 39.5.dp, end = S
 fun ListWorksScreen(session: ServerSession, listId: String, name: String, navigator: Navigator) {
     val model = viewModel(key = listId) { ListWorksViewModel(session, listId) }
     val pages by model.paged.state.collectAsStateWithLifecycle()
+    val lists by remember(session) { session.session.library.lists() }.collectAsStateWithLifecycle(Load.Loading)
     val failed = pages.problem
     if (failed != null) {
         Failed(failed, session.session.baseUrl, model::retry, session.graph::changeServer)
@@ -81,7 +85,7 @@ fun ListWorksScreen(session: ServerSession, listId: String, name: String, naviga
         if (total == 0) {
             Column(Modifier.fillMaxSize().padding(HeadingPadding)) {
                 Heading(name)
-                ListsEmpty(stringResource(R.string.list_empty))
+                if (lists !is Load.Loading) ListsEmpty(stringResource(emptyListMessage(lists.getOrNull()?.firstOrNull { it.id == listId })))
             }
         } else {
             val grid = rememberSaveable(saver = LazyListState.Saver) { LazyListState() }
@@ -105,6 +109,13 @@ fun ListWorksScreen(session: ServerSession, listId: String, name: String, naviga
             }
         }
     }
+}
+
+/** Why an open [list] shows nothing: rules that no longer run, rules matching nothing, or nothing added. */
+internal fun emptyListMessage(list: WorkList?): Int = when {
+    list?.kind != "smart" -> R.string.list_empty
+    !list.smart?.errors.isNullOrEmpty() -> R.string.list_rules_broken
+    else -> R.string.list_nothing_matches
 }
 
 @Composable

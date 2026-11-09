@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"slices"
 	"time"
 
 	"github.com/mmcdole/kivo/internal/catalog"
@@ -120,7 +119,8 @@ func (s *Service) countSmart(ctx context.Context, vw viewer, l *List) error {
 	if l.Smart == nil || len(l.Smart.Errors) > 0 {
 		return nil
 	}
-	c := compile(l.Smart.Query, vw, time.Now(), listSeed(l.ID, time.Now()))
+	now := time.Now()
+	c := compile(l.Smart.Query, vw, now, listSeed(l.ID, now), nil)
 	return s.db.Read(ctx, func(tx *sql.Tx) error {
 		return rowOf(ctx, tx, statement{sql: c.sql + "\n" + compiledCount}, c.args, &l.Works)
 	})
@@ -142,8 +142,9 @@ func (s *Service) List(ctx context.Context, v users.Viewer, list id.ID) (List, e
 	return out, s.countSmart(ctx, vw, &out)
 }
 
-// ListWorks returns a page of a list's works, most recently added first:
-// those of kinds, or every kind when kinds is empty.
+// ListWorks returns a page of a list's works: a manual list's most recently
+// added first, a smart list's as its rules select them. It lists those of
+// kinds, or every kind when kinds is empty.
 func (s *Service) ListWorks(ctx context.Context, v users.Viewer, list id.ID, kinds []catalog.WorkKind, o GridOptions) (GridPage[WorkSummary], error) {
 	limit, err := o.limit()
 	if err != nil {
@@ -177,21 +178,18 @@ func (s *Service) ListWorks(ctx context.Context, v users.Viewer, list id.ID, kin
 	return s.summaryPage(ctx, vw, items, total, nil)
 }
 
-// smartWorks runs a smart list's rules, narrowed to kinds. A list whose
-// rules can't run, or that wants none of kinds, is empty.
+// smartWorks runs a smart list's rules, keeping only kinds from the set
+// the rules cap. A list whose rules can't run is empty.
 func (s *Service) smartWorks(ctx context.Context, vw viewer, list id.ID, smart *SmartList, kinds []catalog.WorkKind, o GridOptions) (GridPage[WorkSummary], error) {
-	q := smart.Query
-	if len(kinds) > 0 {
-		q.Kinds = slices.DeleteFunc(slices.Clone(q.Kinds), func(k catalog.WorkKind) bool { return !slices.Contains(kinds, k) })
-	}
-	if len(smart.Errors) > 0 || len(q.Kinds) == 0 {
+	if len(smart.Errors) > 0 {
 		return s.summaryPage(ctx, vw, nil, 0, nil)
 	}
 	now := time.Now()
-	return s.runQuery(ctx, vw, q, listSeed(list, now), o, now)
+	return s.runQuery(ctx, vw, smart.Query, listSeed(list, now), kinds, o, now)
 }
 
-// listOwner confirms a list is the user's, and reads its rules.
+// listOwner reads a list of the user's rules, NULL for a manual list; a list
+// that isn't the user's has no row.
 var listOwner = stmt("ListOwner", `
 -- viewer-filter: user
 SELECT l.query FROM list l WHERE l.id = @list AND l.user_id = @user`)

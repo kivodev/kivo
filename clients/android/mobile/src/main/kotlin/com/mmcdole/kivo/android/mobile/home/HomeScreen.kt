@@ -64,8 +64,10 @@ import com.mmcdole.kivo.android.mobile.ui.TabTopBar
 import com.mmcdole.kivo.android.mobile.ui.WorkCard
 import com.mmcdole.kivo.android.mobile.ui.WorkMenu
 import com.mmcdole.kivo.android.mobile.ui.WorkMenuHost
+import com.mmcdole.kivo.android.mobile.ui.listShapeOf
 import com.mmcdole.kivo.android.mobile.ui.rowCardWidth
 import com.mmcdole.kivo.android.mobile.ui.shapeOf
+import com.mmcdole.kivo.api.models.WorkSummary
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.ui.draw.clip
@@ -147,9 +149,8 @@ private fun Rows(rows: List<HomeRowUi>, manualListIds: Set<String>, nav: MobileN
                     contentPadding = PaddingValues(horizontal = SideMargin),
                     horizontalArrangement = Arrangement.spacedBy(CardGap),
                 ) {
-                    items(row.items, key = { it.id }, contentType = { if (row.kind == CONTINUE_WATCHING) CardShape.Landscape else shapeOf(it) }) { work ->
-                        // Continue Watching is the frames where you stopped.
-                        val shape = if (row.kind == CONTINUE_WATCHING) CardShape.Landscape else shapeOf(work)
+                    items(row.items, key = { it.id }, contentType = { rowCardShape(row.kind, it) }) { work ->
+                        val shape = rowCardShape(row.kind, work)
                         WorkCard(
                             work = work,
                             shape = shape,
@@ -223,4 +224,11 @@ private fun HomeSkeleton() {
             }
         }
     }
+}
+
+/** A row's card shape: Continue Watching is the frames where you stopped, and a list's row is shaped as its grid. */
+private fun rowCardShape(kind: String, work: WorkSummary): CardShape = when (kind) {
+    CONTINUE_WATCHING -> CardShape.Landscape
+    "list" -> listShapeOf(work)
+    else -> shapeOf(work)
 }

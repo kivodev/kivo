@@ -17,7 +17,8 @@ export const homeQueries = {
 };
 
 /**
- * Save Home's row order and which rows show. The layout changes at once, so a
+ * Save Home's row order and which rows show, given every row of the layout,
+ * including kinds this client doesn't show. The layout changes at once, so a
  * drag stays where it was dropped, and Home and the layout refetch once the
  * server has answered. `retry` sends a refused layout again.
  */

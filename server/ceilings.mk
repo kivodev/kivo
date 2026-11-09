@@ -46,7 +46,7 @@ API_HANDLERS_MAX := 0
 # The web count holds General and Network settings' identical imports, and
 # Edit and Edit book's forms, which open alike with the title field, and a
 # list's name form and the smart list builder's name field.
-JSCPD_GO_MAX     := 228
+JSCPD_GO_MAX     := 217
 JSCPD_SQL_MAX    := 10
 JSCPD_WEB_MAX    := 109
 # The web client's unused files, dependencies, exports and types (knip).

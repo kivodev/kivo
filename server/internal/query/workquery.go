@@ -229,8 +229,9 @@ type compiled struct {
 
 // compile turns a valid query into SQL. It is the only way a WorkQuery
 // becomes a statement: the SQL always carries the visible predicate, and
-// values go in as bound parameters. seed fixes a random sort's order.
-func compile(q WorkQuery, vw viewer, now time.Time, seed string) compiled {
+// values go in as bound parameters. seed fixes a random sort's order, and
+// only narrows the capped set to those kinds when it's set.
+func compile(q WorkQuery, vw viewer, now time.Time, seed string, only []catalog.WorkKind) compiled {
 	c := &compiler{now: now, seed: seed}
 	kinds := make([]string, len(q.Kinds))
 	for i, k := range q.Kinds {
@@ -259,13 +260,16 @@ WHERE NOT w.provisional
   AND w.kind IN (SELECT value FROM json_each(` + c.bind(set(kinds)) + `))
   AND ` + visible + where + `
 ),
-limited AS (SELECT id, o FROM matched WHERE n = 1 ORDER BY o LIMIT ` + limit + `)`, args: vw.args(c.params...)}
+limited AS (SELECT id, o FROM matched WHERE n = 1 ORDER BY o LIMIT ` + limit + `),
+filtered AS (SELECT l.id, l.o FROM limited l JOIN work fw ON fw.id = l.id
+  WHERE @only IS NULL OR fw.kind IN (SELECT value FROM json_each(@only)))`,
+		args: vw.args(append(c.params, sql.Named("only", set(only)))...)}
 }
 
 // compiledCount and compiledPage read a compiled query.
 var (
-	compiledCount = `SELECT count(*) FROM limited`
-	compiledPage  = `, page AS (SELECT id, o FROM limited ORDER BY o LIMIT @limit OFFSET @offset)
+	compiledCount = `SELECT count(*) FROM filtered`
+	compiledPage  = `, page AS (SELECT id, o FROM filtered ORDER BY o LIMIT @limit OFFSET @offset)
 SELECT ` + summaryColumns + `
 FROM page p
 JOIN work w ON w.id = p.id
@@ -501,16 +505,16 @@ func (s *Service) queryWorksAt(ctx context.Context, v users.Viewer, q WorkQuery,
 	if problems := q.Validate(); len(problems) > 0 {
 		return GridPage[WorkSummary]{}, &InvalidQueryError{problems}
 	}
-	return s.runQuery(ctx, viewerOf(v), q, seedOf(q, now), o, now)
+	return s.runQuery(ctx, viewerOf(v), q, seedOf(q, now), nil, o, now)
 }
 
 // runQuery reads a page of a valid query.
-func (s *Service) runQuery(ctx context.Context, vw viewer, q WorkQuery, seed string, o GridOptions, now time.Time) (GridPage[WorkSummary], error) {
+func (s *Service) runQuery(ctx context.Context, vw viewer, q WorkQuery, seed string, only []catalog.WorkKind, o GridOptions, now time.Time) (GridPage[WorkSummary], error) {
 	limit, err := o.limit()
 	if err != nil {
 		return GridPage[WorkSummary]{}, err
 	}
-	c := compile(q, vw, now, seed)
+	c := compile(q, vw, now, seed, only)
 	var total int
 	var items []WorkSummary
 	err = s.db.Read(ctx, func(tx *sql.Tx) error {

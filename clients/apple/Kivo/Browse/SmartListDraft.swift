@@ -20,7 +20,7 @@ struct RuleDraft: Identifiable {
     }
 }
 
-/// A group of rules the root holds; Add Group starts one matching any.
+/// A group of rules the root holds; Add Group starts one matching any with one blank rule.
 struct GroupDraft: Identifiable {
     let id = UUID()
     var match = "any"

@@ -78,7 +78,7 @@ enum SmartListWords {
         case "allOf": String(localized: "is all of")
         case "noneOf": String(localized: "is not")
         case "isSet": String(localized: "is set")
-        case "isNotSet": String(localized: "is not set")
+        case "isNotSet": String(localized: "isn't set")
         case "gte": type == "date" ? String(localized: "on or after") : String(localized: "at least")
         case "lte": type == "date" ? String(localized: "on or before") : String(localized: "at most")
         case "between": String(localized: "between")
@@ -122,14 +122,16 @@ enum SmartListWords {
         return (ms / 60000).formatted(.number.grouping(.never))
     }
 
-    /// A rule's values to read: names where the values are chosen, a period
-    /// in words, a duration in minutes, the two ends of a range joined by [to].
+    /// A rule's values to read: names where the values are chosen, joined by
+    /// "or" ("and" when all must match), a period in words, a duration in
+    /// minutes, the two ends of a range joined by [to].
     static func values(_ rule: RuleDraft, of field: WorkField, names: [String: String], to: String = String(localized: "and")) -> String {
         if rule.op == "within" || rule.op == "notWithin" {
             return rule.values.first.map(period) ?? ""
         }
         if rule.arity == -1 {
-            return rule.values.map { names[nameKey(rule.field, $0)] ?? $0 }.joined(separator: ", ")
+            let separator = rule.op == "allOf" ? String(localized: " and ") : String(localized: " or ")
+            return rule.values.map { names[nameKey(rule.field, $0)] ?? $0 }.joined(separator: separator)
         }
         let shown = field.unit == "ms" ? rule.values.map { String(localized: "\(minutes($0)) min") } : rule.values
         return shown.joined(separator: " \(to) ")
@@ -158,10 +160,10 @@ enum SmartListWords {
         return names
     }
 
-    /// [query]'s rules in a line: "Comedy, no Animation, 1990 to 1999, Unplayed".
+    /// [query]'s rules in a line: "Comedy or Drama, no Animation, 1990 to 1999, (Unplayed or Runtime at most 90 min)".
     static func summary(of query: WorkQuery, fields: [WorkField], names: [String: String]) -> String {
         guard let root = query.where else { return "" }
-        return phrases(of: root, fields: fields, names: names).joined(separator: root.match == "all" ? ", " : String(localized: " or "))
+        return phrases(of: root, fields: fields, names: names).joined(separator: ", ")
     }
 
     private static func phrases(of group: RuleGroup, fields: [WorkField], names: [String: String]) -> [String] {
@@ -182,8 +184,7 @@ enum SmartListWords {
         switch rule.op {
         case "anyOf", "allOf": return values(draft, of: field, names: names)
         case "noneOf": return String(localized: "no \(values(draft, of: field, names: names))")
-        case "isSet": return String(localized: "has \(label.lowercased())")
-        case "isNotSet": return String(localized: "no \(label.lowercased())")
+        case "isSet", "isNotSet": return "\(label) \(op(rule.op, type: field.type))"
         case "between":
             let range = values(draft, of: field, names: names, to: String(localized: "to"))
             return field.field == "year" ? range : "\(label) \(range)"

@@ -406,7 +406,7 @@ func smartRow(ctx context.Context, tx *sql.Tx, vw viewer, r HomeRowInfo) ([]Work
 		return nil, nil
 	}
 	now := time.Now()
-	c := compile(r.smart.Query, vw, now, listSeed(r.List.ID, now))
+	c := compile(r.smart.Query, vw, now, listSeed(r.List.ID, now), nil)
 	return summaries(ctx, tx, statement{sql: c.sql + compiledPage}, append(slices.Clone(c.args), sql.Named("limit", rowLimit), sql.Named("offset", 0)))
 }
 

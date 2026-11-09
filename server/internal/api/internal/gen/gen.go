@@ -3434,7 +3434,7 @@ type ListCreate struct {
 	Name string `json:"name"`
 
 	// Smart Makes a smart list, which runs the rules; without it, a manual list.
-	Smart *SmartRules `json:"smart,omitempty"`
+	Smart *SmartQuery `json:"smart,omitempty"`
 }
 
 // ListKind What a list is. `manual` is works the user added; `smart` is the works rules select. Skip kinds you don't know.
@@ -3452,7 +3452,7 @@ type ListUpdate struct {
 	Name *string `json:"name,omitempty"`
 
 	// Smart Replaces a smart list's rules; a manual list has none.
-	Smart *SmartRules `json:"smart,omitempty"`
+	Smart *SmartQuery `json:"smart,omitempty"`
 }
 
 // ListWorkAdd defines model for ListWorkAdd.
@@ -4615,8 +4615,8 @@ type SetupState struct {
 	ServerName string `json:"serverName"`
 }
 
-// SmartRules defines model for SmartRules.
-type SmartRules struct {
+// SmartQuery defines model for SmartQuery.
+type SmartQuery struct {
 	// Query Which works a query selects. `version` is written by the server;
 	// leave it out, and a newer one is refused. `extra` isn't a kind that
 	// can be asked for. A query has at most 20 rules, 5 groups including
@@ -6312,7 +6312,7 @@ type ServerInterface interface {
 	// GetList Get a list
 	// (GET /api/v1/lists/{id})
 	GetList(w http.ResponseWriter, r *http.Request, id ID)
-	// UpdateList Rename a list
+	// UpdateList Update a list
 	// (PATCH /api/v1/lists/{id})
 	UpdateList(w http.ResponseWriter, r *http.Request, id ID)
 	// ListListWorks List a list's works
@@ -20756,7 +20756,7 @@ type StrictServerInterface interface {
 	// GetList Get a list
 	// (GET /api/v1/lists/{id})
 	GetList(ctx context.Context, request GetListRequestObject) (GetListResponseObject, error)
-	// UpdateList Rename a list
+	// UpdateList Update a list
 	// (PATCH /api/v1/lists/{id})
 	UpdateList(ctx context.Context, request UpdateListRequestObject) (UpdateListResponseObject, error)
 	// ListListWorks List a list's works

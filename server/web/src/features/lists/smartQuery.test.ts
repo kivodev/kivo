@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { Library, WorkField } from "@/api/schemas";
-import { draftOf, queryFromGrid, queryOf, refusal, ruleComplete, storedValue, typedValue } from "./smartQuery";
+import {
+  blankGroup,
+  draftOf,
+  queryFromGrid,
+  queryOf,
+  refusal,
+  ruleComplete,
+  storedValue,
+  typedValue,
+} from "./smartQuery";
 
 const library = (kind: Library["kind"]) => ({ id: "lib", name: "Lib", kind }) as Library;
 
@@ -47,11 +56,11 @@ describe("queryFromGrid", () => {
 });
 
 describe("draftOf and queryOf", () => {
-  it("round-trips a query, the library rule becoming the Libraries row", () => {
+  it("round-trips a query, a root matching all's library rule becoming the Libraries row", () => {
     const query = {
       kinds: ["movie" as const],
       where: {
-        match: "any" as const,
+        match: "all" as const,
         rules: [
           { field: "library", op: "anyOf", values: ["lib"] },
           { field: "genre", op: "noneOf", values: ["Comedy"] },
@@ -64,6 +73,23 @@ describe("draftOf and queryOf", () => {
     };
     const draft = draftOf("X", query);
     expect(draft.libraries).toEqual(["lib"]);
+    expect(queryOf(draft)).toEqual(query);
+  });
+
+  it("keeps a root matching any's library rule among its rules", () => {
+    const query = {
+      kinds: ["movie" as const],
+      where: {
+        match: "any" as const,
+        rules: [
+          { field: "genre", op: "noneOf", values: ["Comedy"] },
+          { field: "library", op: "anyOf", values: ["lib"] },
+        ],
+      },
+    };
+    const draft = draftOf("X", query);
+    expect(draft.libraries).toEqual([]);
+    expect(draft.rules.map((r) => r.field)).toEqual(["genre", "library"]);
     expect(queryOf(draft)).toEqual(query);
   });
 
@@ -94,6 +120,14 @@ const added: WorkField = {
   ],
 };
 const runtime: WorkField = { ...year, field: "runtimeMs", unit: "ms" };
+
+describe("blankGroup", () => {
+  it("matches any and holds one blank rule", () => {
+    const group = blankGroup(year);
+    expect(group.match).toBe("any");
+    expect(group.rules).toMatchObject([{ field: "year", op: "eq", values: [] }]);
+  });
+});
 
 describe("refusal", () => {
   it("refuses a newer version, an unknown field or operator, and an unknown sort", () => {

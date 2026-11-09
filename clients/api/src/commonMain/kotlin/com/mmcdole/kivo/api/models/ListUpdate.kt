@@ -23,7 +23,7 @@
 
 package com.mmcdole.kivo.api.models
 
-import com.mmcdole.kivo.api.models.SmartRules
+import com.mmcdole.kivo.api.models.SmartQuery
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
@@ -42,7 +42,7 @@ data class ListUpdate (
     @SerialName(value = "name") val name: kotlin.String? = null,
 
     /* Replaces a smart list's rules; a manual list has none. */
-    @SerialName(value = "smart") val smart: SmartRules? = null
+    @SerialName(value = "smart") val smart: SmartQuery? = null
 
 ) {
 

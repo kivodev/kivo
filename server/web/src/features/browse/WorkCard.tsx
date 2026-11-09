@@ -3,7 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { type MouseEvent, useRef, useState } from "react";
 import { mergeProps, useLongPress } from "react-aria";
 import { useSetInList } from "@/api/lists";
-import type { UserStateUpdate, WorkKind, WorkSummary } from "@/api/schemas";
+import type { ListRef, UserStateUpdate, WorkKind, WorkSummary } from "@/api/schemas";
 import { useRemoveFromContinue, useUpdateUserState } from "@/api/works";
 import { Artwork, type ArtworkShape, cardDensity } from "@/components/Artwork";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -140,7 +140,7 @@ type Props = {
   /** The Home row the card is in, when its menu can remove it from that row. */
   continueRow?: "continueWatching" | "continueListening";
   /** The list the card is shown on, when its menu can remove it from that list. */
-  listId?: string;
+  list?: ListRef;
 };
 
 /**
@@ -160,11 +160,13 @@ export function workShape(kind: WorkKind): ArtworkShape {
 }
 
 /** The menu item that takes a card off the list it's shown on. Mounted with the menu, not with every card. */
-function RemoveFromList({ listId, workId }: { listId: string; workId: string }) {
+function RemoveFromList({ list, workId }: { list: ListRef; workId: string }) {
   const { t } = useLingui();
   const setInList = useSetInList();
   return (
-    <MenuItem onAction={() => setInList.mutate({ listId, workId, inList: false })}>{t`Remove from this list`}</MenuItem>
+    <MenuItem onAction={() => setInList.mutate({ listId: list.id, workId, inList: false })}>
+      {t`Remove from ${list.name}`}
+    </MenuItem>
   );
 }
 
@@ -189,7 +191,7 @@ const aspects: Record<ArtworkShape, string> = {
  * shows the ⋯ alone. On TV the card is only a link, which its row or grid
  * focuses: nothing hovers, and a remote's OK opens it.
  */
-export function WorkCard({ work, shape, width, inLibrary = false, continueRow, listId }: Props) {
+export function WorkCard({ work, shape, width, inLibrary = false, continueRow, list }: Props) {
   const { t } = useLingui();
   const navigate = useNavigate();
   const update = useUpdateUserState();
@@ -335,7 +337,7 @@ export function WorkCard({ work, shape, width, inLibrary = false, continueRow, l
           {playable && <MenuSeparator />}
           <MenuItem onAction={markPlayed}>{played ? t`Mark as unwatched` : t`Mark as watched`}</MenuItem>
           <MenuItem onAction={() => setChoosingLists(true)}>{t`Add to List`}</MenuItem>
-          {listId && <RemoveFromList listId={listId} workId={work.id} />}
+          {list && <RemoveFromList list={list} workId={work.id} />}
           {continueRow && (
             <MenuItem onAction={() => remove.mutate({ params: { path: { id: work.id } } })}>
               {continueRow === "continueListening"

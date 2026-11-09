@@ -138,22 +138,26 @@ internal fun minutesOf(value: String): String {
 internal fun nameKey(field: String, value: String): String = "$field/$value"
 
 /**
- * A rule's values to read: names where the values are chosen, a period in
- * words, a duration in minutes, the two ends of a range joined by [to].
+ * A rule's values to read: names where the values are chosen, joined by
+ * "or" ("and" for all of them), a period in words, a duration in minutes,
+ * the two ends of a range joined by [to].
  */
 @Composable
 internal fun ruleValues(rule: RuleDraft, field: WorkField, names: Map<String, String>, to: String = stringResource(R.string.mobile_smart_and)): String {
     if (isPeriod(rule.op)) return rule.values.firstOrNull()?.let { periodWords(it) }.orEmpty()
-    if (rule.arity == -1) return rule.values.joinToString(", ") { names[nameKey(rule.field, it)] ?: it }
+    if (rule.arity == -1) {
+        val joiner = stringResource(if (rule.op == "allOf") R.string.mobile_smart_and else R.string.mobile_smart_or)
+        return rule.values.joinToString(" $joiner ") { names[nameKey(rule.field, it)] ?: it }
+    }
     val shown = if (field.unit == "ms") rule.values.map { stringResource(R.string.mobile_smart_minutes, minutesOf(it)) } else rule.values
     return shown.joinToString(" $to ")
 }
 
-/** [query]'s rules in a line: "Comedy, no Animation, 1990 to 1999, Unplayed". */
+/** [query]'s rules in a line: "Comedy or Drama, no Animation, (Unplayed or Rating at least 7)". */
 @Composable
 internal fun rulesSummary(query: WorkQuery, fields: List<WorkField>, names: Map<String, String>): String {
     val root = query.where ?: return ""
-    return phrases(root, fields, names).joinToString(if (root.match == "all") ", " else " ${stringResource(R.string.mobile_smart_or)} ")
+    return phrases(root, fields, names).joinToString(", ")
 }
 
 @Composable
@@ -176,8 +180,8 @@ private fun rulePhrase(rule: Rule, field: WorkField, names: Map<String, String>)
     return when (rule.op) {
         "anyOf", "allOf" -> ruleValues(draft, field, names)
         "noneOf" -> stringResource(R.string.mobile_smart_no, ruleValues(draft, field, names))
-        "isSet" -> stringResource(R.string.mobile_smart_has, label.lowercase())
-        "isNotSet" -> stringResource(R.string.mobile_smart_no, label.lowercase())
+        "isSet" -> stringResource(R.string.mobile_smart_rule_is_set, label)
+        "isNotSet" -> stringResource(R.string.mobile_smart_rule_is_not_set, label)
         "between" -> {
             val range = ruleValues(draft, field, names, to = stringResource(R.string.mobile_smart_to))
             if (field.field == "year") range else "$label $range"

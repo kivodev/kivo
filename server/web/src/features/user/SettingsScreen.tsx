@@ -428,12 +428,20 @@ function AppearanceSection({ device, change }: DeviceProps) {
 
 function HomeRowsCard() {
   const { t } = useLingui();
-  const rows = useSuspenseQuery(homeQueries.layout()).data.items.filter((r) => homeRowKinds.has(r.kind));
+  const layout = useSuspenseQuery(homeQueries.layout()).data.items;
+  const rows = layout.filter((r) => homeRowKinds.has(r.kind));
   const saving = useSaveHomeRows();
   const reset = useResetHomeRows();
   const error = saving.error ?? reset.error;
   const problem = error ? describeProblem(errorCode(error)) : undefined;
-  const save = (next: HomeRowInfo[]) => saving.save(next, reset.reset);
+  // Kinds this client doesn't show keep their slots; the rows it shows fill the others in their new order.
+  const save = (next: HomeRowInfo[]) => {
+    let shown = 0;
+    saving.save(
+      layout.map((row) => (homeRowKinds.has(row.kind) ? (next[shown++] ?? row) : row)),
+      reset.reset,
+    );
+  };
   const resetHome = () => reset.mutate({}, { onSuccess: () => saving.reset() });
   const retry = () => (reset.isError ? resetHome() : saving.retry(reset.reset));
   return (

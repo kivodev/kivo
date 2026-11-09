@@ -14,6 +14,8 @@ struct ListsView: View {
     @State private var naming = false
     @State private var newName = ""
     @State private var problem: String?
+    /// Whether the name prompt comes back, with what was typed, once a taken name is said.
+    @State private var namingAgain = false
     @State private var buildingSmart = false
 
     var body: some View {
@@ -32,7 +34,7 @@ struct ListsView: View {
                         if myList.workCount > 0 {
                             MyListSection(list: myList)
                         }
-                        section(String(localized: "Lists"), others)
+                        section(String(localized: "Your Lists"), others)
                         section(String(localized: "Smart Lists"), smart)
                     }
                     .wideWidth(KivoTokens.Container.form, wide: wide)
@@ -41,6 +43,9 @@ struct ListsView: View {
                     .padding(.top, KivoTokens.spacing * 2)
                     .padding(.bottom, KivoTokens.spacing * 6)
                 }
+            } else if let failure = server.listsFailure {
+                MessageView(String(localized: "Couldn't load your lists."), sentence: failure.sentence)
+                    .frame(maxHeight: .infinity)
             } else if server.unreachable {
                 UnreachableView()
             } else {
@@ -65,7 +70,12 @@ struct ListsView: View {
         }
         .listNameAlert(String(localized: "New List"), isPresented: $naming, name: $newName, confirm: String(localized: "Create"), save: create)
         .alert(problem ?? "", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
-            Button(String(localized: "OK"), role: .cancel) {}
+            Button(String(localized: "OK"), role: .cancel) {
+                if namingAgain {
+                    namingAgain = false
+                    naming = true
+                }
+            }
         }
         .sheet(isPresented: $buildingSmart) { SmartListBuilder() }
     }
@@ -95,6 +105,7 @@ struct ListsView: View {
             do {
                 _ = try await server.session.library.createList(name: name)
             } catch {
+                namingAgain = error.problemCode == "nameTaken"
                 problem = error.listNameSentence
             }
         }

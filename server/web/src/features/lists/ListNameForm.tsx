@@ -46,7 +46,7 @@ export function ListNameForm({ initialName = "", submitLabel, isPending, error, 
         autoComplete="off"
         isRequired
         autoFocus
-        errorMessage={taken && trimmed === sent ? t`A list with that name already exists.` : undefined}
+        errorMessage={taken && trimmed === sent ? t`You already have a list with that name.` : undefined}
       />
     </SubmitForm>
   );
