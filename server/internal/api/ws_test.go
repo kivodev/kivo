@@ -156,6 +156,45 @@ func TestEventStreamFollowsGrants(t *testing.T) {
 	}
 }
 
+// homeChanged goes to the user's own sockets when the layout changes.
+func TestHomeRowsPublishHomeChanged(t *testing.T) {
+	e := newEnv(t, serving{})
+	admin, actx := e.dial(e.adminToken)
+	other, octx := e.dial(e.nobodyToken)
+	read(t, actx, admin)
+	read(t, octx, other)
+	if w := e.do("POST", "/api/v1/home/rows/reset", e.adminToken, nil); w.Code != http.StatusOK {
+		t.Fatalf("reset: %d %s", w.Code, w.Body.String())
+	}
+	if m := read(t, actx, admin); m["kind"] != "homeChanged" {
+		t.Errorf("admin got %v; want homeChanged", m)
+	}
+	if w := e.do("PATCH", "/api/v1/home/rows", e.adminToken, map[string]any{"items": []map[string]any{{"id": "continueWatching", "shown": false}}}); w.Code != http.StatusOK {
+		t.Fatalf("update: %d %s", w.Code, w.Body.String())
+	}
+	if m := read(t, actx, admin); m["kind"] != "homeChanged" {
+		t.Errorf("admin got %v; want homeChanged after an update", m)
+	}
+	e.d.Events.Publish(events.Event{Kind: events.PlayEnded, Scope: events.Scope{User: e.nobody}, Data: playback.Ended{Play: id.New()}})
+	if m := read(t, octx, other); m["kind"] != "playEnded" {
+		t.Errorf("another user got %v; want no homeChanged", m)
+	}
+}
+
+// listsChanged goes to the user's own sockets when a list or its works change.
+func TestListsPublishListsChanged(t *testing.T) {
+	e := newEnv(t, serving{})
+	admin, actx := e.dial(e.adminToken)
+	read(t, actx, admin)
+	w := e.do("POST", "/api/v1/lists", e.adminToken, map[string]any{"name": "Date Night"})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create: %d %s", w.Code, w.Body.String())
+	}
+	if m := read(t, actx, admin); m["kind"] != "listsChanged" {
+		t.Errorf("admin got %v; want listsChanged", m)
+	}
+}
+
 // libraryChanged names to each socket only the libraries it sees, admin
 // sockets included. It doesn't reach a socket that sees none of them.
 func TestLibraryChangedNamesWhatEachSees(t *testing.T) {

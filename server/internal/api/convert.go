@@ -201,7 +201,7 @@ func letterStarts(letters []query.Letter) *[]gen.LetterStart {
 
 func userState(st query.Userstate) gen.UserState {
 	return gen.UserState{
-		Played: st.Played, Favorite: st.Favorite, PlayCount: st.PlayCount,
+		Played: st.Played, PlayCount: st.PlayCount,
 		PositionMs: opt(ms(st.Position)), VersionID: opt(st.Version), LastPlayedAt: optTime(st.LastPlayed),
 	}
 }

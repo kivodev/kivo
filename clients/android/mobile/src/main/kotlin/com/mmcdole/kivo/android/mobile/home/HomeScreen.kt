@@ -26,6 +26,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -45,7 +46,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mmcdole.kivo.android.ServerSession
 import com.mmcdole.kivo.android.library.GridValues
 import com.mmcdole.kivo.android.mobile.R
+import com.mmcdole.kivo.android.mobile.app.SettingsPage
+import com.mmcdole.kivo.android.mobile.app.SettingsPageRoute
 import com.mmcdole.kivo.android.mobile.app.LibraryRoute
+import com.mmcdole.kivo.android.mobile.app.ListRoute
 import com.mmcdole.kivo.android.mobile.app.MobileNav
 import com.mmcdole.kivo.android.mobile.app.SettingsRoute
 import com.mmcdole.kivo.android.mobile.app.handle
@@ -60,8 +64,10 @@ import com.mmcdole.kivo.android.mobile.ui.TabTopBar
 import com.mmcdole.kivo.android.mobile.ui.WorkCard
 import com.mmcdole.kivo.android.mobile.ui.WorkMenu
 import com.mmcdole.kivo.android.mobile.ui.WorkMenuHost
+import com.mmcdole.kivo.android.mobile.ui.listShapeOf
 import com.mmcdole.kivo.android.mobile.ui.rowCardWidth
 import com.mmcdole.kivo.android.mobile.ui.shapeOf
+import com.mmcdole.kivo.api.models.WorkSummary
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.ui.draw.clip
@@ -73,12 +79,12 @@ private val SideMargin = 16.dp
 /**
  * Home: the server's rows in its order, each a row of cards. Continue
  * Watching is the frames where you stopped; a Recently Added heading opens
- * its library newest first, and Favorites' the Favorites tab. A long press
+ * its library newest first, and a list's that list. A long press
  * on a card opens its actions. Pull to refresh; the live events refresh it too.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(session: ServerSession, nav: MobileNav, onFavorites: () -> Unit) {
+fun HomeScreen(session: ServerSession, nav: MobileNav) {
     val model = viewModel { HomeViewModel(session.session) }
     val state by model.state.collectAsStateWithLifecycle()
     val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -97,11 +103,21 @@ fun HomeScreen(session: ServerSession, nav: MobileNav, onFavorites: () -> Unit) 
                     if (rows.isEmpty()) {
                         // Scrollable, so a pull still refreshes it.
                         LazyColumn(Modifier.fillMaxSize()) {
-                            item { Message(stringResource(R.string.mobile_nothing_yet), stringResource(R.string.mobile_nothing_yet_sentence), Modifier.height(400.dp)) }
+                            item {
+                                if (state.allHidden) {
+                                    Message(stringResource(R.string.mobile_home_empty), stringResource(R.string.mobile_home_empty_sentence), Modifier.height(400.dp)) {
+                                        TextButton(onClick = { nav.open(SettingsPageRoute(SettingsPage.Home)) }) {
+                                            Text(stringResource(R.string.mobile_settings_home_section))
+                                        }
+                                    }
+                                } else {
+                                    Message(stringResource(R.string.mobile_nothing_yet), stringResource(R.string.mobile_nothing_yet_sentence), Modifier.height(400.dp))
+                                }
+                            }
                         }
                     } else {
-                        WorkMenuHost({ action, work -> nav.handle(action, work, model.marks) }) { openMenu ->
-                            Rows(rows, nav, onFavorites, openMenu)
+                        WorkMenuHost({ action, menu -> nav.handle(action, menu, model.marks) }) { openMenu ->
+                            Rows(rows, nav, openMenu)
                         }
                     }
                 }
@@ -111,7 +127,7 @@ fun HomeScreen(session: ServerSession, nav: MobileNav, onFavorites: () -> Unit) 
 }
 
 @Composable
-private fun Rows(rows: List<HomeRowUi>, nav: MobileNav, onFavorites: () -> Unit, openMenu: (WorkMenu) -> Unit) {
+private fun Rows(rows: List<HomeRowUi>, nav: MobileNav, openMenu: (WorkMenu) -> Unit) {
     LazyColumn(
         Modifier.fillMaxSize().testTag("homeRows"),
         contentPadding = PaddingValues(bottom = space(6)),
@@ -119,27 +135,27 @@ private fun Rows(rows: List<HomeRowUi>, nav: MobileNav, onFavorites: () -> Unit,
     ) {
         items(rows, key = { it.id }, contentType = { it.kind }) { row ->
             val library = row.library
+            val list = row.list
             val opens: (() -> Unit)? = when {
-                row.kind == "favorites" -> onFavorites
+                list != null -> { { nav.open(ListRoute(list.id, list.name)) } }
                 row.kind == "recentlyAdded" && library != null -> { { nav.open(LibraryRoute(library.id, GridValues.ADDED_AT)) } }
                 else -> null
             }
             Column {
-                RowHeading(rowTitle(row), opens)
+                RowHeading(rowTitle(row.kind, row.libraryName, list?.name), opens)
                 LazyRow(
                     state = rowState(row.items.firstOrNull()?.id),
                     contentPadding = PaddingValues(horizontal = SideMargin),
                     horizontalArrangement = Arrangement.spacedBy(CardGap),
                 ) {
-                    items(row.items, key = { it.id }, contentType = { if (row.kind == CONTINUE_WATCHING) CardShape.Landscape else shapeOf(it) }) { work ->
-                        // Continue Watching is the frames where you stopped.
-                        val shape = if (row.kind == CONTINUE_WATCHING) CardShape.Landscape else shapeOf(work)
+                    items(row.items, key = { it.id }, contentType = { rowCardShape(row.kind, it) }) { work ->
+                        val shape = rowCardShape(row.kind, work)
                         WorkCard(
                             work = work,
                             shape = shape,
                             width = rowCardWidth(shape),
                             onClick = { nav.openWork(work) },
-                            onLongClick = { openMenu(WorkMenu(work, row.kind)) },
+                            onLongClick = { openMenu(WorkMenu(work, row.kind, row.list?.takeIf { it.kind == "manual" })) },
                         )
                     }
                 }
@@ -186,12 +202,11 @@ private fun RowHeading(title: String, onClick: (() -> Unit)?) {
 }
 
 @Composable
-private fun rowTitle(row: HomeRowUi): String = when (row.kind) {
+internal fun rowTitle(kind: String, libraryName: String?, listName: String?): String = when (kind) {
     CONTINUE_WATCHING -> stringResource(R.string.mobile_row_continue_watching)
     "continueListening" -> stringResource(R.string.mobile_row_continue_listening)
-    "continueSeries" -> stringResource(R.string.mobile_row_continue_series)
-    "favorites" -> stringResource(R.string.mobile_row_favorites)
-    else -> row.libraryName?.let { stringResource(R.string.mobile_row_recently_added_in, it) } ?: stringResource(R.string.mobile_row_recently_added)
+    "list" -> listName.orEmpty()
+    else -> libraryName?.let { stringResource(R.string.mobile_row_recently_added_in, it) } ?: stringResource(R.string.mobile_row_recently_added)
 }
 
 /** Home while it loads: a row of landscape cards, then two of posters. */
@@ -208,4 +223,11 @@ private fun HomeSkeleton() {
             }
         }
     }
+}
+
+/** A row's card shape: Continue Watching is the frames where you stopped, and a list's row is shaped as its grid. */
+private fun rowCardShape(kind: String, work: WorkSummary): CardShape = when (kind) {
+    CONTINUE_WATCHING -> CardShape.Landscape
+    "list" -> listShapeOf(work)
+    else -> shapeOf(work)
 }

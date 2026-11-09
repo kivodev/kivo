@@ -1,6 +1,7 @@
 import { act, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { bookIds } from "@/api/mocks/books";
+import type { HomeRowInfo } from "@/api/schemas";
 import { deviceSettings } from "@/lib/deviceSettings";
 import { renderApp, screen } from "@/test/render";
 import { http, mockId, mockIds, problem, sent, serveMockApi, server } from "@/test/server";
@@ -53,7 +54,8 @@ describe("Settings", () => {
       "Subtitles",
       "Quality",
       "Appearance",
-      "Home & libraries",
+      "Home",
+      "Libraries",
       "About",
     ];
     expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual(sections);
@@ -67,7 +69,8 @@ describe("Settings", () => {
     expect(headings("Subtitles")).toEqual(["All your devices", "This browser"]);
     expect(headings("Quality")).toEqual(["This browser"]);
     expect(headings("Appearance")).toEqual(["This browser"]);
-    expect(headings("Home & libraries")).toEqual(["All your devices"]);
+    expect(headings("Home")).toEqual(["All your devices"]);
+    expect(headings("Libraries")).toEqual(["All your devices"]);
     const account = screen.getByRole("region", { name: "Account" });
     expect(within(account).getByText("anna")).toBeInTheDocument();
     expect(within(account).getByText("Signed in to Living room")).toBeInTheDocument();
@@ -289,6 +292,85 @@ describe("Settings", () => {
         ids([mockIds.movies, true], [mockIds.shows, true], [bookIds.audiobooks, true], [mockIds.videos, false]),
       ]),
     );
+  });
+
+  it("hides a Home row, reorders by the handle's keyboard drag, and resets", async () => {
+    serveMockApi();
+    const { user } = renderApp("/settings");
+    const order = await screen.findByRole("grid", { name: "Home rows" });
+    const rows = () =>
+      within(order)
+        .getAllByRole("row")
+        .map((r) => r.textContent);
+    expect(rows()[0]).toContain("Continue Watching");
+
+    await user.click(within(order).getByRole("switch", { name: "Shown: Continue Watching" }));
+    await waitFor(() =>
+      expect(sent("PATCH", "/home/rows").at(-1)?.body).toMatchObject({
+        items: expect.arrayContaining([{ id: "continueWatching", shown: false }]),
+      }),
+    );
+
+    await user.click(screen.getByRole("button", { name: "Reset" }));
+    await waitFor(() => expect(sent("POST", "/home/rows/reset")).toHaveLength(1));
+    await waitFor(() => expect(within(order).getByRole("switch", { name: "Shown: Continue Watching" })).toBeChecked());
+  });
+
+  it("sends every Home row, a kind it doesn't know keeping its slot when a shown row moves", async () => {
+    let shownIds: string[] = [];
+    serveMockApi((api) => {
+      const layout: HomeRowInfo[] = api.home.rows.map((row) => ({
+        id: row.id,
+        kind: row.kind,
+        ...(row.library ? { library: row.library } : {}),
+        ...(row.list ? { list: row.list } : {}),
+        shown: true,
+      }));
+      shownIds = layout.map((r) => r.id);
+      layout.splice(1, 0, { id: "future", kind: "future" as HomeRowInfo["kind"], shown: true });
+      api.homeLayout = layout;
+    });
+    const { user } = renderApp("/settings");
+    const order = await screen.findByRole("grid", { name: "Home rows" });
+    const handles = within(order).getAllByRole("row");
+    expect(handles).toHaveLength(shownIds.length);
+    expect(within(order).queryByText(/future/)).toBeNull();
+
+    // Watchlist's handle, up past its own place and above Continue Watching.
+    const focused = () => document.activeElement?.getAttribute("aria-label");
+    act(() => handles[0]?.focus());
+    await user.keyboard("{ArrowDown}{ArrowRight}");
+    expect(focused()).toBe("Drag Watchlist");
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(focused()).toBe("Insert between Watchlist and Recently Added in Movies"));
+    await user.keyboard("{ArrowUp}{ArrowUp}{Enter}");
+    await waitFor(() => expect(sent("PATCH", "/home/rows")).toHaveLength(1));
+
+    const [first, second, ...rest] = shownIds as [string, string, ...string[]];
+    expect(sent("PATCH", "/home/rows")[0]?.body).toEqual({
+      items: [second, "future", first, ...rest].map((id) => ({ id, shown: true })),
+    });
+  });
+
+  it("retries a refused reset, not an earlier save, and a successful reset clears a save's failure", async () => {
+    serveMockApi();
+    server.use(http.patch("/api/v1/home/rows", () => problem(500, "internal")));
+    const { user } = renderApp("/settings");
+    const order = await screen.findByRole("grid", { name: "Home rows" });
+    await user.click(within(order).getByRole("switch", { name: "Shown: Continue Watching" }));
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Reset" }));
+    await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
+    const patches = sent("PATCH", "/home/rows").length;
+
+    server.use(http.post("/api/v1/home/rows/reset", () => problem(500, "internal")));
+    await user.click(screen.getByRole("button", { name: "Reset" }));
+    const resets = sent("POST", "/home/rows/reset").length;
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(sent("POST", "/home/rows/reset").length).toBeGreaterThan(resets));
+    expect(sent("PATCH", "/home/rows")).toHaveLength(patches);
   });
 
   it("says on the row when the server refuses a change, puts the saved value back, and retries", async () => {

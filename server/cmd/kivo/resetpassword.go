@@ -41,7 +41,7 @@ func resetPassword(configPath, username string, stdin *os.File, out io.Writer) e
 		return err
 	}
 	defer db.Close()
-	u := users.New(db)
+	u := users.New(db, events.NewBus())
 	all, err := u.Users(ctx)
 	if err != nil {
 		return err

@@ -352,7 +352,6 @@ open class LibrariesApi : ApiClient {
      * @param contentRating Any of these content ratings (see &#x60;WorkSummary.contentRating&#x60;). (optional)
      * @param resolution Any of these resolutions. (optional)
      * @param dynamicRange Any of these dynamic ranges. (optional)
-     * @param favorite Only the user&#39;s favorites. (optional)
      * @param narratorId The books this person narrated. (optional)
      * @param matchState Admins only (ignored for others). Only &#x60;unmatched&#x60; is taken, for unmatched items only. (optional)
      * @param offset How many items to skip from the start. (optional)
@@ -360,7 +359,7 @@ open class LibrariesApi : ApiClient {
      * @return WorkSummaryPage
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun listLibraryWorks(id: kotlin.String, sort: kotlin.String? = null, played: kotlin.String? = null, genre: kotlin.collections.List<kotlin.String>? = null, yearFrom: kotlin.Int? = null, yearTo: kotlin.Int? = null, contentRating: kotlin.collections.List<kotlin.String>? = null, resolution: kotlin.collections.List<kotlin.String>? = null, dynamicRange: kotlin.collections.List<kotlin.String>? = null, favorite: kotlin.Boolean? = null, narratorId: kotlin.String? = null, matchState: kotlin.String? = null, offset: kotlin.Int? = null, limit: kotlin.Int? = null): HttpResponse<WorkSummaryPage> {
+    open suspend fun listLibraryWorks(id: kotlin.String, sort: kotlin.String? = null, played: kotlin.String? = null, genre: kotlin.collections.List<kotlin.String>? = null, yearFrom: kotlin.Int? = null, yearTo: kotlin.Int? = null, contentRating: kotlin.collections.List<kotlin.String>? = null, resolution: kotlin.collections.List<kotlin.String>? = null, dynamicRange: kotlin.collections.List<kotlin.String>? = null, narratorId: kotlin.String? = null, matchState: kotlin.String? = null, offset: kotlin.Int? = null, limit: kotlin.Int? = null): HttpResponse<WorkSummaryPage> {
 
         val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
 
@@ -376,7 +375,6 @@ open class LibrariesApi : ApiClient {
         contentRating?.apply { localVariableQuery["contentRating"] = toMultiValue(this, "multi") }
         resolution?.apply { localVariableQuery["resolution"] = toMultiValue(this, "multi") }
         dynamicRange?.apply { localVariableQuery["dynamicRange"] = toMultiValue(this, "multi") }
-        favorite?.apply { localVariableQuery["favorite"] = listOf("$favorite") }
         narratorId?.apply { localVariableQuery["narratorId"] = listOf("$narratorId") }
         matchState?.apply { localVariableQuery["matchState"] = listOf("$matchState") }
         offset?.apply { localVariableQuery["offset"] = listOf("$offset") }

@@ -80,7 +80,7 @@ fun KivoButton(
 }
 
 /**
- * A round icon button, such as Favorite or Played, read out as [label] and
+ * A round icon button, such as My List or Played, read out as [label] and
  * marked in the accent when on, the light theme's on the white when lit.
  * Disabled, it keeps focus and shows it with a ring, as Move up does once
  * its library reaches the top.

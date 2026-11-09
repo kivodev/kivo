@@ -275,7 +275,7 @@ func (f *fakeTasks) take(task string) []id.ID {
 // viewer returns the Viewer of a new user who can see every library.
 func (e *env) viewer() users.Viewer {
 	e.t.Helper()
-	svc := users.New(e.b.DB)
+	svc := users.New(e.b.DB, events.NewBus())
 	var user users.User
 	e.b.Write(func(ctx context.Context, tx *store.Tx) error {
 		var err error

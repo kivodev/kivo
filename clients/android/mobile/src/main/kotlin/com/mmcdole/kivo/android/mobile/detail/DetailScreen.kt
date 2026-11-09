@@ -29,13 +29,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistAddCheck
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Replay
@@ -157,7 +159,7 @@ fun DetailScreen(session: ServerSession, id: String, seasonId: String?, seasonNu
         }
         return
     }
-    WorkMenuHost({ action, work -> nav.handle(action, work, model.marks) }, seriesPage = head.id.takeIf { head.kind == "series" }) { openMenu ->
+    WorkMenuHost({ action, menu -> nav.handle(action, menu, model.marks) }, seriesPage = head.id.takeIf { head.kind == "series" }) { openMenu ->
         DetailPage(head, state, model, nav, openMenu)
     }
 }
@@ -303,7 +305,7 @@ private fun metaLine(head: WorkSummary, work: WorkDetail?): String {
 
 /**
  * Play, or Resume with the time and how far in, as a pill across the page;
- * then Play from beginning, Download, Favorite and Watched. "This file is
+ * then Play from beginning, Download, My List and Watched. "This file is
  * missing" in Play's place when nothing can play.
  */
 @Composable
@@ -341,14 +343,14 @@ private fun PlayActions(head: WorkSummary, state: DetailUiState, model: DetailVi
                 Text(stringResource(R.string.mobile_file_missing), color = LocalKivo.current.warning, style = MaterialTheme.typography.titleSmall)
             }
         }
-        ActionRow(head, state, model, startOver = if (available && position != null) ({ play(fromStart = true) }) else null)
+        ActionRow(head, state, model, startOver = if (available && position != null) ({ play(fromStart = true) }) else null, addToList = { nav.addToList(head) })
         state.download?.let { download ->
             Box(Modifier.fillMaxWidth(), contentAlignment = if (LocalWide.current) Alignment.CenterStart else Alignment.Center) { DownloadBadge(download) }
         }
     }
 }
 
-/** A series' Play: its next episode, or Resume it; its title under. Favorite and Watched beside. */
+/** A series' Play: its next episode, or Resume it; its title under. My List and Watched beside. */
 @Composable
 private fun SeriesActions(head: WorkSummary, state: DetailUiState, model: DetailViewModel, nav: MobileNav) {
     val next = state.work?.series?.nextUp
@@ -365,7 +367,7 @@ private fun SeriesActions(head: WorkSummary, state: DetailUiState, model: Detail
             ) { nav.play(next.id) }
             Text(next.title, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        ActionRow(head, state, model, startOver = next?.takeIf { it.userState?.positionMs != null }?.let { { nav.play(it.id, fromStart = true) } })
+        ActionRow(head, state, model, startOver = next?.takeIf { it.userState?.positionMs != null }?.let { { nav.play(it.id, fromStart = true) } }, addToList = { nav.addToList(head) })
     }
 }
 
@@ -385,13 +387,13 @@ private fun PlayButton(label: String, onClick: () -> Unit) {
 }
 
 /**
- * Play from beginning, Download, Favorite and Watched, an icon over a word
- * each; a series' Download offers the season open or the whole series. On a
- * device without downloads there's no Download.
+ * Play from beginning, Download, My List, Watched and More, an icon over a
+ * word each; More opens Add to List. A series' Download offers the season
+ * open or the whole series. On a device without downloads there's no Download.
  */
 @Composable
-private fun ActionRow(head: WorkSummary, state: DetailUiState, model: DetailViewModel, startOver: (() -> Unit)?) {
-    val favorite = head.userState?.favorite == true
+private fun ActionRow(head: WorkSummary, state: DetailUiState, model: DetailViewModel, startOver: (() -> Unit)?, addToList: () -> Unit) {
+    val onMyList = state.onMyList
     val played = head.userState?.played == true
     val download = state.download
     val downloads = model.downloads
@@ -412,12 +414,13 @@ private fun ActionRow(head: WorkSummary, state: DetailUiState, model: DetailView
             SeriesDownload(state, downloads, cell)
         }
         RoundAction(
-            if (favorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-            stringResource(R.string.mobile_favorite),
-            "favorite",
+            if (onMyList) Icons.AutoMirrored.Filled.PlaylistAddCheck else Icons.AutoMirrored.Filled.PlaylistAdd,
+            stringResource(R.string.mobile_my_list),
+            "myList",
             cell,
-            on = favorite,
-        ) { model.setFavorite(head, !favorite) }
+            on = onMyList,
+            description = stringResource(if (onMyList) R.string.mobile_remove_from_my_list else R.string.mobile_add_to_my_list),
+        ) { model.setOnMyList(head, !onMyList) }
         RoundAction(
             if (played) Icons.Default.CheckCircle else Icons.Outlined.CheckCircle,
             stringResource(if (head.kind == "book") R.string.mobile_finished else R.string.mobile_watched),
@@ -426,6 +429,21 @@ private fun ActionRow(head: WorkSummary, state: DetailUiState, model: DetailView
             on = played,
             description = markPlayedLabel(played, head.kind),
         ) { model.setPlayed(head, !played) }
+        Box(cell) {
+            var more by remember { mutableStateOf(false) }
+            RoundAction(Icons.Default.MoreHoriz, stringResource(R.string.mobile_more), "more") { more = true }
+            DropdownMenu(more, onDismissRequest = { more = false }) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.mobile_add_to_list)) },
+                    onClick = {
+                        more = false
+                        addToList()
+                    },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.PlaylistAdd, null) },
+                    modifier = Modifier.testTag("addToList"),
+                )
+            }
+        }
     }
 }
 

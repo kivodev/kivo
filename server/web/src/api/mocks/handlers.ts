@@ -2,11 +2,38 @@ import { HttpResponse, ws } from "msw";
 import { createOpenApiHttp } from "openapi-msw";
 import { apiPaths } from "../paths";
 import type { paths } from "../schema";
-import type { EventMessage, LetterStart, PlayCreate, PlayStarted, PlayTrack, Problem } from "../schemas";
-import { type MockApi, summaryOf } from "./api";
+import type {
+  EventMessage,
+  HomeRowInfo,
+  LetterStart,
+  PlayCreate,
+  PlayStarted,
+  PlayTrack,
+  Problem,
+  Rule,
+  WorkDetail,
+  WorkList,
+  WorkQuery,
+} from "../schemas";
+import { type MockApi, type MockList, summaryOf } from "./api";
+import { mockId } from "./ids";
 
 /** MSW's handlers, typed by the spec, for tests that answer a request themselves. */
 export const http = createOpenApiHttp<paths>({ baseUrl: "*" });
+
+/** The rows of Home's layout, the mock's stored ones or every row shown. */
+function homeLayout(api: MockApi): HomeRowInfo[] {
+  return (
+    api.homeLayout ??
+    api.home.rows.map(({ id, kind, library, list }) => ({
+      id,
+      kind,
+      ...(library ? { library } : {}),
+      ...(list ? { list } : {}),
+      shown: true,
+    }))
+  );
+}
 
 export function problem(status: number, code: Problem["code"], extra: Partial<Problem> = {}): HttpResponse<Problem> {
   return HttpResponse.json(
@@ -17,6 +44,42 @@ export function problem(status: number, code: Problem["code"], extra: Partial<Pr
 
 const notFound = () => problem(404, "notFound");
 const unauthenticated = () => problem(401, "unauthenticated");
+
+/** A list as the API answers, its count from the works it holds. */
+function workListOf({ workIds, ...list }: MockList): WorkList {
+  return { ...list, workCount: workIds.length };
+}
+
+/** Whether a work passes a rule. Fields without work data here pass every work. */
+function matchesRule(work: WorkDetail, { field, op, values = [] }: Rule): boolean {
+  switch (field) {
+    case "genre":
+      return op === "noneOf"
+        ? !values.some((v) => work.genres.includes(v))
+        : values.some((v) => work.genres.includes(v));
+    case "year": {
+      const year = work.year ?? 0;
+      const [first = 0, second = 0] = values.map(Number);
+      if (op === "between") return year >= first && year <= second;
+      if (op === "gte") return year >= first;
+      return op === "lte" ? year <= first : year === first;
+    }
+    case "title":
+      return work.title.toLowerCase().includes((values[0] ?? "").toLowerCase());
+    default:
+      return true;
+  }
+}
+
+/** The mock's works a query selects, by the root's rules and its groups' as AND. */
+function worksMatching(api: MockApi, query: WorkQuery): WorkDetail[] {
+  const groups = [query.where, ...(query.where?.groups ?? [])];
+  return Object.values(api.works).filter(
+    (work) =>
+      query.kinds.includes(work.kind) &&
+      groups.every((group) => (group?.rules ?? []).every((rule) => matchesRule(work, rule))),
+  );
+}
 
 /** The token an app session signed in with a password gets. */
 const mockAppToken = "mock-app-token";
@@ -220,17 +283,126 @@ export function createHandlers(api: MockApi) {
     ),
     http.post("/api/v1/libraries/{id}/refresh-metadata", ({ response }) => response(202).json({})),
 
-    http.get("/api/v1/home", ({ response }) => response(200).json(api.home)),
-    // The works marked a favorite, of one kind or every kind, as a grid
-    // paged by offset.
-    http.get("/api/v1/favorites", ({ query, response }) => {
-      const kind = query.get("kind");
-      const items = Object.values(api.works)
-        .filter((w) => w.userState?.favorite && (!kind || w.kind === kind))
-        .map(summaryOf);
-      const start = Number(query.get("offset") ?? 0);
-      const end = start + Number(query.get("limit") ?? 50);
+    // A list row holds what the list holds, most recently added first.
+    http.get("/api/v1/home", ({ response }) =>
+      response(200).json({
+        ...api.home,
+        rows: api.home.rows.map((row) => {
+          const list = row.list && api.lists.find((l) => l.id === row.list?.id);
+          return list
+            ? { ...row, items: list.workIds.flatMap((id) => (api.works[id] ? [summaryOf(api.works[id])] : [])) }
+            : row;
+        }),
+      }),
+    ),
+    http.get("/api/v1/home/rows", ({ response }) => response(200).json({ items: homeLayout(api) })),
+    http.patch("/api/v1/home/rows", async ({ request, response }) => {
+      const byId = new Map(homeLayout(api).map((r) => [r.id, r]));
+      api.homeLayout = (await request.json()).items.flatMap(({ id, shown }) => {
+        const row = byId.get(id);
+        return row ? [{ ...row, shown }] : [];
+      });
+      return response(200).json({ items: homeLayout(api) });
+    }),
+    http.post("/api/v1/home/rows/reset", ({ response }) => {
+      api.homeLayout = undefined;
+      return response(200).json({ items: homeLayout(api) });
+    }),
+    // My List first, then by name.
+    http.get("/api/v1/lists", ({ response }) => {
+      const sorted = [...api.lists].sort(
+        (a, b) => Number(b.builtIn) - Number(a.builtIn) || a.name.localeCompare(b.name),
+      );
+      return response(200).json({ items: sorted.map(workListOf) });
+    }),
+    http.post("/api/v1/lists", async ({ request, response }) => {
+      const { name, smart } = await request.json();
+      if (api.lists.some((l) => l.name.toLowerCase() === name.toLowerCase())) return problem(409, "nameTaken");
+      if (api.lists.length >= 100) return problem(409, "conflict");
+      const list: MockList = smart
+        ? {
+            id: mockId(9600 + api.lists.length),
+            name,
+            kind: "smart",
+            builtIn: false,
+            smart: { query: { ...smart.query, version: 1 } },
+            workIds: worksMatching(api, smart.query).map((w) => w.id),
+          }
+        : { id: mockId(9600 + api.lists.length), name, kind: "manual", builtIn: false, workIds: [] };
+      api.lists.push(list);
+      return response(201).json(workListOf(list));
+    }),
+    http.get("/api/v1/lists/{id}", ({ params, response }) => {
+      const list = api.lists.find((l) => l.id === params.id);
+      return list ? response(200).json(workListOf(list)) : notFound();
+    }),
+    http.patch("/api/v1/lists/{id}", async ({ params, request, response }) => {
+      const list = api.lists.find((l) => l.id === params.id);
+      if (!list) return notFound();
+      if (list.builtIn) return problem(409, "conflict");
+      const { name, smart } = await request.json();
+      if (name !== undefined) {
+        if (api.lists.some((l) => l !== list && l.name.toLowerCase() === name.toLowerCase())) {
+          return problem(409, "nameTaken");
+        }
+        list.name = name;
+      }
+      if (smart) {
+        list.smart = { query: { ...smart.query, version: 1 } };
+        list.workIds = worksMatching(api, smart.query).map((w) => w.id);
+      }
+      return response(200).json(workListOf(list));
+    }),
+    http.delete("/api/v1/lists/{id}", ({ params, response }) => {
+      const list = api.lists.find((l) => l.id === params.id);
+      if (!list) return notFound();
+      if (list.builtIn) return problem(409, "conflict");
+      api.lists = api.lists.filter((l) => l !== list);
+      return response(204).empty();
+    }),
+    http.get("/api/v1/work-fields", ({ response }) => response(200).json({ items: api.workFields })),
+    http.get("/api/v1/work-fields/{field}/values", ({ params, query, response }) => {
+      const values = api.workFieldValues[params.field] ?? [];
+      const ids = query.getAll("ids");
+      const q = (query.get("q") ?? "").toLowerCase();
+      const items =
+        ids.length > 0
+          ? values.filter((v) => ids.includes(v.value))
+          : values.filter((v) => v.name.toLowerCase().includes(q));
+      return response(200).json({ items });
+    }),
+    http.post("/api/v1/works/query", async ({ request, response }) => {
+      const { query, offset, limit } = await request.json();
+      const matched = worksMatching(api, query).map(summaryOf);
+      const { start, end } = pageOf(
+        offset === undefined ? null : String(offset),
+        limit === undefined ? null : String(limit),
+        matched.length,
+      );
+      return response(200).json({ items: matched.slice(start, end), total: matched.length });
+    }),
+    // A list's works, most recently added first, by offset.
+    http.get("/api/v1/lists/{id}/works", ({ params, query, response }) => {
+      const list = api.lists.find((l) => l.id === params.id);
+      if (!list) return notFound();
+      const items = list.workIds.flatMap((id) => (api.works[id] ? [summaryOf(api.works[id])] : []));
+      const { start, end } = pageOf(query.get("offset"), query.get("limit"), items.length);
       return response(200).json({ items: items.slice(start, end), total: items.length });
+    }),
+    http.post("/api/v1/lists/{id}/works", async ({ params, request, response }) => {
+      const list = api.lists.find((l) => l.id === params.id);
+      if (!list) return notFound();
+      if (list.kind === "smart") return problem(409, "conflict");
+      const { workId } = await request.json();
+      if (!list.workIds.includes(workId)) list.workIds.unshift(workId);
+      return response(204).empty();
+    }),
+    http.delete("/api/v1/lists/{id}/works/{workId}", ({ params, response }) => {
+      const list = api.lists.find((l) => l.id === params.id);
+      if (!list) return notFound();
+      if (list.kind === "smart") return problem(409, "conflict");
+      list.workIds = list.workIds.filter((id) => id !== params.workId);
+      return response(204).empty();
     }),
     // A library's grid, by offset. The title sort has letters.
     http.get("/api/v1/libraries/{id}/works", ({ params, query, response }) => {
@@ -290,17 +462,17 @@ export function createHandlers(api: MockApi) {
     }),
     http.get("/api/v1/works/{id}", ({ params, response }) => {
       const work = api.works[params.id];
-      return work ? response(200).json(work) : notFound();
+      if (!work) return notFound();
+      return response(200).json({
+        ...work,
+        listIds: api.lists.filter((l) => l.workIds.includes(work.id)).map((l) => l.id),
+      });
     }),
     http.patch("/api/v1/works/{id}/user-state", async ({ params, request, response }) => {
       const work = api.works[params.id];
       if (!work?.userState) return notFound();
-      const { played, favorite } = await request.json();
-      work.userState = {
-        ...work.userState,
-        played: played ?? work.userState.played,
-        favorite: favorite ?? work.userState.favorite,
-      };
+      const { played } = await request.json();
+      work.userState = { ...work.userState, played: played ?? work.userState.played };
       // Lists hold their own copies of the work's card, and marking a
       // series or season marks what's under it.
       const cards = Object.values(api.children).flat();

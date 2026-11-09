@@ -105,7 +105,7 @@ private fun sha(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(
 
 private const val WORK = """{"id":"w1","kind":"movie","title":"Heat","matchState":"matched","available":true,
     "images":{"poster":{"id":"img1"}},"genres":[],"studios":[],"credits":[],"externalIds":[],"versions":[],"extras":[],"collections":[],
-    "userState":{"played":false,"favorite":false,"playCount":0,"positionMs":60000}}"""
+    "userState":{"played":false,"playCount":0,"positionMs":60000}}"""
 
 /** The server's download: a ready conversion of [movie] with a WebVTT subtitle, unless [state] says otherwise. */
 private fun download(
@@ -492,7 +492,7 @@ class DownloadsTest {
         // Back online: one PATCH, the latest.
         h.server.on("PATCH", "/api/v1/works/w1/user-state") {
             sent += h.server.seen.last().body
-            json(UserState.serializer(), UserState(played = false, favorite = false, playCount = 0, positionMs = 2_000_000))
+            json(UserState.serializer(), UserState(played = false, playCount = 0, positionMs = 2_000_000))
         }
         h.downloads.sendOutbox()
         advanceUntilIdle()
@@ -505,7 +505,7 @@ class DownloadsTest {
 
         // Finishing it offline keeps it: only the user deletes a download.
         h.server.on("PATCH", "/api/v1/works/w1/user-state") {
-            json(UserState.serializer(), UserState(played = true, favorite = false, playCount = 1, positionMs = 0))
+            json(UserState.serializer(), UserState(played = true, playCount = 1, positionMs = 0))
         }
         play.plays.stop("download-$id", com.mmcdole.kivo.api.models.PlayStop(7_200_000))
         advanceUntilIdle()
@@ -644,7 +644,7 @@ class DownloadsTest {
         h.downloads.record(id, position)
         h.server.on("PATCH", "/api/v1/works/w1/user-state") {
             gate.await()
-            json(UserState.serializer(), UserState(played = false, favorite = false, playCount = 0, positionMs = position.toInt()))
+            json(UserState.serializer(), UserState(played = false, playCount = 0, positionMs = position.toInt()))
         }
         h.server.on("GET", "/api/v1/works/w1") {
             gate.await()

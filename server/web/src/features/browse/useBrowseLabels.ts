@@ -28,7 +28,6 @@ export function useBrowseLabels() {
           : from !== undefined
             ? t`From ${from}`
             : t`Until ${to}`,
-    favorite: t`Favorites`,
     narrator: (name: string) => t`Narrated by ${name}`,
   };
 }

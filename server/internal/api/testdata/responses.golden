@@ -13,7 +13,6 @@ GET /api/v1/libraries/<id1>/works
       "matchState": "matched",
       "title": "Heatwave Seeded",
       "userState": {
-        "favorite": false,
         "playCount": 0,
         "played": false
       },
@@ -32,7 +31,6 @@ GET /api/v1/libraries/<id1>/works
       },
       "title": "Seeded Series",
       "userState": {
-        "favorite": false,
         "playCount": 0,
         "played": false
       }
@@ -67,7 +65,6 @@ GET /api/v1/libraries/<id1>/works?limit=1
       "matchState": "matched",
       "title": "Heatwave Seeded",
       "userState": {
-        "favorite": false,
         "playCount": 0,
         "played": false
       },
@@ -204,7 +201,6 @@ GET /api/v1/works/<id3>/children
       },
       "title": "Season 1",
       "userState": {
-        "favorite": false,
         "playCount": 0,
         "played": false
       }
@@ -255,11 +251,68 @@ GET /api/v1/unmatched-works
 }
 
 
-GET /api/v1/favorites?kind=movie&offset=0&limit=5
+GET /api/v1/lists
 200
 {
-  "items": [],
-  "total": 0
+  "items": [
+    {
+      "builtIn": true,
+      "id": "<id10>",
+      "kind": "manual",
+      "name": "Watchlist",
+      "workCount": 0
+    }
+  ]
+}
+
+
+POST /api/v1/works/query
+200
+{
+  "items": [
+    {
+      "addedAt": "<time>",
+      "available": true,
+      "durationMs": 7200000,
+      "id": "<id2>",
+      "images": {},
+      "kind": "movie",
+      "libraryId": "<id1>",
+      "matchState": "matched",
+      "title": "Heatwave Seeded",
+      "userState": {
+        "playCount": 0,
+        "played": false
+      },
+      "year": 1995
+    }
+  ],
+  "total": 1
+}
+
+
+POST /api/v1/works/query
+400
+{
+  "code": "invalidRequest",
+  "detail": "invalid query",
+  "errors": [
+    {
+      "code": "invalid",
+      "field": "/query/where/rules/0/field"
+    }
+  ],
+  "requestId": "<request>",
+  "status": 400,
+  "title": "Bad Request",
+  "type": "about:blank"
+}
+
+
+GET /api/v1/work-fields/contentRating/values
+200
+{
+  "items": []
 }
 
 
@@ -276,7 +329,6 @@ GET /api/v1/works/<id2>
   "matchState": "matched",
   "title": "Heatwave Seeded",
   "userState": {
-    "favorite": false,
     "playCount": 0,
     "played": false
   },
@@ -286,19 +338,20 @@ GET /api/v1/works/<id2>
   "externalIds": [],
   "extras": [],
   "genres": [],
+  "listIds": [],
   "lockedFields": [],
   "remembersTracks": false,
   "sortTitle": "Heatwave Seeded",
   "studios": [],
   "versions": [
     {
-      "audioTrackId": "<id10>",
+      "audioTrackId": "<id11>",
       "available": true,
       "bitrateBps": 8000000,
       "chapterCount": 3,
       "container": "mov,mp4,m4a,3gp,3g2,mj2",
       "durationMs": 7200000,
-      "id": "<id11>",
+      "id": "<id12>",
       "libraryId": "<id1>",
       "markers": [
         {
@@ -313,7 +366,7 @@ GET /api/v1/works/<id2>
       "parts": [
         {
           "durationMs": 7200000,
-          "fileId": "<id12>",
+          "fileId": "<id13>",
           "name": "Heatwave Seeded (1995) 1.mkv",
           "sizeBytes": 1073741824
         }
@@ -325,7 +378,7 @@ GET /api/v1/works/<id2>
           "codec": "h264",
           "default": false,
           "fullName": "H.264 High 1080p",
-          "id": "<id13>",
+          "id": "<id14>",
           "name": "H.264 1080p",
           "type": "video",
           "video": {
@@ -342,7 +395,7 @@ GET /api/v1/works/<id2>
           "codec": "aac",
           "default": true,
           "fullName": "Unknown language · AAC Stereo · Default",
-          "id": "<id10>",
+          "id": "<id11>",
           "name": "Unknown language · Stereo",
           "type": "audio"
         }
@@ -372,7 +425,6 @@ GET /api/v1/search?q=hea
       "matchState": "matched",
       "title": "Heatwave Seeded",
       "userState": {
-        "favorite": false,
         "playCount": 0,
         "played": false
       },
@@ -407,7 +459,6 @@ PATCH /api/v1/works/<id2>
   "matchState": "matched",
   "title": "Heat",
   "userState": {
-    "favorite": false,
     "playCount": 0,
     "played": false
   },
@@ -417,6 +468,7 @@ PATCH /api/v1/works/<id2>
   "externalIds": [],
   "extras": [],
   "genres": [],
+  "listIds": [],
   "lockedFields": [
     "overview",
     "title",
@@ -428,13 +480,13 @@ PATCH /api/v1/works/<id2>
   "studios": [],
   "versions": [
     {
-      "audioTrackId": "<id10>",
+      "audioTrackId": "<id11>",
       "available": true,
       "bitrateBps": 8000000,
       "chapterCount": 3,
       "container": "mov,mp4,m4a,3gp,3g2,mj2",
       "durationMs": 7200000,
-      "id": "<id11>",
+      "id": "<id12>",
       "libraryId": "<id1>",
       "markers": [
         {
@@ -449,7 +501,7 @@ PATCH /api/v1/works/<id2>
       "parts": [
         {
           "durationMs": 7200000,
-          "fileId": "<id12>",
+          "fileId": "<id13>",
           "name": "Heatwave Seeded (1995) 1.mkv",
           "sizeBytes": 1073741824
         }
@@ -461,7 +513,7 @@ PATCH /api/v1/works/<id2>
           "codec": "h264",
           "default": false,
           "fullName": "H.264 High 1080p",
-          "id": "<id13>",
+          "id": "<id14>",
           "name": "H.264 1080p",
           "type": "video",
           "video": {
@@ -478,7 +530,7 @@ PATCH /api/v1/works/<id2>
           "codec": "aac",
           "default": true,
           "fullName": "Unknown language · AAC Stereo · Default",
-          "id": "<id10>",
+          "id": "<id11>",
           "name": "Unknown language · Stereo",
           "type": "audio"
         }
@@ -505,7 +557,6 @@ PATCH /api/v1/works/<id2>
   "matchState": "matched",
   "title": "Heat",
   "userState": {
-    "favorite": false,
     "playCount": 0,
     "played": false
   },
@@ -515,6 +566,7 @@ PATCH /api/v1/works/<id2>
   "externalIds": [],
   "extras": [],
   "genres": [],
+  "listIds": [],
   "lockedFields": [
     "contentRating",
     "overview",
@@ -527,13 +579,13 @@ PATCH /api/v1/works/<id2>
   "studios": [],
   "versions": [
     {
-      "audioTrackId": "<id10>",
+      "audioTrackId": "<id11>",
       "available": true,
       "bitrateBps": 8000000,
       "chapterCount": 3,
       "container": "mov,mp4,m4a,3gp,3g2,mj2",
       "durationMs": 7200000,
-      "id": "<id11>",
+      "id": "<id12>",
       "libraryId": "<id1>",
       "markers": [
         {
@@ -548,7 +600,7 @@ PATCH /api/v1/works/<id2>
       "parts": [
         {
           "durationMs": 7200000,
-          "fileId": "<id12>",
+          "fileId": "<id13>",
           "name": "Heatwave Seeded (1995) 1.mkv",
           "sizeBytes": 1073741824
         }
@@ -560,7 +612,7 @@ PATCH /api/v1/works/<id2>
           "codec": "h264",
           "default": false,
           "fullName": "H.264 High 1080p",
-          "id": "<id13>",
+          "id": "<id14>",
           "name": "H.264 1080p",
           "type": "video",
           "video": {
@@ -577,7 +629,7 @@ PATCH /api/v1/works/<id2>
           "codec": "aac",
           "default": true,
           "fullName": "Unknown language · AAC Stereo · Default",
-          "id": "<id10>",
+          "id": "<id11>",
           "name": "Unknown language · Stereo",
           "type": "audio"
         }
@@ -621,7 +673,6 @@ PATCH /api/v1/works/<id2>
   "matchState": "matched",
   "title": "Heat",
   "userState": {
-    "favorite": false,
     "playCount": 0,
     "played": false
   },
@@ -631,6 +682,7 @@ PATCH /api/v1/works/<id2>
   "externalIds": [],
   "extras": [],
   "genres": [],
+  "listIds": [],
   "lockedFields": [
     "contentRating",
     "overview",
@@ -643,13 +695,13 @@ PATCH /api/v1/works/<id2>
   "studios": [],
   "versions": [
     {
-      "audioTrackId": "<id10>",
+      "audioTrackId": "<id11>",
       "available": true,
       "bitrateBps": 8000000,
       "chapterCount": 3,
       "container": "mov,mp4,m4a,3gp,3g2,mj2",
       "durationMs": 7200000,
-      "id": "<id11>",
+      "id": "<id12>",
       "libraryId": "<id1>",
       "markers": [
         {
@@ -664,7 +716,7 @@ PATCH /api/v1/works/<id2>
       "parts": [
         {
           "durationMs": 7200000,
-          "fileId": "<id12>",
+          "fileId": "<id13>",
           "name": "Heatwave Seeded (1995) 1.mkv",
           "sizeBytes": 1073741824
         }
@@ -676,7 +728,7 @@ PATCH /api/v1/works/<id2>
           "codec": "h264",
           "default": false,
           "fullName": "H.264 High 1080p",
-          "id": "<id13>",
+          "id": "<id14>",
           "name": "H.264 1080p",
           "type": "video",
           "video": {
@@ -693,7 +745,7 @@ PATCH /api/v1/works/<id2>
           "codec": "aac",
           "default": true,
           "fullName": "Unknown language · AAC Stereo · Default",
-          "id": "<id10>",
+          "id": "<id11>",
           "name": "Unknown language · Stereo",
           "type": "audio"
         }
@@ -719,7 +771,6 @@ PATCH /api/v1/works/<id2>
   "matchState": "matched",
   "title": "Heat",
   "userState": {
-    "favorite": false,
     "playCount": 0,
     "played": false
   },
@@ -731,6 +782,7 @@ PATCH /api/v1/works/<id2>
   "genres": [
     "Crime"
   ],
+  "listIds": [],
   "lockedFields": [
     "contentRating",
     "genres",
@@ -747,13 +799,13 @@ PATCH /api/v1/works/<id2>
   ],
   "versions": [
     {
-      "audioTrackId": "<id10>",
+      "audioTrackId": "<id11>",
       "available": true,
       "bitrateBps": 8000000,
       "chapterCount": 3,
       "container": "mov,mp4,m4a,3gp,3g2,mj2",
       "durationMs": 7200000,
-      "id": "<id11>",
+      "id": "<id12>",
       "libraryId": "<id1>",
       "markers": [
         {
@@ -768,7 +820,7 @@ PATCH /api/v1/works/<id2>
       "parts": [
         {
           "durationMs": 7200000,
-          "fileId": "<id12>",
+          "fileId": "<id13>",
           "name": "Heatwave Seeded (1995) 1.mkv",
           "sizeBytes": 1073741824
         }
@@ -780,7 +832,7 @@ PATCH /api/v1/works/<id2>
           "codec": "h264",
           "default": false,
           "fullName": "H.264 High 1080p",
-          "id": "<id13>",
+          "id": "<id14>",
           "name": "H.264 1080p",
           "type": "video",
           "video": {
@@ -797,7 +849,7 @@ PATCH /api/v1/works/<id2>
           "codec": "aac",
           "default": true,
           "fullName": "Unknown language · AAC Stereo · Default",
-          "id": "<id10>",
+          "id": "<id11>",
           "name": "Unknown language · Stereo",
           "type": "audio"
         }
@@ -833,7 +885,7 @@ PATCH /api/v1/works/<id2>
 }
 
 
-PATCH /api/v1/works/<id14>
+PATCH /api/v1/works/<id15>
 404
 {
   "code": "notFound",
@@ -902,14 +954,13 @@ PATCH /api/v1/works/<id3>
         "seriesId": "<id3>",
         "seriesTitle": "Seeded Series"
       },
-      "id": "<id15>",
+      "id": "<id16>",
       "images": {},
       "kind": "episode",
       "libraryId": "<id1>",
       "matchState": "matched",
       "title": "Episode 1",
       "userState": {
-        "favorite": false,
         "playCount": 0,
         "played": false
       }
@@ -919,7 +970,6 @@ PATCH /api/v1/works/<id3>
   },
   "title": "Seeded Series",
   "userState": {
-    "favorite": false,
     "playCount": 0,
     "played": false
   },
@@ -928,6 +978,7 @@ PATCH /api/v1/works/<id3>
   "externalIds": [],
   "extras": [],
   "genres": [],
+  "listIds": [],
   "lockedFields": [
     "title"
   ],
@@ -937,7 +988,7 @@ PATCH /api/v1/works/<id3>
 }
 
 
-PATCH /api/v1/works/<id15>
+PATCH /api/v1/works/<id16>
 200
 {
   "addedAt": "<time>",
@@ -950,14 +1001,13 @@ PATCH /api/v1/works/<id15>
     "seriesId": "<id3>",
     "seriesTitle": "Seeded Series"
   },
-  "id": "<id15>",
+  "id": "<id16>",
   "images": {},
   "kind": "episode",
   "libraryId": "<id1>",
   "matchState": "matched",
   "title": "Episode 1",
   "userState": {
-    "favorite": false,
     "playCount": 0,
     "played": false
   },
@@ -966,6 +1016,7 @@ PATCH /api/v1/works/<id15>
   "externalIds": [],
   "extras": [],
   "genres": [],
+  "listIds": [],
   "lockedFields": [
     "episode.airDate"
   ],
@@ -976,14 +1027,14 @@ PATCH /api/v1/works/<id15>
     {
       "available": true,
       "durationMs": 0,
-      "id": "<id16>",
+      "id": "<id17>",
       "libraryId": "<id1>",
       "markers": [],
       "name": "Audio",
       "parts": [
         {
           "durationMs": 0,
-          "fileId": "<id17>",
+          "fileId": "<id18>",
           "name": "S01E01 2.mkv",
           "sizeBytes": 1073741824
         }
@@ -991,14 +1042,14 @@ PATCH /api/v1/works/<id15>
       "sizeBytes": 1073741824,
       "tracks": [],
       "workIds": [
-        "<id15>"
+        "<id16>"
       ]
     }
   ]
 }
 
 
-PATCH /api/v1/works/<id18>
+PATCH /api/v1/works/<id19>
 200
 {
   "addedAt": "<time>",
@@ -1012,7 +1063,7 @@ PATCH /api/v1/works/<id18>
     ],
     "narrators": [
       {
-        "id": "<id19>",
+        "id": "<id20>",
         "name": "Jefferson Mays"
       }
     ],
@@ -1020,7 +1071,7 @@ PATCH /api/v1/works/<id18>
     "releaseDate": "2011-06-02",
     "series": [
       {
-        "id": "<id20>",
+        "id": "<id21>",
         "name": "The Expanse",
         "position": "1",
         "primary": true
@@ -1028,14 +1079,13 @@ PATCH /api/v1/works/<id18>
     ],
     "subtitle": "Expanse 1"
   },
-  "id": "<id18>",
+  "id": "<id19>",
   "images": {},
   "kind": "book",
   "libraryId": "<id4>",
   "matchState": "matched",
   "title": "Leviathan Wakes",
   "userState": {
-    "favorite": false,
     "playCount": 0,
     "played": false
   },
@@ -1049,7 +1099,7 @@ PATCH /api/v1/works/<id18>
     },
     {
       "name": "Jefferson Mays",
-      "personId": "<id19>",
+      "personId": "<id20>",
       "role": "narrator"
     }
   ],
@@ -1062,6 +1112,7 @@ PATCH /api/v1/works/<id18>
   ],
   "extras": [],
   "genres": [],
+  "listIds": [],
   "lockedFields": [
     "book.asin",
     "book.authors",
@@ -1080,13 +1131,13 @@ PATCH /api/v1/works/<id18>
     {
       "available": true,
       "durationMs": 0,
-      "id": "<id21>",
+      "id": "<id22>",
       "libraryId": "<id4>",
       "name": "Audio",
       "parts": [
         {
           "durationMs": 0,
-          "fileId": "<id22>",
+          "fileId": "<id23>",
           "name": "a.m4b",
           "sizeBytes": 1073741824
         }
@@ -1094,14 +1145,14 @@ PATCH /api/v1/works/<id18>
       "sizeBytes": 1073741824,
       "tracks": [],
       "workIds": [
-        "<id18>"
+        "<id19>"
       ]
     }
   ]
 }
 
 
-PATCH /api/v1/works/<id18>
+PATCH /api/v1/works/<id19>
 200
 {
   "addedAt": "<time>",
@@ -1115,14 +1166,14 @@ PATCH /api/v1/works/<id18>
     ],
     "narrators": [
       {
-        "id": "<id19>",
+        "id": "<id20>",
         "name": "Jefferson Mays"
       }
     ],
     "releaseDate": "2011-06-02",
     "series": [
       {
-        "id": "<id20>",
+        "id": "<id21>",
         "name": "The Expanse",
         "position": "1",
         "primary": true
@@ -1130,14 +1181,13 @@ PATCH /api/v1/works/<id18>
     ],
     "subtitle": "Expanse 1"
   },
-  "id": "<id18>",
+  "id": "<id19>",
   "images": {},
   "kind": "book",
   "libraryId": "<id4>",
   "matchState": "matched",
   "title": "Leviathan Wakes",
   "userState": {
-    "favorite": false,
     "playCount": 0,
     "played": false
   },
@@ -1151,7 +1201,7 @@ PATCH /api/v1/works/<id18>
     },
     {
       "name": "Jefferson Mays",
-      "personId": "<id19>",
+      "personId": "<id20>",
       "role": "narrator"
     }
   ],
@@ -1164,6 +1214,7 @@ PATCH /api/v1/works/<id18>
   ],
   "extras": [],
   "genres": [],
+  "listIds": [],
   "lockedFields": [
     "book.asin",
     "book.authors",
@@ -1180,13 +1231,13 @@ PATCH /api/v1/works/<id18>
     {
       "available": true,
       "durationMs": 0,
-      "id": "<id21>",
+      "id": "<id22>",
       "libraryId": "<id4>",
       "name": "Audio",
       "parts": [
         {
           "durationMs": 0,
-          "fileId": "<id22>",
+          "fileId": "<id23>",
           "name": "a.m4b",
           "sizeBytes": 1073741824
         }
@@ -1194,7 +1245,7 @@ PATCH /api/v1/works/<id18>
       "sizeBytes": 1073741824,
       "tracks": [],
       "workIds": [
-        "<id18>"
+        "<id19>"
       ]
     }
   ]
@@ -1217,27 +1268,26 @@ PATCH /api/v1/works
         ],
         "narrators": [
           {
-            "id": "<id19>",
+            "id": "<id20>",
             "name": "Jefferson Mays"
           }
         ],
         "series": [
           {
-            "id": "<id20>",
+            "id": "<id21>",
             "name": "The Expanse",
             "position": "1",
             "primary": true
           }
         ]
       },
-      "id": "<id18>",
+      "id": "<id19>",
       "images": {},
       "kind": "book",
       "libraryId": "<id4>",
       "matchState": "matched",
       "title": "Leviathan Wakes",
       "userState": {
-        "favorite": false,
         "playCount": 0,
         "played": false
       },
@@ -1268,9 +1318,8 @@ PATCH /api/v1/works
 PATCH /api/v1/works/<id2>/user-state
 200
 {
-  "favorite": true,
-  "playCount": 0,
-  "played": false
+  "playCount": 1,
+  "played": true
 }
 
 
@@ -1344,7 +1393,7 @@ GET /api/v1/works/<id2>/matches?provider=audible
 }
 
 
-GET /api/v1/works/<id15>/matches?provider=tmdb&query=tmdb-0
+GET /api/v1/works/<id16>/matches?provider=tmdb&query=tmdb-0
 503
 {
   "code": "providerUnavailable",
@@ -1356,7 +1405,7 @@ GET /api/v1/works/<id15>/matches?provider=tmdb&query=tmdb-0
 }
 
 
-GET /api/v1/works/<id18>/matches?provider=tmdb
+GET /api/v1/works/<id19>/matches?provider=tmdb
 400
 {
   "code": "invalidRequest",
@@ -1374,7 +1423,7 @@ GET /api/v1/works/<id18>/matches?provider=tmdb
 }
 
 
-GET /api/v1/works/<id18>/matches?query=B0058ZZZ5A
+GET /api/v1/works/<id19>/matches?query=B0058ZZZ5A
 503
 {
   "code": "providerUnavailable",
@@ -1386,7 +1435,7 @@ GET /api/v1/works/<id18>/matches?query=B0058ZZZ5A
 }
 
 
-GET /api/v1/works/<id23>/matches
+GET /api/v1/works/<id24>/matches
 404
 {
   "code": "notFound",
@@ -1428,7 +1477,7 @@ POST /api/v1/works/<id2>/match
 }
 
 
-POST /api/v1/works/<id18>/match
+POST /api/v1/works/<id19>/match
 400
 {
   "code": "invalidRequest",
@@ -1446,7 +1495,7 @@ POST /api/v1/works/<id18>/match
 }
 
 
-POST /api/v1/works/<id18>/match
+POST /api/v1/works/<id19>/match
 200
 {
   "addedAt": "<time>",
@@ -1460,14 +1509,14 @@ POST /api/v1/works/<id18>/match
     ],
     "narrators": [
       {
-        "id": "<id19>",
+        "id": "<id20>",
         "name": "Jefferson Mays"
       }
     ],
     "releaseDate": "2011-06-02",
     "series": [
       {
-        "id": "<id20>",
+        "id": "<id21>",
         "name": "The Expanse",
         "position": "1",
         "primary": true
@@ -1475,14 +1524,13 @@ POST /api/v1/works/<id18>/match
     ],
     "subtitle": "Expanse 1"
   },
-  "id": "<id18>",
+  "id": "<id19>",
   "images": {},
   "kind": "book",
   "libraryId": "<id4>",
   "matchState": "matched",
   "title": "Leviathan Wakes",
   "userState": {
-    "favorite": false,
     "playCount": 0,
     "played": false
   },
@@ -1496,7 +1544,7 @@ POST /api/v1/works/<id18>/match
     },
     {
       "name": "Jefferson Mays",
-      "personId": "<id19>",
+      "personId": "<id20>",
       "role": "narrator"
     }
   ],
@@ -1511,6 +1559,7 @@ POST /api/v1/works/<id18>/match
   "genres": [
     "Science Fiction"
   ],
+  "listIds": [],
   "lockedFields": [
     "book.asin",
     "book.authors",
@@ -1528,13 +1577,13 @@ POST /api/v1/works/<id18>/match
     {
       "available": true,
       "durationMs": 0,
-      "id": "<id21>",
+      "id": "<id22>",
       "libraryId": "<id4>",
       "name": "Audio",
       "parts": [
         {
           "durationMs": 0,
-          "fileId": "<id22>",
+          "fileId": "<id23>",
           "name": "a.m4b",
           "sizeBytes": 1073741824
         }
@@ -1542,14 +1591,14 @@ POST /api/v1/works/<id18>/match
       "sizeBytes": 1073741824,
       "tracks": [],
       "workIds": [
-        "<id18>"
+        "<id19>"
       ]
     }
   ]
 }
 
 
-POST /api/v1/works/<id24>/match
+POST /api/v1/works/<id25>/match
 404
 {
   "code": "notFound",
@@ -1561,7 +1610,7 @@ POST /api/v1/works/<id24>/match
 }
 
 
-POST /api/v1/works/<id15>/unmatch
+POST /api/v1/works/<id16>/unmatch
 400
 {
   "code": "invalidRequest",
@@ -1573,7 +1622,7 @@ POST /api/v1/works/<id15>/unmatch
 }
 
 
-POST /api/v1/works/<id25>/unmatch
+POST /api/v1/works/<id26>/unmatch
 404
 {
   "code": "notFound",
@@ -1590,7 +1639,7 @@ POST /api/v1/works/<id2>/refresh-metadata
 {}
 
 
-POST /api/v1/works/<id26>/refresh-metadata
+POST /api/v1/works/<id27>/refresh-metadata
 404
 {
   "code": "notFound",
@@ -1732,7 +1781,7 @@ GET /api/v1/works/<id2>/artwork?limit=1&after=bogus
 }
 
 
-GET /api/v1/works/<id27>/artwork
+GET /api/v1/works/<id28>/artwork
 404
 {
   "code": "notFound",
@@ -1744,7 +1793,7 @@ GET /api/v1/works/<id27>/artwork
 }
 
 
-POST /api/v1/works/<id28>/artwork/<id29>/select
+POST /api/v1/works/<id29>/artwork/<id30>/select
 404
 {
   "code": "notFound",
@@ -1763,7 +1812,7 @@ GET /api/v1/libraries
     {
       "folders": [
         {
-          "id": "<id30>",
+          "id": "<id31>",
           "path": "<tmp>",
           "reachable": true
         }
@@ -1787,7 +1836,7 @@ GET /api/v1/libraries
     {
       "folders": [
         {
-          "id": "<id31>",
+          "id": "<id32>",
           "path": "/media/audiobooks3",
           "reachable": true
         }
@@ -1848,7 +1897,7 @@ GET /api/v1/libraries?limit=1&after=bogus
     {
       "folders": [
         {
-          "id": "<id30>",
+          "id": "<id31>",
           "path": "<tmp>",
           "reachable": true
         }
@@ -1872,7 +1921,7 @@ GET /api/v1/libraries?limit=1&after=bogus
     {
       "folders": [
         {
-          "id": "<id31>",
+          "id": "<id32>",
           "path": "/media/audiobooks3",
           "reachable": true
         }
@@ -1902,7 +1951,7 @@ GET /api/v1/libraries/<id1>
 {
   "folders": [
     {
-      "id": "<id30>",
+      "id": "<id31>",
       "path": "<tmp>",
       "reachable": true
     }
@@ -1960,12 +2009,12 @@ POST /api/v1/libraries
 {
   "folders": [
     {
-      "id": "<id32>",
+      "id": "<id33>",
       "path": "<tmp>",
       "reachable": true
     }
   ],
-  "id": "<id33>",
+  "id": "<id34>",
   "kind": "shows",
   "markers": "nightlyAndAdded",
   "name": "Shows",
@@ -1973,7 +2022,7 @@ POST /api/v1/libraries
   "previews": "never",
   "refreshDays": 30,
   "scan": {
-    "libraryId": "<id33>",
+    "libraryId": "<id34>",
     "state": "scanning"
   },
   "subtitles": "nightlyAndAdded",
@@ -1983,17 +2032,17 @@ POST /api/v1/libraries
 }
 
 
-PATCH /api/v1/libraries/<id33>
+PATCH /api/v1/libraries/<id34>
 200
 {
   "folders": [
     {
-      "id": "<id32>",
+      "id": "<id33>",
       "path": "<tmp>",
       "reachable": true
     }
   ],
-  "id": "<id33>",
+  "id": "<id34>",
   "kind": "shows",
   "markers": "nightlyAndAdded",
   "name": "TV",
@@ -2001,7 +2050,7 @@ PATCH /api/v1/libraries/<id33>
   "previews": "never",
   "refreshDays": 30,
   "scan": {
-    "libraryId": "<id33>",
+    "libraryId": "<id34>",
     "state": "scanning"
   },
   "subtitles": "nightlyAndAdded",
@@ -2011,27 +2060,27 @@ PATCH /api/v1/libraries/<id33>
 }
 
 
-POST /api/v1/libraries/<id33>/scan
+POST /api/v1/libraries/<id34>/scan
 202
 {}
 
 
-POST /api/v1/libraries/<id33>/scan
+POST /api/v1/libraries/<id34>/scan
 202
 {}
 
 
-GET /api/v1/libraries/<id33>
+GET /api/v1/libraries/<id34>
 200
 {
   "folders": [
     {
-      "id": "<id32>",
+      "id": "<id33>",
       "path": "<tmp>",
       "reachable": true
     }
   ],
-  "id": "<id33>",
+  "id": "<id34>",
   "kind": "shows",
   "markers": "nightlyAndAdded",
   "name": "TV",
@@ -2039,7 +2088,7 @@ GET /api/v1/libraries/<id33>
   "previews": "never",
   "refreshDays": 30,
   "scan": {
-    "libraryId": "<id33>",
+    "libraryId": "<id34>",
     "state": "scanning"
   },
   "subtitles": "nightlyAndAdded",
@@ -2049,18 +2098,18 @@ GET /api/v1/libraries/<id33>
 }
 
 
-POST /api/v1/libraries/<id33>/stop-scan
+POST /api/v1/libraries/<id34>/stop-scan
 204
 
 
-POST /api/v1/libraries/<id33>/refresh-metadata
+POST /api/v1/libraries/<id34>/refresh-metadata
 202
 {
   "queued": 0
 }
 
 
-POST /api/v1/libraries/<id34>/refresh-metadata
+POST /api/v1/libraries/<id35>/refresh-metadata
 404
 {
   "code": "notFound",
@@ -2072,7 +2121,7 @@ POST /api/v1/libraries/<id34>/refresh-metadata
 }
 
 
-POST /api/v1/libraries/<id35>/scan
+POST /api/v1/libraries/<id36>/scan
 404
 {
   "code": "notFound",
@@ -2084,7 +2133,7 @@ POST /api/v1/libraries/<id35>/scan
 }
 
 
-POST /api/v1/libraries/<id36>/stop-scan
+POST /api/v1/libraries/<id37>/stop-scan
 404
 {
   "code": "notFound",
@@ -2095,12 +2144,12 @@ POST /api/v1/libraries/<id36>/stop-scan
 }
 
 
-DELETE /api/v1/libraries/<id33>
+DELETE /api/v1/libraries/<id34>
 202
 {}
 
 
-DELETE /api/v1/libraries/<id37>
+DELETE /api/v1/libraries/<id38>
 404
 {
   "code": "notFound",
@@ -2393,7 +2442,7 @@ POST /api/v1/plays
     "enabled": false
   },
   "durationMs": 7200000,
-  "id": "<id38>",
+  "id": "<id39>",
   "local": false,
   "markers": [
     {
@@ -2407,7 +2456,7 @@ POST /api/v1/plays
   "parts": [
     {
       "durationMs": 7200000,
-      "url": "plays/<id38>/files/0"
+      "url": "plays/<id39>/files/0"
     }
   ],
   "previews": {
@@ -2420,7 +2469,7 @@ POST /api/v1/plays
       "delivery": "file",
       "index": 0,
       "selected": true,
-      "trackId": "<id13>",
+      "trackId": "<id14>",
       "type": "video"
     },
     {
@@ -2428,7 +2477,7 @@ POST /api/v1/plays
       "delivery": "file",
       "index": 1,
       "selected": true,
-      "trackId": "<id10>",
+      "trackId": "<id11>",
       "type": "audio"
     },
     {
@@ -2438,8 +2487,8 @@ POST /api/v1/plays
       "type": "subtitle"
     }
   ],
-  "url": "plays/<id38>/files/0",
-  "versionId": "<id11>",
+  "url": "plays/<id39>/files/0",
+  "versionId": "<id12>",
   "workId": "<id2>"
 }
 
@@ -2489,7 +2538,7 @@ POST /api/v1/plays
     "enabled": false
   },
   "durationMs": 7200000,
-  "id": "<id39>",
+  "id": "<id40>",
   "local": false,
   "markers": [
     {
@@ -2503,7 +2552,7 @@ POST /api/v1/plays
   "parts": [
     {
       "durationMs": 7200000,
-      "url": "plays/<id39>/files/0"
+      "url": "plays/<id40>/files/0"
     }
   ],
   "previews": {
@@ -2516,7 +2565,7 @@ POST /api/v1/plays
       "delivery": "file",
       "index": 0,
       "selected": true,
-      "trackId": "<id13>",
+      "trackId": "<id14>",
       "type": "video"
     },
     {
@@ -2524,7 +2573,7 @@ POST /api/v1/plays
       "delivery": "file",
       "index": 1,
       "selected": true,
-      "trackId": "<id10>",
+      "trackId": "<id11>",
       "type": "audio"
     },
     {
@@ -2534,8 +2583,8 @@ POST /api/v1/plays
       "type": "subtitle"
     }
   ],
-  "url": "plays/<id39>/files/0",
-  "versionId": "<id11>",
+  "url": "plays/<id40>/files/0",
+  "versionId": "<id12>",
   "workId": "<id2>"
 }
 
@@ -2552,11 +2601,11 @@ POST /api/v1/plays
 }
 
 
-PATCH /api/v1/plays/<id38>
+PATCH /api/v1/plays/<id39>
 204
 
 
-PATCH /api/v1/plays/<id38>
+PATCH /api/v1/plays/<id39>
 400
 {
   "code": "invalidRequest",
@@ -2574,7 +2623,7 @@ PATCH /api/v1/plays/<id38>
 }
 
 
-PATCH /api/v1/plays/<id38>
+PATCH /api/v1/plays/<id39>
 404
 {
   "code": "notFound",
@@ -2597,7 +2646,7 @@ GET /api/v1/plays
       "clientName": "test",
       "delivery": "file",
       "durationMs": 7200000,
-      "id": "<id38>",
+      "id": "<id39>",
       "local": false,
       "positionMs": 60000,
       "seekToFirstFrameMs": [
@@ -2608,7 +2657,7 @@ GET /api/v1/plays
           "codec": "h264",
           "default": false,
           "fullName": "H.264 High 1080p",
-          "id": "<id13>",
+          "id": "<id14>",
           "name": "H.264 1080p",
           "type": "video",
           "video": {
@@ -2625,7 +2674,7 @@ GET /api/v1/plays
           "codec": "aac",
           "default": true,
           "fullName": "Unknown language · AAC Stereo · Default",
-          "id": "<id10>",
+          "id": "<id11>",
           "name": "Unknown language · Stereo",
           "type": "audio"
         }
@@ -2639,7 +2688,7 @@ GET /api/v1/plays
           "delivery": "file",
           "index": 0,
           "selected": true,
-          "trackId": "<id13>",
+          "trackId": "<id14>",
           "type": "video"
         },
         {
@@ -2647,7 +2696,7 @@ GET /api/v1/plays
           "delivery": "file",
           "index": 1,
           "selected": true,
-          "trackId": "<id10>",
+          "trackId": "<id11>",
           "type": "audio"
         },
         {
@@ -2657,9 +2706,9 @@ GET /api/v1/plays
           "type": "subtitle"
         }
       ],
-      "userId": "<id40>",
+      "userId": "<id41>",
       "username": "friend",
-      "versionId": "<id11>",
+      "versionId": "<id12>",
       "work": {
         "addedAt": "<time>",
         "available": true,
@@ -2671,9 +2720,8 @@ GET /api/v1/plays
         "matchState": "matched",
         "title": "Heat",
         "userState": {
-          "favorite": true,
-          "playCount": 0,
-          "played": false
+          "playCount": 1,
+          "played": true
         },
         "year": 1996
       },
@@ -2685,7 +2733,7 @@ GET /api/v1/plays
       "clientName": "Test",
       "delivery": "file",
       "durationMs": 7200000,
-      "id": "<id39>",
+      "id": "<id40>",
       "local": false,
       "positionMs": 0,
       "sourceTracks": [
@@ -2693,7 +2741,7 @@ GET /api/v1/plays
           "codec": "h264",
           "default": false,
           "fullName": "H.264 High 1080p",
-          "id": "<id13>",
+          "id": "<id14>",
           "name": "H.264 1080p",
           "type": "video",
           "video": {
@@ -2710,7 +2758,7 @@ GET /api/v1/plays
           "codec": "aac",
           "default": true,
           "fullName": "Unknown language · AAC Stereo · Default",
-          "id": "<id10>",
+          "id": "<id11>",
           "name": "Unknown language · Stereo",
           "type": "audio"
         }
@@ -2724,7 +2772,7 @@ GET /api/v1/plays
           "delivery": "file",
           "index": 0,
           "selected": true,
-          "trackId": "<id13>",
+          "trackId": "<id14>",
           "type": "video"
         },
         {
@@ -2732,7 +2780,7 @@ GET /api/v1/plays
           "delivery": "file",
           "index": 1,
           "selected": true,
-          "trackId": "<id10>",
+          "trackId": "<id11>",
           "type": "audio"
         },
         {
@@ -2742,9 +2790,9 @@ GET /api/v1/plays
           "type": "subtitle"
         }
       ],
-      "userId": "<id41>",
+      "userId": "<id42>",
       "username": "admin",
-      "versionId": "<id11>",
+      "versionId": "<id12>",
       "work": {
         "addedAt": "<time>",
         "available": true,
@@ -2756,9 +2804,8 @@ GET /api/v1/plays
         "matchState": "matched",
         "title": "Heat",
         "userState": {
-          "favorite": true,
-          "playCount": 0,
-          "played": false
+          "playCount": 1,
+          "played": true
         },
         "year": 1996
       },
@@ -2768,7 +2815,7 @@ GET /api/v1/plays
 }
 
 
-GET /api/v1/plays/<id38>
+GET /api/v1/plays/<id39>
 200
 {
   "address": "192.0.2.1",
@@ -2777,7 +2824,7 @@ GET /api/v1/plays/<id38>
   "clientName": "test",
   "delivery": "file",
   "durationMs": 7200000,
-  "id": "<id38>",
+  "id": "<id39>",
   "local": false,
   "positionMs": 60000,
   "seekToFirstFrameMs": [
@@ -2788,7 +2835,7 @@ GET /api/v1/plays/<id38>
       "codec": "h264",
       "default": false,
       "fullName": "H.264 High 1080p",
-      "id": "<id13>",
+      "id": "<id14>",
       "name": "H.264 1080p",
       "type": "video",
       "video": {
@@ -2805,7 +2852,7 @@ GET /api/v1/plays/<id38>
       "codec": "aac",
       "default": true,
       "fullName": "Unknown language · AAC Stereo · Default",
-      "id": "<id10>",
+      "id": "<id11>",
       "name": "Unknown language · Stereo",
       "type": "audio"
     }
@@ -2819,7 +2866,7 @@ GET /api/v1/plays/<id38>
       "delivery": "file",
       "index": 0,
       "selected": true,
-      "trackId": "<id13>",
+      "trackId": "<id14>",
       "type": "video"
     },
     {
@@ -2827,7 +2874,7 @@ GET /api/v1/plays/<id38>
       "delivery": "file",
       "index": 1,
       "selected": true,
-      "trackId": "<id10>",
+      "trackId": "<id11>",
       "type": "audio"
     },
     {
@@ -2837,9 +2884,9 @@ GET /api/v1/plays/<id38>
       "type": "subtitle"
     }
   ],
-  "userId": "<id40>",
+  "userId": "<id41>",
   "username": "friend",
-  "versionId": "<id11>",
+  "versionId": "<id12>",
   "work": {
     "addedAt": "<time>",
     "available": true,
@@ -2851,9 +2898,8 @@ GET /api/v1/plays/<id38>
     "matchState": "matched",
     "title": "Heat",
     "userState": {
-      "favorite": true,
-      "playCount": 0,
-      "played": false
+      "playCount": 1,
+      "played": true
     },
     "year": 1996
   },
@@ -2861,7 +2907,7 @@ GET /api/v1/plays/<id38>
 }
 
 
-GET /api/v1/plays/<id38>
+GET /api/v1/plays/<id39>
 403
 {
   "code": "forbidden",
@@ -2872,7 +2918,7 @@ GET /api/v1/plays/<id38>
 }
 
 
-GET /api/v1/plays/<id42>
+GET /api/v1/plays/<id43>
 404
 {
   "code": "notFound",
@@ -2884,7 +2930,7 @@ GET /api/v1/plays/<id42>
 }
 
 
-POST /api/v1/plays/<id38>/stop
+POST /api/v1/plays/<id39>/stop
 400
 {
   "code": "invalidRequest",
@@ -2902,7 +2948,7 @@ POST /api/v1/plays/<id38>/stop
 }
 
 
-POST /api/v1/plays/<id38>/stop
+POST /api/v1/plays/<id39>/stop
 404
 {
   "code": "notFound",
@@ -2914,7 +2960,7 @@ POST /api/v1/plays/<id38>/stop
 }
 
 
-POST /api/v1/plays/<id38>/fallback
+POST /api/v1/plays/<id39>/fallback
 409
 {
   "code": "notPlayable",
@@ -2937,7 +2983,7 @@ GET /api/v1/plays
       "clientName": "Test",
       "delivery": "file",
       "durationMs": 7200000,
-      "id": "<id39>",
+      "id": "<id40>",
       "local": false,
       "positionMs": 0,
       "sourceTracks": [
@@ -2945,7 +2991,7 @@ GET /api/v1/plays
           "codec": "h264",
           "default": false,
           "fullName": "H.264 High 1080p",
-          "id": "<id13>",
+          "id": "<id14>",
           "name": "H.264 1080p",
           "type": "video",
           "video": {
@@ -2962,7 +3008,7 @@ GET /api/v1/plays
           "codec": "aac",
           "default": true,
           "fullName": "Unknown language · AAC Stereo · Default",
-          "id": "<id10>",
+          "id": "<id11>",
           "name": "Unknown language · Stereo",
           "type": "audio"
         }
@@ -2976,7 +3022,7 @@ GET /api/v1/plays
           "delivery": "file",
           "index": 0,
           "selected": true,
-          "trackId": "<id13>",
+          "trackId": "<id14>",
           "type": "video"
         },
         {
@@ -2984,7 +3030,7 @@ GET /api/v1/plays
           "delivery": "file",
           "index": 1,
           "selected": true,
-          "trackId": "<id10>",
+          "trackId": "<id11>",
           "type": "audio"
         },
         {
@@ -2994,9 +3040,9 @@ GET /api/v1/plays
           "type": "subtitle"
         }
       ],
-      "userId": "<id41>",
+      "userId": "<id42>",
       "username": "admin",
-      "versionId": "<id11>",
+      "versionId": "<id12>",
       "work": {
         "addedAt": "<time>",
         "available": true,
@@ -3008,9 +3054,8 @@ GET /api/v1/plays
         "matchState": "matched",
         "title": "Heat",
         "userState": {
-          "favorite": true,
-          "playCount": 0,
-          "played": false
+          "playCount": 1,
+          "played": true
         },
         "year": 1996
       },
@@ -3020,11 +3065,11 @@ GET /api/v1/plays
 }
 
 
-POST /api/v1/plays/<id39>/stop
+POST /api/v1/plays/<id40>/stop
 204
 
 
-POST /api/v1/plays/<id38>/stop
+POST /api/v1/plays/<id39>/stop
 404
 {
   "code": "notFound",
@@ -3063,7 +3108,7 @@ POST /api/v1/plays
     "enabled": false
   },
   "durationMs": 7200000,
-  "id": "<id43>",
+  "id": "<id44>",
   "local": false,
   "markers": [
     {
@@ -3077,7 +3122,7 @@ POST /api/v1/plays
   "parts": [
     {
       "durationMs": 7200000,
-      "url": "plays/<id43>/files/0"
+      "url": "plays/<id44>/files/0"
     }
   ],
   "previews": {
@@ -3090,7 +3135,7 @@ POST /api/v1/plays
       "delivery": "file",
       "index": 0,
       "selected": true,
-      "trackId": "<id13>",
+      "trackId": "<id14>",
       "type": "video"
     },
     {
@@ -3098,7 +3143,7 @@ POST /api/v1/plays
       "delivery": "file",
       "index": 1,
       "selected": true,
-      "trackId": "<id10>",
+      "trackId": "<id11>",
       "type": "audio"
     },
     {
@@ -3108,13 +3153,13 @@ POST /api/v1/plays
       "type": "subtitle"
     }
   ],
-  "url": "plays/<id43>/files/0",
-  "versionId": "<id11>",
+  "url": "plays/<id44>/files/0",
+  "versionId": "<id12>",
   "workId": "<id2>"
 }
 
 
-POST /api/v1/plays/<id43>/stop
+POST /api/v1/plays/<id44>/stop
 204
 
 
@@ -3136,43 +3181,16 @@ GET /api/v1/home
           "matchState": "matched",
           "title": "Heat",
           "userState": {
-            "favorite": true,
             "lastPlayedAt": "<time>",
-            "playCount": 0,
-            "played": false,
+            "playCount": 1,
+            "played": true,
             "positionMs": 600000,
-            "versionId": "<id11>"
+            "versionId": "<id12>"
           },
           "year": 1996
         }
       ],
       "kind": "continueWatching"
-    },
-    {
-      "id": "favorites",
-      "items": [
-        {
-          "addedAt": "<time>",
-          "available": true,
-          "durationMs": 7200000,
-          "id": "<id2>",
-          "images": {},
-          "kind": "movie",
-          "libraryId": "<id1>",
-          "matchState": "matched",
-          "title": "Heat",
-          "userState": {
-            "favorite": true,
-            "lastPlayedAt": "<time>",
-            "playCount": 0,
-            "played": false,
-            "positionMs": 600000,
-            "versionId": "<id11>"
-          },
-          "year": 1996
-        }
-      ],
-      "kind": "favorites"
     },
     {
       "id": "recentlyAdded:<id1>",
@@ -3188,37 +3206,16 @@ GET /api/v1/home
             "seriesId": "<id3>",
             "seriesTitle": "Seeded Series"
           },
-          "id": "<id15>",
+          "id": "<id16>",
           "images": {},
           "kind": "episode",
           "libraryId": "<id1>",
           "matchState": "matched",
           "title": "Episode 1",
           "userState": {
-            "favorite": false,
             "playCount": 0,
             "played": false
           }
-        },
-        {
-          "addedAt": "<time>",
-          "available": true,
-          "durationMs": 7200000,
-          "id": "<id2>",
-          "images": {},
-          "kind": "movie",
-          "libraryId": "<id1>",
-          "matchState": "matched",
-          "title": "Heat",
-          "userState": {
-            "favorite": true,
-            "lastPlayedAt": "<time>",
-            "playCount": 0,
-            "played": false,
-            "positionMs": 600000,
-            "versionId": "<id11>"
-          },
-          "year": 1996
         }
       ],
       "kind": "recentlyAdded",
@@ -3243,27 +3240,26 @@ GET /api/v1/home
             ],
             "narrators": [
               {
-                "id": "<id19>",
+                "id": "<id20>",
                 "name": "Jefferson Mays"
               }
             ],
             "series": [
               {
-                "id": "<id20>",
+                "id": "<id21>",
                 "name": "The Expanse",
                 "position": "1",
                 "primary": true
               }
             ]
           },
-          "id": "<id18>",
+          "id": "<id19>",
           "images": {},
           "kind": "book",
           "libraryId": "<id4>",
           "matchState": "matched",
           "title": "Leviathan Wakes",
           "userState": {
-            "favorite": false,
             "playCount": 0,
             "played": false
           },
@@ -3299,14 +3295,13 @@ GET /api/v1/home
             "seriesId": "<id3>",
             "seriesTitle": "Seeded Series"
           },
-          "id": "<id15>",
+          "id": "<id16>",
           "images": {},
           "kind": "episode",
           "libraryId": "<id1>",
           "matchState": "matched",
           "title": "Episode 1",
           "userState": {
-            "favorite": false,
             "playCount": 0,
             "played": false
           }
@@ -3322,11 +3317,10 @@ GET /api/v1/home
           "matchState": "matched",
           "title": "Heat",
           "userState": {
-            "favorite": false,
             "lastPlayedAt": "<time>",
             "playCount": 0,
             "played": false,
-            "versionId": "<id11>"
+            "versionId": "<id12>"
           },
           "year": 1996
         }
@@ -3353,27 +3347,26 @@ GET /api/v1/home
             ],
             "narrators": [
               {
-                "id": "<id19>",
+                "id": "<id20>",
                 "name": "Jefferson Mays"
               }
             ],
             "series": [
               {
-                "id": "<id20>",
+                "id": "<id21>",
                 "name": "The Expanse",
                 "position": "1",
                 "primary": true
               }
             ]
           },
-          "id": "<id18>",
+          "id": "<id19>",
           "images": {},
           "kind": "book",
           "libraryId": "<id4>",
           "matchState": "matched",
           "title": "Leviathan Wakes",
           "userState": {
-            "favorite": false,
             "playCount": 0,
             "played": false
           },
@@ -3398,18 +3391,251 @@ GET /api/v1/home
 }
 
 
+GET /api/v1/home?kind=recentlyAdded
+200
+{
+  "rows": [
+    {
+      "id": "recentlyAdded:<id1>",
+      "items": [
+        {
+          "addedAt": "<time>",
+          "available": true,
+          "episode": {
+            "airDate": "2001-02-03",
+            "number": 1,
+            "seasonId": "<id7>",
+            "seasonNumber": 1,
+            "seriesId": "<id3>",
+            "seriesTitle": "Seeded Series"
+          },
+          "id": "<id16>",
+          "images": {},
+          "kind": "episode",
+          "libraryId": "<id1>",
+          "matchState": "matched",
+          "title": "Episode 1",
+          "userState": {
+            "playCount": 0,
+            "played": false
+          }
+        }
+      ],
+      "kind": "recentlyAdded",
+      "library": {
+        "id": "<id1>",
+        "kind": "movies",
+        "name": "Seeded Films"
+      }
+    },
+    {
+      "id": "recentlyAdded:<id4>",
+      "items": [
+        {
+          "addedAt": "<time>",
+          "available": true,
+          "book": {
+            "authors": [
+              {
+                "id": "<id5>",
+                "name": "James S. A. Corey"
+              }
+            ],
+            "narrators": [
+              {
+                "id": "<id20>",
+                "name": "Jefferson Mays"
+              }
+            ],
+            "series": [
+              {
+                "id": "<id21>",
+                "name": "The Expanse",
+                "position": "1",
+                "primary": true
+              }
+            ]
+          },
+          "id": "<id19>",
+          "images": {},
+          "kind": "book",
+          "libraryId": "<id4>",
+          "matchState": "matched",
+          "title": "Leviathan Wakes",
+          "userState": {
+            "playCount": 0,
+            "played": false
+          },
+          "year": 2011
+        }
+      ],
+      "kind": "recentlyAdded",
+      "library": {
+        "id": "<id4>",
+        "kind": "audiobooks",
+        "name": "audiobooks 3"
+      }
+    }
+  ]
+}
+
+
+GET /api/v1/home/rows
+200
+{
+  "items": [
+    {
+      "id": "continueWatching",
+      "kind": "continueWatching",
+      "shown": true
+    },
+    {
+      "id": "list:<id45>",
+      "kind": "list",
+      "list": {
+        "id": "<id45>",
+        "kind": "manual",
+        "name": "Watchlist"
+      },
+      "shown": true
+    },
+    {
+      "id": "recentlyAdded:<id1>",
+      "kind": "recentlyAdded",
+      "library": {
+        "id": "<id1>",
+        "kind": "movies",
+        "name": "Seeded Films"
+      },
+      "shown": true
+    },
+    {
+      "id": "continueListening",
+      "kind": "continueListening",
+      "shown": true
+    },
+    {
+      "id": "recentlyAdded:<id4>",
+      "kind": "recentlyAdded",
+      "library": {
+        "id": "<id4>",
+        "kind": "audiobooks",
+        "name": "audiobooks 3"
+      },
+      "shown": true
+    }
+  ]
+}
+
+
+PATCH /api/v1/home/rows
+200
+{
+  "items": [
+    {
+      "id": "continueWatching",
+      "kind": "continueWatching",
+      "shown": false
+    },
+    {
+      "id": "list:<id45>",
+      "kind": "list",
+      "list": {
+        "id": "<id45>",
+        "kind": "manual",
+        "name": "Watchlist"
+      },
+      "shown": true
+    },
+    {
+      "id": "recentlyAdded:<id1>",
+      "kind": "recentlyAdded",
+      "library": {
+        "id": "<id1>",
+        "kind": "movies",
+        "name": "Seeded Films"
+      },
+      "shown": true
+    },
+    {
+      "id": "continueListening",
+      "kind": "continueListening",
+      "shown": true
+    },
+    {
+      "id": "recentlyAdded:<id4>",
+      "kind": "recentlyAdded",
+      "library": {
+        "id": "<id4>",
+        "kind": "audiobooks",
+        "name": "audiobooks 3"
+      },
+      "shown": true
+    }
+  ]
+}
+
+
+POST /api/v1/home/rows/reset
+200
+{
+  "items": [
+    {
+      "id": "continueWatching",
+      "kind": "continueWatching",
+      "shown": true
+    },
+    {
+      "id": "list:<id45>",
+      "kind": "list",
+      "list": {
+        "id": "<id45>",
+        "kind": "manual",
+        "name": "Watchlist"
+      },
+      "shown": true
+    },
+    {
+      "id": "recentlyAdded:<id1>",
+      "kind": "recentlyAdded",
+      "library": {
+        "id": "<id1>",
+        "kind": "movies",
+        "name": "Seeded Films"
+      },
+      "shown": true
+    },
+    {
+      "id": "continueListening",
+      "kind": "continueListening",
+      "shown": true
+    },
+    {
+      "id": "recentlyAdded:<id4>",
+      "kind": "recentlyAdded",
+      "library": {
+        "id": "<id4>",
+        "kind": "audiobooks",
+        "name": "audiobooks 3"
+      },
+      "shown": true
+    }
+  ]
+}
+
+
 GET /api/v1/activity?show=plays&limit=1
 200
 {
   "items": [
     {
-      "id": "<id44>",
+      "id": "<id46>",
       "kind": "playStarted",
       "occurredAt": "<time>",
       "play": {
         "clientName": "Test",
         "local": false,
-        "userId": "<id41>",
+        "userId": "<id42>",
         "username": "admin",
         "work": {
           "kind": "movie",
@@ -3419,22 +3645,22 @@ GET /api/v1/activity?show=plays&limit=1
       }
     }
   ],
-  "next": "<ms>.<id44>"
+  "next": "<ms>.<id46>"
 }
 
 
-GET /api/v1/activity?show=plays&limit=1&after=<ms>.<id44>
+GET /api/v1/activity?show=plays&limit=1&after=<ms>.<id46>
 200
 {
   "items": [
     {
-      "id": "<id45>",
+      "id": "<id47>",
       "kind": "playStarted",
       "occurredAt": "<time>",
       "play": {
         "clientName": "Test",
         "local": false,
-        "userId": "<id41>",
+        "userId": "<id42>",
         "username": "admin",
         "work": {
           "kind": "movie",
@@ -3444,7 +3670,7 @@ GET /api/v1/activity?show=plays&limit=1&after=<ms>.<id44>
       }
     }
   ],
-  "next": "<ms>.<id45>"
+  "next": "<ms>.<id47>"
 }
 
 
@@ -3453,45 +3679,45 @@ GET /api/v1/activity?show=nope
 {
   "items": [
     {
-      "id": "<id44>",
-      "kind": "playStarted",
-      "occurredAt": "<time>",
-      "play": {
-        "clientName": "Test",
-        "local": false,
-        "userId": "<id41>",
-        "username": "admin",
-        "work": {
-          "kind": "movie",
-          "title": "Heat",
-          "workId": "<id2>"
-        }
-      }
-    },
-    {
-      "id": "<id45>",
-      "kind": "playStarted",
-      "occurredAt": "<time>",
-      "play": {
-        "clientName": "Test",
-        "local": false,
-        "userId": "<id41>",
-        "username": "admin",
-        "work": {
-          "kind": "movie",
-          "title": "Heat",
-          "workId": "<id2>"
-        }
-      }
-    },
-    {
       "id": "<id46>",
+      "kind": "playStarted",
+      "occurredAt": "<time>",
+      "play": {
+        "clientName": "Test",
+        "local": false,
+        "userId": "<id42>",
+        "username": "admin",
+        "work": {
+          "kind": "movie",
+          "title": "Heat",
+          "workId": "<id2>"
+        }
+      }
+    },
+    {
+      "id": "<id47>",
+      "kind": "playStarted",
+      "occurredAt": "<time>",
+      "play": {
+        "clientName": "Test",
+        "local": false,
+        "userId": "<id42>",
+        "username": "admin",
+        "work": {
+          "kind": "movie",
+          "title": "Heat",
+          "workId": "<id2>"
+        }
+      }
+    },
+    {
+      "id": "<id48>",
       "kind": "playStarted",
       "occurredAt": "<time>",
       "play": {
         "clientName": "test",
         "local": false,
-        "userId": "<id40>",
+        "userId": "<id41>",
         "username": "friend",
         "work": {
           "kind": "movie",

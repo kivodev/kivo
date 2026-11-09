@@ -10,6 +10,7 @@ import (
 	"github.com/mmcdole/kivo/internal/catalog/dbq"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/store"
+	"github.com/mmcdole/kivo/internal/users"
 )
 
 // RenamePerson renames an author or narrator and returns the resulting
@@ -88,6 +89,9 @@ func (c *Catalog) RenamePerson(ctx context.Context, person id.ID, name string) (
 			return rename(ctx, tx) // renames a person with no credits
 		}
 		if err := q.MovePersonExternalIDs(ctx, dbq.MovePersonExternalIDsParams{Into: into, From: person}); err != nil {
+			return err
+		}
+		if err := users.MovePersonInQueries(ctx, tx, person, into); err != nil {
 			return err
 		}
 		return reindexPerson(ctx, tx, person, func() error { return q.DeletePerson(ctx, person) })

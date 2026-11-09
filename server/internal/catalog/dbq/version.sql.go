@@ -89,8 +89,8 @@ func (q *Queries) DeleteVersions(ctx context.Context, ids string) error {
 }
 
 const fillWorkLibrary = `-- name: FillWorkLibrary :one
-INSERT INTO work_library (library_id, work_id, is_root, sort_title, added_at, year, runtime_sort, resolutions, dynamic_ranges, rating_sort, creator_sort, last_added_at)
-SELECT t.library_id, w.id, w.parent_id IS NULL, w.sort_title, w.added_at, k.year, k.runtime_sort, k.resolutions, k.dynamic_ranges, k.rating_sort, k.creator_sort,
+INSERT INTO work_library (library_id, work_id, is_root, sort_title, added_at, year, release_key, runtime_sort, resolutions, dynamic_ranges, rating_sort, creator_sort, last_added_at)
+SELECT t.library_id, w.id, w.parent_id IS NULL, w.sort_title, w.added_at, k.year, k.release_key, k.runtime_sort, k.resolutions, k.dynamic_ranges, k.rating_sort, k.creator_sort,
   max(d.added_at)
 FROM work w
 JOIN work t ON t.id = w.root_id

@@ -3,13 +3,13 @@ package com.mmcdole.kivo.android.mobile.app
 import androidx.annotation.Keep
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.VideoLibrary
@@ -24,6 +24,7 @@ import androidx.navigation.NavHostController
 import com.mmcdole.kivo.android.mobile.R
 import com.mmcdole.kivo.android.mobile.ui.WorkAction
 import com.mmcdole.kivo.android.mobile.ui.WorkMarks
+import com.mmcdole.kivo.android.mobile.ui.WorkMenu
 import com.mmcdole.kivo.api.models.EpisodeInfo
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.downloads.DownloadItem
@@ -37,7 +38,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object LibrariesTab
 
-@Serializable data object FavoritesTab
+@Serializable data object ListsTab
 
 @Serializable data object DownloadsTab
 
@@ -47,7 +48,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object LibrariesRoute
 
-@Serializable data object FavoritesRoute
+@Serializable data object ListsRoute
 
 @Serializable data object DownloadsRoute
 
@@ -65,8 +66,11 @@ import kotlinx.serialization.Serializable
 
 @Serializable data class BookSeriesRoute(val id: String)
 
-/** One kind's favorites as a grid. */
-@Serializable data class FavoritesGridRoute(val kind: String)
+/** A list as a grid; [name] shows until the list is read, as it can change. */
+@Serializable data class ListRoute(val id: String, val name: String)
+
+/** The smart list builder, on a saved list's query with [listId], or a new list's starting [name] and [query], as JSON. */
+@Serializable data class SmartListBuilderRoute(val listId: String? = null, val name: String = "", val query: String? = null)
 
 /**
  * The video player, full screen: [workId] from where it was left, from the
@@ -95,7 +99,7 @@ import kotlinx.serialization.Serializable
 
 /** A page of Settings; kept by name, as its route names it. */
 @Keep
-enum class SettingsPage { Account, Devices, ChangePassword, Playback, Audio, Subtitles, Quality, Downloads, Libraries, About }
+enum class SettingsPage { Account, Devices, ChangePassword, Playback, Audio, Subtitles, Quality, Downloads, Home, Libraries, About }
 
 @Serializable data class SettingsPageRoute(val page: SettingsPage)
 
@@ -114,7 +118,7 @@ enum class SettingsPage { Account, Devices, ChangePassword, Playback, Audio, Sub
 enum class Tab(val graph: Any, val root: Any, @param:StringRes val label: Int, val icon: ImageVector, val selectedIcon: ImageVector) {
     Home(HomeTab, HomeRoute, R.string.mobile_tab_home, Icons.Outlined.Home, Icons.Filled.Home),
     Libraries(LibrariesTab, LibrariesRoute, R.string.mobile_tab_libraries, Icons.Outlined.VideoLibrary, Icons.Filled.VideoLibrary),
-    Favorites(FavoritesTab, FavoritesRoute, R.string.mobile_tab_favorites, Icons.Outlined.FavoriteBorder, Icons.Filled.Favorite),
+    Lists(ListsTab, ListsRoute, R.string.mobile_tab_lists, Icons.AutoMirrored.Outlined.List, Icons.AutoMirrored.Filled.List),
     Downloads(DownloadsTab, DownloadsRoute, R.string.mobile_tab_downloads, Icons.Outlined.Download, Icons.Filled.Download),
     Search(SearchTab, SearchRoute, R.string.mobile_tab_search, Icons.Outlined.Search, Icons.Filled.Search),
 }
@@ -134,6 +138,18 @@ class MobileNav(
     /** The tab showing: the one chosen last, or the one whose first screen back has come to. */
     var tab by mutableStateOf(Tab.Home)
         private set
+
+    /** The work whose Add to List chooser is open. */
+    var addingToList by mutableStateOf<String?>(null)
+        private set
+
+    fun addToList(work: WorkSummary) {
+        addingToList = work.id
+    }
+
+    fun closeAddToList() {
+        addingToList = null
+    }
 
     /** Follows the back stack to [entry]: a tab's first screen is that tab's, as back from another tab's first screen comes Home. */
     fun follow(entry: NavBackStackEntry?) {
@@ -187,6 +203,11 @@ class MobileNav(
         popUpTo<PlayerRoute> { inclusive = true }
     }
 
+    /** [route] in the smart list builder's place: the list just made. */
+    fun replaceBuilder(route: Any) = nav.navigate(route) {
+        popUpTo<SmartListBuilderRoute> { inclusive = true }
+    }
+
     fun back() {
         nav.popBackStack()
     }
@@ -216,11 +237,14 @@ class MobileNav(
 }
 
 /** Does a card's [action] on [work]: playing and Go to series here, the marks by [marks]. */
-fun MobileNav.handle(action: WorkAction, work: WorkSummary, marks: WorkMarks) {
+fun MobileNav.handle(action: WorkAction, menu: WorkMenu, marks: WorkMarks) {
+    val work = menu.work
     when (action) {
         WorkAction.Play -> play(work)
         WorkAction.PlayFromStart -> play(work, fromStart = true)
         WorkAction.GoToSeries -> work.episode?.let(::openSeries)
+        WorkAction.AddToList -> addToList(work)
+        WorkAction.RemoveFromList -> menu.list?.let { marks.setOnList(it.id, work.id, on = false) }
         else -> marks.apply(action, work)
     }
 }

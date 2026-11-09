@@ -3,8 +3,9 @@ import KivoUI
 import SwiftUI
 
 /// A card that opens its work's page, with a long press's menu: Play or
-/// Resume, Mark as Watched, Favorite, Remove from Continue Watching or
-/// Continue Listening in those rows, Go to Series for an episode, and Go
+/// Resume, Mark as Watched, Add to List, Remove from a list in its rows and
+/// grid, Remove from Continue Watching or Continue Listening in those rows,
+/// Go to Series for an episode, and Go
 /// to Library where the card isn't already in that library's grid. A
 /// pointer over it highlights it.
 struct WorkLink<Label: View>: View {

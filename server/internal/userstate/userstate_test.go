@@ -95,7 +95,7 @@ func (f *fixture) setThreshold(v float64) {
 }
 
 func (f *fixture) newUser(name string) id.ID {
-	u := users.New(f.b.DB)
+	u := users.New(f.b.DB, events.NewBus())
 	var p id.ID
 	f.b.Write(func(ctx context.Context, tx *store.Tx) error {
 		user, err := u.CreateUser(ctx, tx, users.NewUser{Username: name, Grants: users.Grants{All: true}})
@@ -107,7 +107,7 @@ func (f *fixture) newUser(name string) id.ID {
 
 // viewer is the Viewer of the fixture's user.
 func (f *fixture) viewer() users.Viewer {
-	v, err := users.New(f.b.DB).Viewer(ctx, f.user)
+	v, err := users.New(f.b.DB, events.NewBus()).Viewer(ctx, f.user)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -150,8 +150,8 @@ func (f *fixture) play(playID, version id.ID, pos time.Duration) {
 func (f *fixture) state(user, work id.ID) dbq.UserState {
 	f.t.Helper()
 	var st dbq.UserState
-	err := f.b.DB.Reader().QueryRow(`SELECT played, play_count, position_ms, resumable, favorite, favorited_at, rating FROM user_state WHERE user_id = ? AND work_id = ?`, user, work).
-		Scan(&st.Played, &st.PlayCount, &st.PositionMs, &st.Resumable, &st.Favorite, &st.FavoritedAt, &st.Rating)
+	err := f.b.DB.Reader().QueryRow(`SELECT played, play_count, position_ms, resumable, rating FROM user_state WHERE user_id = ? AND work_id = ?`, user, work).
+		Scan(&st.Played, &st.PlayCount, &st.PositionMs, &st.Resumable, &st.Rating)
 	if err != nil && err != sql.ErrNoRows {
 		f.t.Fatal(err)
 	}
@@ -413,7 +413,7 @@ func locate(parts []time.Duration, pos time.Duration) (part int, offset time.Dur
 func TestUpdateTellsChanged(t *testing.T) {
 	f := newFixture(t)
 	m := f.movie("Heat", 2*time.Hour)
-	if err := f.s.Update(ctx, f.viewer(), m.Work, userstate.Change{Favorite: new(true), Played: new(true)}); err != nil {
+	if err := f.s.Update(ctx, f.viewer(), m.Work, userstate.Change{Played: new(true)}); err != nil {
 		t.Fatal(err)
 	}
 	if got := f.told(); len(got) != 1 || got[0].user != f.user || !slices.Equal(got[0].works, []id.ID{m.Work}) {
@@ -506,9 +506,6 @@ func TestFollowVersionMovesOnlyTheFilesPlays(t *testing.T) {
 	f.play(id.New(), keep, 99*time.Minute)      // a play of the version that stays
 	f.play(id.New(), a.Version, 99*time.Minute) // a play of the version that moves
 	f.play(id.New(), a.Version, 40*time.Minute) // and the resume position
-	if err := f.s.Update(ctx, f.viewer(), a.Work, userstate.Change{Favorite: new(true)}); err != nil {
-		t.Fatal(err)
-	}
 
 	f.b.Write(func(ctx context.Context, tx *store.Tx) error {
 		return f.b.Catalog.Batch(ctx, tx, func(cb *catalog.Batch) error {
@@ -520,10 +517,10 @@ func TestFollowVersionMovesOnlyTheFilesPlays(t *testing.T) {
 		})
 	})
 	sa, sb := f.state(f.user, a.Work), f.state(f.user, b.Work)
-	if sa.PlayCount != 1 || !sa.Played || !sa.Favorite || sa.Resumable {
+	if sa.PlayCount != 1 || !sa.Played || sa.Resumable {
 		t.Errorf("the old episode keeps the rest: %+v", sa)
 	}
-	if sb.PlayCount != 1 || sb.PositionMs != (40*time.Minute).Milliseconds() || sb.Favorite {
+	if sb.PlayCount != 1 || sb.PositionMs != (40*time.Minute).Milliseconds() {
 		t.Errorf("the new episode gets the file's play and position: %+v", sb)
 	}
 }
@@ -535,12 +532,8 @@ func TestMergeEpisodeUnionsState(t *testing.T) {
 	f.play(id.New(), a.Version, 99*time.Minute)
 	f.play(id.New(), b.Version, 99*time.Minute)
 	f.play(id.New(), b.Version, 20*time.Minute) // the latest position
-	if err := f.s.Update(ctx, f.viewer(), a.Work, userstate.Change{Favorite: new(true)}); err != nil {
-		t.Fatal(err)
-	}
-	favorited := f.state(f.user, a.Work).FavoritedAt
 	second := f.newUser("ben")
-	ben, err := users.New(f.b.DB).Viewer(ctx, second)
+	ben, err := users.New(f.b.DB, events.NewBus()).Viewer(ctx, second)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -548,18 +541,26 @@ func TestMergeEpisodeUnionsState(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	var mine id.ID
+	if err := f.b.DB.Reader().QueryRow(`SELECT id FROM list WHERE user_id = ? AND built_in`, f.user).Scan(&mine); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.s.AddToList(ctx, f.viewer(), mine, a.Work); err != nil {
+		t.Fatal(err)
+	}
 	f.b.Write(func(ctx context.Context, tx *store.Tx) error {
 		if err := f.s.MergeEpisode(ctx, tx, a.Work, b.Work); err != nil {
 			return err
 		}
 		return f.b.Catalog.Batch(ctx, tx, func(cb *catalog.Batch) error { return cb.MergeEpisode(ctx, a.Work, b.Work) })
 	})
-	st := f.state(f.user, b.Work)
-	if !st.Played || st.PlayCount != 3 || !st.Favorite || st.PositionMs != (20*time.Minute).Milliseconds() {
-		t.Fatalf("merged %+v; want played, 3 plays from the events, favorite, the latest position", st)
+	var inList int
+	if err := f.b.DB.Reader().QueryRow(`SELECT count(*) FROM list_work WHERE work_id = ? AND list_id = ?`, b.Work, mine).Scan(&inList); err != nil || inList != 1 {
+		t.Errorf("the merged episode in My List: %d, %v", inList, err)
 	}
-	if !favorited.Valid || st.FavoritedAt != favorited {
-		t.Errorf("merged favorited at %v, want %v", st.FavoritedAt, favorited)
+	st := f.state(f.user, b.Work)
+	if !st.Played || st.PlayCount != 3 || st.PositionMs != (20*time.Minute).Milliseconds() {
+		t.Fatalf("merged %+v; want played, 3 plays from the events, the latest position", st)
 	}
 	if st := f.state(second, b.Work); !st.Played || st.PlayCount != 1 {
 		t.Fatalf("a hand-marked play must survive the merge: %+v", st)

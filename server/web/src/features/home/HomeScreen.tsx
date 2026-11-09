@@ -1,7 +1,7 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { homeQueries } from "@/api/home";
+import { homeQueries, homeRowKinds } from "@/api/home";
 import { libraryQueries } from "@/api/libraries";
 import type { HomeRow } from "@/api/schemas";
 import { useIsAdmin } from "@/api/users";
@@ -11,20 +11,14 @@ import { Icon } from "@/components/Icon";
 import { LoadError } from "@/components/LoadError";
 import { Row } from "@/components/Row";
 import { HomeSkeleton } from "@/components/Skeleton";
-import { WorkCard } from "@/features/browse/WorkCard";
+import { WorkCard, workShape } from "@/features/browse/WorkCard";
 import { AddLibraryButton } from "@/features/libraries/AddLibraryButton";
 import { isTv } from "@/tv/flag";
 import { useTvEmptyScreen } from "@/tv/focus";
+import { useHomeRowTitle } from "./rowTitle";
 
-const knownRows = new Set<HomeRow["kind"]>([
-  "continueWatching",
-  "continueListening",
-  "continueSeries",
-  "recentlyAdded",
-  "favorites",
-]);
 /** Rows of books, whose covers are square. */
-const bookRows = new Set<HomeRow["kind"]>(["continueListening", "continueSeries"]);
+const bookRows = new Set<HomeRow["kind"]>(["continueListening"]);
 
 /**
  * Home. It shows the rows the server sends that have cards, skipping kinds this client doesn't know.
@@ -36,8 +30,9 @@ export function HomeScreen() {
   const isAdmin = useIsAdmin();
   useDocumentTitle(undefined);
   const home = useQuery(homeQueries.rows());
+  const rowTitle = useHomeRowTitle();
   const libraries = useSuspenseQuery(libraryQueries.list()).data.items;
-  const rows = (home.data?.rows ?? []).filter((r) => knownRows.has(r.kind));
+  const rows = (home.data?.rows ?? []).filter((r) => homeRowKinds.has(r.kind));
   // A screen with nothing to focus hands focus to the rail.
   useTvEmptyScreen(libraries.length === 0 || (home.data !== undefined && rows.length === 0));
 
@@ -57,23 +52,6 @@ export function HomeScreen() {
     return home.isError ? <LoadError error={home.error} onRetry={() => void home.refetch()} /> : <HomeSkeleton />;
   }
 
-  const rowTitle = (row: HomeRow): string => {
-    switch (row.kind) {
-      case "continueWatching":
-        return t`Continue Watching`;
-      case "continueListening":
-        return t`Continue Listening`;
-      case "continueSeries":
-        return t`Continue Series`;
-      case "favorites":
-        return t`Favorites`;
-      default: {
-        const name = row.library?.name;
-        return name ? t`Recently Added in ${name}` : t`Recently Added`;
-      }
-    }
-  };
-
   return (
     // On TV the last row reaches on down the screen, so the page can scroll
     // it to the top as it does every other row (revealTvRow), rather than
@@ -82,11 +60,25 @@ export function HomeScreen() {
       data-part="home"
       className="flex flex-col gap-10 px-4 py-6 sm:px-8 tv:*:last:min-h-(--layout-tv-home-last-row-height)"
     >
-      {rows.length === 0 && (
-        <EmptyState title={t`Nothing here yet`}>
-          <Trans>Items appear here as libraries are scanned.</Trans>
-        </EmptyState>
-      )}
+      {rows.length === 0 &&
+        (home.data.allHidden ? (
+          <EmptyState
+            title={t`Your Home is empty`}
+            action={
+              isTv ? undefined : (
+                <Link to="/settings" hash="home" className="font-semibold text-accent hover:underline">
+                  <Trans>Home</Trans>
+                </Link>
+              )
+            }
+          >
+            <Trans>Choose its rows in Settings.</Trans>
+          </EmptyState>
+        ) : (
+          <EmptyState title={t`Nothing here yet`}>
+            <Trans>Items appear here as libraries are scanned.</Trans>
+          </EmptyState>
+        ))}
       {rows.map((row, index) => {
         // Continue Watching shows the frames where you stopped.
         const landscape = row.kind === "continueWatching" || row.library?.kind === "videos";
@@ -96,6 +88,9 @@ export function HomeScreen() {
             ? "square"
             : "poster";
         const continueRow = row.kind === "continueWatching" || row.kind === "continueListening" ? row.kind : undefined;
+        const list = row.kind === "list" ? row.list : undefined;
+        // Only a manual list's works can be taken off it.
+        const manual = list?.kind === "manual" ? list : undefined;
         return (
           <Row
             key={row.id}
@@ -103,8 +98,12 @@ export function HomeScreen() {
             focusKey={row.id}
             autoFocus={index === rows.findIndex((r) => r.items.length > 0)}
             title={
-              row.kind === "favorites" && !isTv ? (
-                <Link to="/favorites" className="inline-flex items-center gap-1 hover:underline">
+              list && !isTv ? (
+                <Link
+                  to="/lists/$listId"
+                  params={{ listId: list.id }}
+                  className="inline-flex items-center gap-1 hover:underline"
+                >
                   {rowTitle(row)}
                   <Icon name="chevronRight" className="size-5 text-text-muted" />
                 </Link>
@@ -115,10 +114,12 @@ export function HomeScreen() {
             shape={shape}
             items={row.items}
             itemKey={(w) => w.id}
-            renderItem={(w) => <WorkCard work={w} shape={shape} continueRow={continueRow} />}
+            renderItem={(w) => (
+              <WorkCard work={w} shape={list ? workShape(w.kind) : shape} continueRow={continueRow} list={manual} />
+            )}
             action={
-              row.kind === "favorites" && isTv ? (
-                <Link to="/favorites" className="text-sm font-semibold text-text">
+              list && isTv ? (
+                <Link to="/lists/$listId" params={{ listId: list.id }} className="text-sm font-semibold text-text">
                   <Trans>See all</Trans>
                 </Link>
               ) : row.library && row.kind === "recentlyAdded" ? (

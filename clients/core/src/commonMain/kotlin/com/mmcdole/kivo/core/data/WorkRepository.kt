@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.Flow
  * book series' page.
  */
 internal class WorkRepository(private val connection: ServerConnection, private val invalidations: Flow<Invalidation>) {
-    fun work(id: String): Flow<WorkDetail> = refreshing(invalidations, { it.concerns(id) }) {
+    fun work(id: String): Flow<WorkDetail> = refreshing(invalidations, { it.concerns(id) || it == Invalidation.ListsChanged }) {
         connection.works.getWork(id).result()
     }
 

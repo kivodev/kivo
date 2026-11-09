@@ -88,7 +88,6 @@ type Filter struct {
 	ContentRatings []string
 	Resolutions    []Resolution
 	Ranges         []Range
-	Favorites      bool  // only the user's favorites
 	Unmatched      bool  // only provisional works
 	Narrator       id.ID // only the books this person narrated; zero for any
 }
@@ -116,15 +115,7 @@ var grid = `wl.library_id = @library AND wl.is_root
 // filters are a library grid's filters, each in the (@x IS NULL OR ...)
 // form, so a filter not asked for matches every row.
 var filters = `AND (@played IS NULL OR @played = CASE
-    WHEN w.kind = 'series' THEN CASE
-      WHEN NOT EXISTS (SELECT 1 FROM work fe WHERE fe.root_id = w.id AND fe.kind = 'episode'
-        AND EXISTS (SELECT 1 FROM work_library fl WHERE fl.work_id = fe.id AND ` + granted("fl.library_id") + `)
-        AND NOT EXISTS (SELECT 1 FROM user_state fu WHERE fu.user_id = @user AND fu.work_id = fe.id AND fu.played))
-        THEN 'played'
-      WHEN EXISTS (SELECT 1 FROM work fe JOIN user_state fu ON fu.user_id = @user AND fu.work_id = fe.id
-        WHERE fe.root_id = w.id AND fe.kind = 'episode' AND (fu.played OR fu.resumable))
-        THEN 'inProgress'
-      ELSE 'unplayed' END
+    WHEN w.kind = 'series' THEN ` + rollupPlayState("fe.root_id") + `
     ELSE coalesce((SELECT CASE WHEN fu.played THEN 'played' WHEN fu.resumable THEN 'inProgress' END
       FROM user_state fu WHERE fu.user_id = @user AND fu.work_id = w.id), 'unplayed') END)
   AND (@genres IS NULL OR EXISTS (SELECT 1 FROM work_genre fg JOIN genre fgn ON fgn.id = fg.genre_id
@@ -134,10 +125,23 @@ var filters = `AND (@played IS NULL OR @played = CASE
   AND (@content_ratings IS NULL OR w.content_rating IN (SELECT value FROM json_each(@content_ratings)))
   AND (@resolutions = 0 OR wl.resolutions & @resolutions)
   AND (@dynamic_ranges = 0 OR wl.dynamic_ranges & @dynamic_ranges)
-  AND (NOT @favorites OR EXISTS (SELECT 1 FROM user_state fu WHERE fu.user_id = @user AND fu.work_id = w.id AND fu.favorite))
   AND (NOT @unmatched OR w.provisional)
   AND (@narrator IS NULL OR EXISTS (SELECT 1 FROM credit fn
     WHERE fn.work_id = w.id AND fn.role = 'narrator' AND fn.person_id = @narrator))`
+
+// rollupPlayState is a series' or season's play state from its episodes,
+// those with column pointing at w.
+func rollupPlayState(column string) string {
+	return `CASE
+      WHEN NOT EXISTS (SELECT 1 FROM work fe WHERE ` + column + ` = w.id AND fe.kind = 'episode'
+        AND EXISTS (SELECT 1 FROM work_library fl WHERE fl.work_id = fe.id AND ` + granted("fl.library_id") + `)
+        AND NOT EXISTS (SELECT 1 FROM user_state fu WHERE fu.user_id = @user AND fu.work_id = fe.id AND fu.played))
+        THEN 'played'
+      WHEN EXISTS (SELECT 1 FROM work fe JOIN user_state fu ON fu.user_id = @user AND fu.work_id = fe.id
+        WHERE ` + column + ` = w.id AND fe.kind = 'episode' AND (fu.played OR fu.resumable))
+        THEN 'inProgress'
+      ELSE 'unplayed' END`
+}
 
 // gridSort is how a library grid orders one sort, using the sort's index on
 // work_library.
@@ -161,7 +165,7 @@ type gridSort struct {
 var gridSorts = map[Sort]gridSort{
 	ByTitle:   {key: "NULL", order: "t, id", letters: true},
 	ByAdded:   {key: "wl.added_at", order: "k DESC, t, id"},
-	ByRelease: {key: "wl.year", order: "k DESC, t, id"},
+	ByRelease: {key: "wl.release_key", order: "k DESC, t, id"},
 	// rating_sort is the community rating weighted by its votes, as if 50
 	// more votes of 6.5 were cast (see work_browse_keys). So a work few
 	// people rated ranks below a well-rated work many people rated. Works
@@ -358,7 +362,6 @@ func (f Filter) args() ([]any, error) {
 		sql.Named("content_ratings", set(f.ContentRatings)),
 		sql.Named("resolutions", resolutions),
 		sql.Named("dynamic_ranges", dynamicRanges),
-		sql.Named("favorites", f.Favorites),
 		sql.Named("unmatched", f.Unmatched),
 		sql.Named("narrator", f.Narrator),
 	}, nil

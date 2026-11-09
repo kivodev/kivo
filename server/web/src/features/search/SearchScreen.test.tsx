@@ -30,7 +30,7 @@ describe("Search", () => {
       within(await screen.findByRole("menu"))
         .getAllByRole("menuitem")
         .map((i) => i.textContent),
-    ).toEqual(["Play", "Mark as unwatched", "Remove from favorites", "Go to library"]);
+    ).toEqual(["Play", "Mark as unwatched", "Add to List", "Go to library"]);
   });
 
   it("puts the people who match in a row above the works, each opening their page", async () => {

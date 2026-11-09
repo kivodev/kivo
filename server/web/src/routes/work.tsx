@@ -1,4 +1,5 @@
 import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
+import { listQueries } from "@/api/lists";
 import { workQueries } from "@/api/works";
 import { DetailSkeleton, useSummary } from "@/features/detail/DetailSkeleton";
 import { detailSearchSchema } from "@/features/detail/detailSearch";
@@ -12,6 +13,7 @@ export const workRoute = createRoute({
   validateSearch: detailSearchSchema,
   loaderDeps: ({ search }) => ({ season: search.season }),
   loader: ({ context: { queryClient }, params, deps }) => {
+    void queryClient.prefetchQuery(listQueries.all());
     // The page's lists load side by side once the work is known, rather
     // than each after the one above it. For a series, these are its seasons
     // and its open season's episodes. For an episode, they are its season

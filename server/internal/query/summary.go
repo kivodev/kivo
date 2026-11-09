@@ -92,7 +92,7 @@ const (
 	Unmatched MatchState = "unmatched" // a provisional work, from a parsed name
 )
 
-// Userstate is the user's state for a work: played, progress, favorite and rating.
+// Userstate is the user's state for a work: played, progress and rating.
 type Userstate struct {
 	Played    bool
 	PlayCount int
@@ -101,9 +101,8 @@ type Userstate struct {
 	Position time.Duration
 	// Version is the version the user last played, which Position is on.
 	// It is zero if never, and the version may be gone.
-	Version  id.ID
-	Favorite bool
-	Rating   *int // the user's own rating
+	Version id.ID
+	Rating  *int // the user's own rating
 	// LastPlayed is when the user last played the work. For a series, it is
 	// when the user last played any of its episodes. It is zero if never.
 	LastPlayed time.Time
@@ -140,7 +139,7 @@ var summaryColumns = `w.id, w.kind, w.title, w.sort_title, w.parent_id, w.root_i
         OR NOT ` + granted("ar.library_id") + `))) AS unavailable,
   coalesce(us.played, 0) AS played, coalesce(us.play_count, 0) AS play_count,
   CASE WHEN us.resumable THEN us.position_ms ELSE 0 END AS position_ms,
-  coalesce(us.favorite, 0) AS favorite, us.rating,
+  us.rating,
   coalesce(CASE WHEN w.kind = 'series' THEN (SELECT max(su.last_played_at) FROM work sw
     CROSS JOIN user_state su ON su.user_id = @user AND su.work_id = sw.id WHERE sw.root_id = w.id)
   ELSE us.last_played_at END, 0) AS last_played_at,
@@ -171,7 +170,7 @@ func scanSummary(r scanner, more ...any) (WorkSummary, error) {
 	)
 	err := r.Scan(append([]any{&c.ID, &c.Kind, &c.Title, &c.SortTitle, &c.Parent, &root, &c.SeriesTitle, &year, &parentNumber, &number,
 		&numberEnd, &combinedTitle, &c.ReleaseDate, &c.ExtraType, &c.Edition, &durationMs,
-		&addedAt, &provisional, &c.Unavailable, &c.Userstate.Played, &playCount, &positionMs, &c.Userstate.Favorite,
+		&addedAt, &provisional, &c.Unavailable, &c.Userstate.Played, &playCount, &positionMs,
 		&rating, &lastPlayedAt, &unplayed, &community, &votes, &contentRating, &c.Userstate.Version}, more...)...)
 	if err != nil {
 		return WorkSummary{}, err

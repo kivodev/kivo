@@ -12,7 +12,7 @@ class NavigatorTest {
     @Test
     fun backFromADestinationOpensTheRailAndTheRailsBackGoesHome() {
         val navigator = Navigator()
-        for (destination in listOf(Screen.Search, Screen.Settings, Screen.Favorites, Screen.Library("movies"))) {
+        for (destination in listOf(Screen.Search, Screen.Settings, Screen.Lists, Screen.Library("movies"))) {
             navigator.open(destination)
             assertEquals(Back.Rail, navigator.back, "$destination")
             navigator.open(Screen.Home)
@@ -34,12 +34,12 @@ class NavigatorTest {
     }
 
     @Test
-    fun favoritesOpenedFromHomeIsADestinationToo() {
+    fun listsOpenedFromHomeIsADestinationToo() {
         val navigator = Navigator()
-        navigator.push(Screen.Favorites)
+        navigator.push(Screen.Lists)
         assertEquals(Back.Rail, navigator.back)
 
-        navigator.push(Screen.FavoritesGrid("movie"))
+        navigator.push(Screen.ListWorks("l1", "Watchlist"))
         assertEquals(Back.Pop, navigator.back)
     }
 

@@ -15,8 +15,8 @@ type Library struct {
 	ID   id.ID
 	Name string
 	Kind catalog.LibraryKind
-	// Pinned is whether the user shows the library in the sidebar and on
-	// Home. Every library is pinned until the user chooses otherwise (see
+	// Pinned is whether the user shows the library in the sidebar. Every
+	// library is pinned until the user chooses otherwise (see
 	// users.SetLibraries).
 	Pinned bool
 	Items  int // how many works the library's grid shows the Viewer
@@ -50,6 +50,15 @@ LEFT JOIN user_library ul ON ul.user_id = @user AND ul.library_id = l.id
 WHERE l.deleting_at IS NULL
   AND `+libraryVisible+`
 ORDER BY ul.position IS NULL, ul.position, l.created_at, l.id`)
+
+// homeLibraries lists the libraries in the server's order, for Home's
+// rows. The user's own order and pins are the sidebar's.
+var homeLibraries = stmt("HomeLibraries", `
+SELECT l.id, l.name, l.kind
+FROM library l
+WHERE l.deleting_at IS NULL
+  AND `+libraryVisible+`
+ORDER BY l.created_at, l.id`)
 
 func scanLibrary(r scanner, l *Library) error { return r.Scan(&l.ID, &l.Name, &l.Kind, &l.Pinned) }
 

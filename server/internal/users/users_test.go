@@ -14,6 +14,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/mmcdole/kivo/internal/events"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/store"
 	"github.com/mmcdole/kivo/internal/store/storetest"
@@ -27,7 +28,7 @@ type fixture struct {
 
 func newFixture(t *testing.T) *fixture {
 	db := storetest.New(t)
-	return &fixture{t: t, db: db, s: New(db)}
+	return &fixture{t: t, db: db, s: New(db, events.NewBus())}
 }
 
 // libraries creates n libraries for grants to name.

@@ -30,7 +30,6 @@ internal class GridRepository(private val connection: ServerConnection, private 
         contentRating = query.contentRatings,
         resolution = query.resolutions,
         dynamicRange = query.dynamicRanges,
-        favorite = query.favorite.takeIf { it },
         offset = offset.takeIf { it > 0 },
         limit = limit,
     ).result()
@@ -79,6 +78,4 @@ data class GridQuery(
     val resolutions: List<String>? = null,
     /** `DynamicRange`s: `hdr`, `dolbyVision`. */
     val dynamicRanges: List<String>? = null,
-    /** Only the user's favorites. */
-    val favorite: Boolean = false,
 )

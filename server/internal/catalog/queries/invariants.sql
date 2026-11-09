@@ -71,11 +71,11 @@ WITH RECURSIVE avail (work_id, added_at) AS (
   WHERE w.parent_id IS NOT NULL AND w.kind <> 'extra'
 )
 SELECT a.work_id, t.library_id, w.parent_id IS NULL AS is_root, w.sort_title, w.added_at,
-  k.year, k.runtime_sort, k.resolutions, k.dynamic_ranges, k.rating_sort, k.creator_sort,
+  k.year, k.release_key, k.runtime_sort, k.resolutions, k.dynamic_ranges, k.rating_sort, k.creator_sort,
   CAST(max(a.added_at) AS INTEGER) AS last_added_at
 FROM avail a JOIN work w ON w.id = a.work_id JOIN work t ON t.id = w.root_id JOIN work_browse_keys k ON k.work_id = a.work_id
 GROUP BY a.work_id
 ORDER BY a.work_id;
 
 -- name: ActualWorkLibraries :many
-SELECT work_id, library_id, is_root, sort_title, added_at, year, runtime_sort, resolutions, dynamic_ranges, rating_sort, creator_sort, last_added_at FROM work_library ORDER BY work_id;
+SELECT work_id, library_id, is_root, sort_title, added_at, year, release_key, runtime_sort, resolutions, dynamic_ranges, rating_sort, creator_sort, last_added_at FROM work_library ORDER BY work_id;

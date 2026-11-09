@@ -30,6 +30,9 @@ fun shapeOf(work: WorkSummary): CardShape = when (work.kind) {
     else -> CardShape.Poster
 }
 
+/** A card's shape in a list's grid or row, where an episode is a poster. */
+fun listShapeOf(work: WorkSummary): CardShape = if (work.kind == "episode") CardShape.Poster else shapeOf(work)
+
 /** A movie's title with its edition, "Blade Runner · Final Cut", when its cut is named. */
 fun labelledTitle(title: String, movie: MovieInfo?): String = movie?.edition?.let { "$title · $it" } ?: title
 

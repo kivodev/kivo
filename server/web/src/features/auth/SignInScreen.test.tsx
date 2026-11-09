@@ -36,12 +36,12 @@ describe("Sign-in", () => {
       api.signedIn = true;
     });
     const { queryClient, user } = renderApp("/");
-    queryClient.setQueryData(["get", "/api/v1/favorites"], { items: [{ id: "the previous user's" }] });
+    queryClient.setQueryData(["get", "/api/v1/lists"], { items: [{ id: "the previous user's" }] });
     await user.type(await screen.findByLabelText("Username"), "anna");
     await user.type(screen.getByLabelText("Password"), "correct horse");
     await user.click(screen.getByRole("button", { name: "Sign in" }));
     await screen.findByRole("navigation", { name: "Main" });
-    expect(queryClient.getQueryData(["get", "/api/v1/favorites"])).toBeUndefined();
+    expect(queryClient.getQueryData(["get", "/api/v1/lists"])).toBeUndefined();
   });
 
   it("says how long to wait once sign-in is throttled", async () => {
@@ -61,7 +61,7 @@ describe("Sign-in", () => {
 
     // The session ends elsewhere, and the next request gets a 401.
     server.use(http.patch("/api/v1/works/{id}/user-state", () => problem(401, "unauthenticated")));
-    await user.click(screen.getByRole("button", { name: "Add to favorites" }));
+    await user.click(screen.getByRole("button", { name: "Mark as watched" }));
 
     await screen.findByRole("heading", { name: "Sign in" });
     await waitFor(() => expect(locationOf(router)).toContain("/sign-in"));

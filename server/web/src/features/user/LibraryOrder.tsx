@@ -14,7 +14,7 @@ type Props = {
 
 /**
  * Your libraries in your order, as a settings card. Tick the ones to pin,
- * which the sidebar and Home show, and drag a library by its handle to
+ * which the sidebar shows, and drag a library by its handle to
  * reorder them. Dragging works from the keyboard and a TV remote too.
  * Press Enter on the handle, use the arrows, then press Enter to drop.
  */
@@ -79,7 +79,7 @@ export function LibraryOrder({ libraries, onChange }: Props) {
 
 /**
  * Your libraries as a switch each, for TV: whether each is pinned, which
- * the rail and Home show. Putting them in order is for the web, since
+ * the rail shows. Putting them in order is for the web, since
  * dragging needs a pointer.
  */
 export function LibraryPins({ libraries, onChange }: Props) {

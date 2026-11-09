@@ -4,7 +4,7 @@ import SwiftUI
 
 /// A book's page: Play, or Resume with the time left, which starts the
 /// book player where the user left off in any app or browser, and Play
-/// from beginning beside it; Favorite, Mark as Finished and Download; the
+/// from beginning beside it; My List, Mark as Finished and Download; the
 /// overview, its authors and narrators, and its chapters, each starting
 /// the book there. It streams, or plays its download when one is ready,
 /// which the badge under the actions names.

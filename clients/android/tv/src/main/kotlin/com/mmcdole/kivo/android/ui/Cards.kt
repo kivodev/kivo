@@ -139,11 +139,18 @@ fun rememberCardLight(focused: () -> Any?): State<Float> {
     return remember { light.asState() }
 }
 
-/** A card's shape: poster for movies, series and collections, and episodes in Favorites; landscape for episodes and videos; square for books. */
+/** A card's shape: poster for movies, series and collections, and episodes in lists; landscape for episodes and videos; square for books. */
 enum class CardShape(val aspect: Float) {
     Poster(KivoTokens.Aspect.poster),
     Landscape(KivoTokens.Aspect.landscape),
     Square(KivoTokens.Aspect.square),
+}
+
+/** The shape a list's card takes for its own work: a video landscape, an episode by its series' poster, a book square. */
+fun cardShapeOf(work: WorkSummary): CardShape = when (work.kind) {
+    "video", "extra" -> CardShape.Landscape
+    "book" -> CardShape.Square
+    else -> CardShape.Poster
 }
 
 /**

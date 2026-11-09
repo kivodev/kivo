@@ -69,8 +69,8 @@ import com.mmcdole.kivo.android.ServerSession
 import com.mmcdole.kivo.android.detail.CollectionScreen
 import com.mmcdole.kivo.android.detail.DetailScreen
 import com.mmcdole.kivo.android.detail.PersonScreen
-import com.mmcdole.kivo.android.favorites.FavoritesGridScreen
-import com.mmcdole.kivo.android.favorites.FavoritesScreen
+import com.mmcdole.kivo.android.lists.ListWorksScreen
+import com.mmcdole.kivo.android.lists.ListsScreen
 import com.mmcdole.kivo.android.home.HomeScreen
 import com.mmcdole.kivo.android.library.LibraryScreen
 import com.mmcdole.kivo.android.player.PlayerScreen
@@ -116,7 +116,7 @@ private val RailInset = 16.dp
 /** The open rail's corners. */
 private val RailCorner = 16.dp
 
-/** A rail item's height, at which seven libraries show with Search, Home, Favorites and Settings. */
+/** A rail item's height, at which seven libraries show with Search, Home, Lists and Settings. */
 private val RailItemHeight = 40.dp
 
 /** The room above and below the rail's items, clear of a TV's cropped edges. */
@@ -137,7 +137,7 @@ fun libraryIcon(kind: String) = when (kind) {
 
 /**
  * The signed-in app: a rail at the left, icons only until focus
- * moves onto it, with Search, Home, Favorites, a line, the pinned libraries
+ * moves onto it, with Search, Home, Lists, a line, the pinned libraries
  * in the user's order, More libraries and Settings; the screen beside it;
  * the player over everything. Back goes back a page, opens the rail from a
  * destination, and at Home asks "Exit Kivo?"; in the rail it goes Home
@@ -222,8 +222,8 @@ fun MainScreen(session: ServerSession, onExit: () -> Unit) {
                             Screen.Licenses -> LicensesPage(navigator)
                             is Screen.LicenseText -> LicenseTextPage(target.id)
                             is Screen.Library -> LibraryScreen(session, target.id, navigator)
-                            Screen.Favorites -> FavoritesScreen(session, navigator)
-                            is Screen.FavoritesGrid -> FavoritesGridScreen(session, target.kind, navigator)
+                            Screen.Lists -> ListsScreen(session, navigator)
+                            is Screen.ListWorks -> ListWorksScreen(session, target.id, target.name, navigator)
                             is Screen.Work -> DetailScreen(session, target.id, navigator, target.episode)
                             is Screen.Collection -> CollectionScreen(session, target.id, navigator)
                             is Screen.Person -> PersonScreen(session, target.id, navigator)
@@ -253,7 +253,7 @@ fun MainScreen(session: ServerSession, onExit: () -> Unit) {
             val go = { target: Screen -> if (target == screen) close() else closeAfter { navigator.open(target) } }
             RailItem(KivoIcon.Search, stringResource(R.string.search), destination == Screen.Search) { go(Screen.Search) }
             RailItem(KivoIcon.Home, stringResource(R.string.home), destination == Screen.Home) { go(Screen.Home) }
-            RailItem(KivoIcon.Heart, stringResource(R.string.favorites), destination == Screen.Favorites) { go(Screen.Favorites) }
+            RailItem(KivoIcon.List, stringResource(R.string.lists), destination == Screen.Lists) { go(Screen.Lists) }
             RailSeparator()
             RailLibraries { first, last ->
                 val pinned = libraries.filter { it.pinned }
@@ -479,7 +479,7 @@ private fun Rail(
  * last item, and scrolling when they don't fit, with the focused item kept
  * in view. Down into them lands on the [first] item and Up into them on the
  * [last]. Focus moves by where items are laid out, in view or not, so with
- * the list left scrolled, Down from Favorites would pass over the items
+ * the list left scrolled, Down from Lists would pass over the items
  * scrolled up level with it, and Up from Settings over those scrolled down
  * level with it.
  */

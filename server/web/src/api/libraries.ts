@@ -49,15 +49,13 @@ function useInvalidateLibraries() {
 /**
  * Save the order of your libraries and which ones are pinned. The order
  * follows you wherever you sign in. The library list changes at once, so
- * the sidebar follows and a drag stays where it was dropped. Home
- * refetches once the server has saved the order. The list refetches too if
- * the server refused it. `retry` sends a refused order again.
+ * the sidebar follows and a drag stays where it was dropped. The list
+ * refetches if the server refused it. `retry` sends a refused order again.
  */
 export function useSaveLibraries() {
   const queryClient = useQueryClient();
   const refetch = (path: ApiPath) => queryClient.invalidateQueries({ queryKey: pathKey(path) });
   const mutation = $api.useMutation("patch", "/api/v1/users/me", {
-    onSuccess: () => refetch(apiPaths.home),
     onError: () => refetch(apiPaths.libraries),
   });
   const save = (libraries: Library[]) => {

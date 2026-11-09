@@ -23,7 +23,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.mmcdole.kivo.android.HasAppGraph
 import com.mmcdole.kivo.android.ServerSession
 import com.mmcdole.kivo.android.TestDevice
-import com.mmcdole.kivo.android.favorites.FavoritesGridScreen
+import com.mmcdole.kivo.android.lists.ListWorksScreen
 import com.mmcdole.kivo.android.theme.KivoTheme
 import com.mmcdole.kivo.android.ui.LocalSession
 import com.mmcdole.kivo.android.ui.Navigator
@@ -86,12 +86,12 @@ class LibraryGridTest {
     private val server = MockEngine { request ->
         when (request.url.encodedPath) {
             "/api/v1/server" -> json(ServerInfo.serializer(), ServerInfo("grid-test", "Grid test", "1.0"))
-            // 130 favorite movies, the works from 1,000 on.
-            "/api/v1/favorites" -> {
+            // A list of 130 movies, the works from 1,000 on.
+            "/api/v1/lists/l1/works" -> {
                 val params = request.url.parameters
                 val start = params["offset"]?.toInt() ?: 0
-                val end = minOf(start + (params["limit"]?.toInt() ?: 60), FAVORITES)
-                json(WorkSummaryPage.serializer(), WorkSummaryPage((start until end).map { work(1_000 + it) }, total = FAVORITES))
+                val end = minOf(start + (params["limit"]?.toInt() ?: 60), IN_LIST)
+                json(WorkSummaryPage.serializer(), WorkSummaryPage((start until end).map { work(1_000 + it) }, total = IN_LIST))
             }
             "/api/v1/libraries" -> json(LibraryList.serializer(), LibraryList(listOf(Library("lib", "Movies", true, "movies", TOTAL))))
             // The library has no collections.
@@ -295,13 +295,13 @@ class LibraryGridTest {
         waitFor { focusedTag() == "card:${name(0)}" }
     }
 
-    /** A kind's favorites open on their first cards with the first focused, and Down to the last line fills it in. */
+    /** A list opens on its first cards with the first focused, and Down to the last line fills it in. */
     @Test
-    fun favoritesOpenOnTheirFirstCardsAndFillInToTheLast() {
-        open { session, navigator -> FavoritesGridScreen(session, "movie", navigator) }
+    fun aListOpensOnItsFirstCardsAndFillsInToTheLast() {
+        open { session, navigator -> ListWorksScreen(session, "l1", "Queue", navigator) }
         waitFor { focusedTag() == "card:${name(1_000)}" }
-        repeat((FAVORITES - 1) / PosterColumns) { press(KeyEvent.KEYCODE_DPAD_DOWN) }
-        waitFor(10_000) { shows("card:${name(1_000 + FAVORITES - 1)}") }
+        repeat((IN_LIST - 1) / PosterColumns) { press(KeyEvent.KEYCODE_DPAD_DOWN) }
+        waitFor(10_000) { shows("card:${name(1_000 + IN_LIST - 1)}") }
     }
 
     /** Opens [screen] over the mock server: the library's, unless another. */
@@ -369,7 +369,7 @@ class LibraryGridTest {
         const val TOTAL = 3_000
         const val LATENCY_MS = 300L
         const val HOLD_MS = 4_000L
-        const val FAVORITES = 130
+        const val IN_LIST = 130
 
         /** Title [i]'s letter: A to Z in turn through the library. */
         fun letter(i: Int) = 'A' + i * 26 / TOTAL

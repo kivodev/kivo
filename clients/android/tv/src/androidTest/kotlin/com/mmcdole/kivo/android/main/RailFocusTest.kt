@@ -44,10 +44,10 @@ import java.util.UUID
 import kotlin.test.assertEquals
 
 // The rail over an empty Home, with more pinned libraries than fit, so the
-// libraries scroll: Down from Favorites lands on the first library and Up
+// libraries scroll: Down from Lists lands on the first library and Up
 // from Settings on the last, however the libraries were left scrolled.
 // Focus moves by where items are laid out, in view or not, so it passed
-// over the libraries scrolled level with Favorites or Settings.
+// over the libraries scrolled level with Lists or Settings.
 
 @RunWith(AndroidJUnit4::class)
 class RailFocusTest {
@@ -76,12 +76,12 @@ class RailFocusTest {
     }
 
     @Test
-    fun downFromFavoritesLandsOnTheFirstLibraryWithTheLibrariesScrolledToTheirEnd() {
+    fun downFromListsLandsOnTheFirstLibraryWithTheLibrariesScrolledToTheirEnd() {
         open()
         waitFor { focusedTag() == "rail:Home" }
         scrollLibraries(10_000f)
         press(KeyEvent.KEYCODE_DPAD_DOWN)
-        waitFor { focusedTag() == "rail:Favorites" }
+        waitFor { focusedTag() == "rail:Lists" }
         press(KeyEvent.KEYCODE_DPAD_DOWN)
         assertEquals("rail:${libraries.first().name}", focusedTag())
     }

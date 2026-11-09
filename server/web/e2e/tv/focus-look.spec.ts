@@ -200,7 +200,7 @@ test("a focused button turns white with dark text on itself, not on its wrapper"
   expect((await styleOf(wrapper, "box-shadow"))["box-shadow"]).toBe("none");
   // Play is the accent colour while something else has focus.
   await press(page, "ArrowRight");
-  await expectFocus(page, { key: "favorite" });
+  await expectFocus(page, { key: "my-list" });
   await expect.poll(async () => (await styleOf(play, "background-color"))["background-color"]).not.toBe(white);
 });
 
@@ -293,7 +293,7 @@ test("a setting's whole row takes focus and lights up, and Down goes to the next
 
 test("a focused episode card lifts its still, as other cards do", async ({ page }) => {
   await home(page);
-  // The Expanse, among Favorites: Down lands on whichever card is nearest.
+  // The Expanse, on My List: Down lands on whichever card is nearest.
   await press(page, "ArrowDown");
   await pressUntil(page, "ArrowRight", (f) => f.name?.includes("The Expanse") ?? false);
   await press(page, "Enter");

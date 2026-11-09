@@ -6,7 +6,7 @@ import { createAppRouter } from "@/app/router";
 import { LibrarySkeleton, PageSkeleton } from "@/components/Skeleton";
 import { useCast } from "@/features/player/CastButton";
 import { castLink } from "@/features/player/castSession";
-import { favoritesGridRoute, favoritesRoute } from "./favorites";
+import { listRoute, listsRoute } from "./lists";
 import { signInRoute } from "./signIn";
 import { watchRoute } from "./watch";
 
@@ -25,14 +25,14 @@ describe("web route bundles", () => {
     expect(subscribe).toHaveBeenCalledOnce();
   });
 
-  it("keeps the router delay and gives deferred Favorites screens layout placeholders", () => {
+  it("keeps the router delay and gives deferred Lists screens layout placeholders", () => {
     const router = createAppRouter(createQueryClient(), createMemoryHistory());
     expect(router.options.defaultPendingMs).toBe(100);
-    expect(favoritesRoute.options.pendingComponent).toBe(PageSkeleton);
-    expect(favoritesGridRoute.options.pendingComponent).toBe(LibrarySkeleton);
+    expect(listsRoute.options.pendingComponent).toBe(PageSkeleton);
+    expect(listRoute.options.pendingComponent).toBe(LibrarySkeleton);
   });
 
-  it.each([signInRoute, favoritesRoute, favoritesGridRoute, watchRoute])("defers the screen for $path", (route) => {
+  it.each([signInRoute, listsRoute, listRoute, watchRoute])("defers the screen for $path", (route) => {
     expect(route.options.component).toHaveProperty("preload", expect.any(Function));
   });
 });

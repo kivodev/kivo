@@ -2,11 +2,18 @@ package com.mmcdole.kivo.android.mobile.settings
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
+import com.mmcdole.kivo.api.models.HomeRowInfo
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Headphones
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
@@ -33,6 +40,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mmcdole.kivo.android.ServerSession
 import com.mmcdole.kivo.android.mobile.R
+import com.mmcdole.kivo.android.mobile.home.rowTitle
+import com.mmcdole.kivo.android.mobile.home.shownKinds
 import com.mmcdole.kivo.android.mobile.app.MobileNav
 import com.mmcdole.kivo.android.mobile.library.libraryIcon
 import com.mmcdole.kivo.android.mobile.theme.space
@@ -256,38 +265,96 @@ fun DownloadSettingsScreen(session: ServerSession, nav: MobileNav) {
 @Composable
 private fun DeleteAllRow(onClick: () -> Unit) = SettingRow(stringResource(R.string.mobile_delete_all_downloads), "deleteAll", danger = true, onClick = onClick)
 
-/**
- * Libraries: every library the user sees, in their order, each pinned or
- * not, with Move up and Move down. Pinned ones are on Home, in this order;
- * the others are listed under the rest in Libraries.
- */
+/** Home: its rows in order, each with its switch, Move up and Move down, then Reset Home. */
+@Composable
+fun HomeSettingsScreen(session: ServerSession, nav: MobileNav) {
+    val model = viewModel { HomeSettingsViewModel(session.session) }
+    val state by model.state.collectAsStateWithLifecycle()
+    val rows = state.rows.filter { it.kind in shownKinds }
+    SettingsList(stringResource(R.string.mobile_settings_home_section), nav, "homeSettings") {
+        state.rowsFailure?.let { item { FailureRow(it, model::loadRows) } }
+        itemsIndexed(rows, key = { _, row -> row.id }) { index, row ->
+            OrderedSwitch(
+                name = rowTitle(row.kind, row.library?.name, row.list?.name),
+                checked = row.shown,
+                tag = "show:${row.id}",
+                canMoveUp = index > 0,
+                canMoveDown = index < rows.lastIndex,
+                icon = { HomeRowIcon(row) },
+                supporting = if (row.broken == true) stringResource(R.string.mobile_smart_rules_failed) else null,
+                onCheck = { model.show(row.id, it) },
+                onMove = { model.moveRow(row.id, it) },
+            )
+        }
+        item { SettingRow(stringResource(R.string.mobile_reset_home), "resetHome", onClick = model::resetHome) }
+        state.failure?.let { item { FailureRow(stringResource(R.string.mobile_couldnt_save, it), model::retry) } }
+    }
+}
+
+/** A row's icon: what kind of row it is, a smart list's in the accent. */
+@Composable
+private fun HomeRowIcon(row: HomeRowInfo) {
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    when {
+        row.list?.kind == "smart" -> Icon(Icons.Default.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary)
+        row.kind == "continueWatching" -> Icon(Icons.Default.PlayArrow, null, tint = muted)
+        row.kind == "continueListening" -> Icon(Icons.Default.Headphones, null, tint = muted)
+        row.kind == "recentlyAdded" -> Icon(Icons.Default.Schedule, null, tint = muted)
+        else -> Icon(Icons.AutoMirrored.Filled.List, null, tint = muted)
+    }
+}
+
+/** Libraries: every library the user sees, in their order, pinned or not. Pinned ones are in the sidebar; the others are listed under the rest in Libraries. */
 @Composable
 fun LibrariesSettingsScreen(session: ServerSession, nav: MobileNav) {
     val model = viewModel { LibrariesSettingsViewModel(session.session) }
     val state by model.state.collectAsStateWithLifecycle()
-    val up = stringResource(R.string.mobile_move_up)
-    val down = stringResource(R.string.mobile_move_down)
-    val heading = stringResource(R.string.mobile_your_account)
     val note = stringResource(R.string.mobile_libraries_note)
     SettingsList(stringResource(R.string.mobile_tab_libraries), nav, "librariesSettings") {
-        item { Label(heading, note) }
+        item { Label(note) }
         itemsIndexed(state.libraries, key = { _, library -> library.id }) { index, library ->
-            ListItem(
-                headlineContent = { Text(library.name) },
-                leadingContent = { Icon(libraryIcon(library.kind), null) },
-                trailingContent = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { model.move(library.id, -1) }, enabled = index > 0) { Icon(Icons.Default.KeyboardArrowUp, up) }
-                        IconButton(onClick = { model.move(library.id, 1) }, enabled = index < state.libraries.lastIndex) { Icon(Icons.Default.KeyboardArrowDown, down) }
-                        Switch(library.pinned, onCheckedChange = { model.pin(library.id, it) }, modifier = Modifier.testTag("pin:${library.name}"))
-                    }
-                },
-                colors = clear(),
-                modifier = Modifier.animateItem(),
+            OrderedSwitch(
+                name = library.name,
+                checked = library.pinned,
+                tag = "pin:${library.name}",
+                canMoveUp = index > 0,
+                canMoveDown = index < state.libraries.lastIndex,
+                icon = { Icon(libraryIcon(library.kind), null) },
+                onCheck = { model.pin(library.id, it) },
+                onMove = { model.move(library.id, it) },
             )
         }
         state.failure?.let { item { FailureRow(stringResource(R.string.mobile_couldnt_save, it), model::retry) } }
     }
+}
+
+/** A row of Home or Libraries: its name, Move up and Move down, and its switch. */
+@Composable
+private fun LazyItemScope.OrderedSwitch(
+    name: String,
+    checked: Boolean,
+    tag: String,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
+    icon: (@Composable () -> Unit)? = null,
+    supporting: String? = null,
+    onCheck: (Boolean) -> Unit,
+    onMove: (Int) -> Unit,
+) {
+    ListItem(
+        headlineContent = { Text(name) },
+        leadingContent = icon,
+        supportingContent = supporting?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
+        trailingContent = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { onMove(-1) }, enabled = canMoveUp) { Icon(Icons.Default.KeyboardArrowUp, stringResource(R.string.mobile_move_up)) }
+                IconButton(onClick = { onMove(1) }, enabled = canMoveDown) { Icon(Icons.Default.KeyboardArrowDown, stringResource(R.string.mobile_move_down)) }
+                Switch(checked, onCheckedChange = onCheck, modifier = Modifier.testTag(tag))
+            }
+        },
+        colors = clear(),
+        modifier = Modifier.animateItem(),
+    )
 }
 
 /** Languages by name, from the platform's locale data, as BCP 47 tags. */

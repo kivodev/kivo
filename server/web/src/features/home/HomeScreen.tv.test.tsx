@@ -51,8 +51,8 @@ describe("Home on TV", () => {
     await waitFor(() => expect(focused()).toMatch(/^card:continueWatching:/));
     expect(focused()).not.toBe(first);
     press("ArrowDown");
-    // The second row is Favorites, whose cards end in See all.
-    await waitFor(() => expect(focused()).toMatch(/^card:favorites:/));
+    // The second row is My List, whose cards end in See all.
+    await waitFor(() => expect(focused()).toMatch(/^card:list:/));
     press("ArrowUp");
     await waitFor(() => expect(focused()).toMatch(/^card:continueWatching:/));
   });
@@ -82,9 +82,9 @@ describe("Home on TV", () => {
       (r) => r.querySelectorAll("li:not([data-tv-glow-host])").length > 6,
     );
     expect(long?.querySelector('[data-part="see-all"]')).not.toBeNull();
-    const favorites = document.querySelector('[data-row="favorites"]') as HTMLElement;
-    expect(favorites.querySelectorAll("li:not([data-tv-glow-host])")).toHaveLength(2);
-    expect(favorites.querySelector('[data-part="see-all"]')).toBeNull();
+    const myList = document.querySelector('[data-row="list"]') as HTMLElement;
+    expect(myList.querySelectorAll("li:not([data-tv-glow-host])")).toHaveLength(2);
+    expect(myList.querySelector('[data-part="see-all"]')).toBeNull();
     expect(document.querySelector('[data-part="card-play"]')).toBeNull();
     expect(document.querySelector('button[aria-haspopup="menu"]')).toBeNull();
   });

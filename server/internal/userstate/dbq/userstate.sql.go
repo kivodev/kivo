@@ -12,22 +12,20 @@ import (
 	"github.com/mmcdole/kivo/internal/id"
 )
 
-const addFavorite = `-- name: AddFavorite :exec
-INSERT INTO user_state (user_id, work_id, favorite, favorited_at, updated_at) VALUES (?1, ?2, 1, CAST(?3 AS INTEGER), ?3)
-ON CONFLICT (user_id, work_id) DO UPDATE SET
-  favorite = 1, favorited_at = CASE WHEN favorite THEN favorited_at ELSE excluded.favorited_at END,
-  updated_at = excluded.updated_at
+const addToList = `-- name: AddToList :exec
+INSERT INTO list_work (list_id, work_id, added_at) VALUES (?1, ?2, ?3)
+ON CONFLICT (list_id, work_id) DO NOTHING
 `
 
-type AddFavoriteParams struct {
-	UserID id.ID
+type AddToListParams struct {
+	ListID id.ID
 	WorkID id.ID
 	At     int64
 }
 
-// Mark a favorite by hand. One already marked keeps when it was marked.
-func (q *Queries) AddFavorite(ctx context.Context, arg AddFavoriteParams) error {
-	_, err := q.db.ExecContext(ctx, addFavorite, arg.UserID, arg.WorkID, arg.At)
+// A work already in the list keeps its place.
+func (q *Queries) AddToList(ctx context.Context, arg AddToListParams) error {
+	_, err := q.db.ExecContext(ctx, addToList, arg.ListID, arg.WorkID, arg.At)
 	return err
 }
 
@@ -53,6 +51,15 @@ DELETE FROM user_state WHERE work_id = ?1
 
 func (q *Queries) DeleteStates(ctx context.Context, workID id.ID) error {
 	_, err := q.db.ExecContext(ctx, deleteStates, workID)
+	return err
+}
+
+const deleteWorkFromLists = `-- name: DeleteWorkFromLists :exec
+DELETE FROM list_work WHERE work_id = ?1
+`
+
+func (q *Queries) DeleteWorkFromLists(ctx context.Context, workID id.ID) error {
+	_, err := q.db.ExecContext(ctx, deleteWorkFromLists, workID)
 	return err
 }
 
@@ -90,7 +97,7 @@ func (q *Queries) Episodes(ctx context.Context, workID id.ID) ([]id.ID, error) {
 }
 
 const getState = `-- name: GetState :one
-SELECT user_id, work_id, played, play_count, position_ms, resumable, favorite, rating, last_played_at, updated_at, favorited_at, version_id, continue_removed_at FROM user_state WHERE user_id = ?1 AND work_id = ?2
+SELECT user_id, work_id, played, play_count, position_ms, resumable, rating, last_played_at, updated_at, version_id, continue_removed_at FROM user_state WHERE user_id = ?1 AND work_id = ?2
 `
 
 type GetStateParams struct {
@@ -108,11 +115,9 @@ func (q *Queries) GetState(ctx context.Context, arg GetStateParams) (UserState, 
 		&i.PlayCount,
 		&i.PositionMs,
 		&i.Resumable,
-		&i.Favorite,
 		&i.Rating,
 		&i.LastPlayedAt,
 		&i.UpdatedAt,
-		&i.FavoritedAt,
 		&i.VersionID,
 		&i.ContinueRemovedAt,
 	)
@@ -177,6 +182,22 @@ func (q *Queries) InsertEvent(ctx context.Context, arg InsertEventParams) error 
 	return err
 }
 
+const listOwner = `-- name: ListOwner :one
+SELECT user_id, query IS NOT NULL AS smart FROM list WHERE id = ?1
+`
+
+type ListOwnerRow struct {
+	UserID id.ID
+	Smart  bool
+}
+
+func (q *Queries) ListOwner(ctx context.Context, argID id.ID) (ListOwnerRow, error) {
+	row := q.db.QueryRowContext(ctx, listOwner, argID)
+	var i ListOwnerRow
+	err := row.Scan(&i.UserID, &i.Smart)
+	return i, err
+}
+
 const moveEvents = `-- name: MoveEvents :exec
 UPDATE play_event SET work_id = ?1 WHERE work_id = ?2
 `
@@ -188,6 +209,22 @@ type MoveEventsParams struct {
 
 func (q *Queries) MoveEvents(ctx context.Context, arg MoveEventsParams) error {
 	_, err := q.db.ExecContext(ctx, moveEvents, arg.Into, arg.From)
+	return err
+}
+
+const moveListWorks = `-- name: MoveListWorks :exec
+UPDATE OR IGNORE list_work SET work_id = ?1 WHERE work_id = ?2
+`
+
+type MoveListWorksParams struct {
+	Into id.ID
+	From id.ID
+}
+
+// An episode merged into another keeps its places in lists, unless the
+// episode that replaces it is already there.
+func (q *Queries) MoveListWorks(ctx context.Context, arg MoveListWorksParams) error {
+	_, err := q.db.ExecContext(ctx, moveListWorks, arg.Into, arg.From)
 	return err
 }
 
@@ -255,11 +292,11 @@ func (q *Queries) PlayEvent(ctx context.Context, arg PlayEventParams) (PlayEvent
 }
 
 const putState = `-- name: PutState :exec
-INSERT INTO user_state (user_id, work_id, played, play_count, position_ms, resumable, version_id, favorite, favorited_at, rating, last_played_at, updated_at)
-VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+INSERT INTO user_state (user_id, work_id, played, play_count, position_ms, resumable, version_id, rating, last_played_at, updated_at)
+VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
 ON CONFLICT (user_id, work_id) DO UPDATE SET
   played = excluded.played, play_count = excluded.play_count, position_ms = excluded.position_ms,
-  resumable = excluded.resumable, version_id = excluded.version_id, favorite = excluded.favorite, favorited_at = excluded.favorited_at, rating = excluded.rating,
+  resumable = excluded.resumable, version_id = excluded.version_id, rating = excluded.rating,
   last_played_at = excluded.last_played_at, updated_at = excluded.updated_at
 `
 
@@ -271,8 +308,6 @@ type PutStateParams struct {
 	PositionMs   int64
 	Resumable    bool
 	VersionID    id.ID
-	Favorite     bool
-	FavoritedAt  sql.NullInt64
 	Rating       sql.NullInt64
 	LastPlayedAt sql.NullInt64
 	UpdatedAt    int64
@@ -288,28 +323,10 @@ func (q *Queries) PutState(ctx context.Context, arg PutStateParams) error {
 		arg.PositionMs,
 		arg.Resumable,
 		arg.VersionID,
-		arg.Favorite,
-		arg.FavoritedAt,
 		arg.Rating,
 		arg.LastPlayedAt,
 		arg.UpdatedAt,
 	)
-	return err
-}
-
-const removeFavorite = `-- name: RemoveFavorite :exec
-INSERT INTO user_state (user_id, work_id, favorite, updated_at) VALUES (?1, ?2, 0, ?3)
-ON CONFLICT (user_id, work_id) DO UPDATE SET favorite = 0, favorited_at = NULL, updated_at = excluded.updated_at
-`
-
-type RemoveFavoriteParams struct {
-	UserID id.ID
-	WorkID id.ID
-	At     int64
-}
-
-func (q *Queries) RemoveFavorite(ctx context.Context, arg RemoveFavoriteParams) error {
-	_, err := q.db.ExecContext(ctx, removeFavorite, arg.UserID, arg.WorkID, arg.At)
 	return err
 }
 
@@ -328,6 +345,20 @@ type RemoveFromContinueParams struct {
 // still applies.
 func (q *Queries) RemoveFromContinue(ctx context.Context, arg RemoveFromContinueParams) error {
 	_, err := q.db.ExecContext(ctx, removeFromContinue, arg.UserID, arg.WorkID, arg.At)
+	return err
+}
+
+const removeFromList = `-- name: RemoveFromList :exec
+DELETE FROM list_work WHERE list_id = ?1 AND work_id = ?2
+`
+
+type RemoveFromListParams struct {
+	ListID id.ID
+	WorkID id.ID
+}
+
+func (q *Queries) RemoveFromList(ctx context.Context, arg RemoveFromListParams) error {
+	_, err := q.db.ExecContext(ctx, removeFromList, arg.ListID, arg.WorkID)
 	return err
 }
 
@@ -471,7 +502,7 @@ func (q *Queries) SetTrackChoice(ctx context.Context, arg SetTrackChoiceParams) 
 }
 
 const statesOfWork = `-- name: StatesOfWork :many
-SELECT user_id, work_id, played, play_count, position_ms, resumable, favorite, rating, last_played_at, updated_at, favorited_at, version_id, continue_removed_at FROM user_state WHERE work_id = ?1
+SELECT user_id, work_id, played, play_count, position_ms, resumable, rating, last_played_at, updated_at, version_id, continue_removed_at FROM user_state WHERE work_id = ?1
 `
 
 func (q *Queries) StatesOfWork(ctx context.Context, workID id.ID) ([]UserState, error) {
@@ -490,11 +521,9 @@ func (q *Queries) StatesOfWork(ctx context.Context, workID id.ID) ([]UserState, 
 			&i.PlayCount,
 			&i.PositionMs,
 			&i.Resumable,
-			&i.Favorite,
 			&i.Rating,
 			&i.LastPlayedAt,
 			&i.UpdatedAt,
-			&i.FavoritedAt,
 			&i.VersionID,
 			&i.ContinueRemovedAt,
 		); err != nil {

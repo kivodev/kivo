@@ -79,8 +79,15 @@ func TestBudgets(t *testing.T) {
 		{"browse movies, genre and unplayed", browseBudget, false, browse(q, v, movies, query.BrowseOptions{Filter: query.Filter{Genres: []string{"Drama"}, Played: query.Unplayed}})},
 		{"browse movies, 4K", browseBudget, true, browse(q, v, movies, query.BrowseOptions{Filter: query.Filter{Resolutions: []query.Resolution{query.Resolution4K}}})},
 		{"browse movies, HDR", browseBudget, true, browse(q, v, movies, query.BrowseOptions{Filter: query.Filter{Ranges: []query.Range{query.HDR}}})},
-		{"home", homeBudget, true, func() error { _, err := q.Home(ctx, v); return err }},
-		{"favorites", browseBudget, true, func() error { _, err := q.Favorites(ctx, v, "", query.GridOptions{}); return err }},
+		{"home", homeBudget, true, func() error { _, _, err := q.Home(ctx, v); return err }},
+		{"my list", browseBudget, true, func() error {
+			lists, err := q.Lists(ctx, v)
+			if err != nil {
+				return err
+			}
+			_, err = q.ListWorks(ctx, v, lists[0].ID, nil, query.GridOptions{})
+			return err
+		}},
 		{"search", searchBudget, true, func() error { _, err := q.Search(ctx, v, "movie 123", 0); return err }},
 		{"search, a person", searchBudget, true, func() error { _, err := q.Search(ctx, v, "mary actor 123", 0); return err }},
 		// Every movie and every person has "the" and a word starting with
@@ -246,10 +253,10 @@ func generate(t *testing.T, db *store.DB) (movies, shows, moviesFolder id.ID) {
 }
 
 // budgetViewer is an admin who has watched 2,000 movies, has 300 in progress
-// and 50 favorites, and is partway through 100 series.
+// and 50 movies on My List, and is partway through 100 series.
 func budgetViewer(t *testing.T, db *store.DB) users.Viewer {
 	t.Helper()
-	svc := users.New(db)
+	svc := users.New(db, events.NewBus())
 	var user id.ID
 	err := db.Write(context.Background(), func(ctx context.Context, tx *store.Tx) error {
 		u, err := svc.CreateUser(ctx, tx, users.NewUser{Username: "admin", Admin: true, Grants: users.Grants{All: true}})
@@ -258,13 +265,17 @@ func budgetViewer(t *testing.T, db *store.DB) users.Viewer {
 			return err
 		}
 		_, err = tx.ExecContext(ctx, `
-			INSERT INTO user_state (user_id, work_id, played, play_count, position_ms, resumable, favorite, favorited_at, rating, last_played_at, updated_at)
-			SELECT @user, id, rid % 7 <> 0, rid % 7 <> 0, 600000 * (rid % 7 = 0), rid % 7 = 0, rid % 40 = 0, CASE WHEN rid % 40 = 0 THEN @now - rid END,
+			INSERT INTO user_state (user_id, work_id, played, play_count, position_ms, resumable, rating, last_played_at, updated_at)
+			SELECT @user, id, rid % 7 <> 0, rid % 7 <> 0, 600000 * (rid % 7 = 0), rid % 7 = 0,
 			  CASE WHEN rid % 5 = 0 THEN rid % 10 + 1 END, @now - rid, @now - rid
 			FROM work WHERE kind = 'movie' AND rid <= 2300
 			UNION ALL
-			SELECT @user, id, 1, 1, 0, 0, 0, NULL, NULL, @now - rid, @now - rid
-			FROM work WHERE kind = 'episode' AND number <= 6 AND root_id <= CAST(printf('s%015d', 100) AS BLOB)`,
+			SELECT @user, id, 1, 1, 0, 0, NULL, @now - rid, @now - rid
+			FROM work WHERE kind = 'episode' AND number <= 6 AND root_id <= CAST(printf('s%015d', 100) AS BLOB);
+			INSERT INTO list_work (list_id, work_id, added_at)
+			SELECT l.id, w.id, @now - w.rid
+			FROM work w, list l
+			WHERE l.user_id = @user AND w.kind = 'movie' AND w.rid <= 2000 AND w.rid % 40 = 0`,
 			sql.Named("user", user), sql.Named("now", time.Now().UnixMilli()))
 		return err
 	})

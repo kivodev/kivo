@@ -24,6 +24,7 @@
 package com.mmcdole.kivo.api.models
 
 import com.mmcdole.kivo.api.models.LibraryRef
+import com.mmcdole.kivo.api.models.ListRef
 import com.mmcdole.kivo.api.models.WorkSummary
 
 import kotlinx.serialization.*
@@ -33,25 +34,29 @@ import kotlinx.serialization.encoding.*
 /**
  * 
  *
- * @param id Stable per row, such as `recentlyAdded:<libraryId>`.
- * @param kind What a Home row shows: `continueWatching` what to watch on with, videos in progress and each series' episode up next; `continueListening` books in progress; `continueSeries` the next book of each book series the user has finished a book of; `recentlyAdded` a library's newest works; `favorites` the works the user marked. Skip kinds you don't know. 
+ * @param id Stable per row: the kind, `recentlyAdded:<libraryId>` or `list:<listId>`. 
+ * @param kind What a Home row shows: `continueWatching` what to watch on with, videos in progress and each series' episode up next; `continueListening` books in progress; `recentlyAdded` a library's newest works; `list` a list's works. Skip kinds you don't know. 
  * @param items 
  * @param library For `recentlyAdded`, the library.
+ * @param list For `list`, the list.
  */
 @Serializable
 
 data class HomeRow (
 
-    /* Stable per row, such as `recentlyAdded:<libraryId>`. */
+    /* Stable per row: the kind, `recentlyAdded:<libraryId>` or `list:<listId>`.  */
     @SerialName(value = "id") @Required val id: kotlin.String,
 
-    /* What a Home row shows: `continueWatching` what to watch on with, videos in progress and each series' episode up next; `continueListening` books in progress; `continueSeries` the next book of each book series the user has finished a book of; `recentlyAdded` a library's newest works; `favorites` the works the user marked. Skip kinds you don't know.  */
+    /* What a Home row shows: `continueWatching` what to watch on with, videos in progress and each series' episode up next; `continueListening` books in progress; `recentlyAdded` a library's newest works; `list` a list's works. Skip kinds you don't know.  */
     @SerialName(value = "kind") @Required val kind: kotlin.String,
 
     @SerialName(value = "items") @Required val items: kotlin.collections.List<WorkSummary>,
 
     /* For `recentlyAdded`, the library. */
-    @SerialName(value = "library") val library: LibraryRef? = null
+    @SerialName(value = "library") val library: LibraryRef? = null,
+
+    /* For `list`, the list. */
+    @SerialName(value = "list") val list: ListRef? = null
 
 ) {
 

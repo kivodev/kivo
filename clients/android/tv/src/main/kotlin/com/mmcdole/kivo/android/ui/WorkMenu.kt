@@ -15,9 +15,11 @@ import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mmcdole.kivo.android.tv.R
 import com.mmcdole.kivo.android.ServerSession
 import com.mmcdole.kivo.api.models.WorkSummary
+import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.display.episodeCode
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -37,8 +39,8 @@ fun Modifier.menuKey(work: WorkSummary, open: (WorkSummary) -> Unit): Modifier =
 
 /**
  * Gives the screens under it a work's menu: Play or Resume,
- * Play from beginning once there's progress, Mark as watched or unwatched, Add
- * to or Remove from favorites, Remove from Continue Watching in that row,
+ * Play from beginning once there's progress, Mark as watched or unwatched,
+ * Remove from the list that's open, Remove from Continue Watching in that row,
  * Go to series for an episode (except on its series' page), and Go to
  * library outside a library's grid.
  */
@@ -59,7 +61,9 @@ private fun WorkMenu(work: WorkSummary, continueWatching: Boolean, session: Serv
     val playable = work.available && work.kind in setOf("movie", "episode", "video", "extra")
     val started = work.userState?.positionMs != null
     val played = work.userState?.played == true
-    val favorite = work.userState?.favorite == true
+    val lists by remember(session) { session.session.library.lists() }.collectAsStateWithLifecycle(Load.Loading)
+    // A smart list's works are its rules', so only a manual list offers Remove.
+    val openList = (screen as? Screen.ListWorks)?.takeIf { open -> lists.getOrNull()?.any { it.id == open.id && it.kind == "manual" } == true }
     val seriesId = work.episode?.seriesId
     val libraryId = work.libraryId
     val choices = buildList {
@@ -68,7 +72,7 @@ private fun WorkMenu(work: WorkSummary, continueWatching: Boolean, session: Serv
             if (started) add(Choice("fromStart", stringResource(R.string.play_from_beginning)))
         }
         add(Choice("played", stringResource(if (played) R.string.mark_unplayed else R.string.mark_played)))
-        add(Choice("favorite", stringResource(if (favorite) R.string.remove_favorite else R.string.add_favorite)))
+        if (openList != null) add(Choice("removeFromList", stringResource(R.string.remove_from_list, openList.name)))
         if (continueWatching) add(Choice("removeFromContinue", stringResource(R.string.remove_from_continue_watching)))
         if (seriesId != null && (screen as? Screen.Work)?.id != seriesId) add(Choice("series", stringResource(R.string.go_to_series)))
         if (screen !is Screen.Library && libraryId != null) add(Choice("library", stringResource(R.string.go_to_library)))
@@ -95,7 +99,7 @@ private fun WorkMenu(work: WorkSummary, continueWatching: Boolean, session: Serv
                 "play" -> navigator.push(Screen.Player(work.id))
                 "fromStart" -> navigator.push(Screen.Player(work.id, fromStart = true))
                 "played" -> act { session.session.library.setPlayed(work.id, !played) }
-                "favorite" -> act { session.session.library.setFavorite(work.id, !favorite) }
+                "removeFromList" -> openList?.let { list -> act { session.session.library.removeFromList(list.id, work.id) } }
                 "removeFromContinue" -> act { session.session.library.removeFromContinue(work.id) }
                 "series" -> work.episode?.let { navigator.push(Screen.Work(it.seriesId, it)) }
                 "library" -> libraryId?.let { navigator.open(Screen.Library(it)) }

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/mmcdole/kivo/internal/events"
 	"github.com/mmcdole/kivo/internal/store"
 
 	"github.com/mmcdole/kivo/internal/catalog"
@@ -67,7 +68,7 @@ func (d *downloads) results() map[string]string {
 // library when blind is true.
 func (d *downloads) viewer(blind bool) users.Viewer {
 	d.t.Helper()
-	svc := users.New(d.b.DB)
+	svc := users.New(d.b.DB, events.NewBus())
 	grants := users.Grants{All: !blind}
 	if blind {
 		other, _ := d.b.Library(catalog.Movies)

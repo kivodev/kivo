@@ -2,10 +2,10 @@ import KivoCore
 import KivoUI
 import SwiftUI
 
-/// Libraries: every library the user sees, in their order, each pinned
-/// or not. Pinned libraries are on Home and first in the Libraries menu,
-/// in this order; the rest are under More libraries. Each change is sent
-/// at once; a refused one says why, with Retry.
+/// Libraries: every library the user sees, in their order, each pinned or
+/// not. Pinned libraries are first in the Libraries menu, in this order; the
+/// rest are under More libraries. Each change is sent at once; a refused one
+/// says why, with Retry.
 struct LibrariesSettingsView: View {
     @Environment(ServerModel.self) private var server
     @State private var order: [Library] = []
@@ -30,10 +30,8 @@ struct LibrariesSettingsView: View {
                     order.move(fromOffsets: from, toOffset: to)
                     save()
                 }
-            } header: {
-                AccountHeading()
             } footer: {
-                Text("Libraries turned off are hidden from Home and listed under More libraries.")
+                Text("Libraries turned off are listed under More libraries.")
             }
             if let failure {
                 Section {

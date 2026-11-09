@@ -91,8 +91,8 @@ func TestSideEffects(t *testing.T) {
 		works, _ := e.Data.([]id.ID)
 		return e.Kind == events.UserStateChanged && slices.ContainsFunc(works, func(w id.ID) bool { return w.String() == work })
 	}
-	c.call("PATCH", "/api/v1/works/"+work+"/user-state", map[string]any{"favorite": true}, http.StatusOK, nil)
-	w.waitFor("userStateChanged after marking a favorite", changed)
+	c.call("PATCH", "/api/v1/works/"+work+"/user-state", map[string]any{"played": true}, http.StatusOK, nil)
+	w.waitFor("userStateChanged after marking played", changed)
 	caps := capsFor([]string{"mp4"}, true, h264(), []string{"aac"})
 	var play struct{ ID string }
 	c.call("POST", "/api/v1/plays", map[string]any{"workId": work, "capabilities": caps}, http.StatusCreated, &play)

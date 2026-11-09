@@ -10,7 +10,7 @@ import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import com.mmcdole.kivo.api.models.EpisodeInfo
 
-/** The TV interface's screens: the rail's destinations, the favorites' grids, detail pages and the player. */
+/** The TV interface's screens: the rail's destinations, an open list, detail pages and the player. */
 sealed interface Screen {
     /** A screen the rail opens. */
     sealed interface Destination : Screen
@@ -33,11 +33,11 @@ sealed interface Screen {
 
     data class Library(val id: String) : Destination
 
-    /** The user's favorites, a row for each kind. */
-    data object Favorites : Destination
+    /** The user's lists: My List's row, then the lists they made. */
+    data object Lists : Destination
 
-    /** Every favorite of one kind, in a grid. */
-    data class FavoritesGrid(val kind: String) : Screen
+    /** A list's works in a grid, [name] as its title. */
+    data class ListWorks(val id: String, val name: String) : Screen
 
     /**
      * A work's page: a movie, series, season (the series page on that

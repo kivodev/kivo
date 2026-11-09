@@ -348,7 +348,7 @@ private fun ShowRow(show: ShowDownloads, onOpen: () -> Unit, onDelete: () -> Uni
 /** A row that swipes from the end to [onDelete], over a red Delete. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun Swipeable(onDelete: () -> Unit, content: @Composable () -> Unit) {
+internal fun Swipeable(onDelete: () -> Unit, content: @Composable () -> Unit) {
     val state = rememberSwipeToDismissBoxState()
     val scope = rememberCoroutineScope()
     SwipeToDismissBox(

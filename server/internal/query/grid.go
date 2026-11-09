@@ -11,7 +11,7 @@ import (
 
 // A grid is a listing that a client shows as a grid and can load at any
 // position. The grids are a library's works, its collections, an
-// audiobooks library's authors and series, and the user's favorites. A page
+// audiobooks library's authors and series, and a list's works. A page
 // is a run of the listing from an offset. Ties in a grid's order break by
 // title and then ID, so every row has one place.
 

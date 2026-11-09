@@ -19,8 +19,10 @@ DEADCODE_MAX     := 0
 # an API key, a session, a download, remove from continue watching, run a
 # task) read alike in two groups, and so do its get and rename handlers
 # for a book series and a person, each with its own generated request and
-# response types, which no shared helper would make clearer.
-DUPL_MAX         := 27
+# response types, which no shared helper would make clearer. A list's
+# writes, renaming and deleting one and adding or removing a work, read
+# alike the same way.
+DUPL_MAX         := 29
 # Go functions with a cyclomatic complexity over 15 (gocyclo).
 GOCYCLO_MAX      := 45
 # Go functions with a cognitive complexity over 20 (gocognit). identify's
@@ -40,11 +42,13 @@ API_HANDLERS_MAX := 0
 # the SQL count their result rows' queries.
 # The Go count also holds query's Browse and nameList, which check the
 # library and read its letters alike.
+# The Go count holds a list's writes, which read alike (see DUPL_MAX).
 # The web count holds General and Network settings' identical imports, and
-# Edit and Edit book's forms, which open alike with the title field.
-JSCPD_GO_MAX     := 212
+# Edit and Edit book's forms, which open alike with the title field, and a
+# list's name form and the smart list builder's name field.
+JSCPD_GO_MAX     := 217
 JSCPD_SQL_MAX    := 10
-JSCPD_WEB_MAX    := 96
+JSCPD_WEB_MAX    := 110
 # The web client's unused files, dependencies, exports and types (knip).
 KNIP_MAX         := 0
 # Import cycles in the web client (madge). The player's engine loads the

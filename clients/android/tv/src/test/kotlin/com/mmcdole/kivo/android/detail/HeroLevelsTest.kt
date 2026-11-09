@@ -6,21 +6,21 @@ import kotlin.test.assertEquals
 class HeroLevelsTest {
     @Test
     fun upReturnsToTheButtonYouCameFrom() {
-        assertEquals("played", returningButton("played", setOf("play", "favorite", "played")))
+        assertEquals("played", returningButton("played", setOf("play", "myList", "played")))
     }
 
     @Test
     fun upReturnsToPlayUntilThereHasBeenAButton() {
-        assertEquals("play", returningButton("play", setOf("play", "favorite")))
+        assertEquals("play", returningButton("play", setOf("play", "myList")))
     }
 
     @Test
     fun aButtonThatHasGoneGivesWayToPlay() {
-        assertEquals("play", returningButton("restart", setOf("play", "favorite")))
+        assertEquals("play", returningButton("restart", setOf("play", "myList")))
     }
 
     @Test
-    fun withoutPlayFavoriteTakesItsPlace() {
-        assertEquals("favorite", returningButton("play", setOf("favorite", "played")))
+    fun withoutPlayMyListTakesItsPlace() {
+        assertEquals("myList", returningButton("play", setOf("myList", "played")))
     }
 }

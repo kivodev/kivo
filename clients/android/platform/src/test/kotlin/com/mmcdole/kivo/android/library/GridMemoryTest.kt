@@ -31,7 +31,6 @@ class GridMemoryTest {
                 "lib1",
                 sort = "addedAt",
                 played = "inProgress",
-                favorite = true,
                 resolutions = listOf("4k", "1080p"),
                 dynamicRanges = listOf("dolbyVision"),
             ),
@@ -98,7 +97,7 @@ class GridMemoryTest {
 
     @Test
     fun clearingTheFiltersKeepsTheSort() {
-        val query = GridQuery("lib1", sort = "rating", played = "played", favorite = true)
+        val query = GridQuery("lib1", sort = "rating", played = "played")
         assertTrue(query.filtered)
         val clear = query.unfiltered()
         assertFalse(clear.filtered)

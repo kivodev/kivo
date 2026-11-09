@@ -10,6 +10,14 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class ShownRowsTest {
+    @Test
+    fun aListRowDropsTheBooksTheTvDoesntShow() {
+        val book = work.copy(id = "b", kind = "book")
+        val shown = shownRows(listOf(row("list:1", "list", items = listOf(work, book))), emptyList())
+        assertEquals(listOf("w"), shown.single().row.items.map { it.id })
+        assertEquals(emptyList(), shownRows(listOf(row("list:2", "list", items = listOf(book))), emptyList()))
+    }
+
     private val movies = Library("movies", "Movies", true, "movies", 10)
     private val clips = Library("clips", "Clips", true, "videos", 10)
     private val work = WorkSummary(id = "w", kind = "movie", title = "W", matchState = "matched", available = true, images = WorkImages(), libraryId = "movies")
@@ -20,7 +28,7 @@ class ShownRowsTest {
     @Test
     fun eachRowComesWithItsLibraryAndShape() {
         val rows = shownRows(
-            listOf(row("cw", "continueWatching"), row("ra:movies", "recentlyAdded", movies), row("ra:clips", "recentlyAdded", clips), row("fav", "favorites")),
+            listOf(row("cw", "continueWatching"), row("ra:movies", "recentlyAdded", movies), row("ra:clips", "recentlyAdded", clips), row("list:1", "list")),
             listOf(movies, clips),
         )
         assertEquals(

@@ -279,6 +279,7 @@ func workDetail(d query.WorkDetail, tracks playback.Preferred, marks map[id.ID][
 		Genres: nonNil(d.Genres), Studios: nonNil(d.Companies),
 		Credits: []gen.Credit{}, ExternalIds: []gen.ExternalID{}, Versions: []gen.Version{},
 		Extras: summaries(d.Extras), Collections: each(d.Collections, collectionSummary),
+		ListIds: ptr(nonNil(d.ListIDs)),
 	}
 	// A season or episode without its own content rating takes its series'
 	// rating.
@@ -418,7 +419,7 @@ func parseBrowseOptions(p gen.ListLibraryWorksParams, v users.Viewer) (query.Bro
 		Played: query.PlayState(deref(p.Played)), Genres: deref(p.Genre),
 		YearFrom: deref(p.YearFrom), YearTo: deref(p.YearTo), ContentRatings: deref(p.ContentRating),
 		Resolutions: stringsAs[query.Resolution](deref(p.Resolution)), Ranges: stringsAs[query.Range](deref(p.DynamicRange)),
-		Favorites: deref(p.Favorite), Narrator: deref(p.NarratorID),
+		Narrator: deref(p.NarratorID),
 		// Only admins filter by match state.
 		Unmatched: p.MatchState != nil && v.Admin(),
 	}
@@ -453,10 +454,10 @@ func parseMatchID(s string) (catalog.ExternalID, bool) {
 }
 
 // parseUserStateChange reads a change to the user's state for a work. It
-// can set played, favorite and an offline position. An offline position
+// can set played and an offline position. An offline position
 // needs its position, time and version.
 func parseUserStateChange(b *gen.UpdateWorkUserStateJSONRequestBody) (userstate.Change, error) {
-	c := userstate.Change{Played: b.Played, Favorite: b.Favorite}
+	c := userstate.Change{Played: b.Played}
 	if b.PositionMs == nil && b.PlayedAt == nil && b.VersionID == nil {
 		return c, nil
 	}

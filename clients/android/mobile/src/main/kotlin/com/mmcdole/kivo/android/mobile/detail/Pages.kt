@@ -134,7 +134,7 @@ private fun <T : Any> PageFrame(state: PageUiState<T>, model: PageViewModel<T>, 
             when {
                 state.value == null && problem != null -> Failed(problem, stringResource(R.string.mobile_couldnt_load_page), state.name.orEmpty(), model::retry)
                 state.value == null && state.name == null -> Loading()
-                else -> WorkMenuHost({ action, work -> nav.handle(action, work, model.marks) }) { open -> content(open) }
+                else -> WorkMenuHost({ action, menu -> nav.handle(action, menu, model.marks) }) { open -> content(open) }
             }
         }
     }

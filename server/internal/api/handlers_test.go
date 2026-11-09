@@ -435,7 +435,7 @@ func TestBrowseAndDetail(t *testing.T) {
 	if w := e.do("GET", grid+"?offset=-1", e.adminToken, nil); w.Code != http.StatusBadRequest {
 		t.Errorf("offset -1: %d", w.Code)
 	}
-	for _, q := range []string{"?yearFrom=1990&yearTo=1999", "?yearFrom=1990", "?resolution=1080p&hdr=hdr", "?played=unplayed&favorite=false", "?match=unmatched", "?genre=Crime&genre=Drama"} {
+	for _, q := range []string{"?yearFrom=1990&yearTo=1999", "?yearFrom=1990", "?resolution=1080p&hdr=hdr", "?played=unplayed", "?match=unmatched", "?genre=Crime&genre=Drama"} {
 		if w := e.do("GET", grid+q, e.adminToken, nil); w.Code != http.StatusOK {
 			t.Errorf("%s: %d %s", q, w.Code, w.Body.String())
 		}
@@ -536,25 +536,27 @@ func TestBrowseAndDetail(t *testing.T) {
 		}
 		return ids
 	}
-	if rows := homeRows(); slices.Contains(rows, "favorites") {
-		t.Errorf("home without favorites %v", rows)
+	myList := decode[struct {
+		Items []struct {
+			ID      string `json:"id"`
+			BuiltIn bool   `json:"builtIn"`
+		} `json:"items"`
+	}](t, e.do("GET", "/api/v1/lists", e.adminToken, nil)).Items[0].ID
+	if rows := homeRows(); slices.Contains(rows, "list:"+myList) {
+		t.Errorf("home without works on My List %v", rows)
 	}
-	st := decode[map[string]any](t, e.do("PATCH", "/api/v1/works/"+e.heat.Work.String()+"/user-state", e.adminToken, map[string]any{"favorite": true}))
-	if st["favorite"] != true {
-		t.Errorf("user state %v", st)
+	if w := e.do("POST", "/api/v1/lists/"+myList+"/works", e.adminToken, map[string]any{"workId": e.heat.Work.String()}); w.Code != http.StatusNoContent {
+		t.Errorf("add to My List: %d %s", w.Code, w.Body.String())
 	}
-	if rows := homeRows(); len(rows) < 2 || rows[0] != "favorites" || !strings.HasPrefix(rows[1], "recentlyAdded:") {
-		t.Errorf("home with favorites %v", rows)
+	if rows := homeRows(); len(rows) < 2 || rows[0] != "list:"+myList || !strings.HasPrefix(rows[1], "recentlyAdded:") {
+		t.Errorf("home with My List %v", rows)
 	}
-	favs := decode[list](t, e.do("GET", "/api/v1/favorites?kind=movie", e.adminToken, nil))
-	if len(favs.Items) != 1 || favs.Items[0]["id"] != e.heat.Work.String() || *favs.Total != 1 {
-		t.Errorf("favorite movies %+v", favs)
+	inList := decode[list](t, e.do("GET", "/api/v1/lists/"+myList+"/works", e.adminToken, nil))
+	if len(inList.Items) != 1 || inList.Items[0]["id"] != e.heat.Work.String() || *inList.Total != 1 {
+		t.Errorf("my list works %+v", inList)
 	}
-	if favs := decode[list](t, e.do("GET", "/api/v1/favorites?kind=episode", e.adminToken, nil)); len(favs.Items) != 0 || *favs.Total != 0 {
-		t.Errorf("favorite episodes %+v", favs)
-	}
-	if w := e.do("GET", "/api/v1/favorites?kind=collection", e.adminToken, nil); w.Code != http.StatusBadRequest {
-		t.Errorf("favorites of an unknown kind: %d", w.Code)
+	if w := e.do("POST", "/api/v1/lists/"+myList+"/works", e.adminToken, map[string]any{"workId": e.heat.Work.String()}); w.Code != http.StatusNoContent {
+		t.Errorf("adding again: %d %s", w.Code, w.Body.String())
 	}
 	if w := e.do("POST", "/api/v1/works/"+e.heat.Work.String()+"/refresh-metadata", e.adminToken, nil); w.Code != http.StatusAccepted {
 		t.Errorf("refresh: %d %s", w.Code, w.Body.String())
