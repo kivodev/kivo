@@ -22,8 +22,7 @@ type Change struct {
 	// Played marks the work played or unplayed by hand. For a series or
 	// season it marks every episode under it. Either way the position goes
 	// back to the start.
-	Played   *bool
-	Favorite *bool
+	Played *bool
 	// Offline is a position played from a download, outside any play.
 	Offline *Offline
 }
@@ -77,17 +76,6 @@ func (s *Service) Update(ctx context.Context, v users.Viewer, work id.ID, c Chan
 				}
 			}
 			named = append(named, works...)
-		}
-		switch {
-		case c.Favorite == nil:
-		case *c.Favorite:
-			if err := q.AddFavorite(ctx, dbq.AddFavoriteParams{UserID: user, WorkID: work, At: at}); err != nil {
-				return err
-			}
-		default:
-			if err := q.RemoveFavorite(ctx, dbq.RemoveFavoriteParams{UserID: user, WorkID: work, At: at}); err != nil {
-				return err
-			}
 		}
 		s.changed(tx, user, distinct(named)...)
 		return nil
@@ -271,7 +259,6 @@ func (s *Service) SetTrackChoice(ctx context.Context, user, series id.ID, c Trac
 // that replaced it. It runs in the same transaction, before catalog's
 // Batch.MergeEpisode deletes the old episode. The two states are unioned:
 //   - The result is played if either was.
-//   - The result is a favorite if either was, dated by the later marking.
 //   - The latest position, with the version it is on, and the latest
 //     rating win.
 //   - The play count comes from the events. It is never summed, so nothing
@@ -279,6 +266,12 @@ func (s *Service) SetTrackChoice(ctx context.Context, user, series id.ID, c Trac
 func (s *Service) MergeEpisode(ctx context.Context, tx *store.Tx, from, into id.ID) error {
 	q := dbq.New(tx)
 	if err := q.MoveEvents(ctx, dbq.MoveEventsParams{Into: into, From: from}); err != nil {
+		return err
+	}
+	if err := q.MoveListWorks(ctx, dbq.MoveListWorksParams{Into: into, From: from}); err != nil {
+		return err
+	}
+	if err := q.DeleteWorkFromLists(ctx, from); err != nil {
 		return err
 	}
 	states, err := q.StatesOfWork(ctx, from)
@@ -315,10 +308,6 @@ func union(a, b dbq.UserState, completedEvents int64) dbq.PutStateParams {
 	if a.Rating.Valid && (!b.Rating.Valid || a.UpdatedAt > b.UpdatedAt) {
 		rating = a.Rating
 	}
-	favoritedAt := b.FavoritedAt
-	if a.FavoritedAt.Int64 > b.FavoritedAt.Int64 {
-		favoritedAt = a.FavoritedAt
-	}
 	return dbq.PutStateParams{
 		UserID: b.UserID, WorkID: b.WorkID,
 		Played:       a.Played || b.Played,
@@ -326,8 +315,6 @@ func union(a, b dbq.UserState, completedEvents int64) dbq.PutStateParams {
 		PositionMs:   latest.PositionMs,
 		Resumable:    latest.Resumable,
 		VersionID:    latest.VersionID,
-		Favorite:     a.Favorite || b.Favorite,
-		FavoritedAt:  favoritedAt,
 		Rating:       rating,
 		LastPlayedAt: latest.LastPlayedAt,
 		UpdatedAt:    max(a.UpdatedAt, b.UpdatedAt),
@@ -339,7 +326,7 @@ func union(a, b dbq.UserState, completedEvents int64) dbq.PutStateParams {
 // The version's plays, the played mark they make, and the resume position
 // move to the episode the version now covers. So what you did with the file
 // stays with the file, whatever order the version's moves come in. The
-// episode keeps its favorite, its rating and any played mark set by hand.
+// episode keeps its rating and any played mark set by hand.
 // An episode left with no version (Move.Emptied) that was never an episode
 // of the series' match is then merged into its replacement by MergeEpisode.
 func (s *Service) FollowVersion(ctx context.Context, tx *store.Tx, r catalog.Reassignment) error {
@@ -399,7 +386,7 @@ func moveResume(ctx context.Context, q *dbq.Queries, user, a, b id.ID, n int64) 
 	for _, st := range []dbq.UserState{sa, sb} {
 		err := q.PutState(ctx, dbq.PutStateParams{
 			UserID: st.UserID, WorkID: st.WorkID, Played: st.Played, PlayCount: st.PlayCount, PositionMs: st.PositionMs,
-			Resumable: st.Resumable, VersionID: st.VersionID, Favorite: st.Favorite, FavoritedAt: st.FavoritedAt, Rating: st.Rating, LastPlayedAt: st.LastPlayedAt, UpdatedAt: now,
+			Resumable: st.Resumable, VersionID: st.VersionID, Rating: st.Rating, LastPlayedAt: st.LastPlayedAt, UpdatedAt: now,
 		})
 		if err != nil {
 			return err

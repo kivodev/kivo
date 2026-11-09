@@ -44,7 +44,7 @@ class BookViewModelsTest : CoreTest() {
                 ),
                 extras = emptyList(), collections = emptyList(),
                 book = BookInfo(authors = listOf(PersonRef("p1", "Andy Weir")), narrators = listOf(PersonRef("p2", "Ray Porter")), series = emptyList()),
-                userState = UserState(played = false, favorite = false, playCount = 0, positionMs = 90_000),
+                userState = UserState(played = false, playCount = 0, positionMs = 90_000),
             )
         }
         server.on("POST", "/api/v1/plays") {

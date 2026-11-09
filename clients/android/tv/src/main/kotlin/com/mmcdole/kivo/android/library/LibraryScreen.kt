@@ -541,7 +541,7 @@ private fun FilterButton(filtered: Boolean, modifier: Modifier = Modifier, onCli
 
 /**
  * The filters, as the Samsung TV app's: the decade, genre and content rating with the played
- * state, Favorites, and the resolutions and HDR formats the library has.
+ * state, and the resolutions and HDR formats the library has.
  * Each applies as it's chosen, and the panel stays open; Clear filters
  * turns them all off and closes it.
  */
@@ -569,12 +569,10 @@ private fun FilterPanel(model: LibraryViewModel, query: GridQuery, onClose: () -
             GridValues.dynamicRanges.filter { it in f.dynamicRanges }
                 .forEach { add(Choice("dynamicRange:$it", dynamicRangeLabel(it), section = dynamicRange)) }
         }
-        add(Choice("favorite", stringResource(R.string.favorites), section = ""))
         if (query.filtered) add(Choice("clear", stringResource(R.string.clear_filters), section = " "))
     }
     val ticked = buildSet {
         add("played:${query.played.orEmpty()}")
-        if (query.favorite) add("favorite")
         add("decade:${query.yearFrom ?: ""}")
         query.genres?.forEach { add("genre:$it") }
         query.contentRatings?.forEach { add("contentRating:$it") }
@@ -585,7 +583,6 @@ private fun FilterPanel(model: LibraryViewModel, query: GridQuery, onClose: () -
         val (kind, value) = id.split(':', limit = 2).let { it[0] to it.getOrElse(1) { "" } }
         when (kind) {
             "played" -> model.choose(query.copy(played = value.takeIf { it in GridValues.playedStates }))
-            "favorite" -> model.choose(query.copy(favorite = !query.favorite))
             "decade" -> {
                 val from = value.toIntOrNull()
                 model.choose(query.copy(yearFrom = from, yearTo = from?.plus(9)))

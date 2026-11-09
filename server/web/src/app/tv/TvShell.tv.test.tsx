@@ -19,7 +19,7 @@ describe("TV shell", () => {
     vi.unstubAllGlobals();
   });
 
-  it("has the rail in place of the sidebar: Search, Home, Favorites, the pinned libraries, More libraries and Settings, and no Admin", async () => {
+  it("has the rail in place of the sidebar: Search, Home, Lists, the pinned libraries, More libraries and Settings, and no Admin", async () => {
     serveMockApi(scenarios.unpinned);
     renderApp("/");
     const nav = await rail();
@@ -27,13 +27,13 @@ describe("TV shell", () => {
     const entries = () => [...nav.querySelectorAll("a, button")].map((e) => e.textContent);
     // Closed, it's a quiet column: the four destinations, and no libraries.
     expect(railOpen()).toBe(false);
-    expect(entries()).toEqual(["Search", "Home", "Favorites", "Settings"]);
+    expect(entries()).toEqual(["Search", "Home", "Lists", "Settings"]);
     expect(within(nav).getByRole("link", { name: "Home" })).toHaveAttribute("aria-current", "page");
     // Open, every pinned library is there, with More libraries for the rest.
     focusTv(railKeys.home);
     await waitFor(() => expect(railOpen()).toBe(true));
     const open = entries();
-    expect(open.slice(0, 3)).toEqual(["Search", "Home", "Favorites"]);
+    expect(open.slice(0, 3)).toEqual(["Search", "Home", "Lists"]);
     expect(open.at(-2)).toBe("More libraries");
     expect(open.at(-1)).toBe("Settings");
     expect(open).toContain("Movies");
@@ -209,7 +209,7 @@ describe("TV shell", () => {
     const { router } = renderApp("/");
     const nav = await rail();
     const index = () => router.history.location.state.__TSR_index;
-    for (const destination of ["Search", "Favorites", "Home", "Search"]) {
+    for (const destination of ["Search", "Lists", "Home", "Search"]) {
       await router.navigate({ to: "/works/$workId", params: { workId: mockIds.dunePartTwo } });
       await screen.findByRole("heading", { name: "Dune: Part Two", level: 1 });
       expect(index()).toBe(1);

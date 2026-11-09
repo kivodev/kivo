@@ -14,6 +14,10 @@ func SearchWords(s string) []string {
 	return strings.Fields(fold(s))
 }
 
+// Fold is s with case and diacritics removed, for comparing text the way
+// the fold SQL function does.
+func Fold(s string) string { return fold(s) }
+
 // SearchKey returns s in the form search uses to compare it whole. That is
 // its words separated by single spaces, without a leading "the", "a" or
 // "an" when more words follow.

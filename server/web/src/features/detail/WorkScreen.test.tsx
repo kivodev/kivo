@@ -81,7 +81,12 @@ describe("Movie page", () => {
     await user.click(screen.getByRole("button", { name: "More actions for Dune: Part Two" }));
     const menu = await screen.findByRole("menu");
     expect(within(menu).queryByRole("menuitem", { name: "Play from beginning" })).not.toBeInTheDocument();
-    expect(within(menu).getAllByRole("menuitem")[0]).toHaveTextContent("Go to library");
+    expect(
+      within(menu)
+        .getAllByRole("menuitem")
+        .slice(0, 2)
+        .map((i) => i.textContent),
+    ).toEqual(["Add to List", "Go to library"]);
     await user.keyboard("{Escape}");
     await user.click(screen.getByRole("button", { name: "Play from beginning" }));
     await waitFor(() => expect(router.state.location.pathname).toBe(`/watch/${mockIds.dunePartTwo}`));
@@ -143,7 +148,7 @@ describe("Movie page", () => {
   it("selects the version last played, with no Auto entry", async () => {
     serveMockApi((api) => {
       const work = api.works[mockIds.dunePartTwo] as WorkDetail;
-      work.userState = { ...work.userState, played: false, favorite: false, playCount: 1, versionId: dune1080 };
+      work.userState = { ...work.userState, played: false, playCount: 1, versionId: dune1080 };
     });
     const { user } = renderApp(`/works/${mockIds.dunePartTwo}`);
     expect(await screen.findByRole("link", { name: "Resume 1:12:03" })).toHaveAttribute(
@@ -198,22 +203,25 @@ describe("Movie page", () => {
     expect(screen.queryByRole("link", { name: "Play" })).not.toBeInTheDocument();
   });
 
-  it("marks favorite through the API", async () => {
+  it("toggles + Watchlist on and off through the API", async () => {
     serveMockApi();
-    server.use(
-      http.patch("/api/v1/works/{id}/user-state", ({ response }) =>
-        response(200).json({ played: false, favorite: true, playCount: 0, positionMs: 4_323_000 }),
-      ),
-    );
     const { user } = renderApp(`/works/${mockIds.dunePartTwo}`);
-    await user.click(await screen.findByRole("button", { name: "Add to favorites" }));
-    expect(await screen.findByRole("button", { name: "Remove from favorites" })).toBeInTheDocument();
-    expect(sent("PATCH", `/works/${mockIds.dunePartTwo}/user-state`)[0]?.body).toEqual({ favorite: true });
+    await user.click(await screen.findByRole("button", { name: "Add to Watchlist" }));
+    expect(await screen.findByRole("button", { name: "Remove from Watchlist" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(sent("POST", `/lists/${mockIds.myList}/works`)[0]?.body).toEqual({ workId: mockIds.dunePartTwo });
+    await user.click(screen.getByRole("button", { name: "Remove from Watchlist" }));
+    expect(await screen.findByRole("button", { name: "Add to Watchlist" })).toHaveAttribute("aria-pressed", "false");
+    await waitFor(() =>
+      expect(sent("DELETE", `/lists/${mockIds.myList}/works/${mockIds.dunePartTwo}`)).toHaveLength(1),
+    );
   });
 });
 
 describe("Collection page", () => {
-  it("shows its root works, with no favorite or watched toggles of its own", async () => {
+  it("shows its root works, with no Watchlist or watched toggles of its own", async () => {
     serveMockApi();
     renderApp(`/collections/${mockIds.duneCollection}`);
     expect(await screen.findByRole("heading", { name: "Dune Collection", level: 1 })).toBeInTheDocument();
@@ -222,7 +230,7 @@ describe("Collection page", () => {
       "href",
       `/works/${mockIds.dunePartTwo}`,
     );
-    expect(screen.queryByRole("button", { name: "Add to favorites" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add to Watchlist" })).not.toBeInTheDocument();
   });
 
   it("shows its poster, and its backdrop behind the hero", async () => {

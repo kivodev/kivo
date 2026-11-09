@@ -1,0 +1,1 @@
+SEARCH list USING COVERING INDEX sqlite_autoindex_list_2 (user_id=?)

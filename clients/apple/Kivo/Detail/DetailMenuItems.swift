@@ -1,13 +1,12 @@
 import KivoCore
 import SwiftUI
 
-/// Favorite and Mark as Watched again, for the ⋯ menu.
+/// Mark as Watched again and Add to List, for the ⋯ menu.
 struct UserStateMenuItems: View {
     let work: WorkDetail
     @Environment(ServerModel.self) private var server
 
     var body: some View {
-        let favorite = work.userState?.favorite == true
         let played = work.userState?.played == true
         // The menu shows the state the server's events send back, so a write
         // that fails leaves it as it was.
@@ -18,11 +17,11 @@ struct UserStateMenuItems: View {
             Label(Words.markPlayed(!played, kind: work.kind), systemImage: played ? "eye.slash" : "checkmark.circle")
         }
         Button {
-            Haptics.success()
-            Task { _ = try? await server.session.library.setFavorite(workId: work.id, favorite: !favorite) }
+            server.addingToList = work.id
         } label: {
-            Label(favorite ? String(localized: "Remove from favorites") : String(localized: "Favorite"), systemImage: favorite ? "heart.slash" : "heart")
+            Label(String(localized: "Add to List"), systemImage: "text.badge.plus")
         }
+        .accessibilityIdentifier("add-to-list")
     }
 }
 

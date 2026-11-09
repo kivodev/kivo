@@ -1,0 +1,1 @@
+SEARCH user_home_row USING PRIMARY KEY (user_id=?)

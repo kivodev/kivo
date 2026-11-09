@@ -88,7 +88,6 @@ fun encodeGrid(choice: GridChoice): String {
         "section=collections".takeIf { choice.section == Section.Collections },
         query.sort?.let { "sort=$it" },
         query.played?.let { "played=$it" },
-        "favorite=1".takeIf { query.favorite },
         query.yearFrom?.let { "decade=$it" },
         query.genres?.takeIf { it.isNotEmpty() }?.let { "genre=" + encodeNames(it) },
         query.contentRatings?.takeIf { it.isNotEmpty() }?.let { "contentRating=" + encodeNames(it) },
@@ -109,7 +108,6 @@ fun decodeGrid(libraryId: String, text: String): GridChoice {
         libraryId = libraryId,
         sort = values["sort"]?.takeIf { it in GridValues.sorts } ?: GridValues.TITLE,
         played = values["played"]?.takeIf { it in GridValues.playedStates },
-        favorite = values["favorite"] == "1",
         yearFrom = decade,
         yearTo = decade?.plus(9),
         genres = decodeNames(values["genre"]),
@@ -122,13 +120,12 @@ fun decodeGrid(libraryId: String, text: String): GridChoice {
 
 /** Whether a filter narrows the works. */
 val GridQuery.filtered: Boolean
-    get() = played != null || favorite || yearFrom != null || !genres.isNullOrEmpty() || !contentRatings.isNullOrEmpty() ||
+    get() = played != null || yearFrom != null || !genres.isNullOrEmpty() || !contentRatings.isNullOrEmpty() ||
         !resolutions.isNullOrEmpty() || !dynamicRanges.isNullOrEmpty()
 
 /** The query without its filters, keeping its sort. */
 fun GridQuery.unfiltered(): GridQuery = copy(
     played = null,
-    favorite = false,
     yearFrom = null,
     yearTo = null,
     genres = null,

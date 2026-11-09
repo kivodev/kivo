@@ -64,7 +64,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -129,7 +128,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -194,7 +192,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -271,7 +268,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -329,7 +325,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -394,7 +389,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -465,7 +459,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -530,7 +523,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -606,7 +598,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -653,7 +644,6 @@
           "PlayCount": 0,
           "Position": 2400000000000,
           "Version": "version:movie:Dune",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "<time>"
         },
@@ -697,7 +687,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -744,7 +733,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": true,
           "Rating": 9,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -791,7 +779,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -835,7 +822,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -906,7 +892,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -961,7 +946,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "<time>"
         },
@@ -1008,7 +992,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "<time>"
         },
@@ -1052,7 +1035,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -1114,7 +1096,6 @@
         "PlayCount": 1,
         "Position": 0,
         "Version": "version:Bluey 1x01-02",
-        "Favorite": false,
         "Rating": null,
         "LastPlayed": "<time>"
       },
@@ -1158,7 +1139,6 @@
         "PlayCount": 0,
         "Position": 0,
         "Version": "none",
-        "Favorite": false,
         "Rating": null,
         "LastPlayed": "0001-01-01T00:00:00Z"
       },
@@ -1204,7 +1184,6 @@
         "PlayCount": 1,
         "Position": 0,
         "Version": "version:episode:The Expanse 1x01",
-        "Favorite": false,
         "Rating": null,
         "LastPlayed": "<time>"
       },
@@ -1248,7 +1227,6 @@
         "PlayCount": 0,
         "Position": 600000000000,
         "Version": "version:episode:The Expanse 1x02",
-        "Favorite": false,
         "Rating": null,
         "LastPlayed": "<time>"
       },
@@ -1292,7 +1270,6 @@
         "PlayCount": 0,
         "Position": 0,
         "Version": "none",
-        "Favorite": false,
         "Rating": null,
         "LastPlayed": "0001-01-01T00:00:00Z"
       },
@@ -1338,7 +1315,6 @@
         "PlayCount": 0,
         "Position": 0,
         "Version": "none",
-        "Favorite": false,
         "Rating": null,
         "LastPlayed": "0001-01-01T00:00:00Z"
       },
@@ -1382,7 +1358,6 @@
         "PlayCount": 0,
         "Position": 0,
         "Version": "none",
-        "Favorite": false,
         "Rating": null,
         "LastPlayed": "0001-01-01T00:00:00Z"
       },
@@ -1444,7 +1419,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": true,
           "Rating": 9,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -1491,7 +1465,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -1561,7 +1534,6 @@
         "PlayCount": 0,
         "Position": 0,
         "Version": "none",
-        "Favorite": false,
         "Rating": null,
         "LastPlayed": "0001-01-01T00:00:00Z"
       },
@@ -1590,6 +1562,7 @@
       "Library": "library:Audiobooks",
       "Path": ""
     },
+    "ListIDs": null,
     "OriginalTitle": "",
     "Overview": "",
     "ContentRating": "",
@@ -1741,7 +1714,6 @@
         "PlayCount": 1,
         "Position": 0,
         "Version": "version:Bluey 1x01-02",
-        "Favorite": false,
         "Rating": null,
         "LastPlayed": "<time>"
       },
@@ -1749,6 +1721,7 @@
       "Library": "library:Shows",
       "Path": ""
     },
+    "ListIDs": null,
     "OriginalTitle": "",
     "Overview": "",
     "ContentRating": "G",
@@ -1836,7 +1809,6 @@
         "PlayCount": 0,
         "Position": 0,
         "Version": "none",
-        "Favorite": false,
         "Rating": null,
         "LastPlayed": "0001-01-01T00:00:00Z"
       },
@@ -1844,6 +1816,7 @@
       "Library": "library:Movies",
       "Path": ""
     },
+    "ListIDs": null,
     "OriginalTitle": "",
     "Overview": "",
     "ContentRating": "R",
@@ -1957,7 +1930,6 @@
         "PlayCount": 0,
         "Position": 2400000000000,
         "Version": "version:movie:Dune",
-        "Favorite": false,
         "Rating": null,
         "LastPlayed": "<time>"
       },
@@ -1965,6 +1937,7 @@
       "Library": "library:Movies",
       "Path": ""
     },
+    "ListIDs": null,
     "OriginalTitle": "",
     "Overview": "A desert planet.",
     "ContentRating": "PG-13",
@@ -2133,7 +2106,6 @@
         "PlayCount": 0,
         "Position": 0,
         "Version": "none",
-        "Favorite": false,
         "Rating": null,
         "LastPlayed": "0001-01-01T00:00:00Z"
       },
@@ -2141,6 +2113,7 @@
       "Library": "library:Private",
       "Path": ""
     },
+    "ListIDs": null,
     "OriginalTitle": "",
     "Overview": "",
     "ContentRating": "G",
@@ -2227,7 +2200,6 @@
         "PlayCount": 0,
         "Position": 0,
         "Version": "none",
-        "Favorite": true,
         "Rating": 9,
         "LastPlayed": "0001-01-01T00:00:00Z"
       },
@@ -2235,6 +2207,9 @@
       "Library": "library:Movies",
       "Path": ""
     },
+    "ListIDs": [
+      "<id>"
+    ],
     "OriginalTitle": "",
     "Overview": "",
     "ContentRating": "G",
@@ -2331,7 +2306,6 @@
         "PlayCount": 0,
         "Position": 0,
         "Version": "none",
-        "Favorite": false,
         "Rating": null,
         "LastPlayed": "<time>"
       },
@@ -2339,6 +2313,7 @@
       "Library": "library:Shows",
       "Path": ""
     },
+    "ListIDs": null,
     "OriginalTitle": "",
     "Overview": "",
     "ContentRating": "G",
@@ -2388,7 +2363,6 @@
         "PlayCount": 0,
         "Position": 0,
         "Version": "none",
-        "Favorite": false,
         "Rating": null,
         "LastPlayed": "0001-01-01T00:00:00Z"
       },
@@ -2440,7 +2414,6 @@
         "PlayCount": 0,
         "Position": 0,
         "Version": "none",
-        "Favorite": false,
         "Rating": null,
         "LastPlayed": "<time>"
       },
@@ -2448,6 +2421,7 @@
       "Library": "library:Shows",
       "Path": ""
     },
+    "ListIDs": null,
     "OriginalTitle": "",
     "Overview": "",
     "ContentRating": "PG-13",
@@ -2497,7 +2471,6 @@
         "PlayCount": 0,
         "Position": 600000000000,
         "Version": "version:episode:The Expanse 1x02",
-        "Favorite": false,
         "Rating": null,
         "LastPlayed": "<time>"
       },
@@ -2535,6 +2508,7 @@
   },
   "home": [
     {
+      "ID": "continueWatching",
       "Kind": "continueWatching",
       "Library": {
         "ID": "none",
@@ -2542,6 +2516,11 @@
         "Kind": "",
         "Pinned": false,
         "Items": 0
+      },
+      "List": {
+        "ID": "none",
+        "Name": "",
+        "Smart": false
       },
       "Items": [
         {
@@ -2580,7 +2559,6 @@
             "PlayCount": 0,
             "Position": 0,
             "Version": "none",
-            "Favorite": false,
             "Rating": null,
             "LastPlayed": "0001-01-01T00:00:00Z"
           },
@@ -2624,7 +2602,6 @@
             "PlayCount": 0,
             "Position": 600000000000,
             "Version": "version:episode:The Expanse 1x02",
-            "Favorite": false,
             "Rating": null,
             "LastPlayed": "<time>"
           },
@@ -2671,7 +2648,6 @@
             "PlayCount": 0,
             "Position": 2400000000000,
             "Version": "version:movie:Dune",
-            "Favorite": false,
             "Rating": null,
             "LastPlayed": "<time>"
           },
@@ -2682,13 +2658,19 @@
       ]
     },
     {
-      "Kind": "favorites",
+      "ID": "list:<id>",
+      "Kind": "list",
       "Library": {
         "ID": "none",
         "Name": "",
         "Kind": "",
         "Pinned": false,
         "Items": 0
+      },
+      "List": {
+        "ID": "<id>",
+        "Name": "Watchlist",
+        "Smart": false
       },
       "Items": [
         {
@@ -2730,7 +2712,6 @@
             "PlayCount": 0,
             "Position": 0,
             "Version": "none",
-            "Favorite": true,
             "Rating": 9,
             "LastPlayed": "0001-01-01T00:00:00Z"
           },
@@ -2741,6 +2722,7 @@
       ]
     },
     {
+      "ID": "recentlyAdded:library:Movies",
       "Kind": "recentlyAdded",
       "Library": {
         "ID": "library:Movies",
@@ -2748,6 +2730,11 @@
         "Kind": "movies",
         "Pinned": false,
         "Items": 0
+      },
+      "List": {
+        "ID": "none",
+        "Name": "",
+        "Smart": false
       },
       "Items": [
         {
@@ -2786,7 +2773,6 @@
             "PlayCount": 0,
             "Position": 0,
             "Version": "none",
-            "Favorite": false,
             "Rating": null,
             "LastPlayed": "0001-01-01T00:00:00Z"
           },
@@ -2830,7 +2816,6 @@
             "PlayCount": 0,
             "Position": 0,
             "Version": "none",
-            "Favorite": false,
             "Rating": null,
             "LastPlayed": "0001-01-01T00:00:00Z"
           },
@@ -2877,7 +2862,6 @@
             "PlayCount": 0,
             "Position": 0,
             "Version": "none",
-            "Favorite": false,
             "Rating": null,
             "LastPlayed": "0001-01-01T00:00:00Z"
           },
@@ -2924,7 +2908,6 @@
             "PlayCount": 0,
             "Position": 0,
             "Version": "none",
-            "Favorite": true,
             "Rating": 9,
             "LastPlayed": "0001-01-01T00:00:00Z"
           },
@@ -2971,7 +2954,6 @@
             "PlayCount": 0,
             "Position": 0,
             "Version": "none",
-            "Favorite": false,
             "Rating": null,
             "LastPlayed": "0001-01-01T00:00:00Z"
           },
@@ -3018,7 +3000,6 @@
             "PlayCount": 0,
             "Position": 2400000000000,
             "Version": "version:movie:Dune",
-            "Favorite": false,
             "Rating": null,
             "LastPlayed": "<time>"
           },
@@ -3029,6 +3010,7 @@
       ]
     },
     {
+      "ID": "recentlyAdded:library:Shows",
       "Kind": "recentlyAdded",
       "Library": {
         "ID": "library:Shows",
@@ -3036,6 +3018,11 @@
         "Kind": "shows",
         "Pinned": false,
         "Items": 0
+      },
+      "List": {
+        "ID": "none",
+        "Name": "",
+        "Smart": false
       },
       "Items": [
         {
@@ -3074,7 +3061,6 @@
             "PlayCount": 0,
             "Position": 0,
             "Version": "none",
-            "Favorite": false,
             "Rating": null,
             "LastPlayed": "0001-01-01T00:00:00Z"
           },
@@ -3118,7 +3104,6 @@
             "PlayCount": 0,
             "Position": 0,
             "Version": "none",
-            "Favorite": false,
             "Rating": null,
             "LastPlayed": "<time>"
           },
@@ -3162,7 +3147,6 @@
             "PlayCount": 0,
             "Position": 0,
             "Version": "none",
-            "Favorite": false,
             "Rating": null,
             "LastPlayed": "0001-01-01T00:00:00Z"
           },
@@ -3173,6 +3157,7 @@
       ]
     },
     {
+      "ID": "recentlyAdded:library:Private",
       "Kind": "recentlyAdded",
       "Library": {
         "ID": "library:Private",
@@ -3180,6 +3165,11 @@
         "Kind": "movies",
         "Pinned": false,
         "Items": 0
+      },
+      "List": {
+        "ID": "none",
+        "Name": "",
+        "Smart": false
       },
       "Items": [
         {
@@ -3218,7 +3208,6 @@
             "PlayCount": 0,
             "Position": 0,
             "Version": "none",
-            "Favorite": false,
             "Rating": null,
             "LastPlayed": "0001-01-01T00:00:00Z"
           },
@@ -3229,6 +3218,7 @@
       ]
     },
     {
+      "ID": "recentlyAdded:library:Movies 4K",
       "Kind": "recentlyAdded",
       "Library": {
         "ID": "library:Movies 4K",
@@ -3236,6 +3226,11 @@
         "Kind": "movies",
         "Pinned": false,
         "Items": 0
+      },
+      "List": {
+        "ID": "none",
+        "Name": "",
+        "Smart": false
       },
       "Items": [
         {
@@ -3274,7 +3269,6 @@
             "PlayCount": 0,
             "Position": 0,
             "Version": "none",
-            "Favorite": false,
             "Rating": null,
             "LastPlayed": "0001-01-01T00:00:00Z"
           },
@@ -3285,6 +3279,7 @@
       ]
     },
     {
+      "ID": "recentlyAdded:library:Audiobooks",
       "Kind": "recentlyAdded",
       "Library": {
         "ID": "library:Audiobooks",
@@ -3292,6 +3287,11 @@
         "Kind": "audiobooks",
         "Pinned": false,
         "Items": 0
+      },
+      "List": {
+        "ID": "none",
+        "Name": "",
+        "Smart": false
       },
       "Items": [
         {
@@ -3330,7 +3330,6 @@
             "PlayCount": 0,
             "Position": 0,
             "Version": "none",
-            "Favorite": false,
             "Rating": null,
             "LastPlayed": "0001-01-01T00:00:00Z"
           },
@@ -3395,7 +3394,6 @@
             "PlayCount": 0,
             "Position": 0,
             "Version": "none",
-            "Favorite": false,
             "Rating": null,
             "LastPlayed": "0001-01-01T00:00:00Z"
           },
@@ -3460,7 +3458,6 @@
             "PlayCount": 0,
             "Position": 0,
             "Version": "none",
-            "Favorite": false,
             "Rating": null,
             "LastPlayed": "0001-01-01T00:00:00Z"
           },
@@ -3567,7 +3564,6 @@
           "PlayCount": 0,
           "Position": 2400000000000,
           "Version": "version:movie:Dune",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "<time>"
         },
@@ -3627,7 +3623,6 @@
               "PlayCount": 0,
               "Position": 0,
               "Version": "none",
-              "Favorite": false,
               "Rating": null,
               "LastPlayed": "0001-01-01T00:00:00Z"
             },
@@ -3692,7 +3687,6 @@
               "PlayCount": 0,
               "Position": 0,
               "Version": "none",
-              "Favorite": false,
               "Rating": null,
               "LastPlayed": "0001-01-01T00:00:00Z"
             },
@@ -3772,7 +3766,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -3837,7 +3830,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -3902,7 +3894,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -3946,7 +3937,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -3990,7 +3980,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "<time>"
         },
@@ -4043,7 +4032,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": true,
           "Rating": 9,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -4090,7 +4078,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -4156,7 +4143,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -4200,7 +4186,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -4250,7 +4235,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -4325,7 +4309,6 @@
           "PlayCount": 0,
           "Position": 2400000000000,
           "Version": "version:movie:Dune",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "<time>"
         },
@@ -4385,7 +4368,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -4450,7 +4432,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },

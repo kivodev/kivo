@@ -11,6 +11,7 @@ struct WorkActions: View {
     @Environment(\.openWork) private var openWork
     @Environment(\.currentLibraryId) private var currentLibraryId
     @Environment(\.continueRow) private var continueRow
+    @Environment(\.currentList) private var currentList
 
     @ViewBuilder var body: some View {
         if work.playable {
@@ -36,15 +37,18 @@ struct WorkActions: View {
         } label: {
             SwiftUI.Label(Words.markPlayed(!played, kind: work.kind), systemImage: played ? "eye.slash" : "checkmark.circle")
         }
-        let favorite = work.userState?.favorite == true
         Button {
-            Haptics.success()
-            Task { _ = try? await server.session.library.setFavorite(workId: work.id, favorite: !favorite) }
+            server.addingToList = work.id
         } label: {
-            SwiftUI.Label(
-                favorite ? String(localized: "Remove from favorites") : String(localized: "Favorite"),
-                systemImage: favorite ? "heart.slash" : "heart"
-            )
+            SwiftUI.Label(String(localized: "Add to List"), systemImage: "text.badge.plus")
+        }
+        if let currentList, currentList.kind == "manual" {
+            Button {
+                Haptics.success()
+                Task { try? await server.session.library.removeFromList(listId: currentList.id, workId: work.id) }
+            } label: {
+                SwiftUI.Label(String(localized: "Remove from \(currentList.name)"), systemImage: "minus.circle")
+            }
         }
         if let continueRow {
             Button {

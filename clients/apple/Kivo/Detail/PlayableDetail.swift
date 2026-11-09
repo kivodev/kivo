@@ -2,13 +2,13 @@ import KivoCore
 import KivoUI
 import SwiftUI
 
-/// A movie, an episode or another video: Play or Resume, Favorite and Mark
+/// A movie, an episode or another video: Play or Resume, My List and Mark
 /// as Watched, then the overview, the version, audio and subtitle choices,
 /// which carry into playback, cast, extras and collections. An episode has
 /// its series above its title and its season's episodes below, a shelf of
 /// cards in a regular width and a list in a compact one. Once it's in
 /// progress, a round Play from Beginning sits beside Resume, with the time
-/// left and when it ends under them. Download sits beside Favorite and Watched. A
+/// left and when it ends under them. Download sits beside My List and Watched. A
 /// ready download is what Play and Resume play, with "Downloaded"
 /// under the actions and Stream Instead and Remove Download in the ⋯ menu.
 struct PlayableDetail: View {

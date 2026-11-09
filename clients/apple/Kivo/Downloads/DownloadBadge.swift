@@ -15,7 +15,7 @@ struct DownloadBadge: View {
                 Text(DownloadWords.badge(item))
                     .monospacedDigit()
             } icon: {
-                Image(systemName: item.status is DownloadStatusReady ? "checkmark.circle.fill" : "arrow.down.circle")
+                Image(systemName: item.status is DownloadStatusReady ? "arrow.down.circle.fill" : "arrow.down.circle")
             }
             .font(.footnote.weight(.medium))
             .foregroundStyle(item.status is DownloadStatusFailed ? palette.danger : palette.textMuted)

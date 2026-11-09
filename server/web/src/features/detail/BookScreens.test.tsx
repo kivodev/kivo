@@ -33,16 +33,16 @@ describe("Book page", () => {
     expect(screen.getByRole("button", { name: "Play" })).toBeEnabled();
   });
 
-  it("marks the book watched and favorite for you", async () => {
+  it("marks the book watched and adds it to Watchlist for you", async () => {
     serveMockApi();
     const { user } = renderApp(`/works/${bookIds.hailMary}`);
     await user.click(await screen.findByRole("button", { name: "Mark as watched" }));
-    await user.click(screen.getByRole("button", { name: "Add to favorites" }));
+    await user.click(await screen.findByRole("button", { name: "Add to Watchlist" }));
     await waitFor(() =>
-      expect(sent("PATCH", `/works/${bookIds.hailMary}/user-state`).map((r) => r.body)).toEqual([
-        { played: true },
-        { favorite: true },
-      ]),
+      expect(sent("PATCH", `/works/${bookIds.hailMary}/user-state`).map((r) => r.body)).toEqual([{ played: true }]),
+    );
+    await waitFor(() =>
+      expect(sent("POST", `/lists/${mockIds.myList}/works`).map((r) => r.body)).toEqual([{ workId: bookIds.hailMary }]),
     );
   });
 

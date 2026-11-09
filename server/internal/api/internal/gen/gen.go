@@ -451,7 +451,9 @@ func (e EncoderCodec) Valid() bool {
 const (
 	EventKindActivityChanged  EventKind = "activityChanged"
 	EventKindDownloadsChanged EventKind = "downloadsChanged"
+	EventKindHomeChanged      EventKind = "homeChanged"
 	EventKindLibraryChanged   EventKind = "libraryChanged"
+	EventKindListsChanged     EventKind = "listsChanged"
 	EventKindLogsChanged      EventKind = "logsChanged"
 	EventKindPlayEnded        EventKind = "playEnded"
 	EventKindPlaysChanged     EventKind = "playsChanged"
@@ -468,7 +470,11 @@ func (e EventKind) Valid() bool {
 		return true
 	case EventKindDownloadsChanged:
 		return true
+	case EventKindHomeChanged:
+		return true
 	case EventKindLibraryChanged:
+		return true
+	case EventKindListsChanged:
 		return true
 	case EventKindLogsChanged:
 		return true
@@ -654,9 +660,8 @@ func (e HealthStatus) Valid() bool {
 // Defines values for HomeRowKind.
 const (
 	HomeRowKindContinueListening HomeRowKind = "continueListening"
-	HomeRowKindContinueSeries    HomeRowKind = "continueSeries"
 	HomeRowKindContinueWatching  HomeRowKind = "continueWatching"
-	HomeRowKindFavorites         HomeRowKind = "favorites"
+	HomeRowKindList              HomeRowKind = "list"
 	HomeRowKindRecentlyAdded     HomeRowKind = "recentlyAdded"
 )
 
@@ -665,11 +670,9 @@ func (e HomeRowKind) Valid() bool {
 	switch e {
 	case HomeRowKindContinueListening:
 		return true
-	case HomeRowKindContinueSeries:
-		return true
 	case HomeRowKindContinueWatching:
 		return true
-	case HomeRowKindFavorites:
+	case HomeRowKindList:
 		return true
 	case HomeRowKindRecentlyAdded:
 		return true
@@ -750,6 +753,24 @@ func (e LibraryScanState) Valid() bool {
 	case LibraryScanStateScanning:
 		return true
 	case LibraryScanStateUnreachable:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListKind.
+const (
+	ListKindManual ListKind = "manual"
+	ListKindSmart  ListKind = "smart"
+)
+
+// Valid indicates whether the value is a known member of the ListKind enum.
+func (e ListKind) Valid() bool {
+	switch e {
+	case ListKindManual:
+		return true
+	case ListKindSmart:
 		return true
 	default:
 		return false
@@ -1263,6 +1284,24 @@ func (e ResyncMessageType) Valid() bool {
 	}
 }
 
+// Defines values for RuleGroupMatch.
+const (
+	RuleGroupMatchAll RuleGroupMatch = "all"
+	RuleGroupMatchAny RuleGroupMatch = "any"
+)
+
+// Valid indicates whether the value is a known member of the RuleGroupMatch enum.
+func (e RuleGroupMatch) Valid() bool {
+	switch e {
+	case RuleGroupMatchAll:
+		return true
+	case RuleGroupMatchAny:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ScanStep.
 const (
 	ScanStepIdentify ScanStep = "identify"
@@ -1311,6 +1350,24 @@ const (
 func (e SnapshotMessageType) Valid() bool {
 	switch e {
 	case SnapshotMessageTypeSnapshot:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SortDirection.
+const (
+	SortDirectionAsc  SortDirection = "asc"
+	SortDirectionDesc SortDirection = "desc"
+)
+
+// Valid indicates whether the value is a known member of the SortDirection enum.
+func (e SortDirection) Valid() bool {
+	switch e {
+	case SortDirectionAsc:
+		return true
+	case SortDirectionDesc:
 		return true
 	default:
 		return false
@@ -1647,6 +1704,54 @@ func (e TranscodeState) Valid() bool {
 	}
 }
 
+// Defines values for WorkFieldType.
+const (
+	WorkFieldTypeChoice WorkFieldType = "choice"
+	WorkFieldTypeDate   WorkFieldType = "date"
+	WorkFieldTypeNumber WorkFieldType = "number"
+	WorkFieldTypePerson WorkFieldType = "person"
+	WorkFieldTypeSet    WorkFieldType = "set"
+	WorkFieldTypeText   WorkFieldType = "text"
+)
+
+// Valid indicates whether the value is a known member of the WorkFieldType enum.
+func (e WorkFieldType) Valid() bool {
+	switch e {
+	case WorkFieldTypeChoice:
+		return true
+	case WorkFieldTypeDate:
+		return true
+	case WorkFieldTypeNumber:
+		return true
+	case WorkFieldTypePerson:
+		return true
+	case WorkFieldTypeSet:
+		return true
+	case WorkFieldTypeText:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WorkFieldValueSource.
+const (
+	WorkFieldValueSourceInline WorkFieldValueSource = "inline"
+	WorkFieldValueSourceSearch WorkFieldValueSource = "search"
+)
+
+// Valid indicates whether the value is a known member of the WorkFieldValueSource enum.
+func (e WorkFieldValueSource) Valid() bool {
+	switch e {
+	case WorkFieldValueSourceInline:
+		return true
+	case WorkFieldValueSourceSearch:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for WorkKind.
 const (
 	WorkKindBook    WorkKind = "book"
@@ -1674,6 +1779,21 @@ func (e WorkKind) Valid() bool {
 	case WorkKindSeries:
 		return true
 	case WorkKindVideo:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WorkQueryCollapse.
+const (
+	WorkQueryCollapseSeries WorkQueryCollapse = "series"
+)
+
+// Valid indicates whether the value is a known member of the WorkQueryCollapse enum.
+func (e WorkQueryCollapse) Valid() bool {
+	switch e {
+	case WorkQueryCollapseSeries:
 		return true
 	default:
 		return false
@@ -2414,10 +2534,11 @@ type CurrentUserPasswordChange struct {
 
 // CurrentUserUpdate defines model for CurrentUserUpdate.
 type CurrentUserUpdate struct {
-	// Libraries The libraries the user sees, in the order it wants them, each
+	// Libraries The sidebar's libraries, in the order the user wants them, each
 	// pinned or not; it replaces the last order. A library left out is
 	// pinned after the listed ones, in the order libraries were added,
-	// as every library is until the user sets this.
+	// as every library is until the user sets this. Home doesn't follow
+	// it.
 	Libraries *[]LibraryChoice `json:"libraries,omitempty"`
 
 	// Playback Fields as in `PlaybackPreferences`; an empty language sets it back to its default.
@@ -2807,11 +2928,17 @@ type EventKind string
 //     the viewer's place in a grid.
 //   - `userStateChanged` (`workIds`): the user's state for these works
 //     changed, possibly on another client: marked played or unplayed
-//     (a series or season with its episodes), a favorite, or a play's
-//     last position. Refetch them, and the lists that show them.
+//     (a series or season with its episodes), or a play's last
+//     position. Refetch them, and the lists that show them.
 //   - `playEnded` (`playId`, `message`): the user's play was stopped
 //     by an admin or another client, or expired; `message` is the
 //     admin's words to the viewer, if any.
+//   - `homeChanged`: the user's Home layout changed;
+//     every client of the user gets it, the one that made the change
+//     too. Refetch Home and the layout.
+//   - `listsChanged`: the user's lists changed: one was created,
+//     renamed or deleted, or a work was added or removed. Refetch the
+//     lists, any open list, Home, the layout and any open work page.
 //   - `downloadsChanged`: the user's downloads on the server moved:
 //     in line, in their preparation (at most every 10 seconds), or to
 //     ready or failed. Refetch the downloads that aren't ready.
@@ -2937,34 +3064,78 @@ type HealthStatus string
 
 // Home defines model for Home.
 type Home struct {
-	Rows []HomeRow `json:"rows"`
+	// AllHidden Set when `rows` is empty because the user hid every row.
+	AllHidden *bool     `json:"allHidden,omitempty"`
+	Rows      []HomeRow `json:"rows"`
 }
 
 // HomeRow defines model for HomeRow.
 type HomeRow struct {
-	// ID Stable per row, such as `recentlyAdded:<libraryId>`.
+	// ID Stable per row: the kind, `recentlyAdded:<libraryId>` or
+	// `list:<listId>`.
 	ID    string        `json:"id"`
 	Items []WorkSummary `json:"items"`
 
 	// Kind What a Home row shows: `continueWatching` what to watch on with,
 	// videos in progress and each series' episode up next;
-	// `continueListening` books in progress; `continueSeries` the next book of each book series
-	// the user has finished a book of; `recentlyAdded` a library's newest
-	// works; `favorites` the works the user marked. Skip kinds you don't
-	// know.
+	// `continueListening` books in progress; `recentlyAdded` a library's
+	// newest works; `list` a list's works. Skip kinds you
+	// don't know.
 	Kind HomeRowKind `json:"kind"`
 
 	// Library For `recentlyAdded`, the library.
 	Library *LibraryRef `json:"library,omitempty"`
+
+	// List For `list`, the list.
+	List *ListRef `json:"list,omitempty"`
+}
+
+// HomeRowChange defines model for HomeRowChange.
+type HomeRowChange struct {
+	ID    string `json:"id"`
+	Shown bool   `json:"shown"`
+}
+
+// HomeRowInfo A row of the user's Home layout, as the editor lists it.
+type HomeRowInfo struct {
+	// Broken A smart list whose rules no longer run, which never shows on Home.
+	Broken *bool `json:"broken,omitempty"`
+
+	// ID As `HomeRow.id`.
+	ID string `json:"id"`
+
+	// Kind What a Home row shows: `continueWatching` what to watch on with,
+	// videos in progress and each series' episode up next;
+	// `continueListening` books in progress; `recentlyAdded` a library's
+	// newest works; `list` a list's works. Skip kinds you
+	// don't know.
+	Kind HomeRowKind `json:"kind"`
+
+	// Library For `recentlyAdded`, the library.
+	Library *LibraryRef `json:"library,omitempty"`
+
+	// List For `list`, the list.
+	List  *ListRef `json:"list,omitempty"`
+	Shown bool     `json:"shown"`
+}
+
+// HomeRowInfoList defines model for HomeRowInfoList.
+type HomeRowInfoList struct {
+	Items []HomeRowInfo `json:"items"`
 }
 
 // HomeRowKind What a Home row shows: `continueWatching` what to watch on with,
 // videos in progress and each series' episode up next;
-// `continueListening` books in progress; `continueSeries` the next book of each book series
-// the user has finished a book of; `recentlyAdded` a library's newest
-// works; `favorites` the works the user marked. Skip kinds you don't
-// know.
+// `continueListening` books in progress; `recentlyAdded` a library's
+// newest works; `list` a list's works. Skip kinds you
+// don't know.
 type HomeRowKind string
+
+// HomeRowsUpdate defines model for HomeRowsUpdate.
+type HomeRowsUpdate struct {
+	// Items The rows, in the order wanted, each shown or hidden.
+	Items []HomeRowChange `json:"items"`
+}
 
 // ID A UUIDv7.
 type ID = id.ID
@@ -3075,9 +3246,9 @@ type Library struct {
 	MetadataLanguage *string `json:"metadataLanguage,omitempty"`
 	Name             string  `json:"name"`
 
-	// Pinned Pinned by the user: shown in its sidebar and with a Recently
-	// Added row on Home. Every library is until the user
-	// chooses; search finds works in every library either way.
+	// Pinned Pinned by the user: shown in its sidebar. Every library is
+	// until the user chooses; search finds works in every library
+	// either way.
 	Pinned bool `json:"pinned"`
 
 	// Previews When a library processes its media: its preview thumbnails made, its
@@ -3123,7 +3294,7 @@ type LibraryChoice struct {
 	// ID A UUIDv7.
 	ID ID `json:"id"`
 
-	// Pinned Shown in the sidebar and with a Recently Added row on Home.
+	// Pinned Shown in the sidebar.
 	Pinned bool `json:"pinned"`
 }
 
@@ -3260,6 +3431,41 @@ type LibraryUpdate struct {
 	// (`nightlyAndAdded`).
 	Subtitles        *ProcessingSchedule `json:"subtitles,omitempty"`
 	UseLocalMetadata *bool               `json:"useLocalMetadata,omitempty"`
+}
+
+// ListCreate defines model for ListCreate.
+type ListCreate struct {
+	Name string `json:"name"`
+
+	// Smart Makes a smart list, which runs the rules; without it, a manual list.
+	Smart *SmartQuery `json:"smart,omitempty"`
+}
+
+// ListKind What a list is. `manual` is works the user added; `smart` is the works rules select. Skip kinds you don't know.
+type ListKind string
+
+// ListRef A list as a Home row names it.
+type ListRef struct {
+	// ID A UUIDv7.
+	ID ID `json:"id"`
+
+	// Kind What a list is. `manual` is works the user added; `smart` is the works rules select. Skip kinds you don't know.
+	Kind ListKind `json:"kind"`
+	Name string   `json:"name"`
+}
+
+// ListUpdate defines model for ListUpdate.
+type ListUpdate struct {
+	Name *string `json:"name,omitempty"`
+
+	// Smart Replaces a smart list's rules; a manual list has none.
+	Smart *SmartQuery `json:"smart,omitempty"`
+}
+
+// ListWorkAdd defines model for ListWorkAdd.
+type ListWorkAdd struct {
+	// WorkID A UUIDv7.
+	WorkID ID `json:"workId"`
 }
 
 // LogAttr defines model for LogAttr.
@@ -4083,6 +4289,25 @@ type ResyncMessage struct {
 // ResyncMessageType defines model for ResyncMessage.Type.
 type ResyncMessageType string
 
+// Rule defines model for Rule.
+type Rule struct {
+	Field  string    `json:"field"`
+	Op     string    `json:"op"`
+	Values *[]string `json:"values,omitempty"`
+}
+
+// RuleGroup At least one rule or group. The root may hold groups; a group may hold rules only.
+type RuleGroup struct {
+	Groups *[]RuleGroup `json:"groups,omitempty"`
+
+	// Match Whether all of a group's rules and groups must match, or any. Skip values you don't know.
+	Match RuleGroupMatch `json:"match"`
+	Rules *[]Rule        `json:"rules,omitempty"`
+}
+
+// RuleGroupMatch Whether all of a group's rules and groups must match, or any. Skip values you don't know.
+type RuleGroupMatch string
+
 // ScanProgress The step a library's scan is on, and how far it's got.
 type ScanProgress struct {
 	Done int `json:"done"`
@@ -4397,6 +4622,17 @@ type SetupState struct {
 	ServerName string `json:"serverName"`
 }
 
+// SmartQuery defines model for SmartQuery.
+type SmartQuery struct {
+	// Query Which works a query selects. `version` is written by the server;
+	// leave it out, and a newer one is refused. `extra` isn't a kind that
+	// can be asked for. A query has at most 20 rules, 5 groups including
+	// the root and 3 sort keys, and a rule at most 100 values. Values of a rule are in the form its field's
+	// type takes: a date `YYYY-MM-DD`, a duration such as `P30D`, an ID
+	// as a UUID, or a name.
+	Query WorkQuery `json:"query"`
+}
+
 // SnapshotMessage Sent first on every connection and after `resync`. A changed `serverVersion` means the client should offer a reload.
 type SnapshotMessage struct {
 	// ProblemCount Admins only. Open problems, for the dot on Admin.
@@ -4407,6 +4643,16 @@ type SnapshotMessage struct {
 
 // SnapshotMessageType defines model for SnapshotMessage.Type.
 type SnapshotMessageType string
+
+// SortDirection Skip values you don't know.
+type SortDirection string
+
+// SortKey A sortable field, or `random`, which must be the only key.
+type SortKey struct {
+	// Direction Skip values you don't know.
+	Direction *SortDirection `json:"direction,omitempty"`
+	Field     string         `json:"field"`
+}
 
 // SubtitleEntry A subtitle codec a client shows, and how. The server converts a
 // text subtitle to a text codec listed for a delivery. In the stream
@@ -4784,7 +5030,6 @@ type UserList struct {
 
 // UserState The user's state for a work. For a series or season, `played` means every episode is.
 type UserState struct {
-	Favorite     bool       `json:"favorite"`
 	LastPlayedAt *time.Time `json:"lastPlayedAt,omitempty"`
 	PlayCount    int        `json:"playCount"`
 	Played       bool       `json:"played"`
@@ -4800,8 +5045,7 @@ type UserState struct {
 
 // UserStateUpdate defines model for UserStateUpdate.
 type UserStateUpdate struct {
-	Favorite *bool `json:"favorite,omitempty"`
-	Played   *bool `json:"played,omitempty"`
+	Played *bool `json:"played,omitempty"`
 
 	// PlayedAt When the app saw the offline position.
 	PlayedAt *time.Time `json:"playedAt,omitempty"`
@@ -4978,6 +5222,9 @@ type WorkDetail struct {
 	Extras []WorkSummary `json:"extras"`
 	Genres []string      `json:"genres"`
 
+	// ListIds The user's lists holding the work; the server always sends it.
+	ListIds *[]ID `json:"listIds,omitempty"`
+
 	// LockedFields Admins only. Fields an admin edited, shown with a lock icon.
 	LockedFields  *[]string `json:"lockedFields,omitempty"`
 	OriginalTitle *string   `json:"originalTitle,omitempty"`
@@ -5001,6 +5248,55 @@ type WorkDetail struct {
 	Versions []Version `json:"versions"`
 }
 
+// WorkField defines model for WorkField.
+type WorkField struct {
+	// DefaultDirection Skip values you don't know.
+	DefaultDirection *SortDirection `json:"defaultDirection,omitempty"`
+	Field            string         `json:"field"`
+	Kinds            []WorkKind     `json:"kinds"`
+
+	// Name The field's English name; clients translate `field` and fall back to this.
+	Name     string        `json:"name"`
+	Ops      []WorkFieldOp `json:"ops"`
+	Sortable bool          `json:"sortable"`
+
+	// Type What a field's values are. Skip types you don't know.
+	Type WorkFieldType `json:"type"`
+	Unit *string       `json:"unit,omitempty"`
+
+	// ValueSource Whether a field's values are few, `inline`, or found with `search`. Skip values you don't know.
+	ValueSource *WorkFieldValueSource `json:"valueSource,omitempty"`
+}
+
+// WorkFieldList defines model for WorkFieldList.
+type WorkFieldList struct {
+	Items []WorkField `json:"items"`
+}
+
+// WorkFieldOp defines model for WorkFieldOp.
+type WorkFieldOp struct {
+	// Arity How many values it takes, or -1 for one or more.
+	Arity int    `json:"arity"`
+	Op    string `json:"op"`
+}
+
+// WorkFieldType What a field's values are. Skip types you don't know.
+type WorkFieldType string
+
+// WorkFieldValue defines model for WorkFieldValue.
+type WorkFieldValue struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+// WorkFieldValueList defines model for WorkFieldValueList.
+type WorkFieldValueList struct {
+	Items []WorkFieldValue `json:"items"`
+}
+
+// WorkFieldValueSource Whether a field's values are few, `inline`, or found with `search`. Skip values you don't know.
+type WorkFieldValueSource string
+
 // WorkImages defines model for WorkImages.
 type WorkImages struct {
 	// Backdrop Fetch with `GET /api/v1/images/{id}?width=…`.
@@ -5019,6 +5315,80 @@ type WorkImages struct {
 // WorkKind What a work is: `video` an item of a videos library and `book` an
 // item of an audiobooks library. Skip kinds you don't know.
 type WorkKind string
+
+// WorkList A list of works a user keeps.
+type WorkList struct {
+	// BuiltIn Watchlist, which every user has and can't delete or rename.
+	BuiltIn bool `json:"builtIn"`
+
+	// ID A UUIDv7.
+	ID ID `json:"id"`
+
+	// Kind What a list is. `manual` is works the user added; `smart` is the works rules select. Skip kinds you don't know.
+	Kind ListKind `json:"kind"`
+	Name string   `json:"name"`
+
+	// Smart A smart list's rules. A list whose rules no longer run has `errors`
+	// pointing at what's wrong, returns an empty page and is off Home.
+	Smart *WorkListSmart `json:"smart,omitempty"`
+
+	// WorkCount Works in the list the user sees. A smart list's is 0 in `listLists` without `counts`.
+	WorkCount int `json:"workCount"`
+}
+
+// WorkListList defines model for WorkListList.
+type WorkListList struct {
+	Items []WorkList `json:"items"`
+}
+
+// WorkListSmart A smart list's rules. A list whose rules no longer run has `errors`
+// pointing at what's wrong, returns an empty page and is off Home.
+type WorkListSmart struct {
+	Errors *[]FieldError `json:"errors,omitempty"`
+
+	// Query Which works a query selects. `version` is written by the server;
+	// leave it out, and a newer one is refused. `extra` isn't a kind that
+	// can be asked for. A query has at most 20 rules, 5 groups including
+	// the root and 3 sort keys, and a rule at most 100 values. Values of a rule are in the form its field's
+	// type takes: a date `YYYY-MM-DD`, a duration such as `P30D`, an ID
+	// as a UUID, or a name.
+	Query WorkQuery `json:"query"`
+}
+
+// WorkQuery Which works a query selects. `version` is written by the server;
+// leave it out, and a newer one is refused. `extra` isn't a kind that
+// can be asked for. A query has at most 20 rules, 5 groups including
+// the root and 3 sort keys, and a rule at most 100 values. Values of a rule are in the form its field's
+// type takes: a date `YYYY-MM-DD`, a duration such as `P30D`, an ID
+// as a UUID, or a name.
+type WorkQuery struct {
+	// Collapse `series` keeps the first work of each show under the sort. Skip values you don't know.
+	Collapse *WorkQueryCollapse `json:"collapse,omitempty"`
+	Kinds    []WorkKind         `json:"kinds"`
+	MaxWorks *int               `json:"maxWorks,omitempty"`
+	Sort     *[]SortKey         `json:"sort,omitempty"`
+	Version  *int               `json:"version,omitempty"`
+
+	// Where At least one rule or group. The root may hold groups; a group may hold rules only.
+	Where *RuleGroup `json:"where,omitempty"`
+}
+
+// WorkQueryCollapse `series` keeps the first work of each show under the sort. Skip values you don't know.
+type WorkQueryCollapse string
+
+// WorkQueryRequest defines model for WorkQueryRequest.
+type WorkQueryRequest struct {
+	Limit  *int `json:"limit,omitempty"`
+	Offset *int `json:"offset,omitempty"`
+
+	// Query Which works a query selects. `version` is written by the server;
+	// leave it out, and a newer one is refused. `extra` isn't a kind that
+	// can be asked for. A query has at most 20 rules, 5 groups including
+	// the root and 3 sort keys, and a rule at most 100 values. Values of a rule are in the form its field's
+	// type takes: a date `YYYY-MM-DD`, a duration such as `P30D`, an ID
+	// as a UUID, or a name.
+	Query WorkQuery `json:"query"`
+}
 
 // WorkSort The order of a library's grid (`listLibraryWorks`).
 type WorkSort string
@@ -5252,17 +5622,6 @@ type ListDirectoriesParams struct {
 	Path *string `form:"path,omitempty" json:"path,omitempty"`
 }
 
-// ListFavoritesParams defines parameters for ListFavorites.
-type ListFavoritesParams struct {
-	Kind *WorkKind `form:"kind,omitempty" json:"kind,omitempty"`
-
-	// Offset How many items to skip from the start.
-	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
-
-	// Limit Page size. The default and the most a page holds depend on the listing.
-	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
-}
-
 // DeleteMissingFilesParams defines parameters for DeleteMissingFiles.
 type DeleteMissingFilesParams struct {
 	// Status The files to delete; only `gone`.
@@ -5294,6 +5653,12 @@ type ListFileSubtitleResultsParams struct {
 	// language, else the metadata language (the library's, else the
 	// server's).
 	Language *[]string `form:"language,omitempty" json:"language,omitempty"`
+}
+
+// GetHomeParams defines parameters for GetHome.
+type GetHomeParams struct {
+	// Kind Only the rows of these kinds, shown or not.
+	Kind *[]HomeRowKind `form:"kind,omitempty" json:"kind,omitempty"`
 }
 
 // ListLibraryAuthorsParams defines parameters for ListLibraryAuthors.
@@ -5357,14 +5722,29 @@ type ListLibraryWorksParams struct {
 	// DynamicRange Any of these dynamic ranges.
 	DynamicRange *[]DynamicRange `form:"dynamicRange,omitempty" json:"dynamicRange,omitempty"`
 
-	// Favorite Only the user's favorites.
-	Favorite *bool `form:"favorite,omitempty" json:"favorite,omitempty"`
-
 	// NarratorID The books this person narrated.
 	NarratorID *ID `form:"narratorId,omitempty" json:"narratorId,omitempty"`
 
 	// MatchState Admins only (ignored for others). Only `unmatched` is taken, for unmatched items only.
 	MatchState *MatchState `form:"matchState,omitempty" json:"matchState,omitempty"`
+
+	// Offset How many items to skip from the start.
+	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
+
+	// Limit Page size. The default and the most a page holds depend on the listing.
+	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// ListListsParams defines parameters for ListLists.
+type ListListsParams struct {
+	// Counts Count each smart list by running its rules; without it a smart list's `workCount` is 0.
+	Counts *bool `form:"counts,omitempty" json:"counts,omitempty"`
+}
+
+// ListListWorksParams defines parameters for ListListWorks.
+type ListListWorksParams struct {
+	// Kind Only these kinds.
+	Kind *[]WorkKind `form:"kind,omitempty" json:"kind,omitempty"`
 
 	// Offset How many items to skip from the start.
 	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
@@ -5451,6 +5831,12 @@ type ListCurrentUserPlayEventsParams struct {
 	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
+// ListWorkFieldValuesParams defines parameters for ListWorkFieldValues.
+type ListWorkFieldValuesParams struct {
+	Q   *string   `form:"q,omitempty" json:"q,omitempty"`
+	Ids *[]string `form:"ids,omitempty" json:"ids,omitempty"`
+}
+
 // ListWorkArtworkParams defines parameters for ListWorkArtwork.
 type ListWorkArtworkParams struct {
 	Type *ArtworkType `form:"type,omitempty" json:"type,omitempty"`
@@ -5500,6 +5886,9 @@ type EstimateDownloadsJSONRequestBody = DownloadEstimateRequest
 // AddFileSubtitleJSONRequestBody defines body for AddFileSubtitle for application/json ContentType.
 type AddFileSubtitleJSONRequestBody = FileSubtitleAdd
 
+// UpdateHomeRowsJSONRequestBody defines body for UpdateHomeRows for application/json ContentType.
+type UpdateHomeRowsJSONRequestBody = HomeRowsUpdate
+
 // AcceptInviteLinkJSONRequestBody defines body for AcceptInviteLink for application/json ContentType.
 type AcceptInviteLinkJSONRequestBody = SessionCreate
 
@@ -5514,6 +5903,15 @@ type UpdateLibraryJSONRequestBody = LibraryUpdate
 
 // ScanLibraryJSONRequestBody defines body for ScanLibrary for application/json ContentType.
 type ScanLibraryJSONRequestBody = ScanRequest
+
+// CreateListJSONRequestBody defines body for CreateList for application/json ContentType.
+type CreateListJSONRequestBody = ListCreate
+
+// UpdateListJSONRequestBody defines body for UpdateList for application/json ContentType.
+type UpdateListJSONRequestBody = ListUpdate
+
+// AddListWorkJSONRequestBody defines body for AddListWork for application/json ContentType.
+type AddListWorkJSONRequestBody = ListWorkAdd
 
 // UpdatePersonJSONRequestBody defines body for UpdatePerson for application/json ContentType.
 type UpdatePersonJSONRequestBody = NameUpdate
@@ -5562,6 +5960,9 @@ type SetUserPasswordJSONRequestBody = PasswordChange
 
 // UpdateWorksJSONRequestBody defines body for UpdateWorks for application/json ContentType.
 type UpdateWorksJSONRequestBody = WorksUpdate
+
+// QueryWorksJSONRequestBody defines body for QueryWorks for application/json ContentType.
+type QueryWorksJSONRequestBody = WorkQueryRequest
 
 // UpdateWorkJSONRequestBody defines body for UpdateWork for application/json ContentType.
 type UpdateWorkJSONRequestBody = WorkUpdate
@@ -5831,9 +6232,6 @@ type ServerInterface interface {
 	// RetryDownload Retry download
 	// (POST /api/v1/downloads/{id}/retry)
 	RetryDownload(w http.ResponseWriter, r *http.Request, id ID)
-	// ListFavorites List favorites
-	// (GET /api/v1/favorites)
-	ListFavorites(w http.ResponseWriter, r *http.Request, params ListFavoritesParams)
 	// DeleteMissingFiles Delete missing files
 	// (DELETE /api/v1/files)
 	DeleteMissingFiles(w http.ResponseWriter, r *http.Request, params DeleteMissingFilesParams)
@@ -5851,7 +6249,16 @@ type ServerInterface interface {
 	AddFileSubtitle(w http.ResponseWriter, r *http.Request, id ID)
 	// GetHome Get Home rows
 	// (GET /api/v1/home)
-	GetHome(w http.ResponseWriter, r *http.Request)
+	GetHome(w http.ResponseWriter, r *http.Request, params GetHomeParams)
+	// ListHomeRows List Home rows
+	// (GET /api/v1/home/rows)
+	ListHomeRows(w http.ResponseWriter, r *http.Request)
+	// UpdateHomeRows Change the Home layout
+	// (PATCH /api/v1/home/rows)
+	UpdateHomeRows(w http.ResponseWriter, r *http.Request)
+	// ResetHomeRows Reset the Home layout
+	// (POST /api/v1/home/rows/reset)
+	ResetHomeRows(w http.ResponseWriter, r *http.Request)
 	// GetInviteLink Get invite link
 	// (GET /api/v1/invite-links/{token})
 	GetInviteLink(w http.ResponseWriter, r *http.Request, token InviteToken)
@@ -5906,6 +6313,30 @@ type ServerInterface interface {
 	// ListLibraryWorks List library works
 	// (GET /api/v1/libraries/{id}/works)
 	ListLibraryWorks(w http.ResponseWriter, r *http.Request, id ID, params ListLibraryWorksParams)
+	// ListLists List the user's lists
+	// (GET /api/v1/lists)
+	ListLists(w http.ResponseWriter, r *http.Request, params ListListsParams)
+	// CreateList Create a list
+	// (POST /api/v1/lists)
+	CreateList(w http.ResponseWriter, r *http.Request)
+	// DeleteList Delete a list
+	// (DELETE /api/v1/lists/{id})
+	DeleteList(w http.ResponseWriter, r *http.Request, id ID)
+	// GetList Get a list
+	// (GET /api/v1/lists/{id})
+	GetList(w http.ResponseWriter, r *http.Request, id ID)
+	// UpdateList Update a list
+	// (PATCH /api/v1/lists/{id})
+	UpdateList(w http.ResponseWriter, r *http.Request, id ID)
+	// ListListWorks List a list's works
+	// (GET /api/v1/lists/{id}/works)
+	ListListWorks(w http.ResponseWriter, r *http.Request, id ID, params ListListWorksParams)
+	// AddListWork Add a work to a list
+	// (POST /api/v1/lists/{id}/works)
+	AddListWork(w http.ResponseWriter, r *http.Request, id ID)
+	// RemoveListWork Remove a work from a list
+	// (DELETE /api/v1/lists/{id}/works/{workId})
+	RemoveListWork(w http.ResponseWriter, r *http.Request, id ID, workID ID)
 	// ListLogs List log lines
 	// (GET /api/v1/logs)
 	ListLogs(w http.ResponseWriter, r *http.Request, params ListLogsParams)
@@ -6038,9 +6469,18 @@ type ServerInterface interface {
 	// SetUserPassword Set user password
 	// (POST /api/v1/users/{id}/set-password)
 	SetUserPassword(w http.ResponseWriter, r *http.Request, id ID)
+	// ListWorkFields List the fields rules can use
+	// (GET /api/v1/work-fields)
+	ListWorkFields(w http.ResponseWriter, r *http.Request)
+	// ListWorkFieldValues List a field's values
+	// (GET /api/v1/work-fields/{field}/values)
+	ListWorkFieldValues(w http.ResponseWriter, r *http.Request, field string, params ListWorkFieldValuesParams)
 	// UpdateWorks Update books
 	// (PATCH /api/v1/works)
 	UpdateWorks(w http.ResponseWriter, r *http.Request)
+	// QueryWorks Run a work query
+	// (POST /api/v1/works/query)
+	QueryWorks(w http.ResponseWriter, r *http.Request)
 	// GetWork Get work
 	// (GET /api/v1/works/{id})
 	GetWork(w http.ResponseWriter, r *http.Request, id ID)
@@ -6706,65 +7146,6 @@ func (siw *ServerInterfaceWrapper) RetryDownload(w http.ResponseWriter, r *http.
 	handler.ServeHTTP(w, r)
 }
 
-// ListFavorites operation middleware
-func (siw *ServerInterfaceWrapper) ListFavorites(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params ListFavoritesParams
-
-	// ------------- Optional query parameter "kind" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "kind", r.URL.Query(), &params.Kind, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "kind"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "kind", Err: err})
-		}
-		return
-	}
-
-	// ------------- Optional query parameter "offset" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", r.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "offset"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
-		}
-		return
-	}
-
-	// ------------- Optional query parameter "limit" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
-		}
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListFavorites(w, r, params)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
 // DeleteMissingFiles operation middleware
 func (siw *ServerInterfaceWrapper) DeleteMissingFiles(w http.ResponseWriter, r *http.Request) {
 
@@ -6967,8 +7348,69 @@ func (siw *ServerInterfaceWrapper) AddFileSubtitle(w http.ResponseWriter, r *htt
 // GetHome operation middleware
 func (siw *ServerInterfaceWrapper) GetHome(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetHomeParams
+
+	// ------------- Optional query parameter "kind" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "kind", r.URL.Query(), &params.Kind, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "kind"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "kind", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetHome(w, r)
+		siw.Handler.GetHome(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListHomeRows operation middleware
+func (siw *ServerInterfaceWrapper) ListHomeRows(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListHomeRows(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateHomeRows operation middleware
+func (siw *ServerInterfaceWrapper) UpdateHomeRows(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateHomeRows(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ResetHomeRows operation middleware
+func (siw *ServerInterfaceWrapper) ResetHomeRows(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ResetHomeRows(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -7581,19 +8023,6 @@ func (siw *ServerInterfaceWrapper) ListLibraryWorks(w http.ResponseWriter, r *ht
 		return
 	}
 
-	// ------------- Optional query parameter "favorite" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "favorite", r.URL.Query(), &params.Favorite, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "favorite"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "favorite", Err: err})
-		}
-		return
-	}
-
 	// ------------- Optional query parameter "narratorId" -------------
 
 	err = runtime.BindQueryParameterWithOptions("form", true, false, "narratorId", r.URL.Query(), &params.NarratorID, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
@@ -7648,6 +8077,260 @@ func (siw *ServerInterfaceWrapper) ListLibraryWorks(w http.ResponseWriter, r *ht
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListLibraryWorks(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListLists operation middleware
+func (siw *ServerInterfaceWrapper) ListLists(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListListsParams
+
+	// ------------- Optional query parameter "counts" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "counts", r.URL.Query(), &params.Counts, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "counts"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "counts", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListLists(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateList operation middleware
+func (siw *ServerInterfaceWrapper) CreateList(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateList(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteList operation middleware
+func (siw *ServerInterfaceWrapper) DeleteList(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteList(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetList operation middleware
+func (siw *ServerInterfaceWrapper) GetList(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetList(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateList operation middleware
+func (siw *ServerInterfaceWrapper) UpdateList(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateList(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListListWorks operation middleware
+func (siw *ServerInterfaceWrapper) ListListWorks(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListListWorksParams
+
+	// ------------- Optional query parameter "kind" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "kind", r.URL.Query(), &params.Kind, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "kind"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "kind", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", r.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "offset"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListListWorks(w, r, id, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// AddListWork operation middleware
+func (siw *ServerInterfaceWrapper) AddListWork(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AddListWork(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RemoveListWork operation middleware
+func (siw *ServerInterfaceWrapper) RemoveListWork(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "workId" -------------
+	var workID ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "workId", r.PathValue("workId"), &workID, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "workId", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RemoveListWork(w, r, id, workID)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -8758,11 +9441,94 @@ func (siw *ServerInterfaceWrapper) SetUserPassword(w http.ResponseWriter, r *htt
 	handler.ServeHTTP(w, r)
 }
 
+// ListWorkFields operation middleware
+func (siw *ServerInterfaceWrapper) ListWorkFields(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListWorkFields(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListWorkFieldValues operation middleware
+func (siw *ServerInterfaceWrapper) ListWorkFieldValues(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "field" -------------
+	var field string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "field", r.PathValue("field"), &field, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "field", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListWorkFieldValuesParams
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", r.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "q"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "ids" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "ids", r.URL.Query(), &params.Ids, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "ids"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ids", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListWorkFieldValues(w, r, field, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // UpdateWorks operation middleware
 func (siw *ServerInterfaceWrapper) UpdateWorks(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateWorks(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// QueryWorks operation middleware
+func (siw *ServerInterfaceWrapper) QueryWorks(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.QueryWorks(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -9380,8 +10146,21 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/libraries/{id}/stop-scan", wrapper.StopLibraryScan)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/libraries/{id}/refresh-metadata", wrapper.RefreshLibraryMetadata)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/home", wrapper.GetHome)
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/favorites", wrapper.ListFavorites)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/home/rows", wrapper.ListHomeRows)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/api/v1/home/rows", wrapper.UpdateHomeRows)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/home/rows/reset", wrapper.ResetHomeRows)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/lists", wrapper.ListLists)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/lists", wrapper.CreateList)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/api/v1/lists/{id}", wrapper.DeleteList)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/lists/{id}", wrapper.GetList)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/api/v1/lists/{id}", wrapper.UpdateList)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/lists/{id}/works", wrapper.ListListWorks)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/lists/{id}/works", wrapper.AddListWork)
+	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/api/v1/lists/{id}/works/{workId}", wrapper.RemoveListWork)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/api/v1/works", wrapper.UpdateWorks)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/works/query", wrapper.QueryWorks)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/work-fields", wrapper.ListWorkFields)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/work-fields/{field}/values", wrapper.ListWorkFieldValues)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/works/{id}", wrapper.GetWork)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/api/v1/works/{id}", wrapper.UpdateWork)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/works/{id}/children", wrapper.ListWorkChildren)
@@ -11654,77 +12433,6 @@ func (response RetryDownloaddefaultApplicationProblemPlusJSONResponse) VisitRetr
 	return err
 }
 
-type ListFavoritesRequestObject struct {
-	Params ListFavoritesParams
-}
-
-type ListFavoritesResponseObject interface {
-	VisitListFavoritesResponse(w http.ResponseWriter) error
-}
-
-type ListFavorites200JSONResponse WorkSummaryPage
-
-func (response ListFavorites200JSONResponse) VisitListFavoritesResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListFavorites400ApplicationProblemPlusJSONResponse struct {
-	BadRequestApplicationProblemPlusJSONResponse
-}
-
-func (response ListFavorites400ApplicationProblemPlusJSONResponse) VisitListFavoritesResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(400)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListFavorites401ApplicationProblemPlusJSONResponse struct {
-	UnauthorizedApplicationProblemPlusJSONResponse
-}
-
-func (response ListFavorites401ApplicationProblemPlusJSONResponse) VisitListFavoritesResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListFavoritesdefaultApplicationProblemPlusJSONResponse struct {
-	Body       Problem
-	StatusCode int
-}
-
-func (response ListFavoritesdefaultApplicationProblemPlusJSONResponse) VisitListFavoritesResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(response.StatusCode)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
 type DeleteMissingFilesRequestObject struct {
 	Params DeleteMissingFilesParams
 }
@@ -12199,6 +12907,7 @@ func (response AddFileSubtitledefaultApplicationProblemPlusJSONResponse) VisitAd
 }
 
 type GetHomeRequestObject struct {
+	Params GetHomeParams
 }
 
 type GetHomeResponseObject interface {
@@ -12215,6 +12924,22 @@ func (response GetHome200JSONResponse) VisitGetHomeResponse(w http.ResponseWrite
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetHome400ApplicationProblemPlusJSONResponse struct {
+	BadRequestApplicationProblemPlusJSONResponse
+}
+
+func (response GetHome400ApplicationProblemPlusJSONResponse) VisitGetHomeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -12241,6 +12966,185 @@ type GetHomedefaultApplicationProblemPlusJSONResponse struct {
 }
 
 func (response GetHomedefaultApplicationProblemPlusJSONResponse) VisitGetHomeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListHomeRowsRequestObject struct {
+}
+
+type ListHomeRowsResponseObject interface {
+	VisitListHomeRowsResponse(w http.ResponseWriter) error
+}
+
+type ListHomeRows200JSONResponse HomeRowInfoList
+
+func (response ListHomeRows200JSONResponse) VisitListHomeRowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListHomeRows401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response ListHomeRows401ApplicationProblemPlusJSONResponse) VisitListHomeRowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListHomeRowsdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ListHomeRowsdefaultApplicationProblemPlusJSONResponse) VisitListHomeRowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateHomeRowsRequestObject struct {
+	Body *UpdateHomeRowsJSONRequestBody
+}
+
+type UpdateHomeRowsResponseObject interface {
+	VisitUpdateHomeRowsResponse(w http.ResponseWriter) error
+}
+
+type UpdateHomeRows200JSONResponse HomeRowInfoList
+
+func (response UpdateHomeRows200JSONResponse) VisitUpdateHomeRowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateHomeRows400ApplicationProblemPlusJSONResponse struct {
+	BadRequestApplicationProblemPlusJSONResponse
+}
+
+func (response UpdateHomeRows400ApplicationProblemPlusJSONResponse) VisitUpdateHomeRowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateHomeRows401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response UpdateHomeRows401ApplicationProblemPlusJSONResponse) VisitUpdateHomeRowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateHomeRowsdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response UpdateHomeRowsdefaultApplicationProblemPlusJSONResponse) VisitUpdateHomeRowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResetHomeRowsRequestObject struct {
+}
+
+type ResetHomeRowsResponseObject interface {
+	VisitResetHomeRowsResponse(w http.ResponseWriter) error
+}
+
+type ResetHomeRows200JSONResponse HomeRowInfoList
+
+func (response ResetHomeRows200JSONResponse) VisitResetHomeRowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResetHomeRows401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response ResetHomeRows401ApplicationProblemPlusJSONResponse) VisitResetHomeRowsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResetHomeRowsdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ResetHomeRowsdefaultApplicationProblemPlusJSONResponse) VisitResetHomeRowsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
@@ -13781,6 +14685,656 @@ type ListLibraryWorksdefaultApplicationProblemPlusJSONResponse struct {
 }
 
 func (response ListLibraryWorksdefaultApplicationProblemPlusJSONResponse) VisitListLibraryWorksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListListsRequestObject struct {
+	Params ListListsParams
+}
+
+type ListListsResponseObject interface {
+	VisitListListsResponse(w http.ResponseWriter) error
+}
+
+type ListLists200JSONResponse WorkListList
+
+func (response ListLists200JSONResponse) VisitListListsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListLists401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response ListLists401ApplicationProblemPlusJSONResponse) VisitListListsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListListsdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ListListsdefaultApplicationProblemPlusJSONResponse) VisitListListsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateListRequestObject struct {
+	Body *CreateListJSONRequestBody
+}
+
+type CreateListResponseObject interface {
+	VisitCreateListResponse(w http.ResponseWriter) error
+}
+
+type CreateList201JSONResponse WorkList
+
+func (response CreateList201JSONResponse) VisitCreateListResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateList400ApplicationProblemPlusJSONResponse struct {
+	BadRequestApplicationProblemPlusJSONResponse
+}
+
+func (response CreateList400ApplicationProblemPlusJSONResponse) VisitCreateListResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateList401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response CreateList401ApplicationProblemPlusJSONResponse) VisitCreateListResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateList409ApplicationProblemPlusJSONResponse struct {
+	ConflictApplicationProblemPlusJSONResponse
+}
+
+func (response CreateList409ApplicationProblemPlusJSONResponse) VisitCreateListResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateListdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response CreateListdefaultApplicationProblemPlusJSONResponse) VisitCreateListResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteListRequestObject struct {
+	ID ID `json:"id"`
+}
+
+type DeleteListResponseObject interface {
+	VisitDeleteListResponse(w http.ResponseWriter) error
+}
+
+type DeleteList204Response struct {
+}
+
+func (response DeleteList204Response) VisitDeleteListResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteList401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response DeleteList401ApplicationProblemPlusJSONResponse) VisitDeleteListResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteList404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response DeleteList404ApplicationProblemPlusJSONResponse) VisitDeleteListResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteList409ApplicationProblemPlusJSONResponse struct {
+	ConflictApplicationProblemPlusJSONResponse
+}
+
+func (response DeleteList409ApplicationProblemPlusJSONResponse) VisitDeleteListResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteListdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response DeleteListdefaultApplicationProblemPlusJSONResponse) VisitDeleteListResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetListRequestObject struct {
+	ID ID `json:"id"`
+}
+
+type GetListResponseObject interface {
+	VisitGetListResponse(w http.ResponseWriter) error
+}
+
+type GetList200JSONResponse WorkList
+
+func (response GetList200JSONResponse) VisitGetListResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetList401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response GetList401ApplicationProblemPlusJSONResponse) VisitGetListResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetList404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response GetList404ApplicationProblemPlusJSONResponse) VisitGetListResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetListdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response GetListdefaultApplicationProblemPlusJSONResponse) VisitGetListResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateListRequestObject struct {
+	ID   ID `json:"id"`
+	Body *UpdateListJSONRequestBody
+}
+
+type UpdateListResponseObject interface {
+	VisitUpdateListResponse(w http.ResponseWriter) error
+}
+
+type UpdateList200JSONResponse WorkList
+
+func (response UpdateList200JSONResponse) VisitUpdateListResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateList400ApplicationProblemPlusJSONResponse struct {
+	BadRequestApplicationProblemPlusJSONResponse
+}
+
+func (response UpdateList400ApplicationProblemPlusJSONResponse) VisitUpdateListResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateList401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response UpdateList401ApplicationProblemPlusJSONResponse) VisitUpdateListResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateList404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response UpdateList404ApplicationProblemPlusJSONResponse) VisitUpdateListResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateList409ApplicationProblemPlusJSONResponse struct {
+	ConflictApplicationProblemPlusJSONResponse
+}
+
+func (response UpdateList409ApplicationProblemPlusJSONResponse) VisitUpdateListResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateListdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response UpdateListdefaultApplicationProblemPlusJSONResponse) VisitUpdateListResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListListWorksRequestObject struct {
+	ID     ID `json:"id"`
+	Params ListListWorksParams
+}
+
+type ListListWorksResponseObject interface {
+	VisitListListWorksResponse(w http.ResponseWriter) error
+}
+
+type ListListWorks200JSONResponse WorkSummaryPage
+
+func (response ListListWorks200JSONResponse) VisitListListWorksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListListWorks400ApplicationProblemPlusJSONResponse struct {
+	BadRequestApplicationProblemPlusJSONResponse
+}
+
+func (response ListListWorks400ApplicationProblemPlusJSONResponse) VisitListListWorksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListListWorks401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response ListListWorks401ApplicationProblemPlusJSONResponse) VisitListListWorksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListListWorks404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response ListListWorks404ApplicationProblemPlusJSONResponse) VisitListListWorksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListListWorksdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ListListWorksdefaultApplicationProblemPlusJSONResponse) VisitListListWorksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddListWorkRequestObject struct {
+	ID   ID `json:"id"`
+	Body *AddListWorkJSONRequestBody
+}
+
+type AddListWorkResponseObject interface {
+	VisitAddListWorkResponse(w http.ResponseWriter) error
+}
+
+type AddListWork204Response struct {
+}
+
+func (response AddListWork204Response) VisitAddListWorkResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type AddListWork400ApplicationProblemPlusJSONResponse struct {
+	BadRequestApplicationProblemPlusJSONResponse
+}
+
+func (response AddListWork400ApplicationProblemPlusJSONResponse) VisitAddListWorkResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddListWork401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response AddListWork401ApplicationProblemPlusJSONResponse) VisitAddListWorkResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddListWork404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response AddListWork404ApplicationProblemPlusJSONResponse) VisitAddListWorkResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AddListWorkdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response AddListWorkdefaultApplicationProblemPlusJSONResponse) VisitAddListWorkResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveListWorkRequestObject struct {
+	ID     ID `json:"id"`
+	WorkID ID `json:"workId"`
+}
+
+type RemoveListWorkResponseObject interface {
+	VisitRemoveListWorkResponse(w http.ResponseWriter) error
+}
+
+type RemoveListWork204Response struct {
+}
+
+func (response RemoveListWork204Response) VisitRemoveListWorkResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type RemoveListWork401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response RemoveListWork401ApplicationProblemPlusJSONResponse) VisitRemoveListWorkResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveListWork404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response RemoveListWork404ApplicationProblemPlusJSONResponse) VisitRemoveListWorkResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveListWork409ApplicationProblemPlusJSONResponse struct {
+	ConflictApplicationProblemPlusJSONResponse
+}
+
+func (response RemoveListWork409ApplicationProblemPlusJSONResponse) VisitRemoveListWorkResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveListWorkdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response RemoveListWorkdefaultApplicationProblemPlusJSONResponse) VisitRemoveListWorkResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
@@ -17480,6 +19034,148 @@ func (response SetUserPassworddefaultApplicationProblemPlusJSONResponse) VisitSe
 	return err
 }
 
+type ListWorkFieldsRequestObject struct {
+}
+
+type ListWorkFieldsResponseObject interface {
+	VisitListWorkFieldsResponse(w http.ResponseWriter) error
+}
+
+type ListWorkFields200JSONResponse WorkFieldList
+
+func (response ListWorkFields200JSONResponse) VisitListWorkFieldsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListWorkFields401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response ListWorkFields401ApplicationProblemPlusJSONResponse) VisitListWorkFieldsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListWorkFieldsdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ListWorkFieldsdefaultApplicationProblemPlusJSONResponse) VisitListWorkFieldsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListWorkFieldValuesRequestObject struct {
+	Field  string `json:"field"`
+	Params ListWorkFieldValuesParams
+}
+
+type ListWorkFieldValuesResponseObject interface {
+	VisitListWorkFieldValuesResponse(w http.ResponseWriter) error
+}
+
+type ListWorkFieldValues200JSONResponse WorkFieldValueList
+
+func (response ListWorkFieldValues200JSONResponse) VisitListWorkFieldValuesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListWorkFieldValues400ApplicationProblemPlusJSONResponse struct {
+	BadRequestApplicationProblemPlusJSONResponse
+}
+
+func (response ListWorkFieldValues400ApplicationProblemPlusJSONResponse) VisitListWorkFieldValuesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListWorkFieldValues401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response ListWorkFieldValues401ApplicationProblemPlusJSONResponse) VisitListWorkFieldValuesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListWorkFieldValues404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response ListWorkFieldValues404ApplicationProblemPlusJSONResponse) VisitListWorkFieldValuesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListWorkFieldValuesdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ListWorkFieldValuesdefaultApplicationProblemPlusJSONResponse) VisitListWorkFieldValuesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type UpdateWorksRequestObject struct {
 	Body *UpdateWorksJSONRequestBody
 }
@@ -17572,6 +19268,77 @@ type UpdateWorksdefaultApplicationProblemPlusJSONResponse struct {
 }
 
 func (response UpdateWorksdefaultApplicationProblemPlusJSONResponse) VisitUpdateWorksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type QueryWorksRequestObject struct {
+	Body *QueryWorksJSONRequestBody
+}
+
+type QueryWorksResponseObject interface {
+	VisitQueryWorksResponse(w http.ResponseWriter) error
+}
+
+type QueryWorks200JSONResponse WorkSummaryPage
+
+func (response QueryWorks200JSONResponse) VisitQueryWorksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type QueryWorks400ApplicationProblemPlusJSONResponse struct {
+	BadRequestApplicationProblemPlusJSONResponse
+}
+
+func (response QueryWorks400ApplicationProblemPlusJSONResponse) VisitQueryWorksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type QueryWorks401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response QueryWorks401ApplicationProblemPlusJSONResponse) VisitQueryWorksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type QueryWorksdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response QueryWorksdefaultApplicationProblemPlusJSONResponse) VisitQueryWorksResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
@@ -18929,9 +20696,6 @@ type StrictServerInterface interface {
 	// RetryDownload Retry download
 	// (POST /api/v1/downloads/{id}/retry)
 	RetryDownload(ctx context.Context, request RetryDownloadRequestObject) (RetryDownloadResponseObject, error)
-	// ListFavorites List favorites
-	// (GET /api/v1/favorites)
-	ListFavorites(ctx context.Context, request ListFavoritesRequestObject) (ListFavoritesResponseObject, error)
 	// DeleteMissingFiles Delete missing files
 	// (DELETE /api/v1/files)
 	DeleteMissingFiles(ctx context.Context, request DeleteMissingFilesRequestObject) (DeleteMissingFilesResponseObject, error)
@@ -18950,6 +20714,15 @@ type StrictServerInterface interface {
 	// GetHome Get Home rows
 	// (GET /api/v1/home)
 	GetHome(ctx context.Context, request GetHomeRequestObject) (GetHomeResponseObject, error)
+	// ListHomeRows List Home rows
+	// (GET /api/v1/home/rows)
+	ListHomeRows(ctx context.Context, request ListHomeRowsRequestObject) (ListHomeRowsResponseObject, error)
+	// UpdateHomeRows Change the Home layout
+	// (PATCH /api/v1/home/rows)
+	UpdateHomeRows(ctx context.Context, request UpdateHomeRowsRequestObject) (UpdateHomeRowsResponseObject, error)
+	// ResetHomeRows Reset the Home layout
+	// (POST /api/v1/home/rows/reset)
+	ResetHomeRows(ctx context.Context, request ResetHomeRowsRequestObject) (ResetHomeRowsResponseObject, error)
 	// GetInviteLink Get invite link
 	// (GET /api/v1/invite-links/{token})
 	GetInviteLink(ctx context.Context, request GetInviteLinkRequestObject) (GetInviteLinkResponseObject, error)
@@ -19004,6 +20777,30 @@ type StrictServerInterface interface {
 	// ListLibraryWorks List library works
 	// (GET /api/v1/libraries/{id}/works)
 	ListLibraryWorks(ctx context.Context, request ListLibraryWorksRequestObject) (ListLibraryWorksResponseObject, error)
+	// ListLists List the user's lists
+	// (GET /api/v1/lists)
+	ListLists(ctx context.Context, request ListListsRequestObject) (ListListsResponseObject, error)
+	// CreateList Create a list
+	// (POST /api/v1/lists)
+	CreateList(ctx context.Context, request CreateListRequestObject) (CreateListResponseObject, error)
+	// DeleteList Delete a list
+	// (DELETE /api/v1/lists/{id})
+	DeleteList(ctx context.Context, request DeleteListRequestObject) (DeleteListResponseObject, error)
+	// GetList Get a list
+	// (GET /api/v1/lists/{id})
+	GetList(ctx context.Context, request GetListRequestObject) (GetListResponseObject, error)
+	// UpdateList Update a list
+	// (PATCH /api/v1/lists/{id})
+	UpdateList(ctx context.Context, request UpdateListRequestObject) (UpdateListResponseObject, error)
+	// ListListWorks List a list's works
+	// (GET /api/v1/lists/{id}/works)
+	ListListWorks(ctx context.Context, request ListListWorksRequestObject) (ListListWorksResponseObject, error)
+	// AddListWork Add a work to a list
+	// (POST /api/v1/lists/{id}/works)
+	AddListWork(ctx context.Context, request AddListWorkRequestObject) (AddListWorkResponseObject, error)
+	// RemoveListWork Remove a work from a list
+	// (DELETE /api/v1/lists/{id}/works/{workId})
+	RemoveListWork(ctx context.Context, request RemoveListWorkRequestObject) (RemoveListWorkResponseObject, error)
 	// ListLogs List log lines
 	// (GET /api/v1/logs)
 	ListLogs(ctx context.Context, request ListLogsRequestObject) (ListLogsResponseObject, error)
@@ -19136,9 +20933,18 @@ type StrictServerInterface interface {
 	// SetUserPassword Set user password
 	// (POST /api/v1/users/{id}/set-password)
 	SetUserPassword(ctx context.Context, request SetUserPasswordRequestObject) (SetUserPasswordResponseObject, error)
+	// ListWorkFields List the fields rules can use
+	// (GET /api/v1/work-fields)
+	ListWorkFields(ctx context.Context, request ListWorkFieldsRequestObject) (ListWorkFieldsResponseObject, error)
+	// ListWorkFieldValues List a field's values
+	// (GET /api/v1/work-fields/{field}/values)
+	ListWorkFieldValues(ctx context.Context, request ListWorkFieldValuesRequestObject) (ListWorkFieldValuesResponseObject, error)
 	// UpdateWorks Update books
 	// (PATCH /api/v1/works)
 	UpdateWorks(ctx context.Context, request UpdateWorksRequestObject) (UpdateWorksResponseObject, error)
+	// QueryWorks Run a work query
+	// (POST /api/v1/works/query)
+	QueryWorks(ctx context.Context, request QueryWorksRequestObject) (QueryWorksResponseObject, error)
 	// GetWork Get work
 	// (GET /api/v1/works/{id})
 	GetWork(ctx context.Context, request GetWorkRequestObject) (GetWorkResponseObject, error)
@@ -19963,32 +21769,6 @@ func (sh *strictHandler) RetryDownload(w http.ResponseWriter, r *http.Request, i
 	}
 }
 
-// ListFavorites operation middleware
-func (sh *strictHandler) ListFavorites(w http.ResponseWriter, r *http.Request, params ListFavoritesParams) {
-	var request ListFavoritesRequestObject
-
-	request.Params = params
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.ListFavorites(ctx, request.(ListFavoritesRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListFavorites")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(ListFavoritesResponseObject); ok {
-		if err := validResponse.VisitListFavoritesResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
 // DeleteMissingFiles operation middleware
 func (sh *strictHandler) DeleteMissingFiles(w http.ResponseWriter, r *http.Request, params DeleteMissingFilesParams) {
 	var request DeleteMissingFilesRequestObject
@@ -20128,8 +21908,10 @@ func (sh *strictHandler) AddFileSubtitle(w http.ResponseWriter, r *http.Request,
 }
 
 // GetHome operation middleware
-func (sh *strictHandler) GetHome(w http.ResponseWriter, r *http.Request) {
+func (sh *strictHandler) GetHome(w http.ResponseWriter, r *http.Request, params GetHomeParams) {
 	var request GetHomeRequestObject
+
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.GetHome(ctx, request.(GetHomeRequestObject))
@@ -20144,6 +21926,85 @@ func (sh *strictHandler) GetHome(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetHomeResponseObject); ok {
 		if err := validResponse.VisitGetHomeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListHomeRows operation middleware
+func (sh *strictHandler) ListHomeRows(w http.ResponseWriter, r *http.Request) {
+	var request ListHomeRowsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListHomeRows(ctx, request.(ListHomeRowsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListHomeRows")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListHomeRowsResponseObject); ok {
+		if err := validResponse.VisitListHomeRowsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateHomeRows operation middleware
+func (sh *strictHandler) UpdateHomeRows(w http.ResponseWriter, r *http.Request) {
+	var request UpdateHomeRowsRequestObject
+
+	var body UpdateHomeRowsJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateHomeRows(ctx, request.(UpdateHomeRowsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateHomeRows")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateHomeRowsResponseObject); ok {
+		if err := validResponse.VisitUpdateHomeRowsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ResetHomeRows operation middleware
+func (sh *strictHandler) ResetHomeRows(w http.ResponseWriter, r *http.Request) {
+	var request ResetHomeRowsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ResetHomeRows(ctx, request.(ResetHomeRowsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ResetHomeRows")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ResetHomeRowsResponseObject); ok {
+		if err := validResponse.VisitResetHomeRowsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -20646,6 +22507,235 @@ func (sh *strictHandler) ListLibraryWorks(w http.ResponseWriter, r *http.Request
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(ListLibraryWorksResponseObject); ok {
 		if err := validResponse.VisitListLibraryWorksResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListLists operation middleware
+func (sh *strictHandler) ListLists(w http.ResponseWriter, r *http.Request, params ListListsParams) {
+	var request ListListsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListLists(ctx, request.(ListListsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListLists")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListListsResponseObject); ok {
+		if err := validResponse.VisitListListsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateList operation middleware
+func (sh *strictHandler) CreateList(w http.ResponseWriter, r *http.Request) {
+	var request CreateListRequestObject
+
+	var body CreateListJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateList(ctx, request.(CreateListRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateList")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateListResponseObject); ok {
+		if err := validResponse.VisitCreateListResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteList operation middleware
+func (sh *strictHandler) DeleteList(w http.ResponseWriter, r *http.Request, id ID) {
+	var request DeleteListRequestObject
+
+	request.ID = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteList(ctx, request.(DeleteListRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteList")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteListResponseObject); ok {
+		if err := validResponse.VisitDeleteListResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetList operation middleware
+func (sh *strictHandler) GetList(w http.ResponseWriter, r *http.Request, id ID) {
+	var request GetListRequestObject
+
+	request.ID = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetList(ctx, request.(GetListRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetList")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetListResponseObject); ok {
+		if err := validResponse.VisitGetListResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateList operation middleware
+func (sh *strictHandler) UpdateList(w http.ResponseWriter, r *http.Request, id ID) {
+	var request UpdateListRequestObject
+
+	request.ID = id
+
+	var body UpdateListJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateList(ctx, request.(UpdateListRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateList")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateListResponseObject); ok {
+		if err := validResponse.VisitUpdateListResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListListWorks operation middleware
+func (sh *strictHandler) ListListWorks(w http.ResponseWriter, r *http.Request, id ID, params ListListWorksParams) {
+	var request ListListWorksRequestObject
+
+	request.ID = id
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListListWorks(ctx, request.(ListListWorksRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListListWorks")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListListWorksResponseObject); ok {
+		if err := validResponse.VisitListListWorksResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// AddListWork operation middleware
+func (sh *strictHandler) AddListWork(w http.ResponseWriter, r *http.Request, id ID) {
+	var request AddListWorkRequestObject
+
+	request.ID = id
+
+	var body AddListWorkJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AddListWork(ctx, request.(AddListWorkRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AddListWork")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AddListWorkResponseObject); ok {
+		if err := validResponse.VisitAddListWorkResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RemoveListWork operation middleware
+func (sh *strictHandler) RemoveListWork(w http.ResponseWriter, r *http.Request, id ID, workID ID) {
+	var request RemoveListWorkRequestObject
+
+	request.ID = id
+	request.WorkID = workID
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RemoveListWork(ctx, request.(RemoveListWorkRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RemoveListWork")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RemoveListWorkResponseObject); ok {
+		if err := validResponse.VisitRemoveListWorkResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -21869,6 +23959,57 @@ func (sh *strictHandler) SetUserPassword(w http.ResponseWriter, r *http.Request,
 	}
 }
 
+// ListWorkFields operation middleware
+func (sh *strictHandler) ListWorkFields(w http.ResponseWriter, r *http.Request) {
+	var request ListWorkFieldsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListWorkFields(ctx, request.(ListWorkFieldsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListWorkFields")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListWorkFieldsResponseObject); ok {
+		if err := validResponse.VisitListWorkFieldsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListWorkFieldValues operation middleware
+func (sh *strictHandler) ListWorkFieldValues(w http.ResponseWriter, r *http.Request, field string, params ListWorkFieldValuesParams) {
+	var request ListWorkFieldValuesRequestObject
+
+	request.Field = field
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListWorkFieldValues(ctx, request.(ListWorkFieldValuesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListWorkFieldValues")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListWorkFieldValuesResponseObject); ok {
+		if err := validResponse.VisitListWorkFieldValuesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // UpdateWorks operation middleware
 func (sh *strictHandler) UpdateWorks(w http.ResponseWriter, r *http.Request) {
 	var request UpdateWorksRequestObject
@@ -21893,6 +24034,37 @@ func (sh *strictHandler) UpdateWorks(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateWorksResponseObject); ok {
 		if err := validResponse.VisitUpdateWorksResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// QueryWorks operation middleware
+func (sh *strictHandler) QueryWorks(w http.ResponseWriter, r *http.Request) {
+	var request QueryWorksRequestObject
+
+	var body QueryWorksJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.QueryWorks(ctx, request.(QueryWorksRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "QueryWorks")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(QueryWorksResponseObject); ok {
+		if err := validResponse.VisitQueryWorksResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

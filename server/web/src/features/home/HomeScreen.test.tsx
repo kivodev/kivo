@@ -1,5 +1,6 @@
 import { fireEvent, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { bookIds } from "@/api/mocks/books";
 import type { WorkDetail } from "@/api/schemas";
 import { renderApp, screen } from "@/test/render";
 import { mockId, mockIds, scenarios, sendEvent, sent, serveMockApi, summaryOf } from "@/test/server";
@@ -11,12 +12,11 @@ describe("Home", () => {
     await screen.findByRole("heading", { name: "Continue Watching" });
     expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual([
       "Continue Watching",
-      "Favorites",
+      "Watchlist",
       "Recently Added in Movies",
       "Recently Added in TV Shows",
       "Recently Added in Home Videos",
       "Continue Listening",
-      "Continue Series",
       "Recently Added in Audiobooks",
     ]);
     const continueRow = document.querySelector('[data-row="continueWatching"]') as HTMLElement;
@@ -28,25 +28,24 @@ describe("Home", () => {
     expect(within(continueRow).getByText("Good News About Hell")).toBeInTheDocument();
   });
 
-  it("opens Favorites from the Favorites row's heading", async () => {
-    serveMockApi();
+  it("opens a list from its row's heading, with each card in its work's own shape", async () => {
+    serveMockApi((api) => api.lists[0]?.workIds.unshift(bookIds.hailMary));
     const { user, router } = renderApp("/");
-    const heading = await screen.findByRole("heading", { name: "Favorites" });
-    await user.click(within(heading).getByRole("link", { name: "Favorites" }));
-    await waitFor(() => expect(router.state.location.pathname).toBe("/favorites"));
+    const heading = await screen.findByRole("heading", { name: "Watchlist" });
+    const row = document.querySelector('[data-row="list"]') as HTMLElement;
+    expect(row.querySelector('[data-part="cover"]')).not.toBeNull();
+    expect(row.querySelector('[data-part="poster"]')).not.toBeNull();
+    await user.click(within(heading).getByRole("link", { name: "Watchlist" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/lists/${mockIds.myList}`));
   });
 
-  it("shows books in progress and the next book of a series as square covers, with the time left", async () => {
+  it("shows books in progress as square covers, with the time left", async () => {
     serveMockApi();
     renderApp("/");
     await screen.findByRole("heading", { name: "Continue Listening" });
     const listening = document.querySelector('[data-row="continueListening"]') as HTMLElement;
     expect(within(listening).getByText("Andy Weir · 8 hr 5 min left")).toBeInTheDocument();
-    const series = document.querySelector('[data-row="continueSeries"]') as HTMLElement;
-    expect(within(series).getByText("The Churn")).toBeInTheDocument();
-    for (const row of [listening, series]) {
-      expect(row.querySelector('[data-part="cover"], .aspect-square')).not.toBeNull();
-    }
+    expect(listening.querySelector('[data-part="cover"], .aspect-square')).not.toBeNull();
   });
 
   it("lists pinned libraries in the sidebar, and the rest under More libraries", async () => {
@@ -164,9 +163,37 @@ describe("Home", () => {
     expect(screen.getByRole("menuitem", { name: "Remove from Continue Listening" })).toBeInTheDocument();
     await user.keyboard("{Escape}");
 
-    const favorites = document.querySelector('[data-row="favorites"]') as HTMLElement;
-    await user.click(within(favorites).getAllByRole("button", { name: /^More actions for/ })[0] as HTMLElement);
+    const myList = document.querySelector('[data-row="list"]') as HTMLElement;
+    await user.click(within(myList).getAllByRole("button", { name: /^More actions for/ })[0] as HTMLElement);
     expect(screen.queryByRole("menuitem", { name: /^Remove from Continue/ })).toBeNull();
+  });
+
+  it("takes a card off a manual list's row, and doesn't offer it on a smart list's", async () => {
+    serveMockApi((api) => {
+      const row = api.home.rows.find((r) => r.kind === "list");
+      if (row)
+        api.home.rows.push({
+          ...row,
+          id: `list:${mockIds.sciFi}`,
+          list: { id: mockIds.sciFi, name: "Sci-fi", kind: "smart" },
+        });
+    });
+    const { user } = renderApp("/");
+    await screen.findByRole("heading", { name: "Watchlist" });
+    const rows = () => document.querySelectorAll<HTMLElement>('[data-row="list"]');
+    const openMenu = async (row: HTMLElement | undefined) => {
+      await user.click(
+        within(row as HTMLElement).getAllByRole("button", { name: /^More actions for/ })[0] as HTMLElement,
+      );
+      await screen.findByRole("menu");
+    };
+    await openMenu(rows()[1]);
+    expect(screen.queryByRole("menuitem", { name: /^Remove from/ })).toBeNull();
+    await user.keyboard("{Escape}");
+
+    await openMenu(rows()[0]);
+    await user.click(await screen.findByRole("menuitem", { name: "Remove from Watchlist" }));
+    await waitFor(() => expect(sent("DELETE", `/lists/${mockIds.myList}/works/${mockIds.dune}`)).toHaveLength(1));
   });
 
   it("opens a card's menu on a long press, without opening the card", async () => {
@@ -193,7 +220,7 @@ describe("Home", () => {
       "Resume",
       "Play from beginning",
       "Mark as watched",
-      "Add to favorites",
+      "Add to List",
       "Remove from Continue Watching",
       "Go to series",
       "Go to library",
@@ -235,5 +262,15 @@ describe("Home", () => {
     renderApp("/");
     expect(await screen.findByRole("heading", { name: "Continue Watching" })).toBeInTheDocument();
     expect(screen.queryByText(/Scanning/)).not.toBeInTheDocument();
+  });
+
+  it("says Home is empty, with a way to Settings, when every row is hidden", async () => {
+    serveMockApi((api) => {
+      api.home = { rows: [], allHidden: true };
+    });
+    renderApp("/");
+    expect(await screen.findByRole("heading", { name: "Your Home is empty" })).toBeInTheDocument();
+    const links = screen.getAllByRole("link", { name: "Home" });
+    expect(links.map((link) => link.getAttribute("href"))).toContain("/settings#home");
   });
 });

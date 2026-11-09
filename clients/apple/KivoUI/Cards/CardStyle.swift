@@ -3,7 +3,7 @@ import SwiftUI
 
 /// The three card shapes.
 public enum CardStyle: Sendable {
-    /// 2:3, for movies, series, seasons and collections, and episodes in Favorites.
+    /// 2:3, for movies, series, seasons and collections.
     case poster
     /// 16:9, for episodes and other videos, and in Continue Watching.
     case landscape
@@ -17,6 +17,11 @@ public enum CardStyle: Sendable {
         case "book": .square
         default: .poster
         }
+    }
+
+    /// The shape a work's card takes in a list: an episode's is a poster.
+    public static func listed(_ work: WorkSummary) -> CardStyle {
+        work.kind == "episode" ? .poster : of(work)
     }
 
     public var aspect: CGFloat {

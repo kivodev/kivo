@@ -34,6 +34,10 @@ import kotlinx.coroutines.flow.update
 /** The version and tracks chosen on a work's page for its next play; null for the server's choice. */
 data class TrackChoices(val versionId: String? = null, val audioTrackId: String? = null, val subtitleTrackId: String? = null)
 
+/** Whether the work's page says it's on My List. */
+val DetailUiState.onMyList: Boolean
+    get() = myListId != null && work?.listIds?.contains(myListId) == true
+
 data class DetailUiState(
     /** What's shown of the work: its page once read, else what a list read of it. */
     val head: WorkSummary? = null,
@@ -50,6 +54,8 @@ data class DetailUiState(
     val choices: TrackChoices = TrackChoices(),
     /** The work's download, and a season's or series' episodes to download; null on a device that keeps none. */
     val download: DownloadUiState? = null,
+    /** My List, once the lists are read. */
+    val myListId: String? = null,
 )
 
 /**
@@ -84,6 +90,12 @@ class DetailViewModel(
     /** The season asked for, by Go to series or by opening a season. */
     private val askedSeason = MutableStateFlow(seasonId ?: id.takeIf { known?.season != null })
     private val askedEpisode = seasonNumber?.let { EpisodeInfo(seasonNumber = it, number = 0, seriesId = id, seriesTitle = "", seasonId = seasonId) }
+
+    /** My List, once the lists are read. */
+    private val myListId: Flow<String?> = library.lists()
+        .map { load -> load.getOrNull()?.firstOrNull { it.builtIn }?.id }
+        .onStart { emit(null) }
+        .distinctUntilChanged()
 
     /** The season the user chose, which sticks. */
     private val chosenSeason = MutableStateFlow<String?>(null)
@@ -148,7 +160,8 @@ class DetailViewModel(
             )
         },
         downloads?.state ?: flowOf(null),
-    ) { state, download -> state.copy(download = download) }
+        myListId,
+    ) { state, download, myListId -> state.copy(download = download, myListId = myListId) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DetailUiState(head = seed()))
 
     fun chooseSeason(id: String) {
@@ -166,7 +179,10 @@ class DetailViewModel(
 
     fun setPlayed(work: WorkSummary, played: Boolean) = marks.setPlayed(work, played)
 
-    fun setFavorite(work: WorkSummary, favorite: Boolean) = marks.setFavorite(work, favorite)
+    /** Adds [work] to My List or takes it off; the live event redraws the page. */
+    fun setOnMyList(work: WorkSummary, on: Boolean) {
+        state.value.myListId?.let { marks.setOnList(it, work.id, on) }
+    }
 
     fun retry() {
         session.retryNow()

@@ -17,7 +17,7 @@ function layOut() {
   const places: Record<string, [number, number, number, number]> = {
     play: [250, 400, 250, 70],
     restart: [520, 400, 70, 70],
-    favorite: [600, 400, 70, 70],
+    "my-list": [600, 400, 70, 70],
     played: [680, 400, 70, 70],
     more: [760, 400, 70, 70],
   };
@@ -36,12 +36,12 @@ describe("Detail page on TV", () => {
     stopTv();
   });
 
-  it("focuses Play first, and Right reaches the favorite and watched buttons and the menu", async () => {
+  it("focuses Play first, and Right reaches the My List and watched buttons and the menu", async () => {
     serveMockApi();
     renderApp(`/works/${mockIds.dune}`);
     await waitFor(() => expect(focused()).toBe("play"));
     press("ArrowRight");
-    await waitFor(() => expect(focused()).toBe("favorite"));
+    await waitFor(() => expect(focused()).toBe("my-list"));
     press("ArrowRight");
     await waitFor(() => expect(focused()).toBe("played"));
     press("ArrowRight");
@@ -52,7 +52,7 @@ describe("Detail page on TV", () => {
     serveMockApi();
     renderApp(`/works/${mockIds.dune}`);
     await waitFor(() => expect(focused()).toBe("play"));
-    for (const key of ["favorite", "played", "more"]) {
+    for (const key of ["my-list", "played", "more"]) {
       press("ArrowRight");
       await waitFor(() => expect(focused()).toBe(key));
     }
@@ -72,7 +72,7 @@ describe("Detail page on TV", () => {
     press("ArrowRight");
     await waitFor(() => expect(focused()).toBe("restart"));
     press("ArrowRight");
-    await waitFor(() => expect(focused()).toBe("favorite"));
+    await waitFor(() => expect(focused()).toBe("my-list"));
     press("ArrowLeft");
     await waitFor(() => expect(focused()).toBe("restart"));
     press("Enter");

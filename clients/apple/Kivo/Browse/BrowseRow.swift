@@ -2,17 +2,19 @@ import KivoCore
 import KivoUI
 import SwiftUI
 
-/// A heading over a horizontal row of cards, as Home's rows and Favorites'
-/// are. With [more], the heading is a button with a chevron that opens
+/// A heading over a horizontal row of cards, as Home's rows are. With [more], the heading is a button with a chevron that opens
 /// everything the row starts.
 struct BrowseRow: View {
     let title: String
     let items: [WorkSummary]
     /// The shape every card takes, nil where each work's own decides.
     var style: CardStyle?
+    /// How many there are, muted after the heading's chevron.
+    var count: Int?
     var more: (() -> Void)?
     @Environment(\.kivoPalette) private var palette
     @Environment(\.wide) private var wide
+    @Environment(\.currentList) private var currentList
 
     static let headingSpacing = KivoTokens.spacing * 2.5
     static let inset = KivoTokens.spacing * 4
@@ -49,7 +51,7 @@ struct BrowseRow: View {
                 // mixed shapes is as tall as its tallest card. A row holds at most 20.
                 HStack(alignment: .top, spacing: KivoTokens.spacing * 3) {
                     ForEach(items, id: \.id) { work in
-                        let style = style ?? CardStyle.of(work)
+                        let style = style ?? (currentList == nil ? CardStyle.of(work) : CardStyle.listed(work))
                         WorkLink(work: work) {
                             WorkCard(work, style: style, width: Self.cardWidth(style, wide: wide))
                         }
@@ -69,6 +71,10 @@ struct BrowseRow: View {
                     Image(systemName: "chevron.right")
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(palette.textMuted)
+                    if let count {
+                        Text(count.formatted())
+                            .foregroundStyle(palette.textMuted)
+                    }
                 }
                 .contentShape(Rectangle())
             }

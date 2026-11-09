@@ -40,7 +40,7 @@ describe("Settings on TV", () => {
       within(list)
         .getAllByRole("button")
         .map((b) => b.textContent),
-    ).toEqual(["Account", "Playback", "Audio", "Subtitles", "Quality", "Display", "Home & libraries", "About"]);
+    ).toEqual(["Account", "Playback", "Audio", "Subtitles", "Quality", "Display", "Home", "Libraries", "About"]);
     // The first section shows, with focus on it in the list.
     await waitFor(() => expect(focused()).toBe("settings:section:account"));
     expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual(["Account"]);

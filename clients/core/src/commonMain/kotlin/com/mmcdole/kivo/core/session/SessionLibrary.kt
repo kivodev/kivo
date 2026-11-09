@@ -7,11 +7,17 @@ import com.mmcdole.kivo.api.models.BookSeriesSummary
 import com.mmcdole.kivo.api.models.Collection
 import com.mmcdole.kivo.api.models.CollectionSummary
 import com.mmcdole.kivo.api.models.Home
+import com.mmcdole.kivo.api.models.HomeRowChange
+import com.mmcdole.kivo.api.models.HomeRowInfo
 import com.mmcdole.kivo.api.models.Library
 import com.mmcdole.kivo.api.models.LibraryFacets
 import com.mmcdole.kivo.api.models.Person
 import com.mmcdole.kivo.api.models.PersonSummary
 import com.mmcdole.kivo.api.models.SearchResults
+import com.mmcdole.kivo.api.models.WorkField
+import com.mmcdole.kivo.api.models.WorkFieldValue
+import com.mmcdole.kivo.api.models.WorkList
+import com.mmcdole.kivo.api.models.WorkQuery
 import com.mmcdole.kivo.api.models.UserState
 import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.api.models.WorkSummary
@@ -19,7 +25,6 @@ import com.mmcdole.kivo.api.models.WorkSummaryPage
 import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.Reachability
 import com.mmcdole.kivo.core.auth.ServerConnection
-import com.mmcdole.kivo.core.data.FavoritesRepository
 import com.mmcdole.kivo.core.data.GridPage
 import com.mmcdole.kivo.core.data.GridPager
 import com.mmcdole.kivo.core.data.GridQuery
@@ -28,6 +33,7 @@ import com.mmcdole.kivo.core.data.Heading
 import com.mmcdole.kivo.core.data.HomeRepository
 import com.mmcdole.kivo.core.data.Known
 import com.mmcdole.kivo.core.data.LibraryRepository
+import com.mmcdole.kivo.core.data.ListsRepository
 import com.mmcdole.kivo.core.data.SearchRepository
 import com.mmcdole.kivo.core.data.UserStateRepository
 import com.mmcdole.kivo.core.data.WorkRepository
@@ -43,7 +49,7 @@ import kotlinx.coroutines.flow.onEach
 
 /**
  * What the session reads of the server's libraries ([KivoSession.library]):
- * Home, the user's libraries, favorites, works, people, book series and
+ * Home, the user's libraries and lists, works, people, book series and
  * collections, the grids, search, and the user's marks on works. Each read
  * is a Flow of [Load], read again as the live events say and asked again
  * while the server can't be reached; what it has read lately shows at once
@@ -57,7 +63,7 @@ class SessionLibrary internal constructor(
     preferences: DataStore<Preferences>,
 ) {
     private val works = WorkRepository(connection, invalidations)
-    private val favoriteWorks = FavoritesRepository(connection, invalidations)
+    private val listWorks = ListsRepository(connection, invalidations)
     private val grid = GridRepository(connection, invalidations)
     private val userState = UserStateRepository(connection)
 
@@ -67,21 +73,78 @@ class SessionLibrary internal constructor(
 
     private val seen = Known()
 
-    fun home(): Flow<Load<Home>> = reachability.load(HomeRepository(connection, invalidations).home().onEach(seen::read))
+    private val homeLayout = HomeRepository(connection, invalidations)
 
-    /** The first page of one `WorkKind`'s favorites, [limit] long or the server's page, most recently marked first; its `total` says whether there are any. */
-    fun favorites(kind: String, limit: Int?): Flow<Load<WorkSummaryPage>> =
-        reachability.load(favoriteWorks.favorites(kind, limit).onEach { seen.read(it.items) })
+    fun home(): Flow<Load<Home>> = reachability.load(homeLayout.home().onEach(seen::read))
 
-    /** How many works the user marked a favorite, as it changes. */
-    fun favoritesCount(): Flow<Load<Int>> = reachability.load(favoriteWorks.count())
+    /** Home's rows of one `HomeRowKind`, shown or not. */
+    fun home(kind: String): Flow<Load<Home>> = reachability.load(homeLayout.home(kind))
 
-    /** One kind's favorites as a grid, most recently marked first, read again in place as they change. */
-    fun pagedFavorites(kind: String): GridPager<WorkSummary> = paged(
-        "favorites $kind",
-        favoriteWorks.changes(),
+    /** Every row of Home, in order, shown or not, read again as the layout changes. */
+    fun homeRows(): Flow<Load<List<HomeRowInfo>>> = reachability.load(homeLayout.rows())
+
+    /**
+     * Sets the rows' order and which are shown, rows left out following the
+     * listed ones; the layout as the server has it. [homeRows] reads it
+     * again from the live event.
+     */
+    @Throws(Exception::class)
+    suspend fun setHomeRows(rows: List<HomeRowChange>): List<HomeRowInfo> = homeLayout.setRows(rows)
+
+    /** Forgets the order and hidden rows; the layout as the server has it. */
+    @Throws(Exception::class)
+    suspend fun resetHomeRows(): List<HomeRowInfo> = homeLayout.resetRows()
+
+    /** The user's lists, My List first, read again as they change. */
+    fun lists(counted: Boolean = false): Flow<Load<List<WorkList>>> = reachability.load(listWorks.lists(counted))
+
+    /** The first page of a list's works of [kinds], or every kind when null, [limit] long or the server's page, most recently added first. */
+    fun listWorks(listId: String, limit: Int?, kinds: List<String>?): Flow<Load<WorkSummaryPage>> =
+        reachability.load(listWorks.works(listId, limit, kinds).onEach { seen.read(it.items) })
+
+    /** A list's works of [kinds], or every kind when null, as a grid, most recently added first, read again in place as they change. */
+    fun pagedListWorks(listId: String, kinds: List<String>?): GridPager<WorkSummary> = paged(
+        "list $listId $kinds",
+        listWorks.changes(),
         seen::read,
-    ) { offset, limit -> favoriteWorks.page(kind, offset, limit).let { GridPage(it.items, it.total, it.letters) } }
+    ) { offset, limit -> listWorks.page(listId, offset, limit, kinds).let { GridPage(it.items, it.total, it.letters) } }
+
+    @Throws(Exception::class)
+    suspend fun createList(name: String): WorkList = listWorks.create(name)
+
+    /** Makes a smart list that runs [query]. */
+    @Throws(Exception::class)
+    suspend fun createSmartList(name: String, query: WorkQuery): WorkList = listWorks.create(name, query)
+
+    /** Renames a list when [name] is given and, for a smart list, replaces its rules with [query] when given, as one change. */
+    @Throws(Exception::class)
+    suspend fun updateList(id: String, name: String?, query: WorkQuery? = null): WorkList = listWorks.update(id, name, query)
+
+    /** How many works [query] selects, for a builder's live count. */
+    @Throws(Exception::class)
+    suspend fun countMatching(query: WorkQuery): Int = listWorks.countMatching(query)
+
+    /** The fields a rule can use, for a builder. */
+    @Throws(Exception::class)
+    suspend fun workFields(): List<WorkField> = listWorks.fields()
+
+    /** A field's values the user can see: those matching [search], or the ones named by [ids]. */
+    @Throws(Exception::class)
+    suspend fun workFieldValues(field: String, search: String?, ids: List<String>?): List<WorkFieldValue> =
+        listWorks.values(field, search, ids)
+
+    /** The names of [query]'s chosen values, by `SmartLists.nameKey`, as far as they can be read. */
+    @Throws(Exception::class)
+    suspend fun smartListNames(query: WorkQuery, fields: List<WorkField>): Map<String, String> = listWorks.names(query, fields)
+
+    @Throws(Exception::class)
+    suspend fun deleteList(id: String) = listWorks.delete(id)
+
+    @Throws(Exception::class)
+    suspend fun addToList(listId: String, workId: String) = listWorks.add(listId, workId)
+
+    @Throws(Exception::class)
+    suspend fun removeFromList(listId: String, workId: String) = listWorks.remove(listId, workId)
 
     /**
      * The libraries the user sees, in their order, read again as they change
@@ -190,9 +253,6 @@ class SessionLibrary internal constructor(
 
     @Throws(Exception::class)
     suspend fun setPlayed(workId: String, played: Boolean): UserState = userState.setPlayed(workId, played)
-
-    @Throws(Exception::class)
-    suspend fun setFavorite(workId: String, favorite: Boolean): UserState = userState.setFavorite(workId, favorite)
 
     /** Takes a work out of Continue Watching or Continue Listening until it's played again; an episode takes its series. */
     @Throws(Exception::class)

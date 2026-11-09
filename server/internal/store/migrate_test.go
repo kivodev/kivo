@@ -108,6 +108,177 @@ func TestMigrationExternalSubtitles(t *testing.T) {
 	}
 }
 
+// 0059 hides the Recently Added rows of unpinned libraries, and Continue
+// Listening for a user with audiobooks libraries, every one unpinned. A
+// library with no user_library row counts as pinned, and a user's other
+// rows stay out of the new table.
+func TestMigrationHomeRows(t *testing.T) {
+	ctx := context.Background()
+	db, path := testDB(t, through(t, "_continue_removed.sql"))
+	err := db.Write(ctx, func(ctx context.Context, tx *Tx) error {
+		_, err := tx.ExecContext(ctx, `
+			INSERT INTO user (id, username, admin, all_libraries, created_at) VALUES
+				(x'a1', 'unpinned', 0, 1, 1),
+				(x'a2', 'someleft', 0, 1, 1),
+				(x'a3', 'granted', 0, 0, 1),
+				(x'a4', 'nobooks', 0, 0, 1),
+				(x'a5', 'allpinned', 0, 1, 1);
+			INSERT INTO library (id, name, kind, created_at) VALUES
+				(x'b1000000000000000000000000000000', 'Movies', 'movies', 1),
+				(x'b2000000000000000000000000000000', 'Books', 'audiobooks', 2),
+				(x'b3000000000000000000000000000000', 'More Books', 'audiobooks', 3);
+			INSERT INTO library_grant (user_id, library_id) VALUES (x'a3', x'b2000000000000000000000000000000'), (x'a3', x'b1000000000000000000000000000000');
+			INSERT INTO user_library (user_id, library_id, position, pinned) VALUES
+				(x'a1', x'b1000000000000000000000000000000', 0, 0), (x'a1', x'b2000000000000000000000000000000', 1, 0), (x'a1', x'b3000000000000000000000000000000', 2, 0),
+				(x'a2', x'b2000000000000000000000000000000', 0, 0),
+				(x'a3', x'b1000000000000000000000000000000', 0, 1), (x'a3', x'b2000000000000000000000000000000', 1, 0);`)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+
+	up, err := open(ctx, path, embeddedMigrations(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer up.Close()
+	rows, err := up.Reader().QueryContext(ctx, `
+		SELECT hex(user_id), row_id, position IS NULL, shown FROM user_home_row ORDER BY user_id, row_id`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for rows.Next() {
+		var u, r string
+		var null, shown int
+		if err := rows.Scan(&u, &r, &null, &shown); err != nil {
+			t.Fatal(err)
+		}
+		got = append(got, fmt.Sprintf("%s %s %d %d", u, r, null, shown))
+	}
+	rows.Close()
+	want := []string{
+		"A1 continueListening 1 0",
+		"A1 recentlyAdded:b1000000-0000-0000-0000-000000000000 1 0",
+		"A1 recentlyAdded:b2000000-0000-0000-0000-000000000000 1 0",
+		"A1 recentlyAdded:b3000000-0000-0000-0000-000000000000 1 0",
+		"A2 recentlyAdded:b2000000-0000-0000-0000-000000000000 1 0",
+		"A3 continueListening 1 0",
+		"A3 recentlyAdded:b2000000-0000-0000-0000-000000000000 1 0",
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("user_home_row after 0059:\n%q\nwant\n%q", got, want)
+	}
+}
+
+// 0060 creates My List for every user and leaves user_state without the
+// old columns.
+func TestMigrationLists(t *testing.T) {
+	ctx := context.Background()
+	db, path := testDB(t, through(t, "_home_rows.sql"))
+	err := db.Write(ctx, func(ctx context.Context, tx *Tx) error {
+		_, err := tx.ExecContext(ctx, `
+			INSERT INTO user (id, username, admin, all_libraries, created_at) VALUES
+				(x'a1', 'anna', 0, 1, 1), (x'a2', 'bob', 0, 1, 1);`)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+	up, err := open(ctx, path, embeddedMigrations(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer up.Close()
+	var lists int
+	err = up.Reader().QueryRowContext(ctx, `SELECT count(*) FROM list WHERE built_in AND name = 'Watchlist'`).Scan(&lists)
+	if err != nil || lists != 2 {
+		t.Fatalf("after 0060: %d My Lists, %v", lists, err)
+	}
+	if err := up.Reader().QueryRowContext(ctx, `SELECT favorite FROM user_state LIMIT 1`).Scan(new(int)); err == nil {
+		t.Fatal("user_state still has favorite")
+	}
+}
+
+// 0063 calls the built-in list Watchlist, and a list a user had already
+// named that takes the built-in list's old name.
+func TestMigrationWatchlist(t *testing.T) {
+	ctx := context.Background()
+	db, path := testDB(t, through(t, "_smart_lists.sql"))
+	err := db.Write(ctx, func(ctx context.Context, tx *Tx) error {
+		_, err := tx.ExecContext(ctx, `
+			INSERT INTO user (id, username, admin, all_libraries, created_at) VALUES
+				(x'a1', 'anna', 0, 1, 1), (x'a2', 'bob', 0, 1, 1);
+			INSERT INTO list (id, user_id, name, built_in, created_at) VALUES
+				(x'c1', x'a1', 'My List', 1, 1), (x'c2', x'a1', 'watchlist', 0, 1),
+				(x'c3', x'a2', 'My List', 1, 1), (x'c4', x'a2', 'Road Trip', 0, 1);`)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+	up, err := open(ctx, path, embeddedMigrations(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer up.Close()
+	for id, want := range map[string]string{"c1": "Watchlist", "c2": "My List", "c3": "Watchlist", "c4": "Road Trip"} {
+		var name string
+		if err := up.Reader().QueryRowContext(ctx, `SELECT name FROM list WHERE hex(id) = upper(?)`, id).Scan(&name); err != nil || name != want {
+			t.Errorf("list %s: %q, %v; want %q", id, name, err, want)
+		}
+	}
+}
+
+// 0061 stores each work's release date as its earliest day, for the grid's
+// release sort.
+func TestMigrationReleaseKey(t *testing.T) {
+	ctx := context.Background()
+	db, path := testDB(t, through(t, "_lists.sql"))
+	err := db.Write(ctx, func(ctx context.Context, tx *Tx) error {
+		_, err := tx.ExecContext(ctx, `
+			INSERT INTO library (id, name, kind, created_at) VALUES (x'b1', 'Movies', 'movies', 1);
+			INSERT INTO work (id, kind, root_id, title, sort_title, year, release_date, added_at) VALUES
+				(x'01', 'movie', x'01', 'Full', 'Full', 2010, '2010-05-09', 1),
+				(x'02', 'movie', x'02', 'Partial', 'Partial', 2011, '2011-03', 1),
+				(x'03', 'movie', x'03', 'Year', 'Year', 2012, NULL, 1),
+				(x'04', 'movie', x'04', 'None', 'None', NULL, NULL, 1);
+			INSERT INTO work_library (library_id, work_id, is_root, sort_title, added_at) VALUES
+				(x'b1', x'01', 1, 'Full', 1), (x'b1', x'02', 1, 'Partial', 1),
+				(x'b1', x'03', 1, 'Year', 1), (x'b1', x'04', 1, 'None', 1);`)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+	up, err := open(ctx, path, embeddedMigrations(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer up.Close()
+	rows, err := up.Reader().QueryContext(ctx, `SELECT release_key FROM work_library ORDER BY work_id`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	var got []string
+	for rows.Next() {
+		var k string
+		if err := rows.Scan(&k); err != nil {
+			t.Fatal(err)
+		}
+		got = append(got, k)
+	}
+	if want := []string{"2010-05-09", "2011-03-01", "2012-01-01", ""}; !slices.Equal(got, want) {
+		t.Errorf("release keys %q, want %q", got, want)
+	}
+}
+
 // 0057 makes the problem codes problemRaised events keep camelCase, in
 // their codes and their problems' IDs, and leaves other events and codes
 // as they were.

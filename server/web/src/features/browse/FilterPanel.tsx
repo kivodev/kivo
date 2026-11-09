@@ -190,8 +190,6 @@ export function FilterPanel({ facets, labels, books }: Props) {
   const [open, setOpen] = useState(false);
   useTvDialog(open, () => setOpen(false));
   const anyOption = { id: any, label: <Trans>Any</Trans> };
-  const favorite = search.favorite === true;
-  const toggleFavorite = (on: boolean) => setSearch(set(search, "favorite", on ? true : undefined));
 
   return (
     <DialogTrigger isOpen={open} onOpenChange={setOpen}>
@@ -300,20 +298,6 @@ export function FilterPanel({ facets, labels, books }: Props) {
                   )
                 }
               />
-            )}
-            {isTv ? (
-              <TvOption
-                focusKey="filter:favorite"
-                selected={favorite}
-                onPress={() => toggleFavorite(!favorite)}
-                className="self-start"
-              >
-                {labels.favorite}
-              </TvOption>
-            ) : (
-              <Checkbox isSelected={favorite} onChange={toggleFavorite} className={`${optionClass} self-start`}>
-                {labels.favorite}
-              </Checkbox>
             )}
             {isAdmin && !isTv && (
               <SingleChoice

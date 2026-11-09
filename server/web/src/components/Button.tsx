@@ -25,7 +25,7 @@ export function buttonClass(variant: ButtonVariant = "secondary", size: ButtonSi
     "inline-flex shrink-0 cursor-pointer items-center justify-center rounded-md transition-colors select-none touch-target",
     "disabled:opacity-50 data-disabled:opacity-50 data-disabled:cursor-default",
     variants[variant],
-    // A toggle that's on, such as favorite. The attribute selector outranks
+    // A toggle that's on, such as My List. The attribute selector outranks
     // the variant's text colour wherever either lands in the stylesheet.
     "aria-pressed:text-accent",
     sizes[size],

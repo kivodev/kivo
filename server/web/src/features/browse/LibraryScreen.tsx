@@ -17,6 +17,8 @@ import { Icon } from "@/components/Icon";
 import { LetterRail, letterAt, letterOffset, type RailLetter } from "@/components/LetterRail";
 import { LoadError } from "@/components/LoadError";
 import { CountSkeleton, GridSkeleton, LibrarySkeleton, NumberSkeleton } from "@/components/Skeleton";
+import { SmartListDialog } from "@/features/lists/SmartListDialog";
+import { queryFromGrid } from "@/features/lists/smartQuery";
 import { formatCommunityRating, formatRuntime } from "@/i18n/format";
 import { isTv } from "@/tv/flag";
 import { TvFocusable, TvFocusGroup } from "@/tv/focus";
@@ -98,6 +100,7 @@ export function LibraryScreen() {
   // when not selecting.
   const [selected, setSelected] = useState<Set<string> | undefined>(undefined);
   const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
   const chips = filterChips(search, labels, isAdmin, facets.narrators);
   // The header's controls take focus once the grid has first shown, so the
   // screen's initial focus is the grid's first card, not a control above it.
@@ -239,6 +242,12 @@ export function LibraryScreen() {
                   <Trans>Clear all</Trans>
                 </Button>
               </HeaderFocusable>
+              {!isTv && tab === "library" && chips.some((chip) => chip.key !== "matchState") && (
+                <Button size="sm" variant="ghost" onPress={() => setSaving(true)}>
+                  <Icon name="sparkle" className="size-4 text-accent" />
+                  <Trans>Save as Smart List</Trans>
+                </Button>
+              )}
             </div>
           )}
           {ready || !listing ? (
@@ -342,6 +351,9 @@ export function LibraryScreen() {
           setSelected(undefined);
         }}
       />
+      {saving && (
+        <SmartListDialog name={library.name} query={queryFromGrid(library, search)} onClose={() => setSaving(false)} />
+      )}
     </div>
   );
 }

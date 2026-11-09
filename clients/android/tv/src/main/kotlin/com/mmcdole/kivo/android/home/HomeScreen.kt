@@ -63,7 +63,9 @@ import com.mmcdole.kivo.android.ui.SeeAllCard
 import com.mmcdole.kivo.android.ui.Screen
 import com.mmcdole.kivo.android.ui.SkeletonGate
 import com.mmcdole.kivo.android.ui.SkeletonRow
+import com.mmcdole.kivo.android.lists.tvWorkKinds
 import com.mmcdole.kivo.android.ui.WorkCard
+import com.mmcdole.kivo.android.ui.cardShapeOf
 import com.mmcdole.kivo.android.ui.awaitSettled
 import com.mmcdole.kivo.android.ui.cardWidth
 import com.mmcdole.kivo.android.ui.focusKey
@@ -83,13 +85,13 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 /** Home's rows the TV shows, with the libraries it shows. */
-data class HomeUi(val rows: List<ShownRow>, val libraries: List<Library>)
+data class HomeUi(val rows: List<ShownRow>, val libraries: List<Library>, val allHidden: Boolean = false)
 
 /** A row as Home shows it: the library that names it, if it's a library's, and its cards' shape. */
 data class ShownRow(val row: HomeRow, val library: Library?, val shape: CardShape)
 
 /** The row kinds the TV shows: no book rows, and no kind it doesn't know. */
-private val tvRows = setOf("continueWatching", "recentlyAdded", "favorites")
+internal val tvRows = setOf("continueWatching", "recentlyAdded", "list")
 
 /**
  * The [rows] the TV shows, among the [libraries] it shows: empty rows and
@@ -98,7 +100,9 @@ private val tvRows = setOf("continueWatching", "recentlyAdded", "favorites")
  */
 fun shownRows(rows: List<HomeRow>, libraries: List<Library>): List<ShownRow> {
     val byId = libraries.associateBy { it.id }
-    return rows.mapNotNull { row ->
+    return rows.mapNotNull { listed ->
+        // A list can hold books, which aren't on the TV; a row left with none shows nothing.
+        val row = if (listed.kind == "list") listed.copy(items = listed.items.filter { it.kind in tvWorkKinds }) else listed
         val id = row.library?.id
         val library = id?.let(byId::get)
         when {
@@ -115,14 +119,14 @@ class HomeViewModel(session: ServerSession) : ViewModel() {
         combine(session.session.library.home(), session.session.library.libraries()) { home, libraries ->
             home.with(libraries) { home, libraries ->
                 val shown = tvLibraries(libraries)
-                HomeUi(shownRows(home.rows, shown), shown)
+                HomeUi(shownRows(home.rows, shown), shown, home.allHidden == true)
             }
         }.onEach { load ->
             // The cards' blurhashes are decoded here, off the main thread, so a row that comes into view draws
             // them at once rather than decoding them as it's composed.
             val rows = load.getOrNull()?.rows ?: return@onEach
             withContext(Dispatchers.Default) {
-                rows.forEach { shown -> shown.row.items.forEach { prepareCard(it, shown.shape) } }
+                rows.forEach { shown -> shown.row.items.forEach { prepareCard(it, if (shown.row.kind == "list") cardShapeOf(it) else shown.shape) } }
             }
         }
     }
@@ -145,6 +149,7 @@ fun HomeScreen(session: ServerSession, navigator: Navigator) {
             val empty = when {
                 ui.libraries.isEmpty() && user?.admin == true -> R.string.empty_no_libraries_admin to R.string.empty_no_libraries_admin_sentence
                 ui.libraries.isEmpty() -> R.string.empty_no_libraries to R.string.empty_no_libraries_sentence
+                ui.rows.isEmpty() && ui.allHidden -> R.string.empty_home to R.string.empty_home_sentence
                 ui.rows.isEmpty() -> R.string.empty_nothing_yet to R.string.empty_nothing_yet_sentence
                 else -> null
             }
@@ -179,7 +184,7 @@ private val FocusedCardsTop = RowsTop + RowCardsBelow
  */
 private val RowsPadding = PaddingValues(start = 24.dp, top = RowsTop, bottom = 250.dp)
 
-/** Home while it loads: a row of landscape cards and a row of posters, as Continue Watching and Favorites are laid out. */
+/** Home while it loads: a row of landscape cards and a row of posters, as Continue Watching and My List are laid out. */
 @Composable
 private fun HomeSkeleton() {
     Column(Modifier.fillMaxSize().padding(start = 24.dp, top = RowsTop), verticalArrangement = Arrangement.spacedBy(RowGap)) {
@@ -269,15 +274,16 @@ private fun Rows(ui: HomeUi, navigator: Navigator) {
                 val menu = if (row.kind == "continueWatching") LocalContinueWatchingMenu.current else LocalWorkMenu.current
                 // Raised with its focused card, so the card's glow lies over the row below.
                 Column(Modifier.raisedOnFocus()) {
-                    RowTitle(rowTitle(row, library), Modifier.padding(RowTitlePadding))
+                    RowTitle(rowTitle(row.kind, library?.name, row.list?.name), Modifier.padding(RowTitlePadding))
                     CompositionLocalProvider(LocalWorkMenu provides menu, LocalArtworkShown provides artwork, LocalCaptionsShown provides captions, LocalCardLight provides cardLight) {
                         CardRow(state = cards) {
-                            items(row.items, key = { it.id }, contentType = { shape }) { work ->
+                            items(row.items, key = { it.id }, contentType = { if (row.kind == "list") cardShapeOf(it) else shape }) { work ->
                                 val key = "${row.id}/${work.id}"
+                                val cardShape = if (row.kind == "list") cardShapeOf(work) else shape
                                 WorkCard(
                                     work = work,
-                                    shape = shape,
-                                    width = cardWidth(shape),
+                                    shape = cardShape,
+                                    width = cardWidth(cardShape),
                                     onClick = { navigator.push(Screen.Work(work.id)) },
                                     modifier = Modifier
                                         .focusKey(memory, key)
@@ -289,14 +295,14 @@ private fun Rows(ui: HomeUi, navigator: Navigator) {
                                         },
                                 )
                             }
-                            // Favorites ends in a card that opens the Favorites page.
-                            if (row.kind == "favorites") {
+                            // A list ends in a card that opens the list.
+                            row.list?.let { list ->
                                 item(key = "all", contentType = "all") {
                                     SeeAllCard(
                                         detail = null,
                                         shape = shape,
                                         width = cardWidth(shape),
-                                        onClick = { navigator.push(Screen.Favorites) },
+                                        onClick = { navigator.push(Screen.ListWorks(list.id, list.name)) },
                                         modifier = Modifier
                                             .focusKey(memory, "${row.id}/all")
                                             .onFocusChanged { if (it.isFocused) atFirst = false },
@@ -313,8 +319,8 @@ private fun Rows(ui: HomeUi, navigator: Navigator) {
 }
 
 @Composable
-private fun rowTitle(row: HomeRow, library: Library?): String = when (row.kind) {
+internal fun rowTitle(kind: String, libraryName: String?, listName: String?): String = when (kind) {
     "continueWatching" -> stringResource(R.string.row_continue_watching)
-    "favorites" -> stringResource(R.string.row_favorites)
-    else -> library?.let { stringResource(R.string.row_recently_added_in, it.name) } ?: stringResource(R.string.row_recently_added)
+    "list" -> listName.orEmpty()
+    else -> libraryName?.let { stringResource(R.string.row_recently_added_in, it) } ?: stringResource(R.string.row_recently_added)
 }

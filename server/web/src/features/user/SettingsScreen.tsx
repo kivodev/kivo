@@ -1,9 +1,10 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { type ReactNode, Suspense, useState } from "react";
+import { homeQueries, homeRowKinds, useResetHomeRows, useSaveHomeRows } from "@/api/home";
 import { libraryQueries, useSaveLibraries } from "@/api/libraries";
 import { errorCode } from "@/api/problem";
-import type { PlaybackPreferencesUpdate, SubtitleMode } from "@/api/schemas";
+import type { HomeRowInfo, PlaybackPreferencesUpdate, SubtitleMode } from "@/api/schemas";
 import { serverQueries, useQualityLadder } from "@/api/server";
 import { useChangeServer } from "@/api/session";
 import { currentUserQueries, useUpdateCurrentUser } from "@/api/users";
@@ -35,6 +36,7 @@ import { TvControl } from "@/tv/forms/TvControl";
 import { currentTvFocus, focusTv, isTvFocusIn } from "@/tv/spatial";
 import { ChangePasswordDialog } from "./ChangePasswordDialog";
 import { CreditsDialog } from "./CreditsDialog";
+import { HomeRowOrder, HomeRowsTv } from "./HomeRowsEditor";
 import { LibraryOrder, LibraryPins } from "./LibraryOrder";
 import { Sessions, SignOutHereButton } from "./Sessions";
 import { TvVersions } from "./TvVersions";
@@ -75,6 +77,7 @@ export function SettingsScreen() {
           <SubtitlesSection {...device} />
           <QualitySection {...device} />
           <AppearanceSection {...device} />
+          <HomeSection />
           <LibrariesSection />
           <AboutSection />
         </SettingsLayout>
@@ -99,7 +102,8 @@ function TvSettings(device: DeviceProps) {
     { id: "subtitles", label: <Trans>Subtitles</Trans>, content: <SubtitlesSection {...device} /> },
     { id: "quality", label: <Trans>Quality</Trans>, content: <QualitySection {...device} /> },
     { id: "appearance", label: <Trans>Display</Trans>, content: <AppearanceSection {...device} /> },
-    { id: "libraries", label: <Trans>Home & libraries</Trans>, content: <LibrariesSection /> },
+    { id: "home", label: <Trans>Home</Trans>, content: <HomeSection /> },
+    { id: "libraries", label: <Trans>Libraries</Trans>, content: <LibrariesSection /> },
     { id: "about", label: <Trans>About</Trans>, content: <AboutSection /> },
   ];
   const [shown, setShown] = useState("account");
@@ -424,13 +428,63 @@ function AppearanceSection({ device, change }: DeviceProps) {
   );
 }
 
+function HomeSection() {
+  const { t } = useLingui();
+  const layout = useSuspenseQuery(homeQueries.layout()).data.items;
+  const rows = layout.filter((r) => homeRowKinds.has(r.kind));
+  const saving = useSaveHomeRows();
+  const reset = useResetHomeRows();
+  const error = saving.error ?? reset.error;
+  const problem = error ? describeProblem(errorCode(error)) : undefined;
+  // Kinds this client doesn't show keep their slots; the rows it shows fill the others in their new order.
+  const save = (next: HomeRowInfo[]) => {
+    let shown = 0;
+    saving.save(
+      layout.map((row) => (homeRowKinds.has(row.kind) ? (next[shown++] ?? row) : row)),
+      reset.reset,
+    );
+  };
+  const resetHome = () => reset.mutate({}, { onSuccess: () => saving.reset() });
+  const retry = () => (reset.isError ? resetHome() : saving.retry(reset.reset));
+  return (
+    <SettingsSection id="home" title={<Trans>Home</Trans>}>
+      <SettingsCard
+        scope="account"
+        footer={
+          problem ? (
+            <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span role="alert" className="text-danger">
+                {t`Couldn't save. ${problem}`}
+              </span>
+              <TvControl focusKey="home-rows:retry">
+                <Button size="sm" variant="ghost" onPress={retry}>
+                  <Trans>Retry</Trans>
+                </Button>
+              </TvControl>
+            </span>
+          ) : undefined
+        }
+      >
+        {isTv ? <HomeRowsTv rows={rows} onChange={save} /> : <HomeRowOrder rows={rows} onChange={save} />}
+        <SettingsRow label={<Trans>Reset Home</Trans>}>
+          <TvControl focusKey="home-rows:reset">
+            <Button size="sm" variant="ghost" onPress={resetHome}>
+              <Trans>Reset</Trans>
+            </Button>
+          </TvControl>
+        </SettingsRow>
+      </SettingsCard>
+    </SettingsSection>
+  );
+}
+
 function LibrariesSection() {
   const { t } = useLingui();
   const libraries = useSuspenseQuery(libraryQueries.list()).data.items;
   const saving = useSaveLibraries();
   const problem = saving.isError ? describeProblem(errorCode(saving.error)) : undefined;
   return (
-    <SettingsSection id="libraries" title={<Trans>Home & libraries</Trans>}>
+    <SettingsSection id="libraries" title={<Trans>Libraries</Trans>}>
       {libraries.length > 0 ? (
         <SettingsCard
           scope="account"
@@ -447,7 +501,7 @@ function LibrariesSection() {
                 </TvControl>
               </span>
             ) : (
-              <Trans>Unchecked libraries are hidden from the sidebar and Home.</Trans>
+              <Trans>Unchecked libraries are hidden from the sidebar.</Trans>
             )
           }
         >

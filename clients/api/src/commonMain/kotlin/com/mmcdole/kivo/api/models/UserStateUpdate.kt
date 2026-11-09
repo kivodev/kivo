@@ -32,7 +32,6 @@ import kotlinx.serialization.encoding.*
  * 
  *
  * @param played 
- * @param favorite 
  * @param positionMs An offline position on the version's timeline; needs `playedAt` and `versionId`.
  * @param playedAt When the app saw the offline position.
  * @param versionId The version the offline position is in, the one downloaded.
@@ -42,8 +41,6 @@ import kotlinx.serialization.encoding.*
 data class UserStateUpdate (
 
     @SerialName(value = "played") val played: kotlin.Boolean? = null,
-
-    @SerialName(value = "favorite") val favorite: kotlin.Boolean? = null,
 
     /* An offline position on the version's timeline; needs `playedAt` and `versionId`. */
     @SerialName(value = "positionMs") val positionMs: kotlin.Int? = null,

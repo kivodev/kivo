@@ -99,7 +99,7 @@ fun SearchScreen(session: ServerSession, nav: MobileNav) {
             results.works.isEmpty() && results.people.isEmpty() && results.collections.isEmpty() -> Message(stringResource(R.string.mobile_no_results, answer.query), null) {
                 TextButton(onClick = { model.setQuery("") }) { Text(stringResource(R.string.mobile_clear_search)) }
             }
-            else -> WorkMenuHost({ action, work -> nav.handle(action, work, model.marks) }) { openMenu ->
+            else -> WorkMenuHost({ action, menu -> nav.handle(action, menu, model.marks) }) { openMenu ->
                 Results(results, nav, openMenu, Modifier.alpha(if (state.searching) 0.5f else 1f))
             }
         }

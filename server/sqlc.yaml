@@ -37,11 +37,13 @@ overrides:
         go_type: bool
       - column: user_library.pinned
         go_type: bool
+      - column: user_home_row.shown
+        go_type: bool
       - column: user_state.played
         go_type: bool
       - column: user_state.resumable
         go_type: bool
-      - column: user_state.favorite
+      - column: list.built_in
         go_type: bool
       - column: work.provisional
         go_type: bool
@@ -131,6 +133,12 @@ sql:
           - column: user_library.user_id
             go_type: github.com/mmcdole/kivo/internal/id.ID
           - column: user_library.library_id
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+          - column: user_home_row.user_id
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+          - column: list.id
+            go_type: github.com/mmcdole/kivo/internal/id.ID
+          - column: list.user_id
             go_type: github.com/mmcdole/kivo/internal/id.ID
   - engine: sqlite
     schema: internal/store/migrations

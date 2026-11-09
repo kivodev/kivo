@@ -545,8 +545,9 @@ export interface paths {
          * @description Changes the caller's preferences.
          *     Every client of the user gets the change: playback applies the
          *     languages, subtitle mode and `rememberTracks` to the next play, and
-         *     `libraries` orders the library list and Home. A
-         *     library the user doesn't see, or one listed twice, is `400`.
+         *     `libraries` orders the library list, and Recently Added on a Home
+         *     that isn't arranged. A library the user doesn't see, or one listed
+         *     twice, is `400`.
          */
         patch: operations["updateCurrentUser"];
         trace?: never;
@@ -1001,7 +1002,9 @@ export interface paths {
         };
         /**
          * Get Home rows
-         * @description The user's Home rows. Empty rows are left out.
+         * @description The user's Home rows that are shown, in the user's order, on every
+         *     client. With `kind`, the rows of those kinds, shown or not. Empty
+         *     rows are left out. A hidden row is left out for a Cast device too.
          */
         get: operations["getHome"];
         put?: never;
@@ -1012,7 +1015,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/favorites": {
+    "/api/v1/home/rows": {
         parameters: {
             query?: never;
             header?: never;
@@ -1020,19 +1023,166 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List favorites
-         * @description Favorites in libraries the user sees, most recently marked first:
-         *     one kind with `kind`, else every kind. A page grouped by kind asks
-         *     for each kind's first page, whose `total` says whether it has any.
-         *     Summaries are as everywhere: an episode's has its series' title and
-         *     poster and its season and episode numbers. A grid, paged by
-         *     `offset`, with `total` on every page; works marked at the same time
-         *     are listed by title.
+         * List Home rows
+         * @description Every row of the user's Home, in order, shown or not, including
+         *     rows with no works. For the Home & Libraries editor.
          */
-        get: operations["listFavorites"];
+        get: operations["listHomeRows"];
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change the Home layout
+         * @description Places the listed rows first, in the order given. A row left out
+         *     keeps whether it's shown and follows the listed rows. A well-formed
+         *     `id` of a row that no longer exists is ignored; a malformed or
+         *     repeated `id` is `400`. A Home once changed here is arranged: a new
+         *     library's Recently Added row joins the end shown, and a row of a
+         *     new built-in kind joins off. A `homeChanged` event tells the user's
+         *     clients.
+         */
+        patch: operations["updateHomeRows"];
+        trace?: never;
+    };
+    "/api/v1/home/rows/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset the Home layout
+         * @description Forgets the user's order and hidden rows, so Home returns to the
+         *     default order with every built-in row shown. Lists remain, off
+         *     Home, except Watchlist. A `homeChanged` event
+         *     tells the user's clients.
+         */
+        post: operations["resetHomeRows"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the user's lists
+         * @description The user's lists, Watchlist first, then by name.
+         */
+        get: operations["listLists"];
+        put?: never;
+        /**
+         * Create a list
+         * @description Makes a manual list, or with `smart` a smart list that runs the
+         *     rules; its kind is fixed. Rules are validated: `400` with pointers
+         *     such as `/smart/query/where/rules/0/op`. A new list starts off
+         *     Home; Home & Libraries in Settings puts it on. A name in use is `409` with code
+         *     `nameTaken`; a user has at most 100 lists, past which it is `409`
+         *     with code `conflict`. A `listsChanged` event tells the user's
+         *     clients.
+         */
+        post: operations["createList"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lists/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["ID"];
+            };
+            cookie?: never;
+        };
+        /** Get a list */
+        get: operations["getList"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete a list
+         * @description Deletes the list, not its works. Watchlist can't be deleted: `409`
+         *     with code `conflict`. A `listsChanged` event tells the user's
+         *     clients.
+         */
+        delete: operations["deleteList"];
+        options?: never;
+        head?: never;
+        /**
+         * Update a list
+         * @description Renames the list, replaces a smart list's rules, or both, in one
+         *     change. Watchlist can't be changed, and `smart` is refused on a manual
+         *     list: `409` with code `conflict`. A name in use is `409` with code
+         *     `nameTaken`. Invalid rules are `400` with pointers such as
+         *     `/smart/query/where/rules/0/op`. A `listsChanged` event tells the
+         *     user's clients.
+         */
+        patch: operations["updateList"];
+        trace?: never;
+    };
+    "/api/v1/lists/{id}/works": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["ID"];
+            };
+            cookie?: never;
+        };
+        /**
+         * List a list's works
+         * @description A list's works the user sees: a manual list's most recently added
+         *     first, a smart list's as its rules select them. With `kind`, only
+         *     those kinds. A smart list whose rules no longer run is empty. A grid, paged by `offset`, with `total` on
+         *     every page; works added at the same time are listed by title.
+         */
+        get: operations["listListWorks"];
+        put?: never;
+        /**
+         * Add a work to a list
+         * @description A smart list's works come from its rules: `409` with code
+         *     `conflict`. A work already in the list keeps its place. It stays there after
+         *     being played. A `listsChanged` event tells the user's clients.
+         */
+        post: operations["addListWork"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lists/{id}/works/{workId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["ID"];
+                workId: components["schemas"]["ID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove a work from a list
+         * @description A smart list's works come from its rules: `409` with code
+         *     `conflict`. A `listsChanged` event tells the user's clients.
+         */
+        delete: operations["removeListWork"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1062,6 +1212,74 @@ export interface paths {
          *     code `notABook` otherwise).
          */
         patch: operations["updateWorks"];
+        trace?: never;
+    };
+    "/api/v1/works/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run a work query
+         * @description Runs a `WorkQuery` once, as the caller: their library access and
+         *     parental limits apply to every query. A grid, paged by `offset`,
+         *     with `total` on every page; `maxWorks` caps it, and `collapse`
+         *     counts one card per show. An invalid query is `400` with
+         *     `invalidRequest`, and `errors` holds a JSON pointer per problem,
+         *     such as `/query/where/groups/0/rules/2/op`.
+         */
+        post: operations["queryWorks"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the fields rules can use
+         * @description Every field a `WorkQuery` rule or sort key can name, with its operators.
+         */
+        get: operations["listWorkFields"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-fields/{field}/values": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List a field's values
+         * @description The values the caller can see for a field, for building a rule:
+         *     those matching `q`, or with `ids` those values' names. A malformed
+         *     ID in `ids` is `400`. A field with no values to choose from returns
+         *     none.
+         */
+        get: operations["listWorkFieldValues"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/works/{id}": {
@@ -1134,7 +1352,7 @@ export interface paths {
         head?: never;
         /**
          * Update user state
-         * @description Marks a work played or unplayed, favorite or not, or reports an
+         * @description Marks a work played or unplayed, or reports an
          *     offline position.
          *     For the caller. Marking a series or season played or
          *     unplayed applies to each of its episodes; marking unplayed clears the
@@ -3051,16 +3269,17 @@ export interface components {
         CurrentUserUpdate: {
             playback?: components["schemas"]["PlaybackPreferencesUpdate"];
             /**
-             * @description The libraries the user sees, in the order it wants them, each
+             * @description The sidebar's libraries, in the order the user wants them, each
              *     pinned or not; it replaces the last order. A library left out is
              *     pinned after the listed ones, in the order libraries were added,
-             *     as every library is until the user sets this.
+             *     as every library is until the user sets this. Home doesn't follow
+             *     it.
              */
             libraries?: components["schemas"]["LibraryChoice"][];
         };
         LibraryChoice: {
             id: components["schemas"]["ID"];
-            /** @description Shown in the sidebar and with a Recently Added row on Home. */
+            /** @description Shown in the sidebar. */
             pinned: boolean;
         };
         /** @description A user, as admins see it. */
@@ -3237,9 +3456,9 @@ export interface components {
             id: components["schemas"]["ID"];
             name: string;
             /**
-             * @description Pinned by the user: shown in its sidebar and with a Recently
-             *     Added row on Home. Every library is until the user
-             *     chooses; search finds works in every library either way.
+             * @description Pinned by the user: shown in its sidebar. Every library is
+             *     until the user chooses; search finds works in every library
+             *     either way.
              */
             pinned: boolean;
             kind: components["schemas"]["LibraryKind"];
@@ -3413,14 +3632,183 @@ export interface components {
         ScanStep: "walk" | "probe" | "identify";
         Home: {
             rows: components["schemas"]["HomeRow"][];
+            /** @description Set when `rows` is empty because the user hid every row. */
+            allHidden?: boolean;
         };
         HomeRow: {
-            /** @description Stable per row, such as `recentlyAdded:<libraryId>`. */
+            /**
+             * @description Stable per row: the kind, `recentlyAdded:<libraryId>` or
+             *     `list:<listId>`.
+             */
             id: string;
             kind: components["schemas"]["HomeRowKind"];
             /** @description For `recentlyAdded`, the library. */
             library?: components["schemas"]["LibraryRef"];
+            /** @description For `list`, the list. */
+            list?: components["schemas"]["ListRef"];
             items: components["schemas"]["WorkSummary"][];
+        };
+        /** @description A row of the user's Home layout, as the editor lists it. */
+        HomeRowInfo: {
+            /** @description As `HomeRow.id`. */
+            id: string;
+            kind: components["schemas"]["HomeRowKind"];
+            /** @description For `recentlyAdded`, the library. */
+            library?: components["schemas"]["LibraryRef"];
+            /** @description For `list`, the list. */
+            list?: components["schemas"]["ListRef"];
+            shown: boolean;
+            /** @description A smart list whose rules no longer run, which never shows on Home. */
+            broken?: boolean;
+        };
+        HomeRowInfoList: {
+            items: components["schemas"]["HomeRowInfo"][];
+        };
+        HomeRowsUpdate: {
+            /** @description The rows, in the order wanted, each shown or hidden. */
+            items: components["schemas"]["HomeRowChange"][];
+        };
+        HomeRowChange: {
+            id: string;
+            shown: boolean;
+        };
+        WorkQueryRequest: {
+            query: components["schemas"]["WorkQuery"];
+            offset?: number;
+            limit?: number;
+        };
+        /**
+         * @description Which works a query selects. `version` is written by the server;
+         *     leave it out, and a newer one is refused. `extra` isn't a kind that
+         *     can be asked for. A query has at most 20 rules, 5 groups including
+         *     the root and 3 sort keys, and a rule at most 100 values. Values of a rule are in the form its field's
+         *     type takes: a date `YYYY-MM-DD`, a duration such as `P30D`, an ID
+         *     as a UUID, or a name.
+         */
+        WorkQuery: {
+            version?: number;
+            kinds: components["schemas"]["WorkKind"][];
+            where?: components["schemas"]["RuleGroup"];
+            sort?: components["schemas"]["SortKey"][];
+            maxWorks?: number;
+            collapse?: components["schemas"]["WorkQueryCollapse"];
+        };
+        /** @description At least one rule or group. The root may hold groups; a group may hold rules only. */
+        RuleGroup: {
+            match: components["schemas"]["RuleGroupMatch"];
+            rules?: components["schemas"]["Rule"][];
+            groups?: components["schemas"]["RuleGroup"][];
+        };
+        Rule: {
+            field: string;
+            op: string;
+            values?: string[];
+        };
+        /** @description A sortable field, or `random`, which must be the only key. */
+        SortKey: {
+            field: string;
+            direction?: components["schemas"]["SortDirection"];
+        };
+        WorkField: {
+            field: string;
+            /** @description The field's English name; clients translate `field` and fall back to this. */
+            name: string;
+            type: components["schemas"]["WorkFieldType"];
+            ops: components["schemas"]["WorkFieldOp"][];
+            kinds: components["schemas"]["WorkKind"][];
+            sortable: boolean;
+            defaultDirection?: components["schemas"]["SortDirection"];
+            unit?: string;
+            valueSource?: components["schemas"]["WorkFieldValueSource"];
+        };
+        /**
+         * @description `series` keeps the first work of each show under the sort. Skip values you don't know.
+         * @enum {string}
+         */
+        WorkQueryCollapse: "series";
+        /**
+         * @description Whether all of a group's rules and groups must match, or any. Skip values you don't know.
+         * @enum {string}
+         */
+        RuleGroupMatch: "all" | "any";
+        /**
+         * @description Skip values you don't know.
+         * @enum {string}
+         */
+        SortDirection: "asc" | "desc";
+        /**
+         * @description What a field's values are. Skip types you don't know.
+         * @enum {string}
+         */
+        WorkFieldType: "choice" | "set" | "person" | "number" | "date" | "text";
+        /**
+         * @description Whether a field's values are few, `inline`, or found with `search`. Skip values you don't know.
+         * @enum {string}
+         */
+        WorkFieldValueSource: "inline" | "search";
+        WorkFieldOp: {
+            op: string;
+            /** @description How many values it takes, or -1 for one or more. */
+            arity: number;
+        };
+        WorkFieldList: {
+            items: components["schemas"]["WorkField"][];
+        };
+        WorkFieldValue: {
+            value: string;
+            name: string;
+        };
+        WorkFieldValueList: {
+            items: components["schemas"]["WorkFieldValue"][];
+        };
+        /** @description A list as a Home row names it. */
+        ListRef: {
+            id: components["schemas"]["ID"];
+            name: string;
+            kind: components["schemas"]["ListKind"];
+        };
+        /** @description A list of works a user keeps. */
+        WorkList: {
+            id: components["schemas"]["ID"];
+            name: string;
+            kind: components["schemas"]["ListKind"];
+            /** @description Watchlist, which every user has and can't delete or rename. */
+            builtIn: boolean;
+            /** @description Works in the list the user sees. A smart list's is 0 in `listLists` without `counts`. */
+            workCount: number;
+            smart?: components["schemas"]["WorkListSmart"];
+        };
+        /**
+         * @description What a list is. `manual` is works the user added; `smart` is the works rules select. Skip kinds you don't know.
+         * @enum {string}
+         */
+        ListKind: "manual" | "smart";
+        WorkListList: {
+            items: components["schemas"]["WorkList"][];
+        };
+        /**
+         * @description A smart list's rules. A list whose rules no longer run has `errors`
+         *     pointing at what's wrong, returns an empty page and is off Home.
+         */
+        WorkListSmart: {
+            query: components["schemas"]["WorkQuery"];
+            errors?: components["schemas"]["FieldError"][];
+        };
+        SmartQuery: {
+            query: components["schemas"]["WorkQuery"];
+        };
+        ListCreate: {
+            name: string;
+            /** @description Makes a smart list, which runs the rules; without it, a manual list. */
+            smart?: components["schemas"]["SmartQuery"];
+        };
+        ListUpdate: {
+            name?: string;
+            /** @description Replaces a smart list's rules; a manual list has none. */
+            smart?: components["schemas"]["SmartQuery"];
+        };
+        ListWorkAdd: {
+            workId: components["schemas"]["ID"];
         };
         /** @description A library as a row or list names it. */
         LibraryRef: {
@@ -3431,13 +3819,12 @@ export interface components {
         /**
          * @description What a Home row shows: `continueWatching` what to watch on with,
          *     videos in progress and each series' episode up next;
-         *     `continueListening` books in progress; `continueSeries` the next book of each book series
-         *     the user has finished a book of; `recentlyAdded` a library's newest
-         *     works; `favorites` the works the user marked. Skip kinds you don't
-         *     know.
+         *     `continueListening` books in progress; `recentlyAdded` a library's
+         *     newest works; `list` a list's works. Skip kinds you
+         *     don't know.
          * @enum {string}
          */
-        HomeRowKind: "continueWatching" | "continueListening" | "continueSeries" | "recentlyAdded" | "favorites";
+        HomeRowKind: "continueWatching" | "continueListening" | "recentlyAdded" | "list";
         /**
          * @description The summary of a work, the same everywhere it appears. Kind-specific
          *     data is under the kind's name.
@@ -3529,7 +3916,6 @@ export interface components {
         /** @description The user's state for a work. For a series or season, `played` means every episode is. */
         UserState: {
             played: boolean;
-            favorite: boolean;
             playCount: number;
             /** @description The resume position, when in progress. */
             positionMs?: number;
@@ -3544,7 +3930,6 @@ export interface components {
         };
         UserStateUpdate: {
             played?: boolean;
-            favorite?: boolean;
             /** @description An offline position on the version's timeline; needs `playedAt` and `versionId`. */
             positionMs?: number;
             /**
@@ -3823,6 +4208,8 @@ export interface components {
             extras: components["schemas"]["WorkSummary"][];
             /** @description Collections this work is in. */
             collections: components["schemas"]["CollectionSummary"][];
+            /** @description The user's lists holding the work; the server always sends it. */
+            listIds?: components["schemas"]["ID"][];
             /** @description Admins only. Fields an admin edited, shown with a lock icon. */
             lockedFields?: string[];
         };
@@ -5322,11 +5709,17 @@ export interface components {
          *       the viewer's place in a grid.
          *     - `userStateChanged` (`workIds`): the user's state for these works
          *       changed, possibly on another client: marked played or unplayed
-         *       (a series or season with its episodes), a favorite, or a play's
-         *       last position. Refetch them, and the lists that show them.
+         *       (a series or season with its episodes), or a play's last
+         *       position. Refetch them, and the lists that show them.
          *     - `playEnded` (`playId`, `message`): the user's play was stopped
          *       by an admin or another client, or expired; `message` is the
          *       admin's words to the viewer, if any.
+         *     - `homeChanged`: the user's Home layout changed;
+         *       every client of the user gets it, the one that made the change
+         *       too. Refetch Home and the layout.
+         *     - `listsChanged`: the user's lists changed: one was created,
+         *       renamed or deleted, or a work was added or removed. Refetch the
+         *       lists, any open list, Home, the layout and any open work page.
          *     - `downloadsChanged`: the user's downloads on the server moved:
          *       in line, in their preparation (at most every 10 seconds), or to
          *       ready or failed. Refetch the downloads that aren't ready.
@@ -5362,7 +5755,7 @@ export interface components {
          * @description What an event says changed. Skip kinds you don't know.
          * @enum {string}
          */
-        EventKind: "workChanged" | "libraryChanged" | "userStateChanged" | "playEnded" | "downloadsChanged" | "tasksChanged" | "playsChanged" | "problemsChanged" | "logsChanged" | "activityChanged";
+        EventKind: "workChanged" | "libraryChanged" | "userStateChanged" | "homeChanged" | "listsChanged" | "playEnded" | "downloadsChanged" | "tasksChanged" | "playsChanged" | "problemsChanged" | "logsChanged" | "activityChanged";
         /** @description The client fell behind and events were dropped. Treat every live-kept query as stale and refetch; a fresh `snapshot` follows. */
         ResyncMessage: {
             /**
@@ -6795,8 +7188,6 @@ export interface operations {
                 resolution?: components["schemas"]["Resolution"][];
                 /** @description Any of these dynamic ranges. */
                 dynamicRange?: components["schemas"]["DynamicRange"][];
-                /** @description Only the user's favorites. */
-                favorite?: boolean;
                 /** @description The books this person narrated. */
                 narratorId?: components["schemas"]["ID"];
                 /** @description Admins only (ignored for others). Only `unmatched` is taken, for unmatched items only. */
@@ -7005,7 +7396,10 @@ export interface operations {
     };
     getHome: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Only the rows of these kinds, shown or not. */
+                kind?: components["schemas"]["HomeRowKind"][];
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -7021,21 +7415,229 @@ export interface operations {
                     "application/json": components["schemas"]["Home"];
                 };
             };
+            400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             default: components["responses"]["Error"];
         };
     };
-    listFavorites: {
+    listHomeRows: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The layout. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HomeRowInfoList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Error"];
+        };
+    };
+    updateHomeRows: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HomeRowsUpdate"];
+            };
+        };
+        responses: {
+            /** @description The layout. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HomeRowInfoList"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Error"];
+        };
+    };
+    resetHomeRows: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The layout. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HomeRowInfoList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Error"];
+        };
+    };
+    listLists: {
         parameters: {
             query?: {
-                kind?: components["schemas"]["WorkKind"];
+                /** @description Count each smart list by running its rules; without it a smart list's `workCount` is 0. */
+                counts?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The lists. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkListList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Error"];
+        };
+    };
+    createList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ListCreate"];
+            };
+        };
+        responses: {
+            /** @description The list. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkList"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            409: components["responses"]["Conflict"];
+            default: components["responses"]["Error"];
+        };
+    };
+    getList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The list. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Error"];
+        };
+    };
+    deleteList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            default: components["responses"]["Error"];
+        };
+    };
+    updateList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ListUpdate"];
+            };
+        };
+        responses: {
+            /** @description The list. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkList"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            default: components["responses"]["Error"];
+        };
+    };
+    listListWorks: {
+        parameters: {
+            query?: {
+                /** @description Only these kinds. */
+                kind?: components["schemas"]["WorkKind"][];
                 /** @description How many items to skip from the start. */
                 offset?: components["parameters"]["Offset"];
                 /** @description Page size. The default and the most a page holds depend on the listing. */
                 limit?: components["parameters"]["Limit"];
             };
             header?: never;
-            path?: never;
+            path: {
+                id: components["schemas"]["ID"];
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -7051,6 +7653,60 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Error"];
+        };
+    };
+    addListWork: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ListWorkAdd"];
+            };
+        };
+        responses: {
+            /** @description Added. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Error"];
+        };
+    };
+    removeListWork: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["ID"];
+                workId: components["schemas"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             default: components["responses"]["Error"];
         };
     };
@@ -7079,6 +7735,84 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Error"];
+        };
+    };
+    queryWorks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkQueryRequest"];
+            };
+        };
+        responses: {
+            /** @description A page of summaries. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkSummaryPage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Error"];
+        };
+    };
+    listWorkFields: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The fields. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkFieldList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Error"];
+        };
+    };
+    listWorkFieldValues: {
+        parameters: {
+            query?: {
+                q?: string;
+                ids?: string[];
+            };
+            header?: never;
+            path: {
+                field: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The values. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkFieldValueList"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
             default: components["responses"]["Error"];
         };

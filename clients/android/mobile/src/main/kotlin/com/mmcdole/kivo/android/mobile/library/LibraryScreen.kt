@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -82,6 +83,7 @@ import com.mmcdole.kivo.android.mobile.app.CollectionRoute
 import com.mmcdole.kivo.android.mobile.app.MobileNav
 import com.mmcdole.kivo.android.mobile.app.PersonRoute
 import com.mmcdole.kivo.android.mobile.app.handle
+import com.mmcdole.kivo.android.mobile.lists.smartListBuilderRoute
 import com.mmcdole.kivo.android.mobile.theme.space
 import com.mmcdole.kivo.android.mobile.ui.LocalWide
 import com.mmcdole.kivo.android.mobile.ui.CardShape
@@ -96,6 +98,7 @@ import com.mmcdole.kivo.android.mobile.ui.WorkMenuHost
 import com.mmcdole.kivo.android.mobile.cast.CastButton
 import com.mmcdole.kivo.android.mobile.ui.display
 import com.mmcdole.kivo.core.data.GridQuery
+import com.mmcdole.kivo.core.data.SmartLists
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -127,7 +130,7 @@ fun LibraryScreen(session: ServerSession, libraryId: String, oneOffSort: String?
         LaunchedEffect(state.grid) { header.offset = 0f }
         Box(Modifier.padding(padding).fillMaxSize().clipToBounds().nestedScroll(header)) {
             val top = with(LocalDensity.current) { header.height.toDp() }
-            WorkMenuHost({ action, work -> nav.handle(action, work, model.marks) }) { openMenu ->
+            WorkMenuHost({ action, menu -> nav.handle(action, menu, model.marks) }) { openMenu ->
                 Grid(state, model, nav, openMenu, top)
             }
             Header(
@@ -142,7 +145,13 @@ fun LibraryScreen(session: ServerSession, libraryId: String, oneOffSort: String?
     }
     when (sheet) {
         "sort" -> SortSheet(state, onSort = { model.chooseQuery(state.query.copy(sort = it)) }, onDismiss = { sheet = null })
-        "filter" -> FilterSheet(state, model::chooseQuery, model::clearFilters, onDismiss = { sheet = null })
+        "filter" -> FilterSheet(
+            state,
+            model::chooseQuery,
+            model::clearFilters,
+            onSaveSmart = { nav.open(smartListBuilderRoute(state.library?.name.orEmpty(), SmartLists.fromGrid(state.query, state.library?.kind))) },
+            onDismiss = { sheet = null },
+        )
     }
 }
 
@@ -362,7 +371,7 @@ private fun SortSheet(state: LibraryUiState, onSort: (String) -> Unit, onDismiss
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-private fun FilterSheet(state: LibraryUiState, onQuery: (GridQuery) -> Unit, onClear: () -> Unit, onDismiss: () -> Unit) {
+private fun FilterSheet(state: LibraryUiState, onQuery: (GridQuery) -> Unit, onClear: () -> Unit, onSaveSmart: () -> Unit, onDismiss: () -> Unit) {
     val query = state.query
     val facets = state.facets
     val books = state.library?.kind == "audiobooks"
@@ -377,7 +386,6 @@ private fun FilterSheet(state: LibraryUiState, onQuery: (GridQuery) -> Unit, onC
                 for (played in listOf(null) + GridValues.playedStates) {
                     FilterChip(selected = query.played == played, onClick = { onQuery(query.copy(played = played)) }, label = { Text(playedName(played, books)) })
                 }
-                FilterChip(selected = query.favorite, onClick = { onQuery(query.copy(favorite = !query.favorite)) }, label = { Text(stringResource(R.string.mobile_favorites)) })
             }
             val resolutions = GridValues.resolutions.filter { facets?.resolutions?.contains(it) == true }
             if (resolutions.isNotEmpty()) {
@@ -399,6 +407,18 @@ private fun FilterSheet(state: LibraryUiState, onQuery: (GridQuery) -> Unit, onC
                     }
                 }
             }
+            if (query.filtered) {
+                TextButton(
+                    onClick = {
+                        onDismiss()
+                        onSaveSmart()
+                    },
+                    modifier = Modifier.testTag("saveAsSmartList"),
+                ) {
+                    Icon(Icons.Default.AutoAwesome, null, Modifier.size(18.dp).padding(end = space(1)), tint = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(R.string.mobile_smart_save_as))
+                }
+            }
         }
     }
 }
@@ -414,7 +434,6 @@ private fun SheetLabel(text: String) {
 @Composable
 private fun activeFilters(query: GridQuery): List<Pair<String, GridQuery>> = buildList {
     query.played?.let { add(playedName(it, false) to query.copy(played = null)) }
-    if (query.favorite) add(stringResource(R.string.mobile_favorites) to query.copy(favorite = false))
     query.resolutions?.forEach { add(resolutionName(it) to query.copy(resolutions = toggled(query.resolutions.orEmpty(), it))) }
     query.dynamicRanges?.forEach { add(dynamicRangeName(it) to query.copy(dynamicRanges = toggled(query.dynamicRanges.orEmpty(), it))) }
 }

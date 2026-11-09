@@ -31,12 +31,10 @@ CO-ROUTINE page
             SCAN json_each VIRTUAL TABLE INDEX 1:
             CREATE BLOOM FILTER
         CORRELATED SCALAR SUBQUERY 14
-          SEARCH fu USING PRIMARY KEY (user_id=? AND work_id=?)
-        CORRELATED SCALAR SUBQUERY 15
           SEARCH fn USING COVERING INDEX credit_person (person_id=? AND work_id=? AND role=?)
         CORRELATED SCALAR SUBQUERY 3
           SEARCH vr USING INDEX sqlite_autoindex_work_1 (id=?)
-        SEARCH wl USING PRIMARY KEY (library_id=? AND work_id=?)
+        SEARCH wl USING INDEX work_library_work (work_id=? AND library_id=?)
         SEARCH vl EXISTS USING COVERING INDEX work_library_work (work_id=?)
         LIST SUBQUERY 2
           SCAN json_each VIRTUAL TABLE INDEX 1:
@@ -48,39 +46,37 @@ CO-ROUTINE page
       CO-ROUTINE rest
         SEARCH wl USING INDEX work_library_title (library_id=?)
         SEARCH w USING INDEX sqlite_autoindex_work_1 (id=?)
-        LIST SUBQUERY 30
+        LIST SUBQUERY 29
           SCAN json_each VIRTUAL TABLE INDEX 1:
           CREATE BLOOM FILTER
-        CORRELATED SCALAR SUBQUERY 18
+        CORRELATED SCALAR SUBQUERY 17
           SEARCH le USING INDEX work_root (root_id=?)
           SEARCH lu USING PRIMARY KEY (user_id=? AND work_id=?)
-        CORRELATED SCALAR SUBQUERY 25
+        CORRELATED SCALAR SUBQUERY 24
           SEARCH fe USING INDEX work_root (root_id=? AND kind=?)
-          CORRELATED SCALAR SUBQUERY 24
+          CORRELATED SCALAR SUBQUERY 23
             SEARCH fu USING PRIMARY KEY (user_id=? AND work_id=?)
           SEARCH fl EXISTS USING COVERING INDEX work_library_work (work_id=?)
-          LIST SUBQUERY 22
+          LIST SUBQUERY 21
             SCAN json_each VIRTUAL TABLE INDEX 1:
             CREATE BLOOM FILTER
-        CORRELATED SCALAR SUBQUERY 26
+        CORRELATED SCALAR SUBQUERY 25
           SEARCH fe USING INDEX work_root (root_id=? AND kind=?)
           SEARCH fu USING PRIMARY KEY (user_id=? AND work_id=?)
-        CORRELATED SCALAR SUBQUERY 27
+        CORRELATED SCALAR SUBQUERY 26
           SEARCH fu USING PRIMARY KEY (user_id=? AND work_id=?)
-        CORRELATED SCALAR SUBQUERY 29
+        CORRELATED SCALAR SUBQUERY 28
           SEARCH fg USING PRIMARY KEY (work_id=?)
           SEARCH fgn USING INTEGER PRIMARY KEY (rowid=?)
-          LIST SUBQUERY 28
+          LIST SUBQUERY 27
             SCAN json_each VIRTUAL TABLE INDEX 1:
             CREATE BLOOM FILTER
-        CORRELATED SCALAR SUBQUERY 31
-          SEARCH fu USING PRIMARY KEY (user_id=? AND work_id=?)
-        CORRELATED SCALAR SUBQUERY 32
+        CORRELATED SCALAR SUBQUERY 30
           SEARCH fn USING COVERING INDEX credit_person (person_id=? AND work_id=? AND role=?)
-        CORRELATED SCALAR SUBQUERY 20
+        CORRELATED SCALAR SUBQUERY 19
           SEARCH vr USING INDEX sqlite_autoindex_work_1 (id=?)
         SEARCH vl EXISTS USING COVERING INDEX work_library_work (work_id=?)
-        LIST SUBQUERY 19
+        LIST SUBQUERY 18
           SCAN json_each VIRTUAL TABLE INDEX 1:
           CREATE BLOOM FILTER
       SCAN rest
@@ -88,57 +84,57 @@ CO-ROUTINE page
 SCAN p
 SEARCH w USING INDEX sqlite_autoindex_work_1 (id=?)
 SEARCH us USING PRIMARY KEY (user_id=? AND work_id=?) LEFT-JOIN
-CORRELATED SCALAR SUBQUERY 35
+CORRELATED SCALAR SUBQUERY 33
   SEARCH r USING INDEX sqlite_autoindex_work_1 (id=?)
-CORRELATED SCALAR SUBQUERY 39
+CORRELATED SCALAR SUBQUERY 37
   SEARCH b USING PRIMARY KEY (version_id=?)
-  CORRELATED SCALAR SUBQUERY 38
+  CORRELATED SCALAR SUBQUERY 36
     SEARCH a USING INDEX media_version_work_work (work_id=?)
-    CORRELATED SCALAR SUBQUERY 37
+    CORRELATED SCALAR SUBQUERY 35
       SEARCH g USING INDEX media_file_version (version_id=?)
     SEARCH c EXISTS USING PRIMARY KEY (version_id=?)
   SEARCH o USING INDEX sqlite_autoindex_work_1 (id=?)
-CORRELATED SCALAR SUBQUERY 44
-  CO-ROUTINE (subquery-43)
+CORRELATED SCALAR SUBQUERY 42
+  CO-ROUTINE (subquery-41)
     SEARCH b USING PRIMARY KEY (version_id=?)
-    CORRELATED SCALAR SUBQUERY 42
+    CORRELATED SCALAR SUBQUERY 40
       SEARCH a USING INDEX media_version_work_work (work_id=?)
-      CORRELATED SCALAR SUBQUERY 41
+      CORRELATED SCALAR SUBQUERY 39
         SEARCH g USING INDEX media_file_version (version_id=?)
       SEARCH c EXISTS USING PRIMARY KEY (version_id=?)
     SEARCH o USING INDEX sqlite_autoindex_work_1 (id=?)
     USE TEMP B-TREE FOR ORDER BY
-  SCAN (subquery-43)
-CORRELATED SCALAR SUBQUERY 47
+  SCAN (subquery-41)
+CORRELATED SCALAR SUBQUERY 45
   SEARCH df USING INDEX media_file_version (version_id=?)
-  CORRELATED SCALAR SUBQUERY 46
+  CORRELATED SCALAR SUBQUERY 44
     SEARCH dw USING COVERING INDEX media_version_work_work (work_id=?)
-    CORRELATED SCALAR SUBQUERY 45
+    CORRELATED SCALAR SUBQUERY 43
       SEARCH g USING INDEX media_file_version (version_id=?)
-CORRELATED SCALAR SUBQUERY 50
+CORRELATED SCALAR SUBQUERY 48
   SEARCH aw USING COVERING INDEX media_version_work_work (work_id=?)
-  CORRELATED SCALAR SUBQUERY 49
+  CORRELATED SCALAR SUBQUERY 47
     SEARCH af USING INDEX media_file_version (version_id=?)
     SEARCH ar USING INDEX sqlite_autoindex_library_folder_1 (id=?)
-    LIST SUBQUERY 48
+    LIST SUBQUERY 46
       SCAN json_each VIRTUAL TABLE INDEX 1:
       CREATE BLOOM FILTER
-CORRELATED SCALAR SUBQUERY 51
+CORRELATED SCALAR SUBQUERY 49
   SEARCH sw USING INDEX work_root (root_id=?)
   SEARCH su USING PRIMARY KEY (user_id=? AND work_id=?)
-CORRELATED SCALAR SUBQUERY 55
+CORRELATED SCALAR SUBQUERY 53
   SEARCH e USING INDEX work_root (root_id=? AND kind=?)
-  CORRELATED SCALAR SUBQUERY 54
+  CORRELATED SCALAR SUBQUERY 52
     SEARCH eu USING PRIMARY KEY (user_id=? AND work_id=?)
   SEARCH el EXISTS USING COVERING INDEX work_library_work (work_id=?)
-  LIST SUBQUERY 52
+  LIST SUBQUERY 50
     SCAN json_each VIRTUAL TABLE INDEX 1:
     CREATE BLOOM FILTER
-CORRELATED SCALAR SUBQUERY 59
+CORRELATED SCALAR SUBQUERY 57
   SEARCH e USING INDEX work_children (parent_id=?)
-  CORRELATED SCALAR SUBQUERY 58
+  CORRELATED SCALAR SUBQUERY 56
     SEARCH eu USING PRIMARY KEY (user_id=? AND work_id=?)
   SEARCH el EXISTS USING COVERING INDEX work_library_work (work_id=?)
-  LIST SUBQUERY 56
+  LIST SUBQUERY 54
     SCAN json_each VIRTUAL TABLE INDEX 1:
     CREATE BLOOM FILTER

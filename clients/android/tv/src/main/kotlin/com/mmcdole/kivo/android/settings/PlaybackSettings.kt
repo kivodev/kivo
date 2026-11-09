@@ -23,17 +23,23 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.Text
 import com.mmcdole.kivo.android.tv.R
 import com.mmcdole.kivo.android.ServerSession
+import com.mmcdole.kivo.android.home.rowTitle
+import com.mmcdole.kivo.android.home.tvRows
 import com.mmcdole.kivo.android.main.tvLibraries
 import com.mmcdole.kivo.android.theme.Kivo
 import com.mmcdole.kivo.android.theme.TvType
 import com.mmcdole.kivo.android.ui.Choice
 import com.mmcdole.kivo.android.ui.IconButton
 import com.mmcdole.kivo.android.ui.KivoIcon
+import com.mmcdole.kivo.android.ui.KivoIconView
 import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.RequestProblem
+import com.mmcdole.kivo.android.ui.FocusMemory
 import com.mmcdole.kivo.android.ui.focusKey
 import com.mmcdole.kivo.android.ui.rememberFocusMemory
 import com.mmcdole.kivo.api.models.CurrentUser
+import com.mmcdole.kivo.api.models.HomeRowChange
+import com.mmcdole.kivo.api.models.HomeRowInfo
 import com.mmcdole.kivo.api.models.Library
 import com.mmcdole.kivo.api.models.LibraryChoice
 import com.mmcdole.kivo.api.models.PlaybackPreferences
@@ -321,49 +327,158 @@ internal fun moved(all: List<Library>, id: String, by: Int): List<Library> {
 }
 
 /**
- * Home & libraries, on all the user's devices: each library the TV shows,
- * in the user's order, pinned or not, with Move up and Move down, which
- * keep focus as the library moves, at either end too.
+ * Home's rows, kept on the server: every row the user has, in order, though
+ * the TV lists only the rows it shows. A change shows at once and goes back
+ * if the server refuses it.
+ */
+class HomeRowsViewModel(private val session: ServerSession) : ViewModel() {
+    var all by mutableStateOf<Load<List<HomeRowInfo>>>(Load.Loading)
+        private set
+    val saves = Saves(viewModelScope)
+    private var reading: Job? = null
+
+    init {
+        load()
+    }
+
+    /** Reads the layout, and again as it changes; while the server doesn't answer, it asks again. */
+    fun load() {
+        reading?.cancel()
+        all = Load.Loading
+        reading = viewModelScope.launch {
+            session.session.library.homeRows().collect { all = it }
+        }
+    }
+
+    fun show(id: String, shown: Boolean) = change("show/$id") { rows -> rows.map { if (it.id == id) it.copy(shown = shown) else it } }
+
+    /** Moves a row up ([by] -1) or down (1) past the next one the TV lists. */
+    fun move(id: String, by: Int) = change("rowmove/$id") { movedRow(it, tvHomeRows(it), id, by) }
+
+    fun reset() {
+        saves.save("reset") { all = Load.Loaded(session.session.library.resetHomeRows()) }
+    }
+
+    private fun change(row: String, transform: (List<HomeRowInfo>) -> List<HomeRowInfo>) {
+        val before = all.getOrNull() ?: return
+        val after = transform(before)
+        all = Load.Loaded(after)
+        saves.save(row, undo = { all = Load.Loaded(before) }) {
+            session.session.library.setHomeRows(after.map { HomeRowChange(it.id, it.shown) })
+        }
+    }
+}
+
+/** The rows the TV lists of [all]: the kinds Home shows here, and no audiobooks library's. */
+internal fun tvHomeRows(all: List<HomeRowInfo>) = all.filter { row ->
+    row.kind in tvRows && row.library?.kind != "audiobooks"
+}
+
+/**
+ * A row of the Home or Libraries page: its switch, and Move up and Move down,
+ * which keep focus as it moves, at either end too.
  */
 @Composable
-internal fun LibrariesPage(session: ServerSession) {
-    val model = viewModel { LibrariesViewModel(session) }
+private fun OrderedRow(
+    name: String,
+    checked: Boolean,
+    key: String,
+    memory: FocusMemory,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
+    failed: FailedSave?,
+    leading: (@Composable () -> Unit)? = null,
+    supporting: String? = null,
+    onCheck: (Boolean) -> Unit,
+    onMove: (Int) -> Unit,
+) {
+    Column {
+        Row(Modifier.settingWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Kivo.space(2))) {
+            Toggle(name, checked, Modifier.weight(1f).focusKey(memory, "pin/$key"), supporting = supporting, leading = leading, onChange = onCheck)
+            IconButton(KivoIcon.ChevronUp, stringResource(R.string.move_up), { onMove(-1) }, Modifier.focusKey(memory, "up/$key"), enabled = canMoveUp)
+            IconButton(KivoIcon.ChevronDown, stringResource(R.string.move_down), { onMove(1) }, Modifier.focusKey(memory, "down/$key"), enabled = canMoveDown)
+        }
+        SaveFailed(failed)
+    }
+}
+
+/** A row's icon: what kind of row it is, a smart list's in the accent. */
+@Composable
+private fun HomeRowIcon(row: HomeRowInfo) {
+    val icon = when {
+        row.list?.kind == "smart" -> KivoIcon.Sparkle
+        row.kind == "continueWatching" -> KivoIcon.Play
+        row.kind == "continueListening" -> KivoIcon.Headphones
+        row.kind == "recentlyAdded" -> KivoIcon.Clock
+        else -> KivoIcon.List
+    }
+    KivoIconView(icon, tint = if (row.list?.kind == "smart") Kivo.colors.accent else Kivo.colors.textMuted)
+}
+
+/** Home, on all the user's devices: the rows the TV shows, in order, each shown or not, then Reset Home. */
+@Composable
+internal fun HomePage(session: ServerSession) {
+    val rowModel = viewModel { HomeRowsViewModel(session) }
     val memory = rememberFocusMemory()
-    val state = model.all
+    val rowState = rowModel.all
+    val rows = rowState.getOrNull()?.let(::tvHomeRows)
+
+    SettingsPage(SettingsGroup.Home, memory, initial = rows?.firstOrNull()?.let { "pin/${it.id}" }) {
+        item { AllDevicesHeading() }
+        if (rowState is Load.Failed) item { LoadFailed(rowState.problem, rowModel::load) }
+        if (rows != null) {
+            itemsIndexed(rows, key = { _, it -> it.id }) { index, row ->
+                OrderedRow(
+                    rowTitle(row.kind, row.library?.name, row.list?.name),
+                    row.shown,
+                    row.id,
+                    memory,
+                    canMoveUp = index > 0,
+                    canMoveDown = index < rows.lastIndex,
+                    failed = rowModel.saves.on("show/${row.id}") ?: rowModel.saves.on("rowmove/${row.id}"),
+                    leading = { HomeRowIcon(row) },
+                    supporting = if (row.broken == true) stringResource(R.string.list_rules_broken) else null,
+                    onCheck = { rowModel.show(row.id, it) },
+                    onMove = { rowModel.move(row.id, it) },
+                )
+            }
+            item {
+                Column {
+                    SettingRow(stringResource(R.string.settings_reset_home), "", rowModel::reset, Modifier.focusKey(memory, "reset"))
+                    SaveFailed(rowModel.saves.on("reset"))
+                }
+            }
+        }
+    }
+}
+
+/** Libraries, on all the user's devices: the sidebar's, in the user's order, pinned or not. */
+@Composable
+internal fun LibrariesPage(session: ServerSession) {
+    val libraryModel = viewModel { LibrariesViewModel(session) }
+    val memory = rememberFocusMemory()
+    val state = libraryModel.all
     val libraries = state.getOrNull()?.let(::tvLibraries)
     val listed = libraries.orEmpty()
 
     SettingsPage(SettingsGroup.Libraries, memory, initial = libraries?.firstOrNull()?.let { "pin/${it.id}" }) {
         item { AllDevicesHeading() }
-        if (state is Load.Failed) item { LoadFailed(state.problem, model::load) }
+        if (state is Load.Failed) item { LoadFailed(state.problem, libraryModel::load) }
         if (libraries != null) {
             if (libraries.isEmpty()) item { Text(stringResource(R.string.no_libraries_yet), style = TvType.body, color = Kivo.colors.text, modifier = Modifier.padding(Kivo.space(4))) }
         }
         itemsIndexed(listed, key = { _, it -> it.id }) { index, library ->
-            Column {
-                Row(Modifier.settingWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Kivo.space(2))) {
-                    Toggle(
-                        library.name,
-                        library.pinned,
-                        Modifier.weight(1f).focusKey(memory, "pin/${library.id}"),
-                    ) { model.pin(library.id, it) }
-                    IconButton(
-                        KivoIcon.ChevronUp,
-                        stringResource(R.string.move_up),
-                        { model.move(library.id, -1) },
-                        Modifier.focusKey(memory, "up/${library.id}"),
-                        enabled = index > 0,
-                    )
-                    IconButton(
-                        KivoIcon.ChevronDown,
-                        stringResource(R.string.move_down),
-                        { model.move(library.id, 1) },
-                        Modifier.focusKey(memory, "down/${library.id}"),
-                        enabled = index < listed.lastIndex,
-                    )
-                }
-                SaveFailed(model.saves.on("pin/${library.id}") ?: model.saves.on("move/${library.id}"))
-            }
+            OrderedRow(
+                library.name,
+                library.pinned,
+                library.id,
+                memory,
+                canMoveUp = index > 0,
+                canMoveDown = index < listed.lastIndex,
+                failed = libraryModel.saves.on("pin/${library.id}") ?: libraryModel.saves.on("move/${library.id}"),
+                onCheck = { libraryModel.pin(library.id, it) },
+                onMove = { libraryModel.move(library.id, it) },
+            )
         }
     }
 }

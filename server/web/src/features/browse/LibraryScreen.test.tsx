@@ -53,7 +53,7 @@ describe("Library view", () => {
     expect(within(menu).queryByRole("menuitem", { name: "Go to library" })).not.toBeInTheDocument();
   });
 
-  it("switches library from its title: Favorites, the pinned ones, then More libraries", async () => {
+  it("switches library from its title: Lists, the pinned ones, then More libraries", async () => {
     serveMockApi(scenarios.unpinned);
     const { user, router } = renderApp(movies);
     const title = await screen.findByRole("heading", { name: "Movies", level: 1 });
@@ -63,7 +63,7 @@ describe("Library view", () => {
       within(menu)
         .getAllByRole("menuitem")
         .map((i) => i.textContent),
-    ).toEqual(["Favorites", "Movies", "TV Shows", "Audiobooks", "Home Videos"]);
+    ).toEqual(["Lists", "Movies", "TV Shows", "Audiobooks", "Home Videos"]);
     expect(within(menu).getByRole("group", { name: "More libraries" })).toHaveTextContent("Home Videos");
     await user.click(within(menu).getByRole("menuitem", { name: "Home Videos" }));
     expect(await screen.findByRole("heading", { name: "Home Videos", level: 1 })).toBeInTheDocument();

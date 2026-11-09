@@ -67,7 +67,7 @@ func (f *fixture) user(name string) id.ID {
 	var u users.User
 	f.b.Write(func(ctx context.Context, tx *store.Tx) error {
 		var err error
-		u, err = users.New(f.b.DB).CreateUser(ctx, tx, users.NewUser{Username: name, Grants: users.Grants{All: true}})
+		u, err = users.New(f.b.DB, events.NewBus()).CreateUser(ctx, tx, users.NewUser{Username: name, Grants: users.Grants{All: true}})
 		return err
 	})
 	return u.ID

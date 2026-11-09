@@ -25,9 +25,11 @@ var largeTables = []string{
 // wholeLibrary lists the statements allowed to scan a large table, keyed by
 // package/file or by statement key, with the reason. They are the nightly
 // and whole-library tasks, which visit every row anyway, counts over a
-// partial index that holds only the rows counted, and the test suite's
+// partial index that holds only the rows counted, the rule builder's reads
+// of a field's values, and the test suite's
 // invariants.
 var wholeLibrary = map[string]string{
+	"users/users.sql.SavedListQueries":  "once at startup, to log smart lists that no longer compile",
 	"catalog/invariants.sql":            "CheckInvariants, run after every test",
 	"previews/previews.sql.Pending":     "what the previews task has left, or Make preview thumbnails on a library",
 	"subtitles/subtitles.sql.Pending":   "media_track_extracted holds only ASS, SSA and PGS tracks",
@@ -40,6 +42,16 @@ var wholeLibrary = map[string]string{
 	"scan/scan.sql.Behind":              "media_file_behind holds only files a scan hasn't caught up with",
 	"scan/scan.sql.ProbeFailures":       "media_file_probe_failed holds only files that failed to probe",
 	"metadata/work.sql.FailedRefreshes": "work_refresh_failed holds only works whose refresh failed",
+	"query/ValuesActor":                 "a field's values for a rule, read when the builder opens the field",
+	"query/ValuesAuthor":                "a field's values for a rule, read when the builder opens the field",
+	"query/ValuesBookSeries":            "a field's values for a rule, read when the builder opens the field",
+	"query/ValuesCollection":            "a field's values for a rule, read when the builder opens the field",
+	"query/ValuesCompany":               "a field's values for a rule, read when the builder opens the field",
+	"query/ValuesContentRating":         "a field's values for a rule, read when the builder opens the field",
+	"query/ValuesDirector":              "a field's values for a rule, read when the builder opens the field",
+	"query/ValuesGenre":                 "a field's values for a rule, read when the builder opens the field",
+	"query/ValuesNarrator":              "a field's values for a rule, read when the builder opens the field",
+	"query/ValuesTag":                   "a field's values for a rule, read when the builder opens the field",
 }
 
 var (

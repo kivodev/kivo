@@ -19,7 +19,9 @@ import (
 
 // WorkDetail is a work's detail page.
 type WorkDetail struct {
-	Summary       WorkSummary
+	Summary WorkSummary
+	// ListIDs are the user's lists holding the work.
+	ListIDs       []id.ID
 	OriginalTitle string
 	Overview      string
 	// ContentRating is the work's content rating. A season or episode
@@ -457,6 +459,9 @@ func (s *Service) Detail(ctx context.Context, v users.Viewer, work id.ID) (WorkD
 			return err
 		}
 
+		if d.ListIDs, err = rowsOf(ctx, tx, workLists, args, func(r scanner, x *id.ID) error { return r.Scan(x) }); err != nil {
+			return err
+		}
 		if d.Versions, err = versions(ctx, tx, args, v.Admin()); err != nil {
 			return err
 		}

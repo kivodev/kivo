@@ -41,7 +41,7 @@ class NavigationTest {
             NavHost(controller, startDestination = HomeTab) {
                 navigation<HomeTab>(startDestination = HomeRoute) { composable<HomeRoute> { Text("home") } }
                 navigation<LibrariesTab>(startDestination = LibrariesRoute) { composable<LibrariesRoute> { Text("libraries") } }
-                navigation<FavoritesTab>(startDestination = FavoritesRoute) { composable<FavoritesRoute> { Text("favorites") } }
+                navigation<ListsTab>(startDestination = ListsRoute) { composable<ListsRoute> { Text("lists") } }
                 navigation<DownloadsTab>(startDestination = DownloadsRoute) { composable<DownloadsRoute> { Text("downloads") } }
                 navigation<SearchTab>(startDestination = SearchRoute) { composable<SearchRoute> { Text("search") } }
                 composable<WorkRoute> { Text("work ${it.toRoute<WorkRoute>().id}") }

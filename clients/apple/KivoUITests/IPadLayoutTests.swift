@@ -29,7 +29,7 @@ final class IPadLayoutTests: XCTestCase {
     func testTheSidebarAtFullScreen() throws {
         try signIn()
         fill()
-        XCTAssert(sidebarItem("Favorites").waitForExistence(timeout: 10), "the sidebar has no Favorites")
+        XCTAssert(sidebarItem("Lists").waitForExistence(timeout: 10), "the sidebar has no Lists")
         XCTAssert(sidebarItem(library).exists, "the sidebar has no \(library)")
         XCTAssertFalse(app.buttons["Edit"].exists, "the sidebar has Edit")
         keep("ipad-full-home")
@@ -73,7 +73,7 @@ final class IPadLayoutTests: XCTestCase {
         app.typeKey("1", modifierFlags: .command)
         XCTAssert(app.buttons["user"].waitForExistence(timeout: 5), "⌘1 didn't go Home")
         app.typeKey("2", modifierFlags: .command)
-        XCTAssert(app.staticTexts["Favorites"].waitForExistence(timeout: 5), "⌘2 didn't open Favorites")
+        XCTAssert(app.staticTexts["Lists"].waitForExistence(timeout: 5), "⌘2 didn't open Lists")
     }
 
     /// A work's page open in a library's tab stays open as the window
@@ -109,7 +109,7 @@ final class IPadLayoutTests: XCTestCase {
     }
 
     /// A third of the screen is the iPhone's layout: the tab bar with
-    /// Libraries, whose list opens Favorites, and Search.
+    /// Libraries, whose list opens a library, Lists, and Search.
     func testAThirdOfTheScreenIsTheIPhoneLayout() throws {
         try signIn()
         resize(toFraction: 0.33)
@@ -121,9 +121,12 @@ final class IPadLayoutTests: XCTestCase {
         let list = app.descendants(matching: .any)["library-list"]
         if !list.waitForExistence(timeout: 5) { libraries.tap() }
         XCTAssert(list.waitForExistence(timeout: 10), "the Libraries tab has no list")
-        app.descendants(matching: .any)["library:Favorites"].firstMatch.tap()
-        XCTAssert(app.navigationBars["Favorites"].waitForExistence(timeout: 10), "Favorites didn't open")
-        keep("ipad-third-favorites")
+        app.descendants(matching: .any)["library:\(library)"].firstMatch.tap()
+        XCTAssert(app.navigationBars[library].waitForExistence(timeout: 10), "\(library) didn't open")
+
+        app.buttons["Lists"].firstMatch.tap()
+        XCTAssert(app.navigationBars["Lists"].waitForExistence(timeout: 10), "Lists didn't open")
+        keep("ipad-third-lists")
 
         app.buttons["Search"].firstMatch.tap()
         let field = app.searchFields.firstMatch

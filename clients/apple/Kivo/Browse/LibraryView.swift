@@ -21,6 +21,7 @@ struct LibraryView: View {
     /// the row above it can still show under the top bar.
     @State private var jumped: String?
     @State private var prefetcher = CardPrefetcher()
+    @State private var savingAsSmartList = false
 
     /// Opens [library] as this device last left it, or with its works in [sort] for once.
     init(library: Library, server: ServerModel, sort: String? = nil) {
@@ -110,6 +111,9 @@ struct LibraryView: View {
         .task { await model.run() }
         .onChange(of: model.query) { model.reload() }
         .environment(\.currentLibraryId, model.library.id)
+        .sheet(isPresented: $savingAsSmartList) {
+            SmartListBuilder(name: model.library.name, query: model.smartListQuery)
+        }
     }
 
     // MARK: Header
@@ -311,9 +315,6 @@ struct LibraryView: View {
                 Text("Show")
             }
             .pickerStyle(.inline)
-            Toggle(isOn: $model.query.onlyFavorites) {
-                SwiftUI.Label(String(localized: "Favorites"), systemImage: "heart")
-            }
             if !model.resolutions.isEmpty {
                 Section(String(localized: "Resolution")) {
                     ForEach(model.resolutions, id: \.self) { resolution in
@@ -331,6 +332,7 @@ struct LibraryView: View {
             if model.query.filtered {
                 Section {
                     Button(String(localized: "Clear filters"), systemImage: "xmark.circle", action: model.clearFilters)
+                    Button(String(localized: "Save as Smart List"), systemImage: "sparkles") { savingAsSmartList = true }
                 }
             }
         } label: {

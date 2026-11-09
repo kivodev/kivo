@@ -15,6 +15,7 @@ struct HomeView: View {
     @State private var home: Home?
     /// Why Home couldn't be read, when the server refused it.
     @State private var failure: RequestProblem?
+    @State private var editingLayout = false
 
     private static let rowSpacing = KivoTokens.spacing * 7
     private static let top = KivoTokens.spacing * 2
@@ -22,6 +23,8 @@ struct HomeView: View {
     private static let skeletonStyles: [CardStyle] = [.landscape, .poster, .poster]
     /// The rows a card's long press can remove it from.
     private static let continueRows: Set<String> = ["continueWatching", "continueListening"]
+    /// The row kinds this app shows; a kind it doesn't know is skipped.
+    static let knownRows: Set<String> = continueRows.union(["recentlyAdded", "list"])
 
     var body: some View {
         SkeletonGate(loaded: home != nil || failure != nil || server.unreachable) {
@@ -29,7 +32,15 @@ struct HomeView: View {
                 MessageView(String(localized: "Couldn't load Home."), sentence: failure.sentence)
                     .frame(maxHeight: .infinity)
             } else if let home {
-                if home.rows.isEmpty {
+                let rows = home.rows.filter { Self.knownRows.contains($0.kind) }
+                if rows.isEmpty, home.allHidden?.boolValue == true {
+                    MessageView(
+                        String(localized: "Your Home is empty"),
+                        sentence: String(localized: "Choose its rows in Settings."),
+                        action: (String(localized: "Home"), { editingLayout = true })
+                    )
+                    .frame(maxHeight: .infinity)
+                } else if rows.isEmpty {
                     MessageView(
                         String(localized: "Nothing here yet"),
                         sentence: String(localized: "Items appear here as libraries are scanned.")
@@ -38,9 +49,10 @@ struct HomeView: View {
                 } else {
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: Self.rowSpacing) {
-                            ForEach(home.rows, id: \.id) { row in
-                                BrowseRow(title: title(of: row), items: row.items, style: Self.fixedStyle(row.kind), more: more(of: row))
+                            ForEach(rows, id: \.id) { row in
+                                BrowseRow(title: homeRowTitle(kind: row.kind, libraryName: row.library?.name, listName: row.list?.name), items: row.items, style: Self.fixedStyle(row.kind), more: more(of: row))
                                     .environment(\.continueRow, Self.continueRows.contains(row.kind) ? row.kind : nil)
+                                    .environment(\.currentList, row.list)
                             }
                         }
                         .padding(.top, Self.top)
@@ -65,6 +77,7 @@ struct HomeView: View {
             .accessibilityLabel(Text("Loading Home…"))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .sheet(isPresented: $editingLayout) { NavigationStack { HomeSettingsView() } }
         .modifier(HomeTitle(server: server.serverName, wide: wide))
         .toolbar {
             if !wide {
@@ -122,12 +135,13 @@ struct HomeView: View {
         if self.home != home { self.home = home }
     }
 
-    /// What a row's heading opens: Favorites' opens the Favorites page, and
-    /// Recently Added's opens its library sorted by date added, over Home.
+    /// What a row's heading opens, over Home: a list's opens the list, and
+    /// Recently Added's opens its library sorted by date added.
     private func more(of row: HomeRow) -> (() -> Void)? {
         switch row.kind {
-        case "favorites":
-            return { server.showFavorites() }
+        case "list":
+            guard let list = row.list else { return nil }
+            return { server.paths[.home, default: []].append(.list(list)) }
         case "recentlyAdded":
             guard let library = server.library(of: row.library?.id) else { return nil }
             return { server.paths[.home, default: []].append(.library(library, sort: "addedAt")) }
@@ -136,19 +150,19 @@ struct HomeView: View {
         }
     }
 
-    private func title(of row: HomeRow) -> String {
-        switch row.kind {
-        case "continueWatching": String(localized: "Continue Watching")
-        case "continueListening": String(localized: "Continue Listening")
-        case "continueSeries": String(localized: "Continue Series")
-        case "favorites": String(localized: "Favorites")
-        case "recentlyAdded":
-            if let library = server.libraries.first(where: { $0.id == row.library?.id }) {
-                String(localized: "Recently Added in \(library.name)")
-            } else {
-                String(localized: "Recently Added")
-            }
-        default: ""
+}
+
+/// A Home row's heading, the same on Home and in Settings.
+func homeRowTitle(kind: String, libraryName: String?, listName: String?) -> String {
+    switch kind {
+    case "continueWatching": String(localized: "Continue Watching")
+    case "continueListening": String(localized: "Continue Listening")
+    case "list": listName ?? ""
+    default:
+        if let libraryName {
+            String(localized: "Recently Added in \(libraryName)")
+        } else {
+            String(localized: "Recently Added")
         }
     }
 }

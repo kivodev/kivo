@@ -10,6 +10,10 @@ import com.mmcdole.kivo.android.settings.SubtitleBackground
 import com.mmcdole.kivo.android.settings.SubtitleSize
 import com.mmcdole.kivo.api.ProblemException
 import com.mmcdole.kivo.api.models.CurrentUser
+import com.mmcdole.kivo.android.mobile.home.shownKinds
+import com.mmcdole.kivo.android.settings.movedRow
+import com.mmcdole.kivo.api.models.HomeRowChange
+import com.mmcdole.kivo.api.models.HomeRowInfo
 import com.mmcdole.kivo.api.models.Library
 import com.mmcdole.kivo.api.models.LibraryChoice
 import com.mmcdole.kivo.api.models.SubtitleMode
@@ -25,6 +29,7 @@ import com.mmcdole.kivo.core.settings.DeviceSettings
 import com.mmcdole.kivo.core.settings.DownloadQuality
 import com.mmcdole.kivo.core.settings.Quality
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -281,6 +286,81 @@ class ChangePasswordViewModel(private val session: KivoSession) : ViewModel() {
     }
 }
 
+data class HomeSettingsUiState(
+    /** Every row of Home, in order, shown or not. */
+    val rows: List<HomeRowInfo> = emptyList(),
+    /** Why the rows couldn't be read, if they couldn't. */
+    val rowsFailure: String? = null,
+    val failure: String? = null,
+)
+
+/**
+ * Home: its rows in order, each shown or not; the same server settings the
+ * TV and iPhone show. Each change is sent at once; a refused one says why,
+ * with Retry.
+ */
+class HomeSettingsViewModel(private val session: KivoSession) : ViewModel() {
+    private val mutableState = MutableStateFlow(HomeSettingsUiState())
+    val state: StateFlow<HomeSettingsUiState> = mutableState.asStateFlow()
+
+    /** Sends the last change again, for Retry. */
+    private var retrying: (suspend () -> Unit)? = null
+
+    private var readingRows: Job? = null
+
+    init {
+        loadRows()
+    }
+
+    /** Reads Home's rows, and again as they change. */
+    fun loadRows() {
+        readingRows?.cancel()
+        mutableState.update { it.copy(rowsFailure = null) }
+        readingRows = viewModelScope.launch {
+            session.library.homeRows().collect { load ->
+                when (load) {
+                    Load.Loading -> Unit
+                    is Load.Failed -> mutableState.update { it.copy(rowsFailure = sentence(load.problem)) }
+                    is Load.Loaded -> mutableState.update { it.copy(rows = load.value, rowsFailure = null) }
+                }
+            }
+        }
+    }
+
+    fun show(id: String, shown: Boolean) = changeRows { rows -> rows.map { if (it.id == id) it.copy(shown = shown) else it } }
+
+    /** Moves the row [id] up ([by] -1) or down (1) past the next one listed, the others staying where they are. */
+    fun moveRow(id: String, by: Int) = changeRows { rows -> movedRow(rows, rows.filter { it.kind in shownKinds }, id, by) }
+
+    /** Clears Home's order and hidden rows, and shows the layout as the server has it. */
+    fun resetHome() = send { mutableState.update { it.copy(rows = session.library.resetHomeRows()) } }
+
+    fun retry() {
+        val again = retrying ?: return
+        send(again)
+    }
+
+    private fun changeRows(transform: (List<HomeRowInfo>) -> List<HomeRowInfo>) {
+        val after = transform(state.value.rows)
+        mutableState.update { it.copy(rows = after) }
+        send { session.library.setHomeRows(after.map { HomeRowChange(it.id, it.shown) }) }
+    }
+
+    private fun send(call: suspend () -> Unit) {
+        retrying = call
+        viewModelScope.launch {
+            try {
+                call()
+                mutableState.update { it.copy(failure = null) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                mutableState.update { it.copy(failure = sentence(RequestProblem.of(e))) }
+            }
+        }
+    }
+}
+
 data class LibrariesUiState(
     /** Every library the user sees, in their order. */
     val libraries: List<Library> = emptyList(),
@@ -289,13 +369,16 @@ data class LibrariesUiState(
 
 /**
  * Libraries: every library the user sees, in their order, each pinned or
- * not; the same server setting the TV and iPhone show. Pinned ones are on
- * Home, in this order. Each change is sent at once; a refused one says why,
+ * not; the same server settings the TV and iPhone show. Pinned libraries
+ * are in the sidebar. Each change is sent at once; a refused one says why,
  * with Retry.
  */
 class LibrariesSettingsViewModel(private val session: KivoSession) : ViewModel() {
     private val mutableState = MutableStateFlow(LibrariesUiState())
     val state: StateFlow<LibrariesUiState> = mutableState.asStateFlow()
+
+    /** Sends the last change again, for Retry. */
+    private var retrying: (suspend () -> Unit)? = null
 
     init {
         viewModelScope.launch {
@@ -307,20 +390,24 @@ class LibrariesSettingsViewModel(private val session: KivoSession) : ViewModel()
     fun pin(id: String, pinned: Boolean) = change { all -> all.map { if (it.id == id) it.copy(pinned = pinned) else it } }
 
     /** Moves the library [id] up ([by] -1) or down (1). */
-    fun move(id: String, by: Int) = change { all ->
-        val from = all.indexOfFirst { it.id == id }
-        val to = from + by
-        if (from < 0 || to !in all.indices) all else all.toMutableList().apply { add(to, removeAt(from)) }
-    }
+    fun move(id: String, by: Int) = change { all -> moved(all, all.indexOfFirst { it.id == id }, by) }
 
-    fun retry() = change { it }
+    fun retry() {
+        val again = retrying ?: return
+        send(again)
+    }
 
     private fun change(transform: (List<Library>) -> List<Library>) {
         val after = transform(state.value.libraries)
         mutableState.update { it.copy(libraries = after) }
+        send { session.account.setLibraries(after.map { LibraryChoice(it.id, it.pinned) }) }
+    }
+
+    private fun send(call: suspend () -> Unit) {
+        retrying = call
         viewModelScope.launch {
             try {
-                session.account.setLibraries(after.map { LibraryChoice(it.id, it.pinned) })
+                call()
                 mutableState.update { it.copy(failure = null) }
             } catch (e: CancellationException) {
                 throw e
@@ -329,6 +416,12 @@ class LibrariesSettingsViewModel(private val session: KivoSession) : ViewModel()
             }
         }
     }
+}
+
+/** [all] with the item at [from] swapped with its neighbour up ([by] -1) or down (1); [all] itself past either end. */
+private fun <T> moved(all: List<T>, from: Int, by: Int): List<T> {
+    val to = from + by
+    return if (from < 0 || to !in all.indices) all else all.toMutableList().apply { add(to, removeAt(from)) }
 }
 
 /** A quality as Quality's menu names it, by the core's words. */

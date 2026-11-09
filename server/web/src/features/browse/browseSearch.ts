@@ -62,7 +62,6 @@ export const browseSearchSchema = z.object({
   yearTo: z.number().int().optional().catch(undefined),
   resolution: list(z.enum(resolutions)),
   dynamicRange: list(z.enum(dynamicRangeValues)),
-  favorite: z.boolean().optional().catch(undefined),
   matchState: z.enum(matchStateValues).optional().catch(undefined),
   /** An audiobooks library's narrator filter, which is a person's ID. */
   narratorId: z.string().min(1).optional().catch(undefined),
@@ -88,7 +87,6 @@ const filterKeys = [
   "yearFrom",
   "resolution",
   "dynamicRange",
-  "favorite",
   "matchState",
   "narratorId",
 ] as const;

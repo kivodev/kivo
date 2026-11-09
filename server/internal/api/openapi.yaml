@@ -43,7 +43,7 @@ info:
        `…Page`, a feed's `…Feed` and a whole list's `…List`
        (`WorkSummaryPage`, `WorkSummaryFeed`, `WorkSummaryList`). Each kind of list has one
        paging style. A grid (a library's works, collections, authors and
-       book series, and Favorites) is paged by position: `offset` items
+       book series, and a list's works) is paged by position: `offset` items
        from the start, with `total` on every page. A feed (the Unmatched
        and Missing files lists, activity, history, play events and the
        logs) is read in order: `next` is an opaque keyset cursor, passed back as `after`,
@@ -908,8 +908,9 @@ paths:
         Changes the caller's preferences.
         Every client of the user gets the change: playback applies the
         languages, subtitle mode and `rememberTracks` to the next play, and
-        `libraries` orders the library list and Home. A
-        library the user doesn't see, or one listed twice, is `400`.
+        `libraries` orders the library list, and Recently Added on a Home
+        that isn't arranged. A library the user doesn't see, or one listed
+        twice, is `400`.
       tags: [users]
       x-kivo-access: viewer
       requestBody:
@@ -1364,10 +1365,6 @@ paths:
           schema:
             type: array
             items: {$ref: "#/components/schemas/DynamicRange"}
-        - name: favorite
-          in: query
-          description: Only the user's favorites.
-          schema: {type: boolean}
         - name: narratorId
           in: query
           description: The books this person narrated.
@@ -1545,36 +1542,225 @@ paths:
       operationId: getHome
       summary: Get Home rows
       description: |
-        The user's Home rows. Empty rows are left out.
+        The user's Home rows that are shown, in the user's order, on every
+        client. With `kind`, the rows of those kinds, shown or not. Empty
+        rows are left out. A hidden row is left out for a Cast device too.
       tags: [works]
       x-kivo-access: cast
+      parameters:
+        - name: kind
+          in: query
+          description: Only the rows of these kinds, shown or not.
+          schema:
+            type: array
+            items: {$ref: "#/components/schemas/HomeRowKind"}
       responses:
         "200":
           description: Home.
           content:
             application/json:
               schema: {$ref: "#/components/schemas/Home"}
+        "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         default: {$ref: "#/components/responses/Error"}
 
-  /api/v1/favorites:
+  /api/v1/home/rows:
     get:
-      operationId: listFavorites
-      summary: List favorites
+      operationId: listHomeRows
+      summary: List Home rows
       description: |
-        Favorites in libraries the user sees, most recently marked first:
-        one kind with `kind`, else every kind. A page grouped by kind asks
-        for each kind's first page, whose `total` says whether it has any.
-        Summaries are as everywhere: an episode's has its series' title and
-        poster and its season and episode numbers. A grid, paged by
-        `offset`, with `total` on every page; works marked at the same time
-        are listed by title.
+        Every row of the user's Home, in order, shown or not, including
+        rows with no works. For the Home & Libraries editor.
+      tags: [works]
+      x-kivo-access: viewer
+      responses:
+        "200":
+          description: The layout.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/HomeRowInfoList"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        default: {$ref: "#/components/responses/Error"}
+    patch:
+      operationId: updateHomeRows
+      summary: Change the Home layout
+      description: |
+        Places the listed rows first, in the order given. A row left out
+        keeps whether it's shown and follows the listed rows. A well-formed
+        `id` of a row that no longer exists is ignored; a malformed or
+        repeated `id` is `400`. A Home once changed here is arranged: a new
+        library's Recently Added row joins the end shown, and a row of a
+        new built-in kind joins off. A `homeChanged` event tells the user's
+        clients.
+      tags: [works]
+      x-kivo-access: viewer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/HomeRowsUpdate"}
+      responses:
+        "200":
+          description: The layout.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/HomeRowInfoList"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/home/rows/reset:
+    post:
+      operationId: resetHomeRows
+      summary: Reset the Home layout
+      description: |
+        Forgets the user's order and hidden rows, so Home returns to the
+        default order with every built-in row shown. Lists remain, off
+        Home, except Watchlist. A `homeChanged` event
+        tells the user's clients.
+      tags: [works]
+      x-kivo-access: viewer
+      responses:
+        "200":
+          description: The layout.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/HomeRowInfoList"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/lists:
+    get:
+      operationId: listLists
+      summary: List the user's lists
+      description: The user's lists, Watchlist first, then by name.
+      tags: [works]
+      x-kivo-access: viewer
+      parameters:
+        - name: counts
+          in: query
+          description: Count each smart list by running its rules; without it a smart list's `workCount` is 0.
+          schema: {type: boolean}
+      responses:
+        "200":
+          description: The lists.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/WorkListList"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        default: {$ref: "#/components/responses/Error"}
+    post:
+      operationId: createList
+      summary: Create a list
+      description: |
+        Makes a manual list, or with `smart` a smart list that runs the
+        rules; its kind is fixed. Rules are validated: `400` with pointers
+        such as `/smart/query/where/rules/0/op`. A new list starts off
+        Home; Home & Libraries in Settings puts it on. A name in use is `409` with code
+        `nameTaken`; a user has at most 100 lists, past which it is `409`
+        with code `conflict`. A `listsChanged` event tells the user's
+        clients.
+      tags: [works]
+      x-kivo-access: viewer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ListCreate"}
+      responses:
+        "201":
+          description: The list.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/WorkList"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/lists/{id}:
+    parameters:
+      - {name: id, in: path, required: true, schema: {$ref: "#/components/schemas/ID"}}
+    get:
+      operationId: getList
+      summary: Get a list
+      tags: [works]
+      x-kivo-access: viewer
+      responses:
+        "200":
+          description: The list.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/WorkList"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        default: {$ref: "#/components/responses/Error"}
+    patch:
+      operationId: updateList
+      summary: Update a list
+      description: |
+        Renames the list, replaces a smart list's rules, or both, in one
+        change. Watchlist can't be changed, and `smart` is refused on a manual
+        list: `409` with code `conflict`. A name in use is `409` with code
+        `nameTaken`. Invalid rules are `400` with pointers such as
+        `/smart/query/where/rules/0/op`. A `listsChanged` event tells the
+        user's clients.
+      tags: [works]
+      x-kivo-access: viewer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ListUpdate"}
+      responses:
+        "200":
+          description: The list.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/WorkList"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        default: {$ref: "#/components/responses/Error"}
+    delete:
+      operationId: deleteList
+      summary: Delete a list
+      description: |
+        Deletes the list, not its works. Watchlist can't be deleted: `409`
+        with code `conflict`. A `listsChanged` event tells the user's
+        clients.
+      tags: [works]
+      x-kivo-access: viewer
+      responses:
+        "204": {description: Deleted.}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/lists/{id}/works:
+    parameters:
+      - {name: id, in: path, required: true, schema: {$ref: "#/components/schemas/ID"}}
+    get:
+      operationId: listListWorks
+      summary: List a list's works
+      description: |
+        A list's works the user sees: a manual list's most recently added
+        first, a smart list's as its rules select them. With `kind`, only
+        those kinds. A smart list whose rules no longer run is empty. A grid, paged by `offset`, with `total` on
+        every page; works added at the same time are listed by title.
       tags: [works]
       x-kivo-access: viewer
       parameters:
         - name: kind
           in: query
-          schema: {$ref: "#/components/schemas/WorkKind"}
+          description: Only these kinds.
+          style: form
+          explode: true
+          schema:
+            type: array
+            items: {$ref: "#/components/schemas/WorkKind"}
         - {$ref: "#/components/parameters/Offset"}
         - {$ref: "#/components/parameters/Limit"}
       responses:
@@ -1585,6 +1771,46 @@ paths:
               schema: {$ref: "#/components/schemas/WorkSummaryPage"}
         "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        default: {$ref: "#/components/responses/Error"}
+    post:
+      operationId: addListWork
+      summary: Add a work to a list
+      description: |
+        A smart list's works come from its rules: `409` with code
+        `conflict`. A work already in the list keeps its place. It stays there after
+        being played. A `listsChanged` event tells the user's clients.
+      tags: [works]
+      x-kivo-access: viewer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ListWorkAdd"}
+      responses:
+        "204": {description: Added.}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/lists/{id}/works/{workId}:
+    parameters:
+      - {name: id, in: path, required: true, schema: {$ref: "#/components/schemas/ID"}}
+      - {name: workId, in: path, required: true, schema: {$ref: "#/components/schemas/ID"}}
+    delete:
+      operationId: removeListWork
+      summary: Remove a work from a list
+      description: |
+        A smart list's works come from its rules: `409` with code
+        `conflict`. A `listsChanged` event tells the user's clients.
+      tags: [works]
+      x-kivo-access: viewer
+      responses:
+        "204": {description: Removed.}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
         default: {$ref: "#/components/responses/Error"}
 
   /api/v1/works:
@@ -1615,6 +1841,80 @@ paths:
         "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/works/query:
+    post:
+      operationId: queryWorks
+      summary: Run a work query
+      description: |
+        Runs a `WorkQuery` once, as the caller: their library access and
+        parental limits apply to every query. A grid, paged by `offset`,
+        with `total` on every page; `maxWorks` caps it, and `collapse`
+        counts one card per show. An invalid query is `400` with
+        `invalidRequest`, and `errors` holds a JSON pointer per problem,
+        such as `/query/where/groups/0/rules/2/op`.
+      tags: [works]
+      x-kivo-access: viewer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/WorkQueryRequest"}
+      responses:
+        "200":
+          description: A page of summaries.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/WorkSummaryPage"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/work-fields:
+    get:
+      operationId: listWorkFields
+      summary: List the fields rules can use
+      description: Every field a `WorkQuery` rule or sort key can name, with its operators.
+      tags: [works]
+      x-kivo-access: viewer
+      responses:
+        "200":
+          description: The fields.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/WorkFieldList"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/work-fields/{field}/values:
+    get:
+      operationId: listWorkFieldValues
+      summary: List a field's values
+      description: |
+        The values the caller can see for a field, for building a rule:
+        those matching `q`, or with `ids` those values' names. A malformed
+        ID in `ids` is `400`. A field with no values to choose from returns
+        none.
+      tags: [works]
+      x-kivo-access: viewer
+      parameters:
+        - {name: field, in: path, required: true, schema: {type: string}}
+        - {name: q, in: query, schema: {type: string}}
+        - name: ids
+          in: query
+          style: form
+          explode: true
+          schema: {type: array, items: {type: string}}
+      responses:
+        "200":
+          description: The values.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/WorkFieldValueList"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
         "404": {$ref: "#/components/responses/NotFound"}
         default: {$ref: "#/components/responses/Error"}
 
@@ -1693,7 +1993,7 @@ paths:
       operationId: updateWorkUserState
       summary: Update user state
       description: |
-        Marks a work played or unplayed, favorite or not, or reports an
+        Marks a work played or unplayed, or reports an
         offline position.
         For the caller. Marking a series or season played or
         unplayed applies to each of its episodes; marking unplayed clears the
@@ -4258,10 +4558,11 @@ components:
         libraries:
           type: array
           description: |
-            The libraries the user sees, in the order it wants them, each
+            The sidebar's libraries, in the order the user wants them, each
             pinned or not; it replaces the last order. A library left out is
             pinned after the listed ones, in the order libraries were added,
-            as every library is until the user sets this.
+            as every library is until the user sets this. Home doesn't follow
+            it.
           items: {$ref: "#/components/schemas/LibraryChoice"}
 
     LibraryChoice:
@@ -4271,7 +4572,7 @@ components:
         id: {$ref: "#/components/schemas/ID"}
         pinned:
           type: boolean
-          description: Shown in the sidebar and with a Recently Added row on Home.
+          description: Shown in the sidebar.
 
     User:
       type: object
@@ -4509,9 +4810,9 @@ components:
         pinned:
           type: boolean
           description: |
-            Pinned by the user: shown in its sidebar and with a Recently
-            Added row on Home. Every library is until the user
-            chooses; search finds works in every library either way.
+            Pinned by the user: shown in its sidebar. Every library is
+            until the user chooses; search finds works in every library
+            either way.
         kind: {$ref: "#/components/schemas/LibraryKind"}
         workCount:
           type: integer
@@ -4765,6 +5066,9 @@ components:
         rows:
           type: array
           items: {$ref: "#/components/schemas/HomeRow"}
+        allHidden:
+          type: boolean
+          description: Set when `rows` is empty because the user hid every row.
 
     HomeRow:
       type: object
@@ -4772,14 +5076,280 @@ components:
       properties:
         id:
           type: string
-          description: Stable per row, such as `recentlyAdded:<libraryId>`.
+          description: |
+            Stable per row: the kind, `recentlyAdded:<libraryId>` or
+            `list:<listId>`.
         kind: {$ref: "#/components/schemas/HomeRowKind"}
         library:
           $ref: "#/components/schemas/LibraryRef"
           description: For `recentlyAdded`, the library.
+        list:
+          $ref: "#/components/schemas/ListRef"
+          description: For `list`, the list.
         items:
           type: array
           items: {$ref: "#/components/schemas/WorkSummary"}
+
+    HomeRowInfo:
+      type: object
+      description: A row of the user's Home layout, as the editor lists it.
+      required: [id, kind, shown]
+      properties:
+        id:
+          type: string
+          description: As `HomeRow.id`.
+        kind: {$ref: "#/components/schemas/HomeRowKind"}
+        library:
+          $ref: "#/components/schemas/LibraryRef"
+          description: For `recentlyAdded`, the library.
+        list:
+          $ref: "#/components/schemas/ListRef"
+          description: For `list`, the list.
+        shown: {type: boolean}
+        broken:
+          type: boolean
+          description: A smart list whose rules no longer run, which never shows on Home.
+
+    HomeRowInfoList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: {$ref: "#/components/schemas/HomeRowInfo"}
+
+    HomeRowsUpdate:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          description: The rows, in the order wanted, each shown or hidden.
+          items: {$ref: "#/components/schemas/HomeRowChange"}
+
+    HomeRowChange:
+      type: object
+      required: [id, shown]
+      properties:
+        id: {type: string}
+        shown: {type: boolean}
+
+    WorkQueryRequest:
+      type: object
+      required: [query]
+      properties:
+        query: {$ref: "#/components/schemas/WorkQuery"}
+        offset: {type: integer, minimum: 0}
+        limit: {type: integer, minimum: 1}
+
+    WorkQuery:
+      type: object
+      description: |
+        Which works a query selects. `version` is written by the server;
+        leave it out, and a newer one is refused. `extra` isn't a kind that
+        can be asked for. A query has at most 20 rules, 5 groups including
+        the root and 3 sort keys, and a rule at most 100 values. Values of a rule are in the form its field's
+        type takes: a date `YYYY-MM-DD`, a duration such as `P30D`, an ID
+        as a UUID, or a name.
+      required: [kinds]
+      properties:
+        version: {type: integer}
+        kinds:
+          type: array
+          items: {$ref: "#/components/schemas/WorkKind"}
+        where: {$ref: "#/components/schemas/RuleGroup"}
+        sort:
+          type: array
+          items: {$ref: "#/components/schemas/SortKey"}
+        maxWorks: {type: integer, minimum: 1}
+        collapse: {$ref: "#/components/schemas/WorkQueryCollapse"}
+
+    RuleGroup:
+      type: object
+      description: At least one rule or group. The root may hold groups; a group may hold rules only.
+      required: [match]
+      properties:
+        match: {$ref: "#/components/schemas/RuleGroupMatch"}
+        rules:
+          type: array
+          items: {$ref: "#/components/schemas/Rule"}
+        groups:
+          type: array
+          items: {$ref: "#/components/schemas/RuleGroup"}
+
+    Rule:
+      type: object
+      required: [field, op]
+      properties:
+        field: {type: string}
+        op: {type: string}
+        values:
+          type: array
+          items: {type: string}
+
+    SortKey:
+      type: object
+      description: A sortable field, or `random`, which must be the only key.
+      required: [field]
+      properties:
+        field: {type: string}
+        direction: {$ref: "#/components/schemas/SortDirection"}
+
+    WorkField:
+      type: object
+      required: [field, name, type, ops, kinds, sortable]
+      properties:
+        field: {type: string}
+        name:
+          type: string
+          description: The field's English name; clients translate `field` and fall back to this.
+        type: {$ref: "#/components/schemas/WorkFieldType"}
+        ops:
+          type: array
+          items: {$ref: "#/components/schemas/WorkFieldOp"}
+        kinds:
+          type: array
+          items: {$ref: "#/components/schemas/WorkKind"}
+        sortable: {type: boolean}
+        defaultDirection: {$ref: "#/components/schemas/SortDirection"}
+        unit: {type: string}
+        valueSource: {$ref: "#/components/schemas/WorkFieldValueSource"}
+
+    WorkQueryCollapse:
+      type: string
+      description: "`series` keeps the first work of each show under the sort. Skip values you don't know."
+      enum: [series]
+
+    RuleGroupMatch:
+      type: string
+      description: Whether all of a group's rules and groups must match, or any. Skip values you don't know.
+      enum: [all, any]
+
+    SortDirection:
+      type: string
+      description: Skip values you don't know.
+      enum: [asc, desc]
+
+    WorkFieldType:
+      type: string
+      description: What a field's values are. Skip types you don't know.
+      enum: [choice, set, person, number, date, text]
+
+    WorkFieldValueSource:
+      type: string
+      description: Whether a field's values are few, `inline`, or found with `search`. Skip values you don't know.
+      enum: [inline, search]
+
+    WorkFieldOp:
+      type: object
+      required: [op, arity]
+      properties:
+        op: {type: string}
+        arity:
+          type: integer
+          description: How many values it takes, or -1 for one or more.
+
+    WorkFieldList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: {$ref: "#/components/schemas/WorkField"}
+
+    WorkFieldValue:
+      type: object
+      required: [value, name]
+      properties:
+        value: {type: string}
+        name: {type: string}
+
+    WorkFieldValueList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: {$ref: "#/components/schemas/WorkFieldValue"}
+
+    ListRef:
+      type: object
+      description: A list as a Home row names it.
+      required: [id, name, kind]
+      properties:
+        id: {$ref: "#/components/schemas/ID"}
+        name: {type: string}
+        kind: {$ref: "#/components/schemas/ListKind"}
+
+    WorkList:
+      type: object
+      description: A list of works a user keeps.
+      required: [id, name, kind, builtIn, workCount]
+      properties:
+        id: {$ref: "#/components/schemas/ID"}
+        name: {type: string}
+        kind: {$ref: "#/components/schemas/ListKind"}
+        builtIn:
+          type: boolean
+          description: Watchlist, which every user has and can't delete or rename.
+        workCount:
+          type: integer
+          description: Works in the list the user sees. A smart list's is 0 in `listLists` without `counts`.
+        smart: {$ref: "#/components/schemas/WorkListSmart"}
+
+    ListKind:
+      type: string
+      description: What a list is. `manual` is works the user added; `smart` is the works rules select. Skip kinds you don't know.
+      enum: [manual, smart]
+
+    WorkListList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: {$ref: "#/components/schemas/WorkList"}
+
+    WorkListSmart:
+      type: object
+      description: |
+        A smart list's rules. A list whose rules no longer run has `errors`
+        pointing at what's wrong, returns an empty page and is off Home.
+      required: [query]
+      properties:
+        query: {$ref: "#/components/schemas/WorkQuery"}
+        errors:
+          type: array
+          items: {$ref: "#/components/schemas/FieldError"}
+
+    SmartQuery:
+      type: object
+      required: [query]
+      properties:
+        query: {$ref: "#/components/schemas/WorkQuery"}
+
+    ListCreate:
+      type: object
+      required: [name]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 64}
+        smart:
+          $ref: "#/components/schemas/SmartQuery"
+          description: Makes a smart list, which runs the rules; without it, a manual list.
+
+    ListUpdate:
+      type: object
+      properties:
+        name: {type: string, minLength: 1, maxLength: 64}
+        smart:
+          $ref: "#/components/schemas/SmartQuery"
+          description: Replaces a smart list's rules; a manual list has none.
+
+    ListWorkAdd:
+      type: object
+      required: [workId]
+      properties:
+        workId: {$ref: "#/components/schemas/ID"}
 
     LibraryRef:
       type: object
@@ -4795,11 +5365,10 @@ components:
       description: |
         What a Home row shows: `continueWatching` what to watch on with,
         videos in progress and each series' episode up next;
-        `continueListening` books in progress; `continueSeries` the next book of each book series
-        the user has finished a book of; `recentlyAdded` a library's newest
-        works; `favorites` the works the user marked. Skip kinds you don't
-        know.
-      enum: [continueWatching, continueListening, continueSeries, recentlyAdded, favorites]
+        `continueListening` books in progress; `recentlyAdded` a library's
+        newest works; `list` a list's works. Skip kinds you
+        don't know.
+      enum: [continueWatching, continueListening, recentlyAdded, list]
 
     WorkSummary:
       type: object
@@ -4908,10 +5477,9 @@ components:
     UserState:
       type: object
       description: The user's state for a work. For a series or season, `played` means every episode is.
-      required: [played, favorite, playCount]
+      required: [played, playCount]
       properties:
         played: {type: boolean}
-        favorite: {type: boolean}
         playCount: {type: integer}
         positionMs:
           type: integer
@@ -4928,7 +5496,6 @@ components:
       type: object
       properties:
         played: {type: boolean}
-        favorite: {type: boolean}
         positionMs:
           type: integer
           minimum: 0
@@ -5386,6 +5953,10 @@ components:
               type: array
               description: Collections this work is in.
               items: {$ref: "#/components/schemas/CollectionSummary"}
+            listIds:
+              type: array
+              description: The user's lists holding the work; the server always sends it.
+              items: {$ref: "#/components/schemas/ID"}
             lockedFields:
               type: array
               description: Admins only. Fields an admin edited, shown with a lock icon.
@@ -7415,11 +7986,17 @@ components:
           the viewer's place in a grid.
         - `userStateChanged` (`workIds`): the user's state for these works
           changed, possibly on another client: marked played or unplayed
-          (a series or season with its episodes), a favorite, or a play's
-          last position. Refetch them, and the lists that show them.
+          (a series or season with its episodes), or a play's last
+          position. Refetch them, and the lists that show them.
         - `playEnded` (`playId`, `message`): the user's play was stopped
           by an admin or another client, or expired; `message` is the
           admin's words to the viewer, if any.
+        - `homeChanged`: the user's Home layout changed;
+          every client of the user gets it, the one that made the change
+          too. Refetch Home and the layout.
+        - `listsChanged`: the user's lists changed: one was created,
+          renamed or deleted, or a work was added or removed. Refetch the
+          lists, any open list, Home, the layout and any open work page.
         - `downloadsChanged`: the user's downloads on the server moved:
           in line, in their preparation (at most every 10 seconds), or to
           ready or failed. Refetch the downloads that aren't ready.
@@ -7456,7 +8033,7 @@ components:
     EventKind:
       type: string
       description: What an event says changed. Skip kinds you don't know.
-      enum: [workChanged, libraryChanged, userStateChanged, playEnded, downloadsChanged,
+      enum: [workChanged, libraryChanged, userStateChanged, homeChanged, listsChanged, playEnded, downloadsChanged,
         tasksChanged, playsChanged, problemsChanged, logsChanged, activityChanged]
 
     ResyncMessage:

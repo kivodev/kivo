@@ -157,7 +157,7 @@ export function addBooks(
     const w: WorkDetail = {
       ...emptyWork(id, "book", title),
       images: { poster: image() },
-      userState: { played: false, favorite: false, playCount: 0 },
+      userState: { played: false, playCount: 0 },
       libraryId: library.id,
       ...extra,
     };
@@ -227,8 +227,8 @@ export function addBooks(
   // Project Hail Mary is half listened to. Leviathan Wakes is finished, so
   // The Churn is next in The Expanse.
   const hailMaryAt = 485 * minute;
-  hailMary.userState = { played: false, favorite: false, playCount: 0, positionMs: hailMaryAt };
-  leviathan.userState = { played: true, favorite: false, playCount: 1 };
+  hailMary.userState = { played: false, playCount: 0, positionMs: hailMaryAt };
+  leviathan.userState = { played: true, playCount: 1 };
   const books = [caliban, leviathan, hailMary, churn];
   for (const b of books) api.starts[b.id] = bookPlay(b, b === hailMary ? hailMaryAt : 0);
   api.browse[library.id] = books.map(summaryOf);
@@ -239,11 +239,7 @@ export function addBooks(
     items: [hailMary, churn].map(summaryOf),
   };
   // The book rows come after every video row, as the server orders them.
-  api.home.rows.push(
-    { id: "continueListening", kind: "continueListening", items: [summaryOf(hailMary)] },
-    { id: "continueSeries", kind: "continueSeries", items: [summaryOf(churn)] },
-    recent,
-  );
+  api.home.rows.push({ id: "continueListening", kind: "continueListening", items: [summaryOf(hailMary)] }, recent);
   api.facets[library.id] = {
     genres: ["Science Fiction"],
     contentRatings: [],

@@ -8,6 +8,7 @@ import com.mmcdole.kivo.android.mobile.ui.WorkAction
 import com.mmcdole.kivo.android.mobile.ui.WorkMarks
 import com.mmcdole.kivo.api.models.HomeRow
 import com.mmcdole.kivo.api.models.Library
+import com.mmcdole.kivo.api.models.ListRef
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.RequestProblem
@@ -22,7 +23,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 
 /** A row as Home shows it: its kind and items, and for Recently Added the library its heading opens. */
-data class HomeRowUi(val id: String, val kind: String, val items: List<WorkSummary>, val library: Library?, val libraryName: String?)
+data class HomeRowUi(val id: String, val kind: String, val items: List<WorkSummary>, val library: Library?, val libraryName: String?, val list: ListRef?)
 
 data class HomeUiState(
     val serverName: String,
@@ -30,6 +31,8 @@ data class HomeUiState(
     val initial: String = "",
     /** Home's rows, in the server's order; null until read. */
     val rows: List<HomeRowUi>? = null,
+    /** There are no rows because the user hid every one. */
+    val allHidden: Boolean = false,
     /** Why Home couldn't be read, while there's nothing to show. */
     val problem: RequestProblem? = null,
     /** A pull to refresh waiting on its answer. */
@@ -37,13 +40,13 @@ data class HomeUiState(
 )
 
 /** The row kinds the phone shows. */
-private val shownKinds = setOf(CONTINUE_WATCHING, CONTINUE_LISTENING, "continueSeries", "recentlyAdded", "favorites")
+internal val shownKinds = setOf(CONTINUE_WATCHING, CONTINUE_LISTENING, "recentlyAdded", "list")
 
 /** The rows Home shows of [rows]: the kinds it knows, with items, each with its library among [libraries]. */
 fun shownRows(rows: List<HomeRow>, libraries: List<Library>): List<HomeRowUi> {
     val byId = libraries.associateBy { it.id }
     return rows.filter { it.kind in shownKinds && it.items.isNotEmpty() }.map { row ->
-        HomeRowUi(row.id, row.kind, row.items, row.library?.id?.let(byId::get), row.library?.name)
+        HomeRowUi(row.id, row.kind, row.items, row.library?.id?.let(byId::get), row.library?.name, row.list)
     }
 }
 
@@ -73,6 +76,7 @@ class HomeViewModel(private val session: KivoSession) : ViewModel() {
             serverName = server.name,
             initial = user?.initial.orEmpty(),
             rows = home.getOrNull()?.let { shownRows(it.rows, libraries.getOrNull().orEmpty()) },
+            allHidden = home.getOrNull()?.allHidden == true,
             problem = home.problemOrNull(),
             refreshing = refreshing,
         )

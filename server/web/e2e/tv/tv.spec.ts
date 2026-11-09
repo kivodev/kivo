@@ -47,7 +47,7 @@ test("the arrows move along a row and between rows, and Up returns to the same c
   await press(page, "ArrowRight");
   await expectFocus(page, { key: card("continueWatching"), name: "The Expanse" });
   await press(page, "ArrowDown");
-  await expectFocus(page, { key: card("favorites") });
+  await expectFocus(page, { key: card("list") });
   await press(page, "ArrowDown");
   await expectFocus(page, { key: card("recentlyAdded") });
   // Down kept to the second column.

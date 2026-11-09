@@ -4,7 +4,7 @@ import { keysetPages } from "./pages";
 import { type ApiPath, apiPaths, invalidatePaths, pathKey, workViewPaths } from "./paths";
 import { retryPageDelay, shouldRetryPage } from "./problem";
 import type { paths } from "./schema";
-import type { ArtworkType, BrowseQuery, FavoriteKind, UserState, WorkDetail } from "./schemas";
+import type { ArtworkType, BrowseQuery, UserState, WorkDetail } from "./schemas";
 
 /** A library grid's sort and filters: the listLibraryWorks query without the paging. */
 export type BrowseFilters = Omit<BrowseQuery, "offset" | "limit">;
@@ -69,19 +69,8 @@ function groupPage<P extends GroupPath>(path: P, libraryId: string, index: numbe
   });
 }
 
-/** The most cards a Favorites row shows before its See all card. */
-const favoritesRowSize = 20;
-
-/** The kinds Favorites has a row for, in the rows' order. */
-export const favoriteKinds: readonly FavoriteKind[] = [
-  "movie",
-  "series",
-  "episode",
-  "book",
-  "season",
-  "video",
-  "extra",
-];
+/** The most cards a list's row shows. */
+const listRowSize = 20;
 
 export const workQueries = {
   detail: (id: string) => $api.queryOptions("get", "/api/v1/works/{id}", { params: { path: { id } } }),
@@ -116,31 +105,18 @@ export const workQueries = {
   bookSeriesPage: (libraryId: string, index: number) =>
     groupPage("/api/v1/libraries/{id}/book-series", libraryId, index),
 
-  /**
-   * The first cards of a kind's favorites for its row, most recently marked
-   * first. `total` says how many there are.
-   */
-  favorites: (kind: FavoriteKind) =>
-    $api.queryOptions("get", "/api/v1/favorites", { params: { query: { kind, limit: favoritesRowSize } } }),
+  /** The first cards of a list for its row, most recently added first. */
+  listRow: (listId: string) =>
+    $api.queryOptions("get", "/api/v1/lists/{id}/works", {
+      params: { path: { id: listId }, query: { limit: listRowSize } },
+    }),
 
-  /**
-   * How many works of every kind you marked as a favorite. It reads the
-   * total from a first page that is one card long.
-   */
-  favoritesCount: () =>
-    $api.queryOptions(
-      "get",
-      "/api/v1/favorites",
-      { params: { query: { limit: 1 } } },
-      { select: (page) => page.total ?? page.items.length },
-    ),
-
-  /** One page of a kind's favorites for its grid. */
-  favoritesPage: (kind: FavoriteKind, index: number) =>
-    gridPage(["get", apiPaths.favorites, { params: { query: { kind } } }], index, async (offset, signal) => {
-      const { data, error } = await client.GET("/api/v1/favorites", {
+  /** One page of a list's grid, most recently added first. */
+  listPage: (listId: string, index: number) =>
+    gridPage(["get", apiPaths.listWorks, { params: { path: { id: listId } } }], index, async (offset, signal) => {
+      const { data, error } = await client.GET("/api/v1/lists/{id}/works", {
         signal,
-        params: { query: { kind, limit: gridPageSize, offset } },
+        params: { path: { id: listId }, query: { limit: gridPageSize, offset } },
       });
       if (error) throw error;
       return data;
@@ -258,7 +234,7 @@ export function useRefreshWorkMetadata() {
   });
 }
 
-/** Mark played or unplayed, favorite or not, for you. */
+/** Mark played or unplayed, for you. */
 export function useUpdateUserState() {
   const queryClient = useQueryClient();
   return $api.useMutation("patch", "/api/v1/works/{id}/user-state", {
@@ -296,8 +272,7 @@ function replaceUserState(data: unknown, workId: string, userState: UserState, k
 /**
  * Applies a work's new user state to the cache in place. Marking a series or
  * season also marks its episodes, whose views then refetch. Otherwise Home
- * and Favorites refetch, because Home's rows follow what was watched and a
- * work marked or unmarked joins or leaves Favorites.
+ * refetches, because its rows follow what was watched.
  */
 export function applyUserState(queryClient: QueryClient, workId: string, userState: UserState) {
   const kinds = new Set<string>();
@@ -307,5 +282,5 @@ export function applyUserState(queryClient: QueryClient, workId: string, userSta
     queryClient.setQueryData(query.queryKey, replaceUserState(query.state.data, workId, userState, kinds));
   }
   const cascades = kinds.has("series") || kinds.has("season");
-  void invalidatePaths(queryClient, cascades ? workViewPaths : [apiPaths.home, apiPaths.favorites]);
+  void invalidatePaths(queryClient, cascades ? workViewPaths : [apiPaths.home]);
 }

@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mmcdole/kivo/internal/events"
 	"github.com/mmcdole/kivo/internal/store"
 
 	"github.com/mmcdole/kivo/internal/catalog"
@@ -63,7 +64,7 @@ func TestProvisionalWorks(t *testing.T) {
 		return err
 	})
 
-	home, err := h.q.Home(ctx, h.admin)
+	home, _, err := h.q.Home(ctx, h.admin)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -288,8 +289,6 @@ func TestBrowseFilters(t *testing.T) {
 		{"years to", h.movies, query.Filter{YearTo: 1995}, []id.ID{h.bladeRunner.Work, h.toyStory.Work}},
 		{"ratings", h.movies, query.Filter{ContentRatings: []string{"R", "PG-13"}}, []id.ID{h.bladeRunner.Work, h.dune.Work}},
 		{"1080p", h.movies, query.Filter{Resolutions: []query.Resolution{query.Resolution1080p}}, []id.ID{h.dune.Work}},
-		{"favorites", h.movies, query.Filter{Favorites: true}, []id.ID{h.toyStory.Work}},
-		{"and", h.movies, query.Filter{YearFrom: 1995, Favorites: true}, []id.ID{h.toyStory.Work}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -357,7 +356,7 @@ func TestChildrenCombineMultiEpisodeVersions(t *testing.T) {
 func TestHomeRows(t *testing.T) {
 	h := newHousehold(t)
 	h.watch()
-	home, err := h.q.Home(ctx, h.friend)
+	home, _, err := h.q.Home(ctx, h.friend)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -367,8 +366,8 @@ func TestHomeRows(t *testing.T) {
 	if want := []id.ID{h.bluey3.Work, h.expanse2.Work, h.dune.Work}; !slices.Equal(ids(row(home, query.RowContinueWatching)), want) {
 		t.Errorf("Continue Watching = %v, want %v", ids(row(home, query.RowContinueWatching)), want)
 	}
-	if want := []id.ID{h.toyStory.Work}; !slices.Equal(ids(row(home, query.RowFavorites)), want) {
-		t.Errorf("Favorites = %v, want %v", ids(row(home, query.RowFavorites)), want)
+	if want := []id.ID{h.toyStory.Work}; !slices.Equal(ids(row(home, query.RowList)), want) {
+		t.Errorf("My List = %v, want %v", ids(row(home, query.RowList)), want)
 	}
 	var libs []id.ID
 	for _, row := range recentlyAdded(home) {
@@ -395,7 +394,7 @@ func TestHomeRows(t *testing.T) {
 		_, err := tx.ExecContext(ctx, `UPDATE library_folder SET reachable = 0 WHERE id = ?`, h.moviesFolder)
 		return err
 	})
-	home, err = h.q.Home(ctx, h.friend)
+	home, _, err = h.q.Home(ctx, h.friend)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -411,7 +410,7 @@ func TestHomeRows(t *testing.T) {
 // finds the rest.
 func TestPinnedLibraries(t *testing.T) {
 	h := newHousehold(t)
-	us := users.New(h.b.DB)
+	us := users.New(h.b.DB, events.NewBus())
 	type entry struct {
 		lib    id.ID
 		pinned bool
@@ -437,12 +436,12 @@ func TestPinnedLibraries(t *testing.T) {
 		t.Fatal(err)
 	}
 	check("chosen", h.friend, entry{h.shows, true}, entry{h.movies, false})
-	home, err := h.q.Home(ctx, h.friend)
+	home, _, err := h.q.Home(ctx, h.friend)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(recentlyAdded(home)) != 1 || recentlyAdded(home)[0].Library.ID != h.shows {
-		t.Errorf("Recently Added rows = %+v, want Shows only", recentlyAdded(home))
+	if ra := recentlyAdded(home); len(ra) != 2 || ra[0].Library.ID != h.movies || ra[1].Library.ID != h.shows {
+		t.Errorf("Recently Added rows = %+v, want Movies then Shows: the server's order, whatever the user's order and pins", ra)
 	}
 	if got, _ := h.q.Search(ctx, h.friend, "blade runner", 0); !slices.Equal(ids(got.Works), []id.ID{h.bladeRunner.Work}) {
 		t.Errorf("Search finds %v in a library that isn't pinned", ids(got.Works))
@@ -490,9 +489,7 @@ func TestPinnedLibraries(t *testing.T) {
 }
 
 // TestBookRows checks Continue Listening, and that books in progress are
-// kept out of Continue Watching. It also checks Continue Series, which
-// shows the next book of a series with a finished book until a book of the
-// series is in progress.
+// kept out of Continue Watching.
 func TestBookRows(t *testing.T) {
 	h := newHousehold(t)
 	h.watch()
@@ -504,7 +501,7 @@ func TestBookRows(t *testing.T) {
 		return v
 	}
 	rows := func(v users.Viewer) []query.HomeRow {
-		home, err := h.q.Home(ctx, v)
+		home, _, err := h.q.Home(ctx, v)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -519,31 +516,23 @@ func TestBookRows(t *testing.T) {
 	if _, ok := find(row(home, query.RowContinueWatching), h.hailMary); ok {
 		t.Error("a book in Continue Watching")
 	}
-	if want := []id.ID{h.churn}; !slices.Equal(ids(row(home, query.RowContinueSeries)), want) {
-		t.Errorf("Continue Series = %v, want %v", ids(row(home, query.RowContinueSeries)), want)
-	}
 
-	// Once started, the next book moves to Continue Listening.
+	// A book joins Continue Listening once it's started.
 	h.play(h.admin, version(h.churn), 10*time.Minute)
 	home = rows(h.admin)
 	if want := []id.ID{h.churn, h.hailMary}; !slices.Equal(ids(row(home, query.RowContinueListening)), want) {
 		t.Errorf("Continue Listening = %v, want %v", ids(row(home, query.RowContinueListening)), want)
 	}
-	if len(row(home, query.RowContinueSeries)) != 0 {
-		t.Errorf("Continue Series = %v with the next book in progress", ids(row(home, query.RowContinueSeries)))
-	}
 	// The friend has no audiobooks library.
-	if home := rows(h.friend); len(row(home, query.RowContinueListening)) != 0 || len(row(home, query.RowContinueSeries)) != 0 {
-		t.Errorf("the friend's book rows: %v, %v", ids(row(home, query.RowContinueListening)), ids(row(home, query.RowContinueSeries)))
+	if home := rows(h.friend); len(row(home, query.RowContinueListening)) != 0 {
+		t.Errorf("the friend's Continue Listening: %v", ids(row(home, query.RowContinueListening)))
 	}
-	// An audiobooks library that isn't pinned has no book rows.
-	h.play(h.admin, version(h.leviathan), 2*time.Hour-time.Minute)
-	h.play(h.admin, version(h.churn), 4*time.Hour) // finished, so The Expanse has a next book again
-	if err := users.New(h.b.DB).EditPreferences(ctx, h.admin, users.PreferencesChange{Libraries: &[]users.LibraryChoice{{Library: h.books}}}); err != nil {
+	// Pins don't hide Continue Listening.
+	if err := users.New(h.b.DB, events.NewBus()).EditPreferences(ctx, h.admin, users.PreferencesChange{Libraries: &[]users.LibraryChoice{{Library: h.books}}}); err != nil {
 		t.Fatal(err)
 	}
-	if home := rows(h.admin); len(row(home, query.RowContinueListening)) != 0 || len(row(home, query.RowContinueSeries)) != 0 {
-		t.Errorf("book rows without a pinned audiobooks library: %v, %v", ids(row(home, query.RowContinueListening)), ids(row(home, query.RowContinueSeries)))
+	if home := rows(h.admin); len(row(home, query.RowContinueListening)) == 0 {
+		t.Error("Continue Listening is off for an audiobooks library that isn't pinned")
 	}
 }
 
@@ -570,7 +559,7 @@ func TestRecentlyAddedBundles(t *testing.T) {
 		}
 		return err
 	})
-	home, err := h.q.Home(ctx, h.admin)
+	home, _, err := h.q.Home(ctx, h.admin)
 	if err != nil {
 		t.Fatal(err)
 	}

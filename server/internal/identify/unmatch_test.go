@@ -9,7 +9,6 @@ import (
 	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/identify"
 	"github.com/mmcdole/kivo/internal/metadata"
-	"github.com/mmcdole/kivo/internal/userstate"
 )
 
 // Unmatch returns a matched movie to the state of a file nothing matched,
@@ -26,9 +25,6 @@ func TestUnmatchMovie(t *testing.T) {
 	}
 	anna := e.newUser("anna")
 	e.play(anna, e.versionOf(f), f, 95*time.Minute)
-	if err := e.state.Update(ctx, e.viewerOf(anna), matched.ID, userstate.Change{Favorite: new(true)}); err != nil {
-		t.Fatal(err)
-	}
 	e.poster(matched.ID)
 
 	got, err := e.id.Unmatch(ctx, e.viewer(), matched.ID)
@@ -45,7 +41,7 @@ func TestUnmatchMovie(t *testing.T) {
 	if e.artwork(matched.ID) != 0 {
 		t.Fatal("the artwork wasn't cleared")
 	}
-	if s, ok := e.stateOf(anna, w.ID); !ok || !s.played || !s.favorite {
+	if s, ok := e.stateOf(anna, w.ID); !ok || !s.played {
 		t.Fatalf("watch state after unmatching: %+v, %v", s, ok)
 	}
 
@@ -66,7 +62,7 @@ func TestUnmatchMovie(t *testing.T) {
 	if fixed.ID != matched.ID || fixed.Provisional || !fixed.Locked || !slices.Equal(fixed.ExternalIDs, []catalog.ExternalID{heat.ID}) {
 		t.Fatalf("matched again %+v", fixed)
 	}
-	if s, ok := e.stateOf(anna, fixed.ID); !ok || !s.played || !s.favorite || s.plays != 1 {
+	if s, ok := e.stateOf(anna, fixed.ID); !ok || !s.played || s.plays != 1 {
 		t.Fatalf("watch state after Fix match: %+v, %v", s, ok)
 	}
 }

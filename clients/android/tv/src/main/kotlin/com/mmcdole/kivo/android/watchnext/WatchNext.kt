@@ -71,7 +71,7 @@ object WatchNext {
 
     /** Puts [session]'s Continue Watching in the row, in its order, and takes out what's no longer in it. */
     suspend fun publish(context: Context, session: ServerSession) {
-        val read = session.session.library.home().first { it !is Load.Loading }
+        val read = session.session.library.home("continueWatching").first { it !is Load.Loading }
         // The server didn't answer: the row stays as it was until the next refresh.
         val home = read.getOrNull() ?: return
         // A work in progress continues; a series' next episode is next.

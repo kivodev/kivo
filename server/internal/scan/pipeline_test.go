@@ -241,7 +241,7 @@ func newPipeline(t *testing.T, ffmpegBin, ffprobeBin string) *pipeline {
 	p.s = scan.New(b.DB, scan.Deps{
 		Catalog: b.Catalog, Tasks: discard{}, Prober: runner, Settings: cfg, Identifier: p.id, Previews: noPreviews{}, Subtitles: noSubtitles{},
 	}, scan.Options{})
-	svc := users.New(b.DB)
+	svc := users.New(b.DB, events.NewBus())
 	var user users.User
 	b.Write(func(ctx context.Context, tx *store.Tx) error {
 		user, err = svc.CreateUser(ctx, tx, users.NewUser{Username: "admin", Admin: true, Grants: users.Grants{All: true}})

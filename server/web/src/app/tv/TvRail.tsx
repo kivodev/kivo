@@ -17,14 +17,14 @@ export type RailKey = `rail:${string}`;
 export const railKeys = {
   search: "rail:search",
   home: "rail:home",
-  favorites: "rail:favorites",
+  lists: "rail:lists",
   more: "rail:more",
   settings: "rail:settings",
   library: (id: string): RailKey => `rail:library:${id}`,
 } as const;
 
 export type RailLinkTarget =
-  | { to: "/" | "/search" | "/favorites" | "/settings" }
+  | { to: "/" | "/search" | "/lists" | "/settings" }
   | { to: "/libraries/$libraryId"; params: { libraryId: string } };
 
 /**
@@ -195,14 +195,14 @@ function LibraryEntry({
 }
 
 /**
- * The TV's left rail: Search, Home, Favorites, a line, the pinned
+ * The TV's left rail: Search, Home, Lists, a line, the pinned
  * libraries, More libraries, then Settings. It is a quiet column of icons at
  * the screen's left edge until focus moves onto it, then a panel with their
  * names, floating over the screen dimmed behind it. Closed, it shows only
- * Search, Home, Favorites and Settings, and the library the screen is in:
+ * Search, Home, Lists and Settings, and the library the screen is in:
  * every library's icon is one of a few kinds, so a column of them told the
  * libraries apart no better than it cluttered the edge. Search, Home and
- * Favorites stay at the top and Settings at the bottom; the libraries
+ * Lists stay at the top and Settings at the bottom; the libraries
  * between them scroll. `marked` is the destination the screen sits on,
  * where focus enters the rail; a library that isn't pinned marks More
  * libraries, which opens the rest of the libraries under it. The
@@ -299,13 +299,13 @@ export function TvRail({ marked }: { marked: RailKey }) {
           label={<Trans>Home</Trans>}
         />
         <RailLink
-          railKey={railKeys.favorites}
-          link={{ to: "/favorites" }}
-          current={marked === railKeys.favorites}
+          railKey={railKeys.lists}
+          link={{ to: "/lists" }}
+          current={marked === railKeys.lists}
           rail={rail}
           onChoose={setChosen}
-          icon={<Icon name="heart" className="size-8 shrink-0" />}
-          label={<Trans>Favorites</Trans>}
+          icon={<Icon name="list" className="size-8 shrink-0" />}
+          label={<Trans>Lists</Trans>}
         />
         {open && <hr className="my-2 border-border" />}
         <TvFocusGroup

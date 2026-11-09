@@ -81,6 +81,7 @@ enum class SettingsGroup(@param:StringRes val title: Int) {
     Subtitles(R.string.subtitles),
     Quality(R.string.quality),
     Display(R.string.display),
+    Home(R.string.settings_home_rows),
     Libraries(R.string.settings_libraries),
     About(R.string.settings_about),
 }
@@ -143,6 +144,7 @@ fun SettingsScreen(session: ServerSession, navigator: Navigator) {
             SettingsGroup.Subtitles -> SubtitlesPage(session)
             SettingsGroup.Quality -> QualityPage(session)
             SettingsGroup.Display -> DisplayPage(session)
+            SettingsGroup.Home -> HomePage(session)
             SettingsGroup.Libraries -> LibrariesPage(session)
             SettingsGroup.About -> AboutPage(session, navigator)
         }
@@ -360,6 +362,7 @@ private fun SettingItem(
     modifier: Modifier,
     enabled: Boolean = true,
     supporting: String? = null,
+    leading: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
     val interactions = remember { MutableInteractionSource() }
@@ -369,6 +372,7 @@ private fun SettingItem(
         enabled = enabled,
         modifier = modifier.fillMaxWidth(),
         headlineContent = { Text(label, style = TvType.item, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        leadingContent = leading?.let { content -> { content() } },
         supportingContent = supporting?.let {
             {
                 LitOnFocus(interactions) {
@@ -419,6 +423,7 @@ internal fun Toggle(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     supporting: String? = null,
+    leading: (@Composable () -> Unit)? = null,
     onChange: (Boolean) -> Unit,
 ) {
     SettingItem(
@@ -427,6 +432,7 @@ internal fun Toggle(
         modifier.testTag("toggle:$label"),
         enabled = enabled,
         supporting = supporting,
+        leading = leading,
         trailing = { SettingSwitch(value, enabled) },
     )
 }

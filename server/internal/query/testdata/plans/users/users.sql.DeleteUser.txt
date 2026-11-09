@@ -1,4 +1,6 @@
 SEARCH user USING INDEX sqlite_autoindex_user_1 (id=?)
+SEARCH list USING COVERING INDEX sqlite_autoindex_list_2 (user_id=?)
+SEARCH user_home_row USING PRIMARY KEY (user_id=?)
 SEARCH download USING COVERING INDEX download_user (user_id=?)
 SEARCH track_choice USING PRIMARY KEY (user_id=?)
 SEARCH play_event USING COVERING INDEX play_event_user (user_id=?)

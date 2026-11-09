@@ -10,7 +10,7 @@ import (
 )
 
 // LibraryChoice is one library in a user's own order, and whether it's
-// pinned. A pinned library is shown in the sidebar and on Home.
+// pinned. A pinned library is shown in the sidebar.
 type LibraryChoice struct {
 	Library id.ID
 	Pinned  bool

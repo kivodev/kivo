@@ -11,6 +11,7 @@ import type {
   CurrentUser,
   Directory,
   Home,
+  HomeRowInfo,
   Invite,
   InviteLink,
   Library,
@@ -38,9 +39,15 @@ import type {
   User,
   Version,
   WorkDetail,
+  WorkField,
+  WorkFieldValue,
   WorkKind,
+  WorkList,
   WorkSummary,
 } from "../schemas";
+
+/** A list as the mock keeps it. Its count is worked out when it's read. */
+export type MockList = Omit<WorkList, "workCount"> & { workIds: string[] };
 
 /** What the mock server answers. Handlers read it at each request, and tests change it. */
 export type MockApi = {
@@ -87,6 +94,14 @@ export type MockApi = {
   /** A series' seasons and a season's episodes. */
   children: Record<string, WorkSummary[]>;
   home: Home;
+  /** Home's layout once it's been changed. */
+  homeLayout?: HomeRowInfo[];
+  /** The user's lists, each with its works' IDs, most recently added first. */
+  lists: MockList[];
+  /** What rules and sorts can name. */
+  workFields: WorkField[];
+  /** The values of each field that chooses from a list, by field. */
+  workFieldValues: Record<string, WorkFieldValue[]>;
   /** Search results, whatever was searched. */
   search: WorkSummary[];
   /** The people search finds, whatever was searched. */
@@ -170,6 +185,7 @@ export function summaryOf(work: WorkDetail): WorkSummary {
     externalIds: _e,
     versions: _v,
     extras: _x,
+    listIds: _li,
     collections: _co,
     lockedFields: _l,
     ...summary

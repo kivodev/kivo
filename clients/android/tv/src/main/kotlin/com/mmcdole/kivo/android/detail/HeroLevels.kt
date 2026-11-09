@@ -16,11 +16,11 @@ import androidx.compose.ui.focus.onFocusChanged
 import com.mmcdole.kivo.android.ui.FocusMemory
 import com.mmcdole.kivo.android.ui.focusKey
 
-/** The button Up returns to: the one [last] focused, if it's still [offered], else Play, else Favorite, which every page has. */
+/** The button Up returns to: the one [last] focused, if it's still [offered], else Play, else My List, which every page has. */
 internal fun returningButton(last: String, offered: Set<String>): String = when {
     last in offered -> last
     "play" in offered -> "play"
-    else -> "favorite"
+    else -> "myList"
 }
 
 /**

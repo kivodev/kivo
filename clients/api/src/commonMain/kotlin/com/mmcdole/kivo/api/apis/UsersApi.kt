@@ -461,7 +461,7 @@ open class UsersApi : ApiClient {
 
     /**
      * Update current user
-     * Changes the caller&#39;s preferences. Every client of the user gets the change: playback applies the languages, subtitle mode and &#x60;rememberTracks&#x60; to the next play, and &#x60;libraries&#x60; orders the library list and Home. A library the user doesn&#39;t see, or one listed twice, is &#x60;400&#x60;. 
+     * Changes the caller&#39;s preferences. Every client of the user gets the change: playback applies the languages, subtitle mode and &#x60;rememberTracks&#x60; to the next play, and &#x60;libraries&#x60; orders the library list, and Recently Added on a Home that isn&#39;t arranged. A library the user doesn&#39;t see, or one listed twice, is &#x60;400&#x60;. 
      * @param currentUserUpdate 
      * @return CurrentUser
      */

@@ -90,7 +90,7 @@ func TestSeriesUpNext(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			h := newHousehold(t)
 			c.plays(h)
-			home, err := h.q.Home(ctx, h.admin)
+			home, _, err := h.q.Home(ctx, h.admin)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -130,7 +130,7 @@ func TestContinueWatching(t *testing.T) {
 		{"within the rating ceiling", h.kid, []id.ID{h.bluey1, h.secret.Work}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			home, err := h.q.Home(ctx, c.viewer)
+			home, _, err := h.q.Home(ctx, c.viewer)
 			if err != nil {
 				t.Fatal(err)
 			}

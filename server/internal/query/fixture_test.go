@@ -242,7 +242,7 @@ func (h *household) play(v users.Viewer, version id.ID, pos time.Duration) {
 
 // watch gives the admin and the friend some history. Dune and an Expanse
 // episode are in progress, Bluey's double episode is finished, and Toy
-// Story is a rated favorite.
+// Story is rated and on My List.
 func (h *household) watch() {
 	h.t.Helper()
 	for _, v := range []users.Viewer{h.admin, h.friend} {
@@ -251,7 +251,11 @@ func (h *household) watch() {
 		h.play(v, h.expanse2.Version, 10*time.Minute)
 		h.play(v, h.blueyDouble, 14*time.Minute)
 		ctx := context.Background()
-		if err := h.state.Update(ctx, v, h.toyStory.Work, userstate.Change{Favorite: new(true)}); err != nil {
+		lists, err := h.q.Lists(ctx, v)
+		if err != nil {
+			h.t.Fatal(err)
+		}
+		if err := h.state.AddToList(ctx, v, lists[0].ID, h.toyStory.Work); err != nil {
 			h.t.Fatal(err)
 		}
 		if err := h.state.SetRating(ctx, v.User(), h.toyStory.Work, ptr(9)); err != nil {
@@ -422,7 +426,7 @@ func (h *household) collectionOf(work id.ID) id.ID {
 // library.
 func (h *household) viewer(name string, u users.NewUser) users.Viewer {
 	h.t.Helper()
-	svc := users.New(h.b.DB)
+	svc := users.New(h.b.DB, events.NewBus())
 	u.Username = name
 	if len(u.Grants.Libraries) == 0 {
 		u.Grants.All = true
@@ -439,7 +443,7 @@ func (h *household) viewer(name string, u users.NewUser) users.Viewer {
 
 func (h *household) mustViewer(user id.ID) users.Viewer {
 	h.t.Helper()
-	v, err := users.New(h.b.DB).Viewer(context.Background(), user)
+	v, err := users.New(h.b.DB, events.NewBus()).Viewer(context.Background(), user)
 	if err != nil {
 		h.t.Fatal(err)
 	}
