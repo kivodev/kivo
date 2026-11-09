@@ -1,5 +1,5 @@
 import { Trans } from "@lingui/react/macro";
-import { createContext, type ReactNode, useContext, useId } from "react";
+import { createContext, type ReactNode, useContext, useEffect, useId, useRef } from "react";
 import { isTv } from "@/tv/flag";
 import { TvControl } from "@/tv/forms/TvControl";
 import { Button } from "./Button";
@@ -34,8 +34,14 @@ type SectionProps = {
  */
 export function SettingsSection({ id, title, description, children }: SectionProps) {
   const titleId = `${id}-title`;
+  const ref = useRef<HTMLElement>(null);
+  // A link inside the app arrives after the page has already laid out.
+  useEffect(() => {
+    if (window.location.hash === `#${id}`) ref.current?.scrollIntoView();
+  }, [id]);
   return (
     <section
+      ref={ref}
       id={id}
       aria-labelledby={title ? titleId : undefined}
       className="flex scroll-mt-6 flex-col gap-4 @settings-split/settings:grid @settings-split/settings:grid-cols-(--layout-settings-section-grid) @settings-split/settings:gap-10"
