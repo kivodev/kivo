@@ -3636,6 +3636,9 @@ type MediaFileStatus string
 type MovieInfo struct {
 	// Edition The label the movie's folder's edition tag gives it, such as `Final Cut`. Shown after the title wherever it appears.
 	Edition *string `json:"edition,omitempty"`
+
+	// TrailerURL Detail only. The movie's trailer on YouTube, for a client to open; absent when it has none.
+	TrailerURL *string `json:"trailerUrl,omitempty"`
 }
 
 // NameUpdate defines model for NameUpdate.

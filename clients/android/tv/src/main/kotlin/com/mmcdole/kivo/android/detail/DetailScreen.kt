@@ -1,5 +1,8 @@
 package com.mmcdole.kivo.android.detail
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
 import android.view.KeyEvent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,6 +46,7 @@ import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
@@ -435,7 +439,7 @@ private fun playable(head: WorkSummary, work: WorkDetail?, choices: Choices) = i
 
 /**
  * Play or Resume with the time, and beside Resume a round Play from
- * beginning; then [chips], My List, Played and the ⋯ menu; "This file is
+ * beginning; then [chips], a movie's Trailer, My List, Played and the ⋯ menu; "This file is
  * missing" in Play's place when no version can play. They work from the
  * card before the page is read.
  */
@@ -468,6 +472,7 @@ private fun ActionRow(
             if (position != null) RestartButton(hero) { play(fromStart = true) }
         }
         chips?.invoke()
+        read?.movie?.trailerUrl?.let { TrailerButton(it, hero) }
         HeroIconButton(
             if (onMyList) KivoIcon.ListCheck else KivoIcon.ListPlus,
             stringResource(if (onMyList) R.string.remove_from_my_list else R.string.add_to_my_list),
@@ -496,6 +501,26 @@ private fun PlayButton(text: String, hero: HeroLevels, onClick: () -> Unit) {
         icon = KivoIcon.Play,
         primary = true,
         modifier = Modifier.heroButton(hero, "play").height(ButtonHeight).testTag("play"),
+        contentPadding = ButtonPadding,
+    )
+}
+
+/** A movie's Trailer, opening the YouTube app. On a TV with nothing to open it, it does nothing. */
+@Composable
+private fun TrailerButton(url: String, hero: HeroLevels) {
+    val context = LocalContext.current
+    OfferButton(hero, "trailer")
+    KivoButton(
+        text = stringResource(R.string.trailer),
+        onClick = {
+            try {
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+            } catch (_: ActivityNotFoundException) {
+                // No app here plays it.
+            }
+        },
+        icon = KivoIcon.Film,
+        modifier = Modifier.heroButton(hero, "trailer").height(ButtonHeight).testTag("trailer"),
         contentPadding = ButtonPadding,
     )
 }

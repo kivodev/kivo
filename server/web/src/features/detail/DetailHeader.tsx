@@ -29,7 +29,7 @@ type Props = {
   onPlayFromStart?: () => void;
   /** Pickers under the actions. */
   children?: ReactNode;
-  /** On TV, buttons after the primary one in the row of actions, such as the track pickers. */
+  /** Buttons after the primary one in the row of actions, such as a TV's track pickers or a movie's trailer. */
   actions?: ReactNode;
   /**
    * On TV, a hero as wide as the screen with room for a long overview, as

@@ -31,6 +31,7 @@ type WorkDetail struct {
 	// metadata provider gives it. A season or episode without one takes its
 	// series' language. It is empty when unknown.
 	OriginalLanguage string
+	TrailerURL       string // a movie's trailer; empty for none
 	Genres           []string
 	Companies        []string
 	Credits          []Credit             // cast in billing order, then crew
@@ -157,7 +158,7 @@ var detail = stmt("WorkDetail", `
 SELECT coalesce(w.original_title, ''), coalesce(w.overview, ''),
   coalesce(w.content_rating, (SELECT r.content_rating FROM work r WHERE r.id = `+above+`), ''),
   coalesce(w.original_language, (SELECT r.original_language FROM work r WHERE r.id = `+above+`), ''),
-  coalesce(w.locked_fields, '')
+  coalesce(w.locked_fields, ''), coalesce(w.trailer_url, '')
 FROM work w
 WHERE w.id = @work
   AND `+visible)
@@ -431,7 +432,7 @@ func (s *Service) Detail(ctx context.Context, v users.Viewer, work id.ID) (WorkD
 			return notFound(err)
 		}
 		var locked string
-		if err := rowOf(ctx, tx, detail, args, &d.OriginalTitle, &d.Overview, &d.ContentRating, &d.OriginalLanguage, &locked); err != nil {
+		if err := rowOf(ctx, tx, detail, args, &d.OriginalTitle, &d.Overview, &d.ContentRating, &d.OriginalLanguage, &locked, &d.TrailerURL); err != nil {
 			return notFound(err)
 		}
 		if v.Admin() && locked != "" {

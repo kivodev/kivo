@@ -93,6 +93,7 @@ type WorkMetadata struct {
 	ContentRating    string
 	ContentRatingAge *int
 	Community        *CommunityRating // nil when the provider has no votes
+	TrailerURL       string           // a movie's trailer; empty for none
 	Genres, Tags     []string
 	Companies        []string // studios, networks or a book's publisher
 	Credits          []Credit
@@ -136,10 +137,12 @@ const (
 	FieldCompanies     = "companies" // studios, networks, a book's publisher
 	FieldCredits       = "credits"
 
-	// FieldCommunityRating and FieldOriginalLanguage are written only by
-	// providers. No admin edit names them, so they never lock.
+	// FieldCommunityRating, FieldOriginalLanguage and FieldTrailerURL are
+	// written only by providers. No admin edit names them, so they never
+	// lock.
 	FieldCommunityRating  = "community_rating"
 	FieldOriginalLanguage = "original_language"
+	FieldTrailerURL       = "trailer_url"
 )
 
 // EnsureWork returns the work that in describes, creating it if needed.
@@ -385,7 +388,7 @@ func (c *Catalog) writeMetadata(ctx context.Context, q *dbq.Queries, tx *store.T
 		ID: cur.ID, Title: cur.Title, SortTitle: cur.SortTitle, OriginalTitle: cur.OriginalTitle, OriginalLanguage: cur.OriginalLanguage,
 		AltTitles: cur.AltTitles, Year: cur.Year, Overview: cur.Overview, ReleaseDate: cur.ReleaseDate,
 		ContentRating: cur.ContentRating, ContentRatingAge: cur.ContentRatingAge,
-		CommunityRating: cur.CommunityRating, CommunityVotes: cur.CommunityVotes,
+		CommunityRating: cur.CommunityRating, CommunityVotes: cur.CommunityVotes, TrailerUrl: cur.TrailerUrl,
 	}
 	if take(FieldTitle) && m.Title != "" {
 		p.Title = m.Title
@@ -427,6 +430,9 @@ func (c *Catalog) writeMetadata(ctx context.Context, q *dbq.Queries, tx *store.T
 			p.CommunityRating = sql.NullFloat64{Float64: c.Rating, Valid: true}
 			p.CommunityVotes = nullInt(c.Votes)
 		}
+	}
+	if take(FieldTrailerURL) {
+		p.TrailerUrl = nullString(m.TrailerURL)
 	}
 	if err := q.UpdateWorkMetadata(ctx, p); err != nil {
 		return err

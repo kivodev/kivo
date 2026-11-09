@@ -55,6 +55,18 @@ describe("Loading a work's page", () => {
 });
 
 describe("Movie page", () => {
+  it("links to the trailer in a new tab, only for a movie that has one", async () => {
+    serveMockApi();
+    const { unmount } = renderApp(`/works/${mockIds.dunePartTwo}`);
+    const trailer = await screen.findByRole("link", { name: "Trailer" });
+    expect(trailer).toHaveAttribute("href", "https://www.youtube.com/watch?v=Way9Dexny3w");
+    expect(trailer).toHaveAttribute("target", "_blank");
+    unmount();
+    renderApp(`/works/${mockIds.dune}`);
+    expect(await screen.findByRole("heading", { name: "Dune" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Trailer" })).not.toBeInTheDocument();
+  });
+
   it("offers Resume with the time, Play from beginning beside it, the time left and end under it, and the pickers", async () => {
     serveMockApi();
     const { router, user } = renderApp(`/works/${mockIds.dunePartTwo}`);

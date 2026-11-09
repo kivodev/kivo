@@ -121,6 +121,16 @@ type tmdbPart struct {
 	ReleaseDate string `json:"release_date"`
 }
 
+// tmdbVideo is one of the videos TMDb lists for a movie.
+type tmdbVideo struct {
+	Key       string `json:"key"`
+	Site      string `json:"site"`
+	Type      string `json:"type"`
+	Official  bool   `json:"official"`
+	Lang      string `json:"iso_639_1"`
+	Published string `json:"published_at"` // RFC 3339 in one format, so the text sorts by time
+}
+
 type tmdbExternalIDs struct {
 	IMDb string `json:"imdb_id"`
 	TVDB int    `json:"tvdb_id"`
@@ -157,6 +167,9 @@ type tmdbMovie struct {
 	ExternalIDs  tmdbExternalIDs  `json:"external_ids"`
 	Images       tmdbImageSet     `json:"images"`
 	Translations tmdbTranslations `json:"translations"`
+	Videos       struct {
+		Results []tmdbVideo `json:"results"`
+	} `json:"videos"`
 	tmdbVotes
 }
 
@@ -353,6 +366,7 @@ func (t *tmdb) describeMovie(ctx context.Context, tmdbID, lang string) (*Descrip
 		ContentRatings: map[string]string{},
 		Cast:           castOf(m.Credits.Cast), Crew: crewOf(m.Credits.Crew),
 		Community: m.community(), Images: imagesOf(imgs, m.OriginalLanguage),
+		TrailerURL: trailerOf(m.Videos.Results, lang),
 	}
 	for _, a := range m.AlternativeTitles.Titles {
 		d.AltTitles = append(d.AltTitles, a.Title)
@@ -763,6 +777,45 @@ func imageLangs(lang string) string {
 	return strings.Join(slices.Compact([]string{base, "en", "null"}), ",")
 }
 
+// videoLangs returns the video languages a movie's request includes: the
+// metadata language and English.
+func videoLangs(lang string) string {
+	base, _, _ := strings.Cut(lang, "-")
+	return strings.Join(slices.Compact([]string{base, "en"}), ",")
+}
+
+// trailerOf returns the YouTube URL of a movie's best trailer, or "" when it
+// has none. Official trailers come first, then the metadata language, then
+// English, then the newest.
+func trailerOf(videos []tmdbVideo, lang string) string {
+	base, _, _ := strings.Cut(lang, "-")
+	rank := func(v tmdbVideo) int {
+		switch v.Lang {
+		case base:
+			return 0
+		case "en":
+			return 1
+		}
+		return 2
+	}
+	videos = slices.DeleteFunc(slices.Clone(videos), func(v tmdbVideo) bool {
+		return v.Site != "YouTube" || v.Type != "Trailer" || v.Key == ""
+	})
+	if len(videos) == 0 {
+		return ""
+	}
+	best := slices.MinFunc(videos, func(a, b tmdbVideo) int {
+		if a.Official != b.Official {
+			if a.Official {
+				return -1
+			}
+			return 1
+		}
+		return cmp.Or(cmp.Compare(rank(a), rank(b)), cmp.Compare(b.Published, a.Published))
+	})
+	return "https://www.youtube.com/watch?v=" + url.QueryEscape(best.Key)
+}
+
 // allLanguages reports whether a work's images are fetched in every
 // language. That is so for a work made in a language other than the
 // metadata language and English, because images in its own language may be
@@ -781,7 +834,8 @@ func (t *tmdb) movie(ctx context.Context, tmdbID, lang string) (*tmdbMovie, erro
 		return movieTTL(m.ReleaseDate, time.Now())
 	}
 	var m tmdbMovie
-	p := detailParams(lang, "alternative_titles", "credits", "external_ids", "images", "keywords", "release_dates", "translations")
+	p := detailParams(lang, "alternative_titles", "credits", "external_ids", "images", "keywords", "release_dates", "translations", "videos")
+	p.Set("include_video_language", videoLangs(lang)) // without it TMDb lists only videos in the request's language
 	if err := t.get(ctx, "/movie/"+tmdbID, p, ttl, 0, &m); err != nil {
 		return nil, err
 	}

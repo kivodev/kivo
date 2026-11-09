@@ -32,13 +32,17 @@ import kotlinx.serialization.encoding.*
  * 
  *
  * @param edition The label the movie's folder's edition tag gives it, such as `Final Cut`. Shown after the title wherever it appears.
+ * @param trailerUrl Detail only. The movie's trailer on YouTube, for a client to open; absent when it has none.
  */
 @Serializable
 
 data class MovieInfo (
 
     /* The label the movie's folder's edition tag gives it, such as `Final Cut`. Shown after the title wherever it appears. */
-    @SerialName(value = "edition") val edition: kotlin.String? = null
+    @SerialName(value = "edition") val edition: kotlin.String? = null,
+
+    /* Detail only. The movie's trailer on YouTube, for a client to open; absent when it has none. */
+    @SerialName(value = "trailerUrl") val trailerUrl: kotlin.String? = null
 
 ) {
 

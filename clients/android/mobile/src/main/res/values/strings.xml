@@ -192,6 +192,7 @@
     <string name="mobile_automatic_named">Automatic (%1$s)</string>
     <string name="mobile_off">Off</string>
     <string name="mobile_more">More</string>
+    <string name="mobile_trailer">Trailer</string>
     <string name="mobile_less">Less</string>
     <string name="mobile_season_n">Season %1$d</string>
     <string name="mobile_seasons">Seasons</string>

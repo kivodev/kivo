@@ -69,6 +69,8 @@ describe("Detail page on TV", () => {
     serveMockApi();
     const { router } = renderApp(`/works/${mockIds.dunePartTwo}`);
     await waitFor(() => expect(focused()).toBe("play"));
+    // The packaged TV app can't open YouTube, so this movie's trailer isn't offered.
+    expect(screen.queryByRole("link", { name: "Trailer" })).not.toBeInTheDocument();
     press("ArrowRight");
     await waitFor(() => expect(focused()).toBe("restart"));
     press("ArrowRight");

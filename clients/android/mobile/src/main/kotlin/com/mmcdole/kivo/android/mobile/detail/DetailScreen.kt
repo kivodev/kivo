@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.CheckCircle
@@ -71,6 +72,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
@@ -191,13 +193,13 @@ private fun DetailPage(head: WorkSummary, state: DetailUiState, model: DetailVie
             if (credits.isNotEmpty()) item(key = "credits") { CreditsRow(credits, nav) }
             item(key = "end") { Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars).padding(bottom = space(6))) }
         }
-        TopBar(if (titleShown) head.title else null, nav, cast = head.kind != "book")
+        TopBar(if (titleShown) head.title else null, nav, cast = head.kind != "book", state.work?.movie?.trailerUrl)
     }
 }
 
-/** The page's top bar over the artwork: back and Cast, then the page's colour and title once the title has scrolled away. */
+/** The page's top bar over the artwork: back, Cast and a movie's ⋯, then the page's colour and title once the title has scrolled away. */
 @Composable
-private fun TopBar(title: String?, nav: MobileNav, cast: Boolean) {
+private fun TopBar(title: String?, nav: MobileNav, cast: Boolean, trailerUrl: String?) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -210,6 +212,33 @@ private fun TopBar(title: String?, nav: MobileNav, cast: Boolean) {
         BackButton(nav)
         Text(title.orEmpty(), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
         if (cast) CastButton()
+        if (trailerUrl != null) TrailerMenu(trailerUrl)
+    }
+}
+
+/** The ⋯ menu with Trailer, which the system opens in the YouTube app if it's installed, else the browser. */
+@Composable
+private fun TrailerMenu(url: String) {
+    var open by remember { mutableStateOf(false) }
+    val uris = LocalUriHandler.current
+    Box {
+        IconButton(
+            onClick = { open = true },
+            colors = IconButtonDefaults.iconButtonColors(containerColor = LocalKivo.current.badge.copy(alpha = 0.35f)),
+            modifier = Modifier.testTag("more"),
+        ) {
+            Icon(Icons.Default.MoreVert, stringResource(R.string.mobile_more))
+        }
+        DropdownMenu(open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.mobile_trailer)) },
+                onClick = {
+                    open = false
+                    uris.openUri(url)
+                },
+                modifier = Modifier.testTag("trailer"),
+            )
+        }
     }
 }
 
