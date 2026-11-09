@@ -79,7 +79,7 @@ func TestBudgets(t *testing.T) {
 		{"browse movies, genre and unplayed", browseBudget, false, browse(q, v, movies, query.BrowseOptions{Filter: query.Filter{Genres: []string{"Drama"}, Played: query.Unplayed}})},
 		{"browse movies, 4K", browseBudget, true, browse(q, v, movies, query.BrowseOptions{Filter: query.Filter{Resolutions: []query.Resolution{query.Resolution4K}}})},
 		{"browse movies, HDR", browseBudget, true, browse(q, v, movies, query.BrowseOptions{Filter: query.Filter{Ranges: []query.Range{query.HDR}}})},
-		{"home", homeBudget, true, func() error { _, err := q.Home(ctx, v); return err }},
+		{"home", homeBudget, true, func() error { _, _, err := q.Home(ctx, v); return err }},
 		{"my list", browseBudget, true, func() error {
 			lists, err := q.Lists(ctx, v)
 			if err != nil {

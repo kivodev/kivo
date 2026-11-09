@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
+	"math"
 	"regexp"
 	"slices"
 	"strconv"
@@ -18,7 +19,7 @@ import (
 	"github.com/mmcdole/kivo/internal/users"
 )
 
-// The limits of a WorkQuery, and the version the engine writes.
+// The limits of a WorkQuery, and its current format's version.
 const (
 	queryVersion = 1
 	maxRules     = 20
@@ -38,7 +39,7 @@ type WorkQuery struct {
 	Kinds    []catalog.WorkKind
 	Where    *RuleGroup
 	Sort     []SortKey
-	MaxWorks int
+	MaxWorks *int
 	Collapse string // "series" keeps one work per show
 }
 
@@ -80,14 +81,14 @@ func (e *InvalidQueryError) Error() string { return fmt.Sprintf("invalid query: 
 // Validate checks a query against the field registry and the limits.
 func (q WorkQuery) Validate() []QueryProblem {
 	var v validator
-	if q.Version > queryVersion {
+	if q.Version < 0 || q.Version > queryVersion {
 		v.add("/version", "invalid")
 	}
 	if len(q.Kinds) == 0 {
 		v.add("/kinds", "required")
 	}
 	for i, k := range q.Kinds {
-		if !slices.Contains(queryKinds, k) {
+		if !slices.Contains(allKinds, k) {
 			v.add(fmt.Sprintf("/kinds/%d", i), "invalid")
 		}
 	}
@@ -102,7 +103,7 @@ func (q WorkQuery) Validate() []QueryProblem {
 		v.add("/where", "tooLarge")
 	}
 	v.sort(q.Sort)
-	if q.MaxWorks < 0 {
+	if q.MaxWorks != nil && *q.MaxWorks < 1 {
 		v.add("/maxWorks", "invalid")
 	}
 	if q.Collapse != "" && q.Collapse != "series" {
@@ -110,9 +111,6 @@ func (q WorkQuery) Validate() []QueryProblem {
 	}
 	return v.problems
 }
-
-// queryKinds are the kinds a query can select.
-var queryKinds = []catalog.WorkKind{catalog.KindMovie, catalog.KindSeries, catalog.KindSeason, catalog.KindEpisode, catalog.KindVideo, catalog.KindBook}
 
 type validator struct {
 	problems      []QueryProblem
@@ -156,7 +154,11 @@ func (v *validator) rule(r Rule, at string) {
 		return
 	}
 	arity := f.Ops[i].Arity
-	if len(r.Values) > maxValues || (arity >= 0 && len(r.Values) != arity) || (arity < 0 && len(r.Values) == 0) {
+	if len(r.Values) > maxValues {
+		v.add(at+"/values", "tooLarge")
+		return
+	}
+	if (arity >= 0 && len(r.Values) != arity) || (arity < 0 && len(r.Values) == 0) {
 		v.add(at+"/values", "invalid")
 		return
 	}
@@ -198,13 +200,13 @@ func (f *fieldDef) validValue(op, value string) bool {
 	}
 	switch {
 	case f.Type == FieldNumber:
-		_, err := strconv.ParseFloat(value, 64)
-		return err == nil
+		n, err := strconv.ParseFloat(value, 64)
+		return err == nil && !math.IsNaN(n) && !math.IsInf(n, 0)
 	case f.Type == FieldDate:
 		_, err := time.Parse(time.DateOnly, value)
 		return err == nil
 	case f.Type == FieldText:
-		return value != ""
+		return store.Fold(value) != ""
 	case f.bits != nil:
 		_, ok := f.bits[value]
 		return ok
@@ -242,12 +244,13 @@ func compile(q WorkQuery, vw viewer, now time.Time) compiled {
 		partition = "row_number() OVER (PARTITION BY " + seriesOf + " ORDER BY " + sortBy + ")"
 	}
 	limit := "-1"
-	if q.MaxWorks > 0 {
-		limit = c.bind(q.MaxWorks)
+	if q.MaxWorks != nil {
+		limit = c.bind(*q.MaxWorks)
 	}
 	return compiled{sql: `WITH matched AS (
 SELECT w.id, ` + partition + ` AS n, row_number() OVER (ORDER BY ` + sortBy + `) AS o
 FROM work w
+JOIN work_library wl ON wl.work_id = w.id
 LEFT JOIN user_state us ON us.user_id = @user AND us.work_id = w.id
 WHERE NOT w.provisional
   AND NOT (SELECT r.provisional FROM work r WHERE r.id = w.root_id)
@@ -257,10 +260,15 @@ WHERE NOT w.provisional
 limited AS (SELECT id, o FROM matched WHERE n = 1 ORDER BY o LIMIT ` + limit + `)`, args: vw.args(c.params...)}
 }
 
-// compiledPage and compiledCount read a compiled query.
-const (
-	compiledPage  = `SELECT id FROM limited ORDER BY o LIMIT @limit OFFSET @offset`
+// compiledCount and compiledPage read a compiled query.
+var (
 	compiledCount = `SELECT count(*) FROM limited`
+	compiledPage  = `, page AS (SELECT id, o FROM limited ORDER BY o LIMIT @limit OFFSET @offset)
+SELECT ` + summaryColumns + `
+FROM page p
+JOIN work w ON w.id = p.id
+LEFT JOIN user_state us ON us.user_id = @user AND us.work_id = w.id
+ORDER BY p.o`
 )
 
 // compiler builds one statement's WHERE clause and its parameters.
@@ -325,9 +333,9 @@ func (c *compiler) scalarRule(f *fieldDef, r Rule) string {
 	case "isNotSet":
 		return f.expr + " IS NULL"
 	case "within":
-		return f.expr + " >= " + c.bind(c.cutoff(r.Values[0]))
+		return f.expr + " BETWEEN " + c.bind(c.cutoff(r.Values[0])) + " AND " + c.bind(c.today())
 	case "notWithin":
-		return "(" + f.expr + " IS NULL OR " + f.expr + " < " + c.bind(c.cutoff(r.Values[0])) + ")"
+		return "(" + f.expr + " IS NULL OR " + f.expr + " NOT BETWEEN " + c.bind(c.cutoff(r.Values[0])) + " AND " + c.bind(c.today()) + ")"
 	case "between":
 		return f.expr + " BETWEEN " + c.bind(f.scalar(r.Values[0])) + " AND " + c.bind(f.scalar(r.Values[1]))
 	case "gte":
@@ -346,6 +354,9 @@ func (f *fieldDef) scalar(value string) any {
 	}
 	return value
 }
+
+// today is the current UTC day.
+func (c *compiler) today() string { return c.now.UTC().Format(time.DateOnly) }
 
 // cutoff is the day that period, such as P30D, before now.
 func (c *compiler) cutoff(period string) string {
@@ -410,27 +421,27 @@ func distinct(values []string) []string {
 	return slices.Compact(out)
 }
 
-// bitsRule is a rule on a field stored as a bit mask per library.
+// bitsRule is a rule on a field stored as a bit mask in work_library.
 func (c *compiler) bitsRule(f *fieldDef, r Rule) string {
+	column := "wl." + f.column
+	switch r.Op {
+	case "isSet":
+		return column + " <> 0"
+	case "isNotSet":
+		return column + " = 0"
+	}
 	var mask int64
 	for _, v := range r.Values {
 		mask |= f.bits[v]
 	}
-	exists := func(where string) string {
-		return "EXISTS (SELECT 1 FROM work_library x WHERE x.work_id = w.id AND " + where + ")"
-	}
-	set := "x." + f.column + " <> 0"
+	m := strconv.FormatInt(mask, 10)
 	switch r.Op {
-	case "isSet":
-		return exists(set)
-	case "isNotSet":
-		return "NOT " + exists(set)
 	case "allOf":
-		return exists("x." + f.column + " & " + strconv.FormatInt(mask, 10) + " = " + strconv.FormatInt(mask, 10))
+		return "(" + column + " & " + m + ") = " + m
 	case "noneOf":
-		return "NOT " + exists("x."+f.column+" & "+strconv.FormatInt(mask, 10))
+		return "(" + column + " & " + m + ") = 0"
 	}
-	return exists("x." + f.column + " & " + strconv.FormatInt(mask, 10))
+	return "(" + column + " & " + m + ") <> 0"
 }
 
 // order is a query's ORDER BY. A work with no value sorts last whichever
@@ -443,7 +454,7 @@ func (c *compiler) order(q WorkQuery) string {
 	var parts []string
 	for _, k := range keys {
 		if k.Field == sortRandom {
-			parts = append(parts, "((w.rid + "+c.bind(seedOf(q, c.now))+") * 2654435761) & 4294967295")
+			parts = append(parts, "sha256(w.id, "+c.bind(seedOf(q, c.now))+")")
 			continue
 		}
 		f := fieldsByKey[k.Field]
@@ -458,16 +469,20 @@ func (c *compiler) order(q WorkQuery) string {
 }
 
 // seedOf makes the random order the same for a query all UTC day.
-func seedOf(q WorkQuery, now time.Time) int64 {
+func seedOf(q WorkQuery, now time.Time) string {
 	b, _ := json.Marshal(q)
 	h := fnv.New32a()
 	h.Write(b)
-	return int64(h.Sum32()) + now.UTC().Unix()/86400
+	return fmt.Sprintf("%d/%d", h.Sum32(), now.UTC().Unix()/86400)
 }
 
 // QueryWorks runs a query as the Viewer. An invalid query returns an
 // *InvalidQueryError saying what's wrong.
 func (s *Service) QueryWorks(ctx context.Context, v users.Viewer, q WorkQuery, o GridOptions) (GridPage[WorkSummary], error) {
+	return s.queryWorksAt(ctx, v, q, o, time.Now())
+}
+
+func (s *Service) queryWorksAt(ctx context.Context, v users.Viewer, q WorkQuery, o GridOptions, now time.Time) (GridPage[WorkSummary], error) {
 	if problems := q.Validate(); len(problems) > 0 {
 		return GridPage[WorkSummary]{}, &InvalidQueryError{problems}
 	}
@@ -476,33 +491,17 @@ func (s *Service) QueryWorks(ctx context.Context, v users.Viewer, q WorkQuery, o
 		return GridPage[WorkSummary]{}, err
 	}
 	vw := viewerOf(v)
-	c := compile(q, vw, time.Now())
+	c := compile(q, vw, now)
 	var total int
-	var works []id.ID
+	var items []WorkSummary
 	err = s.db.Read(ctx, func(tx *sql.Tx) error {
 		if err := rowOf(ctx, tx, statement{sql: c.sql + "\n" + compiledCount}, c.args, &total); err != nil {
 			return err
 		}
 		args := append(slices.Clone(c.args), sql.Named("limit", limit), sql.Named("offset", o.Offset))
 		var err error
-		works, err = rowsOf(ctx, tx, statement{sql: c.sql + "\n" + compiledPage}, args, func(r scanner, id *id.ID) error { return r.Scan(id) })
+		items, err = summaries(ctx, tx, statement{sql: c.sql + compiledPage}, args)
 		return err
-	})
-	if err != nil {
-		return GridPage[WorkSummary]{}, err
-	}
-	var items []WorkSummary
-	err = s.db.Read(ctx, func(tx *sql.Tx) error {
-		byWork, err := summariesByID(ctx, tx, vw, works)
-		if err != nil {
-			return err
-		}
-		for _, w := range works {
-			if c, ok := byWork[w]; ok {
-				items = append(items, c)
-			}
-		}
-		return nil
 	})
 	if err != nil {
 		return GridPage[WorkSummary]{}, err

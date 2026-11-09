@@ -624,7 +624,7 @@ open class WorksApi : ApiClient {
 
     /**
      * List a field&#39;s values
-     * The values the caller can see for a field, for building a rule: those matching &#x60;q&#x60;, or with &#x60;ids&#x60; those values&#39; names. A field with no values to choose from returns none. 
+     * The values the caller can see for a field, for building a rule: those matching &#x60;q&#x60;, or with &#x60;ids&#x60; those values&#39; names. A malformed ID in &#x60;ids&#x60; is &#x60;400&#x60;. A field with no values to choose from returns none. 
      * @param `field` 
      * @param q  (optional)
      * @param ids  (optional)

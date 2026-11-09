@@ -1878,8 +1878,9 @@ paths:
       summary: List a field's values
       description: |
         The values the caller can see for a field, for building a rule:
-        those matching `q`, or with `ids` those values' names. A field with
-        no values to choose from returns none.
+        those matching `q`, or with `ids` those values' names. A malformed
+        ID in `ids` is `400`. A field with no values to choose from returns
+        none.
       tags: [works]
       x-kivo-access: viewer
       parameters:
@@ -5126,7 +5127,8 @@ components:
       description: |
         Which works a query selects. `version` is written by the server;
         leave it out, and a newer one is refused. `extra` isn't a kind that
-        can be asked for. Values of a rule are in the form its field's
+        can be asked for. A query has at most 20 rules, 5 groups including
+        the root and 3 sort keys, and a rule at most 100 values. Values of a rule are in the form its field's
         type takes: a date `YYYY-MM-DD`, a duration such as `P30D`, an ID
         as a UUID, or a name.
       required: [kinds]
@@ -5140,19 +5142,14 @@ components:
           type: array
           items: {$ref: "#/components/schemas/SortKey"}
         maxWorks: {type: integer, minimum: 1}
-        collapse:
-          type: string
-          description: "`series` keeps the first work of each show under the sort."
-          enum: [series]
+        collapse: {$ref: "#/components/schemas/WorkQueryCollapse"}
 
     RuleGroup:
       type: object
       description: At least one rule or group. The root may hold groups; a group may hold rules only.
       required: [match]
       properties:
-        match:
-          type: string
-          enum: [all, any]
+        match: {$ref: "#/components/schemas/RuleGroupMatch"}
         rules:
           type: array
           items: {$ref: "#/components/schemas/Rule"}
@@ -5176,9 +5173,7 @@ components:
       required: [field]
       properties:
         field: {type: string}
-        direction:
-          type: string
-          enum: [asc, desc]
+        direction: {$ref: "#/components/schemas/SortDirection"}
 
     WorkField:
       type: object
@@ -5188,10 +5183,7 @@ components:
         name:
           type: string
           description: The field's English name; clients translate `field` and fall back to this.
-        type:
-          type: string
-          description: What the field's values are. Skip types you don't know.
-          enum: [choice, set, person, number, date, text]
+        type: {$ref: "#/components/schemas/WorkFieldType"}
         ops:
           type: array
           items: {$ref: "#/components/schemas/WorkFieldOp"}
@@ -5199,14 +5191,34 @@ components:
           type: array
           items: {$ref: "#/components/schemas/WorkKind"}
         sortable: {type: boolean}
-        defaultDirection:
-          type: string
-          enum: [asc, desc]
+        defaultDirection: {$ref: "#/components/schemas/SortDirection"}
         unit: {type: string}
-        valueSource:
-          type: string
-          description: Whether the field's values are few, `inline`, or found with `search`.
-          enum: [inline, search]
+        valueSource: {$ref: "#/components/schemas/WorkFieldValueSource"}
+
+    WorkQueryCollapse:
+      type: string
+      description: "`series` keeps the first work of each show under the sort. Skip values you don't know."
+      enum: [series]
+
+    RuleGroupMatch:
+      type: string
+      description: Whether all of a group's rules and groups must match, or any. Skip values you don't know.
+      enum: [all, any]
+
+    SortDirection:
+      type: string
+      description: Skip values you don't know.
+      enum: [asc, desc]
+
+    WorkFieldType:
+      type: string
+      description: What a field's values are. Skip types you don't know.
+      enum: [choice, set, person, number, date, text]
+
+    WorkFieldValueSource:
+      type: string
+      description: Whether a field's values are few, `inline`, or found with `search`. Skip values you don't know.
+      enum: [inline, search]
 
     WorkFieldOp:
       type: object

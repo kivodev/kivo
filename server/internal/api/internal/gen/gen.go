@@ -1353,18 +1353,18 @@ func (e SnapshotMessageType) Valid() bool {
 	}
 }
 
-// Defines values for SortKeyDirection.
+// Defines values for SortDirection.
 const (
-	SortKeyDirectionAsc  SortKeyDirection = "asc"
-	SortKeyDirectionDesc SortKeyDirection = "desc"
+	SortDirectionAsc  SortDirection = "asc"
+	SortDirectionDesc SortDirection = "desc"
 )
 
-// Valid indicates whether the value is a known member of the SortKeyDirection enum.
-func (e SortKeyDirection) Valid() bool {
+// Valid indicates whether the value is a known member of the SortDirection enum.
+func (e SortDirection) Valid() bool {
 	switch e {
-	case SortKeyDirectionAsc:
+	case SortDirectionAsc:
 		return true
-	case SortKeyDirectionDesc:
+	case SortDirectionDesc:
 		return true
 	default:
 		return false
@@ -1695,24 +1695,6 @@ func (e TranscodeState) Valid() bool {
 	case TranscodeStatePaused:
 		return true
 	case TranscodeStateRunning:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for WorkFieldDefaultDirection.
-const (
-	WorkFieldDefaultDirectionAsc  WorkFieldDefaultDirection = "asc"
-	WorkFieldDefaultDirectionDesc WorkFieldDefaultDirection = "desc"
-)
-
-// Valid indicates whether the value is a known member of the WorkFieldDefaultDirection enum.
-func (e WorkFieldDefaultDirection) Valid() bool {
-	switch e {
-	case WorkFieldDefaultDirectionAsc:
-		return true
-	case WorkFieldDefaultDirectionDesc:
 		return true
 	default:
 		return false
@@ -4300,12 +4282,14 @@ type Rule struct {
 
 // RuleGroup At least one rule or group. The root may hold groups; a group may hold rules only.
 type RuleGroup struct {
-	Groups *[]RuleGroup   `json:"groups,omitempty"`
-	Match  RuleGroupMatch `json:"match"`
-	Rules  *[]Rule        `json:"rules,omitempty"`
+	Groups *[]RuleGroup `json:"groups,omitempty"`
+
+	// Match Whether all of a group's rules and groups must match, or any. Skip values you don't know.
+	Match RuleGroupMatch `json:"match"`
+	Rules *[]Rule        `json:"rules,omitempty"`
 }
 
-// RuleGroupMatch defines model for RuleGroup.Match.
+// RuleGroupMatch Whether all of a group's rules and groups must match, or any. Skip values you don't know.
 type RuleGroupMatch string
 
 // ScanProgress The step a library's scan is on, and how far it's got.
@@ -4633,14 +4617,15 @@ type SnapshotMessage struct {
 // SnapshotMessageType defines model for SnapshotMessage.Type.
 type SnapshotMessageType string
 
+// SortDirection Skip values you don't know.
+type SortDirection string
+
 // SortKey A sortable field, or `random`, which must be the only key.
 type SortKey struct {
-	Direction *SortKeyDirection `json:"direction,omitempty"`
-	Field     string            `json:"field"`
+	// Direction Skip values you don't know.
+	Direction *SortDirection `json:"direction,omitempty"`
+	Field     string         `json:"field"`
 }
-
-// SortKeyDirection defines model for SortKey.Direction.
-type SortKeyDirection string
 
 // SubtitleEntry A subtitle codec a client shows, and how. The server converts a
 // text subtitle to a text codec listed for a delivery. In the stream
@@ -5238,31 +5223,23 @@ type WorkDetail struct {
 
 // WorkField defines model for WorkField.
 type WorkField struct {
-	DefaultDirection *WorkFieldDefaultDirection `json:"defaultDirection,omitempty"`
-	Field            string                     `json:"field"`
-	Kinds            []WorkKind                 `json:"kinds"`
+	// DefaultDirection Skip values you don't know.
+	DefaultDirection *SortDirection `json:"defaultDirection,omitempty"`
+	Field            string         `json:"field"`
+	Kinds            []WorkKind     `json:"kinds"`
 
 	// Name The field's English name; clients translate `field` and fall back to this.
 	Name     string        `json:"name"`
 	Ops      []WorkFieldOp `json:"ops"`
 	Sortable bool          `json:"sortable"`
 
-	// Type What the field's values are. Skip types you don't know.
+	// Type What a field's values are. Skip types you don't know.
 	Type WorkFieldType `json:"type"`
 	Unit *string       `json:"unit,omitempty"`
 
-	// ValueSource Whether the field's values are few, `inline`, or found with `search`.
+	// ValueSource Whether a field's values are few, `inline`, or found with `search`. Skip values you don't know.
 	ValueSource *WorkFieldValueSource `json:"valueSource,omitempty"`
 }
-
-// WorkFieldDefaultDirection defines model for WorkField.DefaultDirection.
-type WorkFieldDefaultDirection string
-
-// WorkFieldType What the field's values are. Skip types you don't know.
-type WorkFieldType string
-
-// WorkFieldValueSource Whether the field's values are few, `inline`, or found with `search`.
-type WorkFieldValueSource string
 
 // WorkFieldList defines model for WorkFieldList.
 type WorkFieldList struct {
@@ -5276,6 +5253,9 @@ type WorkFieldOp struct {
 	Op    string `json:"op"`
 }
 
+// WorkFieldType What a field's values are. Skip types you don't know.
+type WorkFieldType string
+
 // WorkFieldValue defines model for WorkFieldValue.
 type WorkFieldValue struct {
 	Name  string `json:"name"`
@@ -5286,6 +5266,9 @@ type WorkFieldValue struct {
 type WorkFieldValueList struct {
 	Items []WorkFieldValue `json:"items"`
 }
+
+// WorkFieldValueSource Whether a field's values are few, `inline`, or found with `search`. Skip values you don't know.
+type WorkFieldValueSource string
 
 // WorkImages defines model for WorkImages.
 type WorkImages struct {
@@ -5329,11 +5312,12 @@ type WorkListList struct {
 
 // WorkQuery Which works a query selects. `version` is written by the server;
 // leave it out, and a newer one is refused. `extra` isn't a kind that
-// can be asked for. Values of a rule are in the form its field's
+// can be asked for. A query has at most 20 rules, 5 groups including
+// the root and 3 sort keys, and a rule at most 100 values. Values of a rule are in the form its field's
 // type takes: a date `YYYY-MM-DD`, a duration such as `P30D`, an ID
 // as a UUID, or a name.
 type WorkQuery struct {
-	// Collapse `series` keeps the first work of each show under the sort.
+	// Collapse `series` keeps the first work of each show under the sort. Skip values you don't know.
 	Collapse *WorkQueryCollapse `json:"collapse,omitempty"`
 	Kinds    []WorkKind         `json:"kinds"`
 	MaxWorks *int               `json:"maxWorks,omitempty"`
@@ -5344,7 +5328,7 @@ type WorkQuery struct {
 	Where *RuleGroup `json:"where,omitempty"`
 }
 
-// WorkQueryCollapse `series` keeps the first work of each show under the sort.
+// WorkQueryCollapse `series` keeps the first work of each show under the sort. Skip values you don't know.
 type WorkQueryCollapse string
 
 // WorkQueryRequest defines model for WorkQueryRequest.
@@ -5354,7 +5338,8 @@ type WorkQueryRequest struct {
 
 	// Query Which works a query selects. `version` is written by the server;
 	// leave it out, and a newer one is refused. `extra` isn't a kind that
-	// can be asked for. Values of a rule are in the form its field's
+	// can be asked for. A query has at most 20 rules, 5 groups including
+	// the root and 3 sort keys, and a rule at most 100 values. Values of a rule are in the form its field's
 	// type takes: a date `YYYY-MM-DD`, a duration such as `P30D`, an ID
 	// as a UUID, or a name.
 	Query WorkQuery `json:"query"`

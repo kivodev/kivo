@@ -34,13 +34,13 @@ import kotlinx.serialization.encoding.*
  *
  * @param `field` 
  * @param name The field's English name; clients translate `field` and fall back to this.
- * @param type What the field's values are. Skip types you don't know.
+ * @param type What a field's values are. Skip types you don't know.
  * @param ops 
  * @param kinds 
  * @param sortable 
- * @param defaultDirection 
+ * @param defaultDirection Skip values you don't know.
  * @param unit 
- * @param valueSource Whether the field's values are few, `inline`, or found with `search`.
+ * @param valueSource Whether a field's values are few, `inline`, or found with `search`. Skip values you don't know.
  */
 @Serializable
 
@@ -51,8 +51,8 @@ data class WorkField (
     /* The field's English name; clients translate `field` and fall back to this. */
     @SerialName(value = "name") @Required val name: kotlin.String,
 
-    /* What the field's values are. Skip types you don't know. */
-    @SerialName(value = "type") @Required val type: WorkField.Type,
+    /* What a field's values are. Skip types you don't know. */
+    @SerialName(value = "type") @Required val type: kotlin.String,
 
     @SerialName(value = "ops") @Required val ops: kotlin.collections.List<WorkFieldOp>,
 
@@ -60,52 +60,16 @@ data class WorkField (
 
     @SerialName(value = "sortable") @Required val sortable: kotlin.Boolean,
 
-    @SerialName(value = "defaultDirection") val defaultDirection: WorkField.DefaultDirection? = null,
+    /* Skip values you don't know. */
+    @SerialName(value = "defaultDirection") val defaultDirection: kotlin.String? = null,
 
     @SerialName(value = "unit") val unit: kotlin.String? = null,
 
-    /* Whether the field's values are few, `inline`, or found with `search`. */
-    @SerialName(value = "valueSource") val valueSource: WorkField.ValueSource? = null
+    /* Whether a field's values are few, `inline`, or found with `search`. Skip values you don't know. */
+    @SerialName(value = "valueSource") val valueSource: kotlin.String? = null
 
 ) {
 
-    /**
-     * What the field's values are. Skip types you don't know.
-     *
-     * Values: choice,set,person,number,date,text
-     */
-    @Serializable
-    enum class Type(val value: kotlin.String) {
-        @SerialName(value = "choice") choice("choice"),
-        @SerialName(value = "set") set("set"),
-        @SerialName(value = "person") person("person"),
-        @SerialName(value = "number") number("number"),
-        @SerialName(value = "date") date("date"),
-        @SerialName(value = "text") text("text");
-        override fun toString(): kotlin.String = value
-    }
-    /**
-     * 
-     *
-     * Values: asc,desc
-     */
-    @Serializable
-    enum class DefaultDirection(val value: kotlin.String) {
-        @SerialName(value = "asc") asc("asc"),
-        @SerialName(value = "desc") desc("desc");
-        override fun toString(): kotlin.String = value
-    }
-    /**
-     * Whether the field's values are few, `inline`, or found with `search`.
-     *
-     * Values: `inline`,search
-     */
-    @Serializable
-    enum class ValueSource(val value: kotlin.String) {
-        @SerialName(value = "inline") `inline`("inline"),
-        @SerialName(value = "search") search("search");
-        override fun toString(): kotlin.String = value
-    }
 
 }
 

@@ -17,7 +17,7 @@ import (
 // home reads the Viewer's Home rows.
 func (h *household) home(v users.Viewer) []query.HomeRow {
 	h.t.Helper()
-	home, err := h.q.Home(ctx, v)
+	home, _, err := h.q.Home(ctx, v)
 	if err != nil {
 		h.t.Fatal(err)
 	}

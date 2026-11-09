@@ -1260,8 +1260,9 @@ export interface paths {
         /**
          * List a field's values
          * @description The values the caller can see for a field, for building a rule:
-         *     those matching `q`, or with `ids` those values' names. A field with
-         *     no values to choose from returns none.
+         *     those matching `q`, or with `ids` those values' names. A malformed
+         *     ID in `ids` is `400`. A field with no values to choose from returns
+         *     none.
          */
         get: operations["listWorkFieldValues"];
         put?: never;
@@ -3667,7 +3668,8 @@ export interface components {
         /**
          * @description Which works a query selects. `version` is written by the server;
          *     leave it out, and a newer one is refused. `extra` isn't a kind that
-         *     can be asked for. Values of a rule are in the form its field's
+         *     can be asked for. A query has at most 20 rules, 5 groups including
+         *     the root and 3 sort keys, and a rule at most 100 values. Values of a rule are in the form its field's
          *     type takes: a date `YYYY-MM-DD`, a duration such as `P30D`, an ID
          *     as a UUID, or a name.
          */
@@ -3677,16 +3679,11 @@ export interface components {
             where?: components["schemas"]["RuleGroup"];
             sort?: components["schemas"]["SortKey"][];
             maxWorks?: number;
-            /**
-             * @description `series` keeps the first work of each show under the sort.
-             * @enum {string}
-             */
-            collapse?: "series";
+            collapse?: components["schemas"]["WorkQueryCollapse"];
         };
         /** @description At least one rule or group. The root may hold groups; a group may hold rules only. */
         RuleGroup: {
-            /** @enum {string} */
-            match: "all" | "any";
+            match: components["schemas"]["RuleGroupMatch"];
             rules?: components["schemas"]["Rule"][];
             groups?: components["schemas"]["RuleGroup"][];
         };
@@ -3698,30 +3695,45 @@ export interface components {
         /** @description A sortable field, or `random`, which must be the only key. */
         SortKey: {
             field: string;
-            /** @enum {string} */
-            direction?: "asc" | "desc";
+            direction?: components["schemas"]["SortDirection"];
         };
         WorkField: {
             field: string;
             /** @description The field's English name; clients translate `field` and fall back to this. */
             name: string;
-            /**
-             * @description What the field's values are. Skip types you don't know.
-             * @enum {string}
-             */
-            type: "choice" | "set" | "person" | "number" | "date" | "text";
+            type: components["schemas"]["WorkFieldType"];
             ops: components["schemas"]["WorkFieldOp"][];
             kinds: components["schemas"]["WorkKind"][];
             sortable: boolean;
-            /** @enum {string} */
-            defaultDirection?: "asc" | "desc";
+            defaultDirection?: components["schemas"]["SortDirection"];
             unit?: string;
-            /**
-             * @description Whether the field's values are few, `inline`, or found with `search`.
-             * @enum {string}
-             */
-            valueSource?: "inline" | "search";
+            valueSource?: components["schemas"]["WorkFieldValueSource"];
         };
+        /**
+         * @description `series` keeps the first work of each show under the sort. Skip values you don't know.
+         * @enum {string}
+         */
+        WorkQueryCollapse: "series";
+        /**
+         * @description Whether all of a group's rules and groups must match, or any. Skip values you don't know.
+         * @enum {string}
+         */
+        RuleGroupMatch: "all" | "any";
+        /**
+         * @description Skip values you don't know.
+         * @enum {string}
+         */
+        SortDirection: "asc" | "desc";
+        /**
+         * @description What a field's values are. Skip types you don't know.
+         * @enum {string}
+         */
+        WorkFieldType: "choice" | "set" | "person" | "number" | "date" | "text";
+        /**
+         * @description Whether a field's values are few, `inline`, or found with `search`. Skip values you don't know.
+         * @enum {string}
+         */
+        WorkFieldValueSource: "inline" | "search";
         WorkFieldOp: {
             op: string;
             /** @description How many values it takes, or -1 for one or more. */

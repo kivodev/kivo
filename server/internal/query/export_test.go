@@ -1,6 +1,7 @@
 package query
 
 import (
+	"context"
 	"time"
 
 	"github.com/mmcdole/kivo/internal/users"
@@ -18,7 +19,7 @@ func Statements() map[string]string {
 	return out
 }
 
-// CompiledSQL is the statement a valid query compiles to for v.
-func CompiledSQL(q WorkQuery, v users.Viewer, now time.Time) string {
-	return compile(q, viewerOf(v), now).sql
+// QueryWorksAt is QueryWorks as of now.
+func (s *Service) QueryWorksAt(ctx context.Context, v users.Viewer, q WorkQuery, o GridOptions, now time.Time) (GridPage[WorkSummary], error) {
+	return s.queryWorksAt(ctx, v, q, o, now)
 }

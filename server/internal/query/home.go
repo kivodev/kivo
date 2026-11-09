@@ -181,8 +181,8 @@ func ValidRowID(s string) bool {
 // defaultRows lists every row of a user's Home in the default order:
 // Continue Watching, My List, each video library's Recently Added in the
 // user's library order, Continue Listening if the user has an audiobooks
-// library, each audiobooks library's Recently Added, then the other lists. Every row is shown except the
-// other lists.
+// library, each audiobooks library's Recently Added, then the other lists.
+// Every row is shown except the other lists.
 func defaultRows(libs []Library, lists []List) []HomeRowInfo {
 	rows := []HomeRowInfo{
 		{ID: rowID(RowContinueWatching, id.ID{}), Kind: RowContinueWatching, Shown: true},
@@ -359,15 +359,16 @@ func rowItems(ctx context.Context, tx *sql.Tx, vw viewer, r HomeRowInfo) ([]Work
 
 // Home returns the Home rows that have summaries, in the user's layout,
 // read from one snapshot. It returns the shown rows, or with kinds the
-// rows of those kinds, shown or not.
-func (s *Service) Home(ctx context.Context, v users.Viewer, kinds ...RowKind) ([]HomeRow, error) {
+// rows of those kinds, shown or not. allHidden says the user hid every row
+// of the layout; kinds never sets it.
+func (s *Service) Home(ctx context.Context, v users.Viewer, kinds ...RowKind) (rows []HomeRow, allHidden bool, err error) {
 	vw := viewerOf(v)
-	var rows []HomeRow
-	err := s.db.Read(ctx, func(tx *sql.Tx) error {
+	err = s.db.Read(ctx, func(tx *sql.Tx) error {
 		all, err := layout(ctx, tx, vw)
 		if err != nil {
 			return err
 		}
+		allHidden = len(kinds) == 0 && !slices.ContainsFunc(all, func(r HomeRowInfo) bool { return r.Shown })
 		for _, r := range all {
 			if len(kinds) > 0 && !slices.Contains(kinds, r.Kind) || len(kinds) == 0 && !r.Shown {
 				continue
@@ -383,16 +384,16 @@ func (s *Service) Home(ctx context.Context, v users.Viewer, kinds ...RowKind) ([
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	lists := make([][]WorkSummary, len(rows))
 	for i, r := range rows {
 		lists[i] = r.Items
 	}
 	if err := s.decorate(ctx, vw, lists...); err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	return rows, nil
+	return rows, allHidden, nil
 }
 
 // bundleSummaries reads the summaries of a library's "Recently Added"

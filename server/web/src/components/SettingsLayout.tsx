@@ -35,7 +35,7 @@ type SectionProps = {
 export function SettingsSection({ id, title, description, children }: SectionProps) {
   const titleId = `${id}-title`;
   const ref = useRef<HTMLElement>(null);
-  // A link inside the app arrives after the page has already laid out.
+  // The router scrolls to a hash before this section exists, because it suspends.
   useEffect(() => {
     if (window.location.hash === `#${id}`) ref.current?.scrollIntoView();
   }, [id]);

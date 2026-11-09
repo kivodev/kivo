@@ -32,7 +32,7 @@ import kotlinx.serialization.encoding.*
  * A sortable field, or `random`, which must be the only key.
  *
  * @param `field` 
- * @param direction 
+ * @param direction Skip values you don't know.
  */
 @Serializable
 
@@ -40,21 +40,11 @@ data class SortKey (
 
     @SerialName(value = "field") @Required val `field`: kotlin.String,
 
-    @SerialName(value = "direction") val direction: SortKey.Direction? = null
+    /* Skip values you don't know. */
+    @SerialName(value = "direction") val direction: kotlin.String? = null
 
 ) {
 
-    /**
-     * 
-     *
-     * Values: asc,desc
-     */
-    @Serializable
-    enum class Direction(val value: kotlin.String) {
-        @SerialName(value = "asc") asc("asc"),
-        @SerialName(value = "desc") desc("desc");
-        override fun toString(): kotlin.String = value
-    }
 
 }
 

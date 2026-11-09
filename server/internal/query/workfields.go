@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/mmcdole/kivo/internal/catalog"
@@ -95,10 +96,6 @@ func creditOf(role string) string {
 func dayOf(ms string) string { return "date(" + ms + " / 1000, 'unixepoch')" }
 
 var (
-	addedAtMs = "w.added_at"
-	// lastAddedMs is the newest addition under the work in any library the
-	// row covers.
-	lastAddedMs = "(SELECT nullif(max(x.last_added_at), 0) FROM work_library x WHERE x.work_id = w.id)"
 	// lastPlayedMs is the user's last play: a series' or season's rolls up
 	// its episodes.
 	lastPlayedMs = `CASE w.kind
@@ -112,11 +109,6 @@ var (
 	playState = `CASE w.kind WHEN 'series' THEN ` + rollupPlayState("fe.root_id") + `
     WHEN 'season' THEN ` + rollupPlayState("fe.parent_id") + `
     ELSE coalesce(CASE WHEN us.played THEN 'played' WHEN us.resumable THEN 'inProgress' END, 'unplayed') END`
-	// releaseKey is the release date as its earliest day: a partial date
-	// counts from its start, and a work with only a year from that year.
-	releaseKey = `CASE WHEN w.release_date IS NOT NULL THEN substr(w.release_date || '-01-01', 1, 10)
-    WHEN w.year > 0 THEN printf('%04d-01-01', w.year) END`
-	ratingSortExpr = "CAST((w.community_votes * w.community_rating + 325.0) / (w.community_votes + 50) * 1000 AS INTEGER)"
 )
 
 // nameValues is the values statement for a field stored by name.
@@ -223,7 +215,7 @@ var (
 // workFields is the registry: every field a rule or sort key can name.
 var workFields = []*fieldDef{
 	{WorkField: WorkField{Field: "library", Name: "Library", Type: FieldChoice, Kinds: allKinds, ValueSource: "inline"},
-		from: "work_library x", on: "x.work_id = w.id AND " + granted("x.library_id"), value: "x.library_id", ids: true, stmt: &libraryValues},
+		from: "work_library x", on: "x.work_id = w.id", value: "x.library_id", ids: true, stmt: &libraryValues},
 	{WorkField: WorkField{Field: "contentRating", Name: "Content rating", Type: FieldChoice, Kinds: allKinds, ValueSource: "inline"},
 		expr: "CASE WHEN w.kind IN ('season', 'episode') THEN (SELECT r.content_rating FROM work r WHERE r.id = w.root_id) ELSE w.content_rating END",
 		stmt: &contentRatingValues},
@@ -262,21 +254,20 @@ var workFields = []*fieldDef{
 		from: "credit x", on: "x.work_id = w.id AND x.role = 'narrator'", value: "x.person_id", ids: true, stmt: personValues("Narrator", "narrator")},
 
 	{WorkField: WorkField{Field: "rating", Name: "Rating", Type: FieldNumber, Kinds: allKinds, Sortable: true, DefaultDirection: "desc"},
-		expr: "w.community_rating", sort: ratingSortExpr},
+		expr: "w.community_rating", sort: "nullif(wl.rating_sort, -1)"},
 	{WorkField: WorkField{Field: "myRating", Name: "My rating", Type: FieldNumber, Kinds: allKinds, Sortable: true, DefaultDirection: "desc"},
 		expr: "us.rating", sort: "us.rating"},
-	{WorkField: WorkField{Field: "runtimeMs", Name: "Runtime", Type: FieldNumber, Kinds: versioned, Sortable: true, DefaultDirection: "desc", Unit: "ms"},
-		expr: "(SELECT nullif(min(x.runtime_sort), 9223372036854775807) FROM work_library x WHERE x.work_id = w.id)",
-		sort: "(SELECT nullif(min(x.runtime_sort), 9223372036854775807) FROM work_library x WHERE x.work_id = w.id)"},
+	{WorkField: WorkField{Field: "runtimeMs", Name: "Runtime", Type: FieldNumber, Kinds: append(slices.Clone(versioned), catalog.KindBook), Sortable: true, DefaultDirection: "asc", Unit: "ms"},
+		expr: "nullif(wl.runtime_sort, 9223372036854775807)", sort: "nullif(wl.runtime_sort, 9223372036854775807)"},
 	{WorkField: WorkField{Field: "year", Name: "Year", Type: FieldNumber, Kinds: allKinds, Sortable: true, DefaultDirection: "desc"},
-		expr: "nullif(w.year, 0)", sort: "nullif(w.year, 0)"},
+		expr: "nullif(wl.year, 0)", sort: "nullif(wl.year, 0)"},
 
 	{WorkField: WorkField{Field: "addedAt", Name: "Date added", Type: FieldDate, Kinds: allKinds, Sortable: true, DefaultDirection: "desc"},
-		expr: dayOf(addedAtMs), sort: addedAtMs},
+		expr: dayOf("wl.added_at"), sort: "wl.added_at"},
 	{WorkField: WorkField{Field: "lastEpisodeAddedAt", Name: "Latest addition", Type: FieldDate, Kinds: allKinds, Sortable: true, DefaultDirection: "desc"},
-		expr: dayOf(lastAddedMs), sort: lastAddedMs},
+		expr: dayOf("nullif(wl.last_added_at, 0)"), sort: "nullif(wl.last_added_at, 0)"},
 	{WorkField: WorkField{Field: "releaseDate", Name: "Release date", Type: FieldDate, Kinds: allKinds, Sortable: true, DefaultDirection: "desc"},
-		expr: "(" + releaseKey + ")", sort: "(" + releaseKey + ")"},
+		expr: "nullif(wl.release_key, '')", sort: "nullif(wl.release_key, '')"},
 	{WorkField: WorkField{Field: "lastPlayedAt", Name: "Last played", Type: FieldDate, Kinds: allKinds, Sortable: true, DefaultDirection: "desc"},
 		expr: dayOf("(" + lastPlayedMs + ")"), sort: "(" + lastPlayedMs + ")"},
 
@@ -325,7 +316,7 @@ func (s *Service) FieldValues(ctx context.Context, v users.Viewer, field, q stri
 		for _, raw := range ids {
 			u, err := id.Parse(raw)
 			if err != nil {
-				return nil, fmt.Errorf("%w: %w", ErrNotFound, err)
+				return nil, invalid("ids", "invalid", fmt.Sprintf("id %q", raw))
 			}
 			parsed = append(parsed, u)
 		}

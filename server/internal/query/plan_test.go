@@ -25,7 +25,8 @@ var largeTables = []string{
 // wholeLibrary lists the statements allowed to scan a large table, keyed by
 // package/file or by statement key, with the reason. They are the nightly
 // and whole-library tasks, which visit every row anyway, counts over a
-// partial index that holds only the rows counted, and the test suite's
+// partial index that holds only the rows counted, the rule builder's reads
+// of a field's values, and the test suite's
 // invariants.
 var wholeLibrary = map[string]string{
 	"catalog/invariants.sql":            "CheckInvariants, run after every test",

@@ -32,7 +32,7 @@ import kotlinx.serialization.encoding.*
 /**
  * At least one rule or group. The root may hold groups; a group may hold rules only.
  *
- * @param match 
+ * @param match Whether all of a group's rules and groups must match, or any. Skip values you don't know.
  * @param rules 
  * @param groups 
  */
@@ -40,7 +40,8 @@ import kotlinx.serialization.encoding.*
 
 data class RuleGroup (
 
-    @SerialName(value = "match") @Required val match: RuleGroup.Match,
+    /* Whether all of a group's rules and groups must match, or any. Skip values you don't know. */
+    @SerialName(value = "match") @Required val match: kotlin.String,
 
     @SerialName(value = "rules") val rules: kotlin.collections.List<Rule>? = null,
 
@@ -48,17 +49,6 @@ data class RuleGroup (
 
 ) {
 
-    /**
-     * 
-     *
-     * Values: all,any
-     */
-    @Serializable
-    enum class Match(val value: kotlin.String) {
-        @SerialName(value = "all") all("all"),
-        @SerialName(value = "any") any("any");
-        override fun toString(): kotlin.String = value
-    }
 
 }
 

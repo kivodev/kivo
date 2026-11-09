@@ -98,7 +98,7 @@ func TestHomeRowsArrange(t *testing.T) {
 	}
 
 	// A ?kind= read returns it anyway.
-	hidden, err := h.q.Home(ctx, h.admin, query.RowRecentlyAdded)
+	hidden, _, err := h.q.Home(ctx, h.admin, query.RowRecentlyAdded)
 	if err != nil {
 		t.Fatal(err)
 	}

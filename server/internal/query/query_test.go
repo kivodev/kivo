@@ -70,7 +70,7 @@ func (h *household) render(t *testing.T, v users.Viewer) []byte {
 	}
 	libs, err := h.q.Libraries(ctx, v)
 	record("libraries", libs, err)
-	home, err := h.q.Home(ctx, v)
+	home, _, err := h.q.Home(ctx, v)
 	record("home", home, err)
 	for _, lib := range []id.ID{h.movies, h.shows, h.private, h.books} {
 		p, err := h.q.Browse(ctx, v, lib, query.BrowseOptions{})
@@ -154,7 +154,7 @@ func TestNoGrantsSeesNothing(t *testing.T) {
 			if err != nil || len(libs) != 0 {
 				t.Errorf("Libraries = %v, %v", libs, err)
 			}
-			home, err := h.q.Home(ctx, v)
+			home, _, err := h.q.Home(ctx, v)
 			if err != nil || len(row(home, query.RowContinueWatching))+len(recentlyAdded(home))+len(row(home, query.RowList)) != 0 {
 				t.Errorf("Home = %+v, %v", home, err)
 			}

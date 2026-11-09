@@ -64,7 +64,7 @@ func TestProvisionalWorks(t *testing.T) {
 		return err
 	})
 
-	home, err := h.q.Home(ctx, h.admin)
+	home, _, err := h.q.Home(ctx, h.admin)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -356,7 +356,7 @@ func TestChildrenCombineMultiEpisodeVersions(t *testing.T) {
 func TestHomeRows(t *testing.T) {
 	h := newHousehold(t)
 	h.watch()
-	home, err := h.q.Home(ctx, h.friend)
+	home, _, err := h.q.Home(ctx, h.friend)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -394,7 +394,7 @@ func TestHomeRows(t *testing.T) {
 		_, err := tx.ExecContext(ctx, `UPDATE library_folder SET reachable = 0 WHERE id = ?`, h.moviesFolder)
 		return err
 	})
-	home, err = h.q.Home(ctx, h.friend)
+	home, _, err = h.q.Home(ctx, h.friend)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -436,7 +436,7 @@ func TestPinnedLibraries(t *testing.T) {
 		t.Fatal(err)
 	}
 	check("chosen", h.friend, entry{h.shows, true}, entry{h.movies, false})
-	home, err := h.q.Home(ctx, h.friend)
+	home, _, err := h.q.Home(ctx, h.friend)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -501,7 +501,7 @@ func TestBookRows(t *testing.T) {
 		return v
 	}
 	rows := func(v users.Viewer) []query.HomeRow {
-		home, err := h.q.Home(ctx, v)
+		home, _, err := h.q.Home(ctx, v)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -559,7 +559,7 @@ func TestRecentlyAddedBundles(t *testing.T) {
 		}
 		return err
 	})
-	home, err := h.q.Home(ctx, h.admin)
+	home, _, err := h.q.Home(ctx, h.admin)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -31,7 +31,7 @@ func (h *handlers) QueryWorks(ctx context.Context, req gen.QueryWorksRequestObje
 
 // workQuery converts a query from the wire.
 func workQuery(q gen.WorkQuery) query.WorkQuery {
-	out := query.WorkQuery{Version: deref(q.Version), MaxWorks: deref(q.MaxWorks)}
+	out := query.WorkQuery{Version: deref(q.Version), MaxWorks: q.MaxWorks}
 	if q.Collapse != nil {
 		out.Collapse = string(*q.Collapse)
 	}
@@ -71,7 +71,7 @@ func workField(f query.WorkField) gen.WorkField {
 		Unit:  opt(f.Unit),
 	}
 	if f.DefaultDirection != "" {
-		out.DefaultDirection = ptr(gen.WorkFieldDefaultDirection(f.DefaultDirection))
+		out.DefaultDirection = ptr(gen.SortDirection(f.DefaultDirection))
 	}
 	if f.ValueSource != "" {
 		out.ValueSource = ptr(gen.WorkFieldValueSource(f.ValueSource))
