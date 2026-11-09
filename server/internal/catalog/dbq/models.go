@@ -145,4 +145,5 @@ type Work struct {
 	RefreshedAt      sql.NullInt64
 	RefreshError     sql.NullString
 	LibraryID        id.ID
+	TrailerUrl       sql.NullString
 }

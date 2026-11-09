@@ -832,6 +832,10 @@ msgstr "Released"
 msgid "Episodes use the audio and subtitle tracks last chosen for the show."
 msgstr "Episodes use the audio and subtitle tracks last chosen for the show."
 
+#: src/features/detail/MovieDetail.tsx
+msgid "Trailer"
+msgstr "Trailer"
+
 #: src/components/trackLabels.ts
 msgid "{label} (downmix)"
 msgstr "{label} (downmix)"

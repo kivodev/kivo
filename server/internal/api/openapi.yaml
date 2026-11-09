@@ -4947,6 +4947,9 @@ components:
         edition:
           type: string
           description: The label the movie's folder's edition tag gives it, such as `Final Cut`. Shown after the title wherever it appears.
+        trailerUrl:
+          type: string
+          description: Detail only. The movie's trailer on YouTube, for a client to open; absent when it has none.
 
     SeriesInfo:
       type: object

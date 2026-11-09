@@ -76,6 +76,7 @@ type Description struct {
 	Crew                 []Person          // directors and writers
 	Community            *catalog.CommunityRating
 	Collection           *Collection // set only for a movie
+	TrailerURL           string      // set only for a movie; empty for none
 	Images               Images
 }
 

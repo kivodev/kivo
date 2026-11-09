@@ -111,6 +111,38 @@ func TestEpisodes(t *testing.T) {
 	}
 }
 
+func TestTrailerOf(t *testing.T) {
+	trailer := func(key, lang string, official bool, published string) tmdbVideo {
+		return tmdbVideo{Key: key, Site: "YouTube", Type: "Trailer", Official: official, Lang: lang, Published: published}
+	}
+	const older, newer = "2020-01-01T00:00:00.000Z", "2021-01-01T00:00:00.000Z"
+	for _, tc := range []struct {
+		name, lang string
+		videos     []tmdbVideo
+		want       string
+	}{
+		{"none", "en-US", nil, ""},
+		{"official over language", "de-DE", []tmdbVideo{trailer("de", "de", false, newer), trailer("en", "en", true, older)}, "en"},
+		{"metadata language over English", "de-DE", []tmdbVideo{trailer("en", "en", true, newer), trailer("de", "de", true, older)}, "de"},
+		{"English when the language has none", "fr", []tmdbVideo{trailer("es", "es", true, newer), trailer("en", "en", true, older)}, "en"},
+		{"newest within a language", "en-US", []tmdbVideo{trailer("old", "en", true, older), trailer("new", "en", true, newer)}, "new"},
+		{"another language when nothing else", "fr", []tmdbVideo{trailer("es", "es", true, older)}, "es"},
+		{"no teasers or clips", "en", []tmdbVideo{
+			{Key: "teaser", Site: "YouTube", Type: "Teaser", Official: true, Lang: "en", Published: newer},
+			{Key: "clip", Site: "YouTube", Type: "Clip", Official: true, Lang: "en", Published: newer},
+		}, ""},
+		{"YouTube only", "en", []tmdbVideo{{Key: "vimeo", Site: "Vimeo", Type: "Trailer", Official: true, Lang: "en", Published: newer}}, ""},
+	} {
+		want := tc.want
+		if want != "" {
+			want = "https://www.youtube.com/watch?v=" + want
+		}
+		if got := trailerOf(tc.videos, tc.lang); got != want {
+			t.Errorf("%s: %q, want %q", tc.name, got, want)
+		}
+	}
+}
+
 func TestContentRating(t *testing.T) {
 	for _, tc := range []struct {
 		country, cert, name string

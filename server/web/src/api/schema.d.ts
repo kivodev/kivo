@@ -3558,6 +3558,8 @@ export interface components {
         MovieInfo: {
             /** @description The label the movie's folder's edition tag gives it, such as `Final Cut`. Shown after the title wherever it appears. */
             edition?: string;
+            /** @description Detail only. The movie's trailer on YouTube, for a client to open; absent when it has none. */
+            trailerUrl?: string;
         };
         SeriesInfo: {
             /** @description Detail only. */

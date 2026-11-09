@@ -447,8 +447,13 @@ func TestBrowseAndDetail(t *testing.T) {
 	e.b.Write(func(ctx context.Context, tx *store.Tx) error {
 		return e.b.Catalog.UpdateMetadata(ctx, tx, heat.ID, catalog.WorkMetadata{
 			Title: heat.Title, Year: heat.Year, Community: &catalog.CommunityRating{Rating: 7.5, Votes: 900},
+			TrailerURL: "https://www.youtube.com/watch?v=abc",
 		})
 	})
+	detail := decode[map[string]any](t, e.do("GET", "/api/v1/works/"+e.heat.Work.String(), e.adminToken, nil))
+	if movie, _ := detail["movie"].(map[string]any); movie["trailerUrl"] != "https://www.youtube.com/watch?v=abc" {
+		t.Errorf("detail's movie: %v", detail["movie"])
+	}
 	for _, sort := range []string{"rating", "myRating"} {
 		page := decode[list](t, e.do("GET", grid+"?sort="+sort, e.adminToken, nil))
 		if len(page.Items) != 2 {

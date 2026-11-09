@@ -73,6 +73,7 @@ func (s *Service) fromProviders(ctx context.Context, w catalog.Work, lang, count
 		f.meta.OriginalLanguage = languageCode(d.OriginalLanguage)
 		f.meta.Genres, f.meta.Companies, f.meta.Tags = names(d.Genres), names(d.Companies), names(d.Tags)
 		f.meta.Credits, f.meta.Community = credits(d.Cast, d.Crew), d.Community
+		f.meta.TrailerURL = d.TrailerURL
 		f.photos = s.photosOf(d.Cast, d.Crew)
 		for _, a := range d.AltTitles {
 			f.meta.AltTitles = appendNew(f.meta.AltTitles, clean(a, maxTitle))

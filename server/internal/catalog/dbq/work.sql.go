@@ -291,7 +291,7 @@ func (q *Queries) ExternalIDs(ctx context.Context, workID id.ID) ([]ExternalIDsR
 }
 
 const getWork = `-- name: GetWork :one
-SELECT rid, id, kind, parent_id, root_id, number, parent_number, title, sort_title, original_title, alt_titles, year, release_date, overview, content_rating, content_rating_age, community_rating, community_votes, ordering, extra_type, edition, provisional, locked, match_rev, locked_fields, added_at, original_language, refreshed_at, refresh_error, library_id FROM work WHERE id = ?1
+SELECT rid, id, kind, parent_id, root_id, number, parent_number, title, sort_title, original_title, alt_titles, year, release_date, overview, content_rating, content_rating_age, community_rating, community_votes, ordering, extra_type, edition, provisional, locked, match_rev, locked_fields, added_at, original_language, refreshed_at, refresh_error, library_id, trailer_url FROM work WHERE id = ?1
 `
 
 func (q *Queries) GetWork(ctx context.Context, argID id.ID) (Work, error) {
@@ -328,6 +328,7 @@ func (q *Queries) GetWork(ctx context.Context, argID id.ID) (Work, error) {
 		&i.RefreshedAt,
 		&i.RefreshError,
 		&i.LibraryID,
+		&i.TrailerUrl,
 	)
 	return i, err
 }
@@ -666,7 +667,7 @@ func (q *Queries) PersonExternalIDs(ctx context.Context, personID id.ID) ([]Pers
 const resetWork = `-- name: ResetWork :exec
 UPDATE work SET title = ?1, sort_title = ?2, year = ?3, release_date = ?4,
   original_title = NULL, original_language = NULL, alt_titles = NULL, overview = NULL, content_rating = NULL, content_rating_age = NULL,
-  community_rating = NULL, community_votes = NULL, locked_fields = NULL,
+  community_rating = NULL, community_votes = NULL, trailer_url = NULL, locked_fields = NULL,
   provisional = ?5, locked = ?6, match_rev = match_rev + 1
 WHERE id = ?7
 `
@@ -791,8 +792,8 @@ const updateWorkMetadata = `-- name: UpdateWorkMetadata :exec
 UPDATE work SET title = ?1, sort_title = ?2, original_title = ?3, original_language = ?4,
   alt_titles = ?5, year = ?6, overview = ?7, release_date = ?8,
   content_rating = ?9, content_rating_age = ?10, community_rating = ?11, community_votes = ?12,
-  provisional = 0
-WHERE id = ?13
+  trailer_url = ?13, provisional = 0
+WHERE id = ?14
 `
 
 type UpdateWorkMetadataParams struct {
@@ -808,6 +809,7 @@ type UpdateWorkMetadataParams struct {
 	ContentRatingAge sql.NullInt64
 	CommunityRating  sql.NullFloat64
 	CommunityVotes   sql.NullInt64
+	TrailerUrl       sql.NullString
 	ID               id.ID
 }
 
@@ -825,6 +827,7 @@ func (q *Queries) UpdateWorkMetadata(ctx context.Context, arg UpdateWorkMetadata
 		arg.ContentRatingAge,
 		arg.CommunityRating,
 		arg.CommunityVotes,
+		arg.TrailerUrl,
 		arg.ID,
 	)
 	return err

@@ -11,12 +11,16 @@ import SwiftUI
 /// left and when it ends under them. Download sits beside Favorite and Watched. A
 /// ready download is what Play and Resume play, with "Downloaded"
 /// under the actions and Stream Instead and Remove Download in the ⋯ menu.
+/// A movie's Trailer sits beside them in a wide window and in the ⋯ menu
+/// otherwise; the system opens it in the YouTube app if it's installed,
+/// else the browser.
 struct PlayableDetail: View {
     let work: WorkDetail
     @Environment(ServerModel.self) private var server
     @Environment(\.openWork) private var openWork
     @Environment(\.kivoPalette) private var palette
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.wide) private var wide
     /// The version chosen; nil selects the work's default one.
     @State private var versionId: String?
     @State private var audioTrackId: String?
@@ -135,8 +139,11 @@ struct PlayableDetail: View {
                 Text("This file is missing")
                     .font(.headline)
                     .foregroundStyle(palette.danger)
-                HStack(spacing: KivoTokens.spacing * 3) { UserStateButtons(work: work) }
-                    .controlSize(.large)
+                HStack(spacing: KivoTokens.spacing * 3) {
+                    UserStateButtons(work: work)
+                    trailerButton
+                }
+                .controlSize(.large)
             }
             .frame(maxWidth: .infinity)
         } else {
@@ -152,6 +159,7 @@ struct PlayableDetail: View {
                         }
                     } extra: {
                         downloadButton
+                        trailerButton
                     }
                 }
                 DownloadBadge(workId: work.id)
@@ -161,6 +169,22 @@ struct PlayableDetail: View {
 
     private var downloadButton: some View {
         DownloadButton(work: work, versionId: version?.id, audioTrackId: audioTrackId, subtitleTrackId: subtitleTrackId)
+    }
+
+    private var trailer: URL? {
+        work.movie?.trailerUrl.flatMap { URL(string: $0) }
+    }
+
+    @ViewBuilder private var trailerButton: some View {
+        if wide, let trailer {
+            Link(destination: trailer) {
+                Label(String(localized: "Trailer"), systemImage: "film")
+            }
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.capsule)
+            .tint(palette.text)
+            .accessibilityIdentifier("trailer")
+        }
     }
 
     /// "1 hr 36 min left · Ends at 9:41 PM", while it's in progress.
@@ -211,6 +235,11 @@ struct PlayableDetail: View {
             }
         }
         Section {
+            if !wide, let trailer {
+                Link(destination: trailer) {
+                    Label(String(localized: "Trailer"), systemImage: "film")
+                }
+            }
             UserStateMenuItems(work: work)
             GoToLibraryItem(libraryId: work.libraryId)
         }

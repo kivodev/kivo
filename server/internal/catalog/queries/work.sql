@@ -35,7 +35,7 @@ ORDER BY provisional LIMIT 1;
 UPDATE work SET title = @title, sort_title = @sort_title, original_title = @original_title, original_language = @original_language,
   alt_titles = @alt_titles, year = @year, overview = @overview, release_date = @release_date,
   content_rating = @content_rating, content_rating_age = @content_rating_age, community_rating = @community_rating, community_votes = @community_votes,
-  provisional = 0
+  trailer_url = @trailer_url, provisional = 0
 WHERE id = @id;
 
 -- name: SetLockedFields :exec
@@ -148,7 +148,7 @@ WHERE w.root_id = @work_id AND w.kind <> 'extra';
 -- Leaves a work with only what its files' names say.
 UPDATE work SET title = @title, sort_title = @sort_title, year = @year, release_date = @release_date,
   original_title = NULL, original_language = NULL, alt_titles = NULL, overview = NULL, content_rating = NULL, content_rating_age = NULL,
-  community_rating = NULL, community_votes = NULL, locked_fields = NULL,
+  community_rating = NULL, community_votes = NULL, trailer_url = NULL, locked_fields = NULL,
   provisional = @provisional, locked = @locked, match_rev = match_rev + 1
 WHERE id = @id;
 
