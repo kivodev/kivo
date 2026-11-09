@@ -212,19 +212,33 @@ var (
 	resolutions = []FieldValue{{"4k", "4K"}, {"1080p", "1080p"}, {"720p", "720p"}, {"sd", "SD"}}
 )
 
-// workFields is the registry: every field a rule or sort key can name.
+// workFields is the registry: every field a rule or sort key can name, in
+// the order clients offer them, the common ones first.
 var workFields = []*fieldDef{
+	{WorkField: WorkField{Field: "genre", Name: "Genre", Type: FieldSet, Kinds: allKinds, ValueSource: "inline"},
+		from: "work_genre x JOIN genre n ON n.id = x.genre_id", on: "x.work_id = " + seriesOf, value: "n.name",
+		stmt: nameValues("Genre", "genre", "work_genre", "genre_id")},
+	{WorkField: WorkField{Field: "year", Name: "Year", Type: FieldNumber, Kinds: allKinds, Sortable: true, DefaultDirection: "desc"},
+		expr: "nullif(wl.year, 0)", sort: "nullif(wl.year, 0)"},
+	{WorkField: WorkField{Field: "playState", Name: "Play state", Type: FieldChoice, Kinds: allKinds, ValueSource: "inline"},
+		expr: playState, inline: []FieldValue{{"unplayed", "Unplayed"}, {"inProgress", "In progress"}, {"played", "Played"}}},
+	{WorkField: WorkField{Field: "rating", Name: "Rating", Type: FieldNumber, Kinds: allKinds, Sortable: true, DefaultDirection: "desc"},
+		expr: "w.community_rating", sort: "nullif(wl.rating_sort, -1)"},
+	{WorkField: WorkField{Field: "releaseDate", Name: "Release date", Type: FieldDate, Kinds: allKinds, Sortable: true, DefaultDirection: "desc"},
+		expr: "nullif(wl.release_key, '')", sort: "nullif(wl.release_key, '')"},
+	{WorkField: WorkField{Field: "addedAt", Name: "Date added", Type: FieldDate, Kinds: allKinds, Sortable: true, DefaultDirection: "desc"},
+		expr: dayOf("wl.added_at"), sort: "wl.added_at"},
+	{WorkField: WorkField{Field: "actor", Name: "Actor", Type: FieldPerson, Kinds: videoKinds, ValueSource: "search"},
+		from: "credit x", on: creditOf("actor"), value: "x.person_id", ids: true, stmt: personValues("Actor", "actor")},
+	{WorkField: WorkField{Field: "director", Name: "Director", Type: FieldPerson, Kinds: videoKinds, ValueSource: "search"},
+		from: "credit x", on: creditOf("director"), value: "x.person_id", ids: true, stmt: personValues("Director", "director")},
+
 	{WorkField: WorkField{Field: "library", Name: "Library", Type: FieldChoice, Kinds: allKinds, ValueSource: "inline"},
 		from: "work_library x", on: "x.work_id = w.id", value: "x.library_id", ids: true, stmt: &libraryValues},
 	{WorkField: WorkField{Field: "contentRating", Name: "Content rating", Type: FieldChoice, Kinds: allKinds, ValueSource: "inline"},
 		expr: "CASE WHEN w.kind IN ('season', 'episode') THEN (SELECT r.content_rating FROM work r WHERE r.id = w.root_id) ELSE w.content_rating END",
 		stmt: &contentRatingValues},
-	{WorkField: WorkField{Field: "playState", Name: "Play state", Type: FieldChoice, Kinds: allKinds, ValueSource: "inline"},
-		expr: playState, inline: []FieldValue{{"unplayed", "Unplayed"}, {"inProgress", "In progress"}, {"played", "Played"}}},
 
-	{WorkField: WorkField{Field: "genre", Name: "Genre", Type: FieldSet, Kinds: allKinds, ValueSource: "inline"},
-		from: "work_genre x JOIN genre n ON n.id = x.genre_id", on: "x.work_id = " + seriesOf, value: "n.name",
-		stmt: nameValues("Genre", "genre", "work_genre", "genre_id")},
 	{WorkField: WorkField{Field: "tag", Name: "Tag", Type: FieldSet, Kinds: allKinds, ValueSource: "search"},
 		from: "work_tag x JOIN tag n ON n.id = x.tag_id", on: "x.work_id = " + seriesOf, value: "n.name",
 		stmt: nameValues("Tag", "tag", "work_tag", "tag_id")},
@@ -244,30 +258,18 @@ var workFields = []*fieldDef{
 	{WorkField: WorkField{Field: "rootWork", Name: "Show or movie", Type: FieldSet, Kinds: allKinds, ValueSource: "search"},
 		from: "work x", on: "x.id = w.root_id", value: "x.id", ids: true, stmt: &rootWorkValues},
 
-	{WorkField: WorkField{Field: "actor", Name: "Actor", Type: FieldPerson, Kinds: videoKinds, ValueSource: "search"},
-		from: "credit x", on: creditOf("actor"), value: "x.person_id", ids: true, stmt: personValues("Actor", "actor")},
-	{WorkField: WorkField{Field: "director", Name: "Director", Type: FieldPerson, Kinds: videoKinds, ValueSource: "search"},
-		from: "credit x", on: creditOf("director"), value: "x.person_id", ids: true, stmt: personValues("Director", "director")},
 	{WorkField: WorkField{Field: "author", Name: "Author", Type: FieldPerson, Kinds: booksOnly, ValueSource: "search"},
 		from: "credit x", on: "x.work_id = w.id AND x.role = 'author'", value: "x.person_id", ids: true, stmt: personValues("Author", "author")},
 	{WorkField: WorkField{Field: "narrator", Name: "Narrator", Type: FieldPerson, Kinds: booksOnly, ValueSource: "search"},
 		from: "credit x", on: "x.work_id = w.id AND x.role = 'narrator'", value: "x.person_id", ids: true, stmt: personValues("Narrator", "narrator")},
 
-	{WorkField: WorkField{Field: "rating", Name: "Rating", Type: FieldNumber, Kinds: allKinds, Sortable: true, DefaultDirection: "desc"},
-		expr: "w.community_rating", sort: "nullif(wl.rating_sort, -1)"},
 	{WorkField: WorkField{Field: "myRating", Name: "My rating", Type: FieldNumber, Kinds: allKinds, Sortable: true, DefaultDirection: "desc"},
 		expr: "us.rating", sort: "us.rating"},
 	{WorkField: WorkField{Field: "runtimeMs", Name: "Runtime", Type: FieldNumber, Kinds: append(slices.Clone(versioned), catalog.KindBook), Sortable: true, DefaultDirection: "asc", Unit: "ms"},
 		expr: "nullif(wl.runtime_sort, 9223372036854775807)", sort: "nullif(wl.runtime_sort, 9223372036854775807)"},
-	{WorkField: WorkField{Field: "year", Name: "Year", Type: FieldNumber, Kinds: allKinds, Sortable: true, DefaultDirection: "desc"},
-		expr: "nullif(wl.year, 0)", sort: "nullif(wl.year, 0)"},
 
-	{WorkField: WorkField{Field: "addedAt", Name: "Date added", Type: FieldDate, Kinds: allKinds, Sortable: true, DefaultDirection: "desc"},
-		expr: dayOf("wl.added_at"), sort: "wl.added_at"},
 	{WorkField: WorkField{Field: "lastEpisodeAddedAt", Name: "Latest addition", Type: FieldDate, Kinds: allKinds, Sortable: true, DefaultDirection: "desc"},
 		expr: dayOf("nullif(wl.last_added_at, 0)"), sort: "nullif(wl.last_added_at, 0)"},
-	{WorkField: WorkField{Field: "releaseDate", Name: "Release date", Type: FieldDate, Kinds: allKinds, Sortable: true, DefaultDirection: "desc"},
-		expr: "nullif(wl.release_key, '')", sort: "nullif(wl.release_key, '')"},
 	{WorkField: WorkField{Field: "lastPlayedAt", Name: "Last played", Type: FieldDate, Kinds: allKinds, Sortable: true, DefaultDirection: "desc"},
 		expr: dayOf("(" + lastPlayedMs + ")"), sort: "(" + lastPlayedMs + ")"},
 

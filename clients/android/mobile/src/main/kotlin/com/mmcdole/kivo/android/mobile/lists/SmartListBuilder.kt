@@ -103,6 +103,8 @@ fun SmartListBuilderScreen(session: ServerSession, route: SmartListBuilderRoute,
     when {
         page == BuilderPage.Kinds && draft != null && fields != null -> KindsPage(draft, offeredKinds(fields), model)
         page == BuilderPage.Libraries && draft != null -> LibrariesPage(draft, state, model)
+        page is BuilderPage.NewRule && draft != null && fields != null -> FieldsPage(offeredFields(fields, draft.kinds, null), model) { model.addRule(it, page.groupId) }
+        page == BuilderPage.NewGroup && draft != null && fields != null -> FieldsPage(offeredFields(fields, draft.kinds, null), model, model::addGroup)
         rule != null && fields != null && draft != null -> RulePage(rule, offeredFields(fields, draft.kinds, rule.field), state.names, model)
         else -> Scaffold(
             topBar = {
@@ -163,13 +165,13 @@ private fun BuilderForm(draft: SmartListDraft, fields: List<WorkField>, state: B
         }
         Label(stringResource(if (draft.match == "any") R.string.mobile_smart_match_any else R.string.mobile_smart_match_all))
         RuleRows(draft.rules, fields, state.names, model)
-        ActionRow(stringResource(R.string.mobile_smart_add_rule), "addRule") { model.addRule(null) }
-        ActionRow(stringResource(R.string.mobile_smart_add_group), "addGroup", model::addGroup)
+        ActionRow(stringResource(R.string.mobile_smart_add_rule), "addRule") { model.chooseField(BuilderPage.NewRule(null)) }
+        ActionRow(stringResource(R.string.mobile_smart_add_group), "addGroup") { model.chooseField(BuilderPage.NewGroup) }
         for (group in draft.groups) {
             key(group.id) {
                 GroupHeader(group.match) { model.setGroupMatch(group.id, it) }
                 RuleRows(group.rules, fields, state.names, model)
-                ActionRow(stringResource(R.string.mobile_smart_add_rule), "addRule") { model.addRule(group.id) }
+                ActionRow(stringResource(R.string.mobile_smart_add_rule), "addRule") { model.chooseField(BuilderPage.NewRule(group.id)) }
                 SettingRow(stringResource(R.string.mobile_smart_remove_group), "removeGroup", danger = true) { model.removeGroup(group.id) }
             }
         }
@@ -324,6 +326,16 @@ private fun LibrariesPage(draft: SmartListDraft, state: BuilderUiState, model: S
         CheckRow(stringResource(R.string.mobile_all), draft.libraries.isEmpty(), "library:all", model::clearLibraries)
         for (library in state.libraries) {
             CheckRow(library.name, library.id in draft.libraries, "library:${library.name}") { model.toggleLibrary(library.id) }
+        }
+    }
+}
+
+/** The fields a new rule can start from, in the catalog's order. */
+@Composable
+private fun FieldsPage(fields: List<WorkField>, model: SmartListBuilderViewModel, onChoose: (WorkField) -> Unit) {
+    SubPage(stringResource(R.string.mobile_smart_field), model) {
+        for (field in fields) {
+            CheckRow(fieldName(field), chosen = false, "field:${field.field}") { onChoose(field) }
         }
     }
 }

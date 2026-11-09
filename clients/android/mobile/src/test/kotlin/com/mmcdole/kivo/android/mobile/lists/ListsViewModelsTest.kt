@@ -101,12 +101,32 @@ class ListsViewModelsTest : CoreTest() {
     }
 
     @Test
-    fun aNewGroupStartsMatchingAnyWithOneBlankRuleOpen() {
+    fun aNewRuleWaitsForItsFieldAndOpensOnIt() {
         val genre = WorkField("genre", "Genre", "choice", listOf(WorkFieldOp("anyOf", -1)), listOf("movie"), sortable = false, valueSource = "inline")
         server.get("/api/v1/work-fields", WorkFieldList.serializer()) { WorkFieldList(listOf(genre)) }
         val model = SmartListBuilderViewModel(signIn(), null, "", null)
         awaitValue(model.state) { it.draft != null }
-        model.addGroup()
+        model.chooseField(BuilderPage.NewRule(null))
+        assertEquals(BuilderPage.NewRule(null), model.state.value.page)
+        assertTrue(model.state.value.draft!!.rules.isEmpty())
+        model.addRule(genre, null)
+        val state = model.state.value
+        val rule = state.draft!!.rules.single()
+        assertEquals("genre", rule.field)
+        assertEquals("anyOf", rule.op)
+        assertEquals(BuilderPage.EditingRule(rule.id), state.page)
+    }
+
+    @Test
+    fun aNewGroupWaitsForItsFieldThenMatchesAnyWithOneBlankRuleOpen() {
+        val genre = WorkField("genre", "Genre", "choice", listOf(WorkFieldOp("anyOf", -1)), listOf("movie"), sortable = false, valueSource = "inline")
+        server.get("/api/v1/work-fields", WorkFieldList.serializer()) { WorkFieldList(listOf(genre)) }
+        val model = SmartListBuilderViewModel(signIn(), null, "", null)
+        awaitValue(model.state) { it.draft != null }
+        model.chooseField(BuilderPage.NewGroup)
+        assertEquals(BuilderPage.NewGroup, model.state.value.page)
+        assertTrue(model.state.value.draft!!.groups.isEmpty())
+        model.addGroup(genre)
         val state = model.state.value
         val group = state.draft!!.groups.single()
         val rule = group.rules.single()

@@ -40,6 +40,12 @@ sealed interface BuilderPage {
 
     data object Libraries : BuilderPage
 
+    /** The fields a new rule starts from; in the group [groupId], or the root's. */
+    data class NewRule(val groupId: String?) : BuilderPage
+
+    /** The fields a new group's first rule starts from. */
+    data object NewGroup : BuilderPage
+
     data class EditingRule(val id: String) : BuilderPage
 }
 
@@ -141,12 +147,15 @@ class SmartListBuilderViewModel(
 
     fun show(page: BuilderPage) = mutable.update { it.copy(page = page) }
 
-    /** A new rule on the first field the kinds offer, opened at once; in [groupId], or the root's. */
-    fun addRule(groupId: String?) {
+    /** Opens the fields [page] starts from, when the kinds offer any. */
+    fun chooseField(page: BuilderPage) {
         val state = mutable.value
-        val fields = state.fields ?: return
         val draft = state.draft ?: return
-        val field = offeredFields(fields, draft.kinds, null).firstOrNull() ?: return
+        if (offeredFields(state.fields ?: return, draft.kinds, null).isNotEmpty()) show(page)
+    }
+
+    /** A new rule on [field], opened at once; in [groupId], or the root's. */
+    fun addRule(field: WorkField, groupId: String?) {
         val rule = SmartLists.blankRule(field) ?: return
         changeDraft { it.addingRule(rule, groupId) }
         show(BuilderPage.EditingRule(rule.id))
@@ -156,12 +165,9 @@ class SmartListBuilderViewModel(
 
     fun changeRule(id: String, change: (RuleDraft) -> RuleDraft) = changeDraft { it.changingRule(id, change) }
 
-    /** A new group matching any, with a new rule opened at once. */
-    fun addGroup() {
-        val state = mutable.value
-        val fields = state.fields ?: return
-        val draft = state.draft ?: return
-        val group = SmartLists.blankGroup(offeredFields(fields, draft.kinds, null).firstOrNull() ?: return)
+    /** A new group matching any, with a new rule on [field] opened at once. */
+    fun addGroup(field: WorkField) {
+        val group = SmartLists.blankGroup(field)
         changeDraft { it.addingGroup(group) }
         group.rules.firstOrNull()?.let { show(BuilderPage.EditingRule(it.id)) }
     }

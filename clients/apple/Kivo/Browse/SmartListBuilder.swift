@@ -126,8 +126,8 @@ private struct SmartListForm: View {
     let startingQuery: WorkQuery?
     @Environment(ServerModel.self) private var server
     @Environment(\.kivoPalette) private var palette
-    /// The rule whose page is open.
-    @State private var editing: String?
+    /// The page the form has open.
+    @State private var opened: RulesPage?
     /// Chosen values' names, by `SmartLists.nameKey`.
     @State private var names: [String: String] = [:]
     /// The live count as a line, nil before the first answer or with no kinds.
@@ -162,11 +162,8 @@ private struct SmartListForm: View {
                 }
                 .onDelete { remove(draft.rules, at: $0) }
                 addRule(toGroup: nil)
-                Button(String(localized: "Add Group")) {
-                    guard let field = offeredFields(keeping: nil).first else { return }
-                    draft = draft.addingGroup(group: SmartLists.shared.blankGroup(field: field))
-                }
-                .accessibilityIdentifier("add-group")
+                Button(String(localized: "Add Group")) { chooseField(.newGroup) }
+                    .accessibilityIdentifier("add-group")
             } header: {
                 Text(draft.match == "any" ? String(localized: "Match Any of These") : String(localized: "Match All of These"))
             }
@@ -197,13 +194,20 @@ private struct SmartListForm: View {
         // Each choice pushes its own list with a checkmark, as in the Settings app.
         .pickerStyle(.navigationLink)
         .scrollDismissesKeyboard(.interactively)
-        .navigationDestination(item: $editing) { id in
-            RulePage(
-                rule: Binding(get: { draft.rule(id: id)! }, set: { new in draft = draft.changingRule(id: id) { _ in new } }),
-                fields: offeredFields(keeping: draft.rule(id: id)?.field),
-                names: $names,
-                session: server.session
-            )
+        .navigationDestination(item: $opened) { page in
+            switch page {
+            case .newRule(let groupId):
+                FieldsPage(fields: offeredFields(keeping: nil)) { add($0, toGroup: groupId) }
+            case .newGroup:
+                FieldsPage(fields: offeredFields(keeping: nil), choose: addGroup)
+            case .rule(let id):
+                RulePage(
+                    rule: Binding(get: { draft.rule(id: id)! }, set: { new in draft = draft.changingRule(id: id) { _ in new } }),
+                    fields: offeredFields(keeping: draft.rule(id: id)?.field),
+                    names: $names,
+                    session: server.session
+                )
+            }
         }
         .task {
             if let startingQuery {
@@ -238,7 +242,7 @@ private struct SmartListForm: View {
     /// A rule's row, opening its page: "Genre is Comedy".
     private func row(_ rule: RuleDraft) -> some View {
         Button {
-            editing = rule.id
+            opened = .rule(rule.id)
         } label: {
             HStack(spacing: KivoTokens.spacing * 1.5) {
                 if let field = fields.first(where: { $0.field == rule.field }) {
@@ -261,19 +265,29 @@ private struct SmartListForm: View {
         .accessibilityIdentifier("rule:\(rule.field)")
     }
 
-    /// A rule on the first field the kinds offer, its values not chosen yet.
-    private var blankRule: RuleDraft? {
-        offeredFields(keeping: nil).first.flatMap { SmartLists.shared.blankRule(field: $0) }
+    /// Add Rule, in [groupId] or the root's: its field comes first.
+    private func addRule(toGroup groupId: String?) -> some View {
+        Button(String(localized: "Add Rule")) { chooseField(.newRule(groupId: groupId)) }
+            .accessibilityIdentifier("add-rule")
     }
 
-    /// Add Rule: a blank rule in [groupId] or the root's, opened at once.
-    private func addRule(toGroup groupId: String?) -> some View {
-        Button(String(localized: "Add Rule")) {
-            guard let rule = blankRule else { return }
-            draft = draft.addingRule(rule: rule, groupId: groupId)
-            editing = rule.id
-        }
-        .accessibilityIdentifier("add-rule")
+    /// Opens the fields [page] starts from, when the kinds offer any.
+    private func chooseField(_ page: RulesPage) {
+        if !offeredFields(keeping: nil).isEmpty { opened = page }
+    }
+
+    /// A new rule on [field], opened at once.
+    private func add(_ field: WorkField, toGroup groupId: String?) {
+        guard let rule = SmartLists.shared.blankRule(field: field) else { return }
+        draft = draft.addingRule(rule: rule, groupId: groupId)
+        opened = .rule(rule.id)
+    }
+
+    /// A new group with a new rule on [field], opened at once.
+    private func addGroup(_ field: WorkField) {
+        let group = SmartLists.shared.blankGroup(field: field)
+        draft = draft.addingGroup(group: group)
+        opened = group.rules.first.map { .rule($0.id) }
     }
 
     /// A group's heading, a menu of what the group matches.
@@ -340,6 +354,32 @@ private struct SmartListForm: View {
             guard !Task.isCancelled else { return }
             matching = error.problemSentence
         }
+    }
+}
+
+/// What the form opens for a rule: the fields a new one starts from, or its page.
+private enum RulesPage: Hashable {
+    case newRule(groupId: String?)
+    case newGroup
+    case rule(String)
+}
+
+/// The fields a new rule can start from, in the catalog's order.
+private struct FieldsPage: View {
+    let fields: [WorkField]
+    let choose: (WorkField) -> Void
+
+    var body: some View {
+        List {
+            ForEach(fields, id: \.field) { field in
+                ChoiceRow(title: SmartListWords.field(field), detail: nil, chosen: false) { choose(field) }
+                    .accessibilityIdentifier("field:\(field.field)")
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .navigationTitle(String(localized: "Field"))
+        .toolbarTitleDisplayMode(.inline)
+        .kivoPageBackground()
     }
 }
 

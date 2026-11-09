@@ -134,7 +134,7 @@ function ListActions({ list }: { list: WorkList }) {
   return (
     <>
       {list.smart && (
-        <Button variant="secondary" size="sm" onPress={() => setOpen("edit")}>
+        <Button variant="secondary" size="md" onPress={() => setOpen("edit")}>
           <Trans>Edit</Trans>
         </Button>
       )}
