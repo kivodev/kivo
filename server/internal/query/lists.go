@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/mmcdole/kivo/internal/catalog"
@@ -92,6 +93,21 @@ func parseSmart(stored string) *SmartList {
 		return &SmartList{Errors: []QueryProblem{{Pointer: "", Code: "invalid"}}}
 	}
 	return &SmartList{Query: q, Errors: q.Validate()}
+}
+
+// LogBrokenSmartLists logs a Warn for each saved query that no longer
+// compiles, with its list and problem codes and never its rules. The server
+// runs it once as it starts.
+func LogBrokenSmartLists(ctx context.Context, saved []users.SavedQuery) {
+	for _, q := range saved {
+		if problems := parseSmart(q.Query).Errors; len(problems) > 0 {
+			codes := make([]string, len(problems))
+			for i, p := range problems {
+				codes[i] = p.Code
+			}
+			slog.WarnContext(ctx, "lists: a smart list's rules no longer compile", "list", q.List, "problems", codes)
+		}
+	}
 }
 
 // Lists returns the user's lists, My List first. A smart list's Works is 0:

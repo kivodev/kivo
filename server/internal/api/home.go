@@ -111,5 +111,5 @@ func (h *handlers) homeRowInfos(ctx context.Context) (gen.HomeRowInfoList, error
 
 // homeRowInfo converts a row of the layout.
 func homeRowInfo(r query.HomeRowInfo) gen.HomeRowInfo {
-	return gen.HomeRowInfo{ID: r.ID, Kind: gen.HomeRowKind(r.Kind), Shown: r.Shown, Library: libraryRef(r.Library), List: listRef(r.List)}
+	return gen.HomeRowInfo{ID: r.ID, Kind: gen.HomeRowKind(r.Kind), Shown: r.Shown, Library: libraryRef(r.Library), List: listRef(r.List), Broken: opt(r.Broken())}
 }

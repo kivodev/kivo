@@ -281,6 +281,7 @@ fun HomeSettingsScreen(session: ServerSession, nav: MobileNav) {
                 canMoveUp = index > 0,
                 canMoveDown = index < rows.lastIndex,
                 icon = { HomeRowIcon(row) },
+                supporting = if (row.broken == true) stringResource(R.string.mobile_smart_rules_failed) else null,
                 onCheck = { model.show(row.id, it) },
                 onMove = { model.moveRow(row.id, it) },
             )
@@ -336,12 +337,14 @@ private fun LazyItemScope.OrderedSwitch(
     canMoveUp: Boolean,
     canMoveDown: Boolean,
     icon: (@Composable () -> Unit)? = null,
+    supporting: String? = null,
     onCheck: (Boolean) -> Unit,
     onMove: (Int) -> Unit,
 ) {
     ListItem(
         headlineContent = { Text(name) },
         leadingContent = icon,
+        supportingContent = supporting?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
         trailingContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { onMove(-1) }, enabled = canMoveUp) { Icon(Icons.Default.KeyboardArrowUp, stringResource(R.string.mobile_move_up)) }

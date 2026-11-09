@@ -156,9 +156,15 @@ struct ListGrid: View {
 
     /// Reads what naming a smart list's rules takes.
     private func readRules() async {
-        guard let query = smart?.query, let fields = try? await server.session.library.workFields() else { return }
-        let names = (try? await server.session.library.smartListNames(query: query, fields: fields)) ?? [:]
-        rulesLine = SmartListWords.summary(of: query, fields: fields, names: names)
+        guard let query = smart?.query else { return }
+        do {
+            let fields = try await server.session.library.workFields()
+            let names = try await server.session.library.smartListNames(query: query, fields: fields)
+            rulesLine = SmartListWords.summary(of: query, fields: fields, names: names)
+        } catch {
+            guard !Task.isCancelled else { return }
+            problem = error.problemSentence
+        }
     }
 
     /// Why a list shows nothing: rules that no longer run, rules matching nothing, or nothing added.

@@ -3072,6 +3072,7 @@ msgid "Collection"
 msgstr "Collection"
 
 #: src/features/lists/ListScreen.tsx
+#: src/features/user/HomeRowsEditor.tsx
 msgid "These rules no longer work"
 msgstr "These rules no longer work"
 

@@ -29,6 +29,7 @@ var largeTables = []string{
 // of a field's values, and the test suite's
 // invariants.
 var wholeLibrary = map[string]string{
+	"users/users.sql.SavedListQueries":  "once at startup, to log smart lists that no longer compile",
 	"catalog/invariants.sql":            "CheckInvariants, run after every test",
 	"previews/previews.sql.Pending":     "what the previews task has left, or Make preview thumbnails on a library",
 	"subtitles/subtitles.sql.Pending":   "media_track_extracted holds only ASS, SSA and PGS tracks",

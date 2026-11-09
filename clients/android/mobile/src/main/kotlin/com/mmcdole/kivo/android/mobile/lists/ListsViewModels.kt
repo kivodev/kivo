@@ -109,6 +109,11 @@ class ListViewModel(private val session: KivoSession, private val listId: String
 
     val marks = WorkMarks(session.library, viewModelScope)
 
+    private val mutableProblem = MutableStateFlow<RequestProblem?>(null)
+
+    /** Why the list's rules couldn't be named, until it's dismissed. */
+    val problem: StateFlow<RequestProblem?> = mutableProblem
+
     /** The list as the lists last read it; null until then, or when it's gone. */
     val list: StateFlow<WorkList?> = session.library.lists()
         .map { load -> load.getOrNull()?.firstOrNull { it.id == listId } }
@@ -125,8 +130,13 @@ class ListViewModel(private val session: KivoSession, private val listId: String
         SmartRulesWords(fields, session.library.smartListNames(query, fields))
     } catch (e: CancellationException) {
         throw e
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+        mutableProblem.value = RequestProblem.of(e)
         null
+    }
+
+    fun dismissProblem() {
+        mutableProblem.value = null
     }
 
     suspend fun refresh() {

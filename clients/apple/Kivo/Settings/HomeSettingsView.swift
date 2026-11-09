@@ -25,12 +25,19 @@ struct HomeSettingsView: View {
                     Toggle(isOn: Binding(
                         get: { row.shown },
                         set: { shown in
-                            rows = rows.map { $0.id == row.id ? HomeRowInfo(id: $0.id, kind: $0.kind, shown: shown, library: $0.library, list: $0.list) : $0 }
+                            rows = rows.map { $0.id == row.id ? HomeRowInfo(id: $0.id, kind: $0.kind, shown: shown, library: $0.library, list: $0.list, broken: $0.broken) : $0 }
                             save()
                         }
                     )) {
                         Label {
-                            Text(homeRowTitle(kind: row.kind, libraryName: row.library?.name, listName: row.list?.name))
+                            VStack(alignment: .leading) {
+                                Text(homeRowTitle(kind: row.kind, libraryName: row.library?.name, listName: row.list?.name))
+                                if row.broken?.boolValue == true {
+                                    Text("These rules no longer work.")
+                                        .font(.caption)
+                                        .foregroundStyle(palette.danger)
+                                }
+                            }
                         } icon: {
                             icon(of: row)
                         }

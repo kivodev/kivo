@@ -1,9 +1,12 @@
 package query_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -277,6 +280,66 @@ func TestSmartLists(t *testing.T) {
 }
 
 // The kind filter narrows the capped set; it doesn't reach past the cap.
+func TestBrokenSmartLists(t *testing.T) {
+	h := newHousehold(t)
+	us := users.New(h.b.DB, events.NewBus())
+	list := h.smartList(us, h.admin, "Broken", movies(query.Rule{Field: "title", Op: "contains", Values: []string{"secret"}}))
+	h.b.Write(func(ctx context.Context, tx *store.Tx) error {
+		_, err := tx.ExecContext(ctx, `UPDATE list SET query = '{"version":1,"kinds":["movie"],"where":{"match":"all","rules":[{"field":"mood","op":"anyOf","values":["secret"]}]}}' WHERE id = ?`, list)
+		return err
+	})
+	var logged bytes.Buffer
+	defer slog.SetDefault(slog.Default())
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, nil)))
+	saved, err := us.SavedListQueries(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	query.LogBrokenSmartLists(ctx, saved)
+	if line := logged.String(); !strings.Contains(line, list.String()) || !strings.Contains(line, "invalid") || strings.Contains(line, "secret") {
+		t.Errorf("logged %q", line)
+	}
+	rows, err := h.q.HomeRows(ctx, h.admin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	at := slices.IndexFunc(rows, func(r query.HomeRowInfo) bool { return r.List.ID == list })
+	if at < 0 || !rows[at].Broken() {
+		t.Errorf("the layout doesn't say the list is broken: %+v", rows)
+	}
+}
+
+func TestHomeSkipsARowThatFails(t *testing.T) {
+	h := newHousehold(t)
+	us := users.New(h.b.DB, events.NewBus())
+	list := h.smartList(us, h.admin, "Fails", movies(query.Rule{Field: "collection", Op: "anyOf", Values: []string{id.New().String()}}))
+	if err := us.SetHomeRows(ctx, h.admin, []users.HomeRow{{ID: "list:" + list.String(), Shown: true}}); err != nil {
+		t.Fatal(err)
+	}
+	rename := func(from, to string) {
+		h.b.Write(func(ctx context.Context, tx *store.Tx) error {
+			_, err := tx.ExecContext(ctx, `ALTER TABLE `+from+` RENAME TO `+to)
+			return err
+		})
+	}
+	rename("collection_work", "collection_work_away")
+	defer rename("collection_work_away", "collection_work")
+	var logged bytes.Buffer
+	defer slog.SetDefault(slog.Default())
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, nil)))
+	if _, _, err := h.q.Home(ctx, h.admin); err != nil {
+		t.Fatalf("a failing row failed Home: %v", err)
+	}
+	if line := logged.String(); !strings.Contains(line, "list:"+list.String()) {
+		t.Errorf("logged %q", line)
+	}
+	cancelled, cancel := context.WithCancel(ctx)
+	cancel()
+	if _, _, err := h.q.Home(cancelled, h.admin); err == nil {
+		t.Error("a cancelled Home read succeeded")
+	}
+}
+
 func TestSmartListsCountOnlyWhenAsked(t *testing.T) {
 	h := newHousehold(t)
 	us := users.New(h.b.DB, events.NewBus())

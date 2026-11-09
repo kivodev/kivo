@@ -3098,6 +3098,9 @@ type HomeRowChange struct {
 
 // HomeRowInfo A row of the user's Home layout, as the editor lists it.
 type HomeRowInfo struct {
+	// Broken A smart list whose rules no longer run, which never shows on Home.
+	Broken *bool `json:"broken,omitempty"`
+
 	// ID As `HomeRow.id`.
 	ID string `json:"id"`
 

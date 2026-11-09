@@ -77,7 +77,10 @@ export function HomeRowOrder({ rows, onChange }: Props) {
               <Icon name="grip" className="size-4" />
             </RacButton>
             <RowIcon row={row} />
-            <span className={`flex-1 truncate font-medium ${row.shown ? "text-text" : "text-text-muted"}`}>{name}</span>
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className={`truncate font-medium ${row.shown ? "text-text" : "text-text-muted"}`}>{name}</span>
+              {row.broken && <span className="text-xs text-danger">{t`These rules no longer work`}</span>}
+            </span>
             <Switch
               aria-label={t`Shown: ${name}`}
               isSelected={row.shown}
@@ -106,6 +109,7 @@ export function HomeRowsTv({ rows, onChange }: Props) {
         return (
           <SettingsRow
             key={row.id}
+            {...(row.broken ? { error: t`These rules no longer work` } : {})}
             label={
               <span className="flex items-center gap-3">
                 <RowIcon row={row} />

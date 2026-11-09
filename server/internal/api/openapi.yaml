@@ -5106,6 +5106,9 @@ components:
           $ref: "#/components/schemas/ListRef"
           description: For `list`, the list.
         shown: {type: boolean}
+        broken:
+          type: boolean
+          description: A smart list whose rules no longer run, which never shows on Home.
 
     HomeRowInfoList:
       type: object

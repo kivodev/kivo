@@ -388,12 +388,13 @@ private fun OrderedRow(
     canMoveDown: Boolean,
     failed: FailedSave?,
     leading: (@Composable () -> Unit)? = null,
+    supporting: String? = null,
     onCheck: (Boolean) -> Unit,
     onMove: (Int) -> Unit,
 ) {
     Column {
         Row(Modifier.settingWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Kivo.space(2))) {
-            Toggle(name, checked, Modifier.weight(1f).focusKey(memory, "pin/$key"), leading = leading, onChange = onCheck)
+            Toggle(name, checked, Modifier.weight(1f).focusKey(memory, "pin/$key"), supporting = supporting, leading = leading, onChange = onCheck)
             IconButton(KivoIcon.ChevronUp, stringResource(R.string.move_up), { onMove(-1) }, Modifier.focusKey(memory, "up/$key"), enabled = canMoveUp)
             IconButton(KivoIcon.ChevronDown, stringResource(R.string.move_down), { onMove(1) }, Modifier.focusKey(memory, "down/$key"), enabled = canMoveDown)
         }
@@ -436,6 +437,7 @@ internal fun HomePage(session: ServerSession) {
                     canMoveDown = index < rows.lastIndex,
                     failed = rowModel.saves.on("show/${row.id}") ?: rowModel.saves.on("rowmove/${row.id}"),
                     leading = { HomeRowIcon(row) },
+                    supporting = if (row.broken == true) stringResource(R.string.list_rules_broken) else null,
                     onCheck = { rowModel.show(row.id, it) },
                     onMove = { rowModel.move(row.id, it) },
                 )

@@ -352,6 +352,7 @@ fun ListScreen(session: ServerSession, id: String, name: String, nav: MobileNav)
     val title = list?.name ?: name
     val smart = list?.smart
     val rulesWords by model.rulesWords.collectAsStateWithLifecycle()
+    val rulesProblem by model.problem.collectAsStateWithLifecycle()
     Scaffold(
         topBar = {
             PageTopBar(title, nav::back) {
@@ -402,6 +403,13 @@ fun ListScreen(session: ServerSession, id: String, name: String, nav: MobileNav)
                 }
             }
         }
+    }
+    rulesProblem?.let { failure ->
+        AlertDialog(
+            onDismissRequest = model::dismissProblem,
+            text = { Text(sentence(failure)) },
+            confirmButton = { TextButton(onClick = model::dismissProblem) { Text(stringResource(R.string.mobile_ok)) } },
+        )
     }
     if (renaming) {
         ListNameDialog(

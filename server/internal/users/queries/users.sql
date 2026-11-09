@@ -92,5 +92,8 @@ WHERE id = @id;
 -- name: GetUser :one
 SELECT * FROM user WHERE id = @id;
 
+-- name: SavedListQueries :many
+SELECT id, query FROM list WHERE query IS NOT NULL;
+
 -- name: ListUsers :many
 SELECT * FROM user ORDER BY username;

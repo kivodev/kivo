@@ -395,6 +395,38 @@ func (q *Queries) RenameList(ctx context.Context, arg RenameListParams) error {
 	return err
 }
 
+const savedListQueries = `-- name: SavedListQueries :many
+SELECT id, query FROM list WHERE query IS NOT NULL
+`
+
+type SavedListQueriesRow struct {
+	ID    id.ID
+	Query sql.NullString
+}
+
+func (q *Queries) SavedListQueries(ctx context.Context) ([]SavedListQueriesRow, error) {
+	rows, err := q.db.QueryContext(ctx, savedListQueries)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SavedListQueriesRow
+	for rows.Next() {
+		var i SavedListQueriesRow
+		if err := rows.Scan(&i.ID, &i.Query); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const setAdmin = `-- name: SetAdmin :execrows
 UPDATE user SET admin = ?1 WHERE id = ?2
 `

@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"database/sql"
+	"log/slog"
 	"slices"
 	"strings"
 	"time"
@@ -265,6 +266,10 @@ func arrange(rows []HomeRowInfo, states map[string]rowState) []HomeRowInfo {
 	return rows
 }
 
+// Broken says whether the row is a smart list whose rules no longer run,
+// so it never shows on Home.
+func (r HomeRowInfo) Broken() bool { return r.smart != nil && len(r.smart.Errors) > 0 }
+
 // layout returns every row of the user's Home in order, shown or not.
 func layout(ctx context.Context, tx *sql.Tx, vw viewer) ([]HomeRowInfo, error) {
 	libs, err := rowsOf(ctx, tx, homeLibraries, vw.args(), func(r scanner, l *Library) error {
@@ -382,7 +387,11 @@ func (s *Service) Home(ctx context.Context, v users.Viewer, kinds ...RowKind) (r
 			}
 			items, err := rowItems(ctx, tx, vw, r)
 			if err != nil {
-				return err
+				if ctx.Err() != nil {
+					return err
+				}
+				slog.WarnContext(ctx, "home: skipped a row that failed", "row", r.ID, "err", err)
+				continue
 			}
 			if len(items) > 0 {
 				rows = append(rows, HomeRow{ID: r.ID, Kind: r.Kind, Library: r.Library, List: r.List, Items: items})

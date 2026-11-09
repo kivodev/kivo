@@ -167,3 +167,23 @@ func checkListName(name string) error {
 func (s *Service) publishListsChanged(v Viewer) {
 	s.bus.Publish(events.Event{Kind: events.ListsChanged, Scope: events.Scope{User: v.user}})
 }
+
+// SavedQuery is a smart list's stored query.
+type SavedQuery struct {
+	List  id.ID
+	Query string
+}
+
+// SavedListQueries returns every smart list's stored query, for the check
+// at startup.
+func (s *Service) SavedListQueries(ctx context.Context) ([]SavedQuery, error) {
+	rows, err := s.q.SavedListQueries(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]SavedQuery, len(rows))
+	for i, r := range rows {
+		out[i] = SavedQuery{List: r.ID, Query: r.Query.String}
+	}
+	return out, nil
+}

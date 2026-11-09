@@ -3658,6 +3658,8 @@ export interface components {
             /** @description For `list`, the list. */
             list?: components["schemas"]["ListRef"];
             shown: boolean;
+            /** @description A smart list whose rules no longer run, which never shows on Home. */
+            broken?: boolean;
         };
         HomeRowInfoList: {
             items: components["schemas"]["HomeRowInfo"][];

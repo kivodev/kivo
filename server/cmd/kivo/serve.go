@@ -191,6 +191,11 @@ func wire(ctx context.Context, boot config.Bootstrap, logs *health.Logs, bus *ev
 	s.users = users.New(db, bus)
 	s.auth = auth.New(db, auth.Deps{Users: s.users, Settings: s.settings, Activity: s.activity})
 	s.query = query.New(db)
+	if saved, err := s.users.SavedListQueries(ctx); err != nil {
+		slog.WarnContext(ctx, "kivo: can't check the smart lists", "err", err)
+	} else {
+		query.LogBrokenSmartLists(ctx, saved)
+	}
 	s.userstate = userstate.New(db, userstate.Deps{Catalog: s.catalog, Settings: s.settings, Activity: s.activity, Events: bus})
 	s.metadata = metadata.New(db, metadata.Deps{
 		Catalog: s.catalog, Imager: s.ffmpeg, Settings: s.settings, Events: bus, Tasks: s.runner,
