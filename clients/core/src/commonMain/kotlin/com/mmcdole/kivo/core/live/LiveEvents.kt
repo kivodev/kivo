@@ -142,7 +142,7 @@ internal sealed interface Invalidation {
     /** The user's downloads moved on the server: in line, in their preparation, or to ready or failed. */
     data object DownloadsChanged : Invalidation
 
-    /** The user's Home layout or library order changed, on any of their clients: Home and the editor. */
+    /** The user's Home layout changed, on any of their clients: Home and the editor. */
     data object HomeChanged : Invalidation
 
     /** The user's lists changed, or what's in them: the lists, Home and any open work page. */

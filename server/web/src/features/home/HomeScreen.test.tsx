@@ -265,6 +265,7 @@ describe("Home", () => {
     });
     renderApp("/");
     expect(await screen.findByRole("heading", { name: "Your Home is empty" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Home & libraries" })).toHaveAttribute("href", "/settings#libraries");
+    const links = screen.getAllByRole("link", { name: "Home" });
+    expect(links.map((link) => link.getAttribute("href"))).toContain("/settings#home");
   });
 });

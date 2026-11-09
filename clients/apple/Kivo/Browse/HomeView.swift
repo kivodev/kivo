@@ -37,7 +37,7 @@ struct HomeView: View {
                     MessageView(
                         String(localized: "Your Home is empty"),
                         sentence: String(localized: "Choose its rows in Settings."),
-                        action: (String(localized: "Home & Libraries"), { editingLayout = true })
+                        action: (String(localized: "Home"), { editingLayout = true })
                     )
                     .frame(maxHeight: .infinity)
                 } else if rows.isEmpty {
@@ -77,7 +77,7 @@ struct HomeView: View {
             .accessibilityLabel(Text("Loading Home…"))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .sheet(isPresented: $editingLayout) { NavigationStack { LibrariesSettingsView() } }
+        .sheet(isPresented: $editingLayout) { NavigationStack { HomeSettingsView() } }
         .modifier(HomeTitle(server: server.serverName, wide: wide))
         .toolbar {
             if !wide {

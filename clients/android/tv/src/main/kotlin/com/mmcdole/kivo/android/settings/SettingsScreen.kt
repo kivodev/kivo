@@ -81,6 +81,7 @@ enum class SettingsGroup(@param:StringRes val title: Int) {
     Subtitles(R.string.subtitles),
     Quality(R.string.quality),
     Display(R.string.display),
+    Home(R.string.settings_home_rows),
     Libraries(R.string.settings_libraries),
     About(R.string.settings_about),
 }
@@ -143,6 +144,7 @@ fun SettingsScreen(session: ServerSession, navigator: Navigator) {
             SettingsGroup.Subtitles -> SubtitlesPage(session)
             SettingsGroup.Quality -> QualityPage(session)
             SettingsGroup.Display -> DisplayPage(session)
+            SettingsGroup.Home -> HomePage(session)
             SettingsGroup.Libraries -> LibrariesPage(session)
             SettingsGroup.About -> AboutPage(session, navigator)
         }

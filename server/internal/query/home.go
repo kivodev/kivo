@@ -181,7 +181,7 @@ func ValidRowID(s string) bool {
 
 // defaultRows lists every row of a user's Home in the default order:
 // Continue Watching, My List, each video library's Recently Added in the
-// user's library order, Continue Listening if the user has an audiobooks
+// server's library order, Continue Listening if the user has an audiobooks
 // library, each audiobooks library's Recently Added, then the other lists.
 // Every row is shown except the other lists.
 func defaultRows(libs []Library, lists []List) []HomeRowInfo {
@@ -266,7 +266,9 @@ func arrange(rows []HomeRowInfo, states map[string]rowState) []HomeRowInfo {
 
 // layout returns every row of the user's Home in order, shown or not.
 func layout(ctx context.Context, tx *sql.Tx, vw viewer) ([]HomeRowInfo, error) {
-	libs, err := rowsOf(ctx, tx, libraryList, vw.args(), scanLibrary)
+	libs, err := rowsOf(ctx, tx, homeLibraries, vw.args(), func(r scanner, l *Library) error {
+		return r.Scan(&l.ID, &l.Name, &l.Kind)
+	})
 	if err != nil {
 		return nil, err
 	}

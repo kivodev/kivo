@@ -53,8 +53,7 @@ func (s *Service) ResetHomeRows(ctx context.Context, v Viewer) error {
 }
 
 // publishHomeChanged tells the user's clients their Home layout may have
-// changed. The library order sets the order of Recently Added on a Home
-// that isn't arranged.
+// changed.
 func (s *Service) publishHomeChanged(v Viewer) {
 	s.bus.Publish(events.Event{Kind: events.HomeChanged, Scope: events.Scope{User: v.user}})
 }

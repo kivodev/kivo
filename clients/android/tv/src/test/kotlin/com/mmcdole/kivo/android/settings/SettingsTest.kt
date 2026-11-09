@@ -13,7 +13,7 @@ class SettingsTest {
     @Test
     fun groupsAreInSettingsOrder() {
         assertEquals(
-            listOf("Account", "Playback", "Audio", "Subtitles", "Quality", "Display", "Libraries", "About"),
+            listOf("Account", "Playback", "Audio", "Subtitles", "Quality", "Display", "Home", "Libraries", "About"),
             SettingsGroup.entries.map { it.name },
         )
     }

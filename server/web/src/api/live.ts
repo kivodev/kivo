@@ -65,8 +65,7 @@ export function planEvent(event: EventMessage): CacheOp[] {
       ];
     }
     case "homeChanged":
-      // The same event says the library order changed.
-      return [invalidate(apiPaths.home), invalidate(apiPaths.homeRows), invalidate(apiPaths.libraries)];
+      return [invalidate(apiPaths.home), invalidate(apiPaths.homeRows)];
     case "listsChanged":
       return listViewPaths.map((path) => invalidate(path));
     case "userStateChanged":

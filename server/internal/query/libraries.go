@@ -51,6 +51,15 @@ WHERE l.deleting_at IS NULL
   AND `+libraryVisible+`
 ORDER BY ul.position IS NULL, ul.position, l.created_at, l.id`)
 
+// homeLibraries lists the libraries in the server's order, for Home's
+// rows. The user's own order and pins are the sidebar's.
+var homeLibraries = stmt("HomeLibraries", `
+SELECT l.id, l.name, l.kind
+FROM library l
+WHERE l.deleting_at IS NULL
+  AND `+libraryVisible+`
+ORDER BY l.created_at, l.id`)
+
 func scanLibrary(r scanner, l *Library) error { return r.Scan(&l.ID, &l.Name, &l.Kind, &l.Pinned) }
 
 // libraryCounts reads each library's grid count, as BrowseCount gives it

@@ -1959,6 +1959,7 @@ msgstr "Scan"
 
 #: src/app/AppShell.tsx
 #: src/app/tv/TvRail.tsx
+#: src/features/home/HomeScreen.tsx
 #: src/features/user/SettingsScreen.tsx
 msgid "Home"
 msgstr "Home"
@@ -2151,11 +2152,6 @@ msgstr "{admin} added {user}"
 #: src/features/lists/SmartListDialog.tsx
 msgid "days"
 msgstr "days"
-
-#: src/features/home/HomeScreen.tsx
-#: src/features/user/SettingsScreen.tsx
-msgid "Home & libraries"
-msgstr "Home & libraries"
 
 #: src/features/player/StreamInfo.tsx
 msgid "File"

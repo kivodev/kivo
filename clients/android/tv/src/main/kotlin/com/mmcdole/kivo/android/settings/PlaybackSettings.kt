@@ -374,7 +374,7 @@ internal fun tvHomeRows(all: List<HomeRowInfo>) = all.filter { row ->
 }
 
 /**
- * A row of the Home & libraries page: its switch, and Move up and Move down,
+ * A row of the Home or Libraries page: its switch, and Move up and Move down,
  * which keep focus as it moves, at either end too.
  */
 @Composable
@@ -399,28 +399,18 @@ private fun OrderedRow(
     }
 }
 
-/**
- * Home & libraries, on all the user's devices: Home's rows the TV shows, in
- * order, each shown or not, then Reset Home, then the libraries in the
- * sidebar, in the user's order, pinned or not.
- */
+/** Home, on all the user's devices: the rows the TV shows, in order, each shown or not, then Reset Home. */
 @Composable
-internal fun LibrariesPage(session: ServerSession) {
-    val libraryModel = viewModel { LibrariesViewModel(session) }
+internal fun HomePage(session: ServerSession) {
     val rowModel = viewModel { HomeRowsViewModel(session) }
     val memory = rememberFocusMemory()
-    val state = libraryModel.all
-    val libraries = state.getOrNull()?.let(::tvLibraries)
     val rowState = rowModel.all
     val rows = rowState.getOrNull()?.let(::tvHomeRows)
-    val listed = libraries.orEmpty()
-    val first = rows?.firstOrNull()?.let { "pin/${it.id}" } ?: libraries?.firstOrNull()?.let { "pin/${it.id}" }
 
-    SettingsPage(SettingsGroup.Libraries, memory, initial = first) {
+    SettingsPage(SettingsGroup.Home, memory, initial = rows?.firstOrNull()?.let { "pin/${it.id}" }) {
         item { AllDevicesHeading() }
         if (rowState is Load.Failed) item { LoadFailed(rowState.problem, rowModel::load) }
         if (rows != null) {
-            item { SubTitle(stringResource(R.string.settings_home_rows)) }
             itemsIndexed(rows, key = { _, it -> it.id }) { index, row ->
                 OrderedRow(
                     rowTitle(row.kind, row.library?.name, row.list?.name),
@@ -441,7 +431,20 @@ internal fun LibrariesPage(session: ServerSession) {
                 }
             }
         }
-        item { SubTitle(stringResource(R.string.settings_sidebar_libraries)) }
+    }
+}
+
+/** Libraries, on all the user's devices: the sidebar's, in the user's order, pinned or not. */
+@Composable
+internal fun LibrariesPage(session: ServerSession) {
+    val libraryModel = viewModel { LibrariesViewModel(session) }
+    val memory = rememberFocusMemory()
+    val state = libraryModel.all
+    val libraries = state.getOrNull()?.let(::tvLibraries)
+    val listed = libraries.orEmpty()
+
+    SettingsPage(SettingsGroup.Libraries, memory, initial = libraries?.firstOrNull()?.let { "pin/${it.id}" }) {
+        item { AllDevicesHeading() }
         if (state is Load.Failed) item { LoadFailed(state.problem, libraryModel::load) }
         if (libraries != null) {
             if (libraries.isEmpty()) item { Text(stringResource(R.string.no_libraries_yet), style = TvType.body, color = Kivo.colors.text, modifier = Modifier.padding(Kivo.space(4))) }

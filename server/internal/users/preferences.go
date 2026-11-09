@@ -97,7 +97,7 @@ type PreferencesChange struct {
 // any part is refused nothing changes. Languages are stored in their
 // canonical form, such as pt-BR.
 func (s *Service) EditPreferences(ctx context.Context, v Viewer, c PreferencesChange) error {
-	err := s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
+	return s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
 		q := dbq.New(tx)
 		if c.Libraries != nil {
 			if err := setLibraries(ctx, q, v, *c.Libraries); err != nil {
@@ -109,13 +109,6 @@ func (s *Service) EditPreferences(ctx context.Context, v Viewer, c PreferencesCh
 		}
 		return nil
 	})
-	if err != nil {
-		return err
-	}
-	if c.Libraries != nil {
-		s.publishHomeChanged(v)
-	}
-	return nil
 }
 
 // editPlayback changes a user's playback preferences.

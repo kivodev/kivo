@@ -54,7 +54,8 @@ describe("Settings", () => {
       "Subtitles",
       "Quality",
       "Appearance",
-      "Home & libraries",
+      "Home",
+      "Libraries",
       "About",
     ];
     expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual(sections);
@@ -68,7 +69,8 @@ describe("Settings", () => {
     expect(headings("Subtitles")).toEqual(["All your devices", "This browser"]);
     expect(headings("Quality")).toEqual(["This browser"]);
     expect(headings("Appearance")).toEqual(["This browser"]);
-    expect(headings("Home & libraries")).toEqual(["Home", "Libraries"]);
+    expect(headings("Home")).toEqual(["All your devices"]);
+    expect(headings("Libraries")).toEqual(["All your devices"]);
     const account = screen.getByRole("region", { name: "Account" });
     expect(within(account).getByText("anna")).toBeInTheDocument();
     expect(within(account).getByText("Signed in to Living room")).toBeInTheDocument();

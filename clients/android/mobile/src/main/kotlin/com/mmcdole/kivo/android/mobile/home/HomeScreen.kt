@@ -107,8 +107,8 @@ fun HomeScreen(session: ServerSession, nav: MobileNav) {
                             item {
                                 if (state.allHidden) {
                                     Message(stringResource(R.string.mobile_home_empty), stringResource(R.string.mobile_home_empty_sentence), Modifier.height(400.dp)) {
-                                        TextButton(onClick = { nav.open(SettingsPageRoute(SettingsPage.Libraries)) }) {
-                                            Text(stringResource(R.string.mobile_settings_home_libraries))
+                                        TextButton(onClick = { nav.open(SettingsPageRoute(SettingsPage.Home)) }) {
+                                            Text(stringResource(R.string.mobile_settings_home_section))
                                         }
                                     }
                                 } else {

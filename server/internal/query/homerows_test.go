@@ -139,7 +139,7 @@ func TestHomeRowsUnarrangedHidden(t *testing.T) {
 	us := users.New(h.b.DB, events.NewBus())
 	lib := "recentlyAdded:" + h.movies.String()
 	// A row stored hidden with no position leaves the Home unarranged, so
-	// nothing else moves and the library order still decides.
+	// nothing else moves and the server's library order still decides.
 	h.b.Write(func(ctx context.Context, tx *store.Tx) error {
 		_, err := tx.ExecContext(ctx, `INSERT INTO user_home_row (user_id, row_id, position, shown) VALUES (?, ?, NULL, 0)`, h.admin.User(), lib)
 		return err
@@ -148,13 +148,13 @@ func TestHomeRowsUnarrangedHidden(t *testing.T) {
 	if got[0].ID != "continueWatching" || got[2].ID != lib || got[2].Shown {
 		t.Errorf("hidden row on an unarranged Home: %+v", got[:3])
 	}
-	// Changing the library order still reorders Recently Added.
+	before := rowIDs(h.layout(h.admin))
+	// The user's library order is the sidebar's: it doesn't reorder Home.
 	if err := us.EditPreferences(ctx, h.admin, users.PreferencesChange{Libraries: &[]users.LibraryChoice{{Library: h.shows, Pinned: true}, {Library: h.movies, Pinned: true}}}); err != nil {
 		t.Fatal(err)
 	}
-	got = h.layout(h.admin)
-	if got[2].ID != "recentlyAdded:"+h.shows.String() || got[3].ID != lib {
-		t.Errorf("library order on an unarranged Home: %+v", got[:4])
+	if after := rowIDs(h.layout(h.admin)); !slices.Equal(after, before) {
+		t.Errorf("reordering the libraries moved Home's rows: %v, was %v", after, before)
 	}
 	// Pins don't touch Home at all: an unpinned library's row is still there.
 	if err := us.EditPreferences(ctx, h.admin, users.PreferencesChange{Libraries: &[]users.LibraryChoice{{Library: h.shows, Pinned: false}}}); err != nil {

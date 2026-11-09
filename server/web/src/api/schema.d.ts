@@ -3269,10 +3269,11 @@ export interface components {
         CurrentUserUpdate: {
             playback?: components["schemas"]["PlaybackPreferencesUpdate"];
             /**
-             * @description The libraries the user sees, in the order it wants them, each
+             * @description The sidebar's libraries, in the order the user wants them, each
              *     pinned or not; it replaces the last order. A library left out is
              *     pinned after the listed ones, in the order libraries were added,
-             *     as every library is until the user sets this.
+             *     as every library is until the user sets this. Home doesn't follow
+             *     it.
              */
             libraries?: components["schemas"]["LibraryChoice"][];
         };
@@ -5710,7 +5711,7 @@ export interface components {
          *     - `playEnded` (`playId`, `message`): the user's play was stopped
          *       by an admin or another client, or expired; `message` is the
          *       admin's words to the viewer, if any.
-         *     - `homeChanged`: the user's Home layout or library order changed;
+         *     - `homeChanged`: the user's Home layout changed;
          *       every client of the user gets it, the one that made the change
          *       too. Refetch Home and the layout.
          *     - `listsChanged`: the user's lists changed: one was created,

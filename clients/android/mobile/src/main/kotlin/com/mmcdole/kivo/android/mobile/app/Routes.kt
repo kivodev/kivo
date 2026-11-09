@@ -99,7 +99,7 @@ import kotlinx.serialization.Serializable
 
 /** A page of Settings; kept by name, as its route names it. */
 @Keep
-enum class SettingsPage { Account, Devices, ChangePassword, Playback, Audio, Subtitles, Quality, Downloads, Libraries, About }
+enum class SettingsPage { Account, Devices, ChangePassword, Playback, Audio, Subtitles, Quality, Downloads, Home, Libraries, About }
 
 @Serializable data class SettingsPageRoute(val page: SettingsPage)
 

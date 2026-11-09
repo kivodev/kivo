@@ -286,25 +286,22 @@ class ChangePasswordViewModel(private val session: KivoSession) : ViewModel() {
     }
 }
 
-data class LibrariesUiState(
+data class HomeSettingsUiState(
     /** Every row of Home, in order, shown or not. */
     val rows: List<HomeRowInfo> = emptyList(),
     /** Why the rows couldn't be read, if they couldn't. */
     val rowsFailure: String? = null,
-    /** Every library the user sees, in their order. */
-    val libraries: List<Library> = emptyList(),
     val failure: String? = null,
 )
 
 /**
- * Home & Libraries: Home's rows in order, each shown or not, and every
- * library the user sees, in their order, each pinned or not; the same
- * server settings the TV and iPhone show. Pinned libraries are in the
- * sidebar. Each change is sent at once; a refused one says why, with Retry.
+ * Home: its rows in order, each shown or not; the same server settings the
+ * TV and iPhone show. Each change is sent at once; a refused one says why,
+ * with Retry.
  */
-class LibrariesSettingsViewModel(private val session: KivoSession) : ViewModel() {
-    private val mutableState = MutableStateFlow(LibrariesUiState())
-    val state: StateFlow<LibrariesUiState> = mutableState.asStateFlow()
+class HomeSettingsViewModel(private val session: KivoSession) : ViewModel() {
+    private val mutableState = MutableStateFlow(HomeSettingsUiState())
+    val state: StateFlow<HomeSettingsUiState> = mutableState.asStateFlow()
 
     /** Sends the last change again, for Retry. */
     private var retrying: (suspend () -> Unit)? = null
@@ -312,10 +309,6 @@ class LibrariesSettingsViewModel(private val session: KivoSession) : ViewModel()
     private var readingRows: Job? = null
 
     init {
-        viewModelScope.launch {
-            val libraries = session.library.libraries().first { it !is Load.Loading }.getOrNull().orEmpty()
-            mutableState.update { it.copy(libraries = libraries) }
-        }
         loadRows()
     }
 
@@ -342,11 +335,6 @@ class LibrariesSettingsViewModel(private val session: KivoSession) : ViewModel()
     /** Clears Home's order and hidden rows, and shows the layout as the server has it. */
     fun resetHome() = send { mutableState.update { it.copy(rows = session.library.resetHomeRows()) } }
 
-    fun pin(id: String, pinned: Boolean) = change { all -> all.map { if (it.id == id) it.copy(pinned = pinned) else it } }
-
-    /** Moves the library [id] up ([by] -1) or down (1). */
-    fun move(id: String, by: Int) = change { all -> moved(all, all.indexOfFirst { it.id == id }, by) }
-
     fun retry() {
         val again = retrying ?: return
         send(again)
@@ -356,6 +344,57 @@ class LibrariesSettingsViewModel(private val session: KivoSession) : ViewModel()
         val after = transform(state.value.rows)
         mutableState.update { it.copy(rows = after) }
         send { session.library.setHomeRows(after.map { HomeRowChange(it.id, it.shown) }) }
+    }
+
+    private fun send(call: suspend () -> Unit) {
+        retrying = call
+        viewModelScope.launch {
+            try {
+                call()
+                mutableState.update { it.copy(failure = null) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                mutableState.update { it.copy(failure = sentence(RequestProblem.of(e))) }
+            }
+        }
+    }
+}
+
+data class LibrariesUiState(
+    /** Every library the user sees, in their order. */
+    val libraries: List<Library> = emptyList(),
+    val failure: String? = null,
+)
+
+/**
+ * Libraries: every library the user sees, in their order, each pinned or
+ * not; the same server settings the TV and iPhone show. Pinned libraries
+ * are in the sidebar. Each change is sent at once; a refused one says why,
+ * with Retry.
+ */
+class LibrariesSettingsViewModel(private val session: KivoSession) : ViewModel() {
+    private val mutableState = MutableStateFlow(LibrariesUiState())
+    val state: StateFlow<LibrariesUiState> = mutableState.asStateFlow()
+
+    /** Sends the last change again, for Retry. */
+    private var retrying: (suspend () -> Unit)? = null
+
+    init {
+        viewModelScope.launch {
+            val libraries = session.library.libraries().first { it !is Load.Loading }.getOrNull().orEmpty()
+            mutableState.update { it.copy(libraries = libraries) }
+        }
+    }
+
+    fun pin(id: String, pinned: Boolean) = change { all -> all.map { if (it.id == id) it.copy(pinned = pinned) else it } }
+
+    /** Moves the library [id] up ([by] -1) or down (1). */
+    fun move(id: String, by: Int) = change { all -> moved(all, all.indexOfFirst { it.id == id }, by) }
+
+    fun retry() {
+        val again = retrying ?: return
+        send(again)
     }
 
     private fun change(transform: (List<Library>) -> List<Library>) {

@@ -77,6 +77,7 @@ export function SettingsScreen() {
           <SubtitlesSection {...device} />
           <QualitySection {...device} />
           <AppearanceSection {...device} />
+          <HomeSection />
           <LibrariesSection />
           <AboutSection />
         </SettingsLayout>
@@ -101,7 +102,8 @@ function TvSettings(device: DeviceProps) {
     { id: "subtitles", label: <Trans>Subtitles</Trans>, content: <SubtitlesSection {...device} /> },
     { id: "quality", label: <Trans>Quality</Trans>, content: <QualitySection {...device} /> },
     { id: "appearance", label: <Trans>Display</Trans>, content: <AppearanceSection {...device} /> },
-    { id: "libraries", label: <Trans>Home & libraries</Trans>, content: <LibrariesSection /> },
+    { id: "home", label: <Trans>Home</Trans>, content: <HomeSection /> },
+    { id: "libraries", label: <Trans>Libraries</Trans>, content: <LibrariesSection /> },
     { id: "about", label: <Trans>About</Trans>, content: <AboutSection /> },
   ];
   const [shown, setShown] = useState("account");
@@ -426,7 +428,7 @@ function AppearanceSection({ device, change }: DeviceProps) {
   );
 }
 
-function HomeRowsCard() {
+function HomeSection() {
   const { t } = useLingui();
   const layout = useSuspenseQuery(homeQueries.layout()).data.items;
   const rows = layout.filter((r) => homeRowKinds.has(r.kind));
@@ -445,33 +447,34 @@ function HomeRowsCard() {
   const resetHome = () => reset.mutate({}, { onSuccess: () => saving.reset() });
   const retry = () => (reset.isError ? resetHome() : saving.retry(reset.reset));
   return (
-    <SettingsCard
-      scope="account"
-      title={<Trans>Home</Trans>}
-      footer={
-        problem ? (
-          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span role="alert" className="text-danger">
-              {t`Couldn't save. ${problem}`}
+    <SettingsSection id="home" title={<Trans>Home</Trans>}>
+      <SettingsCard
+        scope="account"
+        footer={
+          problem ? (
+            <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span role="alert" className="text-danger">
+                {t`Couldn't save. ${problem}`}
+              </span>
+              <TvControl focusKey="home-rows:retry">
+                <Button size="sm" variant="ghost" onPress={retry}>
+                  <Trans>Retry</Trans>
+                </Button>
+              </TvControl>
             </span>
-            <TvControl focusKey="home-rows:retry">
-              <Button size="sm" variant="ghost" onPress={retry}>
-                <Trans>Retry</Trans>
-              </Button>
-            </TvControl>
-          </span>
-        ) : undefined
-      }
-    >
-      {isTv ? <HomeRowsTv rows={rows} onChange={save} /> : <HomeRowOrder rows={rows} onChange={save} />}
-      <SettingsRow label={<Trans>Reset Home</Trans>}>
-        <TvControl focusKey="home-rows:reset">
-          <Button size="sm" variant="ghost" onPress={resetHome}>
-            <Trans>Reset</Trans>
-          </Button>
-        </TvControl>
-      </SettingsRow>
-    </SettingsCard>
+          ) : undefined
+        }
+      >
+        {isTv ? <HomeRowsTv rows={rows} onChange={save} /> : <HomeRowOrder rows={rows} onChange={save} />}
+        <SettingsRow label={<Trans>Reset Home</Trans>}>
+          <TvControl focusKey="home-rows:reset">
+            <Button size="sm" variant="ghost" onPress={resetHome}>
+              <Trans>Reset</Trans>
+            </Button>
+          </TvControl>
+        </SettingsRow>
+      </SettingsCard>
+    </SettingsSection>
   );
 }
 
@@ -481,12 +484,10 @@ function LibrariesSection() {
   const saving = useSaveLibraries();
   const problem = saving.isError ? describeProblem(errorCode(saving.error)) : undefined;
   return (
-    <SettingsSection id="libraries" title={<Trans>Home & libraries</Trans>}>
-      <HomeRowsCard />
+    <SettingsSection id="libraries" title={<Trans>Libraries</Trans>}>
       {libraries.length > 0 ? (
         <SettingsCard
           scope="account"
-          title={<Trans>Libraries</Trans>}
           footer={
             problem ? (
               <span className="flex flex-wrap items-center gap-x-3 gap-y-1">

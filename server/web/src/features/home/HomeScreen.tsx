@@ -69,8 +69,8 @@ export function HomeScreen() {
             title={t`Your Home is empty`}
             action={
               isTv ? undefined : (
-                <Link to="/settings" hash="libraries" className="font-semibold text-accent hover:underline">
-                  <Trans>Home & libraries</Trans>
+                <Link to="/settings" hash="home" className="font-semibold text-accent hover:underline">
+                  <Trans>Home</Trans>
                 </Link>
               )
             }

@@ -440,8 +440,8 @@ func TestPinnedLibraries(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ra := recentlyAdded(home); len(ra) != 2 || ra[0].Library.ID != h.shows || ra[1].Library.ID != h.movies {
-		t.Errorf("Recently Added rows = %+v, want Shows then Movies: order by library order, regardless of pins", ra)
+	if ra := recentlyAdded(home); len(ra) != 2 || ra[0].Library.ID != h.movies || ra[1].Library.ID != h.shows {
+		t.Errorf("Recently Added rows = %+v, want Movies then Shows: the server's order, whatever the user's order and pins", ra)
 	}
 	if got, _ := h.q.Search(ctx, h.friend, "blade runner", 0); !slices.Equal(ids(got.Works), []id.ID{h.bladeRunner.Work}) {
 		t.Errorf("Search finds %v in a library that isn't pinned", ids(got.Works))

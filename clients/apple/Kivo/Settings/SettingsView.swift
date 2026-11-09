@@ -43,8 +43,11 @@ struct SettingsView: View {
                 NavigationLink { AppearanceSettingsView() } label: {
                     Text(String(localized: "Appearance"))
                 }
+                NavigationLink { HomeSettingsView() } label: {
+                    Text(String(localized: "Home"))
+                }
                 NavigationLink { LibrariesSettingsView() } label: {
-                    Text(String(localized: "Home & Libraries"))
+                    Text(String(localized: "Libraries"))
                 }
             }
             Section {

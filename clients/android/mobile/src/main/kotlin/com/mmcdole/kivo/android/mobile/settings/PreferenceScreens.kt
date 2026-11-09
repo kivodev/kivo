@@ -259,22 +259,13 @@ fun DownloadSettingsScreen(session: ServerSession, nav: MobileNav) {
 @Composable
 private fun DeleteAllRow(onClick: () -> Unit) = SettingRow(stringResource(R.string.mobile_delete_all_downloads), "deleteAll", danger = true, onClick = onClick)
 
-/**
- * Home & Libraries: Home's rows in order, each with its switch, Move up
- * and Move down, then Reset Home, then every library the user sees, in
- * their order, pinned or not. Pinned ones are in the sidebar; the others
- * are listed under the rest in Libraries.
- */
+/** Home: its rows in order, each with its switch, Move up and Move down, then Reset Home. */
 @Composable
-fun LibrariesSettingsScreen(session: ServerSession, nav: MobileNav) {
-    val model = viewModel { LibrariesSettingsViewModel(session.session) }
+fun HomeSettingsScreen(session: ServerSession, nav: MobileNav) {
+    val model = viewModel { HomeSettingsViewModel(session.session) }
     val state by model.state.collectAsStateWithLifecycle()
-    val heading = stringResource(R.string.mobile_settings_home_section)
-    val librariesHeading = stringResource(R.string.mobile_tab_libraries)
-    val note = stringResource(R.string.mobile_libraries_note)
     val rows = state.rows.filter { it.kind in shownKinds }
-    SettingsList(stringResource(R.string.mobile_settings_home_libraries), nav, "librariesSettings") {
-        item { Label(heading) }
+    SettingsList(stringResource(R.string.mobile_settings_home_section), nav, "homeSettings") {
         state.rowsFailure?.let { item { FailureRow(it, model::loadRows) } }
         itemsIndexed(rows, key = { _, row -> row.id }) { index, row ->
             OrderedSwitch(
@@ -288,7 +279,18 @@ fun LibrariesSettingsScreen(session: ServerSession, nav: MobileNav) {
             )
         }
         item { SettingRow(stringResource(R.string.mobile_reset_home), "resetHome", onClick = model::resetHome) }
-        item { Label(librariesHeading, note) }
+        state.failure?.let { item { FailureRow(stringResource(R.string.mobile_couldnt_save, it), model::retry) } }
+    }
+}
+
+/** Libraries: every library the user sees, in their order, pinned or not. Pinned ones are in the sidebar; the others are listed under the rest in Libraries. */
+@Composable
+fun LibrariesSettingsScreen(session: ServerSession, nav: MobileNav) {
+    val model = viewModel { LibrariesSettingsViewModel(session.session) }
+    val state by model.state.collectAsStateWithLifecycle()
+    val note = stringResource(R.string.mobile_libraries_note)
+    SettingsList(stringResource(R.string.mobile_tab_libraries), nav, "librariesSettings") {
+        item { Label(note) }
         itemsIndexed(state.libraries, key = { _, library -> library.id }) { index, library ->
             OrderedSwitch(
                 name = library.name,
@@ -305,7 +307,7 @@ fun LibrariesSettingsScreen(session: ServerSession, nav: MobileNav) {
     }
 }
 
-/** A row of Home & Libraries: its name, Move up and Move down, and its switch. */
+/** A row of Home or Libraries: its name, Move up and Move down, and its switch. */
 @Composable
 private fun LazyItemScope.OrderedSwitch(
     name: String,

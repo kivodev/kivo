@@ -60,11 +60,10 @@ describe("planEvent", () => {
     ]);
   });
 
-  it("maps homeChanged to Home, its layout and the libraries", () => {
+  it("maps homeChanged to Home and its layout", () => {
     expect(planEvent({ type: "event", kind: "homeChanged" })).toEqual([
       { kind: "invalidate", path: apiPaths.home },
       { kind: "invalidate", path: apiPaths.homeRows },
-      { kind: "invalidate", path: apiPaths.libraries },
     ]);
   });
 

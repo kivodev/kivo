@@ -74,7 +74,7 @@
     <string name="empty_no_libraries_sentence">Ask an admin for access.</string>
     <string name="empty_nothing_yet">Nothing here yet</string>
     <string name="empty_home">Your Home is empty</string>
-    <string name="empty_home_sentence">Choose its rows in Settings, under Home &amp; libraries.</string>
+    <string name="empty_home_sentence">Choose its rows in Settings, under Home.</string>
     <string name="empty_nothing_yet_sentence">Items appear here as libraries are scanned.</string>
     <string name="exit_kivo">Exit Kivo?</string>
     <string name="no">No</string>
@@ -239,10 +239,9 @@
     <!-- Settings (the web's SettingsScreen) -->
     <string name="settings_account">Account</string>
     <string name="settings_playback">Playback</string>
-    <string name="settings_libraries">Home &amp; libraries</string>
+    <string name="settings_libraries">Libraries</string>
     <string name="settings_home_rows">Home</string>
     <string name="settings_reset_home">Reset Home</string>
-    <string name="settings_sidebar_libraries">Libraries</string>
     <string name="settings_about">About</string>
     <string name="scope_all_devices">All your devices</string>
     <string name="couldnt_save">Couldn\'t save. %1$s</string>

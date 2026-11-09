@@ -28,7 +28,7 @@ internal class LibraryRepository(
 ) {
     private val key = stringPreferencesKey("kivo.libraries.${connection.serverId}")
 
-    fun libraries(): Flow<List<Library>> = refreshing(invalidations, { it is Invalidation.LibraryChanged || it == Invalidation.HomeChanged }) {
+    fun libraries(): Flow<List<Library>> = refreshing(invalidations, { it is Invalidation.LibraryChanged }) {
         connection.libraries.listLibraries().result().items
     }.onEach(::keep)
 

@@ -87,6 +87,7 @@ import com.mmcdole.kivo.android.mobile.settings.AudioSettingsScreen
 import com.mmcdole.kivo.android.mobile.settings.ChangePasswordScreen
 import com.mmcdole.kivo.android.mobile.settings.CreditsScreen
 import com.mmcdole.kivo.android.mobile.settings.DownloadSettingsScreen
+import com.mmcdole.kivo.android.mobile.settings.HomeSettingsScreen
 import com.mmcdole.kivo.android.mobile.settings.LibrariesSettingsScreen
 import com.mmcdole.kivo.android.mobile.settings.PlaybackSettingsScreen
 import com.mmcdole.kivo.android.mobile.settings.QualitySettingsScreen
@@ -305,6 +306,7 @@ private fun NavGraphBuilder.pages(session: ServerSession, nav: MobileNav, cast: 
             SettingsPage.Subtitles -> SubtitleSettingsScreen(session, nav)
             SettingsPage.Quality -> QualitySettingsScreen(session, nav)
             SettingsPage.Downloads -> DownloadSettingsScreen(session, nav)
+            SettingsPage.Home -> HomeSettingsScreen(session, nav)
             SettingsPage.Libraries -> LibrariesSettingsScreen(session, nav)
             SettingsPage.About -> AboutScreen(session, nav)
         }

@@ -34,7 +34,7 @@ import kotlinx.serialization.encoding.*
  * 
  *
  * @param playback 
- * @param libraries The libraries the user sees, in the order it wants them, each pinned or not; it replaces the last order. A library left out is pinned after the listed ones, in the order libraries were added, as every library is until the user sets this. 
+ * @param libraries The sidebar's libraries, in the order the user wants them, each pinned or not; it replaces the last order. A library left out is pinned after the listed ones, in the order libraries were added, as every library is until the user sets this. Home doesn't follow it. 
  */
 @Serializable
 
@@ -42,7 +42,7 @@ data class CurrentUserUpdate (
 
     @SerialName(value = "playback") val playback: PlaybackPreferencesUpdate? = null,
 
-    /* The libraries the user sees, in the order it wants them, each pinned or not; it replaces the last order. A library left out is pinned after the listed ones, in the order libraries were added, as every library is until the user sets this.  */
+    /* The sidebar's libraries, in the order the user wants them, each pinned or not; it replaces the last order. A library left out is pinned after the listed ones, in the order libraries were added, as every library is until the user sets this. Home doesn't follow it.  */
     @SerialName(value = "libraries") val libraries: kotlin.collections.List<LibraryChoice>? = null
 
 ) {
