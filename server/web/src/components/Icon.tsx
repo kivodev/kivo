@@ -36,6 +36,8 @@ const paths = {
   chevronRight: "m9 6 6 6-6 6",
   grid: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z",
   list: "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01",
+  listPlus: "M4 6h11M4 12h11M4 18h7M18 13v8M14 17h8",
+  listCheck: "M4 6h16M4 12h16M4 18h7M14 18l2.5 2.5L21 15",
   close: "M6 6l12 12M18 6 6 18",
   user: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 9c0-4 3.6-6 8-6s8 2 8 6",
   alert: "M12 3 2 21h20zM12 10v5M12 18h.01",

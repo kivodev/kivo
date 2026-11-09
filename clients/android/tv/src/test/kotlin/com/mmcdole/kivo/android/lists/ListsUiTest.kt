@@ -17,7 +17,7 @@ class ListsUiTest {
 
     @Test
     fun myListComesApartFromTheListsMade() {
-        val myList = WorkList("my", "My List", "manual", builtIn = true, workCount = 2)
+        val myList = WorkList("my", "Watchlist", "manual", builtIn = true, workCount = 2)
         val made = WorkList("d", "Date Night", "manual", builtIn = false, workCount = 1)
         val ui = listsUi(
             listOf(myList, made, WorkList("x", "Later", "future", builtIn = false, workCount = 1)),

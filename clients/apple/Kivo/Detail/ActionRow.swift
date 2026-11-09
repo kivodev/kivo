@@ -202,10 +202,10 @@ struct UserStateButtons: View {
                 }
             }
         } label: {
-            Image(systemName: onMyList ? "checkmark" : "plus")
+            Image(systemName: onMyList ? "text.badge.checkmark" : "text.badge.plus")
                 .roundButtonSymbol()
                 .contentTransition(.symbolEffect(.replace))
-                .accessibilityLabel(onMyList ? Text("Remove from My List") : Text("Add to My List"))
+                .accessibilityLabel(onMyList ? Text("Remove from Watchlist") : Text("Add to Watchlist"))
         }
         .buttonStyle(.bordered)
         .buttonBorderShape(.circle)

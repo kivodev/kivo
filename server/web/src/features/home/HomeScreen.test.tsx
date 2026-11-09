@@ -12,7 +12,7 @@ describe("Home", () => {
     await screen.findByRole("heading", { name: "Continue Watching" });
     expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual([
       "Continue Watching",
-      "My List",
+      "Watchlist",
       "Recently Added in Movies",
       "Recently Added in TV Shows",
       "Recently Added in Home Videos",
@@ -31,11 +31,11 @@ describe("Home", () => {
   it("opens a list from its row's heading, with each card in its work's own shape", async () => {
     serveMockApi((api) => api.lists[0]?.workIds.unshift(bookIds.hailMary));
     const { user, router } = renderApp("/");
-    const heading = await screen.findByRole("heading", { name: "My List" });
+    const heading = await screen.findByRole("heading", { name: "Watchlist" });
     const row = document.querySelector('[data-row="list"]') as HTMLElement;
     expect(row.querySelector('[data-part="cover"]')).not.toBeNull();
     expect(row.querySelector('[data-part="poster"]')).not.toBeNull();
-    await user.click(within(heading).getByRole("link", { name: "My List" }));
+    await user.click(within(heading).getByRole("link", { name: "Watchlist" }));
     await waitFor(() => expect(router.state.location.pathname).toBe(`/lists/${mockIds.myList}`));
   });
 
@@ -179,7 +179,7 @@ describe("Home", () => {
         });
     });
     const { user } = renderApp("/");
-    await screen.findByRole("heading", { name: "My List" });
+    await screen.findByRole("heading", { name: "Watchlist" });
     const rows = () => document.querySelectorAll<HTMLElement>('[data-row="list"]');
     const openMenu = async (row: HTMLElement | undefined) => {
       await user.click(
@@ -192,7 +192,7 @@ describe("Home", () => {
     await user.keyboard("{Escape}");
 
     await openMenu(rows()[0]);
-    await user.click(await screen.findByRole("menuitem", { name: "Remove from My List" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Remove from Watchlist" }));
     await waitFor(() => expect(sent("DELETE", `/lists/${mockIds.myList}/works/${mockIds.dune}`)).toHaveLength(1));
   });
 

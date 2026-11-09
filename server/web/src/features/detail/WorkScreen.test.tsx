@@ -203,14 +203,17 @@ describe("Movie page", () => {
     expect(screen.queryByRole("link", { name: "Play" })).not.toBeInTheDocument();
   });
 
-  it("toggles + My List on and off through the API", async () => {
+  it("toggles + Watchlist on and off through the API", async () => {
     serveMockApi();
     const { user } = renderApp(`/works/${mockIds.dunePartTwo}`);
-    await user.click(await screen.findByRole("button", { name: "Add to My List" }));
-    expect(await screen.findByRole("button", { name: "Remove from My List" })).toHaveAttribute("aria-pressed", "true");
+    await user.click(await screen.findByRole("button", { name: "Add to Watchlist" }));
+    expect(await screen.findByRole("button", { name: "Remove from Watchlist" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     expect(sent("POST", `/lists/${mockIds.myList}/works`)[0]?.body).toEqual({ workId: mockIds.dunePartTwo });
-    await user.click(screen.getByRole("button", { name: "Remove from My List" }));
-    expect(await screen.findByRole("button", { name: "Add to My List" })).toHaveAttribute("aria-pressed", "false");
+    await user.click(screen.getByRole("button", { name: "Remove from Watchlist" }));
+    expect(await screen.findByRole("button", { name: "Add to Watchlist" })).toHaveAttribute("aria-pressed", "false");
     await waitFor(() =>
       expect(sent("DELETE", `/lists/${mockIds.myList}/works/${mockIds.dunePartTwo}`)).toHaveLength(1),
     );
@@ -218,7 +221,7 @@ describe("Movie page", () => {
 });
 
 describe("Collection page", () => {
-  it("shows its root works, with no My List or watched toggles of its own", async () => {
+  it("shows its root works, with no Watchlist or watched toggles of its own", async () => {
     serveMockApi();
     renderApp(`/collections/${mockIds.duneCollection}`);
     expect(await screen.findByRole("heading", { name: "Dune Collection", level: 1 })).toBeInTheDocument();
@@ -227,7 +230,7 @@ describe("Collection page", () => {
       "href",
       `/works/${mockIds.dunePartTwo}`,
     );
-    expect(screen.queryByRole("button", { name: "Add to My List" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add to Watchlist" })).not.toBeInTheDocument();
   });
 
   it("shows its poster, and its backdrop behind the hero", async () => {

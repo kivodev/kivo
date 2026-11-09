@@ -1059,7 +1059,7 @@ export interface paths {
          * Reset the Home layout
          * @description Forgets the user's order and hidden rows, so Home returns to the
          *     default order with every built-in row shown. Lists remain, off
-         *     Home, except My List. A `homeChanged` event
+         *     Home, except Watchlist. A `homeChanged` event
          *     tells the user's clients.
          */
         post: operations["resetHomeRows"];
@@ -1078,7 +1078,7 @@ export interface paths {
         };
         /**
          * List the user's lists
-         * @description The user's lists, My List first, then by name.
+         * @description The user's lists, Watchlist first, then by name.
          */
         get: operations["listLists"];
         put?: never;
@@ -1114,7 +1114,7 @@ export interface paths {
         post?: never;
         /**
          * Delete a list
-         * @description Deletes the list, not its works. My List can't be deleted: `409`
+         * @description Deletes the list, not its works. Watchlist can't be deleted: `409`
          *     with code `conflict`. A `listsChanged` event tells the user's
          *     clients.
          */
@@ -1124,7 +1124,7 @@ export interface paths {
         /**
          * Update a list
          * @description Renames the list, replaces a smart list's rules, or both, in one
-         *     change. My List can't be changed, and `smart` is refused on a manual
+         *     change. Watchlist can't be changed, and `smart` is refused on a manual
          *     list: `409` with code `conflict`. A name in use is `409` with code
          *     `nameTaken`. Invalid rules are `400` with pointers such as
          *     `/smart/query/where/rules/0/op`. A `listsChanged` event tells the
@@ -3772,7 +3772,7 @@ export interface components {
             id: components["schemas"]["ID"];
             name: string;
             kind: components["schemas"]["ListKind"];
-            /** @description My List, which every user has and can't delete or rename. */
+            /** @description Watchlist, which every user has and can't delete or rename. */
             builtIn: boolean;
             /** @description Works in the list the user sees. A smart list's is 0 in `listLists` without `counts`. */
             workCount: number;

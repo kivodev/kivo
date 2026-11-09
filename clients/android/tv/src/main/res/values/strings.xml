@@ -51,9 +51,9 @@
     <string name="list_empty">Nothing in this list yet.</string>
     <string name="list_nothing_matches">Nothing matches these rules.</string>
     <string name="list_rules_broken">These rules no longer work.</string>
-    <string name="lists_empty_sentence">Add something to My List from its page.</string>
-    <string name="add_to_my_list">Add to My List</string>
-    <string name="remove_from_my_list">Remove from My List</string>
+    <string name="lists_empty_sentence">Add something to Watchlist from its page.</string>
+    <string name="add_to_my_list">Add to Watchlist</string>
+    <string name="remove_from_my_list">Remove from Watchlist</string>
     <string name="remove_from_list">Remove from %1$s</string>
     <string name="see_all">See all</string>
     <plurals name="count_episodes">

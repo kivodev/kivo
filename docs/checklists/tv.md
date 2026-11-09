@@ -83,7 +83,7 @@ Check each screen with the arrows, OK and the Back key (Tizen 10009).
 
 - [ ] Home: focus starts on the first card; Down and Up change rows and return to the card left; Right past the last card reaches See all; the focused card is clearly raised.
 - [ ] Back on Home moves focus to the first card, then asks Exit Kivo? with No focused; No or Back stays, Exit leaves the app.
-- [ ] A work: focus starts on Play; Right reaches the My List and watched buttons and the menu; Back returns to the card it came from.
+- [ ] A work: focus starts on Play; Right reaches the Watchlist and watched buttons and the menu; Back returns to the card it came from.
 - [ ] Rail: Left from the screen's left edge opens it over a dimmed screen, entries are named, Right closes it onto the card it left, and Back in the rail on another screen goes Home.
 - [ ] A library: Down goes deep and the grid scrolls with focus, the letter rail picks a letter, Up reaches the section buttons, Sort and Filter; a sort and a filter apply and Back closes them onto their button.
 - [ ] Search: the grid keyboard types, Right reaches the results, OK opens one, and Back returns to the same result.

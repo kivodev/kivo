@@ -30,7 +30,7 @@ func (h *household) lists(v users.Viewer) []query.List {
 func TestListsMyListExists(t *testing.T) {
 	h := newHousehold(t)
 	ls := h.lists(h.friend)
-	if len(ls) != 1 || !ls[0].BuiltIn || ls[0].Name != "My List" || ls[0].Works != 0 {
+	if len(ls) != 1 || !ls[0].BuiltIn || ls[0].Name != "Watchlist" || ls[0].Works != 0 {
 		t.Fatalf("a new user's lists: %+v", ls)
 	}
 	// Each user has their own.

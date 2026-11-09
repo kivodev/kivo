@@ -78,7 +78,7 @@ export function ListsScreen() {
         {!ready && !failed && <RowsSkeleton />}
         {empty && (
           <EmptyState title={t`Nothing in your lists yet.`}>
-            <Trans>Titles you add to My List or to a list of your own appear here.</Trans>
+            <Trans>Titles you add to Watchlist or to a list of your own appear here.</Trans>
           </EmptyState>
         )}
         {ready && myList && row.data && <MyListRow list={myList} items={row.data.items} />}

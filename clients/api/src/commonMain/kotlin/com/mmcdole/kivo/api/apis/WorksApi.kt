@@ -152,7 +152,7 @@ open class WorksApi : ApiClient {
 
     /**
      * Delete a list
-     * Deletes the list, not its works. My List can&#39;t be deleted: &#x60;409&#x60; with code &#x60;conflict&#x60;. A &#x60;listsChanged&#x60; event tells the user&#39;s clients. 
+     * Deletes the list, not its works. Watchlist can&#39;t be deleted: &#x60;409&#x60; with code &#x60;conflict&#x60;. A &#x60;listsChanged&#x60; event tells the user&#39;s clients. 
      * @param id 
      * @return void
      */
@@ -488,7 +488,7 @@ open class WorksApi : ApiClient {
 
     /**
      * List the user&#39;s lists
-     * The user&#39;s lists, My List first, then by name.
+     * The user&#39;s lists, Watchlist first, then by name.
      * @param counts Count each smart list by running its rules; without it a smart list&#39;s &#x60;workCount&#x60; is 0. (optional)
      * @return WorkListList
      */
@@ -901,7 +901,7 @@ open class WorksApi : ApiClient {
 
     /**
      * Reset the Home layout
-     * Forgets the user&#39;s order and hidden rows, so Home returns to the default order with every built-in row shown. Lists remain, off Home, except My List. A &#x60;homeChanged&#x60; event tells the user&#39;s clients. 
+     * Forgets the user&#39;s order and hidden rows, so Home returns to the default order with every built-in row shown. Lists remain, off Home, except Watchlist. A &#x60;homeChanged&#x60; event tells the user&#39;s clients. 
      * @return HomeRowInfoList
      */
     @Suppress("UNCHECKED_CAST")
@@ -1103,7 +1103,7 @@ open class WorksApi : ApiClient {
 
     /**
      * Update a list
-     * Renames the list, replaces a smart list&#39;s rules, or both, in one change. My List can&#39;t be changed, and &#x60;smart&#x60; is refused on a manual list: &#x60;409&#x60; with code &#x60;conflict&#x60;. A name in use is &#x60;409&#x60; with code &#x60;nameTaken&#x60;. Invalid rules are &#x60;400&#x60; with pointers such as &#x60;/smart/query/where/rules/0/op&#x60;. A &#x60;listsChanged&#x60; event tells the user&#39;s clients. 
+     * Renames the list, replaces a smart list&#39;s rules, or both, in one change. Watchlist can&#39;t be changed, and &#x60;smart&#x60; is refused on a manual list: &#x60;409&#x60; with code &#x60;conflict&#x60;. A name in use is &#x60;409&#x60; with code &#x60;nameTaken&#x60;. Invalid rules are &#x60;400&#x60; with pointers such as &#x60;/smart/query/where/rules/0/op&#x60;. A &#x60;listsChanged&#x60; event tells the user&#39;s clients. 
      * @param id 
      * @param listUpdate 
      * @return WorkList

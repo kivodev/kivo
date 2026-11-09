@@ -182,9 +182,9 @@
     <string name="mobile_ends_at">Ends at %1$s</string>
     <string name="mobile_file_missing">This file is missing</string>
     <string name="mobile_download">Download</string>
-    <string name="mobile_my_list">My List</string>
-    <string name="mobile_add_to_my_list">Add to My List</string>
-    <string name="mobile_remove_from_my_list">Remove from My List</string>
+    <string name="mobile_my_list">Watchlist</string>
+    <string name="mobile_add_to_my_list">Add to Watchlist</string>
+    <string name="mobile_remove_from_my_list">Remove from Watchlist</string>
     <string name="mobile_version">Version</string>
     <string name="mobile_audio">Audio</string>
     <string name="mobile_subtitles">Subtitles</string>
@@ -266,7 +266,7 @@
 
     <!-- Lists -->
     <string name="mobile_no_lists">Nothing in your lists yet.</string>
-    <string name="mobile_no_lists_sentence">Add something to My List from a title\'s page.</string>
+    <string name="mobile_no_lists_sentence">Add something to Watchlist from a title\'s page.</string>
     <string name="mobile_list_empty">Nothing in this list yet.</string>
     <string name="mobile_new_list">New List</string>
     <string name="mobile_remove_from_list">Remove from %1$s</string>

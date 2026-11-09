@@ -39,7 +39,7 @@ class NavigatorTest {
         navigator.push(Screen.Lists)
         assertEquals(Back.Rail, navigator.back)
 
-        navigator.push(Screen.ListWorks("l1", "My List"))
+        navigator.push(Screen.ListWorks("l1", "Watchlist"))
         assertEquals(Back.Pop, navigator.back)
     }
 

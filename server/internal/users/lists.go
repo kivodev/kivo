@@ -32,7 +32,7 @@ var (
 )
 
 // myListName is the name My List has, on the server and in the clients.
-const myListName = "My List"
+const myListName = "Watchlist"
 
 // insertMyList gives a new user My List, in the transaction that creates
 // the user.

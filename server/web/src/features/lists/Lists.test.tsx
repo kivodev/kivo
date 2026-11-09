@@ -10,11 +10,11 @@ const emptyMyList = (api: MockApi) => {
 };
 
 describe("Lists", () => {
-  it("shows My List as a row with its count, then the other lists with theirs", async () => {
+  it("shows Watchlist as a row with its count, then the other lists with theirs", async () => {
     serveMockApi();
     const { user, router } = renderApp("/lists");
     expect(await screen.findByRole("heading", { name: "Lists", level: 1 })).toBeInTheDocument();
-    const myList = await screen.findByRole("heading", { name: /^My List/ });
+    const myList = await screen.findByRole("heading", { name: /^Watchlist/ });
     const row = myList.closest("[data-part='row']") as HTMLElement;
     expect(within(row).getByText("2")).toBeInTheDocument();
     expect(await within(row).findByRole("link", { name: /^Dune/ })).toBeInTheDocument();
@@ -23,11 +23,11 @@ describe("Lists", () => {
     await waitFor(() => expect(router.state.location.pathname).toBe(`/lists/${mockIds.dateNight}`));
   });
 
-  it("hides My List's section when it's empty", async () => {
+  it("hides Watchlist's section when it's empty", async () => {
     serveMockApi(emptyMyList);
     renderApp("/lists");
     expect(await screen.findByRole("link", { name: /^Date Night/ })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "My List" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Watchlist" })).toBeNull();
   });
 
   it("says so when there are no lists with anything in them", async () => {
@@ -72,12 +72,12 @@ describe("A list's page", () => {
   it("shows its works as a grid with their count, and takes a card off from its menu", async () => {
     serveMockApi();
     const { user } = renderApp(`/lists/${mockIds.myList}`);
-    expect(await screen.findByRole("heading", { name: "My List", level: 1 })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Watchlist", level: 1 })).toBeInTheDocument();
     expect(await screen.findByText("2 titles")).toBeInTheDocument();
     const card = (await screen.findAllByRole("link", { name: /^The Expanse/ }))[0] as HTMLElement;
-    expect(screen.queryByRole("button", { name: "More actions for My List" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "More actions for Watchlist" })).toBeNull();
     fireEvent.contextMenu(card);
-    await user.click(await screen.findByRole("menuitem", { name: "Remove from My List" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Remove from Watchlist" }));
     await waitFor(() => expect(sent("DELETE", `/lists/${mockIds.myList}/works/${mockIds.expanse}`)).toHaveLength(1));
     expect(await screen.findByText("1 title")).toBeInTheDocument();
   });
@@ -90,7 +90,7 @@ describe("A list's page", () => {
     const dialog = await screen.findByRole("dialog");
     const name = within(dialog).getByRole("textbox", { name: /Name/ });
     await user.clear(name);
-    await user.paste("my list");
+    await user.paste("watchlist");
     await user.click(within(dialog).getByRole("button", { name: "Rename" }));
     expect(await within(dialog).findByText("You already have a list with that name.")).toBeInTheDocument();
     await user.clear(name);
@@ -124,7 +124,7 @@ describe("Add to List", () => {
     const { user } = renderApp(`/works/${mockIds.dunePartTwo}`);
     const dialog = await openChooser(user);
     const dateNight = await within(dialog).findByRole("checkbox", { name: /Date Night/ });
-    const myList = within(dialog).getByRole("checkbox", { name: /My List/ });
+    const myList = within(dialog).getByRole("checkbox", { name: /Watchlist/ });
     expect(dateNight).not.toBeChecked();
     expect(myList).not.toBeChecked();
     await user.click(dateNight);

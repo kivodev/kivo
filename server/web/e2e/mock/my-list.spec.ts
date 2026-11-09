@@ -1,11 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { mockIds } from "@/api/mocks/fixtures";
 
-// The My List and watched toggles on a work's page: a tap saves the toggle,
+// The Watchlist and watched toggles on a work's page: a tap saves the toggle,
 // and the button then looks on, drawn in the accent colour.
 
 for (const [name, label, saved] of [
-  ["My List", /My List/, /\/lists\//],
+  ["Watchlist", /Watchlist/, /\/lists\//],
   ["watched", /Mark as/, /user-state/],
 ] as const) {
   test(`${name} toggle on the detail page`, async ({ page }, info) => {
@@ -47,7 +47,7 @@ test("Add to List from a card's menu", async ({ page }, info) => {
   }
   await page.getByRole("menuitem", { name: "Add to List" }).click();
   const dialog = page.getByRole("dialog");
-  await expect(dialog.getByRole("checkbox", { name: /My List/ })).toBeVisible();
+  await expect(dialog.getByRole("checkbox", { name: /Watchlist/ })).toBeVisible();
   await dialog.getByRole("button", { name: "Done" }).click();
   await expect(dialog).toBeHidden();
 });

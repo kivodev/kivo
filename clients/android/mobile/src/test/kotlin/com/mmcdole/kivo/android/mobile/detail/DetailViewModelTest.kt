@@ -38,7 +38,7 @@ class DetailViewModelTest : CoreTest() {
 
     @Test
     fun aWorkOnMyListSaysSoOnceBothAreRead() {
-        server.get("/api/v1/lists", WorkListList.serializer()) { WorkListList(listOf(WorkList("my", "My List", "manual", builtIn = true, workCount = 1))) }
+        server.get("/api/v1/lists", WorkListList.serializer()) { WorkListList(listOf(WorkList("my", "Watchlist", "manual", builtIn = true, workCount = 1))) }
         server.get("/api/v1/works/m1", WorkDetail.serializer()) { detail("m1", "movie", "Charade").copy(listIds = listOf("my")) }
         val model = DetailViewModel(signIn(), "m1")
         assertTrue(awaitValue(model.state) { it.work != null && it.myListId != null }.onMyList)

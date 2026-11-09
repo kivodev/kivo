@@ -5318,7 +5318,7 @@ type WorkKind string
 
 // WorkList A list of works a user keeps.
 type WorkList struct {
-	// BuiltIn My List, which every user has and can't delete or rename.
+	// BuiltIn Watchlist, which every user has and can't delete or rename.
 	BuiltIn bool `json:"builtIn"`
 
 	// ID A UUIDv7.

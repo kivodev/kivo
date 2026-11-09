@@ -469,7 +469,7 @@ private fun ActionRow(
         }
         chips?.invoke()
         HeroIconButton(
-            if (onMyList) KivoIcon.Check else KivoIcon.Plus,
+            if (onMyList) KivoIcon.ListCheck else KivoIcon.ListPlus,
             stringResource(if (onMyList) R.string.remove_from_my_list else R.string.add_to_my_list),
             hero,
             "myList",
@@ -795,7 +795,7 @@ private fun SeriesDetail(model: DetailViewModel, page: Page, seasonId: String?, 
                             ) { nextUp?.let { navigator.push(Screen.Player(it.id)) } }
                             nextUp?.takeIf { it.userState?.positionMs != null }?.let { RestartButton(hero) { navigator.push(Screen.Player(it.id, fromStart = true)) } }
                         }
-                        HeroIconButton(if (onMyList) KivoIcon.Check else KivoIcon.Plus, stringResource(if (onMyList) R.string.remove_from_my_list else R.string.add_to_my_list), hero, "myList", onMyList) { model.setOnMyList(head.id, !onMyList) }
+                        HeroIconButton(if (onMyList) KivoIcon.ListCheck else KivoIcon.ListPlus, stringResource(if (onMyList) R.string.remove_from_my_list else R.string.add_to_my_list), hero, "myList", onMyList) { model.setOnMyList(head.id, !onMyList) }
                         HeroIconButton(KivoIcon.Check, stringResource(if (played) R.string.mark_unplayed else R.string.mark_played), hero, "played", played) {
                             if (played) model.setPlayed(head.id, false) else confirming = true
                         }

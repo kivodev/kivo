@@ -16,7 +16,7 @@ func TestLists(t *testing.T) {
 	all := decode[struct {
 		Items []listJSON `json:"items"`
 	}](t, e.do("GET", "/api/v1/lists", e.adminToken, nil)).Items
-	if len(all) != 1 || !all[0].BuiltIn || all[0].Name != "My List" || all[0].Kind != "manual" {
+	if len(all) != 1 || !all[0].BuiltIn || all[0].Name != "Watchlist" || all[0].Kind != "manual" {
 		t.Fatalf("a new user's lists: %+v", all)
 	}
 	myList := all[0].ID

@@ -30,7 +30,7 @@ struct ListsView: View {
             if let myList = server.myList, myList.workCount == 0, others.isEmpty, smart.isEmpty {
                 MessageView(
                     String(localized: "Nothing in your lists yet."),
-                    sentence: String(localized: "Add something to My List from a title's page.")
+                    sentence: String(localized: "Add something to Watchlist from a title's page.")
                 )
                 .frame(maxHeight: .infinity)
             } else if let myList = server.myList {

@@ -194,12 +194,43 @@ func TestMigrationLists(t *testing.T) {
 	}
 	defer up.Close()
 	var lists int
-	err = up.Reader().QueryRowContext(ctx, `SELECT count(*) FROM list WHERE built_in AND name = 'My List'`).Scan(&lists)
+	err = up.Reader().QueryRowContext(ctx, `SELECT count(*) FROM list WHERE built_in AND name = 'Watchlist'`).Scan(&lists)
 	if err != nil || lists != 2 {
 		t.Fatalf("after 0060: %d My Lists, %v", lists, err)
 	}
 	if err := up.Reader().QueryRowContext(ctx, `SELECT favorite FROM user_state LIMIT 1`).Scan(new(int)); err == nil {
 		t.Fatal("user_state still has favorite")
+	}
+}
+
+// 0063 calls the built-in list Watchlist, and a list a user had already
+// named that takes the built-in list's old name.
+func TestMigrationWatchlist(t *testing.T) {
+	ctx := context.Background()
+	db, path := testDB(t, through(t, "_smart_lists.sql"))
+	err := db.Write(ctx, func(ctx context.Context, tx *Tx) error {
+		_, err := tx.ExecContext(ctx, `
+			INSERT INTO user (id, username, admin, all_libraries, created_at) VALUES
+				(x'a1', 'anna', 0, 1, 1), (x'a2', 'bob', 0, 1, 1);
+			INSERT INTO list (id, user_id, name, built_in, created_at) VALUES
+				(x'c1', x'a1', 'My List', 1, 1), (x'c2', x'a1', 'watchlist', 0, 1),
+				(x'c3', x'a2', 'My List', 1, 1), (x'c4', x'a2', 'Road Trip', 0, 1);`)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+	up, err := open(ctx, path, embeddedMigrations(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer up.Close()
+	for id, want := range map[string]string{"c1": "Watchlist", "c2": "My List", "c3": "Watchlist", "c4": "Road Trip"} {
+		var name string
+		if err := up.Reader().QueryRowContext(ctx, `SELECT name FROM list WHERE hex(id) = upper(?)`, id).Scan(&name); err != nil || name != want {
+			t.Errorf("list %s: %q, %v; want %q", id, name, err, want)
+		}
 	}
 }
 

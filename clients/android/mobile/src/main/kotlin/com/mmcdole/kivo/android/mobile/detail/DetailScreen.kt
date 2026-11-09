@@ -29,6 +29,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistAddCheck
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -384,7 +385,7 @@ private fun ActionRow(head: WorkSummary, state: DetailUiState, model: DetailView
             SeriesDownload(state, downloads, cell)
         }
         RoundAction(
-            if (onMyList) Icons.Default.Check else Icons.Default.Add,
+            if (onMyList) Icons.AutoMirrored.Filled.PlaylistAddCheck else Icons.AutoMirrored.Filled.PlaylistAdd,
             stringResource(R.string.mobile_my_list),
             "myList",
             cell,

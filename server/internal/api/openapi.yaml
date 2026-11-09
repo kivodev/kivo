@@ -1616,7 +1616,7 @@ paths:
       description: |
         Forgets the user's order and hidden rows, so Home returns to the
         default order with every built-in row shown. Lists remain, off
-        Home, except My List. A `homeChanged` event
+        Home, except Watchlist. A `homeChanged` event
         tells the user's clients.
       tags: [works]
       x-kivo-access: viewer
@@ -1633,7 +1633,7 @@ paths:
     get:
       operationId: listLists
       summary: List the user's lists
-      description: The user's lists, My List first, then by name.
+      description: The user's lists, Watchlist first, then by name.
       tags: [works]
       x-kivo-access: viewer
       parameters:
@@ -1700,7 +1700,7 @@ paths:
       summary: Update a list
       description: |
         Renames the list, replaces a smart list's rules, or both, in one
-        change. My List can't be changed, and `smart` is refused on a manual
+        change. Watchlist can't be changed, and `smart` is refused on a manual
         list: `409` with code `conflict`. A name in use is `409` with code
         `nameTaken`. Invalid rules are `400` with pointers such as
         `/smart/query/where/rules/0/op`. A `listsChanged` event tells the
@@ -1727,7 +1727,7 @@ paths:
       operationId: deleteList
       summary: Delete a list
       description: |
-        Deletes the list, not its works. My List can't be deleted: `409`
+        Deletes the list, not its works. Watchlist can't be deleted: `409`
         with code `conflict`. A `listsChanged` event tells the user's
         clients.
       tags: [works]
@@ -5291,7 +5291,7 @@ components:
         kind: {$ref: "#/components/schemas/ListKind"}
         builtIn:
           type: boolean
-          description: My List, which every user has and can't delete or rename.
+          description: Watchlist, which every user has and can't delete or rename.
         workCount:
           type: integer
           description: Works in the list the user sees. A smart list's is 0 in `listLists` without `counts`.

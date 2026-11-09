@@ -989,7 +989,7 @@ export function createMockApi(): MockApi {
     lists: [
       {
         id: mockIds.myList,
-        name: "My List",
+        name: "Watchlist",
         kind: "manual",
         builtIn: true,
         workIds: [mockIds.dune, mockIds.expanse],
@@ -1029,7 +1029,7 @@ export function createMockApi(): MockApi {
         {
           id: `list:${mockIds.myList}`,
           kind: "list",
-          list: { id: mockIds.myList, name: "My List", kind: "manual" },
+          list: { id: mockIds.myList, name: "Watchlist", kind: "manual" },
           items: summaries([mockIds.dune, mockIds.expanse]),
         },
         {

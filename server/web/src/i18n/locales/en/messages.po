@@ -1417,6 +1417,10 @@ msgstr "Make admin and save"
 msgid "is not set"
 msgstr "is not set"
 
+#: src/features/detail/WatchToggles.tsx
+msgid "Remove from Watchlist"
+msgstr "Remove from Watchlist"
+
 #: src/features/lists/smartLabels.ts
 msgid "shortest first"
 msgstr "shortest first"
@@ -1801,10 +1805,6 @@ msgstr "Lists"
 msgid "Press Ctrl+C to copy."
 msgstr "Press Ctrl+C to copy."
 
-#: src/features/detail/WatchToggles.tsx
-msgid "Remove from My List"
-msgstr "Remove from My List"
-
 #: src/features/admin/CreateInviteButton.tsx
 msgid "Network settings"
 msgstr "Network settings"
@@ -1835,10 +1835,6 @@ msgstr "Allow"
 #: src/features/libraries/AddLibraryForm.tsx
 msgid "Add library"
 msgstr "Add library"
-
-#: src/features/lists/ListsScreen.tsx
-msgid "Titles you add to My List or to a list of your own appear here."
-msgstr "Titles you add to My List or to a list of your own appear here."
 
 #: src/features/user/SettingsScreen.tsx
 msgid "Change password…"
@@ -2442,6 +2438,10 @@ msgstr "Extras"
 #: src/features/admin/ApiKeysScreen.tsx
 msgid "Let scripts and integrations such as Home Assistant access the server."
 msgstr "Let scripts and integrations such as Home Assistant access the server."
+
+#: src/features/detail/WatchToggles.tsx
+msgid "Add to Watchlist"
+msgstr "Add to Watchlist"
 
 #: src/features/user/SettingsScreen.tsx
 msgid "Signed-in devices"
@@ -3261,6 +3261,10 @@ msgstr "Nothing unmatched"
 msgid "Running"
 msgstr "Running"
 
+#: src/features/lists/ListsScreen.tsx
+msgid "Titles you add to Watchlist or to a list of your own appear here."
+msgstr "Titles you add to Watchlist or to a list of your own appear here."
+
 #: src/features/browse/useBrowseLabels.ts
 #: src/features/lists/smartLabels.ts
 msgid "Date added"
@@ -3944,10 +3948,6 @@ msgstr "Other videos"
 #: src/features/admin/EditBookForm.tsx
 msgid "Remove {0}"
 msgstr "Remove {0}"
-
-#: src/features/detail/WatchToggles.tsx
-msgid "Add to My List"
-msgstr "Add to My List"
 
 #: src/features/admin/TaskButtons.tsx
 msgid "Run now"

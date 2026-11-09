@@ -32,12 +32,12 @@ export function WatchToggles({ work, cascadeCount = 0 }: Props) {
       <TvFocusable focusKey="my-list">
         <Button
           size="icon"
-          aria-label={onMyList ? t`Remove from My List` : t`Add to My List`}
+          aria-label={onMyList ? t`Remove from Watchlist` : t`Add to Watchlist`}
           aria-pressed={onMyList}
           isDisabled={myList === undefined}
           onPress={() => myList && setInList.mutate({ listId: myList.id, workId: id, inList: !onMyList })}
         >
-          <Icon name={onMyList ? "check" : "plus"} />
+          <Icon name={onMyList ? "listCheck" : "listPlus"} />
         </Button>
       </TvFocusable>
       <TvFocusable focusKey="played">

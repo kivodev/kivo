@@ -28,7 +28,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ListsViewModelsTest : CoreTest() {
-    private val myList = WorkList("my", "My List", "manual", builtIn = true, workCount = 2)
+    private val myList = WorkList("my", "Watchlist", "manual", builtIn = true, workCount = 2)
     private val dateNight = WorkList("d", "Date Night", "manual", builtIn = false, workCount = 1)
     private var lists = listOf(myList, dateNight, WorkList("x", "Later", "smart", builtIn = false, workCount = 9))
     private var held = listOf("my")

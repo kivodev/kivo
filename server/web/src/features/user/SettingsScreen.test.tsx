@@ -336,13 +336,13 @@ describe("Settings", () => {
     expect(handles).toHaveLength(shownIds.length);
     expect(within(order).queryByText(/future/)).toBeNull();
 
-    // My List's handle, up past its own place and above Continue Watching.
+    // Watchlist's handle, up past its own place and above Continue Watching.
     const focused = () => document.activeElement?.getAttribute("aria-label");
     act(() => handles[0]?.focus());
     await user.keyboard("{ArrowDown}{ArrowRight}");
-    expect(focused()).toBe("Drag My List");
+    expect(focused()).toBe("Drag Watchlist");
     await user.keyboard("{Enter}");
-    await waitFor(() => expect(focused()).toBe("Insert between My List and Recently Added in Movies"));
+    await waitFor(() => expect(focused()).toBe("Insert between Watchlist and Recently Added in Movies"));
     await user.keyboard("{ArrowUp}{ArrowUp}{Enter}");
     await waitFor(() => expect(sent("PATCH", "/home/rows")).toHaveLength(1));
 

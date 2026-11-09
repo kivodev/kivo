@@ -33,11 +33,11 @@ describe("Book page", () => {
     expect(screen.getByRole("button", { name: "Play" })).toBeEnabled();
   });
 
-  it("marks the book watched and adds it to My List for you", async () => {
+  it("marks the book watched and adds it to Watchlist for you", async () => {
     serveMockApi();
     const { user } = renderApp(`/works/${bookIds.hailMary}`);
     await user.click(await screen.findByRole("button", { name: "Mark as watched" }));
-    await user.click(await screen.findByRole("button", { name: "Add to My List" }));
+    await user.click(await screen.findByRole("button", { name: "Add to Watchlist" }));
     await waitFor(() =>
       expect(sent("PATCH", `/works/${bookIds.hailMary}/user-state`).map((r) => r.body)).toEqual([{ played: true }]),
     );
