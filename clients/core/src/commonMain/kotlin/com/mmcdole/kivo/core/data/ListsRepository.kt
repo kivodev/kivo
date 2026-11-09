@@ -14,6 +14,7 @@ import com.mmcdole.kivo.api.models.WorkSummaryPage
 import com.mmcdole.kivo.api.result
 import com.mmcdole.kivo.core.auth.ServerConnection
 import com.mmcdole.kivo.core.live.Invalidation
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
@@ -54,6 +55,19 @@ internal class ListsRepository(private val connection: ServerConnection, private
 
     suspend fun values(field: String, search: String?, ids: List<String>?): List<WorkFieldValue> =
         connection.works.listWorkFieldValues(field, search, ids).result().items
+
+    /** The names of [query]'s chosen values, by [SmartLists.nameKey]; a field whose values can't be read is left out. */
+    suspend fun names(query: WorkQuery, fields: List<WorkField>): Map<String, String> = buildMap {
+        for ((field, values) in SmartLists.valuesToName(query, fields)) {
+            try {
+                for (found in values(field, null, values.toList())) put(SmartLists.nameKey(field, found.value), found.name)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // The values show as saved.
+            }
+        }
+    }
 
     suspend fun delete(id: String) = connection.works.deleteList(id).check()
 

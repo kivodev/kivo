@@ -593,6 +593,22 @@ public final class com/mmcdole/kivo/core/data/GridQuery {
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class com/mmcdole/kivo/core/data/GroupDraft {
+	public fun <init> (Ljava/lang/String;Ljava/util/List;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/util/List;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/util/List;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/util/List;Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/GroupDraft;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/data/GroupDraft;Ljava/lang/String;Ljava/util/List;Ljava/lang/String;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/GroupDraft;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getId ()Ljava/lang/String;
+	public final fun getMatch ()Ljava/lang/String;
+	public final fun getRules ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public final class com/mmcdole/kivo/core/data/Heading {
 	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lcom/mmcdole/kivo/api/models/ImageRef;)V
 	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Lcom/mmcdole/kivo/api/models/ImageRef;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
@@ -616,6 +632,32 @@ public final class com/mmcdole/kivo/core/data/KnownKt {
 	public static final fun summary (Lcom/mmcdole/kivo/api/models/WorkDetail;)Lcom/mmcdole/kivo/api/models/WorkSummary;
 }
 
+public final class com/mmcdole/kivo/core/data/RuleDraft {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;Ljava/util/List;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;Ljava/util/List;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()I
+	public final fun component4 ()Ljava/lang/String;
+	public final fun component5 ()Ljava/util/List;
+	public final fun component6 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;Ljava/util/List;Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/RuleDraft;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/data/RuleDraft;Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;Ljava/util/List;Ljava/lang/String;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/RuleDraft;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getArity ()I
+	public final fun getField ()Ljava/lang/String;
+	public final fun getId ()Ljava/lang/String;
+	public final fun getOp ()Ljava/lang/String;
+	public final fun getType ()Ljava/lang/String;
+	public final fun getValues ()Ljava/util/List;
+	public fun hashCode ()I
+	public final fun isComplete ()Z
+	public fun toString ()Ljava/lang/String;
+	public final fun withField (Lcom/mmcdole/kivo/api/models/WorkField;)Lcom/mmcdole/kivo/core/data/RuleDraft;
+	public final fun withOp (Lcom/mmcdole/kivo/api/models/WorkFieldOp;)Lcom/mmcdole/kivo/core/data/RuleDraft;
+	public final fun withValues (Ljava/util/List;)Lcom/mmcdole/kivo/core/data/RuleDraft;
+}
+
 public final class com/mmcdole/kivo/core/data/Seasons {
 	public static final field INSTANCE Lcom/mmcdole/kivo/core/data/Seasons;
 	public final fun openSeason (Ljava/util/List;Ljava/lang/String;Lcom/mmcdole/kivo/api/models/EpisodeInfo;Lcom/mmcdole/kivo/api/models/EpisodeInfo;Z)Lcom/mmcdole/kivo/api/models/WorkSummary;
@@ -623,6 +665,72 @@ public final class com/mmcdole/kivo/core/data/Seasons {
 
 public final class com/mmcdole/kivo/core/data/SeasonsKt {
 	public static final fun isoAirDate (Lcom/mmcdole/kivo/api/models/EpisodeInfo;)Ljava/lang/String;
+}
+
+public final class com/mmcdole/kivo/core/data/SmartListDraft {
+	public fun <init> (Ljava/lang/String;Ljava/util/List;Ljava/util/Set;Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/lang/Integer;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/util/List;Ljava/util/Set;Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/lang/Integer;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun addingGroup (Lcom/mmcdole/kivo/core/data/GroupDraft;)Lcom/mmcdole/kivo/core/data/SmartListDraft;
+	public final fun addingRule (Lcom/mmcdole/kivo/core/data/RuleDraft;Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/SmartListDraft;
+	public final fun changingRule (Ljava/lang/String;Lkotlin/jvm/functions/Function1;)Lcom/mmcdole/kivo/core/data/SmartListDraft;
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/util/List;
+	public final fun component3 ()Ljava/util/Set;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun component5 ()Ljava/util/List;
+	public final fun component6 ()Ljava/util/List;
+	public final fun component7 ()Ljava/util/List;
+	public final fun component8 ()Ljava/lang/Integer;
+	public final fun component9 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/util/List;Ljava/util/Set;Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/lang/Integer;Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/SmartListDraft;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/data/SmartListDraft;Ljava/lang/String;Ljava/util/List;Ljava/util/Set;Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/lang/Integer;Ljava/lang/String;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/SmartListDraft;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCollapse ()Ljava/lang/String;
+	public final fun getGroups ()Ljava/util/List;
+	public final fun getKinds ()Ljava/util/List;
+	public final fun getLibraries ()Ljava/util/Set;
+	public final fun getMatch ()Ljava/lang/String;
+	public final fun getMaxWorks ()Ljava/lang/Integer;
+	public final fun getName ()Ljava/lang/String;
+	public final fun getQuery ()Lcom/mmcdole/kivo/api/models/WorkQuery;
+	public final fun getRules ()Ljava/util/List;
+	public final fun getSort ()Ljava/util/List;
+	public fun hashCode ()I
+	public final fun inLibraries (Ljava/util/Set;)Lcom/mmcdole/kivo/core/data/SmartListDraft;
+	public final fun isReady ()Z
+	public final fun named (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/SmartListDraft;
+	public final fun removingGroup (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/SmartListDraft;
+	public final fun removingRule (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/SmartListDraft;
+	public final fun rule (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/RuleDraft;
+	public final fun showing (Ljava/util/List;)Lcom/mmcdole/kivo/core/data/SmartListDraft;
+	public final fun sorted (Ljava/util/List;)Lcom/mmcdole/kivo/core/data/SmartListDraft;
+	public fun toString ()Ljava/lang/String;
+	public final fun withGroupMatch (Ljava/lang/String;Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/SmartListDraft;
+}
+
+public final class com/mmcdole/kivo/core/data/SmartListRefusal : java/lang/Enum {
+	public static final field NewerVersion Lcom/mmcdole/kivo/core/data/SmartListRefusal;
+	public static final field UnknownField Lcom/mmcdole/kivo/core/data/SmartListRefusal;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/SmartListRefusal;
+	public static fun values ()[Lcom/mmcdole/kivo/core/data/SmartListRefusal;
+}
+
+public final class com/mmcdole/kivo/core/data/SmartLists {
+	public static final field INSTANCE Lcom/mmcdole/kivo/core/data/SmartLists;
+	public static final field LIBRARY_FIELD Ljava/lang/String;
+	public static final field RANDOM_SORT Ljava/lang/String;
+	public final fun blankGroup (Lcom/mmcdole/kivo/api/models/WorkField;)Lcom/mmcdole/kivo/core/data/GroupDraft;
+	public final fun blankRule (Lcom/mmcdole/kivo/api/models/WorkField;)Lcom/mmcdole/kivo/core/data/RuleDraft;
+	public final fun draft (Ljava/lang/String;Lcom/mmcdole/kivo/api/models/WorkQuery;Ljava/util/List;)Lcom/mmcdole/kivo/core/data/SmartListDraft;
+	public final fun fromGrid (Lcom/mmcdole/kivo/core/data/GridQuery;Ljava/lang/String;)Lcom/mmcdole/kivo/api/models/WorkQuery;
+	public final fun isPeriod (Ljava/lang/String;)Z
+	public final fun nameKey (Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+	public final fun period (Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+	public final fun periodAmount (Ljava/lang/String;)Ljava/lang/String;
+	public final fun periodUnit (Ljava/lang/String;)Ljava/lang/String;
+	public final fun refusal (Lcom/mmcdole/kivo/api/models/WorkQuery;Ljava/util/List;)Lcom/mmcdole/kivo/core/data/SmartListRefusal;
+	public final fun ruleDraft (Lcom/mmcdole/kivo/api/models/Rule;Ljava/util/List;)Lcom/mmcdole/kivo/core/data/RuleDraft;
 }
 
 public final class com/mmcdole/kivo/core/data/SubtitleSearch {
@@ -1678,6 +1786,7 @@ public final class com/mmcdole/kivo/core/session/SessionLibrary {
 	public final fun search (Ljava/lang/String;Ljava/lang/Integer;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun setHomeRows (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun setPlayed (Ljava/lang/String;ZLkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun smartListNames (Lcom/mmcdole/kivo/api/models/WorkQuery;Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun updateList (Ljava/lang/String;Ljava/lang/String;Lcom/mmcdole/kivo/api/models/WorkQuery;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public static synthetic fun updateList$default (Lcom/mmcdole/kivo/core/session/SessionLibrary;Ljava/lang/String;Ljava/lang/String;Lcom/mmcdole/kivo/api/models/WorkQuery;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
 	public final fun work (Ljava/lang/String;)Lkotlinx/coroutines/flow/Flow;

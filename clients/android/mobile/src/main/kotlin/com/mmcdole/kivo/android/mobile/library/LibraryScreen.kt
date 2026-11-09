@@ -83,7 +83,6 @@ import com.mmcdole.kivo.android.mobile.app.MobileNav
 import com.mmcdole.kivo.android.mobile.app.PersonRoute
 import com.mmcdole.kivo.android.mobile.app.handle
 import com.mmcdole.kivo.android.mobile.lists.smartListBuilderRoute
-import com.mmcdole.kivo.android.mobile.lists.smartListQuery
 import com.mmcdole.kivo.android.mobile.theme.space
 import com.mmcdole.kivo.android.mobile.ui.LocalWide
 import com.mmcdole.kivo.android.mobile.ui.CardShape
@@ -98,6 +97,7 @@ import com.mmcdole.kivo.android.mobile.ui.WorkMenuHost
 import com.mmcdole.kivo.android.mobile.cast.CastButton
 import com.mmcdole.kivo.android.mobile.ui.display
 import com.mmcdole.kivo.core.data.GridQuery
+import com.mmcdole.kivo.core.data.SmartLists
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -148,7 +148,7 @@ fun LibraryScreen(session: ServerSession, libraryId: String, oneOffSort: String?
             state,
             model::chooseQuery,
             model::clearFilters,
-            onSaveSmart = { nav.open(smartListBuilderRoute(state.library?.name.orEmpty(), smartListQuery(state.query, state.library?.kind))) },
+            onSaveSmart = { nav.open(smartListBuilderRoute(state.library?.name.orEmpty(), SmartLists.fromGrid(state.query, state.library?.kind))) },
             onDismiss = { sheet = null },
         )
     }

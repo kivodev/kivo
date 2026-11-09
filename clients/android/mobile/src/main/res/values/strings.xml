@@ -288,7 +288,8 @@
     <string name="mobile_smart_save">Save</string>
     <string name="mobile_smart_save_as">Save as Smart List</string>
     <string name="mobile_smart_refused">This list can\'t be edited here.</string>
-    <string name="mobile_smart_refused_sentence">Its rules were made with a newer version of Kivo. It stays as it is.</string>
+    <string name="mobile_smart_refused_newer">It was made by a newer version of Kivo. It stays as it is.</string>
+    <string name="mobile_smart_refused_unknown">It uses a rule this version of Kivo doesn\'t know. It stays as it is.</string>
     <string name="mobile_smart_rules_failed">These rules no longer work.</string>
     <string name="mobile_smart_nothing_matches">Nothing matches these rules yet.</string>
     <string name="mobile_smart_list_detail">%1$s, %2$,d</string>

@@ -481,6 +481,20 @@ final class GridModel {
         }
     }
 
+    /// The query for the grid showing, for Save as Smart List.
+    var smartListQuery: WorkQuery {
+        SmartLists.shared.fromGrid(
+            grid: GridQuery(
+                libraryId: library.id,
+                sort: shown.sort.value,
+                played: shown.played.value,
+                resolutions: Array(shown.resolutions),
+                dynamicRanges: Array(shown.dynamicRanges)
+            ),
+            libraryKind: library.kind
+        )
+    }
+
     /// A resolution or HDR format as its chip and menu name it.
     static func label(_ value: String) -> String {
         switch value {

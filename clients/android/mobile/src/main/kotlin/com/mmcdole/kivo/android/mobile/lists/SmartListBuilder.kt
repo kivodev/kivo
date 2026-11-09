@@ -70,6 +70,10 @@ import com.mmcdole.kivo.api.models.SortKey
 import com.mmcdole.kivo.api.models.WorkField
 import com.mmcdole.kivo.api.models.WorkFieldValue
 import com.mmcdole.kivo.api.models.WorkQuery
+import com.mmcdole.kivo.core.data.RuleDraft
+import com.mmcdole.kivo.core.data.SmartListDraft
+import com.mmcdole.kivo.core.data.SmartListRefusal
+import com.mmcdole.kivo.core.data.SmartLists
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
 
@@ -94,6 +98,7 @@ fun SmartListBuilderScreen(session: ServerSession, route: SmartListBuilderRoute,
     val page = state.page
     val rule = (page as? BuilderPage.EditingRule)?.let { draft?.rule(it.id) }
     val fields = state.fields
+    val refusal = state.refusal
     BackHandler(page != BuilderPage.Form) { model.show(BuilderPage.Form) }
     when {
         page == BuilderPage.Kinds && draft != null && fields != null -> KindsPage(draft, offeredKinds(fields), model)
@@ -120,7 +125,10 @@ fun SmartListBuilderScreen(session: ServerSession, route: SmartListBuilderRoute,
             Box(Modifier.padding(padding).fillMaxSize()) {
                 val failure = state.failure
                 when {
-                    state.refused -> Message(stringResource(R.string.mobile_smart_refused), stringResource(R.string.mobile_smart_refused_sentence))
+                    refusal != null -> Message(
+                        stringResource(R.string.mobile_smart_refused),
+                        stringResource(if (refusal == SmartListRefusal.NewerVersion) R.string.mobile_smart_refused_newer else R.string.mobile_smart_refused_unknown),
+                    )
                     draft != null && fields != null -> BuilderForm(draft, fields, state, model)
                     failure != null -> Column { FailureRow(sentence(failure), model::load) }
                     else -> Loading()
@@ -263,7 +271,7 @@ private fun GroupHeader(match: String, onMatch: (String) -> Unit) {
 private fun SortRow(draft: SmartListDraft, fields: List<WorkField>, model: SmartListBuilderViewModel) {
     fun direction(key: SortKey) = key.direction ?: fields.firstOrNull { it.field == key.field }?.defaultDirection ?: "asc"
     val current = draft.sort.firstOrNull()
-    val currentTag = current?.let { key -> if (key.field == RANDOM_SORT) key.field else "${key.field}:${direction(key)}" } ?: "title:asc"
+    val currentTag = current?.let { key -> if (key.field == SmartLists.RANDOM_SORT) key.field else "${key.field}:${direction(key)}" } ?: "title:asc"
     val choices = buildList {
         for (field in offeredFields(fields, draft.kinds, current?.field).filter { it.sortable }) {
             val way = field.defaultDirection ?: "asc"
@@ -273,7 +281,7 @@ private fun SortRow(draft: SmartListDraft, fields: List<WorkField>, model: Smart
         }
         val saved = current?.let { key -> fields.firstOrNull { it.field == key.field } }
         if (current != null && saved != null && none { it.first == currentTag }) add(0, Triple(currentTag, sortName(saved, direction(current)), draft.sort))
-        add(Triple(RANDOM_SORT, stringResource(R.string.mobile_smart_random), listOf(SortKey(RANDOM_SORT))))
+        add(Triple(SmartLists.RANDOM_SORT, stringResource(R.string.mobile_smart_random), listOf(SortKey(SmartLists.RANDOM_SORT))))
     }
     ChoiceRow(stringResource(R.string.mobile_smart_sort), choices.map { Choice(it.first, it.second) }, currentTag, "smartListSort") { tag ->
         model.setSort(choices.firstOrNull { it.first == tag }?.third.orEmpty())
@@ -333,11 +341,11 @@ private fun RulePage(rule: RuleDraft, fields: List<WorkField>, names: Map<String
     }
     SubPage(field?.let { fieldName(it) }.orEmpty(), model) {
         ChoiceRow(stringResource(R.string.mobile_smart_field), fields.map { Choice(it.field, fieldName(it)) }, rule.field, "ruleField") { chosen ->
-            fields.firstOrNull { it.field == chosen }?.let { picked -> if (picked.field != rule.field) model.changeRule(rule.id) { withField(it, picked) } }
+            fields.firstOrNull { it.field == chosen }?.let { picked -> if (picked.field != rule.field) model.changeRule(rule.id) { it.withField(picked) } }
         }
         if (field != null) {
             ChoiceRow(stringResource(R.string.mobile_smart_condition), field.ops.map { Choice(it.op, opName(it.op, field.type)) }, rule.op, "ruleOp") { chosen ->
-                field.ops.firstOrNull { it.op == chosen }?.let { picked -> model.changeRule(rule.id) { withOp(it, picked) } }
+                field.ops.firstOrNull { it.op == chosen }?.let { picked -> model.changeRule(rule.id) { it.withOp(picked) } }
             }
             if (rule.arity != 0) RuleValues(rule, field, names, search, found, { search = it }, model)
         }
@@ -355,7 +363,7 @@ private fun RuleValues(
     model: SmartListBuilderViewModel,
 ) {
     when {
-        isPeriod(rule.op) -> PeriodValue(rule, model)
+        SmartLists.isPeriod(rule.op) -> PeriodValue(rule, model)
         field.valueSource != null -> ValueChooser(rule, field, names, search, found, onSearch, model)
         else -> {
             for (index in rule.values.indices) {
@@ -400,12 +408,12 @@ private fun TypedValue(rule: RuleDraft, field: WorkField, index: Int, model: Sma
 /** A period: a number of days, weeks, months or years, held as P30D. */
 @Composable
 private fun PeriodValue(rule: RuleDraft, model: SmartListBuilderViewModel) {
-    var unit by rememberSaveable(rule.id) { mutableStateOf(rule.values.firstOrNull()?.lastOrNull()?.toString() ?: "D") }
+    var unit by rememberSaveable(rule.id) { mutableStateOf(SmartLists.periodUnit(rule.values.firstOrNull())) }
     OutlinedTextField(
-        value = rule.values.firstOrNull()?.drop(1)?.dropLast(1).orEmpty(),
+        value = SmartLists.periodAmount(rule.values.firstOrNull().orEmpty()),
         onValueChange = { text ->
             val digits = text.filter(Char::isDigit)
-            model.changeRule(rule.id) { it.copy(values = listOf(if (digits.isEmpty()) "" else "P$digits$unit")) }
+            model.changeRule(rule.id) { it.withValues(listOf(SmartLists.period(digits, unit))) }
         },
         label = { Text(stringResource(R.string.mobile_smart_number)) },
         singleLine = true,
@@ -422,7 +430,7 @@ private fun PeriodValue(rule: RuleDraft, model: SmartListBuilderViewModel) {
         unit = picked
         model.changeRule(rule.id) { current ->
             val value = current.values.firstOrNull().orEmpty()
-            if (value.isEmpty()) current else current.copy(values = listOf(value.dropLast(1) + picked))
+            if (value.isEmpty()) current else current.withValues(listOf(SmartLists.period(SmartLists.periodAmount(value), picked)))
         }
     }
 }
@@ -450,7 +458,7 @@ private fun ValueChooser(
         if (rule.values.isNotEmpty()) {
             Label(stringResource(R.string.mobile_smart_chosen))
             for (value in rule.values) {
-                CheckRow(names[nameKey(field.field, value)] ?: value, true, "chosen:$value") {
+                CheckRow(names[SmartLists.nameKey(field.field, value)] ?: value, true, "chosen:$value") {
                     model.changeRule(rule.id) { it.copy(values = it.values - value) }
                 }
             }

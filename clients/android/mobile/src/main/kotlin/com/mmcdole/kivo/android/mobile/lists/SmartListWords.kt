@@ -9,6 +9,8 @@ import com.mmcdole.kivo.api.models.Rule
 import com.mmcdole.kivo.api.models.RuleGroup
 import com.mmcdole.kivo.api.models.WorkField
 import com.mmcdole.kivo.api.models.WorkQuery
+import com.mmcdole.kivo.core.data.RuleDraft
+import com.mmcdole.kivo.core.data.SmartLists
 import java.text.NumberFormat
 
 /** "42 movies", or "42 titles" over more than one kind. */
@@ -48,7 +50,7 @@ internal fun kindsPhrase(kinds: List<String>): String {
 /** A field's label by its key, or the catalog's name for one this app doesn't know. */
 @Composable
 internal fun fieldName(field: WorkField): String = when (field.field) {
-    LIBRARY_FIELD -> stringResource(R.string.mobile_smart_field_library)
+    SmartLists.LIBRARY_FIELD -> stringResource(R.string.mobile_smart_field_library)
     "contentRating" -> stringResource(R.string.mobile_smart_field_content_rating)
     "playState" -> stringResource(R.string.mobile_smart_field_play_state)
     "genre" -> stringResource(R.string.mobile_smart_field_genre)
@@ -110,16 +112,14 @@ internal fun sortName(field: WorkField, direction: String): String {
     return stringResource(R.string.mobile_smart_sort_named, fieldName(field), stringResource(order))
 }
 
-internal fun isPeriod(op: String): Boolean = op == "within" || op == "notWithin"
-
 /** A period value, "P30D", as words: "30 days". */
 @Composable
 internal fun periodWords(value: String): String {
-    val amount = value.drop(1).dropLast(1).toIntOrNull() ?: 0
-    val plural = when (value.lastOrNull()) {
-        'D' -> R.plurals.mobile_smart_days
-        'W' -> R.plurals.mobile_smart_weeks
-        'M' -> R.plurals.mobile_smart_months
+    val amount = SmartLists.periodAmount(value).toIntOrNull() ?: 0
+    val plural = when (SmartLists.periodUnit(value)) {
+        "D" -> R.plurals.mobile_smart_days
+        "W" -> R.plurals.mobile_smart_weeks
+        "M" -> R.plurals.mobile_smart_months
         else -> R.plurals.mobile_smart_years
     }
     return pluralStringResource(plural, amount, amount)
@@ -134,9 +134,6 @@ internal fun minutesOf(value: String): String {
     }.format(ms / 60_000)
 }
 
-/** The key of a value in a names map. */
-internal fun nameKey(field: String, value: String): String = "$field/$value"
-
 /**
  * A rule's values to read: names where the values are chosen, joined by
  * "or" ("and" for all of them), a period in words, a duration in minutes,
@@ -144,10 +141,10 @@ internal fun nameKey(field: String, value: String): String = "$field/$value"
  */
 @Composable
 internal fun ruleValues(rule: RuleDraft, field: WorkField, names: Map<String, String>, to: String = stringResource(R.string.mobile_smart_and)): String {
-    if (isPeriod(rule.op)) return rule.values.firstOrNull()?.let { periodWords(it) }.orEmpty()
+    if (SmartLists.isPeriod(rule.op)) return rule.values.firstOrNull()?.let { periodWords(it) }.orEmpty()
     if (rule.arity == -1) {
         val joiner = stringResource(if (rule.op == "allOf") R.string.mobile_smart_and else R.string.mobile_smart_or)
-        return rule.values.joinToString(" $joiner ") { names[nameKey(rule.field, it)] ?: it }
+        return rule.values.joinToString(" $joiner ") { names[SmartLists.nameKey(rule.field, it)] ?: it }
     }
     val shown = if (field.unit == "ms") rule.values.map { stringResource(R.string.mobile_smart_minutes, minutesOf(it)) } else rule.values
     return shown.joinToString(" $to ")
@@ -162,7 +159,7 @@ internal fun rulesSummary(query: WorkQuery, fields: List<WorkField>, names: Map<
 
 @Composable
 private fun phrases(group: RuleGroup, fields: List<WorkField>, names: Map<String, String>): List<String> {
-    val rules = group.rules.orEmpty().filter { it.field != LIBRARY_FIELD }.mapNotNull { rule ->
+    val rules = group.rules.orEmpty().filter { it.field != SmartLists.LIBRARY_FIELD }.mapNotNull { rule ->
         fields.firstOrNull { it.field == rule.field }?.let { rulePhrase(rule, it, names) }
     }
     val nested = group.groups.orEmpty().map { inner ->
@@ -174,8 +171,7 @@ private fun phrases(group: RuleGroup, fields: List<WorkField>, names: Map<String
 
 @Composable
 private fun rulePhrase(rule: Rule, field: WorkField, names: Map<String, String>): String {
-    val arity = field.ops.firstOrNull { it.op == rule.op }?.arity ?: -1
-    val draft = RuleDraft(rule.field, rule.op, arity, rule.propertyValues.orEmpty())
+    val draft = SmartLists.ruleDraft(rule, listOf(field))
     val label = fieldName(field)
     return when (rule.op) {
         "anyOf", "allOf" -> ruleValues(draft, field, names)

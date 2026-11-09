@@ -152,7 +152,7 @@ struct ListGrid: View {
     /// Reads what naming a smart list's rules takes.
     private func readRules() async {
         guard let query = smart?.query, let fields = try? await server.session.library.workFields() else { return }
-        let names = await SmartListWords.names(of: query, fields: fields, session: server.session)
+        let names = (try? await server.session.library.smartListNames(query: query, fields: fields)) ?? [:]
         rulesLine = SmartListWords.summary(of: query, fields: fields, names: names)
     }
 

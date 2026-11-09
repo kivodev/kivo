@@ -133,6 +133,10 @@ class SessionLibrary internal constructor(
     suspend fun workFieldValues(field: String, search: String?, ids: List<String>?): List<WorkFieldValue> =
         listWorks.values(field, search, ids)
 
+    /** The names of [query]'s chosen values, by `SmartLists.nameKey`, as far as they can be read. */
+    @Throws(Exception::class)
+    suspend fun smartListNames(query: WorkQuery, fields: List<WorkField>): Map<String, String> = listWorks.names(query, fields)
+
     @Throws(Exception::class)
     suspend fun deleteList(id: String) = listWorks.delete(id)
 

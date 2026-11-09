@@ -16,7 +16,7 @@ struct SmartListBuilder: View {
     /// The catalog's fields of the types this app can edit.
     @State private var fields: [WorkField]?
     @State private var draft: SmartListDraft?
-    @State private var refused = false
+    @State private var refusal: SmartListRefusal?
     @State private var failure: String?
     @State private var problem: String?
 
@@ -63,10 +63,12 @@ struct SmartListBuilder: View {
     }
 
     @ViewBuilder private var content: some View {
-        if refused {
+        if let refusal {
             MessageView(
                 String(localized: "This list can't be edited here."),
-                sentence: String(localized: "Its rules were made with a newer version of Kivo. It stays as it is.")
+                sentence: refusal == .newerVersion
+                    ? String(localized: "It was made by a newer version of Kivo. It stays as it is.")
+                    : String(localized: "It uses a rule this version of Kivo doesn't know. It stays as it is.")
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let fields, draft != nil {
@@ -86,10 +88,10 @@ struct SmartListBuilder: View {
             let catalog = try await server.session.library.workFields().filter { Self.fieldTypes.contains($0.type) }
             fields = catalog
             failure = nil
-            if let query, SmartListDraft.refuses(query, fields: catalog) {
-                refused = true
+            if let query, let refusal = SmartLists.shared.refusal(query: query, fields: catalog) {
+                self.refusal = refusal
             } else {
-                draft = SmartListDraft(name: name, query: query, fields: catalog)
+                draft = SmartLists.shared.draft(name: name, query: query, fields: catalog)
             }
         } catch {
             failure = error.problemSentence
@@ -125,8 +127,8 @@ private struct SmartListForm: View {
     @Environment(ServerModel.self) private var server
     @Environment(\.kivoPalette) private var palette
     /// The rule whose page is open.
-    @State private var editing: UUID?
-    /// Chosen values' names, by ``SmartListWords/nameKey(_:_:)``.
+    @State private var editing: String?
+    /// Chosen values' names, by `SmartLists.nameKey`.
     @State private var names: [String: String] = [:]
     /// The live count as a line, nil before the first answer or with no kinds.
     @State private var matching: String?
@@ -134,7 +136,7 @@ private struct SmartListForm: View {
     var body: some View {
         Form {
             Section {
-                TextField(String(localized: "Name"), text: $draft.name)
+                TextField(String(localized: "Name"), text: Binding(get: { draft.name }, set: { draft = draft.named(name: $0) }))
                     .accessibilityIdentifier("smart-list-name")
             }
             Section {
@@ -155,28 +157,31 @@ private struct SmartListForm: View {
                 }
             }
             Section {
-                ForEach(draft.rules) { rule in
+                ForEach(draft.rules, id: \.id) { rule in
                     row(rule)
                 }
-                .onDelete { draft.rules.remove(atOffsets: $0) }
-                addRule { draft.rules.append($0) }
-                Button(String(localized: "Add Group")) { draft.groups.append(GroupDraft(rules: blankRule.map { [$0] } ?? [])) }
-                    .accessibilityIdentifier("add-group")
+                .onDelete { remove(draft.rules, at: $0) }
+                addRule(toGroup: nil)
+                Button(String(localized: "Add Group")) {
+                    guard let field = offeredFields(keeping: nil).first else { return }
+                    draft = draft.addingGroup(group: SmartLists.shared.blankGroup(field: field))
+                }
+                .accessibilityIdentifier("add-group")
             } header: {
                 Text(draft.match == "any" ? String(localized: "Match Any of These") : String(localized: "Match All of These"))
             }
-            ForEach($draft.groups) { $group in
+            ForEach(draft.groups, id: \.id) { group in
                 Section {
-                    ForEach(group.rules) { rule in
+                    ForEach(group.rules, id: \.id) { rule in
                         row(rule)
                     }
-                    .onDelete { group.rules.remove(atOffsets: $0) }
-                    addRule { group.rules.append($0) }
+                    .onDelete { remove(group.rules, at: $0) }
+                    addRule(toGroup: group.id)
                     Button(String(localized: "Remove Group"), role: .destructive) {
-                        draft.groups.removeAll { $0.id == group.id }
+                        draft = draft.removingGroup(id: group.id)
                     }
                 } header: {
-                    groupHeader($group.match)
+                    groupHeader(group)
                 }
             }
             Section {
@@ -193,11 +198,16 @@ private struct SmartListForm: View {
         .pickerStyle(.navigationLink)
         .scrollDismissesKeyboard(.interactively)
         .navigationDestination(item: $editing) { id in
-            RulePage(rule: $draft[rule: id], fields: offeredFields(keeping: draft[rule: id].field), names: $names, session: server.session)
+            RulePage(
+                rule: Binding(get: { draft.rule(id: id)! }, set: { new in draft = draft.changingRule(id: id) { _ in new } }),
+                fields: offeredFields(keeping: draft.rule(id: id)?.field),
+                names: $names,
+                session: server.session
+            )
         }
         .task {
             if let startingQuery {
-                names = await SmartListWords.names(of: startingQuery, fields: fields, session: server.session)
+                names = (try? await server.session.library.smartListNames(query: startingQuery, fields: fields)) ?? [:]
             }
         }
         .task(id: draft.query.description) { await count() }
@@ -213,6 +223,11 @@ private struct SmartListForm: View {
         fields.filter { field in
             field.field == kept || (field.field != "library" && !Set(field.kinds).isDisjoint(with: draft.kinds))
         }
+    }
+
+    /// Removes the rules at [offsets] of [rules], the root's or a group's.
+    private func remove(_ rules: [RuleDraft], at offsets: IndexSet) {
+        offsets.map { rules[$0].id }.forEach { draft = draft.removingRule(id: $0) }
     }
 
     private var librariesLabel: String {
@@ -248,31 +263,30 @@ private struct SmartListForm: View {
 
     /// A rule on the first field the kinds offer, its values not chosen yet.
     private var blankRule: RuleDraft? {
-        guard let field = offeredFields(keeping: nil).first, let op = field.ops.first else { return nil }
-        return RuleDraft(field: field.field, op: op.op, arity: Int(op.arity), values: RulePage.slots(for: Int(op.arity)))
+        offeredFields(keeping: nil).first.flatMap { SmartLists.shared.blankRule(field: $0) }
     }
 
-    /// Add Rule: a blank rule, opened at once.
-    private func addRule(_ add: @escaping (RuleDraft) -> Void) -> some View {
+    /// Add Rule: a blank rule in [groupId] or the root's, opened at once.
+    private func addRule(toGroup groupId: String?) -> some View {
         Button(String(localized: "Add Rule")) {
             guard let rule = blankRule else { return }
-            add(rule)
+            draft = draft.addingRule(rule: rule, groupId: groupId)
             editing = rule.id
         }
         .accessibilityIdentifier("add-rule")
     }
 
     /// A group's heading, a menu of what the group matches.
-    private func groupHeader(_ match: Binding<String>) -> some View {
+    private func groupHeader(_ group: GroupDraft) -> some View {
         Menu {
-            Picker(String(localized: "Match"), selection: match) {
+            Picker(String(localized: "Match"), selection: Binding(get: { group.match }, set: { draft = draft.withGroupMatch(id: group.id, match: $0) })) {
                 Text("Match Any of These").tag("any")
                 Text("Match All of These").tag("all")
             }
             .pickerStyle(.inline)
         } label: {
             HStack(spacing: 3) {
-                Text(match.wrappedValue == "all" ? String(localized: "Match All of These") : String(localized: "Match Any of These"))
+                Text(group.match == "all" ? String(localized: "Match All of These") : String(localized: "Match Any of These"))
                 Image(systemName: "chevron.up.chevron.down").font(.caption2.weight(.semibold))
             }
         }
@@ -285,7 +299,7 @@ private struct SmartListForm: View {
     private var sortPicker: some View {
         let current = draft.sort.first
         let currentTag = current.map { key in
-            key.field == SmartListWords.randomSort ? key.field : "\(key.field):\(direction(of: key))"
+            key.field == SmartLists.shared.RANDOM_SORT ? key.field : "\(key.field):\(direction(of: key))"
         } ?? "title:asc"
         let chosenField = current?.field ?? "title"
         var choices: [(tag: String, label: String, keys: [SortKey])] = fields
@@ -296,10 +310,10 @@ private struct SmartListForm: View {
                     ("\(field.field):\(way)", SmartListWords.sort(field, direction: way), [SortKey(field: field.field, direction: way)])
                 }
             }
-        choices.append((SmartListWords.randomSort, String(localized: "Random"), [SortKey(field: SmartListWords.randomSort, direction: nil)]))
+        choices.append((SmartLists.shared.RANDOM_SORT, String(localized: "Random"), [SortKey(field: SmartLists.shared.RANDOM_SORT, direction: nil)]))
         return Picker(String(localized: "Sort"), selection: Binding(
             get: { currentTag },
-            set: { tag in draft.sort = choices.first { $0.tag == tag }?.keys ?? [] }
+            set: { tag in draft = draft.sorted(sort: choices.first { $0.tag == tag }?.keys ?? []) }
         )) {
             ForEach(choices, id: \.tag) { Text($0.label).tag($0.tag) }
         }
@@ -339,7 +353,7 @@ private struct KindsPage: View {
             ForEach(offered, id: \.self) { kind in
                 ChoiceRow(title: SmartListWords.kind(kind), detail: nil, chosen: draft.kinds.contains(kind)) {
                     let others = draft.kinds.contains(kind) ? draft.kinds.filter { $0 != kind } : draft.kinds + [kind]
-                    draft.kinds = offered.filter(others.contains)
+                    draft = draft.showing(kinds: offered.filter(others.contains))
                 }
                 .accessibilityIdentifier("kind:\(kind)")
             }
@@ -359,11 +373,11 @@ private struct LibrariesPage: View {
     var body: some View {
         List {
             ChoiceRow(title: String(localized: "All"), detail: nil, chosen: draft.libraries.isEmpty) {
-                draft.libraries = []
+                draft = draft.inLibraries(libraries: [])
             }
             ForEach(server.libraries, id: \.id) { library in
                 ChoiceRow(title: library.name, detail: nil, chosen: draft.libraries.contains(library.id)) {
-                    if draft.libraries.contains(library.id) { draft.libraries.remove(library.id) } else { draft.libraries.insert(library.id) }
+                    draft = draft.inLibraries(libraries: draft.libraries.symmetricDifference([library.id]))
                 }
             }
         }
@@ -394,14 +408,7 @@ private struct RulePage: View {
         ("Y", String(localized: "Years")),
     ]
 
-    /// An empty slot for each exact value, none where any number is taken.
-    static func slots(for arity: Int) -> [String] {
-        arity > 0 ? Array(repeating: "", count: arity) : []
-    }
-
     private var field: WorkField? { fields.first { $0.field == rule.field } }
-
-    private static func isPeriod(_ op: String) -> Bool { op == "within" || op == "notWithin" }
 
     var body: some View {
         Form {
@@ -449,27 +456,20 @@ private struct RulePage: View {
 
     /// A new field keeps the rule's operator if it has it, its first if not; the values start over.
     private func choose(_ newField: String) {
-        guard newField != rule.field, let field = fields.first(where: { $0.field == newField }),
-              let op = field.ops.first(where: { $0.op == rule.op }) ?? field.ops.first else { return }
+        guard newField != rule.field, let field = fields.first(where: { $0.field == newField }) else { return }
         search = ""
         found = []
-        rule.field = newField
-        rule.op = op.op
-        rule.arity = Int(op.arity)
-        rule.values = Self.slots(for: rule.arity)
+        rule = rule.withField(field: field)
     }
 
     /// A new operator keeps values it reads the same way.
     private func chooseOp(_ newOp: String) {
         guard let field, let op = field.ops.first(where: { $0.op == newOp }) else { return }
-        let sameShape = rule.arity == Int(op.arity) && Self.isPeriod(rule.op) == Self.isPeriod(newOp)
-        rule.op = newOp
-        rule.arity = Int(op.arity)
-        if !sameShape { rule.values = Self.slots(for: rule.arity) }
+        rule = rule.withOp(op: op)
     }
 
     @ViewBuilder private func values(_ field: WorkField) -> some View {
-        if Self.isPeriod(rule.op) {
+        if SmartLists.shared.isPeriod(op: rule.op) {
             periodSection
         } else if field.valueSource != nil {
             ValueChooser(rule: $rule, field: field, names: $names, search: $search, found: found)
@@ -502,7 +502,9 @@ private struct RulePage: View {
             get: { field.unit == "ms" && !rule.values[index].isEmpty ? SmartListWords.minutes(rule.values[index]) : rule.values[index] },
             set: { typed in
                 let value = typed.trimmingCharacters(in: .whitespaces)
-                rule.values[index] = field.unit == "ms" ? Double(value).map { String(Int($0 * 60000)) } ?? "" : value
+                var values = rule.values
+                values[index] = field.unit == "ms" ? Double(value).map { String(Int($0 * 60000)) } ?? "" : value
+                rule = rule.withValues(values: values)
             }
         )
     }
@@ -510,10 +512,9 @@ private struct RulePage: View {
     /// A period: a number of days, weeks, months or years, held as P30D.
     private var periodSection: some View {
         let amount = Binding(
-            get: { rule.values.first.map { String($0.dropFirst().dropLast()) } ?? "" },
+            get: { SmartLists.shared.periodAmount(value: rule.values.first ?? "") },
             set: { (typed: String) in
-                let digits = typed.filter(\.isNumber)
-                rule.values = digits.isEmpty ? [""] : ["P\(digits)\(unit)"]
+                rule = rule.withValues(values: [SmartLists.shared.period(amount: typed.filter(\.isNumber), unit: unit)])
             }
         )
         return Section {
@@ -523,14 +524,14 @@ private struct RulePage: View {
             Picker(String(localized: "Unit"), selection: Binding(get: { unit }, set: { newUnit in
                 unit = newUnit
                 if let value = rule.values.first, !value.isEmpty {
-                    rule.values = ["\(value.dropLast())\(newUnit)"]
+                    rule = rule.withValues(values: [SmartLists.shared.period(amount: SmartLists.shared.periodAmount(value: value), unit: newUnit)])
                 }
             })) {
                 ForEach(Self.units, id: \.code) { Text($0.label).tag($0.code) }
             }
         }
         .onAppear {
-            if let last = rule.values.first?.last { unit = String(last) }
+            if rule.values.first?.isEmpty == false { unit = SmartLists.shared.periodUnit(value: rule.values.first) }
         }
     }
 }
@@ -556,8 +557,8 @@ private struct ValueChooser: View {
             if !rule.values.isEmpty {
                 Section(String(localized: "Chosen")) {
                     ForEach(rule.values, id: \.self) { value in
-                        ChoiceRow(title: names[SmartListWords.nameKey(field.field, value)] ?? value, detail: nil, chosen: true) {
-                            rule.values.removeAll { $0 == value }
+                        ChoiceRow(title: names[SmartLists.shared.nameKey(field: field.field, value: value)] ?? value, detail: nil, chosen: true) {
+                            rule = rule.withValues(values: rule.values.filter { $0 != value })
                         }
                     }
                 }
@@ -572,11 +573,7 @@ private struct ValueChooser: View {
     }
 
     private func toggle(_ value: WorkFieldValue) {
-        names[SmartListWords.nameKey(field.field, value.value)] = value.name
-        if rule.values.contains(value.value) {
-            rule.values.removeAll { $0 == value.value }
-        } else {
-            rule.values.append(value.value)
-        }
+        names[SmartLists.shared.nameKey(field: field.field, value: value.value)] = value.name
+        rule = rule.withValues(values: rule.values.contains(value.value) ? rule.values.filter { $0 != value.value } : rule.values + [value.value])
     }
 }

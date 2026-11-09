@@ -5,9 +5,6 @@ import KivoCore
 /// values. A field's label is by its key, or the catalog's name for one this
 /// app doesn't know.
 enum SmartListWords {
-    /// The sort key that isn't a field.
-    static let randomSort = "random"
-
     static func kind(_ kind: String) -> String {
         switch kind {
         case "movie": String(localized: "Movies")
@@ -106,9 +103,9 @@ enum SmartListWords {
 
     /// A period value, "P30D", as words: "30 days".
     static func period(_ value: String) -> String {
-        let amount = Int(value.dropFirst().dropLast()) ?? 0
+        let amount = Int(SmartLists.shared.periodAmount(value: value)) ?? 0
         let one = amount == 1
-        return switch value.last {
+        return switch SmartLists.shared.periodUnit(value: value) {
         case "D": one ? String(localized: "1 day") : String(localized: "\(amount) days")
         case "W": one ? String(localized: "1 week") : String(localized: "\(amount) weeks")
         case "M": one ? String(localized: "1 month") : String(localized: "\(amount) months")
@@ -126,38 +123,15 @@ enum SmartListWords {
     /// "or" ("and" when all must match), a period in words, a duration in
     /// minutes, the two ends of a range joined by [to].
     static func values(_ rule: RuleDraft, of field: WorkField, names: [String: String], to: String = String(localized: "and")) -> String {
-        if rule.op == "within" || rule.op == "notWithin" {
+        if SmartLists.shared.isPeriod(op: rule.op) {
             return rule.values.first.map(period) ?? ""
         }
         if rule.arity == -1 {
             let separator = rule.op == "allOf" ? String(localized: " and ") : String(localized: " or ")
-            return rule.values.map { names[nameKey(rule.field, $0)] ?? $0 }.joined(separator: separator)
+            return rule.values.map { names[SmartLists.shared.nameKey(field: rule.field, value: $0)] ?? $0 }.joined(separator: separator)
         }
         let shown = field.unit == "ms" ? rule.values.map { String(localized: "\(minutes($0)) min") } : rule.values
         return shown.joined(separator: " \(to) ")
-    }
-
-    /// The key of a value in a names map.
-    static func nameKey(_ field: String, _ value: String) -> String {
-        "\(field)/\(value)"
-    }
-
-    /// Reads the names of [query]'s chosen values, as a names map.
-    static func names(of query: WorkQuery, fields: [WorkField], session: KivoSession) async -> [String: String] {
-        var wanted: [String: Set<String>] = [:]
-        func collect(_ group: RuleGroup) {
-            for rule in group.rules ?? [] where fields.first(where: { $0.field == rule.field })?.valueSource != nil {
-                wanted[rule.field, default: []].formUnion(rule.propertyValues ?? [])
-            }
-            group.groups?.forEach(collect)
-        }
-        if let root = query.where { collect(root) }
-        var names: [String: String] = [:]
-        for (field, values) in wanted {
-            let found = (try? await session.library.workFieldValues(field: field, search: nil, ids: Array(values))) ?? []
-            for value in found { names[nameKey(field, value.value)] = value.name }
-        }
-        return names
     }
 
     /// [query]'s rules in a line: "Comedy or Drama, no Animation, 1990 to 1999, (Unplayed or Runtime at most 90 min)".
@@ -179,7 +153,7 @@ enum SmartListWords {
     }
 
     private static func phrase(_ rule: Rule, of field: WorkField, names: [String: String]) -> String {
-        let draft = RuleDraft(field: rule.field, op: rule.op, arity: Int(field.ops.first { $0.op == rule.op }?.arity ?? -1), values: rule.propertyValues ?? [])
+        let draft = SmartLists.shared.ruleDraft(rule: rule, fields: [field])
         let label = Self.field(field)
         switch rule.op {
         case "anyOf", "allOf": return values(draft, of: field, names: names)

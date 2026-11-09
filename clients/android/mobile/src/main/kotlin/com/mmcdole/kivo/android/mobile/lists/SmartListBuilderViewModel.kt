@@ -3,16 +3,17 @@ package com.mmcdole.kivo.android.mobile.lists
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mmcdole.kivo.api.models.Library
-import com.mmcdole.kivo.api.models.RuleGroup
 import com.mmcdole.kivo.api.models.SortKey
 import com.mmcdole.kivo.api.models.WorkField
-import com.mmcdole.kivo.api.models.WorkFieldOp
 import com.mmcdole.kivo.api.models.WorkFieldValue
 import com.mmcdole.kivo.api.models.WorkList
 import com.mmcdole.kivo.api.models.WorkQuery
 import com.mmcdole.kivo.core.RequestProblem
+import com.mmcdole.kivo.core.data.RuleDraft
+import com.mmcdole.kivo.core.data.SmartListDraft
+import com.mmcdole.kivo.core.data.SmartListRefusal
+import com.mmcdole.kivo.core.data.SmartLists
 import com.mmcdole.kivo.core.session.KivoSession
-import com.mmcdole.kivo.core.session.SessionLibrary
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -46,8 +47,8 @@ data class BuilderUiState(
     /** The catalog's fields of the types this app can edit; null until read. */
     val fields: List<WorkField>? = null,
     val draft: SmartListDraft? = null,
-    /** The saved query is one this app must leave alone. */
-    val refused: Boolean = false,
+    /** Why the saved query must be left alone, when it must. */
+    val refusal: SmartListRefusal? = null,
     /** Why the catalog couldn't be read. */
     val failure: RequestProblem? = null,
     /** Why Save was refused, until it's dismissed. */
@@ -56,7 +57,7 @@ data class BuilderUiState(
     /** How many works match; null before the first answer or with no kinds. */
     val matching: Int? = null,
     val matchingProblem: RequestProblem? = null,
-    /** Chosen values' names, by [nameKey]. */
+    /** Chosen values' names, by [SmartLists.nameKey]. */
     val names: Map<String, String> = emptyMap(),
     val libraries: List<Library> = emptyList(),
 )
@@ -106,12 +107,12 @@ class SmartListBuilderViewModel(
         viewModelScope.launch {
             try {
                 val catalog = session.library.workFields().filter { it.type in FieldTypes }
-                val refused = query != null && refusesEditing(query, catalog)
+                val refusal = query?.let { SmartLists.refusal(it, catalog) }
                 mutable.update {
-                    it.copy(fields = catalog, failure = null, refused = refused, draft = if (refused) null else smartListDraft(name, query, catalog))
+                    it.copy(fields = catalog, failure = null, refusal = refusal, draft = if (refusal != null) null else SmartLists.draft(name, query, catalog))
                 }
-                if (query != null && !refused) {
-                    val names = readNames(query, catalog, session.library)
+                if (query != null && refusal == null) {
+                    val names = session.library.smartListNames(query, catalog)
                     mutable.update { it.copy(names = it.names + names) }
                 }
             } catch (e: CancellationException) {
@@ -124,18 +125,18 @@ class SmartListBuilderViewModel(
 
     private fun changeDraft(change: (SmartListDraft) -> SmartListDraft) = mutable.update { state -> state.copy(draft = state.draft?.let(change)) }
 
-    fun setName(name: String) = changeDraft { it.copy(name = name) }
+    fun setName(name: String) = changeDraft { it.named(name) }
 
     /** Turns [kind] on or off, keeping the catalog's order [offered]. */
     fun toggleKind(kind: String, offered: List<String>) = changeDraft { draft ->
         val others = if (kind in draft.kinds) draft.kinds - kind else draft.kinds + kind
-        draft.copy(kinds = offered.filter { it in others })
+        draft.showing(offered.filter { it in others })
     }
 
-    fun clearLibraries() = changeDraft { it.copy(libraries = emptySet()) }
+    fun clearLibraries() = changeDraft { it.inLibraries(emptySet()) }
 
     fun toggleLibrary(id: String) = changeDraft { draft ->
-        draft.copy(libraries = if (id in draft.libraries) draft.libraries - id else draft.libraries + id)
+        draft.inLibraries(if (id in draft.libraries) draft.libraries - id else draft.libraries + id)
     }
 
     fun show(page: BuilderPage) = mutable.update { it.copy(page = page) }
@@ -146,40 +147,32 @@ class SmartListBuilderViewModel(
         val fields = state.fields ?: return
         val draft = state.draft ?: return
         val field = offeredFields(fields, draft.kinds, null).firstOrNull() ?: return
-        val op = field.ops.firstOrNull() ?: return
-        val rule = RuleDraft(field.field, op.op, op.arity, ruleSlots(op.arity))
-        changeDraft {
-            if (groupId == null) {
-                it.copy(rules = it.rules + rule)
-            } else {
-                it.copy(groups = it.groups.map { group -> if (group.id == groupId) group.copy(rules = group.rules + rule) else group })
-            }
-        }
+        val rule = SmartLists.blankRule(field) ?: return
+        changeDraft { it.addingRule(rule, groupId) }
         show(BuilderPage.EditingRule(rule.id))
     }
 
-    fun removeRule(id: String) = changeDraft { draft ->
-        draft.copy(rules = draft.rules.filter { it.id != id }, groups = draft.groups.map { group -> group.copy(rules = group.rules.filter { it.id != id }) })
-    }
+    fun removeRule(id: String) = changeDraft { it.removingRule(id) }
 
     fun changeRule(id: String, change: (RuleDraft) -> RuleDraft) = changeDraft { it.changingRule(id, change) }
 
     /** A new group matching any, with a new rule opened at once. */
     fun addGroup() {
-        val group = GroupDraft()
-        changeDraft { it.copy(groups = it.groups + group) }
-        addRule(group.id)
+        val state = mutable.value
+        val fields = state.fields ?: return
+        val draft = state.draft ?: return
+        val group = SmartLists.blankGroup(offeredFields(fields, draft.kinds, null).firstOrNull() ?: return)
+        changeDraft { it.addingGroup(group) }
+        group.rules.firstOrNull()?.let { show(BuilderPage.EditingRule(it.id)) }
     }
 
-    fun removeGroup(id: String) = changeDraft { draft -> draft.copy(groups = draft.groups.filter { it.id != id }) }
+    fun removeGroup(id: String) = changeDraft { it.removingGroup(id) }
 
-    fun setGroupMatch(id: String, match: String) = changeDraft { draft ->
-        draft.copy(groups = draft.groups.map { if (it.id == id) it.copy(match = match) else it })
-    }
+    fun setGroupMatch(id: String, match: String) = changeDraft { it.withGroupMatch(id, match) }
 
-    fun setSort(sort: List<SortKey>) = changeDraft { it.copy(sort = sort) }
+    fun setSort(sort: List<SortKey>) = changeDraft { it.sorted(sort) }
 
-    fun noteName(field: String, value: WorkFieldValue) = mutable.update { it.copy(names = it.names + (nameKey(field, value.value) to value.name)) }
+    fun noteName(field: String, value: WorkFieldValue) = mutable.update { it.copy(names = it.names + (SmartLists.nameKey(field, value.value) to value.name)) }
 
     /** The values of [field] a search finds, null when they couldn't be read. */
     suspend fun values(field: String, search: String): List<WorkFieldValue>? = try {
@@ -218,40 +211,5 @@ fun offeredKinds(fields: List<WorkField>): List<String> = fields.flatMap { it.ki
 
 /** The fields a rule can use for the [kinds] showing, and the one a rule already has, [kept]; `library` is never offered. */
 fun offeredFields(fields: List<WorkField>, kinds: List<String>, kept: String?): List<WorkField> = fields.filter { field ->
-    field.field == kept || (field.field != LIBRARY_FIELD && field.kinds.any { it in kinds })
-}
-
-/** A new field keeps the rule's operator if it has it, its first if not; the values start over. */
-fun withField(rule: RuleDraft, field: WorkField): RuleDraft {
-    val op = field.ops.firstOrNull { it.op == rule.op } ?: field.ops.firstOrNull() ?: return rule
-    return rule.copy(field = field.field, op = op.op, arity = op.arity, values = ruleSlots(op.arity))
-}
-
-/** A new operator keeps values it reads the same way. */
-fun withOp(rule: RuleDraft, op: WorkFieldOp): RuleDraft {
-    val sameShape = rule.arity == op.arity && isPeriod(rule.op) == isPeriod(op.op)
-    return rule.copy(op = op.op, arity = op.arity, values = if (sameShape) rule.values else ruleSlots(op.arity))
-}
-
-/** Reads the names of [query]'s chosen values, as a names map. */
-internal suspend fun readNames(query: WorkQuery, fields: List<WorkField>, library: SessionLibrary): Map<String, String> {
-    val wanted = mutableMapOf<String, MutableSet<String>>()
-    fun collect(group: RuleGroup) {
-        for (rule in group.rules.orEmpty()) {
-            if (fields.firstOrNull { it.field == rule.field }?.valueSource != null) wanted.getOrPut(rule.field) { mutableSetOf() } += rule.propertyValues.orEmpty()
-        }
-        group.groups.orEmpty().forEach(::collect)
-    }
-    query.where?.let(::collect)
-    val names = mutableMapOf<String, String>()
-    for ((field, values) in wanted) {
-        try {
-            for (found in library.workFieldValues(field, null, values.toList())) names[nameKey(field, found.value)] = found.name
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            // The values show as saved.
-        }
-    }
-    return names
+    field.field == kept || (field.field != SmartLists.LIBRARY_FIELD && field.kinds.any { it in kinds })
 }

@@ -35,6 +35,17 @@ final enum class com.mmcdole.kivo.core.caps/PassthroughMode : kotlin/Enum<com.mm
     final fun values(): kotlin/Array<com.mmcdole.kivo.core.caps/PassthroughMode> // com.mmcdole.kivo.core.caps/PassthroughMode.values|values#static(){}[0]
 }
 
+final enum class com.mmcdole.kivo.core.data/SmartListRefusal : kotlin/Enum<com.mmcdole.kivo.core.data/SmartListRefusal> { // com.mmcdole.kivo.core.data/SmartListRefusal|null[0]
+    enum entry NewerVersion // com.mmcdole.kivo.core.data/SmartListRefusal.NewerVersion|null[0]
+    enum entry UnknownField // com.mmcdole.kivo.core.data/SmartListRefusal.UnknownField|null[0]
+
+    final val entries // com.mmcdole.kivo.core.data/SmartListRefusal.entries|#static{}entries[0]
+        final fun <get-entries>(): kotlin.enums/EnumEntries<com.mmcdole.kivo.core.data/SmartListRefusal> // com.mmcdole.kivo.core.data/SmartListRefusal.entries.<get-entries>|<get-entries>#static(){}[0]
+
+    final fun valueOf(kotlin/String): com.mmcdole.kivo.core.data/SmartListRefusal // com.mmcdole.kivo.core.data/SmartListRefusal.valueOf|valueOf#static(kotlin.String){}[0]
+    final fun values(): kotlin/Array<com.mmcdole.kivo.core.data/SmartListRefusal> // com.mmcdole.kivo.core.data/SmartListRefusal.values|values#static(){}[0]
+}
+
 final enum class com.mmcdole.kivo.core.downloads/WaitReason : kotlin/Enum<com.mmcdole.kivo.core.downloads/WaitReason> { // com.mmcdole.kivo.core.downloads/WaitReason|null[0]
     enum entry Network // com.mmcdole.kivo.core.downloads/WaitReason.Network|null[0]
     enum entry Server // com.mmcdole.kivo.core.downloads/WaitReason.Server|null[0]
@@ -1108,6 +1119,25 @@ final class com.mmcdole.kivo.core.data/GridQuery { // com.mmcdole.kivo.core.data
     final fun toString(): kotlin/String // com.mmcdole.kivo.core.data/GridQuery.toString|toString(){}[0]
 }
 
+final class com.mmcdole.kivo.core.data/GroupDraft { // com.mmcdole.kivo.core.data/GroupDraft|null[0]
+    constructor <init>(kotlin/String, kotlin.collections/List<com.mmcdole.kivo.core.data/RuleDraft> = ..., kotlin/String = ...) // com.mmcdole.kivo.core.data/GroupDraft.<init>|<init>(kotlin.String;kotlin.collections.List<com.mmcdole.kivo.core.data.RuleDraft>;kotlin.String){}[0]
+
+    final val id // com.mmcdole.kivo.core.data/GroupDraft.id|{}id[0]
+        final fun <get-id>(): kotlin/String // com.mmcdole.kivo.core.data/GroupDraft.id.<get-id>|<get-id>(){}[0]
+    final val match // com.mmcdole.kivo.core.data/GroupDraft.match|{}match[0]
+        final fun <get-match>(): kotlin/String // com.mmcdole.kivo.core.data/GroupDraft.match.<get-match>|<get-match>(){}[0]
+    final val rules // com.mmcdole.kivo.core.data/GroupDraft.rules|{}rules[0]
+        final fun <get-rules>(): kotlin.collections/List<com.mmcdole.kivo.core.data/RuleDraft> // com.mmcdole.kivo.core.data/GroupDraft.rules.<get-rules>|<get-rules>(){}[0]
+
+    final fun component1(): kotlin/String // com.mmcdole.kivo.core.data/GroupDraft.component1|component1(){}[0]
+    final fun component2(): kotlin.collections/List<com.mmcdole.kivo.core.data/RuleDraft> // com.mmcdole.kivo.core.data/GroupDraft.component2|component2(){}[0]
+    final fun component3(): kotlin/String // com.mmcdole.kivo.core.data/GroupDraft.component3|component3(){}[0]
+    final fun copy(kotlin/String = ..., kotlin.collections/List<com.mmcdole.kivo.core.data/RuleDraft> = ..., kotlin/String = ...): com.mmcdole.kivo.core.data/GroupDraft // com.mmcdole.kivo.core.data/GroupDraft.copy|copy(kotlin.String;kotlin.collections.List<com.mmcdole.kivo.core.data.RuleDraft>;kotlin.String){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.data/GroupDraft.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.data/GroupDraft.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // com.mmcdole.kivo.core.data/GroupDraft.toString|toString(){}[0]
+}
+
 final class com.mmcdole.kivo.core.data/Heading { // com.mmcdole.kivo.core.data/Heading|null[0]
     constructor <init>(kotlin/String, kotlin/String, com.mmcdole.kivo.api.models/ImageRef? = ...) // com.mmcdole.kivo.core.data/Heading.<init>|<init>(kotlin.String;kotlin.String;com.mmcdole.kivo.api.models.ImageRef?){}[0]
 
@@ -1125,6 +1155,91 @@ final class com.mmcdole.kivo.core.data/Heading { // com.mmcdole.kivo.core.data/H
     final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.data/Heading.equals|equals(kotlin.Any?){}[0]
     final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.data/Heading.hashCode|hashCode(){}[0]
     final fun toString(): kotlin/String // com.mmcdole.kivo.core.data/Heading.toString|toString(){}[0]
+}
+
+final class com.mmcdole.kivo.core.data/RuleDraft { // com.mmcdole.kivo.core.data/RuleDraft|null[0]
+    constructor <init>(kotlin/String, kotlin/String, kotlin/Int, kotlin/String, kotlin.collections/List<kotlin/String>, kotlin/String = ...) // com.mmcdole.kivo.core.data/RuleDraft.<init>|<init>(kotlin.String;kotlin.String;kotlin.Int;kotlin.String;kotlin.collections.List<kotlin.String>;kotlin.String){}[0]
+
+    final val arity // com.mmcdole.kivo.core.data/RuleDraft.arity|{}arity[0]
+        final fun <get-arity>(): kotlin/Int // com.mmcdole.kivo.core.data/RuleDraft.arity.<get-arity>|<get-arity>(){}[0]
+    final val field // com.mmcdole.kivo.core.data/RuleDraft.field|{}field[0]
+        final fun <get-field>(): kotlin/String // com.mmcdole.kivo.core.data/RuleDraft.field.<get-field>|<get-field>(){}[0]
+    final val id // com.mmcdole.kivo.core.data/RuleDraft.id|{}id[0]
+        final fun <get-id>(): kotlin/String // com.mmcdole.kivo.core.data/RuleDraft.id.<get-id>|<get-id>(){}[0]
+    final val isComplete // com.mmcdole.kivo.core.data/RuleDraft.isComplete|{}isComplete[0]
+        final fun <get-isComplete>(): kotlin/Boolean // com.mmcdole.kivo.core.data/RuleDraft.isComplete.<get-isComplete>|<get-isComplete>(){}[0]
+    final val op // com.mmcdole.kivo.core.data/RuleDraft.op|{}op[0]
+        final fun <get-op>(): kotlin/String // com.mmcdole.kivo.core.data/RuleDraft.op.<get-op>|<get-op>(){}[0]
+    final val type // com.mmcdole.kivo.core.data/RuleDraft.type|{}type[0]
+        final fun <get-type>(): kotlin/String // com.mmcdole.kivo.core.data/RuleDraft.type.<get-type>|<get-type>(){}[0]
+    final val values // com.mmcdole.kivo.core.data/RuleDraft.values|{}values[0]
+        final fun <get-values>(): kotlin.collections/List<kotlin/String> // com.mmcdole.kivo.core.data/RuleDraft.values.<get-values>|<get-values>(){}[0]
+
+    final fun component1(): kotlin/String // com.mmcdole.kivo.core.data/RuleDraft.component1|component1(){}[0]
+    final fun component2(): kotlin/String // com.mmcdole.kivo.core.data/RuleDraft.component2|component2(){}[0]
+    final fun component3(): kotlin/Int // com.mmcdole.kivo.core.data/RuleDraft.component3|component3(){}[0]
+    final fun component4(): kotlin/String // com.mmcdole.kivo.core.data/RuleDraft.component4|component4(){}[0]
+    final fun component5(): kotlin.collections/List<kotlin/String> // com.mmcdole.kivo.core.data/RuleDraft.component5|component5(){}[0]
+    final fun component6(): kotlin/String // com.mmcdole.kivo.core.data/RuleDraft.component6|component6(){}[0]
+    final fun copy(kotlin/String = ..., kotlin/String = ..., kotlin/Int = ..., kotlin/String = ..., kotlin.collections/List<kotlin/String> = ..., kotlin/String = ...): com.mmcdole.kivo.core.data/RuleDraft // com.mmcdole.kivo.core.data/RuleDraft.copy|copy(kotlin.String;kotlin.String;kotlin.Int;kotlin.String;kotlin.collections.List<kotlin.String>;kotlin.String){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.data/RuleDraft.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.data/RuleDraft.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // com.mmcdole.kivo.core.data/RuleDraft.toString|toString(){}[0]
+    final fun withField(com.mmcdole.kivo.api.models/WorkField): com.mmcdole.kivo.core.data/RuleDraft // com.mmcdole.kivo.core.data/RuleDraft.withField|withField(com.mmcdole.kivo.api.models.WorkField){}[0]
+    final fun withOp(com.mmcdole.kivo.api.models/WorkFieldOp): com.mmcdole.kivo.core.data/RuleDraft // com.mmcdole.kivo.core.data/RuleDraft.withOp|withOp(com.mmcdole.kivo.api.models.WorkFieldOp){}[0]
+    final fun withValues(kotlin.collections/List<kotlin/String>): com.mmcdole.kivo.core.data/RuleDraft // com.mmcdole.kivo.core.data/RuleDraft.withValues|withValues(kotlin.collections.List<kotlin.String>){}[0]
+}
+
+final class com.mmcdole.kivo.core.data/SmartListDraft { // com.mmcdole.kivo.core.data/SmartListDraft|null[0]
+    constructor <init>(kotlin/String, kotlin.collections/List<kotlin/String>, kotlin.collections/Set<kotlin/String> = ..., kotlin/String = ..., kotlin.collections/List<com.mmcdole.kivo.core.data/RuleDraft> = ..., kotlin.collections/List<com.mmcdole.kivo.core.data/GroupDraft> = ..., kotlin.collections/List<com.mmcdole.kivo.api.models/SortKey> = ..., kotlin/Int? = ..., kotlin/String? = ...) // com.mmcdole.kivo.core.data/SmartListDraft.<init>|<init>(kotlin.String;kotlin.collections.List<kotlin.String>;kotlin.collections.Set<kotlin.String>;kotlin.String;kotlin.collections.List<com.mmcdole.kivo.core.data.RuleDraft>;kotlin.collections.List<com.mmcdole.kivo.core.data.GroupDraft>;kotlin.collections.List<com.mmcdole.kivo.api.models.SortKey>;kotlin.Int?;kotlin.String?){}[0]
+
+    final val collapse // com.mmcdole.kivo.core.data/SmartListDraft.collapse|{}collapse[0]
+        final fun <get-collapse>(): kotlin/String? // com.mmcdole.kivo.core.data/SmartListDraft.collapse.<get-collapse>|<get-collapse>(){}[0]
+    final val groups // com.mmcdole.kivo.core.data/SmartListDraft.groups|{}groups[0]
+        final fun <get-groups>(): kotlin.collections/List<com.mmcdole.kivo.core.data/GroupDraft> // com.mmcdole.kivo.core.data/SmartListDraft.groups.<get-groups>|<get-groups>(){}[0]
+    final val isReady // com.mmcdole.kivo.core.data/SmartListDraft.isReady|{}isReady[0]
+        final fun <get-isReady>(): kotlin/Boolean // com.mmcdole.kivo.core.data/SmartListDraft.isReady.<get-isReady>|<get-isReady>(){}[0]
+    final val kinds // com.mmcdole.kivo.core.data/SmartListDraft.kinds|{}kinds[0]
+        final fun <get-kinds>(): kotlin.collections/List<kotlin/String> // com.mmcdole.kivo.core.data/SmartListDraft.kinds.<get-kinds>|<get-kinds>(){}[0]
+    final val libraries // com.mmcdole.kivo.core.data/SmartListDraft.libraries|{}libraries[0]
+        final fun <get-libraries>(): kotlin.collections/Set<kotlin/String> // com.mmcdole.kivo.core.data/SmartListDraft.libraries.<get-libraries>|<get-libraries>(){}[0]
+    final val match // com.mmcdole.kivo.core.data/SmartListDraft.match|{}match[0]
+        final fun <get-match>(): kotlin/String // com.mmcdole.kivo.core.data/SmartListDraft.match.<get-match>|<get-match>(){}[0]
+    final val maxWorks // com.mmcdole.kivo.core.data/SmartListDraft.maxWorks|{}maxWorks[0]
+        final fun <get-maxWorks>(): kotlin/Int? // com.mmcdole.kivo.core.data/SmartListDraft.maxWorks.<get-maxWorks>|<get-maxWorks>(){}[0]
+    final val name // com.mmcdole.kivo.core.data/SmartListDraft.name|{}name[0]
+        final fun <get-name>(): kotlin/String // com.mmcdole.kivo.core.data/SmartListDraft.name.<get-name>|<get-name>(){}[0]
+    final val query // com.mmcdole.kivo.core.data/SmartListDraft.query|{}query[0]
+        final fun <get-query>(): com.mmcdole.kivo.api.models/WorkQuery // com.mmcdole.kivo.core.data/SmartListDraft.query.<get-query>|<get-query>(){}[0]
+    final val rules // com.mmcdole.kivo.core.data/SmartListDraft.rules|{}rules[0]
+        final fun <get-rules>(): kotlin.collections/List<com.mmcdole.kivo.core.data/RuleDraft> // com.mmcdole.kivo.core.data/SmartListDraft.rules.<get-rules>|<get-rules>(){}[0]
+    final val sort // com.mmcdole.kivo.core.data/SmartListDraft.sort|{}sort[0]
+        final fun <get-sort>(): kotlin.collections/List<com.mmcdole.kivo.api.models/SortKey> // com.mmcdole.kivo.core.data/SmartListDraft.sort.<get-sort>|<get-sort>(){}[0]
+
+    final fun addingGroup(com.mmcdole.kivo.core.data/GroupDraft): com.mmcdole.kivo.core.data/SmartListDraft // com.mmcdole.kivo.core.data/SmartListDraft.addingGroup|addingGroup(com.mmcdole.kivo.core.data.GroupDraft){}[0]
+    final fun addingRule(com.mmcdole.kivo.core.data/RuleDraft, kotlin/String?): com.mmcdole.kivo.core.data/SmartListDraft // com.mmcdole.kivo.core.data/SmartListDraft.addingRule|addingRule(com.mmcdole.kivo.core.data.RuleDraft;kotlin.String?){}[0]
+    final fun changingRule(kotlin/String, kotlin/Function1<com.mmcdole.kivo.core.data/RuleDraft, com.mmcdole.kivo.core.data/RuleDraft>): com.mmcdole.kivo.core.data/SmartListDraft // com.mmcdole.kivo.core.data/SmartListDraft.changingRule|changingRule(kotlin.String;kotlin.Function1<com.mmcdole.kivo.core.data.RuleDraft,com.mmcdole.kivo.core.data.RuleDraft>){}[0]
+    final fun component1(): kotlin/String // com.mmcdole.kivo.core.data/SmartListDraft.component1|component1(){}[0]
+    final fun component2(): kotlin.collections/List<kotlin/String> // com.mmcdole.kivo.core.data/SmartListDraft.component2|component2(){}[0]
+    final fun component3(): kotlin.collections/Set<kotlin/String> // com.mmcdole.kivo.core.data/SmartListDraft.component3|component3(){}[0]
+    final fun component4(): kotlin/String // com.mmcdole.kivo.core.data/SmartListDraft.component4|component4(){}[0]
+    final fun component5(): kotlin.collections/List<com.mmcdole.kivo.core.data/RuleDraft> // com.mmcdole.kivo.core.data/SmartListDraft.component5|component5(){}[0]
+    final fun component6(): kotlin.collections/List<com.mmcdole.kivo.core.data/GroupDraft> // com.mmcdole.kivo.core.data/SmartListDraft.component6|component6(){}[0]
+    final fun component7(): kotlin.collections/List<com.mmcdole.kivo.api.models/SortKey> // com.mmcdole.kivo.core.data/SmartListDraft.component7|component7(){}[0]
+    final fun component8(): kotlin/Int? // com.mmcdole.kivo.core.data/SmartListDraft.component8|component8(){}[0]
+    final fun component9(): kotlin/String? // com.mmcdole.kivo.core.data/SmartListDraft.component9|component9(){}[0]
+    final fun copy(kotlin/String = ..., kotlin.collections/List<kotlin/String> = ..., kotlin.collections/Set<kotlin/String> = ..., kotlin/String = ..., kotlin.collections/List<com.mmcdole.kivo.core.data/RuleDraft> = ..., kotlin.collections/List<com.mmcdole.kivo.core.data/GroupDraft> = ..., kotlin.collections/List<com.mmcdole.kivo.api.models/SortKey> = ..., kotlin/Int? = ..., kotlin/String? = ...): com.mmcdole.kivo.core.data/SmartListDraft // com.mmcdole.kivo.core.data/SmartListDraft.copy|copy(kotlin.String;kotlin.collections.List<kotlin.String>;kotlin.collections.Set<kotlin.String>;kotlin.String;kotlin.collections.List<com.mmcdole.kivo.core.data.RuleDraft>;kotlin.collections.List<com.mmcdole.kivo.core.data.GroupDraft>;kotlin.collections.List<com.mmcdole.kivo.api.models.SortKey>;kotlin.Int?;kotlin.String?){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.data/SmartListDraft.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.data/SmartListDraft.hashCode|hashCode(){}[0]
+    final fun inLibraries(kotlin.collections/Set<kotlin/String>): com.mmcdole.kivo.core.data/SmartListDraft // com.mmcdole.kivo.core.data/SmartListDraft.inLibraries|inLibraries(kotlin.collections.Set<kotlin.String>){}[0]
+    final fun named(kotlin/String): com.mmcdole.kivo.core.data/SmartListDraft // com.mmcdole.kivo.core.data/SmartListDraft.named|named(kotlin.String){}[0]
+    final fun removingGroup(kotlin/String): com.mmcdole.kivo.core.data/SmartListDraft // com.mmcdole.kivo.core.data/SmartListDraft.removingGroup|removingGroup(kotlin.String){}[0]
+    final fun removingRule(kotlin/String): com.mmcdole.kivo.core.data/SmartListDraft // com.mmcdole.kivo.core.data/SmartListDraft.removingRule|removingRule(kotlin.String){}[0]
+    final fun rule(kotlin/String): com.mmcdole.kivo.core.data/RuleDraft? // com.mmcdole.kivo.core.data/SmartListDraft.rule|rule(kotlin.String){}[0]
+    final fun showing(kotlin.collections/List<kotlin/String>): com.mmcdole.kivo.core.data/SmartListDraft // com.mmcdole.kivo.core.data/SmartListDraft.showing|showing(kotlin.collections.List<kotlin.String>){}[0]
+    final fun sorted(kotlin.collections/List<com.mmcdole.kivo.api.models/SortKey>): com.mmcdole.kivo.core.data/SmartListDraft // com.mmcdole.kivo.core.data/SmartListDraft.sorted|sorted(kotlin.collections.List<com.mmcdole.kivo.api.models.SortKey>){}[0]
+    final fun toString(): kotlin/String // com.mmcdole.kivo.core.data/SmartListDraft.toString|toString(){}[0]
+    final fun withGroupMatch(kotlin/String, kotlin/String): com.mmcdole.kivo.core.data/SmartListDraft // com.mmcdole.kivo.core.data/SmartListDraft.withGroupMatch|withGroupMatch(kotlin.String;kotlin.String){}[0]
 }
 
 final class com.mmcdole.kivo.core.discovery/FoundServer { // com.mmcdole.kivo.core.discovery/FoundServer|null[0]
@@ -1776,6 +1891,7 @@ final class com.mmcdole.kivo.core.session/SessionLibrary { // com.mmcdole.kivo.c
     final suspend fun search(kotlin/String, kotlin/Int?): com.mmcdole.kivo.api.models/SearchResults // com.mmcdole.kivo.core.session/SessionLibrary.search|search(kotlin.String;kotlin.Int?){}[0]
     final suspend fun setHomeRows(kotlin.collections/List<com.mmcdole.kivo.api.models/HomeRowChange>): kotlin.collections/List<com.mmcdole.kivo.api.models/HomeRowInfo> // com.mmcdole.kivo.core.session/SessionLibrary.setHomeRows|setHomeRows(kotlin.collections.List<com.mmcdole.kivo.api.models.HomeRowChange>){}[0]
     final suspend fun setPlayed(kotlin/String, kotlin/Boolean): com.mmcdole.kivo.api.models/UserState // com.mmcdole.kivo.core.session/SessionLibrary.setPlayed|setPlayed(kotlin.String;kotlin.Boolean){}[0]
+    final suspend fun smartListNames(com.mmcdole.kivo.api.models/WorkQuery, kotlin.collections/List<com.mmcdole.kivo.api.models/WorkField>): kotlin.collections/Map<kotlin/String, kotlin/String> // com.mmcdole.kivo.core.session/SessionLibrary.smartListNames|smartListNames(com.mmcdole.kivo.api.models.WorkQuery;kotlin.collections.List<com.mmcdole.kivo.api.models.WorkField>){}[0]
     final suspend fun updateList(kotlin/String, kotlin/String?, com.mmcdole.kivo.api.models/WorkQuery? = ...): com.mmcdole.kivo.api.models/WorkList // com.mmcdole.kivo.core.session/SessionLibrary.updateList|updateList(kotlin.String;kotlin.String?;com.mmcdole.kivo.api.models.WorkQuery?){}[0]
     final suspend fun workFieldValues(kotlin/String, kotlin/String?, kotlin.collections/List<kotlin/String>?): kotlin.collections/List<com.mmcdole.kivo.api.models/WorkFieldValue> // com.mmcdole.kivo.core.session/SessionLibrary.workFieldValues|workFieldValues(kotlin.String;kotlin.String?;kotlin.collections.List<kotlin.String>?){}[0]
     final suspend fun workFields(): kotlin.collections/List<com.mmcdole.kivo.api.models/WorkField> // com.mmcdole.kivo.core.session/SessionLibrary.workFields|workFields(){}[0]
@@ -2091,6 +2207,25 @@ final object com.mmcdole.kivo.core.cast/CastMessages { // com.mmcdole.kivo.core.
 
 final object com.mmcdole.kivo.core.data/Seasons { // com.mmcdole.kivo.core.data/Seasons|null[0]
     final fun openSeason(kotlin.collections/List<com.mmcdole.kivo.api.models/WorkSummary>, kotlin/String?, com.mmcdole.kivo.api.models/EpisodeInfo?, com.mmcdole.kivo.api.models/EpisodeInfo?, kotlin/Boolean): com.mmcdole.kivo.api.models/WorkSummary? // com.mmcdole.kivo.core.data/Seasons.openSeason|openSeason(kotlin.collections.List<com.mmcdole.kivo.api.models.WorkSummary>;kotlin.String?;com.mmcdole.kivo.api.models.EpisodeInfo?;com.mmcdole.kivo.api.models.EpisodeInfo?;kotlin.Boolean){}[0]
+}
+
+final object com.mmcdole.kivo.core.data/SmartLists { // com.mmcdole.kivo.core.data/SmartLists|null[0]
+    final const val LIBRARY_FIELD // com.mmcdole.kivo.core.data/SmartLists.LIBRARY_FIELD|{}LIBRARY_FIELD[0]
+        final fun <get-LIBRARY_FIELD>(): kotlin/String // com.mmcdole.kivo.core.data/SmartLists.LIBRARY_FIELD.<get-LIBRARY_FIELD>|<get-LIBRARY_FIELD>(){}[0]
+    final const val RANDOM_SORT // com.mmcdole.kivo.core.data/SmartLists.RANDOM_SORT|{}RANDOM_SORT[0]
+        final fun <get-RANDOM_SORT>(): kotlin/String // com.mmcdole.kivo.core.data/SmartLists.RANDOM_SORT.<get-RANDOM_SORT>|<get-RANDOM_SORT>(){}[0]
+
+    final fun blankGroup(com.mmcdole.kivo.api.models/WorkField): com.mmcdole.kivo.core.data/GroupDraft // com.mmcdole.kivo.core.data/SmartLists.blankGroup|blankGroup(com.mmcdole.kivo.api.models.WorkField){}[0]
+    final fun blankRule(com.mmcdole.kivo.api.models/WorkField): com.mmcdole.kivo.core.data/RuleDraft? // com.mmcdole.kivo.core.data/SmartLists.blankRule|blankRule(com.mmcdole.kivo.api.models.WorkField){}[0]
+    final fun draft(kotlin/String, com.mmcdole.kivo.api.models/WorkQuery?, kotlin.collections/List<com.mmcdole.kivo.api.models/WorkField>): com.mmcdole.kivo.core.data/SmartListDraft // com.mmcdole.kivo.core.data/SmartLists.draft|draft(kotlin.String;com.mmcdole.kivo.api.models.WorkQuery?;kotlin.collections.List<com.mmcdole.kivo.api.models.WorkField>){}[0]
+    final fun fromGrid(com.mmcdole.kivo.core.data/GridQuery, kotlin/String?): com.mmcdole.kivo.api.models/WorkQuery // com.mmcdole.kivo.core.data/SmartLists.fromGrid|fromGrid(com.mmcdole.kivo.core.data.GridQuery;kotlin.String?){}[0]
+    final fun isPeriod(kotlin/String): kotlin/Boolean // com.mmcdole.kivo.core.data/SmartLists.isPeriod|isPeriod(kotlin.String){}[0]
+    final fun nameKey(kotlin/String, kotlin/String): kotlin/String // com.mmcdole.kivo.core.data/SmartLists.nameKey|nameKey(kotlin.String;kotlin.String){}[0]
+    final fun period(kotlin/String, kotlin/String): kotlin/String // com.mmcdole.kivo.core.data/SmartLists.period|period(kotlin.String;kotlin.String){}[0]
+    final fun periodAmount(kotlin/String): kotlin/String // com.mmcdole.kivo.core.data/SmartLists.periodAmount|periodAmount(kotlin.String){}[0]
+    final fun periodUnit(kotlin/String?): kotlin/String // com.mmcdole.kivo.core.data/SmartLists.periodUnit|periodUnit(kotlin.String?){}[0]
+    final fun refusal(com.mmcdole.kivo.api.models/WorkQuery, kotlin.collections/List<com.mmcdole.kivo.api.models/WorkField>): com.mmcdole.kivo.core.data/SmartListRefusal? // com.mmcdole.kivo.core.data/SmartLists.refusal|refusal(com.mmcdole.kivo.api.models.WorkQuery;kotlin.collections.List<com.mmcdole.kivo.api.models.WorkField>){}[0]
+    final fun ruleDraft(com.mmcdole.kivo.api.models/Rule, kotlin.collections/List<com.mmcdole.kivo.api.models/WorkField>): com.mmcdole.kivo.core.data/RuleDraft // com.mmcdole.kivo.core.data/SmartLists.ruleDraft|ruleDraft(com.mmcdole.kivo.api.models.Rule;kotlin.collections.List<com.mmcdole.kivo.api.models.WorkField>){}[0]
 }
 
 final object com.mmcdole.kivo.core.data/SubtitleSearch { // com.mmcdole.kivo.core.data/SubtitleSearch|null[0]

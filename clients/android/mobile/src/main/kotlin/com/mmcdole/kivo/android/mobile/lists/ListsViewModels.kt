@@ -118,7 +118,7 @@ class ListViewModel(private val session: KivoSession, private val listId: String
 
     private suspend fun readRulesWords(query: WorkQuery): SmartRulesWords? = try {
         val fields = session.library.workFields()
-        SmartRulesWords(fields, readNames(query, fields, session.library))
+        SmartRulesWords(fields, session.library.smartListNames(query, fields))
     } catch (e: CancellationException) {
         throw e
     } catch (_: Exception) {
