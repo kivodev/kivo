@@ -5,7 +5,8 @@ import SwiftUI
 /// The Lists tab: My List with a row of its covers and its count, then the
 /// other lists, then the smart lists, each with its first cover and its
 /// count; each opens its works in a grid. A section shows once it has any.
-/// The + makes a list, or opens the smart list builder.
+/// The + makes a list, or opens the smart list builder. A wide window has
+/// My List as a Home row and the others as grids of cards.
 struct ListsView: View {
     @Environment(ServerModel.self) private var server
     @Environment(\.kivoPalette) private var palette
@@ -17,6 +18,8 @@ struct ListsView: View {
     /// Whether the name prompt comes back, with what was typed, once a taken name is said.
     @State private var namingAgain = false
     @State private var buildingSmart = false
+
+    private static let cardColumns = [GridItem(.adaptive(minimum: 324), spacing: KivoTokens.Layout.gridGap, alignment: .top)]
 
     var body: some View {
         Group {
@@ -32,14 +35,17 @@ struct ListsView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: KivoTokens.spacing * 7) {
                         if myList.workCount > 0 {
-                            MyListSection(list: myList)
+                            if wide {
+                                MyListRow(list: myList)
+                            } else {
+                                MyListSection(list: myList)
+                                    .padding(.horizontal, BrowseRow.inset)
+                            }
                         }
                         section(String(localized: "Your Lists"), others)
                         section(String(localized: "Smart Lists"), smart)
                     }
-                    .wideWidth(KivoTokens.Container.form, wide: wide)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, BrowseRow.inset)
                     .padding(.top, KivoTokens.spacing * 2)
                     .padding(.bottom, KivoTokens.spacing * 6)
                 }
@@ -87,16 +93,27 @@ struct ListsView: View {
                 BrowseRow.heading(title)
                     .foregroundStyle(palette.text)
                     .accessibilityAddTraits(.isHeader)
-                LazyVStack(spacing: 0) {
-                    ForEach(Array(lists.enumerated()), id: \.element.id) { index, list in
-                        if index > 0 {
-                            Divider().padding(.leading, BrowseRow.inset)
+                if wide {
+                    LazyVGrid(columns: Self.cardColumns, spacing: KivoTokens.Layout.gridGap) {
+                        ForEach(lists, id: \.id) { list in
+                            ListRow(list: list)
+                                .frame(maxHeight: .infinity)
+                                .background(palette.surfaceRaised, in: RoundedRectangle(cornerRadius: KivoTokens.Radius.lg))
                         }
-                        ListRow(list: list)
                     }
+                } else {
+                    LazyVStack(spacing: 0) {
+                        ForEach(Array(lists.enumerated()), id: \.element.id) { index, list in
+                            if index > 0 {
+                                Divider().padding(.leading, BrowseRow.inset)
+                            }
+                            ListRow(list: list)
+                        }
+                    }
+                    .background(palette.surfaceRaised, in: RoundedRectangle(cornerRadius: KivoTokens.Radius.lg))
                 }
-                .background(palette.surfaceRaised, in: RoundedRectangle(cornerRadius: KivoTokens.Radius.lg))
             }
+            .padding(.horizontal, BrowseRow.inset)
         }
     }
 
@@ -178,6 +195,28 @@ private struct MyListSection: View {
     }
 }
 
+/// My List in a wide Lists tab: a row of its covers, as on Home.
+private struct MyListRow: View {
+    let list: WorkList
+    @Environment(ServerModel.self) private var server
+
+    /// As many as Home's rows hold.
+    private static let limit = 20
+
+    var body: some View {
+        ListWorks(listId: list.id, limit: Self.limit) { works in
+            if works.isEmpty {
+                BrowseRow.skeleton(.poster, wide: true)
+            } else {
+                BrowseRow(title: list.name, items: works) {
+                    server.paths[server.tab, default: []].append(list.route)
+                }
+                .environment(\.currentList, ListRef(id: list.id, name: list.name))
+            }
+        }
+    }
+}
+
 /// One of the other lists in the Lists tab: its first cover, name and count.
 private struct ListRow: View {
     let list: WorkList
@@ -186,10 +225,20 @@ private struct ListRow: View {
     var body: some View {
         NavigationLink(value: list.route) {
             HStack(spacing: KivoTokens.spacing * 3) {
-                ListWorks(listId: list.id, limit: 1) { works in
-                    ListCover(work: works.first, pointWidth: 36)
-                        .frame(width: 36, height: 36 / CardStyle.poster.aspect)
+                Group {
+                    if list.workCount == 0 {
+                        Image(systemName: "list.bullet")
+                            .foregroundStyle(palette.textMuted)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .background(palette.placeholder, in: RoundedRectangle(cornerRadius: KivoTokens.Radius.sm))
+                            .accessibilityHidden(true)
+                    } else {
+                        ListWorks(listId: list.id, limit: 1) { works in
+                            ListCover(work: works.first, pointWidth: 36)
+                        }
+                    }
                 }
+                .frame(width: 36, height: 36 / CardStyle.poster.aspect)
                 VStack(alignment: .leading, spacing: KivoTokens.spacing * 0.5) {
                     Text(list.name)
                         .foregroundStyle(palette.text)
@@ -213,7 +262,7 @@ private struct ListRow: View {
     }
 }
 
-/// A work's poster in a list's row, or an empty cover for a list without one.
+/// A work's poster in a list's row, or an empty cover until it's read.
 private struct ListCover: View {
     let work: WorkSummary?
     let pointWidth: CGFloat
