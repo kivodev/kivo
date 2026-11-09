@@ -35,14 +35,19 @@ const libraryField = "library";
 
 const draftRule = (rule: Rule): DraftRule => ({ ...rule, key: newKey(), values: rule.values ?? [] });
 
-/** The rule a new row starts with: the field's first operator and no values. */
+/** The rule a new row starts with: no field until one is chosen. */
+export function emptyRule(): DraftRule {
+  return { key: newKey(), field: "", op: "", values: [] };
+}
+
+/** A rule on a chosen field: its first operator and no values. */
 export function blankRule(field: WorkField): DraftRule {
   return { key: newKey(), field: field.field, op: field.ops[0]?.op ?? "", values: [] };
 }
 
 /** A group holding one blank rule. */
-export function blankGroup(field: WorkField): DraftGroup {
-  return { key: newKey(), match: "any", rules: [blankRule(field)] };
+export function blankGroup(): DraftGroup {
+  return { key: newKey(), match: "any", rules: [emptyRule()] };
 }
 
 /** Why a saved query can't be edited here, if it can't. */

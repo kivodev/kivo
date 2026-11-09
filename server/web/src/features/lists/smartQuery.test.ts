@@ -122,10 +122,10 @@ const added: WorkField = {
 const runtime: WorkField = { ...year, field: "runtimeMs", unit: "ms" };
 
 describe("blankGroup", () => {
-  it("matches any and holds one blank rule", () => {
-    const group = blankGroup(year);
+  it("matches any and holds one rule with no field yet", () => {
+    const group = blankGroup();
     expect(group.match).toBe("any");
-    expect(group.rules).toMatchObject([{ field: "year", op: "eq", values: [] }]);
+    expect(group.rules).toMatchObject([{ field: "", op: "", values: [] }]);
   });
 });
 

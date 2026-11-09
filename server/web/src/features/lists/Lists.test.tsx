@@ -14,7 +14,7 @@ describe("Lists", () => {
     serveMockApi();
     const { user, router } = renderApp("/lists");
     expect(await screen.findByRole("heading", { name: "Lists", level: 1 })).toBeInTheDocument();
-    const myList = await screen.findByRole("heading", { name: "My List" });
+    const myList = await screen.findByRole("heading", { name: /^My List/ });
     const row = myList.closest("[data-part='row']") as HTMLElement;
     expect(within(row).getByText("2")).toBeInTheDocument();
     expect(await within(row).findByRole("link", { name: /^Dune/ })).toBeInTheDocument();

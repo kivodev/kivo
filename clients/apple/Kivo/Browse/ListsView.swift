@@ -167,7 +167,6 @@ private struct MyListSection: View {
                     Image(systemName: "chevron.right")
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(palette.textMuted)
-                    Spacer()
                     Text(list.workCount.formatted())
                         .foregroundStyle(palette.textMuted)
                 }
@@ -208,7 +207,7 @@ private struct MyListRow: View {
             if works.isEmpty {
                 BrowseRow.skeleton(.poster, wide: true)
             } else {
-                BrowseRow(title: list.name, items: works) {
+                BrowseRow(title: list.name, items: works, count: Int(list.workCount)) {
                     server.paths[server.tab, default: []].append(list.route)
                 }
                 .environment(\.currentList, ListRef(id: list.id, name: list.name))

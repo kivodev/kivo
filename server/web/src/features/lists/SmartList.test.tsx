@@ -41,6 +41,19 @@ describe("The Lists screen's + menu", () => {
     expect(await screen.findByText(/in the last 2 weeks/)).toBeInTheDocument();
   });
 
+  it("starts a new rule with no field, and Save waits for one", async () => {
+    serveMockApi();
+    const { user } = renderApp("/lists");
+    const dialog = await openBuilder(user);
+    await user.type(await within(dialog).findByRole("textbox", { name: /Name/ }), "Unset");
+    expect(within(dialog).getByRole("button", { name: "Save" })).toBeEnabled();
+    await user.click(within(dialog).getByRole("button", { name: "Add Rule" }));
+    const row = dialog.querySelector("[data-part=rule]") as HTMLElement;
+    expect(within(row).getByRole("button", { name: /Field/ })).toHaveTextContent("Choose");
+    expect(within(row).queryByRole("button", { name: /Condition/ })).toBeNull();
+    expect(within(dialog).getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
   it("offers New List and New Smart List", async () => {
     serveMockApi();
     const { user } = renderApp("/lists");

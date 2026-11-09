@@ -30,6 +30,7 @@ import { countOfKinds, type SmartLabels, useSmartLabels } from "./smartLabels";
 import {
   blankGroup,
   blankRule,
+  emptyRule,
   type Draft,
   type DraftRule,
   draftOf,
@@ -107,10 +108,7 @@ function Builder({ fields, listId, name = "", query, onClose }: Props & { fields
     fields.filter(
       (f) => f.field === current || (f.field !== "library" && f.kinds.some((k) => draft.kinds.includes(k))),
     );
-  const newRule = () => {
-    const [first] = available();
-    return first && blankRule(first);
-  };
+  const newRule = () => (available().length > 0 ? emptyRule() : undefined);
   const fieldOf = (key: string) => fields.find((f) => f.field === key);
   const allRules = [...draft.rules, ...draft.groups.flatMap((g) => g.rules)];
   const complete = allRules.every((rule) => {
@@ -234,8 +232,7 @@ function Builder({ fields, listId, name = "", query, onClose }: Props & { fields
         <button
           type="button"
           onClick={() => {
-            const [first] = available();
-            if (first) setDraft((d) => ({ ...d, groups: [...d.groups, blankGroup(first)] }));
+            if (available().length > 0) setDraft((d) => ({ ...d, groups: [...d.groups, blankGroup()] }));
           }}
           className="flex min-h-12 w-full cursor-pointer items-center px-4 text-left font-medium text-accent hover:bg-surface-hover"
         >
@@ -383,10 +380,10 @@ function RuleRow({
   const { t } = useLingui();
   const fields = available(rule.field);
   const field = fields.find((f) => f.field === rule.field);
-  if (!field) return null;
-  const arity = field.ops.find((o) => o.op === rule.op)?.arity ?? 0;
+  if (!field && rule.field !== "") return null;
+  const arity = field?.ops.find((o) => o.op === rule.op)?.arity ?? 0;
   const setOp = (op: string) => {
-    const nextArity = field.ops.find((o) => o.op === op)?.arity;
+    const nextArity = field?.ops.find((o) => o.op === op)?.arity;
     const keep = nextArity === arity && isDurationOp(op) === isDurationOp(rule.op);
     onChange({ ...rule, op, values: keep ? rule.values : [] });
   };
@@ -397,19 +394,23 @@ function RuleRow({
         label={t`Field`}
         options={fields.map((f) => ({ id: f.field, label: labels.field(f) }))}
         selected={rule.field}
+        {...(field ? {} : { value: t`Choose` })}
         onChange={(key) => {
           const next = fields.find((f) => f.field === key);
           if (next) onChange({ ...blankRule(next), key: rule.key });
         }}
       />
-      <Select
-        variant="compact"
-        label={t`Condition`}
-        options={field.ops.map((o) => ({ id: o.op, label: labels.op(o.op, field.type) }))}
-        selected={rule.op}
-        onChange={setOp}
-      />
-      {arity !== 0 &&
+      {field && (
+        <Select
+          variant="compact"
+          label={t`Condition`}
+          options={field.ops.map((o) => ({ id: o.op, label: labels.op(o.op, field.type) }))}
+          selected={rule.op}
+          onChange={setOp}
+        />
+      )}
+      {field &&
+        arity !== 0 &&
         (field.valueSource ? (
           <ValuePicker
             label={labels.field(field)}

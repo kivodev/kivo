@@ -9,6 +9,8 @@ struct BrowseRow: View {
     let items: [WorkSummary]
     /// The shape every card takes, nil where each work's own decides.
     var style: CardStyle?
+    /// How many there are, muted after the heading's chevron.
+    var count: Int?
     var more: (() -> Void)?
     @Environment(\.kivoPalette) private var palette
     @Environment(\.wide) private var wide
@@ -69,6 +71,10 @@ struct BrowseRow: View {
                     Image(systemName: "chevron.right")
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(palette.textMuted)
+                    if let count {
+                        Text(count.formatted())
+                            .foregroundStyle(palette.textMuted)
+                    }
                 }
                 .contentShape(Rectangle())
             }

@@ -6,9 +6,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,11 +18,14 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.MoreVert
@@ -71,6 +75,7 @@ import com.mmcdole.kivo.android.mobile.app.handle
 import com.mmcdole.kivo.android.mobile.library.PagedGrid
 import com.mmcdole.kivo.android.mobile.library.gridCardWidth
 import com.mmcdole.kivo.android.mobile.library.gridColumns
+import com.mmcdole.kivo.android.mobile.theme.LocalKivo
 import com.mmcdole.kivo.android.mobile.theme.space
 import com.mmcdole.kivo.android.mobile.ui.Artwork
 import com.mmcdole.kivo.android.mobile.ui.CardCorners
@@ -85,6 +90,7 @@ import com.mmcdole.kivo.android.mobile.ui.WorkCard
 import com.mmcdole.kivo.android.mobile.ui.WorkMenu
 import com.mmcdole.kivo.android.mobile.ui.WorkMenuHost
 import com.mmcdole.kivo.android.mobile.ui.cardImage
+import com.mmcdole.kivo.android.mobile.ui.rowCardWidth
 import com.mmcdole.kivo.android.mobile.ui.sentence
 import com.mmcdole.kivo.android.mobile.ui.listShapeOf
 import com.mmcdole.kivo.api.models.ListRef
@@ -104,6 +110,9 @@ private val GroupCorners = RoundedCornerShape(22.dp)
 private val CoverGap = 8.dp
 
 private val FirstCoverWidth = 44.dp
+
+/** The narrowest a list's card goes in a wide window's grid. */
+private val ListCardMinWidth = 324.dp
 
 /**
  * Lists: My List as a row of covers with its count, then the lists the user
@@ -133,7 +142,7 @@ fun ListsScreen(session: ServerSession, nav: MobileNav) {
                 lists == null && problem != null -> Failed(problem, stringResource(R.string.mobile_couldnt_load_lists), state.serverName, model::refresh)
                 lists == null -> Loading()
                 else -> PullToRefreshBox(state.refreshing, model::refresh, Modifier.fillMaxSize()) {
-                    ListsContent(state, session.session.library, nav)
+                    ListsContent(state, session.session.library, nav, model)
                 }
             }
         }
@@ -164,27 +173,33 @@ private fun NewListMenu(onNewList: () -> Unit, onNewSmart: () -> Unit) {
 }
 
 @Composable
-private fun ListsContent(state: ListsUiState, library: SessionLibrary, nav: MobileNav) {
+private fun ListsContent(state: ListsUiState, library: SessionLibrary, nav: MobileNav, model: ListsViewModel) {
     val myList = state.myList
     val manual = state.manual
+    val wide = LocalWide.current
+    // A wide window's row reaches the edges, so the sections keep the margin themselves.
+    val edge = if (wide) 0.dp else space(4)
+    val sectionMargin = Modifier.padding(horizontal = space(4) - edge)
     LazyColumn(
         Modifier.fillMaxSize().testTag("lists"),
-        contentPadding = PaddingValues(start = space(4), end = space(4), top = space(2), bottom = space(6)),
+        contentPadding = PaddingValues(start = edge, end = edge, top = space(2), bottom = space(6)),
         verticalArrangement = Arrangement.spacedBy(space(5)),
     ) {
         if (myList == null && manual.isEmpty() && state.smart.isEmpty()) {
             item { Message(stringResource(R.string.mobile_no_lists), stringResource(R.string.mobile_no_lists_sentence), Modifier.height(400.dp)) }
         }
         if (myList != null) {
-            item(key = "myList") { MyListSection(myList, state.covers) { nav.open(ListRoute(myList.id, myList.name)) } }
+            item(key = "myList") {
+                if (wide) MyListRow(myList, state.covers, nav, model) else MyListSection(myList, state.covers) { nav.open(ListRoute(myList.id, myList.name)) }
+            }
         }
         if (manual.isNotEmpty()) {
             item(key = "manual") {
-                ListsSection(stringResource(R.string.mobile_your_lists), manual, library, nav) { pluralStringResource(R.plurals.mobile_count_titles, it.workCount, it.workCount) }
+                ListsSection(stringResource(R.string.mobile_your_lists), manual, library, nav, sectionMargin) { pluralStringResource(R.plurals.mobile_count_titles, it.workCount, it.workCount) }
             }
         }
         if (state.smart.isNotEmpty()) {
-            item(key = "smart") { ListsSection(stringResource(R.string.mobile_smart_lists), state.smart, library, nav) { smartDetail(it) } }
+            item(key = "smart") { ListsSection(stringResource(R.string.mobile_smart_lists), state.smart, library, nav, sectionMargin) { smartDetail(it) } }
         }
     }
 }
@@ -195,12 +210,7 @@ private fun MyListSection(list: WorkList, covers: List<WorkSummary>, onClick: ()
         Modifier.fillMaxWidth().clickable(onClick = onClick).testTag("list:${list.name}"),
         verticalArrangement = Arrangement.spacedBy(space(2)),
     ) {
-        Row(Modifier.fillMaxWidth().semantics(mergeDescendants = true) { heading() }, verticalAlignment = Alignment.CenterVertically) {
-            Text(list.name, style = MaterialTheme.typography.titleMedium)
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.weight(1f))
-            Text(list.workCount.toString(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+        MyListHeading(list, Modifier.fillMaxWidth())
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val width = (maxWidth - CoverGap * (MY_LIST_COVERS - 1)) / MY_LIST_COVERS
             Row(horizontalArrangement = Arrangement.spacedBy(CoverGap)) {
@@ -212,42 +222,106 @@ private fun MyListSection(list: WorkList, covers: List<WorkSummary>, onClick: ()
     }
 }
 
-/** A smart list's line under its name: its kinds and count. */
+/** My List's name and count, after its chevron. */
 @Composable
-private fun smartDetail(list: WorkList): String =
-    stringResource(R.string.mobile_smart_list_detail, kindsPhrase(list.smart?.query?.kinds.orEmpty()), list.workCount)
+private fun MyListHeading(list: WorkList, modifier: Modifier) {
+    Row(modifier.semantics(mergeDescendants = true) { heading() }, verticalAlignment = Alignment.CenterVertically) {
+        Text(list.name, style = MaterialTheme.typography.titleMedium)
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(list.workCount.toString(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
 
-/** A headed group of [lists], each with its first cover, name and [detail]. */
+/** My List in a wide window: a row of its covers, as on Home. */
 @Composable
-private fun ListsSection(title: String, lists: List<WorkList>, library: SessionLibrary, nav: MobileNav, detail: @Composable (WorkList) -> String) {
-    Column(verticalArrangement = Arrangement.spacedBy(space(2))) {
-        Text(
-            title,
-            Modifier.semantics { heading() },
-            style = MaterialTheme.typography.titleMedium,
-        )
-        Column(Modifier.fillMaxWidth().clip(GroupCorners).background(MaterialTheme.colorScheme.surfaceContainerHigh)) {
-            lists.forEachIndexed { index, list ->
-                if (index > 0) HorizontalDivider()
-                ListItem(
-                    headlineContent = { Text(list.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                    leadingContent = { FirstCover(library, list.id) },
-                    supportingContent = { Text(detail(list)) },
-                    trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                    modifier = Modifier.clickable { nav.open(ListRoute(list.id, list.name)) }.testTag("list:${list.name}"),
-                )
+private fun MyListRow(list: WorkList, covers: List<WorkSummary>, nav: MobileNav, model: ListsViewModel) {
+    WorkMenuHost({ action, menu -> nav.handle(action, menu, model.marks) }) { openMenu ->
+        Column(verticalArrangement = Arrangement.spacedBy(space(2))) {
+            MyListHeading(
+                list,
+                Modifier.fillMaxWidth().clickable { nav.open(ListRoute(list.id, list.name)) }.padding(horizontal = space(4)).testTag("list:${list.name}"),
+            )
+            LazyRow(contentPadding = PaddingValues(horizontal = space(4)), horizontalArrangement = Arrangement.spacedBy(space(3))) {
+                items(covers, key = { it.id }) { work ->
+                    val shape = listShapeOf(work)
+                    WorkCard(
+                        work = work,
+                        shape = shape,
+                        width = rowCardWidth(shape),
+                        onClick = { nav.openWork(work) },
+                        onLongClick = { openMenu(WorkMenu(work, list = ListRef(list.id, list.name))) },
+                    )
+                }
             }
         }
     }
 }
 
-/** A list's most recently added work's poster, or an empty cover for a list without one. */
+/** A smart list's line under its name: its kinds and count. */
 @Composable
-private fun FirstCover(library: SessionLibrary, listId: String) {
-    val load by remember(listId) { library.listWorks(listId, 1, null) }.collectAsStateWithLifecycle(Load.Loading)
-    val work = load.getOrNull()?.items?.firstOrNull()
-    Artwork(work?.let { cardImage(it, CardShape.Poster) }, FirstCoverWidth, Modifier.width(FirstCoverWidth).aspectRatio(CardShape.Poster.aspect).clip(CardCorners))
+private fun smartDetail(list: WorkList): String =
+    stringResource(R.string.mobile_smart_list_detail, kindsPhrase(list.smart?.query?.kinds.orEmpty()), list.workCount)
+
+/** A headed group of [lists], each with its first cover, name and [detail]; a wide window has them as a grid of cards. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ListsSection(title: String, lists: List<WorkList>, library: SessionLibrary, nav: MobileNav, modifier: Modifier, detail: @Composable (WorkList) -> String) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(space(2))) {
+        Text(
+            title,
+            Modifier.semantics { heading() },
+            style = MaterialTheme.typography.titleMedium,
+        )
+        if (LocalWide.current) {
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+                val gap = space(3)
+                val columns = ((maxWidth + gap) / (ListCardMinWidth + gap)).toInt().coerceIn(2, 3)
+                val cardWidth = (maxWidth - gap * (columns - 1)) / columns
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(gap), verticalArrangement = Arrangement.spacedBy(gap)) {
+                    for (list in lists) {
+                        Box(Modifier.width(cardWidth).fillMaxRowHeight().clip(GroupCorners).background(MaterialTheme.colorScheme.surfaceContainerHigh)) {
+                            ListCard(list, library, nav, detail)
+                        }
+                    }
+                }
+            }
+        } else {
+            Column(Modifier.fillMaxWidth().clip(GroupCorners).background(MaterialTheme.colorScheme.surfaceContainerHigh)) {
+                lists.forEachIndexed { index, list ->
+                    if (index > 0) HorizontalDivider()
+                    ListCard(list, library, nav, detail)
+                }
+            }
+        }
+    }
+}
+
+/** A list's cover, name and [detail], opening it. */
+@Composable
+private fun ListCard(list: WorkList, library: SessionLibrary, nav: MobileNav, detail: @Composable (WorkList) -> String) {
+    ListItem(
+        headlineContent = { Text(list.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        leadingContent = { FirstCover(library, list) },
+        supportingContent = { Text(detail(list)) },
+        trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        modifier = Modifier.clickable { nav.open(ListRoute(list.id, list.name)) }.testTag("list:${list.name}"),
+    )
+}
+
+/** A list's most recently added work's poster, or a list icon for an empty list. */
+@Composable
+private fun FirstCover(library: SessionLibrary, list: WorkList) {
+    val shape = Modifier.width(FirstCoverWidth).aspectRatio(CardShape.Poster.aspect).clip(CardCorners)
+    if (list.workCount == 0) {
+        Box(shape.background(LocalKivo.current.placeholder), contentAlignment = Alignment.Center) {
+            Icon(Icons.AutoMirrored.Filled.List, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    } else {
+        val load by remember(list.id) { library.listWorks(list.id, 1, null) }.collectAsStateWithLifecycle(Load.Loading)
+        val work = load.getOrNull()?.items?.firstOrNull()
+        Artwork(work?.let { cardImage(it, CardShape.Poster) }, FirstCoverWidth, shape)
+    }
 }
 
 /**

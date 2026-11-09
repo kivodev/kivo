@@ -36,6 +36,9 @@ private const val SMART = "smart"
 /** How many of My List's works the Lists tab shows as its covers. */
 internal const val MY_LIST_COVERS = 4
 
+/** How many of My List's works a wide Lists tab's row holds, as many as Home's. */
+private const val MY_LIST_ROW = 20
+
 data class ListsUiState(
     /** The user's lists, My List first; null until read. */
     val lists: List<WorkList>? = null,
@@ -62,6 +65,7 @@ val WorkList.isManual: Boolean get() = kind == MANUAL
 /** The Lists tab: the lists, and My List's covers, read again as they change and on a pull to refresh. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ListsViewModel(private val session: KivoSession) : ViewModel() {
+    val marks = WorkMarks(session.library, viewModelScope)
     private val refreshes = MutableStateFlow(0)
     private val refreshing = MutableStateFlow(false)
 
@@ -72,7 +76,7 @@ class ListsViewModel(private val session: KivoSession) : ViewModel() {
     private val covers = lists
         .map { load -> load.getOrNull()?.firstOrNull { it.builtIn }?.id }
         .distinctUntilChanged()
-        .flatMapLatest { id -> if (id == null) flowOf(null) else session.library.listWorks(id, MY_LIST_COVERS, null) }
+        .flatMapLatest { id -> if (id == null) flowOf(null) else session.library.listWorks(id, MY_LIST_ROW, null) }
 
     val state: StateFlow<ListsUiState> = combine(lists, covers.onStart { emit(null) }, refreshing) { lists, covers, refreshing ->
         ListsUiState(

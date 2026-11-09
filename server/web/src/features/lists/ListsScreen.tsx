@@ -25,6 +25,11 @@ import { NewListForm } from "./AddToListDialog";
 import { SmartListDialog } from "./SmartListDialog";
 import { useSmartLabels } from "./smartLabels";
 
+/** Each list its own card, as many across as fit; a TV keeps its one card of rows. */
+const listsClass = isTv
+  ? settingsCardClass
+  : "grid max-w-page gap-3 lg:grid-cols-2 xl:grid-cols-3 *:overflow-hidden *:rounded-lg *:border *:border-border *:bg-surface";
+
 /**
  * Lists: My List as a row of covers with its count, then the user's other
  * lists, each with its count. A section with nothing in it is hidden. On TV
@@ -76,7 +81,7 @@ export function ListsScreen() {
             <h2 id="your-lists" className="text-lg font-semibold text-text">
               <Trans>Your lists</Trans>
             </h2>
-            <ul className={settingsCardClass}>
+            <ul className={listsClass}>
               {others.map((list, index) => (
                 <LibraryRow
                   key={list.id}
@@ -101,7 +106,7 @@ export function ListsScreen() {
             <h2 id="smart-lists" className="text-lg font-semibold text-text">
               <Trans>Smart Lists</Trans>
             </h2>
-            <ul className={settingsCardClass}>
+            <ul className={listsClass}>
               {smart.map((list) => (
                 <SmartListRow key={list.id} list={list} />
               ))}
@@ -155,10 +160,13 @@ function MyListRow({ list, items }: { list: WorkList; items: WorkSummary[] }) {
         isTv ? (
           list.name
         ) : (
-          <Link {...link} className="inline-flex items-center gap-1 hover:underline">
-            {list.name}
-            <Icon name="chevronRight" className="size-5 text-text-muted" />
-          </Link>
+          <span className="inline-flex items-center gap-1">
+            <Link {...link} className="inline-flex items-center gap-1 hover:underline">
+              {list.name}
+              <Icon name="chevronRight" className="size-5 text-text-muted" />
+            </Link>
+            <span className="text-sm font-normal text-text-muted">{i18n.number(list.workCount)}</span>
+          </span>
         )
       }
       shape="poster"
@@ -166,12 +174,10 @@ function MyListRow({ list, items }: { list: WorkList; items: WorkSummary[] }) {
       itemKey={(w) => w.id}
       renderItem={(w) => <WorkCard work={w} shape={workShape(w.kind)} />}
       action={
-        isTv ? (
+        isTv && (
           <Link {...link} className="text-sm font-semibold text-text">
             <Trans>See all</Trans>
           </Link>
-        ) : (
-          <span className="text-sm text-text-muted">{i18n.number(list.workCount)}</span>
         )
       }
     />
