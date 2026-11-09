@@ -15,6 +15,7 @@ struct HomeView: View {
     @State private var home: Home?
     /// Why Home couldn't be read, when the server refused it.
     @State private var failure: RequestProblem?
+    @State private var editingLayout = false
 
     private static let rowSpacing = KivoTokens.spacing * 7
     private static let top = KivoTokens.spacing * 2
@@ -32,7 +33,14 @@ struct HomeView: View {
                     .frame(maxHeight: .infinity)
             } else if let home {
                 let rows = home.rows.filter { Self.knownRows.contains($0.kind) }
-                if rows.isEmpty {
+                if rows.isEmpty, home.allHidden?.boolValue == true {
+                    MessageView(
+                        String(localized: "Your Home is empty"),
+                        sentence: String(localized: "Choose its rows in Settings."),
+                        action: (String(localized: "Home & Libraries"), { editingLayout = true })
+                    )
+                    .frame(maxHeight: .infinity)
+                } else if rows.isEmpty {
                     MessageView(
                         String(localized: "Nothing here yet"),
                         sentence: String(localized: "Items appear here as libraries are scanned.")
@@ -69,6 +77,7 @@ struct HomeView: View {
             .accessibilityLabel(Text("Loading Home…"))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .sheet(isPresented: $editingLayout) { NavigationStack { LibrariesSettingsView() } }
         .modifier(HomeTitle(server: server.serverName, wide: wide))
         .toolbar {
             if !wide {

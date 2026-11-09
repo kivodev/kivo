@@ -88,7 +88,7 @@ private const val ROW_LIMIT = 20
 /** Lists as the screen shows them, from the lists and My List's first works; a list kind it doesn't know is left out. */
 internal fun listsUi(lists: List<WorkList>, works: WorkSummaryPage): ListsUi = ListsUi(
     myList = lists.firstOrNull { it.builtIn },
-    works = works.copy(items = works.items.filter { it.kind in tvWorkKinds }),
+    works = works,
     lists = lists.filter { !it.builtIn && it.kind == "manual" },
 )
 
@@ -102,7 +102,7 @@ class ListsViewModel(session: ServerSession) : ViewModel() {
         val works: Flow<Load<WorkSummaryPage>> = lists
             .map { load -> load.getOrNull()?.firstOrNull { it.builtIn }?.id }
             .distinctUntilChanged()
-            .flatMapLatest { id -> if (id == null) flowOf(Load.Loaded(WorkSummaryPage(emptyList(), total = 0))) else library.listWorks(id, ROW_LIMIT).onStart { emit(Load.Loading) } }
+            .flatMapLatest { id -> if (id == null) flowOf(Load.Loaded(WorkSummaryPage(emptyList(), total = 0))) else library.listWorks(id, ROW_LIMIT, tvWorkKinds.toList()).onStart { emit(Load.Loading) } }
         combine(lists, works) { lists, works -> lists.with(works, ::listsUi) }
     }
 }
@@ -222,7 +222,7 @@ private fun Sections(ui: ListsUi, navigator: Navigator) {
                             item(key = "all") {
                                 val shape = CardShape.Poster
                                 SeeAllCard(
-                                    detail = pluralStringResource(R.plurals.titles, myList.workCount, myList.workCount),
+                                    detail = null,
                                     shape = shape,
                                     width = cardWidth(shape),
                                     onClick = { navigator.push(Screen.ListWorks(myList.id, myList.name)) },
@@ -262,7 +262,6 @@ private fun ListTile(list: WorkList, modifier: Modifier, onClick: () -> Unit) {
     ) {
         Column(Modifier.padding(Kivo.space(3)), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(list.name, style = TvType.bodyStrong, color = colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(pluralStringResource(R.plurals.titles, list.workCount, list.workCount), style = TvType.small, color = colors.textMuted, maxLines = 1)
         }
     }
 }

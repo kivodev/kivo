@@ -156,7 +156,7 @@ fun DetailScreen(session: ServerSession, id: String, seasonId: String?, seasonNu
         }
         return
     }
-    WorkMenuHost({ action, work -> nav.handle(action, work, model.marks) }, seriesPage = head.id.takeIf { head.kind == "series" }) { openMenu ->
+    WorkMenuHost({ action, menu -> nav.handle(action, menu, model.marks) }, seriesPage = head.id.takeIf { head.kind == "series" }) { openMenu ->
         DetailPage(head, state, model, nav, openMenu)
     }
 }

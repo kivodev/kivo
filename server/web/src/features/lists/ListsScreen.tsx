@@ -1,13 +1,16 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { listQueries } from "@/api/lists";
 import type { WorkList, WorkSummary } from "@/api/schemas";
 import { workQueries } from "@/api/works";
+import { Button } from "@/components/Button";
 import { useDocumentTitle } from "@/components/documentTitle";
 import { EmptyState } from "@/components/EmptyState";
 import { Icon } from "@/components/Icon";
 import { LoadError } from "@/components/LoadError";
+import { ModalDialog } from "@/components/ModalDialog";
 import { Row } from "@/components/Row";
 import { settingsCardClass } from "@/components/SettingsLayout";
 import { RowsSkeleton } from "@/components/Skeleton";
@@ -16,6 +19,7 @@ import { LibrarySwitcher, listsKey } from "@/features/browse/LibrarySwitcher";
 import { WorkCard, workShape } from "@/features/browse/WorkCard";
 import { isTv } from "@/tv/flag";
 import { TvFocusGroup, useTvEmptyScreen } from "@/tv/focus";
+import { NewListForm } from "./AddToListDialog";
 
 /**
  * Lists: My List as a row of covers with its count, then the user's other
@@ -35,12 +39,18 @@ export function ListsScreen() {
   const row = useQuery({ ...workQueries.listRow(myList?.id ?? ""), enabled: myList !== undefined });
   const ready = lists !== undefined && (myList === undefined || row.data !== undefined);
   const failed = read.isError ? read : row.isError ? row : undefined;
+  const [creating, setCreating] = useState(false);
 
   return (
     <TvFocusGroup focusKey="lists-screen">
       <div data-part="lists" className="flex flex-col gap-10 px-4 py-6 sm:px-8">
-        <div className="flex min-h-10 items-center">
+        <div className="flex min-h-10 items-center justify-between">
           <LibrarySwitcher title={t`Lists`} current={listsKey} />
+          {!isTv && (
+            <Button size="sm" variant="ghost" aria-label={t`New List`} onPress={() => setCreating(true)}>
+              <Icon name="plus" className="size-5" />
+            </Button>
+          )}
         </div>
         {!ready && failed && <LoadError error={failed.error} onRetry={() => void failed.refetch()} />}
         {!ready && !failed && <RowsSkeleton />}
@@ -71,6 +81,17 @@ export function ListsScreen() {
           </section>
         )}
       </div>
+      {creating && (
+        <ModalDialog
+          isOpen
+          onClose={() => setCreating(false)}
+          title={<Trans>New List</Trans>}
+          width="form"
+          part="new-list"
+        >
+          <NewListForm onDone={() => setCreating(false)} />
+        </ModalDialog>
+      )}
     </TvFocusGroup>
   );
 }

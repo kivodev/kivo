@@ -17,7 +17,7 @@ internal class HomeRepository(private val connection: ServerConnection, private 
     }
 
     /** Every row of the user's Home, in order, shown or not, as the editor lists them. */
-    fun rows(): Flow<List<HomeRowInfo>> = refreshing(invalidations, { it == Invalidation.HomeChanged || it is Invalidation.LibraryChanged }) {
+    fun rows(): Flow<List<HomeRowInfo>> = refreshing(invalidations, { it == Invalidation.HomeChanged || it == Invalidation.ListsChanged || it is Invalidation.LibraryChanged }) {
         connection.works.listHomeRows().result().items
     }
 

@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/mmcdole/kivo/internal/api/internal/gen"
 	"github.com/mmcdole/kivo/internal/query"
@@ -23,7 +24,17 @@ func (h *handlers) GetHome(ctx context.Context, req gen.GetHomeRequestObject) (g
 	if err != nil {
 		return nil, err
 	}
-	return gen.GetHome200JSONResponse(gen.Home{Rows: each(rows, homeRow)}), nil
+	out := gen.Home{Rows: each(rows, homeRow)}
+	if len(rows) == 0 && len(kinds) == 0 {
+		layout, err := h.deps.Query.HomeRows(ctx, callerOf(ctx).viewer)
+		if err != nil {
+			return nil, err
+		}
+		if !slices.ContainsFunc(layout, func(r query.HomeRowInfo) bool { return r.Shown }) {
+			out.AllHidden = ptr(true)
+		}
+	}
+	return gen.GetHome200JSONResponse(out), nil
 }
 
 // homeRow converts a Home row.

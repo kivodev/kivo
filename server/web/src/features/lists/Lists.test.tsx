@@ -53,6 +53,20 @@ describe("Lists", () => {
   });
 });
 
+describe("New List on the Lists screen", () => {
+  it("names a new list and stays on the screen", async () => {
+    serveMockApi();
+    const { user } = renderApp("/lists");
+    await user.click(await screen.findByRole("button", { name: "New List" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByRole("textbox", { name: /Name/ }), "Road Trip");
+    await user.click(within(dialog).getByRole("button", { name: "Create" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(sent("POST", "/lists")[0]?.body).toEqual({ name: "Road Trip" });
+    expect(await screen.findByRole("link", { name: /Road Trip/ })).toBeInTheDocument();
+  });
+});
+
 describe("A list's page", () => {
   it("shows its works as a grid with their count, and takes a card off from its menu", async () => {
     serveMockApi();
@@ -104,7 +118,7 @@ describe("Add to List", () => {
     return screen.findByRole("dialog");
   };
 
-  it("checks the lists holding the work, and a press adds or removes at once", async () => {
+  it("checks the lists holding the work, and a press adds or removes", async () => {
     serveMockApi();
     const { user } = renderApp(`/works/${mockIds.dunePartTwo}`);
     const dialog = await openChooser(user);
@@ -113,7 +127,7 @@ describe("Add to List", () => {
     expect(dateNight).not.toBeChecked();
     expect(myList).not.toBeChecked();
     await user.click(dateNight);
-    expect(dateNight).toBeChecked();
+    await waitFor(() => expect(dateNight).toBeChecked());
     await waitFor(() =>
       expect(sent("POST", `/lists/${mockIds.dateNight}/works`)[0]?.body).toEqual({ workId: mockIds.dunePartTwo }),
     );

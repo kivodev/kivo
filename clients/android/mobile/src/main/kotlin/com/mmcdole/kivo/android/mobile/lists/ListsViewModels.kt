@@ -61,7 +61,7 @@ class ListsViewModel(private val session: KivoSession) : ViewModel() {
     private val covers = lists
         .map { load -> load.getOrNull()?.firstOrNull { it.builtIn }?.id }
         .distinctUntilChanged()
-        .flatMapLatest { id -> if (id == null) flowOf(null) else session.library.listWorks(id, MY_LIST_COVERS) }
+        .flatMapLatest { id -> if (id == null) flowOf(null) else session.library.listWorks(id, MY_LIST_COVERS, null) }
 
     val state: StateFlow<ListsUiState> = combine(lists, covers.onStart { emit(null) }, refreshing) { lists, covers, refreshing ->
         ListsUiState(
@@ -78,12 +78,15 @@ class ListsViewModel(private val session: KivoSession) : ViewModel() {
         session.retryNow()
         refreshes.value++
     }
+
+    /** Makes a list; the problem when it's refused. */
+    suspend fun create(name: String): RequestProblem? = attempt { session.library.createList(name) }
 }
 
 /** An open list: its works as a grid, most recently added first; a list the user made can be renamed and deleted. */
 class ListViewModel(private val session: KivoSession, private val listId: String) : ViewModel() {
     /** The grid, which the paged grid reads and asks pages of as they come into view. */
-    val pager: GridPager<WorkSummary> = session.library.pagedListWorks(listId)
+    val pager: GridPager<WorkSummary> = session.library.pagedListWorks(listId, null)
 
     val marks = WorkMarks(session.library, viewModelScope)
 

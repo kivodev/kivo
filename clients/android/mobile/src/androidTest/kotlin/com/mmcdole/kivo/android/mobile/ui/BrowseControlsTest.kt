@@ -86,7 +86,7 @@ class BrowseControlsTest {
         val done = mutableListOf<Pair<WorkAction, String>>()
         rule.setContent {
             KivoMobileTheme {
-                WorkMenuHost({ action, w -> done += action to w.id }) { open ->
+                WorkMenuHost({ action, w -> done += action to w.work.id }) { open ->
                     WorkCard(work, CardShape.Landscape, 260.dp, onClick = {}, onLongClick = { open(WorkMenu(work, CONTINUE_WATCHING)) })
                 }
             }

@@ -26,6 +26,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -45,6 +46,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mmcdole.kivo.android.ServerSession
 import com.mmcdole.kivo.android.library.GridValues
 import com.mmcdole.kivo.android.mobile.R
+import com.mmcdole.kivo.android.mobile.app.SettingsPage
+import com.mmcdole.kivo.android.mobile.app.SettingsPageRoute
 import com.mmcdole.kivo.android.mobile.app.LibraryRoute
 import com.mmcdole.kivo.android.mobile.app.ListRoute
 import com.mmcdole.kivo.android.mobile.app.MobileNav
@@ -98,10 +101,20 @@ fun HomeScreen(session: ServerSession, nav: MobileNav) {
                     if (rows.isEmpty()) {
                         // Scrollable, so a pull still refreshes it.
                         LazyColumn(Modifier.fillMaxSize()) {
-                            item { Message(stringResource(R.string.mobile_nothing_yet), stringResource(R.string.mobile_nothing_yet_sentence), Modifier.height(400.dp)) }
+                            item {
+                                if (state.allHidden) {
+                                    Message(stringResource(R.string.mobile_home_empty), stringResource(R.string.mobile_home_empty_sentence), Modifier.height(400.dp)) {
+                                        TextButton(onClick = { nav.open(SettingsPageRoute(SettingsPage.Libraries)) }) {
+                                            Text(stringResource(R.string.mobile_settings_home_libraries))
+                                        }
+                                    }
+                                } else {
+                                    Message(stringResource(R.string.mobile_nothing_yet), stringResource(R.string.mobile_nothing_yet_sentence), Modifier.height(400.dp))
+                                }
+                            }
                         }
                     } else {
-                        WorkMenuHost({ action, work -> nav.handle(action, work, model.marks) }) { openMenu ->
+                        WorkMenuHost({ action, menu -> nav.handle(action, menu, model.marks) }) { openMenu ->
                             Rows(rows, nav, openMenu)
                         }
                     }
@@ -141,7 +154,7 @@ private fun Rows(rows: List<HomeRowUi>, nav: MobileNav, openMenu: (WorkMenu) -> 
                             shape = shape,
                             width = rowCardWidth(shape),
                             onClick = { nav.openWork(work) },
-                            onLongClick = { openMenu(WorkMenu(work, row.kind)) },
+                            onLongClick = { openMenu(WorkMenu(work, row.kind, row.list)) },
                         )
                     }
                 }

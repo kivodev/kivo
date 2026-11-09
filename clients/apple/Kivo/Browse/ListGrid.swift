@@ -154,7 +154,7 @@ final class ListGridModel {
     @ObservationIgnored private let pager: GridPager<WorkSummary>
 
     init(listId: String, session: KivoSession) {
-        pager = session.library.pagedListWorks(listId: listId)
+        pager = session.library.pagedListWorks(listId: listId, kinds: nil)
         pages = pager.state.value
     }
 

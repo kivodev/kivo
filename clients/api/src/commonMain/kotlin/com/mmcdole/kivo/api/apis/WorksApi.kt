@@ -446,14 +446,15 @@ open class WorksApi : ApiClient {
 
     /**
      * List a list&#39;s works
-     * A list&#39;s works the user sees, most recently added first. A grid, paged by &#x60;offset&#x60;, with &#x60;total&#x60; on every page; works added at the same time are listed by title. 
+     * A list&#39;s works the user sees, most recently added first: with &#x60;kind&#x60;, only those kinds. A grid, paged by &#x60;offset&#x60;, with &#x60;total&#x60; on every page; works added at the same time are listed by title. 
      * @param id 
+     * @param kind Only these kinds. (optional)
      * @param offset How many items to skip from the start. (optional)
      * @param limit Page size. The default and the most a page holds depend on the listing. (optional)
      * @return WorkSummaryPage
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun listListWorks(id: kotlin.String, offset: kotlin.Int? = null, limit: kotlin.Int? = null): HttpResponse<WorkSummaryPage> {
+    open suspend fun listListWorks(id: kotlin.String, kind: kotlin.collections.List<kotlin.String>? = null, offset: kotlin.Int? = null, limit: kotlin.Int? = null): HttpResponse<WorkSummaryPage> {
 
         val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
 
@@ -461,6 +462,7 @@ open class WorksApi : ApiClient {
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
+        kind?.apply { localVariableQuery["kind"] = toMultiValue(this, "multi") }
         offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
         limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
         val localVariableHeaders = mutableMapOf<String, String>()

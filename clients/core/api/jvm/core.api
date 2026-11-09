@@ -1661,12 +1661,12 @@ public final class com/mmcdole/kivo/core/session/SessionLibrary {
 	public final fun knownCollection (Ljava/lang/String;)Lcom/mmcdole/kivo/api/models/CollectionSummary;
 	public final fun knownPerson (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/Heading;
 	public final fun libraries ()Lkotlinx/coroutines/flow/Flow;
-	public final fun listWorks (Ljava/lang/String;Ljava/lang/Integer;)Lkotlinx/coroutines/flow/Flow;
+	public final fun listWorks (Ljava/lang/String;Ljava/lang/Integer;Ljava/util/List;)Lkotlinx/coroutines/flow/Flow;
 	public final fun lists ()Lkotlinx/coroutines/flow/Flow;
 	public final fun pagedAuthors (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/GridPager;
 	public final fun pagedBookSeries (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/GridPager;
 	public final fun pagedCollections (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/GridPager;
-	public final fun pagedListWorks (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/GridPager;
+	public final fun pagedListWorks (Ljava/lang/String;Ljava/util/List;)Lcom/mmcdole/kivo/core/data/GridPager;
 	public final fun pagedWorks (Lcom/mmcdole/kivo/core/data/GridQuery;)Lcom/mmcdole/kivo/core/data/GridPager;
 	public final fun person (Ljava/lang/String;)Lkotlinx/coroutines/flow/Flow;
 	public final fun removeFromContinue (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;

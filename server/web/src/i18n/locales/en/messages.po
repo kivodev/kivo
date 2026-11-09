@@ -755,6 +755,10 @@ msgstr "Use local artwork"
 msgid "Your lists"
 msgstr "Your lists"
 
+#: src/features/home/HomeScreen.tsx
+msgid "Choose its rows in Settings."
+msgstr "Choose its rows in Settings."
+
 #: src/features/admin/EditBookForm.tsx
 msgid "Subtitle"
 msgstr "Subtitle"
@@ -910,6 +914,10 @@ msgstr "Android phone"
 #: src/features/admin/FixMatchDialog.tsx
 msgid "Score {score}"
 msgstr "Score {score}"
+
+#: src/features/home/HomeScreen.tsx
+msgid "Your Home is empty"
+msgstr "Your Home is empty"
 
 #: src/features/player/castProtocol.ts
 msgid "The TV's receiver is older than the server."
@@ -1930,6 +1938,7 @@ msgid "Admins can manage all libraries, users and settings."
 msgstr "Admins can manage all libraries, users and settings."
 
 #: src/features/lists/AddToListDialog.tsx
+#: src/features/lists/ListsScreen.tsx
 msgid "New List"
 msgstr "New List"
 
@@ -1963,6 +1972,7 @@ msgstr "From 50% to 100%."
 msgid "{admin} added {user}"
 msgstr "{admin} added {user}"
 
+#: src/features/home/HomeScreen.tsx
 #: src/features/user/SettingsScreen.tsx
 msgid "Home & libraries"
 msgstr "Home & libraries"

@@ -1,8 +1,7 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { $api, client } from "./client";
+import { useQueryClient } from "@tanstack/react-query";
+import { $api } from "./client";
 import { invalidatePaths, listViewPaths } from "./paths";
-import type { WorkDetail, WorkListList } from "./schemas";
-import { workQueries } from "./works";
+import type { WorkListList } from "./schemas";
 
 /** Skips the list kinds this client doesn't know. */
 const knownKinds = (page: WorkListList): WorkListList => ({
@@ -40,36 +39,16 @@ export function useDeleteList() {
 
 type Membership = { listId: string; workId: string; inList: boolean };
 
-const membershipKey = ["lists", "membership"];
-
-/**
- * Puts a work on a list or takes it off. The work's page changes at once,
- * and saves run one at a time, in order. The last save to settle reads what
- * the server holds, which also undoes a refused change.
- */
+/** Puts a work on a list or takes it off. */
 export function useSetInList() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationKey: membershipKey,
-    scope: { id: "list-membership" },
-    mutationFn: async ({ listId, workId, inList }: Membership) => {
-      const { error } = inList
-        ? await client.POST("/api/v1/lists/{id}/works", { params: { path: { id: listId } }, body: { workId } })
-        : await client.DELETE("/api/v1/lists/{id}/works/{workId}", { params: { path: { id: listId, workId } } });
-      if (error) throw error;
-    },
-    onMutate: async ({ listId, workId, inList }) => {
-      const { queryKey } = workQueries.detail(workId);
-      await queryClient.cancelQueries({ queryKey });
-      queryClient.setQueryData<WorkDetail>(queryKey, (work) => {
-        if (!work) return work;
-        const others = (work.listIds ?? []).filter((id) => id !== listId);
-        return { ...work, listIds: inList ? [...others, listId] : others };
-      });
-    },
-    onSettled: () =>
-      queryClient.isMutating({ mutationKey: membershipKey }) <= 1
-        ? invalidatePaths(queryClient, listViewPaths)
-        : undefined,
-  });
+  const onSuccess = useListsChanged();
+  const add = $api.useMutation("post", "/api/v1/lists/{id}/works", { onSuccess });
+  const remove = $api.useMutation("delete", "/api/v1/lists/{id}/works/{workId}", { onSuccess });
+  return {
+    error: add.error ?? remove.error,
+    mutate: ({ listId, workId, inList }: Membership) =>
+      inList
+        ? add.mutate({ params: { path: { id: listId } }, body: { workId } })
+        : remove.mutate({ params: { path: { id: listId, workId } } }),
+  };
 }

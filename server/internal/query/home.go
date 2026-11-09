@@ -180,8 +180,8 @@ func ValidRowID(s string) bool {
 
 // defaultRows lists every row of a user's Home in the default order:
 // Continue Watching, My List, each video library's Recently Added in the
-// user's library order, Continue Listening, each audiobooks library's
-// Recently Added, then the other lists. Every row is shown except the
+// user's library order, Continue Listening if the user has an audiobooks
+// library, each audiobooks library's Recently Added, then the other lists. Every row is shown except the
 // other lists.
 func defaultRows(libs []Library, lists []List) []HomeRowInfo {
 	rows := []HomeRowInfo{
@@ -206,7 +206,9 @@ func defaultRows(libs []Library, lists []List) []HomeRowInfo {
 			rows = append(rows, row)
 		}
 	}
-	rows = append(rows, HomeRowInfo{ID: rowID(RowContinueListening, id.ID{}), Kind: RowContinueListening, Shown: true})
+	if len(books) > 0 {
+		rows = append(rows, HomeRowInfo{ID: rowID(RowContinueListening, id.ID{}), Kind: RowContinueListening, Shown: true})
+	}
 	rows = append(rows, books...)
 	return append(rows, others...)
 }
@@ -341,7 +343,7 @@ func rowItems(ctx context.Context, tx *sql.Tx, vw viewer, r HomeRowInfo) ([]Work
 	case RowContinueListening:
 		return summaries(ctx, tx, continueListening, vw.args(limit))
 	case RowList:
-		return summaries(ctx, tx, listWorksPage, vw.args(sql.Named("list", r.List.ID), sql.Named("offset", 0), limit))
+		return summaries(ctx, tx, listWorksPage, vw.args(sql.Named("list", r.List.ID), sql.Named("kinds", nil), sql.Named("offset", 0), limit))
 	case RowRecentlyAdded:
 		added, err := rowsOf(ctx, tx, recentlyAdded, vw.args(sql.Named("library", r.Library.ID)), func(rs scanner, a *addition) error {
 			return rs.Scan(&a.ID, &a.Kind, &a.ParentID, &a.RootID, &a.AddedAt, &a.SortTitle,

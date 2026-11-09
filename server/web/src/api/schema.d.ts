@@ -1138,9 +1138,9 @@ export interface paths {
         };
         /**
          * List a list's works
-         * @description A list's works the user sees, most recently added first. A grid,
-         *     paged by `offset`, with `total` on every page; works added at the
-         *     same time are listed by title.
+         * @description A list's works the user sees, most recently added first: with
+         *     `kind`, only those kinds. A grid, paged by `offset`, with `total` on
+         *     every page; works added at the same time are listed by title.
          */
         get: operations["listListWorks"];
         put?: never;
@@ -3554,6 +3554,8 @@ export interface components {
         ScanStep: "walk" | "probe" | "identify";
         Home: {
             rows: components["schemas"]["HomeRow"][];
+            /** @description Set when `rows` is empty because the user hid every row. */
+            allHidden?: boolean;
         };
         HomeRow: {
             /**
@@ -5531,7 +5533,7 @@ export interface components {
          *       too. Refetch Home and the layout.
          *     - `listsChanged`: the user's lists changed: one was created,
          *       renamed or deleted, or a work was added or removed. Refetch the
-         *       lists, any open list, Home and any open work page.
+         *       lists, any open list, Home, the layout and any open work page.
          *     - `downloadsChanged`: the user's downloads on the server moved:
          *       in line, in their preparation (at most every 10 seconds), or to
          *       ready or failed. Refetch the downloads that aren't ready.
@@ -7436,6 +7438,8 @@ export interface operations {
     listListWorks: {
         parameters: {
             query?: {
+                /** @description Only these kinds. */
+                kind?: components["schemas"]["WorkKind"][];
                 /** @description How many items to skip from the start. */
                 offset?: components["parameters"]["Offset"];
                 /** @description Page size. The default and the most a page holds depend on the listing. */

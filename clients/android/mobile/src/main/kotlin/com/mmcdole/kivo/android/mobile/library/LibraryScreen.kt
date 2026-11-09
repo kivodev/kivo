@@ -127,7 +127,7 @@ fun LibraryScreen(session: ServerSession, libraryId: String, oneOffSort: String?
         LaunchedEffect(state.grid) { header.offset = 0f }
         Box(Modifier.padding(padding).fillMaxSize().clipToBounds().nestedScroll(header)) {
             val top = with(LocalDensity.current) { header.height.toDp() }
-            WorkMenuHost({ action, work -> nav.handle(action, work, model.marks) }) { openMenu ->
+            WorkMenuHost({ action, menu -> nav.handle(action, menu, model.marks) }) { openMenu ->
                 Grid(state, model, nav, openMenu, top)
             }
             Header(

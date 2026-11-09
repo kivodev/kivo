@@ -24,6 +24,7 @@ import androidx.navigation.NavHostController
 import com.mmcdole.kivo.android.mobile.R
 import com.mmcdole.kivo.android.mobile.ui.WorkAction
 import com.mmcdole.kivo.android.mobile.ui.WorkMarks
+import com.mmcdole.kivo.android.mobile.ui.WorkMenu
 import com.mmcdole.kivo.api.models.EpisodeInfo
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.downloads.DownloadItem
@@ -228,12 +229,14 @@ class MobileNav(
 }
 
 /** Does a card's [action] on [work]: playing and Go to series here, the marks by [marks]. */
-fun MobileNav.handle(action: WorkAction, work: WorkSummary, marks: WorkMarks) {
+fun MobileNav.handle(action: WorkAction, menu: WorkMenu, marks: WorkMarks) {
+    val work = menu.work
     when (action) {
         WorkAction.Play -> play(work)
         WorkAction.PlayFromStart -> play(work, fromStart = true)
         WorkAction.GoToSeries -> work.episode?.let(::openSeries)
         WorkAction.AddToList -> addToList(work)
+        WorkAction.RemoveFromList -> menu.list?.let { marks.setOnList(it.id, work.id, on = false) }
         else -> marks.apply(action, work)
     }
 }

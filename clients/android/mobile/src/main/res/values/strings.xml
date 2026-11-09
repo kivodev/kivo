@@ -52,6 +52,8 @@
     <string name="mobile_row_recently_added">Recently Added</string>
     <string name="mobile_row_recently_added_in">Recently Added in %1$s</string>
     <string name="mobile_nothing_yet">Nothing here yet</string>
+    <string name="mobile_home_empty">Your Home is empty</string>
+    <string name="mobile_home_empty_sentence">Choose its rows in Settings.</string>
     <string name="mobile_nothing_yet_sentence">Items appear here as libraries are scanned.</string>
 
     <!-- A card's actions -->
@@ -267,6 +269,7 @@
     <string name="mobile_no_lists_sentence">Add something to My List from a title\'s page.</string>
     <string name="mobile_list_empty">Nothing in this list yet.</string>
     <string name="mobile_new_list">New List</string>
+    <string name="mobile_remove_from_list">Remove from %1$s</string>
     <string name="mobile_list_name">Name</string>
     <string name="mobile_list_name_taken">You already have a list with that name.</string>
     <string name="mobile_create">Create</string>

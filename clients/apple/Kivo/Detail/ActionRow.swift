@@ -265,7 +265,7 @@ struct ActionRowSkeleton: View {
             PlayButton(label: String(localized: "Play")) {}
                 .skeleton(Capsule())
             ForEach(0..<roundButtons, id: \.self) { _ in
-                Button {} label: { Image(systemName: "heart").roundButtonSymbol() }
+                Button {} label: { Image(systemName: "plus").roundButtonSymbol() }
                     .buttonStyle(.bordered)
                     .buttonBorderShape(.circle)
                     .skeleton(Circle())

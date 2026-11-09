@@ -60,11 +60,25 @@ export function HomeScreen() {
       data-part="home"
       className="flex flex-col gap-10 px-4 py-6 sm:px-8 tv:*:last:min-h-(--layout-tv-home-last-row-height)"
     >
-      {rows.length === 0 && (
-        <EmptyState title={t`Nothing here yet`}>
-          <Trans>Items appear here as libraries are scanned.</Trans>
-        </EmptyState>
-      )}
+      {rows.length === 0 &&
+        (home.data.allHidden ? (
+          <EmptyState
+            title={t`Your Home is empty`}
+            action={
+              isTv ? undefined : (
+                <Link to="/settings" hash="libraries" className="font-semibold text-accent hover:underline">
+                  <Trans>Home & libraries</Trans>
+                </Link>
+              )
+            }
+          >
+            <Trans>Choose its rows in Settings.</Trans>
+          </EmptyState>
+        ) : (
+          <EmptyState title={t`Nothing here yet`}>
+            <Trans>Items appear here as libraries are scanned.</Trans>
+          </EmptyState>
+        ))}
       {rows.map((row, index) => {
         // Continue Watching shows the frames where you stopped.
         const landscape = row.kind === "continueWatching" || row.library?.kind === "videos";

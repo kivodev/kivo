@@ -92,7 +92,8 @@ function ListChoices({ workId, onNewList, onDone }: { workId: string; onNewList:
   );
 }
 
-function NewListForm({ workId, onDone }: { workId: string; onDone: () => void }) {
+/** New List: makes a list, and adds [workId] to it when given. */
+export function NewListForm({ workId, onDone }: { workId?: string; onDone: () => void }) {
   const create = useCreateList();
   const setInList = useSetInList();
   return (
@@ -106,7 +107,7 @@ function NewListForm({ workId, onDone }: { workId: string; onDone: () => void })
           { body: { name } },
           {
             onSuccess: (list) => {
-              setInList.mutate({ listId: list.id, workId, inList: true });
+              if (workId) setInList.mutate({ listId: list.id, workId, inList: true });
               onDone();
             },
           },

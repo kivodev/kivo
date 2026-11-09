@@ -85,7 +85,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 /** Home's rows the TV shows, with the libraries it shows. */
-data class HomeUi(val rows: List<ShownRow>, val libraries: List<Library>)
+data class HomeUi(val rows: List<ShownRow>, val libraries: List<Library>, val allHidden: Boolean = false)
 
 /** A row as Home shows it: the library that names it, if it's a library's, and its cards' shape. */
 data class ShownRow(val row: HomeRow, val library: Library?, val shape: CardShape)
@@ -119,7 +119,7 @@ class HomeViewModel(session: ServerSession) : ViewModel() {
         combine(session.session.library.home(), session.session.library.libraries()) { home, libraries ->
             home.with(libraries) { home, libraries ->
                 val shown = tvLibraries(libraries)
-                HomeUi(shownRows(home.rows, shown), shown)
+                HomeUi(shownRows(home.rows, shown), shown, home.allHidden == true)
             }
         }.onEach { load ->
             // The cards' blurhashes are decoded here, off the main thread, so a row that comes into view draws
@@ -149,6 +149,7 @@ fun HomeScreen(session: ServerSession, navigator: Navigator) {
             val empty = when {
                 ui.libraries.isEmpty() && user?.admin == true -> R.string.empty_no_libraries_admin to R.string.empty_no_libraries_admin_sentence
                 ui.libraries.isEmpty() -> R.string.empty_no_libraries to R.string.empty_no_libraries_sentence
+                ui.rows.isEmpty() && ui.allHidden -> R.string.empty_home to R.string.empty_home_sentence
                 ui.rows.isEmpty() -> R.string.empty_nothing_yet to R.string.empty_nothing_yet_sentence
                 else -> null
             }

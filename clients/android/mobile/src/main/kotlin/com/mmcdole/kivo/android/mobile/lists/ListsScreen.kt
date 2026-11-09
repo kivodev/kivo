@@ -87,6 +87,7 @@ import com.mmcdole.kivo.android.mobile.ui.WorkMenuHost
 import com.mmcdole.kivo.android.mobile.ui.cardImage
 import com.mmcdole.kivo.android.mobile.ui.sentence
 import com.mmcdole.kivo.android.mobile.ui.shapeOf
+import com.mmcdole.kivo.api.models.ListRef
 import com.mmcdole.kivo.api.models.WorkList
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.Load
@@ -100,22 +101,29 @@ private val GroupCorners = RoundedCornerShape(22.dp)
 /** The gap between My List's covers. */
 private val CoverGap = 8.dp
 
+private val FirstCoverWidth = 44.dp
+
 /**
  * Lists: My List as a row of covers with its count, then the lists the user
  * made, each with its count; a section with nothing in it is left out. Pull
  * to refresh; the live events refresh it too.
  */
-private val FirstCoverWidth = 44.dp
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ListsScreen(session: ServerSession, nav: MobileNav) {
     val model = viewModel { ListsViewModel(session.session) }
     val state by model.state.collectAsStateWithLifecycle()
     val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    var naming by rememberSaveable { mutableStateOf(false) }
     Scaffold(
         modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
-        topBar = { TabTopBar(stringResource(R.string.mobile_tab_lists), scroll) },
+        topBar = {
+            TabTopBar(stringResource(R.string.mobile_tab_lists), scroll, actions = {
+                IconButton(onClick = { naming = true }, modifier = Modifier.testTag("newList")) {
+                    Icon(Icons.Default.Add, stringResource(R.string.mobile_new_list))
+                }
+            })
+        },
     ) { padding ->
         val lists = state.lists
         val problem = state.problem
@@ -128,6 +136,15 @@ fun ListsScreen(session: ServerSession, nav: MobileNav) {
                 }
             }
         }
+    }
+    if (naming) {
+        ListNameDialog(
+            title = stringResource(R.string.mobile_new_list),
+            initial = "",
+            confirm = stringResource(R.string.mobile_create),
+            onSubmit = model::create,
+            onDone = { naming = false },
+        )
     }
 }
 
@@ -202,7 +219,7 @@ private fun ManualSection(lists: List<WorkList>, library: SessionLibrary, nav: M
 /** A list's most recently added work's poster, or an empty cover for a list without one. */
 @Composable
 private fun FirstCover(library: SessionLibrary, listId: String) {
-    val load by remember(listId) { library.listWorks(listId, 1) }.collectAsStateWithLifecycle(Load.Loading)
+    val load by remember(listId) { library.listWorks(listId, 1, null) }.collectAsStateWithLifecycle(Load.Loading)
     val work = load.getOrNull()?.items?.firstOrNull()
     Artwork(work?.let { cardImage(it, CardShape.Poster) }, FirstCoverWidth, Modifier.width(FirstCoverWidth).aspectRatio(CardShape.Poster.aspect).clip(CardCorners))
 }
@@ -246,14 +263,14 @@ fun ListScreen(session: ServerSession, id: String, name: String, nav: MobileNav)
                             item { Message(stringResource(R.string.mobile_list_empty), null, Modifier.height(400.dp)) }
                         }
                     } else {
-                        WorkMenuHost({ action, work -> nav.handle(action, work, model.marks) }) { openMenu ->
+                        WorkMenuHost({ action, menu -> nav.handle(action, menu, model.marks) }) { openMenu ->
                             PagedGrid(model.pager, grid, columns, PaddingValues(horizontal = space(4), vertical = space(2))) { _, work ->
                                 WorkCard(
                                     work,
                                     work?.let(::shapeOf) ?: CardShape.Poster,
                                     cardWidth,
                                     { if (work != null) nav.openWork(work) },
-                                    { if (work != null) openMenu(WorkMenu(work)) },
+                                    { if (work != null) openMenu(WorkMenu(work, list = ListRef(id, title))) },
                                     captionLines = 1,
                                 )
                             }

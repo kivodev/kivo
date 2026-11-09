@@ -85,7 +85,7 @@ func TestBudgets(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			_, err = q.ListWorks(ctx, v, lists[0].ID, query.GridOptions{})
+			_, err = q.ListWorks(ctx, v, lists[0].ID, nil, query.GridOptions{})
 			return err
 		}},
 		{"search", searchBudget, true, func() error { _, err := q.Search(ctx, v, "movie 123", 0); return err }},

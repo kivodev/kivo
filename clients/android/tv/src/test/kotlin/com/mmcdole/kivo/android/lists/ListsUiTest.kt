@@ -12,12 +12,12 @@ class ListsUiTest {
         WorkSummary(id = id, kind = kind, title = id, matchState = "matched", available = true, images = WorkImages())
 
     @Test
-    fun myListComesApartFromTheListsMadeAndBooksAreLeftOut() {
+    fun myListComesApartFromTheListsMade() {
         val myList = WorkList("my", "My List", "manual", builtIn = true, workCount = 2)
         val made = WorkList("d", "Date Night", "manual", builtIn = false, workCount = 1)
         val ui = listsUi(
             listOf(myList, made, WorkList("x", "Later", "smart", builtIn = false, workCount = 1)),
-            WorkSummaryPage(listOf(work("m1", "movie"), work("b1", "book")), total = 2),
+            WorkSummaryPage(listOf(work("m1", "movie")), total = 1),
         )
         assertEquals(myList, ui.myList)
         assertEquals(listOf("m1"), ui.works.items.map { it.id })

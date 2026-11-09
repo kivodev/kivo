@@ -71,6 +71,8 @@
     <string name="empty_no_libraries">No libraries</string>
     <string name="empty_no_libraries_sentence">Ask an admin for access.</string>
     <string name="empty_nothing_yet">Nothing here yet</string>
+    <string name="empty_home">Your Home is empty</string>
+    <string name="empty_home_sentence">Choose its rows in Settings, under Home &amp; libraries.</string>
     <string name="empty_nothing_yet_sentence">Items appear here as libraries are scanned.</string>
     <string name="exit_kivo">Exit Kivo?</string>
     <string name="no">No</string>

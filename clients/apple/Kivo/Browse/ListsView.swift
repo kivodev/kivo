@@ -10,6 +10,10 @@ struct ListsView: View {
     @Environment(\.kivoPalette) private var palette
     @Environment(\.wide) private var wide
 
+    @State private var naming = false
+    @State private var newName = ""
+    @State private var problem: String?
+
     var body: some View {
         Group {
             let others = server.lists.filter { !$0.builtIn }
@@ -56,6 +60,30 @@ struct ListsView: View {
         }
         .navigationTitle(String(localized: "Lists"))
         .toolbarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    newName = ""
+                    naming = true
+                } label: {
+                    SwiftUI.Label(String(localized: "New List"), systemImage: "plus")
+                }
+            }
+        }
+        .listNameAlert(String(localized: "New List"), isPresented: $naming, name: $newName, confirm: String(localized: "Create"), save: create)
+        .alert(problem ?? "", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
+            Button(String(localized: "OK"), role: .cancel) {}
+        }
+    }
+
+    private func create(_ name: String) {
+        Task {
+            do {
+                _ = try await server.session.library.createList(name: name)
+            } catch {
+                problem = error.listNameSentence
+            }
+        }
     }
 }
 
@@ -174,7 +202,7 @@ private struct ListWorks<Content: View>: View {
     var body: some View {
         content(works)
             .task(id: listId) {
-                for await load in server.session.library.listWorks(listId: listId, limit: KotlinInt(int: Int32(limit))) {
+                for await load in server.session.library.listWorks(listId: listId, limit: KotlinInt(int: Int32(limit)), kinds: nil) {
                     if let page = load.getOrNull(), page.items != works { works = page.items }
                 }
             }

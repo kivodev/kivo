@@ -48,7 +48,7 @@ internal val tvWorkKinds = setOf("movie", "series", "episode", "season", "video"
 
 /** An open list as a grid, its pages read again in place as the list changes. */
 class ListWorksViewModel(session: ServerSession, listId: String) : ViewModel() {
-    val paged = session.session.library.pagedListWorks(listId)
+    val paged = session.session.library.pagedListWorks(listId, tvWorkKinds.toList())
 
     /** Reads the grid again, after its first page failed. */
     fun retry() {
@@ -66,8 +66,7 @@ private val HeadingPadding = PaddingValues(start = 24.dp, top = 39.5.dp, end = S
 /**
  * An open list, most recently added first: the title, the count line, and
  * the grid of a library, without its sort, filters or letter rail, each card
- * in its own work's shape; a book leaves its cell empty, as the pager has no
- * way to skip it. With nothing in it, the title and the empty state.
+ * in its own work's shape. With nothing in it, the title and the empty state.
  */
 @Composable
 fun ListWorksScreen(session: ServerSession, listId: String, name: String, navigator: Navigator) {

@@ -31,6 +31,8 @@ data class HomeUiState(
     val initial: String = "",
     /** Home's rows, in the server's order; null until read. */
     val rows: List<HomeRowUi>? = null,
+    /** There are no rows because the user hid every one. */
+    val allHidden: Boolean = false,
     /** Why Home couldn't be read, while there's nothing to show. */
     val problem: RequestProblem? = null,
     /** A pull to refresh waiting on its answer. */
@@ -74,6 +76,7 @@ class HomeViewModel(private val session: KivoSession) : ViewModel() {
             serverName = server.name,
             initial = user?.initial.orEmpty(),
             rows = home.getOrNull()?.let { shownRows(it.rows, libraries.getOrNull().orEmpty()) },
+            allHidden = home.getOrNull()?.allHidden == true,
             problem = home.problemOrNull(),
             refreshing = refreshing,
         )

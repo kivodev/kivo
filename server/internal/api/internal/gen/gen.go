@@ -2835,7 +2835,7 @@ type EventKind string
 //     too. Refetch Home and the layout.
 //   - `listsChanged`: the user's lists changed: one was created,
 //     renamed or deleted, or a work was added or removed. Refetch the
-//     lists, any open list, Home and any open work page.
+//     lists, any open list, Home, the layout and any open work page.
 //   - `downloadsChanged`: the user's downloads on the server moved:
 //     in line, in their preparation (at most every 10 seconds), or to
 //     ready or failed. Refetch the downloads that aren't ready.
@@ -2961,7 +2961,9 @@ type HealthStatus string
 
 // Home defines model for Home.
 type Home struct {
-	Rows []HomeRow `json:"rows"`
+	// AllHidden Set when `rows` is empty because the user hid every row.
+	AllHidden *bool     `json:"allHidden,omitempty"`
+	Rows      []HomeRow `json:"rows"`
 }
 
 // HomeRow defines model for HomeRow.
@@ -5478,6 +5480,9 @@ type ListLibraryWorksParams struct {
 
 // ListListWorksParams defines parameters for ListListWorks.
 type ListListWorksParams struct {
+	// Kind Only these kinds.
+	Kind *[]WorkKind `form:"kind,omitempty" json:"kind,omitempty"`
+
 	// Offset How many items to skip from the start.
 	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
 
@@ -7923,6 +7928,19 @@ func (siw *ServerInterfaceWrapper) ListListWorks(w http.ResponseWriter, r *http.
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params ListListWorksParams
+
+	// ------------- Optional query parameter "kind" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "kind", r.URL.Query(), &params.Kind, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "kind"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "kind", Err: err})
+		}
+		return
+	}
 
 	// ------------- Optional query parameter "offset" -------------
 

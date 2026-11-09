@@ -4,10 +4,11 @@ import (
 	"context"
 
 	"github.com/mmcdole/kivo/internal/api/internal/gen"
+	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/query"
 )
 
-// list converts a list.
+// listOf converts a list.
 func listOf(l query.List) gen.WorkList {
 	return gen.WorkList{ID: l.ID, Name: l.Name, Kind: gen.ListKindManual, BuiltIn: l.BuiltIn, WorkCount: l.Works}
 }
@@ -63,11 +64,18 @@ func (h *handlers) DeleteList(ctx context.Context, req gen.DeleteListRequestObje
 }
 
 func (h *handlers) ListListWorks(ctx context.Context, req gen.ListListWorksRequestObject) (gen.ListListWorksResponseObject, error) {
+	var kinds []catalog.WorkKind
+	for _, k := range deref(req.Params.Kind) {
+		if !k.Valid() {
+			return nil, invalid("unknown kind", field("kind", "invalid"))
+		}
+		kinds = append(kinds, catalog.WorkKind(k))
+	}
 	o, err := gridOptionsOf(req.Params.Offset, req.Params.Limit)
 	if err != nil {
 		return nil, err
 	}
-	page, err := h.deps.Query.ListWorks(ctx, callerOf(ctx).viewer, req.ID, o)
+	page, err := h.deps.Query.ListWorks(ctx, callerOf(ctx).viewer, req.ID, kinds, o)
 	if err != nil {
 		return nil, err
 	}

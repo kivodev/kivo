@@ -20,17 +20,17 @@ internal class ListsRepository(private val connection: ServerConnection, private
         connection.works.listLists().result().items
     }
 
-    /** The first page of a list's works, [limit] long or the server's page. */
-    fun works(listId: String, limit: Int? = null): Flow<WorkSummaryPage> = refreshing(invalidations, ::mayChange) {
-        connection.works.listListWorks(listId, limit = limit).result()
+    /** The first page of a list's works of [kinds], or every kind when null, [limit] long or the server's page. */
+    fun works(listId: String, limit: Int? = null, kinds: List<String>? = null): Flow<WorkSummaryPage> = refreshing(invalidations, ::mayChange) {
+        connection.works.listListWorks(listId, kind = kinds, limit = limit).result()
     }
 
     private fun mayChange(invalidation: Invalidation) =
         invalidation !is Invalidation.PlayEnded && invalidation != Invalidation.DownloadsChanged && invalidation != Invalidation.HomeChanged
 
-    /** [limit] of a list's works from [offset], or the server's page; every page carries the total. */
-    suspend fun page(listId: String, offset: Int, limit: Int? = null): WorkSummaryPage =
-        connection.works.listListWorks(listId, offset = offset.takeIf { it > 0 }, limit = limit).result()
+    /** [limit] of a list's works of [kinds] from [offset], or the server's page; every page carries the total. */
+    suspend fun page(listId: String, offset: Int, limit: Int? = null, kinds: List<String>? = null): WorkSummaryPage =
+        connection.works.listListWorks(listId, kind = kinds, offset = offset.takeIf { it > 0 }, limit = limit).result()
 
     /** Emits when a list's works may have changed: reload the loaded pages, keeping the place. */
     fun changes(): Flow<Unit> = invalidations.filter(::mayChange).map { }

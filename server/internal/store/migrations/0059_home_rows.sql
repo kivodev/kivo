@@ -1,8 +1,7 @@
 -- users ----------------------------------------------------------------------
 -- Each account's Home layout: where each of its rows goes and whether it
 -- shows. A Home is arranged once any row has a position. row_id is the row's
--- id: `continueWatching`, `continueListening`, `favorites` or
--- `recentlyAdded:<library>`.
+-- id: `continueWatching`, `continueListening` or `recentlyAdded:<library>`.
 CREATE TABLE user_home_row (
   user_id  BLOB NOT NULL REFERENCES user (id) ON DELETE CASCADE,
   row_id   TEXT NOT NULL,

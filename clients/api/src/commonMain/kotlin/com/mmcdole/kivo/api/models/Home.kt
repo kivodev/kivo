@@ -33,12 +33,16 @@ import kotlinx.serialization.encoding.*
  * 
  *
  * @param rows 
+ * @param allHidden Set when `rows` is empty because the user hid every row.
  */
 @Serializable
 
 data class Home (
 
-    @SerialName(value = "rows") @Required val rows: kotlin.collections.List<HomeRow>
+    @SerialName(value = "rows") @Required val rows: kotlin.collections.List<HomeRow>,
+
+    /* Set when `rows` is empty because the user hid every row. */
+    @SerialName(value = "allHidden") val allHidden: kotlin.Boolean? = null
 
 ) {
 

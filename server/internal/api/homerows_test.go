@@ -5,6 +5,33 @@ import (
 	"testing"
 )
 
+func TestHomeAllHidden(t *testing.T) {
+	e := newEnv(t, serving{})
+	type homeJSON struct {
+		Rows      []any `json:"rows"`
+		AllHidden *bool `json:"allHidden"`
+	}
+	get := func() homeJSON { return decode[homeJSON](t, e.do("GET", "/api/v1/home", e.adminToken, nil)) }
+	if h := get(); h.AllHidden != nil {
+		t.Errorf("a Home with rows shown: %+v", h)
+	}
+	rows := decode[struct {
+		Items []struct {
+			ID string `json:"id"`
+		} `json:"items"`
+	}](t, e.do("GET", "/api/v1/home/rows", e.adminToken, nil)).Items
+	var items []map[string]any
+	for _, r := range rows {
+		items = append(items, map[string]any{"id": r.ID, "shown": false})
+	}
+	if w := e.do("PATCH", "/api/v1/home/rows", e.adminToken, map[string]any{"items": items}); w.Code != http.StatusOK {
+		t.Fatalf("hide all: %d %s", w.Code, w.Body.String())
+	}
+	if h := get(); len(h.Rows) != 0 || h.AllHidden == nil || !*h.AllHidden {
+		t.Errorf("every row hidden: %+v", h)
+	}
+}
+
 func TestHomeRowsValidation(t *testing.T) {
 	e := newEnv(t, serving{})
 	item := func(id string) map[string]any { return map[string]any{"id": id, "shown": true} }

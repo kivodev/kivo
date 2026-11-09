@@ -1,10 +1,12 @@
 package com.mmcdole.kivo.android.mobile.ui
 
 import com.mmcdole.kivo.android.mobile.work
+import com.mmcdole.kivo.api.models.ListRef
 import com.mmcdole.kivo.api.models.EpisodeInfo
 import com.mmcdole.kivo.api.models.UserState
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 
 class WorkActionsTest {
     private val started = work("m1").copy(durationMs = 100_000, userState = UserState(played = false, playCount = 0, positionMs = 40_000))
@@ -40,5 +42,12 @@ class WorkActionsTest {
     fun artworkIsAskedForAtAStoredWidthCoveringTheCard() {
         assertEquals(320, artworkWidth(300))
         assertEquals(1920, artworkWidth(4000))
+    }
+
+    @Test
+    fun aCardInAListOffersRemovingItFromTheList() {
+        val inList = workActions(WorkMenu(work("m"), list = ListRef("l1", "Date Night")))
+        assertEquals(WorkAction.RemoveFromList, inList[inList.indexOf(WorkAction.AddToList) + 1])
+        assertFalse(WorkAction.RemoveFromList in workActions(WorkMenu(work("m"))))
     }
 }

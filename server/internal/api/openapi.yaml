@@ -1735,12 +1735,20 @@ paths:
       operationId: listListWorks
       summary: List a list's works
       description: |
-        A list's works the user sees, most recently added first. A grid,
-        paged by `offset`, with `total` on every page; works added at the
-        same time are listed by title.
+        A list's works the user sees, most recently added first: with
+        `kind`, only those kinds. A grid, paged by `offset`, with `total` on
+        every page; works added at the same time are listed by title.
       tags: [works]
       x-kivo-access: viewer
       parameters:
+        - name: kind
+          in: query
+          description: Only these kinds.
+          style: form
+          explode: true
+          schema:
+            type: array
+            items: {$ref: "#/components/schemas/WorkKind"}
         - {$ref: "#/components/parameters/Offset"}
         - {$ref: "#/components/parameters/Limit"}
       responses:
@@ -4967,6 +4975,9 @@ components:
         rows:
           type: array
           items: {$ref: "#/components/schemas/HomeRow"}
+        allHidden:
+          type: boolean
+          description: Set when `rows` is empty because the user hid every row.
 
     HomeRow:
       type: object
@@ -5069,12 +5080,12 @@ components:
       type: object
       required: [name]
       properties:
-        name: {type: string, minLength: 1, maxLength: 100}
+        name: {type: string, minLength: 1, maxLength: 64}
 
     ListUpdate:
       type: object
       properties:
-        name: {type: string, minLength: 1, maxLength: 100}
+        name: {type: string, minLength: 1, maxLength: 64}
 
     ListWorkAdd:
       type: object
@@ -7727,7 +7738,7 @@ components:
           too. Refetch Home and the layout.
         - `listsChanged`: the user's lists changed: one was created,
           renamed or deleted, or a work was added or removed. Refetch the
-          lists, any open list, Home and any open work page.
+          lists, any open list, Home, the layout and any open work page.
         - `downloadsChanged`: the user's downloads on the server moved:
           in line, in their preparation (at most every 10 seconds), or to
           ready or failed. Refetch the downloads that aren't ready.

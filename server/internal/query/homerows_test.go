@@ -68,6 +68,16 @@ func TestHomeRowsDefaultOrder(t *testing.T) {
 	}
 }
 
+func TestContinueListeningNeedsAnAudiobooksLibrary(t *testing.T) {
+	h := newHousehold(t)
+	if !slices.Contains(rowIDs(h.layout(h.admin)), "continueListening") {
+		t.Error("the admin, who sees audiobooks, has no Continue Listening row")
+	}
+	if got := rowIDs(h.layout(h.friend)); slices.Contains(got, "continueListening") {
+		t.Errorf("the friend, who sees no audiobooks library, has one: %v", got)
+	}
+}
+
 func TestHomeRowsArrange(t *testing.T) {
 	h := newHousehold(t)
 	us := users.New(h.b.DB, events.NewBus())

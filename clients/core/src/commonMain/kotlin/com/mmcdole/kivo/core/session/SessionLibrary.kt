@@ -95,16 +95,16 @@ class SessionLibrary internal constructor(
     /** The user's lists, My List first, read again as they change. */
     fun lists(): Flow<Load<List<WorkList>>> = reachability.load(listWorks.lists())
 
-    /** The first page of a list's works, [limit] long or the server's page, most recently added first. */
-    fun listWorks(listId: String, limit: Int?): Flow<Load<WorkSummaryPage>> =
-        reachability.load(listWorks.works(listId, limit).onEach { seen.read(it.items) })
+    /** The first page of a list's works of [kinds], or every kind when null, [limit] long or the server's page, most recently added first. */
+    fun listWorks(listId: String, limit: Int?, kinds: List<String>?): Flow<Load<WorkSummaryPage>> =
+        reachability.load(listWorks.works(listId, limit, kinds).onEach { seen.read(it.items) })
 
-    /** A list's works as a grid, most recently added first, read again in place as they change. */
-    fun pagedListWorks(listId: String): GridPager<WorkSummary> = paged(
-        "list $listId",
+    /** A list's works of [kinds], or every kind when null, as a grid, most recently added first, read again in place as they change. */
+    fun pagedListWorks(listId: String, kinds: List<String>?): GridPager<WorkSummary> = paged(
+        "list $listId $kinds",
         listWorks.changes(),
         seen::read,
-    ) { offset, limit -> listWorks.page(listId, offset, limit).let { GridPage(it.items, it.total, it.letters) } }
+    ) { offset, limit -> listWorks.page(listId, offset, limit, kinds).let { GridPage(it.items, it.total, it.letters) } }
 
     @Throws(Exception::class)
     suspend fun createList(name: String): WorkList = listWorks.create(name)

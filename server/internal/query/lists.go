@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
+	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/users"
 )
@@ -25,6 +26,7 @@ FROM list_work lw
 JOIN work w ON w.id = lw.work_id
 LEFT JOIN user_state us ON us.user_id = @user AND us.work_id = w.id
 WHERE lw.list_id = @list
+  AND (@kinds IS NULL OR w.kind IN (SELECT value FROM json_each(@kinds)))
   AND `+visible+`
 ORDER BY lw.added_at DESC, w.sort_title, w.id
 LIMIT @limit OFFSET @offset`)
@@ -34,6 +36,7 @@ SELECT count(*)
 FROM list_work lw
 JOIN work w ON w.id = lw.work_id
 WHERE lw.list_id = @list
+  AND (@kinds IS NULL OR w.kind IN (SELECT value FROM json_each(@kinds)))
   AND `+visible)
 
 // listSelect reads the user's lists with how many of their works the
@@ -87,8 +90,9 @@ func (s *Service) List(ctx context.Context, v users.Viewer, list id.ID) (List, e
 	return out, err
 }
 
-// ListWorks returns a page of a list's works, most recently added first.
-func (s *Service) ListWorks(ctx context.Context, v users.Viewer, list id.ID, o GridOptions) (GridPage[WorkSummary], error) {
+// ListWorks returns a page of a list's works, most recently added first:
+// those of kinds, or every kind when kinds is empty.
+func (s *Service) ListWorks(ctx context.Context, v users.Viewer, list id.ID, kinds []catalog.WorkKind, o GridOptions) (GridPage[WorkSummary], error) {
 	limit, err := o.limit()
 	if err != nil {
 		return GridPage[WorkSummary]{}, err
@@ -101,11 +105,11 @@ func (s *Service) ListWorks(ctx context.Context, v users.Viewer, list id.ID, o G
 		if err := rowOf(ctx, tx, listOwner, vw.args(sql.Named("list", list)), &owner); err != nil {
 			return notFound(err)
 		}
-		if err := rowOf(ctx, tx, listWorksCount, vw.args(sql.Named("list", list)), &total); err != nil {
+		if err := rowOf(ctx, tx, listWorksCount, vw.args(sql.Named("list", list), sql.Named("kinds", set(kinds))), &total); err != nil {
 			return err
 		}
 		var err error
-		items, err = summaries(ctx, tx, listWorksPage, vw.args(sql.Named("list", list),
+		items, err = summaries(ctx, tx, listWorksPage, vw.args(sql.Named("list", list), sql.Named("kinds", set(kinds)),
 			sql.Named("offset", o.Offset), sql.Named("limit", limit)))
 		return err
 	})

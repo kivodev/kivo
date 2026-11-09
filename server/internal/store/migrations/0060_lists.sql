@@ -32,6 +32,3 @@ CREATE TABLE list_work (
 ) STRICT, WITHOUT ROWID;
 CREATE INDEX list_work_list ON list_work (list_id, added_at DESC);
 CREATE INDEX list_work_work ON list_work (work_id);
-
--- users ----------------------------------------------------------------------
-DELETE FROM user_home_row WHERE row_id = 'favorites';

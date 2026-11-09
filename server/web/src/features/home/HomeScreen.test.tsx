@@ -235,4 +235,13 @@ describe("Home", () => {
     expect(await screen.findByRole("heading", { name: "Continue Watching" })).toBeInTheDocument();
     expect(screen.queryByText(/Scanning/)).not.toBeInTheDocument();
   });
+
+  it("says Home is empty, with a way to Settings, when every row is hidden", async () => {
+    serveMockApi((api) => {
+      api.home = { rows: [], allHidden: true };
+    });
+    renderApp("/");
+    expect(await screen.findByRole("heading", { name: "Your Home is empty" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Home & libraries" })).toHaveAttribute("href", "/settings#libraries");
+  });
 });
