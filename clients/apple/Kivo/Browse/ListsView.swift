@@ -63,11 +63,11 @@ struct ListsView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    Button(String(localized: "New List")) {
+                    Button(String(localized: "New List"), systemImage: "list.bullet") {
                         newName = ""
                         naming = true
                     }
-                    Button(String(localized: "New Smart List")) { buildingSmart = true }
+                    Button(String(localized: "New Smart List"), systemImage: "sparkles") { buildingSmart = true }
                 } label: {
                     SwiftUI.Label(String(localized: "New"), systemImage: "plus")
                 }
@@ -226,8 +226,8 @@ private struct ListRow: View {
             HStack(spacing: KivoTokens.spacing * 3) {
                 Group {
                     if list.workCount == 0 {
-                        Image(systemName: "list.bullet")
-                            .foregroundStyle(palette.textMuted)
+                        Image(systemName: list.isSmart ? "sparkles" : "list.bullet")
+                            .foregroundStyle(list.isSmart ? palette.accent : palette.textMuted)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .background(palette.placeholder, in: RoundedRectangle(cornerRadius: KivoTokens.Radius.sm))
                             .accessibilityHidden(true)

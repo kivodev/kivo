@@ -63,8 +63,14 @@ export function ListsScreen() {
               <Button size="sm" variant="ghost" aria-label={t`Create`}>
                 <Icon name="plus" className="size-5" />
               </Button>
-              <MenuItem onAction={() => setCreating("list")}>{t`New List`}</MenuItem>
-              <MenuItem onAction={() => setCreating("smart")}>{t`New Smart List`}</MenuItem>
+              <MenuItem textValue={t`New List`} onAction={() => setCreating("list")}>
+                <Icon name="list" className="size-4" />
+                {t`New List`}
+              </MenuItem>
+              <MenuItem textValue={t`New Smart List`} onAction={() => setCreating("smart")}>
+                <Icon name="sparkle" className="size-4 text-accent" />
+                {t`New Smart List`}
+              </MenuItem>
             </Menu>
           )}
         </div>
@@ -86,7 +92,13 @@ export function ListsScreen() {
                 <LibraryRow
                   key={list.id}
                   link={{ to: "/lists/$listId", params: { listId: list.id } }}
-                  icon={<Icon name="list" className="size-5" />}
+                  icon={
+                    list.kind === "smart" ? (
+                      <Icon name="sparkle" className="size-5 text-accent" />
+                    ) : (
+                      <Icon name="list" className="size-5" />
+                    )
+                  }
                   name={list.name}
                   count={list.kind === "smart" ? undefined : list.workCount}
                   detail={
@@ -141,7 +153,7 @@ function SmartListRow({ list }: { list: WorkList }) {
   return (
     <LibraryRow
       link={{ to: "/lists/$listId", params: { listId: list.id } }}
-      icon={<Icon name="list" className="size-5" />}
+      icon={<Icon name="sparkle" className="size-5 text-accent" />}
       name={list.name}
       detail={t`${kinds}, ${count}`}
       focusKey={`list:${list.id}`}

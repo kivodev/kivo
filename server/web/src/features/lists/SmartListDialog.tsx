@@ -30,10 +30,10 @@ import { countOfKinds, type SmartLabels, useSmartLabels } from "./smartLabels";
 import {
   blankGroup,
   blankRule,
-  emptyRule,
   type Draft,
   type DraftRule,
   draftOf,
+  emptyRule,
   isDurationOp,
   queryOf,
   refusal,

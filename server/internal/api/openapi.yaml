@@ -5101,6 +5101,9 @@ components:
           $ref: "#/components/schemas/ListRef"
           description: For `list`, the list.
         shown: {type: boolean}
+        smart:
+          type: boolean
+          description: Whether the row is a smart list's.
 
     HomeRowInfoList:
       type: object

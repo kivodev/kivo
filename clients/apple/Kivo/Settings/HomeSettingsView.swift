@@ -7,6 +7,7 @@ import SwiftUI
 /// read of the rows.
 struct HomeSettingsView: View {
     @Environment(ServerModel.self) private var server
+    @Environment(\.kivoPalette) private var palette
     /// Every row of Home, in order.
     @State private var rows: [HomeRowInfo] = []
     @State private var failure: String?
@@ -15,6 +16,8 @@ struct HomeSettingsView: View {
     @State private var rowsFailure: RequestProblem?
     @State private var rowsAttempt = 0
 
+    private static let symbols = ["continueWatching": "play", "continueListening": "headphones", "recentlyAdded": "clock"]
+
     var body: some View {
         List {
             Section {
@@ -22,11 +25,15 @@ struct HomeSettingsView: View {
                     Toggle(isOn: Binding(
                         get: { row.shown },
                         set: { shown in
-                            rows = rows.map { $0.id == row.id ? HomeRowInfo(id: $0.id, kind: $0.kind, shown: shown, library: $0.library, list: $0.list) : $0 }
+                            rows = rows.map { $0.id == row.id ? HomeRowInfo(id: $0.id, kind: $0.kind, shown: shown, library: $0.library, list: $0.list, smart: $0.smart) : $0 }
                             save()
                         }
                     )) {
-                        Text(homeRowTitle(kind: row.kind, libraryName: row.library?.name, listName: row.list?.name))
+                        Label {
+                            Text(homeRowTitle(kind: row.kind, libraryName: row.library?.name, listName: row.list?.name))
+                        } icon: {
+                            icon(of: row)
+                        }
                     }
                 }
                 .onMove { from, to in
@@ -63,6 +70,15 @@ struct HomeSettingsView: View {
                     rowsFailure = problem
                 }
             }
+        }
+    }
+
+    /// A row's icon: what kind of row it is, a smart list's in the accent.
+    @ViewBuilder private func icon(of row: HomeRowInfo) -> some View {
+        if row.smart?.boolValue == true {
+            Image(systemName: "sparkles").foregroundStyle(palette.accent)
+        } else {
+            Image(systemName: Self.symbols[row.kind] ?? "list.bullet").foregroundStyle(palette.textMuted)
         }
     }
 

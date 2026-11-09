@@ -3114,6 +3114,9 @@ type HomeRowInfo struct {
 	// List For `list`, the list.
 	List  *ListRef `json:"list,omitempty"`
 	Shown bool     `json:"shown"`
+
+	// Smart Whether the row is a smart list's.
+	Smart *bool `json:"smart,omitempty"`
 }
 
 // HomeRowInfoList defines model for HomeRowInfoList.

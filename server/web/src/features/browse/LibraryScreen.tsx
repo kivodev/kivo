@@ -244,6 +244,7 @@ export function LibraryScreen() {
               </HeaderFocusable>
               {!isTv && tab === "library" && chips.some((chip) => chip.key !== "matchState") && (
                 <Button size="sm" variant="ghost" onPress={() => setSaving(true)}>
+                  <Icon name="sparkle" className="size-4 text-accent" />
                   <Trans>Save as Smart List</Trans>
                 </Button>
               )}

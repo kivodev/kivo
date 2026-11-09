@@ -2,6 +2,7 @@ import { useLingui } from "@lingui/react/macro";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import type { Rule, WorkField, WorkQuery } from "@/api/schemas";
 import { workQueryQueries } from "@/api/workQuery";
+import { Icon } from "@/components/Icon";
 import { countOfKinds, useSmartLabels } from "./smartLabels";
 import { isDurationOp, refusal, rulesOf, typedValue } from "./smartQuery";
 
@@ -62,5 +63,10 @@ export function SmartSummary({ query, count }: { query: WorkQuery; count: number
   });
   const clauses = [...describeAll(query.where?.rules), ...groups];
   const noun = countOfKinds(count, query.kinds);
-  return <>{clauses.length > 0 ? t`${noun}. ${clauses.join(", ")}` : noun}</>;
+  return (
+    <>
+      <Icon name="sparkle" className="mr-1.5 inline size-4 align-text-bottom text-accent" />
+      {clauses.length > 0 ? t`${noun}. ${clauses.join(", ")}` : noun}
+    </>
+  );
 }

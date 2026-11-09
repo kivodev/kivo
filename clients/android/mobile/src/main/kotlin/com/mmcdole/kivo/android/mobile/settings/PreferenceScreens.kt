@@ -8,6 +8,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
+import com.mmcdole.kivo.api.models.HomeRowInfo
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Headphones
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
@@ -274,12 +280,26 @@ fun HomeSettingsScreen(session: ServerSession, nav: MobileNav) {
                 tag = "show:${row.id}",
                 canMoveUp = index > 0,
                 canMoveDown = index < rows.lastIndex,
+                icon = { HomeRowIcon(row) },
                 onCheck = { model.show(row.id, it) },
                 onMove = { model.moveRow(row.id, it) },
             )
         }
         item { SettingRow(stringResource(R.string.mobile_reset_home), "resetHome", onClick = model::resetHome) }
         state.failure?.let { item { FailureRow(stringResource(R.string.mobile_couldnt_save, it), model::retry) } }
+    }
+}
+
+/** A row's icon: what kind of row it is, a smart list's in the accent. */
+@Composable
+private fun HomeRowIcon(row: HomeRowInfo) {
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    when {
+        row.smart == true -> Icon(Icons.Default.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary)
+        row.kind == "continueWatching" -> Icon(Icons.Default.PlayArrow, null, tint = muted)
+        row.kind == "continueListening" -> Icon(Icons.Default.Headphones, null, tint = muted)
+        row.kind == "recentlyAdded" -> Icon(Icons.Default.Schedule, null, tint = muted)
+        else -> Icon(Icons.AutoMirrored.Filled.List, null, tint = muted)
     }
 }
 

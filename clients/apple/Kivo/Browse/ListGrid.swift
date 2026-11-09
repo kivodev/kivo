@@ -41,12 +41,17 @@ struct ListGrid: View {
             let layout = GridLayout(width: geometry.size.width, style: .poster, scrubber: false, wide: wide)
             ScrollView {
                 if let line = smartLine {
-                    Text(line)
-                        .font(.subheadline)
-                        .foregroundStyle(palette.textMuted)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, layout.insets.leading)
-                        .accessibilityIdentifier("smart-list-summary")
+                    HStack(alignment: .firstTextBaseline, spacing: KivoTokens.spacing * 1.5) {
+                        Image(systemName: "sparkles")
+                            .foregroundStyle(palette.accent)
+                            .accessibilityHidden(true)
+                        Text(line)
+                            .foregroundStyle(palette.textMuted)
+                            .accessibilityIdentifier("smart-list-summary")
+                    }
+                    .font(.subheadline)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, layout.insets.leading)
                 }
                 SkeletonGate(loaded: model.total != nil || model.failure != nil || server.unreachable) {
                     if let failure = model.failure {

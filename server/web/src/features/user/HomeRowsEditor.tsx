@@ -13,6 +13,22 @@ type Props = {
   onChange: (rows: HomeRowInfo[]) => void;
 };
 
+const rowIcons = {
+  continueWatching: "play",
+  continueListening: "headphones",
+  recentlyAdded: "clock",
+  list: "list",
+} as const;
+
+/** A row's icon: what kind of row it is, a smart list's in the accent. */
+function RowIcon({ row }: { row: HomeRowInfo }) {
+  return row.smart ? (
+    <Icon name="sparkle" className="size-5 shrink-0 text-accent" />
+  ) : (
+    <Icon name={rowIcons[row.kind]} className="size-5 shrink-0 text-text-muted" />
+  );
+}
+
 /**
  * Home's rows in order, as a settings card, each with a switch to show it.
  * Drag a row by its handle to reorder them; dragging works from the keyboard
@@ -60,6 +76,7 @@ export function HomeRowOrder({ rows, onChange }: Props) {
             >
               <Icon name="grip" className="size-4" />
             </RacButton>
+            <RowIcon row={row} />
             <span className={`flex-1 truncate font-medium ${row.shown ? "text-text" : "text-text-muted"}`}>{name}</span>
             <Switch
               aria-label={t`Shown: ${name}`}
@@ -87,7 +104,15 @@ export function HomeRowsTv({ rows, onChange }: Props) {
       {rows.map((row, index) => {
         const name = title(row);
         return (
-          <SettingsRow key={row.id} label={name}>
+          <SettingsRow
+            key={row.id}
+            label={
+              <span className="flex items-center gap-3">
+                <RowIcon row={row} />
+                {name}
+              </span>
+            }
+          >
             <span className="flex items-center gap-2">
               <TvControl focusKey={`home-row:${row.id}:up`}>
                 <Button

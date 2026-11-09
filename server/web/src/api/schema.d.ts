@@ -3658,6 +3658,8 @@ export interface components {
             /** @description For `list`, the list. */
             list?: components["schemas"]["ListRef"];
             shown: boolean;
+            /** @description Whether the row is a smart list's. */
+            smart?: boolean;
         };
         HomeRowInfoList: {
             items: components["schemas"]["HomeRowInfo"][];

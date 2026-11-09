@@ -264,6 +264,9 @@ func arrange(rows []HomeRowInfo, states map[string]rowState) []HomeRowInfo {
 	return rows
 }
 
+// IsSmart says whether the row is a smart list's.
+func (r HomeRowInfo) IsSmart() bool { return r.smart != nil }
+
 // layout returns every row of the user's Home in order, shown or not.
 func layout(ctx context.Context, tx *sql.Tx, vw viewer) ([]HomeRowInfo, error) {
 	libs, err := rowsOf(ctx, tx, homeLibraries, vw.args(), func(r scanner, l *Library) error {

@@ -3487,7 +3487,8 @@ GET /api/v1/home/rows
     {
       "id": "continueWatching",
       "kind": "continueWatching",
-      "shown": true
+      "shown": true,
+      "smart": false
     },
     {
       "id": "list:<id45>",
@@ -3496,7 +3497,8 @@ GET /api/v1/home/rows
         "id": "<id45>",
         "name": "My List"
       },
-      "shown": true
+      "shown": true,
+      "smart": false
     },
     {
       "id": "recentlyAdded:<id1>",
@@ -3506,12 +3508,14 @@ GET /api/v1/home/rows
         "kind": "movies",
         "name": "Seeded Films"
       },
-      "shown": true
+      "shown": true,
+      "smart": false
     },
     {
       "id": "continueListening",
       "kind": "continueListening",
-      "shown": true
+      "shown": true,
+      "smart": false
     },
     {
       "id": "recentlyAdded:<id4>",
@@ -3521,7 +3525,8 @@ GET /api/v1/home/rows
         "kind": "audiobooks",
         "name": "audiobooks 3"
       },
-      "shown": true
+      "shown": true,
+      "smart": false
     }
   ]
 }
@@ -3534,7 +3539,8 @@ PATCH /api/v1/home/rows
     {
       "id": "continueWatching",
       "kind": "continueWatching",
-      "shown": false
+      "shown": false,
+      "smart": false
     },
     {
       "id": "list:<id45>",
@@ -3543,7 +3549,8 @@ PATCH /api/v1/home/rows
         "id": "<id45>",
         "name": "My List"
       },
-      "shown": true
+      "shown": true,
+      "smart": false
     },
     {
       "id": "recentlyAdded:<id1>",
@@ -3553,12 +3560,14 @@ PATCH /api/v1/home/rows
         "kind": "movies",
         "name": "Seeded Films"
       },
-      "shown": true
+      "shown": true,
+      "smart": false
     },
     {
       "id": "continueListening",
       "kind": "continueListening",
-      "shown": true
+      "shown": true,
+      "smart": false
     },
     {
       "id": "recentlyAdded:<id4>",
@@ -3568,7 +3577,8 @@ PATCH /api/v1/home/rows
         "kind": "audiobooks",
         "name": "audiobooks 3"
       },
-      "shown": true
+      "shown": true,
+      "smart": false
     }
   ]
 }
@@ -3581,7 +3591,8 @@ POST /api/v1/home/rows/reset
     {
       "id": "continueWatching",
       "kind": "continueWatching",
-      "shown": true
+      "shown": true,
+      "smart": false
     },
     {
       "id": "list:<id45>",
@@ -3590,7 +3601,8 @@ POST /api/v1/home/rows/reset
         "id": "<id45>",
         "name": "My List"
       },
-      "shown": true
+      "shown": true,
+      "smart": false
     },
     {
       "id": "recentlyAdded:<id1>",
@@ -3600,12 +3612,14 @@ POST /api/v1/home/rows/reset
         "kind": "movies",
         "name": "Seeded Films"
       },
-      "shown": true
+      "shown": true,
+      "smart": false
     },
     {
       "id": "continueListening",
       "kind": "continueListening",
-      "shown": true
+      "shown": true,
+      "smart": false
     },
     {
       "id": "recentlyAdded:<id4>",
@@ -3615,7 +3629,8 @@ POST /api/v1/home/rows/reset
         "kind": "audiobooks",
         "name": "audiobooks 3"
       },
-      "shown": true
+      "shown": true,
+      "smart": false
     }
   ]
 }

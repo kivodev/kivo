@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -413,7 +414,10 @@ private fun FilterSheet(state: LibraryUiState, onQuery: (GridQuery) -> Unit, onC
                         onSaveSmart()
                     },
                     modifier = Modifier.testTag("saveAsSmartList"),
-                ) { Text(stringResource(R.string.mobile_smart_save_as)) }
+                ) {
+                    Icon(Icons.Default.AutoAwesome, null, Modifier.size(18.dp).padding(end = space(1)), tint = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(R.string.mobile_smart_save_as))
+                }
             }
         }
     }

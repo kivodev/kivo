@@ -332,7 +332,7 @@ struct LibraryView: View {
             if model.query.filtered {
                 Section {
                     Button(String(localized: "Clear filters"), systemImage: "xmark.circle", action: model.clearFilters)
-                    Button(String(localized: "Save as Smart List"), systemImage: "text.badge.plus") { savingAsSmartList = true }
+                    Button(String(localized: "Save as Smart List"), systemImage: "sparkles") { savingAsSmartList = true }
                 }
             }
         } label: {

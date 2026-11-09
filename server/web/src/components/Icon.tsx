@@ -53,6 +53,10 @@ const paths = {
   fileLines: "M6 3h8l4 4v14H6zM14 3v4h4M9 12h6M9 16h6",
   download: "M12 4v11M7 10l5 5 5-5M5 20h14",
   clock: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 3",
+  headphones:
+    "M4 15v-3a8 8 0 0 1 16 0v3M4 15a2 2 0 0 1 2-2h1v7H6a2 2 0 0 1-2-2zM20 15a2 2 0 0 0-2-2h-1v7h1a2 2 0 0 0 2-2z",
+  sparkle:
+    "M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z",
   chip: "M7 7h10v10H7zM9 3v4M15 3v4M9 17v4M15 17v4M3 9h4M3 15h4M17 9h4M17 15h4",
   screen: "M3 5h18v12H3zM10 8.5l5 2.5-5 2.5zM8 21h8",
   settings:

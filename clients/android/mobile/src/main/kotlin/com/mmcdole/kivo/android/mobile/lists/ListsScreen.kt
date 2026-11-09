@@ -6,8 +6,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
@@ -16,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -27,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
@@ -166,8 +166,8 @@ private fun NewListMenu(onNewList: () -> Unit, onNewSmart: () -> Unit) {
             Icon(Icons.Default.Add, stringResource(R.string.mobile_new_list_menu))
         }
         DropdownMenu(open, onDismissRequest = { open = false }) {
-            DropdownMenuItem(text = { Text(stringResource(R.string.mobile_new_list)) }, onClick = { open = false; onNewList() }, modifier = Modifier.testTag("newList"))
-            DropdownMenuItem(text = { Text(stringResource(R.string.mobile_smart_new)) }, onClick = { open = false; onNewSmart() }, modifier = Modifier.testTag("newSmartList"))
+            DropdownMenuItem(text = { Text(stringResource(R.string.mobile_new_list)) }, onClick = { open = false; onNewList() }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.List, null) }, modifier = Modifier.testTag("newList"))
+            DropdownMenuItem(text = { Text(stringResource(R.string.mobile_smart_new)) }, onClick = { open = false; onNewSmart() }, leadingIcon = { Icon(Icons.Default.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary) }, modifier = Modifier.testTag("newSmartList"))
         }
     }
 }
@@ -263,7 +263,6 @@ private fun smartDetail(list: WorkList): String =
     stringResource(R.string.mobile_smart_list_detail, kindsPhrase(list.smart?.query?.kinds.orEmpty()), list.workCount)
 
 /** A headed group of [lists], each with its first cover, name and [detail]; a wide window has them as a grid of cards. */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ListsSection(title: String, lists: List<WorkList>, library: SessionLibrary, nav: MobileNav, modifier: Modifier, detail: @Composable (WorkList) -> String) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(space(2))) {
@@ -277,10 +276,14 @@ private fun ListsSection(title: String, lists: List<WorkList>, library: SessionL
                 val gap = space(3)
                 val columns = ((maxWidth + gap) / (ListCardMinWidth + gap)).toInt().coerceIn(2, 3)
                 val cardWidth = (maxWidth - gap * (columns - 1)) / columns
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(gap), verticalArrangement = Arrangement.spacedBy(gap)) {
-                    for (list in lists) {
-                        Box(Modifier.width(cardWidth).fillMaxRowHeight().clip(GroupCorners).background(MaterialTheme.colorScheme.surfaceContainerHigh)) {
-                            ListCard(list, library, nav, detail)
+                Column(verticalArrangement = Arrangement.spacedBy(gap)) {
+                    for (row in lists.chunked(columns)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                            for (list in row) {
+                                Box(Modifier.width(cardWidth).clip(GroupCorners).background(MaterialTheme.colorScheme.surfaceContainerHigh)) {
+                                    ListCard(list, library, nav, detail)
+                                }
+                            }
                         }
                     }
                 }
@@ -302,7 +305,8 @@ private fun ListCard(list: WorkList, library: SessionLibrary, nav: MobileNav, de
     ListItem(
         headlineContent = { Text(list.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         leadingContent = { FirstCover(library, list) },
-        supportingContent = { Text(detail(list)) },
+        // One line in a wide window, so a row of cards is even.
+        supportingContent = { Text(detail(list), maxLines = if (LocalWide.current) 1 else Int.MAX_VALUE, overflow = TextOverflow.Ellipsis) },
         trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         modifier = Modifier.clickable { nav.open(ListRoute(list.id, list.name)) }.testTag("list:${list.name}"),
@@ -315,7 +319,11 @@ private fun FirstCover(library: SessionLibrary, list: WorkList) {
     val shape = Modifier.width(FirstCoverWidth).aspectRatio(CardShape.Poster.aspect).clip(CardCorners)
     if (list.workCount == 0) {
         Box(shape.background(LocalKivo.current.placeholder), contentAlignment = Alignment.Center) {
-            Icon(Icons.AutoMirrored.Filled.List, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (list.smart != null) {
+                Icon(Icons.Default.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary)
+            } else {
+                Icon(Icons.AutoMirrored.Filled.List, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     } else {
         val load by remember(list.id) { library.listWorks(list.id, 1, null) }.collectAsStateWithLifecycle(Load.Loading)
@@ -431,12 +439,15 @@ fun ListScreen(session: ServerSession, id: String, name: String, nav: MobileNav)
 private fun SmartListLine(query: WorkQuery, total: Int, words: SmartRulesWords?) {
     val count = smartCount(total, query.kinds)
     val rules = words?.let { rulesSummary(query, it.fields, it.names) }.orEmpty()
-    Text(
-        if (rules.isEmpty()) count else stringResource(R.string.mobile_smart_count_rules, count, rules),
-        Modifier.fillMaxWidth().padding(horizontal = space(4)).testTag("smartListSummary"),
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
+    Row(Modifier.fillMaxWidth().padding(horizontal = space(4)), horizontalArrangement = Arrangement.spacedBy(space(2))) {
+        Icon(Icons.Default.AutoAwesome, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+        Text(
+            if (rules.isEmpty()) count else stringResource(R.string.mobile_smart_count_rules, count, rules),
+            Modifier.testTag("smartListSummary"),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
 }
 
 /** Why a list shows nothing: rules that no longer run, rules matching nothing, or nothing added. */

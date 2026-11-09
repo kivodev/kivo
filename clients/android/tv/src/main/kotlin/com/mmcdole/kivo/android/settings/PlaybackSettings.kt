@@ -31,6 +31,7 @@ import com.mmcdole.kivo.android.theme.TvType
 import com.mmcdole.kivo.android.ui.Choice
 import com.mmcdole.kivo.android.ui.IconButton
 import com.mmcdole.kivo.android.ui.KivoIcon
+import com.mmcdole.kivo.android.ui.KivoIconView
 import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.android.ui.FocusMemory
@@ -386,17 +387,31 @@ private fun OrderedRow(
     canMoveUp: Boolean,
     canMoveDown: Boolean,
     failed: FailedSave?,
+    leading: (@Composable () -> Unit)? = null,
     onCheck: (Boolean) -> Unit,
     onMove: (Int) -> Unit,
 ) {
     Column {
         Row(Modifier.settingWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Kivo.space(2))) {
-            Toggle(name, checked, Modifier.weight(1f).focusKey(memory, "pin/$key"), onChange = onCheck)
+            Toggle(name, checked, Modifier.weight(1f).focusKey(memory, "pin/$key"), leading = leading, onChange = onCheck)
             IconButton(KivoIcon.ChevronUp, stringResource(R.string.move_up), { onMove(-1) }, Modifier.focusKey(memory, "up/$key"), enabled = canMoveUp)
             IconButton(KivoIcon.ChevronDown, stringResource(R.string.move_down), { onMove(1) }, Modifier.focusKey(memory, "down/$key"), enabled = canMoveDown)
         }
         SaveFailed(failed)
     }
+}
+
+/** A row's icon: what kind of row it is, a smart list's in the accent. */
+@Composable
+private fun HomeRowIcon(row: HomeRowInfo) {
+    val icon = when {
+        row.smart == true -> KivoIcon.Sparkle
+        row.kind == "continueWatching" -> KivoIcon.Play
+        row.kind == "continueListening" -> KivoIcon.Headphones
+        row.kind == "recentlyAdded" -> KivoIcon.Clock
+        else -> KivoIcon.List
+    }
+    KivoIconView(icon, tint = if (row.smart == true) Kivo.colors.accent else Kivo.colors.textMuted)
 }
 
 /** Home, on all the user's devices: the rows the TV shows, in order, each shown or not, then Reset Home. */
@@ -420,6 +435,7 @@ internal fun HomePage(session: ServerSession) {
                     canMoveUp = index > 0,
                     canMoveDown = index < rows.lastIndex,
                     failed = rowModel.saves.on("show/${row.id}") ?: rowModel.saves.on("rowmove/${row.id}"),
+                    leading = { HomeRowIcon(row) },
                     onCheck = { rowModel.show(row.id, it) },
                     onMove = { rowModel.move(row.id, it) },
                 )

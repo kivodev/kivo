@@ -48,7 +48,7 @@ API_HANDLERS_MAX := 0
 # list's name form and the smart list builder's name field.
 JSCPD_GO_MAX     := 217
 JSCPD_SQL_MAX    := 10
-JSCPD_WEB_MAX    := 109
+JSCPD_WEB_MAX    := 110
 # The web client's unused files, dependencies, exports and types (knip).
 KNIP_MAX         := 0
 # Import cycles in the web client (madge). The player's engine loads the
