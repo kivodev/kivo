@@ -152,7 +152,7 @@ private struct DownloadGlyph: View {
                 Image(systemName: "arrow.down.circle")
                     .accessibilityLabel(Text("Download"))
             case .ready:
-                Image(systemName: "checkmark.circle.fill")
+                Image(systemName: "arrow.down.circle.fill")
                     .accessibilityLabel(Text("Downloaded"))
             case .failed:
                 Image(systemName: "exclamationmark.circle")

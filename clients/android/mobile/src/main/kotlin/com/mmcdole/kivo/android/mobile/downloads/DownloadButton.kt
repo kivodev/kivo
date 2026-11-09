@@ -18,9 +18,9 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.DownloadForOffline
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Refresh
@@ -143,7 +143,7 @@ private fun Glyph(state: DownloadUiState) {
     when {
         item == null && state.asking -> DownloadRing(0f, dashed = true, size = 22.dp, modifier = Modifier.testTag("asking"))
         item == null -> Icon(Icons.Default.Download, null)
-        item.status == DownloadStatus.Ready -> Icon(Icons.Default.CheckCircle, stringResource(R.string.mobile_downloaded), tint = MaterialTheme.colorScheme.primary)
+        item.status == DownloadStatus.Ready -> Icon(Icons.Default.DownloadForOffline, stringResource(R.string.mobile_downloaded), tint = MaterialTheme.colorScheme.primary)
         item.status is DownloadStatus.Failed -> Icon(Icons.Default.ErrorOutline, stringResource(R.string.mobile_download_failed), tint = MaterialTheme.colorScheme.error)
         progress != null -> ProgressRing(
             progress,
@@ -267,7 +267,7 @@ fun DownloadBadge(state: DownloadUiState) {
         horizontalArrangement = Arrangement.spacedBy(space(1)),
     ) {
         val tint = if (failed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
-        Icon(if (item.status == DownloadStatus.Ready) Icons.Default.CheckCircle else Icons.Default.Download, null, Modifier.size(16.dp), tint = tint)
+        Icon(if (item.status == DownloadStatus.Ready) Icons.Default.DownloadForOffline else Icons.Default.Download, null, Modifier.size(16.dp), tint = tint)
         Text(downloadBadge(item), style = MaterialTheme.typography.labelMedium, color = tint)
     }
 }
