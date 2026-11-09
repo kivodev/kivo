@@ -1281,6 +1281,24 @@ func (e ResyncMessageType) Valid() bool {
 	}
 }
 
+// Defines values for RuleGroupMatch.
+const (
+	RuleGroupMatchAll RuleGroupMatch = "all"
+	RuleGroupMatchAny RuleGroupMatch = "any"
+)
+
+// Valid indicates whether the value is a known member of the RuleGroupMatch enum.
+func (e RuleGroupMatch) Valid() bool {
+	switch e {
+	case RuleGroupMatchAll:
+		return true
+	case RuleGroupMatchAny:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ScanStep.
 const (
 	ScanStepIdentify ScanStep = "identify"
@@ -1329,6 +1347,24 @@ const (
 func (e SnapshotMessageType) Valid() bool {
 	switch e {
 	case SnapshotMessageTypeSnapshot:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SortKeyDirection.
+const (
+	SortKeyDirectionAsc  SortKeyDirection = "asc"
+	SortKeyDirectionDesc SortKeyDirection = "desc"
+)
+
+// Valid indicates whether the value is a known member of the SortKeyDirection enum.
+func (e SortKeyDirection) Valid() bool {
+	switch e {
+	case SortKeyDirectionAsc:
+		return true
+	case SortKeyDirectionDesc:
 		return true
 	default:
 		return false
@@ -1665,6 +1701,72 @@ func (e TranscodeState) Valid() bool {
 	}
 }
 
+// Defines values for WorkFieldDefaultDirection.
+const (
+	WorkFieldDefaultDirectionAsc  WorkFieldDefaultDirection = "asc"
+	WorkFieldDefaultDirectionDesc WorkFieldDefaultDirection = "desc"
+)
+
+// Valid indicates whether the value is a known member of the WorkFieldDefaultDirection enum.
+func (e WorkFieldDefaultDirection) Valid() bool {
+	switch e {
+	case WorkFieldDefaultDirectionAsc:
+		return true
+	case WorkFieldDefaultDirectionDesc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WorkFieldType.
+const (
+	WorkFieldTypeChoice WorkFieldType = "choice"
+	WorkFieldTypeDate   WorkFieldType = "date"
+	WorkFieldTypeNumber WorkFieldType = "number"
+	WorkFieldTypePerson WorkFieldType = "person"
+	WorkFieldTypeSet    WorkFieldType = "set"
+	WorkFieldTypeText   WorkFieldType = "text"
+)
+
+// Valid indicates whether the value is a known member of the WorkFieldType enum.
+func (e WorkFieldType) Valid() bool {
+	switch e {
+	case WorkFieldTypeChoice:
+		return true
+	case WorkFieldTypeDate:
+		return true
+	case WorkFieldTypeNumber:
+		return true
+	case WorkFieldTypePerson:
+		return true
+	case WorkFieldTypeSet:
+		return true
+	case WorkFieldTypeText:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WorkFieldValueSource.
+const (
+	WorkFieldValueSourceInline WorkFieldValueSource = "inline"
+	WorkFieldValueSourceSearch WorkFieldValueSource = "search"
+)
+
+// Valid indicates whether the value is a known member of the WorkFieldValueSource enum.
+func (e WorkFieldValueSource) Valid() bool {
+	switch e {
+	case WorkFieldValueSourceInline:
+		return true
+	case WorkFieldValueSourceSearch:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for WorkKind.
 const (
 	WorkKindBook    WorkKind = "book"
@@ -1692,6 +1794,21 @@ func (e WorkKind) Valid() bool {
 	case WorkKindSeries:
 		return true
 	case WorkKindVideo:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for WorkQueryCollapse.
+const (
+	WorkQueryCollapseSeries WorkQueryCollapse = "series"
+)
+
+// Valid indicates whether the value is a known member of the WorkQueryCollapse enum.
+func (e WorkQueryCollapse) Valid() bool {
+	switch e {
+	case WorkQueryCollapseSeries:
 		return true
 	default:
 		return false
@@ -4174,6 +4291,23 @@ type ResyncMessage struct {
 // ResyncMessageType defines model for ResyncMessage.Type.
 type ResyncMessageType string
 
+// Rule defines model for Rule.
+type Rule struct {
+	Field  string    `json:"field"`
+	Op     string    `json:"op"`
+	Values *[]string `json:"values,omitempty"`
+}
+
+// RuleGroup At least one rule or group. The root may hold groups; a group may hold rules only.
+type RuleGroup struct {
+	Groups *[]RuleGroup   `json:"groups,omitempty"`
+	Match  RuleGroupMatch `json:"match"`
+	Rules  *[]Rule        `json:"rules,omitempty"`
+}
+
+// RuleGroupMatch defines model for RuleGroup.Match.
+type RuleGroupMatch string
+
 // ScanProgress The step a library's scan is on, and how far it's got.
 type ScanProgress struct {
 	Done int `json:"done"`
@@ -4498,6 +4632,15 @@ type SnapshotMessage struct {
 
 // SnapshotMessageType defines model for SnapshotMessage.Type.
 type SnapshotMessageType string
+
+// SortKey A sortable field, or `random`, which must be the only key.
+type SortKey struct {
+	Direction *SortKeyDirection `json:"direction,omitempty"`
+	Field     string            `json:"field"`
+}
+
+// SortKeyDirection defines model for SortKey.Direction.
+type SortKeyDirection string
 
 // SubtitleEntry A subtitle codec a client shows, and how. The server converts a
 // text subtitle to a text codec listed for a delivery. In the stream
@@ -5093,6 +5236,57 @@ type WorkDetail struct {
 	Versions []Version `json:"versions"`
 }
 
+// WorkField defines model for WorkField.
+type WorkField struct {
+	DefaultDirection *WorkFieldDefaultDirection `json:"defaultDirection,omitempty"`
+	Field            string                     `json:"field"`
+	Kinds            []WorkKind                 `json:"kinds"`
+
+	// Name The field's English name; clients translate `field` and fall back to this.
+	Name     string        `json:"name"`
+	Ops      []WorkFieldOp `json:"ops"`
+	Sortable bool          `json:"sortable"`
+
+	// Type What the field's values are. Skip types you don't know.
+	Type WorkFieldType `json:"type"`
+	Unit *string       `json:"unit,omitempty"`
+
+	// ValueSource Whether the field's values are few, `inline`, or found with `search`.
+	ValueSource *WorkFieldValueSource `json:"valueSource,omitempty"`
+}
+
+// WorkFieldDefaultDirection defines model for WorkField.DefaultDirection.
+type WorkFieldDefaultDirection string
+
+// WorkFieldType What the field's values are. Skip types you don't know.
+type WorkFieldType string
+
+// WorkFieldValueSource Whether the field's values are few, `inline`, or found with `search`.
+type WorkFieldValueSource string
+
+// WorkFieldList defines model for WorkFieldList.
+type WorkFieldList struct {
+	Items []WorkField `json:"items"`
+}
+
+// WorkFieldOp defines model for WorkFieldOp.
+type WorkFieldOp struct {
+	// Arity How many values it takes, or -1 for one or more.
+	Arity int    `json:"arity"`
+	Op    string `json:"op"`
+}
+
+// WorkFieldValue defines model for WorkFieldValue.
+type WorkFieldValue struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+// WorkFieldValueList defines model for WorkFieldValueList.
+type WorkFieldValueList struct {
+	Items []WorkFieldValue `json:"items"`
+}
+
 // WorkImages defines model for WorkImages.
 type WorkImages struct {
 	// Backdrop Fetch with `GET /api/v1/images/{id}?width=…`.
@@ -5131,6 +5325,39 @@ type WorkList struct {
 // WorkListList defines model for WorkListList.
 type WorkListList struct {
 	Items []WorkList `json:"items"`
+}
+
+// WorkQuery Which works a query selects. `version` is written by the server;
+// leave it out, and a newer one is refused. `extra` isn't a kind that
+// can be asked for. Values of a rule are in the form its field's
+// type takes: a date `YYYY-MM-DD`, a duration such as `P30D`, an ID
+// as a UUID, or a name.
+type WorkQuery struct {
+	// Collapse `series` keeps the first work of each show under the sort.
+	Collapse *WorkQueryCollapse `json:"collapse,omitempty"`
+	Kinds    []WorkKind         `json:"kinds"`
+	MaxWorks *int               `json:"maxWorks,omitempty"`
+	Sort     *[]SortKey         `json:"sort,omitempty"`
+	Version  *int               `json:"version,omitempty"`
+
+	// Where At least one rule or group. The root may hold groups; a group may hold rules only.
+	Where *RuleGroup `json:"where,omitempty"`
+}
+
+// WorkQueryCollapse `series` keeps the first work of each show under the sort.
+type WorkQueryCollapse string
+
+// WorkQueryRequest defines model for WorkQueryRequest.
+type WorkQueryRequest struct {
+	Limit  *int `json:"limit,omitempty"`
+	Offset *int `json:"offset,omitempty"`
+
+	// Query Which works a query selects. `version` is written by the server;
+	// leave it out, and a newer one is refused. `extra` isn't a kind that
+	// can be asked for. Values of a rule are in the form its field's
+	// type takes: a date `YYYY-MM-DD`, a duration such as `P30D`, an ID
+	// as a UUID, or a name.
+	Query WorkQuery `json:"query"`
 }
 
 // WorkSort The order of a library's grid (`listLibraryWorks`).
@@ -5568,6 +5795,12 @@ type ListCurrentUserPlayEventsParams struct {
 	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
+// ListWorkFieldValuesParams defines parameters for ListWorkFieldValues.
+type ListWorkFieldValuesParams struct {
+	Q   *string   `form:"q,omitempty" json:"q,omitempty"`
+	Ids *[]string `form:"ids,omitempty" json:"ids,omitempty"`
+}
+
 // ListWorkArtworkParams defines parameters for ListWorkArtwork.
 type ListWorkArtworkParams struct {
 	Type *ArtworkType `form:"type,omitempty" json:"type,omitempty"`
@@ -5691,6 +5924,9 @@ type SetUserPasswordJSONRequestBody = PasswordChange
 
 // UpdateWorksJSONRequestBody defines body for UpdateWorks for application/json ContentType.
 type UpdateWorksJSONRequestBody = WorksUpdate
+
+// QueryWorksJSONRequestBody defines body for QueryWorks for application/json ContentType.
+type QueryWorksJSONRequestBody = WorkQueryRequest
 
 // UpdateWorkJSONRequestBody defines body for UpdateWork for application/json ContentType.
 type UpdateWorkJSONRequestBody = WorkUpdate
@@ -6197,9 +6433,18 @@ type ServerInterface interface {
 	// SetUserPassword Set user password
 	// (POST /api/v1/users/{id}/set-password)
 	SetUserPassword(w http.ResponseWriter, r *http.Request, id ID)
+	// ListWorkFields List the fields rules can use
+	// (GET /api/v1/work-fields)
+	ListWorkFields(w http.ResponseWriter, r *http.Request)
+	// ListWorkFieldValues List a field's values
+	// (GET /api/v1/work-fields/{field}/values)
+	ListWorkFieldValues(w http.ResponseWriter, r *http.Request, field string, params ListWorkFieldValuesParams)
 	// UpdateWorks Update books
 	// (PATCH /api/v1/works)
 	UpdateWorks(w http.ResponseWriter, r *http.Request)
+	// QueryWorks Run a work query
+	// (POST /api/v1/works/query)
+	QueryWorks(w http.ResponseWriter, r *http.Request)
 	// GetWork Get work
 	// (GET /api/v1/works/{id})
 	GetWork(w http.ResponseWriter, r *http.Request, id ID)
@@ -9141,11 +9386,94 @@ func (siw *ServerInterfaceWrapper) SetUserPassword(w http.ResponseWriter, r *htt
 	handler.ServeHTTP(w, r)
 }
 
+// ListWorkFields operation middleware
+func (siw *ServerInterfaceWrapper) ListWorkFields(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListWorkFields(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListWorkFieldValues operation middleware
+func (siw *ServerInterfaceWrapper) ListWorkFieldValues(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "field" -------------
+	var field string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "field", r.PathValue("field"), &field, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "field", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListWorkFieldValuesParams
+
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", r.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "q"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "ids" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "ids", r.URL.Query(), &params.Ids, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "ids"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ids", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListWorkFieldValues(w, r, field, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // UpdateWorks operation middleware
 func (siw *ServerInterfaceWrapper) UpdateWorks(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateWorks(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// QueryWorks operation middleware
+func (siw *ServerInterfaceWrapper) QueryWorks(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.QueryWorks(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -9775,6 +10103,9 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/lists/{id}/works", wrapper.AddListWork)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/api/v1/lists/{id}/works/{workId}", wrapper.RemoveListWork)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/api/v1/works", wrapper.UpdateWorks)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/works/query", wrapper.QueryWorks)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/work-fields", wrapper.ListWorkFields)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/work-fields/{field}/values", wrapper.ListWorkFieldValues)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/works/{id}", wrapper.GetWork)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/api/v1/works/{id}", wrapper.UpdateWork)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/works/{id}/children", wrapper.ListWorkChildren)
@@ -18631,6 +18962,148 @@ func (response SetUserPassworddefaultApplicationProblemPlusJSONResponse) VisitSe
 	return err
 }
 
+type ListWorkFieldsRequestObject struct {
+}
+
+type ListWorkFieldsResponseObject interface {
+	VisitListWorkFieldsResponse(w http.ResponseWriter) error
+}
+
+type ListWorkFields200JSONResponse WorkFieldList
+
+func (response ListWorkFields200JSONResponse) VisitListWorkFieldsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListWorkFields401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response ListWorkFields401ApplicationProblemPlusJSONResponse) VisitListWorkFieldsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListWorkFieldsdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ListWorkFieldsdefaultApplicationProblemPlusJSONResponse) VisitListWorkFieldsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListWorkFieldValuesRequestObject struct {
+	Field  string `json:"field"`
+	Params ListWorkFieldValuesParams
+}
+
+type ListWorkFieldValuesResponseObject interface {
+	VisitListWorkFieldValuesResponse(w http.ResponseWriter) error
+}
+
+type ListWorkFieldValues200JSONResponse WorkFieldValueList
+
+func (response ListWorkFieldValues200JSONResponse) VisitListWorkFieldValuesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListWorkFieldValues400ApplicationProblemPlusJSONResponse struct {
+	BadRequestApplicationProblemPlusJSONResponse
+}
+
+func (response ListWorkFieldValues400ApplicationProblemPlusJSONResponse) VisitListWorkFieldValuesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListWorkFieldValues401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response ListWorkFieldValues401ApplicationProblemPlusJSONResponse) VisitListWorkFieldValuesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListWorkFieldValues404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response ListWorkFieldValues404ApplicationProblemPlusJSONResponse) VisitListWorkFieldValuesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListWorkFieldValuesdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response ListWorkFieldValuesdefaultApplicationProblemPlusJSONResponse) VisitListWorkFieldValuesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type UpdateWorksRequestObject struct {
 	Body *UpdateWorksJSONRequestBody
 }
@@ -18723,6 +19196,77 @@ type UpdateWorksdefaultApplicationProblemPlusJSONResponse struct {
 }
 
 func (response UpdateWorksdefaultApplicationProblemPlusJSONResponse) VisitUpdateWorksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type QueryWorksRequestObject struct {
+	Body *QueryWorksJSONRequestBody
+}
+
+type QueryWorksResponseObject interface {
+	VisitQueryWorksResponse(w http.ResponseWriter) error
+}
+
+type QueryWorks200JSONResponse WorkSummaryPage
+
+func (response QueryWorks200JSONResponse) VisitQueryWorksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type QueryWorks400ApplicationProblemPlusJSONResponse struct {
+	BadRequestApplicationProblemPlusJSONResponse
+}
+
+func (response QueryWorks400ApplicationProblemPlusJSONResponse) VisitQueryWorksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type QueryWorks401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response QueryWorks401ApplicationProblemPlusJSONResponse) VisitQueryWorksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type QueryWorksdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response QueryWorksdefaultApplicationProblemPlusJSONResponse) VisitQueryWorksResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
@@ -20317,9 +20861,18 @@ type StrictServerInterface interface {
 	// SetUserPassword Set user password
 	// (POST /api/v1/users/{id}/set-password)
 	SetUserPassword(ctx context.Context, request SetUserPasswordRequestObject) (SetUserPasswordResponseObject, error)
+	// ListWorkFields List the fields rules can use
+	// (GET /api/v1/work-fields)
+	ListWorkFields(ctx context.Context, request ListWorkFieldsRequestObject) (ListWorkFieldsResponseObject, error)
+	// ListWorkFieldValues List a field's values
+	// (GET /api/v1/work-fields/{field}/values)
+	ListWorkFieldValues(ctx context.Context, request ListWorkFieldValuesRequestObject) (ListWorkFieldValuesResponseObject, error)
 	// UpdateWorks Update books
 	// (PATCH /api/v1/works)
 	UpdateWorks(ctx context.Context, request UpdateWorksRequestObject) (UpdateWorksResponseObject, error)
+	// QueryWorks Run a work query
+	// (POST /api/v1/works/query)
+	QueryWorks(ctx context.Context, request QueryWorksRequestObject) (QueryWorksResponseObject, error)
 	// GetWork Get work
 	// (GET /api/v1/works/{id})
 	GetWork(ctx context.Context, request GetWorkRequestObject) (GetWorkResponseObject, error)
@@ -23332,6 +23885,57 @@ func (sh *strictHandler) SetUserPassword(w http.ResponseWriter, r *http.Request,
 	}
 }
 
+// ListWorkFields operation middleware
+func (sh *strictHandler) ListWorkFields(w http.ResponseWriter, r *http.Request) {
+	var request ListWorkFieldsRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListWorkFields(ctx, request.(ListWorkFieldsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListWorkFields")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListWorkFieldsResponseObject); ok {
+		if err := validResponse.VisitListWorkFieldsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListWorkFieldValues operation middleware
+func (sh *strictHandler) ListWorkFieldValues(w http.ResponseWriter, r *http.Request, field string, params ListWorkFieldValuesParams) {
+	var request ListWorkFieldValuesRequestObject
+
+	request.Field = field
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListWorkFieldValues(ctx, request.(ListWorkFieldValuesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListWorkFieldValues")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListWorkFieldValuesResponseObject); ok {
+		if err := validResponse.VisitListWorkFieldValuesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // UpdateWorks operation middleware
 func (sh *strictHandler) UpdateWorks(w http.ResponseWriter, r *http.Request) {
 	var request UpdateWorksRequestObject
@@ -23356,6 +23960,37 @@ func (sh *strictHandler) UpdateWorks(w http.ResponseWriter, r *http.Request) {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateWorksResponseObject); ok {
 		if err := validResponse.VisitUpdateWorksResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// QueryWorks operation middleware
+func (sh *strictHandler) QueryWorks(w http.ResponseWriter, r *http.Request) {
+	var request QueryWorksRequestObject
+
+	var body QueryWorksJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.QueryWorks(ctx, request.(QueryWorksRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "QueryWorks")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(QueryWorksResponseObject); ok {
+		if err := validResponse.VisitQueryWorksResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

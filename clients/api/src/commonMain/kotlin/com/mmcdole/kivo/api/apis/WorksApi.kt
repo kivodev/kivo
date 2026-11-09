@@ -44,8 +44,11 @@ import com.mmcdole.kivo.api.models.SearchResults
 import com.mmcdole.kivo.api.models.UserState
 import com.mmcdole.kivo.api.models.UserStateUpdate
 import com.mmcdole.kivo.api.models.WorkDetail
+import com.mmcdole.kivo.api.models.WorkFieldList
+import com.mmcdole.kivo.api.models.WorkFieldValueList
 import com.mmcdole.kivo.api.models.WorkList
 import com.mmcdole.kivo.api.models.WorkListList
+import com.mmcdole.kivo.api.models.WorkQueryRequest
 import com.mmcdole.kivo.api.models.WorkSummaryFeed
 import com.mmcdole.kivo.api.models.WorkSummaryList
 import com.mmcdole.kivo.api.models.WorkSummaryPage
@@ -620,6 +623,75 @@ open class WorksApi : ApiClient {
 
 
     /**
+     * List a field&#39;s values
+     * The values the caller can see for a field, for building a rule: those matching &#x60;q&#x60;, or with &#x60;ids&#x60; those values&#39; names. A field with no values to choose from returns none. 
+     * @param `field` 
+     * @param q  (optional)
+     * @param ids  (optional)
+     * @return WorkFieldValueList
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun listWorkFieldValues(`field`: kotlin.String, q: kotlin.String? = null, ids: kotlin.collections.List<kotlin.String>? = null): HttpResponse<WorkFieldValueList> {
+
+        val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        q?.apply { localVariableQuery["q"] = listOf("$q") }
+        ids?.apply { localVariableQuery["ids"] = toMultiValue(this, "multi") }
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/api/v1/work-fields/{field}/values".replace("{" + "field" + "}", "$`field`"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
+     * List the fields rules can use
+     * Every field a &#x60;WorkQuery&#x60; rule or sort key can name, with its operators.
+     * @return WorkFieldList
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun listWorkFields(): HttpResponse<WorkFieldList> {
+
+        val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/api/v1/work-fields",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
      * Search matches
      * The provider search behind Fix match and a book&#39;s Match. Searches the providers for the work&#39;s kind (movies for a movie, series for a series or episode, Audible&#39;s books for a book), best first. Without &#x60;query&#x60;, the work&#39;s parsed title and year are used, and for a book its title and first author. A query of the form &#x60;tmdb-438631&#x60; or &#x60;tvdb-81189&#x60;, or for a book an ASIN (&#x60;B08G9PRS1K&#x60;), looks that ID up directly. A book is searched for in Audible&#39;s store for its library&#39;s content rating country. This is the one request that calls a provider; it gives up after 10 seconds with &#x60;503&#x60; and code &#x60;providerUnavailable&#x60;. 
      * @param id 
@@ -680,6 +752,39 @@ open class WorksApi : ApiClient {
         val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.POST,
             "/api/v1/works/{id}/match".replace("{" + "id" + "}", "$id"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return jsonRequest(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+
+    /**
+     * Run a work query
+     * Runs a &#x60;WorkQuery&#x60; once, as the caller: their library access and parental limits apply to every query. A grid, paged by &#x60;offset&#x60;, with &#x60;total&#x60; on every page; &#x60;maxWorks&#x60; caps it, and &#x60;collapse&#x60; counts one card per show. An invalid query is &#x60;400&#x60; with &#x60;invalidRequest&#x60;, and &#x60;errors&#x60; holds a JSON pointer per problem, such as &#x60;/query/where/groups/0/rules/2/op&#x60;. 
+     * @param workQueryRequest 
+     * @return WorkSummaryPage
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun queryWorks(workQueryRequest: WorkQueryRequest): HttpResponse<WorkSummaryPage> {
+
+        val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
+
+        val localVariableBody = workQueryRequest
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.POST,
+            "/api/v1/works/query",
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,

@@ -266,6 +266,56 @@ GET /api/v1/lists
 }
 
 
+POST /api/v1/works/query
+200
+{
+  "items": [
+    {
+      "addedAt": "<time>",
+      "available": true,
+      "durationMs": 7200000,
+      "id": "<id2>",
+      "images": {},
+      "kind": "movie",
+      "libraryId": "<id1>",
+      "matchState": "matched",
+      "title": "Heatwave Seeded",
+      "userState": {
+        "playCount": 0,
+        "played": false
+      },
+      "year": 1995
+    }
+  ],
+  "total": 1
+}
+
+
+POST /api/v1/works/query
+400
+{
+  "code": "invalidRequest",
+  "detail": "invalid query",
+  "errors": [
+    {
+      "code": "invalid",
+      "field": "/query/where/rules/0/field"
+    }
+  ],
+  "requestId": "<request>",
+  "status": 400,
+  "title": "Bad Request",
+  "type": "about:blank"
+}
+
+
+GET /api/v1/work-fields/contentRating/values
+200
+{
+  "items": []
+}
+
+
 GET /api/v1/works/<id2>
 200
 {

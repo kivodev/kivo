@@ -20,6 +20,10 @@ func init() {
 		if err != nil {
 			return err
 		}
+		err = c.CreateFunction("fold", 1, sqlite3.DETERMINISTIC|sqlite3.INNOCUOUS, foldFunc)
+		if err != nil {
+			return err
+		}
 		return fts5.RegisterCustom(c, func(api *fts5.API) error {
 			return api.CreateFunction("match_rank", matchRankFunc)
 		})
@@ -35,6 +39,16 @@ func sha256Func(ctx sqlite3.Context, arg ...sqlite3.Value) {
 		h.Write(a.RawBlob())
 	}
 	ctx.ResultBlob(h.Sum(nil))
+}
+
+// foldFunc is the SQL function fold(text): its argument with case and
+// diacritics removed. NULL stays NULL.
+func foldFunc(ctx sqlite3.Context, arg ...sqlite3.Value) {
+	if arg[0].Type() == sqlite3.NULL {
+		ctx.ResultNull()
+		return
+	}
+	ctx.ResultText(fold(arg[0].Text()))
 }
 
 // matchRankFunc is the FTS5 auxiliary function match_rank(table, text,

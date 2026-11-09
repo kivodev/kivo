@@ -1205,6 +1205,73 @@ export interface paths {
         patch: operations["updateWorks"];
         trace?: never;
     };
+    "/api/v1/works/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run a work query
+         * @description Runs a `WorkQuery` once, as the caller: their library access and
+         *     parental limits apply to every query. A grid, paged by `offset`,
+         *     with `total` on every page; `maxWorks` caps it, and `collapse`
+         *     counts one card per show. An invalid query is `400` with
+         *     `invalidRequest`, and `errors` holds a JSON pointer per problem,
+         *     such as `/query/where/groups/0/rules/2/op`.
+         */
+        post: operations["queryWorks"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the fields rules can use
+         * @description Every field a `WorkQuery` rule or sort key can name, with its operators.
+         */
+        get: operations["listWorkFields"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-fields/{field}/values": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List a field's values
+         * @description The values the caller can see for a field, for building a rule:
+         *     those matching `q`, or with `ids` those values' names. A field with
+         *     no values to choose from returns none.
+         */
+        get: operations["listWorkFieldValues"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/works/{id}": {
         parameters: {
             query?: never;
@@ -3591,6 +3658,84 @@ export interface components {
         HomeRowChange: {
             id: string;
             shown: boolean;
+        };
+        WorkQueryRequest: {
+            query: components["schemas"]["WorkQuery"];
+            offset?: number;
+            limit?: number;
+        };
+        /**
+         * @description Which works a query selects. `version` is written by the server;
+         *     leave it out, and a newer one is refused. `extra` isn't a kind that
+         *     can be asked for. Values of a rule are in the form its field's
+         *     type takes: a date `YYYY-MM-DD`, a duration such as `P30D`, an ID
+         *     as a UUID, or a name.
+         */
+        WorkQuery: {
+            version?: number;
+            kinds: components["schemas"]["WorkKind"][];
+            where?: components["schemas"]["RuleGroup"];
+            sort?: components["schemas"]["SortKey"][];
+            maxWorks?: number;
+            /**
+             * @description `series` keeps the first work of each show under the sort.
+             * @enum {string}
+             */
+            collapse?: "series";
+        };
+        /** @description At least one rule or group. The root may hold groups; a group may hold rules only. */
+        RuleGroup: {
+            /** @enum {string} */
+            match: "all" | "any";
+            rules?: components["schemas"]["Rule"][];
+            groups?: components["schemas"]["RuleGroup"][];
+        };
+        Rule: {
+            field: string;
+            op: string;
+            values?: string[];
+        };
+        /** @description A sortable field, or `random`, which must be the only key. */
+        SortKey: {
+            field: string;
+            /** @enum {string} */
+            direction?: "asc" | "desc";
+        };
+        WorkField: {
+            field: string;
+            /** @description The field's English name; clients translate `field` and fall back to this. */
+            name: string;
+            /**
+             * @description What the field's values are. Skip types you don't know.
+             * @enum {string}
+             */
+            type: "choice" | "set" | "person" | "number" | "date" | "text";
+            ops: components["schemas"]["WorkFieldOp"][];
+            kinds: components["schemas"]["WorkKind"][];
+            sortable: boolean;
+            /** @enum {string} */
+            defaultDirection?: "asc" | "desc";
+            unit?: string;
+            /**
+             * @description Whether the field's values are few, `inline`, or found with `search`.
+             * @enum {string}
+             */
+            valueSource?: "inline" | "search";
+        };
+        WorkFieldOp: {
+            op: string;
+            /** @description How many values it takes, or -1 for one or more. */
+            arity: number;
+        };
+        WorkFieldList: {
+            items: components["schemas"]["WorkField"][];
+        };
+        WorkFieldValue: {
+            value: string;
+            name: string;
+        };
+        WorkFieldValueList: {
+            items: components["schemas"]["WorkFieldValue"][];
         };
         /** @description A list as a Home row names it. */
         ListRef: {
@@ -7545,6 +7690,84 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Error"];
+        };
+    };
+    queryWorks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkQueryRequest"];
+            };
+        };
+        responses: {
+            /** @description A page of summaries. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkSummaryPage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Error"];
+        };
+    };
+    listWorkFields: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The fields. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkFieldList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Error"];
+        };
+    };
+    listWorkFieldValues: {
+        parameters: {
+            query?: {
+                q?: string;
+                ids?: string[];
+            };
+            header?: never;
+            path: {
+                field: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The values. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkFieldValueList"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
             default: components["responses"]["Error"];
         };

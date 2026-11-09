@@ -203,6 +203,51 @@ func TestMigrationLists(t *testing.T) {
 	}
 }
 
+// 0061 stores each work's release date as its earliest day, for the grid's
+// release sort.
+func TestMigrationReleaseKey(t *testing.T) {
+	ctx := context.Background()
+	db, path := testDB(t, through(t, "_lists.sql"))
+	err := db.Write(ctx, func(ctx context.Context, tx *Tx) error {
+		_, err := tx.ExecContext(ctx, `
+			INSERT INTO library (id, name, kind, created_at) VALUES (x'b1', 'Movies', 'movies', 1);
+			INSERT INTO work (id, kind, root_id, title, sort_title, year, release_date, added_at) VALUES
+				(x'01', 'movie', x'01', 'Full', 'Full', 2010, '2010-05-09', 1),
+				(x'02', 'movie', x'02', 'Partial', 'Partial', 2011, '2011-03', 1),
+				(x'03', 'movie', x'03', 'Year', 'Year', 2012, NULL, 1),
+				(x'04', 'movie', x'04', 'None', 'None', NULL, NULL, 1);
+			INSERT INTO work_library (library_id, work_id, is_root, sort_title, added_at) VALUES
+				(x'b1', x'01', 1, 'Full', 1), (x'b1', x'02', 1, 'Partial', 1),
+				(x'b1', x'03', 1, 'Year', 1), (x'b1', x'04', 1, 'None', 1);`)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+	up, err := open(ctx, path, embeddedMigrations(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer up.Close()
+	rows, err := up.Reader().QueryContext(ctx, `SELECT release_key FROM work_library ORDER BY work_id`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	var got []string
+	for rows.Next() {
+		var k string
+		if err := rows.Scan(&k); err != nil {
+			t.Fatal(err)
+		}
+		got = append(got, k)
+	}
+	if want := []string{"2010-05-09", "2011-03-01", "2012-01-01", ""}; !slices.Equal(got, want) {
+		t.Errorf("release keys %q, want %q", got, want)
+	}
+}
+
 // 0057 makes the problem codes problemRaised events keep camelCase, in
 // their codes and their problems' IDs, and leaves other events and codes
 // as they were.

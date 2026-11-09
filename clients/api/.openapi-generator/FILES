@@ -167,6 +167,8 @@ src/commonMain/kotlin/com/mmcdole/kivo/api/models/Problem.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/QualityRequest.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/QualityRung.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/ResyncMessage.kt
+src/commonMain/kotlin/com/mmcdole/kivo/api/models/Rule.kt
+src/commonMain/kotlin/com/mmcdole/kivo/api/models/RuleGroup.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/ScanProgress.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/ScanRequest.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/SearchResults.kt
@@ -184,6 +186,7 @@ src/commonMain/kotlin/com/mmcdole/kivo/api/models/Settings.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/SettingsUpdate.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/SetupState.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/SnapshotMessage.kt
+src/commonMain/kotlin/com/mmcdole/kivo/api/models/SortKey.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/SubtitleEntry.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/SubtitleResult.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/SubtitleResultList.kt
@@ -210,9 +213,16 @@ src/commonMain/kotlin/com/mmcdole/kivo/api/models/VersionPart.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/VideoEntry.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/VideoTrackInfo.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/WorkDetail.kt
+src/commonMain/kotlin/com/mmcdole/kivo/api/models/WorkField.kt
+src/commonMain/kotlin/com/mmcdole/kivo/api/models/WorkFieldList.kt
+src/commonMain/kotlin/com/mmcdole/kivo/api/models/WorkFieldOp.kt
+src/commonMain/kotlin/com/mmcdole/kivo/api/models/WorkFieldValue.kt
+src/commonMain/kotlin/com/mmcdole/kivo/api/models/WorkFieldValueList.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/WorkImages.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/WorkList.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/WorkListList.kt
+src/commonMain/kotlin/com/mmcdole/kivo/api/models/WorkQuery.kt
+src/commonMain/kotlin/com/mmcdole/kivo/api/models/WorkQueryRequest.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/WorkSummary.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/WorkSummaryFeed.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/WorkSummaryList.kt
