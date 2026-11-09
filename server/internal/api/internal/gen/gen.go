@@ -3114,9 +3114,6 @@ type HomeRowInfo struct {
 	// List For `list`, the list.
 	List  *ListRef `json:"list,omitempty"`
 	Shown bool     `json:"shown"`
-
-	// Smart Whether the row is a smart list's.
-	Smart *bool `json:"smart,omitempty"`
 }
 
 // HomeRowInfoList defines model for HomeRowInfoList.
@@ -3447,8 +3444,11 @@ type ListKind string
 // ListRef A list as a Home row names it.
 type ListRef struct {
 	// ID A UUIDv7.
-	ID   ID     `json:"id"`
-	Name string `json:"name"`
+	ID ID `json:"id"`
+
+	// Kind What a list is. `manual` is works the user added; `smart` is the works rules select. Skip kinds you don't know.
+	Kind ListKind `json:"kind"`
+	Name string   `json:"name"`
 }
 
 // ListUpdate defines model for ListUpdate.
@@ -5329,7 +5329,7 @@ type WorkList struct {
 	// pointing at what's wrong, returns an empty page and is off Home.
 	Smart *WorkListSmart `json:"smart,omitempty"`
 
-	// WorkCount Works in the list the user sees.
+	// WorkCount Works in the list the user sees. A smart list's is 0 in `listLists` without `counts`.
 	WorkCount int `json:"workCount"`
 }
 
@@ -5730,6 +5730,12 @@ type ListLibraryWorksParams struct {
 
 	// Limit Page size. The default and the most a page holds depend on the listing.
 	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// ListListsParams defines parameters for ListLists.
+type ListListsParams struct {
+	// Counts Count each smart list by running its rules; without it a smart list's `workCount` is 0.
+	Counts *bool `form:"counts,omitempty" json:"counts,omitempty"`
 }
 
 // ListListWorksParams defines parameters for ListListWorks.
@@ -6306,7 +6312,7 @@ type ServerInterface interface {
 	ListLibraryWorks(w http.ResponseWriter, r *http.Request, id ID, params ListLibraryWorksParams)
 	// ListLists List the user's lists
 	// (GET /api/v1/lists)
-	ListLists(w http.ResponseWriter, r *http.Request)
+	ListLists(w http.ResponseWriter, r *http.Request, params ListListsParams)
 	// CreateList Create a list
 	// (POST /api/v1/lists)
 	CreateList(w http.ResponseWriter, r *http.Request)
@@ -8080,8 +8086,27 @@ func (siw *ServerInterfaceWrapper) ListLibraryWorks(w http.ResponseWriter, r *ht
 // ListLists operation middleware
 func (siw *ServerInterfaceWrapper) ListLists(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListListsParams
+
+	// ------------- Optional query parameter "counts" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "counts", r.URL.Query(), &params.Counts, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "counts"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "counts", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListLists(w, r)
+		siw.Handler.ListLists(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -14669,6 +14694,7 @@ func (response ListLibraryWorksdefaultApplicationProblemPlusJSONResponse) VisitL
 }
 
 type ListListsRequestObject struct {
+	Params ListListsParams
 }
 
 type ListListsResponseObject interface {
@@ -22486,8 +22512,10 @@ func (sh *strictHandler) ListLibraryWorks(w http.ResponseWriter, r *http.Request
 }
 
 // ListLists operation middleware
-func (sh *strictHandler) ListLists(w http.ResponseWriter, r *http.Request) {
+func (sh *strictHandler) ListLists(w http.ResponseWriter, r *http.Request, params ListListsParams) {
 	var request ListListsRequestObject
+
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.ListLists(ctx, request.(ListListsRequestObject))

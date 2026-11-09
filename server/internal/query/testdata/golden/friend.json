@@ -1620,7 +1620,8 @@
       },
       "List": {
         "ID": "none",
-        "Name": ""
+        "Name": "",
+        "Smart": false
       },
       "Items": [
         {
@@ -1769,7 +1770,8 @@
       },
       "List": {
         "ID": "<id>",
-        "Name": "My List"
+        "Name": "My List",
+        "Smart": false
       },
       "Items": [
         {
@@ -1832,7 +1834,8 @@
       },
       "List": {
         "ID": "none",
-        "Name": ""
+        "Name": "",
+        "Smart": false
       },
       "Items": [
         {
@@ -2119,7 +2122,8 @@
       },
       "List": {
         "ID": "none",
-        "Name": ""
+        "Name": "",
+        "Smart": false
       },
       "Items": [
         {

@@ -87,7 +87,6 @@ private val SideMargin = 16.dp
 fun HomeScreen(session: ServerSession, nav: MobileNav) {
     val model = viewModel { HomeViewModel(session.session) }
     val state by model.state.collectAsStateWithLifecycle()
-    val manualListIds by model.manualListIds.collectAsStateWithLifecycle()
     val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
         modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
@@ -118,7 +117,7 @@ fun HomeScreen(session: ServerSession, nav: MobileNav) {
                         }
                     } else {
                         WorkMenuHost({ action, menu -> nav.handle(action, menu, model.marks) }) { openMenu ->
-                            Rows(rows, manualListIds, nav, openMenu)
+                            Rows(rows, nav, openMenu)
                         }
                     }
                 }
@@ -128,7 +127,7 @@ fun HomeScreen(session: ServerSession, nav: MobileNav) {
 }
 
 @Composable
-private fun Rows(rows: List<HomeRowUi>, manualListIds: Set<String>, nav: MobileNav, openMenu: (WorkMenu) -> Unit) {
+private fun Rows(rows: List<HomeRowUi>, nav: MobileNav, openMenu: (WorkMenu) -> Unit) {
     LazyColumn(
         Modifier.fillMaxSize().testTag("homeRows"),
         contentPadding = PaddingValues(bottom = space(6)),
@@ -156,7 +155,7 @@ private fun Rows(rows: List<HomeRowUi>, manualListIds: Set<String>, nav: MobileN
                             shape = shape,
                             width = rowCardWidth(shape),
                             onClick = { nav.openWork(work) },
-                            onLongClick = { openMenu(WorkMenu(work, row.kind, row.list?.takeIf { it.id in manualListIds })) },
+                            onLongClick = { openMenu(WorkMenu(work, row.kind, row.list?.takeIf { it.kind == "manual" })) },
                         )
                     }
                 }

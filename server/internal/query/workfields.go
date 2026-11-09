@@ -99,9 +99,9 @@ var (
 	// lastPlayedMs is the user's last play: a series' or season's rolls up
 	// its episodes.
 	lastPlayedMs = `CASE w.kind
-    WHEN 'series' THEN (SELECT max(fu.last_played_at) FROM work fe JOIN user_state fu ON fu.work_id = fe.id
+    WHEN 'series' THEN (SELECT max(fu.last_played_at) FROM work fe CROSS JOIN user_state fu ON fu.work_id = fe.id
       WHERE fe.root_id = w.id AND fu.user_id = @user)
-    WHEN 'season' THEN (SELECT max(fu.last_played_at) FROM work fe JOIN user_state fu ON fu.work_id = fe.id
+    WHEN 'season' THEN (SELECT max(fu.last_played_at) FROM work fe CROSS JOIN user_state fu ON fu.work_id = fe.id
       WHERE fe.parent_id = w.id AND fu.user_id = @user)
     ELSE us.last_played_at END`
 	// playState is the user's state: a series' and season's roll up their

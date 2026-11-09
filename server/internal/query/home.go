@@ -55,8 +55,9 @@ type HomeRow struct {
 
 // ListRef is a list as a row names it.
 type ListRef struct {
-	ID   id.ID
-	Name string
+	ID    id.ID
+	Name  string
+	Smart bool
 }
 
 // HomeRowInfo is a row of a user's Home layout, as the editor lists it.
@@ -190,7 +191,7 @@ func defaultRows(libs []Library, lists []List) []HomeRowInfo {
 	}
 	var others []HomeRowInfo
 	for _, l := range lists {
-		row := HomeRowInfo{ID: rowID(RowList, l.ID), Kind: RowList, Shown: l.BuiltIn, List: ListRef{ID: l.ID, Name: l.Name}, smart: l.Smart}
+		row := HomeRowInfo{ID: rowID(RowList, l.ID), Kind: RowList, Shown: l.BuiltIn, List: ListRef{ID: l.ID, Name: l.Name, Smart: l.Smart != nil}, smart: l.Smart}
 		if l.BuiltIn {
 			rows = append(rows, row)
 		} else {
@@ -263,9 +264,6 @@ func arrange(rows []HomeRowInfo, states map[string]rowState) []HomeRowInfo {
 	})
 	return rows
 }
-
-// IsSmart says whether the row is a smart list's.
-func (r HomeRowInfo) IsSmart() bool { return r.smart != nil }
 
 // layout returns every row of the user's Home in order, shown or not.
 func layout(ctx context.Context, tx *sql.Tx, vw viewer) ([]HomeRowInfo, error) {
@@ -412,7 +410,7 @@ func smartRow(ctx context.Context, tx *sql.Tx, vw viewer, r HomeRowInfo) ([]Work
 	}
 	now := time.Now()
 	c := compile(r.smart.Query, vw, now, listSeed(r.List.ID, now), nil)
-	return summaries(ctx, tx, statement{sql: c.sql + compiledPage}, append(slices.Clone(c.args), sql.Named("limit", rowLimit), sql.Named("offset", 0)))
+	return summaries(ctx, tx, statement{sql: c.page}, append(slices.Clone(c.args), sql.Named("limit", rowLimit), sql.Named("offset", 0)))
 }
 
 // bundleSummaries reads the summaries of a library's "Recently Added"

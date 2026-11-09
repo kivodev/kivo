@@ -94,18 +94,26 @@ func parseSmart(stored string) *SmartList {
 	return &SmartList{Query: q, Errors: q.Validate()}
 }
 
-// Lists returns the user's lists, My List first.
+// Lists returns the user's lists, My List first. A smart list's Works is 0:
+// counting it runs its rules, so only CountedLists does.
 func (s *Service) Lists(ctx context.Context, v users.Viewer) ([]List, error) {
 	var out []List
-	vw := viewerOf(v)
 	err := s.db.Read(ctx, func(tx *sql.Tx) error {
 		var err error
-		out, err = rowsOf(ctx, tx, listsOfUser, vw.args(), scanList)
+		out, err = rowsOf(ctx, tx, listsOfUser, viewerOf(v).args(), scanList)
 		return err
 	})
+	return out, err
+}
+
+// CountedLists returns the user's lists with each smart list's count, for
+// the screen that shows them.
+func (s *Service) CountedLists(ctx context.Context, v users.Viewer) ([]List, error) {
+	out, err := s.Lists(ctx, v)
 	if err != nil {
 		return nil, err
 	}
+	vw := viewerOf(v)
 	for i := range out {
 		if err := s.countSmart(ctx, vw, &out[i]); err != nil {
 			return nil, err
@@ -122,7 +130,7 @@ func (s *Service) countSmart(ctx context.Context, vw viewer, l *List) error {
 	now := time.Now()
 	c := compile(l.Smart.Query, vw, now, listSeed(l.ID, now), nil)
 	return s.db.Read(ctx, func(tx *sql.Tx) error {
-		return rowOf(ctx, tx, statement{sql: c.sql + "\n" + compiledCount}, c.args, &l.Works)
+		return rowOf(ctx, tx, statement{sql: c.count}, c.args, &l.Works)
 	})
 }
 

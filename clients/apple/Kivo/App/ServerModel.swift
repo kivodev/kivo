@@ -74,7 +74,7 @@ final class ServerModel {
         cast.stopped = { [weak self] in self?.castStopped() }
         reloadLibraries()
         tasks.append(Task { [weak self, session] in
-            for await load in session.library.lists() {
+            for await load in session.library.lists(counted: false) {
                 if let problem = load.problemOrNull(), !problem.isUnreachable { self?.listsFailure = problem }
                 guard let lists = load.getOrNull() as? [WorkList] else { continue }
                 self?.lists = lists.filter { $0.kind == "manual" || $0.kind == "smart" }

@@ -21,9 +21,9 @@ import kotlinx.coroutines.flow.map
 
 /** The user's lists and the works in them, most recently added first; the live events tell every screen, this app's too. */
 internal class ListsRepository(private val connection: ServerConnection, private val invalidations: Flow<Invalidation>) {
-    /** The user's lists, My List first. */
-    fun lists(): Flow<List<WorkList>> = refreshing(invalidations, ::mayChange) {
-        connection.works.listLists().result().items
+    /** The user's lists, My List first; a smart list's count is 0 unless [counted], which runs its rules. */
+    fun lists(counted: Boolean): Flow<List<WorkList>> = refreshing(invalidations, ::mayChange) {
+        connection.works.listLists(counts = counted.takeIf { it }).result().items
     }
 
     /** The first page of a list's works of [kinds], or every kind when null, [limit] long or the server's page. */

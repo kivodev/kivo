@@ -38,7 +38,7 @@ const listsClass = isTv
 export function ListsScreen() {
   const { t } = useLingui();
   useDocumentTitle(t`Lists`);
-  const read = useQuery(listQueries.all());
+  const read = useQuery(listQueries.counted());
   const lists = read.data?.items;
   const myList = lists?.find((list) => list.builtIn && list.workCount > 0);
   const custom = lists?.filter((list) => !list.builtIn) ?? [];

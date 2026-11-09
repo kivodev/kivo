@@ -171,7 +171,7 @@ describe("Home", () => {
   it("takes a card off a manual list's row, and doesn't offer it on a smart list's", async () => {
     serveMockApi((api) => {
       const row = api.home.rows.find((r) => r.kind === "list");
-      if (row) api.home.rows.push({ ...row, id: `list:${mockIds.sciFi}`, list: { id: mockIds.sciFi, name: "Sci-fi" } });
+      if (row) api.home.rows.push({ ...row, id: `list:${mockIds.sciFi}`, list: { id: mockIds.sciFi, name: "Sci-fi", kind: "smart" } });
     });
     const { user } = renderApp("/");
     await screen.findByRole("heading", { name: "My List" });

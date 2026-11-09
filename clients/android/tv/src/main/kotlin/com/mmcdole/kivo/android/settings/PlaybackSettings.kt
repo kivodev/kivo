@@ -405,13 +405,13 @@ private fun OrderedRow(
 @Composable
 private fun HomeRowIcon(row: HomeRowInfo) {
     val icon = when {
-        row.smart == true -> KivoIcon.Sparkle
+        row.list?.kind == "smart" -> KivoIcon.Sparkle
         row.kind == "continueWatching" -> KivoIcon.Play
         row.kind == "continueListening" -> KivoIcon.Headphones
         row.kind == "recentlyAdded" -> KivoIcon.Clock
         else -> KivoIcon.List
     }
-    KivoIconView(icon, tint = if (row.smart == true) Kivo.colors.accent else Kivo.colors.textMuted)
+    KivoIconView(icon, tint = if (row.list?.kind == "smart") Kivo.colors.accent else Kivo.colors.textMuted)
 }
 
 /** Home, on all the user's devices: the rows the TV shows, in order, each shown or not, then Reset Home. */

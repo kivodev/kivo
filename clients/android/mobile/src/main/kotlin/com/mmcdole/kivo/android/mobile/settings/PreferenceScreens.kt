@@ -295,7 +295,7 @@ fun HomeSettingsScreen(session: ServerSession, nav: MobileNav) {
 private fun HomeRowIcon(row: HomeRowInfo) {
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     when {
-        row.smart == true -> Icon(Icons.Default.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary)
+        row.list?.kind == "smart" -> Icon(Icons.Default.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary)
         row.kind == "continueWatching" -> Icon(Icons.Default.PlayArrow, null, tint = muted)
         row.kind == "continueListening" -> Icon(Icons.Default.Headphones, null, tint = muted)
         row.kind == "recentlyAdded" -> Icon(Icons.Default.Schedule, null, tint = muted)

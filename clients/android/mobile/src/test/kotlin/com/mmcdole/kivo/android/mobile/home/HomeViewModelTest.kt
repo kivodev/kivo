@@ -22,7 +22,7 @@ class HomeViewModelTest : CoreTest() {
     private var rows = listOf(
         HomeRow("continueWatching", "continueWatching", listOf(work("m1"))),
         HomeRow("someday", "aKindFromLater", listOf(work("m2"))),
-        HomeRow("list:gone", "list", emptyList(), list = ListRef("gone", "Gone")),
+        HomeRow("list:gone", "list", emptyList(), list = ListRef("gone", "Gone", "manual")),
         HomeRow("recentlyAdded:lib1", "recentlyAdded", listOf(work("m2"), work("m1")), LibraryRef("lib1", "Movies", "movies")),
     )
 

@@ -277,6 +277,63 @@ func TestSmartLists(t *testing.T) {
 }
 
 // The kind filter narrows the capped set; it doesn't reach past the cap.
+func TestSmartListsCountOnlyWhenAsked(t *testing.T) {
+	h := newHousehold(t)
+	us := users.New(h.b.DB, events.NewBus())
+	list := h.smartList(us, h.admin, "Toys", movies(query.Rule{Field: "title", Op: "contains", Values: []string{"toy"}}))
+	works := func(read func(context.Context, users.Viewer) ([]query.List, error)) int {
+		ls, err := read(ctx, h.admin)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return ls[slices.IndexFunc(ls, func(l query.List) bool { return l.ID == list })].Works
+	}
+	if got := works(h.q.Lists); got != 0 {
+		t.Errorf("Lists counted a smart list: %d", got)
+	}
+	if got := works(h.q.CountedLists); got != 2 {
+		t.Errorf("CountedLists: %d, want 2", got)
+	}
+}
+
+// A query with no cap reads as a capped one does, in the same order and
+// with the same kind filter.
+func TestPlainQueryMatchesACappedOne(t *testing.T) {
+	h := newHousehold(t)
+	h.watch()
+	us := users.New(h.b.DB, events.NewBus())
+	lots := 100000
+	kinds := []catalog.WorkKind{catalog.KindMovie, catalog.KindSeries, catalog.KindEpisode, catalog.KindBook}
+	for _, field := range []string{"title", "addedAt", "year", "rating", "lastPlayedAt", "releaseDate", "random"} {
+		q := query.WorkQuery{Kinds: kinds, Sort: []query.SortKey{{Field: field}}}
+		capped := q
+		capped.MaxWorks = &lots
+		plain, err := h.q.QueryWorks(ctx, h.admin, q, query.GridOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		both, err := h.q.QueryWorks(ctx, h.admin, capped, query.GridOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if field != "random" && (plain.Total != both.Total || !slices.Equal(ids(plain.Items), ids(both.Items))) {
+			t.Errorf("%s: plain %d %v, capped %d %v", field, plain.Total, ids(plain.Items), both.Total, ids(both.Items))
+		}
+		a := h.smartList(us, h.admin, "plain "+field, q)
+		for _, only := range []catalog.WorkKind{catalog.KindMovie, catalog.KindEpisode} {
+			p, err := h.q.ListWorks(ctx, h.admin, a, []catalog.WorkKind{only}, query.GridOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, w := range p.Items {
+				if w.Kind != only {
+					t.Errorf("%s: a %s under the %s filter", field, w.Kind, only)
+				}
+			}
+		}
+	}
+}
+
 func TestSmartListKindFilterKeepsTheCap(t *testing.T) {
 	h := newHousehold(t)
 	us := users.New(h.b.DB, events.NewBus())

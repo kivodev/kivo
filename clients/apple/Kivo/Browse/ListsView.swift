@@ -18,6 +18,8 @@ struct ListsView: View {
     /// Whether the name prompt comes back, with what was typed, once a taken name is said.
     @State private var namingAgain = false
     @State private var buildingSmart = false
+    /// The smart lists with their counts, read only while this tab shows.
+    @State private var counted: [WorkList] = []
 
     private static let cardColumns = [GridItem(.adaptive(minimum: 324), spacing: KivoTokens.Layout.gridGap, alignment: .top)]
 
@@ -43,7 +45,7 @@ struct ListsView: View {
                             }
                         }
                         section(String(localized: "Your Lists"), others)
-                        section(String(localized: "Smart Lists"), smart)
+                        section(String(localized: "Smart Lists"), counted.filter(\.isSmart))
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.top, KivoTokens.spacing * 2)
@@ -84,6 +86,11 @@ struct ListsView: View {
             }
         }
         .sheet(isPresented: $buildingSmart) { SmartListBuilder() }
+        .task {
+            for await load in server.session.library.lists(counted: true) {
+                if let lists = load.getOrNull() as? [WorkList] { counted = lists }
+            }
+        }
     }
 
     /// A headed section of [lists], nothing when there are none.
@@ -147,7 +154,7 @@ extension WorkList {
 
     /// The page a link to the list opens.
     var route: Route {
-        .list(ListRef(id: id, name: name))
+        .list(ListRef(id: id, name: name, kind: kind))
     }
 }
 
@@ -210,7 +217,7 @@ private struct MyListRow: View {
                 BrowseRow(title: list.name, items: works, count: Int(list.workCount)) {
                     server.paths[server.tab, default: []].append(list.route)
                 }
-                .environment(\.currentList, ListRef(id: list.id, name: list.name))
+                .environment(\.currentList, ListRef(id: list.id, name: list.name, kind: list.kind))
             }
         }
     }

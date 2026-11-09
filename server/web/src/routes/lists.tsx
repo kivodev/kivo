@@ -11,7 +11,7 @@ export const listsRoute = createRoute({
   getParentRoute: () => authedRoute,
   path: "/lists",
   loader: ({ context: { queryClient } }) => {
-    void queryClient.prefetchQuery(listQueries.all());
+    void queryClient.prefetchQuery(listQueries.counted());
   },
   pendingComponent: PageSkeleton,
   component: ListsScreen,

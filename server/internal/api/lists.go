@@ -38,8 +38,12 @@ func savedQuery(smart *gen.SmartQuery) (*string, error) {
 	return &saved, nil
 }
 
-func (h *handlers) ListLists(ctx context.Context, _ gen.ListListsRequestObject) (gen.ListListsResponseObject, error) {
-	ls, err := h.deps.Query.Lists(ctx, callerOf(ctx).viewer)
+func (h *handlers) ListLists(ctx context.Context, req gen.ListListsRequestObject) (gen.ListListsResponseObject, error) {
+	read := h.deps.Query.Lists
+	if deref(req.Params.Counts) {
+		read = h.deps.Query.CountedLists
+	}
+	ls, err := read(ctx, callerOf(ctx).viewer)
 	if err != nil {
 		return nil, err
 	}

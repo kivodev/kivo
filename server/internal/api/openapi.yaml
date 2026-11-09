@@ -1636,6 +1636,11 @@ paths:
       description: The user's lists, My List first, then by name.
       tags: [works]
       x-kivo-access: viewer
+      parameters:
+        - name: counts
+          in: query
+          description: Count each smart list by running its rules; without it a smart list's `workCount` is 0.
+          schema: {type: boolean}
       responses:
         "200":
           description: The lists.
@@ -5101,9 +5106,6 @@ components:
           $ref: "#/components/schemas/ListRef"
           description: For `list`, the list.
         shown: {type: boolean}
-        smart:
-          type: boolean
-          description: Whether the row is a smart list's.
 
     HomeRowInfoList:
       type: object
@@ -5270,10 +5272,11 @@ components:
     ListRef:
       type: object
       description: A list as a Home row names it.
-      required: [id, name]
+      required: [id, name, kind]
       properties:
         id: {$ref: "#/components/schemas/ID"}
         name: {type: string}
+        kind: {$ref: "#/components/schemas/ListKind"}
 
     WorkList:
       type: object
@@ -5288,7 +5291,7 @@ components:
           description: My List, which every user has and can't delete or rename.
         workCount:
           type: integer
-          description: Works in the list the user sees.
+          description: Works in the list the user sees. A smart list's is 0 in `listLists` without `counts`.
         smart: {$ref: "#/components/schemas/WorkListSmart"}
 
     ListKind:

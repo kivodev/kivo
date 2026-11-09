@@ -3658,8 +3658,6 @@ export interface components {
             /** @description For `list`, the list. */
             list?: components["schemas"]["ListRef"];
             shown: boolean;
-            /** @description Whether the row is a smart list's. */
-            smart?: boolean;
         };
         HomeRowInfoList: {
             items: components["schemas"]["HomeRowInfo"][];
@@ -3765,6 +3763,7 @@ export interface components {
         ListRef: {
             id: components["schemas"]["ID"];
             name: string;
+            kind: components["schemas"]["ListKind"];
         };
         /** @description A list of works a user keeps. */
         WorkList: {
@@ -3773,7 +3772,7 @@ export interface components {
             kind: components["schemas"]["ListKind"];
             /** @description My List, which every user has and can't delete or rename. */
             builtIn: boolean;
-            /** @description Works in the list the user sees. */
+            /** @description Works in the list the user sees. A smart list's is 0 in `listLists` without `counts`. */
             workCount: number;
             smart?: components["schemas"]["WorkListSmart"];
         };
@@ -7492,7 +7491,10 @@ export interface operations {
     };
     listLists: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Count each smart list by running its rules; without it a smart list's `workCount` is 0. */
+                counts?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;

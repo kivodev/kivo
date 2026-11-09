@@ -96,7 +96,7 @@ class SessionLibrary internal constructor(
     suspend fun resetHomeRows(): List<HomeRowInfo> = homeLayout.resetRows()
 
     /** The user's lists, My List first, read again as they change. */
-    fun lists(): Flow<Load<List<WorkList>>> = reachability.load(listWorks.lists())
+    fun lists(counted: Boolean = false): Flow<Load<List<WorkList>>> = reachability.load(listWorks.lists(counted))
 
     /** The first page of a list's works of [kinds], or every kind when null, [limit] long or the server's page, most recently added first. */
     fun listWorks(listId: String, limit: Int?, kinds: List<String>?): Flow<Load<WorkSummaryPage>> =

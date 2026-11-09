@@ -22,7 +22,7 @@ const rowIcons = {
 
 /** A row's icon: what kind of row it is, a smart list's in the accent. */
 function RowIcon({ row }: { row: HomeRowInfo }) {
-  return row.smart ? (
+  return row.list?.kind === "smart" ? (
     <Icon name="sparkle" className="size-5 shrink-0 text-accent" />
   ) : (
     <Icon name={rowIcons[row.kind]} className="size-5 shrink-0 text-text-muted" />

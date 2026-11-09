@@ -249,7 +249,7 @@ private fun MyListRow(list: WorkList, covers: List<WorkSummary>, nav: MobileNav,
                         shape = shape,
                         width = rowCardWidth(shape),
                         onClick = { nav.openWork(work) },
-                        onLongClick = { openMenu(WorkMenu(work, list = ListRef(list.id, list.name))) },
+                        onLongClick = { openMenu(WorkMenu(work, list = ListRef(list.id, list.name, list.kind))) },
                     )
                 }
             }
@@ -367,7 +367,7 @@ fun ListScreen(session: ServerSession, id: String, name: String, nav: MobileNav)
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            if (smart != null) SmartListLine(smart.query, pages.total ?: list?.workCount ?: 0, rulesWords)
+            pages.total?.let { if (smart != null) SmartListLine(smart.query, it, rulesWords) }
             BoxWithConstraints(Modifier.fillMaxSize()) {
                 val width = maxWidth - space(8)
                 val wide = LocalWide.current
@@ -392,7 +392,7 @@ fun ListScreen(session: ServerSession, id: String, name: String, nav: MobileNav)
                                         work?.let(::listShapeOf) ?: CardShape.Poster,
                                         cardWidth,
                                         { if (work != null) nav.openWork(work) },
-                                        { if (work != null) openMenu(WorkMenu(work, list = list?.takeIf { it.isManual }?.let { ListRef(id, title) })) },
+                                        { if (work != null) openMenu(WorkMenu(work, list = list?.takeIf { it.isManual }?.let { ListRef(id, title, it.kind) })) },
                                         captionLines = 1,
                                     )
                                 }

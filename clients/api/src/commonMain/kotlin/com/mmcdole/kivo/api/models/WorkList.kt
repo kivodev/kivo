@@ -36,7 +36,7 @@ import kotlinx.serialization.encoding.*
  * @param name 
  * @param kind What a list is. `manual` is works the user added; `smart` is the works rules select. Skip kinds you don't know.
  * @param builtIn My List, which every user has and can't delete or rename.
- * @param workCount Works in the list the user sees.
+ * @param workCount Works in the list the user sees. A smart list's is 0 in `listLists` without `counts`.
  * @param smart 
  */
 @Serializable
@@ -54,7 +54,7 @@ data class WorkList (
     /* My List, which every user has and can't delete or rename. */
     @SerialName(value = "builtIn") @Required val builtIn: kotlin.Boolean,
 
-    /* Works in the list the user sees. */
+    /* Works in the list the user sees. A smart list's is 0 in `listLists` without `counts`. */
     @SerialName(value = "workCount") @Required val workCount: kotlin.Int,
 
     @SerialName(value = "smart") val smart: WorkListSmart? = null

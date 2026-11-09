@@ -489,10 +489,11 @@ open class WorksApi : ApiClient {
     /**
      * List the user&#39;s lists
      * The user&#39;s lists, My List first, then by name.
+     * @param counts Count each smart list by running its rules; without it a smart list&#39;s &#x60;workCount&#x60; is 0. (optional)
      * @return WorkListList
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun listLists(): HttpResponse<WorkListList> {
+    open suspend fun listLists(counts: kotlin.Boolean? = null): HttpResponse<WorkListList> {
 
         val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
 
@@ -500,6 +501,7 @@ open class WorksApi : ApiClient {
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
+        counts?.apply { localVariableQuery["counts"] = listOf("$counts") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
         val localVariableConfig = RequestConfig<kotlin.Any?>(

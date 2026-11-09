@@ -46,7 +46,7 @@ class WorkActionsTest {
 
     @Test
     fun aCardInAListOffersRemovingItFromTheList() {
-        val inList = workActions(WorkMenu(work("m"), list = ListRef("l1", "Date Night")))
+        val inList = workActions(WorkMenu(work("m"), list = ListRef("l1", "Date Night", "manual")))
         assertEquals(WorkAction.RemoveFromList, inList[inList.indexOf(WorkAction.AddToList) + 1])
         assertFalse(WorkAction.RemoveFromList in workActions(WorkMenu(work("m"))))
     }

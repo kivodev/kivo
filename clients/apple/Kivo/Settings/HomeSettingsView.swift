@@ -25,7 +25,7 @@ struct HomeSettingsView: View {
                     Toggle(isOn: Binding(
                         get: { row.shown },
                         set: { shown in
-                            rows = rows.map { $0.id == row.id ? HomeRowInfo(id: $0.id, kind: $0.kind, shown: shown, library: $0.library, list: $0.list, smart: $0.smart) : $0 }
+                            rows = rows.map { $0.id == row.id ? HomeRowInfo(id: $0.id, kind: $0.kind, shown: shown, library: $0.library, list: $0.list) : $0 }
                             save()
                         }
                     )) {
@@ -75,7 +75,7 @@ struct HomeSettingsView: View {
 
     /// A row's icon: what kind of row it is, a smart list's in the accent.
     @ViewBuilder private func icon(of row: HomeRowInfo) -> some View {
-        if row.smart?.boolValue == true {
+        if row.list?.kind == "smart" {
             Image(systemName: "sparkles").foregroundStyle(palette.accent)
         } else {
             Image(systemName: Self.symbols[row.kind] ?? "list.bullet").foregroundStyle(palette.textMuted)

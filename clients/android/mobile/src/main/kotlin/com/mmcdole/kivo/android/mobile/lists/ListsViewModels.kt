@@ -69,7 +69,7 @@ class ListsViewModel(private val session: KivoSession) : ViewModel() {
     private val refreshes = MutableStateFlow(0)
     private val refreshing = MutableStateFlow(false)
 
-    private val lists = refreshes.flatMapLatest { session.library.lists() }
+    private val lists = refreshes.flatMapLatest { session.library.lists(counted = true) }
         .onEach { if (it !is Load.Loading) refreshing.value = false }
         .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
 

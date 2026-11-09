@@ -101,7 +101,7 @@ class RepositoriesTest {
         val invalidations = MutableSharedFlow<Invalidation>()
         val lists = ListsRepository(server.connection(), invalidations)
         val read = mutableListOf<List<WorkList>>()
-        backgroundScope.launch { lists.lists().collect { read += it } }
+        backgroundScope.launch { lists.lists(false).collect { read += it } }
         runCurrent()
         invalidations.emit(Invalidation.ListsChanged)
         runCurrent()

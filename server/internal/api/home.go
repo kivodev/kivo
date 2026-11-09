@@ -40,7 +40,11 @@ func listRef(l query.ListRef) *gen.ListRef {
 	if l.ID.IsZero() {
 		return nil
 	}
-	return &gen.ListRef{ID: l.ID, Name: l.Name}
+	kind := gen.ListKindManual
+	if l.Smart {
+		kind = gen.ListKindSmart
+	}
+	return &gen.ListRef{ID: l.ID, Name: l.Name, Kind: kind}
 }
 
 // libraryRef is a row's library, for a Recently Added row.
@@ -107,5 +111,5 @@ func (h *handlers) homeRowInfos(ctx context.Context) (gen.HomeRowInfoList, error
 
 // homeRowInfo converts a row of the layout.
 func homeRowInfo(r query.HomeRowInfo) gen.HomeRowInfo {
-	return gen.HomeRowInfo{ID: r.ID, Kind: gen.HomeRowKind(r.Kind), Shown: r.Shown, Library: libraryRef(r.Library), List: listRef(r.List), Smart: ptr(r.IsSmart())}
+	return gen.HomeRowInfo{ID: r.ID, Kind: gen.HomeRowKind(r.Kind), Shown: r.Shown, Library: libraryRef(r.Library), List: listRef(r.List)}
 }

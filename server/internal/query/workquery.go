@@ -221,16 +221,17 @@ func (f *fieldDef) validValue(op, value string) bool {
 	return value != ""
 }
 
-// compiled is a query's SQL and its bound parameters.
+// compiled is a query's two statements and their bound parameters; page
+// also takes @limit and @offset.
 type compiled struct {
-	sql  string
-	args []any
+	count, page string
+	args        []any
 }
 
 // compile turns a valid query into SQL. It is the only way a WorkQuery
 // becomes a statement: the SQL always carries the visible predicate, and
 // values go in as bound parameters. seed fixes a random sort's order, and
-// only narrows the capped set to those kinds when it's set.
+// only narrows the query to those kinds, after any cap, when it's set.
 func compile(q WorkQuery, vw viewer, now time.Time, seed string, only []catalog.WorkKind) compiled {
 	c := &compiler{now: now, seed: seed}
 	kinds := make([]string, len(q.Kinds))
@@ -242,6 +243,25 @@ func compile(q WorkQuery, vw viewer, now time.Time, seed string, only []catalog.
 		where = "\n  AND " + c.group(*q.Where)
 	}
 	sortBy := c.order(q)
+	from := `
+FROM work w
+JOIN work_library wl ON wl.work_id = w.id
+LEFT JOIN user_state us ON us.user_id = @user AND us.work_id = w.id
+WHERE NOT w.provisional
+  AND NOT (SELECT r.provisional FROM work r WHERE r.id = w.root_id)
+  AND w.kind IN (SELECT value FROM json_each(` + c.bind(set(kinds)) + `))
+  AND ` + visible + where
+	args := func() []any { return vw.args(append(c.params, sql.Named("only", set(only)))...) }
+	if q.Collapse == "" && q.MaxWorks == nil {
+		if only != nil {
+			from += "\n  AND w.kind IN (SELECT value FROM json_each(@only))"
+		}
+		return compiled{
+			count: "SELECT count(*)" + from,
+			page:  "SELECT " + summaryColumns + from + "\nORDER BY " + sortBy + "\nLIMIT @limit OFFSET @offset",
+			args:  args(),
+		}
+	}
 	partition := "1"
 	if q.Collapse != "" {
 		partition = "row_number() OVER (PARTITION BY " + seriesOf + " ORDER BY " + sortBy + ")"
@@ -250,32 +270,24 @@ func compile(q WorkQuery, vw viewer, now time.Time, seed string, only []catalog.
 	if q.MaxWorks != nil {
 		limit = c.bind(*q.MaxWorks)
 	}
-	return compiled{sql: `WITH matched AS (
-SELECT w.id, ` + partition + ` AS n, row_number() OVER (ORDER BY ` + sortBy + `) AS o
-FROM work w
-JOIN work_library wl ON wl.work_id = w.id
-LEFT JOIN user_state us ON us.user_id = @user AND us.work_id = w.id
-WHERE NOT w.provisional
-  AND NOT (SELECT r.provisional FROM work r WHERE r.id = w.root_id)
-  AND w.kind IN (SELECT value FROM json_each(` + c.bind(set(kinds)) + `))
-  AND ` + visible + where + `
+	capped := `WITH matched AS (
+SELECT w.id, ` + partition + ` AS n, row_number() OVER (ORDER BY ` + sortBy + `) AS o` + from + `
 ),
 limited AS (SELECT id, o FROM matched WHERE n = 1 ORDER BY o LIMIT ` + limit + `),
 filtered AS (SELECT l.id, l.o FROM limited l JOIN work fw ON fw.id = l.id
-  WHERE @only IS NULL OR fw.kind IN (SELECT value FROM json_each(@only)))`,
-		args: vw.args(append(c.params, sql.Named("only", set(only)))...)}
-}
-
-// compiledCount and compiledPage read a compiled query.
-var (
-	compiledCount = `SELECT count(*) FROM filtered`
-	compiledPage  = `, page AS (SELECT id, o FROM filtered ORDER BY o LIMIT @limit OFFSET @offset)
+  WHERE @only IS NULL OR fw.kind IN (SELECT value FROM json_each(@only)))`
+	return compiled{
+		count: capped + `
+SELECT count(*) FROM filtered`,
+		page: capped + `, page AS (SELECT id, o FROM filtered ORDER BY o LIMIT @limit OFFSET @offset)
 SELECT ` + summaryColumns + `
 FROM page p
 JOIN work w ON w.id = p.id
 LEFT JOIN user_state us ON us.user_id = @user AND us.work_id = w.id
-ORDER BY p.o`
-)
+ORDER BY p.o`,
+		args: args(),
+	}
+}
 
 // compiler builds one statement's WHERE clause and its parameters.
 type compiler struct {
@@ -518,12 +530,12 @@ func (s *Service) runQuery(ctx context.Context, vw viewer, q WorkQuery, seed str
 	var total int
 	var items []WorkSummary
 	err = s.db.Read(ctx, func(tx *sql.Tx) error {
-		if err := rowOf(ctx, tx, statement{sql: c.sql + "\n" + compiledCount}, c.args, &total); err != nil {
+		if err := rowOf(ctx, tx, statement{sql: c.count}, c.args, &total); err != nil {
 			return err
 		}
 		args := append(slices.Clone(c.args), sql.Named("limit", limit), sql.Named("offset", o.Offset))
 		var err error
-		items, err = summaries(ctx, tx, statement{sql: c.sql + compiledPage}, args)
+		items, err = summaries(ctx, tx, statement{sql: c.page}, args)
 		return err
 	})
 	if err != nil {

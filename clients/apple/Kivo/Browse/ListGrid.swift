@@ -79,7 +79,7 @@ struct ListGrid: View {
                                 }
                             }
                             .padding(layout.insets)
-                            .environment(\.currentList, ListRef(id: list.id, name: title))
+                            .environment(\.currentList, ListRef(id: list.id, name: title, kind: list.kind))
                         }
                     } else {
                         UnreachableView()
@@ -148,8 +148,8 @@ struct ListGrid: View {
 
     /// A smart list's count and rules: "42 movies. Comedy, no Animation".
     private var smartLine: String? {
-        guard let smart, let current else { return nil }
-        let count = SmartListWords.count(model.total ?? Int(current.workCount), kinds: smart.query.kinds)
+        guard let smart, let total = model.total else { return nil }
+        let count = SmartListWords.count(total, kinds: smart.query.kinds)
         guard let rulesLine, !rulesLine.isEmpty else { return count }
         return "\(count). \(rulesLine)"
     }

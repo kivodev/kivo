@@ -38,7 +38,6 @@ import kotlinx.serialization.encoding.*
  * @param shown 
  * @param library For `recentlyAdded`, the library.
  * @param list For `list`, the list.
- * @param smart Whether the row is a smart list's.
  */
 @Serializable
 
@@ -56,10 +55,7 @@ data class HomeRowInfo (
     @SerialName(value = "library") val library: LibraryRef? = null,
 
     /* For `list`, the list. */
-    @SerialName(value = "list") val list: ListRef? = null,
-
-    /* Whether the row is a smart list's. */
-    @SerialName(value = "smart") val smart: kotlin.Boolean? = null
+    @SerialName(value = "list") val list: ListRef? = null
 
 ) {
 
