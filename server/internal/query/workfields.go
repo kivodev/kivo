@@ -196,7 +196,7 @@ LIMIT `+valuesLimit)
 -- viewer-filter: user
 SELECT l.id, l.name
 FROM list l
-WHERE l.user_id = @user
+WHERE l.user_id = @user AND l.query IS NULL
   AND (@q IS NULL OR instr(fold(l.name), @q) > 0)
   AND (@ids IS NULL OR l.id IN (SELECT unhex(value) FROM json_each(@ids)))
 ORDER BY l.built_in DESC, l.name COLLATE NOCASE

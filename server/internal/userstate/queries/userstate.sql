@@ -99,7 +99,7 @@ ON CONFLICT (user_id, series_id) DO UPDATE SET
   subtitle_kind = excluded.subtitle_kind, updated_at = excluded.updated_at;
 
 -- name: ListOwner :one
-SELECT user_id FROM list WHERE id = @id;
+SELECT user_id, query IS NOT NULL AS smart FROM list WHERE id = @id;
 
 -- name: AddToList :exec
 -- A work already in the list keeps its place.

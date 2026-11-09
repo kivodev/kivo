@@ -89,6 +89,8 @@ import com.mmcdole.kivo.android.mobile.ui.sentence
 import com.mmcdole.kivo.android.mobile.ui.shapeOf
 import com.mmcdole.kivo.api.models.ListRef
 import com.mmcdole.kivo.api.models.WorkList
+import com.mmcdole.kivo.api.models.WorkListSmart
+import com.mmcdole.kivo.api.models.WorkQuery
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.RequestProblem
@@ -105,7 +107,8 @@ private val FirstCoverWidth = 44.dp
 
 /**
  * Lists: My List as a row of covers with its count, then the lists the user
- * made, each with its count; a section with nothing in it is left out. Pull
+ * made, then the smart lists, each with its count; a section with nothing in
+ * it is left out. The + makes a list, or opens the smart list builder. Pull
  * to refresh; the live events refresh it too.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -119,9 +122,7 @@ fun ListsScreen(session: ServerSession, nav: MobileNav) {
         modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
         topBar = {
             TabTopBar(stringResource(R.string.mobile_tab_lists), scroll, actions = {
-                IconButton(onClick = { naming = true }, modifier = Modifier.testTag("newList")) {
-                    Icon(Icons.Default.Add, stringResource(R.string.mobile_new_list))
-                }
+                NewListMenu(onNewList = { naming = true }, onNewSmart = { nav.open(smartListBuilderRoute("", null)) })
             })
         },
     ) { padding ->
@@ -149,6 +150,20 @@ fun ListsScreen(session: ServerSession, nav: MobileNav) {
 }
 
 @Composable
+private fun NewListMenu(onNewList: () -> Unit, onNewSmart: () -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { open = true }, modifier = Modifier.testTag("newListMenu")) {
+            Icon(Icons.Default.Add, stringResource(R.string.mobile_new_list_menu))
+        }
+        DropdownMenu(open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(text = { Text(stringResource(R.string.mobile_new_list)) }, onClick = { open = false; onNewList() }, modifier = Modifier.testTag("newList"))
+            DropdownMenuItem(text = { Text(stringResource(R.string.mobile_smart_new)) }, onClick = { open = false; onNewSmart() }, modifier = Modifier.testTag("newSmartList"))
+        }
+    }
+}
+
+@Composable
 private fun ListsContent(state: ListsUiState, library: SessionLibrary, nav: MobileNav) {
     val myList = state.myList
     val manual = state.manual
@@ -157,14 +172,19 @@ private fun ListsContent(state: ListsUiState, library: SessionLibrary, nav: Mobi
         contentPadding = PaddingValues(start = space(4), end = space(4), top = space(2), bottom = space(6)),
         verticalArrangement = Arrangement.spacedBy(space(5)),
     ) {
-        if (myList == null && manual.isEmpty()) {
+        if (myList == null && manual.isEmpty() && state.smart.isEmpty()) {
             item { Message(stringResource(R.string.mobile_no_lists), stringResource(R.string.mobile_no_lists_sentence), Modifier.height(400.dp)) }
         }
         if (myList != null) {
             item(key = "myList") { MyListSection(myList, state.covers) { nav.open(ListRoute(myList.id, myList.name)) } }
         }
         if (manual.isNotEmpty()) {
-            item(key = "manual") { ManualSection(manual, library, nav) }
+            item(key = "manual") {
+                ListsSection(stringResource(R.string.mobile_tab_lists), manual, library, nav) { pluralStringResource(R.plurals.mobile_count_titles, it.workCount, it.workCount) }
+            }
+        }
+        if (state.smart.isNotEmpty()) {
+            item(key = "smart") { ListsSection(stringResource(R.string.mobile_smart_lists), state.smart, library, nav) { smartDetail(it) } }
         }
     }
 }
@@ -192,11 +212,17 @@ private fun MyListSection(list: WorkList, covers: List<WorkSummary>, onClick: ()
     }
 }
 
+/** A smart list's line under its name: its kinds and count. */
 @Composable
-private fun ManualSection(lists: List<WorkList>, library: SessionLibrary, nav: MobileNav) {
+private fun smartDetail(list: WorkList): String =
+    stringResource(R.string.mobile_smart_list_detail, kindsPhrase(list.smart?.query?.kinds.orEmpty()), list.workCount)
+
+/** A headed group of [lists], each with its first cover, name and [detail]. */
+@Composable
+private fun ListsSection(title: String, lists: List<WorkList>, library: SessionLibrary, nav: MobileNav, detail: @Composable (WorkList) -> String) {
     Column(verticalArrangement = Arrangement.spacedBy(space(2))) {
         Text(
-            stringResource(R.string.mobile_tab_lists),
+            title,
             Modifier.semantics { heading() },
             style = MaterialTheme.typography.titleMedium,
         )
@@ -206,7 +232,7 @@ private fun ManualSection(lists: List<WorkList>, library: SessionLibrary, nav: M
                 ListItem(
                     headlineContent = { Text(list.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     leadingContent = { FirstCover(library, list.id) },
-                    supportingContent = { Text(pluralStringResource(R.plurals.mobile_count_titles, list.workCount, list.workCount)) },
+                    supportingContent = { Text(detail(list)) },
                     trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                     modifier = Modifier.clickable { nav.open(ListRoute(list.id, list.name)) }.testTag("list:${list.name}"),
@@ -224,7 +250,12 @@ private fun FirstCover(library: SessionLibrary, listId: String) {
     Artwork(work?.let { cardImage(it, CardShape.Poster) }, FirstCoverWidth, Modifier.width(FirstCoverWidth).aspectRatio(CardShape.Poster.aspect).clip(CardCorners))
 }
 
-/** An open list: its works in a grid, most recently added first, each card its own work's shape; a list the user made has Rename and Delete in its overflow. */
+/**
+ * An open list: its works in a grid, most recently added first, each card its
+ * own work's shape; a list the user made has Rename and Delete in its
+ * overflow. A smart list also has its count and a line of its rules at the
+ * top, and Edit, which opens the builder on its query.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ListScreen(session: ServerSession, id: String, name: String, nav: MobileNav) {
@@ -237,42 +268,52 @@ fun ListScreen(session: ServerSession, id: String, name: String, nav: MobileNav)
     var renaming by rememberSaveable { mutableStateOf(false) }
     var deleting by rememberSaveable { mutableStateOf(false) }
     val title = list?.name ?: name
+    val smart = list?.smart
+    val rulesWords by model.rulesWords.collectAsStateWithLifecycle()
     Scaffold(
         topBar = {
             PageTopBar(title, nav::back) {
+                if (smart != null) {
+                    TextButton(onClick = { nav.open(smartListBuilderRoute(title, smart.query, id)) }, modifier = Modifier.testTag("smartListEdit")) {
+                        Text(stringResource(R.string.mobile_smart_edit_short))
+                    }
+                }
                 if (list?.builtIn == false) {
                     ListMenu(onRename = { renaming = true }, onDelete = { deleting = true })
                 }
             }
         },
     ) { padding ->
-        BoxWithConstraints(Modifier.padding(padding).fillMaxSize()) {
-            val width = maxWidth - space(8)
-            val wide = LocalWide.current
-            val columns = gridColumns(width, CardShape.Poster, wide)
-            val cardWidth = gridCardWidth(width, columns, wide)
-            val problem = pages.problem
-            val total = pages.total
-            when {
-                problem != null -> Failed(problem, stringResource(R.string.mobile_couldnt_load_lists), "", { scope.launch { model.refresh() } })
-                total == null -> Loading()
-                else -> PullToRefreshBox(refreshing, { scope.launch { refreshing = true; model.refresh(); refreshing = false } }, Modifier.fillMaxSize()) {
-                    if (total == 0) {
-                        // Scrollable, so a pull still refreshes it.
-                        LazyColumn(Modifier.fillMaxSize()) {
-                            item { Message(stringResource(R.string.mobile_list_empty), null, Modifier.height(400.dp)) }
-                        }
-                    } else {
-                        WorkMenuHost({ action, menu -> nav.handle(action, menu, model.marks) }) { openMenu ->
-                            PagedGrid(model.pager, grid, columns, PaddingValues(horizontal = space(4), vertical = space(2))) { _, work ->
-                                WorkCard(
-                                    work,
-                                    work?.let(::shapeOf) ?: CardShape.Poster,
-                                    cardWidth,
-                                    { if (work != null) nav.openWork(work) },
-                                    { if (work != null) openMenu(WorkMenu(work, list = ListRef(id, title))) },
-                                    captionLines = 1,
-                                )
+        Column(Modifier.padding(padding).fillMaxSize()) {
+            if (smart != null) SmartListLine(smart.query, pages.total ?: list?.workCount ?: 0, rulesWords)
+            BoxWithConstraints(Modifier.fillMaxSize()) {
+                val width = maxWidth - space(8)
+                val wide = LocalWide.current
+                val columns = gridColumns(width, CardShape.Poster, wide)
+                val cardWidth = gridCardWidth(width, columns, wide)
+                val problem = pages.problem
+                val total = pages.total
+                when {
+                    problem != null -> Failed(problem, stringResource(R.string.mobile_couldnt_load_lists), "", { scope.launch { model.refresh() } })
+                    total == null -> Loading()
+                    else -> PullToRefreshBox(refreshing, { scope.launch { refreshing = true; model.refresh(); refreshing = false } }, Modifier.fillMaxSize()) {
+                        if (total == 0) {
+                            // Scrollable, so a pull still refreshes it.
+                            LazyColumn(Modifier.fillMaxSize()) {
+                                item { Message(emptyMessage(smart), null, Modifier.height(400.dp)) }
+                            }
+                        } else {
+                            WorkMenuHost({ action, menu -> nav.handle(action, menu, model.marks) }) { openMenu ->
+                                PagedGrid(model.pager, grid, columns, PaddingValues(horizontal = space(4), vertical = space(2))) { _, work ->
+                                    WorkCard(
+                                        work,
+                                        work?.let(::shapeOf) ?: CardShape.Poster,
+                                        cardWidth,
+                                        { if (work != null) nav.openWork(work) },
+                                        { if (work != null) openMenu(WorkMenu(work, list = list?.takeIf { it.isManual }?.let { ListRef(id, title) })) },
+                                        captionLines = 1,
+                                    )
+                                }
                             }
                         }
                     }
@@ -309,6 +350,27 @@ fun ListScreen(session: ServerSession, id: String, name: String, nav: MobileNav)
             dismissButton = { TextButton(onClick = { deleting = false }) { Text(stringResource(R.string.mobile_cancel)) } },
         )
     }
+}
+
+/** A smart list's count and rules: "42 movies. Comedy, no Animation". */
+@Composable
+private fun SmartListLine(query: WorkQuery, total: Int, words: SmartRulesWords?) {
+    val count = smartCount(total, query.kinds)
+    val rules = words?.let { rulesSummary(query, it.fields, it.names) }.orEmpty()
+    Text(
+        if (rules.isEmpty()) count else stringResource(R.string.mobile_smart_count_rules, count, rules),
+        Modifier.fillMaxWidth().padding(horizontal = space(4)).testTag("smartListSummary"),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+/** Why a list shows nothing: rules that no longer run, rules matching nothing, or nothing added. */
+@Composable
+private fun emptyMessage(smart: WorkListSmart?): String = when {
+    smart == null -> stringResource(R.string.mobile_list_empty)
+    !smart.errors.isNullOrEmpty() -> stringResource(R.string.mobile_smart_rules_failed)
+    else -> stringResource(R.string.mobile_smart_nothing_matches)
 }
 
 @Composable
@@ -373,7 +435,7 @@ private fun ListNameDialog(
 }
 
 @Composable
-private fun nameProblem(problem: RequestProblem): String =
+internal fun nameProblem(problem: RequestProblem): String =
     if (problem.code == "nameTaken") stringResource(R.string.mobile_list_name_taken) else sentence(problem)
 
 /** Add to List: New List, then every list ticked when the work's on it, adding and removing as they're tapped. */

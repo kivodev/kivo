@@ -2,6 +2,7 @@ package com.mmcdole.kivo.android.mobile.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mmcdole.kivo.android.mobile.lists.isManual
 import com.mmcdole.kivo.android.mobile.ui.CONTINUE_LISTENING
 import com.mmcdole.kivo.android.mobile.ui.CONTINUE_WATCHING
 import com.mmcdole.kivo.android.mobile.ui.WorkAction
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 
@@ -61,6 +63,11 @@ class HomeViewModel(private val session: KivoSession) : ViewModel() {
     private val refreshing = MutableStateFlow(false)
 
     val marks = WorkMarks(session.library, viewModelScope)
+
+    /** The lists a card can be taken off from Home: a smart list's works are its rules'. */
+    val manualListIds: StateFlow<Set<String>> = session.library.lists()
+        .map { load -> load.getOrNull().orEmpty().filter { it.isManual }.map { it.id }.toSet() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     // A new collection after a pull answers in place: the core emits no Loading before it.
     private val home = refreshes.flatMapLatest { session.library.home() }.onEach { if (it !is Load.Loading) refreshing.value = false }

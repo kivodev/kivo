@@ -26,7 +26,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -89,8 +88,10 @@ private const val ROW_LIMIT = 20
 internal fun listsUi(lists: List<WorkList>, works: WorkSummaryPage): ListsUi = ListsUi(
     myList = lists.firstOrNull { it.builtIn },
     works = works,
-    lists = lists.filter { !it.builtIn && it.kind == "manual" },
+    lists = lists.filter { !it.builtIn && it.kind == "manual" } + lists.filter { it.kind == SMART },
 )
+
+private const val SMART = "smart"
 
 /** Lists, read again as they change: My List's works follow its id, which the lists give. */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -251,7 +252,7 @@ private fun Sections(ui: ListsUi, navigator: Navigator) {
     LaunchedEffect(Unit) { memory.restore(first) }
 }
 
-/** A list the user made: its name and count on a tile. */
+/** A list the user made, or a smart list: its name and count on a tile, saying which it is. */
 @Composable
 private fun ListTile(list: WorkList, modifier: Modifier, onClick: () -> Unit) {
     val colors = Kivo.colors
@@ -262,6 +263,9 @@ private fun ListTile(list: WorkList, modifier: Modifier, onClick: () -> Unit) {
     ) {
         Column(Modifier.padding(Kivo.space(3)), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(list.name, style = TvType.bodyStrong, color = colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (list.kind == SMART) {
+                Text(stringResource(R.string.smart_list), style = TvType.small, color = colors.textMuted, maxLines = 1)
+            }
         }
     }
 }

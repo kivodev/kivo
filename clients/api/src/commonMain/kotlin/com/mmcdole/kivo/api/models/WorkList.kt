@@ -23,6 +23,7 @@
 
 package com.mmcdole.kivo.api.models
 
+import com.mmcdole.kivo.api.models.WorkListSmart
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
@@ -33,9 +34,10 @@ import kotlinx.serialization.encoding.*
  *
  * @param id A UUIDv7.
  * @param name 
- * @param kind What a list is. `manual` is works the user added. Skip kinds you don't know.
+ * @param kind What a list is. `manual` is works the user added; `smart` is the works rules select. Skip kinds you don't know.
  * @param builtIn My List, which every user has and can't delete or rename.
  * @param workCount Works in the list the user sees.
+ * @param smart 
  */
 @Serializable
 
@@ -46,14 +48,16 @@ data class WorkList (
 
     @SerialName(value = "name") @Required val name: kotlin.String,
 
-    /* What a list is. `manual` is works the user added. Skip kinds you don't know. */
+    /* What a list is. `manual` is works the user added; `smart` is the works rules select. Skip kinds you don't know. */
     @SerialName(value = "kind") @Required val kind: kotlin.String,
 
     /* My List, which every user has and can't delete or rename. */
     @SerialName(value = "builtIn") @Required val builtIn: kotlin.Boolean,
 
     /* Works in the list the user sees. */
-    @SerialName(value = "workCount") @Required val workCount: kotlin.Int
+    @SerialName(value = "workCount") @Required val workCount: kotlin.Int,
+
+    @SerialName(value = "smart") val smart: WorkListSmart? = null
 
 ) {
 

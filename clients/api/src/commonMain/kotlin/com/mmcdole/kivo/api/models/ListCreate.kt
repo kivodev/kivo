@@ -23,6 +23,7 @@
 
 package com.mmcdole.kivo.api.models
 
+import com.mmcdole.kivo.api.models.SmartRules
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
@@ -32,12 +33,16 @@ import kotlinx.serialization.encoding.*
  * 
  *
  * @param name 
+ * @param smart Makes a smart list, which runs the rules; without it, a manual list.
  */
 @Serializable
 
 data class ListCreate (
 
-    @SerialName(value = "name") @Required val name: kotlin.String
+    @SerialName(value = "name") @Required val name: kotlin.String,
+
+    /* Makes a smart list, which runs the rules; without it, a manual list. */
+    @SerialName(value = "smart") val smart: SmartRules? = null
 
 ) {
 

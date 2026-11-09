@@ -30,7 +30,7 @@ struct AddToListView: View {
                     .accessibilityIdentifier("new-list")
                 }
                 Section {
-                    ForEach(server.lists, id: \.id) { list in
+                    ForEach(server.lists.filter { !$0.isSmart }, id: \.id) { list in
                         row(list)
                     }
                 }

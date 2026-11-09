@@ -16,11 +16,19 @@ class ListsUiTest {
         val myList = WorkList("my", "My List", "manual", builtIn = true, workCount = 2)
         val made = WorkList("d", "Date Night", "manual", builtIn = false, workCount = 1)
         val ui = listsUi(
-            listOf(myList, made, WorkList("x", "Later", "smart", builtIn = false, workCount = 1)),
+            listOf(myList, made, WorkList("x", "Later", "future", builtIn = false, workCount = 1)),
             WorkSummaryPage(listOf(work("m1", "movie")), total = 1),
         )
         assertEquals(myList, ui.myList)
         assertEquals(listOf("m1"), ui.works.items.map { it.id })
         assertEquals(listOf(made), ui.lists)
+    }
+
+    @Test
+    fun smartListsComeAfterTheManualOnes() {
+        val smart = WorkList("s", "90s comedies", "smart", builtIn = false, workCount = 3)
+        val made = WorkList("d", "Date Night", "manual", builtIn = false, workCount = 1)
+        val ui = listsUi(listOf(smart, made), WorkSummaryPage(emptyList(), total = 0))
+        assertEquals(listOf(made, smart), ui.lists)
     }
 }

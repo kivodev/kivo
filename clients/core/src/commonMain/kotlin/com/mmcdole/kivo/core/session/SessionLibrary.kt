@@ -14,7 +14,10 @@ import com.mmcdole.kivo.api.models.LibraryFacets
 import com.mmcdole.kivo.api.models.Person
 import com.mmcdole.kivo.api.models.PersonSummary
 import com.mmcdole.kivo.api.models.SearchResults
+import com.mmcdole.kivo.api.models.WorkField
+import com.mmcdole.kivo.api.models.WorkFieldValue
 import com.mmcdole.kivo.api.models.WorkList
+import com.mmcdole.kivo.api.models.WorkQuery
 import com.mmcdole.kivo.api.models.UserState
 import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.api.models.WorkSummary
@@ -109,8 +112,26 @@ class SessionLibrary internal constructor(
     @Throws(Exception::class)
     suspend fun createList(name: String): WorkList = listWorks.create(name)
 
+    /** Makes a smart list that runs [query]. */
     @Throws(Exception::class)
-    suspend fun renameList(id: String, name: String): WorkList = listWorks.rename(id, name)
+    suspend fun createSmartList(name: String, query: WorkQuery): WorkList = listWorks.create(name, query)
+
+    /** Renames a list and, for a smart list, replaces its rules with [query] when given. */
+    @Throws(Exception::class)
+    suspend fun renameList(id: String, name: String, query: WorkQuery? = null): WorkList = listWorks.update(id, name, query)
+
+    /** How many works [query] selects, for a builder's live count. */
+    @Throws(Exception::class)
+    suspend fun countMatching(query: WorkQuery): Int = listWorks.countMatching(query)
+
+    /** The fields a rule can use, for a builder. */
+    @Throws(Exception::class)
+    suspend fun workFields(): List<WorkField> = listWorks.fields()
+
+    /** A field's values the user can see: those matching [search], or the ones named by [ids]. */
+    @Throws(Exception::class)
+    suspend fun workFieldValues(field: String, search: String?, ids: List<String>?): List<WorkFieldValue> =
+        listWorks.values(field, search, ids)
 
     @Throws(Exception::class)
     suspend fun deleteList(id: String) = listWorks.delete(id)

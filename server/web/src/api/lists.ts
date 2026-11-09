@@ -5,7 +5,7 @@ import type { WorkListList } from "./schemas";
 
 /** Skips the list kinds this client doesn't know. */
 const knownKinds = (page: WorkListList): WorkListList => ({
-  items: page.items.filter((list) => list.kind === "manual"),
+  items: page.items.filter((list) => list.kind === "manual" || list.kind === "smart"),
 });
 
 export const listQueries = {
@@ -19,14 +19,14 @@ function useListsChanged() {
   return () => invalidatePaths(queryClient, listViewPaths);
 }
 
-/** Make a list. A name in use is refused with `nameTaken`. */
+/** Make a list, manual or smart. A name in use is refused with `nameTaken`. */
 export function useCreateList() {
   const onSuccess = useListsChanged();
   return $api.useMutation("post", "/api/v1/lists", { onSuccess });
 }
 
-/** Rename a list. A name in use is refused with `nameTaken`. */
-export function useRenameList() {
+/** Change a list's name, or a smart list's query. A name in use is refused with `nameTaken`. */
+export function useUpdateList() {
   const onSuccess = useListsChanged();
   return $api.useMutation("patch", "/api/v1/lists/{id}", { onSuccess });
 }

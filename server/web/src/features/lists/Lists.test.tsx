@@ -57,7 +57,8 @@ describe("New List on the Lists screen", () => {
   it("names a new list and stays on the screen", async () => {
     serveMockApi();
     const { user } = renderApp("/lists");
-    await user.click(await screen.findByRole("button", { name: "New List" }));
+    await user.click(await screen.findByRole("button", { name: "Create" }));
+    await user.click(await screen.findByRole("menuitem", { name: "New List" }));
     const dialog = await screen.findByRole("dialog");
     await user.type(within(dialog).getByRole("textbox", { name: /Name/ }), "Road Trip");
     await user.click(within(dialog).getByRole("button", { name: "Create" }));

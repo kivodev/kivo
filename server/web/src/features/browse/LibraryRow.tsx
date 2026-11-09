@@ -10,6 +10,7 @@ export function LibraryRow({
   icon,
   name,
   count,
+  detail,
   focusKey,
   autoFocus = false,
 }: {
@@ -18,6 +19,8 @@ export function LibraryRow({
   name: string;
   /** How many items it has, once known. */
   count?: number;
+  /** A line under the name, such as what a smart list shows. */
+  detail?: string;
   /** The row's focus key on TV. */
   focusKey: string;
   /** Whether it is the screen's initial focus on TV. */
@@ -33,7 +36,10 @@ export function LibraryRow({
           className="flex min-h-12 items-center gap-3 px-4 py-3 text-text hover:bg-surface-hover"
         >
           <span className="shrink-0 text-text-muted">{icon}</span>
-          <span className="min-w-0 flex-1 truncate font-medium">{name}</span>
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="truncate font-medium">{name}</span>
+            {detail && <span className="truncate text-sm text-text-muted">{detail}</span>}
+          </span>
           {count !== undefined && <span className="text-text-muted">{i18n.number(count)}</span>}
           <Icon name="chevronRight" className="size-4 shrink-0 text-text-subtle" />
         </Link>

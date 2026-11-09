@@ -17,16 +17,63 @@ func (h *handlers) QueryWorks(ctx context.Context, req gen.QueryWorksRequestObje
 	page, err := h.deps.Query.QueryWorks(ctx, callerOf(ctx).viewer, workQuery(req.Body.Query), o)
 	var bad *query.InvalidQueryError
 	if errors.As(err, &bad) {
-		fields := make([]gen.FieldError, len(bad.Problems))
-		for i, p := range bad.Problems {
-			fields[i] = field("/query"+p.Pointer, p.Code)
-		}
-		return nil, invalid("invalid query", fields...)
+		return nil, invalid("invalid query", problemFields("/query", bad.Problems)...)
 	}
 	if err != nil {
 		return nil, err
 	}
 	return gen.QueryWorks200JSONResponse(workPage(page)), nil
+}
+
+// problemFields is a query's problems as field errors under prefix.
+func problemFields(prefix string, problems []query.QueryProblem) []gen.FieldError {
+	out := make([]gen.FieldError, len(problems))
+	for i, p := range problems {
+		out[i] = field(prefix+p.Pointer, p.Code)
+	}
+	return out
+}
+
+// wireQuery converts a query for the wire.
+func wireQuery(q query.WorkQuery) gen.WorkQuery {
+	out := gen.WorkQuery{Version: &q.Version, Kinds: each(q.Kinds, func(k catalog.WorkKind) gen.WorkKind { return gen.WorkKind(k) }), MaxWorks: q.MaxWorks}
+	if q.Collapse != "" {
+		out.Collapse = ptr(gen.WorkQueryCollapse(q.Collapse))
+	}
+	if q.Where != nil {
+		g := wireGroup(*q.Where)
+		out.Where = &g
+	}
+	if len(q.Sort) > 0 {
+		sort := each(q.Sort, func(k query.SortKey) gen.SortKey {
+			key := gen.SortKey{Field: k.Field}
+			if k.Direction != "" {
+				key.Direction = ptr(gen.SortDirection(k.Direction))
+			}
+			return key
+		})
+		out.Sort = &sort
+	}
+	return out
+}
+
+func wireGroup(g query.RuleGroup) gen.RuleGroup {
+	out := gen.RuleGroup{Match: gen.RuleGroupMatch(g.Match)}
+	if len(g.Rules) > 0 {
+		rules := each(g.Rules, func(r query.Rule) gen.Rule {
+			rule := gen.Rule{Field: r.Field, Op: r.Op}
+			if len(r.Values) > 0 {
+				rule.Values = &r.Values
+			}
+			return rule
+		})
+		out.Rules = &rules
+	}
+	if len(g.Groups) > 0 {
+		groups := each(g.Groups, wireGroup)
+		out.Groups = &groups
+	}
+	return out
 }
 
 // workQuery converts a query from the wire.

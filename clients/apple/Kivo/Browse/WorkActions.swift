@@ -42,7 +42,7 @@ struct WorkActions: View {
         } label: {
             SwiftUI.Label(String(localized: "Add to List"), systemImage: "text.badge.plus")
         }
-        if let currentList {
+        if let currentList, server.lists.contains(where: { $0.id == currentList.id && !$0.isSmart }) {
             Button {
                 Haptics.success()
                 Task { try? await server.session.library.removeFromList(listId: currentList.id, workId: work.id) }

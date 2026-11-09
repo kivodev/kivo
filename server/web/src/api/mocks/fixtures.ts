@@ -23,6 +23,7 @@ import { emptyWork, filePlayTracks, type MockApi, summaryOf } from "./api";
 
 import { addBooks, bookIds } from "./books";
 import { mockId } from "./ids";
+import { mockFieldValues, mockWorkFields } from "./workFields";
 
 export { mockId };
 
@@ -38,6 +39,7 @@ export const mockIds = {
   duneCollection: mockId(104),
   myList: mockId(9501),
   dateNight: mockId(9502),
+  sciFi: mockId(9503),
   missingReel: mockId(105),
   holiday: mockId(106),
   nightShift: mockId(107),
@@ -999,7 +1001,24 @@ export function createMockApi(): MockApi {
         builtIn: false,
         workIds: [mockIds.dune],
       },
+      {
+        id: mockIds.sciFi,
+        name: "Sci-fi",
+        kind: "smart",
+        builtIn: false,
+        smart: {
+          query: {
+            version: 1,
+            kinds: ["movie"],
+            where: { match: "all", rules: [{ field: "genre", op: "anyOf", values: ["Science Fiction"] }] },
+            sort: [{ field: "rating" }],
+          },
+        },
+        workIds: [mockIds.dune, mockIds.dunePartTwo],
+      },
     ],
+    workFields: mockWorkFields,
+    workFieldValues: mockFieldValues(mockIds),
     home: {
       rows: [
         {

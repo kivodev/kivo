@@ -18,6 +18,7 @@ msgstr "See the test encode error in Logs."
 
 #: src/components/PersonCard.tsx
 #: src/features/browse/FilterPanel.tsx
+#: src/features/lists/smartLabels.ts
 msgid "Narrator"
 msgstr "Narrator"
 
@@ -36,6 +37,10 @@ msgstr "Choose {name}"
 #: src/features/user/SettingsScreen.tsx
 msgid "Reset Home"
 msgstr "Reset Home"
+
+#: src/features/lists/smartLabels.ts
+msgid "starts with"
+msgstr "starts with"
 
 #: src/features/browse/useBrowseLabels.ts
 msgid "In progress"
@@ -87,6 +92,10 @@ msgstr "This browser"
 msgid "{name} failed"
 msgstr "{name} failed"
 
+#: src/features/lists/SmartListDialog.tsx
+msgid "years"
+msgstr "years"
+
 #: src/features/admin/useAdminLabels.ts
 msgid "Converting"
 msgstr "Converting"
@@ -126,6 +135,7 @@ msgstr "iPad"
 
 #: src/features/admin/EditBookForm.tsx
 #: src/features/browse/useBrowseLabels.ts
+#: src/features/lists/smartLabels.ts
 msgid "Release date"
 msgstr "Release date"
 
@@ -187,6 +197,7 @@ msgstr "Always"
 #: src/features/admin/ItemAdminMenu.tsx
 #: src/features/admin/UnmatchedScreen.tsx
 #: src/features/browse/FilterPanel.tsx
+#: src/features/lists/SmartListDialog.tsx
 msgid "Match"
 msgstr "Match"
 
@@ -233,6 +244,10 @@ msgstr "Close Now Playing"
 msgid "Play S{0} E{1}"
 msgstr "Play S{0} E{1}"
 
+#: src/features/lists/SmartSummary.tsx
+msgid "{label} {first} to {second}"
+msgstr "{label} {first} to {second}"
+
 #: src/features/auth/LinkScreen.tsx
 msgid "You can close this page."
 msgstr "You can close this page."
@@ -241,6 +256,10 @@ msgstr "You can close this page."
 #: src/features/setup/SetupWizard.tsx
 msgid "Create account"
 msgstr "Create account"
+
+#: src/features/lists/smartLabels.ts
+msgid "doesn't contain"
+msgstr "doesn't contain"
 
 #: src/features/user/SettingsScreen.tsx
 msgid "Light"
@@ -270,6 +289,11 @@ msgstr "People"
 #: src/features/admin/useAdminLabels.ts
 msgid "Matching"
 msgstr "Matching"
+
+#. placeholder {0}: list(shown, "conjunction")
+#: src/features/lists/SmartSummary.tsx
+msgid "no {0}"
+msgstr "no {0}"
 
 #: src/features/setup/SetupWizard.tsx
 msgid "Set up later"
@@ -316,6 +340,10 @@ msgstr "Optimize database"
 msgid "{0, plural, one {# chapter} other {# chapters}}"
 msgstr "{0, plural, one {# chapter} other {# chapters}}"
 
+#: src/features/lists/smartLabels.ts
+msgid "Play state"
+msgstr "Play state"
+
 #: src/features/user/SettingsScreen.tsx
 msgid "Remote quality"
 msgstr "Remote quality"
@@ -334,6 +362,7 @@ msgstr "SDH"
 
 #: src/features/admin/EditFieldsDialog.tsx
 #: src/features/admin/FixMatchDialog.tsx
+#: src/features/lists/smartLabels.ts
 msgid "Year"
 msgstr "Year"
 
@@ -348,6 +377,10 @@ msgstr "If this repeats, update the driver or choose another accelerator."
 #: src/features/admin/ChooseArtworkDialog.tsx
 msgid "Uploaded"
 msgstr "Uploaded"
+
+#: src/features/lists/smartLabels.ts
+msgid "on or before"
+msgstr "on or before"
 
 #: src/features/admin/problemActions.ts
 msgid "See who tried in Activity. If it wasn't them, change the user's password."
@@ -447,6 +480,11 @@ msgstr "Bitrate"
 msgid "API keys"
 msgstr "API keys"
 
+#: src/features/lists/ListsScreen.tsx
+#: src/features/lists/SmartListDialog.tsx
+msgid "New Smart List"
+msgstr "New Smart List"
+
 #: src/features/admin/OverviewScreen.tsx
 #: src/features/admin/problemActions.ts
 msgid "Review"
@@ -525,6 +563,10 @@ msgstr "Can't play this frame rate"
 msgid "A year, YYYY-MM or YYYY-MM-DD."
 msgstr "A year, YYYY-MM or YYYY-MM-DD."
 
+#: src/features/lists/SmartListDialog.tsx
+msgid "months"
+msgstr "months"
+
 #. placeholder {0}: collection.items.length
 #: src/features/detail/CollectionScreen.tsx
 msgid "{0, plural, one {# item} other {# items}}"
@@ -577,9 +619,14 @@ msgstr "Add this folder"
 #: src/features/libraries/AddLibraryForm.tsx
 #: src/features/libraries/EditLibraryForm.tsx
 #: src/features/lists/ListNameForm.tsx
+#: src/features/lists/SmartListDialog.tsx
 #: src/features/user/Sessions.tsx
 msgid "Name"
 msgstr "Name"
+
+#: src/features/lists/smartLabels.ts
+msgid "Show or movie"
+msgstr "Show or movie"
 
 #: src/features/admin/LogsScreen.tsx
 msgid "Warnings"
@@ -589,6 +636,10 @@ msgstr "Warnings"
 #: src/features/admin/TaskScreen.tsx
 msgid "Failed"
 msgstr "Failed"
+
+#: src/features/lists/smartLabels.ts
+msgid "Company"
+msgstr "Company"
 
 #. placeholder {0}: user.username
 #: src/features/admin/UserScreen.tsx
@@ -676,6 +727,7 @@ msgid "Next episode"
 msgstr "Next episode"
 
 #: src/features/admin/ActivityScreen.tsx
+#: src/features/lists/SmartListDialog.tsx
 msgid "Show"
 msgstr "Show"
 
@@ -716,6 +768,10 @@ msgstr "No usable GPU. Video is transcoded on the CPU."
 #: src/features/admin/GeneralSettingsScreen.tsx
 msgid "OpenSubtitles API key"
 msgstr "OpenSubtitles API key"
+
+#: src/features/lists/smartLabels.ts
+msgid "{count, plural, one {# title} other {# titles}}"
+msgstr "{count, plural, one {# title} other {# titles}}"
 
 #: src/features/admin/ApiKeysScreen.tsx
 msgid "Apps and scripts using this key stop working immediately."
@@ -766,6 +822,7 @@ msgstr "Subtitle"
 #: src/app/AppShell.tsx
 #: src/app/tv/TvRail.tsx
 #: src/features/admin/FixMatchDialog.tsx
+#: src/features/lists/SmartListDialog.tsx
 #: src/features/search/SearchScreen.tsx
 msgid "Search"
 msgstr "Search"
@@ -837,6 +894,7 @@ msgid "Network shares may not report changes. All libraries are also scanned eve
 msgstr "Network shares may not report changes. All libraries are also scanned every 12 hours."
 
 #: src/features/detail/SeriesDetail.tsx
+#: src/features/lists/smartLabels.ts
 #: src/features/search/SearchScreen.tsx
 msgid "Episodes"
 msgstr "Episodes"
@@ -849,9 +907,17 @@ msgstr "Released"
 msgid "Episodes use the audio and subtitle tracks last chosen for the show."
 msgstr "Episodes use the audio and subtitle tracks last chosen for the show."
 
+#: src/features/lists/SmartListDialog.tsx
+msgid "Unit"
+msgstr "Unit"
+
 #: src/components/trackLabels.ts
 msgid "{label} (downmix)"
 msgstr "{label} (downmix)"
+
+#: src/features/lists/SmartListDialog.tsx
+msgid "Field"
+msgstr "Field"
 
 #: src/features/admin/UserScreen.tsx
 msgid "Disable account"
@@ -911,6 +977,10 @@ msgstr "Identifying"
 msgid "Android phone"
 msgstr "Android phone"
 
+#: src/features/lists/smartLabels.ts
+msgid "In list"
+msgstr "In list"
+
 #: src/features/admin/FixMatchDialog.tsx
 msgid "Score {score}"
 msgstr "Score {score}"
@@ -934,6 +1004,10 @@ msgstr "Can't play this level"
 #: src/features/admin/ChooseArtworkDialog.tsx
 msgid "Choose artwork for {title}"
 msgstr "Choose artwork for {title}"
+
+#: src/features/lists/SmartListDialog.tsx
+msgid "Add Rule"
+msgstr "Add Rule"
 
 #: src/features/auth/LinkScreen.tsx
 msgid "{name} is signed in as {username}. You can close this page."
@@ -975,6 +1049,10 @@ msgstr "or"
 #: src/components/SaveBar.tsx
 msgid "Discard"
 msgstr "Discard"
+
+#: src/features/lists/SmartListDialog.tsx
+msgid "Match <0/> of These"
+msgstr "Match <0/> of These"
 
 #: src/features/admin/ActivityList.tsx
 #: src/features/admin/OverviewScreen.tsx
@@ -1196,6 +1274,7 @@ msgid "HDR tone mapping on CPU"
 msgstr "HDR tone mapping on CPU"
 
 #: src/features/browse/FilterPanel.tsx
+#: src/features/lists/smartLabels.ts
 msgid "Dynamic range"
 msgstr "Dynamic range"
 
@@ -1220,9 +1299,17 @@ msgstr "{user} finished {name}"
 msgid "Intro and credits"
 msgstr "Intro and credits"
 
+#: src/features/lists/smartLabels.ts
+msgid "on or after"
+msgstr "on or after"
+
 #: src/features/admin/UsersScreen.tsx
 msgid "Disabled"
 msgstr "Disabled"
+
+#: src/features/lists/smartLabels.ts
+msgid "is"
+msgstr "is"
 
 #: src/components/TranscodeDiagnostics.tsx
 msgid "exit code {exitCode}"
@@ -1294,9 +1381,17 @@ msgstr "Part of {0}"
 msgid "Other extras"
 msgstr "Other extras"
 
+#: src/features/lists/SmartListDialog.tsx
+msgid "This list uses a rule this version of Kivo doesn't know, so it can't be edited here."
+msgstr "This list uses a rule this version of Kivo doesn't know, so it can't be edited here."
+
 #: src/features/admin/UserScreen.tsx
 msgid "Make admin and save"
 msgstr "Make admin and save"
+
+#: src/features/lists/smartLabels.ts
+msgid "is not set"
+msgstr "is not set"
 
 #: src/features/lists/ListScreen.tsx
 msgid "The titles stay in your libraries."
@@ -1310,6 +1405,7 @@ msgid "More libraries"
 msgstr "More libraries"
 
 #: src/features/browse/useBrowseLabels.ts
+#: src/features/lists/smartLabels.ts
 msgid "Runtime"
 msgstr "Runtime"
 
@@ -1319,6 +1415,7 @@ msgstr "Best available accelerator"
 
 #: src/features/admin/ItemAdminMenu.tsx
 #: src/features/admin/ManageLibrariesScreen.tsx
+#: src/features/lists/ListScreen.tsx
 msgid "Edit"
 msgstr "Edit"
 
@@ -1339,6 +1436,7 @@ msgid "Can't play this profile"
 msgstr "Can't play this profile"
 
 #: src/features/browse/CountLine.tsx
+#: src/features/lists/smartLabels.ts
 msgid "{count, plural, one {# book} other {# books}}"
 msgstr "{count, plural, one {# book} other {# books}}"
 
@@ -1359,6 +1457,7 @@ msgstr "Code"
 #: src/features/admin/AdminLayout.tsx
 #: src/features/admin/LibrarySettingsScreen.tsx
 #: src/features/admin/TasksScreen.tsx
+#: src/features/lists/smartLabels.ts
 msgid "Library"
 msgstr "Library"
 
@@ -1399,6 +1498,7 @@ msgid "Unchecked libraries are hidden from the sidebar."
 msgstr "Unchecked libraries are hidden from the sidebar."
 
 #: src/features/browse/CountLine.tsx
+#: src/features/lists/SmartListDialog.tsx
 msgid "Sort"
 msgstr "Sort"
 
@@ -1458,6 +1558,7 @@ msgid "Downloads"
 msgstr "Downloads"
 
 #: src/features/browse/FilterPanel.tsx
+#: src/features/lists/smartLabels.ts
 msgid "Resolution"
 msgstr "Resolution"
 
@@ -1469,6 +1570,7 @@ msgid "Show more"
 msgstr "Show more"
 
 #: src/components/PersonCard.tsx
+#: src/features/lists/smartLabels.ts
 msgid "Actor"
 msgstr "Actor"
 
@@ -1487,6 +1589,11 @@ msgstr "Continue Watching"
 #: src/features/admin/NetworkSettingsScreen.tsx
 msgid "Leave empty to use private address ranges. Other addresses are remote."
 msgstr "Leave empty to use private address ranges. Other addresses are remote."
+
+#. placeholder {0}: clauses.join(", ")
+#: src/features/lists/SmartSummary.tsx
+msgid "{noun}. {0}"
+msgstr "{noun}. {0}"
 
 #. placeholder {0}: formatBitrate(cap)
 #: src/features/player/PlaybackSettingsMenu.tsx
@@ -1545,6 +1652,10 @@ msgstr "No {state} {noun}"
 #: src/features/admin/userFields.tsx
 msgid "Simultaneous streams"
 msgstr "Simultaneous streams"
+
+#: src/features/lists/SmartListDialog.tsx
+msgid "How many"
+msgstr "How many"
 
 #: src/features/admin/TasksScreen.tsx
 msgid "Schedule"
@@ -1630,6 +1741,10 @@ msgstr "Based on connection speed and limits"
 #: src/features/user/Sessions.tsx
 msgid "Sign out {name}?"
 msgstr "Sign out {name}?"
+
+#: src/features/lists/smartLabels.ts
+msgid "at least"
+msgstr "at least"
 
 #: src/features/admin/PlayCards.tsx
 msgid "More reference frames than this device plays"
@@ -1721,6 +1836,10 @@ msgstr "Audio & Subtitles"
 msgid "Error output"
 msgstr "Error output"
 
+#: src/features/lists/SmartListDialog.tsx
+msgid "This list was made by a newer version of Kivo, so it can't be edited here."
+msgstr "This list was made by a newer version of Kivo, so it can't be edited here."
+
 #. placeholder {0}: work.title
 #: src/features/browse/WorkCard.tsx
 msgid "Play {0}"
@@ -1789,8 +1908,13 @@ msgid "Next"
 msgstr "Next"
 
 #: src/features/lists/AddToListDialog.tsx
+#: src/features/lists/ListsScreen.tsx
 msgid "Create"
 msgstr "Create"
+
+#: src/features/lists/SmartListDialog.tsx
+msgid "and"
+msgstr "and"
 
 #: src/features/admin/ManageLibrariesScreen.tsx
 msgid "Scan"
@@ -1809,6 +1933,7 @@ msgstr "Message to the viewer (optional)"
 #: src/features/browse/LibraryScreen.tsx
 #: src/features/detail/PersonScreen.tsx
 #: src/features/libraries/AddLibraryForm.tsx
+#: src/features/lists/smartLabels.ts
 #: src/features/search/SearchScreen.tsx
 msgid "Shows"
 msgstr "Shows"
@@ -1816,6 +1941,10 @@ msgstr "Shows"
 #: src/features/detail/BookDetail.tsx
 msgid "Narrated by <0/>"
 msgstr "Narrated by <0/>"
+
+#: src/features/lists/SmartListDialog.tsx
+msgid "{total, plural, one {{noun} matches} other {{noun} match}}"
+msgstr "{total, plural, one {{noun} matches} other {{noun} match}}"
 
 #: src/features/admin/useAdminLabels.ts
 msgid "Clean up intro and credits"
@@ -1836,6 +1965,7 @@ msgstr "Optimizing"
 #: src/features/browse/LibraryScreen.tsx
 #: src/features/detail/PersonScreen.tsx
 #: src/features/libraries/AddLibraryForm.tsx
+#: src/features/lists/smartLabels.ts
 #: src/features/search/SearchScreen.tsx
 msgid "Movies"
 msgstr "Movies"
@@ -1844,6 +1974,10 @@ msgstr "Movies"
 #: src/features/player/AudioSubtitlesMenu.tsx
 msgid "Search subtitles…"
 msgstr "Search subtitles…"
+
+#: src/features/lists/SmartListDialog.tsx
+msgid "weeks"
+msgstr "weeks"
 
 #: src/features/browse/CountLine.tsx
 msgid "Author A–Z"
@@ -1866,6 +2000,7 @@ msgid "Logo"
 msgstr "Logo"
 
 #: src/features/browse/CountLine.tsx
+#: src/features/lists/smartLabels.ts
 msgid "{count, plural, one {# movie} other {# movies}}"
 msgstr "{count, plural, one {# movie} other {# movies}}"
 
@@ -1972,6 +2107,10 @@ msgstr "From 50% to 100%."
 msgid "{admin} added {user}"
 msgstr "{admin} added {user}"
 
+#: src/features/lists/SmartListDialog.tsx
+msgid "days"
+msgstr "days"
+
 #: src/features/home/HomeScreen.tsx
 #: src/features/user/SettingsScreen.tsx
 msgid "Home & libraries"
@@ -1992,6 +2131,10 @@ msgstr "Choose artwork"
 #: src/features/admin/ManageLibrariesScreen.tsx
 msgid "Edit {name}"
 msgstr "Edit {name}"
+
+#: src/features/lists/smartLabels.ts
+msgid "not in the last"
+msgstr "not in the last"
 
 #: src/features/admin/ChooseArtworkDialog.tsx
 msgid "Choose a JPEG, PNG or WebP image."
@@ -2060,6 +2203,7 @@ msgid "Every 30 days"
 msgstr "Every 30 days"
 
 #: src/features/lists/ListNameForm.tsx
+#: src/features/lists/SmartListDialog.tsx
 msgid "A list with that name already exists."
 msgstr "A list with that name already exists."
 
@@ -2090,6 +2234,10 @@ msgstr "Move down: {name}"
 #: src/features/user/SettingsScreen.tsx
 msgid "Large"
 msgstr "Large"
+
+#: src/features/lists/ListScreen.tsx
+msgid "Edit the rules to fix them."
+msgstr "Edit the rules to fix them."
 
 #: src/features/browse/BatchEditDialog.tsx
 msgid "Empty fields aren't changed."
@@ -2123,6 +2271,10 @@ msgstr "Seek in the chapter"
 #: src/features/search/SearchScreen.tsx
 msgid "{0, plural, one {# title} other {# titles}}"
 msgstr "{0, plural, one {# title} other {# titles}}"
+
+#: src/features/lists/smartLabels.ts
+msgid "is not"
+msgstr "is not"
 
 #: src/features/player/StreamInfo.tsx
 msgid "This device can't play {container} files."
@@ -2182,6 +2334,11 @@ msgstr "Separated by commas."
 msgid "Nothing yet"
 msgstr "Nothing yet"
 
+#. placeholder {0}: list.workCount
+#: src/features/lists/ListsScreen.tsx
+msgid "{0, plural, one {Smart list, # title} other {Smart list, # titles}}"
+msgstr "{0, plural, one {Smart list, # title} other {Smart list, # titles}}"
+
 #: src/features/admin/TranscodingScreen.tsx
 msgid "Not found"
 msgstr "Not found"
@@ -2224,6 +2381,10 @@ msgstr "Speed"
 msgid "Remove filter {label}"
 msgstr "Remove filter {label}"
 
+#: src/features/lists/smartLabels.ts
+msgid "{count, plural, one {# episode} other {# episodes}}"
+msgstr "{count, plural, one {# episode} other {# episodes}}"
+
 #: src/features/admin/TasksScreen.tsx
 msgid "Nightly tasks run {start} to {end}"
 msgstr "Nightly tasks run {start} to {end}"
@@ -2234,6 +2395,7 @@ msgid "Credits"
 msgstr "Credits"
 
 #: src/features/detail/WorkRows.tsx
+#: src/features/lists/smartLabels.ts
 msgid "Extras"
 msgstr "Extras"
 
@@ -2290,6 +2452,7 @@ msgid "Recently played"
 msgstr "Recently played"
 
 #: src/features/browse/FilterPanel.tsx
+#: src/features/lists/SmartListDialog.tsx
 msgid "Any"
 msgstr "Any"
 
@@ -2300,6 +2463,10 @@ msgstr "Access"
 #: src/features/browse/CountLine.tsx
 msgid "watched"
 msgstr "watched"
+
+#: src/features/lists/SmartListDialog.tsx
+msgid "min"
+msgstr "min"
 
 #: src/features/browse/WorkCard.tsx
 #: src/features/detail/PlaybackControls.tsx
@@ -2353,12 +2520,17 @@ msgstr "{0} invited you to Kivo on {1}"
 #: src/features/admin/EditFieldsDialog.tsx
 #: src/features/admin/FixMatchDialog.tsx
 #: src/features/browse/useBrowseLabels.ts
+#: src/features/lists/smartLabels.ts
 msgid "Title"
 msgstr "Title"
 
 #: src/features/detail/RenameDialog.tsx
 msgid "Using an existing name merges the two. The new name is kept through rescans."
 msgstr "Using an existing name merges the two. The new name is kept through rescans."
+
+#: src/features/lists/smartLabels.ts
+msgid "{count, plural, one {# day} other {# days}}"
+msgstr "{count, plural, one {# day} other {# days}}"
 
 #: src/features/admin/ManageLibrariesScreen.tsx
 msgid "Refresh all metadata for {name}?"
@@ -2369,6 +2541,7 @@ msgid "Retry all"
 msgstr "Retry all"
 
 #: src/features/browse/CountLine.tsx
+#: src/features/lists/smartLabels.ts
 msgid "{count, plural, one {# show} other {# shows}}"
 msgstr "{count, plural, one {# show} other {# shows}}"
 
@@ -2382,16 +2555,22 @@ msgid "Not on your home network"
 msgstr "Not on your home network"
 
 #: src/features/admin/FixMatchDialog.tsx
+#: src/features/lists/SmartListDialog.tsx
 msgid "Choose"
 msgstr "Choose"
 
 #: src/features/browse/FilterPanel.tsx
+#: src/features/lists/smartLabels.ts
 msgid "Genre"
 msgstr "Genre"
 
 #: src/features/admin/UserScreen.tsx
 msgid "Highest content rating"
 msgstr "Highest content rating"
+
+#: src/features/lists/smartLabels.ts
+msgid "is set"
+msgstr "is set"
 
 #: src/features/admin/PlayCards.tsx
 msgid "Bitrate higher than this device plays"
@@ -2428,6 +2607,10 @@ msgstr "{n, plural, one {# movie} other {# movies}}"
 msgid "Download"
 msgstr "Download"
 
+#: src/features/lists/SmartListDialog.tsx
+msgid "All"
+msgstr "All"
+
 #: src/features/admin/userFields.tsx
 msgid "All libraries"
 msgstr "All libraries"
@@ -2452,7 +2635,12 @@ msgstr "{name} finished"
 msgid "Ends at {time}"
 msgstr "Ends at {time}"
 
+#: src/features/lists/smartLabels.ts
+msgid "is all of"
+msgstr "is all of"
+
 #: src/components/PersonCard.tsx
+#: src/features/lists/smartLabels.ts
 msgid "Director"
 msgstr "Director"
 
@@ -2480,6 +2668,10 @@ msgstr "Create key"
 msgid "This invite link has expired, was already used or was revoked. Ask for a new link."
 msgstr "This invite link has expired, was already used or was revoked. Ask for a new link."
 
+#: src/features/lists/smartLabels.ts
+msgid "between"
+msgstr "between"
+
 #: src/features/admin/ShowFilesDialog.tsx
 msgid "Files of {title}"
 msgstr "Files of {title}"
@@ -2499,6 +2691,10 @@ msgstr "Description"
 #: src/features/user/SettingsScreen.tsx
 msgid "Couldn't save. {problem}"
 msgstr "Couldn't save. {problem}"
+
+#: src/features/lists/ListsScreen.tsx
+msgid "{kinds}, {count}"
+msgstr "{kinds}, {count}"
 
 #: src/features/admin/TranscodingScreen.tsx
 msgid "Simultaneous video transcodes"
@@ -2536,6 +2732,7 @@ msgstr "{name} has to sign in again."
 #: src/features/admin/userFields.tsx
 #: src/features/browse/LibrariesScreen.tsx
 #: src/features/browse/LibrarySwitcher.tsx
+#: src/features/lists/SmartListDialog.tsx
 #: src/features/user/LibraryOrder.tsx
 #: src/features/user/SettingsScreen.tsx
 msgid "Libraries"
@@ -2563,9 +2760,17 @@ msgstr "Level"
 msgid "Kivo is starting"
 msgstr "Kivo is starting"
 
+#: src/features/lists/smartLabels.ts
+msgid "{count, plural, one {# season} other {# seasons}}"
+msgstr "{count, plural, one {# season} other {# seasons}}"
+
 #: src/features/user/SettingsScreen.tsx
 msgid "Reset"
 msgstr "Reset"
+
+#: src/features/lists/SmartListDialog.tsx
+msgid "Random"
+msgstr "Random"
 
 #: src/features/admin/problemActions.ts
 msgid "Enter an OpenSubtitles API key in General settings, or turn off subtitle downloads for the library."
@@ -2580,6 +2785,10 @@ msgstr "Opening {0}…"
 #: src/features/auth/AddressScreen.tsx
 msgid "{0} is a Kivo server that isn't set up yet. Set it up in a browser, then press Open."
 msgstr "{0} is a Kivo server that isn't set up yet. Set it up in a browser, then press Open."
+
+#: src/features/lists/smartLabels.ts
+msgid "{count, plural, one {# week} other {# weeks}}"
+msgstr "{count, plural, one {# week} other {# weeks}}"
 
 #: src/features/admin/PlayCards.tsx
 msgid "Bandwidth"
@@ -2699,6 +2908,7 @@ msgstr "Search failed."
 
 #: src/features/admin/EditFieldsDialog.tsx
 #: src/features/browse/FilterPanel.tsx
+#: src/features/lists/smartLabels.ts
 msgid "Content rating"
 msgstr "Content rating"
 
@@ -2800,9 +3010,21 @@ msgstr "Play now"
 msgid "Search titles and people"
 msgstr "Search titles and people"
 
+#: src/features/lists/ListsScreen.tsx
+msgid "Smart Lists"
+msgstr "Smart Lists"
+
 #: src/features/admin/ManageLibrariesScreen.tsx
 msgid "Not scanned yet"
 msgstr "Not scanned yet"
+
+#: src/features/lists/smartLabels.ts
+msgid "Collection"
+msgstr "Collection"
+
+#: src/features/lists/ListScreen.tsx
+msgid "These rules no longer work"
+msgstr "These rules no longer work"
 
 #: src/features/admin/TranscodingScreen.tsx
 msgid "Install the driver on the host. For NVIDIA, use the NVIDIA container runtime."
@@ -2870,6 +3092,10 @@ msgstr "{0} realtime"
 #: src/features/admin/TasksScreen.tsx
 msgid "Nightly window"
 msgstr "Nightly window"
+
+#: src/features/lists/SmartListDialog.tsx
+msgid "Add Group"
+msgstr "Add Group"
 
 #: src/features/admin/ActivityList.tsx
 #: src/features/admin/PlayCards.tsx
@@ -2965,6 +3191,10 @@ msgstr "Casting to {0}"
 msgid "Select"
 msgstr "Select"
 
+#: src/features/lists/smartLabels.ts
+msgid "Book series"
+msgstr "Book series"
+
 #: src/features/admin/UnmatchedScreen.tsx
 msgid "Nothing unmatched"
 msgstr "Nothing unmatched"
@@ -2974,6 +3204,7 @@ msgid "Running"
 msgstr "Running"
 
 #: src/features/browse/useBrowseLabels.ts
+#: src/features/lists/smartLabels.ts
 msgid "Date added"
 msgstr "Date added"
 
@@ -3002,6 +3233,10 @@ msgstr "{name} {0}-bit"
 #: src/features/admin/TranscodingScreen.tsx
 msgid "Pass /dev/dri, or the NVIDIA devices, to the container."
 msgstr "Pass /dev/dri, or the NVIDIA devices, to the container."
+
+#: src/features/lists/smartLabels.ts
+msgid "Latest addition"
+msgstr "Latest addition"
 
 #: src/features/admin/TranscodingScreen.tsx
 msgid "Testing accelerators…"
@@ -3035,6 +3270,10 @@ msgstr "Add the folders that hold your movies and shows. You can skip this and a
 #: src/components/deviceCode.ts
 msgid "iPhone"
 msgstr "iPhone"
+
+#: src/features/lists/smartLabels.ts
+msgid "in the last"
+msgstr "in the last"
 
 #: src/features/admin/MissingFilesScreen.tsx
 msgid "Forget {path}"
@@ -3090,6 +3329,10 @@ msgstr "OpenSubtitles password"
 msgid "Command"
 msgstr "Command"
 
+#: src/features/lists/SmartListDialog.tsx
+msgid "Remove rule"
+msgstr "Remove rule"
+
 #: src/features/admin/PlayCards.tsx
 msgid "Can't play non-square pixels"
 msgstr "Can't play non-square pixels"
@@ -3105,6 +3348,10 @@ msgstr "Foreign audio only"
 #: src/features/admin/TaskButtons.tsx
 msgid "Stop {name}"
 msgstr "Stop {name}"
+
+#: src/features/lists/smartLabels.ts
+msgid "at most"
+msgstr "at most"
 
 #: src/features/admin/problemActions.ts
 msgid "Check that the disk or share is mounted, then scan the library again."
@@ -3208,6 +3455,7 @@ msgstr "Delete {0}?"
 #: src/features/admin/EditFieldsDialog.tsx
 #: src/features/browse/BatchEditDialog.tsx
 #: src/features/libraries/EditLibraryForm.tsx
+#: src/features/lists/SmartListDialog.tsx
 #: src/features/user/Sessions.tsx
 msgid "Save"
 msgstr "Save"
@@ -3218,6 +3466,7 @@ msgstr "Remove from Continue Listening"
 
 #: src/features/browse/LibraryScreen.tsx
 #: src/features/detail/PersonScreen.tsx
+#: src/features/lists/smartLabels.ts
 #: src/features/search/SearchScreen.tsx
 msgid "Books"
 msgstr "Books"
@@ -3393,6 +3642,10 @@ msgstr "Parental controls"
 msgid "Nothing failed"
 msgstr "Nothing failed"
 
+#: src/features/lists/smartLabels.ts
+msgid "Tag"
+msgstr "Tag"
+
 #: src/features/admin/ManageLibrariesScreen.tsx
 #: src/features/admin/useAdminLabels.ts
 msgid "Scan all libraries"
@@ -3467,6 +3720,10 @@ msgstr "Device not found."
 msgid "Resume"
 msgstr "Resume"
 
+#: src/features/lists/smartLabels.ts
+msgid "contains"
+msgstr "contains"
+
 #: src/features/search/SearchScreen.tsx
 msgid "Clear search"
 msgstr "Clear search"
@@ -3482,6 +3739,7 @@ msgstr "The viewer can resume from where it stopped."
 #: src/components/PersonCard.tsx
 #: src/features/admin/FixMatchDialog.tsx
 #: src/features/browse/useBrowseLabels.ts
+#: src/features/lists/smartLabels.ts
 msgid "Author"
 msgstr "Author"
 
@@ -3494,6 +3752,7 @@ msgid "Scanning {name}"
 msgstr "Scanning {name}"
 
 #: src/features/browse/CountLine.tsx
+#: src/features/lists/smartLabels.ts
 msgid "{count, plural, one {# video} other {# videos}}"
 msgstr "{count, plural, one {# video} other {# videos}}"
 
@@ -3580,6 +3839,10 @@ msgstr "Search your libraries by title, person or collection"
 msgid "Create link"
 msgstr "Create link"
 
+#: src/features/lists/smartLabels.ts
+msgid "{count, plural, one {# year} other {# years}}"
+msgstr "{count, plural, one {# year} other {# years}}"
+
 #: src/features/admin/PlayCards.tsx
 msgid "Can't play interlaced video"
 msgstr "Can't play interlaced video"
@@ -3607,6 +3870,7 @@ msgstr "Logs"
 
 #: src/features/detail/PersonScreen.tsx
 #: src/features/libraries/AddLibraryForm.tsx
+#: src/features/lists/smartLabels.ts
 #: src/features/search/SearchScreen.tsx
 msgid "Other videos"
 msgstr "Other videos"
@@ -3681,6 +3945,10 @@ msgstr "Chapter {0}"
 msgid "Working now"
 msgstr "Working now"
 
+#: src/features/lists/SmartListDialog.tsx
+msgid "Condition"
+msgstr "Condition"
+
 #: src/features/admin/ActivityScreen.tsx
 msgid "Everything"
 msgstr "Everything"
@@ -3724,12 +3992,17 @@ msgstr "This TV"
 msgid "Nightly and when media is added"
 msgstr "Nightly and when media is added"
 
+#: src/features/lists/ListScreen.tsx
+msgid "Titles appear here when they match the rules."
+msgstr "Titles appear here when they match the rules."
+
 #. placeholder {0}: added.count
 #: src/features/admin/ActivityList.tsx
 msgid "{0, plural, one {# video} other {# videos}}"
 msgstr "{0, plural, one {# video} other {# videos}}"
 
 #: src/features/detail/SeriesDetail.tsx
+#: src/features/lists/smartLabels.ts
 msgid "Seasons"
 msgstr "Seasons"
 
@@ -3754,6 +4027,10 @@ msgstr "Metadata language"
 #: src/features/player/CastButton.tsx
 msgid "Cast"
 msgstr "Cast"
+
+#: src/features/lists/SmartListDialog.tsx
+msgid "Edit Smart List"
+msgstr "Edit Smart List"
 
 #: src/features/admin/PlayCards.tsx
 msgid "Transcoder"
@@ -3792,6 +4069,14 @@ msgstr "{0, plural, one {Remove # folder?} other {Remove # folders?}}"
 #: src/features/user/SettingsScreen.tsx
 msgid "Display"
 msgstr "Display"
+
+#: src/features/lists/smartLabels.ts
+msgid "{count, plural, one {# month} other {# months}}"
+msgstr "{count, plural, one {# month} other {# months}}"
+
+#: src/features/lists/ListScreen.tsx
+msgid "Nothing matches yet"
+msgstr "Nothing matches yet"
 
 #: src/features/admin/ManageLibrariesScreen.tsx
 #: src/features/home/HomeScreen.tsx
@@ -3832,6 +4117,7 @@ msgstr "Created {created}"
 
 #: src/features/browse/CountLine.tsx
 #: src/features/browse/useBrowseLabels.ts
+#: src/features/lists/smartLabels.ts
 msgid "My rating"
 msgstr "My rating"
 
@@ -3923,6 +4209,10 @@ msgstr "Forced"
 msgid "Sign out everywhere else?"
 msgstr "Sign out everywhere else?"
 
+#: src/features/browse/LibraryScreen.tsx
+msgid "Save as Smart List"
+msgstr "Save as Smart List"
+
 #: src/features/auth/SignInScreen.tsx
 msgid "QR code to link this browser"
 msgstr "QR code to link this browser"
@@ -3936,6 +4226,7 @@ msgstr "Clear all"
 #: src/features/admin/ChooseArtworkDialog.tsx
 #: src/features/admin/ShowFilesDialog.tsx
 #: src/features/detail/Overview.tsx
+#: src/features/lists/SmartListDialog.tsx
 #: src/features/user/CreditsDialog.tsx
 #: src/features/user/LicensesDialog.tsx
 msgid "Close"
@@ -3946,6 +4237,7 @@ msgid "{count} transcoding"
 msgstr "{count} transcoding"
 
 #: src/features/browse/useBrowseLabels.ts
+#: src/features/lists/smartLabels.ts
 msgid "Rating"
 msgstr "Rating"
 
@@ -4038,6 +4330,7 @@ msgid "{name} is signed in"
 msgstr "{name} is signed in"
 
 #: src/features/browse/useBrowseLabels.ts
+#: src/features/lists/smartLabels.ts
 msgid "Last played"
 msgstr "Last played"
 

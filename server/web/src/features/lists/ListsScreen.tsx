@@ -1,3 +1,4 @@
+import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -10,6 +11,7 @@ import { useDocumentTitle } from "@/components/documentTitle";
 import { EmptyState } from "@/components/EmptyState";
 import { Icon } from "@/components/Icon";
 import { LoadError } from "@/components/LoadError";
+import { Menu, MenuItem } from "@/components/Menu";
 import { ModalDialog } from "@/components/ModalDialog";
 import { Row } from "@/components/Row";
 import { settingsCardClass } from "@/components/SettingsLayout";
@@ -20,6 +22,8 @@ import { WorkCard, workShape } from "@/features/browse/WorkCard";
 import { isTv } from "@/tv/flag";
 import { TvFocusGroup, useTvEmptyScreen } from "@/tv/focus";
 import { NewListForm } from "./AddToListDialog";
+import { SmartListDialog } from "./SmartListDialog";
+import { useSmartLabels } from "./smartLabels";
 
 /**
  * Lists: My List as a row of covers with its count, then the user's other
@@ -32,14 +36,17 @@ export function ListsScreen() {
   const read = useQuery(listQueries.all());
   const lists = read.data?.items;
   const myList = lists?.find((list) => list.builtIn && list.workCount > 0);
-  const others = lists?.filter((list) => !list.builtIn) ?? [];
-  const empty = lists !== undefined && myList === undefined && others.length === 0;
+  const custom = lists?.filter((list) => !list.builtIn) ?? [];
+  // A TV doesn't read a smart list's query, so it lists them with the rest.
+  const others = isTv ? custom : custom.filter((list) => list.kind !== "smart");
+  const smart = isTv ? [] : custom.filter((list) => list.kind === "smart");
+  const empty = lists !== undefined && myList === undefined && custom.length === 0;
   useTvEmptyScreen(empty);
   // The row and the lists arrive together, so a TV's first focus is the row's.
   const row = useQuery({ ...workQueries.listRow(myList?.id ?? ""), enabled: myList !== undefined });
   const ready = lists !== undefined && (myList === undefined || row.data !== undefined);
   const failed = read.isError ? read : row.isError ? row : undefined;
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState<"list" | "smart">();
 
   return (
     <TvFocusGroup focusKey="lists-screen">
@@ -47,9 +54,13 @@ export function ListsScreen() {
         <div className="flex min-h-10 items-center justify-between">
           <LibrarySwitcher title={t`Lists`} current={listsKey} />
           {!isTv && (
-            <Button size="sm" variant="ghost" aria-label={t`New List`} onPress={() => setCreating(true)}>
-              <Icon name="plus" className="size-5" />
-            </Button>
+            <Menu>
+              <Button size="sm" variant="ghost" aria-label={t`Create`}>
+                <Icon name="plus" className="size-5" />
+              </Button>
+              <MenuItem onAction={() => setCreating("list")}>{t`New List`}</MenuItem>
+              <MenuItem onAction={() => setCreating("smart")}>{t`New Smart List`}</MenuItem>
+            </Menu>
           )}
         </div>
         {!ready && failed && <LoadError error={failed.error} onRetry={() => void failed.refetch()} />}
@@ -72,7 +83,12 @@ export function ListsScreen() {
                   link={{ to: "/lists/$listId", params: { listId: list.id } }}
                   icon={<Icon name="list" className="size-5" />}
                   name={list.name}
-                  count={list.workCount}
+                  count={list.kind === "smart" ? undefined : list.workCount}
+                  detail={
+                    list.kind === "smart"
+                      ? plural(list.workCount, { one: "Smart list, # title", other: "Smart list, # titles" })
+                      : undefined
+                  }
                   focusKey={`list:${list.id}`}
                   autoFocus={myList === undefined && index === 0}
                 />
@@ -80,19 +96,51 @@ export function ListsScreen() {
             </ul>
           </section>
         )}
+        {ready && smart.length > 0 && (
+          <section aria-labelledby="smart-lists" className="flex flex-col gap-3">
+            <h2 id="smart-lists" className="text-lg font-semibold text-text">
+              <Trans>Smart Lists</Trans>
+            </h2>
+            <ul className={settingsCardClass}>
+              {smart.map((list) => (
+                <SmartListRow key={list.id} list={list} />
+              ))}
+            </ul>
+          </section>
+        )}
       </div>
-      {creating && (
+      {creating === "list" && (
         <ModalDialog
           isOpen
-          onClose={() => setCreating(false)}
+          onClose={() => setCreating(undefined)}
           title={<Trans>New List</Trans>}
           width="form"
           part="new-list"
         >
-          <NewListForm onDone={() => setCreating(false)} />
+          <NewListForm onDone={() => setCreating(undefined)} />
         </ModalDialog>
       )}
+      {creating === "smart" && <SmartListDialog onClose={() => setCreating(undefined)} />}
     </TvFocusGroup>
+  );
+}
+
+/** A smart list's row: its name over what it shows and how many. */
+function SmartListRow({ list }: { list: WorkList }) {
+  const { i18n, t } = useLingui();
+  const labels = useSmartLabels();
+  const kinds = new Intl.ListFormat(i18n.locale, { type: "conjunction" }).format(
+    (list.smart?.query.kinds ?? []).map(labels.kind),
+  );
+  const count = i18n.number(list.workCount);
+  return (
+    <LibraryRow
+      link={{ to: "/lists/$listId", params: { listId: list.id } }}
+      icon={<Icon name="list" className="size-5" />}
+      name={list.name}
+      detail={t`${kinds}, ${count}`}
+      focusKey={`list:${list.id}`}
+    />
   );
 }
 

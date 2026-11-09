@@ -82,6 +82,8 @@ import com.mmcdole.kivo.android.mobile.app.CollectionRoute
 import com.mmcdole.kivo.android.mobile.app.MobileNav
 import com.mmcdole.kivo.android.mobile.app.PersonRoute
 import com.mmcdole.kivo.android.mobile.app.handle
+import com.mmcdole.kivo.android.mobile.lists.smartListBuilderRoute
+import com.mmcdole.kivo.android.mobile.lists.smartListQuery
 import com.mmcdole.kivo.android.mobile.theme.space
 import com.mmcdole.kivo.android.mobile.ui.LocalWide
 import com.mmcdole.kivo.android.mobile.ui.CardShape
@@ -142,7 +144,13 @@ fun LibraryScreen(session: ServerSession, libraryId: String, oneOffSort: String?
     }
     when (sheet) {
         "sort" -> SortSheet(state, onSort = { model.chooseQuery(state.query.copy(sort = it)) }, onDismiss = { sheet = null })
-        "filter" -> FilterSheet(state, model::chooseQuery, model::clearFilters, onDismiss = { sheet = null })
+        "filter" -> FilterSheet(
+            state,
+            model::chooseQuery,
+            model::clearFilters,
+            onSaveSmart = { nav.open(smartListBuilderRoute(state.library?.name.orEmpty(), smartListQuery(state.query, state.library?.kind))) },
+            onDismiss = { sheet = null },
+        )
     }
 }
 
@@ -362,7 +370,7 @@ private fun SortSheet(state: LibraryUiState, onSort: (String) -> Unit, onDismiss
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-private fun FilterSheet(state: LibraryUiState, onQuery: (GridQuery) -> Unit, onClear: () -> Unit, onDismiss: () -> Unit) {
+private fun FilterSheet(state: LibraryUiState, onQuery: (GridQuery) -> Unit, onClear: () -> Unit, onSaveSmart: () -> Unit, onDismiss: () -> Unit) {
     val query = state.query
     val facets = state.facets
     val books = state.library?.kind == "audiobooks"
@@ -397,6 +405,15 @@ private fun FilterSheet(state: LibraryUiState, onQuery: (GridQuery) -> Unit, onC
                         FilterChip(selected = r in on, onClick = { onQuery(query.copy(dynamicRanges = toggled(on, r))) }, label = { Text(dynamicRangeName(r)) })
                     }
                 }
+            }
+            if (query.filtered) {
+                TextButton(
+                    onClick = {
+                        onDismiss()
+                        onSaveSmart()
+                    },
+                    modifier = Modifier.testTag("saveAsSmartList"),
+                ) { Text(stringResource(R.string.mobile_smart_save_as)) }
             }
         }
     }

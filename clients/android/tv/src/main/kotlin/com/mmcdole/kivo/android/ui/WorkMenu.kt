@@ -15,9 +15,11 @@ import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mmcdole.kivo.android.tv.R
 import com.mmcdole.kivo.android.ServerSession
 import com.mmcdole.kivo.api.models.WorkSummary
+import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.display.episodeCode
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -59,7 +61,9 @@ private fun WorkMenu(work: WorkSummary, continueWatching: Boolean, session: Serv
     val playable = work.available && work.kind in setOf("movie", "episode", "video", "extra")
     val started = work.userState?.positionMs != null
     val played = work.userState?.played == true
-    val openList = screen as? Screen.ListWorks
+    val lists by remember(session) { session.session.library.lists() }.collectAsStateWithLifecycle(Load.Loading)
+    // A smart list's works are its rules', so only a manual list offers Remove.
+    val openList = (screen as? Screen.ListWorks)?.takeIf { open -> lists.getOrNull()?.any { it.id == open.id && it.kind == "manual" } == true }
     val seriesId = work.episode?.seriesId
     val libraryId = work.libraryId
     val choices = buildList {

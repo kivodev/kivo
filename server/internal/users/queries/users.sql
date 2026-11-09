@@ -49,13 +49,21 @@ WHERE user_library.user_id = @user_id
   AND library_id NOT IN (SELECT g.library_id FROM library_grant g WHERE g.user_id = @user_id);
 
 -- name: InsertList :exec
-INSERT INTO list (id, user_id, name, built_in, created_at) VALUES (@id, @user_id, @name, @built_in, @created_at);
+INSERT INTO list (id, user_id, name, built_in, query, created_at) VALUES (@id, @user_id, @name, @built_in, @query, @created_at);
 
 -- name: CountLists :one
 SELECT count(*) FROM list WHERE user_id = @user_id;
 
 -- name: GetList :one
-SELECT id, built_in FROM list WHERE id = @id AND user_id = @user_id;
+SELECT id, built_in, query IS NOT NULL AS smart FROM list WHERE id = @id AND user_id = @user_id;
+
+-- name: MovePersonInListQueries :exec
+-- A person merged into another keeps the rules that name them.
+UPDATE list SET query = replace(query, CAST(@from AS TEXT), CAST(@into AS TEXT))
+WHERE query LIKE '%' || CAST(@from AS TEXT) || '%';
+
+-- name: SetListQuery :exec
+UPDATE list SET query = @query WHERE id = @id;
 
 -- name: RenameList :exec
 UPDATE list SET name = @name WHERE id = @id;

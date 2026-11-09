@@ -7,7 +7,8 @@ import SwiftUI
 /// own work's shape, over the core's paged grid: the pages around the cards
 /// on screen are read as they appear, and read again in place as the list
 /// changes. A list other than My List can be renamed and deleted from its
-/// menu.
+/// menu. A smart list also has its count and a line of its rules at the top
+/// and Edit, which opens the builder on its query.
 struct ListGrid: View {
     private let list: ListRef
     @State private var model: ListGridModel
@@ -15,8 +16,12 @@ struct ListGrid: View {
     @State private var newName = ""
     @State private var confirmingDelete = false
     @State private var problem: String?
+    @State private var editingRules = false
+    /// A smart list's rules in a line, once its fields and values are read.
+    @State private var rulesLine: String?
     @Environment(ServerModel.self) private var server
     @Environment(\.wide) private var wide
+    @Environment(\.kivoPalette) private var palette
     @Environment(\.dismiss) private var dismiss
 
     init(list: ListRef, session: KivoSession) {
@@ -27,11 +32,20 @@ struct ListGrid: View {
     /// The list as last read: its name changes, and a heading on Home only knows its first.
     private var current: WorkList? { server.lists.first { $0.id == list.id } }
     private var title: String { current?.name ?? list.name }
+    private var smart: WorkListSmart? { current?.smart }
 
     var body: some View {
         GeometryReader { geometry in
             let layout = GridLayout(width: geometry.size.width, style: .poster, scrubber: false, wide: wide)
             ScrollView {
+                if let line = smartLine {
+                    Text(line)
+                        .font(.subheadline)
+                        .foregroundStyle(palette.textMuted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, layout.insets.leading)
+                        .accessibilityIdentifier("smart-list-summary")
+                }
                 SkeletonGate(loaded: model.total != nil || model.failure != nil || server.unreachable) {
                     if let failure = model.failure {
                         MessageView(String(localized: "Couldn't load \(title)."), sentence: failure.sentence)
@@ -39,10 +53,7 @@ struct ListGrid: View {
                             .padding(.top, KivoTokens.spacing * 10)
                     } else if let total = model.total {
                         if total == 0 {
-                            MessageView(
-                                String(localized: "No titles yet."),
-                                sentence: String(localized: "Titles you add to this list appear here.")
-                            )
+                            emptyMessage
                             .frame(maxWidth: .infinity)
                             .padding(.top, KivoTokens.spacing * 10)
                         } else {
@@ -76,8 +87,15 @@ struct ListGrid: View {
             .refreshable { await model.refresh() }
         }
         .navigationTitle(title)
-        .toolbarTitleDisplayMode(.inline)
+        // A list just made isn't read yet, and the mode can't grow once the page is up.
+        .toolbarTitleDisplayMode(current != nil && smart == nil ? .inline : .large)
         .toolbar {
+            if let current, current.isSmart {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(String(localized: "Edit")) { editingRules = true }
+                        .accessibilityIdentifier("smart-list-edit")
+                }
+            }
             if let current, !current.builtIn {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
@@ -107,13 +125,48 @@ struct ListGrid: View {
         .alert(problem ?? "", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
             Button(String(localized: "OK"), role: .cancel) {}
         }
+        .sheet(isPresented: $editingRules) {
+            if let current { SmartListBuilder(editing: current) }
+        }
         .task { await model.run() }
+        .task(id: smart?.query.description) { await readRules() }
+    }
+
+    /// A smart list's count and rules: "42 movies. Comedy, no Animation".
+    private var smartLine: String? {
+        guard let smart, let current else { return nil }
+        let count = SmartListWords.count(model.total ?? Int(current.workCount), kinds: smart.query.kinds)
+        guard let rulesLine, !rulesLine.isEmpty else { return count }
+        return "\(count). \(rulesLine)"
+    }
+
+    /// Reads what naming a smart list's rules takes.
+    private func readRules() async {
+        guard let query = smart?.query, let fields = try? await server.session.library.workFields() else { return }
+        let names = await SmartListWords.names(of: query, fields: fields, session: server.session)
+        rulesLine = SmartListWords.summary(of: query, fields: fields, names: names)
+    }
+
+    /// Why a list shows nothing: rules that no longer run, rules matching nothing, or nothing added.
+    @ViewBuilder private var emptyMessage: some View {
+        if let smart {
+            if smart.errors?.isEmpty == false {
+                MessageView(String(localized: "These rules no longer work."))
+            } else {
+                MessageView(String(localized: "Nothing matches these rules yet."))
+            }
+        } else {
+            MessageView(
+                String(localized: "No titles yet."),
+                sentence: String(localized: "Titles you add to this list appear here.")
+            )
+        }
     }
 
     private func rename(_ name: String) {
         Task {
             do {
-                _ = try await server.session.library.renameList(id: list.id, name: name)
+                _ = try await server.session.library.renameList(id: list.id, name: name, query: nil)
             } catch {
                 problem = error.listNameSentence
             }

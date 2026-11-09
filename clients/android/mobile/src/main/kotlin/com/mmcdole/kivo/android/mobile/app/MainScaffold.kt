@@ -74,6 +74,7 @@ import com.mmcdole.kivo.android.mobile.linkdevice.LinkDeviceScreen
 import com.mmcdole.kivo.android.mobile.lists.AddToListSheet
 import com.mmcdole.kivo.android.mobile.lists.ListScreen
 import com.mmcdole.kivo.android.mobile.lists.ListsScreen
+import com.mmcdole.kivo.android.mobile.lists.SmartListBuilderScreen
 import com.mmcdole.kivo.android.mobile.home.HomeScreen
 import com.mmcdole.kivo.android.mobile.library.LibrariesScreen
 import com.mmcdole.kivo.android.mobile.library.LibraryScreen
@@ -141,7 +142,8 @@ fun MainScaffold(session: ServerSession) {
     val book by mini.state.collectAsStateWithLifecycle()
     val destination = entry?.destination
     val fullScreen = destination != null &&
-        (destination.hasRoute(PlayerRoute::class) || destination.hasRoute(NowPlayingRoute::class) || destination.hasRoute(CastRemoteRoute::class))
+        (destination.hasRoute(PlayerRoute::class) || destination.hasRoute(NowPlayingRoute::class) || destination.hasRoute(CastRemoteRoute::class) ||
+            destination.hasRoute(SmartListBuilderRoute::class))
     val suite = NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(currentWindowAdaptiveInfo())
     val type = if (fullScreen) NavigationSuiteType.None else suite
 
@@ -278,6 +280,7 @@ private fun NavGraphBuilder.pages(session: ServerSession, nav: MobileNav, cast: 
     composable<PersonRoute> { PersonScreen(session, it.toRoute<PersonRoute>().id, nav) }
     composable<BookSeriesRoute> { BookSeriesScreen(session, it.toRoute<BookSeriesRoute>().id, nav) }
     composable<ListRoute> { val r = it.toRoute<ListRoute>(); ListScreen(session, r.id, r.name, nav) }
+    composable<SmartListBuilderRoute> { SmartListBuilderScreen(session, it.toRoute<SmartListBuilderRoute>(), nav) }
     composable<PlayerRoute> { PlayerScreen(session, it.toRoute<PlayerRoute>(), nav) }
     composable<NowPlayingRoute> { NowPlayingScreen(session, nav) }
     composable<SettingsRoute> { SettingsScreen(session, nav) }

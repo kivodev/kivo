@@ -183,14 +183,19 @@ func (q *Queries) InsertEvent(ctx context.Context, arg InsertEventParams) error 
 }
 
 const listOwner = `-- name: ListOwner :one
-SELECT user_id FROM list WHERE id = ?1
+SELECT user_id, query IS NOT NULL AS smart FROM list WHERE id = ?1
 `
 
-func (q *Queries) ListOwner(ctx context.Context, argID id.ID) (id.ID, error) {
+type ListOwnerRow struct {
+	UserID id.ID
+	Smart  bool
+}
+
+func (q *Queries) ListOwner(ctx context.Context, argID id.ID) (ListOwnerRow, error) {
 	row := q.db.QueryRowContext(ctx, listOwner, argID)
-	var user_id id.ID
-	err := row.Scan(&user_id)
-	return user_id, err
+	var i ListOwnerRow
+	err := row.Scan(&i.UserID, &i.Smart)
+	return i, err
 }
 
 const moveEvents = `-- name: MoveEvents :exec

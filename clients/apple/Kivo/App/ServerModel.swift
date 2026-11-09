@@ -74,7 +74,7 @@ final class ServerModel {
         tasks.append(Task { [weak self, session] in
             for await load in session.library.lists() {
                 guard let lists = load.getOrNull() as? [WorkList] else { continue }
-                self?.lists = lists.filter { $0.kind == "manual" }
+                self?.lists = lists.filter { $0.kind == "manual" || $0.kind == "smart" }
             }
         })
         tasks.append(Task { [weak self, session] in

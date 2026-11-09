@@ -69,6 +69,9 @@ import kotlinx.serialization.Serializable
 /** A list as a grid; [name] shows until the list is read, as it can change. */
 @Serializable data class ListRoute(val id: String, val name: String)
 
+/** The smart list builder, on a saved list's query with [listId], or a new list's starting [name] and [query], as JSON. */
+@Serializable data class SmartListBuilderRoute(val listId: String? = null, val name: String = "", val query: String? = null)
+
 /**
  * The video player, full screen: [workId] from where it was left, from the
  * start, or from [positionMs]; with the version and tracks a work's page
@@ -198,6 +201,11 @@ class MobileNav(
     /** [route] in the player's place: the next episode's player, or the series' page after its last. */
     fun replacePlayer(route: Any) = nav.navigate(route) {
         popUpTo<PlayerRoute> { inclusive = true }
+    }
+
+    /** [route] in the smart list builder's place: the list just made. */
+    fun replaceBuilder(route: Any) = nav.navigate(route) {
+        popUpTo<SmartListBuilderRoute> { inclusive = true }
     }
 
     fun back() {

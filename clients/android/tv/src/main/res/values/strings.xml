@@ -229,6 +229,7 @@
         <item quantity="one">%1$d title</item>
         <item quantity="other">%1$d titles</item>
     </plurals>
+    <string name="smart_list">Smart list</string>
     <string name="person_nothing_to_watch">No titles available</string>
     <string name="key_space">Space</string>
     <string name="key_clear">Clear</string>

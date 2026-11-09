@@ -51,9 +51,12 @@ func (s *Service) RemoveFromList(ctx context.Context, v users.Viewer, list, work
 }
 
 func ownsList(ctx context.Context, q *dbq.Queries, v users.Viewer, list id.ID) error {
-	owner, err := q.ListOwner(ctx, list)
-	if errors.Is(err, sql.ErrNoRows) || err == nil && owner != v.User() {
+	l, err := q.ListOwner(ctx, list)
+	if errors.Is(err, sql.ErrNoRows) || err == nil && l.UserID != v.User() {
 		return fmt.Errorf("%w: %s", users.ErrListNotFound, list)
+	}
+	if err == nil && l.Smart {
+		return users.ErrListKind
 	}
 	return err
 }

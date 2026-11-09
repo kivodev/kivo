@@ -2,7 +2,7 @@ import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
-import { listQueries, useDeleteList, useRenameList } from "@/api/lists";
+import { listQueries, useDeleteList, useUpdateList } from "@/api/lists";
 import type { WorkList, WorkSummary } from "@/api/schemas";
 import { gridPageSize, gridPages, workQueries } from "@/api/works";
 import { Button, buttonClass } from "@/components/Button";
@@ -20,24 +20,29 @@ import { WorkCard, workShape } from "@/features/browse/WorkCard";
 import { isTv } from "@/tv/flag";
 import { useTvEmptyScreen } from "@/tv/focus";
 import { ListNameForm } from "./ListNameForm";
+import { SmartListDialog } from "./SmartListDialog";
+import { SmartSummary } from "./SmartSummary";
 
 const listRoute = getRouteApi("/authed/lists/$listId");
 
 /**
- * A list's works, most recently added first, in a grid without sort,
- * filters or letters, each card in its own shape. A list the user made can
- * be renamed or deleted, except on TV.
+ * A list's works in a grid without sort, filters or letters, each card in
+ * its own shape: a manual list's most recently added first, a smart list's
+ * by its rules. A list the user made can be renamed or deleted, except on
+ * TV, and a smart list's rules can be edited there too.
  */
 export function ListScreen() {
   const { t } = useLingui();
   const { listId } = listRoute.useParams();
   const list = useQuery(listQueries.detail(listId));
   useDocumentTitle(list.data?.name ?? t`Lists`);
+  const manual = list.data?.kind === "manual";
+  const smart = list.data?.smart;
   const renderCard = useCallback(
     (work: WorkSummary, width: number) => (
-      <WorkCard work={work} shape={workShape(work.kind)} width={width} listId={listId} />
+      <WorkCard work={work} shape={workShape(work.kind)} width={width} listId={manual ? listId : undefined} />
     ),
-    [listId],
+    [listId, manual],
   );
   const read = useQuery(workQueries.listPage(listId, 0));
   const first = read.data;
@@ -70,8 +75,12 @@ export function ListScreen() {
           {!isTv && list.data && !list.data.builtIn && <ListActions list={list.data} />}
         </div>
         {first ? (
-          <p data-part="library-count" className="text-sm text-text-muted">
-            <Plural value={total} one="# title" other="# titles" />
+          <p data-part="library-count" className="truncate text-sm text-text-muted">
+            {smart && !isTv ? (
+              <SmartSummary query={smart.query} count={total} />
+            ) : (
+              <Plural value={total} one="# title" other="# titles" />
+            )}
           </p>
         ) : (
           !read.isError && <CountSkeleton />
@@ -84,8 +93,18 @@ export function ListScreen() {
           <GridSkeleton rail={false} />
         )
       ) : total === 0 ? (
-        <EmptyState title={t`Nothing on this list yet`}>
-          <Trans>Titles you add to this list appear here.</Trans>
+        <EmptyState
+          title={
+            smart?.errors ? t`These rules no longer work` : smart ? t`Nothing matches yet` : t`Nothing on this list yet`
+          }
+        >
+          {smart?.errors ? (
+            !isTv && <Trans>Edit the rules to fix them.</Trans>
+          ) : smart ? (
+            <Trans>Titles appear here when they match the rules.</Trans>
+          ) : (
+            <Trans>Titles you add to this list appear here.</Trans>
+          )}
         </EmptyState>
       ) : (
         <VirtualGrid
@@ -101,15 +120,20 @@ export function ListScreen() {
   );
 }
 
-/** The ⋯ menu of a list the user made: Rename and Delete. */
+/** A list the user made: Edit, if it's smart, and the ⋯ menu's Rename and Delete. */
 function ListActions({ list }: { list: WorkList }) {
   const { t } = useLingui();
   const navigate = useNavigate();
-  const rename = useRenameList();
+  const rename = useUpdateList();
   const remove = useDeleteList();
-  const [open, setOpen] = useState<"rename" | "delete">();
+  const [open, setOpen] = useState<"edit" | "rename" | "delete">();
   return (
     <>
+      {list.smart && (
+        <Button variant="secondary" size="sm" onPress={() => setOpen("edit")}>
+          <Trans>Edit</Trans>
+        </Button>
+      )}
       <Menu>
         <Button aria-label={t`More actions for ${list.name}`} variant="secondary" size="icon">
           <Icon name="more" />
@@ -117,6 +141,14 @@ function ListActions({ list }: { list: WorkList }) {
         <MenuItem onAction={() => setOpen("rename")}>{t`Rename`}</MenuItem>
         <MenuItem onAction={() => setOpen("delete")}>{t`Delete`}</MenuItem>
       </Menu>
+      {open === "edit" && list.smart && (
+        <SmartListDialog
+          listId={list.id}
+          name={list.name}
+          query={list.smart.query}
+          onClose={() => setOpen(undefined)}
+        />
+      )}
       <ModalDialog
         isOpen={open === "rename"}
         onClose={() => setOpen(undefined)}

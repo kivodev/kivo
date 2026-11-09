@@ -1691,8 +1691,10 @@ paths:
       operationId: updateList
       summary: Rename a list
       description: |
-        My List can't be renamed: `409` with code `conflict`. A name in use
-        is `409` with code `nameTaken`. A `listsChanged` event tells the
+        My List can't be renamed, and `smart` is refused on a manual list:
+        `409` with code `conflict`. A name in use is `409` with code
+        `nameTaken`. Invalid rules are `400` with pointers such as
+        `/smart/query/where/rules/0/op`. A `listsChanged` event tells the
         user's clients.
       tags: [works]
       x-kivo-access: viewer
@@ -1735,8 +1737,9 @@ paths:
       operationId: listListWorks
       summary: List a list's works
       description: |
-        A list's works the user sees, most recently added first: with
-        `kind`, only those kinds. A grid, paged by `offset`, with `total` on
+        A list's works the user sees: a manual list's most recently added
+        first, a smart list's as its rules select them. With `kind`, only
+        those kinds. A smart list whose rules no longer run is empty. A grid, paged by `offset`, with `total` on
         every page; works added at the same time are listed by title.
       tags: [works]
       x-kivo-access: viewer
@@ -1765,7 +1768,8 @@ paths:
       operationId: addListWork
       summary: Add a work to a list
       description: |
-        A work already in the list keeps its place. It stays there after
+        A smart list's works come from its rules: `409` with code
+        `conflict`. A work already in the list keeps its place. It stays there after
         being played. A `listsChanged` event tells the user's clients.
       tags: [works]
       x-kivo-access: viewer
@@ -1788,11 +1792,14 @@ paths:
     delete:
       operationId: removeListWork
       summary: Remove a work from a list
-      description: A `listsChanged` event tells the user's clients.
+      description: |
+        A smart list's works come from its rules: `409` with code
+        `conflict`. A `listsChanged` event tells the user's clients.
       tags: [works]
       x-kivo-access: viewer
       responses:
         "204": {description: Removed.}
+        "409": {$ref: "#/components/responses/Conflict"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "404": {$ref: "#/components/responses/NotFound"}
         default: {$ref: "#/components/responses/Error"}
@@ -5274,11 +5281,12 @@ components:
         workCount:
           type: integer
           description: Works in the list the user sees.
+        smart: {$ref: "#/components/schemas/WorkListSmart"}
 
     ListKind:
       type: string
-      description: What a list is. `manual` is works the user added. Skip kinds you don't know.
-      enum: [manual]
+      description: What a list is. `manual` is works the user added; `smart` is the works rules select. Skip kinds you don't know.
+      enum: [manual, smart]
 
     WorkListList:
       type: object
@@ -5288,16 +5296,40 @@ components:
           type: array
           items: {$ref: "#/components/schemas/WorkList"}
 
+    WorkListSmart:
+      type: object
+      description: |
+        A smart list's rules. A list whose rules no longer run has `errors`
+        pointing at what's wrong, returns an empty page and is off Home.
+      required: [query]
+      properties:
+        query: {$ref: "#/components/schemas/WorkQuery"}
+        errors:
+          type: array
+          items: {$ref: "#/components/schemas/FieldError"}
+
+    SmartRules:
+      type: object
+      required: [query]
+      properties:
+        query: {$ref: "#/components/schemas/WorkQuery"}
+
     ListCreate:
       type: object
       required: [name]
       properties:
         name: {type: string, minLength: 1, maxLength: 64}
+        smart:
+          $ref: "#/components/schemas/SmartRules"
+          description: Makes a smart list, which runs the rules; without it, a manual list.
 
     ListUpdate:
       type: object
       properties:
         name: {type: string, minLength: 1, maxLength: 64}
+        smart:
+          $ref: "#/components/schemas/SmartRules"
+          description: Replaces a smart list's rules; a manual list has none.
 
     ListWorkAdd:
       type: object

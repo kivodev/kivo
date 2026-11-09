@@ -39,6 +39,8 @@ import type {
   User,
   Version,
   WorkDetail,
+  WorkField,
+  WorkFieldValue,
   WorkKind,
   WorkList,
   WorkSummary,
@@ -96,6 +98,10 @@ export type MockApi = {
   homeLayout?: HomeRowInfo[];
   /** The user's lists, each with its works' IDs, most recently added first. */
   lists: MockList[];
+  /** What rules and sorts can name. */
+  workFields: WorkField[];
+  /** The values of each field that chooses from a list, by field. */
+  workFieldValues: Record<string, WorkFieldValue[]>;
   /** Search results, whatever was searched. */
   search: WorkSummary[];
   /** The people search finds, whatever was searched. */

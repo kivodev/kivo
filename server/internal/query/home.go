@@ -66,6 +66,7 @@ type HomeRowInfo struct {
 	Library Library
 	List    ListRef
 	Shown   bool
+	smart   *SmartList // a smart list's rules, for its row
 }
 
 // homeRowStates reads what the user stored about their Home rows.
@@ -189,7 +190,7 @@ func defaultRows(libs []Library, lists []List) []HomeRowInfo {
 	}
 	var others []HomeRowInfo
 	for _, l := range lists {
-		row := HomeRowInfo{ID: rowID(RowList, l.ID), Kind: RowList, Shown: l.BuiltIn, List: ListRef{ID: l.ID, Name: l.Name}}
+		row := HomeRowInfo{ID: rowID(RowList, l.ID), Kind: RowList, Shown: l.BuiltIn, List: ListRef{ID: l.ID, Name: l.Name}, smart: l.Smart}
 		if l.BuiltIn {
 			rows = append(rows, row)
 		} else {
@@ -343,6 +344,9 @@ func rowItems(ctx context.Context, tx *sql.Tx, vw viewer, r HomeRowInfo) ([]Work
 	case RowContinueListening:
 		return summaries(ctx, tx, continueListening, vw.args(limit))
 	case RowList:
+		if r.smart != nil {
+			return smartRow(ctx, tx, vw, r)
+		}
 		return summaries(ctx, tx, listWorksPage, vw.args(sql.Named("list", r.List.ID), sql.Named("kinds", nil), sql.Named("offset", 0), limit))
 	case RowRecentlyAdded:
 		added, err := rowsOf(ctx, tx, recentlyAdded, vw.args(sql.Named("library", r.Library.ID)), func(rs scanner, a *addition) error {
@@ -394,6 +398,16 @@ func (s *Service) Home(ctx context.Context, v users.Viewer, kinds ...RowKind) (r
 		return nil, false, err
 	}
 	return rows, allHidden, nil
+}
+
+// smartRow reads the first rowLimit works of a smart list's rules.
+func smartRow(ctx context.Context, tx *sql.Tx, vw viewer, r HomeRowInfo) ([]WorkSummary, error) {
+	if len(r.smart.Errors) > 0 {
+		return nil, nil
+	}
+	now := time.Now()
+	c := compile(r.smart.Query, vw, now, listSeed(r.List.ID, now))
+	return summaries(ctx, tx, statement{sql: c.sql + compiledPage}, append(slices.Clone(c.args), sql.Named("limit", rowLimit), sql.Named("offset", 0)))
 }
 
 // bundleSummaries reads the summaries of a library's "Recently Added"

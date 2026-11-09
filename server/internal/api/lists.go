@@ -10,7 +10,32 @@ import (
 
 // listOf converts a list.
 func listOf(l query.List) gen.WorkList {
-	return gen.WorkList{ID: l.ID, Name: l.Name, Kind: gen.ListKindManual, BuiltIn: l.BuiltIn, WorkCount: l.Works}
+	out := gen.WorkList{ID: l.ID, Name: l.Name, Kind: gen.ListKindManual, BuiltIn: l.BuiltIn, WorkCount: l.Works}
+	if l.Smart != nil {
+		out.Kind = gen.ListKindSmart
+		out.Smart = &gen.WorkListSmart{Query: wireQuery(l.Smart.Query)}
+		if len(l.Smart.Errors) > 0 {
+			errs := problemFields("/smart/query", l.Smart.Errors)
+			out.Smart.Errors = &errs
+		}
+	}
+	return out
+}
+
+// savedQuery checks a request's rules and returns them as stored JSON.
+func savedQuery(smart *gen.SmartRules) (*string, error) {
+	if smart == nil {
+		return nil, nil
+	}
+	q := workQuery(smart.Query)
+	if problems := q.Validate(); len(problems) > 0 {
+		return nil, invalid("invalid query", problemFields("/smart/query", problems)...)
+	}
+	saved, err := q.Saved()
+	if err != nil {
+		return nil, err
+	}
+	return &saved, nil
 }
 
 func (h *handlers) ListLists(ctx context.Context, _ gen.ListListsRequestObject) (gen.ListListsResponseObject, error) {
@@ -23,7 +48,11 @@ func (h *handlers) ListLists(ctx context.Context, _ gen.ListListsRequestObject) 
 
 func (h *handlers) CreateList(ctx context.Context, req gen.CreateListRequestObject) (gen.CreateListResponseObject, error) {
 	v := callerOf(ctx).viewer
-	listID, err := h.deps.Users.CreateList(ctx, v, req.Body.Name)
+	query, err := savedQuery(req.Body.Smart)
+	if err != nil {
+		return nil, err
+	}
+	listID, err := h.deps.Users.CreateList(ctx, v, req.Body.Name, query)
 	if err != nil {
 		return nil, err
 	}
@@ -46,6 +75,15 @@ func (h *handlers) UpdateList(ctx context.Context, req gen.UpdateListRequestObje
 	v := callerOf(ctx).viewer
 	if req.Body.Name != nil {
 		if err := h.deps.Users.RenameList(ctx, v, req.ID, *req.Body.Name); err != nil {
+			return nil, err
+		}
+	}
+	query, err := savedQuery(req.Body.Smart)
+	if err != nil {
+		return nil, err
+	}
+	if query != nil {
+		if err := h.deps.Users.SetListQuery(ctx, v, req.ID, *query); err != nil {
 			return nil, err
 		}
 	}

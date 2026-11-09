@@ -86,7 +86,7 @@ open class WorksApi : ApiClient {
 
     /**
      * Add a work to a list
-     * A work already in the list keeps its place. It stays there after being played. A &#x60;listsChanged&#x60; event tells the user&#39;s clients. 
+     * A smart list&#39;s works come from its rules: &#x60;409&#x60; with code &#x60;conflict&#x60;. A work already in the list keeps its place. It stays there after being played. A &#x60;listsChanged&#x60; event tells the user&#39;s clients. 
      * @param id 
      * @param listWorkAdd 
      * @return void
@@ -449,7 +449,7 @@ open class WorksApi : ApiClient {
 
     /**
      * List a list&#39;s works
-     * A list&#39;s works the user sees, most recently added first: with &#x60;kind&#x60;, only those kinds. A grid, paged by &#x60;offset&#x60;, with &#x60;total&#x60; on every page; works added at the same time are listed by title. 
+     * A list&#39;s works the user sees: a manual list&#39;s most recently added first, a smart list&#39;s as its rules select them. With &#x60;kind&#x60;, only those kinds. A smart list whose rules no longer run is empty. A grid, paged by &#x60;offset&#x60;, with &#x60;total&#x60; on every page; works added at the same time are listed by title. 
      * @param id 
      * @param kind Only these kinds. (optional)
      * @param offset How many items to skip from the start. (optional)
@@ -866,7 +866,7 @@ open class WorksApi : ApiClient {
 
     /**
      * Remove a work from a list
-     * A &#x60;listsChanged&#x60; event tells the user&#39;s clients.
+     * A smart list&#39;s works come from its rules: &#x60;409&#x60; with code &#x60;conflict&#x60;. A &#x60;listsChanged&#x60; event tells the user&#39;s clients. 
      * @param id 
      * @param workId 
      * @return void
@@ -1101,7 +1101,7 @@ open class WorksApi : ApiClient {
 
     /**
      * Rename a list
-     * My List can&#39;t be renamed: &#x60;409&#x60; with code &#x60;conflict&#x60;. A name in use is &#x60;409&#x60; with code &#x60;nameTaken&#x60;. A &#x60;listsChanged&#x60; event tells the user&#39;s clients. 
+     * My List can&#39;t be renamed, and &#x60;smart&#x60; is refused on a manual list: &#x60;409&#x60; with code &#x60;conflict&#x60;. A name in use is &#x60;409&#x60; with code &#x60;nameTaken&#x60;. Invalid rules are &#x60;400&#x60; with pointers such as &#x60;/smart/query/where/rules/0/op&#x60;. A &#x60;listsChanged&#x60; event tells the user&#39;s clients. 
      * @param id 
      * @param listUpdate 
      * @return WorkList

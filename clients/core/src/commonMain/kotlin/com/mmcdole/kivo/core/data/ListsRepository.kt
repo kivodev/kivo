@@ -4,6 +4,11 @@ import com.mmcdole.kivo.api.check
 import com.mmcdole.kivo.api.models.ListCreate
 import com.mmcdole.kivo.api.models.ListUpdate
 import com.mmcdole.kivo.api.models.ListWorkAdd
+import com.mmcdole.kivo.api.models.SmartRules
+import com.mmcdole.kivo.api.models.WorkField
+import com.mmcdole.kivo.api.models.WorkFieldValue
+import com.mmcdole.kivo.api.models.WorkQuery
+import com.mmcdole.kivo.api.models.WorkQueryRequest
 import com.mmcdole.kivo.api.models.WorkList
 import com.mmcdole.kivo.api.models.WorkSummaryPage
 import com.mmcdole.kivo.api.result
@@ -35,9 +40,20 @@ internal class ListsRepository(private val connection: ServerConnection, private
     /** Emits when a list's works may have changed: reload the loaded pages, keeping the place. */
     fun changes(): Flow<Unit> = invalidations.filter(::mayChange).map { }
 
-    suspend fun create(name: String): WorkList = connection.works.createList(ListCreate(name)).result()
+    suspend fun create(name: String, query: WorkQuery? = null): WorkList =
+        connection.works.createList(ListCreate(name, query?.let(::SmartRules))).result()
 
-    suspend fun rename(id: String, name: String): WorkList = connection.works.updateList(id, ListUpdate(name)).result()
+    suspend fun update(id: String, name: String?, query: WorkQuery? = null): WorkList =
+        connection.works.updateList(id, ListUpdate(name, query?.let(::SmartRules))).result()
+
+    /** How many works [query] selects: the first page's total, read one summary long. */
+    suspend fun countMatching(query: WorkQuery): Int =
+        connection.works.queryWorks(WorkQueryRequest(query, limit = 1)).result().total
+
+    suspend fun fields(): List<WorkField> = connection.works.listWorkFields().result().items
+
+    suspend fun values(field: String, search: String?, ids: List<String>?): List<WorkFieldValue> =
+        connection.works.listWorkFieldValues(field, search, ids).result().items
 
     suspend fun delete(id: String) = connection.works.deleteList(id).check()
 

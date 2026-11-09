@@ -24,6 +24,9 @@ var (
 	ErrListNameTaken = fault.Coded(fault.Conflict, "nameTaken", "list name taken")
 	// ErrListBuiltIn means the change would remove or rename My List.
 	ErrListBuiltIn = fault.New(fault.Conflict, "my list can't be changed")
+	// ErrListKind means a smart list's rules were set on a list that isn't
+	// one; a list's kind is fixed when it's made.
+	ErrListKind = fault.New(fault.Conflict, "list kind is fixed")
 	// ErrListLimit means the Viewer has MaxLists lists already.
 	ErrListLimit = fault.New(fault.Conflict, "too many lists")
 )
@@ -37,8 +40,9 @@ func insertMyList(ctx context.Context, q *dbq.Queries, user id.ID, at time.Time)
 	return q.InsertList(ctx, dbq.InsertListParams{ID: id.New(), UserID: user, Name: myListName, BuiltIn: true, CreatedAt: at.UnixMilli()})
 }
 
-// CreateList creates a list for v's user and returns its ID.
-func (s *Service) CreateList(ctx context.Context, v Viewer, name string) (id.ID, error) {
+// CreateList creates a list for v's user and returns its ID: a manual
+// list, or with query (a WorkQuery as JSON) a smart list.
+func (s *Service) CreateList(ctx context.Context, v Viewer, name string, query *string) (id.ID, error) {
 	if err := checkListName(name); err != nil {
 		return id.ID{}, err
 	}
@@ -52,7 +56,7 @@ func (s *Service) CreateList(ctx context.Context, v Viewer, name string) (id.ID,
 		if n >= MaxLists {
 			return ErrListLimit
 		}
-		err = q.InsertList(ctx, dbq.InsertListParams{ID: list, UserID: v.user, Name: name, CreatedAt: time.Now().UnixMilli()})
+		err = q.InsertList(ctx, dbq.InsertListParams{ID: list, UserID: v.user, Name: name, Query: nullableString(query), CreatedAt: time.Now().UnixMilli()})
 		if store.IsUnique(err) {
 			return fmt.Errorf("%w: %q", ErrListNameTaken, name)
 		}
@@ -88,6 +92,30 @@ func (s *Service) RenameList(ctx context.Context, v Viewer, list id.ID, name str
 	return nil
 }
 
+// SetListQuery replaces a smart list's rules with query, a WorkQuery as
+// JSON. A manual list has none.
+func (s *Service) SetListQuery(ctx context.Context, v Viewer, list id.ID, query string) error {
+	err := s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
+		q := dbq.New(tx)
+		if err := changeableList(ctx, q, v, list); err != nil {
+			return err
+		}
+		l, err := q.GetList(ctx, dbq.GetListParams{ID: list, UserID: v.user})
+		if err != nil {
+			return err
+		}
+		if !l.Smart {
+			return ErrListKind
+		}
+		return q.SetListQuery(ctx, dbq.SetListQueryParams{ID: list, Query: nullableString(&query)})
+	})
+	if err != nil {
+		return err
+	}
+	s.publishListsChanged(v)
+	return nil
+}
+
 // DeleteList deletes one of v's user's lists, except My List.
 func (s *Service) DeleteList(ctx context.Context, v Viewer, list id.ID) error {
 	err := s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
@@ -102,6 +130,20 @@ func (s *Service) DeleteList(ctx context.Context, v Viewer, list id.ID) error {
 	}
 	s.publishListsChanged(v)
 	return nil
+}
+
+// MovePersonInQueries points every saved query naming the person from at
+// into, in the caller's transaction, when one is merged into the other.
+func MovePersonInQueries(ctx context.Context, tx *store.Tx, from, into id.ID) error {
+	return dbq.New(tx).MovePersonInListQueries(ctx, dbq.MovePersonInListQueriesParams{From: from.String(), Into: into.String()})
+}
+
+// nullableString is s for a nullable column, NULL when s is nil.
+func nullableString(s *string) sql.NullString {
+	if s == nil {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: *s, Valid: true}
 }
 
 // changeableList checks that list is the user's and isn't My List.

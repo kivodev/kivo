@@ -762,12 +762,15 @@ func (e LibraryScanState) Valid() bool {
 // Defines values for ListKind.
 const (
 	ListKindManual ListKind = "manual"
+	ListKindSmart  ListKind = "smart"
 )
 
 // Valid indicates whether the value is a known member of the ListKind enum.
 func (e ListKind) Valid() bool {
 	switch e {
 	case ListKindManual:
+		return true
+	case ListKindSmart:
 		return true
 	default:
 		return false
@@ -3429,9 +3432,12 @@ type LibraryUpdate struct {
 // ListCreate defines model for ListCreate.
 type ListCreate struct {
 	Name string `json:"name"`
+
+	// Smart Makes a smart list, which runs the rules; without it, a manual list.
+	Smart *SmartRules `json:"smart,omitempty"`
 }
 
-// ListKind What a list is. `manual` is works the user added. Skip kinds you don't know.
+// ListKind What a list is. `manual` is works the user added; `smart` is the works rules select. Skip kinds you don't know.
 type ListKind string
 
 // ListRef A list as a Home row names it.
@@ -3444,6 +3450,9 @@ type ListRef struct {
 // ListUpdate defines model for ListUpdate.
 type ListUpdate struct {
 	Name *string `json:"name,omitempty"`
+
+	// Smart Replaces a smart list's rules; a manual list has none.
+	Smart *SmartRules `json:"smart,omitempty"`
 }
 
 // ListWorkAdd defines model for ListWorkAdd.
@@ -4606,6 +4615,17 @@ type SetupState struct {
 	ServerName string `json:"serverName"`
 }
 
+// SmartRules defines model for SmartRules.
+type SmartRules struct {
+	// Query Which works a query selects. `version` is written by the server;
+	// leave it out, and a newer one is refused. `extra` isn't a kind that
+	// can be asked for. A query has at most 20 rules, 5 groups including
+	// the root and 3 sort keys, and a rule at most 100 values. Values of a rule are in the form its field's
+	// type takes: a date `YYYY-MM-DD`, a duration such as `P30D`, an ID
+	// as a UUID, or a name.
+	Query WorkQuery `json:"query"`
+}
+
 // SnapshotMessage Sent first on every connection and after `resync`. A changed `serverVersion` means the client should offer a reload.
 type SnapshotMessage struct {
 	// ProblemCount Admins only. Open problems, for the dot on Admin.
@@ -5297,9 +5317,13 @@ type WorkList struct {
 	// ID A UUIDv7.
 	ID ID `json:"id"`
 
-	// Kind What a list is. `manual` is works the user added. Skip kinds you don't know.
+	// Kind What a list is. `manual` is works the user added; `smart` is the works rules select. Skip kinds you don't know.
 	Kind ListKind `json:"kind"`
 	Name string   `json:"name"`
+
+	// Smart A smart list's rules. A list whose rules no longer run has `errors`
+	// pointing at what's wrong, returns an empty page and is off Home.
+	Smart *WorkListSmart `json:"smart,omitempty"`
 
 	// WorkCount Works in the list the user sees.
 	WorkCount int `json:"workCount"`
@@ -5308,6 +5332,20 @@ type WorkList struct {
 // WorkListList defines model for WorkListList.
 type WorkListList struct {
 	Items []WorkList `json:"items"`
+}
+
+// WorkListSmart A smart list's rules. A list whose rules no longer run has `errors`
+// pointing at what's wrong, returns an empty page and is off Home.
+type WorkListSmart struct {
+	Errors *[]FieldError `json:"errors,omitempty"`
+
+	// Query Which works a query selects. `version` is written by the server;
+	// leave it out, and a newer one is refused. `extra` isn't a kind that
+	// can be asked for. A query has at most 20 rules, 5 groups including
+	// the root and 3 sort keys, and a rule at most 100 values. Values of a rule are in the form its field's
+	// type takes: a date `YYYY-MM-DD`, a duration such as `P30D`, an ID
+	// as a UUID, or a name.
+	Query WorkQuery `json:"query"`
 }
 
 // WorkQuery Which works a query selects. `version` is written by the server;
@@ -15238,6 +15276,22 @@ func (response RemoveListWork404ApplicationProblemPlusJSONResponse) VisitRemoveL
 	}
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RemoveListWork409ApplicationProblemPlusJSONResponse struct {
+	ConflictApplicationProblemPlusJSONResponse
+}
+
+func (response RemoveListWork409ApplicationProblemPlusJSONResponse) VisitRemoveListWorkResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
 	_, err := buf.WriteTo(w)
 	return err
 }

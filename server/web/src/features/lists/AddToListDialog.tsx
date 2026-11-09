@@ -65,22 +65,24 @@ function ListChoices({ workId, onNewList, onDone }: { workId: string; onNewList:
       <FormError error={lists.error ?? work.error ?? setInList.error} />
       {lists.data && work.data && (
         <fieldset aria-label={t`Lists`} className={settingsCardClass}>
-          {lists.data.items.map((list) => (
-            <Checkbox
-              key={list.id}
-              isSelected={held.has(list.id)}
-              onChange={(inList) => setInList.mutate({ listId: list.id, workId, inList })}
-              className="group flex min-h-12 cursor-pointer items-center gap-3 px-4 py-2 first:rounded-t-lg last:rounded-b-lg hover:bg-surface-hover"
-            >
-              <span className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate font-medium text-text">{list.name}</span>
-                <span className="text-sm text-text-muted">
-                  <Plural value={list.workCount} one="# title" other="# titles" />
+          {lists.data.items
+            .filter((list) => list.kind === "manual")
+            .map((list) => (
+              <Checkbox
+                key={list.id}
+                isSelected={held.has(list.id)}
+                onChange={(inList) => setInList.mutate({ listId: list.id, workId, inList })}
+                className="group flex min-h-12 cursor-pointer items-center gap-3 px-4 py-2 first:rounded-t-lg last:rounded-b-lg hover:bg-surface-hover"
+              >
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate font-medium text-text">{list.name}</span>
+                  <span className="text-sm text-text-muted">
+                    <Plural value={list.workCount} one="# title" other="# titles" />
+                  </span>
                 </span>
-              </span>
-              <CheckBox />
-            </Checkbox>
-          ))}
+                <CheckBox />
+              </Checkbox>
+            ))}
         </fieldset>
       )}
       <div className="flex justify-end">

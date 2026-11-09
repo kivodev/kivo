@@ -35,33 +35,35 @@ const sortRandom = "random"
 // they sort, and how they're capped and collapsed. Run a WorkQuery with
 // QueryWorks, which applies the Viewer whatever the rules say.
 type WorkQuery struct {
-	Version  int
-	Kinds    []catalog.WorkKind
-	Where    *RuleGroup
-	Sort     []SortKey
-	MaxWorks *int
-	Collapse string // "series" keeps one work per show
+	Version  int                `json:"version"`
+	Kinds    []catalog.WorkKind `json:"kinds"`
+	Where    *RuleGroup         `json:"where,omitempty"`
+	Sort     []SortKey          `json:"sort,omitempty"`
+	MaxWorks *int               `json:"maxWorks,omitempty"`
+	Collapse string             `json:"collapse,omitempty"` // "series" keeps one work per show
 }
 
 // RuleGroup is a group of rules and sub-groups, joined by Match: "all" or
 // "any". The root may hold groups, and those groups rules only.
 type RuleGroup struct {
-	Match  string
-	Rules  []Rule
-	Groups []RuleGroup
+	Match  string      `json:"match"`
+	Rules  []Rule      `json:"rules,omitempty"`
+	Groups []RuleGroup `json:"groups,omitempty"`
 }
 
 // Rule is one condition: an operator on a field, with its values. Values
 // are in the field type's canonical form.
 type Rule struct {
-	Field, Op string
-	Values    []string
+	Field  string   `json:"field"`
+	Op     string   `json:"op"`
+	Values []string `json:"values,omitempty"`
 }
 
 // SortKey is one key of the order: a sortable field, or sortRandom, with
 // its direction, "asc" or "desc", or the field's default when empty.
 type SortKey struct {
-	Field, Direction string
+	Field     string `json:"field"`
+	Direction string `json:"direction,omitempty"`
 }
 
 // QueryProblem is one invalid part of a query. Pointer is a JSON pointer
@@ -227,9 +229,9 @@ type compiled struct {
 
 // compile turns a valid query into SQL. It is the only way a WorkQuery
 // becomes a statement: the SQL always carries the visible predicate, and
-// values go in as bound parameters.
-func compile(q WorkQuery, vw viewer, now time.Time) compiled {
-	c := &compiler{now: now}
+// values go in as bound parameters. seed fixes a random sort's order.
+func compile(q WorkQuery, vw viewer, now time.Time, seed string) compiled {
+	c := &compiler{now: now, seed: seed}
 	kinds := make([]string, len(q.Kinds))
 	for i, k := range q.Kinds {
 		kinds[i] = string(k)
@@ -275,6 +277,7 @@ ORDER BY p.o`
 type compiler struct {
 	params []any
 	now    time.Time
+	seed   string
 }
 
 // bind adds a parameter and returns its name.
@@ -454,7 +457,7 @@ func (c *compiler) order(q WorkQuery) string {
 	var parts []string
 	for _, k := range keys {
 		if k.Field == sortRandom {
-			parts = append(parts, "sha256(w.id, "+c.bind(seedOf(q, c.now))+")")
+			parts = append(parts, "sha256(w.id, "+c.bind(c.seed)+")")
 			continue
 		}
 		f := fieldsByKey[k.Field]
@@ -468,12 +471,24 @@ func (c *compiler) order(q WorkQuery) string {
 	return strings.Join(parts, ", ")
 }
 
-// seedOf makes the random order the same for a query all UTC day.
+// seedOf makes the random order of an unsaved query the same all UTC day.
 func seedOf(q WorkQuery, now time.Time) string {
 	b, _ := json.Marshal(q)
 	h := fnv.New32a()
 	h.Write(b)
 	return fmt.Sprintf("%d/%d", h.Sum32(), now.UTC().Unix()/86400)
+}
+
+// listSeed makes a saved list's random order the same all UTC day.
+func listSeed(list id.ID, now time.Time) string {
+	return fmt.Sprintf("%s/%d", list, now.UTC().Unix()/86400)
+}
+
+// Saved is q stamped with the current version as stored JSON.
+func (q WorkQuery) Saved() (string, error) {
+	q.Version = queryVersion
+	b, err := json.Marshal(q)
+	return string(b), err
 }
 
 // QueryWorks runs a query as the Viewer. An invalid query returns an
@@ -486,12 +501,16 @@ func (s *Service) queryWorksAt(ctx context.Context, v users.Viewer, q WorkQuery,
 	if problems := q.Validate(); len(problems) > 0 {
 		return GridPage[WorkSummary]{}, &InvalidQueryError{problems}
 	}
+	return s.runQuery(ctx, viewerOf(v), q, seedOf(q, now), o, now)
+}
+
+// runQuery reads a page of a valid query.
+func (s *Service) runQuery(ctx context.Context, vw viewer, q WorkQuery, seed string, o GridOptions, now time.Time) (GridPage[WorkSummary], error) {
 	limit, err := o.limit()
 	if err != nil {
 		return GridPage[WorkSummary]{}, err
 	}
-	vw := viewerOf(v)
-	c := compile(q, vw, now)
+	c := compile(q, vw, now, seed)
 	var total int
 	var items []WorkSummary
 	err = s.db.Read(ctx, func(tx *sql.Tx) error {

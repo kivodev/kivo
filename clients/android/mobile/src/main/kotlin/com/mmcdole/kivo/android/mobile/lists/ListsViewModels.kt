@@ -3,7 +3,9 @@ package com.mmcdole.kivo.android.mobile.lists
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mmcdole.kivo.android.mobile.ui.WorkMarks
+import com.mmcdole.kivo.api.models.WorkField
 import com.mmcdole.kivo.api.models.WorkList
+import com.mmcdole.kivo.api.models.WorkQuery
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.RequestProblem
@@ -19,13 +21,15 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 
-/** The list kind the phone shows; others are skipped. */
+/** The list kinds the phone shows; others are skipped. */
 private const val MANUAL = "manual"
+private const val SMART = "smart"
 
 /** How many of My List's works the Lists tab shows as its covers. */
 internal const val MY_LIST_COVERS = 4
@@ -46,7 +50,12 @@ data class ListsUiState(
 
     /** The lists the user made. */
     val manual: List<WorkList> get() = lists.orEmpty().filter { !it.builtIn && it.kind == MANUAL }
+
+    val smart: List<WorkList> get() = lists.orEmpty().filter { it.kind == SMART }
 }
+
+/** Whether works can be added to and taken off the list. */
+val WorkList.isManual: Boolean get() = kind == MANUAL
 
 /** The Lists tab: the lists, and My List's covers, read again as they change and on a pull to refresh. */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -83,7 +92,11 @@ class ListsViewModel(private val session: KivoSession) : ViewModel() {
     suspend fun create(name: String): RequestProblem? = attempt { session.library.createList(name) }
 }
 
-/** An open list: its works as a grid, most recently added first; a list the user made can be renamed and deleted. */
+/** What naming a smart list's rules takes: the catalog and its chosen values' names. */
+data class SmartRulesWords(val fields: List<WorkField>, val names: Map<String, String>)
+
+/** An open list: its works as a grid, most recently added first; a list the user made can be renamed and deleted, and a smart list's rules are read to name them. */
+@OptIn(ExperimentalCoroutinesApi::class)
 class ListViewModel(private val session: KivoSession, private val listId: String) : ViewModel() {
     /** The grid, which the paged grid reads and asks pages of as they come into view. */
     val pager: GridPager<WorkSummary> = session.library.pagedListWorks(listId, null)
@@ -94,6 +107,21 @@ class ListViewModel(private val session: KivoSession, private val listId: String
     val list: StateFlow<WorkList?> = session.library.lists()
         .map { load -> load.getOrNull()?.firstOrNull { it.id == listId } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    val rulesWords: StateFlow<SmartRulesWords?> = list
+        .map { it?.smart?.query }
+        .distinctUntilChanged()
+        .mapLatest { query -> query?.let { readRulesWords(it) } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    private suspend fun readRulesWords(query: WorkQuery): SmartRulesWords? = try {
+        val fields = session.library.workFields()
+        SmartRulesWords(fields, readNames(query, fields, session.library))
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        null
+    }
 
     suspend fun refresh() {
         try {

@@ -10,7 +10,10 @@ import type {
   PlayStarted,
   PlayTrack,
   Problem,
+  Rule,
+  WorkDetail,
   WorkList,
+  WorkQuery,
 } from "../schemas";
 import { type MockApi, type MockList, summaryOf } from "./api";
 import { mockId } from "./ids";
@@ -45,6 +48,37 @@ const unauthenticated = () => problem(401, "unauthenticated");
 /** A list as the API answers, its count from the works it holds. */
 function workListOf({ workIds, ...list }: MockList): WorkList {
   return { ...list, workCount: workIds.length };
+}
+
+/** Whether a work passes a rule. Fields without work data here pass every work. */
+function matchesRule(work: WorkDetail, { field, op, values = [] }: Rule): boolean {
+  switch (field) {
+    case "genre":
+      return op === "noneOf"
+        ? !values.some((v) => work.genres.includes(v))
+        : values.some((v) => work.genres.includes(v));
+    case "year": {
+      const year = work.year ?? 0;
+      const [first = 0, second = 0] = values.map(Number);
+      if (op === "between") return year >= first && year <= second;
+      if (op === "gte") return year >= first;
+      return op === "lte" ? year <= first : year === first;
+    }
+    case "title":
+      return work.title.toLowerCase().includes((values[0] ?? "").toLowerCase());
+    default:
+      return true;
+  }
+}
+
+/** The mock's works a query selects, by the root's rules and its groups' as AND. */
+function worksMatching(api: MockApi, query: WorkQuery): WorkDetail[] {
+  const groups = [query.where, ...(query.where?.groups ?? [])];
+  return Object.values(api.works).filter(
+    (work) =>
+      query.kinds.includes(work.kind) &&
+      groups.every((group) => (group?.rules ?? []).every((rule) => matchesRule(work, rule))),
+  );
 }
 
 /** The token an app session signed in with a password gets. */
@@ -282,10 +316,19 @@ export function createHandlers(api: MockApi) {
       return response(200).json({ items: sorted.map(workListOf) });
     }),
     http.post("/api/v1/lists", async ({ request, response }) => {
-      const { name } = await request.json();
+      const { name, smart } = await request.json();
       if (api.lists.some((l) => l.name.toLowerCase() === name.toLowerCase())) return problem(409, "nameTaken");
       if (api.lists.length >= 100) return problem(409, "conflict");
-      const list: MockList = { id: mockId(9600 + api.lists.length), name, kind: "manual", builtIn: false, workIds: [] };
+      const list: MockList = smart
+        ? {
+            id: mockId(9600 + api.lists.length),
+            name,
+            kind: "smart",
+            builtIn: false,
+            smart: { query: { ...smart.query, version: 1 } },
+            workIds: worksMatching(api, smart.query).map((w) => w.id),
+          }
+        : { id: mockId(9600 + api.lists.length), name, kind: "manual", builtIn: false, workIds: [] };
       api.lists.push(list);
       return response(201).json(workListOf(list));
     }),
@@ -297,12 +340,16 @@ export function createHandlers(api: MockApi) {
       const list = api.lists.find((l) => l.id === params.id);
       if (!list) return notFound();
       if (list.builtIn) return problem(409, "conflict");
-      const { name } = await request.json();
+      const { name, smart } = await request.json();
       if (name !== undefined) {
         if (api.lists.some((l) => l !== list && l.name.toLowerCase() === name.toLowerCase())) {
           return problem(409, "nameTaken");
         }
         list.name = name;
+      }
+      if (smart) {
+        list.smart = { query: { ...smart.query, version: 1 } };
+        list.workIds = worksMatching(api, smart.query).map((w) => w.id);
       }
       return response(200).json(workListOf(list));
     }),
@@ -312,6 +359,27 @@ export function createHandlers(api: MockApi) {
       if (list.builtIn) return problem(409, "conflict");
       api.lists = api.lists.filter((l) => l !== list);
       return response(204).empty();
+    }),
+    http.get("/api/v1/work-fields", ({ response }) => response(200).json({ items: api.workFields })),
+    http.get("/api/v1/work-fields/{field}/values", ({ params, query, response }) => {
+      const values = api.workFieldValues[params.field] ?? [];
+      const ids = query.getAll("ids");
+      const q = (query.get("q") ?? "").toLowerCase();
+      const items =
+        ids.length > 0
+          ? values.filter((v) => ids.includes(v.value))
+          : values.filter((v) => v.name.toLowerCase().includes(q));
+      return response(200).json({ items });
+    }),
+    http.post("/api/v1/works/query", async ({ request, response }) => {
+      const { query, offset, limit } = await request.json();
+      const matched = worksMatching(api, query).map(summaryOf);
+      const { start, end } = pageOf(
+        offset === undefined ? null : String(offset),
+        limit === undefined ? null : String(limit),
+        matched.length,
+      );
+      return response(200).json({ items: matched.slice(start, end), total: matched.length });
     }),
     // A list's works, most recently added first, by offset.
     http.get("/api/v1/lists/{id}/works", ({ params, query, response }) => {
@@ -324,6 +392,7 @@ export function createHandlers(api: MockApi) {
     http.post("/api/v1/lists/{id}/works", async ({ params, request, response }) => {
       const list = api.lists.find((l) => l.id === params.id);
       if (!list) return notFound();
+      if (list.kind === "smart") return problem(409, "conflict");
       const { workId } = await request.json();
       if (!list.workIds.includes(workId)) list.workIds.unshift(workId);
       return response(204).empty();
@@ -331,6 +400,7 @@ export function createHandlers(api: MockApi) {
     http.delete("/api/v1/lists/{id}/works/{workId}", ({ params, response }) => {
       const list = api.lists.find((l) => l.id === params.id);
       if (!list) return notFound();
+      if (list.kind === "smart") return problem(409, "conflict");
       list.workIds = list.workIds.filter((id) => id !== params.workId);
       return response(204).empty();
     }),

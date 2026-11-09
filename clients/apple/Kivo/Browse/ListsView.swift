@@ -3,8 +3,9 @@ import KivoUI
 import SwiftUI
 
 /// The Lists tab: My List with a row of its covers and its count, then the
-/// other lists, each with its first cover and its count; each opens its
-/// works in a grid. The section of other lists shows once there are any.
+/// other lists, then the smart lists, each with its first cover and its
+/// count; each opens its works in a grid. A section shows once it has any.
+/// The + makes a list, or opens the smart list builder.
 struct ListsView: View {
     @Environment(ServerModel.self) private var server
     @Environment(\.kivoPalette) private var palette
@@ -13,11 +14,13 @@ struct ListsView: View {
     @State private var naming = false
     @State private var newName = ""
     @State private var problem: String?
+    @State private var buildingSmart = false
 
     var body: some View {
         Group {
-            let others = server.lists.filter { !$0.builtIn }
-            if let myList = server.myList, myList.workCount == 0, others.isEmpty {
+            let others = server.lists.filter { !$0.builtIn && !$0.isSmart }
+            let smart = server.lists.filter(\.isSmart)
+            if let myList = server.myList, myList.workCount == 0, others.isEmpty, smart.isEmpty {
                 MessageView(
                     String(localized: "Nothing in your lists yet."),
                     sentence: String(localized: "Add something to My List from a title's page.")
@@ -29,22 +32,8 @@ struct ListsView: View {
                         if myList.workCount > 0 {
                             MyListSection(list: myList)
                         }
-                        if !others.isEmpty {
-                            VStack(alignment: .leading, spacing: BrowseRow.headingSpacing) {
-                                BrowseRow.heading(String(localized: "Lists"))
-                                    .foregroundStyle(palette.text)
-                                    .accessibilityAddTraits(.isHeader)
-                                LazyVStack(spacing: 0) {
-                                    ForEach(Array(others.enumerated()), id: \.element.id) { index, list in
-                                        if index > 0 {
-                                            Divider().padding(.leading, BrowseRow.inset)
-                                        }
-                                        ListRow(list: list)
-                                    }
-                                }
-                                .background(palette.surfaceRaised, in: RoundedRectangle(cornerRadius: KivoTokens.Radius.lg))
-                            }
-                        }
+                        section(String(localized: "Lists"), others)
+                        section(String(localized: "Smart Lists"), smart)
                     }
                     .wideWidth(KivoTokens.Container.form, wide: wide)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -62,17 +51,42 @@ struct ListsView: View {
         .toolbarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    newName = ""
-                    naming = true
+                Menu {
+                    Button(String(localized: "New List")) {
+                        newName = ""
+                        naming = true
+                    }
+                    Button(String(localized: "New Smart List")) { buildingSmart = true }
                 } label: {
-                    SwiftUI.Label(String(localized: "New List"), systemImage: "plus")
+                    SwiftUI.Label(String(localized: "New"), systemImage: "plus")
                 }
+                .accessibilityIdentifier("new-list-menu")
             }
         }
         .listNameAlert(String(localized: "New List"), isPresented: $naming, name: $newName, confirm: String(localized: "Create"), save: create)
         .alert(problem ?? "", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
             Button(String(localized: "OK"), role: .cancel) {}
+        }
+        .sheet(isPresented: $buildingSmart) { SmartListBuilder() }
+    }
+
+    /// A headed section of [lists], nothing when there are none.
+    @ViewBuilder private func section(_ title: String, _ lists: [WorkList]) -> some View {
+        if !lists.isEmpty {
+            VStack(alignment: .leading, spacing: BrowseRow.headingSpacing) {
+                BrowseRow.heading(title)
+                    .foregroundStyle(palette.text)
+                    .accessibilityAddTraits(.isHeader)
+                LazyVStack(spacing: 0) {
+                    ForEach(Array(lists.enumerated()), id: \.element.id) { index, list in
+                        if index > 0 {
+                            Divider().padding(.leading, BrowseRow.inset)
+                        }
+                        ListRow(list: list)
+                    }
+                }
+                .background(palette.surfaceRaised, in: RoundedRectangle(cornerRadius: KivoTokens.Radius.lg))
+            }
         }
     }
 
@@ -91,6 +105,16 @@ extension WorkList {
     /// How many titles the list has, as its rows say it.
     var titleCount: String {
         workCount == 1 ? String(localized: "1 title") : String(localized: "\(workCount) titles")
+    }
+
+    var isSmart: Bool { kind == "smart" }
+
+    /// A list's line under its name: a smart list's kinds and count, else its count.
+    var detail: String {
+        if let query = smart?.query {
+            return "\(SmartListWords.kinds(query.kinds)), \(workCount.formatted())"
+        }
+        return titleCount
     }
 
     /// The page a link to the list opens.
@@ -159,7 +183,7 @@ private struct ListRow: View {
                     Text(list.name)
                         .foregroundStyle(palette.text)
                         .lineLimit(1)
-                    Text(list.titleCount)
+                    Text(list.detail)
                         .font(.footnote)
                         .foregroundStyle(palette.textMuted)
                 }

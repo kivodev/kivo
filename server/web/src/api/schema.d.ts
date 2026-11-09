@@ -1120,8 +1120,10 @@ export interface paths {
         head?: never;
         /**
          * Rename a list
-         * @description My List can't be renamed: `409` with code `conflict`. A name in use
-         *     is `409` with code `nameTaken`. A `listsChanged` event tells the
+         * @description My List can't be renamed, and `smart` is refused on a manual list:
+         *     `409` with code `conflict`. A name in use is `409` with code
+         *     `nameTaken`. Invalid rules are `400` with pointers such as
+         *     `/smart/query/where/rules/0/op`. A `listsChanged` event tells the
          *     user's clients.
          */
         patch: operations["updateList"];
@@ -1138,15 +1140,17 @@ export interface paths {
         };
         /**
          * List a list's works
-         * @description A list's works the user sees, most recently added first: with
-         *     `kind`, only those kinds. A grid, paged by `offset`, with `total` on
+         * @description A list's works the user sees: a manual list's most recently added
+         *     first, a smart list's as its rules select them. With `kind`, only
+         *     those kinds. A smart list whose rules no longer run is empty. A grid, paged by `offset`, with `total` on
          *     every page; works added at the same time are listed by title.
          */
         get: operations["listListWorks"];
         put?: never;
         /**
          * Add a work to a list
-         * @description A work already in the list keeps its place. It stays there after
+         * @description A smart list's works come from its rules: `409` with code
+         *     `conflict`. A work already in the list keeps its place. It stays there after
          *     being played. A `listsChanged` event tells the user's clients.
          */
         post: operations["addListWork"];
@@ -1171,7 +1175,8 @@ export interface paths {
         post?: never;
         /**
          * Remove a work from a list
-         * @description A `listsChanged` event tells the user's clients.
+         * @description A smart list's works come from its rules: `409` with code
+         *     `conflict`. A `listsChanged` event tells the user's clients.
          */
         delete: operations["removeListWork"];
         options?: never;
@@ -3763,20 +3768,36 @@ export interface components {
             builtIn: boolean;
             /** @description Works in the list the user sees. */
             workCount: number;
+            smart?: components["schemas"]["WorkListSmart"];
         };
         /**
-         * @description What a list is. `manual` is works the user added. Skip kinds you don't know.
+         * @description What a list is. `manual` is works the user added; `smart` is the works rules select. Skip kinds you don't know.
          * @enum {string}
          */
-        ListKind: "manual";
+        ListKind: "manual" | "smart";
         WorkListList: {
             items: components["schemas"]["WorkList"][];
         };
+        /**
+         * @description A smart list's rules. A list whose rules no longer run has `errors`
+         *     pointing at what's wrong, returns an empty page and is off Home.
+         */
+        WorkListSmart: {
+            query: components["schemas"]["WorkQuery"];
+            errors?: components["schemas"]["FieldError"][];
+        };
+        SmartRules: {
+            query: components["schemas"]["WorkQuery"];
+        };
         ListCreate: {
             name: string;
+            /** @description Makes a smart list, which runs the rules; without it, a manual list. */
+            smart?: components["schemas"]["SmartRules"];
         };
         ListUpdate: {
             name?: string;
+            /** @description Replaces a smart list's rules; a manual list has none. */
+            smart?: components["schemas"]["SmartRules"];
         };
         ListWorkAdd: {
             workId: components["schemas"]["ID"];
@@ -7674,6 +7695,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             default: components["responses"]["Error"];
         };
     };
