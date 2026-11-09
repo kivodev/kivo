@@ -2,7 +2,6 @@ import { type Query, type QueryClient, queryOptions, skipToken, useQueryClient }
 import { useEffect, useRef, useState } from "react";
 import { isPackaged } from "@/tv/flag";
 import { apiBaseUrl, sessionToken, unauthorized } from "./client";
-import { savingLayout } from "./home";
 import { type ApiPath, apiPaths, libraryGridPaths, listViewPaths, workViewPaths } from "./paths";
 import type { EventMessage, EventStreamMessage, SnapshotMessage } from "./schemas";
 
@@ -145,9 +144,7 @@ export function createCacheSync(queryClient: QueryClient, batchMs = 1000) {
 
   const flush = () => {
     timer = undefined;
-    // A save of the layout reads it when it's done; a read now would undo what's on screen.
-    const saving = savingLayout(queryClient) > 0;
-    const ops = [...pending.values()].filter((op) => !(saving && op.path === apiPaths.homeRows));
+    const ops = [...pending.values()];
     pending.clear();
     void queryClient.invalidateQueries({
       predicate: (query: Query) => ops.some((op) => matchesQuery(op, query.queryKey)),

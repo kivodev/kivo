@@ -8,6 +8,7 @@ import com.mmcdole.kivo.android.mobile.refuse
 import com.mmcdole.kivo.android.mobile.reply
 import com.mmcdole.kivo.android.settings.ScreenSettingsStore
 import com.mmcdole.kivo.android.settings.SubtitleSize
+import com.mmcdole.kivo.android.settings.movedRow
 import com.mmcdole.kivo.api.models.HomeRowInfo
 import com.mmcdole.kivo.api.models.CurrentUser
 import com.mmcdole.kivo.api.models.Library
@@ -130,7 +131,7 @@ class SettingsViewModelsTest : CoreTest() {
         val recent = HomeRowInfo("recentlyAdded:a", "recentlyAdded", true)
         val all = listOf(watching, unknown, recent)
 
-        assertEquals(listOf(recent, unknown, watching), movedRow(all, "recentlyAdded:a", -1))
-        assertEquals(all, movedRow(all, "continueWatching", -1))
+        assertEquals(listOf(recent, unknown, watching), movedRow(all, all.filter { it.kind != "aKindFromLater" }, "recentlyAdded:a", -1))
+        assertEquals(all, movedRow(all, all.filter { it.kind != "aKindFromLater" }, "continueWatching", -1))
     }
 }

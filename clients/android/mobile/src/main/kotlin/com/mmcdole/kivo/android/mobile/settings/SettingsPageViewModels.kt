@@ -11,6 +11,7 @@ import com.mmcdole.kivo.android.settings.SubtitleSize
 import com.mmcdole.kivo.api.ProblemException
 import com.mmcdole.kivo.api.models.CurrentUser
 import com.mmcdole.kivo.android.mobile.home.shownKinds
+import com.mmcdole.kivo.android.settings.movedRow
 import com.mmcdole.kivo.api.models.HomeRowChange
 import com.mmcdole.kivo.api.models.HomeRowInfo
 import com.mmcdole.kivo.api.models.Library
@@ -336,7 +337,7 @@ class LibrariesSettingsViewModel(private val session: KivoSession) : ViewModel()
     fun show(id: String, shown: Boolean) = changeRows { rows -> rows.map { if (it.id == id) it.copy(shown = shown) else it } }
 
     /** Moves the row [id] up ([by] -1) or down (1) past the next one listed, the others staying where they are. */
-    fun moveRow(id: String, by: Int) = changeRows { rows -> movedRow(rows, id, by) }
+    fun moveRow(id: String, by: Int) = changeRows { rows -> movedRow(rows, rows.filter { it.kind in shownKinds }, id, by) }
 
     /** Clears Home's order and hidden rows, and shows the layout as the server has it. */
     fun resetHome() = send { mutableState.update { it.copy(rows = session.library.resetHomeRows()) } }
@@ -375,20 +376,6 @@ class LibrariesSettingsViewModel(private val session: KivoSession) : ViewModel()
                 mutableState.update { it.copy(failure = sentence(RequestProblem.of(e))) }
             }
         }
-    }
-}
-
-/** [all] with the row [id] swapped with the next one the phone lists, up ([by] -1) or down (1); [all] itself when there's none. */
-internal fun movedRow(all: List<HomeRowInfo>, id: String, by: Int): List<HomeRowInfo> {
-    val listed = all.filter { it.kind in shownKinds }
-    val from = listed.indexOfFirst { it.id == id }
-    if (from < 0) return all
-    val other = listed.getOrNull(from + by) ?: return all
-    val a = all.indexOf(listed[from])
-    val b = all.indexOf(other)
-    return all.toMutableList().apply {
-        this[a] = other
-        this[b] = listed[from]
     }
 }
 

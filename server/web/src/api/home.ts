@@ -1,6 +1,6 @@
-import { type QueryClient, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { $api } from "./client";
-import { apiPaths, pathKey } from "./paths";
+import { type ApiPath, apiPaths, pathKey } from "./paths";
 import type { HomeRow, HomeRowInfo } from "./schemas";
 
 /** The row kinds this client shows; it skips kinds it doesn't know. */
@@ -16,44 +16,17 @@ export const homeQueries = {
   layout: () => $api.queryOptions("get", "/api/v1/home/rows"),
 };
 
-const resetPath = "/api/v1/home/rows/reset";
-
-/** Layout saves run one at a time, in order. */
-const layoutScope = { id: "home-layout" };
-
-/** How many layout saves are in flight. A read that lands during one would undo what's on screen. */
-export function savingLayout(queryClient: QueryClient): number {
-  return (
-    queryClient.isMutating({ mutationKey: ["patch", apiPaths.homeRows] }) +
-    queryClient.isMutating({ mutationKey: ["post", resetPath] })
-  );
-}
-
-function useLayoutCache() {
-  const queryClient = useQueryClient();
-  return {
-    queryClient,
-    cancelReads: () => queryClient.cancelQueries({ queryKey: pathKey(apiPaths.homeRows) }),
-    // The save that's settling still counts, so the last one to settle reads the layout.
-    readWhenDone: () =>
-      savingLayout(queryClient) <= 1
-        ? queryClient.invalidateQueries({ queryKey: pathKey(apiPaths.homeRows) })
-        : undefined,
-    readHome: () => queryClient.invalidateQueries({ queryKey: pathKey(apiPaths.home) }),
-  };
-}
-
 /**
  * Save Home's row order and which rows show. The layout changes at once, so a
- * drag stays where it was dropped, and Home refetches once the server has
- * saved it. `retry` sends a refused layout again.
+ * drag stays where it was dropped, and Home and the layout refetch once the
+ * server has answered. `retry` sends a refused layout again.
  */
 export function useSaveHomeRows() {
-  const { queryClient, cancelReads, readWhenDone, readHome } = useLayoutCache();
+  const queryClient = useQueryClient();
+  const refetch = (path: ApiPath) => queryClient.invalidateQueries({ queryKey: pathKey(path) });
   const mutation = $api.useMutation("patch", "/api/v1/home/rows", {
-    scope: layoutScope,
     onMutate: async ({ body }) => {
-      await cancelReads();
+      await queryClient.cancelQueries({ queryKey: pathKey(apiPaths.homeRows) });
       const key = homeQueries.layout().queryKey;
       const page = queryClient.getQueryData<{ items: HomeRowInfo[] }>(key);
       if (!page) return;
@@ -65,8 +38,7 @@ export function useSaveHomeRows() {
         }),
       });
     },
-    onSuccess: readHome,
-    onSettled: readWhenDone,
+    onSettled: () => Promise.all([refetch(apiPaths.home), refetch(apiPaths.homeRows)]),
   });
   const save = (rows: HomeRowInfo[], onSuccess?: () => void) =>
     mutation.mutate({ body: { items: rows.map(({ id, shown }) => ({ id, shown })) } }, { onSuccess });
@@ -79,14 +51,13 @@ export function useSaveHomeRows() {
 
 /** Forget Home's order and hidden rows. */
 export function useResetHomeRows() {
-  const { queryClient, cancelReads, readWhenDone, readHome } = useLayoutCache();
-  return $api.useMutation("post", resetPath, {
-    scope: layoutScope,
-    onMutate: () => cancelReads(),
+  const queryClient = useQueryClient();
+  const refetch = (path: ApiPath) => queryClient.invalidateQueries({ queryKey: pathKey(path) });
+  return $api.useMutation("post", "/api/v1/home/rows/reset", {
+    onMutate: () => queryClient.cancelQueries({ queryKey: pathKey(apiPaths.homeRows) }),
     onSuccess: (data) => {
       queryClient.setQueryData(homeQueries.layout().queryKey, data);
-      return readHome();
     },
-    onSettled: readWhenDone,
+    onSettled: () => Promise.all([refetch(apiPaths.home), refetch(apiPaths.homeRows)]),
   });
 }

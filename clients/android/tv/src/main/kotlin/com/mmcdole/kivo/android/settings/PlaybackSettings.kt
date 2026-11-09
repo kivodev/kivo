@@ -352,7 +352,7 @@ class HomeRowsViewModel(private val session: ServerSession) : ViewModel() {
     fun show(id: String, shown: Boolean) = change("show/$id") { rows -> rows.map { if (it.id == id) it.copy(shown = shown) else it } }
 
     /** Moves a row up ([by] -1) or down (1) past the next one the TV lists. */
-    fun move(id: String, by: Int) = change("rowmove/$id") { movedRow(it, id, by) }
+    fun move(id: String, by: Int) = change("rowmove/$id") { movedRow(it, tvHomeRows(it), id, by) }
 
     fun reset() {
         saves.save("reset") { all = Load.Loaded(session.session.library.resetHomeRows()) }
@@ -365,24 +365,6 @@ class HomeRowsViewModel(private val session: ServerSession) : ViewModel() {
         saves.save(row, undo = { all = Load.Loaded(before) }) {
             session.session.library.setHomeRows(after.map { HomeRowChange(it.id, it.shown) })
         }
-    }
-}
-
-/**
- * [all] with the row [id] swapped with the next one up ([by] -1) or down (1)
- * among those the TV lists, the others staying where they are; [all] itself
- * when there's none.
- */
-internal fun movedRow(all: List<HomeRowInfo>, id: String, by: Int): List<HomeRowInfo> {
-    val listed = tvHomeRows(all)
-    val from = listed.indexOfFirst { it.id == id }
-    if (from < 0) return all
-    val other = listed.getOrNull(from + by) ?: return all
-    val a = all.indexOfFirst { it.id == id }
-    val b = all.indexOfFirst { it.id == other.id }
-    return all.toMutableList().apply {
-        this[a] = other
-        this[b] = listed[from]
     }
 }
 

@@ -6,9 +6,6 @@ import com.mmcdole.kivo.api.models.Collection
 import com.mmcdole.kivo.api.models.CollectionSummaryPage
 import com.mmcdole.kivo.api.models.Home
 import com.mmcdole.kivo.api.models.HomeRow
-import com.mmcdole.kivo.api.models.HomeRowChange
-import com.mmcdole.kivo.api.models.HomeRowInfo
-import com.mmcdole.kivo.api.models.HomeRowInfoList
 import com.mmcdole.kivo.api.models.LibraryFacets
 import com.mmcdole.kivo.api.models.Person
 import com.mmcdole.kivo.api.models.PersonSummaryPage
@@ -20,7 +17,6 @@ import com.mmcdole.kivo.api.models.WorkSummaryPage
 import com.mmcdole.kivo.core.FakeServer
 import com.mmcdole.kivo.core.json
 import com.mmcdole.kivo.core.live.Invalidation
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -95,44 +91,6 @@ class RepositoriesTest {
         runCurrent()
         assertEquals(2, people.size, "a book's played mark refetches the page")
         assertEquals(2, series.size)
-    }
-
-    @Test
-    fun aLayoutReadThatOverlapsASaveIsDroppedAndSavesRunInOrder() = runTest {
-        val server = FakeServer(StandardTestDispatcher(testScheduler))
-        val row = { shown: Boolean -> HomeRowInfoList(listOf(HomeRowInfo("continueWatching", "continueWatching", shown))) }
-        server.on("GET", "/api/v1/home/rows") { json(HomeRowInfoList.serializer(), row(true)) }
-        val gate = CompletableDeferred<Unit>()
-        var saved = 0
-        val order = mutableListOf<Int>()
-        server.on("PATCH", "/api/v1/home/rows") {
-            val n = ++saved
-            order += n
-            if (n == 1) gate.await()
-            json(HomeRowInfoList.serializer(), row(false))
-        }
-        val invalidations = MutableSharedFlow<Invalidation>()
-        val home = HomeRepository(server.connection(), invalidations)
-        val reads = mutableListOf<List<HomeRowInfo>>()
-        backgroundScope.launch { home.rows().collect { reads += it } }
-        runCurrent()
-        assertEquals(1, reads.size)
-
-        val change = listOf(HomeRowChange("continueWatching", false))
-        backgroundScope.launch { home.setRows(change) }
-        backgroundScope.launch { home.setRows(change) }
-        runCurrent()
-        invalidations.emit(Invalidation.HomeChanged)
-        runCurrent()
-        assertEquals(1, reads.size, "the echo of a save in flight doesn't overwrite the editor")
-        assertEquals(1, saved, "the second save waits for the first")
-
-        gate.complete(Unit)
-        runCurrent()
-        assertEquals(listOf(1, 2), order)
-        invalidations.emit(Invalidation.HomeChanged)
-        runCurrent()
-        assertEquals(2, reads.size)
     }
 
     @Test

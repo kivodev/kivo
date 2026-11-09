@@ -31,8 +31,8 @@ class SettingsTest {
         val shows = HomeRowInfo("recentlyAdded:shows", "recentlyAdded", true, LibraryRef("shows", "Shows", "shows"))
         val all = listOf(watching, listening, shows)
 
-        assertEquals(listOf(shows, listening, watching), movedRow(all, "recentlyAdded:shows", -1))
-        assertEquals(all, movedRow(all, "continueWatching", -1))
+        assertEquals(listOf(shows, listening, watching), movedRow(all, tvHomeRows(all), "recentlyAdded:shows", -1))
+        assertEquals(all, movedRow(all, tvHomeRows(all), "continueWatching", -1))
     }
 
     @Test
