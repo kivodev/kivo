@@ -35,9 +35,6 @@ export function filterChips(
   }
   listOf("resolution", (v) => labels.resolution[v]);
   listOf("dynamicRange", (v) => labels.dynamicRange[v]);
-  if (search.favorite) {
-    chips.push({ key: "favorite", label: labels.favorite, without: without({ favorite: undefined }) });
-  }
   if (search.narratorId) {
     const name = narrators.find((n) => n.id === search.narratorId)?.name ?? "";
     chips.push({ key: "narrator", label: labels.narrator(name), without: without({ narratorId: undefined }) });

@@ -11,7 +11,7 @@ import { Icon } from "@/components/Icon";
 import { LoadError } from "@/components/LoadError";
 import { Row } from "@/components/Row";
 import { HomeSkeleton } from "@/components/Skeleton";
-import { WorkCard } from "@/features/browse/WorkCard";
+import { WorkCard, workShape } from "@/features/browse/WorkCard";
 import { AddLibraryButton } from "@/features/libraries/AddLibraryButton";
 import { isTv } from "@/tv/flag";
 import { useTvEmptyScreen } from "@/tv/focus";
@@ -74,6 +74,7 @@ export function HomeScreen() {
             ? "square"
             : "poster";
         const continueRow = row.kind === "continueWatching" || row.kind === "continueListening" ? row.kind : undefined;
+        const list = row.kind === "list" ? row.list : undefined;
         return (
           <Row
             key={row.id}
@@ -81,8 +82,12 @@ export function HomeScreen() {
             focusKey={row.id}
             autoFocus={index === rows.findIndex((r) => r.items.length > 0)}
             title={
-              row.kind === "favorites" && !isTv ? (
-                <Link to="/favorites" className="inline-flex items-center gap-1 hover:underline">
+              list && !isTv ? (
+                <Link
+                  to="/lists/$listId"
+                  params={{ listId: list.id }}
+                  className="inline-flex items-center gap-1 hover:underline"
+                >
                   {rowTitle(row)}
                   <Icon name="chevronRight" className="size-5 text-text-muted" />
                 </Link>
@@ -93,10 +98,10 @@ export function HomeScreen() {
             shape={shape}
             items={row.items}
             itemKey={(w) => w.id}
-            renderItem={(w) => <WorkCard work={w} shape={shape} continueRow={continueRow} />}
+            renderItem={(w) => <WorkCard work={w} shape={list ? workShape(w.kind) : shape} continueRow={continueRow} />}
             action={
-              row.kind === "favorites" && isTv ? (
-                <Link to="/favorites" className="text-sm font-semibold text-text">
+              list && isTv ? (
+                <Link to="/lists/$listId" params={{ listId: list.id }} className="text-sm font-semibold text-text">
                   <Trans>See all</Trans>
                 </Link>
               ) : row.library && row.kind === "recentlyAdded" ? (

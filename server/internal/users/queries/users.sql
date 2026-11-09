@@ -48,6 +48,21 @@ DELETE FROM user_library
 WHERE user_library.user_id = @user_id
   AND library_id NOT IN (SELECT g.library_id FROM library_grant g WHERE g.user_id = @user_id);
 
+-- name: InsertList :exec
+INSERT INTO list (id, user_id, name, built_in, created_at) VALUES (@id, @user_id, @name, @built_in, @created_at);
+
+-- name: CountLists :one
+SELECT count(*) FROM list WHERE user_id = @user_id;
+
+-- name: GetList :one
+SELECT id, built_in FROM list WHERE id = @id AND user_id = @user_id;
+
+-- name: RenameList :exec
+UPDATE list SET name = @name WHERE id = @id;
+
+-- name: DeleteList :exec
+DELETE FROM list WHERE id = @id;
+
 -- name: DeleteHomeRows :exec
 DELETE FROM user_home_row WHERE user_id = @user_id;
 

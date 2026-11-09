@@ -14,13 +14,13 @@ import { createAdminRouteTree } from "@/routes/admin";
 import { authedRoute } from "@/routes/authed";
 import { bookSeriesRoute, personRoute } from "@/routes/books";
 import { collectionRoute } from "@/routes/collection";
-import { favoritesGridRoute, favoritesRoute } from "@/routes/favorites";
 import { historyRoute } from "@/routes/history";
 import { homeRoute } from "@/routes/home";
 import { inviteRoute } from "@/routes/invite";
 import { librariesRoute } from "@/routes/libraries";
 import { libraryRoute } from "@/routes/library";
 import { linkRoute } from "@/routes/link";
+import { listRoute, listsRoute } from "@/routes/lists";
 import { rootRoute } from "@/routes/root";
 import { searchRoute } from "@/routes/search";
 import { settingsRoute } from "@/routes/settings";
@@ -48,8 +48,8 @@ const routeTree = rootRoute.addChildren([
     homeRoute,
     librariesRoute,
     libraryRoute,
-    favoritesRoute,
-    favoritesGridRoute,
+    listsRoute,
+    listRoute,
     workRoute,
     personRoute,
     bookSeriesRoute,

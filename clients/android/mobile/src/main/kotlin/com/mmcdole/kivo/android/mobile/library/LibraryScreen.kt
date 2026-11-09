@@ -377,7 +377,6 @@ private fun FilterSheet(state: LibraryUiState, onQuery: (GridQuery) -> Unit, onC
                 for (played in listOf(null) + GridValues.playedStates) {
                     FilterChip(selected = query.played == played, onClick = { onQuery(query.copy(played = played)) }, label = { Text(playedName(played, books)) })
                 }
-                FilterChip(selected = query.favorite, onClick = { onQuery(query.copy(favorite = !query.favorite)) }, label = { Text(stringResource(R.string.mobile_favorites)) })
             }
             val resolutions = GridValues.resolutions.filter { facets?.resolutions?.contains(it) == true }
             if (resolutions.isNotEmpty()) {
@@ -414,7 +413,6 @@ private fun SheetLabel(text: String) {
 @Composable
 private fun activeFilters(query: GridQuery): List<Pair<String, GridQuery>> = buildList {
     query.played?.let { add(playedName(it, false) to query.copy(played = null)) }
-    if (query.favorite) add(stringResource(R.string.mobile_favorites) to query.copy(favorite = false))
     query.resolutions?.forEach { add(resolutionName(it) to query.copy(resolutions = toggled(query.resolutions.orEmpty(), it))) }
     query.dynamicRanges?.forEach { add(dynamicRangeName(it) to query.copy(dynamicRanges = toggled(query.dynamicRanges.orEmpty(), it))) }
 }

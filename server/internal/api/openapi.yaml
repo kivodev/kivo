@@ -43,7 +43,7 @@ info:
        `…Page`, a feed's `…Feed` and a whole list's `…List`
        (`WorkSummaryPage`, `WorkSummaryFeed`, `WorkSummaryList`). Each kind of list has one
        paging style. A grid (a library's works, collections, authors and
-       book series, and Favorites) is paged by position: `offset` items
+       book series, and a list's works) is paged by position: `offset` items
        from the start, with `total` on every page. A feed (the Unmatched
        and Missing files lists, activity, history, play events and the
        logs) is read in order: `next` is an opaque keyset cursor, passed back as `after`,
@@ -1365,10 +1365,6 @@ paths:
           schema:
             type: array
             items: {$ref: "#/components/schemas/DynamicRange"}
-        - name: favorite
-          in: query
-          description: Only the user's favorites.
-          schema: {type: boolean}
         - name: narratorId
           in: query
           description: The books this person narrated.
@@ -1619,7 +1615,8 @@ paths:
       summary: Reset the Home layout
       description: |
         Forgets the user's order and hidden rows, so Home returns to the
-        default order with every built-in row shown. A `homeChanged` event
+        default order with every built-in row shown. Lists remain, off
+        Home, except My List. A `homeChanged` event
         tells the user's clients.
       tags: [works]
       x-kivo-access: viewer
@@ -1632,24 +1629,118 @@ paths:
         "401": {$ref: "#/components/responses/Unauthorized"}
         default: {$ref: "#/components/responses/Error"}
 
-  /api/v1/favorites:
+  /api/v1/lists:
     get:
-      operationId: listFavorites
-      summary: List favorites
+      operationId: listLists
+      summary: List the user's lists
+      description: The user's lists, My List first, then by name.
+      tags: [works]
+      x-kivo-access: viewer
+      responses:
+        "200":
+          description: The lists.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/WorkListList"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        default: {$ref: "#/components/responses/Error"}
+    post:
+      operationId: createList
+      summary: Create a list
       description: |
-        Favorites in libraries the user sees, most recently marked first:
-        one kind with `kind`, else every kind. A page grouped by kind asks
-        for each kind's first page, whose `total` says whether it has any.
-        Summaries are as everywhere: an episode's has its series' title and
-        poster and its season and episode numbers. A grid, paged by
-        `offset`, with `total` on every page; works marked at the same time
-        are listed by title.
+        A new list starts off Home; Home & Libraries in Settings puts it on. A name in use is `409` with code
+        `nameTaken`; a user has at most 100 lists, past which it is `409`
+        with code `conflict`. A `listsChanged` event tells the user's
+        clients.
+      tags: [works]
+      x-kivo-access: viewer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ListCreate"}
+      responses:
+        "201":
+          description: The list.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/WorkList"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/lists/{id}:
+    parameters:
+      - {name: id, in: path, required: true, schema: {$ref: "#/components/schemas/ID"}}
+    get:
+      operationId: getList
+      summary: Get a list
+      tags: [works]
+      x-kivo-access: viewer
+      responses:
+        "200":
+          description: The list.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/WorkList"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        default: {$ref: "#/components/responses/Error"}
+    patch:
+      operationId: updateList
+      summary: Rename a list
+      description: |
+        My List can't be renamed: `409` with code `conflict`. A name in use
+        is `409` with code `nameTaken`. A `listsChanged` event tells the
+        user's clients.
+      tags: [works]
+      x-kivo-access: viewer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ListUpdate"}
+      responses:
+        "200":
+          description: The list.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/WorkList"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        default: {$ref: "#/components/responses/Error"}
+    delete:
+      operationId: deleteList
+      summary: Delete a list
+      description: |
+        Deletes the list, not its works. My List can't be deleted: `409`
+        with code `conflict`. A `listsChanged` event tells the user's
+        clients.
+      tags: [works]
+      x-kivo-access: viewer
+      responses:
+        "204": {description: Deleted.}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/lists/{id}/works:
+    parameters:
+      - {name: id, in: path, required: true, schema: {$ref: "#/components/schemas/ID"}}
+    get:
+      operationId: listListWorks
+      summary: List a list's works
+      description: |
+        A list's works the user sees, most recently added first. A grid,
+        paged by `offset`, with `total` on every page; works added at the
+        same time are listed by title.
       tags: [works]
       x-kivo-access: viewer
       parameters:
-        - name: kind
-          in: query
-          schema: {$ref: "#/components/schemas/WorkKind"}
         - {$ref: "#/components/parameters/Offset"}
         - {$ref: "#/components/parameters/Limit"}
       responses:
@@ -1660,6 +1751,42 @@ paths:
               schema: {$ref: "#/components/schemas/WorkSummaryPage"}
         "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        default: {$ref: "#/components/responses/Error"}
+    post:
+      operationId: addListWork
+      summary: Add a work to a list
+      description: |
+        A work already in the list keeps its place. It stays there after
+        being played. A `listsChanged` event tells the user's clients.
+      tags: [works]
+      x-kivo-access: viewer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ListWorkAdd"}
+      responses:
+        "204": {description: Added.}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/lists/{id}/works/{workId}:
+    parameters:
+      - {name: id, in: path, required: true, schema: {$ref: "#/components/schemas/ID"}}
+      - {name: workId, in: path, required: true, schema: {$ref: "#/components/schemas/ID"}}
+    delete:
+      operationId: removeListWork
+      summary: Remove a work from a list
+      description: A `listsChanged` event tells the user's clients.
+      tags: [works]
+      x-kivo-access: viewer
+      responses:
+        "204": {description: Removed.}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
         default: {$ref: "#/components/responses/Error"}
 
   /api/v1/works:
@@ -1768,7 +1895,7 @@ paths:
       operationId: updateWorkUserState
       summary: Update user state
       description: |
-        Marks a work played or unplayed, favorite or not, or reports an
+        Marks a work played or unplayed, or reports an
         offline position.
         For the caller. Marking a series or season played or
         unplayed applies to each of its episodes; marking unplayed clears the
@@ -4848,11 +4975,15 @@ components:
         id:
           type: string
           description: |
-            Stable per row: the kind, or `recentlyAdded:<libraryId>`.
+            Stable per row: the kind, `recentlyAdded:<libraryId>` or
+            `list:<listId>`.
         kind: {$ref: "#/components/schemas/HomeRowKind"}
         library:
           $ref: "#/components/schemas/LibraryRef"
           description: For `recentlyAdded`, the library.
+        list:
+          $ref: "#/components/schemas/ListRef"
+          description: For `list`, the list.
         items:
           type: array
           items: {$ref: "#/components/schemas/WorkSummary"}
@@ -4869,6 +5000,9 @@ components:
         library:
           $ref: "#/components/schemas/LibraryRef"
           description: For `recentlyAdded`, the library.
+        list:
+          $ref: "#/components/schemas/ListRef"
+          description: For `list`, the list.
         shown: {type: boolean}
 
     HomeRowInfoList:
@@ -4895,6 +5029,59 @@ components:
         id: {type: string}
         shown: {type: boolean}
 
+    ListRef:
+      type: object
+      description: A list as a Home row names it.
+      required: [id, name]
+      properties:
+        id: {$ref: "#/components/schemas/ID"}
+        name: {type: string}
+
+    WorkList:
+      type: object
+      description: A list of works a user keeps.
+      required: [id, name, kind, builtIn, workCount]
+      properties:
+        id: {$ref: "#/components/schemas/ID"}
+        name: {type: string}
+        kind: {$ref: "#/components/schemas/ListKind"}
+        builtIn:
+          type: boolean
+          description: My List, which every user has and can't delete or rename.
+        workCount:
+          type: integer
+          description: Works in the list the user sees.
+
+    ListKind:
+      type: string
+      description: What a list is. `manual` is works the user added. Skip kinds you don't know.
+      enum: [manual]
+
+    WorkListList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: {$ref: "#/components/schemas/WorkList"}
+
+    ListCreate:
+      type: object
+      required: [name]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 100}
+
+    ListUpdate:
+      type: object
+      properties:
+        name: {type: string, minLength: 1, maxLength: 100}
+
+    ListWorkAdd:
+      type: object
+      required: [workId]
+      properties:
+        workId: {$ref: "#/components/schemas/ID"}
+
     LibraryRef:
       type: object
       description: A library as a row or list names it.
@@ -4910,9 +5097,9 @@ components:
         What a Home row shows: `continueWatching` what to watch on with,
         videos in progress and each series' episode up next;
         `continueListening` books in progress; `recentlyAdded` a library's
-        newest works; `favorites` the works the user marked. Skip kinds you
+        newest works; `list` a list's works. Skip kinds you
         don't know.
-      enum: [continueWatching, continueListening, recentlyAdded, favorites]
+      enum: [continueWatching, continueListening, recentlyAdded, list]
 
     WorkSummary:
       type: object
@@ -5021,10 +5208,9 @@ components:
     UserState:
       type: object
       description: The user's state for a work. For a series or season, `played` means every episode is.
-      required: [played, favorite, playCount]
+      required: [played, playCount]
       properties:
         played: {type: boolean}
-        favorite: {type: boolean}
         playCount: {type: integer}
         positionMs:
           type: integer
@@ -5041,7 +5227,6 @@ components:
       type: object
       properties:
         played: {type: boolean}
-        favorite: {type: boolean}
         positionMs:
           type: integer
           minimum: 0
@@ -5499,6 +5684,10 @@ components:
               type: array
               description: Collections this work is in.
               items: {$ref: "#/components/schemas/CollectionSummary"}
+            listIds:
+              type: array
+              description: The user's lists holding the work; the server always sends it.
+              items: {$ref: "#/components/schemas/ID"}
             lockedFields:
               type: array
               description: Admins only. Fields an admin edited, shown with a lock icon.
@@ -7528,14 +7717,17 @@ components:
           the viewer's place in a grid.
         - `userStateChanged` (`workIds`): the user's state for these works
           changed, possibly on another client: marked played or unplayed
-          (a series or season with its episodes), a favorite, or a play's
-          last position. Refetch them, and the lists that show them.
+          (a series or season with its episodes), or a play's last
+          position. Refetch them, and the lists that show them.
         - `playEnded` (`playId`, `message`): the user's play was stopped
           by an admin or another client, or expired; `message` is the
           admin's words to the viewer, if any.
         - `homeChanged`: the user's Home layout or library order changed;
           every client of the user gets it, the one that made the change
           too. Refetch Home and the layout.
+        - `listsChanged`: the user's lists changed: one was created,
+          renamed or deleted, or a work was added or removed. Refetch the
+          lists, any open list, Home and any open work page.
         - `downloadsChanged`: the user's downloads on the server moved:
           in line, in their preparation (at most every 10 seconds), or to
           ready or failed. Refetch the downloads that aren't ready.
@@ -7572,7 +7764,7 @@ components:
     EventKind:
       type: string
       description: What an event says changed. Skip kinds you don't know.
-      enum: [workChanged, libraryChanged, userStateChanged, homeChanged, playEnded, downloadsChanged,
+      enum: [workChanged, libraryChanged, userStateChanged, homeChanged, listsChanged, playEnded, downloadsChanged,
         tasksChanged, playsChanged, problemsChanged, logsChanged, activityChanged]
 
     ResyncMessage:

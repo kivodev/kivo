@@ -12,6 +12,8 @@ import com.mmcdole.kivo.api.models.HomeRowInfoList
 import com.mmcdole.kivo.api.models.LibraryFacets
 import com.mmcdole.kivo.api.models.Person
 import com.mmcdole.kivo.api.models.PersonSummaryPage
+import com.mmcdole.kivo.api.models.WorkList
+import com.mmcdole.kivo.api.models.WorkListList
 import com.mmcdole.kivo.api.models.WorkImages
 import com.mmcdole.kivo.api.models.WorkSummaryList
 import com.mmcdole.kivo.api.models.WorkSummaryPage
@@ -134,36 +136,27 @@ class RepositoriesTest {
     }
 
     @Test
-    fun favoritesAreReadAKindAtATimeAndRefetchedAsTheUsersStateChanges() = runTest {
+    fun listsAreReadAndRefetchedAsTheyChange() = runTest {
         val server = FakeServer(StandardTestDispatcher(testScheduler))
-        server.on("GET", "/api/v1/favorites") { json(WorkSummaryPage.serializer(), WorkSummaryPage(emptyList(), total = 0)) }
+        server.on("GET", "/api/v1/lists") { json(WorkListList.serializer(), WorkListList(emptyList())) }
+        server.on("GET", "/api/v1/lists/l1/works") { json(WorkSummaryPage.serializer(), WorkSummaryPage(emptyList(), total = 0)) }
         val invalidations = MutableSharedFlow<Invalidation>()
-        val favorites = FavoritesRepository(server.connection(), invalidations)
-        val pages = mutableListOf<WorkSummaryPage>()
-        backgroundScope.launch { favorites.favorites("episode").collect { pages += it } }
+        val lists = ListsRepository(server.connection(), invalidations)
+        val read = mutableListOf<List<WorkList>>()
+        backgroundScope.launch { lists.lists().collect { read += it } }
         runCurrent()
-        invalidations.emit(Invalidation.UserStateChanged(listOf("w1")))
+        invalidations.emit(Invalidation.ListsChanged)
         runCurrent()
-        assertEquals(2, pages.size)
+        assertEquals(2, read.size)
+        invalidations.emit(Invalidation.HomeChanged)
+        runCurrent()
+        assertEquals(2, read.size)
 
-        val counts = mutableListOf<Int>()
-        backgroundScope.launch { favorites.count().collect { counts += it } }
-        runCurrent()
-        assertEquals(listOf(0), counts)
-
-        favorites.page("episode", offset = 20)
-        favorites.page("movie", offset = 0, limit = 60)
-        favorites.page("movie", offset = 120, limit = 60)
+        lists.page("l1", offset = 20)
+        lists.page("l1", offset = 0, limit = 60)
         assertEquals(
-            listOf(
-                setOf("kind=episode"),
-                setOf("kind=episode"),
-                setOf("limit=1"),
-                setOf("kind=episode", "offset=20"),
-                setOf("kind=movie", "limit=60"),
-                setOf("kind=movie", "offset=120", "limit=60"),
-            ),
-            server.seen.map { it.query.split('&').toSet() },
+            listOf(setOf("offset=20"), setOf("limit=60")),
+            server.to("GET", "/api/v1/lists/l1/works").map { it.query.split('&').toSet() },
         )
     }
 
@@ -178,14 +171,14 @@ class RepositoriesTest {
         val grid = GridRepository(server.connection(), invalidations)
 
         grid.page(GridQuery("l1"), offset = 0, limit = 60)
-        grid.page(GridQuery("l1", favorite = true), offset = 120, limit = 60)
+        grid.page(GridQuery("l1", genres = listOf("Drama")), offset = 120, limit = 60)
         grid.collections("l1", offset = 60, limit = 60)
         grid.authors("l1", offset = 0, limit = 60)
         grid.bookSeries("l1", offset = 0, limit = 60)
         assertEquals(
             listOf(
                 "/api/v1/libraries/l1/works" to setOf("limit=60"),
-                "/api/v1/libraries/l1/works" to setOf("favorite=true", "offset=120", "limit=60"),
+                "/api/v1/libraries/l1/works" to setOf("genre=Drama", "offset=120", "limit=60"),
                 "/api/v1/libraries/l1/collections" to setOf("offset=60", "limit=60"),
                 "/api/v1/libraries/l1/authors" to setOf("limit=60"),
                 "/api/v1/libraries/l1/book-series" to setOf("limit=60"),

@@ -88,7 +88,6 @@ type Filter struct {
 	ContentRatings []string
 	Resolutions    []Resolution
 	Ranges         []Range
-	Favorites      bool  // only the user's favorites
 	Unmatched      bool  // only provisional works
 	Narrator       id.ID // only the books this person narrated; zero for any
 }
@@ -134,7 +133,6 @@ var filters = `AND (@played IS NULL OR @played = CASE
   AND (@content_ratings IS NULL OR w.content_rating IN (SELECT value FROM json_each(@content_ratings)))
   AND (@resolutions = 0 OR wl.resolutions & @resolutions)
   AND (@dynamic_ranges = 0 OR wl.dynamic_ranges & @dynamic_ranges)
-  AND (NOT @favorites OR EXISTS (SELECT 1 FROM user_state fu WHERE fu.user_id = @user AND fu.work_id = w.id AND fu.favorite))
   AND (NOT @unmatched OR w.provisional)
   AND (@narrator IS NULL OR EXISTS (SELECT 1 FROM credit fn
     WHERE fn.work_id = w.id AND fn.role = 'narrator' AND fn.person_id = @narrator))`
@@ -358,7 +356,6 @@ func (f Filter) args() ([]any, error) {
 		sql.Named("content_ratings", set(f.ContentRatings)),
 		sql.Named("resolutions", resolutions),
 		sql.Named("dynamic_ranges", dynamicRanges),
-		sql.Named("favorites", f.Favorites),
 		sql.Named("unmatched", f.Unmatched),
 		sql.Named("narrator", f.Narrator),
 	}, nil

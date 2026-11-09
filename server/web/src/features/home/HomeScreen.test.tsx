@@ -1,5 +1,6 @@
 import { fireEvent, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { bookIds } from "@/api/mocks/books";
 import type { WorkDetail } from "@/api/schemas";
 import { renderApp, screen } from "@/test/render";
 import { mockId, mockIds, scenarios, sendEvent, sent, serveMockApi, summaryOf } from "@/test/server";
@@ -11,7 +12,7 @@ describe("Home", () => {
     await screen.findByRole("heading", { name: "Continue Watching" });
     expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual([
       "Continue Watching",
-      "Favorites",
+      "My List",
       "Recently Added in Movies",
       "Recently Added in TV Shows",
       "Recently Added in Home Videos",
@@ -27,12 +28,15 @@ describe("Home", () => {
     expect(within(continueRow).getByText("Good News About Hell")).toBeInTheDocument();
   });
 
-  it("opens Favorites from the Favorites row's heading", async () => {
-    serveMockApi();
+  it("opens a list from its row's heading, with each card in its work's own shape", async () => {
+    serveMockApi((api) => api.lists[0]?.workIds.unshift(bookIds.hailMary));
     const { user, router } = renderApp("/");
-    const heading = await screen.findByRole("heading", { name: "Favorites" });
-    await user.click(within(heading).getByRole("link", { name: "Favorites" }));
-    await waitFor(() => expect(router.state.location.pathname).toBe("/favorites"));
+    const heading = await screen.findByRole("heading", { name: "My List" });
+    const row = document.querySelector('[data-row="list"]') as HTMLElement;
+    expect(row.querySelector('[data-part="cover"]')).not.toBeNull();
+    expect(row.querySelector('[data-part="poster"]')).not.toBeNull();
+    await user.click(within(heading).getByRole("link", { name: "My List" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/lists/${mockIds.myList}`));
   });
 
   it("shows books in progress as square covers, with the time left", async () => {
@@ -159,8 +163,8 @@ describe("Home", () => {
     expect(screen.getByRole("menuitem", { name: "Remove from Continue Listening" })).toBeInTheDocument();
     await user.keyboard("{Escape}");
 
-    const favorites = document.querySelector('[data-row="favorites"]') as HTMLElement;
-    await user.click(within(favorites).getAllByRole("button", { name: /^More actions for/ })[0] as HTMLElement);
+    const myList = document.querySelector('[data-row="list"]') as HTMLElement;
+    await user.click(within(myList).getAllByRole("button", { name: /^More actions for/ })[0] as HTMLElement);
     expect(screen.queryByRole("menuitem", { name: /^Remove from Continue/ })).toBeNull();
   });
 
@@ -188,7 +192,7 @@ describe("Home", () => {
       "Resume",
       "Play from beginning",
       "Mark as watched",
-      "Add to favorites",
+      "Add to List",
       "Remove from Continue Watching",
       "Go to series",
       "Go to library",

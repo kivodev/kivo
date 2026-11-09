@@ -23,18 +23,18 @@ import (
 var thing1982 = metadata.Match{ID: catalog.ExternalID{Provider: "tmdb", Kind: "movie", ID: "1091"}, Title: "The Thing", Year: 1982}
 
 type state struct {
-	played, favorite bool
-	plays            int
-	position         int64
-	rating           *int
+	played   bool
+	plays    int
+	position int64
+	rating   *int
 }
 
 func (e *env) stateOf(user, work id.ID) (state, bool) {
 	e.t.Helper()
 	var s state
 	var rating sql.NullInt64
-	err := e.b.DB.Reader().QueryRow(`SELECT played, favorite, play_count, position_ms, rating FROM user_state WHERE user_id = ? AND work_id = ?`,
-		user, work).Scan(&s.played, &s.favorite, &s.plays, &s.position, &rating)
+	err := e.b.DB.Reader().QueryRow(`SELECT played, play_count, position_ms, rating FROM user_state WHERE user_id = ? AND work_id = ?`,
+		user, work).Scan(&s.played, &s.plays, &s.position, &rating)
 	if errors.Is(err, sql.ErrNoRows) {
 		return state{}, false
 	}
@@ -72,7 +72,7 @@ func (e *env) gone(work id.ID) bool {
 }
 
 // This is the acceptance test for wrong-match recovery. A wrong automatic
-// match is watched, favorited and rated. Fix match re-describes the root
+// match is watched and rated. Fix match re-describes the root
 // work in place, so the root keeps its ID along with that state.
 func TestFixMatchRedescribesInPlace(t *testing.T) {
 	e := newEnv(t)
@@ -87,9 +87,6 @@ func TestFixMatchRedescribesInPlace(t *testing.T) {
 	v := e.versionOf(f)
 	e.play(anna, v, f, 95*time.Minute)
 	five := 5
-	if err := e.state.Update(ctx, e.viewerOf(anna), wrong.ID, userstate.Change{Favorite: new(true)}); err != nil {
-		t.Fatal(err)
-	}
 	if err := e.state.SetRating(ctx, anna, wrong.ID, &five); err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +105,7 @@ func TestFixMatchRedescribesInPlace(t *testing.T) {
 		t.Fatalf("external IDs %v, want the fix's alone", right.ExternalIDs)
 	}
 	s, ok := e.stateOf(anna, right.ID)
-	if !ok || !s.played || !s.favorite || s.plays != 1 || s.rating == nil || *s.rating != 5 {
+	if !ok || !s.played || s.plays != 1 || s.rating == nil || *s.rating != 5 {
 		t.Fatalf("state on the root: %+v, %v", s, ok)
 	}
 	if !e.refreshed(right.ID) || e.artwork(right.ID) != 0 {
@@ -409,7 +406,7 @@ func TestSetOrderingRenumbersEpisodes(t *testing.T) {
 
 // A watched file stays watched under the number a new ordering gives it.
 // Its plays move to the episode it now covers, and the episode it leaves
-// keeps its work and its favorite.
+// keeps its work.
 func TestSetOrderingCarriesWatchState(t *testing.T) {
 	e := newEnv(t)
 	lib := e.library(catalog.Shows)
@@ -421,10 +418,6 @@ func TestSetOrderingCarriesWatchState(t *testing.T) {
 	}
 	anna, bob := e.newUser("anna"), e.newUser("bob")
 	e.play(anna, e.versionOf(files[0]), files[0], 95*time.Minute)
-	if err := e.state.Update(ctx, e.viewerOf(anna), reynolds.ID, userstate.Change{Favorite: new(true)}); err != nil {
-		t.Fatal(err)
-	}
-
 	dvd := string(metadata.DVD)
 	if err := e.id.EditWork(ctx, e.viewer(), reynolds.Root, identify.WorkEdit{Ordering: &dvd}); err != nil {
 		t.Fatal(err)
@@ -443,7 +436,7 @@ func TestSetOrderingCarriesWatchState(t *testing.T) {
 	if e.gone(reynolds.ID) {
 		t.Fatal("the matched episode left empty was deleted")
 	}
-	if s, _ := e.stateOf(anna, reynolds.ID); s.played || s.plays != 0 || !s.favorite {
+	if s, _ := e.stateOf(anna, reynolds.ID); s.played || s.plays != 0 {
 		t.Fatalf("anna's state on the episode the file left: %+v", s)
 	}
 }

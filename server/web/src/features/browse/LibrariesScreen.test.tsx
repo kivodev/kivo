@@ -4,13 +4,12 @@ import { locationOf, renderApp, screen } from "@/test/render";
 import { mockIds, scenarios, serveMockApi } from "@/test/server";
 
 describe("Libraries", () => {
-  it("lists Favorites, the pinned libraries, then More libraries, each with its count", async () => {
+  it("lists Lists, the pinned libraries, then More libraries, each library with its count", async () => {
     serveMockApi(scenarios.unpinned);
     const { user, router } = renderApp("/libraries");
     expect(await screen.findByRole("heading", { name: "Libraries", level: 1 })).toBeInTheDocument();
-    const favorites = screen.getByRole("list", { name: "Favorites" });
-    // Favorites counts every kind, read from the server.
-    expect(await within(favorites).findByRole("link", { name: /^Favorites\s*\d+$/ })).toBeInTheDocument();
+    const lists = screen.getByRole("list", { name: "Lists" });
+    expect(within(lists).getByRole("link", { name: "Lists" })).toHaveAttribute("href", "/lists");
     const pinned = screen.getByRole("list", { name: "Pinned libraries" });
     expect(within(pinned).getByRole("link", { name: /^Movies\s*238$/ })).toBeInTheDocument();
     const more = screen.getByRole("region", { name: "More libraries" });

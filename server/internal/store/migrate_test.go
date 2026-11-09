@@ -173,6 +173,37 @@ func TestMigrationHomeRows(t *testing.T) {
 	}
 }
 
+// 0060 creates My List for every user and leaves user_state without the
+// old columns.
+func TestMigrationLists(t *testing.T) {
+	ctx := context.Background()
+	db, path := testDB(t, through(t, "_home_rows.sql"))
+	err := db.Write(ctx, func(ctx context.Context, tx *Tx) error {
+		_, err := tx.ExecContext(ctx, `
+			INSERT INTO user (id, username, admin, all_libraries, created_at) VALUES
+				(x'a1', 'anna', 0, 1, 1), (x'a2', 'bob', 0, 1, 1);
+			INSERT INTO user_home_row (user_id, row_id, position, shown) VALUES (x'a1', 'favorites', 0, 1);`)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+	up, err := open(ctx, path, embeddedMigrations(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer up.Close()
+	var lists, favRows int
+	err = up.Reader().QueryRowContext(ctx, `SELECT count(*), (SELECT count(*) FROM user_home_row WHERE row_id = 'favorites') FROM list WHERE built_in AND name = 'My List'`).Scan(&lists, &favRows)
+	if err != nil || lists != 2 || favRows != 0 {
+		t.Fatalf("after 0060: %d My Lists, %d favorites rows, %v", lists, favRows, err)
+	}
+	if err := up.Reader().QueryRowContext(ctx, `SELECT favorite FROM user_state LIMIT 1`).Scan(new(int)); err == nil {
+		t.Fatal("user_state still has favorite")
+	}
+}
+
 // 0057 makes the problem codes problemRaised events keep camelCase, in
 // their codes and their problems' IDs, and leaves other events and codes
 // as they were.

@@ -14,6 +14,7 @@ import com.mmcdole.kivo.api.models.LibraryFacets
 import com.mmcdole.kivo.api.models.Person
 import com.mmcdole.kivo.api.models.PersonSummary
 import com.mmcdole.kivo.api.models.SearchResults
+import com.mmcdole.kivo.api.models.WorkList
 import com.mmcdole.kivo.api.models.UserState
 import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.api.models.WorkSummary
@@ -21,7 +22,6 @@ import com.mmcdole.kivo.api.models.WorkSummaryPage
 import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.Reachability
 import com.mmcdole.kivo.core.auth.ServerConnection
-import com.mmcdole.kivo.core.data.FavoritesRepository
 import com.mmcdole.kivo.core.data.GridPage
 import com.mmcdole.kivo.core.data.GridPager
 import com.mmcdole.kivo.core.data.GridQuery
@@ -30,6 +30,7 @@ import com.mmcdole.kivo.core.data.Heading
 import com.mmcdole.kivo.core.data.HomeRepository
 import com.mmcdole.kivo.core.data.Known
 import com.mmcdole.kivo.core.data.LibraryRepository
+import com.mmcdole.kivo.core.data.ListsRepository
 import com.mmcdole.kivo.core.data.SearchRepository
 import com.mmcdole.kivo.core.data.UserStateRepository
 import com.mmcdole.kivo.core.data.WorkRepository
@@ -45,7 +46,7 @@ import kotlinx.coroutines.flow.onEach
 
 /**
  * What the session reads of the server's libraries ([KivoSession.library]):
- * Home, the user's libraries, favorites, works, people, book series and
+ * Home, the user's libraries and lists, works, people, book series and
  * collections, the grids, search, and the user's marks on works. Each read
  * is a Flow of [Load], read again as the live events say and asked again
  * while the server can't be reached; what it has read lately shows at once
@@ -59,7 +60,7 @@ class SessionLibrary internal constructor(
     preferences: DataStore<Preferences>,
 ) {
     private val works = WorkRepository(connection, invalidations)
-    private val favoriteWorks = FavoritesRepository(connection, invalidations)
+    private val listWorks = ListsRepository(connection, invalidations)
     private val grid = GridRepository(connection, invalidations)
     private val userState = UserStateRepository(connection)
 
@@ -91,19 +92,34 @@ class SessionLibrary internal constructor(
     @Throws(Exception::class)
     suspend fun resetHomeRows(): List<HomeRowInfo> = homeLayout.resetRows()
 
-    /** The first page of one `WorkKind`'s favorites, [limit] long or the server's page, most recently marked first; its `total` says whether there are any. */
-    fun favorites(kind: String, limit: Int?): Flow<Load<WorkSummaryPage>> =
-        reachability.load(favoriteWorks.favorites(kind, limit).onEach { seen.read(it.items) })
+    /** The user's lists, My List first, read again as they change. */
+    fun lists(): Flow<Load<List<WorkList>>> = reachability.load(listWorks.lists())
 
-    /** How many works the user marked a favorite, as it changes. */
-    fun favoritesCount(): Flow<Load<Int>> = reachability.load(favoriteWorks.count())
+    /** The first page of a list's works, [limit] long or the server's page, most recently added first. */
+    fun listWorks(listId: String, limit: Int?): Flow<Load<WorkSummaryPage>> =
+        reachability.load(listWorks.works(listId, limit).onEach { seen.read(it.items) })
 
-    /** One kind's favorites as a grid, most recently marked first, read again in place as they change. */
-    fun pagedFavorites(kind: String): GridPager<WorkSummary> = paged(
-        "favorites $kind",
-        favoriteWorks.changes(),
+    /** A list's works as a grid, most recently added first, read again in place as they change. */
+    fun pagedListWorks(listId: String): GridPager<WorkSummary> = paged(
+        "list $listId",
+        listWorks.changes(),
         seen::read,
-    ) { offset, limit -> favoriteWorks.page(kind, offset, limit).let { GridPage(it.items, it.total, it.letters) } }
+    ) { offset, limit -> listWorks.page(listId, offset, limit).let { GridPage(it.items, it.total, it.letters) } }
+
+    @Throws(Exception::class)
+    suspend fun createList(name: String): WorkList = listWorks.create(name)
+
+    @Throws(Exception::class)
+    suspend fun renameList(id: String, name: String): WorkList = listWorks.rename(id, name)
+
+    @Throws(Exception::class)
+    suspend fun deleteList(id: String) = listWorks.delete(id)
+
+    @Throws(Exception::class)
+    suspend fun addToList(listId: String, workId: String) = listWorks.add(listId, workId)
+
+    @Throws(Exception::class)
+    suspend fun removeFromList(listId: String, workId: String) = listWorks.remove(listId, workId)
 
     /**
      * The libraries the user sees, in their order, read again as they change
@@ -212,9 +228,6 @@ class SessionLibrary internal constructor(
 
     @Throws(Exception::class)
     suspend fun setPlayed(workId: String, played: Boolean): UserState = userState.setPlayed(workId, played)
-
-    @Throws(Exception::class)
-    suspend fun setFavorite(workId: String, favorite: Boolean): UserState = userState.setFavorite(workId, favorite)
 
     /** Takes a work out of Continue Watching or Continue Listening until it's played again; an episode takes its series. */
     @Throws(Exception::class)

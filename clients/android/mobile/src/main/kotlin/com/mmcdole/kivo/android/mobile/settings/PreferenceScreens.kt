@@ -278,7 +278,7 @@ fun LibrariesSettingsScreen(session: ServerSession, nav: MobileNav) {
         state.rowsFailure?.let { item { FailureRow(it, model::loadRows) } }
         itemsIndexed(rows, key = { _, row -> row.id }) { index, row ->
             OrderedSwitch(
-                name = rowTitle(row.kind, row.library?.name),
+                name = rowTitle(row.kind, row.library?.name, row.list?.name),
                 checked = row.shown,
                 tag = "show:${row.id}",
                 canMoveUp = index > 0,

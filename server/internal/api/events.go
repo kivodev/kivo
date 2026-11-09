@@ -216,7 +216,7 @@ func eventMessage(e events.Event, v users.Viewer) (gen.EventMessage, bool) {
 			return msg, false
 		}
 		msg.ProblemCount = &n
-	case events.DownloadsChanged, events.PlaysChanged, events.TasksChanged, events.LogsChanged, events.ActivityChanged, events.HomeChanged:
+	case events.DownloadsChanged, events.PlaysChanged, events.TasksChanged, events.LogsChanged, events.ActivityChanged, events.HomeChanged, events.ListsChanged:
 	default:
 		return msg, false
 	}

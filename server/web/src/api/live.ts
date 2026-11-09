@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { isPackaged } from "@/tv/flag";
 import { apiBaseUrl, sessionToken, unauthorized } from "./client";
 import { savingLayout } from "./home";
-import { type ApiPath, apiPaths, libraryGridPaths, workViewPaths } from "./paths";
+import { type ApiPath, apiPaths, libraryGridPaths, listViewPaths, workViewPaths } from "./paths";
 import type { EventMessage, EventStreamMessage, SnapshotMessage } from "./schemas";
 
 // Live events, over one WebSocket per tab. Each event kind maps to one
@@ -56,7 +56,8 @@ export function planEvent(event: EventMessage): CacheOp[] {
       return [
         invalidate(apiPaths.home),
         invalidate(apiPaths.homeRows),
-        invalidate(apiPaths.favorites),
+        invalidate(apiPaths.lists),
+        invalidate(apiPaths.listWorks),
         invalidate(apiPaths.libraries),
         invalidate(apiPaths.library, { ids }),
         invalidate(apiPaths.libraryFacets, { ids }),
@@ -65,8 +66,10 @@ export function planEvent(event: EventMessage): CacheOp[] {
     }
     case "homeChanged":
       return [invalidate(apiPaths.home), invalidate(apiPaths.homeRows)];
+    case "listsChanged":
+      return listViewPaths.map((path) => invalidate(path));
     case "userStateChanged":
-      // Cards everywhere show the state, and Home's rows and Favorites follow it.
+      // Cards everywhere show the state, and Home's rows follow it.
       return workViews(event.workIds);
     case "tasksChanged":
       // That work produces the tasks' runs and failures, library scans

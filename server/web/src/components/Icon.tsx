@@ -28,7 +28,6 @@ const paths = {
   spinner: "M12 3a9 9 0 1 0 9 9",
   check: "M5 12.5 10 17.5 19 7",
   checkCircle: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM8 12.5l3 3 5-6",
-  heart: "M12 20s-7.5-4.6-9-9.3C2 7.4 4.3 5 7 5c2 0 3.6 1.1 5 3 1.4-1.9 3-3 5-3 2.7 0 5 2.4 4 5.7-1.5 4.7-9 9.3-9 9.3z",
   more: "M5 12h.01M12 12h.01M19 12h.01",
   grip: "M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01",
   chevronDown: "m6 9 6 6 6-6",
@@ -63,7 +62,6 @@ const paths = {
 // Filled icons, used for the on state of a stroke icon. The shape is
 // filled in, with an optional stroke cut out of it.
 const filled = {
-  heartFill: { fill: paths.heart },
   checkCircleFill: { fill: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z", cut: "M8 12.5l3 3 5-6" },
 } as const satisfies Record<string, { fill: string; cut?: string }>;
 

@@ -28,7 +28,15 @@ func (h *handlers) GetHome(ctx context.Context, req gen.GetHomeRequestObject) (g
 
 // homeRow converts a Home row.
 func homeRow(r query.HomeRow) gen.HomeRow {
-	return gen.HomeRow{ID: r.ID, Kind: gen.HomeRowKind(r.Kind), Items: summaries(r.Items), Library: libraryRef(r.Library)}
+	return gen.HomeRow{ID: r.ID, Kind: gen.HomeRowKind(r.Kind), Items: summaries(r.Items), Library: libraryRef(r.Library), List: listRef(r.List)}
+}
+
+// listRef is a row's list, for a list's row.
+func listRef(l query.ListRef) *gen.ListRef {
+	if l.ID.IsZero() {
+		return nil
+	}
+	return &gen.ListRef{ID: l.ID, Name: l.Name}
 }
 
 // libraryRef is a row's library, for a Recently Added row.
@@ -95,5 +103,5 @@ func (h *handlers) homeRowInfos(ctx context.Context) (gen.HomeRowInfoList, error
 
 // homeRowInfo converts a row of the layout.
 func homeRowInfo(r query.HomeRowInfo) gen.HomeRowInfo {
-	return gen.HomeRowInfo{ID: r.ID, Kind: gen.HomeRowKind(r.Kind), Shown: r.Shown, Library: libraryRef(r.Library)}
+	return gen.HomeRowInfo{ID: r.ID, Kind: gen.HomeRowKind(r.Kind), Shown: r.Shown, Library: libraryRef(r.Library), List: listRef(r.List)}
 }

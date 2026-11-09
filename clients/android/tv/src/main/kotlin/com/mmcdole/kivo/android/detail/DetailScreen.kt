@@ -423,7 +423,7 @@ private fun MovieDetail(model: DetailViewModel, page: Page, navigator: Navigator
             if (work != null) extraRows(work, memory, navigator, firstTop = 24.dp)
         }
     }
-    LaunchedEffect(Unit) { memory.restore(if (playable(head, work, choices)) "play" else "favorite") }
+    LaunchedEffect(Unit) { memory.restore(if (playable(head, work, choices)) "play" else "myList") }
 }
 
 /** Whether the work, in the version selected, can play; before its versions are read, whether its card says it can. */
@@ -435,7 +435,7 @@ private fun playable(head: WorkSummary, work: WorkDetail?, choices: Choices) = i
 
 /**
  * Play or Resume with the time, and beside Resume a round Play from
- * beginning; then [chips], Favorite, Played and the ⋯ menu; "This file is
+ * beginning; then [chips], My List, Played and the ⋯ menu; "This file is
  * missing" in Play's place when no version can play. They work from the
  * card before the page is read.
  */
@@ -450,7 +450,8 @@ private fun ActionRow(
     chips: (@Composable () -> Unit)? = null,
 ) {
     val played = work.userState?.played == true
-    val favorite = work.userState?.favorite == true
+    val myListId by model.myListId.collectAsStateWithLifecycle()
+    val onMyList = read.onList(myListId)
     val playable = playable(work, read, choices)
     val position = if (read != null) read.resumeAt(choices.versionId) else work.userState?.positionMs
     fun play(fromStart: Boolean) = navigator.push(
@@ -468,12 +469,12 @@ private fun ActionRow(
         }
         chips?.invoke()
         HeroIconButton(
-            KivoIcon.Heart,
-            stringResource(if (favorite) R.string.remove_favorite else R.string.add_favorite),
+            if (onMyList) KivoIcon.Check else KivoIcon.Plus,
+            stringResource(if (onMyList) R.string.remove_from_my_list else R.string.add_to_my_list),
             hero,
-            "favorite",
-            favorite,
-        ) { model.setFavorite(work.id, !favorite) }
+            "myList",
+            onMyList,
+        ) { model.setOnMyList(work.id, !onMyList) }
         HeroIconButton(
             KivoIcon.Check,
             stringResource(if (played) R.string.mark_unplayed else R.string.mark_played),
@@ -758,7 +759,8 @@ private fun SeriesDetail(model: DetailViewModel, page: Page, seasonId: String?, 
         head.contentRating,
     ).joinToString(" · ")
     val played = head.userState?.played == true
-    val favorite = head.userState?.favorite == true
+    val myListId by model.myListId.collectAsStateWithLifecycle()
+    val onMyList = work.onList(myListId)
     val server = LocalSession.current.session.baseUrl
 
     val pills = remember { FocusRequester() }
@@ -793,7 +795,7 @@ private fun SeriesDetail(model: DetailViewModel, page: Page, seasonId: String?, 
                             ) { nextUp?.let { navigator.push(Screen.Player(it.id)) } }
                             nextUp?.takeIf { it.userState?.positionMs != null }?.let { RestartButton(hero) { navigator.push(Screen.Player(it.id, fromStart = true)) } }
                         }
-                        HeroIconButton(KivoIcon.Heart, stringResource(if (favorite) R.string.remove_favorite else R.string.add_favorite), hero, "favorite", favorite) { model.setFavorite(head.id, !favorite) }
+                        HeroIconButton(if (onMyList) KivoIcon.Check else KivoIcon.Plus, stringResource(if (onMyList) R.string.remove_from_my_list else R.string.add_to_my_list), hero, "myList", onMyList) { model.setOnMyList(head.id, !onMyList) }
                         HeroIconButton(KivoIcon.Check, stringResource(if (played) R.string.mark_unplayed else R.string.mark_played), hero, "played", played) {
                             if (played) model.setPlayed(head.id, false) else confirming = true
                         }
@@ -887,8 +889,8 @@ private fun SeriesDetail(model: DetailViewModel, page: Page, seasonId: String?, 
             onDismiss = { confirmingSeason = null },
         )
     }
-    LaunchedEffect(Unit) { memory.restore(if (nextUp != null || work == null) "play" else "favorite") }
-    if (work != null && nextUp == null) LaunchedEffect(Unit) { memory.replaced("play", "favorite") }
+    LaunchedEffect(Unit) { memory.restore(if (nextUp != null || work == null) "play" else "myList") }
+    if (work != null && nextUp == null) LaunchedEffect(Unit) { memory.replaced("play", "myList") }
 }
 
 /** Placeholders shown at most for a list being read: about as many as fit on the screen. */
@@ -1043,7 +1045,7 @@ private fun EpisodeDetail(model: DetailViewModel, page: Page, navigator: Navigat
             if (work != null) extraRows(work, memory, navigator)
         }
     }
-    LaunchedEffect(Unit) { memory.restore(if (playable(head, work, choices)) "play" else "favorite") }
+    LaunchedEffect(Unit) { memory.restore(if (playable(head, work, choices)) "play" else "myList") }
 }
 
 /** The series' name over an episode's title: its own stop, leading back to the series, lit with focus. */

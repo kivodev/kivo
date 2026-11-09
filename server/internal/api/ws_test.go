@@ -188,6 +188,20 @@ func TestHomeRowsPublishHomeChanged(t *testing.T) {
 	}
 }
 
+// listsChanged goes to the user's own sockets when a list or its works change.
+func TestListsPublishListsChanged(t *testing.T) {
+	e := newEnv(t, serving{})
+	admin, actx := e.dial(e.adminToken)
+	read(t, actx, admin)
+	w := e.do("POST", "/api/v1/lists", e.adminToken, map[string]any{"name": "Date Night"})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create: %d %s", w.Code, w.Body.String())
+	}
+	if m := read(t, actx, admin); m["kind"] != "listsChanged" {
+		t.Errorf("admin got %v; want listsChanged", m)
+	}
+}
+
 // libraryChanged names to each socket only the libraries it sees, admin
 // sockets included. It doesn't reach a socket that sees none of them.
 func TestLibraryChangedNamesWhatEachSees(t *testing.T) {

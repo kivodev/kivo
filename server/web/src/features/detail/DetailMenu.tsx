@@ -1,10 +1,12 @@
 import { useLingui } from "@lingui/react/macro";
-import { lazy, type ReactElement, Suspense } from "react";
+import { lazy, type ReactElement, Suspense, useState } from "react";
 import type { WorkDetail } from "@/api/schemas";
 import { useIsAdmin } from "@/api/users";
 import { Button } from "@/components/Button";
 import { Icon } from "@/components/Icon";
 import { Menu, MenuItem } from "@/components/Menu";
+import { AddToListDialog } from "@/features/lists/AddToListDialog";
+import { isTv } from "@/tv/flag";
 import { TvFocusable } from "@/tv/focus";
 
 // The item admin menu is in its own chunk, loaded for admins only, and not
@@ -16,16 +18,24 @@ const ItemAdminMenu =
     : lazy(() => import("@/features/admin/ItemAdminMenu").then((m) => ({ default: m.ItemAdminMenu })));
 
 /**
- * The detail page's ⋯ menu. It has Go to series for an episode, and Go to
- * library. For admins it then has the item admin menu, except on TV, where
- * Fix match and the rest are web-only.
+ * The detail page's ⋯ menu. It has Add to List, except on TV, Go to series
+ * for an episode, and Go to library. For admins it then has the item admin
+ * menu, except on TV, where Fix match and the rest are web-only.
  */
 export function DetailMenu({ work }: { work: WorkDetail }) {
   const { t } = useLingui();
   const isAdmin = useIsAdmin();
   const libraryId = work.libraryId;
   const seriesId = work.episode?.seriesId;
+  const [choosingLists, setChoosingLists] = useState(false);
   const items: ReactElement[] = [];
+  if (!isTv) {
+    items.push(
+      <MenuItem key="add-to-list" onAction={() => setChoosingLists(true)}>
+        {t`Add to List`}
+      </MenuItem>,
+    );
+  }
   if (seriesId) {
     items.push(
       <MenuItem
@@ -43,11 +53,17 @@ export function DetailMenu({ work }: { work: WorkDetail }) {
       </MenuItem>,
     );
   }
+  const dialog = choosingLists && (
+    <AddToListDialog workId={work.id} title={work.title} onClose={() => setChoosingLists(false)} />
+  );
   if (isAdmin && ItemAdminMenu) {
     return (
-      <Suspense fallback={null}>
-        <ItemAdminMenu work={work}>{items}</ItemAdminMenu>
-      </Suspense>
+      <>
+        <Suspense fallback={null}>
+          <ItemAdminMenu work={work}>{items}</ItemAdminMenu>
+        </Suspense>
+        {dialog}
+      </>
     );
   }
   if (items.length === 0) return null;
@@ -61,6 +77,7 @@ export function DetailMenu({ work }: { work: WorkDetail }) {
         </TvFocusable>
         {items}
       </Menu>
+      {dialog}
     </span>
   );
 }

@@ -74,7 +74,7 @@ class DownloadActions(
 )
 
 /**
- * A detail page's Download button, round beside Favorite and Watched. Before
+ * A detail page's Download button, round beside My List and Watched. Before
  * a download, a video's opens the qualities with their sizes, the setting's
  * checked, and a book downloads its original at once; a work that can't be
  * downloaded here says why. Once asked for, it shows where the download is:

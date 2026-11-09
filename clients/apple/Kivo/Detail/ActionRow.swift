@@ -4,7 +4,7 @@ import SwiftUI
 
 /// The row under a page's hero: the primary button, accent coloured, and
 /// any round button [primary] puts beside it, such as Play from Beginning,
-/// with a second line under it that says what it plays, then Favorite and
+/// with a second line under it that says what it plays, then My List and
 /// Mark as Watched as neutral round buttons, and any [extra], such as
 /// Download. Where the primary button's label doesn't fit beside the
 /// round buttons, it takes the whole width with the round buttons under it.
@@ -180,30 +180,39 @@ struct RestartButton: View {
     }
 }
 
-/// Favorite and Mark as Watched, as on every detail page: round, neutral buttons.
+/// My List and Mark as Watched, as on every detail page: round, neutral buttons.
 struct UserStateButtons: View {
     let work: WorkDetail
     @Environment(ServerModel.self) private var server
     @Environment(\.kivoPalette) private var palette
 
     var body: some View {
-        let favorite = work.userState?.favorite == true
+        let myList = server.myList
+        let onMyList = myList.map { work.listIds?.contains($0.id) == true } ?? false
         let played = work.userState?.played == true
         // The buttons show the state the server's events send back, so a
         // write that fails leaves them as they were.
         Button {
-            Task { _ = try? await server.session.library.setFavorite(workId: work.id, favorite: !favorite) }
+            guard let myList else { return }
+            Task {
+                if onMyList {
+                    try? await server.session.library.removeFromList(listId: myList.id, workId: work.id)
+                } else {
+                    try? await server.session.library.addToList(listId: myList.id, workId: work.id)
+                }
+            }
         } label: {
-            Image(systemName: favorite ? "heart.fill" : "heart")
+            Image(systemName: onMyList ? "checkmark" : "plus")
                 .roundButtonSymbol()
                 .contentTransition(.symbolEffect(.replace))
-                .accessibilityLabel(favorite ? Text("Remove from favorites") : Text("Favorite"))
+                .accessibilityLabel(onMyList ? Text("Remove from My List") : Text("Add to My List"))
         }
         .buttonStyle(.bordered)
         .buttonBorderShape(.circle)
-        .tint(palette.text)
-        .sensoryFeedback(.success, trigger: favorite)
-        .accessibilityIdentifier("favorite")
+        .tint(onMyList ? palette.accent : palette.text)
+        .disabled(myList == nil)
+        .sensoryFeedback(.success, trigger: onMyList)
+        .accessibilityIdentifier("my-list")
         Button {
             Task { _ = try? await server.session.library.setPlayed(workId: work.id, played: !played) }
         } label: {

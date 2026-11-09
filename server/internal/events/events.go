@@ -53,6 +53,10 @@ const (
 	// HomeChanged says a user's Home layout or library order changed. It is
 	// scoped to the user.
 	HomeChanged Kind = "homeChanged"
+	// ListsChanged says a user's lists changed: one was created, renamed
+	// or deleted, or a work was added to or removed from one. It is scoped
+	// to the user.
+	ListsChanged Kind = "listsChanged"
 	// LogsChanged says the server logged lines at Info or above. It is
 	// admin-only.
 	LogsChanged Kind = "logsChanged"

@@ -40,8 +40,12 @@ import type {
   Version,
   WorkDetail,
   WorkKind,
+  WorkList,
   WorkSummary,
 } from "../schemas";
+
+/** A list as the mock keeps it. Its count is worked out when it's read. */
+export type MockList = Omit<WorkList, "workCount"> & { workIds: string[] };
 
 /** What the mock server answers. Handlers read it at each request, and tests change it. */
 export type MockApi = {
@@ -90,6 +94,8 @@ export type MockApi = {
   home: Home;
   /** Home's layout once it's been changed. */
   homeLayout?: HomeRowInfo[];
+  /** The user's lists, each with its works' IDs, most recently added first. */
+  lists: MockList[];
   /** Search results, whatever was searched. */
   search: WorkSummary[];
   /** The people search finds, whatever was searched. */
@@ -173,6 +179,7 @@ export function summaryOf(work: WorkDetail): WorkSummary {
     externalIds: _e,
     versions: _v,
     extras: _x,
+    listIds: _li,
     collections: _co,
     lockedFields: _l,
     ...summary

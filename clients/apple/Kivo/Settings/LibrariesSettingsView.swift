@@ -23,11 +23,11 @@ struct LibrariesSettingsView: View {
                     Toggle(isOn: Binding(
                         get: { row.shown },
                         set: { shown in
-                            rows = rows.map { $0.id == row.id ? HomeRowInfo(id: $0.id, kind: $0.kind, shown: shown, library: $0.library) : $0 }
+                            rows = rows.map { $0.id == row.id ? HomeRowInfo(id: $0.id, kind: $0.kind, shown: shown, library: $0.library, list: $0.list) : $0 }
                             saveRows()
                         }
                     )) {
-                        Text(homeRowTitle(kind: row.kind, libraryName: row.library?.name))
+                        Text(homeRowTitle(kind: row.kind, libraryName: row.library?.name, listName: row.list?.name))
                     }
                 }
                 .onMove { from, to in

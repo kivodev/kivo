@@ -2,13 +2,15 @@ import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { type MouseEvent, useRef, useState } from "react";
 import { mergeProps, useLongPress } from "react-aria";
-import type { UserStateUpdate, WorkSummary } from "@/api/schemas";
+import { useSetInList } from "@/api/lists";
+import type { UserStateUpdate, WorkKind, WorkSummary } from "@/api/schemas";
 import { useRemoveFromContinue, useUpdateUserState } from "@/api/works";
 import { Artwork, type ArtworkShape, cardDensity } from "@/components/Artwork";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Icon } from "@/components/Icon";
 import { AnchoredMenu, MenuItem, MenuSeparator } from "@/components/Menu";
 import { ProgressBar } from "@/components/ProgressBar";
+import { AddToListDialog } from "@/features/lists/AddToListDialog";
 import { formatEpisodeCode, formatTimeLeft } from "@/i18n/format";
 import { isTv } from "@/tv/flag";
 
@@ -137,7 +139,34 @@ type Props = {
   inLibrary?: boolean;
   /** The Home row the card is in, when its menu can remove it from that row. */
   continueRow?: "continueWatching" | "continueListening";
+  /** The list the card is shown on, when its menu can remove it from that list. */
+  listId?: string;
 };
+
+/**
+ * A card's shape on a row or grid of mixed kinds. An episode uses its
+ * series' poster. Other videos are landscape, and books are square.
+ */
+export function workShape(kind: WorkKind): ArtworkShape {
+  switch (kind) {
+    case "video":
+    case "extra":
+      return "landscape";
+    case "book":
+      return "square";
+    default:
+      return "poster";
+  }
+}
+
+/** The menu item that takes a card off the list it's shown on. Mounted with the menu, not with every card. */
+function RemoveFromList({ listId, workId }: { listId: string; workId: string }) {
+  const { t } = useLingui();
+  const setInList = useSetInList();
+  return (
+    <MenuItem onAction={() => setInList.mutate({ listId, workId, inList: false })}>{t`Remove from this list`}</MenuItem>
+  );
+}
 
 const aspects: Record<ArtworkShape, string> = {
   poster: "aspect-poster",
@@ -147,19 +176,20 @@ const aspects: Record<ArtworkShape, string> = {
 
 /**
  * The card for a work, the same everywhere it appears. It is a poster for
- * movies, series, and episodes in Favorites. It is landscape for episodes,
+ * movies, series, and episodes on a list. It is landscape for episodes,
  * videos and the Continue Watching row, and square for books. An episode's
  * card uses its series, with the episode's code on the artwork.
  *
- * The card's menu plays it, marks it played or favorite for you, removes it
- * from Continue Watching or Continue Listening in those rows, and goes to
+ * The card's menu plays it, marks it played for you, opens Add to List,
+ * removes it from Continue Watching or Continue Listening in those rows, or
+ * from the list it's shown on, and goes to
  * its series and to the first library it's in. Pointing at the card
  * dims the artwork under a Play button, with the ⋯ menu at the bottom
  * right. A right-click or a long press opens the same menu. A touch screen
  * shows the ⋯ alone. On TV the card is only a link, which its row or grid
  * focuses: nothing hovers, and a remote's OK opens it.
  */
-export function WorkCard({ work, shape, width, inLibrary = false, continueRow }: Props) {
+export function WorkCard({ work, shape, width, inLibrary = false, continueRow, listId }: Props) {
   const { t } = useLingui();
   const navigate = useNavigate();
   const update = useUpdateUserState();
@@ -168,10 +198,10 @@ export function WorkCard({ work, shape, width, inLibrary = false, continueRow }:
   const libraryId = inLibrary ? undefined : work.libraryId;
   const [confirming, setConfirming] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [choosingLists, setChoosingLists] = useState(false);
   const anchor = useRef<HTMLButtonElement>(null);
   const status = cardStatus(work);
   const played = work.userState?.played ?? false;
-  const favorite = work.userState?.favorite ?? false;
   const landscape = shape === "landscape";
   const image = landscape ? (work.images.still ?? work.images.backdrop) : work.images.poster;
   const cascade = work.kind === "series" || work.kind === "season";
@@ -304,9 +334,8 @@ export function WorkCard({ work, shape, width, inLibrary = false, continueRow }:
           {playable && position ? <MenuItem onAction={() => play(true)}>{t`Play from beginning`}</MenuItem> : null}
           {playable && <MenuSeparator />}
           <MenuItem onAction={markPlayed}>{played ? t`Mark as unwatched` : t`Mark as watched`}</MenuItem>
-          <MenuItem onAction={() => setState({ favorite: !favorite })}>
-            {favorite ? t`Remove from favorites` : t`Add to favorites`}
-          </MenuItem>
+          <MenuItem onAction={() => setChoosingLists(true)}>{t`Add to List`}</MenuItem>
+          {listId && <RemoveFromList listId={listId} workId={work.id} />}
           {continueRow && (
             <MenuItem onAction={() => remove.mutate({ params: { path: { id: work.id } } })}>
               {continueRow === "continueListening"
@@ -330,6 +359,7 @@ export function WorkCard({ work, shape, width, inLibrary = false, continueRow }:
           )}
         </AnchoredMenu>
       )}
+      {choosingLists && <AddToListDialog workId={work.id} title={work.title} onClose={() => setChoosingLists(false)} />}
       {!isTv && (
         <ConfirmDialog
           isOpen={confirming}

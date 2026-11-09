@@ -32,6 +32,11 @@ extension Error {
         requestProblem.sentence
     }
 
+    /// Why a list's name wasn't saved, in a sentence.
+    var listNameSentence: String {
+        problemCode == "nameTaken" ? String(localized: "You already have a list with that name.") : problemSentence
+    }
+
     /// A failed subtitle search or download in a sentence; a quota used up
     /// says when there's more, in local time, when the server knows.
     var subtitleSearchSentence: String {

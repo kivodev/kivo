@@ -17,7 +17,7 @@ import { LibraryKindIcon } from "@/components/LibraryKindIcon";
 import { Logo } from "@/components/Logo";
 import { Menu, MenuItem } from "@/components/Menu";
 import { useSidebarRail } from "@/components/phoneLayout";
-import { favoritesKey } from "@/features/browse/LibrarySwitcher";
+import { listsKey } from "@/features/browse/LibrarySwitcher";
 import { BookDock } from "@/features/player/BookPlayer";
 import { useBookPlayer } from "@/features/player/useBookPlayer";
 import { describeProblem } from "@/i18n/problems";
@@ -33,9 +33,9 @@ const navLabel = "truncate max-lg:sr-only phone:not-sr-only phone:max-w-full pho
 const activeNav = { className: "bg-surface-raised text-text", "aria-current": "page" as const };
 
 type NavLinkProps = {
-  to: "/" | "/search" | "/favorites";
+  to: "/" | "/search" | "/lists";
   icon: IconName;
-  /** Whether the entry is also current on the pages under it, such as a kind's favorites. */
+  /** Whether the entry is also current on the pages under it, such as a list. */
   under?: boolean;
   className?: string;
   children: ReactNode;
@@ -76,11 +76,11 @@ function RailTooltip({ label, children }: { label: ReactNode; children: ReactEle
 }
 
 /**
- * The signed-in layout. A left sidebar holds Home, Search and Favorites,
+ * The signed-in layout. A left sidebar holds Home, Search and Lists,
  * then a line, your pinned libraries, More libraries for the rest, and
  * your avatar. Below 1024 px it collapses to icons, each named in a
  * tooltip. On phones it becomes a bottom bar with Home, Libraries and
- * Search instead of Favorites and the libraries. On the bottom bar each
+ * Search instead of Lists and the libraries. On the bottom bar each
  * icon has a small label under it. A book that is playing docks its mini
  * player along the bottom, above the bottom bar on phones. The layout
  * holds the tab's event socket, whose state the connection banner shows.
@@ -120,8 +120,8 @@ function WebShell() {
         <NavLink to="/search" icon="search">
           <Trans>Search</Trans>
         </NavLink>
-        <NavLink to="/favorites" icon="heart" under className="phone:hidden">
-          <Trans>Favorites</Trans>
+        <NavLink to="/lists" icon="list" under className="phone:hidden">
+          <Trans>Lists</Trans>
         </NavLink>
         <hr className="my-2 border-border phone:hidden" />
         {libraries
@@ -211,32 +211,32 @@ function WebShell() {
   );
 }
 
-// The library, or Favorites, that this browser last opened. It is cleared
+// The library, or Lists, that this browser last opened. It is cleared
 // when the browser goes back to the list of libraries. Without storage, as
 // in a private window, there is none.
 const lastLibraryKey = "kivo.lastLibrary";
 
 /**
  * Libraries on the phone's bottom bar. It is current while the list of
- * libraries, a library or Favorites is open. It opens the page this
+ * libraries, a library or Lists is open. It opens the page this
  * browser last opened, whose Back goes to the list, or else the list
  * itself. Chosen again on one of those pages, it goes back to the list.
  */
 function LibrariesTab({ libraries }: { libraries: Library[] }) {
   const matchRoute = useMatchRoute();
   const libraryId = useParams({ strict: false }).libraryId;
-  const favorites = matchRoute({ to: "/favorites", fuzzy: true }) !== false;
-  const list = matchRoute({ to: "/libraries" }) !== false;
-  const page = libraryId ?? (favorites ? favoritesKey : undefined);
+  const lists = matchRoute({ to: "/lists", fuzzy: true }) !== false;
+  const all = matchRoute({ to: "/libraries" }) !== false;
+  const page = libraryId ?? (lists ? listsKey : undefined);
   useEffect(() => {
     if (page !== undefined) writeStored(lastLibraryKey, page);
-    else if (list) writeStored(lastLibraryKey, undefined);
-  }, [page, list]);
-  const open = page !== undefined || list;
+    else if (all) writeStored(lastLibraryKey, undefined);
+  }, [page, all]);
+  const open = page !== undefined || all;
   const last = open ? undefined : readStored(lastLibraryKey);
   const link =
-    last === favoritesKey
-      ? ({ to: "/favorites" } as const)
+    last === listsKey
+      ? ({ to: "/lists" } as const)
       : last !== undefined && libraries.some((l) => l.id === last)
         ? ({ to: "/libraries/$libraryId", params: { libraryId: last } } as const)
         : ({ to: "/libraries" } as const);

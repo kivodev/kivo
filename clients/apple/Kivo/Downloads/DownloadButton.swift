@@ -2,7 +2,7 @@ import KivoCore
 import KivoUI
 import SwiftUI
 
-/// A detail page's Download button, round beside Favorite and
+/// A detail page's Download button, round beside My List and
 /// Watched. A tap downloads at the download quality setting; a video's
 /// long press lists every quality with its size, "1080p · 8 Mb/s" over
 /// "~3.6 GB", exact where the original goes as it is, the setting's

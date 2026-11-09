@@ -1058,7 +1058,8 @@ export interface paths {
         /**
          * Reset the Home layout
          * @description Forgets the user's order and hidden rows, so Home returns to the
-         *     default order with every built-in row shown. A `homeChanged` event
+         *     default order with every built-in row shown. Lists remain, off
+         *     Home, except My List. A `homeChanged` event
          *     tells the user's clients.
          */
         post: operations["resetHomeRows"];
@@ -1068,7 +1069,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/favorites": {
+    "/api/v1/lists": {
         parameters: {
             query?: never;
             header?: never;
@@ -1076,19 +1077,103 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List favorites
-         * @description Favorites in libraries the user sees, most recently marked first:
-         *     one kind with `kind`, else every kind. A page grouped by kind asks
-         *     for each kind's first page, whose `total` says whether it has any.
-         *     Summaries are as everywhere: an episode's has its series' title and
-         *     poster and its season and episode numbers. A grid, paged by
-         *     `offset`, with `total` on every page; works marked at the same time
-         *     are listed by title.
+         * List the user's lists
+         * @description The user's lists, My List first, then by name.
          */
-        get: operations["listFavorites"];
+        get: operations["listLists"];
+        put?: never;
+        /**
+         * Create a list
+         * @description A new list starts off Home; Home & Libraries in Settings puts it on. A name in use is `409` with code
+         *     `nameTaken`; a user has at most 100 lists, past which it is `409`
+         *     with code `conflict`. A `listsChanged` event tells the user's
+         *     clients.
+         */
+        post: operations["createList"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lists/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["ID"];
+            };
+            cookie?: never;
+        };
+        /** Get a list */
+        get: operations["getList"];
         put?: never;
         post?: never;
+        /**
+         * Delete a list
+         * @description Deletes the list, not its works. My List can't be deleted: `409`
+         *     with code `conflict`. A `listsChanged` event tells the user's
+         *     clients.
+         */
+        delete: operations["deleteList"];
+        options?: never;
+        head?: never;
+        /**
+         * Rename a list
+         * @description My List can't be renamed: `409` with code `conflict`. A name in use
+         *     is `409` with code `nameTaken`. A `listsChanged` event tells the
+         *     user's clients.
+         */
+        patch: operations["updateList"];
+        trace?: never;
+    };
+    "/api/v1/lists/{id}/works": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["ID"];
+            };
+            cookie?: never;
+        };
+        /**
+         * List a list's works
+         * @description A list's works the user sees, most recently added first. A grid,
+         *     paged by `offset`, with `total` on every page; works added at the
+         *     same time are listed by title.
+         */
+        get: operations["listListWorks"];
+        put?: never;
+        /**
+         * Add a work to a list
+         * @description A work already in the list keeps its place. It stays there after
+         *     being played. A `listsChanged` event tells the user's clients.
+         */
+        post: operations["addListWork"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lists/{id}/works/{workId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["ID"];
+                workId: components["schemas"]["ID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove a work from a list
+         * @description A `listsChanged` event tells the user's clients.
+         */
+        delete: operations["removeListWork"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1190,7 +1275,7 @@ export interface paths {
         head?: never;
         /**
          * Update user state
-         * @description Marks a work played or unplayed, favorite or not, or reports an
+         * @description Marks a work played or unplayed, or reports an
          *     offline position.
          *     For the caller. Marking a series or season played or
          *     unplayed applies to each of its episodes; marking unplayed clears the
@@ -3471,11 +3556,16 @@ export interface components {
             rows: components["schemas"]["HomeRow"][];
         };
         HomeRow: {
-            /** @description Stable per row: the kind, or `recentlyAdded:<libraryId>`. */
+            /**
+             * @description Stable per row: the kind, `recentlyAdded:<libraryId>` or
+             *     `list:<listId>`.
+             */
             id: string;
             kind: components["schemas"]["HomeRowKind"];
             /** @description For `recentlyAdded`, the library. */
             library?: components["schemas"]["LibraryRef"];
+            /** @description For `list`, the list. */
+            list?: components["schemas"]["ListRef"];
             items: components["schemas"]["WorkSummary"][];
         };
         /** @description A row of the user's Home layout, as the editor lists it. */
@@ -3485,6 +3575,8 @@ export interface components {
             kind: components["schemas"]["HomeRowKind"];
             /** @description For `recentlyAdded`, the library. */
             library?: components["schemas"]["LibraryRef"];
+            /** @description For `list`, the list. */
+            list?: components["schemas"]["ListRef"];
             shown: boolean;
         };
         HomeRowInfoList: {
@@ -3498,6 +3590,38 @@ export interface components {
             id: string;
             shown: boolean;
         };
+        /** @description A list as a Home row names it. */
+        ListRef: {
+            id: components["schemas"]["ID"];
+            name: string;
+        };
+        /** @description A list of works a user keeps. */
+        WorkList: {
+            id: components["schemas"]["ID"];
+            name: string;
+            kind: components["schemas"]["ListKind"];
+            /** @description My List, which every user has and can't delete or rename. */
+            builtIn: boolean;
+            /** @description Works in the list the user sees. */
+            workCount: number;
+        };
+        /**
+         * @description What a list is. `manual` is works the user added. Skip kinds you don't know.
+         * @enum {string}
+         */
+        ListKind: "manual";
+        WorkListList: {
+            items: components["schemas"]["WorkList"][];
+        };
+        ListCreate: {
+            name: string;
+        };
+        ListUpdate: {
+            name?: string;
+        };
+        ListWorkAdd: {
+            workId: components["schemas"]["ID"];
+        };
         /** @description A library as a row or list names it. */
         LibraryRef: {
             id: components["schemas"]["ID"];
@@ -3508,11 +3632,11 @@ export interface components {
          * @description What a Home row shows: `continueWatching` what to watch on with,
          *     videos in progress and each series' episode up next;
          *     `continueListening` books in progress; `recentlyAdded` a library's
-         *     newest works; `favorites` the works the user marked. Skip kinds you
+         *     newest works; `list` a list's works. Skip kinds you
          *     don't know.
          * @enum {string}
          */
-        HomeRowKind: "continueWatching" | "continueListening" | "recentlyAdded" | "favorites";
+        HomeRowKind: "continueWatching" | "continueListening" | "recentlyAdded" | "list";
         /**
          * @description The summary of a work, the same everywhere it appears. Kind-specific
          *     data is under the kind's name.
@@ -3604,7 +3728,6 @@ export interface components {
         /** @description The user's state for a work. For a series or season, `played` means every episode is. */
         UserState: {
             played: boolean;
-            favorite: boolean;
             playCount: number;
             /** @description The resume position, when in progress. */
             positionMs?: number;
@@ -3619,7 +3742,6 @@ export interface components {
         };
         UserStateUpdate: {
             played?: boolean;
-            favorite?: boolean;
             /** @description An offline position on the version's timeline; needs `playedAt` and `versionId`. */
             positionMs?: number;
             /**
@@ -3898,6 +4020,8 @@ export interface components {
             extras: components["schemas"]["WorkSummary"][];
             /** @description Collections this work is in. */
             collections: components["schemas"]["CollectionSummary"][];
+            /** @description The user's lists holding the work; the server always sends it. */
+            listIds?: components["schemas"]["ID"][];
             /** @description Admins only. Fields an admin edited, shown with a lock icon. */
             lockedFields?: string[];
         };
@@ -5397,14 +5521,17 @@ export interface components {
          *       the viewer's place in a grid.
          *     - `userStateChanged` (`workIds`): the user's state for these works
          *       changed, possibly on another client: marked played or unplayed
-         *       (a series or season with its episodes), a favorite, or a play's
-         *       last position. Refetch them, and the lists that show them.
+         *       (a series or season with its episodes), or a play's last
+         *       position. Refetch them, and the lists that show them.
          *     - `playEnded` (`playId`, `message`): the user's play was stopped
          *       by an admin or another client, or expired; `message` is the
          *       admin's words to the viewer, if any.
          *     - `homeChanged`: the user's Home layout or library order changed;
          *       every client of the user gets it, the one that made the change
          *       too. Refetch Home and the layout.
+         *     - `listsChanged`: the user's lists changed: one was created,
+         *       renamed or deleted, or a work was added or removed. Refetch the
+         *       lists, any open list, Home and any open work page.
          *     - `downloadsChanged`: the user's downloads on the server moved:
          *       in line, in their preparation (at most every 10 seconds), or to
          *       ready or failed. Refetch the downloads that aren't ready.
@@ -5440,7 +5567,7 @@ export interface components {
          * @description What an event says changed. Skip kinds you don't know.
          * @enum {string}
          */
-        EventKind: "workChanged" | "libraryChanged" | "userStateChanged" | "homeChanged" | "playEnded" | "downloadsChanged" | "tasksChanged" | "playsChanged" | "problemsChanged" | "logsChanged" | "activityChanged";
+        EventKind: "workChanged" | "libraryChanged" | "userStateChanged" | "homeChanged" | "listsChanged" | "playEnded" | "downloadsChanged" | "tasksChanged" | "playsChanged" | "problemsChanged" | "logsChanged" | "activityChanged";
         /** @description The client fell behind and events were dropped. Treat every live-kept query as stale and refetch; a fresh `snapshot` follows. */
         ResyncMessage: {
             /**
@@ -6873,8 +7000,6 @@ export interface operations {
                 resolution?: components["schemas"]["Resolution"][];
                 /** @description Any of these dynamic ranges. */
                 dynamicRange?: components["schemas"]["DynamicRange"][];
-                /** @description Only the user's favorites. */
-                favorite?: boolean;
                 /** @description The books this person narrated. */
                 narratorId?: components["schemas"]["ID"];
                 /** @description Admins only (ignored for others). Only `unmatched` is taken, for unmatched items only. */
@@ -7178,17 +7303,148 @@ export interface operations {
             default: components["responses"]["Error"];
         };
     };
-    listFavorites: {
+    listLists: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The lists. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkListList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            default: components["responses"]["Error"];
+        };
+    };
+    createList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ListCreate"];
+            };
+        };
+        responses: {
+            /** @description The list. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkList"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            409: components["responses"]["Conflict"];
+            default: components["responses"]["Error"];
+        };
+    };
+    getList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The list. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Error"];
+        };
+    };
+    deleteList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            default: components["responses"]["Error"];
+        };
+    };
+    updateList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ListUpdate"];
+            };
+        };
+        responses: {
+            /** @description The list. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkList"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            default: components["responses"]["Error"];
+        };
+    };
+    listListWorks: {
         parameters: {
             query?: {
-                kind?: components["schemas"]["WorkKind"];
                 /** @description How many items to skip from the start. */
                 offset?: components["parameters"]["Offset"];
                 /** @description Page size. The default and the most a page holds depend on the listing. */
                 limit?: components["parameters"]["Limit"];
             };
             header?: never;
-            path?: never;
+            path: {
+                id: components["schemas"]["ID"];
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -7204,6 +7460,59 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Error"];
+        };
+    };
+    addListWork: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ListWorkAdd"];
+            };
+        };
+        responses: {
+            /** @description Added. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            default: components["responses"]["Error"];
+        };
+    };
+    removeListWork: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["ID"];
+                workId: components["schemas"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
             default: components["responses"]["Error"];
         };
     };

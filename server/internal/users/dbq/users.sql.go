@@ -39,6 +39,17 @@ func (q *Queries) AllGrants(ctx context.Context) ([]LibraryGrant, error) {
 	return items, nil
 }
 
+const countLists = `-- name: CountLists :one
+SELECT count(*) FROM list WHERE user_id = ?1
+`
+
+func (q *Queries) CountLists(ctx context.Context, userID id.ID) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countLists, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteGrants = `-- name: DeleteGrants :exec
 DELETE FROM library_grant WHERE user_id = ?1
 `
@@ -63,6 +74,15 @@ DELETE FROM user_library WHERE user_id = ?1
 
 func (q *Queries) DeleteLibraryOrder(ctx context.Context, userID id.ID) error {
 	_, err := q.db.ExecContext(ctx, deleteLibraryOrder, userID)
+	return err
+}
+
+const deleteList = `-- name: DeleteList :exec
+DELETE FROM list WHERE id = ?1
+`
+
+func (q *Queries) DeleteList(ctx context.Context, argID id.ID) error {
+	_, err := q.db.ExecContext(ctx, deleteList, argID)
 	return err
 }
 
@@ -100,6 +120,27 @@ func (q *Queries) EnabledAdmins(ctx context.Context) (int64, error) {
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const getList = `-- name: GetList :one
+SELECT id, built_in FROM list WHERE id = ?1 AND user_id = ?2
+`
+
+type GetListParams struct {
+	ID     id.ID
+	UserID id.ID
+}
+
+type GetListRow struct {
+	ID      id.ID
+	BuiltIn bool
+}
+
+func (q *Queries) GetList(ctx context.Context, arg GetListParams) (GetListRow, error) {
+	row := q.db.QueryRowContext(ctx, getList, arg.ID, arg.UserID)
+	var i GetListRow
+	err := row.Scan(&i.ID, &i.BuiltIn)
+	return i, err
 }
 
 const getUser = `-- name: GetUser :one
@@ -216,6 +257,29 @@ func (q *Queries) InsertLibraryOrder(ctx context.Context, arg InsertLibraryOrder
 	return err
 }
 
+const insertList = `-- name: InsertList :exec
+INSERT INTO list (id, user_id, name, built_in, created_at) VALUES (?1, ?2, ?3, ?4, ?5)
+`
+
+type InsertListParams struct {
+	ID        id.ID
+	UserID    id.ID
+	Name      string
+	BuiltIn   bool
+	CreatedAt int64
+}
+
+func (q *Queries) InsertList(ctx context.Context, arg InsertListParams) error {
+	_, err := q.db.ExecContext(ctx, insertList,
+		arg.ID,
+		arg.UserID,
+		arg.Name,
+		arg.BuiltIn,
+		arg.CreatedAt,
+	)
+	return err
+}
+
 const insertUser = `-- name: InsertUser :exec
 INSERT INTO user (id, username, admin, all_libraries, stream_limit, remote_quality_cap,
   rating_ceiling, block_unrated, subtitle_mode, invited_by, created_at)
@@ -296,6 +360,20 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const renameList = `-- name: RenameList :exec
+UPDATE list SET name = ?1 WHERE id = ?2
+`
+
+type RenameListParams struct {
+	Name string
+	ID   id.ID
+}
+
+func (q *Queries) RenameList(ctx context.Context, arg RenameListParams) error {
+	_, err := q.db.ExecContext(ctx, renameList, arg.Name, arg.ID)
+	return err
 }
 
 const setAdmin = `-- name: SetAdmin :execrows

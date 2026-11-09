@@ -311,9 +311,6 @@ struct LibraryView: View {
                 Text("Show")
             }
             .pickerStyle(.inline)
-            Toggle(isOn: $model.query.onlyFavorites) {
-                SwiftUI.Label(String(localized: "Favorites"), systemImage: "heart")
-            }
             if !model.resolutions.isEmpty {
                 Section(String(localized: "Resolution")) {
                     ForEach(model.resolutions, id: \.self) { resolution in

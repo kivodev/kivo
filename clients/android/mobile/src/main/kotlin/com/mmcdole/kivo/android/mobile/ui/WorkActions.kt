@@ -3,9 +3,8 @@ package com.mmcdole.kivo.android.mobile.ui
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.filled.Replay
@@ -40,14 +39,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 /** What a card's long press offers. */
-enum class WorkAction { Play, PlayFromStart, TogglePlayed, ToggleFavorite, RemoveFromContinue, GoToSeries }
+enum class WorkAction { Play, PlayFromStart, TogglePlayed, AddToList, RemoveFromContinue, GoToSeries }
 
 /** A long-pressed card: the work, and the Home row it's in when that's a continue row. */
 data class WorkMenu(val work: WorkSummary, val row: String? = null)
 
 /**
  * The actions of [menu], in order: Play or Resume, Play from beginning once
- * there's progress, Mark watched, Favorite, Remove from the continue row it's
+ * there's progress, Mark watched, Add to List, Remove from the continue row it's
  * in, and Go to series for an episode, unless it's on [seriesPage]'s page.
  */
 fun workActions(menu: WorkMenu, seriesPage: String? = null): List<WorkAction> = buildList {
@@ -57,7 +56,7 @@ fun workActions(menu: WorkMenu, seriesPage: String? = null): List<WorkAction> = 
         if (work.userState?.positionMs != null) add(WorkAction.PlayFromStart)
     }
     add(WorkAction.TogglePlayed)
-    add(WorkAction.ToggleFavorite)
+    add(WorkAction.AddToList)
     if (menu.row == CONTINUE_WATCHING || menu.row == CONTINUE_LISTENING) add(WorkAction.RemoveFromContinue)
     val series = work.episode?.seriesId
     if (series != null && series != seriesPage) add(WorkAction.GoToSeries)
@@ -74,7 +73,9 @@ const val CONTINUE_LISTENING = "continueListening"
 class WorkMarks(private val library: SessionLibrary, private val scope: CoroutineScope) {
     fun setPlayed(work: WorkSummary, played: Boolean) = act { library.setPlayed(work.id, played) }
 
-    fun setFavorite(work: WorkSummary, favorite: Boolean) = act { library.setFavorite(work.id, favorite) }
+    fun setOnList(listId: String, workId: String, on: Boolean) = act {
+        if (on) library.addToList(listId, workId) else library.removeFromList(listId, workId)
+    }
 
     fun removeFromContinue(work: WorkSummary) = act { library.removeFromContinue(work.id) }
 
@@ -82,7 +83,6 @@ class WorkMarks(private val library: SessionLibrary, private val scope: Coroutin
     fun apply(action: WorkAction, work: WorkSummary) {
         when (action) {
             WorkAction.TogglePlayed -> setPlayed(work, work.userState?.played != true)
-            WorkAction.ToggleFavorite -> setFavorite(work, work.userState?.favorite != true)
             WorkAction.RemoveFromContinue -> removeFromContinue(work)
             else -> Unit
         }
@@ -142,13 +142,11 @@ fun WorkActionsSheet(menu: WorkMenu, onAction: (WorkAction) -> Unit, onDismiss: 
 private fun actionLook(action: WorkAction, menu: WorkMenu): Pair<ImageVector, String> {
     val work = menu.work
     val played = work.userState?.played == true
-    val favorite = work.userState?.favorite == true
     return when (action) {
         WorkAction.Play -> Icons.Default.PlayArrow to stringResource(if (work.userState?.positionMs != null) R.string.mobile_resume else R.string.mobile_play)
         WorkAction.PlayFromStart -> Icons.Default.Replay to stringResource(R.string.mobile_play_from_beginning)
         WorkAction.TogglePlayed -> (if (played) Icons.Default.CheckCircle else Icons.Outlined.CheckCircle) to markPlayedLabel(played, work.kind)
-        WorkAction.ToggleFavorite -> (if (favorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder) to
-            stringResource(if (favorite) R.string.mobile_remove_favorite else R.string.mobile_add_favorite)
+        WorkAction.AddToList -> Icons.AutoMirrored.Filled.PlaylistAdd to stringResource(R.string.mobile_add_to_list)
         WorkAction.RemoveFromContinue -> Icons.Default.RemoveCircleOutline to
             stringResource(if (menu.row == CONTINUE_LISTENING) R.string.mobile_remove_from_continue_listening else R.string.mobile_remove_from_continue_watching)
         WorkAction.GoToSeries -> Icons.AutoMirrored.Filled.ArrowForward to stringResource(R.string.mobile_go_to_series)

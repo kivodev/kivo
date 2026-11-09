@@ -1,0 +1,1 @@
+SEARCH list USING INDEX sqlite_autoindex_list_1 (id=?)

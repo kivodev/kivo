@@ -70,7 +70,7 @@ class BrowseControlsTest {
     fun talkBackReadsACardsTitleLineAndProgressAsOne() {
         val work = WorkSummary(
             id = "m1", kind = "movie", title = "Charade", matchState = "matched", available = true, images = WorkImages(), year = 1963,
-            durationMs = 100_000, userState = UserState(played = false, favorite = false, playCount = 0, positionMs = 30_000),
+            durationMs = 100_000, userState = UserState(played = false, playCount = 0, positionMs = 30_000),
         )
         rule.setContent { KivoMobileTheme { WorkCard(work, CardShape.Poster, 116.dp, onClick = {}, onLongClick = null) } }
         rule.onNodeWithTag("card:Charade").assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf("Charade, 1963, 30% watched")))
@@ -81,7 +81,7 @@ class BrowseControlsTest {
     fun aLongPressOpensTheCardsActionsAndOneRunsOnTheWork() {
         val work = WorkSummary(
             id = "m1", kind = "movie", title = "Charade", matchState = "matched", available = true, images = WorkImages(),
-            durationMs = 100_000, userState = UserState(played = false, favorite = false, playCount = 0, positionMs = 30_000),
+            durationMs = 100_000, userState = UserState(played = false, playCount = 0, positionMs = 30_000),
         )
         val done = mutableListOf<Pair<WorkAction, String>>()
         rule.setContent {
@@ -95,9 +95,9 @@ class BrowseControlsTest {
         rule.onNodeWithTag("workActions").assertExists()
         rule.onAllNodesWithTag("action:RemoveFromContinue").assertCountEquals(1)
         rule.onAllNodesWithTag("action:PlayFromStart").assertCountEquals(1)
-        rule.onNodeWithTag("action:ToggleFavorite").performClick()
+        rule.onNodeWithTag("action:AddToList").performClick()
         rule.waitUntil(5_000) { done.isNotEmpty() }
         rule.onNodeWithTag("workActions").assertDoesNotExist()
-        assertTrue(done.single() == WorkAction.ToggleFavorite to "m1")
+        assertTrue(done.single() == WorkAction.AddToList to "m1")
     }
 }

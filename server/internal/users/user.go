@@ -158,6 +158,9 @@ func (s *Service) CreateUser(ctx context.Context, tx *store.Tx, u NewUser) (User
 	if err := insertGrants(ctx, q, out.ID, out.Grants); err != nil {
 		return User{}, err
 	}
+	if err := insertMyList(ctx, q, out.ID, out.Created); err != nil {
+		return User{}, err
+	}
 	// TODO: no webhook is sent for the user-created event.
 	return out, nil
 }

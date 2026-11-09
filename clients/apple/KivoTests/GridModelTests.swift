@@ -195,7 +195,7 @@ final class GridModelTests: XCTestCase {
         XCTAssertEqual(grid.shown.sort.value, "addedAt")
         XCTAssertFalse(grid.shown.filtered, "none of the kept filters")
         XCTAssertEqual(grid.item(at: 0)?.title, Self.name(Self.total - 1), "newest first")
-        grid.query.onlyFavorites = true
+        grid.query.resolutions = ["4k"]
         grid.reload()
         let kept = UserDefaults.standard.dictionary(forKey: "grid.lib") as? [String: String]
         XCTAssertEqual(kept, ["tab": "collections", "sort": "title", "played": "unplayed"], "the library's own choices stay")

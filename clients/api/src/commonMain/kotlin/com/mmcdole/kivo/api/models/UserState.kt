@@ -32,7 +32,6 @@ import kotlinx.serialization.encoding.*
  * The user's state for a work. For a series or season, `played` means every episode is.
  *
  * @param played 
- * @param favorite 
  * @param playCount 
  * @param positionMs The resume position, when in progress.
  * @param versionId The version last played, which `positionMs` is on; it may be gone. Resume continues its edition, and a version of another edition starts from the beginning. 
@@ -43,8 +42,6 @@ import kotlinx.serialization.encoding.*
 data class UserState (
 
     @SerialName(value = "played") @Required val played: kotlin.Boolean,
-
-    @SerialName(value = "favorite") @Required val favorite: kotlin.Boolean,
 
     @SerialName(value = "playCount") @Required val playCount: kotlin.Int,
 

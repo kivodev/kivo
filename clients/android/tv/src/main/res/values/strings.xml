@@ -42,21 +42,18 @@
     <string name="more_libraries">More libraries</string>
     <string name="settings">Settings</string>
     <string name="row_continue_watching">Continue Watching</string>
-    <string name="row_favorites">Favorites</string>
     <string name="row_recently_added">Recently Added</string>
     <string name="row_recently_added_in">Recently Added in %1$s</string>
 
-    <!-- Favorites -->
-    <string name="favorites_movies">Movies</string>
-    <string name="favorites_shows">Shows</string>
-    <string name="favorites_episodes">Episodes</string>
-    <string name="favorites_seasons">Seasons</string>
-    <string name="favorites_videos">Videos</string>
-    <string name="favorites_extras">Extras</string>
-    <string name="favorites_of">Favorites · %1$s</string>
+    <!-- Lists -->
+    <string name="your_lists">Your lists</string>
+    <string name="lists_empty">Nothing in your lists yet.</string>
+    <string name="list_empty">Nothing in this list yet.</string>
+    <string name="lists_empty_sentence">Add something to My List from its page.</string>
+    <string name="add_to_my_list">Add to My List</string>
+    <string name="remove_from_my_list">Remove from My List</string>
+    <string name="remove_from_list">Remove from %1$s</string>
     <string name="see_all">See all</string>
-    <string name="favorites_empty">No favorites yet.</string>
-    <string name="favorites_empty_sentence">Press and hold OK on anything and choose Add to favorites.</string>
     <plurals name="count_episodes">
         <item quantity="one">%1$s episode</item>
         <item quantity="other">%1$s episodes</item>
@@ -140,7 +137,7 @@
     <string name="unplayed">Unwatched</string>
     <string name="filter_in_progress">In progress</string>
     <string name="played">Watched</string>
-    <string name="favorites">Favorites</string>
+    <string name="lists">Lists</string>
     <string name="decade">Decade</string>
     <!-- A decade by its first year: "1990s". -->
     <string name="decade_label">%1$ds</string>
@@ -166,8 +163,6 @@
     <string name="ends_at">Ends at %1$s</string>
     <string name="play_from_beginning">Play from beginning</string>
     <string name="file_missing">This file is missing</string>
-    <string name="add_favorite">Add to favorites</string>
-    <string name="remove_favorite">Remove from favorites</string>
     <string name="remove_from_continue_watching">Remove from Continue Watching</string>
     <string name="mark_played">Mark as watched</string>
     <string name="mark_unplayed">Mark as unwatched</string>

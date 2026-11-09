@@ -7,11 +7,14 @@ import com.mmcdole.kivo.api.models.EpisodeInfo
 import com.mmcdole.kivo.api.models.SeasonInfo
 import com.mmcdole.kivo.api.models.SeriesInfo
 import com.mmcdole.kivo.api.models.WorkDetail
+import com.mmcdole.kivo.api.models.WorkList
+import com.mmcdole.kivo.api.models.WorkListList
 import com.mmcdole.kivo.api.models.WorkImages
 import com.mmcdole.kivo.api.models.WorkSummaryList
 import com.mmcdole.kivo.core.Load
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import kotlin.test.assertNull
 
 class DetailViewModelTest : CoreTest() {
@@ -31,6 +34,14 @@ class DetailViewModelTest : CoreTest() {
         server.get("/api/v1/works/s1/children", WorkSummaryList.serializer()) { WorkSummaryList(listOf(work("e1", kind = "episode"))) }
         server.get("/api/v1/works/s2/children", WorkSummaryList.serializer()) { WorkSummaryList(listOf(work("e3", kind = "episode"), work("e4", kind = "episode"))) }
         server.get("/api/v1/works/m1", WorkDetail.serializer()) { detail("m1", "movie", "Charade") }
+    }
+
+    @Test
+    fun aWorkOnMyListSaysSoOnceBothAreRead() {
+        server.get("/api/v1/lists", WorkListList.serializer()) { WorkListList(listOf(WorkList("my", "My List", "manual", builtIn = true, workCount = 1))) }
+        server.get("/api/v1/works/m1", WorkDetail.serializer()) { detail("m1", "movie", "Charade").copy(listIds = listOf("my")) }
+        val model = DetailViewModel(signIn(), "m1")
+        assertTrue(awaitValue(model.state) { it.work != null && it.myListId != null }.onMyList)
     }
 
     private fun episodes(state: DetailUiState) = (state.episodes as? Load.Loaded)?.value?.map { it.id }

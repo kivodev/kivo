@@ -1,6 +1,8 @@
 import { useLingui } from "@lingui/react/macro";
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import type { WorkSummary } from "@/api/schemas";
+import { listQueries, useSetInList } from "@/api/lists";
+import type { WorkDetail } from "@/api/schemas";
 import { useUpdateUserState } from "@/api/works";
 import { Button } from "@/components/Button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -8,31 +10,34 @@ import { Icon } from "@/components/Icon";
 import { TvFocusable } from "@/tv/focus";
 
 type Props = {
-  work: WorkSummary;
+  work: WorkDetail;
   /** How many episodes marking played covers, so a series or season can ask first. */
   cascadeCount?: number;
 };
 
-/** A detail page's favorite and played toggles, for you. */
+/** A detail page's My List and played toggles, for you. */
 export function WatchToggles({ work, cascadeCount = 0 }: Props) {
   const { t } = useLingui();
   const update = useUpdateUserState();
   const [confirming, setConfirming] = useState(false);
   const played = work.userState?.played ?? false;
-  const favorite = work.userState?.favorite ?? false;
+  const myList = useQuery(listQueries.all()).data?.items.find((list) => list.builtIn);
+  const setInList = useSetInList();
+  const onMyList = myList !== undefined && (work.listIds ?? []).includes(myList.id);
   const id = work.id;
   const setPlayed = (to: boolean) => update.mutate({ params: { path: { id } }, body: { played: to } });
 
   return (
     <>
-      <TvFocusable focusKey="favorite">
+      <TvFocusable focusKey="my-list">
         <Button
           size="icon"
-          aria-label={favorite ? t`Remove from favorites` : t`Add to favorites`}
-          aria-pressed={favorite}
-          onPress={() => update.mutate({ params: { path: { id } }, body: { favorite: !favorite } })}
+          aria-label={onMyList ? t`Remove from My List` : t`Add to My List`}
+          aria-pressed={onMyList}
+          isDisabled={myList === undefined}
+          onPress={() => myList && setInList.mutate({ listId: myList.id, workId: id, inList: !onMyList })}
         >
-          <Icon name={favorite ? "heartFill" : "heart"} />
+          <Icon name={onMyList ? "check" : "plus"} />
         </Button>
       </TvFocusable>
       <TvFocusable focusKey="played">

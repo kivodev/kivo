@@ -8,7 +8,7 @@ export const homeRowKinds = new Set<HomeRow["kind"]>([
   "continueWatching",
   "continueListening",
   "recentlyAdded",
-  "favorites",
+  "list",
 ]);
 
 export const homeQueries = {

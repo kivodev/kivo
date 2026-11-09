@@ -7,10 +7,10 @@ final class ApiNamingMigrationTests: XCTestCase {
     // Migration (api-naming): remove after every client has updated past this release.
     func testAKeptGridStateTakesTheSortAndFilterNamesOfNow() {
         let migrated = ApiNamingMigration.gridState([
-            "tab": "titles", "sort": "lastEpisodeAdded", "favorites": "false", "resolutions": "4k", "hdr": "dolbyVision,hdr",
+            "tab": "titles", "sort": "lastEpisodeAdded", "played": "unplayed", "resolutions": "4k", "hdr": "dolbyVision,hdr",
         ])
         XCTAssertEqual(migrated, [
-            "tab": "titles", "sort": "lastEpisodeAddedAt", "favorites": "false", "resolutions": "4k", "dynamicRanges": "dolbyVision,hdr",
+            "tab": "titles", "sort": "lastEpisodeAddedAt", "played": "unplayed", "resolutions": "4k", "dynamicRanges": "dolbyVision,hdr",
         ])
     }
 

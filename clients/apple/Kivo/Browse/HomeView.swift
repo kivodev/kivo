@@ -23,7 +23,7 @@ struct HomeView: View {
     /// The rows a card's long press can remove it from.
     private static let continueRows: Set<String> = ["continueWatching", "continueListening"]
     /// The row kinds this app shows; a kind it doesn't know is skipped.
-    static let knownRows: Set<String> = continueRows.union(["recentlyAdded", "favorites"])
+    static let knownRows: Set<String> = continueRows.union(["recentlyAdded", "list"])
 
     var body: some View {
         SkeletonGate(loaded: home != nil || failure != nil || server.unreachable) {
@@ -42,8 +42,9 @@ struct HomeView: View {
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: Self.rowSpacing) {
                             ForEach(rows, id: \.id) { row in
-                                BrowseRow(title: homeRowTitle(kind: row.kind, libraryName: row.library?.name), items: row.items, style: Self.fixedStyle(row.kind), more: more(of: row))
+                                BrowseRow(title: homeRowTitle(kind: row.kind, libraryName: row.library?.name, listName: row.list?.name), items: row.items, style: Self.fixedStyle(row.kind), more: more(of: row))
                                     .environment(\.continueRow, Self.continueRows.contains(row.kind) ? row.kind : nil)
+                                    .environment(\.currentList, row.list)
                             }
                         }
                         .padding(.top, Self.top)
@@ -125,12 +126,13 @@ struct HomeView: View {
         if self.home != home { self.home = home }
     }
 
-    /// What a row's heading opens: Favorites' opens the Favorites page, and
-    /// Recently Added's opens its library sorted by date added, over Home.
+    /// What a row's heading opens, over Home: a list's opens the list, and
+    /// Recently Added's opens its library sorted by date added.
     private func more(of row: HomeRow) -> (() -> Void)? {
         switch row.kind {
-        case "favorites":
-            return { server.showFavorites() }
+        case "list":
+            guard let list = row.list else { return nil }
+            return { server.paths[.home, default: []].append(.list(list)) }
         case "recentlyAdded":
             guard let library = server.library(of: row.library?.id) else { return nil }
             return { server.paths[.home, default: []].append(.library(library, sort: "addedAt")) }
@@ -142,11 +144,11 @@ struct HomeView: View {
 }
 
 /// A Home row's heading, the same on Home and in Settings.
-func homeRowTitle(kind: String, libraryName: String?) -> String {
+func homeRowTitle(kind: String, libraryName: String?, listName: String?) -> String {
     switch kind {
     case "continueWatching": String(localized: "Continue Watching")
     case "continueListening": String(localized: "Continue Listening")
-    case "favorites": String(localized: "Favorites")
+    case "list": listName ?? ""
     default:
         if let libraryName {
             String(localized: "Recently Added in \(libraryName)")

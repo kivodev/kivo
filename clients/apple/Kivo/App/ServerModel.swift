@@ -19,6 +19,8 @@ final class ServerModel {
     private(set) var user: SignedInUser?
     /// Every library the user sees, in their order.
     private(set) var libraries: [Library] = []
+    /// The user's lists of the kinds this app knows, My List first.
+    private(set) var lists: [WorkList] = []
     /// The server isn't answering reads, which retry until it does.
     private(set) var unreachable = false
     /// The base URL the server is reached at now, which artwork follows.
@@ -38,9 +40,11 @@ final class ServerModel {
     var searchQuery = ""
     /// Whether Settings shows, opened from Home's avatar or the sidebar's account row.
     var settingsShown = false
-    /// Whether the window is wide enough for the sidebar, where Favorites
-    /// and each library are tabs of their own rather than pages of Libraries.
+    /// Whether the window is wide enough for the sidebar, where each
+    /// library is a tab of its own rather than a page of Libraries.
     private(set) var sidebar = false
+    /// The work Add to List shows over the tabs, while it does.
+    var addingToList: String?
     /// This server's downloads on the device, newest first.
     private(set) var downloads: [DownloadItem] = []
     /// The works whose downloads are being asked of the server, before they're listed.
@@ -67,6 +71,12 @@ final class ServerModel {
         cast.connected = { [weak self] _ in self?.handOffToCast() }
         cast.stopped = { [weak self] in self?.castStopped() }
         reloadLibraries()
+        tasks.append(Task { [weak self, session] in
+            for await load in session.library.lists() {
+                guard let lists = load.getOrNull() as? [WorkList] else { continue }
+                self?.lists = lists.filter { $0.kind == "manual" }
+            }
+        })
         tasks.append(Task { [weak self, session] in
             for await user in session.user {
                 self?.user = user
@@ -159,19 +169,20 @@ final class ServerModel {
 
     var otherLibraries: [Library] { libraries.filter { !$0.pinned } }
 
-    /// What the Libraries tab shows: what was last chosen on this device,
-    /// Favorites or a library, else the first pinned library, else the
-    /// first library; nil until the libraries are read.
-    var librariesPage: LibrariesPage? {
-        if lastLibraryId == Self.favoritesChoice { return .favorites }
-        let library = libraries.first { $0.id == lastLibraryId } ?? pinnedLibraries.first ?? libraries.first
-        return library.map(LibrariesPage.library)
+    /// My List, once the lists are read.
+    var myList: WorkList? { lists.first(where: \.builtIn) }
+
+    /// What the Libraries tab shows: the library last chosen on this
+    /// device, else the first pinned library, else the first library; nil
+    /// until the libraries are read.
+    var librariesPage: Library? {
+        libraries.first { $0.id == lastLibraryId } ?? pinnedLibraries.first ?? libraries.first
     }
 
-    /// The stack [tab] opens [page] with: over the list of libraries in the
-    /// Libraries tab, else nothing over the page.
-    private func stack(opening page: LibrariesPage, in tab: AppTab) -> [Route] {
-        tab == .libraries ? [.librariesPage(page)] : []
+    /// The stack [tab] opens [library] with: over the list of libraries in
+    /// the Libraries tab, else nothing over the page.
+    private func stack(opening library: Library, in tab: AppTab) -> [Route] {
+        tab == .libraries ? [.librariesPage(library)] : []
     }
 
     /// Opens the Libraries tab's list on the page last chosen on this
@@ -179,16 +190,8 @@ final class ServerModel {
     private func restoreLibrariesPage() {
         guard !restoredLibrariesPage, !libraries.isEmpty else { return }
         restoredLibrariesPage = true
-        guard !sidebar, lastLibraryId != nil, paths[.libraries, default: []].isEmpty, let page = librariesPage else { return }
-        paths[.libraries] = stack(opening: page, in: .libraries)
-    }
-
-    /// Opens [page] in the Libraries tab, and remembers it on this device.
-    func open(_ page: LibrariesPage) {
-        switch page {
-        case .favorites: openFavorites()
-        case .library(let library): open(library)
-        }
+        guard !sidebar, lastLibraryId != nil, paths[.libraries, default: []].isEmpty, let library = librariesPage else { return }
+        paths[.libraries] = stack(opening: library, in: .libraries)
     }
 
     /// Opens [library] in the Libraries tab, and remembers it on this device.
@@ -196,23 +199,14 @@ final class ServerModel {
         lastLibraryId = library.id
     }
 
-    /// Opens Favorites in the Libraries tab, and remembers it on this device.
-    func openFavorites() {
-        lastLibraryId = Self.favoritesChoice
-    }
-
-    /// The choice kept for Favorites in place of a library's ID.
-    private static let favoritesChoice = "favorites"
-
     /// Chooses [tab], as the tab bar, the sidebar and the View menu do. A
-    /// library or Favorites is remembered on this device, as choosing it in
-    /// the Libraries tab does; choosing Search again while there goes back
+    /// library is remembered on this device, as choosing it in the
+    /// Libraries tab does; choosing Search again while there goes back
     /// to its results.
     func choose(_ tab: AppTab) {
         let again = tab == self.tab
         self.tab = tab
         switch tab {
-        case .favorites: openFavorites()
         case .library(let id):
             if let library = libraries.first(where: { $0.id == id }) { open(library) }
         case .search:
@@ -221,34 +215,21 @@ final class ServerModel {
         }
     }
 
-    /// The tab [page] shows in: its own beside the sidebar, else Libraries.
-    func tab(of page: LibrariesPage) -> AppTab {
-        guard sidebar else { return .libraries }
-        switch page {
-        case .favorites: return .favorites
-        case .library(let library): return .library(library.id)
-        }
+    /// The tab [library] shows in: its own beside the sidebar, else Libraries.
+    private func tab(of library: Library) -> AppTab {
+        sidebar ? .library(library.id) : .libraries
     }
 
     /// Goes to the top of [library]'s grid, and remembers it on this device.
     func show(_ library: Library) {
         open(library)
-        let tab = tab(of: .library(library))
-        paths[tab] = stack(opening: .library(library), in: tab)
-        self.tab = tab
-    }
-
-    /// Goes to the top of Favorites, and remembers it on this device.
-    func showFavorites() {
-        openFavorites()
-        let tab = tab(of: .favorites)
-        paths[tab] = stack(opening: .favorites, in: tab)
+        let tab = tab(of: library)
+        paths[tab] = stack(opening: library, in: tab)
         self.tab = tab
     }
 
     /// Switches between the tab bar's Libraries tab and the sidebar's tab
-    /// for each library and Favorites as the window's width crosses
-    /// between them, keeping the page showing and the pages pushed on it.
+    /// for each library as the window's width crosses between them, keeping the page showing and the pages pushed on it.
     /// The Libraries tab's list of libraries, which the sidebar has
     /// instead, shows in a narrow window only.
     func useSidebar(_ sidebar: Bool) {
@@ -259,21 +240,17 @@ final class ServerModel {
         let to: AppTab
         switch from {
         case .libraries:
-            if case .librariesPage(let page) = pushed.first {
-                open(page)
+            if case .librariesPage(let library) = pushed.first {
+                open(library)
                 pushed.removeFirst()
             }
-            guard let page = librariesPage else { return }
-            to = tab(of: page)
-        case .favorites:
-            openFavorites()
-            to = .libraries
-            pushed.insert(contentsOf: stack(opening: .favorites, in: to), at: 0)
+            guard let library = librariesPage else { return }
+            to = tab(of: library)
         case .library(let id):
             to = .libraries
             if let library = libraries.first(where: { $0.id == id }) {
                 open(library)
-                pushed.insert(contentsOf: stack(opening: .library(library), in: to), at: 0)
+                pushed.insert(contentsOf: stack(opening: library, in: to), at: 0)
             }
         default:
             return
@@ -415,18 +392,12 @@ final class ServerModel {
     }
 }
 
-/// What the Libraries tab shows: a library, or the user's favorites.
-enum LibrariesPage: Hashable {
-    case favorites
-    case library(Library)
-}
-
-/// The app's tabs. Libraries is the tab bar's, in a narrow window;
-/// Favorites and each library, by its ID, are the sidebar's.
+/// The app's tabs. Libraries is the tab bar's, in a narrow window; each
+/// library, by its ID, is the sidebar's.
 enum AppTab: Hashable {
     case home
     case libraries
-    case favorites
+    case lists
     case library(String)
     case downloads
     case search

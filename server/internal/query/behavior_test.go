@@ -289,8 +289,6 @@ func TestBrowseFilters(t *testing.T) {
 		{"years to", h.movies, query.Filter{YearTo: 1995}, []id.ID{h.bladeRunner.Work, h.toyStory.Work}},
 		{"ratings", h.movies, query.Filter{ContentRatings: []string{"R", "PG-13"}}, []id.ID{h.bladeRunner.Work, h.dune.Work}},
 		{"1080p", h.movies, query.Filter{Resolutions: []query.Resolution{query.Resolution1080p}}, []id.ID{h.dune.Work}},
-		{"favorites", h.movies, query.Filter{Favorites: true}, []id.ID{h.toyStory.Work}},
-		{"and", h.movies, query.Filter{YearFrom: 1995, Favorites: true}, []id.ID{h.toyStory.Work}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -368,8 +366,8 @@ func TestHomeRows(t *testing.T) {
 	if want := []id.ID{h.bluey3.Work, h.expanse2.Work, h.dune.Work}; !slices.Equal(ids(row(home, query.RowContinueWatching)), want) {
 		t.Errorf("Continue Watching = %v, want %v", ids(row(home, query.RowContinueWatching)), want)
 	}
-	if want := []id.ID{h.toyStory.Work}; !slices.Equal(ids(row(home, query.RowFavorites)), want) {
-		t.Errorf("Favorites = %v, want %v", ids(row(home, query.RowFavorites)), want)
+	if want := []id.ID{h.toyStory.Work}; !slices.Equal(ids(row(home, query.RowList)), want) {
+		t.Errorf("My List = %v, want %v", ids(row(home, query.RowList)), want)
 	}
 	var libs []id.ID
 	for _, row := range recentlyAdded(home) {

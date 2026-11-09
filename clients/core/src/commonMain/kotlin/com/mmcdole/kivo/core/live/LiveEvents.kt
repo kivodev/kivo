@@ -145,6 +145,9 @@ internal sealed interface Invalidation {
     /** The user's Home layout or library order changed, on any of their clients: Home and the editor. */
     data object HomeChanged : Invalidation
 
+    /** The user's lists changed, or what's in them: the lists, Home and any open work page. */
+    data object ListsChanged : Invalidation
+
     /** Events may have been missed (a reconnect, a resync, a new server version): refetch everything visible. */
     data object Everything : Invalidation
 }
@@ -166,5 +169,6 @@ private fun invalidationOf(event: EventMessage): Invalidation? = when (event.kin
     "playEnded" -> event.playId?.let { Invalidation.PlayEnded(it, event.message) }
     "downloadsChanged" -> Invalidation.DownloadsChanged
     "homeChanged" -> Invalidation.HomeChanged
+    "listsChanged" -> Invalidation.ListsChanged
     else -> null
 }

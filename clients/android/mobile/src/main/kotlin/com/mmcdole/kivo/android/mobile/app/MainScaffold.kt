@@ -71,8 +71,9 @@ import com.mmcdole.kivo.android.mobile.cast.LocalCast
 import com.mmcdole.kivo.android.mobile.downloads.DownloadsScreen
 import com.mmcdole.kivo.android.mobile.downloads.ShowDownloadsScreen
 import com.mmcdole.kivo.android.mobile.linkdevice.LinkDeviceScreen
-import com.mmcdole.kivo.android.mobile.favorites.FavoritesGridScreen
-import com.mmcdole.kivo.android.mobile.favorites.FavoritesScreen
+import com.mmcdole.kivo.android.mobile.lists.AddToListSheet
+import com.mmcdole.kivo.android.mobile.lists.ListScreen
+import com.mmcdole.kivo.android.mobile.lists.ListsScreen
 import com.mmcdole.kivo.android.mobile.home.HomeScreen
 import com.mmcdole.kivo.android.mobile.library.LibrariesScreen
 import com.mmcdole.kivo.android.mobile.library.LibraryScreen
@@ -172,6 +173,7 @@ fun MainScaffold(session: ServerSession) {
                     book.shown -> MiniPlayer(book, onOpen = { nav.open(NowPlayingRoute) }, onBack = mini::skipBack, onToggle = mini::togglePlay)
                 }
             }
+            nav.addingToList?.let { AddToListSheet(session, it, nav::closeAddToList) }
         }
     }
 }
@@ -252,13 +254,13 @@ private const val MaxBarFontScale = 1.3f
 /** Each tab's graph and first screen. */
 private fun NavGraphBuilder.tabs(session: ServerSession, nav: MobileNav) {
     navigation<HomeTab>(startDestination = HomeRoute) {
-        composable<HomeRoute> { HomeScreen(session, nav, onFavorites = { nav.select(Tab.Favorites) }) }
+        composable<HomeRoute> { HomeScreen(session, nav) }
     }
     navigation<LibrariesTab>(startDestination = LibrariesRoute) {
         composable<LibrariesRoute> { LibrariesScreen(session, nav) }
     }
-    navigation<FavoritesTab>(startDestination = FavoritesRoute) {
-        composable<FavoritesRoute> { FavoritesScreen(session, nav) }
+    navigation<ListsTab>(startDestination = ListsRoute) {
+        composable<ListsRoute> { ListsScreen(session, nav) }
     }
     navigation<DownloadsTab>(startDestination = DownloadsRoute) {
         composable<DownloadsRoute> { DownloadsScreen(session, nav) }
@@ -275,7 +277,7 @@ private fun NavGraphBuilder.pages(session: ServerSession, nav: MobileNav, cast: 
     composable<CollectionRoute> { CollectionScreen(session, it.toRoute<CollectionRoute>().id, nav) }
     composable<PersonRoute> { PersonScreen(session, it.toRoute<PersonRoute>().id, nav) }
     composable<BookSeriesRoute> { BookSeriesScreen(session, it.toRoute<BookSeriesRoute>().id, nav) }
-    composable<FavoritesGridRoute> { FavoritesGridScreen(session, it.toRoute<FavoritesGridRoute>().kind, nav) }
+    composable<ListRoute> { val r = it.toRoute<ListRoute>(); ListScreen(session, r.id, r.name, nav) }
     composable<PlayerRoute> { PlayerScreen(session, it.toRoute<PlayerRoute>(), nav) }
     composable<NowPlayingRoute> { NowPlayingScreen(session, nav) }
     composable<SettingsRoute> { SettingsScreen(session, nav) }

@@ -123,6 +123,10 @@ src/commonMain/kotlin/com/mmcdole/kivo/api/models/LibraryList.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/LibraryRef.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/LibraryScanStatus.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/LibraryUpdate.kt
+src/commonMain/kotlin/com/mmcdole/kivo/api/models/ListCreate.kt
+src/commonMain/kotlin/com/mmcdole/kivo/api/models/ListRef.kt
+src/commonMain/kotlin/com/mmcdole/kivo/api/models/ListUpdate.kt
+src/commonMain/kotlin/com/mmcdole/kivo/api/models/ListWorkAdd.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/LogAttr.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/LogLine.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/LogLineFeed.kt
@@ -207,6 +211,8 @@ src/commonMain/kotlin/com/mmcdole/kivo/api/models/VideoEntry.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/VideoTrackInfo.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/WorkDetail.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/WorkImages.kt
+src/commonMain/kotlin/com/mmcdole/kivo/api/models/WorkList.kt
+src/commonMain/kotlin/com/mmcdole/kivo/api/models/WorkListList.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/WorkSummary.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/WorkSummaryFeed.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/WorkSummaryList.kt

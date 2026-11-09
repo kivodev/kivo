@@ -3,9 +3,9 @@ import KivoUI
 import SwiftUI
 
 /// The signed-in app: the system's tab bar with Home,
-/// Libraries and Downloads, and Search as its own button, which on iOS 26
+/// Libraries, Lists and Downloads, and Search as its own button, which on iOS 26
 /// becomes the search field. In a regular-width iPad window the tab bar can
-/// open into a sidebar, where Favorites and each library are tabs of their
+/// open into a sidebar, where each library is a tab of its
 /// own, the pinned libraries under Libraries and the others under More
 /// libraries, and the account at its foot, opening Settings as Home's
 /// avatar does; crossing between the two widths keeps the page showing.
@@ -41,12 +41,10 @@ struct SignedInView: View {
                     .modifier(MiniPlayerBar(book: book))
             }
             .hidden(sidebar)
-            Tab(String(localized: "Favorites"), systemImage: "heart", value: AppTab.favorites) {
-                BrowseStack(tab: .favorites) { FavoritesView(server: server) }
+            Tab(String(localized: "Lists"), systemImage: "list.bullet", value: AppTab.lists) {
+                BrowseStack(tab: .lists) { ListsView() }
                     .modifier(MiniPlayerBar(book: book))
             }
-            .hidden(!sidebar)
-            .tabPlacement(.sidebarOnly)
             TabSection(String(localized: "Libraries")) {
                 ForEach(server.pinnedLibraries, id: \.id) { library in
                     libraryTab(library, book: book)
@@ -84,6 +82,11 @@ struct SignedInView: View {
         }
         .sheet(isPresented: $server.settingsShown) {
             NavigationStack { SettingsView() }
+        }
+        .sheet(isPresented: addToListShown) {
+            if let workId = server.addingToList {
+                AddToListView(workId: workId)
+            }
         }
         .sheet(isPresented: linkShown) {
             NavigationStack {
@@ -143,6 +146,11 @@ struct SignedInView: View {
 
     private var downloadProblemShown: Binding<Bool> {
         Binding(get: { server.downloadProblem != nil }, set: { if !$0 { server.downloadProblem = nil } })
+    }
+
+    /// Whether Add to List shows.
+    private var addToListShown: Binding<Bool> {
+        Binding(get: { server.addingToList != nil }, set: { if !$0 { server.addingToList = nil } })
     }
 
     /// The selected tab, chosen as ``ServerModel/choose(_:)`` says.
@@ -272,13 +280,14 @@ struct BrowseStack<Root: View>: View {
                             case .bookSeries: BookSeriesDetail(id: route.id)
                             case .collection: CollectionDetail(id: route.id)
                             }
-                        case .favorites(let kind):
-                            FavoritesGrid(kind: kind, session: server.session)
+                        case .list(let list):
+                            ListGrid(list: list, session: server.session)
                         case .library(let library, let sort):
                             LibraryView(library: library, server: server, sort: sort)
-                        case .librariesPage(let page):
-                            LibrariesPageView(page: page)
-                                .onAppear { server.open(page) }
+                        case .librariesPage(let library):
+                            LibraryView(library: library, server: server)
+                                .id(library.id)
+                                .onAppear { server.open(library) }
                         }
                     }
                     .kivoPageBackground()
@@ -300,12 +309,12 @@ struct BrowseStack<Root: View>: View {
 /// A page pushed on a tab's stack.
 enum Route: Hashable {
     case work(WorkRoute)
-    /// All of one kind's favorites, in a grid.
-    case favorites(FavoriteKind)
+    /// A list's works, in a grid.
+    case list(ListRef)
     /// A library's works in one sort, for once, as Recently Added's heading opens them.
     case library(Library, sort: String)
-    /// A library or Favorites, opened from the Libraries tab's list of them.
-    case librariesPage(LibrariesPage)
+    /// A library, opened from the Libraries tab's list of them.
+    case librariesPage(Library)
 }
 
 /// Pushes a work's page onto the tab's stack.
@@ -324,8 +333,10 @@ extension EnvironmentValues {
     /// The Home row a card is in, Continue Watching or Continue Listening,
     /// so a long press offers to remove it from that row.
     @Entry var continueRow: String?
+    /// The list a card is shown in, so a long press offers to remove it from that list.
+    @Entry var currentList: ListRef?
     /// The window has the wider grids and pages: a regular-width iPad's, which
-    /// also has the sidebar, where Favorites and each library are tabs, or an
+    /// also has the sidebar, where each library is a tab, or an
     /// unfolded iPhone Duo's, which keeps its tab bar.
     @Entry var wide = false
 }

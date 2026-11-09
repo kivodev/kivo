@@ -1,3 +1,4 @@
+SEARCH list_work USING INDEX list_work_work (work_id=?)
 SCAN track_choice
 SEARCH play_event USING COVERING INDEX play_event_work (work_id=?)
 SEARCH user_state USING INDEX user_state_work (work_id=?)

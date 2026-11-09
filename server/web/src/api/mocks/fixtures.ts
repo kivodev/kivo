@@ -36,6 +36,8 @@ export const mockIds = {
   bladeRunner: mockId(102),
   bladeRunnerFinalCut: mockId(103),
   duneCollection: mockId(104),
+  myList: mockId(9501),
+  dateNight: mockId(9502),
   missingReel: mockId(105),
   holiday: mockId(106),
   nightShift: mockId(107),
@@ -424,7 +426,7 @@ export function createMockApi(): MockApi {
       genres: [genres[year % genres.length] ?? "Drama"],
       overview: `${title} is a film from ${year}.`,
       movie: {},
-      userState: { played: false, favorite: false, playCount: 0 },
+      userState: { played: false, playCount: 0 },
       versions: [version(next(), id, mockIds.movies, "1080p", durationMs, tracks1080, 12e9)],
       libraryId: mockIds.movies,
       ...extra,
@@ -440,7 +442,7 @@ export function createMockApi(): MockApi {
   const dune = movie("Dune", 2021, {
     id: mockIds.dune,
     addedAt: ago(30),
-    userState: { played: true, favorite: true, playCount: 1 },
+    userState: { played: true, playCount: 1 },
   });
   const dune2 = movie("Dune: Part Two", 2024, {
     id: mockIds.dunePartTwo,
@@ -452,7 +454,7 @@ export function createMockApi(): MockApi {
     communityVotes: 6400,
     contentRating: "PG-13",
     durationMs: 166 * minute,
-    userState: { played: false, favorite: false, playCount: 0, positionMs: 72 * minute + 3000 },
+    userState: { played: false, playCount: 0, positionMs: 72 * minute + 3000 },
     credits: [
       { personId: next(), name: "Timothée Chalamet", role: "actor", character: "Paul Atreides", photo: image(false) },
       { personId: next(), name: "Zendaya", role: "actor", character: "Chani" },
@@ -495,7 +497,7 @@ export function createMockApi(): MockApi {
         edition: "Final Cut",
       },
     ],
-    userState: { played: true, favorite: false, playCount: 2, positionMs: 40 * minute, versionId: theatrical.id },
+    userState: { played: true, playCount: 2, positionMs: 40 * minute, versionId: theatrical.id },
   });
   add({
     ...emptyWork(mockIds.bladeRunnerFinalCut, "movie", "Blade Runner"),
@@ -504,9 +506,9 @@ export function createMockApi(): MockApi {
     images: { poster: image(), backdrop: image() },
     movie: { edition: "Final Cut" },
     versions: [version(next(), mockIds.bladeRunnerFinalCut, mockIds.movies, "4K HDR", 117 * minute, tracks4k, 40e9)],
-    userState: { played: false, favorite: false, playCount: 0 },
+    userState: { played: false, playCount: 0 },
   });
-  movie("Arrival", 2016, { userState: { played: true, favorite: false, playCount: 1 } });
+  movie("Arrival", 2016, { userState: { played: true, playCount: 1 } });
   movie("Holiday 2019 Final", 2019, { id: mockIds.holiday, matchState: "unmatched", images: {}, addedAt: ago(1) });
   const lighthouse = movie("The Lighthouse Keeper", 2025, { matchState: "identifying", images: {}, addedAt: ago(0) });
   const missing = movie("Missing Reel", 1999, { id: mockIds.missingReel, available: false });
@@ -553,7 +555,6 @@ export function createMockApi(): MockApi {
         },
         userState: {
           played,
-          favorite: false,
           playCount: played ? 1 : 0,
           positionMs: id === mockId(1303) ? 30 * minute : undefined,
         },
@@ -573,7 +574,7 @@ export function createMockApi(): MockApi {
         episodeCount: eps.length,
         unplayedCount: unplayed,
       },
-      userState: { played: unplayed === 0, favorite: false, playCount: 0 },
+      userState: { played: unplayed === 0, playCount: 0 },
       libraryId: series.libraryId,
     });
     children[series.id] = [...(children[series.id] ?? []), seasonId];
@@ -598,7 +599,7 @@ export function createMockApi(): MockApi {
     contentRating: "TV-14",
     images: { poster: image(), backdrop: image() },
     series: { seasonCount: 4, unplayedCount: 10, lastAirYear: 2022, recentlyAddedCount: 3, ordering: "aired" },
-    userState: { played: false, favorite: true, playCount: 0 },
+    userState: { played: false, playCount: 0 },
     libraryId: mockIds.shows,
   });
   const numbered = (count: number) => Array.from({ length: count }, (_, i) => `Episode ${i + 1}`);
@@ -635,7 +636,7 @@ export function createMockApi(): MockApi {
     addedAt: ago(90),
     images: { poster: image(), backdrop: image() },
     series: { seasonCount: 1, unplayedCount: 3 },
-    userState: { played: false, favorite: false, playCount: 0 },
+    userState: { played: false, playCount: 0 },
   });
   link(season(severance, mockIds.severanceSeason1, 1, ["Good News About Hell", "Half Loop", "In Perpetuity"], 3101));
 
@@ -654,7 +655,7 @@ export function createMockApi(): MockApi {
       durationMs,
       addedAt: ago(added),
       images: { still: image() },
-      userState: { played: false, favorite: false, playCount: 0 },
+      userState: { played: false, playCount: 0 },
     }).id;
   const vacationVideos = [video("Beach day", 2023, 5 * minute, 10), video("Mountain hike", 2023, 5 * minute, 10)];
   const birthday = video("Birthday party", 2024, 9 * minute, 3);
@@ -983,6 +984,22 @@ export function createMockApi(): MockApi {
         }),
       ]),
     ),
+    lists: [
+      {
+        id: mockIds.myList,
+        name: "My List",
+        kind: "manual",
+        builtIn: true,
+        workIds: [mockIds.dune, mockIds.expanse],
+      },
+      {
+        id: mockIds.dateNight,
+        name: "Date Night",
+        kind: "manual",
+        builtIn: false,
+        workIds: [mockIds.dune],
+      },
+    ],
     home: {
       rows: [
         {
@@ -990,7 +1007,12 @@ export function createMockApi(): MockApi {
           kind: "continueWatching",
           items: summaries([mockIds.dunePartTwo, mockId(1303), mockIds.severancePilot]),
         },
-        { id: "favorites", kind: "favorites", items: summaries([mockIds.dune, mockIds.expanse]) },
+        {
+          id: `list:${mockIds.myList}`,
+          kind: "list",
+          list: { id: mockIds.myList, name: "My List" },
+          items: summaries([mockIds.dune, mockIds.expanse]),
+        },
         {
           id: `recentlyAdded:${mockIds.movies}`,
           kind: "recentlyAdded",

@@ -48,11 +48,11 @@ describe("applyUserState", () => {
     matchState: "matched",
     available: true,
     images: {},
-    userState: { played: false, favorite: false, playCount: 0 },
+    userState: { played: false, playCount: 0 },
   });
-  const played = { played: true, favorite: false, playCount: 1 };
+  const played = { played: true, playCount: 1 };
 
-  it("updates the work's detail and its cards in every list in place, and refetches only Home and Favorites", () => {
+  it("updates the work's detail and its cards in every list in place, and refetches only Home", () => {
     const qc = new QueryClient();
     const detailKey = ["get", apiPaths.work, { params: { path: { id: work } } }];
     const searchKey = ["get", apiPaths.search, { params: { query: { q: "x" } } }];
@@ -69,12 +69,8 @@ describe("applyUserState", () => {
     expect(search?.items.map((w) => w.userState?.played)).toEqual([true, false]);
     const page = qc.getQueryData<{ items: WorkSummary[] }>(pageKey);
     expect(page?.items.map((w) => w.userState?.played)).toEqual([false, true]);
-    // Home's rows follow what was watched. A work marked or unmarked joins
-    // or leaves Favorites.
-    expect(invalidate.mock.calls).toEqual([
-      [{ queryKey: ["get", apiPaths.home] }],
-      [{ queryKey: ["get", apiPaths.favorites] }],
-    ]);
+    // Home's rows follow what was watched.
+    expect(invalidate.mock.calls).toEqual([[{ queryKey: ["get", apiPaths.home] }]]);
   });
 
   it("refetches the views of a series' episodes, which marking it cascades to", () => {

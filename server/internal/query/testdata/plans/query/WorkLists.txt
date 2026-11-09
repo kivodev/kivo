@@ -1,0 +1,3 @@
+SEARCH l USING INDEX sqlite_autoindex_list_2 (user_id=?)
+SEARCH lw USING COVERING INDEX list_work_work (work_id=? AND list_id=?)
+USE TEMP B-TREE FOR ORDER BY

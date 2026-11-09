@@ -14,7 +14,7 @@ output-options:
   # Keep the WebSocket frame and preview-manifest schemas those handlers send.
   skip-prune: true
 compatibility:
-  # An enum's constants are named for their type, HomeRowKindFavorites, so two
+  # An enum's constants are named for their type, HomeRowKindContinueWatching, so two
   # enums can share a value.
   always-prefix-enum-values: true
   # Work, the spec's one allOf, embeds WorkSummary rather than repeating its

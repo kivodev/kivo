@@ -20,7 +20,9 @@ export const apiPaths = {
   libraryBookSeries: "/api/v1/libraries/{id}/book-series",
   home: "/api/v1/home",
   homeRows: "/api/v1/home/rows",
-  favorites: "/api/v1/favorites",
+  lists: "/api/v1/lists",
+  list: "/api/v1/lists/{id}",
+  listWorks: "/api/v1/lists/{id}/works",
   work: "/api/v1/works/{id}",
   workChildren: "/api/v1/works/{id}/children",
   workFiles: "/api/v1/works/{id}/files",
@@ -65,7 +67,7 @@ export const libraryGridPaths: readonly ApiPath[] = [
 /**
  * Paths whose responses show works, each with its user state. These are a
  * work's page, the grids, children, collections, the Unmatched list, Home,
- * Favorites, search, and the book pages of people and series. Whatever
+ * lists, search, and the book pages of people and series. Whatever
  * changes a work refetches these.
  */
 export const workViewPaths: readonly ApiPath[] = [
@@ -75,10 +77,24 @@ export const workViewPaths: readonly ApiPath[] = [
   apiPaths.collection,
   apiPaths.unmatchedWorks,
   apiPaths.home,
-  apiPaths.favorites,
+  apiPaths.listWorks,
   apiPaths.search,
   apiPaths.person,
   apiPaths.bookSeries,
+];
+
+/**
+ * Paths whose responses show the user's lists or what is on them. These are
+ * the lists, their works, Home and its layout, and a work's page, which says
+ * which lists hold it. Whatever changes a list refetches these.
+ */
+export const listViewPaths: readonly ApiPath[] = [
+  apiPaths.lists,
+  apiPaths.list,
+  apiPaths.listWorks,
+  apiPaths.home,
+  apiPaths.homeRows,
+  apiPaths.work,
 ];
 
 /** Marks every query of the paths stale, refetching those on screen. */

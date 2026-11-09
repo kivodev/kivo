@@ -55,7 +55,7 @@ func TestHomeRowsDefaultOrder(t *testing.T) {
 	h := newHousehold(t)
 	got := rowIDs(h.layout(h.admin))
 	movies, shows, books := "recentlyAdded:"+h.movies.String(), "recentlyAdded:"+h.shows.String(), "recentlyAdded:"+h.books.String()
-	wantFirst := []string{"continueWatching", "favorites", movies, shows}
+	wantFirst := []string{"continueWatching", "list:" + h.lists(h.admin)[0].ID.String(), movies, shows}
 	if !slices.Equal(got[:4], wantFirst) {
 		t.Errorf("default order %v, want first %v", got, wantFirst)
 	}
@@ -119,7 +119,7 @@ func TestHomeRowsArrange(t *testing.T) {
 		t.Fatal(err)
 	}
 	got = h.layout(h.admin)
-	if !slices.Equal(rowIDs(got)[:2], []string{"continueWatching", "favorites"}) || len(shownIDs(got)) != len(got) {
+	if got[0].ID != "continueWatching" || len(shownIDs(got)) != len(got) {
 		t.Errorf("after reset: %v", got)
 	}
 }

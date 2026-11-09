@@ -34,17 +34,6 @@ ON CONFLICT (user_id, work_id) DO UPDATE SET
   played = excluded.played, position_ms = 0, resumable = 0, updated_at = excluded.updated_at,
   play_count = CASE WHEN excluded.played AND play_count = 0 THEN 1 ELSE play_count END;
 
--- name: AddFavorite :exec
--- Mark a favorite by hand. One already marked keeps when it was marked.
-INSERT INTO user_state (user_id, work_id, favorite, favorited_at, updated_at) VALUES (@user_id, @work_id, 1, CAST(@at AS INTEGER), @at)
-ON CONFLICT (user_id, work_id) DO UPDATE SET
-  favorite = 1, favorited_at = CASE WHEN favorite THEN favorited_at ELSE excluded.favorited_at END,
-  updated_at = excluded.updated_at;
-
--- name: RemoveFavorite :exec
-INSERT INTO user_state (user_id, work_id, favorite, updated_at) VALUES (@user_id, @work_id, 0, @at)
-ON CONFLICT (user_id, work_id) DO UPDATE SET favorite = 0, favorited_at = NULL, updated_at = excluded.updated_at;
-
 -- name: RemoveFromContinue :exec
 -- Leaves updated_at alone, so an offline position from before the removal
 -- still applies.
@@ -57,11 +46,11 @@ ON CONFLICT (user_id, work_id) DO UPDATE SET rating = excluded.rating, updated_a
 
 -- name: PutState :exec
 -- Write a whole row, for merging works.
-INSERT INTO user_state (user_id, work_id, played, play_count, position_ms, resumable, version_id, favorite, favorited_at, rating, last_played_at, updated_at)
-VALUES (@user_id, @work_id, @played, @play_count, @position_ms, @resumable, @version_id, @favorite, @favorited_at, @rating, @last_played_at, @updated_at)
+INSERT INTO user_state (user_id, work_id, played, play_count, position_ms, resumable, version_id, rating, last_played_at, updated_at)
+VALUES (@user_id, @work_id, @played, @play_count, @position_ms, @resumable, @version_id, @rating, @last_played_at, @updated_at)
 ON CONFLICT (user_id, work_id) DO UPDATE SET
   played = excluded.played, play_count = excluded.play_count, position_ms = excluded.position_ms,
-  resumable = excluded.resumable, version_id = excluded.version_id, favorite = excluded.favorite, favorited_at = excluded.favorited_at, rating = excluded.rating,
+  resumable = excluded.resumable, version_id = excluded.version_id, rating = excluded.rating,
   last_played_at = excluded.last_played_at, updated_at = excluded.updated_at;
 
 -- name: DeleteStates :exec
@@ -108,3 +97,22 @@ VALUES (@user_id, @series_id, @audio_language, @subtitle_language, @subtitle_kin
 ON CONFLICT (user_id, series_id) DO UPDATE SET
   audio_language = excluded.audio_language, subtitle_language = excluded.subtitle_language,
   subtitle_kind = excluded.subtitle_kind, updated_at = excluded.updated_at;
+
+-- name: ListOwner :one
+SELECT user_id FROM list WHERE id = @id;
+
+-- name: AddToList :exec
+-- A work already in the list keeps its place.
+INSERT INTO list_work (list_id, work_id, added_at) VALUES (@list_id, @work_id, @at)
+ON CONFLICT (list_id, work_id) DO NOTHING;
+
+-- name: RemoveFromList :exec
+DELETE FROM list_work WHERE list_id = @list_id AND work_id = @work_id;
+
+-- name: MoveListWorks :exec
+-- An episode merged into another keeps its places in lists, unless the
+-- episode that replaces it is already there.
+UPDATE OR IGNORE list_work SET work_id = @into WHERE work_id = @from;
+
+-- name: DeleteWorkFromLists :exec
+DELETE FROM list_work WHERE work_id = @work_id;

@@ -485,7 +485,7 @@ func (i *Identifier) decided(ctx context.Context, tx *store.Tx, b *catalog.Batch
 // external ID, it was never an episode of the match: it is provisional, or
 // left over from the series' previous match. It is merged into the episode
 // replacing it, including its state. A matched episode left empty keeps its
-// work, its favorite and its rating. A version coming from another root
+// work, and its rating. A version coming from another root
 // brings no history.
 func (i *Identifier) reassign(ctx context.Context, tx *store.Tx, b *catalog.Batch, v id.ID, works []id.ID) error {
 	q := dbq.New(tx)

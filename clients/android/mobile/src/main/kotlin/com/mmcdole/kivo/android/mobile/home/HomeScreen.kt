@@ -46,6 +46,7 @@ import com.mmcdole.kivo.android.ServerSession
 import com.mmcdole.kivo.android.library.GridValues
 import com.mmcdole.kivo.android.mobile.R
 import com.mmcdole.kivo.android.mobile.app.LibraryRoute
+import com.mmcdole.kivo.android.mobile.app.ListRoute
 import com.mmcdole.kivo.android.mobile.app.MobileNav
 import com.mmcdole.kivo.android.mobile.app.SettingsRoute
 import com.mmcdole.kivo.android.mobile.app.handle
@@ -73,12 +74,12 @@ private val SideMargin = 16.dp
 /**
  * Home: the server's rows in its order, each a row of cards. Continue
  * Watching is the frames where you stopped; a Recently Added heading opens
- * its library newest first, and Favorites' the Favorites tab. A long press
+ * its library newest first, and a list's that list. A long press
  * on a card opens its actions. Pull to refresh; the live events refresh it too.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(session: ServerSession, nav: MobileNav, onFavorites: () -> Unit) {
+fun HomeScreen(session: ServerSession, nav: MobileNav) {
     val model = viewModel { HomeViewModel(session.session) }
     val state by model.state.collectAsStateWithLifecycle()
     val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -101,7 +102,7 @@ fun HomeScreen(session: ServerSession, nav: MobileNav, onFavorites: () -> Unit) 
                         }
                     } else {
                         WorkMenuHost({ action, work -> nav.handle(action, work, model.marks) }) { openMenu ->
-                            Rows(rows, nav, onFavorites, openMenu)
+                            Rows(rows, nav, openMenu)
                         }
                     }
                 }
@@ -111,7 +112,7 @@ fun HomeScreen(session: ServerSession, nav: MobileNav, onFavorites: () -> Unit) 
 }
 
 @Composable
-private fun Rows(rows: List<HomeRowUi>, nav: MobileNav, onFavorites: () -> Unit, openMenu: (WorkMenu) -> Unit) {
+private fun Rows(rows: List<HomeRowUi>, nav: MobileNav, openMenu: (WorkMenu) -> Unit) {
     LazyColumn(
         Modifier.fillMaxSize().testTag("homeRows"),
         contentPadding = PaddingValues(bottom = space(6)),
@@ -119,13 +120,14 @@ private fun Rows(rows: List<HomeRowUi>, nav: MobileNav, onFavorites: () -> Unit,
     ) {
         items(rows, key = { it.id }, contentType = { it.kind }) { row ->
             val library = row.library
+            val list = row.list
             val opens: (() -> Unit)? = when {
-                row.kind == "favorites" -> onFavorites
+                list != null -> { { nav.open(ListRoute(list.id, list.name)) } }
                 row.kind == "recentlyAdded" && library != null -> { { nav.open(LibraryRoute(library.id, GridValues.ADDED_AT)) } }
                 else -> null
             }
             Column {
-                RowHeading(rowTitle(row.kind, row.libraryName), opens)
+                RowHeading(rowTitle(row.kind, row.libraryName, list?.name), opens)
                 LazyRow(
                     state = rowState(row.items.firstOrNull()?.id),
                     contentPadding = PaddingValues(horizontal = SideMargin),
@@ -186,10 +188,10 @@ private fun RowHeading(title: String, onClick: (() -> Unit)?) {
 }
 
 @Composable
-internal fun rowTitle(kind: String, libraryName: String?): String = when (kind) {
+internal fun rowTitle(kind: String, libraryName: String?, listName: String?): String = when (kind) {
     CONTINUE_WATCHING -> stringResource(R.string.mobile_row_continue_watching)
     "continueListening" -> stringResource(R.string.mobile_row_continue_listening)
-    "favorites" -> stringResource(R.string.mobile_row_favorites)
+    "list" -> listName.orEmpty()
     else -> libraryName?.let { stringResource(R.string.mobile_row_recently_added_in, it) } ?: stringResource(R.string.mobile_row_recently_added)
 }
 

@@ -64,7 +64,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -129,7 +128,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -194,7 +192,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -271,7 +268,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -329,7 +325,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -394,7 +389,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -465,7 +459,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -530,7 +523,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -606,7 +598,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -653,7 +644,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -708,7 +698,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -763,7 +752,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -817,7 +805,6 @@
         "PlayCount": 0,
         "Position": 0,
         "Version": "none",
-        "Favorite": false,
         "Rating": null,
         "LastPlayed": "0001-01-01T00:00:00Z"
       },
@@ -861,7 +848,6 @@
         "PlayCount": 0,
         "Position": 0,
         "Version": "none",
-        "Favorite": false,
         "Rating": null,
         "LastPlayed": "0001-01-01T00:00:00Z"
       },
@@ -908,7 +894,6 @@
         "PlayCount": 0,
         "Position": 0,
         "Version": "none",
-        "Favorite": false,
         "Rating": null,
         "LastPlayed": "0001-01-01T00:00:00Z"
       },
@@ -952,7 +937,6 @@
         "PlayCount": 0,
         "Position": 0,
         "Version": "none",
-        "Favorite": false,
         "Rating": null,
         "LastPlayed": "0001-01-01T00:00:00Z"
       },
@@ -1014,7 +998,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -1061,7 +1044,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -1131,7 +1113,6 @@
         "PlayCount": 0,
         "Position": 0,
         "Version": "none",
-        "Favorite": false,
         "Rating": null,
         "LastPlayed": "0001-01-01T00:00:00Z"
       },
@@ -1160,6 +1141,7 @@
       "Library": "library:Audiobooks",
       "Path": ""
     },
+    "ListIDs": null,
     "OriginalTitle": "",
     "Overview": "",
     "ContentRating": "",
@@ -1311,7 +1293,6 @@
         "PlayCount": 0,
         "Position": 0,
         "Version": "none",
-        "Favorite": false,
         "Rating": null,
         "LastPlayed": "0001-01-01T00:00:00Z"
       },
@@ -1319,6 +1300,7 @@
       "Library": "library:Shows",
       "Path": ""
     },
+    "ListIDs": null,
     "OriginalTitle": "",
     "Overview": "",
     "ContentRating": "G",
@@ -1405,7 +1387,6 @@
         "PlayCount": 0,
         "Position": 0,
         "Version": "none",
-        "Favorite": false,
         "Rating": null,
         "LastPlayed": "0001-01-01T00:00:00Z"
       },
@@ -1413,6 +1394,7 @@
       "Library": "library:Private",
       "Path": ""
     },
+    "ListIDs": null,
     "OriginalTitle": "",
     "Overview": "",
     "ContentRating": "G",
@@ -1499,7 +1481,6 @@
         "PlayCount": 0,
         "Position": 0,
         "Version": "none",
-        "Favorite": false,
         "Rating": null,
         "LastPlayed": "0001-01-01T00:00:00Z"
       },
@@ -1507,6 +1488,7 @@
       "Library": "library:Movies",
       "Path": ""
     },
+    "ListIDs": null,
     "OriginalTitle": "",
     "Overview": "",
     "ContentRating": "G",
@@ -1603,7 +1585,6 @@
         "PlayCount": 0,
         "Position": 0,
         "Version": "none",
-        "Favorite": false,
         "Rating": null,
         "LastPlayed": "0001-01-01T00:00:00Z"
       },
@@ -1611,6 +1592,7 @@
       "Library": "library:Shows",
       "Path": ""
     },
+    "ListIDs": null,
     "OriginalTitle": "",
     "Overview": "",
     "ContentRating": "G",
@@ -1660,7 +1642,6 @@
         "PlayCount": 0,
         "Position": 0,
         "Version": "none",
-        "Favorite": false,
         "Rating": null,
         "LastPlayed": "0001-01-01T00:00:00Z"
       },
@@ -1708,6 +1689,10 @@
         "Pinned": false,
         "Items": 0
       },
+      "List": {
+        "ID": "none",
+        "Name": ""
+      },
       "Items": [
         {
           "ID": "movie:Toy Story 2",
@@ -1748,7 +1733,6 @@
             "PlayCount": 0,
             "Position": 0,
             "Version": "none",
-            "Favorite": false,
             "Rating": null,
             "LastPlayed": "0001-01-01T00:00:00Z"
           },
@@ -1795,7 +1779,6 @@
             "PlayCount": 0,
             "Position": 0,
             "Version": "none",
-            "Favorite": false,
             "Rating": null,
             "LastPlayed": "0001-01-01T00:00:00Z"
           },
@@ -1814,6 +1797,10 @@
         "Kind": "shows",
         "Pinned": false,
         "Items": 0
+      },
+      "List": {
+        "ID": "none",
+        "Name": ""
       },
       "Items": [
         {
@@ -1852,7 +1839,6 @@
             "PlayCount": 0,
             "Position": 0,
             "Version": "none",
-            "Favorite": false,
             "Rating": null,
             "LastPlayed": "0001-01-01T00:00:00Z"
           },
@@ -1871,6 +1857,10 @@
         "Kind": "movies",
         "Pinned": false,
         "Items": 0
+      },
+      "List": {
+        "ID": "none",
+        "Name": ""
       },
       "Items": [
         {
@@ -1909,7 +1899,6 @@
             "PlayCount": 0,
             "Position": 0,
             "Version": "none",
-            "Favorite": false,
             "Rating": null,
             "LastPlayed": "0001-01-01T00:00:00Z"
           },
@@ -1928,6 +1917,10 @@
         "Kind": "audiobooks",
         "Pinned": false,
         "Items": 0
+      },
+      "List": {
+        "ID": "none",
+        "Name": ""
       },
       "Items": [
         {
@@ -1966,7 +1959,6 @@
             "PlayCount": 0,
             "Position": 0,
             "Version": "none",
-            "Favorite": false,
             "Rating": null,
             "LastPlayed": "0001-01-01T00:00:00Z"
           },
@@ -2031,7 +2023,6 @@
             "PlayCount": 0,
             "Position": 0,
             "Version": "none",
-            "Favorite": false,
             "Rating": null,
             "LastPlayed": "0001-01-01T00:00:00Z"
           },
@@ -2096,7 +2087,6 @@
             "PlayCount": 0,
             "Position": 0,
             "Version": "none",
-            "Favorite": false,
             "Rating": null,
             "LastPlayed": "0001-01-01T00:00:00Z"
           },
@@ -2206,7 +2196,6 @@
               "PlayCount": 0,
               "Position": 0,
               "Version": "none",
-              "Favorite": false,
               "Rating": null,
               "LastPlayed": "0001-01-01T00:00:00Z"
             },
@@ -2271,7 +2260,6 @@
               "PlayCount": 0,
               "Position": 0,
               "Version": "none",
-              "Favorite": false,
               "Rating": null,
               "LastPlayed": "0001-01-01T00:00:00Z"
             },
@@ -2351,7 +2339,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -2416,7 +2403,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -2478,7 +2464,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -2531,7 +2516,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -2578,7 +2562,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -2646,7 +2629,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -2725,7 +2707,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },
@@ -2790,7 +2771,6 @@
           "PlayCount": 0,
           "Position": 0,
           "Version": "none",
-          "Favorite": false,
           "Rating": null,
           "LastPlayed": "0001-01-01T00:00:00Z"
         },

@@ -3,7 +3,7 @@ import SwiftUI
 
 /// The three card shapes.
 public enum CardStyle: Sendable {
-    /// 2:3, for movies, series, seasons and collections, and episodes in Favorites.
+    /// 2:3, for movies, series, seasons and collections.
     case poster
     /// 16:9, for episodes and other videos, and in Continue Watching.
     case landscape

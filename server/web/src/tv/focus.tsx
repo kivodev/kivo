@@ -325,7 +325,7 @@ function nextInLine(direction: string, focusKey: string, siblings: FocusableComp
 }
 
 /**
- * For a screen with nothing to focus, such as an empty Home or Favorites:
+ * For a screen with nothing to focus, such as an empty Home or Lists:
  * while `empty`, focus goes to the rail.
  */
 export function useTvEmptyScreen(empty: boolean) {

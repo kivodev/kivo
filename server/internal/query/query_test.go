@@ -20,6 +20,9 @@ import (
 
 var update = flag.Bool("update", false, "rewrite golden files")
 
+// listRowPattern is a list row's ID, which holds the list's random ID.
+var listRowPattern = regexp.MustCompile(`"list:[0-9a-f-]{36}"`)
+
 var ctx = context.Background()
 
 // TestGolden renders what each user of the household sees, from Home to
@@ -129,6 +132,7 @@ func (h *household) normalize(b []byte) []byte {
 	b = winPath.ReplaceAllFunc(b, func(p []byte) []byte {
 		return bytes.ReplaceAll(append([]byte(`"`), p[3:]...), []byte(`\\`), []byte("/"))
 	})
+	b = listRowPattern.ReplaceAll(b, []byte(`"list:<id>"`))
 	b = uuidPattern.ReplaceAll(b, []byte(`"<id>"`))
 	b = timePattern.ReplaceAllFunc(b, func(m []byte) []byte {
 		if string(m) == `"0001-01-01T00:00:00Z"` {
@@ -151,7 +155,7 @@ func TestNoGrantsSeesNothing(t *testing.T) {
 				t.Errorf("Libraries = %v, %v", libs, err)
 			}
 			home, err := h.q.Home(ctx, v)
-			if err != nil || len(row(home, query.RowContinueWatching))+len(recentlyAdded(home))+len(row(home, query.RowFavorites)) != 0 {
+			if err != nil || len(row(home, query.RowContinueWatching))+len(recentlyAdded(home))+len(row(home, query.RowList)) != 0 {
 				t.Errorf("Home = %+v, %v", home, err)
 			}
 			for _, q := range []string{"blade", "Bl"} {
@@ -194,7 +198,7 @@ func TestHiddenIsMissing(t *testing.T) {
 // a work the Viewer sees.
 func TestState(t *testing.T) {
 	h := newHousehold(t)
-	if err := h.state.Update(ctx, h.friend, h.toyStory.Work, userstate.Change{Favorite: new(true), Played: new(true)}); err != nil {
+	if err := h.state.Update(ctx, h.friend, h.toyStory.Work, userstate.Change{Played: new(true)}); err != nil {
 		t.Fatal(err)
 	}
 	st, err := h.q.Userstate(ctx, h.friend, h.toyStory.Work)
@@ -205,7 +209,7 @@ func TestState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !st.Favorite || !st.Played || st.PlayCount != 1 || st.Rating != nil || st.LastPlayed != d.Summary.Userstate.LastPlayed ||
+	if !st.Played || st.PlayCount != 1 || st.Rating != nil || st.LastPlayed != d.Summary.Userstate.LastPlayed ||
 		st.Position != d.Summary.Userstate.Position {
 		t.Errorf("state %+v; detail's %+v", st, d.Summary.Userstate)
 	}

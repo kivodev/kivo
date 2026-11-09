@@ -27,7 +27,7 @@ test("pinned libraries order the sidebar and Home, and the rest are under More l
   await moveToTop(page, "Audiobooks");
   await order.getByText("Movies").click(); // the checkbox's label
   await expect(sidebarLibraries).toHaveText(["Audiobooks"]);
-  await expect(sidebar.getByRole("link", { name: "Favorites" })).toBeVisible();
+  await expect(sidebar.getByRole("link", { name: "Lists" })).toBeVisible();
 
   // Saved on the server: a reload keeps it.
   await page.reload();
@@ -64,9 +64,9 @@ test.describe("on a phone", () => {
     await expect(page.getByRole("heading", { name: "Libraries", level: 1 })).toBeVisible();
     await expect(tab).toHaveAttribute("aria-current", "page");
 
-    // Favorites, then the pinned libraries, each with how many items it has.
+    // Lists, then the pinned libraries, each library with how many items it has.
     const rows = page.locator('[data-part="library-row"]');
-    await expect(rows.first()).toContainText("Favorites");
+    await expect(rows.first()).toContainText("Lists");
     await expect(rows.filter({ hasText: "Movies" })).toHaveText(/Movies\s*\d+/);
 
     // A row opens its library under its title alone, with Back to the list.

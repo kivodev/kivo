@@ -29,7 +29,7 @@
     <!-- Navigation -->
     <string name="mobile_tab_home">Home</string>
     <string name="mobile_tab_libraries">Libraries</string>
-    <string name="mobile_tab_favorites">Favorites</string>
+    <string name="mobile_tab_lists">Lists</string>
     <string name="mobile_tab_downloads">Downloads</string>
     <string name="mobile_tab_search">Search</string>
 
@@ -43,13 +43,12 @@
     <string name="mobile_couldnt_load_library">Couldn\'t load this library.</string>
     <string name="mobile_couldnt_load_page">Couldn\'t load this page.</string>
     <string name="mobile_couldnt_load_season">Couldn\'t load this season.</string>
-    <string name="mobile_couldnt_load_favorites">Couldn\'t load Favorites.</string>
+    <string name="mobile_couldnt_load_lists">Couldn\'t load your lists.</string>
     <string name="mobile_search_failed">Search failed.</string>
 
     <!-- Home -->
     <string name="mobile_row_continue_watching">Continue Watching</string>
     <string name="mobile_row_continue_listening">Continue Listening</string>
-    <string name="mobile_row_favorites">Favorites</string>
     <string name="mobile_row_recently_added">Recently Added</string>
     <string name="mobile_row_recently_added_in">Recently Added in %1$s</string>
     <string name="mobile_nothing_yet">Nothing here yet</string>
@@ -66,8 +65,7 @@
     <string name="mobile_mark_unwatched">Mark as unwatched</string>
     <string name="mobile_mark_finished">Mark as finished</string>
     <string name="mobile_mark_unfinished">Mark as unfinished</string>
-    <string name="mobile_add_favorite">Favorite</string>
-    <string name="mobile_remove_favorite">Remove from favorites</string>
+    <string name="mobile_add_to_list">Add to List</string>
     <string name="mobile_remove_from_continue_watching">Remove from Continue Watching</string>
     <string name="mobile_remove_from_continue_listening">Remove from Continue Listening</string>
     <string name="mobile_go_to_series">Go to series</string>
@@ -98,7 +96,6 @@
     <string name="mobile_chapter_position">Chapter position</string>
     <string name="mobile_time_of">%1$s of %2$s</string>
     <string name="mobile_finished">Finished</string>
-    <string name="mobile_favorites">Favorites</string>
     <string name="mobile_resolution">Resolution</string>
     <string name="mobile_dynamic_range">Dynamic range</string>
     <string name="mobile_hdr">HDR</string>
@@ -183,7 +180,9 @@
     <string name="mobile_ends_at">Ends at %1$s</string>
     <string name="mobile_file_missing">This file is missing</string>
     <string name="mobile_download">Download</string>
-    <string name="mobile_favorite">Favorite</string>
+    <string name="mobile_my_list">My List</string>
+    <string name="mobile_add_to_my_list">Add to My List</string>
+    <string name="mobile_remove_from_my_list">Remove from My List</string>
     <string name="mobile_version">Version</string>
     <string name="mobile_audio">Audio</string>
     <string name="mobile_subtitles">Subtitles</string>
@@ -208,8 +207,6 @@
     <string name="mobile_shows">Shows</string>
     <string name="mobile_episodes">Episodes</string>
     <string name="mobile_other_videos">Other videos</string>
-    <string name="mobile_videos">Videos</string>
-    <string name="mobile_extras">Extras</string>
     <string name="mobile_books">Books</string>
     <string name="mobile_other_books">Other books</string>
     <string name="mobile_narrated">Narrated</string>
@@ -265,9 +262,18 @@
     <string name="mobile_clear_search">Clear search</string>
     <string name="mobile_people">People</string>
 
-    <!-- Favorites -->
-    <string name="mobile_no_favorites">No favorites yet.</string>
-    <string name="mobile_no_favorites_sentence">Items you mark with ♥ appear here.</string>
+    <!-- Lists -->
+    <string name="mobile_no_lists">Nothing in your lists yet.</string>
+    <string name="mobile_no_lists_sentence">Add something to My List from a title\'s page.</string>
+    <string name="mobile_list_empty">Nothing in this list yet.</string>
+    <string name="mobile_new_list">New List</string>
+    <string name="mobile_list_name">Name</string>
+    <string name="mobile_list_name_taken">You already have a list with that name.</string>
+    <string name="mobile_create">Create</string>
+    <string name="mobile_rename">Rename</string>
+    <string name="mobile_rename_list">Rename List</string>
+    <string name="mobile_delete_list">Delete List</string>
+    <string name="mobile_delete_named">Delete %1$s?</string>
 
     <!-- Downloads -->
     <string name="mobile_no_downloads">No downloads</string>

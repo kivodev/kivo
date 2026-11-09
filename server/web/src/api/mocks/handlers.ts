@@ -2,8 +2,18 @@ import { HttpResponse, ws } from "msw";
 import { createOpenApiHttp } from "openapi-msw";
 import { apiPaths } from "../paths";
 import type { paths } from "../schema";
-import type { EventMessage, HomeRowInfo, LetterStart, PlayCreate, PlayStarted, PlayTrack, Problem } from "../schemas";
-import { type MockApi, summaryOf } from "./api";
+import type {
+  EventMessage,
+  HomeRowInfo,
+  LetterStart,
+  PlayCreate,
+  PlayStarted,
+  PlayTrack,
+  Problem,
+  WorkList,
+} from "../schemas";
+import { type MockApi, type MockList, summaryOf } from "./api";
+import { mockId } from "./ids";
 
 /** MSW's handlers, typed by the spec, for tests that answer a request themselves. */
 export const http = createOpenApiHttp<paths>({ baseUrl: "*" });
@@ -12,7 +22,13 @@ export const http = createOpenApiHttp<paths>({ baseUrl: "*" });
 function homeLayout(api: MockApi): HomeRowInfo[] {
   return (
     api.homeLayout ??
-    api.home.rows.map(({ id, kind, library }) => ({ id, kind, ...(library ? { library } : {}), shown: true }))
+    api.home.rows.map(({ id, kind, library, list }) => ({
+      id,
+      kind,
+      ...(library ? { library } : {}),
+      ...(list ? { list } : {}),
+      shown: true,
+    }))
   );
 }
 
@@ -25,6 +41,11 @@ export function problem(status: number, code: Problem["code"], extra: Partial<Pr
 
 const notFound = () => problem(404, "notFound");
 const unauthenticated = () => problem(401, "unauthenticated");
+
+/** A list as the API answers, its count from the works it holds. */
+function workListOf({ workIds, ...list }: MockList): WorkList {
+  return { ...list, workCount: workIds.length };
+}
 
 /** The token an app session signed in with a password gets. */
 const mockAppToken = "mock-app-token";
@@ -228,7 +249,18 @@ export function createHandlers(api: MockApi) {
     ),
     http.post("/api/v1/libraries/{id}/refresh-metadata", ({ response }) => response(202).json({})),
 
-    http.get("/api/v1/home", ({ response }) => response(200).json(api.home)),
+    // A list row holds what the list holds, most recently added first.
+    http.get("/api/v1/home", ({ response }) =>
+      response(200).json({
+        ...api.home,
+        rows: api.home.rows.map((row) => {
+          const list = row.list && api.lists.find((l) => l.id === row.list?.id);
+          return list
+            ? { ...row, items: list.workIds.flatMap((id) => (api.works[id] ? [summaryOf(api.works[id])] : [])) }
+            : row;
+        }),
+      }),
+    ),
     http.get("/api/v1/home/rows", ({ response }) => response(200).json({ items: homeLayout(api) })),
     http.patch("/api/v1/home/rows", async ({ request, response }) => {
       const byId = new Map(homeLayout(api).map((r) => [r.id, r]));
@@ -242,16 +274,65 @@ export function createHandlers(api: MockApi) {
       api.homeLayout = undefined;
       return response(200).json({ items: homeLayout(api) });
     }),
-    // The works marked a favorite, of one kind or every kind, as a grid
-    // paged by offset.
-    http.get("/api/v1/favorites", ({ query, response }) => {
-      const kind = query.get("kind");
-      const items = Object.values(api.works)
-        .filter((w) => w.userState?.favorite && (!kind || w.kind === kind))
-        .map(summaryOf);
-      const start = Number(query.get("offset") ?? 0);
-      const end = start + Number(query.get("limit") ?? 50);
+    // My List first, then by name.
+    http.get("/api/v1/lists", ({ response }) => {
+      const sorted = [...api.lists].sort(
+        (a, b) => Number(b.builtIn) - Number(a.builtIn) || a.name.localeCompare(b.name),
+      );
+      return response(200).json({ items: sorted.map(workListOf) });
+    }),
+    http.post("/api/v1/lists", async ({ request, response }) => {
+      const { name } = await request.json();
+      if (api.lists.some((l) => l.name.toLowerCase() === name.toLowerCase())) return problem(409, "nameTaken");
+      if (api.lists.length >= 100) return problem(409, "conflict");
+      const list: MockList = { id: mockId(9600 + api.lists.length), name, kind: "manual", builtIn: false, workIds: [] };
+      api.lists.push(list);
+      return response(201).json(workListOf(list));
+    }),
+    http.get("/api/v1/lists/{id}", ({ params, response }) => {
+      const list = api.lists.find((l) => l.id === params.id);
+      return list ? response(200).json(workListOf(list)) : notFound();
+    }),
+    http.patch("/api/v1/lists/{id}", async ({ params, request, response }) => {
+      const list = api.lists.find((l) => l.id === params.id);
+      if (!list) return notFound();
+      if (list.builtIn) return problem(409, "conflict");
+      const { name } = await request.json();
+      if (name !== undefined) {
+        if (api.lists.some((l) => l !== list && l.name.toLowerCase() === name.toLowerCase())) {
+          return problem(409, "nameTaken");
+        }
+        list.name = name;
+      }
+      return response(200).json(workListOf(list));
+    }),
+    http.delete("/api/v1/lists/{id}", ({ params, response }) => {
+      const list = api.lists.find((l) => l.id === params.id);
+      if (!list) return notFound();
+      if (list.builtIn) return problem(409, "conflict");
+      api.lists = api.lists.filter((l) => l !== list);
+      return response(204).empty();
+    }),
+    // A list's works, most recently added first, by offset.
+    http.get("/api/v1/lists/{id}/works", ({ params, query, response }) => {
+      const list = api.lists.find((l) => l.id === params.id);
+      if (!list) return notFound();
+      const items = list.workIds.flatMap((id) => (api.works[id] ? [summaryOf(api.works[id])] : []));
+      const { start, end } = pageOf(query.get("offset"), query.get("limit"), items.length);
       return response(200).json({ items: items.slice(start, end), total: items.length });
+    }),
+    http.post("/api/v1/lists/{id}/works", async ({ params, request, response }) => {
+      const list = api.lists.find((l) => l.id === params.id);
+      if (!list) return notFound();
+      const { workId } = await request.json();
+      if (!list.workIds.includes(workId)) list.workIds.unshift(workId);
+      return response(204).empty();
+    }),
+    http.delete("/api/v1/lists/{id}/works/{workId}", ({ params, response }) => {
+      const list = api.lists.find((l) => l.id === params.id);
+      if (!list) return notFound();
+      list.workIds = list.workIds.filter((id) => id !== params.workId);
+      return response(204).empty();
     }),
     // A library's grid, by offset. The title sort has letters.
     http.get("/api/v1/libraries/{id}/works", ({ params, query, response }) => {
@@ -311,17 +392,17 @@ export function createHandlers(api: MockApi) {
     }),
     http.get("/api/v1/works/{id}", ({ params, response }) => {
       const work = api.works[params.id];
-      return work ? response(200).json(work) : notFound();
+      if (!work) return notFound();
+      return response(200).json({
+        ...work,
+        listIds: api.lists.filter((l) => l.workIds.includes(work.id)).map((l) => l.id),
+      });
     }),
     http.patch("/api/v1/works/{id}/user-state", async ({ params, request, response }) => {
       const work = api.works[params.id];
       if (!work?.userState) return notFound();
-      const { played, favorite } = await request.json();
-      work.userState = {
-        ...work.userState,
-        played: played ?? work.userState.played,
-        favorite: favorite ?? work.userState.favorite,
-      };
+      const { played } = await request.json();
+      work.userState = { ...work.userState, played: played ?? work.userState.played };
       // Lists hold their own copies of the work's card, and marking a
       // series or season marks what's under it.
       const cards = Object.values(api.children).flat();

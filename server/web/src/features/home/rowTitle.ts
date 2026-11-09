@@ -10,8 +10,8 @@ export function useHomeRowTitle() {
         return t`Continue Watching`;
       case "continueListening":
         return t`Continue Listening`;
-      case "favorites":
-        return t`Favorites`;
+      case "list":
+        return row.list?.name ?? "";
       default: {
         const name = row.library?.name;
         return name ? t`Recently Added in ${name}` : t`Recently Added`;

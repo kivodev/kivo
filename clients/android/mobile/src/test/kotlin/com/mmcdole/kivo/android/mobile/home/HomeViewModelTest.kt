@@ -9,6 +9,7 @@ import com.mmcdole.kivo.api.models.HomeRow
 import com.mmcdole.kivo.api.models.Library
 import com.mmcdole.kivo.api.models.LibraryList
 import com.mmcdole.kivo.api.models.LibraryRef
+import com.mmcdole.kivo.api.models.ListRef
 import com.mmcdole.kivo.core.RequestProblem
 import io.ktor.http.HttpStatusCode
 import kotlin.test.Test
@@ -21,7 +22,7 @@ class HomeViewModelTest : CoreTest() {
     private var rows = listOf(
         HomeRow("continueWatching", "continueWatching", listOf(work("m1"))),
         HomeRow("someday", "aKindFromLater", listOf(work("m2"))),
-        HomeRow("favorites", "favorites", emptyList()),
+        HomeRow("list:gone", "list", emptyList(), list = ListRef("gone", "Gone")),
         HomeRow("recentlyAdded:lib1", "recentlyAdded", listOf(work("m2"), work("m1")), LibraryRef("lib1", "Movies", "movies")),
     )
 

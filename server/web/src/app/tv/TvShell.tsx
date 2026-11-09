@@ -58,7 +58,7 @@ function libraryKey(libraries: readonly { id: string; pinned?: boolean }[], libr
 
 /**
  * The rail destination the screen is, if it is one: Search, Home,
- * Favorites, a library or Settings. A library that isn't pinned is under
+ * Lists, a library or Settings. A library that isn't pinned is under
  * More libraries.
  */
 function useDestination(): RailKey | undefined {
@@ -66,7 +66,7 @@ function useDestination(): RailKey | undefined {
   const libraries = useSuspenseQuery(libraryQueries.list()).data.items;
   if (matchRoute({ to: "/" })) return railKeys.home;
   if (matchRoute({ to: "/search" })) return railKeys.search;
-  if (matchRoute({ to: "/favorites" })) return railKeys.favorites;
+  if (matchRoute({ to: "/lists" })) return railKeys.lists;
   if (matchRoute({ to: "/settings" })) return railKeys.settings;
   const library = matchRoute({ to: "/libraries/$libraryId" });
   if (!library) return undefined;

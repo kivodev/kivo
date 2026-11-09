@@ -2,8 +2,7 @@ import KivoCore
 import KivoUI
 import SwiftUI
 
-/// A heading over a horizontal row of cards, as Home's rows and Favorites'
-/// are. With [more], the heading is a button with a chevron that opens
+/// A heading over a horizontal row of cards, as Home's rows are. With [more], the heading is a button with a chevron that opens
 /// everything the row starts.
 struct BrowseRow: View {
     let title: String

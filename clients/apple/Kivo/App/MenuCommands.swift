@@ -2,7 +2,7 @@ import KivoCore
 import SwiftUI
 
 /// The tabs in the View menu of the iPad's menu bar, each with its shortcut
-/// on a hardware keyboard: Home, Favorites, the pinned libraries, Downloads
+/// on a hardware keyboard: Home, Lists, the pinned libraries, Downloads
 /// and Search, while signed in.
 struct TabCommands: Commands {
     let app: AppModel
@@ -13,7 +13,7 @@ struct TabCommands: Commands {
             Group {
                 Button(String(localized: "Home")) { server?.choose(.home) }
                     .keyboardShortcut("1")
-                Button(String(localized: "Favorites")) { server?.showFavorites() }
+                Button(String(localized: "Lists")) { server?.choose(.lists) }
                     .keyboardShortcut("2")
                 if let server {
                     ForEach(Array(server.pinnedLibraries.prefix(6).enumerated()), id: \.element.id) { index, library in

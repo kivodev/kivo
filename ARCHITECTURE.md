@@ -80,7 +80,7 @@ The main components:
 - **`transcode`** writes HLS playlists, runs one ffmpeg job per play, handles seeks, paces jobs and stores segments. It also runs download conversions.
 - **`playback`** decides how each track of a play is delivered, runs plays, enforces stream limits, authorizes media requests, and plans and prepares downloads.
 - **`previews`**, **`subtitles`** and **`markers`** prepare work ahead of time: scrub thumbnails, extracted subtitles and fonts, and intro and credits markers.
-- **`users`**, **`auth`** and **`userstate`** hold accounts and permissions, credentials and sessions, and watch state.
+- **`users`**, **`auth`** and **`userstate`** hold accounts, permissions, each account's Home layout and lists, credentials and sessions, and watch state and what's in each list.
 - **`query`** answers every read the UI needs, filtered by the caller's permissions.
 - **`tasks`** runs all background work, and **`events`** fans out live-update hints.
 - **`release`** checks once a day whether a newer Kivo release is out, for the admin's notice.

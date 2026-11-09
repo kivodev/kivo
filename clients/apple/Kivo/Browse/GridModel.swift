@@ -96,13 +96,12 @@ final class GridModel {
         var tab = Tab.titles
         var sort: Sort
         var played: Played
-        var onlyFavorites = false
         var resolutions: Set<String> = []
         var dynamicRanges: Set<String> = []
 
         /// Whether a filter narrows the works.
         var filtered: Bool {
-            played.value != nil || onlyFavorites || !resolutions.isEmpty || !dynamicRanges.isEmpty
+            played.value != nil || !resolutions.isEmpty || !dynamicRanges.isEmpty
         }
     }
 
@@ -193,7 +192,6 @@ final class GridModel {
             tab: saved["tab"].flatMap(Tab.init(rawValue:)) ?? .titles,
             sort: sorts.first { $0.value == saved["sort"] } ?? sorts[0],
             played: playedFilters.first { $0.value == saved["played"] } ?? playedFilters[0],
-            onlyFavorites: saved["favorites"] == "true",
             resolutions: list("resolutions"),
             dynamicRanges: list("dynamicRanges")
         )
@@ -275,9 +273,6 @@ final class GridModel {
         var filters: [ActiveFilter] = []
         if query.played.value != nil {
             filters.append(ActiveFilter(id: "played", label: query.played.label) { [playedFilters] in $0.played = playedFilters[0] })
-        }
-        if query.onlyFavorites {
-            filters.append(ActiveFilter(id: "favorites", label: String(localized: "Favorites")) { $0.onlyFavorites = false })
         }
         for resolution in query.resolutions.sorted() {
             filters.append(ActiveFilter(id: resolution, label: Self.label(resolution)) { $0.resolutions.remove(resolution) })
@@ -370,7 +365,6 @@ final class GridModel {
         if keeps {
             var state = [
                 "sort": query.sort.value,
-                "favorites": String(query.onlyFavorites),
                 "resolutions": query.resolutions.sorted().joined(separator: ","),
                 "dynamicRanges": query.dynamicRanges.sorted().joined(separator: ","),
             ]
@@ -396,7 +390,6 @@ final class GridModel {
     /// Clears the filters, keeping the tab and sort.
     func clearFilters() {
         query.played = playedFilters[0]
-        query.onlyFavorites = false
         query.resolutions = []
         query.dynamicRanges = []
     }
@@ -479,7 +472,6 @@ final class GridModel {
                 libraryId: library.id,
                 sort: query.sort.value,
                 played: query.played.value,
-                onlyFavorites: query.onlyFavorites,
                 resolutions: Array(query.resolutions),
                 dynamicRanges: Array(query.dynamicRanges)
             )), item: LibraryItem.work)
@@ -512,7 +504,6 @@ private extension GridQuery {
         libraryId: String,
         sort: String? = nil,
         played: String? = nil,
-        onlyFavorites: Bool = false,
         resolutions: [String] = [],
         dynamicRanges: [String] = []
     ) {
@@ -525,8 +516,7 @@ private extension GridQuery {
             yearTo: nil,
             contentRatings: nil,
             resolutions: resolutions.isEmpty ? nil : resolutions,
-            dynamicRanges: dynamicRanges.isEmpty ? nil : dynamicRanges,
-            favorite: onlyFavorites
+            dynamicRanges: dynamicRanges.isEmpty ? nil : dynamicRanges
         )
     }
 }

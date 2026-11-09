@@ -14,7 +14,7 @@ extension WorkDetail {
             userState: summary.userState, movie: summary.movie, series: summary.series, season: summary.season,
             episode: summary.episode, extra: summary.extra, book: summary.book,
             libraryId: summary.libraryId, path: nil, originalTitle: nil,
-            sortTitle: nil, overview: nil, remembersTracks: nil, lockedFields: nil
+            sortTitle: nil, overview: nil, remembersTracks: nil, listIds: nil, lockedFields: nil
         )
     }
 
@@ -29,7 +29,7 @@ extension WorkDetail {
             communityRating: nil, communityVotes: nil, contentRating: season.contentRating, addedAt: nil, userState: nil,
             movie: nil, series: nil, season: nil, episode: nil, extra: nil, book: nil,
             libraryId: season.libraryId, path: nil, originalTitle: nil, sortTitle: nil, overview: nil,
-            remembersTracks: nil, lockedFields: nil
+            remembersTracks: nil, listIds: nil, lockedFields: nil
         )
     }
 

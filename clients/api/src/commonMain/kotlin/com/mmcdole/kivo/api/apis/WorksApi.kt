@@ -33,6 +33,9 @@ import com.mmcdole.kivo.api.models.FixMatchRequest
 import com.mmcdole.kivo.api.models.Home
 import com.mmcdole.kivo.api.models.HomeRowInfoList
 import com.mmcdole.kivo.api.models.HomeRowsUpdate
+import com.mmcdole.kivo.api.models.ListCreate
+import com.mmcdole.kivo.api.models.ListUpdate
+import com.mmcdole.kivo.api.models.ListWorkAdd
 import com.mmcdole.kivo.api.models.MatchList
 import com.mmcdole.kivo.api.models.NameUpdate
 import com.mmcdole.kivo.api.models.Person
@@ -41,6 +44,8 @@ import com.mmcdole.kivo.api.models.SearchResults
 import com.mmcdole.kivo.api.models.UserState
 import com.mmcdole.kivo.api.models.UserStateUpdate
 import com.mmcdole.kivo.api.models.WorkDetail
+import com.mmcdole.kivo.api.models.WorkList
+import com.mmcdole.kivo.api.models.WorkListList
 import com.mmcdole.kivo.api.models.WorkSummaryFeed
 import com.mmcdole.kivo.api.models.WorkSummaryList
 import com.mmcdole.kivo.api.models.WorkSummaryPage
@@ -75,6 +80,104 @@ open class WorksApi : ApiClient {
         baseUrl: String,
         httpClient: HttpClient
     ): super(baseUrl = baseUrl, httpClient = httpClient)
+
+    /**
+     * Add a work to a list
+     * A work already in the list keeps its place. It stays there after being played. A &#x60;listsChanged&#x60; event tells the user&#39;s clients. 
+     * @param id 
+     * @param listWorkAdd 
+     * @return void
+     */
+    open suspend fun addListWork(id: kotlin.String, listWorkAdd: ListWorkAdd): HttpResponse<Unit> {
+
+        val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
+
+        val localVariableBody = listWorkAdd
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.POST,
+            "/api/v1/lists/{id}/works".replace("{" + "id" + "}", "$id"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return jsonRequest(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+
+    /**
+     * Create a list
+     * A new list starts off Home; Home &amp; Libraries in Settings puts it on. A name in use is &#x60;409&#x60; with code &#x60;nameTaken&#x60;; a user has at most 100 lists, past which it is &#x60;409&#x60; with code &#x60;conflict&#x60;. A &#x60;listsChanged&#x60; event tells the user&#39;s clients. 
+     * @param listCreate 
+     * @return WorkList
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun createList(listCreate: ListCreate): HttpResponse<WorkList> {
+
+        val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
+
+        val localVariableBody = listCreate
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.POST,
+            "/api/v1/lists",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return jsonRequest(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+
+    /**
+     * Delete a list
+     * Deletes the list, not its works. My List can&#39;t be deleted: &#x60;409&#x60; with code &#x60;conflict&#x60;. A &#x60;listsChanged&#x60; event tells the user&#39;s clients. 
+     * @param id 
+     * @return void
+     */
+    open suspend fun deleteList(id: kotlin.String): HttpResponse<Unit> {
+
+        val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.DELETE,
+            "/api/v1/lists/{id}".replace("{" + "id" + "}", "$id"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
 
     /**
      * Get book series
@@ -163,6 +266,39 @@ open class WorksApi : ApiClient {
         val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.GET,
             "/api/v1/home",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
+     * Get a list
+     * 
+     * @param id 
+     * @return WorkList
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun getList(id: kotlin.String): HttpResponse<WorkList> {
+
+        val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/api/v1/lists/{id}".replace("{" + "id" + "}", "$id"),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -277,44 +413,6 @@ open class WorksApi : ApiClient {
 
 
     /**
-     * List favorites
-     * Favorites in libraries the user sees, most recently marked first: one kind with &#x60;kind&#x60;, else every kind. A page grouped by kind asks for each kind&#39;s first page, whose &#x60;total&#x60; says whether it has any. Summaries are as everywhere: an episode&#39;s has its series&#39; title and poster and its season and episode numbers. A grid, paged by &#x60;offset&#x60;, with &#x60;total&#x60; on every page; works marked at the same time are listed by title. 
-     * @param kind  (optional)
-     * @param offset How many items to skip from the start. (optional)
-     * @param limit Page size. The default and the most a page holds depend on the listing. (optional)
-     * @return WorkSummaryPage
-     */
-    @Suppress("UNCHECKED_CAST")
-    open suspend fun listFavorites(kind: kotlin.String? = null, offset: kotlin.Int? = null, limit: kotlin.Int? = null): HttpResponse<WorkSummaryPage> {
-
-        val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
-
-        val localVariableBody = 
-            io.ktor.client.utils.EmptyContent
-
-        val localVariableQuery = mutableMapOf<String, List<String>>()
-        kind?.apply { localVariableQuery["kind"] = listOf("$kind") }
-        offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
-        limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
-        val localVariableHeaders = mutableMapOf<String, String>()
-
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
-            RequestMethod.GET,
-            "/api/v1/favorites",
-            query = localVariableQuery,
-            headers = localVariableHeaders,
-            requiresAuthentication = true,
-        )
-
-        return request(
-            localVariableConfig,
-            localVariableBody,
-            localVariableAuthNames
-        ).wrap()
-    }
-
-
-    /**
      * List Home rows
      * Every row of the user&#39;s Home, in order, shown or not, including rows with no works. For the Home &amp; Libraries editor. 
      * @return HomeRowInfoList
@@ -333,6 +431,75 @@ open class WorksApi : ApiClient {
         val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.GET,
             "/api/v1/home/rows",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
+     * List a list&#39;s works
+     * A list&#39;s works the user sees, most recently added first. A grid, paged by &#x60;offset&#x60;, with &#x60;total&#x60; on every page; works added at the same time are listed by title. 
+     * @param id 
+     * @param offset How many items to skip from the start. (optional)
+     * @param limit Page size. The default and the most a page holds depend on the listing. (optional)
+     * @return WorkSummaryPage
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun listListWorks(id: kotlin.String, offset: kotlin.Int? = null, limit: kotlin.Int? = null): HttpResponse<WorkSummaryPage> {
+
+        val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
+        limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/api/v1/lists/{id}/works".replace("{" + "id" + "}", "$id"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
+     * List the user&#39;s lists
+     * The user&#39;s lists, My List first, then by name.
+     * @return WorkListList
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun listLists(): HttpResponse<WorkListList> {
+
+        val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/api/v1/lists",
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -591,8 +758,41 @@ open class WorksApi : ApiClient {
 
 
     /**
+     * Remove a work from a list
+     * A &#x60;listsChanged&#x60; event tells the user&#39;s clients.
+     * @param id 
+     * @param workId 
+     * @return void
+     */
+    open suspend fun removeListWork(id: kotlin.String, workId: kotlin.String): HttpResponse<Unit> {
+
+        val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.DELETE,
+            "/api/v1/lists/{id}/works/{workId}".replace("{" + "id" + "}", "$id").replace("{" + "workId" + "}", "$workId"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
      * Reset the Home layout
-     * Forgets the user&#39;s order and hidden rows, so Home returns to the default order with every built-in row shown. A &#x60;homeChanged&#x60; event tells the user&#39;s clients. 
+     * Forgets the user&#39;s order and hidden rows, so Home returns to the default order with every built-in row shown. Lists remain, off Home, except My List. A &#x60;homeChanged&#x60; event tells the user&#39;s clients. 
      * @return HomeRowInfoList
      */
     @Suppress("UNCHECKED_CAST")
@@ -793,6 +993,40 @@ open class WorksApi : ApiClient {
 
 
     /**
+     * Rename a list
+     * My List can&#39;t be renamed: &#x60;409&#x60; with code &#x60;conflict&#x60;. A name in use is &#x60;409&#x60; with code &#x60;nameTaken&#x60;. A &#x60;listsChanged&#x60; event tells the user&#39;s clients. 
+     * @param id 
+     * @param listUpdate 
+     * @return WorkList
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun updateList(id: kotlin.String, listUpdate: ListUpdate): HttpResponse<WorkList> {
+
+        val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
+
+        val localVariableBody = listUpdate
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.PATCH,
+            "/api/v1/lists/{id}".replace("{" + "id" + "}", "$id"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return jsonRequest(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+
+    /**
      * Rename person
      * Renaming to the name of someone else merges the two, as Audiobookshelf does: the books move to that person, whose page this answers with. Each book&#39;s authors or narrators are locked, so a rescan keeps the change. 
      * @param id 
@@ -862,7 +1096,7 @@ open class WorksApi : ApiClient {
 
     /**
      * Update user state
-     * Marks a work played or unplayed, favorite or not, or reports an offline position. For the caller. Marking a series or season played or unplayed applies to each of its episodes; marking unplayed clears the resume position.  &#x60;positionMs&#x60;, &#x60;playedAt&#x60; and &#x60;versionId&#x60; report where a download was played to with no server contact, from the app&#39;s progress outbox. The position is applied only when &#x60;playedAt&#x60; is newer than the work&#39;s last update, so the latest play wins wherever it was; an older one is ignored. Then the usual rules apply: a video is finished at the played threshold, a book with 5 minutes or less left, and the play shows in watch history. A version that isn&#39;t the work&#39;s is &#x60;404&#x60;. 
+     * Marks a work played or unplayed, or reports an offline position. For the caller. Marking a series or season played or unplayed applies to each of its episodes; marking unplayed clears the resume position.  &#x60;positionMs&#x60;, &#x60;playedAt&#x60; and &#x60;versionId&#x60; report where a download was played to with no server contact, from the app&#39;s progress outbox. The position is applied only when &#x60;playedAt&#x60; is newer than the work&#39;s last update, so the latest play wins wherever it was; an older one is ignored. Then the usual rules apply: a video is finished at the played threshold, a book with 5 minutes or less left, and the play shows in watch history. A version that isn&#39;t the work&#39;s is &#x60;404&#x60;. 
      * @param id 
      * @param userStateUpdate 
      * @return UserState

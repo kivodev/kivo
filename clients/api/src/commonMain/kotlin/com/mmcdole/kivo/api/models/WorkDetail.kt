@@ -76,6 +76,7 @@ import kotlinx.serialization.encoding.*
  * @param sortTitle 
  * @param overview 
  * @param remembersTracks With versions: whether choosing tracks for this work remembers them for its series, as for an episode when the user's `rememberTracks` is on (`PlaybackPreferences`). 
+ * @param listIds The user's lists holding the work; the server always sends it.
  * @param lockedFields Admins only. Fields an admin edited, shown with a lock icon.
  */
 @Serializable
@@ -159,6 +160,9 @@ data class WorkDetail (
 
     /* With versions: whether choosing tracks for this work remembers them for its series, as for an episode when the user's `rememberTracks` is on (`PlaybackPreferences`).  */
     @SerialName(value = "remembersTracks") val remembersTracks: kotlin.Boolean? = null,
+
+    /* The user's lists holding the work; the server always sends it. */
+    @SerialName(value = "listIds") val listIds: kotlin.collections.List<kotlin.String>? = null,
 
     /* Admins only. Fields an admin edited, shown with a lock icon. */
     @SerialName(value = "lockedFields") val lockedFields: kotlin.collections.List<kotlin.String>? = null

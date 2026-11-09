@@ -441,7 +441,7 @@ internal fun LibrariesPage(session: ServerSession) {
             item { SubTitle(stringResource(R.string.settings_home_rows)) }
             itemsIndexed(rows, key = { _, it -> it.id }) { index, row ->
                 OrderedRow(
-                    rowTitle(row.kind, row.library?.name),
+                    rowTitle(row.kind, row.library?.name, row.list?.name),
                     row.shown,
                     row.id,
                     memory,

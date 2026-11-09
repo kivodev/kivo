@@ -21,7 +21,7 @@ final class LibrarySwitchTests: XCTestCase {
         app.launchEnvironment["KIVO_CLIENT_ID"] = "kivo-ui-tests"
     }
 
-    /// The list: Favorites and the libraries, each opening its page with
+    /// The list of libraries, each opening its page with
     /// Back to the list; choosing the tab again goes back to the list, and
     /// the app opens again on the page last opened.
     func testTheList() throws {
@@ -33,7 +33,6 @@ final class LibrarySwitchTests: XCTestCase {
         if !list.waitForExistence(timeout: 10) { librariesTab.tap() }
         XCTAssert(list.waitForExistence(timeout: 10), "the Libraries tab has no list")
         XCTAssert(app.navigationBars["Libraries"].exists, "the list isn't titled Libraries")
-        XCTAssert(row("Favorites").exists, "the list has no Favorites")
         sleep(1)
         keep("list")
 
@@ -59,8 +58,7 @@ final class LibrarySwitchTests: XCTestCase {
         XCTAssert(app.navigationBars[library].buttons["Libraries"].exists, "the app didn't open \(library) over the list")
 
         app.navigationBars[library].buttons["Libraries"].tap()
-        row("Favorites").tap()
-        XCTAssert(app.navigationBars["Favorites"].waitForExistence(timeout: 10), "Favorites didn't open")
+        XCTAssert(list.waitForExistence(timeout: 10), "\(library) didn't go back to the list")
     }
 
     /// How quickly opening a library from the list shows it.

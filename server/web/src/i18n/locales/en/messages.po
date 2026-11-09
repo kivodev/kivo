@@ -108,10 +108,6 @@ msgstr "Audiobooks"
 msgid "Go to series"
 msgstr "Go to series"
 
-#: src/features/browse/FavoritesScreen.tsx
-msgid "No favorites yet."
-msgstr "No favorites yet."
-
 #: src/features/admin/useAdminLabels.ts
 msgid "Remove missing files"
 msgstr "Remove missing files"
@@ -271,10 +267,6 @@ msgstr "For example, Home Assistant."
 msgid "People"
 msgstr "People"
 
-#: src/features/browse/FavoritesScreen.tsx
-msgid "Items you mark with ♥ appear here."
-msgstr "Items you mark with ♥ appear here."
-
 #: src/features/admin/useAdminLabels.ts
 msgid "Matching"
 msgstr "Matching"
@@ -310,6 +302,7 @@ msgstr "Block unrated items"
 #: src/features/detail/BookSeriesScreen.tsx
 #: src/features/detail/PersonScreen.tsx
 #: src/features/detail/RenameDialog.tsx
+#: src/features/lists/ListScreen.tsx
 #: src/features/user/Sessions.tsx
 msgid "Rename"
 msgstr "Rename"
@@ -583,6 +576,7 @@ msgstr "Add this folder"
 #: src/features/detail/RenameDialog.tsx
 #: src/features/libraries/AddLibraryForm.tsx
 #: src/features/libraries/EditLibraryForm.tsx
+#: src/features/lists/ListNameForm.tsx
 #: src/features/user/Sessions.tsx
 msgid "Name"
 msgstr "Name"
@@ -648,9 +642,11 @@ msgstr "On a signed-in device, scan the QR code, or open Link a device and enter
 msgid "View unmatched items"
 msgstr "View unmatched items"
 
+#. placeholder {0}: list.name
 #. placeholder {0}: work.title
 #: src/features/browse/WorkCard.tsx
 #: src/features/detail/DetailMenu.tsx
+#: src/features/lists/ListScreen.tsx
 msgid "More actions for {0}"
 msgstr "More actions for {0}"
 
@@ -755,6 +751,10 @@ msgstr "Specials"
 msgid "Use local artwork"
 msgstr "Use local artwork"
 
+#: src/features/lists/ListsScreen.tsx
+msgid "Your lists"
+msgstr "Your lists"
+
 #: src/features/admin/EditBookForm.tsx
 msgid "Subtitle"
 msgstr "Subtitle"
@@ -765,6 +765,12 @@ msgstr "Subtitle"
 #: src/features/search/SearchScreen.tsx
 msgid "Search"
 msgstr "Search"
+
+#: src/features/browse/WorkCard.tsx
+#: src/features/detail/DetailMenu.tsx
+#: src/features/lists/AddToListDialog.tsx
+msgid "Add to List"
+msgstr "Add to List"
 
 #: src/features/user/SettingsScreen.tsx
 msgid "Appearance"
@@ -826,7 +832,6 @@ msgstr "Sign out {device}"
 msgid "Network shares may not report changes. All libraries are also scanned every 12 hours."
 msgstr "Network shares may not report changes. All libraries are also scanned every 12 hours."
 
-#: src/features/browse/FavoritesScreen.tsx
 #: src/features/detail/SeriesDetail.tsx
 #: src/features/search/SearchScreen.tsx
 msgid "Episodes"
@@ -1011,6 +1016,7 @@ msgid "Series name"
 msgstr "Series name"
 
 #: src/features/admin/UserScreen.tsx
+#: src/features/lists/ListScreen.tsx
 msgid "Delete"
 msgstr "Delete"
 
@@ -1167,6 +1173,7 @@ msgstr "Playback Settings"
 #: src/components/TranscodeDiagnostics.tsx
 #: src/features/admin/ApiKeysScreen.tsx
 #: src/features/admin/CreateInviteButton.tsx
+#: src/features/lists/AddToListDialog.tsx
 msgid "Done"
 msgstr "Done"
 
@@ -1283,9 +1290,9 @@ msgstr "Other extras"
 msgid "Make admin and save"
 msgstr "Make admin and save"
 
-#: src/features/browse/FavoritesScreen.tsx
-msgid "{count, plural, one {# extra} other {# extras}}"
-msgstr "{count, plural, one {# extra} other {# extras}}"
+#: src/features/lists/ListScreen.tsx
+msgid "The titles stay in your libraries."
+msgstr "The titles stay in your libraries."
 
 #: src/app/AppShell.tsx
 #: src/app/tv/TvRail.tsx
@@ -1324,7 +1331,6 @@ msgid "Can't play this profile"
 msgstr "Can't play this profile"
 
 #: src/features/browse/CountLine.tsx
-#: src/features/browse/FavoritesScreen.tsx
 msgid "{count, plural, one {# book} other {# books}}"
 msgstr "{count, plural, one {# book} other {# books}}"
 
@@ -1363,6 +1369,10 @@ msgstr "Writer"
 #: src/features/admin/ScanLine.tsx
 msgid "about {left} left"
 msgstr "about {left} left"
+
+#: src/features/lists/ListScreen.tsx
+msgid "Titles you add to this list appear here."
+msgstr "Titles you add to this list appear here."
 
 #: src/features/player/castProtocol.ts
 msgid "Update the server to cast to this TV."
@@ -1589,8 +1599,8 @@ msgid "Now Playing: {0}"
 msgstr "Now Playing: {0}"
 
 #: src/features/admin/OverviewScreen.tsx
-#: src/features/browse/FavoritesScreen.tsx
 #: src/features/home/HomeScreen.tsx
+#: src/features/lists/ListsScreen.tsx
 msgid "See all"
 msgstr "See all"
 
@@ -1617,9 +1627,23 @@ msgstr "Sign out {name}?"
 msgid "More reference frames than this device plays"
 msgstr "More reference frames than this device plays"
 
+#: src/app/AppShell.tsx
+#: src/app/tv/TvRail.tsx
+#: src/features/browse/LibrariesScreen.tsx
+#: src/features/browse/LibrarySwitcher.tsx
+#: src/features/lists/AddToListDialog.tsx
+#: src/features/lists/ListScreen.tsx
+#: src/features/lists/ListsScreen.tsx
+msgid "Lists"
+msgstr "Lists"
+
 #: src/components/CopyField.tsx
 msgid "Press Ctrl+C to copy."
 msgstr "Press Ctrl+C to copy."
+
+#: src/features/detail/WatchToggles.tsx
+msgid "Remove from My List"
+msgstr "Remove from My List"
 
 #: src/features/admin/CreateInviteButton.tsx
 msgid "Network settings"
@@ -1651,6 +1675,10 @@ msgstr "Allow"
 #: src/features/libraries/AddLibraryForm.tsx
 msgid "Add library"
 msgstr "Add library"
+
+#: src/features/lists/ListsScreen.tsx
+msgid "Titles you add to My List or to a list of your own appear here."
+msgstr "Titles you add to My List or to a list of your own appear here."
 
 #: src/features/user/SettingsScreen.tsx
 msgid "Change password…"
@@ -1752,6 +1780,10 @@ msgstr "Apple TV"
 msgid "Next"
 msgstr "Next"
 
+#: src/features/lists/AddToListDialog.tsx
+msgid "Create"
+msgstr "Create"
+
 #: src/features/admin/ManageLibrariesScreen.tsx
 msgid "Scan"
 msgstr "Scan"
@@ -1766,7 +1798,6 @@ msgstr "Home"
 msgid "Message to the viewer (optional)"
 msgstr "Message to the viewer (optional)"
 
-#: src/features/browse/FavoritesScreen.tsx
 #: src/features/browse/LibraryScreen.tsx
 #: src/features/detail/PersonScreen.tsx
 #: src/features/libraries/AddLibraryForm.tsx
@@ -1794,7 +1825,6 @@ msgstr "That code didn't work. Check the other device for a new one."
 msgid "Optimizing"
 msgstr "Optimizing"
 
-#: src/features/browse/FavoritesScreen.tsx
 #: src/features/browse/LibraryScreen.tsx
 #: src/features/detail/PersonScreen.tsx
 #: src/features/libraries/AddLibraryForm.tsx
@@ -1828,7 +1858,6 @@ msgid "Logo"
 msgstr "Logo"
 
 #: src/features/browse/CountLine.tsx
-#: src/features/browse/FavoritesScreen.tsx
 msgid "{count, plural, one {# movie} other {# movies}}"
 msgstr "{count, plural, one {# movie} other {# movies}}"
 
@@ -1899,6 +1928,10 @@ msgstr "Test encode failed."
 #: src/features/admin/UserScreen.tsx
 msgid "Admins can manage all libraries, users and settings."
 msgstr "Admins can manage all libraries, users and settings."
+
+#: src/features/lists/AddToListDialog.tsx
+msgid "New List"
+msgstr "New List"
 
 #: src/features/libraries/EditLibraryForm.tsx
 msgid "Every 60 days"
@@ -2016,6 +2049,10 @@ msgstr "Or an ASIN, such as B08G9PRS1K."
 msgid "Every 30 days"
 msgstr "Every 30 days"
 
+#: src/features/lists/ListNameForm.tsx
+msgid "A list with that name already exists."
+msgstr "A list with that name already exists."
+
 #: src/app/ConnectionBanner.tsx
 msgid "Can't reach {server}. Reconnecting…"
 msgstr "Can't reach {server}. Reconnecting…"
@@ -2031,6 +2068,10 @@ msgstr "Can't reach the server. Reconnecting…"
 #: src/features/admin/useAdminLabels.ts
 msgid "Cleaning up"
 msgstr "Cleaning up"
+
+#: src/features/lists/ListsScreen.tsx
+msgid "No lists yet"
+msgstr "No lists yet"
 
 #: src/features/user/HomeRowsEditor.tsx
 msgid "Move down: {name}"
@@ -2064,9 +2105,11 @@ msgstr "CPU only"
 msgid "Seek in the chapter"
 msgstr "Seek in the chapter"
 
+#. placeholder {0}: list.workCount
 #. placeholder {0}: p.workCount
 #. placeholder {0}: person.works.length
 #: src/features/detail/PersonScreen.tsx
+#: src/features/lists/AddToListDialog.tsx
 #: src/features/search/SearchScreen.tsx
 msgid "{0, plural, one {# title} other {# titles}}"
 msgstr "{0, plural, one {# title} other {# titles}}"
@@ -2141,6 +2184,10 @@ msgstr "Kind"
 msgid "Scanning libraries. Items appear on Home as they're found."
 msgstr "Scanning libraries. Items appear on Home as they're found."
 
+#: src/features/lists/ListScreen.tsx
+msgid "Rename List"
+msgstr "Rename List"
+
 #: src/features/admin/EditFieldsDialog.tsx
 msgid "Original title"
 msgstr "Original title"
@@ -2167,10 +2214,6 @@ msgstr "Speed"
 msgid "Remove filter {label}"
 msgstr "Remove filter {label}"
 
-#: src/features/browse/FavoritesScreen.tsx
-msgid "{count, plural, one {# episode} other {# episodes}}"
-msgstr "{count, plural, one {# episode} other {# episodes}}"
-
 #: src/features/admin/TasksScreen.tsx
 msgid "Nightly tasks run {start} to {end}"
 msgstr "Nightly tasks run {start} to {end}"
@@ -2180,7 +2223,6 @@ msgstr "Nightly tasks run {start} to {end}"
 msgid "Credits"
 msgstr "Credits"
 
-#: src/features/browse/FavoritesScreen.tsx
 #: src/features/detail/WorkRows.tsx
 msgid "Extras"
 msgstr "Extras"
@@ -2317,7 +2359,6 @@ msgid "Retry all"
 msgstr "Retry all"
 
 #: src/features/browse/CountLine.tsx
-#: src/features/browse/FavoritesScreen.tsx
 msgid "{count, plural, one {# show} other {# shows}}"
 msgstr "{count, plural, one {# show} other {# shows}}"
 
@@ -2417,6 +2458,10 @@ msgstr "This can't be played on this TV."
 msgid "No missing files"
 msgstr "No missing files"
 
+#: src/features/browse/WorkCard.tsx
+msgid "Remove from this list"
+msgstr "Remove from this list"
+
 #: src/features/admin/ApiKeysScreen.tsx
 msgid "Create key"
 msgstr "Create key"
@@ -2508,10 +2553,6 @@ msgstr "Level"
 msgid "Kivo is starting"
 msgstr "Kivo is starting"
 
-#: src/features/browse/FavoritesScreen.tsx
-msgid "{count, plural, one {# season} other {# seasons}}"
-msgstr "{count, plural, one {# season} other {# seasons}}"
-
 #: src/features/user/SettingsScreen.tsx
 msgid "Reset"
 msgstr "Reset"
@@ -2601,11 +2642,6 @@ msgstr "30 days"
 #: src/features/admin/UserScreen.tsx
 msgid "Enable"
 msgstr "Enable"
-
-#: src/features/browse/WorkCard.tsx
-#: src/features/detail/WatchToggles.tsx
-msgid "Add to favorites"
-msgstr "Add to favorites"
 
 #: src/features/admin/userFields.tsx
 msgid "{maxStreams, plural, one {Up to # stream} other {Up to # streams}}"
@@ -2935,10 +2971,6 @@ msgstr "Date added"
 msgid "7 days"
 msgstr "7 days"
 
-#: src/features/browse/FavoritesScreen.tsx
-msgid "Videos"
-msgstr "Videos"
-
 #. placeholder {0}: work.title
 #: src/features/browse/WorkCard.tsx
 msgid "Actions for {0}"
@@ -3098,11 +3130,6 @@ msgstr "Users"
 msgid "Signs {name} out of all browsers and apps. API keys keep working."
 msgstr "Signs {name} out of all browsers and apps. API keys keep working."
 
-#: src/features/browse/WorkCard.tsx
-#: src/features/detail/WatchToggles.tsx
-msgid "Remove from favorites"
-msgstr "Remove from favorites"
-
 #: src/features/admin/EditBookForm.tsx
 msgid "Primary"
 msgstr "Primary"
@@ -3161,6 +3188,11 @@ msgstr "Playing"
 msgid "Subtitles"
 msgstr "Subtitles"
 
+#. placeholder {0}: list.name
+#: src/features/lists/ListScreen.tsx
+msgid "Delete {0}?"
+msgstr "Delete {0}?"
+
 #: src/components/SaveBar.tsx
 #: src/features/admin/EditBookForm.tsx
 #: src/features/admin/EditFieldsDialog.tsx
@@ -3174,7 +3206,6 @@ msgstr "Save"
 msgid "Remove from Continue Listening"
 msgstr "Remove from Continue Listening"
 
-#: src/features/browse/FavoritesScreen.tsx
 #: src/features/browse/LibraryScreen.tsx
 #: src/features/detail/PersonScreen.tsx
 #: src/features/search/SearchScreen.tsx
@@ -3306,6 +3337,10 @@ msgstr "For the parts in another language"
 #: src/features/history/HistoryScreen.tsx
 msgid "All users"
 msgstr "All users"
+
+#: src/features/lists/ListScreen.tsx
+msgid "{total, plural, one {# title} other {# titles}}"
+msgstr "{total, plural, one {# title} other {# titles}}"
 
 #: src/features/admin/AddUserButton.tsx
 msgid "Add user"
@@ -3449,7 +3484,6 @@ msgid "Scanning {name}"
 msgstr "Scanning {name}"
 
 #: src/features/browse/CountLine.tsx
-#: src/features/browse/FavoritesScreen.tsx
 msgid "{count, plural, one {# video} other {# videos}}"
 msgstr "{count, plural, one {# video} other {# videos}}"
 
@@ -3572,6 +3606,10 @@ msgstr "Other videos"
 msgid "Remove {0}"
 msgstr "Remove {0}"
 
+#: src/features/detail/WatchToggles.tsx
+msgid "Add to My List"
+msgstr "Add to My List"
+
 #: src/features/admin/TaskButtons.tsx
 msgid "Run now"
 msgstr "Run now"
@@ -3615,6 +3653,10 @@ msgstr "General"
 msgid "Can't reach {0}"
 msgstr "Can't reach {0}"
 
+#: src/features/lists/ListScreen.tsx
+msgid "Nothing on this list yet"
+msgstr "Nothing on this list yet"
+
 #: src/features/admin/UserScreen.tsx
 msgid "Setting a password signs {name} out everywhere."
 msgstr "Setting a password signs {name} out everywhere."
@@ -3624,11 +3666,6 @@ msgstr "Setting a password signs {name} out everywhere."
 #: src/features/player/NowPlaying.tsx
 msgid "Chapter {0}"
 msgstr "Chapter {0}"
-
-#. placeholder {0}: kindTitle(kind)
-#: src/features/browse/FavoritesScreen.tsx
-msgid "Favorites · {0}"
-msgstr "Favorites · {0}"
 
 #: src/features/admin/OverviewScreen.tsx
 msgid "Working now"
@@ -3677,22 +3714,11 @@ msgstr "This TV"
 msgid "Nightly and when media is added"
 msgstr "Nightly and when media is added"
 
-#: src/app/AppShell.tsx
-#: src/app/tv/TvRail.tsx
-#: src/features/browse/FavoritesScreen.tsx
-#: src/features/browse/LibrariesScreen.tsx
-#: src/features/browse/LibrarySwitcher.tsx
-#: src/features/browse/useBrowseLabels.ts
-#: src/features/home/rowTitle.ts
-msgid "Favorites"
-msgstr "Favorites"
-
 #. placeholder {0}: added.count
 #: src/features/admin/ActivityList.tsx
 msgid "{0, plural, one {# video} other {# videos}}"
 msgstr "{0, plural, one {# video} other {# videos}}"
 
-#: src/features/browse/FavoritesScreen.tsx
 #: src/features/detail/SeriesDetail.tsx
 msgid "Seasons"
 msgstr "Seasons"
