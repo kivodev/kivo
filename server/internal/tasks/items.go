@@ -284,6 +284,22 @@ func (w *items) enqueueLocked(items ...id.ID) {
 	}
 }
 
+// stopLocked cancels an item in flight, removes it from the line, and marks
+// it done for the current pass.
+func (w *items) stopLocked(i id.ID) {
+	if it := w.busy[i]; it != nil {
+		it.cancel()
+	}
+	if w.queued[i] {
+		delete(w.queued, i)
+		w.asked = slices.DeleteFunc(w.asked, func(x id.ID) bool { return x == i })
+	}
+	delete(w.requeue, i)
+	if w.pass != nil {
+		w.pass.did[i] = true
+	}
+}
+
 // Retry forgets the failures of a task's given items, or of all its failed
 // items when none are given, and enqueues them. The task's counts are read
 // afresh afterwards.

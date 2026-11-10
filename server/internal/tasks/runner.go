@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"runtime/debug"
-	"slices"
 	"sync"
 	"time"
 
@@ -32,6 +31,7 @@ type Runner struct {
 	bus      *events.Bus
 	ended    func(ctx context.Context, tx *store.Tx, e RunEnd) error // Options.Ended
 
+	// Methods whose names end in Locked need mu held.
 	mu      sync.Mutex
 	tasks   []*task // in the order they were added
 	byName  map[string]*task
@@ -272,6 +272,51 @@ func (r *Runner) callFunc(ctx context.Context, t *task) (*run, Outcome) {
 	return ended, out
 }
 
+// flight is a Func or Do call in flight. It holds how to cancel the call
+// and what the call reported through Progress and Summarize.
+type flight struct {
+	r      *Runner
+	cancel context.CancelFunc
+
+	// Runner.mu guards the fields below.
+	step        string
+	done, total int
+	since       time.Time // when it reached step
+	summary     string
+	noticed     time.Time // when its progress was last published
+}
+
+// start prepares f to run under ctx. It returns the context to pass to the
+// Func or Do, which carries f for Progress and Summarize.
+func (f *flight) start(ctx context.Context, r *Runner) context.Context {
+	ctx, f.cancel = context.WithCancel(ctx)
+	f.r, f.since = r, time.Now()
+	return context.WithValue(ctx, flightKey{}, f)
+}
+
+func (f *flight) progress(step string, done, total int) {
+	r := f.r
+	r.mu.Lock()
+	if step != f.step {
+		f.since = time.Now()
+	}
+	f.step, f.done, f.total = step, done, total
+	tell := time.Since(f.noticed) >= noticeEvery
+	if tell {
+		f.noticed = time.Now()
+	}
+	r.mu.Unlock()
+	if tell {
+		r.changed()
+	}
+}
+
+func (f *flight) summarize(summary string) {
+	f.r.mu.Lock()
+	f.summary = summary
+	f.r.mu.Unlock()
+}
+
 // guard calls a Func or Do. It turns a panic into an error and logs the
 // stack.
 func guard(ctx context.Context, f func() error, attrs ...any) (err error) {
@@ -357,20 +402,4 @@ func (r *Runner) Stop(ctx context.Context, name string, items ...id.ID) error {
 	}
 	r.changed()
 	return nil
-}
-
-// stopLocked cancels an item in flight, removes it from the line, and marks
-// it done for the current pass.
-func (w *items) stopLocked(i id.ID) {
-	if it := w.busy[i]; it != nil {
-		it.cancel()
-	}
-	if w.queued[i] {
-		delete(w.queued, i)
-		w.asked = slices.DeleteFunc(w.asked, func(x id.ID) bool { return x == i })
-	}
-	delete(w.requeue, i)
-	if w.pass != nil {
-		w.pass.did[i] = true
-	}
 }
