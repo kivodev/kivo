@@ -262,10 +262,10 @@ struct SeriesDetail: View {
         } else if let nextUp = series.series?.nextUp {
             ActionRow(work: series, secondary: secondLine(nextUp)) {
                 PlayButton(label: playLabel(nextUp)) {
-                    server.play(PlayTarget(workId: nextUp.id))
+                    server.player.play(PlayTarget(workId: nextUp.id))
                 }
                 if nextUp.progress != nil {
-                    RestartButton { server.play(PlayTarget(workId: nextUp.id, fromStart: true)) }
+                    RestartButton { server.player.play(PlayTarget(workId: nextUp.id, fromStart: true)) }
                 }
             }
         } else {

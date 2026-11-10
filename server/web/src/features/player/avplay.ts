@@ -1,6 +1,6 @@
 import { mediaUrl } from "@/api/playback";
 import type { PlayStarted } from "@/api/schemas";
-import type { Avplay, AvplayListener, AvplayTrack } from "@/tv/tizen";
+import type { Avplay, AvplayListener } from "@/tv/tizen";
 import { type Engine, type EngineEvents, type EngineFailure, isMediaTrack } from "./engine";
 
 // Direct play on a Samsung TV through Samsung's own player (webapis.avplay)
@@ -12,12 +12,10 @@ import { type Engine, type EngineEvents, type EngineFailure, isMediaTrack } from
 //
 // AVPlay draws the picture on a plane of its own beneath the page, so the
 // page shows it only where the page is transparent, and it has no media
-// element. The rest of the player works the video element, so while AVPlay
-// plays, the element stands in for it: its paused, ended, currentTime,
-// duration, play() and pause() are AVPlay's, and it fires the media events
-// the controller and the controls listen for, as AVPlay reports them. The
-// element itself loads nothing. Destroying the engine gives the element
-// back as it was, for a fallback to a stream.
+// element. It plays, pauses and reports as an engine does (engine.ts), which
+// is all the controller works. The video element loads nothing while AVPlay
+// plays, and holds only the play's own subtitle, as a text track, whose cues
+// are drawn here by AVPlay's position.
 
 /** AVPlay lays the screen out at 1920×1080, whatever the panel or the page. */
 const screen = { width: 1920, height: 1080 };
@@ -32,7 +30,7 @@ const bufferSeconds = { play: 5, resume: 10 };
 /** How long AVPlay may buffer before it gives up with an error. */
 const bufferTimeoutSeconds = 30;
 
-/** How often, at most, the element fires timeupdate, as a browser does. */
+/** How often, at most, the position is reported as moving on, as a browser does. */
 const timeUpdateMs = 250;
 
 /** How often the subtitle showing is checked against the position. */
@@ -51,27 +49,6 @@ export function avplayFailure(error: string, message?: string): EngineFailure {
   return {
     code: failureCodes[error] ?? "mediaDecodeError",
     detail: `AVPlay ${error}${message ? `: ${message}` : ""}`,
-  };
-}
-
-/** The picture's size, from AVPlay's video track. */
-function videoSize(tracks: readonly AvplayTrack[]): { width: number; height: number } {
-  const video = tracks.find((t) => t.type === "VIDEO");
-  try {
-    const info = JSON.parse(video?.extra_info ?? "{}") as { Width?: string; Height?: string };
-    return { width: Number(info.Width) || 0, height: Number(info.Height) || 0 };
-  } catch {
-    return { width: 0, height: 0 };
-  }
-}
-
-/** Overrides properties of one element, and returns a function that gives it back its own. */
-function standIn(media: HTMLMediaElement, props: Record<string, PropertyDescriptor>): () => void {
-  for (const [name, descriptor] of Object.entries(props)) {
-    Object.defineProperty(media, name, { configurable: true, ...descriptor });
-  }
-  return () => {
-    for (const name of Object.keys(props)) delete (media as unknown as Record<string, unknown>)[name];
   };
 }
 
@@ -150,11 +127,9 @@ export function avplayEngine(media: HTMLMediaElement, play: PlayStarted, events:
   // A seek under way, and the one asked for while it was, which follows it.
   let seeking: number | undefined;
   let queued: number | undefined;
-  let size = { width: 0, height: 0 };
   let lastTimeUpdate = 0;
   let audio = play.tracks.find((t) => t.type === "audio" && t.selected)?.trackId;
 
-  const fire = (type: string) => media.dispatchEvent(new Event(type));
   const fail = (failure: EngineFailure) => {
     if (!destroyed) events.onFailure(failure);
   };
@@ -202,9 +177,9 @@ export function avplayEngine(media: HTMLMediaElement, play: PlayStarted, events:
     }
     paused = false;
     clock = { ms: clock.ms, at: performance.now() };
-    fire("play");
+    events.onPlay();
     applyAudio();
-    if (!buffering) fire("playing");
+    if (!buffering) events.onPlaying();
   };
 
   const seekDone = (load: number) => () => {
@@ -217,8 +192,8 @@ export function avplayEngine(media: HTMLMediaElement, play: PlayStarted, events:
     }
     clock = { ms: seeking ?? clock.ms, at: performance.now() };
     seeking = undefined;
-    fire("seeked");
-    if (!paused && !buffering) fire("playing");
+    events.onSeeked();
+    if (!paused && !buffering) events.onPlaying();
   };
 
   function seekTo(ms: number) {
@@ -228,7 +203,6 @@ export function avplayEngine(media: HTMLMediaElement, play: PlayStarted, events:
       return;
     }
     seeking = ms;
-    fire("seeking");
     const done = seekDone(loads);
     player.seekTo(Math.max(0, ms - (offsets[i] ?? 0)), done, done);
   }
@@ -236,12 +210,12 @@ export function avplayEngine(media: HTMLMediaElement, play: PlayStarted, events:
   const listener: AvplayListener = {
     onbufferingstart: () => {
       buffering = true;
-      if (ready) fire("waiting");
+      if (ready) events.onWaiting();
     },
     onbufferingcomplete: () => {
       buffering = false;
       clock = { ms: clock.ms, at: performance.now() };
-      if (ready && !paused) fire("playing");
+      if (ready && !paused) events.onPlaying();
     },
     oncurrentplaytime: (ms) => {
       if (seeking !== undefined) return;
@@ -249,7 +223,7 @@ export function avplayEngine(media: HTMLMediaElement, play: PlayStarted, events:
       clock = { ms: (offsets[index] ?? 0) + ms, at: now };
       if (now - lastTimeUpdate >= timeUpdateMs) {
         lastTimeUpdate = now;
-        fire("timeupdate");
+        events.onTime();
       }
     },
     onstreamcompleted: () => {
@@ -260,8 +234,6 @@ export function avplayEngine(media: HTMLMediaElement, play: PlayStarted, events:
       ended = true;
       paused = true;
       clock = { ms: totalMs, at: performance.now() };
-      fire("pause");
-      fire("ended");
       events.onEnded();
     },
     onerror: (error) => fail(avplayFailure(error)),
@@ -304,16 +276,13 @@ export function avplayEngine(media: HTMLMediaElement, play: PlayStarted, events:
     }
     const prepared = () => {
       if (destroyed || load !== loads) return;
-      size = videoSize(player.getTotalTrackInfo());
       if (!ready) {
         ready = true;
-        fire("loadedmetadata");
-        fire("durationchange");
         events.onReady();
         return;
       }
       // A seek into another part loads that part.
-      fire("seeked");
+      events.onSeeked();
       if (autoplay) start();
     };
     player.prepareAsync(
@@ -342,48 +311,29 @@ export function avplayEngine(media: HTMLMediaElement, play: PlayStarted, events:
   document.body.prepend(plane);
   document.documentElement.setAttribute("data-avplay", "");
 
-  const giveBack = standIn(media, {
-    paused: { get: () => paused },
-    ended: { get: () => ended },
-    seeking: { get: () => seeking !== undefined },
-    duration: { get: () => (ready ? totalMs / 1000 : Number.NaN) },
-    currentTime: {
-      get: () => positionMs() / 1000,
-      set: (seconds: number) => engine.seek(seconds * 1000),
-    },
-    videoWidth: { get: () => size.width },
-    videoHeight: { get: () => size.height },
-    readyState: { get: () => (ready ? HTMLMediaElement.HAVE_ENOUGH_DATA : HTMLMediaElement.HAVE_NOTHING) },
-    play: {
-      value: () => {
-        if (!ready) return Promise.reject(new DOMException("not loaded", "InvalidStateError"));
-        if (ended) {
-          ended = false;
-          engine.seek(0);
-        }
-        if (paused) start();
-        return Promise.resolve();
-      },
-    },
-    pause: {
-      value: () => {
-        if (paused || !ready) return;
-        try {
-          player.pause();
-        } catch {
-          // Not playing yet.
-        }
-        paused = true;
-        clock = { ms: positionMs(), at: performance.now() };
-        fire("pause");
-      },
-    },
-  });
   const cues = cueLayer(media, positionMs);
 
   const engine: Engine = {
     kind: "avplay",
     positionMs,
+    paused: () => paused,
+    ended: () => ended,
+    play: () => {
+      if (!ready) return Promise.reject(new DOMException("not loaded", "InvalidStateError"));
+      if (paused) start();
+      return Promise.resolve();
+    },
+    pause: () => {
+      if (paused || !ready) return;
+      try {
+        player.pause();
+      } catch {
+        // Not playing yet.
+      }
+      paused = true;
+      clock = { ms: positionMs(), at: performance.now() };
+      events.onPause();
+    },
     seek: (ms) => {
       ended = false;
       const target = Math.min(Math.max(ms, 0), totalMs);
@@ -412,7 +362,6 @@ export function avplayEngine(media: HTMLMediaElement, play: PlayStarted, events:
       destroyed = true;
       close();
       cues.destroy();
-      giveBack();
       plane.remove();
       document.documentElement.removeAttribute("data-avplay");
     },

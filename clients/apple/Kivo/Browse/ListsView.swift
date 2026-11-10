@@ -44,7 +44,7 @@ struct ListsView: View {
                                     detail: list.workCount == 0 ? String(localized: "Empty") : list.titleCount,
                                     placeholder: String(localized: "Nothing in this list yet")
                                 ) {
-                                    server.paths[server.tab, default: []].append(list.route)
+                                    server.navigation.push(list.route)
                                 }
                                 .environment(\.currentList, ListRef(id: list.id, name: list.name, kind: list.kind))
                             }

@@ -11,7 +11,9 @@ import { avplay } from "@/tv/tizen";
 // Safari's own HLS. Positions are always on the version's timeline. Every
 // text subtitle the play streams is a subtitle rendition in its HLS
 // playlist, and both HLS engines draw the one chosen as a text track of the
-// video.
+// video. The controller plays, pauses and follows the play through the
+// engine alone: three of the engines play through the media element and
+// pass on what it does, and AVPlay has no element to play through.
 
 export type EngineKind = "file" | "avplay" | "hlsjs" | "native";
 
@@ -26,12 +28,30 @@ export type EngineEvents = {
   onEnded: () => void;
   /** Media failed, and the engine can't be used again. Called at most once. */
   onFailure: (failure: EngineFailure) => void;
+  /** Playback was started, by the controller or by the browser itself, as its media keys do. */
+  onPlay: () => void;
+  /** Playback was paused, likewise. Not called for the pause at the end of a part or of the last. */
+  onPause: () => void;
+  /** Playback stalled waiting for data. */
+  onWaiting: () => void;
+  /** Frames are moving, at the start, after a stall or after a seek. */
+  onPlaying: () => void;
+  /** A seek landed. */
+  onSeeked: () => void;
+  /** The position moved on, a few times a second while it plays. */
+  onTime: () => void;
 };
 
 export type Engine = {
   kind: EngineKind;
   positionMs: () => number;
   seek: (positionMs: number) => void;
+  paused: () => boolean;
+  /** Whether the last part played to its end, until a seek. */
+  ended: () => boolean;
+  /** Starts playback. It rejects where it can't start, as when a browser refuses to play unasked. */
+  play: () => Promise<void>;
+  pause: () => void;
   /** The measured download rate, where the engine measures one. */
   bandwidthBps: () => number | undefined;
   /**
@@ -111,6 +131,33 @@ function listeners(media: HTMLMediaElement) {
     clear: () => {
       for (const [type, fn] of added) media.removeEventListener(type, fn);
     },
+  };
+}
+
+/**
+ * Playing and pausing through the media element, for the engines that play
+ * through it, with what the element does passed on as the engine's events.
+ * Call it after the engine's own listeners, which then run first.
+ */
+function elementTransport(
+  media: HTMLMediaElement,
+  on: ReturnType<typeof listeners>["on"],
+  events: EngineEvents,
+): Pick<Engine, "paused" | "ended" | "play" | "pause"> {
+  on("play", events.onPlay);
+  on("pause", () => {
+    // Reaching the end of a part pauses on the way to the next one.
+    if (!media.ended) events.onPause();
+  });
+  on("waiting", events.onWaiting);
+  on("playing", events.onPlaying);
+  on("seeked", events.onSeeked);
+  on("timeupdate", events.onTime);
+  return {
+    paused: () => media.paused,
+    ended: () => media.ended,
+    play: () => media.play(),
+    pause: () => media.pause(),
   };
 }
 
@@ -249,9 +296,12 @@ function fileEngine(media: HTMLMediaElement, play: PlayStarted, events: EngineEv
     if (failure) events.onFailure(failure);
   });
 
+  const transport = elementTransport(media, on, events);
+
   load(partAt(play.startMs), play.startMs, false);
   return {
     kind: "file",
+    ...transport,
     positionMs: () => (offsets[index] ?? 0) + (pendingMs ?? media.currentTime * 1000),
     seek: (ms) => {
       const i = partAt(ms);
@@ -293,9 +343,11 @@ function nativeEngine(media: HTMLMediaElement, play: PlayStarted, events: Engine
   // Safari adds the stream's subtitle renditions as text tracks once the
   // playlist loads. One shows only when the player picks it.
   const subtitles = mediaSubtitles(media, play);
+  const transport = elementTransport(media, on, events);
   media.src = mediaUrl(play.url);
   return {
     kind: "native",
+    ...transport,
     positionMs: () => pendingMs ?? media.currentTime * 1000,
     seek: (ms) => {
       if (pendingMs === undefined) media.currentTime = ms / 1000;
@@ -468,10 +520,12 @@ async function hlsJsEngine(
     pendingMs = undefined;
   });
   on("ended", events.onEnded);
+  const transport = elementTransport(media, on, events);
   hls.loadSource(mediaUrl(play.url));
   hls.attachMedia(media);
   return {
     kind: "hlsjs",
+    ...transport,
     positionMs: () => pendingMs ?? media.currentTime * 1000,
     seek: (ms) => {
       pendingMs = undefined;
@@ -491,7 +545,8 @@ async function hlsJsEngine(
 }
 
 /**
- * Attaches a play's media to the video or audio element. When no engine here
+ * Attaches a play's media to the video or audio element, or on a Samsung TV
+ * a file's to AVPlay, which leaves the element empty. When no engine here
  * plays the delivery, it reports `unsupported` and resolves to undefined.
  * A TV keeps smaller buffers.
  */

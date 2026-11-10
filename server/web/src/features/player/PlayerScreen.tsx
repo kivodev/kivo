@@ -1,6 +1,6 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
-import { type RefObject, useEffect, useRef, useState } from "react";
+import { type RefObject, useEffect, useEffectEvent, useRef, useState } from "react";
 import type { QualityRequest, WorkDetail } from "@/api/schemas";
 import { currentUserQueries } from "@/api/users";
 import { workQueries } from "@/api/works";
@@ -95,6 +95,11 @@ export function PlayerScreen({ remote = false, autoplayRun, onAutoplayRun }: Pro
   const { visible, reveal, hide } = useControlsVisibility(state.status === "playing" && !state.paused && !menu, {
     remote,
   });
+  // A pause shows them however it came: from the controls, the browser's own media keys or the TV.
+  const showPaused = useEffectEvent(reveal);
+  useEffect(() => {
+    if (state.paused) showPaused();
+  }, [state.paused]);
   const control = (command: (c: PlayerController) => void) => {
     reveal();
     run(command);
@@ -356,7 +361,6 @@ export function PlayerScreen({ remote = false, autoplayRun, onAutoplayRun }: Pro
         textTrackUrl={textTrackUrl}
         subtitleTrack={subtitleTrack}
         shown={shown}
-        onPause={reveal}
       />
 
       {(state.status === "loading" || state.status === "buffering" || state.status === "seeking") && <LoadingSpinner />}
