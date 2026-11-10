@@ -6,7 +6,6 @@ import (
 	"slices"
 	"sync"
 	"testing"
-	"testing/fstest"
 	"time"
 
 	"github.com/mmcdole/kivo/internal/activity"
@@ -30,6 +29,7 @@ import (
 type flow struct {
 	t    *testing.T
 	b    *catalogtest.Builder
+	dir  string // the library's folder, which is empty on disk
 	fsys *memFS
 	prob *fakeProber
 	find *noMatches
@@ -42,7 +42,7 @@ type flow struct {
 }
 
 func newFlow(t *testing.T) *flow {
-	return &flow{t: t, b: catalogtest.New(t), fsys: newMemFS(), prob: &fakeProber{}, find: &noMatches{}}
+	return &flow{t: t, b: catalogtest.New(t), dir: t.TempDir(), fsys: newMemFS(), prob: &fakeProber{}, find: &noMatches{}}
 }
 
 // wire builds the services over a new runner. When lost is set, what they
@@ -62,15 +62,14 @@ func (f *flow) wire(lost bool) {
 		ask = f.asks
 	}
 	// Only the scanner reads fsys, so its counts are the scans' alone.
-	// Identify looks for NFO files in a folder that has none.
+	// Identify looks for NFO files in the library's real folder, which is
+	// empty.
 	open := func(string) (fs.FS, func() error, error) { return f.fsys, func() error { return nil }, nil }
-	nfos := func(string) (fs.FS, func() error, error) { return fstest.MapFS{}, func() error { return nil }, nil }
 	meta := metadata.New(db, metadata.Deps{Catalog: f.b.Catalog, Settings: settings, Events: events.NewBus(), Tasks: ask, CacheDir: f.t.TempDir(), ImageDir: f.t.TempDir()},
 		metadata.Options{Video: f.find})
 	act := activity.New(db, events.NewBus())
 	state := userstate.New(db, userstate.Deps{Catalog: f.b.Catalog, Settings: settings, Activity: act, Events: events.NewBus()})
-	f.id = identify.New(db, identify.Deps{Catalog: f.b.Catalog, Metadata: meta, Userstate: state, Activity: act, Tasks: ask, Markers: noMarkers{}},
-		identify.Options{OpenFolder: nfos})
+	f.id = identify.New(db, identify.Deps{Catalog: f.b.Catalog, Metadata: meta, Userstate: state, Activity: act, Tasks: ask, Markers: noMarkers{}})
 	f.s = New(db, Deps{
 		Catalog: f.b.Catalog, Tasks: ask, Prober: f.prob, Settings: settings, Identifier: f.id, Previews: noPreviews{}, Subtitles: noSubtitles{},
 	}, Options{OpenFolder: open})
@@ -220,7 +219,7 @@ func TestScanHandsOffToIdentify(t *testing.T) {
 	f.fsys.write("Arrival (2016)/Arrival (2016) - 4K.mkv", "arrival in 4K", old)
 	f.fsys.write("Heat (1995)/Heat (1995).mkv", "heat", old)
 	f.start()
-	lib, err := f.s.AddLibrary(ctx, catalog.LibraryInput{Name: "Movies", Kind: catalog.Movies, Folders: []string{catalogtest.Abs("/m")}})
+	lib, err := f.s.AddLibrary(ctx, catalog.LibraryInput{Name: "Movies", Kind: catalog.Movies, Folders: []string{f.dir}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -273,7 +272,7 @@ func TestIdentifyResumesAfterRestart(t *testing.T) {
 	f := newFlow(t)
 	f.fsys.write("Arrival (2016)/Arrival (2016).mkv", "arrival", old)
 	f.start()
-	lib, err := f.s.AddLibrary(ctx, catalog.LibraryInput{Name: "Movies", Kind: catalog.Movies, Folders: []string{catalogtest.Abs("/m")}})
+	lib, err := f.s.AddLibrary(ctx, catalog.LibraryInput{Name: "Movies", Kind: catalog.Movies, Folders: []string{f.dir}})
 	if err != nil {
 		t.Fatal(err)
 	}

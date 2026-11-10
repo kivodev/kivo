@@ -38,19 +38,13 @@ type Identifier struct {
 	db   *store.DB
 	q    *dbq.Queries
 	deps Deps
-	opt  Options
+	// openFolder opens a library folder to read NFO files.
+	openFolder func(path string) (fs.FS, func() error, error)
 
 	// folders allows only one decision per folder at a time, so two
 	// identifications of one series don't both search for it. The second
 	// waits, then finds the first one's decision.
 	folders keylock.Locks[string]
-}
-
-// Options are an Identifier's optional settings.
-type Options struct {
-	// OpenFolder opens a library folder to read NFO files. The default is
-	// catalog.OpenFolder.
-	OpenFolder func(path string) (fs.FS, func() error, error)
 }
 
 // Tasks enqueues items to be done now. tasks.Runner implements it.
@@ -80,11 +74,8 @@ type Deps struct {
 }
 
 // New returns an Identifier.
-func New(db *store.DB, d Deps, opt Options) *Identifier {
-	if opt.OpenFolder == nil {
-		opt.OpenFolder = catalog.OpenFolder
-	}
-	return &Identifier{db: db, q: dbq.New(db.Reader()), deps: d, opt: opt}
+func New(db *store.DB, d Deps) *Identifier {
+	return &Identifier{db: db, q: dbq.New(db.Reader()), deps: d, openFolder: catalog.OpenFolder}
 }
 
 // TaskIdentifyMedia identifies folders, with each item a file whose folder

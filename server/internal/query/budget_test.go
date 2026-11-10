@@ -108,7 +108,9 @@ func TestBudgets(t *testing.T) {
 			}},
 			budgetCase{"smart " + l.name + ", count", browseBudget, false, func() error { _, err := q.List(ctx, sv, l.id); return err }})
 	}
-	tests = append(tests, budgetCase{"home, 5 smart rows", homeBudget, false, func() error { _, _, err := q.Home(ctx, sv); return err }})
+	tests = append(tests,
+		budgetCase{"home, 5 smart rows", homeBudget, false, func() error { _, _, err := q.Home(ctx, sv); return err }},
+		budgetCase{"lists screen, 10 lists", browseBudget, false, func() error { _, err := q.CountedLists(ctx, sv); return err }})
 	// The budgets are for a real server. A shared CI runner is several
 	// times slower, so CI sets KIVO_BUDGET_SCALE and the check there guards
 	// against regressions rather than proving the budget.
@@ -373,6 +375,27 @@ func smartViewer(t *testing.T, db *store.DB, q *query.Service) (users.Viewer, []
 			t.Fatal(err)
 		}
 		out = append(out, smartList{d.name, list})
+	}
+	// Three manual lists, with none, 2 and 200 movies, make ten lists with
+	// Watchlist for the Lists screen.
+	for _, every := range []int{0, 1000, 10} {
+		list, err := svc.CreateList(ctx, v, fmt.Sprintf("manual %d", every), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if every == 0 {
+			continue
+		}
+		err = db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
+			_, err := tx.ExecContext(ctx, `
+				INSERT INTO list_work (list_id, work_id, added_at)
+				SELECT @list, id, rid FROM work WHERE kind = 'movie' AND rid <= 2000 AND rid % @every = 0`,
+				sql.Named("list", list), sql.Named("every", every))
+			return err
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 	rows, err := q.HomeRows(ctx, v)
 	if err != nil {

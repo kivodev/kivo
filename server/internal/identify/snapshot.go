@@ -115,7 +115,7 @@ func (i *Identifier) unitSnapshot(lib catalog.Library, p parse.Parser, u *unit) 
 // without an NFO that exists could pick the wrong match.
 func (i *Identifier) readNFOs(lib catalog.Library, names []string, into map[string][]byte) error {
 	for _, r := range lib.Folders {
-		fsys, closeFolder, err := i.opt.OpenFolder(r.Path)
+		fsys, closeFolder, err := i.openFolder(r.Path)
 		if err != nil {
 			return fmt.Errorf("%w: %s", catalog.ErrUnreachable, r.Path)
 		}

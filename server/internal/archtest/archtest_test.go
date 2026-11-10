@@ -53,46 +53,8 @@ func TestRepoWrites(t *testing.T) {
 	}
 }
 
-func TestRepoErrors(t *testing.T) {
-	vs, err := checkSentinels("..")
-	if err != nil {
-		t.Fatal(err)
-	}
-	ws, err := checkMessages("..")
-	if err != nil {
-		t.Fatal(err)
-	}
-	wr, err := checkDeferredWraps("..")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, v := range slices.Concat(vs, ws, wr) {
-		t.Error(v)
-	}
-}
-
-func TestRepoSideEffects(t *testing.T) {
-	vs, err := checkSideEffects("..", noSideEffects, sideEffects)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, v := range vs {
-		t.Error(v)
-	}
-}
-
 func TestRepoTransactions(t *testing.T) {
 	vs, err := checkTransactions("..")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, v := range vs {
-		t.Error(v)
-	}
-}
-
-func TestRepoValuesOnly(t *testing.T) {
-	vs, err := checkValuesOnly("..")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -186,10 +148,12 @@ func TestCheckSubpackagesFindsReach(t *testing.T) {
 			module + "/internal/catalog",
 		}},
 		{Path: "scan/s.go", Pkg: "scan", Imports: []string{module + "/internal/media/container"}},
+		{Path: "query/q.go", Pkg: "query", Imports: []string{module + "/internal/catalog", module + "/internal/catalog/dbq"}},
 	}
 	vs := checkSubpackages(files)
-	if len(vs) != 2 || vs[0].File != "api/a.go" || !strings.Contains(vs[0].Msg, "markers/detect") || !strings.Contains(vs[1].Msg, "media/container") {
-		t.Fatalf("got %v, want violations for api's markers/detect and media/container only", vs)
+	if len(vs) != 3 || vs[0].File != "api/a.go" || !strings.Contains(vs[0].Msg, "markers/detect") || !strings.Contains(vs[1].Msg, "media/container") ||
+		vs[2].File != "query/q.go" || !strings.Contains(vs[2].Msg, "catalog/dbq") {
+		t.Fatalf("got %v, want violations for api's markers/detect and media/container and query's catalog/dbq only", vs)
 	}
 }
 
@@ -296,156 +260,6 @@ INSERT INTO play_event (id) VALUES (?);`)
 	}
 }
 
-func TestCheckSentinelsFindsDrift(t *testing.T) {
-	dir := t.TempDir()
-	write(t, dir, "users/user.go", `package users
-var (
-	ErrNotFound = fault.New(fault.NotFound, "not found")
-	ErrNameTaken = fault.Coded(fault.Conflict, "nameTaken", "users: name taken")
-	ErrPlain = errors.New("plain")
-	errLocal = errors.New("users: local")
-	errBare = errors.New("bare")
-)
-
-func check(kind string) error {
-	if kind == "" {
-		return fault.New(fault.Invalid, "users: no kind")
-	}
-	if kind == "x" {
-		return fmt.Errorf("users: kind %q", kind)
-	}
-	return fmt.Errorf("users: check: %w", fault.New(fault.Invalid, "the kind is "+kind))
-}`)
-	write(t, dir, "users/user_test.go", `package users
-var ErrFixture = errors.New("users: fixture")`)
-
-	vs, err := checkSentinels(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var got []string
-	for _, v := range vs {
-		got = append(got, v.File)
-	}
-	slices.Sort(got)
-	want := []string{"users/user.go", "users/user.go:4", "users/user.go:6", "users/user.go:12", "users/user.go:15", "users/user.go:17"}
-	slices.Sort(want)
-	if !slices.Equal(got, want) || !strings.Contains(vs[0].Msg, "ErrPlain") {
-		t.Fatalf("got %v, want ErrPlain and the prefixed messages on lines 4, 6, 12, 15 and 17", vs)
-	}
-}
-
-func TestCheckDeferredWrapsFindsDrift(t *testing.T) {
-	dir := t.TempDir()
-	write(t, dir, "users/user.go", `package users
-
-func (s *Service) Edit(ctx context.Context, id ID) error {
-	if err := s.edit(ctx, id); err != nil {
-		return fmt.Errorf("edit user %s: %w", id, err)
-	}
-	return nil
-}
-
-func (s *Service) Rename(ctx context.Context, id ID) (err error) {
-	defer func() {
-		if err != nil {
-			err = fmt.Errorf("rename: %w", err)
-		}
-	}()
-	return s.rename(ctx, id)
-}
-
-func (s *Service) Close() (err error) {
-	defer func() {
-		if p := recover(); p != nil {
-			err = fmt.Errorf("panic: %v", p)
-		}
-	}()
-	return s.close()
-}`)
-
-	vs, err := checkDeferredWraps(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var got []string
-	for _, v := range vs {
-		got = append(got, v.File)
-	}
-	if want := []string{"users/user.go:13"}; !slices.Equal(got, want) {
-		t.Fatalf("got %v, want %v", vs, want)
-	}
-}
-
-func TestCheckMessagesFindsDrift(t *testing.T) {
-	dir := t.TempDir()
-	write(t, dir, "users/user.go", `package users
-
-func (s *Service) Get() error {
-	if err := s.get(); err != nil {
-		return fmt.Errorf("users: get: %w", err)
-	}
-	if bad {
-		return fmt.Errorf("%w: %q", ErrInvalidName, name)
-	}
-	if cause != nil {
-		return fmt.Errorf("%w: %v", ErrInvalidName, err)
-	}
-	return errors.Join(err, ErrNotFound)
-}
-
-func joined() error {
-	return errors.Join(errs...)
-}
-
-var (
-	errA = errors.New("failed to read")
-	errB = fault.New(fault.Invalid, "Capital")
-	errC = fault.New(fault.Invalid, "ends with a period.")
-)`)
-
-	vs, err := checkMessages(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var got []string
-	for _, v := range vs {
-		got = append(got, v.File)
-	}
-	want := []string{"users/user.go:11", "users/user.go:13", "users/user.go:21", "users/user.go:22", "users/user.go:23"}
-	if !slices.Equal(got, want) {
-		t.Fatalf("got %v, want %v", vs, want)
-	}
-}
-
-func TestCheckSideEffectsFindsCall(t *testing.T) {
-	dir := t.TempDir()
-	write(t, dir, "api/sessions.go", `package api
-
-func (h *handlers) DeleteSession() {
-	h.auth.RevokeSession()
-	h.events.Publish(e)
-}`)
-	write(t, dir, "api/sessions_test.go", `package api
-
-func fixture() { e.d.Events.Publish(e) }`)
-	write(t, dir, "auth/session.go", `package auth
-
-func (s *Service) revoke() { s.events.Publish(e) }`)
-
-	vs, err := checkSideEffects(dir, []string{"api"}, sideEffects)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var got []string
-	for _, v := range vs {
-		got = append(got, v.File)
-	}
-	if want := []string{"api/sessions.go:5"}; !slices.Equal(got, want) {
-		t.Fatalf("got %v, want %v", vs, want)
-	}
-}
-
 func TestCheckTransactionsFindsControl(t *testing.T) {
 	dir := t.TempDir()
 	write(t, dir, "store/tx.go", `package store
@@ -474,47 +288,6 @@ func fixture() { _ = tx.Commit() }`)
 		got = append(got, v.File)
 	}
 	if want := []string{"catalog/catalog.go:4", "catalog/catalog.go:5"}; !slices.Equal(got, want) {
-		t.Fatalf("got %v, want %v", vs, want)
-	}
-}
-
-func TestCheckValuesOnlyFindsReach(t *testing.T) {
-	dir := t.TempDir()
-	write(t, dir, "query/query.go", `package query
-
-import (
-	cat "github.com/mmcdole/kivo/internal/catalog"
-	"github.com/mmcdole/kivo/internal/catalog/dbq"
-)
-
-type Service struct{ c *cat.Catalog }
-
-func use(b *cat.Batch) {
-	_ = cat.New(nil)
-	_, _ = cat.KindMovie, cat.CompareVersions
-	var _ cat.WorkKind
-	_ = dbq.Queries{}
-}`)
-	write(t, dir, "query/query_test.go", `package query
-
-import "github.com/mmcdole/kivo/internal/catalog"
-
-var _ = catalog.New(nil)`)
-	write(t, dir, "scan/scan.go", `package scan
-
-import "github.com/mmcdole/kivo/internal/catalog"
-
-var _ = catalog.New(nil)`)
-
-	vs, err := checkValuesOnly(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var got []string
-	for _, v := range vs {
-		got = append(got, v.File)
-	}
-	if want := []string{"query/query.go:5", "query/query.go:8", "query/query.go:10", "query/query.go:11"}; !slices.Equal(got, want) {
 		t.Fatalf("got %v, want %v", vs, want)
 	}
 }

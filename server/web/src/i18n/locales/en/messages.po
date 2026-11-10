@@ -2753,10 +2753,6 @@ msgstr "Description"
 msgid "Couldn't save. {problem}"
 msgstr "Couldn't save. {problem}"
 
-#: src/features/lists/ListsScreen.tsx
-msgid "{kinds}, {count}"
-msgstr "{kinds}, {count}"
-
 #: src/features/admin/TranscodingScreen.tsx
 msgid "Simultaneous video transcodes"
 msgstr "Simultaneous video transcodes"
@@ -3079,10 +3075,6 @@ msgstr "Remove from {0}"
 #: src/features/search/SearchScreen.tsx
 msgid "Search titles and people"
 msgstr "Search titles and people"
-
-#: src/features/lists/ListsScreen.tsx
-msgid "Smart Lists"
-msgstr "Smart Lists"
 
 #: src/features/admin/ManageLibrariesScreen.tsx
 msgid "Not scanned yet"

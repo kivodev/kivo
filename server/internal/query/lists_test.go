@@ -487,3 +487,72 @@ func TestListsCRUDAndHome(t *testing.T) {
 		}
 	}
 }
+
+// A list's covers are the posters of the first three works its page lists
+// for the Viewer, so a work the Viewer can't see gives none.
+func TestCountedListsCovers(t *testing.T) {
+	h := newHousehold(t)
+	us := users.New(h.b.DB, events.NewBus())
+	posters := map[id.ID]id.ID{}
+	for _, w := range []id.ID{h.dune.Work, h.bladeRunner.Work, h.toyStory.Work, h.toyStory2.Work} {
+		i := id.New()
+		h.b.Write(func(ctx context.Context, tx *store.Tx) error {
+			_, err := tx.ExecContext(ctx, `INSERT INTO image (id, work_id, kind, source, origin, width, height, blurhash, fetched_at)
+				VALUES (?, ?, 'poster', 'provider', 'x', 480, 720, '', 0)`, i, w)
+			return err
+		})
+		posters[w] = i
+	}
+	covers := func(v users.Viewer, list id.ID) []id.ID {
+		t.Helper()
+		ls, err := h.q.CountedLists(ctx, v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		l := ls[slices.IndexFunc(ls, func(l query.List) bool { return l.ID == list })]
+		out := []id.ID{}
+		for _, c := range l.Covers {
+			out = append(out, c.ID)
+		}
+		return out
+	}
+
+	mine := h.lists(h.admin)[0].ID
+	h.putOnList(mine, h.dune.Work, 1000)
+	h.putOnList(mine, h.toyStory.Work, 2000)
+	h.putOnList(mine, h.bladeRunner.Work, 3000)
+	h.putOnList(mine, h.toyStory2.Work, 4000)
+	if got, want := covers(h.admin, mine), []id.ID{posters[h.toyStory2.Work], posters[h.bladeRunner.Work], posters[h.toyStory.Work]}; !slices.Equal(got, want) {
+		t.Errorf("a manual list's covers: %v, want the three most recently added %v", got, want)
+	}
+	kids := h.lists(h.kid)[0].ID
+	h.putOnList(kids, h.toyStory.Work, 1000)
+	h.putOnList(kids, h.bladeRunner.Work, 2000)
+	if got, want := covers(h.kid, kids), []id.ID{posters[h.toyStory.Work]}; !slices.Equal(got, want) {
+		t.Errorf("the kid's list's covers: %v, want %v", got, want)
+	}
+	empty, err := us.CreateList(ctx, h.kid, "Empty", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := covers(h.kid, empty); len(got) != 0 {
+		t.Errorf("an empty list's covers: %v", got)
+	}
+
+	// A smart list's are the first three its rules select, in their order.
+	smart := h.smartList(us, h.kid, "R", movies(query.Rule{Field: "title", Op: "contains", Values: []string{"r"}}))
+	p, err := h.q.ListWorks(ctx, h.kid, smart, nil, query.GridOptions{Limit: 3})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var want []id.ID
+	for _, w := range p.Items {
+		if c, ok := posters[w.ID]; ok {
+			want = append(want, c)
+		}
+	}
+	got := covers(h.kid, smart)
+	if len(got) == 0 || !slices.Equal(got, want) || slices.Contains(got, posters[h.bladeRunner.Work]) {
+		t.Errorf("the kid's smart list's covers: %v, want %v and never Blade Runner's", got, want)
+	}
+}

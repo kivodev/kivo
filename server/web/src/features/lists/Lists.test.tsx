@@ -10,17 +10,37 @@ const emptyMyList = (api: MockApi) => {
 };
 
 describe("Lists", () => {
-  it("shows Watchlist as a row with its count, then the other lists with theirs", async () => {
+  it("shows Watchlist as a row with no count, then every other list in one grid of cards", async () => {
     serveMockApi();
     const { user, router } = renderApp("/lists");
     expect(await screen.findByRole("heading", { name: "Lists", level: 1 })).toBeInTheDocument();
-    const myList = await screen.findByRole("heading", { name: /^Watchlist/ });
+    const myList = await screen.findByRole("heading", { name: "Watchlist" });
     const row = myList.closest("[data-part='row']") as HTMLElement;
-    expect(within(row).getByText("2")).toBeInTheDocument();
+    expect(within(row).queryByText("2")).toBeNull();
     expect(await within(row).findByRole("link", { name: /^Dune/ })).toBeInTheDocument();
-    const dateNight = screen.getByRole("link", { name: /^Date Night\s*1$/ });
+    expect(screen.queryByRole("heading", { name: "Your lists" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Smart Lists" })).toBeNull();
+    // Manual lists, then smart ones, each by name.
+    const grid = document.querySelector("[data-part='list-cards']") as HTMLElement;
+    const names = within(grid)
+      .getAllByRole("link")
+      .map((card) => card.textContent);
+    expect(names).toEqual(["Date Night1", "Weekend", "Every Movie238", "Sci-fi2", "Shows Recently Added2"]);
+    const dateNight = within(grid).getByRole("link", { name: /^Date Night\s*1$/ });
+    expect(dateNight.querySelector("svg")).toBeNull();
+    expect(dateNight.querySelectorAll("img")).toHaveLength(1);
+    expect(dateNight.querySelectorAll("[data-part='cover-placeholder']")).toHaveLength(2);
     await user.click(dateNight);
     await waitFor(() => expect(router.state.location.pathname).toBe(`/lists/${mockIds.dateNight}`));
+  });
+
+  it("shows an empty list's icon on a plain tile, with no count", async () => {
+    serveMockApi();
+    renderApp("/lists");
+    const weekend = await screen.findByRole("link", { name: "Weekend" });
+    expect(weekend).toHaveAttribute("href", `/lists/${mockIds.weekend}`);
+    expect(weekend.querySelector("[data-part='list-count']")).toBeNull();
+    expect(weekend.querySelector("img")).toBeNull();
   });
 
   it("hides Watchlist's section when it's empty", async () => {

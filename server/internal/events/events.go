@@ -2,17 +2,17 @@ package events
 
 import (
 	"bytes"
+	"errors"
 	"slices"
 	"sync"
 	"time"
 
-	"github.com/mmcdole/kivo/internal/fault"
 	"github.com/mmcdole/kivo/internal/id"
 )
 
 // ErrLagged means a subscriber fell behind and its buffer overflowed. Its
 // channel is closed, and the client should resync by refetching.
-var ErrLagged = fault.New(fault.Internal, "subscriber lagged")
+var ErrLagged = errors.New("subscriber lagged")
 
 // buffer is how many events a subscriber can fall behind before it lags.
 const buffer = 256

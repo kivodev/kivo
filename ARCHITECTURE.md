@@ -86,7 +86,7 @@ The main components:
 - **`release`** checks once a day whether a newer Kivo release is out, for the admin's notice.
 - **`api`** exposes it all over HTTP and WebSocket. It runs no SQL and holds no domain rules, though a handler may combine reads from several services into one response.
 
-Several of these rules are enforced by tests in `internal/archtest` rather than left to review: the layering, that only `egress` makes outbound requests, and that each component writes only the tables and columns it owns.
+Several of these rules are enforced by tests in `internal/archtest` rather than left to review: the layering, that only `egress` makes outbound requests, that each component writes only the tables and columns it owns, and that only `store` begins and ends transactions.
 
 ### The API contract
 
@@ -252,7 +252,7 @@ server/
   cmd/kivo/            main, the admin CLI (reset-password, restore), and the one place components are wired
   internal/            one package per component (see "The server" above)
     api/openapi.yaml   the API contract
-    archtest/          tests that enforce layering, egress and table ownership
+    archtest/          tests that enforce layering, egress, table ownership and transactions
     media/container/   MP4 and Matroska parsing, keyframes, the fMP4 segment splitter
     media/ffmpeg/      ffmpeg command lines, accelerator detection
     parse/             the file and folder name parser, for video and audiobook paths
