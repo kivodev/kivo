@@ -105,7 +105,7 @@ SELECT s.id, s.user_id, s.kind, s.name, s.last_used_at,
 FROM session s JOIN user u ON u.id = s.user_id
 WHERE s.token_hash = ?1 AND u.disabled = 0
 UNION ALL
-SELECT k.id, k.created_by, '', k.name, coalesce(k.last_used_at, k.created_at), '', '', '', '', ''
+SELECT k.id, k.created_by, '', k.name, coalesce(k.last_used_at, 0), '', '', '', '', ''
 FROM api_key k JOIN user u ON u.id = k.created_by
 WHERE k.token_hash = ?1 AND u.disabled = 0
 `
@@ -125,7 +125,7 @@ type CallerByTokenRow struct {
 
 // The session or API key with this token, joined to its user in the same
 // read, so disabling the user takes effect at once. An API key's kind is
-// empty, and so is its device.
+// empty, and so is its device. Its last_used_at is 0 until it's used.
 func (q *Queries) CallerByToken(ctx context.Context, tokenHash []byte) (CallerByTokenRow, error) {
 	row := q.db.QueryRowContext(ctx, callerByToken, tokenHash)
 	var i CallerByTokenRow
@@ -233,8 +233,8 @@ func (q *Queries) DeleteCastToken(ctx context.Context, argID id.ID) (int64, erro
 	return result.RowsAffected()
 }
 
-const deleteClientSession = `-- name: DeleteClientSession :many
-DELETE FROM session WHERE user_id = ?1 AND client_id = CAST(?2 AS TEXT) RETURNING id
+const deleteClientSession = `-- name: DeleteClientSession :exec
+DELETE FROM session WHERE user_id = ?1 AND client_id = CAST(?2 AS TEXT)
 `
 
 type DeleteClientSessionParams struct {
@@ -244,27 +244,9 @@ type DeleteClientSessionParams struct {
 
 // The user's session on @client_id, which a new sign-in from that client
 // replaces.
-func (q *Queries) DeleteClientSession(ctx context.Context, arg DeleteClientSessionParams) ([]id.ID, error) {
-	rows, err := q.db.QueryContext(ctx, deleteClientSession, arg.UserID, arg.ClientID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []id.ID
-	for rows.Next() {
-		var id id.ID
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		items = append(items, id)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+func (q *Queries) DeleteClientSession(ctx context.Context, arg DeleteClientSessionParams) error {
+	_, err := q.db.ExecContext(ctx, deleteClientSession, arg.UserID, arg.ClientID)
+	return err
 }
 
 const deleteExpiredCastTokens = `-- name: DeleteExpiredCastTokens :execrows
@@ -319,8 +301,8 @@ func (q *Queries) DeleteInvite(ctx context.Context, argID id.ID) (int64, error) 
 	return result.RowsAffected()
 }
 
-const deleteOtherSessions = `-- name: DeleteOtherSessions :many
-DELETE FROM session WHERE user_id = ?1 AND (id != ?2 OR ?2 IS NULL) RETURNING id
+const deleteOtherSessions = `-- name: DeleteOtherSessions :exec
+DELETE FROM session WHERE user_id = ?1 AND (id != ?2 OR ?2 IS NULL)
 `
 
 type DeleteOtherSessionsParams struct {
@@ -329,27 +311,9 @@ type DeleteOtherSessionsParams struct {
 }
 
 // A user's sessions but @keep; every one when @keep is NULL.
-func (q *Queries) DeleteOtherSessions(ctx context.Context, arg DeleteOtherSessionsParams) ([]id.ID, error) {
-	rows, err := q.db.QueryContext(ctx, deleteOtherSessions, arg.UserID, arg.Keep)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []id.ID
-	for rows.Next() {
-		var id id.ID
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		items = append(items, id)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+func (q *Queries) DeleteOtherSessions(ctx context.Context, arg DeleteOtherSessionsParams) error {
+	_, err := q.db.ExecContext(ctx, deleteOtherSessions, arg.UserID, arg.Keep)
+	return err
 }
 
 const deleteSession = `-- name: DeleteSession :one
@@ -796,7 +760,7 @@ func (q *Queries) SignInUser(ctx context.Context, username string) (SignInUserRo
 }
 
 const touchAPIKey = `-- name: TouchAPIKey :exec
-UPDATE api_key SET last_used_at = max(coalesce(last_used_at, 0), CAST(?1 AS INTEGER)) WHERE id = ?2
+UPDATE api_key SET last_used_at = CAST(?1 AS INTEGER) WHERE id = ?2 AND (last_used_at IS NULL OR last_used_at < ?1)
 `
 
 type TouchAPIKeyParams struct {
@@ -810,7 +774,7 @@ func (q *Queries) TouchAPIKey(ctx context.Context, arg TouchAPIKeyParams) error 
 }
 
 const touchCastToken = `-- name: TouchCastToken :exec
-UPDATE cast_token SET last_used_at = max(last_used_at, CAST(?1 AS INTEGER)) WHERE id = ?2
+UPDATE cast_token SET last_used_at = ?1 WHERE id = ?2 AND last_used_at < ?1
 `
 
 type TouchCastTokenParams struct {
@@ -824,7 +788,7 @@ func (q *Queries) TouchCastToken(ctx context.Context, arg TouchCastTokenParams) 
 }
 
 const touchSession = `-- name: TouchSession :exec
-UPDATE session SET last_used_at = max(last_used_at, CAST(?1 AS INTEGER)) WHERE id = ?2
+UPDATE session SET last_used_at = ?1 WHERE id = ?2 AND last_used_at < ?1
 `
 
 type TouchSessionParams struct {

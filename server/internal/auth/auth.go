@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/netip"
-	"sync"
 	"time"
 
 	"github.com/mmcdole/kivo/internal/activity"
@@ -191,9 +190,6 @@ type Service struct {
 	hasher   *hasher
 	throttle *throttle
 	codes    *deviceCodes
-
-	usedMu sync.Mutex
-	used   map[id.ID]use // last-used times not yet written
 }
 
 // Deps are auth's collaborators.
@@ -206,22 +202,7 @@ type Deps struct {
 	Activity *activity.Service
 }
 
-// use is when a session, API key or cast token was last used.
-type use struct {
-	at   time.Time
-	kind credential
-}
-
-// credential is what a token belongs to.
-type credential int
-
-const (
-	sessionCredential credential = iota
-	apiKeyCredential
-	castCredential
-)
-
-// New returns a Service. Call Run to persist last-used times.
+// New returns a Service. Call Run to drop expired sessions and cast tokens.
 func New(db *store.DB, d Deps) *Service {
 	return &Service{
 		db:       db,
@@ -230,26 +211,23 @@ func New(db *store.DB, d Deps) *Service {
 		hasher:   newHasher(defaultParams),
 		throttle: newThrottle(),
 		codes:    newDeviceCodes(),
-		used:     map[id.ID]use{},
 	}
 }
 
-// flushEvery is how often Run writes the batched last-used times.
-const flushEvery = 5 * time.Minute
+// dropExpiredEvery is how often Run drops expired sessions and cast tokens.
+const dropExpiredEvery = 5 * time.Minute
 
-// Run writes the batched last-used times every 5 minutes. It also drops
-// browser sessions idle for 30 days and expired cast tokens. When ctx ends,
-// it writes what's left and returns.
+// Run drops browser sessions idle for 30 days and expired cast tokens every
+// 5 minutes, until ctx ends.
 func (s *Service) Run(ctx context.Context) error {
-	t := time.NewTicker(flushEvery)
+	t := time.NewTicker(dropExpiredEvery)
 	defer t.Stop()
 	for {
 		select {
 		case <-ctx.Done():
-			s.flush(context.WithoutCancel(ctx))
 			return nil
 		case <-t.C:
-			s.flush(ctx)
+			s.dropExpired(ctx)
 		}
 	}
 }

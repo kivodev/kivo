@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"maps"
 	"slices"
 	"time"
 
@@ -25,11 +24,9 @@ func (s *Service) issue(ctx context.Context, tx *store.Tx, user id.ID, c client)
 		ID: id.New(), User: user, Kind: c.kind, Name: c.name, Device: c.device, Created: now, LastUsed: now,
 	}}
 	if c.id != "" {
-		replaced, err := q.DeleteClientSession(ctx, dbq.DeleteClientSessionParams{UserID: user, ClientID: c.id})
-		if err != nil {
+		if err := q.DeleteClientSession(ctx, dbq.DeleteClientSessionParams{UserID: user, ClientID: c.id}); err != nil {
 			return IssuedSession{}, err
 		}
-		s.revokeAtCommit(tx, replaced...)
 	}
 	err := q.InsertSession(ctx, dbq.InsertSessionParams{
 		ID:          out.Session.ID,
@@ -54,7 +51,8 @@ func (s *Service) issue(ctx context.Context, tx *store.Tx, user id.ID, c client)
 
 // Authenticate resolves a token from a cookie or an Authorization header to
 // its session, API key or cast token. It uses one read, which also checks
-// that the user isn't disabled.
+// that the user isn't disabled, and writes the last-used time when the
+// stored one is stale.
 func (s *Service) Authenticate(ctx context.Context, token string) (Caller, error) {
 	hash, ok := hashToken(token)
 	if !ok {
@@ -71,16 +69,21 @@ func (s *Service) Authenticate(ctx context.Context, token string) (Caller, error
 	c := Caller{User: row.UserID, Name: row.Name, Device: Device{
 		App: row.App, AppVersion: row.AppVersion, Platform: Platform(row.Platform), OSVersion: row.OsVersion, Model: row.DeviceModel,
 	}}
-	kind := apiKeyCredential
+	stored := time.UnixMilli(row.LastUsedAt)
 	if row.Kind == "" {
 		c.APIKey = row.ID
-	} else {
-		if s.expired(row.ID, SessionKind(row.Kind), time.UnixMilli(row.LastUsedAt), now) {
-			return Caller{}, fmt.Errorf("%w: session expired", ErrUnauthenticated)
-		}
-		c.Session, kind = row.ID, sessionCredential
+		s.markUsed(ctx, stored, now, func(ctx context.Context, q *dbq.Queries, used int64) error {
+			return q.TouchAPIKey(ctx, dbq.TouchAPIKeyParams{ID: row.ID, Used: used})
+		})
+		return c, nil
 	}
-	s.touch(row.ID, kind, now)
+	if expired(SessionKind(row.Kind), stored, now) {
+		return Caller{}, fmt.Errorf("%w: session expired", ErrUnauthenticated)
+	}
+	c.Session = row.ID
+	s.markUsed(ctx, stored, now, func(ctx context.Context, q *dbq.Queries, used int64) error {
+		return q.TouchSession(ctx, dbq.TouchSessionParams{ID: row.ID, Used: used})
+	})
 	return c, nil
 }
 
@@ -107,7 +110,7 @@ func (s *Service) Alive(ctx context.Context, c Caller) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return !s.expired(c.Session, SessionKind(row.Kind), time.UnixMilli(row.LastUsedAt), time.Now()), nil
+	return !expired(SessionKind(row.Kind), time.UnixMilli(row.LastUsedAt), time.Now()), nil
 }
 
 // SignOut ends the caller's own session, and its token stops working at
@@ -126,15 +129,9 @@ func (s *Service) SignOutOthers(ctx context.Context, c Caller) error {
 	if c.Session.IsZero() {
 		return fmt.Errorf("%w: sign out others", ErrNotFound)
 	}
-	err := s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
-		revoked, err := dbq.New(tx).DeleteOtherSessions(ctx, dbq.DeleteOtherSessionsParams{UserID: c.User, Keep: c.Session})
-		if err != nil {
-			return err
-		}
-		s.revokeAtCommit(tx, revoked...)
-		return nil
+	return s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
+		return dbq.New(tx).DeleteOtherSessions(ctx, dbq.DeleteOtherSessionsParams{UserID: c.User, Keep: c.Session})
 	})
-	return err
 }
 
 // revoke ends a session.
@@ -144,11 +141,7 @@ func (s *Service) revoke(ctx context.Context, session id.ID) error {
 		if errors.Is(err, sql.ErrNoRows) {
 			return fmt.Errorf("%w: session %s", ErrNotFound, session)
 		}
-		if err != nil {
-			return err
-		}
-		s.revokeAtCommit(tx, session)
-		return nil
+		return err
 	})
 }
 
@@ -167,7 +160,7 @@ func (s *Service) Sessions(ctx context.Context, by Caller, user id.ID) ([]Sessio
 	out := make([]Session, 0, len(rows))
 	for _, r := range rows {
 		kind := SessionKind(r.Kind)
-		if s.expired(r.ID, kind, time.UnixMilli(r.LastUsedAt), now) {
+		if expired(kind, time.UnixMilli(r.LastUsedAt), now) {
 			continue
 		}
 		out = append(out, s.session(dbq.SessionRow(r)))
@@ -181,7 +174,7 @@ func (s *Service) Sessions(ctx context.Context, by Caller, user id.ID) ([]Sessio
 // ErrNotFound.
 func (s *Service) Session(ctx context.Context, by Caller, session id.ID) (Session, error) {
 	r, err := s.q.Session(ctx, session)
-	if errors.Is(err, sql.ErrNoRows) || err == nil && s.expired(r.ID, SessionKind(r.Kind), time.UnixMilli(r.LastUsedAt), time.Now()) {
+	if errors.Is(err, sql.ErrNoRows) || err == nil && expired(SessionKind(r.Kind), time.UnixMilli(r.LastUsedAt), time.Now()) {
 		return Session{}, fmt.Errorf("%w: session %s", ErrNotFound, session)
 	}
 	if err != nil {
@@ -197,7 +190,7 @@ func (s *Service) session(r dbq.SessionRow) Session {
 	return Session{
 		ID: r.ID, User: r.UserID, Kind: SessionKind(r.Kind), Name: r.Name,
 		Device:  Device{App: r.App, AppVersion: r.AppVersion, Platform: Platform(r.Platform), OSVersion: r.OsVersion, Model: r.DeviceModel},
-		Created: time.UnixMilli(r.CreatedAt), LastUsed: s.lastUsed(r.ID, time.UnixMilli(r.LastUsedAt)),
+		Created: time.UnixMilli(r.CreatedAt), LastUsed: time.UnixMilli(r.LastUsedAt),
 	}
 }
 
@@ -290,93 +283,44 @@ func (s *Service) mayManage(ctx context.Context, by Caller, user id.ID) error {
 // browserIdle is how long a browser session lasts unused.
 const browserIdle = 30 * 24 * time.Hour
 
-// expired reports whether a browser session has been idle too long. It
-// counts use that isn't written yet.
-func (s *Service) expired(session id.ID, kind SessionKind, stored time.Time, now time.Time) bool {
-	return kind == SessionBrowser && now.Sub(s.lastUsed(session, stored)) > browserIdle
+// staleAfter is how old a stored last-used time gets before a request
+// writes a new one, so the stored time lags real use by at most a minute,
+// which is small next to castIdle.
+const staleAfter = time.Minute
+
+// expired reports whether a browser session has been idle too long.
+func expired(kind SessionKind, used, now time.Time) bool {
+	return kind == SessionBrowser && now.Sub(used) > browserIdle
 }
 
-// lastUsed returns when a session or API key was last used, counting use
-// that isn't written yet. It is zero for a key that was never used.
-func (s *Service) lastUsed(id id.ID, stored time.Time) time.Time {
-	s.usedMu.Lock()
-	if u, ok := s.used[id]; ok && u.at.After(stored) {
-		stored = u.at
-	}
-	s.usedMu.Unlock()
-	return stored
-}
-
-func (s *Service) touch(id id.ID, kind credential, now time.Time) {
-	s.usedMu.Lock()
-	s.used[id] = use{at: now, kind: kind}
-	s.usedMu.Unlock()
-}
-
-// revokeAtCommit drops the unwritten use of sessions or API keys that tx
-// deletes, once tx commits.
-func (s *Service) revokeAtCommit(tx *store.Tx, credentials ...id.ID) {
-	if len(credentials) == 0 {
+// markUsed writes now as a credential's last-used time with touch, when the
+// stored time is more than staleAfter old. A failed write is logged, and the
+// request carries on.
+func (s *Service) markUsed(ctx context.Context, stored, now time.Time, touch func(ctx context.Context, q *dbq.Queries, used int64) error) {
+	if now.Sub(stored) <= staleAfter {
 		return
 	}
-	tx.AfterCommit(func() {
-		s.usedMu.Lock()
-		for _, c := range credentials {
-			delete(s.used, c)
-		}
-		s.usedMu.Unlock()
+	err := s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
+		return touch(ctx, dbq.New(tx), now.UnixMilli())
 	})
+	if err != nil {
+		slog.WarnContext(ctx, "auth: write last-used time", "err", err)
+	}
 }
 
-// flush writes the batched last-used times, then drops browser sessions
-// that have been idle too long. Both steps go one batch at a time. On
-// failure the times are kept for the next try, since writing a time twice
-// does no harm.
-func (s *Service) flush(ctx context.Context) {
-	s.usedMu.Lock()
-	batch := s.used
-	s.used = map[id.ID]use{}
-	s.usedMu.Unlock()
-
-	ids := slices.Collect(maps.Keys(batch))
-	err := store.Batches(ctx, s.db, ids, func(ctx context.Context, tx *store.Tx, ids []id.ID) error {
-		q := dbq.New(tx)
-		for _, id := range ids {
-			u := batch[id]
-			var err error
-			switch u.kind {
-			case apiKeyCredential:
-				err = q.TouchAPIKey(ctx, dbq.TouchAPIKeyParams{Used: u.at.UnixMilli(), ID: id})
-			case castCredential:
-				err = q.TouchCastToken(ctx, dbq.TouchCastTokenParams{Used: u.at.UnixMilli(), ID: id})
-			default:
-				err = q.TouchSession(ctx, dbq.TouchSessionParams{Used: u.at.UnixMilli(), ID: id})
-			}
-			if err != nil {
-				return err
-			}
-		}
-		return nil
+// dropExpired drops browser sessions that have been idle too long and expired
+// cast tokens, one batch at a time.
+func (s *Service) dropExpired(ctx context.Context) {
+	now := time.Now()
+	before := now.Add(-browserIdle).UnixMilli()
+	err := s.db.Drain(ctx, func(ctx context.Context, tx *store.Tx) (int, error) {
+		n, err := dbq.New(tx).DeleteIdleBrowserSessions(ctx, dbq.DeleteIdleBrowserSessionsParams{Before: before, Limit: store.BatchSize})
+		return int(n), err
 	})
 	if err == nil {
-		now := time.Now()
-		before := now.Add(-browserIdle).UnixMilli()
-		err = s.db.Drain(ctx, func(ctx context.Context, tx *store.Tx) (int, error) {
-			n, err := dbq.New(tx).DeleteIdleBrowserSessions(ctx, dbq.DeleteIdleBrowserSessionsParams{Before: before, Limit: store.BatchSize})
-			return int(n), err
-		})
-		if err == nil {
-			err = s.deleteExpiredCastTokens(ctx, now)
-		}
+		err = s.deleteExpiredCastTokens(ctx, now)
 	}
 	if err != nil {
-		slog.ErrorContext(ctx, "auth: write last-used times", "err", err)
-		s.usedMu.Lock()
-		for id, u := range batch {
-			if u.at.After(s.used[id].at) {
-				s.used[id] = u
-			}
-		}
-		s.usedMu.Unlock()
+		slog.ErrorContext(ctx, "auth: drop expired sessions", "err", err)
 	}
 }

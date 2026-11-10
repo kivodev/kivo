@@ -86,7 +86,7 @@ func (s *Service) RevokeCastToken(ctx context.Context, c Caller) error {
 	if c.CastToken.IsZero() {
 		return fmt.Errorf("%w: revoke cast token", ErrNotFound)
 	}
-	err := s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
+	return s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
 		n, err := dbq.New(tx).DeleteCastToken(ctx, c.CastToken)
 		if err != nil {
 			return err
@@ -94,14 +94,12 @@ func (s *Service) RevokeCastToken(ctx context.Context, c Caller) error {
 		if n == 0 {
 			return fmt.Errorf("%w: cast token %s", ErrNotFound, c.CastToken)
 		}
-		s.revokeAtCommit(tx, c.CastToken)
 		return nil
 	})
-	return err
 }
 
 // castCaller resolves a token that belongs to no session or API key to its
-// cast token.
+// cast token, and writes its last-used time when the stored one is stale.
 func (s *Service) castCaller(ctx context.Context, hash tokenHash) (Caller, error) {
 	row, err := s.q.CastCallerByToken(ctx, hash[:])
 	if errors.Is(err, sql.ErrNoRows) {
@@ -111,11 +109,14 @@ func (s *Service) castCaller(ctx context.Context, hash tokenHash) (Caller, error
 		return Caller{}, err
 	}
 	now := time.Now()
-	if s.castExpired(row.ID, time.UnixMilli(row.CreatedAt), time.UnixMilli(row.LastUsedAt), now) ||
-		s.expired(row.SessionID, SessionKind(row.SessionKind), time.UnixMilli(row.SessionUsedAt), now) {
+	stored := time.UnixMilli(row.LastUsedAt)
+	if castExpired(time.UnixMilli(row.CreatedAt), stored, now) ||
+		expired(SessionKind(row.SessionKind), time.UnixMilli(row.SessionUsedAt), now) {
 		return Caller{}, fmt.Errorf("%w: cast token expired", ErrUnauthenticated)
 	}
-	s.touch(row.ID, castCredential, now)
+	s.markUsed(ctx, stored, now, func(ctx context.Context, q *dbq.Queries, used int64) error {
+		return q.TouchCastToken(ctx, dbq.TouchCastTokenParams{ID: row.ID, Used: used})
+	})
 	return Caller{User: row.UserID, CastToken: row.ID, Name: row.Name}, nil
 }
 
@@ -131,14 +132,14 @@ func (s *Service) castAlive(ctx context.Context, token id.ID) (bool, error) {
 		return false, err
 	}
 	now := time.Now()
-	return !s.castExpired(token, time.UnixMilli(row.CreatedAt), time.UnixMilli(row.LastUsedAt), now) &&
-		!s.expired(row.SessionID, SessionKind(row.SessionKind), time.UnixMilli(row.SessionUsedAt), now), nil
+	return !castExpired(time.UnixMilli(row.CreatedAt), time.UnixMilli(row.LastUsedAt), now) &&
+		!expired(SessionKind(row.SessionKind), time.UnixMilli(row.SessionUsedAt), now), nil
 }
 
 // castExpired reports whether a cast token went unused too long or
-// outlived its lifetime. It counts use that isn't written yet.
-func (s *Service) castExpired(token id.ID, created, stored, now time.Time) bool {
-	return now.Sub(s.lastUsed(token, stored)) > castIdle || now.Sub(created) > castLifetime
+// outlived its lifetime.
+func castExpired(created, used, now time.Time) bool {
+	return now.Sub(used) > castIdle || now.Sub(created) > castLifetime
 }
 
 // deleteExpiredCastTokens drops the cast tokens past their idle time or

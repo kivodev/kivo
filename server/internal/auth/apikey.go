@@ -77,29 +77,21 @@ func (s *Service) APIKey(ctx context.Context, key id.ID) (APIKey, error) {
 }
 
 func (s *Service) apiKey(r dbq.APIKeyRow) APIKey {
-	var stored time.Time
+	var used time.Time
 	if r.LastUsedAt.Valid {
-		stored = time.UnixMilli(r.LastUsedAt.Int64)
+		used = time.UnixMilli(r.LastUsedAt.Int64)
 	}
-	return APIKey{ID: r.ID, Name: r.Name, Created: time.UnixMilli(r.CreatedAt), LastUsed: s.lastUsed(r.ID, stored)}
+	return APIKey{ID: r.ID, Name: r.Name, Created: time.UnixMilli(r.CreatedAt), LastUsed: used}
 }
 
 // RevokeAPIKey deletes an API key, and its token stops working at once.
 // Only an admin may, which api checks.
 func (s *Service) RevokeAPIKey(ctx context.Context, key id.ID) error {
-	err := s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
+	return s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
 		_, err := dbq.New(tx).DeleteAPIKey(ctx, key)
 		if errors.Is(err, sql.ErrNoRows) {
 			return fmt.Errorf("%w: API key %s", ErrNotFound, key)
 		}
-		if err != nil {
-			return err
-		}
-		s.revokeAtCommit(tx, key)
-		return nil
-	})
-	if err != nil {
 		return err
-	}
-	return nil
+	})
 }
