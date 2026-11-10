@@ -1826,7 +1826,7 @@ GET /api/v1/libraries
       "refreshDays": 0,
       "scan": {
         "libraryId": "<id1>",
-        "state": "scanning"
+        "state": "idle"
       },
       "subtitles": "nightlyAndAdded",
       "unmatchedCount": 0,
@@ -1911,7 +1911,7 @@ GET /api/v1/libraries?limit=1&after=bogus
       "refreshDays": 0,
       "scan": {
         "libraryId": "<id1>",
-        "state": "scanning"
+        "state": "idle"
       },
       "subtitles": "nightlyAndAdded",
       "unmatchedCount": 0,
@@ -1965,7 +1965,7 @@ GET /api/v1/libraries/<id1>
   "refreshDays": 0,
   "scan": {
     "libraryId": "<id1>",
-    "state": "scanning"
+    "state": "idle"
   },
   "subtitles": "nightlyAndAdded",
   "unmatchedCount": 0,
@@ -2171,13 +2171,9 @@ GET /api/v1/tasks
       "nextRunAt": "<time>",
       "nightly": false,
       "pendingCount": 0,
-      "progress": {
-        "done": 0,
-        "total": 0
-      },
-      "running": true,
+      "running": false,
       "section": "library",
-      "stoppable": true
+      "stoppable": false
     },
     {
       "id": "prune-gone-files",
@@ -2187,6 +2183,18 @@ GET /api/v1/tasks
       "running": false,
       "section": "library",
       "stoppable": false
+    },
+    {
+      "id": "identify-media",
+      "nightly": false,
+      "pendingCount": 0,
+      "progress": {
+        "done": 0,
+        "total": 0
+      },
+      "running": true,
+      "section": "onDemand",
+      "stoppable": true
     },
     {
       "failedCount": 0,

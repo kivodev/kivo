@@ -5,20 +5,19 @@ import (
 	"errors"
 	"io/fs"
 	"log/slog"
-	"sync"
+	"slices"
 
 	"github.com/mmcdole/kivo/internal/activity"
 	"github.com/mmcdole/kivo/internal/catalog"
+	"github.com/mmcdole/kivo/internal/config"
 	"github.com/mmcdole/kivo/internal/fault"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/identify/dbq"
 	"github.com/mmcdole/kivo/internal/keylock"
 	"github.com/mmcdole/kivo/internal/metadata"
-	"github.com/mmcdole/kivo/internal/scan"
 	"github.com/mmcdole/kivo/internal/store"
 	"github.com/mmcdole/kivo/internal/tasks"
 	"github.com/mmcdole/kivo/internal/userstate"
-	"golang.org/x/sync/errgroup"
 )
 
 var (
@@ -28,8 +27,7 @@ var (
 	ErrInvalid = fault.New(fault.Invalid, "invalid")
 
 	// errStale means a file or a work changed while its folder was being
-	// identified. The result is dropped, and the next scan identifies the
-	// folder again.
+	// identified. The result is dropped, and the folder stays pending.
 	errStale = errors.New("stale")
 )
 
@@ -55,9 +53,7 @@ type Options struct {
 	OpenFolder func(path string) (fs.FS, func() error, error)
 }
 
-// Tasks enqueues items to be done now. Identify uses it to ask for a
-// library's scan, which identifies the folders sent back to be identified
-// again. tasks.Runner implements it.
+// Tasks enqueues items to be done now. tasks.Runner implements it.
 type Tasks interface {
 	Enqueue(task string, items ...id.ID)
 }
@@ -77,7 +73,7 @@ type Deps struct {
 	Userstate *userstate.Service
 	// Activity records the files a scan added.
 	Activity *activity.Service
-	// Tasks scans a library again once a write sends its folders back.
+	// Tasks identifies the folders of the files enqueued.
 	Tasks Tasks
 	// Markers finds markers for the episodes placed.
 	Markers Markers
@@ -91,75 +87,131 @@ func New(db *store.DB, d Deps, opt Options) *Identifier {
 	return &Identifier{db: db, q: dbq.New(db.Reader()), deps: d, opt: opt}
 }
 
+// TaskIdentifyMedia identifies folders, with each item a file whose folder
+// needs identifying. A file needs it when it is probed but not identified at
+// its generation. Items are done as they're enqueued: by a scan as it ends,
+// and by a refresh or an edit that sends a work's folders back. The task also
+// looks for files left pending as the server starts and then each hour, which
+// is when a folder that met a provider outage or couldn't be read is tried
+// again.
+const TaskIdentifyMedia = "identify-media"
+
 const identifyAtOnce = 4 // how many folders are identified at once
 
-// Identify runs as a scan of the library ends. It identifies the folders of
-// the library's files that were probed but not yet identified at their
-// current generation. Each folder, or each loose file's root work, is one unit
-// of work, and identifyAtOnce of them run at once. A folder that meets a
-// provider outage, can't be read, or changed meanwhile is left for the next
-// scan.
-func (i *Identifier) Identify(ctx context.Context, lib catalog.Library) error {
+// Tasks returns the package's tasks, for cmd/kivo to add.
+func (i *Identifier) Tasks() []tasks.Task {
+	return []tasks.Task{{Name: TaskIdentifyMedia, Schedule: tasks.OnDemand, Work: tasks.Items{
+		Pending: i.pending, Do: i.identifyFolder, PendingCount: i.pendingCount,
+		Limit: func(config.Settings) int { return identifyAtOnce }}}}
+}
+
+// pending lists one file for each folder that needs identifying, in every
+// library, by path.
+func (i *Identifier) pending(ctx context.Context) ([]id.ID, error) {
+	libs, err := i.deps.Catalog.Libraries(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var out []id.ID
+	for _, l := range libs {
+		files, err := i.unidentified(ctx, l)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, files...)
+	}
+	return out, nil
+}
+
+// pendingCount counts the files that need identifying. Pending lists one of
+// them for each folder.
+func (i *Identifier) pendingCount(ctx context.Context) (int, error) {
+	n, err := i.q.CountUnidentified(ctx)
+	return int(n), err
+}
+
+// unidentified lists, by path, the first file that needs identifying in each
+// of a library's folders. A folder is identified whole, or a loose file's
+// root work is, so one file stands for the rest.
+func (i *Identifier) unidentified(ctx context.Context, lib catalog.Library) ([]id.ID, error) {
 	rows, err := i.q.Unidentified(ctx, lib.ID)
+	if err != nil {
+		return nil, err
+	}
+	var out []id.ID
+	seen := map[string]bool{}
+	for _, r := range rows {
+		if k := folderKey(lib, r.ID, r.RelPath); !seen[k] {
+			seen[k] = true
+			out = append(out, r.ID)
+		}
+	}
+	return out, nil
+}
+
+// Scanned has the folders of a library's files that need identifying
+// identified now. A scan calls it as it ends, once the library's new and
+// changed files are all probed.
+func (i *Identifier) Scanned(ctx context.Context, lib catalog.Library) error {
+	files, err := i.unidentified(ctx, lib)
 	if err != nil {
 		return err
 	}
-	var keys []string
-	folders := map[string][]catalog.FileState{}
-	for _, r := range rows {
-		k := folderKey(lib, r.ID, r.RelPath)
-		if folders[k] == nil {
-			keys = append(keys, k)
-		}
-		folders[k] = append(folders[k], catalog.FileState{ID: r.ID, RelPath: r.RelPath, Generation: r.Generation})
-	}
-	var mu sync.Mutex
-	done := 0
-	tasks.Progress(ctx, StepIdentify, 0, len(keys))
-	g, gctx := errgroup.WithContext(ctx)
-	g.SetLimit(identifyAtOnce)
-	for _, k := range keys {
-		g.Go(func() error {
-			if err := i.identifyFolder(gctx, lib, folders[k]); err != nil {
-				return err
-			}
-			mu.Lock()
-			done++
-			tasks.Progress(ctx, StepIdentify, done, len(keys))
-			mu.Unlock()
-			return nil
-		})
-	}
-	return g.Wait()
+	i.deps.Tasks.Enqueue(TaskIdentifyMedia, files...)
+	return nil
 }
 
-// StepIdentify is the step of a library's scan that identifies its folders.
-const StepIdentify = "identify"
-
-// identifyFolder identifies the folder holding files, and records the files
-// as identified. It only returns an error when the scan's context ends. A
-// folder that fails is logged and left for the next scan.
-func (i *Identifier) identifyFolder(ctx context.Context, lib catalog.Library, files []catalog.FileState) error {
-	f, err := i.deps.Catalog.File(ctx, files[0].ID)
+// identifyFolder identifies the folder holding a file, and records as
+// identified the folder's files that needed it. It returns nil at once when
+// none of them does, as when another item has identified the folder. It only
+// returns an error when it can't read what to do or its context ends. A
+// folder that meets a provider outage, can't be read, or changed meanwhile
+// is logged and left pending.
+func (i *Identifier) identifyFolder(ctx context.Context, file id.ID) error {
+	f, err := i.deps.Catalog.File(ctx, file)
 	if errors.Is(err, catalog.ErrNotFound) {
 		return nil // deleted, or merged into another file by a move
 	}
-	if err == nil {
-		err = i.identify(ctx, lib, f)
+	if err != nil {
+		return err
 	}
+	lib, err := i.deps.Catalog.Library(ctx, f.Library)
+	if errors.Is(err, catalog.ErrNotFound) {
+		return nil // the library is being deleted
+	}
+	if err != nil {
+		return err
+	}
+	// A folder's files are a range of paths: '0' follows '/'. A loose file
+	// is a range of one.
+	from, before := f.RelPath, f.RelPath+"\x00"
+	if folder := folderOf(lib.Kind, f.RelPath); folder != "" {
+		from, before = folder+"/", folder+"0"
+	}
+	rows, err := i.q.UnidentifiedBetween(ctx, dbq.UnidentifiedBetweenParams{LibraryID: lib.ID, From: from, Before: before})
+	if err != nil {
+		return err
+	}
+	// A movie folder inside this one is a folder of its own.
+	key := folderKey(lib, f.ID, f.RelPath)
+	rows = slices.DeleteFunc(rows, func(r dbq.UnidentifiedBetweenRow) bool { return folderKey(lib, r.ID, r.RelPath) != key })
+	if len(rows) == 0 {
+		return nil
+	}
+	err = i.identify(ctx, lib, f)
 	switch {
 	case ctx.Err() != nil:
 		return ctx.Err()
 	case errors.Is(err, errStale), errors.Is(err, catalog.ErrUnreachable):
 		return nil
 	case err != nil:
-		slog.WarnContext(ctx, "identify: folder left for the next scan", "file", files[0].RelPath, "err", err)
+		slog.WarnContext(ctx, "identify: folder left for a later pass", "file", f.RelPath, "err", err)
 		return nil
 	}
 	return i.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
 		q := dbq.New(tx)
-		for _, f := range files {
-			if err := q.SetIdentified(ctx, dbq.SetIdentifiedParams{ID: f.ID, Generation: f.Generation}); err != nil {
+		for _, r := range rows {
+			if err := q.SetIdentified(ctx, dbq.SetIdentifiedParams{ID: r.ID, Generation: r.Generation}); err != nil {
 				return err
 			}
 		}
@@ -169,19 +221,9 @@ func (i *Identifier) identifyFolder(ctx context.Context, lib catalog.Library, fi
 
 // Reidentify marks files so their folders are identified again. A scan
 // calls it mid-run, when an NFO or artwork changed or a full walk retries
-// what was unmatched, and identifies them as the run ends.
+// what was unmatched, and has them identified as the run ends.
 func (i *Identifier) Reidentify(ctx context.Context, tx *store.Tx, files []id.ID) error {
 	return dbq.New(tx).Reidentify(ctx, id.Set(files...))
-}
-
-// reidentifyAndScan is Reidentify for callers outside a scan: it also asks
-// for a scan of lib once tx commits, which identifies them.
-func (i *Identifier) reidentifyAndScan(ctx context.Context, tx *store.Tx, lib id.ID, files ...id.ID) error {
-	if err := i.Reidentify(ctx, tx, files); err != nil {
-		return err
-	}
-	tx.AfterCommit(func() { i.deps.Tasks.Enqueue(scan.TaskScanLibraries, lib) })
-	return nil
 }
 
 // identify identifies every unit in the folder of file f. It holds the

@@ -12,6 +12,21 @@ import (
 	"github.com/mmcdole/kivo/internal/id"
 )
 
+const countUnidentified = `-- name: CountUnidentified :one
+SELECT count(*) FROM media_file f JOIN library_folder r ON r.id = f.folder_id
+JOIN library l ON l.id = r.library_id AND l.deleting_at IS NULL
+WHERE r.removing_at IS NULL AND f.status = 'present'
+  AND f.probed = f.generation AND f.probe_error IS NULL AND f.identified IS NOT f.generation
+`
+
+// How many files Unidentified lists across the libraries.
+func (q *Queries) CountUnidentified(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countUnidentified)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const episodePlace = `-- name: EpisodePlace :one
 SELECT parent_id, parent_number, number FROM work WHERE id = ?1
 `
@@ -441,16 +456,15 @@ func (q *Queries) SetIdentified(ctx context.Context, arg SetIdentifiedParams) er
 }
 
 const unidentified = `-- name: Unidentified :many
-SELECT f.id, f.rel_path, f.generation FROM media_file f JOIN library_folder r ON r.id = f.folder_id
+SELECT f.id, f.rel_path FROM media_file f JOIN library_folder r ON r.id = f.folder_id
 WHERE r.library_id = ?1 AND r.removing_at IS NULL AND f.status = 'present'
   AND f.probed = f.generation AND f.probe_error IS NULL AND f.identified IS NOT f.generation
 ORDER BY r.path, f.rel_path
 `
 
 type UnidentifiedRow struct {
-	ID         id.ID
-	RelPath    string
-	Generation int64
+	ID      id.ID
+	RelPath string
 }
 
 // A library's present files probed but not identified at their
@@ -464,6 +478,50 @@ func (q *Queries) Unidentified(ctx context.Context, libraryID id.ID) ([]Unidenti
 	var items []UnidentifiedRow
 	for rows.Next() {
 		var i UnidentifiedRow
+		if err := rows.Scan(&i.ID, &i.RelPath); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const unidentifiedBetween = `-- name: UnidentifiedBetween :many
+SELECT f.id, f.rel_path, f.generation FROM media_file f JOIN library_folder r ON r.id = f.folder_id
+WHERE r.library_id = ?1 AND r.removing_at IS NULL AND f.status = 'present'
+  AND f.probed = f.generation AND f.probe_error IS NULL AND f.identified IS NOT f.generation
+  AND f.rel_path >= CAST(?2 AS TEXT) AND f.rel_path < CAST(?3 AS TEXT)
+ORDER BY r.path, f.rel_path
+`
+
+type UnidentifiedBetweenParams struct {
+	LibraryID id.ID
+	From      string
+	Before    string
+}
+
+type UnidentifiedBetweenRow struct {
+	ID         id.ID
+	RelPath    string
+	Generation int64
+}
+
+// A library's files that Unidentified lists, within a range of paths.
+func (q *Queries) UnidentifiedBetween(ctx context.Context, arg UnidentifiedBetweenParams) ([]UnidentifiedBetweenRow, error) {
+	rows, err := q.db.QueryContext(ctx, unidentifiedBetween, arg.LibraryID, arg.From, arg.Before)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UnidentifiedBetweenRow
+	for rows.Next() {
+		var i UnidentifiedBetweenRow
 		if err := rows.Scan(&i.ID, &i.RelPath, &i.Generation); err != nil {
 			return nil, err
 		}

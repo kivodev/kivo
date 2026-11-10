@@ -184,7 +184,7 @@ func TestLostMatchRowIsWrittenAgain(t *testing.T) {
 	}
 }
 
-// A folder whose stored state can't be read is left for the next scan. The
+// A folder whose stored state can't be read is left pending. The
 // failure doesn't count as the folder having no match: no provider is
 // called and nothing is written.
 func TestUnreadableMatchLeavesTheFolder(t *testing.T) {
@@ -198,11 +198,11 @@ func TestUnreadableMatchLeavesTheFolder(t *testing.T) {
 
 	e.exec(`ALTER TABLE match RENAME TO match_away`)
 	e.b.Write(func(ctx context.Context, tx *store.Tx) error { return e.id.Reidentify(ctx, tx, files) })
-	if err := e.identify(ctx, lib.ID); err != nil {
+	if err := e.identify(ctx); err != nil {
 		t.Fatal(err)
 	}
 	if !slices.Equal(e.pending(), files) {
-		t.Errorf("pending %v, want the folder's files %v left for the next scan", e.pending(), files)
+		t.Errorf("pending %v, want the folder's files %v left pending", e.pending(), files)
 	}
 	e.exec(`ALTER TABLE match_away RENAME TO match`)
 	if s, l := e.video.calls(); s != searches || l != lists {
@@ -212,7 +212,7 @@ func TestUnreadableMatchLeavesTheFolder(t *testing.T) {
 		t.Errorf("written:\n%s\nwas:\n%s", got, kept)
 	}
 
-	if err := e.identify(ctx, lib.ID); err != nil {
+	if err := e.identify(ctx); err != nil {
 		t.Fatal(err)
 	}
 	if len(e.pending()) != 0 {

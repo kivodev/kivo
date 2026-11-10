@@ -63,12 +63,11 @@ UPDATE library_folder SET reachable = @reachable WHERE id = @id;
 UPDATE library_folder SET last_scan_at = @last_scan_at WHERE id = @id;
 
 -- name: Behind :many
--- The libraries with files a scan hasn't caught up with: not probed or not
--- identified at their generation.
+-- The libraries with files a scan hasn't caught up with: not probed at
+-- their generation.
 SELECT DISTINCT r.library_id FROM media_file f JOIN library_folder r ON r.id = f.folder_id
 JOIN library l ON l.id = r.library_id AND l.deleting_at IS NULL
-WHERE f.status = 'present' AND (f.probed IS NOT f.generation OR f.identified IS NOT f.generation)
-  AND (f.probed IS NOT f.generation OR f.probe_error IS NULL) AND r.removing_at IS NULL;
+WHERE f.status = 'present' AND f.probed IS NOT f.generation AND r.removing_at IS NULL;
 
 -- name: ProbeFailures :many
 -- The present files that failed to probe at their generation, newest

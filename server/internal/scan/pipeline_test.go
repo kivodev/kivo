@@ -262,15 +262,17 @@ func (p *pipeline) library(dir string) id.ID {
 	return lib
 }
 
-// runAll scans every library and then refreshes the works due, until no
-// file is behind and no work is due.
+// runAll scans every library, identifies what the scans probed, and then
+// refreshes the works due, until no file is behind and no work is due.
 func (p *pipeline) runAll() {
 	p.t.Helper()
-	var scanLibraries, refresh tasks.Items
-	for _, t := range append(p.s.Tasks(), p.meta.Tasks()...) {
+	var scanLibraries, identifyMedia, refresh tasks.Items
+	for _, t := range slices.Concat(p.s.Tasks(), p.id.Tasks(), p.meta.Tasks()) {
 		switch t.Name {
 		case scan.TaskScanLibraries:
 			scanLibraries = t.Work.(tasks.Items)
+		case identify.TaskIdentifyMedia:
+			identifyMedia = t.Work.(tasks.Items)
 		case metadata.TaskRefreshMetadata:
 			refresh = t.Work.(tasks.Items)
 		}
@@ -283,6 +285,15 @@ func (p *pipeline) runAll() {
 		for _, l := range libs {
 			if err := scanLibraries.Do(ctx, l.ID); err != nil {
 				p.t.Fatalf("scan: %v", err)
+			}
+		}
+		unidentified, err := identifyMedia.Pending(ctx)
+		if err != nil {
+			p.t.Fatal(err)
+		}
+		for _, f := range unidentified {
+			if err := identifyMedia.Do(ctx, f); err != nil {
+				p.t.Fatalf("identify: %v", err)
 			}
 		}
 		due, err := refresh.Pending(ctx)
@@ -298,7 +309,7 @@ func (p *pipeline) runAll() {
 		if err != nil {
 			p.t.Fatal(err)
 		}
-		if len(due) == 0 && len(behind) == 0 {
+		if len(due) == 0 && len(behind) == 0 && len(unidentified) == 0 {
 			return
 		}
 	}

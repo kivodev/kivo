@@ -31,7 +31,7 @@ import kotlinx.serialization.encoding.*
 /**
  * The step a library's scan is on, and how far it's got.
  *
- * @param step A step of a library's scan: `walk` finding files, a folder at a time; `probe` reading the files new or changed; `identify` matching their folders. Skip steps you don't know. 
+ * @param step A step of a library's scan: `walk` finding files, a folder at a time; `probe` reading the files new or changed. Skip steps you don't know. 
  * @param done 
  * @param total 
  * @param remainingMs Estimated time left in the step, when there's a rate to go on.
@@ -40,7 +40,7 @@ import kotlinx.serialization.encoding.*
 
 data class ScanProgress (
 
-    /* A step of a library's scan: `walk` finding files, a folder at a time; `probe` reading the files new or changed; `identify` matching their folders. Skip steps you don't know.  */
+    /* A step of a library's scan: `walk` finding files, a folder at a time; `probe` reading the files new or changed. Skip steps you don't know.  */
     @SerialName(value = "step") @Required val step: kotlin.String,
 
     @SerialName(value = "done") @Required val done: kotlin.Int,

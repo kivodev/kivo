@@ -5058,9 +5058,9 @@ components:
       type: string
       description: |
         A step of a library's scan: `walk` finding files, a folder at a
-        time; `probe` reading the files new or changed; `identify` matching
-        their folders. Skip steps you don't know.
-      enum: [walk, probe, identify]
+        time; `probe` reading the files new or changed. Skip steps you
+        don't know.
+      enum: [walk, probe]
 
     Home:
       type: object
@@ -6578,8 +6578,8 @@ components:
     TaskName:
       type: string
       description: A task's name. Skip tasks you don't know.
-      enum: [scan-libraries, prune-gone-files, refresh-metadata, prune-provider-cache, make-previews,
-        prune-previews, find-markers, prune-markers, extract-subtitles, prune-subtitles,
+      enum: [scan-libraries, prune-gone-files, identify-media, refresh-metadata, prune-provider-cache,
+        make-previews, prune-previews, find-markers, prune-markers, extract-subtitles, prune-subtitles,
         prepare-downloads, prune-downloads, library-changes, prune-activity, make-backup, optimize-database]
 
     TaskSection:
@@ -6626,7 +6626,7 @@ components:
         `extractSubtitles`, a download's file having its subtitles
         extracted, or `convert`, a download being converted. Skip steps you
         don't know.
-      enum: [walk, probe, identify, extractSubtitles, convert]
+      enum: [walk, probe, extractSubtitles, convert]
 
     TaskRetry:
       type: object

@@ -27,7 +27,7 @@ import (
 	"github.com/mmcdole/kivo/internal/identify"
 	"github.com/mmcdole/kivo/internal/identify/parse"
 	"github.com/mmcdole/kivo/internal/metadata"
-	"github.com/mmcdole/kivo/internal/scan"
+	"github.com/mmcdole/kivo/internal/tasks"
 	"github.com/mmcdole/kivo/internal/users"
 	"github.com/mmcdole/kivo/internal/userstate"
 )
@@ -271,12 +271,12 @@ type env struct {
 	// placed holds the episodes passed to each call of markers' Placed, in
 	// order.
 	placed [][]id.ID
-	// rescans holds the libraries a scan was asked for, in order. onRescan
-	// runs as each scan is asked for. refreshes holds the works a metadata
+	// asked holds the files the identify task was asked for, in order.
+	// onAsk runs as each is asked for. refreshes holds the works a metadata
 	// refresh was asked for.
 	mu        sync.Mutex
-	rescans   []id.ID
-	onRescan  func(lib id.ID)
+	asked     []id.ID
+	onAsk     func(file id.ID)
 	refreshes []id.ID
 }
 
@@ -310,12 +310,12 @@ func (e *env) Placed(_ context.Context, _ *store.Tx, _ catalog.Library, episodes
 	return nil
 }
 
-// Enqueue records the libraries a scan was asked for, and the works a refresh
-// was asked for. The env serves as the Tasks of both identify and
-// metadata.
+// Enqueue records the files the identify task was asked for, and the works
+// a refresh was asked for. Any other task, such as a library's scan, fails
+// the test. The env serves as the Tasks of both identify and metadata.
 func (e *env) Enqueue(task string, items ...id.ID) {
 	switch task {
-	case scan.TaskScanLibraries:
+	case identify.TaskIdentifyMedia:
 	case metadata.TaskRefreshMetadata:
 		e.mu.Lock()
 		e.refreshes = append(e.refreshes, items...)
@@ -324,24 +324,24 @@ func (e *env) Enqueue(task string, items ...id.ID) {
 	default:
 		e.t.Errorf("asked for %s", task)
 	}
-	for _, lib := range items {
-		if e.onRescan != nil {
-			e.onRescan(lib)
+	for _, file := range items {
+		if e.onAsk != nil {
+			e.onAsk(file)
 		}
 		e.mu.Lock()
-		e.rescans = append(e.rescans, lib)
+		e.asked = append(e.asked, file)
 		e.mu.Unlock()
 	}
 }
 
-// takeRescans returns the libraries a scan was asked for since the last
-// take.
-func (e *env) takeRescans() []id.ID {
+// takeAsked returns the files the identify task was asked for since the
+// last take.
+func (e *env) takeAsked() []id.ID {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	libs := e.rescans
-	e.rescans = nil
-	return libs
+	files := e.asked
+	e.asked = nil
+	return files
 }
 
 // takeRefreshes returns the works a refresh was asked for since the last
@@ -454,9 +454,9 @@ func (e *env) nfo(lib catalog.Library, rel, body string) {
 	e.disk[lib.Folders[0].Path][rel] = &fstest.MapFile{Data: []byte(body)}
 }
 
-// run probes each file at its generation and identifies its library. It
-// handles one file at a time, in order, as a scan does for a file that is
-// new, changed or sent back to be identified.
+// run probes each file at its generation and identifies what is pending.
+// It handles one file at a time, in order, as a scan does for a file that
+// is new, changed or sent back to be identified.
 func (e *env) run(files ...id.ID) {
 	e.t.Helper()
 	if err := e.runCtx(ctx, files...); err != nil {
@@ -476,25 +476,33 @@ func (e *env) runCtx(ctx context.Context, files ...id.ID) error {
 	e.t.Helper()
 	for _, f := range files {
 		e.exec(`UPDATE media_file SET probed = generation, probe_error = NULL WHERE id = ?`, f)
-		file, err := e.b.Catalog.File(ctx, f)
-		if err != nil {
-			return err
-		}
-		if err := e.identify(ctx, file.Library); err != nil {
+		if err := e.identify(ctx); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// identify identifies a library, as the library's scan does when it ends.
-func (e *env) identify(ctx context.Context, lib id.ID) error {
+// task returns the identify task's work.
+func (e *env) task() tasks.Items {
+	return e.id.Tasks()[0].Work.(tasks.Items)
+}
+
+// identify does every item the identify task has pending, as the task does
+// when it looks for work.
+func (e *env) identify(ctx context.Context) error {
 	e.t.Helper()
-	l, err := e.b.Catalog.Library(ctx, lib)
+	w := e.task()
+	files, err := w.Pending(ctx)
 	if err != nil {
 		return err
 	}
-	return e.id.Identify(ctx, l)
+	for _, f := range files {
+		if err := w.Do(ctx, f); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // exec runs a statement in a write, for setting up rows as scan would.
@@ -507,7 +515,7 @@ func (e *env) exec(query string, args ...any) {
 }
 
 // pending lists the files that were probed but not identified at their
-// generation. The next scan identifies them.
+// generation. The identify task does them.
 func (e *env) pending() []id.ID {
 	e.t.Helper()
 	rows, err := e.b.DB.Reader().Query(`SELECT id FROM media_file WHERE status = 'present' AND probed = generation

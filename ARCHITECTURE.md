@@ -120,7 +120,7 @@ Changes are found three ways: a file watcher on local disks (fsnotify), a period
 
 Each new or changed file is probed with ffprobe. The probe stores tracks, chapters and a summary, and a hash of the file's first and last bytes. When a new file matches a known file that has disappeared (same size, same edge hash), the scan treats it as a move and keeps the old row's ID and everything attached to it.
 
-Identification then works per top-level folder. It classifies files (extras, disc rips, multi-part files, ignored files), groups them into versions, and decides which work the folder is. It trusts sources in order: a manual match, an ID in a folder or file name such as `{tmdb-438631}`, an NFO file or embedded tags, the folder structure, and finally the file name alone, which is parsed and searched. The parser (`identify/parse`) follows the folder and naming conventions people already use, and is tested against published fixture sets in `server/testdata/naming`. Audiobooks are identified from their folder layout and tags and then filled in from Audible.
+Identification is a task of its own, which a scan hands its probed files to as it ends. It works per top-level folder. It classifies files (extras, disc rips, multi-part files, ignored files), groups them into versions, and decides which work the folder is. It trusts sources in order: a manual match, an ID in a folder or file name such as `{tmdb-438631}`, an NFO file or embedded tags, the folder structure, and finally the file name alone, which is parsed and searched. The parser (`identify/parse`) follows the folder and naming conventions people already use, and is tested against published fixture sets in `server/testdata/naming`. Audiobooks are identified from their folder layout and tags and then filled in from Audible.
 
 A file shows up as soon as it's probed: before any provider has answered, it appears as a provisional work titled from its name. Metadata and artwork arrive later from TMDb (movies and shows), Audible through Audnexus (books) and the Anime-Lists mapping (anime IDs), all fetched through `egress`.
 
@@ -134,7 +134,7 @@ Each component is the only writer of its own tables, and writes that span compon
 
 ### Background work
 
-All background work runs as tasks of one in-memory runner (`internal/tasks`): scans, metadata refreshes, previews, markers, subtitle extraction, download preparation, library deletion, cleanups and database backups. Each task is one row on the admin Tasks page.
+All background work runs as tasks of one in-memory runner (`internal/tasks`): scans, identification, metadata refreshes, previews, markers, subtitle extraction, download preparation, library deletion, cleanups and database backups. Each task is one row on the admin Tasks page.
 
 A task's work is either one function or a list of items, and it runs nightly, every so often, or on demand. The runner keeps no durable queue. A task that works through items reads what's pending from its feature's own tables every time it looks for work (for example, the files with no previews at their current generation), and records each outcome in those same tables. A feature can also enqueue items to be done now; those wait in memory only. So a restart loses nothing: whatever wasn't finished, enqueued or not, is still pending in the database. Every file has a generation number that changes when its content does, and background results are committed only if the generation still matches, so a result for an old version of a file is dropped.
 

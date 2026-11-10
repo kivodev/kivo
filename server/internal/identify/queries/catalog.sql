@@ -97,10 +97,25 @@ ORDER BY w.id;
 -- name: Unidentified :many
 -- A library's present files probed but not identified at their
 -- generation, by path.
-SELECT f.id, f.rel_path, f.generation FROM media_file f JOIN library_folder r ON r.id = f.folder_id
+SELECT f.id, f.rel_path FROM media_file f JOIN library_folder r ON r.id = f.folder_id
 WHERE r.library_id = @library_id AND r.removing_at IS NULL AND f.status = 'present'
   AND f.probed = f.generation AND f.probe_error IS NULL AND f.identified IS NOT f.generation
 ORDER BY r.path, f.rel_path;
+
+-- name: UnidentifiedBetween :many
+-- A library's files that Unidentified lists, within a range of paths.
+SELECT f.id, f.rel_path, f.generation FROM media_file f JOIN library_folder r ON r.id = f.folder_id
+WHERE r.library_id = @library_id AND r.removing_at IS NULL AND f.status = 'present'
+  AND f.probed = f.generation AND f.probe_error IS NULL AND f.identified IS NOT f.generation
+  AND f.rel_path >= CAST(@from AS TEXT) AND f.rel_path < CAST(@before AS TEXT)
+ORDER BY r.path, f.rel_path;
+
+-- name: CountUnidentified :one
+-- How many files Unidentified lists across the libraries.
+SELECT count(*) FROM media_file f JOIN library_folder r ON r.id = f.folder_id
+JOIN library l ON l.id = r.library_id AND l.deleting_at IS NULL
+WHERE r.removing_at IS NULL AND f.status = 'present'
+  AND f.probed = f.generation AND f.probe_error IS NULL AND f.identified IS NOT f.generation;
 
 -- name: SetIdentified :exec
 UPDATE media_file SET identified = generation WHERE id = @id AND generation = @generation;

@@ -146,7 +146,7 @@ func TestLockedMatchWinsOverPathIDs(t *testing.T) {
 }
 
 // A result for a file or a match that changed while identify searched is
-// dropped, and the file is left for the next scan.
+// dropped, and the file is left pending.
 func TestStaleResultsAreDropped(t *testing.T) {
 	t.Run("file changed while searching", func(t *testing.T) {
 		e := newEnv(t)
@@ -193,10 +193,10 @@ func TestStaleResultsAreDropped(t *testing.T) {
 			t.Fatalf("a result for the old match was written: %+v", w)
 		}
 		if !slices.Equal(e.pending(), []id.ID{f}) {
-			t.Fatalf("pending %v, want the file left for the next scan", e.pending())
+			t.Fatalf("pending %v, want the file left pending", e.pending())
 		}
 		e.video.hook = nil
-		if err := e.identify(ctx, lib.ID); err != nil {
+		if err := e.identify(ctx); err != nil {
 			t.Fatal(err)
 		}
 		if w := e.workOf(f)[0]; w.Provisional || w.ExternalIDs[0].ID != "949" {
@@ -217,7 +217,7 @@ func (e *env) identified(file id.ID) bool {
 }
 
 // A file appears as a provisional work before any provider call. A folder
-// that meets an outage is left unidentified for the next scan.
+// that meets an outage is left unidentified.
 func TestProvisionalFirstAndOutage(t *testing.T) {
 	e := newEnv(t)
 	lib := e.library(catalog.Shows)
@@ -264,7 +264,7 @@ func TestOneSearchPerFolderUnderConcurrency(t *testing.T) {
 	var wg sync.WaitGroup
 	errs := make(chan error, len(files))
 	for range files {
-		wg.Go(func() { errs <- e.identify(ctx, lib.ID) })
+		wg.Go(func() { errs <- e.identify(ctx) })
 	}
 	wg.Wait()
 	close(errs)
@@ -285,8 +285,8 @@ func TestOneSearchPerFolderUnderConcurrency(t *testing.T) {
 
 // An unmatched search is looked up again on the next run, so a movie the
 // provider lists later is found. A match is reused. Refresh metadata on an
-// unmatched work sends its folder back, and asks for a scan once that
-// commits.
+// unmatched work sends its folder back, and asks for the folder alone to be
+// identified, not for a scan of its library.
 func TestUnmatchedIsSearchedAgain(t *testing.T) {
 	e := newEnv(t)
 	lib := e.library(catalog.Movies)
@@ -305,8 +305,8 @@ func TestUnmatchedIsSearchedAgain(t *testing.T) {
 	if p := e.pending(); !slices.Equal(p, files) {
 		t.Fatalf("pending %v, want the folder's file %v", p, files)
 	}
-	if got := e.takeRescans(); !slices.Equal(got, []id.ID{lib.ID}) {
-		t.Fatalf("rescans %v, want the library", got)
+	if got := e.takeAsked(); !slices.Equal(got, files) {
+		t.Fatalf("asked to identify %v, want the folder's file %v", got, files)
 	}
 	n := e.video.searchCount()
 	e.run(files...)
@@ -337,7 +337,6 @@ func TestRefreshLibrary(t *testing.T) {
 	}
 	e.refreshedAt(ep.Root, ep.Parent, ep.ID, unmatched.ID)
 	e.takeRefreshes()
-	e.takeRescans()
 
 	n, err := e.id.RefreshLibrary(ctx, lib.ID)
 	if err != nil {
@@ -364,8 +363,8 @@ func TestRefreshLibrary(t *testing.T) {
 	if p := e.pending(); !slices.Equal(p, files[1:]) {
 		t.Errorf("sent back %v, want the unmatched folder's file %v", p, files[1:])
 	}
-	if got := e.takeRescans(); !slices.Equal(got, []id.ID{lib.ID}) {
-		t.Errorf("rescans %v, want the library", got)
+	if got := e.takeAsked(); !slices.Equal(got, files[1:]) {
+		t.Errorf("asked to identify %v, want the unmatched folder's file %v", got, files[1:])
 	}
 	if _, err := e.id.RefreshLibrary(ctx, id.New()); !errors.Is(err, catalog.ErrNotFound) {
 		t.Errorf("a missing library: %v", err)
@@ -568,7 +567,7 @@ func TestIdentify(t *testing.T) {
 	for _, f := range files[:3] {
 		e.exec(`UPDATE media_file SET probed = generation WHERE id = ?`, f)
 	}
-	if err := e.identify(ctx, lib.ID); err != nil {
+	if err := e.identify(ctx); err != nil {
 		t.Fatal(err)
 	}
 	if n := e.video.searchCount(); n != 2 {
@@ -586,7 +585,7 @@ func TestIdentify(t *testing.T) {
 		t.Fatalf("the unprobed file: identified %v, pending %v", e.identified(files[3]), e.pending())
 	}
 
-	if err := e.identify(ctx, lib.ID); err != nil {
+	if err := e.identify(ctx); err != nil {
 		t.Fatal(err)
 	}
 	if n := e.video.searchCount(); n != 2 {
@@ -594,7 +593,7 @@ func TestIdentify(t *testing.T) {
 	}
 }
 
-// A folder that can't be read is left for the next scan, which identifies
+// A folder that can't be read is left pending, which identifies
 // it once it is back.
 func TestIdentifyUnreachableFolder(t *testing.T) {
 	e := newEnv(t)
@@ -606,7 +605,7 @@ func TestIdentifyUnreachableFolder(t *testing.T) {
 		t.Fatalf("an unreachable folder: identified %v, pending %v", e.identified(f), e.pending())
 	}
 	e.offline.Store(false)
-	if err := e.identify(ctx, lib.ID); err != nil {
+	if err := e.identify(ctx); err != nil {
 		t.Fatal(err)
 	}
 	if w := e.workOf(f)[0]; w.Provisional || !e.identified(f) {
@@ -614,14 +613,14 @@ func TestIdentifyUnreachableFolder(t *testing.T) {
 	}
 }
 
-// Sending a folder back asks for a scan only once the write commits. It
-// doesn't ask before the commit, or at all if the write rolls back.
-func TestReidentifyRescansAfterCommit(t *testing.T) {
+// Sending a folder back asks for it to be identified only once the write
+// commits. It doesn't ask before the commit, or at all if the write rolls
+// back.
+func TestReidentifyAsksAfterCommit(t *testing.T) {
 	e := newEnv(t)
 	lib := e.library(catalog.Shows)
 	files := e.add(lib, "Firefly/Season 1/Firefly - S01E01.mkv", "Nothing Like It/Nothing Like It - S01E01.mkv")
 	e.run(files...)
-	e.takeRescans()
 
 	// Refresh all metadata sends the unmatched folder back, then fails while
 	// asking for the matched works' refreshes.
@@ -629,22 +628,21 @@ func TestReidentifyRescansAfterCommit(t *testing.T) {
 	if _, err := e.id.RefreshLibrary(ctx, lib.ID); err == nil || !strings.Contains(err.Error(), "refresh failed") {
 		t.Fatalf("got %v, want the refresh's error", err)
 	}
-	if got := e.takeRescans(); len(got) != 0 || len(e.pending()) != 0 {
+	if got := e.takeAsked(); len(got) != 0 || len(e.pending()) != 0 {
 		t.Fatalf("a rolled back write asked for %v, sent back %v", got, e.pending())
 	}
 
-	// The requested scan sees the folder sent back, because the write
-	// committed.
+	// The task sees the folder sent back, because the write committed.
 	e.exec(`DROP TRIGGER refresh_fails`)
-	e.onRescan = func(id.ID) {
+	e.onAsk = func(id.ID) {
 		if !slices.Equal(e.pending(), files[1:]) {
-			t.Errorf("asked for a scan before the commit: pending %v", e.pending())
+			t.Errorf("asked before the commit: pending %v", e.pending())
 		}
 	}
 	if err := e.id.Refresh(ctx, e.viewer(), e.workOf(files[1])[0].ID); err != nil {
 		t.Fatal(err)
 	}
-	if got := e.takeRescans(); !slices.Equal(got, []id.ID{lib.ID}) || !slices.Equal(e.pending(), files[1:]) {
-		t.Fatalf("rescans %v, pending %v", got, e.pending())
+	if got := e.takeAsked(); !slices.Equal(got, files[1:]) || !slices.Equal(e.pending(), files[1:]) {
+		t.Fatalf("asked to identify %v, pending %v", got, e.pending())
 	}
 }

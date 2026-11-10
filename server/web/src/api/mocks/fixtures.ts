@@ -1233,6 +1233,14 @@ export function createMockApi(): MockApi {
         running: false,
         stoppable: false,
       },
+      {
+        id: "identify-media",
+        section: "onDemand",
+        nightly: false,
+        pendingCount: 0,
+        running: false,
+        stoppable: false,
+      },
     ],
     problems,
     logs: [
@@ -1402,14 +1410,14 @@ export const scenarios = {
     api.users = [];
     api.snapshot = { type: "snapshot", serverVersion: api.snapshot.serverVersion, problemCount: 0 };
   },
-  /** The Movies library's first scan is running. Its files have been read, and it's matching them. */
+  /** The Movies library's first scan is running. Its files have been found, and it's reading them. */
   scanning(api: MockApi) {
     const movies = api.libraries.find((l) => l.id === mockIds.movies);
     if (!movies) return;
     movies.scan = {
       libraryId: mockIds.movies,
       state: "scanning",
-      progress: { step: "identify", done: 340, total: 812, remainingMs: 4 * minute },
+      progress: { step: "probe", done: 340, total: 812, remainingMs: 4 * minute },
     };
   },
   /** Home Videos isn't pinned, so it's under More libraries and has no Home row. */
@@ -1555,7 +1563,7 @@ export const scenarios = {
   },
   /**
    * A busy evening. Three people are watching, Movies' first scan is
-   * matching, and there's a run of failed sign-ins and an unmatched series
+   * reading its files, and there's a run of failed sign-ins and an unmatched series
    * in TV Shows. These come on top of the sample's problems, unmatched
    * root work, missing file and failed tasks.
    */

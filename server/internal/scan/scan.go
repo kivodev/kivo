@@ -53,13 +53,12 @@ type Tasks interface {
 	Enqueue(task string, items ...id.ID)
 }
 
-// Identifier identifies the folders of a library's files that are probed
-// but not yet identified. Its Reidentify marks files' folders, in the
-// caller's transaction, to be identified again, which the run's Identify
-// at its end does.
-// identify.Identifier implements it.
+// Identifier identifies the folders of files that are probed but not yet
+// identified. Scanned asks for a library's to be identified now. Reidentify
+// marks files' folders, in the caller's transaction, to be identified
+// again. identify.Identifier implements it.
 type Identifier interface {
-	Identify(ctx context.Context, lib catalog.Library) error
+	Scanned(ctx context.Context, lib catalog.Library) error
 	Reidentify(ctx context.Context, tx *store.Tx, files []id.ID) error
 }
 
@@ -88,7 +87,7 @@ type Deps struct {
 	// Settings turns file watching on and off. The watcher runs while the
 	// setting is on.
 	Settings *config.Store
-	// Identifier identifies what each scan probed, as the scan ends. It
+	// Identifier identifies what each scan probed, once the scan ends. It
 	// also has moved files, and folders whose NFO or artwork changed,
 	// identified again.
 	Identifier Identifier
@@ -112,8 +111,9 @@ func New(db *store.DB, d Deps, opt Options) *Scanner {
 // The tasks scan runs.
 const (
 	// TaskScanLibraries scans libraries, with each library an item. A scan
-	// walks the library's folders, probes new or changed files, and
-	// identifies their folders. Every 12 hours the task scans every library.
+	// walks the library's folders, probes new or changed files, and asks
+	// for their folders to be identified. Every 12 hours the task scans
+	// every library.
 	// That timed walk catches what the file watcher can't see (NFS, SMB) or
 	// missed.
 	TaskScanLibraries = "scan-libraries"
@@ -149,8 +149,8 @@ func (s *Scanner) libraries(ctx context.Context) ([]id.ID, error) {
 }
 
 // Resume asks for a scan of each library that has files a scan didn't
-// catch up with because a restart cut it off. cmd/kivo calls it as the
-// server starts.
+// probe because a restart cut it off. cmd/kivo calls it as the server
+// starts.
 func (s *Scanner) Resume(ctx context.Context) error {
 	libs, err := s.q.Behind(ctx)
 	if err != nil {
