@@ -1371,6 +1371,30 @@ func TestAcceleratorFailureBeforeTheFirstSegment(t *testing.T) {
 	}
 }
 
+// A job cancelled before its first segment, as when ffmpeg's launch sees an
+// ended context, was stopped, not failed.
+func TestCancelledBeforeTheFirstSegmentIsNotAFailure(t *testing.T) {
+	for name, accelerator := range map[string]media.Accelerator{"cpu": "", "qsv": "qsv:/dev/dri/renderD128"} {
+		t.Run(name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				var log lockedBuffer
+				old := slog.Default()
+				slog.SetDefault(slog.New(slog.NewTextHandler(&log, nil)))
+				defer slog.SetDefault(old)
+				m := &fakeMedia{failStart: &media.Error{Op: "transcode", Kind: media.ErrCancelled, Detail: "context canceled"}}
+				tr, spec := fixture(t, m)
+				_, err := tr.Open(ctx, encodedSpec(spec, accelerator), 0)
+				if !errors.Is(err, media.ErrCancelled) || jobFailure(err) {
+					t.Fatalf("Open: %v, want ErrCancelled alone", err)
+				}
+				if strings.Contains(log.String(), "job failed") {
+					t.Fatalf("logged a failure:\n%s", log.String())
+				}
+			})
+		})
+	}
+}
+
 func TestAcceleratorFailureAfterTheFirstSegmentFailsTheJob(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		m := &fakeMedia{failAt: 3, failWith: &media.Error{Op: "transcode", Kind: media.ErrEncoderFailed}}

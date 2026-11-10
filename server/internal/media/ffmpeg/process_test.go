@@ -145,6 +145,26 @@ func TestFakeMissingBinary(t *testing.T) {
 	}
 }
 
+func TestFakeEndedContextBeforeStart(t *testing.T) {
+	r := useFake(t, "remux", fixture(t, "remux-h264.mp4"))
+	cancelled, cancel := context.WithCancel(t.Context())
+	cancel()
+	expired, cancel := context.WithDeadline(t.Context(), time.Now().Add(-time.Second))
+	defer cancel()
+	for _, c := range []struct {
+		name string
+		ctx  context.Context
+		want error
+	}{{"cancelled", cancelled, media.ErrCancelled}, {"expired", expired, media.ErrTimeout}} {
+		if _, err := r.Transcode(c.ctx, remux(0)); !errors.Is(err, c.want) || errors.Is(err, media.ErrEncoderFailed) {
+			t.Errorf("%s Transcode: %v, want %v", c.name, err, c.want)
+		}
+		if _, err := r.Probe(c.ctx, "/m/a.mkv"); !errors.Is(err, c.want) || errors.Is(err, media.ErrEncoderFailed) {
+			t.Errorf("%s Probe: %v, want %v", c.name, err, c.want)
+		}
+	}
+}
+
 func TestFakeBackgroundPriority(t *testing.T) {
 	useFake(t, "sleep", "")
 	// nice is the 17th field after the parenthesized command name.
