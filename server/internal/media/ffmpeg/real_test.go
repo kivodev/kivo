@@ -103,6 +103,15 @@ func corpusDir(t *testing.T) string {
 	return corpus.dir
 }
 
+// seekPast is where the transcode package seeks a copied job that begins
+// at keyframe k of the corpus, whose keyframes are at least a second apart.
+func seekPast(k time.Duration) time.Duration {
+	if k == 0 {
+		return 0
+	}
+	return k + 500*time.Millisecond
+}
+
 // ffprobeKeyframes lists the video keyframes ffprobe sees in path.
 func ffprobeKeyframes(t *testing.T, path string) []time.Duration {
 	t.Helper()
@@ -173,20 +182,15 @@ func TestRealRemux(t *testing.T) {
 	for _, name := range corpusFiles {
 		path := filepath.Join(dir, name)
 		keys := ffprobeKeyframes(t, path)
-		for _, start := range []time.Duration{0, keys[3], (keys[4] + keys[5]) / 2} {
+		for _, k := range []int{0, 3, 5} {
+			start := keys[k]
 			t.Run(name+"@"+start.String(), func(t *testing.T) {
-				req := media.TranscodeRequest{Path: path, Start: start, SegmentDuration: 6 * time.Second,
+				req := media.TranscodeRequest{Path: path, Start: start, Seek: seekPast(start), SegmentDuration: 6 * time.Second,
 					Video: media.VideoRendition{Codec: media.Copy},
 					Audio: []media.AudioOut{{Track: 1, Out: media.AudioRendition{Codec: media.Copy}}}}
 				init, segs := transcode(t, m, req)
-				// One segment per keyframe, from the one containing start.
-				var want []time.Duration
-				for i, k := range keys {
-					if i+1 == len(keys) || keys[i+1] > start {
-						want = append(want, k)
-					}
-				}
-				checkSegments(t, init, segs, want)
+				// One segment per keyframe, from start.
+				checkSegments(t, init, segs, keys[k:])
 				if strings.HasPrefix(name, "hevc") && (!bytes.Contains(init, []byte("hvc1")) || bytes.Contains(init, []byte("hev1"))) {
 					t.Error("HEVC init segment isn't tagged hvc1")
 				}
@@ -199,7 +203,7 @@ func TestRealAudioTranscode(t *testing.T) {
 	m, dir := realMedia(t), corpusDir(t)
 	path := filepath.Join(dir, "hevc.mkv")
 	keys := ffprobeKeyframes(t, path)
-	req := media.TranscodeRequest{Path: path, Start: keys[2], SegmentDuration: 6 * time.Second,
+	req := media.TranscodeRequest{Path: path, Start: keys[2], Seek: seekPast(keys[2]), SegmentDuration: 6 * time.Second,
 		Video: media.VideoRendition{Codec: media.Copy},
 		Audio: []media.AudioOut{{Track: 1, Out: media.AudioRendition{Codec: media.AAC, Channels: 1, Bitrate: 96000}}}}
 	init, segs := transcode(t, m, req)

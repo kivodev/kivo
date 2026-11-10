@@ -53,7 +53,7 @@ func (r *Runner) transcode(ctx context.Context, req media.TranscodeRequest, dev 
 	if err != nil {
 		return nil, err
 	}
-	o := &output{op: op, p: p, split: container.NewSplitter(p.stdout, req.Start, seeksPast(req))}
+	o := &output{op: op, p: p, split: container.NewSplitter(p.stdout)}
 	for _, t := range req.Text {
 		o.text = append(o.text, &textFile{path: t.Path})
 	}

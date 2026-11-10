@@ -12,9 +12,9 @@ import (
 	"github.com/mmcdole/kivo/internal/media"
 )
 
-func split(t *testing.T, data []byte, start time.Duration) ([]byte, []media.Segment, error) {
+func split(t *testing.T, data []byte) ([]byte, []media.Segment, error) {
 	t.Helper()
-	s := NewSplitter(bytes.NewReader(data), start, false)
+	s := NewSplitter(bytes.NewReader(data))
 	init, err := s.Init()
 	if err != nil {
 		return nil, nil, err
@@ -36,24 +36,19 @@ func ms(n int) time.Duration { return time.Duration(n) * time.Millisecond }
 
 func TestSplitterSegments(t *testing.T) {
 	// remux-h264.mp4 is ffmpeg's output for a seek to 2.4 s, which began at
-	// the keyframe at 1.6 s. Its keyframes are at 1.6, 2.4, 4 and 6.2 s.
-	// remux-hevc.mp4 has keyframes at 0, 1.6, 4 and 6.2 s. Both end at 8 s.
+	// the keyframe at 1.6 s. remux-hevc.mp4 is from the start. Both end at
+	// 8 s.
 	tests := []struct {
-		name    string
 		fixture string
-		start   time.Duration
 		want    []time.Duration
 	}{
-		{"seek to a keyframe drops the one before", "remux-h264.mp4", ms(2400), []time.Duration{ms(2400), ms(4000), ms(6200)}},
-		{"seek inside a fragment keeps it", "remux-h264.mp4", ms(2000), []time.Duration{ms(1600), ms(2400), ms(4000), ms(6200)}},
-		{"seek within rounding of a keyframe", "remux-h264.mp4", ms(2400) + 500*time.Microsecond, []time.Duration{ms(2400), ms(4000), ms(6200)}},
-		{"from zero", "remux-hevc.mp4", 0, []time.Duration{0, ms(1600), ms(4000), ms(6200)}},
-		{"seek into the last fragment", "remux-hevc.mp4", ms(9000), []time.Duration{ms(6200)}},
+		{"remux-h264.mp4", []time.Duration{ms(1600), ms(2400), ms(4000), ms(6200)}},
+		{"remux-hevc.mp4", []time.Duration{0, ms(1600), ms(4000), ms(6200)}},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.fixture, func(t *testing.T) {
 			data := readFixture(t, tt.fixture)
-			init, segs, err := split(t, data, tt.start)
+			init, segs, err := split(t, data)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -71,7 +66,7 @@ func TestSplitterSegments(t *testing.T) {
 					t.Errorf("segment %d starts at %v, want %v", i, got[i], tt.want[i])
 				}
 			}
-			if tt.start == 0 && total < len(data)-1024 {
+			if total < len(data)-1024 {
 				t.Errorf("segments hold %d of %d bytes", total, len(data))
 			}
 		})
@@ -79,7 +74,7 @@ func TestSplitterSegments(t *testing.T) {
 }
 
 func TestSplitterSegmentsAreValidFragments(t *testing.T) {
-	init, segs, err := split(t, readFixture(t, "remux-hevc.mp4"), 0)
+	init, segs, err := split(t, readFixture(t, "remux-hevc.mp4"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,17 +99,17 @@ func TestSplitterSegmentsAreValidFragments(t *testing.T) {
 func TestSplitterTruncated(t *testing.T) {
 	data := readFixture(t, "remux-h264.mp4")
 	// Cut inside the last fragment, before the trailing mfra box.
-	_, segs, err := split(t, data[:len(data)-400], ms(2400))
+	_, segs, err := split(t, data[:len(data)-400])
 	if !errors.Is(err, media.ErrSourceCorrupt) {
 		t.Fatalf("err = %v, want ErrSourceCorrupt", err)
 	}
-	if len(segs) != 2 {
-		t.Errorf("got %d segments before the error, want 2", len(segs))
+	if len(segs) != 3 {
+		t.Errorf("got %d segments before the error, want 3", len(segs))
 	}
 }
 
 func TestSplitterNoOutput(t *testing.T) {
-	_, err := NewSplitter(bytes.NewReader(nil), 0, false).Init()
+	_, err := NewSplitter(bytes.NewReader(nil)).Init()
 	if !errors.Is(err, media.ErrSourceCorrupt) {
 		t.Fatalf("err = %v, want ErrSourceCorrupt", err)
 	}

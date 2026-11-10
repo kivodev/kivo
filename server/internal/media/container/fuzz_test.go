@@ -85,42 +85,33 @@ func FuzzAttachments(f *testing.F) {
 
 func FuzzSplitter(f *testing.F) {
 	addSeeds(f, "remux-h264.mp4", "remux-hevc.mp4", "h264-frag.mp4")
-	f.Fuzz(func(t *testing.T, data []byte) { fuzzSplit(t, data, 0, false) })
-}
-
-// FuzzSplitterCut cuts at the keyframe at 2.4 s of remux-merged.mp4, which
-// is inside its first fragment.
-func FuzzSplitterCut(f *testing.F) {
-	addSeeds(f, "remux-merged.mp4", "remux-h264.mp4")
-	f.Fuzz(func(t *testing.T, data []byte) { fuzzSplit(t, data, 2400*time.Millisecond, true) })
-}
-
-func fuzzSplit(t *testing.T, data []byte, start time.Duration, cut bool) {
-	var (
-		segs []media.Segment
-		err  error
-	)
-	n := allocated(func() {
-		s := NewSplitter(bytes.NewReader(data), start, cut)
-		for {
-			var seg media.Segment
-			if seg, err = s.Next(); err != nil {
-				return
+	f.Fuzz(func(t *testing.T, data []byte) {
+		var (
+			segs []media.Segment
+			err  error
+		)
+		n := allocated(func() {
+			s := NewSplitter(bytes.NewReader(data))
+			for {
+				var seg media.Segment
+				if seg, err = s.Next(); err != nil {
+					return
+				}
+				segs = append(segs, seg)
 			}
-			segs = append(segs, seg)
+		})
+		if n > allocLimit(len(data)) {
+			t.Fatalf("allocated %d bytes for %d bytes of input", n, len(data))
+		}
+		if err != io.EOF && !errors.Is(err, media.ErrSourceCorrupt) {
+			t.Fatalf("err = %v, want io.EOF or ErrSourceCorrupt", err)
+		}
+		last := time.Duration(-1 << 63)
+		for i, seg := range segs {
+			if seg.Start <= last {
+				t.Fatalf("segment %d at %v follows %v", i, seg.Start, last)
+			}
+			last = seg.Start
 		}
 	})
-	if n > allocLimit(len(data)) {
-		t.Fatalf("allocated %d bytes for %d bytes of input", n, len(data))
-	}
-	if err != io.EOF && !errors.Is(err, media.ErrSourceCorrupt) {
-		t.Fatalf("err = %v, want io.EOF or ErrSourceCorrupt", err)
-	}
-	last := time.Duration(-1 << 63)
-	for i, seg := range segs {
-		if seg.Start <= last {
-			t.Fatalf("segment %d at %v follows %v", i, seg.Start, last)
-		}
-		last = seg.Start
-	}
 }

@@ -68,7 +68,8 @@ func TestFakeRemux(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []time.Duration{2400 * time.Millisecond, 4 * time.Second, 6200 * time.Millisecond}
+	// The fixture's seek landed on the keyframe before 2.4 s.
+	want := []time.Duration{1600 * time.Millisecond, 2400 * time.Millisecond, 4 * time.Second, 6200 * time.Millisecond}
 	if len(starts) != len(want) {
 		t.Fatalf("segments start at %v, want %v", starts, want)
 	}
