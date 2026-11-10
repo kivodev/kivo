@@ -509,6 +509,27 @@ func (c *Catalog) File(ctx context.Context, file id.ID) (File, error) {
 	return f, nil
 }
 
+// Generation cheaply reads a file's current generation. It returns
+// ErrNotFound when the file has no row.
+func (c *Catalog) Generation(ctx context.Context, file id.ID) (int64, error) {
+	gen, err := c.q.FileGeneration(ctx, file)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, fmt.Errorf("%w: file %s", ErrNotFound, file)
+	}
+	return gen, err
+}
+
+// Generations reads the current generation of each given file that still
+// has a row.
+func (c *Catalog) Generations(ctx context.Context, files []id.ID) (map[id.ID]int64, error) {
+	rows, err := c.q.FileGenerations(ctx, id.Set(files...))
+	gens := make(map[id.ID]int64, len(rows))
+	for _, r := range rows {
+		gens[r.ID] = r.Generation
+	}
+	return gens, err
+}
+
 // FileAt returns the file at an absolute path in a library folder, whether
 // present or gone. It returns ErrNotFound when no library has a file there.
 func (c *Catalog) FileAt(ctx context.Context, abs string) (File, error) {

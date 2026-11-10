@@ -187,7 +187,7 @@ func (f *fixture) change() {
 
 func (f *fixture) gen() int64 {
 	f.t.Helper()
-	cur, err := f.s.current(ctx, f.file)
+	cur, err := f.s.deps.Catalog.Generation(ctx, f.file)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -226,7 +226,7 @@ func TestStaleResultsAreDropped(t *testing.T) {
 	if err := f.run(); err != nil {
 		t.Fatal(err)
 	}
-	if f.s.has(f.file, f.gen()) || f.s.has(f.file, f.gen()-1) {
+	if f.s.results.Has(f.file, f.gen()) || f.s.results.Has(f.file, f.gen()-1) {
 		t.Fatal("a stale result was kept")
 	}
 	if p := f.pending(); !slices.Equal(p, []id.ID{f.file}) {
@@ -388,7 +388,7 @@ func TestFontsAreShared(t *testing.T) {
 	if stored, _ := filepath.Glob(filepath.Join(f.cache, "fonts", "*", "*")); !slices.Equal(stored, []string{want}) {
 		t.Fatalf("stored %v, want only %s", stored, want)
 	}
-	if entries, _ := filepath.Glob(filepath.Join(f.s.result(first, f.gen()), "*")); slices.ContainsFunc(entries, func(p string) bool { return filepath.Base(p) == fontsDir }) {
+	if entries, _ := filepath.Glob(filepath.Join(f.s.results.Path(first, f.gen()), "*")); slices.ContainsFunc(entries, func(p string) bool { return filepath.Base(p) == fontsDir }) {
 		t.Fatal("fonts copied into a file's result")
 	}
 
@@ -434,9 +434,9 @@ func TestPrune(t *testing.T) {
 	if err := f.run(); err != nil {
 		t.Fatal(err)
 	}
-	current := f.s.result(f.file, f.gen())
-	old := f.s.result(f.file, f.gen()+7)
-	deleted := f.s.result(id.New(), 1)
+	current := f.s.results.Path(f.file, f.gen())
+	old := f.s.results.Path(f.file, f.gen()+7)
+	deleted := f.s.results.Path(id.New(), 1)
 	for _, d := range []string{old, deleted} {
 		if err := os.MkdirAll(d, 0o755); err != nil {
 			t.Fatal(err)
@@ -507,7 +507,7 @@ func TestUnsupportedFilesFail(t *testing.T) {
 	if p, fl := f.pending(), f.failed(); len(p) != 0 || len(fl) != 1 || fl[0].Item != f.file {
 		t.Fatalf("pending %v, failed %+v", p, fl)
 	}
-	if f.s.has(f.file, f.gen()) {
+	if f.s.results.Has(f.file, f.gen()) {
 		t.Fatal("a result for a file media can't extract")
 	}
 
@@ -672,7 +672,7 @@ func TestProbed(t *testing.T) {
 // task finds them missing.
 func TestDeletedCacheIsRebuilt(t *testing.T) {
 	for name, lose := range map[string]func(f *fixture) string{
-		"result": func(f *fixture) string { return f.s.result(f.file, f.gen()) },
+		"result": func(f *fixture) string { return f.s.results.Path(f.file, f.gen()) },
 		"font":   func(f *fixture) string { return f.s.fontPath(fontSHA + ".ttf") },
 	} {
 		t.Run(name, func(t *testing.T) {

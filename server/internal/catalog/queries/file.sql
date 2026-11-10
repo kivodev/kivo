@@ -19,6 +19,12 @@ RETURNING generation;
 UPDATE media_file SET status = 'gone', gone_at = @now
 WHERE id = @id AND folder_id = @folder_id AND rel_path = @rel_path AND status = 'present';
 
+-- name: FileGeneration :one
+SELECT generation FROM media_file WHERE id = @id;
+
+-- name: FileGenerations :many
+SELECT id, generation FROM media_file WHERE id IN (SELECT unhex(value) FROM (SELECT CAST(@ids AS TEXT) AS ids), json_each(ids));
+
 -- name: GetFile :one
 SELECT sqlc.embed(f), r.path AS folder_path, r.library_id FROM media_file f
 JOIN library_folder r ON r.id = f.folder_id

@@ -7,6 +7,5 @@
 // people they credit.
 //
 // It never changes which work a file belongs to. The identify package
-// decides that, using the searches here and the book-folder parsers
-// BookFolder, Disc and BookTitle.
+// decides that, using the searches here and BookTitle.
 package metadata

@@ -1,5 +1,6 @@
 // Package parse reads titles, years, seasons, episodes and IDs from
 // library-relative paths, following the common media naming conventions.
+// It also finds the book folder and disc of an audiobook's file.
 //
 // It is pure: it has no I/O, no clock and no mutable state, so the same
 // path, kind and date always give the same Guess. Every input returns a

@@ -14,7 +14,7 @@ import (
 // never reads the clock.
 func TestPure(t *testing.T) {
 	allowed := map[string]bool{
-		"fmt": true, "regexp": true, "strings": true, "time": true, "unicode": true, "unicode/utf8": true,
+		"fmt": true, "path": true, "regexp": true, "strconv": true, "strings": true, "time": true, "unicode": true, "unicode/utf8": true,
 		"golang.org/x/text/cases": true, "golang.org/x/text/unicode/norm": true,
 	}
 	files, err := filepath.Glob("*.go")

@@ -5,7 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"log/slog"
 	"slices"
 	"time"
@@ -111,15 +110,6 @@ func (s *Service) retry(ctx context.Context, files ...id.ID) ([]id.ID, error) {
 		return err
 	})
 	return out, err
-}
-
-// current cheaply reads a file's current generation, to find its result.
-func (s *Service) current(ctx context.Context, file id.ID) (int64, error) {
-	gen, err := s.q.FileGeneration(ctx, file)
-	if errors.Is(err, sql.ErrNoRows) {
-		return 0, fmt.Errorf("%w: file %s", catalog.ErrNotFound, file)
-	}
-	return gen, err
 }
 
 // markerSeason is a season the nightly task looks at.

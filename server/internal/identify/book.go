@@ -15,6 +15,7 @@ import (
 	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/metadata"
+	"github.com/mmcdole/kivo/internal/parse"
 )
 
 // classifyBooks makes a book's folder one book. Every audio file in it,
@@ -46,7 +47,7 @@ func bookOrder(files []file) []file {
 	seen := map[key]bool{}
 	tracks := true
 	for _, f := range files {
-		k := key{disc: cmp.Or(metadata.Disc(f.Rel), leadingInt(f.tags["disc"])), track: leadingInt(f.tags["track"])}
+		k := key{disc: cmp.Or(parse.Disc(f.Rel), leadingInt(f.tags["disc"])), track: leadingInt(f.tags["track"])}
 		keys[f.Rel] = k
 		tracks = tracks && k.track > 0 && !seen[k]
 		seen[k] = true

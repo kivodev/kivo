@@ -3,8 +3,6 @@ package subtitles
 import (
 	"context"
 	"database/sql"
-	"errors"
-	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -81,8 +79,11 @@ type Service struct {
 	deps Deps
 	// openSubtitles searches for subtitles and downloads them.
 	openSubtitles *openSubtitles
-	room          health.Room
-	replaced      func(ctx context.Context, tx *store.Tx, replaced []id.ID, by id.ID) error // Options.Replaced
+	// results holds each file's extracted subtitles at a generation, in
+	// cache/subtitles/<xx>/<file>/<generation>/.
+	results  cachedir.Results
+	room     health.Room
+	replaced func(ctx context.Context, tx *store.Tx, replaced []id.ID, by id.ID) error // Options.Replaced
 
 	// fonts is held while an extraction adds fonts to the store and puts
 	// its result, which lists them, in place. It's also held while a prune
@@ -98,14 +99,16 @@ func New(db *store.DB, d Deps, opt Options) *Service {
 	if opt.Replaced == nil {
 		opt.Replaced = func(context.Context, *store.Tx, []id.ID, id.ID) error { return nil }
 	}
-	_ = os.RemoveAll(filepath.Join(d.CacheDir, resultDir, cachedir.Temp))
-	return &Service{
+	s := &Service{
 		db: db, q: dbq.New(db.Reader()), deps: d, openSubtitles: newOpenSubtitles(), replaced: opt.Replaced,
 		room: health.Room{Dir: d.CacheDir, Problem: health.Problem{
 			Component: "subtitles", Code: "cacheFull",
 			Message: "The cache disk is almost full. Subtitle preparation is paused.",
 		}},
 	}
+	s.results = cachedir.Results{Dir: filepath.Join(d.CacheDir, "subtitles"), Generations: d.Catalog.Generations, Room: &s.room}
+	_ = os.RemoveAll(filepath.Join(s.results.Dir, cachedir.Temp))
+	return s
 }
 
 // Tasks returns the subtitles package's tasks, for cmd/kivo to add.
@@ -175,13 +178,4 @@ func (s *Service) retry(ctx context.Context, files ...id.ID) ([]id.ID, error) {
 		return err
 	})
 	return out, err
-}
-
-// current reads a file's current generation cheaply, to find its result.
-func (s *Service) current(ctx context.Context, file id.ID) (int64, error) {
-	gen, err := s.q.FileGeneration(ctx, file)
-	if errors.Is(err, sql.ErrNoRows) {
-		return 0, fmt.Errorf("%w: file %s", catalog.ErrNotFound, file)
-	}
-	return gen, err
 }

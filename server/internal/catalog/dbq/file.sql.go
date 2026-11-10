@@ -150,6 +150,49 @@ func (q *Queries) FileByPath(ctx context.Context, arg FileByPathParams) (FileByP
 	return i, err
 }
 
+const fileGeneration = `-- name: FileGeneration :one
+SELECT generation FROM media_file WHERE id = ?1
+`
+
+func (q *Queries) FileGeneration(ctx context.Context, argID id.ID) (int64, error) {
+	row := q.db.QueryRowContext(ctx, fileGeneration, argID)
+	var generation int64
+	err := row.Scan(&generation)
+	return generation, err
+}
+
+const fileGenerations = `-- name: FileGenerations :many
+SELECT id, generation FROM media_file WHERE id IN (SELECT unhex(value) FROM (SELECT CAST(?1 AS TEXT) AS ids), json_each(ids))
+`
+
+type FileGenerationsRow struct {
+	ID         id.ID
+	Generation int64
+}
+
+func (q *Queries) FileGenerations(ctx context.Context, ids string) ([]FileGenerationsRow, error) {
+	rows, err := q.db.QueryContext(ctx, fileGenerations, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FileGenerationsRow
+	for rows.Next() {
+		var i FileGenerationsRow
+		if err := rows.Scan(&i.ID, &i.Generation); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const fileLibraries = `-- name: FileLibraries :many
 SELECT DISTINCT r.library_id FROM media_file f JOIN library_folder r ON r.id = f.folder_id
 WHERE f.id IN (SELECT unhex(value) FROM (SELECT CAST(?1 AS TEXT) AS ids), json_each(ids))

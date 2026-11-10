@@ -49,52 +49,6 @@ func (q *Queries) Failed(ctx context.Context) ([]FailedRow, error) {
 	return items, nil
 }
 
-const fileGeneration = `-- name: FileGeneration :one
-
-SELECT generation FROM media_file WHERE id = ?1
-`
-
-// Reads of catalog's tables, and subtitles' own subtitle_file. What it
-// extracts is in cache/, and what it downloads in data/.
-func (q *Queries) FileGeneration(ctx context.Context, argID id.ID) (int64, error) {
-	row := q.db.QueryRowContext(ctx, fileGeneration, argID)
-	var generation int64
-	err := row.Scan(&generation)
-	return generation, err
-}
-
-const fileGenerations = `-- name: FileGenerations :many
-SELECT id, generation FROM media_file WHERE id IN (SELECT unhex(value) FROM (SELECT CAST(?1 AS TEXT) AS ids), json_each(ids))
-`
-
-type FileGenerationsRow struct {
-	ID         id.ID
-	Generation int64
-}
-
-func (q *Queries) FileGenerations(ctx context.Context, ids string) ([]FileGenerationsRow, error) {
-	rows, err := q.db.QueryContext(ctx, fileGenerations, ids)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []FileGenerationsRow
-	for rows.Next() {
-		var i FileGenerationsRow
-		if err := rows.Scan(&i.ID, &i.Generation); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const forget = `-- name: Forget :many
 DELETE FROM subtitle_file
 WHERE state = 'failed' AND (CAST(?1 AS BOOLEAN) OR file_id IN (SELECT unhex(value) FROM (SELECT CAST(?2 AS TEXT) AS ids), json_each(ids)))
@@ -165,6 +119,7 @@ func (q *Queries) Made(ctx context.Context) ([]MadeRow, error) {
 }
 
 const pending = `-- name: Pending :many
+
 SELECT f.id FROM library l
 JOIN library_folder r ON r.library_id = l.id
 JOIN media_file f ON f.folder_id = r.id
@@ -175,6 +130,8 @@ WHERE l.subtitles <> 'never' AND l.deleting_at IS NULL AND f.status = 'present'
 ORDER BY l.name, r.path, f.rel_path
 `
 
+// Reads of catalog's tables, and subtitles' own subtitle_file. What it
+// extracts is in cache/, and what it downloads in data/.
 // The present files with an embedded ASS, SSA or PGS track, in libraries
 // that extract subtitles, whose subtitles aren't extracted or failed at
 // their generation, by library and path. The IN reads the few such tracks

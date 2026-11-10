@@ -12,7 +12,7 @@ import (
 	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/identify/dbq"
-	"github.com/mmcdole/kivo/internal/identify/parse"
+	"github.com/mmcdole/kivo/internal/parse"
 )
 
 // snapshot is one folder of a library as the database has it, classified

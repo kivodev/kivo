@@ -60,18 +60,11 @@ func (s *Service) SearchSubtitles(ctx context.Context, v users.Viewer, file id.I
 // a file is an episode of was one for the deaf and hard of hearing. Only a
 // user who remembers track choices has one. Anything it can't read is no.
 func (s *Service) prefersSDH(ctx context.Context, u users.User, file id.ID) bool {
-	if !u.Playback.RememberTracks {
-		return false
-	}
 	ver, err := s.deps.Catalog.VersionOfFile(ctx, file)
 	if err != nil || len(ver.Works) == 0 {
 		return false
 	}
-	w, err := s.deps.Catalog.Work(ctx, ver.Works[0])
-	if err != nil || w.Kind != catalog.KindEpisode || w.Root.IsZero() {
-		return false
-	}
-	c, ok, err := s.deps.Userstate.TrackChoice(ctx, u.ID, w.Root)
+	_, c, ok, err := s.deps.Userstate.SeriesChoice(ctx, u, ver.Works[0])
 	return err == nil && ok && c.SubtitleKind == "sdh"
 }
 

@@ -241,6 +241,23 @@ func (s *Service) TrackChoice(ctx context.Context, user, series id.ID) (TrackCho
 	return TrackChoice{AudioLanguage: c.AudioLanguage.String, SubtitleLanguage: c.SubtitleLanguage.String, SubtitleKind: c.SubtitleKind.String}, true, nil
 }
 
+// SeriesChoice returns the series whose choice applies to a user's play of
+// a work, and the user's last choice for it, if any. The series is zero
+// unless the user remembers track choices and the work is an episode of a
+// series. When only the choice can't be read, the series is still
+// returned with the error.
+func (s *Service) SeriesChoice(ctx context.Context, u users.User, work id.ID) (series id.ID, c TrackChoice, ok bool, err error) {
+	if !u.Playback.RememberTracks {
+		return id.ID{}, TrackChoice{}, false, nil
+	}
+	w, err := s.deps.Catalog.Work(ctx, work)
+	if err != nil || w.Kind != catalog.KindEpisode || w.Root.IsZero() {
+		return id.ID{}, TrackChoice{}, false, err
+	}
+	c, ok, err = s.TrackChoice(ctx, u.ID, w.Root)
+	return w.Root, c, ok, err
+}
+
 // SetTrackChoice remembers a user's audio and subtitle choice for a series.
 func (s *Service) SetTrackChoice(ctx context.Context, user, series id.ID, c TrackChoice) error {
 	err := s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
