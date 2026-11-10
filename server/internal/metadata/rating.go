@@ -51,7 +51,7 @@ func (s *Service) WorkContentRatings(ctx context.Context, v users.Viewer, work i
 	if err := s.deps.Catalog.Visible(ctx, v, work); err != nil {
 		return nil, err
 	}
-	_, country, err := s.locale(ctx, work)
+	_, country, err := s.Locale(ctx, work)
 	if err != nil {
 		return nil, err
 	}

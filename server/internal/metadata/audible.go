@@ -67,7 +67,7 @@ type audibleProduct struct {
 
 // Search searches Audible's catalog by title and author, in Audible's order
 // of relevance. Podcasts are left out.
-func (a *audible) Search(ctx context.Context, country string, q BookQuery) ([]Book, error) {
+func (a *audible) Search(ctx context.Context, country string, q BookQuery, fr Freshness) ([]Book, error) {
 	region := audibleRegion(country)
 	host, ok := audibleHosts[region]
 	if !ok {
@@ -81,7 +81,7 @@ func (a *audible) Search(ctx context.Context, country string, q BookQuery) ([]Bo
 		p.Set("author", q.Author)
 	}
 	path := "/1.0/catalog/products?" + p.Encode()
-	body, err := a.f.fetch(ctx, request{provider: provAudible, url: "https://" + host + path, key: region + path, ttl: fixed(ttlSearch)})
+	body, err := a.f.fetch(ctx, request{provider: provAudible, url: "https://" + host + path, key: region + path, ttl: fixed(ttlSearch), fresh: fr})
 	if err != nil {
 		return nil, err
 	}
@@ -143,9 +143,9 @@ type audnexusBook struct {
 // Book returns a book by its ASIN from Audnexus, in the country's store.
 // Only Audnexus genres of type "genre" become the book's genres. Its tags
 // aren't used.
-func (a *audible) Book(ctx context.Context, country, asin string) (*Book, error) {
+func (a *audible) Book(ctx context.Context, country, asin string, fr Freshness) (*Book, error) {
 	var r audnexusBook
-	if err := a.audnexus(ctx, "books", audibleRegion(country), asin, func(body []byte) time.Duration {
+	if err := a.audnexus(ctx, "books", audibleRegion(country), asin, fr, func(body []byte) time.Duration {
 		var d struct {
 			Released string `json:"releaseDate"`
 		}
@@ -184,14 +184,14 @@ func (a *audible) Book(ctx context.Context, country, asin string) (*Book, error)
 
 // Author returns an author's biography and photo by their ASIN from
 // Audnexus, in the country's store.
-func (a *audible) Author(ctx context.Context, country, asin string) (*Author, error) {
+func (a *audible) Author(ctx context.Context, country, asin string, fr Freshness) (*Author, error) {
 	var r struct {
 		ASIN        string `json:"asin"`
 		Name        string `json:"name"`
 		Description string `json:"description"`
 		Image       string `json:"image"`
 	}
-	if err := a.audnexus(ctx, "authors", audibleRegion(country), asin, fixed(ttlAuthor), &r); err != nil {
+	if err := a.audnexus(ctx, "authors", audibleRegion(country), asin, fr, fixed(ttlAuthor), &r); err != nil {
 		return nil, err
 	}
 	out := &Author{ID: asin, Name: clean(r.Name, maxName), Bio: optText(plainText(r.Description), maxOverview)}
@@ -202,12 +202,12 @@ func (a *audible) Author(ctx context.Context, country, asin string) (*Author, er
 }
 
 // audnexus GETs a book or an author by ASIN in a region.
-func (a *audible) audnexus(ctx context.Context, what, region, asin string, ttl func([]byte) time.Duration, v any) error {
+func (a *audible) audnexus(ctx context.Context, what, region, asin string, fr Freshness, ttl func([]byte) time.Duration, v any) error {
 	if _, ok := audibleHosts[region]; !ok || !IsASIN(asin) {
 		return fmt.Errorf("%w: audnexus %s %q in %q", ErrNotFound, what, asin, region)
 	}
 	path := "/" + what + "/" + asin + "?" + url.Values{"region": {region}}.Encode()
-	body, err := a.f.fetch(ctx, request{provider: provAudnexus, url: audnexusAPI + path, key: path, ttl: ttl})
+	body, err := a.f.fetch(ctx, request{provider: provAudnexus, url: audnexusAPI + path, key: path, ttl: ttl, fresh: fr})
 	if err != nil {
 		return err
 	}

@@ -37,11 +37,11 @@ func (s *Service) SearchBooks(ctx context.Context, work id.ID, q BookQuery) ([]M
 	if s.books == nil {
 		return nil, fmt.Errorf("%w: no book provider", ErrUnavailable)
 	}
-	_, country, err := s.locale(ctx, work)
+	_, country, err := s.Locale(ctx, work)
 	if err != nil {
 		return nil, err
 	}
-	books, err := s.books.Search(ctx, country, q)
+	books, err := s.books.Search(ctx, country, q, Freshness{})
 	if err != nil {
 		return nil, err
 	}
@@ -58,11 +58,11 @@ func (s *Service) LookupBook(ctx context.Context, work id.ID, asin string) (Matc
 	if s.books == nil {
 		return Match{}, fmt.Errorf("%w: no book provider", ErrUnavailable)
 	}
-	_, country, err := s.locale(ctx, work)
+	_, country, err := s.Locale(ctx, work)
 	if err != nil {
 		return Match{}, err
 	}
-	b, err := s.books.Book(ctx, country, asin)
+	b, err := s.books.Book(ctx, country, asin, Freshness{})
 	if err != nil {
 		return Match{}, err
 	}
@@ -215,13 +215,13 @@ type bookDescription struct {
 // using a locked ASIN first and then the files' ASIN. Without an ASIN, it is
 // the search result acceptBook picks, and that result's ASIN becomes the
 // book's.
-func (s *Service) describeBook(ctx context.Context, w catalog.Work, country string) (bookDescription, error) {
+func (s *Service) describeBook(ctx context.Context, w catalog.Work, country string, fr Freshness) (bookDescription, error) {
 	m, cover, d, err := s.fromBook(ctx, w)
 	out := bookDescription{meta: m, cover: cover}
 	if err != nil || m == nil || s.books == nil {
 		return out, err
 	}
-	b, authors, err := s.bookFromProvider(ctx, w, m, country, d)
+	b, authors, err := s.bookFromProvider(ctx, w, m, country, d, fr)
 	var o *outage
 	if errors.As(err, &o) {
 		out.later = err
@@ -248,7 +248,7 @@ func (s *Service) describeBook(ctx context.Context, w catalog.Work, country stri
 // bookFromProvider finds the provider's book for the book m describes, and
 // sets m's ASIN to the one it was found by. It also returns the authors the
 // provider's book names with IDs. Finding no match is not an error.
-func (s *Service) bookFromProvider(ctx context.Context, w catalog.Work, m *catalog.WorkMetadata, country string, d time.Duration) (*Book, []*Author, error) {
+func (s *Service) bookFromProvider(ctx context.Context, w catalog.Work, m *catalog.WorkMetadata, country string, d time.Duration, fr Freshness) (*Book, []*Author, error) {
 	asin := m.Book.ASIN
 	if slices.Contains(w.LockedFields, catalog.FieldASIN) {
 		asin = currentASIN(w)
@@ -257,7 +257,7 @@ func (s *Service) bookFromProvider(ctx context.Context, w catalog.Work, m *catal
 		if len(m.Book.Authors) > 0 {
 			author = m.Book.Authors[0]
 		}
-		results, err := s.books.Search(ctx, country, BookQuery{Title: searchTitle(m.Title), Author: author})
+		results, err := s.books.Search(ctx, country, BookQuery{Title: searchTitle(m.Title), Author: author}, fr)
 		if err != nil && !errors.Is(err, ErrNotFound) {
 			return nil, nil, err
 		}
@@ -269,7 +269,7 @@ func (s *Service) bookFromProvider(ctx context.Context, w catalog.Work, m *catal
 	if asin == "" {
 		return nil, nil, nil
 	}
-	b, err := s.books.Book(ctx, country, asin)
+	b, err := s.books.Book(ctx, country, asin, fr)
 	if errors.Is(err, ErrNotFound) {
 		return nil, nil, nil
 	}
@@ -281,7 +281,7 @@ func (s *Service) bookFromProvider(ctx context.Context, w catalog.Work, m *catal
 		if a.ID == "" {
 			continue
 		}
-		au, err := s.books.Author(ctx, country, a.ID)
+		au, err := s.books.Author(ctx, country, a.ID, fr)
 		switch {
 		case errors.Is(err, ErrNotFound):
 			continue

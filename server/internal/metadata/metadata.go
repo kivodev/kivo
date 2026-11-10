@@ -215,7 +215,7 @@ func (s *Service) Resolve(ctx context.Context, x catalog.ExternalID, lang string
 // when an episode is missing. lang is the library's metadata language; empty
 // means the server's.
 func (s *Service) Episodes(ctx context.Context, series catalog.ExternalID, o Ordering, lang string, maxAge time.Duration) ([]Episode, error) {
-	return s.video.Episodes(ctx, series, o, s.language(lang), maxAge)
+	return s.video.Episodes(ctx, series, o, s.language(lang), Freshness{MaxAge: maxAge})
 }
 
 // EpisodeGroups returns the IDs of a series' episode groups. These are the
@@ -235,10 +235,6 @@ func (s *Service) language(lang string) string {
 // Locale returns a work's metadata language and content rating country. Each
 // comes from the work's library when set there, else from the server.
 func (s *Service) Locale(ctx context.Context, work id.ID) (lang, country string, err error) {
-	return s.locale(ctx, work)
-}
-
-func (s *Service) locale(ctx context.Context, work id.ID) (lang, country string, err error) {
 	var l catalog.Library
 	lib, err := s.q.WorkLibrary(ctx, work)
 	switch {

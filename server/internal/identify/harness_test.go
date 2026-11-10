@@ -160,7 +160,7 @@ func (f *fakeVideo) Resolve(_ context.Context, x catalog.ExternalID, _ string) (
 
 // Describe knows nothing, because identify only asks for refreshes, and the
 // tests don't run them.
-func (f *fakeVideo) Describe(context.Context, metadata.Ref, string) (*metadata.Description, error) {
+func (f *fakeVideo) Describe(context.Context, metadata.Ref, string, metadata.Freshness) (*metadata.Description, error) {
 	return nil, metadata.ErrNotFound
 }
 
@@ -168,7 +168,7 @@ func (f *fakeVideo) Images(context.Context, metadata.Ref, string) (metadata.Imag
 	return metadata.Images{}, metadata.ErrNotFound
 }
 
-func (f *fakeVideo) Episodes(_ context.Context, series catalog.ExternalID, o metadata.Ordering, _ string, _ time.Duration) ([]metadata.Episode, error) {
+func (f *fakeVideo) Episodes(_ context.Context, series catalog.ExternalID, o metadata.Ordering, _ string, _ metadata.Freshness) ([]metadata.Episode, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.episodes = append(f.episodes, series.ID+"/"+cmp.Or(string(o), "aired"))
@@ -199,8 +199,6 @@ func (f *fakeVideo) EpisodeGroups(context.Context, catalog.ExternalID, string) (
 
 func (f *fakeVideo) Owns(string) bool { return false }
 
-func (f *fakeVideo) Preview(url, _ string) string { return url }
-
 func (f *fakeVideo) searchCount() int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -216,7 +214,7 @@ type fakeBooks struct{ video *fakeVideo }
 
 func (f fakeBooks) Name() string { return catalog.ASIN.Provider }
 
-func (f fakeBooks) Search(_ context.Context, _ string, q metadata.BookQuery) ([]metadata.Book, error) {
+func (f fakeBooks) Search(_ context.Context, _ string, q metadata.BookQuery, _ metadata.Freshness) ([]metadata.Book, error) {
 	f.video.mu.Lock()
 	f.video.searches = append(f.video.searches, "book:"+q.Title+"/"+q.Author)
 	f.video.mu.Unlock()
@@ -229,14 +227,14 @@ func (f fakeBooks) Search(_ context.Context, _ string, q metadata.BookQuery) ([]
 	return out, nil
 }
 
-func (f fakeBooks) Book(_ context.Context, _, asin string) (*metadata.Book, error) {
+func (f fakeBooks) Book(_ context.Context, _, asin string, _ metadata.Freshness) (*metadata.Book, error) {
 	if title, ok := asins[asin]; ok {
 		return &metadata.Book{ID: asin, Title: title}, nil
 	}
 	return nil, metadata.ErrNotFound
 }
 
-func (f fakeBooks) Author(context.Context, string, string) (*metadata.Author, error) {
+func (f fakeBooks) Author(context.Context, string, string, metadata.Freshness) (*metadata.Author, error) {
 	return nil, metadata.ErrNotFound
 }
 

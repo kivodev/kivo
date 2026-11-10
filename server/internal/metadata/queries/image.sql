@@ -52,10 +52,10 @@ WHERE w.root_id = @work_id AND w.kind <> 'extra';
 -- name: PutArtwork :one
 -- Records an image Choose artwork lists, keeping its ID if it was listed
 -- before.
-INSERT INTO artwork (id, work_id, kind, source, provider, origin, folder, width, height, language, ord, listed_at)
-VALUES (@id, @work_id, @kind, @source, @provider, @origin, @folder, @width, @height, @language, @ord, @listed_at)
+INSERT INTO artwork (id, work_id, kind, source, provider, origin, preview, folder, width, height, language, ord, listed_at)
+VALUES (@id, @work_id, @kind, @source, @provider, @origin, @preview, @folder, @width, @height, @language, @ord, @listed_at)
 ON CONFLICT (work_id, kind, origin) WHERE work_id IS NOT NULL DO UPDATE SET source = excluded.source, provider = excluded.provider,
-  folder = excluded.folder, width = excluded.width, height = excluded.height, language = excluded.language,
+  preview = excluded.preview, folder = excluded.folder, width = excluded.width, height = excluded.height, language = excluded.language,
   ord = excluded.ord, listed_at = excluded.listed_at
 RETURNING id;
 

@@ -5,7 +5,6 @@ import (
 	"slices"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/id"
@@ -21,27 +20,26 @@ func (f *fakeVideo) Search(context.Context, catalog.WorkKind, Query, string) ([]
 func (f *fakeVideo) Resolve(context.Context, catalog.ExternalID, string) (Match, error) {
 	return Match{}, ErrNotFound
 }
-func (f *fakeVideo) Describe(_ context.Context, r Ref, _ string) (*Description, error) {
+func (f *fakeVideo) Describe(_ context.Context, r Ref, _ string, _ Freshness) (*Description, error) {
 	if !slices.Contains(r.IDs, catalog.ExternalID{Provider: "fake", Kind: string(catalog.KindMovie), ID: "1"}) {
 		return nil, ErrNotFound
 	}
 	return &f.d, nil
 }
 func (f *fakeVideo) Images(ctx context.Context, r Ref, lang string) (Images, error) {
-	d, err := f.Describe(ctx, r, lang)
+	d, err := f.Describe(ctx, r, lang, Freshness{})
 	if err != nil {
 		return Images{}, err
 	}
 	return d.Images, nil
 }
-func (f *fakeVideo) Episodes(context.Context, catalog.ExternalID, Ordering, string, time.Duration) ([]Episode, error) {
+func (f *fakeVideo) Episodes(context.Context, catalog.ExternalID, Ordering, string, Freshness) ([]Episode, error) {
 	return nil, ErrNotFound
 }
 func (f *fakeVideo) EpisodeGroups(context.Context, catalog.ExternalID, string) ([]string, error) {
 	return nil, ErrNotFound
 }
-func (f *fakeVideo) Owns(u string) bool         { return strings.HasPrefix(u, "https://images.example.org/") }
-func (f *fakeVideo) Preview(u, _ string) string { return u }
+func (f *fakeVideo) Owns(u string) bool { return strings.HasPrefix(u, "https://images.example.org/") }
 
 // Any video provider that fills the package's types can describe a work. A
 // refresh normalizes its text, credits, rating and collection, and ranks its
