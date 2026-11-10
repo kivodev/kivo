@@ -68,8 +68,10 @@ func (s *Stream) Segment(ctx context.Context, name string) (string, error) {
 	if text >= 0 {
 		path = s.textPath(text, i)
 	}
-	have := func() bool {
-		s.readLocked(i)
+	have := func(serving bool) bool {
+		if serving {
+			s.readLocked(i)
+		}
 		return s.done[i]
 	}
 	return s.wait(ctx, name, path, have, func(j *job) (int, error) {
@@ -88,21 +90,24 @@ func (s *Stream) Segment(ctx context.Context, name string) (string, error) {
 // It returns the segment to start a new job at, -1 to wait for the job, or
 // an error when the request can't be met. Once the job the request waited
 // on has been replaced, from isn't asked while another job is running, so
-// the newer request keeps the job. have and from run under the lock. name
-// is the requested segment, which errors name.
-func (s *Stream) wait(ctx context.Context, name, path string, have func() bool, from func(j *job) (int, error)) (string, error) {
+// the newer request keeps the job. serving tells have whether the stream's
+// job serves the request, which it doesn't while the request yields to a
+// newer one. have and from run under the lock. name is the requested
+// segment, which errors name.
+func (s *Stream) wait(ctx context.Context, name, path string, have func(serving bool) bool, from func(j *job) (int, error)) (string, error) {
 	var on *job // the job the request last waited on
 	look := func() (<-chan struct{}, error) {
 		s.mu.Lock()
 		defer s.mu.Unlock()
+		// A newer request replaced the job, so this one waits for the
+		// running job rather than take it back.
+		yielding := on != nil && on != s.job && s.job != nil && !s.job.exited
 		switch {
 		case s.closed:
 			return nil, fmt.Errorf("%w: segment %s", ErrClosed, name)
-		case have():
+		case have(!yielding):
 			return nil, nil
-		case on != nil && on != s.job && s.job != nil && !s.job.exited:
-			// A newer request replaced the job, so this one waits for the
-			// running job rather than take it back.
+		case yielding:
 			return s.changed, nil
 		case on != nil && on == s.job && on.err != nil && !stopped(on.err):
 			return nil, on.err
@@ -174,7 +179,7 @@ const nearSegments = 3
 // job is running in the part, it starts one at the part's start. name is
 // the requested segment, which errors name.
 func (s *Stream) init(ctx context.Context, name string, p int) (string, error) {
-	have := func() bool { return s.initDone[p] }
+	have := func(bool) bool { return s.initDone[p] }
 	return s.wait(ctx, name, filepath.Join(s.dir, initName(p)), have, func(j *job) (int, error) {
 		switch {
 		case j != nil && j.failed():
@@ -291,8 +296,8 @@ func (s *Stream) stopLocked() {
 	s.wakeLocked()
 }
 
-// readLocked records a request for segment i. It resumes a paused job once
-// the player has caught up with it.
+// readLocked records a request for segment i that the job serves. It
+// resumes a paused job once the player has caught up with it.
 func (s *Stream) readLocked(i int) {
 	j := s.job
 	if j == nil || i < j.from {

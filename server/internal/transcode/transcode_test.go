@@ -1488,6 +1488,57 @@ func TestPacingPausesAheadAndResumes(t *testing.T) {
 		if j := s.Job(); j.State != JobPaused || j.From != far || j.Next != far+at(90*time.Second) {
 			t.Fatalf("after a far seek: %+v", j)
 		}
+
+		// A request just past the paused job waits for it, which resumes it
+		// until it's 90 s ahead of that request.
+		next := far + at(90*time.Second) + 1
+		if _, err := s.Segment(ctx, segmentName(next)); err != nil {
+			t.Fatal(err)
+		}
+		time.Sleep(time.Minute)
+		synctest.Wait()
+		if j := s.Job(); j.State != JobPaused || j.Next != next+at(90*time.Second) {
+			t.Fatalf("after waiting on the job: %+v", j)
+		}
+	})
+}
+
+// A request whose job a newer request replaced doesn't count toward the
+// newer job's pacing while it waits, so the newer job still pauses 90 s
+// ahead of its own player.
+func TestOlderRequestDoesNotDelayTheNewerJobsPause(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		at := func(d time.Duration) int { return int(d / gridSegment) } // the segment at d
+		m := &fakeMedia{pace: time.Second}
+		tr, spec := fixture(t, m)
+		s, err := tr.Open(ctx, encodedSpec(spec, ""), 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer s.Close()
+		older, cancel := context.WithCancel(ctx)
+		waiter := request(older, s, "200.m4s")
+		synctest.Wait()
+		if _, err := s.Segment(ctx, "40.m4s"); err != nil {
+			t.Fatal(err)
+		}
+		// A 2 s segment a second encodes 90 s in 45 s, well short of the
+		// idle kill.
+		time.Sleep(90 * time.Second)
+		synctest.Wait()
+		s.mu.Lock()
+		reading := s.job.reading
+		s.mu.Unlock()
+		if j := s.Job(); reading != 40 || j.State != JobPaused || j.From != 40 || j.Next != 40+at(90*time.Second) {
+			t.Fatalf("reading %d, %s from %d at segment %d; want reading 40, paused from 40 at %d", reading, j.State, j.From, j.Next, 40+at(90*time.Second))
+		}
+		select {
+		case r := <-waiter:
+			t.Fatalf("the older request returned while the newer job runs: %v", r.err)
+		default:
+		}
+		cancel()
+		<-waiter
 	})
 }
 
