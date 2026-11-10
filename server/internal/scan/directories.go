@@ -31,7 +31,7 @@ var (
 // left out. It reads only the names of directories. It follows links,
 // because a library folder may be a link. found is false when there's no
 // such directory or it may not be opened.
-func (s *Scanner) Directories(path string) (dirs []Directory, found bool, err error) {
+func Directories(path string) (dirs []Directory, found bool, err error) {
 	if !filepath.IsAbs(path) {
 		return nil, false, fault.About(fmt.Errorf("%w: %s", ErrRelativePath, path), fault.Field{Name: "path", Code: "invalid"})
 	}

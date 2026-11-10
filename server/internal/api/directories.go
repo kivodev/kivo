@@ -25,9 +25,9 @@ func (h *handlers) ListDirectories(_ context.Context, req gen.ListDirectoriesReq
 // lists where the picker starts: / and the mounts that could hold media.
 func (h *handlers) directories(path string) ([]scan.Directory, error) {
 	if path == "" {
-		return h.deps.Scan.PickerStarts(), nil
+		return scan.PickerStarts(), nil
 	}
-	dirs, found, err := h.deps.Scan.Directories(path)
+	dirs, found, err := scan.Directories(path)
 	if err == nil && !found {
 		return nil, errNotFound
 	}

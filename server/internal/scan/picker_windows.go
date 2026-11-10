@@ -4,7 +4,7 @@ import "golang.org/x/sys/windows"
 
 // PickerStarts returns where the library folder picker starts: the root of
 // every drive, mapped network drives too.
-func (s *Scanner) PickerStarts() []Directory {
+func PickerStarts() []Directory {
 	drives, _ := windows.GetLogicalDrives()
 	var out []Directory
 	for i := range 26 {
