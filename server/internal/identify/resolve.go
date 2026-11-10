@@ -37,13 +37,9 @@ type decision struct {
 // unchanged, so a matched folder is searched once, not once per run or per
 // file. An unmatched folder is looked up again each time. A manual decision,
 // matched or not, always stands.
-func (i *Identifier) decide(ctx context.Context, s *snapshot) (decision, error) {
+func (i *Identifier) decide(ctx context.Context, s *snapshot, prev stored) (decision, error) {
 	u := s.unit
-	prev, err := i.storedMatch(ctx, s)
-	switch {
-	case err != nil:
-		return decision{}, err
-	case prev.ok && prev.row.Source == sourceManual:
+	if prev.ok && prev.row.Source == sourceManual {
 		return fromRow(prev.row), nil
 	}
 	if d, ok, err := i.exact(ctx, s, sourcePath, u.ids, prev); ok || err != nil {
@@ -74,20 +70,52 @@ func (i *Identifier) decide(ctx context.Context, s *snapshot) (decision, error) 
 	return d, err
 }
 
-// stored is the match row a unit had before this decision. ok is false
-// when there was none.
+// stored is what the database holds about a unit once its files are placed:
+// the match row recording its last decision, where its files are, and what
+// its root work is matched as. A decision is made from it, and written only
+// if it differs.
 type stored struct {
-	row dbq.Match
-	ok  bool
+	row         dbq.Match              // the match row; zero when there is none
+	ok          bool                   // whether there is a match row
+	ps          placements             // where the unit's files are
+	root        id.ID                  // the root work
+	provisional bool                   // no match describes the root yet
+	ids         []dbq.ExternalIDsOfRow // the root's external IDs
+	ordering    string                 // a series' ordering
 }
 
-// storedMatch reads the match row of the snapshot's unit.
-func (i *Identifier) storedMatch(ctx context.Context, s *snapshot) (stored, error) {
-	row, err := i.q.GetMatch(ctx, dbq.GetMatchParams{LibraryID: s.lib.ID, Subject: s.unit.subject})
-	if errors.Is(err, sql.ErrNoRows) {
-		return stored{}, nil
+// readStored reads what the database holds about the snapshot's unit, whose
+// root work is root. It is read after place, which may write any of it.
+func (i *Identifier) readStored(ctx context.Context, s *snapshot, root id.ID) (stored, error) {
+	ps, err := readPlacements(ctx, i.q, s.unit.fileIDs())
+	if err != nil {
+		return stored{}, err
 	}
-	return stored{row: row, ok: err == nil}, err
+	st := stored{ps: ps, root: root}
+	row, err := i.q.GetMatch(ctx, dbq.GetMatchParams{LibraryID: s.lib.ID, Subject: s.unit.subject})
+	switch {
+	case errors.Is(err, sql.ErrNoRows): // no decision yet
+	case err != nil:
+		return stored{}, err
+	default:
+		st.row, st.ok = row, true
+	}
+	w, err := i.q.WorkState(ctx, root)
+	if err != nil {
+		return stored{}, err
+	}
+	st.provisional = w.Provisional
+	if st.ids, err = i.q.ExternalIDsOf(ctx, root); err != nil {
+		return stored{}, err
+	}
+	if s.unit.kind == catalog.KindSeries {
+		o, err := i.q.Ordering(ctx, root)
+		if err != nil {
+			return stored{}, err
+		}
+		st.ordering = o.String
+	}
+	return st, nil
 }
 
 // matched reports whether the stored row is a match found through source
@@ -100,6 +128,25 @@ func (st stored) matched(source, query string) bool {
 // ordering.
 func (st stored) records(d decision, ordering string) bool {
 	return st.ok && fromRow(st.row).same(d) && st.row.Ordering.String == ordering
+}
+
+// describedAs reports whether the root work already is what match c
+// describes, meaning it is matched and carries c's ID.
+func (st stored) describedAs(c *metadata.Match) bool {
+	return !st.provisional && slices.Contains(st.ids, idRow(c.ID))
+}
+
+// holds reports whether writing matched decision d for unit u would change
+// nothing: the match row records d in the root's ordering, the root is what
+// d describes, and every file of u is placed under it, none provisionally.
+func (st stored) holds(u *unit, d decision) bool {
+	if !st.records(d, st.ordering) || !st.describedAs(d.match) {
+		return false
+	}
+	return !slices.ContainsFunc(u.entries(), func(e *entry) bool {
+		p := st.ps.of(e)
+		return p == nil || !p.firm(st.root)
+	})
 }
 
 // same reports whether two decisions came from the same lookup and chose
@@ -259,39 +306,23 @@ func lookupOrder(w want, seen []metadata.Match, inYear map[catalog.ExternalID]bo
 	return ranked
 }
 
-// placeEpisodes returns the series' ordering and the provider episodes of
-// each version that still needs placing. A version needs no episode list if
-// it is already on non-provisional episodes of the root, the root is what
-// the decision describes, and it was placed in this ordering. So a settled
-// folder makes no provider call.
-func (i *Identifier) placeEpisodes(ctx context.Context, s *snapshot, ps placements, d decision, root id.ID, es []*entry) (string, map[*entry][]metadata.Episode, error) {
-	o, err := i.q.Ordering(ctx, root)
-	if err != nil {
-		return "", nil, err
-	}
-	ordering := o.String
-	described, err := i.describes(ctx, i.q, root, d.match)
-	if err != nil {
-		return "", nil, err
-	}
-	placedIn := ""
-	if row, err := i.q.GetMatch(ctx, dbq.GetMatchParams{LibraryID: s.lib.ID, Subject: s.unit.subject}); err == nil {
-		placedIn = row.Ordering.String
-	}
+// placeEpisodes returns the provider episodes of each version of a series
+// that decision d still has to place. A version needs none if it is placed
+// under the root, none of it provisionally, the root is what d describes,
+// and the match row was written in the series' ordering. So a settled folder
+// makes no provider call.
+func (i *Identifier) placeEpisodes(ctx context.Context, s *snapshot, st stored, d decision) (map[*entry][]metadata.Episode, error) {
+	current := st.describedAs(d.match) && st.row.Ordering.String == st.ordering
 	var pending []*entry
-	for _, e := range es {
-		p := ps.of(e)
-		settled := p != nil && described && placedIn == ordering &&
-			!slices.ContainsFunc(p.works, func(w placedWork) bool { return w.provisional || w.root != root })
-		if !settled {
+	for _, e := range s.unit.versions {
+		if p := st.ps.of(e); !current || p == nil || !p.firm(st.root) {
 			pending = append(pending, e)
 		}
 	}
 	if len(pending) == 0 {
-		return ordering, nil, nil
+		return nil, nil
 	}
-	eps, err := i.episodes(ctx, d.match.ID, metadata.Ordering(ordering), s.lib.MetadataLanguage, d.anime, pending)
-	return ordering, eps, err
+	return i.episodes(ctx, d.match.ID, metadata.Ordering(st.ordering), s.lib.MetadataLanguage, d.anime, pending)
 }
 
 // refetchAge is the age past which an episode list that is missing a number

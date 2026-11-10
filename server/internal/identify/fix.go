@@ -116,10 +116,14 @@ func (i *Identifier) fixMatch(ctx context.Context, root id.ID, c metadata.Match)
 		if !h.link.IsZero() && h.link != root {
 			continue // another root's folder, holding a file that came from this root
 		}
-		p := plan{s: h.snap, root: root, ps: h.placed, d: d}
+		st, err := i.readStored(ctx, h.snap, root)
+		if err != nil {
+			return err
+		}
+		p := plan{s: h.snap, root: root, ps: st.ps, d: d, ordering: st.ordering}
 		if h.snap.unit.kind == catalog.KindSeries {
 			rctx, cancel := context.WithTimeout(ctx, requestWait)
-			p.ordering, p.eps, err = i.placeEpisodes(rctx, h.snap, h.placed, d, root, h.snap.unit.versions)
+			p.eps, err = i.placeEpisodes(rctx, h.snap, st, d)
 			cancel()
 			if err != nil {
 				return err
@@ -136,14 +140,18 @@ func (i *Identifier) fixMatch(ctx context.Context, root id.ID, c metadata.Match)
 		if err := i.deps.Metadata.Refresh(ctx, tx, root); err != nil || len(plans) > 0 {
 			return err
 		}
-		err := i.deps.Catalog.Batch(ctx, tx, func(b *catalog.Batch) error {
-			_, err := i.describe(ctx, tx, b, root, c, true)
+		q := dbq.New(tx)
+		st, err := q.WorkState(ctx, root)
+		if err != nil {
+			return err
+		}
+		err = i.deps.Catalog.Batch(ctx, tx, func(b *catalog.Batch) error {
+			_, err := i.describe(ctx, tx, b, root, st, c, true)
 			return err
 		})
 		if err != nil {
 			return err
 		}
-		q := dbq.New(tx)
 		f, err := q.FolderOf(ctx, root)
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io/fs"
 	"log/slog"
-	"slices"
 	"sync"
 
 	"github.com/mmcdole/kivo/internal/activity"
@@ -212,19 +211,13 @@ func (i *Identifier) identify(ctx context.Context, lib catalog.Library, f catalo
 // identifyUnit identifies one unit of a folder.
 //
 // First the unit's files are put on its root work, in their own transaction
-// before any provider call, so a new file appears at once. Then the unit's
-// decision is made and written, provided nothing has changed meanwhile.
-//
-// Nothing is written when the match row already records the decision, the
-// root work already is what the decision describes, and every file is placed
-// by it.
+// before any provider call, so a new file appears at once. Then what is
+// stored about the unit is read, once, and the unit's decision is made from
+// it. The decision is written only if what is stored doesn't already hold
+// it, and only if nothing has changed meanwhile.
 func (i *Identifier) identifyUnit(ctx context.Context, s *snapshot) error {
 	lib, u := s.lib, s.unit
-	ps, err := readPlacements(ctx, i.q, u.fileIDs())
-	if err != nil {
-		return err
-	}
-	root, err := i.place(ctx, s, ps)
+	root, err := i.place(ctx, s)
 	if err != nil {
 		return err
 	}
@@ -234,52 +227,30 @@ func (i *Identifier) identifyUnit(ctx context.Context, s *snapshot) error {
 	case catalog.KindBook:
 		return i.describeBook(ctx, root)
 	}
-	if ps, err = readPlacements(ctx, i.q, u.fileIDs()); err != nil {
-		return err
-	}
-	d, err := i.decide(ctx, s)
+	st, err := i.readStored(ctx, s, root)
 	if err != nil {
 		return err
 	}
-	prev, err := i.storedMatch(ctx, s)
+	d, err := i.decide(ctx, s, st)
 	if err != nil {
 		return err
 	}
 	if d.match == nil {
-		if d.source == "" || prev.records(d, "") {
+		if d.source == "" || st.records(d, "") {
 			return nil
 		}
 		return i.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
 			return putMatch(ctx, dbq.New(tx), lib.ID, u.subject, d, "")
 		})
 	}
-	p := plan{s: s, root: root, ps: ps, d: d}
+	p := plan{s: s, root: root, ps: st.ps, d: d, ordering: st.ordering}
 	if u.kind == catalog.KindSeries {
-		if p.ordering, p.eps, err = i.placeEpisodes(ctx, s, ps, d, root, u.versions); err != nil {
+		if p.eps, err = i.placeEpisodes(ctx, s, st, d); err != nil {
 			return err
 		}
 	}
-	if len(p.eps) == 0 && prev.records(d, p.ordering) {
-		placed, err := i.placedBy(ctx, u, ps, d, root)
-		if err != nil || placed {
-			return err
-		}
+	if len(p.eps) == 0 && st.holds(u, d) {
+		return nil
 	}
 	return i.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error { return i.apply(ctx, tx, p, false) })
-}
-
-// placedBy reports whether the root is what the decision describes and
-// every file of the unit is placed under it, none provisionally. If so,
-// writing the decision again would change nothing.
-func (i *Identifier) placedBy(ctx context.Context, u *unit, ps placements, d decision, root id.ID) (bool, error) {
-	if ok, err := i.describes(ctx, i.q, root, d.match); err != nil || !ok {
-		return false, err
-	}
-	for _, e := range u.entries() {
-		p := ps.of(e)
-		if p == nil || slices.ContainsFunc(p.works, func(w placedWork) bool { return w.provisional || w.root != root }) {
-			return false, nil
-		}
-	}
-	return true, nil
 }

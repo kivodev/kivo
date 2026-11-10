@@ -40,6 +40,12 @@ func (p *placed) foreign(root id.ID) bool {
 	return slices.ContainsFunc(p.works, func(w placedWork) bool { return w.root != root })
 }
 
+// firm reports whether every work the version covers is a work of root and
+// none is provisional, so a match of root has placed it.
+func (p *placed) firm(root id.ID) bool {
+	return !slices.ContainsFunc(p.works, func(w placedWork) bool { return w.provisional || w.root != root })
+}
+
 // placements records where a unit's files are placed, keyed by file.
 type placements map[id.ID]*placed
 
