@@ -48,7 +48,6 @@ class SmartListsTest {
             ),
             sort = listOf(SortKey("addedAt", "asc")),
             maxWorks = 50,
-            collapse = "series",
         )
         val draft = SmartLists.draft("90s", query, fields)
         assertEquals(setOf("l1"), draft.libraries)

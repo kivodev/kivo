@@ -336,7 +336,7 @@ func smartViewer(t *testing.T, db *store.DB, q *query.Service) (users.Viewer, []
 	var actor id.ID // in movies 123 and 20123
 	copy(actor[:], fmt.Sprintf("p%015d", 123))
 	movies := []catalog.WorkKind{catalog.KindMovie}
-	shows := []catalog.WorkKind{catalog.KindSeries, catalog.KindSeason, catalog.KindEpisode}
+	series := []catalog.WorkKind{catalog.KindSeries}
 	hundred := 100
 	defs := []struct {
 		name string
@@ -351,9 +351,9 @@ func smartViewer(t *testing.T, db *store.DB, q *query.Service) (users.Viewer, []
 		{"movies, unplayed, by last played", query.WorkQuery{Kinds: movies, Where: where(
 			query.Rule{Field: "playState", Op: "anyOf", Values: []string{"unplayed"}}),
 			Sort: []query.SortKey{{Field: "lastPlayedAt"}}}},
-		{"shows, one per series", query.WorkQuery{Kinds: shows, Where: where(
+		{"series, by last episode added", query.WorkQuery{Kinds: series, Where: where(
 			query.Rule{Field: "genre", Op: "anyOf", Values: []string{"Drama"}}),
-			Sort: []query.SortKey{{Field: "lastEpisodeAddedAt"}}, Collapse: "series"}},
+			Sort: []query.SortKey{{Field: "lastEpisodeAddedAt"}}}},
 		{"episodes, aired this year", query.WorkQuery{Kinds: []catalog.WorkKind{catalog.KindEpisode}, Where: where(
 			query.Rule{Field: "releaseDate", Op: "within", Values: []string{"P1Y"}}),
 			Sort: []query.SortKey{{Field: "releaseDate"}}}},

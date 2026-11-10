@@ -465,3 +465,40 @@ func TestMigrationPasswordChanged(t *testing.T) {
 		t.Fatal("an unknown kind was accepted")
 	}
 }
+
+// 0070 takes collapse out of each smart list's query and leaves every other
+// query, a manual list and a query that doesn't parse as they were.
+func TestMigrationQueryCollapse(t *testing.T) {
+	ctx := context.Background()
+	db, path := testDB(t, through(t, "_artwork_preview.sql"))
+	err := db.Write(ctx, func(ctx context.Context, tx *Tx) error {
+		_, err := tx.ExecContext(ctx, `
+			INSERT INTO user (id, username, admin, all_libraries, created_at) VALUES (x'a1', 'anna', 0, 1, 1);
+			INSERT INTO list (id, user_id, name, built_in, created_at, query) VALUES
+				(x'c1', x'a1', 'Watchlist', 1, 1, NULL),
+				(x'c2', x'a1', 'Shows', 0, 1, '{"version":1,"kinds":["series","episode"],"sort":[{"field":"title"}],"collapse":"series"}'),
+				(x'c3', x'a1', 'Movies', 0, 1, '{"version":1,"kinds":["movie"],"maxWorks":10}'),
+				(x'c4', x'a1', 'Broken', 0, 1, '{"collapse":');`)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+	up, err := open(ctx, path, through(t, "_query_collapse.sql"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer up.Close()
+	for id, want := range map[string]string{
+		"c1": "",
+		"c2": `{"version":1,"kinds":["series","episode"],"sort":[{"field":"title"}]}`,
+		"c3": `{"version":1,"kinds":["movie"],"maxWorks":10}`,
+		"c4": `{"collapse":`,
+	} {
+		var query string
+		if err := up.Reader().QueryRowContext(ctx, `SELECT coalesce(query, '') FROM list WHERE hex(id) = upper(?)`, id).Scan(&query); err != nil || query != want {
+			t.Errorf("list %s: %q, %v; want %q", id, query, err, want)
+		}
+	}
+}

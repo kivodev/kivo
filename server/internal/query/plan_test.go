@@ -63,7 +63,7 @@ var wholeLibrary = map[string]string{
 	"query/smart/any":        smartScan,
 	"query/smart/nested":     smartScan,
 	"query/smart/maxWorks":   smartScan,
-	"query/smart/collapse":   smartScan,
+	"query/smart/series":     smartScan,
 	"query/smart/books":      smartScan,
 }
 
@@ -146,8 +146,8 @@ func TestSmartQueryPlans(t *testing.T) {
 			}},
 			Sort: []query.SortKey{{Field: "random"}}}},
 		{"maxWorks", query.WorkQuery{Kinds: movies, Sort: []query.SortKey{{Field: "addedAt"}}, MaxWorks: &ten}},
-		{"collapse", query.WorkQuery{Kinds: shows, Where: where(query.Rule{Field: "contentRating", Op: "noneOf", Values: []string{"TV-MA"}}),
-			Sort: []query.SortKey{{Field: "lastEpisodeAddedAt"}}, Collapse: "series"}},
+		{"series", query.WorkQuery{Kinds: []catalog.WorkKind{catalog.KindSeries}, Where: where(query.Rule{Field: "contentRating", Op: "noneOf", Values: []string{"TV-MA"}}),
+			Sort: []query.SortKey{{Field: "lastEpisodeAddedAt"}}}},
 		{"books", query.WorkQuery{Kinds: []catalog.WorkKind{catalog.KindBook}, Where: where(
 			query.Rule{Field: "author", Op: "anyOf", Values: []string{h.weir.String()}},
 			query.Rule{Field: "bookSeries", Op: "isNotSet"}),

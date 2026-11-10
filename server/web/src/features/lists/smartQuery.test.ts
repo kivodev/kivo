@@ -69,7 +69,6 @@ describe("draftOf and queryOf", () => {
       },
       sort: [{ field: "rating", direction: "asc" as const }, { field: "title" }],
       maxWorks: 10,
-      collapse: "series" as const,
     };
     const draft = draftOf("X", query);
     expect(draft.libraries).toEqual(["lib"]);

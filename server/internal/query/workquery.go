@@ -32,7 +32,7 @@ const (
 const sortRandom = "random"
 
 // WorkQuery is what a query selects: kinds of works, a tree of rules, how
-// they sort, and how they're capped and collapsed. Run a WorkQuery with
+// they sort, and how they're capped. Run a WorkQuery with
 // QueryWorks, which applies the Viewer whatever the rules say.
 type WorkQuery struct {
 	Version  int                `json:"version"`
@@ -40,7 +40,6 @@ type WorkQuery struct {
 	Where    *RuleGroup         `json:"where,omitempty"`
 	Sort     []SortKey          `json:"sort,omitempty"`
 	MaxWorks *int               `json:"maxWorks,omitempty"`
-	Collapse string             `json:"collapse,omitempty"` // "series" keeps one work per show
 }
 
 // RuleGroup is a group of rules and sub-groups, joined by Match: "all" or
@@ -107,9 +106,6 @@ func (q WorkQuery) Validate() []QueryProblem {
 	v.sort(q.Sort)
 	if q.MaxWorks != nil && *q.MaxWorks < 1 {
 		v.add("/maxWorks", "invalid")
-	}
-	if q.Collapse != "" && q.Collapse != "series" {
-		v.add("/collapse", "invalid")
 	}
 	return v.problems
 }
@@ -252,7 +248,7 @@ WHERE NOT w.provisional
   AND w.kind IN (SELECT value FROM json_each(` + c.bind(set(kinds)) + `))
   AND ` + visible + where
 	args := func() []any { return vw.args(append(c.params, sql.Named("only", set(only)))...) }
-	if q.Collapse == "" && q.MaxWorks == nil {
+	if q.MaxWorks == nil {
 		if only != nil {
 			from += "\n  AND w.kind IN (SELECT value FROM json_each(@only))"
 		}
@@ -262,18 +258,10 @@ WHERE NOT w.provisional
 			args:  args(),
 		}
 	}
-	partition := "1"
-	if q.Collapse != "" {
-		partition = "row_number() OVER (PARTITION BY " + seriesOf + " ORDER BY " + sortBy + ")"
-	}
-	limit := "-1"
-	if q.MaxWorks != nil {
-		limit = c.bind(*q.MaxWorks)
-	}
 	capped := `WITH matched AS (
-SELECT w.id, ` + partition + ` AS n, row_number() OVER (ORDER BY ` + sortBy + `) AS o` + from + `
+SELECT w.id, row_number() OVER (ORDER BY ` + sortBy + `) AS o` + from + `
 ),
-limited AS (SELECT id, o FROM matched WHERE n = 1 ORDER BY o LIMIT ` + limit + `),
+limited AS (SELECT id, o FROM matched ORDER BY o LIMIT ` + c.bind(*q.MaxWorks) + `),
 filtered AS (SELECT l.id, l.o FROM limited l JOIN work fw ON fw.id = l.id
   WHERE @only IS NULL OR fw.kind IN (SELECT value FROM json_each(@only)))`
 	return compiled{

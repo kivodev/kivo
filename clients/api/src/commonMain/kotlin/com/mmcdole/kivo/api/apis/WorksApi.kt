@@ -770,7 +770,7 @@ open class WorksApi : ApiClient {
 
     /**
      * Run a work query
-     * Runs a &#x60;WorkQuery&#x60; once, as the caller: their library access and parental limits apply to every query. A grid, paged by &#x60;offset&#x60;, with &#x60;total&#x60; on every page; &#x60;maxWorks&#x60; caps it, and &#x60;collapse&#x60; counts one card per show. An invalid query is &#x60;400&#x60; with &#x60;invalidRequest&#x60;, and &#x60;errors&#x60; holds a JSON pointer per problem, such as &#x60;/query/where/groups/0/rules/2/op&#x60;. 
+     * Runs a &#x60;WorkQuery&#x60; once, as the caller: their library access and parental limits apply to every query. A grid, paged by &#x60;offset&#x60;, with &#x60;total&#x60; on every page; &#x60;maxWorks&#x60; caps it. An invalid query is &#x60;400&#x60; with &#x60;invalidRequest&#x60;, and &#x60;errors&#x60; holds a JSON pointer per problem, such as &#x60;/query/where/groups/0/rules/2/op&#x60;. 
      * @param workQueryRequest 
      * @return WorkSummaryPage
      */
