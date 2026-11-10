@@ -61,6 +61,7 @@ type server struct {
 	previews   *previews.Service
 	subtitles  *subtitles.Service
 	playback   *playback.Service
+	downloads  *playback.Downloads
 	ffmpeg     *ffmpeg.Runner
 	problems   *health.Registry
 	discovery  *discovery.Responder
@@ -207,7 +208,7 @@ func wire(ctx context.Context, boot config.Bootstrap, logs *health.Logs, bus *ev
 		CacheDir: boot.CacheDir, SubtitleDir: filepath.Join(boot.DataDir, "subtitles"),
 	}, subtitles.Options{
 		Replaced: func(ctx context.Context, tx *store.Tx, replaced []id.ID, by id.ID) error {
-			return s.playback.SubtitlesReplaced(ctx, tx, replaced, by)
+			return s.downloads.SubtitlesReplaced(ctx, tx, replaced, by)
 		},
 	})
 	s.markers = markers.New(db, markers.Deps{
@@ -234,6 +235,7 @@ func wire(ctx context.Context, boot config.Bootstrap, logs *health.Logs, bus *ev
 		Catalog: s.catalog, Users: s.users, Auth: s.auth, Userstate: s.userstate, Transcoder: tc, Settings: s.settings, Markers: s.markers, Tasks: s.runner,
 		Activity: s.activity, Subtitles: s.subtitles, Previews: s.previews, Accelerators: s.ffmpeg, Events: bus,
 	})
+	s.downloads = playback.NewDownloads(s.playback)
 	s.problems = health.NewRegistry([]health.Reporter{db, s.metadata, s.scanner, s.previews, s.subtitles, s.markers, s.playback, s.activity}, bus, health.RegistryOptions{
 		Raised: func(ctx context.Context, raised []health.OpenProblem) {
 			if err := s.activity.ProblemsRaised(ctx, raised); err != nil {
@@ -250,7 +252,7 @@ func wire(ctx context.Context, boot config.Bootstrap, logs *health.Logs, bus *ev
 	})
 	s.release = release.New(release.Options{Version: version, Check: boot.UpdateCheck})
 	s.api, err = api.New(api.Deps{
-		Users: s.users, Auth: s.auth, Activity: s.activity, Query: s.query, Playback: s.playback,
+		Users: s.users, Auth: s.auth, Activity: s.activity, Query: s.query, Playback: s.playback, Downloads: s.downloads,
 		Scan: s.scanner, Identify: s.identifier, Metadata: s.metadata, Userstate: s.userstate,
 		Catalog: s.catalog, Subtitles: s.subtitles, Markers: s.markers, Events: bus, Tasks: s.runner, Problems: s.problems, Logs: logs,
 		Settings: s.settings, Discovery: s.discovery, Accelerators: s.ffmpeg, Version: version, Release: s.release, BasePath: boot.BasePath,

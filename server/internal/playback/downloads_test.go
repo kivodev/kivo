@@ -46,7 +46,8 @@ func (f *fixture) runTasks() (stop func()) {
 	f.t.Helper()
 	r := tasks.New(f.b.DB, f.cfg, events.NewBus(), tasks.Options{})
 	f.svc, f.runner = New(f.b.DB, f.deps(r)), r
-	for _, t := range f.svc.Tasks() {
+	f.dl = NewDownloads(f.svc)
+	for _, t := range f.dl.Tasks() {
 		r.Add(t)
 	}
 	runCtx, cancel := context.WithCancel(ctx)
@@ -56,7 +57,7 @@ func (f *fixture) runTasks() (stop func()) {
 }
 
 // heardDownloads reports whether user's clients were told that their
-// downloads changed. It waits out downloadsChanged's interval.
+// downloads changed. It waits out changed's interval.
 func (f *fixture) heardDownloads(user id.ID) bool {
 	deadline := time.After(3 * time.Second)
 	for {
@@ -72,7 +73,7 @@ func (f *fixture) heardDownloads(user id.ID) bool {
 }
 
 func (f *fixture) download(work id.ID, quality string) (DownloadStatus, error) {
-	return f.svc.Download(ctx, f.p, f.v, DownloadRequest{Work: work, Caps: iPhone, Quality: quality})
+	return f.dl.Request(ctx, f.p, f.v, DownloadRequest{Work: work, Caps: iPhone, Quality: quality})
 }
 
 func (f *fixture) mustDownload(work id.ID, quality string) DownloadStatus {
@@ -88,7 +89,7 @@ func (f *fixture) mustDownload(work id.ID, quality string) DownloadStatus {
 func (f *fixture) await(download id.ID, want DownloadState) DownloadStatus {
 	f.t.Helper()
 	for deadline := time.Now().Add(5 * time.Second); ; time.Sleep(time.Millisecond) {
-		d, err := f.svc.DownloadStatus(ctx, f.p, download)
+		d, err := f.dl.Status(ctx, f.p, download)
 		if err != nil {
 			f.t.Fatal(err)
 		}
@@ -138,7 +139,7 @@ func TestADownloadIsTheOriginalOrAConversion(t *testing.T) {
 	if p := d.Parts[0]; p.Size != int64(len("the movie")) || p.ETag == "" || p.SHA256 != "" || d.Size != p.Size || !d.SizeExact {
 		t.Fatalf("the original's part: %+v", d.Parts)
 	}
-	file, err := f.svc.DownloadedFile(ctx, f.v, d.ID, 0)
+	file, err := f.dl.File(ctx, f.v, d.ID, 0)
 	if err != nil || file.Type != "video/mp4" || file.ETag != d.Parts[0].ETag {
 		t.Fatalf("the original: %+v %v", file, err)
 	}
@@ -154,7 +155,7 @@ func TestADownloadIsTheOriginalOrAConversion(t *testing.T) {
 	if d.Decision.Delivery != DeliverConversion || d.Decision.Summary() != DirectStream {
 		t.Fatalf("an mkv for AVPlayer: %+v", d.Decision)
 	}
-	if _, err := f.svc.DownloadedFile(ctx, f.v, d.ID, 0); err != nil && !errors.Is(err, ErrNotReady) {
+	if _, err := f.dl.File(ctx, f.v, d.ID, 0); err != nil && !errors.Is(err, ErrNotReady) {
 		t.Fatalf("before it's ready: %v", err)
 	}
 	d = f.await(d.ID, DownloadReady)
@@ -162,7 +163,7 @@ func TestADownloadIsTheOriginalOrAConversion(t *testing.T) {
 	if p.Size == 0 || len(p.SHA256) != 64 || p.ETag != `"`+p.SHA256+`"` || d.Size != p.Size || !d.SizeExact || d.Expires.Before(time.Now().Add(6*24*time.Hour)) {
 		t.Fatalf("ready: %+v", d)
 	}
-	file, err = f.svc.DownloadedFile(ctx, f.v, d.ID, 0)
+	file, err = f.dl.File(ctx, f.v, d.ID, 0)
 	if err != nil || file.Type != "video/mp4" || file.ETag != p.ETag {
 		t.Fatalf("file: %+v %v", file, err)
 	}
@@ -172,7 +173,7 @@ func TestADownloadIsTheOriginalOrAConversion(t *testing.T) {
 	if entries, _ := os.ReadDir(f.tcDir); len(entries) != 0 {
 		t.Fatalf("a conversion touched the plays' segments: %v", entries)
 	}
-	if _, err := f.svc.DownloadedFile(ctx, f.v, d.ID, 1); !errors.Is(err, ErrNotFound) {
+	if _, err := f.dl.File(ctx, f.v, d.ID, 1); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("no second part: %v", err)
 	}
 }
@@ -198,10 +199,10 @@ func TestDownloadsArePreparedOneAtATimeInLine(t *testing.T) {
 
 	// Removing the first download stops it, and the next one takes its
 	// place.
-	if err := f.svc.DeleteDownload(ctx, f.p, a.ID); err != nil {
+	if err := f.dl.Delete(ctx, f.p, a.ID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.svc.DownloadStatus(ctx, f.p, a.ID); !errors.Is(err, ErrNotFound) {
+	if _, err := f.dl.Status(ctx, f.p, a.ID); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("removed: %v", err)
 	}
 	f.await(b.ID, DownloadPreparing)
@@ -231,7 +232,7 @@ func TestASettledDownloadTellsOnlyItsUser(t *testing.T) {
 	m, sub := f.subtitled()
 	hold := make(chan struct{})
 	f.extractions.set(nil, hold)
-	a, err := f.svc.Download(ctx, f.p, f.v, DownloadRequest{Work: m.Work, SubtitleTrack: &sub, Caps: iPhone})
+	a, err := f.dl.Request(ctx, f.p, f.v, DownloadRequest{Work: m.Work, SubtitleTrack: &sub, Caps: iPhone})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -283,12 +284,12 @@ func TestAReadyConversionIsKeptUntilFetchedOrExpired(t *testing.T) {
 	f.downloads()
 	a := f.await(f.mustDownload(f.movie("Heat", "mkv", 1).Work, "high").ID, DownloadReady)
 	b := f.await(f.mustDownload(f.movie("Ronin", "mkv", 1).Work, "high").ID, DownloadReady)
-	fa, _ := f.svc.DownloadedFile(ctx, f.v, a.ID, 0)
-	fb, _ := f.svc.DownloadedFile(ctx, f.v, b.ID, 0)
+	fa, _ := f.dl.File(ctx, f.v, a.ID, 0)
+	fb, _ := f.dl.File(ctx, f.v, b.ID, 0)
 
 	// A play's expiry doesn't affect the download.
 	f.svc.endExpired(ctx)
-	if err := f.svc.PruneDownloads(ctx); err != nil {
+	if err := f.dl.Prune(ctx); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(fa.Path); err != nil {
@@ -296,7 +297,7 @@ func TestAReadyConversionIsKeptUntilFetchedOrExpired(t *testing.T) {
 	}
 
 	// The device has every file, so the server deletes its copy.
-	if err := f.svc.DeleteDownload(ctx, f.p, a.ID); err != nil {
+	if err := f.dl.Delete(ctx, f.p, a.ID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Dir(fa.Path)); !errors.Is(err, os.ErrNotExist) {
@@ -310,10 +311,10 @@ func TestAReadyConversionIsKeptUntilFetchedOrExpired(t *testing.T) {
 	if err := os.Mkdir(stray, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.svc.PruneDownloads(ctx); err != nil {
+	if err := f.dl.Prune(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.svc.DownloadStatus(ctx, f.p, b.ID); !errors.Is(err, ErrNotFound) {
+	if _, err := f.dl.Status(ctx, f.p, b.ID); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("expired: %v", err)
 	}
 	if names, _ := f.tc.Downloads(); len(names) != 0 {
@@ -330,7 +331,7 @@ func TestADownloadSurvivesARestart(t *testing.T) {
 
 	// The server stops partway through.
 	stop()
-	if got, _ := f.svc.DownloadStatus(ctx, f.p, d.ID); got.State != DownloadQueued {
+	if got, _ := f.dl.Status(ctx, f.p, d.ID); got.State != DownloadQueued {
 		t.Fatalf("stopped part way: %+v", got)
 	}
 	if names, _ := f.tc.Downloads(); len(names) != 0 {
@@ -354,13 +355,13 @@ func TestAFailedDownloadSaysWhyAndRetries(t *testing.T) {
 	if got := f.await(d.ID, DownloadFailed); got.Reason != RefuseTranscodeFailed {
 		t.Fatalf("failed: %+v", got)
 	}
-	if _, err := f.svc.DownloadedFile(ctx, f.v, d.ID, 0); !errors.Is(err, ErrNotReady) {
+	if _, err := f.dl.File(ctx, f.v, d.ID, 0); !errors.Is(err, ErrNotReady) {
 		t.Fatalf("a failed conversion's file: %v", err)
 	}
 	f.media.mu.Lock()
 	f.media.fail = nil
 	f.media.mu.Unlock()
-	again, err := f.svc.RetryDownload(ctx, f.p, f.v, d.ID)
+	again, err := f.dl.Retry(ctx, f.p, f.v, d.ID)
 	if err != nil || again.ID != d.ID || again.State == DownloadFailed || again.Reason != "" {
 		t.Fatalf("retried: %+v %v", again, err)
 	}
@@ -387,7 +388,7 @@ func TestAskingAgainWithOtherCapabilitiesReturnsTheSameDownload(t *testing.T) {
 	d := f.mustDownload(m.Work, "standard")
 	updated := iPhone
 	updated.Audio = append(slices.Clone(iPhone.Audio), AudioEntry{Codec: "flac", MaxChannels: 2})
-	again, err := f.svc.Download(ctx, f.p, f.v, DownloadRequest{Work: m.Work, Caps: updated, Quality: "standard"})
+	again, err := f.dl.Request(ctx, f.p, f.v, DownloadRequest{Work: m.Work, Caps: updated, Quality: "standard"})
 	if err != nil || again.ID != d.ID {
 		t.Fatalf("asked again after an update: %s, then %s %v", d.ID, again.ID, err)
 	}
@@ -396,7 +397,7 @@ func TestAskingAgainWithOtherCapabilitiesReturnsTheSameDownload(t *testing.T) {
 		"subtitle": {Work: m.Work, Caps: iPhone, Quality: "standard", SubtitleTrack: &sub},
 		"settings": {Work: m.Work, Caps: iPhone, Quality: "standard", Settings: Settings{BurnSubtitles: true}},
 	} {
-		if other, err := f.svc.Download(ctx, f.p, f.v, r); err != nil || other.ID == d.ID {
+		if other, err := f.dl.Request(ctx, f.p, f.v, r); err != nil || other.ID == d.ID {
 			t.Errorf("asked with another %s: %s, then %s %v", name, d.ID, other.ID, err)
 		}
 	}
@@ -407,9 +408,10 @@ func TestAskingAgainWithOtherCapabilitiesReturnsTheSameDownload(t *testing.T) {
 func TestAQueuedDownloadKeepsItsTracksWhenPreferencesChange(t *testing.T) {
 	f := newFixture(t, 0)
 	f.svc = New(f.b.DB, f.deps(discard{})) // the test prepares it by hand below
+	f.dl = NewDownloads(f.svc)
 	a := f.dualAudioEpisode()
 	f.extract(a.file, "", false)
-	d, err := f.svc.Download(ctx, f.p, f.v, DownloadRequest{Work: a.work, Caps: tv, Quality: "standard"})
+	d, err := f.dl.Request(ctx, f.p, f.v, DownloadRequest{Work: a.work, Caps: tv, Quality: "standard"})
 	if err != nil || d.State != DownloadQueued || selectedOf(d.Decision, media.Audio) != a.eng || selectedOf(d.Decision, media.Subtitle) != a.signs {
 		t.Fatalf("asked with no preference: %+v %v", d, err)
 	}
@@ -427,7 +429,7 @@ func TestAQueuedDownloadKeepsItsTracksWhenPreferencesChange(t *testing.T) {
 			t.Fatalf("a play now starts with %+v, want Japanese with French subtitles", tr)
 		}
 	}
-	if err := f.svc.prepareDownload(ctx, d.ID); err != nil {
+	if err := f.dl.prepare(ctx, d.ID); err != nil {
 		t.Fatal(err)
 	}
 	got := f.await(d.ID, DownloadReady)
@@ -441,11 +443,11 @@ func TestAQueuedDownloadKeepsItsTracksWhenPreferencesChange(t *testing.T) {
 
 	// Subtitles chosen off stay off.
 	off := id.ID{}
-	d, err = f.svc.Download(ctx, f.p, f.v, DownloadRequest{Work: a.work, SubtitleTrack: &off, Caps: tv, Quality: "standard"})
+	d, err = f.dl.Request(ctx, f.p, f.v, DownloadRequest{Work: a.work, SubtitleTrack: &off, Caps: tv, Quality: "standard"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := f.svc.prepareDownload(ctx, d.ID); err != nil {
+	if err := f.dl.prepare(ctx, d.ID); err != nil {
 		t.Fatal(err)
 	}
 	if got := f.await(d.ID, DownloadReady); selectedOf(got.Decision, media.Subtitle) != off {
@@ -458,9 +460,10 @@ func TestAQueuedDownloadKeepsItsTracksWhenPreferencesChange(t *testing.T) {
 func TestADownloadWhoseVersionIsGoneFails(t *testing.T) {
 	f := newFixture(t, 0)
 	f.svc = New(f.b.DB, f.deps(discard{}))
+	f.dl = NewDownloads(f.svc)
 	d := f.mustDownload(f.movie("Heat", "mkv", 1).Work, "high")
 	f.exec("UPDATE download SET version_id = ?", id.New()) // as if the version was replaced by another
-	if err := f.svc.prepareDownload(ctx, d.ID); err != nil {
+	if err := f.dl.prepare(ctx, d.ID); err != nil {
 		t.Fatal(err)
 	}
 	if got := f.await(d.ID, DownloadFailed); got.Reason != RefuseSourceUnreadable {
@@ -472,13 +475,14 @@ func TestADownloadIsAskedForOnceItsRowCommits(t *testing.T) {
 	f := newFixture(t, 0)
 	asked := &asks{f: f}
 	f.svc = New(f.b.DB, f.deps(asked))
+	f.dl = NewDownloads(f.svc)
 	d := f.mustDownload(f.movie("Heat", "mkv", 1).Work, "high")
 	if got := asked.list(); len(got) != 1 || got[0] != TaskPrepareDownloads+" "+d.ID.String()+" seen" {
 		t.Fatalf("asked %v", got)
 	}
 
 	// The task's passes also see it as an item left to do.
-	if open, err := f.svc.q.OpenDownloads(ctx); err != nil || !slices.Equal(open, []id.ID{d.ID}) {
+	if open, err := f.dl.q.OpenDownloads(ctx); err != nil || !slices.Equal(open, []id.ID{d.ID}) {
 		t.Fatalf("open downloads: %v %v", open, err)
 	}
 }
@@ -486,26 +490,27 @@ func TestADownloadIsAskedForOnceItsRowCommits(t *testing.T) {
 func TestAnUnreadableFileIsTriedAgainBeforeItFails(t *testing.T) {
 	f := newFixture(t, 0)
 	f.svc = New(f.b.DB, f.deps(discard{})) // the test runs each pass by hand below
+	f.dl = NewDownloads(f.svc)
 	f.media.fail = media.ErrSourceUnreadable
 	d := f.mustDownload(f.movie("Heat", "mkv", 1).Work, "high")
 	for try := 1; try < downloadAttempts; try++ {
-		if err := f.svc.prepareDownload(ctx, d.ID); !errors.Is(err, media.ErrSourceUnreadable) {
+		if err := f.dl.prepare(ctx, d.ID); !errors.Is(err, media.ErrSourceUnreadable) {
 			t.Fatalf("try %d: %v", try, err)
 		}
-		if got, _ := f.svc.DownloadStatus(ctx, f.p, d.ID); got.State != DownloadQueued {
+		if got, _ := f.dl.Status(ctx, f.p, d.ID); got.State != DownloadQueued {
 			t.Fatalf("waiting for a later pass after try %d: %+v", try, got)
 		}
-		if open, _ := f.svc.q.OpenDownloads(ctx); !slices.Contains(open, d.ID) {
+		if open, _ := f.dl.q.OpenDownloads(ctx); !slices.Contains(open, d.ID) {
 			t.Fatalf("not pending after try %d: %v", try, open)
 		}
 	}
-	if err := f.svc.prepareDownload(ctx, d.ID); err != nil {
+	if err := f.dl.prepare(ctx, d.ID); err != nil {
 		t.Fatalf("the last try: %v", err)
 	}
-	if got, _ := f.svc.DownloadStatus(ctx, f.p, d.ID); got.State != DownloadFailed || got.Reason != RefuseSourceUnreadable {
+	if got, _ := f.dl.Status(ctx, f.p, d.ID); got.State != DownloadFailed || got.Reason != RefuseSourceUnreadable {
 		t.Fatalf("after the last try: %+v", got)
 	}
-	if open, _ := f.svc.q.OpenDownloads(ctx); slices.Contains(open, d.ID) {
+	if open, _ := f.dl.q.OpenDownloads(ctx); slices.Contains(open, d.ID) {
 		t.Fatalf("a failed download is still pending: %v", open)
 	}
 }
@@ -526,7 +531,7 @@ type asks struct {
 func (a *asks) Ask(task string, items ...id.ID) {
 	for _, i := range items {
 		seen := "unseen"
-		if _, err := a.f.svc.q.GetDownload(ctx, i); err == nil {
+		if _, err := a.f.dl.q.GetDownload(ctx, i); err == nil {
 			seen = "seen"
 		}
 		a.mu.Lock()
@@ -575,7 +580,7 @@ func TestADownloadExtractsItsSubtitle(t *testing.T) {
 	m, sub := f.subtitled()
 	hold := make(chan struct{})
 	f.extractions.set(nil, hold)
-	d, err := f.svc.Download(ctx, f.p, f.v, DownloadRequest{Work: m.Work, SubtitleTrack: &sub, Caps: iPhone})
+	d, err := f.dl.Request(ctx, f.p, f.v, DownloadRequest{Work: m.Work, SubtitleTrack: &sub, Caps: iPhone})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -601,7 +606,7 @@ func TestADownloadExtractsItsSubtitle(t *testing.T) {
 	if i := slices.IndexFunc(d.ExternalSubtitles, func(s ExternalSubtitle) bool { return s.Track == sub }); i < 0 || !d.ExternalSubtitles[i].Ready || d.ExternalSubtitles[i].Format != "vtt" {
 		t.Fatalf("its subtitle: %+v", d.ExternalSubtitles)
 	}
-	if _, err := f.svc.DownloadSubtitle(ctx, f.v, d.ID, d.ExternalSubtitles[0].Name); err != nil {
+	if _, err := f.dl.Subtitle(ctx, f.v, d.ID, d.ExternalSubtitles[0].Name); err != nil {
 		t.Fatal(err)
 	}
 	if n, asked := f.extractions.count(), f.requested.take(); n != 1 || len(asked) != 0 {
@@ -624,7 +629,7 @@ func TestADownloadOfUnextractableSubtitlesDoesntWait(t *testing.T) {
 	f.extractions.set(nil, nil)
 
 	start := time.Now()
-	d, err := f.svc.Download(ctx, f.p, f.v, DownloadRequest{Work: m.Work, SubtitleTrack: &sub, Caps: iPhone})
+	d, err := f.dl.Request(ctx, f.p, f.v, DownloadRequest{Work: m.Work, SubtitleTrack: &sub, Caps: iPhone})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -633,7 +638,7 @@ func TestADownloadOfUnextractableSubtitlesDoesntWait(t *testing.T) {
 	}
 
 	off := id.ID{}
-	d, err = f.svc.Download(ctx, f.p, f.v, DownloadRequest{Work: m.Work, SubtitleTrack: &off, Caps: iPhone})
+	d, err = f.dl.Request(ctx, f.p, f.v, DownloadRequest{Work: m.Work, SubtitleTrack: &off, Caps: iPhone})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -668,15 +673,15 @@ func TestADownloadMovesToTheSubtitleThatReplacedItsOwn(t *testing.T) {
 		return got
 	}
 	old := add("x/en.1.srt")
-	d, err := f.svc.Download(ctx, f.p, f.v, DownloadRequest{Work: m.Work, SubtitleTrack: &old, Caps: iPhone})
+	d, err := f.dl.Request(ctx, f.p, f.v, DownloadRequest{Work: m.Work, SubtitleTrack: &old, Caps: iPhone})
 	if err != nil || selectedOf(d.Decision, media.Subtitle) != old {
 		t.Fatalf("the download %+v %v", d, err)
 	}
 	replacement := add("x/en.2.srt")
 	f.b.Write(func(ctx context.Context, tx *store.Tx) error {
-		return f.svc.SubtitlesReplaced(ctx, tx, []id.ID{old}, replacement)
+		return f.dl.SubtitlesReplaced(ctx, tx, []id.ID{old}, replacement)
 	})
-	d, err = f.svc.DownloadStatus(ctx, f.p, d.ID)
+	d, err = f.dl.Status(ctx, f.p, d.ID)
 	if err != nil || selectedOf(d.Decision, media.Subtitle) != replacement || !slices.ContainsFunc(d.ExternalSubtitles, func(s ExternalSubtitle) bool { return s.Track == replacement }) {
 		t.Fatalf("after the replacement %+v %v", d, err)
 	}
@@ -701,7 +706,7 @@ func TestADownloadConvertingMovesToTheSubtitleThatReplacedItsOwn(t *testing.T) {
 		return got
 	}
 	old := add("x/en.1.srt")
-	d, err := f.svc.Download(ctx, f.p, f.v, DownloadRequest{Work: m.Work, SubtitleTrack: &old, Caps: iPhone})
+	d, err := f.dl.Request(ctx, f.p, f.v, DownloadRequest{Work: m.Work, SubtitleTrack: &old, Caps: iPhone})
 	if err != nil || d.Decision.Delivery != DeliverConversion || selectedOf(d.Decision, media.Subtitle) != old {
 		t.Fatalf("the download %+v %v", d, err)
 	}
@@ -710,7 +715,7 @@ func TestADownloadConvertingMovesToTheSubtitleThatReplacedItsOwn(t *testing.T) {
 	}
 	replacement := add("x/en.2.srt")
 	f.b.Write(func(ctx context.Context, tx *store.Tx) error {
-		return f.svc.SubtitlesReplaced(ctx, tx, []id.ID{old}, replacement)
+		return f.dl.SubtitlesReplaced(ctx, tx, []id.ID{old}, replacement)
 	})
 	close(f.media.hold)
 	d = f.await(d.ID, DownloadReady)
@@ -772,7 +777,7 @@ func TestDownloadRefusals(t *testing.T) {
 		refused.Unmet == nil || *refused.Unmet != (Unmet{Field: "codec", Limit: "aac,ac3,eac3", Actual: "flac"}) {
 		t.Fatalf("a book AVPlayer can't play: %v %+v", err, refused.Unmet)
 	}
-	d, err := f.svc.Download(ctx, f.p, f.v, DownloadRequest{Work: book, Caps: alike([]string{"flac"}, false, nil, []AudioEntry{{Codec: "flac", MaxChannels: 2}}), Quality: "standard"})
+	d, err := f.dl.Request(ctx, f.p, f.v, DownloadRequest{Work: book, Caps: alike([]string{"flac"}, false, nil, []AudioEntry{{Codec: "flac", MaxChannels: 2}}), Quality: "standard"})
 	if err != nil || d.Decision.Delivery != DeliverFile || d.State != DownloadReady || d.Quality != "original" {
 		t.Fatalf("a book the device plays is its original: %+v %v", d, err)
 	}
@@ -782,7 +787,7 @@ func TestDownloadRefusals(t *testing.T) {
 	if !errors.As(err, &refused) || refused.Reason != RefuseDownloadsNotAllowed {
 		t.Fatalf("a user without downloads: %v", err)
 	}
-	if _, err := f.svc.DownloadedFile(ctx, f.viewer(), d.ID, 0); !errors.Is(err, ErrNotFound) {
+	if _, err := f.dl.File(ctx, f.viewer(), d.ID, 0); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("a download's file once downloads are off: %v", err)
 	}
 }
@@ -800,7 +805,7 @@ func TestEstimates(t *testing.T) {
 	f.sized(bookFile, 576_000_000)
 	gone := id.New()
 
-	got, err := f.svc.Estimate(ctx, f.p, f.v, iPhone, Settings{}, []EstimateRequest{{Work: heat.Work}, {Work: book}, {Work: gone}})
+	got, err := f.dl.Estimate(ctx, f.p, f.v, iPhone, Settings{}, []EstimateRequest{{Work: heat.Work}, {Work: book}, {Work: gone}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -860,7 +865,7 @@ func TestAvailability(t *testing.T) {
 	heat, ronin := f.movie("Heat", "mp4", 1), f.movie("Ronin", "mp4", 1)
 	check := func(v users.Viewer, want ...bool) {
 		t.Helper()
-		got, err := f.svc.Available(ctx, v, []KeptVersion{
+		got, err := f.dl.Available(ctx, v, []KeptVersion{
 			{heat.Work, heat.Version},
 			{heat.Work, ronin.Version}, // a version of another work
 			{ronin.Work, id.New()},     // a deleted version
@@ -891,15 +896,15 @@ func selectedOf(d Decision, kind media.TrackKind) id.ID {
 
 func TestDownloadsPrepareTwoAtOnceOnAnAccelerator(t *testing.T) {
 	f := newFixture(t, 0)
-	if n := f.svc.preparingAtOnce(config.Settings{}); n != 1 {
+	if n := f.dl.preparingAtOnce(config.Settings{}); n != 1 {
 		t.Fatalf("on the CPU: %d", n)
 	}
 	f.accel.caps = media.Capabilities{Tested: true, Accelerators: []media.Caps{qsv}, CPU: cpu}
-	if n := f.svc.preparingAtOnce(config.Settings{}); n != 2 {
+	if n := f.dl.preparingAtOnce(config.Settings{}); n != 2 {
 		t.Fatalf("on an accelerator: %d", n)
 	}
 	f.setting(func(s *config.Settings) { s.Accelerator = config.AcceleratorNone })
-	if n := f.svc.preparingAtOnce(config.Settings{}); n != 1 {
+	if n := f.dl.preparingAtOnce(config.Settings{}); n != 1 {
 		t.Fatalf("with acceleration off: %d", n)
 	}
 }

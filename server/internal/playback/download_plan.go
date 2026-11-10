@@ -12,6 +12,7 @@ import (
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/media"
 	"github.com/mmcdole/kivo/internal/playback/dbq"
+	"github.com/mmcdole/kivo/internal/store"
 	"github.com/mmcdole/kivo/internal/transcode"
 	"github.com/mmcdole/kivo/internal/users"
 )
@@ -66,9 +67,9 @@ type deliveredRendition struct {
 	Bitrate  int         `json:"bitrate,omitempty"`
 }
 
-// planDownload chooses a download's version and decides its delivery the
+// plan chooses a download's version and decides its delivery the
 // same way a play does, but for whole files.
-func (s *Service) planDownload(ctx context.Context, user id.ID, prefs trackPrefs, r DownloadRequest) (*choice, error) {
+func (s *Downloads) plan(ctx context.Context, user id.ID, prefs trackPrefs, r DownloadRequest) (*choice, error) {
 	q, ok := DownloadQualityNamed(cmp.Or(r.Quality, DefaultDownloadQuality))
 	if !ok {
 		return nil, fmt.Errorf("unknown download quality %q", r.Quality)
@@ -88,8 +89,8 @@ func (s *Service) planDownload(ctx context.Context, user id.ID, prefs trackPrefs
 
 // planAsked plans a download as its user asks for it now. It returns the
 // choice, and what it delivers as planned, to store.
-func (s *Service) planAsked(ctx context.Context, user users.User, r DownloadRequest) (*choice, string, error) {
-	c, err := s.planDownload(ctx, user.ID, s.prefsFor(ctx, user, r.Work), r)
+func (s *Downloads) planAsked(ctx context.Context, user users.User, r DownloadRequest) (*choice, string, error) {
+	c, err := s.plan(ctx, user.ID, s.prefsFor(ctx, user, r.Work), r)
 	if err != nil {
 		return nil, "", err
 	}
@@ -100,7 +101,7 @@ func (s *Service) planAsked(ctx context.Context, user users.User, r DownloadRequ
 // replan decides a stored download again from what its device asked, for
 // its files as they are now. It keeps the download's version and the audio
 // and subtitle it chose, whatever the user has come to prefer since.
-func (s *Service) replan(ctx context.Context, d dbq.Download) (*choice, error) {
+func (s *Downloads) replan(ctx context.Context, d dbq.Download) (*choice, error) {
 	var r DownloadRequest
 	if err := json.Unmarshal([]byte(d.Request), &r); err != nil {
 		return nil, err
@@ -110,7 +111,7 @@ func (s *Service) replan(ctx context.Context, d dbq.Download) (*choice, error) {
 		return nil, err
 	}
 	r.Version, r.AudioTrack, r.SubtitleTrack = d.VersionID, dl.chose(media.Audio), cmp.Or(dl.chose(media.Subtitle), &id.ID{})
-	return s.planDownload(ctx, d.UserID, trackPrefs{}, r)
+	return s.plan(ctx, d.UserID, trackPrefs{}, r)
 }
 
 // chose is the track of a kind a download selected, or nil for none. For
@@ -126,7 +127,7 @@ func (dl delivered) chose(kind media.TrackKind) *id.ID {
 
 // deliveredBy is what a choice delivers as a download, as JSON to store:
 // as planned, or once converted is made, as made.
-func (s *Service) deliveredBy(ctx context.Context, c *choice, converted []transcode.ConvertedFile) (string, error) {
+func (s *Downloads) deliveredBy(ctx context.Context, c *choice, converted []transcode.ConvertedFile) (string, error) {
 	dl := delivered{Delivery: c.decision.Delivery, Quality: c.input.Quality.Name, Size: estimateBytes(c.input, c.decision, c.files)}
 	for i, f := range c.files {
 		p := deliveredPart{File: f.ID}
@@ -173,7 +174,7 @@ func (dl delivered) decision() Decision {
 
 // kept reads what a stored download delivers, with its parts' files as the
 // catalog has them now.
-func (s *Service) kept(ctx context.Context, d dbq.Download) (delivered, []catalog.File, error) {
+func (s *Downloads) kept(ctx context.Context, d dbq.Download) (delivered, []catalog.File, error) {
 	var dl delivered
 	if err := json.Unmarshal([]byte(d.Delivered), &dl); err != nil {
 		return dl, nil, err
@@ -194,14 +195,14 @@ func (s *Service) kept(ctx context.Context, d dbq.Download) (delivered, []catalo
 
 // needsPreparing reports whether the server must work on a download
 // before it's ready, either to convert it or to extract subtitles.
-func (s *Service) needsPreparing(ctx context.Context, c *choice) bool {
+func (s *Downloads) needsPreparing(ctx context.Context, c *choice) bool {
 	return c.decision.Delivery == DeliverConversion || s.subtitlesToExtract(ctx, c)
 }
 
 // subtitlesToExtract reports whether a download needs its file's subtitles
 // extracted before it's ready. That's either its chosen subtitle or the
 // tracks it delivers as separate files.
-func (s *Service) subtitlesToExtract(ctx context.Context, c *choice) bool {
+func (s *Downloads) subtitlesToExtract(ctx context.Context, c *choice) bool {
 	return s.subtitleToExtract(ctx, c) || s.externalSubtitlesToExtract(ctx, c)
 }
 
@@ -210,7 +211,7 @@ func (s *Service) subtitlesToExtract(ctx context.Context, c *choice) bool {
 // subtitles aren't extracted. The download waits so every track comes
 // down with it. A track still missing after extraction couldn't be
 // extracted, and is left out.
-func (s *Service) externalSubtitlesToExtract(ctx context.Context, c *choice) bool {
+func (s *Downloads) externalSubtitlesToExtract(ctx context.Context, c *choice) bool {
 	f := c.files[0]
 	waits := slices.ContainsFunc(s.externalSubtitles(ctx, f, c.styled, c.decision.Tracks), func(d ExternalSubtitle) bool {
 		_, embedded := embeddedSubtitle(f, d.Track)
@@ -222,7 +223,7 @@ func (s *Service) externalSubtitlesToExtract(ctx context.Context, c *choice) boo
 // extractedAll reports whether a file's subtitle extraction has run and
 // every font it lists is in the store. It uses Styled's answer, which
 // covers the whole extraction.
-func (s *Service) extractedAll(ctx context.Context, f catalog.File) bool {
+func (s *Downloads) extractedAll(ctx context.Context, f catalog.File) bool {
 	_, ok, err := s.deps.Subtitles.Styled(ctx, f.ID)
 	if err != nil {
 		slog.WarnContext(ctx, "playback: subtitle extraction", "file", f.ID, "err", err)
@@ -236,7 +237,7 @@ func (s *Service) extractedAll(ctx context.Context, f catalog.File) bool {
 // conversion carries in its file or the client reads from the original,
 // and a burned-in PGS track are all read from the source, so they need
 // nothing.
-func (s *Service) subtitleToExtract(ctx context.Context, c *choice) bool {
+func (s *Downloads) subtitleToExtract(ctx context.Context, c *choice) bool {
 	sub := c.input.Source.Subtitle
 	t, ok := c.decision.Selected(media.Subtitle)
 	if sub == nil || !ok || sub.OwnFile || t.Delivery == DeliverStream || t.Delivery == DeliverFile ||
@@ -244,4 +245,45 @@ func (s *Service) subtitleToExtract(ctx context.Context, c *choice) bool {
 		return false
 	}
 	return !s.prepared(ctx, c.files[0], *sub, s.styledOf(ctx, c.files[0]))
+}
+
+// downloaded is a choice's tracks as an app plays its download offline. A
+// conversion's tracks are inside its file, the video first, then the
+// audio, then each text track it carries, so each has its stream index
+// there.
+func (s *Downloads) downloaded(ctx context.Context, c *choice) []TrackDecision {
+	tracks := slices.Clone(c.decision.Tracks)
+	if c.decision.Delivery != DeliverConversion {
+		return tracks
+	}
+	next := 0
+	inFile := func(t *TrackDecision) {
+		t.Delivery, t.Index = DeliverFile, next
+		next++
+	}
+	for _, kind := range []media.TrackKind{media.Video, media.Audio} {
+		if i := slices.IndexFunc(tracks, func(t TrackDecision) bool { return t.Type == kind && t.Selected }); i >= 0 {
+			inFile(&tracks[i])
+		}
+	}
+	for _, text := range s.textTracks(ctx, c) {
+		if i := slices.IndexFunc(tracks, func(t TrackDecision) bool { return t.Track.String() == text.ID }); i >= 0 {
+			inFile(&tracks[i])
+			tracks[i].Codec = "mov_text"
+		}
+	}
+	return tracks
+}
+
+// SubtitlesReplaced listens for the subtitles package replacing tracks.
+// In tx, it moves every download that asked for or delivers a replaced
+// track to the new track, so the download's status and a retry
+// name a track that exists.
+func (s *Downloads) SubtitlesReplaced(ctx context.Context, tx *store.Tx, replaced []id.ID, by id.ID) error {
+	for _, old := range replaced {
+		if _, err := dbq.New(tx).MoveDownloadSubtitle(ctx, dbq.MoveDownloadSubtitleParams{FromTrack: old.String(), ToTrack: by.String()}); err != nil {
+			return fmt.Errorf("move downloads off subtitle %s: %w", old, err)
+		}
+	}
+	return nil
 }

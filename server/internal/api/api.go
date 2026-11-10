@@ -39,6 +39,7 @@ type Deps struct {
 	Activity  *activity.Service
 	Query     *query.Service
 	Playback  *playback.Service
+	Downloads *playback.Downloads
 	Scan      *scan.Scanner
 	Identify  *identify.Identifier
 	Metadata  *metadata.Service

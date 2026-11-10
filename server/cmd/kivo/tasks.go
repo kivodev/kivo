@@ -13,7 +13,7 @@ func (s *server) tasks() []tasks.Task {
 	var out []tasks.Task
 	for _, ts := range [][]tasks.Task{
 		s.scanner.Tasks(), s.metadata.Tasks(), s.previews.Tasks(), s.markers.Tasks(),
-		s.subtitles.Tasks(), s.playback.Tasks(), s.catalog.Tasks(), s.activity.Tasks(), s.databaseTasks(),
+		s.subtitles.Tasks(), s.downloads.Tasks(), s.catalog.Tasks(), s.activity.Tasks(), s.databaseTasks(),
 	} {
 		out = append(out, ts...)
 	}

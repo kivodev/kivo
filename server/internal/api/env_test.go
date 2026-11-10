@@ -265,7 +265,8 @@ func newEnv(t *testing.T, o serving) *env {
 		Catalog: e.b.Catalog, Users: e.d.Users, Auth: e.d.Auth, Userstate: e.d.Userstate, Transcoder: tc, Settings: e.d.Settings, Markers: e.d.Markers, Tasks: e.asks,
 		Activity: e.d.Activity, Subtitles: e.d.Subtitles, Previews: pv, Accelerators: e.d.Accelerators, Events: e.d.Events,
 	})
-	for _, ts := range [][]tasks.Task{e.d.Scan.Tasks(), e.d.Metadata.Tasks(), pv.Tasks(), e.d.Markers.Tasks(), e.d.Subtitles.Tasks(), e.d.Playback.Tasks(), e.b.Catalog.Tasks()} {
+	e.d.Downloads = playback.NewDownloads(e.d.Playback)
+	for _, ts := range [][]tasks.Task{e.d.Scan.Tasks(), e.d.Metadata.Tasks(), pv.Tasks(), e.d.Markers.Tasks(), e.d.Subtitles.Tasks(), e.d.Downloads.Tasks(), e.b.Catalog.Tasks()} {
 		for _, task := range ts {
 			e.d.Tasks.Add(task)
 		}

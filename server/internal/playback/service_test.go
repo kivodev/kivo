@@ -246,6 +246,7 @@ type fixture struct {
 	tcDir       string        // where the transcoder keeps each play's segments
 	subDir      string        // where downloaded subtitles are kept
 	svc         *Service
+	dl          *Downloads  // the downloads that plan with svc
 	bus         *events.Bus // the service's event bus
 	sub         *events.Sub // receives every event on bus
 	p           auth.Caller
@@ -303,6 +304,7 @@ func newFixture(t *testing.T, floor uint64) *fixture {
 	}, subtitles.Options{})
 	f.previews = previews.New(f.b.DB, previews.Deps{Catalog: f.b.Catalog, Media: noMedia{}, Tasks: discard{}, CacheDir: f.cache})
 	f.svc = New(f.b.DB, f.deps(discard{}))
+	f.dl = NewDownloads(f.svc)
 	t.Cleanup(func() { f.svc.endAll(ctx) }) // end every play, as shutdown does
 	f.lib, f.folder = f.b.Library(catalog.Movies)
 	return f
@@ -971,7 +973,7 @@ func TestAnotherWorksVersionIsNotFound(t *testing.T) {
 	if _, err := f.svc.Start(ctx, f.p, v, StartRequest{Work: heat.Work, Version: ronin.Version, Caps: browser, ClientIP: lan}); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("playing another work's version: %v", err)
 	}
-	if _, err := f.svc.Download(ctx, f.p, v, DownloadRequest{Work: heat.Work, Version: ronin.Version, Caps: iPhone}); !errors.Is(err, ErrNotFound) {
+	if _, err := f.dl.Request(ctx, f.p, v, DownloadRequest{Work: heat.Work, Version: ronin.Version, Caps: iPhone}); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("downloading another work's version: %v", err)
 	}
 	p, err := f.svc.Preferred(ctx, v, heat.Work)

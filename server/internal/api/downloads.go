@@ -30,7 +30,7 @@ func (h *handlers) CreateDownload(ctx context.Context, req gen.CreateDownloadReq
 		return nil, err
 	}
 	c := callerOf(ctx)
-	d, err := h.deps.Playback.Download(ctx, c.Caller, c.viewer, r)
+	d, err := h.deps.Downloads.Request(ctx, c.Caller, c.viewer, r)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +38,7 @@ func (h *handlers) CreateDownload(ctx context.Context, req gen.CreateDownloadReq
 }
 
 func (h *handlers) ListDownloads(ctx context.Context, _ gen.ListDownloadsRequestObject) (gen.ListDownloadsResponseObject, error) {
-	downloads, err := h.deps.Playback.Downloads(ctx, callerOf(ctx).Caller)
+	downloads, err := h.deps.Downloads.List(ctx, callerOf(ctx).Caller)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +47,7 @@ func (h *handlers) ListDownloads(ctx context.Context, _ gen.ListDownloadsRequest
 
 func (h *handlers) GetDownload(ctx context.Context, req gen.GetDownloadRequestObject) (gen.GetDownloadResponseObject, error) {
 	c := callerOf(ctx)
-	d, err := h.deps.Playback.DownloadStatus(ctx, c.Caller, req.ID)
+	d, err := h.deps.Downloads.Status(ctx, c.Caller, req.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func (h *handlers) GetDownload(ctx context.Context, req gen.GetDownloadRequestOb
 }
 
 func (h *handlers) DeleteDownload(ctx context.Context, req gen.DeleteDownloadRequestObject) (gen.DeleteDownloadResponseObject, error) {
-	if err := h.deps.Playback.DeleteDownload(ctx, callerOf(ctx).Caller, req.ID); err != nil {
+	if err := h.deps.Downloads.Delete(ctx, callerOf(ctx).Caller, req.ID); err != nil {
 		return nil, err
 	}
 	return gen.DeleteDownload204Response{}, nil
@@ -63,7 +63,7 @@ func (h *handlers) DeleteDownload(ctx context.Context, req gen.DeleteDownloadReq
 
 func (h *handlers) RetryDownload(ctx context.Context, req gen.RetryDownloadRequestObject) (gen.RetryDownloadResponseObject, error) {
 	c := callerOf(ctx)
-	d, err := h.deps.Playback.RetryDownload(ctx, c.Caller, c.viewer, req.ID)
+	d, err := h.deps.Downloads.Retry(ctx, c.Caller, c.viewer, req.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func (h *handlers) EstimateDownloads(ctx context.Context, req gen.EstimateDownlo
 		items[i] = playback.EstimateRequest{Work: it.WorkID, Version: deref(it.VersionID), AudioTrack: it.AudioTrackID, SubtitleTrack: sub}
 	}
 	c := callerOf(ctx)
-	estimates, err := h.deps.Playback.Estimate(ctx, c.Caller, c.viewer, parseCapabilities(b.Capabilities), parseSettings(b.Settings), items)
+	estimates, err := h.deps.Downloads.Estimate(ctx, c.Caller, c.viewer, parseCapabilities(b.Capabilities), parseSettings(b.Settings), items)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +113,7 @@ func (h *handlers) CheckDownloads(ctx context.Context, req gen.CheckDownloadsReq
 	for i, d := range b.Items {
 		downloads[i] = playback.KeptVersion{Work: d.WorkID, Version: d.VersionID}
 	}
-	available, err := h.deps.Playback.Available(ctx, callerOf(ctx).viewer, downloads)
+	available, err := h.deps.Downloads.Available(ctx, callerOf(ctx).viewer, downloads)
 	if err != nil {
 		return nil, err
 	}
@@ -133,13 +133,13 @@ func (s *Server) serveDownloadFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.serveDownloadMedia(w, r, func(ctx context.Context, v users.Viewer, download id.ID) (playback.Media, error) {
-		return s.deps.Playback.DownloadedFile(ctx, v, download, part)
+		return s.deps.Downloads.File(ctx, v, download, part)
 	})
 }
 
 func (s *Server) serveDownloadSubtitle(w http.ResponseWriter, r *http.Request) {
 	s.serveDownloadMedia(w, r, func(ctx context.Context, v users.Viewer, download id.ID) (playback.Media, error) {
-		return s.deps.Playback.DownloadSubtitle(ctx, v, download, r.PathValue("name"))
+		return s.deps.Downloads.Subtitle(ctx, v, download, r.PathValue("name"))
 	})
 }
 
