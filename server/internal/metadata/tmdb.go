@@ -45,6 +45,15 @@ const (
 type tmdb struct {
 	f      *fetcher
 	apiKey string
+	fresh  Freshness // of each request; set per call by with
+}
+
+// with returns a copy of t whose requests use cached answers only as fr
+// allows.
+func (t *tmdb) with(fr Freshness) *tmdb {
+	c := *t
+	c.fresh = fr
+	return &c
 }
 
 // newTMDb returns a provider that uses key, or the built-in key when key is
@@ -261,15 +270,6 @@ func (t *tmdb) Owns(u string) bool { return strings.HasPrefix(u, "https://image.
 // smallest width, or wider.
 var tmdbPreview = map[string]string{artworkPoster: "w342", artworkBackdrop: "w780", artworkLogo: "w500", artworkStill: "w300"}
 
-// Preview rewrites an original-size TMDb image URL to the kind's preview
-// size.
-func (t *tmdb) Preview(u, kind string) string {
-	if size := tmdbPreview[kind]; size != "" && strings.HasPrefix(u, tmdbImages+"/") {
-		return strings.TrimSuffix(tmdbImages, "original") + size + strings.TrimPrefix(u, tmdbImages)
-	}
-	return u
-}
-
 // lookupID picks, from a movie's or series' IDs, the one to look it up by.
 // It prefers TMDb's own ID, then one TMDb can find it by.
 func lookupID(kind catalog.WorkKind, ids []catalog.ExternalID) (catalog.ExternalID, bool) {
@@ -308,7 +308,8 @@ func (t *tmdb) lookup(ctx context.Context, r Ref) (catalog.WorkKind, string, err
 	return kind, tmdbID, err
 }
 
-func (t *tmdb) Describe(ctx context.Context, r Ref, lang string) (*Description, error) {
+func (t *tmdb) Describe(ctx context.Context, r Ref, lang string, fr Freshness) (*Description, error) {
+	t = t.with(fr)
 	kind, tmdbID, err := t.lookup(ctx, r)
 	if err != nil {
 		return nil, err
@@ -316,7 +317,7 @@ func (t *tmdb) Describe(ctx context.Context, r Ref, lang string) (*Description, 
 	if kind == catalog.KindMovie {
 		return t.describeMovie(ctx, tmdbID, lang)
 	}
-	sr, err := t.series(ctx, tmdbID, lang, 0)
+	sr, err := t.series(ctx, tmdbID, lang)
 	if err != nil {
 		return nil, err
 	}
@@ -324,7 +325,7 @@ func (t *tmdb) Describe(ctx context.Context, r Ref, lang string) (*Description, 
 	case catalog.KindSeries:
 		return t.describeSeries(ctx, sr, lang)
 	case catalog.KindSeason:
-		sn, err := t.season(ctx, sr, r.Season, lang, 0)
+		sn, err := t.season(ctx, sr, r.Season, lang)
 		if err != nil {
 			return nil, err
 		}
@@ -436,7 +437,7 @@ func (t *tmdb) Images(ctx context.Context, r Ref, lang string) (Images, error) {
 		set, err := t.movieImages(ctx, m, lang)
 		return imagesOf(set, m.OriginalLanguage), err
 	}
-	sr, err := t.series(ctx, tmdbID, lang, 0)
+	sr, err := t.series(ctx, tmdbID, lang)
 	if err != nil {
 		return Images{}, err
 	}
@@ -484,7 +485,7 @@ func (t *tmdb) episodeOf(ctx context.Context, sr *tmdbSeries, r Ref, lang string
 		if ref.SeasonNumber != r.Season {
 			continue
 		}
-		sn, err := t.season(ctx, sr, r.Season, lang, 0)
+		sn, err := t.season(ctx, sr, r.Season, lang)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -496,7 +497,7 @@ func (t *tmdb) episodeOf(ctx context.Context, sr *tmdbSeries, r Ref, lang string
 	if epID == 0 {
 		return nil, nil, ErrNotFound // matching by number, only its own season can have it
 	}
-	seasons, err := t.aired(ctx, sr, lang, 0)
+	seasons, err := t.aired(ctx, sr, lang)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -509,18 +510,24 @@ func (t *tmdb) episodeOf(ctx context.Context, sr *tmdbSeries, r Ref, lang string
 }
 
 // imagesOf converts a TMDb image set to Images, keeping only images with a
-// path.
+// path. Each image's preview is the same image at its kind's preview size.
 func imagesOf(set tmdbImageSet, original string) Images {
-	list := func(imgs []tmdbImage) []Image {
+	list := func(imgs []tmdbImage, kind string) []Image {
 		var out []Image
 		for _, img := range imgs {
 			if strings.HasPrefix(img.FilePath, "/") {
-				out = append(out, Image{URL: tmdbImages + img.FilePath, Language: img.Lang, Score: img.Vote, Width: img.Width, Height: img.Height})
+				out = append(out, Image{
+					URL: tmdbImages + img.FilePath, Preview: strings.TrimSuffix(tmdbImages, "original") + tmdbPreview[kind] + img.FilePath,
+					Language: img.Lang, Score: img.Vote, Width: img.Width, Height: img.Height,
+				})
 			}
 		}
 		return out
 	}
-	return Images{Original: original, Posters: list(set.Posters), Backdrops: list(set.Backdrops), Logos: list(set.Logos), Stills: list(set.Stills)}
+	return Images{
+		Original: original, Posters: list(set.Posters, artworkPoster), Backdrops: list(set.Backdrops, artworkBackdrop),
+		Logos: list(set.Logos, artworkLogo), Stills: list(set.Stills, artworkStill),
+	}
 }
 
 // translated returns the translation into the original language, or else
@@ -610,7 +617,7 @@ func profile(path string) string {
 
 // get fetches path through the pipeline and decodes it into v. Query
 // parameters are encoded sorted, so the cache key is stable.
-func (t *tmdb) get(ctx context.Context, path string, params url.Values, ttl func([]byte) time.Duration, maxAge time.Duration, v any) error {
+func (t *tmdb) get(ctx context.Context, path string, params url.Values, ttl func([]byte) time.Duration, v any) error {
 	apiKey := t.apiKey
 	if apiKey == "" {
 		return fmt.Errorf("%w: no TMDb API key", ErrUnavailable)
@@ -633,7 +640,7 @@ func (t *tmdb) get(ctx context.Context, path string, params url.Values, ttl func
 	} else {
 		header.Set("Authorization", "Bearer "+apiKey)
 	}
-	body, err := t.f.fetch(ctx, request{provider: provTMDb, url: u, key: key, ttl: ttl, maxAge: maxAge, header: header})
+	body, err := t.f.fetch(ctx, request{provider: provTMDb, url: u, key: key, ttl: ttl, fresh: t.fresh, header: header})
 	if err != nil {
 		return scrub(err, apiKey)
 	}
@@ -666,7 +673,7 @@ func (t *tmdb) Search(ctx context.Context, kind catalog.WorkKind, q Query, lang 
 			OriginCountry []string `json:"origin_country"`
 		} `json:"results"`
 	}
-	if err := t.get(ctx, path, p, fixed(ttlSearch), 0, &res); err != nil {
+	if err := t.get(ctx, path, p, fixed(ttlSearch), &res); err != nil {
 		return nil, err
 	}
 	out := make([]Match, 0, len(res.Results))
@@ -711,7 +718,7 @@ func (t *tmdb) Resolve(ctx context.Context, x catalog.ExternalID, lang string) (
 		slices.Sort(c.OtherYears)
 		return c, nil
 	case catalog.KindSeries:
-		s, err := t.series(ctx, tmdbID, lang, 0)
+		s, err := t.series(ctx, tmdbID, lang)
 		if err != nil {
 			return Match{}, err
 		}
@@ -748,7 +755,7 @@ func (t *tmdb) tmdbID(ctx context.Context, x catalog.ExternalID) (string, error)
 		Movies []tmdbName `json:"movie_results"`
 		Series []tmdbName `json:"tv_results"`
 	}
-	err := t.get(ctx, "/find/"+url.PathEscape(x.ID), url.Values{"external_source": {source}}, fixed(ttlSearch), 0, &res)
+	err := t.get(ctx, "/find/"+url.PathEscape(x.ID), url.Values{"external_source": {source}}, fixed(ttlSearch), &res)
 	if err != nil {
 		return "", err
 	}
@@ -836,7 +843,7 @@ func (t *tmdb) movie(ctx context.Context, tmdbID, lang string) (*tmdbMovie, erro
 	var m tmdbMovie
 	p := detailParams(lang, "alternative_titles", "credits", "external_ids", "images", "keywords", "release_dates", "translations", "videos")
 	p.Set("include_video_language", videoLangs(lang)) // without it TMDb lists only videos in the request's language
-	if err := t.get(ctx, "/movie/"+tmdbID, p, ttl, 0, &m); err != nil {
+	if err := t.get(ctx, "/movie/"+tmdbID, p, ttl, &m); err != nil {
 		return nil, err
 	}
 	return &m, nil
@@ -851,11 +858,11 @@ func (t *tmdb) movieImages(ctx context.Context, m *tmdbMovie, lang string) (tmdb
 	}
 	var out tmdbImageSet
 	ttl := fixed(movieTTL(m.ReleaseDate, time.Now()))
-	err := t.get(ctx, "/movie/"+strconv.Itoa(m.ID)+"/images", nil, ttl, 0, &out)
+	err := t.get(ctx, "/movie/"+strconv.Itoa(m.ID)+"/images", nil, ttl, &out)
 	return out, err
 }
 
-func (t *tmdb) series(ctx context.Context, tmdbID, lang string, maxAge time.Duration) (*tmdbSeries, error) {
+func (t *tmdb) series(ctx context.Context, tmdbID, lang string) (*tmdbSeries, error) {
 	ttl := func(b []byte) time.Duration {
 		var s tmdbSeries
 		_ = json.Unmarshal(b, &s)
@@ -863,7 +870,7 @@ func (t *tmdb) series(ctx context.Context, tmdbID, lang string, maxAge time.Dura
 	}
 	var s tmdbSeries
 	p := detailParams(lang, "alternative_titles", "content_ratings", "credits", "external_ids", "images", "keywords", "translations")
-	if err := t.get(ctx, "/tv/"+tmdbID, p, ttl, maxAge, &s); err != nil {
+	if err := t.get(ctx, "/tv/"+tmdbID, p, ttl, &s); err != nil {
 		return nil, err
 	}
 	return &s, nil
@@ -875,14 +882,14 @@ func (t *tmdb) seriesImages(ctx context.Context, s *tmdbSeries, lang string) (tm
 		return s.Images, nil
 	}
 	var out tmdbImageSet
-	err := t.get(ctx, fmt.Sprintf("/tv/%d/images", s.ID), nil, fixed(seriesTTL(s.ended())), 0, &out)
+	err := t.get(ctx, fmt.Sprintf("/tv/%d/images", s.ID), nil, fixed(seriesTTL(s.ended())), &out)
 	return out, err
 }
 
-func (t *tmdb) season(ctx context.Context, s *tmdbSeries, n int, lang string, maxAge time.Duration) (*tmdbSeason, error) {
+func (t *tmdb) season(ctx context.Context, s *tmdbSeries, n int, lang string) (*tmdbSeason, error) {
 	var out tmdbSeason
 	path := fmt.Sprintf("/tv/%d/season/%d", s.ID, n)
-	if err := t.get(ctx, path, url.Values{"language": {lang}}, fixed(seriesTTL(s.ended())), maxAge, &out); err != nil {
+	if err := t.get(ctx, path, url.Values{"language": {lang}}, fixed(seriesTTL(s.ended())), &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -896,23 +903,23 @@ func (t *tmdb) childImages(ctx context.Context, s *tmdbSeries, path, lang string
 	if !allLanguages(lang, s.OriginalLanguage) {
 		p = url.Values{"include_image_language": {imageLangs(lang)}}
 	}
-	err := t.get(ctx, path, p, fixed(seriesTTL(s.ended())), 0, &out)
+	err := t.get(ctx, path, p, fixed(seriesTTL(s.ended())), &out)
 	return out, err
 }
 
 func (t *tmdb) collection(ctx context.Context, collID int, lang string) (*tmdbCollection, error) {
 	var out tmdbCollection
-	if err := t.get(ctx, "/collection/"+strconv.Itoa(collID), url.Values{"language": {lang}}, fixed(ttlOlder), 0, &out); err != nil {
+	if err := t.get(ctx, "/collection/"+strconv.Itoa(collID), url.Values{"language": {lang}}, fixed(ttlOlder), &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
 }
 
 // aired returns every season of a series, specials included, in order.
-func (t *tmdb) aired(ctx context.Context, s *tmdbSeries, lang string, maxAge time.Duration) ([]*tmdbSeason, error) {
+func (t *tmdb) aired(ctx context.Context, s *tmdbSeries, lang string) ([]*tmdbSeason, error) {
 	var out []*tmdbSeason
 	for _, sn := range s.Seasons {
-		season, err := t.season(ctx, s, sn.SeasonNumber, lang, maxAge)
+		season, err := t.season(ctx, s, sn.SeasonNumber, lang)
 		if err != nil {
 			return nil, err
 		}
@@ -929,23 +936,24 @@ func (t *tmdb) aired(ctx context.Context, s *tmdbSeries, lang string, maxAge tim
 // are a DVD order when the series has none or several, or an episode group
 // TMDb no longer lists. Absolute order without an absolute group numbers the
 // aired episodes instead.
-func (t *tmdb) Episodes(ctx context.Context, series catalog.ExternalID, o Ordering, lang string, maxAge time.Duration) ([]Episode, error) {
+func (t *tmdb) Episodes(ctx context.Context, series catalog.ExternalID, o Ordering, lang string, fr Freshness) ([]Episode, error) {
 	if !tmdbSeriesID(series) {
 		return nil, fmt.Errorf("%w: %s %s", ErrNotFound, series.Provider, series.Kind)
 	}
-	s, err := t.series(ctx, series.ID, lang, maxAge)
+	t = t.with(fr)
+	s, err := t.series(ctx, series.ID, lang)
 	if err != nil {
 		return nil, err
 	}
 	var eps []Episode
 	switch o {
 	case Aired, "":
-		return t.airedEpisodes(ctx, s, lang, maxAge)
+		return t.airedEpisodes(ctx, s, lang)
 	case Absolute, DVD:
 		want := map[Ordering]int{Absolute: groupAbsolute, DVD: groupDVD}[o]
 		var gid string
-		if gid, err = t.groupOfType(ctx, s, want, maxAge); err == nil {
-			eps, err = t.group(ctx, s, gid, o, lang, maxAge)
+		if gid, err = t.groupOfType(ctx, s, want); err == nil {
+			eps, err = t.group(ctx, s, gid, o, lang)
 		}
 		// An empty group, such as Evangelion's absolute "Specials", is not
 		// an ordering.
@@ -953,21 +961,21 @@ func (t *tmdb) Episodes(ctx context.Context, series catalog.ExternalID, o Orderi
 			err = ErrNotFound
 		}
 	default:
-		eps, err = t.group(ctx, s, string(o), o, lang, maxAge)
+		eps, err = t.group(ctx, s, string(o), o, lang)
 	}
 	switch {
 	case !errors.Is(err, ErrNotFound):
 		return eps, err
 	case o == Absolute:
-		return t.absoluteFromAired(ctx, s, lang, maxAge)
+		return t.absoluteFromAired(ctx, s, lang)
 	}
 	slog.InfoContext(ctx, "metadata: episode ordering not found; using aired order", "series", s.ID, "ordering", o)
-	return t.airedEpisodes(ctx, s, lang, maxAge)
+	return t.airedEpisodes(ctx, s, lang)
 }
 
 // airedEpisodes lists a series' episodes in aired order.
-func (t *tmdb) airedEpisodes(ctx context.Context, s *tmdbSeries, lang string, maxAge time.Duration) ([]Episode, error) {
-	seasons, err := t.aired(ctx, s, lang, maxAge)
+func (t *tmdb) airedEpisodes(ctx context.Context, s *tmdbSeries, lang string) ([]Episode, error) {
+	seasons, err := t.aired(ctx, s, lang)
 	if err != nil {
 		return nil, err
 	}
@@ -985,11 +993,11 @@ func (t *tmdb) EpisodeGroups(ctx context.Context, series catalog.ExternalID, lan
 	if !tmdbSeriesID(series) {
 		return nil, fmt.Errorf("%w: %s %s", ErrNotFound, series.Provider, series.Kind)
 	}
-	s, err := t.series(ctx, series.ID, lang, 0)
+	s, err := t.series(ctx, series.ID, lang)
 	if err != nil {
 		return nil, err
 	}
-	groups, err := t.groups(ctx, s, 0)
+	groups, err := t.groups(ctx, s)
 	if err != nil {
 		return nil, err
 	}
@@ -1011,12 +1019,12 @@ type tmdbGroup struct {
 }
 
 // groups lists a series' episode groups.
-func (t *tmdb) groups(ctx context.Context, s *tmdbSeries, maxAge time.Duration) ([]tmdbGroup, error) {
+func (t *tmdb) groups(ctx context.Context, s *tmdbSeries) ([]tmdbGroup, error) {
 	var res struct {
 		Results []tmdbGroup `json:"results"`
 	}
 	path := fmt.Sprintf("/tv/%d/episode_groups", s.ID)
-	if err := t.get(ctx, path, nil, fixed(seriesTTL(s.ended())), maxAge, &res); err != nil {
+	if err := t.get(ctx, path, nil, fixed(seriesTTL(s.ended())), &res); err != nil {
 		return nil, err
 	}
 	return res.Results, nil
@@ -1025,8 +1033,8 @@ func (t *tmdb) groups(ctx context.Context, s *tmdbSeries, maxAge time.Duration) 
 // groupOfType returns the series' only episode group of a type. It returns
 // ErrNotFound when there are none or several. The first of several is often
 // the wrong DVD order, so in that case the admin names one by ID instead.
-func (t *tmdb) groupOfType(ctx context.Context, s *tmdbSeries, typ int, maxAge time.Duration) (string, error) {
-	groups, err := t.groups(ctx, s, maxAge)
+func (t *tmdb) groupOfType(ctx context.Context, s *tmdbSeries, typ int) (string, error) {
+	groups, err := t.groups(ctx, s)
 	if err != nil {
 		return "", err
 	}
@@ -1045,7 +1053,7 @@ func (t *tmdb) groupOfType(ctx context.Context, s *tmdbSeries, typ int, maxAge t
 // group lists an episode group's episodes. Each subgroup becomes a season,
 // numbered by its order. In Absolute order, the subgroups run on as one
 // season.
-func (t *tmdb) group(ctx context.Context, s *tmdbSeries, gid string, o Ordering, lang string, maxAge time.Duration) ([]Episode, error) {
+func (t *tmdb) group(ctx context.Context, s *tmdbSeries, gid string, o Ordering, lang string) ([]Episode, error) {
 	type groupEpisode struct {
 		ID      int    `json:"id"`
 		Name    string `json:"name"`
@@ -1060,7 +1068,7 @@ func (t *tmdb) group(ctx context.Context, s *tmdbSeries, gid string, o Ordering,
 		Groups []subgroup `json:"groups"`
 	}
 	path := "/tv/episode_group/" + url.PathEscape(gid)
-	if err := t.get(ctx, path, url.Values{"language": {lang}}, fixed(seriesTTL(s.ended())), maxAge, &res); err != nil {
+	if err := t.get(ctx, path, url.Values{"language": {lang}}, fixed(seriesTTL(s.ended())), &res); err != nil {
 		return nil, err
 	}
 	slices.SortFunc(res.Groups, func(a, b subgroup) int { return a.Order - b.Order })
@@ -1081,8 +1089,8 @@ func (t *tmdb) group(ctx context.Context, s *tmdbSeries, gid string, o Ordering,
 // absoluteFromAired numbers the aired episodes from 1 across the series,
 // leaving out specials. It is used for a series with no absolute episode
 // group.
-func (t *tmdb) absoluteFromAired(ctx context.Context, s *tmdbSeries, lang string, maxAge time.Duration) ([]Episode, error) {
-	seasons, err := t.aired(ctx, s, lang, maxAge)
+func (t *tmdb) absoluteFromAired(ctx context.Context, s *tmdbSeries, lang string) ([]Episode, error) {
+	seasons, err := t.aired(ctx, s, lang)
 	if err != nil {
 		return nil, err
 	}

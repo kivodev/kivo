@@ -120,19 +120,11 @@ func (f *fixtures) count(path string) int {
 type fixtureGetter struct{ f *fixtures }
 
 func (g fixtureGetter) Get(ctx context.Context, raw string, h http.Header) (egress.Response, error) {
-	return g.do(ctx, http.MethodGet, raw, h, nil)
-}
-
-func (g fixtureGetter) Post(ctx context.Context, raw string, h http.Header, body []byte) (egress.Response, error) {
-	return g.do(ctx, http.MethodPost, raw, h, body)
-}
-
-func (g fixtureGetter) do(ctx context.Context, method, raw string, h http.Header, body []byte) (egress.Response, error) {
 	u, err := url.Parse(raw)
 	if err != nil || u.Scheme != "https" {
 		return egress.Response{}, fmt.Errorf("test: %w", egress.ErrRefused)
 	}
-	req, err := http.NewRequestWithContext(ctx, method, g.f.srv.URL+u.RequestURI(), bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, g.f.srv.URL+u.RequestURI(), nil)
 	if err != nil {
 		return egress.Response{}, err
 	}
@@ -308,7 +300,7 @@ func catalogID(provider, kind, x string) catalog.ExternalID {
 // refresh runs a work's refresh.
 func (e *env) refresh(work id.ID) error {
 	e.t.Helper()
-	return e.s.refresh(ctx, work)
+	return e.s.refresh(ctx, work, Freshness{})
 }
 
 func (e *env) mustRefresh(work id.ID) {

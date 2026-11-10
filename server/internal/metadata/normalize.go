@@ -47,12 +47,12 @@ type found struct {
 // fromProviders gathers a work's provider data. It returns nil with no
 // error for a work no provider knows. That is a work with no usable external
 // ID, or one the provider has removed.
-func (s *Service) fromProviders(ctx context.Context, w catalog.Work, lang, country string) (*found, error) {
+func (s *Service) fromProviders(ctx context.Context, w catalog.Work, lang, country string, fr Freshness) (*found, error) {
 	r, ok, err := s.ref(ctx, w)
 	if err != nil || !ok {
 		return nil, err
 	}
-	d, err := s.video.Describe(ctx, r, lang)
+	d, err := s.video.Describe(ctx, r, lang, fr)
 	if errors.Is(err, ErrNotFound) {
 		return nil, nil
 	}

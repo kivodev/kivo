@@ -120,7 +120,7 @@ func (s *Service) retryRefreshes(ctx context.Context, works ...id.ID) ([]id.ID, 
 func (s *Service) refreshWork(ctx context.Context, work id.ID) error {
 	for {
 		rctx, cancel := context.WithTimeout(ctx, refreshTimeout)
-		err := s.refresh(refetching(rctx), work)
+		err := s.refresh(rctx, work, refreshing)
 		cancel()
 		var o *outage
 		switch {
@@ -155,7 +155,9 @@ func (s *Service) refreshWork(ctx context.Context, work id.ID) error {
 //
 // Admin edits outrank local files, which outrank providers. catalog skips
 // locked fields, and NFO fields are laid over the provider's here.
-func (s *Service) refresh(ctx context.Context, work id.ID) error {
+//
+// fr is how fresh the providers' cached answers must be.
+func (s *Service) refresh(ctx context.Context, work id.ID, fr Freshness) error {
 	w, err := s.deps.Catalog.Work(ctx, work)
 	if err != nil {
 		return err
@@ -163,11 +165,11 @@ func (s *Service) refresh(ctx context.Context, work id.ID) error {
 	if w.Provisional || w.Kind == catalog.KindExtra {
 		return nil
 	}
-	lang, country, err := s.locale(ctx, work)
+	lang, country, err := s.Locale(ctx, work)
 	if err != nil {
 		return err
 	}
-	f, err := s.fromProviders(ctx, w, lang, country)
+	f, err := s.fromProviders(ctx, w, lang, country, fr)
 	if err != nil {
 		return err
 	}
@@ -182,7 +184,7 @@ func (s *Service) refresh(ctx context.Context, work id.ID) error {
 	)
 	switch w.Kind {
 	case catalog.KindBook:
-		b, err := s.describeBook(ctx, w, country)
+		b, err := s.describeBook(ctx, w, country, fr)
 		if err != nil {
 			return err
 		}

@@ -111,6 +111,52 @@ func TestArtworkPreview(t *testing.T) {
 	if _, err := e.s.ImagePath(ctx, id.New(), 240); !errors.Is(err, ErrNotFound) {
 		t.Errorf("an unknown ID: %v", err)
 	}
+
+	// Every kind's preview is fetched at that kind's TMDb size.
+	_, shows := e.b.Library(catalog.Shows)
+	series := e.b.Work(catalog.WorkInput{Kind: catalog.KindSeries, Title: "The Expanse",
+		ExternalIDs: []catalog.ExternalID{catalogID("tmdb", "series", "63639")}})
+	episode := e.b.Episode(shows, series, 1, 2).Work
+	for _, tc := range []struct {
+		work       id.ID
+		kind, size string
+	}{{w, artworkBackdrop, "w780"}, {w, artworkLogo, "w500"}, {episode, artworkStill, "w300"}} {
+		a := e.artwork(tc.work, tc.kind)[0]
+		row, err := e.s.q.GetArtwork(ctx, a.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		name := strings.TrimPrefix(row.Origin, tmdbImages)
+		if _, err := e.s.ImagePath(ctx, a.ID, 0); err != nil {
+			t.Fatalf("%s: %v", tc.kind, err)
+		}
+		if e.fx.count("/t/p/"+tc.size+name) != 1 || e.fx.count("/t/p/original"+name) != 0 {
+			t.Errorf("the %s preview of %s wasn't fetched at %s", tc.kind, name, tc.size)
+		}
+	}
+}
+
+// A local file's offered preview is made from the file, with no provider
+// request.
+func TestLocalArtworkPreview(t *testing.T) {
+	e := newEnv(t)
+	_, folder, dir := e.localLibrary(catalog.Movies)
+	writeFile(t, filepath.Join(dir, "Dune (2021)", "poster.jpg"), pngBytes(200, 300))
+	w := e.movie(folder, duneRel)
+	a := e.artwork(w, artworkPoster)[0]
+	if a.Source != sourceLocal {
+		t.Fatalf("first poster %+v, want the local file", a)
+	}
+	if _, err := e.s.ImagePath(ctx, a.ID, 240); err != nil {
+		t.Fatal(err)
+	}
+	e.fx.mu.Lock()
+	defer e.fx.mu.Unlock()
+	for p, n := range e.fx.hits {
+		if strings.HasPrefix(p, "/t/p/") {
+			t.Errorf("fetched %s %d times for a local preview", p, n)
+		}
+	}
 }
 
 // Choosing offered artwork fetches it in full and marks it chosen, so a

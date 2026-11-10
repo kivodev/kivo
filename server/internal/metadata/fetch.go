@@ -33,7 +33,6 @@ var spacing = map[string]time.Duration{
 // server.
 type getter interface {
 	Get(ctx context.Context, url string, header http.Header) (egress.Response, error)
-	Post(ctx context.Context, url string, header http.Header, body []byte) (egress.Response, error)
 }
 
 // fetcher is the only path to a provider. Each request goes through the
@@ -64,7 +63,7 @@ type request struct {
 	header   http.Header // carries the API key, so the key stays out of URLs, logs and cache keys
 	key      string      // the cache key; empty for artwork, which the image table tracks instead
 	ttl      func(body []byte) time.Duration
-	maxAge   time.Duration // refetch anything cached longer ago than this; zero relies on ttl alone
+	fresh    Freshness
 }
 
 // outage is an ErrUnavailable that carries when the provider may be asked
@@ -90,15 +89,10 @@ func newFetcher(db *store.DB, get getter) *fetcher {
 // such as a season that its episodes' refreshes share.
 const refetchAfter = day
 
-// refetchKey is the context key that marks a refresh.
-type refetchKey struct{}
-
-// refetching marks ctx as belonging to a refresh. Its fetches use no cached
-// response older than refetchAfter, and no stale response while the
-// provider is down.
-func refetching(ctx context.Context) context.Context {
-	return context.WithValue(ctx, refetchKey{}, true)
-}
+// refreshing is the freshness a refresh asks of its provider calls. They use
+// no cached response older than refetchAfter, and no stale response while
+// the provider is down.
+var refreshing = Freshness{MaxAge: refetchAfter, Strict: true}
 
 // fetch returns a response's body. Every error it returns, including an
 // outage or ErrNotFound, names the request, as in "fetch tmdb /movie/603:
@@ -118,10 +112,6 @@ func (r request) name() string { return cmp.Or(r.key, r.url) }
 // answer does fetch's work. It returns the cache's answer or the
 // provider's.
 func (f *fetcher) answer(ctx context.Context, r request) ([]byte, error) {
-	refetch := ctx.Value(refetchKey{}) != nil
-	if refetch && (r.maxAge == 0 || r.maxAge > refetchAfter) {
-		r.maxAge = refetchAfter
-	}
 	var stale *dbq.GetCachedRow
 	if r.key != "" {
 		c, err := f.q.GetCached(ctx, dbq.GetCachedParams{Provider: r.provider, Key: r.key})
@@ -129,14 +119,11 @@ func (f *fetcher) answer(ctx context.Context, r request) ([]byte, error) {
 		case errors.Is(err, sql.ErrNoRows):
 		case err != nil:
 			return nil, err
-		case fresh(c, time.Now(), r.maxAge):
+		case fresh(c, time.Now(), r.fresh.MaxAge):
 			return cachedResult(c)
-		default:
+		case !r.fresh.Strict:
 			stale = &c
 		}
-	}
-	if refetch {
-		stale = nil // a refresh waits out an outage rather than use an old answer
 	}
 	if err := f.down(r.provider); err != nil {
 		if stale != nil {

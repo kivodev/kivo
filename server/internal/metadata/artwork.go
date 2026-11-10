@@ -1,6 +1,7 @@
 package metadata
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"errors"
@@ -65,8 +66,8 @@ const requestTimeout = 10 * time.Second
 
 // choice is an image a listing found, before it is recorded.
 type choice struct {
-	source, provider, origin, folder, lang string
-	width, height                          int
+	source, provider, origin, preview, folder, lang string
+	width, height                                   int
 }
 
 // Artwork lists the images an admin can choose for a work's artwork of one
@@ -133,7 +134,7 @@ func (s *Service) Artwork(ctx context.Context, v users.Viewer, work id.ID, kind 
 				}
 				cid, err := q.PutArtwork(ctx, dbq.PutArtworkParams{
 					ID: id.New(), WorkID: work, Kind: k, Source: c.source, Provider: nullString(c.provider), Origin: c.origin,
-					Folder: nullString(c.folder), Width: nullInt(c.width), Height: nullInt(c.height), Language: nullString(c.lang),
+					Preview: nullString(c.preview), Folder: nullString(c.folder), Width: nullInt(c.width), Height: nullInt(c.height), Language: nullString(c.lang),
 					Ord: int64(i), ListedAt: now,
 				})
 				if err != nil {
@@ -162,7 +163,7 @@ func (s *Service) Artwork(ctx context.Context, v users.Viewer, work id.ID, kind 
 // best first, ranked the same way a refresh ranks them. A work the provider
 // doesn't know has no images.
 func (s *Service) providerChoices(ctx context.Context, w catalog.Work) (map[string][]choice, error) {
-	lang, _, err := s.locale(ctx, w.ID)
+	lang, _, err := s.Locale(ctx, w.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +182,7 @@ func (s *Service) providerChoices(ctx context.Context, w catalog.Work) (map[stri
 	for kind, list := range imagesByKind(imgs) {
 		for _, img := range ranked(kind, list, lang, imgs.Original) {
 			out[kind] = append(out[kind], choice{
-				source: sourceProvider, provider: s.video.Name(), origin: img.URL, lang: img.Language,
+				source: sourceProvider, provider: s.video.Name(), origin: img.URL, preview: img.Preview, lang: img.Language,
 				width: img.Width, height: img.Height,
 			})
 		}
@@ -356,9 +357,9 @@ func (s *Service) artworkData(ctx context.Context, c dbq.Artwork) ([]byte, error
 }
 
 // previewData reads an offered image for its preview. A provider's image is
-// fetched at a preview size when the provider offers one.
+// fetched from the smaller copy the provider offered, if any.
 func (s *Service) previewData(ctx context.Context, c dbq.Artwork) ([]byte, error) {
-	return s.readArtwork(ctx, c, s.video.Preview(c.Origin, c.Kind))
+	return s.readArtwork(ctx, c, cmp.Or(c.Preview.String, c.Origin))
 }
 
 // readArtwork reads an offered image. A local image is read from its file

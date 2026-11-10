@@ -219,7 +219,7 @@ func (q *Queries) DropArtwork(ctx context.Context, arg DropArtworkParams) ([]Dro
 }
 
 const getArtwork = `-- name: GetArtwork :one
-SELECT id, work_id, person_id, kind, source, provider, origin, folder, width, height, language, ord, listed_at FROM artwork WHERE id = ?1
+SELECT id, work_id, person_id, kind, source, provider, origin, folder, width, height, language, ord, listed_at, preview FROM artwork WHERE id = ?1
 `
 
 func (q *Queries) GetArtwork(ctx context.Context, argID id.ID) (Artwork, error) {
@@ -239,6 +239,7 @@ func (q *Queries) GetArtwork(ctx context.Context, argID id.ID) (Artwork, error) 
 		&i.Language,
 		&i.Ord,
 		&i.ListedAt,
+		&i.Preview,
 	)
 	return i, err
 }
@@ -460,10 +461,10 @@ func (q *Queries) PersonPhoto(ctx context.Context, arg PersonPhotoParams) (Image
 }
 
 const putArtwork = `-- name: PutArtwork :one
-INSERT INTO artwork (id, work_id, kind, source, provider, origin, folder, width, height, language, ord, listed_at)
-VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+INSERT INTO artwork (id, work_id, kind, source, provider, origin, preview, folder, width, height, language, ord, listed_at)
+VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
 ON CONFLICT (work_id, kind, origin) WHERE work_id IS NOT NULL DO UPDATE SET source = excluded.source, provider = excluded.provider,
-  folder = excluded.folder, width = excluded.width, height = excluded.height, language = excluded.language,
+  preview = excluded.preview, folder = excluded.folder, width = excluded.width, height = excluded.height, language = excluded.language,
   ord = excluded.ord, listed_at = excluded.listed_at
 RETURNING id
 `
@@ -475,6 +476,7 @@ type PutArtworkParams struct {
 	Source   string
 	Provider sql.NullString
 	Origin   string
+	Preview  sql.NullString
 	Folder   sql.NullString
 	Width    sql.NullInt64
 	Height   sql.NullInt64
@@ -493,6 +495,7 @@ func (q *Queries) PutArtwork(ctx context.Context, arg PutArtworkParams) (id.ID, 
 		arg.Source,
 		arg.Provider,
 		arg.Origin,
+		arg.Preview,
 		arg.Folder,
 		arg.Width,
 		arg.Height,

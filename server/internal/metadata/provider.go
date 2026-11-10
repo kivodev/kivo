@@ -24,23 +24,26 @@ type VideoProvider interface {
 	Resolve(ctx context.Context, x catalog.ExternalID, lang string) (Match, error)
 	// Describe returns what the provider says about a movie, series, season
 	// or episode, in lang. It returns ErrNotFound for one it doesn't know.
-	Describe(ctx context.Context, r Ref, lang string) (*Description, error)
+	Describe(ctx context.Context, r Ref, lang string, fr Freshness) (*Description, error)
 	// Images returns the artwork an admin chooses from. For a movie or
 	// series, these are the images Describe gives. For a season or episode,
 	// they are every image the provider has.
 	Images(ctx context.Context, r Ref, lang string) (Images, error)
-	// Episodes lists a series' episodes in an ordering. Cached data older
-	// than maxAge is fetched again. A zero maxAge keeps the cache's usual
-	// lifetime.
-	Episodes(ctx context.Context, series catalog.ExternalID, o Ordering, lang string, maxAge time.Duration) ([]Episode, error)
+	// Episodes lists a series' episodes in an ordering.
+	Episodes(ctx context.Context, series catalog.ExternalID, o Ordering, lang string, fr Freshness) ([]Episode, error)
 	// EpisodeGroups lists the IDs of a series' episode groups. These are the
 	// orderings an admin can choose besides the named ones.
 	EpisodeGroups(ctx context.Context, series catalog.ExternalID, lang string) ([]string, error)
 	// Owns reports whether an image URL is one of the provider's.
 	Owns(url string) bool
-	// Preview returns an image URL at the size a preview of an artwork kind
-	// is made from. A URL that isn't the provider's is returned unchanged.
-	Preview(url, kind string) string
+}
+
+// Freshness says which cached answers a provider call may use. The zero
+// value uses the cache as it is, and an expired answer while the provider
+// is down.
+type Freshness struct {
+	MaxAge time.Duration // refetch anything cached longer ago than this; zero relies on the cache's lifetime alone
+	Strict bool          // never use an expired answer or one older than MaxAge, even while the provider is down
 }
 
 // Ref names a work for a video provider by its external IDs. The provider
@@ -109,6 +112,7 @@ type Images struct {
 // Image is one image a provider offers.
 type Image struct {
 	URL           string
+	Preview       string  // a smaller copy's URL, which a preview is made from; empty for none
 	Language      string  // ISO 639-1; empty, or "00", when textless
 	Score         float64 // the provider's rating of the image; higher is better
 	Width, Height int
@@ -120,9 +124,9 @@ type Image struct {
 type BookProvider interface {
 	// Name is the provider's name in external IDs and the fetch pipeline.
 	Name() string
-	Search(ctx context.Context, country string, q BookQuery) ([]Book, error)
-	Book(ctx context.Context, country, id string) (*Book, error)
-	Author(ctx context.Context, country, id string) (*Author, error)
+	Search(ctx context.Context, country string, q BookQuery, fr Freshness) ([]Book, error)
+	Book(ctx context.Context, country, id string, fr Freshness) (*Book, error)
+	Author(ctx context.Context, country, id string, fr Freshness) (*Author, error)
 }
 
 // AnimeMapping maps an AniDB ID to the series a video provider knows. The

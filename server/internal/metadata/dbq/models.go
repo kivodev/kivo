@@ -24,6 +24,7 @@ type Artwork struct {
 	Language sql.NullString
 	Ord      int64
 	ListedAt int64
+	Preview  sql.NullString
 }
 
 type Image struct {
