@@ -57,7 +57,7 @@ var wholeLibrary = map[string]string{
 	"query/ValuesNarrator":              "a field's values for a rule, read when the builder opens the field",
 	"query/ValuesTag":                   "a field's values for a rule, read when the builder opens the field",
 
-	"identify/catalog.sql.CountUnidentified": "how many files the identify task has left, for Tasks: media_file_behind holds only files not yet probed or identified",
+	"identify/catalog.sql.CountUnidentified": "how many files the identify task has left in each library, for Tasks and the Libraries page: media_file_behind holds only files not yet probed or identified",
 }
 
 var (

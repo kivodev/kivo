@@ -36,7 +36,7 @@ import kotlinx.serialization.encoding.*
  * @param id A task's name. Skip tasks you don't know.
  * @param section The Tasks page's table a row is in: `onDemand`, work done as it's asked for; `library`, the scheduled tasks on the libraries' media; `maintenance`, the cleanups and the database's tasks. Skip sections you don't know. 
  * @param nightly Its runs begin as the maintenance window opens; else every so often.
- * @param pendingCount What's left for its next run, while no run of it works; 0 otherwise.
+ * @param pendingCount What's left for its next run, while no run of it works; 0 otherwise. On `scan-libraries` at step `identify`, the files left to identify. 
  * @param running It has items in flight or asked for, or a run working.
  * @param stoppable Stop applies (`POST /api/v1/tasks/{task}/stop`): it's running, and isn't work that always finishes, such as downloads and library changes. 
  * @param lastRun 
@@ -57,7 +57,7 @@ data class Task (
     /* Its runs begin as the maintenance window opens; else every so often. */
     @SerialName(value = "nightly") @Required val nightly: kotlin.Boolean,
 
-    /* What's left for its next run, while no run of it works; 0 otherwise. */
+    /* What's left for its next run, while no run of it works; 0 otherwise. On `scan-libraries` at step `identify`, the files left to identify.  */
     @SerialName(value = "pendingCount") @Required val pendingCount: kotlin.Int,
 
     /* It has items in flight or asked for, or a run working. */

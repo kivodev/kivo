@@ -12,19 +12,41 @@ import (
 	"github.com/mmcdole/kivo/internal/id"
 )
 
-const countUnidentified = `-- name: CountUnidentified :one
-SELECT count(*) FROM media_file f JOIN library_folder r ON r.id = f.folder_id
+const countUnidentified = `-- name: CountUnidentified :many
+SELECT r.library_id, count(*) AS files FROM media_file f JOIN library_folder r ON r.id = f.folder_id
 JOIN library l ON l.id = r.library_id AND l.deleting_at IS NULL
 WHERE r.removing_at IS NULL AND f.status = 'present'
   AND f.probed = f.generation AND f.probe_error IS NULL AND f.identified IS NOT f.generation
+GROUP BY r.library_id
 `
 
-// How many files Unidentified lists across the libraries.
-func (q *Queries) CountUnidentified(ctx context.Context) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countUnidentified)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
+type CountUnidentifiedRow struct {
+	LibraryID id.ID
+	Files     int64
+}
+
+// How many files Unidentified lists in each library that has any.
+func (q *Queries) CountUnidentified(ctx context.Context) ([]CountUnidentifiedRow, error) {
+	rows, err := q.db.QueryContext(ctx, countUnidentified)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountUnidentifiedRow
+	for rows.Next() {
+		var i CountUnidentifiedRow
+		if err := rows.Scan(&i.LibraryID, &i.Files); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const episodePlace = `-- name: EpisodePlace :one

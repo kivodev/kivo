@@ -1912,9 +1912,10 @@ export interface paths {
         /**
          * Stop task
          * @description Its items in flight stop shortly after, what was asked of it is
-         *     dropped, and its run ends. Nothing is lost: what's left is still
-         *     left for its next run. Downloads and library changes always finish:
-         *     `409` with code `notStoppable`.
+         *     dropped, and its run ends. Stopping `scan-libraries` also stops its
+         *     `identify` step. Nothing is lost: what's left is still left for its
+         *     next run. Downloads and library changes always finish: `409` with
+         *     code `notStoppable`.
          */
         post: operations["stopTask"];
         delete?: never;
@@ -3610,10 +3611,11 @@ export interface components {
         };
         /**
          * @description What a library's scan is doing: `scanning` while it's scanned,
+         *     `matching` while its files are being identified after that,
          *     `unreachable` when a folder can't be read.
          * @enum {string}
          */
-        LibraryScanState: "idle" | "scanning" | "unreachable";
+        LibraryScanState: "idle" | "scanning" | "matching" | "unreachable";
         /** @description The step a library's scan is on, and how far it's got. */
         ScanProgress: {
             step: components["schemas"]["ScanStep"];
@@ -4666,7 +4668,11 @@ export interface components {
              */
             nextRunAt?: string;
             progress?: components["schemas"]["TaskProgress"];
-            /** @description What's left for its next run, while no run of it works; 0 otherwise. */
+            /**
+             * @description What's left for its next run, while no run of it works; 0
+             *     otherwise. On `scan-libraries` at step `identify`, the files left
+             *     to identify.
+             */
             pendingCount: number;
             /**
              * @description Its items that failed for good (`GET
@@ -4687,7 +4693,7 @@ export interface components {
          * @description A task's name. Skip tasks you don't know.
          * @enum {string}
          */
-        TaskName: "scan-libraries" | "prune-gone-files" | "identify-media" | "refresh-metadata" | "prune-provider-cache" | "make-previews" | "prune-previews" | "find-markers" | "prune-markers" | "extract-subtitles" | "prune-subtitles" | "prepare-downloads" | "prune-downloads" | "library-changes" | "prune-activity" | "make-backup" | "optimize-database";
+        TaskName: "scan-libraries" | "prune-gone-files" | "refresh-metadata" | "prune-provider-cache" | "make-previews" | "prune-previews" | "find-markers" | "prune-markers" | "extract-subtitles" | "prune-subtitles" | "prepare-downloads" | "prune-downloads" | "library-changes" | "prune-activity" | "make-backup" | "optimize-database";
         /**
          * @description The Tasks page's table a row is in: `onDemand`, work done as it's
          *     asked for; `library`, the scheduled tasks on the libraries' media;
@@ -4719,12 +4725,13 @@ export interface components {
         };
         /**
          * @description A step of a task's item in flight: a library scan's (see ScanStep),
-         *     `extractSubtitles`, a download's file having its subtitles
-         *     extracted, or `convert`, a download being converted. Skip steps you
-         *     don't know.
+         *     `identify`, the scanned files being identified once no library is
+         *     walked or probed, `extractSubtitles`, a download's file having its
+         *     subtitles extracted, or `convert`, a download being converted. Skip
+         *     steps you don't know.
          * @enum {string}
          */
-        TaskStep: "walk" | "probe" | "extractSubtitles" | "convert";
+        TaskStep: "walk" | "probe" | "identify" | "extractSubtitles" | "convert";
         TaskRetry: {
             /** @description The items to retry; every failed one when absent. */
             itemIds?: components["schemas"]["ID"][];

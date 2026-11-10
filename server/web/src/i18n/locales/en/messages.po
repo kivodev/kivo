@@ -294,6 +294,11 @@ msgstr "For example, Home Assistant."
 msgid "People"
 msgstr "People"
 
+#: src/features/admin/ManageLibrariesScreen.tsx
+#: src/features/admin/useAdminLabels.ts
+msgid "Matching"
+msgstr "Matching"
+
 #: src/features/lists/smartLabels.ts
 msgid "highest first"
 msgstr "highest first"
@@ -992,7 +997,6 @@ msgstr "{0} is empty."
 msgid "{from}s"
 msgstr "{from}s"
 
-#: src/features/admin/useAdminLabels.ts
 #: src/features/browse/WorkCard.tsx
 #: src/features/detail/EpisodeList.tsx
 msgid "Identifying"
@@ -2717,6 +2721,10 @@ msgstr "No missing files"
 msgid "Create key"
 msgstr "Create key"
 
+#: src/features/admin/OverviewScreen.tsx
+msgid "Matching {name}"
+msgstr "Matching {name}"
+
 #: src/features/auth/InviteScreen.tsx
 msgid "This invite link has expired, was already used or was revoked. Ask for a new link."
 msgstr "This invite link has expired, was already used or was revoked. Ask for a new link."
@@ -4419,7 +4427,3 @@ msgstr "Refreshing…"
 #: src/features/auth/AddressScreen.tsx
 msgid "Connecting without encryption. Press Open to continue."
 msgstr "Connecting without encryption. Press Open to continue."
-
-#: src/features/admin/useAdminLabels.ts
-msgid "Identify media"
-msgstr "Identify media"

@@ -2685,9 +2685,10 @@ paths:
       summary: Stop task
       description: |
         Its items in flight stop shortly after, what was asked of it is
-        dropped, and its run ends. Nothing is lost: what's left is still
-        left for its next run. Downloads and library changes always finish:
-        `409` with code `notStoppable`.
+        dropped, and its run ends. Stopping `scan-libraries` also stops its
+        `identify` step. Nothing is lost: what's left is still left for its
+        next run. Downloads and library changes always finish: `409` with
+        code `notStoppable`.
       tags: [tasks]
       x-kivo-access: admin
       responses:
@@ -5039,8 +5040,9 @@ components:
       type: string
       description: |
         What a library's scan is doing: `scanning` while it's scanned,
+        `matching` while its files are being identified after that,
         `unreachable` when a folder can't be read.
-      enum: [idle, scanning, unreachable]
+      enum: [idle, scanning, matching, unreachable]
 
     ScanProgress:
       type: object
@@ -6565,7 +6567,10 @@ components:
         progress: {$ref: "#/components/schemas/TaskProgress"}
         pendingCount:
           type: integer
-          description: What's left for its next run, while no run of it works; 0 otherwise.
+          description: |
+            What's left for its next run, while no run of it works; 0
+            otherwise. On `scan-libraries` at step `identify`, the files left
+            to identify.
         failedCount:
           type: integer
           description: |
@@ -6585,7 +6590,7 @@ components:
     TaskName:
       type: string
       description: A task's name. Skip tasks you don't know.
-      enum: [scan-libraries, prune-gone-files, identify-media, refresh-metadata, prune-provider-cache,
+      enum: [scan-libraries, prune-gone-files, refresh-metadata, prune-provider-cache,
         make-previews, prune-previews, find-markers, prune-markers, extract-subtitles, prune-subtitles,
         prepare-downloads, prune-downloads, library-changes, prune-activity, make-backup, optimize-database]
 
@@ -6630,10 +6635,11 @@ components:
       type: string
       description: |
         A step of a task's item in flight: a library scan's (see ScanStep),
-        `extractSubtitles`, a download's file having its subtitles
-        extracted, or `convert`, a download being converted. Skip steps you
-        don't know.
-      enum: [walk, probe, extractSubtitles, convert]
+        `identify`, the scanned files being identified once no library is
+        walked or probed, `extractSubtitles`, a download's file having its
+        subtitles extracted, or `convert`, a download being converted. Skip
+        steps you don't know.
+      enum: [walk, probe, identify, extractSubtitles, convert]
 
     TaskRetry:
       type: object

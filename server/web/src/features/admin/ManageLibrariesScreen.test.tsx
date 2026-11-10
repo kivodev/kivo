@@ -68,6 +68,20 @@ describe("Admin Libraries", () => {
     expect(screen.queryByText(/View progress in/)).not.toBeInTheDocument();
   });
 
+  it("shows Matching with no count or Stop while its files are being identified, then nothing", async () => {
+    const api = serveMockApi();
+    movies(api).scan = { libraryId: mockIds.movies, state: "matching" };
+    renderApp("/admin/libraries");
+    await screen.findByRole("heading", { name: "Libraries" });
+    expect(rowOf("Movies").querySelector('[data-part="scan"]')).toHaveTextContent(/^Matching$/);
+    expect(within(rowOf("Movies")).queryByRole("button", { name: "Stop" })).not.toBeInTheDocument();
+    expect(rowOf("Movies").querySelector('[role="progressbar"]')).toBeNull();
+
+    movies(api).scan = { libraryId: mockIds.movies, state: "idle" };
+    sendEvent({ type: "event", kind: "tasksChanged" });
+    await waitFor(() => expect(rowOf("Movies").querySelector('[data-part="scan"]')).toBeNull(), { timeout: 3000 });
+  });
+
   it("refreshes all metadata from the menu after asking", async () => {
     serveMockApi();
     const { user } = renderApp("/admin/libraries");
