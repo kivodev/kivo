@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mmcdole/kivo/internal/config"
+	"github.com/mmcdole/kivo/internal/cachedir"
 	"github.com/mmcdole/kivo/internal/egress"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/media"
@@ -102,7 +102,7 @@ func (s *Service) ImagePath(ctx context.Context, img id.ID, width int) (string, 
 }
 
 func (s *Service) path(img id.ID, width int) string {
-	return config.CachePath(s.imageCache, img, fmt.Sprintf("%s-%d.webp", img, width))
+	return cachedir.Path(s.imageCache, img, fmt.Sprintf("%s-%d.webp", img, width))
 }
 
 // present reports whether an image's files are all in the cache.
@@ -188,7 +188,7 @@ func (s *Service) encodeAs(ctx context.Context, img id.ID, kind string, widths [
 // encodeTemp creates cache/images/.tmp, the folder images are encoded in,
 // and returns its path.
 func (s *Service) encodeTemp() (string, error) {
-	tmp := filepath.Join(s.imageCache, config.CacheTemp)
+	tmp := filepath.Join(s.imageCache, cachedir.Temp)
 	if err := os.MkdirAll(tmp, 0o755); err != nil {
 		return "", err
 	}
@@ -201,7 +201,7 @@ func (s *Service) encodeTemp() (string, error) {
 // encodes in the folder encodeTemp creates, which the caller must already
 // have created.
 func (s *Service) encodeFile(ctx context.Context, img id.ID, kind string, widths []int, src string) (dbq.InsertImageParams, error) {
-	tmp := filepath.Join(s.imageCache, config.CacheTemp)
+	tmp := filepath.Join(s.imageCache, cachedir.Temp)
 	name := id.New().String()
 
 	var outs []media.ImageOut
@@ -344,7 +344,7 @@ func (s *Service) pruneImages(ctx context.Context) (int, error) {
 		}
 		name := filepath.Base(p)
 		img, err := id.Parse(name[:max(strings.LastIndexByte(name, '-'), 0)])
-		if err != nil || filepath.Base(filepath.Dir(p)) == config.CacheTemp {
+		if err != nil || filepath.Base(filepath.Dir(p)) == cachedir.Temp {
 			orphans = append(orphans, p)
 			continue
 		}

@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/mmcdole/kivo/internal/cachedir"
 	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/config"
 	"github.com/mmcdole/kivo/internal/health"
@@ -72,7 +73,7 @@ type Service struct {
 // the cache.
 func New(db *store.DB, d Deps) *Service {
 	dir := filepath.Join(d.CacheDir, "previews")
-	_ = os.RemoveAll(filepath.Join(dir, config.CacheTemp))
+	_ = os.RemoveAll(filepath.Join(dir, cachedir.Temp))
 	return &Service{
 		db: db, q: dbq.New(db.Reader()), deps: d, dir: dir,
 		room: health.Room{Dir: d.CacheDir, Problem: health.Problem{
@@ -144,7 +145,7 @@ func (s *Service) make(ctx context.Context, file id.ID) error {
 	if err := s.room.Check(); err != nil {
 		return err
 	}
-	tmp, err := config.MakeCacheTemp(s.dir)
+	tmp, err := cachedir.MakeTemp(s.dir)
 	if err != nil {
 		return s.room.Err(err)
 	}

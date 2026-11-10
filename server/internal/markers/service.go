@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/mmcdole/kivo/internal/cachedir"
 	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/config"
 	"github.com/mmcdole/kivo/internal/health"
@@ -61,7 +62,7 @@ type Service struct {
 // New returns the service. It removes whatever an interrupted read left in
 // the cache.
 func New(db *store.DB, d Deps) *Service {
-	_ = os.RemoveAll(filepath.Join(d.CacheDir, resultDir, config.CacheTemp))
+	_ = os.RemoveAll(filepath.Join(d.CacheDir, resultDir, cachedir.Temp))
 	return &Service{
 		db: db, q: dbq.New(db.Reader()), deps: d,
 		room: health.Room{Dir: d.CacheDir, Problem: health.Problem{

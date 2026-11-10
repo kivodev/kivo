@@ -18,8 +18,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mmcdole/kivo/internal/cachedir"
 	"github.com/mmcdole/kivo/internal/catalog"
-	"github.com/mmcdole/kivo/internal/config"
 	"github.com/mmcdole/kivo/internal/id"
 )
 
@@ -148,7 +148,7 @@ func TestEncodeImages(t *testing.T) {
 	if _, ok := img.(*fakeImager); ok && !errors.Is(err, ErrBadImage) {
 		t.Errorf("truncated JPEG with the fake: %v", err)
 	}
-	left, _ := filepath.Glob(filepath.Join(e.cache, "images", config.CacheTemp, "*"))
+	left, _ := filepath.Glob(filepath.Join(e.cache, "images", cachedir.Temp, "*"))
 	if len(left) != 0 {
 		t.Errorf("temporary files left: %v", left)
 	}
@@ -243,7 +243,7 @@ func TestPruneImages(t *testing.T) {
 	}
 	upload := filepath.Join(e.uploads, "kept.png")
 	orphan := e.s.path(id.New(), 240)
-	leftover := filepath.Join(e.cache, "images", config.CacheTemp, id.New().String()+".src")
+	leftover := filepath.Join(e.cache, "images", cachedir.Temp, id.New().String()+".src")
 	for _, p := range []string{upload, orphan, leftover} {
 		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 			t.Fatal(err)

@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mmcdole/kivo/internal/cachedir"
 	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/config"
 	"github.com/mmcdole/kivo/internal/health"
@@ -97,7 +98,7 @@ func New(db *store.DB, d Deps, opt Options) *Service {
 	if opt.Replaced == nil {
 		opt.Replaced = func(context.Context, *store.Tx, []id.ID, id.ID) error { return nil }
 	}
-	_ = os.RemoveAll(filepath.Join(d.CacheDir, resultDir, config.CacheTemp))
+	_ = os.RemoveAll(filepath.Join(d.CacheDir, resultDir, cachedir.Temp))
 	return &Service{
 		db: db, q: dbq.New(db.Reader()), deps: d, openSubtitles: newOpenSubtitles(), replaced: opt.Replaced,
 		room: health.Room{Dir: d.CacheDir, Problem: health.Problem{

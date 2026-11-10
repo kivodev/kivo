@@ -24,6 +24,7 @@ import (
 
 	"github.com/mmcdole/kivo/internal/activity"
 	"github.com/mmcdole/kivo/internal/auth"
+	"github.com/mmcdole/kivo/internal/cachedir"
 	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/catalog/catalogtest"
 	"github.com/mmcdole/kivo/internal/config"
@@ -1416,7 +1417,7 @@ func (f *fixture) extract(file id.ID, font string, stored bool) string {
 	if err != nil {
 		f.t.Fatal(err)
 	}
-	dir := config.CachePath(filepath.Join(f.cache, "subtitles"), file, file.String(), config.CacheLeaf(cf.Generation, 0))
+	dir := cachedir.Path(filepath.Join(f.cache, "subtitles"), file, file.String(), cachedir.Leaf(cf.Generation, 0))
 	f.put(dir, "", "")
 	for _, t := range cf.Tracks {
 		format, ok := media.Codec(t.Codec).SubtitleFormat()
@@ -1447,7 +1448,7 @@ func (f *fixture) makePreviews(file id.ID) string {
 	if err != nil {
 		f.t.Fatal(err)
 	}
-	dir := config.CachePath(filepath.Join(f.cache, "previews"), file, file.String(), config.CacheLeaf(cf.Generation, 0))
+	dir := cachedir.Path(filepath.Join(f.cache, "previews"), file, file.String(), cachedir.Leaf(cf.Generation, 0))
 	b, err := json.Marshal(media.Previews{Interval: 10 * time.Second, Width: 320, Height: 180, Columns: 10, Rows: 10, Sheets: 3})
 	if err != nil {
 		f.t.Fatal(err)

@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 
 	"github.com/mmcdole/kivo/internal/atomicfile"
+	"github.com/mmcdole/kivo/internal/cachedir"
 	"github.com/mmcdole/kivo/internal/catalog"
-	"github.com/mmcdole/kivo/internal/config"
 	"github.com/mmcdole/kivo/internal/health"
 	"github.com/mmcdole/kivo/internal/id"
 )
@@ -18,11 +18,11 @@ import (
 const resultDir = "subtitles"
 
 // result is the folder of a file's extracted subtitles at a generation:
-// cache/subtitles/<xx>/<file>/<generation>/ (config.CachePath). It's built
-// in cache/subtitles/.tmp/ (config.MakeCacheTemp) and moved into place
+// cache/subtitles/<xx>/<file>/<generation>/ (cachedir.Path). It's built
+// in cache/subtitles/.tmp/ (cachedir.MakeTemp) and moved into place
 // whole, so a result that exists is complete.
 func (s *Service) result(file id.ID, gen int64) string {
-	return config.CachePath(s.resultDir(), file, file.String(), config.CacheLeaf(gen, 0))
+	return cachedir.Path(s.resultDir(), file, file.String(), cachedir.Leaf(gen, 0))
 }
 
 // resultDir is cache/subtitles.
