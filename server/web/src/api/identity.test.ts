@@ -1,5 +1,5 @@
 import { HttpResponse, http } from "msw";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { server } from "@/test/server";
 import { client } from "./client";
 import { identityHeaders } from "./identity";
@@ -17,6 +17,20 @@ describe("identityHeaders", () => {
       "Kivo-Device-Model": "Firefox 132",
     });
     expect(identityHeaders(iphone)).toMatchObject({ "Kivo-OS-Version": "17.5", "Kivo-Device-Model": "Safari 17" });
+  });
+
+  it("names the version the server wrote into the page", async () => {
+    const meta = document.createElement("meta");
+    meta.name = "kivo-version";
+    meta.content = "0.3.1-dev+56c0018d";
+    document.head.append(meta);
+    vi.resetModules();
+    try {
+      const served = await import("./identity");
+      expect(served.identityHeaders(firefox)["Kivo-App-Version"]).toBe("0.3.1-dev+56c0018d");
+    } finally {
+      meta.remove();
+    }
   });
 
   it("goes with every API request", async () => {

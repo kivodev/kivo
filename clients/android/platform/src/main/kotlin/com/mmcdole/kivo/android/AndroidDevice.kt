@@ -60,7 +60,7 @@ class AndroidDevice(context: Context, appVersion: String) : Device {
     }
 }
 
-/** This app on this device, as every request to a server says it, [appVersion] being the app's version name. */
+/** This app on this device, as every request to a server says it, [appVersion] being the version its requests name. */
 class AndroidIdentity(context: Context, override val appVersion: String) : ClientIdentity {
     override val app = "kivo-android"
     override val platform = if (context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)) "androidTv" else PHONE

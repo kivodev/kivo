@@ -4315,7 +4315,11 @@ type ServerInfo struct {
 	// limit offer below Auto and Original. A rung is chosen by sending
 	// its bitrate as a `limit` quality's `maxBitrateBps`.
 	QualityLadder *[]QualityRung `json:"qualityLadder,omitempty"`
-	Version       string         `json:"version"`
+
+	// Version The server's semantic version: a release's, such as `0.4.0`, or
+	// a dev build's, the patch after the latest release with its
+	// commit, such as `0.3.1-dev+56c0018d`.
+	Version string `json:"version"`
 }
 
 // ServerProblem An open issue on the problems page, such as "library /mnt/tv unreachable for 2 h".

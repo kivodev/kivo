@@ -95,7 +95,9 @@ info:
     Every request a Kivo app makes says what is asking, a header per field:
 
     - `Kivo-App`: the app, such as `kivo-android`, `kivo-apple`, `kivo-web` or `kivo-tizen`.
-    - `Kivo-App-Version`: its version.
+    - `Kivo-App-Version`: its semantic version, with the build number as
+      build metadata where it has one, such as `0.3.0+78`. The web client
+      sends its server's version.
     - `Kivo-Platform`: what it runs on, a `ClientPlatform` value.
     - `Kivo-OS-Version`: the operating system's version.
     - `Kivo-Device-Model`: the device's model, coarse: Android's
@@ -3915,7 +3917,12 @@ components:
         name:
           type: string
           description: The server's name, from the `serverName` setting.
-        version: {type: string}
+        version:
+          type: string
+          description: |
+            The server's semantic version: a release's, such as `0.4.0`, or
+            a dev build's, the patch after the latest release with its
+            commit, such as `0.3.1-dev+56c0018d`.
         castProtocol:
           type: integer
           description: |

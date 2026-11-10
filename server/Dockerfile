@@ -1,7 +1,10 @@
 # Kivo: the server, its web client, and jellyfin-ffmpeg (GPL, shipped as a
 # separate binary; its source is published with each release).
 # Build from the repository root, since the web client reads shared/:
-# docker build -f server/Dockerfile -t kivo .
+# docker build -f server/Dockerfile --build-arg COMMIT=$(git rev-parse --short=8 HEAD) -t kivo .
+# That's a dev build: the patch after the latest release, with its commit,
+# such as 0.3.1-dev+56c0018d, or 0.3.1-dev without COMMIT. A release build
+# is given its version instead, with --build-arg VERSION=0.4.0.
 
 FROM node:24.21.0-trixie-slim AS web
 WORKDIR /src/server/web
@@ -18,9 +21,10 @@ COPY server/go.mod server/go.sum ./
 RUN go mod download
 COPY server/ .
 COPY --from=web /src/server/web/dist ./web/dist
-ARG VERSION=dev
+ARG VERSION=
+ARG COMMIT=
 RUN CGO_ENABLED=0 go build -trimpath -tags webui \
-    -ldflags "-s -w -X main.version=${VERSION}" \
+    -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${COMMIT}" \
     -o /out/kivo ./cmd/kivo
 # The notices for what's in the image: jellyfin-ffmpeg, the Go modules and
 # CLDR (make notices).

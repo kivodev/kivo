@@ -2838,6 +2838,11 @@ export interface components {
             id: components["schemas"]["ID"];
             /** @description The server's name, from the `serverName` setting. */
             name: string;
+            /**
+             * @description The server's semantic version: a release's, such as `0.4.0`, or
+             *     a dev build's, the patch after the latest release with its
+             *     commit, such as `0.3.1-dev+56c0018d`.
+             */
             version: string;
             /**
              * @description The version of the contract between Cast senders, the Cast

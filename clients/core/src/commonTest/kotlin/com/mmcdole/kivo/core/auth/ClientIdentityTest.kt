@@ -8,7 +8,7 @@ import kotlin.test.assertTrue
 
 private data class Identity(
     override val app: String = "kivo-android",
-    override val appVersion: String = "1.2.3",
+    override val appVersion: String = "0.3.0+78",
     override val platform: String = "androidTv",
     override val osVersion: String = "14",
     override val deviceModel: String = "SHIELD Android TV",
@@ -20,7 +20,7 @@ class ClientIdentityTest {
         assertEquals(
             mapOf(
                 "Kivo-App" to "kivo-android",
-                "Kivo-App-Version" to "1.2.3",
+                "Kivo-App-Version" to "0.3.0+78",
                 "Kivo-Platform" to "androidTv",
                 "Kivo-OS-Version" to "14",
                 "Kivo-Device-Model" to "SHIELD Android TV",

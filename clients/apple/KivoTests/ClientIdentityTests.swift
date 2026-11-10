@@ -29,13 +29,24 @@ final class ClientIdentityTests: XCTestCase {
 
         let headers = try XCTUnwrap(server.requests(to: "/api/v1/libraries").first?.headers)
         let platform = UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"
-        let version = try XCTUnwrap(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)
+        let info = try XCTUnwrap(Bundle.main.infoDictionary)
+        let version = try XCTUnwrap(info["CFBundleShortVersionString"] as? String)
+        let build = try XCTUnwrap(info["CFBundleVersion"] as? String)
+        XCTAssertFalse(version.isEmpty)
         XCTAssertEqual(headers["kivo-app"], "kivo-apple")
-        XCTAssertEqual(headers["kivo-app-version"], version)
+        XCTAssertEqual(headers["kivo-app-version"], "\(version)+\(build)")
+        let semver = try XCTUnwrap(headers["kivo-app-version"]).wholeMatch(of: /\d+\.\d+\.\d+\+\d+/)
+        XCTAssertNotNil(semver, "a semantic version with the build number: \(headers)")
         XCTAssertEqual(headers["kivo-platform"], platform)
         XCTAssertEqual(headers["kivo-os-version"], UIDevice.current.systemVersion)
         XCTAssertEqual(headers["kivo-device-model"], AppleIdentity.machine)
         XCTAssertFalse(headers.values.contains { $0.contains("Alex") }, "the device's name isn't sent: \(headers)")
         XCTAssertFalse(AppleIdentity.machine.isEmpty)
+    }
+
+    func testTheVersionNamesTheBuild() {
+        XCTAssertEqual(AppleIdentity.version(["CFBundleShortVersionString": "0.3.0", "CFBundleVersion": "78"]), "0.3.0+78")
+        XCTAssertEqual(AppleIdentity.version(["CFBundleShortVersionString": "0.3.0"]), "0.3.0")
+        XCTAssertEqual(AppleIdentity.version([:]), "")
     }
 }

@@ -10,10 +10,10 @@ import (
 
 func TestWebApp(t *testing.T) {
 	files := fstest.MapFS{
-		"index.html":         {Data: []byte(`<html><head><base href="/" /></head></html>`)},
+		"index.html":         {Data: []byte(`<html><head><base href="/" /><meta name="kivo-version" content="dev" /></head></html>`)},
 		"assets/app-1a2b.js": {Data: []byte("console.log(1)")},
 	}
-	app, err := newWebApp(files, "/kivo")
+	app, err := newWebApp(files, "/kivo", "0.3.1-dev+56c0018d")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -23,6 +23,7 @@ func TestWebApp(t *testing.T) {
 		has  string
 	}{
 		{"/", 200, `<base href="/kivo/"`},
+		{"/", 200, `<meta name="kivo-version" content="0.3.1-dev+56c0018d" />`},
 		{"/movies/abc", 200, `<base href="/kivo/"`}, // a client route
 		{"/assets/app-1a2b.js", 200, "console.log"},
 		{"/assets/app-old.js", 404, ""}, // an older build's asset
@@ -43,7 +44,7 @@ func TestNoTVApp(t *testing.T) {
 		"index.html":    {Data: []byte(`<html><head><base href="/" /></head>WEB</html>`)},
 		"tv/index.html": {Data: []byte(`<html><head><base href="/" /></head>TV</html>`)},
 	}
-	web, err := newWebApp(files, "/kivo")
+	web, err := newWebApp(files, "/kivo", "0.4.0")
 	if err != nil {
 		t.Fatal(err)
 	}

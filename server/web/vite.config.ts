@@ -35,11 +35,6 @@ function packageVersion(): string {
   return version;
 }
 
-// The client's build, which its requests and error reports name
-// (src/api/identity.ts): the time it was built, to the second, as the
-// client has no version of its own apart from the server it's embedded in.
-const buildTime = new Date().toISOString().replace(/\.\d+Z$/, "Z");
-
 // The TV build's splash shows from the moment the page loads, before its
 // code has run: a TV takes seconds to load and start it, and a blank screen
 // looks broken. It goes in #root, which React replaces on its first render
@@ -277,10 +272,7 @@ export default defineConfig({
   // same build works at / and behind a reverse proxy at /kivo. The packaged
   // app's page has no <base href>, and its URLs resolve beside it.
   base: "./",
-  define: {
-    "import.meta.env.VITE_KIVO_BUILD": JSON.stringify(buildTime),
-    ...(packaged ? { "import.meta.env.VITE_KIVO_APP_VERSION": JSON.stringify(packageVersion()) } : {}),
-  },
+  define: packaged ? { "import.meta.env.VITE_KIVO_APP_VERSION": JSON.stringify(packageVersion()) } : {},
   plugins: [
     lingui({ macroTransform: true }),
     react(),

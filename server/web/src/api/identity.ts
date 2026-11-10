@@ -8,21 +8,22 @@ import { appVersion } from "@/tv/versions";
 // family and major version, and never the screen or the device's name.
 
 /**
- * The client's build: the time it was built, which the build sets as
- * VITE_KIVO_BUILD, as the client has no version of its own apart from the
- * server it's embedded in.
+ * The client's version, which its requests and error reports name. The
+ * packaged TV app has a release of its own; the web client is its server's,
+ * which ships it and writes its version into the page's kivo-version tag.
  */
-export const buildVersion: string = import.meta.env.DEV ? "dev" : import.meta.env.VITE_KIVO_BUILD;
+export const clientVersion: string = isPackaged
+  ? appVersion
+  : document.querySelector<HTMLMetaElement>('meta[name="kivo-version"]')?.content || "dev";
 
 /**
  * The identity headers, a header per field, leaving out what this browser
- * can't say. The packaged TV app is an app of its own, with its release's
- * version.
+ * can't say.
  */
 export function identityHeaders(userAgent = navigator.userAgent): Record<string, string> {
   const fields: [string, string | undefined][] = [
     ["Kivo-App", isPackaged ? "kivo-tizen" : "kivo-web"],
-    ["Kivo-App-Version", isPackaged ? appVersion : buildVersion],
+    ["Kivo-App-Version", clientVersion],
     ["Kivo-Platform", isPackaged ? "tizen" : "browser"],
     ["Kivo-OS-Version", osVersion(userAgent)],
     ["Kivo-Device-Model", deviceModel(userAgent)],
