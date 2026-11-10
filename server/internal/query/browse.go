@@ -1,12 +1,13 @@
 package query
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"fmt"
-	"maps"
 	"slices"
-	"strings"
+	"strconv"
+	"time"
 
 	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/id"
@@ -14,7 +15,7 @@ import (
 )
 
 // Sort orders a library grid. Its values are the API's. Each sort's order
-// is defined in gridSorts.
+// is that of its field in sortFields.
 type Sort string
 
 // Sorts, each in its default direction.
@@ -99,35 +100,19 @@ type BrowseOptions struct {
 	GridOptions
 }
 
-// Library grids use one statement per sort, all of the same shape. The page
-// CTE orders the grid's rows by the sort and cuts the page at its offset.
-// Summaries are then built for the page's rows alone. A sort with an index
-// on work_library reads the page in the index's order. An offset skips rows
-// in that same order, so it costs no more than the count.
+// sortFields is the field of a query each of the grid's sorts orders by,
+// in the field's default direction.
+var sortFields = map[Sort]string{
+	ByTitle: "title", ByAdded: "addedAt", ByRelease: "releaseDate", ByCommunityRating: "rating", ByMyRating: "myRating",
+	ByRuntime: "runtimeMs", ByLastPlayed: "lastPlayedAt", ByAuthor: "author", ByLastEpisodeAdded: "lastEpisodeAddedAt",
+}
 
-// grid selects a library grid's rows, over work_library wl and work w. The
-// rows are the library's top-level works that the Viewer sees and the
-// filters keep.
-var grid = `wl.library_id = @library AND wl.is_root
-  AND ` + visible + `
-  ` + filters
-
-// filters are a library grid's filters, each in the (@x IS NULL OR ...)
-// form, so a filter not asked for matches every row.
-var filters = `AND (@played IS NULL OR @played = CASE
-    WHEN w.kind = 'series' THEN ` + rollupPlayState("fe.root_id") + `
-    ELSE coalesce((SELECT CASE WHEN fu.played THEN 'played' WHEN fu.resumable THEN 'inProgress' END
-      FROM user_state fu WHERE fu.user_id = @user AND fu.work_id = w.id), 'unplayed') END)
-  AND (@genres IS NULL OR EXISTS (SELECT 1 FROM work_genre fg JOIN genre fgn ON fgn.id = fg.genre_id
-    WHERE fg.work_id = w.id AND fgn.name IN (SELECT value FROM json_each(@genres))))
-  AND (@year_from IS NULL OR w.year >= @year_from)
-  AND (@year_to IS NULL OR w.year <= @year_to)
-  AND (@content_ratings IS NULL OR w.content_rating IN (SELECT value FROM json_each(@content_ratings)))
-  AND (@resolutions = 0 OR wl.resolutions & @resolutions)
-  AND (@dynamic_ranges = 0 OR wl.dynamic_ranges & @dynamic_ranges)
-  AND (NOT @unmatched OR w.provisional)
-  AND (@narrator IS NULL OR EXISTS (SELECT 1 FROM credit fn
-    WHERE fn.work_id = w.id AND fn.role = 'narrator' AND fn.person_id = @narrator))`
+// gridKinds is the kind of a library's top-level works, which its grid
+// holds.
+var gridKinds = map[catalog.LibraryKind]catalog.WorkKind{
+	catalog.Movies: catalog.KindMovie, catalog.Shows: catalog.KindSeries,
+	catalog.Videos: catalog.KindVideo, catalog.Audiobooks: catalog.KindBook,
+}
 
 // rollupPlayState is a series' or season's play state from its episodes,
 // those with column pointing at w.
@@ -143,175 +128,105 @@ func rollupPlayState(column string) string {
       ELSE 'unplayed' END`
 }
 
-// gridSort is how a library grid orders one sort, using the sort's index on
-// work_library.
-//
-// key is the sort key, the page's k column. order orders the page's id, k
-// and t (the sort title), with ties broken by title and then ID. letters
-// counts the grid by letter for the letter rail.
-//
-// A per-user sort reads in two parts, each in its own order and cut at the
-// page's end, so a page near the top reads little of a large library. It
-// first reads the user's works that have a key, from the user's states:
-// from is that part's FROM clause, and mine holds its own conditions,
-// placed before the grid's. It then reads the works matching rest by
-// title, with no key.
-type gridSort struct {
-	key, order       string
-	from, mine, rest string
-	letters          bool
-}
-
-var gridSorts = map[Sort]gridSort{
-	ByTitle:   {key: "NULL", order: "t, id", letters: true},
-	ByAdded:   {key: "wl.added_at", order: "k DESC, t, id"},
-	ByRelease: {key: "wl.release_key", order: "k DESC, t, id"},
-	// rating_sort is the community rating weighted by its votes, as if 50
-	// more votes of 6.5 were cast (see work_browse_keys). So a work few
-	// people rated ranks below a well-rated work many people rated. Works
-	// with no rating follow, by title.
-	ByCommunityRating: {key: "wl.rating_sort", order: "k DESC, t, id"},
-	// Sorts by the running time of the work's first version. Works with no
-	// version, such as series, follow by title.
-	ByRuntime: {key: "wl.runtime_sort", order: "k, t, id"},
-	// Works with no author first.
-	ByAuthor: {key: "wl.creator_sort", order: "k, t, id"},
-	// Sorts by the newest added_at among the work and the descendants that
-	// make it available in the library. So a series sorts by its newest
-	// episode in the library.
-	ByLastEpisodeAdded: {key: "wl.last_added_at", order: "k DESC, t, id"},
-	ByMyRating: {
-		key: "us.rating", order: "k DESC, t, id",
-		from: `FROM user_state us -- the user's rated works, first: CROSS JOIN keeps the order
-    CROSS JOIN work_library wl ON wl.library_id = @library AND wl.work_id = us.work_id
-    JOIN work w ON w.id = wl.work_id`,
-		mine: "us.user_id = @user AND us.rating IS NOT NULL AND ",
-		rest: "NOT EXISTS (SELECT 1 FROM user_state ru WHERE ru.user_id = @user AND ru.work_id = w.id AND ru.rating IS NOT NULL)",
-	},
-	// A series sorts by its most recently played episode.
-	ByLastPlayed: {
-		key: "lp.at", order: "k DESC, t, id",
-		from: `FROM ( -- the user's played works, first: CROSS JOIN keeps the order
-      SELECT le.root_id AS root, max(lu.last_played_at) AS at
-      FROM user_state lu JOIN work le ON le.id = lu.work_id
-      WHERE lu.user_id = @user AND lu.last_played_at IS NOT NULL
-      GROUP BY le.root_id) lp
-    CROSS JOIN work_library wl ON wl.library_id = @library AND wl.work_id = lp.root
-    JOIN work w ON w.id = wl.work_id`,
-		// CROSS JOIN reads the work and its episodes before their states.
-		rest: `NOT EXISTS (SELECT 1 FROM work le CROSS JOIN user_state lu ON lu.user_id = @user AND lu.work_id = le.id
-        WHERE le.root_id = w.id AND lu.last_played_at IS NOT NULL)`,
-	},
-}
-
-// page returns the sort's page CTE: the IDs of the page's works, with their
-// k and t. In a per-user sort, the works with no key have a NULL key, which
-// sorts last when descending.
-func (g gridSort) page() string {
-	if g.from == "" {
-		return `SELECT wl.work_id AS id, ` + g.key + ` AS k, wl.sort_title AS t
-  FROM work_library wl
-  JOIN work w ON w.id = wl.work_id
-  WHERE ` + grid + `
-  ORDER BY ` + g.order + `
-  LIMIT @limit OFFSET @offset`
+// query is the grid's sort and filters as a query, without its kinds: the
+// rules every work must pass, and the sort's field as the one sort key. A
+// library's grid is that query read in the library alone.
+func (o BrowseOptions) query() (WorkQuery, error) {
+	f := o.Filter
+	if f.Played != "" && !slices.Contains([]PlayState{Unplayed, InProgress, Played}, f.Played) {
+		return WorkQuery{}, invalid("played", "invalid", fmt.Sprintf("played filter %q", f.Played))
 	}
-	return `SELECT id, k, t FROM (
-    SELECT wl.work_id AS id, ` + g.key + ` AS k, wl.sort_title AS t
-    ` + g.from + `
-    WHERE ` + g.mine + grid + `
-    ORDER BY ` + g.order + `
-    LIMIT @limit + @offset
-  ) keyed
-  UNION ALL
-  SELECT id, k, t FROM (
-    SELECT wl.work_id AS id, NULL AS k, wl.sort_title AS t
-    FROM work_library wl
-    JOIN work w ON w.id = wl.work_id
-    WHERE ` + g.rest + ` AND ` + grid + `
-    ORDER BY t, id
-    LIMIT @limit + @offset
-  ) rest
-  ORDER BY ` + g.order + `
-  LIMIT @limit OFFSET @offset`
+	for _, r := range f.Resolutions {
+		if _, ok := resolutionBits[r]; !ok {
+			return WorkQuery{}, invalid("resolution", "invalid", fmt.Sprintf("resolution %q", r))
+		}
+	}
+	for _, r := range f.Ranges {
+		if _, ok := rangeBits[r]; !ok {
+			return WorkQuery{}, invalid("hdr", "invalid", fmt.Sprintf("range %q", r))
+		}
+	}
+	if f.YearFrom != 0 && f.YearTo != 0 && f.YearTo < f.YearFrom {
+		return WorkQuery{}, invalid("yearTo", "outOfRange", fmt.Sprintf("years %d to %d", f.YearFrom, f.YearTo))
+	}
+	var rules []Rule
+	rule := func(field, op string, values ...string) {
+		if len(values) > 0 {
+			rules = append(rules, Rule{Field: field, Op: op, Values: values})
+		}
+	}
+	if f.Played != "" {
+		rule("playState", "anyOf", string(f.Played))
+	}
+	rule("genre", "anyOf", f.Genres...)
+	from, to := strconv.Itoa(f.YearFrom), strconv.Itoa(f.YearTo)
+	switch {
+	case f.YearFrom != 0 && f.YearTo != 0:
+		rule("year", "between", from, to)
+	case f.YearFrom != 0:
+		rule("year", "gte", from)
+	case f.YearTo != 0:
+		rule("year", "lte", to)
+	}
+	rule("contentRating", "anyOf", f.ContentRatings...)
+	rule("resolution", "anyOf", names(f.Resolutions)...)
+	rule("dynamicRange", "anyOf", names(f.Ranges)...)
+	if !f.Narrator.IsZero() {
+		rule("narrator", "anyOf", f.Narrator.String())
+	}
+	field, ok := sortFields[cmp.Or(o.Sort, ByTitle)]
+	if !ok {
+		return WorkQuery{}, invalid("sort", "invalid", fmt.Sprintf("sort %q", o.Sort))
+	}
+	q := WorkQuery{Sort: []SortKey{{Field: field}}}
+	if len(rules) > 0 {
+		q.Where = &RuleGroup{Match: "all", Rules: rules}
+	}
+	return q, nil
 }
 
-// browse is each sort's grid statement.
-var browse = func() map[Sort]statement {
-	out := map[Sort]statement{}
-	for _, sort := range slices.Sorted(maps.Keys(gridSorts)) {
-		g := gridSorts[sort]
-		out[sort] = stmt("Browse."+string(sort), `
-WITH page (id, k, t) AS (
-  `+g.page()+`
-)
-SELECT `+summaryColumns+`
-FROM page p
-JOIN work w ON w.id = p.id
-LEFT JOIN user_state us ON us.user_id = @user AND us.work_id = w.id
-ORDER BY p.`+strings.ReplaceAll(g.order, ", ", ", p."))
+// reading is how the grid of lib reads q, its query: in the library, the
+// unmatched works alone when the filter asks, and with the letters when it
+// is sorted by title.
+func (o BrowseOptions) reading(lib id.ID, q WorkQuery) reading {
+	return reading{library: lib, unmatched: o.Filter.Unmatched, letters: q.Sort[0].Field == sortFields[ByTitle]}
+}
+
+// names is a filter's values as a rule's.
+func names[V ~string](values []V) []string {
+	out := make([]string, len(values))
+	for i, v := range values {
+		out[i] = string(v)
 	}
 	return out
-}()
-
-var browseCount = stmt("BrowseCount", `
-SELECT count(*)
-FROM work_library wl
-JOIN work w ON w.id = wl.work_id
-WHERE `+grid)
-
-// browseLetters counts BrowseCount's rows by the first character of their
-// sort title, for the letter rail. The character is a code point, or 0 for
-// an empty title. The groups come in the grid's order, because UTF-8 sorts
-// by code point.
-var browseLetters = stmt("BrowseLetters", `
-SELECT coalesce(unicode(wl.sort_title), 0) AS initial, count(*) AS n
-FROM work_library wl
-JOIN work w ON w.id = wl.work_id
-WHERE `+grid+`
-GROUP BY 1
-ORDER BY 1`)
+}
 
 // Browse returns a page of a library's grid. The grid holds the library's
-// top-level works: movies, series, videos or books.
+// top-level works: movies, series, videos or books. It is the query of the
+// grid's sort and filters, read in the library. The first page, at offset
+// 0, has the Total, and the Letters when the grid is sorted by title; a
+// later page's Total is 0.
 func (s *Service) Browse(ctx context.Context, v users.Viewer, lib id.ID, o BrowseOptions) (GridPage[WorkSummary], error) {
-	filter, err := o.Filter.args()
+	q, err := o.query()
 	if err != nil {
 		return GridPage[WorkSummary]{}, err
-	}
-	if o.Sort == "" {
-		o.Sort = ByTitle
-	}
-	g, ok := gridSorts[o.Sort]
-	if !ok {
-		return GridPage[WorkSummary]{}, invalid("sort", "invalid", fmt.Sprintf("sort %q", o.Sort))
 	}
 	limit, err := o.limit()
 	if err != nil {
 		return GridPage[WorkSummary]{}, err
 	}
 	vw := viewerOf(v)
-	count := vw.args(append(filter, sql.Named("library", lib))...)
-	pageArgs := vw.args(append(filter, sql.Named("library", lib), sql.Named("offset", o.Offset), sql.Named("limit", limit))...)
-
+	rd := o.reading(lib, q)
 	var items []WorkSummary
 	var letters []Letter
 	total := 0
 	err = s.db.Read(ctx, func(tx *sql.Tx) error {
-		if err := library(ctx, tx, vw, lib); err != nil {
+		kind, err := libraryKind(ctx, tx, vw, lib)
+		if err != nil {
 			return notFound(err)
 		}
-		var err error
-		if g.letters {
-			// The letters' counts add up to the total.
-			letters, total, err = rail(ctx, tx, browseLetters, count, o.GridOptions)
-		} else {
-			err = rowOf(ctx, tx, browseCount, count, &total)
-		}
-		if err != nil {
-			return err
-		}
-		items, err = summaries(ctx, tx, browse[o.Sort], pageArgs)
+		q.Kinds = []catalog.WorkKind{gridKinds[kind]}
+		items, total, letters, err = readQuery(ctx, tx, vw, q, "", nil, rd, o.Offset, limit, time.Now())
 		return err
 	})
 	if err != nil {
@@ -334,46 +249,6 @@ func named[V ~string](bits map[V]int64) map[string]int64 {
 		out[string(v)] = bit
 	}
 	return out
-}
-
-// args returns the filter's statement arguments.
-func (f Filter) args() ([]any, error) {
-	if f.Played != "" && !slices.Contains([]PlayState{Unplayed, InProgress, Played}, f.Played) {
-		return nil, invalid("played", "invalid", fmt.Sprintf("played filter %q", f.Played))
-	}
-	var resolutions, dynamicRanges int64
-	for _, r := range f.Resolutions {
-		bit, ok := resolutionBits[r]
-		if !ok {
-			return nil, invalid("resolution", "invalid", fmt.Sprintf("resolution %q", r))
-		}
-		resolutions |= bit
-	}
-	for _, r := range f.Ranges {
-		bit, ok := rangeBits[r]
-		if !ok {
-			return nil, invalid("hdr", "invalid", fmt.Sprintf("range %q", r))
-		}
-		dynamicRanges |= bit
-	}
-	if f.YearFrom != 0 && f.YearTo != 0 && f.YearTo < f.YearFrom {
-		return nil, invalid("yearTo", "outOfRange", fmt.Sprintf("years %d to %d", f.YearFrom, f.YearTo))
-	}
-	var played any
-	if f.Played != "" {
-		played = string(f.Played)
-	}
-	return []any{
-		sql.Named("played", played),
-		sql.Named("genres", set(f.Genres)),
-		sql.Named("year_from", sql.Null[int]{V: f.YearFrom, Valid: f.YearFrom != 0}),
-		sql.Named("year_to", sql.Null[int]{V: f.YearTo, Valid: f.YearTo != 0}),
-		sql.Named("content_ratings", set(f.ContentRatings)),
-		sql.Named("resolutions", resolutions),
-		sql.Named("dynamic_ranges", dynamicRanges),
-		sql.Named("unmatched", f.Unmatched),
-		sql.Named("narrator", f.Narrator),
-	}, nil
 }
 
 // notHidden leaves out the episodes a multi-episode version covers after

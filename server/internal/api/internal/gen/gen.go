@@ -5484,9 +5484,8 @@ type WorkSummaryPage struct {
 	// Letters On the first page (offset 0) of the title sort. See `LetterStart`.
 	Letters *[]LetterStart `json:"letters,omitempty"`
 
-	// Total How many works the grid has. A list's works and a work query
-	// have it on the first page (offset 0) only; it is 0 on their
-	// later pages.
+	// Total How many works the grid has, on the first page (offset 0)
+	// only; it is 0 on a later page.
 	Total int `json:"total"`
 }
 

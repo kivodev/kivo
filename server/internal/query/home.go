@@ -418,7 +418,7 @@ func smartRow(ctx context.Context, tx *sql.Tx, vw viewer, r HomeRowInfo) ([]Work
 		return nil, nil
 	}
 	now := time.Now()
-	c, err := compilePage(ctx, tx, r.smart.Query, vw, now, listSeed(r.List.ID, now), nil)
+	c, err := compilePage(ctx, tx, r.smart.Query, vw, now, listSeed(r.List.ID, now), nil, reading{})
 	if err != nil {
 		return nil, err
 	}

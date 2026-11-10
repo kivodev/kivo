@@ -177,8 +177,8 @@ func firstWorks(ctx context.Context, tx *sql.Tx, vw viewer, l *List, now time.Ti
 	if len(l.Smart.Errors) > 0 {
 		return nil, nil
 	}
-	c := compile(l.Smart.Query, vw, now, listSeed(l.ID, now), nil, id.ID{})
-	works, total, err := countedSummaries(ctx, tx, statement{sql: c.counted}, append(c.args, sql.Named("limit", listCovers), sql.Named("offset", 0)))
+	c := compile(l.Smart.Query, vw, now, listSeed(l.ID, now), nil, reading{})
+	works, total, _, err := countedSummaries(ctx, tx, statement{sql: c.counted}, append(c.args, sql.Named("limit", listCovers), sql.Named("offset", 0)), false)
 	l.Works = total
 	return works, err
 }

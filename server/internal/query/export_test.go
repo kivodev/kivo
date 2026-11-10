@@ -3,12 +3,11 @@ package query
 import (
 	"context"
 	"database/sql"
-	"maps"
-	"slices"
 	"testing"
 	"time"
 
 	"github.com/mmcdole/kivo/internal/catalog"
+	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/users"
 )
 
@@ -29,16 +28,35 @@ func (s *Service) QueryWorksAt(ctx context.Context, v users.Viewer, q WorkQuery,
 	return s.queryWorksAt(ctx, v, q, o, now)
 }
 
-// Compiled returns the statements q compiles to as the Viewer, the first
-// page's with its count and a page's as a read of one compiles it, with
-// their arguments for the first page.
+// Compiled returns the statements q compiles to as the Viewer, as a read of
+// it compiles them: the first page's with its count, and a later page's,
+// with their arguments for the first page.
 func (s *Service) Compiled(t *testing.T, q WorkQuery, v users.Viewer, now time.Time, only []catalog.WorkKind) (counted, page string, args []any) {
 	t.Helper()
-	c, err := compilePage(context.Background(), s.db.Reader(), q, viewerOf(v), now, seedOf(q, now), only)
+	vw, seed := viewerOf(v), seedOf(q, now)
+	c, err := compilePage(context.Background(), s.db.Reader(), q, vw, now, seed, only, reading{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	return c.counted, c.page, append(c.args, sql.Named("limit", 50), sql.Named("offset", 0))
+	return compile(q, vw, now, seed, only, reading{}).counted, c.page, append(c.args, sql.Named("limit", 50), sql.Named("offset", 0))
+}
+
+// CompiledGrid returns the statements a library's grid compiles to as the
+// Viewer, as Browse compiles them, with their arguments for the first page.
+func (s *Service) CompiledGrid(t *testing.T, v users.Viewer, lib id.ID, o BrowseOptions) (counted, page string, args []any) {
+	t.Helper()
+	q, err := o.query()
+	if err != nil {
+		t.Fatal(err)
+	}
+	vw := viewerOf(v)
+	kind, err := libraryKind(context.Background(), s.db.Reader(), vw, lib)
+	if err != nil {
+		t.Fatal(err)
+	}
+	q.Kinds = []catalog.WorkKind{gridKinds[kind]}
+	c := compile(q, vw, time.Now(), "", nil, o.reading(lib, q))
+	return c.counted, c.page, append(c.args, sql.Named("limit", 60), sql.Named("offset", 0))
 }
 
 // Bits returns the bit each resolution and each range has in work_library.
@@ -60,8 +78,9 @@ func IndexedSorts() map[string]WorkField {
 // or "" when none does.
 func SortIndex(column string) string { return sortIndexes[column] }
 
-// GridSorts returns the sorts a library grid takes.
-func GridSorts() []Sort { return slices.Collect(maps.Keys(gridSorts)) }
+// GridSorts returns the sorts a library grid takes, each with the field of
+// a query it orders by.
+func GridSorts() map[Sort]string { return sortFields }
 
 // Observe calls fn with the SQL of each statement the package runs, until
 // the test ends.

@@ -82,7 +82,7 @@ GET /api/v1/libraries/<id1>/works?offset=1&yearFrom=1990&yearTo=2030
 200
 {
   "items": [],
-  "total": 1
+  "total": 0
 }
 
 

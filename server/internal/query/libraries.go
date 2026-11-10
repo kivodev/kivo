@@ -62,8 +62,8 @@ ORDER BY l.created_at, l.id`)
 
 func scanLibrary(r scanner, l *Library) error { return r.Scan(&l.ID, &l.Name, &l.Kind, &l.Pinned) }
 
-// libraryCounts reads each library's grid count, as BrowseCount gives it
-// with no filter, and how many of those works are unmatched. It reads each
+// libraryCounts reads how many works each library's grid has with no
+// filter, and how many of those works are unmatched. It reads each
 // library's works in one pass.
 var libraryCounts = stmt("LibraryCounts", `
 SELECT l.id, count(w.id) AS items, coalesce(sum(w.provisional), 0) AS unmatched
@@ -94,7 +94,7 @@ WHERE l.deleting_at IS NULL
 ORDER BY f.library_id, f.path`)
 
 var libraryOne = stmt("Library", `
-SELECT l.id
+SELECT l.kind
 FROM library l
 WHERE l.id = @library AND l.deleting_at IS NULL
   AND `+libraryVisible)
@@ -102,8 +102,15 @@ WHERE l.id = @library AND l.deleting_at IS NULL
 // library checks that the Viewer sees lib. If the Viewer doesn't, it
 // returns sql.ErrNoRows.
 func library(ctx context.Context, q querier, vw viewer, lib id.ID) error {
-	var got id.ID
-	return rowOf(ctx, q, libraryOne, vw.args(sql.Named("library", lib)), &got)
+	_, err := libraryKind(ctx, q, vw, lib)
+	return err
+}
+
+// libraryKind is the kind of lib, a library the Viewer sees. If the Viewer
+// doesn't, it returns sql.ErrNoRows.
+func libraryKind(ctx context.Context, q querier, vw viewer, lib id.ID) (kind catalog.LibraryKind, err error) {
+	err = rowOf(ctx, q, libraryOne, vw.args(sql.Named("library", lib)), &kind)
+	return kind, err
 }
 
 // Libraries returns the libraries the Viewer may see, in the user's own

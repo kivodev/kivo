@@ -32,8 +32,9 @@ func (o GridOptions) limit() (int, error) {
 // GridPage is a page of a grid.
 type GridPage[T any] struct {
 	Items []T
-	// Total is the grid's size. A list's works and a query's works have it
-	// on the first page (offset 0) only, and 0 on a later page.
+	// Total is the grid's size. A library's works, a list's works and a
+	// query's works have it on the first page (offset 0) only, and 0 on a
+	// later page.
 	Total int
 	// Letters is where each letter starts. It is set on the first page
 	// (offset 0) of a grid sorted by title or by name, and is nil otherwise.
@@ -68,9 +69,10 @@ type Letter struct {
 	Offset int
 }
 
-// letterCount is a row of BrowseLetters, CollectionLetters, AuthorLetters
-// or BookSeriesLetters. It counts how many of a list's rows start with one
-// character, given as a code point, or 0 for an empty name.
+// letterCount is a row of CollectionLetters, AuthorLetters or
+// BookSeriesLetters, or of a query's letters. It counts how many of a
+// list's rows start with one character, given as a code point, or 0 for an
+// empty name.
 type letterCount struct {
 	Initial int64
 	N       int64

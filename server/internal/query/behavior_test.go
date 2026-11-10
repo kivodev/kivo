@@ -105,7 +105,8 @@ func TestProvisionalWorks(t *testing.T) {
 
 // TestBrowsePaging reads every sort two items at a time by offset. It
 // checks that the pages join up into the first page of the whole listing,
-// with no repeats, and that each page has the total.
+// with no repeats, and that the first page has the total and a later one
+// none.
 func TestBrowsePaging(t *testing.T) {
 	h := newHousehold(t)
 	h.watch()
@@ -137,8 +138,12 @@ func TestBrowsePaging(t *testing.T) {
 				if want := ids(all.Items[offset:min(offset+2, len(all.Items))]); !slices.Equal(ids(p.Items), want) {
 					t.Errorf("offset %d: %v, want %v", offset, ids(p.Items), want)
 				}
-				if p.Total != all.Total {
-					t.Errorf("offset %d: total %d, want %d", offset, p.Total, all.Total)
+				want := 0
+				if offset == 0 {
+					want = all.Total
+				}
+				if p.Total != want {
+					t.Errorf("offset %d: total %d, want %d", offset, p.Total, want)
 				}
 			}
 		})
@@ -1158,5 +1163,47 @@ func TestWatchHistory(t *testing.T) {
 	}
 	if _, err := h.q.History(ctx, h.friend, "bogus", 0); !errors.Is(err, query.ErrInvalid) {
 		t.Fatalf("a bad cursor: %v", err)
+	}
+}
+
+// TestLastPlayedIsAWorksOwn checks whose plays a work's last play is: a
+// film's are its own, so playing one of its extras neither moves it up the
+// grid by last played nor sets the date for a rule, and a series' are its
+// episodes'.
+func TestLastPlayedIsAWorksOwn(t *testing.T) {
+	h := newHousehold(t)
+	h.watch()
+	trailer := h.b.Work(catalog.WorkInput{Kind: catalog.KindExtra, Parent: h.toyStory.Work, Title: "Trailer", ExtraType: "trailer"})
+	h.b.Write(func(ctx context.Context, tx *store.Tx) error {
+		_, err := tx.ExecContext(ctx, `INSERT INTO user_state (user_id, work_id, played, play_count, last_played_at, updated_at) VALUES (?, ?, 1, 1, ?, ?)`,
+			h.admin.User(), trailer, time.Now().Add(time.Hour).UnixMilli(), time.Now().UnixMilli())
+		return err
+	})
+	played := where(query.Rule{Field: "lastPlayedAt", Op: "isSet"})
+	for _, tt := range []struct {
+		name  string
+		lib   id.ID
+		kind  catalog.WorkKind
+		first []id.ID // the played works, most recent first
+	}{
+		{"movies", h.movies, catalog.KindMovie, []id.ID{h.dune.Work}},
+		{"shows", h.shows, catalog.KindSeries, []id.ID{h.bluey, h.expanse}},
+	} {
+		p, err := h.q.Browse(ctx, h.admin, tt.lib, query.BrowseOptions{Sort: query.ByLastPlayed})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := ids(p.Items); len(got) <= len(tt.first) || !slices.Equal(got[:len(tt.first)], tt.first) {
+			t.Errorf("the %s by last played start %v, want %v", tt.name, got, tt.first)
+		}
+		// The rest follow by title.
+		rest := p.Items[len(tt.first):]
+		if !slices.IsSortedFunc(rest, func(a, b query.WorkSummary) int { return cmp.Compare(a.SortTitle, b.SortTitle) }) {
+			t.Errorf("the %s never played aren't by title: %v", tt.name, ids(rest))
+		}
+		q := query.WorkQuery{Kinds: []catalog.WorkKind{tt.kind}, Where: played, Sort: []query.SortKey{{Field: "lastPlayedAt"}}}
+		if got := ids(h.runQuery(h.admin, q).Items); !slices.Equal(got, tt.first) {
+			t.Errorf("the %s with a last play are %v, want %v", tt.name, got, tt.first)
+		}
 	}
 }

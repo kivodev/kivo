@@ -138,6 +138,7 @@ type differentialVariant struct {
 // TestCompileMatchesOld compares.
 type differential struct {
 	db      *store.DB
+	libs    map[string]id.ID // the libraries, by name
 	viewers []struct {
 		name string
 		v    users.Viewer
@@ -349,7 +350,7 @@ func newDifferential(t *testing.T, db *store.DB) *differential {
 		t.Fatal(err)
 	}
 
-	d := &differential{db: db}
+	d := &differential{db: db, libs: libs}
 	svc := users.New(db, events.NewBus())
 	sorted := func(names ...string) []id.ID {
 		out := make([]id.ID, len(names))

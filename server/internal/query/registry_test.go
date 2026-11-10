@@ -139,18 +139,22 @@ func TestSortIndexes(t *testing.T) {
 }
 
 // TestGridSortsAreQueryFields checks that a library grid's sorts and a
-// query's sortable fields are one vocabulary: each grid sort is the
+// query's sortable fields are one vocabulary: each grid sort orders by the
 // sortable field of its name, but for the one sort whose field has another.
 func TestGridSortsAreQueryFields(t *testing.T) {
 	renamed := map[query.Sort]string{query.ByRuntime: "runtimeMs"}
 	fields := query.WorkFields()
-	for _, sort := range query.GridSorts() {
+	sorts := query.GridSorts()
+	if len(sorts) != 9 {
+		t.Errorf("the grid has %d sorts, want 9", len(sorts))
+	}
+	for sort, field := range sorts {
 		name := string(sort)
-		if field, ok := renamed[sort]; ok {
-			name = field
+		if other, ok := renamed[sort]; ok {
+			name = other
 		}
-		if !slices.ContainsFunc(fields, func(f query.WorkField) bool { return f.Field == name && f.Sortable }) {
-			t.Errorf("the grid sorts by %s, and no query field %s sorts", sort, name)
+		if field != name || !slices.ContainsFunc(fields, func(f query.WorkField) bool { return f.Field == field && f.Sortable }) {
+			t.Errorf("the grid's sort %s orders by %s, want the sortable field %s", sort, field, name)
 		}
 	}
 }

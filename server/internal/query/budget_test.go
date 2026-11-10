@@ -32,9 +32,10 @@ const (
 // TestBudgets times each read against 50k generated works (40,000 movies and
 // 400 series of 24 episodes). Meanwhile another goroutine writes batches of
 // 500 files, shaped like a scan's. The test fails when a read's p95 is over
-// its budget. It then times the smart lists there and on a household's
-// server, and fails when a held list's median is over its budget: a p95
-// taken beside the writer says more of the machine than of the read.
+// its budget. It then times the smart lists there, and the smart lists and
+// the grids on a household's server, and fails when a held one's median is
+// over its budget: a p95 taken beside the writer says more of the machine
+// than of the read.
 //
 // It runs only when KIVO_BUDGET=1, which make budget sets, and runs alone
 // without the race detector. Timings taken beside other packages' tests
@@ -51,33 +52,9 @@ func TestBudgets(t *testing.T) {
 
 	stop := scanWriter(t, db, moviesFolder)
 
-	deep := query.GridOptions{Offset: 20000} // halfway through the movies
-	tests := []budgetCase{
-		{"browse movies by title", browseBudget, true, browse(q, v, movies, query.BrowseOptions{})},
-		{"browse movies by added", browseBudget, true, browse(q, v, movies, query.BrowseOptions{Sort: query.ByAdded})},
-		{"browse shows by title", browseBudget, true, browse(q, v, shows, query.BrowseOptions{})},
-		{"browse movies by release", browseBudget, true, browse(q, v, movies, query.BrowseOptions{Sort: query.ByRelease})},
-		{"browse movies by rating", browseBudget, true, browse(q, v, movies, query.BrowseOptions{Sort: query.ByCommunityRating})},
-		{"browse shows by rating", browseBudget, true, browse(q, v, shows, query.BrowseOptions{Sort: query.ByCommunityRating})},
-		{"browse movies by my rating", browseBudget, true, browse(q, v, movies, query.BrowseOptions{Sort: query.ByMyRating})},
-		{"browse movies by runtime", browseBudget, true, browse(q, v, movies, query.BrowseOptions{Sort: query.ByRuntime})},
-		{"browse movies by last played", browseBudget, true, browse(q, v, movies, query.BrowseOptions{Sort: query.ByLastPlayed})},
-		{"browse shows by last episode added", browseBudget, true, browse(q, v, shows, query.BrowseOptions{Sort: query.ByLastEpisodeAdded})},
-		// A page reads every row its offset skips, and counts the grid for
-		// its total. So a deep page's time is logged rather than held to a
-		// budget.
-		{"browse movies by title, deep", browseBudget, false, browse(q, v, movies, query.BrowseOptions{GridOptions: deep})},
-		{"browse movies by rating, deep", browseBudget, false, browse(q, v, movies, query.BrowseOptions{Sort: query.ByCommunityRating, GridOptions: deep})},
-		{"browse movies by my rating, deep", browseBudget, false, browse(q, v, movies, query.BrowseOptions{Sort: query.ByMyRating, GridOptions: deep})},
-		{"browse movies by last played, deep", browseBudget, false, browse(q, v, movies, query.BrowseOptions{Sort: query.ByLastPlayed, GridOptions: deep})},
-		// Filters on per-user state and genres are checked on every work to
-		// count the matches. So this read's time is logged rather than held
-		// to a budget.
-		{"browse movies, genre and unplayed", browseBudget, false, browse(q, v, movies, query.BrowseOptions{Filter: query.Filter{Genres: []string{"Drama"}, Played: query.Unplayed}})},
-		{"browse movies, 4K", browseBudget, true, browse(q, v, movies, query.BrowseOptions{Filter: query.Filter{Resolutions: []query.Resolution{query.Resolution4K}}})},
-		{"browse movies, HDR", browseBudget, true, browse(q, v, movies, query.BrowseOptions{Filter: query.Filter{Ranges: []query.Range{query.HDR}}})},
-		{"home", homeBudget, true, func() error { _, _, err := q.Home(ctx, v); return err }},
-		{"my list", browseBudget, true, func() error {
+	tests := append(gridCases(q, v, movies, shows, 20000, true), // deep is halfway through the movies
+		budgetCase{"home", homeBudget, true, func() error { _, _, err := q.Home(ctx, v); return err }},
+		budgetCase{"my list", browseBudget, true, func() error {
 			lists, err := q.Lists(ctx, v)
 			if err != nil {
 				return err
@@ -85,13 +62,13 @@ func TestBudgets(t *testing.T) {
 			_, err = q.ListWorks(ctx, v, lists[0].ID, nil, query.GridOptions{})
 			return err
 		}},
-		{"search", searchBudget, true, func() error { _, err := q.Search(ctx, v, "movie 123", 0); return err }},
-		{"search, a person", searchBudget, true, func() error { _, err := q.Search(ctx, v, "mary actor 123", 0); return err }},
+		budgetCase{"search", searchBudget, true, func() error { _, err := q.Search(ctx, v, "movie 123", 0); return err }},
+		budgetCase{"search, a person", searchBudget, true, func() error { _, err := q.Search(ctx, v, "mary actor 123", 0); return err }},
 		// Every movie and every person has "the" and a word starting with
 		// "m", so this query has the most matches a query can have.
-		{"search, a word in every title", searchBudget, true, func() error { _, err := q.Search(ctx, v, "the", 0); return err }},
-		{"search, one letter", searchBudget, true, func() error { _, err := q.Search(ctx, v, "m", 0); return err }},
-	}
+		budgetCase{"search, a word in every title", searchBudget, true, func() error { _, err := q.Search(ctx, v, "the", 0); return err }},
+		budgetCase{"search, one letter", searchBudget, true, func() error { _, err := q.Search(ctx, v, "m", 0); return err }},
+	)
 	timeBudgets(t, tests, false)
 	// A smart list's first page reads every work of its kinds in the
 	// Viewer's libraries, and so does a later page that no index holds in
@@ -114,6 +91,54 @@ func TestBudgets(t *testing.T) {
 	t.Log("a household's server: 5,000 movies and 1,500 series of 105,000 episodes, in four libraries, two of them granted")
 	timeBudgets(t, smartCases(q, sv, smart, "movies, title and rating, by title", "movies, one actor, by added",
 		"movies, unplayed, by last played", "series, by last episode added", "episodes, aired this year", "movies, capped at 100", smartHome), true)
+	// Its grids, as that user: 4,000 movies and 1,200 series.
+	timeBudgets(t, gridCases(q, sv, movies, shows, 2000, false), true)
+}
+
+// gridCases are the reads of a movies and a shows library's grids: each
+// sort's first page, which counts the grid, and a page a few screens down,
+// which doesn't; the movies at deep, by an order of each kind; and the
+// filtered grids. A page reads every row its offset skips, so the deep
+// pages are timed only. So are the filters on per-user state and genres
+// beside a writer, which are checked on every work to count the matches,
+// and the shows in progress, which roll up every series' episodes to count
+// them and again to fill the page.
+func gridCases(q *query.Service, v users.Viewer, movies, shows id.ID, deep int, writing bool) []budgetCase {
+	var tests []budgetCase
+	add := func(name string, enforce bool, lib id.ID, o query.BrowseOptions) {
+		tests = append(tests, budgetCase{name, browseBudget, enforce, browse(q, v, lib, o)})
+	}
+	sorts := []struct {
+		name  string
+		sort  query.Sort
+		shows bool
+	}{{"title", query.ByTitle, true}, {"added", query.ByAdded, false}, {"release", query.ByRelease, false},
+		{"rating", query.ByCommunityRating, true}, {"my rating", query.ByMyRating, true}, {"runtime", query.ByRuntime, false},
+		{"last played", query.ByLastPlayed, true}, {"last episode added", query.ByLastEpisodeAdded, true}}
+	later := query.GridOptions{Offset: 600}
+	for _, s := range sorts {
+		if s.sort != query.ByLastEpisodeAdded {
+			add("browse movies by "+s.name, true, movies, query.BrowseOptions{Sort: s.sort})
+			add("browse movies by "+s.name+", later page", true, movies, query.BrowseOptions{Sort: s.sort, GridOptions: later})
+		}
+		if s.shows {
+			add("browse shows by "+s.name, true, shows, query.BrowseOptions{Sort: s.sort})
+			add("browse shows by "+s.name+", later page", true, shows, query.BrowseOptions{Sort: s.sort, GridOptions: later})
+		}
+	}
+	for _, s := range []int{0, 3, 4, 6} {
+		add("browse movies by "+sorts[s].name+", deep", false, movies, query.BrowseOptions{Sort: sorts[s].sort, GridOptions: query.GridOptions{Offset: deep}})
+	}
+	unplayedDrama := query.Filter{Genres: []string{"Drama"}, Played: query.Unplayed}
+	uhd := query.Filter{Resolutions: []query.Resolution{query.Resolution4K}}
+	add("browse movies, genre and unplayed", !writing, movies, query.BrowseOptions{Filter: unplayedDrama})
+	add("browse movies, genre and unplayed, later page", !writing, movies, query.BrowseOptions{Filter: unplayedDrama, GridOptions: later})
+	add("browse movies, 4K", true, movies, query.BrowseOptions{Filter: uhd})
+	add("browse movies, 4K, by added, later page", true, movies, query.BrowseOptions{Sort: query.ByAdded, Filter: uhd, GridOptions: later})
+	add("browse movies, HDR", true, movies, query.BrowseOptions{Filter: query.Filter{Ranges: []query.Range{query.HDR}}})
+	add("browse movies, 1990s, by rating", true, movies, query.BrowseOptions{Sort: query.ByCommunityRating, Filter: query.Filter{YearFrom: 1990, YearTo: 1999}})
+	add("browse shows, in progress", false, shows, query.BrowseOptions{Filter: query.Filter{Played: query.InProgress}})
+	return tests
 }
 
 // smartHome is the read of a Home that shows five smart lists.

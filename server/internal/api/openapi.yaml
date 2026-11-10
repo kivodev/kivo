@@ -44,9 +44,9 @@ info:
        (`WorkSummaryPage`, `WorkSummaryFeed`, `WorkSummaryList`). Each kind of list has one
        paging style. A grid (a library's works, collections, authors and
        book series, and a list's works) is paged by position: `offset` items
-       from the start, with `total` on every page; a list's works and a
-       work query have `total` on the first page (offset 0) only, and 0
-       after it. A feed (the Unmatched
+       from the start, with `total` on every page; a library's works, a
+       list's works and a work query have `total` on the first page
+       (offset 0) only, and 0 after it. A feed (the Unmatched
        and Missing files lists, activity, history, play events and the
        logs) is read in order: `next` is an opaque keyset cursor, passed back as `after`,
        and `total`, where a feed has one, is set on its first page only.
@@ -1307,9 +1307,9 @@ paths:
         lists movies, with versions never shown separately; a shows library lists series; a
         videos library lists videos; an audiobooks library lists books.
 
-        A grid, paged by `offset`, with `total` on every page; works with
-        the same sort key are listed by title. The first page (offset 0) of
-        the title sort also has `letters`.
+        A grid, paged by `offset`, with `total` on the first page (offset 0)
+        only and 0 on later pages; works with the same sort key are listed
+        by title. The first page of the title sort also has `letters`.
       tags: [libraries]
       x-kivo-access: viewer
       parameters:
@@ -5881,9 +5881,8 @@ components:
         total:
           type: integer
           description: |
-            How many works the grid has. A list's works and a work query
-            have it on the first page (offset 0) only; it is 0 on their
-            later pages.
+            How many works the grid has, on the first page (offset 0)
+            only; it is 0 on a later page.
         letters:
           type: array
           description: On the first page (offset 0) of the title sort. See `LetterStart`.

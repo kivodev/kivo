@@ -446,10 +446,10 @@ func TestBrowseAndDetail(t *testing.T) {
 	if *page.Total != 2 || len(page.Items) != 2 || len(page.Letters) == 0 || page.Letters[0].Offset != 0 {
 		t.Fatalf("browse %+v", page)
 	}
-	// A page at an offset starts the grid from there. It has the total but
-	// not the letter rail, which only the first page has.
+	// A page at an offset starts the grid from there. It has neither the
+	// total nor the letter rail, which only the first page has.
 	at := decode[list](t, e.do("GET", grid+"?offset=1&limit=1", e.adminToken, nil))
-	if len(at.Items) != 1 || at.Items[0]["id"] != page.Items[1]["id"] || at.Total == nil || *at.Total != 2 || at.Letters != nil || at.Next != "" {
+	if len(at.Items) != 1 || at.Items[0]["id"] != page.Items[1]["id"] || at.Total == nil || *at.Total != 0 || at.Letters != nil || at.Next != "" {
 		t.Errorf("offset 1: %+v", at)
 	}
 	if second := page.Letters[1]; second.Offset != 1 {

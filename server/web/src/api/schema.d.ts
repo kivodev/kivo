@@ -833,9 +833,9 @@ export interface paths {
          *     lists movies, with versions never shown separately; a shows library lists series; a
          *     videos library lists videos; an audiobooks library lists books.
          *
-         *     A grid, paged by `offset`, with `total` on every page; works with
-         *     the same sort key are listed by title. The first page (offset 0) of
-         *     the title sort also has `letters`.
+         *     A grid, paged by `offset`, with `total` on the first page (offset 0)
+         *     only and 0 on later pages; works with the same sort key are listed
+         *     by title. The first page of the title sort also has `letters`.
          */
         get: operations["listLibraryWorks"];
         put?: never;
@@ -4157,9 +4157,8 @@ export interface components {
         WorkSummaryPage: {
             items: components["schemas"]["WorkSummary"][];
             /**
-             * @description How many works the grid has. A list's works and a work query
-             *     have it on the first page (offset 0) only; it is 0 on their
-             *     later pages.
+             * @description How many works the grid has, on the first page (offset 0)
+             *     only; it is 0 on a later page.
              */
             total: number;
             /** @description On the first page (offset 0) of the title sort. See `LetterStart`. */

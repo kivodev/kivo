@@ -1,6 +1,7 @@
 package query
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -220,11 +221,23 @@ func (f *fieldDef) validValue(op, value string) bool {
 // compiled is a query's statements and their bound parameters; both also
 // take @limit and @offset. page reads a page of the query's works. counted
 // reads the same page with, after each work's summary columns, how many
-// works the query selects: a page with no works has no row to carry the
-// count, so it is for the first page, where no works means none selected.
+// works the query selects, and then for a read that asks for letters how
+// many start with each character: a page with no works has no row to carry
+// them, so it is for the first page, where no works means none selected.
 type compiled struct {
 	counted, page string
 	args          []any
+}
+
+// reading is what a read asks of a query beyond the query itself: where to
+// look for its works, and what to say of them besides.
+type reading struct {
+	// library is the one library to read, which the Viewer must be granted
+	// like any other, or zero for every library that holds the query's
+	// kinds.
+	library   id.ID
+	unmatched bool // only the works not yet matched
+	letters   bool // counted also counts the works by first character
 }
 
 // libraryOf is the kind of library that holds each kind of work a query
@@ -277,31 +290,48 @@ func scope(kinds []catalog.WorkKind) (works, libraries string, nested bool) {
 // choose, SQLite with statistics scans work for its kinds, or reads wl
 // through an index that has to look every row up again.
 //
-// With walk, a column in sortIndexes, it reads the root rows of the one
-// library @library through the column's index instead, so in its order.
-func (c *compiler) matching(kinds []catalog.WorkKind, walk string) string {
+// A read of one library reads @library's rows alone, and from says where
+// it starts. With a column in sortIndexes, it reads the library's root rows
+// through the column's index, so in its order. With "us" or "pl", it
+// starts from the user's states or from played, and looks up the row of
+// each one's work, so it reads only the works with one.
+func (c *compiler) matching(kinds []catalog.WorkKind, rd reading, from string) string {
 	works, libraries, nested := scope(kinds)
 	rows, joins, age := "\n  AND wl.is_root", "", "w.content_rating_age"
 	if nested {
 		rows, joins = "", "\nCROSS JOIN work r ON r.id = w.root_id"
 		age = "coalesce(w.content_rating_age, r.content_rating_age)"
 	}
-	if c.state {
+	if c.state && from != "us" {
 		joins += "\nLEFT JOIN user_state us ON us.user_id = @user AND us.work_id = w.id"
 	}
-	if c.played {
+	if c.played && from != "pl" {
 		joins += "\nLEFT JOIN played pl ON pl.work = w.id"
 	}
-	index := "sqlite_autoindex_work_library_1"
 	in := "wl.library_id IN (SELECT gl.id FROM library gl WHERE gl.kind IN (" + libraries + ") AND " + catalog.Granted("gl.id") + ")"
-	if walk != "" {
-		index, in = sortIndexes[walk], "wl.library_id = @library"
+	if !rd.library.IsZero() {
+		in = "wl.library_id = @library"
+	}
+	const byKey = "work_library wl INDEXED BY sqlite_autoindex_work_library_1"
+	first := "FROM " + byKey
+	switch from {
+	case "":
+	case "us":
+		first, in = "FROM user_state us\nCROSS JOIN "+byKey+" ON wl.work_id = us.work_id", in+"\n  AND us.user_id = @user"
+	case "pl":
+		first = "FROM played pl\nCROSS JOIN " + byKey + " ON wl.work_id = pl.work"
+	default:
+		first = "FROM work_library wl INDEXED BY " + sortIndexes[from]
+	}
+	unmatched := ""
+	if rd.unmatched {
+		unmatched = "\n  AND w.provisional"
 	}
 	return `
-FROM work_library wl INDEXED BY ` + index + `
+` + first + `
 CROSS JOIN work w ON w.id = wl.work_id` + joins + `
 WHERE ` + in + rows + `
-  AND w.kind IN (` + works + `)
+  AND w.kind IN (` + works + `)` + unmatched + `
   AND ( -- viewer-filter: wl
     ` + catalog.Granted("wl.library_id") + `
     AND ` + catalog.RatingVisible(age) + `)`
@@ -317,11 +347,13 @@ func narrowed(q WorkQuery, only []catalog.WorkKind) []catalog.WorkKind {
 	return slices.DeleteFunc(slices.Clone(q.Kinds), func(k catalog.WorkKind) bool { return !slices.Contains(only, k) })
 }
 
-// walked is the field whose index holds a query's works of kinds in the
-// query's order, when they are in one library: root works alone, ordered
-// by one key in its field's default direction, which is its index's. It is
-// nil for any other query.
-func walked(q WorkQuery, kinds []catalog.WorkKind) *fieldDef {
+// ordered is the field a query's works of kinds are ordered by, when a
+// page of one library's can be read in that order without reading them
+// all: root works alone, ordered by one key in its field's default
+// direction, of a field with an index of that order (see sortIndexes) or
+// one the user's own state gives (see mine). It is nil for any other
+// query.
+func ordered(q WorkQuery, kinds []catalog.WorkKind) *fieldDef {
 	if _, _, nested := scope(kinds); nested || len(q.Sort) > 1 {
 		return nil
 	}
@@ -330,10 +362,26 @@ func walked(q WorkQuery, kinds []catalog.WorkKind) *fieldDef {
 		key = q.Sort[0]
 	}
 	f := fieldsByKey[key.Field]
-	if f == nil || f.indexed == "" || key.Direction != "" && key.Direction != f.DefaultDirection {
+	if f == nil || f.indexed == "" && !f.state || key.Direction != "" && key.Direction != f.DefaultDirection {
 		return nil
 	}
 	return f
+}
+
+// mine is where the works of kinds with a sort key of f's are, when the
+// user's own rows give the key: the user's states us, or played pl for
+// series, whose key is rolled up there. It is "" when no one table has
+// them.
+func (c *compiler) mine(f *fieldDef, kinds []catalog.WorkKind) string {
+	switch {
+	case !f.state:
+		return ""
+	case !f.rolled || !c.rolls:
+		return "us"
+	case slices.Equal(kinds, []catalog.WorkKind{catalog.KindSeries}):
+		return "pl"
+	}
+	return ""
 }
 
 // compile turns a valid query into SQL. It is the only way a WorkQuery
@@ -347,12 +395,14 @@ func walked(q WorkQuery, kinds []catalog.WorkKind) *fieldDef {
 // when a rule or the order reads it. It cuts the page from those, and
 // builds summaries for the page's works alone.
 //
-// library is the one library that holds the query's works, or zero when
-// several do, none does, or the caller didn't look. With it, and an index
-// that holds the query's order (see walked), page reads the library's
-// works in the index's order and stops at the page's end. Any other
-// statement reads every work the query selects and sorts them.
-func compile(q WorkQuery, vw viewer, now time.Time, seed string, only []catalog.WorkKind, library id.ID) compiled {
+// A statement reads every work the query selects and sorts them, but for a
+// read of one library in an order a page can be read in (see ordered).
+// There it reads no further than the page's end: through the order's
+// index, or for an order of the user's own, first the works that have a
+// key, from the user's rows, and then the rest by title. Its counted
+// statement counts the works in a pass of its own, unless the query has a
+// cap.
+func compile(q WorkQuery, vw viewer, now time.Time, seed string, only []catalog.WorkKind, rd reading) compiled {
 	kinds := narrowed(q, only)
 	_, _, nested := scope(kinds)
 	c := &compiler{now: now, seed: seed, nested: nested,
@@ -361,6 +411,7 @@ func compile(q WorkQuery, vw viewer, now time.Time, seed string, only []catalog.
 	if q.Where != nil {
 		where = "\n  AND " + c.group(*q.Where)
 	}
+	rules := *c // reads what the rules read, and not what only the order does
 	columns, by := c.order(q)
 	limit := ""
 	if q.MaxWorks != nil {
@@ -370,32 +421,72 @@ func compile(q WorkQuery, vw viewer, now time.Time, seed string, only []catalog.
 	if c.played {
 		with += played + ",\n"
 	}
-	read := func(walk, columns, by, materialized, total string) string {
-		matched := "SELECT wl.work_id AS id, w.kind AS kind, " + columns + c.matching(kinds, walk) + where
-		if limit != "" {
-			matched += "\nORDER BY " + by + limit
-			if len(only) > 0 {
-				matched = "SELECT * FROM (\n" + matched + "\n) WHERE kind IN (SELECT value FROM json_each(@only))"
-			}
+	// selected selects the works with columns, reading work_library as
+	// matching does from, and keeping those that also pass and.
+	selected := func(from, columns, and string) string {
+		return "SELECT wl.work_id AS id, w.kind AS kind, " + columns + c.matching(kinds, rd, from) + where + and
+	}
+	// capped cuts selected works in the order by at the query's cap.
+	capped := func(works, by string) string {
+		if limit == "" {
+			return works
 		}
-		return with + "matched AS " + materialized + "(\n" + matched + `
-),
-page AS (SELECT * FROM matched ORDER BY ` + by + ` LIMIT @limit OFFSET @offset)
-SELECT ` + summaryColumns + total + `
+		works += "\nORDER BY " + by + limit
+		if len(only) > 0 {
+			works = "SELECT * FROM (\n" + works + "\n) WHERE kind IN (SELECT value FROM json_each(@only))"
+		}
+		return works
+	}
+	// statement cuts its page from matched in the order by. It counts the
+	// works of counted, a table of them with their sort titles t, when one
+	// is given: how many there are, or for letters how many start with each
+	// character, a code point or 0 for an empty title, and then their sum.
+	statement := func(matched, by, counted string) string {
+		rail, counts := "", ""
+		switch {
+		case counted != "" && rd.letters:
+			rail = "rail AS MATERIALIZED (SELECT coalesce(unicode(t), 0) AS initial, count(*) AS n FROM " + counted + " GROUP BY 1),\n"
+			counts = ", (SELECT sum(n) FROM rail), (SELECT json_group_array(json_array(initial, n)) FROM rail)"
+		case counted != "":
+			counts = ", (SELECT count(*) FROM " + counted + ")"
+		}
+		return with + "matched AS " + matched + ",\n" + rail + `page AS (SELECT * FROM matched ORDER BY ` + by + ` LIMIT @limit OFFSET @offset)
+SELECT ` + summaryColumns + counts + `
 FROM page p
 JOIN work w ON w.id = p.id
 LEFT JOIN user_state us ON us.user_id = @user AND us.work_id = w.id
 ORDER BY p.` + strings.ReplaceAll(by, ", ", ", p.")
 	}
-	out := compiled{
-		counted: read("", columns, by, "MATERIALIZED ", ", (SELECT count(*) FROM matched)"),
-		args:    vw.args(append(c.params, sql.Named("only", set(only)), sql.Named("library", library))...),
+	titled := columns
+	if rd.letters {
+		titled += ", wl.sort_title AS t"
 	}
-	if f := walked(q, kinds); f != nil && !library.IsZero() {
+	out := compiled{
+		counted: statement("MATERIALIZED (\n"+capped(selected("", titled, ""), by)+"\n)", by, "matched"),
+		page:    statement("(\n"+capped(selected("", columns, ""), by)+"\n)", by, ""),
+		args:    vw.args(append(c.params, sql.Named("only", set(only)), sql.Named("library", rd.library))...),
+	}
+	f := ordered(q, kinds)
+	if f == nil || rd.library.IsZero() {
+		return out
+	}
+	matched := ""
+	if f.indexed != "" {
 		columns, by = f.walk()
-		out.page = read(f.indexed, columns, by, "", "")
-	} else {
-		out.page = read("", columns, by, "", "")
+		matched = capped(selected(f.indexed, columns, ""), by)
+	} else if from := c.mine(f, kinds); from != "" && limit == "" {
+		// The works with a key, in order, and then those without, by title:
+		// order names the key k0 and the sort title k1.
+		key, ends := c.value(f, f.sort), "\nLIMIT @limit + @offset\n)"
+		matched = "SELECT * FROM (\n" + selected(from, columns, "\n  AND "+key+" IS NOT NULL") + "\nORDER BY " + by + ends +
+			"\nUNION ALL\nSELECT * FROM (\n" + selected("sort_title", columns, "\n  AND "+key+" IS NULL") + "\nORDER BY k1, id" + ends
+	}
+	if matched == "" {
+		return out
+	}
+	out.page = statement("(\n"+matched+"\n)", by, "")
+	if limit == "" {
+		out.counted = statement("(\n"+matched+"\n)", by, "(SELECT wl.sort_title AS t"+rules.matching(kinds, rd, "")+where+")")
 	}
 	return out
 }
@@ -699,15 +790,16 @@ WHERE l.kind IN (SELECT value FROM json_each(@kinds))
   AND `+libraryVisible+`
 LIMIT 2`)
 
-// compilePage compiles q for a page read without its count. When an index
-// holds the query's order, it looks for the one library that holds the
-// query's works, for the page to walk the index there: the only library
-// of their kinds the Viewer is granted, among those a rule every work
-// must pass names.
-func compilePage(ctx context.Context, db querier, q WorkQuery, vw viewer, now time.Time, seed string, only []catalog.WorkKind) (compiled, error) {
+// compilePage compiles q for a page read without its count. When a page
+// of one library's works can be read in the query's order (see ordered)
+// and the read names no library, it looks for the one library that holds
+// the query's works, for the page to be read so there: the only library of
+// their kinds the Viewer is granted, among those a rule every work must
+// pass names.
+func compilePage(ctx context.Context, db querier, q WorkQuery, vw viewer, now time.Time, seed string, only []catalog.WorkKind, rd reading) (compiled, error) {
 	kinds := narrowed(q, only)
-	if walked(q, kinds) == nil {
-		return compile(q, vw, now, seed, only, id.ID{}), nil
+	if ordered(q, kinds) == nil || !rd.library.IsZero() {
+		return compile(q, vw, now, seed, only, rd), nil
 	}
 	var holding []catalog.LibraryKind
 	for _, k := range kinds {
@@ -726,35 +818,22 @@ func compilePage(ctx context.Context, db querier, q WorkQuery, vw viewer, now ti
 	if err != nil {
 		return compiled{}, err
 	}
-	var library id.ID
 	if len(libraries) == 1 {
-		library = libraries[0]
+		rd.library = libraries[0]
 	}
-	return compile(q, vw, now, seed, only, library), nil
+	return compile(q, vw, now, seed, only, rd), nil
 }
 
-// runQuery reads a page of a valid query. The first page, at offset 0,
-// counts the query's works in the statement that reads it; a later page
-// doesn't count, and its Total is 0.
+// runQuery reads a page of a valid query, from one snapshot.
 func (s *Service) runQuery(ctx context.Context, vw viewer, q WorkQuery, seed string, only []catalog.WorkKind, o GridOptions, now time.Time) (GridPage[WorkSummary], error) {
 	limit, err := o.limit()
 	if err != nil {
 		return GridPage[WorkSummary]{}, err
 	}
-	page := []any{sql.Named("limit", limit), sql.Named("offset", o.Offset)}
 	var items []WorkSummary
 	total := 0
 	err = s.db.Read(ctx, func(tx *sql.Tx) error {
-		if o.Offset == 0 {
-			c := compile(q, vw, now, seed, only, id.ID{})
-			items, total, err = countedSummaries(ctx, tx, statement{sql: c.counted}, append(c.args, page...))
-			return err
-		}
-		c, err := compilePage(ctx, tx, q, vw, now, seed, only)
-		if err != nil {
-			return err
-		}
-		items, err = summaries(ctx, tx, statement{sql: c.page}, append(c.args, page...))
+		items, total, _, err = readQuery(ctx, tx, vw, q, seed, only, reading{}, o.Offset, limit, now)
 		return err
 	})
 	if err != nil {
@@ -763,13 +842,56 @@ func (s *Service) runQuery(ctx context.Context, vw viewer, q WorkQuery, seed str
 	return s.summaryPage(ctx, vw, items, total, nil)
 }
 
+// readQuery reads the page of a valid query's works at offset. The first
+// page, at offset 0, counts the query's works in the statement that reads
+// it, and has the letters the read asks for. A later page doesn't count:
+// its total is 0, and it has no letters.
+func readQuery(ctx context.Context, tx *sql.Tx, vw viewer, q WorkQuery, seed string, only []catalog.WorkKind, rd reading,
+	offset, limit int, now time.Time) (items []WorkSummary, total int, letters []Letter, err error) {
+	page := []any{sql.Named("limit", limit), sql.Named("offset", offset)}
+	if offset == 0 {
+		c := compile(q, vw, now, seed, only, rd)
+		return countedSummaries(ctx, tx, statement{sql: c.counted}, append(c.args, page...), rd.letters)
+	}
+	c, err := compilePage(ctx, tx, q, vw, now, seed, only, rd)
+	if err != nil {
+		return nil, 0, nil, err
+	}
+	items, err = summaries(ctx, tx, statement{sql: c.page}, append(c.args, page...))
+	return items, 0, nil, err
+}
+
 // countedSummaries runs a compiled query's counted statement and returns
-// its summaries and its count, 0 when it has no rows.
-func countedSummaries(ctx context.Context, q querier, st statement, args []any) ([]WorkSummary, int, error) {
+// its summaries and its count, 0 when it has no rows. With letters, it
+// returns where each letter starts, which is nowhere when it has no rows.
+func countedSummaries(ctx context.Context, q querier, st statement, args []any, letters bool) ([]WorkSummary, int, []Letter, error) {
 	total := 0
+	var counts sql.NullString
+	more := []any{&total}
+	if letters {
+		more = append(more, &counts)
+	}
 	out, err := rowsOf(ctx, q, st, args, func(r scanner, c *WorkSummary) (err error) {
-		*c, err = scanSummary(r, &total)
+		*c, err = scanSummary(r, more...)
 		return err
 	})
-	return out, total, err
+	if err != nil || !letters {
+		return out, total, nil, err
+	}
+	// The rail's rows are each a character and how many works start with
+	// it. In the characters' order they are in the works' order, because
+	// UTF-8 sorts by code point.
+	var rows [][2]int64
+	if counts.Valid {
+		if err := json.Unmarshal([]byte(counts.String), &rows); err != nil {
+			return nil, 0, nil, err
+		}
+	}
+	slices.SortFunc(rows, func(a, b [2]int64) int { return cmp.Compare(a[0], b[0]) })
+	byLetter := make([]letterCount, len(rows))
+	for i, r := range rows {
+		byLetter[i] = letterCount{Initial: r[0], N: r[1]}
+	}
+	starts, _ := railLetters(byLetter)
+	return out, total, starts, nil
 }

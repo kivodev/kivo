@@ -34,7 +34,7 @@ import kotlinx.serialization.encoding.*
  * A page of a grid of works.
  *
  * @param items 
- * @param total How many works the grid has. A list's works and a work query have it on the first page (offset 0) only; it is 0 on their later pages. 
+ * @param total How many works the grid has, on the first page (offset 0) only; it is 0 on a later page. 
  * @param letters On the first page (offset 0) of the title sort. See `LetterStart`.
  */
 @Serializable
@@ -43,7 +43,7 @@ data class WorkSummaryPage (
 
     @SerialName(value = "items") @Required val items: kotlin.collections.List<WorkSummary>,
 
-    /* How many works the grid has. A list's works and a work query have it on the first page (offset 0) only; it is 0 on their later pages.  */
+    /* How many works the grid has, on the first page (offset 0) only; it is 0 on a later page.  */
     @SerialName(value = "total") @Required val total: kotlin.Int,
 
     /* On the first page (offset 0) of the title sort. See `LetterStart`. */
