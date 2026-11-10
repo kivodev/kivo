@@ -33,7 +33,7 @@ func TestUser(t *testing.T) {
 		got.Playback != DefaultPlayback || u.Playback != DefaultPlayback {
 		t.Errorf("User = %+v, want %+v", got, u)
 	}
-	if err := f.s.Update(ctx, u.ID, Change{Limits: &Limits{}}); err != nil {
+	if err := f.s.Update(ctx, id.ID{}, u.ID, Change{Limits: &Limits{}}); err != nil {
 		t.Fatal(err)
 	}
 	if got, _ := f.s.User(ctx, u.ID); got.Limits != (Limits{}) {
@@ -49,19 +49,19 @@ func TestRename(t *testing.T) {
 	ctx := context.Background()
 	u := f.user(NewUser{Username: "david@example.com"})
 	f.user(NewUser{Username: "eva"})
-	if err := f.s.Update(ctx, u.ID, Change{Username: ptr("david")}); err != nil {
+	if err := f.s.Update(ctx, id.ID{}, u.ID, Change{Username: ptr("david")}); err != nil {
 		t.Fatal(err)
 	}
 	if got, _ := f.s.User(ctx, u.ID); got.Username != "david" {
 		t.Errorf("Username = %q, want david", got.Username)
 	}
-	if err := f.s.Update(ctx, u.ID, Change{Username: ptr("Eva")}); !errors.Is(err, ErrNameTaken) {
+	if err := f.s.Update(ctx, id.ID{}, u.ID, Change{Username: ptr("Eva")}); !errors.Is(err, ErrNameTaken) {
 		t.Errorf("another user's name in other case: %v, want ErrNameTaken", err)
 	}
-	if err := f.s.Update(ctx, u.ID, Change{Username: ptr(" david")}); !errors.Is(err, ErrInvalidName) {
+	if err := f.s.Update(ctx, id.ID{}, u.ID, Change{Username: ptr(" david")}); !errors.Is(err, ErrInvalidName) {
 		t.Errorf("a padded name: %v, want ErrInvalidName", err)
 	}
-	if err := f.s.Update(ctx, u.ID, Change{Username: ptr("David")}); err != nil {
+	if err := f.s.Update(ctx, id.ID{}, u.ID, Change{Username: ptr("David")}); err != nil {
 		t.Errorf("its own name in other case: %v", err)
 	}
 }

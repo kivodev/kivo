@@ -10,7 +10,10 @@ import (
 
 	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/catalog/catalogtest"
+	"github.com/mmcdole/kivo/internal/events"
+	"github.com/mmcdole/kivo/internal/fault"
 	"github.com/mmcdole/kivo/internal/id"
+	"github.com/mmcdole/kivo/internal/users"
 )
 
 // newBook adds a book of one file in an audiobooks library.
@@ -287,7 +290,8 @@ func TestEditBooks(t *testing.T) {
 	two := newBook(t, b, folder, "A/Two/a.m4b")
 	scanned(t, b, two, local("Two", []string{"A"}, "", ""))
 
-	err := b.Catalog.EditBooks(ctx, []id.ID{one, two}, catalog.BookEdit{
+	v := admin(t, b)
+	err := b.Catalog.EditBooks(ctx, v, []id.ID{one, two}, catalog.BookEdit{
 		Narrators: []string{"Kevin R. Free"}, Genres: []string{"Fantasy"},
 		Series: &catalog.SeriesEdit{Name: "Saga", KeepPosition: true},
 	})
@@ -313,16 +317,61 @@ func TestEditBooks(t *testing.T) {
 	if n := strings(t, b, `SELECT name FROM book_series ORDER BY name`); !reflect.DeepEqual(n, []string{"Saga"}) {
 		t.Errorf("series %v", n)
 	}
-	if err := b.Catalog.EditBooks(ctx, []id.ID{one}, catalog.BookEdit{Series: &catalog.SeriesEdit{}}); err != nil {
+	if err := b.Catalog.EditBooks(ctx, v, []id.ID{one}, catalog.BookEdit{Series: &catalog.SeriesEdit{}}); err != nil {
 		t.Fatal(err)
 	}
 	if got := memberships(t, b, one); len(got) != 0 {
 		t.Errorf("cleared series %v", got)
 	}
-	movie := b.Movie(folder, "Dune", 2021)
-	if err := b.Catalog.EditBooks(ctx, []id.ID{movie.Work}, catalog.BookEdit{Genres: []string{"x"}}); !errors.Is(err, catalog.ErrInvalid) {
-		t.Errorf("a movie in a batch edit: %v", err)
+}
+
+// TestEditBooksRefuses checks that a batch edit is refused whole when it
+// holds a work the Viewer can't see, which comes before holding a work
+// that isn't a book.
+func TestEditBooksRefuses(t *testing.T) {
+	b := catalogtest.New(t)
+	_, folder := b.Library(catalog.Audiobooks)
+	book := newBook(t, b, folder, "A/One/a.m4b")
+	movie := b.Movie(folder, "Dune", 2021).Work
+	v := admin(t, b)
+	edit := catalog.BookEdit{Genres: []string{"x"}}
+
+	err := b.Catalog.EditBooks(ctx, v, []id.ID{book, movie}, edit)
+	if fe, ok := fault.FieldOf(err); !errors.Is(err, catalog.ErrNotABook) || !ok || fe != (fault.Field{Name: "/workIds", Code: "notABook"}) {
+		t.Errorf("a movie in a batch edit: %v %v", err, fe)
 	}
+	for name, tc := range map[string]struct {
+		v     users.Viewer
+		works []id.ID
+	}{
+		"a work the viewer can't see": {users.Viewer{}, []id.ID{book}},
+		"an unknown work":             {v, []id.ID{book, id.New()}},
+		"an unknown work and a movie": {v, []id.ID{movie, id.New()}},
+	} {
+		if err := b.Catalog.EditBooks(ctx, tc.v, tc.works, edit); !errors.Is(err, catalog.ErrNotFound) {
+			t.Errorf("%s: %v, want ErrNotFound", name, err)
+		}
+	}
+	if got := strings(t, b, `SELECT g.name FROM work_genre wg JOIN genre g ON g.id = wg.genre_id`); len(got) != 0 {
+		t.Errorf("a refused batch wrote genres %v", got)
+	}
+}
+
+// admin returns the Viewer of a new admin who sees every library.
+func admin(t *testing.T, b *catalogtest.Builder) users.Viewer {
+	t.Helper()
+	svc := users.New(b.DB, events.NewBus())
+	var u users.User
+	b.Write(func(ctx context.Context, tx *store.Tx) error {
+		var err error
+		u, err = svc.CreateUser(ctx, tx, users.NewUser{Username: "admin-" + id.New().String(), Admin: true, Grants: users.Grants{All: true}})
+		return err
+	})
+	v, err := svc.Viewer(ctx, u.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return v
 }
 
 func TestDeleteLeavesNoEmptySeries(t *testing.T) {

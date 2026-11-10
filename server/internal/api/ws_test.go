@@ -140,7 +140,7 @@ func TestEventStreamFollowsGrants(t *testing.T) {
 	e := newEnv(t, serving{})
 	conn, ctx := e.dial(e.nobodyToken)
 	read(t, ctx, conn) // the snapshot
-	if err := e.d.Users.Update(ctx, e.nobody, users.Change{Grants: &users.Grants{Libraries: []id.ID{e.lib}}}); err != nil {
+	if err := e.d.Users.Update(ctx, id.ID{}, e.nobody, users.Change{Grants: &users.Grants{Libraries: []id.ID{e.lib}}}); err != nil {
 		t.Fatal(err)
 	}
 	if m := read(t, ctx, conn); m["type"] != "resync" {

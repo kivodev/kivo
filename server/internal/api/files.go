@@ -58,16 +58,8 @@ func (h *handlers) DeleteMissingFiles(ctx context.Context, req gen.DeleteMissing
 }
 
 func (h *handlers) ListFileSubtitleResults(ctx context.Context, req gen.ListFileSubtitleResultsRequestObject) (gen.ListFileSubtitleResultsResponseObject, error) {
-	v := callerOf(ctx).viewer
-	u, err := h.deps.Users.User(ctx, v.User())
-	if err != nil {
-		return nil, err
-	}
-	q := subtitles.SubtitleSearch{Languages: deref(req.Params.Language), PreferSDH: h.deps.Playback.PrefersSDH(ctx, u, req.ID)}
-	if len(q.Languages) == 0 && u.Playback.SubtitleLanguage != "" {
-		q.Languages = []string{u.Playback.SubtitleLanguage}
-	}
-	cs, err := h.deps.Subtitles.SearchSubtitles(ctx, v, req.ID, q)
+	q := subtitles.SubtitleSearch{Languages: deref(req.Params.Language)}
+	cs, err := h.deps.Subtitles.SearchSubtitles(ctx, callerOf(ctx).viewer, req.ID, q)
 	if err != nil {
 		return nil, err
 	}

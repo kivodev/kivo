@@ -61,17 +61,6 @@ func (p trackPrefs) showsFull(audioLang string) bool {
 	return false
 }
 
-// PrefersSDH reports whether the user's last subtitle choice for the series
-// a file is an episode of was one for the deaf and hard of hearing.
-func (s *Service) PrefersSDH(ctx context.Context, user users.User, file id.ID) bool {
-	v, err := s.deps.Catalog.VersionOfFile(ctx, file)
-	if err != nil || len(v.Works) == 0 {
-		return false
-	}
-	c := s.prefsFor(ctx, user, v.Works[0]).choice
-	return c != nil && c.SubtitleKind == "sdh"
-}
-
 // chosen holds the tracks a client chose for a play. A field is nil when
 // the client chose no track, and a zero subtitle means subtitles off.
 type chosen struct {

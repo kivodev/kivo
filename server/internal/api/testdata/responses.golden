@@ -3813,3 +3813,83 @@ GET /api/v1/logs?level=nope
 }
 
 
+PATCH /api/v1/works
+404
+{
+  "code": "notFound",
+  "detail": "not found",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+PATCH /api/v1/works
+404
+{
+  "code": "notFound",
+  "detail": "not found",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+PATCH /api/v1/users/<id42>
+409
+{
+  "code": "ownUser",
+  "requestId": "<request>",
+  "status": 409,
+  "title": "Conflict",
+  "type": "about:blank"
+}
+
+
+PATCH /api/v1/users/<id42>
+409
+{
+  "code": "ownUser",
+  "requestId": "<request>",
+  "status": 409,
+  "title": "Conflict",
+  "type": "about:blank"
+}
+
+
+PATCH /api/v1/users/<id42>
+409
+{
+  "code": "ownUser",
+  "requestId": "<request>",
+  "status": 409,
+  "title": "Conflict",
+  "type": "about:blank"
+}
+
+
+DELETE /api/v1/users/<id42>
+409
+{
+  "code": "ownUser",
+  "requestId": "<request>",
+  "status": 409,
+  "title": "Conflict",
+  "type": "about:blank"
+}
+
+
+GET /api/v1/files/<id13>/subtitle-results
+503
+{
+  "code": "notConfigured",
+  "detail": "provider not configured",
+  "requestId": "<request>",
+  "status": 503,
+  "title": "Service Unavailable",
+  "type": "about:blank"
+}
+
+

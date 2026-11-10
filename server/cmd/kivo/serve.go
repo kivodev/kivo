@@ -204,7 +204,7 @@ func wire(ctx context.Context, boot config.Bootstrap, logs *health.Logs, bus *ev
 	}, metadata.Options{Audible: boot.Audible, TMDbKey: boot.TMDbKey})
 	s.previews = previews.New(db, previews.Deps{Catalog: s.catalog, Media: s.ffmpeg, Tasks: s.runner, CacheDir: boot.CacheDir})
 	s.subtitles = subtitles.New(db, subtitles.Deps{
-		Catalog: s.catalog, Settings: s.settings, Media: s.ffmpeg, Tasks: s.runner,
+		Catalog: s.catalog, Users: s.users, Userstate: s.userstate, Settings: s.settings, Media: s.ffmpeg, Tasks: s.runner,
 		CacheDir: boot.CacheDir, SubtitleDir: filepath.Join(boot.DataDir, "subtitles"),
 	}, subtitles.Options{
 		Replaced: func(ctx context.Context, tx *store.Tx, replaced []id.ID, by id.ID) error {

@@ -2,18 +2,12 @@ package api
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/mmcdole/kivo/internal/api/internal/gen"
 	"github.com/mmcdole/kivo/internal/auth"
 	"github.com/mmcdole/kivo/internal/playback"
 	"github.com/mmcdole/kivo/internal/users"
 )
-
-// errOwnUser refuses an admin who deletes, disables or removes admin from
-// their own user. The users package separately refuses this for the last
-// admin.
-var errOwnUser = problem{status: http.StatusConflict, code: codeOwnUser}
 
 func (h *handlers) ListUsers(ctx context.Context, _ gen.ListUsersRequestObject) (gen.ListUsersResponseObject, error) {
 	us, err := h.deps.Users.Users(ctx)
@@ -49,9 +43,6 @@ func (h *handlers) GetUser(ctx context.Context, req gen.GetUserRequestObject) (g
 
 func (h *handlers) UpdateUser(ctx context.Context, req gen.UpdateUserRequestObject) (gen.UpdateUserResponseObject, error) {
 	b := req.Body
-	if req.ID == callerOf(ctx).viewer.User() && (b.Admin != nil && !*b.Admin || b.Disabled != nil && *b.Disabled) {
-		return nil, errOwnUser
-	}
 	c := users.Change{Username: b.Username, Admin: b.Admin, Disabled: b.Disabled}
 	if b.Libraries != nil {
 		c.Grants = ptr(parseGrants(*b.Libraries))
@@ -62,7 +53,7 @@ func (h *handlers) UpdateUser(ctx context.Context, req gen.UpdateUserRequestObje
 	if b.Parental != nil {
 		c.Parental = ptr(parseParental(*b.Parental))
 	}
-	if err := h.deps.Users.Update(ctx, req.ID, c); err != nil {
+	if err := h.deps.Users.Update(ctx, callerOf(ctx).viewer.User(), req.ID, c); err != nil {
 		return nil, err
 	}
 	u, err := h.deps.Users.User(ctx, req.ID)
@@ -73,10 +64,7 @@ func (h *handlers) UpdateUser(ctx context.Context, req gen.UpdateUserRequestObje
 }
 
 func (h *handlers) DeleteUser(ctx context.Context, req gen.DeleteUserRequestObject) (gen.DeleteUserResponseObject, error) {
-	if req.ID == callerOf(ctx).viewer.User() {
-		return nil, errOwnUser
-	}
-	if err := h.deps.Users.Delete(ctx, req.ID); err != nil {
+	if err := h.deps.Users.Delete(ctx, callerOf(ctx).viewer.User(), req.ID); err != nil {
 		return nil, err
 	}
 	return gen.DeleteUser204Response{}, nil

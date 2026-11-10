@@ -581,13 +581,13 @@ func TestRevocationAppliesAtTheNextRequest(t *testing.T) {
 				_, err := f.users.CreateUser(ctx, tx, users.NewUser{Username: "other", Admin: true, Grants: users.Grants{All: true}})
 				return err
 			})
-			if err := f.users.Update(ctx, f.p.User, users.Change{Disabled: new(true)}); err != nil {
+			if err := f.users.Update(ctx, id.ID{}, f.p.User, users.Change{Disabled: new(true)}); err != nil {
 				f.t.Fatal(err)
 			}
 		},
 		"grant removed": func(f *fixture) {
 			other, _ := f.b.Library(catalog.Movies)
-			if err := f.users.Update(ctx, f.p.User, users.Change{Grants: &users.Grants{Libraries: []id.ID{other}}}); err != nil {
+			if err := f.users.Update(ctx, id.ID{}, f.p.User, users.Change{Grants: &users.Grants{Libraries: []id.ID{other}}}); err != nil {
 				f.t.Fatal(err)
 			}
 		},
@@ -951,7 +951,7 @@ func TestInvisibleWorksAreNotFound(t *testing.T) {
 	f := newFixture(t, 0)
 	m := f.movie("Heat", "mp4", 1)
 	other, _ := f.b.Library(catalog.Movies)
-	if err := f.users.Update(ctx, f.p.User, users.Change{Grants: &users.Grants{Libraries: []id.ID{other}}}); err != nil {
+	if err := f.users.Update(ctx, id.ID{}, f.p.User, users.Change{Grants: &users.Grants{Libraries: []id.ID{other}}}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := f.svc.Start(ctx, f.p, f.viewer(), StartRequest{Work: m.Work, Caps: browser, ClientIP: lan}); !errors.Is(err, ErrNotFound) {

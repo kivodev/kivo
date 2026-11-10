@@ -242,7 +242,7 @@ func newEnv(t *testing.T, o serving) *env {
 	e.cache = t.TempDir()
 	e.d.Markers = markers.New(db, markers.Deps{Catalog: e.b.Catalog, Media: noMedia{}, Tasks: e.asks, Settings: e.d.Settings, CacheDir: e.cache})
 	pv := previews.New(db, previews.Deps{Catalog: e.b.Catalog, Media: noMedia{}, Tasks: e.asks, CacheDir: e.cache})
-	e.d.Subtitles = subtitles.New(db, subtitles.Deps{Catalog: e.b.Catalog, Settings: e.d.Settings, Media: noMedia{}, Tasks: e.asks, CacheDir: e.cache, SubtitleDir: t.TempDir()}, subtitles.Options{})
+	e.d.Subtitles = subtitles.New(db, subtitles.Deps{Catalog: e.b.Catalog, Users: e.d.Users, Userstate: e.d.Userstate, Settings: e.d.Settings, Media: noMedia{}, Tasks: e.asks, CacheDir: e.cache, SubtitleDir: t.TempDir()}, subtitles.Options{})
 	e.d.Identify = identify.New(db, identify.Deps{
 		Catalog: e.b.Catalog, Metadata: e.d.Metadata, Userstate: e.d.Userstate, Activity: e.d.Activity, Tasks: e.asks, Markers: e.d.Markers,
 	}, identify.Options{})

@@ -23,26 +23,56 @@ import (
 
 // SubtitleSearch is what a subtitle search asks for.
 type SubtitleSearch struct {
-	Languages []string // BCP 47 tags; empty means the file's metadata language
-	PreferSDH bool     // rank subtitles for the deaf and hard of hearing above others
+	// Languages are BCP 47 tags. Empty means the user's subtitle language,
+	// or else the file's metadata language.
+	Languages []string
 }
 
 // downloadFormats are the subtitle file formats kept as downloaded tracks.
 var downloadFormats = []string{"srt", "ass", "ssa", "vtt"}
 
 // SearchSubtitles searches OpenSubtitles for subtitles for a file the
-// viewer can see. Results are ordered best first, as rank orders them.
+// viewer can see. Results are ordered best first, as rank orders them,
+// with SDH first when the viewer's last subtitles for the file's series
+// were SDH.
 func (s *Service) SearchSubtitles(ctx context.Context, v users.Viewer, file id.ID, q SubtitleSearch) ([]SubtitleResult, error) {
+	u, err := s.deps.Users.User(ctx, v.User())
+	if err != nil {
+		return nil, err
+	}
 	f, err := s.visibleFile(ctx, v, file)
 	if err != nil {
 		return nil, err
 	}
-	results, err := s.search(ctx, f, q.Languages)
+	langs := q.Languages
+	if len(langs) == 0 && u.Playback.SubtitleLanguage != "" {
+		langs = []string{u.Playback.SubtitleLanguage}
+	}
+	results, err := s.search(ctx, f, langs)
 	if err != nil {
 		return nil, err
 	}
-	rank(results, q.PreferSDH)
+	rank(results, s.prefersSDH(ctx, u, file))
 	return results, nil
+}
+
+// prefersSDH reports whether the user's last subtitle choice for the series
+// a file is an episode of was one for the deaf and hard of hearing. Only a
+// user who remembers track choices has one. Anything it can't read is no.
+func (s *Service) prefersSDH(ctx context.Context, u users.User, file id.ID) bool {
+	if !u.Playback.RememberTracks {
+		return false
+	}
+	ver, err := s.deps.Catalog.VersionOfFile(ctx, file)
+	if err != nil || len(ver.Works) == 0 {
+		return false
+	}
+	w, err := s.deps.Catalog.Work(ctx, ver.Works[0])
+	if err != nil || w.Kind != catalog.KindEpisode || w.Root.IsZero() {
+		return false
+	}
+	c, ok, err := s.deps.Userstate.TrackChoice(ctx, u.ID, w.Root)
+	return err == nil && ok && c.SubtitleKind == "sdh"
 }
 
 // visibleFile returns a file the viewer may see, which is a part of a

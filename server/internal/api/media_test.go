@@ -92,7 +92,7 @@ func TestMediaFollowsGrants(t *testing.T) {
 		return tx.QueryRowContext(ctx, `SELECT id FROM user WHERE username = 'admin'`).Scan(&admin)
 	})
 	other, _ := e.b.Library(catalog.Movies)
-	if err := e.d.Users.Update(ctx, admin, users.Change{Grants: &users.Grants{Libraries: []id.ID{other}}}); err != nil {
+	if err := e.d.Users.Update(ctx, id.ID{}, admin, users.Change{Grants: &users.Grants{Libraries: []id.ID{other}}}); err != nil {
 		t.Fatal(err)
 	}
 	if w := e.do("GET", url, "", nil); w.Code != http.StatusNotFound {

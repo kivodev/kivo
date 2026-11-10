@@ -110,9 +110,6 @@ func (h *handlers) UpdateWorks(ctx context.Context, req gen.UpdateWorksRequestOb
 	if len(b.WorkIds) > maxBookEdit {
 		return nil, invalid("workIds lists too many works", field("/workIds", "tooLarge"))
 	}
-	if _, err := h.books(ctx, v, b.WorkIds); err != nil {
-		return nil, err
-	}
 	e := catalog.BookEdit{Authors: deref(b.Authors), Narrators: deref(b.Narrators), Genres: deref(b.Genres)}
 	if b.Authors != nil {
 		e.Authors = nonNil(e.Authors)
@@ -126,32 +123,14 @@ func (h *handlers) UpdateWorks(ctx context.Context, req gen.UpdateWorksRequestOb
 	if s := b.Series; s != nil {
 		e.Series = &catalog.SeriesEdit{Name: s.Name, KeepPosition: deref(s.KeepPosition)}
 	}
-	if err := h.deps.Catalog.EditBooks(ctx, b.WorkIds, e); err != nil {
+	if err := h.deps.Catalog.EditBooks(ctx, v, b.WorkIds, e); err != nil {
 		return nil, err
 	}
-	books, err := h.books(ctx, v, b.WorkIds)
+	books, err := h.deps.Query.Summaries(ctx, v, b.WorkIds)
 	if err != nil {
 		return nil, err
 	}
 	return gen.UpdateWorks200JSONResponse(gen.WorkSummaryList{Items: summaries(books)}), nil
-}
-
-// books returns the summaries of the given works. Every work must be a
-// book the Viewer can see, or the whole batch is refused.
-func (h *handlers) books(ctx context.Context, v users.Viewer, works []id.ID) ([]query.WorkSummary, error) {
-	books, err := h.deps.Query.Summaries(ctx, v, works)
-	if err != nil {
-		return nil, err
-	}
-	if len(books) != len(works) {
-		return nil, query.ErrNotFound
-	}
-	for _, c := range books {
-		if c.Kind != catalog.KindBook {
-			return nil, invalid("only books are edited together", field("/workIds", "notABook"))
-		}
-	}
-	return books, nil
 }
 
 func (h *handlers) UpdateWorkUserState(ctx context.Context, req gen.UpdateWorkUserStateRequestObject) (gen.UpdateWorkUserStateResponseObject, error) {

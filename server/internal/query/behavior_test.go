@@ -450,7 +450,7 @@ func TestPinnedLibraries(t *testing.T) {
 	// Losing Movies forgets its place. When it's given back, it's pinned
 	// again.
 	for _, libs := range [][]id.ID{{h.shows}, {h.movies, h.shows}} {
-		if err := us.Update(ctx, h.friend.User(), users.Change{Grants: &users.Grants{Libraries: libs}}); err != nil {
+		if err := us.Update(ctx, id.ID{}, h.friend.User(), users.Change{Grants: &users.Grants{Libraries: libs}}); err != nil {
 			t.Fatal(err)
 		}
 	}
