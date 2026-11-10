@@ -1430,6 +1430,15 @@ export const scenarios = {
       progress: { step: "probe", done: 340, total: 812, remainingMs: 4 * minute },
     };
   },
+  /** The Movies library's scan has read its files and is matching them. */
+  matching(api: MockApi) {
+    const movies = api.libraries.find((l) => l.id === mockIds.movies);
+    if (!movies) return;
+    const progress = { step: "identify", done: 120, total: 768 } as const;
+    movies.scan = { libraryId: mockIds.movies, state: "scanning", progress: { ...progress, remainingMs: 9 * minute } };
+    const scans = api.tasks.find((t) => t.id === "scan-libraries");
+    if (scans) Object.assign(scans, { running: true, stoppable: true, progress });
+  },
   /** Home Videos isn't pinned, so it's under More libraries and has no Home row. */
   unpinned(api: MockApi) {
     const videos = api.libraries.find((l) => l.id === mockIds.videos);

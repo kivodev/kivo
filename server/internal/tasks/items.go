@@ -26,6 +26,12 @@ type items struct {
 
 	busy    map[id.ID]*item // in flight
 	counted counted
+
+	// A step task's items enqueued with EnqueueFor, while in line or in
+	// flight: the owner's item each was asked for by, and how far each
+	// owner's items have got.
+	ownerOf map[id.ID]id.ID
+	owned   map[id.ID]*owned
 }
 
 // pass is one walk through the items a task has left. It reads Pending and
@@ -203,6 +209,7 @@ func (w *items) nextListedLocked() *item {
 // do does one item and then updates the in-memory state. The item's slot
 // is freed and its pass marks it done. If it settled, its run counts it.
 // If it was enqueued again while in flight, it goes back in line.
+// Otherwise its owner, if it has one, counts it done.
 func (r *Runner) do(t *task, it *item) {
 	err := guard(it.ctx, func() error { return t.items.Do(it.ctx, it.id) }, "task", t.Name, "item", it.id)
 	cancelled := it.ctx.Err() != nil
@@ -219,6 +226,8 @@ func (r *Runner) do(t *task, it *item) {
 	if w.requeue[it.id] {
 		delete(w.requeue, it.id)
 		w.enqueueLocked(it.id)
+	} else {
+		w.settleOwnedLocked(it.id)
 	}
 	r.mu.Unlock()
 	if err != nil && !cancelled {

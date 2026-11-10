@@ -955,9 +955,9 @@ export interface paths {
         put?: never;
         /**
          * Stop library scan
-         * @description Its files in flight stop shortly after, as the `scan-libraries`
-         *     task's do when it's stopped; `tasksChanged` events say when it
-         *     moved.
+         * @description Its files in flight, and the folders it asked to be identified, stop
+         *     shortly after, as the `scan-libraries` task's do when it's stopped;
+         *     `tasksChanged` events say when it moved.
          */
         post: operations["stopLibraryScan"];
         delete?: never;
@@ -1913,9 +1913,9 @@ export interface paths {
          * Stop task
          * @description Its items in flight stop shortly after, what was asked of it is
          *     dropped, and its run ends. Stopping `scan-libraries` also stops its
-         *     `identify` step. Nothing is lost: what's left is still left for its
-         *     next run. Downloads and library changes always finish: `409` with
-         *     code `notStoppable`.
+         *     scans' `identify` step. Nothing is lost: what's left is still left
+         *     for its next run. Downloads and library changes always finish: `409`
+         *     with code `notStoppable`.
          */
         post: operations["stopTask"];
         delete?: never;
@@ -3610,12 +3610,12 @@ export interface components {
             progress?: components["schemas"]["ScanProgress"];
         };
         /**
-         * @description What a library's scan is doing: `scanning` while it's scanned,
-         *     `matching` while its files are being identified after that,
-         *     `unreachable` when a folder can't be read.
+         * @description What a library's scan is doing: `scanning` while it's scanned and
+         *     what it read is identified, `unreachable` when a folder can't be
+         *     read.
          * @enum {string}
          */
-        LibraryScanState: "idle" | "scanning" | "matching" | "unreachable";
+        LibraryScanState: "idle" | "scanning" | "unreachable";
         /** @description The step a library's scan is on, and how far it's got. */
         ScanProgress: {
             step: components["schemas"]["ScanStep"];
@@ -3626,11 +3626,11 @@ export interface components {
         };
         /**
          * @description A step of a library's scan: `walk` finding files, a folder at a
-         *     time; `probe` reading the files new or changed. Skip steps you
-         *     don't know.
+         *     time; `probe` reading the files new or changed; `identify` matching
+         *     the folders of the files it read. Skip steps you don't know.
          * @enum {string}
          */
-        ScanStep: "walk" | "probe";
+        ScanStep: "walk" | "probe" | "identify";
         Home: {
             rows: components["schemas"]["HomeRow"][];
             /** @description Set when `rows` is empty because the user hid every row. */
@@ -4668,11 +4668,7 @@ export interface components {
              */
             nextRunAt?: string;
             progress?: components["schemas"]["TaskProgress"];
-            /**
-             * @description What's left for its next run, while no run of it works; 0
-             *     otherwise. On `scan-libraries` at step `identify`, the files left
-             *     to identify.
-             */
+            /** @description What's left for its next run, while no run of it works; 0 otherwise. */
             pendingCount: number;
             /**
              * @description Its items that failed for good (`GET
@@ -4725,10 +4721,9 @@ export interface components {
         };
         /**
          * @description A step of a task's item in flight: a library scan's (see ScanStep),
-         *     `identify`, the scanned files being identified once no library is
-         *     walked or probed, `extractSubtitles`, a download's file having its
-         *     subtitles extracted, or `convert`, a download being converted. Skip
-         *     steps you don't know.
+         *     `extractSubtitles`, a download's file having its subtitles
+         *     extracted, or `convert`, a download being converted. Skip steps you
+         *     don't know.
          * @enum {string}
          */
         TaskStep: "walk" | "probe" | "identify" | "extractSubtitles" | "convert";

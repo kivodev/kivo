@@ -33,7 +33,7 @@ import kotlinx.serialization.encoding.*
  * What a library's scan is doing, as its row shows it: \"Reading files · 1,240 of 3,100 · about 4 minutes left\". 
  *
  * @param libraryId A UUIDv7.
- * @param state What a library's scan is doing: `scanning` while it's scanned, `matching` while its files are being identified after that, `unreachable` when a folder can't be read. 
+ * @param state What a library's scan is doing: `scanning` while it's scanned and what it read is identified, `unreachable` when a folder can't be read. 
  * @param progress 
  */
 @Serializable
@@ -43,7 +43,7 @@ data class LibraryScanStatus (
     /* A UUIDv7. */
     @SerialName(value = "libraryId") @Required val libraryId: kotlin.String,
 
-    /* What a library's scan is doing: `scanning` while it's scanned, `matching` while its files are being identified after that, `unreachable` when a folder can't be read.  */
+    /* What a library's scan is doing: `scanning` while it's scanned and what it read is identified, `unreachable` when a folder can't be read.  */
     @SerialName(value = "state") @Required val state: kotlin.String,
 
     @SerialName(value = "progress") val progress: ScanProgress? = null

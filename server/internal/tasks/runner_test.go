@@ -750,6 +750,8 @@ func TestAddPanics(t *testing.T) {
 		{Task{Name: "no-do", Work: noDo}, "tasks: Items needs Pending and Do: no-do"},
 		{Task{Name: "on-demand", Schedule: OnDemand, Work: run}, "tasks: a Func needs a schedule: on-demand"},
 		{Task{Name: "added", Schedule: Nightly, Work: run}, "tasks: task added twice: added"},
+		{Task{Name: "func-step", Schedule: Nightly, Work: run, StepOf: StepOf{Task: "added", Step: "s"}}, "tasks: a step needs Items, another task and a step name: func-step"},
+		{Task{Name: "unnamed-step", Work: work, StepOf: StepOf{Task: "added"}}, "tasks: a step needs Items, another task and a step name: unnamed-step"},
 	} {
 		h := newHarness(t)
 		r := New(h.db, h.settings, events.NewBus(), Options{})

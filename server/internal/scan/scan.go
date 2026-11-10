@@ -122,8 +122,9 @@ const (
 
 // The steps of a library's scan, as its progress names them.
 const (
-	StepWalk  = "walk"  // finding files, a folder at a time
-	StepProbe = "probe" // reading new or changed files
+	StepWalk     = "walk"     // finding files, a folder at a time
+	StepProbe    = "probe"    // reading new or changed files
+	StepIdentify = "identify" // identifying what it read, the Identifier's task as a step of the scan
 )
 
 // Tasks returns the package's tasks, for cmd/kivo to add. Two libraries

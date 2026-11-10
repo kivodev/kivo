@@ -82,10 +82,10 @@ func TestSetOrderingAsksForTheFolder(t *testing.T) {
 	}
 }
 
-// Waiting counts a library's files left to identify. A folder that meets an
-// outage stays waiting until a later pass. A folder the provider has no
-// match for is identified, as unmatched, and is no longer waiting.
-func TestWaitingByLibrary(t *testing.T) {
+// The task counts the files left to identify. A folder that meets an
+// outage stays counted until a later pass. A folder the provider has no
+// match for is identified, as unmatched, and is no longer counted.
+func TestPendingCountThroughAnOutage(t *testing.T) {
 	e := newEnv(t)
 	movies, shows := e.library(catalog.Movies), e.library(catalog.Shows)
 	unlisted := e.add(movies, "Arrival (2016)/Arrival (2016).mkv")
@@ -93,24 +93,24 @@ func TestWaitingByLibrary(t *testing.T) {
 	for _, f := range append(unlisted, episodes...) {
 		e.exec(`UPDATE media_file SET probed = generation WHERE id = ?`, f)
 	}
-	waiting := func() map[id.ID]int {
+	left := func() int {
 		t.Helper()
-		w, err := e.id.Waiting(ctx)
+		n, err := e.task().PendingCount(ctx)
 		if err != nil {
 			t.Fatal(err)
 		}
-		return w
+		return n
 	}
-	if w := waiting(); len(w) != 2 || w[movies.ID] != 1 || w[shows.ID] != 2 {
-		t.Fatalf("waiting %v, want 1 movie and 2 episodes", w)
+	if n := left(); n != 3 {
+		t.Fatalf("%d left, want 1 movie and 2 episodes", n)
 	}
 
 	e.video.down = true
 	if err := e.identify(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if w := waiting(); len(w) != 2 || w[movies.ID] != 1 || w[shows.ID] != 2 {
-		t.Fatalf("waiting %v after an outage, want every file still waiting", w)
+	if n := left(); n != 3 {
+		t.Fatalf("%d left after an outage, want every file", n)
 	}
 
 	e.video.down = false
@@ -120,7 +120,7 @@ func TestWaitingByLibrary(t *testing.T) {
 	if w := e.workOf(unlisted[0])[0]; !w.Provisional {
 		t.Fatalf("a movie the provider doesn't list matched: %+v", w)
 	}
-	if w := waiting(); len(w) != 0 {
-		t.Fatalf("waiting %v, want none once matched or unmatched", w)
+	if n := left(); n != 0 {
+		t.Fatalf("%d left, want none once matched or unmatched", n)
 	}
 }

@@ -274,6 +274,9 @@ func (f *fakeTasks) Enqueue(task string, items ...id.ID) {
 	f.asked[task] = append(f.asked[task], items...)
 }
 
+// EnqueueFor records the items asked for task, as Enqueue does.
+func (f *fakeTasks) EnqueueFor(_ id.ID, task string, items ...id.ID) { f.Enqueue(task, items...) }
+
 // of returns the items asked for task, in order.
 func (f *fakeTasks) of(task string) []id.ID {
 	f.mu.Lock()

@@ -19,12 +19,14 @@ func (r *Runner) Failed(ctx context.Context, name string) ([]Failure, error) {
 }
 
 // Items returns a task's items in flight, with the progress each reported,
-// in the order they started.
+// in the order they started. After them come its items that aren't in
+// flight but whose step has items left that they asked for, each on the
+// step with the step's items done out of all it asked for.
 func (r *Runner) Items(name string) []Item {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if t := r.byName[name]; t != nil && t.items != nil {
-		return t.items.listLocked()
+		return append(t.items.listLocked(), r.stepItemsLocked(t)...)
 	}
 	return nil
 }
@@ -59,19 +61,31 @@ func (r *Runner) Busy() map[string]int {
 func (r *Runner) task(name string) *task {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return r.byName[name]
+	return r.listedLocked(name)
+}
+
+// listedLocked returns the task the Tasks page lists by name, or nil. A
+// step isn't listed.
+func (r *Runner) listedLocked(name string) *task {
+	if t := r.byName[name]; t != nil && t.StepOf.Task == "" {
+		return t
+	}
+	return nil
 }
 
 // Tasks returns every task as the Tasks page shows it, in the order they
-// were added.
+// were added. A step shows on its owner's row.
 func (r *Runner) Tasks(ctx context.Context) ([]Status, error) {
-	out := make([]Status, len(r.tasks))
-	for i, t := range r.tasks {
+	var out []Status
+	for _, t := range r.tasks {
+		if t.StepOf.Task != "" {
+			continue
+		}
 		s, err := r.status(ctx, t)
 		if err != nil {
 			return nil, fmt.Errorf("status of task %s: %w", t.Name, err)
 		}
-		out[i] = s
+		out = append(out, s)
 	}
 	return out, nil
 }
@@ -108,11 +122,14 @@ func (r *Runner) status(ctx context.Context, t *task) (Status, error) {
 // progress is the items settled out of those settled plus those left.
 // Otherwise progress is that of the first item in flight, if it reports
 // any. Enqueued items get no count of their own here, because whoever
-// enqueued them shows their progress.
+// enqueued them shows their progress. With no work of its own going on, the
+// task runs while a step of it has items left that its items asked for: it
+// is on that step, with the step's items done out of all those asked for.
 func (r *Runner) itemStatus(ctx context.Context, t *task, s *Status, now time.Time) error {
 	r.mu.Lock()
 	w := t.items
 	s.Items = w.listLocked()
+	steps := r.stepItemsLocked(t)
 	working := t.open != nil && w.pass != nil && r.workingLocked(t, now)
 	s.Running = len(w.busy) > 0 || len(w.queued) > 0 || working || t.ending != nil
 	done := 0
@@ -120,6 +137,13 @@ func (r *Runner) itemStatus(ctx context.Context, t *task, s *Status, now time.Ti
 		done = t.open.done
 	}
 	r.mu.Unlock()
+	defer func() { s.Items = append(s.Items, steps...) }()
+	if !s.Running && len(steps) > 0 {
+		s.Running, s.Step = true, steps[0].Step
+		for _, it := range steps {
+			s.Done, s.Total = s.Done+it.Done, s.Total+it.Total
+		}
+	}
 
 	c, err := r.count(ctx, t, now)
 	if err != nil {

@@ -333,6 +333,10 @@ func (e *env) Enqueue(task string, items ...id.ID) {
 	}
 }
 
+// EnqueueFor records the files a scan asked the identify task for, as
+// Enqueue does.
+func (e *env) EnqueueFor(_ id.ID, task string, items ...id.ID) { e.Enqueue(task, items...) }
+
 // takeAsked returns the files the identify task was asked for since the
 // last take.
 func (e *env) takeAsked() []id.ID {

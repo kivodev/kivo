@@ -294,7 +294,6 @@ msgstr "For example, Home Assistant."
 msgid "People"
 msgstr "People"
 
-#: src/features/admin/ManageLibrariesScreen.tsx
 #: src/features/admin/useAdminLabels.ts
 msgid "Matching"
 msgstr "Matching"
@@ -2720,10 +2719,6 @@ msgstr "No missing files"
 #: src/features/admin/ApiKeysScreen.tsx
 msgid "Create key"
 msgstr "Create key"
-
-#: src/features/admin/OverviewScreen.tsx
-msgid "Matching {name}"
-msgstr "Matching {name}"
 
 #: src/features/auth/InviteScreen.tsx
 msgid "This invite link has expired, was already used or was revoked. Ask for a new link."
