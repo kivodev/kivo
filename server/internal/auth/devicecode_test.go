@@ -81,7 +81,6 @@ func TestDeviceCode(t *testing.T) {
 	if _, ok, err := f.auth.PollDeviceCode(ctx, dl.Secret, home); ok || !errors.Is(err, ErrCodeGone) {
 		t.Fatalf("poll after use = %v, %v", ok, err)
 	}
-	f.audit(actionDeviceCode, 1)
 
 	// A linked device can be signed out like any other.
 	if err := f.auth.RevokeSession(ctx, admin, p.Session); err != nil {
@@ -126,7 +125,6 @@ func TestDeviceCodeDenied(t *testing.T) {
 	if _, err := f.auth.LookUpDeviceCode(ctx, admin, dl.Code, home); !errors.Is(err, ErrCodeNotFound) {
 		t.Fatalf("looking up a denied code: err = %v", err)
 	}
-	f.audit(actionDeviceCode, 0)
 }
 
 // When a code is approved and denied at the same time, exactly one wins.

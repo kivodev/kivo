@@ -65,7 +65,7 @@ func (s *Service) CreateInvite(ctx context.Context, by Caller, n NewInvite) (Iss
 				return err
 			}
 		}
-		return audit(ctx, q, actionInviteCreated, by.User, by, noAddr)
+		return nil
 	})
 	if err != nil {
 		return IssuedInvite{}, err
@@ -102,17 +102,16 @@ func (s *Service) Invites(ctx context.Context) ([]Invite, error) {
 }
 
 // RevokeInvite deletes an invite link, which stops working at once.
-func (s *Service) RevokeInvite(ctx context.Context, by Caller, invite id.ID) error {
+func (s *Service) RevokeInvite(ctx context.Context, invite id.ID) error {
 	err := s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
-		q := dbq.New(tx)
-		n, err := q.DeleteInvite(ctx, invite)
+		n, err := dbq.New(tx).DeleteInvite(ctx, invite)
 		if err != nil {
 			return err
 		}
 		if n == 0 {
 			return fmt.Errorf("%w: %s", ErrInviteNotFound, invite)
 		}
-		return audit(ctx, q, actionInviteRevoked, by.User, by, noAddr)
+		return nil
 	})
 	if err != nil {
 		return err
@@ -189,9 +188,6 @@ func (s *Service) AcceptInvite(ctx context.Context, token string, r SignInReques
 			return fmt.Errorf("%w: %s", ErrInviteNotFound, inv.ID)
 		}
 		if out, err = s.issue(ctx, tx, u.ID, c); err != nil {
-			return err
-		}
-		if err := audit(ctx, q, actionInviteAccepted, u.ID, out.Session.Caller(), r.RemoteIP); err != nil {
 			return err
 		}
 		return s.deps.Activity.Joined(ctx, tx, u.ID, id.ID{})

@@ -51,8 +51,7 @@ func (s *Service) Setup(ctx context.Context, r SignInRequest) (IssuedSession, er
 
 	var out IssuedSession
 	err = s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
-		q := dbq.New(tx)
-		if exists, err := q.AnyUser(ctx); err != nil {
+		if exists, err := dbq.New(tx).AnyUser(ctx); err != nil {
 			return err
 		} else if exists == 1 {
 			return ErrAlreadySetUp
@@ -64,10 +63,7 @@ func (s *Service) Setup(ctx context.Context, r SignInRequest) (IssuedSession, er
 			return err
 		}
 		out, err = s.issue(ctx, tx, u.ID, c)
-		if err != nil {
-			return err
-		}
-		return audit(ctx, q, actionSetup, u.ID, out.Session.Caller(), r.RemoteIP)
+		return err
 	})
 	if err != nil {
 		return IssuedSession{}, err
@@ -109,12 +105,8 @@ func (s *Service) SignIn(ctx context.Context, r SignInRequest) (IssuedSession, e
 
 	var out IssuedSession
 	err = s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
-		q := dbq.New(tx)
 		var err error
 		if out, err = s.issue(ctx, tx, user.ID, c); err != nil {
-			return err
-		}
-		if err := audit(ctx, q, actionSignIn, user.ID, out.Session.Caller(), r.RemoteIP); err != nil {
 			return err
 		}
 		return s.deps.Activity.SignedIn(ctx, tx, s.signIn(user.ID, c.name, r.RemoteIP))
@@ -130,9 +122,6 @@ func (s *Service) SignIn(ctx context.Context, r SignInRequest) (IssuedSession, e
 // ErrInvalidCredentials.
 func (s *Service) signInFailed(ctx context.Context, user id.ID, ip netip.Addr) error {
 	err := s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
-		if err := audit(ctx, dbq.New(tx), actionSignInFailed, user, Caller{}, ip); err != nil {
-			return err
-		}
 		return s.deps.Activity.Failed(ctx, tx, s.signIn(user, "", ip))
 	})
 	if err != nil {

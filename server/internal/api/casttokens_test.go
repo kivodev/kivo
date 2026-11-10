@@ -258,8 +258,7 @@ func TestCastCORS(t *testing.T) {
 }
 
 // TestCastTokenNotLogged makes, uses and deletes a cast token. It then
-// checks that the token appears in none of the log, the Logs page and the
-// audit.
+// checks that the token appears in neither the log nor the Logs page.
 func TestCastTokenNotLogged(t *testing.T) {
 	e := newEnv(t, serving{})
 	cast := e.castToken(e.adminToken)["token"].(string)
@@ -271,23 +270,7 @@ func TestCastTokenNotLogged(t *testing.T) {
 
 	logs := e.logs.String()
 	logs += e.do("GET", "/api/v1/logs?level=debug&limit=5000", e.adminToken, nil).Body.String()
-	var audit strings.Builder
-	rows, err := e.b.DB.Reader().QueryContext(ctx, `SELECT action, coalesce(remote_ip, '') FROM audit`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var a, ip string
-		if err := rows.Scan(&a, &ip); err != nil {
-			t.Fatal(err)
-		}
-		audit.WriteString(a + " " + ip + "\n")
-	}
-	if strings.Contains(logs, cast) || strings.Contains(audit.String(), cast) {
-		t.Error("the log or the audit holds the cast token")
-	}
-	if !strings.Contains(audit.String(), "cast_token_created") {
-		t.Errorf("no audit of the cast token: %s", audit.String())
+	if strings.Contains(logs, cast) {
+		t.Error("the log holds the cast token")
 	}
 }

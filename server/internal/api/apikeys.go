@@ -36,7 +36,7 @@ func (h *handlers) GetAPIKey(ctx context.Context, req gen.GetAPIKeyRequestObject
 // DeleteAPIKey revokes an API key. Its next request fails, and its
 // live-events sockets close at once.
 func (h *handlers) DeleteAPIKey(ctx context.Context, req gen.DeleteAPIKeyRequestObject) (gen.DeleteAPIKeyResponseObject, error) {
-	if err := h.deps.Auth.RevokeAPIKey(ctx, callerOf(ctx).Caller, req.ID); err != nil {
+	if err := h.deps.Auth.RevokeAPIKey(ctx, req.ID); err != nil {
 		return nil, err
 	}
 	return gen.DeleteAPIKey204Response{}, nil

@@ -48,7 +48,6 @@ func TestCreateUserAndSetPassword(t *testing.T) {
 	if ben.Session.User != u.ID {
 		t.Fatalf("signed in as %v, want %v", ben.Session.User, u.ID)
 	}
-	f.audit(actionUserCreated, 1)
 
 	// A new password signs out every session but the setter's own.
 	if err := f.auth.SetPassword(ctx, admin, u.ID, "another password"); err != nil {
@@ -136,16 +135,13 @@ func TestInvites(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := f.auth.RevokeInvite(ctx, admin, issued.Invite.ID); err != nil {
+	if err := f.auth.RevokeInvite(ctx, issued.Invite.ID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := f.auth.InviteByToken(ctx, issued.Token); !errors.Is(err, ErrInviteNotFound) {
 		t.Fatalf("revoked: err = %v", err)
 	}
-	if err := f.auth.RevokeInvite(ctx, admin, issued.Invite.ID); !errors.Is(err, ErrInviteNotFound) {
+	if err := f.auth.RevokeInvite(ctx, issued.Invite.ID); !errors.Is(err, ErrInviteNotFound) {
 		t.Fatalf("second revoke: err = %v", err)
 	}
-	f.audit(actionInviteCreated, 2)
-	f.audit(actionInviteAccepted, 1)
-	f.audit(actionInviteRevoked, 1)
 }

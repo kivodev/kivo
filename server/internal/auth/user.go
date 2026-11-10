@@ -15,7 +15,7 @@ import (
 )
 
 // CreateUser creates a user with a password, as when an admin adds someone
-// directly. by is the admin, recorded in the audit log.
+// directly. by is the admin, recorded as who added the user.
 func (s *Service) CreateUser(ctx context.Context, by Caller, u users.NewUser, password string) (users.User, error) {
 	if err := checkPassword(password); err != nil {
 		return users.User{}, err
@@ -27,9 +27,6 @@ func (s *Service) CreateUser(ctx context.Context, by Caller, u users.NewUser, pa
 	var out users.User
 	err = s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
 		if out, err = s.createUser(ctx, tx, u, phc); err != nil {
-			return err
-		}
-		if err := audit(ctx, dbq.New(tx), actionUserCreated, out.ID, by, noAddr); err != nil {
 			return err
 		}
 		return s.deps.Activity.Joined(ctx, tx, out.ID, by.User)
@@ -66,7 +63,7 @@ func (s *Service) SetPassword(ctx context.Context, by Caller, user id.ID, passwo
 			return err
 		}
 		s.revokeAtCommit(tx, revoked...)
-		return audit(ctx, q, actionPasswordSet, user, by, noAddr)
+		return nil
 	})
 	return err
 }
@@ -107,12 +104,6 @@ func (s *Service) ChangePassword(ctx context.Context, c Caller, r PasswordChange
 	}
 	if !ok || len(r.Current) > maxPassword {
 		try.fail()
-		err := s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
-			return audit(ctx, dbq.New(tx), actionPasswordChangeFailed, c.User, c, r.RemoteIP)
-		})
-		if err != nil {
-			return err
-		}
 		return ErrWrongPassword
 	}
 	try.succeed()
@@ -137,7 +128,7 @@ func (s *Service) ChangePassword(ctx context.Context, c Caller, r PasswordChange
 			}
 			s.revokeAtCommit(tx, revoked...)
 		}
-		return audit(ctx, q, actionPasswordChanged, c.User, c, r.RemoteIP)
+		return nil
 	})
 }
 

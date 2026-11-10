@@ -103,7 +103,6 @@ func TestSetupCreatesTheAdminOnce(t *testing.T) {
 	if !errors.Is(err, ErrAlreadySetUp) {
 		t.Fatalf("second setup: err = %v, want ErrAlreadySetUp", err)
 	}
-	f.audit(actionSetup, 1)
 }
 
 func TestSignInAndSignOut(t *testing.T) {
@@ -135,8 +134,6 @@ func TestSignInAndSignOut(t *testing.T) {
 	if alive, err := f.auth.Alive(ctx, admin); err != nil || !alive {
 		t.Fatalf("SignOut ended another session: Alive = %v, %v", alive, err)
 	}
-	f.audit(actionSignIn, 1)
-	f.audit(actionRevoke, 1)
 
 	if _, err := f.auth.SignIn(ctx, SignInRequest{Username: "admin", Password: password, Kind: "api_key"}); err == nil {
 		t.Fatal("signed in as an API key")
@@ -164,7 +161,6 @@ func TestSignInAgainFromAClientReplacesItsSession(t *testing.T) {
 	if list, err := f.auth.Sessions(ctx, admin, second.Session.User); err != nil || len(list) != 1 {
 		t.Fatalf("anna's sessions = %+v, %v", list, err)
 	}
-	f.audit(actionRevoke, 1)
 
 	// The admin signing in on anna's phone adds a second session there, and
 	// anna's session stays.
@@ -215,7 +211,6 @@ func TestSignOutOthers(t *testing.T) {
 			t.Fatalf("signed out what it shouldn't have: %v", err)
 		}
 	}
-	f.audit(actionRevokeOthers, 1)
 
 	if err := f.auth.SignOutOthers(ctx, Caller{User: admin.Session.User, APIKey: key.Key.ID}); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("an API key's caller: err = %v, want ErrNotFound", err)
@@ -283,7 +278,7 @@ func TestEveryRevocationRefusesAtOnce(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := f.auth.RevokeAPIKey(ctx, admin.Session.Caller(), key.Key.ID); err != nil {
+	if err := f.auth.RevokeAPIKey(ctx, key.Key.ID); err != nil {
 		t.Fatal(err)
 	}
 	expect("revoking an API key", key.Token)
@@ -311,7 +306,6 @@ func TestChangePassword(t *testing.T) {
 	if err := f.auth.ChangePassword(ctx, me, PasswordChange{Current: "wrong password", New: "a new password", RemoteIP: home}); !errors.Is(err, ErrWrongPassword) {
 		t.Fatalf("a wrong current password: err = %v, want ErrWrongPassword", err)
 	}
-	f.audit(actionPasswordChangeFailed, 1)
 	if err := f.auth.ChangePassword(ctx, me, PasswordChange{Current: password, New: "short", RemoteIP: home}); !errors.Is(err, ErrWeakPassword) {
 		t.Fatalf("a short new password: err = %v, want ErrWeakPassword", err)
 	}
@@ -338,7 +332,6 @@ func TestChangePassword(t *testing.T) {
 	if u := f.signIn(SignInRequest{Username: "anna", Password: "another password", RemoteIP: home}); u.Session.User != anna {
 		t.Fatalf("signed in as %v, want %v", u.Session.User, anna)
 	}
-	f.audit(actionPasswordChanged, 2)
 }
 
 // Wrong current passwords back off the same way wrong sign-ins do, and
@@ -615,7 +608,6 @@ func TestSignInBacksOff(t *testing.T) {
 
 		time.Sleep(te.RetryAfter)
 		f.signIn(right)
-		f.audit(actionSignInFailed, userFreeFailures+1)
 	})
 }
 
@@ -630,14 +622,3 @@ func (f *fixture) newUser(name string) id.ID {
 }
 
 func ptr[T any](v T) *T { return &v }
-
-func (f *fixture) audit(action string, want int) {
-	f.t.Helper()
-	var n int
-	if err := f.db.Reader().QueryRow(`SELECT count(*) FROM audit WHERE action = ?`, action).Scan(&n); err != nil {
-		f.t.Fatal(err)
-	}
-	if n != want {
-		f.t.Errorf("%d %s audit entries, want %d", n, action, want)
-	}
-}

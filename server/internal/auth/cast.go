@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"net/netip"
 	"time"
 
 	"github.com/mmcdole/kivo/internal/auth/dbq"
@@ -54,7 +53,7 @@ type IssuedCastToken struct {
 // api limits it to the cast routes. It ends when by's session ends. A
 // caller using an API key or another cast token has no session to bind it
 // to, so it gets ErrNotFound.
-func (s *Service) IssueCastToken(ctx context.Context, by Caller, ip netip.Addr, n NewCastToken) (IssuedCastToken, error) {
+func (s *Service) IssueCastToken(ctx context.Context, by Caller, n NewCastToken) (IssuedCastToken, error) {
 	if by.Session.IsZero() {
 		return IssuedCastToken{}, fmt.Errorf("%w: issue cast token", ErrNotFound)
 	}
@@ -71,14 +70,9 @@ func (s *Service) IssueCastToken(ctx context.Context, by Caller, ip netip.Addr, 
 	token, hash := newToken()
 	now := time.Now().Truncate(time.Millisecond)
 	err = s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
-		q := dbq.New(tx)
-		err := q.InsertCastToken(ctx, dbq.InsertCastTokenParams{
+		return dbq.New(tx).InsertCastToken(ctx, dbq.InsertCastTokenParams{
 			ID: id.New(), TokenHash: hash[:], SessionID: by.Session, Name: name, Receiver: string(n.Receiver), Now: now.UnixMilli(),
 		})
-		if err != nil {
-			return err
-		}
-		return audit(ctx, q, actionCastTokenCreated, by.User, by, ip)
 	})
 	if err != nil {
 		return IssuedCastToken{}, err

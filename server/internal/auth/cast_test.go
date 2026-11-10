@@ -12,7 +12,7 @@ import (
 
 func (f *fixture) castToken(by Caller) IssuedCastToken {
 	f.t.Helper()
-	ct, err := f.auth.IssueCastToken(context.Background(), by, home, NewCastToken{Name: "Living Room TV", Receiver: CastWeb})
+	ct, err := f.auth.IssueCastToken(context.Background(), by, NewCastToken{Name: "Living Room TV", Receiver: CastWeb})
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -35,16 +35,15 @@ func TestCastTokenPlaysAsTheSessionsUser(t *testing.T) {
 	if alive, err := f.auth.Alive(ctx, c); err != nil || !alive {
 		t.Fatalf("Alive = %v, %v", alive, err)
 	}
-	f.audit(actionCastTokenCreated, 1)
 
 	// A cast token or an API key can't make one.
-	if _, err := f.auth.IssueCastToken(ctx, c, home, NewCastToken{Name: "TV", Receiver: CastWeb}); !errors.Is(err, ErrNotFound) {
+	if _, err := f.auth.IssueCastToken(ctx, c, NewCastToken{Name: "TV", Receiver: CastWeb}); !errors.Is(err, ErrNotFound) {
 		t.Errorf("a cast token's cast token: %v", err)
 	}
-	if _, err := f.auth.IssueCastToken(ctx, Caller{User: c.User, APIKey: c.CastToken}, home, NewCastToken{Name: "TV", Receiver: CastWeb}); !errors.Is(err, ErrNotFound) {
+	if _, err := f.auth.IssueCastToken(ctx, Caller{User: c.User, APIKey: c.CastToken}, NewCastToken{Name: "TV", Receiver: CastWeb}); !errors.Is(err, ErrNotFound) {
 		t.Errorf("an API key's cast token: %v", err)
 	}
-	if _, err := f.auth.IssueCastToken(ctx, iss.Session.Caller(), home, NewCastToken{Name: "TV", Receiver: "toaster"}); !errors.Is(err, ErrInvalidReceiver) {
+	if _, err := f.auth.IssueCastToken(ctx, iss.Session.Caller(), NewCastToken{Name: "TV", Receiver: "toaster"}); !errors.Is(err, ErrInvalidReceiver) {
 		t.Errorf("an unknown receiver: %v", err)
 	}
 
