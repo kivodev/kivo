@@ -297,7 +297,7 @@ type harness struct {
 	folders    map[string]*memFS
 	down       map[string]bool // folder paths that fail to open
 	mu         sync.Mutex
-	identified []id.ID // the libraries Identify was called for
+	identified []id.ID // the libraries Scanned was called for
 }
 
 func newHarness(t *testing.T) *harness {
@@ -321,10 +321,10 @@ func newHarness(t *testing.T) *harness {
 	return h
 }
 
-// Identify stands in for the identify package's Identify. It records every
-// file of lib that is probed but not identified as identified at its
-// generation.
-func (h *harness) Identify(ctx context.Context, lib catalog.Library) error {
+// Scanned stands in for the identify package's Scanned and the task it asks.
+// It records every file of lib that is probed but not identified as
+// identified at its generation.
+func (h *harness) Scanned(ctx context.Context, lib catalog.Library) error {
 	h.mu.Lock()
 	h.identified = append(h.identified, lib.ID)
 	h.mu.Unlock()

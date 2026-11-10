@@ -27,8 +27,8 @@ type snapshot struct {
 
 // folderKey names what is identified together with a file at rel. That is
 // the whole folder the file is identified with, or the file alone when it
-// is outside any folder. Identify groups a scan's files by this key, so each
-// folder is decided once.
+// is outside any folder. The files that need identifying are grouped by this
+// key, so each folder is decided once.
 func folderKey(lib catalog.Library, file id.ID, rel string) string {
 	if folder := folderOf(lib.Kind, rel); folder != "" {
 		return lib.ID.String() + "/" + folder

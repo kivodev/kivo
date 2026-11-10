@@ -46,20 +46,20 @@ describe("Admin Libraries", () => {
     movies(api).scan = {
       libraryId: mockIds.movies,
       state: "scanning",
-      progress: { step: "identify", done: 1240, total: 3100, remainingMs: 4 * 60_000 },
+      progress: { step: "probe", done: 1240, total: 3100, remainingMs: 4 * 60_000 },
     };
     sendEvent({ type: "event", kind: "tasksChanged" });
 
-    const identify = await waitFor(
+    const probe = await waitFor(
       () => {
-        const step = rowOf("Movies").querySelector<HTMLElement>('[data-part="step-progress"][data-step="identify"]');
+        const step = rowOf("Movies").querySelector<HTMLElement>('[data-part="step-progress"][data-step="probe"]');
         expect(step).not.toBeNull();
         return step as HTMLElement;
       },
       { timeout: 3000 },
     );
-    expect(identify).toHaveTextContent("Scanning · Matching");
-    expect(identify).toHaveTextContent("1,240 of 3,100 · about 4m left");
+    expect(probe).toHaveTextContent("Scanning · Reading files");
+    expect(probe).toHaveTextContent("1,240 of 3,100 · about 4m left");
 
     await user.click(within(rowOf("Movies")).getByRole("button", { name: "Stop" }));
     await waitFor(() => expect(rowOf("Movies").querySelector('[data-part="scan"]')).toBeNull());

@@ -9,9 +9,12 @@ import (
 
 	"github.com/mmcdole/kivo/internal/store"
 
+	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/id"
+	"github.com/mmcdole/kivo/internal/identify"
 	"github.com/mmcdole/kivo/internal/metadata"
 	"github.com/mmcdole/kivo/internal/playback"
+	"github.com/mmcdole/kivo/internal/scan"
 )
 
 // task is a task's row from the Tasks page.
@@ -91,6 +94,45 @@ func TestTasks(t *testing.T) {
 	}
 	if w := e.do("POST", "/api/v1/tasks/scan-libraries/run", e.nobodyToken, nil); w.Code != http.StatusForbidden {
 		t.Errorf("run now as a viewer: %d", w.Code)
+	}
+}
+
+// Identify media is an On demand row. It has the files left to identify
+// as its pending count while they wait, and nothing left once the task has
+// found and identified them, which it does as the runner starts.
+func TestIdentifyTask(t *testing.T) {
+	e := newEnv(t, serving{})
+	// A home video is identified without a provider.
+	_, folder := e.b.Library(catalog.Videos)
+	clip := e.b.File(folder, "Holiday/Beach.mkv")
+	e.b.Write(func(ctx context.Context, tx *store.Tx) error {
+		_, err := tx.ExecContext(ctx, `UPDATE media_file SET probed = generation WHERE id = ?`, clip)
+		return err
+	})
+	// The row's counts are reused for a few seconds, so the change is
+	// waited for.
+	row := func(want float64) map[string]any {
+		t.Helper()
+		for deadline := time.Now().Add(15 * time.Second); ; time.Sleep(100 * time.Millisecond) {
+			r := e.task(identify.TaskIdentifyMedia)
+			if r["pendingCount"] == want && r["running"] == false {
+				return r
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("identify media %v, want %v left and not running", r, want)
+			}
+		}
+	}
+	if r := row(1); r["section"] != "onDemand" || r["progress"] != nil || r["stoppable"] != false || r["failedCount"] != nil || r["nextRunAt"] != nil {
+		t.Errorf("with a file to identify %v", r)
+	}
+	if w := e.do("POST", "/api/v1/tasks/identify-media/run", e.adminToken, nil); w.Code != http.StatusNotFound {
+		t.Errorf("run now: %d", w.Code)
+	}
+	e.run()
+	row(0)
+	if asked := e.asks.of(scan.TaskScanLibraries); len(asked) != 0 {
+		t.Errorf("scans asked for: %v, want none", asked)
 	}
 }
 

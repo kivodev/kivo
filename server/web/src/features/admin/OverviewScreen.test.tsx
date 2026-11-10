@@ -140,7 +140,7 @@ describe("Overview", () => {
     expect(await screen.findByRole("button", { name: /^Dune: Part Two, ben/ })).toBeInTheDocument();
 
     expect(section("Working now")).toBeInTheDocument();
-    expect(await lineOf("Scanning Movies · Matching")).toHaveTextContent("340 of 812 · about 4m left");
+    expect(await lineOf("Scanning Movies · Reading files")).toHaveTextContent("340 of 812 · about 4m left");
     expect(await lineOf("Intro and credits · Analyzing")).toHaveTextContent("312 of 1,516");
     expect(document.querySelectorAll('[data-part="step-progress"]')).toHaveLength(2);
 

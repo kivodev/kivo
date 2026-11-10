@@ -1307,16 +1307,13 @@ func (e RuleGroupMatch) Valid() bool {
 
 // Defines values for ScanStep.
 const (
-	ScanStepIdentify ScanStep = "identify"
-	ScanStepProbe    ScanStep = "probe"
-	ScanStepWalk     ScanStep = "walk"
+	ScanStepProbe ScanStep = "probe"
+	ScanStepWalk  ScanStep = "walk"
 )
 
 // Valid indicates whether the value is a known member of the ScanStep enum.
 func (e ScanStep) Valid() bool {
 	switch e {
-	case ScanStepIdentify:
-		return true
 	case ScanStepProbe:
 		return true
 	case ScanStepWalk:
@@ -1426,6 +1423,7 @@ func (e SubtitleSource) Valid() bool {
 const (
 	TaskNameExtractSubtitles   TaskName = "extract-subtitles"
 	TaskNameFindMarkers        TaskName = "find-markers"
+	TaskNameIdentifyMedia      TaskName = "identify-media"
 	TaskNameLibraryChanges     TaskName = "library-changes"
 	TaskNameMakeBackup         TaskName = "make-backup"
 	TaskNameMakePreviews       TaskName = "make-previews"
@@ -1448,6 +1446,8 @@ func (e TaskName) Valid() bool {
 	case TaskNameExtractSubtitles:
 		return true
 	case TaskNameFindMarkers:
+		return true
+	case TaskNameIdentifyMedia:
 		return true
 	case TaskNameLibraryChanges:
 		return true
@@ -1507,7 +1507,6 @@ func (e TaskSection) Valid() bool {
 const (
 	TaskStepConvert          TaskStep = "convert"
 	TaskStepExtractSubtitles TaskStep = "extractSubtitles"
-	TaskStepIdentify         TaskStep = "identify"
 	TaskStepProbe            TaskStep = "probe"
 	TaskStepWalk             TaskStep = "walk"
 )
@@ -1518,8 +1517,6 @@ func (e TaskStep) Valid() bool {
 	case TaskStepConvert:
 		return true
 	case TaskStepExtractSubtitles:
-		return true
-	case TaskStepIdentify:
 		return true
 	case TaskStepProbe:
 		return true
@@ -4340,8 +4337,8 @@ type ScanProgress struct {
 	RemainingMs *int `json:"remainingMs,omitempty"`
 
 	// Step A step of a library's scan: `walk` finding files, a folder at a
-	// time; `probe` reading the files new or changed; `identify` matching
-	// their folders. Skip steps you don't know.
+	// time; `probe` reading the files new or changed. Skip steps you
+	// don't know.
 	Step  ScanStep `json:"step"`
 	Total int      `json:"total"`
 }
@@ -4353,8 +4350,8 @@ type ScanRequest struct {
 }
 
 // ScanStep A step of a library's scan: `walk` finding files, a folder at a
-// time; `probe` reading the files new or changed; `identify` matching
-// their folders. Skip steps you don't know.
+// time; `probe` reading the files new or changed. Skip steps you
+// don't know.
 type ScanStep string
 
 // SearchResults defines model for SearchResults.

@@ -174,6 +174,34 @@ describe("Tasks", () => {
     });
   });
 
+  it("shows Identify media with what's left, then what it's doing, and never Run now", async () => {
+    const api = serveMockApi();
+    for (const id of ["prepare-downloads", "library-changes"]) {
+      const task = taskOf(api.tasks, id);
+      task.running = false;
+      delete task.progress;
+    }
+    const identify = taskOf(api.tasks, "identify-media");
+    identify.pendingCount = 12;
+    renderApp("/admin/tasks");
+    await screen.findByRole("heading", { name: "On demand" });
+    expect(rows(section("On demand")).map(cells)).toEqual([["Identify media", "", "", "12 left", ""]]);
+
+    Object.assign(identify, { progress: { done: 0, total: 0 }, running: true, stoppable: true });
+    sendEvent({ type: "event", kind: "tasksChanged" });
+    await waitFor(() => expect(cells(rowOf(section("On demand"), "Identify media"))[3]).toBe("Identifying"), {
+      timeout: 3000,
+    });
+    expect(screen.queryByRole("button", { name: "Run Identify media now" })).not.toBeInTheDocument();
+
+    Object.assign(identify, { pendingCount: 0, running: false, stoppable: false });
+    delete identify.progress;
+    sendEvent({ type: "event", kind: "tasksChanged" });
+    await waitFor(() => expect(screen.queryByRole("heading", { name: "On demand" })).not.toBeInTheDocument(), {
+      timeout: 3000,
+    });
+  });
+
   it("runs a task now", async () => {
     serveMockApi();
     const { user } = renderApp("/admin/tasks");

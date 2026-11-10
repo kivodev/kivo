@@ -3625,11 +3625,11 @@ export interface components {
         };
         /**
          * @description A step of a library's scan: `walk` finding files, a folder at a
-         *     time; `probe` reading the files new or changed; `identify` matching
-         *     their folders. Skip steps you don't know.
+         *     time; `probe` reading the files new or changed. Skip steps you
+         *     don't know.
          * @enum {string}
          */
-        ScanStep: "walk" | "probe" | "identify";
+        ScanStep: "walk" | "probe";
         Home: {
             rows: components["schemas"]["HomeRow"][];
             /** @description Set when `rows` is empty because the user hid every row. */
@@ -4688,7 +4688,7 @@ export interface components {
          * @description A task's name. Skip tasks you don't know.
          * @enum {string}
          */
-        TaskName: "scan-libraries" | "prune-gone-files" | "refresh-metadata" | "prune-provider-cache" | "make-previews" | "prune-previews" | "find-markers" | "prune-markers" | "extract-subtitles" | "prune-subtitles" | "prepare-downloads" | "prune-downloads" | "library-changes" | "prune-activity" | "make-backup" | "optimize-database";
+        TaskName: "scan-libraries" | "prune-gone-files" | "identify-media" | "refresh-metadata" | "prune-provider-cache" | "make-previews" | "prune-previews" | "find-markers" | "prune-markers" | "extract-subtitles" | "prune-subtitles" | "prepare-downloads" | "prune-downloads" | "library-changes" | "prune-activity" | "make-backup" | "optimize-database";
         /**
          * @description The Tasks page's table a row is in: `onDemand`, work done as it's
          *     asked for; `library`, the scheduled tasks on the libraries' media;
@@ -4725,7 +4725,7 @@ export interface components {
          *     don't know.
          * @enum {string}
          */
-        TaskStep: "walk" | "probe" | "identify" | "extractSubtitles" | "convert";
+        TaskStep: "walk" | "probe" | "extractSubtitles" | "convert";
         TaskRetry: {
             /** @description The items to retry; every failed one when absent. */
             itemIds?: components["schemas"]["ID"][];

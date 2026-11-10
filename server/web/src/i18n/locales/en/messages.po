@@ -294,10 +294,6 @@ msgstr "For example, Home Assistant."
 msgid "People"
 msgstr "People"
 
-#: src/features/admin/useAdminLabels.ts
-msgid "Matching"
-msgstr "Matching"
-
 #: src/features/lists/smartLabels.ts
 msgid "highest first"
 msgstr "highest first"
@@ -996,6 +992,7 @@ msgstr "{0} is empty."
 msgid "{from}s"
 msgstr "{from}s"
 
+#: src/features/admin/useAdminLabels.ts
 #: src/features/browse/WorkCard.tsx
 #: src/features/detail/EpisodeList.tsx
 msgid "Identifying"
@@ -4430,3 +4427,7 @@ msgstr "Refreshing…"
 #: src/features/auth/AddressScreen.tsx
 msgid "Connecting without encryption. Press Open to continue."
 msgstr "Connecting without encryption. Press Open to continue."
+
+#: src/features/admin/useAdminLabels.ts
+msgid "Identify media"
+msgstr "Identify media"

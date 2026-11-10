@@ -40,9 +40,9 @@ type run struct {
 
 // scan scans one library. It walks the library's folders, or only the
 // directories the watcher asked for. It then probes the files not probed
-// at their generation, and has their folders identified. A folder that
-// can't be reached is left as it is, and the library is scanned again in
-// an hour.
+// at their generation, and asks for their folders to be identified. A
+// folder that can't be reached is left as it is, and the library is
+// scanned again in an hour.
 func (s *Scanner) scan(ctx context.Context, lib id.ID) error {
 	l, err := s.deps.Catalog.Library(ctx, lib)
 	if errors.Is(err, catalog.ErrNotFound) {
@@ -72,7 +72,7 @@ func (s *Scanner) scan(ctx context.Context, lib id.ID) error {
 	if err := s.probeAll(ctx, l); err != nil {
 		return err
 	}
-	return s.deps.Identifier.Identify(ctx, l)
+	return s.deps.Identifier.Scanned(ctx, l)
 }
 
 // scanFolder reconciles one folder, or one directory of it and what changed

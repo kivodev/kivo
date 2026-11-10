@@ -54,6 +54,8 @@ var wholeLibrary = map[string]string{
 	"query/ValuesNarrator":              "a field's values for a rule, read when the builder opens the field",
 	"query/ValuesTag":                   "a field's values for a rule, read when the builder opens the field",
 
+	"identify/catalog.sql.CountUnidentified": "how many files the identify task has left, for Tasks: media_file_behind holds only files not yet probed or identified",
+
 	"query/smart/title":      smartScan,
 	"query/smart/year":       smartScan,
 	"query/smart/playState":  smartScan,

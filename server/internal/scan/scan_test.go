@@ -1287,7 +1287,8 @@ func TestRequestDirScansOnlyThatDirectory(t *testing.T) {
 }
 
 // Resume asks for the libraries with files a scan didn't finish with,
-// meaning files not probed, or not identified, at their generation.
+// meaning files not probed at their generation. Files probed but not
+// identified are the identify task's to find.
 func TestResumeAsksForLibrariesLeftBehind(t *testing.T) {
 	h := newHarness(t)
 	a := h.library(catalog.Movies, "/a")
@@ -1321,8 +1322,8 @@ func TestResumeAsksForLibrariesLeftBehind(t *testing.T) {
 	if err := h.s.Resume(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if got := h.tasks.of(TaskScanLibraries); !slices.Equal(got, []id.ID{b.ID}) {
-		t.Fatalf("asked for %v; want the library left unidentified", got)
+	if got := h.tasks.of(TaskScanLibraries); len(got) != 0 {
+		t.Fatalf("asked for %v; want no scan for a file only left unidentified", got)
 	}
 }
 

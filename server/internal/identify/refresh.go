@@ -78,24 +78,30 @@ func (i *Identifier) libraries(ctx context.Context) (map[id.ID]catalog.Library, 
 	return libs, nil
 }
 
-// reidentifyWork has each folder holding the work's files identified again.
-// It skips folders of a library missing from libs, which is one being
-// deleted.
+// reidentifyWork has each folder holding the work's files identified again,
+// once tx commits. It skips folders of a library missing from libs, which is
+// one being deleted.
 func (i *Identifier) reidentifyWork(ctx context.Context, tx *store.Tx, libs map[id.ID]catalog.Library, work id.ID) error {
 	files, err := dbq.New(tx).FilesOfWork(ctx, work)
 	if err != nil {
 		return err
 	}
-	byLib := map[id.ID][]id.ID{}
+	var marked, folders []id.ID // every file, and one for each folder
+	seen := map[string]bool{}
 	for _, f := range files {
-		if _, ok := libs[f.LibraryID]; ok {
-			byLib[f.LibraryID] = append(byLib[f.LibraryID], f.ID)
+		lib, ok := libs[f.LibraryID]
+		if !ok {
+			continue
+		}
+		marked = append(marked, f.ID)
+		if k := folderKey(lib, f.ID, f.RelPath); !seen[k] {
+			seen[k] = true
+			folders = append(folders, f.ID)
 		}
 	}
-	for lib, ids := range byLib {
-		if err := i.reidentifyAndScan(ctx, tx, lib, ids...); err != nil {
-			return err
-		}
+	if err := i.Reidentify(ctx, tx, marked); err != nil {
+		return err
 	}
+	tx.AfterCommit(func() { i.deps.Tasks.Enqueue(TaskIdentifyMedia, folders...) })
 	return nil
 }

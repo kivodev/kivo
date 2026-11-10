@@ -7,7 +7,7 @@ import { useAdminLabels } from "./useAdminLabels";
 
 /**
  * A library's scan on one line, with a thin bar under it, such as
- * "Movies · Matching    1,240 of 3,100 · about 4m left". On the left is
+ * "Movies · Reading files    1,240 of 3,100 · about 4m left". On the left is
  * what runs (the library's name, or Scanning) and the step it's on. On the
  * right are the count, the time left and the action. Before the first
  * step reports, only the name shows. A task's run has a count and no step.

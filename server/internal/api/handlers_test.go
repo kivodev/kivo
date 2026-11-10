@@ -26,6 +26,7 @@ import (
 	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/health"
 	"github.com/mmcdole/kivo/internal/id"
+	"github.com/mmcdole/kivo/internal/identify"
 	"github.com/mmcdole/kivo/internal/query"
 	"github.com/mmcdole/kivo/internal/scan"
 	"github.com/mmcdole/kivo/internal/tasks"
@@ -668,12 +669,15 @@ func TestUnmatch(t *testing.T) {
 		t.Errorf("the unmatched filter %+v", g)
 	}
 	// Refresh metadata on an unmatched work sends its folder back to be
-	// identified by a scan of its library.
+	// identified, without a scan of its library.
 	if r := e.do("POST", "/api/v1/works/"+e.heat.Work.String()+"/refresh-metadata", e.adminToken, nil); r.Code != http.StatusAccepted {
 		t.Errorf("refresh an unmatched work: %d %s", r.Code, r.Body.String())
 	}
-	if asked := e.asks.of(scan.TaskScanLibraries); !slices.Equal(asked, []id.ID{e.lib}) {
-		t.Errorf("scans asked for: %v, want the unmatched work's library", asked)
+	if asked := e.asks.of(identify.TaskIdentifyMedia); !slices.Equal(asked, []id.ID{e.heat.File}) {
+		t.Errorf("asked to identify %v, want the unmatched work's file", asked)
+	}
+	if asked := e.asks.of(scan.TaskScanLibraries); len(asked) != 0 {
+		t.Errorf("scans asked for: %v, want none", asked)
 	}
 	if r := e.do("POST", "/api/v1/works/"+e.episode.Work.String()+"/unmatch", e.adminToken, nil); r.Code != http.StatusBadRequest {
 		t.Errorf("unmatch an episode: %d %s", r.Code, r.Body.String())
