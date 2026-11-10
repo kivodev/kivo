@@ -17,11 +17,9 @@ import (
 // statement that carries it takes VisibleArgs.
 //
 // The work must be available in a granted library, or in any library when
-// the Viewer has every library. Its rating rank must be within the
-// Viewer's ceiling. The rank is w's own, or else its root's for a work
-// under one. An unrated work passes if the Viewer shows unrated works or
-// the work isn't video: blocking unrated works hides only movies, series
-// with their seasons and episodes, videos and extras.
+// the Viewer has every library: Granted, on the work's library. Its rating
+// must pass RatingVisible, by its own rating rank, or else its root's for a
+// work under one.
 //
 // The "-- viewer-filter" marker lets tests find the predicate in a
 // statement.
@@ -29,9 +27,8 @@ var VisibleWork = `EXISTS ( -- viewer-filter
   SELECT 1 FROM work_library vl
   WHERE vl.work_id = w.id
     AND ` + Granted("vl.library_id") + `
-    AND coalesce(coalesce(w.content_rating_age,
-      (SELECT vr.content_rating_age FROM work vr WHERE vr.id = CASE WHEN w.parent_id IS NOT NULL THEN w.root_id END)) <= @ceiling,
-      @show_unrated OR w.kind NOT IN ('movie', 'series', 'season', 'episode', 'extra', 'video')))`
+    AND ` + RatingVisible(`coalesce(w.content_rating_age,
+      (SELECT vr.content_rating_age FROM work vr WHERE vr.id = CASE WHEN w.parent_id IS NOT NULL THEN w.root_id END))`) + `)`
 
 // Granted applies the Viewer's library grants to a library ID column. It
 // reads @all_libraries and @libraries, which VisibleArgs binds.
@@ -39,8 +36,25 @@ func Granted(library string) string {
 	return "(@all_libraries OR " + library + " IN (SELECT unhex(value) FROM json_each(@libraries)))"
 }
 
-// VisibleArgs returns the named parameters that VisibleWork and Granted
-// read, for v.
+// RatingVisible applies the Viewer's rating rules to the work row aliased
+// w. age is the SQL of the work's rating rank: its own, or else its root's
+// for a work under one. It reads @ceiling and @show_unrated, which
+// VisibleArgs binds.
+//
+// The rank must be within the Viewer's ceiling. An unrated work passes if
+// the Viewer shows unrated works or the work isn't video: blocking unrated
+// works hides only movies, series with their seasons and episodes, videos
+// and extras.
+//
+// VisibleWork is RatingVisible and Granted together. A statement that
+// reads the work's work_library row itself carries the two in its place.
+func RatingVisible(age string) string {
+	return "coalesce(" + age + ` <= @ceiling,
+      @show_unrated OR w.kind NOT IN ('movie', 'series', 'season', 'episode', 'extra', 'video'))`
+}
+
+// VisibleArgs returns the named parameters that VisibleWork, Granted and
+// RatingVisible read, for v.
 func VisibleArgs(v users.Viewer) []any {
 	ceiling := int64(math.MaxInt64)
 	if c, ok := v.RatingCeiling(); ok {
