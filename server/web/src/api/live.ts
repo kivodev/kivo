@@ -2,7 +2,7 @@ import { type Query, type QueryClient, queryOptions, skipToken, useQueryClient }
 import { useEffect, useRef, useState } from "react";
 import { isPackaged } from "@/tv/flag";
 import { apiBaseUrl, sessionToken, unauthorized } from "./client";
-import { type ApiPath, apiPaths, libraryGridPaths, listViewPaths, workViewPaths } from "./paths";
+import { type ApiPath, apiPaths, libraryGridPaths, listViewPaths, readsPath, workViewPaths } from "./paths";
 import type { EventMessage, EventStreamMessage, SnapshotMessage } from "./schemas";
 
 // Live events, over one WebSocket per tab. Each event kind maps to one
@@ -27,7 +27,7 @@ export const liveQueries = {
     queryOptions<PlayNews>({ queryKey: ["live", "play", id], queryFn: skipToken, staleTime: Infinity }),
 };
 
-/** Narrows an invalidation to queries whose path ID is one of ids. */
+/** Narrows an invalidation to queries whose path ID, or the library they are read in, is one of ids. */
 export type Scope = { ids: readonly string[] };
 
 export type CacheOp =
@@ -60,7 +60,7 @@ export function planEvent(event: EventMessage): CacheOp[] {
         invalidate(apiPaths.listWorks),
         invalidate(apiPaths.libraries),
         invalidate(apiPaths.library, { ids }),
-        invalidate(apiPaths.libraryFacets, { ids }),
+        invalidate(apiPaths.workFieldValues, { ids }),
         ...libraryGridPaths.map((path) => invalidate(path, { ids })),
       ];
     }
@@ -128,13 +128,14 @@ export function planMessage(message: EventStreamMessage, reconnect: boolean): Ca
   }
 }
 
-type KeyInit = { params?: { path?: { id?: string } } };
+type KeyInit = { params?: { path?: { id?: string }; query?: { library?: string } }; body?: { library?: string } };
 
 /** Whether an invalidation reaches a query. The query must have the same path and be inside its scope. */
 export function matchesQuery(op: { path: ApiPath; scope?: Scope }, queryKey: readonly unknown[]): boolean {
-  if (queryKey[0] !== "get" || queryKey[1] !== op.path) return false;
+  if (!readsPath(queryKey, op.path)) return false;
   if (!op.scope) return true;
-  const id = ((queryKey[2] ?? {}) as KeyInit).params?.path?.id;
+  const init = (queryKey[2] ?? {}) as KeyInit;
+  const id = init.params?.path?.id ?? init.params?.query?.library ?? init.body?.library;
   return id !== undefined && op.scope.ids.includes(id);
 }
 

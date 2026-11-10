@@ -1,8 +1,10 @@
 package api
 
 import (
+	"cmp"
 	"context"
 	"errors"
+	"slices"
 
 	"github.com/mmcdole/kivo/internal/api/internal/gen"
 	"github.com/mmcdole/kivo/internal/catalog"
@@ -14,7 +16,10 @@ func (h *handlers) QueryWorks(ctx context.Context, req gen.QueryWorksRequestObje
 	if err != nil {
 		return nil, err
 	}
-	page, err := h.deps.Query.QueryWorks(ctx, callerOf(ctx).viewer, workQuery(req.Body.Query), o)
+	v := callerOf(ctx).viewer
+	// Only admins read the unmatched works alone.
+	in := query.Scope{Library: deref(req.Body.Library), Unmatched: deref(req.Body.Unmatched) && v.Admin()}
+	page, err := h.deps.Query.QueryWorks(ctx, v, workQuery(req.Body.Query), in, o)
 	var bad *query.InvalidQueryError
 	if errors.As(err, &bad) {
 		return nil, invalid("invalid query", problemFields("/query", bad.Problems)...)
@@ -22,7 +27,7 @@ func (h *handlers) QueryWorks(ctx context.Context, req gen.QueryWorksRequestObje
 	if err != nil {
 		return nil, err
 	}
-	return gen.QueryWorks200JSONResponse(workPage(page)), nil
+	return gen.QueryWorks200JSONResponse(workPage(page, o.Offset == 0)), nil
 }
 
 // problemFields is a query's problems as field errors under prefix.
@@ -121,9 +126,26 @@ func workField(f query.WorkField) gen.WorkField {
 }
 
 func (h *handlers) ListWorkFieldValues(ctx context.Context, req gen.ListWorkFieldValuesRequestObject) (gen.ListWorkFieldValuesResponseObject, error) {
-	values, err := h.deps.Query.FieldValues(ctx, callerOf(ctx).viewer, req.Field, deref(req.Params.Q), deref(req.Params.Ids))
+	lib := deref(req.Params.Library)
+	values, err := h.deps.Query.FieldValues(ctx, callerOf(ctx).viewer, req.Field, lib, deref(req.Params.Q), deref(req.Params.Ids))
 	if err != nil {
 		return nil, err
+	}
+	if req.Field == "contentRating" && !lib.IsZero() {
+		// The content ratings of the library's country come first, in that
+		// country's order (G, PG, PG-13, R, NC-17, then the TV ratings).
+		// Other ratings keep query's order.
+		l, err := h.deps.Catalog.Library(ctx, lib)
+		if err != nil {
+			return nil, err
+		}
+		order := map[string]int{}
+		for i, r := range h.deps.Metadata.ContentRatings(l.ContentRatingCountry) {
+			order[r.Name] = i + 1
+		}
+		slices.SortStableFunc(values, func(a, b query.FieldValue) int {
+			return cmp.Compare(cmp.Or(order[a.Value], len(order)+1), cmp.Or(order[b.Value], len(order)+1))
+		})
 	}
 	return gen.ListWorkFieldValues200JSONResponse{Items: each(values, func(v query.FieldValue) gen.WorkFieldValue {
 		return gen.WorkFieldValue{Value: v.Value, Name: v.Name}

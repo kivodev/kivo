@@ -186,8 +186,10 @@ func TestNoLibraryAccess(t *testing.T) {
 			}
 		}
 	}
+	if w := e.grid(e.nobodyToken, e.lib, "movie", nil); w.Code != http.StatusNotFound {
+		t.Errorf("a grid of a library not granted: %d, want 404", w.Code)
+	}
 	for _, q := range []string{
-		"/api/v1/libraries/" + e.lib.String() + "/works",
 		"/api/v1/works/" + e.series.String() + "/children",
 		"/api/v1/libraries/" + e.lib.String() + "/collections",
 	} {

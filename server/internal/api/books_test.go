@@ -43,7 +43,7 @@ func TestBooks(t *testing.T) {
 		t.Fatalf("series %v", series.Items)
 	}
 	seriesID := series.Items[0]["id"].(string)
-	books := decode[list](t, e.do("GET", tabs+"/works?sort=author", e.adminToken, nil))
+	books := decode[list](t, e.grid(e.adminToken, lib, "book", map[string]any{"sort": sortBy("author")}))
 	if len(books.Items) != 2 || books.Items[0]["book"].(map[string]any)["authors"].([]any)[0].(map[string]any)["name"] != "James S. A. Corey" {
 		t.Fatalf("books %v", books.Items)
 	}

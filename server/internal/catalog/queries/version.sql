@@ -81,6 +81,15 @@ SELECT EXISTS (SELECT 1 FROM work t
   WHERE t.library_id <> @library_id
     AND t.id IN (SELECT w.root_id FROM work w WHERE w.id IN (SELECT unhex(value) FROM (SELECT CAST(@ids AS TEXT) AS ids), json_each(ids))));
 
+-- name: RootsOfAnotherKind :one
+-- Whether any of the root works of works is of another kind than this
+-- library holds: a movies library holds movies, a shows library series, a
+-- videos library videos and an audiobooks library books.
+SELECT EXISTS (SELECT 1 FROM work t JOIN library l ON l.id = @library_id
+  WHERE l.kind IS NOT CASE t.kind WHEN 'movie' THEN 'movies' WHEN 'series' THEN 'shows'
+      WHEN 'video' THEN 'videos' WHEN 'book' THEN 'audiobooks' END
+    AND t.id IN (SELECT w.root_id FROM work w WHERE w.id IN (SELECT unhex(value) FROM (SELECT CAST(@ids AS TEXT) AS ids), json_each(ids))));
+
 -- name: RootWorks :many
 -- Every work of a root work.
 SELECT w.id FROM work w WHERE w.root_id = @root_id;

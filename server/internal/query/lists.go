@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
-	"slices"
 	"time"
 
 	"github.com/mmcdole/kivo/internal/catalog"
@@ -14,7 +13,8 @@ import (
 	"github.com/mmcdole/kivo/internal/users"
 )
 
-// List is a list the user keeps. Works counts the works the Viewer sees.
+// List is a list the user keeps. Works counts the works the Viewer sees;
+// a smart list's is set only by CountedLists.
 type List struct {
 	ID      id.ID
 	Name    string
@@ -167,7 +167,8 @@ func (s *Service) CountedLists(ctx context.Context, v users.Viewer) ([]List, err
 }
 
 // firstWorks reads a list's first works as its page lists them, and counts
-// a smart list's works. A smart list whose rules can't run has none.
+// a smart list's works with them. A smart list whose rules can't run has
+// none.
 func firstWorks(ctx context.Context, tx *sql.Tx, vw viewer, l *List, now time.Time) ([]WorkSummary, error) {
 	if l.Smart == nil {
 		return summaries(ctx, tx, listWorksPage, vw.args(sql.Named("list", l.ID), sql.Named("kinds", nil),
@@ -176,26 +177,14 @@ func firstWorks(ctx context.Context, tx *sql.Tx, vw viewer, l *List, now time.Ti
 	if len(l.Smart.Errors) > 0 {
 		return nil, nil
 	}
-	c := compile(l.Smart.Query, vw, now, listSeed(l.ID, now), nil)
-	if err := rowOf(ctx, tx, statement{sql: c.count}, c.args, &l.Works); err != nil {
-		return nil, err
-	}
-	return summaries(ctx, tx, statement{sql: c.page}, append(slices.Clone(c.args), sql.Named("limit", listCovers), sql.Named("offset", 0)))
+	c := compile(l.Smart.Query, vw, now, listSeed(l.ID, now), nil, reading{})
+	works, total, _, err := countedSummaries(ctx, tx, statement{sql: c.counted}, append(c.args, sql.Named("limit", listCovers), sql.Named("offset", 0)), false)
+	l.Works = total
+	return works, err
 }
 
-// countSmart sets a smart list's Works to how many works its rules select.
-func (s *Service) countSmart(ctx context.Context, vw viewer, l *List) error {
-	if l.Smart == nil || len(l.Smart.Errors) > 0 {
-		return nil
-	}
-	now := time.Now()
-	c := compile(l.Smart.Query, vw, now, listSeed(l.ID, now), nil)
-	return s.db.Read(ctx, func(tx *sql.Tx) error {
-		return rowOf(ctx, tx, statement{sql: c.count}, c.args, &l.Works)
-	})
-}
-
-// List returns one of the user's lists, or ErrNotFound.
+// List returns one of the user's lists, or ErrNotFound. A smart list's
+// Works is 0, as in Lists: the first page of its works has the count.
 func (s *Service) List(ctx context.Context, v users.Viewer, list id.ID) (List, error) {
 	var out List
 	vw := viewerOf(v)
@@ -208,12 +197,13 @@ func (s *Service) List(ctx context.Context, v users.Viewer, list id.ID) (List, e
 	if err != nil {
 		return List{}, err
 	}
-	return out, s.countSmart(ctx, vw, &out)
+	return out, nil
 }
 
 // ListWorks returns a page of a list's works: a manual list's most recently
 // added first, a smart list's as its rules select them. It lists those of
-// kinds, or every kind when kinds is empty.
+// kinds, or every kind when kinds is empty. The first page, at offset 0,
+// has the Total; a later page's is 0.
 func (s *Service) ListWorks(ctx context.Context, v users.Viewer, list id.ID, kinds []catalog.WorkKind, o GridOptions) (GridPage[WorkSummary], error) {
 	limit, err := o.limit()
 	if err != nil {
@@ -254,7 +244,7 @@ func (s *Service) smartWorks(ctx context.Context, vw viewer, list id.ID, smart *
 		return s.summaryPage(ctx, vw, nil, 0, nil)
 	}
 	now := time.Now()
-	return s.runQuery(ctx, vw, smart.Query, listSeed(list, now), kinds, o, now)
+	return s.runQuery(ctx, vw, smart.Query, listSeed(list, now), kinds, reading{}, o, now)
 }
 
 // listOwner reads a list of the user's rules, NULL for a manual list; a list

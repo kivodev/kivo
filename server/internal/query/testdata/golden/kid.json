@@ -1659,30 +1659,6 @@
     "Book": null
   },
   "detail series:The Expanse": "error: not found",
-  "facets library:Audiobooks": {
-    "Genres": [
-      "Science Fiction"
-    ],
-    "ContentRatings": [],
-    "Years": [
-      2011,
-      2014,
-      2021
-    ],
-    "Narrators": [
-      {
-        "ID": "<id>",
-        "Name": "Jefferson Mays"
-      },
-      {
-        "ID": "person:Ray Porter",
-        "Name": "Ray Porter"
-      }
-    ],
-    "Resolutions": [],
-    "Ranges": [],
-    "Collections": false
-  },
   "home": [
     {
       "ID": "recentlyAdded:library:Movies",
@@ -2155,6 +2131,16 @@
       "Kind": "audiobooks",
       "Pinned": true,
       "Items": 3
+    }
+  ],
+  "narrators library:Audiobooks": [
+    {
+      "Value": "<id>",
+      "Name": "Jefferson Mays"
+    },
+    {
+      "Value": "person:Ray Porter",
+      "Name": "Ray Porter"
     }
   ],
   "person person:Denis Villeneuve": "error: not found",

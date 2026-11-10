@@ -1,59 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { Library, WorkField } from "@/api/schemas";
-import {
-  blankGroup,
-  draftOf,
-  queryFromGrid,
-  queryOf,
-  refusal,
-  ruleComplete,
-  storedValue,
-  typedValue,
-} from "./smartQuery";
-
-const library = (kind: Library["kind"]) => ({ id: "lib", name: "Lib", kind }) as Library;
-
-describe("queryFromGrid", () => {
-  it("maps each filter to its rule and the library to a library rule", () => {
-    const query = queryFromGrid(library("movies"), {
-      played: "inProgress",
-      genre: ["Comedy", "Drama"],
-      yearFrom: 1990,
-      yearTo: 1999,
-      contentRating: ["PG"],
-      resolution: ["4k"],
-      dynamicRange: ["hdr"],
-      matchState: "unmatched",
-      sort: "runtime",
-    });
-    expect(query).toEqual({
-      kinds: ["movie"],
-      where: {
-        match: "all",
-        rules: [
-          { field: "library", op: "anyOf", values: ["lib"] },
-          { field: "playState", op: "anyOf", values: ["inProgress"] },
-          { field: "genre", op: "anyOf", values: ["Comedy", "Drama"] },
-          { field: "year", op: "between", values: ["1990", "1999"] },
-          { field: "contentRating", op: "anyOf", values: ["PG"] },
-          { field: "resolution", op: "anyOf", values: ["4k"] },
-          { field: "dynamicRange", op: "anyOf", values: ["hdr"] },
-        ],
-      },
-      sort: [{ field: "runtimeMs" }],
-    });
-  });
-
-  it("uses each library kind's works, a narrator's ID, and a one-sided year", () => {
-    expect(queryFromGrid(library("shows"), {}).kinds).toEqual(["series"]);
-    expect(queryFromGrid(library("videos"), {}).kinds).toEqual(["video"]);
-    const books = queryFromGrid(library("audiobooks"), { narratorId: "person", yearFrom: 2000, sort: "author" });
-    expect(books.kinds).toEqual(["book"]);
-    expect(books.where?.rules).toContainEqual({ field: "narrator", op: "anyOf", values: ["person"] });
-    expect(books.where?.rules).toContainEqual({ field: "year", op: "gte", values: ["2000"] });
-    expect(books.sort).toBeUndefined();
-  });
-});
+import type { WorkField } from "@/api/schemas";
+import { blankGroup, draftOf, queryOf, refusal, ruleComplete, storedValue, typedValue } from "./smartQuery";
 
 describe("draftOf and queryOf", () => {
   it("round-trips a query, a root matching all's library rule becoming the Libraries row", () => {

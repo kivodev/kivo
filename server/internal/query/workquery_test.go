@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/mmcdole/kivo/internal/catalog"
+	"github.com/mmcdole/kivo/internal/events"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/query"
 	"github.com/mmcdole/kivo/internal/store"
@@ -20,7 +21,7 @@ var queryAllKinds = []catalog.WorkKind{catalog.KindMovie, catalog.KindSeries, ca
 
 func (h *household) runQuery(v users.Viewer, q query.WorkQuery) query.GridPage[query.WorkSummary] {
 	h.t.Helper()
-	p, err := h.q.QueryWorks(ctx, v, q, query.GridOptions{Limit: 200})
+	p, err := h.q.QueryWorks(ctx, v, q, query.Scope{}, query.GridOptions{Limit: 200})
 	if err != nil {
 		h.t.Fatalf("%+v: %v", q, err)
 	}
@@ -145,7 +146,7 @@ func TestQueryHidesWhatTheViewerCantSee(t *testing.T) {
 					}
 				}
 			}
-			offered, err := h.q.FieldValues(ctx, viewer.v, f.Field, "", nil)
+			offered, err := h.q.FieldValues(ctx, viewer.v, f.Field, id.ID{}, "", nil)
 			if err != nil {
 				t.Fatalf("%s values: %v", f.Field, err)
 			}
@@ -161,13 +162,13 @@ func TestQueryHidesWhatTheViewerCantSee(t *testing.T) {
 		}
 	}
 	// A library the friend isn't granted isn't offered, even by its ID.
-	got, err := h.q.FieldValues(ctx, h.friend, "library", "", []string{h.private.String()})
+	got, err := h.q.FieldValues(ctx, h.friend, "library", id.ID{}, "", []string{h.private.String()})
 	if err != nil || len(got) != 0 {
 		t.Errorf("a library the friend isn't granted: %v, %v", got, err)
 	}
 	// Another user's list isn't offered.
 	others := h.lists(h.admin)[0].ID
-	if got, _ := h.q.FieldValues(ctx, h.friend, "inList", "", []string{others.String()}); len(got) != 0 {
+	if got, _ := h.q.FieldValues(ctx, h.friend, "inList", id.ID{}, "", []string{others.String()}); len(got) != 0 {
 		t.Errorf("another user's list is offered: %v", got)
 	}
 	// A rule on a library the friend isn't granted matches nothing.
@@ -176,7 +177,7 @@ func TestQueryHidesWhatTheViewerCantSee(t *testing.T) {
 		t.Errorf("the friend reached a library it isn't granted: %v", ids(p.Items))
 	}
 	// A malformed ID is refused, naming the parameter.
-	if _, err := h.q.FieldValues(ctx, h.friend, "rootWork", "", []string{"nope"}); !errors.Is(err, query.ErrInvalid) {
+	if _, err := h.q.FieldValues(ctx, h.friend, "rootWork", id.ID{}, "", []string{"nope"}); !errors.Is(err, query.ErrInvalid) {
 		t.Errorf("a malformed id: %v", err)
 	}
 }
@@ -187,7 +188,7 @@ func TestQueryRandom(t *testing.T) {
 	titled := ids(h.runQuery(h.admin, query.WorkQuery{Kinds: queryAllKinds}).Items)
 	day := time.Date(2026, 3, 4, 12, 0, 0, 0, time.UTC)
 	on := func(at time.Time) []id.ID {
-		p, err := h.q.QueryWorksAt(ctx, h.admin, q, query.GridOptions{Limit: 200}, at)
+		p, err := h.q.QueryWorksAt(ctx, h.admin, q, query.Scope{}, query.GridOptions{Limit: 200}, at)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -292,11 +293,112 @@ func TestQuerySortOrder(t *testing.T) {
 	}
 }
 
-func TestQueryExcludesProvisionalWorks(t *testing.T) {
+// A query selects unmatched works and the works under them with the rest,
+// an unmatched work's summary saying so as a grid's does: a rule on what
+// only a match gives doesn't select them, and any other rule does. A smart
+// list shows them on its page, in its count, and on Home.
+func TestQueryIncludesProvisionalWorks(t *testing.T) {
 	h := newHousehold(t)
-	all := ids(h.runQuery(h.admin, query.WorkQuery{Kinds: queryAllKinds}).Items)
-	if slices.Contains(all, h.unmatchedShow1.Work) {
-		t.Errorf("a provisional work came back: %v", all)
+	unmatched := []id.ID{h.unmatched.Work, h.unmatchedShow, h.unmatchedShow1.Work}
+	has := func(got []id.ID) bool {
+		return !slices.ContainsFunc(unmatched, func(w id.ID) bool { return !slices.Contains(got, w) })
+	}
+	everything := h.runQuery(h.admin, query.WorkQuery{Kinds: queryAllKinds})
+	if !has(ids(everything.Items)) {
+		t.Errorf("every work: %v, want the unmatched %v among them", ids(everything.Items), unmatched)
+	}
+	for _, c := range everything.Items {
+		if want := c.ID == h.unmatched.Work || c.ID == h.unmatchedShow; (c.MatchState == query.Unmatched) != want {
+			t.Errorf("%s is %s", h.names[c.ID], c.MatchState)
+		}
+	}
+	added := query.Rule{Field: "addedAt", Op: "within", Values: []string{"P30D"}}
+	if got := ids(h.runQuery(h.admin, query.WorkQuery{Kinds: queryAllKinds, Where: where(added)}).Items); !has(got) {
+		t.Errorf("added in the last 30 days: %v, want the unmatched %v among them", got, unmatched)
+	}
+	for _, r := range []query.Rule{{Field: "rating", Op: "isSet"}, {Field: "genre", Op: "isSet"}, {Field: "year", Op: "gte", Values: []string{"1900"}}} {
+		got := ids(h.runQuery(h.admin, query.WorkQuery{Kinds: queryAllKinds, Where: where(r)}).Items)
+		if slices.ContainsFunc(unmatched, func(w id.ID) bool { return slices.Contains(got, w) }) {
+			t.Errorf("%s %s selects an unmatched work: %v", r.Field, r.Op, got)
+		}
+	}
+
+	us := users.New(h.b.DB, events.NewBus())
+	list := h.smartList(us, h.admin, "New", movies(added))
+	p, err := h.q.ListWorks(ctx, h.admin, list, nil, query.GridOptions{})
+	if err != nil || !slices.Contains(ids(p.Items), h.unmatched.Work) {
+		t.Fatalf("the list's page: %v, %v", ids(p.Items), err)
+	}
+	counted, err := h.q.CountedLists(ctx, h.admin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if l := counted[slices.IndexFunc(counted, func(l query.List) bool { return l.ID == list })]; l.Works != p.Total {
+		t.Errorf("the Lists screen counts %d works, and the list's page %d", l.Works, p.Total)
+	}
+	row := "list:" + list.String()
+	h.arrange(us, h.admin, users.HomeRow{ID: row, Shown: true})
+	home := h.home(h.admin)
+	i := slices.IndexFunc(home, func(r query.HomeRow) bool { return r.ID == row })
+	if i < 0 || !slices.Equal(ids(home[i].Items), ids(p.Items)) {
+		t.Errorf("the list's row on Home: %+v, want the page's %v", home, ids(p.Items))
+	}
+	for _, c := range home[i].Items {
+		if c.ID == h.unmatched.Work && c.MatchState != query.Unmatched {
+			t.Errorf("the unmatched film on Home is %s", c.MatchState)
+		}
+	}
+}
+
+// The rating field is the rating a card shows, which a rating without
+// votes isn't.
+func TestRatingNeedsVotes(t *testing.T) {
+	h := newHousehold(t)
+	h.metadata(h.dune.Work, catalog.WorkMetadata{Community: &catalog.CommunityRating{Rating: 8.1, Votes: 900}})
+	rated := movies(query.Rule{Field: "rating", Op: "gte", Values: []string{"8"}})
+	if got := ids(h.runQuery(h.admin, rated).Items); !slices.Contains(got, h.dune.Work) {
+		t.Fatalf("rated 8 or more: %v, want Dune", got)
+	}
+	h.b.Write(func(ctx context.Context, tx *store.Tx) error {
+		if _, err := tx.ExecContext(ctx, `UPDATE work SET community_votes = NULL WHERE id = ?`, h.dune.Work); err != nil {
+			return err
+		}
+		_, err := tx.ExecContext(ctx, `UPDATE work_library SET rating_sort = -1 WHERE work_id = ?`, h.dune.Work)
+		return err
+	})
+	if got := ids(h.runQuery(h.admin, rated).Items); slices.Contains(got, h.dune.Work) {
+		t.Errorf("rated 8 or more: %v, though Dune's rating has no votes", got)
+	}
+	unset := h.runQuery(h.admin, movies(query.Rule{Field: "rating", Op: "isNotSet"}))
+	i := slices.IndexFunc(unset.Items, func(c query.WorkSummary) bool { return c.ID == h.dune.Work })
+	if i < 0 || unset.Items[i].Community != nil {
+		t.Errorf("with no rating: %v, want Dune, its card showing none", ids(unset.Items))
+	}
+}
+
+// A season's or episode's content rating is its own, and its series' when
+// it has none, as the Viewer's rating ceiling reads it.
+func TestContentRatingIsAWorksOwnFirst(t *testing.T) {
+	h := newHousehold(t)
+	h.metadata(h.expanse1.Work, catalog.WorkMetadata{ContentRating: "TV-Y", ContentRatingAge: ptr(0)})
+	series := h.runQuery(h.admin, query.WorkQuery{Kinds: []catalog.WorkKind{catalog.KindSeries},
+		Where: where(query.Rule{Field: "rootWork", Op: "anyOf", Values: []string{h.expanse.String()}})}).Items
+	if len(series) != 1 || series[0].ContentRating == "" || series[0].ContentRating == "TV-Y" {
+		t.Fatalf("the series: %+v, want one with a rating that isn't TV-Y", series)
+	}
+	episodes := func(kinds []catalog.WorkKind, rating string) []id.ID {
+		return ids(h.runQuery(h.admin, query.WorkQuery{Kinds: kinds, Where: where(
+			query.Rule{Field: "rootWork", Op: "anyOf", Values: []string{h.expanse.String()}},
+			query.Rule{Field: "contentRating", Op: "anyOf", Values: []string{rating}})}).Items)
+	}
+	for _, kinds := range [][]catalog.WorkKind{{catalog.KindEpisode}, queryAllKinds} {
+		if got := episodes(kinds, "TV-Y"); !slices.Equal(got, []id.ID{h.expanse1.Work}) {
+			t.Errorf("%v rated TV-Y: %v, want the episode rated so", kinds, got)
+		}
+		got := episodes(kinds, series[0].ContentRating)
+		if slices.Contains(got, h.expanse1.Work) || !slices.Contains(got, h.expanse2.Work) || !slices.Contains(got, h.expanse3.Work) {
+			t.Errorf("%v rated as the series: %v, want its episodes with no rating of their own", kinds, got)
+		}
 	}
 }
 
@@ -321,25 +423,22 @@ func TestQueryKindsAreTheEnginesOwn(t *testing.T) {
 		for _, maxWorks := range []*int{nil, &ten} {
 			q := query.WorkQuery{Kinds: tt.kinds, MaxWorks: maxWorks}
 			var invalid *query.InvalidQueryError
-			if _, err := h.q.QueryWorks(ctx, h.admin, q, query.GridOptions{}); !errors.As(err, &invalid) {
+			if _, err := h.q.QueryWorks(ctx, h.admin, q, query.Scope{}, query.GridOptions{}); !errors.As(err, &invalid) {
 				t.Errorf("%q: got %v, want an InvalidQueryError", tt.kinds, err)
 			}
 			for _, only := range [][]catalog.WorkKind{nil, {injected}, tt.kinds} {
-				count, page, args := query.Compiled(q, h.admin, time.Now(), only)
+				counted, page, args := h.q.Compiled(t, q, h.admin, time.Now(), only)
 				// A page of kinds the query doesn't select has no works.
 				want, works := tt.want, tt.works && (only == nil || slices.Contains(only, catalog.KindMovie))
 				if maxWorks == nil && !works {
 					want = "NULL"
 				}
-				for _, stmt := range []string{count, page} {
+				for _, stmt := range []string{counted, page} {
 					if m := kindList.FindStringSubmatch(stmt); m == nil || m[1] != want || strings.Contains(stmt, "1=1") || strings.Contains(stmt, "album") {
 						t.Errorf("%q, only %q: the statement names the kinds %q, want %s:\n%s", tt.kinds, only, m, want, stmt)
 					}
 				}
-				var total int
-				if err := h.b.DB.Reader().QueryRow(count, args...).Scan(&total); err != nil {
-					t.Fatal(err)
-				}
+				_, total := readCompiled(t, h.b.DB.Reader(), counted, args, true)
 				if (total > 0) != works {
 					t.Errorf("%q, only %q: counts %d works", tt.kinds, only, total)
 				}
@@ -498,8 +597,51 @@ func TestQueryValidation(t *testing.T) {
 		t.Errorf("21 rules: %v", got)
 	}
 	var invalid *query.InvalidQueryError
-	if _, err := query.New(nil).QueryWorks(context.Background(), users.Viewer{}, query.WorkQuery{}, query.GridOptions{}); !errors.As(err, &invalid) {
+	if _, err := query.New(nil).QueryWorks(context.Background(), users.Viewer{}, query.WorkQuery{}, query.Scope{}, query.GridOptions{}); !errors.As(err, &invalid) {
 		t.Errorf("an invalid query: %v", err)
+	}
+}
+
+// A compiled query joins the user's state where it selects its works only
+// when a rule or a sort key reads it. It always joins it once more, to the
+// page's works, for their summaries.
+func TestQueryJoinsStateOnlyWhenRead(t *testing.T) {
+	h := newHousehold(t)
+	const join = "LEFT JOIN user_state us "
+	rule := func(field, op string, values ...string) query.WorkQuery {
+		return movies(query.Rule{Field: field, Op: op, Values: values})
+	}
+	sorted := func(field string) query.WorkQuery {
+		return query.WorkQuery{Kinds: queryAllKinds, Sort: []query.SortKey{{Field: field}}}
+	}
+	ten := 10
+	capped := sorted("myRating")
+	capped.MaxWorks = &ten
+	for _, tt := range []struct {
+		q     query.WorkQuery
+		state bool
+	}{
+		{rule("title", "contains", "toy"), false},
+		{rule("inList", "anyOf", h.lists(h.admin)[0].ID.String()), false},
+		{sorted("year"), false},
+		{sorted("random"), false},
+		{rule("playState", "anyOf", "played"), true},
+		{rule("myRating", "isSet"), true},
+		{rule("lastPlayedAt", "within", "P30D"), true},
+		{sorted("myRating"), true},
+		{sorted("lastPlayedAt"), true},
+		{capped, true},
+	} {
+		if problems := tt.q.Validate(); len(problems) > 0 {
+			t.Fatalf("%s: %v", describe(tt.q), problems)
+		}
+		counted, page, _ := h.q.Compiled(t, tt.q, h.admin, time.Now(), nil)
+		for _, stmt := range []string{counted, page} {
+			selects, summaries, ok := strings.Cut(stmt, "\npage AS (")
+			if !ok || strings.Contains(selects, join) != tt.state || strings.Count(summaries, join) != 1 {
+				t.Errorf("%s: want the user's state joined where the works are selected: %v, and once after:\n%s", describe(tt.q), tt.state, stmt)
+			}
+		}
 	}
 }
 
@@ -519,7 +661,7 @@ func TestReleaseSortUsesTheFullDate(t *testing.T) {
 		}
 		return nil
 	})
-	p, err := h.q.Browse(ctx, h.admin, h.movies, query.BrowseOptions{Sort: query.ByRelease})
+	p, err := h.browse(h.admin, h.movies, grid{Sort: "releaseDate"})
 	if err != nil {
 		t.Fatal(err)
 	}

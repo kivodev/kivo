@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/mmcdole/kivo/internal/catalog"
+	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/query"
 	"github.com/mmcdole/kivo/internal/store"
 	"github.com/mmcdole/kivo/internal/store/storetest"
@@ -160,15 +161,58 @@ func TestSmartQueryPlans(t *testing.T) {
 	now := time.Now()
 	for _, s := range smartSamples(h) {
 		for _, only := range [][]catalog.WorkKind{nil, s.q.Kinds} {
-			count, page, args := query.Compiled(s.q, h.friend, now, only)
+			counted, page, args := h.q.Compiled(t, s.q, h.friend, now, only)
 			prefix := ""
 			if only != nil {
 				prefix = "only/"
 			}
 			file := "smart/" + s.name
-			for _, st := range []statement{{"query", file, prefix + "count", count}, {"query", file, prefix + "page", page}} {
+			for _, st := range []statement{{"query", file, prefix + "counted", counted}, {"query", file, prefix + "page", page}} {
 				t.Run(st.key(), func(t *testing.T) { checkScans(t, h.b.DB.Reader(), st, st.sql, args) })
 			}
+		}
+	}
+}
+
+// gridSample is a library grid the plan and Viewer tests compile.
+type gridSample struct {
+	name string
+	lib  id.ID
+	o    grid
+}
+
+// compiled is the statements the grid's read compiles to as the friend.
+func (s gridSample) compiled(h *household) (counted, page string, args []any) {
+	return h.q.CompiledIn(s.o.query(kindIn(h.b.DB, s.lib)), h.friend, query.Scope{Library: s.lib, Unmatched: s.o.Filter.Unmatched})
+}
+
+// gridSamples are the grids of a movies and a shows library by each sort,
+// bare and with every filter at once.
+func gridSamples(h *household) []gridSample {
+	every := filter{Played: "inProgress", Genres: []string{"Drama", "Crime"}, YearFrom: 1990, YearTo: 2020,
+		ContentRatings: []string{"PG-13"}, Resolutions: []query.Resolution{query.Resolution4K}, Ranges: []query.Range{query.HDR},
+		Unmatched: true, Narrator: h.porter}
+	var out []gridSample
+	for _, sort := range gridSorts {
+		for name, lib := range map[string]id.ID{"movies": h.movies, "shows": h.shows} {
+			out = append(out,
+				gridSample{name + " by " + sort, lib, grid{Sort: sort}},
+				gridSample{name + " by " + sort + ", filtered", lib, grid{Sort: sort, Filter: every}})
+		}
+	}
+	return out
+}
+
+// TestGridPlans checks the statements library grids compile to at run time
+// as TestQueryPlans checks the fixed ones, as a Viewer granted some
+// libraries.
+func TestGridPlans(t *testing.T) {
+	h := newHousehold(t)
+	for _, s := range gridSamples(h) {
+		counted, page, args := s.compiled(h)
+		file := "grid/" + s.name
+		for _, st := range []statement{{"query", file, "counted", counted}, {"query", file, "page", page}} {
+			t.Run(st.key(), func(t *testing.T) { checkScans(t, h.b.DB.Reader(), st, st.sql, args) })
 		}
 	}
 }
@@ -178,12 +222,31 @@ func TestSmartQueryPlans(t *testing.T) {
 // through its primary key. Each work is looked up from there, and then its
 // root when seasons or episodes are asked for. It checks without and with
 // the statistics SQLite gathers, which the nightly maintenance has it do.
+//
+// A page without its count, of a query an index holds in order, for a
+// Viewer with one library of its works, starts at that index instead, takes
+// each row from the index without the table, and sorts nothing before it
+// cuts the page. One of a query ordered by the
+// user's own state starts at the user's rows, and looks each one's work up
+// in that library.
+//
+// A library's grid is a query read in that library, so both of its
+// statements start as such a page does, bare or filtered.
 func TestSmartQueriesStartAtWorkLibrary(t *testing.T) {
 	const (
 		rows = "SEARCH wl USING PRIMARY KEY (library_id=?)"
 		work = "SEARCH w USING INDEX sqlite_autoindex_work_1 (id=?)"
 		root = "SEARCH r USING INDEX sqlite_autoindex_work_1 (id=?)"
+		mine = "SEARCH wl USING PRIMARY KEY (library_id=? AND work_id=?)" // from the user's rows
 	)
+	// The index each of smartDefs' queries walks, if any, or mine.
+	walks := map[string]string{
+		"movies, unplayed, by last played":   mine,
+		"movies, title and rating, by title": "work_library_title",
+		"movies, one actor, by added":        "work_library_added",
+		"series, by last episode added":      "work_library_last_added",
+		"movies, capped at 100":              "work_library_added",
+	}
 	for _, statistics := range []bool{false, true} {
 		t.Run(fmt.Sprintf("statistics=%v", statistics), func(t *testing.T) {
 			db := storetest.New(t)
@@ -208,28 +271,65 @@ func TestSmartQueriesStartAtWorkLibrary(t *testing.T) {
 				}
 				t.Cleanup(func() { db.Close() })
 			}
+			// starts checks that stmt first reads want: its plan's first
+			// steps on wl, w and r are the FROM's, in the order it reads
+			// them. A statement that walks index starts there, reading the
+			// index alone, and sorts nothing before it cuts its page; one
+			// that starts at the user's rows reads wl as mine.
+			starts := func(name, stmt string, args []any, index string, want ...string) {
+				t.Helper()
+				got, err := plan(db.Reader(), stmt, args)
+				if err != nil {
+					t.Fatal(err)
+				}
+				switch {
+				case index == mine:
+					want = []string{mine, work}
+				case index != "":
+					want = []string{"SEARCH wl USING COVERING INDEX " + index + " (library_id=?)", work}
+					if cut, _, _ := strings.Cut(got, "\nSCAN p\n"); strings.Contains(cut, "TEMP B-TREE") {
+						t.Errorf("%s: the page sorts its works:\n%s", name, got)
+					}
+				}
+				var reads []string
+				for line := range strings.SplitSeq(got, "\n") {
+					if step := strings.TrimSpace(line); tableRead.MatchString(step) && len(reads) < len(want) {
+						reads = append(reads, step)
+					}
+				}
+				if !slices.Equal(reads, want) {
+					t.Errorf("%s: reads %q, want %q in:\n%s", name, reads, want, got)
+				}
+			}
 			for _, d := range smartDefs() {
 				want := []string{rows, work}
 				if slices.Contains(d.q.Kinds, catalog.KindEpisode) {
 					want = append(want, root)
 				}
-				for _, v := range viewers {
-					count, page, args := query.Compiled(d.q, v, time.Now(), nil)
-					for _, stmt := range []string{count, page} {
-						got, err := plan(db.Reader(), stmt, args)
-						if err != nil {
-							t.Fatal(err)
-						}
-						// The plan's first steps on wl, w and r are the
-						// FROM's, in the order it reads them.
-						var reads []string
-						for line := range strings.SplitSeq(got, "\n") {
-							if step := strings.TrimSpace(line); tableRead.MatchString(step) && len(reads) < len(want) {
-								reads = append(reads, step)
-							}
-						}
-						if !slices.Equal(reads, want) {
-							t.Errorf("%s: reads %q, want %q in:\n%s", d.name, reads, want, got)
+				for vi, v := range viewers {
+					counted, page, args := query.New(db).Compiled(t, d.q, v, time.Now(), nil)
+					starts(d.name, counted, args, "", want...)
+					// Only the first Viewer has one library of each kind.
+					index := ""
+					if vi == 0 {
+						index = walks[d.name]
+					}
+					starts(d.name, page, args, index, want...)
+				}
+			}
+			indexes := map[string]string{"myRating": mine, "lastPlayedAt": mine} // by field
+			for column, f := range query.IndexedSorts() {
+				indexes[f.Field] = query.SortIndex(column)
+			}
+			unplayedDrama := filter{Genres: []string{"Drama"}, Played: "unplayed"}
+			for _, sort := range gridSorts {
+				for lib, kind := range map[id.ID]catalog.WorkKind{movies: catalog.KindMovie, shows: catalog.KindSeries} {
+					for _, filter := range []filter{{}, unplayedDrama} {
+						for _, v := range viewers {
+							name := fmt.Sprintf("the grid by %s, filter %+v", sort, filter)
+							counted, page, args := query.New(db).CompiledIn(grid{Sort: sort, Filter: filter}.query(kind), v, query.Scope{Library: lib})
+							starts(name, counted, args, indexes[sort], rows, work)
+							starts(name, page, args, indexes[sort], rows, work)
 						}
 					}
 				}
@@ -240,6 +340,88 @@ func TestSmartQueriesStartAtWorkLibrary(t *testing.T) {
 
 // tableRead matches a plan's step that reads wl, w or r.
 var tableRead = regexp.MustCompile(`^(SEARCH|SCAN) (wl|w|r)( |$)`)
+
+// TestSmartReadsSelectOnce counts the statements that select a query's
+// works as the reads of smart lists and of library grids run, and how many
+// of them count the works. Each is a pass over the works of the query's
+// kinds, so a read runs one for each list it shows: a list's screen one
+// that counts, with its header running none, a later page one that doesn't
+// count, the Lists screen one for each smart list's count and covers, and
+// Home one for each smart row, which has no count. A grid's first page
+// runs one that counts, and a later page one that doesn't.
+func TestSmartReadsSelectOnce(t *testing.T) {
+	db := storetest.New(t)
+	movies, shows, _ := generate(t, db, shape{movies: 500, series: 150, seasons: 5, episodes: 14, airEvery: 86400, moviesElsewhere: 100, seriesElsewhere: 30})
+	q := query.New(db)
+	v, smart := smartViewer(t, db, q, movies, shows)
+	list, rows := smart[0].id, 5 // smartViewer shows five of the lists on Home
+	var selects, counts int
+	query.Observe(t, func(sql string) {
+		if strings.Contains(sql, "FROM work_library wl INDEXED BY") {
+			selects++
+			if strings.Contains(sql, "(SELECT count(*) FROM matched)") || strings.Contains(sql, "(SELECT count(*) FROM (SELECT wl.sort_title") ||
+				strings.Contains(sql, "sum(n) FROM rail") {
+				counts++
+			}
+		}
+	})
+	paged := func(o grid, total bool) func() error {
+		return func() error {
+			p, err := browse(db, q, v, movies, o)
+			if err == nil && (len(p.Items) == 0 || (p.Total > 0) != total || (p.Letters != nil) != (total && o.Sort == "")) {
+				t.Errorf("the grid's page %+v has %d works, the total %d and the letters %v", o, len(p.Items), p.Total, p.Letters)
+			}
+			return err
+		}
+	}
+	later := query.GridOptions{Offset: 60}
+	for _, tt := range []struct {
+		name            string
+		selects, counts int
+		read            func() error
+	}{
+		{"a list's screen", 1, 1, func() error {
+			if _, err := q.List(ctx, v, list); err != nil {
+				return err
+			}
+			p, err := q.ListWorks(ctx, v, list, nil, query.GridOptions{Limit: 20})
+			if err == nil && (p.Total <= 20 || len(p.Items) != 20) {
+				t.Errorf("the first page has %d works of %d, want 20 of more", len(p.Items), p.Total)
+			}
+			return err
+		}},
+		{"a list's later page", 1, 0, func() error {
+			p, err := q.ListWorks(ctx, v, list, nil, query.GridOptions{Offset: 20, Limit: 20})
+			if err == nil && (p.Total != 0 || len(p.Items) == 0) {
+				t.Errorf("a later page has %d works and the total %d, want works and no total", len(p.Items), p.Total)
+			}
+			return err
+		}},
+		{"a query", 1, 1, func() error {
+			_, err := q.QueryWorks(ctx, v, smartDefs()[0].q, query.Scope{}, query.GridOptions{})
+			return err
+		}},
+		{"a query's later page", 1, 0, func() error {
+			_, err := q.QueryWorks(ctx, v, smartDefs()[0].q, query.Scope{}, query.GridOptions{Offset: 20})
+			return err
+		}},
+		{"the Lists screen", len(smart), len(smart), func() error { _, err := q.CountedLists(ctx, v); return err }},
+		{"a grid by title", 1, 1, paged(grid{}, true)},
+		{"a grid by title, later page", 1, 0, paged(grid{GridOptions: later}, false)},
+		{"a filtered grid by rating", 1, 1, paged(grid{Sort: "rating", Filter: filter{Genres: []string{"Drama"}}}, true)},
+		{"a grid by my rating", 1, 1, paged(grid{Sort: "myRating"}, true)},
+		{"a grid by my rating, later page", 1, 0, paged(grid{Sort: "myRating", GridOptions: later}, false)},
+		{"Home", rows, 0, func() error { _, _, err := q.Home(ctx, v); return err }},
+	} {
+		selects, counts = 0, 0
+		if err := tt.read(); err != nil {
+			t.Fatalf("%s: %v", tt.name, err)
+		}
+		if selects != tt.selects || counts != tt.counts {
+			t.Errorf("%s selects the works %d times and counts them %d times, want %d and %d", tt.name, selects, counts, tt.selects, tt.counts)
+		}
+	}
+}
 
 // checkScans fails on each full scan of a large table in stmt's plan,
 // unless wholeLibrary allows st.

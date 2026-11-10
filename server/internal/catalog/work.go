@@ -735,9 +735,13 @@ func described(cur dbq.Work, title string, year int, lock bool) dbq.DescribeWork
 
 // MoveRoot puts a root work in another library after its folder moved
 // there. The works under it move with it. Their versions must all be in
-// that library already, or MoveRoot returns ErrInvalid.
+// that library already, and the library of the root's kind, or MoveRoot
+// returns ErrInvalid.
 func (c *Catalog) MoveRoot(ctx context.Context, tx *store.Tx, root, lib id.ID) error {
 	q := dbq.New(tx)
+	if err := holds(ctx, q, lib, id.Set(root)); err != nil {
+		return err
+	}
 	elsewhere, err := q.RootVersionsElsewhere(ctx, dbq.RootVersionsElsewhereParams{RootID: root, LibraryID: lib})
 	if err != nil {
 		return err

@@ -180,9 +180,18 @@ object SmartLists {
 
     /** The query for [grid], a library of [libraryKind]: the kinds it lists, its library, its filters and sort, for Save as Smart List. */
     fun fromGrid(grid: GridQuery, libraryKind: String?): WorkQuery {
+        val query = gridQuery(grid, libraryKind)
+        val library = Rule(LIBRARY_FIELD, ANY_OF, listOf(grid.libraryId))
+        return query.copy(where = RuleGroup("all", listOf(library) + query.where?.rules.orEmpty()))
+    }
+
+    /** The query of [grid]'s works, read in its library of [libraryKind]: the kind it lists, its filters and its sort. */
+    internal fun gridQuery(grid: GridQuery, libraryKind: String?): WorkQuery {
         val rules = buildList {
-            add(Rule(LIBRARY_FIELD, ANY_OF, listOf(grid.libraryId)))
             grid.played?.let { add(Rule("playState", ANY_OF, listOf(it))) }
+            grid.genres?.takeIf { it.isNotEmpty() }?.let { add(Rule("genre", ANY_OF, it)) }
+            yearRule(grid.yearFrom, grid.yearTo)?.let(::add)
+            grid.contentRatings?.takeIf { it.isNotEmpty() }?.let { add(Rule("contentRating", ANY_OF, it)) }
             grid.resolutions?.takeIf { it.isNotEmpty() }?.let { add(Rule("resolution", ANY_OF, it.sorted())) }
             grid.dynamicRanges?.takeIf { it.isNotEmpty() }?.let { add(Rule("dynamicRange", ANY_OF, it.sorted())) }
         }
@@ -192,14 +201,16 @@ object SmartLists {
             "audiobooks" -> "book"
             else -> "video"
         }
-        return WorkQuery(listOf(kind), where = RuleGroup("all", rules), sort = gridSortKeys(grid.sort ?: "title"))
+        val where = if (rules.isEmpty()) null else RuleGroup("all", rules)
+        return WorkQuery(listOf(kind), where = where, sort = listOf(SortKey(grid.sort ?: "title")))
     }
 
-    /** The sort key of a grid's [sort], null for one a query has no field for. */
-    private fun gridSortKeys(sort: String): List<SortKey>? = when (sort) {
-        "author" -> null
-        "runtime" -> listOf(SortKey("runtimeMs"))
-        else -> listOf(SortKey(sort))
+    /** The rule for the years [from] to [to], either open; null for neither. */
+    private fun yearRule(from: Int?, to: Int?): Rule? = when {
+        from != null && to != null -> Rule("year", "between", listOf(from.toString(), to.toString()))
+        from != null -> Rule("year", "gte", listOf(from.toString()))
+        to != null -> Rule("year", "lte", listOf(to.toString()))
+        else -> null
     }
 
     /** Whether [op] takes a period: a count of days, weeks, months or years, held as P30D. */

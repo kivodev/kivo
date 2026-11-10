@@ -74,7 +74,7 @@ func TestSideEffects(t *testing.T) {
 	var work string
 	for deadline := time.Now().Add(60 * time.Second); work == "" && time.Now().Before(deadline); time.Sleep(200 * time.Millisecond) {
 		var page struct{ Items []struct{ ID string } }
-		c.call("GET", "/api/v1/libraries/"+lib.ID.String()+"/works", nil, http.StatusOK, &page)
+		c.call("POST", "/api/v1/works/query", map[string]any{"query": map[string]any{"kinds": []string{"movie"}}, "library": lib.ID}, http.StatusOK, &page)
 		if len(page.Items) > 0 {
 			work = page.Items[0].ID
 		}

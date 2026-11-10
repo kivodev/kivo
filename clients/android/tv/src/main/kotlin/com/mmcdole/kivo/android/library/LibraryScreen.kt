@@ -99,13 +99,13 @@ import com.mmcdole.kivo.android.ui.focusWhenPlaced
 import com.mmcdole.kivo.android.ui.rememberFocusMemory
 import com.mmcdole.kivo.api.models.CollectionSummary
 import com.mmcdole.kivo.api.models.Library
-import com.mmcdole.kivo.api.models.LibraryFacets
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.data.GridPager
 import com.mmcdole.kivo.core.data.GridPages
 import com.mmcdole.kivo.core.data.GridPages.Companion.RAIL_LETTERS
 import com.mmcdole.kivo.core.data.GridQuery
+import com.mmcdole.kivo.core.data.LibraryFilters
 import java.text.NumberFormat
 import kotlinx.coroutines.launch
 
@@ -126,11 +126,11 @@ class LibraryViewModel(private val session: ServerSession, private val libraryId
         private set
 
     /** What the library has to filter by, and whether it has collections, once known; a failed read offers neither. */
-    var facets by mutableStateOf<LibraryFacets?>(null)
+    var filters by mutableStateOf<LibraryFilters?>(null)
         private set
 
     /** Whether that read has answered, or failed, so whether the sections show is known. */
-    var facetsRead by mutableStateOf(false)
+    var filtersRead by mutableStateOf(false)
         private set
 
     /**
@@ -145,9 +145,9 @@ class LibraryViewModel(private val session: ServerSession, private val libraryId
 
     init {
         viewModelScope.launch {
-            session.session.library.facets(libraryId).collect { load ->
-                load.getOrNull()?.let { facets = it }
-                if (load !is Load.Loading) facetsRead = true
+            session.session.library.filters(libraryId).collect { load ->
+                load.getOrNull()?.let { filters = it }
+                if (load !is Load.Loading) filtersRead = true
             }
         }
     }
@@ -326,7 +326,7 @@ fun LibraryScreen(session: ServerSession, libraryId: String, navigator: Navigato
         return
     }
     // The grid's place depends on whether the sections show, so it waits to know.
-    if (pages.total != null && model.facetsRead) model.shown = true
+    if (pages.total != null && model.filtersRead) model.shown = true
     SkeletonGate(Unit.takeIf { model.shown }, { LibrarySkeleton(library) }) {
         val choice = model.choice
         val sections = hasSections(model, choice)
@@ -355,7 +355,7 @@ fun LibraryScreen(session: ServerSession, libraryId: String, navigator: Navigato
 
 /** Whether the library's sections show: when it has collections to show beside its works. */
 private fun hasSections(model: LibraryViewModel, choice: GridChoice) =
-    model.facets?.collections == true || choice.section == Section.Collections
+    model.filters?.collections == true || choice.section == Section.Collections
 
 /** The panel the header has open. */
 private enum class HeaderPanel { Sort, Filter }
@@ -547,7 +547,7 @@ private fun FilterButton(filtered: Boolean, modifier: Modifier = Modifier, onCli
  */
 @Composable
 private fun FilterPanel(model: LibraryViewModel, query: GridQuery, onClose: () -> Unit) {
-    val facets = model.facets
+    val filters = model.filters
     val playedState = stringResource(R.string.played_state)
     val decade = stringResource(R.string.decade)
     val genre = stringResource(R.string.genre)
@@ -559,7 +559,7 @@ private fun FilterPanel(model: LibraryViewModel, query: GridQuery, onClose: () -
         add(Choice("played:${GridValues.UNPLAYED}", stringResource(R.string.unplayed), section = playedState))
         add(Choice("played:${GridValues.IN_PROGRESS}", stringResource(R.string.filter_in_progress), section = playedState))
         add(Choice("played:${GridValues.PLAYED}", stringResource(R.string.played), section = playedState))
-        facets?.let { f ->
+        filters?.let { f ->
             add(Choice("decade:", stringResource(R.string.any), section = decade))
             decadesOf(f.years).forEach { add(Choice("decade:$it", stringResource(R.string.decade_label, it), section = decade)) }
             f.genres.forEach { add(Choice("genre:$it", it, section = genre)) }

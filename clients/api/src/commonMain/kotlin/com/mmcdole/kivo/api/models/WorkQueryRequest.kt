@@ -33,6 +33,8 @@ import kotlinx.serialization.encoding.*
  * 
  *
  * @param query 
+ * @param library Read the query in this library alone; every library when absent.
+ * @param unmatched Admins only (ignored for others). Only unmatched items. Default false.
  * @param offset 
  * @param limit 
  */
@@ -41,6 +43,12 @@ import kotlinx.serialization.encoding.*
 data class WorkQueryRequest (
 
     @SerialName(value = "query") @Required val query: WorkQuery,
+
+    /* Read the query in this library alone; every library when absent. */
+    @SerialName(value = "library") val library: kotlin.String? = null,
+
+    /* Admins only (ignored for others). Only unmatched items. Default false. */
+    @SerialName(value = "unmatched") val unmatched: kotlin.Boolean? = null,
 
     @SerialName(value = "offset") val offset: kotlin.Int? = null,
 

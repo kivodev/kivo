@@ -42,9 +42,10 @@ info:
        a paged list's page size is `limit`. A grid's schema is named
        `…Page`, a feed's `…Feed` and a whole list's `…List`
        (`WorkSummaryPage`, `WorkSummaryFeed`, `WorkSummaryList`). Each kind of list has one
-       paging style. A grid (a library's works, collections, authors and
-       book series, and a list's works) is paged by position: `offset` items
-       from the start, with `total` on every page. A feed (the Unmatched
+       paging style. A grid (a work query, a list's works, and a library's
+       collections, authors and book series) is paged by position: `offset`
+       items from the start, with `total` on every page; a work query and a
+       list's works have `total` on the first page (offset 0) only. A feed (the Unmatched
        and Missing files lists, activity, history, play events and the
        logs) is read in order: `next` is an opaque keyset cursor, passed back as `after`,
        and `total`, where a feed has one, is set on its first page only.
@@ -1272,124 +1273,6 @@ paths:
         "404": {$ref: "#/components/responses/NotFound"}
         default: {$ref: "#/components/responses/Error"}
 
-  /api/v1/libraries/{id}/facets:
-    parameters:
-      - {$ref: "#/components/parameters/ID"}
-    get:
-      operationId: getLibraryFacets
-      summary: Get library facets
-      description: |
-        Genres, content ratings, years, resolutions and dynamic ranges of
-        the top-level items the user can see, for the filter menu, and
-        whether the library has collections.
-      tags: [libraries]
-      x-kivo-access: viewer
-      responses:
-        "200":
-          description: The facets.
-          content:
-            application/json:
-              schema: {$ref: "#/components/schemas/LibraryFacets"}
-        "401": {$ref: "#/components/responses/Unauthorized"}
-        "404": {$ref: "#/components/responses/NotFound"}
-        default: {$ref: "#/components/responses/Error"}
-
-  /api/v1/libraries/{id}/works:
-    parameters:
-      - {$ref: "#/components/parameters/ID"}
-    get:
-      operationId: listLibraryWorks
-      summary: List library works
-      description: |
-        The library's top-level items, sorted and filtered. A movies library
-        lists movies, with versions never shown separately; a shows library lists series; a
-        videos library lists videos; an audiobooks library lists books.
-
-        A grid, paged by `offset`, with `total` on every page; works with
-        the same sort key are listed by title. The first page (offset 0) of
-        the title sort also has `letters`.
-      tags: [libraries]
-      x-kivo-access: viewer
-      parameters:
-        - name: sort
-          in: query
-          description: |
-            Default `title`. Each sort has one direction: `title` A to Z
-            ignoring leading articles, `author` A to Z by the first author's
-            name (an audiobooks library; then by title, books with no author
-            first), `runtime` shortest first, the rest newest or highest
-            first. `lastEpisodeAddedAt` puts the series whose newest episode in
-            the library was added most recently first (a shows library; then
-            by title). `rating` is the community rating weighted by its vote
-            count (as if 50 more votes of 6.5 were cast), so a root work few
-            people rated ranks below a well-rated one many people rated;
-            `myRating` is the user's own rating. Works without the rating
-            come last, by title.
-          schema: {$ref: "#/components/schemas/WorkSort"}
-        - name: played
-          in: query
-          schema: {$ref: "#/components/schemas/PlayedFilter"}
-        - name: genre
-          in: query
-          description: Any of these genres.
-          style: form
-          explode: true
-          schema:
-            type: array
-            items: {type: string}
-        - name: yearFrom
-          in: query
-          description: The first year, inclusive.
-          schema: {type: integer}
-        - name: yearTo
-          in: query
-          description: The last year, inclusive.
-          schema: {type: integer}
-        - name: contentRating
-          in: query
-          description: Any of these content ratings (see `WorkSummary.contentRating`).
-          style: form
-          explode: true
-          schema:
-            type: array
-            items: {type: string}
-        - name: resolution
-          in: query
-          description: Any of these resolutions.
-          style: form
-          explode: true
-          schema:
-            type: array
-            items: {$ref: "#/components/schemas/Resolution"}
-        - name: dynamicRange
-          in: query
-          description: Any of these dynamic ranges.
-          style: form
-          explode: true
-          schema:
-            type: array
-            items: {$ref: "#/components/schemas/DynamicRange"}
-        - name: narratorId
-          in: query
-          description: The books this person narrated.
-          schema: {$ref: "#/components/schemas/ID"}
-        - name: matchState
-          in: query
-          description: Admins only (ignored for others). Only `unmatched` is taken, for unmatched items only.
-          schema: {$ref: "#/components/schemas/MatchState"}
-        - {$ref: "#/components/parameters/Offset"}
-        - {$ref: "#/components/parameters/Limit"}
-      responses:
-        "200":
-          description: A page of summaries.
-          content:
-            application/json:
-              schema: {$ref: "#/components/schemas/WorkSummaryPage"}
-        "400": {$ref: "#/components/responses/BadRequest"}
-        "401": {$ref: "#/components/responses/Unauthorized"}
-        "404": {$ref: "#/components/responses/NotFound"}
-        default: {$ref: "#/components/responses/Error"}
-
   /api/v1/libraries/{id}/collections:
     parameters:
       - {$ref: "#/components/parameters/ID"}
@@ -1753,7 +1636,8 @@ paths:
         A list's works the user sees: a manual list's most recently added
         first, a smart list's as its rules select them. With `kind`, only
         those kinds. A smart list whose rules no longer run is empty. A grid, paged by `offset`, with `total` on
-        every page; works added at the same time are listed by title.
+        the first page (offset 0) only; works added at
+        the same time are listed by title.
       tags: [works]
       x-kivo-access: viewer
       parameters:
@@ -1855,9 +1739,19 @@ paths:
       description: |
         Runs a `WorkQuery` once, as the caller: their library access and
         parental limits apply to every query. A grid, paged by `offset`,
-        with `total` on every page; `maxWorks` caps it. An invalid query is
-        `400` with `invalidRequest`, and `errors` holds a JSON pointer per
-        problem, such as `/query/where/groups/0/rules/2/op`.
+        with `total` on the first page (offset 0) only; `maxWorks` caps it.
+        An invalid query is `400` with `invalidRequest`, and `errors` holds
+        a JSON pointer per problem, such as
+        `/query/where/groups/0/rules/2/op`.
+
+        With `library`, the query is read in that library alone, which is
+        how a library's grid is read: the query's kind is the library's
+        top-level one (`movie` in a movies library, `series` in a shows
+        library, `video` in a videos library, `book` in an audiobooks
+        library), its rules are the grid's filters and its sort the grid's
+        order. The first page then also has `letters` when the query sorts
+        by `title` first, A to Z, or has no sort. A library the caller
+        can't see is `404`.
       tags: [works]
       x-kivo-access: viewer
       requestBody:
@@ -1873,6 +1767,7 @@ paths:
               schema: {$ref: "#/components/schemas/WorkSummaryPage"}
         "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
         default: {$ref: "#/components/responses/Error"}
 
   /api/v1/work-fields:
@@ -1897,14 +1792,28 @@ paths:
       summary: List a field's values
       description: |
         The values the caller can see for a field, for building a rule:
-        those matching `q`, or with `ids` those values' names. A malformed
-        ID in `ids` is `400`. A field with no values to choose from returns
-        none.
+        those matching `q`, or with `ids` those values' names, at most 100
+        of them. A malformed ID in `ids` is `400`. A field with no values
+        to choose from returns none.
+
+        With `library`, they are every value the library's top-level
+        items the caller can see have, which is what its grid's filters
+        offer: `genre` by name, `year` oldest first (it has values only
+        with `library`), `contentRating` in
+        the order `listContentRatings` gives for the library's country and
+        then any others youngest first, `resolution` largest first,
+        `dynamicRange` with `hdr` first, and `narrator` by name. A library
+        the caller can't see is `404`. `library` and `inList` have the
+        same values with it as without.
       tags: [works]
       x-kivo-access: viewer
       parameters:
         - {name: field, in: path, required: true, schema: {type: string}}
         - {name: q, in: query, schema: {type: string}}
+        - name: library
+          in: query
+          description: Only the values of this library's top-level items.
+          schema: {$ref: "#/components/schemas/ID"}
         - name: ids
           in: query
           style: form
@@ -4984,40 +4893,6 @@ components:
           type: array
           items: {$ref: "#/components/schemas/ContentRating"}
 
-    LibraryFacets:
-      type: object
-      required: [genres, contentRatings, years, narrators, resolutions, dynamicRanges, collections]
-      properties:
-        narrators:
-          type: array
-          description: An audiobooks library's narrators, by name, for the narrator filter; empty for other kinds.
-          items: {$ref: "#/components/schemas/PersonRef"}
-        genres:
-          type: array
-          description: By name.
-          items: {type: string}
-        contentRatings:
-          type: array
-          description: |
-            In the order `listContentRatings` gives, then any others youngest
-            first; see `WorkSummary.contentRating`.
-          items: {type: string}
-        years:
-          type: array
-          description: Release years, ascending.
-          items: {type: integer}
-        resolutions:
-          type: array
-          description: The resolution classes of the works' videos, largest first.
-          items: {$ref: "#/components/schemas/Resolution"}
-        dynamicRanges:
-          type: array
-          description: The dynamic ranges of the works' videos, `hdr` first.
-          items: {$ref: "#/components/schemas/DynamicRange"}
-        collections:
-          type: boolean
-          description: Whether `listLibraryCollections` lists anything.
-
     ScanRequest:
       type: object
       properties:
@@ -5144,6 +5019,12 @@ components:
       required: [query]
       properties:
         query: {$ref: "#/components/schemas/WorkQuery"}
+        library:
+          $ref: "#/components/schemas/ID"
+          description: Read the query in this library alone; every library when absent.
+        unmatched:
+          type: boolean
+          description: Admins only (ignored for others). Only unmatched items. Default false.
         offset: {type: integer, minimum: 0}
         limit: {type: integer, minimum: 1}
 
@@ -5155,7 +5036,9 @@ components:
         can be asked for. A query has at most 20 rules, 5 groups including
         the root and 3 sort keys, and a rule at most 100 values. Values of a rule are in the form its field's
         type takes: a date `YYYY-MM-DD`, a duration such as `P30D`, an ID
-        as a UUID, or a name.
+        as a UUID, or a name. The `dynamicRange` field's `hdr` is any HDR
+        format but Dolby Vision (`hdr10`, `hdr10plus`, `hlg`), and its
+        `dolbyVision` Dolby Vision.
       required: [kinds]
       properties:
         version: {type: integer}
@@ -5293,7 +5176,10 @@ components:
           description: Watchlist, which every user has and can't delete or rename.
         workCount:
           type: integer
-          description: Works in the list the user sees. A smart list's is 0 in `listLists` without `counts`.
+          description: |
+            Works in the list the user sees. A smart list's is 0 except in
+            `listLists` with `counts`; the first page of its works has the
+            count as `total`.
         smart: {$ref: "#/components/schemas/WorkListSmart"}
         covers:
           type: array
@@ -5439,16 +5325,6 @@ components:
         What a work is: `video` an item of a videos library and `book` an
         item of an audiobooks library. Skip kinds you don't know.
       enum: [movie, series, season, episode, extra, video, book]
-
-    WorkSort:
-      type: string
-      description: The order of a library's grid (`listLibraryWorks`).
-      enum: [title, addedAt, releaseDate, rating, myRating, runtime, lastPlayedAt, author, lastEpisodeAddedAt]
-
-    PlayedFilter:
-      type: string
-      description: Works by the user's state for them, as the grid's filter asks.
-      enum: [unplayed, inProgress, played]
 
     MatchState:
       type: string
@@ -5866,15 +5742,19 @@ components:
     WorkSummaryPage:
       type: object
       description: A page of a grid of works.
-      required: [items, total]
+      required: [items]
       properties:
         items:
           type: array
           items: {$ref: "#/components/schemas/WorkSummary"}
-        total: {type: integer}
+        total:
+          type: integer
+          description: How many works the grid has, on the first page (offset 0) only.
         letters:
           type: array
-          description: On the first page (offset 0) of the title sort. See `LetterStart`.
+          description: |
+            On the first page (offset 0) of a work query read in one
+            library and sorted by title. See `LetterStart`.
           items: {$ref: "#/components/schemas/LetterStart"}
 
     WorkSummaryFeed:
@@ -6235,16 +6115,8 @@ components:
       description: |
         A video's resolution class, by its width, since wide films are short:
         `4k` from 3200 pixels, `1080p` from 1700, `720p` from 1200, else `sd`.
-        The library's resolution filter classes videos the same way.
+        The `resolution` field of a work query classes videos the same way.
       enum: [4k, 1080p, 720p, sd]
-
-    DynamicRange:
-      type: string
-      description: |
-        A class of high dynamic range, as the library's `dynamicRange`
-        filter and its facets name it: `hdr` any HDR format but Dolby
-        Vision (`hdr10`, `hdr10plus`, `hlg`), `dolbyVision` Dolby Vision.
-      enum: [hdr, dolbyVision]
 
     HdrFormat:
       type: string

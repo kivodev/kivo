@@ -82,13 +82,16 @@ export const mockWorkFields: WorkField[] = [
   set("inList", "In list", all, "inline"),
   person("actor", "Actor", video),
   person("director", "Director", video),
-  person("author", "Author", books),
+  { ...person("author", "Author", books), sortable: true, defaultDirection: "asc" },
   person("narrator", "Narrator", books),
   number("rating", "Rating", "desc"),
+  number("myRating", "My rating", "desc"),
   number("runtimeMs", "Runtime", "asc", "ms"),
   number("year", "Year", "desc"),
   date("addedAt", "Date added"),
   date("releaseDate", "Release date"),
+  date("lastEpisodeAddedAt", "Latest addition"),
+  date("lastPlayedAt", "Last played"),
   {
     field: "title",
     name: "Title",
@@ -105,6 +108,40 @@ export const mockWorkFields: WorkField[] = [
 ];
 
 const value = (name: string): WorkFieldValue => ({ value: name, name });
+
+const resolutionValues: WorkFieldValue[] = [
+  { value: "4k", name: "4K" },
+  { value: "1080p", name: "1080p" },
+  { value: "720p", name: "720p" },
+  { value: "sd", name: "SD" },
+];
+const dynamicRangeValues: WorkFieldValue[] = [
+  { value: "hdr", name: "HDR" },
+  { value: "dolbyVision", name: "Dolby Vision" },
+];
+
+/**
+ * The values a library's works have, by field, as its grid's filters
+ * read them: years oldest first, and the resolutions and dynamic ranges
+ * present in the fields' own order.
+ */
+export function mockLibraryValues(has: {
+  genre?: string[];
+  year?: number[];
+  contentRating?: string[];
+  resolution?: string[];
+  dynamicRange?: string[];
+  narrator?: { id: string; name: string }[];
+}): Record<string, WorkFieldValue[]> {
+  return {
+    genre: (has.genre ?? []).map(value),
+    year: [...(has.year ?? [])].sort((a, b) => a - b).map((y) => value(String(y))),
+    contentRating: (has.contentRating ?? []).map(value),
+    resolution: resolutionValues.filter((v) => has.resolution?.includes(v.value)),
+    dynamicRange: dynamicRangeValues.filter((v) => has.dynamicRange?.includes(v.value)),
+    narrator: (has.narrator ?? []).map((p) => ({ value: p.id, name: p.name })),
+  };
+}
 
 /** The values of the fields that choose from a list, by field. */
 export function mockFieldValues(ids: {
@@ -127,16 +164,8 @@ export function mockFieldValues(ids: {
       { value: "played", name: "Played" },
     ],
     genre: ["Adventure", "Animation", "Comedy", "Drama", "Science Fiction", "Thriller"].map(value),
-    resolution: [
-      { value: "4k", name: "4K" },
-      { value: "1080p", name: "1080p" },
-      { value: "720p", name: "720p" },
-      { value: "sd", name: "SD" },
-    ],
-    dynamicRange: [
-      { value: "hdr", name: "HDR" },
-      { value: "dolbyVision", name: "Dolby Vision" },
-    ],
+    resolution: resolutionValues,
+    dynamicRange: dynamicRangeValues,
     inList: [{ value: ids.dateNight, name: "Date Night" }],
     director: [{ value: ids.villeneuve, name: "Denis Villeneuve" }],
     actor: [

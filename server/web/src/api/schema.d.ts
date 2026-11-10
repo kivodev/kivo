@@ -794,58 +794,6 @@ export interface paths {
         patch: operations["updateLibrary"];
         trace?: never;
     };
-    "/api/v1/libraries/{id}/facets": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: components["parameters"]["ID"];
-            };
-            cookie?: never;
-        };
-        /**
-         * Get library facets
-         * @description Genres, content ratings, years, resolutions and dynamic ranges of
-         *     the top-level items the user can see, for the filter menu, and
-         *     whether the library has collections.
-         */
-        get: operations["getLibraryFacets"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/libraries/{id}/works": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: components["parameters"]["ID"];
-            };
-            cookie?: never;
-        };
-        /**
-         * List library works
-         * @description The library's top-level items, sorted and filtered. A movies library
-         *     lists movies, with versions never shown separately; a shows library lists series; a
-         *     videos library lists videos; an audiobooks library lists books.
-         *
-         *     A grid, paged by `offset`, with `total` on every page; works with
-         *     the same sort key are listed by title. The first page (offset 0) of
-         *     the title sort also has `letters`.
-         */
-        get: operations["listLibraryWorks"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/libraries/{id}/collections": {
         parameters: {
             query?: never;
@@ -1147,7 +1095,8 @@ export interface paths {
          * @description A list's works the user sees: a manual list's most recently added
          *     first, a smart list's as its rules select them. With `kind`, only
          *     those kinds. A smart list whose rules no longer run is empty. A grid, paged by `offset`, with `total` on
-         *     every page; works added at the same time are listed by title.
+         *     the first page (offset 0) only; works added at
+         *     the same time are listed by title.
          */
         get: operations["listListWorks"];
         put?: never;
@@ -1227,9 +1176,19 @@ export interface paths {
          * Run a work query
          * @description Runs a `WorkQuery` once, as the caller: their library access and
          *     parental limits apply to every query. A grid, paged by `offset`,
-         *     with `total` on every page; `maxWorks` caps it. An invalid query is
-         *     `400` with `invalidRequest`, and `errors` holds a JSON pointer per
-         *     problem, such as `/query/where/groups/0/rules/2/op`.
+         *     with `total` on the first page (offset 0) only; `maxWorks` caps it.
+         *     An invalid query is `400` with `invalidRequest`, and `errors` holds
+         *     a JSON pointer per problem, such as
+         *     `/query/where/groups/0/rules/2/op`.
+         *
+         *     With `library`, the query is read in that library alone, which is
+         *     how a library's grid is read: the query's kind is the library's
+         *     top-level one (`movie` in a movies library, `series` in a shows
+         *     library, `video` in a videos library, `book` in an audiobooks
+         *     library), its rules are the grid's filters and its sort the grid's
+         *     order. The first page then also has `letters` when the query sorts
+         *     by `title` first, A to Z, or has no sort. A library the caller
+         *     can't see is `404`.
          */
         post: operations["queryWorks"];
         delete?: never;
@@ -1268,9 +1227,19 @@ export interface paths {
         /**
          * List a field's values
          * @description The values the caller can see for a field, for building a rule:
-         *     those matching `q`, or with `ids` those values' names. A malformed
-         *     ID in `ids` is `400`. A field with no values to choose from returns
-         *     none.
+         *     those matching `q`, or with `ids` those values' names, at most 100
+         *     of them. A malformed ID in `ids` is `400`. A field with no values
+         *     to choose from returns none.
+         *
+         *     With `library`, they are every value the library's top-level
+         *     items the caller can see have, which is what its grid's filters
+         *     offer: `genre` by name, `year` oldest first (it has values only
+         *     with `library`), `contentRating` in
+         *     the order `listContentRatings` gives for the library's country and
+         *     then any others youngest first, `resolution` largest first,
+         *     `dynamicRange` with `hdr` first, and `narrator` by name. A library
+         *     the caller can't see is `404`. `library` and `inList` have the
+         *     same values with it as without.
          */
         get: operations["listWorkFieldValues"];
         put?: never;
@@ -3577,25 +3546,6 @@ export interface components {
         ContentRatingList: {
             items: components["schemas"]["ContentRating"][];
         };
-        LibraryFacets: {
-            /** @description An audiobooks library's narrators, by name, for the narrator filter; empty for other kinds. */
-            narrators: components["schemas"]["PersonRef"][];
-            /** @description By name. */
-            genres: string[];
-            /**
-             * @description In the order `listContentRatings` gives, then any others youngest
-             *     first; see `WorkSummary.contentRating`.
-             */
-            contentRatings: string[];
-            /** @description Release years, ascending. */
-            years: number[];
-            /** @description The resolution classes of the works' videos, largest first. */
-            resolutions: components["schemas"]["Resolution"][];
-            /** @description The dynamic ranges of the works' videos, `hdr` first. */
-            dynamicRanges: components["schemas"]["DynamicRange"][];
-            /** @description Whether `listLibraryCollections` lists anything. */
-            collections: boolean;
-        };
         ScanRequest: {
             /** @description List every directory, not just changed ones. Default false. */
             full?: boolean;
@@ -3675,6 +3625,10 @@ export interface components {
         };
         WorkQueryRequest: {
             query: components["schemas"]["WorkQuery"];
+            /** @description Read the query in this library alone; every library when absent. */
+            library?: components["schemas"]["ID"];
+            /** @description Admins only (ignored for others). Only unmatched items. Default false. */
+            unmatched?: boolean;
             offset?: number;
             limit?: number;
         };
@@ -3684,7 +3638,9 @@ export interface components {
          *     can be asked for. A query has at most 20 rules, 5 groups including
          *     the root and 3 sort keys, and a rule at most 100 values. Values of a rule are in the form its field's
          *     type takes: a date `YYYY-MM-DD`, a duration such as `P30D`, an ID
-         *     as a UUID, or a name.
+         *     as a UUID, or a name. The `dynamicRange` field's `hdr` is any HDR
+         *     format but Dolby Vision (`hdr10`, `hdr10plus`, `hlg`), and its
+         *     `dolbyVision` Dolby Vision.
          */
         WorkQuery: {
             version?: number;
@@ -3769,7 +3725,11 @@ export interface components {
             kind: components["schemas"]["ListKind"];
             /** @description Watchlist, which every user has and can't delete or rename. */
             builtIn: boolean;
-            /** @description Works in the list the user sees. A smart list's is 0 in `listLists` without `counts`. */
+            /**
+             * @description Works in the list the user sees. A smart list's is 0 except in
+             *     `listLists` with `counts`; the first page of its works has the
+             *     count as `total`.
+             */
             workCount: number;
             smart?: components["schemas"]["WorkListSmart"];
             /**
@@ -3882,16 +3842,6 @@ export interface components {
          * @enum {string}
          */
         WorkKind: "movie" | "series" | "season" | "episode" | "extra" | "video" | "book";
-        /**
-         * @description The order of a library's grid (`listLibraryWorks`).
-         * @enum {string}
-         */
-        WorkSort: "title" | "addedAt" | "releaseDate" | "rating" | "myRating" | "runtime" | "lastPlayedAt" | "author" | "lastEpisodeAddedAt";
-        /**
-         * @description Works by the user's state for them, as the grid's filter asks.
-         * @enum {string}
-         */
-        PlayedFilter: "unplayed" | "inProgress" | "played";
         /**
          * @description Whether a work is identified: `identifying` is provisional, its first
          *     identification pending, and `unmatched` provisional with no confident
@@ -4150,8 +4100,12 @@ export interface components {
         /** @description A page of a grid of works. */
         WorkSummaryPage: {
             items: components["schemas"]["WorkSummary"][];
-            total: number;
-            /** @description On the first page (offset 0) of the title sort. See `LetterStart`. */
+            /** @description How many works the grid has, on the first page (offset 0) only. */
+            total?: number;
+            /**
+             * @description On the first page (offset 0) of a work query read in one
+             *     library and sorted by title. See `LetterStart`.
+             */
             letters?: components["schemas"]["LetterStart"][];
         };
         /** @description A page of a feed of works. */
@@ -4428,17 +4382,10 @@ export interface components {
         /**
          * @description A video's resolution class, by its width, since wide films are short:
          *     `4k` from 3200 pixels, `1080p` from 1700, `720p` from 1200, else `sd`.
-         *     The library's resolution filter classes videos the same way.
+         *     The `resolution` field of a work query classes videos the same way.
          * @enum {string}
          */
         Resolution: "4k" | "1080p" | "720p" | "sd";
-        /**
-         * @description A class of high dynamic range, as the library's `dynamicRange`
-         *     filter and its facets name it: `hdr` any HDR format but Dolby
-         *     Vision (`hdr10`, `hdr10plus`, `hlg`), `dolbyVision` Dolby Vision.
-         * @enum {string}
-         */
-        DynamicRange: "hdr" | "dolbyVision";
         /**
          * @description A high dynamic range format. A video's is one of `hdr10`, `hlg` and
          *     `dolbyVision`; a client lists the formats it shows, `hdr10`,
@@ -7150,93 +7097,6 @@ export interface operations {
             default: components["responses"]["Error"];
         };
     };
-    getLibraryFacets: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: components["parameters"]["ID"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The facets. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["LibraryFacets"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            404: components["responses"]["NotFound"];
-            default: components["responses"]["Error"];
-        };
-    };
-    listLibraryWorks: {
-        parameters: {
-            query?: {
-                /**
-                 * @description Default `title`. Each sort has one direction: `title` A to Z
-                 *     ignoring leading articles, `author` A to Z by the first author's
-                 *     name (an audiobooks library; then by title, books with no author
-                 *     first), `runtime` shortest first, the rest newest or highest
-                 *     first. `lastEpisodeAddedAt` puts the series whose newest episode in
-                 *     the library was added most recently first (a shows library; then
-                 *     by title). `rating` is the community rating weighted by its vote
-                 *     count (as if 50 more votes of 6.5 were cast), so a root work few
-                 *     people rated ranks below a well-rated one many people rated;
-                 *     `myRating` is the user's own rating. Works without the rating
-                 *     come last, by title.
-                 */
-                sort?: components["schemas"]["WorkSort"];
-                played?: components["schemas"]["PlayedFilter"];
-                /** @description Any of these genres. */
-                genre?: string[];
-                /** @description The first year, inclusive. */
-                yearFrom?: number;
-                /** @description The last year, inclusive. */
-                yearTo?: number;
-                /** @description Any of these content ratings (see `WorkSummary.contentRating`). */
-                contentRating?: string[];
-                /** @description Any of these resolutions. */
-                resolution?: components["schemas"]["Resolution"][];
-                /** @description Any of these dynamic ranges. */
-                dynamicRange?: components["schemas"]["DynamicRange"][];
-                /** @description The books this person narrated. */
-                narratorId?: components["schemas"]["ID"];
-                /** @description Admins only (ignored for others). Only `unmatched` is taken, for unmatched items only. */
-                matchState?: components["schemas"]["MatchState"];
-                /** @description How many items to skip from the start. */
-                offset?: components["parameters"]["Offset"];
-                /** @description Page size. The default and the most a page holds depend on the listing. */
-                limit?: components["parameters"]["Limit"];
-            };
-            header?: never;
-            path: {
-                id: components["parameters"]["ID"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description A page of summaries. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WorkSummaryPage"];
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthorized"];
-            404: components["responses"]["NotFound"];
-            default: components["responses"]["Error"];
-        };
-    };
     listLibraryCollections: {
         parameters: {
             query?: {
@@ -7780,6 +7640,7 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
             default: components["responses"]["Error"];
         };
     };
@@ -7809,6 +7670,8 @@ export interface operations {
         parameters: {
             query?: {
                 q?: string;
+                /** @description Only the values of this library's top-level items. */
+                library?: components["schemas"]["ID"];
                 ids?: string[];
             };
             header?: never;

@@ -3,8 +3,8 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Button as AriaButton, Checkbox } from "react-aria-components";
-import { libraryQueries, useLibrary } from "@/api/libraries";
-import type { LetterStart, Library, LibraryFacets, WorkSummary } from "@/api/schemas";
+import { useLibrary } from "@/api/libraries";
+import type { LetterStart, Library, WorkSummary } from "@/api/schemas";
 import { useIsAdmin } from "@/api/users";
 import { type GridPageQuery, gridPageSize, gridPages, workQueries } from "@/api/works";
 import { Artwork, type ArtworkShape, cardDensity } from "@/components/Artwork";
@@ -18,7 +18,6 @@ import { LetterRail, letterAt, letterOffset, type RailLetter } from "@/component
 import { LoadError } from "@/components/LoadError";
 import { CountSkeleton, GridSkeleton, LibrarySkeleton, NumberSkeleton } from "@/components/Skeleton";
 import { SmartListDialog } from "@/features/lists/SmartListDialog";
-import { queryFromGrid } from "@/features/lists/smartQuery";
 import { formatCommunityRating, formatRuntime } from "@/i18n/format";
 import { isTv } from "@/tv/flag";
 import { TvFocusable, TvFocusGroup } from "@/tv/focus";
@@ -27,16 +26,18 @@ import {
   type BrowseSearch,
   bookSorts,
   clearFilters,
+  gridRequest,
   hasFilters,
+  listQueryFromGrid,
+  offersCollections,
   showSorts,
   sorts,
   storeBrowse,
-  toFilters,
   useBrowseSearch,
   videoSorts,
 } from "./browseSearch";
 import { CountNoun, SortMenu, useEmptyTitle } from "./CountLine";
-import { FilterPanel } from "./FilterPanel";
+import { FilterPanel, useFilterValues } from "./FilterPanel";
 import { filterChips } from "./filterChips";
 import { AuthorCard, BookSeriesCard, CollectionCard } from "./GroupCard";
 import { LibrarySwitcher } from "./LibrarySwitcher";
@@ -50,15 +51,16 @@ function unreachable(library: Library): boolean {
   return library.scan?.state === "unreachable" || (library.folders ?? []).some((f) => !f.reachable);
 }
 
-const noFacets: LibraryFacets = {
-  narrators: [],
-  genres: [],
-  contentRatings: [],
-  years: [],
-  resolutions: [],
-  dynamicRanges: [],
-  collections: false,
-};
+/** The library's screen: its view once the library is read. */
+export function LibraryScreen() {
+  const { libraryId } = libraryRoute.useParams();
+  const read = useLibrary(libraryId);
+  useDocumentTitle(read.data?.name);
+  if (!read.data) {
+    return read.isError ? <LoadError error={read.error} onRetry={() => void read.refetch()} /> : <LibrarySkeleton />;
+  }
+  return <LibraryView library={read.data} />;
+}
 
 /**
  * The library view, a virtualized grid with sort and filters in the URL.
@@ -71,27 +73,28 @@ const noFacets: LibraryFacets = {
  * libraries, so the title is not a menu, and there's no list view or
  * multi-select.
  */
-export function LibraryScreen() {
+function LibraryView({ library }: { library: Library }) {
   const { t } = useLingui();
-  const { libraryId } = libraryRoute.useParams();
+  const libraryId = library.id;
   const isAdmin = useIsAdmin();
   const [search, setSearch] = useBrowseSearch();
   // Next time, the library opens as it was left.
   useEffect(() => storeBrowse(libraryId, search), [libraryId, search]);
   const labels = useBrowseLabels();
-  const read = useLibrary(libraryId);
-  const library = read.data;
-  useDocumentTitle(library?.name);
-  // The facets say what the filters offer and whether the Collections tab
-  // shows. A failed read offers neither.
-  const facetsRead = useQuery(libraryQueries.facets(libraryId));
-  const facets = facetsRead.data ?? noFacets;
-  const facetsSettled = facetsRead.data !== undefined || facetsRead.isError;
-  const filters = toFilters(search, isAdmin);
+  const books = library.kind === "audiobooks";
+  const values = useFilterValues(libraryId, books);
+  const request = gridRequest(library, search, isAdmin);
   const tab = search.tab ?? "library";
-  // The first page of the section the tab shows.
-  const worksRead = useQuery({ ...workQueries.browsePage(libraryId, filters, 0), enabled: tab === "library" });
-  const collectionsRead = useQuery({ ...workQueries.collectionsPage(libraryId, 0), enabled: tab === "collections" });
+  // The first page of the section the tab shows. The collections' first
+  // page also says whether the Collections tab shows: a library that has
+  // any shows it, and a failed read doesn't.
+  const collectionsTab = offersCollections(library);
+  const worksRead = useQuery({ ...workQueries.browsePage(request, 0), enabled: tab === "library" });
+  const collectionsRead = useQuery({
+    ...workQueries.collectionsPage(libraryId, 0),
+    enabled: tab === "collections" || collectionsTab,
+  });
+  const sectionsSettled = !collectionsTab || collectionsRead.data !== undefined || collectionsRead.isError;
   const authorsRead = useQuery({ ...workQueries.authorsPage(libraryId, 0), enabled: tab === "authors" });
   const seriesRead = useQuery({ ...workQueries.bookSeriesPage(libraryId, 0), enabled: tab === "series" });
   const firstRead = { library: worksRead, collections: collectionsRead, authors: authorsRead, series: seriesRead }[tab];
@@ -101,21 +104,16 @@ export function LibraryScreen() {
   const [selected, setSelected] = useState<Set<string> | undefined>(undefined);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const chips = filterChips(search, labels, isAdmin, facets.narrators);
+  const chips = filterChips(search, labels, isAdmin, values.narrator);
   // The header's controls take focus once the grid has first shown, so the
   // screen's initial focus is the grid's first card, not a control above it.
   // A read that failed counts as shown, so the header is still reachable,
   // and each library waits for its own.
   const [shownFor, setShownFor] = useState<string>();
-  const settled = (first !== undefined || firstRead.isError) && facetsSettled;
+  const settled = (first !== undefined || firstRead.isError) && sectionsSettled;
   if (settled && shownFor !== libraryId) setShownFor(libraryId);
   const shown = shownFor === libraryId;
 
-  if (!library) {
-    return read.isError ? <LoadError error={read.error} onRetry={() => void read.refetch()} /> : <LibrarySkeleton />;
-  }
-
-  const books = library.kind === "audiobooks";
   // The Collections tab and an audiobooks library's Authors and Series tabs
   // list collections, people and series by name, with no sort, filters or
   // list view.
@@ -125,15 +123,14 @@ export function LibraryScreen() {
   const sortOptions = books ? bookSorts : library.kind === "shows" ? showSorts : videoSorts;
   const shape = books ? "square" : library.kind === "videos" ? "landscape" : "poster";
   const set = (patch: Partial<BrowseSearch>) => setSearch({ ...search, ...patch });
-  // The count and the grid wait for the first page and the facets, which
-  // say whether the sections above show.
-  const ready = first !== undefined && facetsSettled;
+  // The count and the grid wait for the first page and for whether the
+  // sections above show.
+  const ready = first !== undefined && sectionsSettled;
   // The library's sections, as chips. An audiobooks library has Books,
   // Authors and Series. A movies or shows library that has collections has
   // Collections beside the works. A library with only one section shows
   // no chips.
-  const hasCollections =
-    tab === "collections" || ((library.kind === "movies" || library.kind === "shows") && facets.collections);
+  const hasCollections = tab === "collections" || (collectionsTab && (collectionsRead.data?.total ?? 0) > 0);
   const sections = books
     ? ([
         ["library", t`Books`],
@@ -173,7 +170,7 @@ export function LibraryScreen() {
               )}
               {!listing && (
                 <HeaderFocusable focusKey="filter" enabled={isTv && shown}>
-                  <FilterPanel facets={facets} labels={labels} books={books} />
+                  <FilterPanel values={values} labels={labels} books={books} />
                 </HeaderFocusable>
               )}
               {!isTv && (
@@ -258,7 +255,7 @@ export function LibraryScreen() {
               <div data-part="library-count" className="flex items-center gap-1.5 text-sm text-text-muted">
                 {ready ? (
                   <span>
-                    <CountNoun count={first.total} kind={library.kind} tab={search.tab} />
+                    <CountNoun count={totalOf(first)} kind={library.kind} tab={search.tab} />
                   </span>
                 ) : (
                   <NumberSkeleton />
@@ -287,7 +284,7 @@ export function LibraryScreen() {
         <LibraryGrid
           library={library}
           first={worksRead.data}
-          page={(i) => workQueries.browsePage(library.id, filters, i)}
+          page={(i) => workQueries.browsePage(request, i)}
           view={view}
           shape={shape}
           letterSort={sort === "title"}
@@ -352,14 +349,21 @@ export function LibraryScreen() {
         }}
       />
       {saving && (
-        <SmartListDialog name={library.name} query={queryFromGrid(library, search)} onClose={() => setSaving(false)} />
+        <SmartListDialog
+          name={library.name}
+          query={listQueryFromGrid(library, search)}
+          onClose={() => setSaving(false)}
+        />
       )}
     </div>
   );
 }
 
 /** A page of one of a library's grids, whatever it lists. */
-type GridPage = { items: { id: string }[]; total: number; letters?: LetterStart[] };
+type GridPage = { items: { id: string }[]; total?: number; letters?: LetterStart[] };
+
+/** How many items a grid has, which its first page says. */
+const totalOf = (first: GridPage) => first.total ?? first.items.length;
 
 type GridProps<P extends GridPage> = {
   library: Library;
@@ -396,7 +400,7 @@ function LibraryGrid<P extends GridPage>({
   const { t } = useLingui();
   const [search, setSearch] = useBrowseSearch();
   const [range, setRange] = useState<GridRange>({ start: 0, end: 0, top: 0, topEnd: 0, settles: 0 });
-  const total = first.total;
+  const total = totalOf(first);
   // The pages of the items around where the grid settles.
   const indexes = gridPages(range.start, range.end, total);
   const rest = useQueries({ queries: indexes.map(page) });

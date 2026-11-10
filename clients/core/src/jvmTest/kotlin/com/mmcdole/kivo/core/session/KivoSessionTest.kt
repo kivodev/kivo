@@ -530,7 +530,8 @@ class KivoSessionTest {
             "w1", "movie", "Heat", "matched", true, WorkImages(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList(),
             emptyList(), emptyList(), year = 1995, overview = "A heist.", libraryId = "l1",
         )
-        h.servers.on("home.test", "GET", "/api/v1/libraries/l1/works") { json(WorkSummaryPage.serializer(), WorkSummaryPage(listOf(summary), 1)) }
+        h.servers.on("home.test", "GET", "/api/v1/libraries") { json(LibraryList.serializer(), LibraryList(listOf(Library("l1", "Movies", true, "movies", 1)))) }
+        h.servers.on("home.test", "POST", "/api/v1/works/query") { json(WorkSummaryPage.serializer(), WorkSummaryPage(listOf(summary), 1)) }
         h.servers.on("home.test", "GET", "/api/v1/works/w1") { json(WorkDetail.serializer(), work) }
         h.device.signedInTo("server-1")
         val session = h.core.restore(SavedServer("server-1", "server-1", listOf("http://home.test")))

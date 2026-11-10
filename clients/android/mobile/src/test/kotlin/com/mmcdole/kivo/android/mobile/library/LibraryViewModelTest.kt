@@ -5,16 +5,25 @@ import com.mmcdole.kivo.android.library.GridValues
 import com.mmcdole.kivo.android.library.SavedGrids
 import com.mmcdole.kivo.android.library.Section
 import com.mmcdole.kivo.android.mobile.CoreTest
+import com.mmcdole.kivo.android.mobile.reply
 import com.mmcdole.kivo.android.mobile.awaitValue
 import com.mmcdole.kivo.android.mobile.ui.CardShape
 import com.mmcdole.kivo.android.mobile.work
 import com.mmcdole.kivo.api.models.LetterStart
 import com.mmcdole.kivo.api.models.Library
-import com.mmcdole.kivo.api.models.LibraryFacets
+import com.mmcdole.kivo.api.infrastructure.ApiClient
+import com.mmcdole.kivo.api.models.CollectionSummary
+import com.mmcdole.kivo.api.models.CollectionSummaryPage
 import com.mmcdole.kivo.api.models.LibraryList
+import com.mmcdole.kivo.api.models.WorkFieldValue
+import com.mmcdole.kivo.api.models.WorkFieldValueList
+import com.mmcdole.kivo.api.models.WorkImages
+import com.mmcdole.kivo.api.models.WorkQueryRequest
 import com.mmcdole.kivo.api.models.WorkSummaryPage
+import io.ktor.http.content.OutgoingContent
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -24,15 +33,26 @@ import kotlin.test.assertTrue
 class LibraryViewModelTest : CoreTest() {
     private val movies = Library("lib1", "Movies", pinned = true, kind = "movies", workCount = 3)
     private val books = Library("lib2", "Books", pinned = true, kind = "audiobooks", workCount = 0)
+    /** The grid's reads, as the server was asked. */
+    private val asked: MutableList<WorkQueryRequest> = CopyOnWriteArrayList()
     private val saved = SavedGrids(PreferenceDataStoreFactory.create { createTempDirectory("grids").resolve("grids.preferences_pb").toFile() })
 
     init {
         server.get("/api/v1/libraries", LibraryList.serializer()) { LibraryList(listOf(movies, books)) }
-        server.get("/api/v1/libraries/lib1/facets", LibraryFacets.serializer()) {
-            LibraryFacets(emptyList(), emptyList(), emptyList(), emptyList(), listOf("1080p"), emptyList(), collections = true)
+        for (field in listOf("genre", "year", "contentRating", "resolution", "dynamicRange")) {
+            server.get("/api/v1/work-fields/$field/values", WorkFieldValueList.serializer()) {
+                WorkFieldValueList(if (field == "resolution") listOf(WorkFieldValue("1080p", "1080p")) else emptyList())
+            }
         }
-        server.get("/api/v1/libraries/lib1/works", WorkSummaryPage.serializer()) {
-            WorkSummaryPage(listOf(work("a", "Algiers"), work("b", "Battleship"), work("c", "Charade")), 3, listOf(LetterStart("A", 0), LetterStart("B", 1), LetterStart("C", 2)))
+        server.get("/api/v1/libraries/lib1/collections", CollectionSummaryPage.serializer()) {
+            CollectionSummaryPage(listOf(CollectionSummary("c1", "Dune Collection", 2, WorkImages())), 1)
+        }
+        server.on("POST", "/api/v1/works/query") { request ->
+            asked += ApiClient.JSON_DEFAULT.decodeFromString(WorkQueryRequest.serializer(), (request.body as OutgoingContent.ByteArrayContent).bytes().decodeToString())
+            reply(
+                WorkSummaryPage.serializer(),
+                WorkSummaryPage(listOf(work("a", "Algiers"), work("b", "Battleship"), work("c", "Charade")), 3, listOf(LetterStart("A", 0), LetterStart("B", 1), LetterStart("C", 2))),
+            )
         }
     }
 
@@ -41,13 +61,15 @@ class LibraryViewModelTest : CoreTest() {
     @Test
     fun opensOnTitlesInTitleOrderWithCollectionsOnceTheLibrarySaysItHasThem() {
         val model = LibraryViewModel(signIn(), saved, emptyMap(), "lib1")
-        val state = awaitValue(model.state) { it.library != null && it.facets != null }
+        val state = awaitValue(model.state) { it.library != null && it.filters != null }
         assertEquals(GridValues.TITLE, state.query.sort)
         assertEquals(listOf(LibraryTab.Titles, LibraryTab.Collections), state.tabs)
+        assertEquals(listOf("1080p"), state.filters?.resolutions)
         assertEquals(CardShape.Poster, state.shape)
         val pages = awaitValue(state.grid.pager.state) { it.total != null }
         assertEquals(3, pages.total)
         assertEquals("B", pages.letterAt(1))
+        assertTrue(asked.all { it.library == "lib1" && it.query.kinds == listOf("movie") }, "read as the movies library's grid")
     }
 
     @Test
@@ -59,7 +81,8 @@ class LibraryViewModelTest : CoreTest() {
         assertTrue(state.grid !== first, "a new grid for the new sort")
         val kept = awaitValue(saved.all) { it["lib1"] != null }
         assertEquals(GridValues.ADDED_AT, kept["lib1"]!!.query.sort)
-        assertTrue(server.seen.any { it.startsWith("GET /api/v1/libraries/lib1/works") && "sort=addedAt" in it })
+        awaitValue(state.grid.pager.state) { it.total != null }
+        assertTrue(asked.any { it.query.sort?.single()?.field == "addedAt" })
     }
 
     @Test

@@ -19,6 +19,8 @@ import com.mmcdole.kivo.android.ui.Navigator
 import com.mmcdole.kivo.api.infrastructure.ApiClient
 import com.mmcdole.kivo.api.models.EpisodeInfo
 import com.mmcdole.kivo.api.models.ImageRef
+import com.mmcdole.kivo.api.models.Library
+import com.mmcdole.kivo.api.models.LibraryList
 import com.mmcdole.kivo.api.models.SeasonInfo
 import com.mmcdole.kivo.api.models.SeriesInfo
 import com.mmcdole.kivo.api.models.ServerInfo
@@ -75,7 +77,8 @@ class DetailSeedTest {
         requests += "${request.method.value} $path"
         when (path) {
             "/api/v1/server" -> json(ServerInfo.serializer(), ServerInfo("detail-test", "Detail test", "1.0"))
-            "/api/v1/libraries/library/works" ->
+            "/api/v1/libraries" -> json(LibraryList.serializer(), LibraryList(listOf(Library("library", "Movies", true, "movies", 3))))
+            "/api/v1/works/query" ->
                 json(WorkSummaryPage.serializer(), WorkSummaryPage(listOf(card, season, card.copy(id = "gone", title = "Ronin")), 3))
             "/api/v1/works/series/children" -> json(WorkSummaryList.serializer(), WorkSummaryList(listOf(season, season2)))
             "/api/v1/works/season/children" -> json(WorkSummaryList.serializer(), WorkSummaryList(listOf(episode)))

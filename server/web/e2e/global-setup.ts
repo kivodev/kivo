@@ -198,7 +198,8 @@ export default async function globalSetup() {
   const { id: libraryId } = (await library.json()) as { id: string };
 
   const workId = await until("the scan", 60, async () => {
-    const page = (await (await api.get(`/api/v1/libraries/${libraryId}/works`)).json()) as { items: { id: string }[] };
+    const read = await api.post("/api/v1/works/query", { data: { query: { kinds: ["movie"] }, library: libraryId } });
+    const page = (await read.json()) as { items: { id: string }[] };
     return page.items[0]?.id;
   });
 
@@ -253,7 +254,8 @@ export default async function globalSetup() {
   const { id: audiobooksId } = (await shelf.json()) as { id: string };
   type Card = { id: string; title: string; book?: { authors: unknown[]; series: unknown[] } };
   const byTitle = await until("the audiobooks scan", 90, async () => {
-    const page = (await (await api.get(`/api/v1/libraries/${audiobooksId}/works`)).json()) as { items: Card[] };
+    const read = await api.post("/api/v1/works/query", { data: { query: { kinds: ["book"] }, library: audiobooksId } });
+    const page = (await read.json()) as { items: Card[] };
     const ready = page.items.length === 3 && page.items.every((c) => (c.book?.authors.length ?? 0) > 0);
     return ready ? new Map(page.items.map((c) => [c.title, c.id])) : undefined;
   });

@@ -1,7 +1,7 @@
 // Names for the generated schema types, so imports read `WorkSummary` rather
 // than `components["schemas"]["WorkSummary"]`. These are only aliases.
 // Every API type comes from schema.d.ts, generated from the OpenAPI spec.
-import type { components, operations } from "./schema";
+import type { components } from "./schema";
 
 type Schemas = components["schemas"];
 
@@ -23,7 +23,6 @@ export type Library = Schemas["Library"];
 /** A library as an admin gets it, with the settings the server sends admins only. */
 export type AdminLibrary = Library &
   Required<Pick<Library, "folders" | "useLocalMetadata" | "previews" | "markers" | "subtitles" | "refreshDays">>;
-export type LibraryFacets = Schemas["LibraryFacets"];
 export type LibraryScanStatus = Schemas["LibraryScanStatus"];
 export type ScanProgress = Schemas["ScanProgress"];
 export type Home = Schemas["Home"];
@@ -97,22 +96,17 @@ export type SnapshotMessage = Schemas["SnapshotMessage"];
 export type EventMessage = Schemas["EventMessage"];
 export type WorkKind = Schemas["WorkKind"];
 export type WorkQuery = Schemas["WorkQuery"];
+export type WorkQueryRequest = Schemas["WorkQueryRequest"];
 export type RuleGroup = Schemas["RuleGroup"];
 export type Rule = Schemas["Rule"];
 export type SortKey = Schemas["SortKey"];
 export type WorkField = Schemas["WorkField"];
 export type WorkFieldValue = Schemas["WorkFieldValue"];
 export type LibraryKind = Schemas["LibraryKind"];
+export type Resolution = Schemas["Resolution"];
+export type MatchState = Schemas["MatchState"];
 export type ProcessingSchedule = Schemas["ProcessingSchedule"];
 export type RefreshDays = Schemas["RefreshDays"];
 export type ArtworkType = Schemas["ArtworkType"];
 export type SubtitleMode = Schemas["SubtitleMode"];
 export type SubtitleTrackInfo = Schemas["SubtitleTrackInfo"];
-
-/** The query of `listLibraryWorks`: sort, filters and paging. */
-export type BrowseQuery = NonNullable<operations["listLibraryWorks"]["parameters"]["query"]>;
-export type BrowseSort = NonNullable<BrowseQuery["sort"]>;
-export type PlayedFilter = NonNullable<BrowseQuery["played"]>;
-export type ResolutionFilter = NonNullable<BrowseQuery["resolution"]>[number];
-export type DynamicRangeFilter = NonNullable<BrowseQuery["dynamicRange"]>[number];
-export type MatchStateFilter = NonNullable<BrowseQuery["matchState"]>;

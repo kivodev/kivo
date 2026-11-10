@@ -115,11 +115,15 @@ func TestResponses(t *testing.T) {
 
 	// Works.
 	libs := "/api/v1/libraries/"
-	tr.do("GET", libs+e.lib.String()+"/works", admin, nil)
-	tr.do("GET", libs+e.lib.String()+"/works?limit=1", admin, nil)
-	tr.do("GET", libs+e.lib.String()+"/works?limit=0", admin, nil)
-	tr.do("GET", libs+e.lib.String()+"/works?offset=1&yearFrom=1990&yearTo=2030", admin, nil)
-	tr.do("GET", libs+e.lib.String()+"/works?yearFrom=2000&yearTo=1999", admin, nil)
+	grid := func(with map[string]any) {
+		tr.do("POST", "/api/v1/works/query", admin, gridQuery(e.lib, "movie", with))
+	}
+	grid(nil)
+	grid(map[string]any{"limit": 1})
+	grid(map[string]any{"limit": 0})
+	grid(map[string]any{"offset": 1, "where": allOf([]string{"year", "between", "1990", "2030"})})
+	tr.do("POST", "/api/v1/works/query", admin, gridQuery(books, "book", map[string]any{"sort": sortBy("author")}))
+	tr.do("POST", "/api/v1/works/query", nobody, gridQuery(e.lib, "movie", nil))
 	tr.do("GET", libs+books.String()+"/authors", admin, nil)
 	tr.do("GET", libs+books.String()+"/book-series", admin, nil)
 	tr.do("GET", libs+books.String()+"/collections", admin, nil)
@@ -189,7 +193,11 @@ func TestResponses(t *testing.T) {
 	tr.do("GET", "/api/v1/libraries?limit=1&after=bogus", admin, nil) // an older app's paging: the list comes back whole
 	tr.do("GET", "/api/v1/libraries/"+e.lib.String(), admin, nil)
 	tr.do("GET", "/api/v1/libraries/"+e.lib.String(), nobody, nil)
-	tr.do("GET", "/api/v1/libraries/"+e.lib.String()+"/facets", admin, nil)
+	for _, field := range []string{"genre", "year", "contentRating", "resolution", "dynamicRange"} {
+		tr.do("GET", "/api/v1/work-fields/"+field+"/values?library="+e.lib.String(), admin, nil)
+	}
+	tr.do("GET", "/api/v1/work-fields/narrator/values?library="+books.String(), admin, nil)
+	tr.do("GET", "/api/v1/work-fields/genre/values?library="+e.lib.String(), nobody, nil)
 	dir := t.TempDir()
 	created := tr.do("POST", "/api/v1/libraries", admin, map[string]any{"name": "Shows", "kind": "shows", "folders": []string{dir}, "previews": "never"})
 	lib, _ := created["id"].(string)

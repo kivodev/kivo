@@ -290,7 +290,7 @@ func TestUsersAndInvites(t *testing.T) {
 func TestLibraries(t *testing.T) {
 	e := newEnv(t, serving{})
 	libs := decode[list](t, e.do("GET", "/api/v1/libraries", e.adminToken, nil))
-	if len(libs.Items) != 1 || libs.Items[0]["workCount"] != float64(2) || libs.Items[0]["folders"] == nil || libs.Total != nil || libs.Next != "" {
+	if len(libs.Items) != 2 || libs.Items[0]["workCount"] != float64(1) || libs.Items[0]["folders"] == nil || libs.Total != nil || libs.Next != "" {
 		t.Fatalf("libraries %+v", libs)
 	}
 	dir := t.TempDir()
@@ -319,16 +319,14 @@ func TestLibraries(t *testing.T) {
 	if asked := e.asks.of(scan.TaskScanLibraries); w.Code != http.StatusAccepted || len(acc) != 0 || len(asked) == 0 || asked[len(asked)-1].String() != lib["id"] {
 		t.Errorf("scan: %d %v, asked for %v", w.Code, acc, asked)
 	}
-	f := decode[map[string]any](t, e.do("GET", "/api/v1/libraries/"+e.lib.String()+"/facets", e.adminToken, nil))
-	if years := f["years"].([]any); len(years) != 1 || years[0] != float64(1995) {
-		t.Errorf("facets %v", f)
+	// Heat is from 1995, in 1080p SDR.
+	for field, want := range map[string][]string{"year": {"1995"}, "resolution": {"1080p"}, "dynamicRange": {}} {
+		if got := e.libraryValues(e.lib, field); !slices.Equal(got, want) {
+			t.Errorf("the library's %s values %v, want %v", field, got, want)
+		}
 	}
-	// Heat is 1080p SDR, in no collection.
-	if r, ok := f["resolutions"].([]any); !ok || len(r) != 1 || r[0] != "1080p" || f["collections"] != false {
-		t.Errorf("facets %v", f)
-	}
-	if h, ok := f["dynamicRanges"].([]any); !ok || len(h) != 0 {
-		t.Errorf("facets %v", f)
+	if w := e.do("GET", "/api/v1/work-fields/year/values?library="+id.New().String(), e.adminToken, nil); w.Code != http.StatusNotFound {
+		t.Errorf("the values of no such library: %d", w.Code)
 	}
 	w = e.do("POST", path+"/refresh-metadata", e.adminToken, nil)
 	if acc := decode[map[string]any](t, w); w.Code != http.StatusAccepted || acc["queued"] != 0.0 {
@@ -363,7 +361,7 @@ func TestLibraries(t *testing.T) {
 	if w := e.do("GET", path, e.adminToken, nil); w.Code != http.StatusNotFound {
 		t.Errorf("deleted library: %d", w.Code)
 	}
-	if libs := decode[list](t, e.do("GET", "/api/v1/libraries", e.adminToken, nil)); len(libs.Items) != 1 {
+	if libs := decode[list](t, e.do("GET", "/api/v1/libraries", e.adminToken, nil)); len(libs.Items) != 2 {
 		t.Errorf("libraries while one is being deleted: %+v", libs)
 	}
 	if w := e.do("DELETE", path, e.adminToken, nil); w.Code != http.StatusNotFound {
@@ -428,7 +426,7 @@ func TestBrowseShowsByLastEpisodeAdded(t *testing.T) {
 	e.b.Episode(folder, older, 1, 1)
 	time.Sleep(2 * time.Millisecond)
 	e.b.Episode(folder, newer, 1, 2)
-	w := e.do("GET", "/api/v1/libraries/"+lib.String()+"/works?sort=lastEpisodeAddedAt", e.adminToken, nil)
+	w := e.grid(e.adminToken, lib, "series", map[string]any{"sort": sortBy("lastEpisodeAddedAt")})
 	if w.Code != http.StatusOK {
 		t.Fatalf("sort=lastEpisodeAddedAt: %d %s", w.Code, w.Body.String())
 	}
@@ -440,26 +438,41 @@ func TestBrowseShowsByLastEpisodeAdded(t *testing.T) {
 
 func TestBrowseAndDetail(t *testing.T) {
 	e := newEnv(t, serving{})
-	grid := "/api/v1/libraries/" + e.lib.String() + "/works"
-	page := decode[list](t, e.do("GET", grid+"?sort=title&limit=10", e.adminToken, nil))
-	if *page.Total != 2 || len(page.Items) != 2 || len(page.Letters) == 0 || page.Letters[0].Offset != 0 {
+	e.b.Movie(e.folder, "Seeded Sequel", 1996)
+	grid := func(with map[string]any) *httptest.ResponseRecorder {
+		return e.grid(e.adminToken, e.lib, "movie", with)
+	}
+	page := decode[list](t, grid(map[string]any{"sort": sortBy("title"), "limit": 10}))
+	if page.Total == nil || *page.Total != 2 || len(page.Items) != 2 || len(page.Letters) == 0 || page.Letters[0].Offset != 0 {
 		t.Fatalf("browse %+v", page)
 	}
-	// A page at an offset starts the grid from there. It has the total but
-	// not the letter rail, which only the first page has.
-	at := decode[list](t, e.do("GET", grid+"?offset=1&limit=1", e.adminToken, nil))
-	if len(at.Items) != 1 || at.Items[0]["id"] != page.Items[1]["id"] || at.Total == nil || *at.Total != 2 || at.Letters != nil || at.Next != "" {
+	// A page at an offset starts the grid from there. It has neither the
+	// total nor the letter rail, which only the first page has.
+	at := decode[list](t, grid(map[string]any{"offset": 1, "limit": 1}))
+	if len(at.Items) != 1 || at.Items[0]["id"] != page.Items[1]["id"] || at.Total != nil || at.Letters != nil || at.Next != "" {
 		t.Errorf("offset 1: %+v", at)
 	}
 	if second := page.Letters[1]; second.Offset != 1 {
 		t.Errorf("letters %+v", page.Letters)
 	}
-	if w := e.do("GET", grid+"?offset=-1", e.adminToken, nil); w.Code != http.StatusBadRequest {
+	// The same query read in every library has the total and no letters.
+	every := decode[list](t, e.do("POST", "/api/v1/works/query", e.adminToken, map[string]any{"query": map[string]any{"kinds": []string{"movie"}}}))
+	if every.Total == nil || *every.Total != 2 || every.Letters != nil {
+		t.Errorf("the query in every library: %+v", every)
+	}
+	if w := grid(map[string]any{"offset": -1}); w.Code != http.StatusBadRequest {
 		t.Errorf("offset -1: %d", w.Code)
 	}
-	for _, q := range []string{"?yearFrom=1990&yearTo=1999", "?yearFrom=1990", "?resolution=1080p&hdr=hdr", "?played=unplayed", "?match=unmatched", "?genre=Crime&genre=Drama"} {
-		if w := e.do("GET", grid+q, e.adminToken, nil); w.Code != http.StatusOK {
-			t.Errorf("%s: %d %s", q, w.Code, w.Body.String())
+	for name, with := range map[string]map[string]any{
+		"years":      {"where": allOf([]string{"year", "between", "1990", "1999"})},
+		"years from": {"where": allOf([]string{"year", "gte", "1990"})},
+		"video":      {"where": allOf([]string{"resolution", "anyOf", "1080p"}, []string{"dynamicRange", "anyOf", "hdr"})},
+		"unplayed":   {"where": allOf([]string{"playState", "anyOf", "unplayed"})},
+		"unmatched":  {"unmatched": true},
+		"genres":     {"where": allOf([]string{"genre", "anyOf", "Crime", "Drama"})},
+	} {
+		if w := grid(with); w.Code != http.StatusOK {
+			t.Errorf("%s: %d %s", name, w.Code, w.Body.String())
 		}
 	}
 	heat, err := e.b.Catalog.Work(ctx, e.heat.Work)
@@ -477,7 +490,7 @@ func TestBrowseAndDetail(t *testing.T) {
 		t.Errorf("detail's movie: %v", detail["movie"])
 	}
 	for _, sort := range []string{"rating", "myRating"} {
-		page := decode[list](t, e.do("GET", grid+"?sort="+sort, e.adminToken, nil))
+		page := decode[list](t, grid(map[string]any{"sort": sortBy(sort)}))
 		if len(page.Items) != 2 {
 			t.Fatalf("sort=%s: %+v", sort, page)
 		}
@@ -485,16 +498,16 @@ func TestBrowseAndDetail(t *testing.T) {
 			t.Errorf("sort=rating: first %v", page.Items[0])
 		}
 	}
-	for _, q := range []string{"?yearFrom=2000&yearTo=1999", "?matchState=identifying", "?sort=popularity"} {
-		if w := e.do("GET", grid+q, e.adminToken, nil); w.Code != http.StatusBadRequest {
-			t.Errorf("%s: %d", q, w.Code)
+	for name, with := range map[string]map[string]any{"sort": {"sort": sortBy("popularity")}, "unmatched": {"unmatched": "identifying"}} {
+		if w := grid(with); w.Code != http.StatusBadRequest {
+			t.Errorf("a bad %s: %d", name, w.Code)
 		}
 	}
-	if w := e.do("GET", "/api/v1/libraries/"+id.New().String()+"/works", e.adminToken, nil); w.Code != http.StatusNotFound {
+	if w := e.grid(e.adminToken, id.New(), "movie", nil); w.Code != http.StatusNotFound || problemCode(w) != codeNotFound {
 		t.Errorf("no such library: %d", w.Code)
 	}
 
-	second := e.b.Episode(e.folder, e.series, 1, 2)
+	second := e.b.Episode(e.showsFolder, e.series, 1, 2)
 	seasons := decode[list](t, e.do("GET", "/api/v1/works/"+e.series.String()+"/children", e.adminToken, nil))
 	if len(seasons.Items) != 1 || seasons.Items[0]["season"].(map[string]any)["seriesId"] != e.series.String() {
 		t.Fatalf("children %+v", seasons)
@@ -541,11 +554,10 @@ func TestBrowseAndDetail(t *testing.T) {
 	if err := e.b.DB.Reader().QueryRow(`SELECT content_rating_age FROM work WHERE id = ?`, e.heat.Work).Scan(&rank); err != nil || rank != 17 {
 		t.Errorf("edit: rank %d, %v", rank, err)
 	}
-	f := decode[map[string]any](t, e.do("GET", "/api/v1/libraries/"+e.lib.String()+"/facets", e.adminToken, nil))
-	if r := f["contentRatings"].([]any); len(r) != 1 || r[0] != "R" {
-		t.Errorf("facets %v", f)
+	if r := e.libraryValues(e.lib, "contentRating"); !slices.Equal(r, []string{"R"}) {
+		t.Errorf("the library's content ratings %v", r)
 	}
-	page = decode[list](t, e.do("GET", grid+"?contentRating=R&contentRating=PG", e.adminToken, nil))
+	page = decode[list](t, grid(map[string]any{"where": allOf([]string{"contentRating", "anyOf", "R", "PG"})}))
 	if len(page.Items) != 1 || page.Items[0]["id"] != e.heat.Work.String() || page.Items[0]["contentRating"] != "R" {
 		t.Errorf("filter by content rating %+v", page)
 	}
@@ -611,7 +623,7 @@ func TestSetOrdering(t *testing.T) {
 // season reads back as unplayed.
 func TestSeasonPlayedToggles(t *testing.T) {
 	e := newEnv(t, serving{})
-	e2 := e.b.Episode(e.folder, e.series, 1, 2)
+	e2 := e.b.Episode(e.showsFolder, e.series, 1, 2)
 	seasons := decode[list](t, e.do("GET", "/api/v1/works/"+e.series.String()+"/children", e.adminToken, nil))
 	if len(seasons.Items) != 1 {
 		t.Fatalf("seasons %+v", seasons)
@@ -664,8 +676,7 @@ func TestUnmatch(t *testing.T) {
 		t.Errorf("a bogus cursor: %d", r.Code)
 	}
 	// The library grid's match filter has it too, for admins only.
-	grid := "/api/v1/libraries/" + e.lib.String() + "/works?matchState=unmatched"
-	if g := decode[list](t, e.do("GET", grid, e.adminToken, nil)); len(g.Items) != 1 || g.Items[0]["id"] != e.heat.Work.String() {
+	if g := decode[list](t, e.grid(e.adminToken, e.lib, "movie", map[string]any{"unmatched": true})); len(g.Items) != 1 || g.Items[0]["id"] != e.heat.Work.String() {
 		t.Errorf("the unmatched filter %+v", g)
 	}
 	// Refresh metadata on an unmatched work sends its folder back to be

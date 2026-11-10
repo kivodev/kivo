@@ -45,11 +45,18 @@ export function problem(status: number, code: Problem["code"], extra: Partial<Pr
 const notFound = () => problem(404, "notFound");
 const unauthenticated = () => problem(401, "unauthenticated");
 
-/** A list as the API answers, its count from the works it holds, and with `counts` its first three posters. */
+/**
+ * A list as the API answers, its count from the works it holds, and with
+ * `counts` its first three posters. A smart list is counted only with `counts`.
+ */
 function workListOf(api: MockApi, { workIds, ...list }: MockList, counts = false): WorkList {
   const covers = workIds.slice(0, 3).flatMap((id) => api.works[id]?.images.poster ?? []);
-  return { ...list, workCount: workIds.length, ...(counts ? { covers } : {}) };
+  const workCount = list.kind === "smart" && !counts ? 0 : workIds.length;
+  return { ...list, workCount, ...(counts ? { covers } : {}) };
 }
+
+/** A page's `total` where only the first page (offset 0) has it. */
+const firstPageTotal = (start: number, total: number) => (start === 0 ? total : undefined);
 
 /** Whether a work passes a rule. Fields without work data here pass every work. */
 function matchesRule(work: WorkDetail, { field, op, values = [] }: Rule): boolean {
@@ -265,10 +272,6 @@ export function createHandlers(api: MockApi) {
       const library = api.libraries.find((l) => l.id === params.id);
       return library ? response(200).json(library) : notFound();
     }),
-    http.get("/api/v1/libraries/{id}/facets", ({ params, response }) => {
-      const facets = api.facets[params.id];
-      return facets ? response(200).json(facets) : notFound();
-    }),
     http.post("/api/v1/libraries", ({ response }) => {
       const library = api.libraries.at(-1);
       return library ? response(201).json(library) : notFound();
@@ -363,7 +366,11 @@ export function createHandlers(api: MockApi) {
     }),
     http.get("/api/v1/work-fields", ({ response }) => response(200).json({ items: api.workFields })),
     http.get("/api/v1/work-fields/{field}/values", ({ params, query, response }) => {
-      const values = api.workFieldValues[params.field] ?? [];
+      // With a library, the values its works have.
+      const library = query.get("library");
+      if (library && !api.libraries.some((l) => l.id === library)) return notFound();
+      const values =
+        (library ? api.libraryFieldValues[library]?.[params.field] : api.workFieldValues[params.field]) ?? [];
       const ids = query.getAll("ids");
       const q = (query.get("q") ?? "").toLowerCase();
       const items =
@@ -372,15 +379,28 @@ export function createHandlers(api: MockApi) {
           : values.filter((v) => v.name.toLowerCase().includes(q));
       return response(200).json({ items });
     }),
+    // A query, by offset. In a library it is the library's grid, whatever
+    // the rules and sort ask, with letters when it sorts by title A to Z.
     http.post("/api/v1/works/query", async ({ request, response }) => {
-      const { query, offset, limit } = await request.json();
-      const matched = worksMatching(api, query).map(summaryOf);
+      const { query, library, unmatched, offset, limit } = await request.json();
+      const grid = library === undefined ? undefined : api.browse[library];
+      if (library !== undefined && !grid) return notFound();
+      const onlyUnmatched = unmatched && api.currentUser.admin;
+      const matched = grid
+        ? grid.filter((w) => !onlyUnmatched || w.matchState === "unmatched")
+        : worksMatching(api, query).map(summaryOf);
       const { start, end } = pageOf(
         offset === undefined ? null : String(offset),
         limit === undefined ? null : String(limit),
         matched.length,
       );
-      return response(200).json({ items: matched.slice(start, end), total: matched.length });
+      const [sort] = query.sort ?? [];
+      const byTitle = !sort || (sort.field === "title" && sort.direction !== "desc");
+      return response(200).json({
+        items: matched.slice(start, end),
+        total: firstPageTotal(start, matched.length),
+        letters: grid && start === 0 && byTitle ? lettersOf(matched.map((w) => w.title)) : undefined,
+      });
     }),
     // A list's works, most recently added first, by offset.
     http.get("/api/v1/lists/{id}/works", ({ params, query, response }) => {
@@ -388,7 +408,7 @@ export function createHandlers(api: MockApi) {
       if (!list) return notFound();
       const items = list.workIds.flatMap((id) => (api.works[id] ? [summaryOf(api.works[id])] : []));
       const { start, end } = pageOf(query.get("offset"), query.get("limit"), items.length);
-      return response(200).json({ items: items.slice(start, end), total: items.length });
+      return response(200).json({ items: items.slice(start, end), total: firstPageTotal(start, items.length) });
     }),
     http.post("/api/v1/lists/{id}/works", async ({ params, request, response }) => {
       const list = api.lists.find((l) => l.id === params.id);
@@ -404,18 +424,6 @@ export function createHandlers(api: MockApi) {
       if (list.kind === "smart") return problem(409, "conflict");
       list.workIds = list.workIds.filter((id) => id !== params.workId);
       return response(204).empty();
-    }),
-    // A library's grid, by offset. The title sort has letters.
-    http.get("/api/v1/libraries/{id}/works", ({ params, query, response }) => {
-      const items = api.browse[params.id];
-      if (!items) return notFound();
-      const { start, end } = pageOf(query.get("offset"), query.get("limit"), items.length);
-      const byTitle = (query.get("sort") ?? "title") === "title";
-      return response(200).json({
-        items: items.slice(start, end),
-        total: items.length,
-        letters: start === 0 && byTitle ? lettersOf(items.map((w) => w.title)) : undefined,
-      });
     }),
     // A library's collections, by name, with letters.
     http.get("/api/v1/libraries/{id}/collections", ({ params, query, response }) => {

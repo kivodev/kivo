@@ -7,4 +7,8 @@
 // is indistinguishable from what doesn't exist: both are ErrNotFound. A work
 // has one WorkSummary everywhere: in grids, rows, children, search and its
 // WorkDetail.
+//
+// A library's grid, a smart list, a smart list's row on Home and a query a
+// client sends are each a WorkQuery, and compile turns every one of them
+// into its statements.
 package query

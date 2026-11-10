@@ -31,28 +31,39 @@ final class GridModelTests: XCTestCase {
         String(decoding: try! JSONSerialization.data(withJSONObject: value), as: UTF8.self)
     }
 
+    private static let worksPath = "/api/v1/works/query"
+
+    /// What a read of the grid asked for: its `WorkQueryRequest`.
+    private static func asked(_ request: StubServer.Request) -> [String: Any] {
+        (try? JSONSerialization.jsonObject(with: request.body)) as? [String: Any] ?? [:]
+    }
+
     private static func answer(_ request: StubServer.Request) -> (Int, String) {
         switch request.path {
         case "/api/v1/server":
             return (200, json(["id": "grid-test", "name": "Grid test", "version": "1.0"]))
         case "/api/v1/libraries":
             return (200, json(["items": [["id": "lib", "name": "Movies", "pinned": true, "kind": "movies", "workCount": total]]]))
-        case "/api/v1/libraries/lib/facets":
-            return (200, json(["narrators": [], "genres": [], "contentRatings": [], "years": [], "resolutions": [], "dynamicRanges": [], "collections": false]))
-        case "/api/v1/libraries/lib/works":
-            let q = request.query
+        case "/api/v1/libraries/lib/collections":
+            return (200, json(["items": [], "total": 0]))
+        case let path where path.hasPrefix("/api/v1/work-fields/"):
+            return (200, json(["items": []]))
+        case worksPath:
+            let read = asked(request)
             if failing {
                 return (404, json(["type": "about:blank", "title": "Not found", "status": 404, "code": "notFound", "requestId": "r"]))
             }
-            let limit = Int(q["limit"] ?? "60") ?? 60
-            let start = Int(q["offset"] ?? "0") ?? 0
+            let limit = read["limit"] as? Int ?? 60
+            let start = read["offset"] as? Int ?? 0
             let end = min(start + limit, total)
-            let byDate = q["sort"] == "addedAt"
+            let sort = (read["query"] as? [String: Any])?["sort"] as? [[String: Any]]
+            let byDate = sort?.first?["field"] as? String == "addedAt"
             let items = (start..<end).map { i -> [String: Any] in
                 let n = byDate ? total - 1 - i : i
                 return ["id": "w\(n)", "kind": "movie", "title": name(n), "matchState": "matched", "available": true, "images": [:]]
             }
-            var page: [String: Any] = ["items": items, "total": total]
+            var page: [String: Any] = ["items": items]
+            if start == 0 { page["total"] = total }
             if start == 0, !byDate {
                 var letters: [[String: Any]] = []
                 for i in 0..<total where i == 0 || letter(i) != letter(i - 1) {
@@ -206,16 +217,14 @@ final class GridModelTests: XCTestCase {
         let run = Task { await grid.run() }
         defer { run.cancel() }
         await grid.ready()
-        let before = server.requests(to: "/api/v1/libraries/lib/works").count
+        let before = server.requests(to: Self.worksPath).count
         for row in stride(from: 0, to: 2400, by: 60) {
             grid.show(row...(row + 20))
             try await Task.sleep(for: .milliseconds(16))
         }
         try await until("where it rests loads") { grid.item(at: 2350) != nil }
-        // The grid's pages, not the filters' questions of one work each.
-        let pages = server.requests(to: "/api/v1/libraries/lib/works").dropFirst(before).filter { $0.query["limit"] != "1" }
-        let starts = pages.map { request in
-            Int(request.query["offset"] ?? "0") ?? 0
+        let starts = server.requests(to: Self.worksPath).dropFirst(before).map { request in
+            Self.asked(request)["offset"] as? Int ?? 0
         }
         XCTAssertEqual(Set(starts), [2280, 2340], "the pages where it rests and the one before, none it passed")
     }

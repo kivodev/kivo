@@ -13,6 +13,7 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -140,7 +141,9 @@ type env struct {
 	admin                   id.ID // the user of adminToken
 	nobody                  id.ID // the user of nobodyToken
 
-	lib, folder  id.ID
+	lib, folder  id.ID // the movies library
+	shows        id.ID // the shows library, and its folder
+	showsFolder  id.ID
 	heat         catalogtest.Item // a movie whose file exists
 	series       id.ID
 	episode      catalogtest.Item
@@ -376,11 +379,61 @@ func (e *env) seed() {
 		})
 	})
 	e.series = e.b.Series("Seeded Series")
-	e.episode = e.b.Episode(e.folder, e.series, 1, 1)
+	e.shows, e.showsFolder = e.b.Library(catalog.Shows)
+	e.episode = e.b.Episode(e.showsFolder, e.series, 1, 1)
 	e.seededTitles = []string{"Heatwave Seeded", "Seeded Series", "Seeded Films"}
 }
 
 // do sends a request through the server.
+// gridQuery is the body of a read of lib's grid: a query of kind read in
+// the library, with the query's sort and where and the request's other
+// fields from with.
+func gridQuery(lib id.ID, kind string, with map[string]any) map[string]any {
+	q := map[string]any{"kinds": []string{kind}}
+	body := map[string]any{"query": q, "library": lib}
+	for k, v := range with {
+		if k == "sort" || k == "where" {
+			q[k] = v
+		} else {
+			body[k] = v
+		}
+	}
+	return body
+}
+
+// sortBy is a query's sort by one field.
+func sortBy(field string) []map[string]any { return []map[string]any{{"field": field}} }
+
+// allOf is a query's where of rules that must all pass, each a field, an
+// operator and its values.
+func allOf(rules ...[]string) map[string]any {
+	out := make([]map[string]any, len(rules))
+	for i, r := range rules {
+		out[i] = map[string]any{"field": r[0], "op": r[1], "values": r[2:]}
+	}
+	return map[string]any{"match": "all", "rules": out}
+}
+
+// libraryValues is the values of field that lib's works have, as the
+// admin reads them.
+func (e *env) libraryValues(lib id.ID, field string) []string {
+	e.t.Helper()
+	w := e.do("GET", "/api/v1/work-fields/"+field+"/values?library="+lib.String(), e.adminToken, nil)
+	if w.Code != http.StatusOK {
+		e.t.Fatalf("the library's %s values: %d %s", field, w.Code, w.Body.String())
+	}
+	out := []string{}
+	for _, v := range decode[list](e.t, w).Items {
+		out = append(out, v["value"].(string))
+	}
+	return out
+}
+
+// grid reads a page of lib's grid as token's user.
+func (e *env) grid(token string, lib id.ID, kind string, with map[string]any) *httptest.ResponseRecorder {
+	return e.do("POST", "/api/v1/works/query", token, gridQuery(lib, kind, with))
+}
+
 func (e *env) do(method, path, token string, body any, headers ...string) *httptest.ResponseRecorder {
 	e.t.Helper()
 	var rd io.Reader

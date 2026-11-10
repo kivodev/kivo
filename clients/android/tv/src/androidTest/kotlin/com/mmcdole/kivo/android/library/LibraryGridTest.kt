@@ -34,7 +34,9 @@ import com.mmcdole.kivo.api.models.LetterStart
 import com.mmcdole.kivo.api.models.Library
 import com.mmcdole.kivo.api.models.LibraryList
 import com.mmcdole.kivo.api.models.ServerInfo
+import com.mmcdole.kivo.api.models.WorkFieldValueList
 import com.mmcdole.kivo.api.models.WorkImages
+import com.mmcdole.kivo.api.models.WorkQueryRequest
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.api.models.CollectionSummaryPage
 import com.mmcdole.kivo.api.models.WorkSummaryPage
@@ -47,6 +49,7 @@ import io.ktor.client.engine.mock.MockRequestHandleScope
 import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.content.OutgoingContent
 import io.ktor.http.headersOf
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -80,8 +83,8 @@ class LibraryGridTest {
     private var scenario: ActivityScenario<ComponentActivity>? = null
     private var root: ViewRootForTest? = null
 
-    /** The pages the server was asked for, as (when, query). */
-    private val pages: MutableList<Pair<Long, String>> = CopyOnWriteArrayList()
+    /** The pages the server was asked for, as (when, offset). */
+    private val pages: MutableList<Pair<Long, Int>> = CopyOnWriteArrayList()
 
     private val server = MockEngine { request ->
         when (request.url.encodedPath) {
@@ -96,31 +99,30 @@ class LibraryGridTest {
             "/api/v1/libraries" -> json(LibraryList.serializer(), LibraryList(listOf(Library("lib", "Movies", true, "movies", TOTAL))))
             // The library has no collections.
             "/api/v1/libraries/lib/collections" -> json(CollectionSummaryPage.serializer(), CollectionSummaryPage(emptyList(), 0))
-            "/api/v1/libraries/lib/works" -> {
-                val params = request.url.parameters
-                val limit = params["limit"]?.toInt() ?: 60
-                // Whether the library has works of a resolution or HDR format: none.
-                if (params["resolution"] != null || params["hdr"] != null) {
-                    json(WorkSummaryPage.serializer(), WorkSummaryPage(emptyList(), total = 0))
-                } else {
-                    pages += SystemClock.uptimeMillis() to request.url.encodedQuery
-                    val start = params["offset"]?.toInt() ?: 0
-                    delay(LATENCY_MS)
-                    val end = minOf(start + limit, TOTAL)
-                    json(
-                        WorkSummaryPage.serializer(),
-                        WorkSummaryPage(
-                            // Date added is the works last to first.
-                            items = (start until end).map { if (params["sort"] == "addedAt") work(TOTAL - 1 - it) else work(it) },
-                            total = TOTAL,
-                            letters = letters.takeIf { start == 0 && params["sort"] != "addedAt" },
-                        ),
-                    )
-                }
+            "/api/v1/works/query" -> {
+                val asked = ApiClient.JSON_DEFAULT.decodeFromString(WorkQueryRequest.serializer(), (request.body as OutgoingContent.ByteArrayContent).bytes().decodeToString())
+                val newest = asked.query.sort?.firstOrNull()?.field == "addedAt"
+                val start = asked.offset ?: 0
+                pages += SystemClock.uptimeMillis() to start
+                delay(LATENCY_MS)
+                val end = minOf(start + (asked.limit ?: 60), TOTAL)
+                json(
+                    WorkSummaryPage.serializer(),
+                    WorkSummaryPage(
+                        // Date added is the works last to first.
+                        items = (start until end).map { if (newest) work(TOTAL - 1 - it) else work(it) },
+                        total = TOTAL.takeIf { start == 0 },
+                        letters = letters.takeIf { start == 0 && !newest },
+                    ),
+                )
             }
+            // The library's works have nothing to filter by.
+            in filterValues -> json(WorkFieldValueList.serializer(), WorkFieldValueList(emptyList()))
             else -> respond("""{"status":404,"code":"notFound"}""", HttpStatusCode.NotFound, headersOf(HttpHeaders.ContentType, "application/problem+json"))
         }
     }
+
+    private val filterValues = listOf("genre", "year", "contentRating", "resolution", "dynamicRange").map { "/api/v1/work-fields/$it/values" }
 
     /** A library opens as it was left, and that's kept on the device between tests and runs, as the sort test leaves it. */
     @Before

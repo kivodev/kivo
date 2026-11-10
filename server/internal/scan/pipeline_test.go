@@ -107,7 +107,7 @@ func TestAudiobookPipeline(t *testing.T) {
 	lib := p.library(dir)
 	p.runAll()
 
-	page, err := p.q.Browse(ctx, p.admin, lib, query.BrowseOptions{Sort: query.ByAuthor})
+	page, err := p.q.QueryWorks(ctx, p.admin, query.WorkQuery{Kinds: []catalog.WorkKind{catalog.KindBook}, Sort: []query.SortKey{{Field: "author"}}}, query.Scope{Library: lib}, query.GridOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

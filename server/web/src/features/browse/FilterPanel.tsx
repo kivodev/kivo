@@ -1,4 +1,5 @@
 import { Trans, useLingui } from "@lingui/react/macro";
+import { useQueries } from "@tanstack/react-query";
 import { type ReactNode, useEffect, useState } from "react";
 import {
   Button as AriaButton,
@@ -11,20 +12,47 @@ import {
   Radio,
   RadioGroup,
 } from "react-aria-components";
-import type { LibraryFacets } from "@/api/schemas";
+import type { WorkFieldValue } from "@/api/schemas";
 import { useIsAdmin } from "@/api/users";
+import { workQueryQueries } from "@/api/workQuery";
 import { Button } from "@/components/Button";
 import { Icon } from "@/components/Icon";
 import { isTv } from "@/tv/flag";
 import { TvFocusable, TvFocusGroup } from "@/tv/focus";
 import { useTvDialog } from "@/tv/forms/dialog";
 import { focusTv } from "@/tv/spatial";
-import { type BrowseSearch, hasFilters, matchStateValues, playedValues, useBrowseSearch } from "./browseSearch";
+import {
+  type BrowseSearch,
+  dynamicRangeValues,
+  hasFilters,
+  matchStateValues,
+  playedValues,
+  resolutions,
+  useBrowseSearch,
+} from "./browseSearch";
 import type { BrowseLabels } from "./useBrowseLabels";
 
+const videoFields = ["genre", "year", "contentRating", "resolution", "dynamicRange"] as const;
+const bookFields = ["genre", "year", "narrator"] as const;
+
+/** The values a library's works have, by the field each filter is a rule on. */
+export type FilterValues = Record<(typeof videoFields | typeof bookFields)[number], WorkFieldValue[]>;
+
+/**
+ * What a library's filters offer. A field has no values until its read
+ * arrives, if its read failed, and when the library's kind has no such
+ * filter.
+ */
+export function useFilterValues(libraryId: string, books: boolean): FilterValues {
+  const fields = books ? bookFields : videoFields;
+  const reads = useQueries({ queries: fields.map((field) => workQueryQueries.libraryValues(field, libraryId)) });
+  const read = Object.fromEntries(fields.map((field, i) => [field, reads[i]?.data?.items ?? []]));
+  return { genre: [], year: [], contentRating: [], resolution: [], dynamicRange: [], narrator: [], ...read };
+}
+
 type Props = {
-  /** The values this library's items have, from the facets endpoint. */
-  facets: LibraryFacets;
+  /** The values this library's works have. */
+  values: FilterValues;
   labels: BrowseLabels;
   /** Books have narrators to filter by, and no video to filter by. */
   books: boolean;
@@ -180,7 +208,7 @@ function set<K extends keyof BrowseSearch>(search: BrowseSearch, key: K, value: 
  * Genres, content ratings, decades, resolutions and dynamic ranges offer
  * only what the library has.
  */
-export function FilterPanel({ facets, labels, books }: Props) {
+export function FilterPanel({ values, labels, books }: Props) {
   const { t } = useLingui();
   const isAdmin = useIsAdmin();
   const [search, setSearch] = useBrowseSearch();
@@ -190,6 +218,11 @@ export function FilterPanel({ facets, labels, books }: Props) {
   const [open, setOpen] = useState(false);
   useTvDialog(open, () => setOpen(false));
   const anyOption = { id: any, label: <Trans>Any</Trans> };
+  const has = (field: keyof FilterValues, value: string) => values[field].some((v) => v.value === value);
+  const genres = values.genre.map((v) => v.value);
+  const contentRatings = values.contentRating.map((v) => v.value);
+  const offeredResolutions = resolutions.filter((r) => has("resolution", r));
+  const offeredRanges = dynamicRangeValues.filter((h) => has("dynamicRange", h));
 
   return (
     <DialogTrigger isOpen={open} onOpenChange={setOpen}>
@@ -221,79 +254,85 @@ export function FilterPanel({ facets, labels, books }: Props) {
             <SingleChoice
               label={t`Decade`}
               value={decade}
-              options={[anyOption, ...decadesOf(facets.years).map((d) => ({ id: String(d), label: labels.decade(d) }))]}
+              options={[
+                anyOption,
+                ...decadesOf(values.year.map((v) => Number(v.value))).map((d) => ({
+                  id: String(d),
+                  label: labels.decade(d),
+                })),
+              ]}
               onChange={(v) => {
                 const from = v === any ? undefined : Number(v);
                 setSearch(set(set(search, "yearFrom", from), "yearTo", from === undefined ? undefined : from + 9));
               }}
             />
-            {facets.genres.length > 0 && (
+            {genres.length > 0 && (
               <MultiChoice
                 label={t`Genre`}
                 value={search.genre ?? []}
-                options={facets.genres.map((g) => ({ id: g, label: g }))}
+                options={genres.map((g) => ({ id: g, label: g }))}
                 onChange={(v) =>
                   setSearch(
                     set(
                       search,
                       "genre",
-                      facets.genres.filter((g) => v.includes(g)),
+                      genres.filter((g) => v.includes(g)),
                     ),
                   )
                 }
               />
             )}
-            {books && facets.narrators.length > 0 && (
+            {books && values.narrator.length > 0 && (
               <SingleChoice
                 label={t`Narrator`}
                 value={search.narratorId ?? any}
-                options={[anyOption, ...facets.narrators.map((n) => ({ id: n.id, label: n.name }))]}
+                options={[anyOption, ...values.narrator.map((n) => ({ id: n.value, label: n.name }))]}
                 onChange={(v) => setSearch(set(search, "narratorId", v === any ? undefined : v))}
               />
             )}
-            {!books && facets.contentRatings.length > 0 && (
+            {!books && contentRatings.length > 0 && (
               <MultiChoice
                 label={t`Content rating`}
                 value={search.contentRating ?? []}
-                options={facets.contentRatings.map((r) => ({ id: r, label: r }))}
+                options={contentRatings.map((r) => ({ id: r, label: r }))}
                 onChange={(v) =>
                   setSearch(
                     set(
                       search,
                       "contentRating",
-                      facets.contentRatings.filter((r) => v.includes(r)),
+                      contentRatings.filter((r) => v.includes(r)),
                     ),
                   )
                 }
               />
             )}
-            {!books && facets.resolutions.length > 0 && (
+            {!books && offeredResolutions.length > 0 && (
               <MultiChoice
                 label={t`Resolution`}
                 value={search.resolution ?? []}
-                options={facets.resolutions.map((r) => ({ id: r, label: labels.resolution[r] }))}
+                options={offeredResolutions.map((r) => ({ id: r, label: labels.resolution[r] }))}
                 onChange={(v) =>
                   setSearch(
                     set(
                       search,
                       "resolution",
-                      facets.resolutions.filter((r) => v.includes(r)),
+                      offeredResolutions.filter((r) => v.includes(r)),
                     ),
                   )
                 }
               />
             )}
-            {!books && facets.dynamicRanges.length > 0 && (
+            {!books && offeredRanges.length > 0 && (
               <MultiChoice
                 label={t`Dynamic range`}
                 value={search.dynamicRange ?? []}
-                options={facets.dynamicRanges.map((h) => ({ id: h, label: labels.dynamicRange[h] }))}
+                options={offeredRanges.map((h) => ({ id: h, label: labels.dynamicRange[h] }))}
                 onChange={(v) =>
                   setSearch(
                     set(
                       search,
                       "dynamicRange",
-                      facets.dynamicRanges.filter((h) => v.includes(h)),
+                      offeredRanges.filter((h) => v.includes(h)),
                     ),
                   )
                 }

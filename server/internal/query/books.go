@@ -171,7 +171,7 @@ func (s *Service) withBooks(ctx context.Context, vw viewer, lists ...[]WorkSumma
 
 // libraryWorks selects the library's top-level works that the Viewer sees,
 // over work_library wl and work w. The Authors and Series lists and the
-// facets read from these works.
+// values a library offers its filters read from these works.
 var libraryWorks = `wl.library_id = @library AND wl.is_root
   AND ` + visible
 

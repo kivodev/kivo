@@ -504,8 +504,9 @@ final class SignInAndPlayTests: XCTestCase {
         }
         _ = try call("POST", "sessions", ["username": username, "password": password])
         let libraries = try call("GET", "libraries")["items"] as? [[String: Any]]
-        let id = try XCTUnwrap(libraries?.first { $0["name"] as? String == library }?["id"] as? String, "the server has no \(library)")
-        let works = try call("GET", "libraries/\(id)/works")["items"] as? [[String: Any]]
+        let found = try XCTUnwrap(libraries?.first { $0["name"] as? String == library }, "the server has no \(library)")
+        let kind = ["movies": "movie", "shows": "series", "audiobooks": "book"][found["kind"] as? String ?? ""] ?? "video"
+        let works = try call("POST", "works/query", ["query": ["kinds": [kind]], "library": found["id"] ?? ""])["items"] as? [[String: Any]]
         let work = try XCTUnwrap(works?.first { ($0["title"] as? String)?.contains(title) == true }?["id"] as? String, "\(library) has no \(title)")
         let versions = try call("GET", "works/\(work)")["versions"] as? [[String: Any]]
         let version = try XCTUnwrap(versions?.first?["id"] as? String, "\(title) has no version")

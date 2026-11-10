@@ -27,7 +27,7 @@ describe("planEvent", () => {
   it("maps workChanged to the work and every list that shows it", () => {
     const views = (ids: string[]) => [
       { kind: "invalidate", path: apiPaths.work, scope: { ids } },
-      { kind: "invalidate", path: apiPaths.libraryWorks },
+      { kind: "invalidate", path: apiPaths.workQuery },
       { kind: "invalidate", path: apiPaths.libraryCollections },
       { kind: "invalidate", path: apiPaths.libraryAuthors },
       { kind: "invalidate", path: apiPaths.libraryBookSeries },
@@ -52,8 +52,8 @@ describe("planEvent", () => {
       { kind: "invalidate", path: apiPaths.listWorks },
       { kind: "invalidate", path: apiPaths.libraries },
       { kind: "invalidate", path: apiPaths.library, scope: { ids: [lib] } },
-      { kind: "invalidate", path: apiPaths.libraryFacets, scope: { ids: [lib] } },
-      { kind: "invalidate", path: apiPaths.libraryWorks, scope: { ids: [lib] } },
+      { kind: "invalidate", path: apiPaths.workFieldValues, scope: { ids: [lib] } },
+      { kind: "invalidate", path: apiPaths.workQuery, scope: { ids: [lib] } },
       { kind: "invalidate", path: apiPaths.libraryCollections, scope: { ids: [lib] } },
       { kind: "invalidate", path: apiPaths.libraryAuthors, scope: { ids: [lib] } },
       { kind: "invalidate", path: apiPaths.libraryBookSeries, scope: { ids: [lib] } },
@@ -70,7 +70,7 @@ describe("planEvent", () => {
   it("maps userStateChanged to the works and every list that shows them", () => {
     expect(planEvent({ type: "event", kind: "userStateChanged", workIds: [work, other] })).toEqual([
       { kind: "invalidate", path: apiPaths.work, scope: { ids: [work, other] } },
-      { kind: "invalidate", path: apiPaths.libraryWorks },
+      { kind: "invalidate", path: apiPaths.workQuery },
       { kind: "invalidate", path: apiPaths.libraryCollections },
       { kind: "invalidate", path: apiPaths.libraryAuthors },
       { kind: "invalidate", path: apiPaths.libraryBookSeries },
@@ -156,7 +156,7 @@ describe("matchesQuery", () => {
 
   it("matches by path prefix, as query keys start with the method and path", () => {
     expect(matchesQuery({ path: apiPaths.home }, ["get", apiPaths.home])).toBe(true);
-    expect(matchesQuery({ path: apiPaths.home }, ["get", apiPaths.libraryWorks])).toBe(false);
+    expect(matchesQuery({ path: apiPaths.home }, ["get", apiPaths.search])).toBe(false);
     expect(matchesQuery({ path: apiPaths.home }, ["live", "snapshot"])).toBe(false);
   });
 
@@ -167,10 +167,39 @@ describe("matchesQuery", () => {
   });
 
   it("narrows grids to the listed libraries, every page of them", () => {
-    const page = (id: string) => ["get", apiPaths.libraryWorks, { params: { path: { id }, query: {} } }, "page", 3];
-    const op = { path: apiPaths.libraryWorks, scope: { ids: [lib] } } as const;
+    const page = (id: string) => ["get", apiPaths.libraryCollections, { params: { path: { id } } }, "page", 3];
+    const op = { path: apiPaths.libraryCollections, scope: { ids: [lib] } } as const;
     expect(matchesQuery(op, page(lib))).toBe(true);
     expect(matchesQuery(op, page(other))).toBe(false);
+  });
+
+  it("matches a work query by its POST key, narrowed to the libraries it is read in", () => {
+    const page = (library?: string) => [
+      "post",
+      apiPaths.workQuery,
+      { body: { query: { kinds: ["movie"] }, library, limit: 100 } },
+      "page",
+      3,
+    ];
+    expect(matchesQuery({ path: apiPaths.workQuery }, page(lib))).toBe(true);
+    expect(matchesQuery({ path: apiPaths.workQuery }, page())).toBe(true);
+    expect(matchesQuery({ path: apiPaths.workQuery }, ["get", apiPaths.workQuery])).toBe(false);
+    const op = { path: apiPaths.workQuery, scope: { ids: [lib] } } as const;
+    expect(matchesQuery(op, page(lib))).toBe(true);
+    expect(matchesQuery(op, page(other))).toBe(false);
+    expect(matchesQuery(op, page())).toBe(false);
+  });
+
+  it("narrows a field's values to those read in the listed libraries", () => {
+    const values = (library?: string) => [
+      "get",
+      apiPaths.workFieldValues,
+      { params: { path: { field: "genre" }, query: library ? { library } : {} } },
+    ];
+    const op = { path: apiPaths.workFieldValues, scope: { ids: [lib] } } as const;
+    expect(matchesQuery(op, values(lib))).toBe(true);
+    expect(matchesQuery(op, values(other))).toBe(false);
+    expect(matchesQuery(op, values())).toBe(false);
   });
 });
 

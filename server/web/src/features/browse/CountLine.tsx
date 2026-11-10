@@ -1,7 +1,6 @@
 import { Plural, useLingui } from "@lingui/react/macro";
-import type { BrowseSort } from "@/api/schemas";
 import { Select } from "@/components/Select";
-import type { BrowseSearch } from "./browseSearch";
+import type { BrowseSearch, GridSort } from "./browseSearch";
 import type { BrowseLabels } from "./useBrowseLabels";
 
 type Tab = BrowseSearch["tab"];
@@ -56,20 +55,20 @@ export function SortMenu({
   labels,
   onChange,
 }: {
-  options: readonly BrowseSort[];
-  selected: BrowseSort;
+  options: readonly GridSort[];
+  selected: GridSort;
   labels: BrowseLabels;
   onChange: (sort: string) => void;
 }) {
   const { t } = useLingui();
-  const short: Record<BrowseSort, string> = {
+  const short: Record<GridSort, string> = {
     title: t`A–Z`,
     author: t`Author A–Z`,
     addedAt: t`Recently added`,
     releaseDate: t`Newest`,
     rating: t`Top rated`,
     myRating: t`My rating`,
-    runtime: t`Shortest`,
+    runtimeMs: t`Shortest`,
     lastPlayedAt: t`Recently played`,
     lastEpisodeAddedAt: t`Last episode added`,
   };

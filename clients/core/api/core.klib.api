@@ -1150,6 +1150,34 @@ final class com.mmcdole.kivo.core.data/Heading { // com.mmcdole.kivo.core.data/H
     final fun toString(): kotlin/String // com.mmcdole.kivo.core.data/Heading.toString|toString(){}[0]
 }
 
+final class com.mmcdole.kivo.core.data/LibraryFilters { // com.mmcdole.kivo.core.data/LibraryFilters|null[0]
+    constructor <init>(kotlin.collections/List<kotlin/String>, kotlin.collections/List<kotlin/Int>, kotlin.collections/List<kotlin/String>, kotlin.collections/List<kotlin/String>, kotlin.collections/List<kotlin/String>, kotlin/Boolean) // com.mmcdole.kivo.core.data/LibraryFilters.<init>|<init>(kotlin.collections.List<kotlin.String>;kotlin.collections.List<kotlin.Int>;kotlin.collections.List<kotlin.String>;kotlin.collections.List<kotlin.String>;kotlin.collections.List<kotlin.String>;kotlin.Boolean){}[0]
+
+    final val collections // com.mmcdole.kivo.core.data/LibraryFilters.collections|{}collections[0]
+        final fun <get-collections>(): kotlin/Boolean // com.mmcdole.kivo.core.data/LibraryFilters.collections.<get-collections>|<get-collections>(){}[0]
+    final val contentRatings // com.mmcdole.kivo.core.data/LibraryFilters.contentRatings|{}contentRatings[0]
+        final fun <get-contentRatings>(): kotlin.collections/List<kotlin/String> // com.mmcdole.kivo.core.data/LibraryFilters.contentRatings.<get-contentRatings>|<get-contentRatings>(){}[0]
+    final val dynamicRanges // com.mmcdole.kivo.core.data/LibraryFilters.dynamicRanges|{}dynamicRanges[0]
+        final fun <get-dynamicRanges>(): kotlin.collections/List<kotlin/String> // com.mmcdole.kivo.core.data/LibraryFilters.dynamicRanges.<get-dynamicRanges>|<get-dynamicRanges>(){}[0]
+    final val genres // com.mmcdole.kivo.core.data/LibraryFilters.genres|{}genres[0]
+        final fun <get-genres>(): kotlin.collections/List<kotlin/String> // com.mmcdole.kivo.core.data/LibraryFilters.genres.<get-genres>|<get-genres>(){}[0]
+    final val resolutions // com.mmcdole.kivo.core.data/LibraryFilters.resolutions|{}resolutions[0]
+        final fun <get-resolutions>(): kotlin.collections/List<kotlin/String> // com.mmcdole.kivo.core.data/LibraryFilters.resolutions.<get-resolutions>|<get-resolutions>(){}[0]
+    final val years // com.mmcdole.kivo.core.data/LibraryFilters.years|{}years[0]
+        final fun <get-years>(): kotlin.collections/List<kotlin/Int> // com.mmcdole.kivo.core.data/LibraryFilters.years.<get-years>|<get-years>(){}[0]
+
+    final fun component1(): kotlin.collections/List<kotlin/String> // com.mmcdole.kivo.core.data/LibraryFilters.component1|component1(){}[0]
+    final fun component2(): kotlin.collections/List<kotlin/Int> // com.mmcdole.kivo.core.data/LibraryFilters.component2|component2(){}[0]
+    final fun component3(): kotlin.collections/List<kotlin/String> // com.mmcdole.kivo.core.data/LibraryFilters.component3|component3(){}[0]
+    final fun component4(): kotlin.collections/List<kotlin/String> // com.mmcdole.kivo.core.data/LibraryFilters.component4|component4(){}[0]
+    final fun component5(): kotlin.collections/List<kotlin/String> // com.mmcdole.kivo.core.data/LibraryFilters.component5|component5(){}[0]
+    final fun component6(): kotlin/Boolean // com.mmcdole.kivo.core.data/LibraryFilters.component6|component6(){}[0]
+    final fun copy(kotlin.collections/List<kotlin/String> = ..., kotlin.collections/List<kotlin/Int> = ..., kotlin.collections/List<kotlin/String> = ..., kotlin.collections/List<kotlin/String> = ..., kotlin.collections/List<kotlin/String> = ..., kotlin/Boolean = ...): com.mmcdole.kivo.core.data/LibraryFilters // com.mmcdole.kivo.core.data/LibraryFilters.copy|copy(kotlin.collections.List<kotlin.String>;kotlin.collections.List<kotlin.Int>;kotlin.collections.List<kotlin.String>;kotlin.collections.List<kotlin.String>;kotlin.collections.List<kotlin.String>;kotlin.Boolean){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.data/LibraryFilters.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.data/LibraryFilters.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // com.mmcdole.kivo.core.data/LibraryFilters.toString|toString(){}[0]
+}
+
 final class com.mmcdole.kivo.core.data/RuleDraft { // com.mmcdole.kivo.core.data/RuleDraft|null[0]
     constructor <init>(kotlin/String, kotlin/String, kotlin/Int, kotlin/String, kotlin.collections/List<kotlin/String>, kotlin/String = ...) // com.mmcdole.kivo.core.data/RuleDraft.<init>|<init>(kotlin.String;kotlin.String;kotlin.Int;kotlin.String;kotlin.collections.List<kotlin.String>;kotlin.String){}[0]
 
@@ -1849,7 +1877,7 @@ final class com.mmcdole.kivo.core.session/SessionLibrary { // com.mmcdole.kivo.c
     final fun bookSeries(kotlin/String): kotlinx.coroutines.flow/Flow<com.mmcdole.kivo.core/Load<com.mmcdole.kivo.api.models/BookSeries>> // com.mmcdole.kivo.core.session/SessionLibrary.bookSeries|bookSeries(kotlin.String){}[0]
     final fun children(kotlin/String): kotlinx.coroutines.flow/Flow<com.mmcdole.kivo.core/Load<kotlin.collections/List<com.mmcdole.kivo.api.models/WorkSummary>>> // com.mmcdole.kivo.core.session/SessionLibrary.children|children(kotlin.String){}[0]
     final fun collection(kotlin/String): kotlinx.coroutines.flow/Flow<com.mmcdole.kivo.core/Load<com.mmcdole.kivo.api.models/Collection>> // com.mmcdole.kivo.core.session/SessionLibrary.collection|collection(kotlin.String){}[0]
-    final fun facets(kotlin/String): kotlinx.coroutines.flow/Flow<com.mmcdole.kivo.core/Load<com.mmcdole.kivo.api.models/LibraryFacets>> // com.mmcdole.kivo.core.session/SessionLibrary.facets|facets(kotlin.String){}[0]
+    final fun filters(kotlin/String): kotlinx.coroutines.flow/Flow<com.mmcdole.kivo.core/Load<com.mmcdole.kivo.core.data/LibraryFilters>> // com.mmcdole.kivo.core.session/SessionLibrary.filters|filters(kotlin.String){}[0]
     final fun home(): kotlinx.coroutines.flow/Flow<com.mmcdole.kivo.core/Load<com.mmcdole.kivo.api.models/Home>> // com.mmcdole.kivo.core.session/SessionLibrary.home|home(){}[0]
     final fun home(kotlin/String): kotlinx.coroutines.flow/Flow<com.mmcdole.kivo.core/Load<com.mmcdole.kivo.api.models/Home>> // com.mmcdole.kivo.core.session/SessionLibrary.home|home(kotlin.String){}[0]
     final fun homeRows(): kotlinx.coroutines.flow/Flow<com.mmcdole.kivo.core/Load<kotlin.collections/List<com.mmcdole.kivo.api.models/HomeRowInfo>>> // com.mmcdole.kivo.core.session/SessionLibrary.homeRows|homeRows(){}[0]

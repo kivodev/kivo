@@ -311,6 +311,14 @@ func newFixture(t *testing.T, floor uint64) *fixture {
 	return f
 }
 
+// folderOf returns the folder of a new library of kind, for the works the
+// fixture's movies library doesn't hold.
+func (f *fixture) folderOf(kind catalog.LibraryKind) id.ID {
+	f.t.Helper()
+	_, folder := f.b.Library(kind)
+	return folder
+}
+
 func (f *fixture) viewer() users.Viewer {
 	v, err := f.users.Viewer(ctx, f.p.User)
 	if err != nil {
@@ -1875,8 +1883,8 @@ func TestDefaultTracks(t *testing.T) {
 
 func TestASeriesRemembersItsTracks(t *testing.T) {
 	f := newFixture(t, 0)
-	series := f.b.Series("Cowboy Bebop")
-	e1, e2 := f.b.Episode(f.folder, series, 1, 1), f.b.Episode(f.folder, series, 1, 2)
+	series, shows := f.b.Series("Cowboy Bebop"), f.folderOf(catalog.Shows)
+	e1, e2 := f.b.Episode(shows, series, 1, 1), f.b.Episode(shows, series, 1, 2)
 	f.anime(e1.File)
 	f.anime(e2.File)
 	// is reports whether a play plays a file's tracks at these stream
@@ -1922,8 +1930,8 @@ func TestASeriesRemembersItsTracks(t *testing.T) {
 
 func TestPreferredIsWhatAPlayStartsWith(t *testing.T) {
 	f := newFixture(t, 0)
-	series := f.b.Series("Cowboy Bebop")
-	e1, e2 := f.b.Episode(f.folder, series, 1, 1), f.b.Episode(f.folder, series, 1, 2)
+	series, shows := f.b.Series("Cowboy Bebop"), f.folderOf(catalog.Shows)
+	e1, e2 := f.b.Episode(shows, series, 1, 1), f.b.Episode(shows, series, 1, 2)
 	f.anime(e1.File)
 	f.anime(e2.File)
 	// matches reports whether an episode's preferred tracks are those its

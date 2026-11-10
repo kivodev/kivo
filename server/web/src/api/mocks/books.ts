@@ -15,6 +15,7 @@ import type {
 } from "../schemas";
 import { emptyWork, filePlayTracks, type MockApi, summaryOf } from "./api";
 import { mockId } from "./ids";
+import { mockLibraryValues } from "./workFields";
 
 const minute = 60_000;
 
@@ -240,15 +241,11 @@ export function addBooks(
   };
   // The book rows come after every video row, as the server orders them.
   api.home.rows.push({ id: "continueListening", kind: "continueListening", items: [summaryOf(hailMary)] }, recent);
-  api.facets[library.id] = {
-    genres: ["Science Fiction"],
-    contentRatings: [],
-    years: [2011, 2012, 2014, 2021],
-    narrators: [mays, porter],
-    resolutions: [],
-    dynamicRanges: [],
-    collections: false,
-  };
+  api.libraryFieldValues[library.id] = mockLibraryValues({
+    genre: ["Science Fiction"],
+    year: [2011, 2012, 2014, 2021],
+    narrator: [mays, porter],
+  });
 
   const expanseBooks = inSeriesOrder([leviathan, churn, caliban], bookIds.expanse);
   api.authors = [

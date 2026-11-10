@@ -373,7 +373,7 @@ private fun SortSheet(state: LibraryUiState, onSort: (String) -> Unit, onDismiss
 @Composable
 private fun FilterSheet(state: LibraryUiState, onQuery: (GridQuery) -> Unit, onClear: () -> Unit, onSaveSmart: () -> Unit, onDismiss: () -> Unit) {
     val query = state.query
-    val facets = state.facets
+    val filters = state.filters
     val books = state.library?.kind == "audiobooks"
     ModalBottomSheet(onDismissRequest = onDismiss, modifier = Modifier.testTag("filterSheet")) {
         Column(Modifier.padding(horizontal = space(6)).padding(bottom = space(6)), verticalArrangement = Arrangement.spacedBy(space(2))) {
@@ -387,7 +387,7 @@ private fun FilterSheet(state: LibraryUiState, onQuery: (GridQuery) -> Unit, onC
                     FilterChip(selected = query.played == played, onClick = { onQuery(query.copy(played = played)) }, label = { Text(playedName(played, books)) })
                 }
             }
-            val resolutions = GridValues.resolutions.filter { facets?.resolutions?.contains(it) == true }
+            val resolutions = GridValues.resolutions.filter { filters?.resolutions?.contains(it) == true }
             if (resolutions.isNotEmpty()) {
                 SheetLabel(stringResource(R.string.mobile_resolution))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(space(2))) {
@@ -397,7 +397,7 @@ private fun FilterSheet(state: LibraryUiState, onQuery: (GridQuery) -> Unit, onC
                     }
                 }
             }
-            val ranges = GridValues.dynamicRanges.filter { facets?.dynamicRanges?.contains(it) == true }
+            val ranges = GridValues.dynamicRanges.filter { filters?.dynamicRanges?.contains(it) == true }
             if (ranges.isNotEmpty()) {
                 SheetLabel(stringResource(R.string.mobile_dynamic_range))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(space(2))) {

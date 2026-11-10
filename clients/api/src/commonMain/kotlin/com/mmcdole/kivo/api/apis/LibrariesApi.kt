@@ -28,13 +28,11 @@ import com.mmcdole.kivo.api.models.BookSeriesSummaryPage
 import com.mmcdole.kivo.api.models.CollectionSummaryPage
 import com.mmcdole.kivo.api.models.Library
 import com.mmcdole.kivo.api.models.LibraryCreate
-import com.mmcdole.kivo.api.models.LibraryFacets
 import com.mmcdole.kivo.api.models.LibraryList
 import com.mmcdole.kivo.api.models.LibraryUpdate
 import com.mmcdole.kivo.api.models.PersonSummaryPage
 import com.mmcdole.kivo.api.models.Problem
 import com.mmcdole.kivo.api.models.ScanRequest
-import com.mmcdole.kivo.api.models.WorkSummaryPage
 
 import com.mmcdole.kivo.api.infrastructure.*
 import io.ktor.client.HttpClient
@@ -151,39 +149,6 @@ open class LibrariesApi : ApiClient {
         val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.GET,
             "/api/v1/libraries/{id}".replace("{" + "id" + "}", "$id"),
-            query = localVariableQuery,
-            headers = localVariableHeaders,
-            requiresAuthentication = true,
-        )
-
-        return request(
-            localVariableConfig,
-            localVariableBody,
-            localVariableAuthNames
-        ).wrap()
-    }
-
-
-    /**
-     * Get library facets
-     * Genres, content ratings, years, resolutions and dynamic ranges of the top-level items the user can see, for the filter menu, and whether the library has collections. 
-     * @param id 
-     * @return LibraryFacets
-     */
-    @Suppress("UNCHECKED_CAST")
-    open suspend fun getLibraryFacets(id: kotlin.String): HttpResponse<LibraryFacets> {
-
-        val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
-
-        val localVariableBody = 
-            io.ktor.client.utils.EmptyContent
-
-        val localVariableQuery = mutableMapOf<String, List<String>>()
-        val localVariableHeaders = mutableMapOf<String, String>()
-
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
-            RequestMethod.GET,
-            "/api/v1/libraries/{id}/facets".replace("{" + "id" + "}", "$id"),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -327,63 +292,6 @@ open class LibrariesApi : ApiClient {
         val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.GET,
             "/api/v1/libraries/{id}/collections".replace("{" + "id" + "}", "$id"),
-            query = localVariableQuery,
-            headers = localVariableHeaders,
-            requiresAuthentication = true,
-        )
-
-        return request(
-            localVariableConfig,
-            localVariableBody,
-            localVariableAuthNames
-        ).wrap()
-    }
-
-
-    /**
-     * List library works
-     * The library&#39;s top-level items, sorted and filtered. A movies library lists movies, with versions never shown separately; a shows library lists series; a videos library lists videos; an audiobooks library lists books.  A grid, paged by &#x60;offset&#x60;, with &#x60;total&#x60; on every page; works with the same sort key are listed by title. The first page (offset 0) of the title sort also has &#x60;letters&#x60;. 
-     * @param id 
-     * @param sort Default &#x60;title&#x60;. Each sort has one direction: &#x60;title&#x60; A to Z ignoring leading articles, &#x60;author&#x60; A to Z by the first author&#39;s name (an audiobooks library; then by title, books with no author first), &#x60;runtime&#x60; shortest first, the rest newest or highest first. &#x60;lastEpisodeAddedAt&#x60; puts the series whose newest episode in the library was added most recently first (a shows library; then by title). &#x60;rating&#x60; is the community rating weighted by its vote count (as if 50 more votes of 6.5 were cast), so a root work few people rated ranks below a well-rated one many people rated; &#x60;myRating&#x60; is the user&#39;s own rating. Works without the rating come last, by title.  (optional)
-     * @param played  (optional)
-     * @param genre Any of these genres. (optional)
-     * @param yearFrom The first year, inclusive. (optional)
-     * @param yearTo The last year, inclusive. (optional)
-     * @param contentRating Any of these content ratings (see &#x60;WorkSummary.contentRating&#x60;). (optional)
-     * @param resolution Any of these resolutions. (optional)
-     * @param dynamicRange Any of these dynamic ranges. (optional)
-     * @param narratorId The books this person narrated. (optional)
-     * @param matchState Admins only (ignored for others). Only &#x60;unmatched&#x60; is taken, for unmatched items only. (optional)
-     * @param offset How many items to skip from the start. (optional)
-     * @param limit Page size. The default and the most a page holds depend on the listing. (optional)
-     * @return WorkSummaryPage
-     */
-    @Suppress("UNCHECKED_CAST")
-    open suspend fun listLibraryWorks(id: kotlin.String, sort: kotlin.String? = null, played: kotlin.String? = null, genre: kotlin.collections.List<kotlin.String>? = null, yearFrom: kotlin.Int? = null, yearTo: kotlin.Int? = null, contentRating: kotlin.collections.List<kotlin.String>? = null, resolution: kotlin.collections.List<kotlin.String>? = null, dynamicRange: kotlin.collections.List<kotlin.String>? = null, narratorId: kotlin.String? = null, matchState: kotlin.String? = null, offset: kotlin.Int? = null, limit: kotlin.Int? = null): HttpResponse<WorkSummaryPage> {
-
-        val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
-
-        val localVariableBody = 
-            io.ktor.client.utils.EmptyContent
-
-        val localVariableQuery = mutableMapOf<String, List<String>>()
-        sort?.apply { localVariableQuery["sort"] = listOf("$sort") }
-        played?.apply { localVariableQuery["played"] = listOf("$played") }
-        genre?.apply { localVariableQuery["genre"] = toMultiValue(this, "multi") }
-        yearFrom?.apply { localVariableQuery["yearFrom"] = listOf("$yearFrom") }
-        yearTo?.apply { localVariableQuery["yearTo"] = listOf("$yearTo") }
-        contentRating?.apply { localVariableQuery["contentRating"] = toMultiValue(this, "multi") }
-        resolution?.apply { localVariableQuery["resolution"] = toMultiValue(this, "multi") }
-        dynamicRange?.apply { localVariableQuery["dynamicRange"] = toMultiValue(this, "multi") }
-        narratorId?.apply { localVariableQuery["narratorId"] = listOf("$narratorId") }
-        matchState?.apply { localVariableQuery["matchState"] = listOf("$matchState") }
-        offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
-        limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
-        val localVariableHeaders = mutableMapOf<String, String>()
-
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
-            RequestMethod.GET,
-            "/api/v1/libraries/{id}/works".replace("{" + "id" + "}", "$id"),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,

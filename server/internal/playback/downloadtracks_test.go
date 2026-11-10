@@ -34,7 +34,7 @@ type anime struct {
 func (f *fixture) dualAudioEpisode() anime {
 	f.t.Helper()
 	series := f.b.Series("Steins;Gate")
-	e := f.b.Episode(f.folder, series, 1, 1)
+	e := f.b.Episode(f.folderOf(catalog.Shows), series, 1, 1)
 	f.probeWith(e.File, "mkv", 24*time.Minute, 4_000_000,
 		media.Track{Index: 0, Kind: media.Video, Codec: "h264", Profile: "High", Width: 1920, Height: 1080, BitDepth: 8},
 		media.Track{Index: 1, Kind: media.Audio, Codec: "aac", Channels: 2, Language: "eng", Default: true},

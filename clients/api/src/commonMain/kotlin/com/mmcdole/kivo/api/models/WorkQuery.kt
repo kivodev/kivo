@@ -31,7 +31,7 @@ import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
 
 /**
- * Which works a query selects. `version` is written by the server; leave it out, and a newer one is refused. `extra` isn't a kind that can be asked for. A query has at most 20 rules, 5 groups including the root and 3 sort keys, and a rule at most 100 values. Values of a rule are in the form its field's type takes: a date `YYYY-MM-DD`, a duration such as `P30D`, an ID as a UUID, or a name. 
+ * Which works a query selects. `version` is written by the server; leave it out, and a newer one is refused. `extra` isn't a kind that can be asked for. A query has at most 20 rules, 5 groups including the root and 3 sort keys, and a rule at most 100 values. Values of a rule are in the form its field's type takes: a date `YYYY-MM-DD`, a duration such as `P30D`, an ID as a UUID, or a name. The `dynamicRange` field's `hdr` is any HDR format but Dolby Vision (`hdr10`, `hdr10plus`, `hlg`), and its `dolbyVision` Dolby Vision. 
  *
  * @param kinds 
  * @param version 

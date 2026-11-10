@@ -120,7 +120,7 @@ func (h *handlers) ListListWorks(ctx context.Context, req gen.ListListWorksReque
 	if err != nil {
 		return nil, err
 	}
-	return gen.ListListWorks200JSONResponse(workPage(page)), nil
+	return gen.ListListWorks200JSONResponse(workPage(page, o.Offset == 0)), nil
 }
 
 func (h *handlers) AddListWork(ctx context.Context, req gen.AddListWorkRequestObject) (gen.AddListWorkResponseObject, error) {

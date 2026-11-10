@@ -73,8 +73,14 @@ type querier interface {
 // scanner is a row to read: *sql.Rows positioned at a row, or *sql.Row.
 type scanner interface{ Scan(dest ...any) error }
 
+// observe, when a test sets it, is told each statement as it runs.
+var observe func(statement)
+
 // each runs st and calls fn for each of its rows.
 func each(ctx context.Context, q querier, st statement, args []any, fn func(scanner) error) error {
+	if observe != nil {
+		observe(st)
+	}
 	rows, err := q.QueryContext(ctx, st.sql, args...)
 	if err != nil {
 		return err
@@ -106,6 +112,9 @@ func rowsOf[T any](ctx context.Context, q querier, st statement, args []any, sca
 // queryRow runs st for its one row. If there is no row, Scan returns
 // sql.ErrNoRows.
 func queryRow(ctx context.Context, q querier, st statement, args []any) *sql.Row {
+	if observe != nil {
+		observe(st)
+	}
 	return q.QueryRowContext(ctx, st.sql, args...)
 }
 

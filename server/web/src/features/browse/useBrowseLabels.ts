@@ -10,7 +10,7 @@ export function useBrowseLabels() {
       releaseDate: t`Release date`,
       rating: t`Rating`,
       myRating: t`My rating`,
-      runtime: t`Runtime`,
+      runtimeMs: t`Runtime`,
       lastPlayedAt: t`Last played`,
       author: t`Author`,
       lastEpisodeAddedAt: t`Last episode added`,

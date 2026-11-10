@@ -11,6 +11,12 @@ export const workQueryQueries = {
       params: { path: { field }, query: q ? { q } : {} },
     }),
 
+  /** Every value a library's top-level works have for a field, which its grid's filters offer. */
+  libraryValues: (field: string, library: string) =>
+    $api.queryOptions("get", "/api/v1/work-fields/{field}/values", {
+      params: { path: { field }, query: { library } },
+    }),
+
   /** The names of a field's values. */
   names: (field: string, ids: string[]) =>
     $api.queryOptions("get", "/api/v1/work-fields/{field}/values", {

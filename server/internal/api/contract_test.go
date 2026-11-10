@@ -9,16 +9,15 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/mmcdole/kivo/internal/api/internal/gen"
-	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/media"
 	"github.com/mmcdole/kivo/internal/playback"
 	"github.com/mmcdole/kivo/internal/query"
 )
 
-// TestGridAcceptsEveryContractValue checks that a library grid accepts
-// every value the contract gives its sort and filters.
-func TestGridAcceptsEveryContractValue(t *testing.T) {
+// TestQueryAcceptsEveryContractValue checks that a rule takes every value
+// the contract gives a resolution.
+func TestQueryAcceptsEveryContractValue(t *testing.T) {
 	raw, err := os.ReadFile("openapi.yaml")
 	if err != nil {
 		t.Fatal(err)
@@ -32,15 +31,14 @@ func TestGridAcceptsEveryContractValue(t *testing.T) {
 		t.Fatal(err)
 	}
 	e := newEnv(t, serving{})
-	lib, _ := e.b.Library(catalog.Shows)
-	for param, schema := range map[string]string{"sort": "WorkSort", "played": "PlayedFilter", "resolution": "Resolution", "dynamicRange": "DynamicRange"} {
+	for field, schema := range map[string]string{"resolution": "Resolution"} {
 		values := spec.Components.Schemas[schema].Enum
 		if len(values) == 0 {
 			t.Fatalf("%s has no values", schema)
 		}
 		for _, v := range values {
-			if w := e.do("GET", "/api/v1/libraries/"+lib.String()+"/works?"+param+"="+v, e.adminToken, nil); w.Code != http.StatusOK {
-				t.Errorf("%s=%s: %d %s", param, v, w.Code, w.Body.String())
+			if w := e.grid(e.adminToken, e.lib, "movie", map[string]any{"where": allOf([]string{field, "anyOf", v})}); w.Code != http.StatusOK {
+				t.Errorf("%s=%s: %d %s", field, v, w.Code, w.Body.String())
 			}
 		}
 	}
