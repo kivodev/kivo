@@ -15,7 +15,7 @@ function allOf<U extends string>() {
   return <const L extends readonly U[]>(list: L & ([Exclude<U, L[number]>] extends [never] ? unknown : never)) => list;
 }
 
-export const sorts = [
+const sorts = [
   "title",
   "addedAt",
   "releaseDate",
