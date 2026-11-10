@@ -2659,7 +2659,7 @@ type Download struct {
 	QueuePosition *int `json:"queuePosition,omitempty"`
 
 	// Reason When failed, why: `transcodeFailed`, `storageFull`,
-	// `sourceUnreadable`, `subtitlesUnavailable` or `planUnreadable`.
+	// `sourceUnreadable` or `subtitlesUnavailable`.
 	Reason *RefusalReason `json:"reason,omitempty"`
 
 	// RemainingMs While converting, about how long it has left, once that can be told.
@@ -4275,8 +4275,9 @@ type RefreshDays int
 // `storageFull` (try again later); `downloadsNotAllowed`; and for a
 // download's preparation, `sourceUnreadable` (the file couldn't be
 // read, after trying again), `subtitlesUnavailable` (its chosen
-// subtitle couldn't be prepared) and `planUnreadable` (the server
-// can't read how it was decided).
+// subtitle couldn't be prepared). The server never gives
+// `planUnreadable`: the apps use it for a download whose plan on the
+// device they can't read.
 type RefusalReason string
 
 // Resolution A video's resolution class, by its width, since wide films are short:

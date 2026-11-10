@@ -1,6 +1,7 @@
 package playback
 
 import (
+	"cmp"
 	"slices"
 	"strings"
 
@@ -126,10 +127,18 @@ const DefaultDownloadQuality = "high"
 // rather than encodes, the most Apple's HLS spec gives stereo AAC.
 const stereoBitrate = 160_000
 
+// Migration (downloads): remove after every client has updated past this release.
+
+// legacyQualities are the download qualities an earlier release offered,
+// each by the quality it is now. A download asked for at one, by an
+// earlier app, keeps working: 1080p-high and 1080p were 1080p, which High
+// is; 720p and 480p were for saving space, which Standard is.
+var legacyQualities = map[string]string{"1080p-high": "high", "1080p": "high", "720p": "standard", "480p": "standard"}
+
 // DownloadQualityNamed returns a download quality by its name.
 func DownloadQualityNamed(name string) (DownloadQuality, bool) {
 	// Migration (downloads): remove after every client has updated past this release.
-	name = currentQualityName(name)
+	name = cmp.Or(legacyQualities[name], name)
 	i := slices.IndexFunc(DownloadQualities, func(q DownloadQuality) bool { return q.Name == name })
 	if i < 0 {
 		return DownloadQuality{}, false

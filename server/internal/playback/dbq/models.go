@@ -17,10 +17,9 @@ type Download struct {
 	WorkID    id.ID
 	VersionID id.ID
 	Request   string
-	Plan      string
+	Delivered string
 	State     string
 	Reason    sql.NullString
-	Files     sql.NullString
 	CreatedAt int64
 	QueuedAt  int64
 	SettledAt sql.NullInt64

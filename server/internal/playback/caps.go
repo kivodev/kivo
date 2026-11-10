@@ -19,67 +19,67 @@ import (
 // matches it, and an entry matches when every field it sets holds. An
 // unset field is no limit.
 type Capabilities struct {
-	File      *FileCaps // nil means the client plays no file
-	Video     []VideoEntry
-	Audio     []AudioEntry
-	Subtitles []SubtitleEntry
+	File      *FileCaps       `json:"file,omitempty"` // nil means the client plays no file
+	Video     []VideoEntry    `json:"video,omitempty"`
+	Audio     []AudioEntry    `json:"audio,omitempty"`
+	Subtitles []SubtitleEntry `json:"subtitles,omitempty"`
 }
 
 // FileCaps say how a client plays a whole file.
 type FileCaps struct {
-	Containers []string // mkv, mp4, webm, ts, m2ts, mov, m4a, mp3, flac, ogg
+	Containers []string `json:"containers,omitempty"` // mkv, mp4, webm, ts, m2ts, mov, m4a, mp3, flac, ogg
 	// TrackSelection means the client plays any audio track inside a file,
 	// not only the default one.
-	TrackSelection bool
+	TrackSelection bool `json:"trackSelection,omitempty"`
 }
 
 // VideoEntry is one kind of video a client decodes.
 type VideoEntry struct {
-	Codec        media.Codec
-	Delivery     []Delivery // file, stream
-	Containers   []string   // for file delivery, the containers it decodes this in
-	Tags         []string   // for file delivery, the codec tags it takes: hvc1, hev1, dvh1, dvhe
-	Profiles     []string   // as ffprobe prints them
-	MaxLevel     float64    // as the codec's specification writes it, such as 4.1
-	MaxBitDepth  int
-	MaxWidth     int
-	MaxHeight    int
-	MaxFramerate float64
-	MaxBitrate   int   // the decoder's limit, in bits per second
-	MaxRefFrames int   // zero means any
-	Interlaced   *bool // nil means allowed
-	Anamorphic   *bool // nil means allowed
-	HDR          []media.DynamicRange
-	DolbyVision  []DolbyVisionEntry
+	Codec        media.Codec          `json:"codec"`
+	Delivery     []Delivery           `json:"delivery,omitempty"`   // file, stream
+	Containers   []string             `json:"containers,omitempty"` // for file delivery, the containers it decodes this in
+	Tags         []string             `json:"tags,omitempty"`       // for file delivery, the codec tags it takes: hvc1, hev1, dvh1, dvhe
+	Profiles     []string             `json:"profiles,omitempty"`   // as ffprobe prints them
+	MaxLevel     float64              `json:"maxLevel,omitempty"`   // as the codec's specification writes it, such as 4.1
+	MaxBitDepth  int                  `json:"maxBitDepth,omitempty"`
+	MaxWidth     int                  `json:"maxWidth,omitempty"`
+	MaxHeight    int                  `json:"maxHeight,omitempty"`
+	MaxFramerate float64              `json:"maxFramerate,omitempty"`
+	MaxBitrate   int                  `json:"maxBitrate,omitempty"`   // the decoder's limit, in bits per second
+	MaxRefFrames int                  `json:"maxRefFrames,omitempty"` // zero means any
+	Interlaced   *bool                `json:"interlaced,omitempty"`   // nil means allowed
+	Anamorphic   *bool                `json:"anamorphic,omitempty"`   // nil means allowed
+	HDR          []media.DynamicRange `json:"hdr,omitempty"`
+	DolbyVision  []DolbyVisionEntry   `json:"dolbyVision,omitempty"`
 	// DoviFallback plays a Dolby Vision video whose profile isn't listed
 	// by its base layer, when that layer's range is in HDR.
-	DoviFallback bool
+	DoviFallback bool `json:"doviFallback,omitempty"`
 }
 
 // DolbyVisionEntry is a Dolby Vision profile a client shows.
 type DolbyVisionEntry struct {
-	Profile int   // 5, 7, 8 or 10
-	Compat  []int // the base layer compatibility IDs; empty means any
-	EL      *bool // whether it plays an enhancement layer; nil means it does
+	Profile int   `json:"profile"`          // 5, 7, 8 or 10
+	Compat  []int `json:"compat,omitempty"` // the base layer compatibility IDs; empty means any
+	EL      *bool `json:"el,omitempty"`     // whether it plays an enhancement layer; nil means it does
 }
 
 // AudioEntry is one kind of audio a client plays.
 type AudioEntry struct {
-	Codec         media.Codec
-	Delivery      []Delivery // file, stream
-	Containers    []string   // for file delivery
-	MaxChannels   int        // what reaches the output
-	MaxSampleRate int
-	MaxBitDepth   int
-	Profiles      []string // as ffprobe prints them: LC, HE-AAC, Dolby TrueHD + Dolby Atmos
+	Codec         media.Codec `json:"codec"`
+	Delivery      []Delivery  `json:"delivery,omitempty"`    // file, stream
+	Containers    []string    `json:"containers,omitempty"`  // for file delivery
+	MaxChannels   int         `json:"maxChannels,omitempty"` // what reaches the output
+	MaxSampleRate int         `json:"maxSampleRate,omitempty"`
+	MaxBitDepth   int         `json:"maxBitDepth,omitempty"`
+	Profiles      []string    `json:"profiles,omitempty"` // as ffprobe prints them: LC, HE-AAC, Dolby TrueHD + Dolby Atmos
 }
 
 // SubtitleEntry is a subtitle codec a client shows, and how: read from the
 // played file, as a WebVTT rendition of the stream, or as its own file.
 type SubtitleEntry struct {
-	Codec      media.Codec
-	Delivery   []Delivery // file, stream, external
-	Containers []string   // for file delivery, the containers it reads this from
+	Codec      media.Codec `json:"codec"`
+	Delivery   []Delivery  `json:"delivery,omitempty"`   // file, stream, external
+	Containers []string    `json:"containers,omitempty"` // for file delivery, the containers it reads this from
 }
 
 // HDR10Plus is the HDR format a client may list for HDR10+ dynamic
@@ -90,8 +90,8 @@ const HDR10Plus media.DynamicRange = "hdr10plus"
 // Settings are the client's playback settings. They're kept on the client,
 // not the server.
 type Settings struct {
-	DisableDirectPlay bool
-	BurnSubtitles     bool
+	DisableDirectPlay bool `json:"disableDirectPlay,omitempty"`
+	BurnSubtitles     bool `json:"burnSubtitles,omitempty"`
 }
 
 // The kinds of entry each say which codec they're for, and how it's
@@ -133,9 +133,9 @@ func (c Capabilities) readsFromFile(codec media.Codec, containers []string) verd
 // Unmet is the capability a track failed: the field, the value the client
 // declared, and the track's own. Lists are joined with commas.
 type Unmet struct {
-	Field  string
-	Limit  string // empty when the client declared nothing for the track
-	Actual string
+	Field  string `json:"field"`
+	Limit  string `json:"limit,omitempty"` // empty when the client declared nothing for the track
+	Actual string `json:"actual"`
 }
 
 // verdict says whether a track plays unchanged, and why not if it doesn't.

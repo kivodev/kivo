@@ -5208,8 +5208,9 @@ export interface components {
          *     `storageFull` (try again later); `downloadsNotAllowed`; and for a
          *     download's preparation, `sourceUnreadable` (the file couldn't be
          *     read, after trying again), `subtitlesUnavailable` (its chosen
-         *     subtitle couldn't be prepared) and `planUnreadable` (the server
-         *     can't read how it was decided).
+         *     subtitle couldn't be prepared). The server never gives
+         *     `planUnreadable`: the apps use it for a download whose plan on the
+         *     device they can't read.
          * @enum {string}
          */
         RefusalReason: "noTracks" | "fileUnplayable" | "subtitleUnplayable" | "keyframeIndexMissing" | "transcodeFailed" | "transcodeLimit" | "storageFull" | "downloadsNotAllowed" | "sourceUnreadable" | "subtitlesUnavailable" | "planUnreadable";
@@ -5284,7 +5285,7 @@ export interface components {
             remainingMs?: number;
             /**
              * @description When failed, why: `transcodeFailed`, `storageFull`,
-             *     `sourceUnreadable`, `subtitlesUnavailable` or `planUnreadable`.
+             *     `sourceUnreadable` or `subtitlesUnavailable`.
              */
             reason?: components["schemas"]["RefusalReason"];
             delivery: components["schemas"]["DownloadDelivery"];

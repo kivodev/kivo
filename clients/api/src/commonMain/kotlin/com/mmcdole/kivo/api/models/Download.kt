@@ -50,7 +50,7 @@ import kotlinx.serialization.encoding.*
  * @param queuePosition While queued, its place in line, 1 when it's next.
  * @param progress While preparing, how much is converted, from 0 to 1.
  * @param remainingMs While converting, about how long it has left, once that can be told.
- * @param reason When failed, why: `transcodeFailed`, `storageFull`, `sourceUnreadable`, `subtitlesUnavailable` or `planUnreadable`. 
+ * @param reason When failed, why: `transcodeFailed`, `storageFull`, `sourceUnreadable` or `subtitlesUnavailable`. 
  * @param markers The version's markers on its timeline, in order.
  * @param expiresAt Once ready or failed, when the server forgets it, unless deleted sooner.
  */
@@ -100,7 +100,7 @@ data class Download (
     /* While converting, about how long it has left, once that can be told. */
     @SerialName(value = "remainingMs") val remainingMs: kotlin.Int? = null,
 
-    /* When failed, why: `transcodeFailed`, `storageFull`, `sourceUnreadable`, `subtitlesUnavailable` or `planUnreadable`.  */
+    /* When failed, why: `transcodeFailed`, `storageFull`, `sourceUnreadable` or `subtitlesUnavailable`.  */
     @SerialName(value = "reason") val reason: kotlin.String? = null,
 
     /* The version's markers on its timeline, in order. */

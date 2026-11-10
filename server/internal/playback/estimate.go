@@ -60,7 +60,7 @@ func (s *Service) Estimate(ctx context.Context, p auth.Caller, v users.Viewer, c
 			}
 			continue
 		}
-		c, err := s.planDownload(ctx, user, DownloadRequest{
+		c, err := s.planDownload(ctx, user.ID, s.prefsFor(ctx, user, it.Work), DownloadRequest{
 			Work: it.Work, Version: it.Version, AudioTrack: it.AudioTrack, SubtitleTrack: it.SubtitleTrack, Caps: caps, Settings: settings,
 		})
 		if refused, ok := errors.AsType[*RefusedError](err); ok {

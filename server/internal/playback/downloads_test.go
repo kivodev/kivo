@@ -338,84 +338,96 @@ func TestAFailedDownloadSaysWhyAndRetries(t *testing.T) {
 	}
 }
 
-// A plan with a field the server doesn't know, such as a field renamed
-// since the plan was stored, fails to restore rather than reading as
-// blank.
-func TestAPlanWithAnUnknownFieldFailsToRestore(t *testing.T) {
-	f := newFixture(t, 0)
-	f.downloads()
-	d := f.mustDownload(f.movie("Heat", "mp4", 1).Work, "high")
-	row, err := f.svc.q.GetDownload(ctx, d.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := f.svc.restore(ctx, row); err != nil {
-		t.Fatalf("the plan as kept: %v", err)
-	}
-	row.Plan = strings.Replace(row.Plan, `"input":{`, `"input":{"Renamed":true,`, 1)
-	if _, err := f.svc.restore(ctx, row); err == nil || !strings.Contains(err.Error(), `unknown field "Renamed"`) {
-		t.Fatalf("a plan with an unknown field: %v", err)
-	}
-}
-
-// A download whose plan can't be read fails on its own. The list and its
-// status show it as failed, its preparation settles it as failed, and its
-// files aren't ready. The other downloads go on, and Retry plans it again.
-func TestADownloadWhosePlanDoesntReadFailsAlone(t *testing.T) {
+// An app asking again after an update, when it reports what it plays
+// differently, gets the download it has. One asked for another way, at
+// another quality or with other tracks, is a download of its own.
+func TestAskingAgainWithOtherCapabilitiesReturnsTheSameDownload(t *testing.T) {
 	f := newFixture(t, 0)
 	f.media.hold = make(chan struct{})
 	f.downloads()
-	small := f.movie("Heat", "mp4", 3_000_000)
-	f.onDisk(small.File, "the movie")
-	original := f.mustDownload(small.Work, "high")
-	converting := f.mustDownload(f.movie("Ronin", "mkv", 1).Work, "high")
-	f.await(converting.ID, DownloadPreparing)
-	queued := f.mustDownload(f.movie("Thief", "mkv", 1).Work, "high")
-	f.exec(`UPDATE download SET plan = replace(plan, '"input":{', '"input":{"Renamed":true,') WHERE id IN (?, ?)`, original.ID, queued.ID)
+	defer close(f.media.hold)
+	m, sub := f.subtitled()
+	d := f.mustDownload(m.Work, "standard")
+	updated := iPhone
+	updated.Audio = append(slices.Clone(iPhone.Audio), AudioEntry{Codec: "flac", MaxChannels: 2})
+	again, err := f.svc.Download(ctx, f.p, f.v, DownloadRequest{Work: m.Work, Caps: updated, Quality: "standard"})
+	if err != nil || again.ID != d.ID {
+		t.Fatalf("asked again after an update: %s, then %s %v", d.ID, again.ID, err)
+	}
+	for name, r := range map[string]DownloadRequest{
+		"quality":  {Work: m.Work, Caps: iPhone, Quality: "high"},
+		"subtitle": {Work: m.Work, Caps: iPhone, Quality: "standard", SubtitleTrack: &sub},
+		"settings": {Work: m.Work, Caps: iPhone, Quality: "standard", Settings: Settings{BurnSubtitles: true}},
+	} {
+		if other, err := f.svc.Download(ctx, f.p, f.v, r); err != nil || other.ID == d.ID {
+			t.Errorf("asked with another %s: %s, then %s %v", name, d.ID, other.ID, err)
+		}
+	}
+}
 
-	list, err := f.svc.Downloads(ctx, f.p)
-	if err != nil || len(list) != 3 {
-		t.Fatalf("downloads %+v %v", list, err)
+// A download in line is prepared with the audio and subtitle it chose when
+// it was asked for, though its user prefers others by then.
+func TestAQueuedDownloadKeepsItsTracksWhenPreferencesChange(t *testing.T) {
+	f := newFixture(t, 0)
+	f.svc = New(f.b.DB, f.deps(discard{})) // the test prepares it by hand below
+	a := f.dualAudioEpisode()
+	f.extract(a.file, "", false)
+	d, err := f.svc.Download(ctx, f.p, f.v, DownloadRequest{Work: a.work, Caps: tv, Quality: "standard"})
+	if err != nil || d.State != DownloadQueued || selectedOf(d.Decision, media.Audio) != a.eng || selectedOf(d.Decision, media.Subtitle) != a.signs {
+		t.Fatalf("asked with no preference: %+v %v", d, err)
 	}
-	for _, d := range list {
-		want, reason := DownloadFailed, RefusePlanUnreadable
-		if d.ID == converting.ID {
-			want, reason = DownloadPreparing, ""
+	audio, subtitles, mode := "ja", "fr", users.SubtitlesAlways
+	change := users.PlaybackChange{AudioLanguage: &audio, SubtitleLanguage: &subtitles, SubtitleMode: &mode}
+	if err := f.users.EditPreferences(ctx, f.v, users.PreferencesChange{Playback: &change}); err != nil {
+		t.Fatal(err)
+	}
+	pref, err := f.svc.Preferred(ctx, f.viewer(), a.work)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tr := range pref.Versions {
+		if tr.Audio != a.jpn || tr.Subtitle != a.fre {
+			t.Fatalf("a play now starts with %+v, want Japanese with French subtitles", tr)
 		}
-		if d.State != want || d.Reason != reason || d.Quality != "high" {
-			t.Errorf("listed %+v", d)
-		}
 	}
-	if got, err := f.svc.DownloadStatus(ctx, f.p, original.ID); err != nil || got.State != DownloadFailed || got.Reason != RefusePlanUnreadable {
-		t.Fatalf("status %+v %v", got, err)
+	if err := f.svc.prepareDownload(ctx, d.ID); err != nil {
+		t.Fatal(err)
 	}
-	if _, err := f.svc.DownloadedFile(ctx, f.v, original.ID, 0); !errors.Is(err, ErrNotReady) {
-		t.Fatalf("its file: %v", err)
+	got := f.await(d.ID, DownloadReady)
+	if selectedOf(got.Decision, media.Audio) != a.eng || selectedOf(got.Decision, media.Subtitle) != a.signs {
+		t.Fatalf("prepared with audio %v and subtitle %v, want the English %v and its signs %v",
+			selectedOf(got.Decision, media.Audio), selectedOf(got.Decision, media.Subtitle), a.eng, a.signs)
+	}
+	if c := f.converts(); len(c) != 1 || len(c[0].Audio) != 1 || c[0].Audio[0].Language != "eng" {
+		t.Fatalf("converted %+v", c)
 	}
 
-	// The conversion ahead of it finishes, and the queued one is settled
-	// as failed.
-	close(f.media.hold)
-	f.await(converting.ID, DownloadReady)
-	for deadline := time.Now().Add(5 * time.Second); ; time.Sleep(time.Millisecond) {
-		row, err := f.svc.q.GetDownload(ctx, queued.ID)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if DownloadState(row.State) == DownloadFailed && row.Reason.String == string(RefusePlanUnreadable) {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatalf("prepared: %+v", row)
-		}
+	// Subtitles chosen off stay off.
+	off := id.ID{}
+	d, err = f.svc.Download(ctx, f.p, f.v, DownloadRequest{Work: a.work, SubtitleTrack: &off, Caps: tv, Quality: "standard"})
+	if err != nil {
+		t.Fatal(err)
 	}
+	if err := f.svc.prepareDownload(ctx, d.ID); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.await(d.ID, DownloadReady); selectedOf(got.Decision, media.Subtitle) != off {
+		t.Fatalf("subtitles off, prepared with %v", selectedOf(got.Decision, media.Subtitle))
+	}
+}
 
-	for _, d := range []DownloadStatus{original, queued} {
-		again, err := f.svc.RetryDownload(ctx, f.p, f.v, d.ID)
-		if err != nil || again.State == DownloadFailed || again.Reason != "" {
-			t.Fatalf("retried: %+v %v", again, err)
-		}
-		f.await(d.ID, DownloadReady)
+// A download whose version is gone when its turn comes fails, saying its
+// file couldn't be read.
+func TestADownloadWhoseVersionIsGoneFails(t *testing.T) {
+	f := newFixture(t, 0)
+	f.svc = New(f.b.DB, f.deps(discard{}))
+	d := f.mustDownload(f.movie("Heat", "mkv", 1).Work, "high")
+	f.exec("UPDATE download SET version_id = ?", id.New()) // as if the version was replaced by another
+	if err := f.svc.prepareDownload(ctx, d.ID); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.await(d.ID, DownloadFailed); got.Reason != RefuseSourceUnreadable {
+		t.Fatalf("its version gone: %+v", got)
 	}
 }
 
@@ -633,6 +645,43 @@ func TestADownloadMovesToTheSubtitleThatReplacedItsOwn(t *testing.T) {
 	}
 }
 
+// A subtitle replaced while its download converts is the one the download
+// names once it's ready.
+func TestADownloadConvertingMovesToTheSubtitleThatReplacedItsOwn(t *testing.T) {
+	f := newFixture(t, 0)
+	f.media.hold = make(chan struct{})
+	f.downloads()
+	m := f.movie("Heat", "mkv", 1)
+	add := func(rel string) (got id.ID) {
+		f.b.Write(func(ctx context.Context, tx *store.Tx) error {
+			var err error
+			if got, err = f.b.Catalog.AddDownloadedSubtitle(ctx, tx, m.File, catalog.SubtitleFile{RelPath: rel, Format: "srt", Language: "en"}); err != nil {
+				return err
+			}
+			_, err = f.b.Catalog.DropReplacedSubtitles(ctx, tx, m.File, got)
+			return err
+		})
+		return got
+	}
+	old := add("x/en.1.srt")
+	d, err := f.svc.Download(ctx, f.p, f.v, DownloadRequest{Work: m.Work, SubtitleTrack: &old, Caps: iPhone})
+	if err != nil || d.Decision.Delivery != DeliverConversion || selectedOf(d.Decision, media.Subtitle) != old {
+		t.Fatalf("the download %+v %v", d, err)
+	}
+	for len(f.converts()) == 0 {
+		time.Sleep(time.Millisecond)
+	}
+	replacement := add("x/en.2.srt")
+	f.b.Write(func(ctx context.Context, tx *store.Tx) error {
+		return f.svc.SubtitlesReplaced(ctx, tx, []id.ID{old}, replacement)
+	})
+	close(f.media.hold)
+	d = f.await(d.ID, DownloadReady)
+	if selectedOf(d.Decision, media.Subtitle) != replacement || !slices.ContainsFunc(d.ExternalSubtitles, func(s ExternalSubtitle) bool { return s.Track == replacement }) {
+		t.Fatalf("ready after the replacement: subtitle %v, want %v; files %+v", selectedOf(d.Decision, media.Subtitle), replacement, d.ExternalSubtitles)
+	}
+}
+
 func TestAskingForTheSameDownloadAtOnceKeepsOne(t *testing.T) {
 	f := newFixture(t, 0)
 	f.downloads()
@@ -752,12 +801,16 @@ func TestAConversionOnABusyAcceleratorRunsOnTheCPU(t *testing.T) {
 	if v, _ := d.Decision.Selected("video"); v.Method() != Transcode || v.Video.Codec != media.HEVC || v.Video.Bitrate != 8_000_000 {
 		t.Fatalf("decided %+v", v)
 	}
-	f.await(d.ID, DownloadReady)
+	d = f.await(d.ID, DownloadReady)
 	f.media.mu.Lock()
 	first, retry := f.media.converts[0], f.media.converts[len(f.media.converts)-1]
 	f.media.mu.Unlock()
 	if first.Accelerator != qsv.Accelerator || retry.Accelerator != "" || retry.Video.Codec != media.H264 {
 		t.Fatalf("on the GPU %+v, then %+v", first, retry)
+	}
+	// Once ready, it reports the codec and encoder its file was made with.
+	if v, _ := d.Decision.Selected("video"); v.Codec != media.H264 || v.Video.Codec != media.H264 || v.Encoder != "CPU" {
+		t.Fatalf("ready, it reports %s by %q, want the H.264 the CPU encoded", v.Codec, v.Encoder)
 	}
 	// A conversion doesn't count as one of the server's video transcodes.
 	if _, err := f.start(f.hdrMovie("Arrival").Work, lan); err != nil {
