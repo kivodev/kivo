@@ -40,7 +40,7 @@ func (s *Service) CreateInvite(ctx context.Context, by Caller, n NewInvite) (Iss
 	if !n.Expires.After(time.Now()) {
 		return IssuedInvite{}, ErrInvalidExpiry
 	}
-	token, hash := newToken()
+	token, hash := newBareToken()
 	out := Invite{ID: id.New(), Grants: n.Grants, Limits: n.Limits, Created: time.Now().Truncate(time.Millisecond),
 		Expires: n.Expires.Truncate(time.Millisecond)}
 	if out.Grants.All {
@@ -129,7 +129,7 @@ func (s *Service) InviteByToken(ctx context.Context, token string) (Invite, erro
 }
 
 func (s *Service) inviteByToken(ctx context.Context, q *dbq.Queries, token string) (dbq.InviteByTokenRow, error) {
-	hash, ok := hashToken(token)
+	hash, ok := hashBareToken(token)
 	if !ok {
 		return dbq.InviteByTokenRow{}, ErrInviteNotFound
 	}

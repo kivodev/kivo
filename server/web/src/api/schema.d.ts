@@ -2910,9 +2910,10 @@ export interface components {
         /**
          * @description The server's proof, to an app that holds one of its sessions, of
          *     where the app's probe reached it. `mac` is HMAC-SHA256, keyed by the
-         *     session's token hash (SHA-256 of the token), over `kivo-probe-v1`,
-         *     then the challenge, the server's `id` and `host`, each after its
-         *     length as two bytes big-endian, then one byte, 1 when `local`.
+         *     session's token hash (SHA-256 of the token's body after `kivo_s_`,
+         *     decoded), over `kivo-probe-v1`, then the challenge, the server's
+         *     `id` and `host`, each after its length as two bytes big-endian,
+         *     then one byte, 1 when `local`.
          */
         ServerProof: {
             /** @description Base64url without padding. */
@@ -5985,7 +5986,9 @@ export interface operations {
                 challenge?: string;
                 /**
                  * @description The app's session's probe ID, base64url without padding: the
-                 *     first 16 bytes of SHA-256("kivo-probe-id" ‖ SHA-256(token)).
+                 *     first 16 bytes of SHA-256("kivo-probe-id" ‖ the session's token
+                 *     hash), the hash being SHA-256 of the token's body after
+                 *     `kivo_s_`, decoded.
                  */
                 probeId?: string;
             };

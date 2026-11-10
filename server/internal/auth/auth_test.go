@@ -474,11 +474,12 @@ func TestNoRawTokenInTheDatabase(t *testing.T) {
 		t.Fatal("read nothing")
 	}
 	for _, tok := range tokens {
-		raw, err := tokenEncoding.DecodeString(tok)
+		body := tok[len(sessionCredential):]
+		raw, err := tokenEncoding.DecodeString(body)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if bytes.Contains(file, []byte(tok)) || bytes.Contains(file, raw) {
+		if bytes.Contains(file, []byte(body)) || bytes.Contains(file, raw) {
 			t.Fatal("a token is in the database file")
 		}
 	}
@@ -490,9 +491,85 @@ func TestNoRawTokenInTheDatabase(t *testing.T) {
 func TestMalformedTokens(t *testing.T) {
 	f := newFixture(t)
 	good := f.setUp().Token
-	for _, tok := range []string{"", "x", good + "A", good[:len(good)-1], "Bearer " + good, tokenEncoding.EncodeToString(make([]byte, tokenLen))} {
+	body := good[len(sessionCredential):]
+	malformed := []string{
+		"", "x", good + "A", good[:len(good)-1], "Bearer " + good, " " + good,
+		body, // the body alone, with no kind
+		"kivo_s_", "kivo_x_" + body, "KIVO_S_" + body, "kivo_" + body, "kivo_s_kivo_s_" + body,
+		"kivo_s_" + body + "=", "kivo_s_" + strings.Repeat("!", len(body)),
+		"kivo_k_" + tokenEncoding.EncodeToString(make([]byte, tokenLen+1)),
+		"kivo_c_" + tokenEncoding.EncodeToString(make([]byte, tokenLen-1)),
+	}
+	for _, tok := range malformed {
 		if _, err := f.auth.Authenticate(context.Background(), tok); !errors.Is(err, ErrUnauthenticated) {
 			t.Errorf("token %q: err = %v, want ErrUnauthenticated", tok, err)
+		}
+	}
+
+	// With the database closed, any read fails with an error of its own, so
+	// a malformed token's ErrUnauthenticated shows nothing was read.
+	if err := f.db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	for _, tok := range malformed {
+		if _, err := f.auth.Authenticate(context.Background(), tok); !errors.Is(err, ErrUnauthenticated) {
+			t.Errorf("token %q with the database closed: err = %v, want ErrUnauthenticated", tok, err)
+		}
+	}
+	for _, k := range []credentialKind{sessionCredential, apiKeyCredential, castCredential} {
+		if _, err := f.auth.Authenticate(context.Background(), string(k)+body); err == nil || errors.Is(err, ErrUnauthenticated) {
+			t.Errorf("a well-formed %s token with the database closed: err = %v, want a failed read", k, err)
+		}
+	}
+}
+
+// TestTokensCarryTheirKind checks that each credential names its kind and
+// is looked up in that kind's table alone, and that invite links and device
+// code secrets are bare.
+func TestTokensCarryTheirKind(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	session := f.setUp()
+	by := session.Session.Caller()
+	key, err := f.auth.CreateAPIKey(ctx, by, NewAPIKey{Name: "Home Assistant"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cast := f.castToken(by)
+
+	issued := map[credentialKind]string{sessionCredential: session.Token, apiKeyCredential: key.Token, castCredential: cast.Token}
+	for kind, tok := range issued {
+		body, ok := strings.CutPrefix(tok, string(kind))
+		if !ok {
+			t.Fatalf("%s token %q lacks its prefix", kind, tok)
+		}
+		if _, err := f.auth.Authenticate(ctx, tok); err != nil {
+			t.Fatalf("%s token: %v", kind, err)
+		}
+		for other := range issued {
+			if other == kind {
+				continue
+			}
+			if _, err := f.auth.Authenticate(ctx, string(other)+body); !errors.Is(err, ErrUnauthenticated) {
+				t.Errorf("a %s token's body as %s: err = %v, want ErrUnauthenticated", kind, other, err)
+			}
+		}
+	}
+
+	inv, err := f.auth.CreateInvite(ctx, by, NewInvite{Grants: users.Grants{All: true}, Expires: time.Now().Add(time.Hour)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	dc, err := f.auth.StartDeviceCode(ctx, DeviceCodeStart{Name: "TV", RemoteIP: home})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tok := range []string{inv.Token, dc.Secret} {
+		if _, ok := hashBareToken(tok); !ok || strings.HasPrefix(tok, "kivo_") {
+			t.Errorf("%q isn't a bare token", tok)
+		}
+		if _, err := f.auth.Authenticate(ctx, tok); !errors.Is(err, ErrUnauthenticated) {
+			t.Errorf("%q authenticates: %v", tok, err)
 		}
 	}
 }

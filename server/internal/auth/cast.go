@@ -67,7 +67,7 @@ func (s *Service) IssueCastToken(ctx context.Context, by Caller, n NewCastToken)
 	if !n.Receiver.valid() {
 		return IssuedCastToken{}, fmt.Errorf("%w: %q", ErrInvalidReceiver, n.Receiver)
 	}
-	token, hash := newToken()
+	token, hash := newCredential(castCredential)
 	now := time.Now().Truncate(time.Millisecond)
 	err = s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
 		return dbq.New(tx).InsertCastToken(ctx, dbq.InsertCastTokenParams{
@@ -98,8 +98,8 @@ func (s *Service) RevokeCastToken(ctx context.Context, c Caller) error {
 	})
 }
 
-// castCaller resolves a token that belongs to no session or API key to its
-// cast token, and writes its last-used time when the stored one is stale.
+// castCaller resolves a cast token's hash to its cast token, and writes its
+// last-used time when the stored one is stale.
 func (s *Service) castCaller(ctx context.Context, hash tokenHash) (Caller, error) {
 	row, err := s.q.CastCallerByToken(ctx, hash[:])
 	if errors.Is(err, sql.ErrNoRows) {

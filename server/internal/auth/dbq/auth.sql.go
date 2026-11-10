@@ -48,6 +48,33 @@ func (q *Queries) APIKeyAlive(ctx context.Context, argID id.ID) (int64, error) {
 	return column_1, err
 }
 
+const aPIKeyCallerByToken = `-- name: APIKeyCallerByToken :one
+SELECT k.id, k.created_by, k.name, k.last_used_at
+FROM api_key k JOIN user u ON u.id = k.created_by
+WHERE k.token_hash = ?1 AND u.disabled = 0
+`
+
+type APIKeyCallerByTokenRow struct {
+	ID         id.ID
+	CreatedBy  id.ID
+	Name       string
+	LastUsedAt sql.NullInt64
+}
+
+// The API key with this token hash, joined to its user in the same read, so
+// disabling the user takes effect at once.
+func (q *Queries) APIKeyCallerByToken(ctx context.Context, tokenHash []byte) (APIKeyCallerByTokenRow, error) {
+	row := q.db.QueryRowContext(ctx, aPIKeyCallerByToken, tokenHash)
+	var i APIKeyCallerByTokenRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedBy,
+		&i.Name,
+		&i.LastUsedAt,
+	)
+	return i, err
+}
+
 const aPIKeys = `-- name: APIKeys :many
 SELECT id, name, created_at, last_used_at FROM api_key ORDER BY created_at DESC
 `
@@ -97,51 +124,6 @@ func (q *Queries) AnyUser(ctx context.Context) (int64, error) {
 	var column_1 int64
 	err := row.Scan(&column_1)
 	return column_1, err
-}
-
-const callerByToken = `-- name: CallerByToken :one
-SELECT s.id, s.user_id, s.kind, s.name, s.last_used_at,
-  s.app, s.app_version, s.platform, s.os_version, s.device_model
-FROM session s JOIN user u ON u.id = s.user_id
-WHERE s.token_hash = ?1 AND u.disabled = 0
-UNION ALL
-SELECT k.id, k.created_by, '', k.name, coalesce(k.last_used_at, 0), '', '', '', '', ''
-FROM api_key k JOIN user u ON u.id = k.created_by
-WHERE k.token_hash = ?1 AND u.disabled = 0
-`
-
-type CallerByTokenRow struct {
-	ID          id.ID
-	UserID      id.ID
-	Kind        string
-	Name        string
-	LastUsedAt  int64
-	App         string
-	AppVersion  string
-	Platform    string
-	OsVersion   string
-	DeviceModel string
-}
-
-// The session or API key with this token, joined to its user in the same
-// read, so disabling the user takes effect at once. An API key's kind is
-// empty, and so is its device. Its last_used_at is 0 until it's used.
-func (q *Queries) CallerByToken(ctx context.Context, tokenHash []byte) (CallerByTokenRow, error) {
-	row := q.db.QueryRowContext(ctx, callerByToken, tokenHash)
-	var i CallerByTokenRow
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.Kind,
-		&i.Name,
-		&i.LastUsedAt,
-		&i.App,
-		&i.AppVersion,
-		&i.Platform,
-		&i.OsVersion,
-		&i.DeviceModel,
-	)
-	return i, err
 }
 
 const castCallerByToken = `-- name: CastCallerByToken :one
@@ -667,6 +649,46 @@ func (q *Queries) SessionAlive(ctx context.Context, argID id.ID) (SessionAliveRo
 	row := q.db.QueryRowContext(ctx, sessionAlive, argID)
 	var i SessionAliveRow
 	err := row.Scan(&i.Kind, &i.LastUsedAt)
+	return i, err
+}
+
+const sessionCallerByToken = `-- name: SessionCallerByToken :one
+SELECT s.id, s.user_id, s.kind, s.name, s.last_used_at,
+  s.app, s.app_version, s.platform, s.os_version, s.device_model
+FROM session s JOIN user u ON u.id = s.user_id
+WHERE s.token_hash = ?1 AND u.disabled = 0
+`
+
+type SessionCallerByTokenRow struct {
+	ID          id.ID
+	UserID      id.ID
+	Kind        string
+	Name        string
+	LastUsedAt  int64
+	App         string
+	AppVersion  string
+	Platform    string
+	OsVersion   string
+	DeviceModel string
+}
+
+// The session with this token hash, joined to its user in the same read, so
+// disabling the user takes effect at once.
+func (q *Queries) SessionCallerByToken(ctx context.Context, tokenHash []byte) (SessionCallerByTokenRow, error) {
+	row := q.db.QueryRowContext(ctx, sessionCallerByToken, tokenHash)
+	var i SessionCallerByTokenRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Kind,
+		&i.Name,
+		&i.LastUsedAt,
+		&i.App,
+		&i.AppVersion,
+		&i.Platform,
+		&i.OsVersion,
+		&i.DeviceModel,
+	)
 	return i, err
 }
 

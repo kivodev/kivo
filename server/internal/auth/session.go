@@ -18,7 +18,7 @@ import (
 // existing session on the same client.
 func (s *Service) issue(ctx context.Context, tx *store.Tx, user id.ID, c client) (IssuedSession, error) {
 	q := dbq.New(tx)
-	token, hash := newToken()
+	token, hash := newCredential(sessionCredential)
 	now := time.Now().Truncate(time.Millisecond)
 	out := IssuedSession{Token: token, ClientID: c.id, Session: Session{
 		ID: id.New(), User: user, Kind: c.kind, Name: c.name, Device: c.device, Created: now, LastUsed: now,
@@ -50,41 +50,47 @@ func (s *Service) issue(ctx context.Context, tx *store.Tx, user id.ID, c client)
 }
 
 // Authenticate resolves a token from a cookie or an Authorization header to
-// its session, API key or cast token. It uses one read, which also checks
-// that the user isn't disabled, and writes the last-used time when the
-// stored one is stale.
+// its session, API key or cast token. The token's prefix names the table,
+// and one read of it also checks that the user isn't disabled. A token
+// without a known prefix, or with a malformed body, is refused without a
+// read. It writes the last-used time when the stored one is stale.
 func (s *Service) Authenticate(ctx context.Context, token string) (Caller, error) {
-	hash, ok := hashToken(token)
+	kind, hash, ok := parseCredential(token)
 	if !ok {
 		return Caller{}, fmt.Errorf("%w: malformed token", ErrUnauthenticated)
 	}
-	row, err := s.q.CallerByToken(ctx, hash[:])
-	if errors.Is(err, sql.ErrNoRows) {
+	switch kind {
+	case sessionCredential:
+		return s.sessionCaller(ctx, hash)
+	case apiKeyCredential:
+		return s.apiKeyCaller(ctx, hash)
+	case castCredential:
 		return s.castCaller(ctx, hash)
+	}
+	return Caller{}, fmt.Errorf("%w: token kind %q", ErrUnauthenticated, kind)
+}
+
+// sessionCaller resolves a session token's hash to its session, and writes
+// its last-used time when the stored one is stale.
+func (s *Service) sessionCaller(ctx context.Context, hash tokenHash) (Caller, error) {
+	row, err := s.q.SessionCallerByToken(ctx, hash[:])
+	if errors.Is(err, sql.ErrNoRows) {
+		return Caller{}, fmt.Errorf("%w: no such session", ErrUnauthenticated)
 	}
 	if err != nil {
 		return Caller{}, err
 	}
 	now := time.Now()
-	c := Caller{User: row.UserID, Name: row.Name, Device: Device{
-		App: row.App, AppVersion: row.AppVersion, Platform: Platform(row.Platform), OSVersion: row.OsVersion, Model: row.DeviceModel,
-	}}
 	stored := time.UnixMilli(row.LastUsedAt)
-	if row.Kind == "" {
-		c.APIKey = row.ID
-		s.markUsed(ctx, stored, now, func(ctx context.Context, q *dbq.Queries, used int64) error {
-			return q.TouchAPIKey(ctx, dbq.TouchAPIKeyParams{ID: row.ID, Used: used})
-		})
-		return c, nil
-	}
 	if expired(SessionKind(row.Kind), stored, now) {
 		return Caller{}, fmt.Errorf("%w: session expired", ErrUnauthenticated)
 	}
-	c.Session = row.ID
 	s.markUsed(ctx, stored, now, func(ctx context.Context, q *dbq.Queries, used int64) error {
 		return q.TouchSession(ctx, dbq.TouchSessionParams{ID: row.ID, Used: used})
 	})
-	return c, nil
+	return Caller{User: row.UserID, Session: row.ID, Name: row.Name, Device: Device{
+		App: row.App, AppVersion: row.AppVersion, Platform: Platform(row.Platform), OSVersion: row.OsVersion, Model: row.DeviceModel,
+	}}, nil
 }
 
 // Alive reports whether a caller's session, API key or cast token still

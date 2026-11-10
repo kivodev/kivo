@@ -38,7 +38,7 @@ func (s *Service) CreateAPIKey(ctx context.Context, by Caller, k NewAPIKey) (Iss
 	if name == "" {
 		return IssuedAPIKey{}, ErrInvalidName
 	}
-	token, hash := newToken()
+	token, hash := newCredential(apiKeyCredential)
 	key := APIKey{ID: id.New(), Name: name, Created: time.Now().Truncate(time.Millisecond)}
 	err = s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
 		return dbq.New(tx).InsertAPIKey(ctx, dbq.InsertAPIKeyParams{
@@ -49,6 +49,22 @@ func (s *Service) CreateAPIKey(ctx context.Context, by Caller, k NewAPIKey) (Iss
 		return IssuedAPIKey{}, err
 	}
 	return IssuedAPIKey{Token: token, Key: key}, nil
+}
+
+// apiKeyCaller resolves an API key token's hash to its key, and writes its
+// last-used time when the stored one is stale.
+func (s *Service) apiKeyCaller(ctx context.Context, hash tokenHash) (Caller, error) {
+	row, err := s.q.APIKeyCallerByToken(ctx, hash[:])
+	if errors.Is(err, sql.ErrNoRows) {
+		return Caller{}, fmt.Errorf("%w: no such API key", ErrUnauthenticated)
+	}
+	if err != nil {
+		return Caller{}, err
+	}
+	s.markUsed(ctx, time.UnixMilli(row.LastUsedAt.Int64), time.Now(), func(ctx context.Context, q *dbq.Queries, used int64) error {
+		return q.TouchAPIKey(ctx, dbq.TouchAPIKeyParams{ID: row.ID, Used: used})
+	})
+	return Caller{User: row.CreatedBy, APIKey: row.ID, Name: row.Name}, nil
 }
 
 // APIKeys returns every API key, newest first.

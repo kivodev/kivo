@@ -129,7 +129,7 @@ internal fun proofOf(challenge: String?, probeId: String?, host: String, serverI
     if (challenge == null || probeId == null) return null
     val token = tokens.firstOrNull { ProbeKey.of(it)?.probeId == probeId } ?: return null
     val base64 = Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT)
-    val mac = hmacSha256(sha256(base64.decode(token)), message(base64.decode(challenge), serverId, host, local = true))
+    val mac = hmacSha256(sha256(base64.decode(token.removePrefix("kivo_s_"))), message(base64.decode(challenge), serverId, host, local = true))
     return ServerProof(ProbeKey.encode(mac), host, local = true)
 }
 

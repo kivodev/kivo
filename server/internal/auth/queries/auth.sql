@@ -34,16 +34,18 @@ VALUES (@id, @token_hash, @probe_id, @user_id, @kind, @name, @platform, NULLIF(C
 -- replaces.
 DELETE FROM session WHERE user_id = @user_id AND client_id = CAST(@client_id AS TEXT);
 
--- name: CallerByToken :one
--- The session or API key with this token, joined to its user in the same
--- read, so disabling the user takes effect at once. An API key's kind is
--- empty, and so is its device. Its last_used_at is 0 until it's used.
+-- name: SessionCallerByToken :one
+-- The session with this token hash, joined to its user in the same read, so
+-- disabling the user takes effect at once.
 SELECT s.id, s.user_id, s.kind, s.name, s.last_used_at,
   s.app, s.app_version, s.platform, s.os_version, s.device_model
 FROM session s JOIN user u ON u.id = s.user_id
-WHERE s.token_hash = @token_hash AND u.disabled = 0
-UNION ALL
-SELECT k.id, k.created_by, '', k.name, coalesce(k.last_used_at, 0), '', '', '', '', ''
+WHERE s.token_hash = @token_hash AND u.disabled = 0;
+
+-- name: APIKeyCallerByToken :one
+-- The API key with this token hash, joined to its user in the same read, so
+-- disabling the user takes effect at once.
+SELECT k.id, k.created_by, k.name, k.last_used_at
 FROM api_key k JOIN user u ON u.id = k.created_by
 WHERE k.token_hash = @token_hash AND u.disabled = 0;
 

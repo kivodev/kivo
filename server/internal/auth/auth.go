@@ -50,12 +50,12 @@ var (
 	// ErrInviteNotFound means an invite link is unknown, used, expired or
 	// revoked. All four cases look the same.
 	ErrInviteNotFound = fault.New(fault.NotFound, "no such invite")
-	// ErrCodeNotFound means a device code's code is unknown, expired, or
+	// ErrCodeNotFound means a device code is unknown, expired, or
 	// already approved or denied. All three cases look the same.
-	ErrCodeNotFound = fault.New(fault.NotFound, "no such device code code")
+	ErrCodeNotFound = fault.New(fault.NotFound, "no such device code")
 	// ErrCodeGone means a poll's secret is unknown, or its code expired or
 	// was used. The device starts again with a new code.
-	ErrCodeGone = fault.New(fault.Gone, "device code code expired or used")
+	ErrCodeGone = fault.New(fault.Gone, "device code expired or used")
 	// ErrDenied means a device code was denied. The device signs in another
 	// way, or starts again.
 	ErrDenied = fault.Coded(fault.Forbidden, "denied", "device code denied")
