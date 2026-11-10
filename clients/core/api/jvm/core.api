@@ -653,6 +653,17 @@ public final class com/mmcdole/kivo/core/data/LibraryFilters {
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class com/mmcdole/kivo/core/data/ListSorts {
+	public static final field CUSTOM Ljava/lang/String;
+	public static final field DATE_ADDED Ljava/lang/String;
+	public static final field INSTANCE Lcom/mmcdole/kivo/core/data/ListSorts;
+	public static final field RATING Ljava/lang/String;
+	public static final field RELEASE_DATE Ljava/lang/String;
+	public static final field TITLE Ljava/lang/String;
+	public final fun getAll ()Ljava/util/List;
+	public final fun of (Lcom/mmcdole/kivo/api/models/WorkList;)Ljava/lang/String;
+}
+
 public final class com/mmcdole/kivo/core/data/RuleDraft {
 	public fun <init> (Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;Ljava/util/List;Ljava/lang/String;)V
 	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;Ljava/util/List;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
@@ -1786,8 +1797,10 @@ public final class com/mmcdole/kivo/core/session/SessionLibrary {
 	public final fun knownCollection (Ljava/lang/String;)Lcom/mmcdole/kivo/api/models/CollectionSummary;
 	public final fun knownPerson (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/Heading;
 	public final fun libraries ()Lkotlinx/coroutines/flow/Flow;
+	public final fun listWorksInCustomOrder (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun lists (Z)Lkotlinx/coroutines/flow/Flow;
 	public static synthetic fun lists$default (Lcom/mmcdole/kivo/core/session/SessionLibrary;ZILjava/lang/Object;)Lkotlinx/coroutines/flow/Flow;
+	public final fun moveInList (Ljava/lang/String;Ljava/util/List;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun pagedAuthors (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/GridPager;
 	public final fun pagedBookSeries (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/GridPager;
 	public final fun pagedCollections (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/GridPager;
@@ -1800,6 +1813,7 @@ public final class com/mmcdole/kivo/core/session/SessionLibrary {
 	public final fun resetHomeRows (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun search (Ljava/lang/String;Ljava/lang/Integer;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun setHomeRows (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun setListSort (Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun setPlayed (Ljava/lang/String;ZLkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun smartListNames (Lcom/mmcdole/kivo/api/models/WorkQuery;Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun updateList (Ljava/lang/String;Ljava/lang/String;Lcom/mmcdole/kivo/api/models/WorkQuery;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;

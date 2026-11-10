@@ -1588,9 +1588,10 @@ paths:
       operationId: updateList
       summary: Update a list
       description: |
-        Renames the list, replaces a smart list's rules, or both, in one
-        change. Watchlist can't be changed, and `smart` is refused on a manual
-        list: `409` with code `conflict`. A name in use is `409` with code
+        Renames the list, replaces a smart list's rules, sets the order a
+        manual list is shown in, or any of them, in one change. Watchlist
+        keeps its name, `smart` is refused on a manual list and `sort` on a
+        smart list: `409` with code `conflict`. A name in use is `409` with code
         `nameTaken`. Invalid rules are `400` with pointers such as
         `/smart/query/where/rules/0/op`. A `listsChanged` event tells the
         user's clients.
@@ -1635,11 +1636,10 @@ paths:
       operationId: listListWorks
       summary: List a list's works
       description: |
-        A list's works the user sees: a manual list's most recently added
-        first, a smart list's as its rules select them. With `kind`, only
-        those kinds. A smart list whose rules no longer run is empty. A grid, paged by `offset`, with `total` on
-        the first page (offset 0) only; works added at
-        the same time are listed by title.
+        A list's works the user sees: a manual list's in its `sort`, or in
+        the `sort` asked for, a smart list's as its rules select them. With
+        `kind`, only those kinds. A smart list whose rules no longer run is empty. A grid, paged by `offset`, with `total` on
+        the first page (offset 0) only.
       tags: [works]
       x-kivo-access: viewer
       parameters:
@@ -1651,6 +1651,13 @@ paths:
           schema:
             type: array
             items: {$ref: "#/components/schemas/WorkKind"}
+        - name: sort
+          in: query
+          description: |
+            Lists a manual list's works in this order, whatever its own
+            `sort`: `custom` is what a screen that moves them shows. A
+            smart list ignores it.
+          schema: {$ref: "#/components/schemas/ListSort"}
         - {$ref: "#/components/parameters/Offset"}
         - {$ref: "#/components/parameters/Limit"}
       responses:
@@ -1668,7 +1675,8 @@ paths:
       summary: Add a work to a list
       description: |
         A smart list's works come from its rules: `409` with code
-        `conflict`. A work already in the list keeps its place. It stays there after
+        `conflict`. The work goes first in the list's custom order; a work
+        already in the list keeps its place. It stays there after
         being played. A `listsChanged` event tells the user's clients.
       tags: [works]
       x-kivo-access: viewer
@@ -1682,6 +1690,35 @@ paths:
         "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "404": {$ref: "#/components/responses/NotFound"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/lists/{id}/move:
+    parameters:
+      - {name: id, in: path, required: true, schema: {$ref: "#/components/schemas/ID"}}
+    post:
+      operationId: moveListWorks
+      summary: Move works in a list's custom order
+      description: |
+        Puts `workIds`, in the order given, just after the work `after` in
+        a manual list's custom order, or first without `after`, and sets
+        the list's `sort` to `custom`. A work that isn't in the list is
+        skipped, so repeating a move changes nothing. `after` must be in the
+        list and not among `workIds`: `400` otherwise. A smart list's rules
+        order it: `409` with code `conflict`. A `listsChanged` event tells
+        the user's clients.
+      tags: [works]
+      x-kivo-access: viewer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ListMove"}
+      responses:
+        "204": {description: Moved.}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
         default: {$ref: "#/components/responses/Error"}
 
   /api/v1/lists/{id}/works/{workId}:
@@ -5194,11 +5231,24 @@ components:
             The list's first works the user sees, up to 20, in the list's
             order, as a Home row has them. Set by `listLists` with `counts`.
           items: {$ref: "#/components/schemas/WorkSummary"}
+        sort:
+          $ref: "#/components/schemas/ListSort"
+          description: The order a manual list's works are in, wherever they are listed. A smart list has none.
 
     ListKind:
       type: string
       description: What a list is. `manual` is works the user added; `smart` is the works rules select. Skip kinds you don't know.
       enum: [manual, smart]
+
+    ListSort:
+      type: string
+      description: |
+        The order a manual list is shown in. `custom` is the user's own: a
+        work added goes first, and `moveListWorks` moves them. `title` is A
+        to Z, `releaseDate` newest first, `rating` highest first and
+        `dateAdded` most recently added to the list first. Treat a sort you
+        don't know as `custom`.
+      enum: [custom, title, releaseDate, rating, dateAdded]
 
     WorkListList:
       type: object
@@ -5242,6 +5292,23 @@ components:
         smart:
           $ref: "#/components/schemas/SmartQuery"
           description: Replaces a smart list's rules; a manual list has none.
+        sort:
+          $ref: "#/components/schemas/ListSort"
+          description: Sets the order a manual list is shown in; a smart list has none.
+
+    ListMove:
+      type: object
+      required: [workIds]
+      properties:
+        workIds:
+          type: array
+          description: The works to move, in the order they are to be in.
+          minItems: 1
+          maxItems: 100
+          items: {$ref: "#/components/schemas/ID"}
+        after:
+          $ref: "#/components/schemas/ID"
+          description: The work they go just after; without it they go first.
 
     ListWorkAdd:
       type: object

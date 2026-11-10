@@ -45,8 +45,12 @@ import type {
   WorkSummary,
 } from "../schemas";
 
-/** A list as the mock keeps it. Its count is worked out when it's read. */
-export type MockList = Omit<WorkList, "workCount"> & { workIds: string[] };
+/**
+ * A list as the mock keeps it. Its count is worked out when it's read.
+ * `workIds` is a manual list's custom order, and `added` its works newest
+ * first, which is the same until one is moved.
+ */
+export type MockList = Omit<WorkList, "workCount"> & { workIds: string[]; added?: string[] };
 
 /** What the mock server answers. Handlers read it at each request, and tests change it. */
 export type MockApi = {
@@ -96,7 +100,7 @@ export type MockApi = {
   home: Home;
   /** Home's layout once it's been changed. */
   homeLayout?: HomeRowInfo[];
-  /** The user's lists, each with its works' IDs, most recently added first. */
+  /** The user's lists, each with its works' IDs. */
   lists: MockList[];
   /** What rules and sorts can name. */
   workFields: WorkField[];

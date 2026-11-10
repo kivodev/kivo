@@ -31,12 +31,11 @@ import {
   listQueryFromGrid,
   offersCollections,
   showSorts,
-  sorts,
   storeBrowse,
   useBrowseSearch,
   videoSorts,
 } from "./browseSearch";
-import { CountNoun, SortMenu, useEmptyTitle } from "./CountLine";
+import { CountNoun, SortMenu, useEmptyTitle, useSortWords } from "./CountLine";
 import { FilterPanel, useFilterValues } from "./FilterPanel";
 import { filterChips } from "./filterChips";
 import { AuthorCard, BookSeriesCard, CollectionCard } from "./GroupCard";
@@ -120,6 +119,7 @@ function LibraryView({ library }: { library: Library }) {
   const listing = tab !== "library";
   const view = listing || isTv ? "grid" : (search.view ?? "grid");
   const sort = search.sort ?? "title";
+  const sortWords = useSortWords();
   const sortOptions = books ? bookSorts : library.kind === "shows" ? showSorts : videoSorts;
   const shape = books ? "square" : library.kind === "videos" ? "landscape" : "poster";
   const set = (patch: Partial<BrowseSearch>) => setSearch({ ...search, ...patch });
@@ -266,8 +266,9 @@ function LibraryView({ library }: { library: Library }) {
                     <SortMenu
                       options={sortOptions}
                       selected={sort}
-                      labels={labels}
-                      onChange={(s) => set({ sort: sorts.find((x) => x === s) ?? "title" })}
+                      labels={labels.sort}
+                      words={sortWords}
+                      onChange={(s) => set({ sort: s })}
                     />
                   </>
                 )}

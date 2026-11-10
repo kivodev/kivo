@@ -52,6 +52,7 @@ func TestBudgets(t *testing.T) {
 	v := budgetViewer(t, db, "admin")
 	q := query.New(db)
 	sv, smart := smartViewer(t, db, q)
+	lv, manual := manualViewer(t, db)
 
 	stop := scanWriter(t, db, moviesFolder)
 
@@ -62,7 +63,7 @@ func TestBudgets(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			_, err = q.ListWorks(ctx, v, lists[0].ID, nil, query.GridOptions{})
+			_, err = q.ListWorks(ctx, v, lists[0].ID, nil, "", query.GridOptions{})
 			return err
 		}},
 		budgetCase{"search", searchBudget, true, func() error { _, err := q.Search(ctx, v, "movie 123", 0); return err }},
@@ -80,6 +81,9 @@ func TestBudgets(t *testing.T) {
 	// or where its rules are light: not the other lists of 40,000 movies.
 	timeBudgets(t, smartCases(q, sv, smart, browseBudget, "movies, title and rating, by title", "series, by last episode added",
 		"episodes, aired this year", "movies, capped at 100"), true)
+	// A manual list's page reads the list's works alone, however many the
+	// libraries hold.
+	timeBudgets(t, manualCases(q, lv, manual, browseBudget), true)
 	stop()
 
 	// The smart lists again on a household's server, as a user granted one
@@ -89,12 +93,14 @@ func TestBudgets(t *testing.T) {
 	movies, shows, moviesFolder = generate(t, db, householdShape)
 	q = query.New(db)
 	sv, smart = smartViewer(t, db, q, movies, shows)
+	lv, manual = manualViewer(t, db, movies, shows)
 	stop = scanWriter(t, db, moviesFolder)
 	defer stop()
 	t.Log("a household's server: 5,000 movies and 1,500 series of 105,000 episodes, in four libraries, two of them granted")
 	timeBudgets(t, smartCases(q, sv, smart, scrollBudget, "movies, title and rating, by title", "movies, one actor, by added",
 		"movies, unplayed, by last played", "series, by last episode added", "episodes, aired this year", "movies, capped at 100",
 		smartHome, listsScreen), true)
+	timeBudgets(t, manualCases(q, lv, manual, scrollBudget), true)
 	// Its grids, as that user: 4,000 movies and 1,200 series.
 	timeBudgets(t, gridCases(q, sv, movies, shows, 2000, true), true)
 }
@@ -190,7 +196,7 @@ func smartCases(q *query.Service, v users.Viewer, smart []smartList, later time.
 	for _, l := range smart {
 		enforce := slices.Contains(held, l.name)
 		page := func(o query.GridOptions) func() error {
-			return func() error { _, err := q.ListWorks(ctx, v, l.id, nil, o); return err }
+			return func() error { _, err := q.ListWorks(ctx, v, l.id, nil, "", o); return err }
 		}
 		scroll := later
 		if l.nested {
@@ -443,8 +449,8 @@ func budgetViewer(t *testing.T, db *store.DB, name string, libs ...id.ID) users.
 			UNION ALL
 			SELECT @user, id, 1, 1, 0, 0, NULL, @now - rid, @now - rid
 			FROM work WHERE kind = 'episode' AND number <= 6 AND root_id <= CAST(printf('s%015d', 100) AS BLOB)`, `
-			INSERT INTO list_work (list_id, work_id, added_at)
-			SELECT l.id, w.id, @now - w.rid
+			INSERT INTO list_work (list_id, work_id, added_at, position)
+			SELECT l.id, w.id, @now - w.rid, w.rid
 			FROM work w, list l
 			WHERE l.user_id = @user AND w.kind = 'movie' AND w.rid <= 2000 AND w.rid % 40 = 0`,
 		} {
@@ -502,8 +508,8 @@ func smartViewer(t *testing.T, db *store.DB, q *query.Service, libs ...id.ID) (u
 		}
 		err = db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
 			_, err := tx.ExecContext(ctx, `
-				INSERT INTO list_work (list_id, work_id, added_at)
-				SELECT @list, id, rid FROM work WHERE kind = 'movie' AND rid <= 2000 AND rid % @every = 0`,
+				INSERT INTO list_work (list_id, work_id, added_at, position)
+				SELECT @list, id, rid, -rid FROM work WHERE kind = 'movie' AND rid <= 2000 AND rid % @every = 0`,
 				sql.Named("list", list), sql.Named("every", every))
 			return err
 		})
@@ -524,6 +530,80 @@ func smartViewer(t *testing.T, db *store.DB, q *query.Service, libs ...id.ID) (u
 		t.Fatal(err)
 	}
 	return v, out
+}
+
+// manualList is a manual list the budgets time, of works top-level works.
+type manualList struct {
+	name  string
+	id    id.ID
+	works int
+}
+
+// manualViewer is a third budgetViewer with large manual lists of the
+// top-level works the user sees, movies and then series: one of 500 in its
+// custom order, and one of 5,000 in each of the custom order, by title and
+// by rating.
+func manualViewer(t *testing.T, db *store.DB, libs ...id.ID) (users.Viewer, []manualList) {
+	t.Helper()
+	v := budgetViewer(t, db, "lists", libs...)
+	svc := users.New(db, events.NewBus())
+	var out []manualList
+	for _, l := range []struct {
+		works int
+		sort  users.ListSort
+	}{{500, users.ListCustom}, {5000, users.ListCustom}, {5000, users.ListTitle}, {5000, users.ListRating}} {
+		name := fmt.Sprintf("manual list, %d titles, %s", l.works, l.sort)
+		list, err := svc.CreateList(ctx, v, name, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := svc.UpdateList(ctx, v, list, nil, nil, &l.sort); err != nil {
+			t.Fatal(err)
+		}
+		var among any // every library, for a user with them all
+		if len(libs) > 0 {
+			among = id.Set(libs...)
+		}
+		err = db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
+			_, err := tx.ExecContext(ctx, `
+				INSERT INTO list_work (list_id, work_id, added_at, position)
+				SELECT @list, w.id, w.rid, 4294967296 * row_number() OVER (ORDER BY w.kind, w.rid)
+				FROM work w
+				JOIN work_library wl ON wl.work_id = w.id
+				WHERE wl.is_root AND (@libraries IS NULL OR wl.library_id IN (SELECT unhex(value) FROM json_each(@libraries)))
+				ORDER BY w.kind, w.rid
+				LIMIT @works`,
+				sql.Named("list", list), sql.Named("works", l.works), sql.Named("libraries", among))
+			return err
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		out = append(out, manualList{name, list, l.works})
+	}
+	return v, out
+}
+
+// manualCases are the reads of the manual lists: each one's first page,
+// which counts its works, held to browseBudget, and a page halfway down
+// it, held to later.
+func manualCases(q *query.Service, v users.Viewer, lists []manualList, later time.Duration) []budgetCase {
+	var tests []budgetCase
+	for _, l := range lists {
+		page := func(o query.GridOptions) func() error {
+			return func() error {
+				p, err := q.ListWorks(ctx, v, l.id, nil, "", o)
+				if err == nil && (len(p.Items) != 60 || o.Offset == 0 && p.Total != l.works) {
+					err = fmt.Errorf("%s: %d works of %d at %d", l.name, len(p.Items), p.Total, o.Offset)
+				}
+				return err
+			}
+		}
+		tests = append(tests,
+			budgetCase{l.name, browseBudget, true, page(query.GridOptions{})},
+			budgetCase{l.name + ", later page", later, true, page(query.GridOptions{Offset: l.works / 2})})
+	}
+	return tests
 }
 
 // smartDefs are the smart lists the budgets time, over generate's works.

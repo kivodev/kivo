@@ -99,7 +99,7 @@ class SessionLibrary internal constructor(
     fun lists(counted: Boolean = false): Flow<Load<List<WorkList>>> =
         reachability.load(listWorks.lists(counted).onEach { lists -> lists.forEach { seen.read(it.items.orEmpty()) } })
 
-    /** A list's works of [kinds], or every kind when null, as a grid, most recently added first, read again in place as they change. */
+    /** A list's works of [kinds], or every kind when null, as a grid, a manual list's in its sort, read again in place as they change. */
     fun pagedListWorks(listId: String, kinds: List<String>?): GridPager<WorkSummary> = paged(
         "list $listId $kinds",
         listWorks.changes(),
@@ -116,6 +116,18 @@ class SessionLibrary internal constructor(
     /** Renames a list when [name] is given and, for a smart list, replaces its rules with [query] when given, as one change. */
     @Throws(Exception::class)
     suspend fun updateList(id: String, name: String?, query: WorkQuery? = null): WorkList = listWorks.update(id, name, query)
+
+    /** Sets the order a manual list is shown in, one of `ListSorts`, on every screen and device. */
+    @Throws(Exception::class)
+    suspend fun setListSort(id: String, sort: String): WorkList = listWorks.setSort(id, sort)
+
+    /** Every work of a manual list in its custom order, whatever its sort, for a screen that moves them. */
+    @Throws(Exception::class)
+    suspend fun listWorksInCustomOrder(listId: String): List<WorkSummary> = listWorks.inCustomOrder(listId).also(seen::read)
+
+    /** Puts [workIds], in that order, just after [after] in a manual list's custom order, or first when it's null, and shows the list in that order. */
+    @Throws(Exception::class)
+    suspend fun moveInList(listId: String, workIds: List<String>, after: String?) = listWorks.move(listId, workIds, after)
 
     /** How many works [query] selects, for a builder's live count. */
     @Throws(Exception::class)

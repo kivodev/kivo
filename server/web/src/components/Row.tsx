@@ -130,6 +130,15 @@ export function Row<T>({
     return () => resized.disconnect();
   }, [measure, items.length]);
 
+  // A row whose first card changes goes back to its start. Left alone, the
+  // browser keeps the card the row was snapped to in place, and cards put
+  // ahead of it are off to its left. A TV's cards ride a track instead.
+  const firstKey = items[0] === undefined ? undefined : itemKey(items[0]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the first card's key is what changes.
+  useLayoutEffect(() => {
+    if (!isTv && list.current) list.current.scrollLeft = 0;
+  }, [firstKey]);
+
   // On TV, See all ends only a row longer than the screen, since a shorter
   // row already shows all there is, unless the row always ends in it.
   const seeAll = isTv && Boolean(action) && (endsInAction || items.length > tvFit);

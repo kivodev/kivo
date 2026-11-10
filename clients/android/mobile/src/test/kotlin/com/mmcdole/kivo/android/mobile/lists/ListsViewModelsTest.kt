@@ -15,6 +15,11 @@ import com.mmcdole.kivo.api.models.WorkFieldOp
 import com.mmcdole.kivo.api.models.WorkImages
 import com.mmcdole.kivo.api.models.WorkList
 import com.mmcdole.kivo.api.models.WorkListList
+import com.mmcdole.kivo.api.models.WorkSummaryPage
+import com.mmcdole.kivo.android.mobile.waitFor
+import com.mmcdole.kivo.core.data.ListSorts
+import io.ktor.http.content.OutgoingContent
+import java.util.concurrent.CopyOnWriteArrayList
 import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CompletableDeferred
@@ -149,6 +154,77 @@ class ListsViewModelsTest : CoreTest() {
         assertNull(runBlocking { model.create("Road Trip") })
         assertTrue("POST /api/v1/lists" in server.seen)
         assertTrue("POST /api/v1/lists/n/works" in server.seen)
+    }
+
+    /** A model of Date Night, whose custom order is a, b, c, with every move's body in [moves]. */
+    private fun reordering(moves: MutableList<String>, answer: suspend () -> Boolean = { true }): ListViewModel {
+        server.get("/api/v1/lists/d/works", WorkSummaryPage.serializer()) { WorkSummaryPage(listOf(work("a"), work("b"), work("c")), total = 3) }
+        server.on("POST", "/api/v1/lists/d/move") { request ->
+            moves += (request.body as OutgoingContent.ByteArrayContent).bytes().decodeToString()
+            if (answer()) respond("", HttpStatusCode.NoContent) else refuse(HttpStatusCode.Conflict, "conflict")
+        }
+        return held { ListViewModel(signIn(), "d") }
+    }
+
+    private fun rows(model: ListViewModel) = model.reorder.value?.works?.map { it.id }
+
+    @Test
+    fun reorderShowsTheCustomOrderAndSavesARowWhereItIsLetGo() {
+        val moves = CopyOnWriteArrayList<String>()
+        val model = reordering(moves)
+        assertNull(model.reorder.value)
+        model.startReorder()
+        awaitValue(model.reorder) { it?.works != null }
+        assertTrue(server.seen.any { it.startsWith("GET /api/v1/lists/d/works?") && "sort=custom" in it }, server.seen.toString())
+
+        // A drag passes over rows, and only letting go is sent.
+        model.moveRow(2, 1)
+        model.moveRow(1, 0)
+        assertEquals(listOf("c", "a", "b"), rows(model))
+        assertTrue(moves.isEmpty())
+        model.saveMove("c")
+        model.step(1, 1)
+        assertEquals(listOf("c", "b", "a"), rows(model))
+        model.step(2, 1)
+        waitFor { moves.size == 2 }
+        assertEquals(listOf("""{"workIds":["c"]}""", """{"workIds":["a"],"after":"b"}"""), moves.toList())
+
+        model.endReorder()
+        assertNull(model.reorder.value)
+    }
+
+    @Test
+    fun aRefusedMoveReadsTheOrderAgainAndSaysWhy() {
+        val answer = CompletableDeferred<Unit>()
+        val model = reordering(CopyOnWriteArrayList()) {
+            answer.await()
+            false
+        }
+        model.startReorder()
+        awaitValue(model.reorder) { it?.works != null }
+        model.step(0, 1)
+        assertEquals(listOf("b", "a", "c"), rows(model))
+        answer.complete(Unit)
+        assertEquals("conflict", awaitValue(model.problem) { it != null }?.code)
+        awaitValue(model.reorder) { state -> state?.works?.map { it.id } == listOf("a", "b", "c") }
+    }
+
+    @Test
+    fun aManualListsSortShowsAsChosenAndARefusedOneGoesBack() {
+        lists = listOf(myList, dateNight.copy(sort = "title"), WorkList("x", "Later", "smart", builtIn = false, workCount = 9))
+        val answer = CompletableDeferred<Unit>()
+        server.on("PATCH", "/api/v1/lists/d") {
+            answer.await()
+            refuse(HttpStatusCode.Conflict, "conflict")
+        }
+        val model = held { ListViewModel(signIn(), "d") }
+        assertEquals(ListSorts.TITLE, awaitValue(model.sort) { it != null })
+        model.chooseSort(ListSorts.RATING)
+        assertEquals(ListSorts.RATING, awaitValue(model.sort) { it != ListSorts.TITLE })
+        answer.complete(Unit)
+        assertEquals("conflict", awaitValue(model.problem) { it != null }?.code)
+        assertEquals(ListSorts.TITLE, awaitValue(model.sort) { it != ListSorts.RATING })
+
     }
 
     @Test

@@ -4,13 +4,16 @@ import { keysetPages } from "./pages";
 import { apiPaths, invalidatePaths, pathKey, readsPath, workViewPaths } from "./paths";
 import { retryPageDelay, shouldRetryPage } from "./problem";
 import type { paths } from "./schema";
-import type { ArtworkType, UserState, WorkDetail, WorkQueryRequest } from "./schemas";
+import type { ArtworkType, UserState, WorkDetail, WorkQueryRequest, WorkSummary } from "./schemas";
 
 /**
  * A library grid's read: a work query in the library, whose rules are the
  * grid's filters and whose sort is its order. `unmatched` is for admins.
  */
 export type GridRequest = Required<Pick<WorkQueryRequest, "query" | "library">> & Pick<WorkQueryRequest, "unmatched">;
+
+/** The most works the server gives in a page. */
+const orderPageSize = 200;
 
 /** A library grid's page size. Page i holds the items from i * gridPageSize. */
 export const gridPageSize = 100;
@@ -102,7 +105,7 @@ export const workQueries = {
   bookSeriesPage: (libraryId: string, index: number) =>
     groupPage("/api/v1/libraries/{id}/book-series", libraryId, index),
 
-  /** One page of a list's grid, most recently added first. */
+  /** One page of a list's grid, a manual list's in its sort. */
   listPage: (listId: string, index: number) =>
     gridPage(["get", apiPaths.listWorks, { params: { path: { id: listId } } }], index, async (offset, signal) => {
       const { data, error } = await client.GET("/api/v1/lists/{id}/works", {
@@ -112,6 +115,26 @@ export const workQueries = {
       if (error) throw error;
       return data;
     }),
+
+  /** Every work of a manual list in its custom order, whatever its sort: what Reorder shows. */
+  listOrder: (listId: string) => {
+    const query = { sort: "custom", limit: orderPageSize } as const;
+    return queryOptions({
+      queryKey: ["get", apiPaths.listWorks, { params: { path: { id: listId }, query } }] as const,
+      queryFn: async ({ signal }) => {
+        const works: WorkSummary[] = [];
+        for (;;) {
+          const { data, error } = await client.GET("/api/v1/lists/{id}/works", {
+            signal,
+            params: { path: { id: listId }, query: { ...query, offset: works.length || undefined } },
+          });
+          if (error) throw error;
+          works.push(...data.items);
+          if (data.items.length < orderPageSize) return works;
+        }
+      },
+    });
+  },
 
   /** The Unmatched list for every library, library by library, one keyset page at a time. */
   unmatched: () => {

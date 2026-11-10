@@ -1,6 +1,34 @@
 package com.mmcdole.kivo.android.mobile.lists
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.zIndex
+import com.mmcdole.kivo.android.mobile.library.CountSortLine
+import com.mmcdole.kivo.android.mobile.library.SortSheet
+import com.mmcdole.kivo.android.mobile.ui.Artwork
+import com.mmcdole.kivo.android.mobile.ui.cardCaption
+import com.mmcdole.kivo.android.mobile.ui.cardTitle
+import com.mmcdole.kivo.api.models.WorkSummary
+import com.mmcdole.kivo.core.data.ListSorts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -273,10 +301,12 @@ private fun EmptyShelf(modifier: Modifier) {
 }
 
 /**
- * An open list: its works in a grid, most recently added first, each card its
- * own work's shape; a list the user made has Rename and Delete in its
- * overflow. A smart list also has its count and a line of its rules at the
- * top, and Edit, which opens the builder on its query.
+ * An open list: its works in a grid, each card its own work's shape. A
+ * manual list's are in its sort, which the count line chooses, and its
+ * overflow has Reorder, which shows them as rows to move until Done; a
+ * list the user made also has Rename and Delete there. A smart list has
+ * its count and a line of its rules at the top, and Edit, which opens the
+ * builder on its query.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -289,26 +319,46 @@ fun ListScreen(session: ServerSession, id: String, name: String, nav: MobileNav)
     val grid = rememberSaveable(saver = LazyGridState.Saver) { LazyGridState() }
     var renaming by rememberSaveable { mutableStateOf(false) }
     var deleting by rememberSaveable { mutableStateOf(false) }
+    var sorting by rememberSaveable { mutableStateOf(false) }
     val title = list?.name ?: name
     val smart = list?.smart
+    val sort by model.sort.collectAsStateWithLifecycle()
+    val reorder by model.reorder.collectAsStateWithLifecycle()
+    BackHandler(reorder != null, model::endReorder)
     val rulesWords by model.rulesWords.collectAsStateWithLifecycle()
     val rulesProblem by model.problem.collectAsStateWithLifecycle()
     Scaffold(
         topBar = {
-            PageTopBar(title, nav::back) {
-                if (smart != null) {
-                    TextButton(onClick = { nav.open(smartListBuilderRoute(title, smart.query, id)) }, modifier = Modifier.testTag("smartListEdit")) {
+            PageTopBar(title, { if (reorder != null) model.endReorder() else nav.back() }) {
+                val open = list
+                when {
+                    reorder != null -> TextButton(onClick = model::endReorder, modifier = Modifier.testTag("reorderDone")) {
+                        Text(stringResource(R.string.mobile_done))
+                    }
+                    smart != null -> TextButton(onClick = { nav.open(smartListBuilderRoute(title, smart.query, id)) }, modifier = Modifier.testTag("smartListEdit")) {
                         Text(stringResource(R.string.mobile_smart_edit_short))
                     }
                 }
-                if (list?.builtIn == false) {
-                    ListMenu(onRename = { renaming = true }, onDelete = { deleting = true })
+                if (reorder == null && open != null && (open.isManual || !open.builtIn)) {
+                    ListMenu(
+                        onReorder = model::startReorder.takeIf { open.isManual },
+                        onRename = { renaming = true }.takeIf { !open.builtIn },
+                        onDelete = { deleting = true }.takeIf { !open.builtIn },
+                    )
                 }
             }
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            pages.total?.let { if (smart != null) SmartListLine(smart.query, it, rulesWords) }
+            val rows = reorder
+            if (rows != null) {
+                ReorderRows(rows.works, model::moveRow, model::saveMove, model::step)
+                return@Column
+            }
+            pages.total?.let { total ->
+                if (smart != null) SmartListLine(smart.query, total, rulesWords)
+                sort?.let { CountSortLine(pluralStringResource(R.plurals.mobile_count_titles, total, total), listSortShort(it)) { sorting = true } }
+            }
             BoxWithConstraints(Modifier.fillMaxSize()) {
                 val width = maxWidth - space(8)
                 val wide = LocalWide.current
@@ -350,6 +400,9 @@ fun ListScreen(session: ServerSession, id: String, name: String, nav: MobileNav)
             text = { Text(sentence(failure)) },
             confirmButton = { TextButton(onClick = model::dismissProblem) { Text(stringResource(R.string.mobile_ok)) } },
         )
+    }
+    if (sorting) {
+        SortSheet(ListSorts.all, sort ?: ListSorts.CUSTOM, { listSortName(it) }, { listSortDirection(it) }, model::chooseSort) { sorting = false }
     }
     if (renaming) {
         ListNameDialog(
@@ -406,14 +459,184 @@ private fun emptyMessage(smart: WorkListSmart?): String = when {
     else -> stringResource(R.string.mobile_smart_nothing_matches)
 }
 
+/** A list's overflow: those of Reorder, Rename and Delete it has. */
 @Composable
-private fun ListMenu(onRename: () -> Unit, onDelete: () -> Unit) {
+private fun ListMenu(onReorder: (() -> Unit)?, onRename: (() -> Unit)?, onDelete: (() -> Unit)?) {
     var open by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { open = true }, modifier = Modifier.testTag("listMenu")) { Icon(Icons.Default.MoreVert, stringResource(R.string.mobile_more)) }
         DropdownMenu(open, onDismissRequest = { open = false }) {
-            DropdownMenuItem(text = { Text(stringResource(R.string.mobile_rename)) }, onClick = { open = false; onRename() }, modifier = Modifier.testTag("renameList"))
-            DropdownMenuItem(text = { Text(stringResource(R.string.mobile_delete)) }, onClick = { open = false; onDelete() }, modifier = Modifier.testTag("deleteList"))
+            for ((label, tag, action) in listOf(
+                Triple(R.string.mobile_reorder, "reorderList", onReorder),
+                Triple(R.string.mobile_rename, "renameList", onRename),
+                Triple(R.string.mobile_delete, "deleteList", onDelete),
+            )) {
+                if (action != null) DropdownMenuItem(text = { Text(stringResource(label)) }, onClick = { open = false; action() }, modifier = Modifier.testTag(tag))
+            }
+        }
+    }
+}
+
+@Composable
+private fun listSortName(sort: String) = stringResource(
+    when (sort) {
+        ListSorts.TITLE -> R.string.mobile_sort_title
+        ListSorts.RELEASE_DATE -> R.string.mobile_sort_release
+        ListSorts.RATING -> R.string.mobile_sort_rating
+        ListSorts.DATE_ADDED -> R.string.mobile_sort_added_to_list
+        else -> R.string.mobile_sort_custom
+    },
+)
+
+/** Which way a sort runs; the custom order runs as the user put it. */
+@Composable
+private fun listSortDirection(sort: String): String? = when (sort) {
+    ListSorts.TITLE -> R.string.mobile_a_to_z
+    ListSorts.RELEASE_DATE, ListSorts.DATE_ADDED -> R.string.mobile_newest_first
+    ListSorts.RATING -> R.string.mobile_highest_first
+    else -> null
+}?.let { stringResource(it) }
+
+/** The sort in a word or two, for the count line. */
+@Composable
+private fun listSortShort(sort: String) = stringResource(
+    when (sort) {
+        ListSorts.TITLE -> R.string.mobile_sort_short_title
+        ListSorts.RELEASE_DATE -> R.string.mobile_sort_short_release
+        ListSorts.RATING -> R.string.mobile_sort_short_rating
+        ListSorts.DATE_ADDED -> R.string.mobile_sort_short_added
+        else -> R.string.mobile_sort_custom
+    },
+)
+
+/** A reorder row's height, and its poster's width. */
+private val ReorderRowHeight = 76.dp
+private val ReorderPosterWidth = 40.dp
+
+/**
+ * Reorder: the list's works in its custom order as rows, each a small
+ * poster, its title and the line under it, and a handle at the right. A
+ * drag by the handle moves the row past the rows it crosses, [onMove], and
+ * letting go saves its place, [onDrop]. The handle also takes Move up and
+ * Move down from a screen reader, and the up and down keys, [onStep].
+ */
+@Composable
+private fun ReorderRows(works: List<WorkSummary>?, onMove: (Int, Int) -> Unit, onDrop: (String) -> Unit, onStep: (Int, Int) -> Unit) {
+    if (works == null) {
+        Loading()
+        return
+    }
+    val state = rememberLazyListState()
+    val shown by rememberUpdatedState(works)
+    var dragging by remember { mutableStateOf<String?>(null) }
+    // How far the dragged row is from where the list lays it out.
+    var lift by remember { mutableFloatStateOf(0f) }
+    LazyColumn(Modifier.fillMaxSize().testTag("reorderRows"), state, contentPadding = PaddingValues(vertical = space(2))) {
+        itemsIndexed(works, key = { _, work -> work.id }) { index, work ->
+            val held = dragging == work.id
+            val drag = Modifier.pointerInput(work.id) {
+                detectDragGestures(
+                    onDragStart = {
+                        dragging = work.id
+                        lift = 0f
+                    },
+                    onDragEnd = {
+                        dragging = null
+                        onDrop(work.id)
+                    },
+                    onDragCancel = {
+                        dragging = null
+                        onDrop(work.id)
+                    },
+                ) { change, amount ->
+                    change.consume()
+                    lift += amount.y
+                    val layout = state.layoutInfo
+                    val row = layout.visibleItemsInfo.firstOrNull { it.key == work.id } ?: return@detectDragGestures
+                    // The list hasn't laid out the last move yet.
+                    if (shown.getOrNull(row.index)?.id != work.id) return@detectDragGestures
+                    val top = row.offset + lift
+                    // Near an edge the list scrolls under the row.
+                    val past = when {
+                        top < layout.viewportStartOffset -> top - layout.viewportStartOffset
+                        top + row.size > layout.viewportEndOffset -> top + row.size - layout.viewportEndOffset
+                        else -> 0f
+                    }
+                    val middle = top + row.size / 2
+                    if (past != 0f) lift += state.dispatchRawDelta(past)
+                    val over = layout.visibleItemsInfo.firstOrNull { it.key != work.id && middle > it.offset && middle < it.offset + it.size }
+                    if (over != null) {
+                        // A move of the first row shown would scroll the list after it.
+                        if (row.index == state.firstVisibleItemIndex || over.index == state.firstVisibleItemIndex) {
+                            state.requestScrollToItem(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset)
+                        }
+                        lift += row.offset - over.offset
+                        onMove(row.index, over.index)
+                    }
+                }
+            }
+            ReorderRow(
+                work,
+                held,
+                if (held) Modifier.zIndex(1f).graphicsLayer { translationY = lift } else Modifier.animateItem(),
+                drag,
+                up = { onStep(index, -1) }.takeIf { index > 0 },
+                down = { onStep(index, 1) }.takeIf { index < works.lastIndex },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReorderRow(work: WorkSummary, held: Boolean, modifier: Modifier, drag: Modifier, up: (() -> Unit)?, down: (() -> Unit)?) {
+    val title = cardTitle(work)
+    val moveUp = stringResource(R.string.mobile_move_up)
+    val moveDown = stringResource(R.string.mobile_move_down)
+    val handle = stringResource(R.string.mobile_reorder_work, title)
+    Surface(
+        modifier.fillMaxWidth().height(ReorderRowHeight).testTag("reorderRow:${work.id}"),
+        color = if (held) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.background,
+        contentColor = MaterialTheme.colorScheme.onBackground,
+        shadowElevation = if (held) 6.dp else 0.dp,
+    ) {
+        Row(Modifier.padding(start = space(4)), verticalAlignment = Alignment.CenterVertically) {
+            Artwork(
+                work.images.poster ?: work.images.still,
+                ReorderPosterWidth,
+                Modifier.width(ReorderPosterWidth).aspectRatio(CardShape.Poster.aspect).clip(RoundedCornerShape(4.dp)),
+            )
+            Column(Modifier.weight(1f).padding(horizontal = space(3))) {
+                Text(title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                cardCaption(work)?.let {
+                    Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            Box(
+                Modifier
+                    .size(56.dp, ReorderRowHeight)
+                    .onKeyEvent { event ->
+                        val step = when (event.key) {
+                            Key.DirectionUp -> up
+                            Key.DirectionDown -> down
+                            else -> null
+                        }
+                        if (step != null && event.type == KeyEventType.KeyDown) step()
+                        step != null
+                    }
+                    .focusable()
+                    .then(drag)
+                    .semantics {
+                        contentDescription = handle
+                        customActions = listOfNotNull(
+                            up?.let { CustomAccessibilityAction(moveUp) { it(); true } },
+                            down?.let { CustomAccessibilityAction(moveDown) { it(); true } },
+                        )
+                    }
+                    .testTag("reorderHandle:${work.id}"),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Default.DragHandle, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }

@@ -34,6 +34,7 @@ import kotlinx.serialization.encoding.*
  *
  * @param name 
  * @param smart Replaces a smart list's rules; a manual list has none.
+ * @param sort Sets the order a manual list is shown in; a smart list has none.
  */
 @Serializable
 
@@ -42,7 +43,10 @@ data class ListUpdate (
     @SerialName(value = "name") val name: kotlin.String? = null,
 
     /* Replaces a smart list's rules; a manual list has none. */
-    @SerialName(value = "smart") val smart: SmartQuery? = null
+    @SerialName(value = "smart") val smart: SmartQuery? = null,
+
+    /* Sets the order a manual list is shown in; a smart list has none. */
+    @SerialName(value = "sort") val sort: kotlin.String? = null
 
 ) {
 

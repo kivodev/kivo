@@ -111,6 +111,8 @@
     <string name="mobile_sort_runtime">Runtime</string>
     <string name="mobile_sort_last_played">Last played</string>
     <string name="mobile_sort_author">Author</string>
+    <string name="mobile_sort_custom">Custom order</string>
+    <string name="mobile_sort_added_to_list">Date added to list</string>
     <string name="mobile_a_to_z">A to Z</string>
     <string name="mobile_newest_first">Newest first</string>
     <string name="mobile_highest_first">Highest first</string>
@@ -276,6 +278,8 @@
     <string name="mobile_create">Create</string>
     <string name="mobile_rename">Rename</string>
     <string name="mobile_rename_list">Rename List</string>
+    <string name="mobile_reorder">Reorder</string>
+    <string name="mobile_reorder_work">Reorder %1$s</string>
     <string name="mobile_delete_list_note">The titles stay in your libraries.</string>
     <string name="mobile_delete_named">Delete %1$s?</string>
     <string name="mobile_new_list_menu">New</string>
