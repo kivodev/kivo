@@ -130,11 +130,14 @@ function TvLists({ lists, autoFocus }: { lists: WorkList[]; autoFocus: boolean }
   );
 }
 
-/** The lists as cards, as many across as fit: manual lists, then smart ones, each by name. */
+/** The lists as cards, two across on a phone and as many as fit wider: manual lists, then smart ones, each by name. */
 function ListCards({ lists }: { lists: WorkList[] }) {
   const ordered = [...lists.filter((list) => list.kind !== "smart"), ...lists.filter((list) => list.kind === "smart")];
   return (
-    <ul data-part="list-cards" className="grid max-w-page grid-cols-(--layout-landscape-grid) gap-x-5 gap-y-7">
+    <ul
+      data-part="list-cards"
+      className="grid max-w-page grid-cols-2 gap-x-(--layout-grid-gap) gap-y-6 sm:grid-cols-(--layout-landscape-grid) sm:gap-x-5 sm:gap-y-7"
+    >
       {ordered.map((list) => (
         <li key={list.id} className="min-w-0">
           <ListCard list={list} />
