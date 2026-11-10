@@ -971,8 +971,8 @@ func TestLibraryScanStatusFromItsScan(t *testing.T) {
 		p.RemainingMs == nil || *p.RemainingMs != int((3*time.Minute).Milliseconds()) {
 		t.Errorf("probing 10 of 40 in a minute: %+v %+v", a, a.Progress)
 	}
-	// Files waiting to be identified show as matching, with no progress,
-	// only while no scan of the library runs or is asked for.
+	// Files being identified show as matching, with no progress, only
+	// while no scan of the library runs or is asked for.
 	if a := libraryScanStatus(lib, []tasks.Item{other, probing}, nil, 3, now); a.Progress == nil || a.Progress.Step != gen.ScanStepProbe || a.Progress.Done != 10 {
 		t.Errorf("probing with files waiting: %+v %+v", a, a.Progress)
 	}
@@ -990,11 +990,17 @@ func TestLibraryScanStatusFromItsScan(t *testing.T) {
 	if a := libraryScanStatus(lib, nil, nil, 0, now); a.State != "unreachable" {
 		t.Errorf("a folder unreachable: %+v", a)
 	}
+	if a := libraryScanStatus(lib, nil, nil, 3, now); a.State != "unreachable" {
+		t.Errorf("a folder unreachable with files being identified: %+v", a)
+	}
 }
 
 // A library whose files are read but not yet identified lists as matching,
-// with no progress, until the identify task has identified them. A library whose files are all identified, matched or
-// unmatched, is idle. One listing reads each library's own state.
+// with no progress, while the identify task is at work and until it has
+// identified them. Files waiting while it isn't, as during a provider
+// outage, leave the library idle. A library whose files are all
+// identified, matched or unmatched, is idle. One listing reads each
+// library's own state.
 func TestLibraryMatchingUntilIdentified(t *testing.T) {
 	e := newEnv(t, serving{})
 	// Home videos are identified without a provider.
@@ -1018,9 +1024,14 @@ func TestLibraryMatchingUntilIdentified(t *testing.T) {
 		}
 		return out
 	}
+	if s := statuses()[waiting.String()]; s["state"] != "idle" || s["progress"] != nil {
+		t.Errorf("with a file waiting and the identify task idle: %v", s)
+	}
+	// The runner isn't running yet, so the file stays asked for.
+	e.d.Tasks.Enqueue(identify.TaskIdentifyMedia, clip)
 	st := statuses()
 	if s := st[waiting.String()]; s["state"] != "matching" || s["progress"] != nil {
-		t.Errorf("with a file waiting: %v", s)
+		t.Errorf("with a file being identified: %v", s)
 	}
 	for _, lib := range []id.ID{done, e.lib} {
 		if s := st[lib.String()]; s["state"] != "idle" || s["progress"] != nil {

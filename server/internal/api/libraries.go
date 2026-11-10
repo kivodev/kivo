@@ -50,9 +50,11 @@ func (h *handlers) librariesOf(ctx context.Context, v users.Viewer, only *id.ID)
 		return nil, err
 	}
 	libs = slices.DeleteFunc(libs, func(l query.AdminLibrary) bool { return other(l.ID) })
-	waiting, err := h.deps.Identify.Waiting(ctx)
-	if err != nil {
-		return nil, err
+	var waiting map[id.ID]int
+	if identifying(h.deps.Tasks) {
+		if waiting, err = h.deps.Identify.Waiting(ctx); err != nil {
+			return nil, err
+		}
 	}
 	scans, asked, now := h.deps.Tasks.Items(scan.TaskScanLibraries), h.deps.Tasks.Asked(scan.TaskScanLibraries), time.Now()
 	out := make([]gen.Library, len(libs))

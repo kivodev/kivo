@@ -174,32 +174,39 @@ describe("Tasks", () => {
     });
   });
 
-  it("shows Identify media with what's left, then what it's doing, and never Run now", async () => {
+  it("shows matching on Scan all libraries with the files left and Stop, and no row of its own", async () => {
     const api = serveMockApi();
     for (const id of ["prepare-downloads", "library-changes"]) {
       const task = taskOf(api.tasks, id);
       task.running = false;
       delete task.progress;
     }
-    const identify = taskOf(api.tasks, "identify-media");
-    identify.pendingCount = 12;
-    renderApp("/admin/tasks");
-    await screen.findByRole("heading", { name: "On demand" });
-    expect(rows(section("On demand")).map(cells)).toEqual([["Identify media", "", "", "12 left", ""]]);
-
-    Object.assign(identify, { progress: { done: 0, total: 0 }, running: true, stoppable: true });
-    sendEvent({ type: "event", kind: "tasksChanged" });
-    await waitFor(() => expect(cells(rowOf(section("On demand"), "Identify media"))[3]).toBe("Identifying"), {
-      timeout: 3000,
+    Object.assign(taskOf(api.tasks, "scan-libraries"), {
+      progress: { step: "identify", done: 0, total: 0 },
+      pendingCount: 768,
+      running: true,
+      stoppable: true,
     });
-    expect(screen.queryByRole("button", { name: "Run Identify media now" })).not.toBeInTheDocument();
+    const { user } = renderApp("/admin/tasks");
+    await screen.findByRole("heading", { name: "Library" });
+    expect(screen.queryByRole("heading", { name: "On demand" })).not.toBeInTheDocument();
+    const scans = rowOf(section("Library"), "Scan all libraries");
+    expect(cells(scans)[3]).toBe("Matching768 left");
+    expect(within(scans).queryByRole("progressbar")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Identif/)).not.toBeInTheDocument();
+    await user.click(within(scans).getByRole("button", { name: "Stop Scan all libraries" }));
+    const confirm = await screen.findByRole("alertdialog", { name: "Stop Scan all libraries?" });
+    await user.click(within(confirm).getByRole("button", { name: "Stop" }));
+    await waitFor(() =>
+      expect(sent("POST", "/tasks/{task}/stop")[0]?.url.pathname).toBe("/api/v1/tasks/scan-libraries/stop"),
+    );
 
-    Object.assign(identify, { pendingCount: 0, running: false, stoppable: false });
-    delete identify.progress;
+    // Files left waiting with nothing at work leave the row idle.
+    taskOf(api.tasks, "scan-libraries").pendingCount = 0;
     sendEvent({ type: "event", kind: "tasksChanged" });
-    await waitFor(() => expect(screen.queryByRole("heading", { name: "On demand" })).not.toBeInTheDocument(), {
-      timeout: 3000,
-    });
+    await waitFor(() =>
+      expect(cells(rowOf(section("Library"), "Scan all libraries")).slice(3)).toEqual(["", "Run now"]),
+    );
   });
 
   it("runs a task now", async () => {

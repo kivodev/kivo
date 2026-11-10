@@ -8,6 +8,7 @@ export function useAdminLabels() {
   const stepNames: Record<string, string> = {
     walk: t`Finding files`,
     probe: t`Reading files`,
+    identify: t`Matching`,
     extractSubtitles: t`Extracting subtitles`,
     convert: t`Converting`,
   };
@@ -28,7 +29,6 @@ export function useAdminLabels() {
     "prepare-downloads": t`Preparing`,
     "extract-subtitles": t`Extracting`,
     "library-changes": t`Removing`,
-    "identify-media": t`Identifying`,
   };
   // A task's name on Tasks, in the order Tasks lists them: Library, Maintenance, Activity.
   const taskNames: Record<string, string> = {
@@ -48,7 +48,6 @@ export function useAdminLabels() {
     "optimize-database": t`Optimize database`,
     "prepare-downloads": t`Downloads`,
     "library-changes": t`Library changes`,
-    "identify-media": t`Identify media`,
   };
   const order = Object.keys(taskNames);
   return {

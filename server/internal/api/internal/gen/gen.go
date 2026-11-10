@@ -1426,7 +1426,6 @@ func (e SubtitleSource) Valid() bool {
 const (
 	TaskNameExtractSubtitles   TaskName = "extract-subtitles"
 	TaskNameFindMarkers        TaskName = "find-markers"
-	TaskNameIdentifyMedia      TaskName = "identify-media"
 	TaskNameLibraryChanges     TaskName = "library-changes"
 	TaskNameMakeBackup         TaskName = "make-backup"
 	TaskNameMakePreviews       TaskName = "make-previews"
@@ -1449,8 +1448,6 @@ func (e TaskName) Valid() bool {
 	case TaskNameExtractSubtitles:
 		return true
 	case TaskNameFindMarkers:
-		return true
-	case TaskNameIdentifyMedia:
 		return true
 	case TaskNameLibraryChanges:
 		return true
@@ -1510,6 +1507,7 @@ func (e TaskSection) Valid() bool {
 const (
 	TaskStepConvert          TaskStep = "convert"
 	TaskStepExtractSubtitles TaskStep = "extractSubtitles"
+	TaskStepIdentify         TaskStep = "identify"
 	TaskStepProbe            TaskStep = "probe"
 	TaskStepWalk             TaskStep = "walk"
 )
@@ -1520,6 +1518,8 @@ func (e TaskStep) Valid() bool {
 	case TaskStepConvert:
 		return true
 	case TaskStepExtractSubtitles:
+		return true
+	case TaskStepIdentify:
 		return true
 	case TaskStepProbe:
 		return true
@@ -3386,7 +3386,7 @@ type LibraryRef struct {
 }
 
 // LibraryScanState What a library's scan is doing: `scanning` while it's scanned,
-// `matching` while no scan runs and files wait to be identified,
+// `matching` while its files are being identified after that,
 // `unreachable` when a folder can't be read.
 type LibraryScanState string
 
@@ -3400,7 +3400,7 @@ type LibraryScanStatus struct {
 	Progress *ScanProgress `json:"progress,omitempty"`
 
 	// State What a library's scan is doing: `scanning` while it's scanned,
-	// `matching` while no scan runs and files wait to be identified,
+	// `matching` while its files are being identified after that,
 	// `unreachable` when a folder can't be read.
 	State LibraryScanState `json:"state"`
 }
@@ -4758,7 +4758,9 @@ type Task struct {
 	// Nightly Its runs begin as the maintenance window opens; else every so often.
 	Nightly bool `json:"nightly"`
 
-	// PendingCount What's left for its next run, while no run of it works; 0 otherwise.
+	// PendingCount What's left for its next run, while no run of it works; 0
+	// otherwise. On `scan-libraries` at step `identify`, the files left
+	// to identify.
 	PendingCount int `json:"pendingCount"`
 
 	// Progress How far a task has got, present while it's running: the items its
@@ -4846,9 +4848,10 @@ type TaskRun struct {
 type TaskSection string
 
 // TaskStep A step of a task's item in flight: a library scan's (see ScanStep),
-// `extractSubtitles`, a download's file having its subtitles
-// extracted, or `convert`, a download being converted. Skip steps you
-// don't know.
+// `identify`, the scanned files being identified once no library is
+// walked or probed, `extractSubtitles`, a download's file having its
+// subtitles extracted, or `convert`, a download being converted. Skip
+// steps you don't know.
 type TaskStep string
 
 // Track An audio, video or subtitle track. Kind-specific data is under its type's name.

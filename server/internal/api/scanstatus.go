@@ -6,17 +6,18 @@ import (
 
 	"github.com/mmcdole/kivo/internal/api/internal/gen"
 	"github.com/mmcdole/kivo/internal/id"
+	"github.com/mmcdole/kivo/internal/identify"
 	"github.com/mmcdole/kivo/internal/query"
 	"github.com/mmcdole/kivo/internal/tasks"
 )
 
 // libraryScanStatus builds a library's scan status from the scans in
-// flight, the scans asked for and its count of files waiting to be
-// identified. It reports the step the scan is on, how far it has got, and
-// the time left in the step at the rate so far ("Reading files · 1,240 of
-// 3,100 · about 4 minutes left"). A scan that was asked for counts as
-// scanning before it starts. A library not scanning with files waiting is
-// matching, with no progress.
+// flight, the scans asked for and its count of files being identified. It
+// reports the step the scan is on, how far it has got, and the time left in
+// the step at the rate so far ("Reading files · 1,240 of 3,100 · about 4
+// minutes left"). A scan that was asked for counts as scanning before it
+// starts. An idle library with files being identified is matching, with no
+// progress. A folder that can't be read shows over matching.
 func libraryScanStatus(l query.AdminLibrary, scans []tasks.Item, asked []id.ID, waiting int, now time.Time) gen.LibraryScanStatus {
 	s := gen.LibraryScanStatus{LibraryID: l.ID, State: gen.LibraryScanStateIdle}
 	for _, f := range l.Folders {
@@ -42,8 +43,15 @@ func libraryScanStatus(l query.AdminLibrary, scans []tasks.Item, asked []id.ID, 
 		}
 		s.Progress = p
 	}
-	if s.State != gen.LibraryScanStateScanning && waiting > 0 {
+	if s.State == gen.LibraryScanStateIdle && waiting > 0 {
 		s.State = gen.LibraryScanStateMatching
 	}
 	return s
+}
+
+// identifying reports whether the identify task is at work: it has files in
+// flight or asked for. Files merely waiting, as between the hourly tries
+// during a provider outage, don't count.
+func identifying(r *tasks.Runner) bool {
+	return len(r.Items(identify.TaskIdentifyMedia)) > 0 || len(r.Asked(identify.TaskIdentifyMedia)) > 0
 }

@@ -68,7 +68,7 @@ describe("Admin Libraries", () => {
     expect(screen.queryByText(/View progress in/)).not.toBeInTheDocument();
   });
 
-  it("shows Matching with no count or Stop while files wait to be identified, until they are", async () => {
+  it("shows Matching with no count or Stop while its files are being identified, then nothing", async () => {
     const api = serveMockApi();
     movies(api).scan = { libraryId: mockIds.movies, state: "matching" };
     renderApp("/admin/libraries");
