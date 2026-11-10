@@ -1634,9 +1634,9 @@ paths:
       operationId: listListWorks
       summary: List a list's works
       description: |
-        A list's works the user sees: a manual list's in its `sort`, a
-        smart list's as its rules select them. With `kind`, only
-        those kinds. A smart list whose rules no longer run is empty. A grid, paged by `offset`, with `total` on
+        A list's works the user sees: a manual list's in its `sort`, or in
+        the `sort` asked for, a smart list's as its rules select them. With
+        `kind`, only those kinds. A smart list whose rules no longer run is empty. A grid, paged by `offset`, with `total` on
         the first page (offset 0) only.
       tags: [works]
       x-kivo-access: viewer
@@ -1649,6 +1649,13 @@ paths:
           schema:
             type: array
             items: {$ref: "#/components/schemas/WorkKind"}
+        - name: sort
+          in: query
+          description: |
+            Lists a manual list's works in this order, whatever its own
+            `sort`: `custom` is what a screen that moves them shows. A
+            smart list ignores it.
+          schema: {$ref: "#/components/schemas/ListSort"}
         - {$ref: "#/components/parameters/Offset"}
         - {$ref: "#/components/parameters/Limit"}
       responses:
@@ -5210,9 +5217,6 @@ components:
             Works in the list the user sees. A smart list's is 0 except in
             `listLists` with `counts`; the first page of its works has the
             count as `total`.
-        sort:
-          $ref: "#/components/schemas/ListSort"
-          description: The order a manual list's works are in, wherever they are listed. A smart list has none.
         smart: {$ref: "#/components/schemas/WorkListSmart"}
         items:
           type: array
@@ -5220,6 +5224,9 @@ components:
             The list's first works the user sees, up to 20, in the list's
             order, as a Home row has them. Set by `listLists` with `counts`.
           items: {$ref: "#/components/schemas/WorkSummary"}
+        sort:
+          $ref: "#/components/schemas/ListSort"
+          description: The order a manual list's works are in, wherever they are listed. A smart list has none.
 
     ListKind:
       type: string

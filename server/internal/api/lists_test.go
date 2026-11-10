@@ -139,6 +139,14 @@ func TestListOrder(t *testing.T) {
 	if w := e.do("PATCH", path, e.adminToken, map[string]any{"sort": "title"}); w.Code != http.StatusOK || *decode[listJSON](t, w).Sort != "title" {
 		t.Fatalf("sorting Watchlist: %d %s", w.Code, w.Body.String())
 	}
+	// A read can ask for the custom order of a list sorted otherwise.
+	custom := decode[struct{ Items []struct{ ID string } }](t, e.do("GET", path+"/works?sort=custom", e.adminToken, nil)).Items
+	if len(custom) != 3 || custom[0].ID != episode || custom[1].ID != series || custom[2].ID != heat {
+		t.Errorf("the custom order of a list sorted by title: %v", custom)
+	}
+	if w := e.do("GET", path+"/works?sort=shuffled", e.adminToken, nil); w.Code != http.StatusBadRequest {
+		t.Errorf("a read in an unknown sort: %d", w.Code)
+	}
 	move := func(token string, body map[string]any) int {
 		return e.do("POST", path+"/move", token, body).Code
 	}

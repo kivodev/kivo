@@ -120,7 +120,11 @@ func (h *handlers) ListListWorks(ctx context.Context, req gen.ListListWorksReque
 	if err != nil {
 		return nil, err
 	}
-	page, err := h.deps.Query.ListWorks(ctx, callerOf(ctx).viewer, req.ID, kinds, o)
+	sort := users.ListSort(deref(req.Params.Sort))
+	if sort != "" && !sort.Valid() {
+		return nil, invalid("unknown sort", field("sort", "invalid"))
+	}
+	page, err := h.deps.Query.ListWorks(ctx, callerOf(ctx).viewer, req.ID, kinds, sort, o)
 	if err != nil {
 		return nil, err
 	}

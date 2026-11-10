@@ -5663,6 +5663,11 @@ type ListListWorksParams struct {
 	// Kind Only these kinds.
 	Kind *[]WorkKind `form:"kind,omitempty" json:"kind,omitempty"`
 
+	// Sort Lists a manual list's works in this order, whatever its own
+	// `sort`: `custom` is what a screen that moves them shows. A
+	// smart list ignores it.
+	Sort *ListSort `form:"sort,omitempty" json:"sort,omitempty"`
+
 	// Offset How many items to skip from the start.
 	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
 
@@ -7975,6 +7980,19 @@ func (siw *ServerInterfaceWrapper) ListListWorks(w http.ResponseWriter, r *http.
 			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "kind"})
 		} else {
 			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "kind", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "sort" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "sort", r.URL.Query(), &params.Sort, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "sort"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sort", Err: err})
 		}
 		return
 	}

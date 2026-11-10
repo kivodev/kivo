@@ -193,11 +193,11 @@ func (s *Service) List(ctx context.Context, v users.Viewer, list id.ID) (List, e
 	return out, nil
 }
 
-// ListWorks returns a page of a list's works: a manual list's in the order
-// it is shown in, a smart list's as its rules select them. It lists those
-// of kinds, or every kind when kinds is empty. The first page, at offset 0,
-// has the Total; a later page's is 0.
-func (s *Service) ListWorks(ctx context.Context, v users.Viewer, list id.ID, kinds []catalog.WorkKind, o GridOptions) (GridPage[WorkSummary], error) {
+// ListWorks returns a page of a list's works: a manual list's in sort, or
+// in the order it is shown in when sort is empty, a smart list's as its
+// rules select them. It lists those of kinds, or every kind when kinds is
+// empty. The first page, at offset 0, has the Total; a later page's is 0.
+func (s *Service) ListWorks(ctx context.Context, v users.Viewer, list id.ID, kinds []catalog.WorkKind, sort users.ListSort, o GridOptions) (GridPage[WorkSummary], error) {
 	limit, err := o.limit()
 	if err != nil {
 		return GridPage[WorkSummary]{}, err
@@ -213,6 +213,9 @@ func (s *Service) ListWorks(ctx context.Context, v users.Viewer, list id.ID, kin
 		}
 		if saved.Valid {
 			l.Smart = parseSmart(saved.String)
+		}
+		if sort != "" {
+			l.Sort = sort
 		}
 		q, rd, ok := l.reads()
 		if !ok {

@@ -63,7 +63,7 @@ func TestBudgets(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			_, err = q.ListWorks(ctx, v, lists[0].ID, nil, query.GridOptions{})
+			_, err = q.ListWorks(ctx, v, lists[0].ID, nil, "", query.GridOptions{})
 			return err
 		}},
 		budgetCase{"search", searchBudget, true, func() error { _, err := q.Search(ctx, v, "movie 123", 0); return err }},
@@ -196,7 +196,7 @@ func smartCases(q *query.Service, v users.Viewer, smart []smartList, later time.
 	for _, l := range smart {
 		enforce := slices.Contains(held, l.name)
 		page := func(o query.GridOptions) func() error {
-			return func() error { _, err := q.ListWorks(ctx, v, l.id, nil, o); return err }
+			return func() error { _, err := q.ListWorks(ctx, v, l.id, nil, "", o); return err }
 		}
 		scroll := later
 		if l.nested {
@@ -592,7 +592,7 @@ func manualCases(q *query.Service, v users.Viewer, lists []manualList, later tim
 	for _, l := range lists {
 		page := func(o query.GridOptions) func() error {
 			return func() error {
-				p, err := q.ListWorks(ctx, v, l.id, nil, o)
+				p, err := q.ListWorks(ctx, v, l.id, nil, "", o)
 				if err == nil && (len(p.Items) != 60 || o.Offset == 0 && p.Total != l.works) {
 					err = fmt.Errorf("%s: %d works of %d at %d", l.name, len(p.Items), p.Total, o.Offset)
 				}

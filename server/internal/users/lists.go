@@ -110,38 +110,42 @@ func (s *Service) UpdateList(ctx context.Context, v Viewer, list id.ID, name, qu
 	err := s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
 		q := dbq.New(tx)
 		l, err := ownList(ctx, q, v, list)
-		if err != nil {
+		switch {
+		case err != nil:
 			return err
-		}
-		if l.BuiltIn && (name != nil || query != nil) {
+		case l.BuiltIn && (name != nil || query != nil):
 			return ErrListBuiltIn
-		}
-		if query != nil && !l.Smart || sort != nil && l.Smart {
+		case query != nil && !l.Smart, sort != nil && l.Smart:
 			return ErrListKind
 		}
-		if name != nil {
-			err := q.RenameList(ctx, dbq.RenameListParams{ID: list, Name: *name})
-			if store.IsUnique(err) {
-				return fmt.Errorf("%w: %q", ErrListNameTaken, *name)
-			}
-			if err != nil {
-				return err
-			}
-		}
-		if sort != nil {
-			if err := q.SetListSort(ctx, dbq.SetListSortParams{ID: list, Sort: string(*sort)}); err != nil {
-				return err
-			}
-		}
-		if query != nil {
-			return q.SetListQuery(ctx, dbq.SetListQueryParams{ID: list, Query: nullableString(query)})
-		}
-		return nil
+		return writeList(ctx, q, list, name, query, sort)
 	})
 	if err != nil {
 		return err
 	}
 	s.publishListsChanged(v)
+	return nil
+}
+
+// writeList writes those of a list's name, rules and sort that are set.
+func writeList(ctx context.Context, q *dbq.Queries, list id.ID, name, query *string, sort *ListSort) error {
+	if name != nil {
+		err := q.RenameList(ctx, dbq.RenameListParams{ID: list, Name: *name})
+		if store.IsUnique(err) {
+			return fmt.Errorf("%w: %q", ErrListNameTaken, *name)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if sort != nil {
+		if err := q.SetListSort(ctx, dbq.SetListSortParams{ID: list, Sort: string(*sort)}); err != nil {
+			return err
+		}
+	}
+	if query != nil {
+		return q.SetListQuery(ctx, dbq.SetListQueryParams{ID: list, Query: nullableString(query)})
+	}
 	return nil
 }
 

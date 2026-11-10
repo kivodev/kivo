@@ -441,14 +441,14 @@ func TestSmartReadsSelectOnce(t *testing.T) {
 			if _, err := q.List(ctx, v, list); err != nil {
 				return err
 			}
-			p, err := q.ListWorks(ctx, v, list, nil, query.GridOptions{Limit: 20})
+			p, err := q.ListWorks(ctx, v, list, nil, "", query.GridOptions{Limit: 20})
 			if err == nil && (p.Total <= 20 || len(p.Items) != 20) {
 				t.Errorf("the first page has %d works of %d, want 20 of more", len(p.Items), p.Total)
 			}
 			return err
 		}},
 		{"a list's later page", 1, 0, func() error {
-			p, err := q.ListWorks(ctx, v, list, nil, query.GridOptions{Offset: 20, Limit: 20})
+			p, err := q.ListWorks(ctx, v, list, nil, "", query.GridOptions{Offset: 20, Limit: 20})
 			if err == nil && (p.Total != 0 || len(p.Items) == 0) {
 				t.Errorf("a later page has %d works and the total %d, want works and no total", len(p.Items), p.Total)
 			}

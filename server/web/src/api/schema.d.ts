@@ -1093,9 +1093,9 @@ export interface paths {
         };
         /**
          * List a list's works
-         * @description A list's works the user sees: a manual list's in its `sort`, a
-         *     smart list's as its rules select them. With `kind`, only
-         *     those kinds. A smart list whose rules no longer run is empty. A grid, paged by `offset`, with `total` on
+         * @description A list's works the user sees: a manual list's in its `sort`, or in
+         *     the `sort` asked for, a smart list's as its rules select them. With
+         *     `kind`, only those kinds. A smart list whose rules no longer run is empty. A grid, paged by `offset`, with `total` on
          *     the first page (offset 0) only.
          */
         get: operations["listListWorks"];
@@ -3760,14 +3760,14 @@ export interface components {
              *     count as `total`.
              */
             workCount: number;
-            /** @description The order a manual list's works are in, wherever they are listed. A smart list has none. */
-            sort?: components["schemas"]["ListSort"];
             smart?: components["schemas"]["WorkListSmart"];
             /**
              * @description The list's first works the user sees, up to 20, in the list's
              *     order, as a Home row has them. Set by `listLists` with `counts`.
              */
             items?: components["schemas"]["WorkSummary"][];
+            /** @description The order a manual list's works are in, wherever they are listed. A smart list has none. */
+            sort?: components["schemas"]["ListSort"];
         };
         /**
          * @description What a list is. `manual` is works the user added; `smart` is the works rules select. Skip kinds you don't know.
@@ -7553,6 +7553,12 @@ export interface operations {
             query?: {
                 /** @description Only these kinds. */
                 kind?: components["schemas"]["WorkKind"][];
+                /**
+                 * @description Lists a manual list's works in this order, whatever its own
+                 *     `sort`: `custom` is what a screen that moves them shows. A
+                 *     smart list ignores it.
+                 */
+                sort?: components["schemas"]["ListSort"];
                 /** @description How many items to skip from the start. */
                 offset?: components["parameters"]["Offset"];
                 /** @description Page size. The default and the most a page holds depend on the listing. */

@@ -450,15 +450,16 @@ open class WorksApi : ApiClient {
 
     /**
      * List a list&#39;s works
-     * A list&#39;s works the user sees: a manual list&#39;s in its &#x60;sort&#x60;, a smart list&#39;s as its rules select them. With &#x60;kind&#x60;, only those kinds. A smart list whose rules no longer run is empty. A grid, paged by &#x60;offset&#x60;, with &#x60;total&#x60; on the first page (offset 0) only. 
+     * A list&#39;s works the user sees: a manual list&#39;s in its &#x60;sort&#x60;, or in the &#x60;sort&#x60; asked for, a smart list&#39;s as its rules select them. With &#x60;kind&#x60;, only those kinds. A smart list whose rules no longer run is empty. A grid, paged by &#x60;offset&#x60;, with &#x60;total&#x60; on the first page (offset 0) only. 
      * @param id 
      * @param kind Only these kinds. (optional)
+     * @param sort Lists a manual list&#39;s works in this order, whatever its own &#x60;sort&#x60;: &#x60;custom&#x60; is what a screen that moves them shows. A smart list ignores it.  (optional)
      * @param offset How many items to skip from the start. (optional)
      * @param limit Page size. The default and the most a page holds depend on the listing. (optional)
      * @return WorkSummaryPage
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun listListWorks(id: kotlin.String, kind: kotlin.collections.List<kotlin.String>? = null, offset: kotlin.Int? = null, limit: kotlin.Int? = null): HttpResponse<WorkSummaryPage> {
+    open suspend fun listListWorks(id: kotlin.String, kind: kotlin.collections.List<kotlin.String>? = null, sort: kotlin.String? = null, offset: kotlin.Int? = null, limit: kotlin.Int? = null): HttpResponse<WorkSummaryPage> {
 
         val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
 
@@ -467,6 +468,7 @@ open class WorksApi : ApiClient {
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         kind?.apply { localVariableQuery["kind"] = toMultiValue(this, "multi") }
+        sort?.apply { localVariableQuery["sort"] = listOf("$sort") }
         offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
         limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
         val localVariableHeaders = mutableMapOf<String, String>()
