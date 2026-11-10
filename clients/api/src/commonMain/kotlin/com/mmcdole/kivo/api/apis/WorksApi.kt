@@ -489,7 +489,7 @@ open class WorksApi : ApiClient {
     /**
      * List the user&#39;s lists
      * The user&#39;s lists, Watchlist first, then by name.
-     * @param counts Count each smart list by running its rules; without it a smart list&#39;s &#x60;workCount&#x60; is 0. (optional)
+     * @param counts Count each smart list by running its rules, and fill each list&#39;s &#x60;covers&#x60;; without it a smart list&#39;s &#x60;workCount&#x60; is 0. (optional)
      * @return WorkListList
      */
     @Suppress("UNCHECKED_CAST")

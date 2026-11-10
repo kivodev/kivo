@@ -45,9 +45,10 @@ export function problem(status: number, code: Problem["code"], extra: Partial<Pr
 const notFound = () => problem(404, "notFound");
 const unauthenticated = () => problem(401, "unauthenticated");
 
-/** A list as the API answers, its count from the works it holds. */
-function workListOf({ workIds, ...list }: MockList): WorkList {
-  return { ...list, workCount: workIds.length };
+/** A list as the API answers, its count from the works it holds, and with `counts` its first three posters. */
+function workListOf(api: MockApi, { workIds, ...list }: MockList, counts = false): WorkList {
+  const covers = workIds.slice(0, 3).flatMap((id) => api.works[id]?.images.poster ?? []);
+  return { ...list, workCount: workIds.length, ...(counts ? { covers } : {}) };
 }
 
 /** Whether a work passes a rule. Fields without work data here pass every work. */
@@ -309,11 +310,11 @@ export function createHandlers(api: MockApi) {
       return response(200).json({ items: homeLayout(api) });
     }),
     // My List first, then by name.
-    http.get("/api/v1/lists", ({ response }) => {
+    http.get("/api/v1/lists", ({ query, response }) => {
       const sorted = [...api.lists].sort(
         (a, b) => Number(b.builtIn) - Number(a.builtIn) || a.name.localeCompare(b.name),
       );
-      return response(200).json({ items: sorted.map(workListOf) });
+      return response(200).json({ items: sorted.map((list) => workListOf(api, list, query.get("counts") === "true")) });
     }),
     http.post("/api/v1/lists", async ({ request, response }) => {
       const { name, smart } = await request.json();
@@ -330,11 +331,11 @@ export function createHandlers(api: MockApi) {
           }
         : { id: mockId(9600 + api.lists.length), name, kind: "manual", builtIn: false, workIds: [] };
       api.lists.push(list);
-      return response(201).json(workListOf(list));
+      return response(201).json(workListOf(api, list));
     }),
     http.get("/api/v1/lists/{id}", ({ params, response }) => {
       const list = api.lists.find((l) => l.id === params.id);
-      return list ? response(200).json(workListOf(list)) : notFound();
+      return list ? response(200).json(workListOf(api, list)) : notFound();
     }),
     http.patch("/api/v1/lists/{id}", async ({ params, request, response }) => {
       const list = api.lists.find((l) => l.id === params.id);
@@ -351,7 +352,7 @@ export function createHandlers(api: MockApi) {
         list.smart = { query: { ...smart.query, version: 1 } };
         list.workIds = worksMatching(api, smart.query).map((w) => w.id);
       }
-      return response(200).json(workListOf(list));
+      return response(200).json(workListOf(api, list));
     }),
     http.delete("/api/v1/lists/{id}", ({ params, response }) => {
       const list = api.lists.find((l) => l.id === params.id);
