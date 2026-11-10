@@ -23,20 +23,23 @@ describe("a library grid's pages", () => {
 
   it("are each read at their offset", async () => {
     const items = Array.from({ length: gridPageSize }, () => ({}) as WorkSummary);
-    const asked: string[] = [];
+    const asked: unknown[] = [];
     server.use(
-      http.get("*/api/v1/libraries/:id/works", ({ request }) => {
-        const query = new URL(request.url).searchParams;
-        asked.push(`offset=${query.get("offset")}`);
+      http.post("*/api/v1/works/query", async ({ request }) => {
+        asked.push(await request.json());
         return HttpResponse.json({ items, total: 1000 });
       }),
     );
     const queryClient = new QueryClient();
-    const page = (i: number) => workQueries.browsePage(lib, {}, i);
+    const request = { query: { kinds: ["movie" as const] }, library: lib };
+    const page = (i: number) => workQueries.browsePage(request, i);
 
     await queryClient.fetchQuery(page(3));
     await queryClient.fetchQuery(page(0));
-    expect(asked).toEqual([`offset=${3 * gridPageSize}`, "offset=null"]);
+    expect(asked).toEqual([
+      { ...request, limit: gridPageSize, offset: 3 * gridPageSize },
+      { ...request, limit: gridPageSize },
+    ]);
   });
 });
 
@@ -56,7 +59,7 @@ describe("applyUserState", () => {
     const qc = new QueryClient();
     const detailKey = ["get", apiPaths.work, { params: { path: { id: work } } }];
     const searchKey = ["get", apiPaths.search, { params: { query: { q: "x" } } }];
-    const pageKey = ["get", apiPaths.libraryWorks, { params: { path: { id: lib }, query: {} } }, "page", 1];
+    const pageKey = workQueries.browsePage({ query: { kinds: ["movie"] }, library: lib }, 1).queryKey;
     qc.setQueryData(detailKey, { ...card(work), genres: [] });
     qc.setQueryData(searchKey, { items: [card(work), card(other)] });
     qc.setQueryData(pageKey, { items: [card(other), card(work)] });

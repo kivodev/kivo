@@ -1,17 +1,21 @@
 import { fireEvent, waitFor, within } from "@testing-library/react";
 import { http as untyped } from "msw";
 import { describe, expect, it, vi } from "vitest";
+import type { Library, WorkQueryRequest } from "@/api/schemas";
 import { locationOf, renderApp, screen } from "@/test/render";
 import { mockId, mockIds, scenarios, sendEvent, sent, serveMockApi, server } from "@/test/server";
-import { browseSearchSchema, toFilters } from "./browseSearch";
+import { type BrowseSearch, browseSearchSchema, gridRequest, listQueryFromGrid, queryFromGrid } from "./browseSearch";
 
 const movies = `/libraries/${mockIds.movies}`;
 
 /** The library grid requests sent, oldest first. */
-const browses = () => sent("GET", "/libraries/{id}/works");
+const browses = () => sent("POST", "/works/query").map((r) => r.body as WorkQueryRequest);
 
-/** The query the library grid last asked for. */
-const lastBrowse = () => browses().at(-1)?.url.searchParams;
+/** What the library grid last asked for. */
+const lastBrowse = () => browses().at(-1);
+
+/** The rules of what the library grid last asked for. */
+const lastRules = () => lastBrowse()?.query.where?.rules ?? [];
 
 describe("browse search params", () => {
   it("keeps valid values and drops invalid ones instead of failing the page", () => {
@@ -23,11 +27,77 @@ describe("browse search params", () => {
     });
   });
 
-  it("sends the match filter for admins only, and neither the tab nor the view", () => {
-    expect(toFilters({ matchState: "unmatched", tab: "collections", view: "list" }, true)).toEqual({
-      matchState: "unmatched",
+  it("reads the grid in its library, unmatched works alone for admins only, and neither the tab nor the view", () => {
+    expect(gridRequest(library("movies"), { matchState: "unmatched", tab: "collections", view: "list" }, true)).toEqual(
+      {
+        query: { kinds: ["movie"] },
+        library: "lib",
+        unmatched: true,
+      },
+    );
+    expect(gridRequest(library("movies"), { matchState: "unmatched" }, false)).toEqual({
+      query: { kinds: ["movie"] },
+      library: "lib",
     });
-    expect(toFilters({ matchState: "unmatched" }, false)).toEqual({});
+  });
+});
+
+const library = (kind: Library["kind"]) => ({ id: "lib", name: "Lib", kind }) as Library;
+
+describe("queryFromGrid", () => {
+  const filtered: BrowseSearch = {
+    played: "inProgress",
+    genre: ["Comedy", "Drama"],
+    yearFrom: 1990,
+    yearTo: 1999,
+    contentRating: ["PG"],
+    resolution: ["4k"],
+    dynamicRange: ["hdr"],
+    matchState: "unmatched",
+    sort: "runtimeMs",
+  };
+  const rules = [
+    { field: "playState", op: "anyOf", values: ["inProgress"] },
+    { field: "genre", op: "anyOf", values: ["Comedy", "Drama"] },
+    { field: "year", op: "between", values: ["1990", "1999"] },
+    { field: "contentRating", op: "anyOf", values: ["PG"] },
+    { field: "resolution", op: "anyOf", values: ["4k"] },
+    { field: "dynamicRange", op: "anyOf", values: ["hdr"] },
+  ];
+
+  it("maps each filter to its rule and the sort to its field, with no rule for the library or the Match filter", () => {
+    expect(queryFromGrid(library("movies"), filtered)).toEqual({
+      kinds: ["movie"],
+      where: { match: "all", rules },
+      sort: [{ field: "runtimeMs" }],
+    });
+  });
+
+  it("is the kind alone for a grid with no filters or sort", () => {
+    expect(queryFromGrid(library("movies"), { view: "list", tab: "collections" })).toEqual({ kinds: ["movie"] });
+  });
+
+  it("adds the library as a rule to the same query for a list", () => {
+    const inLibrary = { field: "library", op: "anyOf", values: ["lib"] };
+    expect(listQueryFromGrid(library("movies"), filtered)).toEqual({
+      kinds: ["movie"],
+      where: { match: "all", rules: [inLibrary, ...rules] },
+      sort: [{ field: "runtimeMs" }],
+    });
+    expect(listQueryFromGrid(library("shows"), {})).toEqual({
+      kinds: ["series"],
+      where: { match: "all", rules: [inLibrary] },
+    });
+  });
+
+  it("uses each library kind's works, a narrator's ID, and a one-sided year", () => {
+    expect(queryFromGrid(library("shows"), {}).kinds).toEqual(["series"]);
+    expect(queryFromGrid(library("videos"), {}).kinds).toEqual(["video"]);
+    const books = queryFromGrid(library("audiobooks"), { narratorId: "person", yearFrom: 2000, sort: "author" });
+    expect(books.kinds).toEqual(["book"]);
+    expect(books.where?.rules).toContainEqual({ field: "narrator", op: "anyOf", values: ["person"] });
+    expect(books.where?.rules).toContainEqual({ field: "year", op: "gte", values: ["2000"] });
+    expect(books.sort).toEqual([{ field: "author" }]);
   });
 });
 
@@ -38,8 +108,7 @@ describe("Library view", () => {
     expect(await screen.findByRole("heading", { name: "Movies", level: 1 })).toBeInTheDocument();
     expect(await screen.findByText("238 movies")).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /^Arrival/ }).length).toBeGreaterThan(0);
-    expect(browses().at(-1)?.url.pathname).toBe(`/api/v1/libraries/${mockIds.movies}/works`);
-    expect(lastBrowse()?.get("sort")).toBeNull();
+    expect(lastBrowse()).toEqual({ query: { kinds: ["movie"] }, library: mockIds.movies, limit: 100 });
     const rail = screen.getByRole("slider", { name: "Jump to letter" });
     expect(rail).toHaveAttribute("aria-valuetext", "A");
   });
@@ -102,9 +171,7 @@ describe("Library view", () => {
     await waitFor(() => expect(current()).toBe("W"));
     expect(window.scrollY).toBeGreaterThan(0);
     // Its page is read at its offset.
-    const pages = browses();
-    expect(pages.some((r) => Number(r.url.searchParams.get("offset")) > 0)).toBe(true);
-    expect(pages.some((r) => r.url.searchParams.has("after"))).toBe(false);
+    expect(browses().some((r) => (r.offset ?? 0) > 0)).toBe(true);
     // The grid is still the whole list, A to Z, so the URL is unchanged.
     expect(router.state.location.search).toEqual({});
     expect(screen.getAllByRole("link", { name: /^Velvet/ }).length).toBeGreaterThan(0);
@@ -133,12 +200,15 @@ describe("Library view", () => {
       { ...first, id: mockId(4242), title: "Aardvark" },
       ...(api.browse[mockIds.movies] ?? []),
     ];
-    const facets = sent("GET", "/libraries/{id}/facets").length;
+    const values = sent("GET", "/work-fields/{field}/values").length;
+    const collections = sent("GET", "/libraries/{id}/collections").length;
     scrollTo.mockClear();
 
     sendEvent({ type: "event", kind: "libraryChanged", libraryIds: [mockIds.movies] });
     expect(await screen.findByText("239 movies", {}, { timeout: 3000 })).toBeInTheDocument();
-    expect(sent("GET", "/libraries/{id}/facets")).toHaveLength(facets + 1);
+    // Its filters' values and whether it has collections are read again.
+    expect(sent("GET", "/work-fields/{field}/values")).toHaveLength(values * 2);
+    expect(sent("GET", "/libraries/{id}/collections")).toHaveLength(collections + 1);
     // Still where the viewer was. There's no scroll, and the rail's letter
     // isn't back at A.
     expect(window.scrollY).toBe(4000);
@@ -204,7 +274,7 @@ describe("Library view", () => {
       search: { resolution: ["720p"] },
     });
     expect(await screen.findByRole("heading", { name: "No movies match these filters" })).toBeInTheDocument();
-    expect(lastBrowse()?.getAll("resolution").join(",")).toContain("720p");
+    expect(lastRules()).toEqual([{ field: "resolution", op: "anyOf", values: ["720p"] }]);
     expect(screen.getByRole("button", { name: "Remove filter 720p" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Filter, some on" }));
     expect(screen.queryByRole("checkbox", { name: "720p" })).not.toBeInTheDocument();
@@ -226,8 +296,11 @@ describe("Library view", () => {
     await user.click(await screen.findByRole("radio", { name: "Watched" }));
     await waitFor(() => expect(router.state.location.search).toEqual({ sort: "addedAt", played: "played" }));
     expect(await screen.findByText("3 movies")).toBeInTheDocument();
-    expect(lastBrowse()?.get("sort")).toBe("addedAt");
-    expect(lastBrowse()?.get("played")).toBe("played");
+    expect(lastBrowse()?.query).toEqual({
+      kinds: ["movie"],
+      where: { match: "all", rules: [{ field: "playState", op: "anyOf", values: ["played"] }] },
+      sort: [{ field: "addedAt" }],
+    });
     await user.keyboard("{Escape}");
 
     await user.click(screen.getByRole("button", { name: "Remove filter Watched" }));
@@ -248,7 +321,13 @@ describe("Library view", () => {
     await user.click(await screen.findByRole("button", { name: /Sort/ }));
     await user.click(await screen.findByRole("option", { name: "Last episode added" }));
     await waitFor(() => expect(router.state.location.search).toEqual({ sort: "lastEpisodeAddedAt" }));
-    expect(lastBrowse()?.get("sort")).toBe("lastEpisodeAddedAt");
+    await waitFor(() =>
+      expect(lastBrowse()).toEqual({
+        query: { kinds: ["series"], sort: [{ field: "lastEpisodeAddedAt" }] },
+        library: mockIds.shows,
+        limit: 100,
+      }),
+    );
   });
 
   it("shows the next library at once, its title from the list of libraries, and its grid as it arrives", async () => {
@@ -258,8 +337,9 @@ describe("Library view", () => {
       release = resolve;
     });
     server.use(
-      untyped.get(`*/api/v1/libraries/${mockIds.shows}/works`, async () => {
-        await held;
+      untyped.post("*/api/v1/works/query", async ({ request }) => {
+        const body = (await request.clone().json()) as WorkQueryRequest;
+        if (body.library === mockIds.shows) await held;
       }),
     );
     const { router } = renderApp(movies);
@@ -285,7 +365,7 @@ describe("Library view", () => {
     await router.navigate({ to: "/" });
     await router.navigate({ to: "/libraries/$libraryId", params: { libraryId: mockIds.movies } });
     await waitFor(() => expect(router.state.location.search).toEqual({ sort: "addedAt", view: "list" }));
-    expect(lastBrowse()?.get("sort")).toBe("addedAt");
+    expect(lastBrowse()?.query.sort).toEqual([{ field: "addedAt" }]);
 
     // Each library keeps its own.
     await router.navigate({ to: "/libraries/$libraryId", params: { libraryId: mockIds.shows } });
@@ -297,7 +377,7 @@ describe("Library view", () => {
       params: { libraryId: mockIds.movies },
       search: { played: "played" },
     });
-    await waitFor(() => expect(lastBrowse()?.get("played")).toBe("played"));
+    await waitFor(() => expect(lastRules()).toEqual([{ field: "playState", op: "anyOf", values: ["played"] }]));
     expect(router.state.location.search).toEqual({ played: "played" });
 
     // Clearing everything stays cleared, and is what the library opens on next.
@@ -319,7 +399,12 @@ describe("Library view", () => {
     await user.click(await screen.findByRole("radio", { name: "Unmatched" }));
     await waitFor(() => expect(router.state.location.search).toEqual({ matchState: "unmatched" }));
     expect(await screen.findByText("1 movie")).toBeInTheDocument();
-    expect(lastBrowse()?.get("matchState")).toBe("unmatched");
+    expect(lastBrowse()).toEqual({
+      query: { kinds: ["movie"] },
+      library: mockIds.movies,
+      unmatched: true,
+      limit: 100,
+    });
     await user.keyboard("{Escape}");
     expect(screen.getByRole("button", { name: "Filter, some on" })).toBeInTheDocument();
     expect(screen.getByText("Holiday 2019 Final", { selector: "div" })).toBeInTheDocument();
@@ -330,7 +415,7 @@ describe("Library view", () => {
     serveMockApi(scenarios.viewer);
     renderApp(`${movies}?matchState=unmatched`);
     expect(await screen.findByText("238 movies")).toBeInTheDocument();
-    expect(lastBrowse()?.get("matchState")).toBeNull();
+    expect(lastBrowse()).toEqual({ query: { kinds: ["movie"] }, library: mockIds.movies, limit: 100 });
   });
 
   it("explains an empty filter result and clears it in one action", async () => {
@@ -368,14 +453,17 @@ describe("Library view", () => {
     expect(screen.queryByRole("navigation", { name: "Library sections" })).not.toBeInTheDocument();
   });
 
-  it("shows Collections as the facets say, reading the collections only when it opens", async () => {
+  it("shows Collections when the first page of the library's collections has any", async () => {
     const api = serveMockApi();
-    const facets = api.facets[mockIds.movies];
-    if (!facets) throw new Error("no facets");
-    facets.collections = false;
-    renderApp(movies);
+    api.collections[mockIds.movies] = [];
+    const { router } = renderApp(movies);
     await screen.findByText("238 movies");
     expect(screen.queryByRole("navigation", { name: "Library sections" })).not.toBeInTheDocument();
-    expect(sent("GET", "/libraries/{id}/collections")).toHaveLength(0);
+    expect(sent("GET", "/libraries/{id}/collections").map((r) => r.url.search)).toEqual(["?limit=100"]);
+
+    // A videos library has no Collections tab, so its collections aren't read.
+    await router.navigate({ to: "/libraries/$libraryId", params: { libraryId: mockIds.videos } });
+    await screen.findByText("3 videos");
+    expect(sent("GET", "/libraries/{id}/collections")).toHaveLength(1);
   });
 });

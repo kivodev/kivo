@@ -2490,30 +2490,6 @@
     "NextEpisode": "none",
     "Book": null
   },
-  "facets library:Audiobooks": {
-    "Genres": [
-      "Science Fiction"
-    ],
-    "ContentRatings": [],
-    "Years": [
-      2011,
-      2014,
-      2021
-    ],
-    "Narrators": [
-      {
-        "ID": "<id>",
-        "Name": "Jefferson Mays"
-      },
-      {
-        "ID": "person:Ray Porter",
-        "Name": "Ray Porter"
-      }
-    ],
-    "Resolutions": [],
-    "Ranges": [],
-    "Collections": false
-  },
   "home": [
     {
       "ID": "continueWatching",
@@ -3525,6 +3501,16 @@
       "Kind": "audiobooks",
       "Pinned": true,
       "Items": 3
+    }
+  ],
+  "narrators library:Audiobooks": [
+    {
+      "Value": "<id>",
+      "Name": "Jefferson Mays"
+    },
+    {
+      "Value": "person:Ray Porter",
+      "Name": "Ray Porter"
     }
   ],
   "person person:Denis Villeneuve": {

@@ -1,12 +1,15 @@
 package com.mmcdole.kivo.core.data
 
+import com.mmcdole.kivo.api.infrastructure.ApiClient
 import com.mmcdole.kivo.api.models.LetterStart
 import com.mmcdole.kivo.api.models.WorkImages
+import com.mmcdole.kivo.api.models.WorkQueryRequest
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.api.models.WorkSummaryPage
 import com.mmcdole.kivo.core.FakeServer
 import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.RequestProblem
+import com.mmcdole.kivo.core.Seen
 import com.mmcdole.kivo.core.json
 import com.mmcdole.kivo.core.live.Invalidation
 import com.mmcdole.kivo.core.problem
@@ -38,9 +41,10 @@ class GridPagerTest {
     private val letters = (0 until 20).map { LetterStart(('A' + it).toString(), it * 100) }
 
     /**
-     * The library over the fake server: works by position, from `offset`;
-     * [answer] may answer otherwise, or hold, by the requested start; null
-     * answers as the library does.
+     * The library over the fake server: works by position, from `offset`,
+     * the total and letters on the first page alone; [answer] may answer
+     * otherwise, or hold, by the requested start; null answers as the
+     * library does.
      */
     private class Library(val scope: TestScope, val total: Int, val letters: List<LetterStart>, val summary: (Int) -> WorkSummary) {
         val server = FakeServer(StandardTestDispatcher(scope.testScheduler))
@@ -51,16 +55,16 @@ class GridPagerTest {
         var answer: (suspend io.ktor.client.engine.mock.MockRequestHandleScope.(start: Int) -> io.ktor.client.request.HttpResponseData?) = { null }
 
         init {
-            server.on("GET", "/api/v1/libraries/l1/works") { request ->
-                val params = request.url.parameters
-                val start = params["offset"]?.toInt() ?: 0
+            server.on("POST", QUERY) {
+                val asked = asked(server.seen.last())
+                val start = asked.offset ?: 0
                 answer(start) ?: run {
-                    val end = minOf(start + (params["limit"]?.toInt() ?: 60), total)
+                    val end = minOf(start + (asked.limit ?: 60), total)
                     json(
                         WorkSummaryPage.serializer(),
                         WorkSummaryPage(
                             (start until end).map { summary(it).copy(title = "$prefix$it") },
-                            total = total,
+                            total = total.takeIf { start == 0 },
                             letters = letters.takeIf { start == 0 },
                         ),
                     )
@@ -69,7 +73,7 @@ class GridPagerTest {
         }
 
         fun paged(kept: Int = GridPager.KEPT_PAGES) = GridPager(
-            read = { offset, limit -> GridRepository(connection, invalidations).page(GridQuery("l1"), offset, limit).let { GridPage(it.items, it.total, it.letters) } },
+            read = { offset, limit -> GridRepository(connection, invalidations).page(GridQuery("l1"), "movies", offset, limit).let { GridPage(it.items, it.total, it.letters) } },
             changes = GridRepository(connection, invalidations).changes("l1"),
             reachability = connection.reachability,
             known = known,
@@ -81,9 +85,12 @@ class GridPagerTest {
         )
 
         /** The offsets of the pages asked for, in order. */
-        fun asked() = server.to("GET", "/api/v1/libraries/l1/works").map { seen ->
-            val q = seen.query.split('&').associate { it.substringBefore('=') to it.substringAfter('=') }
-            q["offset"]?.toInt() ?: 0
+        fun asked() = server.to("POST", QUERY).map { asked(it).offset ?: 0 }
+
+        private fun asked(seen: Seen) = ApiClient.JSON_DEFAULT.decodeFromString(WorkQueryRequest.serializer(), seen.body)
+
+        private companion object {
+            const val QUERY = "/api/v1/works/query"
         }
     }
 

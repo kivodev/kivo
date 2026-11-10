@@ -11,14 +11,14 @@ import java.net.URLEncoder
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-/** The values of the grid's sort and filters this app offers, as `listLibraryWorks` names them. */
+/** The values of the grid's sort and filters this app offers, as a work query names them. */
 object GridValues {
     const val TITLE = "title"
     const val ADDED_AT = "addedAt"
     const val LAST_EPISODE_ADDED_AT = "lastEpisodeAddedAt"
     const val RELEASE_DATE = "releaseDate"
     const val RATING = "rating"
-    const val RUNTIME = "runtime"
+    const val RUNTIME = "runtimeMs"
     const val LAST_PLAYED_AT = "lastPlayedAt"
     const val AUTHOR = "author"
     val sorts = listOf(TITLE, ADDED_AT, LAST_EPISODE_ADDED_AT, RELEASE_DATE, RATING, RUNTIME, LAST_PLAYED_AT, AUTHOR)
@@ -40,7 +40,7 @@ object GridValues {
     const val PLAYED = "played"
     val playedStates = listOf(UNPLAYED, IN_PROGRESS, PLAYED)
 
-    /** Largest first, as the facets list them. */
+    /** Largest first. */
     val resolutions = listOf("4k", "1080p", "720p", "sd")
 
     const val DOLBY_VISION = "dolbyVision"

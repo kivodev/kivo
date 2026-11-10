@@ -6,11 +6,18 @@ import com.mmcdole.kivo.api.models.Collection
 import com.mmcdole.kivo.api.models.CollectionSummaryPage
 import com.mmcdole.kivo.api.models.Home
 import com.mmcdole.kivo.api.models.HomeRow
-import com.mmcdole.kivo.api.models.LibraryFacets
+import com.mmcdole.kivo.api.infrastructure.ApiClient
 import com.mmcdole.kivo.api.models.Person
 import com.mmcdole.kivo.api.models.PersonSummaryPage
+import com.mmcdole.kivo.api.models.Rule
+import com.mmcdole.kivo.api.models.RuleGroup
+import com.mmcdole.kivo.api.models.SortKey
+import com.mmcdole.kivo.api.models.WorkFieldValue
+import com.mmcdole.kivo.api.models.WorkFieldValueList
 import com.mmcdole.kivo.api.models.WorkList
 import com.mmcdole.kivo.api.models.WorkListList
+import com.mmcdole.kivo.api.models.WorkQuery
+import com.mmcdole.kivo.api.models.WorkQueryRequest
 import com.mmcdole.kivo.api.models.WorkImages
 import com.mmcdole.kivo.api.models.WorkSummaryList
 import com.mmcdole.kivo.api.models.WorkSummaryPage
@@ -121,28 +128,45 @@ class RepositoriesTest {
     @Test
     fun aGridPagesByOffsetAndHearsOnlyItsLibrary() = runTest {
         val server = FakeServer(StandardTestDispatcher(testScheduler))
-        server.on("GET", "/api/v1/libraries/l1/works") { json(WorkSummaryPage.serializer(), WorkSummaryPage(emptyList(), total = 0)) }
+        server.on("POST", "/api/v1/works/query") { json(WorkSummaryPage.serializer(), WorkSummaryPage(emptyList(), total = 0)) }
         server.on("GET", "/api/v1/libraries/l1/collections") { json(CollectionSummaryPage.serializer(), CollectionSummaryPage(emptyList(), 0)) }
         server.on("GET", "/api/v1/libraries/l1/authors") { json(PersonSummaryPage.serializer(), PersonSummaryPage(emptyList(), 0)) }
         server.on("GET", "/api/v1/libraries/l1/book-series") { json(BookSeriesSummaryPage.serializer(), BookSeriesSummaryPage(emptyList(), 0)) }
         val invalidations = MutableSharedFlow<Invalidation>()
         val grid = GridRepository(server.connection(), invalidations)
 
-        grid.page(GridQuery("l1"), offset = 0, limit = 60)
-        grid.page(GridQuery("l1", genres = listOf("Drama")), offset = 120, limit = 60)
+        grid.page(GridQuery("l1"), "movies", offset = 0, limit = 60)
+        grid.page(GridQuery("l1", sort = "author", genres = listOf("Drama"), yearFrom = 1990, yearTo = 1999), "audiobooks", offset = 120, limit = 60)
         grid.collections("l1", offset = 60, limit = 60)
         grid.authors("l1", offset = 0, limit = 60)
         grid.bookSeries("l1", offset = 0, limit = 60)
         assertEquals(
             listOf(
-                "/api/v1/libraries/l1/works" to setOf("limit=60"),
-                "/api/v1/libraries/l1/works" to setOf("genre=Drama", "offset=120", "limit=60"),
+                "/api/v1/works/query" to setOf(""),
+                "/api/v1/works/query" to setOf(""),
                 "/api/v1/libraries/l1/collections" to setOf("offset=60", "limit=60"),
                 "/api/v1/libraries/l1/authors" to setOf("limit=60"),
                 "/api/v1/libraries/l1/book-series" to setOf("limit=60"),
             ),
             server.seen.map { it.path to it.query.split('&').toSet() },
             "the first page, which carries the total and letters, has no offset",
+        )
+        assertEquals(
+            listOf(
+                WorkQueryRequest(WorkQuery(listOf("movie"), sort = listOf(SortKey("title"))), library = "l1", limit = 60),
+                WorkQueryRequest(
+                    WorkQuery(
+                        listOf("book"),
+                        where = RuleGroup("all", listOf(Rule("genre", "anyOf", listOf("Drama")), Rule("year", "between", listOf("1990", "1999")))),
+                        sort = listOf(SortKey("author")),
+                    ),
+                    library = "l1",
+                    offset = 120,
+                    limit = 60,
+                ),
+            ),
+            server.to("POST", "/api/v1/works/query").map { ApiClient.JSON_DEFAULT.decodeFromString(WorkQueryRequest.serializer(), it.body) },
+            "the library is the request's, not a rule",
         )
 
         var changes = 0
@@ -156,18 +180,35 @@ class RepositoriesTest {
     }
 
     @Test
-    fun aLibrarysFacetsAreReadAgainAsItChangesAlone() = runTest {
+    fun aLibrarysFiltersAreItsWorksValuesReadAgainAsItChangesAlone() = runTest {
         val server = FakeServer(StandardTestDispatcher(testScheduler))
-        server.on("GET", "/api/v1/libraries/l1/facets") {
-            json(LibraryFacets.serializer(), LibraryFacets(emptyList(), emptyList(), emptyList(), emptyList(), listOf("4k"), listOf("hdr"), collections = true))
+        val values = mapOf(
+            "genre" to listOf("Crime", "Drama"),
+            "year" to listOf("1995", "2021"),
+            "contentRating" to listOf("PG", "R"),
+            "resolution" to listOf("4k"),
+            "dynamicRange" to listOf("hdr"),
+        )
+        for ((field, found) in values) {
+            server.on("GET", "/api/v1/work-fields/$field/values") {
+                json(WorkFieldValueList.serializer(), WorkFieldValueList(found.map { WorkFieldValue(it, it) }))
+            }
         }
+        server.on("GET", "/api/v1/libraries/l1/collections") { json(CollectionSummaryPage.serializer(), CollectionSummaryPage(emptyList(), 2)) }
         val invalidations = MutableSharedFlow<Invalidation>()
         val grid = GridRepository(server.connection(), invalidations)
 
-        val read = mutableListOf<LibraryFacets>()
-        backgroundScope.launch { grid.facets("l1").collect { read += it } }
+        val read = mutableListOf<LibraryFilters>()
+        backgroundScope.launch { grid.filters("l1").collect { read += it } }
         runCurrent()
-        assertEquals(listOf("4k"), read.single().resolutions)
+        assertEquals(
+            LibraryFilters(listOf("Crime", "Drama"), listOf(1995, 2021), listOf("PG", "R"), listOf("4k"), listOf("hdr"), collections = true),
+            read.single(),
+        )
+        assertEquals(
+            values.keys.map { "/api/v1/work-fields/$it/values" to "library=l1" }.toSet() + ("/api/v1/libraries/l1/collections" to "limit=1"),
+            server.seen.map { it.path to it.query }.toSet(),
+        )
         invalidations.emit(Invalidation.LibraryChanged(listOf("l2")))
         invalidations.emit(Invalidation.UserStateChanged(listOf("w1")))
         runCurrent()

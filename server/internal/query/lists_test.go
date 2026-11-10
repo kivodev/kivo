@@ -375,11 +375,11 @@ func TestPlainQueryMatchesACappedOne(t *testing.T) {
 		q := query.WorkQuery{Kinds: kinds, Sort: []query.SortKey{{Field: field}}}
 		capped := q
 		capped.MaxWorks = &lots
-		plain, err := h.q.QueryWorks(ctx, h.admin, q, query.GridOptions{})
+		plain, err := h.q.QueryWorks(ctx, h.admin, q, query.Scope{}, query.GridOptions{})
 		if err != nil {
 			t.Fatal(err)
 		}
-		both, err := h.q.QueryWorks(ctx, h.admin, capped, query.GridOptions{})
+		both, err := h.q.QueryWorks(ctx, h.admin, capped, query.Scope{}, query.GridOptions{})
 		if err != nil {
 			t.Fatal(err)
 		}

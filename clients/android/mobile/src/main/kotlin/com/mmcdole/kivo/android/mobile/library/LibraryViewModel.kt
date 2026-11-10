@@ -12,12 +12,12 @@ import com.mmcdole.kivo.android.mobile.ui.WorkMarks
 import com.mmcdole.kivo.api.models.BookSeriesSummary
 import com.mmcdole.kivo.api.models.CollectionSummary
 import com.mmcdole.kivo.api.models.Library
-import com.mmcdole.kivo.api.models.LibraryFacets
 import com.mmcdole.kivo.api.models.PersonSummary
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.data.GridPager
 import com.mmcdole.kivo.core.data.GridQuery
+import com.mmcdole.kivo.core.data.LibraryFilters
 import com.mmcdole.kivo.core.session.KivoSession
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,7 +54,7 @@ data class LibraryUiState(
     val query: GridQuery,
     val grid: LibraryGrid,
     /** What the library offers to filter by, once read. */
-    val facets: LibraryFacets?,
+    val filters: LibraryFilters?,
 ) {
     val shape: CardShape get() = gridShape(library?.kind, tab)
 }
@@ -69,9 +69,9 @@ fun gridShape(kind: String?, tab: LibraryTab): CardShape = when {
 }
 
 /** The tabs a library of [kind] offers: an audiobooks library its authors and series, another its collections when it has any. */
-fun tabsOf(kind: String?, facets: LibraryFacets?, tab: LibraryTab): List<LibraryTab> = when {
+fun tabsOf(kind: String?, filters: LibraryFilters?, tab: LibraryTab): List<LibraryTab> = when {
     kind == "audiobooks" -> listOf(LibraryTab.Titles, LibraryTab.Authors, LibraryTab.Series)
-    facets?.collections == true || tab == LibraryTab.Collections -> listOf(LibraryTab.Titles, LibraryTab.Collections)
+    filters?.collections == true || tab == LibraryTab.Collections -> listOf(LibraryTab.Titles, LibraryTab.Collections)
     else -> listOf(LibraryTab.Titles)
 }
 
@@ -100,10 +100,10 @@ class LibraryViewModel(
         choice,
         grid,
         session.library.libraries().onStart { emit(Load.Loading) },
-        session.library.facets(libraryId).onStart { emit(Load.Loading) },
-    ) { (query, tab), grid, libraries, facets ->
+        session.library.filters(libraryId).onStart { emit(Load.Loading) },
+    ) { (query, tab), grid, libraries, filters ->
         val library = libraries.getOrNull()?.firstOrNull { it.id == libraryId }
-        val read = facets.getOrNull()
+        val read = filters.getOrNull()
         LibraryUiState(library, tab, tabsOf(library?.kind, read, tab), query, grid, read)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LibraryUiState(null, choice.value.second, listOf(choice.value.second), choice.value.first, grid.value, null))
 

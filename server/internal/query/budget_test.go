@@ -101,52 +101,65 @@ func TestBudgets(t *testing.T) {
 
 // gridCases are the reads of a movies and a shows library's grids: each
 // sort's first page, which counts the grid, and a page a few screens down,
-// which doesn't; the movies at deep, by an order of each kind; and the
-// filtered grids.
+// which doesn't; the movies at deep, by an order of each kind; the
+// filtered grids; and the values the movies grid's filters offer.
 //
 // On a household's server every read is held, and a later page to
 // scrollBudget. On any other, a page reads every row its offset skips, so
 // the deep pages are timed only, and so is the filter on per-user state and
-// genres, which is checked on every work to count the matches.
+// genres, which is checked on every work to count the matches, and the
+// filters' values.
 func gridCases(q *query.Service, v users.Viewer, movies, shows id.ID, deep int, household bool) []budgetCase {
 	var tests []budgetCase
-	add := func(name string, enforce bool, lib id.ID, o query.BrowseOptions) {
+	add := func(name string, enforce bool, lib id.ID, o grid) {
 		budget := browseBudget
 		if household && o.Offset > 0 && o.Offset != deep {
 			budget = scrollBudget
 		}
-		tests = append(tests, budgetCase{name, budget, enforce, browse(q, v, lib, o)})
+		kind := catalog.KindMovie
+		if lib == shows {
+			kind = catalog.KindSeries
+		}
+		wq, in := o.query(kind), query.Scope{Library: lib}
+		tests = append(tests, budgetCase{name, budget, enforce, func() error { _, err := q.QueryWorks(ctx, v, wq, in, o.GridOptions); return err }})
 	}
 	sorts := []struct {
 		name  string
-		sort  query.Sort
+		sort  string
 		shows bool
-	}{{"title", query.ByTitle, true}, {"added", query.ByAdded, false}, {"release", query.ByRelease, false},
-		{"rating", query.ByCommunityRating, true}, {"my rating", query.ByMyRating, true}, {"runtime", query.ByRuntime, false},
-		{"last played", query.ByLastPlayed, true}, {"last episode added", query.ByLastEpisodeAdded, true}}
+	}{{"title", "title", true}, {"added", "addedAt", false}, {"release", "releaseDate", false},
+		{"rating", "rating", true}, {"my rating", "myRating", true}, {"runtime", "runtimeMs", false},
+		{"last played", "lastPlayedAt", true}, {"last episode added", "lastEpisodeAddedAt", true}}
 	later := query.GridOptions{Offset: 600}
 	for _, s := range sorts {
-		if s.sort != query.ByLastEpisodeAdded {
-			add("browse movies by "+s.name, true, movies, query.BrowseOptions{Sort: s.sort})
-			add("browse movies by "+s.name+", later page", true, movies, query.BrowseOptions{Sort: s.sort, GridOptions: later})
+		if s.sort != "lastEpisodeAddedAt" {
+			add("browse movies by "+s.name, true, movies, grid{Sort: s.sort})
+			add("browse movies by "+s.name+", later page", true, movies, grid{Sort: s.sort, GridOptions: later})
 		}
 		if s.shows {
-			add("browse shows by "+s.name, true, shows, query.BrowseOptions{Sort: s.sort})
-			add("browse shows by "+s.name+", later page", true, shows, query.BrowseOptions{Sort: s.sort, GridOptions: later})
+			add("browse shows by "+s.name, true, shows, grid{Sort: s.sort})
+			add("browse shows by "+s.name+", later page", true, shows, grid{Sort: s.sort, GridOptions: later})
 		}
 	}
 	for _, s := range []int{0, 3, 4, 6} {
-		add("browse movies by "+sorts[s].name+", deep", household, movies, query.BrowseOptions{Sort: sorts[s].sort, GridOptions: query.GridOptions{Offset: deep}})
+		add("browse movies by "+sorts[s].name+", deep", household, movies, grid{Sort: sorts[s].sort, GridOptions: query.GridOptions{Offset: deep}})
 	}
-	unplayedDrama := query.Filter{Genres: []string{"Drama"}, Played: query.Unplayed}
-	uhd := query.Filter{Resolutions: []query.Resolution{query.Resolution4K}}
-	add("browse movies, genre and unplayed", household, movies, query.BrowseOptions{Filter: unplayedDrama})
-	add("browse movies, genre and unplayed, later page", household, movies, query.BrowseOptions{Filter: unplayedDrama, GridOptions: later})
-	add("browse movies, 4K", true, movies, query.BrowseOptions{Filter: uhd})
-	add("browse movies, 4K, by added, later page", true, movies, query.BrowseOptions{Sort: query.ByAdded, Filter: uhd, GridOptions: later})
-	add("browse movies, HDR", true, movies, query.BrowseOptions{Filter: query.Filter{Ranges: []query.Range{query.HDR}}})
-	add("browse movies, 1990s, by rating", true, movies, query.BrowseOptions{Sort: query.ByCommunityRating, Filter: query.Filter{YearFrom: 1990, YearTo: 1999}})
-	add("browse shows, in progress", true, shows, query.BrowseOptions{Filter: query.Filter{Played: query.InProgress}})
+	unplayedDrama := filter{Genres: []string{"Drama"}, Played: "unplayed"}
+	uhd := filter{Resolutions: []query.Resolution{query.Resolution4K}}
+	add("browse movies, genre and unplayed", household, movies, grid{Filter: unplayedDrama})
+	add("browse movies, genre and unplayed, later page", household, movies, grid{Filter: unplayedDrama, GridOptions: later})
+	add("browse movies, 4K", true, movies, grid{Filter: uhd})
+	add("browse movies, 4K, by added, later page", true, movies, grid{Sort: "addedAt", Filter: uhd, GridOptions: later})
+	add("browse movies, HDR", true, movies, grid{Filter: filter{Ranges: []query.Range{query.HDR}}})
+	add("browse movies, 1990s, by rating", true, movies, grid{Sort: "rating", Filter: filter{YearFrom: 1990, YearTo: 1999}})
+	add("browse shows, in progress", true, shows, grid{Filter: filter{Played: "inProgress"}})
+	// What the movies grid's filters offer, a read for each field.
+	for _, field := range []string{"genre", "year", "contentRating", "resolution", "dynamicRange"} {
+		tests = append(tests, budgetCase{"browse movies, " + field + " values", browseBudget, household, func() error {
+			_, err := q.FieldValues(ctx, v, field, movies, "", nil)
+			return err
+		}})
+	}
 	return tests
 }
 
@@ -222,10 +235,6 @@ func timeBudgets(t *testing.T, tests []budgetCase, median bool) {
 			t.Errorf("%s: %s %v over its budget of %v", tt.name, name, timed, tt.budget)
 		}
 	}
-}
-
-func browse(q *query.Service, v users.Viewer, lib id.ID, o query.BrowseOptions) func() error {
-	return func() error { _, err := q.Browse(ctx, v, lib, o); return err }
 }
 
 func ms(d time.Duration) float64 { return float64(d.Microseconds()) / 1000 }

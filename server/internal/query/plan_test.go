@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"maps"
 	"regexp"
 	"slices"
 	"strings"
@@ -179,21 +178,26 @@ func TestSmartQueryPlans(t *testing.T) {
 type gridSample struct {
 	name string
 	lib  id.ID
-	o    query.BrowseOptions
+	o    grid
+}
+
+// compiled is the statements the grid's read compiles to as the friend.
+func (s gridSample) compiled(h *household) (counted, page string, args []any) {
+	return h.q.CompiledIn(s.o.query(kindIn(h.b.DB, s.lib)), h.friend, query.Scope{Library: s.lib, Unmatched: s.o.Filter.Unmatched})
 }
 
 // gridSamples are the grids of a movies and a shows library by each sort,
 // bare and with every filter at once.
 func gridSamples(h *household) []gridSample {
-	every := query.Filter{Played: query.InProgress, Genres: []string{"Drama", "Crime"}, YearFrom: 1990, YearTo: 2020,
+	every := filter{Played: "inProgress", Genres: []string{"Drama", "Crime"}, YearFrom: 1990, YearTo: 2020,
 		ContentRatings: []string{"PG-13"}, Resolutions: []query.Resolution{query.Resolution4K}, Ranges: []query.Range{query.HDR},
 		Unmatched: true, Narrator: h.porter}
 	var out []gridSample
-	for _, sort := range slices.Sorted(maps.Keys(query.GridSorts())) {
+	for _, sort := range gridSorts {
 		for name, lib := range map[string]id.ID{"movies": h.movies, "shows": h.shows} {
 			out = append(out,
-				gridSample{name + " by " + string(sort), lib, query.BrowseOptions{Sort: sort}},
-				gridSample{name + " by " + string(sort) + ", filtered", lib, query.BrowseOptions{Sort: sort, Filter: every}})
+				gridSample{name + " by " + sort, lib, grid{Sort: sort}},
+				gridSample{name + " by " + sort + ", filtered", lib, grid{Sort: sort, Filter: every}})
 		}
 	}
 	return out
@@ -205,7 +209,7 @@ func gridSamples(h *household) []gridSample {
 func TestGridPlans(t *testing.T) {
 	h := newHousehold(t)
 	for _, s := range gridSamples(h) {
-		counted, page, args := h.q.CompiledGrid(t, h.friend, s.lib, s.o)
+		counted, page, args := s.compiled(h)
 		file := "grid/" + s.name
 		for _, st := range []statement{{"query", file, "counted", counted}, {"query", file, "page", page}} {
 			t.Run(st.key(), func(t *testing.T) { checkScans(t, h.b.DB.Reader(), st, st.sql, args) })
@@ -317,15 +321,15 @@ func TestSmartQueriesStartAtWorkLibrary(t *testing.T) {
 			for column, f := range query.IndexedSorts() {
 				indexes[f.Field] = query.SortIndex(column)
 			}
-			unplayedDrama := query.Filter{Genres: []string{"Drama"}, Played: query.Unplayed}
-			for sort, field := range query.GridSorts() {
-				for _, lib := range []id.ID{movies, shows} {
-					for _, filter := range []query.Filter{{}, unplayedDrama} {
+			unplayedDrama := filter{Genres: []string{"Drama"}, Played: "unplayed"}
+			for _, sort := range gridSorts {
+				for lib, kind := range map[id.ID]catalog.WorkKind{movies: catalog.KindMovie, shows: catalog.KindSeries} {
+					for _, filter := range []filter{{}, unplayedDrama} {
 						for _, v := range viewers {
 							name := fmt.Sprintf("the grid by %s, filter %+v", sort, filter)
-							counted, page, args := query.New(db).CompiledGrid(t, v, lib, query.BrowseOptions{Sort: sort, Filter: filter})
-							starts(name, counted, args, indexes[field], rows, work)
-							starts(name, page, args, indexes[field], rows, work)
+							counted, page, args := query.New(db).CompiledIn(grid{Sort: sort, Filter: filter}.query(kind), v, query.Scope{Library: lib})
+							starts(name, counted, args, indexes[sort], rows, work)
+							starts(name, page, args, indexes[sort], rows, work)
 						}
 					}
 				}
@@ -361,9 +365,9 @@ func TestSmartReadsSelectOnce(t *testing.T) {
 			}
 		}
 	})
-	grid := func(o query.BrowseOptions, total bool) func() error {
+	paged := func(o grid, total bool) func() error {
 		return func() error {
-			p, err := q.Browse(ctx, v, movies, o)
+			p, err := browse(db, q, v, movies, o)
 			if err == nil && (len(p.Items) == 0 || (p.Total > 0) != total || (p.Letters != nil) != (total && o.Sort == "")) {
 				t.Errorf("the grid's page %+v has %d works, the total %d and the letters %v", o, len(p.Items), p.Total, p.Letters)
 			}
@@ -394,19 +398,19 @@ func TestSmartReadsSelectOnce(t *testing.T) {
 			return err
 		}},
 		{"a query", 1, 1, func() error {
-			_, err := q.QueryWorks(ctx, v, smartDefs()[0].q, query.GridOptions{})
+			_, err := q.QueryWorks(ctx, v, smartDefs()[0].q, query.Scope{}, query.GridOptions{})
 			return err
 		}},
 		{"a query's later page", 1, 0, func() error {
-			_, err := q.QueryWorks(ctx, v, smartDefs()[0].q, query.GridOptions{Offset: 20})
+			_, err := q.QueryWorks(ctx, v, smartDefs()[0].q, query.Scope{}, query.GridOptions{Offset: 20})
 			return err
 		}},
 		{"the Lists screen", len(smart), len(smart), func() error { _, err := q.CountedLists(ctx, v); return err }},
-		{"a grid by title", 1, 1, grid(query.BrowseOptions{}, true)},
-		{"a grid by title, later page", 1, 0, grid(query.BrowseOptions{GridOptions: later}, false)},
-		{"a filtered grid by rating", 1, 1, grid(query.BrowseOptions{Sort: query.ByCommunityRating, Filter: query.Filter{Genres: []string{"Drama"}}}, true)},
-		{"a grid by my rating", 1, 1, grid(query.BrowseOptions{Sort: query.ByMyRating}, true)},
-		{"a grid by my rating, later page", 1, 0, grid(query.BrowseOptions{Sort: query.ByMyRating, GridOptions: later}, false)},
+		{"a grid by title", 1, 1, paged(grid{}, true)},
+		{"a grid by title, later page", 1, 0, paged(grid{GridOptions: later}, false)},
+		{"a filtered grid by rating", 1, 1, paged(grid{Sort: "rating", Filter: filter{Genres: []string{"Drama"}}}, true)},
+		{"a grid by my rating", 1, 1, paged(grid{Sort: "myRating"}, true)},
+		{"a grid by my rating, later page", 1, 0, paged(grid{Sort: "myRating", GridOptions: later}, false)},
 		{"Home", rows, 0, func() error { _, _, err := q.Home(ctx, v); return err }},
 	} {
 		selects, counts = 0, 0

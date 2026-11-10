@@ -576,3 +576,37 @@ func TestMigrationSortIndexesCover(t *testing.T) {
 		t.Errorf("by title %s and by added %s, %v; want 02,01 and 01,02", titled, added, err)
 	}
 }
+
+// 0072 drops the index of works by sort title, which no read uses, and
+// leaves the works as they were.
+func TestMigrationDropsWorkSortTitle(t *testing.T) {
+	ctx := context.Background()
+	db, path := testDB(t, through(t, "_sort_indexes_cover.sql"))
+	var before int
+	if err := db.Reader().QueryRowContext(ctx, `SELECT count(*) FROM sqlite_master WHERE type = 'index' AND name = 'work_sort_title'`).Scan(&before); err != nil || before != 1 {
+		t.Fatalf("before: %d indexes named work_sort_title, %v; want 1", before, err)
+	}
+	err := db.Write(ctx, func(ctx context.Context, tx *Tx) error {
+		_, err := tx.ExecContext(ctx, `
+			INSERT INTO work (id, kind, parent_id, root_id, title, sort_title, added_at) VALUES
+				(x'01', 'movie', NULL, x'01', 'b', 'b', 1), (x'02', 'movie', NULL, x'02', 'A', 'A', 2);`)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+	up, err := open(ctx, path, embeddedMigrations(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer up.Close()
+	var after int
+	var titles string
+	err = up.Reader().QueryRowContext(ctx, `SELECT
+		(SELECT count(*) FROM sqlite_master WHERE name = 'work_sort_title'),
+		(SELECT group_concat(sort_title, ',') FROM (SELECT sort_title FROM work ORDER BY sort_title))`).Scan(&after, &titles)
+	if err != nil || after != 0 || titles != "A,b" {
+		t.Errorf("after: %d indexes named work_sort_title, works %q, %v; want none and A,b", after, titles, err)
+	}
+}

@@ -1,46 +1,13 @@
 package query
 
 import (
-	"cmp"
 	"context"
 	"database/sql"
-	"fmt"
 	"slices"
-	"strconv"
-	"time"
 
 	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/users"
-)
-
-// Sort orders a library grid. Its values are the API's. Each sort's order
-// is that of its field in sortFields.
-type Sort string
-
-// Sorts, each in its default direction.
-const (
-	ByTitle            Sort = "title"              // A to Z, ignoring leading articles
-	ByAdded            Sort = "addedAt"            // newest first
-	ByRelease          Sort = "releaseDate"        // newest first
-	ByCommunityRating  Sort = "rating"             // the community rating, weighted by its votes, highest first
-	ByMyRating         Sort = "myRating"           // the user's own rating, highest first
-	ByRuntime          Sort = "runtime"            // shortest first
-	ByLastPlayed       Sort = "lastPlayedAt"       // most recent first
-	ByAuthor           Sort = "author"             // A to Z by the first author's sort name, then by title
-	ByLastEpisodeAdded Sort = "lastEpisodeAddedAt" // a series by its newest episode in the library, newest first, then by title
-)
-
-// PlayState filters by the user's watch state. Its values are the API's. A
-// series is played when every episode is played, and in progress when some
-// are.
-type PlayState string
-
-// Play states.
-const (
-	Unplayed   PlayState = "unplayed"
-	InProgress PlayState = "inProgress"
-	Played     PlayState = "played"
 )
 
 // Resolution classes a version's video by its width.
@@ -71,155 +38,11 @@ func ResolutionOf(width int) Resolution {
 // Range is a video's dynamic range. Its values are the API's.
 type Range string
 
-// Ranges a filter can ask for.
+// Ranges a rule can ask for.
 const (
 	HDR         Range = "hdr" // HDR10 or HLG
 	DolbyVision Range = "dolbyVision"
 )
-
-// Filter narrows a library grid. Its fields combine with AND. A list
-// matches any of its values, and an empty list matches everything.
-// Resolutions and Ranges apply to works with versions (movies and videos),
-// not to series.
-type Filter struct {
-	Played         PlayState // empty for any
-	Genres         []string
-	YearFrom       int // the first year, inclusive; zero for no bound
-	YearTo         int // the last year, inclusive; zero for no bound
-	ContentRatings []string
-	Resolutions    []Resolution
-	Ranges         []Range
-	Unmatched      bool  // only provisional works
-	Narrator       id.ID // only the books this person narrated; zero for any
-}
-
-// BrowseOptions picks a page of a library grid.
-type BrowseOptions struct {
-	Sort   Sort // ByTitle when empty
-	Filter Filter
-	GridOptions
-}
-
-// sortFields is the field of a query each of the grid's sorts orders by,
-// in the field's default direction.
-var sortFields = map[Sort]string{
-	ByTitle: "title", ByAdded: "addedAt", ByRelease: "releaseDate", ByCommunityRating: "rating", ByMyRating: "myRating",
-	ByRuntime: "runtimeMs", ByLastPlayed: "lastPlayedAt", ByAuthor: "author", ByLastEpisodeAdded: "lastEpisodeAddedAt",
-}
-
-// gridKinds is the kind of a library's top-level works, which its grid
-// holds.
-var gridKinds = map[catalog.LibraryKind]catalog.WorkKind{
-	catalog.Movies: catalog.KindMovie, catalog.Shows: catalog.KindSeries,
-	catalog.Videos: catalog.KindVideo, catalog.Audiobooks: catalog.KindBook,
-}
-
-// query is the grid's sort and filters as a query, without its kinds: the
-// rules every work must pass, and the sort's field as the one sort key. A
-// library's grid is that query read in the library alone.
-func (o BrowseOptions) query() (WorkQuery, error) {
-	f := o.Filter
-	if f.Played != "" && !slices.Contains([]PlayState{Unplayed, InProgress, Played}, f.Played) {
-		return WorkQuery{}, invalid("played", "invalid", fmt.Sprintf("played filter %q", f.Played))
-	}
-	for _, r := range f.Resolutions {
-		if _, ok := resolutionBits[r]; !ok {
-			return WorkQuery{}, invalid("resolution", "invalid", fmt.Sprintf("resolution %q", r))
-		}
-	}
-	for _, r := range f.Ranges {
-		if _, ok := rangeBits[r]; !ok {
-			return WorkQuery{}, invalid("hdr", "invalid", fmt.Sprintf("range %q", r))
-		}
-	}
-	if f.YearFrom != 0 && f.YearTo != 0 && f.YearTo < f.YearFrom {
-		return WorkQuery{}, invalid("yearTo", "outOfRange", fmt.Sprintf("years %d to %d", f.YearFrom, f.YearTo))
-	}
-	var rules []Rule
-	rule := func(field, op string, values ...string) {
-		if len(values) > 0 {
-			rules = append(rules, Rule{Field: field, Op: op, Values: values})
-		}
-	}
-	if f.Played != "" {
-		rule("playState", "anyOf", string(f.Played))
-	}
-	rule("genre", "anyOf", f.Genres...)
-	from, to := strconv.Itoa(f.YearFrom), strconv.Itoa(f.YearTo)
-	switch {
-	case f.YearFrom != 0 && f.YearTo != 0:
-		rule("year", "between", from, to)
-	case f.YearFrom != 0:
-		rule("year", "gte", from)
-	case f.YearTo != 0:
-		rule("year", "lte", to)
-	}
-	rule("contentRating", "anyOf", f.ContentRatings...)
-	rule("resolution", "anyOf", names(f.Resolutions)...)
-	rule("dynamicRange", "anyOf", names(f.Ranges)...)
-	if !f.Narrator.IsZero() {
-		rule("narrator", "anyOf", f.Narrator.String())
-	}
-	field, ok := sortFields[cmp.Or(o.Sort, ByTitle)]
-	if !ok {
-		return WorkQuery{}, invalid("sort", "invalid", fmt.Sprintf("sort %q", o.Sort))
-	}
-	q := WorkQuery{Sort: []SortKey{{Field: field}}}
-	if len(rules) > 0 {
-		q.Where = &RuleGroup{Match: "all", Rules: rules}
-	}
-	return q, nil
-}
-
-// reading is how the grid of lib reads q, its query: in the library, the
-// unmatched works alone when the filter asks, and with the letters when it
-// is sorted by title.
-func (o BrowseOptions) reading(lib id.ID, q WorkQuery) reading {
-	return reading{library: lib, unmatched: o.Filter.Unmatched, letters: q.Sort[0].Field == sortFields[ByTitle]}
-}
-
-// names is a filter's values as a rule's.
-func names[V ~string](values []V) []string {
-	out := make([]string, len(values))
-	for i, v := range values {
-		out[i] = string(v)
-	}
-	return out
-}
-
-// Browse returns a page of a library's grid. The grid holds the library's
-// top-level works: movies, series, videos or books. It is the query of the
-// grid's sort and filters, read in the library. The first page, at offset
-// 0, has the Total, and the Letters when the grid is sorted by title; a
-// later page's Total is 0.
-func (s *Service) Browse(ctx context.Context, v users.Viewer, lib id.ID, o BrowseOptions) (GridPage[WorkSummary], error) {
-	q, err := o.query()
-	if err != nil {
-		return GridPage[WorkSummary]{}, err
-	}
-	limit, err := o.limit()
-	if err != nil {
-		return GridPage[WorkSummary]{}, err
-	}
-	vw := viewerOf(v)
-	rd := o.reading(lib, q)
-	var items []WorkSummary
-	var letters []Letter
-	total := 0
-	err = s.db.Read(ctx, func(tx *sql.Tx) error {
-		kind, err := libraryKind(ctx, tx, vw, lib)
-		if err != nil {
-			return notFound(err)
-		}
-		q.Kinds = []catalog.WorkKind{gridKinds[kind]}
-		items, total, letters, err = readQuery(ctx, tx, vw, q, "", nil, rd, o.Offset, limit, time.Now())
-		return err
-	})
-	if err != nil {
-		return GridPage[WorkSummary]{}, err
-	}
-	return s.summaryPage(ctx, vw, items, total, letters)
-}
 
 // Resolutions and ranges are stored as bit sets in work_library, a bit for
 // each a work's versions have. The work_browse_keys view sets the bits.

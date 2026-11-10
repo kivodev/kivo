@@ -22,9 +22,10 @@ import kotlin.math.abs
 
 /**
  * A page of a grid as the server answers it: its items, the grid's total,
- * and on the first page in letter order the letter rail's starts.
+ * which a grid of works has on its first page only, and on the first page
+ * in letter order the letter rail's starts.
  */
-internal class GridPage<T : Any>(val items: List<T>, val total: Int, val letters: List<LetterStart>?)
+internal class GridPage<T : Any>(val items: List<T>, val total: Int?, val letters: List<LetterStart>?)
 
 /**
  * A grid too long to read at once, such as a library's works or its
@@ -170,7 +171,7 @@ class GridPager<T : Any> internal constructor(
         seen(answer.items)
         if (page == 0) {
             known.readGridStart(key, answer)
-            val count = answer.total
+            val count = answer.total ?: answer.items.size
             total = count
             letters = answer.letters.orEmpty()
             pages.keys.removeAll { it * pageSize >= count && it != 0 }

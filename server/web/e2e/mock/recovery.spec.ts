@@ -20,8 +20,10 @@ async function open(page: Page) {
     const orig = window.fetch.bind(window);
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const req = input instanceof Request ? input : new Request(input, init);
-      const u = new URL(req.url);
-      if (/\/api\/v1\/libraries\/[^/]+\/works$/.test(u.pathname) && u.searchParams.has("offset")) {
+      // A page of the grid past the first: a work query in a library, at an offset.
+      const query = new URL(req.url).pathname.endsWith("/api/v1/works/query");
+      const body = query ? ((await req.clone().json()) as { library?: string; offset?: number }) : {};
+      if (body.library !== undefined && body.offset !== undefined) {
         w.asked++;
         if (w.mode === "down") throw new TypeError("Load failed");
         if (w.mode === "429")

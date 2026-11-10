@@ -15,7 +15,6 @@ import type {
   Invite,
   InviteLink,
   Library,
-  LibraryFacets,
   LogLine,
   Match,
   MediaFile,
@@ -83,7 +82,8 @@ export type MockApi = {
   contentRatings: { name: string; age: number }[];
   directories: Record<string, Directory[]>;
   libraries: Library[];
-  facets: Record<string, LibraryFacets>;
+  /** The values a library's works have for the fields its grid filters by, by library and field. */
+  libraryFieldValues: Record<string, Record<string, WorkFieldValue[]>>;
   /** A library's grid, whatever the sort and filters asked. */
   browse: Record<string, WorkSummary[]>;
   /** A library's collections, by library. */

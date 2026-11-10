@@ -23,7 +23,7 @@ import { emptyWork, filePlayTracks, type MockApi, summaryOf } from "./api";
 
 import { addBooks, bookIds } from "./books";
 import { mockId } from "./ids";
-import { mockFieldValues, mockWorkFields } from "./workFields";
+import { mockFieldValues, mockLibraryValues, mockWorkFields } from "./workFields";
 
 export { mockId };
 
@@ -938,34 +938,21 @@ export function createMockApi(): MockApi {
       "/media": [],
     },
     libraries,
-    facets: {
-      [mockIds.movies]: {
-        genres: [...genres].sort(),
-        contentRatings: ratings,
-        years: [...new Set((browse[mockIds.movies] ?? []).map((w) => w.year ?? 0))].sort((a, b) => a - b),
-        narrators: [],
-        resolutions: ["4k", "1080p"],
-        dynamicRanges: ["hdr"],
-        collections: true,
-      },
-      [mockIds.shows]: {
-        genres: ["Drama", "Science Fiction"],
-        contentRatings: ["TV-14"],
-        years: [2015, 2022],
-        narrators: [],
-        resolutions: ["1080p"],
-        dynamicRanges: [],
-        collections: false,
-      },
-      [mockIds.videos]: {
-        genres: [],
-        contentRatings: [],
-        years: [2023, 2024],
-        narrators: [],
-        resolutions: ["1080p"],
-        dynamicRanges: [],
-        collections: true,
-      },
+    libraryFieldValues: {
+      [mockIds.movies]: mockLibraryValues({
+        genre: [...genres].sort(),
+        contentRating: ratings,
+        year: [...new Set((browse[mockIds.movies] ?? []).map((w) => w.year ?? 0))],
+        resolution: ["4k", "1080p"],
+        dynamicRange: ["hdr"],
+      }),
+      [mockIds.shows]: mockLibraryValues({
+        genre: ["Drama", "Science Fiction"],
+        contentRating: ["TV-14"],
+        year: [2015, 2022],
+        resolution: ["1080p"],
+      }),
+      [mockIds.videos]: mockLibraryValues({ year: [2023, 2024], resolution: ["1080p"] }),
     },
     browse,
     collections: { [mockIds.movies]: [collection], [mockIds.videos]: [vacation] },

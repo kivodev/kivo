@@ -414,24 +414,6 @@ func (e DownloadState) Valid() bool {
 	}
 }
 
-// Defines values for DynamicRange.
-const (
-	DynamicRangeDolbyVision DynamicRange = "dolbyVision"
-	DynamicRangeHdr         DynamicRange = "hdr"
-)
-
-// Valid indicates whether the value is a known member of the DynamicRange enum.
-func (e DynamicRange) Valid() bool {
-	switch e {
-	case DynamicRangeDolbyVision:
-		return true
-	case DynamicRangeHdr:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for EncoderCodec.
 const (
 	EncoderCodecH264 EncoderCodec = "h264"
@@ -942,27 +924,6 @@ func (e PlayState) Valid() bool {
 	case PlayStatePaused:
 		return true
 	case PlayStatePlaying:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for PlayedFilter.
-const (
-	PlayedFilterInProgress PlayedFilter = "inProgress"
-	PlayedFilterPlayed     PlayedFilter = "played"
-	PlayedFilterUnplayed   PlayedFilter = "unplayed"
-)
-
-// Valid indicates whether the value is a known member of the PlayedFilter enum.
-func (e PlayedFilter) Valid() bool {
-	switch e {
-	case PlayedFilterInProgress:
-		return true
-	case PlayedFilterPlayed:
-		return true
-	case PlayedFilterUnplayed:
 		return true
 	default:
 		return false
@@ -1782,45 +1743,6 @@ func (e WorkKind) Valid() bool {
 	case WorkKindSeries:
 		return true
 	case WorkKindVideo:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for WorkSort.
-const (
-	WorkSortAddedAt            WorkSort = "addedAt"
-	WorkSortAuthor             WorkSort = "author"
-	WorkSortLastEpisodeAddedAt WorkSort = "lastEpisodeAddedAt"
-	WorkSortLastPlayedAt       WorkSort = "lastPlayedAt"
-	WorkSortMyRating           WorkSort = "myRating"
-	WorkSortRating             WorkSort = "rating"
-	WorkSortReleaseDate        WorkSort = "releaseDate"
-	WorkSortRuntime            WorkSort = "runtime"
-	WorkSortTitle              WorkSort = "title"
-)
-
-// Valid indicates whether the value is a known member of the WorkSort enum.
-func (e WorkSort) Valid() bool {
-	switch e {
-	case WorkSortAddedAt:
-		return true
-	case WorkSortAuthor:
-		return true
-	case WorkSortLastEpisodeAddedAt:
-		return true
-	case WorkSortLastPlayedAt:
-		return true
-	case WorkSortMyRating:
-		return true
-	case WorkSortRating:
-		return true
-	case WorkSortReleaseDate:
-		return true
-	case WorkSortRuntime:
-		return true
-	case WorkSortTitle:
 		return true
 	default:
 		return false
@@ -2877,11 +2799,6 @@ type DownloadRef struct {
 // again).
 type DownloadState string
 
-// DynamicRange A class of high dynamic range, as the library's `dynamicRange`
-// filter and its facets name it: `hdr` any HDR format but Dolby
-// Vision (`hdr10`, `hdr10plus`, `hlg`), `dolbyVision` Dolby Vision.
-type DynamicRange string
-
 // EncoderCodec A video codec the server encodes.
 type EncoderCodec string
 
@@ -3331,31 +3248,6 @@ type LibraryCreate struct {
 
 	// UseLocalMetadata Default true.
 	UseLocalMetadata *bool `json:"useLocalMetadata,omitempty"`
-}
-
-// LibraryFacets defines model for LibraryFacets.
-type LibraryFacets struct {
-	// Collections Whether `listLibraryCollections` lists anything.
-	Collections bool `json:"collections"`
-
-	// ContentRatings In the order `listContentRatings` gives, then any others youngest
-	// first; see `WorkSummary.contentRating`.
-	ContentRatings []string `json:"contentRatings"`
-
-	// DynamicRanges The dynamic ranges of the works' videos, `hdr` first.
-	DynamicRanges []DynamicRange `json:"dynamicRanges"`
-
-	// Genres By name.
-	Genres []string `json:"genres"`
-
-	// Narrators An audiobooks library's narrators, by name, for the narrator filter; empty for other kinds.
-	Narrators []PersonRef `json:"narrators"`
-
-	// Resolutions The resolution classes of the works' videos, largest first.
-	Resolutions []Resolution `json:"resolutions"`
-
-	// Years Release years, ascending.
-	Years []int `json:"years"`
 }
 
 // LibraryFolder defines model for LibraryFolder.
@@ -4153,9 +4045,6 @@ type PlaybackSettings struct {
 	RemoteQuality *QualityRequest `json:"remoteQuality,omitempty"`
 }
 
-// PlayedFilter Works by the user's state for them, as the grid's filter asks.
-type PlayedFilter string
-
 // PlayerErrorCode What failed in a client's player.
 type PlayerErrorCode string
 
@@ -4289,7 +4178,7 @@ type RefusalReason string
 
 // Resolution A video's resolution class, by its width, since wide films are short:
 // `4k` from 3200 pixels, `1080p` from 1700, `720p` from 1200, else `sd`.
-// The library's resolution filter classes videos the same way.
+// The `resolution` field of a work query classes videos the same way.
 type Resolution string
 
 // ResyncMessage The client fell behind and events were dropped. Treat every live-kept query as stale and refetch; a fresh `snapshot` follows.
@@ -4641,7 +4530,9 @@ type SmartQuery struct {
 	// can be asked for. A query has at most 20 rules, 5 groups including
 	// the root and 3 sort keys, and a rule at most 100 values. Values of a rule are in the form its field's
 	// type takes: a date `YYYY-MM-DD`, a duration such as `P30D`, an ID
-	// as a UUID, or a name.
+	// as a UUID, or a name. The `dynamicRange` field's `hdr` is any HDR
+	// format but Dolby Vision (`hdr10`, `hdr10plus`, `hlg`), and its
+	// `dolbyVision` Dolby Vision.
 	Query WorkQuery `json:"query"`
 }
 
@@ -5214,7 +5105,7 @@ type VideoTrackInfo struct {
 
 	// Resolution A video's resolution class, by its width, since wide films are short:
 	// `4k` from 3200 pixels, `1080p` from 1700, `720p` from 1200, else `sd`.
-	// The library's resolution filter classes videos the same way.
+	// The `resolution` field of a work query classes videos the same way.
 	Resolution *Resolution `json:"resolution,omitempty"`
 	Width      int         `json:"width"`
 }
@@ -5370,7 +5261,9 @@ type WorkListSmart struct {
 	// can be asked for. A query has at most 20 rules, 5 groups including
 	// the root and 3 sort keys, and a rule at most 100 values. Values of a rule are in the form its field's
 	// type takes: a date `YYYY-MM-DD`, a duration such as `P30D`, an ID
-	// as a UUID, or a name.
+	// as a UUID, or a name. The `dynamicRange` field's `hdr` is any HDR
+	// format but Dolby Vision (`hdr10`, `hdr10plus`, `hlg`), and its
+	// `dolbyVision` Dolby Vision.
 	Query WorkQuery `json:"query"`
 }
 
@@ -5379,7 +5272,9 @@ type WorkListSmart struct {
 // can be asked for. A query has at most 20 rules, 5 groups including
 // the root and 3 sort keys, and a rule at most 100 values. Values of a rule are in the form its field's
 // type takes: a date `YYYY-MM-DD`, a duration such as `P30D`, an ID
-// as a UUID, or a name.
+// as a UUID, or a name. The `dynamicRange` field's `hdr` is any HDR
+// format but Dolby Vision (`hdr10`, `hdr10plus`, `hlg`), and its
+// `dolbyVision` Dolby Vision.
 type WorkQuery struct {
 	Kinds    []WorkKind `json:"kinds"`
 	MaxWorks *int       `json:"maxWorks,omitempty"`
@@ -5392,20 +5287,24 @@ type WorkQuery struct {
 
 // WorkQueryRequest defines model for WorkQueryRequest.
 type WorkQueryRequest struct {
-	Limit  *int `json:"limit,omitempty"`
-	Offset *int `json:"offset,omitempty"`
+	// Library Read the query in this library alone; every library when absent.
+	Library *ID  `json:"library,omitempty"`
+	Limit   *int `json:"limit,omitempty"`
+	Offset  *int `json:"offset,omitempty"`
 
 	// Query Which works a query selects. `version` is written by the server;
 	// leave it out, and a newer one is refused. `extra` isn't a kind that
 	// can be asked for. A query has at most 20 rules, 5 groups including
 	// the root and 3 sort keys, and a rule at most 100 values. Values of a rule are in the form its field's
 	// type takes: a date `YYYY-MM-DD`, a duration such as `P30D`, an ID
-	// as a UUID, or a name.
+	// as a UUID, or a name. The `dynamicRange` field's `hdr` is any HDR
+	// format but Dolby Vision (`hdr10`, `hdr10plus`, `hlg`), and its
+	// `dolbyVision` Dolby Vision.
 	Query WorkQuery `json:"query"`
-}
 
-// WorkSort The order of a library's grid (`listLibraryWorks`).
-type WorkSort string
+	// Unmatched Admins only (ignored for others). Only unmatched items. Default false.
+	Unmatched *bool `json:"unmatched,omitempty"`
+}
 
 // WorkSummary The summary of a work, the same everywhere it appears. Kind-specific
 // data is under the kind's name.
@@ -5481,12 +5380,12 @@ type WorkSummaryList struct {
 type WorkSummaryPage struct {
 	Items []WorkSummary `json:"items"`
 
-	// Letters On the first page (offset 0) of the title sort. See `LetterStart`.
+	// Letters On the first page (offset 0) of a work query read in one
+	// library and sorted by title. See `LetterStart`.
 	Letters *[]LetterStart `json:"letters,omitempty"`
 
-	// Total How many works the grid has, on the first page (offset 0)
-	// only; it is 0 on a later page.
-	Total int `json:"total"`
+	// Total How many works the grid has, on the first page (offset 0) only.
+	Total *int `json:"total,omitempty"`
 }
 
 // WorkUpdate Only the fields sent change, and each is locked.
@@ -5705,53 +5604,6 @@ type ListLibraryCollectionsParams struct {
 	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
-// ListLibraryWorksParams defines parameters for ListLibraryWorks.
-type ListLibraryWorksParams struct {
-	// Sort Default `title`. Each sort has one direction: `title` A to Z
-	// ignoring leading articles, `author` A to Z by the first author's
-	// name (an audiobooks library; then by title, books with no author
-	// first), `runtime` shortest first, the rest newest or highest
-	// first. `lastEpisodeAddedAt` puts the series whose newest episode in
-	// the library was added most recently first (a shows library; then
-	// by title). `rating` is the community rating weighted by its vote
-	// count (as if 50 more votes of 6.5 were cast), so a root work few
-	// people rated ranks below a well-rated one many people rated;
-	// `myRating` is the user's own rating. Works without the rating
-	// come last, by title.
-	Sort   *WorkSort     `form:"sort,omitempty" json:"sort,omitempty"`
-	Played *PlayedFilter `form:"played,omitempty" json:"played,omitempty"`
-
-	// Genre Any of these genres.
-	Genre *[]string `form:"genre,omitempty" json:"genre,omitempty"`
-
-	// YearFrom The first year, inclusive.
-	YearFrom *int `form:"yearFrom,omitempty" json:"yearFrom,omitempty"`
-
-	// YearTo The last year, inclusive.
-	YearTo *int `form:"yearTo,omitempty" json:"yearTo,omitempty"`
-
-	// ContentRating Any of these content ratings (see `WorkSummary.contentRating`).
-	ContentRating *[]string `form:"contentRating,omitempty" json:"contentRating,omitempty"`
-
-	// Resolution Any of these resolutions.
-	Resolution *[]Resolution `form:"resolution,omitempty" json:"resolution,omitempty"`
-
-	// DynamicRange Any of these dynamic ranges.
-	DynamicRange *[]DynamicRange `form:"dynamicRange,omitempty" json:"dynamicRange,omitempty"`
-
-	// NarratorID The books this person narrated.
-	NarratorID *ID `form:"narratorId,omitempty" json:"narratorId,omitempty"`
-
-	// MatchState Admins only (ignored for others). Only `unmatched` is taken, for unmatched items only.
-	MatchState *MatchState `form:"matchState,omitempty" json:"matchState,omitempty"`
-
-	// Offset How many items to skip from the start.
-	Offset *Offset `form:"offset,omitempty" json:"offset,omitempty"`
-
-	// Limit Page size. The default and the most a page holds depend on the listing.
-	Limit *Limit `form:"limit,omitempty" json:"limit,omitempty"`
-}
-
 // ListListsParams defines parameters for ListLists.
 type ListListsParams struct {
 	// Counts Count each smart list by running its rules, and fill each list's `covers`; without it a smart list's `workCount` is 0.
@@ -5852,8 +5704,11 @@ type ListCurrentUserPlayEventsParams struct {
 
 // ListWorkFieldValuesParams defines parameters for ListWorkFieldValues.
 type ListWorkFieldValuesParams struct {
-	Q   *string   `form:"q,omitempty" json:"q,omitempty"`
-	Ids *[]string `form:"ids,omitempty" json:"ids,omitempty"`
+	Q *string `form:"q,omitempty" json:"q,omitempty"`
+
+	// Library Only the values of this library's top-level items.
+	Library *ID       `form:"library,omitempty" json:"library,omitempty"`
+	Ids     *[]string `form:"ids,omitempty" json:"ids,omitempty"`
 }
 
 // ListWorkArtworkParams defines parameters for ListWorkArtwork.
@@ -6317,9 +6172,6 @@ type ServerInterface interface {
 	// ListLibraryCollections List library collections
 	// (GET /api/v1/libraries/{id}/collections)
 	ListLibraryCollections(w http.ResponseWriter, r *http.Request, id ID, params ListLibraryCollectionsParams)
-	// GetLibraryFacets Get library facets
-	// (GET /api/v1/libraries/{id}/facets)
-	GetLibraryFacets(w http.ResponseWriter, r *http.Request, id ID)
 	// RefreshLibraryMetadata Refresh library metadata
 	// (POST /api/v1/libraries/{id}/refresh-metadata)
 	RefreshLibraryMetadata(w http.ResponseWriter, r *http.Request, id ID)
@@ -6329,9 +6181,6 @@ type ServerInterface interface {
 	// StopLibraryScan Stop library scan
 	// (POST /api/v1/libraries/{id}/stop-scan)
 	StopLibraryScan(w http.ResponseWriter, r *http.Request, id ID)
-	// ListLibraryWorks List library works
-	// (GET /api/v1/libraries/{id}/works)
-	ListLibraryWorks(w http.ResponseWriter, r *http.Request, id ID, params ListLibraryWorksParams)
 	// ListLists List the user's lists
 	// (GET /api/v1/lists)
 	ListLists(w http.ResponseWriter, r *http.Request, params ListListsParams)
@@ -7816,32 +7665,6 @@ func (siw *ServerInterfaceWrapper) ListLibraryCollections(w http.ResponseWriter,
 	handler.ServeHTTP(w, r)
 }
 
-// GetLibraryFacets operation middleware
-func (siw *ServerInterfaceWrapper) GetLibraryFacets(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "id" -------------
-	var id ID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetLibraryFacets(w, r, id)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
 // RefreshLibraryMetadata operation middleware
 func (siw *ServerInterfaceWrapper) RefreshLibraryMetadata(w http.ResponseWriter, r *http.Request) {
 
@@ -7911,191 +7734,6 @@ func (siw *ServerInterfaceWrapper) StopLibraryScan(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.StopLibraryScan(w, r, id)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// ListLibraryWorks operation middleware
-func (siw *ServerInterfaceWrapper) ListLibraryWorks(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "id" -------------
-	var id ID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
-		return
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params ListLibraryWorksParams
-
-	// ------------- Optional query parameter "sort" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "sort", r.URL.Query(), &params.Sort, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "sort"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sort", Err: err})
-		}
-		return
-	}
-
-	// ------------- Optional query parameter "played" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "played", r.URL.Query(), &params.Played, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "played"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "played", Err: err})
-		}
-		return
-	}
-
-	// ------------- Optional query parameter "genre" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "genre", r.URL.Query(), &params.Genre, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "genre"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "genre", Err: err})
-		}
-		return
-	}
-
-	// ------------- Optional query parameter "yearFrom" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "yearFrom", r.URL.Query(), &params.YearFrom, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "yearFrom"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "yearFrom", Err: err})
-		}
-		return
-	}
-
-	// ------------- Optional query parameter "yearTo" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "yearTo", r.URL.Query(), &params.YearTo, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "yearTo"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "yearTo", Err: err})
-		}
-		return
-	}
-
-	// ------------- Optional query parameter "contentRating" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "contentRating", r.URL.Query(), &params.ContentRating, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "contentRating"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "contentRating", Err: err})
-		}
-		return
-	}
-
-	// ------------- Optional query parameter "resolution" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "resolution", r.URL.Query(), &params.Resolution, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "resolution"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "resolution", Err: err})
-		}
-		return
-	}
-
-	// ------------- Optional query parameter "dynamicRange" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "dynamicRange", r.URL.Query(), &params.DynamicRange, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "dynamicRange"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "dynamicRange", Err: err})
-		}
-		return
-	}
-
-	// ------------- Optional query parameter "narratorId" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "narratorId", r.URL.Query(), &params.NarratorID, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "narratorId"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "narratorId", Err: err})
-		}
-		return
-	}
-
-	// ------------- Optional query parameter "matchState" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "matchState", r.URL.Query(), &params.MatchState, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "matchState"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "matchState", Err: err})
-		}
-		return
-	}
-
-	// ------------- Optional query parameter "offset" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", r.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "offset"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
-		}
-		return
-	}
-
-	// ------------- Optional query parameter "limit" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
-		}
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListLibraryWorks(w, r, id, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -9505,6 +9143,19 @@ func (siw *ServerInterfaceWrapper) ListWorkFieldValues(w http.ResponseWriter, r 
 		return
 	}
 
+	// ------------- Optional query parameter "library" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "library", r.URL.Query(), &params.Library, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "library"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "library", Err: err})
+		}
+		return
+	}
+
 	// ------------- Optional query parameter "ids" -------------
 
 	err = runtime.BindQueryParameterWithOptions("form", true, false, "ids", r.URL.Query(), &params.Ids, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
@@ -10156,8 +9807,6 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/api/v1/libraries/{id}", wrapper.DeleteLibrary)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/libraries/{id}", wrapper.GetLibrary)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/api/v1/libraries/{id}", wrapper.UpdateLibrary)
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/libraries/{id}/facets", wrapper.GetLibraryFacets)
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/libraries/{id}/works", wrapper.ListLibraryWorks)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/libraries/{id}/collections", wrapper.ListLibraryCollections)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/libraries/{id}/authors", wrapper.ListLibraryAuthors)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/libraries/{id}/book-series", wrapper.ListLibraryBookSeries)
@@ -14284,77 +13933,6 @@ func (response ListLibraryCollectionsdefaultApplicationProblemPlusJSONResponse) 
 	return err
 }
 
-type GetLibraryFacetsRequestObject struct {
-	ID ID `json:"id"`
-}
-
-type GetLibraryFacetsResponseObject interface {
-	VisitGetLibraryFacetsResponse(w http.ResponseWriter) error
-}
-
-type GetLibraryFacets200JSONResponse LibraryFacets
-
-func (response GetLibraryFacets200JSONResponse) VisitGetLibraryFacetsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetLibraryFacets401ApplicationProblemPlusJSONResponse struct {
-	UnauthorizedApplicationProblemPlusJSONResponse
-}
-
-func (response GetLibraryFacets401ApplicationProblemPlusJSONResponse) VisitGetLibraryFacetsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetLibraryFacets404ApplicationProblemPlusJSONResponse struct {
-	NotFoundApplicationProblemPlusJSONResponse
-}
-
-func (response GetLibraryFacets404ApplicationProblemPlusJSONResponse) VisitGetLibraryFacetsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type GetLibraryFacetsdefaultApplicationProblemPlusJSONResponse struct {
-	Body       Problem
-	StatusCode int
-}
-
-func (response GetLibraryFacetsdefaultApplicationProblemPlusJSONResponse) VisitGetLibraryFacetsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(response.StatusCode)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
 type RefreshLibraryMetadataRequestObject struct {
 	ID ID `json:"id"`
 }
@@ -14616,94 +14194,6 @@ type StopLibraryScandefaultApplicationProblemPlusJSONResponse struct {
 }
 
 func (response StopLibraryScandefaultApplicationProblemPlusJSONResponse) VisitStopLibraryScanResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(response.StatusCode)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListLibraryWorksRequestObject struct {
-	ID     ID `json:"id"`
-	Params ListLibraryWorksParams
-}
-
-type ListLibraryWorksResponseObject interface {
-	VisitListLibraryWorksResponse(w http.ResponseWriter) error
-}
-
-type ListLibraryWorks200JSONResponse WorkSummaryPage
-
-func (response ListLibraryWorks200JSONResponse) VisitListLibraryWorksResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListLibraryWorks400ApplicationProblemPlusJSONResponse struct {
-	BadRequestApplicationProblemPlusJSONResponse
-}
-
-func (response ListLibraryWorks400ApplicationProblemPlusJSONResponse) VisitListLibraryWorksResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(400)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListLibraryWorks401ApplicationProblemPlusJSONResponse struct {
-	UnauthorizedApplicationProblemPlusJSONResponse
-}
-
-func (response ListLibraryWorks401ApplicationProblemPlusJSONResponse) VisitListLibraryWorksResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListLibraryWorks404ApplicationProblemPlusJSONResponse struct {
-	NotFoundApplicationProblemPlusJSONResponse
-}
-
-func (response ListLibraryWorks404ApplicationProblemPlusJSONResponse) VisitListLibraryWorksResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListLibraryWorksdefaultApplicationProblemPlusJSONResponse struct {
-	Body       Problem
-	StatusCode int
-}
-
-func (response ListLibraryWorksdefaultApplicationProblemPlusJSONResponse) VisitListLibraryWorksResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
@@ -19352,6 +18842,22 @@ func (response QueryWorks401ApplicationProblemPlusJSONResponse) VisitQueryWorksR
 	return err
 }
 
+type QueryWorks404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response QueryWorks404ApplicationProblemPlusJSONResponse) VisitQueryWorksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type QueryWorksdefaultApplicationProblemPlusJSONResponse struct {
 	Body       Problem
 	StatusCode int
@@ -20781,9 +20287,6 @@ type StrictServerInterface interface {
 	// ListLibraryCollections List library collections
 	// (GET /api/v1/libraries/{id}/collections)
 	ListLibraryCollections(ctx context.Context, request ListLibraryCollectionsRequestObject) (ListLibraryCollectionsResponseObject, error)
-	// GetLibraryFacets Get library facets
-	// (GET /api/v1/libraries/{id}/facets)
-	GetLibraryFacets(ctx context.Context, request GetLibraryFacetsRequestObject) (GetLibraryFacetsResponseObject, error)
 	// RefreshLibraryMetadata Refresh library metadata
 	// (POST /api/v1/libraries/{id}/refresh-metadata)
 	RefreshLibraryMetadata(ctx context.Context, request RefreshLibraryMetadataRequestObject) (RefreshLibraryMetadataResponseObject, error)
@@ -20793,9 +20296,6 @@ type StrictServerInterface interface {
 	// StopLibraryScan Stop library scan
 	// (POST /api/v1/libraries/{id}/stop-scan)
 	StopLibraryScan(ctx context.Context, request StopLibraryScanRequestObject) (StopLibraryScanResponseObject, error)
-	// ListLibraryWorks List library works
-	// (GET /api/v1/libraries/{id}/works)
-	ListLibraryWorks(ctx context.Context, request ListLibraryWorksRequestObject) (ListLibraryWorksResponseObject, error)
 	// ListLists List the user's lists
 	// (GET /api/v1/lists)
 	ListLists(ctx context.Context, request ListListsRequestObject) (ListListsResponseObject, error)
@@ -22392,32 +21892,6 @@ func (sh *strictHandler) ListLibraryCollections(w http.ResponseWriter, r *http.R
 	}
 }
 
-// GetLibraryFacets operation middleware
-func (sh *strictHandler) GetLibraryFacets(w http.ResponseWriter, r *http.Request, id ID) {
-	var request GetLibraryFacetsRequestObject
-
-	request.ID = id
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.GetLibraryFacets(ctx, request.(GetLibraryFacetsRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetLibraryFacets")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(GetLibraryFacetsResponseObject); ok {
-		if err := validResponse.VisitGetLibraryFacetsResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
 // RefreshLibraryMetadata operation middleware
 func (sh *strictHandler) RefreshLibraryMetadata(w http.ResponseWriter, r *http.Request, id ID) {
 	var request RefreshLibraryMetadataRequestObject
@@ -22499,33 +21973,6 @@ func (sh *strictHandler) StopLibraryScan(w http.ResponseWriter, r *http.Request,
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(StopLibraryScanResponseObject); ok {
 		if err := validResponse.VisitStopLibraryScanResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// ListLibraryWorks operation middleware
-func (sh *strictHandler) ListLibraryWorks(w http.ResponseWriter, r *http.Request, id ID, params ListLibraryWorksParams) {
-	var request ListLibraryWorksRequestObject
-
-	request.ID = id
-	request.Params = params
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.ListLibraryWorks(ctx, request.(ListLibraryWorksRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListLibraryWorks")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(ListLibraryWorksResponseObject); ok {
-		if err := validResponse.VisitListLibraryWorksResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

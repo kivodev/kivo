@@ -1,5 +1,4 @@
-import type { BrowseSort, Library, Rule, RuleGroup, SortKey, WorkField, WorkKind, WorkQuery } from "@/api/schemas";
-import type { BrowseSearch } from "@/features/browse/browseSearch";
+import type { Rule, RuleGroup, SortKey, WorkField, WorkKind, WorkQuery } from "@/api/schemas";
 
 /** The newest query format this client reads. */
 const supportedVersion = 1;
@@ -143,55 +142,4 @@ export function ruleComplete(rule: DraftRule, field: WorkField): boolean {
   if (arity === 0) return true;
   if (arity === -1 ? rule.values.length === 0 : rule.values.length !== arity) return false;
   return rule.values.every((v) => validValue(field, rule.op, v));
-}
-
-const gridKinds: Record<Library["kind"], WorkKind> = {
-  movies: "movie",
-  shows: "series",
-  videos: "video",
-  audiobooks: "book",
-};
-
-// The grid's author sort has no query field, so it isn't carried over.
-const gridSortFields: Partial<Record<BrowseSort, string>> = {
-  title: "title",
-  addedAt: "addedAt",
-  releaseDate: "releaseDate",
-  rating: "rating",
-  myRating: "myRating",
-  runtime: "runtimeMs",
-  lastPlayedAt: "lastPlayedAt",
-  lastEpisodeAddedAt: "lastEpisodeAddedAt",
-};
-
-function yearRules(from: number | undefined, to: number | undefined): Rule[] {
-  if (from !== undefined && to !== undefined) {
-    return [{ field: "year", op: "between", values: [String(from), String(to)] }];
-  }
-  if (from !== undefined) return [{ field: "year", op: "gte", values: [String(from)] }];
-  return to !== undefined ? [{ field: "year", op: "lte", values: [String(to)] }] : [];
-}
-
-/** A library grid's filters and sort as a query, leaving out its match state filter. */
-export function queryFromGrid(library: Library, search: BrowseSearch): WorkQuery {
-  const anyOf = (field: string, values: readonly string[] | undefined) =>
-    values && values.length > 0 ? [{ field, op: "anyOf", values: [...values] }] : [];
-  const sort = search.sort && gridSortFields[search.sort];
-  return {
-    kinds: [gridKinds[library.kind]],
-    where: {
-      match: "all",
-      rules: [
-        ...anyOf(libraryField, [library.id]),
-        ...anyOf("playState", search.played ? [search.played] : undefined),
-        ...anyOf("genre", search.genre),
-        ...yearRules(search.yearFrom, search.yearTo),
-        ...anyOf("contentRating", search.contentRating),
-        ...anyOf("resolution", search.resolution),
-        ...anyOf("dynamicRange", search.dynamicRange),
-        ...anyOf("narrator", search.narratorId ? [search.narratorId] : undefined),
-      ],
-    },
-    ...(sort ? { sort: [{ field: sort }] } : {}),
-  };
 }

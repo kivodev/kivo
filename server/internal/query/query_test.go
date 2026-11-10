@@ -73,19 +73,19 @@ func (h *household) render(t *testing.T, v users.Viewer) []byte {
 	home, _, err := h.q.Home(ctx, v)
 	record("home", home, err)
 	for _, lib := range []id.ID{h.movies, h.shows, h.private, h.books} {
-		p, err := h.q.Browse(ctx, v, lib, query.BrowseOptions{})
+		p, err := h.browse(v, lib, grid{})
 		record("browse "+h.names[lib], p, err)
 	}
-	byAuthor, err := h.q.Browse(ctx, v, h.books, query.BrowseOptions{Sort: query.ByAuthor})
+	byAuthor, err := h.browse(v, h.books, grid{Sort: "author"})
 	record("browse library:Audiobooks by author", byAuthor, err)
-	narrated, err := h.q.Browse(ctx, v, h.books, query.BrowseOptions{Filter: query.Filter{Narrator: h.porter}})
+	narrated, err := h.browse(v, h.books, grid{Filter: filter{Narrator: h.porter}})
 	record("browse library:Audiobooks narrated by Ray Porter", narrated, err)
 	authors, err := h.q.Authors(ctx, v, h.books, query.GridOptions{})
 	record("authors library:Audiobooks", authors, err)
 	series, err := h.q.SeriesList(ctx, v, h.books, query.GridOptions{})
 	record("series library:Audiobooks", series, err)
-	facets, err := h.q.Facets(ctx, v, h.books)
-	record("facets library:Audiobooks", facets, err)
+	narrators, err := h.q.FieldValues(ctx, v, "narrator", h.books, "", nil)
+	record("narrators library:Audiobooks", narrators, err)
 	for _, p := range []id.ID{h.corey, h.porter, h.villeneuve} {
 		person, err := h.q.Person(ctx, v, p)
 		record("person "+h.names[p], person, err)
@@ -164,7 +164,7 @@ func TestNoGrantsSeesNothing(t *testing.T) {
 				}
 			}
 			notFound := map[string]error{}
-			_, notFound["Browse"] = h.q.Browse(ctx, v, h.movies, query.BrowseOptions{})
+			_, notFound["Browse"] = h.browse(v, h.movies, grid{})
 			_, notFound["Children"] = h.q.Children(ctx, v, h.bluey)
 			_, notFound["Detail"] = h.q.Detail(ctx, v, h.dune.Work)
 			_, notFound["Collections"] = h.q.Collections(ctx, v, h.movies, query.GridOptions{})
@@ -187,8 +187,8 @@ func TestHiddenIsMissing(t *testing.T) {
 	if !errors.Is(hidden, query.ErrNotFound) || hidden.Error() != missing.Error() {
 		t.Errorf("hidden: %v, missing: %v", hidden, missing)
 	}
-	_, hidden = h.q.Browse(ctx, h.friend, h.private, query.BrowseOptions{})
-	_, missing = h.q.Browse(ctx, h.friend, id.New(), query.BrowseOptions{})
+	_, hidden = h.browse(h.friend, h.private, grid{})
+	_, missing = h.browse(h.friend, id.New(), grid{})
 	if !errors.Is(hidden, query.ErrNotFound) || hidden.Error() != missing.Error() {
 		t.Errorf("hidden: %v, missing: %v", hidden, missing)
 	}
@@ -227,7 +227,7 @@ func TestRatingCeilingAndUnratedRule(t *testing.T) {
 		}
 		return out
 	}
-	p, err := h.q.Browse(ctx, h.kid, h.movies, query.BrowseOptions{})
+	p, err := h.browse(h.kid, h.movies, grid{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -30,6 +30,13 @@ describe("Audiobooks library", () => {
     ]);
     await user.click(screen.getByRole("option", { name: "Author" }));
     await waitFor(() => expect(router.state.location.search).toEqual({ sort: "author" }));
+    await waitFor(() =>
+      expect(sent("POST", "/works/query").at(-1)?.body).toEqual({
+        query: { kinds: ["book"], sort: [{ field: "author" }] },
+        library: bookIds.audiobooks,
+        limit: 100,
+      }),
+    );
     // The title sort stays on screen until the new sort's first page loads.
     await waitFor(() => expect(screen.queryByRole("slider", { name: "Jump to letter" })).not.toBeInTheDocument());
 
@@ -59,8 +66,18 @@ describe("Audiobooks library", () => {
     await waitFor(() => expect(router.state.location.search).toEqual({ narratorId: bookIds.porter }));
     expect(await screen.findByText("Narrated by Ray Porter")).toBeInTheDocument(); // the chip
     await waitFor(() =>
-      expect(sent("GET", "/libraries/{id}/works").at(-1)?.url.searchParams.get("narratorId")).toBe(bookIds.porter),
+      expect(sent("POST", "/works/query").at(-1)?.body).toEqual({
+        query: {
+          kinds: ["book"],
+          where: { match: "all", rules: [{ field: "narrator", op: "anyOf", values: [bookIds.porter] }] },
+        },
+        library: bookIds.audiobooks,
+        limit: 100,
+      }),
     );
+    expect(
+      sent("GET", "/work-fields/{field}/values").map((r) => `${r.url.pathname.split("/").at(-2)}${r.url.search}`),
+    ).toEqual(["genre", "year", "narrator"].map((field) => `${field}?library=${bookIds.audiobooks}`));
   });
 
   it("edits the selected books together", async () => {

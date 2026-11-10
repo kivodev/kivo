@@ -244,7 +244,7 @@ func (s *Service) smartWorks(ctx context.Context, vw viewer, list id.ID, smart *
 		return s.summaryPage(ctx, vw, nil, 0, nil)
 	}
 	now := time.Now()
-	return s.runQuery(ctx, vw, smart.Query, listSeed(list, now), kinds, o, now)
+	return s.runQuery(ctx, vw, smart.Query, listSeed(list, now), kinds, reading{}, o, now)
 }
 
 // listOwner reads a list of the user's rules, NULL for a manual list; a list

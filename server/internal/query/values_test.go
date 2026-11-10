@@ -8,64 +8,80 @@ import (
 	"testing"
 
 	"github.com/mmcdole/kivo/internal/catalog"
+	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/query"
 	"github.com/mmcdole/kivo/internal/users"
 )
 
-func TestFacets(t *testing.T) {
+// TestLibraryValues checks the values a library's grid offers its filters:
+// those its top-level works the Viewer sees have.
+func TestLibraryValues(t *testing.T) {
 	h := newHousehold(t)
-	f, err := h.q.Facets(ctx, h.admin, h.movies)
-	if err != nil {
-		t.Fatal(err)
+	values := func(v users.Viewer, lib id.ID, field string) []string {
+		t.Helper()
+		got, err := h.q.FieldValues(ctx, v, field, lib, "", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		out := make([]string, len(got))
+		for i, fv := range got {
+			out[i] = fv.Value
+		}
+		return out
 	}
-	if !slices.Contains(f.Genres, "Science Fiction") || !slices.IsSorted(f.Genres) {
-		t.Errorf("admin genres %v", f.Genres)
+	if genres := values(h.admin, h.movies, "genre"); !slices.Contains(genres, "Science Fiction") || !slices.IsSorted(genres) {
+		t.Errorf("admin genres %v", genres)
 	}
-	if want := []string{"G", "PG-13", "R"}; !slices.Equal(f.ContentRatings, want) { // youngest first
-		t.Errorf("admin ratings %v, want %v", f.ContentRatings, want)
+	if got, want := values(h.admin, h.movies, "contentRating"), []string{"G", "PG-13", "R"}; !slices.Equal(got, want) { // youngest first
+		t.Errorf("admin ratings %v, want %v", got, want)
 	}
-	if !slices.Contains(f.Years, 2021) || !slices.IsSorted(f.Years) {
-		t.Errorf("admin years %v", f.Years)
+	if years := values(h.admin, h.movies, "year"); !slices.Contains(years, "2021") || !slices.IsSorted(years) {
+		t.Errorf("admin years %v", years)
 	}
-	if want := []query.Resolution{query.Resolution1080p}; !slices.Equal(f.Resolutions, want) || len(f.Ranges) != 0 || !f.Collections {
-		t.Errorf("admin resolutions %v, ranges %v, collections %v; want %v, none, true", f.Resolutions, f.Ranges, f.Collections, want)
-	}
-
-	kid, err := h.q.Facets(ctx, h.kid, h.movies)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if want := []string{"G"}; !slices.Equal(kid.ContentRatings, want) {
-		t.Errorf("kid ratings %v, want %v", kid.ContentRatings, want)
-	}
-	if slices.Contains(kid.Years, 2021) {
-		t.Errorf("kid sees Dune's year: %v", kid.Years)
-	}
-	// Dune is the 1080p film, and the kid doesn't see it; Toy Story's collection stays.
-	if len(kid.Resolutions) != 0 || !kid.Collections {
-		t.Errorf("kid resolutions %v, collections %v", kid.Resolutions, kid.Collections)
+	if got, ranges := values(h.admin, h.movies, "resolution"), values(h.admin, h.movies, "dynamicRange"); !slices.Equal(got, []string{"1080p"}) || len(ranges) != 0 {
+		t.Errorf("admin resolutions %v, ranges %v; want 1080p, none", got, ranges)
 	}
 
-	uhd, err := h.q.Facets(ctx, h.admin, h.uhd)
-	if err != nil {
-		t.Fatal(err)
+	if got, want := values(h.kid, h.movies, "contentRating"), []string{"G"}; !slices.Equal(got, want) {
+		t.Errorf("kid ratings %v, want %v", got, want)
 	}
-	if want := []query.Range{query.HDR, query.DolbyVision}; !slices.Equal(uhd.Ranges, want) || !slices.Equal(uhd.Resolutions, []query.Resolution{query.Resolution4K}) {
-		t.Errorf("4K library resolutions %v, ranges %v", uhd.Resolutions, uhd.Ranges)
+	if years := values(h.kid, h.movies, "year"); slices.Contains(years, "2021") {
+		t.Errorf("kid sees Dune's year: %v", years)
 	}
-	shows, err := h.q.Facets(ctx, h.admin, h.shows)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if shows.Collections {
-		t.Error("the shows library lists collections")
-	}
-	if p, err := h.q.Collections(ctx, h.admin, h.shows, query.GridOptions{}); err != nil || p.Total != 0 {
-		t.Errorf("the shows library's collections total %d, %v", p.Total, err)
+	// Dune is the 1080p film, and the kid doesn't see it.
+	if got := values(h.kid, h.movies, "resolution"); len(got) != 0 {
+		t.Errorf("kid resolutions %v", got)
 	}
 
-	if _, err := h.q.Facets(ctx, h.nobody, h.movies); !errors.Is(err, query.ErrNotFound) {
-		t.Errorf("no grants: %v", err)
+	if got, ranges := values(h.admin, h.uhd, "resolution"), values(h.admin, h.uhd, "dynamicRange"); !slices.Equal(got, []string{"4k"}) || !slices.Equal(ranges, []string{"hdr", "dolbyVision"}) {
+		t.Errorf("4K library resolutions %v, ranges %v", got, ranges)
+	}
+	// A library's values are its own: the movies library has no narrators,
+	// and the books library has the books' alone.
+	if got := values(h.admin, h.movies, "narrator"); len(got) != 0 {
+		t.Errorf("the movies library's narrators %v", got)
+	}
+	if got := values(h.admin, h.books, "narrator"); !slices.Contains(got, h.porter.String()) {
+		t.Errorf("the books library's narrators %v, want Porter among them", got)
+	}
+	if every, own := values(h.admin, id.ID{}, "genre"), values(h.admin, h.shows, "genre"); len(every) == 0 || len(own) != 0 {
+		t.Errorf("the shows library's genres %v, of every library's %v", own, every)
+	}
+	// The values a rule can only name, not the works', are every library's.
+	if got := values(h.admin, h.movies, "library"); len(got) < 2 {
+		t.Errorf("the libraries, asked in one: %v", got)
+	}
+	if got := values(h.admin, h.movies, "playState"); len(got) != 3 {
+		t.Errorf("the play states, asked in one library: %v", got)
+	}
+
+	for _, field := range []string{"genre", "resolution", "playState"} {
+		if _, err := h.q.FieldValues(ctx, h.nobody, field, h.movies, "", nil); !errors.Is(err, query.ErrNotFound) {
+			t.Errorf("no grants, %s: %v", field, err)
+		}
+	}
+	if _, err := h.q.FieldValues(ctx, h.friend, "genre", h.private, "", nil); !errors.Is(err, query.ErrNotFound) {
+		t.Errorf("a library not granted: %v", err)
 	}
 }
 
@@ -77,7 +93,7 @@ func TestBrowseLetters(t *testing.T) {
 	h.movie(h.moviesFolder, "12 Monkeys", 1995, rankR)
 	h.movie(h.moviesFolder, "The Abyss", 1989, rankPG13)
 	h.movie(h.moviesFolder, "Zodiac", 2007, rankR)
-	p, err := h.q.Browse(ctx, h.admin, h.movies, query.BrowseOptions{})
+	p, err := h.browse(h.admin, h.movies, grid{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +112,7 @@ func TestBrowseLetters(t *testing.T) {
 	}
 	// The page at each letter's offset starts with it.
 	for _, l := range p.Letters {
-		g, err := h.q.Browse(ctx, h.admin, h.movies, query.BrowseOptions{GridOptions: query.GridOptions{Offset: l.Offset, Limit: 1}})
+		g, err := h.browse(h.admin, h.movies, grid{GridOptions: query.GridOptions{Offset: l.Offset, Limit: 1}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -107,7 +123,7 @@ func TestBrowseLetters(t *testing.T) {
 
 	// The grid's filters and Viewer apply. Of 1995's films, the kid sees
 	// only Toy Story.
-	years := query.Filter{YearFrom: 1995, YearTo: 1995}
+	years := filter{YearFrom: 1995, YearTo: 1995}
 	for _, tt := range []struct {
 		v     users.Viewer
 		want  string
@@ -116,7 +132,7 @@ func TestBrowseLetters(t *testing.T) {
 		{h.admin, "#0 T1", 2},
 		{h.kid, "T0", 1},
 	} {
-		g, err := h.q.Browse(ctx, tt.v, h.movies, query.BrowseOptions{Filter: years})
+		g, err := h.browse(tt.v, h.movies, grid{Filter: years})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -126,12 +142,12 @@ func TestBrowseLetters(t *testing.T) {
 	}
 
 	// Only the first page of the title sort has them.
-	two, err := h.q.Browse(ctx, h.admin, h.movies, query.BrowseOptions{GridOptions: query.GridOptions{Limit: 2}})
+	two, err := h.browse(h.admin, h.movies, grid{GridOptions: query.GridOptions{Limit: 2}})
 	if err != nil || two.Letters == nil {
 		t.Fatalf("a short first page: letters %v, %v", two.Letters, err)
 	}
-	for _, o := range []query.BrowseOptions{{Sort: query.ByAdded}, {GridOptions: query.GridOptions{Offset: 3}}} {
-		g, err := h.q.Browse(ctx, h.admin, h.movies, o)
+	for _, o := range []grid{{Sort: "addedAt"}, {GridOptions: query.GridOptions{Offset: 3}}} {
+		g, err := h.browse(h.admin, h.movies, o)
 		if err != nil {
 			t.Fatal(err)
 		}

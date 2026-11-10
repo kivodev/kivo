@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/mmcdole/kivo/internal/catalog"
-	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/users"
 )
 
@@ -24,8 +23,8 @@ func Statements() map[string]string {
 }
 
 // QueryWorksAt is QueryWorks as of now.
-func (s *Service) QueryWorksAt(ctx context.Context, v users.Viewer, q WorkQuery, o GridOptions, now time.Time) (GridPage[WorkSummary], error) {
-	return s.queryWorksAt(ctx, v, q, o, now)
+func (s *Service) QueryWorksAt(ctx context.Context, v users.Viewer, q WorkQuery, in Scope, o GridOptions, now time.Time) (GridPage[WorkSummary], error) {
+	return s.queryWorksAt(ctx, v, q, in, o, now)
 }
 
 // Compiled returns the statements q compiles to as the Viewer, as a read of
@@ -41,32 +40,12 @@ func (s *Service) Compiled(t *testing.T, q WorkQuery, v users.Viewer, now time.T
 	return compile(q, vw, now, seed, only, reading{}).counted, c.page, append(c.args, sql.Named("limit", 50), sql.Named("offset", 0))
 }
 
-// CompiledGrid returns the statements a library's grid compiles to as the
-// Viewer, as Browse compiles them, with their arguments for the first page.
-func (s *Service) CompiledGrid(t *testing.T, v users.Viewer, lib id.ID, o BrowseOptions) (counted, page string, args []any) {
-	t.Helper()
-	q, err := o.query()
-	if err != nil {
-		t.Fatal(err)
-	}
-	vw := viewerOf(v)
-	kind, err := libraryKind(context.Background(), s.db.Reader(), vw, lib)
-	if err != nil {
-		t.Fatal(err)
-	}
-	q.Kinds = []catalog.WorkKind{gridKinds[kind]}
-	c := compile(q, vw, time.Now(), "", nil, o.reading(lib, q))
+// CompiledIn returns the statements q compiles to as the Viewer when it is
+// read in lib, as QueryWorks compiles them, with their arguments for the
+// first page.
+func (s *Service) CompiledIn(q WorkQuery, v users.Viewer, in Scope) (counted, page string, args []any) {
+	c := compile(q, viewerOf(v), time.Now(), "", nil, reading{library: in.Library, unmatched: in.Unmatched, letters: titled(q)})
 	return c.counted, c.page, append(c.args, sql.Named("limit", 60), sql.Named("offset", 0))
-}
-
-// GridQuery returns the query a library's grid reads, without its kinds.
-func GridQuery(t *testing.T, o BrowseOptions) WorkQuery {
-	t.Helper()
-	q, err := o.query()
-	if err != nil {
-		t.Fatal(err)
-	}
-	return q
 }
 
 // Bits returns the bit each resolution and each range has in work_library.
@@ -87,10 +66,6 @@ func IndexedSorts() map[string]WorkField {
 // SortIndex returns the index that holds a work_library column's order,
 // or "" when none does.
 func SortIndex(column string) string { return sortIndexes[column] }
-
-// GridSorts returns the sorts a library grid takes, each with the field of
-// a query it orders by.
-func GridSorts() map[Sort]string { return sortFields }
 
 // Observe calls fn with the SQL of each statement the package runs, until
 // the test ends.

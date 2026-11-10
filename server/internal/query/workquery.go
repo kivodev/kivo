@@ -766,17 +766,38 @@ func (q WorkQuery) Saved() (string, error) {
 	return string(b), err
 }
 
-// QueryWorks runs a query as the Viewer. An invalid query returns an
-// *InvalidQueryError saying what's wrong.
-func (s *Service) QueryWorks(ctx context.Context, v users.Viewer, q WorkQuery, o GridOptions) (GridPage[WorkSummary], error) {
-	return s.queryWorksAt(ctx, v, q, o, time.Now())
+// Scope is where a read looks for a query's works.
+type Scope struct {
+	// Library is the one library to read, or zero for every library that
+	// holds the query's kinds.
+	Library   id.ID
+	Unmatched bool // only the works not yet matched
 }
 
-func (s *Service) queryWorksAt(ctx context.Context, v users.Viewer, q WorkQuery, o GridOptions, now time.Time) (GridPage[WorkSummary], error) {
+// QueryWorks runs a query as the Viewer. An invalid query returns an
+// *InvalidQueryError saying what's wrong. The first page, at offset 0, has
+// the Total; a later page's Total is 0.
+//
+// A read of one library is the library's grid when the query's kinds are
+// those of its top-level works: its first page has the Letters when the
+// query sorts by title first, A to Z. A library the Viewer doesn't see is
+// ErrNotFound.
+func (s *Service) QueryWorks(ctx context.Context, v users.Viewer, q WorkQuery, in Scope, o GridOptions) (GridPage[WorkSummary], error) {
+	return s.queryWorksAt(ctx, v, q, in, o, time.Now())
+}
+
+func (s *Service) queryWorksAt(ctx context.Context, v users.Viewer, q WorkQuery, in Scope, o GridOptions, now time.Time) (GridPage[WorkSummary], error) {
 	if problems := q.Validate(); len(problems) > 0 {
 		return GridPage[WorkSummary]{}, &InvalidQueryError{problems}
 	}
-	return s.runQuery(ctx, viewerOf(v), q, seedOf(q, now), nil, o, now)
+	rd := reading{library: in.Library, unmatched: in.Unmatched, letters: !in.Library.IsZero() && titled(q)}
+	return s.runQuery(ctx, viewerOf(v), q, seedOf(q, now), nil, rd, o, now)
+}
+
+// titled reports whether q's works are in the order of their sort titles,
+// A to Z, which the letters' starts are in.
+func titled(q WorkQuery) bool {
+	return len(q.Sort) == 0 || q.Sort[0].Field == "title" && q.Sort[0].Direction != "desc"
 }
 
 // holdingLibraries reads the libraries of @kinds the Viewer is granted,
@@ -824,22 +845,29 @@ func compilePage(ctx context.Context, db querier, q WorkQuery, vw viewer, now ti
 	return compile(q, vw, now, seed, only, rd), nil
 }
 
-// runQuery reads a page of a valid query, from one snapshot.
-func (s *Service) runQuery(ctx context.Context, vw viewer, q WorkQuery, seed string, only []catalog.WorkKind, o GridOptions, now time.Time) (GridPage[WorkSummary], error) {
+// runQuery reads a page of a valid query, from one snapshot. A read of a
+// library the Viewer doesn't see is ErrNotFound.
+func (s *Service) runQuery(ctx context.Context, vw viewer, q WorkQuery, seed string, only []catalog.WorkKind, rd reading, o GridOptions, now time.Time) (GridPage[WorkSummary], error) {
 	limit, err := o.limit()
 	if err != nil {
 		return GridPage[WorkSummary]{}, err
 	}
 	var items []WorkSummary
+	var letters []Letter
 	total := 0
 	err = s.db.Read(ctx, func(tx *sql.Tx) error {
-		items, total, _, err = readQuery(ctx, tx, vw, q, seed, only, reading{}, o.Offset, limit, now)
+		if !rd.library.IsZero() {
+			if err := library(ctx, tx, vw, rd.library); err != nil {
+				return notFound(err)
+			}
+		}
+		items, total, letters, err = readQuery(ctx, tx, vw, q, seed, only, rd, o.Offset, limit, now)
 		return err
 	})
 	if err != nil {
 		return GridPage[WorkSummary]{}, err
 	}
-	return s.summaryPage(ctx, vw, items, total, nil)
+	return s.summaryPage(ctx, vw, items, total, letters)
 }
 
 // readQuery reads the page of a valid query's works at offset. The first

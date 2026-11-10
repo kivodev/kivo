@@ -118,7 +118,6 @@ src/commonMain/kotlin/com/mmcdole/kivo/api/models/Library.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/LibraryAccess.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/LibraryChoice.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/LibraryCreate.kt
-src/commonMain/kotlin/com/mmcdole/kivo/api/models/LibraryFacets.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/LibraryFolder.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/LibraryList.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/LibraryRef.kt

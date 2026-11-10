@@ -78,7 +78,7 @@ func TestEndToEnd(t *testing.T) {
 		var page struct {
 			Items []struct{ ID, Title string }
 		}
-		c.call("GET", "/api/v1/libraries/"+lib.ID+"/works", nil, http.StatusOK, &page)
+		c.call("POST", "/api/v1/works/query", map[string]any{"query": map[string]any{"kinds": []string{"movie"}}, "library": lib.ID}, http.StatusOK, &page)
 		for _, w := range page.Items {
 			works[w.Title] = w.ID
 		}

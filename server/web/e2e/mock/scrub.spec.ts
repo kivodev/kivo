@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Page, type Request, test } from "@playwright/test";
 import { mockIds } from "@/api/mocks/fixtures";
 
 // A 3,000-work library moved through by each input the grid has: a fling,
@@ -61,18 +61,17 @@ async function watch(page: Page) {
     requestAnimationFrame(frame);
   });
   const pages = { asked: 0, done: 0, cancelled: 0 };
-  const isPage = (url: string) => {
-    const u = new URL(url);
-    return u.pathname.endsWith(`/api/v1/libraries/${mockIds.movies}/works`);
-  };
+  // A page of the grid: a work query read in the library.
+  const isPage = (r: Request) =>
+    new URL(r.url()).pathname.endsWith("/api/v1/works/query") && r.postDataJSON()?.library === mockIds.movies;
   page.on("request", (r) => {
-    if (isPage(r.url())) pages.asked++;
+    if (isPage(r)) pages.asked++;
   });
   page.on("requestfinished", (r) => {
-    if (isPage(r.url())) pages.done++;
+    if (isPage(r)) pages.done++;
   });
   page.on("requestfailed", (r) => {
-    if (isPage(r.url())) pages.cancelled++;
+    if (isPage(r)) pages.cancelled++;
   });
   const settle = async () => {
     await page.waitForTimeout(600);

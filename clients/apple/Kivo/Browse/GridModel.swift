@@ -56,7 +56,7 @@ final class GridModel {
             case "addedAt": String(localized: "Recently added")
             case "releaseDate": String(localized: "Newest")
             case "rating": String(localized: "Top rated")
-            case "runtime": String(localized: "Shortest")
+            case "runtimeMs": String(localized: "Shortest")
             case "lastPlayedAt": String(localized: "Recently played")
             default: label
             }
@@ -168,7 +168,7 @@ final class GridModel {
         ] : []) + [
             Sort(value: "releaseDate", label: String(localized: "Release date"), direction: String(localized: "Newest first")),
             Sort(value: "rating", label: String(localized: "Rating"), direction: String(localized: "Highest first")),
-            Sort(value: "runtime", label: String(localized: "Runtime"), direction: String(localized: "Shortest first")),
+            Sort(value: "runtimeMs", label: String(localized: "Runtime"), direction: String(localized: "Shortest first")),
             Sort(value: "lastPlayedAt", label: String(localized: "Last played"), direction: String(localized: "Most recent first")),
         ]
         playedFilters = [
@@ -298,8 +298,8 @@ final class GridModel {
             hasRun = true
             await ready()
         }
-        for await load in session.library.facets(libraryId: library.id) {
-            if let facets = load.getOrNull() { offer(facets) }
+        for await load in session.library.filters(libraryId: library.id) {
+            if let filters = load.getOrNull() { offer(filters) }
         }
     }
 
@@ -449,16 +449,16 @@ final class GridModel {
     }
 
     /// Offers the filters that find something in the library, and knows whether it has collections.
-    private func offer(_ facets: LibraryFacets) {
-        if !isBooks { know(collections: facets.collections) }
-        if resolutions != facets.resolutions { resolutions = facets.resolutions }
-        if dynamicRanges != facets.dynamicRanges { dynamicRanges = facets.dynamicRanges }
+    private func offer(_ filters: LibraryFilters) {
+        if !isBooks { know(collections: filters.collections) }
+        if resolutions != filters.resolutions { resolutions = filters.resolutions }
+        if dynamicRanges != filters.dynamicRanges { dynamicRanges = filters.dynamicRanges }
     }
 
-    /// Whether the library has collections, by its facets' first answer; a failed read counts as none.
+    /// Whether the library has collections, by its filters' first answer; a failed read counts as none.
     private func hasCollections() async -> Bool {
-        for await load in session.library.facets(libraryId: library.id) {
-            if let facets = load.getOrNull() { return facets.collections }
+        for await load in session.library.filters(libraryId: library.id) {
+            if let filters = load.getOrNull() { return filters.collections }
             if load.problemOrNull() != nil { return false }
         }
         return false

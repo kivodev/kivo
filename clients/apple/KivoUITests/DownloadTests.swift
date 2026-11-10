@@ -295,7 +295,7 @@ final class DownloadTests: XCTestCase {
         _ = try call("POST", "sessions", ["username": "test", "password": password])
         let libraries = try call("GET", "libraries")["items"] as? [[String: Any]]
         let library = try XCTUnwrap(libraries?.first { $0["name"] as? String == "Movies" }?["id"] as? String, "the server has no Movies")
-        let movies = try call("GET", "libraries/\(library)/works")["items"] as? [[String: Any]]
+        let movies = try call("POST", "works/query", ["query": ["kinds": ["movie"]], "library": library])["items"] as? [[String: Any]]
         let id = try XCTUnwrap(movies?.first?["id"] as? String, "the server lists no movie")
         let versions = try call("GET", "works/\(id)")["versions"] as? [[String: Any]]
         let version = try XCTUnwrap(versions?.first?["id"] as? String, "the movie has no version")

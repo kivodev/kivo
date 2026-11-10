@@ -10,7 +10,6 @@ import com.mmcdole.kivo.api.models.Home
 import com.mmcdole.kivo.api.models.HomeRowChange
 import com.mmcdole.kivo.api.models.HomeRowInfo
 import com.mmcdole.kivo.api.models.Library
-import com.mmcdole.kivo.api.models.LibraryFacets
 import com.mmcdole.kivo.api.models.Person
 import com.mmcdole.kivo.api.models.PersonSummary
 import com.mmcdole.kivo.api.models.SearchResults
@@ -32,6 +31,7 @@ import com.mmcdole.kivo.core.data.GridRepository
 import com.mmcdole.kivo.core.data.Heading
 import com.mmcdole.kivo.core.data.HomeRepository
 import com.mmcdole.kivo.core.data.Known
+import com.mmcdole.kivo.core.data.LibraryFilters
 import com.mmcdole.kivo.core.data.LibraryRepository
 import com.mmcdole.kivo.core.data.ListsRepository
 import com.mmcdole.kivo.core.data.SearchRepository
@@ -207,7 +207,7 @@ class SessionLibrary internal constructor(
     /** [limit] works of a library's grid from [offset], such as one long to ask whether a filter finds any. */
     @Throws(Exception::class)
     suspend fun gridPage(query: GridQuery, offset: Int, limit: Int): WorkSummaryPage =
-        grid.page(query, offset, limit).also { seen.read(it.items) }
+        grid.page(query, libraryList.kind(query.libraryId), offset, limit).also { seen.read(it.items) }
 
     /** Whether [libraryId] has collections, read one long. */
     @Throws(Exception::class)
@@ -218,11 +218,11 @@ class SessionLibrary internal constructor(
      * ratings, years, resolutions and dynamic ranges) and whether it has
      * collections, read again as the library changes.
      */
-    fun facets(libraryId: String): Flow<Load<LibraryFacets>> = reachability.load(grid.facets(libraryId))
+    fun filters(libraryId: String): Flow<Load<LibraryFilters>> = reachability.load(grid.filters(libraryId))
 
     /** A library's works for [query], read again in place as the library or the user's marks change. */
     fun pagedWorks(query: GridQuery): GridPager<WorkSummary> = paged("works $query", grid.changes(query.libraryId), seen::read) { offset, limit ->
-        grid.page(query, offset, limit).let { GridPage(it.items, it.total, it.letters) }
+        grid.page(query, libraryList.kind(query.libraryId), offset, limit).let { GridPage(it.items, it.total, it.letters) }
     }
 
     /** A library's collections, by name, read again in place as the library changes. */

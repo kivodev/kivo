@@ -449,7 +449,7 @@ open class WorksApi : ApiClient {
 
     /**
      * List a list&#39;s works
-     * A list&#39;s works the user sees: a manual list&#39;s most recently added first, a smart list&#39;s as its rules select them. With &#x60;kind&#x60;, only those kinds. A smart list whose rules no longer run is empty. A grid, paged by &#x60;offset&#x60;, with &#x60;total&#x60; on the first page (offset 0) only and 0 on later pages; works added at the same time are listed by title. 
+     * A list&#39;s works the user sees: a manual list&#39;s most recently added first, a smart list&#39;s as its rules select them. With &#x60;kind&#x60;, only those kinds. A smart list whose rules no longer run is empty. A grid, paged by &#x60;offset&#x60;, with &#x60;total&#x60; on the first page (offset 0) only; works added at the same time are listed by title. 
      * @param id 
      * @param kind Only these kinds. (optional)
      * @param offset How many items to skip from the start. (optional)
@@ -626,14 +626,15 @@ open class WorksApi : ApiClient {
 
     /**
      * List a field&#39;s values
-     * The values the caller can see for a field, for building a rule: those matching &#x60;q&#x60;, or with &#x60;ids&#x60; those values&#39; names. A malformed ID in &#x60;ids&#x60; is &#x60;400&#x60;. A field with no values to choose from returns none. 
+     * The values the caller can see for a field, for building a rule: those matching &#x60;q&#x60;, or with &#x60;ids&#x60; those values&#39; names, at most 100 of them. A malformed ID in &#x60;ids&#x60; is &#x60;400&#x60;. A field with no values to choose from returns none.  With &#x60;library&#x60;, they are every value the library&#39;s top-level items the caller can see have, which is what its grid&#39;s filters offer: &#x60;genre&#x60; by name, &#x60;year&#x60; oldest first (it has values only with &#x60;library&#x60;), &#x60;contentRating&#x60; in the order &#x60;listContentRatings&#x60; gives for the library&#39;s country and then any others youngest first, &#x60;resolution&#x60; largest first, &#x60;dynamicRange&#x60; with &#x60;hdr&#x60; first, and &#x60;narrator&#x60; by name. A library the caller can&#39;t see is &#x60;404&#x60;. &#x60;library&#x60; and &#x60;inList&#x60; have the same values with it as without. 
      * @param `field` 
      * @param q  (optional)
+     * @param library Only the values of this library&#39;s top-level items. (optional)
      * @param ids  (optional)
      * @return WorkFieldValueList
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun listWorkFieldValues(`field`: kotlin.String, q: kotlin.String? = null, ids: kotlin.collections.List<kotlin.String>? = null): HttpResponse<WorkFieldValueList> {
+    open suspend fun listWorkFieldValues(`field`: kotlin.String, q: kotlin.String? = null, library: kotlin.String? = null, ids: kotlin.collections.List<kotlin.String>? = null): HttpResponse<WorkFieldValueList> {
 
         val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
 
@@ -642,6 +643,7 @@ open class WorksApi : ApiClient {
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         q?.apply { localVariableQuery["q"] = listOf("$q") }
+        library?.apply { localVariableQuery["library"] = listOf("$library") }
         ids?.apply { localVariableQuery["ids"] = toMultiValue(this, "multi") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
@@ -770,7 +772,7 @@ open class WorksApi : ApiClient {
 
     /**
      * Run a work query
-     * Runs a &#x60;WorkQuery&#x60; once, as the caller: their library access and parental limits apply to every query. A grid, paged by &#x60;offset&#x60;, with &#x60;total&#x60; on the first page (offset 0) only and 0 on later pages; &#x60;maxWorks&#x60; caps it. An invalid query is &#x60;400&#x60; with &#x60;invalidRequest&#x60;, and &#x60;errors&#x60; holds a JSON pointer per problem, such as &#x60;/query/where/groups/0/rules/2/op&#x60;. 
+     * Runs a &#x60;WorkQuery&#x60; once, as the caller: their library access and parental limits apply to every query. A grid, paged by &#x60;offset&#x60;, with &#x60;total&#x60; on the first page (offset 0) only; &#x60;maxWorks&#x60; caps it. An invalid query is &#x60;400&#x60; with &#x60;invalidRequest&#x60;, and &#x60;errors&#x60; holds a JSON pointer per problem, such as &#x60;/query/where/groups/0/rules/2/op&#x60;.  With &#x60;library&#x60;, the query is read in that library alone, which is how a library&#39;s grid is read: the query&#39;s kind is the library&#39;s top-level one (&#x60;movie&#x60; in a movies library, &#x60;series&#x60; in a shows library, &#x60;video&#x60; in a videos library, &#x60;book&#x60; in an audiobooks library), its rules are the grid&#39;s filters and its sort the grid&#39;s order. The first page then also has &#x60;letters&#x60; when the query sorts by &#x60;title&#x60; first, A to Z, or has no sort. A library the caller can&#39;t see is &#x60;404&#x60;. 
      * @param workQueryRequest 
      * @return WorkSummaryPage
      */

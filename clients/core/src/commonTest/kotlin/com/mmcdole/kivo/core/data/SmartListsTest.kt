@@ -215,26 +215,41 @@ class SmartListsTest {
 
     @Test
     fun aFilteredGridBecomesAQueryOnItsLibrary() {
-        val grid = GridQuery("l1", sort = "runtime", played = "unplayed", resolutions = listOf("720p", "4k"), dynamicRanges = listOf("hdr"))
+        val grid = GridQuery(
+            "l1", sort = "runtimeMs", played = "unplayed", genres = listOf("Drama"), yearFrom = 1990, yearTo = 1999,
+            contentRatings = listOf("R"), resolutions = listOf("720p", "4k"), dynamicRanges = listOf("hdr"),
+        )
         val query = SmartLists.fromGrid(grid, "movies")
         assertEquals(listOf("movie"), query.kinds)
         assertEquals(
             listOf(
                 Rule("library", "anyOf", listOf("l1")),
                 Rule("playState", "anyOf", listOf("unplayed")),
+                Rule("genre", "anyOf", listOf("Drama")),
+                Rule("year", "between", listOf("1990", "1999")),
+                Rule("contentRating", "anyOf", listOf("R")),
                 Rule("resolution", "anyOf", listOf("4k", "720p")),
                 Rule("dynamicRange", "anyOf", listOf("hdr")),
             ),
             query.where?.rules,
         )
         assertEquals(listOf(SortKey("runtimeMs")), query.sort)
+        assertEquals(query.where?.rules?.drop(1), SmartLists.gridQuery(grid, "movies").where?.rules, "the grid's own read has no library rule")
+        assertEquals(query.copy(where = null), SmartLists.gridQuery(grid, "movies").copy(where = null))
+    }
+
+    @Test
+    fun aGridWithoutFiltersIsAQueryWithoutRules() {
+        assertNull(SmartLists.gridQuery(GridQuery("l1"), "movies").where)
+        assertEquals(listOf(Rule("year", "gte", listOf("1990"))), SmartLists.gridQuery(GridQuery("l1", yearFrom = 1990), "movies").where?.rules)
+        assertEquals(listOf(Rule("year", "lte", listOf("1999"))), SmartLists.gridQuery(GridQuery("l1", yearTo = 1999), "movies").where?.rules)
     }
 
     @Test
     fun aGridsSortAndKindMapToTheQuerys() {
         assertEquals(listOf(SortKey("title")), SmartLists.fromGrid(GridQuery("l"), "shows").sort)
         assertEquals(listOf("series"), SmartLists.fromGrid(GridQuery("l"), "shows").kinds)
-        assertNull(SmartLists.fromGrid(GridQuery("l", sort = "author"), "audiobooks").sort)
+        assertEquals(listOf(SortKey("author")), SmartLists.fromGrid(GridQuery("l", sort = "author"), "audiobooks").sort)
         assertEquals(listOf("book"), SmartLists.fromGrid(GridQuery("l", sort = "author"), "audiobooks").kinds)
         assertEquals(listOf("video"), SmartLists.fromGrid(GridQuery("l"), "videos").kinds)
     }

@@ -64,19 +64,6 @@ func optAs[U, T ~string](v T) *U {
 	return &u
 }
 
-// stringsAs converts a slice between string types, such as the wire's
-// strings and the server's named types. A nil slice stays nil.
-func stringsAs[U, T ~string](xs []T) []U {
-	if xs == nil {
-		return nil
-	}
-	out := make([]U, len(xs))
-	for i, x := range xs {
-		out[i] = U(x)
-	}
-	return out
-}
-
 func ms(d time.Duration) int { return int(d.Milliseconds()) }
 
 // duration converts a request's milliseconds to a time.Duration.
@@ -180,10 +167,14 @@ func bookInfo(b *query.BookInfo) *gen.BookInfo {
 	return out
 }
 
-// workPage is a page of a grid of works, with its total. It includes the
-// letter rail when the grid has one.
-func workPage(p query.GridPage[query.WorkSummary]) gen.WorkSummaryPage {
-	return gen.WorkSummaryPage{Items: summaries(p.Items), Total: p.Total, Letters: letterStarts(p.Letters)}
+// workPage is a page of a grid of works, with its total when it is the
+// first. It includes the letter rail when the grid has one.
+func workPage(p query.GridPage[query.WorkSummary], first bool) gen.WorkSummaryPage {
+	out := gen.WorkSummaryPage{Items: summaries(p.Items), Letters: letterStarts(p.Letters)}
+	if first {
+		out.Total = &p.Total
+	}
+	return out
 }
 
 // letterStarts is a grid's letter rail. It is absent when the grid has

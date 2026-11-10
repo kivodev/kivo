@@ -1,13 +1,13 @@
-import type { PersonRef } from "@/api/schemas";
+import type { WorkFieldValue } from "@/api/schemas";
 import type { BrowseSearch } from "./browseSearch";
 import type { BrowseLabels } from "./useBrowseLabels";
 
-/** One chip per active filter value, each with the search that removes it. */
+/** One chip per active filter value, each with the search that removes it. `narrators` are the `narrator` field's values. */
 export function filterChips(
   search: BrowseSearch,
   labels: BrowseLabels,
   isAdmin: boolean,
-  narrators: readonly PersonRef[] = [],
+  narrators: readonly WorkFieldValue[] = [],
 ) {
   const chips: { key: string; label: string; without: BrowseSearch }[] = [];
   const without = (patch: Partial<BrowseSearch>): BrowseSearch => ({ ...search, ...patch });
@@ -36,7 +36,7 @@ export function filterChips(
   listOf("resolution", (v) => labels.resolution[v]);
   listOf("dynamicRange", (v) => labels.dynamicRange[v]);
   if (search.narratorId) {
-    const name = narrators.find((n) => n.id === search.narratorId)?.name ?? "";
+    const name = narrators.find((n) => n.value === search.narratorId)?.name ?? "";
     chips.push({ key: "narrator", label: labels.narrator(name), without: without({ narratorId: undefined }) });
   }
   if (search.matchState && isAdmin) {

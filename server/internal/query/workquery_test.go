@@ -21,7 +21,7 @@ var queryAllKinds = []catalog.WorkKind{catalog.KindMovie, catalog.KindSeries, ca
 
 func (h *household) runQuery(v users.Viewer, q query.WorkQuery) query.GridPage[query.WorkSummary] {
 	h.t.Helper()
-	p, err := h.q.QueryWorks(ctx, v, q, query.GridOptions{Limit: 200})
+	p, err := h.q.QueryWorks(ctx, v, q, query.Scope{}, query.GridOptions{Limit: 200})
 	if err != nil {
 		h.t.Fatalf("%+v: %v", q, err)
 	}
@@ -146,7 +146,7 @@ func TestQueryHidesWhatTheViewerCantSee(t *testing.T) {
 					}
 				}
 			}
-			offered, err := h.q.FieldValues(ctx, viewer.v, f.Field, "", nil)
+			offered, err := h.q.FieldValues(ctx, viewer.v, f.Field, id.ID{}, "", nil)
 			if err != nil {
 				t.Fatalf("%s values: %v", f.Field, err)
 			}
@@ -162,13 +162,13 @@ func TestQueryHidesWhatTheViewerCantSee(t *testing.T) {
 		}
 	}
 	// A library the friend isn't granted isn't offered, even by its ID.
-	got, err := h.q.FieldValues(ctx, h.friend, "library", "", []string{h.private.String()})
+	got, err := h.q.FieldValues(ctx, h.friend, "library", id.ID{}, "", []string{h.private.String()})
 	if err != nil || len(got) != 0 {
 		t.Errorf("a library the friend isn't granted: %v, %v", got, err)
 	}
 	// Another user's list isn't offered.
 	others := h.lists(h.admin)[0].ID
-	if got, _ := h.q.FieldValues(ctx, h.friend, "inList", "", []string{others.String()}); len(got) != 0 {
+	if got, _ := h.q.FieldValues(ctx, h.friend, "inList", id.ID{}, "", []string{others.String()}); len(got) != 0 {
 		t.Errorf("another user's list is offered: %v", got)
 	}
 	// A rule on a library the friend isn't granted matches nothing.
@@ -177,7 +177,7 @@ func TestQueryHidesWhatTheViewerCantSee(t *testing.T) {
 		t.Errorf("the friend reached a library it isn't granted: %v", ids(p.Items))
 	}
 	// A malformed ID is refused, naming the parameter.
-	if _, err := h.q.FieldValues(ctx, h.friend, "rootWork", "", []string{"nope"}); !errors.Is(err, query.ErrInvalid) {
+	if _, err := h.q.FieldValues(ctx, h.friend, "rootWork", id.ID{}, "", []string{"nope"}); !errors.Is(err, query.ErrInvalid) {
 		t.Errorf("a malformed id: %v", err)
 	}
 }
@@ -188,7 +188,7 @@ func TestQueryRandom(t *testing.T) {
 	titled := ids(h.runQuery(h.admin, query.WorkQuery{Kinds: queryAllKinds}).Items)
 	day := time.Date(2026, 3, 4, 12, 0, 0, 0, time.UTC)
 	on := func(at time.Time) []id.ID {
-		p, err := h.q.QueryWorksAt(ctx, h.admin, q, query.GridOptions{Limit: 200}, at)
+		p, err := h.q.QueryWorksAt(ctx, h.admin, q, query.Scope{}, query.GridOptions{Limit: 200}, at)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -423,7 +423,7 @@ func TestQueryKindsAreTheEnginesOwn(t *testing.T) {
 		for _, maxWorks := range []*int{nil, &ten} {
 			q := query.WorkQuery{Kinds: tt.kinds, MaxWorks: maxWorks}
 			var invalid *query.InvalidQueryError
-			if _, err := h.q.QueryWorks(ctx, h.admin, q, query.GridOptions{}); !errors.As(err, &invalid) {
+			if _, err := h.q.QueryWorks(ctx, h.admin, q, query.Scope{}, query.GridOptions{}); !errors.As(err, &invalid) {
 				t.Errorf("%q: got %v, want an InvalidQueryError", tt.kinds, err)
 			}
 			for _, only := range [][]catalog.WorkKind{nil, {injected}, tt.kinds} {
@@ -597,7 +597,7 @@ func TestQueryValidation(t *testing.T) {
 		t.Errorf("21 rules: %v", got)
 	}
 	var invalid *query.InvalidQueryError
-	if _, err := query.New(nil).QueryWorks(context.Background(), users.Viewer{}, query.WorkQuery{}, query.GridOptions{}); !errors.As(err, &invalid) {
+	if _, err := query.New(nil).QueryWorks(context.Background(), users.Viewer{}, query.WorkQuery{}, query.Scope{}, query.GridOptions{}); !errors.As(err, &invalid) {
 		t.Errorf("an invalid query: %v", err)
 	}
 }
@@ -661,7 +661,7 @@ func TestReleaseSortUsesTheFullDate(t *testing.T) {
 		}
 		return nil
 	})
-	p, err := h.q.Browse(ctx, h.admin, h.movies, query.BrowseOptions{Sort: query.ByRelease})
+	p, err := h.browse(h.admin, h.movies, grid{Sort: "releaseDate"})
 	if err != nil {
 		t.Fatal(err)
 	}

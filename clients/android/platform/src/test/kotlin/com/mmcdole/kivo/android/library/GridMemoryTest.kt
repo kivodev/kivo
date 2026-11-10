@@ -19,9 +19,10 @@ class GridMemoryTest {
     @Test
     fun eachLibrarysSortsAreTheOnesEveryAppOffers() {
         assertEquals(listOf("title", "author", "addedAt", "releaseDate"), GridValues.sortsOf("audiobooks"))
-        assertEquals(listOf("title", "addedAt", "lastEpisodeAddedAt", "releaseDate", "rating", "runtime", "lastPlayedAt"), GridValues.sortsOf("shows"))
-        assertEquals(listOf("title", "addedAt", "releaseDate", "rating", "runtime", "lastPlayedAt"), GridValues.sortsOf("movies"))
-        assertEquals("runtime", decodeGrid("lib1", "sort=runtime").query.sort)
+        assertEquals(listOf("title", "addedAt", "lastEpisodeAddedAt", "releaseDate", "rating", "runtimeMs", "lastPlayedAt"), GridValues.sortsOf("shows"))
+        assertEquals(listOf("title", "addedAt", "releaseDate", "rating", "runtimeMs", "lastPlayedAt"), GridValues.sortsOf("movies"))
+        assertEquals("runtimeMs", decodeGrid("lib1", "sort=runtimeMs").query.sort)
+        assertEquals("title", decodeGrid("lib1", "sort=runtime").query.sort, "a sort this app doesn't offer")
     }
 
     @Test

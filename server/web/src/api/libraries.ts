@@ -12,8 +12,6 @@ export const libraryQueries = {
     select: (page: { items: Library[] }) => page.items as AdminLibrary[],
   }),
   detail: (id: string) => $api.queryOptions("get", "/api/v1/libraries/{id}", { params: { path: { id } } }),
-  /** The genres, content ratings and years the library's filter menu offers. */
-  facets: (id: string) => $api.queryOptions("get", "/api/v1/libraries/{id}/facets", { params: { path: { id } } }),
 };
 
 /**
@@ -39,7 +37,7 @@ function useInvalidateLibraries() {
     invalidatePaths(queryClient, [
       apiPaths.libraries,
       apiPaths.library,
-      apiPaths.libraryFacets,
+      apiPaths.workFieldValues,
       apiPaths.home,
       ...libraryGridPaths,
       apiPaths.tasks,

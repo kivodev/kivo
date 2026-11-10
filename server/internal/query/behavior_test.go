@@ -80,7 +80,7 @@ func TestProvisionalWorks(t *testing.T) {
 			t.Errorf("Recently Added in %s: %s missing or not unmatched (%+v)", h.names[row.Library.ID], h.names[want], c)
 		}
 	}
-	p, err := h.q.Browse(ctx, h.admin, h.movies, query.BrowseOptions{Filter: query.Filter{Unmatched: true}})
+	p, err := h.browse(h.admin, h.movies, grid{Filter: filter{Unmatched: true}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,9 +110,9 @@ func TestProvisionalWorks(t *testing.T) {
 func TestBrowsePaging(t *testing.T) {
 	h := newHousehold(t)
 	h.watch()
-	for _, sort := range []query.Sort{query.ByTitle, query.ByAdded, query.ByRelease, query.ByCommunityRating, query.ByMyRating, query.ByRuntime, query.ByLastPlayed, query.ByLastEpisodeAdded} {
+	for _, sort := range []string{"title", "addedAt", "releaseDate", "rating", "myRating", "runtimeMs", "lastPlayedAt", "lastEpisodeAddedAt"} {
 		t.Run(string(sort), func(t *testing.T) {
-			all, err := h.q.Browse(ctx, h.admin, h.movies, query.BrowseOptions{Sort: sort})
+			all, err := h.browse(h.admin, h.movies, grid{Sort: sort})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -121,7 +121,7 @@ func TestBrowsePaging(t *testing.T) {
 			}
 			var walked []id.ID
 			for offset := 0; offset < all.Total; offset += 2 {
-				p, err := h.q.Browse(ctx, h.admin, h.movies, query.BrowseOptions{Sort: sort, GridOptions: query.GridOptions{Offset: offset, Limit: 2}})
+				p, err := h.browse(h.admin, h.movies, grid{Sort: sort, GridOptions: query.GridOptions{Offset: offset, Limit: 2}})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -131,7 +131,7 @@ func TestBrowsePaging(t *testing.T) {
 				t.Errorf("pages give %v, want %v", walked, ids(all.Items))
 			}
 			for offset := range len(all.Items) + 1 {
-				p, err := h.q.Browse(ctx, h.admin, h.movies, query.BrowseOptions{Sort: sort, GridOptions: query.GridOptions{Offset: offset, Limit: 2}})
+				p, err := h.browse(h.admin, h.movies, grid{Sort: sort, GridOptions: query.GridOptions{Offset: offset, Limit: 2}})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -149,13 +149,14 @@ func TestBrowsePaging(t *testing.T) {
 		})
 	}
 	for _, o := range []query.GridOptions{{Offset: -1}, {Limit: -1}, {Limit: 1000}} {
-		if _, err := h.q.Browse(ctx, h.admin, h.movies, query.BrowseOptions{GridOptions: o}); !errors.Is(err, query.ErrInvalid) {
+		if _, err := h.browse(h.admin, h.movies, grid{GridOptions: o}); !errors.Is(err, query.ErrInvalid) {
 			t.Errorf("Browse(%+v): %v, want ErrInvalid", o, err)
 		}
 	}
-	for _, o := range []query.BrowseOptions{{Sort: "popularity"}, {Filter: query.Filter{Played: "maybe"}}, {Filter: query.Filter{YearFrom: 2000, YearTo: 1999}}} {
-		if _, err := h.q.Browse(ctx, h.admin, h.movies, o); !errors.Is(err, query.ErrInvalid) {
-			t.Errorf("Browse(%+v): %v, want ErrInvalid", o, err)
+	for _, o := range []grid{{Sort: "popularity"}, {Filter: filter{Played: "maybe"}}} {
+		var invalid *query.InvalidQueryError
+		if _, err := h.browse(h.admin, h.movies, o); !errors.As(err, &invalid) {
+			t.Errorf("Browse(%+v): %v, want an invalid query", o, err)
 		}
 	}
 }
@@ -163,8 +164,8 @@ func TestBrowsePaging(t *testing.T) {
 func TestBrowseOrders(t *testing.T) {
 	h := newHousehold(t)
 	h.watch()
-	order := func(sort query.Sort) []string {
-		p, err := h.q.Browse(ctx, h.admin, h.movies, query.BrowseOptions{Sort: sort})
+	order := func(sort string) []string {
+		p, err := h.browse(h.admin, h.movies, grid{Sort: sort})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -176,17 +177,17 @@ func TestBrowseOrders(t *testing.T) {
 	}
 	// Works sort by sort title, bytewise, so capitals sort first. The Final
 	// Cut is grouped under Blade Runner, and Lost Film's file is gone.
-	tests := map[query.Sort][]string{
-		query.ByTitle:   {"movie:Blade Runner", "movie:Dune", "movie:Home Movie", "movie:Toy Story", "movie:Toy Story 2", "movie:some.film.2023"},
-		query.ByRelease: {"movie:Dune", "movie:Home Movie", "movie:Toy Story 2", "movie:Toy Story", "movie:Blade Runner", "movie:some.film.2023"},
+	tests := map[string][]string{
+		"title":       {"movie:Blade Runner", "movie:Dune", "movie:Home Movie", "movie:Toy Story", "movie:Toy Story 2", "movie:some.film.2023"},
+		"releaseDate": {"movie:Dune", "movie:Home Movie", "movie:Toy Story 2", "movie:Toy Story", "movie:Blade Runner", "movie:some.film.2023"},
 		// Blade Runner's 9 from 12 votes weighs less than Toy Story 2's 7.6
 		// from 14,000. Home Movie and the unmatched film have no rating.
-		query.ByCommunityRating: {"movie:Dune", "movie:Toy Story", "movie:Toy Story 2", "movie:Blade Runner", "movie:Home Movie", "movie:some.film.2023"},
+		"rating": {"movie:Dune", "movie:Toy Story", "movie:Toy Story 2", "movie:Blade Runner", "movie:Home Movie", "movie:some.film.2023"},
 		// The admin rated only Toy Story.
-		query.ByMyRating: {"movie:Toy Story", "movie:Blade Runner", "movie:Dune", "movie:Home Movie", "movie:Toy Story 2", "movie:some.film.2023"},
+		"myRating": {"movie:Toy Story", "movie:Blade Runner", "movie:Dune", "movie:Home Movie", "movie:Toy Story 2", "movie:some.film.2023"},
 		// Dune's file runs 2h35m, the others 2h.
-		query.ByRuntime:    {"movie:Blade Runner", "movie:Home Movie", "movie:Toy Story", "movie:Toy Story 2", "movie:some.film.2023", "movie:Dune"},
-		query.ByLastPlayed: {"movie:Dune", "movie:Blade Runner", "movie:Home Movie", "movie:Toy Story", "movie:Toy Story 2", "movie:some.film.2023"},
+		"runtimeMs":    {"movie:Blade Runner", "movie:Home Movie", "movie:Toy Story", "movie:Toy Story 2", "movie:some.film.2023", "movie:Dune"},
+		"lastPlayedAt": {"movie:Dune", "movie:Blade Runner", "movie:Home Movie", "movie:Toy Story", "movie:Toy Story 2", "movie:some.film.2023"},
 	}
 	for sort, want := range tests {
 		if got := order(sort); !slices.Equal(got, want) {
@@ -196,7 +197,7 @@ func TestBrowseOrders(t *testing.T) {
 	// Works made within a millisecond tie on their added time. So the added
 	// sort is checked for its order, newest first and then by title, rather
 	// than against a list.
-	p, err := h.q.Browse(ctx, h.admin, h.movies, query.BrowseOptions{Sort: query.ByAdded})
+	p, err := h.browse(h.admin, h.movies, grid{Sort: "addedAt"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -214,7 +215,7 @@ func TestBrowseByLastEpisodeAdded(t *testing.T) {
 	h := newHousehold(t)
 	order := func() []string {
 		t.Helper()
-		p, err := h.q.Browse(ctx, h.admin, h.shows, query.BrowseOptions{Sort: query.ByLastEpisodeAdded})
+		p, err := h.browse(h.admin, h.shows, grid{Sort: "lastEpisodeAddedAt"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -282,22 +283,22 @@ func TestBrowseFilters(t *testing.T) {
 	tests := []struct {
 		name string
 		lib  id.ID
-		f    query.Filter
+		f    filter
 		want []id.ID
 	}{
-		{"played", h.movies, query.Filter{Played: query.Played}, nil},
-		{"in progress", h.movies, query.Filter{Played: query.InProgress}, []id.ID{h.dune.Work}},
-		{"series in progress", h.shows, query.Filter{Played: query.InProgress}, []id.ID{h.bluey, h.expanse}},
-		{"series unplayed", h.shows, query.Filter{Played: query.Unplayed}, []id.ID{h.unmatchedShow}},
-		{"genre", h.movies, query.Filter{Genres: []string{"Adventure", "Western"}}, []id.ID{h.dune.Work}},
-		{"years", h.movies, query.Filter{YearFrom: 1995, YearTo: 1999}, []id.ID{h.toyStory.Work, h.toyStory2.Work}},
-		{"years to", h.movies, query.Filter{YearTo: 1995}, []id.ID{h.bladeRunner.Work, h.toyStory.Work}},
-		{"ratings", h.movies, query.Filter{ContentRatings: []string{"R", "PG-13"}}, []id.ID{h.bladeRunner.Work, h.dune.Work}},
-		{"1080p", h.movies, query.Filter{Resolutions: []query.Resolution{query.Resolution1080p}}, []id.ID{h.dune.Work}},
+		{"played", h.movies, filter{Played: "played"}, nil},
+		{"in progress", h.movies, filter{Played: "inProgress"}, []id.ID{h.dune.Work}},
+		{"series in progress", h.shows, filter{Played: "inProgress"}, []id.ID{h.bluey, h.expanse}},
+		{"series unplayed", h.shows, filter{Played: "unplayed"}, []id.ID{h.unmatchedShow}},
+		{"genre", h.movies, filter{Genres: []string{"Adventure", "Western"}}, []id.ID{h.dune.Work}},
+		{"years", h.movies, filter{YearFrom: 1995, YearTo: 1999}, []id.ID{h.toyStory.Work, h.toyStory2.Work}},
+		{"years to", h.movies, filter{YearTo: 1995}, []id.ID{h.bladeRunner.Work, h.toyStory.Work}},
+		{"ratings", h.movies, filter{ContentRatings: []string{"R", "PG-13"}}, []id.ID{h.bladeRunner.Work, h.dune.Work}},
+		{"1080p", h.movies, filter{Resolutions: []query.Resolution{query.Resolution1080p}}, []id.ID{h.dune.Work}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p, err := h.q.Browse(ctx, h.admin, tt.lib, query.BrowseOptions{Filter: tt.f})
+			p, err := h.browse(h.admin, tt.lib, grid{Filter: tt.f})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -307,7 +308,7 @@ func TestBrowseFilters(t *testing.T) {
 		})
 	}
 	// The Final Cut's 4K HDR copy is its own root work in the 4K library.
-	p, err := h.q.Browse(ctx, h.admin, h.uhd, query.BrowseOptions{Filter: query.Filter{
+	p, err := h.browse(h.admin, h.uhd, grid{Filter: filter{
 		Resolutions: []query.Resolution{query.Resolution4K}, Ranges: []query.Range{query.DolbyVision},
 	}})
 	if err != nil {
@@ -694,7 +695,7 @@ func TestGoneVersionHidden(t *testing.T) {
 		if !slices.Equal(catalogOrder, want) {
 			t.Errorf("%s: the catalog's versions = %v, want %v", when, catalogOrder, want)
 		}
-		p, err := h.q.Browse(ctx, h.admin, h.movies, query.BrowseOptions{Filter: query.Filter{Resolutions: []query.Resolution{query.Resolution4K}}})
+		p, err := h.browse(h.admin, h.movies, grid{Filter: filter{Resolutions: []query.Resolution{query.Resolution4K}}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -730,7 +731,7 @@ func TestLabelledRootIsItsOwn(t *testing.T) {
 	if c := got.Works[1]; c.Edition != "Final Cut" {
 		t.Errorf("the labelled root's summary has label %q", c.Edition)
 	}
-	p, err := h.q.Browse(ctx, h.friend, h.movies, query.BrowseOptions{})
+	p, err := h.browse(h.friend, h.movies, grid{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1113,7 +1114,7 @@ func TestSummariesCarryArtwork(t *testing.T) {
 	if im.Still == nil || im.Still.ID != still || im.Poster == nil || im.Poster.ID != poster || im.Backdrop.ID != backdrop || im.Poster.Blurhash == "" {
 		t.Fatalf("an episode's art: %+v; want its still and the series' poster and backdrop", im)
 	}
-	p, err := h.q.Browse(ctx, h.admin, h.movies, query.BrowseOptions{})
+	p, err := h.browse(h.admin, h.movies, grid{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1189,7 +1190,7 @@ func TestLastPlayedIsAWorksOwn(t *testing.T) {
 		{"movies", h.movies, catalog.KindMovie, []id.ID{h.dune.Work}},
 		{"shows", h.shows, catalog.KindSeries, []id.ID{h.bluey, h.expanse}},
 	} {
-		p, err := h.q.Browse(ctx, h.admin, tt.lib, query.BrowseOptions{Sort: query.ByLastPlayed})
+		p, err := h.browse(h.admin, tt.lib, grid{Sort: "lastPlayedAt"})
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -43,6 +43,13 @@ internal class LibraryRepository(
         }
     }
 
+    /** A library's kind, by the kept libraries or else the server's; null for one the user doesn't see. */
+    suspend fun kind(libraryId: String): String? {
+        val library = kept()?.firstOrNull { it.id == libraryId }
+            ?: connection.libraries.listLibraries().result().items.firstOrNull { it.id == libraryId }
+        return library?.kind
+    }
+
     private suspend fun keep(libraries: List<Library>) {
         val user = connection.user.value?.id ?: return
         try {

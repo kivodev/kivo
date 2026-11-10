@@ -1,13 +1,16 @@
 import { type QueryClient, type QueryKey, queryOptions, useQueryClient } from "@tanstack/react-query";
 import { $api, client } from "./client";
 import { keysetPages } from "./pages";
-import { type ApiPath, apiPaths, invalidatePaths, pathKey, workViewPaths } from "./paths";
+import { apiPaths, invalidatePaths, pathKey, readsPath, workViewPaths } from "./paths";
 import { retryPageDelay, shouldRetryPage } from "./problem";
 import type { paths } from "./schema";
-import type { ArtworkType, BrowseQuery, UserState, WorkDetail } from "./schemas";
+import type { ArtworkType, UserState, WorkDetail, WorkQueryRequest } from "./schemas";
 
-/** A library grid's sort and filters: the listLibraryWorks query without the paging. */
-export type BrowseFilters = Omit<BrowseQuery, "offset" | "limit">;
+/**
+ * A library grid's read: a work query in the library, whose rules are the
+ * grid's filters and whose sort is its order. `unmatched` is for admins.
+ */
+export type GridRequest = Required<Pick<WorkQueryRequest, "query" | "library">> & Pick<WorkQueryRequest, "unmatched">;
 
 /** A library grid's page size. Page i holds the items from i * gridPageSize. */
 export const gridPageSize = 100;
@@ -82,13 +85,10 @@ export const workQueries = {
   collection: (id: string) => $api.queryOptions("get", "/api/v1/collections/{id}", { params: { path: { id } } }),
 
   /** One page of a library's grid. Page 0 of the title sort carries the letter rail's letters. */
-  browsePage: (libraryId: string, filters: BrowseFilters, index: number) => {
-    const init = { params: { path: { id: libraryId }, query: { ...filters, limit: gridPageSize } } };
-    return gridPage(["get", apiPaths.libraryWorks, init], index, async (offset, signal) => {
-      const { data, error } = await client.GET("/api/v1/libraries/{id}/works", {
-        signal,
-        params: { ...init.params, query: { ...init.params.query, offset } },
-      });
+  browsePage: (request: GridRequest, index: number) => {
+    const body = { ...request, limit: gridPageSize };
+    return gridPage([...pathKey(apiPaths.workQuery), { body }], index, async (offset, signal) => {
+      const { data, error } = await client.POST("/api/v1/works/query", { signal, body: { ...body, offset } });
       if (error) throw error;
       return data;
     });
@@ -277,8 +277,7 @@ function replaceUserState(data: unknown, workId: string, userState: UserState, k
 export function applyUserState(queryClient: QueryClient, workId: string, userState: UserState) {
   const kinds = new Set<string>();
   for (const query of queryClient.getQueryCache().getAll()) {
-    const [method, path] = query.queryKey;
-    if (method !== "get" || !workViewPaths.includes(path as ApiPath) || query.state.data === undefined) continue;
+    if (!workViewPaths.some((path) => readsPath(query.queryKey, path)) || query.state.data === undefined) continue;
     queryClient.setQueryData(query.queryKey, replaceUserState(query.state.data, workId, userState, kinds));
   }
   const cascades = kinds.has("series") || kinds.has("season");

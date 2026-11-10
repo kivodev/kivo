@@ -1,7 +1,6 @@
 package api
 
 import (
-	"cmp"
 	"context"
 	"slices"
 	"time"
@@ -72,51 +71,6 @@ func (h *handlers) GetLibrary(ctx context.Context, req gen.GetLibraryRequestObje
 		return nil, err
 	}
 	return gen.GetLibrary200JSONResponse(l), nil
-}
-
-func (h *handlers) GetLibraryFacets(ctx context.Context, req gen.GetLibraryFacetsRequestObject) (gen.GetLibraryFacetsResponseObject, error) {
-	f, err := h.deps.Query.Facets(ctx, callerOf(ctx).viewer, req.ID)
-	if err != nil {
-		return nil, err
-	}
-	// The content ratings of the library's country come first, in that
-	// country's order (G, PG, PG-13, R, NC-17, then the TV ratings). Other
-	// ratings keep query's order.
-	lib, err := h.deps.Catalog.Library(ctx, req.ID)
-	if err != nil {
-		return nil, err
-	}
-	order := map[string]int{}
-	for i, r := range h.deps.Metadata.ContentRatings(lib.ContentRatingCountry) {
-		order[r.Name] = i + 1
-	}
-	slices.SortStableFunc(f.ContentRatings, func(a, b string) int {
-		return cmp.Compare(cmp.Or(order[a], len(order)+1), cmp.Or(order[b], len(order)+1))
-	})
-	narrators := make([]gen.PersonRef, len(f.Narrators))
-	for i, n := range f.Narrators {
-		narrators[i] = gen.PersonRef{ID: n.ID, Name: n.Name}
-	}
-	return gen.GetLibraryFacets200JSONResponse{
-		Genres: f.Genres, ContentRatings: f.ContentRatings, Years: f.Years, Narrators: narrators,
-		Resolutions:   each(f.Resolutions, func(r query.Resolution) gen.Resolution { return gen.Resolution(r) }),
-		DynamicRanges: each(f.Ranges, func(r query.Range) gen.DynamicRange { return gen.DynamicRange(r) }),
-		Collections:   f.Collections,
-	}, nil
-}
-
-// ListLibraryWorks is a page of a library's grid, sorted and filtered.
-func (h *handlers) ListLibraryWorks(ctx context.Context, req gen.ListLibraryWorksRequestObject) (gen.ListLibraryWorksResponseObject, error) {
-	v := callerOf(ctx).viewer
-	o, err := parseBrowseOptions(req.Params, v)
-	if err != nil {
-		return nil, err
-	}
-	g, err := h.deps.Query.Browse(ctx, v, req.ID, o)
-	if err != nil {
-		return nil, err
-	}
-	return gen.ListLibraryWorks200JSONResponse(workPage(g)), nil
 }
 
 // ListLibraryCollections is a page of a library's collections.

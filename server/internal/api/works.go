@@ -384,27 +384,6 @@ func lockedFieldName(kind catalog.WorkKind, f string) string {
 	return f
 }
 
-// parseBrowseOptions reads a library grid's sort, page and filters.
-func parseBrowseOptions(p gen.ListLibraryWorksParams, v users.Viewer) (query.BrowseOptions, error) {
-	if p.MatchState != nil && *p.MatchState != gen.MatchStateUnmatched {
-		return query.BrowseOptions{}, invalid("matchState is unmatched", field("matchState", "invalid"))
-	}
-	o := query.BrowseOptions{Sort: query.Sort(deref(p.Sort))}
-	var err error
-	if o.GridOptions, err = gridOptionsOf(p.Offset, p.Limit); err != nil {
-		return o, err
-	}
-	o.Filter = query.Filter{
-		Played: query.PlayState(deref(p.Played)), Genres: deref(p.Genre),
-		YearFrom: deref(p.YearFrom), YearTo: deref(p.YearTo), ContentRatings: deref(p.ContentRating),
-		Resolutions: stringsAs[query.Resolution](deref(p.Resolution)), Ranges: stringsAs[query.Range](deref(p.DynamicRange)),
-		Narrator: deref(p.NarratorID),
-		// Only admins filter by match state.
-		Unmatched: p.MatchState != nil && v.Admin(),
-	}
-	return o, nil
-}
-
 // match is a "Fix match" result on the wire. A book's result also carries
 // its authors, narrators, subtitle, overview and running time.
 func match(m metadata.Match) gen.Match {

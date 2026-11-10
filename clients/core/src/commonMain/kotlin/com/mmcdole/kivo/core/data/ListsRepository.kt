@@ -49,12 +49,12 @@ internal class ListsRepository(private val connection: ServerConnection, private
 
     /** How many works [query] selects: the first page's total, read one summary long. */
     suspend fun countMatching(query: WorkQuery): Int =
-        connection.works.queryWorks(WorkQueryRequest(query, limit = 1)).result().total
+        connection.works.queryWorks(WorkQueryRequest(query, limit = 1)).result().total ?: 0
 
     suspend fun fields(): List<WorkField> = connection.works.listWorkFields().result().items
 
     suspend fun values(field: String, search: String?, ids: List<String>?): List<WorkFieldValue> =
-        connection.works.listWorkFieldValues(field, search, ids).result().items
+        connection.works.listWorkFieldValues(field, search, ids = ids).result().items
 
     /** The names of [query]'s chosen values, by [SmartLists.nameKey]; a field whose values can't be read is left out. */
     suspend fun names(query: WorkQuery, fields: List<WorkField>): Map<String, String> = buildMap {

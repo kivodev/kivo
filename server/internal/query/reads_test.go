@@ -202,15 +202,11 @@ func TestGridReadsAgree(t *testing.T) {
 	if raceDetector {
 		every = 293
 	}
-	sorts := []query.Sort{"", query.ByTitle, query.ByAdded, query.ByRelease, query.ByCommunityRating, query.ByMyRating,
-		query.ByRuntime, query.ByLastPlayed, query.ByAuthor, query.ByLastEpisodeAdded}
-	if len(sorts) != len(query.GridSorts())+1 {
-		t.Fatalf("the matrix has %d sorts, and the grid %d", len(sorts)-1, len(query.GridSorts()))
-	}
-	resolutions := func(rs ...query.Resolution) query.Filter { return query.Filter{Resolutions: rs} }
-	filters := []query.Filter{
+	sorts := append([]string{""}, gridSorts...)
+	resolutions := func(rs ...query.Resolution) filter { return filter{Resolutions: rs} }
+	filters := []filter{
 		{},
-		{Played: query.Unplayed}, {Played: query.InProgress}, {Played: query.Played},
+		{Played: "unplayed"}, {Played: "inProgress"}, {Played: "played"},
 		{Genres: []string{"Drama"}}, {Genres: []string{"Comedy", "Action"}}, {Genres: []string{"Western"}},
 		{YearFrom: 1990}, {YearTo: 1980}, {YearFrom: 1965, YearTo: 2000}, {YearFrom: 2001, YearTo: 2001},
 		{ContentRatings: []string{"PG-13"}}, {ContentRatings: []string{"G", "R", "TV-MA"}},
@@ -219,10 +215,10 @@ func TestGridReadsAgree(t *testing.T) {
 		{Ranges: []query.Range{query.HDR}}, {Ranges: []query.Range{query.DolbyVision}}, {Ranges: []query.Range{query.HDR, query.DolbyVision}},
 		{Unmatched: true},
 		{Narrator: blobID('p', 6)},
-		{Played: query.Played, Genres: []string{"Drama", "Horror"}},
-		{Unmatched: true, YearFrom: 1970, Played: query.Unplayed},
+		{Played: "played", Genres: []string{"Drama", "Horror"}},
+		{Unmatched: true, YearFrom: 1970, Played: "unplayed"},
 		{Genres: []string{"Comedy"}, YearFrom: 1960, YearTo: 2010, ContentRatings: []string{"PG-13", "R"}, Resolutions: []query.Resolution{query.Resolution1080p, query.Resolution4K}},
-		{Narrator: blobID('p', 5), Played: query.InProgress},
+		{Narrator: blobID('p', 5), Played: "inProgress"},
 		{Ranges: []query.Range{query.HDR}, Resolutions: []query.Resolution{query.Resolution720p}, YearTo: 1999},
 	}
 	libraries := []struct {
@@ -253,10 +249,10 @@ func TestGridReadsAgree(t *testing.T) {
 					if n++; n%every != 0 {
 						continue
 					}
-					o := query.BrowseOptions{Sort: sort, Filter: filter}
+					o := grid{Sort: sort, Filter: filter}
 					at := fmt.Sprintf("as %s, %s by %q, filter %d %+v", v.name, l.name, sort, fi, filter)
 					ran++
-					first, err := svc.Browse(ctx, v.v, lib, query.BrowseOptions{Sort: sort, Filter: filter, GridOptions: query.GridOptions{Limit: 200}})
+					first, err := browse(db, svc, v.v, lib, grid{Sort: sort, Filter: filter, GridOptions: query.GridOptions{Limit: 200}})
 					if !v.v.AllLibraries() && !slices.Contains(v.v.Libraries(), lib) {
 						// A Viewer without the library finds none, whatever the grid.
 						if !errors.Is(err, query.ErrNotFound) {
@@ -272,8 +268,7 @@ func TestGridReadsAgree(t *testing.T) {
 					// The grid's query, in every library, and sorted by a
 					// second key that changes no order, so that it is read
 					// whole and sorted.
-					q := query.GridQuery(t, o)
-					q.Kinds = []catalog.WorkKind{l.kind}
+					q := o.query(l.kind)
 					in := query.Rule{Field: "library", Op: "anyOf", Values: []string{lib.String()}}
 					if q.Where == nil {
 						q.Where = where(in)
@@ -290,14 +285,14 @@ func TestGridReadsAgree(t *testing.T) {
 						found++
 					}
 
-					titled := sort == "" || sort == query.ByTitle
+					titled := sort == "" || sort == "title"
 					if !slices.Equal(ids(first.Items), want) || first.Total != len(want) || (first.Letters != nil) != titled {
 						t.Fatalf("%s: has %d works, the total %d and the letters %v, want %d works", at, len(first.Items), first.Total, first.Letters, len(want))
 					}
 					for _, p := range []query.GridOptions{{Limit: 7}, {Offset: 7, Limit: 7}, {Offset: 3, Limit: 1},
 						{Offset: max(len(want)-2, 1), Limit: 5}, {Offset: 100000, Limit: 50}} {
 						o.GridOptions = p
-						got, err := svc.Browse(ctx, v.v, lib, o)
+						got, err := browse(db, svc, v.v, lib, o)
 						if err != nil {
 							t.Fatalf("%s, page %+v: %v", at, p, err)
 						}

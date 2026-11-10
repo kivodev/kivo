@@ -3,7 +3,7 @@ import type { paths } from "./schema";
 
 /**
  * Spec paths the client refers to outside a typed call. These are used for
- * invalidation by path (query keys start `["get", path]`), image URLs and
+ * invalidation by path (query keys start with `pathKey`), image URLs and
  * the event socket. They are checked against the generated `paths`, so a
  * renamed route fails to compile.
  */
@@ -13,8 +13,6 @@ export const apiPaths = {
   sessions: "/api/v1/sessions",
   libraries: "/api/v1/libraries",
   library: "/api/v1/libraries/{id}",
-  libraryFacets: "/api/v1/libraries/{id}/facets",
-  libraryWorks: "/api/v1/libraries/{id}/works",
   libraryCollections: "/api/v1/libraries/{id}/collections",
   libraryAuthors: "/api/v1/libraries/{id}/authors",
   libraryBookSeries: "/api/v1/libraries/{id}/book-series",
@@ -26,6 +24,8 @@ export const apiPaths = {
   work: "/api/v1/works/{id}",
   workChildren: "/api/v1/works/{id}/children",
   workFiles: "/api/v1/works/{id}/files",
+  workQuery: "/api/v1/works/query",
+  workFieldValues: "/api/v1/work-fields/{field}/values",
   unmatchedWorks: "/api/v1/unmatched-works",
   collection: "/api/v1/collections/{id}",
   workArtwork: "/api/v1/works/{id}/artwork",
@@ -51,14 +51,26 @@ export const apiPaths = {
 
 export type ApiPath = (typeof apiPaths)[keyof typeof apiPaths];
 
-/** The prefix of every GET query key for a path, for invalidation. */
-export function pathKey(path: ApiPath): readonly ["get", ApiPath] {
-  return ["get", path];
+/**
+ * The prefix of every query key that reads a path, for invalidation. A path
+ * is read with GET, and a work query with POST.
+ */
+export function pathKey(path: ApiPath): readonly ["get" | "post", ApiPath] {
+  return [path === apiPaths.workQuery ? "post" : "get", path];
 }
 
-/** A library's grids: its works, collections, authors and book series. */
+/** Whether a query reads a path. */
+export function readsPath(queryKey: readonly unknown[], path: ApiPath): boolean {
+  const [method, keyPath] = pathKey(path);
+  return queryKey[0] === method && queryKey[1] === keyPath;
+}
+
+/**
+ * A library's grids: its works, which a work query in the library reads,
+ * and its collections, authors and book series.
+ */
 export const libraryGridPaths: readonly ApiPath[] = [
-  apiPaths.libraryWorks,
+  apiPaths.workQuery,
   apiPaths.libraryCollections,
   apiPaths.libraryAuthors,
   apiPaths.libraryBookSeries,
@@ -66,8 +78,9 @@ export const libraryGridPaths: readonly ApiPath[] = [
 
 /**
  * Paths whose responses show works, each with its user state. These are a
- * work's page, the grids, children, collections, the Unmatched list, Home,
- * lists, search, and the book pages of people and series. Whatever
+ * work's page, work queries and the grids, children, collections, the
+ * Unmatched list, Home, lists, search, and the book pages of people and
+ * series. Whatever
  * changes a work refetches these.
  */
 export const workViewPaths: readonly ApiPath[] = [

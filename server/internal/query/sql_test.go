@@ -197,7 +197,7 @@ func TestViewerFilter(t *testing.T) {
 		}
 	}
 	for _, s := range gridSamples(h) {
-		counted, page, _ := h.q.CompiledGrid(t, h.friend, s.lib, s.o)
+		counted, page, _ := s.compiled(h)
 		checkCompiledFilter(t, canonical["works"], counted)
 		checkCompiledFilter(t, canonical["works"], page)
 	}

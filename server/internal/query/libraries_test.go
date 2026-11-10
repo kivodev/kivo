@@ -28,11 +28,11 @@ func TestLibraryCounts(t *testing.T) {
 			t.Fatalf("%s: admin libraries %d, %v; want %d", name, len(admin), err, len(libs))
 		}
 		for i, l := range libs {
-			all, err := h.q.Browse(ctx, v, l.ID, query.BrowseOptions{GridOptions: query.GridOptions{Limit: 1}})
+			all, err := h.browse(v, l.ID, grid{GridOptions: query.GridOptions{Limit: 1}})
 			if err != nil {
 				t.Fatal(err)
 			}
-			unmatched, err := h.q.Browse(ctx, v, l.ID, query.BrowseOptions{GridOptions: query.GridOptions{Limit: 1}, Filter: query.Filter{Unmatched: true}})
+			unmatched, err := h.browse(v, l.ID, grid{GridOptions: query.GridOptions{Limit: 1}, Filter: filter{Unmatched: true}})
 			if err != nil {
 				t.Fatal(err)
 			}

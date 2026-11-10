@@ -1,9 +1,10 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createRoute, lazyRouteComponent, redirect } from "@tanstack/react-router";
 import { libraryQueries } from "@/api/libraries";
+import type { Library } from "@/api/schemas";
 import { workQueries } from "@/api/works";
 import { LibrarySkeleton } from "@/components/Skeleton";
-import { browseSearchSchema, storedBrowse, toFilters } from "@/features/browse/browseSearch";
+import { browseSearchSchema, gridRequest, offersCollections, storedBrowse } from "@/features/browse/browseSearch";
 import { LibrarySwitcher } from "@/features/browse/LibrarySwitcher";
 import { authedRoute } from "./authed";
 
@@ -25,18 +26,27 @@ export const libraryRoute = createRoute({
   loaderDeps: ({ search }) => ({ search }),
   loader: ({ context: { queryClient, user }, params: { libraryId }, deps }) => {
     void queryClient.prefetchQuery(libraryQueries.detail(libraryId));
-    // The facets say whether there's a Collections tab. Then the first
-    // page of the tab's section.
-    void queryClient.prefetchQuery(libraryQueries.facets(libraryId));
+    // The first page of the tab's section.
     const tab = deps.search.tab ?? "library";
-    if (tab === "library") {
-      void queryClient.prefetchQuery(workQueries.browsePage(libraryId, toFilters(deps.search, user.admin), 0));
-    } else if (tab === "collections") {
+    if (tab === "collections") {
       void queryClient.prefetchQuery(workQueries.collectionsPage(libraryId, 0));
     } else if (tab === "authors") {
       void queryClient.prefetchQuery(workQueries.authorsPage(libraryId, 0));
     } else if (tab === "series") {
       void queryClient.prefetchQuery(workQueries.bookSeriesPage(libraryId, 0));
+    } else {
+      // The grid's query names the library's kind, which the list of
+      // libraries has. The collections' first page says whether the
+      // Collections tab shows.
+      const libraries = libraryQueries.list();
+      void queryClient.prefetchQuery(libraries).then(() => {
+        const library = queryClient
+          .getQueryData<{ items: Library[] }>(libraries.queryKey)
+          ?.items.find((l) => l.id === libraryId);
+        if (!library) return;
+        void queryClient.prefetchQuery(workQueries.browsePage(gridRequest(library, deps.search, user.admin), 0));
+        if (offersCollections(library)) void queryClient.prefetchQuery(workQueries.collectionsPage(libraryId, 0));
+      });
     }
   },
   // Another library is a new page, with fresh state.

@@ -77,7 +77,7 @@ func TestBitsAgreeWithTheView(t *testing.T) {
 		t.Errorf("the films have %d of the %d resolutions, and there are %d ranges, want 2", len(seen), len(resolutions), len(ranges))
 	}
 	// The grid's filters read the same bits.
-	p, err := h.q.Browse(ctx, h.admin, h.movies, query.BrowseOptions{Filter: query.Filter{
+	p, err := h.browse(h.admin, h.movies, grid{Filter: filter{
 		Resolutions: []query.Resolution{query.Resolution720p}, Ranges: nil}})
 	if err != nil {
 		t.Fatal(err)
@@ -139,23 +139,13 @@ func TestSortIndexes(t *testing.T) {
 	}
 }
 
-// TestGridSortsAreQueryFields checks that a library grid's sorts and a
-// query's sortable fields are one vocabulary: each grid sort orders by the
-// sortable field of its name, but for the one sort whose field has another.
+// TestGridSortsAreQueryFields checks that each sort a library's grid
+// offers is a sortable field of a query.
 func TestGridSortsAreQueryFields(t *testing.T) {
-	renamed := map[query.Sort]string{query.ByRuntime: "runtimeMs"}
 	fields := query.WorkFields()
-	sorts := query.GridSorts()
-	if len(sorts) != 9 {
-		t.Errorf("the grid has %d sorts, want 9", len(sorts))
-	}
-	for sort, field := range sorts {
-		name := string(sort)
-		if other, ok := renamed[sort]; ok {
-			name = other
-		}
-		if field != name || !slices.ContainsFunc(fields, func(f query.WorkField) bool { return f.Field == field && f.Sortable }) {
-			t.Errorf("the grid's sort %s orders by %s, want the sortable field %s", sort, field, name)
+	for _, sort := range gridSorts {
+		if !slices.ContainsFunc(fields, func(f query.WorkField) bool { return f.Field == sort && f.Sortable }) {
+			t.Errorf("the grid's sort %s is no sortable field", sort)
 		}
 	}
 }
@@ -199,7 +189,7 @@ func TestWalkedPagesFollowTheFirst(t *testing.T) {
 	for _, f := range query.IndexedSorts() {
 		for _, kind := range []catalog.WorkKind{catalog.KindMovie, catalog.KindSeries} {
 			wq := query.WorkQuery{Kinds: []catalog.WorkKind{kind}, Sort: []query.SortKey{{Field: f.Field}}}
-			first, err := q.QueryWorks(ctx, some, wq, query.GridOptions{Limit: 200})
+			first, err := q.QueryWorks(ctx, some, wq, query.Scope{}, query.GridOptions{Limit: 200})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -209,7 +199,7 @@ func TestWalkedPagesFollowTheFirst(t *testing.T) {
 			walked = 0
 			var got []id.ID
 			for offset := 7; offset+13 <= len(first.Items); offset += 13 {
-				p, err := q.QueryWorks(ctx, some, wq, query.GridOptions{Offset: offset, Limit: 13})
+				p, err := q.QueryWorks(ctx, some, wq, query.Scope{}, query.GridOptions{Offset: offset, Limit: 13})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -225,12 +215,12 @@ func TestWalkedPagesFollowTheFirst(t *testing.T) {
 			walks bool
 		}{{nil, false}, {inMovies, true}} {
 			wq := query.WorkQuery{Kinds: []catalog.WorkKind{catalog.KindMovie}, Where: tt.where, Sort: []query.SortKey{{Field: f.Field}}}
-			first, err := q.QueryWorks(ctx, every, wq, query.GridOptions{Limit: 100})
+			first, err := q.QueryWorks(ctx, every, wq, query.Scope{}, query.GridOptions{Limit: 100})
 			if err != nil {
 				t.Fatal(err)
 			}
 			walked = 0
-			later, err := q.QueryWorks(ctx, every, wq, query.GridOptions{Offset: 40, Limit: 60})
+			later, err := q.QueryWorks(ctx, every, wq, query.Scope{}, query.GridOptions{Offset: 40, Limit: 60})
 			if err != nil {
 				t.Fatal(err)
 			}
