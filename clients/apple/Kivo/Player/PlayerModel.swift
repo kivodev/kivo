@@ -149,7 +149,7 @@ final class PlayerModel: PlayerChoices, Scrubbable {
                 )
             } catch {
                 // A download that can't play now, such as one that needs the server to check it first.
-                if target.downloadId != nil { server.playerShown = false }
+                if target.downloadId != nil { server.player.shown = false }
             }
         })
     }
@@ -501,7 +501,7 @@ final class PlayerModel: PlayerChoices, Scrubbable {
             playNext()
         case .series:
             guard let episode = work?.episode else { return }
-            server.showSeries(afterPlaying: episode.seriesId, offline: offline)
+            server.player.showSeries(afterPlaying: episode.seriesId, offline: offline)
         case .close, nil:
             break
         }
@@ -527,25 +527,25 @@ final class PlayerModel: PlayerChoices, Scrubbable {
             guard let self else { return }
             self.pictureInPictureActive = true
             self.tellOverlayShows()
-            self.server.playerShown = false
+            self.server.player.shown = false
         }
         pictureInPictureEvents.failedToStart = { [weak self] error in
             NSLog("Kivo: Picture in Picture didn't start: \(error)")
             guard let self, self.pictureInPictureActive else { return }
             self.pictureInPictureActive = false
             self.tellOverlayShows()
-            self.server.playerShown = true
+            self.server.player.shown = true
         }
         pictureInPictureEvents.didStop = { [weak self] in
             guard let self else { return }
             self.pictureInPictureActive = false
             self.tellOverlayShows()
-            self.server.pictureInPictureEnded()
+            self.server.player.pictureInPictureEnded()
         }
         pictureInPictureEvents.restore = { [weak self] completion in
             guard let self else { return completion(false) }
             self.restoring = completion
-            self.server.playerShown = true
+            self.server.player.shown = true
         }
         pictureInPicture = controller
     }

@@ -24,7 +24,8 @@ struct SignedInView: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     var body: some View {
-        @Bindable var server = server
+        @Bindable var navigation = server.navigation
+        @Bindable var player = server.player
         @Bindable var book = server.book
         // The sidebar is iPad's: an iPhone in landscape is regular width too, but keeps its tab bar.
         let sidebar = UIDevice.current.userInterfaceIdiom == .pad && horizontalSizeClass == .regular
@@ -63,28 +64,28 @@ struct SignedInView: View {
                     .modifier(MiniPlayerBar(book: book))
             }
             Tab(String(localized: "Search"), systemImage: "magnifyingglass", value: AppTab.search, role: .search) {
-                SearchTab(query: $server.searchQuery, chosen: server.tab == .search)
+                SearchTab(query: $navigation.searchQuery, chosen: navigation.tab == .search)
                     .modifier(MiniPlayerBar(book: book))
             }
         }
         .modifier(SearchTabActivation())
         .tabViewStyle(.sidebarAdaptable)
         .tabViewSidebarBottomBar { SidebarAccount() }
-        .onChange(of: sidebar, initial: true) { _, sidebar in server.useSidebar(sidebar) }
+        .onChange(of: sidebar, initial: true) { _, sidebar in navigation.useSidebar(sidebar) }
         .environment(\.wide, wide)
-        .modifier(MiniPlayerAccessoryModifier(book: book, cast: server.cast, open: { server.playerShown = true }))
-        .sheet(isPresented: castMenuShown(over: false), onDismiss: server.castMenuClosed) {
-            CastMenu(cast: server.cast, stop: server.stopCastingAfterMenu)
+        .modifier(MiniPlayerAccessoryModifier(book: book, cast: server.cast, open: { player.shown = true }))
+        .sheet(isPresented: castMenuShown(over: false), onDismiss: player.castMenuClosed) {
+            CastMenu(cast: server.cast, stop: player.stopCastingAfterMenu)
                 .environment(\.artworkSource, server.artwork)
         }
         .sheet(isPresented: $book.expanded) {
             NowPlayingView(book: book)
         }
-        .sheet(isPresented: $server.settingsShown) {
+        .sheet(isPresented: $navigation.settingsShown) {
             NavigationStack { SettingsView() }
         }
         .sheet(isPresented: addToListShown) {
-            if let workId = server.addingToList {
+            if let workId = navigation.addingToList {
                 AddToListView(workId: workId)
             }
         }
@@ -110,17 +111,17 @@ struct SignedInView: View {
         .alert(server.downloadProblem ?? "", isPresented: downloadProblemShown) {
             Button(String(localized: "OK"), role: .cancel) {}
         }
-        .fullScreenCover(isPresented: $server.playerShown, onDismiss: server.playerDismissed) {
+        .fullScreenCover(isPresented: $player.shown, onDismiss: player.dismissed) {
             Group {
-                if let playback = server.playback {
-                    PlayerScreen(model: playback)
+                if let model = player.model {
+                    PlayerScreen(model: model)
                 } else if server.cast.active {
-                    CastRemote(cast: server.cast, close: { server.playerShown = false })
+                    CastRemote(cast: server.cast, close: { player.shown = false })
                 }
             }
             .environment(\.artworkSource, server.artwork)
-            .sheet(isPresented: castMenuShown(over: true), onDismiss: server.castMenuClosed) {
-                CastMenu(cast: server.cast, stop: server.stopCastingAfterMenu)
+            .sheet(isPresented: castMenuShown(over: true), onDismiss: player.castMenuClosed) {
+                CastMenu(cast: server.cast, stop: player.stopCastingAfterMenu)
                     .environment(\.artworkSource, server.artwork)
             }
         }
@@ -129,7 +130,7 @@ struct SignedInView: View {
     /// Whether the Cast menu shows over the player or the remote [over], or over the tabs.
     private func castMenuShown(over player: Bool) -> Binding<Bool> {
         Binding(
-            get: { server.cast.menuShown && server.playerShown == player },
+            get: { server.cast.menuShown && server.player.shown == player },
             set: { if !$0 { server.cast.menuShown = false } }
         )
     }
@@ -150,17 +151,17 @@ struct SignedInView: View {
 
     /// Whether Add to List shows.
     private var addToListShown: Binding<Bool> {
-        Binding(get: { server.addingToList != nil }, set: { if !$0 { server.addingToList = nil } })
+        Binding(get: { server.navigation.addingToList != nil }, set: { if !$0 { server.navigation.addingToList = nil } })
     }
 
-    /// The selected tab, chosen as ``ServerModel/choose(_:)`` says.
+    /// The selected tab, chosen as ``Navigation/choose(_:)`` says.
     /// Whether Link a device shows for a `kivo://link` link opened from the system Camera.
     private var linkShown: Binding<Bool> {
         Binding(get: { app.pendingLink != nil }, set: { if !$0 { app.pendingLink = nil } })
     }
 
     private var selection: Binding<AppTab> {
-        Binding(get: { server.tab }, set: { server.choose($0) })
+        Binding(get: { server.navigation.tab }, set: { server.navigation.choose($0) })
     }
 }
 
@@ -211,7 +212,7 @@ private struct SidebarAccount: View {
 
     var body: some View {
         Button {
-            server.settingsShown = true
+            server.navigation.settingsShown = true
         } label: {
             // Inset and sized as the sidebar's rows are, so the avatar sits in their icon column.
             Label {
@@ -287,21 +288,21 @@ struct BrowseStack<Root: View>: View {
                         case .librariesPage(let library):
                             LibraryView(library: library, server: server)
                                 .id(library.id)
-                                .onAppear { server.open(library) }
+                                .onAppear { server.navigation.open(library) }
                         }
                     }
                     .kivoPageBackground()
                 }
         }
         .environment(\.openWork, OpenWork { route in
-            server.paths[tab, default: []].append(.work(route))
+            server.navigation.paths[tab, default: []].append(.work(route))
         })
     }
 
     private var path: Binding<[Route]> {
         Binding(
-            get: { server.paths[tab] ?? [] },
-            set: { server.paths[tab] = $0 }
+            get: { server.navigation.paths[tab] ?? [] },
+            set: { server.navigation.paths[tab] = $0 }
         )
     }
 }
@@ -399,7 +400,7 @@ struct UnreachableView: View {
                 server.session.retryNow()
                 reload?()
             }),
-            secondary: server.downloads.isEmpty ? nil : (label: String(localized: "Go to Downloads"), run: { server.tab = .downloads })
+            secondary: server.downloads.isEmpty ? nil : (label: String(localized: "Go to Downloads"), run: { server.navigation.tab = .downloads })
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task {

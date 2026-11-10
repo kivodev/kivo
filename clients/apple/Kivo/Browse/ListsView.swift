@@ -215,7 +215,7 @@ private struct MyListRow: View {
                 BrowseRow.skeleton(.poster, wide: true)
             } else {
                 BrowseRow(title: list.name, items: works, count: Int(list.workCount)) {
-                    server.paths[server.tab, default: []].append(list.route)
+                    server.navigation.push(list.route)
                 }
                 .environment(\.currentList, ListRef(id: list.id, name: list.name, kind: list.kind))
             }

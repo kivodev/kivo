@@ -248,7 +248,7 @@ struct PlayableDetail: View {
     /// Plays the download when there's one ready, with the subtitle chosen where it has it, else streams.
     private func play(fromStart: Bool) {
         if let download {
-            server.play(PlayTarget(workId: work.id, subtitleTrackId: subtitleTrackId, fromStart: fromStart, downloadId: download.id))
+            server.player.play(PlayTarget(workId: work.id, subtitleTrackId: subtitleTrackId, fromStart: fromStart, downloadId: download.id))
         } else {
             stream(fromStart: fromStart)
         }
@@ -256,7 +256,7 @@ struct PlayableDetail: View {
 
     /// Plays from the server, at this device's streaming quality.
     private func stream(fromStart: Bool) {
-        server.play(PlayTarget(
+        server.player.play(PlayTarget(
             workId: work.id,
             versionId: version?.id,
             audioTrackId: audioTrackId,

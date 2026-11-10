@@ -126,8 +126,8 @@ struct NowPlayingView: View {
     /// A person's page or the book's, on the tab showing, with Now Playing closed.
     private func open(_ route: WorkRoute) {
         book.expanded = false
-        if server.tab == .downloads { server.tab = .home }
-        server.paths[server.tab, default: []].append(.work(route))
+        if server.navigation.tab == .downloads { server.navigation.tab = .home }
+        server.navigation.push(.work(route))
     }
 }
 
