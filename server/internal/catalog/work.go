@@ -14,7 +14,6 @@ import (
 	"github.com/mmcdole/kivo/internal/catalog/dbq"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/store"
-	"github.com/mmcdole/kivo/internal/users"
 )
 
 // Work is a work's identity and matching state. Root is the top of the
@@ -841,24 +840,6 @@ func (c *Catalog) DeleteEmptyWorks(ctx context.Context, tx *store.Tx) (int, erro
 		return 0, err
 	}
 	return len(works), nil
-}
-
-// Visible returns nil when a viewer may see a work. It returns ErrNotFound
-// when the viewer may not, or when there's no such work. users.Viewer.CanSeeWork
-// judges it from the libraries the work is in and how it's rated there.
-func (c *Catalog) Visible(ctx context.Context, v users.Viewer, work id.ID) error {
-	rows, err := c.q.WorkAccess(ctx, work)
-	if err != nil {
-		return err
-	}
-	access := make([]users.Access, len(rows))
-	for i, r := range rows {
-		access[i] = users.Access{Library: r.LibraryID, Kind: r.Kind, Age: intPtr(r.ContentRatingAge)}
-	}
-	if !v.CanSeeWork(access) {
-		return fmt.Errorf("%w: work %s", ErrNotFound, work)
-	}
-	return nil
 }
 
 // SortTitle returns the title to sort under. It drops a leading "¡" or "¿"

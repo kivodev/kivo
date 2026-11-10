@@ -493,45 +493,6 @@ func (q *Queries) VersionsOfWork(ctx context.Context, workID id.ID) ([]VersionsO
 	return items, nil
 }
 
-const workAccess = `-- name: WorkAccess :many
-SELECT wl.library_id, w.kind,
-  coalesce(w.content_rating_age, (SELECT r.content_rating_age FROM work r WHERE r.id = w.root_id)) AS content_rating_age
-FROM work_library wl
-JOIN work w ON w.id = wl.work_id
-WHERE wl.work_id = ?1
-`
-
-type WorkAccessRow struct {
-	LibraryID        id.ID
-	Kind             string
-	ContentRatingAge sql.NullInt64
-}
-
-// The libraries a work is available in, with its kind and its
-// content rating age: its own, else its top ancestor's.
-func (q *Queries) WorkAccess(ctx context.Context, workID id.ID) ([]WorkAccessRow, error) {
-	rows, err := q.db.QueryContext(ctx, workAccess, workID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []WorkAccessRow
-	for rows.Next() {
-		var i WorkAccessRow
-		if err := rows.Scan(&i.LibraryID, &i.Kind, &i.ContentRatingAge); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const workHasVersions = `-- name: WorkHasVersions :one
 SELECT EXISTS (SELECT 1 FROM media_version_work WHERE work_id = ?1)
 `

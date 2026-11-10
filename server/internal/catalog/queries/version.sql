@@ -127,15 +127,6 @@ WHERE vw.work_id = @work_id
   AND NOT EXISTS (SELECT 1 FROM media_file g WHERE g.version_id = vw.version_id AND g.status = 'gone')
 ORDER BY vw.version_id;
 
--- name: WorkAccess :many
--- The libraries a work is available in, with its kind and its
--- content rating age: its own, else its top ancestor's.
-SELECT wl.library_id, w.kind,
-  coalesce(w.content_rating_age, (SELECT r.content_rating_age FROM work r WHERE r.id = w.root_id)) AS content_rating_age
-FROM work_library wl
-JOIN work w ON w.id = wl.work_id
-WHERE wl.work_id = @work_id;
-
 -- name: VersionlessWorks :many
 SELECT id FROM work w WHERE w.id IN (SELECT unhex(value) FROM (SELECT CAST(@ids AS TEXT) AS ids), json_each(ids))
   AND NOT EXISTS (SELECT 1 FROM media_version_work vw WHERE vw.work_id = w.id);

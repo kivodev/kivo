@@ -134,7 +134,7 @@ var filters = `AND (@played IS NULL OR @played = CASE
 func rollupPlayState(column string) string {
 	return `CASE
       WHEN NOT EXISTS (SELECT 1 FROM work fe WHERE ` + column + ` = w.id AND fe.kind = 'episode'
-        AND EXISTS (SELECT 1 FROM work_library fl WHERE fl.work_id = fe.id AND ` + granted("fl.library_id") + `)
+        AND EXISTS (SELECT 1 FROM work_library fl WHERE fl.work_id = fe.id AND ` + catalog.Granted("fl.library_id") + `)
         AND NOT EXISTS (SELECT 1 FROM user_state fu WHERE fu.user_id = @user AND fu.work_id = fe.id AND fu.played))
         THEN 'played'
       WHEN EXISTS (SELECT 1 FROM work fe JOIN user_state fu ON fu.user_id = @user AND fu.work_id = fe.id

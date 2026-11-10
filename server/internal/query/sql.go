@@ -4,8 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"math"
 
+	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/users"
 )
@@ -27,22 +27,12 @@ func stmt(name, sql string) statement {
 
 // viewer is a Viewer in the form the statements' parameters take.
 type viewer struct {
-	user        id.ID
-	all         bool
-	libraries   string // the granted libraries, a set of IDs
-	ceiling     int64
-	showUnrated bool
+	user    id.ID
+	visible []any // the arguments of catalog.VisibleWork
 }
 
 func viewerOf(v users.Viewer) viewer {
-	out := viewer{
-		user: v.User(), all: v.AllLibraries(), libraries: id.Set(v.Libraries()...),
-		ceiling: math.MaxInt64, showUnrated: v.ShowsUnrated(),
-	}
-	if c, ok := v.RatingCeiling(); ok {
-		out.ceiling = c
-	}
-	return out
+	return viewer{user: v.User(), visible: catalog.VisibleArgs(v)}
 }
 
 // args returns a statement's arguments: more, followed by the Viewer's.
@@ -50,13 +40,7 @@ func viewerOf(v users.Viewer) viewer {
 // state, and the values the Viewer predicate reads. A statement ignores
 // the arguments it doesn't name.
 func (vw viewer) args(more ...any) []any {
-	return append(more,
-		sql.Named("user", vw.user),
-		sql.Named("all_libraries", vw.all),
-		sql.Named("libraries", vw.libraries),
-		sql.Named("ceiling", vw.ceiling),
-		sql.Named("show_unrated", vw.showUnrated),
-	)
+	return append(append(more, sql.Named("user", vw.user)), vw.visible...)
 }
 
 // set returns values as a set parameter, which a statement reads with
@@ -70,34 +54,15 @@ func set[T any](values []T) any {
 	return string(b)
 }
 
-// granted applies the Viewer's library grants to a library ID column.
-func granted(library string) string {
-	return "(@all_libraries OR " + library + " IN (SELECT unhex(value) FROM json_each(@libraries)))"
-}
-
-// visible is the Viewer predicate on w, which every statement about works
-// carries. It requires w to be available in a granted library, or in any
-// library when @all_libraries is set. It also requires w's rating rank to
-// be within @ceiling. The rank is w's own, or else its root's for a work
-// under one, or else the library's default.
-//
-// An unrated work passes if the user shows unrated works or the work isn't
-// video. Blocking unrated works hides only movies, series with their
-// seasons and episodes, videos and extras.
-//
-// A test looks for the "-- viewer-filter" marker in every statement.
-var visible = `EXISTS ( -- viewer-filter
-  SELECT 1 FROM work_library vl
-  WHERE vl.work_id = w.id
-    AND ` + granted("vl.library_id") + `
-    AND coalesce(coalesce(w.content_rating_age,
-      (SELECT vr.content_rating_age FROM work vr WHERE vr.id = CASE WHEN w.parent_id IS NOT NULL THEN w.root_id END)) <= @ceiling,
-      @show_unrated OR w.kind NOT IN ('movie', 'series', 'season', 'episode', 'extra', 'video')))`
+// visible is catalog.VisibleWork, the Viewer predicate on w, which every
+// statement about works carries. A test looks for its "-- viewer-filter"
+// marker in every statement.
+var visible = catalog.VisibleWork
 
 // libraryVisible is the Viewer predicate on a library l. The statements
 // that list libraries or their files carry it in place of visible.
 var libraryVisible = `-- viewer-filter: libraries
-  ` + granted("l.id")
+  ` + catalog.Granted("l.id")
 
 // querier runs a statement. It is a read transaction or the reader pool.
 type querier interface {
