@@ -32,12 +32,6 @@ enum SmartListWords {
         }
     }
 
-    /// A list's kinds in a phrase: "Movies and shows".
-    static func kinds(_ kinds: [String]) -> String {
-        let phrase = ListFormatter.localizedString(byJoining: kinds.map { kind($0).lowercased() })
-        return phrase.prefix(1).uppercased() + phrase.dropFirst()
-    }
-
     static func field(_ field: WorkField) -> String {
         switch field.field {
         case "library": String(localized: "Library")

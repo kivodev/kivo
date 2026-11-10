@@ -1,6 +1,5 @@
 package com.mmcdole.kivo.android.mobile.lists
 
-import android.icu.text.ListFormatter
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -38,13 +37,6 @@ internal fun kindName(kind: String): String = when (kind) {
     "video" -> stringResource(R.string.mobile_tab_videos)
     "book" -> stringResource(R.string.mobile_tab_books)
     else -> kind
-}
-
-/** A list's kinds in a phrase: "Movies and shows". */
-@Composable
-internal fun kindsPhrase(kinds: List<String>): String {
-    val phrase = ListFormatter.getInstance().format(kinds.map { kindName(it).lowercase() })
-    return phrase.replaceFirstChar { it.uppercase() }
 }
 
 /** A field's label by its key, or the catalog's name for one this app doesn't know. */
