@@ -1855,10 +1855,9 @@ paths:
       description: |
         Runs a `WorkQuery` once, as the caller: their library access and
         parental limits apply to every query. A grid, paged by `offset`,
-        with `total` on every page; `maxWorks` caps it, and `collapse`
-        counts one card per show. An invalid query is `400` with
-        `invalidRequest`, and `errors` holds a JSON pointer per problem,
-        such as `/query/where/groups/0/rules/2/op`.
+        with `total` on every page; `maxWorks` caps it. An invalid query is
+        `400` with `invalidRequest`, and `errors` holds a JSON pointer per
+        problem, such as `/query/where/groups/0/rules/2/op`.
       tags: [works]
       x-kivo-access: viewer
       requestBody:
@@ -5166,7 +5165,6 @@ components:
           type: array
           items: {$ref: "#/components/schemas/SortKey"}
         maxWorks: {type: integer, minimum: 1}
-        collapse: {$ref: "#/components/schemas/WorkQueryCollapse"}
 
     RuleGroup:
       type: object
@@ -5218,11 +5216,6 @@ components:
         defaultDirection: {$ref: "#/components/schemas/SortDirection"}
         unit: {type: string}
         valueSource: {$ref: "#/components/schemas/WorkFieldValueSource"}
-
-    WorkQueryCollapse:
-      type: string
-      description: "`series` keeps the first work of each show under the sort. Skip values you don't know."
-      enum: [series]
 
     RuleGroupMatch:
       type: string

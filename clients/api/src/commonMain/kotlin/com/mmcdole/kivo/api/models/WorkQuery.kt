@@ -38,7 +38,6 @@ import kotlinx.serialization.encoding.*
  * @param `where` 
  * @param sort 
  * @param maxWorks 
- * @param collapse `series` keeps the first work of each show under the sort. Skip values you don't know.
  */
 @Serializable
 
@@ -52,10 +51,7 @@ data class WorkQuery (
 
     @SerialName(value = "sort") val sort: kotlin.collections.List<SortKey>? = null,
 
-    @SerialName(value = "maxWorks") val maxWorks: kotlin.Int? = null,
-
-    /* `series` keeps the first work of each show under the sort. Skip values you don't know. */
-    @SerialName(value = "collapse") val collapse: kotlin.String? = null
+    @SerialName(value = "maxWorks") val maxWorks: kotlin.Int? = null
 
 ) {
 

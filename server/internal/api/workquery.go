@@ -37,9 +37,6 @@ func problemFields(prefix string, problems []query.QueryProblem) []gen.FieldErro
 // wireQuery converts a query for the wire.
 func wireQuery(q query.WorkQuery) gen.WorkQuery {
 	out := gen.WorkQuery{Version: &q.Version, Kinds: each(q.Kinds, func(k catalog.WorkKind) gen.WorkKind { return gen.WorkKind(k) }), MaxWorks: q.MaxWorks}
-	if q.Collapse != "" {
-		out.Collapse = ptr(gen.WorkQueryCollapse(q.Collapse))
-	}
 	if q.Where != nil {
 		g := wireGroup(*q.Where)
 		out.Where = &g
@@ -79,9 +76,6 @@ func wireGroup(g query.RuleGroup) gen.RuleGroup {
 // workQuery converts a query from the wire.
 func workQuery(q gen.WorkQuery) query.WorkQuery {
 	out := query.WorkQuery{Version: deref(q.Version), MaxWorks: q.MaxWorks}
-	if q.Collapse != nil {
-		out.Collapse = string(*q.Collapse)
-	}
 	for _, k := range q.Kinds {
 		out.Kinds = append(out.Kinds, catalog.WorkKind(k))
 	}

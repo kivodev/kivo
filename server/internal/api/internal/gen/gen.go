@@ -1788,21 +1788,6 @@ func (e WorkKind) Valid() bool {
 	}
 }
 
-// Defines values for WorkQueryCollapse.
-const (
-	WorkQueryCollapseSeries WorkQueryCollapse = "series"
-)
-
-// Valid indicates whether the value is a known member of the WorkQueryCollapse enum.
-func (e WorkQueryCollapse) Valid() bool {
-	switch e {
-	case WorkQueryCollapseSeries:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for WorkSort.
 const (
 	WorkSortAddedAt            WorkSort = "addedAt"
@@ -5387,19 +5372,14 @@ type WorkListSmart struct {
 // type takes: a date `YYYY-MM-DD`, a duration such as `P30D`, an ID
 // as a UUID, or a name.
 type WorkQuery struct {
-	// Collapse `series` keeps the first work of each show under the sort. Skip values you don't know.
-	Collapse *WorkQueryCollapse `json:"collapse,omitempty"`
-	Kinds    []WorkKind         `json:"kinds"`
-	MaxWorks *int               `json:"maxWorks,omitempty"`
-	Sort     *[]SortKey         `json:"sort,omitempty"`
-	Version  *int               `json:"version,omitempty"`
+	Kinds    []WorkKind `json:"kinds"`
+	MaxWorks *int       `json:"maxWorks,omitempty"`
+	Sort     *[]SortKey `json:"sort,omitempty"`
+	Version  *int       `json:"version,omitempty"`
 
 	// Where At least one rule or group. The root may hold groups; a group may hold rules only.
 	Where *RuleGroup `json:"where,omitempty"`
 }
-
-// WorkQueryCollapse `series` keeps the first work of each show under the sort. Skip values you don't know.
-type WorkQueryCollapse string
 
 // WorkQueryRequest defines model for WorkQueryRequest.
 type WorkQueryRequest struct {

@@ -66,8 +66,8 @@ data class GroupDraft(
 
 /**
  * What the smart list builder edits: the name, the kinds, the libraries, the
- * rules and groups, and the sort. The max works and collapse a query carries
- * are kept untouched, and so is its sort until another is chosen.
+ * rules and groups, and the sort. The max works a query carries is kept
+ * untouched, and so is its sort until another is chosen.
  */
 data class SmartListDraft(
     val name: String,
@@ -79,7 +79,6 @@ data class SmartListDraft(
     val groups: List<GroupDraft> = emptyList(),
     val sort: List<SortKey> = emptyList(),
     val maxWorks: Int? = null,
-    val collapse: String? = null,
 ) {
     val isReady: Boolean
         get() = name.isNotBlank() && kinds.isNotEmpty() && (rules + groups.flatMap { it.rules }).all { it.isComplete }
@@ -93,7 +92,7 @@ data class SmartListDraft(
                 group.rules.filter { it.isComplete }.map { it.toRule() }.takeIf { it.isNotEmpty() }?.let { RuleGroup(group.match, it) }
             }
             val root = if (rootRules.isEmpty() && rootGroups.isEmpty()) null else RuleGroup(match, rootRules.ifEmpty { null }, rootGroups.ifEmpty { null })
-            return WorkQuery(kinds, where = root, sort = sort.ifEmpty { null }, maxWorks = maxWorks, collapse = collapse)
+            return WorkQuery(kinds, where = root, sort = sort.ifEmpty { null }, maxWorks = maxWorks)
         }
 
     /** The rule [id], in the root or a group. */
@@ -143,7 +142,7 @@ object SmartLists {
 
     /** A draft of [query] named [name], or of a new list when null. */
     fun draft(name: String, query: WorkQuery?, fields: List<WorkField>): SmartListDraft {
-        val base = SmartListDraft(name, query?.kinds ?: NEW_LIST_KINDS, sort = query?.sort.orEmpty(), maxWorks = query?.maxWorks, collapse = query?.collapse)
+        val base = SmartListDraft(name, query?.kinds ?: NEW_LIST_KINDS, sort = query?.sort.orEmpty(), maxWorks = query?.maxWorks)
         val root = query?.where ?: return base
         val saved = root.rules.orEmpty()
         val libraryAt = if (root.match == "all") saved.indexOfFirst { it.field == LIBRARY_FIELD && it.op == ANY_OF } else -1

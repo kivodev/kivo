@@ -237,24 +237,6 @@ func TestQueryFieldsByKind(t *testing.T) {
 	}
 }
 
-func TestQueryCollapseChoosesTheFirstWork(t *testing.T) {
-	h := newHousehold(t)
-	sort := []query.SortKey{{Field: "title", Direction: "desc"}}
-	all := h.runQuery(h.admin, query.WorkQuery{Kinds: []catalog.WorkKind{catalog.KindEpisode}, Sort: sort})
-	want := []id.ID{}
-	seen := map[id.ID]bool{}
-	for _, c := range all.Items {
-		if !seen[c.Root] {
-			seen[c.Root] = true
-			want = append(want, c.ID)
-		}
-	}
-	got := h.runQuery(h.admin, query.WorkQuery{Kinds: []catalog.WorkKind{catalog.KindEpisode}, Sort: sort, Collapse: "series"})
-	if !slices.Equal(ids(got.Items), want) || got.Total != len(want) {
-		t.Errorf("collapse: %v (%d), want %v", ids(got.Items), got.Total, want)
-	}
-}
-
 func TestQueryWithin(t *testing.T) {
 	h := newHousehold(t)
 	movies := []catalog.WorkKind{catalog.KindMovie}

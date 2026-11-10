@@ -1227,10 +1227,9 @@ export interface paths {
          * Run a work query
          * @description Runs a `WorkQuery` once, as the caller: their library access and
          *     parental limits apply to every query. A grid, paged by `offset`,
-         *     with `total` on every page; `maxWorks` caps it, and `collapse`
-         *     counts one card per show. An invalid query is `400` with
-         *     `invalidRequest`, and `errors` holds a JSON pointer per problem,
-         *     such as `/query/where/groups/0/rules/2/op`.
+         *     with `total` on every page; `maxWorks` caps it. An invalid query is
+         *     `400` with `invalidRequest`, and `errors` holds a JSON pointer per
+         *     problem, such as `/query/where/groups/0/rules/2/op`.
          */
         post: operations["queryWorks"];
         delete?: never;
@@ -3691,7 +3690,6 @@ export interface components {
             where?: components["schemas"]["RuleGroup"];
             sort?: components["schemas"]["SortKey"][];
             maxWorks?: number;
-            collapse?: components["schemas"]["WorkQueryCollapse"];
         };
         /** @description At least one rule or group. The root may hold groups; a group may hold rules only. */
         RuleGroup: {
@@ -3721,11 +3719,6 @@ export interface components {
             unit?: string;
             valueSource?: components["schemas"]["WorkFieldValueSource"];
         };
-        /**
-         * @description `series` keeps the first work of each show under the sort. Skip values you don't know.
-         * @enum {string}
-         */
-        WorkQueryCollapse: "series";
         /**
          * @description Whether all of a group's rules and groups must match, or any. Skip values you don't know.
          * @enum {string}

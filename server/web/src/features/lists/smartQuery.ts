@@ -13,8 +13,7 @@ export type DraftGroup = { key: number; match: Match; rules: DraftRule[] };
  * A query as the builder edits it. A root matching all has its `anyOf`
  * library rule as the Libraries row; a root matching any keeps it among its
  * rules, since a row would AND it. Each rule and group has a key for its row.
- * maxWorks, collapse and further sort keys aren't edited and are saved as
- * they were.
+ * maxWorks and further sort keys aren't edited and are saved as they were.
  */
 export type Draft = {
   name: string;
@@ -25,7 +24,6 @@ export type Draft = {
   groups: DraftGroup[];
   sort: SortKey[];
   maxWorks?: number;
-  collapse?: WorkQuery["collapse"];
 };
 
 let lastKey = 0;
@@ -80,7 +78,6 @@ export function draftOf(name: string, query: WorkQuery): Draft {
     })),
     sort: query.sort ?? [],
     maxWorks: query.maxWorks,
-    collapse: query.collapse,
   };
 }
 
@@ -103,7 +100,6 @@ export function queryOf(draft: Draft): WorkQuery {
     ...(rules.length > 0 || groups.length > 0 ? { where } : {}),
     ...(draft.sort.length > 0 ? { sort: draft.sort } : {}),
     ...(draft.maxWorks !== undefined ? { maxWorks: draft.maxWorks } : {}),
-    ...(draft.collapse !== undefined ? { collapse: draft.collapse } : {}),
   };
 }
 
