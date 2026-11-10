@@ -10,8 +10,7 @@ import { useAdminLabels } from "./useAdminLabels";
  * "Movies · Reading files    1,240 of 3,100 · about 4m left". On the left is
  * what runs (the library's name, or Scanning) and the step it's on. On the
  * right are the count, the time left and the action. Before the first
- * step reports, only the name shows. A step with no total, such as
- * Matching, shows no count and no bar. A task's run has a count and no step.
+ * step reports, only the name shows. A task's run has a count and no step.
  */
 export function ScanLine({
   name,
@@ -28,8 +27,7 @@ export function ScanLine({
 }) {
   const { stepName } = useAdminLabels();
   const parts: { key: string; node: ReactNode }[] = [];
-  const counted = progress !== undefined && progress.total > 0;
-  if (counted) {
+  if (progress) {
     const done = formatCount(progress.done);
     const total = formatCount(progress.total);
     parts.push({
@@ -71,9 +69,9 @@ export function ScanLine({
           {action}
         </span>
       </div>
-      {counted && (
+      {progress && (
         <ProgressBar
-          value={progress.done / progress.total}
+          value={progress.total > 0 ? progress.done / progress.total : 0}
           thin={edge}
           className={edge ? "absolute inset-x-0 bottom-0" : "rounded-full"}
         />

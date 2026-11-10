@@ -70,15 +70,10 @@ describe("Admin Libraries", () => {
 
   it("shows Matching with no count or Stop while files wait to be identified, until they are", async () => {
     const api = serveMockApi();
-    movies(api).scan = {
-      libraryId: mockIds.movies,
-      state: "scanning",
-      progress: { step: "identify", done: 0, total: 0 },
-    };
+    movies(api).scan = { libraryId: mockIds.movies, state: "matching" };
     renderApp("/admin/libraries");
     await screen.findByRole("heading", { name: "Libraries" });
-    const step = rowOf("Movies").querySelector<HTMLElement>('[data-part="step-progress"][data-step="identify"]');
-    expect(step).toHaveTextContent(/^Scanning · Matching$/);
+    expect(rowOf("Movies").querySelector('[data-part="scan"]')).toHaveTextContent(/^Matching$/);
     expect(within(rowOf("Movies")).queryByRole("button", { name: "Stop" })).not.toBeInTheDocument();
     expect(rowOf("Movies").querySelector('[role="progressbar"]')).toBeNull();
 

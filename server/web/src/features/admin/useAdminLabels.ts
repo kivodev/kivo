@@ -8,7 +8,6 @@ export function useAdminLabels() {
   const stepNames: Record<string, string> = {
     walk: t`Finding files`,
     probe: t`Reading files`,
-    identify: t`Matching`,
     extractSubtitles: t`Extracting subtitles`,
     convert: t`Converting`,
   };

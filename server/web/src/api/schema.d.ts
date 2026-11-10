@@ -3609,12 +3609,12 @@ export interface components {
             progress?: components["schemas"]["ScanProgress"];
         };
         /**
-         * @description What a library's scan is doing: `scanning` while it's scanned or
-         *     has files waiting to be identified, `unreachable` when a folder
-         *     can't be read.
+         * @description What a library's scan is doing: `scanning` while it's scanned,
+         *     `matching` while no scan runs and files wait to be identified,
+         *     `unreachable` when a folder can't be read.
          * @enum {string}
          */
-        LibraryScanState: "idle" | "scanning" | "unreachable";
+        LibraryScanState: "idle" | "scanning" | "matching" | "unreachable";
         /** @description The step a library's scan is on, and how far it's got. */
         ScanProgress: {
             step: components["schemas"]["ScanStep"];
@@ -3625,12 +3625,11 @@ export interface components {
         };
         /**
          * @description A step of a library's scan: `walk` finding files, a folder at a
-         *     time; `probe` reading the files new or changed; `identify` matching
-         *     the folders of files read but not yet identified, which has no
-         *     counts, so `done` and `total` are 0. Skip steps you don't know.
+         *     time; `probe` reading the files new or changed. Skip steps you
+         *     don't know.
          * @enum {string}
          */
-        ScanStep: "walk" | "probe" | "identify";
+        ScanStep: "walk" | "probe";
         Home: {
             rows: components["schemas"]["HomeRow"][];
             /** @description Set when `rows` is empty because the user hid every row. */

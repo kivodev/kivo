@@ -172,10 +172,9 @@ describe("Overview", () => {
   it("shows a library matching its files with no count", async () => {
     const api = serveMockApi(scenarios.quiet);
     const movies = api.libraries.find((l) => l.id === mockIds.movies);
-    if (movies)
-      movies.scan = { libraryId: mockIds.movies, state: "scanning", progress: { step: "identify", done: 0, total: 0 } };
+    if (movies) movies.scan = { libraryId: mockIds.movies, state: "matching" };
     renderApp("/admin");
-    expect(await lineOf("Scanning Movies · Matching")).toHaveTextContent(/^Scanning Movies · Matching$/);
+    expect(await lineOf("Matching Movies")).toHaveTextContent(/^Matching Movies$/);
     expect(document.querySelector('[role="progressbar"]')).toBeNull();
   });
 

@@ -971,8 +971,8 @@ func TestLibraryScanStatusFromItsScan(t *testing.T) {
 		p.RemainingMs == nil || *p.RemainingMs != int((3*time.Minute).Milliseconds()) {
 		t.Errorf("probing 10 of 40 in a minute: %+v %+v", a, a.Progress)
 	}
-	// Files waiting to be identified show as the identify step, with no
-	// counts, only while no scan of the library runs or is asked for.
+	// Files waiting to be identified show as matching, with no progress,
+	// only while no scan of the library runs or is asked for.
 	if a := libraryScanStatus(lib, []tasks.Item{other, probing}, nil, 3, now); a.Progress == nil || a.Progress.Step != gen.ScanStepProbe || a.Progress.Done != 10 {
 		t.Errorf("probing with files waiting: %+v %+v", a, a.Progress)
 	}
@@ -983,8 +983,7 @@ func TestLibraryScanStatusFromItsScan(t *testing.T) {
 	if a := libraryScanStatus(lib, nil, []id.ID{lib.ID}, 3, now); a.State != "scanning" || a.Progress != nil {
 		t.Errorf("a scan asked for with files waiting: %+v", a)
 	}
-	if a := libraryScanStatus(lib, []tasks.Item{other}, nil, 3, now); a.State != "scanning" ||
-		a.Progress == nil || *a.Progress != (gen.ScanProgress{Step: gen.ScanStepIdentify}) {
+	if a := libraryScanStatus(lib, []tasks.Item{other}, nil, 3, now); a.State != "matching" || a.Progress != nil {
 		t.Errorf("files waiting, no scan: %+v %+v", a, a.Progress)
 	}
 	lib.Folders = append(lib.Folders, catalog.Folder{Reachable: false})
@@ -993,9 +992,8 @@ func TestLibraryScanStatusFromItsScan(t *testing.T) {
 	}
 }
 
-// A library whose files are read but not yet identified lists as scanning
-// on the identify step, with no counts, until the identify task has
-// identified them. A library whose files are all identified, matched or
+// A library whose files are read but not yet identified lists as matching,
+// with no progress, until the identify task has identified them. A library whose files are all identified, matched or
 // unmatched, is idle. One listing reads each library's own state.
 func TestLibraryMatchingUntilIdentified(t *testing.T) {
 	e := newEnv(t, serving{})
@@ -1021,9 +1019,8 @@ func TestLibraryMatchingUntilIdentified(t *testing.T) {
 		return out
 	}
 	st := statuses()
-	if p, _ := st[waiting.String()]["progress"].(map[string]any); st[waiting.String()]["state"] != "scanning" ||
-		!maps.Equal(p, map[string]any{"step": "identify", "done": 0.0, "total": 0.0}) {
-		t.Errorf("with a file waiting: %v", st[waiting.String()])
+	if s := st[waiting.String()]; s["state"] != "matching" || s["progress"] != nil {
+		t.Errorf("with a file waiting: %v", s)
 	}
 	for _, lib := range []id.ID{done, e.lib} {
 		if s := st[lib.String()]; s["state"] != "idle" || s["progress"] != nil {

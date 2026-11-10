@@ -144,6 +144,7 @@ function LibraryRow({
   const close = () => setOpen(undefined);
   const status = library.scan;
   const scanning = status?.state === "scanning";
+  const matching = status?.state === "matching";
   const unreachable = (library.folders ?? []).filter((f) => !f.reachable).map((f) => f.path);
   const path = { params: { path: { id: library.id } } };
   const name = library.name;
@@ -206,20 +207,22 @@ function LibraryRow({
               progress={status.progress}
               edge
               action={
-                // Stop ends a scan, not the matching that follows it.
-                status.progress?.step !== "identify" && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="-my-1.5 -mr-3"
-                    isPending={stop.isPending}
-                    onPress={() => stop.mutate(path)}
-                  >
-                    <Trans>Stop</Trans>
-                  </Button>
-                )
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="-my-1.5 -mr-3"
+                  isPending={stop.isPending}
+                  onPress={() => stop.mutate(path)}
+                >
+                  <Trans>Stop</Trans>
+                </Button>
               }
             />
+          </div>
+        )}
+        {matching && (
+          <div data-part="scan" role="status">
+            <ScanLine name={<Trans>Matching</Trans>} edge />
           </div>
         )}
         <FormError error={failed?.error} />

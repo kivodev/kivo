@@ -744,6 +744,7 @@ func (e LibraryKind) Valid() bool {
 // Defines values for LibraryScanState.
 const (
 	LibraryScanStateIdle        LibraryScanState = "idle"
+	LibraryScanStateMatching    LibraryScanState = "matching"
 	LibraryScanStateScanning    LibraryScanState = "scanning"
 	LibraryScanStateUnreachable LibraryScanState = "unreachable"
 )
@@ -752,6 +753,8 @@ const (
 func (e LibraryScanState) Valid() bool {
 	switch e {
 	case LibraryScanStateIdle:
+		return true
+	case LibraryScanStateMatching:
 		return true
 	case LibraryScanStateScanning:
 		return true
@@ -1307,16 +1310,13 @@ func (e RuleGroupMatch) Valid() bool {
 
 // Defines values for ScanStep.
 const (
-	ScanStepIdentify ScanStep = "identify"
-	ScanStepProbe    ScanStep = "probe"
-	ScanStepWalk     ScanStep = "walk"
+	ScanStepProbe ScanStep = "probe"
+	ScanStepWalk  ScanStep = "walk"
 )
 
 // Valid indicates whether the value is a known member of the ScanStep enum.
 func (e ScanStep) Valid() bool {
 	switch e {
-	case ScanStepIdentify:
-		return true
 	case ScanStepProbe:
 		return true
 	case ScanStepWalk:
@@ -3385,9 +3385,9 @@ type LibraryRef struct {
 	Name string      `json:"name"`
 }
 
-// LibraryScanState What a library's scan is doing: `scanning` while it's scanned or
-// has files waiting to be identified, `unreachable` when a folder
-// can't be read.
+// LibraryScanState What a library's scan is doing: `scanning` while it's scanned,
+// `matching` while no scan runs and files wait to be identified,
+// `unreachable` when a folder can't be read.
 type LibraryScanState string
 
 // LibraryScanStatus What a library's scan is doing, as its row shows it: "Reading files ·
@@ -3399,9 +3399,9 @@ type LibraryScanStatus struct {
 	// Progress The step a library's scan is on, and how far it's got.
 	Progress *ScanProgress `json:"progress,omitempty"`
 
-	// State What a library's scan is doing: `scanning` while it's scanned or
-	// has files waiting to be identified, `unreachable` when a folder
-	// can't be read.
+	// State What a library's scan is doing: `scanning` while it's scanned,
+	// `matching` while no scan runs and files wait to be identified,
+	// `unreachable` when a folder can't be read.
 	State LibraryScanState `json:"state"`
 }
 
@@ -4327,9 +4327,8 @@ type ScanProgress struct {
 	RemainingMs *int `json:"remainingMs,omitempty"`
 
 	// Step A step of a library's scan: `walk` finding files, a folder at a
-	// time; `probe` reading the files new or changed; `identify` matching
-	// the folders of files read but not yet identified, which has no
-	// counts, so `done` and `total` are 0. Skip steps you don't know.
+	// time; `probe` reading the files new or changed. Skip steps you
+	// don't know.
 	Step  ScanStep `json:"step"`
 	Total int      `json:"total"`
 }
@@ -4341,9 +4340,8 @@ type ScanRequest struct {
 }
 
 // ScanStep A step of a library's scan: `walk` finding files, a folder at a
-// time; `probe` reading the files new or changed; `identify` matching
-// the folders of files read but not yet identified, which has no
-// counts, so `done` and `total` are 0. Skip steps you don't know.
+// time; `probe` reading the files new or changed. Skip steps you
+// don't know.
 type ScanStep string
 
 // SearchResults defines model for SearchResults.

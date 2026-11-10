@@ -16,7 +16,7 @@ import (
 // the time left in the step at the rate so far ("Reading files · 1,240 of
 // 3,100 · about 4 minutes left"). A scan that was asked for counts as
 // scanning before it starts. A library not scanning with files waiting is
-// scanning on the identify step, with no counts.
+// matching, with no progress.
 func libraryScanStatus(l query.AdminLibrary, scans []tasks.Item, asked []id.ID, waiting int, now time.Time) gen.LibraryScanStatus {
 	s := gen.LibraryScanStatus{LibraryID: l.ID, State: gen.LibraryScanStateIdle}
 	for _, f := range l.Folders {
@@ -43,8 +43,7 @@ func libraryScanStatus(l query.AdminLibrary, scans []tasks.Item, asked []id.ID, 
 		s.Progress = p
 	}
 	if s.State != gen.LibraryScanStateScanning && waiting > 0 {
-		s.State = gen.LibraryScanStateScanning
-		s.Progress = &gen.ScanProgress{Step: gen.ScanStepIdentify}
+		s.State = gen.LibraryScanStateMatching
 	}
 	return s
 }
