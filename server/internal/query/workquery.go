@@ -338,10 +338,10 @@ WHERE ` + in + rows + `
 }
 
 // narrowed is the kinds a statement of q selects: q's, or those of them in
-// only for an uncapped query's page of only's kinds. A capped query's page
-// keeps only's kinds from its capped works instead.
+// only, when it has any, for an uncapped query's page of only's kinds. A
+// capped query's page keeps only's kinds from its capped works instead.
 func narrowed(q WorkQuery, only []catalog.WorkKind) []catalog.WorkKind {
-	if q.MaxWorks != nil || only == nil {
+	if q.MaxWorks != nil || len(only) == 0 {
 		return q.Kinds
 	}
 	return slices.DeleteFunc(slices.Clone(q.Kinds), func(k catalog.WorkKind) bool { return !slices.Contains(only, k) })
@@ -419,7 +419,7 @@ func compile(q WorkQuery, vw viewer, now time.Time, seed string, only []catalog.
 	}
 	with := "WITH "
 	if c.played {
-		with += played + ",\n"
+		with += played(kinds) + ",\n"
 	}
 	// selected selects the works with columns, reading work_library as
 	// matching does from, and keeping those that also pass and.
@@ -572,7 +572,7 @@ func (c *compiler) rule(r Rule) string {
 	case f.Type == FieldNumber || f.Type == FieldDate:
 		return c.scalarRule(f, expr, r)
 	}
-	return c.choiceRule(expr, r)
+	return c.choiceRule(f, expr, r)
 }
 
 func (c *compiler) textRule(expr string, r Rule) string {
@@ -636,8 +636,8 @@ func (c *compiler) cutoff(period string) string {
 	return t.Format(time.DateOnly)
 }
 
-func (c *compiler) choiceRule(expr string, r Rule) string {
-	in := expr + " IN (SELECT value FROM json_each(" + c.bind(set(r.Values)) + "))"
+func (c *compiler) choiceRule(f *fieldDef, expr string, r Rule) string {
+	in := expr + " IN " + c.members(f, r.Values)
 	if r.Op == "noneOf" {
 		return "(" + expr + " IS NULL OR NOT " + in + ")"
 	}
@@ -664,7 +664,7 @@ func (c *compiler) setRule(f *fieldDef, r Rule) string {
 	return exists(" AND " + f.value + " IN " + c.members(f, r.Values))
 }
 
-// members is the SQL list of a set field's values, bound as one parameter.
+// members is the SQL list of a rule's values, bound as one parameter.
 func (c *compiler) members(f *fieldDef, values []string) string {
 	if !f.ids {
 		return "(SELECT value FROM json_each(" + c.bind(set(values)) + "))"

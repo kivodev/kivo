@@ -22,9 +22,12 @@ import (
 	"github.com/mmcdole/kivo/internal/users"
 )
 
-// The read budgets, at 50k works while a scan is writing.
+// The read budgets, at 50k works while a scan is writing. scrollBudget is
+// for a later page of a grid or a list of top-level works on a household's
+// server, which a client reads as it scrolls.
 const (
 	browseBudget = 50 * time.Millisecond
+	scrollBudget = 20 * time.Millisecond
 	homeBudget   = 100 * time.Millisecond
 	searchBudget = 100 * time.Millisecond
 )
@@ -32,10 +35,10 @@ const (
 // TestBudgets times each read against 50k generated works (40,000 movies and
 // 400 series of 24 episodes). Meanwhile another goroutine writes batches of
 // 500 files, shaped like a scan's. The test fails when a read's p95 is over
-// its budget. It then times the smart lists there, and the smart lists and
-// the grids on a household's server, and fails when a held one's median is
-// over its budget: a p95 taken beside the writer says more of the machine
-// than of the read.
+// its budget. It then times the smart lists there, and the smart lists, the
+// Lists screen, Home and the grids on a household's server, and fails when
+// a held one's median is over its budget: a p95 taken beside the writer
+// says more of the machine than of the read.
 //
 // It runs only when KIVO_BUDGET=1, which make budget sets, and runs alone
 // without the race detector. Timings taken beside other packages' tests
@@ -52,7 +55,7 @@ func TestBudgets(t *testing.T) {
 
 	stop := scanWriter(t, db, moviesFolder)
 
-	tests := append(gridCases(q, v, movies, shows, 20000, true), // deep is halfway through the movies
+	tests := append(gridCases(q, v, movies, shows, 20000, false), // deep is halfway through the movies
 		budgetCase{"home", homeBudget, true, func() error { _, _, err := q.Home(ctx, v); return err }},
 		budgetCase{"my list", browseBudget, true, func() error {
 			lists, err := q.Lists(ctx, v)
@@ -75,13 +78,13 @@ func TestBudgets(t *testing.T) {
 	// order or that few works match. So a list is held to the budget where
 	// those works are few, where a cap keeps its order to the first works,
 	// or where its rules are light: not the other lists of 40,000 movies.
-	timeBudgets(t, smartCases(q, sv, smart, "movies, title and rating, by title", "series, by last episode added",
+	timeBudgets(t, smartCases(q, sv, smart, browseBudget, "movies, title and rating, by title", "series, by last episode added",
 		"episodes, aired this year", "movies, capped at 100"), true)
 	stop()
 
 	// The smart lists again on a household's server, as a user granted one
 	// of its two movies libraries and one of its two shows libraries. Every
-	// list is held, and Home.
+	// list is held, and Home and the Lists screen.
 	db = storetest.New(t)
 	movies, shows, moviesFolder = generate(t, db, householdShape)
 	q = query.New(db)
@@ -89,24 +92,30 @@ func TestBudgets(t *testing.T) {
 	stop = scanWriter(t, db, moviesFolder)
 	defer stop()
 	t.Log("a household's server: 5,000 movies and 1,500 series of 105,000 episodes, in four libraries, two of them granted")
-	timeBudgets(t, smartCases(q, sv, smart, "movies, title and rating, by title", "movies, one actor, by added",
-		"movies, unplayed, by last played", "series, by last episode added", "episodes, aired this year", "movies, capped at 100", smartHome), true)
+	timeBudgets(t, smartCases(q, sv, smart, scrollBudget, "movies, title and rating, by title", "movies, one actor, by added",
+		"movies, unplayed, by last played", "series, by last episode added", "episodes, aired this year", "movies, capped at 100",
+		smartHome, listsScreen), true)
 	// Its grids, as that user: 4,000 movies and 1,200 series.
-	timeBudgets(t, gridCases(q, sv, movies, shows, 2000, false), true)
+	timeBudgets(t, gridCases(q, sv, movies, shows, 2000, true), true)
 }
 
 // gridCases are the reads of a movies and a shows library's grids: each
 // sort's first page, which counts the grid, and a page a few screens down,
 // which doesn't; the movies at deep, by an order of each kind; and the
-// filtered grids. A page reads every row its offset skips, so the deep
-// pages are timed only. So are the filters on per-user state and genres
-// beside a writer, which are checked on every work to count the matches,
-// and the shows in progress, which roll up every series' episodes to count
-// them and again to fill the page.
-func gridCases(q *query.Service, v users.Viewer, movies, shows id.ID, deep int, writing bool) []budgetCase {
+// filtered grids.
+//
+// On a household's server every read is held, and a later page to
+// scrollBudget. On any other, a page reads every row its offset skips, so
+// the deep pages are timed only, and so is the filter on per-user state and
+// genres, which is checked on every work to count the matches.
+func gridCases(q *query.Service, v users.Viewer, movies, shows id.ID, deep int, household bool) []budgetCase {
 	var tests []budgetCase
 	add := func(name string, enforce bool, lib id.ID, o query.BrowseOptions) {
-		tests = append(tests, budgetCase{name, browseBudget, enforce, browse(q, v, lib, o)})
+		budget := browseBudget
+		if household && o.Offset > 0 && o.Offset != deep {
+			budget = scrollBudget
+		}
+		tests = append(tests, budgetCase{name, budget, enforce, browse(q, v, lib, o)})
 	}
 	sorts := []struct {
 		name  string
@@ -127,22 +136,26 @@ func gridCases(q *query.Service, v users.Viewer, movies, shows id.ID, deep int, 
 		}
 	}
 	for _, s := range []int{0, 3, 4, 6} {
-		add("browse movies by "+sorts[s].name+", deep", false, movies, query.BrowseOptions{Sort: sorts[s].sort, GridOptions: query.GridOptions{Offset: deep}})
+		add("browse movies by "+sorts[s].name+", deep", household, movies, query.BrowseOptions{Sort: sorts[s].sort, GridOptions: query.GridOptions{Offset: deep}})
 	}
 	unplayedDrama := query.Filter{Genres: []string{"Drama"}, Played: query.Unplayed}
 	uhd := query.Filter{Resolutions: []query.Resolution{query.Resolution4K}}
-	add("browse movies, genre and unplayed", !writing, movies, query.BrowseOptions{Filter: unplayedDrama})
-	add("browse movies, genre and unplayed, later page", !writing, movies, query.BrowseOptions{Filter: unplayedDrama, GridOptions: later})
+	add("browse movies, genre and unplayed", household, movies, query.BrowseOptions{Filter: unplayedDrama})
+	add("browse movies, genre and unplayed, later page", household, movies, query.BrowseOptions{Filter: unplayedDrama, GridOptions: later})
 	add("browse movies, 4K", true, movies, query.BrowseOptions{Filter: uhd})
 	add("browse movies, 4K, by added, later page", true, movies, query.BrowseOptions{Sort: query.ByAdded, Filter: uhd, GridOptions: later})
 	add("browse movies, HDR", true, movies, query.BrowseOptions{Filter: query.Filter{Ranges: []query.Range{query.HDR}}})
 	add("browse movies, 1990s, by rating", true, movies, query.BrowseOptions{Sort: query.ByCommunityRating, Filter: query.Filter{YearFrom: 1990, YearTo: 1999}})
-	add("browse shows, in progress", false, shows, query.BrowseOptions{Filter: query.Filter{Played: query.InProgress}})
+	add("browse shows, in progress", true, shows, query.BrowseOptions{Filter: query.Filter{Played: query.InProgress}})
 	return tests
 }
 
-// smartHome is the read of a Home that shows five smart lists.
-const smartHome = "home, 5 smart rows"
+// smartHome is the read of a Home that shows five smart lists, and
+// listsScreen that of the Lists screen.
+const (
+	smartHome   = "home, 5 smart rows"
+	listsScreen = "lists screen, 10 lists"
+)
 
 // budgetCase is a read to time, held to budget when enforce is set.
 type budgetCase struct {
@@ -156,23 +169,28 @@ type budgetCase struct {
 // a Home that shows five of the lists. A list's first page reads its works
 // and counts them, a later page reads its works alone, and its header reads
 // the list without running its rules. held names the lists whose reads are
-// held to browseBudget, and with smartHome holds Home to homeBudget; the
-// Lists screen is timed only.
-func smartCases(q *query.Service, v users.Viewer, smart []smartList, held ...string) []budgetCase {
+// held to browseBudget, a later page of top-level works to later; with
+// smartHome it holds Home, and with listsScreen the Lists screen, which
+// runs every smart list's rules as Home runs five, to homeBudget.
+func smartCases(q *query.Service, v users.Viewer, smart []smartList, later time.Duration, held ...string) []budgetCase {
 	var tests []budgetCase
 	for _, l := range smart {
 		enforce := slices.Contains(held, l.name)
 		page := func(o query.GridOptions) func() error {
 			return func() error { _, err := q.ListWorks(ctx, v, l.id, nil, o); return err }
 		}
+		scroll := later
+		if l.nested {
+			scroll = browseBudget
+		}
 		tests = append(tests,
 			budgetCase{"smart " + l.name, browseBudget, enforce, page(query.GridOptions{})},
-			budgetCase{"smart " + l.name + ", later page", browseBudget, enforce, page(query.GridOptions{Offset: 60})},
+			budgetCase{"smart " + l.name + ", later page", scroll, enforce, page(query.GridOptions{Offset: 60})},
 			budgetCase{"smart " + l.name + ", header", browseBudget, enforce, func() error { _, err := q.List(ctx, v, l.id); return err }})
 	}
 	return append(tests,
 		budgetCase{smartHome, homeBudget, slices.Contains(held, smartHome), func() error { _, _, err := q.Home(ctx, v); return err }},
-		budgetCase{"lists screen, 10 lists", browseBudget, false, func() error { _, err := q.CountedLists(ctx, v); return err }})
+		budgetCase{listsScreen, homeBudget, slices.Contains(held, listsScreen), func() error { _, err := q.CountedLists(ctx, v); return err }})
 }
 
 // timeBudgets times each read and fails for an enforced one whose p95 is
@@ -437,10 +455,12 @@ func budgetViewer(t *testing.T, db *store.DB, name string, libs ...id.ID) users.
 	return v
 }
 
-// smartList is a smart list the budgets time.
+// smartList is a smart list the budgets time. nested is set for one of
+// seasons or episodes.
 type smartList struct {
-	name string
-	id   id.ID
+	name   string
+	id     id.ID
+	nested bool
 }
 
 // smartViewer is a second budgetViewer with smart lists, the first five of
@@ -459,7 +479,7 @@ func smartViewer(t *testing.T, db *store.DB, q *query.Service, libs ...id.ID) (u
 		if err != nil {
 			t.Fatal(err)
 		}
-		out = append(out, smartList{d.name, list})
+		out = append(out, smartList{d.name, list, slices.Contains(d.q.Kinds, catalog.KindEpisode)})
 	}
 	// Three manual lists, with none, 2 and 200 movies, make ten lists with
 	// Watchlist for the Lists screen.

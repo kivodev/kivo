@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"os"
 	"slices"
 	"strings"
 	"testing"
@@ -17,126 +16,19 @@ import (
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/query"
 	"github.com/mmcdole/kivo/internal/store"
-	"github.com/mmcdole/kivo/internal/store/storetest"
 	"github.com/mmcdole/kivo/internal/users"
 )
 
-// TestCompileMatchesOld runs a matrix of queries through compile and
-// through the compiler it replaced, on the same generated works, and checks
-// that both select the same works in the same order and count the same
-// total. The matrix is every field with every operator, groups, every sort
-// both ways, caps, a list page's kinds and page offsets, over each set of
-// kinds, as Viewers with every, some and no libraries, with and without a
-// rating ceiling and unrated works. The pages are first pages, later ones,
-// pages past the end, and pages longer and shorter than a cap. Some of the
-// Viewers have one library of a kind, so their pages of a query an index
-// holds in order walk it, and are compared like the rest.
-//
-// compileOld's comment says where the old compiler is made to mean what
-// compile now means on purpose.
-//
-// The whole matrix takes minutes, so it runs only when KIVO_DIFFERENTIAL=1.
-// Otherwise one query in 29 runs, which still takes each field, operator
-// and sort through several Viewers and sets of kinds, or one in 293 under
-// the race detector.
-func TestCompileMatchesOld(t *testing.T) {
-	db := storetest.New(t)
-	d := newDifferential(t, db)
-	svc := query.New(db)
-	canonical := canonicalFilter(t)
-	now := time.Now()
-	every := 29
-	switch {
-	case os.Getenv("KIVO_DIFFERENTIAL") == "1":
-		every = 1
-	case raceDetector:
-		every = 293
-	}
-	var ran, found, rows, differed int
-	for vi, v := range d.viewers {
-		for ki, kinds := range differentialKinds {
-			for qi, base := range d.queries {
-				n := vi*len(differentialKinds)*len(d.queries) + ki*len(d.queries) + qi
-				if n%every != 0 {
-					continue
-				}
-				q := base
-				q.Kinds = kinds
-				// Rules take each sort in turn, and sorts each rule.
-				if q.Sort == nil {
-					q.Sort = d.sorts[n%len(d.sorts)]
-				} else if q.Where == nil && n%2 == 0 {
-					q.Where = where(d.rules[n%len(d.rules)])
-				}
-				if problems := q.Validate(); len(problems) > 0 {
-					t.Fatalf("%s: %v", describe(q), problems)
-				}
-				variants := []differentialVariant{{limit: 100000}}
-				switch n % 6 {
-				case 0: // as a list's covers read its first works
-					variants = append(variants, differentialVariant{limit: 3}, differentialVariant{limit: 3, offset: 3})
-				case 1:
-					variants = append(variants, differentialVariant{limit: 7, offset: 5}, differentialVariant{limit: 50, offset: 100000})
-				case 2:
-					variants = append(variants, differentialVariant{limit: 100000, only: kinds[:1]}, differentialVariant{limit: 100000, only: []catalog.WorkKind{}})
-				case 3:
-					variants = append(variants, differentialVariant{limit: 100000, cap: 7}, differentialVariant{limit: 3, offset: 2, cap: 7, only: kinds[:1]},
-						differentialVariant{limit: 5, offset: 5, cap: 7}, differentialVariant{limit: 5, offset: 10, cap: 7})
-				case 4:
-					variants = append(variants, differentialVariant{limit: 100000, cap: 1}, differentialVariant{limit: 100000, cap: 5000, only: []catalog.WorkKind{catalog.KindEpisode, catalog.KindMovie}},
-						differentialVariant{limit: 2, offset: 2, cap: 5000})
-				case 5:
-					variants = append(variants, differentialVariant{limit: 100000, only: []catalog.WorkKind{catalog.KindSeries, catalog.KindBook}}, differentialVariant{limit: 100000, cap: 40, only: []catalog.WorkKind{}})
-				}
-				for _, variant := range variants {
-					q := q
-					if variant.cap > 0 {
-						q.MaxWorks = &variant.cap
-					}
-					counted, page, args := svc.Compiled(t, q, v.v, now, variant.only)
-					oldCount, oldPage, oldArgs := query.CompiledOld(q, v.v, now, variant.only)
-					checkCompiledFilter(t, canonical, counted)
-					checkCompiledFilter(t, canonical, page)
-					got, total := d.run(t, counted, page, args, variant)
-					want, oldTotal := d.runOld(t, oldCount, oldPage, oldArgs, variant)
-					ran++
-					rows += len(want)
-					if len(want) > 0 {
-						found++
-					}
-					if total != oldTotal || !slices.Equal(got, want) {
-						t.Errorf("as %s, %s, %+v:\n got %d of %d\nwant %d of %d", v.name, describe(q), variant, len(got), total, len(want), oldTotal)
-						if differed++; differed == 10 {
-							t.Fatal("and more")
-						}
-					}
-				}
-			}
-		}
-	}
-	t.Logf("%d queries compared, %d with works, %d works in all", ran, found, rows)
-	if found < ran/4 {
-		t.Errorf("only %d of %d queries selected any work: the matrix compares too little", found, ran)
-	}
-}
-
-// differentialKinds are the sets of kinds the matrix asks for.
-var differentialKinds = [][]catalog.WorkKind{
+// generatedKinds are the sets of kinds the matrices ask for.
+var generatedKinds = [][]catalog.WorkKind{
 	{catalog.KindMovie}, {catalog.KindSeries}, {catalog.KindSeason}, {catalog.KindEpisode}, {catalog.KindVideo}, {catalog.KindBook},
 	{catalog.KindSeries, catalog.KindSeason, catalog.KindEpisode}, {catalog.KindMovie, catalog.KindSeries},
 	{catalog.KindEpisode, catalog.KindMovie}, queryAllKinds,
 }
 
-// differentialVariant is how one comparison runs a query: its page, its cap
-// if any, and the kinds a list's page narrows it to.
-type differentialVariant struct {
-	limit, offset, cap int
-	only               []catalog.WorkKind
-}
-
-// differential is the generated works, the Viewers and the queries
-// TestCompileMatchesOld compares.
-type differential struct {
+// generated is the generated works, their Viewers, and the rules, sorts and
+// queries the matrices read them with.
+type generated struct {
 	db      *store.DB
 	libs    map[string]id.ID // the libraries, by name
 	viewers []struct {
@@ -165,30 +57,6 @@ func paged(args []any, limit, offset int) []any {
 		}
 	}
 	return args
-}
-
-// run reads a compiled query's total, from its first page, and the IDs of
-// the variant's page, in order. It checks that the first page reads the
-// same with its count and without.
-func (d *differential) run(t *testing.T, counted, page string, args []any, v differentialVariant) (ids []id.ID, total int) {
-	t.Helper()
-	first, total := readCompiled(t, d.db.Reader(), counted, paged(args, v.limit, 0), true)
-	ids, _ = readCompiled(t, d.db.Reader(), page, paged(args, v.limit, v.offset), false)
-	if v.offset == 0 && !slices.Equal(first, ids) {
-		t.Errorf("the first page with its count has %d works, and without %d, in %s", len(first), len(ids), counted)
-	}
-	return ids, total
-}
-
-// runOld reads the old compiler's total and the IDs of its page, in order.
-func (d *differential) runOld(t *testing.T, count, page string, args []any, v differentialVariant) (ids []id.ID, total int) {
-	t.Helper()
-	args = paged(args, v.limit, v.offset)
-	if err := d.db.Reader().QueryRow(count, args...).Scan(&total); err != nil {
-		t.Fatalf("%v in %s", err, count)
-	}
-	ids, _ = readCompiled(t, d.db.Reader(), page, args, false)
-	return ids, total
 }
 
 // readCompiled runs a statement whose rows start with a work's ID and
@@ -233,14 +101,14 @@ func blobID(letter byte, n int) id.ID {
 	return out
 }
 
-// newDifferential fills db with 240 movies in two libraries, 40 series of 2
+// newGenerated fills db with 240 movies in two libraries, 40 series of 2
 // seasons of 6 episodes in two more, 40 videos, 40 books and 12 extras.
 // Some are provisional, some under a provisional series, some unrated,
 // some episodes rated apart from their series, and some in no library.
 // Titles and dates repeat, so every sort breaks ties. Two of its Viewers
 // have play states, ratings and a list. It writes the tables directly, as
 // generate does.
-func newDifferential(t *testing.T, db *store.DB) *differential {
+func newGenerated(t *testing.T, db *store.DB) *generated {
 	t.Helper()
 	cat := catalog.New(db, events.NewBus())
 	libs := map[string]id.ID{}
@@ -350,7 +218,7 @@ func newDifferential(t *testing.T, db *store.DB) *differential {
 		t.Fatal(err)
 	}
 
-	d := &differential{db: db, libs: libs}
+	g := &generated{db: db, libs: libs}
 	svc := users.New(db, events.NewBus())
 	sorted := func(names ...string) []id.ID {
 		out := make([]id.ID, len(names))
@@ -414,12 +282,12 @@ func newDifferential(t *testing.T, db *store.DB) *differential {
 				t.Fatal(err)
 			}
 		}
-		d.viewers = append(d.viewers, struct {
+		g.viewers = append(g.viewers, struct {
 			name string
 			v    users.Viewer
 		}{u.Username, v})
 	}
-	d.viewers = append(d.viewers, struct {
+	g.viewers = append(g.viewers, struct {
 		name string
 		v    users.Viewer
 	}{"zero", users.Viewer{}})
@@ -451,7 +319,7 @@ func newDifferential(t *testing.T, db *store.DB) *differential {
 		"title":         {{"movie 1"}, {"e"}},
 		"releaseDate":   dates, "addedAt": dates, "lastEpisodeAddedAt": dates, "lastPlayedAt": dates,
 	}
-	d.sorts = [][]query.SortKey{nil, {{Field: "random"}},
+	g.sorts = [][]query.SortKey{nil, {{Field: "random"}},
 		{{Field: "year"}, {Field: "title", Direction: "desc"}},
 		{{Field: "rating", Direction: "asc"}, {Field: "myRating"}, {Field: "addedAt", Direction: "asc"}},
 		{{Field: "lastPlayedAt"}, {Field: "releaseDate"}}}
@@ -464,31 +332,31 @@ func newDifferential(t *testing.T, db *store.DB) *differential {
 			switch {
 			case op.Op == "within" || op.Op == "notWithin":
 				for _, period := range []string{"P30D", "P1Y", "P30Y"} {
-					d.rules = append(d.rules, query.Rule{Field: f.Field, Op: op.Op, Values: []string{period}})
+					g.rules = append(g.rules, query.Rule{Field: f.Field, Op: op.Op, Values: []string{period}})
 				}
 			case op.Arity == 0:
-				d.rules = append(d.rules, query.Rule{Field: f.Field, Op: op.Op})
+				g.rules = append(g.rules, query.Rule{Field: f.Field, Op: op.Op})
 			case op.Arity < 0:
 				for _, set := range sets {
-					d.rules = append(d.rules, query.Rule{Field: f.Field, Op: op.Op, Values: set})
+					g.rules = append(g.rules, query.Rule{Field: f.Field, Op: op.Op, Values: set})
 				}
 			default:
 				for _, set := range sets {
-					d.rules = append(d.rules, query.Rule{Field: f.Field, Op: op.Op, Values: []string{set[0], set[len(set)-1]}[:op.Arity]})
+					g.rules = append(g.rules, query.Rule{Field: f.Field, Op: op.Op, Values: []string{set[0], set[len(set)-1]}[:op.Arity]})
 				}
 			}
 		}
 		if f.Sortable {
 			for _, dir := range []string{"", "asc", "desc"} {
-				d.sorts = append(d.sorts, []query.SortKey{{Field: f.Field, Direction: dir}})
+				g.sorts = append(g.sorts, []query.SortKey{{Field: f.Field, Direction: dir}})
 			}
 		}
 	}
-	for _, r := range d.rules {
-		d.queries = append(d.queries, query.WorkQuery{Where: where(r)})
+	for _, r := range g.rules {
+		g.queries = append(g.queries, query.WorkQuery{Where: where(r)})
 	}
-	for _, s := range d.sorts[1:] {
-		d.queries = append(d.queries, query.WorkQuery{Sort: s})
+	for _, s := range g.sorts[1:] {
+		g.queries = append(g.queries, query.WorkQuery{Sort: s})
 	}
 	rule := func(field, op string, values ...string) query.Rule {
 		return query.Rule{Field: field, Op: op, Values: values}
@@ -497,7 +365,7 @@ func newDifferential(t *testing.T, db *store.DB) *differential {
 	all := func(rules ...query.Rule) query.RuleGroup { return query.RuleGroup{Match: "all", Rules: rules} }
 	drama, recent, played := rule("genre", "anyOf", "Drama"), rule("year", "gte", "2000"), rule("playState", "anyOf", "played")
 	inLibrary := rule("library", "anyOf", libs["movies1"].String(), libs["shows1"].String())
-	for _, g := range []query.RuleGroup{
+	for _, group := range []query.RuleGroup{
 		any(drama, recent, played),
 		all(drama, recent, rule("contentRating", "noneOf", "R")),
 		all(inLibrary, rule("rating", "gte", "4")),
@@ -505,7 +373,7 @@ func newDifferential(t *testing.T, db *store.DB) *differential {
 		{Match: "any", Rules: []query.Rule{rule("title", "startsWith", "movie 2")}, Groups: []query.RuleGroup{all(recent, played), all(drama, rule("resolution", "anyOf", "4k"))}},
 		{Match: "any", Groups: []query.RuleGroup{all(rule("rootWork", "anyOf", blobID('s', 3).String())), any(rule("actor", "anyOf", blobID('p', 3).String()), rule("lastPlayedAt", "within", "P30D"))}},
 	} {
-		d.queries = append(d.queries, query.WorkQuery{Where: &g})
+		g.queries = append(g.queries, query.WorkQuery{Where: &group})
 	}
-	return d
+	return g
 }

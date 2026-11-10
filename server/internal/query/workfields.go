@@ -76,7 +76,7 @@ type fieldDef struct {
 	from   string
 	on     string
 	value  string
-	ids    bool // value is an ID
+	ids    bool // value, or a scalar field's expr, is an ID
 	bits   map[string]int64
 	column string
 
@@ -94,7 +94,9 @@ type fieldDef struct {
 
 // sortIndexes are the indexes that hold a library's root works in a sort's
 // order, by the work_library column they order: by that column, in its
-// field's default direction, then by sort title and ID.
+// field's default direction, then by sort title and ID. Each holds is_root
+// too, so a read of the root rows that names no other column of
+// work_library takes them from the index alone.
 var sortIndexes = map[string]string{
 	"sort_title":    "work_library_title",
 	"added_at":      "work_library_added",
@@ -116,21 +118,43 @@ func creditOf(role string) string {
 // dayOf renders an epoch-milliseconds expression as a UTC day.
 func dayOf(ms string) string { return "date(" + ms + " / 1000, 'unixepoch')" }
 
-// played is the user's last play of each series and season, which have no
-// state of their own: a series' is the latest of the works under it and
-// itself, a season's of the works in it. A work is never both a root and a
-// parent under one, so each has one row.
-const played = `played (work, at) AS MATERIALIZED (
-  SELECT pw.root_id, max(pu.last_played_at)
+// played is the user's last play of each series and season among kinds,
+// which have no state of their own: a series' is the latest of the works
+// under it and itself, a season's of the works in it. A work is never both
+// a root and a parent under one, so each has one row.
+func played(kinds []catalog.WorkKind) string {
+	var parts []string
+	if slices.Contains(kinds, catalog.KindSeries) {
+		parts = append(parts, `SELECT pw.root_id, max(pu.last_played_at)
   FROM user_state pu CROSS JOIN work pw ON pw.id = pu.work_id
   WHERE pu.user_id = @user AND pu.last_played_at IS NOT NULL
-  GROUP BY pw.root_id
-  UNION ALL
-  SELECT pw.parent_id, max(pu.last_played_at)
+  GROUP BY pw.root_id`)
+	}
+	if slices.Contains(kinds, catalog.KindSeason) {
+		parts = append(parts, `SELECT pw.parent_id, max(pu.last_played_at)
   FROM user_state pu CROSS JOIN work pw ON pw.id = pu.work_id
   WHERE pu.user_id = @user AND pu.last_played_at IS NOT NULL AND pw.parent_id <> pw.root_id
-  GROUP BY pw.parent_id
-)`
+  GROUP BY pw.parent_id`)
+	}
+	return "played (work, at) AS MATERIALIZED (\n  " + strings.Join(parts, "\n  UNION ALL\n  ") + "\n)"
+}
+
+// rollupPlayState is a series' or season's play state from its episodes,
+// those with column pointing at w: played when the user has played every
+// one in a library the Viewer is granted, and in progress when the user
+// has played or started any. The works with one played or started are read
+// once for the statement, from the user's states.
+func rollupPlayState(column string) string {
+	return `CASE
+      WHEN NOT EXISTS (SELECT 1 FROM work fe WHERE ` + column + ` = w.id AND fe.kind = 'episode'
+        AND EXISTS (SELECT 1 FROM work_library fl WHERE fl.work_id = fe.id AND ` + catalog.Granted("fl.library_id") + `)
+        AND NOT EXISTS (SELECT 1 FROM user_state fu WHERE fu.user_id = @user AND fu.work_id = fe.id AND fu.played))
+        THEN 'played'
+      WHEN w.id IN (SELECT ` + column + ` FROM user_state fu CROSS JOIN work fe ON fe.id = fu.work_id
+        WHERE fu.user_id = @user AND (fu.played OR fu.resumable) AND fe.kind = 'episode')
+        THEN 'inProgress'
+      ELSE 'unplayed' END`
+}
 
 // playState is the user's state: a series' and season's roll up their
 // episodes; no state means unplayed.
@@ -262,7 +286,7 @@ var workFields = []*fieldDef{
 		from: "credit x", on: creditOf("director"), value: "x.person_id", ids: true, stmt: personValues("Director", "director")},
 
 	{WorkField: WorkField{Field: "library", Name: "Library", Type: FieldChoice, Kinds: allKinds, ValueSource: "inline"},
-		from: "work_library x", on: "x.work_id = w.id", value: "x.library_id", ids: true, stmt: &libraryValues},
+		expr: "wl.library_id", ids: true, stmt: &libraryValues},
 	{WorkField: WorkField{Field: "contentRating", Name: "Content rating", Type: FieldChoice, Kinds: allKinds, ValueSource: "inline"},
 		expr: "w.content_rating", inherit: "r.content_rating", stmt: &contentRatingValues},
 

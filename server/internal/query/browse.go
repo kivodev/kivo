@@ -114,20 +114,6 @@ var gridKinds = map[catalog.LibraryKind]catalog.WorkKind{
 	catalog.Videos: catalog.KindVideo, catalog.Audiobooks: catalog.KindBook,
 }
 
-// rollupPlayState is a series' or season's play state from its episodes,
-// those with column pointing at w.
-func rollupPlayState(column string) string {
-	return `CASE
-      WHEN NOT EXISTS (SELECT 1 FROM work fe WHERE ` + column + ` = w.id AND fe.kind = 'episode'
-        AND EXISTS (SELECT 1 FROM work_library fl WHERE fl.work_id = fe.id AND ` + catalog.Granted("fl.library_id") + `)
-        AND NOT EXISTS (SELECT 1 FROM user_state fu WHERE fu.user_id = @user AND fu.work_id = fe.id AND fu.played))
-        THEN 'played'
-      WHEN EXISTS (SELECT 1 FROM work fe JOIN user_state fu ON fu.user_id = @user AND fu.work_id = fe.id
-        WHERE ` + column + ` = w.id AND fe.kind = 'episode' AND (fu.played OR fu.resumable))
-        THEN 'inProgress'
-      ELSE 'unplayed' END`
-}
-
 // query is the grid's sort and filters as a query, without its kinds: the
 // rules every work must pass, and the sort's field as the one sort key. A
 // library's grid is that query read in the library alone.

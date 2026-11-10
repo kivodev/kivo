@@ -59,6 +59,16 @@ func (s *Service) CompiledGrid(t *testing.T, v users.Viewer, lib id.ID, o Browse
 	return c.counted, c.page, append(c.args, sql.Named("limit", 60), sql.Named("offset", 0))
 }
 
+// GridQuery returns the query a library's grid reads, without its kinds.
+func GridQuery(t *testing.T, o BrowseOptions) WorkQuery {
+	t.Helper()
+	q, err := o.query()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return q
+}
+
 // Bits returns the bit each resolution and each range has in work_library.
 func Bits() (map[Resolution]int64, map[Range]int64) { return resolutionBits, rangeBits }
 

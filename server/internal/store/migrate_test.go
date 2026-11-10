@@ -502,3 +502,77 @@ func TestMigrationQueryCollapse(t *testing.T) {
 		}
 	}
 }
+
+// 0071 rebuilds the sorts' indexes with is_root in them. Each still holds
+// a library's top-level works alone, in its order, and a read of them in
+// that order takes its rows from the index without the table.
+func TestMigrationSortIndexesCover(t *testing.T) {
+	ctx := context.Background()
+	db, path := testDB(t, through(t, "_query_collapse.sql"))
+	err := db.Write(ctx, func(ctx context.Context, tx *Tx) error {
+		_, err := tx.ExecContext(ctx, `
+			INSERT INTO library (id, name, kind, created_at) VALUES (x'b1', 'Shows', 'shows', 1);
+			INSERT INTO work (id, kind, parent_id, root_id, title, sort_title, added_at) VALUES
+				(x'01', 'series', NULL, x'01', 'B', 'B', 3),
+				(x'02', 'series', NULL, x'02', 'A', 'A', 2),
+				(x'03', 'season', x'01', x'01', 'Season 1', 'Season 1', 9);
+			INSERT INTO work_library (library_id, work_id, is_root, sort_title, added_at) VALUES
+				(x'b1', x'01', 1, 'B', 3), (x'b1', x'02', 1, 'A', 2), (x'b1', x'03', 0, 'Season 1', 9);`)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+	up, err := open(ctx, path, embeddedMigrations(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer up.Close()
+	for index, column := range map[string]string{
+		"work_library_title": "sort_title", "work_library_release": "release_key", "work_library_runtime": "runtime_sort",
+		"work_library_rating": "rating_sort", "work_library_creator": "creator_sort", "work_library_last_added": "last_added_at",
+		"work_library_added": "added_at",
+	} {
+		var columns string
+		var partial bool
+		err := up.Reader().QueryRowContext(ctx, `
+			SELECT (SELECT group_concat(name, ',') FROM pragma_index_info(l.name)), l.partial
+			FROM pragma_index_list('work_library') l WHERE l.name = ?`, index).Scan(&columns, &partial)
+		want := "library_id," + column + ",sort_title,work_id,is_root"
+		if column == "sort_title" {
+			want = "library_id,sort_title,work_id,is_root"
+		}
+		if err != nil || columns != want || !partial {
+			t.Errorf("%s holds %s, partial %v, %v; want %s of the top-level works", index, columns, partial, err, want)
+		}
+		read := `SELECT hex(wl.work_id) FROM work_library wl INDEXED BY ` + index + `
+			WHERE wl.library_id = x'b1' AND wl.is_root ORDER BY wl.` + column
+		var plan []string
+		rows, err := up.Reader().QueryContext(ctx, "EXPLAIN QUERY PLAN "+read)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for rows.Next() {
+			var id, parent, unused int
+			var detail string
+			if err := rows.Scan(&id, &parent, &unused, &detail); err != nil {
+				t.Fatal(err)
+			}
+			plan = append(plan, detail)
+		}
+		rows.Close()
+		if want := []string{"SEARCH wl USING COVERING INDEX " + index + " (library_id=?)"}; !slices.Equal(plan, want) {
+			t.Errorf("%s: the read's plan is %q, want %q", index, plan, want)
+		}
+	}
+	var titled, added string
+	err = up.Reader().QueryRowContext(ctx, `SELECT
+		(SELECT group_concat(hex(work_id), ',') FROM (SELECT work_id FROM work_library INDEXED BY work_library_title
+			WHERE library_id = x'b1' AND is_root ORDER BY sort_title)),
+		(SELECT group_concat(hex(work_id), ',') FROM (SELECT work_id FROM work_library INDEXED BY work_library_added
+			WHERE library_id = x'b1' AND is_root ORDER BY added_at DESC))`).Scan(&titled, &added)
+	if err != nil || titled != "02,01" || added != "01,02" {
+		t.Errorf("by title %s and by added %s, %v; want 02,01 and 01,02", titled, added, err)
+	}
+}

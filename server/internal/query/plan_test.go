@@ -220,8 +220,9 @@ func TestGridPlans(t *testing.T) {
 // the statistics SQLite gathers, which the nightly maintenance has it do.
 //
 // A page without its count, of a query an index holds in order, for a
-// Viewer with one library of its works, starts at that index instead, and
-// sorts nothing before it cuts the page. One of a query ordered by the
+// Viewer with one library of its works, starts at that index instead, takes
+// each row from the index without the table, and sorts nothing before it
+// cuts the page. One of a query ordered by the
 // user's own state starts at the user's rows, and looks each one's work up
 // in that library.
 //
@@ -268,9 +269,9 @@ func TestSmartQueriesStartAtWorkLibrary(t *testing.T) {
 			}
 			// starts checks that stmt first reads want: its plan's first
 			// steps on wl, w and r are the FROM's, in the order it reads
-			// them. A statement that walks index starts there, and sorts
-			// nothing before it cuts its page; one that starts at the
-			// user's rows reads wl as mine.
+			// them. A statement that walks index starts there, reading the
+			// index alone, and sorts nothing before it cuts its page; one
+			// that starts at the user's rows reads wl as mine.
 			starts := func(name, stmt string, args []any, index string, want ...string) {
 				t.Helper()
 				got, err := plan(db.Reader(), stmt, args)
@@ -281,7 +282,7 @@ func TestSmartQueriesStartAtWorkLibrary(t *testing.T) {
 				case index == mine:
 					want = []string{mine, work}
 				case index != "":
-					want = []string{"SEARCH wl USING INDEX " + index + " (library_id=?)", work}
+					want = []string{"SEARCH wl USING COVERING INDEX " + index + " (library_id=?)", work}
 					if cut, _, _ := strings.Cut(got, "\nSCAN p\n"); strings.Contains(cut, "TEMP B-TREE") {
 						t.Errorf("%s: the page sorts its works:\n%s", name, got)
 					}

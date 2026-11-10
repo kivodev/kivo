@@ -93,8 +93,9 @@ func TestBitsAgreeWithTheView(t *testing.T) {
 
 // TestSortIndexes checks each index the registry says holds a sort's order
 // against the schema: a library's root rows by the field's column in the
-// field's default direction, then by sort title and ID. A page that walks
-// the index relies on it.
+// field's default direction, then by sort title and ID, and last is_root,
+// which a read of the root rows names. A page that walks the index relies
+// on its order, and reads the index alone.
 func TestSortIndexes(t *testing.T) {
 	db := storetest.New(t)
 	for column, f := range query.IndexedSorts() {
@@ -125,12 +126,12 @@ func TestSortIndexes(t *testing.T) {
 			got = append(got, name)
 		}
 		rows.Close()
-		want := []string{"library_id", column, "sort_title", "work_id"}
+		want := []string{"library_id", column, "sort_title", "work_id", "is_root"}
 		if f.DefaultDirection == "desc" {
 			want[1] += " desc"
 		}
 		if column == "sort_title" {
-			want = []string{"library_id", "sort_title", "work_id"}
+			want = []string{"library_id", "sort_title", "work_id", "is_root"}
 		}
 		if !slices.Equal(got, want) || !strings.HasSuffix(definition, "WHERE is_root") {
 			t.Errorf("%s, for %s, is %v in %q; want %v of the root rows", index, f.Field, got, definition, want)
