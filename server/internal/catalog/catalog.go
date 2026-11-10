@@ -61,14 +61,6 @@ func nullIntPtr(n *int) sql.NullInt64 {
 	return sql.NullInt64{Int64: int64(*n), Valid: true}
 }
 
-func intPtr(n sql.NullInt64) *int {
-	if !n.Valid {
-		return nil
-	}
-	v := int(n.Int64)
-	return &v
-}
-
 // notFound maps a query's sql.ErrNoRows to ErrNotFound and returns any
 // other err unchanged.
 func notFound(err error) error {

@@ -136,7 +136,7 @@ var summaryColumns = `w.id, w.kind, w.title, w.sort_title, w.parent_id, w.root_i
     SELECT 1 FROM media_version_work aw WHERE aw.work_id = w.id AND NOT EXISTS (
       SELECT 1 FROM media_file af JOIN library_folder ar ON ar.id = af.folder_id
       WHERE af.version_id = aw.version_id AND (af.status = 'gone' OR NOT ar.reachable
-        OR NOT ` + granted("ar.library_id") + `))) AS unavailable,
+        OR NOT ` + catalog.Granted("ar.library_id") + `))) AS unavailable,
   coalesce(us.played, 0) AS played, coalesce(us.play_count, 0) AS play_count,
   CASE WHEN us.resumable THEN us.position_ms ELSE 0 END AS position_ms,
   us.rating,
@@ -145,10 +145,10 @@ var summaryColumns = `w.id, w.kind, w.title, w.sort_title, w.parent_id, w.root_i
   ELSE us.last_played_at END, 0) AS last_played_at,
   CASE w.kind
     WHEN 'series' THEN (SELECT count(*) FROM work e WHERE e.root_id = w.id AND e.kind = 'episode'
-      AND EXISTS (SELECT 1 FROM work_library el WHERE el.work_id = e.id AND ` + granted("el.library_id") + `)
+      AND EXISTS (SELECT 1 FROM work_library el WHERE el.work_id = e.id AND ` + catalog.Granted("el.library_id") + `)
       AND NOT EXISTS (SELECT 1 FROM user_state eu WHERE eu.user_id = @user AND eu.work_id = e.id AND eu.played))
     WHEN 'season' THEN (SELECT count(*) FROM work e WHERE e.parent_id = w.id AND e.kind = 'episode'
-      AND EXISTS (SELECT 1 FROM work_library el WHERE el.work_id = e.id AND ` + granted("el.library_id") + `)
+      AND EXISTS (SELECT 1 FROM work_library el WHERE el.work_id = e.id AND ` + catalog.Granted("el.library_id") + `)
       AND NOT EXISTS (SELECT 1 FROM user_state eu WHERE eu.user_id = @user AND eu.work_id = e.id AND eu.played))
     ELSE 0 END AS unplayed,
   w.community_rating, w.community_votes, w.content_rating, us.version_id`
