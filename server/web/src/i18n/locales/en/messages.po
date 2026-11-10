@@ -1099,6 +1099,10 @@ msgstr "Re-enter the provider's API key in General settings."
 msgid "collections"
 msgstr "collections"
 
+#: src/features/admin/ActivityList.tsx
+msgid "{user}'s password was reset from the command line"
+msgstr "{user}'s password was reset from the command line"
+
 #: src/features/browse/useBrowseLabels.ts
 msgid "Unwatched"
 msgstr "Unwatched"

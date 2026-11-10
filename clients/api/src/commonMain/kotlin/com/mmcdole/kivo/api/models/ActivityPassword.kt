@@ -29,12 +29,13 @@ import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
 
 /**
- * `passwordChanged`: a user's password changed, by the user or by an admin.
+ * `passwordChanged`: a user's password changed, by the user, by an admin, or from the command line.
  *
  * @param userId A UUIDv7.
  * @param username 
- * @param changedBy The admin who changed it; absent when the user did.
+ * @param changedBy The admin who changed it; absent when the user did or it was reset from the command line.
  * @param address The client's address, when the user changed it.
+ * @param commandLine True when it was reset from the command line on the server.
  */
 @Serializable
 
@@ -45,11 +46,14 @@ data class ActivityPassword (
 
     @SerialName(value = "username") @Required val username: kotlin.String,
 
-    /* The admin who changed it; absent when the user did. */
+    /* The admin who changed it; absent when the user did or it was reset from the command line. */
     @SerialName(value = "changedBy") val changedBy: kotlin.String? = null,
 
     /* The client's address, when the user changed it. */
-    @SerialName(value = "address") val address: kotlin.String? = null
+    @SerialName(value = "address") val address: kotlin.String? = null,
+
+    /* True when it was reset from the command line on the server. */
+    @SerialName(value = "commandLine") val commandLine: kotlin.Boolean? = null
 
 ) {
 

@@ -98,7 +98,7 @@ func TestRecordAndList(t *testing.T) {
 				f.a.FilesAdded(ctx, tx, f.lib, movie.Work, 1),
 				f.a.SignedIn(ctx, tx, activity.SignIn{User: ben, Client: "ben's iPhone", Address: netip.MustParseAddr("::ffff:203.0.113.24")}),
 				f.a.Joined(ctx, tx, ben, admin),
-				f.a.PasswordSet(ctx, tx, ben, admin, netip.Addr{}),
+				f.a.PasswordSet(ctx, tx, ben, admin, netip.Addr{}, false),
 				f.a.TaskRunEnded(ctx, tx, tasks.RunEnd{Task: "make-previews", Outcome: tasks.Outcome{At: time.Now(), Summary: "214 done"}, Failed: 2}),
 			)
 		})

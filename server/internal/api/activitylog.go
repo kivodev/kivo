@@ -78,7 +78,9 @@ func activityEvent(e activity.Event) gen.ActivityEvent {
 	case activity.UserJoined:
 		out.Joined = &gen.ActivityJoined{UserID: e.User, Username: e.Username, AddedBy: opt(e.By)}
 	case activity.PasswordChanged:
-		out.Password = &gen.ActivityPassword{UserID: e.User, Username: e.Username, ChangedBy: opt(e.By), Address: opt(e.Address)}
+		out.Password = &gen.ActivityPassword{
+			UserID: e.User, Username: e.Username, ChangedBy: opt(e.By), Address: opt(e.Address), CommandLine: opt(e.CommandLine),
+		}
 	case activity.TaskEnded:
 		out.Task = &gen.ActivityTask{Task: gen.TaskName(e.Task), Summary: opt(e.Summary), Error: opt(e.Error), FailedCount: e.Failed}
 	case activity.ProblemRaised:

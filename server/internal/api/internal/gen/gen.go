@@ -1991,7 +1991,7 @@ type ActivityEvent struct {
 	Kind       ActivityKind `json:"kind"`
 	OccurredAt time.Time    `json:"occurredAt"`
 
-	// Password `passwordChanged`: a user's password changed, by the user or by an admin.
+	// Password `passwordChanged`: a user's password changed, by the user, by an admin, or from the command line.
 	Password *ActivityPassword `json:"password,omitempty"`
 
 	// Play `playStarted` and `playFinished`: a play started, or ended past the played threshold.
@@ -2033,13 +2033,16 @@ type ActivityJoined struct {
 // ActivityKind What an event tells of. Skip kinds you don't know.
 type ActivityKind string
 
-// ActivityPassword `passwordChanged`: a user's password changed, by the user or by an admin.
+// ActivityPassword `passwordChanged`: a user's password changed, by the user, by an admin, or from the command line.
 type ActivityPassword struct {
 	// Address The client's address, when the user changed it.
 	Address *string `json:"address,omitempty"`
 
-	// ChangedBy The admin who changed it; absent when the user did.
+	// ChangedBy The admin who changed it; absent when the user did or it was reset from the command line.
 	ChangedBy *string `json:"changedBy,omitempty"`
+
+	// CommandLine True when it was reset from the command line on the server.
+	CommandLine *bool `json:"commandLine,omitempty"`
 
 	// UserID A UUIDv7.
 	UserID   ID     `json:"userId"`

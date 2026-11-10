@@ -130,6 +130,7 @@ function EventText({ event }: { event: ActivityEvent }): ReactNode {
   if (password) {
     const user = <strong className="font-semibold">{password.username}</strong>;
     const admin = password.changedBy;
+    if (password.commandLine) return <Trans>{user}'s password was reset from the command line</Trans>;
     return admin ? (
       <Trans>
         {admin} changed {user}'s password
