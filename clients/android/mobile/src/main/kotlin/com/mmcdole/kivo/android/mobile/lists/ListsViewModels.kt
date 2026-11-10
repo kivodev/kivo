@@ -10,6 +10,7 @@ import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.core.data.GridPager
+import com.mmcdole.kivo.core.data.ListSorts
 import com.mmcdole.kivo.core.session.KivoSession
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -25,6 +26,8 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /** The list kinds the phone shows; others are skipped. */
 private const val MANUAL = "manual"
@@ -78,7 +81,14 @@ class ListsViewModel(private val session: KivoSession) : ViewModel() {
 /** What naming a smart list's rules takes: the catalog and its chosen values' names. */
 data class SmartRulesWords(val fields: List<WorkField>, val names: Map<String, String>)
 
-/** An open list: its works as a grid, most recently added first; a list the user made can be renamed and deleted, and a smart list's rules are read to name them. */
+/** Reorder: a manual list's works in its custom order, as moved here; null while they're read. */
+data class ReorderUiState(val works: List<WorkSummary>? = null)
+
+/**
+ * An open list: its works as a grid, a manual list's in its sort, which can
+ * be chosen, and in Reorder as rows to move; a list the user made can be
+ * renamed and deleted, and a smart list's rules are read to name them.
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ListViewModel(private val session: KivoSession, private val listId: String) : ViewModel() {
     /** The grid, which the paged grid reads and asks pages of as they come into view. */
@@ -88,7 +98,7 @@ class ListViewModel(private val session: KivoSession, private val listId: String
 
     private val mutableProblem = MutableStateFlow<RequestProblem?>(null)
 
-    /** Why the list's rules couldn't be named, until it's dismissed. */
+    /** Why the list's rules couldn't be named, or a sort or move was refused, until it's dismissed. */
     val problem: StateFlow<RequestProblem?> = mutableProblem
 
     /** The list as the lists last read it; null until then, or when it's gone. */
@@ -124,6 +134,90 @@ class ListViewModel(private val session: KivoSession, private val listId: String
         } catch (_: Exception) {
             // The grid shows why.
         }
+    }
+
+    /** The sort just chosen here, until the list is read again. */
+    private val chosenSort = MutableStateFlow<String?>(null)
+
+    /** The order a manual list is shown in; null for a smart list or one not read. */
+    val sort: StateFlow<String?> = combine(list.onEach { chosenSort.value = null }, chosenSort) { list, chosen -> list?.let(ListSorts::of)?.let { chosen ?: it } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Shows the list in [sort] at once and saves it; a refusal goes back and says why. */
+    fun chooseSort(sort: String) {
+        chosenSort.value = sort
+        viewModelScope.launch {
+            val failure = attempt { session.library.setListSort(listId, sort) }
+            if (failure != null) {
+                chosenSort.value = null
+                mutableProblem.value = failure
+            }
+        }
+    }
+
+    private val mutableReorder = MutableStateFlow<ReorderUiState?>(null)
+
+    /** Reorder's rows while it's open, else null. */
+    val reorder: StateFlow<ReorderUiState?> = mutableReorder
+
+    /** The moves are sent one at a time, in the order they were made. */
+    private val sending = Mutex()
+
+    /** Opens Reorder on the list's custom order; a failed read closes it and says why. */
+    fun startReorder() {
+        mutableReorder.value = ReorderUiState()
+        viewModelScope.launch { readCustomOrder(closing = true) }
+    }
+
+    private suspend fun readCustomOrder(closing: Boolean) {
+        try {
+            val works = session.library.listWorksInCustomOrder(listId)
+            mutableReorder.update { it?.copy(works = works) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            if (closing) {
+                mutableReorder.value = null
+                mutableProblem.value = RequestProblem.of(e)
+            }
+        }
+    }
+
+    fun endReorder() {
+        mutableReorder.value = null
+    }
+
+    /** Puts the row at [from] at [to], here alone: a drag passes over rows before it's let go. */
+    fun moveRow(from: Int, to: Int) {
+        mutableReorder.update { state ->
+            val works = state?.works ?: return@update state
+            if (from !in works.indices || to !in works.indices || from == to) return@update state
+            state.copy(works = works.toMutableList().apply { add(to, removeAt(from)) })
+        }
+    }
+
+    /** Saves where [workId] now is: after the row above it, or first. A refusal reads the order again and says why. */
+    fun saveMove(workId: String) {
+        val works = mutableReorder.value?.works ?: return
+        val index = works.indexOfFirst { it.id == workId }
+        if (index < 0) return
+        val after = works.getOrNull(index - 1)?.id
+        viewModelScope.launch {
+            val failure = sending.withLock { attempt { session.library.moveInList(listId, listOf(workId), after) } }
+            if (failure != null) {
+                mutableProblem.value = failure
+                readCustomOrder(closing = false)
+            }
+        }
+    }
+
+    /** Moves the row at [index] one place up or down, [by] -1 or 1, and saves it. */
+    fun step(index: Int, by: Int) {
+        val works = mutableReorder.value?.works ?: return
+        val work = works.getOrNull(index) ?: return
+        if (index + by !in works.indices) return
+        moveRow(index, index + by)
+        saveMove(work.id)
     }
 
     /** Renames the list; why not, or null once it's done. */

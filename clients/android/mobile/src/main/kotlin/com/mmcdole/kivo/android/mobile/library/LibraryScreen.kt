@@ -144,7 +144,14 @@ fun LibraryScreen(session: ServerSession, libraryId: String, oneOffSort: String?
         }
     }
     when (sheet) {
-        "sort" -> SortSheet(state, onSort = { model.chooseQuery(state.query.copy(sort = it)) }, onDismiss = { sheet = null })
+        "sort" -> SortSheet(
+            GridValues.sortsOf(state.library?.kind),
+            state.query.sort ?: GridValues.TITLE,
+            { sortName(it) },
+            { sortDirection(it) },
+            onSort = { model.chooseQuery(state.query.copy(sort = it)) },
+            onDismiss = { sheet = null },
+        )
         "filter" -> FilterSheet(
             state,
             model::chooseQuery,
@@ -214,18 +221,24 @@ private fun Header(state: LibraryUiState, model: LibraryViewModel, modifier: Mod
         }
     }
     val total = state.grid.pager.state.collectAsStateWithLifecycle().value.total
+    CountSortLine(total?.let { countLine(it, state) }.orEmpty(), if (state.tab == LibraryTab.Titles) sortShort(query.sort) else null, onSort)
+}
+
+/** The count line: how many there are and, with [sort], the sort in a word or two, the line opening the sort sheet. */
+@Composable
+internal fun CountSortLine(count: String, sort: String?, onSort: () -> Unit) {
     Row(
         Modifier
             .padding(horizontal = space(2))
-            .then(if (state.tab == LibraryTab.Titles) Modifier.clickable(onClick = onSort).testTag("sort") else Modifier)
+            .then(if (sort != null) Modifier.clickable(onClick = onSort).testTag("sort") else Modifier)
             .padding(horizontal = space(2), vertical = space(2)),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         val muted = MaterialTheme.colorScheme.onSurfaceVariant
-        Text(total?.let { countLine(it, state) }.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = muted)
-        if (state.tab == LibraryTab.Titles) {
+        Text(count, style = MaterialTheme.typography.bodyMedium, color = muted)
+        if (sort != null) {
             Text(" · ", style = MaterialTheme.typography.bodyMedium, color = muted)
-            Text(sortShort(query.sort), style = MaterialTheme.typography.labelLarge, color = muted)
+            Text(sort, style = MaterialTheme.typography.labelLarge, color = muted)
             Icon(Icons.Default.ArrowDropDown, null, tint = muted)
         }
     }
@@ -348,18 +361,27 @@ private fun SkeletonGrid(columns: Int, shape: CardShape, cardWidth: Dp, padding:
     }
 }
 
+/** Sort by: [sorts], each named by [name] with which way it runs, from [direction], under it, and [selected] ticked. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SortSheet(state: LibraryUiState, onSort: (String) -> Unit, onDismiss: () -> Unit) {
+internal fun SortSheet(
+    sorts: List<String>,
+    selected: String,
+    name: @Composable (String) -> String,
+    direction: @Composable (String) -> String?,
+    onSort: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
     ModalBottomSheet(onDismissRequest = onDismiss, modifier = Modifier.testTag("sortSheet")) {
         Text(stringResource(R.string.mobile_sort_by), Modifier.padding(horizontal = space(6), vertical = space(2)), style = MaterialTheme.typography.titleMedium)
-        for (sort in GridValues.sortsOf(state.library?.kind)) {
+        for (sort in sorts) {
+            val runs = direction(sort)
             ListItem(
-                headlineContent = { Text(sortName(sort)) },
-                supportingContent = { Text(sortDirection(sort)) },
-                trailingContent = { if (sort == (state.query.sort ?: GridValues.TITLE)) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) },
+                headlineContent = { Text(name(sort)) },
+                supportingContent = runs?.let { { Text(it) } },
+                trailingContent = { if (sort == selected) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) },
                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                modifier = Modifier.clickable {
+                modifier = Modifier.testTag("sort:$sort").clickable {
                     onSort(sort)
                     onDismiss()
                 },

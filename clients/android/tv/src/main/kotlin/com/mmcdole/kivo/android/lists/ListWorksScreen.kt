@@ -67,7 +67,7 @@ class ListWorksViewModel(session: ServerSession, listId: String) : ViewModel() {
 private val HeadingPadding = PaddingValues(start = 24.dp, top = 39.5.dp, end = SafeEdge)
 
 /**
- * An open list, most recently added first: the title, the count line, and
+ * An open list, a manual list's in its sort: the title, the count line, and
  * the grid of a library, without its sort, filters or letter rail, each card
  * in its own work's shape. With nothing in it, the title and the empty state.
  */
