@@ -198,7 +198,8 @@ type Deps struct {
 	// Settings name the local networks, which decide whether a device code
 	// is nearby.
 	Settings *config.Store
-	// Activity records sign-ins, failed sign-ins, and users joining.
+	// Activity records sign-ins, failed sign-ins, users joining, and
+	// password changes.
 	Activity *activity.Service
 }
 

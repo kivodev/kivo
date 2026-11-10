@@ -403,3 +403,65 @@ func TestMigrationTypedTokens(t *testing.T) {
 		t.Fatalf("after it: %d credentials, %d users (%v)", credentials, users, err)
 	}
 }
+
+// 0068 lets activity record passwordChanged. Every event keeps its rowid
+// and columns, the table has both its indexes again, and a kind it
+// doesn't know is still refused.
+func TestMigrationPasswordChanged(t *testing.T) {
+	ctx := context.Background()
+	db, path := testDB(t, through(t, "_typed_tokens.sql"))
+	err := db.Write(ctx, func(ctx context.Context, tx *Tx) error {
+		_, err := tx.ExecContext(ctx, `
+			INSERT INTO activity (rowid, id, at, kind, data) VALUES
+				(4, x'a1', 10, 'signedIn', '{"username":"ben"}'),
+				(9, x'a2', 20, 'userJoined', '{"username":"dana","by":"admin"}');`)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+	up, err := open(ctx, path, through(t, "_password_changed.sql"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer up.Close()
+	rows, err := up.Reader().QueryContext(ctx, `SELECT rowid, hex(id), at, kind, data FROM activity ORDER BY rowid`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for rows.Next() {
+		var rowid, at int
+		var id, kind, data string
+		if err := rows.Scan(&rowid, &id, &at, &kind, &data); err != nil {
+			t.Fatal(err)
+		}
+		got = append(got, fmt.Sprintf("%d %s %d %s %s", rowid, id, at, kind, data))
+	}
+	rows.Close()
+	want := []string{
+		`4 A1 10 signedIn {"username":"ben"}`,
+		`9 A2 20 userJoined {"username":"dana","by":"admin"}`,
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("activity after 0068:\n%q\nwant\n%q", got, want)
+	}
+	var n int
+	if err := up.Reader().QueryRowContext(ctx, `SELECT count(*) FROM sqlite_schema
+		WHERE name IN ('activity_at', 'activity_kind')`).Scan(&n); err != nil || n != 2 {
+		t.Fatalf("the table's indexes: %d of 2 (%v)", n, err)
+	}
+	insert := func(kind string) error {
+		return up.Write(ctx, func(ctx context.Context, tx *Tx) error {
+			_, err := tx.ExecContext(ctx, `INSERT INTO activity (id, at, kind, data) VALUES (randomblob(16), 30, ?, '{}')`, kind)
+			return err
+		})
+	}
+	if err := insert("passwordChanged"); err != nil {
+		t.Fatalf("a passwordChanged event after it: %v", err)
+	}
+	if err := insert("nope"); err == nil {
+		t.Fatal("an unknown kind was accepted")
+	}
+}

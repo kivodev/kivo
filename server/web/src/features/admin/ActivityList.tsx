@@ -36,7 +36,7 @@ function EventText({ event }: { event: ActivityEvent }): ReactNode {
   const { t } = useLingui();
   const { taskName } = useAdminLabels();
   const actionOf = useProblemActions();
-  const { play, added, signIn, joined, task, problem } = event;
+  const { play, added, signIn, joined, password, task, problem } = event;
   if (play) {
     const user = play.username;
     const name = <Name work={play.work} />;
@@ -125,6 +125,20 @@ function EventText({ event }: { event: ActivityEvent }): ReactNode {
       </Trans>
     ) : (
       <Trans>{user} joined from an invite</Trans>
+    );
+  }
+  if (password) {
+    const user = <strong className="font-semibold">{password.username}</strong>;
+    const admin = password.changedBy;
+    return admin ? (
+      <Trans>
+        {admin} changed {user}'s password
+      </Trans>
+    ) : (
+      <>
+        <Trans>{user} changed their password</Trans>
+        <Muted parts={[password.address]} />
+      </>
     );
   }
   if (task) {

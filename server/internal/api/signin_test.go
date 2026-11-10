@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -441,6 +442,34 @@ func TestChangeCurrentUserPassword(t *testing.T) {
 	signIn := map[string]string{"username": "admin", "password": "a new password"}
 	if w := e.do("POST", "/api/v1/sessions", "", signIn); w.Code != http.StatusCreated {
 		t.Errorf("sign in with the new password: %d", w.Code)
+	}
+}
+
+// A password change shows in the activity: an admin's own with the
+// address it came from, and one an admin set with who set it.
+func TestPasswordChangedActivity(t *testing.T) {
+	e := newEnv(t, serving{})
+	w := e.do("POST", "/api/v1/users/me/change-password", e.adminToken,
+		map[string]any{"currentPassword": adminPassword, "password": "a new password", "signOutOthers": false})
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("change: %d %s", w.Code, w.Body.String())
+	}
+	w = e.do("POST", "/api/v1/users/"+e.nobody.String()+"/set-password", e.adminToken, map[string]any{"password": "a fresh password"})
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("set password: %d %s", w.Code, w.Body.String())
+	}
+	var got []map[string]any
+	for _, ev := range decode[list](t, e.do("GET", "/api/v1/activity?group=signIns", e.adminToken, nil)).Items {
+		if ev["kind"] == "passwordChanged" {
+			got = append(got, ev["password"].(map[string]any))
+		}
+	}
+	want := []map[string]any{
+		{"userId": e.nobody.String(), "username": "nobody", "changedBy": "admin"},
+		{"userId": e.admin.String(), "username": "admin", "address": "192.0.2.1"},
+	}
+	if fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Errorf("passwordChanged events %v, want %v", got, want)
 	}
 }
 

@@ -36,6 +36,7 @@ src/commonMain/kotlin/com/mmcdole/kivo/api/models/ActivityAdded.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/ActivityEvent.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/ActivityFeed.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/ActivityJoined.kt
+src/commonMain/kotlin/com/mmcdole/kivo/api/models/ActivityPassword.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/ActivityPlay.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/ActivityProblem.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/ActivitySignIn.kt

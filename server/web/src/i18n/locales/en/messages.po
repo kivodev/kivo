@@ -22,6 +22,10 @@ msgstr "See the test encode error in Logs."
 msgid "Narrator"
 msgstr "Narrator"
 
+#: src/features/admin/ActivityList.tsx
+msgid "{user} changed their password"
+msgstr "{user} changed their password"
+
 #: src/features/player/VolumeControl.tsx
 msgid "Volume"
 msgstr "Volume"
@@ -4337,6 +4341,10 @@ msgstr "Forget every missing file?"
 #: src/features/player/SubtitleSearch.tsx
 msgid "Exact match"
 msgstr "Exact match"
+
+#: src/features/admin/ActivityList.tsx
+msgid "{admin} changed {user}'s password"
+msgstr "{admin} changed {user}'s password"
 
 #: src/features/admin/UserScreen.tsx
 msgid "Delete account"
