@@ -80,7 +80,7 @@ var owns = map[string][]string{
 	"activity": {"activity"},
 	"config":   {"setting"},
 	"users":    {"user", "library_grant", "user_library", "user_home_row", "list"},
-	"auth":     {"credential", "session", "api_key", "cast_token", "audit", "invite", "invite_library"},
+	"auth":     {"credential", "session", "api_key", "cast_token", "invite", "invite_library"},
 	"catalog": {"library", "library_folder", "media_file", "media_track", "media_chapter", "media_attachment", "work", "work_library",
 		"work_external_id", "media_version", "media_version_work", "person", "person_external_id", "credit", "genre", "work_genre",
 		"tag", "work_tag", "company", "work_company", "collection", "collection_work", "collection_fts", "work_fts", "person_fts",

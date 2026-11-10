@@ -29,11 +29,6 @@ func (s *Service) issue(ctx context.Context, tx *store.Tx, user id.ID, c client)
 		if err != nil {
 			return IssuedSession{}, err
 		}
-		for range replaced {
-			if err := audit(ctx, q, actionRevoke, user, out.Session.Caller(), noAddr); err != nil {
-				return IssuedSession{}, err
-			}
-		}
 		s.revokeAtCommit(tx, replaced...)
 	}
 	err := q.InsertSession(ctx, dbq.InsertSessionParams{
@@ -121,7 +116,7 @@ func (s *Service) SignOut(ctx context.Context, c Caller) error {
 	if c.Session.IsZero() {
 		return fmt.Errorf("%w: sign out", ErrNotFound)
 	}
-	return s.revoke(ctx, c, c.Session)
+	return s.revoke(ctx, c.Session)
 }
 
 // SignOutOthers ends every session of the caller's user except the
@@ -132,25 +127,20 @@ func (s *Service) SignOutOthers(ctx context.Context, c Caller) error {
 		return fmt.Errorf("%w: sign out others", ErrNotFound)
 	}
 	err := s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
-		q := dbq.New(tx)
-		revoked, err := q.DeleteOtherSessions(ctx, dbq.DeleteOtherSessionsParams{UserID: c.User, Keep: c.Session})
+		revoked, err := dbq.New(tx).DeleteOtherSessions(ctx, dbq.DeleteOtherSessionsParams{UserID: c.User, Keep: c.Session})
 		if err != nil {
 			return err
 		}
-		if len(revoked) == 0 {
-			return nil
-		}
 		s.revokeAtCommit(tx, revoked...)
-		return audit(ctx, q, actionRevokeOthers, c.User, c, noAddr)
+		return nil
 	})
 	return err
 }
 
-// revoke ends a session on behalf of by.
-func (s *Service) revoke(ctx context.Context, by Caller, session id.ID) error {
+// revoke ends a session.
+func (s *Service) revoke(ctx context.Context, session id.ID) error {
 	return s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
-		q := dbq.New(tx)
-		user, err := q.DeleteSession(ctx, session)
+		_, err := dbq.New(tx).DeleteSession(ctx, session)
 		if errors.Is(err, sql.ErrNoRows) {
 			return fmt.Errorf("%w: session %s", ErrNotFound, session)
 		}
@@ -158,7 +148,7 @@ func (s *Service) revoke(ctx context.Context, by Caller, session id.ID) error {
 			return err
 		}
 		s.revokeAtCommit(tx, session)
-		return audit(ctx, q, actionRevoke, user, by, noAddr)
+		return nil
 	})
 }
 
@@ -275,7 +265,7 @@ func (s *Service) RevokeSession(ctx context.Context, by Caller, session id.ID) e
 	if err := s.mayManage(ctx, by, r.UserID); err != nil {
 		return err
 	}
-	return s.revoke(ctx, by, session)
+	return s.revoke(ctx, session)
 }
 
 // mayManage checks that by may see and sign out user's sessions. That holds

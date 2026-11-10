@@ -174,17 +174,6 @@ sql:
             go_type: github.com/mmcdole/kivo/internal/id.ID
           - column: invite_library.library_id
             go_type: github.com/mmcdole/kivo/internal/id.ID
-          - column: audit.id
-            go_type: github.com/mmcdole/kivo/internal/id.ID
-          - column: audit.user_id
-            go_type: github.com/mmcdole/kivo/internal/id.ID
-            nullable: true
-          - column: audit.session_id
-            go_type: github.com/mmcdole/kivo/internal/id.ID
-            nullable: true
-          - column: audit.api_key_id
-            go_type: github.com/mmcdole/kivo/internal/id.ID
-            nullable: true
           - column: api_key.id
             go_type: github.com/mmcdole/kivo/internal/id.ID
           - column: api_key.created_by

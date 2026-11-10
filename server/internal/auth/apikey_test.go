@@ -25,7 +25,6 @@ func TestAPIKeys(t *testing.T) {
 	if k.Name != "Home Assistant" || k.ID.IsZero() || token == "" {
 		t.Fatalf("CreateAPIKey = %+v, %q", k, token)
 	}
-	f.audit(actionAPIKeyCreated, 1)
 
 	keys, err := f.auth.APIKeys(ctx)
 	if err != nil || len(keys) != 1 || keys[0].ID != k.ID || keys[0].Name != k.Name || !keys[0].LastUsed.IsZero() {
@@ -62,17 +61,16 @@ func TestAPIKeys(t *testing.T) {
 		t.Fatalf("after a new password: %v", err)
 	}
 
-	if err := f.auth.RevokeAPIKey(ctx, admin, k.ID); err != nil {
+	if err := f.auth.RevokeAPIKey(ctx, k.ID); err != nil {
 		t.Fatal(err)
 	}
-	f.audit(actionAPIKeyRevoked, 1)
 	if _, err := f.auth.Authenticate(ctx, token); !errors.Is(err, ErrUnauthenticated) {
 		t.Fatalf("revoked key: err = %v", err)
 	}
 	if alive, err := f.auth.Alive(ctx, c); err != nil || alive {
 		t.Fatalf("Alive after revoking = %v, %v", alive, err)
 	}
-	if err := f.auth.RevokeAPIKey(ctx, admin, k.ID); !errors.Is(err, ErrNotFound) {
+	if err := f.auth.RevokeAPIKey(ctx, k.ID); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("revoking again: err = %v, want ErrNotFound", err)
 	}
 	if keys, err := f.auth.APIKeys(ctx); err != nil || len(keys) != 0 {

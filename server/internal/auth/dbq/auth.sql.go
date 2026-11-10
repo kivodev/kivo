@@ -387,34 +387,6 @@ func (q *Queries) InsertAPIKey(ctx context.Context, arg InsertAPIKeyParams) erro
 	return err
 }
 
-const insertAudit = `-- name: InsertAudit :exec
-INSERT INTO audit (id, at, action, user_id, session_id, api_key_id, remote_ip)
-VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
-`
-
-type InsertAuditParams struct {
-	ID        id.ID
-	At        int64
-	Action    string
-	UserID    id.ID
-	SessionID id.ID
-	ApiKeyID  id.ID
-	RemoteIp  string
-}
-
-func (q *Queries) InsertAudit(ctx context.Context, arg InsertAuditParams) error {
-	_, err := q.db.ExecContext(ctx, insertAudit,
-		arg.ID,
-		arg.At,
-		arg.Action,
-		arg.UserID,
-		arg.SessionID,
-		arg.ApiKeyID,
-		arg.RemoteIp,
-	)
-	return err
-}
-
 const insertCastToken = `-- name: InsertCastToken :exec
 INSERT INTO cast_token (id, token_hash, session_id, name, receiver, created_at, last_used_at)
 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)

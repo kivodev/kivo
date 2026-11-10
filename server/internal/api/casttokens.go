@@ -14,7 +14,7 @@ func (h *handlers) CreateCastToken(ctx context.Context, req gen.CreateCastTokenR
 	c := callerOf(ctx)
 	ip := requestOf(ctx).ip
 	n := auth.NewCastToken{Name: req.Body.ReceiverName, Receiver: auth.CastReceiver(req.Body.ReceiverKind)}
-	issued, err := h.deps.Auth.IssueCastToken(ctx, c.Caller, ip, n)
+	issued, err := h.deps.Auth.IssueCastToken(ctx, c.Caller, n)
 	if err != nil {
 		return nil, err
 	}

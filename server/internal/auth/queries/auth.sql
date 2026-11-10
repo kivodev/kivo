@@ -95,10 +95,6 @@ UPDATE api_key SET last_used_at = max(coalesce(last_used_at, 0), CAST(@used AS I
 DELETE FROM session WHERE rowid IN (
   SELECT s.rowid FROM session s WHERE s.kind = 'browser' AND s.last_used_at < @before LIMIT @limit);
 
--- name: InsertAudit :exec
-INSERT INTO audit (id, at, action, user_id, session_id, api_key_id, remote_ip)
-VALUES (@id, @at, @action, @user_id, @session_id, @api_key_id, @remote_ip);
-
 -- name: InsertInvite :exec
 INSERT INTO invite (id, token_hash, created_by, all_libraries, stream_limit, remote_quality_cap, expires_at, created_at)
 VALUES (@id, @token_hash, @created_by, @all_libraries, @stream_limit, @remote_quality_cap, @expires_at, @created_at);

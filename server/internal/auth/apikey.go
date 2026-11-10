@@ -41,14 +41,9 @@ func (s *Service) CreateAPIKey(ctx context.Context, by Caller, k NewAPIKey) (Iss
 	token, hash := newToken()
 	key := APIKey{ID: id.New(), Name: name, Created: time.Now().Truncate(time.Millisecond)}
 	err = s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
-		q := dbq.New(tx)
-		err := q.InsertAPIKey(ctx, dbq.InsertAPIKeyParams{
+		return dbq.New(tx).InsertAPIKey(ctx, dbq.InsertAPIKeyParams{
 			ID: key.ID, TokenHash: hash[:], Name: name, CreatedBy: by.User, CreatedAt: key.Created.UnixMilli(),
 		})
-		if err != nil {
-			return err
-		}
-		return audit(ctx, q, actionAPIKeyCreated, by.User, by, noAddr)
 	})
 	if err != nil {
 		return IssuedAPIKey{}, err
@@ -89,12 +84,11 @@ func (s *Service) apiKey(r dbq.APIKeyRow) APIKey {
 	return APIKey{ID: r.ID, Name: r.Name, Created: time.UnixMilli(r.CreatedAt), LastUsed: s.lastUsed(r.ID, stored)}
 }
 
-// RevokeAPIKey deletes an API key on behalf of by, and its token stops
-// working at once. by must be an admin, which api checks.
-func (s *Service) RevokeAPIKey(ctx context.Context, by Caller, key id.ID) error {
+// RevokeAPIKey deletes an API key, and its token stops working at once.
+// Only an admin may, which api checks.
+func (s *Service) RevokeAPIKey(ctx context.Context, key id.ID) error {
 	err := s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
-		q := dbq.New(tx)
-		creator, err := q.DeleteAPIKey(ctx, key)
+		_, err := dbq.New(tx).DeleteAPIKey(ctx, key)
 		if errors.Is(err, sql.ErrNoRows) {
 			return fmt.Errorf("%w: API key %s", ErrNotFound, key)
 		}
@@ -102,7 +96,7 @@ func (s *Service) RevokeAPIKey(ctx context.Context, by Caller, key id.ID) error 
 			return err
 		}
 		s.revokeAtCommit(tx, key)
-		return audit(ctx, q, actionAPIKeyRevoked, creator, by, noAddr)
+		return nil
 	})
 	if err != nil {
 		return err

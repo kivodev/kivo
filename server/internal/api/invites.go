@@ -37,7 +37,7 @@ func (h *handlers) CreateInvite(ctx context.Context, req gen.CreateInviteRequest
 }
 
 func (h *handlers) DeleteInvite(ctx context.Context, req gen.DeleteInviteRequestObject) (gen.DeleteInviteResponseObject, error) {
-	if err := h.deps.Auth.RevokeInvite(ctx, callerOf(ctx).Caller, req.ID); err != nil {
+	if err := h.deps.Auth.RevokeInvite(ctx, req.ID); err != nil {
 		return nil, err
 	}
 	return gen.DeleteInvite204Response{}, nil

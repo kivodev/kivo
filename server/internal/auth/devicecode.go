@@ -9,10 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mmcdole/kivo/internal/auth/dbq"
-	"github.com/mmcdole/kivo/internal/store"
-
 	"github.com/mmcdole/kivo/internal/id"
+	"github.com/mmcdole/kivo/internal/store"
 )
 
 const (
@@ -259,12 +257,8 @@ func (s *Service) PollDeviceCode(ctx context.Context, secret string, ip netip.Ad
 
 	var out IssuedSession
 	err = s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
-		q := dbq.New(tx)
 		var err error
 		if out, err = s.issue(ctx, tx, pl.approver, pl.client); err != nil {
-			return err
-		}
-		if err := audit(ctx, q, actionDeviceCode, pl.approver, out.Session.Caller(), ip); err != nil {
 			return err
 		}
 		return s.deps.Activity.SignedIn(ctx, tx, s.signIn(pl.approver, pl.client.name, ip))
