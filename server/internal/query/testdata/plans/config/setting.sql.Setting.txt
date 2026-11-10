@@ -1,1 +1,0 @@
-SEARCH setting USING PRIMARY KEY (key=?)

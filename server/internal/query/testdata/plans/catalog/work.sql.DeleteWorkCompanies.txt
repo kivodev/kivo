@@ -1,1 +1,0 @@
-SEARCH work_company USING PRIMARY KEY (work_id=?)

@@ -1,1 +1,0 @@
-SEARCH user_state USING INDEX user_state_work (work_id=?)

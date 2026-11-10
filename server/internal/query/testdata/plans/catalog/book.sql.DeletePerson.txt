@@ -1,7 +1,0 @@
-SEARCH person USING INDEX sqlite_autoindex_person_1 (id=?)
-CORRELATED SCALAR SUBQUERY 1
-  SEARCH c USING COVERING INDEX credit_person (person_id=?)
-SEARCH artwork USING COVERING INDEX artwork_person (person_id=?)
-SEARCH image USING COVERING INDEX image_person (person_id=?)
-SEARCH credit USING INDEX credit_person (person_id=?)
-SEARCH person_external_id USING COVERING INDEX person_external_id_person (person_id=?)

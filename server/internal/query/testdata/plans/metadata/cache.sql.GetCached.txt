@@ -1,1 +1,0 @@
-SEARCH provider_cache USING INDEX sqlite_autoindex_provider_cache_1 (provider=? AND key=?)

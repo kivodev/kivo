@@ -1,1 +1,0 @@
-SEARCH media_chapter USING PRIMARY KEY (file_id=?)

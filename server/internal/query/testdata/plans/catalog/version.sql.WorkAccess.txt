@@ -1,4 +1,0 @@
-SEARCH wl USING COVERING INDEX work_library_work (work_id=?)
-SEARCH w USING INDEX sqlite_autoindex_work_1 (id=?)
-CORRELATED SCALAR SUBQUERY 1
-  SEARCH r USING INDEX sqlite_autoindex_work_1 (id=?)

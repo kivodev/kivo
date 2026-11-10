@@ -1,7 +1,0 @@
-SEARCH cast_token USING INTEGER PRIMARY KEY (rowid=?)
-LIST SUBQUERY 1
-  MULTI-INDEX OR
-    INDEX 1
-      SEARCH c USING INDEX cast_token_used (last_used_at<?)
-    INDEX 2
-      SEARCH c USING INDEX cast_token_created (created_at<?)

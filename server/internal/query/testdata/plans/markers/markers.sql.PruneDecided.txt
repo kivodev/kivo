@@ -1,4 +1,0 @@
-SEARCH marker_file USING PRIMARY KEY (file_id=?)
-LIST SUBQUERY 1
-  SCAN m
-  SEARCH f USING INDEX sqlite_autoindex_media_file_1 (id=?)

@@ -1,2 +1,0 @@
-SCAN w
-SEARCH l USING COVERING INDEX sqlite_autoindex_work_folder_1 (work_id=?)

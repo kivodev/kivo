@@ -1,1 +1,0 @@
-SEARCH work_folder USING PRIMARY KEY (library_id=? AND subject=?)

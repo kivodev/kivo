@@ -1,3 +1,0 @@
-SCAN collection_fts VIRTUAL TABLE INDEX 0:=
-SCALAR SUBQUERY 1
-  SEARCH collection USING COVERING INDEX sqlite_autoindex_collection_1 (id=?)

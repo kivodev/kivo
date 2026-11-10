@@ -1,2 +1,0 @@
-SEARCH x USING PRIMARY KEY (provider=? AND kind=? AND ext_id=?)
-SEARCH i USING INDEX image_person (person_id=? AND kind=?)

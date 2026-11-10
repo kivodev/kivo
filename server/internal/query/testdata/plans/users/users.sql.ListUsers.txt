@@ -1,1 +1,0 @@
-SCAN user USING INDEX sqlite_autoindex_user_2

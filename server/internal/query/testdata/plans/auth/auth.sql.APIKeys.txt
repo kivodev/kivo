@@ -1,2 +1,0 @@
-SCAN api_key
-USE TEMP B-TREE FOR ORDER BY

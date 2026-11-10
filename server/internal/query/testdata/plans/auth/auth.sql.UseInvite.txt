@@ -1,1 +1,0 @@
-SEARCH invite USING INDEX sqlite_autoindex_invite_1 (id=?)

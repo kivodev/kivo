@@ -1,3 +1,0 @@
-SCAN CONSTANT ROW
-SCALAR SUBQUERY 1
-  SEARCH media_version_work USING COVERING INDEX media_version_work_work (work_id=?)

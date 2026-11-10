@@ -1,3 +1,0 @@
-SEARCH session USING COVERING INDEX session_client (user_id=? AND client_id=?)
-SEARCH download USING COVERING INDEX download_session (session_id=?)
-SEARCH cast_token USING COVERING INDEX cast_token_session (session_id=?)

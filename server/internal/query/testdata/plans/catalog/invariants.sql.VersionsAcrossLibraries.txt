@@ -1,3 +1,0 @@
-SEARCH f USING INDEX media_file_version (version_id>?)
-SEARCH r USING INDEX sqlite_autoindex_library_folder_1 (id=?)
-USE TEMP B-TREE FOR count(DISTINCT)

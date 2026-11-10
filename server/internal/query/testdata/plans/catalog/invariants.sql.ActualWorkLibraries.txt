@@ -1,1 +1,0 @@
-SCAN work_library USING INDEX work_library_work

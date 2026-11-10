@@ -1,2 +1,0 @@
-SEARCH u USING INDEX sqlite_autoindex_user_2 (username=?)
-SEARCH c USING INDEX credential_user (user_id=? AND kind=?) LEFT-JOIN

@@ -1,1 +1,0 @@
-SEARCH work USING INDEX work_root (root_id=?)

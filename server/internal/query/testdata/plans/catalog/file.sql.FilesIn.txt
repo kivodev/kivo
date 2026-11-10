@@ -1,1 +1,0 @@
-SEARCH media_file USING INDEX sqlite_autoindex_media_file_2 (folder_id=?)

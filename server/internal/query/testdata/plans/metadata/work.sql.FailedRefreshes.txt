@@ -1,1 +1,0 @@
-SCAN work USING INDEX work_refresh_failed

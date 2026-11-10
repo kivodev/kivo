@@ -1,1 +1,0 @@
-SEARCH session USING INDEX sqlite_autoindex_session_1 (id=?)

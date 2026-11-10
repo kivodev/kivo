@@ -1,1 +1,0 @@
-SEARCH list_work USING INDEX list_work_work (work_id=?)

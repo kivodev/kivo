@@ -1,1 +1,0 @@
-SEARCH download USING INDEX download_session (session_id=?)

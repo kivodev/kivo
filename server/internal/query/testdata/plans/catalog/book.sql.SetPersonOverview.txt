@@ -1,1 +1,0 @@
-SEARCH person USING INDEX sqlite_autoindex_person_1 (id=?)

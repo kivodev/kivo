@@ -1,1 +1,0 @@
-SEARCH media_attachment USING PRIMARY KEY (file_id=?)

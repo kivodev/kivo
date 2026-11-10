@@ -1,1 +1,0 @@
-SCAN f USING INDEX media_file_probe_failed

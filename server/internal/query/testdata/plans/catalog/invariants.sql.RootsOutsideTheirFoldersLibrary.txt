@@ -1,2 +1,0 @@
-SCAN l
-SEARCH w USING INDEX sqlite_autoindex_work_1 (id=?)

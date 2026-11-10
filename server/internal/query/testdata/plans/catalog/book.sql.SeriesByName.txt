@@ -1,2 +1,0 @@
-SEARCH book_series USING INDEX book_series_name (name=?)
-USE TEMP B-TREE FOR ORDER BY

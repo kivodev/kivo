@@ -1,1 +1,0 @@
-SEARCH book_series USING INDEX sqlite_autoindex_book_series_1 (id=?)

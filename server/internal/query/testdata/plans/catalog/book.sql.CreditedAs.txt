@@ -1,3 +1,0 @@
-SCAN CONSTANT ROW
-SCALAR SUBQUERY 1
-  SEARCH credit USING COVERING INDEX credit_person (person_id=? AND work_id=? AND role=?)
