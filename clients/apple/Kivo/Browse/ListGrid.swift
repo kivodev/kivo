@@ -3,12 +3,14 @@ import KivoUI
 import Observation
 import SwiftUI
 
-/// A list's works in a grid, most recently added first, each card in its
-/// own work's shape, over the core's paged grid: the pages around the cards
-/// on screen are read as they appear, and read again in place as the list
-/// changes. A list other than My List can be renamed and deleted from its
-/// menu. A smart list also has its count and a line of its rules at the top
-/// and Edit, which opens the builder on its query.
+/// A list's works in a grid, each card in its own work's shape, over the
+/// core's paged grid: the pages around the cards on screen are read as they
+/// appear, and read again in place as the list changes. A manual list has
+/// its count and its sort at the top, and Reorder in its menu, which shows
+/// its works as rows to drag until Done. A list other than My List can be
+/// renamed and deleted from its menu. A smart list also has its count and a
+/// line of its rules at the top and Edit, which opens the builder on its
+/// query.
 struct ListGrid: View {
     private let list: ListRef
     @State private var model: ListGridModel
@@ -21,6 +23,10 @@ struct ListGrid: View {
     @State private var editingRules = false
     /// A smart list's rules in a line, once its fields and values are read.
     @State private var rulesLine: String?
+    /// The works as rows to drag, while reordering.
+    @State private var order: ListOrderModel?
+    /// The sort just chosen, until the list is read with it.
+    @State private var chosenSort: GridModel.Sort?
     @Environment(ServerModel.self) private var server
     @Environment(\.wide) private var wide
     @Environment(\.kivoPalette) private var palette
@@ -36,7 +42,67 @@ struct ListGrid: View {
     private var title: String { current?.name ?? list.name }
     private var smart: WorkListSmart? { current?.smart }
 
+    /// The sorts of a manual list.
+    static let sorts = [
+        GridModel.Sort(value: ListSorts.shared.CUSTOM, label: String(localized: "Custom order"), direction: ""),
+        GridModel.Sort(value: ListSorts.shared.TITLE, label: String(localized: "Title"), direction: String(localized: "A to Z")),
+        GridModel.Sort(value: ListSorts.shared.RELEASE_DATE, label: String(localized: "Release date"), direction: String(localized: "Newest first")),
+        GridModel.Sort(value: ListSorts.shared.RATING, label: String(localized: "Rating"), direction: String(localized: "Highest first")),
+        GridModel.Sort(value: ListSorts.shared.DATE_ADDED, label: String(localized: "Date added to list"), direction: String(localized: "Newest first")),
+    ]
+
+    /// A manual list's sort as chosen or as last read, nil for a smart list.
+    private var sort: GridModel.Sort? {
+        guard let current, let saved = ListSorts.shared.of(list: current) else { return nil }
+        return chosenSort ?? Self.sorts.first { $0.value == saved }
+    }
+
     var body: some View {
+        Group {
+            if let order {
+                ListOrder(model: order, title: title)
+            } else {
+                grid
+            }
+        }
+        .navigationTitle(title)
+        // A list just made isn't read yet, and the mode can't grow once the page is up.
+        .toolbarTitleDisplayMode(current != nil && smart == nil ? .inline : .large)
+        .toolbar {
+            if order != nil {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(String(localized: "Done")) { finishReordering() }
+                        .fontWeight(.semibold)
+                        .accessibilityIdentifier("list-order-done")
+                }
+            } else {
+                menus
+            }
+        }
+        .listNameAlert(String(localized: "Rename List"), isPresented: $renaming, name: $newName, confirm: String(localized: "Rename"), save: rename)
+        .alert(String(localized: "Delete \(title)?"), isPresented: $confirmingDelete) {
+            Button(String(localized: "Delete"), role: .destructive) { delete() }
+            Button(String(localized: "Cancel"), role: .cancel) {}
+        } message: {
+            Text("The titles stay in your libraries.")
+        }
+        .alert(problem ?? "", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
+            Button(String(localized: "OK"), role: .cancel) {
+                if renamingAgain {
+                    renamingAgain = false
+                    renaming = true
+                }
+            }
+        }
+        .sheet(isPresented: $editingRules) {
+            if let current { SmartListBuilder(editing: current) }
+        }
+        .task { await model.run() }
+        .task(id: smart?.query.description) { await readRules() }
+        .onChange(of: current?.sort) { chosenSort = nil }
+    }
+
+    private var grid: some View {
         GeometryReader { geometry in
             let layout = GridLayout(width: geometry.size.width, style: .poster, scrubber: false, wide: wide)
             ScrollView {
@@ -64,6 +130,7 @@ struct ListGrid: View {
                             .frame(maxWidth: .infinity)
                             .padding(.top, KivoTokens.spacing * 10)
                         } else {
+                            if let sort { countLine(total, sort: sort) }
                             LazyVGrid(columns: layout.columns, alignment: .leading, spacing: layout.rowSpacing) {
                                 ForEach(0..<total, id: \.self) { index in
                                     Group {
@@ -93,19 +160,43 @@ struct ListGrid: View {
             }
             .refreshable { await model.refresh() }
         }
-        .navigationTitle(title)
-        // A list just made isn't read yet, and the mode can't grow once the page is up.
-        .toolbarTitleDisplayMode(current != nil && smart == nil ? .inline : .large)
-        .toolbar {
-            if let current, current.isSmart {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(String(localized: "Edit")) { editingRules = true }
-                        .accessibilityIdentifier("smart-list-edit")
-                }
+    }
+
+    /// "12 titles · Custom order", the sort opening the sort menu.
+    private func countLine(_ total: Int, sort: GridModel.Sort) -> some View {
+        HStack(spacing: KivoTokens.spacing * 1.5) {
+            Text(total == 1 ? String(localized: "1 title") : String(localized: "\(total.formatted()) titles"))
+            Text("·")
+            SortMenu(sorts: Self.sorts, selection: Binding(get: { sort }, set: choose))
+        }
+        .frame(minHeight: 32)
+        .font(.footnote)
+        .foregroundStyle(palette.textMuted)
+        .tint(palette.textMuted)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, KivoTokens.spacing * 4)
+    }
+
+    /// Edit for a smart list, then the menu: Reorder for a manual list, Rename and Delete for one the user made.
+    @ToolbarContentBuilder private var menus: some ToolbarContent {
+        if let current, current.isSmart {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(String(localized: "Edit")) { editingRules = true }
+                    .accessibilityIdentifier("smart-list-edit")
             }
-            if let current, !current.builtIn {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
+        }
+        if let current, !current.builtIn || !current.isSmart {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    if !current.isSmart {
+                        Button {
+                            order = ListOrderModel(listId: list.id, session: server.session)
+                        } label: {
+                            Label(String(localized: "Reorder"), systemImage: "arrow.up.arrow.down")
+                        }
+                        .disabled((model.total ?? 0) < 2)
+                    }
+                    if !current.builtIn {
                         Button {
                             newName = current.name
                             renaming = true
@@ -117,33 +208,35 @@ struct ListGrid: View {
                         } label: {
                             Label(String(localized: "Delete"), systemImage: "trash")
                         }
-                    } label: {
-                        Label(String(localized: "More"), systemImage: "ellipsis")
                     }
-                    .accessibilityIdentifier("list-menu")
+                } label: {
+                    Label(String(localized: "More"), systemImage: "ellipsis")
                 }
+                .accessibilityIdentifier("list-menu")
             }
         }
-        .listNameAlert(String(localized: "Rename List"), isPresented: $renaming, name: $newName, confirm: String(localized: "Rename"), save: rename)
-        .alert(String(localized: "Delete \(title)?"), isPresented: $confirmingDelete) {
-            Button(String(localized: "Delete"), role: .destructive) { delete() }
-            Button(String(localized: "Cancel"), role: .cancel) {}
-        } message: {
-            Text("The titles stay in your libraries.")
-        }
-        .alert(problem ?? "", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
-            Button(String(localized: "OK"), role: .cancel) {
-                if renamingAgain {
-                    renamingAgain = false
-                    renaming = true
-                }
+    }
+
+    private func choose(_ sort: GridModel.Sort) {
+        chosenSort = sort
+        Task {
+            do {
+                _ = try await server.session.library.setListSort(id: list.id, sort: sort.value)
+            } catch {
+                chosenSort = nil
+                problem = error.problemSentence
             }
         }
-        .sheet(isPresented: $editingRules) {
-            if let current { SmartListBuilder(editing: current) }
+    }
+
+    /// Leaves the rows for the grid, read again once the moves are sent.
+    private func finishReordering() {
+        guard let done = order else { return }
+        order = nil
+        Task {
+            await done.settle()
+            await model.refresh()
         }
-        .task { await model.run() }
-        .task(id: smart?.query.description) { await readRules() }
     }
 
     /// A smart list's count and rules: "42 movies. Comedy, no Animation".

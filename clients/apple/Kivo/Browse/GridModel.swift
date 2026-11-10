@@ -53,7 +53,7 @@ final class GridModel {
             switch value {
             case "title": String(localized: "A–Z")
             case "author": String(localized: "Author A–Z")
-            case "addedAt": String(localized: "Recently added")
+            case "addedAt", "dateAdded": String(localized: "Recently added")
             case "releaseDate": String(localized: "Newest")
             case "rating": String(localized: "Top rated")
             case "runtimeMs": String(localized: "Shortest")
