@@ -19,7 +19,7 @@ var pseudoFS = []string{
 // PickerStarts returns where the library folder picker starts: / plus every
 // mount that could hold media. That way /media and /mnt/… show at once in a
 // container.
-func (s *Scanner) PickerStarts() []Directory {
+func PickerStarts() []Directory {
 	out := []Directory{{Name: "/", Path: "/"}}
 	f, err := os.Open("/proc/self/mounts")
 	if err != nil {
