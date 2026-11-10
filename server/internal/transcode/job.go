@@ -19,7 +19,7 @@ import (
 type job struct {
 	seq        int // the job's number among the stream's jobs
 	from, next int // the first segment, and the next one it will produce
-	reading    int // the furthest segment requested since the job started
+	reading    int // the furthest segment requested of the job since it started
 	cancel     context.CancelFunc
 	exited     bool
 	err        error        // set as the job exits
