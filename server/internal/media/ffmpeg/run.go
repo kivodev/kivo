@@ -81,7 +81,15 @@ func start(ctx context.Context, op, bin string, args []string, how spawn) (*proc
 	}
 	fail := func(err error) (*proc, error) {
 		cancel()
-		return nil, &media.Error{Op: op, Kind: media.ErrEncoderFailed, Detail: err.Error(), Diagnostics: p.diagnostics()}
+		e := &media.Error{Op: op, Kind: media.ErrEncoderFailed, Detail: err.Error(), Diagnostics: p.diagnostics()}
+		// A context that has already ended stops the launch itself.
+		switch {
+		case errors.Is(ctx.Err(), context.DeadlineExceeded):
+			e.Kind = media.ErrTimeout
+		case ctx.Err() != nil:
+			e.Kind = media.ErrCancelled
+		}
+		return nil, e
 	}
 	var err error
 	if p.stdout, err = cmd.StdoutPipe(); err != nil {
