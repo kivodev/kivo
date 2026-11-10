@@ -266,7 +266,8 @@ func (s *Scanner) RequestDir(ctx context.Context, folder id.ID, dir string) erro
 		req = &request{dirs: map[id.ID][]string{}}
 		s.asked[r.Library] = req
 	}
-	if !slices.Contains(req.dirs[folder], dir) {
+	// A scan of every folder already covers dir.
+	if !req.all && !slices.Contains(req.dirs[folder], dir) {
 		req.dirs[folder] = append(req.dirs[folder], dir)
 	}
 	s.mu.Unlock()

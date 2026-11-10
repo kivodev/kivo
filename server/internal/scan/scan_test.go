@@ -1018,6 +1018,23 @@ func TestPartialScan(t *testing.T) {
 	}
 }
 
+// A directory asked for while a scan of the whole library waits leaves
+// that scan whole.
+func TestDirAskedDuringWholeLibraryScan(t *testing.T) {
+	h := newHarness(t)
+	l := h.library(catalog.Movies, "/m") // asks for the whole library
+	folder, fsys := l.Folders[0].ID, h.folders["/m"]
+	fsys.write("A/a.mkv", "a", old)
+	fsys.write("B/b.mkv", "b", old)
+	if err := h.s.RequestDir(ctx, folder, "A"); err != nil {
+		t.Fatal(err)
+	}
+	h.scanLibrary(l.ID)
+	if files := h.files(folder); !files["A/a.mkv"].Present || !files["B/b.mkv"].Present {
+		t.Fatalf("after the library's scan: %v", files)
+	}
+}
+
 // A folder containing an .ignore file is left out with everything below
 // it. Adding or removing the file changes the folder, which is listed
 // again.
