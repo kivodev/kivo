@@ -8,7 +8,9 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/query"
 )
 
@@ -101,25 +103,91 @@ var space = regexp.MustCompile(`\s+`)
 
 func squeeze(s string) string { return strings.TrimSpace(space.ReplaceAllString(s, " ")) }
 
+// canonicalFilter returns the Viewer predicate on works as WorkSummary
+// carries it, from its opening parenthesis to its closing one.
+func canonicalFilter(t *testing.T) string {
+	t.Helper()
+	sql := query.Statements()["WorkSummary"]
+	i := strings.Index(sql, "EXISTS ( -- viewer-filter")
+	if i < 0 {
+		t.Fatal("no canonical predicate in WorkSummary")
+	}
+	return squeeze(group(sql, i+len("EXISTS ")))
+}
+
+// checkCompiledFilter checks that a statement a WorkQuery compiled to
+// carries the Viewer predicate, once, before any cap or page is cut.
+//
+// A compiled statement reads each work w from its work_library row wl, so
+// it carries the predicate behind a "-- viewer-filter: wl" marker without
+// the canonical one's lookup of that row, and tests wl in its place. It
+// reads the rating of w's root from the root it joined as r, or leaves it
+// out when it reads only root rows, which have no other root. The check
+// rewrites the canonical predicate in exactly those ways and requires the
+// statement's to be the same text, and requires the joins and the root
+// rows condition that make the rewrites mean the same.
+func checkCompiledFilter(t *testing.T, canonical, sql string) {
+	t.Helper()
+	const (
+		marker     = "-- viewer-filter: wl"
+		lookup     = "( -- viewer-filter SELECT 1 FROM work_library vl WHERE vl.work_id = w.id AND "
+		rootAge    = "(SELECT vr.content_rating_age FROM work vr WHERE vr.id = CASE WHEN w.parent_id IS NOT NULL THEN w.root_id END)"
+		ownOrRoots = "coalesce(w.content_rating_age, " + rootAge + ")"
+	)
+	if !strings.HasPrefix(canonical, lookup) || strings.Count(canonical, "vl.library_id") != 1 || strings.Count(canonical, ownOrRoots) != 1 {
+		t.Fatalf("the canonical predicate changed, and this check with it:\n%s", canonical)
+	}
+	want := strings.ReplaceAll(strings.TrimPrefix(canonical, lookup), "vl.library_id", "wl.library_id")
+	rooted := strings.Contains(sql, "CROSS JOIN work r ON r.id = w.root_id")
+	switch {
+	case rooted:
+		want = strings.Replace(want, rootAge, "r.content_rating_age", 1)
+	case strings.Contains(sql, "\n  AND wl.is_root\n"):
+		want = strings.Replace(want, ownOrRoots, "w.content_rating_age", 1)
+	default:
+		t.Errorf("the statement reads neither the root of each work nor only root rows:\n%s", sql)
+	}
+	want = "( " + marker + " " + want
+	if !strings.Contains(sql, "\nFROM work_library wl ") || !strings.Contains(sql, "\nCROSS JOIN work w ON w.id = wl.work_id\n") {
+		t.Errorf("the statement doesn't read each work from its work_library row:\n%s", sql)
+	}
+	at := strings.Index(sql, marker)
+	if at < 0 || strings.Count(sql, "-- viewer-filter") != 1 {
+		t.Fatalf("the statement doesn't carry the Viewer predicate once:\n%s", sql)
+	}
+	if got := squeeze(group(sql, strings.LastIndex(sql[:at], "("))); got != want {
+		t.Errorf("viewer predicate differs from the canonical one:\n got %s\nwant %s", got, want)
+	}
+	if cut := strings.Index(sql, "LIMIT"); cut >= 0 && cut < at {
+		t.Errorf("the Viewer predicate comes after a cut:\n%s", sql)
+	}
+}
+
 // TestViewerFilter checks that every statement carries the Viewer
 // predicate behind a "-- viewer-filter" marker, and every copy of it is the
 // same as WorkSummary's (or, for the statements that list libraries, as
-// Libraries').
+// Libraries'). The statements a WorkQuery compiles to carry it in the form
+// checkCompiledFilter checks.
 func TestViewerFilter(t *testing.T) {
 	stmts := own()
-	canonical := map[string]string{}
+	canonical := map[string]string{"works": canonicalFilter(t)}
 	for _, st := range stmts {
-		switch st.name {
-		case "WorkSummary":
-			i := strings.Index(st.sql, "EXISTS ( -- viewer-filter")
-			canonical["works"] = squeeze(group(st.sql, i+len("EXISTS ")))
-		case "Libraries":
+		if st.name == "Libraries" {
 			i := strings.Index(st.sql, "-- viewer-filter: libraries")
 			canonical["libraries"] = squeeze(group(st.sql, strings.Index(st.sql[i:], "(")+i))
 		}
 	}
-	if canonical["works"] == "" || canonical["libraries"] == "" {
-		t.Fatal("no canonical predicate in WorkSummary or Libraries")
+	if canonical["libraries"] == "" {
+		t.Fatal("no canonical predicate in Libraries")
+	}
+	h := newHousehold(t)
+	now := time.Now()
+	for _, s := range smartSamples(h) {
+		for _, only := range [][]catalog.WorkKind{nil, s.q.Kinds} {
+			count, page, _ := query.Compiled(s.q, h.friend, now, only)
+			checkCompiledFilter(t, canonical["works"], count)
+			checkCompiledFilter(t, canonical["works"], page)
+		}
 	}
 	for _, st := range stmts {
 		n := 0
