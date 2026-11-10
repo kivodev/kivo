@@ -105,11 +105,14 @@ struct BrowseRow: View {
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(palette.textMuted)
                     if smart {
-                        SwiftUI.Label(String(localized: "Smart list"), systemImage: "sparkles")
-                            .labelStyle(.titleAndIcon)
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(palette.accent)
-                            .fixedSize()
+                        HStack(spacing: KivoTokens.spacing) {
+                            Image(systemName: "sparkles")
+                                .accessibilityHidden(true)
+                            Text("Smart list")
+                        }
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(palette.accent)
+                        .fixedSize()
                     }
                     if let detail {
                         Text(detail)
