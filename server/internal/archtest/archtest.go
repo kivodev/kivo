@@ -218,6 +218,15 @@ func walkGo(internalDir string, mode parser.Mode, fn func(rel string, fset *toke
 	})
 }
 
+// eachFile parses every non-test, hand-written Go file under internalDir.
+func eachFile(internalDir string, fn func(rel string, fset *token.FileSet, f *ast.File)) error {
+	return walkGo(internalDir, parser.ParseComments, func(rel string, fset *token.FileSet, f *ast.File) {
+		if !ast.IsGenerated(f) {
+			fn(rel, fset, f)
+		}
+	})
+}
+
 // internal returns an import path's path under internal/, if it has one.
 func internal(imp string) (string, bool) {
 	return strings.CutPrefix(imp, module+"/internal/")
@@ -268,21 +277,27 @@ func checkImport(file, imp string, layers []layer, at int) (violation, bool) {
 	return violation{}, false
 }
 
-// checkSubpackages reports api files importing another component's
-// subpackage. api must reach every other component through its root
-// package.
+// rootOnly are the components that must reach every other component
+// through its root package. api only converts, and query only reads, so
+// neither may reach another component's internals, such as catalog's
+// generated statements.
+var rootOnly = []string{"api", "query"}
+
+// checkSubpackages reports files of a rootOnly component importing another
+// component's subpackage.
 func checkSubpackages(files []goFile) []violation {
 	var out []violation
 	for _, f := range files {
-		if component(f.Path) != "api" {
+		from := component(f.Path)
+		if !slices.Contains(rootOnly, from) {
 			continue
 		}
 		for _, imp := range f.Imports {
 			rest, ok := internal(imp)
-			if !ok || component(rest) == "api" || rest == component(rest) {
+			if !ok || component(rest) == from || rest == component(rest) {
 				continue
 			}
-			out = append(out, violation{f.Path, fmt.Sprintf("api may import only %s's root package, not %s", component(rest), imp)})
+			out = append(out, violation{f.Path, fmt.Sprintf("%s may import only %s's root package, not %s", from, component(rest), imp)})
 		}
 	}
 	return out

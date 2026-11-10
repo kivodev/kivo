@@ -20,7 +20,6 @@ import (
 
 	"github.com/mmcdole/kivo/internal/cachedir"
 	"github.com/mmcdole/kivo/internal/catalog"
-	"github.com/mmcdole/kivo/internal/fault"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/media"
 	"github.com/mmcdole/kivo/internal/media/container"
@@ -208,7 +207,7 @@ func validHash(hash string) bool {
 // generation, because the media package can't read the file or doesn't
 // support its tracks. That stays true until the file changes or its
 // failure is retried.
-var ErrUnextractable = fault.New(fault.Internal, "subtitles can't be extracted")
+var ErrUnextractable = errors.New("subtitles can't be extracted")
 
 // Prepare makes sure a file's embedded subtitles are extracted at its
 // current generation, regardless of its library's schedule. Only one
