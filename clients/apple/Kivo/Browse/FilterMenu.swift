@@ -26,13 +26,12 @@ struct FilterMenu: View {
                     several(String(localized: "Genre"), model.genres, in: \.genres) { $0 }
                 }
                 if !model.decades.isEmpty {
-                    Picker(selection: $model.query.decade) {
-                        Text("Any").tag(Int?.none)
-                        ForEach(model.decades, id: \.self) { Text(GridModel.label(decade: $0)).tag(Int?.some($0)) }
-                    } label: {
-                        Text("Decade")
+                    one(String(localized: "Decade"), chosen: model.query.decade.map(GridModel.label(decade:))) {
+                        Picker(String(localized: "Decade"), selection: $model.query.decade) {
+                            Text("Any").tag(Int?.none)
+                            ForEach(model.decades, id: \.self) { Text(GridModel.label(decade: $0)).tag(Int?.some($0)) }
+                        }
                     }
-                    .pickerStyle(.menu)
                 }
                 if !model.contentRatings.isEmpty {
                     several(String(localized: "Content rating"), model.contentRatings, in: \.contentRatings) { $0 }
@@ -44,13 +43,12 @@ struct FilterMenu: View {
                     several(String(localized: "Dynamic range"), model.dynamicRanges, in: \.dynamicRanges, label: GridModel.label)
                 }
                 if !model.narrators.isEmpty {
-                    Picker(selection: $model.query.narrator) {
-                        Text("Any").tag(GridModel.Narrator?.none)
-                        ForEach(model.narrators) { Text($0.name).tag(GridModel.Narrator?.some($0)) }
-                    } label: {
-                        Text("Narrator")
+                    one(String(localized: "Narrator"), chosen: model.query.narrator?.name) {
+                        Picker(String(localized: "Narrator"), selection: $model.query.narrator) {
+                            Text("Any").tag(GridModel.Narrator?.none)
+                            ForEach(model.narrators) { Text($0.name).tag(GridModel.Narrator?.some($0)) }
+                        }
                     }
-                    .pickerStyle(.menu)
                 }
             }
             if model.query.filtered {
@@ -64,6 +62,16 @@ struct FilterMenu: View {
         }
         .tint(palette.text)
         .accessibilityIdentifier("filter")
+    }
+
+    /// A submenu holding [picker], a choice of one, named with what's chosen.
+    private func one(_ title: String, chosen: String?, @ViewBuilder picker: () -> some View) -> some View {
+        Menu {
+            picker().pickerStyle(.inline)
+        } label: {
+            Text(title)
+            if let chosen { Text(chosen) }
+        }
     }
 
     /// A submenu of [values] to take any of, named with those chosen.
