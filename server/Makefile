@@ -57,10 +57,10 @@ build:
 test:
 	go test -race $(GO_PKGS)
 
-# The read budgets, timed alone and without the race detector;
-# a plain go test skips them.
+# The read budgets, timed alone and without the race detector, printing
+# each read's times; a plain go test skips them.
 budget:
-	KIVO_BUDGET=1 go test -count=1 -run TestBudgets ./internal/query
+	KIVO_BUDGET=1 go test -count=1 -v -run TestBudgets ./internal/query
 
 # The dependency and write-ownership lints are tests in internal/archtest;
 # redocly checks the OpenAPI spec, including that every operation has an
