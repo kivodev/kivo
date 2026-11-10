@@ -48,7 +48,9 @@ func (s *Stream) Playlist(name string) ([]byte, error) {
 // Segment returns the path of a segment (a video segment, a text segment,
 // or an init segment) once it's on disk. It returns at once if the segment
 // is already there. It waits if the running job is about to write it. For
-// a far seek, it restarts the job at that segment. A job that began at the
+// a far seek, it restarts the job at that segment. The newest request
+// wins: once another request has replaced the job, this one only waits for
+// the running job and doesn't restart it. A job that began at the
 // segment and went past it without writing it fails the request with
 // ErrJobFailed, rather than starting again. Every text track's
 // segment is written along with its video, so text segments behave the
@@ -84,8 +86,10 @@ func (s *Stream) Segment(ctx context.Context, name string) (string, error) {
 // wait returns path once have reports that it's on disk. Until then it
 // looks again each time the stream changes. from is given the stream's job.
 // It returns the segment to start a new job at, -1 to wait for the job, or
-// an error when the request can't be met. have and from run under the
-// lock. name is the requested segment, which errors name.
+// an error when the request can't be met. Once the job the request waited
+// on has been replaced, from isn't asked while another job is running, so
+// the newer request keeps the job. have and from run under the lock. name
+// is the requested segment, which errors name.
 func (s *Stream) wait(ctx context.Context, name, path string, have func() bool, from func(j *job) (int, error)) (string, error) {
 	var on *job // the job the request last waited on
 	look := func() (<-chan struct{}, error) {
@@ -96,11 +100,9 @@ func (s *Stream) wait(ctx context.Context, name, path string, have func() bool, 
 			return nil, fmt.Errorf("%w: segment %s", ErrClosed, name)
 		case have():
 			return nil, nil
-		case on != nil && on != s.job && !on.exited:
-			// The job was replaced, by a far seek elsewhere or an idle
-			// kill. The request waits for it to exit before starting
-			// another, so requests far apart can't restart the job faster
-			// than jobs end.
+		case on != nil && on != s.job && s.job != nil && !s.job.exited:
+			// A newer request replaced the job, so this one waits for the
+			// running job rather than take it back.
 			return s.changed, nil
 		case on != nil && on == s.job && on.err != nil && !stopped(on.err):
 			return nil, on.err

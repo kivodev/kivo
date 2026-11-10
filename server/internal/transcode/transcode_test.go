@@ -71,6 +71,9 @@ type fakeMedia struct {
 	// keyframes it spans don't start fragments of their own.
 	swallow time.Duration
 	missing []time.Duration // keyframes no job emits, as if the media went past them
+	// jobLimit fails every job after this many have started, so a loop of
+	// restarts ends in failed requests; 0 means no limit.
+	jobLimit int
 
 	mu       sync.Mutex
 	requests []media.TranscodeRequest
@@ -82,7 +85,11 @@ type fakeMedia struct {
 func (m *fakeMedia) Transcode(ctx context.Context, req media.TranscodeRequest) (media.Output, error) {
 	m.mu.Lock()
 	m.requests = append(m.requests, req)
+	n := len(m.requests)
 	m.mu.Unlock()
+	if m.jobLimit > 0 && n > m.jobLimit {
+		return nil, &media.Error{Op: "transcode", Kind: media.ErrSourceCorrupt}
+	}
 	return &fakeOutput{ctx: ctx, m: m, req: req, running: make(chan struct{})}, nil
 }
 
@@ -909,23 +916,31 @@ func TestSkippedSegmentWakesItsWaiters(t *testing.T) {
 	})
 }
 
-// A far seek replaces the job under a request that's waiting on it. The
-// request looks again, and the new job serves it.
+type served struct {
+	path string
+	err  error
+}
+
+// request asks for a segment in the background.
+func request(ctx context.Context, s *Stream, name string) <-chan served {
+	c := make(chan served, 1)
+	go func() {
+		p, err := s.Segment(ctx, name)
+		c <- served{p, err}
+	}()
+	return c
+}
+
+// A far seek replaces the job under a request that's waiting near it. The
+// older request waits rather than restart the job, and the new job serves
+// it once it gets there.
 func TestReplacedJobsWaiterIsServedByTheNewJob(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		m := &fakeMedia{}
 		tr, spec := fixture(t, m)
 		s, _ := tr.Open(ctx, spec, time.Minute) // a job from segment 10
 		defer s.Close()
-		type result struct {
-			path string
-			err  error
-		}
-		waiter := make(chan result, 1)
-		go func() {
-			p, err := s.Segment(ctx, "12.m4s")
-			waiter <- result{p, err}
-		}()
+		waiter := request(ctx, s, "12.m4s")
 		synctest.Wait()
 		if n := len(m.jobs()); n != 1 {
 			t.Fatalf("a near request started a job (%d)", n)
@@ -941,6 +956,119 @@ func TestReplacedJobsWaiterIsServedByTheNewJob(t *testing.T) {
 		}
 		if jobs := m.jobs(); len(jobs) != 2 || jobs[1].Start != s.plan[9].Start {
 			t.Fatalf("%d jobs, want the second from segment 9", len(jobs))
+		}
+	})
+}
+
+// replaced opens a stream, has a request for segment 10 start a job there,
+// and then has a newer request for segment far start one there and be
+// served. It returns the older request, which is still waiting.
+func replaced(t *testing.T, m *fakeMedia, older context.Context, far string) (*Stream, <-chan served) {
+	t.Helper()
+	m.jobLimit = 10
+	tr, spec := fixture(t, m)
+	s, _ := tr.Open(ctx, spec, 0)
+	t.Cleanup(s.Close)
+	waiter := request(older, s, "10.m4s")
+	synctest.Wait()
+	if _, err := s.Segment(ctx, far); err != nil {
+		t.Fatalf("the newer request: %v after %d jobs", err, len(m.jobs()))
+	}
+	return s, waiter
+}
+
+// Two requests far apart don't take the job from each other in turn. The
+// newer one is served, and the older one waits for the running job until
+// its client gives up.
+func TestOlderFarRequestWaitsForTheNewerJob(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m := &fakeMedia{}
+		older, cancel := context.WithCancel(ctx)
+		_, waiter := replaced(t, m, older, "50.m4s")
+		time.Sleep(30 * time.Second)
+		synctest.Wait()
+		if n := len(m.jobs()); n != 3 {
+			t.Fatalf("%d jobs, want 3", n)
+		}
+		select {
+		case r := <-waiter:
+			t.Fatalf("the older request returned while the newer job runs: %v", r.err)
+		default:
+		}
+		cancel()
+		if r := <-waiter; !errors.Is(r.err, context.Canceled) {
+			t.Fatalf("the older request once cancelled: %v", r.err)
+		}
+	})
+}
+
+// Once the newer request's job ends or is idle-killed, the older request
+// starts a job of its own.
+func TestOlderRequestStartsAJobOnceTheNewerJobIsGone(t *testing.T) {
+	for _, tt := range []struct {
+		name, far string
+		wait      time.Duration
+	}{
+		{"end of file", "95.m4s", 0},
+		{"idle kill", "50.m4s", idleTimeout + time.Second},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				m := &fakeMedia{}
+				_, waiter := replaced(t, m, ctx, tt.far)
+				time.Sleep(tt.wait)
+				r := <-waiter
+				if r.err != nil || read(t, r.path) != "[1m0s][1m2s][1m4s]" {
+					t.Fatalf("the older request: %v", r.err)
+				}
+				if jobs := m.jobs(); len(jobs) != 4 || jobs[3].Start != time.Minute {
+					t.Fatalf("%d jobs, want the fourth from segment 10", len(jobs))
+				}
+			})
+		})
+	}
+}
+
+// A new request for the older request's segment takes the job back and
+// serves both.
+func TestFreshRequestAfterAReplacementIsServed(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m := &fakeMedia{}
+		s, waiter := replaced(t, m, ctx, "50.m4s")
+		p, err := s.Segment(ctx, "10.m4s")
+		if err != nil || read(t, p) != "[1m0s][1m2s][1m4s]" || len(m.jobs()) != 4 {
+			t.Fatalf("a fresh request: %v, %d jobs", err, len(m.jobs()))
+		}
+		if r := <-waiter; r.err != nil || r.path != p {
+			t.Fatalf("the older request: %v", r.err)
+		}
+	})
+}
+
+// An init request for another part is newer than a waiting segment request
+// too: it takes the job, and the segment request waits.
+func TestInitRequestTakesTheJobFromAnOlderRequest(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m := &fakeMedia{jobLimit: 10}
+		tr, spec := fixture(t, m)
+		spec.Parts = append(spec.Parts, FileRef{ID: id.New(), Path: "/m/a-cd2.mkv", Duration: 10 * time.Minute, Keyframes: m.keys})
+		s, _ := tr.Open(ctx, spec, 12*time.Minute)
+		defer s.Close()
+		waiter := request(ctx, s, "150.m4s")
+		synctest.Wait()
+		if _, err := s.Segment(ctx, "init.mp4"); err != nil {
+			t.Fatalf("the init request: %v after %d jobs", err, len(m.jobs()))
+		}
+		time.Sleep(10 * time.Second) // the init request's job is still running
+		synctest.Wait()
+		if jobs := m.jobs(); len(jobs) != 3 || jobs[2].Path != "/m/a.mkv" || jobs[2].Start != 0 {
+			t.Fatalf("%d jobs, want the third from the first part's start", len(jobs))
+		}
+		if p, err := s.Segment(ctx, "150.m4s"); err != nil || read(t, p) != "[5m0s][5m2s][5m4s]" {
+			t.Fatalf("asking again for the segment: %v", err)
+		}
+		if r := <-waiter; r.err != nil {
+			t.Fatalf("the older request: %v", r.err)
 		}
 	})
 }
