@@ -65,7 +65,7 @@ The server's packages live under `server/internal`, one component per package, a
  features   scan  identify  previews  subtitles  markers  transcode  playback
  domain     store  config  media  discovery  tasks  users  auth  catalog
             activity  query  metadata  userstate  release
- helpers    fault  id  events  health  keylock  atomicfile  cachedir  egress
+ helpers    fault  id  events  health  keylock  atomicfile  cachedir  egress  parse
 ```
 
 The main components:
@@ -120,7 +120,7 @@ Changes are found three ways: a file watcher on local disks (fsnotify), a period
 
 Each new or changed file is probed with ffprobe. The probe stores tracks, chapters and a summary, and a hash of the file's first and last bytes. When a new file matches a known file that has disappeared (same size, same edge hash), the scan treats it as a move and keeps the old row's ID and everything attached to it.
 
-Identification is a task of its own, which a scan hands its probed files to as it ends. It works per top-level folder. It classifies files (extras, disc rips, multi-part files, ignored files), groups them into versions, and decides which work the folder is. It trusts sources in order: a manual match, an ID in a folder or file name such as `{tmdb-438631}`, an NFO file or embedded tags, the folder structure, and finally the file name alone, which is parsed and searched. The parser (`identify/parse`) follows the folder and naming conventions people already use, and is tested against published fixture sets in `server/testdata/naming`. Audiobooks are identified from their folder layout and tags and then filled in from Audible.
+Identification is a task of its own, which a scan hands its probed files to as it ends. It works per top-level folder. It classifies files (extras, disc rips, multi-part files, ignored files), groups them into versions, and decides which work the folder is. It trusts sources in order: a manual match, an ID in a folder or file name such as `{tmdb-438631}`, an NFO file or embedded tags, the folder structure, and finally the file name alone, which is parsed and searched. The parser (`parse`) follows the folder and naming conventions people already use, and is tested against published fixture sets in `server/testdata/naming`. Audiobooks are identified from their folder layout and tags and then filled in from Audible.
 
 A file shows up as soon as it's probed: before any provider has answered, it appears as a provisional work titled from its name. Metadata and artwork arrive later from TMDb (movies and shows), Audible through Audnexus (books) and the Anime-Lists mapping (anime IDs), all fetched through `egress`.
 
@@ -253,9 +253,9 @@ server/
   internal/            one package per component (see "The server" above)
     api/openapi.yaml   the API contract
     archtest/          tests that enforce layering, egress and table ownership
-    identify/parse/    the file and folder name parser
     media/container/   MP4 and Matroska parsing, keyframes, the fMP4 segment splitter
     media/ffmpeg/      ffmpeg command lines, accelerator detection
+    parse/             the file and folder name parser, for video and audiobook paths
   web/                 the web client (React, TypeScript), embedded into the server at build
   testdata/naming/     naming fixtures from permissively licensed projects
   docker/              the container entrypoint and an Unraid template

@@ -13,7 +13,7 @@ import (
 )
 
 // naming is the vendored fixture directory (server/testdata/naming).
-var naming = filepath.Join("..", "..", "..", "testdata", "naming")
+var naming = filepath.Join("..", "..", "testdata", "naming")
 
 // fixtureToday is the date the fixtures parse on. It only bounds years.
 var fixtureToday = Date{2026, 1, 1}

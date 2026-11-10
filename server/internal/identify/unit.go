@@ -5,7 +5,7 @@ import (
 
 	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/id"
-	"github.com/mmcdole/kivo/internal/identify/parse"
+	"github.com/mmcdole/kivo/internal/parse"
 )
 
 // file is one present media file of a snapshot.

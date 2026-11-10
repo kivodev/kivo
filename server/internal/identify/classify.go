@@ -10,8 +10,7 @@ import (
 	"strings"
 
 	"github.com/mmcdole/kivo/internal/catalog"
-	"github.com/mmcdole/kivo/internal/identify/parse"
-	"github.com/mmcdole/kivo/internal/metadata"
+	"github.com/mmcdole/kivo/internal/parse"
 )
 
 // classify turns a snapshot's files into units. It handles ignored files
@@ -380,7 +379,7 @@ func folderOf(kind catalog.LibraryKind, rel string) string {
 	case catalog.Videos:
 		return "" // each other video stands alone
 	case catalog.Audiobooks:
-		return metadata.BookFolder(rel)
+		return parse.BookFolder(rel)
 	}
 	return movieDir(dirs)
 }
