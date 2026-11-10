@@ -350,7 +350,7 @@ func TestMigrationDownloadDelivered(t *testing.T) {
 		t.Fatal(err)
 	}
 	db.Close()
-	up, err := open(ctx, path, embeddedMigrations(t))
+	up, err := open(ctx, path, through(t, "_download_delivered.sql"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -370,5 +370,36 @@ func TestMigrationDownloadDelivered(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("a download after it: %v", err)
+	}
+}
+
+// The typed-token migration clears every session, API key and cast token,
+// since none made before it can authenticate. Users stay.
+func TestMigrationTypedTokens(t *testing.T) {
+	ctx := context.Background()
+	db, path := testDB(t, through(t, "_download_delivered.sql"))
+	err := db.Write(ctx, func(ctx context.Context, tx *Tx) error {
+		_, err := tx.ExecContext(ctx, `
+			INSERT INTO user (id, username, admin, all_libraries, created_at) VALUES (x'a1', 'anna', 0, 1, 1);
+			INSERT INTO session (id, token_hash, user_id, kind, created_at, last_used_at) VALUES (x'b1', x'00', x'a1', 'app', 1, 1);
+			INSERT INTO api_key (id, token_hash, name, created_by, created_at) VALUES (x'c1', x'01', 'k', x'a1', 1);
+			INSERT INTO cast_token (id, token_hash, session_id, name, receiver, created_at, last_used_at) VALUES
+				(x'e1', x'02', x'b1', 'TV', 'web', 1, 1);`)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+	up, err := open(ctx, path, through(t, "_typed_tokens.sql"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer up.Close()
+	var credentials, users int
+	err = up.Reader().QueryRowContext(ctx, `SELECT (SELECT count(*) FROM session) + (SELECT count(*) FROM api_key) +
+		(SELECT count(*) FROM cast_token), (SELECT count(*) FROM user)`).Scan(&credentials, &users)
+	if err != nil || credentials != 0 || users != 1 {
+		t.Fatalf("after it: %d credentials, %d users (%v)", credentials, users, err)
 	}
 }
