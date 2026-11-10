@@ -25,6 +25,10 @@ final class ServerModel {
     private(set) var listsFailure: RequestProblem?
     /// The server isn't answering reads, which retry until it does.
     private(set) var unreachable = false
+    /// Whether the app and the server work together, as the server last said what it is.
+    private(set) var compatibility: Compatibility
+    /// Why they don't, while they don't: its screen shows in place of the server's.
+    var incompatibility: Incompatibility? { Incompatibility(compatibility, server: serverName) }
     /// The base URL the server is reached at now, which artwork follows.
     private(set) var baseUrl: String
     /// The tab showing, its pages, and the sheets over the tabs.
@@ -52,6 +56,7 @@ final class ServerModel {
         self.app = app
         baseUrl = session.baseUrl
         serverName = session.savedServer.value.name
+        compatibility = session.compatibility.value
         book = BookPlayer(session: session, artwork: { Self.artwork(session, at: session.baseUrl) }, display: app.display)
         cast = CastModel(session: session, core: app.core, display: app.display)
         user = session.user.value
@@ -79,6 +84,11 @@ final class ServerModel {
         tasks.append(Task { [weak self, session] in
             for await unreachable in session.unreachable {
                 self?.unreachable = unreachable.boolValue
+            }
+        })
+        tasks.append(Task { [weak self, session] in
+            for await compatibility in session.compatibility {
+                self?.compatibility = compatibility
             }
         })
         tasks.append(Task { [weak self, session] in
@@ -182,6 +192,11 @@ final class ServerModel {
     /// Plays a book in the book player, from where the user left it or from [positionMs], such as a chapter's start.
     func listen(_ workId: String, at positionMs: Int64? = nil) {
         book.play(workId, at: positionMs)
+    }
+
+    /// Asks the server what it is again, as Try again does on a server the app doesn't work with.
+    func checkCompatibility() async {
+        _ = try? await session.serverInfo()
     }
 
     /// Signed out: everything stops.

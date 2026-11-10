@@ -730,6 +730,14 @@ msgstr "Forget"
 msgid "From opensubtitles.com. Required for subtitle downloads."
 msgstr "From opensubtitles.com. Required for subtitle downloads."
 
+#. placeholder {0}: problem.appVersion
+#. placeholder {1}: problem.minServerVersion
+#. placeholder {2}: found.name
+#. placeholder {3}: problem.serverVersion
+#: src/features/auth/UpdateScreen.tsx
+msgid "Kivo {0} works with server {1} or newer. {2} runs {3}. Ask whoever runs it to update."
+msgstr "Kivo {0} works with server {1} or newer. {2} runs {3}. Ask whoever runs it to update."
+
 #: src/features/admin/ChooseArtworkDialog.tsx
 msgid "Loading artwork…"
 msgstr "Loading artwork…"
@@ -1308,6 +1316,10 @@ msgstr "Done"
 msgid "Authors"
 msgstr "Authors"
 
+#: src/features/auth/UpdateScreen.tsx
+msgid "This server needs an update"
+msgstr "This server needs an update"
+
 #: src/features/admin/TranscodingScreen.tsx
 msgid "HDR tone mapping on CPU"
 msgstr "HDR tone mapping on CPU"
@@ -1469,6 +1481,13 @@ msgstr "Edit"
 #: src/features/user/SettingsScreen.tsx
 msgid "When the audio isn't in your subtitle language"
 msgstr "When the audio isn't in your subtitle language"
+
+#. placeholder {0}: found.name
+#. placeholder {1}: problem.minAppVersion
+#. placeholder {2}: problem.appVersion
+#: src/features/auth/UpdateScreen.tsx
+msgid "{0} needs Kivo {1} or newer. You have {2}."
+msgstr "{0} needs Kivo {1} or newer. You have {2}."
 
 #: src/features/admin/userFields.tsx
 msgid "Server's limit"
@@ -1911,6 +1930,7 @@ msgstr "Picture in picture"
 
 #: src/app/RouteStates.tsx
 #: src/features/auth/SignInScreen.tsx
+#: src/features/auth/UpdateScreen.tsx
 #: src/features/user/SettingsScreen.tsx
 msgid "Change server"
 msgstr "Change server"
@@ -2188,6 +2208,10 @@ msgstr "not in the last"
 msgid "Choose a JPEG, PNG or WebP image."
 msgstr "Choose a JPEG, PNG or WebP image."
 
+#: src/features/auth/UpdateScreen.tsx
+msgid "Update Kivo"
+msgstr "Update Kivo"
+
 #: src/features/admin/UserScreen.tsx
 msgid "Audiobooks aren't affected."
 msgstr "Audiobooks aren't affected."
@@ -2293,6 +2317,7 @@ msgid "Certification country"
 msgstr "Certification country"
 
 #: src/components/LoadError.tsx
+#: src/features/auth/UpdateScreen.tsx
 #: src/features/player/CastRemote.tsx
 #: src/features/player/PlayerError.tsx
 msgid "Try again"

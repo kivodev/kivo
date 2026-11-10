@@ -159,6 +159,14 @@ final class AppModel {
         pendingLink = url.absoluteString
     }
 
+    /// Leaves the signed-in server for sign-in, to choose a server again.
+    /// The device stays signed in to it, and keeps its downloads.
+    func changeServer() {
+        guard case let .signedIn(current) = phase else { return }
+        current.close()
+        phase = .signedOut(nil)
+    }
+
     /// The device holds a token for [session]'s server: show the app until it's signed out.
     func signedIn(_ session: KivoSession) {
         let model = ServerModel(session: session, app: self)

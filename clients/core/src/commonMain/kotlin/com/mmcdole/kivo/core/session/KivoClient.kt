@@ -2,6 +2,7 @@ package com.mmcdole.kivo.core.session
 
 import com.mmcdole.kivo.api.models.ServerInfo
 import com.mmcdole.kivo.api.result
+import com.mmcdole.kivo.core.Compatibility
 import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.core.auth.ClientId
 import com.mmcdole.kivo.core.auth.LinkState
@@ -153,6 +154,14 @@ class KivoClient internal constructor(
     @Throws(Exception::class)
     suspend fun reach(server: SavedServer): FoundServer? = discovery.reach(server)
 
+    /**
+     * Whether this app and the server that says [info] of itself work
+     * together: what an app asks of a server it found before it offers
+     * sign-in, and again as the person tries again.
+     */
+    fun compatibility(info: ServerInfo): Compatibility =
+        Compatibility.of(info.version, info.minAppVersion, device.identity.appVersion)
+
     /** The last server signed in to that this device still holds a session for; null when there's none. */
     @Throws(Exception::class)
     suspend fun lastSignedIn(): SavedServer? =
@@ -172,7 +181,7 @@ class KivoClient internal constructor(
         connection.restore()
         val found = connection.reach()?.let { (at, info) -> FoundServer(at, info) }
         val saved = if (found != null && connection.signedIn.value) save(connection, found.info) else server
-        val session = KivoSession(saved, connection, this)
+        val session = KivoSession(saved, connection, this, found?.info)
         if (found == null) connection.reachability.unanswered()
         return session
     }
@@ -220,7 +229,7 @@ class KivoClient internal constructor(
 
     /** The session [connection] just signed in as, with its server saved ([save]); as [found] said it is when it doesn't answer again. */
     private suspend fun signedIn(found: FoundServer, connection: ServerConnection): KivoSession =
-        KivoSession(save(connection, found.info), connection, this)
+        KivoSession(save(connection, found.info), connection, this, found.info)
 
     /**
      * Saves the server at [connection] as the server last signed in to, with

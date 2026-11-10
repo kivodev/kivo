@@ -13,6 +13,14 @@ final class SignInModel {
     enum Step {
         case findServer
         case password(FoundServer)
+        /// The app and the server don't work together: one of them needs an update.
+        case incompatible(FoundServer, Incompatibility)
+    }
+
+    /// Where a server found goes, by how the app and it stand: its password
+    /// when they work together, else why they don't.
+    static func step(for found: FoundServer, _ compatibility: Compatibility) -> Step {
+        Incompatibility(compatibility, server: found.info.name).map { .incompatible(found, $0) } ?? .password(found)
     }
 
     let saved: SavedServer?
@@ -59,7 +67,15 @@ final class SignInModel {
 
     func choose(_ found: FoundServer) {
         message = nil
-        step = .password(found)
+        step = Self.step(for: found, app.core.compatibility(info: found.info))
+    }
+
+    /// Asks the server the app doesn't work with what it is again; it stays as it is when it doesn't answer.
+    func retryCompatibility() async {
+        guard case let .incompatible(found, _) = step else { return }
+        await run {
+            if let again = try? await self.app.core.serverAt(address: found.baseUrl) { self.choose(again) }
+        }
     }
 
     /// The server signed in to last, at the first of its addresses that answers as it.
@@ -69,7 +85,7 @@ final class SignInModel {
             for address in saved.addresses {
                 if let found = try? await self.app.core.serverAt(address: address), found.info.id == saved.id {
                     self.username = ""
-                    self.step = .password(found)
+                    self.choose(found)
                     return
                 }
             }
@@ -83,7 +99,7 @@ final class SignInModel {
         guard !typed.isEmpty else { return }
         await run {
             do {
-                self.step = .password(try await self.app.core.serverAt(address: typed))
+                self.choose(try await self.app.core.serverAt(address: typed))
             } catch {
                 self.message = String(localized: "No server found at that address.")
             }

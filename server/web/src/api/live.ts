@@ -1,9 +1,11 @@
 import { type Query, type QueryClient, queryOptions, skipToken, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { isPackaged } from "@/tv/flag";
 import { apiBaseUrl, sessionToken, unauthorized } from "./client";
 import { type ApiPath, apiPaths, libraryGridPaths, listViewPaths, readsPath, workViewPaths } from "./paths";
 import type { EventMessage, EventStreamMessage, SnapshotMessage } from "./schemas";
+import { recheckServer } from "./server";
 
 // Live events, over one WebSocket per tab. Each event kind maps to one
 // cache operation. The problem count updates in place. Other changes
@@ -364,10 +366,12 @@ export type LiveState = {
 /**
  * Keeps the tab's event socket open while mounted, applying each frame to
  * the query cache. A socket closed for an invalid session signs out, as a
- * 401 does.
+ * 401 does. The packaged app asks its server what it is again each time
+ * the socket reconnects.
  */
 export function useLiveEvents(): LiveState {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const [status, setStatus] = useState<LiveStatus>({ state: "connecting" });
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const connectionRef = useRef<{ retryNow: () => void } | undefined>(undefined);
@@ -380,6 +384,7 @@ export function useLiveEvents(): LiveState {
         if (message.type === "snapshot") {
           firstVersion ??= message.serverVersion;
           if (message.serverVersion !== firstVersion) setUpdateAvailable(true);
+          if (isPackaged && reconnect) void recheckServer(queryClient, router);
         }
         for (const op of planMessage(message, reconnect)) sync.apply(op);
       },
@@ -390,7 +395,7 @@ export function useLiveEvents(): LiveState {
       connection.close();
       sync.dispose();
     };
-  }, [queryClient]);
+  }, [queryClient, router]);
 
   return { status, updateAvailable, retryNow: () => connectionRef.current?.retryNow() };
 }

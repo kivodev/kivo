@@ -1,6 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext, Outlet, redirect } from "@tanstack/react-router";
-import { serverQueries } from "@/api/server";
+import { probeCompatibility, serverQueries } from "@/api/server";
 import { setupQueries } from "@/api/setup";
 import { isPackaged, isTv } from "@/tv/flag";
 import { packagedServer, packagedToken } from "@/tv/packaged";
@@ -10,8 +10,9 @@ export type RouterContext = { queryClient: QueryClient };
 /**
  * Until the admin user exists, every page is the setup wizard. The
  * packaged TV app first needs its server: until it has one, and while the
- * one it has doesn't answer, isn't Kivo, is too old or isn't set up, every
- * page is the address screen, and until it has a token, sign-in.
+ * one it has doesn't answer, isn't Kivo or isn't set up, every page is the
+ * address screen; while the app and the server don't work together, every
+ * page is the update screen; and until it has a token, sign-in.
  */
 export const rootRoute = createRootRouteWithContext<RouterContext>()({
   beforeLoad: async ({ context, location }) => {
@@ -29,6 +30,13 @@ export const rootRoute = createRootRouteWithContext<RouterContext>()({
       // change.
       const probe = await context.queryClient.fetchQuery(serverQueries.probe(server.address));
       if (probe.result !== "kivo") throw redirect({ to: "/server", search: { failed: probe.result }, replace: true });
+      // A server the app doesn't work with is asked nothing more either.
+      const compatible = probeCompatibility(probe).state === "compatible";
+      if (location.pathname === "/update") {
+        if (compatible) throw redirect({ to: "/", replace: true });
+        return;
+      }
+      if (!compatible) throw redirect({ to: "/update", replace: true });
     }
     // This waits, because whether setup is needed decides where every URL
     // leads.

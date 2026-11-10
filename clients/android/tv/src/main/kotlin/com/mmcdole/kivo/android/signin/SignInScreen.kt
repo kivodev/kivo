@@ -53,11 +53,13 @@ import com.mmcdole.kivo.android.theme.KivoTokens
 import com.mmcdole.kivo.android.theme.TvType
 import com.mmcdole.kivo.android.ui.EmptyState
 import com.mmcdole.kivo.android.ui.FocusOnOpen
+import com.mmcdole.kivo.android.ui.Incompatible
 import com.mmcdole.kivo.android.ui.KivoButton
 import com.mmcdole.kivo.android.ui.Loading
 import com.mmcdole.kivo.android.ui.QrCode
 import com.mmcdole.kivo.android.ui.TextInput
 import com.mmcdole.kivo.android.ui.display
+import com.mmcdole.kivo.core.Compatibility
 import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.core.display.problem
 import com.mmcdole.kivo.core.session.LinkProgress
@@ -69,7 +71,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
 /** Each server is signed in to where it answered ([FoundServer.baseUrl]). */
-private sealed interface Step {
+internal sealed interface Step {
     data object Finding : Step
 
     data object Address : Step
@@ -77,14 +79,24 @@ private sealed interface Step {
     data class Code(val server: FoundServer) : Step
 
     data class Password(val server: FoundServer) : Step
+
+    /** The app and [server] don't work together, for [problem]: one of them needs an update. */
+    data class Incompatible(val server: FoundServer, val problem: Compatibility) : Step
 }
+
+/** Where a server found goes, by how the app and it stand: its sign-in code when they work together, else why they don't. */
+internal fun stepFor(server: FoundServer, compatibility: Compatibility): Step =
+    if (compatibility == Compatibility.Compatible) Step.Code(server) else Step.Incompatible(server, compatibility)
+
+private fun AppGraph.stepFor(server: FoundServer): Step = stepFor(server, core.compatibility(server.info))
 
 /**
  * Signing in on the TV: the saved server first, then the servers found on
  * the network, choosing the one found by itself and listing several, with
  * "Enter address" always a step away; then the sign-in code, with the
  * password as the alternative. A session that ended goes straight to the
- * code on its server.
+ * code on its server. A server the app doesn't work with says which of
+ * them needs an update, in place of its code.
  */
 @Composable
 fun SignInScreen(graph: AppGraph, server: SavedServer?) {
@@ -94,7 +106,7 @@ fun SignInScreen(graph: AppGraph, server: SavedServer?) {
         if (server == null) return@LaunchedEffect
         val found = graph.core.reach(server)
         reachingSaved = false
-        if (found != null) step = Step.Code(found)
+        if (found != null) step = graph.stepFor(found)
     }
     if (reachingSaved) {
         Loading()
@@ -102,11 +114,11 @@ fun SignInScreen(graph: AppGraph, server: SavedServer?) {
     }
 
     // A form sits at the top, clear of the keyboard, which opens over the lower half of the screen.
-    val alignment = if (step is Step.Code) Alignment.Center else Alignment.TopCenter
-    Box(Modifier.fillMaxSize().padding(top = if (step is Step.Code) 0.dp else FormTop), contentAlignment = alignment) {
+    val centred = step is Step.Code || step is Step.Incompatible
+    Box(Modifier.fillMaxSize().padding(top = if (centred) 0.dp else FormTop), contentAlignment = if (centred) Alignment.Center else Alignment.TopCenter) {
         when (val s = step) {
-            Step.Finding -> FormPanel { Finding(graph, onChoose = { step = Step.Code(it) }, onAddress = { step = Step.Address }) }
-            Step.Address -> FormPanel { Address(graph, onFound = { step = Step.Code(it) }, onBack = { step = Step.Finding }) }
+            Step.Finding -> FormPanel { Finding(graph, onChoose = { step = graph.stepFor(it) }, onAddress = { step = Step.Address }) }
+            Step.Address -> FormPanel { Address(graph, onFound = { step = graph.stepFor(it) }, onBack = { step = Step.Finding }) }
             is Step.Code -> key(s.server) {
                 LinkCode(
                     serverName = s.server.info.name,
@@ -117,6 +129,26 @@ fun SignInScreen(graph: AppGraph, server: SavedServer?) {
                 )
             }
             is Step.Password -> FormPanel { Password(graph, s.server, onBack = { step = Step.Code(s.server) }) }
+            is Step.Incompatible -> {
+                val scope = rememberCoroutineScope()
+                BackHandler { step = Step.Finding }
+                Incompatible(
+                    s.problem,
+                    s.server.info.name,
+                    onRetry = {
+                        scope.launch {
+                            try {
+                                step = graph.stepFor(graph.core.serverAt(s.server.baseUrl))
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (_: Exception) {
+                                // It stays as it last said it is.
+                            }
+                        }
+                    },
+                    onChangeServer = { step = Step.Finding },
+                )
+            }
         }
     }
 }

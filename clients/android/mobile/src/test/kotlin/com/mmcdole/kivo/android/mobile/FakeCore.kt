@@ -116,12 +116,12 @@ private class Memory : SecureStore {
     }
 }
 
-/** A phone in a test; with [transport], one that keeps downloads, its store in SQLite in memory and its files in [dir]. */
-class TestDevice(dir: File, transport: DownloadTransport? = null) : Device {
+/** A phone in a test, its app at [version]; with [transport], one that keeps downloads, its store in SQLite in memory and its files in [dir]. */
+class TestDevice(dir: File, transport: DownloadTransport? = null, version: String = "test") : Device {
     override val name = "Test phone"
     override val identity = object : ClientIdentity {
         override val app = "kivo-android"
-        override val appVersion = "test"
+        override val appVersion = version
         override val platform = "androidPhone"
         override val osVersion = "17"
         override val deviceModel = "test"
@@ -158,10 +158,13 @@ open class CoreTest {
     /** The device's download transfers, for a test of downloads; none otherwise, as on a TV. */
     open val transport: DownloadTransport? get() = null
 
+    /** The app's version, as the device says it. */
+    open val appVersion: String get() = "test"
+
     /** Where the device keeps its preferences and downloads. */
     val folder: File get() = dir
 
-    val client: KivoClient by lazy { KivoClient(TestDevice(dir, transport), server.engine) }
+    val client: KivoClient by lazy { KivoClient(TestDevice(dir, transport, appVersion), server.engine) }
 
     fun signIn(): KivoSession = runBlocking { client.signIn(FoundServer(SERVER, ServerInfo("s1", "Den", "1.0")), "anna", "pw", "Phone") }
         .also { sessions += it }

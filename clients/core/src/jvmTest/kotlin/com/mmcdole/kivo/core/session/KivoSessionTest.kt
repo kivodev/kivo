@@ -17,7 +17,9 @@ import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.api.models.WorkImages
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.api.models.WorkSummaryPage
+import com.mmcdole.kivo.core.Compatibility
 import com.mmcdole.kivo.core.Load
+import com.mmcdole.kivo.core.MIN_SERVER_VERSION
 import com.mmcdole.kivo.core.MemoryPreferences
 import com.mmcdole.kivo.core.MemoryStore
 import com.mmcdole.kivo.core.auth.ClientIdentity
@@ -33,6 +35,7 @@ import com.mmcdole.kivo.core.downloads.TransferRequest
 import com.mmcdole.kivo.core.downloads.db.DownloadDatabase
 import com.mmcdole.kivo.core.empty
 import com.mmcdole.kivo.core.json
+import com.mmcdole.kivo.core.kivoJson
 import com.mmcdole.kivo.core.play.FakeEngine
 import com.mmcdole.kivo.core.player.Autoplay
 import com.mmcdole.kivo.core.player.UpNextPhase
@@ -43,19 +46,41 @@ import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
 import io.ktor.client.request.HttpRequestData
 import io.ktor.client.request.HttpResponseData
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.application.install
+import io.ktor.server.cio.CIO
+import io.ktor.server.engine.embeddedServer
+import io.ktor.server.response.respondText
+import io.ktor.server.routing.get
+import io.ktor.server.routing.routing
+import io.ktor.server.websocket.WebSockets
+import io.ktor.server.websocket.webSocket
+import io.ktor.websocket.CloseReason
+import io.ktor.websocket.Frame
+import io.ktor.websocket.close
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -75,6 +100,12 @@ private val ladder = listOf(QualityRung(20_000_000, 1080), QualityRung(8_000_000
 
 private fun info(id: String, name: String = id, localUrls: List<String>? = null) =
     ServerInfo(id, name, "1.0", localUrls = localUrls, qualityLadder = ladder)
+
+/** A server at [version] that supports apps from [minAppVersion]. */
+private fun release(version: String, minAppVersion: String? = "0.3.0") =
+    ServerInfo("server-1", "Basement", version, minAppVersion = minAppVersion)
+
+private val home = SavedServer("server-1", "Basement", listOf("http://home.test"))
 
 private val anna = CurrentUser("u1", "anna", admin = false, limits = UserLimits(), playback = PlaybackPreferences(SubtitleMode.Smart, true, true, 1.0))
 
@@ -129,17 +160,16 @@ private class Disk(override val folder: String) : DownloadDisk {
     override fun sha256(path: String) = ""
 }
 
-private object Identity : ClientIdentity {
+private class Identity(override val appVersion: String) : ClientIdentity {
     override val app = "kivo-android"
-    override val appVersion = "1.0"
     override val platform = "androidTv"
     override val osVersion = "14"
     override val deviceModel = "SHIELD Android TV"
 }
 
-private class TestDevice(withDownloads: Boolean) : Device {
+private class TestDevice(withDownloads: Boolean, appVersion: String = "1.0") : Device {
     override val name = "Living Room"
-    override val identity = Identity
+    override val identity = Identity(appVersion)
     override val preferences = MemoryPreferences()
     override val secureStore = MemoryStore()
     override val capabilities = Probe()
@@ -157,9 +187,9 @@ private class TestDevice(withDownloads: Boolean) : Device {
     }
 }
 
-private class Harness(scope: TestScope, withDownloads: Boolean = false) {
+private class Harness(scope: TestScope, withDownloads: Boolean = false, appVersion: String = "1.0") {
     val servers = Servers()
-    val device = TestDevice(withDownloads)
+    val device = TestDevice(withDownloads, appVersion)
     val core = KivoClient(device, servers.engine, scope.backgroundScope)
 
     init {
@@ -245,6 +275,131 @@ class KivoSessionTest {
         assertEquals("Den", session.savedServer.first { it.name != "Kivo" }.name)
         assertEquals("Den", h.core.servers.first { all -> all.single().name != "Kivo" }.single().name)
         foreground.cancel()
+    }
+
+    @Test
+    fun aServerFoundBeforeSignInIsCheckedAgainstTheApp() = runTest {
+        val h = Harness(this, appVersion = "0.5.0")
+
+        assertEquals(Compatibility.Compatible, h.core.compatibility(release(MIN_SERVER_VERSION)))
+        assertEquals(Compatibility.Compatible, h.core.compatibility(release("0.9.0", minAppVersion = null)))
+        assertEquals(Compatibility.Compatible, h.core.compatibility(release("dev", minAppVersion = "dev")))
+        assertEquals(
+            Compatibility.ServerTooOld(serverVersion = "0.2.0", minServerVersion = MIN_SERVER_VERSION, appVersion = "0.5.0"),
+            h.core.compatibility(release("0.2.0")),
+        )
+        assertEquals(
+            Compatibility.AppTooOld(appVersion = "0.5.0", minAppVersion = "0.6.0"),
+            h.core.compatibility(release("0.6.0", minAppVersion = "0.6.0")),
+        )
+    }
+
+    @Test
+    fun aSavedServerOpensAsItStandsWithTheAppAndIsCheckedAgainOnTryAgain() = runTest {
+        val h = Harness(this, appVersion = "0.5.0")
+        h.servers.server("home.test", release("0.2.0"))
+        h.device.signedInTo("server-1")
+
+        val session = h.core.restore(home)
+
+        // Too old, and still signed in: nothing of the session is given up.
+        assertEquals(Compatibility.ServerTooOld("0.2.0", MIN_SERVER_VERSION, "0.5.0"), session.compatibility.value)
+        assertTrue(session.isSignedIn)
+
+        // Its owner updates it, to a release that no longer supports this app.
+        h.servers.server("home.test", release("0.9.0", minAppVersion = "0.6.0"))
+        session.serverInfo()
+        assertEquals(Compatibility.AppTooOld("0.5.0", "0.6.0"), session.compatibility.value)
+
+        // Tried again against one that does, the app goes on.
+        h.servers.server("home.test", release("0.9.0", minAppVersion = "0.5.0"))
+        session.serverInfo()
+        assertEquals(Compatibility.Compatible, session.compatibility.value)
+    }
+
+    @Test
+    fun aSavedServerThatDoesntAnswerIsCompatibleUntilItDoes() = runTest {
+        val h = Harness(this, appVersion = "0.5.0")
+        h.servers.on("home.test", "GET", "/api/v1/server") { throw IOException("no route to host") }
+        h.device.signedInTo("server-1")
+        val session = h.core.restore(home)
+        assertTrue(session.unreachable.value)
+        assertEquals(Compatibility.Compatible, session.compatibility.value)
+
+        // It answers again, on a release this app is too old for.
+        h.servers.server("home.test", release("0.9.0", minAppVersion = "0.6.0"))
+        session.awaitReachable()
+
+        val found = withContext(Dispatchers.Default) { withTimeoutOrNull(5.seconds) { session.compatibility.first { it != Compatibility.Compatible } } }
+        assertEquals(Compatibility.AppTooOld("0.5.0", "0.6.0"), found)
+    }
+
+    @Test
+    fun comingToTheForegroundChecksTheServerAgain() = runTest {
+        val h = Harness(this, appVersion = "0.5.0")
+        h.servers.server("home.test", release("0.5.0"))
+        h.device.signedInTo("server-1")
+        val session = h.core.restore(home)
+        assertEquals(Compatibility.Compatible, session.compatibility.value)
+        h.servers.server("home.test", release("0.9.0", minAppVersion = "0.6.0"))
+
+        val foreground = backgroundScope.launch { session.runLiveEvents() }
+
+        assertEquals(Compatibility.AppTooOld("0.5.0", "0.6.0"), session.compatibility.first { it != Compatibility.Compatible })
+        foreground.cancel()
+    }
+
+    @Test
+    fun aServerThatRestartsOnAnotherVersionIsCheckedAsTheLiveEventsReconnect() = runBlocking {
+        val version = AtomicReference("0.5.0")
+        val sockets = AtomicInteger()
+        val opened = CompletableDeferred<Unit>()
+        val restart = CompletableDeferred<Unit>()
+        val server = embeddedServer(CIO, port = 0) {
+            install(WebSockets)
+            routing {
+                get("/api/v1/server") {
+                    val q = call.request.queryParameters
+                    val proof = proofOf(q["challenge"], q["probeId"], call.request.headers[HttpHeaders.Host].orEmpty(), "server-1", listOf("tok"))
+                    val info = release(version.get(), minAppVersion = "0.3.0").copy(proof = proof)
+                    call.respondText(kivoJson.encodeToString(ServerInfo.serializer(), info), ContentType.Application.Json)
+                }
+                webSocket("/api/v1/events") {
+                    send(Frame.Text("""{"type":"snapshot","serverVersion":"${version.get()}"}"""))
+                    if (sockets.getAndIncrement() > 0) awaitCancellation()
+                    opened.complete(Unit)
+                    restart.await()
+                    close(CloseReason(CloseReason.Codes.GOING_AWAY, "stopping"))
+                }
+            }
+        }
+        server.startSuspend()
+        val scope = CoroutineScope(SupervisorJob())
+        try {
+            val device = TestDevice(withDownloads = false, appVersion = "0.5.0")
+            device.secureStore.values["kivo.token.server-1"] = "tok"
+            val core = KivoClient(device, null, scope)
+            val url = "http://127.0.0.1:${server.engine.resolvedConnectors().first().port}"
+            val session = core.restore(SavedServer("server-1", "Basement", listOf(url)))
+            assertTrue(session.isSignedIn)
+            assertEquals(Compatibility.Compatible, session.compatibility.value)
+
+            val foreground = scope.launch { session.runLiveEvents() }
+            withTimeout(10.seconds) { opened.await() }
+            // The read as the app came to the foreground is over; only the reconnect reads again.
+            delay(500)
+            assertEquals(Compatibility.Compatible, session.compatibility.value)
+            version.set("0.2.0")
+            restart.complete(Unit)
+
+            val found = withTimeout(20.seconds) { session.compatibility.first { it != Compatibility.Compatible } }
+            assertEquals(Compatibility.ServerTooOld("0.2.0", MIN_SERVER_VERSION, "0.5.0"), found)
+            assertEquals(2, sockets.get())
+            foreground.cancel()
+        } finally {
+            scope.cancel()
+            server.stop(0, 0)
+        }
     }
 
     @Test

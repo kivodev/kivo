@@ -2,6 +2,7 @@ package com.mmcdole.kivo.core.session
 
 import com.mmcdole.kivo.api.models.ServerInfo
 import com.mmcdole.kivo.api.result
+import com.mmcdole.kivo.core.Compatibility
 import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.auth.AddressChange
 import com.mmcdole.kivo.core.auth.LinkDevice
@@ -48,13 +49,30 @@ import kotlin.time.Duration.Companion.seconds
  *
  * A signed-out session stays as it was made, for the app to sign in again;
  * one that was signed in deletes this server's downloads as it signs out.
+ *
+ * [opened] is what the server said of itself as the session opened; null
+ * when it didn't answer.
  */
 class KivoSession internal constructor(
     saved: SavedServer,
     internal val connection: ServerConnection,
     internal val core: KivoClient,
+    opened: ServerInfo? = null,
 ) {
     private val mutableServer = MutableStateFlow(saved)
+    private val mutableCompatibility = MutableStateFlow(opened?.let(core::compatibility) ?: Compatibility.Compatible)
+
+    /**
+     * Whether this app and the server work together, by what the server
+     * last said of itself ([serverInfo]): as the session opened, as the app
+     * comes to the foreground, as the live events reconnect, which they do
+     * when the server restarts on another version, and as the server
+     * answers after it didn't. Compatible until the server first answers.
+     * An app shows an incompatible server as needing an update, or itself,
+     * in place of the server's screens, and reads [serverInfo] again as the
+     * person tries again.
+     */
+    val compatibility: StateFlow<Compatibility> = mutableCompatibility.asStateFlow()
 
     /**
      * The server, as saved: its ID, name and addresses. Its name follows the
@@ -112,13 +130,7 @@ class KivoSession internal constructor(
         scope.launch {
             reachability.unreachable.filter { it }.collect {
                 reachability.unreachable.first { !it }
-                try {
-                    serverInfo()
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (_: Exception) {
-                    // The server keeps its saved name until it answers.
-                }
+                readServerInfo()
             }
         }
         @OptIn(FlowPreview::class)
@@ -196,7 +208,8 @@ class KivoSession internal constructor(
      * Keeps the live events open until cancelled, as the app goes to the
      * background, or signed out; tells the downloads what they say, and
      * reads the user again after each reconnect. The app runs it in the
-     * foreground, so coming back picks the server's address again, and on a
+     * foreground, so coming back picks the server's address again and reads
+     * what the server says of itself, as each reconnect does, and on a
      * public address a local one is looked for now and then and as a stream
      * stops playing, while none plays.
      */
@@ -205,13 +218,8 @@ class KivoSession internal constructor(
         val downloads = core.downloads?.let { d -> launch { invalidations.collect { d.invalidated(it) } } }
         val user = launch { userSettings.refreshOn(invalidations) }
         val info = launch {
-            try {
-                serverInfo()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                // The server keeps its saved name until it answers.
-            }
+            launch { readServerInfo() }
+            invalidations.filterIsInstance<Invalidation.Everything>().collect { readServerInfo() }
         }
         val address = launch {
             connection.address.repick(AddressChange.Foreground)
@@ -245,9 +253,27 @@ class KivoSession internal constructor(
         scope.cancel()
     }
 
-    /** The server's name, version and addresses, as it says now; a new name is saved ([savedServer]). */
+    /**
+     * The server's name, version and addresses, as it says now; a new name
+     * is saved ([savedServer]), and whether the app works with it follows
+     * ([compatibility]).
+     */
     @Throws(Exception::class)
-    suspend fun serverInfo(): ServerInfo = connection.setup.getServer().result().also { renamed(it.name) }
+    suspend fun serverInfo(): ServerInfo = connection.setup.getServer().result().also {
+        mutableCompatibility.value = core.compatibility(it)
+        renamed(it.name)
+    }
+
+    /** Reads what the server says of itself; one that doesn't answer stays as it last said. */
+    private suspend fun readServerInfo() {
+        try {
+            serverInfo()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // Read again the next time the server answers.
+        }
+    }
 
     /** Saves the server's [name] when it has changed, while this app is signed in to it. */
     private suspend fun renamed(name: String) {

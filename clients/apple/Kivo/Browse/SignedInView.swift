@@ -15,7 +15,9 @@ import SwiftUI
 /// background refresh. A `kivo://link` link opens Link a device over it. While a book is loaded its mini player
 /// sits above the tabs and opens Now Playing, and while casting the cast's
 /// mini controller does, opening the remote; the video player and the
-/// remote cover everything.
+/// remote cover everything. While the app and the server don't work
+/// together, every tab but Downloads, whose downloads play without the
+/// server, shows which of them needs an update.
 struct SignedInView: View {
     @Environment(AppModel.self) private var app
     @Environment(ServerModel.self) private var server
@@ -36,15 +38,18 @@ struct SignedInView: View {
             Tab(String(localized: "Home"), systemImage: "house", value: AppTab.home) {
                 BrowseStack(tab: .home) { HomeView() }
                     .modifier(MiniPlayerBar(book: book))
+                    .modifier(CompatibilityGate())
             }
             Tab(String(localized: "Libraries"), systemImage: "square.grid.2x2", value: AppTab.libraries) {
                 BrowseStack(tab: .libraries) { LibrariesView() }
                     .modifier(MiniPlayerBar(book: book))
+                    .modifier(CompatibilityGate())
             }
             .hidden(sidebar)
             Tab(String(localized: "Lists"), systemImage: "list.bullet", value: AppTab.lists) {
                 BrowseStack(tab: .lists) { ListsView() }
                     .modifier(MiniPlayerBar(book: book))
+                    .modifier(CompatibilityGate())
             }
             TabSection(String(localized: "Libraries")) {
                 ForEach(server.pinnedLibraries, id: \.id) { library in
@@ -66,6 +71,7 @@ struct SignedInView: View {
             Tab(String(localized: "Search"), systemImage: "magnifyingglass", value: AppTab.search, role: .search) {
                 SearchTab(query: $navigation.searchQuery, chosen: navigation.tab == .search)
                     .modifier(MiniPlayerBar(book: book))
+                    .modifier(CompatibilityGate())
             }
         }
         .modifier(SearchTabActivation())
@@ -142,6 +148,7 @@ struct SignedInView: View {
                 LibraryView(library: library, server: server)
             }
             .modifier(MiniPlayerBar(book: book))
+            .modifier(CompatibilityGate())
         }
     }
 
@@ -162,6 +169,21 @@ struct SignedInView: View {
 
     private var selection: Binding<AppTab> {
         Binding(get: { server.navigation.tab }, set: { server.navigation.choose($0) })
+    }
+}
+
+/// A tab's screens, or, while the app and the server don't work together,
+/// which of them needs an update.
+private struct CompatibilityGate: ViewModifier {
+    @Environment(AppModel.self) private var app
+    @Environment(ServerModel.self) private var server
+
+    func body(content: Content) -> some View {
+        if let problem = server.incompatibility {
+            CompatibilityView(problem: problem, retry: server.checkCompatibility, changeServer: app.changeServer)
+        } else {
+            content
+        }
     }
 }
 

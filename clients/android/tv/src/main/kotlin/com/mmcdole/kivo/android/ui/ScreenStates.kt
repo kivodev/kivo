@@ -17,14 +17,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Text
+import com.mmcdole.kivo.android.STORE_LISTING
+import com.mmcdole.kivo.android.platform.R as PlatformR
 import com.mmcdole.kivo.android.tv.R
 import com.mmcdole.kivo.android.theme.Kivo
 import com.mmcdole.kivo.android.theme.TvType
+import com.mmcdole.kivo.android.words
+import com.mmcdole.kivo.core.Compatibility
 import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.core.display.problem
 import kotlinx.coroutines.delay
@@ -81,6 +87,26 @@ fun Failed(problem: RequestProblem, server: String, onRetry: () -> Unit, onChang
         }
     }
     LaunchedEffect(problem) { focusWhenPlaced(retry) }
+}
+
+/**
+ * A server the app doesn't work with, in place of its sign-in or its
+ * screens: which of the two needs an update, with Try again, focused,
+ * which asks the server what it is again, and Change server.
+ */
+@Composable
+fun Incompatible(problem: Compatibility, server: String, onRetry: () -> Unit, onChangeServer: () -> Unit) {
+    val words = problem.words(LocalResources.current, server) ?: return
+    val retry = remember { FocusRequester() }
+    val uris = LocalUriHandler.current
+    EmptyState(words.title, words.sentence, Modifier.testTag("incompatible")) {
+        if (problem is Compatibility.AppTooOld) {
+            STORE_LISTING?.let { listing -> KivoButton(stringResource(PlatformR.string.app_too_old_store), { uris.openUri(listing) }) }
+        }
+        KivoButton(stringResource(R.string.try_again), onRetry, Modifier.focusRequester(retry), primary = true)
+        KivoButton(stringResource(R.string.change_server), onChangeServer)
+    }
+    FocusOnOpen(retry, problem)
 }
 
 /**

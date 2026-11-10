@@ -600,6 +600,53 @@ sealed interface com.mmcdole.kivo.core.session/LinkProgress { // com.mmcdole.kiv
     }
 }
 
+sealed interface com.mmcdole.kivo.core/Compatibility { // com.mmcdole.kivo.core/Compatibility|null[0]
+    final class AppTooOld : com.mmcdole.kivo.core/Compatibility { // com.mmcdole.kivo.core/Compatibility.AppTooOld|null[0]
+        constructor <init>(kotlin/String, kotlin/String) // com.mmcdole.kivo.core/Compatibility.AppTooOld.<init>|<init>(kotlin.String;kotlin.String){}[0]
+
+        final val appVersion // com.mmcdole.kivo.core/Compatibility.AppTooOld.appVersion|{}appVersion[0]
+            final fun <get-appVersion>(): kotlin/String // com.mmcdole.kivo.core/Compatibility.AppTooOld.appVersion.<get-appVersion>|<get-appVersion>(){}[0]
+        final val minAppVersion // com.mmcdole.kivo.core/Compatibility.AppTooOld.minAppVersion|{}minAppVersion[0]
+            final fun <get-minAppVersion>(): kotlin/String // com.mmcdole.kivo.core/Compatibility.AppTooOld.minAppVersion.<get-minAppVersion>|<get-minAppVersion>(){}[0]
+
+        final fun component1(): kotlin/String // com.mmcdole.kivo.core/Compatibility.AppTooOld.component1|component1(){}[0]
+        final fun component2(): kotlin/String // com.mmcdole.kivo.core/Compatibility.AppTooOld.component2|component2(){}[0]
+        final fun copy(kotlin/String = ..., kotlin/String = ...): com.mmcdole.kivo.core/Compatibility.AppTooOld // com.mmcdole.kivo.core/Compatibility.AppTooOld.copy|copy(kotlin.String;kotlin.String){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core/Compatibility.AppTooOld.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core/Compatibility.AppTooOld.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.mmcdole.kivo.core/Compatibility.AppTooOld.toString|toString(){}[0]
+    }
+
+    final class ServerTooOld : com.mmcdole.kivo.core/Compatibility { // com.mmcdole.kivo.core/Compatibility.ServerTooOld|null[0]
+        constructor <init>(kotlin/String, kotlin/String, kotlin/String) // com.mmcdole.kivo.core/Compatibility.ServerTooOld.<init>|<init>(kotlin.String;kotlin.String;kotlin.String){}[0]
+
+        final val appVersion // com.mmcdole.kivo.core/Compatibility.ServerTooOld.appVersion|{}appVersion[0]
+            final fun <get-appVersion>(): kotlin/String // com.mmcdole.kivo.core/Compatibility.ServerTooOld.appVersion.<get-appVersion>|<get-appVersion>(){}[0]
+        final val minServerVersion // com.mmcdole.kivo.core/Compatibility.ServerTooOld.minServerVersion|{}minServerVersion[0]
+            final fun <get-minServerVersion>(): kotlin/String // com.mmcdole.kivo.core/Compatibility.ServerTooOld.minServerVersion.<get-minServerVersion>|<get-minServerVersion>(){}[0]
+        final val serverVersion // com.mmcdole.kivo.core/Compatibility.ServerTooOld.serverVersion|{}serverVersion[0]
+            final fun <get-serverVersion>(): kotlin/String // com.mmcdole.kivo.core/Compatibility.ServerTooOld.serverVersion.<get-serverVersion>|<get-serverVersion>(){}[0]
+
+        final fun component1(): kotlin/String // com.mmcdole.kivo.core/Compatibility.ServerTooOld.component1|component1(){}[0]
+        final fun component2(): kotlin/String // com.mmcdole.kivo.core/Compatibility.ServerTooOld.component2|component2(){}[0]
+        final fun component3(): kotlin/String // com.mmcdole.kivo.core/Compatibility.ServerTooOld.component3|component3(){}[0]
+        final fun copy(kotlin/String = ..., kotlin/String = ..., kotlin/String = ...): com.mmcdole.kivo.core/Compatibility.ServerTooOld // com.mmcdole.kivo.core/Compatibility.ServerTooOld.copy|copy(kotlin.String;kotlin.String;kotlin.String){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core/Compatibility.ServerTooOld.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core/Compatibility.ServerTooOld.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.mmcdole.kivo.core/Compatibility.ServerTooOld.toString|toString(){}[0]
+    }
+
+    final object Companion { // com.mmcdole.kivo.core/Compatibility.Companion|null[0]
+        final fun of(kotlin/String, kotlin/String?, kotlin/String, kotlin/String = ...): com.mmcdole.kivo.core/Compatibility // com.mmcdole.kivo.core/Compatibility.Companion.of|of(kotlin.String;kotlin.String?;kotlin.String;kotlin.String){}[0]
+    }
+
+    final object Compatible : com.mmcdole.kivo.core/Compatibility { // com.mmcdole.kivo.core/Compatibility.Compatible|null[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core/Compatibility.Compatible.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core/Compatibility.Compatible.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.mmcdole.kivo.core/Compatibility.Compatible.toString|toString(){}[0]
+    }
+}
+
 final class <#A: kotlin/Any> com.mmcdole.kivo.core.data/GridPager { // com.mmcdole.kivo.core.data/GridPager|null[0]
     final val state // com.mmcdole.kivo.core.data/GridPager.state|{}state[0]
         final fun <get-state>(): kotlinx.coroutines.flow/StateFlow<com.mmcdole.kivo.core.data/GridPages<#A>> // com.mmcdole.kivo.core.data/GridPager.state.<get-state>|<get-state>(){}[0]
@@ -1757,6 +1804,7 @@ final class com.mmcdole.kivo.core.session/KivoClient { // com.mmcdole.kivo.core.
     final val settings // com.mmcdole.kivo.core.session/KivoClient.settings|{}settings[0]
         final fun <get-settings>(): kotlinx.coroutines.flow/Flow<com.mmcdole.kivo.core.settings/DeviceSettings> // com.mmcdole.kivo.core.session/KivoClient.settings.<get-settings>|<get-settings>(){}[0]
 
+    final fun compatibility(com.mmcdole.kivo.api.models/ServerInfo): com.mmcdole.kivo.core/Compatibility // com.mmcdole.kivo.core.session/KivoClient.compatibility|compatibility(com.mmcdole.kivo.api.models.ServerInfo){}[0]
     final fun networkChanged(kotlin/Boolean, kotlin/Boolean) // com.mmcdole.kivo.core.session/KivoClient.networkChanged|networkChanged(kotlin.Boolean;kotlin.Boolean){}[0]
     final fun signInByLink(com.mmcdole.kivo.core.discovery/FoundServer, kotlin/String): kotlinx.coroutines.flow/Flow<com.mmcdole.kivo.core.session/LinkProgress> // com.mmcdole.kivo.core.session/KivoClient.signInByLink|signInByLink(com.mmcdole.kivo.core.discovery.FoundServer;kotlin.String){}[0]
     final fun transferChanged(com.mmcdole.kivo.core.downloads/TransferEvent) // com.mmcdole.kivo.core.session/KivoClient.transferChanged|transferChanged(com.mmcdole.kivo.core.downloads.TransferEvent){}[0]
@@ -1784,6 +1832,8 @@ final class com.mmcdole.kivo.core.session/KivoSession { // com.mmcdole.kivo.core
         final fun <get-baseUrl>(): kotlin/String // com.mmcdole.kivo.core.session/KivoSession.baseUrl.<get-baseUrl>|<get-baseUrl>(){}[0]
     final val cast // com.mmcdole.kivo.core.session/KivoSession.cast|{}cast[0]
         final fun <get-cast>(): com.mmcdole.kivo.core.session/SessionCast // com.mmcdole.kivo.core.session/KivoSession.cast.<get-cast>|<get-cast>(){}[0]
+    final val compatibility // com.mmcdole.kivo.core.session/KivoSession.compatibility|{}compatibility[0]
+        final fun <get-compatibility>(): kotlinx.coroutines.flow/StateFlow<com.mmcdole.kivo.core/Compatibility> // com.mmcdole.kivo.core.session/KivoSession.compatibility.<get-compatibility>|<get-compatibility>(){}[0]
     final val downloads // com.mmcdole.kivo.core.session/KivoSession.downloads|{}downloads[0]
         final fun <get-downloads>(): com.mmcdole.kivo.core.session/SessionDownloads? // com.mmcdole.kivo.core.session/KivoSession.downloads.<get-downloads>|<get-downloads>(){}[0]
     final val http // com.mmcdole.kivo.core.session/KivoSession.http|{}http[0]
@@ -2298,6 +2348,8 @@ final object com.mmcdole.kivo.core.player/Subtitles { // com.mmcdole.kivo.core.p
 
 final const val com.mmcdole.kivo.core.discovery/SERVICE_TYPE // com.mmcdole.kivo.core.discovery/SERVICE_TYPE|{}SERVICE_TYPE[0]
     final fun <get-SERVICE_TYPE>(): kotlin/String // com.mmcdole.kivo.core.discovery/SERVICE_TYPE.<get-SERVICE_TYPE>|<get-SERVICE_TYPE>(){}[0]
+final const val com.mmcdole.kivo.core/MIN_SERVER_VERSION // com.mmcdole.kivo.core/MIN_SERVER_VERSION|{}MIN_SERVER_VERSION[0]
+    final fun <get-MIN_SERVER_VERSION>(): kotlin/String // com.mmcdole.kivo.core/MIN_SERVER_VERSION.<get-MIN_SERVER_VERSION>|<get-MIN_SERVER_VERSION>(){}[0]
 
 final val com.mmcdole.kivo.core.display/pickerName // com.mmcdole.kivo.core.display/pickerName|@com.mmcdole.kivo.api.models.Track{}pickerName[0]
     final fun (com.mmcdole.kivo.api.models/Track).<get-pickerName>(): com.mmcdole.kivo.core.display/TrackName // com.mmcdole.kivo.core.display/pickerName.<get-pickerName>|<get-pickerName>@com.mmcdole.kivo.api.models.Track(){}[0]
@@ -2327,3 +2379,4 @@ final fun (com.mmcdole.kivo.core.display/Display).com.mmcdole.kivo.core.download
 final fun (com.mmcdole.kivo.core.display/Display).com.mmcdole.kivo.core.play/failure(com.mmcdole.kivo.core.play/PlayerFailure): kotlin/String // com.mmcdole.kivo.core.play/failure|failure@com.mmcdole.kivo.core.display.Display(com.mmcdole.kivo.core.play.PlayerFailure){}[0]
 final fun com.mmcdole.kivo.core.discovery/serviceUrl(kotlin/String, kotlin/Int, kotlin/Boolean, kotlin/String): kotlin/String // com.mmcdole.kivo.core.discovery/serviceUrl|serviceUrl(kotlin.String;kotlin.Int;kotlin.Boolean;kotlin.String){}[0]
 final fun com.mmcdole.kivo.core.display/qualityMenu(kotlin.collections/List<com.mmcdole.kivo.api.models/QualityRung>): kotlin.collections/List<com.mmcdole.kivo.core.display/QualityOption> // com.mmcdole.kivo.core.display/qualityMenu|qualityMenu(kotlin.collections.List<com.mmcdole.kivo.api.models.QualityRung>){}[0]
+final fun com.mmcdole.kivo.core/compareVersions(kotlin/String, kotlin/String): kotlin/Int? // com.mmcdole.kivo.core/compareVersions|compareVersions(kotlin.String;kotlin.String){}[0]

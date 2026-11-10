@@ -66,7 +66,10 @@ private struct AppTheme: ViewModifier {
     }
 }
 
-/// Sign-in or the signed-in app, by where the app is; the background alone while it starts.
+/// Sign-in or the signed-in app, by where the app is; the background alone
+/// while it starts. A server the app doesn't work with shows which of them
+/// needs an update in place of its screens; with downloads on the device,
+/// the tabs stay, for Downloads.
 struct RootView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.kivoPalette) private var palette
@@ -80,9 +83,13 @@ struct RootView: View {
             case let .signedOut(saved):
                 SignInView(saved: saved)
             case let .signedIn(server):
-                SignedInView()
-                    .environment(server)
-                    .id(ObjectIdentifier(server))
+                if let problem = server.incompatibility, server.downloads.isEmpty {
+                    CompatibilityView(problem: problem, retry: server.checkCompatibility, changeServer: app.changeServer)
+                } else {
+                    SignedInView()
+                        .environment(server)
+                        .id(ObjectIdentifier(server))
+                }
             }
         }
     }

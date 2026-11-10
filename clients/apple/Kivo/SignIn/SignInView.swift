@@ -5,7 +5,9 @@ import SwiftUI
 /// Sign-in: the server signed in to last, the servers Bonjour finds on the
 /// network, "Enter address", and on a phone with a camera "Scan server QR
 /// code"; then the password, with "Sign in with another device" under it.
-/// On a wide screen the form keeps to a form's width in the middle.
+/// On a wide screen the form keeps to a form's width in the middle. A
+/// server the app doesn't work with says which of them needs an update, in
+/// place of its password.
 struct SignInView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.kivoPalette) private var palette
@@ -13,21 +15,27 @@ struct SignInView: View {
     let saved: SavedServer?
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if let model {
-                    switch model.step {
-                    case .findServer: FindServerForm(model: model)
-                    case let .password(found): PasswordForm(model: model, found: found)
+        Group {
+            if let model, case let .incompatible(_, problem) = model.step {
+                CompatibilityView(problem: problem, retry: model.retryCompatibility, changeServer: model.back)
+            } else {
+                NavigationStack {
+                    Group {
+                        if let model {
+                            switch model.step {
+                            case .findServer, .incompatible: FindServerForm(model: model)
+                            case let .password(found): PasswordForm(model: model, found: found)
+                            }
+                        }
                     }
+                    .scrollContentBackground(.hidden)
+                    // A form's width on a wide screen, as on the web, rather than rows across it.
+                    .frame(maxWidth: KivoTokens.Container.form)
+                    .frame(maxWidth: .infinity)
+                    .background(palette.bg)
+                    .navigationTitle(String(localized: "Sign in"))
                 }
             }
-            .scrollContentBackground(.hidden)
-            // A form's width on a wide screen, as on the web, rather than rows across it.
-            .frame(maxWidth: KivoTokens.Container.form)
-            .frame(maxWidth: .infinity)
-            .background(palette.bg)
-            .navigationTitle(String(localized: "Sign in"))
         }
         .task {
             if model == nil { model = SignInModel(app: app, saved: saved) }
