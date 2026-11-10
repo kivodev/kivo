@@ -94,13 +94,15 @@ func (s *Stream) Segment(ctx context.Context, name string) (string, error) {
 		case <-ch:
 		}
 		s.mu.Lock()
-		done, replaced := s.done[i], s.job != j
+		// A commit can wake this while the job still runs, so its error is
+		// read under the lock it's written under.
+		done, replaced, err := s.done[i], s.job != j, j.err
 		s.mu.Unlock()
 		switch {
 		case done:
 			return path(i), nil
-		case !replaced && j.err != nil && !stopped(j.err):
-			return "", j.err
+		case !replaced && err != nil && !stopped(err):
+			return "", err
 		}
 		// The job was replaced (by a far seek elsewhere or an idle kill),
 		// or it ended without this segment, so look again.
