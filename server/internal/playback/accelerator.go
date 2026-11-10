@@ -37,7 +37,7 @@ const failureShown = 24 * time.Hour
 // accelerators returns the accelerators plays may use under the
 // accelerator setting, best first. When there are none, it also returns
 // why the CPU is used.
-func (s *Service) accelerators(cpu bool) ([]media.Caps, Reason) {
+func (s *planner) accelerators(cpu bool) ([]media.Caps, Reason) {
 	caps := s.deps.Accelerators.Capabilities()
 	accel := slices.Clone(caps.Accelerators)
 	setting := s.deps.Settings.Get().Accelerator
@@ -60,7 +60,7 @@ func (s *Service) accelerators(cpu bool) ([]media.Caps, Reason) {
 // encoders lists the codecs a video transcode may produce. H.264 is always
 // available, on an accelerator or the CPU. HEVC needs an accelerator,
 // because the CPU's encoder is too slow for playback.
-func (s *Service) encoders(cpu bool) []media.Codec {
+func (s *planner) encoders(cpu bool) []media.Codec {
 	out := []media.Codec{media.H264}
 	accel, _ := s.accelerators(cpu)
 	if slices.ContainsFunc(accel, func(a media.Caps) bool { _, ok := a.Encoder(media.HEVC); return ok }) {
@@ -75,7 +75,7 @@ func (s *Service) encoders(cpu bool) []media.Codec {
 // mapping and subtitle drawing when the job needs them. Otherwise it falls
 // back to the CPU with H.264, and records the reason when the server has
 // an accelerator.
-func (s *Service) chooseAccelerator(c *choice) {
+func (s *planner) chooseAccelerator(c *choice) {
 	i := slices.IndexFunc(c.decision.Tracks, func(t TrackDecision) bool { return t.Type == media.Video && t.Selected && t.Transcoded() })
 	if i < 0 {
 		return
@@ -104,7 +104,7 @@ func (s *Service) chooseAccelerator(c *choice) {
 
 // acceleratorFailed records an accelerator failing a play or a download,
 // for the log and the problems page.
-func (s *Service) acceleratorFailed(c *choice, accelerator media.Accelerator, err error) {
+func (s *planner) acceleratorFailed(c *choice, accelerator media.Accelerator, err error) {
 	slog.Warn("playback: accelerator failed; using the CPU", "work", c.work, "accelerator", accelerator, "err", err)
 	s.accelFailure.mu.Lock()
 	defer s.accelFailure.mu.Unlock()

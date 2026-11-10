@@ -26,7 +26,7 @@ type trackPrefs struct {
 // prefsFor returns a user's track preferences. For an episode, when the
 // user remembers choices, it includes the series' last choice. Anything it
 // can't read falls back to the file's defaults.
-func (s *Service) prefsFor(ctx context.Context, user users.User, work id.ID) trackPrefs {
+func (s *planner) prefsFor(ctx context.Context, user users.User, work id.ID) trackPrefs {
 	p := trackPrefs{subtitle: media.BaseLanguage(s.deps.Settings.Get().MetadataLanguage), mode: users.SubtitlesForced}
 	pb := user.Playback
 	p.audio, p.mode = media.BaseLanguage(pb.AudioLanguage), pb.SubtitleMode

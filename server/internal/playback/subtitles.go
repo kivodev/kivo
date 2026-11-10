@@ -83,7 +83,7 @@ func embeddedSubtitle(f catalog.File, track id.ID) (catalog.Track, bool) {
 }
 
 // findSubtitleFile returns the subtitle file with this ID, and its path.
-func (s *Service) findSubtitleFile(f catalog.File, track id.ID) (catalog.SubtitleFile, string, bool) {
+func (s *planner) findSubtitleFile(f catalog.File, track id.ID) (catalog.SubtitleFile, string, bool) {
 	for _, x := range f.SubtitleFiles {
 		if x.ID != track {
 			continue
@@ -105,7 +105,7 @@ type styled struct {
 
 // styledOf reads a file's styled-subtitle preparation, if it has an
 // embedded ASS track.
-func (s *Service) styledOf(ctx context.Context, f catalog.File) styled {
+func (s *planner) styledOf(ctx context.Context, f catalog.File) styled {
 	if !slices.ContainsFunc(f.Tracks, func(t catalog.Track) bool {
 		return media.TrackKind(t.Type) == media.Subtitle && formatOf(media.Codec(t.Codec)) == media.ASS
 	}) {
@@ -123,7 +123,7 @@ func (s *Service) styledOf(ctx context.Context, f catalog.File) styled {
 // client or burned in. An ASS track is ready once the file is styled and
 // the track is extracted. Another text track is ready once it's extracted
 // as WebVTT. A PGS track is ready once it's extracted.
-func (s *Service) prepared(ctx context.Context, f catalog.File, sub SubtitleSource, st styled) bool {
+func (s *planner) prepared(ctx context.Context, f catalog.File, sub SubtitleSource, st styled) bool {
 	if sub.OwnFile {
 		return false
 	}
@@ -146,7 +146,7 @@ func (s *Service) prepared(ctx context.Context, f catalog.File, sub SubtitleSour
 // from a file, never the source: either the subtitle file, or the
 // extraction the subtitles package prepared. A prepared ASS track comes
 // with the paths of the fonts it uses.
-func (s *Service) burnIn(ctx context.Context, c *choice, t TrackDecision) (*media.SubtitleRef, []string, error) {
+func (s *planner) burnIn(ctx context.Context, c *choice, t TrackDecision) (*media.SubtitleRef, []string, error) {
 	f := c.files[0]
 	if x, p, ok := s.findSubtitleFile(f, t.Track); ok {
 		if !formatOf(subtitleFileCodec(x)).Text() {
@@ -181,7 +181,7 @@ func (s *Service) burnIn(ctx context.Context, c *choice, t TrackDecision) (*medi
 
 // extracted returns the path of an embedded track's extraction, if it's
 // made.
-func (s *Service) extracted(ctx context.Context, file id.ID, track int, format media.SubtitleFormat) (string, bool) {
+func (s *planner) extracted(ctx context.Context, file id.ID, track int, format media.SubtitleFormat) (string, bool) {
 	p, ok, err := s.deps.Subtitles.Subtitle(ctx, file, track, format)
 	if err != nil {
 		slog.WarnContext(ctx, "playback: subtitle extraction", "file", file, "track", track, "err", err)
@@ -193,7 +193,7 @@ func (s *Service) extracted(ctx context.Context, file id.ID, track int, format m
 // externalSubtitles lists the subtitle tracks of f that tracks deliver
 // external, as their own files, with whether each file is there to fetch.
 // An embedded ASS track lists the fonts it uses, from f's styled subtitles.
-func (s *Service) externalSubtitles(ctx context.Context, f catalog.File, st styled, tracks []TrackDecision) []ExternalSubtitle {
+func (s *planner) externalSubtitles(ctx context.Context, f catalog.File, st styled, tracks []TrackDecision) []ExternalSubtitle {
 	var out []ExternalSubtitle
 	for _, t := range tracks {
 		if t.Type != media.Subtitle || t.Delivery != DeliverExternal {
@@ -219,7 +219,7 @@ func (s *Service) externalSubtitles(ctx context.Context, f catalog.File, st styl
 // streamed subtitle first, then, for a client that draws no WebVTT file,
 // every other text track it doesn't get as a file or burned
 // in.
-func (s *Service) textTracks(ctx context.Context, c *choice) []transcode.TextTrack {
+func (s *planner) textTracks(ctx context.Context, c *choice) []transcode.TextTrack {
 	var out []transcode.TextTrack
 	for _, t := range c.decision.Tracks {
 		if t.Type == media.Subtitle && t.Delivery == DeliverStream {
@@ -256,7 +256,7 @@ func fontHashes(paths []string) []string {
 // conversion's file. A subtitle file is read whole, and so, for a stream of
 // a single file, is an embedded track's extraction once it's made. Any
 // other embedded track is read along with the video.
-func (s *Service) textTrack(ctx context.Context, c *choice, track id.ID) transcode.TextTrack {
+func (s *planner) textTrack(ctx context.Context, c *choice, track id.ID) transcode.TextTrack {
 	f := c.files[0]
 	out := transcode.TextTrack{ID: track.String(), Track: -1, Title: "Subtitles"}
 	if x, p, ok := s.findSubtitleFile(f, track); ok {
@@ -314,7 +314,7 @@ func (s *Service) Subtitle(ctx context.Context, sid id.ID, name string) (Media, 
 }
 
 // subtitleFile returns a subtitle track of a file by its media name.
-func (s *Service) subtitleFile(ctx context.Context, f catalog.File, name string) (Media, error) {
+func (s *planner) subtitleFile(ctx context.Context, f catalog.File, name string) (Media, error) {
 	n, ext, ok := strings.Cut(name, ".")
 	track, err := id.Parse(n)
 	if !ok || err != nil {

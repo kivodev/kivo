@@ -41,8 +41,8 @@ type EstimateOption struct {
 
 // Estimate says what downloading each work would produce at each quality,
 // on a client with the given capabilities. It decides the same way
-// Download does.
-func (s *Service) Estimate(ctx context.Context, p auth.Caller, v users.Viewer, caps Capabilities, settings Settings, items []EstimateRequest) ([]Estimate, error) {
+// Request does.
+func (s *Downloads) Estimate(ctx context.Context, p auth.Caller, v users.Viewer, caps Capabilities, settings Settings, items []EstimateRequest) ([]Estimate, error) {
 	user, err := s.deps.Users.User(ctx, p.User)
 	if err != nil {
 		return nil, err
@@ -60,7 +60,7 @@ func (s *Service) Estimate(ctx context.Context, p auth.Caller, v users.Viewer, c
 			}
 			continue
 		}
-		c, err := s.planDownload(ctx, user.ID, s.prefsFor(ctx, user, it.Work), DownloadRequest{
+		c, err := s.plan(ctx, user.ID, s.prefsFor(ctx, user, it.Work), DownloadRequest{
 			Work: it.Work, Version: it.Version, AudioTrack: it.AudioTrack, SubtitleTrack: it.SubtitleTrack, Caps: caps, Settings: settings,
 		})
 		if refused, ok := errors.AsType[*RefusedError](err); ok {

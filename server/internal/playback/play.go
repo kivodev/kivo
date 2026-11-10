@@ -292,7 +292,7 @@ func (pl *play) transcodesAll() bool {
 // returns ErrNotFound. A request that names no version plays the version
 // its chosen track belongs to, or with no track chosen, the work's default
 // version (see defaultVersion).
-func (s *Service) choose(ctx context.Context, user id.ID, r StartRequest, prefs trackPrefs, base Input) (choice, error) {
+func (s *planner) choose(ctx context.Context, user id.ID, r StartRequest, prefs trackPrefs, base Input) (choice, error) {
 	versions, err := s.deps.Catalog.VersionsOf(ctx, r.Work)
 	if err != nil {
 		return choice{}, err
@@ -338,7 +338,7 @@ func defaultVersion(versions []catalog.Version, last id.ID) []catalog.Version {
 // it would play, and their deliveries. It returns nil for a version with a
 // missing file, or without a track the request chooses. That way a chosen
 // track's ID selects its version when the request names none.
-func (s *Service) decideVersion(ctx context.Context, v catalog.Version, r StartRequest, prefs trackPrefs, base Input) (*choice, error) {
+func (s *planner) decideVersion(ctx context.Context, v catalog.Version, r StartRequest, prefs trackPrefs, base Input) (*choice, error) {
 	c := &choice{work: r.Work, version: v}
 	for _, part := range v.Parts {
 		f, err := s.deps.Catalog.File(ctx, part)
@@ -481,7 +481,7 @@ func probed(t catalog.Track) media.Track {
 // remuxKeyframes returns each part's keyframes when every part's container
 // indexes them closely enough to cut copied video into segments, and nil
 // otherwise. They're read again each time a play starts.
-func (s *Service) remuxKeyframes(ctx context.Context, files []catalog.File) [][]media.Keyframe {
+func (s *planner) remuxKeyframes(ctx context.Context, files []catalog.File) [][]media.Keyframe {
 	out := make([][]media.Keyframe, len(files))
 	for i, f := range files {
 		if out[i] = s.deps.Transcoder.RemuxKeyframes(ctx, transcode.FileRef{ID: f.ID, Path: f.Path(), Duration: f.Probe.Duration}); out[i] == nil {
@@ -521,7 +521,7 @@ func (s *Service) open(ctx context.Context, pl *play) error {
 // accelerator is busy or fails as the job starts, the failure is recorded
 // and the job runs again on the CPU. The reason goes on the decision's
 // video track.
-func (s *Service) transcodeWithFallback(ctx context.Context, c *choice, run func(transcode.Spec) error) error {
+func (s *planner) transcodeWithFallback(ctx context.Context, c *choice, run func(transcode.Spec) error) error {
 	// try chooses the encoder for the video, if it transcodes video, and
 	// runs the transcode the decision describes.
 	try := func() error {
@@ -547,7 +547,7 @@ func (s *Service) transcodeWithFallback(ctx context.Context, c *choice, run func
 // accelerator), and the audio. It may also have a subtitle to burn in, or
 // one to carry in the stream or, for a download, in the file. A download
 // also carries its other text tracks in the file.
-func (s *Service) spec(ctx context.Context, c *choice) (transcode.Spec, error) {
+func (s *planner) spec(ctx context.Context, c *choice) (transcode.Spec, error) {
 	var spec transcode.Spec
 	for i, f := range c.files {
 		ref := transcode.FileRef{ID: f.ID, Path: f.Path(), Duration: f.Probe.Duration, Start: f.Probe.Start, Bitrate: f.Probe.Bitrate}

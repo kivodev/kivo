@@ -101,7 +101,7 @@ func TestADownloadHasItsAudioAndEverySubtitle(t *testing.T) {
 
 	hold := make(chan struct{})
 	f.extractions.set(nil, hold)
-	d, err := f.svc.Download(ctx, f.p, f.v, DownloadRequest{Work: a.work, AudioTrack: &a.jpn, SubtitleTrack: &a.pgs, Caps: tv})
+	d, err := f.dl.Request(ctx, f.p, f.v, DownloadRequest{Work: a.work, AudioTrack: &a.jpn, SubtitleTrack: &a.pgs, Caps: tv})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +142,7 @@ func TestADownloadHasItsAudioAndEverySubtitle(t *testing.T) {
 		}
 	}
 	for _, s := range d.ExternalSubtitles {
-		if _, err := f.svc.DownloadSubtitle(ctx, f.v, d.ID, s.Name); err != nil && s.Track != a.spanish && s.Track != a.italian && s.Track != a.german {
+		if _, err := f.dl.Subtitle(ctx, f.v, d.ID, s.Name); err != nil && s.Track != a.spanish && s.Track != a.italian && s.Track != a.german {
 			t.Errorf("subtitle %s: %v", s.Name, err)
 		}
 	}
@@ -176,7 +176,7 @@ func TestADownloadCarriesTheTextTracksItDoesntDeliverAsFiles(t *testing.T) {
 			f.extract(a.file, "", false)
 			caps := iPhone
 			caps.Subtitles = tt.subtitles
-			d, err := f.svc.Download(ctx, f.p, f.v, DownloadRequest{Work: a.work, AudioTrack: &a.jpn, SubtitleTrack: &a.pgs, Caps: caps})
+			d, err := f.dl.Request(ctx, f.p, f.v, DownloadRequest{Work: a.work, AudioTrack: &a.jpn, SubtitleTrack: &a.pgs, Caps: caps})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -235,7 +235,7 @@ func TestAPGSOnlyDownload(t *testing.T) {
 	f.extract(m.File, "", false)
 	cf, _ := f.b.Catalog.File(ctx, m.File)
 	jpn, pgs := cf.Tracks[2].ID, cf.Tracks[3].ID
-	d, err := f.svc.Download(ctx, f.p, f.v, DownloadRequest{Work: m.Work, AudioTrack: &jpn, SubtitleTrack: &pgs, Caps: tv})
+	d, err := f.dl.Request(ctx, f.p, f.v, DownloadRequest{Work: m.Work, AudioTrack: &jpn, SubtitleTrack: &pgs, Caps: tv})
 	if err != nil {
 		t.Fatal(err)
 	}

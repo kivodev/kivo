@@ -2,7 +2,6 @@ package playback
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -15,7 +14,6 @@ import (
 	"github.com/mmcdole/kivo/internal/fault"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/markers"
-	"github.com/mmcdole/kivo/internal/playback/dbq"
 	"github.com/mmcdole/kivo/internal/previews"
 	"github.com/mmcdole/kivo/internal/store"
 	"github.com/mmcdole/kivo/internal/subtitles"
@@ -69,7 +67,7 @@ func (e *RefusedError) Error() string { return fmt.Sprintf("%v: %s", e.Err, e.Re
 
 func (e *RefusedError) Unwrap() error { return e.Err }
 
-// Deps are the service's collaborators and folders.
+// Deps are the collaborators of plays and downloads.
 type Deps struct {
 	Catalog    *catalog.Catalog
 	Users      *users.Service
@@ -108,16 +106,15 @@ type Ended struct {
 	Message string // the admin's message to the viewer, when an admin stopped the play
 }
 
-// Service runs plays and downloads. Plays live in memory, so a restart
-// ends them and the client starts again from its saved position. Downloads
-// are kept in the database, so a restart doesn't lose them. A task finds
-// them there and prepares them.
+// Service runs plays. They live in memory, so a restart ends them and the
+// client starts again from its saved position.
 type Service struct {
+	*planner
 	db      *store.DB
-	q       *dbq.Queries
-	deps    Deps
 	created time.Time
 
+	// mu guards plays and the fields of each play that heartbeats and media
+	// requests update, stopped, reserved, starting, seeks and seekTime.
 	mu       sync.Mutex
 	plays    map[id.ID]*play
 	stopped  map[id.ID]stoppedPlay // plays an admin stopped, kept for a while so their players learn of it
@@ -125,26 +122,15 @@ type Service struct {
 	starting map[id.ID]int         // streams held for plays still starting, per user
 	seeks    int                   // number of seeks clients have timed
 	seekTime time.Duration         // total time to the first frame across those seeks
-	// preparing holds the downloads this process is preparing now, by ID.
-	preparing map[id.ID]*preparation
-	// attempts counts the tries at each download whose file couldn't be
-	// read.
-	attempts map[id.ID]int
-	// downloadsPrepared counts the downloads prepared since none were waiting, for
-	// the Downloads task's count.
-	downloadsPrepared int
-
-	accelFailure acceleratorFailure
 }
 
 // New returns the service.
 func New(db *store.DB, d Deps) *Service {
 	return &Service{
-		db: db, q: dbq.New(db.Reader()), deps: d, created: time.Now(),
-		plays:     map[id.ID]*play{},
-		stopped:   map[id.ID]stoppedPlay{},
-		starting:  map[id.ID]int{},
-		preparing: map[id.ID]*preparation{}, attempts: map[id.ID]int{},
+		planner: &planner{deps: d}, db: db, created: time.Now(),
+		plays:    map[id.ID]*play{},
+		stopped:  map[id.ID]stoppedPlay{},
+		starting: map[id.ID]int{},
 	}
 }
 
@@ -165,15 +151,6 @@ func (s *Service) Run(ctx context.Context) error {
 			s.endExpired(ctx)
 		}
 	}
-}
-
-// visible reports whether a viewer may see a work.
-func (s *Service) visible(ctx context.Context, v users.Viewer, work id.ID) (bool, error) {
-	err := s.deps.Catalog.Visible(ctx, v, work)
-	if errors.Is(err, catalog.ErrNotFound) {
-		return false, nil
-	}
-	return err == nil, err
 }
 
 // notify tells admins that "Now playing" changed.
