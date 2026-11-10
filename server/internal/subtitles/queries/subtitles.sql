@@ -1,12 +1,6 @@
 -- Reads of catalog's tables, and subtitles' own subtitle_file. What it
 -- extracts is in cache/, and what it downloads in data/.
 
--- name: FileGeneration :one
-SELECT generation FROM media_file WHERE id = @id;
-
--- name: FileGenerations :many
-SELECT id, generation FROM media_file WHERE id IN (SELECT unhex(value) FROM (SELECT CAST(@ids AS TEXT) AS ids), json_each(ids));
-
 -- name: Pending :many
 -- The present files with an embedded ASS, SSA or PGS track, in libraries
 -- that extract subtitles, whose subtitles aren't extracted or failed at

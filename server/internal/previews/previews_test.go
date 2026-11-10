@@ -155,7 +155,7 @@ func (f *fixture) change() {
 
 func (f *fixture) gen() int64 {
 	f.t.Helper()
-	cur, err := f.s.current(ctx, f.file)
+	cur, err := f.s.deps.Catalog.Generation(ctx, f.file)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -194,7 +194,7 @@ func TestStaleResultsAreDropped(t *testing.T) {
 	if err := f.run(); err != nil {
 		t.Fatal(err)
 	}
-	if f.s.has(f.file, f.gen()) || f.s.has(f.file, f.gen()-1) {
+	if f.s.results.Has(f.file, f.gen()) || f.s.results.Has(f.file, f.gen()-1) {
 		t.Fatal("a stale result was kept")
 	}
 	if p := f.pending(); !slices.Equal(p, []id.ID{f.file}) {
@@ -481,9 +481,9 @@ func TestPrune(t *testing.T) {
 	if err := f.run(); err != nil {
 		t.Fatal(err)
 	}
-	current := f.s.result(f.file, f.gen())
-	old := f.s.result(f.file, f.gen()+7)
-	deleted := f.s.result(id.New(), 1)
+	current := f.s.results.Path(f.file, f.gen())
+	old := f.s.results.Path(f.file, f.gen()+7)
+	deleted := f.s.results.Path(id.New(), 1)
 	for _, d := range []string{old, deleted} {
 		if err := os.MkdirAll(d, 0o755); err != nil {
 			t.Fatal(err)

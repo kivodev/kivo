@@ -218,14 +218,14 @@ func audioTrack(f catalog.File, language string) (int, bool) {
 
 // fingerprinted reports whether a file's fingerprint is kept at gen.
 func (s *Service) fingerprinted(file id.ID, gen int64) bool {
-	_, err := os.Stat(filepath.Join(s.result(file, gen), fingerprintFile))
+	_, err := os.Stat(filepath.Join(s.results.Path(file, gen), fingerprintFile))
 	return err == nil
 }
 
 // fingerprintAt returns a file's kept fingerprint, if it was fingerprinted
 // at gen.
 func (s *Service) fingerprintAt(file id.ID, gen int64) (*detect.Fingerprint, bool) {
-	b, err := os.ReadFile(filepath.Join(s.result(file, gen), fingerprintFile))
+	b, err := os.ReadFile(filepath.Join(s.results.Path(file, gen), fingerprintFile))
 	if err != nil {
 		return nil, false
 	}
@@ -238,7 +238,7 @@ func (s *Service) fingerprintAt(file id.ID, gen int64) (*detect.Fingerprint, boo
 
 // keepFingerprint puts a file's fingerprint in its result folder.
 func (s *Service) keepFingerprint(ctx context.Context, f catalog.File, fp *detect.Fingerprint) error {
-	tmp, err := cachedir.MakeTemp(s.resultDir())
+	tmp, err := cachedir.MakeTemp(s.results.Dir)
 	if err != nil {
 		return s.room.Err(err)
 	}
@@ -250,6 +250,6 @@ func (s *Service) keepFingerprint(ctx context.Context, f catalog.File, fp *detec
 	if err := os.WriteFile(filepath.Join(tmp, fingerprintFile), b, 0o644); err != nil {
 		return s.room.Err(err)
 	}
-	_, err = s.commit(ctx, f, tmp) // a stale fingerprint is dropped, and decide skips its file
+	_, err = s.results.Place(ctx, tmp, f.ID, f.Generation) // a stale fingerprint is dropped, and decide skips its file
 	return err
 }

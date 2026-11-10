@@ -18,41 +18,11 @@ SELECT generation FROM media_file WHERE id = ?1
 
 // Reads of catalog's tables. Readings live in cache/; the tables markers
 // writes are in markers.sql.
+// Read in the transaction that stores a file's markers, so they're stored
+// only for the generation they were found at.
 func (q *Queries) FileGeneration(ctx context.Context, argID id.ID) (int64, error) {
 	row := q.db.QueryRowContext(ctx, fileGeneration, argID)
 	var generation int64
 	err := row.Scan(&generation)
 	return generation, err
-}
-
-const fileGenerations = `-- name: FileGenerations :many
-SELECT id, generation FROM media_file WHERE id IN (SELECT unhex(value) FROM (SELECT CAST(?1 AS TEXT) AS ids), json_each(ids))
-`
-
-type FileGenerationsRow struct {
-	ID         id.ID
-	Generation int64
-}
-
-func (q *Queries) FileGenerations(ctx context.Context, ids string) ([]FileGenerationsRow, error) {
-	rows, err := q.db.QueryContext(ctx, fileGenerations, ids)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []FileGenerationsRow
-	for rows.Next() {
-		var i FileGenerationsRow
-		if err := rows.Scan(&i.ID, &i.Generation); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }

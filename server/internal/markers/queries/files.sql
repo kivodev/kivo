@@ -2,7 +2,6 @@
 -- writes are in markers.sql.
 
 -- name: FileGeneration :one
+-- Read in the transaction that stores a file's markers, so they're stored
+-- only for the generation they were found at.
 SELECT generation FROM media_file WHERE id = @id;
-
--- name: FileGenerations :many
-SELECT id, generation FROM media_file WHERE id IN (SELECT unhex(value) FROM (SELECT CAST(@ids AS TEXT) AS ids), json_each(ids));
