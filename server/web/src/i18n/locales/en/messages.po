@@ -315,6 +315,11 @@ msgstr "Set up later"
 msgid "List"
 msgstr "List"
 
+#. placeholder {0}: list.name
+#: src/features/lists/ListReorder.tsx
+msgid "Reorder {0}"
+msgstr "Reorder {0}"
+
 #: src/features/auth/LinkScreen.tsx
 msgid "Shown on the device you're signing in."
 msgstr "Shown on the device you're signing in."
@@ -793,6 +798,7 @@ msgstr "Nothing in your lists yet."
 msgid "{label} is set"
 msgstr "{label} is set"
 
+#: src/features/lists/ListScreen.tsx
 #: src/features/lists/smartLabels.ts
 msgid "{count, plural, one {# title} other {# titles}}"
 msgstr "{count, plural, one {# title} other {# titles}}"
@@ -1292,6 +1298,7 @@ msgstr "Playback Settings"
 #: src/features/admin/ApiKeysScreen.tsx
 #: src/features/admin/CreateInviteButton.tsx
 #: src/features/lists/AddToListDialog.tsx
+#: src/features/lists/ListScreen.tsx
 msgid "Done"
 msgstr "Done"
 
@@ -2636,6 +2643,10 @@ msgstr "Filter, some on"
 msgid "Only admin. Make another user an admin first."
 msgstr "Only admin. Make another user an admin first."
 
+#: src/features/lists/ListScreen.tsx
+msgid "Custom order"
+msgstr "Custom order"
+
 #: src/features/admin/EditBookForm.tsx
 msgid "Add series"
 msgstr "Add series"
@@ -3553,6 +3564,10 @@ msgstr "OpenSubtitles username"
 msgid "Move up: {name}"
 msgstr "Move up: {name}"
 
+#: src/features/lists/ListScreen.tsx
+msgid "Reorder"
+msgstr "Reorder"
+
 #: src/features/libraries/EditLibraryForm.tsx
 msgid "Use local metadata"
 msgstr "Use local metadata"
@@ -3670,10 +3685,6 @@ msgstr "For the parts in another language"
 #: src/features/history/HistoryScreen.tsx
 msgid "All users"
 msgstr "All users"
-
-#: src/features/lists/ListScreen.tsx
-msgid "{total, plural, one {# title} other {# titles}}"
-msgstr "{total, plural, one {# title} other {# titles}}"
 
 #: src/features/admin/AddUserButton.tsx
 msgid "Add user"
@@ -3960,6 +3971,10 @@ msgstr "Other videos"
 #: src/features/admin/EditBookForm.tsx
 msgid "Remove {0}"
 msgstr "Remove {0}"
+
+#: src/features/lists/ListScreen.tsx
+msgid "Date added to list"
+msgstr "Date added to list"
 
 #: src/features/admin/TaskButtons.tsx
 msgid "Run now"

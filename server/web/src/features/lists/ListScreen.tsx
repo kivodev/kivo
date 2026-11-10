@@ -3,7 +3,7 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
 import { listQueries, useDeleteList, useUpdateList } from "@/api/lists";
-import type { WorkList, WorkSummary } from "@/api/schemas";
+import type { ListSort, WorkList, WorkSummary } from "@/api/schemas";
 import { gridPageSize, gridPages, workQueries } from "@/api/works";
 import { Button, buttonClass } from "@/components/Button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -15,21 +15,29 @@ import { LoadError } from "@/components/LoadError";
 import { Menu, MenuItem } from "@/components/Menu";
 import { ModalDialog } from "@/components/ModalDialog";
 import { CountSkeleton, GridSkeleton } from "@/components/Skeleton";
+import { SortMenu, useSortWords } from "@/features/browse/CountLine";
+import { useBrowseLabels } from "@/features/browse/useBrowseLabels";
 import { type GridRange, useRefetchFailed, VirtualGrid } from "@/features/browse/VirtualGrid";
 import { WorkCard, workShape } from "@/features/browse/WorkCard";
 import { isTv } from "@/tv/flag";
-import { useTvEmptyScreen } from "@/tv/focus";
+import { TvFocusable, useTvEmptyScreen } from "@/tv/focus";
 import { ListNameForm } from "./ListNameForm";
+import { ListReorder } from "./ListReorder";
 import { SmartListDialog } from "./SmartListDialog";
 import { SmartSummary } from "./SmartSummary";
 
 const listRoute = getRouteApi("/authed/lists/$listId");
 
+/** The sorts of a manual list, in the menu's order. */
+const listSorts = ["custom", "title", "releaseDate", "rating", "dateAdded"] as const satisfies readonly ListSort[];
+
 /**
- * A list's works in a grid without sort, filters or letters, each card in
- * its own shape: a manual list's most recently added first, a smart list's
- * by its rules. A list the user made can be renamed or deleted, except on
- * TV, and a smart list's rules can be edited there too.
+ * A list's works in a grid without filters or letters, each card in its
+ * own shape: a manual list's in the sort its count line names and sets, a
+ * smart list's by its rules. Except on TV, a manual list's ⋯ menu has
+ * Reorder, which lists the works as rows to drag into a custom order, a
+ * list the user made can be renamed or deleted there, and a smart list's
+ * rules can be edited.
  */
 export function ListScreen() {
   const { t } = useLingui();
@@ -38,6 +46,7 @@ export function ListScreen() {
   useDocumentTitle(list.data?.name ?? t`Lists`);
   const manual = list.data?.kind === "manual" ? list.data : undefined;
   const smart = list.data?.smart;
+  const [reordering, setReordering] = useState(false);
   const renderCard = useCallback(
     (work: WorkSummary, width: number) => (
       <WorkCard work={work} shape={workShape(work.kind)} width={width} list={manual} />
@@ -72,16 +81,22 @@ export function ListScreen() {
             </Link>
           )}
           <h1 className="min-w-0 flex-1 truncate text-2xl font-semibold">{list.data?.name}</h1>
-          {!isTv && list.data && !list.data.builtIn && <ListActions list={list.data} />}
+          {reordering ? (
+            <Button variant="primary" size="md" onPress={() => setReordering(false)}>
+              <Trans>Done</Trans>
+            </Button>
+          ) : (
+            !isTv && list.data && <ListActions list={list.data} onReorder={() => setReordering(true)} />
+          )}
         </div>
         {first ? (
-          <p data-part="library-count" className="truncate text-sm text-text-muted">
-            {smart && !isTv ? (
+          smart && !isTv ? (
+            <p data-part="library-count" className="truncate text-sm text-text-muted">
               <SmartSummary query={smart.query} count={total} />
-            ) : (
-              <Plural value={total} one="# title" other="# titles" />
-            )}
-          </p>
+            </p>
+          ) : (
+            <CountLine count={total} list={reordering ? undefined : manual} />
+          )
         ) : (
           !read.isError && <CountSkeleton />
         )}
@@ -110,6 +125,8 @@ export function ListScreen() {
             <Trans>Titles you add to this list appear here.</Trans>
           )}
         </EmptyState>
+      ) : reordering && manual ? (
+        <ListReorder list={manual} />
       ) : (
         <VirtualGrid
           items={items}
@@ -124,8 +141,49 @@ export function ListScreen() {
   );
 }
 
-/** A list the user made: Edit, if it's smart, and the ⋯ menu's Rename and Delete. */
-function ListActions({ list }: { list: WorkList }) {
+/**
+ * How many titles the list has and, for a manual list, its sort, which
+ * opens the sort menu. On TV the two are one focusable, as on a library.
+ */
+function CountLine({ count, list }: { count: number; list: WorkList | undefined }) {
+  const { t } = useLingui();
+  const labels = useBrowseLabels().sort;
+  const words = useSortWords();
+  const update = useUpdateList();
+  const line = (
+    <div data-part="library-count" className="flex items-center gap-1.5 text-sm text-text-muted">
+      <span>
+        <Plural value={count} one="# title" other="# titles" />
+      </span>
+      {list && (
+        <>
+          <span aria-hidden="true">·</span>
+          <SortMenu
+            options={listSorts}
+            // The sort just chosen shows while it is being saved.
+            selected={(update.isPending && update.variables.body.sort) || (list.sort ?? "custom")}
+            labels={{ ...labels, custom: t`Custom order`, dateAdded: t`Date added to list` }}
+            words={{ ...words, custom: t`Custom order`, dateAdded: words.addedAt }}
+            onChange={(sort) => update.mutate({ params: { path: { id: list.id } }, body: { sort } })}
+          />
+        </>
+      )}
+    </div>
+  );
+  return isTv && list ? (
+    <TvFocusable focusKey="sort" face="inside" className="w-fit">
+      {line}
+    </TvFocusable>
+  ) : (
+    line
+  );
+}
+
+/**
+ * A list's actions: Edit, if it's smart, and the ⋯ menu's Reorder for a
+ * manual list and Rename and Delete for one the user made.
+ */
+function ListActions({ list, onReorder }: { list: WorkList; onReorder: () => void }) {
   const { t } = useLingui();
   const navigate = useNavigate();
   const rename = useUpdateList();
@@ -138,13 +196,16 @@ function ListActions({ list }: { list: WorkList }) {
           <Trans>Edit</Trans>
         </Button>
       )}
-      <Menu>
-        <Button aria-label={t`More actions for ${list.name}`} variant="secondary" size="icon">
-          <Icon name="more" />
-        </Button>
-        <MenuItem onAction={() => setOpen("rename")}>{t`Rename`}</MenuItem>
-        <MenuItem onAction={() => setOpen("delete")}>{t`Delete`}</MenuItem>
-      </Menu>
+      {(!list.smart || !list.builtIn) && (
+        <Menu>
+          <Button aria-label={t`More actions for ${list.name}`} variant="secondary" size="icon">
+            <Icon name="more" />
+          </Button>
+          {!list.smart && <MenuItem onAction={onReorder}>{t`Reorder`}</MenuItem>}
+          {!list.builtIn && <MenuItem onAction={() => setOpen("rename")}>{t`Rename`}</MenuItem>}
+          {!list.builtIn && <MenuItem onAction={() => setOpen("delete")}>{t`Delete`}</MenuItem>}
+        </Menu>
+      )}
       {open === "edit" && list.smart && (
         <SmartListDialog
           listId={list.id}

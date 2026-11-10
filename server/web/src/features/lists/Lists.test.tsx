@@ -1,8 +1,8 @@
-import { fireEvent, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { MockApi } from "@/api/mocks/api";
 import { renderApp, screen } from "@/test/render";
-import { mockIds, sendEvent, sent, serveMockApi } from "@/test/server";
+import { http, mockIds, problem, sendEvent, sent, serveMockApi, server } from "@/test/server";
 
 const emptyMyList = (api: MockApi) => {
   const myList = api.lists.find((l) => l.builtIn);
@@ -104,11 +104,98 @@ describe("A list's page", () => {
     expect(await screen.findByRole("heading", { name: "Watchlist", level: 1 })).toBeInTheDocument();
     expect(await screen.findByText("2 titles")).toBeInTheDocument();
     const card = (await screen.findAllByRole("link", { name: /^The Expanse/ }))[0] as HTMLElement;
-    expect(screen.queryByRole("button", { name: "More actions for Watchlist" })).toBeNull();
     fireEvent.contextMenu(card);
     await user.click(await screen.findByRole("menuitem", { name: "Remove from Watchlist" }));
     await waitFor(() => expect(sent("DELETE", `/lists/${mockIds.myList}/works/${mockIds.expanse}`)).toHaveLength(1));
     expect(await screen.findByText("1 title")).toBeInTheDocument();
+  });
+
+  it("sorts a manual list from its count line, and its shelf follows", async () => {
+    serveMockApi((api) => {
+      api.lists.find((l) => l.builtIn)?.workIds.reverse();
+    });
+    const { user } = renderApp(`/lists/${mockIds.myList}`);
+    const first = () => screen.getAllByRole("link", { name: /^(Dune|The Expanse)/ })[0];
+    const sort = await screen.findByRole("button", { name: /Sort/ });
+    expect(sort).toHaveTextContent("Custom order");
+    await waitFor(() => expect(first()).toHaveAccessibleName(/^The Expanse/));
+    await user.click(sort);
+    expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual([
+      "Custom order",
+      "Title",
+      "Release date",
+      "Rating",
+      "Date added to list",
+    ]);
+    await user.click(screen.getByRole("option", { name: "Title" }));
+    await waitFor(() => expect(sent("PATCH", `/lists/${mockIds.myList}`).at(-1)?.body).toEqual({ sort: "title" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /Sort/ })).toHaveTextContent("A–Z"));
+    await waitFor(() => expect(first()).toHaveAccessibleName(/^Dune/));
+    // A smart list's rules order it, so it has no sort.
+    await user.click(screen.getAllByRole("link", { name: "Lists" }).at(-1) as HTMLElement);
+    const shelf = (await screen.findByRole("heading", { name: /^Watchlist/, level: 2 })).closest(
+      "[data-part='row']",
+    ) as HTMLElement;
+    expect(within(shelf).getAllByRole("link", { name: /^(Dune|The Expanse)/ })[0]).toHaveAccessibleName(/^Dune/);
+    await user.click(screen.getByRole("link", { name: "Sci-fi" }));
+    expect(await screen.findByRole("heading", { name: "Sci-fi", level: 1 })).toBeInTheDocument();
+    await screen.findByText(/2 titles|Science Fiction/);
+    expect(screen.queryByRole("button", { name: /Sort/ })).toBeNull();
+  });
+
+  it("reorders a manual list by its rows' handles, from the keyboard, until Done", async () => {
+    serveMockApi((api) => {
+      const myList = api.lists.find((l) => l.builtIn);
+      if (myList) myList.sort = "title";
+    });
+    const { user } = renderApp(`/lists/${mockIds.myList}`);
+    await user.click(await screen.findByRole("button", { name: "More actions for Watchlist" }));
+    // Watchlist can be reordered, and not renamed or deleted.
+    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Reorder"]);
+    await user.click(screen.getByRole("menuitem", { name: "Reorder" }));
+    const order = await screen.findByRole("grid", { name: "Reorder Watchlist" });
+    const rows = () =>
+      within(order)
+        .getAllByRole("row")
+        .map((row) => row.textContent);
+    expect(rows()).toEqual(["Dune2021", "The Expanse2015"]);
+    expect(screen.queryByRole("button", { name: /Sort/ })).toBeNull();
+    expect(sent("GET", `/lists/${mockIds.myList}/works`).at(-1)?.url.search).toContain("sort=custom");
+
+    const focused = () => document.activeElement?.getAttribute("aria-label");
+    act(() => within(order).getAllByRole("row")[0]?.focus());
+    await user.keyboard("{ArrowRight}");
+    expect(focused()).toBe("Drag Dune");
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(focused()).toMatch(/^Insert /));
+    await user.keyboard("{ArrowDown}{Enter}");
+    await waitFor(() => expect(sent("POST", `/lists/${mockIds.myList}/move`)).toHaveLength(1));
+    expect(sent("POST", `/lists/${mockIds.myList}/move`)[0]?.body).toEqual({
+      workIds: [mockIds.dune],
+      after: mockIds.expanse,
+    });
+    await waitFor(() => expect(rows()).toEqual(["The Expanse2015", "Dune2021"]));
+
+    // Done shows the grid again, in the custom order a move sets.
+    await user.click(screen.getByRole("button", { name: "Done" }));
+    await waitFor(() => expect(screen.queryByRole("grid", { name: "Reorder Watchlist" })).toBeNull());
+    expect(await screen.findByRole("button", { name: /Sort/ })).toHaveTextContent("Custom order");
+    expect(screen.getAllByRole("link", { name: /^(Dune|The Expanse)/ })[0]).toHaveAccessibleName(/^The Expanse/);
+  });
+
+  it("puts a row back when its move fails", async () => {
+    serveMockApi();
+    server.use(http.post("/api/v1/lists/{id}/move", () => problem(409, "conflict")));
+    const { user } = renderApp(`/lists/${mockIds.myList}`);
+    await user.click(await screen.findByRole("button", { name: "More actions for Watchlist" }));
+    await user.click(screen.getByRole("menuitem", { name: "Reorder" }));
+    const order = await screen.findByRole("grid", { name: "Reorder Watchlist" });
+    act(() => within(order).getAllByRole("row")[0]?.focus());
+    await user.keyboard("{ArrowRight}{Enter}");
+    await waitFor(() => expect(document.activeElement?.getAttribute("aria-label")).toMatch(/^Insert /));
+    await user.keyboard("{ArrowDown}{Enter}");
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(within(order).getAllByRole("row")[0]).toHaveTextContent("Dune");
   });
 
   it("renames a list, saying when the name is in use", async () => {
