@@ -15,12 +15,11 @@ import (
 	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/encoding/unicode"
 
-	"github.com/mmcdole/kivo/internal/fault"
 	"github.com/mmcdole/kivo/internal/media"
 )
 
 // ErrFormat means the format is one WebVTT doesn't convert.
-var ErrFormat = fault.New(fault.Internal, "unsupported format")
+var ErrFormat = errors.New("unsupported format")
 
 // maxSize caps how much is read. A feature film's subtitles are well under 1 MB.
 const maxSize = 16 << 20

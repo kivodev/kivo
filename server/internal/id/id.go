@@ -4,18 +4,17 @@ import (
 	"crypto/rand"
 	"database/sql/driver"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
-
-	"github.com/mmcdole/kivo/internal/fault"
 )
 
 // ID is a UUIDv7 (RFC 9562). The zero value means "no ID".
 type ID [16]byte
 
 // ErrInvalid is returned when text or a database value isn't a valid ID.
-var ErrInvalid = fault.New(fault.Internal, "invalid id")
+var ErrInvalid = errors.New("invalid id")
 
 var (
 	mu     sync.Mutex

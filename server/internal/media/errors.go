@@ -1,25 +1,25 @@
 package media
 
-import "github.com/mmcdole/kivo/internal/fault"
+import "errors"
 
 // Every failure is one of these errors, and each calls for one response.
 // Match them with errors.Is. Use errors.As with *Error to get the
 // diagnostics.
 var (
 	// ErrSourceUnreadable is a transient I/O failure. Retry later.
-	ErrSourceUnreadable = fault.New(fault.Internal, "source unreadable")
+	ErrSourceUnreadable = errors.New("source unreadable")
 	// ErrSourceCorrupt means ffmpeg or a parser found the file broken.
-	ErrSourceCorrupt = fault.New(fault.Internal, "source corrupt")
+	ErrSourceCorrupt = errors.New("source corrupt")
 	// ErrUnsupported means this rendition can't be produced. Fail the job.
-	ErrUnsupported = fault.New(fault.Internal, "unsupported")
+	ErrUnsupported = errors.New("unsupported")
 	// ErrEncoderBusy means the accelerator has no capacity.
-	ErrEncoderBusy = fault.New(fault.Internal, "encoder busy")
+	ErrEncoderBusy = errors.New("encoder busy")
 	// ErrEncoderFailed is an accelerator or encoder failure.
-	ErrEncoderFailed = fault.New(fault.Internal, "encoder failed")
+	ErrEncoderFailed = errors.New("encoder failed")
 	// ErrTimeout means the caller's deadline passed.
-	ErrTimeout = fault.New(fault.Internal, "timed out")
+	ErrTimeout = errors.New("timed out")
 	// ErrCancelled means the caller cancelled, or closed the output.
-	ErrCancelled = fault.New(fault.Internal, "cancelled")
+	ErrCancelled = errors.New("cancelled")
 )
 
 // Error is a failed run or a refused request. It unwraps to Kind, one of

@@ -15,24 +15,24 @@ import (
 var (
 	// ErrStorageFull means the transcode disk is below its free-space
 	// floor. The playback package refuses the play with that reason.
-	ErrStorageFull = fault.New(fault.Internal, "transcode disk is below its free-space floor")
+	ErrStorageFull = errors.New("transcode disk is below its free-space floor")
 	// ErrUnsupported means the spec can't be planned. For example, a remux
 	// needs each part's keyframes from RemuxKeyframes.
-	ErrUnsupported = fault.New(fault.Internal, "can't plan this rendition")
+	ErrUnsupported = errors.New("can't plan this rendition")
 	// ErrAcceleratorFailed means an accelerator reported busy or failed
 	// before a job's first segment. This package never switches
 	// accelerators. The playback package opens the stream's transcode again
 	// in software instead.
-	ErrAcceleratorFailed = fault.New(fault.Internal, "accelerator busy or failed before the first segment")
+	ErrAcceleratorFailed = errors.New("accelerator busy or failed before the first segment")
 	// ErrJobFailed means the stream's job failed. The source is corrupt,
 	// the rendition can't be made, or the encoder failed after the job's
 	// first segment. The client falls back to a new play.
-	ErrJobFailed = fault.New(fault.Internal, "job failed")
+	ErrJobFailed = errors.New("job failed")
 	// ErrNotFound means a playlist or segment name is invalid or out of
 	// range.
 	ErrNotFound = fault.New(fault.NotFound, "no such playlist or segment")
 	// ErrClosed means the stream has ended.
-	ErrClosed = fault.New(fault.Internal, "stream closed")
+	ErrClosed = errors.New("stream closed")
 )
 
 // Media is the part of the media package that this package uses.

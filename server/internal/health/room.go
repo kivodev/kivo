@@ -7,8 +7,6 @@ import (
 	"sync"
 	"syscall"
 	"time"
-
-	"github.com/mmcdole/kivo/internal/fault"
 )
 
 // minFree is the free space below which a Room's disk counts as full.
@@ -16,7 +14,7 @@ const minFree = 1 << 30
 
 // ErrDiskFull means a Room's disk is almost full. The work that writes to
 // it waits for a later pass.
-var ErrDiskFull = fault.New(fault.Internal, "disk full")
+var ErrDiskFull = errors.New("disk full")
 
 // A Room watches the free space of a disk that work writes to. While the
 // disk is almost full it reports a problem, until work finds room again.

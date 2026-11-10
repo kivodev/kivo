@@ -14,8 +14,6 @@ import (
 	"strings"
 	"syscall"
 	"time"
-
-	"github.com/mmcdole/kivo/internal/fault"
 )
 
 // MaxBody is the largest response body Get reads. It is big enough for
@@ -34,9 +32,9 @@ const (
 var (
 	// ErrRefused means the request would leave HTTPS or reach an address
 	// that isn't on the public internet.
-	ErrRefused = fault.New(fault.Internal, "refused")
+	ErrRefused = errors.New("refused")
 	// ErrTooLarge means the response body is over MaxBody.
-	ErrTooLarge = fault.New(fault.Internal, "response too large")
+	ErrTooLarge = errors.New("response too large")
 )
 
 // Response is a complete response. Callers interpret the status.
