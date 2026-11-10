@@ -63,6 +63,9 @@ func (h *handlers) ListHomeRows(ctx context.Context, _ gen.ListHomeRowsRequestOb
 	return gen.ListHomeRows200JSONResponse(rows), nil
 }
 
+// UpdateHomeRows checks the row IDs and arranges the rows here because users
+// saves the layout but only query knows which rows exist, and query imports
+// users, so users can't ask it.
 func (h *handlers) UpdateHomeRows(ctx context.Context, req gen.UpdateHomeRowsRequestObject) (gen.UpdateHomeRowsResponseObject, error) {
 	v := callerOf(ctx).viewer
 	changes := make([]users.HomeRow, len(req.Body.Items))

@@ -120,7 +120,7 @@ func TestLibrariesMustBeChosen(t *testing.T) {
 		t.Fatalf("unknown library: err = %v, want ErrUnknownLibrary", err)
 	}
 	u := f.user(NewUser{Username: "ben"})
-	if err := f.s.Update(ctx, u.ID, Change{Grants: &Grants{}}); !errors.Is(err, ErrNoLibraries) {
+	if err := f.s.Update(ctx, id.ID{}, u.ID, Change{Grants: &Grants{}}); !errors.Is(err, ErrNoLibraries) {
 		t.Fatalf("update to no libraries: err = %v, want ErrNoLibraries", err)
 	}
 }
@@ -146,7 +146,7 @@ func TestViewerGrants(t *testing.T) {
 	}
 
 	// Revoking a grant applies to the next Viewer.
-	if err := f.s.Update(ctx, u.ID, Change{Grants: &Grants{Libraries: []id.ID{b}}}); err != nil {
+	if err := f.s.Update(ctx, id.ID{}, u.ID, Change{Grants: &Grants{Libraries: []id.ID{b}}}); err != nil {
 		t.Fatal(err)
 	}
 	if f.viewer(u.ID).CanSee(a) {
@@ -154,7 +154,7 @@ func TestViewerGrants(t *testing.T) {
 	}
 
 	// Grant every library, then a list again.
-	if err := f.s.Update(ctx, u.ID, Change{Grants: &Grants{All: true}}); err != nil {
+	if err := f.s.Update(ctx, id.ID{}, u.ID, Change{Grants: &Grants{All: true}}); err != nil {
 		t.Fatal(err)
 	}
 	if v := f.viewer(u.ID); !v.AllLibraries() || !v.CanSee(c) || v.CanSee(id.ID{}) {
@@ -163,14 +163,14 @@ func TestViewerGrants(t *testing.T) {
 	if got, _ := f.s.User(ctx, u.ID); !got.Grants.All || len(got.Grants.Libraries) != 0 {
 		t.Fatalf("Grants = %+v, want all", got.Grants)
 	}
-	if err := f.s.Update(ctx, u.ID, Change{Grants: &Grants{Libraries: []id.ID{c}}}); err != nil {
+	if err := f.s.Update(ctx, id.ID{}, u.ID, Change{Grants: &Grants{Libraries: []id.ID{c}}}); err != nil {
 		t.Fatal(err)
 	}
 	if v := f.viewer(u.ID); v.AllLibraries() || !slices.Equal(v.Libraries(), []id.ID{c}) {
 		t.Fatalf("back to a list: %+v", v)
 	}
 
-	if err := f.s.Update(ctx, id.New(), Change{Grants: &Grants{All: true}}); !errors.Is(err, ErrNotFound) {
+	if err := f.s.Update(ctx, id.ID{}, id.New(), Change{Grants: &Grants{All: true}}); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("Update on a missing user: err = %v", err)
 	}
 }
@@ -183,7 +183,7 @@ func TestViewerParental(t *testing.T) {
 	if c, ok := v.RatingCeiling(); !ok || c != 7 || v.ShowsUnrated() || v.Admin() {
 		t.Fatalf("kid Viewer: %+v", v)
 	}
-	if err := f.s.Update(ctx, u.ID, Change{Parental: &Parental{}}); err != nil {
+	if err := f.s.Update(ctx, id.ID{}, u.ID, Change{Parental: &Parental{}}); err != nil {
 		t.Fatal(err)
 	}
 	v = f.viewer(u.ID)
@@ -201,13 +201,13 @@ func TestViewerOfDisabledUser(t *testing.T) {
 	if _, err := f.s.Viewer(ctx, id.New()); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("missing user: err = %v, want ErrNotFound", err)
 	}
-	if err := f.s.Update(ctx, u.ID, Change{Disabled: ptr(true)}); err != nil {
+	if err := f.s.Update(ctx, id.ID{}, u.ID, Change{Disabled: ptr(true)}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := f.s.Viewer(ctx, u.ID); !errors.Is(err, ErrDisabled) {
 		t.Fatalf("disabled user: err = %v, want ErrDisabled", err)
 	}
-	if err := f.s.Update(ctx, u.ID, Change{Disabled: ptr(false)}); err != nil {
+	if err := f.s.Update(ctx, id.ID{}, u.ID, Change{Disabled: ptr(false)}); err != nil {
 		t.Fatal(err)
 	}
 	f.viewer(u.ID)
@@ -220,18 +220,18 @@ func TestLastAdmin(t *testing.T) {
 	b := f.user(NewUser{Username: "b", Admin: true})
 	c := f.user(NewUser{Username: "c"})
 
-	if err := f.s.Update(ctx, a.ID, Change{Disabled: ptr(true)}); err != nil {
+	if err := f.s.Update(ctx, id.ID{}, a.ID, Change{Disabled: ptr(true)}); err != nil {
 		t.Fatal(err)
 	}
 	for name, change := range map[string]Change{
 		"disable":  {Disabled: ptr(true)},
 		"un-admin": {Admin: ptr(false)},
 	} {
-		if err := f.s.Update(ctx, b.ID, change); !errors.Is(err, ErrLastAdmin) {
+		if err := f.s.Update(ctx, id.ID{}, b.ID, change); !errors.Is(err, ErrLastAdmin) {
 			t.Errorf("%s the last admin: err = %v, want ErrLastAdmin", name, err)
 		}
 	}
-	if err := f.s.Delete(ctx, b.ID); !errors.Is(err, ErrLastAdmin) {
+	if err := f.s.Delete(ctx, id.ID{}, b.ID); !errors.Is(err, ErrLastAdmin) {
 		t.Fatalf("deleting the last admin: err = %v, want ErrLastAdmin", err)
 	}
 	// A refused change changes nothing.
@@ -240,17 +240,51 @@ func TestLastAdmin(t *testing.T) {
 	}
 
 	// Another admin makes it possible.
-	if err := f.s.Update(ctx, c.ID, Change{Admin: ptr(true)}); err != nil {
+	if err := f.s.Update(ctx, id.ID{}, c.ID, Change{Admin: ptr(true)}); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.s.Delete(ctx, b.ID); err != nil {
+	if err := f.s.Delete(ctx, id.ID{}, b.ID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := f.s.User(ctx, b.ID); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("deleted user: err = %v", err)
 	}
-	if err := f.s.Delete(ctx, b.ID); !errors.Is(err, ErrNotFound) {
+	if err := f.s.Delete(ctx, id.ID{}, b.ID); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("deleting again: err = %v, want ErrNotFound", err)
+	}
+}
+
+// TestOwnUser checks that a user can't disable, remove admin from or
+// delete their own user, even with another admin left. Another admin can.
+func TestOwnUser(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	a := f.user(NewUser{Username: "a", Admin: true})
+	b := f.user(NewUser{Username: "b", Admin: true})
+
+	for name, change := range map[string]Change{
+		"disable":             {Disabled: ptr(true)},
+		"un-admin":            {Admin: ptr(false)},
+		"un-admin and rename": {Admin: ptr(false), Username: ptr("")},
+	} {
+		if err := f.s.Update(ctx, a.ID, a.ID, change); !errors.Is(err, ErrOwnUser) {
+			t.Errorf("%s oneself: err = %v, want ErrOwnUser", name, err)
+		}
+	}
+	if err := f.s.Delete(ctx, a.ID, a.ID); !errors.Is(err, ErrOwnUser) {
+		t.Errorf("deleting oneself: err = %v, want ErrOwnUser", err)
+	}
+	if got, _ := f.s.User(ctx, a.ID); !got.Admin || got.Disabled {
+		t.Fatalf("after refusals: %+v", got)
+	}
+	if err := f.s.Update(ctx, a.ID, a.ID, Change{Admin: ptr(true), Disabled: ptr(false), Username: ptr("ann")}); err != nil {
+		t.Errorf("keeping oneself an enabled admin: %v", err)
+	}
+	if err := f.s.Update(ctx, b.ID, a.ID, Change{Admin: ptr(false)}); err != nil {
+		t.Errorf("another admin removes admin: %v", err)
+	}
+	if err := f.s.Delete(ctx, b.ID, a.ID); err != nil {
+		t.Errorf("another admin deletes: %v", err)
 	}
 }
 

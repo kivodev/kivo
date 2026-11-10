@@ -21,6 +21,8 @@ import (
 	"github.com/mmcdole/kivo/internal/store"
 	"github.com/mmcdole/kivo/internal/subtitles/dbq"
 	"github.com/mmcdole/kivo/internal/tasks"
+	"github.com/mmcdole/kivo/internal/users"
+	"github.com/mmcdole/kivo/internal/userstate"
 )
 
 // The tasks subtitles runs.
@@ -46,6 +48,10 @@ type Tasks interface {
 // Deps are the service's collaborators and folders.
 type Deps struct {
 	Catalog *catalog.Catalog
+	// Users hold each user's subtitle language. Userstate holds the
+	// subtitles a user last chose for a series.
+	Users     *users.Service
+	Userstate *userstate.Service
 	// Settings hold the OpenSubtitles credentials.
 	Settings *config.Store
 	Media    Media

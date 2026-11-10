@@ -31,6 +31,9 @@ var (
 	ErrInvalidName = fault.New(fault.Invalid, "invalid name")
 	// ErrLastAdmin means the change would leave no enabled admin.
 	ErrLastAdmin = fault.Coded(fault.Conflict, "lastAdmin", "last admin")
+	// ErrOwnUser means an admin would delete, disable or remove admin from
+	// their own user.
+	ErrOwnUser = fault.Coded(fault.Conflict, "ownUser", "own user")
 	// ErrNoLibraries means a user was given neither every library nor
 	// any one of them.
 	ErrNoLibraries = fault.New(fault.Invalid, "no libraries chosen")
@@ -165,10 +168,15 @@ func (s *Service) CreateUser(ctx context.Context, tx *store.Tx, u NewUser) (User
 	return out, nil
 }
 
-// Update applies a change to a user in one write. It refuses a change that
-// would leave no enabled admin. A new username is checked the same way as
-// at creation.
-func (s *Service) Update(ctx context.Context, user id.ID, c Change) error {
+// Update applies a change to a user in one write, made by the user by. It
+// refuses with ErrOwnUser a change by a user to their own that disables
+// them or removes their admin, and with ErrLastAdmin a change that would
+// leave no enabled admin. A new username is checked the same way as at
+// creation.
+func (s *Service) Update(ctx context.Context, by, user id.ID, c Change) error {
+	if by == user && (c.Admin != nil && !*c.Admin || c.Disabled != nil && *c.Disabled) {
+		return ErrOwnUser
+	}
 	if c.Grants != nil && !c.Grants.All && len(c.Grants.Libraries) == 0 {
 		return ErrNoLibraries
 	}
@@ -243,8 +251,12 @@ func (s *Service) Update(ctx context.Context, user id.ID, c Change) error {
 }
 
 // Delete deletes a user with its grants, sessions, watch state and
-// history. It refuses to delete the last enabled admin.
-func (s *Service) Delete(ctx context.Context, user id.ID) error {
+// history, as the user by asks. It refuses with ErrOwnUser to delete by
+// itself, and with ErrLastAdmin to delete the last enabled admin.
+func (s *Service) Delete(ctx context.Context, by, user id.ID) error {
+	if by == user {
+		return ErrOwnUser
+	}
 	err := s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
 		q := dbq.New(tx)
 		if n, err := q.DeleteUser(ctx, user); err != nil {

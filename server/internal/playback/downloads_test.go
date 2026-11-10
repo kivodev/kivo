@@ -877,11 +877,11 @@ func TestAvailability(t *testing.T) {
 	check(f.v, true, false, false)
 
 	other, _ := f.b.Library(catalog.Movies)
-	if err := f.users.Update(ctx, f.p.User, users.Change{Grants: &users.Grants{Libraries: []id.ID{other}}}); err != nil {
+	if err := f.users.Update(ctx, id.ID{}, f.p.User, users.Change{Grants: &users.Grants{Libraries: []id.ID{other}}}); err != nil {
 		t.Fatal(err)
 	}
 	check(f.viewer(), false, false, false)
-	if err := f.users.Update(ctx, f.p.User, users.Change{Grants: &users.Grants{All: true}}); err != nil {
+	if err := f.users.Update(ctx, id.ID{}, f.p.User, users.Change{Grants: &users.Grants{All: true}}); err != nil {
 		t.Fatal(err)
 	}
 	f.exec("UPDATE user SET downloads_allowed = 0")

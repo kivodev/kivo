@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"regexp"
 	"slices"
 	"strconv"
@@ -11,8 +12,10 @@ import (
 	"time"
 
 	"github.com/mmcdole/kivo/internal/catalog/dbq"
+	"github.com/mmcdole/kivo/internal/fault"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/store"
+	"github.com/mmcdole/kivo/internal/users"
 )
 
 // Fields of a book that an admin can edit. An edited field locks against
@@ -341,14 +344,24 @@ type SeriesEdit struct {
 	KeepPosition bool
 }
 
-// EditBooks is an admin's batch edit of books, in one write.
-func (c *Catalog) EditBooks(ctx context.Context, works []id.ID, e BookEdit) error {
+// EditBooks is an admin's batch edit of books, in one write. Every work
+// must be one the Viewer can see, or the batch fails with ErrNotFound. Then
+// every work must be a book, or it fails with ErrNotABook about /workIds.
+func (c *Catalog) EditBooks(ctx context.Context, v users.Viewer, works []id.ID, e BookEdit) error {
+	for _, w := range works {
+		if err := c.Visible(ctx, v, w); err != nil {
+			return err
+		}
+	}
 	err := c.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
 		q := dbq.New(tx)
 		for _, w := range works {
 			cur, err := q.GetWork(ctx, w)
 			if err != nil {
 				return notFound(err)
+			}
+			if WorkKind(cur.Kind) != KindBook {
+				return fault.About(fmt.Errorf("%w: %s", ErrNotABook, w), fault.Field{Name: "/workIds", Code: "notABook"})
 			}
 			m := WorkMetadata{Genres: e.Genres, Book: &BookMetadata{Authors: e.Authors, Narrators: e.Narrators}}
 			var fields []string

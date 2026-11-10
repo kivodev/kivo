@@ -15,6 +15,7 @@ import (
 	"github.com/mmcdole/kivo/internal/metadata"
 	"github.com/mmcdole/kivo/internal/playback"
 	"github.com/mmcdole/kivo/internal/subtitles"
+	"github.com/mmcdole/kivo/internal/users"
 )
 
 // statusClientClosed is nginx's status for a request whose client hung up
@@ -63,12 +64,18 @@ func field(name, code string) gen.FieldError {
 
 var errNotFound = problem{status: http.StatusNotFound, code: codeNotFound}
 
+// errOwnUser is users.ErrOwnUser's problem, which has no detail.
+var errOwnUser = problem{status: http.StatusConflict, code: codeOwnUser}
+
 // problemFor maps an error from a service to its problem. Anything it
 // doesn't know is a 500 whose text stays in the log.
 func problemFor(err error) (problem, bool) {
 	var p problem
 	if errors.As(err, &p) {
 		return p, true
+	}
+	if errors.Is(err, users.ErrOwnUser) {
+		return errOwnUser, true
 	}
 	f, ok := fault.Of(err)
 	if !ok && errors.Is(err, context.DeadlineExceeded) {

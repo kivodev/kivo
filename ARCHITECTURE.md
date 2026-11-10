@@ -84,7 +84,7 @@ The main components:
 - **`query`** answers every read the UI needs, filtered by the caller's permissions.
 - **`tasks`** runs all background work, and **`events`** fans out live-update hints.
 - **`release`** checks once a day whether a newer Kivo release is out, for the admin's notice.
-- **`api`** exposes it all over HTTP and WebSocket. It runs no SQL and holds no domain logic.
+- **`api`** exposes it all over HTTP and WebSocket. It runs no SQL and holds no domain rules, though a handler may combine reads from several services into one response.
 
 Several of these rules are enforced by tests in `internal/archtest` rather than left to review: the layering, that only `egress` makes outbound requests, and that each component writes only the tables and columns it owns.
 

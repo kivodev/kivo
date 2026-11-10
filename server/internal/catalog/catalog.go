@@ -19,6 +19,8 @@ var (
 	ErrStale = fault.New(fault.Conflict, "stale")
 	// ErrInvalid means the input breaks an integrity rule.
 	ErrInvalid = fault.New(fault.Invalid, "invalid")
+	// ErrNotABook means a batch edit of books holds a work that isn't one.
+	ErrNotABook = fault.New(fault.Invalid, "only books are edited together")
 	// ErrFolderInUse means a library folder already belongs to another
 	// library, or to this one while it's being removed.
 	ErrFolderInUse = fault.New(fault.Conflict, "folder is already in a library")

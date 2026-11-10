@@ -277,6 +277,21 @@ func TestResponses(t *testing.T) {
 	tr.do("GET", "/api/v1/logs?limit=0", admin, nil)
 	tr.do("GET", "/api/v1/logs?level=nope", admin, nil)
 
+	// A batch edit with a work that isn't there is refused as not found,
+	// even when the batch also holds a movie.
+	tr.do("PATCH", "/api/v1/works", admin, map[string]any{"workIds": []string{book.String(), id.New().String()}, "genres": []string{"x"}})
+	tr.do("PATCH", "/api/v1/works", admin, map[string]any{"workIds": []string{id.New().String(), heat}, "genres": []string{"x"}})
+
+	// An admin can't remove admin from, disable or delete their own user.
+	me := "/api/v1/users/" + e.admin.String()
+	tr.do("PATCH", me, admin, map[string]any{"admin": false})
+	tr.do("PATCH", me, admin, map[string]any{"disabled": true})
+	tr.do("PATCH", me, admin, map[string]any{"admin": false, "libraries": map[string]any{"all": false, "libraryIds": []string{}}})
+	tr.do("DELETE", me, admin, nil)
+
+	// A subtitle search without a language.
+	tr.do("GET", "/api/v1/files/"+e.heat.File.String()+"/subtitle-results", admin, nil)
+
 	golden(t, "responses.golden", tr.String())
 	if code := e.do("GET", "/api/v1/home", admin, nil).Code; code != http.StatusOK {
 		t.Errorf("home: %d", code)

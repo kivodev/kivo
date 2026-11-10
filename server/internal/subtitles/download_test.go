@@ -18,18 +18,21 @@ import (
 	"github.com/mmcdole/kivo/internal/config"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/users"
+	"github.com/mmcdole/kivo/internal/userstate"
 )
 
 // downloads returns a service over a movies library holding one movie,
 // with a fake answering for OpenSubtitles.
 type downloads struct {
-	t        *testing.T
-	b        *catalogtest.Builder
-	remote   *fakeOpenSubtitles
-	s        *Service
-	settings *config.Store
-	subDir   string
-	file     id.ID
+	t         *testing.T
+	b         *catalogtest.Builder
+	remote    *fakeOpenSubtitles
+	s         *Service
+	settings  *config.Store
+	users     *users.Service
+	userstate *userstate.Service
+	subDir    string
+	file      id.ID
 }
 
 func newDownloads(t *testing.T) *downloads {
@@ -42,7 +45,12 @@ func newDownloads(t *testing.T) *downloads {
 	}
 	d.settings = settings
 	d.setOpenSubtitles("os-key", "", "")
-	d.s = New(d.b.DB, Deps{Catalog: d.b.Catalog, Settings: settings, Media: &fakeMedia{}, Tasks: &fakeTasks{}, CacheDir: t.TempDir(), SubtitleDir: d.subDir}, Options{})
+	d.users = users.New(d.b.DB, events.NewBus())
+	d.userstate = userstate.New(d.b.DB, userstate.Deps{Catalog: d.b.Catalog, Settings: settings, Events: events.NewBus()})
+	d.s = New(d.b.DB, Deps{
+		Catalog: d.b.Catalog, Users: d.users, Userstate: d.userstate, Settings: settings, Media: &fakeMedia{}, Tasks: &fakeTasks{},
+		CacheDir: t.TempDir(), SubtitleDir: d.subDir,
+	}, Options{})
 	d.s.openSubtitles.get = d.remote
 	d.s.room.Free = func(string) (uint64, error) { return 100 << 30, nil }
 	return d
@@ -68,7 +76,7 @@ func (d *downloads) results() map[string]string {
 // library when blind is true.
 func (d *downloads) viewer(blind bool) users.Viewer {
 	d.t.Helper()
-	svc := users.New(d.b.DB, events.NewBus())
+	svc := d.users
 	grants := users.Grants{All: !blind}
 	if blind {
 		other, _ := d.b.Library(catalog.Movies)
@@ -99,11 +107,6 @@ func TestSearchSubtitles(t *testing.T) {
 	if want := []string{"7002.en.hi", "7001.en", "7005.en.hi", "7003.en.forced"}; !slices.Equal(resultIDs(got), want) {
 		t.Fatalf("results %v, want %v", resultIDs(got), want)
 	}
-	// SDH ranks first for a user who prefers it.
-	got, err = d.s.SearchSubtitles(ctx, v, d.file, SubtitleSearch{Languages: []string{"en"}, PreferSDH: true})
-	if want := []string{"7002.en.hi", "7005.en.hi", "7001.en", "7003.en.forced"}; err != nil || !slices.Equal(resultIDs(got), want) {
-		t.Fatalf("preferring SDH %v %v, want %v", resultIDs(got), err, want)
-	}
 	// A user who can't see the file can't search for it.
 	if _, err := d.s.SearchSubtitles(ctx, d.viewer(true), d.file, SubtitleSearch{}); !errors.Is(err, catalog.ErrNotFound) {
 		t.Fatalf("a file the user can't see: %v", err)
@@ -113,6 +116,59 @@ func TestSearchSubtitles(t *testing.T) {
 	if _, err := d.s.SearchSubtitles(ctx, v, d.file, SubtitleSearch{Languages: []string{"de"}}); !errors.Is(err, ErrUnavailable) {
 		t.Fatalf("OpenSubtitles down: %v", err)
 	}
+}
+
+// TestSearchSubtitlesForTheUser checks what a search takes from its user.
+// With no language asked, it searches the user's subtitle language. SDH
+// ranks first for an episode whose series the user last watched with SDH,
+// when the user remembers track choices.
+func TestSearchSubtitlesForTheUser(t *testing.T) {
+	d := newDownloads(t)
+	err := d.settings.Update(ctx, func(s *config.Settings) error {
+		s.MetadataLanguage = "de" // the fake has no German subtitles
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	v := d.viewer(false)
+	if got, err := d.s.SearchSubtitles(ctx, v, d.file, SubtitleSearch{}); err != nil || len(got) != 0 {
+		t.Fatalf("no language, none preferred: %v %v", resultIDs(got), err)
+	}
+	en := "en"
+	if err := d.users.EditPreferences(ctx, v, users.PreferencesChange{Playback: &users.PlaybackChange{SubtitleLanguage: &en}}); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := d.s.SearchSubtitles(ctx, v, d.file, SubtitleSearch{}); err != nil || len(got) != 4 {
+		t.Fatalf("no language, English preferred: %v %v", resultIDs(got), err)
+	}
+	if got, err := d.s.SearchSubtitles(ctx, v, d.file, SubtitleSearch{Languages: []string{"de"}}); err != nil || len(got) != 0 {
+		t.Fatalf("German asked, English preferred: %v %v", resultIDs(got), err)
+	}
+
+	_, folder := d.b.Library(catalog.Shows)
+	series := d.b.Series("Dune: Prophecy")
+	episode := d.b.Episode(folder, series, 1, 1).File
+	notSDH := []string{"7002.en.hi", "7001.en", "7005.en.hi", "7003.en.forced"}
+	sdh := []string{"7002.en.hi", "7005.en.hi", "7001.en", "7003.en.forced"}
+	search := func(name string, file id.ID, want []string) {
+		t.Helper()
+		got, err := d.s.SearchSubtitles(ctx, v, file, SubtitleSearch{Languages: []string{"en"}})
+		if err != nil || !slices.Equal(resultIDs(got), want) {
+			t.Errorf("%s: %v %v, want %v", name, resultIDs(got), err, want)
+		}
+	}
+	search("an episode with no choice", episode, notSDH)
+	if err := d.userstate.SetTrackChoice(ctx, v.User(), series, userstate.TrackChoice{SubtitleLanguage: "en", SubtitleKind: "sdh"}); err != nil {
+		t.Fatal(err)
+	}
+	search("an episode of a series last watched with SDH", episode, sdh)
+	search("a movie", d.file, notSDH)
+	off := false
+	if err := d.users.EditPreferences(ctx, v, users.PreferencesChange{Playback: &users.PlaybackChange{RememberTracks: &off}}); err != nil {
+		t.Fatal(err)
+	}
+	search("a user who doesn't remember choices", episode, notSDH)
 }
 
 // A download is titled with its result's release. It replaces the file's

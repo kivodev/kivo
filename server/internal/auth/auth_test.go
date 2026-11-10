@@ -366,7 +366,7 @@ func TestSignInFailuresLookAlike(t *testing.T) {
 	ctx := context.Background()
 	f := newFixture(t)
 	f.setUp()
-	if err := f.users.Update(ctx, f.newUser("friend"), users.Change{Disabled: ptr(true)}); err != nil {
+	if err := f.users.Update(ctx, id.ID{}, f.newUser("friend"), users.Change{Disabled: ptr(true)}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -422,7 +422,7 @@ func TestDisablingAUserFailsAuthenticateAtOnce(t *testing.T) {
 	friend := f.newUser("friend")
 	iss := f.signIn(SignInRequest{Username: "friend", Password: password, RemoteIP: home})
 
-	if err := f.users.Update(ctx, friend, users.Change{Disabled: ptr(true)}); err != nil {
+	if err := f.users.Update(ctx, id.ID{}, friend, users.Change{Disabled: ptr(true)}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := f.auth.Authenticate(ctx, iss.Token); !errors.Is(err, ErrUnauthenticated) {
@@ -439,7 +439,7 @@ func TestDisablingAUserFailsAuthenticateAtOnce(t *testing.T) {
 		t.Fatalf("another user's token stopped working: %v", err)
 	}
 
-	if err := f.users.Update(ctx, friend, users.Change{Disabled: ptr(false)}); err != nil {
+	if err := f.users.Update(ctx, id.ID{}, friend, users.Change{Disabled: ptr(false)}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := f.auth.Authenticate(ctx, iss.Token); err != nil {
