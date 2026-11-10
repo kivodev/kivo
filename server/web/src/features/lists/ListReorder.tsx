@@ -77,10 +77,15 @@ export function ListReorder({ list }: { list: WorkList }) {
             <GridListItem
               id={work.id}
               textValue={title}
-              className="flex items-center gap-3 py-2 pr-2 pl-3 outline-none data-dragging:opacity-50 data-focus-visible:bg-surface-hover"
+              className="flex items-center gap-3 py-2 pr-2 pl-3 outline-none first:rounded-t-lg last:rounded-b-lg data-dragging:opacity-50 data-focus-visible:bg-surface-hover"
             >
               <span className="w-10 shrink-0">
-                <Artwork image={work.images.poster} title={title} shape="poster" width={40} />
+                {work.images.poster ? (
+                  <Artwork image={work.images.poster} title={title} shape="poster" width={40} />
+                ) : (
+                  // A tile this small has no room for the title a missing poster shows.
+                  <span className="block aspect-poster rounded-md bg-placeholder" />
+                )}
               </span>
               <span className="flex min-w-0 flex-1 flex-col">
                 <span className="truncate font-medium text-text">{title}</span>
