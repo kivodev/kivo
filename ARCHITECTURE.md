@@ -136,9 +136,9 @@ Each component is the only writer of its own tables, and writes that span compon
 
 All background work runs as tasks of one in-memory runner (`internal/tasks`): scans, metadata refreshes, previews, markers, subtitle extraction, download preparation, library deletion, cleanups and database backups. Each task is one row on the admin Tasks page.
 
-The runner keeps no queue of its own. An item task reads what it has left from its feature's own tables every time it looks for work (for example, the files with no previews at their current generation), and records its outcome in those same tables. So a restart loses nothing: whatever wasn't finished is still pending in the database. Every file has a generation number that changes when its content does, and background results are committed only if the generation still matches, so a result for an old version of a file is dropped.
+A task's work is either one function or a list of items, and it runs nightly, every so often, or on demand. The runner keeps no durable queue. A task that works through items reads what's pending from its feature's own tables every time it looks for work (for example, the files with no previews at their current generation), and records each outcome in those same tables. A feature can also enqueue items to be done now; those wait in memory only. So a restart loses nothing: whatever wasn't finished, enqueued or not, is still pending in the database. Every file has a generation number that changes when its content does, and background results are committed only if the generation still matches, so a result for an old version of a file is dropped.
 
-Nightly tasks run in a maintenance window the admin sets. Newly added media can be processed immediately. Background ffmpeg runs at low OS priority so it stays out of playback's way.
+Nightly tasks run in a maintenance window the admin sets. On-demand tasks, such as preparing downloads, have no runs and do items as they're enqueued. Newly added media is enqueued, so it can be processed immediately. Background ffmpeg runs at low OS priority so it stays out of playback's way.
 
 ### A play, from capability report to stream
 

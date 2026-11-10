@@ -152,7 +152,7 @@ type env struct {
 	openFolder func(path string) (fs.FS, func() error, error)
 }
 
-// asks records what is asked of the runner, by task, and passes each
+// asks records what is enqueued on the runner, by task, and passes each
 // request on.
 type asks struct {
 	r  *tasks.Runner
@@ -160,11 +160,11 @@ type asks struct {
 	by map[string][]id.ID
 }
 
-func (a *asks) Ask(task string, items ...id.ID) {
+func (a *asks) Enqueue(task string, items ...id.ID) {
 	a.mu.Lock()
 	a.by[task] = append(a.by[task], items...)
 	a.mu.Unlock()
-	a.r.Ask(task, items...)
+	a.r.Enqueue(task, items...)
 }
 
 // of is what was asked of a task, in order.

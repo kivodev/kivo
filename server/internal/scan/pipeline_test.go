@@ -266,13 +266,13 @@ func (p *pipeline) library(dir string) id.ID {
 // file is behind and no work is due.
 func (p *pipeline) runAll() {
 	p.t.Helper()
-	var scanLibraries, refresh tasks.Task
+	var scanLibraries, refresh tasks.Items
 	for _, t := range append(p.s.Tasks(), p.meta.Tasks()...) {
 		switch t.Name {
 		case scan.TaskScanLibraries:
-			scanLibraries = t
+			scanLibraries = t.Work.(tasks.Items)
 		case metadata.TaskRefreshMetadata:
-			refresh = t
+			refresh = t.Work.(tasks.Items)
 		}
 	}
 	for range 20 {
@@ -371,7 +371,7 @@ func settle(t *testing.T, dir string) {
 // the scans and refreshes it needs by hand.
 type discard struct{}
 
-func (discard) Ask(string, ...id.ID)                                              {}
+func (discard) Enqueue(string, ...id.ID)                                          {}
 func (discard) Placed(context.Context, *store.Tx, catalog.Library, []id.ID) error { return nil }
 
 // noPreviews and noSubtitles drop what a probe asks of previews and

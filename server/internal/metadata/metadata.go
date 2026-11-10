@@ -40,9 +40,9 @@ type Imager interface {
 	Image(ctx context.Context, src string, outs []media.ImageOut) ([]byte, error)
 }
 
-// Tasks asks for items to be done now. tasks.Runner implements it.
+// Tasks enqueues items to be done now. tasks.Runner implements it.
 type Tasks interface {
-	Ask(task string, items ...id.ID)
+	Enqueue(task string, items ...id.ID)
 }
 
 // Deps are the service's collaborators and folders.
@@ -115,9 +115,10 @@ const taskPruneProviderCache = "prune-provider-cache"
 // Tasks returns metadata's tasks, for cmd/kivo to add.
 func (s *Service) Tasks() []tasks.Task {
 	return []tasks.Task{
-		{Name: TaskRefreshMetadata, Nightly: true, Limit: func(config.Settings) int { return 4 }, Wanted: s.refreshWanted,
-			Pending: s.pendingRefreshes, Do: s.refreshWork, Left: s.refreshesLeft, Failed: s.failedRefreshes, Retry: s.retryRefreshes},
-		{Name: taskPruneProviderCache, Nightly: true, Maintenance: true, Run: s.prune},
+		{Name: TaskRefreshMetadata, Schedule: tasks.Nightly, Wanted: s.q.RefreshWanted, Work: tasks.Items{
+			Pending: s.pendingRefreshes, Do: s.refreshWork, Limit: func(config.Settings) int { return 4 },
+			Failed: s.failedRefreshes, Retry: s.retryRefreshes}},
+		{Name: taskPruneProviderCache, Schedule: tasks.Nightly, Maintenance: true, Work: tasks.Func(s.prune)},
 	}
 }
 

@@ -53,7 +53,7 @@ func (m *fakeMedia) Previews(_ context.Context, req media.PreviewsRequest) (medi
 	return p, nil
 }
 
-// ask is one call of Ask.
+// ask is one call of Enqueue.
 type ask struct {
 	task  string
 	items []id.ID
@@ -65,7 +65,7 @@ type fakeTasks struct {
 	asked []ask
 }
 
-func (t *fakeTasks) Ask(task string, items ...id.ID) {
+func (t *fakeTasks) Enqueue(task string, items ...id.ID) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.asked = append(t.asked, ask{task, items})
@@ -169,7 +169,7 @@ func (f *fixture) run() error {
 // pending is what the make task has left.
 func (f *fixture) pending() []id.ID {
 	f.t.Helper()
-	files, err := f.s.pending(ctx)
+	files, err := f.s.q.Pending(ctx)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -350,14 +350,14 @@ func TestRetry(t *testing.T) {
 func TestLeft(t *testing.T) {
 	f := newFixture(t)
 	f.add("b.mkv")
-	if left, err := f.s.left(ctx); err != nil || left != 2 {
-		t.Fatalf("before: %d left, %v", left, err)
+	if left := len(f.pending()); left != 2 {
+		t.Fatalf("before: %d left", left)
 	}
 	if err := f.run(); err != nil {
 		t.Fatal(err)
 	}
-	if left, err := f.s.left(ctx); err != nil || left != 1 {
-		t.Fatalf("after one: %d left, %v", left, err)
+	if left := len(f.pending()); left != 1 {
+		t.Fatalf("after one: %d left", left)
 	}
 }
 

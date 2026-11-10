@@ -23,10 +23,10 @@ func (h *handlers) ListTasks(ctx context.Context, _ gen.ListTasksRequestObject) 
 // task puts a task on the wire.
 func task(t tasks.Status) gen.Task {
 	out := gen.Task{
-		ID: gen.TaskName(t.Name), Section: gen.TaskSection(t.Section()), Nightly: t.Nightly, PendingCount: t.Left,
-		Running: t.Running, Stoppable: t.Running && !t.Finish,
+		ID: gen.TaskName(t.Name), Section: gen.TaskSection(t.Section()), Nightly: t.Schedule == tasks.Nightly, PendingCount: t.PendingCount,
+		Running: t.Running, Stoppable: t.Running && !t.Unstoppable,
 	}
-	if t.Task.Failed != nil {
+	if items, ok := t.Work.(tasks.Items); ok && items.Failed != nil {
 		out.FailedCount = ptr(t.Failures)
 	}
 	if t.Last != nil {

@@ -246,7 +246,7 @@ type fakeTasks struct {
 	asked map[string][]id.ID
 }
 
-func (f *fakeTasks) Ask(task string, items ...id.ID) {
+func (f *fakeTasks) Enqueue(task string, items ...id.ID) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.asked == nil {

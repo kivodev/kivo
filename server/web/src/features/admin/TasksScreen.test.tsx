@@ -34,7 +34,7 @@ const taskOf = (tasks: Task[], id: string) => {
 };
 
 describe("Tasks", () => {
-  it("says when the nightly tasks run, then lists Activity, Library and Maintenance", async () => {
+  it("says when the nightly tasks run, then lists On demand, Library and Maintenance", async () => {
     serveMockApi();
     renderApp("/admin/tasks");
     await screen.findByRole("heading", { name: "Library" });
@@ -43,7 +43,7 @@ describe("Tasks", () => {
     );
     expect(screen.queryByRole("button", { name: /Nightly start/ })).not.toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual([
-      "Activity",
+      "On demand",
       "Library",
       "Maintenance",
     ]);
@@ -147,21 +147,21 @@ describe("Tasks", () => {
     expect(cells(rowOf(section("Library"), "Intro and credits"))[2]).toBe("—");
   });
 
-  it("shows Activity rows only while they have work, and hides Activity when none does", async () => {
+  it("shows On demand rows only while they have work, and hides On demand when none does", async () => {
     const api = serveMockApi();
     Object.assign(taskOf(api.tasks, "library-changes"), { progress: { done: 0, total: 0 }, running: true });
     renderApp("/admin/tasks");
-    await screen.findByRole("heading", { name: "Activity" });
-    const activity = section("Activity");
-    expect(within(activity).queryByRole("columnheader")).not.toBeInTheDocument();
-    expect(rows(activity).map((r) => cells(r)[0])).toEqual(["Downloads", "Library changes"]);
+    await screen.findByRole("heading", { name: "On demand" });
+    const onDemand = section("On demand");
+    expect(within(onDemand).queryByRole("columnheader")).not.toBeInTheDocument();
+    expect(rows(onDemand).map((r) => cells(r)[0])).toEqual(["Downloads", "Library changes"]);
     // Work that was asked for has no count. It shows only what it's
     // doing, with no bar.
-    expect(cells(rowOf(activity, "Downloads"))).toEqual(["Downloads", "", "", "Preparing", ""]);
-    expect(within(rowOf(activity, "Downloads")).queryByRole("progressbar")).not.toBeInTheDocument();
+    expect(cells(rowOf(onDemand, "Downloads"))).toEqual(["Downloads", "", "", "Preparing", ""]);
+    expect(within(rowOf(onDemand, "Downloads")).queryByRole("progressbar")).not.toBeInTheDocument();
     // Library changes finishes what it starts, so it has neither Stop nor
     // Run now.
-    expect(cells(rowOf(activity, "Library changes"))).toEqual(["Library changes", "", "", "Removing", ""]);
+    expect(cells(rowOf(onDemand, "Library changes"))).toEqual(["Library changes", "", "", "Removing", ""]);
 
     for (const id of ["prepare-downloads", "library-changes"]) {
       const task = taskOf(api.tasks, id);
@@ -169,7 +169,7 @@ describe("Tasks", () => {
       delete task.progress;
     }
     sendEvent({ type: "event", kind: "tasksChanged" });
-    await waitFor(() => expect(screen.queryByRole("heading", { name: "Activity" })).not.toBeInTheDocument(), {
+    await waitFor(() => expect(screen.queryByRole("heading", { name: "On demand" })).not.toBeInTheDocument(), {
       timeout: 3000,
     });
   });

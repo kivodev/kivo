@@ -22,6 +22,7 @@ import (
 	"github.com/mmcdole/kivo/internal/config"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/media"
+	"github.com/mmcdole/kivo/internal/tasks"
 )
 
 // memFS is a directory tree in memory that counts listings and opens, so a
@@ -264,7 +265,7 @@ type fakeTasks struct {
 	asked map[string][]id.ID
 }
 
-func (f *fakeTasks) Ask(task string, items ...id.ID) {
+func (f *fakeTasks) Enqueue(task string, items ...id.ID) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.asked == nil {
@@ -460,7 +461,7 @@ func (h *harness) remove(item id.ID) {
 	h.t.Helper()
 	for _, t := range h.b.Catalog.Tasks() {
 		if t.Name == catalog.TaskLibraryChanges {
-			if err := t.Do(context.Background(), item); err != nil {
+			if err := t.Work.(tasks.Items).Do(context.Background(), item); err != nil {
 				h.t.Fatal(err)
 			}
 			return

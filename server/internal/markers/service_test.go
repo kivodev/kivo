@@ -50,13 +50,13 @@ type fakeTasks struct {
 	asked []ask
 }
 
-// ask is one Ask call: the task and its items.
+// ask is one Enqueue call: the task and its items.
 type ask struct {
 	task  string
 	items []id.ID
 }
 
-func (t *fakeTasks) Ask(task string, items ...id.ID) {
+func (t *fakeTasks) Enqueue(task string, items ...id.ID) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.asked = append(t.asked, ask{task: task, items: items})

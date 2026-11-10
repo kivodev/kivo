@@ -36,9 +36,13 @@ func newFeature(n int, took time.Duration) *feature {
 	return f
 }
 
+// task is a nightly task whose work is f's items.
 func (f *feature) task(name string) Task {
-	return Task{
-		Name: name, Nightly: true,
+	return Task{Name: name, Schedule: Nightly, Work: f.items()}
+}
+
+func (f *feature) items() Items {
+	return Items{
 		Pending: func(context.Context) ([]id.ID, error) {
 			f.mu.Lock()
 			defer f.mu.Unlock()
@@ -66,7 +70,7 @@ func (f *feature) task(name string) Task {
 			f.settled[i] = time.Now()
 			return nil
 		},
-		Left: func(context.Context) (int, error) {
+		PendingCount: func(context.Context) (int, error) {
 			f.mu.Lock()
 			defer f.mu.Unlock()
 			return len(f.left), nil
@@ -166,7 +170,7 @@ func TestANightRunEndsAtTheWindowsClose(t *testing.T) {
 		h := newHarness(t, f.task("markers"))
 		h.window(1, 2)
 		h.start()
-		if s := h.status("markers"); s.Running || s.Left != 6 {
+		if s := h.status("markers"); s.Running || s.PendingCount != 6 {
 			t.Fatalf("before the window: %+v, want 6 left and idle", s)
 		}
 
@@ -175,13 +179,13 @@ func TestANightRunEndsAtTheWindowsClose(t *testing.T) {
 			t.Fatalf("inside the window: running %v, %d of %d, want 2 of 6", s.Running, s.Done, s.Total)
 		}
 		sleep(time.Hour + time.Minute) // the window closes, with the fifth in flight
-		if s := h.status("markers"); s.Running || s.Left != 2 || s.Last == nil || s.Last.Summary != "4 done, 2 left" || f.done() != 4 {
+		if s := h.status("markers"); s.Running || s.PendingCount != 2 || s.Last == nil || s.Last.Summary != "4 done, 2 left" || f.done() != 4 {
 			t.Fatalf("after the window: %+v with %d done, want the run ended with 4 done, 2 left", s, f.done())
 		}
 
 		h.stop() // a restart during the day
 		h.start()
-		if s := h.status("markers"); s.Running || s.Left != 2 || s.Last == nil || s.Last.Summary != "4 done, 2 left" {
+		if s := h.status("markers"); s.Running || s.PendingCount != 2 || s.Last == nil || s.Last.Summary != "4 done, 2 left" {
 			t.Fatalf("after a restart: %+v, want idle with the last run kept", s)
 		}
 
@@ -241,7 +245,7 @@ func TestARunEndedTonightIsntBegunAgain(t *testing.T) {
 		h.start()
 		sleep(time.Hour)
 		h.stop()
-		if s := h.status("markers"); s.Running || s.Left != 1 || s.Last.Summary != "2 done" || f.done() != 2 {
+		if s := h.status("markers"); s.Running || s.PendingCount != 1 || s.Last.Summary != "2 done" || f.done() != 2 {
 			t.Fatalf("after a restart: %+v with %d done, want no run until the next night", s, f.done())
 		}
 	})
@@ -268,27 +272,27 @@ func TestRunNowGoesOnThroughTheWindowsClose(t *testing.T) {
 	})
 }
 
-func TestAsksRunNowWithoutTheBacklog(t *testing.T) {
+func TestEnqueuedItemsRunNowWithoutTheBacklog(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		f := newFeature(5, time.Minute)
-		task := f.task("markers")
-		task.Limit = func(config.Settings) int { return 1 }
-		h := newHarness(t, task)
+		w := f.items()
+		w.Limit = func(config.Settings) int { return 1 }
+		h := newHarness(t, Task{Name: "markers", Schedule: Nightly, Work: w})
 		h.window(6, 2)
 		h.start()
 
-		// Asked items run in the order asked, one at a time within the
-		// limit. An item asked for again while it waits keeps its place.
+		// Enqueued items run in the order enqueued, one at a time within
+		// the limit. An item enqueued again while it waits keeps its place.
 		ids := slices.Clone(f.left)
-		h.r.Ask("markers", ids[3], ids[4])
+		h.r.Enqueue("markers", ids[3], ids[4])
 		synctest.Wait()
-		h.r.Ask("markers", ids[0], ids[4])
+		h.r.Enqueue("markers", ids[0], ids[4])
 		synctest.Wait()
 		if s := h.status("markers"); !s.Running || len(s.Items) != 1 || s.Items[0].ID != ids[3] {
-			t.Fatalf("%+v: want the first asked in flight, alone", s.Items)
+			t.Fatalf("%+v: want the first enqueued in flight, alone", s.Items)
 		}
 		if asked := h.r.Asked("markers"); !slices.Equal(asked, []id.ID{ids[4], ids[0]}) {
-			t.Fatalf("asked %v, want the rest in the order asked", asked)
+			t.Fatalf("asked %v, want the rest in the order enqueued", asked)
 		}
 		sleep(3 * time.Minute)
 		if want := []id.ID{ids[3], ids[4], ids[0]}; !slices.Equal(f.order, want) || f.done() != 3 {
@@ -296,7 +300,7 @@ func TestAsksRunNowWithoutTheBacklog(t *testing.T) {
 		}
 		h.stop()
 		if s := h.status("markers"); s.Last != nil {
-			t.Fatalf("asks ended a run: %+v", s.Last)
+			t.Fatalf("enqueued items ended a run: %+v", s.Last)
 		}
 	})
 }
@@ -347,17 +351,17 @@ func TestStopEndsTheRun(t *testing.T) {
 func TestARunEndsInOneStep(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		f := newFeature(4, time.Hour)
-		task := f.task("previews")
-		left := task.Left
+		w := f.items()
+		left := w.PendingCount
 		var holding atomic.Bool
 		gate := make(chan struct{})
-		task.Left = func(ctx context.Context) (int, error) {
+		w.PendingCount = func(ctx context.Context) (int, error) {
 			if holding.CompareAndSwap(true, false) {
 				<-gate
 			}
 			return left(ctx)
 		}
-		h := newHarness(t, task)
+		h := newHarness(t, Task{Name: "previews", Schedule: Nightly, Work: w})
 		h.window(6, 2)
 		h.start()
 		if err := h.r.Start(context.Background(), "previews"); err != nil {
@@ -386,18 +390,18 @@ func TestARunEndsInOneStep(t *testing.T) {
 	})
 }
 
-func TestPlainRuns(t *testing.T) {
+func TestFuncRuns(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		runs := 0
 		h := newHarness(t,
-			Task{Name: "make-backup", Nightly: true, Maintenance: true, Run: func(ctx context.Context) error {
+			Task{Name: "make-backup", Schedule: Nightly, Maintenance: true, Work: Func(func(ctx context.Context) error {
 				runs++
 				Summarize(ctx, "Backed up")
 				return nil
-			}},
-			Task{Name: "optimize-database", Nightly: true, Maintenance: true, Run: func(ctx context.Context) error {
+			})},
+			Task{Name: "optimize-database", Schedule: Nightly, Maintenance: true, Work: Func(func(ctx context.Context) error {
 				return errors.New("disk I/O error")
-			}},
+			})},
 		)
 		h.window(1, 1)
 		h.start()
@@ -416,10 +420,10 @@ func TestPlainRuns(t *testing.T) {
 func TestUnwantedHasNoNextRun(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		wanted := false
-		run := func(context.Context) error { return nil }
+		run := Func(func(context.Context) error { return nil })
 		h := newHarness(t,
-			Task{Name: "make-previews", Nightly: true, Run: run, Wanted: func(context.Context) (bool, error) { return wanted, nil }},
-			Task{Name: "make-backup", Nightly: true, Maintenance: true, Run: run},
+			Task{Name: "make-previews", Schedule: Nightly, Work: run, Wanted: func(context.Context) (bool, error) { return wanted, nil }},
+			Task{Name: "make-backup", Schedule: Nightly, Maintenance: true, Work: run},
 		)
 		h.start()
 		defer h.stop()
@@ -436,12 +440,12 @@ func TestUnwantedHasNoNextRun(t *testing.T) {
 	})
 }
 
-func TestActivityDoesWhatItFindsAtStartup(t *testing.T) {
+func TestOnDemandDoesWhatItFindsAtStartup(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		f := newFeature(2, time.Minute)
-		task := f.task("downloads")
-		task.Nightly, task.Left, task.Finish = false, nil, true
-		h := newHarness(t, task)
+		w := f.items()
+		w.PendingCount, w.Uncounted = nil, true
+		h := newHarness(t, Task{Name: "downloads", Schedule: OnDemand, Unstoppable: true, Work: w})
 		h.window(6, 2)
 		h.start()
 		if s := h.status("downloads"); !s.Running || len(s.Items) != 1 || s.Total != 0 {
@@ -467,14 +471,14 @@ func TestEndedHearsOfRunsThatDidSomething(t *testing.T) {
 		f.failing[f.left[0]] = true
 		every := 0
 		h := newHarness(t, f.task("make-previews"), idle.task("find-markers"),
-			Task{Name: "optimize-database", Nightly: true, Maintenance: true, Run: func(ctx context.Context) error {
+			Task{Name: "optimize-database", Schedule: Nightly, Maintenance: true, Work: Func(func(ctx context.Context) error {
 				return errors.New("disk I/O error")
-			}},
-			Task{Name: "scan-libraries", Every: 2 * time.Hour, Run: func(ctx context.Context) error {
+			})},
+			Task{Name: "scan-libraries", Schedule: Every(2 * time.Hour), Work: Func(func(ctx context.Context) error {
 				every++
 				Summarize(ctx, "Scanned")
 				return nil
-			}},
+			})},
 		)
 		var told []RunEnd
 		h.opt.Ended = func(_ context.Context, tx *store.Tx, e RunEnd) error {
@@ -506,8 +510,8 @@ func TestEndedHearsOfRunsThatDidSomething(t *testing.T) {
 	})
 }
 
-// plain is a plain task's Run. It reports progress and takes a while,
-// unless it's cancelled.
+// plain is a task's Func. It reports progress and takes a while, unless
+// it's cancelled.
 type plain struct {
 	mu    sync.Mutex
 	calls int
@@ -517,7 +521,7 @@ type plain struct {
 }
 
 func (p *plain) task(name string) Task {
-	return Task{Name: name, Nightly: true, Maintenance: true, Run: func(ctx context.Context) error {
+	return Task{Name: name, Schedule: Nightly, Maintenance: true, Work: Func(func(ctx context.Context) error {
 		p.mu.Lock()
 		p.calls++
 		p.mu.Unlock()
@@ -532,7 +536,7 @@ func (p *plain) task(name string) Task {
 		p.mu.Unlock()
 		Summarize(ctx, "Removed 3")
 		return p.err
-	}}
+	})}
 }
 
 func (p *plain) counts() (calls, ended int) {
@@ -541,7 +545,7 @@ func (p *plain) counts() (calls, ended int) {
 	return p.calls, p.ended
 }
 
-func TestRunNowOnAPlainTask(t *testing.T) {
+func TestRunNowOnAFuncTask(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		p := &plain{took: time.Hour}
 		h := newHarness(t, p.task("prune-previews"))
@@ -572,12 +576,12 @@ func TestRunNowOnAPlainTask(t *testing.T) {
 	})
 }
 
-// An error or panic from a plain task's Run becomes the run's error.
-func TestAPlainRunFails(t *testing.T) {
+// An error or panic from a task's Func becomes the run's error.
+func TestAFuncRunFails(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		p := &plain{took: time.Minute, err: errors.New("disk I/O error")}
 		h := newHarness(t, p.task("optimize-database"),
-			Task{Name: "make-backup", Nightly: true, Maintenance: true, Run: func(context.Context) error { panic("no disk") }},
+			Task{Name: "make-backup", Schedule: Nightly, Maintenance: true, Work: Func(func(context.Context) error { panic("no disk") })},
 		)
 		h.window(6, 2)
 		h.start()
@@ -597,7 +601,7 @@ func TestAPlainRunFails(t *testing.T) {
 	})
 }
 
-func TestStopDuringAPlainRun(t *testing.T) {
+func TestStopDuringAFuncRun(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		p := &plain{took: time.Hour}
 		h := newHarness(t, p.task("prune-previews"))
@@ -623,9 +627,9 @@ func TestStopDuringAPlainRun(t *testing.T) {
 	})
 }
 
-// A plain night run cut off by the window's close ends as stopped. The
+// A Func's night run cut off by the window's close ends as stopped. The
 // window's next opening begins another run.
-func TestAPlainRunAcrossTheWindow(t *testing.T) {
+func TestAFuncRunAcrossTheWindow(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		p := &plain{took: 90 * time.Minute}
 		h := newHarness(t, p.task("prune-previews"))
@@ -648,7 +652,7 @@ func TestAPlainRunAcrossTheWindow(t *testing.T) {
 		h.start()
 		sleep(40 * time.Minute) // ten minutes into the window
 		if calls, _ := p.counts(); calls != 2 {
-			t.Fatalf("%d calls, want a new run's Run called", calls)
+			t.Fatalf("%d calls, want a new run's Func called", calls)
 		}
 		sleep(2 * time.Hour)
 		h.stop()
@@ -659,9 +663,9 @@ func TestAPlainRunAcrossTheWindow(t *testing.T) {
 	})
 }
 
-// While a plain run's end is being recorded, the task still shows as
+// While a Func run's end is being recorded, the task still shows as
 // running and its last run is unchanged.
-func TestAPlainRunEndsInOneStep(t *testing.T) {
+func TestAFuncRunEndsInOneStep(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		p := &plain{took: time.Minute}
 		h := newHarness(t, p.task("prune-previews"))
@@ -686,4 +690,88 @@ func TestAPlainRunEndsInOneStep(t *testing.T) {
 			t.Fatalf("after: %+v, want the run recorded", s)
 		}
 	})
+}
+
+// A task with no PendingCount is counted by what Pending lists, a supplied
+// PendingCount wins, and an Uncounted task reports no count.
+func TestPendingCount(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := newFeature(3, time.Minute)
+		listed, supplied, uncounted := f.items(), f.items(), f.items()
+		listed.PendingCount = nil
+		supplied.PendingCount = func(context.Context) (int, error) { return 7, nil }
+		uncounted.PendingCount, uncounted.Uncounted = nil, true
+		h := newHarness(t,
+			Task{Name: "listed", Schedule: Nightly, Work: listed},
+			Task{Name: "supplied", Schedule: Nightly, Work: supplied},
+			Task{Name: "uncounted", Schedule: Nightly, Work: uncounted},
+		)
+		h.window(6, 2)
+		h.start()
+		for name, want := range map[string]int{"listed": 3, "supplied": 7, "uncounted": 0} {
+			if s := h.status(name); s.PendingCount != want {
+				t.Errorf("%s: %d pending, want %d", name, s.PendingCount, want)
+			}
+		}
+
+		// A run's progress and summary use the same count.
+		if err := h.r.Start(context.Background(), "listed"); err != nil {
+			t.Fatal(err)
+		}
+		sleep(90 * time.Second)
+		if s := h.status("listed"); s.Done != 1 || s.Total != 3 {
+			t.Errorf("listed, running: %d of %d, want 1 of 3", s.Done, s.Total)
+		}
+		if err := h.r.Stop(context.Background(), "listed"); err != nil {
+			t.Fatal(err)
+		}
+		h.stop()
+		if s := h.status("listed"); s.Last == nil || s.Last.Summary != "Stopped: 1 done, 2 left" {
+			t.Errorf("listed, stopped: %+v", s.Last)
+		}
+	})
+}
+
+// Add panics on what the compiler can't check.
+func TestAddPanics(t *testing.T) {
+	run := Func(func(context.Context) error { return nil })
+	work := newFeature(0, time.Minute).items()
+	noPending, noDo := work, work
+	noPending.Pending, noDo.Do = nil, nil
+	for _, c := range []struct {
+		task Task
+		want string
+	}{
+		{Task{Schedule: Nightly, Work: run}, "tasks: a task needs a name"},
+		{Task{Name: "none", Schedule: Nightly}, "tasks: a task needs Work, a Func or Items: none"},
+		{Task{Name: "nil-func", Schedule: Nightly, Work: Func(nil)}, "tasks: a task needs Work, a Func or Items: nil-func"},
+		{Task{Name: "pointer", Schedule: Nightly, Work: &work}, "tasks: a task needs Work, a Func or Items: pointer"},
+		{Task{Name: "no-pending", Work: noPending}, "tasks: Items needs Pending and Do: no-pending"},
+		{Task{Name: "no-do", Work: noDo}, "tasks: Items needs Pending and Do: no-do"},
+		{Task{Name: "on-demand", Schedule: OnDemand, Work: run}, "tasks: a Func needs a schedule: on-demand"},
+		{Task{Name: "added", Schedule: Nightly, Work: run}, "tasks: task added twice: added"},
+	} {
+		h := newHarness(t)
+		r := New(h.db, h.settings, events.NewBus(), Options{})
+		r.Add(Task{Name: "added", Work: work})
+		if got := panicOf(func() { r.Add(c.task) }); got != c.want {
+			t.Errorf("Add(%+v) panicked with %v, want %q", c.task, got, c.want)
+		}
+	}
+
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t)
+		h.start()
+		defer h.stop()
+		if got := panicOf(func() { h.r.Add(Task{Name: "late", Work: work}) }); got != "tasks: Add after Run" {
+			t.Errorf("Add after Run panicked with %v", got)
+		}
+	})
+}
+
+// panicOf returns what f panicked with, or nil.
+func panicOf(f func()) (p any) {
+	defer func() { p = recover() }()
+	f()
+	return nil
 }

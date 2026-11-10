@@ -2271,7 +2271,7 @@ GET /api/v1/tasks
       "nightly": false,
       "pendingCount": 0,
       "running": false,
-      "section": "activity",
+      "section": "onDemand",
       "stoppable": false
     },
     {
@@ -2292,7 +2292,7 @@ GET /api/v1/tasks
         "total": 0
       },
       "running": true,
-      "section": "activity",
+      "section": "onDemand",
       "stoppable": false
     }
   ]

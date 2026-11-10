@@ -41,7 +41,7 @@ func (s *Service) Placed(ctx context.Context, tx *store.Tx, lib catalog.Library,
 	if err != nil {
 		return err
 	}
-	tx.AfterCommit(func() { s.deps.Tasks.Ask(TaskFindMarkers, files...) })
+	tx.AfterCommit(func() { s.deps.Tasks.Enqueue(TaskFindMarkers, files...) })
 	return nil
 }
 
@@ -82,8 +82,8 @@ func (s *Service) pending(ctx context.Context) ([]id.ID, error) {
 	return out, nil
 }
 
-// left counts the files left.
-func (s *Service) left(ctx context.Context) (int, error) {
+// pendingCount counts the files pending lists.
+func (s *Service) pendingCount(ctx context.Context) (int, error) {
 	if !s.deps.Media.Chromaprint(ctx) {
 		return 0, nil // nothing to fingerprint, so nothing pending
 	}
@@ -231,14 +231,4 @@ func (s *Service) pruneMarkers(ctx context.Context) (int64, error) {
 		}
 	}
 	return total, nil
-}
-
-// wanted reports whether any shows library finds markers, which means the
-// nightly task has something to do.
-func (s *Service) wanted(ctx context.Context) (bool, error) {
-	ok, err := s.q.Wanted(ctx)
-	if err != nil {
-		return false, err
-	}
-	return ok, nil
 }

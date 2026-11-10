@@ -27,7 +27,8 @@ const TaskLibraryChanges = "library-changes"
 // runs to the end, because a half-deleted library is worse than a deleted
 // one.
 func (c *Catalog) Tasks() []tasks.Task {
-	return []tasks.Task{{Name: TaskLibraryChanges, Finish: true, Pending: c.removals, Do: c.remove}}
+	return []tasks.Task{{Name: TaskLibraryChanges, Schedule: tasks.OnDemand, Unstoppable: true,
+		Work: tasks.Items{Pending: c.removals, Do: c.remove, Uncounted: true}}}
 }
 
 // removals lists the libraries being deleted, then the folders being

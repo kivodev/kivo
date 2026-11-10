@@ -31,9 +31,9 @@ type Media interface {
 	Capabilities() media.Capabilities
 }
 
-// Tasks asks for items to be done now. tasks.Runner implements it.
+// Tasks enqueues items to be done now. tasks.Runner implements it.
 type Tasks interface {
-	Ask(task string, items ...id.ID)
+	Enqueue(task string, items ...id.ID)
 }
 
 // Deps are the service's collaborators and folders.
@@ -76,9 +76,10 @@ func New(db *store.DB, d Deps) *Service {
 // with playback. The markers-at-once setting says how many run at once.
 func (s *Service) Tasks() []tasks.Task {
 	return []tasks.Task{
-		{Name: TaskFindMarkers, Nightly: true, Limit: func(st config.Settings) int { return st.MarkersAtOnce }, Wanted: s.wanted,
-			Pending: s.pending, Do: s.find, Left: s.left, Failed: s.failed, Retry: s.retry},
-		{Name: taskPruneMarkers, Nightly: true, Maintenance: true, Run: s.prune},
+		{Name: TaskFindMarkers, Schedule: tasks.Nightly, Wanted: s.q.Wanted, Work: tasks.Items{
+			Pending: s.pending, Do: s.find, Limit: func(st config.Settings) int { return st.MarkersAtOnce },
+			PendingCount: s.pendingCount, Failed: s.failed, Retry: s.retry}},
+		{Name: taskPruneMarkers, Schedule: tasks.Nightly, Maintenance: true, Work: tasks.Func(s.prune)},
 	}
 }
 

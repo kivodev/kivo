@@ -16,10 +16,10 @@ import (
 	"github.com/mmcdole/kivo/internal/users"
 )
 
-// Tasks asks for a task's items to be done now. tasks.Runner implements
+// Tasks enqueues a task's items to be done now. tasks.Runner implements
 // it.
 type Tasks interface {
-	Ask(task string, items ...id.ID)
+	Enqueue(task string, items ...id.ID)
 }
 
 // The tasks playback runs.
@@ -107,8 +107,9 @@ func (p *preparation) progressLocked(now time.Time) (float64, time.Duration) {
 // downloads are removed each night.
 func (s *Downloads) Tasks() []tasks.Task {
 	return []tasks.Task{
-		{Name: TaskPrepareDownloads, Finish: true, Limit: s.preparingAtOnce, Pending: s.q.OpenDownloads, Do: s.prepare},
-		{Name: taskPruneDownloads, Nightly: true, Maintenance: true, Run: s.Prune},
+		{Name: TaskPrepareDownloads, Schedule: tasks.OnDemand, Unstoppable: true,
+			Work: tasks.Items{Pending: s.q.OpenDownloads, Do: s.prepare, Limit: s.preparingAtOnce, Uncounted: true}},
+		{Name: taskPruneDownloads, Schedule: tasks.Nightly, Maintenance: true, Work: tasks.Func(s.Prune)},
 	}
 }
 

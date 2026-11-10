@@ -310,10 +310,10 @@ func (e *env) Placed(_ context.Context, _ *store.Tx, _ catalog.Library, episodes
 	return nil
 }
 
-// Ask records the libraries a scan was asked for, and the works a refresh
+// Enqueue records the libraries a scan was asked for, and the works a refresh
 // was asked for. The env serves as the Tasks of both identify and
 // metadata.
-func (e *env) Ask(task string, items ...id.ID) {
+func (e *env) Enqueue(task string, items ...id.ID) {
 	switch task {
 	case scan.TaskScanLibraries:
 	case metadata.TaskRefreshMetadata:

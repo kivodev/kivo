@@ -157,7 +157,7 @@ open class TasksApi : ApiClient {
 
     /**
      * Run task
-     * Begins a run of the task, outside the maintenance window too, or has its open run, one the night began, go on past the window&#39;s close. Either works until it&#39;s done or stopped. An Activity row has no runs: &#x60;404&#x60;. 
+     * Begins a run of the task, outside the maintenance window too, or has its open run, one the night began, go on past the window&#39;s close. Either works until it&#39;s done or stopped. An on-demand row has no runs: &#x60;404&#x60;. 
      * @param task A task&#39;s &#x60;id&#x60; (a &#x60;TaskName&#x60;).
      * @return void
      */

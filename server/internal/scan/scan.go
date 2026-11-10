@@ -48,9 +48,9 @@ type Options struct {
 	OpenFolder func(path string) (fs.FS, func() error, error)
 }
 
-// Tasks asks for items to be done now. tasks.Runner implements it.
+// Tasks enqueues items to be done now. tasks.Runner implements it.
 type Tasks interface {
-	Ask(task string, items ...id.ID)
+	Enqueue(task string, items ...id.ID)
 }
 
 // Identifier identifies the folders of a library's files that are probed
@@ -127,12 +127,14 @@ const (
 )
 
 // Tasks returns the package's tasks, for cmd/kivo to add. Two libraries
-// are scanned at once.
+// are scanned at once. Every library is pending in every run, so the scan
+// task shows no pending count.
 func (s *Scanner) Tasks() []tasks.Task {
 	return []tasks.Task{
-		{Name: TaskScanLibraries, Every: 12 * time.Hour, Limit: func(config.Settings) int { return 2 },
-			Pending: s.libraries, Do: s.scan, Failed: s.failed, Retry: s.retry},
-		{Name: taskPruneGone, Nightly: true, Run: s.pruneGone},
+		{Name: TaskScanLibraries, Schedule: tasks.Every(12 * time.Hour), Work: tasks.Items{
+			Pending: s.libraries, Do: s.scan, Limit: func(config.Settings) int { return 2 },
+			Uncounted: true, Failed: s.failed, Retry: s.retry}},
+		{Name: taskPruneGone, Schedule: tasks.Nightly, Work: tasks.Func(s.pruneGone)},
 	}
 }
 
@@ -154,7 +156,7 @@ func (s *Scanner) Resume(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("find scans to resume: %w", err)
 	}
-	s.deps.Tasks.Ask(TaskScanLibraries, libs...)
+	s.deps.Tasks.Enqueue(TaskScanLibraries, libs...)
 	return nil
 }
 
@@ -197,7 +199,7 @@ func (s *Scanner) EditLibrary(ctx context.Context, lib id.ID, ch catalog.Library
 				s.askAll(lib)
 			}
 			for _, r := range removed {
-				s.deps.Tasks.Ask(catalog.TaskLibraryChanges, r.ID)
+				s.deps.Tasks.Enqueue(catalog.TaskLibraryChanges, r.ID)
 			}
 		})
 		return nil
@@ -215,7 +217,7 @@ func (s *Scanner) DeleteLibrary(ctx context.Context, lib id.ID) error {
 		}
 		tx.AfterCommit(func() {
 			s.rewatch()
-			s.deps.Tasks.Ask(catalog.TaskLibraryChanges, lib)
+			s.deps.Tasks.Enqueue(catalog.TaskLibraryChanges, lib)
 		})
 		return nil
 	})
@@ -271,7 +273,7 @@ func (s *Scanner) RequestDir(ctx context.Context, folder id.ID, dir string) erro
 		req.dirs[folder] = append(req.dirs[folder], dir)
 	}
 	s.mu.Unlock()
-	s.deps.Tasks.Ask(TaskScanLibraries, r.Library)
+	s.deps.Tasks.Enqueue(TaskScanLibraries, r.Library)
 	return nil
 }
 
@@ -280,7 +282,7 @@ func (s *Scanner) askAll(lib id.ID) {
 	s.mu.Lock()
 	s.asked[lib] = &request{all: true}
 	s.mu.Unlock()
-	s.deps.Tasks.Ask(TaskScanLibraries, lib)
+	s.deps.Tasks.Enqueue(TaskScanLibraries, lib)
 }
 
 // take removes and returns what a library's scan covers: the directories
@@ -299,7 +301,7 @@ func (s *Scanner) take(lib id.ID) map[id.ID][]string {
 // askLater asks for a scan of a library after d, such as when a folder
 // can't be reached.
 func (s *Scanner) askLater(lib id.ID, d time.Duration) {
-	time.AfterFunc(d, func() { s.deps.Tasks.Ask(TaskScanLibraries, lib) })
+	time.AfterFunc(d, func() { s.deps.Tasks.Enqueue(TaskScanLibraries, lib) })
 }
 
 // failed lists the files that failed to probe at their generation.

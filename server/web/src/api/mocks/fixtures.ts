@@ -1209,7 +1209,7 @@ export function createMockApi(): MockApi {
       },
       {
         id: "prepare-downloads",
-        section: "activity",
+        section: "onDemand",
         nightly: false,
         progress: { done: 0, total: 0 },
         pendingCount: 0,
@@ -1227,7 +1227,7 @@ export function createMockApi(): MockApi {
       },
       {
         id: "library-changes",
-        section: "activity",
+        section: "onDemand",
         nightly: false,
         pendingCount: 0,
         running: false,
