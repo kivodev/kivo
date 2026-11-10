@@ -281,8 +281,9 @@
     <string name="mobile_new_list_menu">New</string>
 
     <!-- Smart lists -->
-    <string name="mobile_your_lists">Your Lists</string>
-    <string name="mobile_smart_lists">Smart Lists</string>
+    <string name="mobile_smart_list">Smart list</string>
+    <string name="mobile_list_no_titles">Empty</string>
+    <string name="mobile_list_empty_shelf">Nothing in this list yet</string>
     <string name="mobile_smart_new">New Smart List</string>
     <string name="mobile_smart_edit">Edit Smart List</string>
     <string name="mobile_smart_edit_short">Edit</string>
@@ -293,7 +294,6 @@
     <string name="mobile_smart_refused_unknown">It uses a rule this version of Kivo doesn\'t know. It stays as it is.</string>
     <string name="mobile_smart_rules_failed">These rules no longer work.</string>
     <string name="mobile_smart_nothing_matches">Nothing matches these rules yet.</string>
-    <string name="mobile_smart_list_detail">%1$s, %2$,d</string>
     <string name="mobile_smart_count_rules">%1$s. %2$s</string>
     <string name="mobile_smart_libraries">Libraries</string>
     <string name="mobile_smart_match_all">Match All of These</string>

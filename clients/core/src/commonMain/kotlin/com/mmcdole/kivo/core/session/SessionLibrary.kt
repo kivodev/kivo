@@ -95,12 +95,9 @@ class SessionLibrary internal constructor(
     @Throws(Exception::class)
     suspend fun resetHomeRows(): List<HomeRowInfo> = homeLayout.resetRows()
 
-    /** The user's lists, My List first, read again as they change. */
-    fun lists(counted: Boolean = false): Flow<Load<List<WorkList>>> = reachability.load(listWorks.lists(counted))
-
-    /** The first page of a list's works of [kinds], or every kind when null, [limit] long or the server's page, most recently added first. */
-    fun listWorks(listId: String, limit: Int?, kinds: List<String>?): Flow<Load<WorkSummaryPage>> =
-        reachability.load(listWorks.works(listId, limit, kinds).onEach { seen.read(it.items) })
+    /** The user's lists, My List first, read again as they change; [counted] also counts the smart lists and gives each list its first works, as a Home row has them. */
+    fun lists(counted: Boolean = false): Flow<Load<List<WorkList>>> =
+        reachability.load(listWorks.lists(counted).onEach { lists -> lists.forEach { seen.read(it.items.orEmpty()) } })
 
     /** A list's works of [kinds], or every kind when null, as a grid, most recently added first, read again in place as they change. */
     fun pagedListWorks(listId: String, kinds: List<String>?): GridPager<WorkSummary> = paged(
