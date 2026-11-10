@@ -92,7 +92,7 @@ func TestRepoTransactions(t *testing.T) {
 }
 
 func TestRepoValuesOnly(t *testing.T) {
-	vs, err := checkValuesOnly("..", valuesOnly)
+	vs, err := checkValuesOnly("..")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -399,9 +399,9 @@ func joined() error {
 }
 
 var (
-	errA = errors.New("Capital")
-	errB = errors.New("ends with a period.")
-	errC = errors.New("failed to read")
+	errA = errors.New("failed to read")
+	errB = fault.New(fault.Invalid, "Capital")
+	errC = fault.New(fault.Invalid, "ends with a period.")
 )`)
 
 	vs, err := checkMessages(dir)
@@ -480,36 +480,6 @@ func fixture() { _ = tx.Commit() }`)
 
 func TestCheckValuesOnlyFindsReach(t *testing.T) {
 	dir := t.TempDir()
-	write(t, dir, "catalog/catalog.go", `package catalog
-
-import (
-	"context"
-	"database/sql"
-
-	"github.com/mmcdole/kivo/internal/store"
-)
-
-type Catalog struct{}
-
-func New(db *store.DB) *Catalog { return &Catalog{} }
-
-func (c *Catalog) Work(ctx context.Context) error { return nil }
-
-func Visible(tx *sql.Tx) bool { return true }
-
-func Reindex(tx *store.Tx) error { return nil }
-
-type Kind string
-
-const Movie Kind = "movie"
-
-type Batch struct{}
-
-func (b *Batch) Flush(ctx context.Context) error { return nil }
-
-func (b *Batch) Len() int { return 0 }
-
-func SortTitle(s string) string { return s }`)
 	write(t, dir, "query/query.go", `package query
 
 import (
@@ -521,10 +491,8 @@ type Service struct{ c *cat.Catalog }
 
 func use(b *cat.Batch) {
 	_ = cat.New(nil)
-	_ = cat.Visible(nil)
-	_ = cat.Reindex(nil)
-	_, _ = cat.Movie, cat.SortTitle("x")
-	var _ cat.Kind
+	_, _ = cat.KindMovie, cat.CompareVersions
+	var _ cat.WorkKind
 	_ = dbq.Queries{}
 }`)
 	write(t, dir, "query/query_test.go", `package query
@@ -538,7 +506,7 @@ import "github.com/mmcdole/kivo/internal/catalog"
 
 var _ = catalog.New(nil)`)
 
-	vs, err := checkValuesOnly(dir, map[string][]string{"query": {"catalog"}})
+	vs, err := checkValuesOnly(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -546,7 +514,7 @@ var _ = catalog.New(nil)`)
 	for _, v := range vs {
 		got = append(got, v.File)
 	}
-	if want := []string{"query/query.go:5", "query/query.go:8", "query/query.go:10", "query/query.go:11", "query/query.go:12", "query/query.go:13"}; !slices.Equal(got, want) {
+	if want := []string{"query/query.go:5", "query/query.go:8", "query/query.go:10", "query/query.go:11"}; !slices.Equal(got, want) {
 		t.Fatalf("got %v, want %v", vs, want)
 	}
 }
