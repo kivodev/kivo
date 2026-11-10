@@ -15,8 +15,8 @@ import (
 
 	"github.com/mmcdole/kivo/internal/store"
 
+	"github.com/mmcdole/kivo/internal/cachedir"
 	"github.com/mmcdole/kivo/internal/catalog"
-	"github.com/mmcdole/kivo/internal/config"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/markers/dbq"
 	"github.com/mmcdole/kivo/internal/markers/detect"
@@ -493,7 +493,7 @@ func TestOlderRulesDecideAgain(t *testing.T) {
 func TestOlderFingerprintsAreMissing(t *testing.T) {
 	f := newShowFixture(t)
 	older := func(file catalog.File) string {
-		return config.CachePath(f.a.resultDir(), file.ID, file.ID.String(), config.CacheLeaf(file.Generation, detect.FingerprintVersion-1))
+		return cachedir.Path(f.a.resultDir(), file.ID, file.ID.String(), cachedir.Leaf(file.Generation, detect.FingerprintVersion-1))
 	}
 	for i := range f.episodes {
 		if err := os.MkdirAll(older(f.file(i)), 0o755); err != nil {

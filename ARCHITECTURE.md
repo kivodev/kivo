@@ -65,7 +65,7 @@ The server's packages live under `server/internal`, one component per package, a
  features   scan  identify  previews  subtitles  markers  transcode  playback
  domain     store  config  media  discovery  tasks  users  auth  catalog
             activity  query  metadata  userstate  release
- helpers    fault  id  events  health  keylock  atomicfile  egress
+ helpers    fault  id  events  health  keylock  atomicfile  cachedir  egress
 ```
 
 The main components:

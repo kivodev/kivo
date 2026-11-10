@@ -8,7 +8,7 @@ import (
 
 	"github.com/mmcdole/kivo/internal/store"
 
-	"github.com/mmcdole/kivo/internal/config"
+	"github.com/mmcdole/kivo/internal/cachedir"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/subtitles/dbq"
 	"github.com/mmcdole/kivo/internal/tasks"
@@ -25,7 +25,7 @@ import (
 // A file missing from disk keeps its subtitles as long as its row is kept,
 // in case the file comes back.
 func (s *Service) prune(ctx context.Context) error {
-	removed, kept, err := config.PruneCache(ctx, s.resultDir(), config.CachePrune{Generations: s.generations, Progress: tasks.Progress})
+	removed, kept, err := cachedir.Prune(ctx, s.resultDir(), cachedir.PruneOptions{Generations: s.generations, Progress: tasks.Progress})
 	if err != nil {
 		return err
 	}

@@ -46,7 +46,7 @@ type layer struct {
 // and may import any. A component may always import its own subpackages.
 // Every package under internal except archtest is in a layer.
 var layers = []layer{
-	{"helpers", []string{"fault", "id", "events", "health", "keylock", "atomicfile", "egress"}},
+	{"helpers", []string{"fault", "id", "events", "health", "keylock", "atomicfile", "cachedir", "egress"}},
 	{"domain", []string{"store", "config", "media", "discovery", "tasks", "users", "auth", "catalog", "activity",
 		"query", "metadata", "userstate", "release"}},
 	{"features", []string{"scan", "identify", "previews", "subtitles", "markers", "transcode", "playback"}},

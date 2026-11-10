@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 
 	"github.com/mmcdole/kivo/internal/atomicfile"
+	"github.com/mmcdole/kivo/internal/cachedir"
 	"github.com/mmcdole/kivo/internal/catalog"
-	"github.com/mmcdole/kivo/internal/config"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/markers/detect"
 	"github.com/mmcdole/kivo/internal/tasks"
@@ -19,14 +19,14 @@ import (
 const resultDir = "markers"
 
 // result returns the folder of a file's fingerprint at a generation:
-// cache/markers/<xx>/<file>/<generation>v<version>/ (see config.CachePath
-// and config.CacheLeaf). Because the folder names the fingerprint version,
+// cache/markers/<xx>/<file>/<generation>v<version>/ (see cachedir.Path
+// and cachedir.Leaf). Because the folder names the fingerprint version,
 // a fingerprint of an older version counts as not made, and it is pruned
 // like an older generation's. The folder is built in cache/markers/.tmp/
-// (see config.MakeCacheTemp) and renamed into place whole, so a fingerprint
+// (see cachedir.MakeTemp) and renamed into place whole, so a fingerprint
 // that's there is complete.
 func (s *Service) result(file id.ID, gen int64) string {
-	return config.CachePath(s.resultDir(), file, file.String(), config.CacheLeaf(gen, detect.FingerprintVersion))
+	return cachedir.Path(s.resultDir(), file, file.String(), cachedir.Leaf(gen, detect.FingerprintVersion))
 }
 
 // resultDir is cache/markers.
@@ -59,7 +59,7 @@ func (s *Service) commit(ctx context.Context, f catalog.File, tmp string) (bool,
 // markers found and decisions made at older generations. A file gone from
 // disk keeps its fingerprints while its row is kept, in case it comes back.
 func (s *Service) prune(ctx context.Context) error {
-	removed, kept, err := config.PruneCache(ctx, s.resultDir(), config.CachePrune{
+	removed, kept, err := cachedir.Prune(ctx, s.resultDir(), cachedir.PruneOptions{
 		Version: detect.FingerprintVersion, Generations: s.generations, Progress: tasks.Progress,
 	})
 	if err != nil {

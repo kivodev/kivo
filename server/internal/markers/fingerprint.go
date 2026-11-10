@@ -12,6 +12,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/mmcdole/kivo/internal/cachedir"
 	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/config"
 	"github.com/mmcdole/kivo/internal/id"
@@ -237,7 +238,7 @@ func (s *Service) fingerprintAt(file id.ID, gen int64) (*detect.Fingerprint, boo
 
 // keepFingerprint puts a file's fingerprint in its result folder.
 func (s *Service) keepFingerprint(ctx context.Context, f catalog.File, fp *detect.Fingerprint) error {
-	tmp, err := config.MakeCacheTemp(s.resultDir())
+	tmp, err := cachedir.MakeTemp(s.resultDir())
 	if err != nil {
 		return s.room.Err(err)
 	}

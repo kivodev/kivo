@@ -7,18 +7,18 @@ import (
 	"os"
 
 	"github.com/mmcdole/kivo/internal/atomicfile"
+	"github.com/mmcdole/kivo/internal/cachedir"
 	"github.com/mmcdole/kivo/internal/catalog"
-	"github.com/mmcdole/kivo/internal/config"
 	"github.com/mmcdole/kivo/internal/health"
 	"github.com/mmcdole/kivo/internal/id"
 )
 
 // result returns the folder of a file's previews at a generation, which is
-// cache/previews/<xx>/<file>/<generation>/ (see config.CachePath). Previews
-// are made in cache/previews/.tmp/ (see config.MakeCacheTemp) and moved
+// cache/previews/<xx>/<file>/<generation>/ (see cachedir.Path). Previews
+// are made in cache/previews/.tmp/ (see cachedir.MakeTemp) and moved
 // into place whole, so previews that are in place are complete.
 func (s *Service) result(file id.ID, gen int64) string {
-	return config.CachePath(s.dir, file, file.String(), config.CacheLeaf(gen, 0))
+	return cachedir.Path(s.dir, file, file.String(), cachedir.Leaf(gen, 0))
 }
 
 // has reports whether a file's previews are made at a generation.

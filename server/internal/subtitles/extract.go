@@ -18,8 +18,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mmcdole/kivo/internal/cachedir"
 	"github.com/mmcdole/kivo/internal/catalog"
-	"github.com/mmcdole/kivo/internal/config"
 	"github.com/mmcdole/kivo/internal/fault"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/media"
@@ -292,7 +292,7 @@ func (s *Service) extract(ctx context.Context, file id.ID) error {
 	if err := s.room.Check(); err != nil {
 		return err
 	}
-	tmp, err := config.MakeCacheTemp(s.resultDir())
+	tmp, err := cachedir.MakeTemp(s.resultDir())
 	if err != nil {
 		return s.room.Err(err)
 	}
