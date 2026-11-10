@@ -216,6 +216,7 @@ func wire(ctx context.Context, boot config.Bootstrap, logs *health.Logs, bus *ev
 	})
 	s.identifier = identify.New(db, identify.Deps{
 		Catalog: s.catalog, Metadata: s.metadata, Userstate: s.userstate, Activity: s.activity, Tasks: s.runner, Markers: s.markers,
+		ScanStep: tasks.StepOf{Task: scan.TaskScanLibraries, Step: scan.StepIdentify},
 	})
 	s.scanner = scan.New(db, scan.Deps{
 		Catalog: s.catalog, Tasks: s.runner, Prober: s.ffmpeg, Settings: s.settings, Identifier: s.identifier,

@@ -234,16 +234,15 @@ function NowPlaying() {
 
 /**
  * Each library that is scanning, and each task running a counted run, gets
- * a line and a bar; a library matching its files gets a line. A library's
- * scan shows on its own line, not under Scan all libraries. Nothing shows
- * while nothing runs.
+ * a line and a bar. A library's scan shows on its own line, not under Scan
+ * all libraries. Nothing shows while nothing runs.
  */
 function WorkingNow() {
   const libraries = useSuspenseQuery(libraryQueries.list()).data.items;
   const tasks = useQuery(taskQueries.list()).data?.items ?? [];
   const { taskName, doing } = useAdminLabels();
   const scanning = libraries.flatMap(({ scan: status, ...library }) =>
-    status?.state === "scanning" || status?.state === "matching" ? [{ library, status }] : [],
+    status?.state === "scanning" ? [{ library, status }] : [],
   );
   const running = tasks.filter((t) => t.running && t.id !== "scan-libraries" && (t.progress?.total ?? 0) > 0);
   if (scanning.length === 0 && running.length === 0) return null;
@@ -254,11 +253,7 @@ function WorkingNow() {
           const name = library.name;
           return (
             <AdminListItem key={library.id}>
-              {status.state === "matching" ? (
-                <ScanLine name={<Trans>Matching {name}</Trans>} />
-              ) : (
-                <ScanLine name={<Trans>Scanning {name}</Trans>} progress={status.progress} />
-              )}
+              <ScanLine name={<Trans>Scanning {name}</Trans>} progress={status.progress} />
             </AdminListItem>
           );
         })}

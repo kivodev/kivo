@@ -98,17 +98,19 @@ func TestTasks(t *testing.T) {
 }
 
 // Identification isn't a row of the Tasks page and can't be asked for by
-// its name. While it works and no scan does, the scan's row runs on the
-// step identify with the files left to identify, and Stop on that row stops
-// it, leaving the files waiting. Files waiting while nothing works leave
-// the row idle.
+// its name. While the folders a scan asked to identify are left, the scan's
+// row runs on the step identify, with the folders done out of those asked
+// for, and Stop on that row stops them. Folders no scan asked for, as after
+// a fix match, leave the row idle and go on after Stop.
 func TestScanRowMatching(t *testing.T) {
 	e := newEnv(t, serving{})
-	// A home video is identified without a provider.
-	lib, folder := e.b.Library(catalog.Videos)
-	clip := e.b.File(folder, "Holiday/Beach.mkv")
+	// Home videos are identified without a provider.
+	scanned, folder := e.b.Library(catalog.Videos)
+	e.b.File(folder, "Holiday/Beach.mkv")
+	_, other := e.b.Library(catalog.Videos)
+	fix := e.b.File(other, "Garden/Pond.mkv")
 	e.b.Write(func(ctx context.Context, tx *store.Tx) error {
-		_, err := tx.ExecContext(ctx, `UPDATE media_file SET probed = generation WHERE id = ?`, clip)
+		_, err := tx.ExecContext(ctx, `UPDATE media_file SET probed = generation`)
 		return err
 	})
 	scans := func() map[string]any {
@@ -119,31 +121,38 @@ func TestScanRowMatching(t *testing.T) {
 		}
 		return e.task(scan.TaskScanLibraries)
 	}
-	if r := scans(); r["running"] != false || r["stoppable"] != false || r["progress"] != nil || r["pendingCount"] != 0.0 {
-		t.Errorf("a file waiting, nothing running: %v", r)
-	}
 	for _, req := range [][2]string{{"POST", "run"}, {"POST", "stop"}, {"GET", "failures"}, {"POST", "retry"}} {
 		if w := e.do(req[0], "/api/v1/tasks/identify-media/"+req[1], e.adminToken, nil); w.Code != http.StatusNotFound {
 			t.Errorf("%s identify media: %d", req[1], w.Code)
 		}
 	}
 
-	// The runner isn't running, so the file stays asked for.
-	e.d.Tasks.Enqueue(identify.TaskIdentifyMedia, clip)
+	// The runner isn't running, so what's asked for stays asked for.
+	e.d.Tasks.Enqueue(identify.TaskIdentifyMedia, fix)
+	if r := scans(); r["running"] != false || r["stoppable"] != false || r["progress"] != nil || r["pendingCount"] != 0.0 {
+		t.Errorf("identifying what no scan asked for: %v", r)
+	}
+	lib, err := e.b.Catalog.Library(ctx, scanned)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := e.d.Identify.Scanned(ctx, lib); err != nil {
+		t.Fatal(err)
+	}
 	r := scans()
 	if p, _ := r["progress"].(map[string]any); r["running"] != true || r["stoppable"] != true || p["step"] != "identify" ||
-		p["done"] != 0.0 || p["total"] != 0.0 || r["pendingCount"] != 1.0 || r["section"] != "library" || r["nextRunAt"] == nil {
-		t.Errorf("identifying with no scan: %v", r)
+		p["done"] != 0.0 || p["total"] != 1.0 || r["pendingCount"] != 0.0 || r["section"] != "library" || r["nextRunAt"] == nil {
+		t.Errorf("identifying what a scan asked for: %v", r)
 	}
 
 	if w := e.do("POST", "/api/v1/tasks/scan-libraries/stop", e.adminToken, nil); w.Code != http.StatusNoContent {
 		t.Fatalf("stop: %d %s", w.Code, w.Body.String())
 	}
-	if r := scans(); r["running"] != false || r["progress"] != nil || r["pendingCount"] != 0.0 {
+	if r := scans(); r["running"] != false || r["progress"] != nil {
 		t.Errorf("after Stop: %v", r)
 	}
-	if waiting, err := e.d.Identify.Waiting(ctx); err != nil || waiting[lib] != 1 {
-		t.Errorf("waiting after Stop: %v, %v", waiting, err)
+	if asked := e.d.Tasks.Asked(identify.TaskIdentifyMedia); !slices.Equal(asked, []id.ID{fix}) {
+		t.Errorf("asked to identify %v after Stop, want the fix match's %v", asked, fix)
 	}
 }
 

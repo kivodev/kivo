@@ -28,11 +28,11 @@ const (
 	SectionMaintenance Section = "maintenance" // cleanups and database upkeep
 )
 
-// Task is one row of the Tasks page. Work says what it does: a Func, which
-// is one call per run, or Items, a list worked through an item at a time.
-// Schedule says when its runs begin: Nightly, Every so often, or OnDemand,
-// which has no runs. Whatever the schedule, Runner.Enqueue has Items do
-// the given items now.
+// Task is one row of the Tasks page, unless StepOf makes it a step of
+// another task's row. Work says what it does: a Func, which is one call per
+// run, or Items, a list worked through an item at a time. Schedule says when
+// its runs begin: Nightly, Every so often, or OnDemand, which has no runs.
+// Whatever the schedule, Runner.Enqueue has Items do the given items now.
 type Task struct {
 	Name     string
 	Schedule Schedule
@@ -48,6 +48,20 @@ type Task struct {
 	// the task's next run on the Tasks page. The schedule begins the run
 	// either way. Nil means always wanted.
 	Wanted func(ctx context.Context) (bool, error)
+	// StepOf makes an Items task the last step of another task's items,
+	// as identifying what a library's scan found is of the scan. Such a
+	// task has no row of its own: the runner leaves it out of Tasks and
+	// reports it not found. Its items enqueued with Runner.EnqueueFor
+	// show on the owner's row and stop with the owner's items. Its other
+	// work shows nowhere. The zero StepOf makes the task a row.
+	StepOf StepOf
+}
+
+// StepOf names the task whose row shows a step task's work, and the step
+// it shows it as.
+type StepOf struct {
+	Task string // the owner, an Items task
+	Step string // the step as the owner's progress names it, such as "identify"
 }
 
 // Schedule is when a task's runs begin: Nightly, Every some interval, or
@@ -144,18 +158,20 @@ type Status struct {
 	// on-demand task and for a task that isn't wanted.
 	Next time.Time
 	// Running is true while the task has items in flight or enqueued, or
-	// has a run working.
+	// has a run working, or a step of it has items left that its items
+	// asked for.
 	Running bool
 	// Step is what the running task is doing.
 	Step string
 	// Done of Total is how far the running task has got. For an item run
-	// it is the items done out of those done plus those left.
+	// it is the items done out of those done plus those left. For a step
+	// it is the step's items done out of those its items asked for.
 	Done, Total int
 	// PendingCount is how many items are left for the next run, while no
 	// run is working.
 	PendingCount int
 	Failures     int    // items that failed for good
-	Items        []Item // items in flight, in the order they started
+	Items        []Item // items in flight, as Runner.Items lists them
 }
 
 // Outcome is how a run ended.

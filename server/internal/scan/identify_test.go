@@ -57,7 +57,7 @@ func (f *flow) wire(lost bool) {
 	}
 	f.r = tasks.New(db, settings, events.NewBus(), tasks.Options{})
 	f.asks = &fakeTasks{}
-	var ask Tasks = asking{f.asks, f.r}
+	var ask identify.Tasks = asking{f.asks, f.r}
 	if lost {
 		ask = f.asks
 	}
@@ -69,7 +69,10 @@ func (f *flow) wire(lost bool) {
 		metadata.Options{Video: f.find})
 	act := activity.New(db, events.NewBus())
 	state := userstate.New(db, userstate.Deps{Catalog: f.b.Catalog, Settings: settings, Activity: act, Events: events.NewBus()})
-	f.id = identify.New(db, identify.Deps{Catalog: f.b.Catalog, Metadata: meta, Userstate: state, Activity: act, Tasks: ask, Markers: noMarkers{}})
+	f.id = identify.New(db, identify.Deps{
+		Catalog: f.b.Catalog, Metadata: meta, Userstate: state, Activity: act, Tasks: ask, Markers: noMarkers{},
+		ScanStep: tasks.StepOf{Task: TaskScanLibraries, Step: StepIdentify},
+	})
 	f.s = New(db, Deps{
 		Catalog: f.b.Catalog, Tasks: ask, Prober: f.prob, Settings: settings, Identifier: f.id, Previews: noPreviews{}, Subtitles: noSubtitles{},
 	}, Options{OpenFolder: open})
@@ -109,6 +112,11 @@ type asking struct {
 func (a asking) Enqueue(task string, items ...id.ID) {
 	a.fakeTasks.Enqueue(task, items...)
 	a.r.Enqueue(task, items...)
+}
+
+func (a asking) EnqueueFor(owner id.ID, task string, items ...id.ID) {
+	a.fakeTasks.Enqueue(task, items...)
+	a.r.EnqueueFor(owner, task, items...)
 }
 
 type noMarkers struct{}
@@ -199,14 +207,14 @@ func (f *flow) works() int {
 	return n
 }
 
-// identifyTask is the identify task's row of the Tasks page.
-func (f *flow) identifyTask() tasks.Status {
+// scanTask is the scan task's row of the Tasks page.
+func (f *flow) scanTask() tasks.Status {
 	f.t.Helper()
 	all, err := f.r.Tasks(ctx)
 	if err != nil {
 		f.t.Fatal(err)
 	}
-	return all[slices.IndexFunc(all, func(s tasks.Status) bool { return s.Name == identify.TaskIdentifyMedia })]
+	return all[slices.IndexFunc(all, func(s tasks.Status) bool { return s.Name == TaskScanLibraries })]
 }
 
 // A scan hands the files it probed to the identify task, which identifies
@@ -267,7 +275,8 @@ func TestScanHandsOffToIdentify(t *testing.T) {
 
 // Files left probed but not identified when the server stops, and files
 // sent back to be identified, are identified as the next server starts,
-// without a scan. The task's row counts them until then.
+// without a scan. No scan asked for them, so the scan's row doesn't show
+// them.
 func TestIdentifyResumesAfterRestart(t *testing.T) {
 	f := newFlow(t)
 	f.fsys.write("Arrival (2016)/Arrival (2016).mkv", "arrival", old)
@@ -297,21 +306,18 @@ func TestIdentifyResumesAfterRestart(t *testing.T) {
 
 	f.fsys.resetCounts()
 	f.wire(false)
-	if row := f.identifyTask(); row.Section() != tasks.SectionOnDemand || row.PendingCount != 2 {
-		t.Errorf("the task's row as the server starts: section %s, %d pending", row.Section(), row.PendingCount)
-	}
 	f.run()
-	f.wait("both files are identified", func() bool { return f.works() == 2 && len(f.pending()) == 0 })
+	f.wait("both files are identified", func() bool {
+		if row := f.scanTask(); row.Running {
+			t.Errorf("the scan's row while the restart identifies: %+v", row)
+		}
+		return f.works() == 2 && len(f.pending()) == 0
+	})
 	f.stop()
 	if got := f.asks.of(TaskScanLibraries); len(got) != 0 {
 		t.Errorf("the restart asked for a scan of %v", got)
 	}
 	if lists, _ := f.fsys.counts(); lists != 0 {
 		t.Errorf("the restart listed %d directories", lists)
-	}
-	// A row's count is reused for a while, so a new runner reads it.
-	f.wire(false)
-	if row := f.identifyTask(); row.PendingCount != 0 || row.Running {
-		t.Errorf("the task's row once all is identified: %d pending, running %v", row.PendingCount, row.Running)
 	}
 }

@@ -144,7 +144,6 @@ function LibraryRow({
   const close = () => setOpen(undefined);
   const status = library.scan;
   const scanning = status?.state === "scanning";
-  const matching = status?.state === "matching";
   const unreachable = (library.folders ?? []).filter((f) => !f.reachable).map((f) => f.path);
   const path = { params: { path: { id: library.id } } };
   const name = library.name;
@@ -218,11 +217,6 @@ function LibraryRow({
                 </Button>
               }
             />
-          </div>
-        )}
-        {matching && (
-          <div data-part="scan" role="status">
-            <ScanLine name={<Trans>Matching</Trans>} edge />
           </div>
         )}
         <FormError error={failed?.error} />

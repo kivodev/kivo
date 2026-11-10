@@ -68,18 +68,18 @@ describe("Admin Libraries", () => {
     expect(screen.queryByText(/View progress in/)).not.toBeInTheDocument();
   });
 
-  it("shows Matching with no count or Stop while its files are being identified, then nothing", async () => {
-    const api = serveMockApi();
-    movies(api).scan = { libraryId: mockIds.movies, state: "matching" };
-    renderApp("/admin/libraries");
+  it("shows its scan matching with a count, the time left and Stop, on its row alone", async () => {
+    serveMockApi(scenarios.matching);
+    const { user } = renderApp("/admin/libraries");
     await screen.findByRole("heading", { name: "Libraries" });
-    expect(rowOf("Movies").querySelector('[data-part="scan"]')).toHaveTextContent(/^Matching$/);
-    expect(within(rowOf("Movies")).queryByRole("button", { name: "Stop" })).not.toBeInTheDocument();
-    expect(rowOf("Movies").querySelector('[role="progressbar"]')).toBeNull();
+    const step = rowOf("Movies").querySelector('[data-part="step-progress"][data-step="identify"]');
+    expect(step).toHaveTextContent("Scanning · Matching");
+    expect(step).toHaveTextContent("120 of 768 · about 9m left");
+    expect(rowOf("Movies").querySelector('[role="progressbar"]')).not.toBeNull();
+    expect(rowOf("TV Shows").querySelector('[data-part="scan"]')).toBeNull();
 
-    movies(api).scan = { libraryId: mockIds.movies, state: "idle" };
-    sendEvent({ type: "event", kind: "tasksChanged" });
-    await waitFor(() => expect(rowOf("Movies").querySelector('[data-part="scan"]')).toBeNull(), { timeout: 3000 });
+    await user.click(within(rowOf("Movies")).getByRole("button", { name: "Stop" }));
+    await waitFor(() => expect(sent("POST", `/libraries/${mockIds.movies}/stop-scan`)).toHaveLength(1));
   });
 
   it("refreshes all metadata from the menu after asking", async () => {
