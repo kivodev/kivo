@@ -31,7 +31,8 @@ var (
 // reindex rewrites a work's row in the search index from its titles and
 // credits. It also indexes any newly credited people. It runs in the same
 // transaction as the change.
-func reindex(ctx context.Context, q *dbq.Queries, tx *store.Tx, work id.ID) error {
+func reindex(ctx context.Context, tx *store.Tx, work id.ID) error {
+	q := dbq.New(tx)
 	w, err := q.GetWork(ctx, work)
 	if err != nil {
 		return notFound(err)

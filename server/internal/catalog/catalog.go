@@ -31,7 +31,9 @@ var (
 
 // Catalog holds what exists. A write takes the caller's transaction, so a
 // change that spans packages is one atomic write. For example, identify
-// reassigns a version while userstate moves its watch state. Only an
+// reassigns a version while userstate moves its watch state. A write that
+// changes which works are available is a method on Batch, which rebuilds
+// each touched work's work_library row once, when the batch ends. Only an
 // admin's edits and deletions open their own transaction.
 type Catalog struct {
 	db  *store.DB

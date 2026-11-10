@@ -370,7 +370,7 @@ func (c *Catalog) EditBooks(ctx context.Context, works []id.ID, e BookEdit) erro
 					m.Book.Series = append(m.Book.Series, ref)
 				}
 			}
-			if err := c.edit(ctx, q, tx, cur, m, fields); err != nil {
+			if err := c.edit(ctx, tx, cur, m, fields); err != nil {
 				return err
 			}
 		}

@@ -165,7 +165,7 @@ func (c *Catalog) EnsureWork(ctx context.Context, tx *store.Tx, in WorkInput) (i
 		return id.ID{}, err
 	}
 	if work.IsZero() {
-		return insertWork(ctx, q, tx, in)
+		return insertWork(ctx, tx, in)
 	}
 	if err := addExternalIDs(ctx, q, work, in.ExternalIDs); err != nil {
 		return id.ID{}, err
@@ -222,7 +222,8 @@ func numberedChild(ctx context.Context, q *dbq.Queries, in WorkInput) (id.ID, er
 }
 
 // insertWork creates the work that in describes, with its external IDs.
-func insertWork(ctx context.Context, q *dbq.Queries, tx *store.Tx, in WorkInput) (id.ID, error) {
+func insertWork(ctx context.Context, tx *store.Tx, in WorkInput) (id.ID, error) {
+	q := dbq.New(tx)
 	work := id.New()
 	root := work
 	if !in.Parent.IsZero() {
@@ -249,7 +250,7 @@ func insertWork(ctx context.Context, q *dbq.Queries, tx *store.Tx, in WorkInput)
 	if err := addExternalIDs(ctx, q, work, in.ExternalIDs); err != nil {
 		return id.ID{}, err
 	}
-	if err := reindex(ctx, q, tx, work); err != nil {
+	if err := reindex(ctx, tx, work); err != nil {
 		return id.ID{}, err
 	}
 	return work, nil
@@ -341,7 +342,7 @@ func (c *Catalog) UpdateMetadata(ctx context.Context, tx *store.Tx, work id.ID, 
 	}
 	locked := lockedFields(cur)
 	take := func(f string) bool { return !slices.Contains(locked, f) }
-	return c.writeMetadata(ctx, q, tx, cur, m, take, locked)
+	return c.writeMetadata(ctx, tx, cur, m, take, locked)
 }
 
 // EditMetadata applies an admin's edit. It writes the named fields and
@@ -362,11 +363,11 @@ func (c *Catalog) editMetadata(ctx context.Context, tx *store.Tx, work id.ID, m 
 	if err != nil {
 		return notFound(err)
 	}
-	return c.edit(ctx, q, tx, cur, m, fields)
+	return c.edit(ctx, tx, cur, m, fields)
 }
 
 // edit writes the named fields of an admin's edit and locks them.
-func (c *Catalog) edit(ctx context.Context, q *dbq.Queries, tx *store.Tx, cur dbq.Work, m WorkMetadata, fields []string) error {
+func (c *Catalog) edit(ctx context.Context, tx *store.Tx, cur dbq.Work, m WorkMetadata, fields []string) error {
 	locked := lockedFields(cur)
 	for _, f := range fields {
 		if !slices.Contains(locked, f) {
@@ -374,15 +375,16 @@ func (c *Catalog) edit(ctx context.Context, q *dbq.Queries, tx *store.Tx, cur db
 		}
 	}
 	slices.Sort(locked)
-	return c.writeMetadata(ctx, q, tx, cur, m, func(f string) bool { return slices.Contains(fields, f) }, locked)
+	return c.writeMetadata(ctx, tx, cur, m, func(f string) bool { return slices.Contains(fields, f) }, locked)
 }
 
 // writeMetadata writes over cur the fields of m that take allows. It stores
 // locked as the work's locked fields.
-func (c *Catalog) writeMetadata(ctx context.Context, q *dbq.Queries, tx *store.Tx, cur dbq.Work, m WorkMetadata, take func(field string) bool, locked []string) error {
+func (c *Catalog) writeMetadata(ctx context.Context, tx *store.Tx, cur dbq.Work, m WorkMetadata, take func(field string) bool, locked []string) error {
 	if m.Book != nil && WorkKind(cur.Kind) != KindBook {
 		return fmt.Errorf("%w: a book's fields are for books only", ErrInvalid)
 	}
+	q := dbq.New(tx)
 	p := dbq.UpdateWorkMetadataParams{
 		ID: cur.ID, Title: cur.Title, SortTitle: cur.SortTitle, OriginalTitle: cur.OriginalTitle, OriginalLanguage: cur.OriginalLanguage,
 		AltTitles: cur.AltTitles, Year: cur.Year, Overview: cur.Overview, ReleaseDate: cur.ReleaseDate,
@@ -467,7 +469,7 @@ func (c *Catalog) writeMetadata(ctx context.Context, q *dbq.Queries, tx *store.T
 		}
 	}
 	if m.Collection != nil {
-		if err := joinCollection(ctx, q, tx, cur.ID, *m.Collection); err != nil {
+		if err := joinCollection(ctx, tx, cur.ID, *m.Collection); err != nil {
 			return err
 		}
 	}
@@ -476,7 +478,7 @@ func (c *Catalog) writeMetadata(ctx context.Context, q *dbq.Queries, tx *store.T
 			return err
 		}
 	}
-	if err := reindex(ctx, q, tx, cur.ID); err != nil {
+	if err := reindex(ctx, tx, cur.ID); err != nil {
 		return err
 	}
 	return c.rebuildWork(ctx, tx, cur.ID) // work_library holds copies of the sort title and browse keys
@@ -537,11 +539,12 @@ func setCredits(ctx context.Context, q *dbq.Queries, work id.ID, credits []Credi
 // joinCollection puts a work in a collection. The work leaves any other
 // collection from the same source. The collection's row in the search index
 // is rewritten from its name.
-func joinCollection(ctx context.Context, q *dbq.Queries, tx *store.Tx, work id.ID, ref CollectionRef) error {
+func joinCollection(ctx context.Context, tx *store.Tx, work id.ID, ref CollectionRef) error {
 	source, _, ok := strings.Cut(ref.Key, ":")
 	if !ok || ref.Name == "" {
 		return fmt.Errorf("%w: collection key %q", ErrInvalid, ref.Key)
 	}
+	q := dbq.New(tx)
 	if err := q.LeaveCollections(ctx, dbq.LeaveCollectionsParams{WorkID: work, Prefix: sql.NullString{String: source + ":", Valid: true}}); err != nil {
 		return err
 	}
@@ -640,7 +643,7 @@ func (b *Batch) Unmatch(ctx context.Context, work id.ID, title string, year int)
 				return err
 			}
 		}
-		if err := reindex(ctx, q, b.tx, r.ID); err != nil {
+		if err := reindex(ctx, b.tx, r.ID); err != nil {
 			return err
 		}
 		all = append(all, r.ID)
@@ -674,7 +677,7 @@ func (b *Batch) Describe(ctx context.Context, work id.ID, x ExternalID, title st
 	if err := q.BumpTreeMatchRev(ctx, work); err != nil {
 		return err
 	}
-	if err := reindex(ctx, q, b.tx, work); err != nil {
+	if err := reindex(ctx, b.tx, work); err != nil {
 		return err
 	}
 	return b.add(ctx, q, []id.ID{work}) // its sort title is copied to work_library
