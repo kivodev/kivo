@@ -107,7 +107,6 @@ type DownloadStatus struct {
 	ID, Work, Version id.ID
 	Quality           string
 	State             DownloadState
-	Position          int           // when queued, its place in line; 1 means it's next
 	Progress          float64       // when preparing, a fraction from 0 to 1
 	Remaining         time.Duration // when preparing, about how long is left; zero until known
 	Reason            Refusal       // when failed, why
@@ -202,7 +201,7 @@ func (s *Service) Download(ctx context.Context, p auth.Caller, v users.Viewer, r
 	slog.InfoContext(ctx, "playback: download", "work", r.Work, "version", c.version.ID, "client", p.Name, "quality", c.input.Quality.Name,
 		"delivery", c.decision.Delivery, "summary", c.decision.Summary(), "prepare", prepare)
 	if prepare {
-		s.queueMoved(ctx)
+		s.downloadsChanged(p.User)
 	}
 	return s.status(ctx, row)
 }
@@ -321,13 +320,18 @@ func (s *Service) prepareDownload(ctx context.Context, download id.ID) error {
 	s.mu.Lock()
 	s.preparing[d.ID] = p
 	s.mu.Unlock()
+	// A download put back in line is told of once it's out of preparing,
+	// so its status reads queued.
+	requeued := false
 	defer func() {
 		s.mu.Lock()
 		delete(s.preparing, d.ID)
 		s.mu.Unlock()
-		s.queueMoved(context.WithoutCancel(ctx))
+		if requeued {
+			s.downloadsChanged(d.UserID)
+		}
 	}()
-	s.queueMoved(ctx)
+	s.downloadsChanged(d.UserID)
 
 	files, why, err := s.prepareFiles(pctx, d, c, p)
 	s.mu.Lock()
@@ -340,10 +344,12 @@ func (s *Service) prepareDownload(ctx context.Context, download id.ID) error {
 		// The server is stopping. The download is prepared again after a
 		// restart.
 		s.requeue(context.WithoutCancel(ctx), d.ID)
+		requeued = true
 		return ctx.Err()
 	case errors.Is(err, media.ErrSourceUnreadable) && s.attempt(d.ID) < downloadAttempts:
 		slog.WarnContext(ctx, "playback: download's file unreadable; trying again later", "work", d.WorkID, "err", err)
 		s.requeue(ctx, d.ID)
+		requeued = true
 		return err
 	}
 	s.mu.Lock()
@@ -536,19 +542,6 @@ func moved(made, was, now string) string {
 	return made
 }
 
-// queueMoved tells every user with downloads in line that their places
-// may have changed.
-func (s *Service) queueMoved(ctx context.Context) {
-	queued, err := s.q.QueuedUsers(ctx)
-	if err != nil {
-		slog.WarnContext(ctx, "playback: downloads in line", "err", err)
-		return
-	}
-	for _, u := range queued {
-		s.downloadsChanged(u)
-	}
-}
-
 // downloadsChanged tells a user's clients that their downloads changed.
 func (s *Service) downloadsChanged(user id.ID) {
 	s.deps.Events.Publish(events.Event{Kind: events.DownloadsChanged, Scope: events.Scope{User: user}})
@@ -678,11 +671,7 @@ func (s *Service) status(ctx context.Context, d dbq.Download) (DownloadStatus, e
 		if p == nil {
 			// This process isn't preparing it, so it's in line, or back in
 			// line after a restart.
-			ahead, err := s.q.QueueAhead(ctx, dbq.QueueAheadParams{QueuedAt: d.QueuedAt, ID: d.ID})
-			if err != nil {
-				return DownloadStatus{}, err
-			}
-			out.State, out.Position = DownloadQueued, int(ahead)+1
+			out.State = DownloadQueued
 		}
 	}
 	return out, nil
@@ -756,7 +745,7 @@ func (s *Service) RetryDownload(ctx context.Context, p auth.Caller, v users.View
 	}
 	slog.InfoContext(ctx, "playback: download retried", "work", d.WorkID, "delivery", c.decision.Delivery)
 	if prepare {
-		s.queueMoved(ctx)
+		s.downloadsChanged(p.User)
 	}
 	return s.status(ctx, d)
 }
@@ -796,9 +785,6 @@ func (s *Service) DeleteDownload(ctx context.Context, p auth.Caller, download id
 	s.mu.Unlock()
 	if err := s.deps.Transcoder.DeleteDownload(d.ID.String()); err != nil {
 		return err
-	}
-	if state := DownloadState(d.State); state == DownloadQueued || state == DownloadPreparing {
-		s.queueMoved(ctx)
 	}
 	return nil
 }

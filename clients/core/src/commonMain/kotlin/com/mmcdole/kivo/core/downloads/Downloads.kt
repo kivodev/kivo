@@ -316,7 +316,7 @@ internal class Downloads(
                 Row(
                     id = id, server_id = c.serverId, account_id = user, remote_id = created.id, work_id = work.id,
                     asked_version = request.versionId, asked_audio = request.audioTrackId, asked_subtitle = request.subtitleTrackId,
-                    quality = created.quality, state = QUEUED, queue_position = null, progress = null, remaining_ms = null, reason = null,
+                    quality = created.quality, state = QUEUED, progress = null, remaining_ms = null, reason = null,
                     plan = kivoJson.encodeToString(ServerDownload.serializer(), created),
                     work = kivoJson.encodeToString(WorkDetail.serializer(), work), title = work.title, kind = work.kind,
                     series_id = episode?.seriesId, series_title = episode?.seriesTitle, season = episode?.seasonNumber?.toLong(), episode = episode?.number?.toLong(),
@@ -359,7 +359,7 @@ internal class Downloads(
             null
         }
         if (d != null) {
-            lock.withLock { q.setServerState(QUEUED, null, null, null, null, row.plan, row.size_bytes, id) }
+            lock.withLock { q.setServerState(QUEUED, null, null, null, row.plan, row.size_bytes, id) }
             apply(id, d)
         } else {
             reask(row)
@@ -550,7 +550,7 @@ internal class Downloads(
         }
         lock.withLock {
             q.setRemote(d.id, row.id)
-            q.setServerState(QUEUED, null, null, null, null, row.plan, row.size_bytes, row.id)
+            q.setServerState(QUEUED, null, null, null, row.plan, row.size_bytes, row.id)
         }
         apply(row.id, d)
     }
@@ -584,9 +584,9 @@ internal class Downloads(
         if (row.state == READY || row.state == DOWNLOADING && d.state == "ready" && row.plan == planJson(d)) return@withLock
         val plan = planJson(d)
         when (d.state) {
-            "queued" -> q.setServerState(QUEUED, d.queuePosition?.toLong(), null, null, null, plan, d.sizeBytes, id)
-            "preparing" -> q.setServerState(CONVERTING, null, d.progress, d.remainingMs?.toLong(), null, plan, d.sizeBytes, id)
-            "failed" -> q.setServerState(FAILED, null, null, null, d.reason ?: "transcodeFailed", plan, d.sizeBytes, id)
+            "queued" -> q.setServerState(QUEUED, null, null, null, plan, d.sizeBytes, id)
+            "preparing" -> q.setServerState(CONVERTING, d.progress, d.remainingMs?.toLong(), null, plan, d.sizeBytes, id)
+            "failed" -> q.setServerState(FAILED, null, null, d.reason ?: "transcodeFailed", plan, d.sizeBytes, id)
             "ready" -> {
                 val kept = q.files(id).executeAsList().associateBy { it.name }
                 val files = filesOf(id, d)
@@ -598,7 +598,7 @@ internal class Downloads(
                         val old = kept[f.name]
                         q.insertFile(if (old != null && old.state == DONE && old.size_bytes == f.size_bytes && old.sha256 == f.sha256) old else f)
                     }
-                    q.setServerState(if (row.state == PAUSED) PAUSED else DOWNLOADING, null, null, null, null, plan, d.sizeBytes, id)
+                    q.setServerState(if (row.state == PAUSED) PAUSED else DOWNLOADING, null, null, null, plan, d.sizeBytes, id)
                 }
                 for (f in dropped) transfers.discard(f)
             }
@@ -616,7 +616,7 @@ internal class Downloads(
         val received = files.filter { it.role == PART }.sumOf { if (it.state == DONE) it.size_bytes ?: 0 else l?.received?.get(it.name) ?: 0 }
         val status = when {
             plan == null -> DownloadStatus.Failed(row.reason ?: PLAN_UNREADABLE)
-            row.state == QUEUED -> DownloadStatus.Queued(row.queue_position?.toInt() ?: 1)
+            row.state == QUEUED -> DownloadStatus.Queued
             row.state == CONVERTING -> DownloadStatus.Converting(row.progress ?: 0.0, row.remaining_ms)
             row.state == DOWNLOADING -> Transfers.waitingFor(files, l, c, slotted)?.let { DownloadStatus.Waiting(it, received, row.size_bytes) }
                 ?: DownloadStatus.Downloading(received, row.size_bytes, l?.bytesPerSecond ?: 0)

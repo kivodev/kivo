@@ -1,0 +1,2 @@
+-- A download in line on the server doesn't keep its place in line.
+ALTER TABLE download DROP COLUMN queue_position;

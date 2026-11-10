@@ -75,7 +75,7 @@ final class DownloadWordsTests: XCTestCase {
     }
 
     func testOneUnderWaySaysItsStateAndPercentAndNoSize() {
-        XCTAssertEqual(line(DownloadStatusQueued(position: 2)), "Queued")
+        XCTAssertEqual(line(DownloadStatusQueued.shared), "Queued")
         XCTAssertEqual(line(preparing(0)), "Preparing")
         XCTAssertEqual(line(downloading(52)), "Downloading · 52%")
         XCTAssertEqual(line(downloading(100)), "Downloading · 99%")
@@ -90,7 +90,7 @@ final class DownloadWordsTests: XCTestCase {
     }
 
     func testOneTheServerConvertsIsHalfDoneOnceConverted() {
-        XCTAssertEqual(line(DownloadStatusQueued(position: 1), prepared: true), "Queued")
+        XCTAssertEqual(line(DownloadStatusQueued.shared, prepared: true), "Queued")
         XCTAssertEqual(line(preparing(0.52), prepared: true), "Preparing · 26%")
         XCTAssertEqual(line(preparing(0.99), prepared: true), "Preparing · 49%")
         XCTAssertEqual(line(downloading(0), prepared: true), "Downloading · 50%")
@@ -103,7 +103,7 @@ final class DownloadWordsTests: XCTestCase {
     }
 
     func testTheRingIsTheLinesPercentAndTurnsUntilThereIsOne() {
-        let queued = DownloadWords.progress(item(DownloadStatusQueued(position: 1)))
+        let queued = DownloadWords.progress(item(DownloadStatusQueued.shared))
         XCTAssertEqual(queued, DownloadProgress(stage: .queued, percent: nil))
         XCTAssertEqual(queued?.active, false)
         let converting = DownloadWords.progress(item(preparing(0.45), prepared: true))
@@ -120,7 +120,7 @@ final class DownloadWordsTests: XCTestCase {
 
     func testAShowIsOneStateAndTheAverageOfItsEpisodes() {
         func show(_ episodes: [DownloadItem]) -> String { DownloadWords.line(show: episodes, display: display) }
-        let queued = episode(DownloadStatusQueued(position: 1))
+        let queued = episode(DownloadStatusQueued.shared)
         let eight = Array(repeating: queued, count: 8)
         XCTAssertEqual(show([episode(preparing(0.52)), episode(preparing(0.40))]), "Downloading · 23%")
         XCTAssertEqual(DownloadWords.progress(show: [episode(preparing(0.52))])?.stage, .downloading)

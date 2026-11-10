@@ -194,7 +194,7 @@ open class DownloadsApi : ApiClient {
 
     /**
      * Get download
-     * Where it is: its place in line, how far its preparation has got and about how long it has left, or once ready each file&#39;s size and validator. Anyone else&#39;s download is &#x60;404&#x60;, as is one the server has forgotten. 
+     * Where it is: in line, how far its preparation has got and about how long it has left, or once ready each file&#39;s size and validator. Anyone else&#39;s download is &#x60;404&#x60;, as is one the server has forgotten. 
      * @param id 
      * @return Download
      */

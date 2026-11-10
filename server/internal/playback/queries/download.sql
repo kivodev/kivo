@@ -16,20 +16,9 @@ SELECT * FROM download
 WHERE session_id = @session_id AND work_id = @work_id AND state <> 'failed'
 ORDER BY created_at DESC;
 
--- name: QueueAhead :one
--- How many downloads waiting to be prepared were asked for before this one.
-SELECT count(*) FROM download
-WHERE state IN ('queued', 'preparing')
-  AND (queued_at < @queued_at OR queued_at = @queued_at AND id < @id);
-
 -- name: OpenDownloads :many
 -- The downloads waiting to be prepared, in the order they were asked for.
 SELECT id FROM download WHERE state IN ('queued', 'preparing') ORDER BY queued_at, id;
-
--- name: QueuedUsers :many
--- The users with downloads waiting to be prepared, whose places in the
--- queue move as one is prepared.
-SELECT DISTINCT user_id FROM download WHERE state IN ('queued', 'preparing');
 
 -- name: StartDownload :execrows
 UPDATE download SET state = 'preparing' WHERE id = @id AND state IN ('queued', 'preparing');

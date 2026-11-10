@@ -192,54 +192,6 @@ func (q *Queries) OpenDownloads(ctx context.Context) ([]id.ID, error) {
 	return items, nil
 }
 
-const queueAhead = `-- name: QueueAhead :one
-SELECT count(*) FROM download
-WHERE state IN ('queued', 'preparing')
-  AND (queued_at < ?1 OR queued_at = ?1 AND id < ?2)
-`
-
-type QueueAheadParams struct {
-	QueuedAt int64
-	ID       id.ID
-}
-
-// How many downloads waiting to be prepared were asked for before this one.
-func (q *Queries) QueueAhead(ctx context.Context, arg QueueAheadParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, queueAhead, arg.QueuedAt, arg.ID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
-const queuedUsers = `-- name: QueuedUsers :many
-SELECT DISTINCT user_id FROM download WHERE state IN ('queued', 'preparing')
-`
-
-// The users with downloads waiting to be prepared, whose places in the
-// queue move as one is prepared.
-func (q *Queries) QueuedUsers(ctx context.Context) ([]id.ID, error) {
-	rows, err := q.db.QueryContext(ctx, queuedUsers)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []id.ID
-	for rows.Next() {
-		var user_id id.ID
-		if err := rows.Scan(&user_id); err != nil {
-			return nil, err
-		}
-		items = append(items, user_id)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const replanDownload = `-- name: ReplanDownload :execrows
 UPDATE download SET version_id = ?1, delivered = ?2, state = ?3, reason = NULL,
   queued_at = ?4, settled_at = ?5

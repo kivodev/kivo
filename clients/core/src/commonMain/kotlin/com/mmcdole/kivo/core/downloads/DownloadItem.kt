@@ -43,8 +43,8 @@ data class DownloadItem(
 
 /** Where a download is. */
 sealed interface DownloadStatus {
-    /** In line on the server; [position] 1 is next. */
-    data class Queued(val position: Int) : DownloadStatus
+    /** In line on the server. */
+    data object Queued : DownloadStatus
 
     /**
      * The server is preparing it: converting it, from 0 to 1 with about

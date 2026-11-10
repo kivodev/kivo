@@ -185,12 +185,10 @@ func TestDownloadsArePreparedOneAtATimeInLine(t *testing.T) {
 	b := f.mustDownload(f.movie("Ronin", "mkv", 1).Work, "high")
 	c := f.mustDownload(f.movie("Thief", "mkv", 1).Work, "high")
 	f.await(a.ID, DownloadPreparing)
-	if got := f.await(b.ID, DownloadQueued); got.Position != 2 {
+	if got := f.await(b.ID, DownloadQueued); got.Progress != 0 || got.Remaining != 0 {
 		t.Fatalf("second in line: %+v", got)
 	}
-	if got := f.await(c.ID, DownloadQueued); got.Position != 3 {
-		t.Fatalf("third in line: %+v", got)
-	}
+	f.await(c.ID, DownloadQueued)
 	if !f.heardDownloads(f.p.User) {
 		t.Fatal("the user didn't hear its downloads move")
 	}
@@ -207,9 +205,7 @@ func TestDownloadsArePreparedOneAtATimeInLine(t *testing.T) {
 		t.Fatalf("removed: %v", err)
 	}
 	f.await(b.ID, DownloadPreparing)
-	if got := f.await(c.ID, DownloadQueued); got.Position != 2 {
-		t.Fatalf("next in line: %+v", got)
-	}
+	f.await(c.ID, DownloadQueued)
 	close(f.media.hold)
 	f.await(b.ID, DownloadReady)
 	f.await(c.ID, DownloadReady)
@@ -222,6 +218,47 @@ func TestDownloadsArePreparedOneAtATimeInLine(t *testing.T) {
 	}
 	if names, _ := f.tc.Downloads(); len(names) != 2 {
 		t.Fatalf("cache/downloads holds %v", names)
+	}
+}
+
+// A download that settles tells its own user, and the user whose download
+// starts next, but not another user whose download is still in line.
+func TestASettledDownloadTellsOnlyItsUser(t *testing.T) {
+	f := newFixture(t, 0)
+	f.media.hold = make(chan struct{})
+	defer close(f.media.hold)
+	f.downloads()
+	m, sub := f.subtitled()
+	hold := make(chan struct{})
+	f.extractions.set(nil, hold)
+	a, err := f.svc.Download(ctx, f.p, f.v, DownloadRequest{Work: m.Work, SubtitleTrack: &sub, Caps: iPhone})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := f.mustDownload(f.movie("Ronin", "mkv", 1).Work, "high")
+	f.await(a.ID, DownloadPreparing)
+	f.await(b.ID, DownloadQueued)
+
+	// Another user's download waits behind both.
+	var friend id.ID
+	f.b.Write(func(ctx context.Context, tx *store.Tx) error {
+		u, err := f.users.CreateUser(ctx, tx, users.NewUser{Username: "friend", Grants: users.Grants{All: true}})
+		friend = u.ID
+		return err
+	})
+	f.exec(`INSERT INTO download (id, user_id, session_id, work_id, version_id, request, delivered, state, created_at, queued_at)
+		SELECT ?, ?, session_id, work_id, version_id, request, delivered, 'queued', created_at, queued_at + 3600000 FROM download WHERE id = ?`,
+		id.New(), friend, b.ID)
+	f.published(events.DownloadsChanged)
+
+	close(hold)
+	f.await(a.ID, DownloadReady)
+	f.await(b.ID, DownloadPreparing)
+	if !f.heardDownloads(f.p.User) {
+		t.Fatal("the user didn't hear its downloads move")
+	}
+	if f.heardDownloads(friend) {
+		t.Fatal("another user with a download in line heard of it")
 	}
 }
 
@@ -293,7 +330,7 @@ func TestADownloadSurvivesARestart(t *testing.T) {
 
 	// The server stops partway through.
 	stop()
-	if got, _ := f.svc.DownloadStatus(ctx, f.p, d.ID); got.State != DownloadQueued || got.Position != 1 {
+	if got, _ := f.svc.DownloadStatus(ctx, f.p, d.ID); got.State != DownloadQueued {
 		t.Fatalf("stopped part way: %+v", got)
 	}
 	if names, _ := f.tc.Downloads(); len(names) != 0 {

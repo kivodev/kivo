@@ -1085,12 +1085,8 @@ public final class com/mmcdole/kivo/core/downloads/DownloadStatus$Paused : com/m
 }
 
 public final class com/mmcdole/kivo/core/downloads/DownloadStatus$Queued : com/mmcdole/kivo/core/downloads/DownloadStatus {
-	public fun <init> (I)V
-	public final fun component1 ()I
-	public final fun copy (I)Lcom/mmcdole/kivo/core/downloads/DownloadStatus$Queued;
-	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/downloads/DownloadStatus$Queued;IILjava/lang/Object;)Lcom/mmcdole/kivo/core/downloads/DownloadStatus$Queued;
+	public static final field INSTANCE Lcom/mmcdole/kivo/core/downloads/DownloadStatus$Queued;
 	public fun equals (Ljava/lang/Object;)Z
-	public final fun getPosition ()I
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }

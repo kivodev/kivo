@@ -2655,9 +2655,6 @@ type Download struct {
 	// Quality The quality asked for, `original` for a book.
 	Quality DownloadQuality `json:"quality"`
 
-	// QueuePosition While queued, its place in line, 1 when it's next.
-	QueuePosition *int `json:"queuePosition,omitempty"`
-
 	// Reason When failed, why: `transcodeFailed`, `storageFull`,
 	// `sourceUnreadable` or `subtitlesUnavailable`.
 	Reason *RefusalReason `json:"reason,omitempty"`
@@ -2674,11 +2671,11 @@ type Download struct {
 	// goes as it is. Otherwise it's an estimate.
 	SizeExact bool `json:"sizeExact"`
 
-	// State Where a download is: `queued` waiting in line on the server
-	// (`queuePosition` says where); `preparing` its subtitles or conversion
-	// being made (`progress` and `remainingMs` say how far); `ready` to
-	// fetch each part's `url`, and each subtitle's; `failed` (`reason` says
-	// why, and `retry` asks again).
+	// State Where a download is: `queued` waiting in line on the server;
+	// `preparing` its subtitles or conversion being made (`progress` and
+	// `remainingMs` say how far); `ready` to fetch each part's `url`, and
+	// each subtitle's; `failed` (`reason` says why, and `retry` asks
+	// again).
 	State DownloadState `json:"state"`
 
 	// Tracks Every track of the version, and the subtitle choice `off`, as a
@@ -2865,11 +2862,11 @@ type DownloadRef struct {
 	WorkID ID `json:"workId"`
 }
 
-// DownloadState Where a download is: `queued` waiting in line on the server
-// (`queuePosition` says where); `preparing` its subtitles or conversion
-// being made (`progress` and `remainingMs` say how far); `ready` to
-// fetch each part's `url`, and each subtitle's; `failed` (`reason` says
-// why, and `retry` asks again).
+// DownloadState Where a download is: `queued` waiting in line on the server;
+// `preparing` its subtitles or conversion being made (`progress` and
+// `remainingMs` say how far); `ready` to fetch each part's `url`, and
+// each subtitle's; `failed` (`reason` says why, and `retry` asks
+// again).
 type DownloadState string
 
 // DynamicRange A class of high dynamic range, as the library's `dynamicRange`
@@ -2940,8 +2937,8 @@ type EventKind string
 //     renamed or deleted, or a work was added or removed. Refetch the
 //     lists, any open list, Home, the layout and any open work page.
 //   - `downloadsChanged`: the user's downloads on the server moved:
-//     in line, in their preparation (at most every 10 seconds), or to
-//     ready or failed. Refetch the downloads that aren't ready.
+//     into line or preparation, along in their preparation (at most
+//     every 10 seconds), or to ready or failed. Refetch the downloads that aren't ready.
 //   - `tasksChanged`: admins only. A task's work moved: an item started
 //     or finished, or reported its progress, a run began or ended, or
 //     something was asked for. Refetch the tasks and libraries, whose

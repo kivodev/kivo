@@ -166,10 +166,7 @@ func download(d playback.DownloadStatus) gen.Download {
 		DurationMs: ms(d.Duration), SizeBytes: d.Size, SizeExact: d.SizeExact, Parts: []gen.DownloadPart{},
 		Chapters: chapters(d.Chapters), Markers: ptr(markerList(d.Markers)), Reason: optAs[gen.RefusalReason](d.Reason),
 	}
-	switch d.State {
-	case playback.DownloadQueued:
-		out.QueuePosition = ptr(d.Position)
-	case playback.DownloadPreparing:
+	if d.State == playback.DownloadPreparing {
 		out.Progress = ptr(float32(d.Progress))
 		if d.Remaining > 0 {
 			out.RemainingMs = ptr(ms(d.Remaining.Round(time.Second)))
