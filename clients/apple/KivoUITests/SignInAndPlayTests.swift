@@ -152,14 +152,18 @@ final class SignInAndPlayTests: XCTestCase {
             keep("episode")
         }
 
-        // A filter from the menu: a dot on the button and a chip that turns it off.
+        // A filter from the Filter button: a dot on the button and a chip that turns it off.
         open(library: library)
         app.buttons["filter"].tap()
-        XCTAssert(app.buttons["Unwatched"].waitForExistence(timeout: 5), "the filter menu has no Unwatched")
+        XCTAssert(app.buttons["Unwatched"].waitForExistence(timeout: 5), "the filters have no Unwatched")
         keep("filter-menu")
         app.buttons["Unwatched"].tap()
-        // Choosing may close the menu, and a tap outside it then would be Back.
-        if !app.buttons["Unwatched"].waitForNonExistence(timeout: 2) { dismissMenu() }
+        // The sheet closes with Show; choosing may close the menu, and a tap outside it then would be Back.
+        if app.buttons["filters-show"].exists {
+            app.buttons["filters-show"].tap()
+        } else if !app.buttons["Unwatched"].waitForNonExistence(timeout: 2) {
+            dismissMenu()
+        }
         XCTAssert(app.buttons["filter-played"].waitForExistence(timeout: 5), "an active filter shows no chip")
         sleep(2)
         keep("library-filtered")

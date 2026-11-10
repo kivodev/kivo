@@ -1076,7 +1076,7 @@ final class com.mmcdole.kivo.core.cast/CastStatus { // com.mmcdole.kivo.core.cas
 }
 
 final class com.mmcdole.kivo.core.data/GridQuery { // com.mmcdole.kivo.core.data/GridQuery|null[0]
-    constructor <init>(kotlin/String, kotlin/String? = ..., kotlin/String? = ..., kotlin.collections/List<kotlin/String>? = ..., kotlin/Int? = ..., kotlin/Int? = ..., kotlin.collections/List<kotlin/String>? = ..., kotlin.collections/List<kotlin/String>? = ..., kotlin.collections/List<kotlin/String>? = ...) // com.mmcdole.kivo.core.data/GridQuery.<init>|<init>(kotlin.String;kotlin.String?;kotlin.String?;kotlin.collections.List<kotlin.String>?;kotlin.Int?;kotlin.Int?;kotlin.collections.List<kotlin.String>?;kotlin.collections.List<kotlin.String>?;kotlin.collections.List<kotlin.String>?){}[0]
+    constructor <init>(kotlin/String, kotlin/String? = ..., kotlin/String? = ..., kotlin.collections/List<kotlin/String>? = ..., kotlin/Int? = ..., kotlin/Int? = ..., kotlin.collections/List<kotlin/String>? = ..., kotlin.collections/List<kotlin/String>? = ..., kotlin.collections/List<kotlin/String>? = ..., kotlin/String? = ...) // com.mmcdole.kivo.core.data/GridQuery.<init>|<init>(kotlin.String;kotlin.String?;kotlin.String?;kotlin.collections.List<kotlin.String>?;kotlin.Int?;kotlin.Int?;kotlin.collections.List<kotlin.String>?;kotlin.collections.List<kotlin.String>?;kotlin.collections.List<kotlin.String>?;kotlin.String?){}[0]
 
     final val contentRatings // com.mmcdole.kivo.core.data/GridQuery.contentRatings|{}contentRatings[0]
         final fun <get-contentRatings>(): kotlin.collections/List<kotlin/String>? // com.mmcdole.kivo.core.data/GridQuery.contentRatings.<get-contentRatings>|<get-contentRatings>(){}[0]
@@ -1086,6 +1086,8 @@ final class com.mmcdole.kivo.core.data/GridQuery { // com.mmcdole.kivo.core.data
         final fun <get-genres>(): kotlin.collections/List<kotlin/String>? // com.mmcdole.kivo.core.data/GridQuery.genres.<get-genres>|<get-genres>(){}[0]
     final val libraryId // com.mmcdole.kivo.core.data/GridQuery.libraryId|{}libraryId[0]
         final fun <get-libraryId>(): kotlin/String // com.mmcdole.kivo.core.data/GridQuery.libraryId.<get-libraryId>|<get-libraryId>(){}[0]
+    final val narratorId // com.mmcdole.kivo.core.data/GridQuery.narratorId|{}narratorId[0]
+        final fun <get-narratorId>(): kotlin/String? // com.mmcdole.kivo.core.data/GridQuery.narratorId.<get-narratorId>|<get-narratorId>(){}[0]
     final val played // com.mmcdole.kivo.core.data/GridQuery.played|{}played[0]
         final fun <get-played>(): kotlin/String? // com.mmcdole.kivo.core.data/GridQuery.played.<get-played>|<get-played>(){}[0]
     final val resolutions // com.mmcdole.kivo.core.data/GridQuery.resolutions|{}resolutions[0]
@@ -1098,6 +1100,7 @@ final class com.mmcdole.kivo.core.data/GridQuery { // com.mmcdole.kivo.core.data
         final fun <get-yearTo>(): kotlin/Int? // com.mmcdole.kivo.core.data/GridQuery.yearTo.<get-yearTo>|<get-yearTo>(){}[0]
 
     final fun component1(): kotlin/String // com.mmcdole.kivo.core.data/GridQuery.component1|component1(){}[0]
+    final fun component10(): kotlin/String? // com.mmcdole.kivo.core.data/GridQuery.component10|component10(){}[0]
     final fun component2(): kotlin/String? // com.mmcdole.kivo.core.data/GridQuery.component2|component2(){}[0]
     final fun component3(): kotlin/String? // com.mmcdole.kivo.core.data/GridQuery.component3|component3(){}[0]
     final fun component4(): kotlin.collections/List<kotlin/String>? // com.mmcdole.kivo.core.data/GridQuery.component4|component4(){}[0]
@@ -1106,7 +1109,7 @@ final class com.mmcdole.kivo.core.data/GridQuery { // com.mmcdole.kivo.core.data
     final fun component7(): kotlin.collections/List<kotlin/String>? // com.mmcdole.kivo.core.data/GridQuery.component7|component7(){}[0]
     final fun component8(): kotlin.collections/List<kotlin/String>? // com.mmcdole.kivo.core.data/GridQuery.component8|component8(){}[0]
     final fun component9(): kotlin.collections/List<kotlin/String>? // com.mmcdole.kivo.core.data/GridQuery.component9|component9(){}[0]
-    final fun copy(kotlin/String = ..., kotlin/String? = ..., kotlin/String? = ..., kotlin.collections/List<kotlin/String>? = ..., kotlin/Int? = ..., kotlin/Int? = ..., kotlin.collections/List<kotlin/String>? = ..., kotlin.collections/List<kotlin/String>? = ..., kotlin.collections/List<kotlin/String>? = ...): com.mmcdole.kivo.core.data/GridQuery // com.mmcdole.kivo.core.data/GridQuery.copy|copy(kotlin.String;kotlin.String?;kotlin.String?;kotlin.collections.List<kotlin.String>?;kotlin.Int?;kotlin.Int?;kotlin.collections.List<kotlin.String>?;kotlin.collections.List<kotlin.String>?;kotlin.collections.List<kotlin.String>?){}[0]
+    final fun copy(kotlin/String = ..., kotlin/String? = ..., kotlin/String? = ..., kotlin.collections/List<kotlin/String>? = ..., kotlin/Int? = ..., kotlin/Int? = ..., kotlin.collections/List<kotlin/String>? = ..., kotlin.collections/List<kotlin/String>? = ..., kotlin.collections/List<kotlin/String>? = ..., kotlin/String? = ...): com.mmcdole.kivo.core.data/GridQuery // com.mmcdole.kivo.core.data/GridQuery.copy|copy(kotlin.String;kotlin.String?;kotlin.String?;kotlin.collections.List<kotlin.String>?;kotlin.Int?;kotlin.Int?;kotlin.collections.List<kotlin.String>?;kotlin.collections.List<kotlin.String>?;kotlin.collections.List<kotlin.String>?;kotlin.String?){}[0]
     final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.data/GridQuery.equals|equals(kotlin.Any?){}[0]
     final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.data/GridQuery.hashCode|hashCode(){}[0]
     final fun toString(): kotlin/String // com.mmcdole.kivo.core.data/GridQuery.toString|toString(){}[0]
@@ -1151,7 +1154,7 @@ final class com.mmcdole.kivo.core.data/Heading { // com.mmcdole.kivo.core.data/H
 }
 
 final class com.mmcdole.kivo.core.data/LibraryFilters { // com.mmcdole.kivo.core.data/LibraryFilters|null[0]
-    constructor <init>(kotlin.collections/List<kotlin/String>, kotlin.collections/List<kotlin/Int>, kotlin.collections/List<kotlin/String>, kotlin.collections/List<kotlin/String>, kotlin.collections/List<kotlin/String>, kotlin/Boolean) // com.mmcdole.kivo.core.data/LibraryFilters.<init>|<init>(kotlin.collections.List<kotlin.String>;kotlin.collections.List<kotlin.Int>;kotlin.collections.List<kotlin.String>;kotlin.collections.List<kotlin.String>;kotlin.collections.List<kotlin.String>;kotlin.Boolean){}[0]
+    constructor <init>(kotlin.collections/List<kotlin/String>, kotlin.collections/List<kotlin/Int>, kotlin.collections/List<kotlin/String>, kotlin.collections/List<kotlin/String>, kotlin.collections/List<kotlin/String>, kotlin.collections/List<com.mmcdole.kivo.api.models/PersonRef>, kotlin/Boolean) // com.mmcdole.kivo.core.data/LibraryFilters.<init>|<init>(kotlin.collections.List<kotlin.String>;kotlin.collections.List<kotlin.Int>;kotlin.collections.List<kotlin.String>;kotlin.collections.List<kotlin.String>;kotlin.collections.List<kotlin.String>;kotlin.collections.List<com.mmcdole.kivo.api.models.PersonRef>;kotlin.Boolean){}[0]
 
     final val collections // com.mmcdole.kivo.core.data/LibraryFilters.collections|{}collections[0]
         final fun <get-collections>(): kotlin/Boolean // com.mmcdole.kivo.core.data/LibraryFilters.collections.<get-collections>|<get-collections>(){}[0]
@@ -1161,6 +1164,8 @@ final class com.mmcdole.kivo.core.data/LibraryFilters { // com.mmcdole.kivo.core
         final fun <get-dynamicRanges>(): kotlin.collections/List<kotlin/String> // com.mmcdole.kivo.core.data/LibraryFilters.dynamicRanges.<get-dynamicRanges>|<get-dynamicRanges>(){}[0]
     final val genres // com.mmcdole.kivo.core.data/LibraryFilters.genres|{}genres[0]
         final fun <get-genres>(): kotlin.collections/List<kotlin/String> // com.mmcdole.kivo.core.data/LibraryFilters.genres.<get-genres>|<get-genres>(){}[0]
+    final val narrators // com.mmcdole.kivo.core.data/LibraryFilters.narrators|{}narrators[0]
+        final fun <get-narrators>(): kotlin.collections/List<com.mmcdole.kivo.api.models/PersonRef> // com.mmcdole.kivo.core.data/LibraryFilters.narrators.<get-narrators>|<get-narrators>(){}[0]
     final val resolutions // com.mmcdole.kivo.core.data/LibraryFilters.resolutions|{}resolutions[0]
         final fun <get-resolutions>(): kotlin.collections/List<kotlin/String> // com.mmcdole.kivo.core.data/LibraryFilters.resolutions.<get-resolutions>|<get-resolutions>(){}[0]
     final val years // com.mmcdole.kivo.core.data/LibraryFilters.years|{}years[0]
@@ -1171,8 +1176,9 @@ final class com.mmcdole.kivo.core.data/LibraryFilters { // com.mmcdole.kivo.core
     final fun component3(): kotlin.collections/List<kotlin/String> // com.mmcdole.kivo.core.data/LibraryFilters.component3|component3(){}[0]
     final fun component4(): kotlin.collections/List<kotlin/String> // com.mmcdole.kivo.core.data/LibraryFilters.component4|component4(){}[0]
     final fun component5(): kotlin.collections/List<kotlin/String> // com.mmcdole.kivo.core.data/LibraryFilters.component5|component5(){}[0]
-    final fun component6(): kotlin/Boolean // com.mmcdole.kivo.core.data/LibraryFilters.component6|component6(){}[0]
-    final fun copy(kotlin.collections/List<kotlin/String> = ..., kotlin.collections/List<kotlin/Int> = ..., kotlin.collections/List<kotlin/String> = ..., kotlin.collections/List<kotlin/String> = ..., kotlin.collections/List<kotlin/String> = ..., kotlin/Boolean = ...): com.mmcdole.kivo.core.data/LibraryFilters // com.mmcdole.kivo.core.data/LibraryFilters.copy|copy(kotlin.collections.List<kotlin.String>;kotlin.collections.List<kotlin.Int>;kotlin.collections.List<kotlin.String>;kotlin.collections.List<kotlin.String>;kotlin.collections.List<kotlin.String>;kotlin.Boolean){}[0]
+    final fun component6(): kotlin.collections/List<com.mmcdole.kivo.api.models/PersonRef> // com.mmcdole.kivo.core.data/LibraryFilters.component6|component6(){}[0]
+    final fun component7(): kotlin/Boolean // com.mmcdole.kivo.core.data/LibraryFilters.component7|component7(){}[0]
+    final fun copy(kotlin.collections/List<kotlin/String> = ..., kotlin.collections/List<kotlin/Int> = ..., kotlin.collections/List<kotlin/String> = ..., kotlin.collections/List<kotlin/String> = ..., kotlin.collections/List<kotlin/String> = ..., kotlin.collections/List<com.mmcdole.kivo.api.models/PersonRef> = ..., kotlin/Boolean = ...): com.mmcdole.kivo.core.data/LibraryFilters // com.mmcdole.kivo.core.data/LibraryFilters.copy|copy(kotlin.collections.List<kotlin.String>;kotlin.collections.List<kotlin.Int>;kotlin.collections.List<kotlin.String>;kotlin.collections.List<kotlin.String>;kotlin.collections.List<kotlin.String>;kotlin.collections.List<com.mmcdole.kivo.api.models.PersonRef>;kotlin.Boolean){}[0]
     final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.data/LibraryFilters.equals|equals(kotlin.Any?){}[0]
     final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.data/LibraryFilters.hashCode|hashCode(){}[0]
     final fun toString(): kotlin/String // com.mmcdole.kivo.core.data/LibraryFilters.toString|toString(){}[0]

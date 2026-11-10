@@ -45,6 +45,8 @@ struct AppearanceSettingsView: View {
             } header: {
                 DeviceHeading()
             }
+            // FilterStyleTrial: remove with the losing filter style.
+            FilterStyleSection()
         })
     }
 }

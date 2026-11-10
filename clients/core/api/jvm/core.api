@@ -566,9 +566,10 @@ public final class com/mmcdole/kivo/core/data/GridPages$Companion {
 }
 
 public final class com/mmcdole/kivo/core/data/GridQuery {
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/util/List;Ljava/util/List;Ljava/util/List;)V
-	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/util/List;Ljava/util/List;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ljava/lang/String;
+	public final fun component10 ()Ljava/lang/String;
 	public final fun component2 ()Ljava/lang/String;
 	public final fun component3 ()Ljava/lang/String;
 	public final fun component4 ()Ljava/util/List;
@@ -577,13 +578,14 @@ public final class com/mmcdole/kivo/core/data/GridQuery {
 	public final fun component7 ()Ljava/util/List;
 	public final fun component8 ()Ljava/util/List;
 	public final fun component9 ()Ljava/util/List;
-	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/util/List;Ljava/util/List;Ljava/util/List;)Lcom/mmcdole/kivo/core/data/GridQuery;
-	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/data/GridQuery;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/util/List;Ljava/util/List;Ljava/util/List;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/GridQuery;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/GridQuery;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/data/GridQuery;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/lang/String;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/GridQuery;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getContentRatings ()Ljava/util/List;
 	public final fun getDynamicRanges ()Ljava/util/List;
 	public final fun getGenres ()Ljava/util/List;
 	public final fun getLibraryId ()Ljava/lang/String;
+	public final fun getNarratorId ()Ljava/lang/String;
 	public final fun getPlayed ()Ljava/lang/String;
 	public final fun getResolutions ()Ljava/util/List;
 	public final fun getSort ()Ljava/lang/String;
@@ -633,20 +635,22 @@ public final class com/mmcdole/kivo/core/data/KnownKt {
 }
 
 public final class com/mmcdole/kivo/core/data/LibraryFilters {
-	public fun <init> (Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Z)V
+	public fun <init> (Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Z)V
 	public final fun component1 ()Ljava/util/List;
 	public final fun component2 ()Ljava/util/List;
 	public final fun component3 ()Ljava/util/List;
 	public final fun component4 ()Ljava/util/List;
 	public final fun component5 ()Ljava/util/List;
-	public final fun component6 ()Z
-	public final fun copy (Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Z)Lcom/mmcdole/kivo/core/data/LibraryFilters;
-	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/data/LibraryFilters;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;ZILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/LibraryFilters;
+	public final fun component6 ()Ljava/util/List;
+	public final fun component7 ()Z
+	public final fun copy (Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Z)Lcom/mmcdole/kivo/core/data/LibraryFilters;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/data/LibraryFilters;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;ZILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/LibraryFilters;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getCollections ()Z
 	public final fun getContentRatings ()Ljava/util/List;
 	public final fun getDynamicRanges ()Ljava/util/List;
 	public final fun getGenres ()Ljava/util/List;
+	public final fun getNarrators ()Ljava/util/List;
 	public final fun getResolutions ()Ljava/util/List;
 	public final fun getYears ()Ljava/util/List;
 	public fun hashCode ()I

@@ -2,6 +2,7 @@ package com.mmcdole.kivo.core.data
 
 import com.mmcdole.kivo.api.models.BookSeriesSummaryPage
 import com.mmcdole.kivo.api.models.CollectionSummaryPage
+import com.mmcdole.kivo.api.models.PersonRef
 import com.mmcdole.kivo.api.models.PersonSummaryPage
 import com.mmcdole.kivo.api.models.WorkQueryRequest
 import com.mmcdole.kivo.api.models.WorkSummaryPage
@@ -43,9 +44,13 @@ internal class GridRepository(private val connection: ServerConnection, private 
         refreshing(invalidations, { it is Invalidation.WorkChanged || (it is Invalidation.LibraryChanged && libraryId in it.libraryIds) }) {
             coroutineScope {
                 val values = FILTER_FIELDS.map { field -> async { values(field, libraryId) } }
+                val narrators = async { connection.works.listWorkFieldValues("narrator", library = libraryId).result().items }
                 val collections = async { collections(libraryId, 0, 1).total > 0 }
                 val (genres, years, contentRatings, resolutions, dynamicRanges) = values.map { it.await() }
-                LibraryFilters(genres, years.mapNotNull { it.toIntOrNull() }, contentRatings, resolutions, dynamicRanges, collections.await())
+                LibraryFilters(
+                    genres, years.mapNotNull { it.toIntOrNull() }, contentRatings, resolutions, dynamicRanges,
+                    narrators.await().map { PersonRef(it.value, it.name) }, collections.await(),
+                )
             }
         }
 
@@ -79,6 +84,8 @@ data class LibraryFilters(
     val resolutions: List<String>,
     /** `hdr` and `dolbyVision`. */
     val dynamicRanges: List<String>,
+    /** An audiobooks library's narrators, by name. */
+    val narrators: List<PersonRef>,
     val collections: Boolean,
 )
 
@@ -97,4 +104,6 @@ data class GridQuery(
     val resolutions: List<String>? = null,
     /** `hdr`, `dolbyVision`. */
     val dynamicRanges: List<String>? = null,
+    /** A narrator's person ID, of an audiobooks library. */
+    val narratorId: String? = null,
 )

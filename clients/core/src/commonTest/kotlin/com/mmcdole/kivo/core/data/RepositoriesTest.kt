@@ -8,6 +8,7 @@ import com.mmcdole.kivo.api.models.Home
 import com.mmcdole.kivo.api.models.HomeRow
 import com.mmcdole.kivo.api.infrastructure.ApiClient
 import com.mmcdole.kivo.api.models.Person
+import com.mmcdole.kivo.api.models.PersonRef
 import com.mmcdole.kivo.api.models.PersonSummaryPage
 import com.mmcdole.kivo.api.models.Rule
 import com.mmcdole.kivo.api.models.RuleGroup
@@ -194,6 +195,9 @@ class RepositoriesTest {
                 json(WorkFieldValueList.serializer(), WorkFieldValueList(found.map { WorkFieldValue(it, it) }))
             }
         }
+        server.on("GET", "/api/v1/work-fields/narrator/values") {
+            json(WorkFieldValueList.serializer(), WorkFieldValueList(listOf(WorkFieldValue("p1", "Ray Porter"))))
+        }
         server.on("GET", "/api/v1/libraries/l1/collections") { json(CollectionSummaryPage.serializer(), CollectionSummaryPage(emptyList(), 2)) }
         val invalidations = MutableSharedFlow<Invalidation>()
         val grid = GridRepository(server.connection(), invalidations)
@@ -202,11 +206,14 @@ class RepositoriesTest {
         backgroundScope.launch { grid.filters("l1").collect { read += it } }
         runCurrent()
         assertEquals(
-            LibraryFilters(listOf("Crime", "Drama"), listOf(1995, 2021), listOf("PG", "R"), listOf("4k"), listOf("hdr"), collections = true),
+            LibraryFilters(
+                listOf("Crime", "Drama"), listOf(1995, 2021), listOf("PG", "R"), listOf("4k"), listOf("hdr"),
+                listOf(PersonRef("p1", "Ray Porter")), collections = true,
+            ),
             read.single(),
         )
         assertEquals(
-            values.keys.map { "/api/v1/work-fields/$it/values" to "library=l1" }.toSet() + ("/api/v1/libraries/l1/collections" to "limit=1"),
+            (values.keys + "narrator").map { "/api/v1/work-fields/$it/values" to "library=l1" }.toSet() + ("/api/v1/libraries/l1/collections" to "limit=1"),
             server.seen.map { it.path to it.query }.toSet(),
         )
         invalidations.emit(Invalidation.LibraryChanged(listOf("l2")))
