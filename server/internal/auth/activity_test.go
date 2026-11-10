@@ -94,7 +94,8 @@ func (f *fixture) passwordChanges() []activity.Event {
 }
 
 // A password change is recorded with whose password it is: one the user
-// changed with the address it came from, one an admin set with the admin.
+// changed with the address it came from, one an admin set with the admin,
+// and one set by the zero Caller as a reset from the command line.
 // A wrong current password, setup and accepting an invite record none.
 func TestActivityPasswordChanged(t *testing.T) {
 	ctx := context.Background()
@@ -138,7 +139,21 @@ func TestActivityPasswordChanged(t *testing.T) {
 	if len(got) != 2 {
 		t.Fatalf("after an admin set it: %+v", got)
 	}
-	if e := got[0]; e.User != me.User || e.Username != "dana" || e.By != "admin" || e.Address != "" {
+	if e := got[0]; e.User != me.User || e.Username != "dana" || e.By != "admin" || e.Address != "" || e.CommandLine {
 		t.Errorf("set by an admin %+v", e)
+	}
+	if e := got[1]; e.CommandLine {
+		t.Errorf("changed one's own %+v", e)
+	}
+
+	if err := f.auth.SetPassword(ctx, Caller{}, me.User, "a third password"); err != nil {
+		t.Fatal(err)
+	}
+	got = f.passwordChanges()
+	if len(got) != 3 {
+		t.Fatalf("after a command-line reset: %+v", got)
+	}
+	if e := got[0]; e.User != me.User || e.Username != "dana" || e.By != "" || e.Address != "" || !e.CommandLine {
+		t.Errorf("reset from the command line %+v", e)
 	}
 }

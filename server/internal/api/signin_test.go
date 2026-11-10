@@ -446,7 +446,8 @@ func TestChangeCurrentUserPassword(t *testing.T) {
 }
 
 // A password change shows in the activity: an admin's own with the
-// address it came from, and one an admin set with who set it.
+// address it came from, one an admin set with who set it, and a reset
+// from the command line marked as one.
 func TestPasswordChangedActivity(t *testing.T) {
 	e := newEnv(t, serving{})
 	w := e.do("POST", "/api/v1/users/me/change-password", e.adminToken,
@@ -458,6 +459,9 @@ func TestPasswordChangedActivity(t *testing.T) {
 	if w.Code != http.StatusNoContent {
 		t.Fatalf("set password: %d %s", w.Code, w.Body.String())
 	}
+	if err := e.d.Auth.SetPassword(context.Background(), auth.Caller{}, e.nobody, "a reset password"); err != nil {
+		t.Fatal(err)
+	}
 	var got []map[string]any
 	for _, ev := range decode[list](t, e.do("GET", "/api/v1/activity?group=signIns", e.adminToken, nil)).Items {
 		if ev["kind"] == "passwordChanged" {
@@ -465,6 +469,7 @@ func TestPasswordChangedActivity(t *testing.T) {
 		}
 	}
 	want := []map[string]any{
+		{"userId": e.nobody.String(), "username": "nobody", "commandLine": true},
 		{"userId": e.nobody.String(), "username": "nobody", "changedBy": "admin"},
 		{"userId": e.admin.String(), "username": "admin", "address": "192.0.2.1"},
 	}

@@ -72,7 +72,7 @@ describe("Activity", () => {
     await waitFor(() => expect(rows()).toHaveLength(14));
   });
 
-  it("says whose password changed, and the admin who changed it", async () => {
+  it("says whose password changed, and who changed it or that it was reset from the command line", async () => {
     const api = serveMockApi();
     const at = new Date().toISOString();
     api.activity = [
@@ -88,12 +88,19 @@ describe("Activity", () => {
         kind: "passwordChanged",
         password: { userId: mockId(7102), username: "carla", changedBy: "anna" },
       },
+      {
+        id: mockId(9102),
+        occurredAt: at,
+        kind: "passwordChanged",
+        password: { userId: mockId(7103), username: "dana", commandLine: true },
+      },
     ];
     renderApp("/admin/activity");
-    await waitFor(() => expect(rows()).toHaveLength(2));
+    await waitFor(() => expect(rows()).toHaveLength(3));
     expect(rows().map((r) => r.textContent?.replace(/^\d{1,2}:\d{2}\s?[AP]M/, ""))).toEqual([
       "ben changed their password · 203.0.113.24",
       "anna changed carla's password",
+      "dana's password was reset from the command line",
     ]);
   });
 

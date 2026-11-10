@@ -24,11 +24,12 @@ import (
 // passwordServer is a database with two signed-in users, an admin and anna.
 // It is held open the way the running server holds it.
 type passwordServer struct {
-	t      *testing.T
-	config string
-	auth   *auth.Service
-	admin  string // the admin's token
-	anna   []string
+	t        *testing.T
+	config   string
+	auth     *auth.Service
+	activity *activity.Service
+	admin    string // the admin's token
+	anna     []string
 }
 
 const oldPassword = "correct horse battery"
@@ -54,7 +55,8 @@ func newPasswordServer(t *testing.T) *passwordServer {
 		t.Fatal(err)
 	}
 	u := users.New(db, events.NewBus())
-	s := &passwordServer{t: t, config: cfg, auth: auth.New(db, auth.Deps{Users: u, Settings: settings, Activity: activity.New(db, events.NewBus())})}
+	act := activity.New(db, events.NewBus())
+	s := &passwordServer{t: t, config: cfg, auth: auth.New(db, auth.Deps{Users: u, Settings: settings, Activity: act}), activity: act}
 	home := netip.MustParseAddr("192.168.1.2")
 	admin, err := s.auth.Setup(ctx, auth.SignInRequest{Username: "admin", Password: oldPassword, RemoteIP: home})
 	if err != nil {
@@ -110,7 +112,7 @@ func stdin(t *testing.T, text string) *os.File {
 // reset-password sets the password and signs out all of the user's
 // sessions, while the database is held open elsewhere as by the running
 // server. The username is matched case-insensitively, and other users stay
-// signed in.
+// signed in. The activity records it as a reset from the command line.
 func TestResetPassword(t *testing.T) {
 	s := newPasswordServer(t)
 	var out strings.Builder
@@ -130,6 +132,22 @@ func TestResetPassword(t *testing.T) {
 	}
 	if s.signsIn(oldPassword) || !s.signsIn("a new password") {
 		t.Error("the new password isn't the one that signs in")
+	}
+	rows, _, err := s.activity.List(context.Background(), activity.GroupSignIns, activity.Position{}, 50)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var changed []activity.Event
+	for _, e := range rows {
+		if e.Kind == activity.PasswordChanged {
+			changed = append(changed, e)
+		}
+	}
+	if len(changed) != 1 {
+		t.Fatalf("passwordChanged events %+v, want one", changed)
+	}
+	if e := changed[0]; e.Username != "Anna" || !e.CommandLine || e.By != "" || e.Address != "" {
+		t.Errorf("recorded %+v", e)
 	}
 }
 

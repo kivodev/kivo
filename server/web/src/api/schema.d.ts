@@ -5651,14 +5651,16 @@ export interface components {
             /** @description The admin who added the user; absent for an invite. */
             addedBy?: string;
         };
-        /** @description `passwordChanged`: a user's password changed, by the user or by an admin. */
+        /** @description `passwordChanged`: a user's password changed, by the user, by an admin, or from the command line. */
         ActivityPassword: {
             userId: components["schemas"]["ID"];
             username: string;
-            /** @description The admin who changed it; absent when the user did. */
+            /** @description The admin who changed it; absent when the user did or it was reset from the command line. */
             changedBy?: string;
             /** @description The client's address, when the user changed it. */
             address?: string;
+            /** @description True when it was reset from the command line on the server. */
+            commandLine?: boolean;
         };
         /** @description `taskEnded`: a night run's end, or Run now's, that did something or failed. */
         ActivityTask: {

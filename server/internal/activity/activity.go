@@ -82,6 +82,8 @@ type Event struct {
 	Code     string `json:"code,omitempty"`
 	Message  string `json:"message,omitempty"`
 	Severity string `json:"severity,omitempty"`
+
+	CommandLine bool `json:"commandLine,omitempty"` // a password was reset from the command line
 }
 
 const (
@@ -233,10 +235,11 @@ func (s *Service) Joined(ctx context.Context, tx *store.Tx, user, by id.ID) erro
 }
 
 // PasswordSet records a user's new password in the caller's transaction.
-// by is the admin who set it, or zero when the user changed their own.
-// address is where the user changed it from, or the zero Addr.
-func (s *Service) PasswordSet(ctx context.Context, tx *store.Tx, user, by id.ID, addr netip.Addr) error {
-	e := Event{Kind: PasswordChanged, User: user, Address: address(addr)}
+// by is the admin who set it, or zero when the user changed their own or
+// commandLine says it was reset from the command line. address is where
+// the user changed it from, or the zero Addr.
+func (s *Service) PasswordSet(ctx context.Context, tx *store.Tx, user, by id.ID, addr netip.Addr, commandLine bool) error {
+	e := Event{Kind: PasswordChanged, User: user, Address: address(addr), CommandLine: commandLine}
 	var err error
 	if !by.IsZero() && by != user {
 		e.By, err = dbq.New(tx).Username(ctx, by)
