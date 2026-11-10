@@ -130,23 +130,28 @@ struct ListGrid: View {
                             .frame(maxWidth: .infinity)
                             .padding(.top, KivoTokens.spacing * 10)
                         } else {
-                            if let sort { countLine(total, sort: sort) }
-                            LazyVGrid(columns: layout.columns, alignment: .leading, spacing: layout.rowSpacing) {
-                                ForEach(0..<total, id: \.self) { index in
-                                    Group {
-                                        if let work = model.work(at: index) {
-                                            WorkLink(work: work) {
-                                                WorkCard(work, style: CardStyle.listed(work), width: layout.cardWidth, caption: layout.caption)
-                                            }
-                                        } else {
-                                            SkeletonCard(style: .poster, width: layout.cardWidth)
-                                        }
-                                    }
-                                    .onAppear { model.show(index) }
+                            VStack(alignment: .leading, spacing: 0) {
+                                if let sort {
+                                    countLine(total, sort: sort)
+                                        .padding(.bottom, KivoTokens.spacing)
                                 }
+                                LazyVGrid(columns: layout.columns, alignment: .leading, spacing: layout.rowSpacing) {
+                                    ForEach(0..<total, id: \.self) { index in
+                                        Group {
+                                            if let work = model.work(at: index) {
+                                                WorkLink(work: work) {
+                                                    WorkCard(work, style: CardStyle.listed(work), width: layout.cardWidth, caption: layout.caption)
+                                                }
+                                            } else {
+                                                SkeletonCard(style: .poster, width: layout.cardWidth)
+                                            }
+                                        }
+                                        .onAppear { model.show(index) }
+                                    }
+                                }
+                                .padding(layout.insets)
+                                .environment(\.currentList, ListRef(id: list.id, name: title, kind: list.kind))
                             }
-                            .padding(layout.insets)
-                            .environment(\.currentList, ListRef(id: list.id, name: title, kind: list.kind))
                         }
                     } else {
                         UnreachableView()
