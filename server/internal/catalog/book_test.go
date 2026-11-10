@@ -129,7 +129,8 @@ func TestBookMetadataKeepsEditsThroughRescans(t *testing.T) {
 	}
 
 	// A book's fields are for books only.
-	movie := b.Movie(folder, "Dune", 2021)
+	_, films := b.Library(catalog.Movies)
+	movie := b.Movie(films, "Dune", 2021)
 	err := b.DB.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
 		return b.Catalog.EditMetadata(ctx, tx, movie.Work, catalog.WorkMetadata{Book: &catalog.BookMetadata{}}, catalog.FieldSubtitle)
 	})
@@ -332,7 +333,8 @@ func TestEditBooksRefuses(t *testing.T) {
 	b := catalogtest.New(t)
 	_, folder := b.Library(catalog.Audiobooks)
 	book := newBook(t, b, folder, "A/One/a.m4b")
-	movie := b.Movie(folder, "Dune", 2021).Work
+	_, films := b.Library(catalog.Movies)
+	movie := b.Movie(films, "Dune", 2021).Work
 	v := admin(t, b)
 	edit := catalog.BookEdit{Genres: []string{"x"}}
 

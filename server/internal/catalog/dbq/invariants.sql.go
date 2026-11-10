@@ -224,6 +224,39 @@ func (q *Queries) LibrariesOfNonRoots(ctx context.Context) ([]id.ID, error) {
 	return items, nil
 }
 
+const rootsOfAnotherKindThanTheirLibrary = `-- name: RootsOfAnotherKindThanTheirLibrary :many
+SELECT w.id FROM work w JOIN library l ON l.id = w.library_id
+WHERE l.kind IS NOT CASE w.kind WHEN 'movie' THEN 'movies' WHEN 'series' THEN 'shows'
+  WHEN 'video' THEN 'videos' WHEN 'book' THEN 'audiobooks' END
+`
+
+// A library holds root works of its own kind: a movies library movies, a
+// shows library series, a videos library videos, an audiobooks library
+// books. The works under a root are in its library, so a library holds
+// no other kind of work but extras.
+func (q *Queries) RootsOfAnotherKindThanTheirLibrary(ctx context.Context) ([]id.ID, error) {
+	rows, err := q.db.QueryContext(ctx, rootsOfAnotherKindThanTheirLibrary)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []id.ID
+	for rows.Next() {
+		var id id.ID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const rootsOutsideTheirFoldersLibrary = `-- name: RootsOutsideTheirFoldersLibrary :many
 SELECT w.id FROM work_folder l JOIN work w ON w.id = l.work_id WHERE w.library_id <> l.library_id
 `

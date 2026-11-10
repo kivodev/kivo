@@ -149,9 +149,12 @@ func (b *Batch) PutVersion(ctx context.Context, in VersionInput) (id.ID, error) 
 // inRootLibrary checks that the root works of works are in lib, which is
 // the library of a version they are about to gain. A root with no library
 // yet is put in lib. All of a root's versions are in its library, so a
-// root in another library is ErrInvalid.
+// root in another library is ErrInvalid. So is a root lib doesn't hold.
 func inRootLibrary(ctx context.Context, q *dbq.Queries, lib id.ID, works []id.ID) error {
 	ids := id.Set(works...)
+	if err := holds(ctx, q, lib, ids); err != nil {
+		return err
+	}
 	if err := q.SetRootLibrary(ctx, dbq.SetRootLibraryParams{LibraryID: lib, Ids: ids}); err != nil {
 		return err
 	}
@@ -161,6 +164,21 @@ func inRootLibrary(ctx context.Context, q *dbq.Queries, lib id.ID, works []id.ID
 	}
 	if elsewhere != 0 {
 		return fmt.Errorf("%w: a version must be in its root work's library", ErrInvalid)
+	}
+	return nil
+}
+
+// holds checks that lib is of the kind that holds the root works of the
+// works in ids: a library holds works of its own kind alone, which the
+// reads that look for a kind of work only in its kind of library rely on.
+// A root of another kind is ErrInvalid.
+func holds(ctx context.Context, q *dbq.Queries, lib id.ID, ids string) error {
+	other, err := q.RootsOfAnotherKind(ctx, dbq.RootsOfAnotherKindParams{LibraryID: lib, Ids: ids})
+	if err != nil {
+		return err
+	}
+	if other != 0 {
+		return fmt.Errorf("%w: a library holds works of its own kind", ErrInvalid)
 	}
 	return nil
 }

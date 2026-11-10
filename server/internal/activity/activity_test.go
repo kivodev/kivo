@@ -27,7 +27,6 @@ type fixture struct {
 	b      *catalogtest.Builder
 	a      *activity.Service
 	sub    *events.Sub // the activity's events
-	lib    id.ID
 	folder id.ID
 }
 
@@ -38,7 +37,7 @@ func newFixture(t *testing.T) *fixture {
 	f.sub = bus.Subscribe(func(events.Scope) bool { return true })
 	t.Cleanup(f.sub.Close)
 	f.a = activity.New(f.b.DB, bus)
-	f.lib, f.folder = f.b.Library(catalog.Shows)
+	_, f.folder = f.b.Library(catalog.Shows)
 	return f
 }
 
@@ -91,11 +90,12 @@ func TestRecordAndList(t *testing.T) {
 		ben, admin := f.user("ben"), f.user("admin")
 		series := f.b.Series("Shōgun")
 		ep := f.b.Episode(f.folder, series, 1, 4)
-		movie := f.b.Movie(f.folder, "Runner", 2024)
+		films, filmsFolder := f.b.Library(catalog.Movies)
+		movie := f.b.Movie(filmsFolder, "Runner", 2024)
 		f.b.Write(func(ctx context.Context, tx *store.Tx) error {
 			return errors.Join(
 				f.a.Played(ctx, tx, activity.PlayStarted, activity.PlayActivity{User: ben, Work: ep.Work, Client: "Firefox", Local: false}),
-				f.a.FilesAdded(ctx, tx, f.lib, movie.Work, 1),
+				f.a.FilesAdded(ctx, tx, films, movie.Work, 1),
 				f.a.SignedIn(ctx, tx, activity.SignIn{User: ben, Client: "ben's iPhone", Address: netip.MustParseAddr("::ffff:203.0.113.24")}),
 				f.a.Joined(ctx, tx, ben, admin),
 				f.a.PasswordSet(ctx, tx, ben, admin, netip.Addr{}, false),

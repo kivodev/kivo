@@ -106,7 +106,7 @@ func (f *fixture) await(download id.ID, want DownloadState) DownloadStatus {
 // moving its library's folder to a temporary one.
 func (f *fixture) onDisk(file id.ID, content string) {
 	f.t.Helper()
-	f.exec("UPDATE library_folder SET path = ? WHERE id = ?", f.t.TempDir(), f.folder)
+	f.exec("UPDATE library_folder SET path = ? WHERE id = (SELECT folder_id FROM media_file WHERE id = ?)", f.t.TempDir(), file)
 	cf, err := f.b.Catalog.File(ctx, file)
 	if err != nil {
 		f.t.Fatal(err)
@@ -728,7 +728,7 @@ func TestAskingForTheSameDownloadAtOnceKeepsOne(t *testing.T) {
 	f := newFixture(t, 0)
 	f.downloads()
 	book := f.b.Work(catalog.WorkInput{Kind: catalog.KindBook, Title: "Dune"})
-	file := f.b.File(f.folder, "Dune/Dune.m4b")
+	file := f.b.File(f.folderOf(catalog.Audiobooks), "Dune/Dune.m4b")
 	f.b.Version([]id.ID{file}, book)
 	f.probeWith(file, "mp4", 20*time.Hour, 64_000, media.Track{Index: 0, Kind: media.Audio, Codec: "aac", Channels: 2, Default: true})
 	f.onDisk(file, "the book")
@@ -768,7 +768,7 @@ func TestDownloadRefusals(t *testing.T) {
 	f := newFixture(t, 0)
 	f.downloads()
 	book := f.b.Work(catalog.WorkInput{Kind: catalog.KindBook, Title: "Dune"})
-	file := f.b.File(f.folder, "Dune/Dune.flac")
+	file := f.b.File(f.folderOf(catalog.Audiobooks), "Dune/Dune.flac")
 	f.b.Version([]id.ID{file}, book)
 	f.probeWith(file, "flac", 20*time.Hour, 900_000, media.Track{Index: 0, Kind: media.Audio, Codec: "flac", Channels: 2, Default: true})
 	_, err := f.download(book, "")
@@ -799,7 +799,7 @@ func TestEstimates(t *testing.T) {
 	heat := f.movie("Heat", "mp4", 5_000_000)
 	f.sized(heat.File, 4_500_000_000)
 	book := f.b.Work(catalog.WorkInput{Kind: catalog.KindBook, Title: "Dune"})
-	bookFile := f.b.File(f.folder, "Dune/Dune.m4b")
+	bookFile := f.b.File(f.folderOf(catalog.Audiobooks), "Dune/Dune.m4b")
 	f.b.Version([]id.ID{bookFile}, book)
 	f.probeWith(bookFile, "mp4", 20*time.Hour, 64_000, media.Track{Index: 0, Kind: media.Audio, Codec: "aac", Channels: 2, Default: true})
 	f.sized(bookFile, 576_000_000)

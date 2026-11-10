@@ -238,6 +238,28 @@ func (q *Queries) RootsElsewhere(ctx context.Context, arg RootsElsewhereParams) 
 	return column_1, err
 }
 
+const rootsOfAnotherKind = `-- name: RootsOfAnotherKind :one
+SELECT EXISTS (SELECT 1 FROM work t JOIN library l ON l.id = ?1
+  WHERE l.kind IS NOT CASE t.kind WHEN 'movie' THEN 'movies' WHEN 'series' THEN 'shows'
+      WHEN 'video' THEN 'videos' WHEN 'book' THEN 'audiobooks' END
+    AND t.id IN (SELECT w.root_id FROM work w WHERE w.id IN (SELECT unhex(value) FROM (SELECT CAST(?2 AS TEXT) AS ids), json_each(ids))))
+`
+
+type RootsOfAnotherKindParams struct {
+	LibraryID id.ID
+	Ids       string
+}
+
+// Whether any of the root works of works is of another kind than this
+// library holds: a movies library holds movies, a shows library series, a
+// videos library videos and an audiobooks library books.
+func (q *Queries) RootsOfAnotherKind(ctx context.Context, arg RootsOfAnotherKindParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, rootsOfAnotherKind, arg.LibraryID, arg.Ids)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const setAddedAt = `-- name: SetAddedAt :exec
 UPDATE work SET added_at = ?1 WHERE id IN (SELECT unhex(value) FROM (SELECT CAST(?2 AS TEXT) AS ids), json_each(ids))
 `

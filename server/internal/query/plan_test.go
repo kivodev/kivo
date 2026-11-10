@@ -160,7 +160,7 @@ func TestSmartQueryPlans(t *testing.T) {
 	now := time.Now()
 	for _, s := range smartSamples(h) {
 		for _, only := range [][]catalog.WorkKind{nil, s.q.Kinds} {
-			counted, page, args := query.Compiled(s.q, h.friend, now, only)
+			counted, page, args := h.q.Compiled(t, s.q, h.friend, now, only)
 			prefix := ""
 			if only != nil {
 				prefix = "only/"
@@ -178,12 +178,23 @@ func TestSmartQueryPlans(t *testing.T) {
 // through its primary key. Each work is looked up from there, and then its
 // root when seasons or episodes are asked for. It checks without and with
 // the statistics SQLite gathers, which the nightly maintenance has it do.
+//
+// A page without its count, of a query an index holds in order, for a
+// Viewer with one library of its works, starts at that index instead, and
+// sorts nothing before it cuts the page.
 func TestSmartQueriesStartAtWorkLibrary(t *testing.T) {
 	const (
 		rows = "SEARCH wl USING PRIMARY KEY (library_id=?)"
 		work = "SEARCH w USING INDEX sqlite_autoindex_work_1 (id=?)"
 		root = "SEARCH r USING INDEX sqlite_autoindex_work_1 (id=?)"
 	)
+	// The index each of smartDefs' queries walks, if any.
+	walks := map[string]string{
+		"movies, title and rating, by title": "work_library_title",
+		"movies, one actor, by added":        "work_library_added",
+		"series, by last episode added":      "work_library_last_added",
+		"movies, capped at 100":              "work_library_added",
+	}
 	for _, statistics := range []bool{false, true} {
 		t.Run(fmt.Sprintf("statistics=%v", statistics), func(t *testing.T) {
 			db := storetest.New(t)
@@ -213,12 +224,20 @@ func TestSmartQueriesStartAtWorkLibrary(t *testing.T) {
 				if slices.Contains(d.q.Kinds, catalog.KindEpisode) {
 					want = append(want, root)
 				}
-				for _, v := range viewers {
-					counted, page, args := query.Compiled(d.q, v, time.Now(), nil)
+				for vi, v := range viewers {
+					counted, page, args := query.New(db).Compiled(t, d.q, v, time.Now(), nil)
 					for _, stmt := range []string{counted, page} {
 						got, err := plan(db.Reader(), stmt, args)
 						if err != nil {
 							t.Fatal(err)
+						}
+						want := want
+						// Only the first Viewer has one library of each kind.
+						if index := walks[d.name]; index != "" && vi == 0 && stmt == page {
+							want = []string{"SEARCH wl USING INDEX " + index + " (library_id=?)", work}
+							if cut, _, _ := strings.Cut(got, "\nSCAN p\n"); strings.Contains(cut, "TEMP B-TREE") {
+								t.Errorf("%s: the page sorts its works:\n%s", d.name, got)
+							}
 						}
 						// The plan's first steps on wl, w and r are the
 						// FROM's, in the order it reads them.

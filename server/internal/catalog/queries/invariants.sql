@@ -27,6 +27,15 @@ WHERE t.library_id IS NOT r.library_id
 -- A root work is in its folder's library.
 SELECT w.id FROM work_folder l JOIN work w ON w.id = l.work_id WHERE w.library_id <> l.library_id;
 
+-- name: RootsOfAnotherKindThanTheirLibrary :many
+-- A library holds root works of its own kind: a movies library movies, a
+-- shows library series, a videos library videos, an audiobooks library
+-- books. The works under a root are in its library, so a library holds
+-- no other kind of work but extras.
+SELECT w.id FROM work w JOIN library l ON l.id = w.library_id
+WHERE l.kind IS NOT CASE w.kind WHEN 'movie' THEN 'movies' WHEN 'series' THEN 'shows'
+  WHEN 'video' THEN 'videos' WHEN 'book' THEN 'audiobooks' END;
+
 -- name: LibrariesOfNonRoots :many
 -- Only a work with no parent has a library.
 SELECT id FROM work WHERE parent_id IS NOT NULL AND library_id IS NOT NULL;

@@ -23,6 +23,7 @@ func (c *Catalog) CheckInvariants(ctx context.Context) error {
 		{"version with parts in several libraries", c.q.VersionsAcrossLibraries},
 		{"identified version with a part outside its root work's library", c.q.VersionsOutsideTheirRootsLibrary},
 		{"root work outside its folder's or its movie's library", c.q.RootsOutsideTheirFoldersLibrary},
+		{"root work of another kind than its library holds", c.q.RootsOfAnotherKindThanTheirLibrary},
 		{"work with a parent that has a library", c.q.LibrariesOfNonRoots},
 		{"version with parts not numbered 1 to n", c.q.VersionsWithGappedParts},
 		{"folder linked to a work that isn't a root", c.q.FoldersOfNonRoots},

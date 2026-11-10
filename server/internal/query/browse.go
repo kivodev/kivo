@@ -320,12 +320,21 @@ func (s *Service) Browse(ctx context.Context, v users.Viewer, lib id.ID, o Brows
 	return s.summaryPage(ctx, vw, items, total, letters)
 }
 
-// Resolutions and ranges are stored as bit sets in work_library (see the
-// work_browse_keys view).
+// Resolutions and ranges are stored as bit sets in work_library, a bit for
+// each a work's versions have. The work_browse_keys view sets the bits.
 var (
 	resolutionBits = map[Resolution]int64{ResolutionSD: 1, Resolution720p: 2, Resolution1080p: 4, Resolution4K: 8}
 	rangeBits      = map[Range]int64{HDR: 1, DolbyVision: 2}
 )
+
+// named is a bit set's bits by their values' names, as a rule gives them.
+func named[V ~string](bits map[V]int64) map[string]int64 {
+	out := make(map[string]int64, len(bits))
+	for v, bit := range bits {
+		out[string(v)] = bit
+	}
+	return out
+}
 
 // args returns the filter's statement arguments.
 func (f Filter) args() ([]any, error) {

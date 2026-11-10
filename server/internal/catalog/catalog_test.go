@@ -1,6 +1,7 @@
 package catalog_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -875,6 +876,67 @@ func TestCheckInvariantsCatchesMissingNumbers(t *testing.T) {
 	}
 }
 
+// A library holds works of its own kind alone: a version in a library of
+// another kind than its root work's is refused, for a root and for a work
+// under one, and so is moving a root to one. CheckInvariants reports a
+// root that is in one all the same.
+func TestALibraryHoldsItsOwnKind(t *testing.T) {
+	b := catalogtest.New(t)
+	holds := map[catalog.WorkKind]catalog.LibraryKind{
+		catalog.KindMovie: catalog.Movies, catalog.KindSeries: catalog.Shows, catalog.KindVideo: catalog.Videos, catalog.KindBook: catalog.Audiobooks,
+	}
+	libs, folders := map[catalog.LibraryKind]id.ID{}, map[catalog.LibraryKind]id.ID{}
+	for _, kind := range holds {
+		libs[kind], folders[kind] = b.Library(kind)
+	}
+	put := func(folder, work id.ID, name string) error {
+		f := b.File(folder, name)
+		return write(t, b, func(ctx context.Context, tx *store.Tx) error {
+			return b.Catalog.Batch(ctx, tx, func(cb *catalog.Batch) error {
+				_, err := cb.PutVersion(ctx, catalog.VersionInput{Parts: []id.ID{f}, Works: []id.ID{work}})
+				return err
+			})
+		})
+	}
+	for kind, own := range holds {
+		root := b.Work(catalog.WorkInput{Kind: kind, Title: "A " + string(kind)})
+		playable := root
+		if kind == catalog.KindSeries {
+			season := b.Work(catalog.WorkInput{Kind: catalog.KindSeason, Parent: root, Title: "Season 1", Number: 1})
+			playable = b.Work(catalog.WorkInput{Kind: catalog.KindEpisode, Parent: season, Title: "Episode 1", ParentNumber: 1, Number: 1})
+		}
+		for other, folder := range folders {
+			err := put(folder, playable, fmt.Sprintf("%s in %s.mkv", kind, other))
+			if (err == nil) != (other == own) || err != nil && !errors.Is(err, catalog.ErrInvalid) {
+				t.Errorf("a %s's version in a %s library: %v", kind, other, err)
+			}
+			if got, want := libraries(t, b, playable), []id.ID{libs[own]}; !slices.Equal(got, want) && !(other != own && len(got) == 0) {
+				t.Errorf("a %s is in %v, want its own library %v or none yet", kind, got, want)
+			}
+		}
+		for other, lib := range libs {
+			err := write(t, b, func(ctx context.Context, tx *store.Tx) error { return b.Catalog.MoveRoot(ctx, tx, root, lib) })
+			if (err == nil) != (other == own) || err != nil && !errors.Is(err, catalog.ErrInvalid) {
+				t.Errorf("a %s moved to a %s library: %v", kind, other, err)
+			}
+		}
+	}
+	if err := b.Catalog.CheckInvariants(ctx); err != nil {
+		t.Fatalf("before: %v", err)
+	}
+	misplace := func(lib id.ID) {
+		b.Write(func(ctx context.Context, tx *store.Tx) error {
+			_, err := tx.ExecContext(ctx, `UPDATE work SET library_id = ? WHERE kind = 'video'`, lib)
+			return err
+		})
+	}
+	misplace(libs[catalog.Movies])
+	if err := b.Catalog.CheckInvariants(ctx); err == nil || !bytes.Contains([]byte(err.Error()), []byte("root work of another kind than its library holds")) {
+		t.Errorf("a video in a movies library: %v", err)
+	}
+	misplace(libs[catalog.Videos]) // back, for the check after the test
+}
+
 // A batch that moves a whole season rebuilds each work once at the flush.
 // It still rebuilds the season whose episodes were merged away before the
 // flush.
@@ -959,10 +1021,12 @@ func TestLibraryChanged(t *testing.T) {
 		expect("a rename", lib)
 		heat := b.Movie(folder, "Heat", 1995)
 		expect("a film added", lib)
+		shows, showsFolder := b.Library(catalog.Shows)
+		expect("another new library", shows)
 		series := b.Series("Show")
-		b.Episode(folder, series, 1, 1)
-		expect("a series' first episode", lib)
-		b.Episode(folder, series, 1, 2)
+		b.Episode(showsFolder, series, 1, 1)
+		expect("a series' first episode", shows)
+		b.Episode(showsFolder, series, 1, 2)
 		expect("another episode")
 		dup := b.Movie(folder, "Heat (dup)", 1995)
 		expect("a duplicate added", lib)

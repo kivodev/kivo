@@ -28,7 +28,12 @@ import (
 // both ways, caps, a list page's kinds and page offsets, over each set of
 // kinds, as Viewers with every, some and no libraries, with and without a
 // rating ceiling and unrated works. The pages are first pages, later ones,
-// pages past the end, and pages longer and shorter than a cap.
+// pages past the end, and pages longer and shorter than a cap. Some of the
+// Viewers have one library of a kind, so their pages of a query an index
+// holds in order walk it, and are compared like the rest.
+//
+// compileOld's comment says where the old compiler is made to mean what
+// compile now means on purpose.
 //
 // The whole matrix takes minutes, so it runs only when KIVO_DIFFERENTIAL=1.
 // Otherwise one query in 29 runs, which still takes each field, operator
@@ -37,6 +42,7 @@ import (
 func TestCompileMatchesOld(t *testing.T) {
 	db := storetest.New(t)
 	d := newDifferential(t, db)
+	svc := query.New(db)
 	canonical := canonicalFilter(t)
 	now := time.Now()
 	every := 29
@@ -87,7 +93,7 @@ func TestCompileMatchesOld(t *testing.T) {
 					if variant.cap > 0 {
 						q.MaxWorks = &variant.cap
 					}
-					counted, page, args := query.Compiled(q, v.v, now, variant.only)
+					counted, page, args := svc.Compiled(t, q, v.v, now, variant.only)
 					oldCount, oldPage, oldArgs := query.CompiledOld(q, v.v, now, variant.only)
 					checkCompiledFilter(t, canonical, counted)
 					checkCompiledFilter(t, canonical, page)

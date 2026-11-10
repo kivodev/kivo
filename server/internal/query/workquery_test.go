@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/mmcdole/kivo/internal/catalog"
+	"github.com/mmcdole/kivo/internal/events"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/query"
 	"github.com/mmcdole/kivo/internal/store"
@@ -292,11 +293,112 @@ func TestQuerySortOrder(t *testing.T) {
 	}
 }
 
-func TestQueryExcludesProvisionalWorks(t *testing.T) {
+// A query selects unmatched works and the works under them with the rest,
+// an unmatched work's summary saying so as a grid's does: a rule on what
+// only a match gives doesn't select them, and any other rule does. A smart
+// list shows them on its page, in its count, and on Home.
+func TestQueryIncludesProvisionalWorks(t *testing.T) {
 	h := newHousehold(t)
-	all := ids(h.runQuery(h.admin, query.WorkQuery{Kinds: queryAllKinds}).Items)
-	if slices.Contains(all, h.unmatchedShow1.Work) {
-		t.Errorf("a provisional work came back: %v", all)
+	unmatched := []id.ID{h.unmatched.Work, h.unmatchedShow, h.unmatchedShow1.Work}
+	has := func(got []id.ID) bool {
+		return !slices.ContainsFunc(unmatched, func(w id.ID) bool { return !slices.Contains(got, w) })
+	}
+	everything := h.runQuery(h.admin, query.WorkQuery{Kinds: queryAllKinds})
+	if !has(ids(everything.Items)) {
+		t.Errorf("every work: %v, want the unmatched %v among them", ids(everything.Items), unmatched)
+	}
+	for _, c := range everything.Items {
+		if want := c.ID == h.unmatched.Work || c.ID == h.unmatchedShow; (c.MatchState == query.Unmatched) != want {
+			t.Errorf("%s is %s", h.names[c.ID], c.MatchState)
+		}
+	}
+	added := query.Rule{Field: "addedAt", Op: "within", Values: []string{"P30D"}}
+	if got := ids(h.runQuery(h.admin, query.WorkQuery{Kinds: queryAllKinds, Where: where(added)}).Items); !has(got) {
+		t.Errorf("added in the last 30 days: %v, want the unmatched %v among them", got, unmatched)
+	}
+	for _, r := range []query.Rule{{Field: "rating", Op: "isSet"}, {Field: "genre", Op: "isSet"}, {Field: "year", Op: "gte", Values: []string{"1900"}}} {
+		got := ids(h.runQuery(h.admin, query.WorkQuery{Kinds: queryAllKinds, Where: where(r)}).Items)
+		if slices.ContainsFunc(unmatched, func(w id.ID) bool { return slices.Contains(got, w) }) {
+			t.Errorf("%s %s selects an unmatched work: %v", r.Field, r.Op, got)
+		}
+	}
+
+	us := users.New(h.b.DB, events.NewBus())
+	list := h.smartList(us, h.admin, "New", movies(added))
+	p, err := h.q.ListWorks(ctx, h.admin, list, nil, query.GridOptions{})
+	if err != nil || !slices.Contains(ids(p.Items), h.unmatched.Work) {
+		t.Fatalf("the list's page: %v, %v", ids(p.Items), err)
+	}
+	counted, err := h.q.CountedLists(ctx, h.admin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if l := counted[slices.IndexFunc(counted, func(l query.List) bool { return l.ID == list })]; l.Works != p.Total {
+		t.Errorf("the Lists screen counts %d works, and the list's page %d", l.Works, p.Total)
+	}
+	row := "list:" + list.String()
+	h.arrange(us, h.admin, users.HomeRow{ID: row, Shown: true})
+	home := h.home(h.admin)
+	i := slices.IndexFunc(home, func(r query.HomeRow) bool { return r.ID == row })
+	if i < 0 || !slices.Equal(ids(home[i].Items), ids(p.Items)) {
+		t.Errorf("the list's row on Home: %+v, want the page's %v", home, ids(p.Items))
+	}
+	for _, c := range home[i].Items {
+		if c.ID == h.unmatched.Work && c.MatchState != query.Unmatched {
+			t.Errorf("the unmatched film on Home is %s", c.MatchState)
+		}
+	}
+}
+
+// The rating field is the rating a card shows, which a rating without
+// votes isn't.
+func TestRatingNeedsVotes(t *testing.T) {
+	h := newHousehold(t)
+	h.metadata(h.dune.Work, catalog.WorkMetadata{Community: &catalog.CommunityRating{Rating: 8.1, Votes: 900}})
+	rated := movies(query.Rule{Field: "rating", Op: "gte", Values: []string{"8"}})
+	if got := ids(h.runQuery(h.admin, rated).Items); !slices.Contains(got, h.dune.Work) {
+		t.Fatalf("rated 8 or more: %v, want Dune", got)
+	}
+	h.b.Write(func(ctx context.Context, tx *store.Tx) error {
+		if _, err := tx.ExecContext(ctx, `UPDATE work SET community_votes = NULL WHERE id = ?`, h.dune.Work); err != nil {
+			return err
+		}
+		_, err := tx.ExecContext(ctx, `UPDATE work_library SET rating_sort = -1 WHERE work_id = ?`, h.dune.Work)
+		return err
+	})
+	if got := ids(h.runQuery(h.admin, rated).Items); slices.Contains(got, h.dune.Work) {
+		t.Errorf("rated 8 or more: %v, though Dune's rating has no votes", got)
+	}
+	unset := h.runQuery(h.admin, movies(query.Rule{Field: "rating", Op: "isNotSet"}))
+	i := slices.IndexFunc(unset.Items, func(c query.WorkSummary) bool { return c.ID == h.dune.Work })
+	if i < 0 || unset.Items[i].Community != nil {
+		t.Errorf("with no rating: %v, want Dune, its card showing none", ids(unset.Items))
+	}
+}
+
+// A season's or episode's content rating is its own, and its series' when
+// it has none, as the Viewer's rating ceiling reads it.
+func TestContentRatingIsAWorksOwnFirst(t *testing.T) {
+	h := newHousehold(t)
+	h.metadata(h.expanse1.Work, catalog.WorkMetadata{ContentRating: "TV-Y", ContentRatingAge: ptr(0)})
+	series := h.runQuery(h.admin, query.WorkQuery{Kinds: []catalog.WorkKind{catalog.KindSeries},
+		Where: where(query.Rule{Field: "rootWork", Op: "anyOf", Values: []string{h.expanse.String()}})}).Items
+	if len(series) != 1 || series[0].ContentRating == "" || series[0].ContentRating == "TV-Y" {
+		t.Fatalf("the series: %+v, want one with a rating that isn't TV-Y", series)
+	}
+	episodes := func(kinds []catalog.WorkKind, rating string) []id.ID {
+		return ids(h.runQuery(h.admin, query.WorkQuery{Kinds: kinds, Where: where(
+			query.Rule{Field: "rootWork", Op: "anyOf", Values: []string{h.expanse.String()}},
+			query.Rule{Field: "contentRating", Op: "anyOf", Values: []string{rating}})}).Items)
+	}
+	for _, kinds := range [][]catalog.WorkKind{{catalog.KindEpisode}, queryAllKinds} {
+		if got := episodes(kinds, "TV-Y"); !slices.Equal(got, []id.ID{h.expanse1.Work}) {
+			t.Errorf("%v rated TV-Y: %v, want the episode rated so", kinds, got)
+		}
+		got := episodes(kinds, series[0].ContentRating)
+		if slices.Contains(got, h.expanse1.Work) || !slices.Contains(got, h.expanse2.Work) || !slices.Contains(got, h.expanse3.Work) {
+			t.Errorf("%v rated as the series: %v, want its episodes with no rating of their own", kinds, got)
+		}
 	}
 }
 
@@ -325,7 +427,7 @@ func TestQueryKindsAreTheEnginesOwn(t *testing.T) {
 				t.Errorf("%q: got %v, want an InvalidQueryError", tt.kinds, err)
 			}
 			for _, only := range [][]catalog.WorkKind{nil, {injected}, tt.kinds} {
-				counted, page, args := query.Compiled(q, h.admin, time.Now(), only)
+				counted, page, args := h.q.Compiled(t, q, h.admin, time.Now(), only)
 				// A page of kinds the query doesn't select has no works.
 				want, works := tt.want, tt.works && (only == nil || slices.Contains(only, catalog.KindMovie))
 				if maxWorks == nil && !works {
@@ -533,7 +635,7 @@ func TestQueryJoinsStateOnlyWhenRead(t *testing.T) {
 		if problems := tt.q.Validate(); len(problems) > 0 {
 			t.Fatalf("%s: %v", describe(tt.q), problems)
 		}
-		counted, page, _ := query.Compiled(tt.q, h.admin, time.Now(), nil)
+		counted, page, _ := h.q.Compiled(t, tt.q, h.admin, time.Now(), nil)
 		for _, stmt := range []string{counted, page} {
 			selects, summaries, ok := strings.Cut(stmt, "\npage AS (")
 			if !ok || strings.Contains(selects, join) != tt.state || strings.Count(summaries, join) != 1 {

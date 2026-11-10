@@ -64,7 +64,11 @@ type FieldValue struct {
 
 // fieldDef is a field with what compiling it needs. A scalar field reads
 // expr, NULL when unset; a set field reads rows of from joined by on, each
-// row's value in value; bits fields read a mask column of work_library.
+// row's value in value; bits fields read a mask column of work_library. A
+// sortable field orders by sort.
+//
+// A field of a series that its seasons and episodes share, such as its
+// genres, joins on w.root_id, which is a root work's own ID.
 type fieldDef struct {
 	WorkField
 	expr   string
@@ -76,13 +80,30 @@ type fieldDef struct {
 	bits   map[string]int64
 	column string
 
+	ms      bool   // expr is in epoch milliseconds, which a rule compares as its UTC day
+	state   bool   // expr or sort reads the user's state us
+	inherit string // what a season or episode with no expr takes: its series', read from the root r
+	rolled  bool   // a series' or season's expr and sort are pl.at, rolled up in played
+	// indexed is the work_library column the field sorts by, when an index
+	// in sortIndexes holds a library's root works in the sort's order.
+	indexed string
+
 	inline []FieldValue
 	stmt   *statement // reads the field's values, for fields with many
 }
 
-// seriesOf is the work a season or episode takes its series-level fields
-// from: its series; any other work is its own.
-const seriesOf = "CASE WHEN w.kind IN ('season', 'episode') THEN w.root_id ELSE w.id END"
+// sortIndexes are the indexes that hold a library's root works in a sort's
+// order, by the work_library column they order: by that column, in its
+// field's default direction, then by sort title and ID.
+var sortIndexes = map[string]string{
+	"sort_title":    "work_library_title",
+	"added_at":      "work_library_added",
+	"release_key":   "work_library_release",
+	"rating_sort":   "work_library_rating",
+	"runtime_sort":  "work_library_runtime",
+	"creator_sort":  "work_library_creator",
+	"last_added_at": "work_library_last_added",
+}
 
 // creditOf is the work to read a role's credits from: a season's or
 // episode's own, or else its series'.
@@ -95,21 +116,27 @@ func creditOf(role string) string {
 // dayOf renders an epoch-milliseconds expression as a UTC day.
 func dayOf(ms string) string { return "date(" + ms + " / 1000, 'unixepoch')" }
 
-var (
-	// lastPlayedMs is the user's last play: a series' or season's rolls up
-	// its episodes.
-	lastPlayedMs = `CASE w.kind
-    WHEN 'series' THEN (SELECT max(fu.last_played_at) FROM work fe CROSS JOIN user_state fu ON fu.work_id = fe.id
-      WHERE fe.root_id = w.id AND fu.user_id = @user)
-    WHEN 'season' THEN (SELECT max(fu.last_played_at) FROM work fe CROSS JOIN user_state fu ON fu.work_id = fe.id
-      WHERE fe.parent_id = w.id AND fu.user_id = @user)
-    ELSE us.last_played_at END`
-	// playState is the user's state: a series' and season's roll up their
-	// episodes; no state means unplayed.
-	playState = `CASE w.kind WHEN 'series' THEN ` + rollupPlayState("fe.root_id") + `
+// played is the user's last play of each series and season, which have no
+// state of their own: a series' is the latest of the works under it and
+// itself, a season's of the works in it. A work is never both a root and a
+// parent under one, so each has one row.
+const played = `played (work, at) AS MATERIALIZED (
+  SELECT pw.root_id, max(pu.last_played_at)
+  FROM user_state pu CROSS JOIN work pw ON pw.id = pu.work_id
+  WHERE pu.user_id = @user AND pu.last_played_at IS NOT NULL
+  GROUP BY pw.root_id
+  UNION ALL
+  SELECT pw.parent_id, max(pu.last_played_at)
+  FROM user_state pu CROSS JOIN work pw ON pw.id = pu.work_id
+  WHERE pu.user_id = @user AND pu.last_played_at IS NOT NULL AND pw.parent_id <> pw.root_id
+  GROUP BY pw.parent_id
+)`
+
+// playState is the user's state: a series' and season's roll up their
+// episodes; no state means unplayed.
+var playState = `CASE w.kind WHEN 'series' THEN ` + rollupPlayState("fe.root_id") + `
     WHEN 'season' THEN ` + rollupPlayState("fe.parent_id") + `
     ELSE coalesce(CASE WHEN us.played THEN 'played' WHEN us.resumable THEN 'inProgress' END, 'unplayed') END`
-)
 
 // nameValues is the values statement for a field stored by name.
 func nameValues(name, table, workTable, key string) *statement {
@@ -216,18 +243,19 @@ var (
 // the order clients offer them, the common ones first.
 var workFields = []*fieldDef{
 	{WorkField: WorkField{Field: "genre", Name: "Genre", Type: FieldSet, Kinds: allKinds, ValueSource: "inline"},
-		from: "work_genre x JOIN genre n ON n.id = x.genre_id", on: "x.work_id = " + seriesOf, value: "n.name",
+		from: "work_genre x JOIN genre n ON n.id = x.genre_id", on: "x.work_id = w.root_id", value: "n.name",
 		stmt: nameValues("Genre", "genre", "work_genre", "genre_id")},
 	{WorkField: WorkField{Field: "year", Name: "Year", Type: FieldNumber, Kinds: allKinds, Sortable: true, DefaultDirection: "desc"},
 		expr: "nullif(wl.year, 0)", sort: "nullif(wl.year, 0)"},
 	{WorkField: WorkField{Field: "playState", Name: "Play state", Type: FieldChoice, Kinds: allKinds, ValueSource: "inline"},
-		expr: playState, inline: []FieldValue{{"unplayed", "Unplayed"}, {"inProgress", "In progress"}, {"played", "Played"}}},
+		expr: playState, state: true, inline: []FieldValue{{"unplayed", "Unplayed"}, {"inProgress", "In progress"}, {"played", "Played"}}},
+	// The rating a card shows: a work's community rating when it has votes.
 	{WorkField: WorkField{Field: "rating", Name: "Rating", Type: FieldNumber, Kinds: allKinds, Sortable: true, DefaultDirection: "desc"},
-		expr: "w.community_rating", sort: "nullif(wl.rating_sort, -1)"},
+		expr: "CASE WHEN w.community_votes IS NOT NULL THEN w.community_rating END", sort: "nullif(wl.rating_sort, -1)", indexed: "rating_sort"},
 	{WorkField: WorkField{Field: "releaseDate", Name: "Release date", Type: FieldDate, Kinds: allKinds, Sortable: true, DefaultDirection: "desc"},
-		expr: "nullif(wl.release_key, '')", sort: "nullif(wl.release_key, '')"},
+		expr: "nullif(wl.release_key, '')", sort: "nullif(wl.release_key, '')", indexed: "release_key"},
 	{WorkField: WorkField{Field: "addedAt", Name: "Date added", Type: FieldDate, Kinds: allKinds, Sortable: true, DefaultDirection: "desc"},
-		expr: dayOf("wl.added_at"), sort: "wl.added_at"},
+		expr: "wl.added_at", ms: true, sort: "wl.added_at", indexed: "added_at"},
 	{WorkField: WorkField{Field: "actor", Name: "Actor", Type: FieldPerson, Kinds: videoKinds, ValueSource: "search"},
 		from: "credit x", on: creditOf("actor"), value: "x.person_id", ids: true, stmt: personValues("Actor", "actor")},
 	{WorkField: WorkField{Field: "director", Name: "Director", Type: FieldPerson, Kinds: videoKinds, ValueSource: "search"},
@@ -236,19 +264,18 @@ var workFields = []*fieldDef{
 	{WorkField: WorkField{Field: "library", Name: "Library", Type: FieldChoice, Kinds: allKinds, ValueSource: "inline"},
 		from: "work_library x", on: "x.work_id = w.id", value: "x.library_id", ids: true, stmt: &libraryValues},
 	{WorkField: WorkField{Field: "contentRating", Name: "Content rating", Type: FieldChoice, Kinds: allKinds, ValueSource: "inline"},
-		expr: "CASE WHEN w.kind IN ('season', 'episode') THEN (SELECT r.content_rating FROM work r WHERE r.id = w.root_id) ELSE w.content_rating END",
-		stmt: &contentRatingValues},
+		expr: "w.content_rating", inherit: "r.content_rating", stmt: &contentRatingValues},
 
 	{WorkField: WorkField{Field: "tag", Name: "Tag", Type: FieldSet, Kinds: allKinds, ValueSource: "search"},
-		from: "work_tag x JOIN tag n ON n.id = x.tag_id", on: "x.work_id = " + seriesOf, value: "n.name",
+		from: "work_tag x JOIN tag n ON n.id = x.tag_id", on: "x.work_id = w.root_id", value: "n.name",
 		stmt: nameValues("Tag", "tag", "work_tag", "tag_id")},
 	{WorkField: WorkField{Field: "company", Name: "Company", Type: FieldSet, Kinds: allKinds, ValueSource: "search"},
-		from: "work_company x JOIN company n ON n.id = x.company_id", on: "x.work_id = " + seriesOf, value: "n.name",
+		from: "work_company x JOIN company n ON n.id = x.company_id", on: "x.work_id = w.root_id", value: "n.name",
 		stmt: nameValues("Company", "company", "work_company", "company_id")},
 	{WorkField: WorkField{Field: "resolution", Name: "Resolution", Type: FieldSet, Kinds: versioned, ValueSource: "inline"},
-		bits: map[string]int64{"sd": 1, "720p": 2, "1080p": 4, "4k": 8}, column: "resolutions", inline: resolutions},
+		bits: named(resolutionBits), column: "resolutions", inline: resolutions},
 	{WorkField: WorkField{Field: "dynamicRange", Name: "Dynamic range", Type: FieldSet, Kinds: versioned, ValueSource: "inline"},
-		bits: map[string]int64{"hdr": 1, "dolbyVision": 2}, column: "dynamic_ranges", inline: rangeValues},
+		bits: named(rangeBits), column: "dynamic_ranges", inline: rangeValues},
 	{WorkField: WorkField{Field: "collection", Name: "Collection", Type: FieldSet, Kinds: []catalog.WorkKind{catalog.KindMovie, catalog.KindSeries, catalog.KindVideo}, ValueSource: "search"},
 		from: "collection_work x", on: "x.work_id = w.id", value: "x.collection_id", ids: true, stmt: &collectionValues},
 	{WorkField: WorkField{Field: "bookSeries", Name: "Book series", Type: FieldSet, Kinds: booksOnly, ValueSource: "search"},
@@ -258,23 +285,25 @@ var workFields = []*fieldDef{
 	{WorkField: WorkField{Field: "rootWork", Name: "Show or movie", Type: FieldSet, Kinds: allKinds, ValueSource: "search"},
 		from: "work x", on: "x.id = w.root_id", value: "x.id", ids: true, stmt: &rootWorkValues},
 
-	{WorkField: WorkField{Field: "author", Name: "Author", Type: FieldPerson, Kinds: booksOnly, ValueSource: "search"},
-		from: "credit x", on: "x.work_id = w.id AND x.role = 'author'", value: "x.person_id", ids: true, stmt: personValues("Author", "author")},
+	// It sorts by the first author's sort name, a work with no author first.
+	{WorkField: WorkField{Field: "author", Name: "Author", Type: FieldPerson, Kinds: booksOnly, Sortable: true, DefaultDirection: "asc", ValueSource: "search"},
+		from: "credit x", on: "x.work_id = w.id AND x.role = 'author'", value: "x.person_id", ids: true, stmt: personValues("Author", "author"),
+		sort: "wl.creator_sort", indexed: "creator_sort"},
 	{WorkField: WorkField{Field: "narrator", Name: "Narrator", Type: FieldPerson, Kinds: booksOnly, ValueSource: "search"},
 		from: "credit x", on: "x.work_id = w.id AND x.role = 'narrator'", value: "x.person_id", ids: true, stmt: personValues("Narrator", "narrator")},
 
 	{WorkField: WorkField{Field: "myRating", Name: "My rating", Type: FieldNumber, Kinds: allKinds, Sortable: true, DefaultDirection: "desc"},
-		expr: "us.rating", sort: "us.rating"},
+		expr: "us.rating", sort: "us.rating", state: true},
 	{WorkField: WorkField{Field: "runtimeMs", Name: "Runtime", Type: FieldNumber, Kinds: append(slices.Clone(versioned), catalog.KindBook), Sortable: true, DefaultDirection: "asc", Unit: "ms"},
-		expr: "nullif(wl.runtime_sort, 9223372036854775807)", sort: "nullif(wl.runtime_sort, 9223372036854775807)"},
+		expr: "nullif(wl.runtime_sort, 9223372036854775807)", sort: "nullif(wl.runtime_sort, 9223372036854775807)", indexed: "runtime_sort"},
 
 	{WorkField: WorkField{Field: "lastEpisodeAddedAt", Name: "Latest addition", Type: FieldDate, Kinds: allKinds, Sortable: true, DefaultDirection: "desc"},
-		expr: dayOf("nullif(wl.last_added_at, 0)"), sort: "nullif(wl.last_added_at, 0)"},
+		expr: "nullif(wl.last_added_at, 0)", ms: true, sort: "nullif(wl.last_added_at, 0)", indexed: "last_added_at"},
 	{WorkField: WorkField{Field: "lastPlayedAt", Name: "Last played", Type: FieldDate, Kinds: allKinds, Sortable: true, DefaultDirection: "desc"},
-		expr: dayOf("(" + lastPlayedMs + ")"), sort: "(" + lastPlayedMs + ")"},
+		expr: "us.last_played_at", ms: true, sort: "us.last_played_at", state: true, rolled: true},
 
 	{WorkField: WorkField{Field: "title", Name: "Title", Type: FieldText, Kinds: allKinds, Sortable: true, DefaultDirection: "asc"},
-		expr: "w.title", sort: "w.sort_title"},
+		expr: "w.title", sort: "wl.sort_title", indexed: "sort_title"},
 }
 
 // fieldsByKey is the registry by field name, with each field's operators.

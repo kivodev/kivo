@@ -228,7 +228,8 @@ type compiled struct {
 }
 
 // libraryOf is the kind of library that holds each kind of work a query
-// selects.
+// selects. A library holds works of its own kind alone: catalog refuses
+// any other.
 var libraryOf = map[catalog.WorkKind]catalog.LibraryKind{
 	catalog.KindMovie: catalog.Movies, catalog.KindSeries: catalog.Shows, catalog.KindSeason: catalog.Shows,
 	catalog.KindEpisode: catalog.Shows, catalog.KindVideo: catalog.Videos, catalog.KindBook: catalog.Audiobooks,
@@ -258,9 +259,10 @@ func scope(kinds []catalog.WorkKind) (works, libraries string, nested bool) {
 }
 
 // matching is the FROM and WHERE that select a query's works, before its
-// rules: the works of kinds, not provisional, that the Viewer sees. It
-// reads work_library wl in the libraries the Viewer is granted that hold
-// the kinds, then each row's work w, and with state the user's state us.
+// rules: the works of kinds that the Viewer sees. It reads work_library wl
+// in the libraries the Viewer is granted that hold the kinds, then each
+// row's work w, and what the rules and the order read besides: the user's
+// state us, and played pl.
 //
 // A query with seasons or episodes also reads each work's root r, for what
 // a work under a root takes from it. Any other work is its own root, so a
@@ -274,29 +276,65 @@ func scope(kinds []catalog.WorkKind) (works, libraries string, nested bool) {
 // SQLite names sqlite_autoindex_work_library_1, then w, then r. Left to
 // choose, SQLite with statistics scans work for its kinds, or reads wl
 // through an index that has to look every row up again.
-func matching(kinds []catalog.WorkKind, state bool) string {
+//
+// With walk, a column in sortIndexes, it reads the root rows of the one
+// library @library through the column's index instead, so in its order.
+func (c *compiler) matching(kinds []catalog.WorkKind, walk string) string {
 	works, libraries, nested := scope(kinds)
-	rows, root, matched, age := "\n  AND wl.is_root", "", "NOT w.provisional", "w.content_rating_age"
+	rows, joins, age := "\n  AND wl.is_root", "", "w.content_rating_age"
 	if nested {
-		rows, root = "", "\nCROSS JOIN work r ON r.id = w.root_id"
-		matched, age = "NOT w.provisional AND NOT r.provisional", "coalesce(w.content_rating_age, r.content_rating_age)"
+		rows, joins = "", "\nCROSS JOIN work r ON r.id = w.root_id"
+		age = "coalesce(w.content_rating_age, r.content_rating_age)"
 	}
-	if state {
-		root += "\nLEFT JOIN user_state us ON us.user_id = @user AND us.work_id = w.id"
+	if c.state {
+		joins += "\nLEFT JOIN user_state us ON us.user_id = @user AND us.work_id = w.id"
+	}
+	if c.played {
+		joins += "\nLEFT JOIN played pl ON pl.work = w.id"
+	}
+	index := "sqlite_autoindex_work_library_1"
+	in := "wl.library_id IN (SELECT gl.id FROM library gl WHERE gl.kind IN (" + libraries + ") AND " + catalog.Granted("gl.id") + ")"
+	if walk != "" {
+		index, in = sortIndexes[walk], "wl.library_id = @library"
 	}
 	return `
-FROM work_library wl INDEXED BY sqlite_autoindex_work_library_1
-CROSS JOIN work w ON w.id = wl.work_id` + root + `
-WHERE wl.library_id IN (SELECT gl.id FROM library gl WHERE gl.kind IN (` + libraries + `) AND ` + catalog.Granted("gl.id") + `)` + rows + `
+FROM work_library wl INDEXED BY ` + index + `
+CROSS JOIN work w ON w.id = wl.work_id` + joins + `
+WHERE ` + in + rows + `
   AND w.kind IN (` + works + `)
-  AND ` + matched + `
   AND ( -- viewer-filter: wl
     ` + catalog.Granted("wl.library_id") + `
     AND ` + catalog.RatingVisible(age) + `)`
 }
 
-// stateRead matches SQL that reads the user's state us.
-var stateRead = regexp.MustCompile(`\bus\.`)
+// narrowed is the kinds a statement of q selects: q's, or those of them in
+// only for an uncapped query's page of only's kinds. A capped query's page
+// keeps only's kinds from its capped works instead.
+func narrowed(q WorkQuery, only []catalog.WorkKind) []catalog.WorkKind {
+	if q.MaxWorks != nil || only == nil {
+		return q.Kinds
+	}
+	return slices.DeleteFunc(slices.Clone(q.Kinds), func(k catalog.WorkKind) bool { return !slices.Contains(only, k) })
+}
+
+// walked is the field whose index holds a query's works of kinds in the
+// query's order, when they are in one library: root works alone, ordered
+// by one key in its field's default direction, which is its index's. It is
+// nil for any other query.
+func walked(q WorkQuery, kinds []catalog.WorkKind) *fieldDef {
+	if _, _, nested := scope(kinds); nested || len(q.Sort) > 1 {
+		return nil
+	}
+	key := SortKey{Field: "title"}
+	if len(q.Sort) == 1 {
+		key = q.Sort[0]
+	}
+	f := fieldsByKey[key.Field]
+	if f == nil || f.indexed == "" || key.Direction != "" && key.Direction != f.DefaultDirection {
+		return nil
+	}
+	return f
+}
 
 // compile turns a valid query into SQL. It is the only way a WorkQuery
 // becomes a statement: the SQL always carries the Viewer predicate, before
@@ -308,26 +346,39 @@ var stateRead = regexp.MustCompile(`\bus\.`)
 // with the columns its order reads, and joins the user's state there only
 // when a rule or the order reads it. It cuts the page from those, and
 // builds summaries for the page's works alone.
-func compile(q WorkQuery, vw viewer, now time.Time, seed string, only []catalog.WorkKind) compiled {
-	c := &compiler{now: now, seed: seed}
+//
+// library is the one library that holds the query's works, or zero when
+// several do, none does, or the caller didn't look. With it, and an index
+// that holds the query's order (see walked), page reads the library's
+// works in the index's order and stops at the page's end. Any other
+// statement reads every work the query selects and sorts them.
+func compile(q WorkQuery, vw viewer, now time.Time, seed string, only []catalog.WorkKind, library id.ID) compiled {
+	kinds := narrowed(q, only)
+	_, _, nested := scope(kinds)
+	c := &compiler{now: now, seed: seed, nested: nested,
+		rolls: slices.Contains(kinds, catalog.KindSeries) || slices.Contains(kinds, catalog.KindSeason)}
 	where := ""
 	if q.Where != nil {
 		where = "\n  AND " + c.group(*q.Where)
 	}
 	columns, by := c.order(q)
-	kinds := q.Kinds
-	if q.MaxWorks == nil && only != nil {
-		kinds = slices.DeleteFunc(slices.Clone(kinds), func(k catalog.WorkKind) bool { return !slices.Contains(only, k) })
-	}
-	matched := "SELECT w.id AS id, w.kind AS kind, " + columns + matching(kinds, stateRead.MatchString(columns+where)) + where
+	limit := ""
 	if q.MaxWorks != nil {
-		matched += "\nORDER BY " + by + "\nLIMIT " + c.bind(*q.MaxWorks)
-		if len(only) > 0 {
-			matched = "SELECT * FROM (\n" + matched + "\n) WHERE kind IN (SELECT value FROM json_each(@only))"
-		}
+		limit = "\nLIMIT " + c.bind(*q.MaxWorks)
 	}
-	read := func(materialized, total string) string {
-		return "WITH matched AS " + materialized + "(\n" + matched + `
+	with := "WITH "
+	if c.played {
+		with += played + ",\n"
+	}
+	read := func(walk, columns, by, materialized, total string) string {
+		matched := "SELECT wl.work_id AS id, w.kind AS kind, " + columns + c.matching(kinds, walk) + where
+		if limit != "" {
+			matched += "\nORDER BY " + by + limit
+			if len(only) > 0 {
+				matched = "SELECT * FROM (\n" + matched + "\n) WHERE kind IN (SELECT value FROM json_each(@only))"
+			}
+		}
+		return with + "matched AS " + materialized + "(\n" + matched + `
 ),
 page AS (SELECT * FROM matched ORDER BY ` + by + ` LIMIT @limit OFFSET @offset)
 SELECT ` + summaryColumns + total + `
@@ -336,18 +387,44 @@ JOIN work w ON w.id = p.id
 LEFT JOIN user_state us ON us.user_id = @user AND us.work_id = w.id
 ORDER BY p.` + strings.ReplaceAll(by, ", ", ", p.")
 	}
-	return compiled{
-		counted: read("MATERIALIZED ", ", (SELECT count(*) FROM matched)"),
-		page:    read("", ""),
-		args:    vw.args(append(c.params, sql.Named("only", set(only)))...),
+	out := compiled{
+		counted: read("", columns, by, "MATERIALIZED ", ", (SELECT count(*) FROM matched)"),
+		args:    vw.args(append(c.params, sql.Named("only", set(only)), sql.Named("library", library))...),
 	}
+	if f := walked(q, kinds); f != nil && !library.IsZero() {
+		columns, by = f.walk()
+		out.page = read(f.indexed, columns, by, "", "")
+	} else {
+		out.page = read("", columns, by, "", "")
+	}
+	return out
 }
 
-// compiler builds one statement's WHERE clause and its parameters.
+// walk is the order of f's index, as order gives a query's: the columns
+// it reads and the ORDER BY over their names and id.
+func (f *fieldDef) walk() (columns, by string) {
+	columns, by = "wl."+f.indexed+" AS k0", "k0"
+	if f.DefaultDirection == "desc" {
+		by += " DESC"
+	}
+	if f.indexed != "sort_title" {
+		columns, by = columns+", wl.sort_title AS k1", by+", k1"
+	}
+	return columns, by + ", id"
+}
+
+// compiler builds one statement's WHERE clause and order, with their
+// parameters, and notes what they read besides each work and its
+// work_library row.
 type compiler struct {
 	params []any
 	now    time.Time
 	seed   string
+
+	nested bool // the works include seasons or episodes, so each one's root r is read
+	rolls  bool // the works include series or seasons
+	state  bool // a rule or the order reads the user's state us
+	played bool // a rule or the order reads played pl
 }
 
 // bind adds a parameter and returns its name.
@@ -355,6 +432,21 @@ func (c *compiler) bind(v any) string {
 	name := "p" + strconv.Itoa(len(c.params))
 	c.params = append(c.params, sql.Named(name, v))
 	return "@" + name
+}
+
+// value is a field's expr or sort as the statement's works have it: a
+// season's or episode's own or else its series', and a series' or season's
+// rolled up from its works.
+func (c *compiler) value(f *fieldDef, expr string) string {
+	c.state = c.state || f.state
+	switch {
+	case f.inherit != "" && c.nested:
+		return "coalesce(" + expr + ", " + f.inherit + ")"
+	case f.rolled && c.rolls:
+		c.played = true
+		return "CASE WHEN w.kind IN ('series', 'season') THEN pl.at ELSE " + expr + " END"
+	}
+	return expr
 }
 
 func (c *compiler) group(g RuleGroup) string {
@@ -379,44 +471,49 @@ func (c *compiler) rule(r Rule) string {
 		return c.bitsRule(f, r)
 	case f.from != "":
 		return c.setRule(f, r)
-	case f.Type == FieldText:
-		return c.textRule(f, r)
-	case f.Type == FieldNumber || f.Type == FieldDate:
-		return c.scalarRule(f, r)
 	}
-	return c.choiceRule(f, r)
+	expr := c.value(f, f.expr)
+	switch {
+	case f.Type == FieldText:
+		return c.textRule(expr, r)
+	case f.ms:
+		return c.scalarRule(f, dayOf(expr), r)
+	case f.Type == FieldNumber || f.Type == FieldDate:
+		return c.scalarRule(f, expr, r)
+	}
+	return c.choiceRule(expr, r)
 }
 
-func (c *compiler) textRule(f *fieldDef, r Rule) string {
+func (c *compiler) textRule(expr string, r Rule) string {
 	p := c.bind(store.Fold(r.Values[0]))
-	fold := "fold(" + f.expr + ")"
+	fold := "fold(" + expr + ")"
 	switch r.Op {
 	case "contains":
 		return "instr(" + fold + ", " + p + ") > 0"
 	case "notContains":
-		return "(" + f.expr + " IS NULL OR instr(" + fold + ", " + p + ") = 0)"
+		return "(" + expr + " IS NULL OR instr(" + fold + ", " + p + ") = 0)"
 	}
 	return "substr(" + fold + ", 1, length(" + p + ")) = " + p
 }
 
-func (c *compiler) scalarRule(f *fieldDef, r Rule) string {
+func (c *compiler) scalarRule(f *fieldDef, expr string, r Rule) string {
 	switch r.Op {
 	case "isSet":
-		return f.expr + " IS NOT NULL"
+		return expr + " IS NOT NULL"
 	case "isNotSet":
-		return f.expr + " IS NULL"
+		return expr + " IS NULL"
 	case "within":
-		return f.expr + " BETWEEN " + c.bind(c.cutoff(r.Values[0])) + " AND " + c.bind(c.today())
+		return expr + " BETWEEN " + c.bind(c.cutoff(r.Values[0])) + " AND " + c.bind(c.today())
 	case "notWithin":
-		return "(" + f.expr + " IS NULL OR " + f.expr + " NOT BETWEEN " + c.bind(c.cutoff(r.Values[0])) + " AND " + c.bind(c.today()) + ")"
+		return "(" + expr + " IS NULL OR " + expr + " NOT BETWEEN " + c.bind(c.cutoff(r.Values[0])) + " AND " + c.bind(c.today()) + ")"
 	case "between":
-		return f.expr + " BETWEEN " + c.bind(f.scalar(r.Values[0])) + " AND " + c.bind(f.scalar(r.Values[1]))
+		return expr + " BETWEEN " + c.bind(f.scalar(r.Values[0])) + " AND " + c.bind(f.scalar(r.Values[1]))
 	case "gte":
-		return f.expr + " >= " + c.bind(f.scalar(r.Values[0]))
+		return expr + " >= " + c.bind(f.scalar(r.Values[0]))
 	case "lte":
-		return f.expr + " <= " + c.bind(f.scalar(r.Values[0]))
+		return expr + " <= " + c.bind(f.scalar(r.Values[0]))
 	}
-	return f.expr + " = " + c.bind(f.scalar(r.Values[0]))
+	return expr + " = " + c.bind(f.scalar(r.Values[0]))
 }
 
 // scalar is value as its field's expression compares: a number, or a day.
@@ -448,10 +545,10 @@ func (c *compiler) cutoff(period string) string {
 	return t.Format(time.DateOnly)
 }
 
-func (c *compiler) choiceRule(f *fieldDef, r Rule) string {
-	in := f.expr + " IN (SELECT value FROM json_each(" + c.bind(set(r.Values)) + "))"
+func (c *compiler) choiceRule(expr string, r Rule) string {
+	in := expr + " IN (SELECT value FROM json_each(" + c.bind(set(r.Values)) + "))"
 	if r.Op == "noneOf" {
-		return "(" + f.expr + " IS NULL OR NOT " + in + ")"
+		return "(" + expr + " IS NULL OR NOT " + in + ")"
 	}
 	return in
 }
@@ -481,11 +578,16 @@ func (c *compiler) members(f *fieldDef, values []string) string {
 	if !f.ids {
 		return "(SELECT value FROM json_each(" + c.bind(set(values)) + "))"
 	}
+	return "(SELECT unhex(value) FROM json_each(" + c.bind(id.Set(parsed(values)...)) + "))"
+}
+
+// parsed is a valid rule's values as the IDs they are.
+func parsed(values []string) []id.ID {
 	ids := make([]id.ID, len(values))
 	for i, v := range values {
 		ids[i], _ = id.Parse(v)
 	}
-	return "(SELECT unhex(value) FROM json_each(" + c.bind(id.Set(ids...)) + "))"
+	return ids
 }
 
 func distinct(values []string) []string {
@@ -520,7 +622,8 @@ func (c *compiler) bitsRule(f *fieldDef, r Rule) string {
 // order is a query's order: the columns it reads, named k0 onwards, and
 // the ORDER BY over those names and id, each term starting with a name. A
 // work with no value sorts last whichever way the key runs; ties go by
-// season and episode number, title, then ID.
+// season and episode number, which only works under a root have, sort
+// title, then ID.
 func (c *compiler) order(q WorkQuery) (columns, by string) {
 	keys := q.Sort
 	if len(keys) == 0 {
@@ -542,10 +645,13 @@ func (c *compiler) order(q WorkQuery) (columns, by string) {
 		if dir == "" {
 			dir = f.DefaultDirection
 		}
-		name := column(f.sort)
+		name := column(c.value(f, f.sort))
 		terms = append(terms, name+" IS NULL", name+" "+strings.ToUpper(dir))
 	}
-	terms = append(terms, column("w.parent_number"), column("w.number"), column("w.sort_title"), "id")
+	if c.nested {
+		terms = append(terms, column("w.parent_number"), column("w.number"))
+	}
+	terms = append(terms, column("wl.sort_title"), "id")
 	return strings.Join(cols, ", "), strings.Join(terms, ", ")
 }
 
@@ -582,6 +688,51 @@ func (s *Service) queryWorksAt(ctx context.Context, v users.Viewer, q WorkQuery,
 	return s.runQuery(ctx, viewerOf(v), q, seedOf(q, now), nil, o, now)
 }
 
+// holdingLibraries reads the libraries of @kinds the Viewer is granted,
+// among @among when it's set, and no more than two: what matters is
+// whether there is one.
+var holdingLibraries = stmt("HoldingLibraries", `
+SELECT l.id
+FROM library l
+WHERE l.kind IN (SELECT value FROM json_each(@kinds))
+  AND (@among IS NULL OR l.id IN (SELECT unhex(value) FROM json_each(@among)))
+  AND `+libraryVisible+`
+LIMIT 2`)
+
+// compilePage compiles q for a page read without its count. When an index
+// holds the query's order, it looks for the one library that holds the
+// query's works, for the page to walk the index there: the only library
+// of their kinds the Viewer is granted, among those a rule every work
+// must pass names.
+func compilePage(ctx context.Context, db querier, q WorkQuery, vw viewer, now time.Time, seed string, only []catalog.WorkKind) (compiled, error) {
+	kinds := narrowed(q, only)
+	if walked(q, kinds) == nil {
+		return compile(q, vw, now, seed, only, id.ID{}), nil
+	}
+	var holding []catalog.LibraryKind
+	for _, k := range kinds {
+		if l, ok := libraryOf[k]; ok && !slices.Contains(holding, l) {
+			holding = append(holding, l)
+		}
+	}
+	var among any
+	if q.Where != nil && q.Where.Match == "all" {
+		if i := slices.IndexFunc(q.Where.Rules, func(r Rule) bool { return r.Field == "library" && r.Op == "anyOf" }); i >= 0 {
+			among = id.Set(parsed(q.Where.Rules[i].Values)...)
+		}
+	}
+	libraries, err := rowsOf(ctx, db, holdingLibraries, vw.args(sql.Named("kinds", set(holding)), sql.Named("among", among)),
+		func(r scanner, l *id.ID) error { return r.Scan(l) })
+	if err != nil {
+		return compiled{}, err
+	}
+	var library id.ID
+	if len(libraries) == 1 {
+		library = libraries[0]
+	}
+	return compile(q, vw, now, seed, only, library), nil
+}
+
 // runQuery reads a page of a valid query. The first page, at offset 0,
 // counts the query's works in the statement that reads it; a later page
 // doesn't count, and its Total is 0.
@@ -590,15 +741,22 @@ func (s *Service) runQuery(ctx context.Context, vw viewer, q WorkQuery, seed str
 	if err != nil {
 		return GridPage[WorkSummary]{}, err
 	}
-	c := compile(q, vw, now, seed, only)
-	args := append(c.args, sql.Named("limit", limit), sql.Named("offset", o.Offset))
+	page := []any{sql.Named("limit", limit), sql.Named("offset", o.Offset)}
 	var items []WorkSummary
 	total := 0
-	if o.Offset == 0 {
-		items, total, err = countedSummaries(ctx, s.db.Reader(), statement{sql: c.counted}, args)
-	} else {
-		items, err = summaries(ctx, s.db.Reader(), statement{sql: c.page}, args)
-	}
+	err = s.db.Read(ctx, func(tx *sql.Tx) error {
+		if o.Offset == 0 {
+			c := compile(q, vw, now, seed, only, id.ID{})
+			items, total, err = countedSummaries(ctx, tx, statement{sql: c.counted}, append(c.args, page...))
+			return err
+		}
+		c, err := compilePage(ctx, tx, q, vw, now, seed, only)
+		if err != nil {
+			return err
+		}
+		items, err = summaries(ctx, tx, statement{sql: c.page}, append(c.args, page...))
+		return err
+	})
 	if err != nil {
 		return GridPage[WorkSummary]{}, err
 	}

@@ -93,16 +93,18 @@ func TestBudgets(t *testing.T) {
 		{"search, one letter", searchBudget, true, func() error { _, err := q.Search(ctx, v, "m", 0); return err }},
 	}
 	timeBudgets(t, tests, false)
-	// A smart list reads every work of its kinds in the Viewer's libraries,
-	// so a list is held to the budget where those are few, or where a cap
-	// keeps its order to the first works: not the other lists of 40,000
-	// movies.
-	timeBudgets(t, smartCases(q, sv, smart, "series, by last episode added", "episodes, aired this year", "movies, capped at 100"), true)
+	// A smart list's first page reads every work of its kinds in the
+	// Viewer's libraries, and so does a later page that no index holds in
+	// order or that few works match. So a list is held to the budget where
+	// those works are few, where a cap keeps its order to the first works,
+	// or where its rules are light: not the other lists of 40,000 movies.
+	timeBudgets(t, smartCases(q, sv, smart, "movies, title and rating, by title", "series, by last episode added",
+		"episodes, aired this year", "movies, capped at 100"), true)
 	stop()
 
 	// The smart lists again on a household's server, as a user granted one
 	// of its two movies libraries and one of its two shows libraries. Every
-	// list is held.
+	// list is held, and Home.
 	db = storetest.New(t)
 	movies, shows, moviesFolder = generate(t, db, householdShape)
 	q = query.New(db)
@@ -111,8 +113,11 @@ func TestBudgets(t *testing.T) {
 	defer stop()
 	t.Log("a household's server: 5,000 movies and 1,500 series of 105,000 episodes, in four libraries, two of them granted")
 	timeBudgets(t, smartCases(q, sv, smart, "movies, title and rating, by title", "movies, one actor, by added",
-		"movies, unplayed, by last played", "series, by last episode added", "episodes, aired this year", "movies, capped at 100"), true)
+		"movies, unplayed, by last played", "series, by last episode added", "episodes, aired this year", "movies, capped at 100", smartHome), true)
 }
+
+// smartHome is the read of a Home that shows five smart lists.
+const smartHome = "home, 5 smart rows"
 
 // budgetCase is a read to time, held to budget when enforce is set.
 type budgetCase struct {
@@ -126,7 +131,8 @@ type budgetCase struct {
 // a Home that shows five of the lists. A list's first page reads its works
 // and counts them, a later page reads its works alone, and its header reads
 // the list without running its rules. held names the lists whose reads are
-// held to browseBudget; Home and the Lists screen are timed only.
+// held to browseBudget, and with smartHome holds Home to homeBudget; the
+// Lists screen is timed only.
 func smartCases(q *query.Service, v users.Viewer, smart []smartList, held ...string) []budgetCase {
 	var tests []budgetCase
 	for _, l := range smart {
@@ -140,7 +146,7 @@ func smartCases(q *query.Service, v users.Viewer, smart []smartList, held ...str
 			budgetCase{"smart " + l.name + ", header", browseBudget, enforce, func() error { _, err := q.List(ctx, v, l.id); return err }})
 	}
 	return append(tests,
-		budgetCase{"home, 5 smart rows", homeBudget, false, func() error { _, _, err := q.Home(ctx, v); return err }},
+		budgetCase{smartHome, homeBudget, slices.Contains(held, smartHome), func() error { _, _, err := q.Home(ctx, v); return err }},
 		budgetCase{"lists screen, 10 lists", browseBudget, false, func() error { _, err := q.CountedLists(ctx, v); return err }})
 }
 

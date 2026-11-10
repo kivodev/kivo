@@ -140,7 +140,9 @@ type env struct {
 	admin                   id.ID // the user of adminToken
 	nobody                  id.ID // the user of nobodyToken
 
-	lib, folder  id.ID
+	lib, folder  id.ID // the movies library
+	shows        id.ID // the shows library, and its folder
+	showsFolder  id.ID
 	heat         catalogtest.Item // a movie whose file exists
 	series       id.ID
 	episode      catalogtest.Item
@@ -368,7 +370,8 @@ func (e *env) seed() {
 		})
 	})
 	e.series = e.b.Series("Seeded Series")
-	e.episode = e.b.Episode(e.folder, e.series, 1, 1)
+	e.shows, e.showsFolder = e.b.Library(catalog.Shows)
+	e.episode = e.b.Episode(e.showsFolder, e.series, 1, 1)
 	e.seededTitles = []string{"Heatwave Seeded", "Seeded Series", "Seeded Films"}
 }
 

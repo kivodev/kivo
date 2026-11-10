@@ -559,7 +559,7 @@ func TestPruneAfterThirtyDays(t *testing.T) {
 	unwatched := h.movie(folder, fsys, "B/b.mkv", "other bytes")
 	kept := h.movie(folder, fsys, "C/c.mkv", "still here")
 	series := h.b.Series("Show")
-	ep := h.b.Episode(folder, series, 1, 1)
+	ep := h.b.Episode(h.library(catalog.Shows, "/s").Folders[0].ID, series, 1, 1)
 	epWork, err := h.b.Catalog.Work(ctx, ep.Work)
 	if err != nil {
 		t.Fatal(err)

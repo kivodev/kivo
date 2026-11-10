@@ -290,7 +290,7 @@ func TestUsersAndInvites(t *testing.T) {
 func TestLibraries(t *testing.T) {
 	e := newEnv(t, serving{})
 	libs := decode[list](t, e.do("GET", "/api/v1/libraries", e.adminToken, nil))
-	if len(libs.Items) != 1 || libs.Items[0]["workCount"] != float64(2) || libs.Items[0]["folders"] == nil || libs.Total != nil || libs.Next != "" {
+	if len(libs.Items) != 2 || libs.Items[0]["workCount"] != float64(1) || libs.Items[0]["folders"] == nil || libs.Total != nil || libs.Next != "" {
 		t.Fatalf("libraries %+v", libs)
 	}
 	dir := t.TempDir()
@@ -363,7 +363,7 @@ func TestLibraries(t *testing.T) {
 	if w := e.do("GET", path, e.adminToken, nil); w.Code != http.StatusNotFound {
 		t.Errorf("deleted library: %d", w.Code)
 	}
-	if libs := decode[list](t, e.do("GET", "/api/v1/libraries", e.adminToken, nil)); len(libs.Items) != 1 {
+	if libs := decode[list](t, e.do("GET", "/api/v1/libraries", e.adminToken, nil)); len(libs.Items) != 2 {
 		t.Errorf("libraries while one is being deleted: %+v", libs)
 	}
 	if w := e.do("DELETE", path, e.adminToken, nil); w.Code != http.StatusNotFound {
@@ -440,6 +440,7 @@ func TestBrowseShowsByLastEpisodeAdded(t *testing.T) {
 
 func TestBrowseAndDetail(t *testing.T) {
 	e := newEnv(t, serving{})
+	e.b.Movie(e.folder, "Seeded Sequel", 1996)
 	grid := "/api/v1/libraries/" + e.lib.String() + "/works"
 	page := decode[list](t, e.do("GET", grid+"?sort=title&limit=10", e.adminToken, nil))
 	if *page.Total != 2 || len(page.Items) != 2 || len(page.Letters) == 0 || page.Letters[0].Offset != 0 {
@@ -494,7 +495,7 @@ func TestBrowseAndDetail(t *testing.T) {
 		t.Errorf("no such library: %d", w.Code)
 	}
 
-	second := e.b.Episode(e.folder, e.series, 1, 2)
+	second := e.b.Episode(e.showsFolder, e.series, 1, 2)
 	seasons := decode[list](t, e.do("GET", "/api/v1/works/"+e.series.String()+"/children", e.adminToken, nil))
 	if len(seasons.Items) != 1 || seasons.Items[0]["season"].(map[string]any)["seriesId"] != e.series.String() {
 		t.Fatalf("children %+v", seasons)
@@ -611,7 +612,7 @@ func TestSetOrdering(t *testing.T) {
 // season reads back as unplayed.
 func TestSeasonPlayedToggles(t *testing.T) {
 	e := newEnv(t, serving{})
-	e2 := e.b.Episode(e.folder, e.series, 1, 2)
+	e2 := e.b.Episode(e.showsFolder, e.series, 1, 2)
 	seasons := decode[list](t, e.do("GET", "/api/v1/works/"+e.series.String()+"/children", e.adminToken, nil))
 	if len(seasons.Items) != 1 {
 		t.Fatalf("seasons %+v", seasons)
