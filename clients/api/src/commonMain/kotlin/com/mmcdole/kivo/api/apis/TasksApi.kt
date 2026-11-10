@@ -189,7 +189,7 @@ open class TasksApi : ApiClient {
 
     /**
      * Stop task
-     * Its items in flight stop shortly after, what was asked of it is dropped, and its run ends. Nothing is lost: what&#39;s left is still left for its next run. Downloads and library changes always finish: &#x60;409&#x60; with code &#x60;notStoppable&#x60;. 
+     * Its items in flight stop shortly after, what was asked of it is dropped, and its run ends. Stopping &#x60;scan-libraries&#x60; also stops its &#x60;identify&#x60; step. Nothing is lost: what&#39;s left is still left for its next run. Downloads and library changes always finish: &#x60;409&#x60; with code &#x60;notStoppable&#x60;. 
      * @param task A task&#39;s &#x60;id&#x60; (a &#x60;TaskName&#x60;).
      * @return void
      */

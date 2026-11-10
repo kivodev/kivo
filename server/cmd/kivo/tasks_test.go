@@ -12,9 +12,10 @@ import (
 	"github.com/mmcdole/kivo/internal/config"
 	"github.com/mmcdole/kivo/internal/events"
 	"github.com/mmcdole/kivo/internal/health"
+	"github.com/mmcdole/kivo/internal/identify"
 )
 
-// TestTaskNames checks the tasks the server runs against the names used
+// TestTaskNames checks the tasks the server lists against the names used
 // outside it. The OpenAPI spec's TaskName enum must match in the order the
 // server lists them. The web client's task names must match too, in any
 // order, since the web client lists them in its own order.
@@ -36,7 +37,10 @@ func TestTaskNames(t *testing.T) {
 	}
 	var names []string
 	for _, r := range rows {
-		names = append(names, r.Name)
+		// The tasks list shows identification on the scan's row.
+		if r.Name != identify.TaskIdentifyMedia {
+			names = append(names, r.Name)
+		}
 	}
 	spec := read(t, "../../internal/api/openapi.yaml")
 	same(t, "the spec's TaskName enum", names, specEnum(t, spec, "TaskName"))

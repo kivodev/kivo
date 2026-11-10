@@ -1251,14 +1251,6 @@ export function createMockApi(): MockApi {
         running: false,
         stoppable: false,
       },
-      {
-        id: "identify-media",
-        section: "onDemand",
-        nightly: false,
-        pendingCount: 0,
-        running: false,
-        stoppable: false,
-      },
     ],
     problems,
     logs: [

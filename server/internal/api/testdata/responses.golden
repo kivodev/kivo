@@ -2171,9 +2171,14 @@ GET /api/v1/tasks
       "nextRunAt": "<time>",
       "nightly": false,
       "pendingCount": 0,
-      "running": false,
+      "progress": {
+        "done": 0,
+        "step": "identify",
+        "total": 0
+      },
+      "running": true,
       "section": "library",
-      "stoppable": false
+      "stoppable": true
     },
     {
       "id": "prune-gone-files",
@@ -2183,18 +2188,6 @@ GET /api/v1/tasks
       "running": false,
       "section": "library",
       "stoppable": false
-    },
-    {
-      "id": "identify-media",
-      "nightly": false,
-      "pendingCount": 0,
-      "progress": {
-        "done": 0,
-        "total": 0
-      },
-      "running": true,
-      "section": "onDemand",
-      "stoppable": true
     },
     {
       "failedCount": 0,

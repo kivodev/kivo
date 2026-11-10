@@ -81,3 +81,46 @@ func TestSetOrderingAsksForTheFolder(t *testing.T) {
 		t.Fatalf("pending %v, want the folder's files %v", e.pending(), files)
 	}
 }
+
+// Waiting counts a library's files left to identify. A folder that meets an
+// outage stays waiting until a later pass. A folder the provider has no
+// match for is identified, as unmatched, and is no longer waiting.
+func TestWaitingByLibrary(t *testing.T) {
+	e := newEnv(t)
+	movies, shows := e.library(catalog.Movies), e.library(catalog.Shows)
+	unlisted := e.add(movies, "Arrival (2016)/Arrival (2016).mkv")
+	episodes := e.add(shows, "Firefly/S01E01.mkv", "Firefly/S01E02.mkv")
+	for _, f := range append(unlisted, episodes...) {
+		e.exec(`UPDATE media_file SET probed = generation WHERE id = ?`, f)
+	}
+	waiting := func() map[id.ID]int {
+		t.Helper()
+		w, err := e.id.Waiting(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return w
+	}
+	if w := waiting(); len(w) != 2 || w[movies.ID] != 1 || w[shows.ID] != 2 {
+		t.Fatalf("waiting %v, want 1 movie and 2 episodes", w)
+	}
+
+	e.video.down = true
+	if err := e.identify(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if w := waiting(); len(w) != 2 || w[movies.ID] != 1 || w[shows.ID] != 2 {
+		t.Fatalf("waiting %v after an outage, want every file still waiting", w)
+	}
+
+	e.video.down = false
+	if err := e.identify(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if w := e.workOf(unlisted[0])[0]; !w.Provisional {
+		t.Fatalf("a movie the provider doesn't list matched: %+v", w)
+	}
+	if w := waiting(); len(w) != 0 {
+		t.Fatalf("waiting %v, want none once matched or unmatched", w)
+	}
+}
