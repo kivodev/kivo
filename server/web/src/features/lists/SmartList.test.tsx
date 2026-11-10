@@ -62,12 +62,13 @@ describe("The Lists screen's + menu", () => {
     expect(screen.getByRole("menuitem", { name: "New Smart List" })).toBeInTheDocument();
   });
 
-  it("shows smart lists under their own heading, each with what it shows and how many", async () => {
+  it("shows a smart list's card with its sparkle, name and count alone", async () => {
     serveMockApi();
     renderApp("/lists");
-    const row = await screen.findByRole("link", { name: /Sci-fi/ });
-    expect(row).toHaveTextContent("Movies, 2");
-    expect(screen.getByRole("heading", { name: "Smart Lists" })).toBeInTheDocument();
+    const card = await screen.findByRole("link", { name: /Sci-fi/ });
+    expect(card).toHaveTextContent(/^Sci-fi2$/);
+    expect(card.querySelector("svg.text-accent")).not.toBeNull();
+    expect(card.querySelectorAll("img")).toHaveLength(2);
   });
 });
 
