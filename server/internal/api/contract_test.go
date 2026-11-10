@@ -2,15 +2,49 @@ package api
 
 import (
 	"net/http"
+	"os"
 	"reflect"
 	"testing"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/mmcdole/kivo/internal/api/internal/gen"
+	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/media"
 	"github.com/mmcdole/kivo/internal/playback"
 	"github.com/mmcdole/kivo/internal/query"
 )
+
+// TestGridAcceptsEveryContractValue checks that a library grid accepts
+// every value the contract gives its sort and filters.
+func TestGridAcceptsEveryContractValue(t *testing.T) {
+	raw, err := os.ReadFile("openapi.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var spec struct {
+		Components struct {
+			Schemas map[string]struct{ Enum []string }
+		}
+	}
+	if err := yaml.Unmarshal(raw, &spec); err != nil {
+		t.Fatal(err)
+	}
+	e := newEnv(t, serving{})
+	lib, _ := e.b.Library(catalog.Shows)
+	for param, schema := range map[string]string{"sort": "WorkSort", "played": "PlayedFilter", "resolution": "Resolution", "dynamicRange": "DynamicRange"} {
+		values := spec.Components.Schemas[schema].Enum
+		if len(values) == 0 {
+			t.Fatalf("%s has no values", schema)
+		}
+		for _, v := range values {
+			if w := e.do("GET", "/api/v1/libraries/"+lib.String()+"/works?"+param+"="+v, e.adminToken, nil); w.Code != http.StatusOK {
+				t.Errorf("%s=%s: %d %s", param, v, w.Code, w.Body.String())
+			}
+		}
+	}
+}
 
 // TestPlayStarted checks a play's answer: its delivery, URL and every
 // choice in tracks, and nothing else about its tracks.
