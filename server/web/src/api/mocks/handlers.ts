@@ -45,11 +45,18 @@ export function problem(status: number, code: Problem["code"], extra: Partial<Pr
 const notFound = () => problem(404, "notFound");
 const unauthenticated = () => problem(401, "unauthenticated");
 
-/** A list as the API answers, its count from the works it holds, and with `counts` its first three posters. */
+/**
+ * A list as the API answers, its count from the works it holds, and with
+ * `counts` its first three posters. A smart list is counted only with `counts`.
+ */
 function workListOf(api: MockApi, { workIds, ...list }: MockList, counts = false): WorkList {
   const covers = workIds.slice(0, 3).flatMap((id) => api.works[id]?.images.poster ?? []);
-  return { ...list, workCount: workIds.length, ...(counts ? { covers } : {}) };
+  const workCount = list.kind === "smart" && !counts ? 0 : workIds.length;
+  return { ...list, workCount, ...(counts ? { covers } : {}) };
 }
+
+/** A page's `total` where only the first page (offset 0) has it. */
+const firstPageTotal = (start: number, total: number) => (start === 0 ? total : 0);
 
 /** Whether a work passes a rule. Fields without work data here pass every work. */
 function matchesRule(work: WorkDetail, { field, op, values = [] }: Rule): boolean {
@@ -380,7 +387,7 @@ export function createHandlers(api: MockApi) {
         limit === undefined ? null : String(limit),
         matched.length,
       );
-      return response(200).json({ items: matched.slice(start, end), total: matched.length });
+      return response(200).json({ items: matched.slice(start, end), total: firstPageTotal(start, matched.length) });
     }),
     // A list's works, most recently added first, by offset.
     http.get("/api/v1/lists/{id}/works", ({ params, query, response }) => {
@@ -388,7 +395,7 @@ export function createHandlers(api: MockApi) {
       if (!list) return notFound();
       const items = list.workIds.flatMap((id) => (api.works[id] ? [summaryOf(api.works[id])] : []));
       const { start, end } = pageOf(query.get("offset"), query.get("limit"), items.length);
-      return response(200).json({ items: items.slice(start, end), total: items.length });
+      return response(200).json({ items: items.slice(start, end), total: firstPageTotal(start, items.length) });
     }),
     http.post("/api/v1/lists/{id}/works", async ({ params, request, response }) => {
       const list = api.lists.find((l) => l.id === params.id);

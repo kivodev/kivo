@@ -217,11 +217,14 @@ func (f *fieldDef) validValue(op, value string) bool {
 	return value != ""
 }
 
-// compiled is a query's two statements and their bound parameters; page
-// also takes @limit and @offset.
+// compiled is a query's statements and their bound parameters; both also
+// take @limit and @offset. page reads a page of the query's works. counted
+// reads the same page with, after each work's summary columns, how many
+// works the query selects: a page with no works has no row to carry the
+// count, so it is for the first page, where no works means none selected.
 type compiled struct {
-	count, page string
-	args        []any
+	counted, page string
+	args          []any
 }
 
 // libraryOf is the kind of library that holds each kind of work a query
@@ -257,7 +260,7 @@ func scope(kinds []catalog.WorkKind) (works, libraries string, nested bool) {
 // matching is the FROM and WHERE that select a query's works, before its
 // rules: the works of kinds, not provisional, that the Viewer sees. It
 // reads work_library wl in the libraries the Viewer is granted that hold
-// the kinds, then each row's work w, and the user's state us.
+// the kinds, then each row's work w, and with state the user's state us.
 //
 // A query with seasons or episodes also reads each work's root r, for what
 // a work under a root takes from it. Any other work is its own root, so a
@@ -271,17 +274,19 @@ func scope(kinds []catalog.WorkKind) (works, libraries string, nested bool) {
 // SQLite names sqlite_autoindex_work_library_1, then w, then r. Left to
 // choose, SQLite with statistics scans work for its kinds, or reads wl
 // through an index that has to look every row up again.
-func matching(kinds []catalog.WorkKind) string {
+func matching(kinds []catalog.WorkKind, state bool) string {
 	works, libraries, nested := scope(kinds)
 	rows, root, matched, age := "\n  AND wl.is_root", "", "NOT w.provisional", "w.content_rating_age"
 	if nested {
 		rows, root = "", "\nCROSS JOIN work r ON r.id = w.root_id"
 		matched, age = "NOT w.provisional AND NOT r.provisional", "coalesce(w.content_rating_age, r.content_rating_age)"
 	}
+	if state {
+		root += "\nLEFT JOIN user_state us ON us.user_id = @user AND us.work_id = w.id"
+	}
 	return `
 FROM work_library wl INDEXED BY sqlite_autoindex_work_library_1
 CROSS JOIN work w ON w.id = wl.work_id` + root + `
-LEFT JOIN user_state us ON us.user_id = @user AND us.work_id = w.id
 WHERE wl.library_id IN (SELECT gl.id FROM library gl WHERE gl.kind IN (` + libraries + `) AND ` + catalog.Granted("gl.id") + `)` + rows + `
   AND w.kind IN (` + works + `)
   AND ` + matched + `
@@ -290,47 +295,51 @@ WHERE wl.library_id IN (SELECT gl.id FROM library gl WHERE gl.kind IN (` + libra
     AND ` + catalog.RatingVisible(age) + `)`
 }
 
+// stateRead matches SQL that reads the user's state us.
+var stateRead = regexp.MustCompile(`\bus\.`)
+
 // compile turns a valid query into SQL. It is the only way a WorkQuery
 // becomes a statement: the SQL always carries the Viewer predicate, before
 // any cap or page is cut, and values go in as bound parameters. seed fixes
 // a random sort's order, and only narrows the query to those kinds, after
 // any cap, when it's set.
+//
+// A statement selects in matched the ID of each work the query selects,
+// with the columns its order reads, and joins the user's state there only
+// when a rule or the order reads it. It cuts the page from those, and
+// builds summaries for the page's works alone.
 func compile(q WorkQuery, vw viewer, now time.Time, seed string, only []catalog.WorkKind) compiled {
 	c := &compiler{now: now, seed: seed}
 	where := ""
 	if q.Where != nil {
 		where = "\n  AND " + c.group(*q.Where)
 	}
-	sortBy := c.order(q)
-	args := func() []any { return vw.args(append(c.params, sql.Named("only", set(only)))...) }
-	if q.MaxWorks == nil {
-		kinds := q.Kinds
-		if only != nil {
-			kinds = slices.DeleteFunc(slices.Clone(kinds), func(k catalog.WorkKind) bool { return !slices.Contains(only, k) })
-		}
-		from := matching(kinds) + where
-		return compiled{
-			count: "SELECT count(*)" + from,
-			page:  "SELECT " + summaryColumns + from + "\nORDER BY " + sortBy + "\nLIMIT @limit OFFSET @offset",
-			args:  args(),
+	columns, by := c.order(q)
+	kinds := q.Kinds
+	if q.MaxWorks == nil && only != nil {
+		kinds = slices.DeleteFunc(slices.Clone(kinds), func(k catalog.WorkKind) bool { return !slices.Contains(only, k) })
+	}
+	matched := "SELECT w.id AS id, w.kind AS kind, " + columns + matching(kinds, stateRead.MatchString(columns+where)) + where
+	if q.MaxWorks != nil {
+		matched += "\nORDER BY " + by + "\nLIMIT " + c.bind(*q.MaxWorks)
+		if len(only) > 0 {
+			matched = "SELECT * FROM (\n" + matched + "\n) WHERE kind IN (SELECT value FROM json_each(@only))"
 		}
 	}
-	capped := `WITH matched AS (
-SELECT w.id, row_number() OVER (ORDER BY ` + sortBy + `) AS o` + matching(q.Kinds) + where + `
+	read := func(materialized, total string) string {
+		return "WITH matched AS " + materialized + "(\n" + matched + `
 ),
-limited AS (SELECT id, o FROM matched ORDER BY o LIMIT ` + c.bind(*q.MaxWorks) + `),
-filtered AS (SELECT l.id, l.o FROM limited l JOIN work fw ON fw.id = l.id
-  WHERE @only IS NULL OR fw.kind IN (SELECT value FROM json_each(@only)))`
-	return compiled{
-		count: capped + `
-SELECT count(*) FROM filtered`,
-		page: capped + `, page AS (SELECT id, o FROM filtered ORDER BY o LIMIT @limit OFFSET @offset)
-SELECT ` + summaryColumns + `
+page AS (SELECT * FROM matched ORDER BY ` + by + ` LIMIT @limit OFFSET @offset)
+SELECT ` + summaryColumns + total + `
 FROM page p
 JOIN work w ON w.id = p.id
 LEFT JOIN user_state us ON us.user_id = @user AND us.work_id = w.id
-ORDER BY p.o`,
-		args: args(),
+ORDER BY p.` + strings.ReplaceAll(by, ", ", ", p.")
+	}
+	return compiled{
+		counted: read("MATERIALIZED ", ", (SELECT count(*) FROM matched)"),
+		page:    read("", ""),
+		args:    vw.args(append(c.params, sql.Named("only", set(only)))...),
 	}
 }
 
@@ -508,17 +517,24 @@ func (c *compiler) bitsRule(f *fieldDef, r Rule) string {
 	return "(" + column + " & " + m + ") <> 0"
 }
 
-// order is a query's ORDER BY. A work with no value sorts last whichever
-// way the key runs; ties go by season and episode number, title, then ID.
-func (c *compiler) order(q WorkQuery) string {
+// order is a query's order: the columns it reads, named k0 onwards, and
+// the ORDER BY over those names and id, each term starting with a name. A
+// work with no value sorts last whichever way the key runs; ties go by
+// season and episode number, title, then ID.
+func (c *compiler) order(q WorkQuery) (columns, by string) {
 	keys := q.Sort
 	if len(keys) == 0 {
 		keys = []SortKey{{Field: "title"}}
 	}
-	var parts []string
+	var cols, terms []string
+	column := func(expr string) string {
+		name := "k" + strconv.Itoa(len(cols))
+		cols = append(cols, expr+" AS "+name)
+		return name
+	}
 	for _, k := range keys {
 		if k.Field == sortRandom {
-			parts = append(parts, "sha256(w.id, "+c.bind(c.seed)+")")
+			terms = append(terms, column("sha256(w.id, "+c.bind(c.seed)+")"))
 			continue
 		}
 		f := fieldsByKey[k.Field]
@@ -526,10 +542,11 @@ func (c *compiler) order(q WorkQuery) string {
 		if dir == "" {
 			dir = f.DefaultDirection
 		}
-		parts = append(parts, f.sort+" IS NULL", f.sort+" "+strings.ToUpper(dir))
+		name := column(f.sort)
+		terms = append(terms, name+" IS NULL", name+" "+strings.ToUpper(dir))
 	}
-	parts = append(parts, "w.parent_number", "w.number", "w.sort_title", "w.id")
-	return strings.Join(parts, ", ")
+	terms = append(terms, column("w.parent_number"), column("w.number"), column("w.sort_title"), "id")
+	return strings.Join(cols, ", "), strings.Join(terms, ", ")
 }
 
 // seedOf makes the random order of an unsaved query the same all UTC day.
@@ -565,26 +582,36 @@ func (s *Service) queryWorksAt(ctx context.Context, v users.Viewer, q WorkQuery,
 	return s.runQuery(ctx, viewerOf(v), q, seedOf(q, now), nil, o, now)
 }
 
-// runQuery reads a page of a valid query.
+// runQuery reads a page of a valid query. The first page, at offset 0,
+// counts the query's works in the statement that reads it; a later page
+// doesn't count, and its Total is 0.
 func (s *Service) runQuery(ctx context.Context, vw viewer, q WorkQuery, seed string, only []catalog.WorkKind, o GridOptions, now time.Time) (GridPage[WorkSummary], error) {
 	limit, err := o.limit()
 	if err != nil {
 		return GridPage[WorkSummary]{}, err
 	}
 	c := compile(q, vw, now, seed, only)
-	var total int
+	args := append(c.args, sql.Named("limit", limit), sql.Named("offset", o.Offset))
 	var items []WorkSummary
-	err = s.db.Read(ctx, func(tx *sql.Tx) error {
-		if err := rowOf(ctx, tx, statement{sql: c.count}, c.args, &total); err != nil {
-			return err
-		}
-		args := append(slices.Clone(c.args), sql.Named("limit", limit), sql.Named("offset", o.Offset))
-		var err error
-		items, err = summaries(ctx, tx, statement{sql: c.page}, args)
-		return err
-	})
+	total := 0
+	if o.Offset == 0 {
+		items, total, err = countedSummaries(ctx, s.db.Reader(), statement{sql: c.counted}, args)
+	} else {
+		items, err = summaries(ctx, s.db.Reader(), statement{sql: c.page}, args)
+	}
 	if err != nil {
 		return GridPage[WorkSummary]{}, err
 	}
 	return s.summaryPage(ctx, vw, items, total, nil)
+}
+
+// countedSummaries runs a compiled query's counted statement and returns
+// its summaries and its count, 0 when it has no rows.
+func countedSummaries(ctx context.Context, q querier, st statement, args []any) ([]WorkSummary, int, error) {
+	total := 0
+	out, err := rowsOf(ctx, q, st, args, func(r scanner, c *WorkSummary) (err error) {
+		*c, err = scanSummary(r, &total)
+		return err
+	})
+	return out, total, err
 }

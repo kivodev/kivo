@@ -2,15 +2,48 @@ package query
 
 import (
 	"database/sql"
+	"strings"
 	"time"
 
 	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/users"
 )
 
-// compileOld is compile as it was when it read every work on the server,
-// kept so TestCompileMatchesOld can check compile selects the same works.
-func compileOld(q WorkQuery, vw viewer, now time.Time, seed string, only []catalog.WorkKind) compiled {
+// compiledOld is the two statements compileOld makes of a query, its count
+// and its page, and their bound parameters; page also takes @limit and
+// @offset.
+type compiledOld struct {
+	count, page string
+	args        []any
+}
+
+// orderOld is a query's ORDER BY as compileOld wrote it.
+func (c *compiler) orderOld(q WorkQuery) string {
+	keys := q.Sort
+	if len(keys) == 0 {
+		keys = []SortKey{{Field: "title"}}
+	}
+	var parts []string
+	for _, k := range keys {
+		if k.Field == sortRandom {
+			parts = append(parts, "sha256(w.id, "+c.bind(c.seed)+")")
+			continue
+		}
+		f := fieldsByKey[k.Field]
+		dir := k.Direction
+		if dir == "" {
+			dir = f.DefaultDirection
+		}
+		parts = append(parts, f.sort+" IS NULL", f.sort+" "+strings.ToUpper(dir))
+	}
+	parts = append(parts, "w.parent_number", "w.number", "w.sort_title", "w.id")
+	return strings.Join(parts, ", ")
+}
+
+// compileOld is compile as it was when it read every work on the server
+// and counted in a statement of its own, kept so TestCompileMatchesOld can
+// check compile selects the same works.
+func compileOld(q WorkQuery, vw viewer, now time.Time, seed string, only []catalog.WorkKind) compiledOld {
 	c := &compiler{now: now, seed: seed}
 	kinds := make([]string, len(q.Kinds))
 	for i, k := range q.Kinds {
@@ -20,7 +53,7 @@ func compileOld(q WorkQuery, vw viewer, now time.Time, seed string, only []catal
 	if q.Where != nil {
 		where = "\n  AND " + c.group(*q.Where)
 	}
-	sortBy := c.order(q)
+	sortBy := c.orderOld(q)
 	from := `
 FROM work w
 JOIN work_library wl ON wl.work_id = w.id
@@ -34,7 +67,7 @@ WHERE NOT w.provisional
 		if only != nil {
 			from += "\n  AND w.kind IN (SELECT value FROM json_each(@only))"
 		}
-		return compiled{
+		return compiledOld{
 			count: "SELECT count(*)" + from,
 			page:  "SELECT " + summaryColumns + from + "\nORDER BY " + sortBy + "\nLIMIT @limit OFFSET @offset",
 			args:  args(),
@@ -46,7 +79,7 @@ SELECT w.id, row_number() OVER (ORDER BY ` + sortBy + `) AS o` + from + `
 limited AS (SELECT id, o FROM matched ORDER BY o LIMIT ` + c.bind(*q.MaxWorks) + `),
 filtered AS (SELECT l.id, l.o FROM limited l JOIN work fw ON fw.id = l.id
   WHERE @only IS NULL OR fw.kind IN (SELECT value FROM json_each(@only)))`
-	return compiled{
+	return compiledOld{
 		count: capped + `
 SELECT count(*) FROM filtered`,
 		page: capped + `, page AS (SELECT id, o FROM filtered ORDER BY o LIMIT @limit OFFSET @offset)

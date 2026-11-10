@@ -44,7 +44,9 @@ info:
        (`WorkSummaryPage`, `WorkSummaryFeed`, `WorkSummaryList`). Each kind of list has one
        paging style. A grid (a library's works, collections, authors and
        book series, and a list's works) is paged by position: `offset` items
-       from the start, with `total` on every page. A feed (the Unmatched
+       from the start, with `total` on every page; a list's works and a
+       work query have `total` on the first page (offset 0) only, and 0
+       after it. A feed (the Unmatched
        and Missing files lists, activity, history, play events and the
        logs) is read in order: `next` is an opaque keyset cursor, passed back as `after`,
        and `total`, where a feed has one, is set on its first page only.
@@ -1753,7 +1755,8 @@ paths:
         A list's works the user sees: a manual list's most recently added
         first, a smart list's as its rules select them. With `kind`, only
         those kinds. A smart list whose rules no longer run is empty. A grid, paged by `offset`, with `total` on
-        every page; works added at the same time are listed by title.
+        the first page (offset 0) only and 0 on later pages; works added at
+        the same time are listed by title.
       tags: [works]
       x-kivo-access: viewer
       parameters:
@@ -1855,7 +1858,8 @@ paths:
       description: |
         Runs a `WorkQuery` once, as the caller: their library access and
         parental limits apply to every query. A grid, paged by `offset`,
-        with `total` on every page; `maxWorks` caps it. An invalid query is
+        with `total` on the first page (offset 0) only and 0 on later
+        pages; `maxWorks` caps it. An invalid query is
         `400` with `invalidRequest`, and `errors` holds a JSON pointer per
         problem, such as `/query/where/groups/0/rules/2/op`.
       tags: [works]
@@ -5291,7 +5295,10 @@ components:
           description: Watchlist, which every user has and can't delete or rename.
         workCount:
           type: integer
-          description: Works in the list the user sees. A smart list's is 0 in `listLists` without `counts`.
+          description: |
+            Works in the list the user sees. A smart list's is 0 except in
+            `listLists` with `counts`; the first page of its works has the
+            count as `total`.
         smart: {$ref: "#/components/schemas/WorkListSmart"}
         covers:
           type: array
@@ -5869,7 +5876,12 @@ components:
         items:
           type: array
           items: {$ref: "#/components/schemas/WorkSummary"}
-        total: {type: integer}
+        total:
+          type: integer
+          description: |
+            How many works the grid has. A list's works and a work query
+            have it on the first page (offset 0) only; it is 0 on their
+            later pages.
         letters:
           type: array
           description: On the first page (offset 0) of the title sort. See `LetterStart`.

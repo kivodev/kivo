@@ -160,13 +160,13 @@ func TestSmartQueryPlans(t *testing.T) {
 	now := time.Now()
 	for _, s := range smartSamples(h) {
 		for _, only := range [][]catalog.WorkKind{nil, s.q.Kinds} {
-			count, page, args := query.Compiled(s.q, h.friend, now, only)
+			counted, page, args := query.Compiled(s.q, h.friend, now, only)
 			prefix := ""
 			if only != nil {
 				prefix = "only/"
 			}
 			file := "smart/" + s.name
-			for _, st := range []statement{{"query", file, prefix + "count", count}, {"query", file, prefix + "page", page}} {
+			for _, st := range []statement{{"query", file, prefix + "counted", counted}, {"query", file, prefix + "page", page}} {
 				t.Run(st.key(), func(t *testing.T) { checkScans(t, h.b.DB.Reader(), st, st.sql, args) })
 			}
 		}
@@ -214,8 +214,8 @@ func TestSmartQueriesStartAtWorkLibrary(t *testing.T) {
 					want = append(want, root)
 				}
 				for _, v := range viewers {
-					count, page, args := query.Compiled(d.q, v, time.Now(), nil)
-					for _, stmt := range []string{count, page} {
+					counted, page, args := query.Compiled(d.q, v, time.Now(), nil)
+					for _, stmt := range []string{counted, page} {
 						got, err := plan(db.Reader(), stmt, args)
 						if err != nil {
 							t.Fatal(err)
@@ -240,6 +240,71 @@ func TestSmartQueriesStartAtWorkLibrary(t *testing.T) {
 
 // tableRead matches a plan's step that reads wl, w or r.
 var tableRead = regexp.MustCompile(`^(SEARCH|SCAN) (wl|w|r)( |$)`)
+
+// TestSmartReadsSelectOnce counts the statements that select a query's
+// works as the reads of smart lists run, and how many of them count the
+// works. Each is a pass over the works of the query's kinds, so a read runs
+// one for each list it shows: a list's screen one that counts, with its
+// header running none, a later page one that doesn't count, the Lists
+// screen one for each smart list's count and covers, and Home one for each
+// smart row, which has no count.
+func TestSmartReadsSelectOnce(t *testing.T) {
+	db := storetest.New(t)
+	movies, shows, _ := generate(t, db, shape{movies: 500, series: 150, seasons: 5, episodes: 14, airEvery: 86400, moviesElsewhere: 100, seriesElsewhere: 30})
+	q := query.New(db)
+	v, smart := smartViewer(t, db, q, movies, shows)
+	list, rows := smart[0].id, 5 // smartViewer shows five of the lists on Home
+	var selects, counts int
+	query.Observe(t, func(sql string) {
+		if strings.Contains(sql, "FROM work_library wl INDEXED BY") {
+			selects++
+			if strings.Contains(sql, "count(*) FROM matched") {
+				counts++
+			}
+		}
+	})
+	for _, tt := range []struct {
+		name            string
+		selects, counts int
+		read            func() error
+	}{
+		{"a list's screen", 1, 1, func() error {
+			if _, err := q.List(ctx, v, list); err != nil {
+				return err
+			}
+			p, err := q.ListWorks(ctx, v, list, nil, query.GridOptions{Limit: 20})
+			if err == nil && (p.Total <= 20 || len(p.Items) != 20) {
+				t.Errorf("the first page has %d works of %d, want 20 of more", len(p.Items), p.Total)
+			}
+			return err
+		}},
+		{"a list's later page", 1, 0, func() error {
+			p, err := q.ListWorks(ctx, v, list, nil, query.GridOptions{Offset: 20, Limit: 20})
+			if err == nil && (p.Total != 0 || len(p.Items) == 0) {
+				t.Errorf("a later page has %d works and the total %d, want works and no total", len(p.Items), p.Total)
+			}
+			return err
+		}},
+		{"a query", 1, 1, func() error {
+			_, err := q.QueryWorks(ctx, v, smartDefs()[0].q, query.GridOptions{})
+			return err
+		}},
+		{"a query's later page", 1, 0, func() error {
+			_, err := q.QueryWorks(ctx, v, smartDefs()[0].q, query.GridOptions{Offset: 20})
+			return err
+		}},
+		{"the Lists screen", len(smart), len(smart), func() error { _, err := q.CountedLists(ctx, v); return err }},
+		{"Home", rows, 0, func() error { _, _, err := q.Home(ctx, v); return err }},
+	} {
+		selects, counts = 0, 0
+		if err := tt.read(); err != nil {
+			t.Fatalf("%s: %v", tt.name, err)
+		}
+		if selects != tt.selects || counts != tt.counts {
+			t.Errorf("%s selects the works %d times and counts them %d times, want %d and %d", tt.name, selects, counts, tt.selects, tt.counts)
+		}
+	}
+}
 
 // checkScans fails on each full scan of a large table in stmt's plan,
 // unless wholeLibrary allows st.

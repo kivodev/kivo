@@ -5344,7 +5344,9 @@ type WorkList struct {
 	// pointing at what's wrong, returns an empty page and is off Home.
 	Smart *WorkListSmart `json:"smart,omitempty"`
 
-	// WorkCount Works in the list the user sees. A smart list's is 0 in `listLists` without `counts`.
+	// WorkCount Works in the list the user sees. A smart list's is 0 except in
+	// `listLists` with `counts`; the first page of its works has the
+	// count as `total`.
 	WorkCount int `json:"workCount"`
 }
 
@@ -5476,7 +5478,11 @@ type WorkSummaryPage struct {
 
 	// Letters On the first page (offset 0) of the title sort. See `LetterStart`.
 	Letters *[]LetterStart `json:"letters,omitempty"`
-	Total   int            `json:"total"`
+
+	// Total How many works the grid has. A list's works and a work query
+	// have it on the first page (offset 0) only; it is 0 on their
+	// later pages.
+	Total int `json:"total"`
 }
 
 // WorkUpdate Only the fields sent change, and each is locked.

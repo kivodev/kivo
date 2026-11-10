@@ -204,12 +204,16 @@ func TestSmartLists(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Smart == nil || len(got.Smart.Errors) != 0 || got.Works != 2 || got.Smart.Query.Version != 1 {
+	// The list itself isn't counted: the first page of its works is.
+	if got.Smart == nil || len(got.Smart.Errors) != 0 || got.Works != 0 || got.Smart.Query.Version != 1 {
 		t.Errorf("a saved smart list: %+v, %+v", got, got.Smart)
 	}
 	p, err := h.q.ListWorks(ctx, h.admin, list, nil, query.GridOptions{})
 	if err != nil || p.Total != 2 || !slices.Contains(ids(p.Items), h.toyStory.Work) {
 		t.Errorf("its works: %v (%d), %v", ids(p.Items), p.Total, err)
+	}
+	if later, err := h.q.ListWorks(ctx, h.admin, list, nil, query.GridOptions{Offset: 1}); err != nil || later.Total != 0 || !slices.Equal(ids(later.Items), ids(p.Items)[1:]) {
+		t.Errorf("a later page: %v (%d), %v, want %v and no total", ids(later.Items), later.Total, err, ids(p.Items)[1:])
 	}
 	if p, err := h.q.ListWorks(ctx, h.admin, list, []catalog.WorkKind{catalog.KindBook}, query.GridOptions{}); err != nil || p.Total != 0 {
 		t.Errorf("kinds it doesn't select: %d, %v", p.Total, err)

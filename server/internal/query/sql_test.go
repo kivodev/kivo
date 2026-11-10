@@ -184,8 +184,8 @@ func TestViewerFilter(t *testing.T) {
 	now := time.Now()
 	for _, s := range smartSamples(h) {
 		for _, only := range [][]catalog.WorkKind{nil, s.q.Kinds} {
-			count, page, _ := query.Compiled(s.q, h.friend, now, only)
-			checkCompiledFilter(t, canonical["works"], count)
+			counted, page, _ := query.Compiled(s.q, h.friend, now, only)
+			checkCompiledFilter(t, canonical["works"], counted)
 			checkCompiledFilter(t, canonical["works"], page)
 		}
 	}

@@ -1147,7 +1147,8 @@ export interface paths {
          * @description A list's works the user sees: a manual list's most recently added
          *     first, a smart list's as its rules select them. With `kind`, only
          *     those kinds. A smart list whose rules no longer run is empty. A grid, paged by `offset`, with `total` on
-         *     every page; works added at the same time are listed by title.
+         *     the first page (offset 0) only and 0 on later pages; works added at
+         *     the same time are listed by title.
          */
         get: operations["listListWorks"];
         put?: never;
@@ -1227,7 +1228,8 @@ export interface paths {
          * Run a work query
          * @description Runs a `WorkQuery` once, as the caller: their library access and
          *     parental limits apply to every query. A grid, paged by `offset`,
-         *     with `total` on every page; `maxWorks` caps it. An invalid query is
+         *     with `total` on the first page (offset 0) only and 0 on later
+         *     pages; `maxWorks` caps it. An invalid query is
          *     `400` with `invalidRequest`, and `errors` holds a JSON pointer per
          *     problem, such as `/query/where/groups/0/rules/2/op`.
          */
@@ -3767,7 +3769,11 @@ export interface components {
             kind: components["schemas"]["ListKind"];
             /** @description Watchlist, which every user has and can't delete or rename. */
             builtIn: boolean;
-            /** @description Works in the list the user sees. A smart list's is 0 in `listLists` without `counts`. */
+            /**
+             * @description Works in the list the user sees. A smart list's is 0 except in
+             *     `listLists` with `counts`; the first page of its works has the
+             *     count as `total`.
+             */
             workCount: number;
             smart?: components["schemas"]["WorkListSmart"];
             /**
@@ -4148,6 +4154,11 @@ export interface components {
         /** @description A page of a grid of works. */
         WorkSummaryPage: {
             items: components["schemas"]["WorkSummary"][];
+            /**
+             * @description How many works the grid has. A list's works and a work query
+             *     have it on the first page (offset 0) only; it is 0 on their
+             *     later pages.
+             */
             total: number;
             /** @description On the first page (offset 0) of the title sort. See `LetterStart`. */
             letters?: components["schemas"]["LetterStart"][];

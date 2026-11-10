@@ -3,6 +3,7 @@ package query
 import (
 	"context"
 	"database/sql"
+	"testing"
 	"time"
 
 	"github.com/mmcdole/kivo/internal/catalog"
@@ -26,9 +27,17 @@ func (s *Service) QueryWorksAt(ctx context.Context, v users.Viewer, q WorkQuery,
 	return s.queryWorksAt(ctx, v, q, o, now)
 }
 
-// Compiled returns the statements q compiles to as the Viewer, its count
-// and its page, with their arguments for the first page.
-func Compiled(q WorkQuery, v users.Viewer, now time.Time, only []catalog.WorkKind) (count, page string, args []any) {
+// Compiled returns the statements q compiles to as the Viewer, the first
+// page's with its count and a page's, with their arguments for the first
+// page.
+func Compiled(q WorkQuery, v users.Viewer, now time.Time, only []catalog.WorkKind) (counted, page string, args []any) {
 	c := compile(q, viewerOf(v), now, seedOf(q, now), only)
-	return c.count, c.page, append(c.args, sql.Named("limit", 50), sql.Named("offset", 0))
+	return c.counted, c.page, append(c.args, sql.Named("limit", 50), sql.Named("offset", 0))
+}
+
+// Observe calls fn with the SQL of each statement the package runs, until
+// the test ends.
+func Observe(t *testing.T, fn func(sql string)) {
+	observe = func(st statement) { fn(st.sql) }
+	t.Cleanup(func() { observe = nil })
 }

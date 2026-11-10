@@ -32,7 +32,9 @@ func (o GridOptions) limit() (int, error) {
 // GridPage is a page of a grid.
 type GridPage[T any] struct {
 	Items []T
-	Total int // the grid's size
+	// Total is the grid's size. A list's works and a query's works have it
+	// on the first page (offset 0) only, and 0 on a later page.
+	Total int
 	// Letters is where each letter starts. It is set on the first page
 	// (offset 0) of a grid sorted by title or by name, and is nil otherwise.
 	Letters []Letter

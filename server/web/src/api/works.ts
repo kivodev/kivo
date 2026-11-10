@@ -25,7 +25,7 @@ export function gridPages(start: number, end: number, total: number): number[] {
 
 /**
  * Page `index` of a grid, read by offset so the grid can load any
- * position. Every page carries the total. `page` fetches the page from
+ * position. The first page carries the total. `page` fetches the page from
  * `offset`, which is undefined for the first page. The key extends
  * `pathKey`, so invalidating the path reaches it too.
  */

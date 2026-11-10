@@ -325,21 +325,18 @@ func TestQueryKindsAreTheEnginesOwn(t *testing.T) {
 				t.Errorf("%q: got %v, want an InvalidQueryError", tt.kinds, err)
 			}
 			for _, only := range [][]catalog.WorkKind{nil, {injected}, tt.kinds} {
-				count, page, args := query.Compiled(q, h.admin, time.Now(), only)
+				counted, page, args := query.Compiled(q, h.admin, time.Now(), only)
 				// A page of kinds the query doesn't select has no works.
 				want, works := tt.want, tt.works && (only == nil || slices.Contains(only, catalog.KindMovie))
 				if maxWorks == nil && !works {
 					want = "NULL"
 				}
-				for _, stmt := range []string{count, page} {
+				for _, stmt := range []string{counted, page} {
 					if m := kindList.FindStringSubmatch(stmt); m == nil || m[1] != want || strings.Contains(stmt, "1=1") || strings.Contains(stmt, "album") {
 						t.Errorf("%q, only %q: the statement names the kinds %q, want %s:\n%s", tt.kinds, only, m, want, stmt)
 					}
 				}
-				var total int
-				if err := h.b.DB.Reader().QueryRow(count, args...).Scan(&total); err != nil {
-					t.Fatal(err)
-				}
+				_, total := readCompiled(t, h.b.DB.Reader(), counted, args, true)
 				if (total > 0) != works {
 					t.Errorf("%q, only %q: counts %d works", tt.kinds, only, total)
 				}
@@ -500,6 +497,49 @@ func TestQueryValidation(t *testing.T) {
 	var invalid *query.InvalidQueryError
 	if _, err := query.New(nil).QueryWorks(context.Background(), users.Viewer{}, query.WorkQuery{}, query.GridOptions{}); !errors.As(err, &invalid) {
 		t.Errorf("an invalid query: %v", err)
+	}
+}
+
+// A compiled query joins the user's state where it selects its works only
+// when a rule or a sort key reads it. It always joins it once more, to the
+// page's works, for their summaries.
+func TestQueryJoinsStateOnlyWhenRead(t *testing.T) {
+	h := newHousehold(t)
+	const join = "LEFT JOIN user_state us "
+	rule := func(field, op string, values ...string) query.WorkQuery {
+		return movies(query.Rule{Field: field, Op: op, Values: values})
+	}
+	sorted := func(field string) query.WorkQuery {
+		return query.WorkQuery{Kinds: queryAllKinds, Sort: []query.SortKey{{Field: field}}}
+	}
+	ten := 10
+	capped := sorted("myRating")
+	capped.MaxWorks = &ten
+	for _, tt := range []struct {
+		q     query.WorkQuery
+		state bool
+	}{
+		{rule("title", "contains", "toy"), false},
+		{rule("inList", "anyOf", h.lists(h.admin)[0].ID.String()), false},
+		{sorted("year"), false},
+		{sorted("random"), false},
+		{rule("playState", "anyOf", "played"), true},
+		{rule("myRating", "isSet"), true},
+		{rule("lastPlayedAt", "within", "P30D"), true},
+		{sorted("myRating"), true},
+		{sorted("lastPlayedAt"), true},
+		{capped, true},
+	} {
+		if problems := tt.q.Validate(); len(problems) > 0 {
+			t.Fatalf("%s: %v", describe(tt.q), problems)
+		}
+		counted, page, _ := query.Compiled(tt.q, h.admin, time.Now(), nil)
+		for _, stmt := range []string{counted, page} {
+			selects, summaries, ok := strings.Cut(stmt, "\npage AS (")
+			if !ok || strings.Contains(selects, join) != tt.state || strings.Count(summaries, join) != 1 {
+				t.Errorf("%s: want the user's state joined where the works are selected: %v, and once after:\n%s", describe(tt.q), tt.state, stmt)
+			}
+		}
 	}
 }
 

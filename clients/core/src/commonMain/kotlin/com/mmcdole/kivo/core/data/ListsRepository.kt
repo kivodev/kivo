@@ -34,7 +34,7 @@ internal class ListsRepository(private val connection: ServerConnection, private
     private fun mayChange(invalidation: Invalidation) =
         invalidation !is Invalidation.PlayEnded && invalidation != Invalidation.DownloadsChanged && invalidation != Invalidation.HomeChanged
 
-    /** [limit] of a list's works of [kinds] from [offset], or the server's page; every page carries the total. */
+    /** [limit] of a list's works of [kinds] from [offset], or the server's page; the first page carries the total. */
     suspend fun page(listId: String, offset: Int, limit: Int? = null, kinds: List<String>? = null): WorkSummaryPage =
         connection.works.listListWorks(listId, kind = kinds, offset = offset.takeIf { it > 0 }, limit = limit).result()
 

@@ -94,14 +94,15 @@ func TestBudgets(t *testing.T) {
 	}
 	timeBudgets(t, tests, false)
 	// A smart list reads every work of its kinds in the Viewer's libraries,
-	// so a list is held to the budget where those are few: not the lists of
-	// 40,000 movies.
-	timeBudgets(t, smartCases(q, sv, smart, "series, by last episode added", "episodes, aired this year"), true)
+	// so a list is held to the budget where those are few, or where a cap
+	// keeps its order to the first works: not the other lists of 40,000
+	// movies.
+	timeBudgets(t, smartCases(q, sv, smart, "series, by last episode added", "episodes, aired this year", "movies, capped at 100"), true)
 	stop()
 
 	// The smart lists again on a household's server, as a user granted one
-	// of its two movies libraries and one of its two shows libraries. The
-	// lists of movies and series are held, and not the list of episodes.
+	// of its two movies libraries and one of its two shows libraries. Every
+	// list is held.
 	db = storetest.New(t)
 	movies, shows, moviesFolder = generate(t, db, householdShape)
 	q = query.New(db)
@@ -110,7 +111,7 @@ func TestBudgets(t *testing.T) {
 	defer stop()
 	t.Log("a household's server: 5,000 movies and 1,500 series of 105,000 episodes, in four libraries, two of them granted")
 	timeBudgets(t, smartCases(q, sv, smart, "movies, title and rating, by title", "movies, one actor, by added",
-		"movies, unplayed, by last played", "series, by last episode added", "movies, capped at 100"), true)
+		"movies, unplayed, by last played", "series, by last episode added", "episodes, aired this year", "movies, capped at 100"), true)
 }
 
 // budgetCase is a read to time, held to budget when enforce is set.
@@ -122,20 +123,21 @@ type budgetCase struct {
 }
 
 // smartCases are the reads of the smart lists, of the Lists screen, and of
-// a Home that shows five of the lists. A list's page reads its works, which
-// counts them too, and its header reads the list with its count. held
-// names the lists whose reads are held to browseBudget; Home and the Lists
-// screen are timed only.
+// a Home that shows five of the lists. A list's first page reads its works
+// and counts them, a later page reads its works alone, and its header reads
+// the list without running its rules. held names the lists whose reads are
+// held to browseBudget; Home and the Lists screen are timed only.
 func smartCases(q *query.Service, v users.Viewer, smart []smartList, held ...string) []budgetCase {
 	var tests []budgetCase
 	for _, l := range smart {
 		enforce := slices.Contains(held, l.name)
+		page := func(o query.GridOptions) func() error {
+			return func() error { _, err := q.ListWorks(ctx, v, l.id, nil, o); return err }
+		}
 		tests = append(tests,
-			budgetCase{"smart " + l.name, browseBudget, enforce, func() error {
-				_, err := q.ListWorks(ctx, v, l.id, nil, query.GridOptions{})
-				return err
-			}},
-			budgetCase{"smart " + l.name + ", count", browseBudget, enforce, func() error { _, err := q.List(ctx, v, l.id); return err }})
+			budgetCase{"smart " + l.name, browseBudget, enforce, page(query.GridOptions{})},
+			budgetCase{"smart " + l.name + ", later page", browseBudget, enforce, page(query.GridOptions{Offset: 60})},
+			budgetCase{"smart " + l.name + ", header", browseBudget, enforce, func() error { _, err := q.List(ctx, v, l.id); return err }})
 	}
 	return append(tests,
 		budgetCase{"home, 5 smart rows", homeBudget, false, func() error { _, _, err := q.Home(ctx, v); return err }},

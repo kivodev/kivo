@@ -449,7 +449,7 @@ open class WorksApi : ApiClient {
 
     /**
      * List a list&#39;s works
-     * A list&#39;s works the user sees: a manual list&#39;s most recently added first, a smart list&#39;s as its rules select them. With &#x60;kind&#x60;, only those kinds. A smart list whose rules no longer run is empty. A grid, paged by &#x60;offset&#x60;, with &#x60;total&#x60; on every page; works added at the same time are listed by title. 
+     * A list&#39;s works the user sees: a manual list&#39;s most recently added first, a smart list&#39;s as its rules select them. With &#x60;kind&#x60;, only those kinds. A smart list whose rules no longer run is empty. A grid, paged by &#x60;offset&#x60;, with &#x60;total&#x60; on the first page (offset 0) only and 0 on later pages; works added at the same time are listed by title. 
      * @param id 
      * @param kind Only these kinds. (optional)
      * @param offset How many items to skip from the start. (optional)
@@ -770,7 +770,7 @@ open class WorksApi : ApiClient {
 
     /**
      * Run a work query
-     * Runs a &#x60;WorkQuery&#x60; once, as the caller: their library access and parental limits apply to every query. A grid, paged by &#x60;offset&#x60;, with &#x60;total&#x60; on every page; &#x60;maxWorks&#x60; caps it. An invalid query is &#x60;400&#x60; with &#x60;invalidRequest&#x60;, and &#x60;errors&#x60; holds a JSON pointer per problem, such as &#x60;/query/where/groups/0/rules/2/op&#x60;. 
+     * Runs a &#x60;WorkQuery&#x60; once, as the caller: their library access and parental limits apply to every query. A grid, paged by &#x60;offset&#x60;, with &#x60;total&#x60; on the first page (offset 0) only and 0 on later pages; &#x60;maxWorks&#x60; caps it. An invalid query is &#x60;400&#x60; with &#x60;invalidRequest&#x60;, and &#x60;errors&#x60; holds a JSON pointer per problem, such as &#x60;/query/where/groups/0/rules/2/op&#x60;. 
      * @param workQueryRequest 
      * @return WorkSummaryPage
      */

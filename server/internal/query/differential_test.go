@@ -27,7 +27,8 @@ import (
 // total. The matrix is every field with every operator, groups, every sort
 // both ways, caps, a list page's kinds and page offsets, over each set of
 // kinds, as Viewers with every, some and no libraries, with and without a
-// rating ceiling and unrated works.
+// rating ceiling and unrated works. The pages are first pages, later ones,
+// pages past the end, and pages longer and shorter than a cap.
 //
 // The whole matrix takes minutes, so it runs only when KIVO_DIFFERENTIAL=1.
 // Otherwise one query in 29 runs, which still takes each field, operator
@@ -67,15 +68,17 @@ func TestCompileMatchesOld(t *testing.T) {
 				variants := []differentialVariant{{limit: 100000}}
 				switch n % 6 {
 				case 0: // as a list's covers read its first works
-					variants = append(variants, differentialVariant{limit: 3})
+					variants = append(variants, differentialVariant{limit: 3}, differentialVariant{limit: 3, offset: 3})
 				case 1:
 					variants = append(variants, differentialVariant{limit: 7, offset: 5}, differentialVariant{limit: 50, offset: 100000})
 				case 2:
 					variants = append(variants, differentialVariant{limit: 100000, only: kinds[:1]}, differentialVariant{limit: 100000, only: []catalog.WorkKind{}})
 				case 3:
-					variants = append(variants, differentialVariant{limit: 100000, cap: 7}, differentialVariant{limit: 3, offset: 2, cap: 7, only: kinds[:1]})
+					variants = append(variants, differentialVariant{limit: 100000, cap: 7}, differentialVariant{limit: 3, offset: 2, cap: 7, only: kinds[:1]},
+						differentialVariant{limit: 5, offset: 5, cap: 7}, differentialVariant{limit: 5, offset: 10, cap: 7})
 				case 4:
-					variants = append(variants, differentialVariant{limit: 100000, cap: 1}, differentialVariant{limit: 100000, cap: 5000, only: []catalog.WorkKind{catalog.KindEpisode, catalog.KindMovie}})
+					variants = append(variants, differentialVariant{limit: 100000, cap: 1}, differentialVariant{limit: 100000, cap: 5000, only: []catalog.WorkKind{catalog.KindEpisode, catalog.KindMovie}},
+						differentialVariant{limit: 2, offset: 2, cap: 5000})
 				case 5:
 					variants = append(variants, differentialVariant{limit: 100000, only: []catalog.WorkKind{catalog.KindSeries, catalog.KindBook}}, differentialVariant{limit: 100000, cap: 40, only: []catalog.WorkKind{}})
 				}
@@ -84,12 +87,12 @@ func TestCompileMatchesOld(t *testing.T) {
 					if variant.cap > 0 {
 						q.MaxWorks = &variant.cap
 					}
-					count, page, args := query.Compiled(q, v.v, now, variant.only)
+					counted, page, args := query.Compiled(q, v.v, now, variant.only)
 					oldCount, oldPage, oldArgs := query.CompiledOld(q, v.v, now, variant.only)
-					checkCompiledFilter(t, canonical, count)
+					checkCompiledFilter(t, canonical, counted)
 					checkCompiledFilter(t, canonical, page)
-					got, total := d.run(t, count, page, args, variant)
-					want, oldTotal := d.run(t, oldCount, oldPage, oldArgs, variant)
+					got, total := d.run(t, counted, page, args, variant)
+					want, oldTotal := d.runOld(t, oldCount, oldPage, oldArgs, variant)
 					ran++
 					rows += len(want)
 					if len(want) > 0 {
@@ -143,24 +146,52 @@ func describe(q query.WorkQuery) string {
 	return string(b)
 }
 
-// run reads a compiled query's total and the IDs of its page, in order.
-func (d *differential) run(t *testing.T, count, page string, args []any, v differentialVariant) (ids []id.ID, total int) {
-	t.Helper()
+// paged is args with a page's limit and offset.
+func paged(args []any, limit, offset int) []any {
 	args = slices.Clone(args)
 	for i, a := range args {
 		switch a.(sql.NamedArg).Name {
 		case "limit":
-			args[i] = sql.Named("limit", v.limit)
+			args[i] = sql.Named("limit", limit)
 		case "offset":
-			args[i] = sql.Named("offset", v.offset)
+			args[i] = sql.Named("offset", offset)
 		}
 	}
+	return args
+}
+
+// run reads a compiled query's total, from its first page, and the IDs of
+// the variant's page, in order. It checks that the first page reads the
+// same with its count and without.
+func (d *differential) run(t *testing.T, counted, page string, args []any, v differentialVariant) (ids []id.ID, total int) {
+	t.Helper()
+	first, total := readCompiled(t, d.db.Reader(), counted, paged(args, v.limit, 0), true)
+	ids, _ = readCompiled(t, d.db.Reader(), page, paged(args, v.limit, v.offset), false)
+	if v.offset == 0 && !slices.Equal(first, ids) {
+		t.Errorf("the first page with its count has %d works, and without %d, in %s", len(first), len(ids), counted)
+	}
+	return ids, total
+}
+
+// runOld reads the old compiler's total and the IDs of its page, in order.
+func (d *differential) runOld(t *testing.T, count, page string, args []any, v differentialVariant) (ids []id.ID, total int) {
+	t.Helper()
+	args = paged(args, v.limit, v.offset)
 	if err := d.db.Reader().QueryRow(count, args...).Scan(&total); err != nil {
 		t.Fatalf("%v in %s", err, count)
 	}
-	rows, err := d.db.Reader().Query(page, args...)
+	ids, _ = readCompiled(t, d.db.Reader(), page, args, false)
+	return ids, total
+}
+
+// readCompiled runs a statement whose rows start with a work's ID and
+// returns the IDs in order. A counted statement's rows end with its count,
+// which is 0 when it has no rows.
+func readCompiled(t *testing.T, db *sql.DB, stmt string, args []any, counted bool) (ids []id.ID, total int) {
+	t.Helper()
+	rows, err := db.Query(stmt, args...)
 	if err != nil {
-		t.Fatalf("%v in %s", err, page)
+		t.Fatalf("%v in %s", err, stmt)
 	}
 	defer rows.Close()
 	cols, err := rows.Columns()
@@ -172,6 +203,9 @@ func (d *differential) run(t *testing.T, count, page string, args []any, v diffe
 	dest[0] = &work
 	for i := 1; i < len(dest); i++ {
 		dest[i] = new(sql.RawBytes)
+	}
+	if counted {
+		dest[len(dest)-1] = &total
 	}
 	for rows.Next() {
 		if err := rows.Scan(dest...); err != nil {
