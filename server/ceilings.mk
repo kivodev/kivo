@@ -24,7 +24,7 @@ DEADCODE_MAX     := 0
 # alike the same way.
 DUPL_MAX         := 29
 # Go functions with a cyclomatic complexity over 15 (gocyclo).
-GOCYCLO_MAX      := 45
+GOCYCLO_MAX      := 43
 # Go functions with a cognitive complexity over 20 (gocognit). identify's
 # search is one of them at 21: its searches in turn, then the lookup.
 GOCOGNIT_MAX     := 53
