@@ -23,7 +23,7 @@ func TestWebApp(t *testing.T) {
 		has  string
 	}{
 		{"/", 200, `<base href="/kivo/"`},
-		{"/", 200, `<meta name="kivo-version" content="0.3.1-dev+56c0018d" />`}, // the server's version, which the client sends
+		{"/", 200, `<meta name="kivo-version" content="0.3.1-dev+56c0018d" />`},
 		{"/movies/abc", 200, `<base href="/kivo/"`}, // a client route
 		{"/assets/app-1a2b.js", 200, "console.log"},
 		{"/assets/app-old.js", 404, ""}, // an older build's asset
