@@ -10,9 +10,9 @@ import (
 	"github.com/mmcdole/kivo/internal/identify/dbq"
 )
 
-// placed is a version as the catalog has it, with its parts, its edition
+// placedVersion is a version as the catalog has it, with its parts, its edition
 // label and the works it covers, in order.
-type placed struct {
+type placedVersion struct {
 	version id.ID
 	parts   []id.ID
 	edition string
@@ -26,7 +26,7 @@ type placedWork struct {
 	matchRev    int64
 }
 
-func (p *placed) workIDs() []id.ID {
+func (p *placedVersion) workIDs() []id.ID {
 	out := make([]id.ID, len(p.works))
 	for i, w := range p.works {
 		out[i] = w.id
@@ -36,21 +36,21 @@ func (p *placed) workIDs() []id.ID {
 
 // foreign reports whether the version covers a work of a root work other than
 // root, meaning its file came from another folder.
-func (p *placed) foreign(root id.ID) bool {
+func (p *placedVersion) foreign(root id.ID) bool {
 	return slices.ContainsFunc(p.works, func(w placedWork) bool { return w.root != root })
 }
 
-// firm reports whether every work the version covers is a work of root and
-// none is provisional, so a match of root has placed it.
-func (p *placed) firm(root id.ID) bool {
+// finalUnder reports whether every work the version covers is a work of root
+// and none is provisional, so a match of root has placed it.
+func (p *placedVersion) finalUnder(root id.ID) bool {
 	return !slices.ContainsFunc(p.works, func(w placedWork) bool { return w.provisional || w.root != root })
 }
 
 // placements records where a unit's files are placed, keyed by file.
-type placements map[id.ID]*placed
+type placements map[id.ID]*placedVersion
 
 // of returns the version an entry's files make up exactly, or nil.
-func (ps placements) of(e *entry) *placed {
+func (ps placements) of(e *entry) *placedVersion {
 	p := ps[e.parts[0].ID]
 	if p == nil || !slices.Equal(p.parts, e.ids()) {
 		return nil
@@ -76,14 +76,14 @@ func (ps placements) anchor() (id.ID, bool) {
 }
 
 // versions returns each placed version once, in a stable order.
-func (ps placements) versions() []*placed {
-	var out []*placed
+func (ps placements) versions() []*placedVersion {
+	var out []*placedVersion
 	for _, p := range ps {
 		if !slices.Contains(out, p) {
 			out = append(out, p)
 		}
 	}
-	slices.SortFunc(out, func(a, b *placed) int { return bytes.Compare(a.version[:], b.version[:]) })
+	slices.SortFunc(out, func(a, b *placedVersion) int { return bytes.Compare(a.version[:], b.version[:]) })
 	return out
 }
 
@@ -94,13 +94,13 @@ func readPlacements(ctx context.Context, q *dbq.Queries, files []id.ID) (placeme
 	if err != nil {
 		return nil, err
 	}
-	byVersion := map[id.ID]*placed{}
+	byVersion := map[id.ID]*placedVersion{}
 	ps := placements{}
 	var versions []id.ID
 	for _, r := range rows {
 		p := byVersion[r.VersionID]
 		if p == nil {
-			p = &placed{version: r.VersionID, edition: r.Edition.String}
+			p = &placedVersion{version: r.VersionID, edition: r.Edition.String}
 			byVersion[r.VersionID] = p
 			versions = append(versions, r.VersionID)
 		}
