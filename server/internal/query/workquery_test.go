@@ -3,7 +3,9 @@ package query_test
 import (
 	"context"
 	"errors"
+	"regexp"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -295,6 +297,54 @@ func TestQueryExcludesProvisionalWorks(t *testing.T) {
 	all := ids(h.runQuery(h.admin, query.WorkQuery{Kinds: queryAllKinds}).Items)
 	if slices.Contains(all, h.unmatchedShow1.Work) {
 		t.Errorf("a provisional work came back: %v", all)
+	}
+}
+
+// TestQueryKindsAreTheEnginesOwn checks that a kind the engine doesn't
+// know is refused, and that a statement names kinds from the engine's own
+// list alone, even compiled from a query that wasn't validated.
+func TestQueryKindsAreTheEnginesOwn(t *testing.T) {
+	h := newHousehold(t)
+	kindList := regexp.MustCompile(`\n  AND w\.kind IN \(([^)]*)\)\n`)
+	injected := catalog.WorkKind("movie') OR 1=1 --")
+	ten := 10
+	for _, tt := range []struct {
+		kinds []catalog.WorkKind
+		want  string // the kinds the statement names
+		works bool
+	}{
+		{[]catalog.WorkKind{injected}, "NULL", false},
+		{[]catalog.WorkKind{catalog.KindExtra}, "NULL", false},
+		{[]catalog.WorkKind{"album"}, "NULL", false},
+		{[]catalog.WorkKind{catalog.KindMovie, injected, catalog.KindExtra}, "'movie'", true},
+	} {
+		for _, maxWorks := range []*int{nil, &ten} {
+			q := query.WorkQuery{Kinds: tt.kinds, MaxWorks: maxWorks}
+			var invalid *query.InvalidQueryError
+			if _, err := h.q.QueryWorks(ctx, h.admin, q, query.GridOptions{}); !errors.As(err, &invalid) {
+				t.Errorf("%q: got %v, want an InvalidQueryError", tt.kinds, err)
+			}
+			for _, only := range [][]catalog.WorkKind{nil, {injected}, tt.kinds} {
+				count, page, args := query.Compiled(q, h.admin, time.Now(), only)
+				// A page of kinds the query doesn't select has no works.
+				want, works := tt.want, tt.works && (only == nil || slices.Contains(only, catalog.KindMovie))
+				if maxWorks == nil && !works {
+					want = "NULL"
+				}
+				for _, stmt := range []string{count, page} {
+					if m := kindList.FindStringSubmatch(stmt); m == nil || m[1] != want || strings.Contains(stmt, "1=1") || strings.Contains(stmt, "album") {
+						t.Errorf("%q, only %q: the statement names the kinds %q, want %s:\n%s", tt.kinds, only, m, want, stmt)
+					}
+				}
+				var total int
+				if err := h.b.DB.Reader().QueryRow(count, args...).Scan(&total); err != nil {
+					t.Fatal(err)
+				}
+				if (total > 0) != works {
+					t.Errorf("%q, only %q: counts %d works", tt.kinds, only, total)
+				}
+			}
+		}
 	}
 }
 

@@ -224,34 +224,91 @@ type compiled struct {
 	args        []any
 }
 
+// libraryOf is the kind of library that holds each kind of work a query
+// selects.
+var libraryOf = map[catalog.WorkKind]catalog.LibraryKind{
+	catalog.KindMovie: catalog.Movies, catalog.KindSeries: catalog.Shows, catalog.KindSeason: catalog.Shows,
+	catalog.KindEpisode: catalog.Shows, catalog.KindVideo: catalog.Videos, catalog.KindBook: catalog.Audiobooks,
+}
+
+// scope is where a query's works are, as SQL literals: the kinds, the
+// kinds of library that hold them, and whether any is under a root work.
+// It writes the names in allKinds and libraryOf, never the query's own
+// text, so a kind that isn't one of them selects nothing. With none of
+// them it writes NULL, which no kind is in.
+func scope(kinds []catalog.WorkKind) (works, libraries string, nested bool) {
+	var ws, ls []string
+	for _, k := range allKinds {
+		if !slices.Contains(kinds, k) {
+			continue
+		}
+		ws = append(ws, "'"+string(k)+"'")
+		if l := "'" + string(libraryOf[k]) + "'"; !slices.Contains(ls, l) {
+			ls = append(ls, l)
+		}
+		nested = nested || k == catalog.KindSeason || k == catalog.KindEpisode
+	}
+	if len(ws) == 0 {
+		return "NULL", "NULL", false
+	}
+	return strings.Join(ws, ", "), strings.Join(ls, ", "), nested
+}
+
+// matching is the FROM and WHERE that select a query's works, before its
+// rules: the works of kinds, not provisional, that the Viewer sees. It
+// reads work_library wl in the libraries the Viewer is granted that hold
+// the kinds, then each row's work w, and the user's state us.
+//
+// A query with seasons or episodes also reads each work's root r, for what
+// a work under a root takes from it. Any other work is its own root, so a
+// query without them looks up the works of the libraries' root rows alone.
+//
+// The Viewer predicate is in the form for a statement on wl:
+// catalog.Granted on the row's library and catalog.RatingVisible, which
+// together are catalog.VisibleWork.
+//
+// CROSS JOIN and INDEXED BY fix the plan: wl by its primary key, which
+// SQLite names sqlite_autoindex_work_library_1, then w, then r. Left to
+// choose, SQLite with statistics scans work for its kinds, or reads wl
+// through an index that has to look every row up again.
+func matching(kinds []catalog.WorkKind) string {
+	works, libraries, nested := scope(kinds)
+	rows, root, matched, age := "\n  AND wl.is_root", "", "NOT w.provisional", "w.content_rating_age"
+	if nested {
+		rows, root = "", "\nCROSS JOIN work r ON r.id = w.root_id"
+		matched, age = "NOT w.provisional AND NOT r.provisional", "coalesce(w.content_rating_age, r.content_rating_age)"
+	}
+	return `
+FROM work_library wl INDEXED BY sqlite_autoindex_work_library_1
+CROSS JOIN work w ON w.id = wl.work_id` + root + `
+LEFT JOIN user_state us ON us.user_id = @user AND us.work_id = w.id
+WHERE wl.library_id IN (SELECT gl.id FROM library gl WHERE gl.kind IN (` + libraries + `) AND ` + catalog.Granted("gl.id") + `)` + rows + `
+  AND w.kind IN (` + works + `)
+  AND ` + matched + `
+  AND ( -- viewer-filter: wl
+    ` + catalog.Granted("wl.library_id") + `
+    AND ` + catalog.RatingVisible(age) + `)`
+}
+
 // compile turns a valid query into SQL. It is the only way a WorkQuery
-// becomes a statement: the SQL always carries the visible predicate, and
-// values go in as bound parameters. seed fixes a random sort's order, and
-// only narrows the query to those kinds, after any cap, when it's set.
+// becomes a statement: the SQL always carries the Viewer predicate, before
+// any cap or page is cut, and values go in as bound parameters. seed fixes
+// a random sort's order, and only narrows the query to those kinds, after
+// any cap, when it's set.
 func compile(q WorkQuery, vw viewer, now time.Time, seed string, only []catalog.WorkKind) compiled {
 	c := &compiler{now: now, seed: seed}
-	kinds := make([]string, len(q.Kinds))
-	for i, k := range q.Kinds {
-		kinds[i] = string(k)
-	}
 	where := ""
 	if q.Where != nil {
 		where = "\n  AND " + c.group(*q.Where)
 	}
 	sortBy := c.order(q)
-	from := `
-FROM work w
-JOIN work_library wl ON wl.work_id = w.id
-LEFT JOIN user_state us ON us.user_id = @user AND us.work_id = w.id
-WHERE NOT w.provisional
-  AND NOT (SELECT r.provisional FROM work r WHERE r.id = w.root_id)
-  AND w.kind IN (SELECT value FROM json_each(` + c.bind(set(kinds)) + `))
-  AND ` + visible + where
 	args := func() []any { return vw.args(append(c.params, sql.Named("only", set(only)))...) }
 	if q.MaxWorks == nil {
+		kinds := q.Kinds
 		if only != nil {
-			from += "\n  AND w.kind IN (SELECT value FROM json_each(@only))"
+			kinds = slices.DeleteFunc(slices.Clone(kinds), func(k catalog.WorkKind) bool { return !slices.Contains(only, k) })
 		}
+		from := matching(kinds) + where
 		return compiled{
 			count: "SELECT count(*)" + from,
 			page:  "SELECT " + summaryColumns + from + "\nORDER BY " + sortBy + "\nLIMIT @limit OFFSET @offset",
@@ -259,7 +316,7 @@ WHERE NOT w.provisional
 		}
 	}
 	capped := `WITH matched AS (
-SELECT w.id, row_number() OVER (ORDER BY ` + sortBy + `) AS o` + from + `
+SELECT w.id, row_number() OVER (ORDER BY ` + sortBy + `) AS o` + matching(q.Kinds) + where + `
 ),
 limited AS (SELECT id, o FROM matched ORDER BY o LIMIT ` + c.bind(*q.MaxWorks) + `),
 filtered AS (SELECT l.id, l.o FROM limited l JOIN work fw ON fw.id = l.id

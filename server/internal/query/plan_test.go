@@ -1,6 +1,7 @@
 package query_test
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"regexp"
@@ -11,7 +12,9 @@ import (
 
 	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/query"
+	"github.com/mmcdole/kivo/internal/store"
 	"github.com/mmcdole/kivo/internal/store/storetest"
+	"github.com/mmcdole/kivo/internal/users"
 )
 
 // largeTables grow with the library or with use. A query may search them
@@ -28,7 +31,7 @@ var largeTables = []string{
 // and whole-library tasks, which visit every row anyway, counts over a
 // partial index that holds only the rows counted, the rule builder's reads
 // of a field's values, and the test suite's
-// invariants. The smart list samples are known scans to be looked at.
+// invariants.
 var wholeLibrary = map[string]string{
 	"users/users.sql.SavedListQueries":  "once at startup, to log smart lists that no longer compile",
 	"catalog/invariants.sql":            "CheckInvariants, run after every test",
@@ -55,23 +58,7 @@ var wholeLibrary = map[string]string{
 	"query/ValuesTag":                   "a field's values for a rule, read when the builder opens the field",
 
 	"identify/catalog.sql.CountUnidentified": "how many files the identify task has left, for Tasks: media_file_behind holds only files not yet probed or identified",
-
-	"query/smart/title":      smartScan,
-	"query/smart/year":       smartScan,
-	"query/smart/playState":  smartScan,
-	"query/smart/people":     smartScan,
-	"query/smart/resolution": smartScan,
-	"query/smart/within":     smartScan,
-	"query/smart/any":        smartScan,
-	"query/smart/nested":     smartScan,
-	"query/smart/maxWorks":   smartScan,
-	"query/smart/series":     smartScan,
-	"query/smart/books":      smartScan,
 }
-
-// smartScan is why a smart list sample scans: a compiled query reads every
-// work, of every kind and library, as nothing indexes work's kind.
-const smartScan = "a known scan to be looked at: a smart list reads every work, of every kind and library"
 
 var (
 	narg      = regexp.MustCompile(`sqlc\.(?:narg|slice)\('(\w+)'\)`)
@@ -104,20 +91,21 @@ func TestQueryPlans(t *testing.T) {
 	}
 }
 
-// TestSmartQueryPlans checks the statements smart lists compile to at run
-// time as TestQueryPlans checks the fixed ones. Each sample compiles as a
-// Viewer granted some libraries, alone and narrowed to its kinds as a
-// list's page narrows it.
-func TestSmartQueryPlans(t *testing.T) {
-	h := newHousehold(t)
+// smartSample is a WorkQuery the plan and Viewer tests compile.
+type smartSample struct {
+	name string
+	q    query.WorkQuery
+}
+
+// smartSamples are queries over the fixture that between them use each
+// kind of field, groups, a cap, and kinds with and without a root above
+// them.
+func smartSamples(h *household) []smartSample {
 	mine := h.lists(h.admin)[0].ID
 	movies := []catalog.WorkKind{catalog.KindMovie}
 	shows := []catalog.WorkKind{catalog.KindSeries, catalog.KindSeason, catalog.KindEpisode}
 	ten := 10
-	samples := []struct {
-		name string
-		q    query.WorkQuery
-	}{
+	samples := []smartSample{
 		{"title", query.WorkQuery{Kinds: movies, Where: where(query.Rule{Field: "title", Op: "contains", Values: []string{"toy"}})}},
 		{"year", query.WorkQuery{Kinds: movies, Where: where(query.Rule{Field: "year", Op: "between", Values: []string{"1990", "2020"}}),
 			Sort: []query.SortKey{{Field: "year"}}}},
@@ -155,11 +143,22 @@ func TestSmartQueryPlans(t *testing.T) {
 			query.Rule{Field: "bookSeries", Op: "isNotSet"}),
 			Sort: []query.SortKey{{Field: "runtimeMs"}}}},
 	}
-	now := time.Now()
 	for _, s := range samples {
 		if problems := s.q.Validate(); len(problems) > 0 {
-			t.Fatalf("%s: %v", s.name, problems)
+			h.t.Fatalf("%s: %v", s.name, problems)
 		}
+	}
+	return samples
+}
+
+// TestSmartQueryPlans checks the statements smart lists compile to at run
+// time as TestQueryPlans checks the fixed ones. Each sample compiles as a
+// Viewer granted some libraries, alone and narrowed to its kinds as a
+// list's page narrows it.
+func TestSmartQueryPlans(t *testing.T) {
+	h := newHousehold(t)
+	now := time.Now()
+	for _, s := range smartSamples(h) {
 		for _, only := range [][]catalog.WorkKind{nil, s.q.Kinds} {
 			count, page, args := query.Compiled(s.q, h.friend, now, only)
 			prefix := ""
@@ -173,6 +172,74 @@ func TestSmartQueryPlans(t *testing.T) {
 		}
 	}
 }
+
+// TestSmartQueriesStartAtWorkLibrary checks where a compiled query starts
+// reading, on generated libraries: at work_library, searched by library
+// through its primary key. Each work is looked up from there, and then its
+// root when seasons or episodes are asked for. It checks without and with
+// the statistics SQLite gathers, which the nightly maintenance has it do.
+func TestSmartQueriesStartAtWorkLibrary(t *testing.T) {
+	const (
+		rows = "SEARCH wl USING PRIMARY KEY (library_id=?)"
+		work = "SEARCH w USING INDEX sqlite_autoindex_work_1 (id=?)"
+		root = "SEARCH r USING INDEX sqlite_autoindex_work_1 (id=?)"
+	)
+	for _, statistics := range []bool{false, true} {
+		t.Run(fmt.Sprintf("statistics=%v", statistics), func(t *testing.T) {
+			db := storetest.New(t)
+			movies, shows, _ := generate(t, db, shape{movies: 500, series: 150, seasons: 5, episodes: 14, airEvery: 86400, moviesElsewhere: 100, seriesElsewhere: 30})
+			viewers := []users.Viewer{budgetViewer(t, db, "some", movies, shows), budgetViewer(t, db, "every")}
+			if statistics {
+				err := db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
+					_, err := tx.ExecContext(ctx, "ANALYZE")
+					return err
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
+				// A connection plans with the statistics it found when it
+				// first read the schema, so plan on new connections.
+				var path string
+				if err := db.Reader().QueryRow(`SELECT file FROM pragma_database_list WHERE name = 'main'`).Scan(&path); err != nil {
+					t.Fatal(err)
+				}
+				if db, err = store.Open(ctx, path); err != nil {
+					t.Fatal(err)
+				}
+				t.Cleanup(func() { db.Close() })
+			}
+			for _, d := range smartDefs() {
+				want := []string{rows, work}
+				if slices.Contains(d.q.Kinds, catalog.KindEpisode) {
+					want = append(want, root)
+				}
+				for _, v := range viewers {
+					count, page, args := query.Compiled(d.q, v, time.Now(), nil)
+					for _, stmt := range []string{count, page} {
+						got, err := plan(db.Reader(), stmt, args)
+						if err != nil {
+							t.Fatal(err)
+						}
+						// The plan's first steps on wl, w and r are the
+						// FROM's, in the order it reads them.
+						var reads []string
+						for line := range strings.SplitSeq(got, "\n") {
+							if step := strings.TrimSpace(line); tableRead.MatchString(step) && len(reads) < len(want) {
+								reads = append(reads, step)
+							}
+						}
+						if !slices.Equal(reads, want) {
+							t.Errorf("%s: reads %q, want %q in:\n%s", d.name, reads, want, got)
+						}
+					}
+				}
+			}
+		})
+	}
+}
+
+// tableRead matches a plan's step that reads wl, w or r.
+var tableRead = regexp.MustCompile(`^(SEARCH|SCAN) (wl|w|r)( |$)`)
 
 // checkScans fails on each full scan of a large table in stmt's plan,
 // unless wholeLibrary allows st.

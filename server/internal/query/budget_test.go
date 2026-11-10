@@ -32,7 +32,9 @@ const (
 // TestBudgets times each read against 50k generated works (40,000 movies and
 // 400 series of 24 episodes). Meanwhile another goroutine writes batches of
 // 500 files, shaped like a scan's. The test fails when a read's p95 is over
-// its budget.
+// its budget. It then times the smart lists there and on a household's
+// server, and fails when a held list's median is over its budget: a p95
+// taken beside the writer says more of the machine than of the read.
 //
 // It runs only when KIVO_BUDGET=1, which make budget sets, and runs alone
 // without the race detector. Timings taken beside other packages' tests
@@ -42,21 +44,14 @@ func TestBudgets(t *testing.T) {
 		t.Skip("times reads; make budget runs it (KIVO_BUDGET=1)")
 	}
 	db := storetest.New(t)
-	movies, shows, moviesFolder := generate(t, db)
+	movies, shows, moviesFolder := generate(t, db, fiftyK)
 	v := budgetViewer(t, db, "admin")
 	q := query.New(db)
 	sv, smart := smartViewer(t, db, q)
 
 	stop := scanWriter(t, db, moviesFolder)
-	defer stop()
 
 	deep := query.GridOptions{Offset: 20000} // halfway through the movies
-	type budgetCase struct {
-		name    string
-		budget  time.Duration
-		enforce bool
-		read    func() error
-	}
 	tests := []budgetCase{
 		{"browse movies by title", browseBudget, true, browse(q, v, movies, query.BrowseOptions{})},
 		{"browse movies by added", browseBudget, true, browse(q, v, movies, query.BrowseOptions{Sort: query.ByAdded})},
@@ -97,20 +92,60 @@ func TestBudgets(t *testing.T) {
 		{"search, a word in every title", searchBudget, true, func() error { _, err := q.Search(ctx, v, "the", 0); return err }},
 		{"search, one letter", searchBudget, true, func() error { _, err := q.Search(ctx, v, "m", 0); return err }},
 	}
-	// Smart lists are measured pending a decision on how they read, so none
-	// is held to a budget yet. A list's page reads its works, which counts
-	// them too, and its header reads the list with its count.
+	timeBudgets(t, tests, false)
+	// A smart list reads every work of its kinds in the Viewer's libraries,
+	// so a list is held to the budget where those are few: not the lists of
+	// 40,000 movies.
+	timeBudgets(t, smartCases(q, sv, smart, "series, by last episode added", "episodes, aired this year"), true)
+	stop()
+
+	// The smart lists again on a household's server, as a user granted one
+	// of its two movies libraries and one of its two shows libraries. The
+	// lists of movies and series are held, and not the list of episodes.
+	db = storetest.New(t)
+	movies, shows, moviesFolder = generate(t, db, householdShape)
+	q = query.New(db)
+	sv, smart = smartViewer(t, db, q, movies, shows)
+	stop = scanWriter(t, db, moviesFolder)
+	defer stop()
+	t.Log("a household's server: 5,000 movies and 1,500 series of 105,000 episodes, in four libraries, two of them granted")
+	timeBudgets(t, smartCases(q, sv, smart, "movies, title and rating, by title", "movies, one actor, by added",
+		"movies, unplayed, by last played", "series, by last episode added", "movies, capped at 100"), true)
+}
+
+// budgetCase is a read to time, held to budget when enforce is set.
+type budgetCase struct {
+	name    string
+	budget  time.Duration
+	enforce bool
+	read    func() error
+}
+
+// smartCases are the reads of the smart lists, of the Lists screen, and of
+// a Home that shows five of the lists. A list's page reads its works, which
+// counts them too, and its header reads the list with its count. held
+// names the lists whose reads are held to browseBudget; Home and the Lists
+// screen are timed only.
+func smartCases(q *query.Service, v users.Viewer, smart []smartList, held ...string) []budgetCase {
+	var tests []budgetCase
 	for _, l := range smart {
+		enforce := slices.Contains(held, l.name)
 		tests = append(tests,
-			budgetCase{"smart " + l.name, browseBudget, false, func() error {
-				_, err := q.ListWorks(ctx, sv, l.id, nil, query.GridOptions{})
+			budgetCase{"smart " + l.name, browseBudget, enforce, func() error {
+				_, err := q.ListWorks(ctx, v, l.id, nil, query.GridOptions{})
 				return err
 			}},
-			budgetCase{"smart " + l.name + ", count", browseBudget, false, func() error { _, err := q.List(ctx, sv, l.id); return err }})
+			budgetCase{"smart " + l.name + ", count", browseBudget, enforce, func() error { _, err := q.List(ctx, v, l.id); return err }})
 	}
-	tests = append(tests,
-		budgetCase{"home, 5 smart rows", homeBudget, false, func() error { _, _, err := q.Home(ctx, sv); return err }},
-		budgetCase{"lists screen, 10 lists", browseBudget, false, func() error { _, err := q.CountedLists(ctx, sv); return err }})
+	return append(tests,
+		budgetCase{"home, 5 smart rows", homeBudget, false, func() error { _, _, err := q.Home(ctx, v); return err }},
+		budgetCase{"lists screen, 10 lists", browseBudget, false, func() error { _, err := q.CountedLists(ctx, v); return err }})
+}
+
+// timeBudgets times each read and fails for an enforced one whose p95 is
+// over its budget, or whose median is when median is set.
+func timeBudgets(t *testing.T, tests []budgetCase, median bool) {
+	t.Helper()
 	// The budgets are for a real server. A shared CI runner is several
 	// times slower, so CI sets KIVO_BUDGET_SCALE and the check there guards
 	// against regressions rather than proving the budget.
@@ -124,13 +159,16 @@ func TestBudgets(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: %v", tt.name, err)
 		}
-		held := ""
+		held, name, timed := "", "p95", p95
+		if median {
+			held, name, timed = " on p50", "p50", p50
+		}
 		if !tt.enforce {
 			held = ", not held"
 		}
 		t.Logf("%-50s p50 %6.1f ms  p95 %6.1f ms (budget %v%s)", tt.name, ms(p50), ms(p95), tt.budget, held)
-		if tt.enforce && p95 > tt.budget {
-			t.Errorf("%s: p95 %v over its budget of %v", tt.name, p95, tt.budget)
+		if tt.enforce && timed > tt.budget {
+			t.Errorf("%s: %s %v over its budget of %v", tt.name, name, timed, tt.budget)
 		}
 	}
 }
@@ -185,16 +223,37 @@ func scanWriter(t *testing.T, db *store.DB, folder id.ID) (stop func()) {
 	return func() { cancel(); wg.Wait() }
 }
 
-// generate fills db with 40,000 movies and 400 series of 2 seasons of 12
-// episodes, in two libraries. Each movie and episode has a file, a version
-// and a video track. It adds 20,000 people credited on the movies, and
-// indexes everything for search. It writes the tables directly, which only
-// a test may do, because building 50k works through catalog one at a time
-// would take minutes.
-func generate(t *testing.T, db *store.DB) (movies, shows, moviesFolder id.ID) {
+// shape is how many works generate makes: movies, and series of seasons
+// seasons of episodes episodes each, an episode airing every airEvery
+// seconds. The last moviesElsewhere movies and seriesElsewhere series are
+// in a second movies and a second shows library.
+type shape struct {
+	movies, series, seasons, episodes, airEvery int
+	moviesElsewhere, seriesElsewhere            int
+}
+
+var (
+	// fiftyK is 40,000 movies and 400 series of 2 seasons of 12 episodes,
+	// in two libraries, the episodes aired one every 9 hours over the last
+	// ten years.
+	fiftyK = shape{movies: 40000, series: 400, seasons: 2, episodes: 12, airEvery: 32400}
+	// householdShape is a household's server: 5,000 movies and 1,500 series
+	// of 5 seasons of 14 episodes, 105,000 episodes aired over the last ten
+	// years, in four libraries.
+	householdShape = shape{movies: 5000, series: 1500, seasons: 5, episodes: 14, airEvery: 3000, moviesElsewhere: 1000, seriesElsewhere: 300}
+)
+
+// generate fills db with s's movies and series. Each movie and episode has
+// a file, a version and a video track. It adds 20,000 people credited on
+// the movies, and indexes everything for search. It writes the tables
+// directly, which only a test may do, because building 50k works through
+// catalog one at a time would take minutes.
+func generate(t *testing.T, db *store.DB, s shape) (movies, shows, moviesFolder id.ID) {
 	t.Helper()
 	cat := catalog.New(db, events.NewBus())
 	var showsFolder id.ID
+	// Where the works elsewhere go: the first libraries when there are none.
+	var movies2, shows2, moviesFolder2, showsFolder2 id.ID
 	err := db.Write(context.Background(), func(ctx context.Context, tx *store.Tx) error {
 		m, err := cat.CreateLibrary(ctx, tx, catalog.LibraryInput{Name: "Movies", Kind: catalog.Movies, Folders: []string{catalogtest.Abs("/m")}})
 		if err != nil {
@@ -205,34 +264,46 @@ func generate(t *testing.T, db *store.DB) (movies, shows, moviesFolder id.ID) {
 			return err
 		}
 		movies, moviesFolder, shows, showsFolder = m.ID, m.Folders[0].ID, sh.ID, sh.Folders[0].ID
+		movies2, moviesFolder2, shows2, showsFolder2 = movies, moviesFolder, shows, showsFolder
+		if s.moviesElsewhere > 0 || s.seriesElsewhere > 0 {
+			m, err := cat.CreateLibrary(ctx, tx, catalog.LibraryInput{Name: "Movies 2", Kind: catalog.Movies, Folders: []string{catalogtest.Abs("/m2")}})
+			if err != nil {
+				return err
+			}
+			sh, err := cat.CreateLibrary(ctx, tx, catalog.LibraryInput{Name: "Shows 2", Kind: catalog.Shows, Folders: []string{catalogtest.Abs("/s2")}})
+			if err != nil {
+				return err
+			}
+			movies2, moviesFolder2, shows2, showsFolder2 = m.ID, m.Folders[0].ID, sh.ID, sh.Folders[0].ID
+		}
 		now := time.Now().UnixMilli()
 		for _, stmt := range []string{
-			// 40,000 movies. Each ID is a letter and a number, padded to 16
+			// The movies. Each ID is a letter and a number, padded to 16
 			// bytes.
-			`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 40000)
+			`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < @n_movies)
 			 INSERT INTO work (id, kind, root_id, title, sort_title, year, content_rating_age, community_rating, community_votes, added_at)
 			 SELECT CAST(printf('m%015d', i) AS BLOB), 'movie', CAST(printf('m%015d', i) AS BLOB),
 			   printf('The Movie %d', i), printf('Movie %d', i), 1950 + i % 75, i % 19,
 			   CASE WHEN i % 10 THEN i % 91 / 10.0 + 1 END, CASE WHEN i % 10 THEN i * 37 % 20000 + 1 END, @now - i * 1000 FROM n`,
-			`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 400)
+			`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < @n_series)
 			 INSERT INTO work (id, kind, root_id, title, sort_title, year, content_rating_age, community_rating, community_votes, added_at)
 			 SELECT CAST(printf('s%015d', i) AS BLOB), 'series', CAST(printf('s%015d', i) AS BLOB),
 			   printf('Show %d', i), printf('Show %d', i), 1990 + i % 35, i % 19,
 			   CASE WHEN i % 10 THEN i % 91 / 10.0 + 1 END, CASE WHEN i % 10 THEN i * 37 % 20000 + 1 END, @now - i * 1000 FROM n`,
-			`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 800)
+			`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < @n_series * @seasons)
 			 INSERT INTO work (id, kind, parent_id, root_id, title, sort_title, number, added_at)
-			 SELECT CAST(printf('z%015d', i) AS BLOB), 'season', CAST(printf('s%015d', (i + 1) / 2) AS BLOB),
-			   CAST(printf('s%015d', (i + 1) / 2) AS BLOB), printf('Season %d', 2 - i % 2), printf('Season %d', 2 - i % 2),
-			   2 - i % 2, @now FROM n`,
-			// Episodes aired one every 9 hours over the last ten years.
-			`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 9600)
+			 SELECT CAST(printf('z%015d', i) AS BLOB), 'season', CAST(printf('s%015d', (i + @seasons - 1) / @seasons) AS BLOB),
+			   CAST(printf('s%015d', (i + @seasons - 1) / @seasons) AS BLOB), printf('Season %d', (i - 1) % @seasons + 1), printf('Season %d', (i - 1) % @seasons + 1),
+			   (i - 1) % @seasons + 1, @now FROM n`,
+			// The episodes, aired one every @air_every seconds.
+			`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < @n_series * @seasons * @episodes)
 			 INSERT INTO work (id, kind, parent_id, root_id, title, sort_title, parent_number, number, release_date, added_at)
-			 SELECT CAST(printf('e%015d', i) AS BLOB), 'episode', CAST(printf('z%015d', (i + 11) / 12) AS BLOB),
-			   CAST(printf('s%015d', (i + 23) / 24) AS BLOB), printf('Episode %d', i), printf('Episode %d', i),
-			   2 - ((i + 11) / 12) % 2, (i - 1) % 12 + 1, date(@now / 1000 - i * 32400, 'unixepoch'), @now - i * 100 FROM n`,
+			 SELECT CAST(printf('e%015d', i) AS BLOB), 'episode', CAST(printf('z%015d', (i + @episodes - 1) / @episodes) AS BLOB),
+			   CAST(printf('s%015d', (i + @seasons * @episodes - 1) / (@seasons * @episodes)) AS BLOB), printf('Episode %d', i), printf('Episode %d', i),
+			   ((i + @episodes - 1) / @episodes - 1) % @seasons + 1, (i - 1) % @episodes + 1, date(@now / 1000 - i * @air_every, 'unixepoch'), @now - i * 100 FROM n`,
 			// A file, a version and a video track for each movie and episode.
 			`INSERT INTO media_file (id, folder_id, rel_path, size, mtime, status, duration_ms)
-			 SELECT CAST('f' || substr(CAST(id AS TEXT), 1, 1) || substr(CAST(id AS TEXT), 3) AS BLOB), CASE kind WHEN 'movie' THEN @movies_folder ELSE @shows_folder END,
+			 SELECT CAST('f' || substr(CAST(id AS TEXT), 1, 1) || substr(CAST(id AS TEXT), 3) AS BLOB), CASE WHEN kind = 'movie' THEN iif(id <= @last_movie, @movies_folder, @movies_folder2) ELSE iif(root_id <= @last_series, @shows_folder, @shows_folder2) END,
 			   CAST(id AS TEXT) || '.mkv', 1 << 30, 1, 'present', CASE kind WHEN 'movie' THEN 6000000 + rid ELSE 1500000 END
 			 FROM work WHERE kind IN ('movie', 'episode')`,
 			`INSERT INTO media_version (id, created_at) SELECT CAST('v' || substr(CAST(id AS TEXT), 1, 1) || substr(CAST(id AS TEXT), 3) AS BLOB), @now FROM work WHERE kind IN ('movie', 'episode')`,
@@ -243,7 +314,7 @@ func generate(t *testing.T, db *store.DB) (movies, shows, moviesFolder id.ID) {
 			 SELECT CAST('t' || substr(CAST(id AS TEXT), 1, 1) || substr(CAST(id AS TEXT), 3) AS BLOB), CAST('f' || substr(CAST(id AS TEXT), 1, 1) || substr(CAST(id AS TEXT), 3) AS BLOB), 'embedded', 0, 'video', 'h264', json_object('width', CASE rid % 3 WHEN 0 THEN 3840 ELSE 1920 END, 'range', CASE rid % 50 WHEN 0 THEN 'hdr10' ELSE 'sdr' END)
 			 FROM work WHERE kind IN ('movie', 'episode')`,
 			`INSERT INTO work_library (library_id, work_id, is_root, sort_title, added_at, year, runtime_sort, resolutions, dynamic_ranges, rating_sort, last_added_at)
-			 SELECT CASE WHEN w.kind = 'movie' THEN @movies ELSE @shows END, w.id, w.parent_id IS NULL, w.sort_title, w.added_at,
+			 SELECT CASE WHEN w.kind = 'movie' THEN iif(w.id <= @last_movie, @movies, @movies2) ELSE iif(w.root_id <= @last_series, @shows, @shows2) END, w.id, w.parent_id IS NULL, w.sort_title, w.added_at,
 			   k.year, k.runtime_sort, k.resolutions, k.dynamic_ranges, k.rating_sort,
 			   (SELECT max(d.added_at) FROM work d WHERE d.kind IN ('movie', 'episode') AND (d.id = w.id OR d.root_id = w.id OR d.parent_id = w.id))
 			 FROM work w JOIN work_browse_keys k ON k.work_id = w.id`,
@@ -266,7 +337,14 @@ func generate(t *testing.T, db *store.DB) (movies, shows, moviesFolder id.ID) {
 			var args []any
 			if strings.Contains(stmt, "@") {
 				args = []any{sql.Named("now", now), sql.Named("movies", movies), sql.Named("shows", shows),
-					sql.Named("movies_folder", moviesFolder), sql.Named("shows_folder", showsFolder)}
+					sql.Named("movies_folder", moviesFolder), sql.Named("shows_folder", showsFolder),
+					sql.Named("movies2", movies2), sql.Named("shows2", shows2),
+					sql.Named("movies_folder2", moviesFolder2), sql.Named("shows_folder2", showsFolder2),
+					sql.Named("n_movies", s.movies), sql.Named("n_series", s.series), sql.Named("seasons", s.seasons),
+					sql.Named("episodes", s.episodes), sql.Named("air_every", s.airEvery),
+					// The last movie and series of the first libraries.
+					sql.Named("last_movie", fmt.Appendf(nil, "m%015d", s.movies-s.moviesElsewhere)),
+					sql.Named("last_series", fmt.Appendf(nil, "s%015d", s.series-s.seriesElsewhere))}
 			}
 			_, err := tx.ExecContext(ctx, stmt, args...)
 			if err != nil {
@@ -281,14 +359,16 @@ func generate(t *testing.T, db *store.DB) (movies, shows, moviesFolder id.ID) {
 	return movies, shows, moviesFolder
 }
 
-// budgetViewer is an admin who has watched 2,000 movies, has 300 in progress
-// and 50 movies on My List, and is partway through 100 series.
-func budgetViewer(t *testing.T, db *store.DB, name string) users.Viewer {
+// budgetViewer is a user who has watched 2,000 movies, has 300 in progress
+// and 50 movies on My List, and is partway through 100 series: an admin
+// with every library, or a user granted libs.
+func budgetViewer(t *testing.T, db *store.DB, name string, libs ...id.ID) users.Viewer {
 	t.Helper()
 	svc := users.New(db, events.NewBus())
 	var user id.ID
 	err := db.Write(context.Background(), func(ctx context.Context, tx *store.Tx) error {
-		u, err := svc.CreateUser(ctx, tx, users.NewUser{Username: name, Admin: true, Grants: users.Grants{All: true}})
+		slices.SortFunc(libs, func(a, b id.ID) int { return slices.Compare(a[:], b[:]) })
+		u, err := svc.CreateUser(ctx, tx, users.NewUser{Username: name, Admin: len(libs) == 0, Grants: users.Grants{All: len(libs) == 0, Libraries: libs}})
 		user = u.ID
 		if err != nil {
 			return err
@@ -332,40 +412,12 @@ type smartList struct {
 
 // smartViewer is a second budgetViewer with smart lists, the first five of
 // them shown at the end of Home.
-func smartViewer(t *testing.T, db *store.DB, q *query.Service) (users.Viewer, []smartList) {
+func smartViewer(t *testing.T, db *store.DB, q *query.Service, libs ...id.ID) (users.Viewer, []smartList) {
 	t.Helper()
-	v := budgetViewer(t, db, "smart")
-	var actor id.ID // in movies 123 and 20123
-	copy(actor[:], fmt.Sprintf("p%015d", 123))
-	movies := []catalog.WorkKind{catalog.KindMovie}
-	series := []catalog.WorkKind{catalog.KindSeries}
-	hundred := 100
-	defs := []struct {
-		name string
-		q    query.WorkQuery
-	}{
-		{"movies, title and rating, by title", query.WorkQuery{Kinds: movies, Where: where(
-			query.Rule{Field: "title", Op: "contains", Values: []string{"movie 1"}},
-			query.Rule{Field: "rating", Op: "gte", Values: []string{"5"}})}},
-		{"movies, one actor, by added", query.WorkQuery{Kinds: movies, Where: where(
-			query.Rule{Field: "actor", Op: "anyOf", Values: []string{actor.String()}}),
-			Sort: []query.SortKey{{Field: "addedAt"}}}},
-		{"movies, unplayed, by last played", query.WorkQuery{Kinds: movies, Where: where(
-			query.Rule{Field: "playState", Op: "anyOf", Values: []string{"unplayed"}}),
-			Sort: []query.SortKey{{Field: "lastPlayedAt"}}}},
-		{"series, by last episode added", query.WorkQuery{Kinds: series, Where: where(
-			query.Rule{Field: "genre", Op: "anyOf", Values: []string{"Drama"}}),
-			Sort: []query.SortKey{{Field: "lastEpisodeAddedAt"}}}},
-		{"episodes, aired this year", query.WorkQuery{Kinds: []catalog.WorkKind{catalog.KindEpisode}, Where: where(
-			query.Rule{Field: "releaseDate", Op: "within", Values: []string{"P1Y"}}),
-			Sort: []query.SortKey{{Field: "releaseDate"}}}},
-		{"movies, capped at 100", query.WorkQuery{Kinds: movies, Where: where(
-			query.Rule{Field: "rating", Op: "gte", Values: []string{"6"}}),
-			Sort: []query.SortKey{{Field: "addedAt"}}, MaxWorks: &hundred}},
-	}
+	v := budgetViewer(t, db, "smart", libs...)
 	svc := users.New(db, events.NewBus())
 	var out []smartList
-	for _, d := range defs {
+	for _, d := range smartDefs() {
 		saved, err := d.q.Saved()
 		if err != nil {
 			t.Fatal(err)
@@ -410,4 +462,33 @@ func smartViewer(t *testing.T, db *store.DB, q *query.Service) (users.Viewer, []
 		t.Fatal(err)
 	}
 	return v, out
+}
+
+// smartDefs are the smart lists the budgets time, over generate's works.
+func smartDefs() []smartSample {
+	var actor id.ID // in movies 123 and 20123
+	copy(actor[:], fmt.Sprintf("p%015d", 123))
+	movies := []catalog.WorkKind{catalog.KindMovie}
+	series := []catalog.WorkKind{catalog.KindSeries}
+	hundred := 100
+	return []smartSample{
+		{"movies, title and rating, by title", query.WorkQuery{Kinds: movies, Where: where(
+			query.Rule{Field: "title", Op: "contains", Values: []string{"movie 1"}},
+			query.Rule{Field: "rating", Op: "gte", Values: []string{"5"}})}},
+		{"movies, one actor, by added", query.WorkQuery{Kinds: movies, Where: where(
+			query.Rule{Field: "actor", Op: "anyOf", Values: []string{actor.String()}}),
+			Sort: []query.SortKey{{Field: "addedAt"}}}},
+		{"movies, unplayed, by last played", query.WorkQuery{Kinds: movies, Where: where(
+			query.Rule{Field: "playState", Op: "anyOf", Values: []string{"unplayed"}}),
+			Sort: []query.SortKey{{Field: "lastPlayedAt"}}}},
+		{"series, by last episode added", query.WorkQuery{Kinds: series, Where: where(
+			query.Rule{Field: "genre", Op: "anyOf", Values: []string{"Drama"}}),
+			Sort: []query.SortKey{{Field: "lastEpisodeAddedAt"}}}},
+		{"episodes, aired this year", query.WorkQuery{Kinds: []catalog.WorkKind{catalog.KindEpisode}, Where: where(
+			query.Rule{Field: "releaseDate", Op: "within", Values: []string{"P1Y"}}),
+			Sort: []query.SortKey{{Field: "releaseDate"}}}},
+		{"movies, capped at 100", query.WorkQuery{Kinds: movies, Where: where(
+			query.Rule{Field: "rating", Op: "gte", Values: []string{"6"}}),
+			Sort: []query.SortKey{{Field: "addedAt"}}, MaxWorks: &hundred}},
+	}
 }
