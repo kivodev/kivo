@@ -13,12 +13,38 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime/debug"
 
 	"github.com/mmcdole/kivo/internal/config"
+	kivoversion "github.com/mmcdole/kivo/internal/version"
 )
 
-// version is set at build time with -ldflags "-X main.version=…".
-var version = "dev"
+// version and commit are set at build time, with -ldflags "-X
+// main.version=… -X main.commit=…": version for a release build, commit,
+// the short commit hash, for any other. init turns them into the version
+// the server reports.
+var version, commit string
+
+func init() {
+	if commit == "" {
+		commit = vcsCommit()
+	}
+	version = kivoversion.Of(version, commit)
+}
+
+// vcsCommit is the short commit hash go build stamped, if it had one.
+func vcsCommit() string {
+	info, _ := debug.ReadBuildInfo()
+	if info == nil {
+		return ""
+	}
+	for _, s := range info.Settings {
+		if s.Key == "vcs.revision" && len(s.Value) >= 8 {
+			return s.Value[:8]
+		}
+	}
+	return ""
+}
 
 func main() {
 	if err := command(os.Args[1:]); err != nil {

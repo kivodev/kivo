@@ -43,6 +43,8 @@ android {
         targetSdk = 37
         versionCode = appVersionCode
         versionName = "$appVersion ($buildNumber)"
+        // The version every request names: a semantic version, the build number as build metadata.
+        buildConfigField("String", "KIVO_VERSION", "\"$appVersion+$buildNumber\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

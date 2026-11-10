@@ -36,7 +36,7 @@ import kotlinx.serialization.encoding.*
  *
  * @param id The same across restarts and address changes; apps keep their sign-in under it.
  * @param name The server's name, from the `serverName` setting.
- * @param version 
+ * @param version The server's semantic version: a release's, such as `0.4.0`, or a dev build's, the patch after the latest release with its commit, such as `0.3.1-dev+56c0018d`. 
  * @param castProtocol The version of the contract between Cast senders, the Cast receiver and the server: the load request's custom data, the receiver's status and messages, and the `cast` routes. A receiver that speaks another version says which side to update. 
  * @param localUrls Signed in: the server's addresses on its local networks, without container, VM or VPN interfaces (a VPN only when the asker is on it). The asker's own network comes first, then addresses in the `localNetworks` setting, then the rest. 
  * @param publicUrl Signed in, when one is set (the `publicUrl` setting), the address to use away from home.
@@ -54,6 +54,7 @@ data class ServerInfo (
     /* The server's name, from the `serverName` setting. */
     @SerialName(value = "name") @Required val name: kotlin.String,
 
+    /* The server's semantic version: a release's, such as `0.4.0`, or a dev build's, the patch after the latest release with its commit, such as `0.3.1-dev+56c0018d`.  */
     @SerialName(value = "version") @Required val version: kotlin.String,
 
     /* The version of the contract between Cast senders, the Cast receiver and the server: the load request's custom data, the receiver's status and messages, and the `cast` routes. A receiver that speaks another version says which side to update.  */

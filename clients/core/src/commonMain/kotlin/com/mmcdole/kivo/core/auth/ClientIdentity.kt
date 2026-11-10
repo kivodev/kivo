@@ -11,7 +11,7 @@ interface ClientIdentity {
     /** `kivo-android` or `kivo-apple`. */
     val app: String
 
-    /** The app's version, such as `1.2.3`. */
+    /** The app's semantic version, with its build number as build metadata where it has one, such as `0.3.0+78`. */
     val appVersion: String
 
     /** What it runs on: `androidTv`, `androidPhone`, `appleTv`, `iPhone` or `iPad`. */

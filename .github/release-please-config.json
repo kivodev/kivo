@@ -20,6 +20,7 @@
       "package-name": "kivo",
       "skip-changelog": true,
       "extra-files": [
+        "server/internal/version/version.go",
         "clients/android/app/build.gradle.kts",
         "clients/apple/project.yml",
         "clients/tizen/config.xml",

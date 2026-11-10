@@ -116,7 +116,7 @@ func New(d Deps, opt Options) (*Server, error) {
 	if opt.Logger == nil {
 		opt.Logger = slog.Default()
 	}
-	web, err := newWebApp(opt.Web, d.BasePath)
+	web, err := newWebApp(opt.Web, d.BasePath, d.Version)
 	if err != nil {
 		return nil, fmt.Errorf("load the web app: %w", err)
 	}
