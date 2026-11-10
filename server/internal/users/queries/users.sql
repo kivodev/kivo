@@ -68,6 +68,9 @@ UPDATE list SET query = @query WHERE id = @id;
 -- name: RenameList :exec
 UPDATE list SET name = @name WHERE id = @id;
 
+-- name: SetListSort :exec
+UPDATE list SET sort = @sort WHERE id = @id;
+
 -- name: DeleteList :exec
 DELETE FROM list WHERE id = @id;
 

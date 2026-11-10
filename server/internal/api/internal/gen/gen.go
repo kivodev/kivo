@@ -762,6 +762,33 @@ func (e ListKind) Valid() bool {
 	}
 }
 
+// Defines values for ListSort.
+const (
+	ListSortCustom      ListSort = "custom"
+	ListSortDateAdded   ListSort = "dateAdded"
+	ListSortRating      ListSort = "rating"
+	ListSortReleaseDate ListSort = "releaseDate"
+	ListSortTitle       ListSort = "title"
+)
+
+// Valid indicates whether the value is a known member of the ListSort enum.
+func (e ListSort) Valid() bool {
+	switch e {
+	case ListSortCustom:
+		return true
+	case ListSortDateAdded:
+		return true
+	case ListSortRating:
+		return true
+	case ListSortReleaseDate:
+		return true
+	case ListSortTitle:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for LogLevel.
 const (
 	LogLevelDebug   LogLevel = "debug"
@@ -3343,6 +3370,15 @@ type ListCreate struct {
 // ListKind What a list is. `manual` is works the user added; `smart` is the works rules select. Skip kinds you don't know.
 type ListKind string
 
+// ListMove defines model for ListMove.
+type ListMove struct {
+	// After The work they go just after; without it they go first.
+	After *ID `json:"after,omitempty"`
+
+	// WorkIds The works to move, in the order they are to be in.
+	WorkIds []ID `json:"workIds"`
+}
+
 // ListRef A list as a Home row names it.
 type ListRef struct {
 	// ID A UUIDv7.
@@ -3353,12 +3389,22 @@ type ListRef struct {
 	Name string   `json:"name"`
 }
 
+// ListSort The order a manual list is shown in. `custom` is the user's own: a
+// work added goes first, and `moveListWorks` moves them. `title` is A
+// to Z, `releaseDate` newest first, `rating` highest first and
+// `dateAdded` most recently added to the list first. Treat a sort you
+// don't know as `custom`.
+type ListSort string
+
 // ListUpdate defines model for ListUpdate.
 type ListUpdate struct {
 	Name *string `json:"name,omitempty"`
 
 	// Smart Replaces a smart list's rules; a manual list has none.
 	Smart *SmartQuery `json:"smart,omitempty"`
+
+	// Sort Sets the order a manual list is shown in; a smart list has none.
+	Sort *ListSort `json:"sort,omitempty"`
 }
 
 // ListWorkAdd defines model for ListWorkAdd.
@@ -5239,6 +5285,9 @@ type WorkList struct {
 	// pointing at what's wrong, returns an empty page and is off Home.
 	Smart *WorkListSmart `json:"smart,omitempty"`
 
+	// Sort The order a manual list's works are in, wherever they are listed. A smart list has none.
+	Sort *ListSort `json:"sort,omitempty"`
+
 	// WorkCount Works in the list the user sees. A smart list's is 0 except in
 	// `listLists` with `counts`; the first page of its works has the
 	// count as `total`.
@@ -5783,6 +5832,9 @@ type CreateListJSONRequestBody = ListCreate
 // UpdateListJSONRequestBody defines body for UpdateList for application/json ContentType.
 type UpdateListJSONRequestBody = ListUpdate
 
+// MoveListWorksJSONRequestBody defines body for MoveListWorks for application/json ContentType.
+type MoveListWorksJSONRequestBody = ListMove
+
 // AddListWorkJSONRequestBody defines body for AddListWork for application/json ContentType.
 type AddListWorkJSONRequestBody = ListWorkAdd
 
@@ -6195,6 +6247,9 @@ type ServerInterface interface {
 	// UpdateList Update a list
 	// (PATCH /api/v1/lists/{id})
 	UpdateList(w http.ResponseWriter, r *http.Request, id ID)
+	// MoveListWorks Move works in a list's custom order
+	// (POST /api/v1/lists/{id}/move)
+	MoveListWorks(w http.ResponseWriter, r *http.Request, id ID)
 	// ListListWorks List a list's works
 	// (GET /api/v1/lists/{id}/works)
 	ListListWorks(w http.ResponseWriter, r *http.Request, id ID, params ListListWorksParams)
@@ -7858,6 +7913,32 @@ func (siw *ServerInterfaceWrapper) UpdateList(w http.ResponseWriter, r *http.Req
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.UpdateList(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// MoveListWorks operation middleware
+func (siw *ServerInterfaceWrapper) MoveListWorks(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.MoveListWorks(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -9823,6 +9904,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/api/v1/lists/{id}", wrapper.UpdateList)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/lists/{id}/works", wrapper.ListListWorks)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/lists/{id}/works", wrapper.AddListWork)
+	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/lists/{id}/move", wrapper.MoveListWorks)
 	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/api/v1/lists/{id}/works/{workId}", wrapper.RemoveListWork)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/api/v1/works", wrapper.UpdateWorks)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/works/query", wrapper.QueryWorks)
@@ -14591,6 +14673,104 @@ type UpdateListdefaultApplicationProblemPlusJSONResponse struct {
 }
 
 func (response UpdateListdefaultApplicationProblemPlusJSONResponse) VisitUpdateListResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MoveListWorksRequestObject struct {
+	ID   ID `json:"id"`
+	Body *MoveListWorksJSONRequestBody
+}
+
+type MoveListWorksResponseObject interface {
+	VisitMoveListWorksResponse(w http.ResponseWriter) error
+}
+
+type MoveListWorks204Response struct {
+}
+
+func (response MoveListWorks204Response) VisitMoveListWorksResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type MoveListWorks400ApplicationProblemPlusJSONResponse struct {
+	BadRequestApplicationProblemPlusJSONResponse
+}
+
+func (response MoveListWorks400ApplicationProblemPlusJSONResponse) VisitMoveListWorksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MoveListWorks401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response MoveListWorks401ApplicationProblemPlusJSONResponse) VisitMoveListWorksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MoveListWorks404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response MoveListWorks404ApplicationProblemPlusJSONResponse) VisitMoveListWorksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MoveListWorks409ApplicationProblemPlusJSONResponse struct {
+	ConflictApplicationProblemPlusJSONResponse
+}
+
+func (response MoveListWorks409ApplicationProblemPlusJSONResponse) VisitMoveListWorksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MoveListWorksdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response MoveListWorksdefaultApplicationProblemPlusJSONResponse) VisitMoveListWorksResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
@@ -20310,6 +20490,9 @@ type StrictServerInterface interface {
 	// UpdateList Update a list
 	// (PATCH /api/v1/lists/{id})
 	UpdateList(ctx context.Context, request UpdateListRequestObject) (UpdateListResponseObject, error)
+	// MoveListWorks Move works in a list's custom order
+	// (POST /api/v1/lists/{id}/move)
+	MoveListWorks(ctx context.Context, request MoveListWorksRequestObject) (MoveListWorksResponseObject, error)
 	// ListListWorks List a list's works
 	// (GET /api/v1/lists/{id}/works)
 	ListListWorks(ctx context.Context, request ListListWorksRequestObject) (ListListWorksResponseObject, error)
@@ -22114,6 +22297,39 @@ func (sh *strictHandler) UpdateList(w http.ResponseWriter, r *http.Request, id I
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(UpdateListResponseObject); ok {
 		if err := validResponse.VisitUpdateListResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// MoveListWorks operation middleware
+func (sh *strictHandler) MoveListWorks(w http.ResponseWriter, r *http.Request, id ID) {
+	var request MoveListWorksRequestObject
+
+	request.ID = id
+
+	var body MoveListWorksJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.MoveListWorks(ctx, request.(MoveListWorksRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "MoveListWorks")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(MoveListWorksResponseObject); ok {
+		if err := validResponse.VisitMoveListWorksResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

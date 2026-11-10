@@ -6,6 +6,7 @@ import (
 	"github.com/mmcdole/kivo/internal/api/internal/gen"
 	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/query"
+	"github.com/mmcdole/kivo/internal/users"
 )
 
 // listOf converts a list.
@@ -15,7 +16,10 @@ func listOf(l query.List) gen.WorkList {
 		items := summaries(l.Items)
 		out.Items = &items
 	}
-	if l.Smart != nil {
+	if l.Smart == nil {
+		sort := gen.ListSort(l.Sort)
+		out.Sort = &sort
+	} else {
 		out.Kind = gen.ListKindSmart
 		out.Smart = &gen.WorkListSmart{Query: wireQuery(l.Smart.Query)}
 		if len(l.Smart.Errors) > 0 {
@@ -85,8 +89,8 @@ func (h *handlers) UpdateList(ctx context.Context, req gen.UpdateListRequestObje
 	if err != nil {
 		return nil, err
 	}
-	if req.Body.Name != nil || saved != nil {
-		if err := h.deps.Users.UpdateList(ctx, v, req.ID, req.Body.Name, saved); err != nil {
+	if req.Body.Name != nil || saved != nil || req.Body.Sort != nil {
+		if err := h.deps.Users.UpdateList(ctx, v, req.ID, req.Body.Name, saved, (*users.ListSort)(req.Body.Sort)); err != nil {
 			return nil, err
 		}
 	}
@@ -128,6 +132,16 @@ func (h *handlers) AddListWork(ctx context.Context, req gen.AddListWorkRequestOb
 		return nil, err
 	}
 	return gen.AddListWork204Response{}, nil
+}
+
+func (h *handlers) MoveListWorks(ctx context.Context, req gen.MoveListWorksRequestObject) (gen.MoveListWorksResponseObject, error) {
+	if n := len(req.Body.WorkIds); n < 1 || n > 100 {
+		return nil, invalid("workIds: 1 to 100 works", field("workIds", "outOfRange"))
+	}
+	if err := h.deps.Userstate.MoveInList(ctx, callerOf(ctx).viewer, req.ID, req.Body.WorkIds, deref(req.Body.After)); err != nil {
+		return nil, err
+	}
+	return gen.MoveListWorks204Response{}, nil
 }
 
 func (h *handlers) RemoveListWork(ctx context.Context, req gen.RemoveListWorkRequestObject) (gen.RemoveListWorkResponseObject, error) {

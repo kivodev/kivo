@@ -29,7 +29,31 @@ var (
 	ErrListKind = fault.New(fault.Conflict, "list kind is fixed")
 	// ErrListLimit means the Viewer has MaxLists lists already.
 	ErrListLimit = fault.New(fault.Conflict, "too many lists")
+	// ErrListSort means a sort isn't one a list can be shown in.
+	ErrListSort = fault.New(fault.Invalid, "unknown list sort")
 )
+
+// ListSort is the order a manual list is shown in.
+type ListSort string
+
+// The sorts of a manual list. ListCustom is the user's own order, in which
+// a work added goes first; the rest order the works by one of their fields.
+const (
+	ListCustom      ListSort = "custom"
+	ListTitle       ListSort = "title"
+	ListReleaseDate ListSort = "releaseDate"
+	ListRating      ListSort = "rating"
+	ListDateAdded   ListSort = "dateAdded"
+)
+
+// Valid reports whether s is one of the sorts.
+func (s ListSort) Valid() bool {
+	switch s {
+	case ListCustom, ListTitle, ListReleaseDate, ListRating, ListDateAdded:
+		return true
+	}
+	return false
+}
 
 // myListName is the name My List has, on the server and in the clients.
 const myListName = "Watchlist"
@@ -69,23 +93,30 @@ func (s *Service) CreateList(ctx context.Context, v Viewer, name string, query *
 	return list, nil
 }
 
-// UpdateList renames one of v's user's lists, when name is set, and
-// replaces a smart list's rules with query, a WorkQuery as JSON, when query
-// is set, in one transaction. My List can't be changed and a manual list
-// has no rules.
-func (s *Service) UpdateList(ctx context.Context, v Viewer, list id.ID, name, query *string) error {
+// UpdateList renames one of v's user's lists, when name is set, replaces a
+// smart list's rules with query, a WorkQuery as JSON, when query is set,
+// and sets the order a manual list is shown in, when sort is set, in one
+// transaction. My List keeps its name, a manual list has no rules, and a
+// smart list has no sort.
+func (s *Service) UpdateList(ctx context.Context, v Viewer, list id.ID, name, query *string, sort *ListSort) error {
 	if name != nil {
 		if err := checkListName(*name); err != nil {
 			return err
 		}
 	}
+	if sort != nil && !sort.Valid() {
+		return fmt.Errorf("%w: %q", ErrListSort, *sort)
+	}
 	err := s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
 		q := dbq.New(tx)
-		l, err := changeableList(ctx, q, v, list)
+		l, err := ownList(ctx, q, v, list)
 		if err != nil {
 			return err
 		}
-		if query != nil && !l.Smart {
+		if l.BuiltIn && (name != nil || query != nil) {
+			return ErrListBuiltIn
+		}
+		if query != nil && !l.Smart || sort != nil && l.Smart {
 			return ErrListKind
 		}
 		if name != nil {
@@ -94,6 +125,11 @@ func (s *Service) UpdateList(ctx context.Context, v Viewer, list id.ID, name, qu
 				return fmt.Errorf("%w: %q", ErrListNameTaken, *name)
 			}
 			if err != nil {
+				return err
+			}
+		}
+		if sort != nil {
+			if err := q.SetListSort(ctx, dbq.SetListSortParams{ID: list, Sort: string(*sort)}); err != nil {
 				return err
 			}
 		}
@@ -109,12 +145,22 @@ func (s *Service) UpdateList(ctx context.Context, v Viewer, list id.ID, name, qu
 	return nil
 }
 
+// SetListSort sets the order a list is shown in, in the caller's
+// transaction, for a change to the list's works that decides it.
+func SetListSort(ctx context.Context, tx *store.Tx, list id.ID, sort ListSort) error {
+	return dbq.New(tx).SetListSort(ctx, dbq.SetListSortParams{ID: list, Sort: string(sort)})
+}
+
 // DeleteList deletes one of v's user's lists, except My List.
 func (s *Service) DeleteList(ctx context.Context, v Viewer, list id.ID) error {
 	err := s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
 		q := dbq.New(tx)
-		if _, err := changeableList(ctx, q, v, list); err != nil {
+		l, err := ownList(ctx, q, v, list)
+		if err != nil {
 			return err
+		}
+		if l.BuiltIn {
+			return ErrListBuiltIn
 		}
 		return q.DeleteList(ctx, list)
 	})
@@ -139,19 +185,13 @@ func nullableString(s *string) sql.NullString {
 	return sql.NullString{String: *s, Valid: true}
 }
 
-// changeableList checks that list is the user's and isn't My List.
-func changeableList(ctx context.Context, q *dbq.Queries, v Viewer, list id.ID) (dbq.GetListRow, error) {
+// ownList reads list, which must be the user's.
+func ownList(ctx context.Context, q *dbq.Queries, v Viewer, list id.ID) (dbq.GetListRow, error) {
 	l, err := q.GetList(ctx, dbq.GetListParams{ID: list, UserID: v.user})
 	if errors.Is(err, sql.ErrNoRows) {
 		return l, fmt.Errorf("%w: %s", ErrListNotFound, list)
 	}
-	if err != nil {
-		return l, err
-	}
-	if l.BuiltIn {
-		return l, ErrListBuiltIn
-	}
-	return l, nil
+	return l, err
 }
 
 // checkListName refuses a list name that is empty, too long, padded with

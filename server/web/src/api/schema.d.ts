@@ -1071,9 +1071,10 @@ export interface paths {
         head?: never;
         /**
          * Update a list
-         * @description Renames the list, replaces a smart list's rules, or both, in one
-         *     change. Watchlist can't be changed, and `smart` is refused on a manual
-         *     list: `409` with code `conflict`. A name in use is `409` with code
+         * @description Renames the list, replaces a smart list's rules, sets the order a
+         *     manual list is shown in, or any of them, in one change. Watchlist
+         *     keeps its name, `smart` is refused on a manual list and `sort` on a
+         *     smart list: `409` with code `conflict`. A name in use is `409` with code
          *     `nameTaken`. Invalid rules are `400` with pointers such as
          *     `/smart/query/where/rules/0/op`. A `listsChanged` event tells the
          *     user's clients.
@@ -1092,21 +1093,49 @@ export interface paths {
         };
         /**
          * List a list's works
-         * @description A list's works the user sees: a manual list's most recently added
-         *     first, a smart list's as its rules select them. With `kind`, only
+         * @description A list's works the user sees: a manual list's in its `sort`, a
+         *     smart list's as its rules select them. With `kind`, only
          *     those kinds. A smart list whose rules no longer run is empty. A grid, paged by `offset`, with `total` on
-         *     the first page (offset 0) only; works added at
-         *     the same time are listed by title.
+         *     the first page (offset 0) only.
          */
         get: operations["listListWorks"];
         put?: never;
         /**
          * Add a work to a list
          * @description A smart list's works come from its rules: `409` with code
-         *     `conflict`. A work already in the list keeps its place. It stays there after
+         *     `conflict`. The work goes first in the list's custom order; a work
+         *     already in the list keeps its place. It stays there after
          *     being played. A `listsChanged` event tells the user's clients.
          */
         post: operations["addListWork"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lists/{id}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["ID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move works in a list's custom order
+         * @description Puts `workIds`, in the order given, just after the work `after` in
+         *     a manual list's custom order, or first without `after`, and sets
+         *     the list's `sort` to `custom`. A work that isn't in the list is
+         *     skipped, so repeating a move changes nothing. `after` must be in the
+         *     list and not among `workIds`: `400` otherwise. A smart list's rules
+         *     order it: `409` with code `conflict`. A `listsChanged` event tells
+         *     the user's clients.
+         */
+        post: operations["moveListWorks"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3731,6 +3760,8 @@ export interface components {
              *     count as `total`.
              */
             workCount: number;
+            /** @description The order a manual list's works are in, wherever they are listed. A smart list has none. */
+            sort?: components["schemas"]["ListSort"];
             smart?: components["schemas"]["WorkListSmart"];
             /**
              * @description The list's first works the user sees, up to 20, in the list's
@@ -3743,6 +3774,15 @@ export interface components {
          * @enum {string}
          */
         ListKind: "manual" | "smart";
+        /**
+         * @description The order a manual list is shown in. `custom` is the user's own: a
+         *     work added goes first, and `moveListWorks` moves them. `title` is A
+         *     to Z, `releaseDate` newest first, `rating` highest first and
+         *     `dateAdded` most recently added to the list first. Treat a sort you
+         *     don't know as `custom`.
+         * @enum {string}
+         */
+        ListSort: "custom" | "title" | "releaseDate" | "rating" | "dateAdded";
         WorkListList: {
             items: components["schemas"]["WorkList"][];
         };
@@ -3766,6 +3806,14 @@ export interface components {
             name?: string;
             /** @description Replaces a smart list's rules; a manual list has none. */
             smart?: components["schemas"]["SmartQuery"];
+            /** @description Sets the order a manual list is shown in; a smart list has none. */
+            sort?: components["schemas"]["ListSort"];
+        };
+        ListMove: {
+            /** @description The works to move, in the order they are to be in. */
+            workIds: components["schemas"]["ID"][];
+            /** @description The work they go just after; without it they go first. */
+            after?: components["schemas"]["ID"];
         };
         ListWorkAdd: {
             workId: components["schemas"]["ID"];
@@ -7558,6 +7606,35 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            default: components["responses"]["Error"];
+        };
+    };
+    moveListWorks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ListMove"];
+            };
+        };
+        responses: {
+            /** @description Moved. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             default: components["responses"]["Error"];
         };
     };

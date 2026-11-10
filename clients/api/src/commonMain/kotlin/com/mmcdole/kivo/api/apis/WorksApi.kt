@@ -34,6 +34,7 @@ import com.mmcdole.kivo.api.models.Home
 import com.mmcdole.kivo.api.models.HomeRowInfoList
 import com.mmcdole.kivo.api.models.HomeRowsUpdate
 import com.mmcdole.kivo.api.models.ListCreate
+import com.mmcdole.kivo.api.models.ListMove
 import com.mmcdole.kivo.api.models.ListUpdate
 import com.mmcdole.kivo.api.models.ListWorkAdd
 import com.mmcdole.kivo.api.models.MatchList
@@ -86,7 +87,7 @@ open class WorksApi : ApiClient {
 
     /**
      * Add a work to a list
-     * A smart list&#39;s works come from its rules: &#x60;409&#x60; with code &#x60;conflict&#x60;. A work already in the list keeps its place. It stays there after being played. A &#x60;listsChanged&#x60; event tells the user&#39;s clients. 
+     * A smart list&#39;s works come from its rules: &#x60;409&#x60; with code &#x60;conflict&#x60;. The work goes first in the list&#39;s custom order; a work already in the list keeps its place. It stays there after being played. A &#x60;listsChanged&#x60; event tells the user&#39;s clients. 
      * @param id 
      * @param listWorkAdd 
      * @return void
@@ -449,7 +450,7 @@ open class WorksApi : ApiClient {
 
     /**
      * List a list&#39;s works
-     * A list&#39;s works the user sees: a manual list&#39;s most recently added first, a smart list&#39;s as its rules select them. With &#x60;kind&#x60;, only those kinds. A smart list whose rules no longer run is empty. A grid, paged by &#x60;offset&#x60;, with &#x60;total&#x60; on the first page (offset 0) only; works added at the same time are listed by title. 
+     * A list&#39;s works the user sees: a manual list&#39;s in its &#x60;sort&#x60;, a smart list&#39;s as its rules select them. With &#x60;kind&#x60;, only those kinds. A smart list whose rules no longer run is empty. A grid, paged by &#x60;offset&#x60;, with &#x60;total&#x60; on the first page (offset 0) only. 
      * @param id 
      * @param kind Only these kinds. (optional)
      * @param offset How many items to skip from the start. (optional)
@@ -756,6 +757,39 @@ open class WorksApi : ApiClient {
         val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.POST,
             "/api/v1/works/{id}/match".replace("{" + "id" + "}", "$id"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return jsonRequest(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+
+    /**
+     * Move works in a list&#39;s custom order
+     * Puts &#x60;workIds&#x60;, in the order given, just after the work &#x60;after&#x60; in a manual list&#39;s custom order, or first without &#x60;after&#x60;, and sets the list&#39;s &#x60;sort&#x60; to &#x60;custom&#x60;. A work that isn&#39;t in the list is skipped, so repeating a move changes nothing. &#x60;after&#x60; must be in the list and not among &#x60;workIds&#x60;: &#x60;400&#x60; otherwise. A smart list&#39;s rules order it: &#x60;409&#x60; with code &#x60;conflict&#x60;. A &#x60;listsChanged&#x60; event tells the user&#39;s clients. 
+     * @param id 
+     * @param listMove 
+     * @return void
+     */
+    open suspend fun moveListWorks(id: kotlin.String, listMove: ListMove): HttpResponse<Unit> {
+
+        val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
+
+        val localVariableBody = listMove
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.POST,
+            "/api/v1/lists/{id}/move".replace("{" + "id" + "}", "$id"),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -1105,7 +1139,7 @@ open class WorksApi : ApiClient {
 
     /**
      * Update a list
-     * Renames the list, replaces a smart list&#39;s rules, or both, in one change. Watchlist can&#39;t be changed, and &#x60;smart&#x60; is refused on a manual list: &#x60;409&#x60; with code &#x60;conflict&#x60;. A name in use is &#x60;409&#x60; with code &#x60;nameTaken&#x60;. Invalid rules are &#x60;400&#x60; with pointers such as &#x60;/smart/query/where/rules/0/op&#x60;. A &#x60;listsChanged&#x60; event tells the user&#39;s clients. 
+     * Renames the list, replaces a smart list&#39;s rules, sets the order a manual list is shown in, or any of them, in one change. Watchlist keeps its name, &#x60;smart&#x60; is refused on a manual list and &#x60;sort&#x60; on a smart list: &#x60;409&#x60; with code &#x60;conflict&#x60;. A name in use is &#x60;409&#x60; with code &#x60;nameTaken&#x60;. Invalid rules are &#x60;400&#x60; with pointers such as &#x60;/smart/query/where/rules/0/op&#x60;. A &#x60;listsChanged&#x60; event tells the user&#39;s clients. 
      * @param id 
      * @param listUpdate 
      * @return WorkList

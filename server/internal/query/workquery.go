@@ -235,7 +235,10 @@ type reading struct {
 	// library is the one library to read, which the Viewer must be granted
 	// like any other, or zero for every library that holds the query's
 	// kinds.
-	library   id.ID
+	library id.ID
+	// list is the one manual list to read, or zero: the query selects from
+	// the works in it, if it is the user's, and may sort by listSorts.
+	list      id.ID
 	unmatched bool // only the works not yet matched
 	letters   bool // counted also counts the works by first character
 }
@@ -252,18 +255,23 @@ var libraryOf = map[catalog.WorkKind]catalog.LibraryKind{
 // kinds of library that hold them, and whether any is under a root work.
 // It writes the names in allKinds and libraryOf, never the query's own
 // text, so a kind that isn't one of them selects nothing. With none of
-// them it writes NULL, which no kind is in.
-func scope(kinds []catalog.WorkKind) (works, libraries string, nested bool) {
+// them it writes NULL, which no kind is in. A read of a list, listed,
+// takes listKinds instead: an extra is under a root, in its library.
+func scope(kinds []catalog.WorkKind, listed bool) (works, libraries string, nested bool) {
+	known := allKinds
+	if listed {
+		known = listKinds
+	}
 	var ws, ls []string
-	for _, k := range allKinds {
+	for _, k := range known {
 		if !slices.Contains(kinds, k) {
 			continue
 		}
 		ws = append(ws, "'"+string(k)+"'")
-		if l := "'" + string(libraryOf[k]) + "'"; !slices.Contains(ls, l) {
-			ls = append(ls, l)
+		if l, ok := libraryOf[k]; ok && !slices.Contains(ls, "'"+string(l)+"'") {
+			ls = append(ls, "'"+string(l)+"'")
 		}
-		nested = nested || k == catalog.KindSeason || k == catalog.KindEpisode
+		nested = nested || k == catalog.KindSeason || k == catalog.KindEpisode || k == catalog.KindExtra
 	}
 	if len(ws) == 0 {
 		return "NULL", "NULL", false
@@ -295,8 +303,12 @@ func scope(kinds []catalog.WorkKind) (works, libraries string, nested bool) {
 // through the column's index, so in its order. With "us" or "pl", it
 // starts from the user's states or from played, and looks up the row of
 // each one's work, so it reads only the works with one.
+//
+// A read of a list starts from the list's rows lw, if the list is the
+// user's, and looks up the row of each one's work, whatever its library: it
+// reads only the works in the list.
 func (c *compiler) matching(kinds []catalog.WorkKind, rd reading, from string) string {
-	works, libraries, nested := scope(kinds)
+	works, libraries, nested := scope(kinds, !rd.list.IsZero())
 	rows, joins, age := "\n  AND wl.is_root", "", "w.content_rating_age"
 	if nested {
 		rows, joins = "", "\nCROSS JOIN work r ON r.id = w.root_id"
@@ -322,6 +334,10 @@ func (c *compiler) matching(kinds []catalog.WorkKind, rd reading, from string) s
 		first = "FROM played pl\nCROSS JOIN " + byKey + " ON wl.work_id = pl.work"
 	default:
 		first = "FROM work_library wl INDEXED BY " + sortIndexes[from]
+	}
+	if !rd.list.IsZero() {
+		first = "FROM list_work lw\nCROSS JOIN work_library wl INDEXED BY work_library_work ON wl.work_id = lw.work_id"
+		in = "lw.list_id = (SELECT ul.id FROM list ul WHERE ul.id = @list AND ul.user_id = @user)"
 	}
 	unmatched := ""
 	if rd.unmatched {
@@ -354,7 +370,7 @@ func narrowed(q WorkQuery, only []catalog.WorkKind) []catalog.WorkKind {
 // one the user's own state gives (see mine). It is nil for any other
 // query.
 func ordered(q WorkQuery, kinds []catalog.WorkKind) *fieldDef {
-	if _, _, nested := scope(kinds); nested || len(q.Sort) > 1 {
+	if _, _, nested := scope(kinds, false); nested || len(q.Sort) > 1 {
 		return nil
 	}
 	key := SortKey{Field: "title"}
@@ -404,8 +420,8 @@ func (c *compiler) mine(f *fieldDef, kinds []catalog.WorkKind) string {
 // cap.
 func compile(q WorkQuery, vw viewer, now time.Time, seed string, only []catalog.WorkKind, rd reading) compiled {
 	kinds := narrowed(q, only)
-	_, _, nested := scope(kinds)
-	c := &compiler{now: now, seed: seed, nested: nested,
+	_, _, nested := scope(kinds, !rd.list.IsZero())
+	c := &compiler{now: now, seed: seed, nested: nested, list: !rd.list.IsZero(),
 		rolls: slices.Contains(kinds, catalog.KindSeries) || slices.Contains(kinds, catalog.KindSeason)}
 	where := ""
 	if q.Where != nil {
@@ -464,7 +480,7 @@ ORDER BY p.` + strings.ReplaceAll(by, ", ", ", p.")
 	out := compiled{
 		counted: statement("MATERIALIZED (\n"+capped(selected("", titled, ""), by)+"\n)", by, "matched"),
 		page:    statement("(\n"+capped(selected("", columns, ""), by)+"\n)", by, ""),
-		args:    vw.args(append(c.params, sql.Named("only", set(only)), sql.Named("library", rd.library))...),
+		args:    vw.args(append(c.params, sql.Named("only", set(only)), sql.Named("library", rd.library), sql.Named("list", rd.list))...),
 	}
 	f := ordered(q, kinds)
 	if f == nil || rd.library.IsZero() {
@@ -512,7 +528,8 @@ type compiler struct {
 	now    time.Time
 	seed   string
 
-	nested bool // the works include seasons or episodes, so each one's root r is read
+	nested bool // the works include seasons, episodes or extras, so each one's root r is read
+	list   bool // the works are a list's, so the order may be one of listSorts
 	rolls  bool // the works include series or seasons
 	state  bool // a rule or the order reads the user's state us
 	played bool // a rule or the order reads played pl
@@ -732,6 +749,9 @@ func (c *compiler) order(q WorkQuery) (columns, by string) {
 			continue
 		}
 		f := fieldsByKey[k.Field]
+		if own := listSorts[k.Field]; c.list && own != nil {
+			f = own
+		}
 		dir := k.Direction
 		if dir == "" {
 			dir = f.DefaultDirection

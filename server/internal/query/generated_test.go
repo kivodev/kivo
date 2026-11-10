@@ -261,8 +261,8 @@ func newGenerated(t *testing.T, db *store.DB) *generated {
 				SELECT @user, id, rid % 3 = 0, rid % 3 = 0, 600000 * (rid % 3 = 1), rid % 3 = 1,
 				  CASE WHEN rid % 5 = 0 THEN rid % 10 + 1 END, CASE WHEN rid % 7 THEN @now - (rid % 40) * 3600000 END, @now
 				FROM work WHERE (kind NOT IN ('series', 'season') AND rid % @every = 0) OR rid % 10 = 0`, `
-				INSERT INTO list_work (list_id, work_id, added_at)
-				SELECT l.id, w.id, @now - w.rid FROM work w, list l WHERE l.user_id = @user AND l.built_in AND w.rid % 9 = 0`,
+				INSERT INTO list_work (list_id, work_id, added_at, position)
+				SELECT l.id, w.id, @now - w.rid, w.rid FROM work w, list l WHERE l.user_id = @user AND l.built_in AND w.rid % 9 = 0`,
 			} {
 				if _, err := tx.ExecContext(ctx, stmt, args...); err != nil {
 					return err

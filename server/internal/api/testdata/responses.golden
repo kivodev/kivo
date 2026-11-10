@@ -266,6 +266,7 @@ GET /api/v1/lists
       "id": "<id13>",
       "kind": "manual",
       "name": "Watchlist",
+      "sort": "custom",
       "workCount": 0
     }
   ]

@@ -38,6 +38,7 @@ import kotlinx.serialization.encoding.*
  * @param kind What a list is. `manual` is works the user added; `smart` is the works rules select. Skip kinds you don't know.
  * @param builtIn Watchlist, which every user has and can't delete or rename.
  * @param workCount Works in the list the user sees. A smart list's is 0 except in `listLists` with `counts`; the first page of its works has the count as `total`. 
+ * @param sort The order a manual list's works are in, wherever they are listed. A smart list has none.
  * @param smart 
  * @param items The list's first works the user sees, up to 20, in the list's order, as a Home row has them. Set by `listLists` with `counts`. 
  */
@@ -58,6 +59,9 @@ data class WorkList (
 
     /* Works in the list the user sees. A smart list's is 0 except in `listLists` with `counts`; the first page of its works has the count as `total`.  */
     @SerialName(value = "workCount") @Required val workCount: kotlin.Int,
+
+    /* The order a manual list's works are in, wherever they are listed. A smart list has none. */
+    @SerialName(value = "sort") val sort: kotlin.String? = null,
 
     @SerialName(value = "smart") val smart: WorkListSmart? = null,
 
