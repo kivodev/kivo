@@ -612,6 +612,58 @@ func TestTrackChoice(t *testing.T) {
 	}
 }
 
+func TestSeriesChoice(t *testing.T) {
+	f := newFixture(t)
+	_, shows := f.b.Library(catalog.Shows)
+	dark, lost := f.b.Series("Dark"), f.b.Series("Lost")
+	ep, other := f.b.Episode(shows, dark, 1, 1), f.b.Episode(shows, lost, 1, 1)
+	movie := f.movie("Heat", time.Hour)
+	sdh := userstate.TrackChoice{AudioLanguage: "de", SubtitleLanguage: "en", SubtitleKind: "sdh"}
+	if err := f.s.SetTrackChoice(ctx, f.user, dark, sdh); err != nil {
+		t.Fatal(err)
+	}
+	remembers := users.User{ID: f.user, Playback: users.Playback{RememberTracks: true}}
+	forgets := users.User{ID: f.user}
+	for _, tc := range []struct {
+		name   string
+		u      users.User
+		work   id.ID
+		series id.ID
+		want   userstate.TrackChoice
+		ok     bool
+		err    error
+	}{
+		{"remember tracks off", forgets, ep.Work, id.ID{}, userstate.TrackChoice{}, false, nil},
+		{"movie", remembers, movie.Work, id.ID{}, userstate.TrackChoice{}, false, nil},
+		{"no choice yet", remembers, other.Work, lost, userstate.TrackChoice{}, false, nil},
+		{"remembered choice", remembers, ep.Work, dark, sdh, true, nil},
+		{"missing work", remembers, id.New(), id.ID{}, userstate.TrackChoice{}, false, catalog.ErrNotFound},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			series, got, ok, err := f.s.SeriesChoice(ctx, tc.u, tc.work)
+			if series != tc.series || got != tc.want || ok != tc.ok || !errors.Is(err, tc.err) {
+				t.Fatalf("got %v %+v %v %v; want %v %+v %v %v", series, got, ok, err, tc.series, tc.want, tc.ok, tc.err)
+			}
+		})
+	}
+	full := userstate.TrackChoice{AudioLanguage: "ja", SubtitleLanguage: "en", SubtitleKind: "full"}
+	if err := f.s.SetTrackChoice(ctx, f.user, dark, full); err != nil {
+		t.Fatal(err)
+	}
+	if _, got, ok, err := f.s.SeriesChoice(ctx, remembers, ep.Work); !ok || err != nil || got != full {
+		t.Fatalf("got %+v %v %v; want the newer non-SDH choice", got, ok, err)
+	}
+	// A choice that can't be read still names the series, so a new choice
+	// can be remembered for it.
+	f.b.Write(func(ctx context.Context, tx *store.Tx) error {
+		_, err := tx.ExecContext(ctx, `DROP TABLE track_choice`)
+		return err
+	})
+	if series, _, ok, err := f.s.SeriesChoice(ctx, remembers, ep.Work); series != dark || ok || err == nil {
+		t.Fatalf("got %v %v %v; want the series and an error", series, ok, err)
+	}
+}
+
 func TestOfflineProgressAppliesOnlyWhenNewer(t *testing.T) {
 	f := newFixture(t)
 	_, folder := f.b.Library(catalog.Audiobooks)

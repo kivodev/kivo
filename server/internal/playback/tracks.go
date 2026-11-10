@@ -33,15 +33,9 @@ func (s *planner) prefsFor(ctx context.Context, user users.User, work id.ID) tra
 	if pb.SubtitleLanguage != "" {
 		p.subtitle = media.BaseLanguage(pb.SubtitleLanguage)
 	}
-	if !pb.RememberTracks {
-		return p
-	}
-	w, err := s.deps.Catalog.Work(ctx, work)
-	if err != nil || w.Kind != catalog.KindEpisode || w.Root.IsZero() {
-		return p
-	}
-	p.series = w.Root
-	if c, ok, err := s.deps.Userstate.TrackChoice(ctx, user.ID, w.Root); err == nil && ok {
+	series, c, ok, err := s.deps.Userstate.SeriesChoice(ctx, user, work)
+	p.series = series
+	if err == nil && ok {
 		p.choice = &c
 	}
 	return p
