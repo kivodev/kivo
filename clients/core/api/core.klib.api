@@ -1902,11 +1902,14 @@ final class com.mmcdole.kivo.core.session/SessionLibrary { // com.mmcdole.kivo.c
     final suspend fun deleteList(kotlin/String) // com.mmcdole.kivo.core.session/SessionLibrary.deleteList|deleteList(kotlin.String){}[0]
     final suspend fun gridPage(com.mmcdole.kivo.core.data/GridQuery, kotlin/Int, kotlin/Int): com.mmcdole.kivo.api.models/WorkSummaryPage // com.mmcdole.kivo.core.session/SessionLibrary.gridPage|gridPage(com.mmcdole.kivo.core.data.GridQuery;kotlin.Int;kotlin.Int){}[0]
     final suspend fun hasCollections(kotlin/String): kotlin/Boolean // com.mmcdole.kivo.core.session/SessionLibrary.hasCollections|hasCollections(kotlin.String){}[0]
+    final suspend fun listWorksInCustomOrder(kotlin/String): kotlin.collections/List<com.mmcdole.kivo.api.models/WorkSummary> // com.mmcdole.kivo.core.session/SessionLibrary.listWorksInCustomOrder|listWorksInCustomOrder(kotlin.String){}[0]
+    final suspend fun moveInList(kotlin/String, kotlin.collections/List<kotlin/String>, kotlin/String?) // com.mmcdole.kivo.core.session/SessionLibrary.moveInList|moveInList(kotlin.String;kotlin.collections.List<kotlin.String>;kotlin.String?){}[0]
     final suspend fun removeFromContinue(kotlin/String) // com.mmcdole.kivo.core.session/SessionLibrary.removeFromContinue|removeFromContinue(kotlin.String){}[0]
     final suspend fun removeFromList(kotlin/String, kotlin/String) // com.mmcdole.kivo.core.session/SessionLibrary.removeFromList|removeFromList(kotlin.String;kotlin.String){}[0]
     final suspend fun resetHomeRows(): kotlin.collections/List<com.mmcdole.kivo.api.models/HomeRowInfo> // com.mmcdole.kivo.core.session/SessionLibrary.resetHomeRows|resetHomeRows(){}[0]
     final suspend fun search(kotlin/String, kotlin/Int?): com.mmcdole.kivo.api.models/SearchResults // com.mmcdole.kivo.core.session/SessionLibrary.search|search(kotlin.String;kotlin.Int?){}[0]
     final suspend fun setHomeRows(kotlin.collections/List<com.mmcdole.kivo.api.models/HomeRowChange>): kotlin.collections/List<com.mmcdole.kivo.api.models/HomeRowInfo> // com.mmcdole.kivo.core.session/SessionLibrary.setHomeRows|setHomeRows(kotlin.collections.List<com.mmcdole.kivo.api.models.HomeRowChange>){}[0]
+    final suspend fun setListSort(kotlin/String, kotlin/String): com.mmcdole.kivo.api.models/WorkList // com.mmcdole.kivo.core.session/SessionLibrary.setListSort|setListSort(kotlin.String;kotlin.String){}[0]
     final suspend fun setPlayed(kotlin/String, kotlin/Boolean): com.mmcdole.kivo.api.models/UserState // com.mmcdole.kivo.core.session/SessionLibrary.setPlayed|setPlayed(kotlin.String;kotlin.Boolean){}[0]
     final suspend fun smartListNames(com.mmcdole.kivo.api.models/WorkQuery, kotlin.collections/List<com.mmcdole.kivo.api.models/WorkField>): kotlin.collections/Map<kotlin/String, kotlin/String> // com.mmcdole.kivo.core.session/SessionLibrary.smartListNames|smartListNames(com.mmcdole.kivo.api.models.WorkQuery;kotlin.collections.List<com.mmcdole.kivo.api.models.WorkField>){}[0]
     final suspend fun updateList(kotlin/String, kotlin/String?, com.mmcdole.kivo.api.models/WorkQuery? = ...): com.mmcdole.kivo.api.models/WorkList // com.mmcdole.kivo.core.session/SessionLibrary.updateList|updateList(kotlin.String;kotlin.String?;com.mmcdole.kivo.api.models.WorkQuery?){}[0]
@@ -2220,6 +2223,24 @@ final object com.mmcdole.kivo.core.cast/CastMessages { // com.mmcdole.kivo.core.
     final fun setTracks(kotlin/String?, kotlin/String?): kotlin/String // com.mmcdole.kivo.core.cast/CastMessages.setTracks|setTracks(kotlin.String?;kotlin.String?){}[0]
     final fun setVersion(kotlin/String): kotlin/String // com.mmcdole.kivo.core.cast/CastMessages.setVersion|setVersion(kotlin.String){}[0]
     final fun token(kotlin/String): kotlin/String // com.mmcdole.kivo.core.cast/CastMessages.token|token(kotlin.String){}[0]
+}
+
+final object com.mmcdole.kivo.core.data/ListSorts { // com.mmcdole.kivo.core.data/ListSorts|null[0]
+    final const val CUSTOM // com.mmcdole.kivo.core.data/ListSorts.CUSTOM|{}CUSTOM[0]
+        final fun <get-CUSTOM>(): kotlin/String // com.mmcdole.kivo.core.data/ListSorts.CUSTOM.<get-CUSTOM>|<get-CUSTOM>(){}[0]
+    final const val DATE_ADDED // com.mmcdole.kivo.core.data/ListSorts.DATE_ADDED|{}DATE_ADDED[0]
+        final fun <get-DATE_ADDED>(): kotlin/String // com.mmcdole.kivo.core.data/ListSorts.DATE_ADDED.<get-DATE_ADDED>|<get-DATE_ADDED>(){}[0]
+    final const val RATING // com.mmcdole.kivo.core.data/ListSorts.RATING|{}RATING[0]
+        final fun <get-RATING>(): kotlin/String // com.mmcdole.kivo.core.data/ListSorts.RATING.<get-RATING>|<get-RATING>(){}[0]
+    final const val RELEASE_DATE // com.mmcdole.kivo.core.data/ListSorts.RELEASE_DATE|{}RELEASE_DATE[0]
+        final fun <get-RELEASE_DATE>(): kotlin/String // com.mmcdole.kivo.core.data/ListSorts.RELEASE_DATE.<get-RELEASE_DATE>|<get-RELEASE_DATE>(){}[0]
+    final const val TITLE // com.mmcdole.kivo.core.data/ListSorts.TITLE|{}TITLE[0]
+        final fun <get-TITLE>(): kotlin/String // com.mmcdole.kivo.core.data/ListSorts.TITLE.<get-TITLE>|<get-TITLE>(){}[0]
+
+    final val all // com.mmcdole.kivo.core.data/ListSorts.all|{}all[0]
+        final fun <get-all>(): kotlin.collections/List<kotlin/String> // com.mmcdole.kivo.core.data/ListSorts.all.<get-all>|<get-all>(){}[0]
+
+    final fun of(com.mmcdole.kivo.api.models/WorkList): kotlin/String? // com.mmcdole.kivo.core.data/ListSorts.of|of(com.mmcdole.kivo.api.models.WorkList){}[0]
 }
 
 final object com.mmcdole.kivo.core.data/Seasons { // com.mmcdole.kivo.core.data/Seasons|null[0]
