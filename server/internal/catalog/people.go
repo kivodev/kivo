@@ -71,7 +71,7 @@ func (c *Catalog) RenamePerson(ctx context.Context, person id.ID, name string) (
 					return err
 				}
 			}
-			if err := reindex(ctx, q, tx, w.WorkID); err != nil {
+			if err := reindex(ctx, tx, w.WorkID); err != nil {
 				return err
 			}
 			if err := c.rebuildWork(ctx, tx, w.WorkID); err != nil { // work_library holds the author sort key
