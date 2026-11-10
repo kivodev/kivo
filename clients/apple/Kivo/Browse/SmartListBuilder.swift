@@ -108,7 +108,7 @@ struct SmartListBuilder: View {
                     _ = try await server.session.library.updateList(id: list.id, name: name, query: query)
                 } else {
                     let made = try await server.session.library.createSmartList(name: name, query: query)
-                    server.paths[server.tab, default: []].append(made.route)
+                    server.navigation.push(made.route)
                 }
                 dismiss()
             } catch {

@@ -139,7 +139,7 @@ struct MiniPlayerBar: ViewModifier {
         } else {
             content.safeAreaInset(edge: .bottom, spacing: 0) {
                 if server.cast.active {
-                    CastMiniController(cast: server.cast, open: { server.playerShown = true })
+                    CastMiniController(cast: server.cast, open: { server.player.shown = true })
                         .frame(height: 60)
                         .background(.bar)
                         .overlay(alignment: .bottom) { Divider() }
