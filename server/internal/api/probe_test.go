@@ -11,17 +11,22 @@ import (
 	"net/http/httptest"
 	"net/netip"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/mmcdole/kivo/internal/api/internal/gen"
 	"github.com/mmcdole/kivo/internal/config"
 )
 
-// probeOf returns a token's key and probe ID, derived the way an app
-// derives them.
+// probeOf returns a session token's key and probe ID, derived the way an
+// app derives them.
 func probeOf(t *testing.T, token string) (key []byte, probe string) {
 	t.Helper()
-	raw, err := base64.RawURLEncoding.DecodeString(token)
+	body, ok := strings.CutPrefix(token, "kivo_s_")
+	if !ok {
+		t.Fatalf("%q isn't a session token", token)
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(body)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,7 +174,7 @@ func TestProbeForwarded(t *testing.T) {
 
 func TestProbeWithoutASession(t *testing.T) {
 	e := newEnv(t, serving{})
-	_, id := probeOf(t, base64.RawURLEncoding.EncodeToString(make([]byte, 32)))
+	_, id := probeOf(t, "kivo_s_"+base64.RawURLEncoding.EncodeToString(make([]byte, 32)))
 	code, info := probe(t, e, id, "192.168.1.5:5000", "192.168.1.20:8484")
 	if code != http.StatusOK || info.Proof != nil || info.ID != e.d.Settings.ServerID() || info.Name == "" {
 		t.Errorf("unknown probe ID: %d %+v", code, info)

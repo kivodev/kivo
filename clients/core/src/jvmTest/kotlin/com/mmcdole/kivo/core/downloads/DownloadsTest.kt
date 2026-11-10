@@ -139,7 +139,7 @@ private const val LOCAL = "http://192.168.1.20:8484"
 private const val PUBLIC = "https://kivo.example.com"
 
 /** A session token, as the server issues them, which a probe's proof is keyed by. */
-private const val TOKEN = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8"
+private const val TOKEN = "kivo_s_AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8"
 
 private class FakeTransport : DownloadTransport {
     val started = mutableListOf<TransferRequest>()

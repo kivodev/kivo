@@ -40,8 +40,8 @@ import kotlin.test.assertTrue
 private const val LOCAL = "http://192.168.1.20:8484"
 private const val PUBLIC = "https://kivo.example.com"
 
-/** A session token, 32 bytes base64url, as the server issues them. */
-private val TOKEN = Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(32) { it.toByte() })
+/** A session token, its kind and then 32 bytes base64url, as the server issues them. */
+private val TOKEN = "kivo_s_" + Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(32) { it.toByte() })
 
 private val anna = CurrentUser("u1", "anna", admin = false, limits = UserLimits(), playback = PlaybackPreferences(SubtitleMode.Smart, true, true, 1.0))
 
@@ -70,7 +70,7 @@ private class Net(scope: TestScope) {
     val up = mutableSetOf(LOCAL, PUBLIC)
     var answer = Answer.Server
     val seen: MutableList<String> = CopyOnWriteArrayList()
-    private val key = sha256(Base64.getUrlDecoder().decode(TOKEN))
+    private val key = sha256(Base64.getUrlDecoder().decode(TOKEN.removePrefix("kivo_s_")))
 
     val engine = MockEngine(
         MockEngineConfig().apply {

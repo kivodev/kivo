@@ -474,8 +474,12 @@ func TestAPIKeys(t *testing.T) {
 	if err := e.b.DB.Reader().QueryRow(`SELECT token_hash FROM api_key`).Scan(&stored); err != nil {
 		t.Fatal(err)
 	}
-	if raw, _ := base64.RawURLEncoding.DecodeString(token); sha256.Sum256(raw) != [32]byte(stored) {
-		t.Error("what's stored isn't the token's SHA-256")
+	body, ok := strings.CutPrefix(token, "kivo_k_")
+	if !ok {
+		t.Errorf("the key %q doesn't start with kivo_k_", token)
+	}
+	if raw, _ := base64.RawURLEncoding.DecodeString(body); sha256.Sum256(raw) != [32]byte(stored) {
+		t.Error("what's stored isn't the SHA-256 of the token's body")
 	}
 
 	// Used as a bearer token, the key reaches admin routes and acts as the

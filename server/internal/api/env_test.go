@@ -324,7 +324,7 @@ func (e *env) session(user id.ID) string {
 			VALUES (?, ?, ?, 'app', 'test', ?, ?)`, id.New(), hash[:], user, time.Now().UnixMilli(), time.Now().UnixMilli())
 		return err
 	})
-	return base64.RawURLEncoding.EncodeToString(raw)
+	return "kivo_s_" + base64.RawURLEncoding.EncodeToString(raw)
 }
 
 func (e *env) seed() {

@@ -29,7 +29,7 @@ import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
 
 /**
- * The server's proof, to an app that holds one of its sessions, of where the app's probe reached it. `mac` is HMAC-SHA256, keyed by the session's token hash (SHA-256 of the token), over `kivo-probe-v1`, then the challenge, the server's `id` and `host`, each after its length as two bytes big-endian, then one byte, 1 when `local`. 
+ * The server's proof, to an app that holds one of its sessions, of where the app's probe reached it. `mac` is HMAC-SHA256, keyed by the session's token hash (SHA-256 of the token's body after `kivo_s_`, decoded), over `kivo-probe-v1`, then the challenge, the server's `id` and `host`, each after its length as two bytes big-endian, then one byte, 1 when `local`. 
  *
  * @param mac Base64url without padding.
  * @param host The host the probe reached, as its `Host` header, or a trusted proxy's `X-Forwarded-Host`, names it.

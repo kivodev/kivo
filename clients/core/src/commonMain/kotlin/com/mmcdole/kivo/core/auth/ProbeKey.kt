@@ -7,8 +7,9 @@ import kotlin.io.encoding.Base64
 /**
  * What a probe of a plain-HTTP address needs to tell the server this app
  * signed in to from an impostor, from the session's [token]: the key the
- * server holds too, SHA-256 of the token (the hash it keeps), and the
- * session's [probeId], which the probe sends in the clear. The server
+ * server holds too, SHA-256 of the token's body after its `kivo_s_` prefix
+ * (the hash it keeps), and the session's [probeId], which the probe sends
+ * in the clear. The server
  * proves itself with HMAC-SHA256, keyed by that hash, over the probe's
  * fresh challenge, its ID, the host the probe reached and whether the probe
  * came from a local network ([proves]). Null for a token that isn't one.
@@ -41,7 +42,7 @@ internal class ProbeKey private constructor(private val key: ByteArray) {
         /** The key and probe ID of [token]; null when it isn't a token. */
         fun of(token: String): ProbeKey? {
             val raw = try {
-                base64url.decode(token)
+                base64url.decode(token.removePrefix(SESSION_PREFIX))
             } catch (_: IllegalArgumentException) {
                 return null
             }
@@ -54,6 +55,9 @@ internal class ProbeKey private constructor(private val key: ByteArray) {
 }
 
 private val base64url = Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT)
+
+/** What a session's token starts with, before the body its hash is of. */
+private const val SESSION_PREFIX = "kivo_s_"
 
 private const val PROBE_ID_BYTES = 16
 private const val CHALLENGE_BYTES = 32

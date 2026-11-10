@@ -116,7 +116,7 @@ func (s *Service) StartDeviceCode(_ context.Context, r DeviceCodeStart) (DeviceC
 	if c.name == "" {
 		return DeviceCode{}, ErrInvalidName
 	}
-	secret, hash := newToken()
+	secret, hash := newBareToken()
 	now := time.Now()
 	pl := &pendingCode{
 		client: c, secret: hash, addr: ClientAddr(r.RemoteIP), nearby: s.deps.Settings.Get().IsLocal(r.RemoteIP),
@@ -229,7 +229,7 @@ func (s *Service) PollDeviceCode(ctx context.Context, secret string, ip netip.Ad
 		return IssuedSession{}, false, &ThrottledError{RetryAfter: d}
 	}
 	defer try.end()
-	hash, _ := hashToken(secret) // a malformed secret gives the zero hash, which no code has
+	hash, _ := hashBareToken(secret) // a malformed secret gives the zero hash, which no code has
 	now := time.Now()
 	dc := s.codes
 	dc.mu.Lock()

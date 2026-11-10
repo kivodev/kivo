@@ -126,7 +126,9 @@ info:
     closing with 4401, means the session was signed out. Scripts and other
     tools send an API key, which an admin creates under Admin, API keys
     (`POST /api/v1/api-keys`), the same way: `Authorization: Bearer <key>`.
-    `GET /api/v1/users/me` is the user behind either.
+    `GET /api/v1/users/me` is the user behind either. A token starts with
+    its kind, `kivo_s_` for a session, `kivo_k_` for an API key and
+    `kivo_c_` for a cast token, followed by its body in base64url.
 
     Casting gives the Cast receiver a cast token: a signed-in session
     creates one with `POST /api/v1/cast-tokens` and passes it to the
@@ -300,7 +302,9 @@ paths:
           in: query
           description: |
             The app's session's probe ID, base64url without padding: the
-            first 16 bytes of SHA-256("kivo-probe-id" ‖ SHA-256(token)).
+            first 16 bytes of SHA-256("kivo-probe-id" ‖ the session's token
+            hash), the hash being SHA-256 of the token's body after
+            `kivo_s_`, decoded.
           schema: {type: string, minLength: 22, maxLength: 22}
       responses:
         "200":
@@ -4055,9 +4059,10 @@ components:
       description: |
         The server's proof, to an app that holds one of its sessions, of
         where the app's probe reached it. `mac` is HMAC-SHA256, keyed by the
-        session's token hash (SHA-256 of the token), over `kivo-probe-v1`,
-        then the challenge, the server's `id` and `host`, each after its
-        length as two bytes big-endian, then one byte, 1 when `local`.
+        session's token hash (SHA-256 of the token's body after `kivo_s_`,
+        decoded), over `kivo-probe-v1`, then the challenge, the server's
+        `id` and `host`, each after its length as two bytes big-endian,
+        then one byte, 1 when `local`.
       required: [mac, host, local]
       properties:
         mac:
