@@ -115,8 +115,8 @@ func TestCastTokenExpires(t *testing.T) {
 			t.Fatal("a cast token past 24 hours is Alive")
 		}
 
-		// Expired tokens are dropped at the next flush.
-		time.Sleep(flushEvery)
+		// Expired tokens are dropped on Run's next pass.
+		time.Sleep(dropExpiredEvery)
 		synctest.Wait()
 		var n int
 		if err := f.db.Reader().QueryRow(`SELECT count(*) FROM cast_token`).Scan(&n); err != nil || n != 0 {

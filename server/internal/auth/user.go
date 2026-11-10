@@ -58,12 +58,7 @@ func (s *Service) SetPassword(ctx context.Context, by Caller, user id.ID, passwo
 		if n == 0 {
 			return users.ErrNotFound
 		}
-		revoked, err := q.DeleteOtherSessions(ctx, dbq.DeleteOtherSessionsParams{UserID: user, Keep: by.Session})
-		if err != nil {
-			return err
-		}
-		s.revokeAtCommit(tx, revoked...)
-		return nil
+		return q.DeleteOtherSessions(ctx, dbq.DeleteOtherSessionsParams{UserID: user, Keep: by.Session})
 	})
 	return err
 }
@@ -122,11 +117,7 @@ func (s *Service) ChangePassword(ctx context.Context, c Caller, r PasswordChange
 			return users.ErrNotFound
 		}
 		if r.SignOutOthers {
-			revoked, err := q.DeleteOtherSessions(ctx, dbq.DeleteOtherSessionsParams{UserID: c.User, Keep: c.Session})
-			if err != nil {
-				return err
-			}
-			s.revokeAtCommit(tx, revoked...)
+			return q.DeleteOtherSessions(ctx, dbq.DeleteOtherSessionsParams{UserID: c.User, Keep: c.Session})
 		}
 		return nil
 	})

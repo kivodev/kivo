@@ -93,7 +93,7 @@ CREATE TABLE session (
   kind         TEXT NOT NULL CHECK (kind IN ('browser', 'app')),
   name         TEXT NOT NULL DEFAULT '', -- the client's name
   created_at   INTEGER NOT NULL,
-  last_used_at INTEGER NOT NULL, -- batched in memory, so up to 5 minutes behind
+  last_used_at INTEGER NOT NULL, -- written when used, at most a minute behind
   client_id    TEXT,
   platform     TEXT NOT NULL DEFAULT '',
   probe_id     BLOB
@@ -111,7 +111,7 @@ CREATE TABLE api_key (
   name         TEXT NOT NULL,
   created_by   BLOB NOT NULL REFERENCES user (id) ON DELETE CASCADE,
   created_at   INTEGER NOT NULL,
-  last_used_at INTEGER -- NULL until it's used; batched in memory, so up to 5 minutes behind
+  last_used_at INTEGER -- NULL until it's used, then at most a minute behind
 ) STRICT;
 CREATE INDEX api_key_created_by ON api_key (created_by);
 
@@ -127,7 +127,7 @@ CREATE TABLE cast_token (
   name         TEXT NOT NULL, -- the receiver's name, such as "Living Room TV"
   receiver     TEXT NOT NULL CHECK (receiver IN ('web', 'androidTv')),
   created_at   INTEGER NOT NULL,
-  last_used_at INTEGER NOT NULL -- batched in memory, so up to 5 minutes behind
+  last_used_at INTEGER NOT NULL -- written when used, at most a minute behind
 ) STRICT;
 CREATE INDEX cast_token_session ON cast_token (session_id);
 CREATE INDEX cast_token_used ON cast_token (last_used_at);

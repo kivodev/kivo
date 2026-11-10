@@ -526,7 +526,7 @@ func TestBrowserSessionsExpireWhenIdleAndAppsDont(t *testing.T) {
 		if _, err := f.auth.Authenticate(ctx, app.Token); err != nil {
 			t.Fatalf("idle app session expired: %v", err)
 		}
-		time.Sleep(flushEvery)
+		time.Sleep(dropExpiredEvery)
 		synctest.Wait()
 		var n int
 		if err := f.db.Reader().QueryRow(`SELECT count(*) FROM session WHERE id = ?`, browser.Session.ID).Scan(&n); err != nil || n != 0 {
@@ -537,50 +537,73 @@ func TestBrowserSessionsExpireWhenIdleAndAppsDont(t *testing.T) {
 	})
 }
 
-func TestLastUsedIsBatched(t *testing.T) {
+// A request writes its session's, API key's or cast token's last-used time
+// when the stored one is more than staleAfter old, and leaves it otherwise.
+func TestLastUsedIsWrittenWhenStale(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx := context.Background()
 		f := newFixture(t)
 		iss := f.setUp()
+		key, err := f.auth.CreateAPIKey(ctx, iss.Session.Caller(), NewAPIKey{Name: "Script"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		ct := f.castToken(iss.Session.Caller())
+		cast, err := f.auth.Authenticate(ctx, ct.Token)
+		if err != nil {
+			t.Fatal(err)
+		}
 		created := time.Now()
-		done := make(chan struct{})
-		go func() {
-			defer close(done)
-			_ = f.auth.Run(ctx)
-		}()
-		lastUsed := func() time.Time {
+		lastUsed := func(table string, id id.ID) time.Time {
+			t.Helper()
 			var ms int64
-			if err := f.db.Reader().QueryRow(`SELECT last_used_at FROM session WHERE id = ?`, iss.Session.ID).Scan(&ms); err != nil {
+			if err := f.db.Reader().QueryRow(`SELECT coalesce(last_used_at, 0) FROM `+table+` WHERE id = ?`, id).Scan(&ms); err != nil {
 				t.Fatal(err)
 			}
 			return time.UnixMilli(ms)
 		}
+		use := func(token string) {
+			t.Helper()
+			if _, err := f.auth.Authenticate(ctx, token); err != nil {
+				t.Fatal(err)
+			}
+		}
 
-		time.Sleep(time.Minute)
+		// An API key's first use sets its last-used time.
+		use(key.Token)
+		if got := lastUsed("api_key", key.Key.ID); !got.Equal(created) {
+			t.Fatalf("API key last-used = %v after its first use, want %v", got, created)
+		}
+
+		creds := []struct {
+			table, token string
+			id           id.ID
+		}{
+			{"session", iss.Token, iss.Session.ID},
+			{"api_key", key.Token, key.Key.ID},
+			{"cast_token", ct.Token, cast.CastToken},
+		}
+		time.Sleep(staleAfter)
+		for _, c := range creds {
+			use(c.token)
+			if got := lastUsed(c.table, c.id); !got.Equal(created) {
+				t.Errorf("%s last-used = %v after a use within %v, want %v unchanged", c.table, got, staleAfter, created)
+			}
+		}
+		time.Sleep(time.Millisecond)
 		used := time.Now()
-		if _, err := f.auth.Authenticate(ctx, iss.Token); err != nil {
-			t.Fatal(err)
+		for _, c := range creds {
+			use(c.token)
+			if got := lastUsed(c.table, c.id); !got.Equal(used) {
+				t.Errorf("%s last-used = %v after a use past %v, want %v", c.table, got, staleAfter, used)
+			}
 		}
-		synctest.Wait()
-		if !lastUsed().Equal(created) {
-			t.Fatal("last-used written before the batch")
+		sessions, err := f.auth.Sessions(ctx, iss.Session.Caller(), iss.Session.User)
+		if err != nil || len(sessions) != 1 || !sessions[0].LastUsed.Equal(used) {
+			t.Fatalf("Sessions = %+v, %v, want last used %v", sessions, err, used)
 		}
-		time.Sleep(flushEvery)
-		synctest.Wait()
-		if got := lastUsed(); !got.Equal(used) {
-			t.Fatalf("last-used = %v after a flush, want %v", got, used)
-		}
-
-		// A use just before shutdown is written on the way out.
-		time.Sleep(time.Minute)
-		final := time.Now()
-		if _, err := f.auth.Authenticate(ctx, iss.Token); err != nil {
-			t.Fatal(err)
-		}
-		cancel()
-		<-done
-		if got := lastUsed(); !got.Equal(final) {
-			t.Fatalf("last-used = %v after shutdown, want %v", got, final)
+		if k, err := f.auth.APIKey(ctx, key.Key.ID); err != nil || !k.LastUsed.Equal(used) {
+			t.Fatalf("APIKey = %+v, %v, want last used %v", k, err, used)
 		}
 	})
 }

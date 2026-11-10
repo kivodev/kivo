@@ -29,21 +29,21 @@ INSERT INTO session (id, token_hash, probe_id, user_id, kind, name, platform, cl
 VALUES (@id, @token_hash, @probe_id, @user_id, @kind, @name, @platform, NULLIF(CAST(@client_id AS TEXT), ''), @now, @now,
   @app, @app_version, @os_version, @device_model);
 
--- name: DeleteClientSession :many
+-- name: DeleteClientSession :exec
 -- The user's session on @client_id, which a new sign-in from that client
 -- replaces.
-DELETE FROM session WHERE user_id = @user_id AND client_id = CAST(@client_id AS TEXT) RETURNING id;
+DELETE FROM session WHERE user_id = @user_id AND client_id = CAST(@client_id AS TEXT);
 
 -- name: CallerByToken :one
 -- The session or API key with this token, joined to its user in the same
 -- read, so disabling the user takes effect at once. An API key's kind is
--- empty, and so is its device.
+-- empty, and so is its device. Its last_used_at is 0 until it's used.
 SELECT s.id, s.user_id, s.kind, s.name, s.last_used_at,
   s.app, s.app_version, s.platform, s.os_version, s.device_model
 FROM session s JOIN user u ON u.id = s.user_id
 WHERE s.token_hash = @token_hash AND u.disabled = 0
 UNION ALL
-SELECT k.id, k.created_by, '', k.name, coalesce(k.last_used_at, k.created_at), '', '', '', '', ''
+SELECT k.id, k.created_by, '', k.name, coalesce(k.last_used_at, 0), '', '', '', '', ''
 FROM api_key k JOIN user u ON u.id = k.created_by
 WHERE k.token_hash = @token_hash AND u.disabled = 0;
 
@@ -80,15 +80,15 @@ SELECT EXISTS (
 -- name: DeleteSession :one
 DELETE FROM session WHERE id = @id RETURNING user_id;
 
--- name: DeleteOtherSessions :many
+-- name: DeleteOtherSessions :exec
 -- A user's sessions but @keep; every one when @keep is NULL.
-DELETE FROM session WHERE user_id = @user_id AND (id != @keep OR @keep IS NULL) RETURNING id;
+DELETE FROM session WHERE user_id = @user_id AND (id != @keep OR @keep IS NULL);
 
 -- name: TouchSession :exec
-UPDATE session SET last_used_at = max(last_used_at, CAST(@used AS INTEGER)) WHERE id = @id;
+UPDATE session SET last_used_at = @used WHERE id = @id AND last_used_at < @used;
 
 -- name: TouchAPIKey :exec
-UPDATE api_key SET last_used_at = max(coalesce(last_used_at, 0), CAST(@used AS INTEGER)) WHERE id = @id;
+UPDATE api_key SET last_used_at = CAST(@used AS INTEGER) WHERE id = @id AND (last_used_at IS NULL OR last_used_at < @used);
 
 -- name: DeleteIdleBrowserSessions :execrows
 -- At most @limit of the browser sessions idle since before @before: one batch.
@@ -167,7 +167,7 @@ WHERE c.id = @id AND u.disabled = 0;
 DELETE FROM cast_token WHERE id = @id;
 
 -- name: TouchCastToken :exec
-UPDATE cast_token SET last_used_at = max(last_used_at, CAST(@used AS INTEGER)) WHERE id = @id;
+UPDATE cast_token SET last_used_at = @used WHERE id = @id AND last_used_at < @used;
 
 -- name: DeleteExpiredCastTokens :execrows
 -- At most @limit of the cast tokens unused since before @idle_before or
