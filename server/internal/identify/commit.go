@@ -40,7 +40,11 @@ const (
 // movie the label its folder's names give it. New files are recorded as
 // added, under the first new file's work. A folder whose files are all where
 // they belong writes nothing.
-func (i *Identifier) place(ctx context.Context, s *snapshot, ps placements) (id.ID, error) {
+func (i *Identifier) place(ctx context.Context, s *snapshot) (id.ID, error) {
+	ps, err := readPlacements(ctx, i.q, s.unit.fileIDs())
+	if err != nil {
+		return id.ID{}, err
+	}
 	root, err := i.q.FolderWork(ctx, dbq.FolderWorkParams{LibraryID: s.lib.ID, Subject: s.unit.subject})
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
@@ -319,7 +323,7 @@ func (i *Identifier) apply(ctx context.Context, tx *store.Tx, p plan, fix bool) 
 	var episodes []id.ID // episodes in a season that got versions
 	err = i.deps.Catalog.Batch(ctx, tx, func(b *catalog.Batch) error {
 		var err error
-		if changed, err = i.describe(ctx, tx, b, p.root, *p.d.match, fix); err != nil {
+		if changed, err = i.describe(ctx, tx, b, p.root, st, *p.d.match, fix); err != nil {
 			return err
 		}
 		for _, e := range p.s.unit.entries() {
@@ -359,15 +363,11 @@ func (i *Identifier) apply(ctx context.Context, tx *store.Tx, p plan, fix bool) 
 }
 
 // describe makes the root work what the match describes, unless it already
-// is, and reports whether it changed. A root that had a different match loses
-// its artwork, since that artwork showed the old match.
-func (i *Identifier) describe(ctx context.Context, tx *store.Tx, b *catalog.Batch, root id.ID, c metadata.Match, lock bool) (bool, error) {
-	q := dbq.New(tx)
-	st, err := q.WorkState(ctx, root)
-	if err != nil {
-		return false, err
-	}
-	xs, err := q.ExternalIDsOf(ctx, root)
+// is, and reports whether it changed. st is the root's state as tx reads it.
+// A root that had a different match loses its artwork, since that artwork
+// showed the old match.
+func (i *Identifier) describe(ctx context.Context, tx *store.Tx, b *catalog.Batch, root id.ID, st dbq.WorkStateRow, c metadata.Match, lock bool) (bool, error) {
+	xs, err := dbq.New(tx).ExternalIDsOf(ctx, root)
 	if err != nil {
 		return false, err
 	}
@@ -384,17 +384,6 @@ func (i *Identifier) describe(ctx context.Context, tx *store.Tx, b *catalog.Batc
 		}
 	}
 	return true, nil
-}
-
-// describes reports whether a root work is already what a match describes,
-// meaning it is matched and carries the match's ID.
-func (i *Identifier) describes(ctx context.Context, q *dbq.Queries, root id.ID, c *metadata.Match) (bool, error) {
-	st, err := q.WorkState(ctx, root)
-	if err != nil || st.Provisional {
-		return false, err
-	}
-	xs, err := q.ExternalIDsOf(ctx, root)
-	return slices.Contains(xs, idRow(c.ID)), err
 }
 
 // idRow converts an external ID to the row type ExternalIDsOf returns.
