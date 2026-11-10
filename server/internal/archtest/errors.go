@@ -122,8 +122,9 @@ func wraps(call *ast.CallExpr) bool {
 //   - An error made from a sentinel puts it first, as "%w: detail", or
 //     "%w: %w" with a cause. It never uses errors.Join.
 //   - A cause is formatted with %w.
-//   - Every message starts in lower case, has no trailing period and
-//     doesn't say "failed to".
+//   - No message says "failed to". A fault's message also starts in lower
+//     case and has no trailing period, which staticcheck checks for the
+//     others.
 func checkMessages(internalDir string) ([]violation, error) {
 	var out []violation
 	err := eachFile(internalDir, func(rel string, fset *token.FileSet, f *ast.File) {
@@ -143,16 +144,16 @@ func checkMessages(internalDir string) ([]violation, error) {
 func checkCall(call *ast.CallExpr, report func(ast.Node, string)) {
 	switch callee(call) {
 	case "errors.New":
-		checkMessage(call, 0, report)
+		checkMessage(call, 0, false, report)
 	case "fault.New", "fault.Coded":
-		checkMessage(call, len(call.Args)-1, report)
+		checkMessage(call, len(call.Args)-1, true, report)
 	case "errors.Join":
 		if slices.ContainsFunc(call.Args, isSentinel) {
 			report(call, `an error with its cause is fmt.Errorf("%w: %w"), not errors.Join`)
 		}
 	case "fmt.Errorf":
 		if format, ok := literal(call, 0); ok {
-			checkMessage(call, 0, report)
+			checkMessage(call, 0, false, report)
 			checkCause(call, format, report)
 		}
 	}
@@ -194,17 +195,18 @@ func literal(call *ast.CallExpr, i int) (string, bool) {
 	return s, err == nil
 }
 
-// checkMessage reports the message in argument i of call if it starts in
-// upper case, ends with a period or says "failed to".
-func checkMessage(call *ast.CallExpr, i int, report func(ast.Node, string)) {
+// checkMessage reports the message in argument i of call if it says
+// "failed to", or, for a fault, if it starts in upper case or ends with a
+// period.
+func checkMessage(call *ast.CallExpr, i int, isFault bool, report func(ast.Node, string)) {
 	msg, ok := literal(call, i)
 	if !ok {
 		return
 	}
-	if r, _ := utf8.DecodeRuneInString(msg); unicode.IsUpper(r) {
+	if r, _ := utf8.DecodeRuneInString(msg); isFault && unicode.IsUpper(r) {
 		report(call, fmt.Sprintf("error message %q starts in upper case", msg))
 	}
-	if strings.HasSuffix(msg, ".") {
+	if isFault && strings.HasSuffix(msg, ".") {
 		report(call, fmt.Sprintf("error message %q ends with a period", msg))
 	}
 	if strings.Contains(msg, "failed to") {

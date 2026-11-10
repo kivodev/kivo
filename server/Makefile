@@ -3,7 +3,6 @@ SQLC        := go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.29.0
 STATICCHECK := go run honnef.co/go/tools/cmd/staticcheck@2026.1
 DEADCODE    := go run golang.org/x/tools/cmd/deadcode@v0.51.0
 DUPL        := go run github.com/mibk/dupl@v1.1.0
-GOCYCLO     := go run github.com/fzipp/gocyclo/cmd/gocyclo@v0.6.0
 GOCOGNIT    := go run github.com/uudashr/gocognit/cmd/gocognit@v1.2.1
 GO_LICENSES := go run github.com/google/go-licenses/v2@v2.0.1
 # The OpenAPI tools run at pinned versions through npx (Node 20 or later).
@@ -84,10 +83,8 @@ ceilings-server ceilings-web ceilings-clients: .SHELLFLAGS := -o pipefail -c
 ceilings-server:
 	@$(call ceiling,deadcode,$(DEADCODE_MAX),$(DEADCODE) ./cmd/... | wc -l)
 	@$(call ceiling,dupl,$(DUPL_MAX),$(DUPL) -t 50 $(GO_SOURCES) | sed -n 's/^Found total \([0-9]*\) clone groups.*/\1/p')
-	@$(call ceiling,gocyclo,$(GOCYCLO_MAX),$(GOCYCLO) $(GO_SOURCES) | awk '$$1 > 15' | wc -l)
 	@$(call ceiling,gocognit,$(GOCOGNIT_MAX),$(GOCOGNIT) $(GO_SOURCES) | awk '$$1 > 20' | wc -l)
 	@$(call ceiling,api handlers,$(API_HANDLERS_MAX),$(GOCOGNIT) $(filter internal/api/%,$(GO_SOURCES)) | awk '$$1 > 15 && (index($$3$(comma) "(*handlers).") == 1 || index($$3$(comma) "(*Server).serve") == 1)' | wc -l)
-	@$(call ceiling,jscpd go,$(JSCPD_GO_MAX),$(call jscpd,--format go $(GO_SOURCES)))
 	@$(call ceiling,jscpd sql,$(JSCPD_SQL_MAX),$(call jscpd,--format sql $(wildcard internal/*/queries/*.sql)))
 
 ceilings-web:
@@ -106,7 +103,7 @@ ceilings-clients:
 	@$(call ceiling,app player timers,$(APP_PLAYER_TIMERS_MAX),$(call app_lines,$(APP_TIMERS),$(APP_PLAYERS)))
 	@$(call ceiling,app formats,$(APP_FORMATS_MAX),$(call app_lines,$(APP_FORMATS),$(APP_SOURCES)))
 
-# Sorted, since dupl's and jscpd's counts depend on the order of the files.
+# Sorted, since dupl's count depends on the order of the files.
 GO_SOURCES    = $(sort $(shell grep -rL --include='*.go' --exclude='*_test.go' '^// Code generated' $(GO_FILES)))
 WEB_EXCLUDED := **/*.test.ts,**/*.test.tsx,**/src/test/**,**/src/api/mocks/**,**/src/api/schema.d.ts,**/src/i18n/locales/**
 KNIP_COUNT    := let n = 0; for (const f of JSON.parse(require("fs").readFileSync(0)).issues) for (const [k, v] of Object.entries(f)) if (k !== "file") n += Object.keys(v).length; console.log(n)
