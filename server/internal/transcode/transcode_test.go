@@ -452,16 +452,18 @@ const bframeMargin = 3 * time.Second / 23
 
 func TestSeekPast(t *testing.T) {
 	s := func(f float64) time.Duration { return time.Duration(f * float64(time.Second)) }
-	keys := []media.Keyframe{{Time: 0}, {Time: s(10.427)}, {Time: s(20.854)}, {Time: s(21.4)}, {Time: s(31.8)}}
-	f := FileRef{Duration: s(32.2), Keyframes: keys}
+	keys := []media.Keyframe{{Time: 0}, {Time: s(10.427)}, {Time: s(20.854)}, {Time: s(21.104)}, {Time: s(21.604)}, {Time: s(23.604)}}
+	f := FileRef{Duration: s(24.004), Keyframes: keys}
 	for _, tt := range []struct {
 		name string
 		k    time.Duration
 		want time.Duration
 	}{
 		{"a normal GOP seeks maxSeekPast past its keyframe", s(10.427), s(10.927)},
-		{"a GOP under a second seeks halfway through it", s(20.854), s(21.127)},
-		{"the last keyframe seeks halfway to the end", s(31.8), s(32.0)},
+		{"a 2 s GOP seeks maxSeekPast past its keyframe", s(21.604), s(22.104)},
+		{"a 0.5 s GOP seeks three quarters through it", s(21.104), s(21.479)},
+		{"a 0.25 s GOP seeks past ffmpeg's B-frame margin", s(20.854), s(21.0415)},
+		{"the last keyframe seeks three quarters of the way to the end", s(23.604), s(23.904)},
 		{"the start doesn't seek", 0, 0},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
