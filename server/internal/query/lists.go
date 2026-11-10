@@ -22,14 +22,10 @@ type List struct {
 	Works   int
 	// Smart is a smart list's rules, nil for a manual list.
 	Smart *SmartList
-	// Covers are the posters of the list's first works, up to three, in
-	// its order; a work without a poster gives none. Only CountedLists sets
-	// them.
-	Covers []Image
+	// Items are the list's first works, up to a Home row's, in its order.
+	// Only CountedLists sets them.
+	Items []WorkSummary
 }
-
-// listCovers is how many of a list's first works give it covers.
-const listCovers = 3
 
 // SmartList is a smart list's rules, and why they can't run if they can't.
 type SmartList struct {
@@ -131,7 +127,7 @@ func (s *Service) Lists(ctx context.Context, v users.Viewer) ([]List, error) {
 }
 
 // CountedLists returns the user's lists with each smart list's count and
-// each list's covers, for the screen that shows them.
+// each list's first works, for the screen that shows them.
 func (s *Service) CountedLists(ctx context.Context, v users.Viewer) ([]List, error) {
 	out, err := s.Lists(ctx, v)
 	if err != nil {
@@ -152,16 +148,11 @@ func (s *Service) CountedLists(ctx context.Context, v users.Viewer) ([]List, err
 	if err != nil {
 		return nil, err
 	}
-	if err := s.withImages(ctx, vw, firsts...); err != nil {
+	if err := s.decorate(ctx, vw, firsts...); err != nil {
 		return nil, err
 	}
-	for i, works := range firsts {
-		out[i].Covers = []Image{}
-		for _, w := range works {
-			if w.Images.Poster != nil {
-				out[i].Covers = append(out[i].Covers, *w.Images.Poster)
-			}
-		}
+	for i := range out {
+		out[i].Items = append([]WorkSummary{}, firsts[i]...)
 	}
 	return out, nil
 }
@@ -172,13 +163,13 @@ func (s *Service) CountedLists(ctx context.Context, v users.Viewer) ([]List, err
 func firstWorks(ctx context.Context, tx *sql.Tx, vw viewer, l *List, now time.Time) ([]WorkSummary, error) {
 	if l.Smart == nil {
 		return summaries(ctx, tx, listWorksPage, vw.args(sql.Named("list", l.ID), sql.Named("kinds", nil),
-			sql.Named("offset", 0), sql.Named("limit", listCovers)))
+			sql.Named("offset", 0), sql.Named("limit", rowLimit)))
 	}
 	if len(l.Smart.Errors) > 0 {
 		return nil, nil
 	}
 	c := compile(l.Smart.Query, vw, now, listSeed(l.ID, now), nil, reading{})
-	works, total, _, err := countedSummaries(ctx, tx, statement{sql: c.counted}, append(c.args, sql.Named("limit", listCovers), sql.Named("offset", 0)), false)
+	works, total, _, err := countedSummaries(ctx, tx, statement{sql: c.counted}, append(c.args, sql.Named("limit", rowLimit), sql.Named("offset", 0)), false)
 	l.Works = total
 	return works, err
 }

@@ -33,6 +33,8 @@ type Props<T> = {
   header?: ReactNode;
   /** A link beside the title, such as to the whole library. */
   action?: ReactNode;
+  /** On TV, whether the action ends the row even when the row fits the screen. */
+  endsInAction?: boolean;
   /** Landscape rows hold fewer, wider cards. Square cards are as wide as posters. */
   shape: ArtworkShape;
   items: readonly T[];
@@ -89,6 +91,7 @@ export function Row<T>({
   header,
   enterOn,
   cardFocus,
+  endsInAction = false,
 }: Props<T>) {
   const { t } = useLingui();
   const generatedKey = useId();
@@ -127,9 +130,9 @@ export function Row<T>({
     return () => resized.disconnect();
   }, [measure, items.length]);
 
-  // On TV, See all ends only a row longer than the screen: a shorter row
-  // already shows all there is.
-  const seeAll = isTv && Boolean(action) && items.length > tvFit;
+  // On TV, See all ends only a row longer than the screen, since a shorter
+  // row already shows all there is, unless the row always ends in it.
+  const seeAll = isTv && Boolean(action) && (endsInAction || items.length > tvFit);
 
   // On TV the track keeps its place through new cards, so it's put back
   // where it belongs once they change, before they show, and as the row's

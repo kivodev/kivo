@@ -47,12 +47,12 @@ const unauthenticated = () => problem(401, "unauthenticated");
 
 /**
  * A list as the API answers, its count from the works it holds, and with
- * `counts` its first three posters. A smart list is counted only with `counts`.
+ * `counts` its first works. A smart list is counted only with `counts`.
  */
 function workListOf(api: MockApi, { workIds, ...list }: MockList, counts = false): WorkList {
-  const covers = workIds.slice(0, 3).flatMap((id) => api.works[id]?.images.poster ?? []);
+  const items = workIds.slice(0, 20).flatMap((id) => (api.works[id] ? [summaryOf(api.works[id])] : []));
   const workCount = list.kind === "smart" && !counts ? 0 : workIds.length;
-  return { ...list, workCount, ...(counts ? { covers } : {}) };
+  return { ...list, workCount, ...(counts ? { items } : {}) };
 }
 
 /** A page's `total` where only the first page (offset 0) has it. */

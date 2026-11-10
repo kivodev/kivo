@@ -10,36 +10,45 @@ const emptyMyList = (api: MockApi) => {
 };
 
 describe("Lists", () => {
-  it("shows Watchlist as a row with no count, then every other list in one grid of cards", async () => {
+  it("shows every list as a shelf of its titles, Watchlist first and the others by name", async () => {
     serveMockApi();
     const { user, router } = renderApp("/lists");
     expect(await screen.findByRole("heading", { name: "Lists", level: 1 })).toBeInTheDocument();
-    const myList = await screen.findByRole("heading", { name: "Watchlist" });
-    const row = myList.closest("[data-part='row']") as HTMLElement;
-    expect(within(row).queryByText("2")).toBeNull();
-    expect(await within(row).findByRole("link", { name: /^Dune/ })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Your lists" })).toBeNull();
-    expect(screen.queryByRole("heading", { name: "Smart Lists" })).toBeNull();
-    // Manual lists, then smart ones, each by name.
-    const grid = document.querySelector("[data-part='list-cards']") as HTMLElement;
-    const names = within(grid)
-      .getAllByRole("link")
-      .map((card) => card.textContent);
-    expect(names).toEqual(["Date Night1", "Weekend", "Every Movie238", "Sci-fi2", "Shows Recently Added2"]);
-    const dateNight = within(grid).getByRole("link", { name: /^Date Night\s*1$/ });
-    expect(dateNight.querySelector("svg")).toBeNull();
-    expect(dateNight.querySelectorAll("img")).toHaveLength(1);
-    expect(dateNight.querySelectorAll("[data-part='cover-placeholder']")).toHaveLength(2);
-    await user.click(dateNight);
-    await waitFor(() => expect(router.state.location.pathname).toBe(`/lists/${mockIds.dateNight}`));
+    await screen.findByRole("heading", { name: /^Watchlist/ });
+    const names = screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent);
+    expect(names).toEqual([
+      "Watchlist2 titles",
+      "Date Night1 title",
+      "Every MovieSmart list238 titles",
+      "Sci-fiSmart list2 titles",
+      "Shows Recently AddedSmart list2 titles",
+      "WeekendEmpty",
+    ]);
+    const shelf = (name: RegExp) =>
+      screen.getByRole("heading", { name, level: 2 }).closest("[data-part='row']") as HTMLElement;
+    expect(within(shelf(/^Watchlist/)).getByRole("link", { name: /^The Expanse/ })).toBeInTheDocument();
+    // A shelf holds as many titles as a Home row.
+    expect(within(shelf(/^Every Movie/)).getAllByRole("listitem")).toHaveLength(20);
+    // A title on a manual list's shelf can be taken off it.
+    fireEvent.contextMenu(within(shelf(/^Date Night/)).getByRole("link", { name: /^Dune/ }));
+    await user.click(await screen.findByRole("menuitem", { name: "Remove from Date Night" }));
+    await waitFor(() => expect(sent("DELETE", `/lists/${mockIds.dateNight}/works/${mockIds.dune}`)).toHaveLength(1));
+    fireEvent.contextMenu(within(shelf(/^Sci-fi/)).getAllByRole("link", { name: /^Dune/ })[0] as HTMLElement);
+    await screen.findByRole("menuitem", { name: "Add to List" });
+    expect(screen.queryByRole("menuitem", { name: /^Remove from/ })).toBeNull();
+    await user.keyboard("{Escape}");
+    await user.click(screen.getByRole("link", { name: "Sci-fi" }));
+    await waitFor(() => expect(router.state.location.pathname).toBe(`/lists/${mockIds.sciFi}`));
   });
 
-  it("shows an empty list's icon on a plain tile, with no count", async () => {
+  it("shows an empty list's shelf as a placeholder that opens the list", async () => {
     serveMockApi();
     renderApp("/lists");
-    const weekend = await screen.findByRole("link", { name: "Weekend" });
-    expect(weekend).toHaveAttribute("href", `/lists/${mockIds.weekend}`);
-    expect(weekend.querySelector("[data-part='list-count']")).toBeNull();
+    const weekend = (await screen.findByRole("heading", { name: /^Weekend/ })).closest(
+      "[data-part='row']",
+    ) as HTMLElement;
+    const placeholder = within(weekend).getByRole("link", { name: "Nothing in this list yet" });
+    expect(placeholder).toHaveAttribute("href", `/lists/${mockIds.weekend}`);
     expect(weekend.querySelector("img")).toBeNull();
   });
 

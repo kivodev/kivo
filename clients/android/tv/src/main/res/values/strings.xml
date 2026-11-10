@@ -46,7 +46,8 @@
     <string name="row_recently_added_in">Recently Added in %1$s</string>
 
     <!-- Lists -->
-    <string name="your_lists">Your Lists</string>
+    <string name="list_empty_shelf">Nothing in this list yet</string>
+    <string name="list_no_titles">Empty</string>
     <string name="lists_empty">Nothing in your lists yet.</string>
     <string name="list_empty">Nothing in this list yet.</string>
     <string name="list_nothing_matches">Nothing matches these rules.</string>

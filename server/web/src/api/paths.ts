@@ -90,6 +90,7 @@ export const workViewPaths: readonly ApiPath[] = [
   apiPaths.collection,
   apiPaths.unmatchedWorks,
   apiPaths.home,
+  apiPaths.lists,
   apiPaths.listWorks,
   apiPaths.search,
   apiPaths.person,

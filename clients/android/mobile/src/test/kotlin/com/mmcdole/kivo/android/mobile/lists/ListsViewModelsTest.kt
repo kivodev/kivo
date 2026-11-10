@@ -15,7 +15,6 @@ import com.mmcdole.kivo.api.models.WorkFieldOp
 import com.mmcdole.kivo.api.models.WorkImages
 import com.mmcdole.kivo.api.models.WorkList
 import com.mmcdole.kivo.api.models.WorkListList
-import com.mmcdole.kivo.api.models.WorkSummaryPage
 import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CompletableDeferred
@@ -35,7 +34,6 @@ class ListsViewModelsTest : CoreTest() {
 
     init {
         server.get("/api/v1/lists", WorkListList.serializer()) { WorkListList(lists) }
-        server.get("/api/v1/lists/my/works", WorkSummaryPage.serializer()) { WorkSummaryPage(listOf(work("m1"), work("m2")), total = 2) }
         server.get("/api/v1/works/m1", WorkDetail.serializer()) {
             WorkDetail(
                 id = "m1", kind = "movie", title = "m1", matchState = "matched", available = true, images = WorkImages(),
@@ -53,21 +51,22 @@ class ListsViewModelsTest : CoreTest() {
     }
 
     @Test
-    fun theTabShowsMyListsCoversAndTheManualListsMade() {
+    fun theTabShelvesEveryListInItsOrderWithItsFirstWorks() {
+        val smart = WorkList("x", "Later", "smart", builtIn = false, workCount = 9)
+        lists = listOf(myList.copy(items = listOf(work("m1"), work("m2"))), dateNight, smart, WorkList("y", "Other", "future", builtIn = false, workCount = 1))
         val model = ListsViewModel(signIn())
-        val state = awaitValue(model.state) { it.lists != null && it.covers.isNotEmpty() }
-        assertEquals(myList, state.myList)
-        assertEquals(listOf("m1", "m2"), state.covers.map { it.id })
-        assertEquals(listOf(dateNight), state.manual)
+        val state = awaitValue(model.state) { it.lists != null }
+        assertEquals(listOf("my", "d", "x"), state.shelves.map { it.id })
+        assertEquals(listOf("m1", "m2"), state.shelves.first().items?.map { it.id })
+        assertTrue("GET /api/v1/lists?counts=true" in server.seen, server.seen.toString())
     }
 
     @Test
     fun anEmptyMyListIsLeftOut() {
-        lists = listOf(myList.copy(workCount = 0), dateNight)
+        lists = listOf(myList.copy(workCount = 0), dateNight.copy(workCount = 0))
         val model = ListsViewModel(signIn())
         val state = awaitValue(model.state) { it.lists != null }
-        assertNull(state.myList)
-        assertEquals(listOf(dateNight), state.manual)
+        assertEquals(listOf(dateNight.copy(workCount = 0)), state.shelves)
     }
 
     @Test

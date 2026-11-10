@@ -7,7 +7,6 @@ import com.mmcdole.kivo.api.models.WorkList
 import com.mmcdole.kivo.api.models.WorkListSmart
 import com.mmcdole.kivo.api.models.WorkQuery
 import com.mmcdole.kivo.api.models.WorkSummary
-import com.mmcdole.kivo.api.models.WorkSummaryPage
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -16,16 +15,21 @@ class ListsUiTest {
         WorkSummary(id = id, kind = kind, title = id, matchState = "matched", available = true, images = WorkImages())
 
     @Test
-    fun myListComesApartFromTheListsMade() {
-        val myList = WorkList("my", "Watchlist", "manual", builtIn = true, workCount = 2)
-        val made = WorkList("d", "Date Night", "manual", builtIn = false, workCount = 1)
-        val ui = listsUi(
-            listOf(myList, made, WorkList("x", "Later", "future", builtIn = false, workCount = 1)),
-            WorkSummaryPage(listOf(work("m1", "movie")), total = 1),
+    fun everyListIsAShelfInItsOrderWithoutBooks() {
+        val myList = WorkList("my", "Watchlist", "manual", builtIn = true, workCount = 2, items = listOf(work("m1", "movie"), work("b1", "book")))
+        val smart = WorkList("s", "90s comedies", "smart", builtIn = false, workCount = 3, items = listOf(work("m2", "movie")))
+        val made = WorkList("d", "Date Night", "manual", builtIn = false, workCount = 0, items = emptyList())
+        val later = WorkList("x", "Later", "future", builtIn = false, workCount = 1)
+        assertEquals(
+            listOf(Shelf(myList, listOf(work("m1", "movie"))), Shelf(smart, smart.items.orEmpty()), Shelf(made, emptyList())),
+            shelves(listOf(myList, smart, made, later)),
         )
-        assertEquals(myList, ui.myList)
-        assertEquals(listOf("m1"), ui.works.items.map { it.id })
-        assertEquals(listOf(made), ui.lists)
+    }
+
+    @Test
+    fun watchlistHasNoShelfWithNothingToShow() {
+        val myList = WorkList("my", "Watchlist", "manual", builtIn = true, workCount = 1, items = listOf(work("b1", "book")))
+        assertEquals(emptyList(), shelves(listOf(myList)))
     }
 
     @Test
@@ -37,13 +41,5 @@ class ListsUiTest {
         assertEquals(R.string.list_empty, emptyListMessage(manual))
         assertEquals(R.string.list_nothing_matches, emptyListMessage(smart))
         assertEquals(R.string.list_rules_broken, emptyListMessage(broken))
-    }
-
-    @Test
-    fun smartListsComeAfterTheManualOnes() {
-        val smart = WorkList("s", "90s comedies", "smart", builtIn = false, workCount = 3)
-        val made = WorkList("d", "Date Night", "manual", builtIn = false, workCount = 1)
-        val ui = listsUi(listOf(smart, made), WorkSummaryPage(emptyList(), total = 0))
-        assertEquals(listOf(made, smart), ui.lists)
     }
 }

@@ -346,7 +346,7 @@ var tableRead = regexp.MustCompile(`^(SEARCH|SCAN) (wl|w|r)( |$)`)
 // of them count the works. Each is a pass over the works of the query's
 // kinds, so a read runs one for each list it shows: a list's screen one
 // that counts, with its header running none, a later page one that doesn't
-// count, the Lists screen one for each smart list's count and covers, and
+// count, the Lists screen one for each smart list's count and first works, and
 // Home one for each smart row, which has no count. A grid's first page
 // runs one that counts, and a later page one that doesn't.
 func TestSmartReadsSelectOnce(t *testing.T) {

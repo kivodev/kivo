@@ -9,8 +9,12 @@ struct BrowseRow: View {
     let items: [WorkSummary]
     /// The shape every card takes, nil where each work's own decides.
     var style: CardStyle?
-    /// How many there are, muted after the heading's chevron.
-    var count: Int?
+    /// Whether the heading says the row is a smart list's.
+    var smart = false
+    /// What the row holds, such as how many, muted after the heading's chevron.
+    var detail: String?
+    /// What a row with no cards says in a poster's place, which opens what [more] does.
+    var placeholder: String?
     var more: (() -> Void)?
     @Environment(\.kivoPalette) private var palette
     @Environment(\.wide) private var wide
@@ -46,21 +50,49 @@ struct BrowseRow: View {
                 .foregroundStyle(palette.text)
                 .accessibilityAddTraits(.isHeader)
                 .padding(.horizontal, Self.inset)
-            ScrollView(.horizontal, showsIndicators: false) {
-                // Every card is laid out, not only those on screen, so a row of
-                // mixed shapes is as tall as its tallest card. A row holds at most 20.
-                HStack(alignment: .top, spacing: KivoTokens.spacing * 3) {
-                    ForEach(items, id: \.id) { work in
-                        let style = style ?? (currentList == nil ? CardStyle.of(work) : CardStyle.listed(work))
-                        WorkLink(work: work) {
-                            WorkCard(work, style: style, width: Self.cardWidth(style, wide: wide))
-                        }
+            if items.isEmpty, let placeholder {
+                emptyCard(placeholder)
+                    .padding(.horizontal, Self.inset)
+            } else {
+                cards
+            }
+        }
+    }
+
+    private var cards: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            // Every card is laid out, not only those on screen, so a row of
+            // mixed shapes is as tall as its tallest card. A row holds at most 20.
+            HStack(alignment: .top, spacing: KivoTokens.spacing * 3) {
+                ForEach(items, id: \.id) { work in
+                    let style = style ?? (currentList == nil ? CardStyle.of(work) : CardStyle.listed(work))
+                    WorkLink(work: work) {
+                        WorkCard(work, style: style, width: Self.cardWidth(style, wide: wide))
                     }
                 }
-                .padding(.horizontal, Self.inset)
             }
-            .scrollClipDisabled()
+            .padding(.horizontal, Self.inset)
         }
+        .scrollClipDisabled()
+    }
+
+    /// A dashed outline the size of a poster, saying [text].
+    private func emptyCard(_ text: String) -> some View {
+        let width = Self.cardWidth(.poster, wide: wide)
+        return Button { more?() } label: {
+            Text(text)
+                .font(.footnote)
+                .foregroundStyle(palette.textMuted)
+                .multilineTextAlignment(.center)
+                .padding(KivoTokens.spacing * 3)
+                .frame(width: width, height: width / CardStyle.poster.aspect)
+                .overlay {
+                    RoundedRectangle(cornerRadius: KivoTokens.Radius.md)
+                        .strokeBorder(palette.border, style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                }
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder private var header: some View {
@@ -68,12 +100,25 @@ struct BrowseRow: View {
             Button(action: more) {
                 HStack(spacing: KivoTokens.spacing * 1.5) {
                     Self.heading(title)
+                        .lineLimit(1)
                     Image(systemName: "chevron.right")
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(palette.textMuted)
-                    if let count {
-                        Text(count.formatted())
+                    if smart {
+                        HStack(spacing: KivoTokens.spacing) {
+                            Image(systemName: "sparkles")
+                                .accessibilityHidden(true)
+                            Text("Smart list")
+                        }
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(palette.accent)
+                        .fixedSize()
+                    }
+                    if let detail {
+                        Text(detail)
+                            .font(.subheadline)
                             .foregroundStyle(palette.textMuted)
+                            .fixedSize()
                     }
                 }
                 .contentShape(Rectangle())

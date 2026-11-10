@@ -1786,7 +1786,6 @@ public final class com/mmcdole/kivo/core/session/SessionLibrary {
 	public final fun knownCollection (Ljava/lang/String;)Lcom/mmcdole/kivo/api/models/CollectionSummary;
 	public final fun knownPerson (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/Heading;
 	public final fun libraries ()Lkotlinx/coroutines/flow/Flow;
-	public final fun listWorks (Ljava/lang/String;Ljava/lang/Integer;Ljava/util/List;)Lkotlinx/coroutines/flow/Flow;
 	public final fun lists (Z)Lkotlinx/coroutines/flow/Flow;
 	public static synthetic fun lists$default (Lcom/mmcdole/kivo/core/session/SessionLibrary;ZILjava/lang/Object;)Lkotlinx/coroutines/flow/Flow;
 	public final fun pagedAuthors (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/GridPager;

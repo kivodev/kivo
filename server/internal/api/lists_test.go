@@ -55,6 +55,21 @@ func TestLists(t *testing.T) {
 	if ids, ok := detail["listIds"].([]any); !ok || len(ids) != 1 || ids[0] != myList {
 		t.Errorf("listIds after: %v", detail["listIds"])
 	}
+	// With counts each list has its first works, and without them none.
+	type shelves struct {
+		Items []struct {
+			ID    string
+			Items *[]struct{ ID string }
+		}
+	}
+	counted := decode[shelves](t, e.do("GET", "/api/v1/lists?counts=true", e.adminToken, nil)).Items
+	if len(counted) != 2 || counted[0].Items == nil || len(*counted[0].Items) != 1 || (*counted[0].Items)[0].ID != e.heat.Work.String() ||
+		counted[1].Items == nil || len(*counted[1].Items) != 0 {
+		t.Errorf("counted lists' items: %+v", counted)
+	}
+	if plain := decode[shelves](t, e.do("GET", "/api/v1/lists", e.adminToken, nil)).Items; plain[0].Items != nil {
+		t.Errorf("uncounted lists have items: %+v", plain)
+	}
 	if w := e.do("DELETE", "/api/v1/lists/"+myList+"/works/"+e.heat.Work.String(), e.adminToken, nil); w.Code != http.StatusNoContent {
 		t.Errorf("removing: %d", w.Code)
 	}

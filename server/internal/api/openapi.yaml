@@ -1526,7 +1526,7 @@ paths:
       parameters:
         - name: counts
           in: query
-          description: Count each smart list by running its rules, and fill each list's `covers`; without it a smart list's `workCount` is 0.
+          description: Count each smart list by running its rules, and fill each list's `items`; without it a smart list's `workCount` is 0.
           schema: {type: boolean}
       responses:
         "200":
@@ -5181,13 +5181,12 @@ components:
             `listLists` with `counts`; the first page of its works has the
             count as `total`.
         smart: {$ref: "#/components/schemas/WorkListSmart"}
-        covers:
+        items:
           type: array
           description: |
-            Posters of the list's first works the user sees, up to three, in
-            the list's order. A work without a poster is left out. Set by
-            `listLists` with `counts`.
-          items: {$ref: "#/components/schemas/ImageRef"}
+            The list's first works the user sees, up to 20, in the list's
+            order, as a Home row has them. Set by `listLists` with `counts`.
+          items: {$ref: "#/components/schemas/WorkSummary"}
 
     ListKind:
       type: string

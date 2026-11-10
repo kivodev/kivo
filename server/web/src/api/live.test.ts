@@ -35,11 +35,11 @@ describe("planEvent", () => {
       { kind: "invalidate", path: apiPaths.collection },
       { kind: "invalidate", path: apiPaths.unmatchedWorks },
       { kind: "invalidate", path: apiPaths.home },
+      { kind: "invalidate", path: apiPaths.lists },
       { kind: "invalidate", path: apiPaths.listWorks },
       { kind: "invalidate", path: apiPaths.search },
       { kind: "invalidate", path: apiPaths.person },
       { kind: "invalidate", path: apiPaths.bookSeries },
-      { kind: "invalidate", path: apiPaths.lists },
     ];
     expect(planEvent({ type: "event", kind: "workChanged", workId: work })).toEqual(views([work]));
   });
@@ -78,11 +78,11 @@ describe("planEvent", () => {
       { kind: "invalidate", path: apiPaths.collection },
       { kind: "invalidate", path: apiPaths.unmatchedWorks },
       { kind: "invalidate", path: apiPaths.home },
+      { kind: "invalidate", path: apiPaths.lists },
       { kind: "invalidate", path: apiPaths.listWorks },
       { kind: "invalidate", path: apiPaths.search },
       { kind: "invalidate", path: apiPaths.person },
       { kind: "invalidate", path: apiPaths.bookSeries },
-      { kind: "invalidate", path: apiPaths.lists },
     ]);
   });
 

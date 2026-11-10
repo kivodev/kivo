@@ -48,8 +48,7 @@ const workViews = (ids?: readonly string[]): CacheOp[] =>
 export function planEvent(event: EventMessage): CacheOp[] {
   switch (event.kind) {
     case "workChanged":
-      // Lists' counts follow their works.
-      return [...workViews(event.workId ? [event.workId] : undefined), invalidate(apiPaths.lists)];
+      return workViews(event.workId ? [event.workId] : undefined);
     case "libraryChanged": {
       // Home, the library list's counts, and the libraries' grids with their filters and letter rails.
       const ids = event.libraryIds ?? [];
@@ -69,8 +68,8 @@ export function planEvent(event: EventMessage): CacheOp[] {
     case "listsChanged":
       return listViewPaths.map((path) => invalidate(path));
     case "userStateChanged":
-      // Cards everywhere show the state, Home's rows follow it, and so do smart lists' counts.
-      return [...workViews(event.workIds), invalidate(apiPaths.lists)];
+      // Cards everywhere show the state, and Home's rows and smart lists follow it.
+      return workViews(event.workIds);
     case "tasksChanged":
       // That work produces the tasks' runs and failures, library scans
       // and counts, works' files and missing files.

@@ -1,6 +1,5 @@
 package com.mmcdole.kivo.android.mobile.lists
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,7 +20,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.List
@@ -33,7 +31,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -55,7 +52,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
@@ -75,10 +71,7 @@ import com.mmcdole.kivo.android.mobile.app.handle
 import com.mmcdole.kivo.android.mobile.library.PagedGrid
 import com.mmcdole.kivo.android.mobile.library.gridCardWidth
 import com.mmcdole.kivo.android.mobile.library.gridColumns
-import com.mmcdole.kivo.android.mobile.theme.LocalKivo
 import com.mmcdole.kivo.android.mobile.theme.space
-import com.mmcdole.kivo.android.mobile.ui.Artwork
-import com.mmcdole.kivo.android.mobile.ui.CardCorners
 import com.mmcdole.kivo.android.mobile.ui.CardShape
 import com.mmcdole.kivo.android.mobile.ui.Failed
 import com.mmcdole.kivo.android.mobile.ui.Loading
@@ -89,7 +82,6 @@ import com.mmcdole.kivo.android.mobile.ui.TabTopBar
 import com.mmcdole.kivo.android.mobile.ui.WorkCard
 import com.mmcdole.kivo.android.mobile.ui.WorkMenu
 import com.mmcdole.kivo.android.mobile.ui.WorkMenuHost
-import com.mmcdole.kivo.android.mobile.ui.cardImage
 import com.mmcdole.kivo.android.mobile.ui.rowCardWidth
 import com.mmcdole.kivo.android.mobile.ui.sentence
 import com.mmcdole.kivo.android.mobile.ui.listShapeOf
@@ -97,28 +89,25 @@ import com.mmcdole.kivo.api.models.ListRef
 import com.mmcdole.kivo.api.models.WorkList
 import com.mmcdole.kivo.api.models.WorkListSmart
 import com.mmcdole.kivo.api.models.WorkQuery
-import com.mmcdole.kivo.api.models.WorkSummary
-import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.RequestProblem
-import com.mmcdole.kivo.core.session.SessionLibrary
 import kotlinx.coroutines.launch
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.style.TextAlign
 
-/** The grouped rows' corners. */
-private val GroupCorners = RoundedCornerShape(22.dp)
-
-/** The gap between My List's covers. */
-private val CoverGap = 8.dp
-
-private val FirstCoverWidth = 44.dp
-
-/** The narrowest a list's card goes in a wide window's grid. */
-private val ListCardMinWidth = 324.dp
+/** The gap between a shelf's cards, and the page's side margin, as Home's. */
+private val CardGap = 12.dp
+private val SideMargin = 16.dp
 
 /**
- * Lists: My List as a row of covers with its count, then the lists the user
- * made, then the smart lists, each with its count; a section with nothing in
- * it is left out. The + makes a list, or opens the smart list builder. Pull
- * to refresh; the live events refresh it too.
+ * Lists: a shelf for each list, My List first and the others by name, its
+ * name and count over a row of its first titles; the name opens the list.
+ * The + makes a list, or opens the smart list builder. Pull to refresh; the
+ * live events refresh it too.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -142,7 +131,7 @@ fun ListsScreen(session: ServerSession, nav: MobileNav) {
                 lists == null && problem != null -> Failed(problem, stringResource(R.string.mobile_couldnt_load_lists), state.serverName, model::refresh)
                 lists == null -> Loading()
                 else -> PullToRefreshBox(state.refreshing, model::refresh, Modifier.fillMaxSize()) {
-                    ListsContent(state, session.session.library, nav, model)
+                    ListsContent(state, nav, model)
                 }
             }
         }
@@ -173,83 +162,41 @@ private fun NewListMenu(onNewList: () -> Unit, onNewSmart: () -> Unit) {
 }
 
 @Composable
-private fun ListsContent(state: ListsUiState, library: SessionLibrary, nav: MobileNav, model: ListsViewModel) {
-    val myList = state.myList
-    val manual = state.manual
-    val wide = LocalWide.current
-    // A wide window's row reaches the edges, so the sections keep the margin themselves.
-    val edge = if (wide) 0.dp else space(4)
-    val sectionMargin = Modifier.padding(horizontal = space(4) - edge)
-    LazyColumn(
-        Modifier.fillMaxSize().testTag("lists"),
-        contentPadding = PaddingValues(start = edge, end = edge, top = space(2), bottom = space(6)),
-        verticalArrangement = Arrangement.spacedBy(space(5)),
-    ) {
-        if (myList == null && manual.isEmpty() && state.smart.isEmpty()) {
-            item { Message(stringResource(R.string.mobile_no_lists), stringResource(R.string.mobile_no_lists_sentence), Modifier.height(400.dp)) }
-        }
-        if (myList != null) {
-            item(key = "myList") {
-                if (wide) MyListRow(myList, state.covers, nav, model) else MyListSection(myList, state.covers) { nav.open(ListRoute(myList.id, myList.name)) }
-            }
-        }
-        if (manual.isNotEmpty()) {
-            item(key = "manual") {
-                ListsSection(stringResource(R.string.mobile_your_lists), manual, library, nav, sectionMargin) { pluralStringResource(R.plurals.mobile_count_titles, it.workCount, it.workCount) }
-            }
-        }
-        if (state.smart.isNotEmpty()) {
-            item(key = "smart") { ListsSection(stringResource(R.string.mobile_smart_lists), state.smart, library, nav, sectionMargin) { smartDetail(it) } }
-        }
-    }
-}
-
-@Composable
-private fun MyListSection(list: WorkList, covers: List<WorkSummary>, onClick: () -> Unit) {
-    Column(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).testTag("list:${list.name}"),
-        verticalArrangement = Arrangement.spacedBy(space(2)),
-    ) {
-        MyListHeading(list, Modifier.fillMaxWidth())
-        BoxWithConstraints(Modifier.fillMaxWidth()) {
-            val width = (maxWidth - CoverGap * (MY_LIST_COVERS - 1)) / MY_LIST_COVERS
-            Row(horizontalArrangement = Arrangement.spacedBy(CoverGap)) {
-                for (work in covers.take(MY_LIST_COVERS)) {
-                    Artwork(cardImage(work, CardShape.Poster), width, Modifier.weight(1f, fill = false).aspectRatio(CardShape.Poster.aspect).clip(CardCorners))
-                }
-            }
-        }
-    }
-}
-
-/** My List's name and count, after its chevron. */
-@Composable
-private fun MyListHeading(list: WorkList, modifier: Modifier) {
-    Row(modifier.semantics(mergeDescendants = true) { heading() }, verticalAlignment = Alignment.CenterVertically) {
-        Text(list.name, style = MaterialTheme.typography.titleMedium)
-        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(list.workCount.toString(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-/** My List in a wide window: a row of its covers, as on Home. */
-@Composable
-private fun MyListRow(list: WorkList, covers: List<WorkSummary>, nav: MobileNav, model: ListsViewModel) {
+private fun ListsContent(state: ListsUiState, nav: MobileNav, model: ListsViewModel) {
+    val shelves = state.shelves
     WorkMenuHost({ action, menu -> nav.handle(action, menu, model.marks) }) { openMenu ->
-        Column(verticalArrangement = Arrangement.spacedBy(space(2))) {
-            MyListHeading(
-                list,
-                Modifier.fillMaxWidth().clickable { nav.open(ListRoute(list.id, list.name)) }.padding(horizontal = space(4)).testTag("list:${list.name}"),
-            )
-            LazyRow(contentPadding = PaddingValues(horizontal = space(4)), horizontalArrangement = Arrangement.spacedBy(space(3))) {
-                items(covers, key = { it.id }) { work ->
+        LazyColumn(
+            Modifier.fillMaxSize().testTag("lists"),
+            contentPadding = PaddingValues(bottom = space(6)),
+            verticalArrangement = Arrangement.spacedBy(space(7)),
+        ) {
+            if (shelves.isEmpty()) {
+                item { Message(stringResource(R.string.mobile_no_lists), stringResource(R.string.mobile_no_lists_sentence), Modifier.height(400.dp)) }
+            }
+            items(shelves, key = { it.id }) { list -> Shelf(list, nav, openMenu) }
+        }
+    }
+}
+
+/** A list's shelf: its heading, which opens it, over its first titles as cards, or a placeholder for an empty list. */
+@Composable
+private fun Shelf(list: WorkList, nav: MobileNav, openMenu: (WorkMenu) -> Unit) {
+    val works = list.items.orEmpty()
+    val open = { nav.open(ListRoute(list.id, list.name)) }
+    Column {
+        ShelfHeading(list, open)
+        if (works.isEmpty()) {
+            EmptyShelf(Modifier.padding(horizontal = SideMargin).clickable(onClick = open))
+        } else {
+            LazyRow(contentPadding = PaddingValues(horizontal = SideMargin), horizontalArrangement = Arrangement.spacedBy(CardGap)) {
+                items(works, key = { it.id }, contentType = { listShapeOf(it) }) { work ->
                     val shape = listShapeOf(work)
                     WorkCard(
                         work = work,
                         shape = shape,
                         width = rowCardWidth(shape),
                         onClick = { nav.openWork(work) },
-                        onLongClick = { openMenu(WorkMenu(work, list = ListRef(list.id, list.name, list.kind))) },
+                        onLongClick = { openMenu(WorkMenu(work, list = list.takeIf { it.isManual }?.let { ListRef(it.id, it.name, it.kind) })) },
                     )
                 }
             }
@@ -257,78 +204,71 @@ private fun MyListRow(list: WorkList, covers: List<WorkSummary>, nav: MobileNav,
     }
 }
 
-/** A smart list's line under its name: its kinds and count. */
+/** A shelf's heading: the list's name and chevron, a smart list's mark, and its count. */
 @Composable
-private fun smartDetail(list: WorkList): String =
-    stringResource(R.string.mobile_smart_list_detail, kindsPhrase(list.smart?.query?.kinds.orEmpty()), list.workCount)
-
-/** A headed group of [lists], each with its first cover, name and [detail]; a wide window has them as a grid of cards. */
-@Composable
-private fun ListsSection(title: String, lists: List<WorkList>, library: SessionLibrary, nav: MobileNav, modifier: Modifier, detail: @Composable (WorkList) -> String) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(space(2))) {
-        Text(
-            title,
-            Modifier.semantics { heading() },
-            style = MaterialTheme.typography.titleMedium,
-        )
-        if (LocalWide.current) {
-            BoxWithConstraints(Modifier.fillMaxWidth()) {
-                val gap = space(3)
-                val columns = ((maxWidth + gap) / (ListCardMinWidth + gap)).toInt().coerceIn(2, 3)
-                val cardWidth = (maxWidth - gap * (columns - 1)) / columns
-                Column(verticalArrangement = Arrangement.spacedBy(gap)) {
-                    for (row in lists.chunked(columns)) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                            for (list in row) {
-                                Box(Modifier.width(cardWidth).clip(GroupCorners).background(MaterialTheme.colorScheme.surfaceContainerHigh)) {
-                                    ListCard(list, library, nav, detail)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        } else {
-            Column(Modifier.fillMaxWidth().clip(GroupCorners).background(MaterialTheme.colorScheme.surfaceContainerHigh)) {
-                lists.forEachIndexed { index, list ->
-                    if (index > 0) HorizontalDivider()
-                    ListCard(list, library, nav, detail)
-                }
-            }
+private fun ShelfHeading(list: WorkList, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .heightIn(min = 48.dp)
+            .padding(horizontal = SideMargin, vertical = space(2))
+            .semantics(mergeDescendants = true) { heading() }
+            .testTag("list:${list.name}"),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(list.name, Modifier.weight(1f, fill = false), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (list.smart != null) {
+            Icon(Icons.Default.AutoAwesome, null, Modifier.padding(start = space(1)).size(16.dp), tint = MaterialTheme.colorScheme.primary)
+            Text(
+                stringResource(R.string.mobile_smart_list),
+                Modifier.padding(start = space(1), end = space(2)),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+            )
         }
+        Text(
+            if (list.workCount == 0) stringResource(R.string.mobile_list_no_titles) else pluralStringResource(R.plurals.mobile_count_titles, list.workCount, list.workCount),
+            Modifier.padding(start = space(1)),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+        )
     }
 }
 
-/** A list's cover, name and [detail], opening it. */
+/** An empty list's shelf: a dashed outline the size of a poster, saying so. */
 @Composable
-private fun ListCard(list: WorkList, library: SessionLibrary, nav: MobileNav, detail: @Composable (WorkList) -> String) {
-    ListItem(
-        headlineContent = { Text(list.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        leadingContent = { FirstCover(library, list) },
-        // One line in a wide window, so a row of cards is even.
-        supportingContent = { Text(detail(list), maxLines = if (LocalWide.current) 1 else Int.MAX_VALUE, overflow = TextOverflow.Ellipsis) },
-        trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-        modifier = Modifier.clickable { nav.open(ListRoute(list.id, list.name)) }.testTag("list:${list.name}"),
-    )
-}
-
-/** A list's most recently added work's poster, or a list icon for an empty list. */
-@Composable
-private fun FirstCover(library: SessionLibrary, list: WorkList) {
-    val shape = Modifier.width(FirstCoverWidth).aspectRatio(CardShape.Poster.aspect).clip(CardCorners)
-    if (list.workCount == 0) {
-        Box(shape.background(LocalKivo.current.placeholder), contentAlignment = Alignment.Center) {
-            if (list.smart != null) {
-                Icon(Icons.Default.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary)
-            } else {
-                Icon(Icons.AutoMirrored.Filled.List, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+private fun EmptyShelf(modifier: Modifier) {
+    val outline = MaterialTheme.colorScheme.outlineVariant
+    Box(
+        modifier
+            .width(rowCardWidth(CardShape.Poster))
+            .aspectRatio(CardShape.Poster.aspect)
+            .drawBehind {
+                val stroke = 1.dp.toPx()
+                val dash = 4.dp.toPx()
+                val radius = 10.dp.toPx()
+                drawRoundRect(
+                    color = outline,
+                    topLeft = Offset(stroke / 2, stroke / 2),
+                    size = Size(size.width - stroke, size.height - stroke),
+                    cornerRadius = CornerRadius(radius, radius),
+                    style = Stroke(stroke, pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, dash))),
+                )
             }
-        }
-    } else {
-        val load by remember(list.id) { library.listWorks(list.id, 1, null) }.collectAsStateWithLifecycle(Load.Loading)
-        val work = load.getOrNull()?.items?.firstOrNull()
-        Artwork(work?.let { cardImage(it, CardShape.Poster) }, FirstCoverWidth, shape)
+            .padding(space(3))
+            .testTag("emptyShelf"),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            stringResource(R.string.mobile_list_empty_shelf),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 

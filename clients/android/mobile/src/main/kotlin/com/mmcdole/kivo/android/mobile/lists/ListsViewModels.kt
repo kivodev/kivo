@@ -19,12 +19,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.onStart
-import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -33,36 +30,23 @@ import kotlinx.coroutines.launch
 private const val MANUAL = "manual"
 private const val SMART = "smart"
 
-/** How many of My List's works the Lists tab shows as its covers. */
-internal const val MY_LIST_COVERS = 4
-
-/** How many of My List's works a wide Lists tab's row holds, as many as Home's. */
-private const val MY_LIST_ROW = 20
-
 data class ListsUiState(
-    /** The user's lists, My List first; null until read. */
+    /** The user's lists, My List first, each with its first works; null until read. */
     val lists: List<WorkList>? = null,
-    /** My List's most recently added works. */
-    val covers: List<WorkSummary> = emptyList(),
     /** Why the lists couldn't be read, while there's nothing to show. */
     val problem: RequestProblem? = null,
     /** A pull to refresh waiting on its answer. */
     val refreshing: Boolean = false,
     val serverName: String = "",
 ) {
-    /** My List, when it has anything in it. */
-    val myList: WorkList? get() = lists?.firstOrNull { it.builtIn }?.takeIf { it.workCount > 0 }
-
-    /** The lists the user made. */
-    val manual: List<WorkList> get() = lists.orEmpty().filter { !it.builtIn && it.kind == MANUAL }
-
-    val smart: List<WorkList> get() = lists.orEmpty().filter { it.kind == SMART }
+    /** The lists the tab shelves, in their order: My List only with something in it, and a list kind it doesn't know left out. */
+    val shelves: List<WorkList> get() = lists.orEmpty().filter { (it.kind == MANUAL || it.kind == SMART) && (!it.builtIn || it.workCount > 0) }
 }
 
 /** Whether works can be added to and taken off the list. */
 val WorkList.isManual: Boolean get() = kind == MANUAL
 
-/** The Lists tab: the lists, and My List's covers, read again as they change and on a pull to refresh. */
+/** The Lists tab: the lists with their first works, read again as they change and on a pull to refresh. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ListsViewModel(private val session: KivoSession) : ViewModel() {
     val marks = WorkMarks(session.library, viewModelScope)
@@ -71,17 +55,10 @@ class ListsViewModel(private val session: KivoSession) : ViewModel() {
 
     private val lists = refreshes.flatMapLatest { session.library.lists(counted = true) }
         .onEach { if (it !is Load.Loading) refreshing.value = false }
-        .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
 
-    private val covers = lists
-        .map { load -> load.getOrNull()?.firstOrNull { it.builtIn }?.id }
-        .distinctUntilChanged()
-        .flatMapLatest { id -> if (id == null) flowOf(null) else session.library.listWorks(id, MY_LIST_ROW, null) }
-
-    val state: StateFlow<ListsUiState> = combine(lists, covers.onStart { emit(null) }, refreshing) { lists, covers, refreshing ->
+    val state: StateFlow<ListsUiState> = combine(lists, refreshing) { lists, refreshing ->
         ListsUiState(
             lists = lists.getOrNull(),
-            covers = covers?.getOrNull()?.items.orEmpty(),
             problem = lists.problemOrNull(),
             refreshing = refreshing,
             serverName = session.savedServer.value.name,
