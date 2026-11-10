@@ -491,7 +491,7 @@ ORDER BY p.` + strings.ReplaceAll(by, ", ", ", p.")
 		page:    statement("(\n"+capped(selected("", columns, ""), by)+"\n)", by, ""),
 		args:    vw.args(append(c.params, sql.Named("only", set(only)), sql.Named("library", rd.library), sql.Named("list", rd.list))...),
 	}
-	if c.list && len(q.Sort) == 1 && q.Sort[0] == (SortKey{Field: sortListPosition}) {
+	if c.placed(q) {
 		// The places order the works by themselves: k0, and id for two
 		// works left at one place.
 		const by = "k0, id"
@@ -523,6 +523,11 @@ ORDER BY p.` + strings.ReplaceAll(by, ", ", ", p.")
 		out.counted = statement("(\n"+matched+"\n)", by, "(SELECT wl.sort_title AS t"+rules.matching(kinds, rd, "")+where+")")
 	}
 	return out
+}
+
+// placed reports whether q's works are a list's in its custom order.
+func (c *compiler) placed(q WorkQuery) bool {
+	return c.list && len(q.Sort) == 1 && q.Sort[0] == (SortKey{Field: sortListPosition})
 }
 
 // walk is the order of f's index, as order gives a query's: the columns
