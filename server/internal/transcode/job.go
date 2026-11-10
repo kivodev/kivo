@@ -20,11 +20,9 @@ type job struct {
 	seq        int // the job's number among the stream's jobs
 	from, next int // the first segment, and the next one it will produce
 	reading    int // the furthest segment requested since the job started
-	ready      map[int]chan struct{}
-	first      chan struct{} // closed once the job's first segment is on disk
 	cancel     context.CancelFunc
-	exited     chan struct{}
-	err        error        // set before exited closes
+	exited     bool
+	err        error        // set as the job exits
 	out        media.Output // nil until ffmpeg has started
 	paused     bool
 	passed     bool // the job went past a segment without writing it, which has been logged
@@ -89,13 +87,9 @@ func (s *Stream) run(ctx context.Context, j *job) {
 		}
 		slog.WarnContext(ctx, "transcode: job failed", append(attrs, "accelerator", s.spec.Accelerator, "err", err, "command", d.Command, "stderr", d.Stderr)...)
 	}
-	j.err = err
+	j.err, j.exited = err, true
 	j.restLocked()
-	close(j.exited)
-	for _, ch := range j.ready {
-		close(ch) // waiters for segments this job didn't produce will look again
-	}
-	j.ready = nil
+	s.wakeLocked()
 }
 
 // classify maps a job's media error to what the playback package does
@@ -323,9 +317,8 @@ const (
 	resumeLead = 60 * time.Second
 )
 
-// commit renames a finished segment into place, and wakes its waiters and
-// the waiters of any earlier segment. It pauses the job once it's far
-// enough ahead of the player.
+// commit renames a finished segment into place and wakes the waiting
+// requests. It pauses the job once it's far enough ahead of the player.
 func (s *Stream) commit(j *job, i int, f *os.File) error {
 	if err := f.Close(); err != nil {
 		return err
@@ -336,16 +329,8 @@ func (s *Stream) commit(j *job, i int, f *os.File) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.done[i] = true
-	if j.next == j.from {
-		close(j.first)
-	}
 	j.next = i + 1
-	for k, ch := range j.ready {
-		if k <= i { // waiters for segments the job skipped past will look again
-			close(ch)
-			delete(j.ready, k)
-		}
-	}
+	s.wakeLocked()
 	if !j.paused && s.job == j && s.leadLocked(j) >= pauseLead {
 		if err := j.out.Pause(); err != nil {
 			slog.Debug("transcode: can't pause the job", "err", err)
@@ -376,47 +361,29 @@ func (s *Stream) writeInit(p int, b []byte) error {
 	defer s.mu.Unlock()
 	if !s.initDone[p] {
 		s.initDone[p] = true
-		close(s.initReady[p])
+		s.wakeLocked()
 	}
 	return nil
 }
 
-// waitLocked returns a channel that's closed when segment i is on disk or
-// the job ends.
-func (j *job) waitLocked(i int) chan struct{} {
-	ch, ok := j.ready[i]
-	if !ok {
-		ch = make(chan struct{})
-		j.ready[i] = ch
-	}
-	return ch
-}
-
-// started waits for the job's first segment. It returns the job's error if
+// started waits for job j's first segment. It returns the job's error if
 // the job ends without one.
-func (j *job) started(ctx context.Context) error {
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-j.first:
-		return nil
-	case <-j.exited:
-		select {
-		case <-j.first:
+func (s *Stream) started(ctx context.Context, j *job) error {
+	for {
+		s.mu.Lock()
+		first, exited, err, changed := j.next > j.from, j.exited, j.err, s.changed
+		s.mu.Unlock()
+		switch {
+		case first:
 			return nil
-		default:
-			return j.err
+		case exited:
+			return err
 		}
-	}
-}
-
-// ended reports whether the job has exited.
-func (j *job) ended() bool {
-	select {
-	case <-j.exited:
-		return true
-	default:
-		return false
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-changed:
+		}
 	}
 }
 
@@ -426,7 +393,7 @@ func (j *job) ended() bool {
 // unreadable source or a cancellation isn't a failure, so the next request
 // starts a new job.
 func (j *job) failed() bool {
-	return j.ended() && jobFailure(j.err)
+	return j.exited && jobFailure(j.err)
 }
 
 // jobFailure reports whether err is a job's own failure, as classify

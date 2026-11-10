@@ -23,15 +23,15 @@ type Stream struct {
 	playlists map[string][]byte
 	fileCues  [][]media.Cue // each text track's cues when it's read from a file, read as the stream opens
 
-	mu        sync.Mutex
-	done      []bool          // whether each segment is on disk
-	initDone  []bool          // whether each part's init segment is on disk
-	initReady []chan struct{} // each is closed once its part's init segment is on disk
-	job       *job            // nil when no job is running
-	closed    bool
-	idle      *time.Timer
-	jobs      sync.WaitGroup // tracks every started job until it exits
-	started   int            // the number of jobs started, used to number their scratch files
+	mu       sync.Mutex
+	changed  chan struct{} // closed and replaced whenever a waiting request should look again
+	done     []bool        // whether each segment is on disk
+	initDone []bool        // whether each part's init segment is on disk
+	job      *job          // nil when no job is running
+	closed   bool
+	idle     *time.Timer
+	jobs     sync.WaitGroup // tracks every started job until it exits
+	count    int            // the number of jobs started, used to number their scratch files
 }
 
 // Playlist returns one of the stream's playlists: PlaylistName, or one of
@@ -62,51 +62,81 @@ func (s *Stream) Segment(ctx context.Context, name string) (string, error) {
 	if !ok || i >= len(s.plan) || text >= len(s.spec.Text) {
 		return "", fmt.Errorf("%w: segment %s", ErrNotFound, name)
 	}
-	path := s.path
+	path := s.path(i)
 	if text >= 0 {
-		path = func(i int) string { return s.textPath(text, i) }
+		path = s.textPath(text, i)
+	}
+	have := func() bool {
+		s.readLocked(i)
+		return s.done[i]
+	}
+	return s.wait(ctx, name, path, have, func(j *job) (int, error) {
+		if err := s.refusedLocked(j, i); err != nil {
+			return 0, err
+		}
+		if j == nil || j.exited || i < j.next || i > j.next+nearSegments {
+			return i, nil
+		}
+		return -1, nil
+	})
+}
+
+// wait returns path once have reports that it's on disk. Until then it
+// looks again each time the stream changes. from is given the stream's job.
+// It returns the segment to start a new job at, -1 to wait for the job, or
+// an error when the request can't be met. have and from run under the
+// lock. name is the requested segment, which errors name.
+func (s *Stream) wait(ctx context.Context, name, path string, have func() bool, from func(j *job) (int, error)) (string, error) {
+	var on *job // the job the request last waited on
+	look := func() (<-chan struct{}, error) {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		switch {
+		case s.closed:
+			return nil, fmt.Errorf("%w: segment %s", ErrClosed, name)
+		case have():
+			return nil, nil
+		case on != nil && on != s.job && !on.exited:
+			// The job was replaced, by a far seek elsewhere or an idle
+			// kill. The request waits for it to exit before starting
+			// another, so requests far apart can't restart the job faster
+			// than jobs end.
+			return s.changed, nil
+		case on != nil && on == s.job && on.err != nil && !stopped(on.err):
+			return nil, on.err
+		}
+		i, err := from(s.job)
+		if err != nil {
+			return nil, err
+		}
+		if i >= 0 {
+			s.startLocked(i)
+		}
+		on = s.job
+		return s.changed, nil
 	}
 	for {
-		s.mu.Lock()
-		if s.closed {
-			s.mu.Unlock()
-			return "", fmt.Errorf("%w: segment %s", ErrClosed, name)
-		}
-		s.readLocked(i)
-		if s.done[i] {
-			s.mu.Unlock()
-			return path(i), nil
-		}
-		j := s.job
-		if err := s.refusedLocked(j, i); err != nil {
-			s.mu.Unlock()
+		changed, err := look()
+		switch {
+		case err != nil:
 			return "", err
+		case changed == nil:
+			return path, nil
 		}
-		if j == nil || j.ended() || i < j.next || i > j.next+nearSegments {
-			j = s.startLocked(i)
-		}
-		ch := j.waitLocked(i)
-		s.mu.Unlock()
-
 		select {
 		case <-ctx.Done():
 			return "", ctx.Err()
-		case <-ch:
+		case <-changed:
 		}
-		s.mu.Lock()
-		// A commit can wake this while the job still runs, so its error is
-		// read under the lock it's written under.
-		done, replaced, err := s.done[i], s.job != j, j.err
-		s.mu.Unlock()
-		switch {
-		case done:
-			return path(i), nil
-		case !replaced && err != nil && !stopped(err):
-			return "", err
-		}
-		// The job was replaced (by a far seek elsewhere or an idle kill),
-		// or it ended without this segment, so look again.
 	}
+}
+
+// wakeLocked makes every waiting request look again. Whatever changes what
+// a request waits for calls it: a segment or an init segment landing, a job
+// ending or being replaced, and the stream closing.
+func (s *Stream) wakeLocked() {
+	close(s.changed)
+	s.changed = make(chan struct{})
 }
 
 // refusedLocked returns why segment i can't come from the stream's job j:
@@ -142,38 +172,16 @@ const nearSegments = 3
 // job is running in the part, it starts one at the part's start. name is
 // the requested segment, which errors name.
 func (s *Stream) init(ctx context.Context, name string, p int) (string, error) {
-	for {
-		s.mu.Lock()
-		if s.closed {
-			s.mu.Unlock()
-			return "", fmt.Errorf("%w: segment %s", ErrClosed, name)
+	have := func() bool { return s.initDone[p] }
+	return s.wait(ctx, name, filepath.Join(s.dir, initName(p)), have, func(j *job) (int, error) {
+		switch {
+		case j != nil && j.failed():
+			return 0, j.err
+		case j == nil || j.exited || s.plan[j.from].Part != p:
+			return s.firstOf(p), nil
 		}
-		if s.initDone[p] {
-			s.mu.Unlock()
-			return filepath.Join(s.dir, initName(p)), nil
-		}
-		j := s.job
-		if j != nil && j.failed() {
-			s.mu.Unlock()
-			return "", j.err
-		}
-		if j == nil || j.ended() || s.plan[j.from].Part != p {
-			j = s.startLocked(s.firstOf(p))
-		}
-		s.mu.Unlock()
-		select {
-		case <-ctx.Done():
-			return "", ctx.Err()
-		case <-s.initReady[p]:
-		case <-j.exited:
-			s.mu.Lock()
-			failed := s.job == j && !s.initDone[p] && j.err != nil && !stopped(j.err)
-			s.mu.Unlock()
-			if failed {
-				return "", j.err
-			}
-		}
-	}
+		return -1, nil
+	})
 }
 
 // Touch marks the stream active by resetting the idle timer. Heartbeats
@@ -201,7 +209,7 @@ func (s *Stream) Job() JobInfo {
 	switch {
 	case j.failed():
 		info.State, info.Err = JobFailed, j.err
-	case j.ended():
+	case j.exited:
 		info.State = JobDone
 	case j.paused:
 		info.State = JobPaused
@@ -265,11 +273,8 @@ func (s *Stream) firstOf(p int) int {
 func (s *Stream) startLocked(i int) *job {
 	s.stopLocked()
 	ctx, cancel := context.WithCancel(context.Background())
-	s.started++
-	j := &job{
-		seq: s.started, from: i, next: i, reading: i, ready: map[int]chan struct{}{},
-		first: make(chan struct{}), cancel: cancel, exited: make(chan struct{}), began: time.Now(),
-	}
+	s.count++
+	j := &job{seq: s.count, from: i, next: i, reading: i, cancel: cancel, began: time.Now()}
 	s.job = j
 	s.jobs.Go(func() { s.run(ctx, j) })
 	return j
@@ -281,6 +286,7 @@ func (s *Stream) stopLocked() {
 		s.job.cancel()
 		s.job = nil
 	}
+	s.wakeLocked()
 }
 
 // readLocked records a request for segment i. It resumes a paused job once

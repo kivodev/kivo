@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"iter"
+	"log/slog"
 	"math"
 	"os"
 	"path/filepath"
@@ -56,6 +57,7 @@ type fakeMedia struct {
 	failAt    int             // fail after this many fragments; 0 means never
 	failWith  error           // the error failAt fails with; defaults to an encoder failure
 	failStart error           // fail with this before the first fragment
+	initAfter time.Duration   // how long a job takes to yield its init segment
 	cues      []media.Cue     // the text track; each cue is read along with the fragment it starts in
 	start     time.Duration   // the source's first timestamp, which copied cue times include
 	lost      []time.Duration // keyframes a job from the start doesn't emit, because its plan is wrong there
@@ -193,6 +195,13 @@ func (o *fakeOutput) Cues(i int) ([]media.Cue, error) {
 }
 
 func (o *fakeOutput) Init() ([]byte, error) {
+	if o.m.initAfter > 0 {
+		select {
+		case <-o.ctx.Done():
+			return nil, o.ctx.Err()
+		case <-time.After(o.m.initAfter):
+		}
+	}
 	if err := o.m.failStart; err != nil {
 		return nil, err
 	}
@@ -559,6 +568,10 @@ func TestPassedSegmentFailsFast(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer s.Close()
+		var log lockedBuffer
+		old := slog.Default()
+		slog.SetDefault(slog.New(slog.NewTextHandler(&log, nil)))
+		defer slog.SetDefault(old)
 		c, cancel := context.WithTimeout(ctx, time.Minute)
 		defer cancel()
 		start := time.Now()
@@ -578,7 +591,28 @@ func TestPassedSegmentFailsFast(t *testing.T) {
 		if _, err := s.Segment(c, "81.m4s"); err != nil {
 			t.Fatalf("segment 81: %v", err)
 		}
+		if n := strings.Count(log.String(), "passed a segment"); n != 1 {
+			t.Fatalf("%d warnings for two refusals, want 1", n)
+		}
 	})
+}
+
+// lockedBuffer collects what goroutines log.
+type lockedBuffer struct {
+	mu sync.Mutex
+	b  strings.Builder
+}
+
+func (l *lockedBuffer) Write(p []byte) (int, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.b.Write(p)
+}
+
+func (l *lockedBuffer) String() string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.b.String()
 }
 
 // cuesEvery returns a 1.2 s cue every interval over d, each starting half
@@ -850,6 +884,138 @@ func TestSkippedSegmentWakesItsWaiters(t *testing.T) {
 		}
 		if got := read(t, p); got != "[12s][14s][16s]" || len(m.jobs()) != 2 {
 			t.Fatalf("segment 2 = %q from %d jobs", got, len(m.jobs()))
+		}
+	})
+}
+
+// A far seek replaces the job under a request that's waiting on it. The
+// request looks again, and the new job serves it.
+func TestReplacedJobsWaiterIsServedByTheNewJob(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m := &fakeMedia{}
+		tr, spec := fixture(t, m)
+		s, _ := tr.Open(ctx, spec, time.Minute) // a job from segment 10
+		defer s.Close()
+		type result struct {
+			path string
+			err  error
+		}
+		waiter := make(chan result, 1)
+		go func() {
+			p, err := s.Segment(ctx, "12.m4s")
+			waiter <- result{p, err}
+		}()
+		synctest.Wait()
+		if n := len(m.jobs()); n != 1 {
+			t.Fatalf("a near request started a job (%d)", n)
+		}
+		// Segment 9 is behind the job, so the job restarts there, which is
+		// near enough to segment 12 to reach it.
+		if _, err := s.Segment(ctx, "9.m4s"); err != nil {
+			t.Fatal(err)
+		}
+		r := <-waiter
+		if r.err != nil || read(t, r.path) != "[1m12s][1m14s][1m16s]" {
+			t.Fatalf("the waiter on the replaced job: %v", r.err)
+		}
+		if jobs := m.jobs(); len(jobs) != 2 || jobs[1].Start != s.plan[9].Start {
+			t.Fatalf("%d jobs, want the second from segment 9", len(jobs))
+		}
+	})
+}
+
+// A job that's stopped under a waiting request doesn't fail it. The request
+// starts a new job.
+func TestStoppedJobsWaiterStartsANewJob(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m := &fakeMedia{pace: idleTimeout} // the idle kill comes before the first segment
+		tr, spec := fixture(t, m)
+		s, _ := tr.Open(ctx, spec, 0)
+		defer s.Close()
+		if _, err := s.Segment(ctx, "0.m4s"); err != nil || len(m.jobs()) != 2 {
+			t.Fatalf("waiting through an idle kill: %v, %d jobs", err, len(m.jobs()))
+		}
+	})
+}
+
+// Close fails every waiting request, for a segment or an init segment.
+func TestCloseWakesWaiters(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m := &fakeMedia{initAfter: time.Minute}
+		tr, spec := fixture(t, m)
+		s, _ := tr.Open(ctx, spec, 0)
+		errs := make(chan error, 3)
+		for _, name := range []string{"init.mp4", "0.m4s", "2.m4s"} {
+			go func() {
+				_, err := s.Segment(ctx, name)
+				errs <- err
+			}()
+		}
+		synctest.Wait()
+		start := time.Now()
+		s.Close()
+		for range 3 {
+			if err := <-errs; !errors.Is(err, ErrClosed) {
+				t.Fatalf("a waiter on a closed stream: %v", err)
+			}
+		}
+		if time.Since(start) != 0 || len(m.jobs()) != 1 {
+			t.Fatalf("waiters woke after %v with %d jobs", time.Since(start), len(m.jobs()))
+		}
+	})
+}
+
+// A failed job fails the init requests waiting on it and those that come
+// later, rather than starting again.
+func TestJobFailureFailsInitRequests(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m := &fakeMedia{initAfter: time.Second, failStart: &media.Error{Op: "transcode", Kind: media.ErrSourceCorrupt}}
+		tr, spec := fixture(t, m)
+		s, _ := tr.Open(ctx, spec, 0)
+		defer s.Close()
+		start := time.Now()
+		if _, err := s.Segment(ctx, "init.mp4"); !errors.Is(err, ErrJobFailed) || time.Since(start) != time.Second {
+			t.Fatalf("waiting on a job that fails: %v after %v", err, time.Since(start))
+		}
+		if _, err := s.Segment(ctx, "init.mp4"); !errors.Is(err, ErrJobFailed) || len(m.jobs()) != 1 {
+			t.Fatalf("after the failure: %v, %d jobs", err, len(m.jobs()))
+		}
+	})
+}
+
+func TestCancelledInitRequestStopsWaiting(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m := &fakeMedia{initAfter: time.Second}
+		tr, spec := fixture(t, m)
+		s, _ := tr.Open(ctx, spec, 0)
+		defer s.Close()
+		rctx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
+		defer cancel()
+		if _, err := s.Segment(rctx, "init.mp4"); !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("err %v", err)
+		}
+		if p, err := s.Segment(ctx, "init.mp4"); err != nil || read(t, p) != "init" || len(m.jobs()) != 1 {
+			t.Fatalf("the init segment once it's written: %v, %d jobs", err, len(m.jobs()))
+		}
+	})
+}
+
+// A job that fails after its first segment has still started.
+func TestFailureAfterTheFirstSegmentHasStarted(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m := &fakeMedia{failAt: 4}
+		tr, spec := fixture(t, m)
+		s, _ := tr.Open(ctx, spec, 0)
+		defer s.Close()
+		s.mu.Lock()
+		j := s.job
+		s.mu.Unlock()
+		time.Sleep(time.Minute)
+		if s.Job().State != JobFailed {
+			t.Fatalf("job %+v", s.Job())
+		}
+		if err := s.started(ctx, j); err != nil {
+			t.Fatalf("started: %v", err)
 		}
 	})
 }

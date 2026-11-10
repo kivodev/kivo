@@ -166,10 +166,7 @@ func (t *Transcoder) Open(ctx context.Context, s Spec, start time.Duration) (*St
 	}
 	ss := &Stream{
 		t: t, spec: s, plan: plan, dir: dir, playlists: renderPlaylists(s, plan),
-		done: make([]bool, len(plan)), initDone: make([]bool, len(s.Parts)),
-	}
-	for range s.Parts {
-		ss.initReady = append(ss.initReady, make(chan struct{}))
+		changed: make(chan struct{}), done: make([]bool, len(plan)), initDone: make([]bool, len(s.Parts)),
 	}
 	ss.fileCues = make([][]media.Cue, len(s.Text))
 	for k, t := range s.Text {
@@ -182,7 +179,7 @@ func (t *Transcoder) Open(ctx context.Context, s Spec, start time.Duration) (*St
 	j := ss.startLocked(segmentAt(plan, start))
 	ss.mu.Unlock()
 	if s.encoded() {
-		if err := j.started(ctx); err != nil {
+		if err := ss.started(ctx, j); err != nil {
 			ss.Close()
 			return nil, err
 		}
