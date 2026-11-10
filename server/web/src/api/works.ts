@@ -72,9 +72,6 @@ function groupPage<P extends GroupPath>(path: P, libraryId: string, index: numbe
   });
 }
 
-/** The most cards a list's row shows. */
-const listRowSize = 20;
-
 export const workQueries = {
   detail: (id: string) => $api.queryOptions("get", "/api/v1/works/{id}", { params: { path: { id } } }),
 
@@ -104,12 +101,6 @@ export const workQueries = {
   /** One page of an audiobooks library's book series, by name. Page 0 carries the letters. */
   bookSeriesPage: (libraryId: string, index: number) =>
     groupPage("/api/v1/libraries/{id}/book-series", libraryId, index),
-
-  /** The first cards of a list for its row, most recently added first. */
-  listRow: (listId: string) =>
-    $api.queryOptions("get", "/api/v1/lists/{id}/works", {
-      params: { path: { id: listId }, query: { limit: listRowSize } },
-    }),
 
   /** One page of a list's grid, most recently added first. */
   listPage: (listId: string, index: number) =>

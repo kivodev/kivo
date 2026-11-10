@@ -831,10 +831,6 @@ msgstr "Specials"
 msgid "Use local artwork"
 msgstr "Use local artwork"
 
-#: src/features/lists/ListsScreen.tsx
-msgid "Your lists"
-msgstr "Your lists"
-
 #: src/features/home/HomeScreen.tsx
 msgid "Choose its rows in Settings."
 msgstr "Choose its rows in Settings."
@@ -2308,6 +2304,7 @@ msgstr "Seek in the chapter"
 #. placeholder {0}: person.works.length
 #: src/features/detail/PersonScreen.tsx
 #: src/features/lists/AddToListDialog.tsx
+#: src/features/lists/ListsScreen.tsx
 #: src/features/search/SearchScreen.tsx
 msgid "{0, plural, one {# title} other {# titles}}"
 msgstr "{0, plural, one {# title} other {# titles}}"
@@ -2373,11 +2370,6 @@ msgstr "Separated by commas."
 #: src/features/admin/ActivityScreen.tsx
 msgid "Nothing yet"
 msgstr "Nothing yet"
-
-#. placeholder {0}: list.workCount
-#: src/features/lists/ListsScreen.tsx
-msgid "{0, plural, one {Smart list, # title} other {Smart list, # titles}}"
-msgstr "{0, plural, one {Smart list, # title} other {Smart list, # titles}}"
 
 #: src/features/admin/TranscodingScreen.tsx
 msgid "Not found"
@@ -2666,6 +2658,10 @@ msgstr "{n, plural, one {# movie} other {# movies}}"
 #: src/features/player/SubtitleSearch.tsx
 msgid "Download"
 msgstr "Download"
+
+#: src/features/lists/ListsScreen.tsx
+msgid "Empty"
+msgstr "Empty"
 
 #: src/features/lists/SmartListDialog.tsx
 msgid "All"
@@ -3769,6 +3765,10 @@ msgstr "Book {position} of {link}"
 msgid "Details"
 msgstr "Details"
 
+#: src/features/lists/ListsScreen.tsx
+msgid "Nothing in this list yet"
+msgstr "Nothing in this list yet"
+
 #: src/features/history/HistoryScreen.tsx
 msgid "No watch history"
 msgstr "No watch history"
@@ -3788,6 +3788,10 @@ msgstr "Makes speech clearer and evens out loud scenes, playing some audio as AA
 #: src/features/user/SettingsScreen.tsx
 msgid "About"
 msgstr "About"
+
+#: src/features/lists/ListsScreen.tsx
+msgid "Smart list"
+msgstr "Smart list"
 
 #: src/features/admin/TranscodingScreen.tsx
 msgid "Device not found."

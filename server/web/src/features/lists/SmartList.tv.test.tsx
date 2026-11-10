@@ -1,3 +1,4 @@
+import { within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { renderApp, screen } from "@/test/render";
 import { mockIds, sent, serveMockApi } from "@/test/server";
@@ -6,12 +7,21 @@ import { stopTv } from "@/tv/start";
 afterEach(() => stopTv());
 
 describe("Smart lists on TV", () => {
-  it("lists a smart list with the others, with no builder", async () => {
+  it("shelves a smart list with the others, each ending in See all, with no builder", async () => {
     serveMockApi();
     renderApp("/lists");
-    const row = await screen.findByRole("link", { name: /Sci-fi/ });
-    expect(row).toHaveTextContent("Smart list, 2 titles");
-    expect(screen.queryByRole("heading", { name: "Smart Lists" })).toBeNull();
+    const heading = await screen.findByRole("heading", { name: /^Sci-fi/, level: 2 });
+    expect(heading).toHaveTextContent("Sci-fiSmart list2 titles");
+    expect(heading.querySelector("a")).toBeNull();
+    const shelf = heading.closest("[data-part='row']") as HTMLElement;
+    expect(within(shelf).getByRole("link", { name: "See all" })).toHaveAttribute("href", `/lists/${mockIds.sciFi}`);
+    // An empty list's placeholder opens it, and it has no See all.
+    const weekend = screen.getByRole("heading", { name: /^Weekend/ }).closest("[data-part='row']") as HTMLElement;
+    expect(within(weekend).getByRole("link", { name: "Nothing in this list yet" })).toHaveAttribute(
+      "href",
+      `/lists/${mockIds.weekend}`,
+    );
+    expect(within(weekend).queryByRole("link", { name: "See all" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Create" })).toBeNull();
   });
 

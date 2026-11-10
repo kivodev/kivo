@@ -11,7 +11,7 @@ const knownKinds = (page: WorkListList): WorkListList => ({
 export const listQueries = {
   /** The user's lists, My List first, then by name. */
   all: () => $api.queryOptions("get", "/api/v1/lists", undefined, { select: knownKinds }),
-  /** The same with each smart list's count, which runs its rules: for the Lists screen alone. */
+  /** The same with each smart list's count, which runs its rules, and each list's first works: for the Lists screen alone. */
   counted: () =>
     $api.queryOptions("get", "/api/v1/lists", { params: { query: { counts: true } } }, { select: knownKinds }),
   detail: (id: string) => $api.queryOptions("get", "/api/v1/lists/{id}", { params: { path: { id } } }),
