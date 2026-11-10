@@ -4,24 +4,22 @@ import (
 	"errors"
 
 	"github.com/ncruces/go-sqlite3"
-
-	"github.com/mmcdole/kivo/internal/fault"
 )
 
 var (
 	// ErrNewerDatabase means the database was migrated by a newer release.
-	ErrNewerDatabase = fault.New(fault.Internal, "database is newer than this release")
+	ErrNewerDatabase = errors.New("database is newer than this release")
 	// ErrOlderDatabase means the database is older than this release's
 	// baseline migration, so this release can't upgrade it.
-	ErrOlderDatabase = fault.New(fault.Internal, "database is too old for this release to upgrade")
+	ErrOlderDatabase = errors.New("database is too old for this release to upgrade")
 	// ErrNestedWrite means Write was called inside another Write, which would
 	// deadlock on the single writer connection.
-	ErrNestedWrite = fault.New(fault.Internal, "write inside a write")
+	ErrNestedWrite = errors.New("write inside a write")
 	// ErrLowSpace means there isn't enough free space for a snapshot.
-	ErrLowSpace = fault.New(fault.Internal, "not enough free space")
+	ErrLowSpace = errors.New("not enough free space")
 	// ErrInUse means another connection has the database open, as the
 	// server does while it runs.
-	ErrInUse = fault.New(fault.Internal, "database in use; stop the server first")
+	ErrInUse = errors.New("database in use; stop the server first")
 )
 
 // busy reports whether err comes from a lock that another connection

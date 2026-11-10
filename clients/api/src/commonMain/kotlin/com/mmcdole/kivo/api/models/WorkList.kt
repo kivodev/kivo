@@ -23,6 +23,7 @@
 
 package com.mmcdole.kivo.api.models
 
+import com.mmcdole.kivo.api.models.ImageRef
 import com.mmcdole.kivo.api.models.WorkListSmart
 
 import kotlinx.serialization.*
@@ -38,6 +39,7 @@ import kotlinx.serialization.encoding.*
  * @param builtIn Watchlist, which every user has and can't delete or rename.
  * @param workCount Works in the list the user sees. A smart list's is 0 in `listLists` without `counts`.
  * @param smart 
+ * @param covers Posters of the list's first works the user sees, up to three, in the list's order. A work without a poster is left out. Set by `listLists` with `counts`. 
  */
 @Serializable
 
@@ -57,7 +59,10 @@ data class WorkList (
     /* Works in the list the user sees. A smart list's is 0 in `listLists` without `counts`. */
     @SerialName(value = "workCount") @Required val workCount: kotlin.Int,
 
-    @SerialName(value = "smart") val smart: WorkListSmart? = null
+    @SerialName(value = "smart") val smart: WorkListSmart? = null,
+
+    /* Posters of the list's first works the user sees, up to three, in the list's order. A work without a poster is left out. Set by `listLists` with `counts`.  */
+    @SerialName(value = "covers") val covers: kotlin.collections.List<ImageRef>? = null
 
 ) {
 

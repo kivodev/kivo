@@ -3770,6 +3770,12 @@ export interface components {
             /** @description Works in the list the user sees. A smart list's is 0 in `listLists` without `counts`. */
             workCount: number;
             smart?: components["schemas"]["WorkListSmart"];
+            /**
+             * @description Posters of the list's first works the user sees, up to three, in
+             *     the list's order. A work without a poster is left out. Set by
+             *     `listLists` with `counts`.
+             */
+            covers?: components["schemas"]["ImageRef"][];
         };
         /**
          * @description What a list is. `manual` is works the user added; `smart` is the works rules select. Skip kinds you don't know.
@@ -7503,7 +7509,7 @@ export interface operations {
     listLists: {
         parameters: {
             query?: {
-                /** @description Count each smart list by running its rules; without it a smart list's `workCount` is 0. */
+                /** @description Count each smart list by running its rules, and fill each list's `covers`; without it a smart list's `workCount` is 0. */
                 counts?: boolean;
             };
             header?: never;

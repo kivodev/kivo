@@ -28,7 +28,7 @@ var (
 	ErrPresent = fault.Coded(fault.Conflict, "fileStillPresent", "only a missing file can be deleted")
 	// ErrUnreachable means a library folder can't be read, as when its disk
 	// or share is offline. The work that hit it waits and tries again.
-	ErrUnreachable = fault.New(fault.Internal, "library folder unreachable")
+	ErrUnreachable = errors.New("library folder unreachable")
 )
 
 // Catalog holds what exists. A write takes the caller's transaction, so a
