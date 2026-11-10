@@ -19,7 +19,7 @@ final class GridModelTests: XCTestCase {
     nonisolated(unsafe) private static var prefix = "Title"
     nonisolated(unsafe) private static var failing = false
     /// The values the library's works have, by field.
-    private static let values: [String: [String]] = [
+    nonisolated private static let values: [String: [String]] = [
         "genre": ["Action, Adventure", "Comedy", "Drama"],
         "year": ["1899", "1985", "1992", "1999", "2003", "2021"],
         "contentRating": ["G", "PG-13", "R"],
