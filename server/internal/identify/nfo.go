@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mmcdole/kivo/internal/identify/parse"
+	"github.com/mmcdole/kivo/internal/parse"
 )
 
 // maxNFO bounds how much of an NFO file is read.

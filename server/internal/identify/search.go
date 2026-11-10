@@ -10,8 +10,8 @@ import (
 	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/fault"
 	"github.com/mmcdole/kivo/internal/id"
-	"github.com/mmcdole/kivo/internal/identify/parse"
 	"github.com/mmcdole/kivo/internal/metadata"
+	"github.com/mmcdole/kivo/internal/parse"
 	"github.com/mmcdole/kivo/internal/users"
 )
 

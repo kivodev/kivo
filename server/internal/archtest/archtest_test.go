@@ -180,7 +180,7 @@ import _ "github.com/mmcdole/kivo/internal/media"`)
 func TestCheckSubpackagesFindsReach(t *testing.T) {
 	files := []goFile{
 		{Path: "api/a.go", Pkg: "api", Imports: []string{
-			module + "/internal/identify/parse",
+			module + "/internal/markers/detect",
 			module + "/internal/media/container",
 			module + "/internal/api/internal/gen",
 			module + "/internal/catalog",
@@ -188,8 +188,8 @@ func TestCheckSubpackagesFindsReach(t *testing.T) {
 		{Path: "scan/s.go", Pkg: "scan", Imports: []string{module + "/internal/media/container"}},
 	}
 	vs := checkSubpackages(files)
-	if len(vs) != 2 || vs[0].File != "api/a.go" || !strings.Contains(vs[0].Msg, "identify/parse") || !strings.Contains(vs[1].Msg, "media/container") {
-		t.Fatalf("got %v, want violations for api's identify/parse and media/container only", vs)
+	if len(vs) != 2 || vs[0].File != "api/a.go" || !strings.Contains(vs[0].Msg, "markers/detect") || !strings.Contains(vs[1].Msg, "media/container") {
+		t.Fatalf("got %v, want violations for api's markers/detect and media/container only", vs)
 	}
 }
 

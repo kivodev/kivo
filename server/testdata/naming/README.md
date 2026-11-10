@@ -1,7 +1,7 @@
 # Naming fixtures
 
 Permissively licensed filename-parser test cases, vendored unmodified for
-`internal/identify/parse`. Each set keeps its upstream license next to it.
+`internal/parse`. Each set keeps its upstream license next to it.
 
 | Path | Source | License |
 | --- | --- | --- |

@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mmcdole/kivo/internal/identify/parse"
+	"github.com/mmcdole/kivo/internal/parse"
 )
 
 // halves matches a number and a half, as in "The Lion King 1½". A key would

@@ -14,36 +14,8 @@ import (
 
 	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/metadata/dbq"
+	"github.com/mmcdole/kivo/internal/parse"
 )
-
-// discFolder matches a CD or disc folder. Its files belong to the book in
-// the folder above it.
-var discFolder = regexp.MustCompile(`(?i)^(?:cd|dis[ck])\s*\d{1,3}$`)
-
-// BookFolder returns the folder a book's file belongs to. That is the folder
-// the file is in, or the one above it when the file is in a CD or disc
-// folder. It returns "" for a file directly in the library folder, which is
-// a book of its own.
-func BookFolder(rel string) string {
-	dir := path.Dir(rel)
-	if discFolder.MatchString(path.Base(dir)) {
-		dir = path.Dir(dir)
-	}
-	if dir == "." {
-		return ""
-	}
-	return dir
-}
-
-// Disc returns the number of the disc folder a book's file is in, or zero.
-func Disc(rel string) int {
-	d := path.Base(path.Dir(rel))
-	if !discFolder.MatchString(d) {
-		return 0
-	}
-	n, _ := strconv.Atoi(strings.TrimLeft(d, "cdiskCDISK \t"))
-	return n
-}
 
 // bookPath holds what a book's folder names say about it.
 type bookPath struct {
@@ -179,7 +151,7 @@ func BookTitle(rel string, tags map[string]string) string {
 // The series comes from tags only when there is no series folder. Names are
 // used as written.
 func bookOf(rel string, tags map[string]string) catalog.WorkMetadata {
-	folder := BookFolder(rel)
+	folder := parse.BookFolder(rel)
 	p := parseBookPath(folder)
 	b := &catalog.BookMetadata{Series: []catalog.SeriesRef{}}
 	m := catalog.WorkMetadata{Book: b, Overview: clean(tags["description"], maxOverview), Companies: []string{}}
@@ -279,7 +251,7 @@ var bookImages = []string{"cover", "folder", "poster"}
 func (d *dirs) bookCovers(out *local, files []string) {
 	seen := map[string]bool{}
 	for _, f := range files {
-		folder := cmp.Or(BookFolder(f), ".")
+		folder := cmp.Or(parse.BookFolder(f), ".")
 		if seen[folder] {
 			continue
 		}

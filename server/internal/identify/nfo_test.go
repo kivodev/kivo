@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/mmcdole/kivo/internal/identify/parse"
+	"github.com/mmcdole/kivo/internal/parse"
 )
 
 func TestParseNFO(t *testing.T) {

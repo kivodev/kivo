@@ -46,7 +46,7 @@ type layer struct {
 // and may import any. A component may always import its own subpackages.
 // Every package under internal except archtest is in a layer.
 var layers = []layer{
-	{"helpers", []string{"fault", "id", "events", "health", "keylock", "atomicfile", "cachedir", "egress"}},
+	{"helpers", []string{"fault", "id", "events", "health", "keylock", "atomicfile", "cachedir", "egress", "parse"}},
 	{"domain", []string{"store", "config", "media", "discovery", "tasks", "users", "auth", "catalog", "activity",
 		"query", "metadata", "userstate", "release"}},
 	{"features", []string{"scan", "identify", "previews", "subtitles", "markers", "transcode", "playback"}},
@@ -65,6 +65,7 @@ var outbound = map[string][]string{
 // files, so they import none of impure either.
 var pure = map[string][]string{
 	"markers/detect": {"id", "media"},
+	"parse":          {},
 }
 
 // impure are the standard packages that reach outside the program.
