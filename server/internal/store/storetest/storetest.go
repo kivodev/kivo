@@ -2,7 +2,6 @@ package storetest
 
 import (
 	"context"
-	"io"
 	"os"
 	"path/filepath"
 	"sync"
@@ -13,7 +12,7 @@ import (
 
 var (
 	templateOnce sync.Once
-	templatePath string
+	template     []byte
 	templateErr  error
 )
 
@@ -27,7 +26,7 @@ func New(t testing.TB) *store.DB {
 		t.Fatalf("storetest: template: %v", templateErr)
 	}
 	path := filepath.Join(t.TempDir(), "kivo.db")
-	if err := copyFile(templatePath, path); err != nil {
+	if err := os.WriteFile(path, template, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	db, err := store.Open(context.Background(), path)
@@ -38,34 +37,24 @@ func New(t testing.TB) *store.DB {
 	return db
 }
 
+// buildTemplate migrates a database and keeps the file's bytes in memory,
+// so nothing is left on disk when the test binary exits.
 func buildTemplate() {
 	dir, err := os.MkdirTemp("", "kivo-storetest-")
 	if err != nil {
 		templateErr = err
 		return
 	}
-	templatePath = filepath.Join(dir, "template.db")
-	db, err := store.Open(context.Background(), templatePath)
+	defer os.RemoveAll(dir)
+	path := filepath.Join(dir, "template.db")
+	db, err := store.Open(context.Background(), path)
 	if err != nil {
 		templateErr = err
 		return
 	}
-	templateErr = db.Close() // closing the last connection folds the WAL into the file
-}
-
-func copyFile(src, dst string) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
+	// Closing the last connection folds the WAL into the file.
+	if templateErr = db.Close(); templateErr != nil {
+		return
 	}
-	defer in.Close()
-	out, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	if _, err := io.Copy(out, in); err != nil {
-		out.Close()
-		return err
-	}
-	return out.Close()
+	template, templateErr = os.ReadFile(path)
 }
