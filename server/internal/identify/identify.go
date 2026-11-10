@@ -227,29 +227,29 @@ func (i *Identifier) identifyUnit(ctx context.Context, s *snapshot) error {
 	case catalog.KindBook:
 		return i.describeBook(ctx, root)
 	}
-	st, err := i.readStored(ctx, s, root)
+	stored, err := i.readStored(ctx, s, root)
 	if err != nil {
 		return err
 	}
-	d, err := i.decide(ctx, s, st)
+	d, err := i.decide(ctx, s, stored)
 	if err != nil {
 		return err
 	}
 	if d.match == nil {
-		if d.source == "" || st.records(d, "") {
+		if d.source == "" || stored.records(d, "") {
 			return nil
 		}
 		return i.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
 			return putMatch(ctx, dbq.New(tx), lib.ID, u.subject, d, "")
 		})
 	}
-	p := plan{s: s, root: root, ps: st.ps, d: d, ordering: st.ordering}
+	p := plan{s: s, root: root, ps: stored.ps, d: d, ordering: stored.ordering}
 	if u.kind == catalog.KindSeries {
-		if p.eps, err = i.placeEpisodes(ctx, s, st, d); err != nil {
+		if p.eps, err = i.placeEpisodes(ctx, s, stored, d); err != nil {
 			return err
 		}
 	}
-	if len(p.eps) == 0 && st.holds(u, d) {
+	if len(p.eps) == 0 && stored.upToDate(u, d) {
 		return nil
 	}
 	return i.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error { return i.apply(ctx, tx, p, false) })

@@ -148,7 +148,7 @@ func (i *Identifier) placeFiles(ctx context.Context, tx *store.Tx, s *snapshot, 
 
 // relabel gives a placed version the edition label its files' names give
 // it, if it has another.
-func relabel(ctx context.Context, b *catalog.Batch, e *entry, pl *placed) error {
+func relabel(ctx context.Context, b *catalog.Batch, e *entry, pl *placedVersion) error {
 	if pl.edition == e.edition {
 		return nil
 	}

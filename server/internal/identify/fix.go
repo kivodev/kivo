@@ -116,14 +116,14 @@ func (i *Identifier) fixMatch(ctx context.Context, root id.ID, c metadata.Match)
 		if !h.link.IsZero() && h.link != root {
 			continue // another root's folder, holding a file that came from this root
 		}
-		st, err := i.readStored(ctx, h.snap, root)
+		stored, err := i.readStored(ctx, h.snap, root)
 		if err != nil {
 			return err
 		}
-		p := plan{s: h.snap, root: root, ps: st.ps, d: d, ordering: st.ordering}
+		p := plan{s: h.snap, root: root, ps: stored.ps, d: d, ordering: stored.ordering}
 		if h.snap.unit.kind == catalog.KindSeries {
 			rctx, cancel := context.WithTimeout(ctx, requestWait)
-			p.eps, err = i.placeEpisodes(rctx, h.snap, st, d)
+			p.eps, err = i.placeEpisodes(rctx, h.snap, stored, d)
 			cancel()
 			if err != nil {
 				return err
@@ -165,9 +165,9 @@ func (i *Identifier) fixMatch(ctx context.Context, root id.ID, c metadata.Match)
 
 // folder is a held folder that a work's files are in.
 type folder struct {
-	snap   *snapshot  // the folder, with the unit those files belong to
-	placed placements // where that unit's files are placed
-	link   id.ID      // the root work the folder is linked to, if any
+	snap *snapshot  // the folder, with the unit those files belong to
+	ps   placements // where that unit's files are placed
+	link id.ID      // the root work the folder is linked to, if any
 }
 
 // holdFolders locks every folder that holds the work's present files, each
@@ -235,7 +235,7 @@ func (i *Identifier) holdFolders(ctx context.Context, work id.ID) (held []folder
 			unlock()
 			return nil, nil, err
 		}
-		held = append(held, folder{snap: s, placed: ps, link: link})
+		held = append(held, folder{snap: s, ps: ps, link: link})
 	}
 	return held, unlock, nil
 }
@@ -285,7 +285,7 @@ func (i *Identifier) Unmatch(ctx context.Context, v users.Viewer, work id.ID) (i
 			for _, h := range held {
 				if w.Kind == catalog.KindSeries {
 					for _, e := range h.snap.unit.versions {
-						p := h.placed.of(e)
+						p := h.ps.of(e)
 						if p == nil || slices.ContainsFunc(p.works, func(x placedWork) bool { return x.root != work }) {
 							continue // not an episode of this series
 						}
