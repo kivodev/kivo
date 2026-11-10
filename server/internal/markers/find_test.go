@@ -493,7 +493,7 @@ func TestOlderRulesDecideAgain(t *testing.T) {
 func TestOlderFingerprintsAreMissing(t *testing.T) {
 	f := newShowFixture(t)
 	older := func(file catalog.File) string {
-		return cachedir.Path(f.a.resultDir(), file.ID, file.ID.String(), cachedir.Leaf(file.Generation, detect.FingerprintVersion-1))
+		return cachedir.Path(f.a.results.Dir, file.ID, file.ID.String(), cachedir.Leaf(file.Generation, detect.FingerprintVersion-1))
 	}
 	for i := range f.episodes {
 		if err := os.MkdirAll(older(f.file(i)), 0o755); err != nil {

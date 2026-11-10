@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -65,22 +64,30 @@ type Service struct {
 	db   *store.DB
 	q    *dbq.Queries
 	deps Deps
-	dir  string // cache/previews
-	room health.Room
+	// results holds each file's previews at a generation, in
+	// cache/previews/<xx>/<file>/<generation>/.
+	results cachedir.Results
+	room    health.Room
 }
 
 // New returns the service. It removes anything an interrupted run left in
 // the cache.
 func New(db *store.DB, d Deps) *Service {
-	dir := filepath.Join(d.CacheDir, "previews")
-	_ = os.RemoveAll(filepath.Join(dir, cachedir.Temp))
-	return &Service{
-		db: db, q: dbq.New(db.Reader()), deps: d, dir: dir,
+	s := &Service{
+		db: db, q: dbq.New(db.Reader()), deps: d,
 		room: health.Room{Dir: d.CacheDir, Problem: health.Problem{
 			Component: "previews", Code: "cacheFull",
 			Message: "The cache disk is almost full. Preview thumbnails are paused.",
 		}},
 	}
+	s.results = cachedir.Results{Dir: filepath.Join(d.CacheDir, "previews"), Generations: d.Catalog.Generations, Room: &s.room}
+	_ = os.RemoveAll(filepath.Join(s.results.Dir, cachedir.Temp))
+	return s
+}
+
+// Health implements health.Reporter. It reports a full cache disk.
+func (s *Service) Health(ctx context.Context) []health.Problem {
+	return s.room.Health(ctx)
 }
 
 // Tasks returns the package's tasks for cmd/kivo to add. Previews are made
@@ -100,11 +107,11 @@ func (s *Service) Tasks() []tasks.Task {
 // sheets, if they're made. Missing previews are left to the nightly "Make
 // preview thumbnails" task, as the library's setting says.
 func (s *Service) Previews(ctx context.Context, file id.ID) (media.Previews, string, bool) {
-	cur, err := s.current(ctx, file)
+	cur, err := s.deps.Catalog.Generation(ctx, file)
 	if err != nil {
 		return media.Previews{}, "", false
 	}
-	dir := s.result(file, cur)
+	dir := s.results.Path(file, cur)
 	b, err := os.ReadFile(filepath.Join(dir, manifestFile))
 	if err != nil {
 		return media.Previews{}, "", false
@@ -139,13 +146,13 @@ func (s *Service) make(ctx context.Context, file id.ID) error {
 	switch {
 	case lib.Previews == catalog.Never || !ok || f.Probe.Duration == 0:
 		return nil // nothing to show, or the file isn't probed yet
-	case s.has(f.ID, f.Generation):
+	case s.results.Has(f.ID, f.Generation):
 		return s.settle(ctx, f, nil) // the previews were made before they were recorded
 	}
 	if err := s.room.Check(); err != nil {
 		return err
 	}
-	tmp, err := cachedir.MakeTemp(s.dir)
+	tmp, err := cachedir.MakeTemp(s.results.Dir)
 	if err != nil {
 		return s.room.Err(err)
 	}
@@ -167,7 +174,7 @@ func (s *Service) make(ctx context.Context, file id.ID) error {
 	if err := os.WriteFile(filepath.Join(tmp, manifestFile), b, 0o644); err != nil {
 		return s.room.Err(err)
 	}
-	if made, err := s.commit(ctx, f, tmp); !made || err != nil {
+	if made, err := s.results.Place(ctx, tmp, f.ID, f.Generation); !made || err != nil {
 		return err
 	}
 	slog.DebugContext(ctx, "previews: made", "file", f.ID, "sheets", p.Sheets, "duration", time.Since(start).Round(time.Millisecond))
@@ -207,16 +214,6 @@ func (s *Service) retry(ctx context.Context, files ...id.ID) ([]id.ID, error) {
 		return err
 	})
 	return out, err
-}
-
-// current cheaply reads a file's current generation, for finding its
-// result.
-func (s *Service) current(ctx context.Context, file id.ID) (int64, error) {
-	gen, err := s.q.FileGeneration(ctx, file)
-	if errors.Is(err, sql.ErrNoRows) {
-		return 0, fmt.Errorf("%w: file %s", catalog.ErrNotFound, file)
-	}
-	return gen, err
 }
 
 // Probed asks for a file's previews, if its library makes previews as media

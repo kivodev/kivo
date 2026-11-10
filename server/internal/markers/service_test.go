@@ -73,9 +73,9 @@ func (t *fakeTasks) take() []ask {
 func TestPrune(t *testing.T) {
 	f := newShowFixture(t)
 	file := f.file(0)
-	current := f.a.result(file.ID, file.Generation)
-	old := f.a.result(file.ID, file.Generation+7)
-	deleted := f.a.result(id.New(), 1)
+	current := f.a.results.Path(file.ID, file.Generation)
+	old := f.a.results.Path(file.ID, file.Generation+7)
+	deleted := f.a.results.Path(id.New(), 1)
 	for _, d := range []string{current, old, deleted} {
 		if err := os.MkdirAll(d, 0o755); err != nil {
 			t.Fatal(err)

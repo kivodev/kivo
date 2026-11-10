@@ -1,11 +1,5 @@
 -- Reads of catalog's tables, and previews' own preview_file.
 
--- name: FileGeneration :one
-SELECT generation FROM media_file WHERE id = @id;
-
--- name: FileGenerations :many
-SELECT id, generation FROM media_file WHERE id IN (SELECT unhex(value) FROM (SELECT CAST(@ids AS TEXT) AS ids), json_each(ids));
-
 -- name: Pending :many
 -- The present, probed files with a picture, in libraries that make
 -- previews, whose previews aren't made or failed at their generation, by

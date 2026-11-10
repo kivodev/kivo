@@ -12,6 +12,7 @@ import (
 	"github.com/mmcdole/kivo/internal/health"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/markers/dbq"
+	"github.com/mmcdole/kivo/internal/markers/detect"
 	"github.com/mmcdole/kivo/internal/media"
 	"github.com/mmcdole/kivo/internal/store"
 	"github.com/mmcdole/kivo/internal/tasks"
@@ -56,20 +57,30 @@ type Service struct {
 	db   *store.DB
 	q    *dbq.Queries
 	deps Deps
-	room health.Room
+	// results holds each file's fingerprint at a generation, in
+	// cache/markers/<xx>/<file>/<generation>v<version>/. Because the folder
+	// names the fingerprint version, a fingerprint of an older version
+	// counts as not made, and it is pruned like an older generation's.
+	results cachedir.Results
+	room    health.Room
 }
 
 // New returns the service. It removes whatever an interrupted read left in
 // the cache.
 func New(db *store.DB, d Deps) *Service {
-	_ = os.RemoveAll(filepath.Join(d.CacheDir, resultDir, cachedir.Temp))
-	return &Service{
+	s := &Service{
 		db: db, q: dbq.New(db.Reader()), deps: d,
 		room: health.Room{Dir: d.CacheDir, Problem: health.Problem{
 			Component: "markers", Code: "cacheFull",
 			Message: "The cache disk is almost full. Finding intro and credits is paused.",
 		}},
 	}
+	s.results = cachedir.Results{
+		Dir: filepath.Join(d.CacheDir, "markers"), Version: detect.FingerprintVersion,
+		Generations: d.Catalog.Generations, Room: &s.room,
+	}
+	_ = os.RemoveAll(filepath.Join(s.results.Dir, cachedir.Temp))
+	return s
 }
 
 // Tasks returns the package's tasks, for cmd/kivo to add. Files are

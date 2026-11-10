@@ -8,8 +8,6 @@ import (
 
 	"github.com/mmcdole/kivo/internal/store"
 
-	"github.com/mmcdole/kivo/internal/cachedir"
-	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/subtitles/dbq"
 	"github.com/mmcdole/kivo/internal/tasks"
 )
@@ -25,7 +23,7 @@ import (
 // A file missing from disk keeps its subtitles as long as its row is kept,
 // in case the file comes back.
 func (s *Service) prune(ctx context.Context) error {
-	removed, kept, err := cachedir.Prune(ctx, s.resultDir(), cachedir.PruneOptions{Generations: s.generations, Progress: tasks.Progress})
+	removed, kept, err := s.results.Prune(ctx, tasks.Progress)
 	if err != nil {
 		return err
 	}
@@ -62,24 +60,13 @@ func (s *Service) prune(ctx context.Context) error {
 	return nil
 }
 
-// generations reads the current generation of each file in files that
-// still has a row.
-func (s *Service) generations(ctx context.Context, files []id.ID) (map[id.ID]int64, error) {
-	rows, err := s.q.FileGenerations(ctx, id.Set(files...))
-	gens := make(map[id.ID]int64, len(rows))
-	for _, r := range rows {
-		gens[r.ID] = r.Generation
-	}
-	return gens, err
-}
-
 // pruneFonts removes the fonts no subtitle result lists, and returns how
 // many it removed. It holds the store's lock throughout, so no extraction
 // can add and list a font in the meantime.
 func (s *Service) pruneFonts() (int, error) {
 	s.fonts.Lock()
 	defer s.fonts.Unlock()
-	lists, err := filepath.Glob(filepath.Join(s.resultDir(), "*", "*", "*", fontsList))
+	lists, err := filepath.Glob(filepath.Join(s.results.Dir, "*", "*", "*", fontsList))
 	if err != nil {
 		return 0, err
 	}

@@ -7,10 +7,13 @@ import (
 	"context"
 	"errors"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strconv"
 
+	"github.com/mmcdole/kivo/internal/atomicfile"
+	"github.com/mmcdole/kivo/internal/health"
 	"github.com/mmcdole/kivo/internal/id"
 )
 
@@ -41,7 +44,8 @@ func Leaf(gen int64, version int) string {
 }
 
 // MakeTemp makes a folder inside dir's Temp folder to build a
-// result in. atomicfile.RenameDir then moves it into place.
+// result in. Results.Place, or atomicfile.RenameDir, then moves it into
+// place.
 func MakeTemp(dir string) (string, error) {
 	parent := filepath.Join(dir, Temp)
 	if err := os.MkdirAll(parent, 0o755); err != nil {
@@ -50,41 +54,87 @@ func MakeTemp(dir string) (string, error) {
 	return os.MkdirTemp(parent, "")
 }
 
-// PruneOptions says which results in a cache folder Prune keeps.
-type PruneOptions struct {
+// Results keeps one result per file in a cache folder, for the file's
+// current generation, at Dir/xx/<file>/<Leaf>/ (see Path and Leaf). A
+// result is built in a folder from MakeTemp and placed whole, so a
+// result that is in place is complete. It's safe for concurrent use once
+// its fields are set.
+type Results struct {
+	// Dir is the cache folder.
+	Dir string
 	// Version is the current version of the results, as in Leaf.
 	Version int
 	// Generations reads the current generation of each given file that
 	// still has a row.
 	Generations func(ctx context.Context, files []id.ID) (map[id.ID]int64, error)
-	// Progress, if set, is told how many of the files with results have
-	// been looked at, with an empty step. It has the same shape as
-	// tasks.Progress, so a prune task passes that.
-	Progress func(ctx context.Context, step string, done, total int)
+	// Room watches the disk Dir is on. A Place that runs out of space
+	// tells it.
+	Room *health.Room
+}
+
+// Path returns the folder of a file's result at a generation.
+func (r Results) Path(file id.ID, gen int64) string {
+	return Path(r.Dir, file, file.String(), Leaf(gen, r.Version))
+}
+
+// Has reports whether a file's result is made at a generation.
+func (r Results) Has(file id.ID, gen int64) bool {
+	_, err := os.Stat(r.Path(file, gen))
+	return err == nil
+}
+
+// Place moves a result built in tmp into place if the file is still at
+// gen, the generation it was built from, and reports whether it did.
+// Otherwise the result is left for the caller to remove, and the file's
+// current generation stays pending. A result already in place counts as
+// placed, and tmp is left for the caller to remove.
+func (r Results) Place(ctx context.Context, tmp string, file id.ID, gen int64) (bool, error) {
+	gens, err := r.Generations(ctx, []id.ID{file})
+	if err != nil {
+		return false, err
+	}
+	cur, ok := gens[file]
+	if !ok {
+		return false, nil // the file was deleted, or a move merged it into another file
+	}
+	if cur != gen {
+		// Dir's last element names the feature, as in "previews".
+		slog.DebugContext(ctx, filepath.Base(r.Dir)+": stale result dropped", "file", file)
+		return false, nil
+	}
+	return true, r.Room.Err(atomicfile.RenameDir(tmp, r.Path(file, gen)))
 }
 
 // pruneStep is how many files Prune looks at between progress reports
 // and checks of ctx.
 const pruneStep = 500
 
-// Prune removes the results in dir that no file needs. Those are all
-// results of a file with no row, and a file's results of other generations
-// and versions. It returns how many results it removed and how many files
+// Prune removes the results that no file needs. Those are all results of a
+// file with no row, and a file's results of other generations and
+// versions. It returns how many results it removed and how many files
 // still have a result. A file's generation is read again before each
-// removal, so a result committed meanwhile is kept.
-func Prune(ctx context.Context, dir string, p PruneOptions) (removed, kept int, err error) {
-	all, err := cachedFiles(dir)
+// removal, so a result placed meanwhile is kept.
+//
+// progress, if set, is told how many of the files with results have been
+// looked at, with an empty step. It has the same shape as tasks.Progress,
+// so a prune task passes that.
+func (r Results) Prune(ctx context.Context, progress func(ctx context.Context, step string, done, total int)) (removed, kept int, err error) {
+	all, err := cachedFiles(r.Dir)
 	if err != nil {
 		return 0, 0, err
 	}
-	gens, err := generations(ctx, p, all)
+	ids := make([]id.ID, len(all))
+	for i, c := range all {
+		ids[i] = c.file
+	}
+	gens, err := r.Generations(ctx, ids)
 	if err != nil {
 		return 0, 0, err
 	}
 	for i, c := range all {
 		if i%pruneStep == 0 {
-			if p.Progress != nil {
-				p.Progress(ctx, "", i, len(all))
+			if progress != nil {
+				progress(ctx, "", i, len(all))
 			}
 			if err := ctx.Err(); err != nil {
 				return removed, 0, err
@@ -94,7 +144,7 @@ func Prune(ctx context.Context, dir string, p PruneOptions) (removed, kept int, 
 		if !ok {
 			gen = -1
 		}
-		n, err := c.prune(gen, p.Version, func() (int64, error) { return latestGen(ctx, p, c.file) })
+		n, err := c.prune(gen, r.Version, func() (int64, error) { return r.latestGen(ctx, c.file) })
 		removed += n
 		if err != nil {
 			return removed, 0, err
@@ -103,19 +153,9 @@ func Prune(ctx context.Context, dir string, p PruneOptions) (removed, kept int, 
 	return removed, len(gens), nil
 }
 
-// generations reads the current generation of each file with results that
-// still has a row.
-func generations(ctx context.Context, p PruneOptions, all []cachedFile) (map[id.ID]int64, error) {
-	ids := make([]id.ID, len(all))
-	for i, c := range all {
-		ids[i] = c.file
-	}
-	return p.Generations(ctx, ids)
-}
-
 // latestGen reads a file's current generation, or -1 once its row is gone.
-func latestGen(ctx context.Context, p PruneOptions, file id.ID) (int64, error) {
-	g, err := p.Generations(ctx, []id.ID{file})
+func (r Results) latestGen(ctx context.Context, file id.ID) (int64, error) {
+	g, err := r.Generations(ctx, []id.ID{file})
 	if gen, ok := g[file]; ok {
 		return gen, err
 	}

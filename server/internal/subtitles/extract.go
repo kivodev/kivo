@@ -68,11 +68,11 @@ func (s *Service) Subtitle(ctx context.Context, file id.ID, track int, format me
 	if !slices.Contains(trackFormats, format) {
 		return "", false, fmt.Errorf("unsupported subtitle format %q", format)
 	}
-	cur, err := s.current(ctx, file)
+	cur, err := s.deps.Catalog.Generation(ctx, file)
 	if err != nil {
 		return "", false, err
 	}
-	p := filepath.Join(s.result(file, cur), strconv.Itoa(track)+"."+format.Ext())
+	p := filepath.Join(s.results.Path(file, cur), strconv.Itoa(track)+"."+format.Ext())
 	if _, err := os.Stat(p); err != nil {
 		return "", false, nil
 	}
@@ -86,11 +86,11 @@ func (s *Service) Subtitle(ctx context.Context, file id.ID, track int, format me
 // the font's SHA-256 and extension, which is the same for every file that
 // has the font. Calling Styled never extracts a file.
 func (s *Service) Styled(ctx context.Context, file id.ID) ([]string, bool, error) {
-	cur, err := s.current(ctx, file)
+	cur, err := s.deps.Catalog.Generation(ctx, file)
 	if err != nil {
 		return nil, false, err
 	}
-	dir := s.result(file, cur)
+	dir := s.results.Path(file, cur)
 	if _, err := os.Stat(dir); err != nil {
 		return nil, false, nil
 	}
@@ -282,17 +282,17 @@ func (s *Service) extract(ctx context.Context, file id.ID) error {
 		return err
 	case ok:
 		return s.settle(ctx, f, nil)
-	case s.has(f.ID, f.Generation):
+	case s.results.Has(f.ID, f.Generation):
 		// The store lost some of its fonts, so extract the file again.
 		slog.DebugContext(ctx, "subtitles: subtitle fonts missing, extracting again", "file", f.ID)
-		if err := os.RemoveAll(s.result(f.ID, f.Generation)); err != nil {
+		if err := os.RemoveAll(s.results.Path(f.ID, f.Generation)); err != nil {
 			return s.room.Err(err)
 		}
 	}
 	if err := s.room.Check(); err != nil {
 		return err
 	}
-	tmp, err := cachedir.MakeTemp(s.resultDir())
+	tmp, err := cachedir.MakeTemp(s.results.Dir)
 	if err != nil {
 		return s.room.Err(err)
 	}
@@ -337,7 +337,7 @@ func (s *Service) extract(ctx context.Context, file id.ID) error {
 // whether the result was put in place.
 func (s *Service) commitFonts(ctx context.Context, f catalog.File, tmp string, fonts map[string]string) (bool, error) {
 	if len(fonts) == 0 {
-		return s.commit(ctx, f, tmp)
+		return s.results.Place(ctx, tmp, f.ID, f.Generation)
 	}
 	s.fonts.Lock()
 	defer s.fonts.Unlock()
@@ -362,7 +362,7 @@ func (s *Service) commitFonts(ctx context.Context, f catalog.File, tmp string, f
 	if err != nil {
 		return false, s.room.Err(err)
 	}
-	return s.commit(ctx, f, tmp)
+	return s.results.Place(ctx, tmp, f.ID, f.Generation)
 }
 
 // copyFonts copies a file's font attachments, as the probe recorded them,
