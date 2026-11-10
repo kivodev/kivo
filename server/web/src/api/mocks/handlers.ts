@@ -593,7 +593,7 @@ export function createHandlers(api: MockApi) {
       const kinds: Record<string, string[]> = {
         plays: ["playStarted", "playFinished"],
         added: ["added"],
-        signIns: ["signedIn", "signInFailed", "userJoined"],
+        signIns: ["signedIn", "signInFailed", "userJoined", "passwordChanged"],
         server: ["taskEnded", "problemRaised"],
       };
       const all = api.activity.filter((e) => !group || kinds[group]?.includes(e.kind));

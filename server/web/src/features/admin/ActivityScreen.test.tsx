@@ -72,6 +72,31 @@ describe("Activity", () => {
     await waitFor(() => expect(rows()).toHaveLength(14));
   });
 
+  it("says whose password changed, and the admin who changed it", async () => {
+    const api = serveMockApi();
+    const at = new Date().toISOString();
+    api.activity = [
+      {
+        id: mockId(9100),
+        occurredAt: at,
+        kind: "passwordChanged",
+        password: { userId: mockId(7101), username: "ben", address: "203.0.113.24" },
+      },
+      {
+        id: mockId(9101),
+        occurredAt: at,
+        kind: "passwordChanged",
+        password: { userId: mockId(7102), username: "carla", changedBy: "anna" },
+      },
+    ];
+    renderApp("/admin/activity");
+    await waitFor(() => expect(rows()).toHaveLength(2));
+    expect(rows().map((r) => r.textContent?.replace(/^\d{1,2}:\d{2}\s?[AP]M/, ""))).toEqual([
+      "ben changed their password · 203.0.113.24",
+      "anna changed carla's password",
+    ]);
+  });
+
   it("opens filtered, as Needs attention's link to failed sign-ins does", async () => {
     serveMockApi();
     renderApp("/admin/activity?show=plays");

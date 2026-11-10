@@ -40,7 +40,8 @@ func (s *Service) CreateUser(ctx context.Context, by Caller, u users.NewUser, pa
 // SetPassword replaces a user's password and signs out the user's sessions
 // except by's own, so a user setting their own password stays signed in.
 // When by has no session, such as an API key or the zero Caller, every
-// session is signed out. The user's API keys stay.
+// session is signed out. The user's API keys stay. The change is recorded
+// with by as who made it, unless by is the user or names nobody.
 func (s *Service) SetPassword(ctx context.Context, by Caller, user id.ID, password string) error {
 	if err := checkPassword(password); err != nil {
 		return err
@@ -58,7 +59,10 @@ func (s *Service) SetPassword(ctx context.Context, by Caller, user id.ID, passwo
 		if n == 0 {
 			return users.ErrNotFound
 		}
-		return q.DeleteOtherSessions(ctx, dbq.DeleteOtherSessionsParams{UserID: user, Keep: by.Session})
+		if err := q.DeleteOtherSessions(ctx, dbq.DeleteOtherSessionsParams{UserID: user, Keep: by.Session}); err != nil {
+			return err
+		}
+		return s.deps.Activity.PasswordSet(ctx, tx, user, by.User, netip.Addr{})
 	})
 	return err
 }
@@ -117,9 +121,11 @@ func (s *Service) ChangePassword(ctx context.Context, c Caller, r PasswordChange
 			return users.ErrNotFound
 		}
 		if r.SignOutOthers {
-			return q.DeleteOtherSessions(ctx, dbq.DeleteOtherSessionsParams{UserID: c.User, Keep: c.Session})
+			if err := q.DeleteOtherSessions(ctx, dbq.DeleteOtherSessionsParams{UserID: c.User, Keep: c.Session}); err != nil {
+				return err
+			}
 		}
-		return nil
+		return s.deps.Activity.PasswordSet(ctx, tx, c.User, id.ID{}, r.RemoteIP)
 	})
 }
 

@@ -5580,7 +5580,8 @@ export interface components {
         /**
          * @description The Activity page's Show filter: `plays` (`playStarted`,
          *     `playFinished`), `added`, `signIns` (`signedIn`, `signInFailed`,
-         *     `userJoined`) and `server` (`taskEnded`, `problemRaised`).
+         *     `userJoined`, `passwordChanged`) and `server` (`taskEnded`,
+         *     `problemRaised`).
          * @enum {string}
          */
         ActivityGroup: "plays" | "added" | "signIns" | "server";
@@ -5588,7 +5589,7 @@ export interface components {
          * @description What an event tells of. Skip kinds you don't know.
          * @enum {string}
          */
-        ActivityKind: "playStarted" | "playFinished" | "added" | "signedIn" | "signInFailed" | "userJoined" | "taskEnded" | "problemRaised";
+        ActivityKind: "playStarted" | "playFinished" | "added" | "signedIn" | "signInFailed" | "userJoined" | "passwordChanged" | "taskEnded" | "problemRaised";
         /** @description One event of the Activity page, its kind's fields under its group. */
         ActivityEvent: {
             id: components["schemas"]["ID"];
@@ -5599,6 +5600,7 @@ export interface components {
             added?: components["schemas"]["ActivityAdded"];
             signIn?: components["schemas"]["ActivitySignIn"];
             joined?: components["schemas"]["ActivityJoined"];
+            password?: components["schemas"]["ActivityPassword"];
             task?: components["schemas"]["ActivityTask"];
             problem?: components["schemas"]["ActivityProblem"];
         };
@@ -5651,6 +5653,15 @@ export interface components {
             username: string;
             /** @description The admin who added the user; absent for an invite. */
             addedBy?: string;
+        };
+        /** @description `passwordChanged`: a user's password changed, by the user or by an admin. */
+        ActivityPassword: {
+            userId: components["schemas"]["ID"];
+            username: string;
+            /** @description The admin who changed it; absent when the user did. */
+            changedBy?: string;
+            /** @description The client's address, when the user changed it. */
+            address?: string;
         };
         /** @description `taskEnded`: a night run's end, or Run now's, that did something or failed. */
         ActivityTask: {

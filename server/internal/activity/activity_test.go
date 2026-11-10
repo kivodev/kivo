@@ -98,11 +98,12 @@ func TestRecordAndList(t *testing.T) {
 				f.a.FilesAdded(ctx, tx, f.lib, movie.Work, 1),
 				f.a.SignedIn(ctx, tx, activity.SignIn{User: ben, Client: "ben's iPhone", Address: netip.MustParseAddr("::ffff:203.0.113.24")}),
 				f.a.Joined(ctx, tx, ben, admin),
+				f.a.PasswordSet(ctx, tx, ben, admin, netip.Addr{}),
 				f.a.TaskRunEnded(ctx, tx, tasks.RunEnd{Task: "make-previews", Outcome: tasks.Outcome{At: time.Now(), Summary: "214 done"}, Failed: 2}),
 			)
 		})
 		if n := f.changed(); n != 1 {
-			t.Errorf("%d activityChanged events for a write of five; want 1", n)
+			t.Errorf("%d activityChanged events for a write of six; want 1", n)
 		}
 		err := f.a.ProblemsRaised(ctx, []health.OpenProblem{
 			{ID: "playback.gpuFailed", Problem: health.Problem{Component: "playback", Code: "gpuFailed", Message: "Quick Sync stopped working", Severity: health.Error, RaisedAt: time.Now()}},
@@ -117,12 +118,12 @@ func TestRecordAndList(t *testing.T) {
 		for _, e := range all {
 			kinds = append(kinds, e.Kind)
 		}
-		want := []activity.Kind{activity.ProblemRaised, activity.TaskEnded, activity.UserJoined, activity.SignedIn, activity.Added, activity.PlayStarted}
+		want := []activity.Kind{activity.ProblemRaised, activity.TaskEnded, activity.PasswordChanged, activity.UserJoined, activity.SignedIn, activity.Added, activity.PlayStarted}
 		if len(kinds) != len(want) {
 			t.Fatalf("kinds %v, want %v (newest first, activity's own problem left out)", kinds, want)
 		}
 		for i := range want {
-			if kinds[i] != want[i] && !(i < 5 && all[i].At.Equal(all[i+1].At)) {
+			if kinds[i] != want[i] && !(i < len(want)-1 && all[i].At.Equal(all[i+1].At)) {
 				t.Errorf("kinds %v, want %v", kinds, want)
 				break
 			}
@@ -143,6 +144,9 @@ func TestRecordAndList(t *testing.T) {
 		if e := byKind[activity.UserJoined]; e.Username != "ben" || e.By != "admin" {
 			t.Errorf("joined %+v", e)
 		}
+		if e := byKind[activity.PasswordChanged]; e.User != ben || e.Username != "ben" || e.By != "admin" || e.Address != "" {
+			t.Errorf("password changed %+v", e)
+		}
 		if e := byKind[activity.TaskEnded]; e.Task != "make-previews" || e.Summary != "214 done" || e.Failed != 2 {
 			t.Errorf("task ended %+v", e)
 		}
@@ -153,7 +157,7 @@ func TestRecordAndList(t *testing.T) {
 		if got := f.list(activity.GroupPlays); len(got) != 1 || got[0].Kind != activity.PlayStarted {
 			t.Errorf("plays %+v", got)
 		}
-		if got := f.list(activity.GroupSignIns); len(got) != 2 {
+		if got := f.list(activity.GroupSignIns); len(got) != 3 {
 			t.Errorf("sign-ins %+v", got)
 		}
 		if got := f.list(activity.GroupServer); len(got) != 2 {

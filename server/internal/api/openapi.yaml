@@ -7807,13 +7807,14 @@ components:
       description: |
         The Activity page's Show filter: `plays` (`playStarted`,
         `playFinished`), `added`, `signIns` (`signedIn`, `signInFailed`,
-        `userJoined`) and `server` (`taskEnded`, `problemRaised`).
+        `userJoined`, `passwordChanged`) and `server` (`taskEnded`,
+        `problemRaised`).
       enum: [plays, added, signIns, server]
 
     ActivityKind:
       type: string
       description: What an event tells of. Skip kinds you don't know.
-      enum: [playStarted, playFinished, added, signedIn, signInFailed, userJoined, taskEnded, problemRaised]
+      enum: [playStarted, playFinished, added, signedIn, signInFailed, userJoined, passwordChanged, taskEnded, problemRaised]
 
     ActivityEvent:
       type: object
@@ -7827,6 +7828,7 @@ components:
         added: {$ref: "#/components/schemas/ActivityAdded"}
         signIn: {$ref: "#/components/schemas/ActivitySignIn"}
         joined: {$ref: "#/components/schemas/ActivityJoined"}
+        password: {$ref: "#/components/schemas/ActivityPassword"}
         task: {$ref: "#/components/schemas/ActivityTask"}
         problem: {$ref: "#/components/schemas/ActivityProblem"}
 
@@ -7899,6 +7901,20 @@ components:
         addedBy:
           type: string
           description: The admin who added the user; absent for an invite.
+
+    ActivityPassword:
+      type: object
+      description: "`passwordChanged`: a user's password changed, by the user or by an admin."
+      required: [userId, username]
+      properties:
+        userId: {$ref: "#/components/schemas/ID"}
+        username: {type: string}
+        changedBy:
+          type: string
+          description: The admin who changed it; absent when the user did.
+        address:
+          type: string
+          description: The client's address, when the user changed it.
 
     ActivityTask:
       type: object

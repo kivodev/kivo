@@ -25,6 +25,7 @@ package com.mmcdole.kivo.api.models
 
 import com.mmcdole.kivo.api.models.ActivityAdded
 import com.mmcdole.kivo.api.models.ActivityJoined
+import com.mmcdole.kivo.api.models.ActivityPassword
 import com.mmcdole.kivo.api.models.ActivityPlay
 import com.mmcdole.kivo.api.models.ActivityProblem
 import com.mmcdole.kivo.api.models.ActivitySignIn
@@ -44,6 +45,7 @@ import kotlinx.serialization.encoding.*
  * @param added 
  * @param signIn 
  * @param joined 
+ * @param password 
  * @param task 
  * @param problem 
  */
@@ -66,6 +68,8 @@ data class ActivityEvent (
     @SerialName(value = "signIn") val signIn: ActivitySignIn? = null,
 
     @SerialName(value = "joined") val joined: ActivityJoined? = null,
+
+    @SerialName(value = "password") val password: ActivityPassword? = null,
 
     @SerialName(value = "task") val task: ActivityTask? = null,
 

@@ -95,20 +95,23 @@ func (e ActivityGroup) Valid() bool {
 
 // Defines values for ActivityKind.
 const (
-	ActivityKindAdded         ActivityKind = "added"
-	ActivityKindPlayFinished  ActivityKind = "playFinished"
-	ActivityKindPlayStarted   ActivityKind = "playStarted"
-	ActivityKindProblemRaised ActivityKind = "problemRaised"
-	ActivityKindSignInFailed  ActivityKind = "signInFailed"
-	ActivityKindSignedIn      ActivityKind = "signedIn"
-	ActivityKindTaskEnded     ActivityKind = "taskEnded"
-	ActivityKindUserJoined    ActivityKind = "userJoined"
+	ActivityKindAdded           ActivityKind = "added"
+	ActivityKindPasswordChanged ActivityKind = "passwordChanged"
+	ActivityKindPlayFinished    ActivityKind = "playFinished"
+	ActivityKindPlayStarted     ActivityKind = "playStarted"
+	ActivityKindProblemRaised   ActivityKind = "problemRaised"
+	ActivityKindSignInFailed    ActivityKind = "signInFailed"
+	ActivityKindSignedIn        ActivityKind = "signedIn"
+	ActivityKindTaskEnded       ActivityKind = "taskEnded"
+	ActivityKindUserJoined      ActivityKind = "userJoined"
 )
 
 // Valid indicates whether the value is a known member of the ActivityKind enum.
 func (e ActivityKind) Valid() bool {
 	switch e {
 	case ActivityKindAdded:
+		return true
+	case ActivityKindPasswordChanged:
 		return true
 	case ActivityKindPlayFinished:
 		return true
@@ -1988,6 +1991,9 @@ type ActivityEvent struct {
 	Kind       ActivityKind `json:"kind"`
 	OccurredAt time.Time    `json:"occurredAt"`
 
+	// Password `passwordChanged`: a user's password changed, by the user or by an admin.
+	Password *ActivityPassword `json:"password,omitempty"`
+
 	// Play `playStarted` and `playFinished`: a play started, or ended past the played threshold.
 	Play *ActivityPlay `json:"play,omitempty"`
 
@@ -2010,7 +2016,8 @@ type ActivityFeed struct {
 
 // ActivityGroup The Activity page's Show filter: `plays` (`playStarted`,
 // `playFinished`), `added`, `signIns` (`signedIn`, `signInFailed`,
-// `userJoined`) and `server` (`taskEnded`, `problemRaised`).
+// `userJoined`, `passwordChanged`) and `server` (`taskEnded`,
+// `problemRaised`).
 type ActivityGroup string
 
 // ActivityJoined `userJoined`: a user created from an invite, or by an admin.
@@ -2025,6 +2032,19 @@ type ActivityJoined struct {
 
 // ActivityKind What an event tells of. Skip kinds you don't know.
 type ActivityKind string
+
+// ActivityPassword `passwordChanged`: a user's password changed, by the user or by an admin.
+type ActivityPassword struct {
+	// Address The client's address, when the user changed it.
+	Address *string `json:"address,omitempty"`
+
+	// ChangedBy The admin who changed it; absent when the user did.
+	ChangedBy *string `json:"changedBy,omitempty"`
+
+	// UserID A UUIDv7.
+	UserID   ID     `json:"userId"`
+	Username string `json:"username"`
+}
 
 // ActivityPlay `playStarted` and `playFinished`: a play started, or ended past the played threshold.
 type ActivityPlay struct {

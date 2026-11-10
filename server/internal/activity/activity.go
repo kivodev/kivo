@@ -21,14 +21,15 @@ type Kind string
 
 // The kinds of event.
 const (
-	PlayStarted   Kind = "playStarted"
-	PlayFinished  Kind = "playFinished" // a play ended past the played threshold
-	Added         Kind = "added"        // a folder's new files, under one root work
-	SignedIn      Kind = "signedIn"
-	SignInFailed  Kind = "signInFailed" // a run of failed sign-ins for one user from one address
-	UserJoined    Kind = "userJoined"
-	TaskEnded     Kind = "taskEnded" // a night run or a Run now run ended
-	ProblemRaised Kind = "problemRaised"
+	PlayStarted     Kind = "playStarted"
+	PlayFinished    Kind = "playFinished" // a play ended past the played threshold
+	Added           Kind = "added"        // a folder's new files, under one root work
+	SignedIn        Kind = "signedIn"
+	SignInFailed    Kind = "signInFailed" // a run of failed sign-ins for one user from one address
+	UserJoined      Kind = "userJoined"
+	PasswordChanged Kind = "passwordChanged"
+	TaskEnded       Kind = "taskEnded" // a night run or a Run now run ended
+	ProblemRaised   Kind = "problemRaised"
 )
 
 // Group is a set of kinds, as offered by the Activity page's Show filter.
@@ -46,7 +47,7 @@ const (
 var groups = map[Group][]Kind{
 	GroupPlays:   {PlayStarted, PlayFinished},
 	GroupAdded:   {Added},
-	GroupSignIns: {SignedIn, SignInFailed, UserJoined},
+	GroupSignIns: {SignedIn, SignInFailed, UserJoined, PasswordChanged},
 	GroupServer:  {TaskEnded, ProblemRaised},
 }
 
@@ -72,7 +73,7 @@ type Event struct {
 	Client   string `json:"client,omitempty"`  // the name of the session or API key
 	Address  string `json:"address,omitempty"`
 	Local    bool   `json:"local,omitempty"`
-	By       string `json:"by,omitempty"` // the admin who added a user, or empty for an invite
+	By       string `json:"by,omitempty"` // the admin who added a user or changed their password, or empty
 	Task     string `json:"task,omitempty"`
 	Summary  string `json:"summary,omitempty"`
 	Error    string `json:"error,omitempty"`
@@ -227,6 +228,24 @@ func (s *Service) Joined(ctx context.Context, tx *store.Tx, user, by id.ID) erro
 	}
 	if err != nil {
 		return fmt.Errorf("record %s activity: %w", UserJoined, err)
+	}
+	return nil
+}
+
+// PasswordSet records a user's new password in the caller's transaction.
+// by is the admin who set it, or zero when the user changed their own.
+// address is where the user changed it from, or the zero Addr.
+func (s *Service) PasswordSet(ctx context.Context, tx *store.Tx, user, by id.ID, addr netip.Addr) error {
+	e := Event{Kind: PasswordChanged, User: user, Address: address(addr)}
+	var err error
+	if !by.IsZero() && by != user {
+		e.By, err = dbq.New(tx).Username(ctx, by)
+	}
+	if err == nil {
+		err = s.record(ctx, tx, e)
+	}
+	if err != nil {
+		return fmt.Errorf("record %s activity: %w", PasswordChanged, err)
 	}
 	return nil
 }

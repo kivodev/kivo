@@ -80,3 +80,65 @@ func TestActivity(t *testing.T) {
 		t.Errorf("added by an admin %+v", e)
 	}
 }
+
+// passwordChanges returns the passwordChanged events, the newest first.
+func (f *fixture) passwordChanges() []activity.Event {
+	f.t.Helper()
+	var out []activity.Event
+	for _, e := range f.events(activity.GroupSignIns) {
+		if e.Kind == activity.PasswordChanged {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+// A password change is recorded with whose password it is: one the user
+// changed with the address it came from, one an admin set with the admin.
+// A wrong current password, setup and accepting an invite record none.
+func TestActivityPasswordChanged(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	admin := f.setUp().Session.Caller()
+	lib := f.library("Movies")
+	issued, err := f.auth.CreateInvite(ctx, admin, NewInvite{Grants: users.Grants{Libraries: []id.ID{lib}}, Expires: time.Now().Add(time.Hour)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	dana, err := f.auth.AcceptInvite(ctx, issued.Token, SignInRequest{Username: "dana", Password: password, RemoteIP: other})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := f.passwordChanges(); len(got) != 0 {
+		t.Fatalf("setup and an invite recorded %+v", got)
+	}
+
+	me := dana.Session.Caller()
+	if err := f.auth.ChangePassword(ctx, me, PasswordChange{Current: "wrong password", New: "a new password", RemoteIP: other}); !errors.Is(err, ErrWrongPassword) {
+		t.Fatalf("a wrong current password: %v", err)
+	}
+	if got := f.passwordChanges(); len(got) != 0 {
+		t.Fatalf("a wrong current password recorded %+v", got)
+	}
+	if err := f.auth.ChangePassword(ctx, me, PasswordChange{Current: password, New: "a new password", RemoteIP: other}); err != nil {
+		t.Fatal(err)
+	}
+	got := f.passwordChanges()
+	if len(got) != 1 {
+		t.Fatalf("after changing one's own: %+v", got)
+	}
+	if e := got[0]; e.User != me.User || e.Username != "dana" || e.By != "" || e.Address != other.String() {
+		t.Errorf("changed one's own %+v", e)
+	}
+
+	if err := f.auth.SetPassword(ctx, admin, me.User, "another password"); err != nil {
+		t.Fatal(err)
+	}
+	got = f.passwordChanges()
+	if len(got) != 2 {
+		t.Fatalf("after an admin set it: %+v", got)
+	}
+	if e := got[0]; e.User != me.User || e.Username != "dana" || e.By != "admin" || e.Address != "" {
+		t.Errorf("set by an admin %+v", e)
+	}
+}
