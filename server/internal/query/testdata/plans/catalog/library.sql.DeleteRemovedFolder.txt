@@ -1,6 +1,0 @@
-SEARCH d USING INDEX sqlite_autoindex_library_folder_1 (id=?)
-CORRELATED SCALAR SUBQUERY 1
-  SEARCH f USING COVERING INDEX sqlite_autoindex_media_file_2 (folder_id=?)
-SEARCH scan_folder USING PRIMARY KEY (folder_id=?)
-SEARCH scan_dir USING PRIMARY KEY (folder_id=?)
-SEARCH media_file USING COVERING INDEX sqlite_autoindex_media_file_2 (folder_id=?)

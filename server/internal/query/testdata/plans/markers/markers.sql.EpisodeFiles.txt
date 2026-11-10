@@ -1,9 +1,0 @@
-SEARCH vw USING COVERING INDEX media_version_work_work (work_id=?)
-LIST SUBQUERY 2
-  CO-ROUTINE (subquery-1)
-    SCAN CONSTANT ROW
-  SCAN (subquery-1)
-  SCAN json_each VIRTUAL TABLE INDEX 1:
-SEARCH e USING INDEX sqlite_autoindex_work_1 (id=?)
-SEARCH f USING INDEX media_file_version (version_id=?)
-USE TEMP B-TREE FOR DISTINCT

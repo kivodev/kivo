@@ -1,4 +1,0 @@
-SCAN CONSTANT ROW
-SCALAR SUBQUERY 1
-  SEARCH k USING INDEX sqlite_autoindex_api_key_1 (id=?)
-  SEARCH u USING INDEX sqlite_autoindex_user_1 (id=?)

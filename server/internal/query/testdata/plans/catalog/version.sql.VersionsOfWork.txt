@@ -1,9 +1,0 @@
-SEARCH vw USING COVERING INDEX media_version_work_work (work_id=?)
-CORRELATED SCALAR SUBQUERY 3
-  SEARCH g USING INDEX media_file_version (version_id=?)
-SEARCH mv USING PRIMARY KEY (id=?)
-CORRELATED SCALAR SUBQUERY 1
-  SEARCH p USING INDEX media_file_version (version_id=? AND part=?)
-  SEARCH t USING INDEX sqlite_autoindex_media_track_2 (file_id=?)
-CORRELATED SCALAR SUBQUERY 2
-  SEARCH f USING INDEX media_file_version (version_id=?)

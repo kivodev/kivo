@@ -1,1 +1,0 @@
-SEARCH artwork USING INDEX artwork_work (work_id=? AND kind=?)

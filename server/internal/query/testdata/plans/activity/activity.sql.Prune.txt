@@ -1,1 +1,0 @@
-SEARCH activity USING INDEX activity_at (at<?)

@@ -1,1 +1,0 @@
-SEARCH media_track USING INDEX sqlite_autoindex_media_track_3 (file_id=? AND source=?)

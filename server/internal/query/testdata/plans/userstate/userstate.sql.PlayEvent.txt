@@ -1,1 +1,0 @@
-SEARCH play_event USING INDEX play_event_play (play_id=? AND work_id=?)

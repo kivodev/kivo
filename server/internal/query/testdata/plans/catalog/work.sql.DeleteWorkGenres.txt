@@ -1,1 +1,0 @@
-SEARCH work_genre USING PRIMARY KEY (work_id=?)

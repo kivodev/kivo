@@ -1,9 +1,0 @@
-SEARCH e USING INDEX work_children (parent_id=?)
-SEARCH vw USING COVERING INDEX media_version_work_work (work_id=?)
-SEARCH f USING INDEX media_file_version (version_id=?)
-SEARCH r USING INDEX sqlite_autoindex_library_folder_1 (id=?)
-CORRELATED SCALAR SUBQUERY 1
-  SEARCH p USING COVERING INDEX media_file_version (version_id=?)
-CORRELATED SCALAR SUBQUERY 2
-  SEARCH c USING PRIMARY KEY (version_id=?)
-USE TEMP B-TREE FOR LAST 3 TERMS OF ORDER BY

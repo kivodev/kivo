@@ -1,7 +1,0 @@
-SCAN f
-CORRELATED SCALAR SUBQUERY 2
-  SEARCH x USING PRIMARY KEY (file_id=?)
-SEARCH t EXISTS USING INDEX sqlite_autoindex_media_track_2 (file_id=?)
-SEARCH r USING INDEX sqlite_autoindex_library_folder_1 (id=?)
-SEARCH l USING INDEX sqlite_autoindex_library_1 (id=?)
-USE TEMP B-TREE FOR ORDER BY

@@ -1,1 +1,0 @@
-SEARCH activity USING INDEX sqlite_autoindex_activity_1 (id=?)

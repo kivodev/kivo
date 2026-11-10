@@ -2,8 +2,10 @@ package query
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
+	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/users"
 )
 
@@ -22,4 +24,11 @@ func Statements() map[string]string {
 // QueryWorksAt is QueryWorks as of now.
 func (s *Service) QueryWorksAt(ctx context.Context, v users.Viewer, q WorkQuery, o GridOptions, now time.Time) (GridPage[WorkSummary], error) {
 	return s.queryWorksAt(ctx, v, q, o, now)
+}
+
+// Compiled returns the statements q compiles to as the Viewer, its count
+// and its page, with their arguments for the first page.
+func Compiled(q WorkQuery, v users.Viewer, now time.Time, only []catalog.WorkKind) (count, page string, args []any) {
+	c := compile(q, viewerOf(v), now, seedOf(q, now), only)
+	return c.count, c.page, append(c.args, sql.Named("limit", 50), sql.Named("offset", 0))
 }

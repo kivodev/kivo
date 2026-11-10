@@ -1,1 +1,0 @@
-SEARCH media_marker USING PRIMARY KEY (file_id=?)

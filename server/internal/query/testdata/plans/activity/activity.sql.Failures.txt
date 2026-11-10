@@ -1,1 +1,0 @@
-SEARCH activity USING INDEX activity_kind (kind=? AND at>?)

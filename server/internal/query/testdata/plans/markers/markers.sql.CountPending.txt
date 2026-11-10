@@ -1,6 +1,0 @@
-SCAN f USING INDEX sqlite_autoindex_media_file_1
-SEARCH r USING INDEX sqlite_autoindex_library_folder_1 (id=?)
-SEARCH l USING INDEX sqlite_autoindex_library_1 (id=?)
-SEARCH vw USING PRIMARY KEY (version_id=?)
-SEARCH e USING INDEX sqlite_autoindex_work_1 (id=?)
-SEARCH x USING PRIMARY KEY (file_id=?) LEFT-JOIN

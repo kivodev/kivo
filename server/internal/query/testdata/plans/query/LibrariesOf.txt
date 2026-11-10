@@ -1,7 +1,0 @@
-SEARCH wl USING COVERING INDEX work_library_work (work_id=?)
-LIST SUBQUERY 1
-  SCAN json_each VIRTUAL TABLE INDEX 1:
-SEARCH l USING INDEX sqlite_autoindex_library_1 (id=?)
-LIST SUBQUERY 2
-  SCAN json_each VIRTUAL TABLE INDEX 1:
-  CREATE BLOOM FILTER

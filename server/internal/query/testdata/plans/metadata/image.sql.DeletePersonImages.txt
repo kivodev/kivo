@@ -1,1 +1,0 @@
-SEARCH image USING COVERING INDEX image_person (person_id=? AND kind=?)

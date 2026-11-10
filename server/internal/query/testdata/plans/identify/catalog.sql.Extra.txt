@@ -1,2 +1,0 @@
-SEARCH work USING INDEX work_children (parent_id=?)
-USE TEMP B-TREE FOR ORDER BY

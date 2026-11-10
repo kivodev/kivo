@@ -1,1 +1,0 @@
-SEARCH work_folder USING COVERING INDEX sqlite_autoindex_work_folder_1 (work_id=?)

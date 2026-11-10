@@ -1,1 +1,0 @@
-SEARCH media_file USING COVERING INDEX media_file_version (version_id>?)

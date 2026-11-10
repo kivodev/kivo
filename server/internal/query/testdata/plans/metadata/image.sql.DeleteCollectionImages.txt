@@ -1,1 +1,0 @@
-SEARCH image USING COVERING INDEX image_collection (collection_id=? AND kind=?)

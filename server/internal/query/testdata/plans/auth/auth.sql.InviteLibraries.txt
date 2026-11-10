@@ -1,1 +1,0 @@
-SEARCH invite_library USING PRIMARY KEY (invite_id=?)
