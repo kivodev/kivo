@@ -585,7 +585,7 @@ func (s *Service) started(ctx context.Context, pl *play) Started {
 	out := Started{
 		ID: pl.id, Work: pl.work, Version: pl.version.ID, Start: pl.start, Local: pl.local,
 		Quality: pl.request.qualityFor(pl.local), MaxBitrate: pl.input.Limit.MaxBitrate, Cap: pl.cap,
-		Bitrate: pl.bitrate(), Decision: pl.decision, ExternalSubtitles: s.externalSubtitles(ctx, &pl.choice),
+		Bitrate: pl.bitrate(), Decision: pl.decision, ExternalSubtitles: s.externalSubtitles(ctx, pl.files[0], pl.styled, pl.decision.Tracks),
 	}
 	if len(pl.files) == 1 {
 		_, _, out.Previews = s.deps.Previews.Previews(ctx, pl.files[0].ID)

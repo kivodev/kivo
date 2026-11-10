@@ -79,7 +79,6 @@ const (
 	// why a download's preparation failed.
 	RefuseSourceUnreadable     Refusal = "sourceUnreadable"     // the file couldn't be read, after retrying
 	RefuseSubtitlesUnavailable Refusal = "subtitlesUnavailable" // its subtitle couldn't be prepared
-	RefusePlanUnreadable       Refusal = "planUnreadable"       // the server can't read the download's stored decision
 	// The server is busy, and the client should try again later.
 	RefuseTranscodeLimit Refusal = "transcodeLimit" // the server is at its limit of simultaneous video transcodes
 	RefuseStorageFull    Refusal = "storageFull"    // the transcode disk is below its free-space floor

@@ -11,6 +11,7 @@ import (
 	"os"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/mmcdole/kivo/internal/auth"
@@ -73,6 +74,32 @@ type DownloadRequest struct {
 	Caps          Capabilities `json:"capabilities"`       // what the client plays offline
 	Settings      Settings     `json:"settings"`
 	Quality       string       `json:"quality"`
+}
+
+// asksFor reports whether two requests ask for the same download: the
+// same version and tracks of the work, at the same quality, with the same
+// settings. What the device plays isn't compared, since an app reports it
+// anew each time it asks, and differently after an update.
+func (r DownloadRequest) asksFor(o DownloadRequest) bool {
+	same := func(a, b *id.ID) bool { return a == nil && b == nil || a != nil && b != nil && *a == *b }
+	quality := func(name string) DownloadQuality {
+		q, _ := DownloadQualityNamed(cmp.Or(name, DefaultDownloadQuality))
+		return q
+	}
+	return r.Work == o.Work && r.Version == o.Version && same(r.AudioTrack, o.AudioTrack) && same(r.SubtitleTrack, o.SubtitleTrack) &&
+		quality(r.Quality) == quality(o.Quality) && r.Settings == o.Settings
+}
+
+// sameDownload finds the newest of a device's downloads of a work, newest
+// first, that asked for what r asks for.
+func sameDownload(rows []dbq.Download, r DownloadRequest) (dbq.Download, bool) {
+	for _, d := range rows {
+		var asked DownloadRequest
+		if err := json.Unmarshal([]byte(d.Request), &asked); err == nil && asked.asksFor(r) {
+			return d, true
+		}
+	}
+	return dbq.Download{}, false
 }
 
 // DownloadStatus is a download as its app sees it.
@@ -143,24 +170,20 @@ func (s *Service) Download(ctx context.Context, p auth.Caller, v users.Viewer, r
 	if err != nil {
 		return DownloadStatus{}, err
 	}
-	same, err := s.q.SameDownload(ctx, dbq.SameDownloadParams{SessionID: p.Session, WorkID: r.Work, Request: string(request)})
-	switch {
-	case err == nil:
-		return s.status(ctx, same)
-	case !errors.Is(err, sql.ErrNoRows):
-		return DownloadStatus{}, err
-	}
-	c, err := s.planDownload(ctx, user, r)
+	rows, err := s.q.SameDownload(ctx, dbq.SameDownloadParams{SessionID: p.Session, WorkID: r.Work})
 	if err != nil {
 		return DownloadStatus{}, err
 	}
-	plan, err := json.Marshal(planOf(c))
+	if same, ok := sameDownload(rows, r); ok {
+		return s.status(ctx, same)
+	}
+	c, planned, err := s.planAsked(ctx, user, r)
 	if err != nil {
 		return DownloadStatus{}, err
 	}
 	now := time.Now()
 	row := dbq.Download{
-		ID: id.New(), UserID: p.User, SessionID: p.Session, WorkID: r.Work, VersionID: c.version.ID, Request: string(request), Plan: string(plan),
+		ID: id.New(), UserID: p.User, SessionID: p.Session, WorkID: r.Work, VersionID: c.version.ID, Request: string(request), Delivered: planned,
 		State: string(DownloadReady), CreatedAt: now.UnixMilli(), QueuedAt: now.UnixMilli(),
 	}
 	prepare := s.needsPreparing(ctx, c)
@@ -169,7 +192,7 @@ func (s *Service) Download(ctx context.Context, p auth.Caller, v users.Viewer, r
 	} else {
 		row.SettledAt = sql.NullInt64{Int64: now.UnixMilli(), Valid: true}
 	}
-	stored, inserted, err := s.storeDownload(ctx, row, prepare)
+	stored, inserted, err := s.storeDownload(ctx, row, r, prepare)
 	if err != nil {
 		return DownloadStatus{}, err
 	}
@@ -188,20 +211,20 @@ func (s *Service) Download(ctx context.Context, p auth.Caller, v users.Viewer, r
 // it needs it, unless the same download was stored while this one was
 // planned. Writes take turns, so the first stored is the one, and it's
 // returned instead.
-func (s *Service) storeDownload(ctx context.Context, row dbq.Download, prepare bool) (stored dbq.Download, inserted bool, err error) {
+func (s *Service) storeDownload(ctx context.Context, row dbq.Download, r DownloadRequest, prepare bool) (stored dbq.Download, inserted bool, err error) {
 	stored = row
 	err = s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
 		q := dbq.New(tx)
-		same, err := q.SameDownload(ctx, dbq.SameDownloadParams{SessionID: row.SessionID, WorkID: row.WorkID, Request: row.Request})
-		if err == nil {
+		rows, err := q.SameDownload(ctx, dbq.SameDownloadParams{SessionID: row.SessionID, WorkID: row.WorkID})
+		if err != nil {
+			return err
+		}
+		if same, ok := sameDownload(rows, r); ok {
 			stored = same
 			return nil
 		}
-		if !errors.Is(err, sql.ErrNoRows) {
-			return err
-		}
 		if err := q.InsertDownload(ctx, dbq.InsertDownloadParams{
-			ID: row.ID, UserID: row.UserID, SessionID: row.SessionID, WorkID: row.WorkID, VersionID: row.VersionID, Request: row.Request, Plan: row.Plan,
+			ID: row.ID, UserID: row.UserID, SessionID: row.SessionID, WorkID: row.WorkID, VersionID: row.VersionID, Request: row.Request, Delivered: row.Delivered,
 			State: row.State, CreatedAt: row.CreatedAt, QueuedAt: row.QueuedAt, SettledAt: row.SettledAt,
 		}); err != nil {
 			return err
@@ -258,14 +281,15 @@ func (s *Service) preparingAtOnce(config.Settings) int {
 	return 1
 }
 
-// prepareDownload prepares one download. It extracts the subtitles the
-// download needs from its file, then converts the download. If the
-// accelerator fails before producing any output, the conversion runs
-// again on the CPU. Finally it settles the download as ready, or as
-// failed with the reason. A file that can't be read is tried again on
-// later passes before the download fails. A download whose plan can't be
-// read fails at once. After a server restart, the download waits in line
-// and starts again.
+// prepareDownload prepares one download. It plans the download again for
+// its files as they are now, extracts the subtitles it needs from its
+// file, then converts it. If the accelerator fails before producing any
+// output, the conversion runs again on the CPU. Finally it settles the
+// download as ready, delivering what was made, or as failed with the
+// reason. A file that can't be read is tried again on later passes before
+// the download fails. A download that can't be planned any more, its
+// version or a track gone, fails at once. After a server restart, the
+// download waits in line and starts again.
 func (s *Service) prepareDownload(ctx context.Context, download id.ID) error {
 	d, err := s.q.GetDownload(ctx, download)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -277,17 +301,12 @@ func (s *Service) prepareDownload(ctx context.Context, download id.ID) error {
 	if state := DownloadState(d.State); state != DownloadQueued && state != DownloadPreparing {
 		return nil
 	}
-	c, err := s.restore(ctx, d)
-	if why := unrestorable(err); why != "" {
-		return s.settle(ctx, d, nil, why, err)
+	c, err := s.replan(ctx, d)
+	if _, refused := errors.AsType[*RefusedError](err); refused || errors.Is(err, ErrNotFound) || errors.Is(err, catalog.ErrNotFound) {
+		return s.settle(ctx, d, nil, nil, RefuseSourceUnreadable, err)
 	}
 	if err != nil {
 		return err
-	}
-	for _, f := range c.files {
-		if !f.Present {
-			return s.settle(ctx, d, nil, RefuseSourceUnreadable, fmt.Errorf("%s is missing", f.RelPath))
-		}
 	}
 	if err := s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
 		_, err := dbq.New(tx).StartDownload(ctx, d.ID)
@@ -330,7 +349,7 @@ func (s *Service) prepareDownload(ctx context.Context, download id.ID) error {
 	s.mu.Lock()
 	delete(s.attempts, d.ID)
 	s.mu.Unlock()
-	err = s.settle(context.WithoutCancel(ctx), d, files, why, err)
+	err = s.settle(context.WithoutCancel(ctx), d, c, files, why, err)
 	s.preparedOne(context.WithoutCancel(ctx))
 	return err
 }
@@ -364,19 +383,6 @@ func (s *Service) preparedOne(ctx context.Context) {
 	} else {
 		s.downloadsPrepared++
 	}
-}
-
-// unrestorable returns why a download that restore failed on should fail
-// at once: its plan can't be read, or its files are gone. For any other
-// error it returns "", and the download stays pending.
-func unrestorable(err error) Refusal {
-	switch {
-	case errors.Is(err, errPlanUnreadable):
-		return RefusePlanUnreadable
-	case errors.Is(err, catalog.ErrNotFound):
-		return RefuseSourceUnreadable
-	}
-	return ""
 }
 
 // attempt counts one more attempt at a download whose file couldn't be
@@ -473,27 +479,33 @@ func (s *Service) requeue(ctx context.Context, download id.ID) {
 	}
 }
 
-// settle records a download as ready with its converted files, or as
-// failed with the reason. If the app removed the download in the
-// meantime, the converted files are deleted instead.
-func (s *Service) settle(ctx context.Context, d dbq.Download, files []transcode.ConvertedFile, why Refusal, cause error) error {
-	state, reason, kept := DownloadReady, sql.NullString{}, sql.NullString{}
+// settle records a download as ready, delivering what c made with its
+// converted files, or as failed with the reason. If the app removed the
+// download in the meantime, the converted files are deleted instead.
+func (s *Service) settle(ctx context.Context, d dbq.Download, c *choice, files []transcode.ConvertedFile, why Refusal, cause error) error {
+	state, reason, made := DownloadReady, sql.NullString{}, sql.NullString{}
 	if cause != nil {
 		state, reason = DownloadFailed, sql.NullString{String: string(why), Valid: true}
 		slog.WarnContext(ctx, "playback: download failed", "work", d.WorkID, "reason", why, "err", cause)
-	} else if files != nil {
-		b, err := json.Marshal(files)
+	} else {
+		b, err := s.deliveredBy(ctx, c, files)
 		if err != nil {
 			return err
 		}
-		kept = sql.NullString{String: string(b), Valid: true}
-		slog.InfoContext(ctx, "playback: download ready", "work", d.WorkID, "took", time.Since(time.UnixMilli(d.QueuedAt)).Round(time.Second))
+		made = sql.NullString{String: b, Valid: true}
+		if files != nil {
+			slog.InfoContext(ctx, "playback: download ready", "work", d.WorkID, "took", time.Since(time.UnixMilli(d.QueuedAt)).Round(time.Second))
+		}
 	}
 	var n int64
 	err := s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
+		q := dbq.New(tx)
+		if now, err := q.GetDownload(ctx, d.ID); err == nil && made.Valid {
+			made.String = moved(made.String, d.Delivered, now.Delivered)
+		}
 		var err error
-		n, err = dbq.New(tx).SettleDownload(ctx, dbq.SettleDownloadParams{
-			ID: d.ID, State: string(state), Reason: reason, Files: kept, SettledAt: sql.NullInt64{Int64: time.Now().UnixMilli(), Valid: true},
+		n, err = q.SettleDownload(ctx, dbq.SettleDownloadParams{
+			ID: d.ID, State: string(state), Reason: reason, Delivered: made, SettledAt: sql.NullInt64{Int64: time.Now().UnixMilli(), Valid: true},
 		})
 		return err
 	})
@@ -505,6 +517,23 @@ func (s *Service) settle(ctx context.Context, d dbq.Download, files []transcode.
 	}
 	s.downloadsChanged(d.UserID)
 	return nil
+}
+
+// moved renames, in what a download delivers as made, each track that was
+// replaced while it was made. was is what the download delivered when its
+// preparation read it, and now what it delivers since, the same tracks in
+// the same order.
+func moved(made, was, now string) string {
+	var a, b delivered
+	if was == now || json.Unmarshal([]byte(was), &a) != nil || json.Unmarshal([]byte(now), &b) != nil {
+		return made
+	}
+	for i := range min(len(a.Tracks), len(b.Tracks)) {
+		if from, to := a.Tracks[i].Track, b.Tracks[i].Track; from != to {
+			made = strings.ReplaceAll(made, from.String(), to.String())
+		}
+	}
+	return made
 }
 
 // queueMoved tells every user with downloads in line that their places
@@ -569,55 +598,49 @@ func (s *Service) ownDownload(ctx context.Context, user, download id.ID) (dbq.Do
 	return d, nil
 }
 
-// downloaded is a download's decision as its app plays it offline. A
+// downloaded is a choice's tracks as an app plays its download offline. A
 // conversion's tracks are inside its file, the video first, then the
 // audio, then each text track it carries, so each has its stream index
-// there. Once the download is ready, a subtitle delivered external that
-// couldn't be extracted isn't in it.
-func (s *Service) downloaded(ctx context.Context, c *choice, externals []ExternalSubtitle, ready bool) Decision {
-	d := c.decision
-	d.Tracks = slices.Clone(d.Tracks)
+// there.
+func (s *Service) downloaded(ctx context.Context, c *choice) []TrackDecision {
+	tracks := slices.Clone(c.decision.Tracks)
+	if c.decision.Delivery != DeliverConversion {
+		return tracks
+	}
 	next := 0
 	inFile := func(t *TrackDecision) {
 		t.Delivery, t.Index = DeliverFile, next
 		next++
 	}
-	if d.Delivery == DeliverConversion {
-		for _, kind := range []media.TrackKind{media.Video, media.Audio} {
-			if i := slices.IndexFunc(d.Tracks, func(t TrackDecision) bool { return t.Type == kind && t.Selected }); i >= 0 {
-				inFile(&d.Tracks[i])
-			}
-		}
-		for _, text := range s.textTracks(ctx, c) {
-			if i := slices.IndexFunc(d.Tracks, func(t TrackDecision) bool { return t.Track.String() == text.ID }); i >= 0 {
-				inFile(&d.Tracks[i])
-				d.Tracks[i].Codec = "mov_text"
-			}
+	for _, kind := range []media.TrackKind{media.Video, media.Audio} {
+		if i := slices.IndexFunc(tracks, func(t TrackDecision) bool { return t.Type == kind && t.Selected }); i >= 0 {
+			inFile(&tracks[i])
 		}
 	}
-	for i, t := range d.Tracks {
-		if t.Delivery == DeliverExternal && ready && !slices.ContainsFunc(externals, func(x ExternalSubtitle) bool { return x.Track == t.Track && x.Ready }) {
-			d.Tracks[i] = TrackDecision{Type: t.Type, Track: t.Track, Index: t.Index, Selected: t.Selected, Reason: ReasonSubtitlePreparing}
+	for _, text := range s.textTracks(ctx, c) {
+		if i := slices.IndexFunc(tracks, func(t TrackDecision) bool { return t.Track.String() == text.ID }); i >= 0 {
+			inFile(&tracks[i])
+			tracks[i].Codec = "mov_text"
 		}
 	}
-	return d
+	return tracks
 }
 
+// status is a download as its app sees it, from what it delivers and its
+// files, subtitles and markers as they are now. Once it's ready, a
+// subtitle delivered external that couldn't be extracted isn't in it.
 func (s *Service) status(ctx context.Context, d dbq.Download) (DownloadStatus, error) {
-	c, err := s.restore(ctx, d)
-	if errors.Is(err, errPlanUnreadable) {
-		return unreadableStatus(d), nil
-	}
+	dl, files, err := s.kept(ctx, d)
 	if err != nil {
 		return DownloadStatus{}, err
 	}
-	out := DownloadStatus{
-		ID: d.ID, Work: d.WorkID, Version: d.VersionID, Quality: c.input.Quality.Name, State: DownloadState(d.State),
-		ExternalSubtitles: s.externalSubtitles(ctx, c),
-	}
-	out.Decision = s.downloaded(ctx, c, out.ExternalSubtitles, out.State == DownloadReady)
-	if out.Quality == "" {
-		out.Quality = "original"
+	out := DownloadStatus{ID: d.ID, Work: d.WorkID, Version: d.VersionID, Quality: dl.Quality, State: DownloadState(d.State), Decision: dl.decision()}
+	out.ExternalSubtitles = s.externalSubtitles(ctx, files[0], s.styledOf(ctx, files[0]), out.Decision.Tracks)
+	for i, t := range out.Decision.Tracks {
+		if t.Delivery == DeliverExternal && out.State == DownloadReady &&
+			!slices.ContainsFunc(out.ExternalSubtitles, func(x ExternalSubtitle) bool { return x.Track == t.Track && x.Ready }) {
+			out.Decision.Tracks[i] = TrackDecision{Type: t.Type, Track: t.Track, Index: t.Index, Selected: t.Selected, Reason: ReasonSubtitlePreparing}
+		}
 	}
 	if d.Reason.Valid {
 		out.Reason = Refusal(d.Reason.String)
@@ -625,32 +648,24 @@ func (s *Service) status(ctx context.Context, d dbq.Download) (DownloadStatus, e
 	if d.SettledAt.Valid {
 		out.Expires = time.UnixMilli(d.SettledAt.Int64).Add(keepDownload)
 	}
-	out.Chapters, out.Markers = s.deps.Markers.Markers(ctx, c.work, c.files)
-	var converted []transcode.ConvertedFile
-	if d.Files.Valid {
-		if err := json.Unmarshal([]byte(d.Files.String), &converted); err != nil {
-			return DownloadStatus{}, err
-		}
-	}
-	out.Duration = duration(c.files)
-	for i, f := range c.files {
+	out.Chapters, out.Markers = s.deps.Markers.Markers(ctx, d.WorkID, files)
+	out.Duration = duration(files)
+	for i, f := range files {
 		part := DownloadPart{Duration: f.Probe.Duration, Type: "video/mp4"}
-		switch {
-		case c.decision.Delivery == DeliverFile:
+		if dl.Delivery == DeliverFile {
 			part.Size, part.Type = f.Size, mimeType(f.Probe.Container, f.RelPath)
 			if fi, err := os.Stat(f.Path()); err == nil {
 				part.Size, part.ETag = fi.Size(), fileETag(fi)
 			}
-		case i < len(converted):
-			cf := converted[i]
-			part.Size, part.ETag, part.SHA256 = cf.Size, `"`+cf.SHA256+`"`, cf.SHA256
+		} else if made := dl.Parts[i]; made.SHA256 != "" {
+			part.Size, part.ETag, part.SHA256 = made.Size, `"`+made.SHA256+`"`, made.SHA256
 		}
 		out.Size += part.Size
 		out.Parts = append(out.Parts, part)
 	}
-	out.SizeExact = out.State == DownloadReady || c.decision.Delivery == DeliverFile
+	out.SizeExact = out.State == DownloadReady || dl.Delivery == DeliverFile
 	if out.State != DownloadReady {
-		out.Size = estimateBytes(c.input, c.decision, c.files)
+		out.Size = dl.Size
 	}
 	if out.State == DownloadQueued || out.State == DownloadPreparing {
 		s.mu.Lock()
@@ -671,23 +686,6 @@ func (s *Service) status(ctx context.Context, d dbq.Download) (DownloadStatus, e
 		}
 	}
 	return out, nil
-}
-
-// unreadableStatus builds the status of a download whose plan can't be
-// read, from its row alone. It's always failed, whatever the stored state,
-// so the app offers Retry.
-func unreadableStatus(d dbq.Download) DownloadStatus {
-	var r DownloadRequest
-	_ = json.Unmarshal([]byte(d.Request), &r) // an unreadable request shows the default quality
-	out := DownloadStatus{
-		// Migration (downloads): remove after every client has updated past this release.
-		ID: d.ID, Work: d.WorkID, Version: d.VersionID, Quality: currentQualityName(cmp.Or(r.Quality, DefaultDownloadQuality)),
-		State: DownloadFailed, Reason: RefusePlanUnreadable,
-	}
-	if d.SettledAt.Valid {
-		out.Expires = time.UnixMilli(d.SettledAt.Int64).Add(keepDownload)
-	}
-	return out
 }
 
 // progressLocked returns how far a preparation has got and about how long
@@ -713,16 +711,15 @@ func fileETag(fi os.FileInfo) string {
 	return `"` + strconv.FormatInt(fi.Size(), 10) + "-" + strconv.FormatInt(fi.ModTime().UnixNano(), 36) + `"`
 }
 
-// RetryDownload asks again for a download that failed or whose plan can't
-// be read. It decides the download again, since the files may have
-// changed, and puts it at the back of the line. Any other download is
-// returned unchanged.
+// RetryDownload asks again for a download that failed. It decides the
+// download again, since the files may have changed, and puts it at the
+// back of the line. Any other download is returned unchanged.
 func (s *Service) RetryDownload(ctx context.Context, p auth.Caller, v users.Viewer, download id.ID) (DownloadStatus, error) {
 	d, err := s.ownDownload(ctx, p.User, download)
 	if err != nil {
 		return DownloadStatus{}, err
 	}
-	if _, err := readPlan(d); err == nil && DownloadState(d.State) != DownloadFailed {
+	if DownloadState(d.State) != DownloadFailed {
 		return s.status(ctx, d)
 	}
 	var r DownloadRequest
@@ -733,25 +730,21 @@ func (s *Service) RetryDownload(ctx context.Context, p auth.Caller, v users.View
 	if err != nil {
 		return DownloadStatus{}, err
 	}
-	c, err := s.planDownload(ctx, user, r)
-	if err != nil {
-		return DownloadStatus{}, err
-	}
-	plan, err := json.Marshal(planOf(c))
+	c, planned, err := s.planAsked(ctx, user, r)
 	if err != nil {
 		return DownloadStatus{}, err
 	}
 	now := time.Now().UnixMilli()
 	was := d.State
-	d.VersionID, d.Plan, d.QueuedAt, d.State, d.SettledAt = c.version.ID, string(plan), now, string(DownloadReady), sql.NullInt64{Int64: now, Valid: true}
+	d.VersionID, d.Delivered, d.QueuedAt, d.State, d.SettledAt = c.version.ID, planned, now, string(DownloadReady), sql.NullInt64{Int64: now, Valid: true}
 	prepare := s.needsPreparing(ctx, c)
 	if prepare {
 		d.State, d.SettledAt = string(DownloadQueued), sql.NullInt64{}
 	}
-	d.Reason, d.Files = sql.NullString{}, sql.NullString{}
+	d.Reason = sql.NullString{}
 	err = s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
 		n, err := dbq.New(tx).ReplanDownload(ctx, dbq.ReplanDownloadParams{
-			ID: d.ID, Was: was, VersionID: d.VersionID, Plan: d.Plan, State: d.State, QueuedAt: d.QueuedAt, SettledAt: d.SettledAt,
+			ID: d.ID, Was: was, VersionID: d.VersionID, Delivered: d.Delivered, State: d.State, QueuedAt: d.QueuedAt, SettledAt: d.SettledAt,
 		})
 		if err == nil && n > 0 && prepare {
 			s.enqueue(tx, d.ID)
@@ -769,8 +762,8 @@ func (s *Service) RetryDownload(ctx context.Context, p auth.Caller, v users.View
 }
 
 // SubtitlesReplaced listens for the subtitles package replacing tracks.
-// In tx, it moves every download that chose or was planned with a
-// replaced track to the new track, so the download's status and a retry
+// In tx, it moves every download that asked for or delivers a replaced
+// track to the new track, so the download's status and a retry
 // name a track that exists.
 func (s *Service) SubtitlesReplaced(ctx context.Context, tx *store.Tx, replaced []id.ID, by id.ID) error {
 	for _, old := range replaced {
@@ -815,66 +808,53 @@ func (s *Service) DeleteDownload(ctx context.Context, p auth.Caller, download id
 // returned at once. A conversion's part is returned once it's ready, and
 // ErrNotReady before then.
 func (s *Service) DownloadedFile(ctx context.Context, v users.Viewer, download id.ID, part int) (Media, error) {
-	d, c, err := s.servable(ctx, v, download)
+	d, dl, files, err := s.servable(ctx, v, download)
 	if err != nil {
 		return Media{}, err
 	}
-	if part < 0 || part >= len(c.files) {
+	if part < 0 || part >= len(files) {
 		return Media{}, fmt.Errorf("%w: part %d of download %s", ErrNotFound, part, download)
 	}
-	if c.decision.Delivery == DeliverFile {
-		f := c.files[part]
+	if dl.Delivery == DeliverFile {
+		f := files[part]
 		fi, err := os.Stat(f.Path())
 		if err != nil {
 			return Media{}, err
 		}
 		return Media{Path: f.Path(), Type: mimeType(f.Probe.Container, f.RelPath), ETag: fileETag(fi)}, nil
 	}
-	if DownloadState(d.State) != DownloadReady || !d.Files.Valid {
+	made := dl.Parts[part]
+	if DownloadState(d.State) != DownloadReady || made.Path == "" {
 		return Media{}, fmt.Errorf("%w: download %s", ErrNotReady, download)
 	}
-	var converted []transcode.ConvertedFile
-	if err := json.Unmarshal([]byte(d.Files.String), &converted); err != nil {
-		return Media{}, fmt.Errorf("%w: download %s: %w", ErrNotFound, download, err)
-	}
-	if part >= len(converted) {
-		return Media{}, fmt.Errorf("%w: part %d of download %s", ErrNotFound, part, download)
-	}
-	cf := converted[part]
-	return Media{Path: cf.Path, Type: "video/mp4", ETag: `"` + cf.SHA256 + `"`}, nil
+	return Media{Path: made.Path, Type: "video/mp4", ETag: `"` + made.SHA256 + `"`}, nil
 }
 
 // DownloadSubtitle returns a subtitle of one of the user's downloads by
 // the name in its delivery, the same way Subtitle does for a play.
 func (s *Service) DownloadSubtitle(ctx context.Context, v users.Viewer, download id.ID, name string) (Media, error) {
-	_, c, err := s.servable(ctx, v, download)
+	_, _, files, err := s.servable(ctx, v, download)
 	if err != nil {
 		return Media{}, err
 	}
-	return s.subtitleFile(ctx, c.files[0], name)
+	return s.subtitleFile(ctx, files[0], name)
 }
 
-// servable returns one of the viewer's downloads and its plan, as long as
-// the user may still have it. A download whose plan can't be read returns
-// ErrNotReady.
-func (s *Service) servable(ctx context.Context, v users.Viewer, download id.ID) (dbq.Download, *choice, error) {
+// servable returns one of the viewer's downloads, what it delivers and its
+// files, as long as the user may still have it.
+func (s *Service) servable(ctx context.Context, v users.Viewer, download id.ID) (dbq.Download, delivered, []catalog.File, error) {
 	d, err := s.ownDownload(ctx, v.User(), download)
 	if err != nil {
-		return d, nil, err
+		return d, delivered{}, nil, err
 	}
 	if _, err := s.downloader(ctx, v, v.User(), d.WorkID); err != nil {
-		return d, nil, fmt.Errorf("%w: download %s", ErrNotFound, download)
+		return d, delivered{}, nil, fmt.Errorf("%w: download %s", ErrNotFound, download)
 	}
-	c, err := s.restore(ctx, d)
-	switch {
-	case errors.Is(err, errPlanUnreadable):
-		return d, nil, fmt.Errorf("%w: download %s", ErrNotReady, download)
-	case errors.Is(err, catalog.ErrNotFound):
-		return d, nil, fmt.Errorf("%w: download %s", ErrNotFound, download)
-	case err != nil:
-		return d, nil, err
+	dl, files, err := s.kept(ctx, d)
+	if errors.Is(err, catalog.ErrNotFound) {
+		return d, dl, nil, fmt.Errorf("%w: download %s", ErrNotFound, download)
 	}
-	return d, c, nil
+	return d, dl, files, err
 }
 
 // PruneDownloads deletes downloads that became ready or failed more than

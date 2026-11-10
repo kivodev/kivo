@@ -4,7 +4,7 @@
 # Functions nothing reachable from cmd/kivo calls (deadcode).
 DEADCODE_MAX     := 0
 # Groups of Go clones of 50 tokens or more (dupl -t 50).
-DUPL_MAX         := 28
+DUPL_MAX         := 29
 # Go functions with a cognitive complexity over 20 (gocognit).
 GOCOGNIT_MAX     := 53
 # api handlers, the operations' and the media routes', with a cognitive

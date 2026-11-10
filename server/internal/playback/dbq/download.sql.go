@@ -84,7 +84,7 @@ func (q *Queries) ExpiredDownloads(ctx context.Context, arg ExpiredDownloadsPara
 }
 
 const getDownload = `-- name: GetDownload :one
-SELECT id, user_id, session_id, work_id, version_id, request, "plan", state, reason, files, created_at, queued_at, settled_at FROM download WHERE id = ?1
+SELECT id, user_id, session_id, work_id, version_id, request, delivered, state, reason, created_at, queued_at, settled_at FROM download WHERE id = ?1
 `
 
 func (q *Queries) GetDownload(ctx context.Context, argID id.ID) (Download, error) {
@@ -97,10 +97,9 @@ func (q *Queries) GetDownload(ctx context.Context, argID id.ID) (Download, error
 		&i.WorkID,
 		&i.VersionID,
 		&i.Request,
-		&i.Plan,
+		&i.Delivered,
 		&i.State,
 		&i.Reason,
-		&i.Files,
 		&i.CreatedAt,
 		&i.QueuedAt,
 		&i.SettledAt,
@@ -109,7 +108,7 @@ func (q *Queries) GetDownload(ctx context.Context, argID id.ID) (Download, error
 }
 
 const insertDownload = `-- name: InsertDownload :exec
-INSERT INTO download (id, user_id, session_id, work_id, version_id, request, plan, state, created_at, queued_at, settled_at)
+INSERT INTO download (id, user_id, session_id, work_id, version_id, request, delivered, state, created_at, queued_at, settled_at)
 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
 `
 
@@ -120,7 +119,7 @@ type InsertDownloadParams struct {
 	WorkID    id.ID
 	VersionID id.ID
 	Request   string
-	Plan      string
+	Delivered string
 	State     string
 	CreatedAt int64
 	QueuedAt  int64
@@ -135,7 +134,7 @@ func (q *Queries) InsertDownload(ctx context.Context, arg InsertDownloadParams) 
 		arg.WorkID,
 		arg.VersionID,
 		arg.Request,
-		arg.Plan,
+		arg.Delivered,
 		arg.State,
 		arg.CreatedAt,
 		arg.QueuedAt,
@@ -146,8 +145,8 @@ func (q *Queries) InsertDownload(ctx context.Context, arg InsertDownloadParams) 
 
 const moveDownloadSubtitle = `-- name: MoveDownloadSubtitle :execrows
 UPDATE download SET request = replace(request, CAST(?1 AS TEXT), CAST(?2 AS TEXT)),
-  plan = replace(plan, CAST(?1 AS TEXT), CAST(?2 AS TEXT))
-WHERE instr(request, CAST(?1 AS TEXT)) > 0 OR instr(plan, CAST(?1 AS TEXT)) > 0
+  delivered = replace(delivered, CAST(?1 AS TEXT), CAST(?2 AS TEXT))
+WHERE instr(request, CAST(?1 AS TEXT)) > 0 OR instr(delivered, CAST(?1 AS TEXT)) > 0
 `
 
 type MoveDownloadSubtitleParams struct {
@@ -155,8 +154,8 @@ type MoveDownloadSubtitleParams struct {
 	ToTrack   string
 }
 
-// Downloads that name a subtitle track, in what was asked and what was
-// planned, name another instead. Track IDs are unique, so the text replaces.
+// Downloads that name a subtitle track, in what was asked and what is
+// delivered, name another instead. Track IDs are unique, so the text replaces.
 func (q *Queries) MoveDownloadSubtitle(ctx context.Context, arg MoveDownloadSubtitleParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, moveDownloadSubtitle, arg.FromTrack, arg.ToTrack)
 	if err != nil {
@@ -242,14 +241,14 @@ func (q *Queries) QueuedUsers(ctx context.Context) ([]id.ID, error) {
 }
 
 const replanDownload = `-- name: ReplanDownload :execrows
-UPDATE download SET version_id = ?1, plan = ?2, state = ?3, reason = NULL, files = NULL,
+UPDATE download SET version_id = ?1, delivered = ?2, state = ?3, reason = NULL,
   queued_at = ?4, settled_at = ?5
 WHERE id = ?6 AND state = ?7
 `
 
 type ReplanDownloadParams struct {
 	VersionID id.ID
-	Plan      string
+	Delivered string
 	State     string
 	QueuedAt  int64
 	SettledAt sql.NullInt64
@@ -257,12 +256,12 @@ type ReplanDownloadParams struct {
 	Was       string
 }
 
-// Retry: a failed download, or one whose plan doesn't read, planned again,
-// at the back of the queue, while it's in the state Retry read it in.
+// Retry: a failed download planned again, at the back of the queue, while
+// it's in the state Retry read it in.
 func (q *Queries) ReplanDownload(ctx context.Context, arg ReplanDownloadParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, replanDownload,
 		arg.VersionID,
-		arg.Plan,
+		arg.Delivered,
 		arg.State,
 		arg.QueuedAt,
 		arg.SettledAt,
@@ -284,43 +283,57 @@ func (q *Queries) RequeueDownload(ctx context.Context, argID id.ID) error {
 	return err
 }
 
-const sameDownload = `-- name: SameDownload :one
-SELECT id, user_id, session_id, work_id, version_id, request, "plan", state, reason, files, created_at, queued_at, settled_at FROM download
-WHERE session_id = ?1 AND work_id = ?2 AND request = ?3 AND state <> 'failed'
-ORDER BY created_at DESC LIMIT 1
+const sameDownload = `-- name: SameDownload :many
+SELECT id, user_id, session_id, work_id, version_id, request, delivered, state, reason, created_at, queued_at, settled_at FROM download
+WHERE session_id = ?1 AND work_id = ?2 AND state <> 'failed'
+ORDER BY created_at DESC
 `
 
 type SameDownloadParams struct {
 	SessionID id.ID
 	WorkID    id.ID
-	Request   string
 }
 
-// The device's download asked for exactly so, unless it failed: asking
-// again, as a device does when the answer was lost, gets it back.
-func (q *Queries) SameDownload(ctx context.Context, arg SameDownloadParams) (Download, error) {
-	row := q.db.QueryRowContext(ctx, sameDownload, arg.SessionID, arg.WorkID, arg.Request)
-	var i Download
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.SessionID,
-		&i.WorkID,
-		&i.VersionID,
-		&i.Request,
-		&i.Plan,
-		&i.State,
-		&i.Reason,
-		&i.Files,
-		&i.CreatedAt,
-		&i.QueuedAt,
-		&i.SettledAt,
-	)
-	return i, err
+// The device's downloads of a work that haven't failed, newest first. One
+// asked for the same way is what a device asking again gets back.
+func (q *Queries) SameDownload(ctx context.Context, arg SameDownloadParams) ([]Download, error) {
+	rows, err := q.db.QueryContext(ctx, sameDownload, arg.SessionID, arg.WorkID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Download
+	for rows.Next() {
+		var i Download
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.SessionID,
+			&i.WorkID,
+			&i.VersionID,
+			&i.Request,
+			&i.Delivered,
+			&i.State,
+			&i.Reason,
+			&i.CreatedAt,
+			&i.QueuedAt,
+			&i.SettledAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const sessionDownloads = `-- name: SessionDownloads :many
-SELECT id, user_id, session_id, work_id, version_id, request, "plan", state, reason, files, created_at, queued_at, settled_at FROM download WHERE session_id = ?1 ORDER BY created_at DESC
+SELECT id, user_id, session_id, work_id, version_id, request, delivered, state, reason, created_at, queued_at, settled_at FROM download WHERE session_id = ?1 ORDER BY created_at DESC
 `
 
 // A device's downloads, newest first.
@@ -340,10 +353,9 @@ func (q *Queries) SessionDownloads(ctx context.Context, sessionID id.ID) ([]Down
 			&i.WorkID,
 			&i.VersionID,
 			&i.Request,
-			&i.Plan,
+			&i.Delivered,
 			&i.State,
 			&i.Reason,
-			&i.Files,
 			&i.CreatedAt,
 			&i.QueuedAt,
 			&i.SettledAt,
@@ -362,23 +374,26 @@ func (q *Queries) SessionDownloads(ctx context.Context, sessionID id.ID) ([]Down
 }
 
 const settleDownload = `-- name: SettleDownload :execrows
-UPDATE download SET state = ?1, reason = ?2, files = ?3, settled_at = ?4
+UPDATE download SET state = ?1, reason = ?2, delivered = coalesce(?3, delivered),
+  settled_at = ?4
 WHERE id = ?5 AND state IN ('queued', 'preparing')
 `
 
 type SettleDownloadParams struct {
 	State     string
 	Reason    sql.NullString
-	Files     sql.NullString
+	Delivered sql.NullString
 	SettledAt sql.NullInt64
 	ID        id.ID
 }
 
+// A ready download takes what it delivers from how it was made. A failed
+// one keeps what it had.
 func (q *Queries) SettleDownload(ctx context.Context, arg SettleDownloadParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, settleDownload,
 		arg.State,
 		arg.Reason,
-		arg.Files,
+		arg.Delivered,
 		arg.SettledAt,
 		arg.ID,
 	)

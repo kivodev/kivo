@@ -3,7 +3,9 @@ package api
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"net/http"
+	"regexp"
 	"strconv"
 	"testing"
 	"time"
@@ -193,5 +195,39 @@ func TestOfflineProgress(t *testing.T) {
 	page := decode[map[string]any](t, e.do("GET", "/api/v1/users/me/play-events", e.adminToken, nil))
 	if items := page["items"].([]any); len(items) != 1 || items[0].(map[string]any)["positionMs"] != 1_800_000.0 {
 		t.Fatalf("history %v", page)
+	}
+}
+
+// A conversion's tracks read the same while it waits and once it's ready:
+// each inside the file at its stream index there, with why it isn't the
+// original's and what it's encoded to.
+func TestADownloadsTracksOnTheWire(t *testing.T) {
+	e := newEnv(t, serving{})
+	e.run()
+	w := e.do("POST", "/api/v1/downloads", e.adminToken, map[string]any{"workId": e.heat.Work, "quality": "high", "capabilities": map[string]any{
+		"file": map[string]any{"containers": []string{"mp4"}}, "subtitles": []map[string]any{{"codec": "webvtt", "delivery": []string{"external"}}},
+		"video": []map[string]any{{"codec": "h264", "delivery": []string{"file"}}},
+		"audio": []map[string]any{{"codec": "eac3", "delivery": []string{"file"}, "maxChannels": 6}},
+	}})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("create: %d %s", w.Code, w.Body.String())
+	}
+	const want = `[{"codec":"h264","delivery":"file","index":0,"mismatch":{"actual":"aac","declared":"eac3","field":"codec"},"reason":"audioCodecUnsupported","selected":true,"trackId":"ID","type":"video"},` +
+		`{"codec":"eac3","delivery":"file","index":1,"mismatch":{"actual":"aac","declared":"eac3","field":"codec"},"reason":"audioCodecUnsupported","selected":true,"trackId":"ID","transcode":{"bitrateBps":384000,"channels":2},"type":"audio"},` +
+		`{"delivery":"none","selected":true,"trackId":"off","type":"subtitle"}]`
+	ids := regexp.MustCompile(`[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}`)
+	d := decode[map[string]any](t, w)
+	for deadline := time.Now().Add(5 * time.Second); ; time.Sleep(time.Millisecond) {
+		tracks, err := json.Marshal(d["tracks"])
+		if got := ids.ReplaceAllString(string(tracks), "ID"); err != nil || got != want {
+			t.Fatalf("%s, its tracks:\n got %s\nwant %s", d["state"], got, want)
+		}
+		if d["state"] == "ready" {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("download: %v", d)
+		}
+		d = decode[map[string]any](t, e.do("GET", "/api/v1/downloads/"+d["id"].(string), e.adminToken, nil))
 	}
 }

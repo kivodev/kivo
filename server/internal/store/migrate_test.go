@@ -331,3 +331,44 @@ func TestMigrationProblemCodes(t *testing.T) {
 		t.Fatalf("activity after 0057:\n%q\nwant\n%q", got, want)
 	}
 }
+
+// The download migration keeps what a download delivers in place of its
+// plan and converted files. The downloads stored before it are dropped,
+// and the table has its indexes again.
+func TestMigrationDownloadDelivered(t *testing.T) {
+	ctx := context.Background()
+	db, path := testDB(t, through(t, "_drop_audit.sql"))
+	err := db.Write(ctx, func(ctx context.Context, tx *Tx) error {
+		_, err := tx.ExecContext(ctx, `
+			INSERT INTO user (id, username, admin, all_libraries, created_at) VALUES (x'a1', 'anna', 0, 1, 1);
+			INSERT INTO session (id, token_hash, user_id, kind, created_at, last_used_at) VALUES (x'b1', x'00', x'a1', 'app', 1, 1);
+			INSERT INTO download (id, user_id, session_id, work_id, version_id, request, plan, state, created_at, queued_at) VALUES
+				(x'd1', x'a1', x'b1', x'01', x'02', '{}', '{}', 'queued', 1, 1);`)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+	up, err := open(ctx, path, embeddedMigrations(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer up.Close()
+	var n int
+	if err := up.Reader().QueryRowContext(ctx, `SELECT count(*) FROM download`).Scan(&n); err != nil || n != 0 {
+		t.Fatalf("downloads kept: %d (%v)", n, err)
+	}
+	if err := up.Reader().QueryRowContext(ctx, `SELECT count(*) FROM sqlite_schema
+		WHERE name IN ('download_user', 'download_session', 'download_queue', 'download_settled')`).Scan(&n); err != nil || n != 4 {
+		t.Fatalf("the table's indexes: %d of 4 (%v)", n, err)
+	}
+	err = up.Write(ctx, func(ctx context.Context, tx *Tx) error {
+		_, err := tx.ExecContext(ctx, `INSERT INTO download (id, user_id, session_id, work_id, version_id, request, delivered, state, created_at, queued_at)
+			VALUES (x'd2', x'a1', x'b1', x'01', x'02', '{}', '{}', 'queued', 1, 1)`)
+		return err
+	})
+	if err != nil {
+		t.Fatalf("a download after it: %v", err)
+	}
+}

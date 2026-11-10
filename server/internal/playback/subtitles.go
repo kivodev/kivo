@@ -190,13 +190,12 @@ func (s *Service) extracted(ctx context.Context, file id.ID, track int, format m
 	return p, ok
 }
 
-// externalSubtitles lists the subtitle tracks a choice delivers external,
-// as their own files, with whether each file is there to fetch. An embedded ASS track
-// lists the fonts it uses.
-func (s *Service) externalSubtitles(ctx context.Context, c *choice) []ExternalSubtitle {
-	f := c.files[0]
+// externalSubtitles lists the subtitle tracks of f that tracks deliver
+// external, as their own files, with whether each file is there to fetch.
+// An embedded ASS track lists the fonts it uses, from f's styled subtitles.
+func (s *Service) externalSubtitles(ctx context.Context, f catalog.File, st styled, tracks []TrackDecision) []ExternalSubtitle {
 	var out []ExternalSubtitle
-	for _, t := range c.decision.Tracks {
+	for _, t := range tracks {
 		if t.Type != media.Subtitle || t.Delivery != DeliverExternal {
 			continue
 		}
@@ -205,8 +204,8 @@ func (s *Service) externalSubtitles(ctx context.Context, c *choice) []ExternalSu
 		if _, embedded := embeddedSubtitle(f, t.Track); embedded {
 			_, d.Ready = s.extracted(ctx, f.ID, t.Index, format)
 			if format == media.ASS {
-				d.Ready = d.Ready && c.styled.ok
-				d.Fonts = fontHashes(c.styled.fonts)
+				d.Ready = d.Ready && st.ok
+				d.Fonts = fontHashes(st.fonts)
 			}
 		}
 		out = append(out, d)
