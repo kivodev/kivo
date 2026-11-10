@@ -7,6 +7,9 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
+/** This build, from BuildConfig, which the app's build.gradle.kts fills from the one version release-please stamps. */
+internal fun appBuild() = AppBuild(BuildConfig.VERSION_NAME, BuildConfig.KIVO_VERSION, R.raw.aboutlibraries)
+
 /**
  * The process: it holds the [AppGraph], opens the last server at start,
  * tells the core as the network changes, starts the playback service as
@@ -22,7 +25,7 @@ class KivoApp : Application(), HasAppGraph {
         val tv = chooseUi(this) == Ui.Tv
         graph = AppGraph(
             this,
-            AppBuild(BuildConfig.VERSION_NAME, R.raw.aboutlibraries),
+            appBuild(),
             onOpened = { if (tv) WatchNext.refresh(this) },
             onLeft = { if (tv) WatchNext.clear(this) },
         )

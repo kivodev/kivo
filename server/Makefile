@@ -18,7 +18,11 @@ OPENAPI_GENERATOR_VERSION := 7.26.0
 OPENAPI_GENERATOR_SHA256  := 1760050094997b9cc790cc1350be095f15da8c08a996b184d3eadc4ccda5e35e
 OPENAPI_GENERATOR         := bin/openapi-generator-cli-$(OPENAPI_GENERATOR_VERSION).jar
 KOTLIN_API                := ../clients/api
-VERSION     ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+# A release build is given its version, as in make build VERSION=0.4.0. Any
+# other reports the patch after the latest release as a dev build, with its
+# commit: 0.3.1-dev+56c0018d (internal/version).
+VERSION     ?=
+COMMIT      ?= $(shell git rev-parse --short=8 HEAD 2>/dev/null)
 # The Go code the checks cover, leaving out web/node_modules, which can hold
 # Go files of its own.
 GO_PKGS     := ./cmd/... ./internal/... ./web
@@ -52,7 +56,7 @@ notices:
 	mv bin/THIRD-PARTY-NOTICES.txt.tmp bin/THIRD-PARTY-NOTICES.txt
 
 build:
-	CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)" -o bin/kivo ./cmd/kivo
+	CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT)" -o bin/kivo ./cmd/kivo
 
 test:
 	go test -race $(GO_PKGS)

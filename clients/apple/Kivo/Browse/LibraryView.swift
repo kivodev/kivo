@@ -266,28 +266,7 @@ struct LibraryView: View {
     }
 
     private var sortMenu: some View {
-        Menu {
-            Picker(selection: $model.query.sort) {
-                ForEach(model.sorts) { sort in
-                    Button {} label: {
-                        Text(sort.label)
-                        Text(sort.direction)
-                    }
-                    .tag(sort)
-                }
-            } label: {
-                Text("Sort by")
-            }
-            .pickerStyle(.inline)
-        } label: {
-            HStack(spacing: 3) {
-                Text(model.query.sort.short)
-                Image(systemName: "chevron.up.chevron.down").font(.caption2.weight(.semibold))
-            }
-            .frame(minHeight: 32)
-            .contentShape(Rectangle())
-        }
-        .accessibilityIdentifier("count-sort")
+        SortMenu(sorts: model.sorts, selection: $model.query.sort)
     }
 }
 

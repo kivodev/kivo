@@ -20,9 +20,11 @@ import com.mmcdole.kivo.api.models.WorkListList
 import com.mmcdole.kivo.api.models.WorkQuery
 import com.mmcdole.kivo.api.models.WorkQueryRequest
 import com.mmcdole.kivo.api.models.WorkImages
+import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.api.models.WorkSummaryList
 import com.mmcdole.kivo.api.models.WorkSummaryPage
 import com.mmcdole.kivo.core.FakeServer
+import com.mmcdole.kivo.core.empty
 import com.mmcdole.kivo.core.json
 import com.mmcdole.kivo.core.live.Invalidation
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -122,6 +124,38 @@ class RepositoriesTest {
         lists.page("l1", offset = 0, limit = 60)
         assertEquals(
             listOf(setOf("offset=20"), setOf("limit=60")),
+            server.to("GET", "/api/v1/lists/l1/works").map { it.query.split('&').toSet() },
+        )
+    }
+
+    @Test
+    fun aListIsSortedMovedAndReadInItsCustomOrder() = runTest {
+        val server = FakeServer(StandardTestDispatcher(testScheduler))
+        val list = WorkList("l1", "Later", "manual", builtIn = false, workCount = 201, sort = "title")
+        server.on("PATCH", "/api/v1/lists/l1") { json(WorkList.serializer(), list) }
+        server.on("POST", "/api/v1/lists/l1/move") { empty() }
+        server.on("GET", "/api/v1/lists/l1/works") { request ->
+            val offset = request.url.parameters["offset"]?.toInt() ?: 0
+            val works = (offset until minOf(offset + 200, 201)).map { WorkSummary("w$it", "movie", "Movie $it", "matched", true, WorkImages()) }
+            json(WorkSummaryPage.serializer(), WorkSummaryPage(works, total = 201.takeIf { offset == 0 }))
+        }
+        val lists = ListsRepository(server.connection(), MutableSharedFlow())
+
+        assertEquals("title", ListSorts.of(lists.setSort("l1", ListSorts.TITLE)))
+        assertEquals("""{"sort":"title"}""", server.to("PATCH", "/api/v1/lists/l1").single().body)
+        assertEquals(ListSorts.CUSTOM, ListSorts.of(list.copy(sort = "shuffled")))
+        assertEquals(null, ListSorts.of(list.copy(kind = "smart", sort = null)))
+
+        lists.move("l1", listOf("w3", "w1"), after = "w7")
+        lists.move("l1", listOf("w2"), after = null)
+        assertEquals(
+            listOf("""{"workIds":["w3","w1"],"after":"w7"}""", """{"workIds":["w2"]}"""),
+            server.to("POST", "/api/v1/lists/l1/move").map { it.body },
+        )
+
+        assertEquals((0..200).map { "w$it" }, lists.inCustomOrder("l1").map { it.id })
+        assertEquals(
+            listOf(setOf("sort=custom", "limit=200"), setOf("sort=custom", "limit=200", "offset=200")),
             server.to("GET", "/api/v1/lists/l1/works").map { it.query.split('&').toSet() },
         )
     }

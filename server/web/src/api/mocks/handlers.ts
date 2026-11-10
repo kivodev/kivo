@@ -6,6 +6,7 @@ import type {
   EventMessage,
   HomeRowInfo,
   LetterStart,
+  ListSort,
   PlayCreate,
   PlayStarted,
   PlayTrack,
@@ -14,6 +15,7 @@ import type {
   WorkDetail,
   WorkList,
   WorkQuery,
+  WorkSummary,
 } from "../schemas";
 import { type MockApi, type MockList, summaryOf } from "./api";
 import { mockId } from "./ids";
@@ -49,10 +51,30 @@ const unauthenticated = () => problem(401, "unauthenticated");
  * A list as the API answers, its count from the works it holds, and with
  * `counts` its first works. A smart list is counted only with `counts`.
  */
-function workListOf(api: MockApi, { workIds, ...list }: MockList, counts = false): WorkList {
-  const items = workIds.slice(0, 20).flatMap((id) => (api.works[id] ? [summaryOf(api.works[id])] : []));
+function workListOf(api: MockApi, list: MockList, counts = false): WorkList {
+  const { workIds, added: _, ...rest } = list;
   const workCount = list.kind === "smart" && !counts ? 0 : workIds.length;
-  return { ...list, workCount, ...(counts ? { items } : {}) };
+  return {
+    ...rest,
+    workCount,
+    ...(list.kind === "manual" ? { sort: list.sort ?? "custom" } : {}),
+    ...(counts ? { items: listWorks(api, list).slice(0, 20) } : {}),
+  };
+}
+
+/** A list's works: a manual list's in `sort`, or else its own, and a smart list's as kept. */
+function listWorks(api: MockApi, list: MockList, sort: ListSort = list.sort ?? "custom"): WorkSummary[] {
+  const works = list.workIds.flatMap((id) => (api.works[id] ? [summaryOf(api.works[id])] : []));
+  if (list.kind !== "manual") return works;
+  const added = list.added ?? list.workIds;
+  const orders: Record<ListSort, (a: WorkSummary, b: WorkSummary) => number> = {
+    custom: () => 0,
+    title: (a, b) => a.title.localeCompare(b.title),
+    releaseDate: (a, b) => (b.year ?? 0) - (a.year ?? 0),
+    rating: (a, b) => (b.communityRating ?? 0) - (a.communityRating ?? 0),
+    dateAdded: (a, b) => added.indexOf(a.id) - added.indexOf(b.id),
+  };
+  return works.sort(orders[sort]);
 }
 
 /** A page's `total` where only the first page (offset 0) has it. */
@@ -287,15 +309,13 @@ export function createHandlers(api: MockApi) {
     ),
     http.post("/api/v1/libraries/{id}/refresh-metadata", ({ response }) => response(202).json({})),
 
-    // A list row holds what the list holds, most recently added first.
+    // A list row holds what the list holds, in the list's order.
     http.get("/api/v1/home", ({ response }) =>
       response(200).json({
         ...api.home,
         rows: api.home.rows.map((row) => {
           const list = row.list && api.lists.find((l) => l.id === row.list?.id);
-          return list
-            ? { ...row, items: list.workIds.flatMap((id) => (api.works[id] ? [summaryOf(api.works[id])] : [])) }
-            : row;
+          return list ? { ...row, items: listWorks(api, list) } : row;
         }),
       }),
     ),
@@ -343,8 +363,10 @@ export function createHandlers(api: MockApi) {
     http.patch("/api/v1/lists/{id}", async ({ params, request, response }) => {
       const list = api.lists.find((l) => l.id === params.id);
       if (!list) return notFound();
-      if (list.builtIn) return problem(409, "conflict");
-      const { name, smart } = await request.json();
+      const { name, smart, sort } = await request.json();
+      if (list.builtIn && (name !== undefined || smart)) return problem(409, "conflict");
+      if (sort && list.kind === "smart") return problem(409, "conflict");
+      if (sort) list.sort = sort;
       if (name !== undefined) {
         if (api.lists.some((l) => l !== list && l.name.toLowerCase() === name.toLowerCase())) {
           return problem(409, "nameTaken");
@@ -402,11 +424,11 @@ export function createHandlers(api: MockApi) {
         letters: grid && start === 0 && byTitle ? lettersOf(matched.map((w) => w.title)) : undefined,
       });
     }),
-    // A list's works, most recently added first, by offset.
+    // A list's works, in its order or the one asked for, by offset.
     http.get("/api/v1/lists/{id}/works", ({ params, query, response }) => {
       const list = api.lists.find((l) => l.id === params.id);
       if (!list) return notFound();
-      const items = list.workIds.flatMap((id) => (api.works[id] ? [summaryOf(api.works[id])] : []));
+      const items = listWorks(api, list, (query.get("sort") as ListSort | null) ?? undefined);
       const { start, end } = pageOf(query.get("offset"), query.get("limit"), items.length);
       return response(200).json({ items: items.slice(start, end), total: firstPageTotal(start, items.length) });
     }),
@@ -415,7 +437,24 @@ export function createHandlers(api: MockApi) {
       if (!list) return notFound();
       if (list.kind === "smart") return problem(409, "conflict");
       const { workId } = await request.json();
-      if (!list.workIds.includes(workId)) list.workIds.unshift(workId);
+      if (!list.workIds.includes(workId)) {
+        list.added = [workId, ...(list.added ?? list.workIds)];
+        list.workIds.unshift(workId);
+      }
+      return response(204).empty();
+    }),
+    // The works go after `after`, or first, and the list back to its custom order.
+    http.post("/api/v1/lists/{id}/move", async ({ params, request, response }) => {
+      const list = api.lists.find((l) => l.id === params.id);
+      if (!list) return notFound();
+      if (list.kind === "smart") return problem(409, "conflict");
+      const { workIds, after } = await request.json();
+      const rest = list.workIds.filter((id) => !workIds.includes(id));
+      const at = after === undefined ? 0 : rest.indexOf(after) + 1;
+      if (after !== undefined && at === 0) return problem(400, "invalidRequest");
+      list.added ??= [...list.workIds];
+      list.workIds = [...rest.slice(0, at), ...workIds.filter((id) => list.workIds.includes(id)), ...rest.slice(at)];
+      list.sort = "custom";
       return response(204).empty();
     }),
     http.delete("/api/v1/lists/{id}/works/{workId}", ({ params, response }) => {
@@ -423,6 +462,7 @@ export function createHandlers(api: MockApi) {
       if (!list) return notFound();
       if (list.kind === "smart") return problem(409, "conflict");
       list.workIds = list.workIds.filter((id) => id !== params.workId);
+      list.added = list.added?.filter((id) => id !== params.workId);
       return response(204).empty();
     }),
     // A library's collections, by name, with letters.

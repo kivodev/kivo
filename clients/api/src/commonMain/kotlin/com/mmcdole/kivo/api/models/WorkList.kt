@@ -40,6 +40,7 @@ import kotlinx.serialization.encoding.*
  * @param workCount Works in the list the user sees. A smart list's is 0 except in `listLists` with `counts`; the first page of its works has the count as `total`. 
  * @param smart 
  * @param items The list's first works the user sees, up to 20, in the list's order, as a Home row has them. Set by `listLists` with `counts`. 
+ * @param sort The order a manual list's works are in, wherever they are listed. A smart list has none.
  */
 @Serializable
 
@@ -62,7 +63,10 @@ data class WorkList (
     @SerialName(value = "smart") val smart: WorkListSmart? = null,
 
     /* The list's first works the user sees, up to 20, in the list's order, as a Home row has them. Set by `listLists` with `counts`.  */
-    @SerialName(value = "items") val items: kotlin.collections.List<WorkSummary>? = null
+    @SerialName(value = "items") val items: kotlin.collections.List<WorkSummary>? = null,
+
+    /* The order a manual list's works are in, wherever they are listed. A smart list has none. */
+    @SerialName(value = "sort") val sort: kotlin.String? = null
 
 ) {
 

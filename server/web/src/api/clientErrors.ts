@@ -2,7 +2,7 @@ import type { Middleware } from "openapi-fetch";
 import { browserOf } from "@/lib/browser";
 import { isTv } from "@/tv/flag";
 import { client } from "./client";
-import { buildVersion } from "./identity";
+import { clientVersion } from "./identity";
 import { isProblem } from "./problem";
 import type { components } from "./schema";
 
@@ -189,7 +189,7 @@ export function reportClientError(kind: ClientErrorKind, error: unknown, route?:
   if (!isTv || !worthReporting(error)) return;
   reporter(() => ({
     ...reportOf(isChunkError(error) ? "chunk" : kind, error, route ?? routeTemplate(location.pathname)),
-    version: buildVersion,
+    version: clientVersion,
     engine: engineOf(navigator.userAgent),
   }));
 }

@@ -113,6 +113,8 @@ func (e *env) body(op string) any {
 		return map[string]any{"positionMs": 0}
 	case "fallbackPlay":
 		return map[string]any{"positionMs": 0, "code": "unsupported"}
+	case "moveListWorks":
+		return map[string]any{"workIds": []id.ID{e.heat.Work}}
 	}
 	return map[string]any{}
 }

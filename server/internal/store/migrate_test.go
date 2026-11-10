@@ -610,3 +610,70 @@ func TestMigrationDropsWorkSortTitle(t *testing.T) {
 		t.Errorf("after: %d indexes named work_sort_title, works %q, %v; want none and A,b", after, titles, err)
 	}
 }
+
+// 0073 gives every list the custom sort and every work in one a place,
+// 2^32 apart, in the order the list was shown in: most recently added
+// first, then by title. The works keep when they were added, and still
+// leave with their list or their work.
+func TestMigrationListOrder(t *testing.T) {
+	ctx := context.Background()
+	db, path := testDB(t, through(t, "_drop_work_sort_title.sql"))
+	err := db.Write(ctx, func(ctx context.Context, tx *Tx) error {
+		_, err := tx.ExecContext(ctx, `
+			INSERT INTO user (id, username, admin, all_libraries, created_at) VALUES (x'a1', 'anna', 0, 1, 1);
+			INSERT INTO list (id, user_id, name, built_in, created_at, query) VALUES
+				(x'c1', x'a1', 'Watchlist', 1, 1, NULL), (x'c2', x'a1', 'Later', 0, 1, NULL),
+				(x'c3', x'a1', 'Smart', 0, 1, '{"version":1,"kinds":["movie"]}');
+			INSERT INTO work (id, kind, parent_id, root_id, title, sort_title, added_at) VALUES
+				(x'01', 'movie', NULL, x'01', 'Alien', 'Alien', 1), (x'02', 'movie', NULL, x'02', 'Brazil', 'Brazil', 1),
+				(x'03', 'movie', NULL, x'03', 'Casablanca', 'Casablanca', 1), (x'04', 'movie', NULL, x'04', 'Dune', 'Dune', 1);
+			INSERT INTO list_work (list_id, work_id, added_at) VALUES
+				(x'c1', x'01', 10), (x'c1', x'03', 30), (x'c1', x'04', 20), (x'c1', x'02', 20),
+				(x'c2', x'04', 5), (x'c2', x'01', 7);`)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+	up, err := open(ctx, path, embeddedMigrations(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer up.Close()
+	read := func(query string) (out string) {
+		t.Helper()
+		if err := up.Reader().QueryRowContext(ctx, query).Scan(&out); err != nil {
+			t.Fatal(err)
+		}
+		return out
+	}
+	places := `SELECT group_concat(hex(work_id) || ':' || (position / 4294967296) || ':' || added_at, ' ')
+		FROM (SELECT * FROM list_work WHERE list_id = x'%s' ORDER BY position)`
+	if got, want := read(fmt.Sprintf(places, "c1")), "03:1:30 02:2:20 04:3:20 01:4:10"; got != want {
+		t.Errorf("Watchlist's places: %s, want %s", got, want)
+	}
+	if got, want := read(fmt.Sprintf(places, "c2")), "01:1:7 04:2:5"; got != want {
+		t.Errorf("the other list's places: %s, want %s", got, want)
+	}
+	if got := read(`SELECT group_concat(sort, ',') FROM list`); got != "custom,custom,custom" {
+		t.Errorf("the lists' sorts: %s", got)
+	}
+	if got, want := read(`SELECT group_concat(name, ',') FROM (SELECT name FROM pragma_index_list('list_work') WHERE origin = 'c' ORDER BY name)`),
+		"list_work_position,list_work_work"; got != want {
+		t.Errorf("list_work's indexes: %s, want %s", got, want)
+	}
+	err = up.Write(ctx, func(ctx context.Context, tx *Tx) error {
+		if _, err := tx.ExecContext(ctx, `UPDATE list SET sort = 'shuffled' WHERE id = x'c1'`); err == nil {
+			t.Error("an unknown sort was accepted")
+		}
+		_, err := tx.ExecContext(ctx, `DELETE FROM list WHERE id = x'c2'; DELETE FROM work WHERE id = x'03';`)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := read(`SELECT group_concat(hex(list_id) || hex(work_id), ' ') FROM (SELECT * FROM list_work ORDER BY position)`), "C102 C104 C101"; got != want {
+		t.Errorf("after deleting a list and a work: %s, want %s", got, want)
+	}
+}

@@ -13,7 +13,8 @@ import (
 )
 
 const addToList = `-- name: AddToList :exec
-INSERT INTO list_work (list_id, work_id, added_at) VALUES (?1, ?2, ?3)
+INSERT INTO list_work (list_id, work_id, added_at, position)
+SELECT ?1, ?2, ?3, coalesce(min(position), 0) - 4294967296 FROM list_work WHERE list_id = ?1
 ON CONFLICT (list_id, work_id) DO NOTHING
 `
 
@@ -23,7 +24,8 @@ type AddToListParams struct {
 	At     int64
 }
 
-// A work already in the list keeps its place.
+// The work goes first in the list's custom order: a place before its
+// lowest. A work already in the list keeps its place.
 func (q *Queries) AddToList(ctx context.Context, arg AddToListParams) error {
 	_, err := q.db.ExecContext(ctx, addToList, arg.ListID, arg.WorkID, arg.At)
 	return err
@@ -196,6 +198,39 @@ func (q *Queries) ListOwner(ctx context.Context, argID id.ID) (ListOwnerRow, err
 	var i ListOwnerRow
 	err := row.Scan(&i.UserID, &i.Smart)
 	return i, err
+}
+
+const listPlaces = `-- name: ListPlaces :many
+SELECT work_id, position FROM list_work WHERE list_id = ?1 ORDER BY position, work_id
+`
+
+type ListPlacesRow struct {
+	WorkID   id.ID
+	Position int64
+}
+
+// A list's works in its custom order, each with its place.
+func (q *Queries) ListPlaces(ctx context.Context, listID id.ID) ([]ListPlacesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPlaces, listID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPlacesRow
+	for rows.Next() {
+		var i ListPlacesRow
+		if err := rows.Scan(&i.WorkID, &i.Position); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const moveEvents = `-- name: MoveEvents :exec
@@ -421,6 +456,21 @@ func (q *Queries) SaveProgress(ctx context.Context, arg SaveProgressParams) erro
 		arg.VersionID,
 		arg.At,
 	)
+	return err
+}
+
+const setListPlace = `-- name: SetListPlace :exec
+UPDATE list_work SET position = ?1 WHERE list_id = ?2 AND work_id = ?3
+`
+
+type SetListPlaceParams struct {
+	Position int64
+	ListID   id.ID
+	WorkID   id.ID
+}
+
+func (q *Queries) SetListPlace(ctx context.Context, arg SetListPlaceParams) error {
+	_, err := q.db.ExecContext(ctx, setListPlace, arg.Position, arg.ListID, arg.WorkID)
 	return err
 }
 

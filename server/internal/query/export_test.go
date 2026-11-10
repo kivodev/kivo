@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/mmcdole/kivo/internal/catalog"
+	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/users"
 )
 
@@ -45,6 +46,14 @@ func (s *Service) Compiled(t *testing.T, q WorkQuery, v users.Viewer, now time.T
 // first page.
 func (s *Service) CompiledIn(q WorkQuery, v users.Viewer, in Scope) (counted, page string, args []any) {
 	c := compile(q, viewerOf(v), time.Now(), "", nil, reading{library: in.Library, unmatched: in.Unmatched, letters: titled(q)})
+	return c.counted, c.page, append(c.args, sql.Named("limit", 60), sql.Named("offset", 0))
+}
+
+// CompiledList returns the statements the read of a manual list in sort
+// compiles to as the Viewer, with their arguments for the first page.
+func (s *Service) CompiledList(v users.Viewer, list id.ID, sort users.ListSort, only []catalog.WorkKind) (counted, page string, args []any) {
+	q, rd, _ := List{ID: list, Sort: sort}.reads()
+	c := compile(q, viewerOf(v), time.Now(), "", only, rd)
 	return c.counted, c.page, append(c.args, sql.Named("limit", 60), sql.Named("offset", 0))
 }
 

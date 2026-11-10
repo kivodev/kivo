@@ -24,9 +24,11 @@ type webApp struct {
 	index []byte
 }
 
-// newWebApp reads the client's index.html and points its <base href> at the
-// base path. The client builds its asset, route and API URLs from it.
-func newWebApp(files fs.FS, base string) (*webApp, error) {
+// newWebApp reads the client's index.html, points its <base href> at the
+// base path and writes the server's version into its kivo-version tag. The
+// client builds its asset, route and API URLs from the base, and names the
+// version in its requests.
+func newWebApp(files fs.FS, base, version string) (*webApp, error) {
 	if files == nil {
 		files, _ = fs.Sub(placeholder, "placeholder")
 	}
@@ -39,6 +41,8 @@ func newWebApp(files fs.FS, base string) (*webApp, error) {
 		return nil, fmt.Errorf("index.html has no %s />", tag)
 	}
 	index = bytes.Replace(index, []byte(tag), []byte(`<base href="`+html.EscapeString(base+"/")+`"`), 1)
+	const versionTag = `<meta name="kivo-version" content="dev"`
+	index = bytes.Replace(index, []byte(versionTag), []byte(`<meta name="kivo-version" content="`+html.EscapeString(version)+`"`), 1)
 	return &webApp{files: files, index: index}, nil
 }
 

@@ -54,30 +54,6 @@ func checker(opt Options, g *github) *Checker {
 
 const latest = `{"tag_name": "v0.5.0", "html_url": "https://example.com/elsewhere", "draft": false, "prerelease": false}`
 
-func TestNewer(t *testing.T) {
-	for _, tc := range []struct {
-		a, b string
-		want bool
-	}{
-		{"v0.5.0", "0.4.0", true},
-		{"0.4.1", "0.4.0", true},
-		{"1.0.0", "0.10.9", true},
-		{"0.10.0", "0.9.0", true},
-		{"v0.4.0", "0.4.0", false},
-		{"0.4.0", "0.5.0", false},
-		{"v0.5.0", "v0.4.0-3-gabc1234-dirty", true},
-		{"v0.4.0", "v0.4.0-3-gabc1234", false},
-		{"v0.5.0", "dev", false},
-		{"v0.5.0", "d76b7e0", false},
-		{"latest", "0.4.0", false},
-		{"0.5", "0.4.0", false},
-	} {
-		if got := Newer(tc.a, tc.b); got != tc.want {
-			t.Errorf("Newer(%q, %q) = %v, want %v", tc.a, tc.b, got, tc.want)
-		}
-	}
-}
-
 func TestCheck(t *testing.T) {
 	g := &github{body: latest}
 	c := checker(Options{Version: "0.4.0", Check: true}, g)
@@ -165,7 +141,7 @@ func TestRun(t *testing.T) {
 }
 
 // TestRunSkips checks that Run returns at once, without asking, for a
-// build that isn't a release and when the check is off.
+// version that isn't a semantic version and when the check is off.
 func TestRunSkips(t *testing.T) {
 	for name, opt := range map[string]Options{
 		"dev":    {Version: "dev", Check: true},
@@ -178,6 +154,21 @@ func TestRunSkips(t *testing.T) {
 		}
 		if n := g.count(); n != 0 {
 			t.Errorf("%s: asked %d times", name, n)
+		}
+	}
+}
+
+// TestCheckDevBuild checks that a dev build hears of a release after the
+// one it's built past, and not of that one.
+func TestCheckDevBuild(t *testing.T) {
+	for tag, want := range map[string]bool{"v0.3.0": false, "v0.4.0": true} {
+		g := &github{body: `{"tag_name": "` + tag + `"}`}
+		c := checker(Options{Version: "0.3.1-dev+56c0018d", Check: true}, g)
+		if err := c.check(t.Context()); err != nil {
+			t.Fatal(err)
+		}
+		if _, ok := c.Newer(); ok != want {
+			t.Errorf("%s: newer = %v, want %v", tag, ok, want)
 		}
 	}
 }

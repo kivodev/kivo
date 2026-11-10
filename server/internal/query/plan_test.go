@@ -253,23 +253,7 @@ func TestSmartQueriesStartAtWorkLibrary(t *testing.T) {
 			movies, shows, _ := generate(t, db, shape{movies: 500, series: 150, seasons: 5, episodes: 14, airEvery: 86400, moviesElsewhere: 100, seriesElsewhere: 30})
 			viewers := []users.Viewer{budgetViewer(t, db, "some", movies, shows), budgetViewer(t, db, "every")}
 			if statistics {
-				err := db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
-					_, err := tx.ExecContext(ctx, "ANALYZE")
-					return err
-				})
-				if err != nil {
-					t.Fatal(err)
-				}
-				// A connection plans with the statistics it found when it
-				// first read the schema, so plan on new connections.
-				var path string
-				if err := db.Reader().QueryRow(`SELECT file FROM pragma_database_list WHERE name = 'main'`).Scan(&path); err != nil {
-					t.Fatal(err)
-				}
-				if db, err = store.Open(ctx, path); err != nil {
-					t.Fatal(err)
-				}
-				t.Cleanup(func() { db.Close() })
+				db = analyzed(t, db)
 			}
 			// starts checks that stmt first reads want: its plan's first
 			// steps on wl, w and r are the FROM's, in the order it reads
@@ -338,6 +322,86 @@ func TestSmartQueriesStartAtWorkLibrary(t *testing.T) {
 	}
 }
 
+// TestManualListsStartAtTheList checks where the read of a manual list
+// starts, in each sort, on generated libraries, without and with the
+// statistics SQLite gathers: at the list's own rows, by its primary key or
+// its index of places. Each one's work is looked up from there, and its
+// root, so the read never goes through a library's works. In the custom
+// order it walks the index of places and cuts its page as it goes: it
+// sorts only works left at one place, by ID.
+func TestManualListsStartAtTheList(t *testing.T) {
+	want := []string{
+		"SEARCH lw (list_id=?)",
+		"SEARCH wl USING INDEX work_library_work (work_id=?)",
+		"SEARCH w USING INDEX sqlite_autoindex_work_1 (id=?)",
+		"SEARCH r USING INDEX sqlite_autoindex_work_1 (id=?)",
+	}
+	listRead := regexp.MustCompile(`^(SEARCH|SCAN) (lw|wl|w|r)( |$)`)
+	listIndex := regexp.MustCompile(`^SEARCH lw USING (PRIMARY KEY|COVERING INDEX list_work_position) `)
+	covering := strings.NewReplacer("USING COVERING INDEX work_library_work", "USING INDEX work_library_work")
+	for _, statistics := range []bool{false, true} {
+		t.Run(fmt.Sprintf("statistics=%v", statistics), func(t *testing.T) {
+			db := storetest.New(t)
+			movies, shows, _ := generate(t, db, shape{movies: 500, series: 150, seasons: 5, episodes: 14, airEvery: 86400, moviesElsewhere: 100, seriesElsewhere: 30})
+			v, lists := manualViewer(t, db, movies, shows)
+			if statistics {
+				db = analyzed(t, db)
+			}
+			q := query.New(db)
+			for _, sort := range []users.ListSort{users.ListCustom, users.ListTitle, users.ListReleaseDate, users.ListRating, users.ListDateAdded} {
+				for _, only := range [][]catalog.WorkKind{nil, {catalog.KindMovie}} {
+					counted, page, args := q.CompiledList(v, lists[0].id, sort, only)
+					for name, stmt := range map[string]string{"counted": counted, "page": page} {
+						st := statement{"query", fmt.Sprintf("list/%s/%v", sort, only), name, stmt}
+						checkScans(t, db.Reader(), st, stmt, args)
+						got, err := plan(db.Reader(), stmt, args)
+						if err != nil {
+							t.Fatal(err)
+						}
+						// A read of movies alone has no works under a root.
+						expect := want[:len(want)-len(only)]
+						var reads []string
+						for line := range strings.SplitSeq(got, "\n") {
+							if step := strings.TrimSpace(line); listRead.MatchString(step) && len(reads) < len(expect) {
+								reads = append(reads, covering.Replace(listIndex.ReplaceAllString(step, "SEARCH lw ")))
+							}
+						}
+						if cut, _, _ := strings.Cut(got, "\nSCAN p\n"); sort == users.ListCustom &&
+							(strings.Contains(cut, "TEMP B-TREE FOR ORDER BY") || !strings.Contains(cut, "SEARCH lw USING COVERING INDEX list_work_position (list_id=?)")) {
+							t.Errorf("%s: a page in the custom order doesn't walk the places unsorted:\n%s", st.key(), got)
+						}
+						if !slices.Equal(reads, expect) {
+							t.Errorf("%s: reads %q, want %q in:\n%s", st.key(), reads, expect, got)
+						}
+					}
+				}
+			}
+		})
+	}
+}
+
+// analyzed gathers db's statistics and opens it again: a connection plans
+// with the statistics it found when it first read the schema.
+func analyzed(t *testing.T, db *store.DB) *store.DB {
+	t.Helper()
+	err := db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
+		_, err := tx.ExecContext(ctx, "ANALYZE")
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var path string
+	if err := db.Reader().QueryRow(`SELECT file FROM pragma_database_list WHERE name = 'main'`).Scan(&path); err != nil {
+		t.Fatal(err)
+	}
+	if db, err = store.Open(ctx, path); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { db.Close() })
+	return db
+}
+
 // tableRead matches a plan's step that reads wl, w or r.
 var tableRead = regexp.MustCompile(`^(SEARCH|SCAN) (wl|w|r)( |$)`)
 
@@ -384,14 +448,14 @@ func TestSmartReadsSelectOnce(t *testing.T) {
 			if _, err := q.List(ctx, v, list); err != nil {
 				return err
 			}
-			p, err := q.ListWorks(ctx, v, list, nil, query.GridOptions{Limit: 20})
+			p, err := q.ListWorks(ctx, v, list, nil, "", query.GridOptions{Limit: 20})
 			if err == nil && (p.Total <= 20 || len(p.Items) != 20) {
 				t.Errorf("the first page has %d works of %d, want 20 of more", len(p.Items), p.Total)
 			}
 			return err
 		}},
 		{"a list's later page", 1, 0, func() error {
-			p, err := q.ListWorks(ctx, v, list, nil, query.GridOptions{Offset: 20, Limit: 20})
+			p, err := q.ListWorks(ctx, v, list, nil, "", query.GridOptions{Offset: 20, Limit: 20})
 			if err == nil && (p.Total != 0 || len(p.Items) == 0) {
 				t.Errorf("a later page has %d works and the total %d, want works and no total", len(p.Items), p.Total)
 			}

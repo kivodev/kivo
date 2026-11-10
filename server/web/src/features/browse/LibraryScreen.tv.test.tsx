@@ -88,6 +88,17 @@ describe("Library grid on TV", () => {
     await waitFor(() => expect(focused()).toBe("sort"));
   });
 
+  it("focuses a manual list's first card, with its sort above the grid and no Reorder", async () => {
+    serveMockApi();
+    renderApp(`/lists/${mockIds.myList}`);
+    await waitFor(() => expect(focused()).toMatch(/^card:grid:/));
+    expect(indexOfFocused()).toBe(0);
+    expect(document.querySelector('button[aria-label^="More actions"]')).toBeNull();
+    press("ArrowUp");
+    await waitFor(() => expect(focused()).toBe("sort"));
+    expect(document.activeElement).toHaveTextContent(/^2 titles·.*Custom order/);
+  });
+
   it("opens a card with OK and Back returns focus to the same card", async () => {
     serveMockApi();
     const { router } = renderApp(movies);

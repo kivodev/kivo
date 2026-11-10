@@ -23,11 +23,20 @@ final class AppleIdentity: NSObject, ClientIdentity {
     @MainActor
     static var current: AppleIdentity {
         AppleIdentity(
-            appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "",
+            appVersion: version(Bundle.main.infoDictionary ?? [:]),
             platform: UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone",
             osVersion: UIDevice.current.systemVersion,
             deviceModel: machine
         )
+    }
+
+    /// The app's version as its requests say it: the marketing version with
+    /// the build number as build metadata, such as "0.3.0+78", from the
+    /// bundle's `info`.
+    static func version(_ info: [String: Any]) -> String {
+        let version = info["CFBundleShortVersionString"] as? String ?? ""
+        guard let build = info["CFBundleVersion"] as? String, !build.isEmpty, !version.isEmpty else { return version }
+        return "\(version)+\(build)"
     }
 
     /// The device's model by its marketing name, such as "iPhone 17 Pro",

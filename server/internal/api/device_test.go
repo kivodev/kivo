@@ -18,11 +18,11 @@ func identity(version string) []string {
 }
 
 func TestParseDevice(t *testing.T) {
-	h, pairs := http.Header{}, identity("1.4.0")
+	h, pairs := http.Header{}, identity("0.3.0+78")
 	for i := 0; i < len(pairs); i += 2 {
 		h.Set(pairs[i], pairs[i+1])
 	}
-	want := auth.Device{App: "kivo-android", AppVersion: "1.4.0", Platform: auth.PlatformAndroidTV, OSVersion: "14", Model: "SHIELD Android TV"}
+	want := auth.Device{App: "kivo-android", AppVersion: "0.3.0+78", Platform: auth.PlatformAndroidTV, OSVersion: "14", Model: "SHIELD Android TV"}
 	if got := parseDevice(h); got != want {
 		t.Errorf("%+v, want %+v", got, want)
 	}
@@ -45,12 +45,12 @@ func TestParseDevice(t *testing.T) {
 func TestDevice(t *testing.T) {
 	e := newEnv(t, serving{})
 	w := e.do("POST", "/api/v1/sessions", "", map[string]string{"username": "admin", "password": adminPassword, "kind": "app", "name": "Living Room"},
-		identity("1.0")...)
+		identity("0.3.0+78")...)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("sign in: %d %s", w.Code, w.Body.String())
 	}
 	s := decode[gen.Session](t, w)
-	want := gen.ClientDevice{App: ptr("kivo-android"), AppVersion: ptr("1.0"), Platform: ptr(gen.ClientPlatformAndroidTv), OsVersion: ptr("14"),
+	want := gen.ClientDevice{App: ptr("kivo-android"), AppVersion: ptr("0.3.0+78"), Platform: ptr(gen.ClientPlatformAndroidTv), OsVersion: ptr("14"),
 		DeviceModel: ptr("SHIELD Android TV")}
 	if s.Device == nil || !reflect.DeepEqual(*s.Device, want) {
 		t.Fatalf("the session: %+v", s)
@@ -71,13 +71,13 @@ func TestDevice(t *testing.T) {
 	if got := sessions(); !reflect.DeepEqual(*got.Device, want) {
 		t.Fatalf("after a request without the headers: %+v", got.Device)
 	}
-	e.do("GET", "/api/v1/users/me", *s.Token, nil, identity("1.1")...)
-	want.AppVersion = ptr("1.1")
+	e.do("GET", "/api/v1/users/me", *s.Token, nil, identity("0.3.0+79")...)
+	want.AppVersion = ptr("0.3.0+79")
 	if got := sessions(); !reflect.DeepEqual(*got.Device, want) {
 		t.Fatalf("after an update: %+v", got.Device)
 	}
 
-	w = e.do("POST", "/api/v1/plays", *s.Token, map[string]any{"workId": e.heat.Work, "capabilities": clientCaps}, identity("1.1")...)
+	w = e.do("POST", "/api/v1/plays", *s.Token, map[string]any{"workId": e.heat.Work, "capabilities": clientCaps}, identity("0.3.0+79")...)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("start: %d %s", w.Code, w.Body.String())
 	}

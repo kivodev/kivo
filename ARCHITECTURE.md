@@ -66,6 +66,7 @@ The server's packages live under `server/internal`, one component per package, a
  domain     store  config  media  discovery  tasks  users  auth  catalog
             activity  query  metadata  userstate  release
  helpers    fault  id  events  health  keylock  atomicfile  cachedir  egress  parse
+            version
 ```
 
 The main components:
@@ -256,6 +257,7 @@ server/
     media/container/   MP4 and Matroska parsing, keyframes, the fMP4 segment splitter
     media/ffmpeg/      ffmpeg command lines, accelerator detection
     parse/             the file and folder name parser, for video and audiobook paths
+    version/           the server's version, which release-please raises, and the version parser
   web/                 the web client (React, TypeScript), embedded into the server at build
   testdata/naming/     naming fixtures from permissively licensed projects
   docker/              the container entrypoint and an Unraid template

@@ -20,6 +20,8 @@ type List struct {
 	Name    string
 	BuiltIn bool
 	Works   int
+	// Sort is the order a manual list is shown in.
+	Sort users.ListSort
 	// Smart is a smart list's rules, nil for a manual list.
 	Smart *SmartList
 	// Items are the list's first works, up to a Home row's, in its order.
@@ -33,33 +35,32 @@ type SmartList struct {
 	Errors []QueryProblem
 }
 
-// listWorksPage reads a list's works from @offset, most recently added
-// first; works added at the same time are listed by title.
-var listWorksPage = stmt("ListWorks", `
-SELECT `+summaryColumns+`
-FROM list_work lw
-JOIN work w ON w.id = lw.work_id
-LEFT JOIN user_state us ON us.user_id = @user AND us.work_id = w.id
-WHERE lw.list_id = @list
-  AND (@kinds IS NULL OR w.kind IN (SELECT value FROM json_each(@kinds)))
-  AND `+visible+`
-ORDER BY lw.added_at DESC, w.sort_title, w.id
-LIMIT @limit OFFSET @offset`)
+// listOrders is the sort key of each order a manual list is shown in.
+var listOrders = map[users.ListSort]string{
+	users.ListCustom:      sortListPosition,
+	users.ListTitle:       "title",
+	users.ListReleaseDate: "releaseDate",
+	users.ListRating:      "rating",
+	users.ListDateAdded:   sortListAddedAt,
+}
 
-var listWorksCount = stmt("ListWorksCount", `
-SELECT count(*)
-FROM list_work lw
-JOIN work w ON w.id = lw.work_id
-WHERE lw.list_id = @list
-  AND (@kinds IS NULL OR w.kind IN (SELECT value FROM json_each(@kinds)))
-  AND `+visible)
+// reads is how a list's works are read: the query to run, and where. A
+// manual list's selects the works in it, of any kind, in the list's order;
+// a smart list's is its rules. ok is false for a smart list whose rules
+// can't run, which has no works.
+func (l List) reads() (q WorkQuery, rd reading, ok bool) {
+	if l.Smart == nil {
+		return WorkQuery{Kinds: listKinds, Sort: []SortKey{{Field: listOrders[l.Sort]}}}, reading{list: l.ID}, true
+	}
+	return l.Smart.Query, reading{}, len(l.Smart.Errors) == 0
+}
 
 // listSelect reads the user's lists with how many of their works the
 // Viewer sees.
 var listSelect = `
 SELECT l.id, l.name, l.built_in,
   (SELECT count(*) FROM list_work lw JOIN work w ON w.id = lw.work_id WHERE lw.list_id = l.id AND ` + visible + `),
-  l.query
+  l.query, l.sort
 FROM list l
 WHERE l.user_id = @user`
 
@@ -80,7 +81,7 @@ ORDER BY l.built_in DESC, l.name COLLATE NOCASE, l.id`)
 
 func scanList(r scanner, l *List) error {
 	var query sql.NullString
-	if err := r.Scan(&l.ID, &l.Name, &l.BuiltIn, &l.Works, &query); err != nil {
+	if err := r.Scan(&l.ID, &l.Name, &l.BuiltIn, &l.Works, &query, &l.Sort); err != nil {
 		return err
 	}
 	if query.Valid {
@@ -161,15 +162,16 @@ func (s *Service) CountedLists(ctx context.Context, v users.Viewer) ([]List, err
 // a smart list's works with them. A smart list whose rules can't run has
 // none.
 func firstWorks(ctx context.Context, tx *sql.Tx, vw viewer, l *List, now time.Time) ([]WorkSummary, error) {
-	if l.Smart == nil {
-		return summaries(ctx, tx, listWorksPage, vw.args(sql.Named("list", l.ID), sql.Named("kinds", nil),
-			sql.Named("offset", 0), sql.Named("limit", rowLimit)))
-	}
-	if len(l.Smart.Errors) > 0 {
+	q, rd, ok := l.reads()
+	if !ok {
 		return nil, nil
 	}
-	c := compile(l.Smart.Query, vw, now, listSeed(l.ID, now), nil, reading{})
-	works, total, _, err := countedSummaries(ctx, tx, statement{sql: c.counted}, append(c.args, sql.Named("limit", rowLimit), sql.Named("offset", 0)), false)
+	c := compile(q, vw, now, listSeed(l.ID, now), nil, rd)
+	args := append(c.args, sql.Named("limit", rowLimit), sql.Named("offset", 0))
+	if l.Smart == nil {
+		return summaries(ctx, tx, statement{sql: c.page}, args)
+	}
+	works, total, _, err := countedSummaries(ctx, tx, statement{sql: c.counted}, args, false)
 	l.Works = total
 	return works, err
 }
@@ -191,55 +193,46 @@ func (s *Service) List(ctx context.Context, v users.Viewer, list id.ID) (List, e
 	return out, nil
 }
 
-// ListWorks returns a page of a list's works: a manual list's most recently
-// added first, a smart list's as its rules select them. It lists those of
-// kinds, or every kind when kinds is empty. The first page, at offset 0,
-// has the Total; a later page's is 0.
-func (s *Service) ListWorks(ctx context.Context, v users.Viewer, list id.ID, kinds []catalog.WorkKind, o GridOptions) (GridPage[WorkSummary], error) {
+// ListWorks returns a page of a list's works: a manual list's in sort, or
+// in the order it is shown in when sort is empty, a smart list's as its
+// rules select them. It lists those of kinds, or every kind when kinds is
+// empty. The first page, at offset 0, has the Total; a later page's is 0.
+func (s *Service) ListWorks(ctx context.Context, v users.Viewer, list id.ID, kinds []catalog.WorkKind, sort users.ListSort, o GridOptions) (GridPage[WorkSummary], error) {
 	limit, err := o.limit()
 	if err != nil {
 		return GridPage[WorkSummary]{}, err
 	}
 	vw := viewerOf(v)
-	var saved sql.NullString
 	var items []WorkSummary
 	var total int
 	err = s.db.Read(ctx, func(tx *sql.Tx) error {
-		if err := rowOf(ctx, tx, listOwner, vw.args(sql.Named("list", list)), &saved); err != nil {
+		l := List{ID: list}
+		var saved sql.NullString
+		if err := rowOf(ctx, tx, listOwner, vw.args(sql.Named("list", list)), &saved, &l.Sort); err != nil {
 			return notFound(err)
 		}
 		if saved.Valid {
+			l.Smart = parseSmart(saved.String)
+		}
+		if sort != "" {
+			l.Sort = sort
+		}
+		q, rd, ok := l.reads()
+		if !ok {
 			return nil
 		}
-		if err := rowOf(ctx, tx, listWorksCount, vw.args(sql.Named("list", list), sql.Named("kinds", set(kinds))), &total); err != nil {
-			return err
-		}
-		var err error
-		items, err = summaries(ctx, tx, listWorksPage, vw.args(sql.Named("list", list), sql.Named("kinds", set(kinds)),
-			sql.Named("offset", o.Offset), sql.Named("limit", limit)))
+		now := time.Now()
+		items, total, _, err = readQuery(ctx, tx, vw, q, listSeed(list, now), kinds, rd, o.Offset, limit, now)
 		return err
 	})
 	if err != nil {
 		return GridPage[WorkSummary]{}, err
 	}
-	if saved.Valid {
-		return s.smartWorks(ctx, vw, list, parseSmart(saved.String), kinds, o)
-	}
 	return s.summaryPage(ctx, vw, items, total, nil)
 }
 
-// smartWorks runs a smart list's rules, keeping only kinds from the set
-// the rules cap. A list whose rules can't run is empty.
-func (s *Service) smartWorks(ctx context.Context, vw viewer, list id.ID, smart *SmartList, kinds []catalog.WorkKind, o GridOptions) (GridPage[WorkSummary], error) {
-	if len(smart.Errors) > 0 {
-		return s.summaryPage(ctx, vw, nil, 0, nil)
-	}
-	now := time.Now()
-	return s.runQuery(ctx, vw, smart.Query, listSeed(list, now), kinds, reading{}, o, now)
-}
-
-// listOwner reads a list of the user's rules, NULL for a manual list; a list
-// that isn't the user's has no row.
+// listOwner reads a list of the user's: its rules, NULL for a manual list,
+// and its sort. A list that isn't the user's has no row.
 var listOwner = stmt("ListOwner", `
 -- viewer-filter: user
-SELECT l.query FROM list l WHERE l.id = @list AND l.user_id = @user`)
+SELECT l.query, l.sort FROM list l WHERE l.id = @list AND l.user_id = @user`)

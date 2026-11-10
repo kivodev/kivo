@@ -510,6 +510,20 @@ func (q *Queries) SetListQuery(ctx context.Context, arg SetListQueryParams) erro
 	return err
 }
 
+const setListSort = `-- name: SetListSort :exec
+UPDATE list SET sort = ?1 WHERE id = ?2
+`
+
+type SetListSortParams struct {
+	Sort string
+	ID   id.ID
+}
+
+func (q *Queries) SetListSort(ctx context.Context, arg SetListSortParams) error {
+	_, err := q.db.ExecContext(ctx, setListSort, arg.Sort, arg.ID)
+	return err
+}
+
 const setParental = `-- name: SetParental :execrows
 UPDATE user SET rating_ceiling = ?1, block_unrated = ?2 WHERE id = ?3
 `

@@ -124,6 +124,7 @@ src/commonMain/kotlin/com/mmcdole/kivo/api/models/LibraryRef.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/LibraryScanStatus.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/LibraryUpdate.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/ListCreate.kt
+src/commonMain/kotlin/com/mmcdole/kivo/api/models/ListMove.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/ListRef.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/ListUpdate.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/ListWorkAdd.kt

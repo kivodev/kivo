@@ -325,7 +325,7 @@ func TestQueryIncludesProvisionalWorks(t *testing.T) {
 
 	us := users.New(h.b.DB, events.NewBus())
 	list := h.smartList(us, h.admin, "New", movies(added))
-	p, err := h.q.ListWorks(ctx, h.admin, list, nil, query.GridOptions{})
+	p, err := h.q.ListWorks(ctx, h.admin, list, nil, "", query.GridOptions{})
 	if err != nil || !slices.Contains(ids(p.Items), h.unmatched.Work) {
 		t.Fatalf("the list's page: %v, %v", ids(p.Items), err)
 	}

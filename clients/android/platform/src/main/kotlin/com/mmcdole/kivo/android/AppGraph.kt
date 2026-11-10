@@ -39,8 +39,11 @@ sealed interface AppState {
     data class SignedIn(val session: ServerSession) : AppState
 }
 
-/** What the app's build knows that its screens show: its [versionName], and the raw resource listing the [libraries] it's built from. */
-class AppBuild(val versionName: String, @param:RawRes val libraries: Int)
+/**
+ * What the app's build knows: the [versionName] its screens show, the [version] its requests name, a semantic version
+ * such as `0.3.0+12`, and the raw resource listing the [libraries] it's built from.
+ */
+class AppBuild(val versionName: String, val version: String, @param:RawRes val libraries: Int)
 
 /** The application, which holds the [AppGraph], for what runs outside its activity, such as a background worker. */
 interface HasAppGraph {
@@ -56,7 +59,7 @@ interface HasAppGraph {
 class AppGraph(
     val context: Context,
     val build: AppBuild,
-    device: Device = AndroidDevice(context, build.versionName),
+    device: Device = AndroidDevice(context, build.version),
     /** Told as the app opens a server, such as to fill the TV launcher's Watch Next row. */
     private val onOpened: () -> Unit = {},
     /** Told as the app leaves its server, signed out or choosing another. */

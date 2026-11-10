@@ -298,7 +298,9 @@ WHERE `+libraryWorks)
 )
 
 var (
-	allKinds    = []catalog.WorkKind{catalog.KindMovie, catalog.KindSeries, catalog.KindSeason, catalog.KindEpisode, catalog.KindVideo, catalog.KindBook}
+	allKinds = []catalog.WorkKind{catalog.KindMovie, catalog.KindSeries, catalog.KindSeason, catalog.KindEpisode, catalog.KindVideo, catalog.KindBook}
+	// listKinds are the kinds a manual list holds: any work can be added.
+	listKinds   = append(slices.Clone(allKinds), catalog.KindExtra)
 	videoKinds  = []catalog.WorkKind{catalog.KindMovie, catalog.KindSeries, catalog.KindSeason, catalog.KindEpisode, catalog.KindVideo}
 	versioned   = []catalog.WorkKind{catalog.KindMovie, catalog.KindEpisode, catalog.KindVideo}
 	booksOnly   = []catalog.WorkKind{catalog.KindBook}
@@ -371,6 +373,23 @@ var workFields = []*fieldDef{
 
 	{WorkField: WorkField{Field: "title", Name: "Title", Type: FieldText, Kinds: allKinds, Sortable: true, DefaultDirection: "asc"},
 		expr: "w.title", sort: "wl.sort_title", indexed: "sort_title"},
+}
+
+// The sort keys of a manual list's own orders.
+const (
+	sortListPosition = "listPosition"
+	sortListAddedAt  = "listAddedAt"
+)
+
+// listSorts are the orders a manual list has of its own: the place the
+// user gave each work, and when each was added to it. They sort by the
+// list's row of the work, lw, which only a read of one list has (see
+// reading.list), so they are apart from the registry: no rule names them,
+// Validate refuses them in a query's sort, and the catalog doesn't list
+// them.
+var listSorts = map[string]*fieldDef{
+	sortListPosition: {WorkField: WorkField{Field: sortListPosition, DefaultDirection: "asc"}, sort: "lw.position"},
+	sortListAddedAt:  {WorkField: WorkField{Field: sortListAddedAt, DefaultDirection: "desc"}, sort: "lw.added_at"},
 }
 
 // fieldsByKey is the registry by field name, with each field's operators.

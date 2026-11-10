@@ -16,6 +16,7 @@ import (
 	"github.com/mmcdole/kivo/internal/query"
 	"github.com/mmcdole/kivo/internal/store"
 	"github.com/mmcdole/kivo/internal/users"
+	"github.com/mmcdole/kivo/internal/userstate"
 )
 
 func (h *household) lists(v users.Viewer) []query.List {
@@ -39,11 +40,12 @@ func TestListsMyListExists(t *testing.T) {
 	}
 }
 
-// putOnList adds a work to a list directly, so a test can say when.
+// putOnList adds a work to a list directly, so a test can say when. As a
+// work added does, it goes before those added earlier in the custom order.
 func (h *household) putOnList(list, work id.ID, addedAt int64) {
 	h.t.Helper()
 	h.b.Write(func(ctx context.Context, tx *store.Tx) error {
-		_, err := tx.ExecContext(ctx, `INSERT INTO list_work (list_id, work_id, added_at) VALUES (?, ?, ?)`, list, work, addedAt)
+		_, err := tx.ExecContext(ctx, `INSERT INTO list_work (list_id, work_id, added_at, position) VALUES (?, ?, ?, ?)`, list, work, addedAt, -addedAt)
 		return err
 	})
 }
@@ -53,7 +55,7 @@ func TestListWorksOrderAndOwnership(t *testing.T) {
 	mine := h.lists(h.friend)[0].ID
 	h.putOnList(mine, h.dune.Work, 1000)
 	h.putOnList(mine, h.toyStory.Work, 2000)
-	p, err := h.q.ListWorks(ctx, h.friend, mine, nil, query.GridOptions{})
+	p, err := h.q.ListWorks(ctx, h.friend, mine, nil, "", query.GridOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,17 +66,17 @@ func TestListWorksOrderAndOwnership(t *testing.T) {
 	if err := h.state.AddToList(ctx, h.friend, mine, h.dune.Work); err != nil {
 		t.Fatal(err)
 	}
-	if p2, err := h.q.ListWorks(ctx, h.friend, mine, nil, query.GridOptions{}); err != nil || p2.Total != 2 || p2.Items[0].ID != h.toyStory.Work {
+	if p2, err := h.q.ListWorks(ctx, h.friend, mine, nil, "", query.GridOptions{}); err != nil || p2.Total != 2 || p2.Items[0].ID != h.toyStory.Work {
 		t.Errorf("after adding again: %+v, %v", p2.Items, err)
 	}
 	// Playing keeps a work in the list.
 	h.play(h.friend, h.dune.Version, 155*time.Minute)
-	if p3, err := h.q.ListWorks(ctx, h.friend, mine, nil, query.GridOptions{}); err != nil || p3.Total != 2 {
+	if p3, err := h.q.ListWorks(ctx, h.friend, mine, nil, "", query.GridOptions{}); err != nil || p3.Total != 2 {
 		t.Errorf("after playing it: total %d, %v", p3.Total, err)
 	}
 
 	// It's the Viewer's list: nobody else reads it.
-	if _, err := h.q.ListWorks(ctx, h.admin, mine, nil, query.GridOptions{}); !errors.Is(err, query.ErrNotFound) {
+	if _, err := h.q.ListWorks(ctx, h.admin, mine, nil, "", query.GridOptions{}); !errors.Is(err, query.ErrNotFound) {
 		t.Errorf("another user's list: %v", err)
 	}
 	if err := h.state.AddToList(ctx, h.admin, mine, h.dune.Work); err == nil {
@@ -98,7 +100,7 @@ func TestListWorksLeaveOutWhatTheViewerCantSee(t *testing.T) {
 	mine := h.lists(h.kid)[0].ID
 	h.putOnList(mine, h.toyStory.Work, 1000)
 	h.putOnList(mine, h.bladeRunner.Work, 2000)
-	p, err := h.q.ListWorks(ctx, h.kid, mine, nil, query.GridOptions{})
+	p, err := h.q.ListWorks(ctx, h.kid, mine, nil, "", query.GridOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +170,7 @@ func TestListWorksOfKinds(t *testing.T) {
 	mine := h.lists(h.admin)[0].ID
 	h.putOnList(mine, h.dune.Work, 1000)
 	h.putOnList(mine, h.hailMary, 2000)
-	p, err := h.q.ListWorks(ctx, h.admin, mine, []catalog.WorkKind{catalog.KindMovie}, query.GridOptions{})
+	p, err := h.q.ListWorks(ctx, h.admin, mine, []catalog.WorkKind{catalog.KindMovie}, "", query.GridOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -208,14 +210,14 @@ func TestSmartLists(t *testing.T) {
 	if got.Smart == nil || len(got.Smart.Errors) != 0 || got.Works != 0 || got.Smart.Query.Version != 1 {
 		t.Errorf("a saved smart list: %+v, %+v", got, got.Smart)
 	}
-	p, err := h.q.ListWorks(ctx, h.admin, list, nil, query.GridOptions{})
+	p, err := h.q.ListWorks(ctx, h.admin, list, nil, "", query.GridOptions{})
 	if err != nil || p.Total != 2 || !slices.Contains(ids(p.Items), h.toyStory.Work) {
 		t.Errorf("its works: %v (%d), %v", ids(p.Items), p.Total, err)
 	}
-	if later, err := h.q.ListWorks(ctx, h.admin, list, nil, query.GridOptions{Offset: 1}); err != nil || later.Total != 0 || !slices.Equal(ids(later.Items), ids(p.Items)[1:]) {
+	if later, err := h.q.ListWorks(ctx, h.admin, list, nil, "", query.GridOptions{Offset: 1}); err != nil || later.Total != 0 || !slices.Equal(ids(later.Items), ids(p.Items)[1:]) {
 		t.Errorf("a later page: %v (%d), %v, want %v and no total", ids(later.Items), later.Total, err, ids(p.Items)[1:])
 	}
-	if p, err := h.q.ListWorks(ctx, h.admin, list, []catalog.WorkKind{catalog.KindBook}, query.GridOptions{}); err != nil || p.Total != 0 {
+	if p, err := h.q.ListWorks(ctx, h.admin, list, []catalog.WorkKind{catalog.KindBook}, "", query.GridOptions{}); err != nil || p.Total != 0 {
 		t.Errorf("kinds it doesn't select: %d, %v", p.Total, err)
 	}
 
@@ -227,11 +229,11 @@ func TestSmartLists(t *testing.T) {
 		t.Errorf("removing from a smart list: %v", err)
 	}
 	mine := h.lists(h.admin)[0].ID
-	if err := us.UpdateList(ctx, h.admin, mine, nil, new(`{}`)); !errors.Is(err, users.ErrListBuiltIn) {
+	if err := us.UpdateList(ctx, h.admin, mine, nil, new(`{}`), nil); !errors.Is(err, users.ErrListBuiltIn) {
 		t.Errorf("My List's rules: %v", err)
 	}
 	manual, _ := us.CreateList(ctx, h.admin, "Manual", nil)
-	if err := us.UpdateList(ctx, h.admin, manual, nil, new(`{}`)); !errors.Is(err, users.ErrListKind) {
+	if err := us.UpdateList(ctx, h.admin, manual, nil, new(`{}`), nil); !errors.Is(err, users.ErrListKind) {
 		t.Errorf("rules on a manual list: %v", err)
 	}
 
@@ -244,7 +246,7 @@ func TestSmartLists(t *testing.T) {
 	capped := toyStory
 	capped.MaxWorks = &one
 	saved, _ := capped.Saved()
-	if err := us.UpdateList(ctx, h.admin, list, nil, &saved); err != nil {
+	if err := us.UpdateList(ctx, h.admin, list, nil, &saved, nil); err != nil {
 		t.Fatal(err)
 	}
 	h.arrange(us, h.admin, users.HomeRow{ID: row, Shown: true})
@@ -274,7 +276,7 @@ func TestSmartLists(t *testing.T) {
 	if err != nil || len(broken.Smart.Errors) == 0 || broken.Works != 0 {
 		t.Errorf("a query that no longer runs: %+v, %v", broken.Smart, err)
 	}
-	if p, err := h.q.ListWorks(ctx, h.admin, list, nil, query.GridOptions{}); err != nil || p.Total != 0 {
+	if p, err := h.q.ListWorks(ctx, h.admin, list, nil, "", query.GridOptions{}); err != nil || p.Total != 0 {
 		t.Errorf("its works: %d, %v", p.Total, err)
 	}
 	home = h.home(h.admin)
@@ -388,7 +390,7 @@ func TestPlainQueryMatchesACappedOne(t *testing.T) {
 		}
 		a := h.smartList(us, h.admin, "plain "+field, q)
 		for _, only := range []catalog.WorkKind{catalog.KindMovie, catalog.KindEpisode} {
-			p, err := h.q.ListWorks(ctx, h.admin, a, []catalog.WorkKind{only}, query.GridOptions{})
+			p, err := h.q.ListWorks(ctx, h.admin, a, []catalog.WorkKind{only}, "", query.GridOptions{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -407,7 +409,7 @@ func TestSmartListKindFilterKeepsTheCap(t *testing.T) {
 	cap := 1
 	q := query.WorkQuery{Kinds: []catalog.WorkKind{catalog.KindMovie, catalog.KindBook}, Sort: []query.SortKey{{Field: "title"}}, MaxWorks: &cap}
 	list := h.smartList(us, h.admin, "One", q)
-	all, err := h.q.ListWorks(ctx, h.admin, list, nil, query.GridOptions{})
+	all, err := h.q.ListWorks(ctx, h.admin, list, nil, "", query.GridOptions{})
 	if err != nil || all.Total != 1 {
 		t.Fatalf("capped: %d, %v", all.Total, err)
 	}
@@ -415,7 +417,7 @@ func TestSmartListKindFilterKeepsTheCap(t *testing.T) {
 	if all.Items[0].Kind == catalog.KindBook {
 		other = catalog.KindMovie
 	}
-	p, err := h.q.ListWorks(ctx, h.admin, list, []catalog.WorkKind{other}, query.GridOptions{})
+	p, err := h.q.ListWorks(ctx, h.admin, list, []catalog.WorkKind{other}, "", query.GridOptions{})
 	if err != nil || p.Total != 0 {
 		t.Errorf("the other kind reached past the cap: %d, %v", p.Total, err)
 	}
@@ -428,7 +430,7 @@ func TestSmartListRandomIsSeededByList(t *testing.T) {
 	a := h.smartList(us, h.admin, "A", random)
 	b := h.smartList(us, h.admin, "B", random)
 	read := func(list id.ID) []id.ID {
-		p, err := h.q.ListWorks(ctx, h.admin, list, nil, query.GridOptions{Limit: 200})
+		p, err := h.q.ListWorks(ctx, h.admin, list, nil, "", query.GridOptions{Limit: 200})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -456,7 +458,7 @@ func TestListsCRUDAndHome(t *testing.T) {
 	if _, err := us.CreateList(ctx, h.friend, " padded", nil); err == nil {
 		t.Error("a padded name was accepted")
 	}
-	if err := us.UpdateList(ctx, h.friend, date, new("Road Trip"), nil); err != nil {
+	if err := us.UpdateList(ctx, h.friend, date, new("Road Trip"), nil, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -546,7 +548,7 @@ func TestCountedListsItems(t *testing.T) {
 
 	// A smart list's are the first its rules select, in their order.
 	smart := h.smartList(us, h.kid, "R", movies(query.Rule{Field: "title", Op: "contains", Values: []string{"r"}}))
-	p, err := h.q.ListWorks(ctx, h.kid, smart, nil, query.GridOptions{Limit: 20})
+	p, err := h.q.ListWorks(ctx, h.kid, smart, nil, "", query.GridOptions{Limit: 20})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -557,5 +559,138 @@ func TestCountedListsItems(t *testing.T) {
 	l = list(h.kid, smart)
 	if got := works(l); len(got) == 0 || !slices.Equal(got, want) || slices.Contains(got, h.bladeRunner.Work) || l.Works != len(got) {
 		t.Errorf("the kid's smart list's items: %v counted %d, want %v and never Blade Runner", got, l.Works, want)
+	}
+}
+
+// A manual list is shown in its sort wherever it is listed: on its page, on
+// its shelf and in its Home row. A work added goes first in the custom
+// order, a move puts works after another or first and sets the list to the
+// custom order, and a smart list has neither.
+func TestManualListOrder(t *testing.T) {
+	h := newHousehold(t)
+	us := users.New(h.b.DB, events.NewBus())
+	mine := h.lists(h.admin)[0].ID
+	dune, toys, blade := h.dune.Work, h.toyStory.Work, h.bladeRunner.Work
+	for _, w := range []id.ID{dune, toys, blade} {
+		if err := h.state.AddToList(ctx, h.admin, mine, w); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// shown checks the list's order on its page, its shelf and its Home row.
+	shown := func(what string, sort users.ListSort, want ...id.ID) {
+		t.Helper()
+		p, err := h.q.ListWorks(ctx, h.admin, mine, nil, "", query.GridOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		lists, err := h.q.CountedLists(ctx, h.admin)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rows, _, err := h.q.Home(ctx, h.admin, query.RowList)
+		if err != nil || len(rows) != 1 {
+			t.Fatalf("%s: Home's list rows %v, %v", what, rows, err)
+		}
+		if got := ids(p.Items); !slices.Equal(got, want) || p.Total != len(want) {
+			t.Errorf("%s: the page lists %v (%d), want %v", what, got, p.Total, want)
+		}
+		if got := ids(lists[0].Items); !slices.Equal(got, want) || lists[0].Sort != sort {
+			t.Errorf("%s: the shelf lists %v by %q, want %v by %q", what, got, lists[0].Sort, want, sort)
+		}
+		if got := ids(rows[0].Items); !slices.Equal(got, want) {
+			t.Errorf("%s: Home lists %v, want %v", what, got, want)
+		}
+	}
+	shown("as added", users.ListCustom, blade, toys, dune)
+
+	move := func(after id.ID, works ...id.ID) {
+		t.Helper()
+		if err := h.state.MoveInList(ctx, h.admin, mine, works, after); err != nil {
+			t.Fatal(err)
+		}
+	}
+	move(blade, dune)
+	shown("Dune after Blade Runner", users.ListCustom, blade, dune, toys)
+	move(blade, dune)
+	shown("the same move again", users.ListCustom, blade, dune, toys)
+	move(id.ID{}, toys, dune)
+	shown("two moved to the top", users.ListCustom, toys, dune, blade)
+	move(blade, toys, h.hailMary)
+	shown("one moved last, with a work not in the list", users.ListCustom, dune, blade, toys)
+	// Works put between the same two until no place is left between them.
+	for range 40 {
+		move(dune, toys)
+		move(dune, blade)
+	}
+	shown("after 80 moves into one gap", users.ListCustom, dune, blade, toys)
+
+	sort := func(s users.ListSort) {
+		t.Helper()
+		if err := us.UpdateList(ctx, h.admin, mine, nil, nil, &s); err != nil {
+			t.Fatal(err)
+		}
+	}
+	sort(users.ListTitle)
+	shown("by title", users.ListTitle, blade, dune, toys)
+	sort(users.ListReleaseDate)
+	shown("by release date", users.ListReleaseDate, dune, toys, blade)
+	h.b.Write(func(ctx context.Context, tx *store.Tx) error {
+		_, err := tx.ExecContext(ctx, `UPDATE list_work SET added_at = CASE work_id WHEN ? THEN 3 WHEN ? THEN 2 ELSE 1 END`, toys, blade)
+		return err
+	})
+	sort(users.ListDateAdded)
+	shown("by date added", users.ListDateAdded, toys, blade, dune)
+	sort(users.ListRating)
+	shown("by rating", users.ListRating, dune, toys, blade)
+	// A work added while the list is sorted is first in the custom order,
+	// and a move goes back to it.
+	if err := h.state.AddToList(ctx, h.admin, mine, h.hailMary); err != nil {
+		t.Fatal(err)
+	}
+	move(dune, blade)
+	shown("moved while sorted", users.ListCustom, h.hailMary, dune, blade, toys)
+
+	if err := h.state.MoveInList(ctx, h.admin, mine, []id.ID{toys}, h.leviathan); !errors.Is(err, userstate.ErrListAnchor) {
+		t.Errorf("after a work that isn't in the list: %v", err)
+	}
+	if err := h.state.MoveInList(ctx, h.admin, mine, []id.ID{toys}, toys); !errors.Is(err, userstate.ErrListAnchor) {
+		t.Errorf("after itself: %v", err)
+	}
+	if err := h.state.MoveInList(ctx, h.friend, mine, []id.ID{toys}, id.ID{}); !errors.Is(err, users.ErrListNotFound) {
+		t.Errorf("a move in another user's list: %v", err)
+	}
+	if err := us.UpdateList(ctx, h.friend, mine, nil, nil, new(users.ListTitle)); !errors.Is(err, users.ErrListNotFound) {
+		t.Errorf("a sort of another user's list: %v", err)
+	}
+	if err := us.UpdateList(ctx, h.admin, mine, nil, nil, new(users.ListSort("shuffled"))); !errors.Is(err, users.ErrListSort) {
+		t.Errorf("an unknown sort: %v", err)
+	}
+	smart := h.smartList(us, h.admin, "Smart", movies(query.Rule{Field: "title", Op: "contains", Values: []string{"toy"}}))
+	if err := h.state.MoveInList(ctx, h.admin, smart, []id.ID{toys}, id.ID{}); !errors.Is(err, users.ErrListKind) {
+		t.Errorf("a move in a smart list: %v", err)
+	}
+	if err := us.UpdateList(ctx, h.admin, smart, nil, nil, new(users.ListTitle)); !errors.Is(err, users.ErrListKind) {
+		t.Errorf("a sort of a smart list: %v", err)
+	}
+	// The list's own orders are no part of a query.
+	q := movies(query.Rule{Field: "title", Op: "contains", Values: []string{"toy"}})
+	q.Sort = []query.SortKey{{Field: "listPosition"}}
+	if problems := q.Validate(); len(problems) != 1 || problems[0].Pointer != "/sort/0/field" {
+		t.Errorf("a query sorted by a list's order: %v", problems)
+	}
+}
+
+// An extra can be added to a list, and is listed there.
+func TestListWorksHoldAnyKind(t *testing.T) {
+	h := newHousehold(t)
+	mine := h.lists(h.admin)[0].ID
+	extra := h.b.Work(catalog.WorkInput{Kind: catalog.KindExtra, Parent: h.dune.Work, Title: "Making Of", ExtraType: "featurette"})
+	h.b.Version([]id.ID{h.b.File(h.moviesFolder, "Dune (2021)/Featurettes/Making Of.mkv")}, extra)
+	if err := h.state.AddToList(ctx, h.admin, mine, extra); err != nil {
+		t.Fatal(err)
+	}
+	p, err := h.q.ListWorks(ctx, h.admin, mine, nil, "", query.GridOptions{})
+	if err != nil || !slices.Equal(ids(p.Items), []id.ID{extra}) {
+		t.Errorf("a list with an extra: %v, %v", ids(p.Items), err)
 	}
 }

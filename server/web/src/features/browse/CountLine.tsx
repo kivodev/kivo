@@ -1,7 +1,6 @@
 import { Plural, useLingui } from "@lingui/react/macro";
 import { Select } from "@/components/Select";
 import type { BrowseSearch, GridSort } from "./browseSearch";
-import type { BrowseLabels } from "./useBrowseLabels";
 
 type Tab = BrowseSearch["tab"];
 
@@ -45,23 +44,10 @@ export function useEmptyTitle(kind: string, tab: Tab, search: BrowseSearch, only
   return t`No ${noun} match these filters`;
 }
 
-/**
- * The sort in a word or two at the end of the count line ("A–Z", "Recently
- * added"), which opens the sort menu.
- */
-export function SortMenu({
-  options,
-  selected,
-  labels,
-  onChange,
-}: {
-  options: readonly GridSort[];
-  selected: GridSort;
-  labels: BrowseLabels;
-  onChange: (sort: string) => void;
-}) {
+/** Each grid sort in a word or two, as a count line ends with it. */
+export function useSortWords(): Record<GridSort, string> {
   const { t } = useLingui();
-  const short: Record<GridSort, string> = {
+  return {
     title: t`A–Z`,
     author: t`Author A–Z`,
     addedAt: t`Recently added`,
@@ -72,14 +58,35 @@ export function SortMenu({
     lastPlayedAt: t`Recently played`,
     lastEpisodeAddedAt: t`Last episode added`,
   };
+}
+
+/**
+ * The sort in a word or two at the end of a count line ("A–Z", "Recently
+ * added"), which opens the sort menu. `words` says each sort so, and
+ * `labels` names each in the menu.
+ */
+export function SortMenu<T extends string>({
+  options,
+  selected,
+  labels,
+  words,
+  onChange,
+}: {
+  options: readonly T[];
+  selected: T;
+  labels: Record<T, string>;
+  words: Record<T, string>;
+  onChange: (sort: T) => void;
+}) {
+  const { t } = useLingui();
   return (
     <Select
       variant="compact"
       part="sort"
       label={t`Sort`}
-      options={options.map((s) => ({ id: s, label: labels.sort[s] }))}
+      options={options.map((s) => ({ id: s, label: labels[s] }))}
       selected={selected}
-      value={short[selected]}
+      value={words[selected]}
       onChange={onChange}
     />
   );

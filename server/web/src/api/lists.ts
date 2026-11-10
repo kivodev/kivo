@@ -28,7 +28,7 @@ export function useCreateList() {
   return $api.useMutation("post", "/api/v1/lists", { onSuccess });
 }
 
-/** Change a list's name, or a smart list's query. A name in use is refused with `nameTaken`. */
+/** Change a list's name, a smart list's query, or the order a manual list is shown in. A name in use is refused with `nameTaken`. */
 export function useUpdateList() {
   const onSuccess = useListsChanged();
   return $api.useMutation("patch", "/api/v1/lists/{id}", { onSuccess });
@@ -38,6 +38,12 @@ export function useUpdateList() {
 export function useDeleteList() {
   const onSuccess = useListsChanged();
   return $api.useMutation("delete", "/api/v1/lists/{id}", { onSuccess });
+}
+
+/** Move works in a manual list's custom order, which the list is then shown in. */
+export function useMoveListWorks() {
+  const onSuccess = useListsChanged();
+  return $api.useMutation("post", "/api/v1/lists/{id}/move", { onSuccess });
 }
 
 type Membership = { listId: string; workId: string; inList: boolean };
