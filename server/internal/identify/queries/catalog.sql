@@ -110,13 +110,12 @@ WHERE r.library_id = @library_id AND r.removing_at IS NULL AND f.status = 'prese
   AND f.rel_path >= CAST(@from AS TEXT) AND f.rel_path < CAST(@before AS TEXT)
 ORDER BY r.path, f.rel_path;
 
--- name: CountUnidentified :many
--- How many files Unidentified lists in each library that has any.
-SELECT r.library_id, count(*) AS files FROM media_file f JOIN library_folder r ON r.id = f.folder_id
+-- name: CountUnidentified :one
+-- How many files Unidentified lists across the libraries.
+SELECT count(*) FROM media_file f JOIN library_folder r ON r.id = f.folder_id
 JOIN library l ON l.id = r.library_id AND l.deleting_at IS NULL
 WHERE r.removing_at IS NULL AND f.status = 'present'
-  AND f.probed = f.generation AND f.probe_error IS NULL AND f.identified IS NOT f.generation
-GROUP BY r.library_id;
+  AND f.probed = f.generation AND f.probe_error IS NULL AND f.identified IS NOT f.generation;
 
 -- name: SetIdentified :exec
 UPDATE media_file SET identified = generation WHERE id = @id AND generation = @generation;

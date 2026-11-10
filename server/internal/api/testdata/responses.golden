@@ -2201,14 +2201,9 @@ GET /api/v1/tasks
       "nextRunAt": "<time>",
       "nightly": false,
       "pendingCount": 0,
-      "progress": {
-        "done": 0,
-        "step": "identify",
-        "total": 0
-      },
-      "running": true,
+      "running": false,
       "section": "library",
-      "stoppable": true
+      "stoppable": false
     },
     {
       "id": "prune-gone-files",

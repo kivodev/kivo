@@ -47,9 +47,11 @@ type Identifier struct {
 	folders keylock.Locks[string]
 }
 
-// Tasks enqueues items to be done now. tasks.Runner implements it.
+// Tasks enqueues items to be done now, or on behalf of an item of the task
+// a task is a step of. tasks.Runner implements it.
 type Tasks interface {
 	Enqueue(task string, items ...id.ID)
+	EnqueueFor(owner id.ID, task string, items ...id.ID)
 }
 
 // Markers asks for markers for a library's episodes that got versions,
@@ -71,6 +73,9 @@ type Deps struct {
 	Tasks Tasks
 	// Markers finds markers for the episodes placed.
 	Markers Markers
+	// ScanStep is where the identify task shows: as the last step of a
+	// library's scan. Scanned enqueues for the library's item of it.
+	ScanStep tasks.StepOf
 }
 
 // New returns an Identifier.
@@ -84,14 +89,15 @@ func New(db *store.DB, d Deps) *Identifier {
 // and by a refresh or an edit that sends a work's folders back. The task also
 // looks for files left pending as the server starts and then each hour, which
 // is when a folder that met a provider outage or couldn't be read is tried
-// again.
+// again. It is a step of a library's scan, so it has no row of its own: what
+// a scan asked for shows on the scan's row, and nothing else shows.
 const TaskIdentifyMedia = "identify-media"
 
 const identifyAtOnce = 4 // how many folders are identified at once
 
 // Tasks returns the package's tasks, for cmd/kivo to add.
 func (i *Identifier) Tasks() []tasks.Task {
-	return []tasks.Task{{Name: TaskIdentifyMedia, Schedule: tasks.OnDemand, Work: tasks.Items{
+	return []tasks.Task{{Name: TaskIdentifyMedia, Schedule: tasks.OnDemand, StepOf: i.deps.ScanStep, Work: tasks.Items{
 		Pending: i.pending, Do: i.identifyFolder, PendingCount: i.pendingCount,
 		Limit: func(config.Settings) int { return identifyAtOnce }}}}
 }
@@ -117,28 +123,8 @@ func (i *Identifier) pending(ctx context.Context) ([]id.ID, error) {
 // pendingCount counts the files that need identifying. Pending lists one of
 // them for each folder.
 func (i *Identifier) pendingCount(ctx context.Context) (int, error) {
-	waiting, err := i.Waiting(ctx)
-	n := 0
-	for _, w := range waiting {
-		n += w
-	}
-	return n, err
-}
-
-// Waiting counts, by library, the files that need identifying. A library
-// with none is absent. Files stay counted while their folder can't be
-// identified, as during a provider outage; a folder looked up with no match
-// is identified, as unmatched.
-func (i *Identifier) Waiting(ctx context.Context) (map[id.ID]int, error) {
-	rows, err := i.q.CountUnidentified(ctx)
-	if err != nil {
-		return nil, err
-	}
-	out := make(map[id.ID]int, len(rows))
-	for _, r := range rows {
-		out[r.LibraryID] = int(r.Files)
-	}
-	return out, nil
+	n, err := i.q.CountUnidentified(ctx)
+	return int(n), err
 }
 
 // unidentified lists, by path, the first file that needs identifying in each
@@ -161,14 +147,14 @@ func (i *Identifier) unidentified(ctx context.Context, lib catalog.Library) ([]i
 }
 
 // Scanned has the folders of a library's files that need identifying
-// identified now. A scan calls it as it ends, once the library's new and
-// changed files are all probed.
+// identified now, as the last step of the library's scan. A scan calls it as
+// it ends, once the library's new and changed files are all probed.
 func (i *Identifier) Scanned(ctx context.Context, lib catalog.Library) error {
 	files, err := i.unidentified(ctx, lib)
 	if err != nil {
 		return err
 	}
-	i.deps.Tasks.Enqueue(TaskIdentifyMedia, files...)
+	i.deps.Tasks.EnqueueFor(lib.ID, TaskIdentifyMedia, files...)
 	return nil
 }
 

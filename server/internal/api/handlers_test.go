@@ -952,68 +952,46 @@ func TestLibraryScanStatusAndStop(t *testing.T) {
 func TestLibraryScanStatusFromItsScan(t *testing.T) {
 	now := time.Now()
 	lib := query.AdminLibrary{Library: query.Library{ID: id.New()}, Folders: []catalog.Folder{{Reachable: true}}}
-	if a := libraryScanStatus(lib, nil, nil, 0, now); a.LibraryID != lib.ID || a.State != "idle" || a.Progress != nil {
+	if a := libraryScanStatus(lib, nil, nil, now); a.LibraryID != lib.ID || a.State != "idle" || a.Progress != nil {
 		t.Errorf("no scan: %+v", a)
 	}
 	other := tasks.Item{ID: id.New(), Step: "probe", Done: 1, Total: 2, Since: now.Add(-time.Minute)}
-	if a := libraryScanStatus(lib, []tasks.Item{other}, nil, 0, now); a.State != "idle" || a.Progress != nil {
+	if a := libraryScanStatus(lib, []tasks.Item{other}, nil, now); a.State != "idle" || a.Progress != nil {
 		t.Errorf("another library's scan: %+v", a)
 	}
-	if a := libraryScanStatus(lib, nil, []id.ID{lib.ID}, 0, now); a.State != "scanning" || a.Progress != nil {
+	if a := libraryScanStatus(lib, nil, []id.ID{lib.ID}, now); a.State != "scanning" || a.Progress != nil {
 		t.Errorf("a scan asked for, not started: %+v", a)
 	}
 	started := tasks.Item{ID: lib.ID}
-	if a := libraryScanStatus(lib, []tasks.Item{other, started}, nil, 0, now); a.State != "scanning" || a.Progress != nil {
+	if a := libraryScanStatus(lib, []tasks.Item{other, started}, nil, now); a.State != "scanning" || a.Progress != nil {
 		t.Errorf("a scan with no step yet: %+v", a)
 	}
 	probing := tasks.Item{ID: lib.ID, Step: "probe", Done: 10, Total: 40, Since: now.Add(-time.Minute)}
-	a := libraryScanStatus(lib, []tasks.Item{other, probing}, nil, 0, now)
+	a := libraryScanStatus(lib, []tasks.Item{other, probing}, nil, now)
 	if p := a.Progress; a.State != "scanning" || p == nil || p.Step != gen.ScanStep("probe") || p.Done != 10 || p.Total != 40 ||
 		p.RemainingMs == nil || *p.RemainingMs != int((3*time.Minute).Milliseconds()) {
 		t.Errorf("probing 10 of 40 in a minute: %+v %+v", a, a.Progress)
 	}
-	// Files being identified show as matching, with no progress, only
-	// while no scan of the library runs or is asked for.
-	if a := libraryScanStatus(lib, []tasks.Item{other, probing}, nil, 3, now); a.Progress == nil || a.Progress.Step != gen.ScanStepProbe || a.Progress.Done != 10 {
-		t.Errorf("probing with files waiting: %+v %+v", a, a.Progress)
-	}
-	walking := tasks.Item{ID: lib.ID, Step: "walk", Done: 0, Total: 1, Since: now}
-	if a := libraryScanStatus(lib, []tasks.Item{walking}, nil, 3, now); a.Progress == nil || a.Progress.Step != gen.ScanStepWalk {
-		t.Errorf("walking with files waiting: %+v %+v", a, a.Progress)
-	}
-	if a := libraryScanStatus(lib, nil, []id.ID{lib.ID}, 3, now); a.State != "scanning" || a.Progress != nil {
-		t.Errorf("a scan asked for with files waiting: %+v", a)
-	}
-	if a := libraryScanStatus(lib, []tasks.Item{other}, nil, 3, now); a.State != "matching" || a.Progress != nil {
-		t.Errorf("files waiting, no scan: %+v %+v", a, a.Progress)
-	}
 	lib.Folders = append(lib.Folders, catalog.Folder{Reachable: false})
-	if a := libraryScanStatus(lib, nil, nil, 0, now); a.State != "unreachable" {
+	if a := libraryScanStatus(lib, nil, nil, now); a.State != "unreachable" {
 		t.Errorf("a folder unreachable: %+v", a)
-	}
-	if a := libraryScanStatus(lib, nil, nil, 3, now); a.State != "unreachable" {
-		t.Errorf("a folder unreachable with files being identified: %+v", a)
 	}
 }
 
-// A library whose files are read but not yet identified lists as matching,
-// with no progress, while the identify task is at work and until it has
-// identified them. Files waiting while it isn't, as during a provider
-// outage, leave the library idle. A library whose files are all
-// identified, matched or unmatched, is idle. One listing reads each
-// library's own state.
-func TestLibraryMatchingUntilIdentified(t *testing.T) {
+// While the folders a library's scan asked to identify are left, the
+// library is scanning on the step identify, with the folders done out of
+// those asked for. Another library isn't, even with a folder being
+// identified that no scan asked for, as after a fix match. Stopping the
+// library's scan stops its matching and nothing else.
+func TestLibraryMatchingFromItsScan(t *testing.T) {
 	e := newEnv(t, serving{})
-	// Home videos are identified without a provider.
-	waiting, folder := e.b.Library(catalog.Videos)
-	clip := e.b.File(folder, "Holiday/Beach.mkv")
-	done, other := e.b.Library(catalog.Videos)
-	settled := e.b.File(other, "Party/Cake.mkv")
+	scanned, folder := e.b.Library(catalog.Videos)
+	e.b.File(folder, "Holiday/Beach.mkv")
+	e.b.File(folder, "Party/Cake.mkv")
+	fixed, other := e.b.Library(catalog.Videos)
+	fix := e.b.File(other, "Garden/Pond.mkv")
 	e.b.Write(func(ctx context.Context, tx *store.Tx) error {
-		_, err := tx.ExecContext(ctx, `UPDATE media_file SET probed = generation WHERE id = ?`, clip)
-		if err == nil {
-			_, err = tx.ExecContext(ctx, `UPDATE media_file SET probed = generation, identified = generation WHERE id = ?`, settled)
-		}
+		_, err := tx.ExecContext(ctx, `UPDATE media_file SET probed = generation`)
 		return err
 	})
 	statuses := func() map[string]map[string]any {
@@ -1025,29 +1003,39 @@ func TestLibraryMatchingUntilIdentified(t *testing.T) {
 		}
 		return out
 	}
-	if s := statuses()[waiting.String()]; s["state"] != "idle" || s["progress"] != nil {
-		t.Errorf("with a file waiting and the identify task idle: %v", s)
+	if s := statuses()[scanned.String()]; s["state"] != "idle" || s["progress"] != nil {
+		t.Errorf("with files waiting and nothing asked: %v", s)
 	}
-	// The runner isn't running yet, so the file stays asked for.
-	e.d.Tasks.Enqueue(identify.TaskIdentifyMedia, clip)
+
+	// The runner isn't running, so what's asked for stays asked for.
+	lib, err := e.b.Catalog.Library(ctx, scanned)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := e.d.Identify.Scanned(ctx, lib); err != nil {
+		t.Fatal(err)
+	}
+	e.d.Tasks.Enqueue(identify.TaskIdentifyMedia, fix)
 	st := statuses()
-	if s := st[waiting.String()]; s["state"] != "matching" || s["progress"] != nil {
-		t.Errorf("with a file being identified: %v", s)
+	if s := st[scanned.String()]; s["state"] != "scanning" {
+		t.Errorf("matching what its scan asked for: %v", s)
+	} else if p, _ := s["progress"].(map[string]any); p["step"] != "identify" || p["done"] != 0.0 || p["total"] != 2.0 {
+		t.Errorf("matching what its scan asked for: %v", p)
 	}
-	for _, lib := range []id.ID{done, e.lib} {
+	for _, lib := range []id.ID{fixed, e.lib} {
 		if s := st[lib.String()]; s["state"] != "idle" || s["progress"] != nil {
-			t.Errorf("library %v with nothing waiting: %v", lib, s)
+			t.Errorf("library %v that no scan asked to identify: %v", lib, s)
 		}
 	}
 
-	e.run()
-	for deadline := time.Now().Add(15 * time.Second); ; time.Sleep(50 * time.Millisecond) {
-		if s := statuses()[waiting.String()]; s["state"] == "idle" && s["progress"] == nil {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatalf("after the identify task: %v", statuses()[waiting.String()])
-		}
+	if w := e.do("POST", "/api/v1/libraries/"+scanned.String()+"/stop-scan", e.adminToken, nil); w.Code != http.StatusNoContent {
+		t.Fatalf("stop: %d %s", w.Code, w.Body.String())
+	}
+	if s := statuses()[scanned.String()]; s["state"] != "idle" || s["progress"] != nil {
+		t.Errorf("after stopping its scan: %v", s)
+	}
+	if asked := e.d.Tasks.Asked(identify.TaskIdentifyMedia); !slices.Equal(asked, []id.ID{fix}) {
+		t.Errorf("asked to identify %v after stopping the scan, want the fix match's %v", asked, fix)
 	}
 }
 

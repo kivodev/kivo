@@ -170,6 +170,13 @@ func (a *asks) Enqueue(task string, items ...id.ID) {
 	a.r.Enqueue(task, items...)
 }
 
+func (a *asks) EnqueueFor(owner id.ID, task string, items ...id.ID) {
+	a.mu.Lock()
+	a.by[task] = append(a.by[task], items...)
+	a.mu.Unlock()
+	a.r.EnqueueFor(owner, task, items...)
+}
+
 // of is what was asked of a task, in order.
 func (a *asks) of(task string) []id.ID {
 	a.mu.Lock()
@@ -248,6 +255,7 @@ func newEnv(t *testing.T, o serving) *env {
 	e.d.Subtitles = subtitles.New(db, subtitles.Deps{Catalog: e.b.Catalog, Users: e.d.Users, Userstate: e.d.Userstate, Settings: e.d.Settings, Media: noMedia{}, Tasks: e.asks, CacheDir: e.cache, SubtitleDir: t.TempDir()}, subtitles.Options{})
 	e.d.Identify = identify.New(db, identify.Deps{
 		Catalog: e.b.Catalog, Metadata: e.d.Metadata, Userstate: e.d.Userstate, Activity: e.d.Activity, Tasks: e.asks, Markers: e.d.Markers,
+		ScanStep: tasks.StepOf{Task: scan.TaskScanLibraries, Step: scan.StepIdentify},
 	})
 	e.d.Scan = scan.New(db, scan.Deps{
 		Catalog: e.b.Catalog, Tasks: e.asks, Prober: noMedia{}, Settings: settings, Identifier: e.d.Identify, Previews: pv, Subtitles: e.d.Subtitles,

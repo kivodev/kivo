@@ -744,7 +744,6 @@ func (e LibraryKind) Valid() bool {
 // Defines values for LibraryScanState.
 const (
 	LibraryScanStateIdle        LibraryScanState = "idle"
-	LibraryScanStateMatching    LibraryScanState = "matching"
 	LibraryScanStateScanning    LibraryScanState = "scanning"
 	LibraryScanStateUnreachable LibraryScanState = "unreachable"
 )
@@ -753,8 +752,6 @@ const (
 func (e LibraryScanState) Valid() bool {
 	switch e {
 	case LibraryScanStateIdle:
-		return true
-	case LibraryScanStateMatching:
 		return true
 	case LibraryScanStateScanning:
 		return true
@@ -1310,13 +1307,16 @@ func (e RuleGroupMatch) Valid() bool {
 
 // Defines values for ScanStep.
 const (
-	ScanStepProbe ScanStep = "probe"
-	ScanStepWalk  ScanStep = "walk"
+	ScanStepIdentify ScanStep = "identify"
+	ScanStepProbe    ScanStep = "probe"
+	ScanStepWalk     ScanStep = "walk"
 )
 
 // Valid indicates whether the value is a known member of the ScanStep enum.
 func (e ScanStep) Valid() bool {
 	switch e {
+	case ScanStepIdentify:
+		return true
 	case ScanStepProbe:
 		return true
 	case ScanStepWalk:
@@ -3385,9 +3385,9 @@ type LibraryRef struct {
 	Name string      `json:"name"`
 }
 
-// LibraryScanState What a library's scan is doing: `scanning` while it's scanned,
-// `matching` while its files are being identified after that,
-// `unreachable` when a folder can't be read.
+// LibraryScanState What a library's scan is doing: `scanning` while it's scanned and
+// what it read is identified, `unreachable` when a folder can't be
+// read.
 type LibraryScanState string
 
 // LibraryScanStatus What a library's scan is doing, as its row shows it: "Reading files ·
@@ -3399,9 +3399,9 @@ type LibraryScanStatus struct {
 	// Progress The step a library's scan is on, and how far it's got.
 	Progress *ScanProgress `json:"progress,omitempty"`
 
-	// State What a library's scan is doing: `scanning` while it's scanned,
-	// `matching` while its files are being identified after that,
-	// `unreachable` when a folder can't be read.
+	// State What a library's scan is doing: `scanning` while it's scanned and
+	// what it read is identified, `unreachable` when a folder can't be
+	// read.
 	State LibraryScanState `json:"state"`
 }
 
@@ -4327,8 +4327,8 @@ type ScanProgress struct {
 	RemainingMs *int `json:"remainingMs,omitempty"`
 
 	// Step A step of a library's scan: `walk` finding files, a folder at a
-	// time; `probe` reading the files new or changed. Skip steps you
-	// don't know.
+	// time; `probe` reading the files new or changed; `identify` matching
+	// the folders of the files it read. Skip steps you don't know.
 	Step  ScanStep `json:"step"`
 	Total int      `json:"total"`
 }
@@ -4340,8 +4340,8 @@ type ScanRequest struct {
 }
 
 // ScanStep A step of a library's scan: `walk` finding files, a folder at a
-// time; `probe` reading the files new or changed. Skip steps you
-// don't know.
+// time; `probe` reading the files new or changed; `identify` matching
+// the folders of the files it read. Skip steps you don't know.
 type ScanStep string
 
 // SearchResults defines model for SearchResults.
@@ -4758,9 +4758,7 @@ type Task struct {
 	// Nightly Its runs begin as the maintenance window opens; else every so often.
 	Nightly bool `json:"nightly"`
 
-	// PendingCount What's left for its next run, while no run of it works; 0
-	// otherwise. On `scan-libraries` at step `identify`, the files left
-	// to identify.
+	// PendingCount What's left for its next run, while no run of it works; 0 otherwise.
 	PendingCount int `json:"pendingCount"`
 
 	// Progress How far a task has got, present while it's running: the items its
@@ -4848,10 +4846,9 @@ type TaskRun struct {
 type TaskSection string
 
 // TaskStep A step of a task's item in flight: a library scan's (see ScanStep),
-// `identify`, the scanned files being identified once no library is
-// walked or probed, `extractSubtitles`, a download's file having its
-// subtitles extracted, or `convert`, a download being converted. Skip
-// steps you don't know.
+// `extractSubtitles`, a download's file having its subtitles
+// extracted, or `convert`, a download being converted. Skip steps you
+// don't know.
 type TaskStep string
 
 // Track An audio, video or subtitle track. Kind-specific data is under its type's name.

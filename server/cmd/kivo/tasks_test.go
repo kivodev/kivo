@@ -12,7 +12,6 @@ import (
 	"github.com/mmcdole/kivo/internal/config"
 	"github.com/mmcdole/kivo/internal/events"
 	"github.com/mmcdole/kivo/internal/health"
-	"github.com/mmcdole/kivo/internal/identify"
 )
 
 // TestTaskNames checks the tasks the server lists against the names used
@@ -37,10 +36,7 @@ func TestTaskNames(t *testing.T) {
 	}
 	var names []string
 	for _, r := range rows {
-		// The tasks list shows identification on the scan's row.
-		if r.Name != identify.TaskIdentifyMedia {
-			names = append(names, r.Name)
-		}
+		names = append(names, r.Name)
 	}
 	spec := read(t, "../../internal/api/openapi.yaml")
 	same(t, "the spec's TaskName enum", names, specEnum(t, spec, "TaskName"))

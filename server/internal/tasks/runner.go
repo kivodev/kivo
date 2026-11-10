@@ -115,9 +115,15 @@ func (r *Runner) Add(t Task) {
 		if w.Pending == nil || w.Do == nil {
 			panic("tasks: Items needs Pending and Do: " + t.Name)
 		}
-		tk.items = &items{Items: w, queued: map[id.ID]bool{}, requeue: map[id.ID]bool{}, busy: map[id.ID]*item{}}
+		tk.items = &items{
+			Items: w, queued: map[id.ID]bool{}, requeue: map[id.ID]bool{}, busy: map[id.ID]*item{},
+			ownerOf: map[id.ID]id.ID{}, owned: map[id.ID]*owned{},
+		}
 	default:
 		panic("tasks: a task needs Work, a Func or Items: " + t.Name)
+	}
+	if s := t.StepOf; s != (StepOf{}) && (tk.items == nil || s.Task == "" || s.Step == "" || s.Task == t.Name) {
+		panic("tasks: a step needs Items, another task and a step name: " + t.Name)
 	}
 	r.tasks = append(r.tasks, tk)
 	r.byName[t.Name] = tk
@@ -138,6 +144,12 @@ func (r *Runner) Run(ctx context.Context) error {
 		panic("tasks: Run called twice")
 	}
 	r.started, r.boot = true, now
+	for _, t := range r.tasks {
+		if of := t.StepOf.Task; of != "" && (r.byName[of] == nil || r.byName[of].items == nil) {
+			r.mu.Unlock()
+			panic("tasks: " + t.Name + " is a step of " + of + ", which isn't an added Items task")
+		}
+	}
 	for _, row := range rows {
 		t := r.byName[row.Name]
 		if t == nil {
@@ -341,7 +353,7 @@ func (t *task) signal() {
 // until its work is done or Stop is called.
 func (r *Runner) Start(ctx context.Context, name string) error {
 	r.mu.Lock()
-	t := r.byName[name]
+	t := r.listedLocked(name)
 	if t == nil || t.Schedule == OnDemand {
 		r.mu.Unlock()
 		return fmt.Errorf("%w: task %s", ErrNotFound, name)
@@ -362,11 +374,12 @@ func (r *Runner) Start(ctx context.Context, name string) error {
 
 // Stop stops a task. It cancels the work in flight, which stays pending,
 // drops the items enqueued, and ends the run. Given items, it stops only
-// those, as when one library's scan is stopped. A task whose work always
-// finishes returns ErrNotStoppable.
+// those, as when one library's scan is stopped. Either way it also stops
+// what its steps were asked to do by the items it stops. A task whose work
+// always finishes returns ErrNotStoppable.
 func (r *Runner) Stop(ctx context.Context, name string, items ...id.ID) error {
 	r.mu.Lock()
-	t := r.byName[name]
+	t := r.listedLocked(name)
 	switch {
 	case t == nil || len(items) > 0 && t.items == nil:
 		r.mu.Unlock()
@@ -379,6 +392,7 @@ func (r *Runner) Stop(ctx context.Context, name string, items ...id.ID) error {
 		for _, i := range items {
 			t.items.stopLocked(i)
 		}
+		r.stopStepsLocked(t, items...)
 		r.mu.Unlock()
 		r.changed()
 		return nil
@@ -390,6 +404,7 @@ func (r *Runner) Stop(ctx context.Context, name string, items ...id.ID) error {
 		for i := range w.queued {
 			w.stopLocked(i)
 		}
+		r.stopStepsLocked(t)
 	}
 	ended := r.cutLocked(t)
 	r.mu.Unlock()

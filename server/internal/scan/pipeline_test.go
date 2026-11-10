@@ -383,6 +383,7 @@ func settle(t *testing.T, dir string) {
 type discard struct{}
 
 func (discard) Enqueue(string, ...id.ID)                                          {}
+func (discard) EnqueueFor(id.ID, string, ...id.ID)                                {}
 func (discard) Placed(context.Context, *store.Tx, catalog.Library, []id.ID) error { return nil }
 
 // noPreviews and noSubtitles drop what a probe asks of previews and

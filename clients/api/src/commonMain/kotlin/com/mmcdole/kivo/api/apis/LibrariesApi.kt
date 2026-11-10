@@ -466,7 +466,7 @@ open class LibrariesApi : ApiClient {
 
     /**
      * Stop library scan
-     * Its files in flight stop shortly after, as the &#x60;scan-libraries&#x60; task&#39;s do when it&#39;s stopped; &#x60;tasksChanged&#x60; events say when it moved. 
+     * Its files in flight, and the folders it asked to be identified, stop shortly after, as the &#x60;scan-libraries&#x60; task&#39;s do when it&#39;s stopped; &#x60;tasksChanged&#x60; events say when it moved. 
      * @param id 
      * @return void
      */

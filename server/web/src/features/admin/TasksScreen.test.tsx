@@ -2,7 +2,7 @@ import { waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { Task } from "@/api/schemas";
 import { renderApp, screen } from "@/test/render";
-import { onRequest, sendEvent, sent, serveMockApi } from "@/test/server";
+import { onRequest, scenarios, sendEvent, sent, serveMockApi } from "@/test/server";
 
 const section = (name: string) => {
   const el = screen.getByRole("heading", { name }).closest("section");
@@ -174,25 +174,13 @@ describe("Tasks", () => {
     });
   });
 
-  it("shows matching on Scan all libraries with the files left and Stop, and no row of its own", async () => {
-    const api = serveMockApi();
-    for (const id of ["prepare-downloads", "library-changes"]) {
-      const task = taskOf(api.tasks, id);
-      task.running = false;
-      delete task.progress;
-    }
-    Object.assign(taskOf(api.tasks, "scan-libraries"), {
-      progress: { step: "identify", done: 0, total: 0 },
-      pendingCount: 768,
-      running: true,
-      stoppable: true,
-    });
+  it("shows matching on Scan all libraries with a count and Stop", async () => {
+    const api = serveMockApi(scenarios.matching);
     const { user } = renderApp("/admin/tasks");
     await screen.findByRole("heading", { name: "Library" });
-    expect(screen.queryByRole("heading", { name: "On demand" })).not.toBeInTheDocument();
     const scans = rowOf(section("Library"), "Scan all libraries");
-    expect(cells(scans)[3]).toBe("Matching768 left");
-    expect(within(scans).queryByRole("progressbar")).not.toBeInTheDocument();
+    expect(cells(scans)[3]).toBe("Matching120 of 768");
+    expect(within(scans).getByRole("progressbar")).toBeInTheDocument();
     expect(screen.queryByText(/Identif/)).not.toBeInTheDocument();
     await user.click(within(scans).getByRole("button", { name: "Stop Scan all libraries" }));
     const confirm = await screen.findByRole("alertdialog", { name: "Stop Scan all libraries?" });
@@ -201,8 +189,7 @@ describe("Tasks", () => {
       expect(sent("POST", "/tasks/{task}/stop")[0]?.url.pathname).toBe("/api/v1/tasks/scan-libraries/stop"),
     );
 
-    // Files left waiting with nothing at work leave the row idle.
-    taskOf(api.tasks, "scan-libraries").pendingCount = 0;
+    Object.assign(taskOf(api.tasks, "scan-libraries"), { running: false, stoppable: false, progress: undefined });
     sendEvent({ type: "event", kind: "tasksChanged" });
     await waitFor(() =>
       expect(cells(rowOf(section("Library"), "Scan all libraries")).slice(3)).toEqual(["", "Run now"]),
