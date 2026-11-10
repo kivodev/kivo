@@ -326,7 +326,9 @@ func TestSmartQueriesStartAtWorkLibrary(t *testing.T) {
 // starts, in each sort, on generated libraries, without and with the
 // statistics SQLite gathers: at the list's own rows, by its primary key or
 // its index of places. Each one's work is looked up from there, and its
-// root, so the read never goes through a library's works.
+// root, so the read never goes through a library's works. In the custom
+// order it walks the index of places and cuts its page as it goes: it
+// sorts only works left at one place, by ID.
 func TestManualListsStartAtTheList(t *testing.T) {
 	want := []string{
 		"SEARCH lw (list_id=?)",
@@ -336,6 +338,7 @@ func TestManualListsStartAtTheList(t *testing.T) {
 	}
 	listRead := regexp.MustCompile(`^(SEARCH|SCAN) (lw|wl|w|r)( |$)`)
 	listIndex := regexp.MustCompile(`^SEARCH lw USING (PRIMARY KEY|COVERING INDEX list_work_position) `)
+	covering := strings.NewReplacer("USING COVERING INDEX work_library_work", "USING INDEX work_library_work")
 	for _, statistics := range []bool{false, true} {
 		t.Run(fmt.Sprintf("statistics=%v", statistics), func(t *testing.T) {
 			db := storetest.New(t)
@@ -360,8 +363,12 @@ func TestManualListsStartAtTheList(t *testing.T) {
 						var reads []string
 						for line := range strings.SplitSeq(got, "\n") {
 							if step := strings.TrimSpace(line); listRead.MatchString(step) && len(reads) < len(expect) {
-								reads = append(reads, listIndex.ReplaceAllString(step, "SEARCH lw "))
+								reads = append(reads, covering.Replace(listIndex.ReplaceAllString(step, "SEARCH lw ")))
 							}
+						}
+						if cut, _, _ := strings.Cut(got, "\nSCAN p\n"); sort == users.ListCustom &&
+							(strings.Contains(cut, "TEMP B-TREE FOR ORDER BY") || !strings.Contains(cut, "SEARCH lw USING COVERING INDEX list_work_position (list_id=?)")) {
+							t.Errorf("%s: a page in the custom order doesn't walk the places unsorted:\n%s", st.key(), got)
 						}
 						if !slices.Equal(reads, expect) {
 							t.Errorf("%s: reads %q, want %q in:\n%s", st.key(), reads, expect, got)

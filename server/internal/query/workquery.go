@@ -306,7 +306,8 @@ func scope(kinds []catalog.WorkKind, listed bool) (works, libraries string, nest
 //
 // A read of a list starts from the list's rows lw, if the list is the
 // user's, and looks up the row of each one's work, whatever its library: it
-// reads only the works in the list.
+// reads only the works in the list. From sortListPosition it reads the rows
+// through the index of their places, so in the custom order.
 func (c *compiler) matching(kinds []catalog.WorkKind, rd reading, from string) string {
 	works, libraries, nested := scope(kinds, !rd.list.IsZero())
 	rows, joins, age := "\n  AND wl.is_root", "", "w.content_rating_age"
@@ -336,7 +337,11 @@ func (c *compiler) matching(kinds []catalog.WorkKind, rd reading, from string) s
 		first = "FROM work_library wl INDEXED BY " + sortIndexes[from]
 	}
 	if !rd.list.IsZero() {
-		first = "FROM list_work lw\nCROSS JOIN work_library wl INDEXED BY work_library_work ON wl.work_id = lw.work_id"
+		rows := "list_work lw"
+		if from == sortListPosition {
+			rows += " INDEXED BY list_work_position"
+		}
+		first = "FROM " + rows + "\nCROSS JOIN work_library wl INDEXED BY work_library_work ON wl.work_id = lw.work_id"
 		in = "lw.list_id = (SELECT ul.id FROM list ul WHERE ul.id = @list AND ul.user_id = @user)"
 	}
 	unmatched := ""
@@ -418,6 +423,10 @@ func (c *compiler) mine(f *fieldDef, kinds []catalog.WorkKind) string {
 // key, from the user's rows, and then the rest by title. Its counted
 // statement counts the works in a pass of its own, unless the query has a
 // cap.
+//
+// A read of a list in its custom order also reads no further than the
+// page's end, through the index of the list's places, sorting only works
+// left at one place.
 func compile(q WorkQuery, vw viewer, now time.Time, seed string, only []catalog.WorkKind, rd reading) compiled {
 	kinds := narrowed(q, only)
 	_, _, nested := scope(kinds, !rd.list.IsZero())
@@ -481,6 +490,15 @@ ORDER BY p.` + strings.ReplaceAll(by, ", ", ", p.")
 		counted: statement("MATERIALIZED (\n"+capped(selected("", titled, ""), by)+"\n)", by, "matched"),
 		page:    statement("(\n"+capped(selected("", columns, ""), by)+"\n)", by, ""),
 		args:    vw.args(append(c.params, sql.Named("only", set(only)), sql.Named("library", rd.library), sql.Named("list", rd.list))...),
+	}
+	if c.list && len(q.Sort) == 1 && q.Sort[0] == (SortKey{Field: sortListPosition}) {
+		// The places order the works by themselves: k0, and id for two
+		// works left at one place.
+		const by = "k0, id"
+		matched := "(\n" + selected(sortListPosition, "lw.position AS k0", "") + "\n)"
+		out.page = statement(matched, by, "")
+		out.counted = statement(matched, by, "(SELECT wl.sort_title AS t"+rules.matching(kinds, rd, "")+where+")")
+		return out
 	}
 	f := ordered(q, kinds)
 	if f == nil || rd.library.IsZero() {
