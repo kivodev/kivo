@@ -1,13 +1,18 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,6 +21,7 @@ import (
 	"github.com/mmcdole/kivo/internal/config"
 	"github.com/mmcdole/kivo/internal/egress"
 	"github.com/mmcdole/kivo/internal/events"
+	"github.com/mmcdole/kivo/internal/health"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/identify"
 	"github.com/mmcdole/kivo/internal/media"
@@ -138,6 +144,8 @@ var errorProblems = []struct {
 	{"egress.ErrRefused", egress.ErrRefused, 500, "internal"},
 	{"egress.ErrTooLarge", egress.ErrTooLarge, 500, "internal"},
 	{"id.ErrInvalid", id.ErrInvalid, 500, "internal"},
+	{"health.ErrDiskFull", health.ErrDiskFull, 500, "internal"},
+	{"subtitles.ErrUnextractable", subtitles.ErrUnextractable, 500, "internal"},
 }
 
 // TestErrorProblems checks the status and code of every exported error
@@ -169,6 +177,32 @@ func TestErrorProblems(t *testing.T) {
 	}
 	if p, known := problemFor(errors.New("disk on fire: /secret/path")); known || p.status != 500 || p.code != "internal" || p.detail != "" {
 		t.Errorf("an unknown error: %+v, known %v", p, known)
+	}
+}
+
+// TestInternalErrorResponse checks that every error answered as a 500
+// gets the same response as an error api has never heard of: no detail, no
+// code of its own, and its text in the log only.
+func TestInternalErrorResponse(t *testing.T) {
+	respond := func(err error) (*httptest.ResponseRecorder, string) {
+		var logs bytes.Buffer
+		s := &Server{log: slog.New(slog.NewTextHandler(&logs, nil))}
+		w := httptest.NewRecorder()
+		s.writeError(w, httptest.NewRequest("GET", "/api/v1/libraries", nil), fmt.Errorf("pkg: operation: %w", err))
+		return w, logs.String()
+	}
+	want, _ := respond(errors.New("disk on fire: /secret/path"))
+	for _, tc := range errorProblems {
+		if tc.code != codeInternal {
+			continue
+		}
+		w, logs := respond(tc.err)
+		if w.Code != want.Code || w.Body.String() != want.Body.String() || !maps.EqualFunc(w.Header(), want.Header(), slices.Equal) {
+			t.Errorf("%s: %d %v %s, want %d %v %s", tc.name, w.Code, w.Header(), w.Body, want.Code, want.Header(), want.Body)
+		}
+		if !strings.Contains(logs, "request failed") || !strings.Contains(logs, tc.err.Error()) {
+			t.Errorf("%s: logs %q", tc.name, logs)
+		}
 	}
 }
 

@@ -121,10 +121,11 @@ type budgetCase struct {
 	read    func() error
 }
 
-// smartCases are the reads of the smart lists and of a Home that shows five
-// of them. A list's page reads its works, which counts them too, and its
-// header reads the list with its count. held names the lists whose reads
-// are held to browseBudget; Home is timed only.
+// smartCases are the reads of the smart lists, of the Lists screen, and of
+// a Home that shows five of the lists. A list's page reads its works, which
+// counts them too, and its header reads the list with its count. held
+// names the lists whose reads are held to browseBudget; Home and the Lists
+// screen are timed only.
 func smartCases(q *query.Service, v users.Viewer, smart []smartList, held ...string) []budgetCase {
 	var tests []budgetCase
 	for _, l := range smart {
@@ -136,7 +137,9 @@ func smartCases(q *query.Service, v users.Viewer, smart []smartList, held ...str
 			}},
 			budgetCase{"smart " + l.name + ", count", browseBudget, enforce, func() error { _, err := q.List(ctx, v, l.id); return err }})
 	}
-	return append(tests, budgetCase{"home, 5 smart rows", homeBudget, false, func() error { _, _, err := q.Home(ctx, v); return err }})
+	return append(tests,
+		budgetCase{"home, 5 smart rows", homeBudget, false, func() error { _, _, err := q.Home(ctx, v); return err }},
+		budgetCase{"lists screen, 10 lists", browseBudget, false, func() error { _, err := q.CountedLists(ctx, v); return err }})
 }
 
 // timeBudgets times each read and fails for an enforced one whose p95 is
@@ -424,6 +427,27 @@ func smartViewer(t *testing.T, db *store.DB, q *query.Service, libs ...id.ID) (u
 			t.Fatal(err)
 		}
 		out = append(out, smartList{d.name, list})
+	}
+	// Three manual lists, with none, 2 and 200 movies, make ten lists with
+	// Watchlist for the Lists screen.
+	for _, every := range []int{0, 1000, 10} {
+		list, err := svc.CreateList(ctx, v, fmt.Sprintf("manual %d", every), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if every == 0 {
+			continue
+		}
+		err = db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
+			_, err := tx.ExecContext(ctx, `
+				INSERT INTO list_work (list_id, work_id, added_at)
+				SELECT @list, id, rid FROM work WHERE kind = 'movie' AND rid <= 2000 AND rid % @every = 0`,
+				sql.Named("list", list), sql.Named("every", every))
+			return err
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 	rows, err := q.HomeRows(ctx, v)
 	if err != nil {

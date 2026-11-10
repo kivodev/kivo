@@ -66,6 +66,8 @@ func TestCompileMatchesOld(t *testing.T) {
 				}
 				variants := []differentialVariant{{limit: 100000}}
 				switch n % 6 {
+				case 0: // as a list's covers read its first works
+					variants = append(variants, differentialVariant{limit: 3})
 				case 1:
 					variants = append(variants, differentialVariant{limit: 7, offset: 5}, differentialVariant{limit: 50, offset: 100000})
 				case 2:
