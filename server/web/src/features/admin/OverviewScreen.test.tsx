@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { MockApi } from "@/api/mocks/api";
 import { serverQueries } from "@/api/server";
 import { locationOf, renderApp, screen } from "@/test/render";
-import { mockId, scenarios, sendEvent, serveMockApi } from "@/test/server";
+import { mockId, mockIds, scenarios, sendEvent, serveMockApi } from "@/test/server";
 
 /** The progress line whose label, on its left, starts with `label`. */
 const lineOf = (label: string) =>
@@ -167,6 +167,16 @@ describe("Overview", () => {
     // Nor the version, uptime or scans the Overview once had.
     expect(screen.queryByText(/^Kivo /)).toBeNull();
     expect(screen.queryByText("No scans running.")).toBeNull();
+  });
+
+  it("shows a library matching its files with no count", async () => {
+    const api = serveMockApi(scenarios.quiet);
+    const movies = api.libraries.find((l) => l.id === mockIds.movies);
+    if (movies)
+      movies.scan = { libraryId: mockIds.movies, state: "scanning", progress: { step: "identify", done: 0, total: 0 } };
+    renderApp("/admin");
+    expect(await lineOf("Scanning Movies · Matching")).toHaveTextContent(/^Scanning Movies · Matching$/);
+    expect(document.querySelector('[role="progressbar"]')).toBeNull();
   });
 
   it("says when nothing is playing, and shows a play that starts, told by the server", async () => {

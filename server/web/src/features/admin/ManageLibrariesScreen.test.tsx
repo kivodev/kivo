@@ -68,6 +68,25 @@ describe("Admin Libraries", () => {
     expect(screen.queryByText(/View progress in/)).not.toBeInTheDocument();
   });
 
+  it("shows Matching with no count or Stop while files wait to be identified, until they are", async () => {
+    const api = serveMockApi();
+    movies(api).scan = {
+      libraryId: mockIds.movies,
+      state: "scanning",
+      progress: { step: "identify", done: 0, total: 0 },
+    };
+    renderApp("/admin/libraries");
+    await screen.findByRole("heading", { name: "Libraries" });
+    const step = rowOf("Movies").querySelector<HTMLElement>('[data-part="step-progress"][data-step="identify"]');
+    expect(step).toHaveTextContent(/^Scanning · Matching$/);
+    expect(within(rowOf("Movies")).queryByRole("button", { name: "Stop" })).not.toBeInTheDocument();
+    expect(rowOf("Movies").querySelector('[role="progressbar"]')).toBeNull();
+
+    movies(api).scan = { libraryId: mockIds.movies, state: "idle" };
+    sendEvent({ type: "event", kind: "tasksChanged" });
+    await waitFor(() => expect(rowOf("Movies").querySelector('[data-part="scan"]')).toBeNull(), { timeout: 3000 });
+  });
+
   it("refreshes all metadata from the menu after asking", async () => {
     serveMockApi();
     const { user } = renderApp("/admin/libraries");

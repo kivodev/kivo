@@ -126,8 +126,28 @@ func (i *Identifier) pending(ctx context.Context) ([]id.ID, error) {
 // pendingCount counts the files that need identifying. Pending lists one of
 // them for each folder.
 func (i *Identifier) pendingCount(ctx context.Context) (int, error) {
-	n, err := i.q.CountUnidentified(ctx)
-	return int(n), err
+	waiting, err := i.Waiting(ctx)
+	n := 0
+	for _, w := range waiting {
+		n += w
+	}
+	return n, err
+}
+
+// Waiting counts, by library, the files that need identifying. A library
+// with none is absent. Files stay counted while their folder can't be
+// identified, as during a provider outage; a folder looked up with no match
+// is identified, as unmatched.
+func (i *Identifier) Waiting(ctx context.Context) (map[id.ID]int, error) {
+	rows, err := i.q.CountUnidentified(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[id.ID]int, len(rows))
+	for _, r := range rows {
+		out[r.LibraryID] = int(r.Files)
+	}
+	return out, nil
 }
 
 // unidentified lists, by path, the first file that needs identifying in each

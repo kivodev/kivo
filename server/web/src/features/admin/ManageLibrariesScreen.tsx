@@ -206,15 +206,18 @@ function LibraryRow({
               progress={status.progress}
               edge
               action={
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="-my-1.5 -mr-3"
-                  isPending={stop.isPending}
-                  onPress={() => stop.mutate(path)}
-                >
-                  <Trans>Stop</Trans>
-                </Button>
+                // Stop ends a scan, not the matching that follows it.
+                status.progress?.step !== "identify" && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="-my-1.5 -mr-3"
+                    isPending={stop.isPending}
+                    onPress={() => stop.mutate(path)}
+                  >
+                    <Trans>Stop</Trans>
+                  </Button>
+                )
               }
             />
           </div>

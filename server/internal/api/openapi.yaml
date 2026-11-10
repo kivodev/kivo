@@ -5038,8 +5038,9 @@ components:
     LibraryScanState:
       type: string
       description: |
-        What a library's scan is doing: `scanning` while it's scanned,
-        `unreachable` when a folder can't be read.
+        What a library's scan is doing: `scanning` while it's scanned or
+        has files waiting to be identified, `unreachable` when a folder
+        can't be read.
       enum: [idle, scanning, unreachable]
 
     ScanProgress:
@@ -5058,9 +5059,10 @@ components:
       type: string
       description: |
         A step of a library's scan: `walk` finding files, a folder at a
-        time; `probe` reading the files new or changed. Skip steps you
-        don't know.
-      enum: [walk, probe]
+        time; `probe` reading the files new or changed; `identify` matching
+        the folders of files read but not yet identified, which has no
+        counts, so `done` and `total` are 0. Skip steps you don't know.
+      enum: [walk, probe, identify]
 
     Home:
       type: object

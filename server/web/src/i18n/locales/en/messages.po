@@ -294,6 +294,10 @@ msgstr "For example, Home Assistant."
 msgid "People"
 msgstr "People"
 
+#: src/features/admin/useAdminLabels.ts
+msgid "Matching"
+msgstr "Matching"
+
 #: src/features/lists/smartLabels.ts
 msgid "highest first"
 msgstr "highest first"
