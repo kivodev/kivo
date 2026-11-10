@@ -13,7 +13,9 @@ import type { PlayerAction, PlayerFailure } from "./reducer";
 // fallback request, up to maxFallbacks times. A play in picture-in-picture asks for no external
 // subtitles, since nothing drawn over the video shows there, and entering or
 // leaving it starts a new play when the subtitle needs one to show. It stops
-// the play when the player goes away. It is plain
+// the play when the player goes away. It plays, pauses and follows the play
+// through the engine, and keeps the media element only to attach engines to
+// and for picture-in-picture, which is the element's own. It is plain
 // TypeScript holding mutable instances, and the React side only sees the
 // reducer's actions.
 
@@ -93,50 +95,11 @@ export class PlayerController {
     this.#media = media;
     this.#dispatch = dispatch;
     this.#onEnded = onEnded;
-    const handlers: [keyof HTMLMediaElementEventMap, () => void][] = [
-      ["play", () => dispatch({ type: "play" })],
-      [
-        "pause",
-        () => {
-          // Reaching the end of a part pauses on the way to the next one.
-          if (media.ended) return;
-          dispatch({ type: "pause" });
-          this.#beat("paused");
-        },
-      ],
-      [
-        "waiting",
-        () => {
-          this.#waiting = true;
-          dispatch({ type: "waiting" });
-        },
-      ],
-      [
-        "playing",
-        () => {
-          this.#waiting = false;
-          dispatch({ type: "playing" });
-        },
-      ],
-      [
-        "seeked",
-        () => {
-          if (this.#seekStartedAt === undefined) return;
-          const seekToFirstFrameMs = Math.round(performance.now() - this.#seekStartedAt);
-          this.#seekStartedAt = undefined;
-          dispatch({ type: "seeked" });
-          this.#beat(undefined, { seekToFirstFrameMs });
-        },
-      ],
-      ["timeupdate", () => this.#engine && dispatch({ type: "time", positionMs: this.positionMs() })],
-    ];
-    for (const [type, fn] of handlers) media.addEventListener(type, fn);
     const pictureInPicture = () => this.#followPictureInPicture();
     for (const type of ["enterpictureinpicture", "leavepictureinpicture"]) {
       media.addEventListener(type, pictureInPicture);
     }
     this.#removeListeners = () => {
-      for (const [type, fn] of handlers) media.removeEventListener(type, fn);
       for (const type of ["enterpictureinpicture", "leavepictureinpicture"]) {
         media.removeEventListener(type, pictureInPicture);
       }
@@ -259,18 +222,19 @@ export class PlayerController {
   }
 
   togglePlay(): void {
-    if (this.#media.paused) this.resume();
+    if (this.#engine?.paused() ?? true) this.resume();
     else this.pause();
   }
 
   resume(): void {
-    if (!this.#engine) return;
-    if (this.#media.ended) this.seek(0);
-    this.#media.play().catch(() => this.#dispatch({ type: "pause" }));
+    const engine = this.#engine;
+    if (!engine) return;
+    if (engine.ended()) this.seek(0);
+    engine.play().catch(() => this.#dispatch({ type: "pause" }));
   }
 
   pause(): void {
-    if (this.#engine) this.#media.pause();
+    this.#engine?.pause();
   }
 
   /** Shows the subtitle track with this ID from the media itself, or none. */
@@ -319,8 +283,8 @@ export class PlayerController {
    */
   suspend(): void {
     if (!this.#play) return;
-    this.#suspended = { paused: this.#media.paused };
-    this.#media.pause();
+    this.#suspended = { paused: this.#engine?.paused() ?? true };
+    this.#engine?.pause();
     this.stopOnExit();
   }
 
@@ -370,8 +334,13 @@ export class PlayerController {
     this.positionMs();
     clearInterval(this.#timer);
     this.#timer = undefined;
-    this.#engine?.destroy();
+    const engine = this.#engine;
     this.#engine = undefined;
+    if (engine) {
+      engine.destroy();
+      // Nothing plays once the engine is gone, and it reports nothing more.
+      this.#dispatch({ type: "pause" });
+    }
     this.#seekStartedAt = undefined;
     this.#waiting = false;
   }
@@ -381,6 +350,10 @@ export class PlayerController {
     this.#lastPositionMs = play.startMs;
     this.#dispatch({ type: "started", play });
     const current = () => generation === this.#generation;
+    const start = (engine: Engine) => engine.play().catch(() => this.#dispatch({ type: "pause" }));
+    // An engine may be ready before it's handed over here, and then plays once it is.
+    let attached: Engine | undefined;
+    let readyFirst = false;
     const engine = await attachEngine(this.#media, play, {
       onReady: () => {
         if (!current()) return;
@@ -390,7 +363,36 @@ export class PlayerController {
           this.#dispatch({ type: "pause" });
           return;
         }
-        this.#media.play().catch(() => this.#dispatch({ type: "pause" }));
+        if (attached) void start(attached);
+        else readyFirst = true;
+      },
+      onPlay: () => {
+        if (current()) this.#dispatch({ type: "play" });
+      },
+      onPause: () => {
+        if (!current()) return;
+        this.#dispatch({ type: "pause" });
+        this.#beat("paused");
+      },
+      onWaiting: () => {
+        if (!current()) return;
+        this.#waiting = true;
+        this.#dispatch({ type: "waiting" });
+      },
+      onPlaying: () => {
+        if (!current()) return;
+        this.#waiting = false;
+        this.#dispatch({ type: "playing" });
+      },
+      onSeeked: () => {
+        if (!current() || this.#seekStartedAt === undefined) return;
+        const seekToFirstFrameMs = Math.round(performance.now() - this.#seekStartedAt);
+        this.#seekStartedAt = undefined;
+        this.#dispatch({ type: "seeked" });
+        this.#beat(undefined, { seekToFirstFrameMs });
+      },
+      onTime: () => {
+        if (current() && this.#engine) this.#dispatch({ type: "time", positionMs: this.positionMs() });
       },
       onEnded: () => {
         if (!current()) return;
@@ -407,6 +409,8 @@ export class PlayerController {
       return;
     }
     this.#engine = engine;
+    attached = engine;
+    if (engine && readyFirst) void start(engine);
     engine?.showSubtitle(this.#mediaSubtitle);
     this.#timer = setInterval(() => this.#beat(), heartbeatMs);
     // Picture-in-picture may have started or ended while the play was on its way.
@@ -489,7 +493,7 @@ export class PlayerController {
     if (bandwidthBps !== undefined && !play.local) rememberBandwidth(bandwidthBps);
     const body: PlayUpdate = {
       positionMs: Math.round(this.positionMs()),
-      state: state ?? (this.#media.paused ? "paused" : this.#waiting ? "buffering" : "playing"),
+      state: state ?? (this.#engine.paused() ? "paused" : this.#waiting ? "buffering" : "playing"),
       bandwidthBps,
       subtitleTrackId: this.#shownSubtitle,
       audioTrackId: this.#shownAudio,

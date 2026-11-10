@@ -13,25 +13,18 @@ type Props = {
   subtitleTrack: Track | undefined;
   /** How the chosen subtitle shows, as the play's tracks say. */
   shown: PlayTrack | undefined;
-  onPause: () => void;
 };
 
 /**
  * PlayerVideo is the picture: the video with the chosen subtitle as a text
  * track, or drawn over it by the renderers.
  */
-export function PlayerVideo({ videoRef, subtitle, textTrackUrl, subtitleTrack, shown, onPause }: Props) {
+export function PlayerVideo({ videoRef, subtitle, textTrackUrl, subtitleTrack, shown }: Props) {
   const { t } = useLingui();
   return (
     <>
       {/* biome-ignore lint/a11y/useMediaCaption: captions come from the chosen subtitle, shown as a text track, by the stream or by the renderers. */}
-      <video
-        ref={videoRef}
-        playsInline
-        data-surface
-        onPause={onPause}
-        className="absolute inset-0 size-full bg-player object-contain"
-      >
+      <video ref={videoRef} playsInline data-surface className="absolute inset-0 size-full bg-player object-contain">
         {textTrackUrl && (
           <track
             key={textTrackUrl}

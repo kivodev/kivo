@@ -81,7 +81,17 @@ const play: PlayStarted = {
 
 function attach(s: PlayStarted = play, tv = false) {
   const video = document.createElement("video");
-  const events = { onReady: vi.fn(), onEnded: vi.fn(), onFailure: vi.fn() };
+  const events = {
+    onReady: vi.fn(),
+    onEnded: vi.fn(),
+    onFailure: vi.fn(),
+    onPlay: vi.fn(),
+    onPause: vi.fn(),
+    onWaiting: vi.fn(),
+    onPlaying: vi.fn(),
+    onSeeked: vi.fn(),
+    onTime: vi.fn(),
+  };
   return { video, events, engine: attachEngine(video, s, events, tv) };
 }
 
@@ -125,6 +135,41 @@ describe("file engine", () => {
     expect(events.onEnded).toHaveBeenCalledOnce();
   });
 
+  it("plays and pauses the element, and passes on what the element does, whoever asked", async () => {
+    const { video, events, engine } = attach({ ...play, startMs: 0 });
+    const e = await engine;
+    await waitFor(() => expect(events.onReady).toHaveBeenCalled());
+    expect(e?.paused()).toBe(true);
+    await e?.play();
+    expect(video.paused).toBe(false);
+    expect(e?.paused()).toBe(false);
+    // The element reports on a later task, as a browser's does.
+    await waitFor(() => expect(events.onPlaying).toHaveBeenCalledOnce());
+    expect(events.onPlay).toHaveBeenCalledOnce();
+    // The browser's own controls pause the element behind the engine's back.
+    video.pause();
+    await waitFor(() => expect(events.onPause).toHaveBeenCalledOnce());
+    playTo(video, 30);
+    expect(events.onTime).toHaveBeenCalledOnce();
+    video.dispatchEvent(new Event("waiting"));
+    video.dispatchEvent(new Event("seeked"));
+    expect(events.onWaiting).toHaveBeenCalledOnce();
+    expect(events.onSeeked).toHaveBeenCalledOnce();
+  });
+
+  it("doesn't report the pause at the end of a part as a pause", async () => {
+    const { video, events, engine } = attach({ ...play, startMs: 0 });
+    const e = await engine;
+    await waitFor(() => expect(events.onReady).toHaveBeenCalled());
+    await e?.play();
+    playToEnd(video);
+    await waitFor(() => expect(video.paused).toBe(false));
+    playToEnd(video);
+    expect(events.onEnded).toHaveBeenCalledOnce();
+    expect(e?.ended()).toBe(true);
+    expect(events.onPause).not.toHaveBeenCalled();
+  });
+
   it("reports a media error once, by its fallback code", async () => {
     const { video, events, engine } = attach();
     await engine;
@@ -159,7 +204,11 @@ describe("file engine", () => {
     expect(video.hasAttribute("src")).toBe(false);
     expect(load).toHaveBeenCalled();
     video.dispatchEvent(new Event("ended"));
+    video.dispatchEvent(new Event("pause"));
+    video.dispatchEvent(new Event("timeupdate"));
     expect(events.onEnded).not.toHaveBeenCalled();
+    expect(events.onPause).not.toHaveBeenCalled();
+    expect(events.onTime).not.toHaveBeenCalled();
   });
 });
 
