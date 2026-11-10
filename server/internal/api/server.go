@@ -8,6 +8,7 @@ import (
 	"github.com/mmcdole/kivo/internal/api/internal/gen"
 	"github.com/mmcdole/kivo/internal/auth"
 	"github.com/mmcdole/kivo/internal/playback"
+	kivoversion "github.com/mmcdole/kivo/internal/version"
 )
 
 // GetServer returns the server's info. Anyone may see the basics. A
@@ -81,9 +82,13 @@ const maxProbeHost = 255
 const castProtocol = 3
 
 // serverInfo is the server as anyone may see it, even signed out. It
-// gives the server's ID, name, version and cast protocol.
+// gives the server's ID, name, version, the oldest app it supports and
+// its cast protocol.
 func (s *Server) serverInfo() gen.ServerInfo {
-	return gen.ServerInfo{ID: s.deps.Settings.ServerID(), Name: s.deps.Settings.Get().ServerName, Version: s.deps.Version, CastProtocol: ptr(castProtocol)}
+	return gen.ServerInfo{
+		ID: s.deps.Settings.ServerID(), Name: s.deps.Settings.Get().ServerName, Version: s.deps.Version,
+		MinAppVersion: ptr(kivoversion.MinApp), CastProtocol: ptr(castProtocol),
+	}
 }
 
 // addresses lists the server's URLs for a client at ip. The local URLs

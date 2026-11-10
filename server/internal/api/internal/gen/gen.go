@@ -4344,6 +4344,11 @@ type ServerInfo struct {
 	// rest.
 	LocalUrls *[]string `json:"localUrls,omitempty"`
 
+	// MinAppVersion The oldest app release the server supports, such as `0.3.0`. An
+	// app older than it says it needs an update and asks nothing more
+	// of the server.
+	MinAppVersion *string `json:"minAppVersion,omitempty"`
+
 	// Name The server's name, from the `serverName` setting.
 	Name string `json:"name"`
 

@@ -26,6 +26,7 @@ import { searchRoute } from "@/routes/search";
 import { settingsRoute } from "@/routes/settings";
 import { setupRoute } from "@/routes/setup";
 import { signInRoute } from "@/routes/signIn";
+import { createUpdateRoute } from "@/routes/update";
 import { watchRoute } from "@/routes/watch";
 import { workRoute } from "@/routes/work";
 import { isPackaged, isTv } from "@/tv/flag";
@@ -34,9 +35,9 @@ import { RouteError } from "./RouteStates";
 // TV has no admin area; its routes and screens stay in the web build.
 const adminRoutes = isTv ? [] : [createAdminRouteTree()];
 
-// The packaged TV app's address screen. Only that build has it: elsewhere
-// the factory is never called, so the build drops it.
-const packagedRoutes = isPackaged ? [createAddressRoute()] : [];
+// The packaged TV app's address and update screens. Only that build has
+// them: elsewhere the factories are never called, so the build drops them.
+const packagedRoutes = isPackaged ? [createAddressRoute(), createUpdateRoute()] : [];
 
 const routeTree = rootRoute.addChildren([
   ...packagedRoutes,

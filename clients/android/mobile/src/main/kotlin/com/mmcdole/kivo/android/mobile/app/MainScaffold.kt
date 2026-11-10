@@ -96,8 +96,10 @@ import com.mmcdole.kivo.android.mobile.settings.SubtitleSettingsScreen
 import com.mmcdole.kivo.android.mobile.settings.LicenseScreen
 import com.mmcdole.kivo.android.mobile.settings.LicensesScreen
 import com.mmcdole.kivo.android.mobile.settings.SettingsScreen
+import com.mmcdole.kivo.android.mobile.ui.Incompatible
 import com.mmcdole.kivo.android.mobile.ui.LocalWide
 import com.mmcdole.kivo.api.models.Library
+import com.mmcdole.kivo.core.Compatibility
 import com.mmcdole.kivo.core.session.KivoSession
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -120,6 +122,10 @@ class MainViewModel(session: KivoSession) : ViewModel() {
  * something plays on a TV. The player, Now Playing and the cast's remote
  * take the whole screen. The window that has the rail has the wide
  * layouts too ([LocalWide]). A `kivo://link` link opens Link a device.
+ *
+ * While the app and the server don't work together, which of them needs an
+ * update shows in place of the screens. A phone with downloads keeps its
+ * bar and its Downloads tab, whose downloads play without the server.
  */
 @Composable
 fun MainScaffold(session: ServerSession) {
@@ -146,7 +152,11 @@ fun MainScaffold(session: ServerSession) {
         (destination.hasRoute(PlayerRoute::class) || destination.hasRoute(NowPlayingRoute::class) || destination.hasRoute(CastRemoteRoute::class) ||
             destination.hasRoute(SmartListBuilderRoute::class))
     val suite = NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(currentWindowAdaptiveInfo())
-    val type = if (fullScreen) NavigationSuiteType.None else suite
+    val compatibility by session.session.compatibility.collectAsStateWithLifecycle()
+    val downloads by session.downloads.collectAsStateWithLifecycle()
+    val incompatible = compatibility != Compatibility.Compatible
+    val blocked = incompatible && (downloads.isEmpty() || current != Tab.Downloads)
+    val type = if (fullScreen || (incompatible && downloads.isEmpty())) NavigationSuiteType.None else suite
 
     NavigationSuiteScaffoldLayout(
         layoutType = type,
@@ -165,7 +175,9 @@ fun MainScaffold(session: ServerSession) {
             else -> WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)
         }
         CompositionLocalProvider(LocalCast provides cast.takeIf { it.offered }, LocalWide provides (suite == NavigationSuiteType.NavigationRail)) {
-            Column(Modifier.fillMaxSize()) {
+            if (blocked) {
+                Incompatible(compatibility, session.session.savedServer.collectAsStateWithLifecycle().value.name, session::checkCompatibility, session.graph::changeServer)
+            } else Column(Modifier.fillMaxSize()) {
                 NavHost(controller, startDestination = HomeTab, modifier = Modifier.weight(1f).fillMaxWidth().consumeWindowInsets(suiteInsets)) {
                     tabs(session, nav)
                     pages(session, nav, cast)

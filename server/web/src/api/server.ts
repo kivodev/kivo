@@ -1,4 +1,7 @@
-import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { AnyRouter } from "@tanstack/react-router";
+import { type Compatibility, compatibility } from "@/tv/compatibility";
+import { packagedServer } from "@/tv/packaged";
 import { $api, client } from "./client";
 import { gatewayDown } from "./problem";
 import type { QualityRung } from "./schemas";
@@ -8,10 +11,10 @@ export const serverQueries = {
   info: () => $api.queryOptions("get", "/api/v1/server", undefined, { staleTime: Number.POSITIVE_INFINITY }),
   /**
    * The packaged app's probe of its kept server, once each time it starts,
-   * so a server below the floor is found before anything else is asked of
-   * it. Only a Kivo server's answer is kept: an
-   * address that didn't answer, or answered as something else, is asked
-   * again, and a server that has come back has its version checked then.
+   * so a server the app doesn't work with is found before anything else is
+   * asked of it. Only a Kivo server's answer is kept: an address that
+   * didn't answer, or answered as something else, is asked again, and a
+   * server that has come back has its version checked then.
    */
   probe: (baseUrl: string) =>
     queryOptions({
@@ -30,10 +33,19 @@ export function useQualityLadder(): QualityRung[] {
 
 /**
  * What an address answered the packaged TV app's probe: a Kivo server,
- * with its ID and version; something that isn't one, such as a router's
- * admin page on a reused address; or no answer in time.
+ * with its ID, name and version and the oldest app it supports, when it
+ * says; something that isn't one, such as a router's admin page on a
+ * reused address; or no answer in time.
  */
-export type ServerProbe = { result: "kivo"; id: string; version: string } | { result: "other" } | { result: "none" };
+export type ServerProbe =
+  | { result: "kivo"; id: string; name: string; version: string; minAppVersion?: string }
+  | { result: "other" }
+  | { result: "none" };
+
+/** How the packaged app and the server a probe found stand: whether they work together. */
+export function probeCompatibility(probe: ServerProbe & { result: "kivo" }): Compatibility {
+  return compatibility(probe.version, probe.minAppVersion);
+}
 
 /**
  * Asks the server at a base URL, such as "https://nas:8484/kivo", what it
@@ -61,9 +73,9 @@ async function probeServer(baseUrl: string): Promise<ServerProbe> {
     return { result: "other" };
   }
   if (typeof info !== "object" || info === null) return { result: "other" };
-  const { id, name, version } = info as Record<string, unknown>;
+  const { id, name, version, minAppVersion } = info as Record<string, unknown>;
   if (typeof id !== "string" || typeof name !== "string" || typeof version !== "string") return { result: "other" };
-  return { result: "kivo", id, version };
+  return { result: "kivo", id, name, version, ...(typeof minAppVersion === "string" ? { minAppVersion } : {}) };
 }
 
 function ask(baseUrl: string) {
@@ -79,6 +91,21 @@ function ask(baseUrl: string) {
 export function useProbeServer(): (baseUrl: string) => Promise<ServerProbe> {
   const queryClient = useQueryClient();
   return (baseUrl) => queryClient.fetchQuery({ ...serverQueries.probe(baseUrl), staleTime: 0 });
+}
+
+/**
+ * The packaged app's check of its server as the events socket reconnects,
+ * which it does when the server restarts on another version: the server is
+ * asked what it is again, and one the app no longer works with sends the
+ * app to the screen that says which of them needs an update.
+ */
+export async function recheckServer(queryClient: QueryClient, router: AnyRouter): Promise<void> {
+  const server = packagedServer();
+  if (server === undefined) return;
+  const probe = await queryClient.fetchQuery({ ...serverQueries.probe(server.address), staleTime: 0 });
+  if (probe.result === "kivo" && probeCompatibility(probe).state !== "compatible") {
+    await router.navigate({ to: "/update", replace: true });
+  }
 }
 
 /**

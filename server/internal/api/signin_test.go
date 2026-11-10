@@ -19,6 +19,7 @@ import (
 	"github.com/mmcdole/kivo/internal/auth"
 	"github.com/mmcdole/kivo/internal/config"
 	"github.com/mmcdole/kivo/internal/release"
+	kivoversion "github.com/mmcdole/kivo/internal/version"
 )
 
 // A TV starts a code, and a signed-in user looks it up and approves it.
@@ -574,7 +575,7 @@ func TestServerInfo(t *testing.T) {
 		t.Fatal(err)
 	}
 	anon := decode[map[string]any](t, e.do("GET", "/api/v1/server", "", nil))
-	if len(anon) != 4 || anon["castProtocol"] != float64(castProtocol) || anon["id"] != e.d.Settings.ServerID().String() || anon["name"] != "Den" || anon["version"] != "1.2.3" {
+	if len(anon) != 5 || anon["castProtocol"] != float64(castProtocol) || anon["id"] != e.d.Settings.ServerID().String() || anon["name"] != "Den" || anon["version"] != "1.2.3" || anon["minAppVersion"] != kivoversion.MinApp {
 		t.Errorf("signed out: %v", anon)
 	}
 	in := decode[map[string]any](t, e.do("GET", "/api/v1/server", e.nobodyToken, nil))
@@ -592,7 +593,7 @@ func TestServerInfo(t *testing.T) {
 	if err := e.d.Auth.RevokeSession(ctx, auth.Caller{User: e.admin}, e.adminSession); err != nil {
 		t.Fatal(err)
 	}
-	if got := decode[map[string]any](t, e.do("GET", "/api/v1/server", e.adminToken, nil)); len(got) != 4 {
+	if got := decode[map[string]any](t, e.do("GET", "/api/v1/server", e.adminToken, nil)); len(got) != 5 {
 		t.Errorf("revoked token: %v", got)
 	}
 }

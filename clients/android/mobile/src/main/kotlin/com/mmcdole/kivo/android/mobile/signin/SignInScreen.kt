@@ -79,6 +79,7 @@ import com.mmcdole.kivo.android.AppGraph
 import com.mmcdole.kivo.android.mobile.R
 import com.mmcdole.kivo.android.platform.R as PlatformR
 import com.mmcdole.kivo.android.mobile.theme.space
+import com.mmcdole.kivo.android.mobile.ui.Incompatible
 import com.mmcdole.kivo.android.mobile.ui.sentence
 import com.mmcdole.kivo.core.auth.SavedServer
 
@@ -88,7 +89,8 @@ private val askForLocalNetwork = Build.VERSION.SDK_INT >= 37
 /**
  * Signing in: choose a server, the last signed in to, one found on the
  * network or a typed address; then its password, or a code a signed-in
- * device approves.
+ * device approves. A server the app doesn't work with says which of them
+ * needs an update, in place of its password.
  */
 @Composable
 fun SignInScreen(graph: AppGraph, saved: SavedServer?) {
@@ -97,7 +99,10 @@ fun SignInScreen(graph: AppGraph, saved: SavedServer?) {
     }
     val state by model.state.collectAsStateWithLifecycle()
     BackHandler(enabled = state.step != SignInStep.Find) { model.back() }
-    SignInContent(state, model)
+    when (val step = state.step) {
+        is SignInStep.Incompatible -> Incompatible(step.problem, step.server.info.name, model::retryCompatibility, onChangeServer = { model.back() })
+        else -> SignInContent(state, model)
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -135,6 +140,7 @@ private fun SignInContent(state: SignInUiState, model: SignInViewModel) {
                     SignInStep.Find -> FindServer(state, model)
                     is SignInStep.Password -> Password(state, step, model)
                     is SignInStep.Link -> LinkCode(state.link, step.server.info.name, model::retryLink)
+                    is SignInStep.Incompatible -> Unit
                 }
             }
         }

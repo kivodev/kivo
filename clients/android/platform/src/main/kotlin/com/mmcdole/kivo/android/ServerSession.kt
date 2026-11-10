@@ -84,6 +84,19 @@ class ServerSession(val graph: AppGraph, val session: KivoSession, savedGrids: M
         }
     }
 
+    /** Asks the server what it is again, as Try again does on a server the app doesn't work with. */
+    fun checkCompatibility() {
+        scope.launch {
+            try {
+                session.serverInfo()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // It stays as it last said it is.
+            }
+        }
+    }
+
     private val bookPlayback = lazy { BookPlayback(this) }
 
     /** The phone's book player, made as it's first wanted. */

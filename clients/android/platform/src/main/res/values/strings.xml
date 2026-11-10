@@ -6,4 +6,11 @@
     <string name="downloads_channel">Downloads</string>
     <string name="downloading">Downloading</string>
     <string name="downloading_percent">Downloading · %1$d%%</string>
+    <!-- A server and an app that don't work together: the app's version, the oldest server it works with, the server's name and its version. -->
+    <string name="server_too_old_title">This server needs an update</string>
+    <string name="server_too_old_sentence">Kivo %1$s works with server %2$s or newer. %3$s runs %4$s. Ask whoever runs it to update.</string>
+    <!-- The server's name, the oldest app it supports and the app's version. -->
+    <string name="app_too_old_title">Update Kivo</string>
+    <string name="app_too_old_sentence">%1$s needs Kivo %2$s or newer. You have %3$s.</string>
+    <string name="app_too_old_store">Get the update</string>
 </resources>

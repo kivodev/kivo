@@ -2,6 +2,7 @@ package com.mmcdole.kivo.android.mobile.signin
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mmcdole.kivo.core.Compatibility
 import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.core.auth.SavedServer
 import com.mmcdole.kivo.core.discovery.FoundServer
@@ -24,13 +25,16 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** Where signing in is: choosing a server, its password, or a code another device approves. */
+/** Where signing in is: choosing a server, its password, a code another device approves, or a server the app doesn't work with. */
 sealed interface SignInStep {
     data object Find : SignInStep
 
     data class Password(val server: FoundServer) : SignInStep
 
     data class Link(val server: FoundServer) : SignInStep
+
+    /** The app and [server] don't work together, for [problem]: one of them needs an update. */
+    data class Incompatible(val server: FoundServer, val problem: Compatibility) : SignInStep
 }
 
 /** Why the last step didn't go on. */
@@ -113,11 +117,25 @@ class SignInViewModel(
                     null
                 }
             }
-            if (server == null) fail(SignInError.CantReach(saved.name)) else go(SignInStep.Password(server))
+            if (server == null) fail(SignInError.CantReach(saved.name)) else offer(server)
         }
     }
 
-    fun choose(server: FoundServer) = go(SignInStep.Password(server))
+    fun choose(server: FoundServer) = offer(server)
+
+    /** Asks the server the app doesn't work with what it is again; it stays as it is when it doesn't answer. */
+    fun retryCompatibility() {
+        val server = (form.value.step as? SignInStep.Incompatible)?.server ?: return
+        busy {
+            try {
+                offer(client.serverAt(server.baseUrl))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                form.update { it.copy(busy = false) }
+            }
+        }
+    }
 
     /** The server at the typed address. */
     fun connect() {
@@ -125,7 +143,7 @@ class SignInViewModel(
         if (address.isEmpty()) return
         busy {
             try {
-                go(SignInStep.Password(client.serverAt(address)))
+                offer(client.serverAt(address))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -164,10 +182,16 @@ class SignInViewModel(
     fun back(): Boolean {
         when (val step = form.value.step) {
             SignInStep.Find -> return false
-            is SignInStep.Password -> go(SignInStep.Find)
+            is SignInStep.Password, is SignInStep.Incompatible -> go(SignInStep.Find)
             is SignInStep.Link -> go(SignInStep.Password(step.server))
         }
         return true
+    }
+
+    /** On to [server]'s password, when the app and it work together; else to why they don't. */
+    private fun offer(server: FoundServer) {
+        val compatibility = client.compatibility(server.info)
+        go(if (compatibility == Compatibility.Compatible) SignInStep.Password(server) else SignInStep.Incompatible(server, compatibility))
     }
 
     private fun go(step: SignInStep) = form.update { it.copy(step = step, error = null, busy = false) }
@@ -199,7 +223,7 @@ class SignInViewModel(
         }
         emit(Found(servers, searching = false, started = true))
         val now = form.value
-        if (servers.size == 1 && now.saved == null && now.step == SignInStep.Find && now.address.isBlank()) go(SignInStep.Password(servers.single()))
+        if (servers.size == 1 && now.saved == null && now.step == SignInStep.Find && now.address.isBlank()) offer(servers.single())
     }
 
     /**

@@ -62,7 +62,10 @@ export interface paths {
          * Get server info
          * @description The server's ID, name and version, and for a signed-in client its
          *     addresses and quality ladder.
-         *     Signed out, only `id`, `name` and `version`. A client keeps its
+         *     Signed out, only `id`, `name`, `version`, `minAppVersion` and
+         *     `castProtocol`. An app compares `version` with the oldest server it
+         *     works with, and its own version with `minAppVersion`, before it
+         *     signs in. A client keeps its
          *     sign-in under `id`, which stays the same across restarts and address
          *     changes, and tries a local URL first and the public one elsewhere.
          *     Signed in, it also gets the quality ladder every client's quality
@@ -2873,6 +2876,12 @@ export interface components {
              *     commit, such as `0.3.1-dev+56c0018d`.
              */
             version: string;
+            /**
+             * @description The oldest app release the server supports, such as `0.3.0`. An
+             *     app older than it says it needs an update and asks nothing more
+             *     of the server.
+             */
+            minAppVersion?: string;
             /**
              * @description The version of the contract between Cast senders, the Cast
              *     receiver and the server: the load request's custom data, the
