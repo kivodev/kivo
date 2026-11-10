@@ -68,9 +68,7 @@ type fakeMedia struct {
 	// swallow is how far past where a copied job's seek lands its first
 	// fragment runs. ffmpeg's delay_moov, which AC-3 and E-AC-3 output
 	// need, cuts the first fragment only at the second keyframe, so the
-	// keyframes it spans don't start fragments of their own. The fake
-	// doesn't cut fragments, as the media package does for a job with a
-	// Seek, so a fragment it begins before Start stays before it.
+	// keyframes it spans don't start fragments of their own.
 	swallow time.Duration
 	missing []time.Duration // keyframes no job emits, as if the media went past them
 
@@ -535,8 +533,10 @@ func TestSeekLandingEarlyInOneFragment(t *testing.T) {
 	})
 }
 
-// A fragment from before the job's first segment fails the job rather than
-// filling the segment before.
+// A copied seek that lands on the keyframe before its first segment's
+// fails the job with its first fragment, and logs one warning that names
+// the file and the times. Requests for the segment report the failure, so
+// playback falls back, and don't start the job again.
 func TestFragmentBeforeTheFirstSegmentFailsTheJob(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		m := &fakeMedia{early: 2 * time.Second}
@@ -546,13 +546,32 @@ func TestFragmentBeforeTheFirstSegmentFailsTheJob(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer s.Close()
+		var log lockedBuffer
+		old := slog.Default()
+		slog.SetDefault(slog.New(slog.NewTextHandler(&log, nil)))
+		defer slog.SetDefault(old)
 		c, cancel := context.WithTimeout(ctx, time.Minute)
 		defer cancel()
-		if _, err := s.Segment(c, "80.m4s"); !errors.Is(err, ErrJobFailed) {
-			t.Fatalf("segment 80: %v, want ErrJobFailed", err)
+		start := time.Now()
+		for range 2 {
+			if _, err := s.Segment(c, "80.m4s"); !errors.Is(err, ErrJobFailed) || !errors.Is(err, errBeganEarly) {
+				t.Fatalf("segment 80: %v, want ErrJobFailed for errBeganEarly", err)
+			}
+		}
+		if got := time.Since(start); got != m.pace {
+			t.Fatalf("failed after %v, want %v", got, m.pace)
 		}
 		if n := len(m.jobs()); n != 1 {
 			t.Fatalf("%d jobs", n)
+		}
+		warns := strings.Split(strings.TrimSpace(log.String()), "\n")
+		if len(warns) != 1 || !strings.Contains(warns[0], "level=WARN") {
+			t.Fatalf("log %q, want one warning", warns)
+		}
+		for _, want := range []string{spec.Parts[0].ID.String(), "seeking to 8m0.5s", "segment 80 at 8m0s", "began at 7m58s"} {
+			if !strings.Contains(warns[0], want) {
+				t.Errorf("warning %q doesn't say %q", warns[0], want)
+			}
 		}
 	})
 }

@@ -145,18 +145,16 @@ type TextOut struct {
 type TranscodeRequest struct {
 	Path string
 	// Start is where output begins on the source's timeline. Copied video
-	// can only begin on a source keyframe, so output begins with the
-	// segment that contains Start. Encoded video begins at Start, which
-	// should be a grid point.
+	// can only begin on a source keyframe, so output begins on the keyframe
+	// the input seek lands on. Encoded video begins at Start, which should
+	// be a grid point.
 	Start time.Duration
 	// Seek, for copied video, is where the input seek goes when Start is a
 	// source keyframe: past Start, before the keyframe after it. ffmpeg's
 	// input seek lands on the last keyframe before the time it's given,
 	// less a margin for B-frames, so a seek to Start itself can land a
-	// keyframe early. With Seek set, output begins at Start exactly: the
-	// audio and text begin where the video does, and a first fragment that
-	// begins earlier is cut at Start. One without a keyframe at Start fails
-	// the job. Zero seeks to Start.
+	// keyframe early. With Seek set, the audio and text begin where the
+	// video does. Zero seeks to Start.
 	Seek time.Duration
 	// SegmentDuration is the grid encoded video places its keyframes on,
 	// counted from Start. Copied video keeps the source's keyframes.

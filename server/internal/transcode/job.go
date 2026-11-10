@@ -108,6 +108,11 @@ func (s Spec) classify(err error, produced bool) error {
 	}
 }
 
+// errBeganEarly means a copied job's output began on a keyframe before the
+// one its first segment begins at, so its first fragment holds part of the
+// segment before. The job fails, and playback falls back.
+var errBeganEarly = errors.New("copied output began before its first segment")
+
 // produce runs ffmpeg on the part the job starts in, up to that part's
 // end.
 func (s *Stream) produce(ctx context.Context, j *job) error {
@@ -170,9 +175,7 @@ func (s *Stream) produce(ctx context.Context, j *job) error {
 		}
 		i := s.segmentOf(j, part, cur, seg)
 		if i < j.from {
-			// A copied job's output begins at its first segment's
-			// keyframe, so this would be a fragment of the segment before.
-			return fmt.Errorf("%w: a fragment at %v is before segment %d", media.ErrSourceCorrupt, seg.Start, j.from)
+			return fmt.Errorf("%w: seeking to %v for segment %d at %v, it began at %v", errBeganEarly, req.Seek, j.from, s.plan[j.from].Start, seg.Start)
 		}
 		if i != cur {
 			if f != nil {
