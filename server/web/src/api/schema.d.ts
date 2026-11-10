@@ -2472,9 +2472,8 @@ export interface paths {
         };
         /**
          * Get download
-         * @description Where it is: its place in line, how far its preparation has got and
-         *     about how long it has left, or once ready each file's size and
-         *     validator. Anyone else's download is `404`, as is one the server
+         * @description Where it is: in line, how far its preparation has got and about how
+         *     long it has left, or once ready each file's size and validator. Anyone else's download is `404`, as is one the server
          *     has forgotten.
          */
         get: operations["getDownload"];
@@ -5278,8 +5277,6 @@ export interface components {
             /** @description The quality asked for, `original` for a book. */
             quality: components["schemas"]["DownloadQuality"];
             state: components["schemas"]["DownloadState"];
-            /** @description While queued, its place in line, 1 when it's next. */
-            queuePosition?: number;
             /** @description While preparing, how much is converted, from 0 to 1. */
             progress?: number;
             /** @description While converting, about how long it has left, once that can be told. */
@@ -5327,11 +5324,11 @@ export interface components {
             expiresAt?: string;
         };
         /**
-         * @description Where a download is: `queued` waiting in line on the server
-         *     (`queuePosition` says where); `preparing` its subtitles or conversion
-         *     being made (`progress` and `remainingMs` say how far); `ready` to
-         *     fetch each part's `url`, and each subtitle's; `failed` (`reason` says
-         *     why, and `retry` asks again).
+         * @description Where a download is: `queued` waiting in line on the server;
+         *     `preparing` its subtitles or conversion being made (`progress` and
+         *     `remainingMs` say how far); `ready` to fetch each part's `url`, and
+         *     each subtitle's; `failed` (`reason` says why, and `retry` asks
+         *     again).
          * @enum {string}
          */
         DownloadState: "queued" | "preparing" | "ready" | "failed";
@@ -5725,8 +5722,8 @@ export interface components {
          *       renamed or deleted, or a work was added or removed. Refetch the
          *       lists, any open list, Home, the layout and any open work page.
          *     - `downloadsChanged`: the user's downloads on the server moved:
-         *       in line, in their preparation (at most every 10 seconds), or to
-         *       ready or failed. Refetch the downloads that aren't ready.
+         *       into line or preparation, along in their preparation (at most
+         *       every 10 seconds), or to ready or failed. Refetch the downloads that aren't ready.
          *     - `tasksChanged`: admins only. A task's work moved: an item started
          *       or finished, or reported its progress, a run began or ended, or
          *       something was asked for. Refetch the tasks and libraries, whose

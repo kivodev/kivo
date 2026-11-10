@@ -39,7 +39,7 @@ import kotlinx.serialization.encoding.*
  * @param workId A UUIDv7.
  * @param versionId A UUIDv7.
  * @param quality The quality asked for, `original` for a book.
- * @param state Where a download is: `queued` waiting in line on the server (`queuePosition` says where); `preparing` its subtitles or conversion being made (`progress` and `remainingMs` say how far); `ready` to fetch each part's `url`, and each subtitle's; `failed` (`reason` says why, and `retry` asks again). 
+ * @param state Where a download is: `queued` waiting in line on the server; `preparing` its subtitles or conversion being made (`progress` and `remainingMs` say how far); `ready` to fetch each part's `url`, and each subtitle's; `failed` (`reason` says why, and `retry` asks again). 
  * @param delivery 
  * @param tracks Every track of the version, and the subtitle choice `off`, as a play gives them (`PlayStarted.tracks`), for playing the download offline. A track inside the downloaded file has delivery `file` and its stream index in that file: in a conversion the video, the audio, then each text track it carries, the chosen one first. A subtitle delivered `external` is fetched with the download, at `url`, once the download is ready; one that couldn't be extracted has no delivery. A choice without a delivery isn't in the download. 
  * @param durationMs 
@@ -47,7 +47,6 @@ import kotlinx.serialization.encoding.*
  * @param sizeExact `sizeBytes` is exact: the download is ready, or the original goes as it is. Otherwise it's an estimate. 
  * @param parts The version's parts in order; positions are on their joined timeline.
  * @param chapters 
- * @param queuePosition While queued, its place in line, 1 when it's next.
  * @param progress While preparing, how much is converted, from 0 to 1.
  * @param remainingMs While converting, about how long it has left, once that can be told.
  * @param reason When failed, why: `transcodeFailed`, `storageFull`, `sourceUnreadable` or `subtitlesUnavailable`. 
@@ -70,7 +69,7 @@ data class Download (
     /* The quality asked for, `original` for a book. */
     @SerialName(value = "quality") @Required val quality: kotlin.String,
 
-    /* Where a download is: `queued` waiting in line on the server (`queuePosition` says where); `preparing` its subtitles or conversion being made (`progress` and `remainingMs` say how far); `ready` to fetch each part's `url`, and each subtitle's; `failed` (`reason` says why, and `retry` asks again).  */
+    /* Where a download is: `queued` waiting in line on the server; `preparing` its subtitles or conversion being made (`progress` and `remainingMs` say how far); `ready` to fetch each part's `url`, and each subtitle's; `failed` (`reason` says why, and `retry` asks again).  */
     @SerialName(value = "state") @Required val state: kotlin.String,
 
     @SerialName(value = "delivery") @Required val delivery: com.mmcdole.kivo.api.models.DownloadDelivery,
@@ -90,9 +89,6 @@ data class Download (
     @SerialName(value = "parts") @Required val parts: kotlin.collections.List<DownloadPart>,
 
     @SerialName(value = "chapters") @Required val chapters: kotlin.collections.List<Chapter>,
-
-    /* While queued, its place in line, 1 when it's next. */
-    @SerialName(value = "queuePosition") val queuePosition: kotlin.Int? = null,
 
     /* While preparing, how much is converted, from 0 to 1. */
     @SerialName(value = "progress") val progress: kotlin.Double? = null,

@@ -336,19 +336,6 @@ sealed interface com.mmcdole.kivo.core.downloads/DownloadStatus { // com.mmcdole
         final fun toString(): kotlin/String // com.mmcdole.kivo.core.downloads/DownloadStatus.Paused.toString|toString(){}[0]
     }
 
-    final class Queued : com.mmcdole.kivo.core.downloads/DownloadStatus { // com.mmcdole.kivo.core.downloads/DownloadStatus.Queued|null[0]
-        constructor <init>(kotlin/Int) // com.mmcdole.kivo.core.downloads/DownloadStatus.Queued.<init>|<init>(kotlin.Int){}[0]
-
-        final val position // com.mmcdole.kivo.core.downloads/DownloadStatus.Queued.position|{}position[0]
-            final fun <get-position>(): kotlin/Int // com.mmcdole.kivo.core.downloads/DownloadStatus.Queued.position.<get-position>|<get-position>(){}[0]
-
-        final fun component1(): kotlin/Int // com.mmcdole.kivo.core.downloads/DownloadStatus.Queued.component1|component1(){}[0]
-        final fun copy(kotlin/Int = ...): com.mmcdole.kivo.core.downloads/DownloadStatus.Queued // com.mmcdole.kivo.core.downloads/DownloadStatus.Queued.copy|copy(kotlin.Int){}[0]
-        final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.downloads/DownloadStatus.Queued.equals|equals(kotlin.Any?){}[0]
-        final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.downloads/DownloadStatus.Queued.hashCode|hashCode(){}[0]
-        final fun toString(): kotlin/String // com.mmcdole.kivo.core.downloads/DownloadStatus.Queued.toString|toString(){}[0]
-    }
-
     final class Waiting : com.mmcdole.kivo.core.downloads/DownloadStatus { // com.mmcdole.kivo.core.downloads/DownloadStatus.Waiting|null[0]
         constructor <init>(com.mmcdole.kivo.core.downloads/WaitReason, kotlin/Long, kotlin/Long) // com.mmcdole.kivo.core.downloads/DownloadStatus.Waiting.<init>|<init>(com.mmcdole.kivo.core.downloads.WaitReason;kotlin.Long;kotlin.Long){}[0]
 
@@ -375,6 +362,12 @@ sealed interface com.mmcdole.kivo.core.downloads/DownloadStatus { // com.mmcdole
             final fun <get-NOT_ENOUGH_SPACE>(): kotlin/String // com.mmcdole.kivo.core.downloads/DownloadStatus.Companion.NOT_ENOUGH_SPACE.<get-NOT_ENOUGH_SPACE>|<get-NOT_ENOUGH_SPACE>(){}[0]
         final const val NOT_PLAYABLE // com.mmcdole.kivo.core.downloads/DownloadStatus.Companion.NOT_PLAYABLE|{}NOT_PLAYABLE[0]
             final fun <get-NOT_PLAYABLE>(): kotlin/String // com.mmcdole.kivo.core.downloads/DownloadStatus.Companion.NOT_PLAYABLE.<get-NOT_PLAYABLE>|<get-NOT_PLAYABLE>(){}[0]
+    }
+
+    final object Queued : com.mmcdole.kivo.core.downloads/DownloadStatus { // com.mmcdole.kivo.core.downloads/DownloadStatus.Queued|null[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.downloads/DownloadStatus.Queued.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.downloads/DownloadStatus.Queued.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.mmcdole.kivo.core.downloads/DownloadStatus.Queued.toString|toString(){}[0]
     }
 
     final object Ready : com.mmcdole.kivo.core.downloads/DownloadStatus { // com.mmcdole.kivo.core.downloads/DownloadStatus.Ready|null[0]

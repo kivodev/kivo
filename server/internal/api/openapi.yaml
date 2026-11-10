@@ -3348,9 +3348,8 @@ paths:
       operationId: getDownload
       summary: Get download
       description: |
-        Where it is: its place in line, how far its preparation has got and
-        about how long it has left, or once ready each file's size and
-        validator. Anyone else's download is `404`, as is one the server
+        Where it is: in line, how far its preparation has got and about how
+        long it has left, or once ready each file's size and validator. Anyone else's download is `404`, as is one the server
         has forgotten.
       tags: [downloads]
       x-kivo-access: viewer
@@ -7375,9 +7374,6 @@ components:
           $ref: "#/components/schemas/DownloadQuality"
           description: The quality asked for, `original` for a book.
         state: {$ref: "#/components/schemas/DownloadState"}
-        queuePosition:
-          type: integer
-          description: While queued, its place in line, 1 when it's next.
         progress:
           type: number
           description: While preparing, how much is converted, from 0 to 1.
@@ -7435,11 +7431,11 @@ components:
     DownloadState:
       type: string
       description: |
-        Where a download is: `queued` waiting in line on the server
-        (`queuePosition` says where); `preparing` its subtitles or conversion
-        being made (`progress` and `remainingMs` say how far); `ready` to
-        fetch each part's `url`, and each subtitle's; `failed` (`reason` says
-        why, and `retry` asks again).
+        Where a download is: `queued` waiting in line on the server;
+        `preparing` its subtitles or conversion being made (`progress` and
+        `remainingMs` say how far); `ready` to fetch each part's `url`, and
+        each subtitle's; `failed` (`reason` says why, and `retry` asks
+        again).
       enum: [queued, preparing, ready, failed]
 
     DownloadDelivery:
@@ -8007,8 +8003,8 @@ components:
           renamed or deleted, or a work was added or removed. Refetch the
           lists, any open list, Home, the layout and any open work page.
         - `downloadsChanged`: the user's downloads on the server moved:
-          in line, in their preparation (at most every 10 seconds), or to
-          ready or failed. Refetch the downloads that aren't ready.
+          into line or preparation, along in their preparation (at most
+          every 10 seconds), or to ready or failed. Refetch the downloads that aren't ready.
         - `tasksChanged`: admins only. A task's work moved: an item started
           or finished, or reported its progress, a run began or ended, or
           something was asked for. Refetch the tasks and libraries, whose

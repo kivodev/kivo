@@ -20,7 +20,6 @@ CREATE TABLE download (
   -- queued and converting are on the server, downloading on the way here,
   -- or paused there by the user, then ready, or failed with a reason.
   state TEXT NOT NULL,
-  queue_position INTEGER,
   progress REAL,
   remaining_ms INTEGER,
   reason TEXT,
@@ -92,7 +91,7 @@ download:
 SELECT * FROM download WHERE id = ?;
 
 setServerState:
-UPDATE download SET state = ?, queue_position = ?, progress = ?, remaining_ms = ?, reason = ?, plan = ?, size_bytes = ?
+UPDATE download SET state = ?, progress = ?, remaining_ms = ?, reason = ?, plan = ?, size_bytes = ?
 WHERE id = ?;
 
 setRemote:

@@ -111,7 +111,6 @@ private const val WORK = """{"id":"w1","kind":"movie","title":"Heat","matchState
 private fun download(
     id: String = "d1",
     state: String = "ready",
-    queuePosition: Int? = null,
     progress: Double? = null,
     remaining: Int? = null,
     delivery: DownloadDelivery = DownloadDelivery.Conversion,
@@ -131,7 +130,7 @@ private fun download(
     ),
     chapters = emptyList(),
     markers = listOf(com.mmcdole.kivo.api.models.Marker("credits", 6_600_000, 7_200_000, "chapter", final = true)),
-    queuePosition = queuePosition, progress = progress, remainingMs = remaining,
+    progress = progress, remainingMs = remaining,
 )
 
 /** A transport the tests drive: it records what's started, and the test says what arrives. */
@@ -411,11 +410,11 @@ class DownloadsTest {
     @Test
     fun aServerRestartMidConversionIsRecoveredFrom() = runTest {
         val h = Harness(this)
-        h.remote = download(state = "queued", queuePosition = 2)
+        h.remote = download(state = "queued")
         h.connect()
         val id = h.downloads.download(DownloadRequest("w1"))
         advanceUntilIdle()
-        assertEquals(DownloadStatus.Queued(2), h.item()?.status)
+        assertEquals(DownloadStatus.Queued, h.item()?.status)
         assertEquals(listOf("$id/artwork"), h.transport.started.map { it.id }, "only its artwork comes while it waits")
 
         h.remote = download(state = "preparing", progress = 0.5, remaining = 240_000)
@@ -425,10 +424,10 @@ class DownloadsTest {
         assertEquals(true, h.item()?.prepared)
 
         // The server restarts: the conversion is back in line, then starts over.
-        h.remote = download(state = "queued", queuePosition = 1)
+        h.remote = download(state = "queued")
         h.downloads.sync()
         advanceUntilIdle()
-        assertEquals(DownloadStatus.Queued(1), h.item()?.status)
+        assertEquals(DownloadStatus.Queued, h.item()?.status)
 
         // A server that forgot it altogether is asked again.
         h.listed = false
@@ -889,18 +888,19 @@ class DownloadsTest {
     }
 
     @Test
-    fun aStoreFromBeforeLosesTheLastCheckAndRemoveWhenFinishedAndKeepsItsDownloads() {
+    fun aStoreFromBeforeLosesWhatItNoLongerKeepsAndKeepsItsDownloads() {
         val driver = JdbcSqliteDriver("jdbc:sqlite:${File(createTempDirectory("kivo-store").toFile(), "downloads.db").path}")
         DownloadDatabase.Schema.create(driver)
         // As the first version kept a download, with when the server last said the user may have it, whether to remove it when
-        // finished, and a conversion's time left in seconds.
+        // finished, a conversion's time left in seconds, and its place in the server's line.
         driver.execute(null, "ALTER TABLE download RENAME COLUMN remaining_ms TO remaining_seconds", 0)
+        driver.execute(null, "ALTER TABLE download ADD COLUMN queue_position INTEGER", 0)
         driver.execute(null, "ALTER TABLE download ADD COLUMN remove_when_finished INTEGER NOT NULL DEFAULT 1", 0)
         driver.execute(null, "ALTER TABLE download ADD COLUMN checked_at INTEGER NOT NULL DEFAULT 0", 0)
         driver.execute(
             null,
-            "INSERT INTO download (id, server_id, account_id, work_id, quality, state, remaining_seconds, plan, work, title, kind, size_bytes, remove_when_finished, created_at, checked_at) " +
-                "VALUES ('d', 's', 'a', 'w1', '1080p', 'converting', 90, '{}', '{}', 'Title', 'movie', 1, 1, 1, 1)",
+            "INSERT INTO download (id, server_id, account_id, work_id, quality, state, queue_position, remaining_seconds, plan, work, title, kind, size_bytes, remove_when_finished, created_at, checked_at) " +
+                "VALUES ('d', 's', 'a', 'w1', '1080p', 'converting', 2, 90, '{}', '{}', 'Title', 'movie', 1, 1, 1, 1)",
             0,
         )
         DownloadDatabase.Schema.migrate(driver, 1, DownloadDatabase.Schema.version)
