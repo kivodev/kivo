@@ -11,9 +11,9 @@ import (
 // listOf converts a list.
 func listOf(l query.List) gen.WorkList {
 	out := gen.WorkList{ID: l.ID, Name: l.Name, Kind: gen.ListKindManual, BuiltIn: l.BuiltIn, WorkCount: l.Works}
-	if l.Covers != nil {
-		covers := each(l.Covers, func(i query.Image) gen.ImageRef { return *imageRef(&i) })
-		out.Covers = &covers
+	if l.Items != nil {
+		items := summaries(l.Items)
+		out.Items = &items
 	}
 	if l.Smart != nil {
 		out.Kind = gen.ListKindSmart

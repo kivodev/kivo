@@ -5224,13 +5224,12 @@ type WorkList struct {
 	// BuiltIn Watchlist, which every user has and can't delete or rename.
 	BuiltIn bool `json:"builtIn"`
 
-	// Covers Posters of the list's first works the user sees, up to three, in
-	// the list's order. A work without a poster is left out. Set by
-	// `listLists` with `counts`.
-	Covers *[]ImageRef `json:"covers,omitempty"`
-
 	// ID A UUIDv7.
 	ID ID `json:"id"`
+
+	// Items The list's first works the user sees, up to 20, in the list's
+	// order, as a Home row has them. Set by `listLists` with `counts`.
+	Items *[]WorkSummary `json:"items,omitempty"`
 
 	// Kind What a list is. `manual` is works the user added; `smart` is the works rules select. Skip kinds you don't know.
 	Kind ListKind `json:"kind"`
@@ -5606,7 +5605,7 @@ type ListLibraryCollectionsParams struct {
 
 // ListListsParams defines parameters for ListLists.
 type ListListsParams struct {
-	// Counts Count each smart list by running its rules, and fill each list's `covers`; without it a smart list's `workCount` is 0.
+	// Counts Count each smart list by running its rules, and fill each list's `items`; without it a smart list's `workCount` is 0.
 	Counts *bool `form:"counts,omitempty" json:"counts,omitempty"`
 }
 
