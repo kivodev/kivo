@@ -542,7 +542,7 @@ struct DownloadRow: View {
         if item.kind == "book" {
             server.listen(item.workId)
         } else {
-            server.play(PlayTarget(workId: item.workId, downloadId: item.id))
+            server.player.play(PlayTarget(workId: item.workId, downloadId: item.id))
         }
     }
 

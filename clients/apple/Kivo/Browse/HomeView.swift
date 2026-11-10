@@ -94,7 +94,7 @@ struct HomeView: View {
                 HStack(spacing: KivoTokens.spacing * 4) {
                     CastButton(cast: server.cast)
                         .tint(palette.text)
-                    AccountButton { server.settingsShown = true }
+                    AccountButton { server.navigation.settingsShown = true }
                 }
             }
             .bareToolbarItem()
@@ -141,10 +141,10 @@ struct HomeView: View {
         switch row.kind {
         case "list":
             guard let list = row.list else { return nil }
-            return { server.paths[.home, default: []].append(.list(list)) }
+            return { server.navigation.paths[.home, default: []].append(.list(list)) }
         case "recentlyAdded":
             guard let library = server.library(of: row.library?.id) else { return nil }
-            return { server.paths[.home, default: []].append(.library(library, sort: "addedAt")) }
+            return { server.navigation.paths[.home, default: []].append(.library(library, sort: "addedAt")) }
         default:
             return nil
         }

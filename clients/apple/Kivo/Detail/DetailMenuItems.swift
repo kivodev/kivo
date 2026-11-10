@@ -17,7 +17,7 @@ struct UserStateMenuItems: View {
             Label(Words.markPlayed(!played, kind: work.kind), systemImage: played ? "eye.slash" : "checkmark.circle")
         }
         Button {
-            server.addingToList = work.id
+            server.navigation.addingToList = work.id
         } label: {
             Label(String(localized: "Add to List"), systemImage: "text.badge.plus")
         }
@@ -33,7 +33,7 @@ struct GoToLibraryItem: View {
     var body: some View {
         if server.library(of: libraryId) != nil {
             Button {
-                server.showLibrary(of: libraryId)
+                server.navigation.showLibrary(of: libraryId)
             } label: {
                 Label(String(localized: "Go to library"), systemImage: "square.grid.2x2")
             }

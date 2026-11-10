@@ -38,7 +38,7 @@ struct WorkActions: View {
             SwiftUI.Label(Words.markPlayed(!played, kind: work.kind), systemImage: played ? "eye.slash" : "checkmark.circle")
         }
         Button {
-            server.addingToList = work.id
+            server.navigation.addingToList = work.id
         } label: {
             SwiftUI.Label(String(localized: "Add to List"), systemImage: "text.badge.plus")
         }
@@ -71,7 +71,7 @@ struct WorkActions: View {
         }
         if currentLibraryId == nil, server.library(of: work.libraryId) != nil {
             Button {
-                server.showLibrary(of: work.libraryId)
+                server.navigation.showLibrary(of: work.libraryId)
             } label: {
                 SwiftUI.Label(String(localized: "Go to library"), systemImage: "square.grid.2x2")
             }
@@ -102,7 +102,7 @@ struct WorkActions: View {
             server.listen(work.id, at: fromStart ? 0 : nil)
             return
         }
-        server.play(PlayTarget(workId: work.id, fromStart: fromStart, downloadId: server.readyDownload(of: work.id)?.id))
+        server.player.play(PlayTarget(workId: work.id, fromStart: fromStart, downloadId: server.readyDownload(of: work.id)?.id))
     }
 }
 

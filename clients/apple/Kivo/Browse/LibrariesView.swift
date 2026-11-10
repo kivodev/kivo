@@ -37,7 +37,7 @@ struct LibrariesView: View {
         .navigationTitle(String(localized: "Libraries"))
         .toolbarTitleDisplayMode(.large)
         // A page opened over the list is a switch, for its signposts.
-        .onChange(of: server.paths[.libraries]?.first) { _, opened in
+        .onChange(of: server.navigation.paths[.libraries]?.first) { _, opened in
             if opened != nil { SwitchSignposts.chose() }
         }
     }
