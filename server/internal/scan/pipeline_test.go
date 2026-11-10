@@ -237,7 +237,7 @@ func newPipeline(t *testing.T, ffmpegBin, ffprobeBin string) *pipeline {
 	state := userstate.New(b.DB, userstate.Deps{Catalog: b.Catalog, Settings: cfg, Activity: act, Events: events.NewBus()})
 	p.id = identify.New(b.DB, identify.Deps{
 		Catalog: b.Catalog, Metadata: p.meta, Userstate: state, Activity: act, Tasks: discard{}, Markers: discard{},
-	}, identify.Options{})
+	})
 	p.s = scan.New(b.DB, scan.Deps{
 		Catalog: b.Catalog, Tasks: discard{}, Prober: runner, Settings: cfg, Identifier: p.id, Previews: noPreviews{}, Subtitles: noSubtitles{},
 	}, scan.Options{})

@@ -246,7 +246,7 @@ func newEnv(t *testing.T, o serving) *env {
 	e.d.Subtitles = subtitles.New(db, subtitles.Deps{Catalog: e.b.Catalog, Users: e.d.Users, Userstate: e.d.Userstate, Settings: e.d.Settings, Media: noMedia{}, Tasks: e.asks, CacheDir: e.cache, SubtitleDir: t.TempDir()}, subtitles.Options{})
 	e.d.Identify = identify.New(db, identify.Deps{
 		Catalog: e.b.Catalog, Metadata: e.d.Metadata, Userstate: e.d.Userstate, Activity: e.d.Activity, Tasks: e.asks, Markers: e.d.Markers,
-	}, identify.Options{})
+	})
 	e.d.Scan = scan.New(db, scan.Deps{
 		Catalog: e.b.Catalog, Tasks: e.asks, Prober: noMedia{}, Settings: settings, Identifier: e.d.Identify, Previews: pv, Subtitles: e.d.Subtitles,
 	}, scan.Options{

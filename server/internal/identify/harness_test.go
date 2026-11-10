@@ -292,13 +292,12 @@ func newEnv(t *testing.T) *env {
 		metadata.Options{Video: e.video, Books: fakeBooks{e.video}, Anime: anime})
 	e.activity = activity.New(b.DB, events.NewBus())
 	e.state = userstate.New(b.DB, userstate.Deps{Catalog: b.Catalog, Settings: settings, Activity: e.activity, Events: events.NewBus()})
-	e.id = identify.New(b.DB, identify.Deps{Catalog: b.Catalog, Metadata: e.meta, Userstate: e.state, Activity: e.activity, Tasks: e, Markers: e}, identify.Options{
-		OpenFolder: func(path string) (fs.FS, func() error, error) {
-			if e.offline.Load() {
-				return nil, nil, errors.New("offline")
-			}
-			return e.disk[path], func() error { return nil }, nil
-		},
+	e.id = identify.New(b.DB, identify.Deps{Catalog: b.Catalog, Metadata: e.meta, Userstate: e.state, Activity: e.activity, Tasks: e, Markers: e})
+	e.id.SetOpenFolder(func(path string) (fs.FS, func() error, error) {
+		if e.offline.Load() {
+			return nil, nil, errors.New("offline")
+		}
+		return e.disk[path], func() error { return nil }, nil
 	})
 	return e
 }
