@@ -19,15 +19,15 @@ type Sort string
 
 // Sorts, each in its default direction.
 const (
-	ByTitle            Sort = "title"            // A to Z, ignoring leading articles
-	ByAdded            Sort = "addedAt"          // newest first
-	ByRelease          Sort = "releaseDate"      // newest first
-	ByCommunityRating  Sort = "rating"           // the community rating, weighted by its votes, highest first
-	ByMyRating         Sort = "myRating"         // the user's own rating, highest first
-	ByRuntime          Sort = "runtime"          // shortest first
-	ByLastPlayed       Sort = "lastPlayedAt"     // most recent first
-	ByAuthor           Sort = "author"           // A to Z by the first author's sort name, then by title
-	ByLastEpisodeAdded Sort = "lastEpisodeAdded" // a series by its newest episode in the library, newest first, then by title
+	ByTitle            Sort = "title"              // A to Z, ignoring leading articles
+	ByAdded            Sort = "addedAt"            // newest first
+	ByRelease          Sort = "releaseDate"        // newest first
+	ByCommunityRating  Sort = "rating"             // the community rating, weighted by its votes, highest first
+	ByMyRating         Sort = "myRating"           // the user's own rating, highest first
+	ByRuntime          Sort = "runtime"            // shortest first
+	ByLastPlayed       Sort = "lastPlayedAt"       // most recent first
+	ByAuthor           Sort = "author"             // A to Z by the first author's sort name, then by title
+	ByLastEpisodeAdded Sort = "lastEpisodeAddedAt" // a series by its newest episode in the library, newest first, then by title
 )
 
 // PlayState filters by the user's watch state. Its values are the API's. A

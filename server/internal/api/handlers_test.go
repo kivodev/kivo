@@ -416,6 +416,27 @@ func TestCollection(t *testing.T) {
 	}
 }
 
+// TestBrowseShowsByLastEpisodeAdded checks that a shows library's grid
+// puts the series with the newest episode first.
+func TestBrowseShowsByLastEpisodeAdded(t *testing.T) {
+	e := newEnv(t, serving{})
+	lib, folder := e.b.Library(catalog.Shows)
+	older, newer := e.b.Series("Older Show"), e.b.Series("Newer Show")
+	e.b.Episode(folder, newer, 1, 1)
+	time.Sleep(2 * time.Millisecond)
+	e.b.Episode(folder, older, 1, 1)
+	time.Sleep(2 * time.Millisecond)
+	e.b.Episode(folder, newer, 1, 2)
+	w := e.do("GET", "/api/v1/libraries/"+lib.String()+"/works?sort=lastEpisodeAddedAt", e.adminToken, nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("sort=lastEpisodeAddedAt: %d %s", w.Code, w.Body.String())
+	}
+	page := decode[list](t, w)
+	if len(page.Items) != 2 || page.Items[0]["id"] != newer.String() || page.Items[1]["id"] != older.String() {
+		t.Errorf("sort=lastEpisodeAddedAt: %+v, want %s then %s", page.Items, newer, older)
+	}
+}
+
 func TestBrowseAndDetail(t *testing.T) {
 	e := newEnv(t, serving{})
 	grid := "/api/v1/libraries/" + e.lib.String() + "/works"
