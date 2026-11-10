@@ -1,7 +1,7 @@
 // Package tasks runs the server's background work. Each task is one row of
-// the Tasks page. An item task reads its remaining items from the tables of
-// the feature that owns it each time it looks for work. So the only record
-// a task keeps of its own is how its last run ended.
+// the Tasks page. Its work is one function, or a list of items read from
+// the tables of the feature that owns it each time it looks for work. So
+// the only record a task keeps of its own is how its last run ended.
 package tasks
 
 import (
@@ -27,43 +27,65 @@ type Section string
 
 // The sections, in the order admins see them.
 const (
-	SectionActivity    Section = "activity"    // unscheduled work, done when asked for
+	SectionOnDemand    Section = "onDemand"    // unscheduled work, done when enqueued
 	SectionLibrary     Section = "library"     // scheduled work on the libraries' media
 	SectionMaintenance Section = "maintenance" // cleanups and database upkeep
 )
 
-// Task is one row of the Tasks page. It says when its work runs and what
-// the work is. A plain task sets Run. An item task sets Pending and Do.
+// Task is one row of the Tasks page. Work says what it does: a Func, which
+// is one call per run, or Items, a list worked through an item at a time.
+// Schedule says when its runs begin: Nightly, Every so often, or OnDemand,
+// which has no runs. Whatever the schedule, Runner.Enqueue has Items do
+// the given items now.
 type Task struct {
-	Name string
-	// Nightly makes the task run in the nightly maintenance window. A run
-	// begins when the window opens. If the server starts inside the window
-	// and no run has ended since it opened, a run begins at startup. The
-	// run ends when the window closes, unless Run now started it or asked
-	// it to finish.
-	Nightly bool
-	// Every is how long after a run ends the next one begins.
-	//
-	// A task with neither Nightly nor Every is an Activity row. It has no
-	// runs. It does items when they are asked for, and it also does any
-	// items it finds left at startup and then each hour.
-	Every time.Duration
+	Name     string
+	Schedule Schedule
+	Work     Work
 	// Maintenance lists a scheduled task under Maintenance instead of
 	// Library.
 	Maintenance bool
-	// Limit is how many items may run at once. It is read each time an item
-	// could start. Nil means one.
-	Limit func(config.Settings) int
-	// Finish means Stop doesn't apply, because the work is worse half done.
-	Finish bool
-	// Wanted reports whether a scheduled task has anything to do. It is
-	// false when every library is set never to do the task's work, and then
-	// the task shows no next run. Nil means always wanted.
+	// Unstoppable means Stop doesn't apply, because the work is worse half
+	// done.
+	Unstoppable bool
+	// Wanted reports whether a scheduled task has anything to do, which is
+	// false when every library is set never to do its work. It only hides
+	// the task's next run on the Tasks page. The schedule begins the run
+	// either way. Nil means always wanted.
 	Wanted func(ctx context.Context) (bool, error)
+}
 
-	// Run is a plain task's whole run.
-	Run func(ctx context.Context) error
+// Schedule is when a task's runs begin: Nightly, Every some interval, or
+// OnDemand.
+type Schedule struct {
+	nightly bool
+	every   time.Duration
+}
 
+var (
+	// OnDemand is the zero Schedule. The task has no runs. It does items
+	// when they are enqueued, and it also does any pending items it finds
+	// at startup and then each hour. Only Items can be on demand.
+	OnDemand = Schedule{}
+	// Nightly runs the task in the nightly maintenance window. A run begins
+	// when the window opens. If the server starts inside the window and no
+	// run has ended since it opened, a run begins at startup. The run ends
+	// when the window closes, unless Run now started it or asked it to
+	// finish.
+	Nightly = Schedule{nightly: true}
+)
+
+// Every begins a run d after the last one ended.
+func Every(d time.Duration) Schedule { return Schedule{every: d} }
+
+// Work is what a task does. It is a Func or Items.
+type Work interface{ work() }
+
+// Func is work that is one call. The call is the task's whole run.
+type Func func(ctx context.Context) error
+
+// Items is work on a list of items held in the tables of the feature that
+// owns the task. A run works through Pending until nothing new turns up.
+type Items struct {
 	// Pending lists the items left, in the order to do them. It leaves out
 	// items that are done and items that failed for good.
 	Pending func(ctx context.Context) ([]id.ID, error)
@@ -72,8 +94,15 @@ type Task struct {
 	// good, in the task's own tables, so Pending leaves the item out
 	// afterwards. A returned error leaves the item pending for a later pass.
 	Do func(ctx context.Context, item id.ID) error
-	// Left is how many items are left, counted as Pending would list them.
-	Left func(ctx context.Context) (int, error)
+	// Limit is how many items may run at once. It is read each time an item
+	// could start. Nil means one.
+	Limit func(config.Settings) int
+	// PendingCount counts the items Pending would list. Nil means the
+	// runner counts what Pending returns.
+	PendingCount func(ctx context.Context) (int, error)
+	// Uncounted means the task reports no pending count, as when Pending
+	// lists items whether or not they have work to do.
+	Uncounted bool
 	// Failed lists the items that failed for good.
 	Failed func(ctx context.Context) ([]Failure, error)
 	// Retry forgets the failures of the given items, or of every failed
@@ -81,11 +110,23 @@ type Task struct {
 	Retry func(ctx context.Context, items ...id.ID) ([]id.ID, error)
 }
 
+func (Func) work()  {}
+func (Items) work() {}
+
+// pendingCount counts the items left.
+func (w Items) pendingCount(ctx context.Context) (int, error) {
+	if w.PendingCount != nil {
+		return w.PendingCount(ctx)
+	}
+	list, err := w.Pending(ctx)
+	return len(list), err
+}
+
 // Section is the table the task is listed in.
 func (t Task) Section() Section {
 	switch {
-	case !t.Nightly && t.Every == 0:
-		return SectionActivity
+	case t.Schedule == OnDemand:
+		return SectionOnDemand
 	case t.Maintenance:
 		return SectionMaintenance
 	}
@@ -104,9 +145,9 @@ type Status struct {
 	Task
 	Last *Outcome // the last run, or nil if it never ran
 	// Next is when the schedule next begins a run. It is zero for an
-	// Activity task and for a task that isn't wanted.
+	// on-demand task and for a task that isn't wanted.
 	Next time.Time
-	// Running is true while the task has items in flight or asked for, or
+	// Running is true while the task has items in flight or enqueued, or
 	// has a run working.
 	Running bool
 	// Step is what the running task is doing.
@@ -114,11 +155,11 @@ type Status struct {
 	// Done of Total is how far the running task has got. For an item run
 	// it is the items done out of those done plus those left.
 	Done, Total int
-	// Left is how many items are left for the next run, while no run is
-	// working.
-	Left     int
-	Failures int    // items that failed for good
-	Items    []Item // items in flight, in the order they started
+	// PendingCount is how many items are left for the next run, while no
+	// run is working.
+	PendingCount int
+	Failures     int    // items that failed for good
+	Items        []Item // items in flight, in the order they started
 }
 
 // Outcome is how a run ended.
@@ -146,20 +187,20 @@ type Item struct {
 	started time.Time
 }
 
-// flightKey is the context key that holds the flight of a Run or Do call.
+// flightKey is the context key that holds the flight of a Func or Do call.
 type flightKey struct{}
 
-// Progress reports what an item or a plain run is doing, as a step such as
-// "probe" and how far it has got. ctx must be the context Do or Run was
-// given.
+// Progress reports what an item or a Func's run is doing, as a step such as
+// "probe" and how far it has got. ctx must be the context Do or the Func
+// was given.
 func Progress(ctx context.Context, step string, done, total int) {
 	if f, ok := ctx.Value(flightKey{}).(*flight); ok {
 		f.progress(step, done, total)
 	}
 }
 
-// Summarize sets a plain run's one-line summary, such as "Removed 12
-// missing files". ctx must be the context Run was given.
+// Summarize sets a Func run's one-line summary, such as "Removed 12
+// missing files". ctx must be the context the Func was given.
 func Summarize(ctx context.Context, summary string) {
 	if f, ok := ctx.Value(flightKey{}).(*flight); ok {
 		f.summarize(summary)

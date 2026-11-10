@@ -2412,6 +2412,10 @@ msgstr "Same"
 msgid "One per line, in order."
 msgstr "One per line, in order."
 
+#: src/features/admin/TasksScreen.tsx
+msgid "On demand"
+msgstr "On demand"
+
 #: src/features/admin/LibrarySettingsScreen.tsx
 msgid "Libraries can override these."
 msgstr "Libraries can override these."
@@ -4130,7 +4134,6 @@ msgstr "Update the driver, then restart the server."
 #: src/features/admin/ActivityScreen.tsx
 #: src/features/admin/AdminLayout.tsx
 #: src/features/admin/OverviewScreen.tsx
-#: src/features/admin/TasksScreen.tsx
 msgid "Activity"
 msgstr "Activity"
 

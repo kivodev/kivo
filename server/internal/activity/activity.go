@@ -116,7 +116,7 @@ func New(db *store.DB, bus *events.Bus) *Service {
 
 // Tasks returns the service's only task, the nightly cleanup.
 func (s *Service) Tasks() []tasks.Task {
-	return []tasks.Task{{Name: TaskPrune, Nightly: true, Maintenance: true, Run: s.prune}}
+	return []tasks.Task{{Name: TaskPrune, Schedule: tasks.Nightly, Maintenance: true, Work: tasks.Func(s.prune)}}
 }
 
 func (s *Service) prune(ctx context.Context) error {

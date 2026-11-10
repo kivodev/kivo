@@ -277,10 +277,10 @@ func TestPrune(t *testing.T) {
 		return nil
 	})
 	ts := f.a.Tasks()
-	if len(ts) != 1 || ts[0].Name != activity.TaskPrune || !ts[0].Nightly || !ts[0].Maintenance {
+	if len(ts) != 1 || ts[0].Name != activity.TaskPrune || ts[0].Schedule != tasks.Nightly || !ts[0].Maintenance {
 		t.Fatalf("tasks %+v", ts)
 	}
-	if err := ts[0].Run(ctx); err != nil {
+	if err := ts[0].Work.(tasks.Func)(ctx); err != nil {
 		t.Fatal(err)
 	}
 	if got := f.list(""); len(got) != 1 || time.Since(got[0].At) > 90*24*time.Hour {

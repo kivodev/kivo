@@ -215,7 +215,7 @@ func TestFailedFile(t *testing.T) {
 	if got := f.pending(); len(got) != 0 {
 		t.Errorf("pending %v", got)
 	}
-	if left, err := f.a.left(ctx); err != nil || left != 0 {
+	if left, err := f.a.pendingCount(ctx); err != nil || left != 0 {
 		t.Errorf("%d left, %v", left, err)
 	}
 	if got := f.failures(); len(got) != 1 || got[0].Item != f.files[0] || !strings.Contains(got[0].Reason, media.ErrSourceCorrupt.Error()) {
@@ -294,7 +294,7 @@ func TestCountPendingIsPending(t *testing.T) {
 	if !slices.Equal(pending, []id.ID{f.files[1], f.files[2], f.files[4]}) {
 		t.Errorf("pending %v", pending)
 	}
-	if left, err := f.a.left(ctx); err != nil || left != len(pending) {
+	if left, err := f.a.pendingCount(ctx); err != nil || left != len(pending) {
 		t.Errorf("%d left, %v; pending %d", left, err, len(pending))
 	}
 }

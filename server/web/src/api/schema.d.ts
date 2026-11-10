@@ -1888,7 +1888,7 @@ export interface paths {
          * Run task
          * @description Begins a run of the task, outside the maintenance window too, or
          *     has its open run, one the night began, go on past the window's
-         *     close. Either works until it's done or stopped. An Activity row has
+         *     close. Either works until it's done or stopped. An on-demand row has
          *     no runs: `404`.
          */
         post: operations["runTask"];
@@ -4661,7 +4661,7 @@ export interface components {
             nightly: boolean;
             /**
              * Format: date-time
-             * @description When its next run begins. Absent in `activity`, and for a task
+             * @description When its next run begins. Absent in `onDemand`, and for a task
              *     whose work every library is set to never do, such as refreshing
              *     metadata, preview thumbnails or intro and credits.
              */
@@ -4690,13 +4690,13 @@ export interface components {
          */
         TaskName: "scan-libraries" | "prune-gone-files" | "refresh-metadata" | "prune-provider-cache" | "make-previews" | "prune-previews" | "find-markers" | "prune-markers" | "extract-subtitles" | "prune-subtitles" | "prepare-downloads" | "prune-downloads" | "library-changes" | "prune-activity" | "make-backup" | "optimize-database";
         /**
-         * @description The Tasks page's table a row is in: `activity`, work done as it's
+         * @description The Tasks page's table a row is in: `onDemand`, work done as it's
          *     asked for; `library`, the scheduled tasks on the libraries' media;
          *     `maintenance`, the cleanups and the database's tasks. Skip sections
          *     you don't know.
          * @enum {string}
          */
-        TaskSection: "activity" | "library" | "maintenance";
+        TaskSection: "onDemand" | "library" | "maintenance";
         /** @description How a task's last run ended. */
         TaskRun: {
             /** Format: date-time */

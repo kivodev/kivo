@@ -37,10 +37,10 @@ type Media interface {
 	Subtitles(ctx context.Context, req media.SubtitlesRequest) error
 }
 
-// Tasks asks for a task's items to be done now. tasks.Runner implements
+// Tasks enqueues a task's items to be done now. tasks.Runner implements
 // it.
 type Tasks interface {
-	Ask(task string, items ...id.ID)
+	Enqueue(task string, items ...id.ID)
 }
 
 // Deps are the service's collaborators and folders.
@@ -109,8 +109,9 @@ func New(db *store.DB, d Deps, opt Options) *Service {
 // file through Prepare, outside the task.
 func (s *Service) Tasks() []tasks.Task {
 	return []tasks.Task{
-		{Name: TaskExtractSubtitles, Nightly: true, Wanted: s.wanted, Pending: s.pending, Do: s.do, Left: s.left, Failed: s.failed, Retry: s.retry},
-		{Name: taskPruneSubtitles, Nightly: true, Maintenance: true, Run: s.prune},
+		{Name: TaskExtractSubtitles, Schedule: tasks.Nightly, Wanted: s.q.Wanted,
+			Work: tasks.Items{Pending: s.q.Pending, Do: s.do, Failed: s.failed, Retry: s.retry}},
+		{Name: taskPruneSubtitles, Schedule: tasks.Nightly, Maintenance: true, Work: tasks.Func(s.prune)},
 	}
 }
 
@@ -120,7 +121,7 @@ func (s *Service) Tasks() []tasks.Task {
 // track. That way the subtitles are drawn from files from the first play.
 func (s *Service) Probed(tx *store.Tx, lib catalog.Library, file id.ID, tracks []catalog.Track) {
 	if lib.Subtitles == catalog.NightlyAndAdded && extractedAhead(tracks) {
-		tx.AfterCommit(func() { s.deps.Tasks.Ask(TaskExtractSubtitles, file) })
+		tx.AfterCommit(func() { s.deps.Tasks.Enqueue(TaskExtractSubtitles, file) })
 	}
 }
 
@@ -134,16 +135,6 @@ func extractedAhead(tracks []catalog.Track) bool {
 	})
 }
 
-// wanted reports whether any library extracts subtitles, so the nightly
-// task has something to do.
-func (s *Service) wanted(ctx context.Context) (bool, error) {
-	ok, err := s.q.Wanted(ctx)
-	if err != nil {
-		return ok, err
-	}
-	return ok, nil
-}
-
 // settle records that a file's subtitles were extracted at its generation,
 // or that extraction failed with failure.
 func (s *Service) settle(ctx context.Context, f catalog.File, failure error) error {
@@ -155,19 +146,6 @@ func (s *Service) settle(ctx context.Context, f catalog.File, failure error) err
 	return s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
 		return dbq.New(tx).Settle(ctx, row)
 	})
-}
-
-// pending lists what the task has left: the files with an unextracted
-// embedded ASS, SSA or PGS track, in every library that extracts
-// subtitles.
-func (s *Service) pending(ctx context.Context) ([]id.ID, error) {
-	return s.q.Pending(ctx)
-}
-
-// left is how many files are left.
-func (s *Service) left(ctx context.Context) (int, error) {
-	left, err := s.pending(ctx)
-	return len(left), err
 }
 
 // failed lists the files whose extraction failed at their generation.

@@ -2666,7 +2666,7 @@ paths:
       description: |
         Begins a run of the task, outside the maintenance window too, or
         has its open run, one the night began, go on past the window's
-        close. Either works until it's done or stopped. An Activity row has
+        close. Either works until it's done or stopped. An on-demand row has
         no runs: `404`.
       tags: [tasks]
       x-kivo-access: admin
@@ -6559,7 +6559,7 @@ components:
           type: string
           format: date-time
           description: |
-            When its next run begins. Absent in `activity`, and for a task
+            When its next run begins. Absent in `onDemand`, and for a task
             whose work every library is set to never do, such as refreshing
             metadata, preview thumbnails or intro and credits.
         progress: {$ref: "#/components/schemas/TaskProgress"}
@@ -6592,11 +6592,11 @@ components:
     TaskSection:
       type: string
       description: |
-        The Tasks page's table a row is in: `activity`, work done as it's
+        The Tasks page's table a row is in: `onDemand`, work done as it's
         asked for; `library`, the scheduled tasks on the libraries' media;
         `maintenance`, the cleanups and the database's tasks. Skip sections
         you don't know.
-      enum: [activity, library, maintenance]
+      enum: [onDemand, library, maintenance]
 
     TaskRun:
       type: object

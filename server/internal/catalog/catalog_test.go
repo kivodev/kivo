@@ -60,11 +60,11 @@ func count(t *testing.T, b *catalogtest.Builder, query string, args ...any) int 
 	return n
 }
 
-// libraryChanges returns the catalog's task.
-func libraryChanges(b *catalogtest.Builder) tasks.Task {
+// libraryChanges returns the work of the catalog's task.
+func libraryChanges(b *catalogtest.Builder) tasks.Items {
 	for _, t := range b.Catalog.Tasks() {
 		if t.Name == catalog.TaskLibraryChanges {
-			return t
+			return t.Work.(tasks.Items)
 		}
 	}
 	panic("no task " + catalog.TaskLibraryChanges)

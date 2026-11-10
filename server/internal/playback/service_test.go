@@ -1390,7 +1390,7 @@ type requests struct {
 	files []id.ID
 }
 
-func (r *requests) Ask(_ string, files ...id.ID) {
+func (r *requests) Enqueue(_ string, files ...id.ID) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.files = append(r.files, files...)

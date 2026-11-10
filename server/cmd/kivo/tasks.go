@@ -23,13 +23,13 @@ func (s *server) tasks() []tasks.Task {
 // databaseTasks returns the server's own tasks on its database.
 func (s *server) databaseTasks() []tasks.Task {
 	return []tasks.Task{
-		{Name: "make-backup", Nightly: true, Maintenance: true, Run: func(ctx context.Context) error {
+		{Name: "make-backup", Schedule: tasks.Nightly, Maintenance: true, Work: tasks.Func(func(ctx context.Context) error {
 			path, err := s.db.Backup(ctx, s.boot.BackupDir, 7)
 			if err == nil {
 				tasks.Summarize(ctx, "Backed up to "+filepath.Base(path))
 			}
 			return err
-		}},
-		{Name: "optimize-database", Nightly: true, Maintenance: true, Run: s.db.Optimize},
+		})},
+		{Name: "optimize-database", Schedule: tasks.Nightly, Maintenance: true, Work: tasks.Func(s.db.Optimize)},
 	}
 }

@@ -29,7 +29,7 @@ const actionWidth = "w-18";
 /**
  * The Tasks page. It shows when the nightly tasks run, with Schedule to
  * change that and how many files are worked on at once. Then comes
- * Activity, the work done as it's asked for, shown only while it's busy.
+ * On demand, the work done as it's asked for, shown only while it's busy.
  * Then come the Library and Maintenance tasks. Each row has its last and
  * next run, its progress or how much is left, and Stop or Run now.
  */
@@ -41,11 +41,11 @@ export function TasksScreen() {
   useRunNotices(tasks);
   // Future times are relative to when the list was fetched.
   const now = list.dataUpdatedAt;
-  const busy = tasks.filter((task) => task.section === "activity" && (task.running || task.pendingCount > 0));
+  const busy = tasks.filter((task) => task.section === "onDemand" && (task.running || task.pendingCount > 0));
   return (
     <AdminPage page="tasks" title={t`Tasks`} narrow description={<NightlyWindow />} actions={<ScheduleButton />}>
       {busy.length > 0 && (
-        <Section title={<Trans>Activity</Trans>}>
+        <Section title={<Trans>On demand</Trans>}>
           <AdminTable columns={columns}>
             {busy.map((task) => (
               <TaskRow key={task.id} task={task} now={now} />
@@ -233,7 +233,7 @@ function TaskRow({ task, now }: { task: Task; now: number }) {
         {task.stoppable ? (
           <StopButton task={task} className={actionWidth} />
         ) : (
-          task.section !== "activity" && <RunButton task={task} className={actionWidth} />
+          task.section !== "onDemand" && <RunButton task={task} className={actionWidth} />
         )}
       </AdminCell>
     </AdminTableRow>
@@ -246,11 +246,11 @@ function TaskRow({ task, now }: { task: Task; now: number }) {
  *  - "Failed 8 hours ago", with the reason on hover.
  *  - A muted "Never".
  *
- * Nothing shows in Activity.
+ * Nothing shows in On demand.
  */
 function LastRun({ task }: { task: Task }) {
   const last = task.lastRun;
-  if (task.section === "activity") return null;
+  if (task.section === "onDemand") return null;
   if (!last) {
     return (
       <span className="text-text-muted">
@@ -283,10 +283,10 @@ function LastRun({ task }: { task: Task }) {
  *    with its weekday or date when it's past the next day.
  *  - A muted "—" when every library is set never to do the task's work.
  *
- * Nothing shows in Activity.
+ * Nothing shows in On demand.
  */
 function NextRun({ task, now }: { task: Task; now: number }) {
-  if (task.section === "activity") return null;
+  if (task.section === "onDemand") return null;
   if (!task.nextRunAt) return <span className="text-text-muted">—</span>;
   return (
     <time dateTime={task.nextRunAt} title={formatDateTime(task.nextRunAt)} className="text-text-muted">

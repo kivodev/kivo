@@ -1484,19 +1484,19 @@ func (e TaskName) Valid() bool {
 
 // Defines values for TaskSection.
 const (
-	TaskSectionActivity    TaskSection = "activity"
 	TaskSectionLibrary     TaskSection = "library"
 	TaskSectionMaintenance TaskSection = "maintenance"
+	TaskSectionOnDemand    TaskSection = "onDemand"
 )
 
 // Valid indicates whether the value is a known member of the TaskSection enum.
 func (e TaskSection) Valid() bool {
 	switch e {
-	case TaskSectionActivity:
-		return true
 	case TaskSectionLibrary:
 		return true
 	case TaskSectionMaintenance:
+		return true
+	case TaskSectionOnDemand:
 		return true
 	default:
 		return false
@@ -4763,7 +4763,7 @@ type Task struct {
 	// LastRun How a task's last run ended.
 	LastRun *TaskRun `json:"lastRun,omitempty"`
 
-	// NextRunAt When its next run begins. Absent in `activity`, and for a task
+	// NextRunAt When its next run begins. Absent in `onDemand`, and for a task
 	// whose work every library is set to never do, such as refreshing
 	// metadata, preview thumbnails or intro and credits.
 	NextRunAt *time.Time `json:"nextRunAt,omitempty"`
@@ -4783,7 +4783,7 @@ type Task struct {
 	// Running It has items in flight or asked for, or a run working.
 	Running bool `json:"running"`
 
-	// Section The Tasks page's table a row is in: `activity`, work done as it's
+	// Section The Tasks page's table a row is in: `onDemand`, work done as it's
 	// asked for; `library`, the scheduled tasks on the libraries' media;
 	// `maintenance`, the cleanups and the database's tasks. Skip sections
 	// you don't know.
@@ -4852,7 +4852,7 @@ type TaskRun struct {
 	Summary *string `json:"summary,omitempty"`
 }
 
-// TaskSection The Tasks page's table a row is in: `activity`, work done as it's
+// TaskSection The Tasks page's table a row is in: `onDemand`, work done as it's
 // asked for; `library`, the scheduled tasks on the libraries' media;
 // `maintenance`, the cleanups and the database's tasks. Skip sections
 // you don't know.

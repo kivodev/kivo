@@ -518,7 +518,7 @@ func TestAnUnreadableFileIsTriedAgainBeforeItFails(t *testing.T) {
 // discard drops every request, so a test can run a task's items by hand.
 type discard struct{}
 
-func (discard) Ask(string, ...id.ID) {}
+func (discard) Enqueue(string, ...id.ID) {}
 
 // asks records each request, with whether the download was already
 // readable outside the transaction that created it.
@@ -528,7 +528,7 @@ type asks struct {
 	l  []string
 }
 
-func (a *asks) Ask(task string, items ...id.ID) {
+func (a *asks) Enqueue(task string, items ...id.ID) {
 	for _, i := range items {
 		seen := "unseen"
 		if _, err := a.f.dl.q.GetDownload(ctx, i); err == nil {

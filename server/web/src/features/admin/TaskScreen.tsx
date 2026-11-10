@@ -40,7 +40,7 @@ export function TaskScreen() {
         task.stoppable ? (
           <StopButton task={task} size="md" />
         ) : (
-          task.section !== "activity" && <RunButton task={task} size="md" variant="primary" />
+          task.section !== "onDemand" && <RunButton task={task} size="md" variant="primary" />
         )
       }
     >

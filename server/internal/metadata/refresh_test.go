@@ -572,11 +572,11 @@ func TestDueRefreshes(t *testing.T) {
 	if got := e.due(); !slices.Contains(got, kept) {
 		t.Errorf("due %v: a work never refreshed in a library set to never", got)
 	}
-	if ok, err := e.s.refreshWanted(ctx); err != nil || !ok {
+	if ok, err := e.s.q.RefreshWanted(ctx); err != nil || !ok {
 		t.Errorf("wanted %v, %v", ok, err)
 	}
 	e.exec(`UPDATE library SET refresh_days = 0`)
-	if ok, err := e.s.refreshWanted(ctx); err != nil || ok {
+	if ok, err := e.s.q.RefreshWanted(ctx); err != nil || ok {
 		t.Errorf("wanted with every library set to never: %v, %v", ok, err)
 	}
 }
@@ -667,7 +667,7 @@ func TestFailedRefresh(t *testing.T) {
 	if err != nil || len(failed) != 1 || failed[0].Item != w || !strings.Contains(failed[0].Reason, "403") {
 		t.Fatalf("failed %+v, %v", failed, err)
 	}
-	if left, err := e.s.refreshesLeft(ctx); err != nil || left != 0 {
+	if left, err := e.s.pendingRefreshes(ctx); err != nil || len(left) != 0 {
 		t.Fatalf("%d left: %v", left, err)
 	}
 

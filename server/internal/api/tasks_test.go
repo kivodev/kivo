@@ -52,7 +52,7 @@ func TestTasks(t *testing.T) {
 	if subs := e.task("extract-subtitles"); subs["section"] != "library" || subs["nightly"] != true || subs["nextRunAt"] == nil || subs["failedCount"] != 0.0 {
 		t.Errorf("subtitles %v", subs)
 	}
-	if downloads := e.task("prepare-downloads"); downloads["section"] != "activity" || downloads["failedCount"] != nil || downloads["running"] != false {
+	if downloads := e.task("prepare-downloads"); downloads["section"] != "onDemand" || downloads["failedCount"] != nil || downloads["running"] != false {
 		t.Errorf("downloads %v", downloads)
 	}
 
@@ -75,7 +75,7 @@ func TestTasks(t *testing.T) {
 	}
 
 	// Work that always finishes runs without Stop.
-	e.d.Tasks.Ask(playback.TaskPrepareDownloads, id.New())
+	e.d.Tasks.Enqueue(playback.TaskPrepareDownloads, id.New())
 	downloads := e.task("prepare-downloads")
 	if p, _ := downloads["progress"].(map[string]any); downloads["running"] != true || downloads["stoppable"] != false || p["total"] != 0.0 {
 		t.Errorf("a download asked for %v", downloads)
@@ -85,9 +85,9 @@ func TestTasks(t *testing.T) {
 			t.Errorf("stop %s: %d %s", name, w.Code, problemCode(w))
 		}
 	}
-	// An Activity row has no runs.
+	// An on-demand row has no runs.
 	if w := e.do("POST", "/api/v1/tasks/library-changes/run", e.adminToken, nil); w.Code != http.StatusNotFound {
-		t.Errorf("run an Activity task: %d", w.Code)
+		t.Errorf("run an on-demand task: %d", w.Code)
 	}
 	if w := e.do("POST", "/api/v1/tasks/scan-libraries/run", e.nobodyToken, nil); w.Code != http.StatusForbidden {
 		t.Errorf("run now as a viewer: %d", w.Code)
@@ -110,7 +110,7 @@ func TestTasksWithEveryLibrarySetToNever(t *testing.T) {
 		switch never := slices.Contains([]string{"refresh-metadata", "make-previews", "find-markers"}, task["id"].(string)); {
 		case never && task["nextRunAt"] != nil:
 			t.Errorf("%v runs next with every library set to never", task["id"])
-		case !never && task["section"] != "activity" && task["nextRunAt"] == nil:
+		case !never && task["section"] != "onDemand" && task["nextRunAt"] == nil:
 			t.Errorf("%v has no next run", task["id"])
 		}
 	}

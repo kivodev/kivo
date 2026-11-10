@@ -58,7 +58,7 @@ func (m *fakeMedia) Subtitles(_ context.Context, req media.SubtitlesRequest) err
 	return nil
 }
 
-// ask is one call to Ask.
+// ask is one call to Enqueue.
 type ask struct {
 	task  string
 	items []id.ID
@@ -70,7 +70,7 @@ type fakeTasks struct {
 	asked []ask
 }
 
-func (t *fakeTasks) Ask(task string, items ...id.ID) {
+func (t *fakeTasks) Enqueue(task string, items ...id.ID) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.asked = append(t.asked, ask{task, items})
@@ -201,7 +201,7 @@ func (f *fixture) run() error {
 // pending lists what the extract task has left.
 func (f *fixture) pending() []id.ID {
 	f.t.Helper()
-	files, err := f.s.pending(ctx)
+	files, err := f.s.q.Pending(ctx)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -573,7 +573,7 @@ func TestPending(t *testing.T) {
 	if p := f.pending(); len(p) != 0 {
 		t.Fatalf("pending %v in a library that never extracts them", p)
 	}
-	if ok, err := f.s.wanted(ctx); err != nil || ok {
+	if ok, err := f.s.q.Wanted(ctx); err != nil || ok {
 		t.Fatalf("wanted %v, %v with no library extracting them", ok, err)
 	}
 }

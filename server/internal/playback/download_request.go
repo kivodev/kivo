@@ -145,7 +145,7 @@ func (s *Downloads) store(ctx context.Context, row dbq.Download, r DownloadReque
 
 // enqueue asks for a download's preparation once tx commits.
 func (s *Downloads) enqueue(tx *store.Tx, download id.ID) {
-	tx.AfterCommit(func() { s.deps.Tasks.Ask(TaskPrepareDownloads, download) })
+	tx.AfterCommit(func() { s.deps.Tasks.Enqueue(TaskPrepareDownloads, download) })
 }
 
 // Retry asks again for a download that failed. It decides the

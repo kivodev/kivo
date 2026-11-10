@@ -55,11 +55,11 @@ type Options struct {
 	OpenFolder func(path string) (fs.FS, func() error, error)
 }
 
-// Tasks asks for items to be done now. Identify uses it to ask for a
+// Tasks enqueues items to be done now. Identify uses it to ask for a
 // library's scan, which identifies the folders sent back to be identified
 // again. tasks.Runner implements it.
 type Tasks interface {
-	Ask(task string, items ...id.ID)
+	Enqueue(task string, items ...id.ID)
 }
 
 // Markers asks for markers for a library's episodes that got versions,
@@ -180,7 +180,7 @@ func (i *Identifier) reidentifyAndScan(ctx context.Context, tx *store.Tx, lib id
 	if err := i.Reidentify(ctx, tx, files); err != nil {
 		return err
 	}
-	tx.AfterCommit(func() { i.deps.Tasks.Ask(scan.TaskScanLibraries, lib) })
+	tx.AfterCommit(func() { i.deps.Tasks.Enqueue(scan.TaskScanLibraries, lib) })
 	return nil
 }
 

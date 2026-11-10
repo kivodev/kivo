@@ -44,9 +44,9 @@ type Media interface {
 	Previews(ctx context.Context, req media.PreviewsRequest) (media.Previews, error)
 }
 
-// Tasks asks for items to be done now. tasks.Runner implements it.
+// Tasks enqueues items to be done now. tasks.Runner implements it.
 type Tasks interface {
-	Ask(task string, items ...id.ID)
+	Enqueue(task string, items ...id.ID)
 }
 
 // Deps are the service's collaborators and folders.
@@ -88,9 +88,10 @@ func New(db *store.DB, d Deps) *Service {
 // once.
 func (s *Service) Tasks() []tasks.Task {
 	return []tasks.Task{
-		{Name: TaskMakePreviews, Nightly: true, Limit: func(st config.Settings) int { return st.PreviewsAtOnce }, Wanted: s.wanted,
-			Pending: s.pending, Do: s.make, Left: s.left, Failed: s.failed, Retry: s.retry},
-		{Name: taskPrunePreviews, Nightly: true, Maintenance: true, Run: s.prune},
+		{Name: TaskMakePreviews, Schedule: tasks.Nightly, Wanted: s.q.Wanted, Work: tasks.Items{
+			Pending: s.q.Pending, Do: s.make, Limit: func(st config.Settings) int { return st.PreviewsAtOnce },
+			Failed: s.failed, Retry: s.retry}},
+		{Name: taskPrunePreviews, Schedule: tasks.Nightly, Maintenance: true, Work: tasks.Func(s.prune)},
 	}
 }
 
@@ -185,18 +186,6 @@ func (s *Service) settle(ctx context.Context, f catalog.File, failure error) err
 	})
 }
 
-// pending lists what the task has left: the files missing previews, in
-// every library that makes them.
-func (s *Service) pending(ctx context.Context) ([]id.ID, error) {
-	return s.q.Pending(ctx)
-}
-
-// left returns how many files are left.
-func (s *Service) left(ctx context.Context) (int, error) {
-	left, err := s.pending(ctx)
-	return len(left), err
-}
-
 // failed lists the files whose previews failed at their generation.
 func (s *Service) failed(ctx context.Context) ([]tasks.Failure, error) {
 	rows, err := s.q.Failed(ctx)
@@ -234,18 +223,8 @@ func (s *Service) current(ctx context.Context, file id.ID) (int64, error) {
 // commits.
 func (s *Service) Probed(tx *store.Tx, lib catalog.Library, file id.ID) {
 	if lib.Previews == catalog.NightlyAndAdded {
-		tx.AfterCommit(func() { s.deps.Tasks.Ask(TaskMakePreviews, file) })
+		tx.AfterCommit(func() { s.deps.Tasks.Enqueue(TaskMakePreviews, file) })
 	}
-}
-
-// wanted reports whether any library makes previews, which means the
-// nightly task has something to do.
-func (s *Service) wanted(ctx context.Context) (bool, error) {
-	ok, err := s.q.Wanted(ctx)
-	if err != nil {
-		return false, err
-	}
-	return ok, nil
 }
 
 // videoTrack returns a file's video track as probing described it. It is

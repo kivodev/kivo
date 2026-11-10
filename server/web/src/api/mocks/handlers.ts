@@ -567,7 +567,7 @@ export function createHandlers(api: MockApi) {
 
     http.get("/api/v1/tasks", ({ response }) => response(200).json({ items: api.tasks })),
     http.post("/api/v1/tasks/{task}/run", ({ params, response }) => {
-      const task = api.tasks.find((t) => t.id === params.task && t.section !== "activity");
+      const task = api.tasks.find((t) => t.id === params.task && t.section !== "onDemand");
       return task ? response(204).empty() : notFound();
     }),
     // Stop ends the task's run, and none of its work is left in flight.

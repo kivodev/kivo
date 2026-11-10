@@ -60,26 +60,14 @@ func (s *Service) due(ctx context.Context, tx *store.Tx, works []id.ID) error {
 	if err := dbq.New(tx).MarkDue(ctx, id.Set(works...)); err != nil {
 		return err
 	}
-	tx.AfterCommit(func() { s.deps.Tasks.Ask(TaskRefreshMetadata, works...) })
+	tx.AfterCommit(func() { s.deps.Tasks.Enqueue(TaskRefreshMetadata, works...) })
 	return nil
-}
-
-// refreshWanted reports whether any library refreshes its metadata, so the
-// nightly task has something to do.
-func (s *Service) refreshWanted(ctx context.Context) (bool, error) {
-	return s.q.RefreshWanted(ctx)
 }
 
 // pendingRefreshes lists the task's remaining items: the works due a
 // refresh.
 func (s *Service) pendingRefreshes(ctx context.Context) ([]id.ID, error) {
 	return s.q.DueRefreshes(ctx, time.Now().UnixMilli())
-}
-
-// refreshesLeft counts the works due a refresh.
-func (s *Service) refreshesLeft(ctx context.Context) (int, error) {
-	left, err := s.pendingRefreshes(ctx)
-	return len(left), err
 }
 
 // failedRefreshes lists the works whose last refresh failed.

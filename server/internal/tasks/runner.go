@@ -19,9 +19,9 @@ import (
 
 const (
 	tick        = time.Minute     // how often the schedule and the window are checked
-	activityRun = time.Hour       // how often an Activity task looks for items left
+	onDemandRun = time.Hour       // how often an on-demand task looks for pending items
 	noticeEvery = 5 * time.Second // how often progress is published
-	countFor    = 5 * time.Second // how long a task's Left count is reused
+	countFor    = 5 * time.Second // how long a task's pending count is reused
 )
 
 // Runner runs the tasks.
@@ -75,8 +75,9 @@ type task struct {
 	ending *run
 	last   *Outcome // how the last run ended, or nil if none has
 
-	call  *flight // a plain task's Run in flight, or nil
-	items *items  // an item task's work, or nil for a plain task
+	fn    Func    // a Func task's work, or nil
+	call  *flight // fn in flight, or nil
+	items *items  // an Items task's work, or nil
 }
 
 // run is a task's open run. It is held in memory only.
@@ -88,17 +89,18 @@ type run struct {
 	done  int // items its passes settled
 }
 
-// items is an item task's work: its pass, the items asked for, and the
-// items in flight.
+// items is an Items task's work: what the task does, its pass, the items
+// enqueued, and the items in flight.
 type items struct {
-	pass    *pass
-	nextAct time.Time // when an Activity task next looks for items left
+	Items
+	pass     *pass
+	nextLook time.Time // when an on-demand task next looks for pending items
 
 	asked  []id.ID
 	queued map[id.ID]bool // the items in asked
-	// again holds items asked for while in flight. Each is done once more
+	// requeue holds items enqueued while in flight. Each is done once more
 	// after it finishes.
-	again map[id.ID]bool
+	requeue map[id.ID]bool
 
 	busy    map[id.ID]*item // in flight
 	counted counted
@@ -114,14 +116,14 @@ type pass struct {
 	did  map[id.ID]bool
 }
 
-// counted caches a task's Left count and its number of failed items for
+// counted caches a task's pending count and its number of failed items for
 // countFor.
 type counted struct {
-	at             time.Time
-	left, failures int
+	at                time.Time
+	pending, failures int
 }
 
-// flight is a Run or Do call in flight. It holds how to cancel the call
+// flight is a Func or Do call in flight. It holds how to cancel the call
 // and what the call reported through Progress and Summarize.
 type flight struct {
 	r      *Runner
@@ -141,27 +143,38 @@ type item struct {
 	ctx     context.Context // the context Do gets, carrying the flight for Progress
 	id      id.ID
 	started time.Time // used to log how long the item took
-	pass    *pass     // the pass it came from, or nil if it was asked for
+	pass    *pass     // the pass it came from, or nil if it was enqueued
 }
 
 // Add adds a task. Call it while wiring the server, before Run.
 func (r *Runner) Add(t Task) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	plain, hasItems := t.Run != nil, t.Pending != nil && t.Do != nil
 	switch {
 	case r.started:
 		panic("tasks: Add after Run")
-	case t.Name == "" || plain == hasItems:
-		panic("tasks: a task needs a name, and Run or Pending and Do: " + t.Name)
-	case plain && t.Section() == SectionActivity:
-		panic("tasks: a plain task needs a schedule: " + t.Name)
+	case t.Name == "":
+		panic("tasks: a task needs a name")
 	case r.byName[t.Name] != nil:
 		panic("tasks: task added twice: " + t.Name)
 	}
 	tk := &task{Task: t, wake: make(chan struct{}, 1)}
-	if hasItems {
-		tk.items = &items{queued: map[id.ID]bool{}, again: map[id.ID]bool{}, busy: map[id.ID]*item{}}
+	switch w := t.Work.(type) {
+	case Func:
+		if w == nil {
+			panic("tasks: a task needs Work, a Func or Items: " + t.Name)
+		}
+		if t.Schedule == OnDemand {
+			panic("tasks: a Func needs a schedule: " + t.Name)
+		}
+		tk.fn = w
+	case Items:
+		if w.Pending == nil || w.Do == nil {
+			panic("tasks: Items needs Pending and Do: " + t.Name)
+		}
+		tk.items = &items{Items: w, queued: map[id.ID]bool{}, requeue: map[id.ID]bool{}, busy: map[id.ID]*item{}}
+	default:
+		panic("tasks: a task needs Work, a Func or Items: " + t.Name)
 	}
 	r.tasks = append(r.tasks, tk)
 	r.byName[t.Name] = tk
@@ -194,7 +207,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	var wg sync.WaitGroup
 	for _, t := range r.tasks {
 		if t.items == nil {
-			wg.Go(func() { r.plainLoop(ctx, t) })
+			wg.Go(func() { r.funcLoop(ctx, t) })
 		} else {
 			wg.Go(func() { r.itemLoop(ctx, t, &wg) })
 		}
@@ -224,7 +237,7 @@ func (r *Runner) schedule(ctx context.Context) {
 //     window, unless Run now asked it to finish.
 //   - An interval run begins when it's due.
 //   - A working run goes on.
-//   - An Activity task looks for items left once an hour.
+//   - An on-demand task looks for pending items once an hour.
 func (r *Runner) look(ctx context.Context, now time.Time) {
 	r.mu.Lock()
 	open := r.window().Contains(now)
@@ -235,7 +248,7 @@ func (r *Runner) look(ctx context.Context, now time.Time) {
 		case r.due(t, now, open):
 			t.open = &run{started: now}
 			begun = append(begun, t)
-		case t.Nightly && !open && t.open != nil && !t.open.toEnd:
+		case t.Schedule == Nightly && !open && t.open != nil && !t.open.toEnd:
 			closed[t] = r.cut(t)
 			continue
 		}
@@ -263,14 +276,14 @@ func (r *Runner) due(t *task, now time.Time, open bool) bool {
 	switch {
 	case t.open != nil || t.ending != nil:
 		return false
-	case t.Nightly:
+	case t.Schedule == Nightly:
 		return open && (t.last == nil || t.last.At.Before(r.window().Opened(now)))
 	}
-	return t.Every > 0 && !now.Before(r.next(t, now))
+	return t.Schedule.every > 0 && !now.Before(r.next(t, now))
 }
 
-// goOn lets t's work go on where it may. A plain task's loop is woken while
-// its open run is working. An item task gets a pass when it has none.
+// goOn lets t's work go on where it may. A Func task's loop is woken while
+// its open run is working. An Items task gets a pass when it has none.
 func (r *Runner) goOn(t *task, now time.Time) {
 	if t.items == nil {
 		if t.open != nil && r.working(t, now) {
@@ -282,7 +295,7 @@ func (r *Runner) goOn(t *task, now time.Time) {
 }
 
 // cut cancels the open run's work in flight and ends the run, returning
-// it. The cancelled work stays pending. Items that were asked for go on.
+// it. The cancelled work stays pending. Items that were enqueued go on.
 // The caller holds Runner.mu.
 func (r *Runner) cut(t *task) *run {
 	if t.call != nil {
@@ -299,34 +312,34 @@ func (r *Runner) cut(t *task) *run {
 	return t.endOpen()
 }
 
-// working reports whether t may work on its own now. An Activity task
+// working reports whether t may work on its own now. An on-demand task
 // always may. Any other task may only while it has an open run, and a
 // nightly run also needs the window open unless Run now asked it to
 // finish.
 func (r *Runner) working(t *task, now time.Time) bool {
 	switch {
-	case t.Section() == SectionActivity:
+	case t.Schedule == OnDemand:
 		return true
 	case t.open == nil:
 		return false
 	}
-	return t.open.toEnd || !t.Nightly || r.window().Contains(now)
+	return t.open.toEnd || t.Schedule != Nightly || r.window().Contains(now)
 }
 
 // next is when t's schedule next begins a run, as of now. For a night task
-// it is the window's next opening. For an interval task it is Every after
-// the later of the last run's end and the server's start. For an Activity
-// task it is zero.
+// it is the window's next opening. For an interval task it is the interval
+// after the later of the last run's end and the server's start. For an
+// on-demand task it is zero.
 func (r *Runner) next(t *task, now time.Time) time.Time {
 	switch {
-	case t.Nightly:
+	case t.Schedule == Nightly:
 		return r.window().Next(now)
-	case t.Every > 0:
+	case t.Schedule.every > 0:
 		from := r.boot
 		if t.last != nil && t.last.At.After(from) {
 			from = t.last.At
 		}
-		return from.Add(t.Every)
+		return from.Add(t.Schedule.every)
 	}
 	return time.Time{}
 }
@@ -354,7 +367,7 @@ func (t *task) endOpen() *run {
 func (r *Runner) end(ctx context.Context, t *task, ended *run, out Outcome, did bool) {
 	out.At = time.Now()
 	var tell *RunEnd
-	if (t.Nightly || ended.toEnd) && (did || out.Error != "") {
+	if (t.Schedule == Nightly || ended.toEnd) && (did || out.Error != "") {
 		e := r.runEnd(ctx, t, out)
 		tell = &e
 	}
@@ -388,8 +401,8 @@ func (r *Runner) end(ctx context.Context, t *task, ended *run, out Outcome, did 
 // items.
 func (r *Runner) runEnd(ctx context.Context, t *task, out Outcome) RunEnd {
 	e := RunEnd{Task: t.Name, Outcome: out}
-	if t.Failed != nil {
-		if failed, err := t.Failed(ctx); err == nil {
+	if t.items != nil && t.items.Failed != nil {
+		if failed, err := t.items.Failed(ctx); err == nil {
 			e.Failed = len(failed)
 		}
 	}
@@ -398,11 +411,11 @@ func (r *Runner) runEnd(ctx context.Context, t *task, out Outcome) RunEnd {
 
 func nullString(s string) sql.NullString { return sql.NullString{String: s, Valid: s != ""} }
 
-// plainLoop calls a plain task's Run while its open run is working, then
+// funcLoop calls a Func task's work while its open run is working, then
 // waits to be woken.
-func (r *Runner) plainLoop(ctx context.Context, t *task) {
+func (r *Runner) funcLoop(ctx context.Context, t *task) {
 	for {
-		if ended, out := r.callRun(ctx, t); ended != nil {
+		if ended, out := r.callFunc(ctx, t); ended != nil {
 			r.end(ctx, t, ended, out, true)
 		}
 		select {
@@ -413,11 +426,11 @@ func (r *Runner) plainLoop(ctx context.Context, t *task) {
 	}
 }
 
-// callRun calls t's Run if its open run is working now. When Run returns on
-// its own, the run ends, and callRun returns it with Run's summary or
-// error. When the window's close or Stop cancels Run, they end the run
-// themselves. A shutdown leaves the run unrecorded.
-func (r *Runner) callRun(ctx context.Context, t *task) (*run, Outcome) {
+// callFunc calls t's Func if its open run is working now. When the Func
+// returns on its own, the run ends, and callFunc returns it with the Func's
+// summary or error. When the window's close or Stop cancels the Func, they
+// end the run themselves. A shutdown leaves the run unrecorded.
+func (r *Runner) callFunc(ctx context.Context, t *task) (*run, Outcome) {
 	r.mu.Lock()
 	if t.call != nil || t.open == nil || !r.working(t, time.Now()) {
 		r.mu.Unlock()
@@ -429,7 +442,7 @@ func (r *Runner) callRun(ctx context.Context, t *task) (*run, Outcome) {
 	r.mu.Unlock()
 	r.changed()
 
-	err := guard(cctx, func() error { return t.Run(cctx) }, "task", t.Name)
+	err := guard(cctx, func() error { return t.fn(cctx) }, "task", t.Name)
 	cancelled := cctx.Err() != nil
 	c.cancel()
 
@@ -451,7 +464,7 @@ func (r *Runner) callRun(ctx context.Context, t *task) (*run, Outcome) {
 	return ended, out
 }
 
-// itemLoop starts an item task's items whenever one may start, then waits
+// itemLoop starts an Items task's items whenever one may start, then waits
 // to be woken.
 func (r *Runner) itemLoop(ctx context.Context, t *task, wg *sync.WaitGroup) {
 	for {
@@ -482,7 +495,7 @@ func (r *Runner) fill(ctx context.Context, t *task, wg *sync.WaitGroup) {
 		case it != nil:
 			wg.Go(func() { r.do(t, it) })
 		case p != nil:
-			list, err := t.Pending(ctx)
+			list, err := t.items.Pending(ctx)
 			r.mu.Lock()
 			ended := r.refill(t, p, list, err)
 			r.mu.Unlock()
@@ -512,7 +525,7 @@ func (r *Runner) ranOut(t *task) *pass {
 }
 
 // refill sets a pass's next list from what Pending read, less the items in
-// flight, asked for, or already done this pass. If nothing new is left,
+// flight, enqueued, or already done this pass. If nothing new is left,
 // the pass ends and so does the run, which refill returns.
 func (r *Runner) refill(t *task, p *pass, list []id.ID, err error) *run {
 	w := t.items
@@ -533,16 +546,16 @@ func (r *Runner) refill(t *task, p *pass, list []id.ID, err error) *run {
 	return nil
 }
 
-// keepPassing gives an item task a pass when it has none and should have
-// one. An Activity task gets one each hour. Any other task gets one while
+// keepPassing gives an Items task a pass when it has none and should have
+// one. An on-demand task gets one each hour. Any other task gets one while
 // its open run is working.
 func (r *Runner) keepPassing(t *task, now time.Time) {
 	w := t.items
 	switch {
 	case w.pass != nil:
-	case t.Section() == SectionActivity:
-		if !now.Before(w.nextAct) {
-			w.nextAct = now.Add(activityRun)
+	case t.Schedule == OnDemand:
+		if !now.Before(w.nextLook) {
+			w.nextLook = now.Add(onDemandRun)
 			r.startPass(t)
 		}
 	case t.open != nil && r.working(t, now):
@@ -558,7 +571,7 @@ func (r *Runner) startPass(t *task) {
 }
 
 // claim picks the next item t should start now, if its limit allows one.
-// Items asked for come first. Otherwise it takes the pass's next item,
+// Enqueued items come first. Otherwise it takes the pass's next item,
 // while the task is working.
 func (r *Runner) claim(ctx context.Context, t *task) *item {
 	w, limit := t.items, r.limit(t)
@@ -584,14 +597,14 @@ func (r *Runner) claim(ctx context.Context, t *task) *item {
 
 // limit is how many of t's items may run at once now, at least one.
 func (r *Runner) limit(t *task) int {
-	if t.Limit == nil {
+	if t.items.Limit == nil {
 		return 1
 	}
-	return max(1, t.Limit(r.settings.Get()))
+	return max(1, t.items.Limit(r.settings.Get()))
 }
 
 // nextListed takes the pass's next item that isn't done, in flight, or
-// asked for. It returns nil when the list runs out.
+// enqueued. It returns nil when the list runs out.
 func (w *items) nextListed() *item {
 	p := w.pass
 	for p.pos < len(p.list) {
@@ -606,9 +619,9 @@ func (w *items) nextListed() *item {
 
 // do does one item and then updates the in-memory state. The item's slot
 // is freed and its pass marks it done. If it settled, its run counts it.
-// If it was asked for again while in flight, it goes back in line.
+// If it was enqueued again while in flight, it goes back in line.
 func (r *Runner) do(t *task, it *item) {
-	err := guard(it.ctx, func() error { return t.Do(it.ctx, it.id) }, "task", t.Name, "item", it.id)
+	err := guard(it.ctx, func() error { return t.items.Do(it.ctx, it.id) }, "task", t.Name, "item", it.id)
 	cancelled := it.ctx.Err() != nil
 	it.cancel()
 	r.mu.Lock()
@@ -620,8 +633,8 @@ func (r *Runner) do(t *task, it *item) {
 			t.open.done++
 		}
 	}
-	if w.again[it.id] {
-		delete(w.again, it.id)
+	if w.requeue[it.id] {
+		delete(w.requeue, it.id)
 		w.enqueue(it.id)
 	}
 	r.mu.Unlock()
@@ -632,13 +645,13 @@ func (r *Runner) do(t *task, it *item) {
 	r.changed()
 }
 
-// endItems ends an item task's run. Its summary says how many items the run
+// endItems ends an Items task's run. Its summary says how many items the run
 // settled and how many are left, after prefix, such as "Stopped".
 func (r *Runner) endItems(ctx context.Context, t *task, ended *run, prefix string) {
 	left := 0
-	if t.Left != nil {
+	if !t.items.Uncounted {
 		var err error
-		if left, err = t.Left(ctx); err != nil {
+		if left, err = t.items.pendingCount(ctx); err != nil {
 			slog.ErrorContext(ctx, "tasks: read what's left", "task", t.Name, "err", err)
 		}
 	}
@@ -658,7 +671,7 @@ func settledSummary(prefix string, settled, left int) string {
 	return s
 }
 
-// guard calls Run or Do. It turns a panic into an error and logs the
+// guard calls a Func or Do. It turns a panic into an error and logs the
 // stack.
 func guard(ctx context.Context, f func() error, attrs ...any) (err error) {
 	defer func() {
@@ -683,7 +696,7 @@ func (t *task) signal() {
 func (r *Runner) Start(ctx context.Context, name string) error {
 	r.mu.Lock()
 	t := r.byName[name]
-	if t == nil || t.Section() == SectionActivity {
+	if t == nil || t.Schedule == OnDemand {
 		r.mu.Unlock()
 		return fmt.Errorf("%w: task %s", ErrNotFound, name)
 	}
@@ -702,7 +715,7 @@ func (r *Runner) Start(ctx context.Context, name string) error {
 }
 
 // Stop stops a task. It cancels the work in flight, which stays pending,
-// drops the items asked for, and ends the run. Given items, it stops only
+// drops the items enqueued, and ends the run. Given items, it stops only
 // those, as when one library's scan is stopped. A task whose work always
 // finishes returns ErrNotStoppable.
 func (r *Runner) Stop(ctx context.Context, name string, items ...id.ID) error {
@@ -712,7 +725,7 @@ func (r *Runner) Stop(ctx context.Context, name string, items ...id.ID) error {
 	case t == nil || len(items) > 0 && t.items == nil:
 		r.mu.Unlock()
 		return ErrNotFound
-	case t.Finish:
+	case t.Unstoppable:
 		r.mu.Unlock()
 		return ErrNotStoppable
 	}
@@ -755,23 +768,23 @@ func (w *items) stop(i id.ID) {
 		delete(w.queued, i)
 		w.asked = slices.DeleteFunc(w.asked, func(x id.ID) bool { return x == i })
 	}
-	delete(w.again, i)
+	delete(w.requeue, i)
 	if w.pass != nil {
 		w.pass.did[i] = true
 	}
 }
 
-// Ask has an item task do the given items now, whether or not the window is
-// open. They go ahead of the run's items, in the order asked and within
-// the task's limit, and no run begins. An item asked for while in flight is
-// done once more afterwards. Asks are held in memory only. An ask lost to a
-// restart is still pending in the task's tables.
-func (r *Runner) Ask(name string, items ...id.ID) {
+// Enqueue has an Items task do the given items now, whether or not the
+// window is open. They go ahead of the run's items, in the order enqueued
+// and within the task's limit, and no run begins. An item enqueued while in
+// flight is done once more afterwards. The line is held in memory only. An
+// item lost to a restart is still pending in the feature's tables.
+func (r *Runner) Enqueue(name string, items ...id.ID) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	t := r.byName[name]
 	if t == nil || t.items == nil {
-		panic("tasks: ask of a task with no items: " + name)
+		panic("tasks: enqueue on a task with no items: " + name)
 	}
 	t.items.enqueue(items...)
 	t.signal()
@@ -783,7 +796,7 @@ func (w *items) enqueue(items ...id.ID) {
 	for _, i := range items {
 		switch {
 		case w.busy[i] != nil:
-			w.again[i] = true
+			w.requeue[i] = true
 		case !w.queued[i]:
 			w.asked = append(w.asked, i)
 			w.queued[i] = true
@@ -794,28 +807,28 @@ func (w *items) enqueue(items ...id.ID) {
 // Failed lists a task's items that failed for good.
 func (r *Runner) Failed(ctx context.Context, name string) ([]Failure, error) {
 	t := r.task(name)
-	if t == nil || t.Failed == nil {
+	if t == nil || t.items == nil || t.items.Failed == nil {
 		return nil, ErrNotFound
 	}
-	return t.Failed(ctx)
+	return t.items.Failed(ctx)
 }
 
 // Retry forgets the failures of a task's given items, or of all its failed
-// items when none are given, and asks for them. The task's counts are read
+// items when none are given, and enqueues them. The task's counts are read
 // afresh afterwards.
 func (r *Runner) Retry(ctx context.Context, name string, items ...id.ID) error {
 	t := r.task(name)
-	if t == nil || t.Retry == nil {
+	if t == nil || t.items == nil || t.items.Retry == nil {
 		return ErrNotFound
 	}
-	again, err := t.Retry(ctx, items...)
+	again, err := t.items.Retry(ctx, items...)
 	if err != nil {
 		return err
 	}
 	r.mu.Lock()
 	t.items.counted = counted{}
 	r.mu.Unlock()
-	r.Ask(name, again...)
+	r.Enqueue(name, again...)
 	return nil
 }
 
@@ -830,7 +843,7 @@ func (r *Runner) Items(name string) []Item {
 	return nil
 }
 
-// Asked returns a task's items asked for that haven't started yet.
+// Asked returns a task's enqueued items that haven't started yet.
 func (r *Runner) Asked(name string) []id.ID {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -840,7 +853,7 @@ func (r *Runner) Asked(name string) []id.ID {
 	return nil
 }
 
-// Busy counts each task's work in flight: its items, or one for a plain
+// Busy counts each task's work in flight: its items, or one for a Func
 // task's run. Tasks with nothing in flight are left out.
 func (r *Runner) Busy() map[string]int {
 	r.mu.Lock()
@@ -878,7 +891,7 @@ func (r *Runner) Tasks(ctx context.Context) ([]Status, error) {
 }
 
 // status builds one task's Status: its schedule, its last run, and the
-// progress of its Run in flight or its items.
+// progress of its Func in flight or its items.
 func (r *Runner) status(ctx context.Context, t *task) (Status, error) {
 	now := time.Now()
 	r.mu.Lock()
@@ -905,11 +918,11 @@ func (r *Runner) status(ctx context.Context, t *task) (Status, error) {
 	return s, err
 }
 
-// itemStatus fills in an item task's Status. While its run is working,
+// itemStatus fills in an Items task's Status. While its run is working,
 // progress is the items settled out of those settled plus those left.
 // Otherwise progress is that of the first item in flight, if it reports
-// any. Asked-for items get no count of their own here, because whoever
-// asked for them shows their progress.
+// any. Enqueued items get no count of their own here, because whoever
+// enqueued them shows their progress.
 func (r *Runner) itemStatus(ctx context.Context, t *task, s *Status, now time.Time) error {
 	r.mu.Lock()
 	w := t.items
@@ -926,11 +939,11 @@ func (r *Runner) itemStatus(ctx context.Context, t *task, s *Status, now time.Ti
 	if err != nil {
 		return err
 	}
-	if t.Left != nil {
+	if !w.Uncounted {
 		if working {
-			s.Done, s.Total = done, done+c.left
+			s.Done, s.Total = done, done+c.pending
 		} else {
-			s.Left = c.left
+			s.PendingCount = c.pending
 		}
 	}
 	s.Failures = c.failures
@@ -954,7 +967,7 @@ func (w *items) list() []Item {
 	return out
 }
 
-// count returns t's Left count and its number of failed items. A result is
+// count returns t's pending count and its number of failed items. A result is
 // reused for countFor.
 func (r *Runner) count(ctx context.Context, t *task, now time.Time) (counted, error) {
 	r.mu.Lock()
@@ -964,14 +977,14 @@ func (r *Runner) count(ctx context.Context, t *task, now time.Time) (counted, er
 		return c, nil
 	}
 	c = counted{at: now}
-	if t.Left != nil {
+	if !t.items.Uncounted {
 		var err error
-		if c.left, err = t.Left(ctx); err != nil {
+		if c.pending, err = t.items.pendingCount(ctx); err != nil {
 			return counted{}, err
 		}
 	}
-	if t.Failed != nil {
-		failed, err := t.Failed(ctx)
+	if t.items.Failed != nil {
+		failed, err := t.items.Failed(ctx)
 		if err != nil {
 			return counted{}, err
 		}
@@ -988,8 +1001,8 @@ func (it *item) status() Item {
 	return Item{ID: it.id, Step: it.step, Done: it.done, Total: it.total, Since: it.since, started: it.started}
 }
 
-// start prepares f to run under ctx. It returns the context to pass to Run
-// or Do, which carries f for Progress and Summarize.
+// start prepares f to run under ctx. It returns the context to pass to the
+// Func or Do, which carries f for Progress and Summarize.
 func (f *flight) start(ctx context.Context, r *Runner) context.Context {
 	ctx, f.cancel = context.WithCancel(ctx)
 	f.r, f.since = r, time.Now()
