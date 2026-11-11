@@ -439,7 +439,7 @@ private fun playable(head: WorkSummary, work: WorkDetail?, choices: Choices) = i
 
 /**
  * Play or Resume with the time, and beside Resume a round Play from
- * beginning; then [chips], a movie's Trailer, My List, Played and the ⋯ menu; "This file is
+ * beginning; then [chips], My List, Played, a movie's Trailer and the ⋯ menu; "This file is
  * missing" in Play's place when no version can play. They work from the
  * card before the page is read.
  */
@@ -472,7 +472,6 @@ private fun ActionRow(
             if (position != null) RestartButton(hero) { play(fromStart = true) }
         }
         chips?.invoke()
-        read?.movie?.trailerUrl?.let { TrailerButton(it, hero) }
         HeroIconButton(
             if (onMyList) KivoIcon.ListCheck else KivoIcon.ListPlus,
             stringResource(if (onMyList) R.string.remove_from_my_list else R.string.add_to_my_list),
@@ -487,6 +486,7 @@ private fun ActionRow(
             "played",
             played,
         ) { model.setPlayed(work.id, !played) }
+        read?.movie?.trailerUrl?.let { TrailerButton(it, hero) }
         MoreButton(work, hero, navigator)
     }
 }

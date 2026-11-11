@@ -55,12 +55,17 @@ describe("Loading a work's page", () => {
 });
 
 describe("Movie page", () => {
-  it("links to the trailer in a new tab, only for a movie that has one", async () => {
+  it("links to the trailer in a new tab, last of the actions, only for a movie that has one", async () => {
     serveMockApi();
     const { unmount } = renderApp(`/works/${mockIds.dunePartTwo}`);
     const trailer = await screen.findByRole("link", { name: "Trailer" });
     expect(trailer).toHaveAttribute("href", "https://www.youtube.com/watch?v=Way9Dexny3w");
     expect(trailer).toHaveAttribute("target", "_blank");
+    // Last of the actions, after Watched and before the menu.
+    expect(trailer.previousElementSibling).toContainElement(screen.getByRole("button", { name: "Mark as watched" }));
+    expect(trailer.nextElementSibling).toContainElement(
+      screen.getByRole("button", { name: "More actions for Dune: Part Two" }),
+    );
     unmount();
     renderApp(`/works/${mockIds.dune}`);
     expect(await screen.findByRole("heading", { name: "Dune" })).toBeInTheDocument();

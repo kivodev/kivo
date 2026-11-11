@@ -5,9 +5,10 @@ import SwiftUI
 /// The row under a page's hero: the primary button, accent coloured, and
 /// any round button [primary] puts beside it, such as Play from Beginning,
 /// with a second line under it that says what it plays, then My List and
-/// Mark as Watched as neutral round buttons, and any [extra], such as
-/// Download. Where the primary button's label doesn't fit beside the
-/// round buttons, it takes the whole width with the round buttons under it.
+/// Mark as Watched as neutral round buttons, and any [extra] round buttons,
+/// such as Download and a movie's Trailer. Where the primary button's label
+/// doesn't fit beside the round buttons, it takes the whole width with the
+/// round buttons under it.
 /// In a wide window the row keeps to the leading edge.
 struct ActionRow<Primary: View, Extra: View>: View {
     let work: WorkDetail
@@ -177,6 +178,25 @@ struct RestartButton: View {
         .buttonBorderShape(.circle)
         .tint(palette.text)
         .accessibilityIdentifier("play-from-beginning")
+    }
+}
+
+/// A movie's Trailer, a round button like the others in the row, which
+/// the system opens in the YouTube app if it's installed, else the browser.
+struct TrailerButton: View {
+    let url: URL
+    @Environment(\.kivoPalette) private var palette
+
+    var body: some View {
+        Link(destination: url) {
+            Image(systemName: "film")
+                .roundButtonSymbol()
+                .accessibilityLabel(Text("Trailer"))
+        }
+        .buttonStyle(.bordered)
+        .buttonBorderShape(.circle)
+        .tint(palette.text)
+        .accessibilityIdentifier("trailer")
     }
 }
 

@@ -21,7 +21,7 @@ export function MovieDetail({ work }: Props) {
         primary={<PlayActions work={work} />}
         playing={resume.playing}
         onPlayFromStart={resume.onPlayFromStart}
-        actions={
+        trailing={
           trailer && (
             <a href={trailer} target="_blank" rel="noreferrer" className={buttonClass()} data-part="trailer">
               <Icon name="film" />

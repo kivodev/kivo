@@ -177,13 +177,7 @@ struct PlayableDetail: View {
 
     @ViewBuilder private var trailerButton: some View {
         if wide, let trailer {
-            Link(destination: trailer) {
-                Label(String(localized: "Trailer"), systemImage: "film")
-            }
-            .buttonStyle(.bordered)
-            .buttonBorderShape(.capsule)
-            .tint(palette.text)
-            .accessibilityIdentifier("trailer")
+            TrailerButton(url: trailer)
         }
     }
 
