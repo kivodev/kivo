@@ -1,4 +1,4 @@
-import { Trans } from "@lingui/react/macro";
+import { useLingui } from "@lingui/react/macro";
 import type { WorkDetail } from "@/api/schemas";
 import { buttonClass } from "@/components/Button";
 import { Icon } from "@/components/Icon";
@@ -11,6 +11,7 @@ type Props = { work: WorkDetail };
 
 /** A movie, other video or extra, which is anything with versions of its own. */
 export function MovieDetail({ work }: Props) {
+  const { t } = useLingui();
   const resume = useResumeParts(work);
   // The packaged TV app never leaves its page and can't open YouTube.
   const trailer = isTv ? undefined : work.movie?.trailerUrl;
@@ -23,9 +24,16 @@ export function MovieDetail({ work }: Props) {
         onPlayFromStart={resume.onPlayFromStart}
         trailing={
           trailer && (
-            <a href={trailer} target="_blank" rel="noreferrer" className={buttonClass()} data-part="trailer">
+            <a
+              href={trailer}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={t`Trailer`}
+              title={t`Trailer`}
+              className={buttonClass("secondary", "icon")}
+              data-part="trailer"
+            >
               <Icon name="film" />
-              <Trans>Trailer</Trans>
             </a>
           )
         }

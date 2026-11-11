@@ -513,18 +513,19 @@ private fun PlayButton(text: String, hero: HeroLevels, onClick: () -> Unit) {
 private fun TrailerButton(url: String, hero: HeroLevels) {
     val context = LocalContext.current
     OfferButton(hero, "trailer")
-    KivoButton(
-        text = stringResource(R.string.trailer),
-        onClick = {
+    IconButton(
+        KivoIcon.Film,
+        stringResource(R.string.trailer),
+        {
             try {
                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
             } catch (_: ActivityNotFoundException) {
                 // No app here plays it.
             }
         },
-        icon = KivoIcon.Film,
-        modifier = Modifier.heroButton(hero, "trailer").height(ButtonHeight).testTag("trailer"),
-        contentPadding = ButtonPadding,
+        Modifier.heroButton(hero, "trailer").testTag("trailer"),
+        size = ButtonHeight,
+        corners = KivoTokens.Radius.md,
     )
 }
 

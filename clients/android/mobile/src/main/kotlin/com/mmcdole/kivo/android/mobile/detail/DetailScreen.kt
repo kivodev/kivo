@@ -39,8 +39,8 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Replay
+import androidx.compose.material.icons.filled.Theaters
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material3.AlertDialog
@@ -195,13 +195,13 @@ private fun DetailPage(head: WorkSummary, state: DetailUiState, model: DetailVie
             if (credits.isNotEmpty()) item(key = "credits") { CreditsRow(credits, nav) }
             item(key = "end") { Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars).padding(bottom = space(6))) }
         }
-        TopBar(if (titleShown) head.title else null, nav, cast = head.kind != WorkKind.Book, state.work?.movie?.trailerUrl)
+        TopBar(if (titleShown) head.title else null, nav, cast = head.kind != WorkKind.Book)
     }
 }
 
-/** The page's top bar over the artwork: back, Cast and a movie's ⋯, then the page's colour and title once the title has scrolled away. */
+/** The page's top bar over the artwork: back and Cast, then the page's colour and title once the title has scrolled away. */
 @Composable
-private fun TopBar(title: String?, nav: MobileNav, cast: Boolean, trailerUrl: String?) {
+private fun TopBar(title: String?, nav: MobileNav, cast: Boolean) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -214,33 +214,6 @@ private fun TopBar(title: String?, nav: MobileNav, cast: Boolean, trailerUrl: St
         BackButton(nav)
         Text(title.orEmpty(), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
         if (cast) CastButton()
-        if (trailerUrl != null) TrailerMenu(trailerUrl)
-    }
-}
-
-/** The ⋯ menu with Trailer, which the system opens in the YouTube app if it's installed, else the browser. */
-@Composable
-private fun TrailerMenu(url: String) {
-    var open by remember { mutableStateOf(false) }
-    val uris = LocalUriHandler.current
-    Box {
-        IconButton(
-            onClick = { open = true },
-            colors = IconButtonDefaults.iconButtonColors(containerColor = LocalKivo.current.badge.copy(alpha = 0.35f)),
-            modifier = Modifier.testTag("more"),
-        ) {
-            Icon(Icons.Default.MoreVert, stringResource(R.string.mobile_more))
-        }
-        DropdownMenu(open, onDismissRequest = { open = false }) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.mobile_trailer)) },
-                onClick = {
-                    open = false
-                    uris.openUri(url)
-                },
-                modifier = Modifier.testTag("trailer"),
-            )
-        }
     }
 }
 
@@ -307,7 +280,7 @@ private fun metaLine(head: WorkSummary, work: WorkDetail?): String {
 
 /**
  * Play, or Resume with the time and how far in, as a pill across the page;
- * then Play from beginning, Download, My List and Watched. "This file is
+ * then Play from beginning, Download, My List, Watched and a movie's Trailer. "This file is
  * missing" in Play's place when nothing can play.
  */
 @Composable
@@ -389,8 +362,8 @@ private fun PlayButton(label: String, onClick: () -> Unit) {
 }
 
 /**
- * Play from beginning, Download, My List, Watched and More, an icon over a
- * word each; More opens Add to List. A series' Download offers the season
+ * Play from beginning, Download, My List, Watched, a movie's Trailer and
+ * More, an icon over a word each; More opens Add to List. A series' Download offers the season
  * open or the whole series. On a device without downloads there's no Download.
  */
 @Composable
@@ -431,6 +404,11 @@ private fun ActionRow(head: WorkSummary, state: DetailUiState, model: DetailView
             on = played,
             description = markPlayedLabel(played, head.kind),
         ) { model.setPlayed(head, !played) }
+        state.work?.movie?.trailerUrl?.let { url ->
+            // The system opens it in the YouTube app if it's installed, else the browser.
+            val uris = LocalUriHandler.current
+            RoundAction(Icons.Default.Theaters, stringResource(R.string.mobile_trailer), "trailer", cell) { uris.openUri(url) }
+        }
         Box(cell) {
             var more by remember { mutableStateOf(false) }
             RoundAction(Icons.Default.MoreHoriz, stringResource(R.string.mobile_more), "more") { more = true }

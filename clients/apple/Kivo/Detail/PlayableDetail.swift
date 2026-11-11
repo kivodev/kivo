@@ -11,16 +11,14 @@ import SwiftUI
 /// left and when it ends under them. Download sits beside My List and Watched. A
 /// ready download is what Play and Resume play, with "Downloaded"
 /// under the actions and Stream Instead and Remove Download in the ⋯ menu.
-/// A movie's Trailer sits beside them in a wide window and in the ⋯ menu
-/// otherwise; the system opens it in the YouTube app if it's installed,
-/// else the browser.
+/// A movie's Trailer is the last of them; the system opens it in the
+/// YouTube app if it's installed, else the browser.
 struct PlayableDetail: View {
     let work: WorkDetail
     @Environment(ServerModel.self) private var server
     @Environment(\.openWork) private var openWork
     @Environment(\.kivoPalette) private var palette
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.wide) private var wide
     /// The version chosen; nil selects the work's default one.
     @State private var versionId: String?
     @State private var audioTrackId: String?
@@ -176,7 +174,7 @@ struct PlayableDetail: View {
     }
 
     @ViewBuilder private var trailerButton: some View {
-        if wide, let trailer {
+        if let trailer {
             TrailerButton(url: trailer)
         }
     }
@@ -229,11 +227,6 @@ struct PlayableDetail: View {
             }
         }
         Section {
-            if !wide, let trailer {
-                Link(destination: trailer) {
-                    Label(String(localized: "Trailer"), systemImage: "film")
-                }
-            }
             UserStateMenuItems(work: work)
             GoToLibraryItem(libraryId: work.libraryId)
         }
