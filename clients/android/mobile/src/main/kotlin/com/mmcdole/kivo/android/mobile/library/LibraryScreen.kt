@@ -14,15 +14,18 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -32,6 +35,8 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
@@ -40,10 +45,14 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -69,6 +78,10 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -77,6 +90,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mmcdole.kivo.android.ServerSession
 import com.mmcdole.kivo.android.library.filtered
 import com.mmcdole.kivo.android.library.sortsOf
+import com.mmcdole.kivo.android.library.unfiltered
 import com.mmcdole.kivo.android.mobile.R
 import com.mmcdole.kivo.android.mobile.app.BookSeriesRoute
 import com.mmcdole.kivo.android.mobile.app.CollectionRoute
@@ -160,9 +174,8 @@ fun LibraryScreen(session: ServerSession, libraryId: String, oneOffSort: GridSor
         )
         "filter" -> FilterSheet(
             state,
-            model::chooseQuery,
-            model::clearFilters,
-            onSaveSmart = { nav.open(smartListBuilderRoute(state.library?.name.orEmpty(), SmartLists.fromGrid(state.query, state.library?.kind))) },
+            model,
+            onSaveSmart = { nav.open(smartListBuilderRoute(state.library?.name.orEmpty(), SmartLists.fromGrid(it, state.library?.kind))) },
             onDismiss = { sheet = null },
         )
     }
@@ -200,7 +213,8 @@ private class QuickReturn : NestedScrollConnection {
 @Composable
 private fun Header(state: LibraryUiState, model: LibraryViewModel, modifier: Modifier, onSort: () -> Unit) = Column(modifier.fillMaxWidth()) {
     val query = state.query
-    val chips = activeFilters(query)
+    val books = state.library?.kind == LibraryKind.Audiobooks
+    val chips = activeFilters(query, state.offer)
     if (state.tabs.size > 1 || chips.isNotEmpty()) {
         Row(
             Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = space(4)),
@@ -216,11 +230,11 @@ private fun Header(state: LibraryUiState, model: LibraryViewModel, modifier: Mod
                     )
                 }
             }
-            for ((label, without) in chips) {
+            for (chip in chips) {
                 InputChip(
                     selected = true,
-                    onClick = { model.chooseQuery(without) },
-                    label = { Text(label) },
+                    onClick = { model.chooseQuery(chip.without) },
+                    label = { Text(filterName(chip, books)) },
                     trailingIcon = { Icon(Icons.Default.Close, stringResource(R.string.mobile_remove_filter), Modifier.size(16.dp)) },
                 )
             }
@@ -398,74 +412,215 @@ internal fun <T> SortSheet(
     }
 }
 
+/**
+ * Filters: watch status, then a group of chips for each filter the library
+ * offers, each shown only when it has something. The grid behind follows
+ * the choices once they've held still, and Show gives its count, the last
+ * one known while the next is read, and closes the sheet.
+ */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-private fun FilterSheet(state: LibraryUiState, onQuery: (GridQuery) -> Unit, onClear: () -> Unit, onSaveSmart: () -> Unit, onDismiss: () -> Unit) {
-    val query = state.query
-    val filters = state.filters
+private fun FilterSheet(state: LibraryUiState, model: LibraryViewModel, onSaveSmart: (GridQuery) -> Unit, onDismiss: () -> Unit) {
+    val offer = state.offer
     val books = state.library?.kind == LibraryKind.Audiobooks
-    ModalBottomSheet(onDismissRequest = onDismiss, modifier = Modifier.testTag("filterSheet")) {
-        Column(Modifier.padding(horizontal = space(6)).padding(bottom = space(6)), verticalArrangement = Arrangement.spacedBy(space(2))) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.mobile_filter), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-                if (query.filtered) TextButton(onClick = onClear) { Text(stringResource(R.string.mobile_clear_filters)) }
+    var draft by remember { mutableStateOf(state.query) }
+    val total = state.grid.pager.state.collectAsStateWithLifecycle().value.total
+    var count by remember { mutableStateOf(total) }
+    LaunchedEffect(total) { if (total != null) count = total }
+    var allGenres by rememberSaveable { mutableStateOf(false) }
+    var allNarrators by rememberSaveable { mutableStateOf(false) }
+    val change = { next: GridQuery ->
+        draft = next
+        model.settle(next)
+    }
+    val close = {
+        model.chooseQuery(draft)
+        onDismiss()
+    }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = rememberCoroutineScope()
+    ModalBottomSheet(onDismissRequest = close, sheetState = sheetState, modifier = Modifier.testTag("filterSheet")) {
+        Box(Modifier.fillMaxWidth().padding(horizontal = space(3))) {
+            Text(stringResource(R.string.mobile_filters), Modifier.align(Alignment.Center), style = MaterialTheme.typography.titleMedium)
+            TextButton(
+                onClick = { change(draft.unfiltered()) },
+                enabled = draft.filtered,
+                modifier = Modifier.align(Alignment.CenterEnd).testTag("filtersClear"),
+            ) { Text(stringResource(R.string.mobile_clear)) }
+        }
+        Column(
+            Modifier
+                .weight(1f, fill = false)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = space(5))
+                .padding(top = space(2), bottom = space(4)),
+            verticalArrangement = Arrangement.spacedBy(space(6)),
+        ) {
+            FilterGroup(stringResource(R.string.mobile_watch_status)) {
+                WatchStatus(draft.played, books) { change(draft.copy(played = it)) }
             }
-            SheetLabel(stringResource(R.string.mobile_show))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(space(2))) {
-                for (played in listOf(null) + WorkPlayState.entries) {
-                    FilterChip(selected = query.played == played, onClick = { onQuery(query.copy(played = played)) }, label = { Text(playedName(played, books)) })
-                }
-            }
-            val resolutions = Resolution.entries.filter { filters?.resolutions?.contains(it) == true }
-            if (resolutions.isNotEmpty()) {
-                SheetLabel(stringResource(R.string.mobile_resolution))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(space(2))) {
-                    for (r in resolutions) {
-                        val on = query.resolutions.orEmpty()
-                        FilterChip(selected = r in on, onClick = { onQuery(query.copy(resolutions = toggled(on, r))) }, label = { Text(resolutionName(r)) })
+            if (offer.decades.isNotEmpty()) {
+                FilterGroup(stringResource(R.string.mobile_decade)) {
+                    ChipFlow {
+                        for (decade in offer.decades) {
+                            SheetChip(decadeName(decade), draft.yearFrom == decade, "decade:$decade") { change(draft.toggleDecade(decade)) }
+                        }
                     }
                 }
             }
-            val ranges = DynamicRange.entries.filter { filters?.dynamicRanges?.contains(it) == true }
-            if (ranges.isNotEmpty()) {
-                SheetLabel(stringResource(R.string.mobile_dynamic_range))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(space(2))) {
-                    for (r in ranges) {
-                        val on = query.dynamicRanges.orEmpty()
-                        FilterChip(selected = r in on, onClick = { onQuery(query.copy(dynamicRanges = toggled(on, r))) }, label = { Text(dynamicRangeName(r)) })
+            if (offer.genres.isNotEmpty()) {
+                val on = draft.genres.orEmpty()
+                FilterGroup(stringResource(R.string.mobile_genre), offer.genres.size, allGenres, { allGenres = it }) {
+                    ChipFlow {
+                        for (genre in shortened(offer.genres, allGenres) { it in on }) {
+                            SheetChip(genre, genre in on, "genre:$genre") { change(draft.toggleGenre(genre)) }
+                        }
                     }
                 }
             }
-            if (query.filtered) {
+            if (offer.contentRatings.isNotEmpty()) {
+                val on = draft.contentRatings.orEmpty()
+                FilterGroup(stringResource(R.string.mobile_content_rating)) {
+                    ChipFlow {
+                        for (rating in offer.contentRatings) {
+                            SheetChip(rating, rating in on, "contentRating:$rating") { change(draft.toggleContentRating(rating)) }
+                        }
+                    }
+                }
+            }
+            if (offer.resolutions.isNotEmpty() || offer.dynamicRanges.isNotEmpty()) {
+                val resolutions = draft.resolutions.orEmpty()
+                val ranges = draft.dynamicRanges.orEmpty()
+                FilterGroup(stringResource(R.string.mobile_quality)) {
+                    ChipFlow {
+                        for (r in offer.resolutions) {
+                            SheetChip(resolutionName(r), r in resolutions, "resolution:${r.value}") { change(draft.toggleResolution(r)) }
+                        }
+                        for (r in offer.dynamicRanges) {
+                            SheetChip(dynamicRangeName(r), r in ranges, "dynamicRange:${r.value}") { change(draft.toggleDynamicRange(r)) }
+                        }
+                    }
+                }
+            }
+            if (offer.narrators.isNotEmpty()) {
+                FilterGroup(stringResource(R.string.mobile_narrator), offer.narrators.size, allNarrators, { allNarrators = it }) {
+                    ChipFlow {
+                        for (narrator in shortened(offer.narrators, allNarrators) { it.id == draft.narratorId }) {
+                            SheetChip(narrator.name, narrator.id == draft.narratorId, "narrator:${narrator.id}") { change(draft.toggleNarrator(narrator.id)) }
+                        }
+                    }
+                }
+            }
+            if (draft.filtered) {
                 TextButton(
                     onClick = {
-                        onDismiss()
-                        onSaveSmart()
+                        close()
+                        onSaveSmart(draft)
                     },
+                    contentPadding = PaddingValues(0.dp),
                     modifier = Modifier.testTag("saveAsSmartList"),
                 ) {
-                    Icon(Icons.Default.AutoAwesome, null, Modifier.size(18.dp).padding(end = space(1)), tint = MaterialTheme.colorScheme.primary)
-                    Text(stringResource(R.string.mobile_smart_save_as))
+                    Icon(Icons.Default.AutoAwesome, null, Modifier.size(18.dp))
+                    Text(stringResource(R.string.mobile_smart_save_as), Modifier.padding(start = space(2)))
                 }
             }
+        }
+        HorizontalDivider()
+        Button(
+            onClick = { scope.launch { sheetState.hide() }.invokeOnCompletion { close() } },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = space(5))
+                .padding(top = space(3), bottom = space(2))
+                .heightIn(min = 48.dp)
+                .testTag("filtersShow"),
+        ) {
+            Text(count?.let { stringResource(R.string.mobile_show_count, countLine(it, state)) } ?: stringResource(R.string.mobile_show), style = MaterialTheme.typography.titleSmall)
         }
     }
 }
 
-private fun <T> toggled(values: List<T>, value: T) = (if (value in values) values - value else values + value).ifEmpty { null }
-
+/** All, Unwatched, In progress, Watched, or a books library's Not started and Finished. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SheetLabel(text: String) {
-    Text(text, Modifier.padding(top = space(2)), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+private fun WatchStatus(played: WorkPlayState?, books: Boolean, onPlayed: (WorkPlayState?) -> Unit) {
+    val states = listOf(null) + WorkPlayState.entries
+    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+        states.forEachIndexed { i, state ->
+            SegmentedButton(
+                selected = played == state,
+                onClick = { onPlayed(state) },
+                shape = SegmentedButtonDefaults.itemShape(i, states.size),
+                icon = {},
+                modifier = Modifier.testTag("played:${state?.value.orEmpty()}"),
+            ) { Text(playedName(state, books), maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        }
+    }
 }
 
-/** The filters on, each as a chip's label and the query without it. */
+/** A group: its [title], with All or Fewer when its [count] values are many, over its [content]. */
 @Composable
-private fun activeFilters(query: GridQuery): List<Pair<String, GridQuery>> = buildList {
-    query.played?.let { add(playedName(it, false) to query.copy(played = null)) }
-    query.resolutions?.forEach { add(resolutionName(it) to query.copy(resolutions = toggled(query.resolutions.orEmpty(), it))) }
-    query.dynamicRanges?.forEach { add(dynamicRangeName(it) to query.copy(dynamicRanges = toggled(query.dynamicRanges.orEmpty(), it))) }
+private fun FilterGroup(
+    title: String,
+    count: Int = 0,
+    whole: Boolean = false,
+    onWhole: ((Boolean) -> Unit)? = null,
+    content: @Composable () -> Unit,
+) = Column(verticalArrangement = Arrangement.spacedBy(space(1))) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 32.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(title, Modifier.weight(1f).semantics { heading() }, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (onWhole != null && isLongGroup(count)) {
+            TextButton(onClick = { onWhole(!whole) }, contentPadding = PaddingValues(horizontal = space(2))) {
+                Text(if (whole) stringResource(R.string.mobile_fewer) else stringResource(R.string.mobile_all_count, count))
+            }
+        }
+    }
+    content()
 }
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ChipFlow(content: @Composable () -> Unit) = FlowRow(
+    horizontalArrangement = Arrangement.spacedBy(space(2)),
+    verticalArrangement = Arrangement.spacedBy(space(2)),
+) { content() }
+
+/** A choice in the filter sheet: neutral, or filled with the accent while chosen. */
+@Composable
+private fun SheetChip(label: String, selected: Boolean, tag: String, onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        // At least its touch target wide, its label centred, so a one-letter chip starts where the others do.
+        label = { Text(label, Modifier.widthIn(min = 28.dp), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center) },
+        modifier = Modifier.heightIn(min = 36.dp).testTag(tag),
+        shape = CircleShape,
+        colors = FilterChipDefaults.filterChipColors(
+            containerColor = colors.surfaceContainerHighest,
+            labelColor = colors.onSurface,
+            selectedContainerColor = colors.primary,
+            selectedLabelColor = colors.onPrimary,
+        ),
+        border = null,
+    )
+}
+
+/** A filter that's on, as its chip names it. */
+@Composable
+private fun filterName(filter: ActiveFilter, books: Boolean): String = when (filter) {
+    is ActiveFilter.Played -> playedName(filter.state, books)
+    is ActiveFilter.Genre -> filter.name
+    is ActiveFilter.ContentRating -> filter.name
+    is ActiveFilter.Decade -> decadeName(filter.decade)
+    is ActiveFilter.Quality -> resolutionName(filter.resolution)
+    is ActiveFilter.Range -> dynamicRangeName(filter.range)
+    is ActiveFilter.Narrator -> filter.name?.let { stringResource(R.string.mobile_narrated_by, it) } ?: stringResource(R.string.mobile_narrator)
+}
+
+/** "1990s". */
+@Composable
+private fun decadeName(decade: Int) = stringResource(R.string.mobile_decade_label, decade)
 
 @Composable
 private fun tabName(tab: LibraryTab, kind: LibraryKind?): String = stringResource(

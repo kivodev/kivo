@@ -70,7 +70,7 @@ class SavedGrids(private val store: DataStore<Preferences>) {
     }
 }
 
-/** A grid's section, sort and filters as `section=collections&sort=addedAt&resolution=4k,1080p`. */
+/** A grid's section, sort and filters as `section=collections&sort=addedAt&resolution=4k,1080p&narrator=p1`. */
 fun encodeGrid(choice: GridChoice): String {
     val query = choice.query
     return listOfNotNull(
@@ -82,6 +82,7 @@ fun encodeGrid(choice: GridChoice): String {
         query.contentRatings?.takeIf { it.isNotEmpty() }?.let { "contentRating=" + encodeNames(it) },
         query.resolutions?.takeIf { it.isNotEmpty() }?.let { "resolution=" + it.joinToString(",") { resolution -> resolution.value } },
         query.dynamicRanges?.takeIf { it.isNotEmpty() }?.let { "dynamicRange=" + it.joinToString(",") { range -> range.value } },
+        query.narratorId?.let { "narrator=" + encodeNames(listOf(it)) },
     ).joinToString("&")
 }
 
@@ -103,6 +104,7 @@ fun decodeGrid(libraryId: String, text: String): GridChoice {
         contentRatings = decodeNames(values["contentRating"]),
         resolutions = Resolution.entries.filter { it != Resolution.Unknown && it.value in list("resolution") }.ifEmpty { null },
         dynamicRanges = DynamicRange.entries.filter { it.value in list("dynamicRange") }.ifEmpty { null },
+        narratorId = decodeNames(values["narrator"])?.singleOrNull(),
     )
     return GridChoice(query, if (values["section"] == "collections") Section.Collections else Section.Titles)
 }
@@ -110,7 +112,7 @@ fun decodeGrid(libraryId: String, text: String): GridChoice {
 /** Whether a filter narrows the works. */
 val GridQuery.filtered: Boolean
     get() = played != null || yearFrom != null || !genres.isNullOrEmpty() || !contentRatings.isNullOrEmpty() ||
-        !resolutions.isNullOrEmpty() || !dynamicRanges.isNullOrEmpty()
+        !resolutions.isNullOrEmpty() || !dynamicRanges.isNullOrEmpty() || narratorId != null
 
 /** The query without its filters, keeping its sort. */
 fun GridQuery.unfiltered(): GridQuery = copy(
@@ -121,6 +123,7 @@ fun GridQuery.unfiltered(): GridQuery = copy(
     contentRatings = null,
     resolutions = null,
     dynamicRanges = null,
+    narratorId = null,
 )
 
 /** The decades a library's [years] fall in, newest first. */

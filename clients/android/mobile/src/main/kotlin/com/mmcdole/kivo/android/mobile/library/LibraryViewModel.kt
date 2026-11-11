@@ -22,6 +22,8 @@ import com.mmcdole.kivo.core.data.GridSort
 import com.mmcdole.kivo.core.data.LibraryFilters
 import com.mmcdole.kivo.core.session.KivoSession
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -58,6 +60,9 @@ data class LibraryUiState(
     /** What the library offers to filter by, once read. */
     val filters: LibraryFilters?,
 ) {
+    /** What the filter sheet offers. */
+    val offer: FilterOffer get() = filterOffer(library?.kind, filters)
+
     val shape: CardShape get() = gridShape(library?.kind, tab)
 }
 
@@ -98,6 +103,9 @@ class LibraryViewModel(
 
     val marks = WorkMarks(session.library, viewModelScope)
 
+    /** The filter sheet's choices, on their way to the grid. */
+    private var settling: Job? = null
+
     val state: StateFlow<LibraryUiState> = combine(
         choice,
         grid,
@@ -111,7 +119,19 @@ class LibraryViewModel(
 
     fun chooseTab(tab: LibraryTab) = choose(choice.value.first, tab)
 
-    fun chooseQuery(query: GridQuery) = choose(query, choice.value.second)
+    fun chooseQuery(query: GridQuery) {
+        settling?.cancel()
+        choose(query, choice.value.second)
+    }
+
+    /** Shows [query] once the filter sheet's choices have held still. */
+    fun settle(query: GridQuery) {
+        settling?.cancel()
+        settling = viewModelScope.launch {
+            delay(SETTLE_MILLIS)
+            choose(query, choice.value.second)
+        }
+    }
 
     fun clearFilters() = chooseQuery(choice.value.first.unfiltered())
 
@@ -160,5 +180,10 @@ class LibraryViewModel(
 
     override fun onCleared() {
         grid.value.pager.close()
+    }
+
+    private companion object {
+        /** How long the filter sheet's choices hold still before the grid follows them. */
+        const val SETTLE_MILLIS = 300L
     }
 }

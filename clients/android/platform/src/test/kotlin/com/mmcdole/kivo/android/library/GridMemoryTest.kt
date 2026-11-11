@@ -68,12 +68,45 @@ class GridMemoryTest {
     }
 
     @Test
+    fun aNarratorComesBackAsItWasKept() {
+        val choice = GridChoice(GridQuery("lib2", sort = GridSort.Author, played = WorkPlayState.Unplayed, genres = listOf("Fantasy"), narratorId = "p&1"))
+        assertEquals(choice, decodeGrid("lib2", encodeGrid(choice)))
+    }
+
+    @Test
+    fun aGridKeptBeforeNarratorsReadsAsItWasAndKeepsEverything() {
+        // As the build before narrators wrote it.
+        val stored = "sort=addedAt&played=unplayed&decade=1990&genre=Action+%26+Adventure,Drama&contentRating=PG-13,R" +
+            "&resolution=4k,1080p&dynamicRange=hdr"
+        val choice = decodeGrid("lib1", stored)
+        assertEquals(
+            GridChoice(
+                GridQuery(
+                    "lib1",
+                    sort = GridSort.AddedAt,
+                    played = WorkPlayState.Unplayed,
+                    genres = listOf("Action & Adventure", "Drama"),
+                    yearFrom = 1990,
+                    yearTo = 1999,
+                    contentRatings = listOf("PG-13", "R"),
+                    resolutions = listOf(Resolution.FourK, Resolution.P1080),
+                    dynamicRanges = listOf(DynamicRange.Hdr),
+                ),
+            ),
+            choice,
+        )
+        assertEquals(stored, encodeGrid(choice))
+        assertEquals("$stored&narrator=p1", encodeGrid(choice.copy(query = choice.query.copy(narratorId = "p1"))))
+    }
+
+    @Test
     fun theSamsungFiltersCountAsFiltersAndClear() {
         val query = GridQuery("lib1", sort = GridSort.Title)
         listOf(
             query.copy(genres = listOf("Drama")),
             query.copy(yearFrom = 1990, yearTo = 1999),
             query.copy(contentRatings = listOf("PG")),
+            query.copy(narratorId = "p1"),
         ).forEach {
             assertTrue(it.filtered)
             assertEquals(query, it.unfiltered())
