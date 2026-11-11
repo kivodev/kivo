@@ -65,7 +65,9 @@ final class GridModelTests: XCTestCase {
             let items = (start..<end).map { i -> [String: Any] in
                 ["id": "w\(i)", "kind": "movie", "title": name(i), "matchState": "matched", "available": true, "images": [:]]
             }
-            return (200, json(start == 0 ? ["items": items, "total": total] : ["items": items]))
+            var page: [String: Any] = ["items": items]
+            if start == 0 { page["total"] = total }
+            return (200, json(page))
         case worksPath:
             let read = asked(request)
             if failing {
