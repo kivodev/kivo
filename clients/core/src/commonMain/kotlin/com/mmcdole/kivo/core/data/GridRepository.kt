@@ -3,6 +3,7 @@ package com.mmcdole.kivo.core.data
 import com.mmcdole.kivo.api.models.BookSeriesSummaryPage
 import com.mmcdole.kivo.api.models.CollectionSummaryPage
 import com.mmcdole.kivo.api.models.LibraryKind
+import com.mmcdole.kivo.api.models.PersonRef
 import com.mmcdole.kivo.api.models.PersonSummaryPage
 import com.mmcdole.kivo.api.models.Resolution
 import com.mmcdole.kivo.api.models.WorkQueryRequest
@@ -45,6 +46,7 @@ internal class GridRepository(private val connection: ServerConnection, private 
         refreshing(invalidations, { it is Invalidation.WorkChanged || (it is Invalidation.LibraryChanged && libraryId in it.libraryIds) }) {
             coroutineScope {
                 val values = FILTER_FIELDS.map { field -> async { values(field, libraryId) } }
+                val narrators = async { connection.works.listWorkFieldValues("narrator", library = libraryId).result().items }
                 val collections = async { collections(libraryId, 0, 1).total > 0 }
                 val (genres, years, contentRatings, resolutions, dynamicRanges) = values.map { it.await() }
                 LibraryFilters(
@@ -53,6 +55,7 @@ internal class GridRepository(private val connection: ServerConnection, private 
                     contentRatings,
                     resolutions.map(Resolution::of).filter { it != Resolution.Unknown },
                     dynamicRanges.mapNotNull(DynamicRange::of),
+                    narrators.await().map { PersonRef(it.value, it.name) },
                     collections.await(),
                 )
             }
@@ -88,6 +91,8 @@ data class LibraryFilters(
     val resolutions: List<Resolution>,
     /** One this version doesn't know is left out. */
     val dynamicRanges: List<DynamicRange>,
+    /** An audiobooks library's narrators, by name. */
+    val narrators: List<PersonRef>,
     val collections: Boolean,
 )
 
@@ -103,6 +108,8 @@ data class GridQuery(
     val contentRatings: List<String>? = null,
     val resolutions: List<Resolution>? = null,
     val dynamicRanges: List<DynamicRange>? = null,
+    /** A narrator's person ID, of an audiobooks library. */
+    val narratorId: String? = null,
 )
 
 /** A library grid's sort: a sortable field of a work query, by [value], in its own direction. */

@@ -140,7 +140,7 @@ struct LibraryView: View {
     private var countLine: some View {
         HStack(spacing: KivoTokens.spacing * 1.5) {
             if let total = model.total {
-                Text(noun(total))
+                Text(model.noun(total))
                 if model.query.tab == .titles {
                     Text("·")
                     sortMenu
@@ -152,24 +152,6 @@ struct LibraryView: View {
         .font(.footnote)
         .foregroundStyle(palette.textMuted)
         .tint(palette.textMuted)
-    }
-
-    /// The count with the noun for what the section lists.
-    private func noun(_ count: Int) -> String {
-        let n = count.formatted()
-        let one = count == 1
-        switch model.shown.tab {
-        case .collections: return one ? String(localized: "1 collection") : String(localized: "\(n) collections")
-        case .authors: return one ? String(localized: "1 author") : String(localized: "\(n) authors")
-        case .bookSeries: return String(localized: "\(n) series")
-        case .titles:
-            switch model.library.kind {
-            case .movies: return one ? String(localized: "1 movie") : String(localized: "\(n) movies")
-            case .shows: return one ? String(localized: "1 show") : String(localized: "\(n) shows")
-            case .audiobooks: return one ? String(localized: "1 book") : String(localized: "\(n) books")
-            case .videos, .unknown: return one ? String(localized: "1 video") : String(localized: "\(n) videos")
-            }
-        }
     }
 
     /// The plural the empty state names: "movies", "shows".
@@ -276,7 +258,8 @@ struct LibraryView: View {
                         .tint(palette.text)
                 }
                 if model.query.tab == .titles {
-                    filterMenu
+                    // FilterStyleTrial: becomes the chosen style's control.
+                    FilterControl(model: model, savingAsSmartList: $savingAsSmartList)
                 }
             }
         }
@@ -284,61 +267,6 @@ struct LibraryView: View {
 
     private var sortMenu: some View {
         SortMenu(sorts: model.sorts, selection: $model.query.sort)
-    }
-
-    private var filterMenu: some View {
-        Menu {
-            Picker(selection: $model.query.played) {
-                ForEach(model.playedFilters) { Text($0.label).tag($0) }
-            } label: {
-                Text("Show")
-            }
-            .pickerStyle(.inline)
-            if !model.resolutions.isEmpty {
-                Section(String(localized: "Resolution")) {
-                    ForEach(model.resolutions, id: \.self) { resolution in
-                        Toggle(GridModel.label(resolution), isOn: member(resolution, of: \.resolutions))
-                    }
-                }
-            }
-            if !model.dynamicRanges.isEmpty {
-                Section(String(localized: "Dynamic range")) {
-                    ForEach(model.dynamicRanges, id: \.self) { format in
-                        Toggle(GridModel.label(format), isOn: member(format, of: \.dynamicRanges))
-                    }
-                }
-            }
-            if model.query.filtered {
-                Section {
-                    Button(String(localized: "Clear filters"), systemImage: "xmark.circle", action: model.clearFilters)
-                    Button(String(localized: "Save as Smart List"), systemImage: "sparkles") { savingAsSmartList = true }
-                }
-            }
-        } label: {
-            Image(systemName: "line.3.horizontal.decrease")
-                // A dot while any filter is on.
-                .overlay(alignment: .topTrailing) {
-                    if model.query.filtered {
-                        Circle()
-                            .fill(palette.accent)
-                            .frame(width: 8, height: 8)
-                            .offset(x: 4, y: -3)
-                    }
-                }
-                .accessibilityLabel(model.query.filtered ? Text("Filter, on") : Text("Filter"))
-        }
-        .tint(palette.text)
-        .accessibilityIdentifier("filter")
-    }
-
-    /// Whether [value] is in one of the query's sets, as a switch.
-    private func member<Value: Hashable>(_ value: Value, of set: WritableKeyPath<GridModel.Query, Set<Value>>) -> Binding<Bool> {
-        Binding(
-            get: { model.query[keyPath: set].contains(value) },
-            set: { on in
-                if on { model.query[keyPath: set].insert(value) } else { model.query[keyPath: set].remove(value) }
-            }
-        )
     }
 }
 
@@ -390,6 +318,25 @@ private struct GridCell: View {
         .buttonStyle(.plain)
         .hoverEffect(.highlight)
         .accessibilityIdentifier("work")
+    }
+}
+
+/// The Filter button's icon, with a dot while any filter is on.
+struct FilterLabel: View {
+    let on: Bool
+    @Environment(\.kivoPalette) private var palette
+
+    var body: some View {
+        Image(systemName: "line.3.horizontal.decrease")
+            .overlay(alignment: .topTrailing) {
+                if on {
+                    Circle()
+                        .fill(palette.accent)
+                        .frame(width: 8, height: 8)
+                        .offset(x: 4, y: -3)
+                }
+            }
+            .accessibilityLabel(on ? Text("Filter, on") : Text("Filter"))
     }
 }
 

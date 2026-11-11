@@ -207,6 +207,7 @@ object SmartLists {
             grid.contentRatings?.takeIf { it.isNotEmpty() }?.let { add(Rule("contentRating", ANY_OF, it)) }
             grid.resolutions?.takeIf { it.isNotEmpty() }?.let { add(Rule("resolution", ANY_OF, it.map { r -> r.value }.sorted())) }
             grid.dynamicRanges?.takeIf { it.isNotEmpty() }?.let { add(Rule("dynamicRange", ANY_OF, it.map { r -> r.value }.sorted())) }
+            grid.narratorId?.let { add(Rule("narrator", ANY_OF, listOf(it))) }
         }
         val kind = when (libraryKind) {
             LibraryKind.Movies -> WorkKind.Movie

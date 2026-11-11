@@ -270,6 +270,14 @@ class SmartListsTest {
     }
 
     @Test
+    fun anAudiobooksGridsNarratorIsARuleOnTheNarrator() {
+        assertEquals(
+            listOf(Rule("narrator", "anyOf", listOf("p1"))),
+            SmartLists.gridQuery(GridQuery("l1", narratorId = "p1"), LibraryKind.Audiobooks).where?.rules,
+        )
+    }
+
+    @Test
     fun aGridWithoutFiltersIsAQueryWithoutRules() {
         assertNull(SmartLists.gridQuery(GridQuery("l1"), LibraryKind.Movies).where)
         assertEquals(listOf(Rule("year", "gte", listOf("1990"))), SmartLists.gridQuery(GridQuery("l1", yearFrom = 1990), LibraryKind.Movies).where?.rules)
