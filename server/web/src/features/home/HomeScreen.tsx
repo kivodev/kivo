@@ -127,6 +127,7 @@ export function HomeScreen() {
                   to="/libraries/$libraryId"
                   params={{ libraryId: row.library.id }}
                   search={{ sort: "addedAt" }}
+                  state={{ oneOffSort: true }}
                   className="text-sm text-text-muted touch-target hover:text-text tv:font-semibold tv:text-text"
                 >
                   <Trans>See all</Trans>
