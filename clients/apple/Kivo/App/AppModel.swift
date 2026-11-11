@@ -3,19 +3,12 @@ import KivoUI
 import Observation
 import UIKit
 
-/// The app's state for its life: the core, this device's settings, and
-/// whether a server is signed in. A signed-in server is a ServerModel; signing out, by the user, a `401` or the live events
-/// closing with 4401, returns to sign-in with that server filled in.
+/// The app's state for its life: the core, where it says the app is, and
+/// this device's settings. While the core is signed in to a server, that
+/// server's ServerModel.
 @MainActor
 @Observable
 final class AppModel {
-    enum Phase {
-        case starting
-        /// Sign-in, offering the server last signed in to, if any.
-        case signedOut(SavedServer?)
-        case signedIn(ServerModel)
-    }
-
     /// The subtitles this app shows, for the capability report: plain text
     /// as the stream's renditions, which AVPlayer draws, and PGS and styled
     /// ASS as files the overlay draws (SubtitleOverlay).
@@ -31,13 +24,13 @@ final class AppModel {
     let transport: BackgroundTransport
     /// The device's network, told to the downloads.
     @ObservationIgnored private let connectivity: Connectivity
-    private(set) var phase: Phase = .starting
+    /// Where the app is, which the root shows.
+    @ObservationIgnored private(set) lazy var state = Observed(core.state) { [weak self] in self?.changed($0) }
     /// The server signed in to, if any.
-    var server: ServerModel? {
-        if case let .signedIn(server) = phase { server } else { nil }
-    }
+    private(set) var server: ServerModel?
     /// This device's settings the core plays and downloads by.
-    private(set) var settings: DeviceSettings?
+    var settings: DeviceSettings? { deviceSettings.value }
+    @ObservationIgnored private let deviceSettings: Observed<DeviceSettings?>
     /// This device's settings only the app's screens follow, kept in UserDefaults.
     var theme = Theme(rawValue: UserDefaults.standard.string(forKey: AppSettingsKey.theme) ?? "") ?? .system {
         didSet { UserDefaults.standard.set(theme.rawValue, forKey: AppSettingsKey.theme) }
@@ -84,34 +77,27 @@ final class AppModel {
         connectivity = Connectivity(core: core)
         self.core = core
         display = core.display
+        deviceSettings = Observed(nil, core.settings.map { $0 as DeviceSettings? })
+        _ = state
     }
 
-    /// Restores the last server signed in to, or goes to sign-in, once the
-    /// downloads' transfers under way are known.
+    /// Has the core open the last server signed in to, or sign in, once
+    /// the downloads' transfers under way are known.
     func start() async {
         guard !started else { return }
         started = true
         await takeAppSettings()
         await transport.prepare()
-        Task { [weak self, core] in
-            for await settings in core.settings {
-                self?.settings = settings
-            }
-        }
-        guard let saved = try? await core.savedServers().last else {
-            phase = .signedOut(nil)
-            return
-        }
-        do {
-            let server = try await core.restore(server: saved)
-            if server.isSignedIn {
-                signedIn(server)
-            } else {
-                phase = .signedOut(saved)
-            }
-        } catch {
-            phase = .signedOut(saved)
-        }
+        core.start()
+    }
+
+    /// The signed-in server's model, made as the core opens a server and closed as it leaves it.
+    private func changed(_ state: AppState) {
+        var session: KivoSession?
+        if case let .signedIn(signedIn) = onEnum(of: state) { session = signedIn.session }
+        guard server?.session !== session else { return }
+        server?.close()
+        server = session.map { ServerModel(session: $0, app: self) }
     }
 
     /// Keeps the settings an earlier version kept in the core here, once.
@@ -128,7 +114,13 @@ final class AppModel {
     /// anything is still there.
     func refreshDownloads() async {
         await start()
-        guard let downloads = server?.session.downloads else { return }
+        var session: KivoSession?
+        for await state in core.state {
+            if case .starting = onEnum(of: state) { continue }
+            if case let .signedIn(signedIn) = onEnum(of: state) { session = signedIn.session }
+            break
+        }
+        guard let downloads = session?.downloads else { return }
         if (try? await downloads.startReady())?.boolValue == true {
             DownloadRefresh.schedule()
         }
@@ -140,33 +132,12 @@ final class AppModel {
     func open(_ url: URL) async {
         guard url.scheme == "kivo", url.host() == "link" else { return }
         let other = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "server" }?.value
-        if let other, case let .signedIn(current) = phase, current.session.savedServer.value.id != other {
+        if let other, let current = server, current.session.savedServer.value.id != other {
             let saved = try? await core.savedServers().first { $0.id == other }
             if let saved, let session = try? await core.restore(server: saved), session.isSignedIn {
-                current.close()
-                signedIn(session)
+                core.signedIn(session: session)
             }
         }
         pendingLink = url.absoluteString
-    }
-
-    /// Leaves the signed-in server for sign-in, to choose a server again.
-    /// The device stays signed in to it, and keeps its downloads.
-    func changeServer() {
-        guard case let .signedIn(current) = phase else { return }
-        current.close()
-        phase = .signedOut(nil)
-    }
-
-    /// The device holds a token for [session]'s server: show the app until it's signed out.
-    func signedIn(_ session: KivoSession) {
-        let model = ServerModel(session: session, app: self)
-        phase = .signedIn(model)
-        Task { [weak self] in
-            try? await session.awaitSignOut()
-            guard let self, case let .signedIn(current) = self.phase, current === model else { return }
-            model.close()
-            self.phase = .signedOut(session.savedServer.value)
-        }
     }
 }

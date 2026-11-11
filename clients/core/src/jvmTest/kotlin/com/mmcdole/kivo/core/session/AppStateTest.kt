@@ -23,16 +23,19 @@ import io.ktor.server.websocket.WebSockets
 import io.ktor.server.websocket.webSocket
 import io.ktor.websocket.Frame
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import java.io.IOException
 import kotlin.test.Test
@@ -41,7 +44,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
-import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import com.mmcdole.kivo.core.downloads.db.Download as Row
 
@@ -54,26 +56,43 @@ import com.mmcdole.kivo.core.downloads.db.Download as Row
 private const val SERVER = "home.test GET /api/v1/server"
 private const val DOWNLOADS = "home.test GET /api/v1/downloads"
 
-/** A harness whose device was signed in to [home] before, at `home.test`, which answers as [info]. */
-private suspend fun TestScope.signedInBefore(info: ServerInfo = info("server-1", "Basement"), withDownloads: Boolean = false, appVersion: String = "1.0"): Harness {
+/**
+ * Runs [test] on a device whose app, when [signedInBefore] says what its
+ * server is, was signed in to [home] at `home.test` before.
+ */
+private fun appTest(
+    signedInBefore: ServerInfo? = info("server-1", "Basement"),
+    withDownloads: Boolean = false,
+    appVersion: String = "1.0",
+    test: suspend TestScope.(Harness) -> Unit,
+) = runTest {
     val h = Harness(this, withDownloads, appVersion)
-    h.servers.server("home.test", info)
-    h.device.signedInTo("server-1")
-    h.core.restore(home).close()
-    return h
+    if (signedInBefore != null) {
+        h.servers.server("home.test", signedInBefore)
+        h.device.signedInTo("server-1")
+        h.core.restore(home).close()
+    }
+    test(h)
 }
 
 private fun Harness.unreachable() = servers.on("home.test", "GET", "/api/v1/server") { throw IOException("no route to host") }
 
 private suspend fun KivoClient.started(): AppState = state.first { it != AppState.Starting }
 
-private suspend fun KivoClient.signedIn(): KivoSession = assertIs<AppState.SignedIn>(started()).session
+private suspend fun KivoClient.session(): KivoSession = assertIs<AppState.SignedIn>(started()).session
+
+/** Waits, in real time, for what the servers' own threads do. */
+private suspend fun until(what: String, met: () -> Boolean) = withContext(Dispatchers.Default) {
+    withTimeout(10.seconds) {
+        while (!met()) delay(10)
+    }
+    assertTrue(met(), what)
+}
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AppStateTest {
     @Test
-    fun withNoServerSignedInToTheAppStartsSignedOut() = runTest {
-        val h = Harness(this)
+    fun withNoServerSignedInToTheAppStartsSignedOut() = appTest(signedInBefore = null) { h ->
         assertEquals(AppState.Starting, h.core.state.value)
 
         h.core.start()
@@ -82,11 +101,7 @@ class AppStateTest {
     }
 
     @Test
-    fun aSavedServerTheDeviceHoldsNoSessionOnIsNotOpened() = runTest {
-        val h = Harness(this)
-        h.servers.server("home.test", info("server-1", "Basement"))
-        h.device.signedInTo("server-1")
-        h.core.restore(home).close()
+    fun aSavedServerTheDeviceHoldsNoSessionOnIsNotOpened() = appTest { h ->
         h.device.secureStore.values.clear()
 
         h.core.start()
@@ -95,11 +110,9 @@ class AppStateTest {
     }
 
     @Test
-    fun theServerLastSignedInToOpensSignedInAndItsUserIsRead() = runTest {
-        val h = signedInBefore()
-
+    fun theServerLastSignedInToOpensSignedInAndItsUserIsRead() = appTest { h ->
         h.core.start()
-        val session = h.core.signedIn()
+        val session = h.core.session()
 
         assertTrue(session.isSignedIn)
         assertEquals("server-1", session.savedServer.value.id)
@@ -108,29 +121,27 @@ class AppStateTest {
     }
 
     @Test
-    fun startingTwiceOpensTheServerOnce() = runTest {
-        val h = signedInBefore()
-
+    fun startingTwiceOpensTheServerOnce() = appTest { h ->
         h.core.start()
-        val session = h.core.signedIn()
+        val session = h.core.session()
+
         h.core.start()
         testScheduler.runCurrent()
 
-        assertSame(session, h.core.signedIn())
+        assertSame(session, h.core.session())
         assertTrue(session.scope.isActive)
     }
 
     @Test
-    fun aServerThatAnswersNowhereIsUnreachableOnceItHasStayedSoAndRetryOpensIt() = runTest {
-        val h = signedInBefore()
-        val answering = h.servers.seen.size
+    fun aServerThatAnswersNowhereIsUnreachableOnceItHasStayedSoAndRetryOpensIt() = appTest { h ->
+        val before = h.servers.seen.size
         h.unreachable()
 
         h.core.start()
 
         assertEquals(AppState.Unreachable(home, hasDownloads = false), h.core.started())
         assertTrue(currentTime >= 3000, "it's tried twice more, a moment apart, before it's unreachable")
-        assertTrue(h.servers.seen.drop(answering).count { it == SERVER } >= 3)
+        assertTrue(h.servers.seen.drop(before).count { it == SERVER } >= 3)
 
         h.core.retry()
         assertEquals(AppState.Starting, h.core.state.value)
@@ -138,12 +149,11 @@ class AppStateTest {
 
         h.servers.server("home.test", info("server-1", "Basement"))
         h.core.retry()
-        assertFalse(h.core.signedIn().unreachable.value)
+        assertFalse(h.core.session().unreachable.value)
     }
 
     @Test
-    fun aServerThatAnswersWhileStartingTriesAgainOpensSignedIn() = runTest {
-        val h = signedInBefore()
+    fun aServerThatAnswersAsStartingTriesAgainOpensSignedIn() = appTest { h ->
         h.servers.on("home.test", "GET", "/api/v1/server") {
             if (currentTime < 1500) throw IOException("the network is waking")
             json(ServerInfo.serializer(), info("server-1", "Basement").copy(proof = proofOf(it, "server-1", h.device.secureStore.values.values)))
@@ -151,24 +161,22 @@ class AppStateTest {
 
         h.core.start()
 
-        assertFalse(h.core.signedIn().unreachable.value)
+        assertFalse(h.core.session().unreachable.value)
     }
 
     @Test
-    fun aSessionTheServerEndedSignsInToItsServerAgain() = runTest {
-        val h = signedInBefore()
+    fun aSessionTheServerEndedSignsInToItsServerAgain() = appTest { h ->
         h.servers.on("home.test", "GET", "/api/v1/users/me") { problem(HttpStatusCode.Unauthorized, "unauthorized") }
+
         h.core.start()
-        h.core.signedIn()
 
         assertEquals(AppState.SignedOut(home), h.core.state.first { it is AppState.SignedOut })
     }
 
     @Test
-    fun signingOutGoesBackToSigningInToTheServerAndClosesTheSession() = runTest {
-        val h = signedInBefore()
+    fun signingOutGoesBackToSigningInToTheServerAndClosesTheSession() = appTest { h ->
         h.core.start()
-        val session = h.core.signedIn()
+        val session = h.core.session()
 
         session.connection.signOut()
 
@@ -178,10 +186,9 @@ class AppStateTest {
     }
 
     @Test
-    fun changingServerLeavesForSignInAndKeepsTheDeviceSignedIn() = runTest {
-        val h = signedInBefore()
+    fun changingServerLeavesForSignInAndKeepsTheDeviceSignedIn() = appTest { h ->
         h.core.start()
-        val session = h.core.signedIn()
+        val session = h.core.session()
 
         h.core.changeServer()
 
@@ -191,8 +198,7 @@ class AppStateTest {
     }
 
     @Test
-    fun changingServerFromOneThatCantBeReachedSignsIn() = runTest {
-        val h = signedInBefore()
+    fun changingServerFromOneThatCantBeReachedSignsIn() = appTest { h ->
         h.unreachable()
         h.core.start()
         assertIs<AppState.Unreachable>(h.core.started())
@@ -203,12 +209,11 @@ class AppStateTest {
     }
 
     @Test
-    fun aSignInShowsItsServerInPlaceOfTheOneOpen() = runTest {
-        val h = signedInBefore()
+    fun aSignInShowsItsServerInPlaceOfTheOneOpen() = appTest { h ->
         h.servers.server("b.test", info("b"))
         h.device.signedInTo("b")
         h.core.start()
-        val first = h.core.signedIn()
+        val first = h.core.session()
 
         val other = h.core.restore(SavedServer("b", "b", listOf("http://b.test")))
         h.core.signedIn(other)
@@ -220,8 +225,7 @@ class AppStateTest {
     }
 
     @Test
-    fun anUnreachableServerWithDownloadsOnTheDeviceOpensWithoutIt() = runTest {
-        val h = signedInBefore(withDownloads = true)
+    fun anUnreachableServerWithDownloadsOnTheDeviceOpensWithoutIt() = appTest(withDownloads = true) { h ->
         DownloadDatabase(h.device.downloads!!.driver).downloadsQueries.insertDownload(
             Row("d1", "server-1", "u1", null, "w1", null, null, null, "standard", "ready", null, null, null, "{}", "{}", "Night Shift", "movie", null, null, null, null, 1, 1, 1, null),
         )
@@ -230,7 +234,7 @@ class AppStateTest {
         assertEquals(AppState.Unreachable(home, hasDownloads = true), h.core.started())
 
         h.core.openOffline()
-        val session = h.core.signedIn()
+        val session = h.core.session()
 
         assertTrue(session.isSignedIn)
         assertTrue(session.unreachable.value)
@@ -238,32 +242,21 @@ class AppStateTest {
     }
 
     @Test
-    fun theForegroundRunsTheLiveEventsAndSyncsTheDownloads() = runTest {
-        val h = signedInBefore(withDownloads = true)
+    fun comingToTheForegroundReadsTheServerAgainAndSyncsTheDownloads() = appTest(withDownloads = true) { h ->
         h.servers.on("home.test", "GET", "/api/v1/downloads") { json(DownloadList.serializer(), DownloadList(emptyList())) }
         h.core.start()
-        val session = h.core.signedIn()
-        testScheduler.advanceTimeBy(10.minutes)
-        testScheduler.runCurrent()
-        val idle = h.servers.seen.size
-        testScheduler.advanceTimeBy(10.minutes)
-        assertEquals(idle, h.servers.seen.size, "in the background nothing asks the server")
-        val synced = h.servers.seen.count { it == DOWNLOADS }
-
+        val session = h.core.session()
+        until("the downloads sync as the server opens") { h.servers.seen.count { it == DOWNLOADS } == 1 }
         h.servers.server("home.test", info("server-1", "Den"))
+
         h.core.setForeground(true)
 
         assertEquals("Den", session.savedServer.first { it.name == "Den" }.name)
-        testScheduler.advanceTimeBy(10.minutes)
-        assertTrue(h.servers.seen.count { it == DOWNLOADS } > synced, "coming to the foreground syncs the downloads")
-        assertTrue(h.servers.seen.size > idle)
+        until("the downloads sync as the app comes to the foreground") { h.servers.seen.count { it == DOWNLOADS } == 2 }
 
         h.core.setForeground(false)
-        testScheduler.runCurrent()
-        val left = h.servers.seen.size
-        testScheduler.advanceTimeBy(10.minutes)
-        assertEquals(left, h.servers.seen.size, "the live events stop as the app leaves the foreground")
-        assertTrue(session.scope.isActive)
+        h.core.setForeground(true)
+        until("and each time it comes back") { h.servers.seen.count { it == DOWNLOADS } == 3 }
     }
 
     @Test
@@ -282,7 +275,7 @@ class AppStateTest {
                     send(Frame.Text("""{"type":"snapshot","serverVersion":"1.0"}"""))
                     opened.send(Unit)
                     try {
-                        for (frame in incoming) Unit
+                        for (frame in incoming) continue
                     } finally {
                         closed.trySend(Unit)
                     }
@@ -298,13 +291,17 @@ class AppStateTest {
             val url = "http://127.0.0.1:${server.engine.resolvedConnectors().first().port}"
             core.restore(SavedServer("server-1", "Basement", listOf(url))).close()
             core.start()
-            withTimeout(20.seconds) { core.signedIn() }
+            withTimeout(20.seconds) { core.session() }
+            delay(500)
             assertTrue(opened.tryReceive().isFailure, "no socket before the app is in the foreground")
 
             core.setForeground(true)
             withTimeout(20.seconds) { opened.receive() }
             core.setForeground(false)
             withTimeout(20.seconds) { closed.receive() }
+            delay(500)
+            assertTrue(opened.tryReceive().isFailure, "no socket in the background")
+
             core.setForeground(true)
             withTimeout(20.seconds) { opened.receive() }
             core.changeServer()
@@ -316,44 +313,37 @@ class AppStateTest {
     }
 
     @Test
-    fun aServerTheAppIsTooOldForOpensSignedInAndSaysSo() = runTest {
-        val h = signedInBefore(release("0.9.0", minAppVersion = "0.6.0"), appVersion = "0.5.0")
-
+    fun aServerTheAppIsTooOldForOpensSignedInAndSaysSo() = appTest(release("0.9.0", minAppVersion = "0.6.0"), appVersion = "0.5.0") { h ->
         h.core.start()
-        val session = h.core.signedIn()
+        val session = h.core.session()
 
         assertEquals(Compatibility.AppTooOld("0.5.0", "0.6.0"), session.compatibility.value)
         assertEquals(Compatibility.AppTooOld("0.5.0", "0.6.0"), session.state.value.compatibility)
     }
 
     @Test
-    fun aServerTooOldForTheAppOpensSignedInAndSaysSo() = runTest {
-        val h = signedInBefore(release("0.2.0"), appVersion = "0.5.0")
-
+    fun aServerTooOldForTheAppOpensSignedInAndSaysSo() = appTest(release("0.2.0"), appVersion = "0.5.0") { h ->
         h.core.start()
 
-        assertEquals(Compatibility.ServerTooOld("0.2.0", MIN_SERVER_VERSION, "0.5.0"), h.core.signedIn().compatibility.value)
+        assertEquals(Compatibility.ServerTooOld("0.2.0", MIN_SERVER_VERSION, "0.5.0"), h.core.session().compatibility.value)
     }
 
     @Test
-    fun comingToTheForegroundChecksTheServerAgainstTheAppAgain() = runTest {
-        val h = signedInBefore(release("0.5.0"), appVersion = "0.5.0")
+    fun comingToTheForegroundChecksTheServerAgainstTheAppAgain() = appTest(release("0.5.0"), appVersion = "0.5.0") { h ->
         h.core.start()
-        val session = h.core.signedIn()
+        val session = h.core.session()
         assertEquals(Compatibility.Compatible, session.compatibility.value)
         h.servers.server("home.test", release("0.9.0", minAppVersion = "0.6.0"))
 
         h.core.setForeground(true)
 
         assertEquals(Compatibility.AppTooOld("0.5.0", "0.6.0"), session.state.first { it.compatibility != Compatibility.Compatible }.compatibility)
-        h.core.setForeground(false)
     }
 
     @Test
-    fun aSessionsStateFollowsItsServerUserAndReachability() = runTest {
-        val h = signedInBefore()
+    fun aSessionsStateFollowsItsServerUserAndReachability() = appTest { h ->
         h.core.start()
-        val session = h.core.signedIn()
+        val session = h.core.session()
 
         val state = session.state.first { it.user != null }
 

@@ -13,10 +13,12 @@ import SwiftUI
 final class ServerModel {
     let session: KivoSession
     unowned let app: AppModel
+    /// The session as the core says it is: the server, the user, whether it answers, whether the app works with it, and its address.
+    @ObservationIgnored private let state: Observed<SessionState>
     /// The server's name, as it last said it.
-    private(set) var serverName: String
+    var serverName: String { state.value.server.name }
     /// Who the app is signed in as, kept on the device, so it shows without the server.
-    private(set) var user: SignedInUser?
+    var user: SignedInUser? { state.value.user }
     /// Every library the user sees, in their order.
     private(set) var libraries: [Library] = []
     /// The user's lists of the kinds this app knows, My List first.
@@ -24,13 +26,11 @@ final class ServerModel {
     /// Why the lists couldn't be read, when the server refused it.
     private(set) var listsFailure: RequestProblem?
     /// The server isn't answering reads, which retry until it does.
-    private(set) var unreachable = false
-    /// Whether the app and the server work together, as the server last said what it is.
-    private(set) var compatibility: Compatibility
-    /// Why they don't, while they don't: its screen shows in place of the server's.
-    var incompatibility: Incompatibility? { Incompatibility(compatibility, server: serverName) }
+    var unreachable: Bool { state.value.unreachable }
+    /// Why the app and the server don't work together, while they don't: its screen shows in place of the server's.
+    var incompatibility: Incompatibility? { Incompatibility(state.value.compatibility, server: serverName) }
     /// The base URL the server is reached at now, which artwork follows.
-    private(set) var baseUrl: String
+    var baseUrl: String { state.value.address }
     /// The tab showing, its pages, and the sheets over the tabs.
     let navigation: Navigation
     /// The video player and its screen, made once the rest is.
@@ -40,88 +40,43 @@ final class ServerModel {
     /// Casting to a TV, with its mini controller and remote while something plays there.
     let cast: CastModel
     /// This server's downloads on the device, newest first.
-    private(set) var downloads: [DownloadItem] = []
+    var downloads: [DownloadItem] { onDevice?.items.value ?? [] }
     /// The works whose downloads are being asked of the server, before they're listed.
-    private(set) var asking: Set<String> = []
+    var asking: Set<String> { onDevice?.asking.value ?? [] }
     /// How many downloads the availability check deleted, until Downloads says so.
-    private(set) var deletedDownloads: Int32 = 0
+    var deletedDownloads: Int32 { onDevice?.deleted.value ?? 0 }
     /// Why a download asked for from a long press couldn't start, until it's said.
     var downloadProblem: String?
 
-    @ObservationIgnored private var tasks: [Task<Void, Never>] = []
+    /// The downloads the device keeps of this server, as the core lists them.
+    @ObservationIgnored private let onDevice: (items: Observed<[DownloadItem]>, asking: Observed<Set<String>>, deleted: Observed<Int32>)?
+    @ObservationIgnored private var listsTask: Task<Void, Never>?
     @ObservationIgnored private var librariesTask: Task<Void, Never>?
 
     init(session: KivoSession, app: AppModel) {
         self.session = session
         self.app = app
-        baseUrl = session.baseUrl
-        serverName = session.savedServer.value.name
-        compatibility = session.compatibility.value
+        state = Observed(session.state)
         book = BookPlayer(session: session, artwork: { Self.artwork(session, at: session.baseUrl) }, display: app.display)
         cast = CastModel(session: session, core: app.core, display: app.display)
-        user = session.user.value
         navigation = Navigation(serverId: session.savedServer.value.id)
+        if let downloads = session.downloads {
+            onDevice = (Observed([], downloads.items), Observed([], downloads.asking), Observed(0, downloads.deleted.map { $0.int32Value }))
+        } else {
+            onDevice = nil
+        }
+        // Opened without the server, for what the device keeps of it: its downloads.
+        if session.unreachable.value.boolValue { navigation.tab = .downloads }
         // Casting hands over to and from the player from the start.
         _ = player
         reloadLibraries()
-        tasks.append(Task { [weak self, session] in
+        listsTask = Task { [weak self, session] in
             for await load in session.library.lists() {
                 if let problem = load.problemOrNull(), !problem.isUnreachable { self?.listsFailure = problem }
                 guard let lists = load.getOrNull() as? [WorkList] else { continue }
                 self?.lists = lists.filter { $0.kind == .manual || $0.kind == .smart }
             }
-        })
-        tasks.append(Task { [weak self, session] in
-            for await user in session.user {
-                self?.user = user
-            }
-        })
-        tasks.append(Task { [weak self, session] in
-            for await saved in session.savedServer {
-                self?.serverName = saved.name
-            }
-        })
-        tasks.append(Task { [weak self, session] in
-            for await unreachable in session.unreachable {
-                self?.unreachable = unreachable.boolValue
-            }
-        })
-        tasks.append(Task { [weak self, session] in
-            for await compatibility in session.compatibility {
-                self?.compatibility = compatibility
-            }
-        })
-        tasks.append(Task { [weak self, session] in
-            for await url in session.address {
-                self?.baseUrl = String(url)
-            }
-        })
-        if let onDevice = session.downloads {
-            tasks.append(Task { [weak self] in
-                for await downloads in onDevice.items {
-                    self?.downloads = downloads
-                }
-            })
-            tasks.append(Task { [weak self] in
-                for await asking in onDevice.asking {
-                    self?.asking = asking
-                }
-            })
-            tasks.append(Task { [weak self] in
-                for await deleted in onDevice.deleted {
-                    self?.deletedDownloads = deleted.int32Value
-                }
-            })
         }
-        tasks.append(Task { [weak self, session] in
-            do {
-                _ = try await session.account.currentUser()
-            } catch {
-                // With no server, the app opens on Downloads, and reads the user again once it answers.
-                if error.requestProblem.isUnreachable { self?.navigation.tab = .downloads }
-                try? await session.awaitReachable()
-            }
-        })
     }
 
     /// The download of [workId], if there is one.
@@ -201,7 +156,7 @@ final class ServerModel {
 
     /// Signed out: everything stops.
     func close() {
-        tasks.forEach { $0.cancel() }
+        listsTask?.cancel()
         librariesTask?.cancel()
         player.close()
         book.close()

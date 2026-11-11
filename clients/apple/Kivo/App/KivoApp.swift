@@ -1,9 +1,11 @@
+import KivoCore
 import KivoUI
 import SwiftUI
 
 struct KivoApp: App {
     @UIApplicationDelegateAdaptor private var delegate: AppDelegate
     @State private var app = AppModel(transport: .shared)
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         ArtworkSource.configureCaches()
@@ -20,6 +22,10 @@ struct KivoApp: App {
         .commands {
             TabCommands(app: app)
             PlaybackCommands(app: app)
+        }
+        // The core runs the live events, and brings the downloads up to date, while the app is in the foreground.
+        .onChange(of: scenePhase, initial: true) { _, phase in
+            app.core.setForeground(active: phase == .active)
         }
         .backgroundTask(.appRefresh(DownloadRefresh.identifier)) {
             await app.refreshDownloads()
@@ -65,10 +71,11 @@ private struct AppTheme: ViewModifier {
     }
 }
 
-/// Sign-in or the signed-in app, by where the app is; the background alone
-/// while it starts. A server the app doesn't work with shows which of them
-/// needs an update in place of its screens; with downloads on the device,
-/// the tabs stay, for Downloads.
+/// Sign-in, the saved server that can't be reached, or the signed-in app,
+/// by where the core says the app is; a spinner while it opens its server.
+/// A server the app doesn't work with shows which of them needs an update
+/// in place of its screens; with downloads on the device, the tabs stay,
+/// for Downloads.
 struct RootView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.kivoPalette) private var palette
@@ -76,20 +83,48 @@ struct RootView: View {
     var body: some View {
         ZStack {
             palette.bg.ignoresSafeArea()
-            switch app.phase {
+            switch onEnum(of: app.state.value) {
             case .starting:
-                EmptyView()
-            case let .signedOut(saved):
-                SignInView(saved: saved)
-            case let .signedIn(server):
-                if let problem = server.incompatibility, server.downloads.isEmpty {
-                    CompatibilityView(problem: problem, retry: server.checkCompatibility, changeServer: app.changeServer)
-                } else {
-                    SignedInView()
-                        .environment(server)
-                        .id(ObjectIdentifier(server))
+                ProgressView()
+            case let .signedOut(signedOut):
+                SignInView(saved: signedOut.server)
+            case let .unreachable(unreachable):
+                UnreachableServerView(server: unreachable.server, hasDownloads: unreachable.hasDownloads)
+            case .signedIn:
+                if let server = app.server {
+                    if let problem = server.incompatibility, server.downloads.isEmpty {
+                        CompatibilityView(problem: problem, retry: server.checkCompatibility, changeServer: app.core.changeServer)
+                    } else {
+                        SignedInView()
+                            .environment(server)
+                            .id(ObjectIdentifier(server))
+                    }
                 }
             }
         }
+    }
+}
+
+/// The saved server answers at none of its addresses, in place of its
+/// screens: Retry tries it again, Change server goes to sign-in, and Go to
+/// Downloads, while the device keeps downloads of it, opens it without it.
+private struct UnreachableServerView: View {
+    let server: SavedServer
+    let hasDownloads: Bool
+    @Environment(AppModel.self) private var app
+
+    var body: some View {
+        VStack(spacing: 0) {
+            MessageView(
+                String(localized: "Can't reach \(server.name)."),
+                sentence: String(localized: "Check your connection, or choose another server."),
+                action: (String(localized: "Retry"), app.core.retry),
+                secondary: (String(localized: "Change server"), app.core.changeServer)
+            )
+            if hasDownloads {
+                Button(String(localized: "Go to Downloads"), action: app.core.openOffline)
+            }
+        }
+        .accessibilityIdentifier("unreachable")
     }
 }

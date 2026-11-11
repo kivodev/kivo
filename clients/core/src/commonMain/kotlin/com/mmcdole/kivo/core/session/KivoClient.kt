@@ -205,14 +205,14 @@ class KivoClient internal constructor(
             } catch (_: Exception) {
                 null
             }
-            if (saved == null) mutableState.value = AppState.SignedOut(null) else reach(saved)
+            if (saved == null) mutableState.value = AppState.SignedOut(null) else enter(saved)
         }
     }
 
     /** Tries the server that couldn't be reached again. */
     fun retry() {
         val server = (state.value as? AppState.Unreachable)?.server ?: return
-        open { reach(server) }
+        open { enter(server) }
     }
 
     /**
@@ -222,7 +222,7 @@ class KivoClient internal constructor(
      */
     fun openOffline() {
         val server = (state.value as? AppState.Unreachable)?.server ?: return
-        open { reach(server, offline = true) }
+        open { enter(server, offline = true) }
     }
 
     /** The app signed in, as [session]: its server shows, in place of the one open, until it's signed out. */
@@ -261,7 +261,7 @@ class KivoClient internal constructor(
      * signed in, signing in again when its session has ended, or
      * unreachable; [offline], signed in whether it answers or not.
      */
-    private suspend fun reach(server: SavedServer, offline: Boolean = false) {
+    private suspend fun enter(server: SavedServer, offline: Boolean = false) {
         mutableState.value = AppState.Starting
         val session = try {
             var session = restore(server)

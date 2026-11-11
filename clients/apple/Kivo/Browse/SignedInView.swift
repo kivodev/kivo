@@ -106,11 +106,6 @@ struct SignedInView: View {
             }
         }
         .environment(\.artworkSource, server.artwork)
-        .task(id: scenePhase == .active) {
-            guard scenePhase == .active else { return }
-            Task { try? await server.session.downloads?.sync() }
-            try? await server.session.runLiveEvents()
-        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background, DownloadRefresh.pending(server.downloads) { DownloadRefresh.schedule() }
         }
@@ -180,7 +175,7 @@ private struct CompatibilityGate: ViewModifier {
 
     func body(content: Content) -> some View {
         if let problem = server.incompatibility {
-            CompatibilityView(problem: problem, retry: server.checkCompatibility, changeServer: app.changeServer)
+            CompatibilityView(problem: problem, retry: server.checkCompatibility, changeServer: app.core.changeServer)
         } else {
             content
         }
