@@ -63,7 +63,7 @@ struct TracksPanel: View {
     private func subtitleRows(_ version: Version) -> [TrackRow] {
         let subtitles = version.tracks.filter { $0.type == .subtitle && model.offers($0) }
         guard !subtitles.isEmpty || model.searchesSubtitles else { return [] }
-        let off = Subtitles.shared.OFF
+        let off = SUBTITLES_OFF
         let offRow = TrackRow(id: off, name: TrackName(name: String(localized: "Off"), note: nil), chosen: model.subtitle == off) {
             model.chooseSubtitle(off)
         }

@@ -47,7 +47,7 @@ struct TrackPicker: View {
                 Picker(title, selection: $selection) {
                     Text(automaticLabel).tag(String?.none)
                     if kind == .subtitles {
-                        Text("Off").tag(String?.some(Subtitles.shared.OFF))
+                        Text("Off").tag(String?.some(SUBTITLES_OFF))
                     }
                     ForEach(tracks, id: \.id) { track in
                         Button {} label: {
@@ -71,7 +71,7 @@ struct TrackPicker: View {
     }
 
     private func name(_ id: String?) -> String? {
-        if id == Subtitles.shared.OFF { return String(localized: "Off") }
+        if id == SUBTITLES_OFF { return String(localized: "Off") }
         return id.flatMap { id in tracks.first { $0.id == id }?.name }
     }
 }

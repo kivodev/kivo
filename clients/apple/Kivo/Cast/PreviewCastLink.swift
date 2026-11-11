@@ -67,12 +67,7 @@ final class PreviewCastLink: CastLink {
     func load(_ load: CastLoad, title: String, image: URL?) {
         let custom = (try? JSONSerialization.jsonObject(with: Data(load.customData.utf8))) as? [String: Any] ?? [:]
         Task { @MainActor [weak self, session] in
-            var work: WorkDetail?
-            for await read in session.library.work(id: load.contentId) {
-                guard let answer = read.getOrNull() else { continue }
-                work = answer
-                break
-            }
+            let work = await session.library.work(id: load.contentId).answer()
             guard let self, let work else { return }
             self.play(work, custom: custom, from: load.currentTimeSec?.doubleValue)
         }

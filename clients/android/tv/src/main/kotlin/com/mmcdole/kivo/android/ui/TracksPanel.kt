@@ -34,11 +34,11 @@ import com.mmcdole.kivo.api.models.Track
 import com.mmcdole.kivo.core.display.pickerName
 import com.mmcdole.kivo.core.data.SubtitleSearch
 import com.mmcdole.kivo.core.display.TrackName
-import com.mmcdole.kivo.core.player.Subtitles
+import com.mmcdole.kivo.core.player.SUBTITLES_OFF
 
 /**
  * A version's audio and subtitle tracks, and which play: a track's ID,
- * [Subtitles.OFF], or null for Automatic; and whether Subtitles offers
+ * [SUBTITLES_OFF], or null for Automatic; and whether Subtitles offers
  * "Search subtitles…" ([SubtitleSearch.offered]).
  */
 data class TrackChoices(
@@ -52,7 +52,7 @@ data class TrackChoices(
 /** Whether [TrackChoices] has anything to choose: more than one audio track, a subtitle track besides Off, or a search. */
 val TrackChoices.choosable: Boolean get() = audio.size > 1 || subtitles.isNotEmpty() || searchable
 
-/** The track a play starts with when none is chosen: an audio track's ID, and a subtitle track's or [Subtitles.OFF]. */
+/** The track a play starts with when none is chosen: an audio track's ID, and a subtitle track's or [SUBTITLES_OFF]. */
 data class AutomaticTracks(val audio: String?, val subtitle: String)
 
 /**
@@ -124,10 +124,10 @@ fun ColumnScope.TrackColumns(
     val subtitles = buildList {
         if (tracks.subtitles.isNotEmpty() || tracks.searchable) {
             if (automatic != null && tracks.subtitles.isNotEmpty()) {
-                val plays = if (automatic.subtitle == Subtitles.OFF) off else tracks.subtitles.firstOrNull { it.id == automatic.subtitle }?.pickerName
+                val plays = if (automatic.subtitle == SUBTITLES_OFF) off else tracks.subtitles.firstOrNull { it.id == automatic.subtitle }?.pickerName
                 add(automaticRow("automatic-subtitle", plays, tracks.subtitleSelected == null, onSubtitle))
             }
-            add(TrackRow.Choice(Subtitles.OFF, Subtitles.OFF, off, tracks.subtitleSelected == Subtitles.OFF, onSubtitle))
+            add(TrackRow.Choice(SUBTITLES_OFF, SUBTITLES_OFF, off, tracks.subtitleSelected == SUBTITLES_OFF, onSubtitle))
             tracks.subtitles.forEach {
                 add(TrackRow.Choice(it.id, it.id, it.pickerName, it.id == tracks.subtitleSelected, onSubtitle))
             }
@@ -164,7 +164,7 @@ private sealed interface TrackRow {
         override val ticked get() = false
     }
 
-    /** A track's ID or [Subtitles.OFF] as [value], or null for Automatic. */
+    /** A track's ID or [SUBTITLES_OFF] as [value], or null for Automatic. */
     data class Choice(
         override val key: String,
         val value: String?,

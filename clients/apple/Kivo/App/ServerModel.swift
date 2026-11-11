@@ -65,7 +65,7 @@ final class ServerModel {
         _ = player
         reloadLibraries()
         tasks.append(Task { [weak self, session] in
-            for await load in session.library.lists(counted: false) {
+            for await load in session.library.lists() {
                 if let problem = load.problemOrNull(), !problem.isUnreachable { self?.listsFailure = problem }
                 guard let lists = load.getOrNull() as? [WorkList] else { continue }
                 self?.lists = lists.filter { $0.kind == .manual || $0.kind == .smart }
@@ -134,7 +134,7 @@ final class ServerModel {
     func startDownload(_ workId: String) {
         Task {
             do {
-                _ = try await session.downloads?.download(workId: workId, versionId: nil, audioTrackId: nil, subtitleTrackId: nil, quality: nil)
+                _ = try await session.downloads?.download(choice: PlayChoice(workId: workId))
                 Haptics.success()
             } catch {
                 downloadProblem = error.downloadSentence

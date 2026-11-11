@@ -76,9 +76,9 @@ final class PlayerModel: PlayerChoices, Scrubbable {
     @ObservationIgnored private var artwork: (id: String, data: Data?)?
     @ObservationIgnored private var externalObservation: NSKeyValueObservation?
 
-    init(target: PlayTarget, server: ServerModel) {
+    init(_ choice: PlayChoice, at positionMs: Int64?, downloadId: String?, server: ServerModel) {
         self.server = server
-        workId = target.workId
+        workId = choice.workId
         display = server.display
         let app = server.app
         let session = server.session
@@ -101,55 +101,51 @@ final class PlayerModel: PlayerChoices, Scrubbable {
             // Without the menu, Playback Settings offers no quality.
             qualities = (try? await self.server.session.playback.qualityMenu()) ?? []
         })
-        start(target)
+        start(choice, at: positionMs, downloadId: downloadId)
     }
 
-    /// Plays [target]. Everything but where the play comes from is the
-    /// same for a download as for the server: a download plays from its
+    /// Plays [choice] from [positionMs], or its resume position when nil.
+    /// Everything but where the play comes from is the same for the
+    /// download [downloadId] as for the server: a download plays from its
     /// files, without the server. The engine, its surface and Picture in
     /// Picture stay the same across the plays: the last play's picture shows
     /// until the next one's replaces it.
-    private func start(_ target: PlayTarget) {
+    private func start(_ choice: PlayChoice, at positionMs: Int64? = nil, downloadId: String?) {
         following.forEach { $0.cancel() }
         following = []
         player?.handOver()
         player = nil
         ui = nil
-        workId = target.workId
-        offline = target.downloadId != nil
+        let workId = choice.workId
+        self.workId = workId
+        offline = downloadId != nil
         downloadSource = nil
         // Playback audio, so the video plays with the silent switch on and
         // Picture in Picture and AirPlay are allowed. Set on every play, as
         // the system can reset it.
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
-        load(workId: target.workId)
+        load(workId: workId)
         tasks.append(Task { [weak self, engine, server] in
             do {
                 let player: KivoCore.VideoPlayer
                 var source: DownloadSource?
-                if let downloadId = target.downloadId {
+                if let downloadId {
                     player = try await server.session.playback.offlinePlayer(engine: engine, downloadId: downloadId)
                     source = player.downloadSource()
                 } else {
                     player = server.session.playback.videoPlayer(engine: engine)
                 }
-                guard let self, self.workId == target.workId else {
+                guard let self, self.workId == workId else {
                     player.dispose()
                     return
                 }
                 downloadSource = source
                 attach(player)
                 // The controller reports a play that fails to start in its state.
-                try await player.play(
-                    workId: target.workId,
-                    versionId: target.versionId,
-                    audioTrackId: target.audioTrackId,
-                    subtitleTrackId: target.subtitleTrackId,
-                    positionMs: (target.positionMs ?? (target.fromStart ? Int64(0) : nil)).map { KotlinLong(value: $0) }
-                )
+                try await player.play(choice: choice, positionMs: positionMs.map { KotlinLong(value: $0) })
             } catch {
                 // A download that can't play now, such as one that needs the server to check it first.
-                if target.downloadId != nil { server.player.shown = false }
+                if downloadId != nil { server.player.shown = false }
             }
         })
     }
@@ -195,7 +191,7 @@ final class PlayerModel: PlayerChoices, Scrubbable {
 
     /// The subtitle track showing, or off, as the core's player says.
     var subtitle: String {
-        state?.subtitleTrackId ?? Subtitles.shared.OFF
+        state?.subtitleTrackId ?? SUBTITLES_OFF
     }
 
     /// The subtitle file the overlay draws, when the one showing is a file.
@@ -233,10 +229,10 @@ final class PlayerModel: PlayerChoices, Scrubbable {
     }
 
     /// Where the play is, to carry on from on a Cast device: the work, its version and tracks, and the position.
-    var handoff: (target: PlayTarget, positionMs: Int64)? {
+    var handoff: (choice: PlayChoice, positionMs: Int64)? {
         guard let play else { return nil }
-        let target = PlayTarget(workId: workId, versionId: play.versionId, audioTrackId: audioTrackId, subtitleTrackId: subtitle)
-        return (target, controller?.positionMs() ?? Int64(state?.positionMs ?? 0))
+        let choice = PlayChoice(workId: workId, versionId: play.versionId, audioTrackId: audioTrackId, subtitleTrackId: subtitle)
+        return (choice, controller?.positionMs() ?? Int64(state?.positionMs ?? 0))
     }
 
     /// Reads a subtitle file or font the play names: a download's from its
@@ -449,13 +445,9 @@ final class PlayerModel: PlayerChoices, Scrubbable {
                 self.tellEpisode()
                 guard let nextId = work.episode?.nextId, self.next?.id != nextId else { continue }
                 // Without the server, the next episode only if it's downloaded.
-                for await nextLoad in server.session.playback.playableWork(id: nextId) {
-                    guard let next = nextLoad.getOrNull() else { continue }
-                    if self.workId == workId {
-                        self.next = next
-                        self.tellEpisode()
-                    }
-                    break
+                if let next = await server.session.playback.playableWork(id: nextId).answer(), self.workId == workId {
+                    self.next = next
+                    self.tellEpisode()
                 }
             }
         })
@@ -512,7 +504,7 @@ final class PlayerModel: PlayerChoices, Scrubbable {
         guard let next else { return }
         work = nil
         self.next = nil
-        start(PlayTarget(workId: next.id, downloadId: server.readyDownload(of: next.id)?.id))
+        start(PlayChoice(workId: next.id), downloadId: server.readyDownload(of: next.id)?.id)
     }
 
     // MARK: Picture in Picture and Now Playing
@@ -563,8 +555,8 @@ final class PlayerModel: PlayerChoices, Scrubbable {
             case .play: controller.resume()
             case .pause: controller.pause()
             case .togglePlay: controller.togglePlay()
-            case .skipBack: controller.skip(deltaMs: -Markers.shared.BACK_MS)
-            case .skipForward: controller.skip(deltaMs: Markers.shared.FORWARD_MS)
+            case .skipBack: controller.skip(deltaMs: -SKIP_BACK_MS)
+            case .skipForward: controller.skip(deltaMs: SKIP_FORWARD_MS)
             case .seek:
                 guard let event = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
                 controller.seek(positionMs: Int64(event.positionTime * 1000))

@@ -43,9 +43,9 @@ struct PlaybackCommands: Commands {
             Group {
                 Button(String(localized: "Play or pause")) { player?.togglePlay() }
                     .keyboardShortcut(.space, modifiers: [])
-                Button(String(localized: "Back 10 seconds")) { player?.skip(by: -Markers.shared.BACK_MS) }
+                Button(String(localized: "Back 10 seconds")) { player?.skip(by: -SKIP_BACK_MS) }
                     .keyboardShortcut(.leftArrow, modifiers: [])
-                Button(String(localized: "Forward 30 seconds")) { player?.skip(by: Markers.shared.FORWARD_MS) }
+                Button(String(localized: "Forward 30 seconds")) { player?.skip(by: SKIP_FORWARD_MS) }
                     .keyboardShortcut(.rightArrow, modifiers: [])
                 Divider()
                 Button(String(localized: "Close player")) { app.server?.player.shown = false }

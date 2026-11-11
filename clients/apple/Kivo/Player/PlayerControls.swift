@@ -141,7 +141,7 @@ struct TabletopControls: View {
             .frame(height: 77)
             HStack(spacing: gap) {
                 tile(String(localized: "Back 10 seconds")) {
-                    model.skip(by: -Markers.shared.BACK_MS)
+                    model.skip(by: -SKIP_BACK_MS)
                 } label: {
                     Image(systemName: "gobackward.10")
                 }
@@ -159,7 +159,7 @@ struct TabletopControls: View {
                     .accessibilityIdentifier(paused ? "Play" : "Pause")
                 }
                 tile(String(localized: "Forward 30 seconds")) {
-                    model.skip(by: Markers.shared.FORWARD_MS)
+                    model.skip(by: SKIP_FORWARD_MS)
                 } label: {
                     Image(systemName: "goforward.30")
                 }
@@ -314,7 +314,7 @@ private struct Transport: View {
         let paused = model.state?.paused != false
         let side: CGFloat = 44
         HStack(spacing: 0) {
-            Button { model.skip(by: -Markers.shared.BACK_MS) } label: {
+            Button { model.skip(by: -SKIP_BACK_MS) } label: {
                 Image(systemName: "gobackward.10")
                     .font(PlayerGlyph.transport)
                     .frame(width: side, height: side)
@@ -336,7 +336,7 @@ private struct Transport: View {
                 }
             }
             .frame(width: side, height: side)
-            Button { model.skip(by: Markers.shared.FORWARD_MS) } label: {
+            Button { model.skip(by: SKIP_FORWARD_MS) } label: {
                 Image(systemName: "goforward.30")
                     .font(PlayerGlyph.transport)
                     .frame(width: side, height: side)

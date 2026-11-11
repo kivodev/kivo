@@ -6,7 +6,7 @@ import com.mmcdole.kivo.core.FakeServer
 import com.mmcdole.kivo.core.MemoryStore
 import com.mmcdole.kivo.core.json
 import com.mmcdole.kivo.core.display.Display
-import com.mmcdole.kivo.core.player.Subtitles
+import com.mmcdole.kivo.core.player.SUBTITLES_OFF
 import com.mmcdole.kivo.core.player.UpNext
 import com.mmcdole.kivo.core.player.UpNextPhase
 import io.ktor.http.HttpStatusCode
@@ -39,7 +39,7 @@ class CastTest {
                 workId = "w1",
                 versionId = "v2",
                 audioTrackId = "a3",
-                subtitleTrackId = Subtitles.OFF,
+                subtitleTrackId = SUBTITLES_OFF,
                 positionMs = 2_723_500,
                 dialogueBoost = true,
                 localQuality = QualityRequest("original"),
@@ -115,7 +115,7 @@ class CastTest {
     @Test
     fun messagesAreTheOnesTheReceiverAnswers() {
         assertEquals(parse("""{"type":"kivo.setTracks","audioTrackId":"a2"}"""), parse(CastMessages.setTracks("a2", null)))
-        assertEquals(parse("""{"type":"kivo.setTracks","subtitleTrackId":"off"}"""), parse(CastMessages.setTracks(null, Subtitles.OFF)))
+        assertEquals(parse("""{"type":"kivo.setTracks","subtitleTrackId":"off"}"""), parse(CastMessages.setTracks(null, SUBTITLES_OFF)))
         assertEquals(parse("""{"type":"kivo.setDialogueBoost","enabled":true}"""), parse(CastMessages.setDialogueBoost(true)))
         assertEquals(
             parse("""{"type":"kivo.setQuality","localQuality":{"mode":"limit","maxBitrateBps":4000000},"remoteQuality":{"mode":"limit","maxBitrateBps":4000000}}"""),
@@ -147,7 +147,7 @@ class CastTest {
         assertEquals("Direct Stream", Display().method(status.tracks.first()))
         assertEquals(true, status.dialogueBoost?.enabled)
         assertEquals("a1", status.audioTrackId)
-        assertEquals(Subtitles.OFF, status.subtitleTrackId)
+        assertEquals(SUBTITLES_OFF, status.subtitleTrackId)
         assertFalse(status.startsNewPlay("s1"), "streamed: shown at once")
         assertTrue(status.startsNewPlay("s2"))
         assertEquals(true, status.local)

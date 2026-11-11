@@ -13,9 +13,8 @@ import SwiftUI
 /// while it comes, Retry when it failed, and Remove Download.
 struct DownloadButton: View {
     let work: WorkDetail
-    var versionId: String?
-    var audioTrackId: String?
-    var subtitleTrackId: String?
+    /// The work with the version and tracks chosen on its page.
+    let choice: PlayChoice
     @Environment(ServerModel.self) private var server
     @Environment(\.kivoPalette) private var palette
     @State private var estimate: DownloadEstimate?
@@ -90,11 +89,9 @@ struct DownloadButton: View {
         .buttonBorderShape(.circle)
         .tint(palette.text)
         .accessibilityIdentifier("download")
-        .task(id: [work.id, versionId, audioTrackId, subtitleTrackId].map { $0 ?? "" }) {
+        .task(id: choice) {
             // Without an estimate the menu goes on working out the sizes.
-            estimate = try? await server.session.downloads?.estimates(
-                workIds: [work.id], versionId: versionId, audioTrackId: audioTrackId, subtitleTrackId: subtitleTrackId
-            ).first
+            estimate = try? await server.session.downloads?.estimates(choices: [choice]).first
         }
         .alert(problem ?? "", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil } })) {
             Button(String(localized: "OK"), role: .cancel) {}
@@ -113,10 +110,9 @@ struct DownloadButton: View {
     /// Downloads at [quality], or the setting's when nil.
     private func download(_ quality: DownloadQuality?) {
         act {
-            _ = try await server.session.downloads?.download(
-                workId: work.id, versionId: versionId, audioTrackId: work.book == nil ? audioTrackId : nil,
-                subtitleTrackId: work.book == nil ? subtitleTrackId : nil, quality: quality
-            )
+            // A book has no tracks to choose.
+            let wanted = work.book == nil ? choice : PlayChoice(workId: work.id, versionId: choice.versionId)
+            _ = try await server.session.downloads?.download(choice: wanted, quality: quality)
         }
     }
 

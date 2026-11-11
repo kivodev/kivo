@@ -16,7 +16,7 @@ import com.google.android.gms.cast.framework.media.RemoteMediaClient
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.common.images.WebImage
-import com.mmcdole.kivo.core.cast.Cast
+import com.mmcdole.kivo.core.cast.CAST_NAMESPACE
 import com.mmcdole.kivo.core.cast.CastLoad
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -179,7 +179,7 @@ class GoogleCastLink private constructor(private val context: CastContext) : Cas
     }
 
     override fun send(message: String) {
-        session?.sendMessage(Cast.NAMESPACE, message)
+        session?.sendMessage(CAST_NAMESPACE, message)
     }
 
     override fun end(stopCasting: Boolean) {
@@ -205,7 +205,7 @@ class GoogleCastLink private constructor(private val context: CastContext) : Cas
     private fun attach(session: CastSession, resumed: Boolean) {
         this.session?.let { detachClient(it) }
         this.session = session
-        session.setMessageReceivedCallbacks(Cast.NAMESPACE) { _, _, message -> messages.tryEmit(message) }
+        session.setMessageReceivedCallbacks(CAST_NAMESPACE) { _, _, message -> messages.tryEmit(message) }
         session.addCastListener(castListener)
         session.remoteMediaClient?.registerCallback(mediaCallback)
         mutableVolume.value = session.volume.toFloat()
@@ -223,7 +223,7 @@ class GoogleCastLink private constructor(private val context: CastContext) : Cas
     private fun detachClient(session: CastSession) {
         session.remoteMediaClient?.unregisterCallback(mediaCallback)
         session.removeCastListener(castListener)
-        runCatching { session.removeMessageReceivedCallbacks(Cast.NAMESPACE) }
+        runCatching { session.removeMessageReceivedCallbacks(CAST_NAMESPACE) }
     }
 
     private fun mediaChanged() {

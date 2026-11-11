@@ -162,10 +162,14 @@ class KivoClient internal constructor(
     fun compatibility(info: ServerInfo): Compatibility =
         Compatibility.of(info.version, info.minAppVersion, device.identity.appVersion)
 
+    /** [servers] as they are now. */
+    @Throws(Exception::class)
+    suspend fun savedServers(): List<SavedServer> = servers.first()
+
     /** The last server signed in to that this device still holds a session for; null when there's none. */
     @Throws(Exception::class)
     suspend fun lastSignedIn(): SavedServer? =
-        servers.first().lastOrNull { ServerConnection.holdsSession(device.secureStore, it.id) }
+        savedServers().lastOrNull { ServerConnection.holdsSession(device.secureStore, it.id) }
 
     /**
      * A saved server, with this device's session on it restored when one is

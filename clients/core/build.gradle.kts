@@ -34,6 +34,7 @@ aboutLibraries {
 
 val ktorVersion = "3.5.1"
 val sqldelightVersion = "2.4.1"
+val skieVersion = "0.10.15"
 
 /**
  * Writes the shared display tables (shared/display: en.json, media.json, and
@@ -115,6 +116,8 @@ kotlin {
                 implementation("io.ktor:ktor-client-websockets:$ktorVersion")
                 api("androidx.datastore:datastore-preferences-core:1.2.1")
                 implementation("app.cash.sqldelight:coroutines-extensions:$sqldelightVersion")
+                // Marks the few functions whose default arguments Swift gets too.
+                implementation("co.touchlab.skie:configuration-annotations:$skieVersion")
             }
         }
         androidMain.dependencies {
