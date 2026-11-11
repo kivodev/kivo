@@ -1013,6 +1013,11 @@ public final class com/mmcdole/kivo/core/data/SubtitleSearchProblem$QuotaUsed : 
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class com/mmcdole/kivo/core/data/TrailersKt {
+	public static final fun localTrailers (Lcom/mmcdole/kivo/api/models/WorkDetail;)Ljava/util/List;
+	public static final fun otherExtras (Lcom/mmcdole/kivo/api/models/WorkDetail;)Ljava/util/List;
+}
+
 public final class com/mmcdole/kivo/core/data/WorkPlayState : java/lang/Enum {
 	public static final field Companion Lcom/mmcdole/kivo/core/data/WorkPlayState$Companion;
 	public static final field InProgress Lcom/mmcdole/kivo/core/data/WorkPlayState;

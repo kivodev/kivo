@@ -1,15 +1,19 @@
 import { useLingui } from "@lingui/react/macro";
 import { useQuery } from "@tanstack/react-query";
-import type { CollectionSummary, Credit, WorkDetail, WorkSummary } from "@/api/schemas";
+import type { CollectionSummary, Credit, Trailer, WorkDetail, WorkSummary } from "@/api/schemas";
 import { workQueries } from "@/api/works";
+import { Artwork, cardDensity } from "@/components/Artwork";
 import { PersonCard, useRoleLabel } from "@/components/PersonCard";
 import { Row } from "@/components/Row";
-import { WorkCard } from "@/features/browse/WorkCard";
+import { markClass, WorkCard } from "@/features/browse/WorkCard";
+import { formatClock } from "@/i18n/format";
+import { isTv } from "@/tv/flag";
 
-/** Cast and crew, then extras by type, then each collection's other members. */
+/** Trailers, then cast and crew, then the other extras by type, then each collection's other members. */
 export function WorkRows({ work }: { work: WorkDetail }) {
   return (
     <div className="flex flex-col gap-10 px-4 pb-12 sm:px-8 tv:relative">
+      <TrailersRow extras={work.extras} trailers={work.movie?.trailers} />
       <CastRow credits={work.credits} />
       <ExtrasRows extras={work.extras} />
       {work.collections.map((c) => (
@@ -37,10 +41,78 @@ function CastRow({ credits }: { credits: readonly Credit[] }) {
   );
 }
 
+/**
+ * A movie's trailers: the trailer files in its folder, which play here,
+ * then its trailers on YouTube, which open there. The packaged TV app never
+ * leaves its page, so it shows the files alone.
+ */
+function TrailersRow({ extras, trailers = [] }: { extras: readonly WorkSummary[]; trailers?: readonly Trailer[] }) {
+  const { t } = useLingui();
+  const items: (WorkSummary | Trailer)[] = [
+    ...extras.filter((e) => e.extra?.type === "trailer"),
+    ...(isTv ? [] : trailers),
+  ];
+  if (items.length === 0) return null;
+  return (
+    <Row
+      id="trailers"
+      title={t`Trailers`}
+      shape="landscape"
+      items={items}
+      itemKey={(item) => item.id}
+      renderItem={(item) =>
+        "url" in item ? (
+          <TrailerCard trailer={item} />
+        ) : (
+          <WorkCard
+            work={item}
+            shape="landscape"
+            badge={item.durationMs ? formatClock(item.durationMs) : undefined}
+            caption={t`In your library`}
+          />
+        )
+      }
+    />
+  );
+}
+
+/** A trailer on YouTube, which opens there in a new tab. Its mark says so before the click. */
+function TrailerCard({ trailer }: { trailer: Trailer }) {
+  const { t } = useLingui();
+  return (
+    <a
+      href={trailer.url}
+      target="_blank"
+      rel="noreferrer"
+      data-part="card"
+      data-kind="trailer"
+      className="flex min-w-0 flex-col gap-2 rounded-md"
+    >
+      <div className="relative">
+        <Artwork
+          image={trailer.image}
+          title={trailer.title}
+          shape="landscape"
+          width={288}
+          density={cardDensity}
+          part="still"
+          className="relative shadow-card"
+        />
+        <span data-part="site" className={markClass}>
+          YouTube ↗
+        </span>
+      </div>
+      <div className="min-w-0 px-0.5">
+        <div className="truncate text-sm font-semibold text-text">{trailer.title}</div>
+        <div className="truncate text-sm text-text-muted">{t`Opens in YouTube`}</div>
+      </div>
+    </a>
+  );
+}
+
 function ExtrasRows({ extras }: { extras: readonly WorkSummary[] }) {
   const { t } = useLingui();
   const titles: Record<string, string> = {
-    trailer: t`Trailers`,
     featurette: t`Featurettes`,
     behindTheScenes: t`Behind the Scenes`,
     deletedScene: t`Deleted Scenes`,
@@ -51,6 +123,7 @@ function ExtrasRows({ extras }: { extras: readonly WorkSummary[] }) {
   };
   const groups = new Map<string, WorkSummary[]>();
   for (const extra of extras) {
+    if (extra.extra?.type === "trailer") continue; // in the Trailers row
     const type = extra.extra?.type && extra.extra.type in titles ? extra.extra.type : "other";
     groups.set(type, [...(groups.get(type) ?? []), extra]);
   }

@@ -677,3 +677,92 @@ func TestMigrationListOrder(t *testing.T) {
 		t.Errorf("after deleting a list and a work: %s, want %s", got, want)
 	}
 }
+
+// 0074 turns each movie's trailer link into its first trailer and drops the
+// link. Such a movie is made due a refresh, and no other is. Every image is
+// kept as it was, a trailer can own one, and a trailer and its image leave
+// with their movie.
+func TestMigrationTrailers(t *testing.T) {
+	ctx := context.Background()
+	db, path := testDB(t, through(t, "_list_order.sql"))
+	err := db.Write(ctx, func(ctx context.Context, tx *Tx) error {
+		_, err := tx.ExecContext(ctx, `
+			INSERT INTO work (id, kind, parent_id, root_id, title, sort_title, added_at, refreshed_at, refresh_error, trailer_url) VALUES
+				(x'01', 'movie', NULL, x'01', 'Dune', 'Dune', 1, 100, NULL, 'https://www.youtube.com/watch?v=n9xhJrPXop4'),
+				(x'02', 'movie', NULL, x'02', 'Heat', 'Heat', 1, 200, 'failed', NULL),
+				(x'03', 'movie', NULL, x'03', 'Alien', 'Alien', 1, 300, NULL, 'https://www.youtube.com/watch?v=LjLamj-b0I8'),
+				(x'04', 'movie', NULL, x'04', 'Odd', 'Odd', 1, 400, NULL, 'https://example.org/trailer');
+			INSERT INTO person (id, name, sort_name) VALUES (x'b1', 'Ann', 'Ann');
+			INSERT INTO collection (id, key, name, sort_name, created_at) VALUES (x'c1', 'tmdb:1', 'Dune Collection', 'Dune Collection', 1);
+			INSERT INTO image (id, work_id, person_id, collection_id, kind, source, origin, origin_mtime, width, height, blurhash, chosen, fetched_at) VALUES
+				(x'e1', x'01', NULL, NULL, 'poster', 'local', '/m/Dune/poster.jpg', 7, 1000, 1500, 'hash1', 1, 11),
+				(x'e2', NULL, x'b1', NULL, 'photo', 'provider', 'https://image.tmdb.org/a.jpg', NULL, 400, 600, 'hash2', 0, 12),
+				(x'e3', NULL, NULL, x'c1', 'backdrop', 'provider', 'https://image.tmdb.org/b.jpg', NULL, 1920, 1080, 'hash3', 0, 13);`)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+	up, err := open(ctx, path, embeddedMigrations(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer up.Close()
+	read := func(query string) (out string) {
+		t.Helper()
+		if err := up.Reader().QueryRowContext(ctx, query).Scan(&out); err != nil {
+			t.Fatal(err)
+		}
+		return out
+	}
+	if got, want := read(`SELECT group_concat(hex(work_id) || ' ' || ord || ' ' || site || ' ' || key || ' ' || title || ' ' || official || ' ' ||
+		coalesce(language, '-') || ' ' || coalesce(published_at, '-') || ' ' || length(id) || ' ' || substr(hex(id), 13, 1), ', ')
+		FROM (SELECT * FROM trailer ORDER BY work_id)`),
+		"01 0 youtube n9xhJrPXop4 Trailer 0 - - 16 7, 03 0 youtube LjLamj-b0I8 Trailer 0 - - 16 7"; got != want {
+		t.Errorf("trailers: %s, want %s", got, want)
+	}
+	if got := read(`SELECT count(*) FROM pragma_table_info('work') WHERE name = 'trailer_url'`); got != "0" {
+		t.Error("work still has trailer_url")
+	}
+	if got, want := read(`SELECT group_concat(hex(id) || ':' || coalesce(refreshed_at, '-') || ':' || coalesce(refresh_error, '-'), ' ')
+		FROM (SELECT * FROM work ORDER BY id)`), "01:-:- 02:200:failed 03:-:- 04:400:-"; got != want {
+		t.Errorf("refreshes due: %s, want %s", got, want)
+	}
+	if got, want := read(`SELECT group_concat(hex(id) || '|' || coalesce(hex(work_id), '') || '|' || coalesce(hex(person_id), '') || '|' ||
+		coalesce(hex(collection_id), '') || '|' || coalesce(hex(trailer_id), '') || '|' || kind || '|' || source || '|' || origin || '|' ||
+		coalesce(origin_mtime, '-') || '|' || width || 'x' || height || '|' || blurhash || '|' || chosen || '|' || fetched_at, ' ')
+		FROM (SELECT * FROM image ORDER BY id)`),
+		"E1|01||||poster|local|/m/Dune/poster.jpg|7|1000x1500|hash1|1|11 "+
+			"E2||B1|||photo|provider|https://image.tmdb.org/a.jpg|-|400x600|hash2|0|12 "+
+			"E3|||C1||backdrop|provider|https://image.tmdb.org/b.jpg|-|1920x1080|hash3|0|13"; got != want {
+		t.Errorf("images: %s, want %s", got, want)
+	}
+	if got := read(`SELECT group_concat(name, ',') FROM (SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'image' AND name LIKE 'image_%' ORDER BY name)`); got != "image_collection,image_person,image_trailer,image_work" {
+		t.Errorf("image's indexes: %s", got)
+	}
+
+	thumb := `INSERT INTO image (id, %s, kind, source, origin, width, height, blurhash, fetched_at)
+		SELECT x'%s', %s, 'thumb', 'provider', 'https://i.ytimg.com/vi/n9xhJrPXop4/maxresdefault.jpg', 1280, 720, 'hash4', 14 FROM trailer WHERE work_id = x'01'`
+	exec := func(query string) error {
+		return up.Write(ctx, func(ctx context.Context, tx *Tx) error {
+			_, err := tx.ExecContext(ctx, query)
+			return err
+		})
+	}
+	if err := exec(fmt.Sprintf(thumb, "trailer_id", "e4", "id")); err != nil {
+		t.Fatalf("a trailer's image: %v", err)
+	}
+	if err := exec(fmt.Sprintf(thumb, "trailer_id", "e5", "id")); err == nil {
+		t.Error("a trailer took a second thumbnail")
+	}
+	if err := exec(fmt.Sprintf(thumb, "trailer_id, work_id", "e6", "id, x'01'")); err == nil {
+		t.Error("an image took two owners")
+	}
+	if err := exec(`DELETE FROM work WHERE id = x'01'`); err != nil {
+		t.Fatal(err)
+	}
+	if got := read(`SELECT (SELECT count(*) FROM trailer WHERE work_id = x'01') || ' ' || (SELECT group_concat(hex(id), ',') FROM (SELECT id FROM image ORDER BY id))`); got != "0 E2,E3" {
+		t.Errorf("after deleting the movie: %s, want no trailer and only the other owners' images", got)
+	}
+}

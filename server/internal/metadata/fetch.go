@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/egress"
 	"github.com/mmcdole/kivo/internal/health"
 	"github.com/mmcdole/kivo/internal/metadata/dbq"
@@ -305,6 +306,7 @@ func reject(name string, p *egress.Limiter) error {
 var displayNames = map[string]string{
 	provTMDb: "TMDb", provAnimeLists: "Anime-Lists",
 	provAudible: "Audible", provAudnexus: "Audnexus",
+	catalog.TrailerYouTube: "YouTube",
 }
 
 // health lists providers that are down or have refused our key.

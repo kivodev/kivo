@@ -202,6 +202,7 @@ src/commonMain/kotlin/com/mmcdole/kivo/api/models/TaskRetry.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/TaskRun.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/Track.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/TrackTranscode.kt
+src/commonMain/kotlin/com/mmcdole/kivo/api/models/Trailer.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/TranscodeInfo.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/User.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/UserCreate.kt

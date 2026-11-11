@@ -275,10 +275,11 @@ func (i *Identifier) Unmatch(ctx context.Context, v users.Viewer, work id.ID) (i
 
 	err = i.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
 		return i.deps.Catalog.Batch(ctx, tx, func(b *catalog.Batch) error {
-			if err := b.Unmatch(ctx, work, title, year); err != nil {
+			// Artwork goes first, while the work still has the trailers that own some of it.
+			if err := i.deps.Metadata.ClearArtwork(ctx, tx, work); err != nil {
 				return err
 			}
-			if err := i.deps.Metadata.ClearArtwork(ctx, tx, work); err != nil {
+			if err := b.Unmatch(ctx, work, title, year); err != nil {
 				return err
 			}
 			q := dbq.New(tx)

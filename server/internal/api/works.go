@@ -294,11 +294,15 @@ func workDetail(d query.WorkDetail, tracks playback.Preferred, marks map[id.ID][
 	if out.Episode != nil {
 		out.Episode.PreviousID, out.Episode.NextID = opt(d.PreviousEpisode), opt(d.NextEpisode)
 	}
-	if d.TrailerURL != "" {
+	if len(d.Trailers) > 0 {
 		if out.Movie == nil { // a summary has a movie's object only for its edition
 			out.Movie = &gen.MovieInfo{}
 		}
-		out.Movie.TrailerURL = &d.TrailerURL
+		ts := make([]gen.Trailer, len(d.Trailers))
+		for i, t := range d.Trailers {
+			ts[i] = gen.Trailer{ID: t.ID, Title: t.Title, URL: t.URL, Image: imageRef(t.Image)}
+		}
+		out.Movie.Trailers = &ts
 	}
 	if b := d.Book; b != nil && out.Book != nil {
 		out.Book.Subtitle, out.Book.Publisher, out.Book.Language = opt(b.Subtitle), opt(b.Publisher), opt(b.Language)

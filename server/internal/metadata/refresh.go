@@ -134,7 +134,7 @@ func (s *Service) refreshWork(ctx context.Context, work id.ID) error {
 }
 
 // refresh gathers a work's provider data, local files and artwork, and the
-// artwork of a movie's collection. It writes them all in one transaction. It
+// artwork of a movie's collection and trailers. It writes them all in one transaction. It
 // also records when the work was refreshed, unless a provider was down.
 //
 // A work that was unmatched meanwhile gets nothing written, because nothing
@@ -188,15 +188,22 @@ func (s *Service) refresh(ctx context.Context, work id.ID, fr Freshness) error {
 			}
 		}
 	}
+	trailers, err := s.planTrailers(ctx, w, meta)
+	if err != nil {
+		s.deleteEncodedPhotos(photos)
+		return err
+	}
 	plan, err := s.planArtwork(ctx, w, f, l)
 	if err != nil {
 		s.deleteEncodedPhotos(photos)
+		s.deleteEncodedTrailers(trailers)
 		return err
 	}
 	coll, err := s.planCollectionArt(ctx, f)
 	if err != nil {
 		s.deleteEncoded(plan.add)
 		s.deleteEncodedPhotos(photos)
+		s.deleteEncodedTrailers(trailers)
 		return err
 	}
 
@@ -208,7 +215,14 @@ func (s *Service) refresh(ctx context.Context, work id.ID, fr Freshness) error {
 			return notFoundRow(err)
 		}
 		if meta != nil {
+			thumbs, err := q.TrailerImages(ctx, work)
+			if err != nil {
+				return err
+			}
 			if err := s.deps.Catalog.UpdateMetadata(ctx, tx, work, *meta); err != nil {
+				return err
+			}
+			if err := s.recordTrailers(ctx, tx, work, thumbs, trailers); err != nil {
 				return err
 			}
 		}
@@ -233,6 +247,7 @@ func (s *Service) refresh(ctx context.Context, work id.ID, fr Freshness) error {
 		s.deleteEncoded(plan.add)
 		s.deleteEncoded(coll.add)
 		s.deleteEncodedPhotos(photos)
+		s.deleteEncodedTrailers(trailers)
 		return err
 	}
 	for _, r := range plan.remove {

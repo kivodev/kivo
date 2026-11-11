@@ -123,8 +123,8 @@ func rowOf(ctx context.Context, q querier, st statement, args []any, dest ...any
 	return queryRow(ctx, q, st, args).Scan(dest...)
 }
 
-// photoColumns are a person's photo, read from the image i. They are all
-// NULL when the person has no photo.
+// photoColumns are a person's photo or a trailer's thumbnail, read from the
+// image i. They are all NULL when there is none.
 const photoColumns = "i.id, i.blurhash, i.width, i.height"
 
 // photo reads the photo columns.

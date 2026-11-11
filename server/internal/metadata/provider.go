@@ -78,8 +78,8 @@ type Description struct {
 	Cast                 []Person          // in billing order
 	Crew                 []Person          // directors and writers
 	Community            *catalog.CommunityRating
-	Collection           *Collection // set only for a movie
-	TrailerURL           string      // set only for a movie; empty for none
+	Collection           *Collection       // set only for a movie
+	Trailers             []catalog.Trailer // a movie's, best first
 	Images               Images
 }
 

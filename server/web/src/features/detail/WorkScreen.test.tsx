@@ -55,16 +55,37 @@ describe("Loading a work's page", () => {
 });
 
 describe("Movie page", () => {
-  it("links to the trailer in a new tab, only for a movie that has one", async () => {
+  it("shows one Trailers row, the folder's trailer first and then YouTube's, only for a movie that has any", async () => {
     serveMockApi();
     const { unmount } = renderApp(`/works/${mockIds.dunePartTwo}`);
-    const trailer = await screen.findByRole("link", { name: "Trailer" });
-    expect(trailer).toHaveAttribute("href", "https://www.youtube.com/watch?v=Way9Dexny3w");
-    expect(trailer).toHaveAttribute("target", "_blank");
+    const row = (await screen.findByRole("heading", { name: "Trailers" })).closest("section");
+    if (!row) throw new Error("no Trailers row");
+    const cards = [...row.querySelectorAll<HTMLElement>('[data-part="card"]')];
+    expect(cards.map((c) => c.dataset.kind)).toEqual(["extra", "trailer", "trailer"]);
+    // The folder's trailer plays here.
+    const [local, first, second] = cards as [HTMLElement, HTMLElement, HTMLElement];
+    expect(within(local).getByText("Official Trailer")).toBeInTheDocument();
+    expect(within(local).getByText("2:00")).toBeInTheDocument();
+    expect(within(local).getByText("In your library")).toBeInTheDocument();
+    expect(local.querySelector("a")?.getAttribute("href")).toMatch(/^\/works\//);
+    // YouTube's open there, in a new tab.
+    expect(first).toHaveAttribute("href", "https://www.youtube.com/watch?v=Way9Dexny3w");
+    expect(first).toHaveAttribute("target", "_blank");
+    expect(within(first).getByText("Official Trailer 3")).toBeInTheDocument();
+    expect(within(first).getByText("YouTube ↗")).toBeInTheDocument();
+    expect(within(first).getByText("Opens in YouTube")).toBeInTheDocument();
+    expect(first.querySelector("img")).not.toBeNull();
+    // One whose thumbnail the server doesn't have shows the titled tile.
+    expect(second).toHaveAttribute("href", "https://www.youtube.com/watch?v=_YUzQa_1RCE");
+    expect(second.querySelector("img")).toBeNull();
+    // No button and no menu item leads to a trailer.
+    expect(screen.queryByRole("link", { name: "Trailer" })).not.toBeInTheDocument();
+    // The other extras keep their own rows.
+    expect(screen.getByRole("heading", { name: "Featurettes" })).toBeInTheDocument();
     unmount();
     renderApp(`/works/${mockIds.dune}`);
     expect(await screen.findByRole("heading", { name: "Dune" })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Trailer" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Trailers" })).not.toBeInTheDocument();
   });
 
   it("offers Resume with the time, Play from beginning beside it, the time left and end under it, and the pickers", async () => {

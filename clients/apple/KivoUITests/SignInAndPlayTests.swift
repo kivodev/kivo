@@ -22,6 +22,8 @@ final class SignInAndPlayTests: XCTestCase {
         continueAfterFailure = false
         // Every run signs in as one client, replacing the last run's session.
         app.launchEnvironment["KIVO_CLIENT_ID"] = "kivo-ui-tests"
+        // Sign-in goes straight to the server under test, without browsing the network.
+        app.launchEnvironment["KIVO_SERVER"] = environment["KIVO_SERVER"]
     }
 
     func testSignInBrowseAndPlay() throws {
@@ -614,7 +616,6 @@ final class SignInAndPlayTests: XCTestCase {
         app.launch()
 
         // Sign in, unless the Keychain still holds a sign-in from a last run.
-        // Discovery goes straight to the password when it finds one server.
         let address = app.textFields["address"]
         let user = app.textFields["username"]
         let home = app.buttons["user"]
@@ -622,16 +623,7 @@ final class SignInAndPlayTests: XCTestCase {
         wait(for: [expectation(for: start, evaluatedWith: nil)], timeout: 20)
         if !home.exists {
             if showingSteps { keep("sign-in") }
-            // Discovery takes up to 3 seconds, and may go straight to another
-            // server's password; then it's the typed address.
-            if !user.waitForExistence(timeout: 6) || !app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", server)).firstMatch.exists {
-                if user.exists { app.buttons["Change server"].tap() }
-                XCTAssert(address.waitForExistence(timeout: 10), "sign-in has no address field")
-                address.tap()
-                address.typeText(server)
-                app.buttons["Continue"].tap()
-                XCTAssert(user.waitForExistence(timeout: 15), "the server at \(server) wasn't found")
-            }
+            XCTAssert(user.waitForExistence(timeout: 15), "the server at \(server) wasn't found")
             user.tap()
             user.typeText(username)
             // A wrong password first: the server's refusal in words.

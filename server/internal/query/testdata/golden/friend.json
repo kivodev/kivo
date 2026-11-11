@@ -940,7 +940,7 @@
     "Overview": "",
     "ContentRating": "G",
     "OriginalLanguage": "",
-    "TrailerURL": "",
+    "Trailers": null,
     "Genres": null,
     "Companies": null,
     "Credits": null,
@@ -1036,7 +1036,7 @@
     "Overview": "",
     "ContentRating": "R",
     "OriginalLanguage": "",
-    "TrailerURL": "",
+    "Trailers": null,
     "Genres": null,
     "Companies": null,
     "Credits": null,
@@ -1158,7 +1158,20 @@
     "Overview": "A desert planet.",
     "ContentRating": "PG-13",
     "OriginalLanguage": "",
-    "TrailerURL": "",
+    "Trailers": [
+      {
+        "ID": "<id>",
+        "Title": "Official Main Trailer",
+        "URL": "https://www.youtube.com/watch?v=n9xhJrPXop4",
+        "Image": null
+      },
+      {
+        "ID": "<id>",
+        "Title": "Official Trailer",
+        "URL": "https://www.youtube.com/watch?v=8g18jFHCLXk",
+        "Image": null
+      }
+    ],
     "Genres": [
       "Adventure",
       "Science Fiction"
@@ -1341,7 +1354,7 @@
     "Overview": "",
     "ContentRating": "G",
     "OriginalLanguage": "",
-    "TrailerURL": "",
+    "Trailers": null,
     "Genres": null,
     "Companies": null,
     "Credits": null,
@@ -1446,7 +1459,7 @@
     "Overview": "",
     "ContentRating": "G",
     "OriginalLanguage": "",
-    "TrailerURL": "",
+    "Trailers": null,
     "Genres": null,
     "Companies": null,
     "Credits": null,
@@ -1555,7 +1568,7 @@
     "Overview": "",
     "ContentRating": "PG-13",
     "OriginalLanguage": "",
-    "TrailerURL": "",
+    "Trailers": null,
     "Genres": null,
     "Companies": null,
     "Credits": null,

@@ -2549,6 +2549,8 @@ final val com.mmcdole.kivo.core.display/pickerName // com.mmcdole.kivo.core.disp
 
 final fun (com.mmcdole.kivo.api.models/EpisodeInfo).com.mmcdole.kivo.core.data/isoAirDate(): kotlin/String? // com.mmcdole.kivo.core.data/isoAirDate|isoAirDate@com.mmcdole.kivo.api.models.EpisodeInfo(){}[0]
 final fun (com.mmcdole.kivo.api.models/WorkDetail).com.mmcdole.kivo.core.data/defaultVersion(): com.mmcdole.kivo.api.models/Version? // com.mmcdole.kivo.core.data/defaultVersion|defaultVersion@com.mmcdole.kivo.api.models.WorkDetail(){}[0]
+final fun (com.mmcdole.kivo.api.models/WorkDetail).com.mmcdole.kivo.core.data/localTrailers(): kotlin.collections/List<com.mmcdole.kivo.api.models/WorkSummary> // com.mmcdole.kivo.core.data/localTrailers|localTrailers@com.mmcdole.kivo.api.models.WorkDetail(){}[0]
+final fun (com.mmcdole.kivo.api.models/WorkDetail).com.mmcdole.kivo.core.data/otherExtras(): kotlin.collections/List<com.mmcdole.kivo.api.models/WorkSummary> // com.mmcdole.kivo.core.data/otherExtras|otherExtras@com.mmcdole.kivo.api.models.WorkDetail(){}[0]
 final fun (com.mmcdole.kivo.api.models/WorkDetail).com.mmcdole.kivo.core.data/resumeAt(kotlin/String?): kotlin/Int? // com.mmcdole.kivo.core.data/resumeAt|resumeAt@com.mmcdole.kivo.api.models.WorkDetail(kotlin.String?){}[0]
 final fun (com.mmcdole.kivo.api.models/WorkDetail).com.mmcdole.kivo.core.data/selectedVersion(kotlin/String?): com.mmcdole.kivo.api.models/Version? // com.mmcdole.kivo.core.data/selectedVersion|selectedVersion@com.mmcdole.kivo.api.models.WorkDetail(kotlin.String?){}[0]
 final fun (com.mmcdole.kivo.api.models/WorkDetail).com.mmcdole.kivo.core.data/summary(): com.mmcdole.kivo.api.models/WorkSummary // com.mmcdole.kivo.core.data/summary|summary@com.mmcdole.kivo.api.models.WorkDetail(){}[0]

@@ -57,7 +57,7 @@ See also: [reverse proxy setup](docs/reverse-proxy.md), [resetting a password](d
 
 Kivo transcodes with [jellyfin-ffmpeg](https://github.com/jellyfin/jellyfin-ffmpeg), the Jellyfin project's ffmpeg build, which adds the GPU tone mapping and driver fixes Kivo relies on. It's licensed under the GPL and ships alongside Kivo as a separate program.
 
-Movie and TV metadata comes from [TMDB](https://www.themoviedb.org). Audiobook metadata comes from [Audnexus](https://github.com/laxamentumtech/audnexus).
+Movie and TV metadata comes from [TMDB](https://www.themoviedb.org). Audiobook metadata comes from [Audnexus](https://github.com/laxamentumtech/audnexus). The thumbnails of the movie trailers TMDB lists come from YouTube's image server, which only the Kivo server asks.
 
 ## License
 

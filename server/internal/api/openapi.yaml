@@ -5478,9 +5478,24 @@ components:
         edition:
           type: string
           description: The label the movie's folder's edition tag gives it, such as `Final Cut`. Shown after the title wherever it appears.
-        trailerUrl:
+        trailers:
+          type: array
+          items: {$ref: "#/components/schemas/Trailer"}
+          description: Detail only. The movie's trailers on YouTube, best first; absent when it has none.
+
+    Trailer:
+      type: object
+      description: A movie's trailer on YouTube, which a client opens there rather than plays.
+      required: [id, title, url]
+      properties:
+        id: {$ref: "#/components/schemas/ID"}
+        title: {type: string}
+        url:
           type: string
-          description: Detail only. The movie's trailer on YouTube, for a client to open; absent when it has none.
+          description: The trailer's page on YouTube.
+        image:
+          $ref: "#/components/schemas/ImageRef"
+          description: The trailer's thumbnail; absent until the server has fetched it.
 
     SeriesInfo:
       type: object

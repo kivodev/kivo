@@ -51,6 +51,55 @@ struct CardRow: View {
     }
 }
 
+/// Trailers: the trailer files in the work's folder, each opening its page,
+/// then a movie's trailers on YouTube, which the system opens in the
+/// YouTube app if it's installed, else the browser.
+struct TrailersRow: View {
+    let work: WorkDetail
+    @Environment(\.wide) private var wide
+
+    var body: some View {
+        let local = work.localTrailers()
+        let online = work.movie?.trailers ?? []
+        if !local.isEmpty || !online.isEmpty {
+            let width = CardRow.cardWidth(.landscape, wide: wide)
+            VStack(alignment: .leading, spacing: CardRow.headingSpacing) {
+                SectionHeading(title: String(localized: "Trailers"))
+                    .padding(.horizontal, CardRow.inset)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(alignment: .top, spacing: KivoTokens.spacing * 3) {
+                        ForEach(local, id: \.id) { trailer in
+                            WorkLink(work: trailer) {
+                                WorkCard(
+                                    trailer,
+                                    style: .landscape,
+                                    width: width,
+                                    mark: trailer.durationMs.map { Display.app.clock(ms: $0.int64Value) },
+                                    detail: String(localized: "In your library")
+                                )
+                            }
+                        }
+                        ForEach(online, id: \.id) { trailer in
+                            if let url = URL(string: trailer.url) {
+                                Link(destination: url) {
+                                    TrailerCard(trailer, width: width)
+                                }
+                                .buttonStyle(.plain)
+                                .hoverEffect(.highlight)
+                                .accessibilityIdentifier("trailer")
+                            }
+                        }
+                    }
+                    .padding(.horizontal, CardRow.inset)
+                }
+                .scrollClipDisabled()
+            }
+            .cardRowInsets()
+            .accessibilityIdentifier("trailers")
+        }
+    }
+}
+
 /// A collection the work is part of, its card opening the collection's page.
 struct CollectionRow: View {
     let collection: CollectionSummary

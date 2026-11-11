@@ -1,6 +1,7 @@
 package com.mmcdole.kivo.android.detail
 
 import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.view.KeyEvent
@@ -108,6 +109,7 @@ import com.mmcdole.kivo.android.ui.RowTitle
 import com.mmcdole.kivo.android.ui.SafeEdge
 import com.mmcdole.kivo.android.ui.SafeTop
 import com.mmcdole.kivo.android.ui.Screen
+import com.mmcdole.kivo.android.ui.TrailerCard
 import com.mmcdole.kivo.android.ui.ValueRow
 import com.mmcdole.kivo.android.ui.WorkCard
 import com.mmcdole.kivo.android.ui.LocalSession
@@ -139,6 +141,8 @@ import com.mmcdole.kivo.core.data.CreditRole
 import com.mmcdole.kivo.core.data.Seasons
 import com.mmcdole.kivo.core.data.SubtitleSearch
 import com.mmcdole.kivo.core.data.knownRole
+import com.mmcdole.kivo.core.data.localTrailers
+import com.mmcdole.kivo.core.data.otherExtras
 import com.mmcdole.kivo.core.data.resumeAt
 import com.mmcdole.kivo.core.data.selectedVersion
 import com.mmcdole.kivo.core.data.summary
@@ -436,7 +440,7 @@ private fun playable(head: WorkSummary, work: WorkDetail?, choices: PlayChoice) 
 
 /**
  * Play or Resume with the time, and beside Resume a round Play from
- * beginning; then [chips], a movie's Trailer, My List, Played and the ⋯ menu; "This file is
+ * beginning; then [chips], My List, Played and the ⋯ menu; "This file is
  * missing" in Play's place when no version can play. They work from the
  * card before the page is read.
  */
@@ -469,7 +473,6 @@ private fun ActionRow(
             if (position != null) RestartButton(hero) { play(fromStart = true) }
         }
         chips?.invoke()
-        read?.movie?.trailerUrl?.let { TrailerButton(it, hero) }
         HeroIconButton(
             if (onMyList) KivoIcon.ListCheck else KivoIcon.ListPlus,
             stringResource(if (onMyList) R.string.remove_from_my_list else R.string.add_to_my_list),
@@ -498,26 +501,6 @@ private fun PlayButton(text: String, hero: HeroLevels, onClick: () -> Unit) {
         icon = KivoIcon.Play,
         primary = true,
         modifier = Modifier.heroButton(hero, "play").height(ButtonHeight).testTag("play"),
-        contentPadding = ButtonPadding,
-    )
-}
-
-/** A movie's Trailer, opening the YouTube app. On a TV with nothing to open it, it does nothing. */
-@Composable
-private fun TrailerButton(url: String, hero: HeroLevels) {
-    val context = LocalContext.current
-    OfferButton(hero, "trailer")
-    KivoButton(
-        text = stringResource(R.string.trailer),
-        onClick = {
-            try {
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-            } catch (_: ActivityNotFoundException) {
-                // No app here plays it.
-            }
-        },
-        icon = KivoIcon.Film,
-        modifier = Modifier.heroButton(hero, "trailer").height(ButtonHeight).testTag("trailer"),
         contentPadding = ButtonPadding,
     )
 }
@@ -698,10 +681,34 @@ private fun PickerChip(label: String, value: String, hero: HeroLevels, key: Stri
     )
 }
 
-/** Cast, extras and collections under the hero, the first [firstTop] under it; rows with nothing in them are left out. */
+/**
+ * Trailers, cast, extras and collections under the hero, the first [firstTop] under it; rows with nothing in them are
+ * left out. The Trailers row holds the trailer files in the work's folder, then a movie's trailers on YouTube.
+ */
 private fun LazyListScope.extraRows(work: WorkDetail, memory: FocusMemory, navigator: Navigator, firstTop: Dp = RowGap) {
     var top = firstTop
     fun nextTop() = top.also { top = RowGap }
+    val local = work.localTrailers()
+    val online = work.movie?.trailers.orEmpty()
+    if (local.isNotEmpty() || online.isNotEmpty()) {
+        extraRow(R.string.trailers, nextTop()) {
+            items(local, key = { it.id }) { w ->
+                WorkCard(
+                    w,
+                    CardShape.Landscape,
+                    LandscapeWidth,
+                    { navigator.push(Screen.Work(w.id)) },
+                    Modifier.focusKey(memory, "row/${w.id}"),
+                    mark = w.durationMs?.let { display.clock(it.toLong()) },
+                    caption = stringResource(R.string.in_your_library),
+                )
+            }
+            items(online, key = { it.id }) { trailer ->
+                val context = LocalContext.current
+                TrailerCard(trailer, LandscapeWidth, { context.openTrailer(trailer.url) }, Modifier.focusKey(memory, "row/${trailer.id}"))
+            }
+        }
+    }
     val cast = work.credits.filter { it.knownRole == CreditRole.Actor }.take(20)
     if (cast.isNotEmpty()) {
         extraRow(R.string.cast, nextTop()) {
@@ -710,9 +717,10 @@ private fun LazyListScope.extraRows(work: WorkDetail, memory: FocusMemory, navig
             }
         }
     }
-    if (work.extras.isNotEmpty()) {
+    val extras = work.otherExtras()
+    if (extras.isNotEmpty()) {
         extraRow(R.string.extras, nextTop()) {
-            items(work.extras, key = { it.id }) { w ->
+            items(extras, key = { it.id }) { w ->
                 WorkCard(w, CardShape.Landscape, LandscapeWidth, { navigator.push(Screen.Work(w.id)) }, Modifier.focusKey(memory, "row/${w.id}"))
             }
         }
@@ -723,6 +731,15 @@ private fun LazyListScope.extraRows(work: WorkDetail, memory: FocusMemory, navig
                 CollectionCard(c, PosterWidth, { navigator.push(Screen.Collection(c.id)) }, Modifier.focusKey(memory, "row/${c.id}"))
             }
         }
+    }
+}
+
+/** Opens a trailer in the YouTube app. On a TV with nothing to open it, it does nothing. */
+private fun Context.openTrailer(url: String) {
+    try {
+        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+    } catch (_: ActivityNotFoundException) {
+        // No app here plays it.
     }
 }
 

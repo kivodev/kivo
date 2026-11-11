@@ -73,7 +73,9 @@ func (s *Service) fromProviders(ctx context.Context, w catalog.Work, lang, count
 		f.meta.OriginalLanguage = languageCode(d.OriginalLanguage)
 		f.meta.Genres, f.meta.Companies, f.meta.Tags = names(d.Genres), names(d.Companies), names(d.Tags)
 		f.meta.Credits, f.meta.Community = credits(d.Cast, d.Crew), d.Community
-		f.meta.TrailerURL = d.TrailerURL
+		if w.Kind == catalog.KindMovie {
+			f.meta.Trailers = trailers(d.Trailers)
+		}
 		f.photos = s.photosOf(d.Cast, d.Crew)
 		for _, a := range d.AltTitles {
 			f.meta.AltTitles = appendNew(f.meta.AltTitles, clean(a, maxTitle))
@@ -175,6 +177,18 @@ func names(ns []string) []string {
 	out := []string{} // non-nil, because an empty list clears the field
 	for _, n := range ns {
 		out = appendNew(out, clean(n, maxName))
+	}
+	return out
+}
+
+// trailers cleans a provider's trailers. One without a title is named
+// "Trailer".
+func trailers(ts []catalog.Trailer) []catalog.Trailer {
+	out := []catalog.Trailer{} // non-nil, because an empty list clears the field
+	for _, t := range ts {
+		t.Title = cmp.Or(clean(t.Title, maxTitle), "Trailer")
+		t.Language = languageCode(t.Language)
+		out = append(out, t)
 	}
 	return out
 }

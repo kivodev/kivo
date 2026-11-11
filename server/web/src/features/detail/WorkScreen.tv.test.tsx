@@ -69,8 +69,12 @@ describe("Detail page on TV", () => {
     serveMockApi();
     const { router } = renderApp(`/works/${mockIds.dunePartTwo}`);
     await waitFor(() => expect(focused()).toBe("play"));
-    // The packaged TV app can't open YouTube, so this movie's trailer isn't offered.
-    expect(screen.queryByRole("link", { name: "Trailer" })).not.toBeInTheDocument();
+    // The packaged TV app can't open YouTube, so the Trailers row holds the folder's trailer alone.
+    const row = (await screen.findByRole("heading", { name: "Trailers" })).closest("section");
+    expect([...(row?.querySelectorAll<HTMLElement>('[data-part="card"]') ?? [])].map((c) => c.dataset.kind)).toEqual([
+      "extra",
+    ]);
+    expect(screen.queryByText("Opens in YouTube")).not.toBeInTheDocument();
     press("ArrowRight");
     await waitFor(() => expect(focused()).toBe("restart"));
     press("ArrowRight");

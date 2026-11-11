@@ -35,7 +35,7 @@ ORDER BY provisional LIMIT 1;
 UPDATE work SET title = @title, sort_title = @sort_title, original_title = @original_title, original_language = @original_language,
   alt_titles = @alt_titles, year = @year, overview = @overview, release_date = @release_date,
   content_rating = @content_rating, content_rating_age = @content_rating_age, community_rating = @community_rating, community_votes = @community_votes,
-  trailer_url = @trailer_url, provisional = 0
+  provisional = 0
 WHERE id = @id;
 
 -- name: SetLockedFields :exec
@@ -121,6 +121,23 @@ DELETE FROM credit WHERE work_id = @work_id;
 -- name: InsertCredit :exec
 INSERT INTO credit (work_id, person_id, role, ord, character) VALUES (@work_id, @person_id, @role, @ord, @character);
 
+-- name: TrailerKeys :many
+SELECT site, key FROM trailer WHERE work_id = @work_id;
+
+-- name: PutTrailer :exec
+-- Records a work's trailer. A video the work already lists keeps its row,
+-- and so its thumbnail.
+INSERT INTO trailer (id, work_id, ord, site, key, title, language, official, published_at)
+VALUES (@id, @work_id, @ord, @site, @key, @title, @language, @official, @published_at)
+ON CONFLICT (work_id, site, key) DO UPDATE SET ord = excluded.ord, title = excluded.title, language = excluded.language,
+  official = excluded.official, published_at = excluded.published_at;
+
+-- name: DeleteTrailer :exec
+DELETE FROM trailer WHERE work_id = @work_id AND site = @site AND key = @key;
+
+-- name: DeleteTrailers :exec
+DELETE FROM trailer WHERE work_id = @work_id;
+
 -- name: CreditNames :many
 SELECT p.name FROM credit c JOIN person p ON p.id = c.person_id WHERE c.work_id = @work_id ORDER BY c.role, c.ord;
 
@@ -148,7 +165,7 @@ WHERE w.root_id = @work_id AND w.kind <> 'extra';
 -- Leaves a work with only what its files' names say.
 UPDATE work SET title = @title, sort_title = @sort_title, year = @year, release_date = @release_date,
   original_title = NULL, original_language = NULL, alt_titles = NULL, overview = NULL, content_rating = NULL, content_rating_age = NULL,
-  community_rating = NULL, community_votes = NULL, trailer_url = NULL, locked_fields = NULL,
+  community_rating = NULL, community_votes = NULL, locked_fields = NULL,
   provisional = @provisional, locked = @locked, match_rev = match_rev + 1
 WHERE id = @id;
 

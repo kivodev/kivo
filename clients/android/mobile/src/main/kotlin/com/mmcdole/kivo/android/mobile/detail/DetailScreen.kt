@@ -28,6 +28,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAddCheck
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -39,7 +40,6 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.CheckCircle
@@ -75,6 +75,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.pluralStringResource
@@ -103,6 +104,7 @@ import com.mmcdole.kivo.android.mobile.theme.LocalKivo
 import com.mmcdole.kivo.android.mobile.theme.space
 import com.mmcdole.kivo.android.mobile.ui.ActionLabel
 import com.mmcdole.kivo.android.mobile.ui.Artwork
+import com.mmcdole.kivo.android.mobile.ui.Caption
 import com.mmcdole.kivo.android.mobile.ui.CardCorners
 import com.mmcdole.kivo.android.mobile.ui.CardShape
 import com.mmcdole.kivo.android.mobile.ui.LocalWide
@@ -114,6 +116,7 @@ import com.mmcdole.kivo.android.mobile.ui.NamedCard
 import com.mmcdole.kivo.android.mobile.ui.ProgressBar
 import com.mmcdole.kivo.android.mobile.ui.WorkMenu
 import com.mmcdole.kivo.android.mobile.ui.WorkMenuHost
+import com.mmcdole.kivo.android.mobile.ui.cardImage
 import com.mmcdole.kivo.android.mobile.ui.display
 import com.mmcdole.kivo.android.mobile.ui.endsAt
 import com.mmcdole.kivo.android.mobile.ui.labelledTitle
@@ -122,10 +125,13 @@ import com.mmcdole.kivo.android.mobile.ui.progressOf
 import com.mmcdole.kivo.android.mobile.ui.roleName
 import com.mmcdole.kivo.android.mobile.ui.tapAndHold
 import com.mmcdole.kivo.api.models.Credit
+import com.mmcdole.kivo.api.models.ImageRef
+import com.mmcdole.kivo.api.models.Trailer
 import com.mmcdole.kivo.api.models.TrackType
 import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.Load
+import com.mmcdole.kivo.core.data.localTrailers
 import com.mmcdole.kivo.core.data.resumeAt
 import com.mmcdole.kivo.core.data.selectedVersion
 import com.mmcdole.kivo.core.display.clock
@@ -192,17 +198,20 @@ private fun DetailPage(head: WorkSummary, state: DetailUiState, model: DetailVie
                 WorkKind.Episode -> episodeItems(seasonHeading, state, head.id, nav, openMenu)
                 else -> {}
             }
+            val local = state.work?.localTrailers().orEmpty()
+            val online = state.work?.movie?.trailers.orEmpty()
+            if (local.isNotEmpty() || online.isNotEmpty()) item(key = "trailers") { TrailersRow(local, online, nav, openMenu) }
             val credits = state.work?.credits.orEmpty()
             if (credits.isNotEmpty()) item(key = "credits") { CreditsRow(credits, nav) }
             item(key = "end") { Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars).padding(bottom = space(6))) }
         }
-        TopBar(if (titleShown) head.title else null, nav, cast = head.kind != WorkKind.Book, state.work?.movie?.trailerUrl)
+        TopBar(if (titleShown) head.title else null, nav, cast = head.kind != WorkKind.Book)
     }
 }
 
-/** The page's top bar over the artwork: back, Cast and a movie's ⋯, then the page's colour and title once the title has scrolled away. */
+/** The page's top bar over the artwork: back and Cast, then the page's colour and title once the title has scrolled away. */
 @Composable
-private fun TopBar(title: String?, nav: MobileNav, cast: Boolean, trailerUrl: String?) {
+private fun TopBar(title: String?, nav: MobileNav, cast: Boolean) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -215,33 +224,6 @@ private fun TopBar(title: String?, nav: MobileNav, cast: Boolean, trailerUrl: St
         BackButton(nav)
         Text(title.orEmpty(), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
         if (cast) CastButton()
-        if (trailerUrl != null) TrailerMenu(trailerUrl)
-    }
-}
-
-/** The ⋯ menu with Trailer, which the system opens in the YouTube app if it's installed, else the browser. */
-@Composable
-private fun TrailerMenu(url: String) {
-    var open by remember { mutableStateOf(false) }
-    val uris = LocalUriHandler.current
-    Box {
-        IconButton(
-            onClick = { open = true },
-            colors = IconButtonDefaults.iconButtonColors(containerColor = LocalKivo.current.badge.copy(alpha = 0.35f)),
-            modifier = Modifier.testTag("more"),
-        ) {
-            Icon(Icons.Default.MoreVert, stringResource(R.string.mobile_more))
-        }
-        DropdownMenu(open, onDismissRequest = { open = false }) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.mobile_trailer)) },
-                onClick = {
-                    open = false
-                    uris.openUri(url)
-                },
-                modifier = Modifier.testTag("trailer"),
-            )
-        }
     }
 }
 
@@ -785,6 +767,70 @@ private fun EpisodeSkeleton() {
     Row(Modifier.padding(horizontal = space(4), vertical = space(2)), horizontalArrangement = Arrangement.spacedBy(space(3))) {
         Box(Modifier.width(128.dp).aspectRatio(16f / 9f).clip(CardCorners).background(LocalKivo.current.placeholder))
         Box(Modifier.width(160.dp).height(16.dp).clip(CardCorners).background(LocalKivo.current.placeholder))
+    }
+}
+
+/**
+ * Trailers: the trailer files in the work's folder, each opening its page, then a movie's trailers on YouTube, which
+ * the system opens in the YouTube app if it's installed, else the browser.
+ */
+@Composable
+private fun TrailersRow(local: List<WorkSummary>, online: List<Trailer>, nav: MobileNav, openMenu: (WorkMenu) -> Unit) {
+    val uris = LocalUriHandler.current
+    Column(Modifier.padding(top = space(4)).testTag("trailers")) {
+        Text(stringResource(R.string.mobile_trailers), Modifier.padding(horizontal = space(4), vertical = space(2)).semantics { heading() }, style = MaterialTheme.typography.titleMedium)
+        LazyRow(contentPadding = PaddingValues(horizontal = space(4)), horizontalArrangement = Arrangement.spacedBy(space(3))) {
+            items(local, key = { it.id }) { work ->
+                TrailerCard(
+                    title = work.title,
+                    image = cardImage(work, CardShape.Landscape),
+                    mark = work.durationMs?.let { display.clock(it.toLong()) },
+                    markAt = Alignment.BottomEnd,
+                    detail = stringResource(R.string.mobile_in_your_library),
+                    onClick = { nav.openWork(work) },
+                    onLongClick = { openMenu(WorkMenu(work)) },
+                )
+            }
+            items(online, key = { it.id }) { trailer ->
+                TrailerCard(
+                    title = trailer.title,
+                    image = trailer.image,
+                    mark = "YouTube ↗",
+                    markAt = Alignment.BottomStart,
+                    detail = stringResource(R.string.mobile_opens_in_youtube),
+                    onClick = { uris.openUri(trailer.url) },
+                    onLongClick = null,
+                )
+            }
+        }
+    }
+}
+
+/** A trailer's card: its frame with [mark] on it, such as its running time, then its title and [detail]. */
+@Composable
+private fun TrailerCard(title: String, image: ImageRef?, mark: String?, markAt: Alignment, detail: String, onClick: () -> Unit, onLongClick: (() -> Unit)?) {
+    val width = rowCardWidth(CardShape.Landscape)
+    Column(Modifier.width(width)) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .aspectRatio(CardShape.Landscape.aspect)
+                .clip(CardCorners)
+                .tapAndHold(onClick, onLongClick)
+                .semantics { contentDescription = listOfNotNull(title, mark, detail).joinToString(", ") }
+                .testTag("trailer:$title"),
+        ) {
+            Artwork(image, width, Modifier.matchParentSize())
+            if (mark != null) {
+                Text(
+                    mark,
+                    Modifier.align(markAt).padding(6.dp).background(LocalKivo.current.badge, RoundedCornerShape(5.dp)).padding(horizontal = 6.dp, vertical = 2.dp),
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
+        }
+        Caption(title, detail, 2)
     }
 }
 

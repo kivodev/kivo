@@ -112,6 +112,30 @@ func (q *Queries) DeleteExternalIDs(ctx context.Context, workID id.ID) error {
 	return err
 }
 
+const deleteTrailer = `-- name: DeleteTrailer :exec
+DELETE FROM trailer WHERE work_id = ?1 AND site = ?2 AND key = ?3
+`
+
+type DeleteTrailerParams struct {
+	WorkID id.ID
+	Site   string
+	Key    string
+}
+
+func (q *Queries) DeleteTrailer(ctx context.Context, arg DeleteTrailerParams) error {
+	_, err := q.db.ExecContext(ctx, deleteTrailer, arg.WorkID, arg.Site, arg.Key)
+	return err
+}
+
+const deleteTrailers = `-- name: DeleteTrailers :exec
+DELETE FROM trailer WHERE work_id = ?1
+`
+
+func (q *Queries) DeleteTrailers(ctx context.Context, workID id.ID) error {
+	_, err := q.db.ExecContext(ctx, deleteTrailers, workID)
+	return err
+}
+
 const deleteTreeExternalIDs = `-- name: DeleteTreeExternalIDs :exec
 DELETE FROM work_external_id WHERE work_id IN (SELECT id FROM work WHERE root_id = ?1 AND id <> ?1)
 `
@@ -291,7 +315,7 @@ func (q *Queries) ExternalIDs(ctx context.Context, workID id.ID) ([]ExternalIDsR
 }
 
 const getWork = `-- name: GetWork :one
-SELECT rid, id, kind, parent_id, root_id, number, parent_number, title, sort_title, original_title, alt_titles, year, release_date, overview, content_rating, content_rating_age, community_rating, community_votes, ordering, extra_type, edition, provisional, locked, match_rev, locked_fields, added_at, original_language, refreshed_at, refresh_error, library_id, trailer_url FROM work WHERE id = ?1
+SELECT rid, id, kind, parent_id, root_id, number, parent_number, title, sort_title, original_title, alt_titles, year, release_date, overview, content_rating, content_rating_age, community_rating, community_votes, ordering, extra_type, edition, provisional, locked, match_rev, locked_fields, added_at, original_language, refreshed_at, refresh_error, library_id FROM work WHERE id = ?1
 `
 
 func (q *Queries) GetWork(ctx context.Context, argID id.ID) (Work, error) {
@@ -328,7 +352,6 @@ func (q *Queries) GetWork(ctx context.Context, argID id.ID) (Work, error) {
 		&i.RefreshedAt,
 		&i.RefreshError,
 		&i.LibraryID,
-		&i.TrailerUrl,
 	)
 	return i, err
 }
@@ -664,10 +687,46 @@ func (q *Queries) PersonExternalIDs(ctx context.Context, personID id.ID) ([]Pers
 	return items, nil
 }
 
+const putTrailer = `-- name: PutTrailer :exec
+INSERT INTO trailer (id, work_id, ord, site, key, title, language, official, published_at)
+VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+ON CONFLICT (work_id, site, key) DO UPDATE SET ord = excluded.ord, title = excluded.title, language = excluded.language,
+  official = excluded.official, published_at = excluded.published_at
+`
+
+type PutTrailerParams struct {
+	ID          id.ID
+	WorkID      id.ID
+	Ord         int64
+	Site        string
+	Key         string
+	Title       string
+	Language    sql.NullString
+	Official    bool
+	PublishedAt sql.NullString
+}
+
+// Records a work's trailer. A video the work already lists keeps its row,
+// and so its thumbnail.
+func (q *Queries) PutTrailer(ctx context.Context, arg PutTrailerParams) error {
+	_, err := q.db.ExecContext(ctx, putTrailer,
+		arg.ID,
+		arg.WorkID,
+		arg.Ord,
+		arg.Site,
+		arg.Key,
+		arg.Title,
+		arg.Language,
+		arg.Official,
+		arg.PublishedAt,
+	)
+	return err
+}
+
 const resetWork = `-- name: ResetWork :exec
 UPDATE work SET title = ?1, sort_title = ?2, year = ?3, release_date = ?4,
   original_title = NULL, original_language = NULL, alt_titles = NULL, overview = NULL, content_rating = NULL, content_rating_age = NULL,
-  community_rating = NULL, community_votes = NULL, trailer_url = NULL, locked_fields = NULL,
+  community_rating = NULL, community_votes = NULL, locked_fields = NULL,
   provisional = ?5, locked = ?6, match_rev = match_rev + 1
 WHERE id = ?7
 `
@@ -741,6 +800,38 @@ func (q *Queries) SetOrdering(ctx context.Context, arg SetOrderingParams) (int64
 	return result.RowsAffected()
 }
 
+const trailerKeys = `-- name: TrailerKeys :many
+SELECT site, key FROM trailer WHERE work_id = ?1
+`
+
+type TrailerKeysRow struct {
+	Site string
+	Key  string
+}
+
+func (q *Queries) TrailerKeys(ctx context.Context, workID id.ID) ([]TrailerKeysRow, error) {
+	rows, err := q.db.QueryContext(ctx, trailerKeys, workID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TrailerKeysRow
+	for rows.Next() {
+		var i TrailerKeysRow
+		if err := rows.Scan(&i.Site, &i.Key); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const unmatchTargets = `-- name: UnmatchTargets :many
 
 SELECT w.id, w.kind, w.title, w.number, w.parent_number, w.release_date FROM work w
@@ -792,8 +883,8 @@ const updateWorkMetadata = `-- name: UpdateWorkMetadata :exec
 UPDATE work SET title = ?1, sort_title = ?2, original_title = ?3, original_language = ?4,
   alt_titles = ?5, year = ?6, overview = ?7, release_date = ?8,
   content_rating = ?9, content_rating_age = ?10, community_rating = ?11, community_votes = ?12,
-  trailer_url = ?13, provisional = 0
-WHERE id = ?14
+  provisional = 0
+WHERE id = ?13
 `
 
 type UpdateWorkMetadataParams struct {
@@ -809,7 +900,6 @@ type UpdateWorkMetadataParams struct {
 	ContentRatingAge sql.NullInt64
 	CommunityRating  sql.NullFloat64
 	CommunityVotes   sql.NullInt64
-	TrailerUrl       sql.NullString
 	ID               id.ID
 }
 
@@ -827,7 +917,6 @@ func (q *Queries) UpdateWorkMetadata(ctx context.Context, arg UpdateWorkMetadata
 		arg.ContentRatingAge,
 		arg.CommunityRating,
 		arg.CommunityVotes,
-		arg.TrailerUrl,
 		arg.ID,
 	)
 	return err
