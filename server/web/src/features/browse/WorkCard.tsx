@@ -1,6 +1,6 @@
 import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { type MouseEvent, useRef, useState } from "react";
+import { type MouseEvent, type ReactNode, useRef, useState } from "react";
 import { mergeProps, useLongPress } from "react-aria";
 import { useSetInList } from "@/api/lists";
 import type { ListRef, UserStateUpdate, WorkKind, WorkSummary } from "@/api/schemas";
@@ -141,6 +141,10 @@ type Props = {
   continueRow?: "continueWatching" | "continueListening";
   /** The list the card is shown on, when its menu can remove it from that list. */
   list?: ListRef;
+  /** A short mark at the artwork's bottom left, such as a trailer's running time. */
+  badge?: string;
+  /** The line under the title, in place of the kind's own. */
+  caption?: ReactNode;
 };
 
 /**
@@ -170,6 +174,10 @@ function RemoveFromList({ list, workId }: { list: ListRef; workId: string }) {
   );
 }
 
+/** A short mark on a card's artwork, at its bottom left. */
+export const markClass =
+  "absolute bottom-2 left-2 rounded-sm bg-badge px-1.5 py-0.5 text-xs font-semibold text-on-badge tv:text-sm";
+
 const aspects: Record<ArtworkShape, string> = {
   poster: "aspect-poster",
   landscape: "aspect-landscape",
@@ -191,7 +199,7 @@ const aspects: Record<ArtworkShape, string> = {
  * shows the ⋯ alone. On TV the card is only a link, which its row or grid
  * focuses: nothing hovers, and a remote's OK opens it.
  */
-export function WorkCard({ work, shape, width, inLibrary = false, continueRow, list }: Props) {
+export function WorkCard({ work, shape, width, inLibrary = false, continueRow, list, badge, caption }: Props) {
   const { t } = useLingui();
   const navigate = useNavigate();
   const update = useUpdateUserState();
@@ -277,18 +285,15 @@ export function WorkCard({ work, shape, width, inLibrary = false, continueRow, l
               <span className="absolute bottom-3 left-3 text-sm font-semibold text-on-badge">{code}</span>
             ) : (
               // A poster has no dark frame to sit on, so the code is a badge.
-              <span className="absolute bottom-2 left-2 rounded-sm bg-badge px-1.5 py-0.5 text-xs font-semibold text-on-badge">
-                {code}
-              </span>
+              <span className={markClass}>{code}</span>
             ))}
+          {badge && <span className={markClass}>{badge}</span>}
           {status && <StatusBadge status={status} right={landscape || code !== undefined} />}
         </div>
         {/* On TV the caption lines up with the artwork's edge. */}
         <div className="min-w-0 px-0.5 tv:px-0">
           <div className="truncate text-sm font-semibold text-text">{title}</div>
-          <div className="truncate text-sm text-text-muted">
-            <Subtitle work={work} />
-          </div>
+          <div className="truncate text-sm text-text-muted">{caption ?? <Subtitle work={work} />}</div>
         </div>
       </Link>
       {/*

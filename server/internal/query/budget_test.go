@@ -66,6 +66,7 @@ func TestBudgets(t *testing.T) {
 			_, err = q.ListWorks(ctx, v, lists[0].ID, nil, "", query.GridOptions{})
 			return err
 		}},
+		budgetCase{"movie detail", browseBudget, true, func() error { _, err := q.Detail(ctx, v, id.ID([]byte("m000000000020000"))); return err }},
 		budgetCase{"search", searchBudget, true, func() error { _, err := q.Search(ctx, v, "movie 123", 0); return err }},
 		budgetCase{"search, a person", searchBudget, true, func() error { _, err := q.Search(ctx, v, "mary actor 123", 0); return err }},
 		// Every movie and every person has "the" and a word starting with
@@ -310,7 +311,7 @@ var (
 )
 
 // generate fills db with s's movies and series. Each movie and episode has
-// a file, a version and a video track. It adds 20,000 people credited on
+// a file, a version and a video track, and each movie two trailers. It adds 20,000 people credited on
 // the movies, and indexes everything for search. It writes the tables
 // directly, which only a test may do, because building 50k works through
 // catalog one at a time would take minutes.
@@ -395,6 +396,13 @@ func generate(t *testing.T, db *store.DB, s shape) (movies, shows, moviesFolder 
 			 INSERT INTO person (id, name, sort_name) SELECT CAST(printf('p%015d', i) AS BLOB), printf('Mary Actor %d', i), printf('Mary Actor %d', i) FROM n`,
 			`INSERT INTO credit (work_id, person_id, role, ord)
 			 SELECT id, CAST(printf('p%015d', (rid - 1) % 20000 + 1) AS BLOB), 'actor', 1 FROM work WHERE kind = 'movie'`,
+			// Two trailers for each movie, each with its thumbnail.
+			`INSERT INTO trailer (id, work_id, ord, site, key, title, official)
+			 SELECT CAST('r' || n.i || substr(CAST(w.id AS TEXT), 3) AS BLOB), w.id, n.i, 'youtube', printf('key%d-%d', w.rid, n.i), printf('Trailer %d', n.i + 1), 1
+			 FROM work w, (SELECT 0 AS i UNION ALL SELECT 1) n WHERE w.kind = 'movie'`,
+			`INSERT INTO image (id, trailer_id, kind, source, origin, width, height, blurhash, fetched_at)
+			 SELECT CAST('i' || substr(CAST(id AS TEXT), 2) AS BLOB), id, 'thumb', 'provider', 'https://i.ytimg.com/vi/' || key || '/maxresdefault.jpg',
+			   1280, 720, 'LEHV6nWB2yk8pyo0adR*.7kCMdnj', @now FROM trailer`,
 			`INSERT INTO work_fts (rowid, title, alt_titles, people)
 			 SELECT w.rid, w.title, '', coalesce((SELECT group_concat(p.name, char(10)) FROM credit c JOIN person p ON p.id = c.person_id WHERE c.work_id = w.id), '')
 			 FROM work w`,

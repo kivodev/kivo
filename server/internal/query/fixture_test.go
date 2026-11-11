@@ -89,6 +89,10 @@ func newHousehold(t *testing.T) *household {
 		Title: "Dune", Year: 2021, ContentRating: certs[rankPG13], ContentRatingAge: ptr(rankPG13), Overview: "A desert planet.",
 		Community: &catalog.CommunityRating{Rating: 8.1, Votes: 5000},
 		Genres:    []string{"Science Fiction", "Adventure"}, Companies: []string{"Legendary"},
+		Trailers: []catalog.Trailer{
+			{Site: catalog.TrailerYouTube, Key: "n9xhJrPXop4", Title: "Official Main Trailer", Language: "en", Official: true},
+			{Site: catalog.TrailerYouTube, Key: "8g18jFHCLXk", Title: "Official Trailer", Language: "en", Official: true},
+		},
 		Credits: []catalog.Credit{
 			{Name: "Timothée Chalamet", Role: "actor", Character: "Paul Atreides"},
 			{Name: "Zendaya", Role: "actor", Character: "Chani"},
