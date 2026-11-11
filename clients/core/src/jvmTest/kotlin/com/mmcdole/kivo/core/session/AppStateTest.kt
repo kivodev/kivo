@@ -240,7 +240,7 @@ class AppStateTest {
         h.core.start()
         val session = h.core.session()
 
-        assertTrue(currentTime >= 3000, "it's tried twice more before it opens without the server")
+        assertTrue(currentTime < 1500, "it opens at once, without trying again first")
         assertTrue(session.isSignedIn)
         assertTrue(session.unreachable.value)
         assertTrue(session.state.first { it.unreachable }.unreachable)

@@ -250,15 +250,19 @@ class KivoClient internal constructor(
     /**
      * Opens [server] at the first of its addresses that answers as it:
      * signed in, signing in again when its session has ended, or
-     * unreachable. One that answers nowhere still opens signed in when the
-     * device keeps downloads of it, which play without it; its reads ask
-     * until it answers.
+     * unreachable. One that doesn't answer still opens signed in, at once,
+     * when the device keeps downloads of it, which play without it; its
+     * reads ask until it answers.
      */
     private suspend fun enter(server: SavedServer) {
+        // Whether the device keeps downloads of it: then it opens whether it answers or not.
+        var kept = false
         val session = try {
+            kept = downloads?.has(server.id) == true
             var session = restore(server)
-            // The network may still be waking as the app starts, so it's only unreachable once it's stayed so.
-            repeat(REACH_RETRIES) {
+            // The network may still be waking as the app starts, so it's only unreachable once it's stayed so,
+            // which is waited for only when that's where it would end.
+            repeat(if (kept) 0 else REACH_RETRIES) {
                 if (session.unreachable.value) {
                     session.close()
                     delay(REACH_RETRY)
@@ -277,7 +281,7 @@ class KivoClient internal constructor(
                 session.close()
                 mutableState.value = AppState.SignedOut(server)
             }
-            session.unreachable.value && downloads?.has(server.id) != true -> {
+            session.unreachable.value && !kept -> {
                 session.close()
                 mutableState.value = AppState.Unreachable(server)
             }
