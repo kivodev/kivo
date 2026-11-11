@@ -71,7 +71,7 @@ internal class Known {
     private val collectionCards = Recent<CollectionSummary>(SUMMARIES)
     private val personNames = Recent<Heading>(SUMMARIES)
     private val seriesNames = Recent<Heading>(SUMMARIES)
-    private val gridStarts = Recent<GridPage<*>>(GRIDS)
+    private val gridStarts = Recent<GridPage>(GRIDS)
 
     fun summary(id: String): WorkSummary? = summaries[id]
 
@@ -89,12 +89,19 @@ internal class Known {
 
     fun bookSeriesHeading(id: String): Heading? = series[id]?.let { Heading(it.id, it.name, it.cover()) } ?: seriesNames[id]
 
-    /** The first page of the grid [key] names, as last read; a key names a grid of one item type. */
-    @Suppress("UNCHECKED_CAST")
-    fun <T : Any> gridStart(key: String): GridPage<T>? = gridStarts[key] as GridPage<T>?
+    /** The first page of the grid [key] names, as last read. */
+    fun gridStart(key: String): GridPage? = gridStarts[key]
 
     /** Keeps [page] as the first page of the grid [key] names. */
-    fun readGridStart(key: String, page: GridPage<*>) = gridStarts.put(listOf(key to page))
+    fun readGridStart(key: String, page: GridPage) = gridStarts.put(listOf(key to page))
+
+    /** A grid's page: its works, collections, authors or book series. */
+    fun readGrid(items: List<GridItem>) {
+        read(items.mapNotNull { (it as? GridItem.Work)?.work })
+        readCollections(items.mapNotNull { (it as? GridItem.Collection)?.collection })
+        readPeople(items.mapNotNull { (it as? GridItem.Author)?.author })
+        readBookSeries(items.mapNotNull { (it as? GridItem.BookSeries)?.series })
+    }
 
     fun read(list: List<WorkSummary>) {
         summaries.put(list.map { it.id to it })

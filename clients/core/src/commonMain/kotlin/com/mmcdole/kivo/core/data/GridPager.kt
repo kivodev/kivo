@@ -1,6 +1,10 @@
 package com.mmcdole.kivo.core.data
 
+import com.mmcdole.kivo.api.models.BookSeriesSummary
+import com.mmcdole.kivo.api.models.CollectionSummary
 import com.mmcdole.kivo.api.models.LetterStart
+import com.mmcdole.kivo.api.models.PersonSummary
+import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.Reachability
 import com.mmcdole.kivo.core.RequestProblem
@@ -11,6 +15,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,12 +25,33 @@ import kotlinx.coroutines.withContext
 import kotlin.coroutines.CoroutineContext
 import kotlin.math.abs
 
+/** A card of a grid: a work, or a library's collection, author or book series. */
+sealed class GridItem {
+    abstract val id: String
+
+    data class Work(val work: WorkSummary) : GridItem() {
+        override val id: String get() = work.id
+    }
+
+    data class Collection(val collection: CollectionSummary) : GridItem() {
+        override val id: String get() = collection.id
+    }
+
+    data class Author(val author: PersonSummary) : GridItem() {
+        override val id: String get() = author.id
+    }
+
+    data class BookSeries(val series: BookSeriesSummary) : GridItem() {
+        override val id: String get() = series.id
+    }
+}
+
 /**
  * A page of a grid as the server answers it: its items, the grid's total,
  * which a grid of works has on its first page only, and on the first page
  * in letter order the letter rail's starts.
  */
-internal class GridPage<T : Any>(val items: List<T>, val total: Int?, val letters: List<LetterStart>?)
+internal class GridPage(val items: List<GridItem>, val total: Int?, val letters: List<LetterStart>?)
 
 /**
  * A grid too long to read at once, such as a library's works or its
@@ -44,28 +70,32 @@ internal class GridPage<T : Any>(val items: List<T>, val total: Int?, val letter
  * asked for last are read again in place, each showing what it had until
  * its answer comes.
  *
+ * A grid made to settle reads the pages asked for once it has been asked
+ * for no others for that long, so a fling or a jump reads only the pages
+ * where it lands; the first page and [refresh] never wait.
+ *
  * Called on the main thread, as the core's work runs; [close] it when the
  * grid goes.
  */
-class GridPager<T : Any> internal constructor(
-    private val read: suspend (offset: Int, limit: Int) -> GridPage<T>,
+class GridPager internal constructor(
+    private val read: suspend (offset: Int, limit: Int) -> GridPage,
     changes: Flow<Unit>,
     private val reachability: Reachability,
     private val known: Known,
     /** Names the grid for its first page as the session last read it. */
     private val key: String,
-    /** Keeps what each answer names, for the pages it opens. */
-    private val seen: (List<T>) -> Unit,
     scope: CoroutineScope,
     /** Where answers are read, off the main thread. */
     private val work: CoroutineContext,
+    /** How long the grid holds still before the pages asked for are read; 0 reads them at once. */
+    private val settleMs: Long = 0,
     private val pageSize: Int = PAGE_SIZE,
     private val kept: Int = KEPT_PAGES,
 ) {
     private val scope = CoroutineScope(scope.coroutineContext + SupervisorJob(scope.coroutineContext[Job]))
 
     /** Each page's read; on [pages] only as it's published. */
-    private val pages = HashMap<Int, Load<List<T>>>()
+    private val pages = HashMap<Int, Load<List<GridItem>>>()
     private var total: Int? = null
     private var letters: List<LetterStart> = emptyList()
 
@@ -78,16 +108,19 @@ class GridPager<T : Any> internal constructor(
     /** The pages the client asked for last. */
     private var window = 0..0
 
+    /** The pages asked for last, waiting for the grid to hold still. */
+    private var settling: Job? = null
+
     /** Completes as this generation's first page answers or fails. */
     private var firstAnswer = CompletableDeferred<Unit>()
 
-    private val mutableState = MutableStateFlow(GridPages<T>(null, emptyList(), emptyMap(), pageSize))
+    private val mutableState = MutableStateFlow(GridPages(null, emptyList(), emptyMap(), pageSize))
 
     /** The grid as read so far. */
-    val state: StateFlow<GridPages<T>> = mutableState.asStateFlow()
+    val state: StateFlow<GridPages> = mutableState.asStateFlow()
 
     init {
-        known.gridStart<T>(key)?.let { first ->
+        known.gridStart(key)?.let { first ->
             total = first.total
             letters = first.letters.orEmpty()
             pages[0] = Load.Loaded(first.items)
@@ -101,9 +134,19 @@ class GridPager<T : Any> internal constructor(
      * Reads the pages holding the items from [first] to [last] that aren't
      * read or being read, a failed one again; pages being read outside them
      * stop, and those far from them are let go. A client asks for those in
-     * view and a screen past them as its grid comes to rest.
+     * view and a screen past them as its grid moves; a grid that settles
+     * reads the ones asked for last, once it has held still.
      */
     fun load(first: Int, last: Int) {
+        settling?.cancel()
+        if (settleMs <= 0) return loadNow(first, last)
+        settling = scope.launch {
+            delay(settleMs)
+            loadNow(first, last)
+        }
+    }
+
+    private fun loadNow(first: Int, last: Int) {
         val count = total ?: return
         if (count == 0 || last < first) return
         val wanted = first.coerceIn(0, count - 1) / pageSize..last.coerceIn(0, count - 1) / pageSize
@@ -167,8 +210,8 @@ class GridPager<T : Any> internal constructor(
         }
     }
 
-    private fun answered(page: Int, answer: GridPage<T>) {
-        seen(answer.items)
+    private fun answered(page: Int, answer: GridPage) {
+        known.readGrid(answer.items)
         if (page == 0) {
             known.readGridStart(key, answer)
             val count = answer.total ?: answer.items.size
@@ -222,21 +265,21 @@ class GridPager<T : Any> internal constructor(
  * the first page answers, the letter rail's starts, and each page's read,
  * by number, a page holding the items from its number times [pageSize].
  */
-class GridPages<T : Any> internal constructor(
+class GridPages internal constructor(
     val total: Int?,
     /** Where each letter starts, for a list in letter order; empty for others. */
     val letters: List<LetterStart>,
-    val pages: Map<Int, Load<List<T>>>,
+    val pages: Map<Int, Load<List<GridItem>>>,
     val pageSize: Int,
 ) {
     /** Why the grid can't be shown: its first page failed and there's no count. */
     val problem: RequestProblem? get() = if (total == null) pages[0]?.problemOrNull() else null
 
     /** Page [page]'s items once it's read, else null. */
-    fun items(page: Int): List<T>? = pages[page]?.getOrNull()
+    fun items(page: Int): List<GridItem>? = pages[page]?.getOrNull()
 
     /** The item at [index], null while its page isn't read. */
-    fun item(index: Int): T? = items(index / pageSize)?.getOrNull(index % pageSize)
+    fun item(index: Int): GridItem? = items(index / pageSize)?.getOrNull(index % pageSize)
 
     /** The letter of the item at [index]: the last to start at or before it. */
     fun letterAt(index: Int): String? = letters.lastOrNull { it.offset <= index }?.letter
