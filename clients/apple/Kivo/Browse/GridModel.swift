@@ -229,6 +229,16 @@ final class GridModel {
         }
     }
 
+    /// A watch status as "No unwatched movies" names it; a books library's
+    /// are unstarted, in-progress and finished.
+    static func emptyName(played: WorkPlayState, books: Bool) -> String {
+        switch played {
+        case .unplayed: books ? String(localized: "unstarted") : String(localized: "unwatched")
+        case .inProgress: String(localized: "in-progress")
+        case .played: books ? String(localized: "finished") : String(localized: "watched")
+        }
+    }
+
     /// A value to filter by, as its group names it.
     func label(_ filter: GridFilter) -> String {
         switch onEnum(of: filter) {

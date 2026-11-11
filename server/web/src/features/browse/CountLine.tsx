@@ -27,9 +27,9 @@ export function CountNoun({ count, kind, tab }: { count: number; kind: string; t
 }
 
 /**
- * What an empty filtered result says, matching the iPhone app. It is "No
- * unplayed movies" for the played filter alone, or else "No movies match
- * these filters".
+ * What an empty filtered result says, as the other apps do. It is "No
+ * unwatched movies" or "No unstarted books" for the watch status alone, or
+ * else "No movies match these filters".
  */
 export function useEmptyTitle(kind: string, tab: Tab, search: BrowseSearch, onlyPlayed: boolean): string {
   const { t } = useLingui();
@@ -38,7 +38,11 @@ export function useEmptyTitle(kind: string, tab: Tab, search: BrowseSearch, only
       ? t`collections`
       : (({ movies: t`movies`, shows: t`shows`, audiobooks: t`books` } as Record<string, string>)[kind] ?? t`videos`);
   if (onlyPlayed && search.played) {
-    const state = { unplayed: t`unwatched`, inProgress: t`in-progress`, played: t`watched` }[search.played];
+    const state = (
+      kind === "audiobooks"
+        ? { unplayed: t`unstarted`, inProgress: t`in-progress`, played: t`finished` }
+        : { unplayed: t`unwatched`, inProgress: t`in-progress`, played: t`watched` }
+    )[search.played];
     return t`No ${state} ${noun}`;
   }
   return t`No ${noun} match these filters`;

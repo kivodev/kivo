@@ -1,7 +1,10 @@
 import { useLingui } from "@lingui/react/macro";
 
-/** Labels for sort and filter values, shared by the menus and the chips. */
-export function useBrowseLabels() {
+/**
+ * Labels for sort and filter values, shared by the menus and the chips.
+ * An audiobooks library's watch status is Not started, In progress or Finished.
+ */
+export function useBrowseLabels(books = false) {
   const { t } = useLingui();
   return {
     sort: {
@@ -15,7 +18,9 @@ export function useBrowseLabels() {
       author: t`Author`,
       lastEpisodeAddedAt: t`Last episode added`,
     },
-    played: { unplayed: t`Unwatched`, inProgress: t`In progress`, played: t`Watched` },
+    played: books
+      ? { unplayed: t`Not started`, inProgress: t`In progress`, played: t`Finished` }
+      : { unplayed: t`Unwatched`, inProgress: t`In progress`, played: t`Watched` },
     resolution: { "4k": "4K", "1080p": "1080p", "720p": "720p", sd: "SD" },
     dynamicRange: { hdr: "HDR", dolbyVision: "Dolby Vision" },
     matchState: { unmatched: t`Unmatched` },

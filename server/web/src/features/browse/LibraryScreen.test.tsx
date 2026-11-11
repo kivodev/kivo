@@ -450,8 +450,21 @@ describe("Library view", () => {
   it("names the played state when it's the only filter", async () => {
     const api = serveMockApi();
     api.browse[mockIds.movies] = [];
-    renderApp(`${movies}?played=unplayed`);
+    const { router } = renderApp(`${movies}?played=unplayed`);
     expect(await screen.findByRole("heading", { name: "No unwatched movies" })).toBeInTheDocument();
+    await router.navigate({
+      to: "/libraries/$libraryId",
+      params: { libraryId: mockIds.movies },
+      search: { played: "inProgress" },
+    });
+    expect(await screen.findByRole("heading", { name: "No in-progress movies" })).toBeInTheDocument();
+  });
+
+  it("says an empty library has nothing yet", async () => {
+    const api = serveMockApi();
+    api.browse[mockIds.movies] = [];
+    renderApp(movies);
+    expect(await screen.findByRole("heading", { name: "Nothing in this library yet." })).toBeInTheDocument();
   });
 
   it("shows the sections as chips: Collections beside Movies, and none for a library of one", async () => {

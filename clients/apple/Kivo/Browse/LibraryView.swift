@@ -224,12 +224,12 @@ struct LibraryView: View {
         let clear: () -> Void = { model.clearFilters() }
         switch model.state.emptyCase {
         case .watchStatus:
-            let played = model.label(played: model.state.filters.played).lowercased()
+            let played = model.state.filters.played.map { GridModel.emptyName(played: $0, books: model.isBooks) } ?? ""
             MessageView(String(localized: "No \(played) \(plural)"), action: (label: String(localized: "Clear filters"), run: clear))
         case .filtered:
             MessageView(String(localized: "No \(plural) match these filters"), action: (label: String(localized: "Clear filters"), run: clear))
         case .unfiltered:
-            MessageView(String(localized: "Nothing here yet."))
+            MessageView(String(localized: "Nothing in this library yet."))
         }
     }
 

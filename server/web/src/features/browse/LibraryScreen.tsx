@@ -84,8 +84,8 @@ function LibraryView({ library }: { library: Library }) {
   useEffect(() => {
     if (!oneOff) storeBrowse(libraryId, search);
   }, [libraryId, search, oneOff]);
-  const labels = useBrowseLabels();
   const books = library.kind === "audiobooks";
+  const labels = useBrowseLabels(books);
   const values = useFilterValues(libraryId, books);
   const request = gridRequest(library, search, isAdmin);
   const tab = search.tab ?? "library";
@@ -451,7 +451,7 @@ function LibraryGrid<P extends GridPage>({
         }
       />
     ) : (
-      <EmptyState title={t`${library.name} is empty.`}>
+      <EmptyState title={t`Nothing in this library yet.`}>
         <Trans>Items appear here as the library's folders are scanned.</Trans>
       </EmptyState>
     );
