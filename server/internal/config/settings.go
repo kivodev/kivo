@@ -3,6 +3,9 @@ package config
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -179,15 +182,20 @@ func (s Settings) Validate() error {
 	return invalid(errs)
 }
 
-// serverIDKey is the setting table's row for the server's ID. The ID isn't
-// a setting. It is made on first start and never changes.
-const serverIDKey = "server_id"
+// serverIDKey and serverKeyKey are the setting table's rows for the
+// server's ID and its identity key's private scalar. Neither is a setting. Both are
+// made on first start and never change.
+const (
+	serverIDKey  = "server_id"
+	serverKeyKey = "server_key"
+)
 
 // Store serves the current settings and persists changes.
 type Store struct {
 	db       *store.DB
 	q        *dbq.Queries
 	serverID id.ID
+	key      *ecdsa.PrivateKey
 	cur      atomic.Pointer[Settings]
 	mu       sync.Mutex             // serializes Update
 	changed  func(was, is Settings) // Options.Changed
@@ -211,8 +219,8 @@ func Open(ctx context.Context, db *store.DB, opt Options) (*Store, error) {
 		opt.Changed = func(was, is Settings) {}
 	}
 	s := &Store{db: db, q: dbq.New(db.Reader()), changed: opt.Changed}
-	if err := s.loadServerID(ctx); err != nil {
-		return nil, fmt.Errorf("load server ID: %w", err)
+	if err := s.loadIdentity(ctx); err != nil {
+		return nil, fmt.Errorf("load server identity: %w", err)
 	}
 	rows, err := s.q.ListSettings(ctx)
 	if err != nil {
@@ -221,7 +229,7 @@ func Open(ctx context.Context, db *store.DB, opt Options) (*Store, error) {
 	cur := Defaults()
 	fields := fieldsByKey(&cur)
 	for _, r := range rows {
-		if r.Key == serverIDKey {
+		if r.Key == serverIDKey || r.Key == serverKeyKey {
 			continue
 		}
 		f, ok := fields[r.Key]
@@ -248,28 +256,58 @@ func Open(ctx context.Context, db *store.DB, opt Options) (*Store, error) {
 	return s, nil
 }
 
-// loadServerID reads the server's ID, making it on first start.
-func (s *Store) loadServerID(ctx context.Context) error {
-	made, err := json.Marshal(id.New())
+// loadIdentity reads the server's ID and identity key, making them on
+// first start.
+func (s *Store) loadIdentity(ctx context.Context) error {
+	if err := s.loadOrMake(ctx, serverIDKey, id.New(), &s.serverID); err != nil {
+		return err
+	}
+	made, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return err
+	}
+	scalar, err := made.Bytes()
+	if err != nil {
+		return err
+	}
+	if err := s.loadOrMake(ctx, serverKeyKey, scalar, &scalar); err != nil {
+		return err
+	}
+	s.key, err = ecdsa.ParseRawPrivateKey(elliptic.P256(), scalar)
+	if err != nil {
+		return fmt.Errorf("server key: %w", err)
+	}
+	return nil
+}
+
+// loadOrMake reads the setting table's row key into v, writing made there
+// first when the row is absent.
+func (s *Store) loadOrMake(ctx context.Context, key string, made, v any) error {
+	b, err := json.Marshal(made)
 	if err != nil {
 		return err
 	}
 	err = s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
-		return dbq.New(tx).InsertSettingIfAbsent(ctx, dbq.InsertSettingIfAbsentParams{Key: serverIDKey, Value: string(made)})
+		return dbq.New(tx).InsertSettingIfAbsent(ctx, dbq.InsertSettingIfAbsentParams{Key: key, Value: string(b)})
 	})
 	if err != nil {
 		return err
 	}
-	v, err := s.q.Setting(ctx, serverIDKey)
+	stored, err := s.q.Setting(ctx, key)
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal([]byte(v), &s.serverID)
+	return json.Unmarshal([]byte(stored), v)
 }
 
 // ServerID is the server's own ID, which apps use to recognize it. It stays
 // the same across restarts and address changes, and a backup carries it.
 func (s *Store) ServerID() id.ID { return s.serverID }
+
+// ServerKey is the server's identity key, an ECDSA P-256 key, which signs
+// its answer to an app's probe. Like the ID, it stays the same and a backup
+// carries it.
+func (s *Store) ServerKey() *ecdsa.PrivateKey { return s.key }
 
 // Get returns the current settings. It never blocks. Treat slices in the
 // result as read-only.

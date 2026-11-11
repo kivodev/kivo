@@ -276,7 +276,7 @@ func TestUsersAndInvites(t *testing.T) {
 	}
 	w = e.do("POST", "/api/v1/invite-links/"+token+"/accept", "", map[string]any{"username": "cara", "password": "a good password", "kind": "app"})
 	s := decode[map[string]any](t, w)
-	if w.Code != http.StatusCreated || s["token"] == nil {
+	if w.Code != http.StatusCreated || s["token"] == nil || s["serverKey"] == nil {
 		t.Fatalf("accept: %d %v", w.Code, s)
 	}
 	if me := decode[map[string]any](t, e.do("GET", "/api/v1/users/me", s["token"].(string), nil)); me["username"] != "cara" {

@@ -4,13 +4,8 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.emptyPreferences
 import com.mmcdole.kivo.api.infrastructure.ApiClient
-import com.mmcdole.kivo.api.models.ServerProof
 import com.mmcdole.kivo.core.auth.ClientIdentity
 import com.mmcdole.kivo.core.auth.NetworkEpoch
-import com.mmcdole.kivo.core.auth.ProbeKey
-import com.mmcdole.kivo.core.auth.hmacSha256
-import com.mmcdole.kivo.core.auth.message
-import com.mmcdole.kivo.core.auth.sha256
 import com.mmcdole.kivo.core.auth.SecureStore
 import com.mmcdole.kivo.core.auth.ServerConnection
 import io.ktor.client.engine.mock.MockEngine
@@ -30,7 +25,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.KSerializer
 import kotlin.coroutines.EmptyCoroutineContext
-import kotlin.io.encoding.Base64
 import kotlin.time.TimeSource
 
 /** A request the fake server saw. */
@@ -115,23 +109,6 @@ fun MockRequestHandleScope.problem(
 )
 
 fun MockRequestHandleScope.empty(status: HttpStatusCode = HttpStatusCode.NoContent) = respond("", status)
-
-/**
- * The proof a server holding a session of one of [tokens] answers a probe
- * [request] with, as reached at the probed host from a local network; null
- * for a probe of none of them, or a request that isn't a probe.
- */
-internal fun proofOf(request: HttpRequestData, serverId: String, tokens: Collection<String>): ServerProof? =
-    proofOf(request.url.parameters["challenge"], request.url.parameters["probeId"], "${request.url.host}:${request.url.port}", serverId, tokens)
-
-/** The proof to a probe with [challenge] and [probeId] that reached [host]; null when it isn't one of [tokens]'s. */
-internal fun proofOf(challenge: String?, probeId: String?, host: String, serverId: String, tokens: Collection<String>): ServerProof? {
-    if (challenge == null || probeId == null) return null
-    val token = tokens.firstOrNull { ProbeKey.of(it)?.probeId == probeId } ?: return null
-    val base64 = Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT)
-    val mac = hmacSha256(sha256(base64.decode(token.removePrefix("kivo_s_"))), message(base64.decode(challenge), serverId, host, local = true))
-    return ServerProof(ProbeKey.encode(mac), host, local = true)
-}
 
 /** A [SecureStore] in memory. */
 class MemoryStore(val values: MutableMap<String, String> = mutableMapOf()) : SecureStore {

@@ -1,5 +1,6 @@
 package com.mmcdole.kivo.core.auth
 
+import androidx.datastore.preferences.core.stringPreferencesKey
 import com.mmcdole.kivo.api.models.CurrentUser
 import com.mmcdole.kivo.api.models.PlaybackPreferences
 import com.mmcdole.kivo.api.models.ServerInfo
@@ -15,15 +16,17 @@ import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockEngineConfig
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import java.io.IOException
-import java.security.MessageDigest
+import java.security.KeyPair
+import java.security.KeyPairGenerator
+import java.security.Signature
+import java.security.spec.ECGenParameterSpec
 import java.util.Base64
 import java.util.concurrent.CopyOnWriteArrayList
-import javax.crypto.Mac
-import javax.crypto.spec.SecretKeySpec
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -35,7 +38,7 @@ import kotlin.test.assertTrue
 
 // The token goes only to an address that has proven, on the device's
 // network as it is now, that it's the server: an HTTPS one, or a plain-HTTP
-// one whose answer to a probe carries the server's proof.
+// one whose answer to a probe carries the server's signature by its key.
 
 private const val LOCAL = "http://192.168.1.20:8484"
 private const val PUBLIC = "https://kivo.example.com"
@@ -46,23 +49,30 @@ private val TOKEN = "kivo_s_" + Base64.getUrlEncoder().withoutPadding().encodeTo
 private val anna = CurrentUser("u1", "anna", admin = false, limits = UserLimits(), playback = PlaybackPreferences(SubtitleMode.Smart, true, true, 1.0))
 
 /** How the plain-HTTP address answers a probe: as the server, or as one of the impostors. */
-private enum class Answer { Server, WrongMac, NoProof, NotLocal, OtherHost }
+private enum class Answer { Server, OtherKey, NoProof, NotLocal, OtherHost }
 
-private fun sha256(b: ByteArray) = MessageDigest.getInstance("SHA-256").digest(b)
 private fun b64(b: ByteArray) = Base64.getUrlEncoder().withoutPadding().encodeToString(b)
 
-/** The server's proof, worked out apart from the app's. */
-private fun proof(key: ByteArray, challenge: ByteArray, host: String, local: Boolean): ServerProof {
+private fun p256(): KeyPair = KeyPairGenerator.getInstance("EC").apply { initialize(ECGenParameterSpec("secp256r1")) }.generateKeyPair()
+
+/** A key pair's public key as the server gives it: the uncompressed point, the end of its X.509 encoding. */
+private fun KeyPair.encoded(): String = b64(public.encoded.takeLast(65).toByteArray())
+
+private val SERVER = p256()
+private val OTHER = p256()
+
+/** The server's proof, worked out apart from the app's, with the JDK's ECDSA. */
+private fun proof(key: KeyPair, challenge: ByteArray, host: String, local: Boolean): ServerProof {
     val out = java.io.ByteArrayOutputStream()
-    out.write("kivo-probe-v1".toByteArray())
+    out.write("kivo-probe-v2".toByteArray())
     for (f in listOf(challenge, "server-1".toByteArray(), host.toByteArray())) {
         out.write(f.size shr 8)
         out.write(f.size and 0xff)
         out.write(f)
     }
     out.write(if (local) 1 else 0)
-    val mac = Mac.getInstance("HmacSHA256").apply { init(SecretKeySpec(key, "HmacSHA256")) }.doFinal(out.toByteArray())
-    return ServerProof(b64(mac), host, local)
+    val signature = Signature.getInstance("SHA256withECDSA").apply { initSign(key.private) }.apply { update(out.toByteArray()) }.sign()
+    return ServerProof(b64(signature), key.encoded(), host, local)
 }
 
 /** The server at its addresses, the local one answering probes as [answer] says, and every request as "host path auth". */
@@ -70,7 +80,6 @@ private class Net(scope: TestScope) {
     val up = mutableSetOf(LOCAL, PUBLIC)
     var answer = Answer.Server
     val seen: MutableList<String> = CopyOnWriteArrayList()
-    private val key = sha256(Base64.getUrlDecoder().decode(TOKEN.removePrefix("kivo_s_")))
 
     val engine = MockEngine(
         MockEngineConfig().apply {
@@ -81,21 +90,16 @@ private class Net(scope: TestScope) {
                 if (up.none { it.contains(request.url.host) }) throw IOException("no route to host")
                 when (request.url.encodedPath) {
                     "/api/v1/server" -> {
-                        val challenge = request.url.parameters["challenge"]
-                        val probeId = request.url.parameters["probeId"]
-                        val ours = b64(sha256("kivo-probe-id".toByteArray() + key).copyOf(16))
-                        val p = if (challenge != null && probeId == ours) {
+                        val p = request.url.parameters["challenge"]?.let { challenge ->
                             val c = Base64.getUrlDecoder().decode(challenge)
                             val host = "${request.url.host}:${request.url.port}"
                             when (answer) {
-                                Answer.Server -> proof(key, c, host, true)
-                                Answer.WrongMac -> proof(sha256("guess".toByteArray()), c, host, true)
+                                Answer.Server -> proof(SERVER, c, host, true)
+                                Answer.OtherKey -> proof(OTHER, c, host, true)
                                 Answer.NoProof -> null
-                                Answer.NotLocal -> proof(key, c, host, false)
-                                Answer.OtherHost -> proof(key, c, "10.9.9.9:8484", true)
+                                Answer.NotLocal -> proof(SERVER, c, host, false)
+                                Answer.OtherHost -> proof(SERVER, c, "10.9.9.9:8484", true)
                             }
-                        } else {
-                            null
                         }
                         json(ServerInfo.serializer(), ServerInfo("server-1", "Basement", "1.0", proof = p))
                     }
@@ -108,14 +112,15 @@ private class Net(scope: TestScope) {
 
     val network = NetworkEpoch()
     private val time = scope.testScheduler.timeSource
+    val preferences = MemoryPreferences()
 
-    suspend fun connection(at: String, addresses: List<String>): ServerConnection {
-        val store = MemoryStore()
+    /** A connection signed in, given the server's key when [key] (as a sign-in gives it), else none. */
+    suspend fun connection(at: String, addresses: List<String>, key: String? = SERVER.encoded()): ServerConnection {
         val c = ServerConnection(
-            "server-1", at, store, MemoryPreferences(), engine,
+            "server-1", at, MemoryStore(), preferences, engine,
             addresses = addresses, background = EmptyCoroutineContext, pickTime = time, network = network,
         )
-        c.signIn(TOKEN)
+        c.signIn(TOKEN, key)
         return c
     }
 
@@ -137,7 +142,7 @@ class AddressTrustTest {
 
     @Test
     fun anImpostorNeverGetsTheToken() = runTest {
-        for (impostor in listOf(Answer.WrongMac, Answer.NoProof, Answer.NotLocal, Answer.OtherHost)) {
+        for (impostor in listOf(Answer.OtherKey, Answer.NoProof, Answer.NotLocal, Answer.OtherHost)) {
             val net = Net(this)
             net.answer = impostor
             val c = net.connection(LOCAL, listOf(LOCAL))
@@ -152,12 +157,63 @@ class AddressTrustTest {
     @Test
     fun anImpostorIsPassedOverForTheHttpsAddress() = runTest {
         val net = Net(this)
-        net.answer = Answer.WrongMac
+        net.answer = Answer.OtherKey
         val c = net.connection(LOCAL, listOf(LOCAL, PUBLIC))
 
         assertEquals("anna", c.users.getCurrentUser().result().username)
         assertEquals(PUBLIC, c.baseUrl)
         assertEquals(emptyList(), net.tokenAtLocal())
+        assertTrue(c.signedIn.value, "the HTTPS address proves the server, so the session goes on")
+    }
+
+    @Test
+    fun anAddressThatAnswersAsTheServerWithAnotherKeySignsOut() = runTest {
+        val net = Net(this)
+        net.answer = Answer.OtherKey
+        val c = net.connection(LOCAL, listOf(LOCAL))
+
+        assertFailsWith<UntrustedAddress> { c.users.getCurrentUser().result() }
+        assertFalse(c.signedIn.value)
+        assertTrue(c.identityChanged)
+        assertEquals(emptyList(), net.tokenAtLocal())
+
+        // Opening it signs out too, and finds it, to sign in to again.
+        val opened = net.connection(LOCAL, listOf(LOCAL))
+        assertEquals(LOCAL, assertNotNull(opened.reach()).first)
+        assertFalse(opened.signedIn.value)
+        assertTrue(opened.identityChanged)
+        assertEquals(emptyList(), net.tokenAtLocal())
+
+        // A new sign-in takes the key it gives.
+        opened.signIn(TOKEN, OTHER.encoded())
+        assertFalse(opened.identityChanged)
+        assertEquals("anna", opened.users.getCurrentUser().result().username)
+    }
+
+    @Test
+    fun signedInWithoutTheServersKeyTheFirstThatSignsIsKept() = runTest {
+        val net = Net(this)
+        val c = net.connection(LOCAL, listOf(LOCAL), key = null)
+
+        assertEquals("anna", c.users.getCurrentUser().result().username)
+        assertEquals(SERVER.encoded(), net.preferences.data.first()[stringPreferencesKey("kivo.serverKey.server-1")])
+
+        // From then on it's that key's signature or nothing.
+        net.network.changed()
+        net.answer = Answer.OtherKey
+        assertFailsWith<UntrustedAddress> { c.users.getCurrentUser().result() }
+        assertTrue(c.identityChanged)
+        assertEquals(1, net.tokenAtLocal().size)
+
+        // It's kept across a restart, as a session restored there checks it.
+        val restored = ServerConnection(
+            "server-1", LOCAL, MemoryStore(mutableMapOf("kivo.token.server-1" to TOKEN)), net.preferences, net.engine,
+            background = EmptyCoroutineContext, network = net.network,
+        )
+        assertTrue(restored.restore())
+        net.answer = Answer.Server
+        assertEquals(LOCAL, assertNotNull(restored.reach()).first)
+        assertTrue(restored.signedIn.value)
     }
 
     @Test
@@ -213,6 +269,7 @@ class AddressTrustTest {
         net.seen.clear()
         assertFailsWith<UntrustedAddress> { c.users.getCurrentUser().result() }
         assertEquals(emptyList(), net.tokenAtLocal())
+        assertTrue(c.signedIn.value, "an impostor that proves nothing doesn't sign out")
     }
 
     @Test

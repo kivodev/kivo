@@ -31,7 +31,6 @@ func (s *Service) issue(ctx context.Context, tx *store.Tx, user id.ID, c client)
 	err := q.InsertSession(ctx, dbq.InsertSessionParams{
 		ID:          out.Session.ID,
 		TokenHash:   hash[:],
-		ProbeID:     probeID(hash),
 		UserID:      user,
 		Kind:        string(c.kind),
 		Name:        c.name,

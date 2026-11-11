@@ -118,7 +118,7 @@ func TestBootstrapValidate(t *testing.T) {
 	}
 }
 
-// rows are the stored settings, without the server's ID.
+// rows are the stored settings, without the server's ID and key.
 func rows(t *testing.T, db *store.DB) map[string]string {
 	t.Helper()
 	rs, err := dbq.New(db.Reader()).ListSettings(context.Background())
@@ -127,14 +127,14 @@ func rows(t *testing.T, db *store.DB) map[string]string {
 	}
 	out := map[string]string{}
 	for _, r := range rs {
-		if r.Key != serverIDKey {
+		if r.Key != serverIDKey && r.Key != serverKeyKey {
 			out[r.Key] = r.Value
 		}
 	}
 	return out
 }
 
-func TestServerIDIsMadeOnceAndKept(t *testing.T) {
+func TestServerIdentityIsMadeOnceAndKept(t *testing.T) {
 	db := storetest.New(t)
 	ctx := context.Background()
 	s, err := Open(ctx, db, Options{})
@@ -153,6 +153,16 @@ func TestServerIDIsMadeOnceAndKept(t *testing.T) {
 	}
 	if reopened.ServerID() != s.ServerID() {
 		t.Fatalf("server ID %v after a restart, was %v", reopened.ServerID(), s.ServerID())
+	}
+	if s.ServerKey() == nil || !s.ServerKey().Equal(reopened.ServerKey()) {
+		t.Fatal("the server key changed across a restart")
+	}
+	other, err := Open(ctx, storetest.New(t), Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if other.ServerKey().Equal(s.ServerKey()) {
+		t.Fatal("two servers made the same key")
 	}
 }
 

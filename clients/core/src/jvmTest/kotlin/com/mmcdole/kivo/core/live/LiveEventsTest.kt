@@ -83,7 +83,7 @@ private class EventServer(private val scripts: List<Script>) : AutoCloseable {
         routing {
             get("/api/v1/server") {
                 val q = call.request.queryParameters
-                val proof = proofOf(q["challenge"], q["probeId"], call.request.headers[HttpHeaders.Host].orEmpty(), id, listOf("tok", "expired0"))
+                val proof = proofOf(q["challenge"], call.request.headers[HttpHeaders.Host].orEmpty(), id)
                 val info = ServerInfo(id, "Basement", "1.0", proof = proof)
                 call.respondText(kivoJson.encodeToString(ServerInfo.serializer(), info), ContentType.Application.Json)
             }
@@ -255,7 +255,7 @@ class LiveEventsTest {
             assertFalse(connection.signedIn.value)
             assertNull(store.values[TOKEN_KEY])
             assertNull(connection.user.value)
-            assertTrue(preferences.data.first().asMap().isEmpty())
+            assertNull(preferences.data.first()[stringPreferencesKey("kivo.user.server-1")])
         }
     }
 
