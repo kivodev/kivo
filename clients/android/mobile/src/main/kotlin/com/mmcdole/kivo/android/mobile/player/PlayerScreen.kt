@@ -61,8 +61,9 @@ import com.mmcdole.kivo.core.display.quality
 import com.mmcdole.kivo.core.display.qualityMenu
 import com.mmcdole.kivo.core.display.size
 import com.mmcdole.kivo.core.play.PlayerStatus
-import com.mmcdole.kivo.core.player.Markers
-import com.mmcdole.kivo.core.player.Subtitles
+import com.mmcdole.kivo.core.player.SKIP_BACK_MS
+import com.mmcdole.kivo.core.player.SKIP_FORWARD_MS
+import com.mmcdole.kivo.core.player.SUBTITLES_OFF
 import com.mmcdole.kivo.core.settings.Quality
 import io.github.peerless2012.ass.media.widget.AssSubtitleView
 import kotlinx.coroutines.delay
@@ -172,7 +173,7 @@ fun PlayerScreen(session: ServerSession, route: PlayerRoute, nav: MobileNav) {
             onClose = nav::back,
         )
         burst?.let { b ->
-            val seconds = b.count * ((if (b.forward) Markers.FORWARD_MS else Markers.BACK_MS) / 1000).toInt()
+            val seconds = b.count * ((if (b.forward) SKIP_FORWARD_MS else SKIP_BACK_MS) / 1000).toInt()
             SkipBurstLabel(b.forward, seconds, Modifier.align(if (b.forward) Alignment.CenterEnd else Alignment.CenterStart).padding(horizontal = space(16)))
         }
 
@@ -374,7 +375,7 @@ private fun menuPage(state: PlayerUiState, menu: PlayerMenu, sub: SubMenu?): Men
     return when (sub) {
         SubMenu.Audio -> MenuPage(audio.map { MenuItem(it.id, it.pickerName.name, it.pickerName.note, ticked = it.id == audioId) }, stringResource(R.string.mobile_audio))
         SubMenu.Subtitles -> MenuPage(
-            listOf(MenuItem(Subtitles.OFF, off, ticked = subtitleId == Subtitles.OFF)) +
+            listOf(MenuItem(SUBTITLES_OFF, off, ticked = subtitleId == SUBTITLES_OFF)) +
                 subtitles.map { MenuItem(it.id, it.pickerName.name, it.pickerName.note, ticked = it.id == subtitleId) },
             stringResource(R.string.mobile_subtitles),
         )
@@ -386,7 +387,7 @@ private fun menuPage(state: PlayerUiState, menu: PlayerMenu, sub: SubMenu?): Men
                 buildList {
                     if (audio.size > 1) add(MenuItem(SubMenu.Audio.name, stringResource(R.string.mobile_audio), audio.firstOrNull { it.id == audioId }?.pickerName?.name, opens = true))
                     if (subtitles.isNotEmpty()) {
-                        val shown = if (subtitleId == Subtitles.OFF) off else subtitles.firstOrNull { it.id == subtitleId }?.pickerName?.name
+                        val shown = if (subtitleId == SUBTITLES_OFF) off else subtitles.firstOrNull { it.id == subtitleId }?.pickerName?.name
                         add(MenuItem(SubMenu.Subtitles.name, stringResource(R.string.mobile_subtitles), shown, opens = true))
                     }
                 },

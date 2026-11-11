@@ -111,7 +111,7 @@ struct StreamInfoView: View {
     /// The subtitle showing, as the play delivers it.
     private func subtitleRow(play: StreamInfo, track: Track?) -> Row {
         let label = String(localized: "Subtitles")
-        guard model.subtitle != Subtitles.shared.OFF, let shown = play.tracks.first(where: { $0.type == .subtitle && $0.trackId == model.subtitle }) else {
+        guard model.subtitle != SUBTITLES_OFF, let shown = play.tracks.first(where: { $0.type == .subtitle && $0.trackId == model.subtitle }) else {
             return Row(label: label, value: String(localized: "Off"))
         }
         let display = model.display

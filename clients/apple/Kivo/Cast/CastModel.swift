@@ -60,7 +60,7 @@ final class CastModel: PlayerChoices, Scrubbable {
     @ObservationIgnored private var reading: Task<Void, Never>?
     @ObservationIgnored private var readingNext: Task<Void, Never>?
     /// The last cast asked for, and where it started, for Try again before the TV has a play.
-    @ObservationIgnored private var lastCast: (target: PlayTarget, positionMs: Int64?)?
+    @ObservationIgnored private var lastCast: (choice: PlayChoice, fromStart: Bool, positionMs: Int64?)?
 
     init(session: KivoSession, core: KivoClient, display: Display) {
         self.session = session
@@ -139,27 +139,21 @@ final class CastModel: PlayerChoices, Scrubbable {
         }
     }
 
-    /// Casts [target] from [positionMs], else from its start with fromStart, else its resume position,
+    /// Casts [choice] from [positionMs], else from its start with [fromStart], else its resume position,
     /// carrying the run of episodes this app's players played on without input.
-    func cast(_ target: PlayTarget, positionMs: Int64? = nil) {
+    func cast(_ choice: PlayChoice, fromStart: Bool = false, at positionMs: Int64? = nil) {
         guard connection == .connected, let device else { return }
-        lastCast = (target, positionMs)
-        loading = target.workId
+        lastCast = (choice, fromStart, positionMs)
+        let workId = choice.workId
+        loading = workId
         failure = nil
         status = nil
         qualityChoice = nil
-        read(workId: target.workId)
-        let start = positionMs ?? (target.fromStart ? 0 : nil)
+        read(workId: workId)
+        let start = positionMs ?? (fromStart ? 0 : nil)
         Task { [weak self, session, link] in
             do {
-                let load = try await session.cast.load(
-                    receiverName: device,
-                    workId: target.workId,
-                    versionId: target.versionId,
-                    audioTrackId: target.audioTrackId,
-                    subtitleTrackId: target.subtitleTrackId,
-                    positionMs: start.map { KotlinLong(value: $0) }
-                )
+                let load = try await session.cast.load(receiverName: device, choice: choice, positionMs: start.map { KotlinLong(value: $0) })
                 let work = self?.work
                 let art = work?.images.poster ?? work?.images.still ?? work?.images.backdrop
                 link.load(
@@ -168,7 +162,7 @@ final class CastModel: PlayerChoices, Scrubbable {
                     image: art.flatMap { URL(string: session.imageUrl(id: $0.id, width: 480)) }
                 )
             } catch {
-                guard let self, self.loading == target.workId else { return }
+                guard let self, self.loading == workId else { return }
                 self.loading = nil
                 self.failure = error.problemSentence
                 self.changed()
@@ -211,7 +205,7 @@ final class CastModel: PlayerChoices, Scrubbable {
 
     func chooseQuality(_ option: QualityOption) {
         qualityChoice = option.quality
-        let request = option.quality.request(bandwidthBps: nil)
+        let request = option.quality.request()
         link.send(CastMessages.shared.setQuality(localQuality: request, remoteQuality: request))
     }
 
@@ -236,22 +230,22 @@ final class CastModel: PlayerChoices, Scrubbable {
     func retry() {
         session.playback.confirmStillWatching()
         if let workId = media?.workId ?? status?.workId {
-            cast(current(workId: workId), positionMs: positionMs > 0 ? positionMs : lastCast?.positionMs)
+            cast(current(workId: workId), at: positionMs > 0 ? positionMs : lastCast?.positionMs)
         } else if let lastCast {
-            cast(lastCast.target, positionMs: lastCast.positionMs)
+            cast(lastCast.choice, fromStart: lastCast.fromStart, at: lastCast.positionMs)
         }
     }
 
     /// Stop casting: the TV stops, saving the position, and what played
     /// there is returned to carry on with here, at the TV's position.
-    func stopCasting() -> (target: PlayTarget, positionMs: Int64)? {
+    func stopCasting() -> (choice: PlayChoice, positionMs: Int64)? {
         let workId = media?.workId ?? status?.workId
         let position = positionMs
-        let target = workId.map(current)
+        let choice = workId.map(current)
         menuShown = false
         link.end(stopCasting: true)
         disconnected()
-        return target.map { ($0, position) }
+        return choice.map { ($0, position) }
     }
 
     /// Disconnect: this device lets go, and the TV plays on.
@@ -270,9 +264,9 @@ final class CastModel: PlayerChoices, Scrubbable {
     }
 
     /// [workId] as the TV plays it: its version and tracks.
-    private func current(workId: String) -> PlayTarget {
-        guard let status, status.workId == workId else { return PlayTarget(workId: workId) }
-        return PlayTarget(workId: workId, versionId: status.versionId, audioTrackId: status.audioTrackId, subtitleTrackId: status.subtitleTrackId)
+    private func current(workId: String) -> PlayChoice {
+        guard let status, status.workId == workId else { return PlayChoice(workId: workId) }
+        return PlayChoice(workId: workId, versionId: status.versionId, audioTrackId: status.audioTrackId, subtitleTrackId: status.subtitleTrackId)
     }
 
     // MARK: Choices
@@ -288,7 +282,7 @@ final class CastModel: PlayerChoices, Scrubbable {
 
     var dialogueBoost: DialogueBoost? { status?.dialogueBoost }
 
-    var subtitle: String { status?.subtitleTrackId ?? Subtitles.shared.OFF }
+    var subtitle: String { status?.subtitleTrackId ?? SUBTITLES_OFF }
 
     var quality: Quality? {
         qualityChoice ?? status?.quality.map { Quality.companion.of(request: $0) }
@@ -312,7 +306,7 @@ final class CastModel: PlayerChoices, Scrubbable {
 
     /// The TV plays the server's play, so its subtitles can be searched for as the player's can.
     var searchesSubtitles: Bool {
-        SubtitleSearch.shared.offered(version: version, offline: false)
+        SubtitleSearch.shared.offered(version: version)
     }
 
     func searchSubtitles() async throws -> [SubtitleResult] {
@@ -375,11 +369,7 @@ final class CastModel: PlayerChoices, Scrubbable {
         next = nil
         guard let nextId else { return }
         readingNext = Task { [weak self, session] in
-            for await load in session.library.work(id: nextId) {
-                guard let next = load.getOrNull() else { continue }
-                self?.next = next
-                break
-            }
+            if let next = await session.library.work(id: nextId).answer() { self?.next = next }
         }
     }
 

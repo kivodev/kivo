@@ -11,7 +11,7 @@ import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.core.downloads.db.Download
 import com.mmcdole.kivo.core.play.PlaySource
 import com.mmcdole.kivo.core.player.PlayTracks
-import com.mmcdole.kivo.core.player.Subtitles
+import com.mmcdole.kivo.core.player.SUBTITLES_OFF
 import com.mmcdole.kivo.core.player.TrackShow
 import com.mmcdole.kivo.api.models.Download as ServerDownload
 import com.mmcdole.kivo.api.models.DownloadDelivery
@@ -144,7 +144,7 @@ internal fun offlineTracks(tracks: List<PlayTrack>, local: (String) -> String?):
         }
     }
     if (offline.any { it.type == TrackType.Subtitle && it.selected == true }) return offline
-    return offline.map { if (it.trackId == Subtitles.OFF && it.delivery != null) it.copy(selected = true) else it }
+    return offline.map { if (it.trackId == SUBTITLES_OFF && it.delivery != null) it.copy(selected = true) else it }
 }
 
 /** A `file://` URL for an absolute path, each segment escaped. */

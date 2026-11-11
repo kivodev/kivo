@@ -73,7 +73,7 @@ final class GoogleCastLink: NSObject, CastLink {
     /// from the start, since sign-in already asked for the local network,
     /// and the hardware volume buttons drive the TV.
     static func configure() {
-        let options = GCKCastOptions(discoveryCriteria: GCKDiscoveryCriteria(applicationID: Cast.shared.APP_ID))
+        let options = GCKCastOptions(discoveryCriteria: GCKDiscoveryCriteria(applicationID: CAST_APP_ID))
         options.startDiscoveryAfterFirstTapOnCastButton = false
         options.physicalVolumeButtonsWillControlDeviceVolume = true
         GCKCastContext.setSharedInstanceWith(options)
@@ -161,7 +161,7 @@ final class GoogleCastLink: NSObject, CastLink {
     }
 
     private func attach(_ session: GCKCastSession) {
-        let channel = KivoChannel(namespace: Cast.shared.NAMESPACE)
+        let channel = KivoChannel(namespace: CAST_NAMESPACE)
         channel.received = { [weak self] in self?.delegate?.received($0) }
         session.add(channel)
         self.channel = channel

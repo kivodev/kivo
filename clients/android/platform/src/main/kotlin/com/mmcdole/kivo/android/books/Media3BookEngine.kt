@@ -18,7 +18,8 @@ import com.mmcdole.kivo.android.player.failureCode
 import com.mmcdole.kivo.api.models.PlayDelivery
 import com.mmcdole.kivo.api.models.PlayStarted
 import com.mmcdole.kivo.core.books.BookAudio
-import com.mmcdole.kivo.core.player.Markers
+import com.mmcdole.kivo.core.player.SKIP_BACK_MS
+import com.mmcdole.kivo.core.player.SKIP_FORWARD_MS
 import com.mmcdole.kivo.core.player.PartTimeline
 import com.mmcdole.kivo.core.player.PlayerError
 import com.mmcdole.kivo.core.player.PlayerEngine
@@ -172,8 +173,8 @@ class Media3BookEngine(
     private fun build(): ExoPlayer {
         val renderers = DefaultRenderersFactory(context).setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
         val player = ExoPlayer.Builder(context, renderers)
-            .setSeekBackIncrementMs(Markers.BACK_MS)
-            .setSeekForwardIncrementMs(Markers.FORWARD_MS)
+            .setSeekBackIncrementMs(SKIP_BACK_MS)
+            .setSeekForwardIncrementMs(SKIP_FORWARD_MS)
             .setAudioAttributes(
                 AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_SPEECH).build(),
                 /* handleAudioFocus = */ true,

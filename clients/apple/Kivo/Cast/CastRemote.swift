@@ -127,7 +127,7 @@ struct CastRemote: View {
 
     private var transport: some View {
         HStack(spacing: 0) {
-            Button { cast.skip(by: -Markers.shared.BACK_MS) } label: {
+            Button { cast.skip(by: -SKIP_BACK_MS) } label: {
                 Image(systemName: "gobackward.10").font(.system(size: 30, weight: .medium))
             }
             .accessibilityLabel(Text("Back 10 seconds"))
@@ -146,7 +146,7 @@ struct CastRemote: View {
                 }
             }
             .frame(width: 72, height: 72)
-            Button { cast.skip(by: Markers.shared.FORWARD_MS) } label: {
+            Button { cast.skip(by: SKIP_FORWARD_MS) } label: {
                 Image(systemName: "goforward.30").font(.system(size: 30, weight: .medium))
             }
             .accessibilityLabel(Text("Forward 30 seconds"))

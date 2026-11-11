@@ -55,7 +55,7 @@ struct DownloadEpisodesSheet: View {
         .task {
             do {
                 let ids = try await episodes()
-                estimates = try await server.session.downloads?.estimates(workIds: ids, versionId: nil, audioTrackId: nil, subtitleTrackId: nil) ?? []
+                estimates = try await server.session.downloads?.estimates(choices: ids.map { PlayChoice(workId: $0) }) ?? []
             } catch {
                 problem = error.downloadSentence
             }
@@ -76,7 +76,7 @@ struct DownloadEpisodesSheet: View {
             do {
                 for estimate in estimates {
                     _ = try await server.session.downloads?.download(
-                        workId: estimate.workId, versionId: nil, audioTrackId: nil, subtitleTrackId: nil,
+                        choice: PlayChoice(workId: estimate.workId),
                         quality: DownloadQuality.allCases.first { $0.value == quality }
                     )
                 }

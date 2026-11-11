@@ -135,7 +135,8 @@ import com.mmcdole.kivo.core.display.runtime
 import com.mmcdole.kivo.core.display.size
 import com.mmcdole.kivo.core.display.timeLeft
 import com.mmcdole.kivo.core.downloads.DownloadStatus
-import com.mmcdole.kivo.core.player.Subtitles
+import com.mmcdole.kivo.core.play.PlayChoice
+import com.mmcdole.kivo.core.player.SUBTITLES_OFF
 
 /**
  * A work's page, as the work's kind has it: a movie, episode, video or
@@ -323,7 +324,7 @@ private fun PlayActions(head: WorkSummary, state: DetailUiState, model: DetailVi
     fun play(fromStart: Boolean) = when {
         book -> nav.play(head, fromStart)
         ready != null -> nav.play(PlayerRoute(head.id, fromStart, subtitleTrackId = choices.subtitleTrackId, downloadId = ready.id))
-        else -> nav.play(head.id, fromStart, choices.versionId, choices.audioTrackId, choices.subtitleTrackId)
+        else -> nav.play(choices, fromStart)
     }
     Column(Modifier.padding(horizontal = space(4), vertical = space(4)).wideWidth(KivoTokens.Container.form), verticalArrangement = Arrangement.spacedBy(space(3))) {
         if (available) {
@@ -366,10 +367,10 @@ private fun SeriesActions(head: WorkSummary, state: DetailUiState, model: Detail
                     episode != null -> stringResource(R.string.mobile_play_episode, episode.seasonNumber, episode.number)
                     else -> stringResource(R.string.mobile_play)
                 },
-            ) { nav.play(next.id) }
+            ) { nav.play(PlayChoice(next.id)) }
             Text(next.title, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        ActionRow(head, state, model, startOver = next?.takeIf { it.userState?.positionMs != null }?.let { { nav.play(it.id, fromStart = true) } }, addToList = { nav.addToList(head) })
+        ActionRow(head, state, model, startOver = next?.takeIf { it.userState?.positionMs != null }?.let { { nav.play(PlayChoice(it.id), fromStart = true) } }, addToList = { nav.addToList(head) })
     }
 }
 
@@ -529,7 +530,7 @@ private enum class Picker { Version, Audio, Subtitles }
  * server's track names; Automatic names the track a play starts with.
  */
 @Composable
-private fun TrackRows(work: WorkDetail, choices: TrackChoices, model: DetailViewModel) {
+private fun TrackRows(work: WorkDetail, choices: PlayChoice, model: DetailViewModel) {
     if (!work.available) return
     val version = work.selectedVersion(choices.versionId) ?: return
     val audio = version.tracks.filter { it.type == TrackType.Audio }
@@ -538,7 +539,7 @@ private fun TrackRows(work: WorkDetail, choices: TrackChoices, model: DetailView
     val automatic = stringResource(R.string.mobile_automatic)
     val off = stringResource(R.string.mobile_off)
     fun audioName(id: String?) = audio.firstOrNull { it.id == id }?.name
-    fun subtitleName(id: String?) = if (id == Subtitles.OFF) off else subtitles.firstOrNull { it.id == id }?.name
+    fun subtitleName(id: String?) = if (id == SUBTITLES_OFF) off else subtitles.firstOrNull { it.id == id }?.name
     Column(Modifier.padding(bottom = space(2)).wideWidth()) {
         if (work.versions.size > 1) TrackRow(stringResource(R.string.mobile_version), version.name, "version") { open = Picker.Version }
         if (audio.size > 1) {
@@ -566,7 +567,7 @@ private fun TrackRows(work: WorkDetail, choices: TrackChoices, model: DetailView
         )
         Picker.Subtitles -> PickerSheet(
             stringResource(R.string.mobile_subtitles),
-            listOf(Choice(null, stringResource(R.string.mobile_automatic_named, subtitleName(version.subtitleTrackId ?: Subtitles.OFF).orEmpty())), Choice(Subtitles.OFF, off)) +
+            listOf(Choice(null, stringResource(R.string.mobile_automatic_named, subtitleName(version.subtitleTrackId ?: SUBTITLES_OFF).orEmpty())), Choice(SUBTITLES_OFF, off)) +
                 subtitles.map { Choice(it.id, it.pickerName.name, it.pickerName.note) },
             choices.subtitleTrackId,
             onPick = model::chooseSubtitle,

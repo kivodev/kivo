@@ -59,7 +59,7 @@ struct BookDetail: View {
                         RestartButton { server.listen(work.id, at: 0) }
                     }
                 } extra: {
-                    DownloadButton(work: work, versionId: nil, audioTrackId: nil, subtitleTrackId: nil)
+                    DownloadButton(work: work, choice: PlayChoice(workId: work.id))
                 }
                 DownloadBadge(workId: work.id)
             }

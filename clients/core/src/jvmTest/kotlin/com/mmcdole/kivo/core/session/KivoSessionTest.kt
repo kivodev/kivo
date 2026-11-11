@@ -4,7 +4,9 @@ import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.mmcdole.kivo.api.models.CastToken
 import com.mmcdole.kivo.api.models.ClientPlatform
 import com.mmcdole.kivo.api.models.CurrentUser
+import com.mmcdole.kivo.api.models.DownloadEstimateItem
 import com.mmcdole.kivo.api.models.DownloadEstimateList
+import com.mmcdole.kivo.api.models.DownloadEstimateRequest
 import com.mmcdole.kivo.api.models.Library
 import com.mmcdole.kivo.api.models.LibraryKind
 import com.mmcdole.kivo.api.models.LibraryList
@@ -42,6 +44,7 @@ import com.mmcdole.kivo.core.empty
 import com.mmcdole.kivo.core.json
 import com.mmcdole.kivo.core.kivoJson
 import com.mmcdole.kivo.core.play.FakeEngine
+import com.mmcdole.kivo.core.play.PlayChoice
 import com.mmcdole.kivo.core.player.Autoplay
 import com.mmcdole.kivo.core.player.UpNextPhase
 import com.mmcdole.kivo.core.problem
@@ -54,6 +57,7 @@ import io.ktor.client.request.HttpResponseData
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.content.OutgoingContent
 import io.ktor.server.application.install
 import io.ktor.server.cio.CIO
 import io.ktor.server.engine.embeddedServer
@@ -568,12 +572,45 @@ class KivoSessionTest {
 
         val b = h.core.restore(SavedServer("b", "b", listOf("http://b.test")))
         a.close()
-        b.downloads!!.estimates(listOf("w1"), null, null, null)
+        b.downloads!!.estimates(listOf(PlayChoice("w1")))
 
         assertTrue("b.test POST /api/v1/downloads/estimate" in h.servers.seen)
         assertFalse(a.scope.isActive)
         assertTrue(b.scope.isActive)
         assertTrue(b.isSignedIn, "leaving a server doesn't sign the next out")
+    }
+
+    @Test
+    fun anEstimateAsksForEachWorkWithItsOwnChoices() = runTest {
+        val h = Harness(this, withDownloads = true)
+        h.servers.server("home.test", info("server-1"))
+        var asked = ""
+        h.servers.on("home.test", "POST", "/api/v1/downloads/estimate") {
+            asked = (it.body as OutgoingContent.ByteArrayContent).bytes().decodeToString()
+            json(DownloadEstimateList.serializer(), DownloadEstimateList(emptyList()))
+        }
+        h.device.signedInTo("server-1")
+        val session = h.core.restore(SavedServer("server-1", "server-1", listOf("http://home.test")))
+
+        session.downloads!!.estimates(listOf(PlayChoice("w1", "v1", "a1", "s1"), PlayChoice("w2")))
+
+        val items = kivoJson.decodeFromString(DownloadEstimateRequest.serializer(), asked).items
+        assertEquals(
+            listOf(DownloadEstimateItem("w1", versionId = "v1", audioTrackId = "a1", subtitleTrackId = "s1"), DownloadEstimateItem("w2")),
+            items,
+        )
+    }
+
+    @Test
+    fun theSavedServersAreReadOnce() = runTest {
+        val h = Harness(this)
+        assertEquals(emptyList(), h.core.savedServers())
+        h.servers.server("home.test", info("server-1", "Basement"))
+        h.device.signedInTo("server-1")
+
+        h.core.restore(home)
+
+        assertEquals(listOf(home), h.core.savedServers())
     }
 
     @Test
@@ -586,16 +623,17 @@ class KivoSessionTest {
         val session = h.core.restore(SavedServer("server-1", "server-1", listOf("http://home.test")))
         val player = session.playback.videoPlayer(FakeEngine())
 
-        val request = player.request("w1", "v1", "a1", null, null)
+        val request = player.request(PlayChoice("w1", "v1", "a1", "s1"))
 
         assertEquals(QualityRequest("limit", maxBitrateBps = 8_000_000), request.localQuality)
         assertEquals(QualityRequest("auto", bandwidthBps = 5_000_000), request.remoteQuality, "a rung the server doesn't have is Auto")
         assertTrue(request.dialogueBoost)
         assertEquals("v1", request.versionId)
         assertEquals("a1", request.audioTrackId)
+        assertEquals("s1", request.subtitleTrackId)
         assertNull(request.positionMs)
-        assertEquals(0, player.request("w1", null, null, null, 0).positionMs)
-        assertEquals(42_000, player.request("w1", null, null, null, 42_000).positionMs)
+        assertEquals(0, player.request(PlayChoice("w1"), 0).positionMs)
+        assertEquals(42_000, player.request(PlayChoice("w1"), 42_000).positionMs)
         player.dispose()
     }
 
@@ -607,8 +645,11 @@ class KivoSessionTest {
         val session = h.core.restore(SavedServer("server-1", "server-1", listOf("http://home.test")))
         val player = session.playback.videoPlayer(FakeEngine())
 
-        val request = player.request("w1", null, null, null, null)
+        val request = player.request(PlayChoice("w1"))
 
+        assertNull(request.versionId)
+        assertNull(request.audioTrackId)
+        assertNull(request.subtitleTrackId)
         assertEquals(QualityRequest("original"), request.localQuality)
         assertEquals(QualityRequest("limit", maxBitrateBps = 3_000_000), request.remoteQuality)
         assertFalse(request.dialogueBoost)
@@ -648,8 +689,17 @@ class KivoSessionTest {
 
         val second = session.playback.videoPlayer(FakeEngine())
         assertEquals(2, h.core.autoplay.count, "a new player keeps the run")
-        val load = session.cast.load("Living Room", "w1", null, null, null, null)
+        val load = session.cast.load("Living Room", PlayChoice("w1"))
         assertTrue("\"autoplayCount\":2" in load.customData)
+        assertNull(load.currentTimeSec, "a cast without a position resumes")
+        assertFalse("versionId" in load.customData, "and leaves the version and tracks to the server")
+
+        val chosen = session.cast.load("Living Room", PlayChoice("w1", "v2", "a2", "off"), positionMs = 90_000)
+        assertEquals("w1", chosen.contentId)
+        assertEquals(90.0, chosen.currentTimeSec)
+        assertTrue("\"versionId\":\"v2\"" in chosen.customData)
+        assertTrue("\"audioTrackId\":\"a2\"" in chosen.customData)
+        assertTrue("\"subtitleTrackId\":\"off\"" in chosen.customData)
 
         second.userActivity()
         assertEquals(0, h.core.autoplay.count, "input in a player starts it again")

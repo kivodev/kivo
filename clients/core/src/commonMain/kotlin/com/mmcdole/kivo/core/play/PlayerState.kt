@@ -7,7 +7,7 @@ import com.mmcdole.kivo.core.ProblemCode
 import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.core.display.Display
 import com.mmcdole.kivo.core.display.problem
-import com.mmcdole.kivo.core.player.Subtitles
+import com.mmcdole.kivo.core.player.SUBTITLES_OFF
 import com.mmcdole.kivo.core.player.TrackShow
 
 data class PlayerState(
@@ -24,8 +24,8 @@ data class PlayerState(
     val detail: String? = null,
     /** The audio track playing; null without a play, or with no audio. */
     val audioTrackId: String? = null,
-    /** The subtitle track showing, or [Subtitles.OFF]. */
-    val subtitleTrackId: String = Subtitles.OFF,
+    /** The subtitle track showing, or [SUBTITLES_OFF]. */
+    val subtitleTrackId: String = SUBTITLES_OFF,
     /** How the player shows [subtitleTrackId]: the app draws a [TrackShow.External] where its engine doesn't. */
     val subtitle: TrackShow = TrackShow.Off,
 ) {

@@ -14,7 +14,7 @@ import com.mmcdole.kivo.core.player.PictureInPicture
 import com.mmcdole.kivo.core.player.PlayTracks
 import com.mmcdole.kivo.core.player.PlayerError
 import com.mmcdole.kivo.core.player.PlayerEngine
-import com.mmcdole.kivo.core.player.Subtitles
+import com.mmcdole.kivo.core.player.SUBTITLES_OFF
 import com.mmcdole.kivo.core.player.TrackShow
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -155,7 +155,7 @@ class PlayController internal constructor(
     internal fun boostDialogue(on: Boolean) = switchTracks { it.copy(dialogueBoost = on) }
 
     /**
-     * Shows a subtitle track, or [Subtitles.OFF], as the play's tracks say:
+     * Shows a subtitle track, or [SUBTITLES_OFF], as the play's tracks say:
      * at once where it has a delivery, the heartbeats reporting it so the
      * server remembers it as a choice and a later switch or retry keeps it;
      * else by a new play at the position, with the audio playing.
@@ -329,7 +329,7 @@ class PlayController internal constructor(
      * selected by its index, as it may not be the file's default.
      */
     private fun showTracks(play: PlayStarted) {
-        val subtitle = shownSubtitle ?: PlayTracks.selected(play, TrackType.Subtitle) ?: Subtitles.OFF
+        val subtitle = shownSubtitle ?: PlayTracks.selected(play, TrackType.Subtitle) ?: SUBTITLES_OFF
         val audio = shownAudio ?: PlayTracks.selected(play, TrackType.Audio)
         val show = PlayTracks.show(play, subtitle)
         dispatch(PlayerAction.Shown(audio, subtitle, show))

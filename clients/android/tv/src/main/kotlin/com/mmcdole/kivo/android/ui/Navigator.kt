@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import com.mmcdole.kivo.api.models.EpisodeInfo
+import com.mmcdole.kivo.core.play.PlayChoice
 
 /** The TV interface's screens: the rail's destinations, an open list, detail pages and the player. */
 sealed interface Screen {
@@ -53,13 +54,9 @@ sealed interface Screen {
     data class Person(val id: String) : Screen
 
     /** The player, with the detail page's choices; [fromStart] plays from the beginning rather than resuming. */
-    data class Player(
-        val workId: String,
-        val versionId: String? = null,
-        val audioTrackId: String? = null,
-        val subtitleTrackId: String? = null,
-        val fromStart: Boolean = false,
-    ) : Screen
+    data class Player(val choice: PlayChoice, val fromStart: Boolean = false) : Screen {
+        constructor(workId: String, fromStart: Boolean = false) : this(PlayChoice(workId), fromStart)
+    }
 }
 
 /** A screen on the back stack, with its own view models, cleared when it's popped. */

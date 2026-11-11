@@ -1,3 +1,4 @@
+import KivoCore
 import Observation
 
 /// The video player's place in the signed-in app: the player while there
@@ -22,18 +23,21 @@ final class PlayerHost {
         server.cast.stopped = { [weak self] in self?.castStopped() }
     }
 
-    /// Opens the video player on [target], replacing anything playing; a
-    /// book stops, keeping its place. Connected to a TV, it plays there,
-    /// from the server even when it's downloaded, and the remote opens.
-    func play(_ target: PlayTarget) {
+    /// Opens the video player on [choice], replacing anything playing; a
+    /// book stops, keeping its place. It starts at [positionMs], as where
+    /// a cast stopped, else at the start with [fromStart], else at the
+    /// resume position, and plays the ready download [downloadId] without
+    /// the server. Connected to a TV, it plays there, from the server even
+    /// when it's downloaded, and the remote opens.
+    func play(_ choice: PlayChoice, fromStart: Bool = false, at positionMs: Int64? = nil, downloadId: String? = nil) {
         model?.close()
         model = nil
         if server.cast.connection == .connected {
-            server.cast.cast(target)
+            server.cast.cast(choice, fromStart: fromStart)
             shown = true
             return
         }
-        model = PlayerModel(target: target, server: server)
+        model = PlayerModel(choice, at: positionMs ?? (fromStart ? 0 : nil), downloadId: downloadId, server: server)
         shown = true
     }
 
@@ -43,7 +47,7 @@ final class PlayerHost {
         guard let model, let handoff = model.handoff else { return }
         model.close()
         self.model = nil
-        server.cast.cast(handoff.target, positionMs: handoff.positionMs)
+        server.cast.cast(handoff.choice, at: handoff.positionMs)
     }
 
     /// The Cast menu's Stop casting, which happens once the menu has closed,
@@ -62,9 +66,7 @@ final class PlayerHost {
     /// Stop casting: the TV stops, and the player carries on here from where the TV was.
     func stopCasting() {
         guard let stopped = server.cast.stopCasting() else { return }
-        var target = stopped.target
-        target.positionMs = stopped.positionMs
-        play(target)
+        play(stopped.choice, at: stopped.positionMs)
     }
 
     /// Nothing plays on the TV any more: the remote closes.
@@ -101,17 +103,4 @@ final class PlayerHost {
         model?.close()
         model = nil
     }
-}
-
-/// What the video player opens on: a work from the server, or a download from its files here.
-struct PlayTarget: Hashable {
-    let workId: String
-    var versionId: String?
-    var audioTrackId: String?
-    var subtitleTrackId: String?
-    var fromStart = false
-    /// A ready download, played without the server.
-    var downloadId: String?
-    /// Where to start, as where a cast stopped; nil for the resume position, or the start with [fromStart].
-    var positionMs: Int64?
 }

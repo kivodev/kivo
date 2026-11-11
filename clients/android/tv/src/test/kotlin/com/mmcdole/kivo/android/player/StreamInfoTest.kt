@@ -18,7 +18,7 @@ import com.mmcdole.kivo.api.models.Version
 import com.mmcdole.kivo.api.models.VersionPart
 import com.mmcdole.kivo.api.models.VideoTrackInfo
 import com.mmcdole.kivo.core.display.Display
-import com.mmcdole.kivo.core.player.Subtitles
+import com.mmcdole.kivo.core.player.SUBTITLES_OFF
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -90,7 +90,7 @@ class StreamInfoTest {
             tracks = listOf(PlayTrack("tv", TrackType.Video, selected = true, delivery = TrackDelivery.File, index = 0), PlayTrack("off", TrackType.Subtitle, selected = true, delivery = TrackDelivery.None)),
             bitrateBps = null,
         )
-        val rows = streamInfo(direct, version.copy(bitrateBps = 4_000_000), QualityRequest("limit", maxBitrateBps = 8_000_000), Subtitles.OFF, display, words)
+        val rows = streamInfo(direct, version.copy(bitrateBps = 4_000_000), QualityRequest("limit", maxBitrateBps = 8_000_000), SUBTITLES_OFF, display, words)
         assertEquals(
             listOf(
                 InfoRow("Playback", "Direct Play"),

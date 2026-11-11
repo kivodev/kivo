@@ -6,7 +6,8 @@ import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.api.result
 import com.mmcdole.kivo.core.auth.ServerConnection
 import com.mmcdole.kivo.core.downloads.Downloads
-import com.mmcdole.kivo.core.player.Markers
+import com.mmcdole.kivo.core.player.SKIP_BACK_MS
+import com.mmcdole.kivo.core.player.SKIP_FORWARD_MS
 import com.mmcdole.kivo.core.player.PlayerEngine
 import com.mmcdole.kivo.core.play.PlayRequest
 import com.mmcdole.kivo.core.play.PlayController
@@ -130,9 +131,9 @@ class BookPlayerModel internal constructor(
         controller?.pause()
     }
 
-    fun skipBack() = seek(position() - Markers.BACK_MS)
+    fun skipBack() = seek(position() - SKIP_BACK_MS)
 
-    fun skipForward() = seek(position() + Markers.FORWARD_MS)
+    fun skipForward() = seek(position() + SKIP_FORWARD_MS)
 
     /** Moves to a position on the book's timeline. */
     fun seek(positionMs: Long) {

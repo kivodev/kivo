@@ -47,6 +47,7 @@ import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.api.models.WorkImages
 import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.core.auth.SavedServer
+import com.mmcdole.kivo.core.play.PlayChoice
 import com.mmcdole.kivo.core.play.PlayerEnd
 import com.mmcdole.kivo.core.session.KivoClient
 import com.mmcdole.kivo.core.player.PlayerEngine
@@ -234,7 +235,7 @@ class PlayerHarness(private val compose: ComposeContentTestRule, private val clo
             val engine = FakeVideoEngine()
             val video = session.playback.videoPlayer(engine)
             onMain { video.setHasNextEpisode(hasNext = true) }
-            runBlocking { withContext(Dispatchers.Main) { video.play(EPISODE, null, null, null, null) } }
+            runBlocking { withContext(Dispatchers.Main) { video.play(PlayChoice(EPISODE)) } }
             waitFor { engine.loaded }
             onMain {
                 engine.ready()
