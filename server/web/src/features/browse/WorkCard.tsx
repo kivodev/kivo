@@ -176,7 +176,7 @@ function RemoveFromList({ list, workId }: { list: ListRef; workId: string }) {
 
 /** A short mark on a card's artwork, at its bottom left. */
 export const markClass =
-  "absolute bottom-2 left-2 rounded-sm bg-badge px-1.5 py-0.5 text-xs font-semibold text-on-badge tv:text-sm";
+  "absolute bottom-2 left-2 rounded-sm bg-badge px-1.5 py-0.5 text-xs font-semibold text-on-badge";
 
 const aspects: Record<ArtworkShape, string> = {
   poster: "aspect-poster",
@@ -287,7 +287,7 @@ export function WorkCard({ work, shape, width, inLibrary = false, continueRow, l
               // A poster has no dark frame to sit on, so the code is a badge.
               <span className={markClass}>{code}</span>
             ))}
-          {badge && <span className={markClass}>{badge}</span>}
+          {badge && <span className={`${markClass} tv:text-sm`}>{badge}</span>}
           {status && <StatusBadge status={status} right={landscape || code !== undefined} />}
         </div>
         {/* On TV the caption lines up with the artwork's edge. */}
