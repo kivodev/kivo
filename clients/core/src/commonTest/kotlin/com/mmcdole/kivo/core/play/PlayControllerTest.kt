@@ -342,6 +342,26 @@ class PlayControllerTest {
     }
 
     @Test
+    fun leavingWhileAPlayStartsStopsItOnceItStarts() = runTest {
+        val h = Harness(this)
+        h.answerStarts(play("s1", startMs = 90_000), play("s2", startMs = 90_000))
+        h.acceptBeats("s1")
+        h.acceptBeats("s2")
+
+        // The app comes back and leaves again before the server answers the play it restores.
+        h.controller.play(PlayRequest("w1", positionMs = 90_000))
+        h.controller.stopOnExit()
+        runCurrent()
+        assertTrue(h.engine.loads.isEmpty())
+        assertEquals(90_000, h.stops("s1").single()["positionMs"]?.jsonPrimitive?.int)
+        assertNull(h.controller.current)
+
+        h.controller.restore()
+        runCurrent()
+        assertEquals("s2", h.engine.loads.single().id)
+    }
+
+    @Test
     fun anAdminStopEndsThePlayerWithAMessage() = runTest {
         val h = Harness(this)
         h.answerStarts(play("s1"))
