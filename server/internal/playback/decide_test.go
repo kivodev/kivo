@@ -39,6 +39,13 @@ func alike(containers []string, hls bool, video []VideoEntry, audio []AudioEntry
 	return c
 }
 
+// cpuOnly is a server with no accelerator, and withHEVC one with an
+// accelerator that encodes HEVC, tone-maps and draws subtitles.
+var (
+	cpuOnly  = []Encoder{{Codec: media.H264, ToneMap: true, BurnIn: true}}
+	withHEVC = append(cpuOnly, Encoder{Codec: media.HEVC, ToneMap: true, BurnIn: true})
+)
+
 // browser is a typical desktop browser: MP4 and WebM, H.264 and VP9, AAC
 // and Opus, HLS through MSE, WebVTT and ASS files.
 var browser = alike([]string{"mp4", "webm"}, true,
@@ -319,7 +326,7 @@ func TestDecide(t *testing.T) {
 			Input{Caps: safari, Source: Source{Container: mkv, Video: dv7(), Audio: audio("eac3", 6), DefaultAudio: true, Remuxable: true}},
 			want{delivery: DeliverStream, video: DirectStream, audio: DirectStream, videoWhy: ReasonContainerUnsupported, audioWhy: ReasonContainerUnsupported, playable: true}},
 		{"HEVC 10-bit without an accelerator: H.264 on the CPU",
-			Input{Caps: browser, Encoders: []media.Codec{media.H264}, Source: Source{Container: mkv, Video: hevc10(), Audio: audio("aac", 2), DefaultAudio: true, Remuxable: true}},
+			Input{Caps: browser, Encoders: cpuOnly, Source: Source{Container: mkv, Video: hevc10(), Audio: audio("aac", 2), DefaultAudio: true, Remuxable: true}},
 			want{delivery: DeliverStream, video: Transcode, audio: DirectStream, videoWhy: ReasonVideoCodecUnsupported, audioWhy: ReasonVideoCodecUnsupported, playable: true}},
 		{"a fallback from direct play: everything transcoded",
 			Input{Caps: browser, Fallback: true, Source: Source{Container: mp4, Video: h264(), Audio: audio("aac", 2), DefaultAudio: true, Remuxable: true}},
@@ -454,12 +461,17 @@ func TestRenditions(t *testing.T) {
 		want media.VideoRendition
 	}{
 		{"4K HDR with no accelerator: 1080p H.264, tone-mapped",
-			Input{Caps: browser, Encoders: []media.Codec{media.H264}, Source: Source{Container: mkv, Bitrate: 50_000_000, Video: hevc10(), Audio: audio("aac", 2), DefaultAudio: true}},
+			Input{Caps: browser, Encoders: cpuOnly, Source: Source{Container: mkv, Bitrate: 50_000_000, Video: hevc10(), Audio: audio("aac", 2), DefaultAudio: true}},
 			media.VideoRendition{Codec: media.H264, Profile: "high", BitDepth: 8, Width: 1920, Height: 1080, Bitrate: 20_000_000, HDR: media.ToneMap}},
 		{"HEVC out where an accelerator encodes it and the client plays it",
-			Input{Caps: alike(nil, true, []VideoEntry{{Codec: "hevc"}}, browser.Audio), Encoders: []media.Codec{media.H264, media.HEVC},
+			Input{Caps: alike(nil, true, []VideoEntry{{Codec: "hevc"}}, browser.Audio), Encoders: withHEVC,
 				Source: Source{Container: mkv, Bitrate: 50_000_000, Video: hevc10(), Audio: audio("aac", 2), DefaultAudio: true}},
 			media.VideoRendition{Codec: media.HEVC, Profile: "main", BitDepth: 8, Width: 1920, Height: 1080, Bitrate: 20_000_000, HDR: media.ToneMap}},
+		{"HDR where the HEVC encoder can't tone-map: H.264, sized for the client's H.264",
+			Input{Caps: alike(nil, true, []VideoEntry{{Codec: "h264", MaxWidth: 1280, MaxHeight: 720, MaxBitrate: 5_000_000}, {Codec: "hevc"}}, browser.Audio),
+				Encoders: append(cpuOnly, Encoder{Codec: media.HEVC, BurnIn: true}),
+				Source:   Source{Container: mkv, Bitrate: 50_000_000, Video: hevc10(), Audio: audio("aac", 2), DefaultAudio: true}},
+			media.VideoRendition{Codec: media.H264, Profile: "high", BitDepth: 8, Width: 1280, Height: 720, Bitrate: 5_000_000, HDR: media.ToneMap}},
 		{"a low-bitrate source: no more than half again its bitrate",
 			Input{Caps: browser, Source: Source{Container: mkv, Bitrate: 3_000_000, Video: hevc10(), Audio: audio("aac", 2), DefaultAudio: true}},
 			media.VideoRendition{Codec: media.H264, Profile: "high", BitDepth: 8, Width: 1920, Height: 1080, Bitrate: 4_500_000, HDR: media.ToneMap}},
@@ -474,7 +486,7 @@ func TestRenditions(t *testing.T) {
 				Source: Source{Container: mkv, Bitrate: 50_000_000, Video: hevc10(), Audio: audio("aac", 2), DefaultAudio: true}},
 			media.VideoRendition{Codec: media.H264, Profile: "high", BitDepth: 8, Width: 1920, Height: 1080, Bitrate: 10_000_000, HDR: media.ToneMap}},
 		{"a High download of 4K HDR: HEVC capped at 8 Mbps where an accelerator encodes it",
-			Input{Caps: stereoPhone, Target: TargetFile, Quality: qHigh, Encoders: []media.Codec{media.H264, media.HEVC},
+			Input{Caps: stereoPhone, Target: TargetFile, Quality: qHigh, Encoders: withHEVC,
 				Source: Source{Container: mkv, Bitrate: 50_000_000, Video: hevc10(), Audio: audio("aac", 2), DefaultAudio: true}},
 			media.VideoRendition{Codec: media.HEVC, Profile: "main", BitDepth: 8, Width: 1920, Height: 1080, Bitrate: 8_000_000, HDR: media.ToneMap}},
 		{"a Standard download: 1080p capped at 3 Mbps, at Standard's fidelity",
