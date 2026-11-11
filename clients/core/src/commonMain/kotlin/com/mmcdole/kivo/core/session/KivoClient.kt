@@ -14,6 +14,7 @@ import com.mmcdole.kivo.core.auth.ServerConnection
 import com.mmcdole.kivo.core.auth.ServerList
 import com.mmcdole.kivo.core.auth.SignIn
 import com.mmcdole.kivo.core.caps.CapabilityReport
+import com.mmcdole.kivo.core.data.SavedGrids
 import com.mmcdole.kivo.core.discovery.Discovery
 import com.mmcdole.kivo.core.discovery.FoundAddress
 import com.mmcdole.kivo.core.discovery.FoundServer
@@ -101,6 +102,9 @@ class KivoClient internal constructor(
     private val discovery = Discovery(probes)
 
     internal val report = CapabilityReport(device.capabilities) { settingsNow().audio }
+
+    /** Each library's grid as this device last left it, read as a server opens. */
+    internal val savedGrids = SavedGrids(preferences, scope)
 
     /** The download rate Auto quality goes by. */
     internal val bandwidth = Bandwidth(preferences)
@@ -338,6 +342,7 @@ class KivoClient internal constructor(
         connection.restore()
         val found = connection.reach()?.let { (at, info) -> FoundServer(at, info) }
         val saved = if (found != null && connection.signedIn.value) save(connection, found.info) else server
+        savedGrids.load()
         val session = KivoSession(saved, connection, this, found?.info)
         if (found == null) connection.reachability.unanswered()
         return session
@@ -385,8 +390,10 @@ class KivoClient internal constructor(
         )
 
     /** The session [connection] just signed in as, with its server saved ([save]); as [found] said it is when it doesn't answer again. */
-    private suspend fun session(found: FoundServer, connection: ServerConnection): KivoSession =
-        KivoSession(save(connection, found.info), connection, this, found.info)
+    private suspend fun session(found: FoundServer, connection: ServerConnection): KivoSession {
+        savedGrids.load()
+        return KivoSession(save(connection, found.info), connection, this, found.info)
+    }
 
     /**
      * Saves the server at [connection] as the server last signed in to, with

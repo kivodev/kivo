@@ -111,7 +111,7 @@ class KivoSession internal constructor(
     internal val playsEnded: Flow<Invalidation.PlayEnded> = invalidations.filterIsInstance<Invalidation.PlayEnded>()
 
     /** The server's libraries as the user sees them, and the user's marks on works. */
-    val library = SessionLibrary(connection, invalidations, reachability, scope, core.device.preferences)
+    val library = SessionLibrary(connection, invalidations, reachability, scope, core.device.preferences, core.savedGrids)
 
     /** The signed-in user's account: their preferences, password and signed-in devices. */
     val account = SessionAccount(userSettings, core.autoplay, library, scope)

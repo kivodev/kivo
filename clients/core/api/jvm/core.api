@@ -660,6 +660,151 @@ public final class com/mmcdole/kivo/core/data/DynamicRange$Companion {
 	public final fun of (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/DynamicRange;
 }
 
+public final class com/mmcdole/kivo/core/data/FilterGroup {
+	public fun <init> (Lcom/mmcdole/kivo/core/data/FilterGroupKind;Ljava/util/List;)V
+	public final fun component1 ()Lcom/mmcdole/kivo/core/data/FilterGroupKind;
+	public final fun component2 ()Ljava/util/List;
+	public final fun copy (Lcom/mmcdole/kivo/core/data/FilterGroupKind;Ljava/util/List;)Lcom/mmcdole/kivo/core/data/FilterGroup;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/data/FilterGroup;Lcom/mmcdole/kivo/core/data/FilterGroupKind;Ljava/util/List;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/FilterGroup;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getKind ()Lcom/mmcdole/kivo/core/data/FilterGroupKind;
+	public final fun getValues ()Ljava/util/List;
+	public fun hashCode ()I
+	public final fun isLong ()Z
+	public final fun shown (ZLcom/mmcdole/kivo/core/data/GridFilters;)Ljava/util/List;
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/mmcdole/kivo/core/data/FilterGroupKind : java/lang/Enum {
+	public static final field ContentRating Lcom/mmcdole/kivo/core/data/FilterGroupKind;
+	public static final field Decade Lcom/mmcdole/kivo/core/data/FilterGroupKind;
+	public static final field Genre Lcom/mmcdole/kivo/core/data/FilterGroupKind;
+	public static final field Narrator Lcom/mmcdole/kivo/core/data/FilterGroupKind;
+	public static final field Quality Lcom/mmcdole/kivo/core/data/FilterGroupKind;
+	public static final field WatchStatus Lcom/mmcdole/kivo/core/data/FilterGroupKind;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun getSingle ()Z
+	public static fun valueOf (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/FilterGroupKind;
+	public static fun values ()[Lcom/mmcdole/kivo/core/data/FilterGroupKind;
+}
+
+public abstract class com/mmcdole/kivo/core/data/GridFilter {
+	public abstract fun getGroup ()Lcom/mmcdole/kivo/core/data/FilterGroupKind;
+	public abstract fun getKey ()Ljava/lang/String;
+}
+
+public final class com/mmcdole/kivo/core/data/GridFilter$ContentRating : com/mmcdole/kivo/core/data/GridFilter {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/GridFilter$ContentRating;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/data/GridFilter$ContentRating;Ljava/lang/String;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/GridFilter$ContentRating;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getGroup ()Lcom/mmcdole/kivo/core/data/FilterGroupKind;
+	public fun getKey ()Ljava/lang/String;
+	public final fun getName ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/mmcdole/kivo/core/data/GridFilter$Decade : com/mmcdole/kivo/core/data/GridFilter {
+	public fun <init> (I)V
+	public final fun component1 ()I
+	public final fun copy (I)Lcom/mmcdole/kivo/core/data/GridFilter$Decade;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/data/GridFilter$Decade;IILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/GridFilter$Decade;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getGroup ()Lcom/mmcdole/kivo/core/data/FilterGroupKind;
+	public fun getKey ()Ljava/lang/String;
+	public final fun getYear ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/mmcdole/kivo/core/data/GridFilter$DynamicRange : com/mmcdole/kivo/core/data/GridFilter {
+	public fun <init> (Lcom/mmcdole/kivo/core/data/DynamicRange;)V
+	public final fun component1 ()Lcom/mmcdole/kivo/core/data/DynamicRange;
+	public final fun copy (Lcom/mmcdole/kivo/core/data/DynamicRange;)Lcom/mmcdole/kivo/core/data/GridFilter$DynamicRange;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/data/GridFilter$DynamicRange;Lcom/mmcdole/kivo/core/data/DynamicRange;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/GridFilter$DynamicRange;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getGroup ()Lcom/mmcdole/kivo/core/data/FilterGroupKind;
+	public fun getKey ()Ljava/lang/String;
+	public final fun getRange ()Lcom/mmcdole/kivo/core/data/DynamicRange;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/mmcdole/kivo/core/data/GridFilter$Genre : com/mmcdole/kivo/core/data/GridFilter {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/GridFilter$Genre;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/data/GridFilter$Genre;Ljava/lang/String;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/GridFilter$Genre;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getGroup ()Lcom/mmcdole/kivo/core/data/FilterGroupKind;
+	public fun getKey ()Ljava/lang/String;
+	public final fun getName ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/mmcdole/kivo/core/data/GridFilter$Narrator : com/mmcdole/kivo/core/data/GridFilter {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/GridFilter$Narrator;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/data/GridFilter$Narrator;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/GridFilter$Narrator;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getGroup ()Lcom/mmcdole/kivo/core/data/FilterGroupKind;
+	public final fun getId ()Ljava/lang/String;
+	public fun getKey ()Ljava/lang/String;
+	public final fun getName ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/mmcdole/kivo/core/data/GridFilter$Played : com/mmcdole/kivo/core/data/GridFilter {
+	public fun <init> (Lcom/mmcdole/kivo/core/data/WorkPlayState;)V
+	public final fun component1 ()Lcom/mmcdole/kivo/core/data/WorkPlayState;
+	public final fun copy (Lcom/mmcdole/kivo/core/data/WorkPlayState;)Lcom/mmcdole/kivo/core/data/GridFilter$Played;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/data/GridFilter$Played;Lcom/mmcdole/kivo/core/data/WorkPlayState;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/GridFilter$Played;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getGroup ()Lcom/mmcdole/kivo/core/data/FilterGroupKind;
+	public fun getKey ()Ljava/lang/String;
+	public final fun getState ()Lcom/mmcdole/kivo/core/data/WorkPlayState;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/mmcdole/kivo/core/data/GridFilter$Resolution : com/mmcdole/kivo/core/data/GridFilter {
+	public fun <init> (Lcom/mmcdole/kivo/api/models/Resolution;)V
+	public final fun component1 ()Lcom/mmcdole/kivo/api/models/Resolution;
+	public final fun copy (Lcom/mmcdole/kivo/api/models/Resolution;)Lcom/mmcdole/kivo/core/data/GridFilter$Resolution;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/data/GridFilter$Resolution;Lcom/mmcdole/kivo/api/models/Resolution;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/GridFilter$Resolution;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getGroup ()Lcom/mmcdole/kivo/core/data/FilterGroupKind;
+	public fun getKey ()Ljava/lang/String;
+	public final fun getResolution ()Lcom/mmcdole/kivo/api/models/Resolution;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/mmcdole/kivo/core/data/GridFilters {
+	public static final field Companion Lcom/mmcdole/kivo/core/data/GridFilters$Companion;
+	public final fun choosing (Lcom/mmcdole/kivo/core/data/GridFilter;)Lcom/mmcdole/kivo/core/data/GridFilters;
+	public final fun clearing (Lcom/mmcdole/kivo/core/data/FilterGroupKind;)Lcom/mmcdole/kivo/core/data/GridFilters;
+	public final fun component1 ()Ljava/util/List;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getChosen ()Ljava/util/List;
+	public final fun getPlayed ()Lcom/mmcdole/kivo/core/data/WorkPlayState;
+	public final fun has (Lcom/mmcdole/kivo/core/data/GridFilter;)Z
+	public fun hashCode ()I
+	public final fun isEmpty ()Z
+	public fun toString ()Ljava/lang/String;
+	public final fun toggling (Lcom/mmcdole/kivo/core/data/GridFilter;)Lcom/mmcdole/kivo/core/data/GridFilters;
+}
+
+public final class com/mmcdole/kivo/core/data/GridFilters$Companion {
+	public final fun getNone ()Lcom/mmcdole/kivo/core/data/GridFilters;
+}
+
 public abstract class com/mmcdole/kivo/core/data/GridItem {
 	public abstract fun getId ()Ljava/lang/String;
 }
@@ -826,27 +971,20 @@ public final class com/mmcdole/kivo/core/data/KnownKt {
 	public static final fun summary (Lcom/mmcdole/kivo/api/models/WorkDetail;)Lcom/mmcdole/kivo/api/models/WorkSummary;
 }
 
-public final class com/mmcdole/kivo/core/data/LibraryFilters {
-	public fun <init> (Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Z)V
-	public final fun component1 ()Ljava/util/List;
-	public final fun component2 ()Ljava/util/List;
-	public final fun component3 ()Ljava/util/List;
-	public final fun component4 ()Ljava/util/List;
-	public final fun component5 ()Ljava/util/List;
-	public final fun component6 ()Ljava/util/List;
-	public final fun component7 ()Z
-	public final fun copy (Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Z)Lcom/mmcdole/kivo/core/data/LibraryFilters;
-	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/data/LibraryFilters;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/List;ZILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/LibraryFilters;
-	public fun equals (Ljava/lang/Object;)Z
-	public final fun getCollections ()Z
-	public final fun getContentRatings ()Ljava/util/List;
-	public final fun getDynamicRanges ()Ljava/util/List;
-	public final fun getGenres ()Ljava/util/List;
-	public final fun getNarrators ()Ljava/util/List;
-	public final fun getResolutions ()Ljava/util/List;
-	public final fun getYears ()Ljava/util/List;
-	public fun hashCode ()I
-	public fun toString ()Ljava/lang/String;
+public final class com/mmcdole/kivo/core/data/LibraryTab : java/lang/Enum {
+	public static final field Authors Lcom/mmcdole/kivo/core/data/LibraryTab;
+	public static final field BookSeries Lcom/mmcdole/kivo/core/data/LibraryTab;
+	public static final field Collections Lcom/mmcdole/kivo/core/data/LibraryTab;
+	public static final field Companion Lcom/mmcdole/kivo/core/data/LibraryTab$Companion;
+	public static final field Titles Lcom/mmcdole/kivo/core/data/LibraryTab;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun getValue ()Ljava/lang/String;
+	public static fun valueOf (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/LibraryTab;
+	public static fun values ()[Lcom/mmcdole/kivo/core/data/LibraryTab;
+}
+
+public final class com/mmcdole/kivo/core/data/LibraryTab$Companion {
+	public final fun of (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/LibraryTab;
 }
 
 public final class com/mmcdole/kivo/core/data/ListSorts {
@@ -1894,6 +2032,24 @@ public final class com/mmcdole/kivo/core/session/Device$DefaultImpls {
 public final class com/mmcdole/kivo/core/session/DownloadDevice {
 }
 
+public final class com/mmcdole/kivo/core/session/GridCardShape : java/lang/Enum {
+	public static final field Landscape Lcom/mmcdole/kivo/core/session/GridCardShape;
+	public static final field Poster Lcom/mmcdole/kivo/core/session/GridCardShape;
+	public static final field Square Lcom/mmcdole/kivo/core/session/GridCardShape;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/mmcdole/kivo/core/session/GridCardShape;
+	public static fun values ()[Lcom/mmcdole/kivo/core/session/GridCardShape;
+}
+
+public final class com/mmcdole/kivo/core/session/GridEmptyCase : java/lang/Enum {
+	public static final field Filtered Lcom/mmcdole/kivo/core/session/GridEmptyCase;
+	public static final field Unfiltered Lcom/mmcdole/kivo/core/session/GridEmptyCase;
+	public static final field WatchStatus Lcom/mmcdole/kivo/core/session/GridEmptyCase;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/mmcdole/kivo/core/session/GridEmptyCase;
+	public static fun values ()[Lcom/mmcdole/kivo/core/session/GridEmptyCase;
+}
+
 public final class com/mmcdole/kivo/core/session/KivoClient {
 	public fun <init> (Lcom/mmcdole/kivo/core/session/Device;)V
 	public fun <init> (Lcom/mmcdole/kivo/core/session/Device;Lio/ktor/client/engine/HttpClientEngine;)V
@@ -1956,6 +2112,46 @@ public final class com/mmcdole/kivo/core/session/KivoSession {
 	public final fun signOut (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 }
 
+public final class com/mmcdole/kivo/core/session/LibraryGrid {
+	public final fun choose (Lcom/mmcdole/kivo/core/data/GridFilters;Z)V
+	public final fun choose (Lcom/mmcdole/kivo/core/data/GridSort;)V
+	public final fun choose (Lcom/mmcdole/kivo/core/data/LibraryTab;)V
+	public static synthetic fun choose$default (Lcom/mmcdole/kivo/core/session/LibraryGrid;Lcom/mmcdole/kivo/core/data/GridFilters;ZILjava/lang/Object;)V
+	public final fun clearFilters (Z)V
+	public static synthetic fun clearFilters$default (Lcom/mmcdole/kivo/core/session/LibraryGrid;ZILjava/lang/Object;)V
+	public final fun close ()V
+	public final fun getState ()Lkotlinx/coroutines/flow/StateFlow;
+}
+
+public final class com/mmcdole/kivo/core/session/LibraryGridState {
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Lcom/mmcdole/kivo/api/models/Library;
+	public final fun component3 ()Lcom/mmcdole/kivo/core/data/LibraryTab;
+	public final fun component4 ()Lcom/mmcdole/kivo/core/data/GridSort;
+	public final fun component5 ()Lcom/mmcdole/kivo/core/data/GridFilters;
+	public final fun component6 ()Ljava/util/List;
+	public final fun component7 ()Lcom/mmcdole/kivo/core/session/OfferRead;
+	public final fun component9 ()Lcom/mmcdole/kivo/core/data/GridPager;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getActiveFilters ()Ljava/util/List;
+	public final fun getCardShape ()Lcom/mmcdole/kivo/core/session/GridCardShape;
+	public final fun getEmptyCase ()Lcom/mmcdole/kivo/core/session/GridEmptyCase;
+	public final fun getFilters ()Lcom/mmcdole/kivo/core/data/GridFilters;
+	public final fun getLibrary ()Lcom/mmcdole/kivo/api/models/Library;
+	public final fun getLibraryId ()Ljava/lang/String;
+	public final fun getOffer ()Ljava/util/List;
+	public final fun getOfferRead ()Lcom/mmcdole/kivo/core/session/OfferRead;
+	public final fun getPager ()Lcom/mmcdole/kivo/core/data/GridPager;
+	public final fun getSmartListQuery ()Lcom/mmcdole/kivo/api/models/WorkQuery;
+	public final fun getSort ()Lcom/mmcdole/kivo/core/data/GridSort;
+	public final fun getSorts ()Ljava/util/List;
+	public final fun getTab ()Lcom/mmcdole/kivo/core/data/LibraryTab;
+	public final fun getTabs ()Ljava/util/List;
+	public final fun getTabsKnown ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public abstract interface class com/mmcdole/kivo/core/session/LinkProgress {
 }
 
@@ -2008,6 +2204,15 @@ public final class com/mmcdole/kivo/core/session/LinkProgress$Waiting : com/mmcd
 	public final fun getLinkUrl ()Ljava/lang/String;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/mmcdole/kivo/core/session/OfferRead : java/lang/Enum {
+	public static final field Failed Lcom/mmcdole/kivo/core/session/OfferRead;
+	public static final field Pending Lcom/mmcdole/kivo/core/session/OfferRead;
+	public static final field Read Lcom/mmcdole/kivo/core/session/OfferRead;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/mmcdole/kivo/core/session/OfferRead;
+	public static fun values ()[Lcom/mmcdole/kivo/core/session/OfferRead;
 }
 
 public final class com/mmcdole/kivo/core/session/ScrubPreviews {
@@ -2071,9 +2276,7 @@ public final class com/mmcdole/kivo/core/session/SessionLibrary {
 	public final fun createList (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun createSmartList (Ljava/lang/String;Lcom/mmcdole/kivo/api/models/WorkQuery;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun deleteList (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
-	public final fun filters (Ljava/lang/String;)Lkotlinx/coroutines/flow/Flow;
 	public final fun gridPage (Lcom/mmcdole/kivo/core/data/GridQuery;IILkotlin/coroutines/Continuation;)Ljava/lang/Object;
-	public final fun hasCollections (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun home ()Lkotlinx/coroutines/flow/Flow;
 	public final fun home (Lcom/mmcdole/kivo/api/models/HomeRowKind;)Lkotlinx/coroutines/flow/Flow;
 	public final fun homeRows ()Lkotlinx/coroutines/flow/Flow;
@@ -2082,20 +2285,14 @@ public final class com/mmcdole/kivo/core/session/SessionLibrary {
 	public final fun knownCollection (Ljava/lang/String;)Lcom/mmcdole/kivo/api/models/CollectionSummary;
 	public final fun knownPerson (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/Heading;
 	public final fun libraries ()Lkotlinx/coroutines/flow/Flow;
+	public final fun libraryGrid (Ljava/lang/String;Lcom/mmcdole/kivo/core/data/GridSort;J)Lcom/mmcdole/kivo/core/session/LibraryGrid;
+	public static synthetic fun libraryGrid$default (Lcom/mmcdole/kivo/core/session/SessionLibrary;Ljava/lang/String;Lcom/mmcdole/kivo/core/data/GridSort;JILjava/lang/Object;)Lcom/mmcdole/kivo/core/session/LibraryGrid;
 	public final fun listWorksInCustomOrder (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun lists (Z)Lkotlinx/coroutines/flow/Flow;
 	public static synthetic fun lists$default (Lcom/mmcdole/kivo/core/session/SessionLibrary;ZILjava/lang/Object;)Lkotlinx/coroutines/flow/Flow;
 	public final fun moveInList (Ljava/lang/String;Ljava/util/List;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
-	public final fun pagedAuthors (Ljava/lang/String;J)Lcom/mmcdole/kivo/core/data/GridPager;
-	public static synthetic fun pagedAuthors$default (Lcom/mmcdole/kivo/core/session/SessionLibrary;Ljava/lang/String;JILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/GridPager;
-	public final fun pagedBookSeries (Ljava/lang/String;J)Lcom/mmcdole/kivo/core/data/GridPager;
-	public static synthetic fun pagedBookSeries$default (Lcom/mmcdole/kivo/core/session/SessionLibrary;Ljava/lang/String;JILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/GridPager;
-	public final fun pagedCollections (Ljava/lang/String;J)Lcom/mmcdole/kivo/core/data/GridPager;
-	public static synthetic fun pagedCollections$default (Lcom/mmcdole/kivo/core/session/SessionLibrary;Ljava/lang/String;JILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/GridPager;
 	public final fun pagedListWorks (Ljava/lang/String;Ljava/util/List;J)Lcom/mmcdole/kivo/core/data/GridPager;
 	public static synthetic fun pagedListWorks$default (Lcom/mmcdole/kivo/core/session/SessionLibrary;Ljava/lang/String;Ljava/util/List;JILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/GridPager;
-	public final fun pagedWorks (Lcom/mmcdole/kivo/core/data/GridQuery;J)Lcom/mmcdole/kivo/core/data/GridPager;
-	public static synthetic fun pagedWorks$default (Lcom/mmcdole/kivo/core/session/SessionLibrary;Lcom/mmcdole/kivo/core/data/GridQuery;JILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/GridPager;
 	public final fun person (Ljava/lang/String;)Lkotlinx/coroutines/flow/Flow;
 	public final fun removeFromContinue (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun removeFromList (Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;

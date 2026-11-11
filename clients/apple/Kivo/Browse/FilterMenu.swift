@@ -1,3 +1,4 @@
+import KivoCore
 import KivoUI
 import SwiftUI
 
@@ -12,96 +13,91 @@ struct FilterMenu: View {
     @Binding var savingAsSmartList: Bool
     @Environment(\.kivoPalette) private var palette
 
+    /// All, then each watch status.
+    private static let statuses: [WorkPlayState?] = [nil, .unplayed, .inProgress, .played]
+
+    private var chosen: GridFilters { model.state.filters }
+
     var body: some View {
-        @Bindable var model = model
         Menu {
-            Picker(selection: $model.query.played) {
-                ForEach(model.playedFilters) { Text($0.label).tag($0) }
+            Picker(selection: one(of: .watchStatus)) {
+                ForEach(Self.statuses, id: \.self) { status in
+                    Text(model.label(played: status)).tag(status.map { GridFilter.Played(state: $0).key })
+                }
             } label: {
                 Text("Show")
             }
             .pickerStyle(.inline)
             Section {
-                if !model.genres.isEmpty {
-                    several(String(localized: "Genre"), model.genres, in: \.genres) { $0 }
-                }
-                if !model.decades.isEmpty {
-                    one(String(localized: "Decade"), chosen: model.query.decade.map(GridModel.label(decade:))) {
-                        Picker(String(localized: "Decade"), selection: $model.query.decade) {
-                            Text("Any").tag(Int?.none)
-                            ForEach(model.decades, id: \.self) { Text(GridModel.label(decade: $0)).tag(Int?.some($0)) }
-                        }
-                    }
-                }
-                if !model.contentRatings.isEmpty {
-                    several(String(localized: "Content rating"), model.contentRatings, in: \.contentRatings) { $0 }
-                }
-                if !model.resolutions.isEmpty {
-                    several(String(localized: "Resolution"), model.resolutions, in: \.resolutions, label: GridModel.label)
-                }
-                if !model.dynamicRanges.isEmpty {
-                    several(String(localized: "Dynamic range"), model.dynamicRanges, in: \.dynamicRanges, label: GridModel.label)
-                }
-                if !model.narrators.isEmpty {
-                    one(String(localized: "Narrator"), chosen: model.query.narrator?.name) {
-                        Picker(String(localized: "Narrator"), selection: $model.query.narrator) {
-                            Text("Any").tag(GridModel.Narrator?.none)
-                            ForEach(model.narrators) { Text($0.name).tag(GridModel.Narrator?.some($0)) }
-                        }
-                    }
-                }
+                let quality = values(of: .quality)
+                several(String(localized: "Genre"), values(of: .genre))
+                one(String(localized: "Decade"), .decade)
+                several(String(localized: "Content rating"), values(of: .contentRating))
+                several(String(localized: "Resolution"), quality.filter { $0 is GridFilter.Resolution })
+                several(String(localized: "Dynamic range"), quality.filter { $0 is GridFilter.DynamicRange })
+                one(String(localized: "Narrator"), .narrator)
             }
-            if model.query.filtered {
+            if !chosen.isEmpty {
                 Section {
-                    Button(String(localized: "Clear filters"), systemImage: "xmark.circle", action: model.clearFilters)
+                    Button(String(localized: "Clear filters"), systemImage: "xmark.circle") { model.clearFilters() }
                     Button(String(localized: "Save as Smart List"), systemImage: "sparkles") { savingAsSmartList = true }
                 }
             }
         } label: {
-            FilterLabel(on: model.query.filtered)
+            FilterLabel(on: !chosen.isEmpty)
         }
         .tint(palette.text)
         .accessibilityIdentifier("filter")
     }
 
-    /// A submenu holding [picker], a choice of one, named with what's chosen.
-    private func one(_ title: String, chosen: String?, @ViewBuilder picker: () -> some View) -> some View {
-        Menu {
-            picker().pickerStyle(.inline)
-        } label: {
-            Text(title)
-            if let chosen { Text(chosen) }
-        }
+    /// The values [group] offers; none when the library has none of it.
+    private func values(of group: FilterGroupKind) -> [GridFilter] {
+        model.state.offer.first { $0.kind == group }?.values ?? []
     }
 
-    /// A submenu of [values] to take any of, named with those chosen.
-    private func several<Value: Hashable>(
-        _ title: String,
-        _ values: [Value],
-        in set: WritableKeyPath<GridModel.Query, Set<Value>>,
-        label: @escaping (Value) -> String
-    ) -> some View {
-        let chosen = values.filter(model.query[keyPath: set].contains).map(label)
-        return Menu {
-            ForEach(values, id: \.self) { value in
-                Toggle(label(value), isOn: member(value, of: set))
-                    .menuActionDismissBehavior(.disabled)
-            }
-        } label: {
-            Text(title)
-            if !chosen.isEmpty {
-                Text(chosen.joined(separator: ", "))
-            }
-        }
-    }
-
-    /// Whether [value] is in one of the query's sets, as a switch.
-    private func member<Value: Hashable>(_ value: Value, of set: WritableKeyPath<GridModel.Query, Set<Value>>) -> Binding<Bool> {
+    /// The one value on in [group], by its key; nil turns the group off.
+    private func one(of group: FilterGroupKind) -> Binding<String?> {
         Binding(
-            get: { model.query[keyPath: set].contains(value) },
-            set: { on in
-                if on { model.query[keyPath: set].insert(value) } else { model.query[keyPath: set].remove(value) }
+            get: { chosen.chosen.first { $0.group == group }?.key },
+            set: { key in
+                let picked = values(of: group).first { $0.key == key }
+                model.choose(picked.map { chosen.choosing(filter: $0) } ?? chosen.clearing(group: group))
             }
         )
+    }
+
+    /// A submenu of [group]'s values to take one of, or Any, named with what's chosen; nothing when it offers none.
+    @ViewBuilder private func one(_ title: String, _ group: FilterGroupKind) -> some View {
+        let values = values(of: group)
+        if !values.isEmpty {
+            Menu {
+                Picker(title, selection: one(of: group)) {
+                    Text("Any").tag(String?.none)
+                    ForEach(values, id: \.key) { Text(model.label($0)).tag(String?.some($0.key)) }
+                }
+                .pickerStyle(.inline)
+            } label: {
+                Text(title)
+                if let on = chosen.chosen.first(where: { $0.group == group }) { Text(model.label(on)) }
+            }
+        }
+    }
+
+    /// A submenu of [values] to take any of, named with those chosen; nothing when there are none.
+    @ViewBuilder private func several(_ title: String, _ values: [GridFilter]) -> some View {
+        if !values.isEmpty {
+            let on = values.filter { chosen.has(filter: $0) }.map { model.label($0) }
+            Menu {
+                ForEach(values, id: \.key) { value in
+                    Toggle(model.label(value), isOn: Binding(get: { chosen.has(filter: value) }, set: { _ in model.toggle(value) }))
+                        .menuActionDismissBehavior(.disabled)
+                }
+            } label: {
+                Text(title)
+                if !on.isEmpty {
+                    Text(on.joined(separator: ", "))
+                }
+            }
+        }
     }
 }

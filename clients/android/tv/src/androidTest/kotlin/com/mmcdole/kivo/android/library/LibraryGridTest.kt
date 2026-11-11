@@ -44,7 +44,6 @@ import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.api.models.CollectionSummaryPage
 import com.mmcdole.kivo.api.models.WorkSummaryPage
 import com.mmcdole.kivo.core.auth.SavedServer
-import com.mmcdole.kivo.core.data.GridQuery
 import com.mmcdole.kivo.core.data.GridPages.Companion.RAIL_LETTERS
 import com.mmcdole.kivo.core.session.KivoClient
 import io.ktor.client.engine.mock.MockEngine
@@ -58,7 +57,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.KSerializer
 import org.junit.After
-import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
@@ -126,12 +124,6 @@ class LibraryGridTest {
     }
 
     private val filterValues = listOf("genre", "year", "contentRating", "resolution", "dynamicRange", "narrator").map { "/api/v1/work-fields/$it/values" }
-
-    /** A library opens as it was left, and that's kept on the device between tests and runs, as the sort test leaves it. */
-    @Before
-    fun forgetTheGrid() = runBlocking {
-        (context.applicationContext as HasAppGraph).graph.savedGrids.save(GridChoice(GridQuery("lib")))
-    }
 
     @After
     fun close() {
@@ -314,7 +306,7 @@ class LibraryGridTest {
         val graph = (context.applicationContext as HasAppGraph).graph
         val core = KivoClient(TestDevice(context, preferences), server)
         val kivo = runBlocking { core.restore(SavedServer("grid-test", "Grid test", listOf("http://kivo.test"))) }
-        val session = ServerSession(graph, kivo, emptyMap())
+        val session = ServerSession(graph, kivo)
         val navigator = Navigator()
         scenario = ActivityScenario.launch(ComponentActivity::class.java).onActivity {
             it.setContent {

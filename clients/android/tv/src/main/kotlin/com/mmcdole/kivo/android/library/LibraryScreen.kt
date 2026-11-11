@@ -100,42 +100,31 @@ import com.mmcdole.kivo.android.ui.rememberFocusMemory
 import com.mmcdole.kivo.api.models.Library
 import com.mmcdole.kivo.api.models.LibraryKind
 import com.mmcdole.kivo.api.models.Resolution
-import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.data.DynamicRange
 import com.mmcdole.kivo.core.data.GridItem
 import com.mmcdole.kivo.core.data.GridPager
 import com.mmcdole.kivo.core.data.GridPages
 import com.mmcdole.kivo.core.data.GridPages.Companion.RAIL_LETTERS
-import com.mmcdole.kivo.core.data.GridQuery
+import com.mmcdole.kivo.core.data.FilterGroupKind
+import com.mmcdole.kivo.core.data.GridFilter
 import com.mmcdole.kivo.core.data.GridSort
-import com.mmcdole.kivo.core.data.LibraryFilters
+import com.mmcdole.kivo.core.data.LibraryTab
 import com.mmcdole.kivo.core.data.WorkPlayState
+import com.mmcdole.kivo.core.session.GridCardShape
+import com.mmcdole.kivo.core.session.GridEmptyCase
+import com.mmcdole.kivo.core.session.LibraryGrid
+import com.mmcdole.kivo.core.session.LibraryGridState
+import com.mmcdole.kivo.core.session.OfferRead
 import java.text.NumberFormat
 import kotlinx.coroutines.launch
 
 /**
- * A library's grid behind the screen: the section, sort and
- * filters this device last used in it, the grid showing, and what the
- * library has to filter by. A new section, sort or filter shows at once,
- * its placeholders until its first page arrives; a grid seen lately shows
- * at once while it's read again.
+ * A library's screen: the core's [grid], which holds the section, sort and
+ * filters this device last used in it and the grid they show, for as long
+ * as the screen lasts.
  */
-class LibraryViewModel(private val session: ServerSession, private val libraryId: String) : ViewModel() {
-    /** The section, sort and filters chosen, which the grid shows. */
-    var choice by mutableStateOf(gridChoice(session.gridChoices.value, libraryId))
-        private set
-
-    /** The grid on screen, the chosen section's. */
-    var grid by mutableStateOf(gridOf(choice))
-        private set
-
-    /** What the library has to filter by, and whether it has collections, once known; a failed read offers neither. */
-    var filters by mutableStateOf<LibraryFilters?>(null)
-        private set
-
-    /** Whether that read has answered, or failed, so whether the sections show is known. */
-    var filtersRead by mutableStateOf(false)
-        private set
+class LibraryViewModel(session: ServerSession, libraryId: String) : ViewModel() {
+    val grid: LibraryGrid = session.session.library.libraryGrid(libraryId)
 
     /**
      * The grid on screen replaced another and focus stays where it was,
@@ -147,47 +136,28 @@ class LibraryViewModel(private val session: ServerSession, private val libraryId
     /** Whether a grid has shown, after which another shows in its place without the screen's skeleton. */
     var shown = false
 
-    init {
-        viewModelScope.launch {
-            session.session.library.filters(libraryId).collect { load ->
-                load.getOrNull()?.let { filters = it }
-                if (load !is Load.Loading) filtersRead = true
-            }
-        }
+    /** Makes [change] to what's chosen; a grid it shows in place of the one on screen leaves focus where it is when [keepFocus]. */
+    fun choose(keepFocus: Boolean = true, change: LibraryGrid.() -> Unit) {
+        val before = grid.state.value.pager
+        grid.change()
+        if (grid.state.value.pager !== before) replaced = keepFocus
     }
-
-    /** Shows [next], keeping it for the library on this device. */
-    fun choose(next: GridChoice, keepFocus: Boolean = true) {
-        if (next == choice) return
-        choice = next
-        session.graph.scope.launch { session.graph.savedGrids.save(next) }
-        val old = grid
-        replaced = keepFocus
-        grid = gridOf(next)
-        old.close()
-    }
-
-    /** Shows the works with [query], keeping the section. */
-    fun choose(query: GridQuery, keepFocus: Boolean = true) = choose(choice.copy(query = query), keepFocus)
 
     /** Reads the grid again, after its first page failed. */
     fun retry() {
-        viewModelScope.launch { grid.refresh() }
+        viewModelScope.launch { grid.state.value.pager.refresh() }
     }
 
     override fun onCleared() {
         grid.close()
     }
-
-    /** The chosen section's grid: its works, or its collections. */
-    private fun gridOf(choice: GridChoice): GridPager = when (choice.section) {
-        Section.Titles -> session.session.library.pagedWorks(choice.query)
-        Section.Collections -> session.session.library.pagedCollections(libraryId)
-    }
 }
 
-/** The sorts the TV offers for [library], as every app offers them, with the title sort's letter rail. */
-private fun sortsOf(library: Library?) = sortsOf(library?.kind)
+/** What the grid on screen shows, for as long as it fades: its section, its cards' shape, and what it says when empty. */
+private data class Shown(val tab: LibraryTab, val shape: CardShape, val empty: GridEmptyCase, val played: WorkPlayState?)
+
+private val LibraryGridState.shown: Shown
+    get() = Shown(tab, if (cardShape == GridCardShape.Landscape) CardShape.Landscape else CardShape.Poster, emptyCase, filters.played)
 
 @Composable
 private fun sortName(sort: GridSort) = stringResource(
@@ -220,9 +190,9 @@ private fun sortShort(sort: GridSort) = stringResource(
 
 /** "237 movies", "5 collections": how many of what the section lists. */
 @Composable
-private fun countNoun(count: Int, section: Section, library: Library?): String {
+private fun countNoun(count: Int, tab: LibraryTab, library: Library?): String {
     val plural = when {
-        section == Section.Collections -> R.plurals.count_collections
+        tab == LibraryTab.Collections -> R.plurals.count_collections
         library?.kind == LibraryKind.Movies -> R.plurals.count_movies
         library?.kind == LibraryKind.Shows -> R.plurals.count_shows
         else -> R.plurals.count_videos
@@ -232,7 +202,7 @@ private fun countNoun(count: Int, section: Section, library: Library?): String {
 
 /** "No unwatched movies" for the watch status alone, else "No movies match these filters". */
 @Composable
-private fun emptyFiltered(query: GridQuery, library: Library?): String {
+private fun emptyFiltered(shown: Shown, library: Library?): String {
     val noun = stringResource(
         when (library?.kind) {
             LibraryKind.Movies -> R.string.noun_movies
@@ -240,8 +210,8 @@ private fun emptyFiltered(query: GridQuery, library: Library?): String {
             else -> R.string.noun_videos
         },
     )
-    val played = query.played
-    return if (played != null && query.unfiltered().copy(played = played) == query) {
+    val played = shown.played
+    return if (played != null && shown.empty == GridEmptyCase.WatchStatus) {
         val state = stringResource(
             when (played) {
                 WorkPlayState.Unplayed -> R.string.state_unplayed
@@ -303,9 +273,9 @@ private val LetterRailTop = 83.5.dp
 @Composable
 fun LibraryScreen(session: ServerSession, libraryId: String, navigator: Navigator) {
     val model = viewModel(key = libraryId) { LibraryViewModel(session, libraryId) }
-    val libraries by session.libraryList.collectAsStateWithLifecycle()
-    val library = libraries?.firstOrNull { it.id == libraryId }
-    val shownGrid = model.grid
+    val state by model.grid.state.collectAsStateWithLifecycle()
+    val library = state.library
+    val shownGrid = state.pager
     val pages by shownGrid.state.collectAsStateWithLifecycle()
     val failed = pages.problem
 
@@ -322,10 +292,9 @@ fun LibraryScreen(session: ServerSession, libraryId: String, navigator: Navigato
         return
     }
     // The grid's place depends on whether the sections show, so it waits to know.
-    if (pages.total != null && model.filtersRead) model.shown = true
+    if (pages.total != null && state.offerRead != OfferRead.Pending) model.shown = true
     SkeletonGate(Unit.takeIf { model.shown }, { LibrarySkeleton(library) }) {
-        val choice = model.choice
-        val sections = hasSections(model, choice)
+        val sections = LibraryTab.Collections in state.tabs
         val top = GridTop + if (sections) SectionsHeight else 0.dp
         // Kept here, for the header to scroll with the grid on screen.
         val list = rememberSaveable(shownGrid, saver = LazyListState.Saver) { LazyListState() }
@@ -333,25 +302,21 @@ fun LibraryScreen(session: ServerSession, libraryId: String, navigator: Navigato
         Box(Modifier.fillMaxSize()) {
             // A new section, sort or filter's grid fades in over the one it replaces. What's under the fade saves its
             // state by the content key, so the list stays out of it: it's a new object each time it's restored.
-            updateTransition(Triple(shownGrid, choice, list), label = "grid").Crossfade(
+            updateTransition(Triple(shownGrid, state.shown, list), label = "grid").Crossfade(
                 animationSpec = fadeSpec(),
-                contentKey = { (grid, gridChoice) -> grid to gridChoice },
-            ) { (grid, gridChoice, gridList) ->
+                contentKey = { (grid, shown) -> grid to shown },
+            ) { (grid, shown, gridList) ->
                 val gridPages by grid.state.collectAsStateWithLifecycle()
                 if (gridPages.total == null) {
-                    SkeletonCards(library, gridChoice, top)
+                    SkeletonCards(shown.shape, top)
                 } else {
-                    GridWithRail(grid, gridList, gridPages, gridChoice, library, navigator, model, top, gridEntry, onClearFilters = { model.choose(choice.query.unfiltered(), keepFocus = false) })
+                    GridWithRail(grid, gridList, gridPages, shown, library, navigator, model, top, gridEntry, onClearFilters = { model.choose(keepFocus = false) { clearFilters() } })
                 }
             }
-            Header(model, choice, library, sections, pages.total, list, gridEntry, letterRail = pages.letters.isNotEmpty())
+            Header(model, state, sections, pages.total, list, gridEntry, letterRail = pages.letters.isNotEmpty())
         }
     }
 }
-
-/** Whether the library's sections show: when it has collections to show beside its works. */
-private fun hasSections(model: LibraryViewModel, choice: GridChoice) =
-    model.filters?.collections == true || choice.section == Section.Collections
 
 /** The panel the header has open. */
 private enum class HeaderPanel { Sort, Filter }
@@ -364,8 +329,7 @@ private enum class HeaderPanel { Sort, Filter }
 @Composable
 private fun Header(
     model: LibraryViewModel,
-    choice: GridChoice,
-    library: Library?,
+    state: LibraryGridState,
     sections: Boolean,
     total: Int?,
     grid: LazyListState,
@@ -373,11 +337,11 @@ private fun Header(
     letterRail: Boolean,
 ) {
     var panel by remember { mutableStateOf<HeaderPanel?>(null) }
-    val query = choice.query
+    val library = state.library
     val scope = rememberCoroutineScope()
     val downToGrid = Modifier.focusProperties { down = gridEntry }
     // Over Collections' grid there's no Sort between the tabs and the cards.
-    val tabs = if (choice.section == Section.Collections) downToGrid else Modifier
+    val tabs = if (state.tab == LibraryTab.Collections) downToGrid else Modifier
     Box(
         Modifier
             .fillMaxWidth()
@@ -395,25 +359,25 @@ private fun Header(
                             else -> R.string.section_videos
                         },
                     )
-                    SectionTab(titles, choice.section == Section.Titles, { model.choose(choice.copy(section = Section.Titles)) }, tabs.testTag("section:titles"))
+                    SectionTab(titles, state.tab == LibraryTab.Titles, { model.choose { choose(LibraryTab.Titles) } }, tabs.testTag("section:titles"))
                     SectionTab(
                         stringResource(R.string.collections),
-                        choice.section == Section.Collections,
-                        { model.choose(choice.copy(section = Section.Collections)) },
+                        state.tab == LibraryTab.Collections,
+                        { model.choose { choose(LibraryTab.Collections) } },
                         tabs.testTag("section:collections"),
                     )
                 }
             }
-            CountLine(choice, library, total, gridEntry, Modifier.padding(top = if (sections) 10.5.dp else 13.dp)) { panel = HeaderPanel.Sort }
+            CountLine(state, total, gridEntry, Modifier.padding(top = if (sections) 10.5.dp else 13.dp)) { panel = HeaderPanel.Sort }
         }
-        if (choice.section == Section.Titles) {
-            FilterButton(query.filtered, (if (letterRail) Modifier else downToGrid).align(Alignment.TopEnd).padding(top = 40.5.dp, end = SafeEdge)) { panel = HeaderPanel.Filter }
+        if (state.tab == LibraryTab.Titles) {
+            FilterButton(!state.filters.isEmpty, (if (letterRail) Modifier else downToGrid).align(Alignment.TopEnd).padding(top = 40.5.dp, end = SafeEdge)) { panel = HeaderPanel.Filter }
         }
     }
 
     when (panel) {
         HeaderPanel.Sort -> {
-            val sorts = sortsOf(library)
+            val sorts = state.sorts
             MenuPopup(
                 onDismiss = { panel = null },
                 alignment = Alignment.TopStart,
@@ -422,15 +386,15 @@ private fun Header(
             ) {
                 ChoiceList(
                     choices = sorts.map { Choice(it.value, sortName(it)) },
-                    selected = query.sort?.value,
+                    selected = state.sort.value,
                     onSelect = { id ->
                         panel = null
-                        sorts.firstOrNull { it.value == id }?.let { model.choose(query.copy(sort = it)) }
+                        sorts.firstOrNull { it.value == id }?.let { sort -> model.choose { choose(sort) } }
                     },
                 )
             }
         }
-        HeaderPanel.Filter -> FilterPanel(model, query, onClose = { panel = null })
+        HeaderPanel.Filter -> FilterPanel(model, state, onClose = { panel = null })
         null -> Unit
     }
 }
@@ -463,10 +427,10 @@ private fun SectionTab(label: String, current: Boolean, onClick: () -> Unit, mod
  * Until the first page arrives it's a placeholder.
  */
 @Composable
-private fun CountLine(choice: GridChoice, library: Library?, total: Int?, gridEntry: FocusRequester, modifier: Modifier = Modifier, onSort: () -> Unit) {
+private fun CountLine(state: LibraryGridState, total: Int?, gridEntry: FocusRequester, modifier: Modifier = Modifier, onSort: () -> Unit) {
     val colors = Kivo.colors
-    val count = total?.let { countNoun(it, choice.section, library) }
-    if (choice.section != Section.Titles) {
+    val count = total?.let { countNoun(it, state.tab, state.library) }
+    if (state.tab != LibraryTab.Titles) {
         if (count != null) {
             Text(count, style = TvType.small, color = colors.textMuted, modifier = modifier)
         } else {
@@ -490,7 +454,7 @@ private fun CountLine(choice: GridChoice, library: Library?, total: Int?, gridEn
             Row(Modifier.padding(horizontal = 8.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (count != null) Text(count, style = TvType.small) else SkeletonLine(120.dp, TvType.small)
                 Text(" · ", style = TvType.small)
-                Text(choice.query.sort?.let { sortShort(it) }.orEmpty(), style = TvType.smallStrong)
+                Text(sortShort(state.sort), style = TvType.smallStrong)
                 KivoIconView(KivoIcon.ChevronDown, Modifier.padding(start = 3.dp), size = 14.dp)
             }
         }
@@ -542,68 +506,48 @@ private fun FilterButton(filtered: Boolean, modifier: Modifier = Modifier, onCli
  * turns them all off and closes it.
  */
 @Composable
-private fun FilterPanel(model: LibraryViewModel, query: GridQuery, onClose: () -> Unit) {
-    val filters = model.filters
+private fun FilterPanel(model: LibraryViewModel, state: LibraryGridState, onClose: () -> Unit) {
+    val chosen = state.filters
+    val any = stringResource(R.string.any)
     val playedState = stringResource(R.string.played_state)
     val decade = stringResource(R.string.decade)
-    val genre = stringResource(R.string.genre)
-    val contentRating = stringResource(R.string.content_rating)
-    val resolution = stringResource(R.string.resolution)
-    val dynamicRange = stringResource(R.string.dynamic_range)
+    fun values(kind: FilterGroupKind) = state.offer.firstOrNull { it.kind == kind }?.values.orEmpty()
+    val quality = values(FilterGroupKind.Quality)
+    // The panel's groups in its order, the resolutions and the dynamic ranges each in the order this app knows them.
+    val groups = listOf(
+        playedState to values(FilterGroupKind.WatchStatus),
+        decade to values(FilterGroupKind.Decade),
+        stringResource(R.string.genre) to values(FilterGroupKind.Genre),
+        stringResource(R.string.content_rating) to values(FilterGroupKind.ContentRating),
+        stringResource(R.string.resolution) to quality.filterIsInstance<GridFilter.Resolution>().sortedBy { it.resolution },
+        stringResource(R.string.dynamic_range) to quality.filterIsInstance<GridFilter.DynamicRange>().sortedBy { it.range },
+    )
+    val offered = groups.flatMap { it.second }
     val choices = buildList {
-        add(Choice("played:", stringResource(R.string.any), section = playedState))
-        add(Choice("played:${WorkPlayState.Unplayed.value}", stringResource(R.string.unplayed), section = playedState))
-        add(Choice("played:${WorkPlayState.InProgress.value}", stringResource(R.string.filter_in_progress), section = playedState))
-        add(Choice("played:${WorkPlayState.Played.value}", stringResource(R.string.played), section = playedState))
-        filters?.let { f ->
-            add(Choice("decade:", stringResource(R.string.any), section = decade))
-            decadesOf(f.years).forEach { add(Choice("decade:$it", stringResource(R.string.decade_label, it), section = decade)) }
-            f.genres.forEach { add(Choice("genre:$it", it, section = genre)) }
-            f.contentRatings.forEach { add(Choice("contentRating:$it", it, section = contentRating)) }
-            Resolution.entries.filter { it in f.resolutions }
-                .forEach { add(Choice("resolution:${it.value}", resolutionLabel(it), section = resolution)) }
-            DynamicRange.entries.filter { it in f.dynamicRanges }
-                .forEach { add(Choice("dynamicRange:${it.value}", dynamicRangeLabel(it), section = dynamicRange)) }
+        for ((section, filters) in groups) {
+            if (section == playedState) add(Choice(ANY_PLAYED, any, section = section))
+            // The decades show once the library's values are read, as Any alone when it has none.
+            if (section == decade && state.offerRead == OfferRead.Read) add(Choice(ANY_DECADE, any, section = section))
+            for (filter in filters) add(Choice(filter.key, filterLabel(filter), section = section))
         }
-        if (query.filtered) add(Choice("clear", stringResource(R.string.clear_filters), section = " "))
+        if (!chosen.isEmpty) add(Choice("clear", stringResource(R.string.clear_filters), section = " "))
     }
     val ticked = buildSet {
-        add("played:${query.played?.value.orEmpty()}")
-        add("decade:${query.yearFrom ?: ""}")
-        query.genres?.forEach { add("genre:$it") }
-        query.contentRatings?.forEach { add("contentRating:$it") }
-        query.resolutions?.forEach { add("resolution:${it.value}") }
-        query.dynamicRanges?.forEach { add("dynamicRange:${it.value}") }
+        chosen.chosen.forEach { add(it.key) }
+        if (chosen.played == null) add(ANY_PLAYED)
+        if (chosen.chosen.none { it.group == FilterGroupKind.Decade }) add(ANY_DECADE)
     }
     val select = { id: String ->
-        val (kind, value) = id.split(':', limit = 2).let { it[0] to it.getOrElse(1) { "" } }
-        when (kind) {
-            "played" -> model.choose(query.copy(played = WorkPlayState.of(value)))
-            "decade" -> {
-                val from = value.toIntOrNull()
-                model.choose(query.copy(yearFrom = from, yearTo = from?.plus(9)))
-            }
-            "genre" -> {
-                val now = query.genres.orEmpty()
-                model.choose(query.copy(genres = (if (value in now) now - value else now + value).ifEmpty { null }))
-            }
-            "contentRating" -> {
-                val now = query.contentRatings.orEmpty()
-                model.choose(query.copy(contentRatings = (if (value in now) now - value else now + value).ifEmpty { null }))
-            }
-            "resolution" -> {
-                val now = query.resolutions.orEmpty()
-                val picked = Resolution.of(value)
-                model.choose(query.copy(resolutions = (if (picked in now) now - picked else now + picked).ifEmpty { null }))
-            }
-            "dynamicRange" -> DynamicRange.of(value)?.let { picked ->
-                val now = query.dynamicRanges.orEmpty()
-                model.choose(query.copy(dynamicRanges = (if (picked in now) now - picked else now + picked).ifEmpty { null }))
-            }
-            "clear" -> {
+        val picked = offered.firstOrNull { it.key == id }
+        when {
+            id == "clear" -> {
                 onClose()
-                model.choose(query.unfiltered())
+                model.choose { clearFilters() }
             }
+            id == ANY_PLAYED -> model.choose { choose(chosen.clearing(FilterGroupKind.WatchStatus)) }
+            id == ANY_DECADE -> model.choose { choose(chosen.clearing(FilterGroupKind.Decade)) }
+            // The watch status and the decade stay on when chosen again: Any turns them off.
+            picked != null -> model.choose { choose(if (picked.group.single) chosen.choosing(picked) else chosen.toggling(picked)) }
         }
     }
     MenuPopup(
@@ -614,6 +558,28 @@ private fun FilterPanel(model: LibraryViewModel, query: GridQuery, onClose: () -
     ) {
         ChipChoices(choices, ticked, select)
     }
+}
+
+/** The choices that turn the watch status and the decade off. */
+private const val ANY_PLAYED = "played:"
+private const val ANY_DECADE = "decade:"
+
+/** A value to filter by, as its chip names it. */
+@Composable
+private fun filterLabel(filter: GridFilter): String = when (filter) {
+    is GridFilter.Played -> stringResource(
+        when (filter.state) {
+            WorkPlayState.Unplayed -> R.string.unplayed
+            WorkPlayState.InProgress -> R.string.filter_in_progress
+            WorkPlayState.Played -> R.string.played
+        },
+    )
+    is GridFilter.Decade -> stringResource(R.string.decade_label, filter.year)
+    is GridFilter.Genre -> filter.name
+    is GridFilter.ContentRating -> filter.name
+    is GridFilter.Resolution -> resolutionLabel(filter.resolution)
+    is GridFilter.DynamicRange -> dynamicRangeLabel(filter.range)
+    is GridFilter.Narrator -> filter.name.orEmpty()
 }
 
 /** A library while its first page loads: its name, the count line and a row of cards. */
@@ -628,29 +594,24 @@ private fun LibrarySkeleton(library: Library?) {
             }
             SkeletonLine(180.dp, TvType.small, Modifier.padding(top = 13.dp))
         }
-        SkeletonCards(library, null, GridTop)
+        SkeletonCards(if (library?.kind == LibraryKind.Videos) CardShape.Landscape else CardShape.Poster, GridTop)
     }
 }
 
-/** A line of placeholder cards, in the grid's shape for [choice], [top] down the screen. */
+/** A line of placeholder cards of [shape], [top] down the screen. */
 @Composable
-private fun SkeletonCards(library: Library?, choice: GridChoice?, top: Dp) {
-    val shape = gridShape(library, choice)
+private fun SkeletonCards(shape: CardShape, top: Dp) {
     Row(Modifier.padding(start = ContentStart, top = top), horizontalArrangement = Arrangement.spacedBy(CardGap)) {
         repeat(gridColumns(shape)) { SkeletonCard(shape, gridCardWidth(shape)) }
     }
 }
-
-/** Landscape cards for a videos library's works, else posters. */
-private fun gridShape(library: Library?, choice: GridChoice?) =
-    if (library?.kind == LibraryKind.Videos && choice?.section != Section.Collections) CardShape.Landscape else CardShape.Poster
 
 @Composable
 private fun GridWithRail(
     shown: GridPager,
     grid: LazyListState,
     pages: GridPages,
-    choice: GridChoice,
+    showing: Shown,
     library: Library?,
     navigator: Navigator,
     model: LibraryViewModel,
@@ -659,12 +620,11 @@ private fun GridWithRail(
     onClearFilters: () -> Unit,
 ) {
     val total = pages.total ?: 0
-    val query = choice.query
     val scope = rememberCoroutineScope()
     if (total == 0) {
-        if (choice.section == Section.Titles && query.filtered) {
+        if (showing.empty != GridEmptyCase.Unfiltered) {
             val clear = remember { FocusRequester() }
-            EmptyState(emptyFiltered(query, library), null, Modifier.padding(top = top)) {
+            EmptyState(emptyFiltered(showing, library), null, Modifier.padding(top = top)) {
                 KivoButton(stringResource(R.string.clear_filters), onClearFilters, Modifier.focusRequester(clear), primary = true)
             }
             LaunchedEffect(Unit) { if (model.replaced) model.replaced = false else focusWhenPlaced(clear) }
@@ -673,7 +633,7 @@ private fun GridWithRail(
         }
         return
     }
-    val shape = gridShape(library, choice)
+    val shape = showing.shape
     val columns = gridColumns(shape)
     val memory = rememberFocusMemory()
     // A grid replacing another leaves focus where it is, such as on Sort.
@@ -684,9 +644,9 @@ private fun GridWithRail(
     }
     val density = LocalDensity.current
     Box(Modifier.fillMaxSize()) {
-        when (choice.section) {
-            Section.Titles -> PagedGrid(shown, grid, shape, navigator, top = top, memory = memory, takesFocus = takesFocus, entry = entry)
-            Section.Collections -> PagedCards(shown, grid, shape, top = top, memory = memory, takesFocus = takesFocus, entry = entry) { item, width, cardModifier ->
+        when (showing.tab) {
+            LibraryTab.Titles, LibraryTab.Authors, LibraryTab.BookSeries -> PagedGrid(shown, grid, shape, navigator, top = top, memory = memory, takesFocus = takesFocus, entry = entry)
+            LibraryTab.Collections -> PagedCards(shown, grid, shape, top = top, memory = memory, takesFocus = takesFocus, entry = entry) { item, width, cardModifier ->
                 val c = (item as? GridItem.Collection)?.collection
                 CollectionCard(c, width, { if (c != null) navigator.push(Screen.Collection(c.id)) }, cardModifier)
             }

@@ -31,8 +31,8 @@ struct LibraryView: View {
     /// Whether the grid showing is one the scrubber goes with: the works by
     /// title, or the Collections, Authors or Series tab, which are by name.
     private var takesScrubber: Bool {
-        switch model.shown.tab {
-        case .titles: model.shown.sort.value == .title
+        switch model.state.tab {
+        case .titles: model.state.sort == .title
         case .collections, .authors, .bookSeries: true
         }
     }
@@ -43,7 +43,7 @@ struct LibraryView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let stacked = model.shown.tab == .bookSeries
+            let stacked = model.state.tab == .bookSeries
             let layout = GridLayout(width: geometry.size.width, style: model.style, scrubber: showsScrubber, stacked: stacked, wide: wide)
             ScrollViewReader { scroller in
                 ScrollView {
@@ -109,10 +109,9 @@ struct LibraryView: View {
         .libraryTitle(model.library.name)
         .toolbar { toolbar }
         .task { await model.run() }
-        .onChange(of: model.query) { model.reload() }
         .environment(\.currentLibraryId, model.library.id)
         .sheet(isPresented: $savingAsSmartList) {
-            SmartListBuilder(name: model.library.name, query: model.smartListQuery)
+            SmartListBuilder(name: model.library.name, query: model.state.smartListQuery)
         }
     }
 
@@ -122,14 +121,14 @@ struct LibraryView: View {
     /// come from what the device knows of the library, so they're there
     /// from the first frame, before the grid.
     @ViewBuilder private var header: some View {
-        if model.sectionsKnown, model.sections.count > 1 {
-            ChipBar(model.sections.map { Chip(id: $0.id, label: $0.label, selected: $0.tab == model.query.tab) }) { chip in
-                model.query.tab = model.sections.first { $0.id == chip.id }?.tab ?? .titles
+        if model.state.tabsKnown, model.sections.count > 1 {
+            ChipBar(model.sections.map { Chip(id: $0.id, label: $0.label, selected: $0.tab == model.state.tab) }) { chip in
+                model.choose(tab: model.sections.first { $0.id == chip.id }?.tab ?? .titles)
             }
         }
-        let filters = model.activeFilters
+        let filters = model.state.activeFilters
         if !filters.isEmpty {
-            ActiveFilterBar(filters: filters) { filter in filter.remove(&model.query) }
+            ActiveFilterBar(filters: filters, label: model.chipLabel) { model.toggle($0) }
         }
     }
 
@@ -141,7 +140,7 @@ struct LibraryView: View {
         HStack(spacing: KivoTokens.spacing * 1.5) {
             if let total = model.paged.total {
                 Text(model.noun(total))
-                if model.query.tab == .titles {
+                if model.state.tab == .titles {
                     Text("·")
                     sortMenu
                 }
@@ -199,7 +198,7 @@ struct LibraryView: View {
     private func skeleton(_ layout: GridLayout, height: CGFloat) -> some View {
         let rows = Int((height / (layout.cardWidth / model.style.aspect + layout.rowSpacing)).rounded(.up))
         return VStack(alignment: .leading, spacing: 0) {
-            if !model.sectionsKnown {
+            if !model.state.tabsKnown {
                 SkeletonChipBar(labels: model.sections.map(\.label) + [String(localized: "Collections")])
                     .padding(.bottom, KivoTokens.spacing * 2.5)
             }
@@ -211,7 +210,7 @@ struct LibraryView: View {
                 .padding(.bottom, KivoTokens.spacing)
             LazyVGrid(columns: layout.columns, alignment: .leading, spacing: layout.rowSpacing) {
                 ForEach(0..<(layout.columns.count * max(rows, 1)), id: \.self) { _ in
-                    SkeletonCard(style: model.style, width: layout.cardWidth, caption: layout.caption, person: model.shown.tab == .authors)
+                    SkeletonCard(style: model.style, width: layout.cardWidth, caption: layout.caption, person: model.state.tab == .authors)
                 }
             }
             .padding(layout.insets)
@@ -222,14 +221,14 @@ struct LibraryView: View {
 
     /// "No unwatched movies" with Clear Filters, or nothing in the section at all.
     @ViewBuilder private var emptyMessage: some View {
-        let filters = model.activeFilters
-        if !filters.isEmpty {
-            let clear: () -> Void = { model.clearFilters() }
-            let title = filters.count == 1 && filters[0].id == "played"
-                ? String(localized: "No \(filters[0].label.lowercased()) \(plural)")
-                : String(localized: "No \(plural) match these filters")
-            MessageView(title, action: (label: String(localized: "Clear filters"), run: clear))
-        } else {
+        let clear: () -> Void = { model.clearFilters() }
+        switch model.state.emptyCase {
+        case .watchStatus:
+            let played = model.label(played: model.state.filters.played).lowercased()
+            MessageView(String(localized: "No \(played) \(plural)"), action: (label: String(localized: "Clear filters"), run: clear))
+        case .filtered:
+            MessageView(String(localized: "No \(plural) match these filters"), action: (label: String(localized: "Clear filters"), run: clear))
+        case .unfiltered:
             MessageView(String(localized: "Nothing here yet."))
         }
     }
@@ -251,13 +250,13 @@ struct LibraryView: View {
     /// Cast, then filter, in one group; an audiobooks library has no Cast.
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
         let cast = server.cast.buttonShown && model.library.kind != .audiobooks
-        if cast || model.query.tab == .titles {
+        if cast || model.state.tab == .titles {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 if cast {
                     CastButton(cast: server.cast)
                         .tint(palette.text)
                 }
-                if model.query.tab == .titles {
+                if model.state.tab == .titles {
                     // FilterStyleTrial: becomes the chosen style's control.
                     FilterControl(model: model, savingAsSmartList: $savingAsSmartList)
                 }
@@ -266,7 +265,7 @@ struct LibraryView: View {
     }
 
     private var sortMenu: some View {
-        SortMenu(sorts: model.sorts, selection: $model.query.sort)
+        SortMenu(sorts: model.sorts, selection: Binding(get: { model.sort }, set: { model.choose(sort: $0.value) }))
     }
 }
 
@@ -343,19 +342,20 @@ struct FilterLabel: View {
 /// The filters that are on, as small outlined chips with ✕ that turn them
 /// off: secondary to the section chips above them.
 private struct ActiveFilterBar: View {
-    let filters: [GridModel.ActiveFilter]
-    let remove: (GridModel.ActiveFilter) -> Void
+    let filters: [GridFilter]
+    let label: (GridFilter) -> String
+    let remove: (GridFilter) -> Void
     @Environment(\.kivoPalette) private var palette
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: KivoTokens.spacing * 2) {
-                ForEach(filters) { filter in
+                ForEach(filters, id: \.key) { filter in
                     Button {
                         remove(filter)
                     } label: {
                         HStack(spacing: KivoTokens.spacing * 1.5) {
-                            Text(filter.label)
+                            Text(label(filter))
                             Image(systemName: "xmark")
                                 .font(.caption2.weight(.bold))
                                 .foregroundStyle(palette.textMuted)
@@ -369,13 +369,25 @@ private struct ActiveFilterBar: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(Text("Remove filter \(filter.label)"))
-                    .accessibilityIdentifier("filter-\(filter.id)")
+                    .accessibilityLabel(Text("Remove filter \(label(filter))"))
+                    .accessibilityIdentifier("filter-\(Self.name(filter))")
                 }
             }
             .padding(.horizontal, KivoTokens.spacing * 4)
         }
         .scrollClipDisabled()
         .padding(.vertical, -8)
+    }
+
+    /// What names a chip to a test: its group where the group takes one value, else its value.
+    private static func name(_ filter: GridFilter) -> String {
+        switch onEnum(of: filter) {
+        case .played: "played"
+        case .decade: "decade"
+        case .narrator: "narrator"
+        case .genre, .contentRating: filter.key
+        case .resolution(let filter): filter.resolution.value
+        case .dynamicRange(let filter): filter.range.value
+        }
     }
 }
