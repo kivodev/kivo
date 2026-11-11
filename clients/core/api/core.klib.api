@@ -684,16 +684,13 @@ sealed interface com.mmcdole.kivo.core.session/AppState { // com.mmcdole.kivo.co
     }
 
     final class Unreachable : com.mmcdole.kivo.core.session/AppState { // com.mmcdole.kivo.core.session/AppState.Unreachable|null[0]
-        constructor <init>(com.mmcdole.kivo.core.auth/SavedServer, kotlin/Boolean) // com.mmcdole.kivo.core.session/AppState.Unreachable.<init>|<init>(com.mmcdole.kivo.core.auth.SavedServer;kotlin.Boolean){}[0]
+        constructor <init>(com.mmcdole.kivo.core.auth/SavedServer) // com.mmcdole.kivo.core.session/AppState.Unreachable.<init>|<init>(com.mmcdole.kivo.core.auth.SavedServer){}[0]
 
-        final val hasDownloads // com.mmcdole.kivo.core.session/AppState.Unreachable.hasDownloads|{}hasDownloads[0]
-            final fun <get-hasDownloads>(): kotlin/Boolean // com.mmcdole.kivo.core.session/AppState.Unreachable.hasDownloads.<get-hasDownloads>|<get-hasDownloads>(){}[0]
         final val server // com.mmcdole.kivo.core.session/AppState.Unreachable.server|{}server[0]
             final fun <get-server>(): com.mmcdole.kivo.core.auth/SavedServer // com.mmcdole.kivo.core.session/AppState.Unreachable.server.<get-server>|<get-server>(){}[0]
 
         final fun component1(): com.mmcdole.kivo.core.auth/SavedServer // com.mmcdole.kivo.core.session/AppState.Unreachable.component1|component1(){}[0]
-        final fun component2(): kotlin/Boolean // com.mmcdole.kivo.core.session/AppState.Unreachable.component2|component2(){}[0]
-        final fun copy(com.mmcdole.kivo.core.auth/SavedServer = ..., kotlin/Boolean = ...): com.mmcdole.kivo.core.session/AppState.Unreachable // com.mmcdole.kivo.core.session/AppState.Unreachable.copy|copy(com.mmcdole.kivo.core.auth.SavedServer;kotlin.Boolean){}[0]
+        final fun copy(com.mmcdole.kivo.core.auth/SavedServer = ...): com.mmcdole.kivo.core.session/AppState.Unreachable // com.mmcdole.kivo.core.session/AppState.Unreachable.copy|copy(com.mmcdole.kivo.core.auth.SavedServer){}[0]
         final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.session/AppState.Unreachable.equals|equals(kotlin.Any?){}[0]
         final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.session/AppState.Unreachable.hashCode|hashCode(){}[0]
         final fun toString(): kotlin/String // com.mmcdole.kivo.core.session/AppState.Unreachable.toString|toString(){}[0]
@@ -2002,7 +1999,6 @@ final class com.mmcdole.kivo.core.session/KivoClient { // com.mmcdole.kivo.core.
     final fun changeServer() // com.mmcdole.kivo.core.session/KivoClient.changeServer|changeServer(){}[0]
     final fun compatibility(com.mmcdole.kivo.api.models/ServerInfo): com.mmcdole.kivo.core/Compatibility // com.mmcdole.kivo.core.session/KivoClient.compatibility|compatibility(com.mmcdole.kivo.api.models.ServerInfo){}[0]
     final fun networkChanged(kotlin/Boolean, kotlin/Boolean) // com.mmcdole.kivo.core.session/KivoClient.networkChanged|networkChanged(kotlin.Boolean;kotlin.Boolean){}[0]
-    final fun openOffline() // com.mmcdole.kivo.core.session/KivoClient.openOffline|openOffline(){}[0]
     final fun retry() // com.mmcdole.kivo.core.session/KivoClient.retry|retry(){}[0]
     final fun setForeground(kotlin/Boolean) // com.mmcdole.kivo.core.session/KivoClient.setForeground|setForeground(kotlin.Boolean){}[0]
     final fun signInByLink(com.mmcdole.kivo.core.discovery/FoundServer, kotlin/String): kotlinx.coroutines.flow/Flow<com.mmcdole.kivo.core.session/LinkProgress> // com.mmcdole.kivo.core.session/KivoClient.signInByLink|signInByLink(com.mmcdole.kivo.core.discovery.FoundServer;kotlin.String){}[0]

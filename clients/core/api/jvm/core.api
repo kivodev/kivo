@@ -1865,13 +1865,11 @@ public final class com/mmcdole/kivo/core/session/AppState$Starting : com/mmcdole
 }
 
 public final class com/mmcdole/kivo/core/session/AppState$Unreachable : com/mmcdole/kivo/core/session/AppState {
-	public fun <init> (Lcom/mmcdole/kivo/core/auth/SavedServer;Z)V
+	public fun <init> (Lcom/mmcdole/kivo/core/auth/SavedServer;)V
 	public final fun component1 ()Lcom/mmcdole/kivo/core/auth/SavedServer;
-	public final fun component2 ()Z
-	public final fun copy (Lcom/mmcdole/kivo/core/auth/SavedServer;Z)Lcom/mmcdole/kivo/core/session/AppState$Unreachable;
-	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/session/AppState$Unreachable;Lcom/mmcdole/kivo/core/auth/SavedServer;ZILjava/lang/Object;)Lcom/mmcdole/kivo/core/session/AppState$Unreachable;
+	public final fun copy (Lcom/mmcdole/kivo/core/auth/SavedServer;)Lcom/mmcdole/kivo/core/session/AppState$Unreachable;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/session/AppState$Unreachable;Lcom/mmcdole/kivo/core/auth/SavedServer;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/session/AppState$Unreachable;
 	public fun equals (Ljava/lang/Object;)Z
-	public final fun getHasDownloads ()Z
 	public final fun getServer ()Lcom/mmcdole/kivo/core/auth/SavedServer;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
@@ -1908,7 +1906,6 @@ public final class com/mmcdole/kivo/core/session/KivoClient {
 	public final fun getState ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun lastSignedIn (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun networkChanged (ZZ)V
-	public final fun openOffline ()V
 	public final fun reach (Lcom/mmcdole/kivo/core/auth/SavedServer;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun restore (Lcom/mmcdole/kivo/core/auth/SavedServer;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun retry ()V
