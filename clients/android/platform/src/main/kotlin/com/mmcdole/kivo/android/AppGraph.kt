@@ -9,35 +9,24 @@ import com.mmcdole.kivo.android.discovery.servers
 import com.mmcdole.kivo.android.library.SavedGrids
 import com.mmcdole.kivo.android.player.SessionPlayers
 import com.mmcdole.kivo.android.settings.ScreenSettingsStore
-import com.mmcdole.kivo.core.auth.SavedServer
 import com.mmcdole.kivo.core.discovery.FoundServer
 import com.mmcdole.kivo.core.display.Display
 import com.mmcdole.kivo.core.downloads.DownloadStatus
+import com.mmcdole.kivo.core.session.AppState
 import com.mmcdole.kivo.core.session.Device
 import com.mmcdole.kivo.core.session.KivoClient
-import com.mmcdole.kivo.core.session.KivoSession
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.seconds
-
-/** Where the app is: starting, signing in, unable to reach its server, or signed in to one. */
-sealed interface AppState {
-    data object Starting : AppState
-
-    /** Signing in; to [server] by a device code when it's known (a session that ended), else from discovery. */
-    data class SigningIn(val server: SavedServer? = null) : AppState
-
-    /** The saved server answers at none of its addresses. */
-    data class Unreachable(val server: SavedServer) : AppState
-
-    data class SignedIn(val session: ServerSession) : AppState
-}
 
 /**
  * What the app's build knows: the [versionName] its screens show, the [version] its requests name, a semantic version
@@ -53,8 +42,9 @@ interface HasAppGraph {
 /**
  * Everything the app holds for its whole life: the core on this device, the
  * browse for servers on the network, a phone's download transfers, this
- * device's own settings and saved grids, and where the app is. Screens get what they need from here and from [ServerSession];
- * the core never calls back into the app.
+ * device's own settings and saved grids, and the signed-in server as the
+ * screens keep it ([session]). Where the app is, is the core's to say
+ * ([KivoClient.state]); the core never calls back into the app.
  */
 class AppGraph(
     val context: Context,
@@ -73,7 +63,7 @@ class AppGraph(
     /** A phone's download transfers, which tell the core how they go; null on a TV. */
     val transport: WorkTransport? = (device as? AndroidDevice)?.transport?.also { transport ->
         transport.events = core::transferChanged
-        transport.titleOf = { id -> (state.value as? AppState.SignedIn)?.session?.downloads?.value?.firstOrNull { it.id == id }?.title }
+        transport.titleOf = { id -> session.value?.downloads?.value?.firstOrNull { it.id == id }?.title }
     }
 
     /** This TV's name, such as "Living Room": its sessions' name. */
@@ -102,55 +92,27 @@ class AppGraph(
     /** A `kivo://link` link to answer in a phone's Link a device, until it shows it. */
     val linking = MutableStateFlow<String?>(null)
 
-    private val mutableState = MutableStateFlow<AppState>(AppState.Starting)
-    val state: StateFlow<AppState> = mutableState.asStateFlow()
+    private val mutableSession = MutableStateFlow<ServerSession?>(null)
 
-    /** Opens the last server signed in to that this TV still has a session on, else signs in. */
-    fun start() {
-        scope.launch {
-            val saved = core.lastSignedIn()
-            if (saved == null) mutableState.value = AppState.SigningIn() else reach(saved)
-        }
-    }
+    /** The signed-in server as the screens keep it, while the core is signed in to one; made as it opens and closed as it's left. */
+    val session: StateFlow<ServerSession?> = mutableSession.asStateFlow()
 
-    /** Opens [server] at the first of its addresses that answers as it. */
-    fun reach(server: SavedServer) {
-        mutableState.value = AppState.Starting
-        scope.launch {
-            var session = core.restore(server)
-            // The network may still be waking as the app starts, so it's only unreachable once it's stayed so.
-            repeat(REACH_RETRIES) {
-                if (session.unreachable.value) {
-                    session.close()
-                    delay(REACH_RETRY_MS)
-                    session = core.restore(server)
+    init {
+        val grids = savedGrids.all.stateIn(scope, SharingStarted.Eagerly, null)
+        // Without a dispatch, so the screens have their server by the frame that shows the app signed in.
+        scope.launch(Dispatchers.Main.immediate) {
+            var before: AppState = AppState.Starting
+            core.state.collect { state ->
+                val signedIn = (state as? AppState.SignedIn)?.session
+                if (mutableSession.value?.session !== signedIn) {
+                    mutableSession.value?.close()
+                    mutableSession.value = signedIn?.let { ServerSession(this@AppGraph, it, grids.filterNotNull().first()) }
                 }
-            }
-            when {
-                session.unreachable.value -> {
-                    session.close()
-                    mutableState.value = AppState.Unreachable(server)
+                when {
+                    state is AppState.SignedIn -> onOpened()
+                    state is AppState.SignedOut && before != AppState.Starting -> onLeft()
                 }
-                !session.isSignedIn -> {
-                    session.close()
-                    mutableState.value = AppState.SigningIn(server)
-                }
-                else -> open(session)
-            }
-        }
-    }
-
-    /** Signed in: shows [session]'s server until it's signed out, then signs in to it again. */
-    suspend fun open(session: KivoSession) {
-        val signedIn = ServerSession(this, session, savedGrids.all.first())
-        mutableState.value = AppState.SignedIn(signedIn)
-        onOpened()
-        scope.launch {
-            session.awaitSignOut()
-            if (state.value == AppState.SignedIn(signedIn)) {
-                signedIn.close()
-                mutableState.value = AppState.SigningIn(session.savedServer.value)
-                onLeft()
+                before = state
             }
         }
     }
@@ -160,21 +122,13 @@ class AppGraph(
      * preparing, the downloads' refresh is asked for, to start it once it's ready.
      */
     fun leftForeground() {
-        val downloads = (state.value as? AppState.SignedIn)?.session?.downloads?.value ?: return
+        val downloads = session.value?.downloads?.value ?: return
         if (downloads.any { it.status is DownloadStatus.Queued || it.status is DownloadStatus.Converting }) DownloadRefresh.schedule(context)
     }
 
     /** Leaves the signed-in server for the sign-in screens, choosing a server again. */
-    fun changeServer() {
-        (state.value as? AppState.SignedIn)?.session?.close()
-        mutableState.value = AppState.SigningIn()
-        onLeft()
-    }
+    fun changeServer() = core.changeServer()
 }
 
 /** How long a browse for servers looks. */
 private val FIND_TIME = 3.seconds
-
-/** How many more times opening a server tries before saying it can't be reached, and how long it waits between. */
-private const val REACH_RETRIES = 2
-private const val REACH_RETRY_MS = 1500L

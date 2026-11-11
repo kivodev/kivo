@@ -7,19 +7,14 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.fragment.app.FragmentActivity
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import com.mmcdole.kivo.android.main.TvRoot
 import com.mmcdole.kivo.android.mobile.app.MobileRoot
 import com.mmcdole.kivo.android.watchnext.WatchNext
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
 
 /**
  * The one activity, showing the TV interface on a TV and the phone's
- * elsewhere. Live events run only while it's in the foreground:
- * the socket closes in the background, and opening it again
+ * elsewhere. It tells the core while it's in the foreground, where live
+ * events run: the socket closes in the background, and opening it again
  * on return refetches what's on screen; the downloads catch up as it comes
  * back. A fragment activity, as the phone's Cast button opens its device
  * list as a dialog fragment. A `kivo://link` link opens Link a device on a phone.
@@ -29,16 +24,6 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         val graph = (application as KivoApp).graph
         if (savedInstanceState == null) open(intent)
-
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                graph.state.collectLatest { state ->
-                    val signedIn = (state as? AppState.SignedIn)?.session ?: return@collectLatest
-                    signedIn.syncDownloads()
-                    signedIn.session.runLiveEvents()
-                }
-            }
-        }
 
         val ui = chooseUi(this)
         // The phone's screens draw behind the system bars.
@@ -51,9 +36,16 @@ class MainActivity : FragmentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        (application as KivoApp).graph.core.setForeground(true)
+    }
+
     override fun onStop() {
         super.onStop()
-        (application as KivoApp).graph.leftForeground()
+        val graph = (application as KivoApp).graph
+        graph.core.setForeground(false)
+        graph.leftForeground()
     }
 
     override fun onNewIntent(intent: Intent) {

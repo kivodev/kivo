@@ -26,13 +26,16 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -84,6 +87,20 @@ class KivoSession internal constructor(
 
     /** What the session runs while it's open: what it hears of the server, for itself and its players. */
     internal val scope = CoroutineScope(core.scope.coroutineContext + SupervisorJob(core.scope.coroutineContext[Job]))
+
+    /**
+     * The session as its screens show it, in one value: the saved server,
+     * the user, whether the server answers, whether the app works with it,
+     * and where it's reached. It follows [savedServer], [user],
+     * [unreachable], [compatibility] and [address] while the session is open.
+     */
+    val state: StateFlow<SessionState> =
+        combine(mutableServer, connection.user, connection.reachability.unreachable, mutableCompatibility, connection.address.current, ::SessionState)
+            .stateIn(
+                scope,
+                SharingStarted.Eagerly,
+                SessionState(saved, connection.user.value, connection.reachability.unreachable.value, mutableCompatibility.value, connection.address.current.value),
+            )
 
     private val live = LiveEvents(connection)
     private val invalidations: Flow<Invalidation> = live.invalidations

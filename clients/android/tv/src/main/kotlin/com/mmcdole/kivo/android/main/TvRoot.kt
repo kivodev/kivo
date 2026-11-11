@@ -10,7 +10,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mmcdole.kivo.android.AppGraph
-import com.mmcdole.kivo.android.AppState
+import com.mmcdole.kivo.core.session.AppState
 import com.mmcdole.kivo.android.signin.SignInScreen
 import com.mmcdole.kivo.android.signin.UnreachableScreen
 import com.mmcdole.kivo.android.theme.KivoTheme
@@ -27,21 +27,25 @@ import com.mmcdole.kivo.core.Compatibility
 @Composable
 fun TvRoot(graph: AppGraph, onExit: () -> Unit) {
     KivoTheme {
-        val state by graph.state.collectAsStateWithLifecycle()
+        val state by graph.core.state.collectAsStateWithLifecycle()
+        val session by graph.session.collectAsStateWithLifecycle()
         // Test tags double as resource IDs, so UI Automator finds controls on a device.
         // The window's background is the page's, so nothing here paints the whole screen again.
         Box(Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }) {
             when (val s = state) {
                 AppState.Starting -> Loading()
-                is AppState.SigningIn -> SignInScreen(graph, s.server)
+                is AppState.SignedOut -> SignInScreen(graph, s.server)
                 is AppState.Unreachable -> UnreachableScreen(graph, s.server)
-                is AppState.SignedIn -> {
-                    val compatibility by s.session.session.compatibility.collectAsStateWithLifecycle()
-                    if (compatibility == Compatibility.Compatible) {
-                        CompositionLocalProvider(LocalSession provides s.session) { MainScreen(s.session, onExit = onExit) }
-                    } else {
-                        val server by s.session.session.savedServer.collectAsStateWithLifecycle()
-                        Incompatible(compatibility, server.name, s.session::checkCompatibility, graph::changeServer)
+                is AppState.SignedIn -> when (val signedIn = session?.takeIf { it.session === s.session }) {
+                    null -> Loading()
+                    else -> {
+                        val compatibility by s.session.compatibility.collectAsStateWithLifecycle()
+                        if (compatibility == Compatibility.Compatible) {
+                            CompositionLocalProvider(LocalSession provides signedIn) { MainScreen(signedIn, onExit = onExit) }
+                        } else {
+                            val server by s.session.savedServer.collectAsStateWithLifecycle()
+                            Incompatible(compatibility, server.name, signedIn::checkCompatibility, graph::changeServer)
+                        }
                     }
                 }
             }

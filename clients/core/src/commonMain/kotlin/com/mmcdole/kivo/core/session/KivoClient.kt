@@ -24,6 +24,7 @@ import com.mmcdole.kivo.core.downloads.Downloads
 import com.mmcdole.kivo.core.downloads.NetworkPath
 import com.mmcdole.kivo.core.downloads.TransferEvent
 import com.mmcdole.kivo.core.downloads.db.DownloadDatabase
+import com.mmcdole.kivo.core.downloads.quietly
 import com.mmcdole.kivo.core.play.Bandwidth
 import com.mmcdole.kivo.core.player.Autoplay
 import com.mmcdole.kivo.core.settings.DeviceSettings
@@ -34,23 +35,33 @@ import com.mmcdole.kivo.core.settings.Quality
 import io.ktor.client.engine.HttpClientEngine
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * The core as an app holds it, one for the app's life, on the [device] it
- * runs on: the servers it has signed in to and signing in to one, this
- * device's settings, its downloads and display tables. Each server it opens
- * is a [KivoSession].
+ * runs on: where the app is ([state]), the servers it has signed in to and
+ * signing in to one, this device's settings, its downloads and display
+ * tables. Each server it opens is a [KivoSession].
  *
  * What it gives the apps keeps to what SKIE bridges safely: every suspend
  * function declares `@Throws`, so a failure reaches Swift as an error rather
@@ -162,6 +173,152 @@ class KivoClient internal constructor(
     fun compatibility(info: ServerInfo): Compatibility =
         Compatibility.of(info.version, info.minAppVersion, device.identity.appVersion)
 
+    private val mutableState = MutableStateFlow<AppState>(AppState.Starting)
+
+    /**
+     * Where the app is, which its root shows. [start] opens the server last
+     * signed in to; a sign-in the app made shows through [signedIn]; a
+     * session that ends, by the user, a `401` or the live events closing
+     * with 4401, goes back to signing in to its server.
+     */
+    val state: StateFlow<AppState> = mutableState.asStateFlow()
+
+    private val foreground = MutableStateFlow(false)
+    private var started = false
+
+    /** The server being opened, which leaving for sign-in or another server ends. */
+    private var opening: Job? = null
+
+    /**
+     * Opens the last server signed in to that this device still holds a
+     * session on, else signs in. Once, as the app starts, when the platform
+     * is ready for the downloads to go on.
+     */
+    fun start() {
+        if (started) return
+        started = true
+        open {
+            val saved = try {
+                lastSignedIn()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
+            }
+            if (saved == null) mutableState.value = AppState.SignedOut(null) else reach(saved)
+        }
+    }
+
+    /** Tries the server that couldn't be reached again. */
+    fun retry() {
+        val server = (state.value as? AppState.Unreachable)?.server ?: return
+        open { reach(server) }
+    }
+
+    /**
+     * Opens the server that couldn't be reached as the app last signed in
+     * to it, without it answering: what the device keeps of it shows, such
+     * as its downloads, and its reads ask until it answers.
+     */
+    fun openOffline() {
+        val server = (state.value as? AppState.Unreachable)?.server ?: return
+        open { reach(server, offline = true) }
+    }
+
+    /** The app signed in, as [session]: its server shows, in place of the one open, until it's signed out. */
+    fun signedIn(session: KivoSession) {
+        opening?.cancel()
+        show(session)
+    }
+
+    /**
+     * Leaves the server for sign-in, to choose a server again. The device
+     * stays signed in to it, and keeps its downloads.
+     */
+    fun changeServer() {
+        opening?.cancel()
+        (state.value as? AppState.SignedIn)?.session?.close()
+        mutableState.value = AppState.SignedOut(null)
+    }
+
+    /**
+     * From the platform, as the app comes to the foreground and as it
+     * leaves it. While it's there, the signed-in server's live events run
+     * ([KivoSession.runLiveEvents]), and its downloads are brought up to
+     * date as it comes.
+     */
+    fun setForeground(active: Boolean) {
+        foreground.value = active
+    }
+
+    private fun open(work: suspend () -> Unit) {
+        opening?.cancel()
+        opening = scope.launch { work() }
+    }
+
+    /**
+     * Opens [server] at the first of its addresses that answers as it:
+     * signed in, signing in again when its session has ended, or
+     * unreachable; [offline], signed in whether it answers or not.
+     */
+    private suspend fun reach(server: SavedServer, offline: Boolean = false) {
+        mutableState.value = AppState.Starting
+        val session = try {
+            var session = restore(server)
+            // The network may still be waking as the app starts, so it's only unreachable once it's stayed so.
+            repeat(if (offline) 0 else REACH_RETRIES) {
+                if (session.unreachable.value) {
+                    session.close()
+                    delay(REACH_RETRY)
+                    session = restore(server)
+                }
+            }
+            session
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            mutableState.value = AppState.SignedOut(server)
+            return
+        }
+        when {
+            !session.isSignedIn -> {
+                session.close()
+                mutableState.value = AppState.SignedOut(server)
+            }
+            session.unreachable.value && !offline -> {
+                session.close()
+                mutableState.value = AppState.Unreachable(server, downloads?.has(server.id) == true)
+            }
+            else -> show(session)
+        }
+    }
+
+    /** Signed in: shows [session]'s server until it's signed out, then signs in to it again. */
+    private fun show(session: KivoSession) {
+        (state.value as? AppState.SignedIn)?.session?.takeIf { it !== session }?.close()
+        mutableState.value = AppState.SignedIn(session)
+        // Who the app is signed in as, read as the server opens, or once it answers; the stored user shows until then.
+        session.scope.launch { quietly { session.awaitReachable() } }
+        session.scope.launch {
+            session.awaitSignOut()
+            mutableState.value = AppState.SignedOut(session.savedServer.value)
+            session.close()
+        }
+    }
+
+    init {
+        scope.launch {
+            combine(state, foreground) { state, active -> (state as? AppState.SignedIn)?.session?.takeIf { active } }
+                .distinctUntilChanged()
+                .collectLatest { session ->
+                    if (session == null) return@collectLatest
+                    // On the session rather than here, so a sync under way goes on as the app leaves the foreground.
+                    session.scope.launch { quietly { session.downloads?.sync() } }
+                    quietly { session.runLiveEvents() }
+                }
+        }
+    }
+
     /** [servers] as they are now. */
     @Throws(Exception::class)
     suspend fun savedServers(): List<SavedServer> = servers.first()
@@ -198,7 +355,7 @@ class KivoClient internal constructor(
     suspend fun signIn(found: FoundServer, username: String, password: String, name: String): KivoSession {
         val connection = connection(found.info.id, found.baseUrl)
         SignIn(connection, name, clientId()).withPassword(username, password)
-        return signedIn(found, connection)
+        return session(found, connection)
     }
 
     /**
@@ -214,7 +371,7 @@ class KivoClient internal constructor(
             when (state) {
                 is LinkState.Waiting ->
                     LinkProgress.Waiting(state.code, state.linkUrl, state.expiresAt.toEpochMilliseconds())
-                is LinkState.SignedIn -> LinkProgress.SignedIn(signedIn(found, connection))
+                is LinkState.SignedIn -> LinkProgress.SignedIn(session(found, connection))
                 LinkState.Denied -> LinkProgress.Denied
                 LinkState.Expired -> LinkProgress.Expired
             }
@@ -232,7 +389,7 @@ class KivoClient internal constructor(
         )
 
     /** The session [connection] just signed in as, with its server saved ([save]); as [found] said it is when it doesn't answer again. */
-    private suspend fun signedIn(found: FoundServer, connection: ServerConnection): KivoSession =
+    private suspend fun session(found: FoundServer, connection: ServerConnection): KivoSession =
         KivoSession(save(connection, found.info), connection, this, found.info)
 
     /**
@@ -287,6 +444,10 @@ class KivoClient internal constructor(
     @Throws(Exception::class)
     suspend fun setCellularDownloads(allowed: Boolean) = updateSettings { it.copy(cellularDownloads = allowed) }
 }
+
+/** How many more times opening a server tries before saying it can't be reached, and how long it waits between. */
+private const val REACH_RETRIES = 2
+private val REACH_RETRY = 1500.milliseconds
 
 /** Where signing in by linking is ([KivoClient.signInByLink]). */
 sealed interface LinkProgress {

@@ -95,7 +95,7 @@ private val askForLocalNetwork = Build.VERSION.SDK_INT >= 37
 @Composable
 fun SignInScreen(graph: AppGraph, saved: SavedServer?) {
     val model = viewModel {
-        SignInViewModel(graph.core, graph::findServers, graph.name, saved) { graph.open(it) }
+        SignInViewModel(graph.core, graph::findServers, graph.name, saved) { graph.core.signedIn(it) }
     }
     val state by model.state.collectAsStateWithLifecycle()
     BackHandler(enabled = state.step != SignInStep.Find) { model.back() }
