@@ -284,7 +284,7 @@ private struct GridCell: View {
     var body: some View {
         let item = page.item(at: index)
         ZStack {
-            switch item.map({ onEnum(of: $0) }) {
+            switch onEnum(of: item) {
             case .work(let item):
                 WorkLink(work: item.work) {
                     WorkCard(item.work, style: style, width: width, caption: caption)

@@ -330,7 +330,7 @@ private struct ListCell: View {
     let caption: CardCaption
 
     var body: some View {
-        if let item = page.item(at: index), case .work(let card) = onEnum(of: item) {
+        if case .work(let card) = onEnum(of: page.item(at: index)) {
             WorkLink(work: card.work) {
                 WorkCard(card.work, style: CardStyle.listed(card.work), width: width, caption: caption)
             }
