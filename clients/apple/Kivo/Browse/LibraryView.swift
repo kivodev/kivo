@@ -38,7 +38,7 @@ struct LibraryView: View {
     }
 
     private var showsScrubber: Bool {
-        takesScrubber && model.letters.count > 1
+        takesScrubber && model.paged.letters.count > 1
     }
 
     var body: some View {
@@ -51,7 +51,7 @@ struct LibraryView: View {
                         header
                         // The skeleton shows at once, so a library chosen has its shape on the next frame.
                         ZStack(alignment: .top) {
-                            if model.total != nil || model.failed != nil {
+                            if model.paged.total != nil || model.paged.failed != nil {
                                 VStack(alignment: .leading, spacing: 0) {
                                     countLine
                                         .padding(.horizontal, KivoTokens.spacing * 4)
@@ -67,13 +67,13 @@ struct LibraryView: View {
                                 .onAppear { SwitchSignposts.gridShown() }
                             }
                         }
-                        .fades(with: model.total != nil || model.failed != nil)
+                        .fades(with: model.paged.total != nil || model.paged.failed != nil)
                     }
                     .id("top")
                     .padding(.top, KivoTokens.spacing)
                     .padding(.bottom, KivoTokens.spacing * 4)
                 }
-                .refreshable { await model.refresh() }
+                .refreshable { await model.paged.refresh() }
                 // A new tab, sort or filter's grid starts from the top.
                 .onChange(of: model.generation) {
                     prefetcher.stop()
@@ -89,7 +89,7 @@ struct LibraryView: View {
                 .overlay(alignment: .trailing) {
                     ZStack {
                         if showsScrubber {
-                            LetterScrubber(letters: model.letters, current: jumped ?? topLetter) { start in
+                            LetterScrubber(letters: model.paged.letters, current: jumped ?? topLetter) { start in
                                 jumped = start.letter
                                 withAnimation(nil) {
                                     if start.offset == 0 {
@@ -139,7 +139,7 @@ struct LibraryView: View {
     /// sort opens the sort menu.
     private var countLine: some View {
         HStack(spacing: KivoTokens.spacing * 1.5) {
-            if let total = model.total {
+            if let total = model.paged.total {
                 Text(model.noun(total))
                 if model.query.tab == .titles {
                     Text("·")
@@ -167,7 +167,7 @@ struct LibraryView: View {
     // MARK: Grid
 
     @ViewBuilder private func grid(_ layout: GridLayout) -> some View {
-        if let total = model.total {
+        if let total = model.paged.total {
             if total == 0 {
                 emptyMessage
                     .frame(maxWidth: .infinity)
@@ -175,7 +175,7 @@ struct LibraryView: View {
             } else {
                 LazyVGrid(columns: layout.columns, alignment: .leading, spacing: layout.rowSpacing) {
                     ForEach(0..<total, id: \.self) { index in
-                        GridCell(page: model.page(containing: index), index: index, style: model.style, width: layout.cardWidth, caption: layout.caption)
+                        GridCell(page: model.paged.page(containing: index), index: index, style: model.style, width: layout.cardWidth, caption: layout.caption)
                             .id(index)
                     }
                 }
@@ -184,10 +184,10 @@ struct LibraryView: View {
                 .id(model.generation)
                 .fades(with: model.generation)
             }
-        } else if model.failed?.isUnreachable == true {
-            UnreachableView { Task { await model.refresh() } }
+        } else if model.paged.failed?.isUnreachable == true {
+            UnreachableView { Task { await model.paged.refresh() } }
                 .padding(.top, KivoTokens.spacing * 10)
-        } else if let failed = model.failed {
+        } else if let failed = model.paged.failed {
             MessageView(String(localized: "Couldn't load this library."), sentence: failed.sentence)
                 .frame(maxWidth: .infinity)
         }
@@ -237,13 +237,13 @@ struct LibraryView: View {
     /// The cards at [indices] are on screen: their pages load, the scrubber
     /// marks the top one's letter, and the artwork ahead is fetched.
     private func shown(_ indices: [Int], layout: GridLayout) {
-        guard let first = indices.min(), let last = indices.max(), let total = model.total else { return }
-        model.show(first...last)
-        let letter = model.letter(at: first)
+        guard let first = indices.min(), let last = indices.max(), let total = model.paged.total else { return }
+        model.paged.show(first...last)
+        let letter = model.paged.letter(at: first)
         if letter != topLetter { topLetter = letter }
         let cards = CardPrefetcher.Cards(pixelWidth: layout.cardWidth * displayScale, source: artworkSource)
         let style = model.style
-        prefetcher.show(first...last, of: total, cards: cards) { model.item(at: $0)?.artwork(style) }
+        prefetcher.show(first...last, of: total, cards: cards) { model.paged.item(at: $0)?.artwork(style) }
     }
 
     // MARK: Sort and filter
@@ -274,7 +274,7 @@ struct LibraryView: View {
 /// fades in. It reads its own page alone, so a page arriving updates only
 /// that page's cards.
 private struct GridCell: View {
-    let page: GridModel.Page
+    let page: PagedGrid.Page
     let index: Int
     let style: CardStyle
     let width: CGFloat
@@ -284,22 +284,22 @@ private struct GridCell: View {
     var body: some View {
         let item = page.item(at: index)
         ZStack {
-            switch item {
-            case .work(let work):
-                WorkLink(work: work) {
-                    WorkCard(work, style: style, width: width, caption: caption)
+            switch onEnum(of: item) {
+            case .work(let item):
+                WorkLink(work: item.work) {
+                    WorkCard(item.work, style: style, width: width, caption: caption)
                 }
-            case .collection(let collection):
-                link(WorkRoute(id: collection.id, page: .collection)) {
-                    GroupCard(collection, width: width, caption: caption)
+            case .collection(let item):
+                link(WorkRoute(id: item.collection.id, page: .collection)) {
+                    GroupCard(item.collection, width: width, caption: caption)
                 }
-            case .author(let author):
-                link(WorkRoute(id: author.id, page: .author)) {
-                    GroupCard(author: author, width: width, caption: caption)
+            case .author(let item):
+                link(WorkRoute(id: item.author.id, page: .author)) {
+                    GroupCard(author: item.author, width: width, caption: caption)
                 }
-            case .bookSeries(let series):
-                link(WorkRoute(id: series.id, page: .bookSeries)) {
-                    GroupCard(series, width: width, caption: caption)
+            case .bookSeries(let item):
+                link(WorkRoute(id: item.series.id, page: .bookSeries)) {
+                    GroupCard(item.series, width: width, caption: caption)
                 }
             case nil:
                 SkeletonCard(style: style, width: width, caption: caption)

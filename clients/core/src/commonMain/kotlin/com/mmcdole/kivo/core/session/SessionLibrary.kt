@@ -4,7 +4,6 @@ import co.touchlab.skie.configuration.annotations.DefaultArgumentInterop
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import com.mmcdole.kivo.api.models.BookSeries
-import com.mmcdole.kivo.api.models.BookSeriesSummary
 import com.mmcdole.kivo.api.models.Collection
 import com.mmcdole.kivo.api.models.CollectionSummary
 import com.mmcdole.kivo.api.models.Home
@@ -14,7 +13,6 @@ import com.mmcdole.kivo.api.models.HomeRowKind
 import com.mmcdole.kivo.api.models.Library
 import com.mmcdole.kivo.api.models.ListSort
 import com.mmcdole.kivo.api.models.Person
-import com.mmcdole.kivo.api.models.PersonSummary
 import com.mmcdole.kivo.api.models.SearchResults
 import com.mmcdole.kivo.api.models.WorkField
 import com.mmcdole.kivo.api.models.WorkFieldValue
@@ -28,6 +26,7 @@ import com.mmcdole.kivo.api.models.WorkSummaryPage
 import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.Reachability
 import com.mmcdole.kivo.core.auth.ServerConnection
+import com.mmcdole.kivo.core.data.GridItem
 import com.mmcdole.kivo.core.data.GridPage
 import com.mmcdole.kivo.core.data.GridPager
 import com.mmcdole.kivo.core.data.GridQuery
@@ -104,12 +103,14 @@ class SessionLibrary internal constructor(
     fun lists(counted: Boolean = false): Flow<Load<List<WorkList>>> =
         reachability.load(listWorks.lists(counted).onEach { lists -> lists.forEach { seen.read(it.items.orEmpty()) } })
 
-    /** A list's works of [kinds], or every kind when null, as a grid, a manual list's in its sort, read again in place as they change. */
-    fun pagedListWorks(listId: String, kinds: List<WorkKind>?): GridPager<WorkSummary> = paged(
-        "list $listId $kinds",
-        listWorks.changes(),
-        seen::read,
-    ) { offset, limit -> listWorks.page(listId, offset, limit, kinds).let { GridPage(it.items, it.total, it.letters) } }
+    /**
+     * A list's works of [kinds], or every kind when null, as a grid, a manual list's in its sort, read again in place
+     * as they change; [settleMs] as for [pagedWorks].
+     */
+    fun pagedListWorks(listId: String, kinds: List<WorkKind>?, settleMs: Long = 0): GridPager =
+        paged("list $listId $kinds", listWorks.changes(), settleMs) { offset, limit ->
+            listWorks.page(listId, offset, limit, kinds).let { GridPage(it.items.map(GridItem::Work), it.total, it.letters) }
+        }
 
     @Throws(Exception::class)
     suspend fun createList(name: String): WorkList = listWorks.create(name)
@@ -235,31 +236,36 @@ class SessionLibrary internal constructor(
      */
     fun filters(libraryId: String): Flow<Load<LibraryFilters>> = reachability.load(grid.filters(libraryId))
 
-    /** A library's works for [query], read again in place as the library or the user's marks change. */
-    fun pagedWorks(query: GridQuery): GridPager<WorkSummary> = paged("works $query", grid.changes(query.libraryId), seen::read) { offset, limit ->
-        grid.page(query, libraryList.kind(query.libraryId), offset, limit).let { GridPage(it.items, it.total, it.letters) }
-    }
-
-    /** A library's collections, by name, read again in place as the library changes. */
-    fun pagedCollections(libraryId: String): GridPager<CollectionSummary> =
-        paged("collections $libraryId", grid.changes(libraryId), seen::readCollections) { offset, limit ->
-            grid.collections(libraryId, offset, limit).let { GridPage(it.items, it.total, it.letters) }
+    /**
+     * A library's works for [query], read again in place as the library or the user's marks change. With [settleMs],
+     * the pages asked for are read once the grid has held still that long, as a touch screen's does after a fling;
+     * with none they're read at once.
+     */
+    fun pagedWorks(query: GridQuery, settleMs: Long = 0): GridPager =
+        paged("works $query", grid.changes(query.libraryId), settleMs) { offset, limit ->
+            grid.page(query, libraryList.kind(query.libraryId), offset, limit).let { GridPage(it.items.map(GridItem::Work), it.total, it.letters) }
         }
 
-    /** An audiobooks library's authors, by name, read again in place as the library changes. */
-    fun pagedAuthors(libraryId: String): GridPager<PersonSummary> =
-        paged("authors $libraryId", grid.changes(libraryId), seen::readPeople) { offset, limit ->
-            grid.authors(libraryId, offset, limit).let { GridPage(it.items, it.total, it.letters) }
+    /** A library's collections, by name, read again in place as the library changes; [settleMs] as for [pagedWorks]. */
+    fun pagedCollections(libraryId: String, settleMs: Long = 0): GridPager =
+        paged("collections $libraryId", grid.changes(libraryId), settleMs) { offset, limit ->
+            grid.collections(libraryId, offset, limit).let { GridPage(it.items.map(GridItem::Collection), it.total, it.letters) }
         }
 
-    /** An audiobooks library's book series, by name, read again in place as the library changes. */
-    fun pagedBookSeries(libraryId: String): GridPager<BookSeriesSummary> =
-        paged("bookSeries $libraryId", grid.changes(libraryId), seen::readBookSeries) { offset, limit ->
-            grid.bookSeries(libraryId, offset, limit).let { GridPage(it.items, it.total, it.letters) }
+    /** An audiobooks library's authors, by name, read again in place as the library changes; [settleMs] as for [pagedWorks]. */
+    fun pagedAuthors(libraryId: String, settleMs: Long = 0): GridPager =
+        paged("authors $libraryId", grid.changes(libraryId), settleMs) { offset, limit ->
+            grid.authors(libraryId, offset, limit).let { GridPage(it.items.map(GridItem::Author), it.total, it.letters) }
         }
 
-    private fun <T : Any> paged(key: String, changes: Flow<Unit>, keep: (List<T>) -> Unit, read: suspend (Int, Int) -> GridPage<T>) =
-        GridPager(read, changes, reachability, seen, key, keep, scope, Dispatchers.Default)
+    /** An audiobooks library's book series, by name, read again in place as the library changes; [settleMs] as for [pagedWorks]. */
+    fun pagedBookSeries(libraryId: String, settleMs: Long = 0): GridPager =
+        paged("bookSeries $libraryId", grid.changes(libraryId), settleMs) { offset, limit ->
+            grid.bookSeries(libraryId, offset, limit).let { GridPage(it.items.map(GridItem::BookSeries), it.total, it.letters) }
+        }
+
+    private fun paged(key: String, changes: Flow<Unit>, settleMs: Long, read: suspend (Int, Int) -> GridPage) =
+        GridPager(read, changes, reachability, seen, key, scope, Dispatchers.Default, settleMs)
 
     /** The works, people and collections matching [query], each best first, [limit] of each or the server's number. */
     @Throws(Exception::class)

@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.coroutines.EmptyCoroutineContext
@@ -33,6 +34,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 class GridPagerTest {
@@ -75,16 +77,19 @@ class GridPagerTest {
             }
         }
 
-        fun paged(kept: Int = GridPager.KEPT_PAGES) = GridPager(
-            read = { offset, limit -> GridRepository(connection, invalidations).page(GridQuery("l1"), LibraryKind.Movies, offset, limit).let { GridPage(it.items, it.total, it.letters) } },
+        fun paged(kept: Int = GridPager.KEPT_PAGES, settleMs: Long = 0) = GridPager(
+            read = { offset, limit ->
+                GridRepository(connection, invalidations).page(GridQuery("l1"), LibraryKind.Movies, offset, limit)
+                    .let { GridPage(it.items.map(GridItem::Work), it.total, it.letters) }
+            },
             changes = GridRepository(connection, invalidations).changes("l1"),
             reachability = connection.reachability,
             known = known,
             key = "works l1",
-            seen = known::read,
             scope = scope.backgroundScope,
             work = EmptyCoroutineContext,
             kept = kept,
+            settleMs = settleMs,
         )
 
         /** The offsets of the pages asked for, in order. */
@@ -99,6 +104,9 @@ class GridPagerTest {
 
     private fun TestScope.library() = Library(this, total, letters, ::summary)
 
+    /** The title of the work at [index], null while its page isn't read. */
+    private fun GridPages.title(index: Int) = (item(index) as GridItem.Work?)?.work?.title
+
     @Test
     fun theFirstPageBringsTheCountLettersAndItsWorks() = runTest {
         val library = library()
@@ -109,12 +117,13 @@ class GridPagerTest {
         val state = paged.state.value
         assertEquals(total, state.total)
         assertEquals(letters, state.letters)
-        assertEquals("T59", state.item(59)?.title)
+        assertEquals("T59", state.title(59))
         assertNull(state.item(60), "a page isn't read until it's asked for")
         assertEquals("C", state.letterAt(250))
         assertEquals(1_900, state.letterOffset("T"), "a letter without works goes to the next that has some")
         assertEquals(total - 1, state.letterOffset("Z"), "or the last work")
         assertNull(state.problem)
+        assertEquals("T59", library.known.summary("w59")?.title, "what a page names is kept for the pages it opens")
     }
 
     @Test
@@ -124,9 +133,9 @@ class GridPagerTest {
         library.prefix = "U"
         val again = library.paged()
         assertEquals(total, again.state.value.total, "the count before any answer")
-        assertEquals("T0", again.state.value.item(0)?.title)
+        assertEquals("T0", again.state.value.title(0))
         runCurrent()
-        assertEquals("U0", again.state.value.item(0)?.title, "read again")
+        assertEquals("U0", again.state.value.title(0), "read again")
         assertEquals(2, library.asked().size)
     }
 
@@ -143,7 +152,7 @@ class GridPagerTest {
         paged.load(1_300, 1_379)
         runCurrent()
         assertEquals(1_320, library.asked().last())
-        assertEquals("T1379", paged.state.value.item(1_379)?.title)
+        assertEquals("T1379", paged.state.value.title(1_379))
         paged.load(1_300, 1_379)
         runCurrent()
         assertEquals(4, library.asked().size, "pages read are kept")
@@ -177,7 +186,7 @@ class GridPagerTest {
         hold.complete(Unit)
         runCurrent()
         assertNull(paged.state.value.pages[10], "nor its answer kept")
-        assertEquals("T1200", paged.state.value.item(1_200)?.title)
+        assertEquals("T1200", paged.state.value.title(1_200))
     }
 
     @Test
@@ -202,14 +211,14 @@ class GridPagerTest {
         library.invalidations.emit(Invalidation.LibraryChanged(listOf("l1")))
         runCurrent()
         val state = paged.state.value
-        assertEquals("U0", state.item(0)?.title, "the first page is read again")
+        assertEquals("U0", state.title(0), "the first page is read again")
         assertNull(state.pages[1], "a page no longer asked for goes")
-        assertEquals("U600", state.item(600)?.title)
+        assertEquals("U600", state.title(600))
         // The answer held back was for the grid before; it's dropped.
         library.prefix = "T"
         hold.complete(Unit)
         runCurrent()
-        assertEquals("U600", paged.state.value.item(600)?.title)
+        assertEquals("U600", paged.state.value.title(600))
     }
 
     @Test
@@ -221,7 +230,7 @@ class GridPagerTest {
         library.answer = { if (!hold.isCompleted) hold.await().let { null } else null }
         library.invalidations.emit(Invalidation.Everything)
         runCurrent()
-        assertEquals("T0", paged.state.value.item(0)?.title, "no placeholders while it's read")
+        assertEquals("T0", paged.state.value.title(0), "no placeholders while it's read")
         hold.complete(Unit)
     }
 
@@ -250,7 +259,7 @@ class GridPagerTest {
         library.answer = { null }
         paged.load(600, 659)
         runCurrent()
-        assertEquals("T600", paged.state.value.item(600)?.title, "asked for again, it's read again")
+        assertEquals("T600", paged.state.value.title(600), "asked for again, it's read again")
     }
 
     @Test
@@ -273,7 +282,7 @@ class GridPagerTest {
         val again = library.paged()
         runCurrent()
         assertNull(again.state.value.problem)
-        assertEquals("T0", again.state.value.item(0)?.title)
+        assertEquals("T0", again.state.value.title(0))
     }
 
     @Test
@@ -283,7 +292,97 @@ class GridPagerTest {
         runCurrent()
         library.prefix = "U"
         paged.refresh()
-        assertEquals("U0", paged.state.value.item(0)?.title)
+        assertEquals("U0", paged.state.value.title(0))
+    }
+
+    @Test
+    fun aGridThatSettlesReadsOnlyThePagesWhereAFlingComesToRest() = runTest {
+        val library = library()
+        val paged = library.paged(settleMs = 150)
+        runCurrent()
+        assertEquals(0, currentTime, "the first page never waits")
+        assertEquals("T0", paged.state.value.title(0))
+        // A fling down the grid, a line a frame.
+        for (first in 0 until 1_980 step 60) {
+            paged.load(first, first + 119)
+            advanceTimeBy(16.milliseconds)
+            runCurrent()
+        }
+        assertEquals(listOf(0), library.asked(), "none of the pages it passes")
+        advanceTimeBy(133.milliseconds)
+        runCurrent()
+        assertEquals(listOf(0), library.asked(), "nor where it rests until it has held still")
+        advanceTimeBy(1.milliseconds)
+        runCurrent()
+        assertEquals(listOf(0, 1_920, 1_980), library.asked())
+        assertEquals("T1999", paged.state.value.title(1_999))
+    }
+
+    @Test
+    fun aJumpReadsWhereItLandsOnceTheGridHasHeldStill() = runTest {
+        val library = library()
+        val paged = library.paged(settleMs = 150)
+        runCurrent()
+        paged.load(paged.state.value.letterOffset("M"), paged.state.value.letterOffset("M") + 59)
+        advanceTimeBy(149.milliseconds)
+        runCurrent()
+        assertNull(paged.state.value.pages[20])
+        advanceTimeBy(1.milliseconds)
+        runCurrent()
+        assertEquals(listOf(0, 1_200), library.asked())
+        assertEquals("T1200", paged.state.value.title(1_200))
+    }
+
+    @Test
+    fun pagesAskedForWhileOthersWaitTakeTheirPlace() = runTest {
+        val library = library()
+        val paged = library.paged(settleMs = 150)
+        runCurrent()
+        paged.load(600, 659)
+        advanceTimeBy(100.milliseconds)
+        paged.load(1_200, 1_259)
+        advanceTimeBy(100.milliseconds)
+        runCurrent()
+        assertEquals(listOf(0), library.asked(), "the first wait ended with the second")
+        advanceTimeBy(50.milliseconds)
+        runCurrent()
+        assertEquals(listOf(0, 1_200), library.asked())
+        advanceTimeBy(1.seconds)
+        assertEquals(2, library.asked().size)
+    }
+
+    @Test
+    fun aRefreshNeverWaitsForTheGridToSettle() = runTest {
+        val library = library()
+        val paged = library.paged(settleMs = 150)
+        runCurrent()
+        paged.load(600, 659)
+        advanceTimeBy(150.milliseconds)
+        runCurrent()
+        // Pages are waiting as the refresh comes.
+        paged.load(1_200, 1_259)
+        library.prefix = "U"
+        val before = currentTime
+        paged.refresh()
+        runCurrent()
+        assertEquals(before, currentTime)
+        assertEquals(listOf(0, 600, 0, 600), library.asked(), "the first page and those asked for last, at once")
+        assertEquals("U600", paged.state.value.title(600))
+        advanceTimeBy(150.milliseconds)
+        runCurrent()
+        assertEquals(1_200, library.asked().last(), "the pages waiting are read in their turn")
+    }
+
+    @Test
+    fun aClosedGridReadsNoPagesStillWaiting() = runTest {
+        val library = library()
+        val paged = library.paged(settleMs = 150)
+        runCurrent()
+        paged.load(600, 659)
+        paged.close()
+        advanceTimeBy(1.seconds)
+        runCurrent()
+        assertEquals(listOf(0), library.asked())
     }
 
     @Test
@@ -298,7 +397,7 @@ class GridPagerTest {
         assertEquals(setOf(0, 3, 4, 5), paged.state.value.pages.keys, "the first and the nearest")
         paged.load(60, 119)
         runCurrent()
-        assertEquals("T60", paged.state.value.item(60)?.title, "read again once asked for")
+        assertEquals("T60", paged.state.value.title(60), "read again once asked for")
     }
 
     @Test

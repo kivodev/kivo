@@ -60,7 +60,7 @@ struct FilterSheet: View {
         self.model = model
         self.saveAsSmartList = saveAsSmartList
         _draft = State(initialValue: model.query)
-        _count = State(initialValue: model.total)
+        _count = State(initialValue: model.paged.total)
     }
 
     var body: some View {
@@ -145,8 +145,8 @@ struct FilterSheet: View {
         .presentationDragIndicator(.visible)
         .presentationBackground(palette.surface)
         .onChange(of: draft) { send() }
-        .onChange(of: model.total) {
-            if let total = model.total { count = total }
+        .onChange(of: model.paged.total) {
+            if let total = model.paged.total { count = total }
         }
         .onDisappear {
             sending?.cancel()

@@ -69,6 +69,7 @@ import com.mmcdole.kivo.android.ui.rememberFocusMemory
 import com.mmcdole.kivo.android.ui.rememberCardLight
 import com.mmcdole.kivo.android.ui.rememberOneMovePerFrame
 import com.mmcdole.kivo.api.models.WorkSummary
+import com.mmcdole.kivo.core.data.GridItem
 import com.mmcdole.kivo.core.data.GridPager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -125,7 +126,7 @@ suspend fun LazyListState.scrollToLine(line: Int, top: Int, margin: Int) {
 /** A paged grid of works' cards, each opening its work's page (see [PagedCards]). */
 @Composable
 fun PagedGrid(
-    paged: GridPager<WorkSummary>,
+    paged: GridPager,
     grid: LazyListState,
     shape: CardShape,
     navigator: Navigator,
@@ -134,7 +135,8 @@ fun PagedGrid(
     memory: FocusMemory = rememberFocusMemory(),
     takesFocus: () -> Boolean = { true },
     entry: FocusRequester = remember { FocusRequester() },
-) = PagedCards(paged, grid, shape, { it.id }, modifier, top, memory, takesFocus, entry, prepare = { prepareCard(it, shape) }) { work, width, cardModifier ->
+) = PagedCards(paged, grid, shape, modifier, top, memory, takesFocus, entry, prepare = { prepareCard(it, shape) }) { item, width, cardModifier ->
+    val work = (item as? GridItem.Work)?.work
     WorkCard(work, shape, width, { if (work != null) navigator.push(Screen.Work(work.id)) }, cardModifier)
 }
 
@@ -144,25 +146,24 @@ fun PagedGrid(
  * find the card above or below even before its line has scrolled into view.
  * As it's shown it focuses the card focused last, else the first, unless
  * [takesFocus] says to leave focus where it is. [card] draws an item, null
- * while its page is read; [prepare] readies an item's card off the main
+ * while its page is read; [prepare] readies a work's card off the main
  * thread before it shows. It fills the screen's height, its first line [top]
  * down, leaving that room for a header that [scrollsWith] it; a focused card
  * scrolls only as far as shows its line. [entry] moves focus into its cards, for a header over it: focus search
  * from there passes the grid over, as it starts above the header rather than below.
  */
 @Composable
-fun <T : Any> PagedCards(
-    paged: GridPager<T>,
+fun PagedCards(
+    paged: GridPager,
     grid: LazyListState,
     shape: CardShape,
-    key: (T) -> String,
     modifier: Modifier = Modifier,
     top: Dp = GridTop,
     memory: FocusMemory = rememberFocusMemory(),
     takesFocus: () -> Boolean = { true },
     entry: FocusRequester = remember { FocusRequester() },
-    prepare: (T) -> Unit = {},
-    card: @Composable (item: T?, width: Dp, modifier: Modifier) -> Unit,
+    prepare: (WorkSummary) -> Unit = {},
+    card: @Composable (item: GridItem?, width: Dp, modifier: Modifier) -> Unit,
 ) {
     val pages by paged.state.collectAsState()
     val total = pages.total ?: 0
@@ -183,7 +184,7 @@ fun <T : Any> PagedCards(
         val target = ((focused / columns + step * page).coerceIn(0, lines - 1) * columns + column).coerceAtMost(total - 1)
         scope.launch {
             grid.scrollToLine((grid.firstVisibleItemIndex + step * page).coerceIn(0, lines - 1), topPx, marginPx)
-            focusWhenPlaced { paged.state.value.item(target)?.let(key)?.let(memory::requester) }
+            focusWhenPlaced { paged.state.value.item(target)?.id?.let(memory::requester) }
         }
     }
 
@@ -203,7 +204,7 @@ fun <T : Any> PagedCards(
                 val near = ((visible.first - 4) * columns).coerceAtLeast(0)..((visible.last + 5) * columns - 1).coerceAtMost(count - 1)
                 paged.load(near.first, near.last)
                 val read = paged.state.value
-                withContext(Dispatchers.Default) { near.forEach { i -> read.item(i)?.let(prepare) } }
+                withContext(Dispatchers.Default) { near.forEach { i -> (read.item(i) as? GridItem.Work)?.work?.let(prepare) } }
             }
     }
 
@@ -247,7 +248,7 @@ fun <T : Any> PagedCards(
                     Row(Modifier.raisedOnFocus(), horizontalArrangement = Arrangement.spacedBy(CardGap)) {
                         for (index in line * columns until line * columns + columns) {
                             val item = pages.item(index)
-                            val itemKey = item?.let(key)
+                            val itemKey = item?.id
                             // The same modifier while the card's item is, so a page arriving recomposes only its own cards.
                             val cardModifier = remember(index, itemKey) {
                                 Modifier
@@ -264,6 +265,6 @@ fun <T : Any> PagedCards(
         }
     }
     LaunchedEffect(Unit) {
-        if (takesFocus()) memory.restore(paged.state.value.item(0)?.let(key))
+        if (takesFocus()) memory.restore(paged.state.value.item(0)?.id)
     }
 }

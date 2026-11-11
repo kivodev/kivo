@@ -3,9 +3,9 @@ import KivoUI
 import Observation
 import SwiftUI
 
-/// A list's works in a grid, each card in its own work's shape, over the
-/// core's paged grid: the pages around the cards on screen are read as they
-/// appear, and read again in place as the list changes. A manual list has
+/// A list's works in a grid, each card in its own work's shape, over a
+/// paged grid (``PagedGrid``): the pages around the cards on screen are
+/// read once the grid holds still, and read again in place as the list changes. A manual list has
 /// its count and its sort at the top, and Reorder in its menu, which shows
 /// its works as rows to drag until Done. A list other than My List can be
 /// renamed and deleted from its menu. A smart list also has its count and a
@@ -13,7 +13,7 @@ import SwiftUI
 /// query.
 struct ListGrid: View {
     private let list: ListRef
-    @State private var model: ListGridModel
+    @State private var model: PagedGrid
     @State private var renaming = false
     @State private var newName = ""
     @State private var confirmingDelete = false
@@ -34,13 +34,16 @@ struct ListGrid: View {
 
     init(list: ListRef, session: KivoSession) {
         self.list = list
-        _model = State(initialValue: ListGridModel(listId: list.id, session: session))
+        let grid = session.library.pagedListWorks(listId: list.id, kinds: nil, settleMs: PagedGrid.settleMs)
+        _model = State(initialValue: PagedGrid(grid))
     }
 
     /// The list as last read: its name changes, and a heading on Home only knows its first.
     private var current: WorkList? { server.lists.first { $0.id == list.id } }
     private var title: String { current?.name ?? list.name }
     private var smart: WorkListSmart? { current?.smart }
+    /// Why the first page couldn't be read, when the server refused it.
+    private var failure: RequestProblem? { model.failed.flatMap { $0.isUnreachable ? nil : $0 } }
 
     /// The sorts of a manual list.
     static let sorts = [
@@ -119,8 +122,8 @@ struct ListGrid: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, layout.insets.leading)
                 }
-                SkeletonGate(loaded: model.total != nil || model.failure != nil || server.unreachable) {
-                    if let failure = model.failure {
+                SkeletonGate(loaded: model.total != nil || failure != nil || server.unreachable) {
+                    if let failure {
                         MessageView(String(localized: "Couldn't load \(title)."), sentence: failure.sentence)
                             .frame(maxWidth: .infinity)
                             .padding(.top, KivoTokens.spacing * 10)
@@ -137,16 +140,8 @@ struct ListGrid: View {
                                 }
                                 LazyVGrid(columns: layout.columns, alignment: .leading, spacing: layout.rowSpacing) {
                                     ForEach(0..<total, id: \.self) { index in
-                                        Group {
-                                            if let work = model.work(at: index) {
-                                                WorkLink(work: work) {
-                                                    WorkCard(work, style: CardStyle.listed(work), width: layout.cardWidth, caption: layout.caption)
-                                                }
-                                            } else {
-                                                SkeletonCard(style: .poster, width: layout.cardWidth)
-                                            }
-                                        }
-                                        .onAppear { model.show(index) }
+                                        ListCell(page: model.page(containing: index), index: index, width: layout.cardWidth, caption: layout.caption)
+                                            .onAppear { model.show(index...index) }
                                     }
                                 }
                                 .padding(layout.insets)
@@ -326,51 +321,21 @@ extension ListSort: SortMenuKey {
     }
 }
 
-/// A list's works as the core's paged grid (`GridPager`) has read them.
-@MainActor
-@Observable
-final class ListGridModel {
-    /// The grid as read so far.
-    private(set) var pages: GridPages<WorkSummary>
-    @ObservationIgnored private let pager: GridPager<WorkSummary>
+/// A list's card, or its skeleton until its page arrives. It reads its own
+/// page alone, so a page arriving updates only that page's cards.
+private struct ListCell: View {
+    let page: PagedGrid.Page
+    let index: Int
+    let width: CGFloat
+    let caption: CardCaption
 
-    init(listId: String, session: KivoSession) {
-        pager = session.library.pagedListWorks(listId: listId, kinds: nil)
-        pages = pager.state.value
-    }
-
-    deinit {
-        pager.close()
-    }
-
-    /// How many works there are, nil until the first page answers.
-    var total: Int? { pages.total.map { Int(truncating: $0) } }
-
-    /// Why the first page couldn't be read, when the server refused it.
-    var failure: RequestProblem? {
-        pages.problem.flatMap { $0.isUnreachable ? nil : $0 }
-    }
-
-    /// The work at [index], nil while its page isn't read.
-    func work(at index: Int) -> WorkSummary? {
-        pages.item(index: Int32(index))
-    }
-
-    /// Follows the grid until cancelled.
-    func run() async {
-        for await pages in pager.state {
-            self.pages = pages
+    var body: some View {
+        if case .work(let card) = onEnum(of: page.item(at: index)) {
+            WorkLink(work: card.work) {
+                WorkCard(card.work, style: CardStyle.listed(card.work), width: width, caption: caption)
+            }
+        } else {
+            SkeletonCard(style: .poster, width: width)
         }
-    }
-
-    /// The card at [index] appeared: its page and the next are read.
-    func show(_ index: Int) {
-        pager.load(first: Int32(index), last: Int32(index) + pages.pageSize)
-    }
-
-    /// Reads the grid again in place, for a pull to refresh.
-    func refresh() async {
-        // SKIE gives a generic class's suspend functions through skie().
-        try? await skie(pager).refresh()
     }
 }

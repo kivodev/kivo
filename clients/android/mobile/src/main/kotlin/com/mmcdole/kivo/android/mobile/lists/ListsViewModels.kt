@@ -3,6 +3,7 @@ package com.mmcdole.kivo.android.mobile.lists
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mmcdole.kivo.android.mobile.ui.WorkMarks
+import com.mmcdole.kivo.android.mobile.library.GridSettleMs
 import com.mmcdole.kivo.api.models.ListKind
 import com.mmcdole.kivo.api.models.ListSort
 import com.mmcdole.kivo.api.models.WorkField
@@ -90,7 +91,7 @@ data class ReorderUiState(val works: List<WorkSummary>? = null)
 @OptIn(ExperimentalCoroutinesApi::class)
 class ListViewModel(private val session: KivoSession, private val listId: String) : ViewModel() {
     /** The grid, which the paged grid reads and asks pages of as they come into view. */
-    val pager: GridPager<WorkSummary> = session.library.pagedListWorks(listId, null)
+    val pager: GridPager = session.library.pagedListWorks(listId, null, GridSettleMs)
 
     val marks = WorkMarks(session.library, viewModelScope)
 

@@ -40,6 +40,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.TimeSource
 
 class LibraryViewModelTest : CoreTest() {
     private val movies = Library("lib1", "Movies", pinned = true, kind = LibraryKind.Movies, workCount = 3)
@@ -90,10 +92,28 @@ class LibraryViewModelTest : CoreTest() {
         assertEquals(listOf(LibraryTab.Titles, LibraryTab.Collections), state.tabs)
         assertEquals(listOf(Resolution.P1080), state.filters?.resolutions)
         assertEquals(CardShape.Poster, state.shape)
-        val pages = awaitValue(state.grid.pager.state) { it.total != null }
+        val pages = awaitValue(state.grid.state) { it.total != null }
         assertEquals(3, pages.total)
         assertEquals("B", pages.letterAt(1))
         assertTrue(asked.all { it.library == "lib1" && it.query.kinds == listOf(WorkKind.Movie) }, "read as the movies library's grid")
+    }
+
+    @Test
+    fun theGridReadsThePagesAskedForOnceItHasHeldStill() {
+        server.on("POST", "/api/v1/works/query") { request ->
+            val read = ApiClient.JSON_DEFAULT.decodeFromString(WorkQueryRequest.serializer(), (request.body as OutgoingContent.ByteArrayContent).bytes().decodeToString())
+            asked += read
+            val start = read.offset ?: 0
+            reply(WorkSummaryPage.serializer(), WorkSummaryPage((start until minOf(start + 60, 200)).map { work("w$it") }, 200.takeIf { start == 0 }))
+        }
+        val grid = LibraryViewModel(signIn(), saved, emptyMap(), "lib1").state.value.grid
+        awaitValue(grid.state) { it.total != null }
+        val asking = TimeSource.Monotonic.markNow()
+        grid.load(60, 119)
+        grid.load(120, 179)
+        awaitValue(grid.state) { it.item(120) != null }
+        assertTrue(asking.elapsedNow() >= GridSettleMs.milliseconds, "not while the grid moves")
+        assertEquals(listOf(0, 120), asked.map { it.offset ?: 0 }, "none of the pages it passed")
     }
 
     @Test
@@ -105,7 +125,7 @@ class LibraryViewModelTest : CoreTest() {
         assertTrue(state.grid !== first, "a new grid for the new sort")
         val kept = awaitValue(saved.all) { it["lib1"] != null }
         assertEquals(GridSort.AddedAt, kept["lib1"]!!.query.sort)
-        awaitValue(state.grid.pager.state) { it.total != null }
+        awaitValue(state.grid.state) { it.total != null }
         assertTrue(asked.any { it.query.sort?.single()?.field == "addedAt" })
     }
 
@@ -252,7 +272,7 @@ class LibraryViewModelTest : CoreTest() {
     @Test
     fun theSheetsChoicesReachTheGridOnceTheyHoldStillAndAreKept() {
         val model = LibraryViewModel(signIn(), saved, emptyMap(), "lib2")
-        awaitValue(model.state.value.grid.pager.state) { it.total != null }
+        awaitValue(model.state.value.grid.state) { it.total != null }
         val start = model.state.value.query
         val unplayed = start.copy(played = WorkPlayState.Unplayed)
         val chosen = unplayed.toggleDecade(1990).toggleGenre("Drama").toggleGenre("Action").toggleNarrator("p1")
@@ -261,7 +281,7 @@ class LibraryViewModelTest : CoreTest() {
         model.settle(chosen)
         assertEquals(start, model.state.value.query, "not before they hold still")
         val state = awaitValue(model.state) { it.query == chosen }
-        awaitValue(state.grid.pager.state) { it.total != null }
+        awaitValue(state.grid.state) { it.total != null }
         val rules = askedRules().last()
         assertEquals(listOf("unplayed"), rules["playState"])
         assertEquals(listOf("Drama", "Action"), rules["genre"])

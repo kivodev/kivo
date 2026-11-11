@@ -3,15 +3,12 @@ import KivoCore
 import KivoUI
 import Observation
 
-/// A library's grid, over the core's paged grid (`GridPager`) of the
-/// section showing: its works, collections, authors or book series. The
-/// first page brings the total and, in letter order, the letter scrubber's
-/// starts, and the pages where the grid comes to rest load as it does. Each
-/// page is observed on its own, so a page arriving updates only its own
-/// cards. A new tab, sort or filter shows at once, its placeholders until
-/// its first page arrives; a change the live events report, a pull or
-/// coming back reads the pages again in place, keeping the place. A first
-//// page seen lately shows at once while it's read again. It also finds out
+/// A library's grid: the paged grid (``PagedGrid``) of the section showing,
+/// its works, collections, authors or book series, with the tab, sort and
+/// filters that choose it. A new tab, sort or filter shows at once, its
+/// placeholders until its first page arrives; a change the live events
+/// report, a pull or coming back reads the pages again in place, keeping
+/// the place. It also finds out
 /// what the library's filters offer, of the values its works have: genres,
 /// decades, content ratings, resolutions and dynamic ranges, or a books
 /// library's genres, decades and narrators; and whether it has
@@ -23,26 +20,6 @@ import Observation
 @MainActor
 @Observable
 final class GridModel {
-    /// A page of the grid, its items once they've arrived.
-    @MainActor
-    @Observable
-    final class Page {
-        fileprivate(set) var items: [LibraryItem]?
-        @ObservationIgnored fileprivate let offset: Int
-        /// The items on their way to [items], their blurhashes being decoded.
-        @ObservationIgnored fileprivate var coming: [LibraryItem]?
-
-        fileprivate init(offset: Int) {
-            self.offset = offset
-        }
-
-        /// The item at [index] of the grid, nil until the page arrives.
-        func item(at index: Int) -> LibraryItem? {
-            guard let items, items.indices.contains(index - offset) else { return nil }
-            return items[index - offset]
-        }
-    }
-
     /// A sort a sort menu offers: a library's [GridSort] or a list's [ListSort].
     struct Sort<Key: SortMenuKey>: Hashable, Identifiable {
         let value: Key
@@ -109,10 +86,6 @@ final class GridModel {
         }
     }
 
-    /// How long the grid holds still before the pages where it rests load,
-    /// so a fling or a scrub reads none of the pages it passes.
-    private static let settleTime = Duration.milliseconds(150)
-
     let library: Library
     /// The sorts this library offers, Title first.
     let sorts: [Sort<GridSort>]
@@ -122,10 +95,8 @@ final class GridModel {
     /// Those of the grid showing: [query] as last reloaded.
     private(set) var shown: Query
 
-    private(set) var total: Int?
-    private(set) var letters: [LetterStart] = []
-    /// Why the first page couldn't be read.
-    private(set) var failed: RequestProblem?
+    /// The grid showing, [shown]'s: its count, letters and pages.
+    private(set) var paged: PagedGrid
     /// Whether the library has collections, nil until it's known on this device.
     private(set) var hasCollections: Bool?
     /// What the filters offer, in the order to show them; none of a kind the library's filters don't have.
@@ -139,16 +110,8 @@ final class GridModel {
     /// Counts the grids shown, a new one with each tab, sort or filter.
     private(set) var generation = 0
 
-    /// The pages by number, made as cards ask for them; the cards observe
-    /// each page, not this.
-    @ObservationIgnored private var pages: [Int: Page] = [:]
-    /// The grid showing, [shown]'s.
-    @ObservationIgnored private var paged: Pager
-    @ObservationIgnored private let pageSize: Int
     /// Following [paged] while the grid runs.
-    @ObservationIgnored private var observing: Task<Void, Never>?
-    /// The pages to load once the grid has held still.
-    @ObservationIgnored private var settling: Task<Void, Never>?
+    @ObservationIgnored private var following: Task<Void, Never>?
     /// Asking whether the library has collections, which the first page waits for.
     @ObservationIgnored private var askingCollections: Task<Void, Never>?
     @ObservationIgnored private var running = false
@@ -212,16 +175,13 @@ final class GridModel {
         self.query = query
         shown = query
         hasCollections = UserDefaults.standard.object(forKey: Self.collectionsKey(library)) as? Bool
-        paged = Self.pager(query, of: library, session: session)
-        pageSize = paged.pageSize
+        paged = Self.grid(query, of: library, session: session)
+        holdFirstPage()
         askCollections()
-        apply(paged.current(), of: paged, atOnce: true)
     }
 
     deinit {
-        observing?.cancel()
-        settling?.cancel()
-        paged.close()
+        following?.cancel()
     }
 
     private static func stateKey(_ library: Library) -> String { "grid.\(library.id)" }
@@ -240,10 +200,10 @@ final class GridModel {
     var isBooks: Bool { library.kind == .audiobooks }
 
     /// The shape of the cards on the section showing.
-    var style: CardStyle { style(of: shown.tab) }
+    var style: CardStyle { Self.style(of: shown.tab, in: library) }
 
-    /// The shape of the cards on [tab].
-    private func style(of tab: Tab) -> CardStyle {
+    /// The shape of the cards on [tab] of [library].
+    private static func style(of tab: Tab, in library: Library) -> CardStyle {
         switch tab {
         case .collections: .poster
         case .authors, .bookSeries: .square
@@ -319,10 +279,10 @@ final class GridModel {
     /// grid exists, so coming back to it reads nothing again.
     func run() async {
         running = true
-        observe()
+        follow()
         defer {
             running = false
-            observing?.cancel()
+            following?.cancel()
         }
         if !hasRun {
             hasRun = true
@@ -337,54 +297,7 @@ final class GridModel {
     /// the cache or the server, or why it couldn't be read.
     func ready() async {
         await askingCollections?.value
-        let paged = paged
-        for await state in paged.states() {
-            apply(state, of: paged)
-            if total != nil || failed != nil || paged !== self.paged { return }
-        }
-    }
-
-    /// Reads the pages on screen again, keeping the place, as for a pull to refresh.
-    func refresh() async {
-        await paged.refresh()
-    }
-
-    /// The page holding the card at [index].
-    func page(containing index: Int) -> Page {
-        let number = index / pageSize
-        if let page = pages[number] { return page }
-        let page = Page(offset: number * pageSize)
-        page.items = paged.current().items(number)
-        pages[number] = page
-        return page
-    }
-
-    /// The item at [index], nil until its page arrives.
-    func item(at index: Int) -> LibraryItem? {
-        paged.current().items(index / pageSize)?[safe: index % pageSize]
-    }
-
-    /// The cards at [visible] are on screen: once the grid holds still,
-    /// their pages load, and the next page either way once they're past the
-    /// middle of theirs.
-    func show(_ visible: ClosedRange<Int>) {
-        let size = pageSize
-        var low = visible.lowerBound / size
-        var high = visible.upperBound / size
-        if visible.upperBound % size >= size / 2 { high += 1 }
-        if visible.lowerBound % size < size / 2 { low = max(low - 1, 0) }
-        settling?.cancel()
-        let paged = paged
-        settling = Task { [weak self] in
-            try? await Task.sleep(for: Self.settleTime)
-            guard !Task.isCancelled, let self, paged === self.paged else { return }
-            paged.load(Int32(low * size), Int32((high + 1) * size - 1))
-        }
-    }
-
-    /// The letter a card at [index] files under.
-    func letter(at index: Int) -> String? {
-        letters.last { Int($0.offset) <= index }?.letter
+        await paged.ready()
     }
 
     /// The tab, sort or filters changed: the device keeps them for the
@@ -408,18 +321,13 @@ final class GridModel {
             UserDefaults.standard.set(state, forKey: Self.stateKey(library))
         }
         let old = paged
-        paged = Self.pager(query, of: library, session: session)
+        paged = Self.grid(query, of: library, session: session)
+        holdFirstPage()
         old.close()
-        settling?.cancel()
         shown = query
         generation += 1
-        pages = [:]
-        total = nil
-        letters = []
-        failed = nil
         askCollections()
-        apply(paged.current(), of: paged, atOnce: true)
-        observe()
+        follow()
     }
 
     /// Clears the filters, keeping the tab and sort.
@@ -433,15 +341,16 @@ final class GridModel {
     }
 
     /// Follows [paged] while the grid runs, showing each change.
-    private func observe() {
-        observing?.cancel()
+    private func follow() {
+        following?.cancel()
         guard running else { return }
         let paged = paged
-        observing = Task { [weak self] in
-            for await state in paged.states() {
-                self?.apply(state, of: paged)
-            }
-        }
+        following = Task { await paged.run() }
+    }
+
+    /// The first page shows with whether the library has collections.
+    private func holdFirstPage() {
+        paged.holdsFirstPage = { [weak self] in self?.askingCollections != nil }
     }
 
     /// Asks, when it isn't known yet, whether the library has collections,
@@ -453,36 +362,7 @@ final class GridModel {
             let has = await hasCollections()
             know(collections: has)
             askingCollections = nil
-            apply(paged.current(), of: paged)
-        }
-    }
-
-    /// Shows [state] of [from], the grid showing; set only where changed, so
-    /// a read that finds nothing new redraws nothing. A page's cards show
-    /// once their blurhashes are decoded, or [atOnce], for those seen before.
-    private func apply(_ state: Pager.State, of from: Pager, atOnce: Bool = false) {
-        guard from === paged else { return }
-        // The first page shows with whether the library has collections.
-        if total == nil, askingCollections != nil, !atOnce, state.problem == nil { return }
-        if total != state.total { total = state.total }
-        if letters != state.letters { letters = state.letters }
-        if failed != state.problem { failed = state.problem }
-        let style = style(of: shown.tab)
-        for (number, page) in pages {
-            let items = state.items(number)
-            guard items != page.items, items != page.coming else { continue }
-            guard let items, !atOnce else {
-                page.coming = nil
-                page.items = items
-                continue
-            }
-            page.coming = items
-            Task {
-                await BlurHash.prepare(items.compactMap { $0.artwork(style)?.blurhash })
-                guard page.coming == items else { return }
-                page.coming = nil
-                page.items = items
-            }
+            paged.catchUp()
         }
     }
 
@@ -517,14 +397,16 @@ final class GridModel {
     }
 
     /// The grid of [query]'s tab: the works with their sort and filters, or a tab whole.
-    private static func pager(_ query: Query, of library: Library, session: KivoSession) -> Pager {
-        switch query.tab {
-        case .titles:
-            Pager(session.library.pagedWorks(query: gridQuery(query, of: library)), item: LibraryItem.work)
-        case .collections: Pager(session.library.pagedCollections(libraryId: library.id), item: LibraryItem.collection)
-        case .authors: Pager(session.library.pagedAuthors(libraryId: library.id), item: LibraryItem.author)
-        case .bookSeries: Pager(session.library.pagedBookSeries(libraryId: library.id), item: LibraryItem.bookSeries)
+    private static func grid(_ query: Query, of library: Library, session: KivoSession) -> PagedGrid {
+        let settle = PagedGrid.settleMs
+        let grid = switch query.tab {
+        case .titles: session.library.pagedWorks(query: gridQuery(query, of: library), settleMs: settle)
+        case .collections: session.library.pagedCollections(libraryId: library.id, settleMs: settle)
+        case .authors: session.library.pagedAuthors(libraryId: library.id, settleMs: settle)
+        case .bookSeries: session.library.pagedBookSeries(libraryId: library.id, settleMs: settle)
         }
+        let style = style(of: query.tab, in: library)
+        return PagedGrid(grid) { $0.artwork(style) }
     }
 
     /// The query for the grid chosen, for Save as Smart List.
@@ -608,75 +490,5 @@ extension GridSort: SortMenuKey {
         case .lastPlayedAt: String(localized: "Recently played")
         case .lastEpisodeAddedAt: nil
         }
-    }
-}
-
-/// A card of a library's grid: a work, or a collection, author or book series.
-enum LibraryItem: Equatable {
-    case work(WorkSummary)
-    case collection(CollectionSummary)
-    case author(PersonSummary)
-    case bookSeries(BookSeriesSummary)
-
-    /// The image its card shows, in a card of [style].
-    func artwork(_ style: CardStyle) -> ImageRef? {
-        switch self {
-        case .work(let work): style.artwork(of: work)
-        case .collection: nil
-        case .author(let author): author.photo
-        case .bookSeries(let series): series.cover
-        }
-    }
-}
-
-/// One of the core's paged grids, whichever item type it lists, its items
-/// as [LibraryItem]s.
-private final class Pager {
-    /// A grid as read so far: its total once known, the letter scrubber's
-    /// starts, why its first page failed, and each page's items once read.
-    struct State {
-        let total: Int?
-        let letters: [LetterStart]
-        let problem: RequestProblem?
-        let items: (Int) -> [LibraryItem]?
-    }
-
-    let pageSize: Int
-    let current: () -> State
-    let states: () -> AsyncStream<State>
-    let load: (Int32, Int32) -> Void
-    let refresh: () async -> Void
-    let close: () -> Void
-
-    init<T: AnyObject>(_ grid: GridPager<T>, item: @escaping (T) -> LibraryItem) {
-        func state(_ pages: GridPages<T>) -> State {
-            State(
-                total: pages.total.map { Int(truncating: $0) },
-                letters: pages.letters,
-                problem: pages.problem,
-                items: { pages.items(page: Int32($0))?.map(item) }
-            )
-        }
-        pageSize = Int(grid.state.value.pageSize)
-        current = { state(grid.state.value) }
-        states = {
-            AsyncStream { continuation in
-                let task = Task {
-                    for await pages in grid.state { continuation.yield(state(pages)) }
-                    continuation.finish()
-                }
-                continuation.onTermination = { _ in task.cancel() }
-            }
-        }
-        load = { grid.load(first: $0, last: $1) }
-        // SKIE gives a generic class's suspend functions through skie().
-        refresh = { try? await skie(grid).refresh() }
-        close = { grid.close() }
-    }
-}
-
-private extension Array {
-    subscript(safe index: Int) -> Element? {
-        indices.contains(index) ? self[index] : nil
     }
 }

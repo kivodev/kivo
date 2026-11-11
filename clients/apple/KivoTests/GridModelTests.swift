@@ -41,6 +41,7 @@ final class GridModelTests: XCTestCase {
     }
 
     private static let worksPath = "/api/v1/works/query"
+    private static let listPath = "/api/v1/lists/l1/works"
 
     /// What a read of the grid asked for: its `WorkQueryRequest`.
     private static func asked(_ request: StubServer.Request) -> [String: Any] {
@@ -58,6 +59,15 @@ final class GridModelTests: XCTestCase {
         case let path where path.hasPrefix("/api/v1/work-fields/"):
             let field = path.dropFirst("/api/v1/work-fields/".count).split(separator: "/").first.map(String.init) ?? ""
             return (200, json(["items": (values[field] ?? []).map { ["value": $0, "name": $0] }]))
+        case listPath:
+            let start = request.query["offset"].flatMap(Int.init) ?? 0
+            let end = min(start + (request.query["limit"].flatMap(Int.init) ?? 60), total)
+            let items = (start..<end).map { i -> [String: Any] in
+                ["id": "w\(i)", "kind": "movie", "title": name(i), "matchState": "matched", "available": true, "images": [:]]
+            }
+            var page: [String: Any] = ["items": items]
+            if start == 0 { page["total"] = total }
+            return (200, json(page))
         case worksPath:
             let read = asked(request)
             if failing {
@@ -129,14 +139,14 @@ final class GridModelTests: XCTestCase {
         let run = Task { await grid.run() }
         defer { run.cancel() }
         await grid.ready()
-        XCTAssertEqual(grid.total, Self.total)
-        XCTAssertEqual(grid.letters.count, 26)
-        XCTAssertNil(grid.failed)
-        XCTAssertEqual(grid.item(at: 0)?.title, Self.name(0))
-        XCTAssertEqual(grid.item(at: 59)?.title, Self.name(59))
-        XCTAssertNil(grid.item(at: 60), "a page isn't read before it's shown")
-        XCTAssertEqual(grid.letter(at: 0), "A")
-        XCTAssertEqual(grid.letter(at: 1500), "N")
+        XCTAssertEqual(grid.paged.total, Self.total)
+        XCTAssertEqual(grid.paged.letters.count, 26)
+        XCTAssertNil(grid.paged.failed)
+        XCTAssertEqual(grid.paged.item(at: 0)?.title, Self.name(0))
+        XCTAssertEqual(grid.paged.item(at: 59)?.title, Self.name(59))
+        XCTAssertNil(grid.paged.item(at: 60), "a page isn't read before it's shown")
+        XCTAssertEqual(grid.paged.letter(at: 0), "A")
+        XCTAssertEqual(grid.paged.letter(at: 1500), "N")
     }
 
     func testTheCardsOnScreenLoadTheirPagesAndFillTheirPagesCards() async throws {
@@ -144,13 +154,13 @@ final class GridModelTests: XCTestCase {
         let run = Task { await grid.run() }
         defer { run.cancel() }
         await grid.ready()
-        let page = grid.page(containing: 1210)
+        let page = grid.paged.page(containing: 1210)
         XCTAssertNil(page.item(at: 1210))
-        grid.show(1200...1230)
+        grid.paged.show(1200...1230)
         try await until("page 20 loads") { page.item(at: 1210) != nil }
         XCTAssertEqual(page.item(at: 1210)?.title, Self.name(1210))
-        XCTAssertEqual(grid.item(at: 1200)?.title, Self.name(1200))
-        XCTAssertNil(grid.item(at: 2400), "a page far off isn't read")
+        XCTAssertEqual(grid.paged.item(at: 1200)?.title, Self.name(1200))
+        XCTAssertNil(grid.paged.item(at: 2400), "a page far off isn't read")
     }
 
     func testARefreshReadsTheLoadedPagesAgainInPlace() async throws {
@@ -158,15 +168,15 @@ final class GridModelTests: XCTestCase {
         let run = Task { await grid.run() }
         defer { run.cancel() }
         await grid.ready()
-        grid.show(1200...1230)
-        try await until("page 20 loads") { grid.item(at: 1210) != nil }
+        grid.paged.show(1200...1230)
+        try await until("page 20 loads") { grid.paged.item(at: 1210) != nil }
         let generation = grid.generation
         Self.prefix = "Renamed"
-        await grid.refresh()
-        try await until("page 20 reads again") { grid.item(at: 1210)?.title == Self.name(1210) }
-        XCTAssertEqual(grid.item(at: 0)?.title, Self.name(0))
+        await grid.paged.refresh()
+        try await until("page 20 reads again") { grid.paged.item(at: 1210)?.title == Self.name(1210) }
+        XCTAssertEqual(grid.paged.item(at: 0)?.title, Self.name(0))
         XCTAssertEqual(grid.generation, generation, "the same grid, in place")
-        XCTAssertEqual(grid.total, Self.total)
+        XCTAssertEqual(grid.paged.total, Self.total)
     }
 
     func testALibrarySeenLatelyShowsAtOnce() async throws {
@@ -175,8 +185,8 @@ final class GridModelTests: XCTestCase {
         await first.ready()
         run.cancel()
         let again = model()
-        XCTAssertEqual(again.total, Self.total, "the count before any read")
-        XCTAssertEqual(again.item(at: 0)?.title, Self.name(0), "the first cards before any read")
+        XCTAssertEqual(again.paged.total, Self.total, "the count before any read")
+        XCTAssertEqual(again.paged.item(at: 0)?.title, Self.name(0), "the first cards before any read")
     }
 
     func testAnotherSortShowsItsOwnOrderFromTheTop() async throws {
@@ -187,10 +197,10 @@ final class GridModelTests: XCTestCase {
         let generation = grid.generation
         grid.query.sort = grid.sorts.first { $0.value == .addedAt }!
         grid.reload()
-        try await until("the new order shows") { grid.item(at: 0)?.title == Self.name(Self.total - 1) }
+        try await until("the new order shows") { grid.paged.item(at: 0)?.title == Self.name(Self.total - 1) }
         XCTAssertGreaterThan(grid.generation, generation, "a new grid")
         XCTAssertEqual(grid.shown.sort.value, .addedAt)
-        XCTAssertTrue(grid.letters.isEmpty, "no letters by date")
+        XCTAssertTrue(grid.paged.letters.isEmpty, "no letters by date")
     }
 
     func testAnotherSortShowsItsPlaceholdersAtOnce() async throws {
@@ -201,9 +211,9 @@ final class GridModelTests: XCTestCase {
         grid.query.sort = grid.sorts.first { $0.value == .addedAt }!
         grid.reload()
         XCTAssertEqual(grid.shown.sort.value, .addedAt, "the new sort shows at once")
-        XCTAssertNil(grid.total, "its placeholders until its first page arrives, not the grid before")
-        XCTAssertNil(grid.item(at: 0))
-        try await until("its first page arrives") { grid.total == Self.total }
+        XCTAssertNil(grid.paged.total, "its placeholders until its first page arrives, not the grid before")
+        XCTAssertNil(grid.paged.item(at: 0))
+        try await until("its first page arrives") { grid.paged.total == Self.total }
     }
 
     func testASortForOnceOpensWithoutFiltersAndKeepsNothing() async throws {
@@ -215,7 +225,7 @@ final class GridModelTests: XCTestCase {
         XCTAssertEqual(grid.shown.tab, .titles)
         XCTAssertEqual(grid.shown.sort.value, .addedAt)
         XCTAssertFalse(grid.shown.filtered, "none of the kept filters")
-        XCTAssertEqual(grid.item(at: 0)?.title, Self.name(Self.total - 1), "newest first")
+        XCTAssertEqual(grid.paged.item(at: 0)?.title, Self.name(Self.total - 1), "newest first")
         grid.query.resolutions = [.fourK]
         grid.reload()
         let kept = UserDefaults.standard.dictionary(forKey: "grid.lib") as? [String: String]
@@ -229,14 +239,33 @@ final class GridModelTests: XCTestCase {
         await grid.ready()
         let before = server.requests(to: Self.worksPath).count
         for row in stride(from: 0, to: 2400, by: 60) {
-            grid.show(row...(row + 20))
+            grid.paged.show(row...(row + 20))
             try await Task.sleep(for: .milliseconds(16))
         }
-        try await until("where it rests loads") { grid.item(at: 2350) != nil }
+        try await until("where it rests loads") { grid.paged.item(at: 2350) != nil }
         let starts = server.requests(to: Self.worksPath).dropFirst(before).map { request in
             Self.asked(request)["offset"] as? Int ?? 0
         }
         XCTAssertEqual(Set(starts), [2280, 2340], "the pages where it rests and the one before, none it passed")
+    }
+
+    func testAListsGridReadsOnlyThePagesWhereItComesToRest() async throws {
+        let grid = PagedGrid(session.library.pagedListWorks(listId: "l1", kinds: nil, settleMs: PagedGrid.settleMs))
+        let run = Task { await grid.run() }
+        defer { run.cancel() }
+        await grid.ready()
+        XCTAssertEqual(grid.total, Self.total)
+        XCTAssertEqual(grid.item(at: 0)?.title, Self.name(0))
+        let page = grid.page(containing: 1210)
+        // Cards appearing down the list, as it's flung.
+        for index in stride(from: 0, to: 1230, by: 30) {
+            grid.show(index...index)
+            try await Task.sleep(for: .milliseconds(16))
+        }
+        try await until("where it rests loads") { page.item(at: 1210) != nil }
+        XCTAssertEqual(page.item(at: 1210)?.title, Self.name(1210))
+        let starts = server.requests(to: Self.listPath).compactMap { $0.query["offset"] }
+        XCTAssertEqual(Set(starts), ["1140", "1200"], "the page where it rests and the one before, none it passed")
     }
 
     func testAFirstPageThatCantBeReadSaysWhy() async throws {
@@ -245,8 +274,8 @@ final class GridModelTests: XCTestCase {
         let run = Task { await grid.run() }
         defer { run.cancel() }
         await grid.ready()
-        XCTAssertNil(grid.total)
-        XCTAssertEqual(grid.failed?.code, "notFound")
+        XCTAssertNil(grid.paged.total)
+        XCTAssertEqual(grid.paged.failed?.code, "notFound")
     }
 
     func testTheFiltersOfferTheLibrarysValuesWithItsDecadesNewestFirst() async throws {
@@ -417,10 +446,10 @@ final class NoTransport: NSObject, DownloadTransport {
     func running() -> [String] { [] }
 }
 
-private extension Kivo.LibraryItem {
+private extension GridItem {
     /// A work's name; nil for a card of another kind.
     var title: String? {
-        guard case .work(let work) = self else { return nil }
-        return work.title
+        guard case .work(let item) = onEnum(of: self) else { return nil }
+        return item.work.title
     }
 }

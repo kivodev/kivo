@@ -9,12 +9,8 @@ import com.mmcdole.kivo.android.library.gridChoice
 import com.mmcdole.kivo.android.library.unfiltered
 import com.mmcdole.kivo.android.mobile.ui.CardShape
 import com.mmcdole.kivo.android.mobile.ui.WorkMarks
-import com.mmcdole.kivo.api.models.BookSeriesSummary
-import com.mmcdole.kivo.api.models.CollectionSummary
 import com.mmcdole.kivo.api.models.Library
 import com.mmcdole.kivo.api.models.LibraryKind
-import com.mmcdole.kivo.api.models.PersonSummary
-import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.data.GridPager
 import com.mmcdole.kivo.core.data.GridQuery
@@ -35,19 +31,6 @@ import kotlinx.coroutines.launch
 /** A library's tabs: its works, its collections, and an audiobooks library's authors and book series. */
 enum class LibraryTab { Titles, Collections, Authors, Series }
 
-/** The grid a tab shows, over its pager. */
-sealed interface LibraryGrid {
-    val pager: GridPager<*>
-
-    class Works(override val pager: GridPager<WorkSummary>) : LibraryGrid
-
-    class Collections(override val pager: GridPager<CollectionSummary>) : LibraryGrid
-
-    class Authors(override val pager: GridPager<PersonSummary>) : LibraryGrid
-
-    class Series(override val pager: GridPager<BookSeriesSummary>) : LibraryGrid
-}
-
 data class LibraryUiState(
     /** The library, once the libraries are read. */
     val library: Library?,
@@ -56,7 +39,8 @@ data class LibraryUiState(
     val tabs: List<LibraryTab>,
     /** The works' sort and filters. */
     val query: GridQuery,
-    val grid: LibraryGrid,
+    /** The grid the tab shows. */
+    val grid: GridPager,
     /** What the library offers to filter by, once read. */
     val filters: LibraryFilters?,
 ) {
@@ -138,7 +122,7 @@ class LibraryViewModel(
     /** Reads the grid again in place, as a pull to refresh does; returns once its first page answers. */
     suspend fun refresh() {
         try {
-            grid.value.pager.refresh()
+            grid.value.refresh()
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
@@ -155,7 +139,7 @@ class LibraryViewModel(
         choice.value = query to tab
         val old = grid.value
         grid.value = gridOf(tab, query)
-        old.pager.close()
+        old.close()
         // The works' and collections' choice is kept; a one-off sort keeps nothing.
         if (oneOffSort == null && (tab == LibraryTab.Titles || tab == LibraryTab.Collections)) {
             val kept = GridChoice(query, if (tab == LibraryTab.Collections) Section.Collections else Section.Titles)
@@ -171,15 +155,15 @@ class LibraryViewModel(
         }
     }
 
-    private fun gridOf(tab: LibraryTab, query: GridQuery): LibraryGrid = when (tab) {
-        LibraryTab.Titles -> LibraryGrid.Works(session.library.pagedWorks(query))
-        LibraryTab.Collections -> LibraryGrid.Collections(session.library.pagedCollections(libraryId))
-        LibraryTab.Authors -> LibraryGrid.Authors(session.library.pagedAuthors(libraryId))
-        LibraryTab.Series -> LibraryGrid.Series(session.library.pagedBookSeries(libraryId))
+    private fun gridOf(tab: LibraryTab, query: GridQuery): GridPager = when (tab) {
+        LibraryTab.Titles -> session.library.pagedWorks(query, GridSettleMs)
+        LibraryTab.Collections -> session.library.pagedCollections(libraryId, GridSettleMs)
+        LibraryTab.Authors -> session.library.pagedAuthors(libraryId, GridSettleMs)
+        LibraryTab.Series -> session.library.pagedBookSeries(libraryId, GridSettleMs)
     }
 
     override fun onCleared() {
-        grid.value.pager.close()
+        grid.value.close()
     }
 
     private companion object {
