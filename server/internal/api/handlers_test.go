@@ -558,9 +558,23 @@ func TestBrowseAndDetail(t *testing.T) {
 	if ms, _ := v["markers"].([]any); len(ms) != 1 || ms[0].(map[string]any)["kind"] != "credits" || ms[0].(map[string]any)["startMs"] != 6_600_000.0 {
 		t.Errorf("version markers %v", v["markers"])
 	}
+	e.b.Write(func(ctx context.Context, tx *store.Tx) error {
+		return e.b.Catalog.UpdateMetadata(ctx, tx, e.series, catalog.WorkMetadata{
+			Title:    "Seeded Series",
+			Trailers: []catalog.Trailer{{Site: catalog.TrailerYouTube, Key: "ser", Title: "Series Trailer"}},
+		})
+	})
 	sd := decode[map[string]any](t, e.do("GET", "/api/v1/works/"+e.series.String(), e.adminToken, nil))
 	if sd["series"].(map[string]any)["seasonCount"] != float64(1) {
 		t.Errorf("series detail %v", sd["series"])
+	}
+	// A series' trailers are on its series object, and it has no movie's.
+	if ts, _ := sd["series"].(map[string]any)["trailers"].([]any); len(ts) != 1 ||
+		ts[0].(map[string]any)["title"] != "Series Trailer" || ts[0].(map[string]any)["url"] != "https://www.youtube.com/watch?v=ser" {
+		t.Errorf("series trailers %v", sd["series"])
+	}
+	if _, has := sd["movie"]; has {
+		t.Errorf("series detail has a movie object: %v", sd["movie"])
 	}
 
 	ratings := decode[map[string]any](t, e.do("GET", "/api/v1/content-ratings", e.adminToken, nil))

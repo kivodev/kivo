@@ -68,7 +68,7 @@ DELETE FROM image WHERE id = @id;
 
 -- name: UnmatchedImages :many
 -- The artwork of a movie or series and the seasons and episodes under it,
--- and the thumbnails of a movie's trailers.
+-- and the thumbnails of its trailers.
 SELECT i.* FROM work w CROSS JOIN image i ON i.work_id = w.id
 WHERE w.root_id = @work_id AND w.kind <> 'extra'
 UNION ALL

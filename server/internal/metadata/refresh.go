@@ -134,7 +134,7 @@ func (s *Service) refreshWork(ctx context.Context, work id.ID) error {
 }
 
 // refresh gathers a work's provider data, local files and artwork, and the
-// artwork of a movie's collection and trailers. It writes them all in one transaction. It
+// artwork of a movie's collection and of its trailers. It writes them all in one transaction. It
 // also records when the work was refreshed, unless a provider was down.
 //
 // A work that was unmatched meanwhile gets nothing written, because nothing

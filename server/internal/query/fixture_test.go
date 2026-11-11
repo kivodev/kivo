@@ -142,7 +142,10 @@ func newHousehold(t *testing.T) *household {
 	h.unmatched = h.provisional(h.moviesFolder, "some.film.2023")
 
 	h.expanse = h.series("The Expanse", rankPG13)
-	h.metadata(h.expanse, catalog.WorkMetadata{ContentRating: certs[rankPG13], ContentRatingAge: ptr(rankPG13), Community: &catalog.CommunityRating{Rating: 8.4, Votes: 3000}})
+	h.metadata(h.expanse, catalog.WorkMetadata{
+		ContentRating: certs[rankPG13], ContentRatingAge: ptr(rankPG13), Community: &catalog.CommunityRating{Rating: 8.4, Votes: 3000},
+		Trailers: []catalog.Trailer{{Site: catalog.TrailerYouTube, Key: "kQuTJdE3j2Q", Title: "Official Trailer", Language: "en", Official: true}},
+	})
 	h.expanse1 = h.episode(h.expanse, 1, 1)
 	h.expanse2 = h.episode(h.expanse, 1, 2)
 	h.expanse3 = h.episode(h.expanse, 1, 3)

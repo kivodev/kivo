@@ -607,7 +607,16 @@ export function createMockApi(): MockApi {
     communityVotes: 3100,
     contentRating: "TV-14",
     images: { poster: image(), backdrop: image() },
-    series: { seasonCount: 4, unplayedCount: 10, lastAirYear: 2022, recentlyAddedCount: 3, ordering: "aired" },
+    series: {
+      seasonCount: 4,
+      unplayedCount: 10,
+      lastAirYear: 2022,
+      recentlyAddedCount: 3,
+      ordering: "aired",
+      trailers: [
+        { id: next(), title: "Official Trailer", url: "https://www.youtube.com/watch?v=kQuTJdE3j2Q", image: image() },
+      ],
+    },
     userState: { played: false, playCount: 0 },
     libraryId: mockIds.shows,
   });

@@ -23,6 +23,7 @@
 
 package com.mmcdole.kivo.api.models
 
+import com.mmcdole.kivo.api.models.Trailer
 import com.mmcdole.kivo.api.models.WorkSummary
 
 import kotlinx.serialization.*
@@ -38,6 +39,7 @@ import kotlinx.serialization.encoding.*
  * @param lastAirYear 
  * @param ordering Detail only. Documented values `aired`, `dvd`, `absolute`, or `group:<provider episode group ID>`.
  * @param nextUp Detail only. The episode the primary button plays.
+ * @param trailers Detail only. The series' trailers on YouTube, best first; absent when it has none.
  */
 @Serializable
 
@@ -58,7 +60,10 @@ data class SeriesInfo (
     @SerialName(value = "ordering") val ordering: kotlin.String? = null,
 
     /* Detail only. The episode the primary button plays. */
-    @SerialName(value = "nextUp") val nextUp: WorkSummary? = null
+    @SerialName(value = "nextUp") val nextUp: WorkSummary? = null,
+
+    /* Detail only. The series' trailers on YouTube, best first; absent when it has none. */
+    @SerialName(value = "trailers") val trailers: kotlin.collections.List<Trailer>? = null
 
 ) {
 

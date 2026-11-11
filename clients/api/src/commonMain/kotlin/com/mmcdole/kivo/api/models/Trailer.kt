@@ -30,7 +30,7 @@ import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
 
 /**
- * A movie's trailer on YouTube, which a client opens there rather than plays.
+ * A movie's or series' trailer on YouTube, which a client opens there rather than plays.
  *
  * @param id A UUIDv7.
  * @param title 
