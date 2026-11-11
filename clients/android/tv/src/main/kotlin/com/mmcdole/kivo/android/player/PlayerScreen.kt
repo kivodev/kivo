@@ -27,7 +27,9 @@ import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
 import com.mmcdole.kivo.core.ProblemCode
 import com.mmcdole.kivo.core.data.SubtitleSearch
-import com.mmcdole.kivo.core.player.Markers
+import com.mmcdole.kivo.core.player.SKIP_BACK_MS
+import com.mmcdole.kivo.core.player.SKIP_FORWARD_MS
+import com.mmcdole.kivo.core.player.chapterAt
 import com.mmcdole.kivo.core.player.SpriteFrame
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -298,8 +300,8 @@ fun PlayerScreen(session: ServerSession, args: Screen.Player, navigator: Navigat
             PlayerCommand.TogglePlay -> { reveal(); c.togglePlay() }
             PlayerCommand.Play -> { reveal(); c.resume() }
             PlayerCommand.Pause -> { reveal(); c.pause() }
-            PlayerCommand.SkipBack -> skipBy(-Markers.BACK_MS)
-            PlayerCommand.SkipForward -> skipBy(Markers.FORWARD_MS)
+            PlayerCommand.SkipBack -> skipBy(-SKIP_BACK_MS)
+            PlayerCommand.SkipForward -> skipBy(SKIP_FORWARD_MS)
             PlayerCommand.ScrubBack -> scrub(-1, repeatCount)
             PlayerCommand.ScrubForward -> scrub(1, repeatCount)
             PlayerCommand.Previous -> model.playPrevious()
@@ -411,8 +413,8 @@ fun PlayerScreen(session: ServerSession, args: Screen.Player, navigator: Navigat
                 hasTracks = current?.let { tracksPanelShows(model, it) } == true,
                 preview = { at -> model.previews?.let { (url, manifest) -> SpriteFrame.atOrNull(manifest, url, at) } },
                 onToggle = { model.controller.togglePlay() },
-                onBack = { model.controller.skip(-Markers.BACK_MS) },
-                onForward = { model.controller.skip(Markers.FORWARD_MS) },
+                onBack = { model.controller.skip(-SKIP_BACK_MS) },
+                onForward = { model.controller.skip(SKIP_FORWARD_MS) },
                 onScrub = ::scrub,
                 onCommitScrub = ::commitScrub,
                 onPrevious = model::playPrevious,
@@ -433,7 +435,7 @@ fun PlayerScreen(session: ServerSession, args: Screen.Player, navigator: Navigat
         }
 
         if (failed) {
-            val other = work?.versions?.firstOrNull { it.available && it.id != (current?.versionId ?: args.versionId) }
+            val other = work?.versions?.firstOrNull { it.available && it.id != (current?.versionId ?: args.choice.versionId) }
             PlayerError(
                 state = state,
                 admin = user?.admin == true,
@@ -653,7 +655,7 @@ private fun ScrubBar(
         BoxWithConstraints(Modifier.fillMaxWidth().padding(start = playedWidth, end = leftWidth).height(28.dp)) {
             val scrubbing = target
             if (scrubbing != null) {
-                val chapter = Markers.chapterAt(chapters, scrubbing)?.title
+                val chapter = chapterAt(chapters, scrubbing)?.title
                 val frame = preview(scrubbing)
                 val density = LocalDensity.current
                 // Above the bar at the target, kept on screen; floating, so the controls don't move.

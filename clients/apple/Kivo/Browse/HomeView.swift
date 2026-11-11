@@ -123,10 +123,7 @@ struct HomeView: View {
 
     /// Reads Home again now, for a pull to refresh.
     private func refresh() async {
-        for await load in server.session.library.home() {
-            if let home = load.getOrNull() { show(home) }
-            break
-        }
+        if let home = await server.session.library.home().answer() { show(home) }
     }
 
     /// Shows [home] only if it changed, so a read that finds nothing new redraws nothing.

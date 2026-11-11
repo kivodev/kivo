@@ -18,6 +18,7 @@ import com.mmcdole.kivo.api.models.Library
 import com.mmcdole.kivo.api.models.LibraryChoice
 import com.mmcdole.kivo.api.models.SubtitleMode
 import com.mmcdole.kivo.core.Load
+import com.mmcdole.kivo.core.answer
 import com.mmcdole.kivo.core.ProblemCode
 import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.core.display.QualityOption
@@ -383,7 +384,7 @@ class LibrariesSettingsViewModel(private val session: KivoSession) : ViewModel()
 
     init {
         viewModelScope.launch {
-            val libraries = session.library.libraries().first { it !is Load.Loading }.getOrNull().orEmpty()
+            val libraries = session.library.libraries().answer().orEmpty()
             mutableState.update { it.copy(libraries = libraries) }
         }
     }

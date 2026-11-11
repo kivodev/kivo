@@ -49,7 +49,7 @@ struct ScrubBar: View {
         .accessibilityValue(Text("\(Display.app.clock(ms: Int64(shown))) of \(Display.app.clock(ms: Int64(duration)))"))
         .accessibilityIdentifier("scrub bar")
         .accessibilityAdjustableAction { direction in
-            model.skip(by: direction == .increment ? Markers.shared.FORWARD_MS : -Markers.shared.BACK_MS)
+            model.skip(by: direction == .increment ? SKIP_FORWARD_MS : -SKIP_BACK_MS)
         }
     }
 
@@ -146,7 +146,7 @@ struct ScrubBar: View {
             }
             Text(Display.app.clock(ms: Int64(target)))
                 .font(.subheadline.monospacedDigit().weight(.semibold))
-            if let chapter = Markers.shared.chapterAt(chapters: model.chapters, positionMs: Int64(target))?.title {
+            if let chapter = chapterAt(chapters: model.chapters, positionMs: Int64(target))?.title {
                 Text(chapter).font(.caption).lineLimit(1).frame(maxWidth: 200)
             }
             if rate < 1 {

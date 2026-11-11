@@ -1,5 +1,6 @@
 package com.mmcdole.kivo.core.data
 
+import co.touchlab.skie.configuration.annotations.DefaultArgumentInterop
 import com.mmcdole.kivo.api.models.FileSubtitleAdd
 import com.mmcdole.kivo.api.models.SubtitleResult
 import com.mmcdole.kivo.api.models.Track
@@ -42,6 +43,7 @@ object SubtitleSearch {
      * the server's play or title page of a video, even with no subtitle track,
      * never for a download playing from its files ([offline]).
      */
+    @DefaultArgumentInterop.Enabled
     fun offered(version: Version?, offline: Boolean = false): Boolean =
         !offline && version?.subtitleSearchFile != null
 

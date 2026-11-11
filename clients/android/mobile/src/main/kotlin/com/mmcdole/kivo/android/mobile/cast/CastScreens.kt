@@ -77,7 +77,8 @@ import com.mmcdole.kivo.android.mobile.ui.display
 import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.core.display.clock
 import com.mmcdole.kivo.core.display.episodeCode
-import com.mmcdole.kivo.core.player.Markers
+import com.mmcdole.kivo.core.player.SKIP_BACK_MS
+import com.mmcdole.kivo.core.player.SKIP_FORWARD_MS
 
 /** Casting, for the screens that show it: null where Google Play services isn't, and nothing casts. */
 val LocalCast = staticCompositionLocalOf<CastViewModel?> { null }
@@ -245,7 +246,7 @@ fun CastRemoteScreen(cast: CastViewModel, onClose: () -> Unit, onContinueHere: (
                     Text(display.clock(state.durationMs), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Row(Modifier.padding(top = space(4)), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(space(6))) {
-                    IconButton(onClick = { cast.skip(-Markers.BACK_MS) }) { Icon(Icons.Default.Replay10, stringResource(R.string.mobile_back_10), Modifier.size(32.dp)) }
+                    IconButton(onClick = { cast.skip(-SKIP_BACK_MS) }) { Icon(Icons.Default.Replay10, stringResource(R.string.mobile_back_10), Modifier.size(32.dp)) }
                     Box(Modifier.size(72.dp), contentAlignment = Alignment.Center) {
                         if (state.waiting) {
                             CircularProgressIndicator()
@@ -255,7 +256,7 @@ fun CastRemoteScreen(cast: CastViewModel, onClose: () -> Unit, onContinueHere: (
                             }
                         }
                     }
-                    IconButton(onClick = { cast.skip(Markers.FORWARD_MS) }) { Icon(Icons.Default.Forward30, stringResource(R.string.mobile_forward_30), Modifier.size(32.dp)) }
+                    IconButton(onClick = { cast.skip(SKIP_FORWARD_MS) }) { Icon(Icons.Default.Forward30, stringResource(R.string.mobile_forward_30), Modifier.size(32.dp)) }
                 }
             }
             Row(Modifier.fillMaxWidth().padding(top = space(6)), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(space(3))) {

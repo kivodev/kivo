@@ -9,7 +9,7 @@ import com.mmcdole.kivo.api.result
 import com.mmcdole.kivo.core.auth.ServerConnection
 import com.mmcdole.kivo.core.kivoJson
 import com.mmcdole.kivo.core.player.PlayTracks
-import com.mmcdole.kivo.core.player.Subtitles
+import com.mmcdole.kivo.core.player.SUBTITLES_OFF
 import com.mmcdole.kivo.core.player.TrackShow
 import com.mmcdole.kivo.core.player.UpNext
 import com.mmcdole.kivo.core.player.UpNextPhase
@@ -27,18 +27,16 @@ import kotlinx.serialization.json.put
 // and sends a LOAD naming the work, the server and the token; the receiver
 // starts and heartbeats the play itself, as the token's user. The sender
 // reads the receiver's status and sends Kivo's own messages on
-// Cast.NAMESPACE, never a token anywhere but the LOAD and `kivo.token`.
+// CAST_NAMESPACE, never a token anywhere but the LOAD and `kivo.token`.
 
-object Cast {
-    /** The Google Cast app senders launch: Kivo's own Web Receiver. A fork registers its own and changes it here. */
-    const val APP_ID = "2457CC30"
+/** The Google Cast app senders launch: Kivo's own Web Receiver. A fork registers its own and changes it here. */
+const val CAST_APP_ID = "2457CC30"
 
-    /** The namespace of Kivo's own messages between senders and the receiver. */
-    const val NAMESPACE = "urn:x-cast:com.mmcdole.kivo"
+/** The namespace of Kivo's own messages between senders and the receiver. */
+const val CAST_NAMESPACE = "urn:x-cast:com.mmcdole.kivo"
 
-    /** The version of the contract with the receiver and the server: the LOAD's custom data, the status and the messages. */
-    internal const val PROTOCOL = 3
-}
+/** The version of the contract with the receiver and the server: the LOAD's custom data, the status and the messages. */
+internal const val CAST_PROTOCOL = 3
 
 /** What a cast plays: the work, its version and tracks, where it starts, and the choices it carries to the TV. */
 internal data class CastRequest(
@@ -46,7 +44,7 @@ internal data class CastRequest(
     /** Null for the server's defaults. */
     val versionId: String? = null,
     val audioTrackId: String? = null,
-    /** A track's ID, [Subtitles.OFF], or null for the server's default. */
+    /** A track's ID, [SUBTITLES_OFF], or null for the server's default. */
     val subtitleTrackId: String? = null,
     /** Where to start; null for the server's resume position. */
     val positionMs: Long? = null,
@@ -72,7 +70,7 @@ private val wireJson = Json { explicitNulls = false }
 /** The LOAD for [request], carrying [token] and its server's ID and addresses. */
 internal fun castLoad(token: CastToken, request: CastRequest): CastLoad {
     val customData = buildJsonObject {
-        put("protocol", Cast.PROTOCOL)
+        put("protocol", CAST_PROTOCOL)
         put("serverId", token.serverId)
         put("urls", wireJson.encodeToJsonElement(token.urls))
         put("token", token.token)
@@ -113,9 +111,9 @@ internal class CastSender(private val connection: ServerConnection) {
     }
 }
 
-/** The messages senders send the receiver on [Cast.NAMESPACE], as JSON. */
+/** The messages senders send the receiver on [CAST_NAMESPACE], as JSON. */
 object CastMessages {
-    /** Another audio track, a subtitle track or [Subtitles.OFF], or both; the receiver starts a new play where it must. */
+    /** Another audio track, a subtitle track or [SUBTITLES_OFF], or both; the receiver starts a new play where it must. */
     fun setTracks(audioTrackId: String?, subtitleTrackId: String?): String = message("kivo.setTracks") {
         audioTrackId?.let { put("audioTrackId", it) }
         subtitleTrackId?.let { put("subtitleTrackId", it) }
@@ -165,7 +163,7 @@ data class CastStatus(
     val limitBps: Long?,
     val dialogueBoost: DialogueBoost?,
     val audioTrackId: String?,
-    /** The subtitle showing, or [Subtitles.OFF]; null with no play. */
+    /** The subtitle showing, or [SUBTITLES_OFF]; null with no play. */
     val subtitleTrackId: String?,
     /** Whether the receiver plays from the server's local network; null with no play. */
     val local: Boolean?,
@@ -180,7 +178,7 @@ data class CastStatus(
     val playing: Boolean get() = versionId != null
 
     /**
-     * Whether choosing [trackId], a track's ID or [Subtitles.OFF], takes
+     * Whether choosing [trackId], a track's ID or [SUBTITLES_OFF], takes
      * the receiver a new play at the position, by its play's tracks; else it
      * shows the choice at once.
      */
@@ -210,7 +208,7 @@ data class CastStatus(
                 limitBps = wire.limitBps,
                 dialogueBoost = wire.dialogueBoost,
                 audioTrackId = wire.audioTrackId,
-                subtitleTrackId = wire.subtitleTrackId ?: Subtitles.OFF.takeIf { wire.versionId != null },
+                subtitleTrackId = wire.subtitleTrackId ?: SUBTITLES_OFF.takeIf { wire.versionId != null },
                 local = wire.local,
                 upNext = wire.upNext?.let { UpNext(phaseOf(it.phase), it.secondsLeft) } ?: UpNext(),
                 error = wire.error,

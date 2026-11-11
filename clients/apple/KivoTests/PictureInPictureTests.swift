@@ -69,7 +69,7 @@ final class PictureInPictureTests: XCTestCase {
 
     func testASubtitleFilePlaysAgainBurnedInAndBackAsAFile() async throws {
         Self.deliveries = ["external", "burn", "external"]
-        try await player.play(workId: "w1", versionId: nil, audioTrackId: nil, subtitleTrackId: nil, positionMs: nil)
+        try await player.play(choice: PlayChoice(workId: "w1"))
         try await until("the subtitle file showing") { self.player.controller.state.value.subtitle is TrackShowExternal }
         XCTAssertEqual(try externalSubtitles(play: 0), ["ass", "hdmv_pgs_subtitle"])
 
@@ -85,7 +85,7 @@ final class PictureInPictureTests: XCTestCase {
 
     func testASubtitleInTheStreamCarriesOn() async throws {
         Self.deliveries = ["stream"]
-        try await player.play(workId: "w1", versionId: nil, audioTrackId: nil, subtitleTrackId: nil, positionMs: nil)
+        try await player.play(choice: PlayChoice(workId: "w1"))
         try await until("the subtitle in the stream") { self.player.controller.state.value.subtitle is TrackShowStream }
 
         player.setOverlayVisible(visible: false)

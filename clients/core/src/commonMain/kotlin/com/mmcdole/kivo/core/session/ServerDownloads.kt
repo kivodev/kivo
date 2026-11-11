@@ -1,5 +1,6 @@
 package com.mmcdole.kivo.core.session
 
+import co.touchlab.skie.configuration.annotations.DefaultArgumentInterop
 import com.mmcdole.kivo.api.models.DownloadEstimate
 import com.mmcdole.kivo.api.models.DownloadEstimateItem
 import com.mmcdole.kivo.core.downloads.DownloadItem
@@ -8,6 +9,7 @@ import com.mmcdole.kivo.core.downloads.DownloadRequest
 import com.mmcdole.kivo.core.downloads.DownloadStorage
 import com.mmcdole.kivo.core.downloads.Downloads
 import com.mmcdole.kivo.core.downloads.NotEnoughSpaceException
+import com.mmcdole.kivo.core.play.PlayChoice
 import com.mmcdole.kivo.core.settings.DownloadQuality
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -24,33 +26,23 @@ class SessionDownloads internal constructor(private val downloads: Downloads) {
     val deleted: Flow<Int> = downloads.deleted.catch { emit(0) }
 
     /**
-     * What downloading the works would be at each quality, for the download
-     * menu; a season's or series' episodes in one call. The version and
-     * tracks apply to a single work.
+     * What downloading each of [choices] would be at each quality, for the
+     * download menu; a season's or series' episodes in one call.
      */
     @Throws(Exception::class)
-    suspend fun estimates(workIds: List<String>, versionId: String?, audioTrackId: String?, subtitleTrackId: String?): List<DownloadEstimate> {
-        val one = workIds.size == 1
-        return downloads.estimate(
-            workIds.map {
-                DownloadEstimateItem(
-                    workId = it,
-                    versionId = versionId.takeIf { one },
-                    audioTrackId = audioTrackId.takeIf { one },
-                    subtitleTrackId = subtitleTrackId.takeIf { one },
-                )
-            },
-        )
-    }
+    suspend fun estimates(choices: List<PlayChoice>): List<DownloadEstimate> = downloads.estimate(
+        choices.map { DownloadEstimateItem(workId = it.workId, versionId = it.versionId, audioTrackId = it.audioTrackId, subtitleTrackId = it.subtitleTrackId) },
+    )
 
     /**
-     * Downloads a work at [quality], or the download quality setting's when
+     * Downloads [choice] at [quality], or the download quality setting's when
      * null; throws [NotEnoughSpaceException] or [DownloadRefusedException].
      * Returns the download's ID.
      */
+    @DefaultArgumentInterop.Enabled
     @Throws(Exception::class)
-    suspend fun download(workId: String, versionId: String?, audioTrackId: String?, subtitleTrackId: String?, quality: DownloadQuality?): String =
-        downloads.download(DownloadRequest(workId, versionId, audioTrackId, subtitleTrackId, quality))
+    suspend fun download(choice: PlayChoice, quality: DownloadQuality? = null): String =
+        downloads.download(DownloadRequest(choice.workId, choice.versionId, choice.audioTrackId, choice.subtitleTrackId, quality))
 
     @Throws(Exception::class)
     suspend fun delete(id: String) = downloads.delete(id)

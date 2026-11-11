@@ -7,6 +7,7 @@ import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.downloads.DownloadItem
 import com.mmcdole.kivo.core.downloads.downloadProblem
+import com.mmcdole.kivo.core.play.PlayChoice
 import com.mmcdole.kivo.core.session.SessionDownloads
 import com.mmcdole.kivo.core.session.SessionLibrary
 import com.mmcdole.kivo.core.settings.DownloadQuality
@@ -29,13 +30,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /** What a page's Download button downloads: a work, with the version and tracks chosen on its page; a book its original. */
-data class DownloadTarget(
-    val workId: String,
-    val book: Boolean,
-    val versionId: String? = null,
-    val audioTrackId: String? = null,
-    val subtitleTrackId: String? = null,
-)
+data class DownloadTarget(val choice: PlayChoice, val book: Boolean)
 
 /** A season's or a series' episodes to download: [season] null for the whole series, and their estimates once read. */
 data class EpisodesSheet(val season: WorkSummary?, val estimates: List<DownloadEstimate>? = null) {
@@ -83,13 +78,13 @@ class WorkDownloads(
         } else {
             flow {
                 emit(null)
-                emit(quietly { downloads.estimates(listOf(t.workId), t.versionId, t.audioTrackId, t.subtitleTrackId).firstOrNull() })
+                emit(quietly { downloads.estimates(listOf(t.choice)).firstOrNull() })
             }
         }
     }
 
-    private val item = combine(downloads.items, targets) { items, t -> t?.let { items.firstOrNull { it.workId == t.workId } } }
-    private val asking = combine(downloads.asking, targets) { asking, t -> t != null && t.workId in asking }
+    private val item = combine(downloads.items, targets) { items, t -> t?.let { items.firstOrNull { it.workId == t.choice.workId } } }
+    private val asking = combine(downloads.asking, targets) { asking, t -> t != null && t.choice.workId in asking }
     private val downloaded = downloads.items.map { items -> items.map { it.workId }.toSet() }
 
     val state: StateFlow<DownloadUiState> = combine(
@@ -106,13 +101,7 @@ class WorkDownloads(
     fun download(quality: DownloadQuality? = null) {
         val t = targets.value ?: return
         act {
-            downloads.download(
-                t.workId,
-                t.versionId.takeUnless { t.book },
-                t.audioTrackId.takeUnless { t.book },
-                t.subtitleTrackId.takeUnless { t.book },
-                if (t.book) DownloadQuality.Original else quality,
-            )
+            if (t.book) downloads.download(PlayChoice(t.choice.workId), DownloadQuality.Original) else downloads.download(t.choice, quality)
         }
     }
 
@@ -139,7 +128,7 @@ class WorkDownloads(
                     }
                     ids += episodes.map { it.id }
                 }
-                val estimates = downloads.estimates(ids, null, null, null)
+                val estimates = downloads.estimates(ids.map { PlayChoice(it) })
                 sheet.update { it?.copy(estimates = estimates) }
             } catch (e: CancellationException) {
                 throw e
@@ -157,7 +146,7 @@ class WorkDownloads(
         sheet.value = null
         act {
             for (estimate in estimates.filter { it.playable && it.workId !in downloaded }) {
-                downloads.download(estimate.workId, null, null, null, DownloadQuality.parseOrNull(quality))
+                downloads.download(PlayChoice(estimate.workId), DownloadQuality.parseOrNull(quality))
             }
         }
     }

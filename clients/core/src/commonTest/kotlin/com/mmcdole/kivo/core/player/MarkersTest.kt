@@ -22,11 +22,11 @@ class MarkersTest {
 
     @Test
     fun findsTheChapterAndTheMarkerAtAPosition() {
-        assertEquals("Cold open", Markers.chapterAt(chapters, 30_000)?.title)
+        assertEquals("Cold open", chapterAt(chapters, 30_000)?.title)
         assertNull(markerAt(markers, 30_000))
         assertEquals(MarkerKind.Intro, markerAt(markers, 60_000)?.kind)
         assertEquals(MarkerKind.Credits, markerAt(markers, 2_600_000)?.kind)
-        assertNull(Markers.chapterAt(emptyList(), 5))
+        assertNull(chapterAt(emptyList(), 5))
     }
 
     @Test

@@ -65,8 +65,8 @@ enum RemoteCommands {
     }
 
     /// Back and forward, in seconds, as the skip buttons show them.
-    static let backSeconds = Markers.shared.BACK_MS / 1000
-    static let forwardSeconds = Markers.shared.FORWARD_MS / 1000
+    static let backSeconds = SKIP_BACK_MS / 1000
+    static let forwardSeconds = SKIP_FORWARD_MS / 1000
 
     static func actions(_ kind: Kind) -> [Command: Action] {
         let common: [Command: Action] = [

@@ -109,10 +109,7 @@ class CastViewModel(private val session: KivoSession, private val link: CastLink
         read(route.workId)
         viewModelScope.launch {
             try {
-                val load = session.cast.load(
-                    device, route.workId, route.versionId, route.audioTrackId, route.subtitleTrackId,
-                    route.positionMs ?: if (route.fromStart) 0 else null,
-                )
+                val load = session.cast.load(device, route.choice, route.startMs)
                 val work = state.value.work?.takeIf { it.id == route.workId }
                 val art = work?.images?.let { it.poster ?: it.still ?: it.backdrop }
                 link.load(load, work?.title.orEmpty(), art?.let { session.imageUrl(it.id, 480) })

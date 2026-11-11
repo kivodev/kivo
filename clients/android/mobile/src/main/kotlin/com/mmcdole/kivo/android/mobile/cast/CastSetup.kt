@@ -6,7 +6,7 @@ import com.google.android.gms.cast.framework.OptionsProvider
 import com.google.android.gms.cast.framework.SessionProvider
 import com.google.android.gms.cast.framework.media.CastMediaOptions
 import com.google.android.gms.cast.framework.media.NotificationOptions
-import com.mmcdole.kivo.core.cast.Cast
+import com.mmcdole.kivo.core.cast.CAST_APP_ID
 
 /**
  * Google Cast's setup, which the framework reads from the manifest as the
@@ -19,7 +19,7 @@ class CastSetup : OptionsProvider {
         val app = context.packageManager.getLaunchIntentForPackage(context.packageName)?.component?.className
         val notification = NotificationOptions.Builder().apply { app?.let(::setTargetActivityClassName) }.build()
         return CastOptions.Builder()
-            .setReceiverApplicationId(Cast.APP_ID)
+            .setReceiverApplicationId(CAST_APP_ID)
             .setResumeSavedSession(true)
             .setCastMediaOptions(CastMediaOptions.Builder().setNotificationOptions(notification).build())
             .build()

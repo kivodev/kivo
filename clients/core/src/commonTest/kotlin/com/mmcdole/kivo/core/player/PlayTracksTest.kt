@@ -38,7 +38,7 @@ class PlayTracksTest {
         assertEquals("v1", PlayTracks.selected(stream, TrackType.Video))
         assertEquals("a1", PlayTracks.selected(stream, TrackType.Audio))
         assertEquals("t3", PlayTracks.selected(stream, TrackType.Subtitle))
-        assertEquals(Subtitles.OFF, PlayTracks.selected(play(), TrackType.Subtitle), "no subtitle selected is off")
+        assertEquals(SUBTITLES_OFF, PlayTracks.selected(play(), TrackType.Subtitle), "no subtitle selected is off")
         assertNull(PlayTracks.selected(play(), TrackType.Audio))
     }
 
@@ -48,7 +48,7 @@ class PlayTracksTest {
         assertEquals(TrackShow.Stream("t3", 1), PlayTracks.show(stream, "t3"), "its place among the streamed subtitles, not among all")
         assertEquals(TrackShow.External("t2", "plays/p1/subtitles/2.ass", "ass", listOf("fonts/f1")), PlayTracks.show(stream, "t2"))
         assertEquals(TrackShow.File(5), PlayTracks.show(stream, "t4"))
-        assertEquals(TrackShow.Off, PlayTracks.show(stream, Subtitles.OFF))
+        assertEquals(TrackShow.Off, PlayTracks.show(stream, SUBTITLES_OFF))
     }
 
     @Test
@@ -71,7 +71,7 @@ class PlayTracksTest {
         )
         assertEquals(TrackShow.Burned, PlayTracks.show(burned, "t1"))
         assertEquals(TrackShow.NewPlay, PlayTracks.show(burned, "t2"))
-        assertEquals(TrackShow.NewPlay, PlayTracks.show(burned, Subtitles.OFF))
+        assertEquals(TrackShow.NewPlay, PlayTracks.show(burned, SUBTITLES_OFF))
     }
 }
 
@@ -81,7 +81,7 @@ class PictureInPictureTest {
         assertTrue(PictureInPicture.enteringNeedsNewPlay(stream, "t2"))
         assertFalse(PictureInPicture.enteringNeedsNewPlay(stream, "t3"), "streamed: the player shows it there")
         assertFalse(PictureInPicture.enteringNeedsNewPlay(stream, "t4"), "read from the file by the player")
-        assertFalse(PictureInPicture.enteringNeedsNewPlay(stream, Subtitles.OFF))
+        assertFalse(PictureInPicture.enteringNeedsNewPlay(stream, SUBTITLES_OFF))
         assertFalse(PictureInPicture.enteringNeedsNewPlay(play(PlayTrack("t1", TrackType.Subtitle, selected = true, delivery = TrackDelivery.Burn)), "t1"))
     }
 
@@ -89,6 +89,6 @@ class PictureInPictureTest {
     fun leavingTakesANewPlayOnlyWhenThePlayBurnedTheSubtitleIn() {
         assertTrue(PictureInPicture.leavingNeedsNewPlay(play(PlayTrack("t1", TrackType.Subtitle, selected = true, delivery = TrackDelivery.Burn)), "t1"))
         assertFalse(PictureInPicture.leavingNeedsNewPlay(stream, "t3"))
-        assertFalse(PictureInPicture.leavingNeedsNewPlay(stream, Subtitles.OFF))
+        assertFalse(PictureInPicture.leavingNeedsNewPlay(stream, SUBTITLES_OFF))
     }
 }

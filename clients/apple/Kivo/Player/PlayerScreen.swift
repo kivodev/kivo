@@ -313,7 +313,7 @@ struct SkipBurst: Equatable {
     var at: Date
 
     var seconds: Int {
-        count * Int((side == .back ? Markers.shared.BACK_MS : Markers.shared.FORWARD_MS) / 1000)
+        count * Int((side == .back ? SKIP_BACK_MS : SKIP_FORWARD_MS) / 1000)
     }
 }
 
@@ -376,7 +376,7 @@ private struct VideoGestures: View {
         } else {
             burst = SkipBurst(side: side, count: 1, at: now)
         }
-        model.nudge(by: side == .back ? -Markers.shared.BACK_MS : Markers.shared.FORWARD_MS)
+        model.nudge(by: side == .back ? -SKIP_BACK_MS : SKIP_FORWARD_MS)
         let shown = burst
         Task {
             try? await Task.sleep(for: .milliseconds(900))

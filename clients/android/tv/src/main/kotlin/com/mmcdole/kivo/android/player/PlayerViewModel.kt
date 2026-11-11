@@ -16,11 +16,12 @@ import com.mmcdole.kivo.api.models.QualityRung
 import com.mmcdole.kivo.api.models.SubtitleResult
 import com.mmcdole.kivo.api.models.Version
 import com.mmcdole.kivo.api.models.WorkDetail
-import com.mmcdole.kivo.core.Load
+import com.mmcdole.kivo.core.answer
 import com.mmcdole.kivo.core.data.withTrack
 import com.mmcdole.kivo.core.display.episodeCode
+import com.mmcdole.kivo.core.play.PlayChoice
 import com.mmcdole.kivo.core.play.PlayerEnd
-import com.mmcdole.kivo.core.player.Subtitles
+import com.mmcdole.kivo.core.player.SUBTITLES_OFF
 import com.mmcdole.kivo.android.settings.ScreenSettings
 import com.mmcdole.kivo.core.settings.Quality
 import kotlinx.coroutines.CancellationException
@@ -83,8 +84,8 @@ class PlayerViewModel(
     var ladder by mutableStateOf<List<QualityRung>>(emptyList())
         private set
 
-    /** The subtitle track showing, or [Subtitles.OFF], as the core's player says. */
-    var subtitle by mutableStateOf(Subtitles.OFF)
+    /** The subtitle track showing, or [SUBTITLES_OFF], as the core's player says. */
+    var subtitle by mutableStateOf(SUBTITLES_OFF)
         private set
 
     /** The audio track playing, as the core's player says. */
@@ -103,20 +104,14 @@ class PlayerViewModel(
 
     init {
         viewModelScope.launch {
-            video.play(
-                args.workId,
-                args.versionId,
-                args.audioTrackId,
-                args.subtitleTrackId,
-                positionMs = if (args.fromStart) 0 else null,
-            )
+            video.play(args.choice, positionMs = if (args.fromStart) 0 else null)
         }
         viewModelScope.launch { screen = graph.screenSettings.values.first() }
         viewModelScope.launch {
             ladder = quietly { server.playback.qualityLadder() } ?: return@launch // The quality menu offers Auto and Original.
         }
         viewModelScope.launch {
-            work = fetch(args.workId)?.also { w ->
+            work = fetch(args.choice.workId)?.also { w ->
                 val e = w.episode
                 engine.metadata = MediaMetadata.Builder()
                     .setTitle(w.title)
@@ -154,7 +149,7 @@ class PlayerViewModel(
     }
 
     /** The work as the server says it is; null when it can't say. */
-    private suspend fun fetch(id: String): WorkDetail? = server.library.work(id).first { it !is Load.Loading }.getOrNull()
+    private suspend fun fetch(id: String): WorkDetail? = server.library.work(id).answer()
 
     /** A subtitle track, or off: shown as the play's tracks say, at once or by a new play at the position. */
     fun chooseSubtitle(trackId: String) = video.chooseSubtitle(trackId)
@@ -200,7 +195,7 @@ class PlayerViewModel(
     }
 
     fun playVersion(versionId: String) {
-        exits.trySend(PlayerExit.Replace(Screen.Player(args.workId, versionId = versionId)))
+        exits.trySend(PlayerExit.Replace(Screen.Player(PlayChoice(args.choice.workId, versionId = versionId))))
     }
 
     override fun onCleared() {

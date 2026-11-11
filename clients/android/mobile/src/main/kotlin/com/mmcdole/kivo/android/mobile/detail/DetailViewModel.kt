@@ -14,6 +14,7 @@ import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.core.data.Seasons
 import com.mmcdole.kivo.core.data.summary
+import com.mmcdole.kivo.core.play.PlayChoice
 import com.mmcdole.kivo.core.session.KivoSession
 import com.mmcdole.kivo.core.settings.DownloadQuality
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -32,9 +33,6 @@ import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 
-/** The version and tracks chosen on a work's page for its next play; null for the server's choice. */
-data class TrackChoices(val versionId: String? = null, val audioTrackId: String? = null, val subtitleTrackId: String? = null)
-
 /** Whether the work's page says it's on My List. */
 val DetailUiState.onMyList: Boolean
     get() = myListId != null && work?.listIds?.contains(myListId) == true
@@ -52,7 +50,8 @@ data class DetailUiState(
     val season: WorkSummary? = null,
     /** The episodes of that season, or of an episode's own season. */
     val episodes: Load<List<WorkSummary>>? = null,
-    val choices: TrackChoices = TrackChoices(),
+    /** The page's work with the version and tracks chosen here for its next play. */
+    val choices: PlayChoice,
     /** The work's download, and a season's or series' episodes to download; null on a device that keeps none. */
     val download: DownloadUiState? = null,
     /** My List, once the lists are read. */
@@ -100,7 +99,7 @@ class DetailViewModel(
 
     /** The season the user chose, which sticks. */
     private val chosenSeason = MutableStateFlow<String?>(null)
-    private val choices = MutableStateFlow(TrackChoices())
+    private val choices = MutableStateFlow(PlayChoice(id))
     private val retries = MutableStateFlow(0)
 
     private val work: Flow<Load<WorkDetail>> = combine(target, retries) { t, _ -> t }
@@ -138,7 +137,7 @@ class DetailViewModel(
     val downloads: WorkDownloads? = session.downloads?.let { downloads ->
         val target = combine(work, choices) { load, c ->
             load.getOrNull()?.takeIf { it.kind != WorkKind.Series && it.kind != WorkKind.Season }?.let {
-                DownloadTarget(it.id, it.kind == WorkKind.Book, c.versionId, c.audioTrackId, c.subtitleTrackId)
+                DownloadTarget(c, it.kind == WorkKind.Book)
             }
         }
         WorkDownloads(downloads, library, target, setting, viewModelScope)
@@ -163,7 +162,7 @@ class DetailViewModel(
         downloads?.state ?: flowOf(null),
         myListId,
     ) { state, download, myListId -> state.copy(download = download, myListId = myListId) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DetailUiState(head = seed()))
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DetailUiState(head = seed(), choices = choices.value))
 
     fun chooseSeason(id: String) {
         chosenSeason.value = id
@@ -171,7 +170,7 @@ class DetailViewModel(
 
     /** Another version: its tracks are its own, so the track choices go back to the server's. */
     fun chooseVersion(id: String) {
-        choices.value = TrackChoices(versionId = id)
+        choices.update { PlayChoice(it.workId, versionId = id) }
     }
 
     fun chooseAudio(id: String?) = choices.update { it.copy(audioTrackId = id) }

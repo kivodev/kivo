@@ -175,7 +175,7 @@ targets:
           - com.kivo.player.downloads.refresh
         # Reaching a server on the local network, finding it by Bonjour as
         # the _kivo._tcp service it advertises, and finding Cast devices
-        # running Kivo's receiver (app ID 2457CC30, Cast.APP_ID in the core)
+        # running Kivo's receiver (app ID 2457CC30, CAST_APP_ID in the core)
         # need the person's permission.
         NSLocalNetworkUsageDescription: Kivo finds and connects to your Kivo server and Cast devices on this network.
         NSBonjourServices:

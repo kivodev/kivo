@@ -12,7 +12,7 @@ import com.mmcdole.kivo.api.models.Version
 import com.mmcdole.kivo.core.display.Display
 import com.mmcdole.kivo.core.display.bitrate
 import com.mmcdole.kivo.core.display.delivered
-import com.mmcdole.kivo.core.player.Subtitles
+import com.mmcdole.kivo.core.player.SUBTITLES_OFF
 
 /** One line of the stream info overlay, with why it isn't direct. */
 data class InfoRow(val label: String, val value: String, val why: String? = null)
@@ -97,7 +97,7 @@ fun streamInfo(
     }
 
     val shown = play.tracks.firstOrNull { it.type == TrackType.Subtitle && it.trackId == subtitleTrackId }
-    if (subtitleTrackId == Subtitles.OFF || shown == null) {
+    if (subtitleTrackId == SUBTITLES_OFF || shown == null) {
         rows += InfoRow(words.subtitles, words.off)
     } else {
         val track = version?.tracks?.firstOrNull { it.id == subtitleTrackId }

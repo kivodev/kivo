@@ -31,7 +31,8 @@ import com.mmcdole.kivo.api.models.PlayTrack
 import com.mmcdole.kivo.api.models.TrackDelivery
 import com.mmcdole.kivo.core.caps.AudioSettings
 import com.mmcdole.kivo.core.caps.PassthroughMode
-import com.mmcdole.kivo.core.player.Markers
+import com.mmcdole.kivo.core.player.SKIP_BACK_MS
+import com.mmcdole.kivo.core.player.SKIP_FORWARD_MS
 import com.mmcdole.kivo.core.player.PartTimeline
 import com.mmcdole.kivo.core.player.PlayerError
 import com.mmcdole.kivo.core.player.PlayerEngine
@@ -250,8 +251,8 @@ class Media3Engine(
             .setMediaSourceFactory(mediaSources)
             .setBandwidthMeter(bandwidth)
             // A media key the screen doesn't take reaches the media session, which skips as the player's own keys do.
-            .setSeekBackIncrementMs(Markers.BACK_MS)
-            .setSeekForwardIncrementMs(Markers.FORWARD_MS)
+            .setSeekBackIncrementMs(SKIP_BACK_MS)
+            .setSeekForwardIncrementMs(SKIP_FORWARD_MS)
             .setAudioAttributes(
                 AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(),
                 /* handleAudioFocus = */ true,

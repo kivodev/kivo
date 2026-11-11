@@ -29,6 +29,7 @@ import com.mmcdole.kivo.api.models.EpisodeInfo
 import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.downloads.DownloadItem
+import com.mmcdole.kivo.core.play.PlayChoice
 import kotlinx.serialization.Serializable
 
 // The phone's destinations, type-safe: each tab is a graph with its first
@@ -87,7 +88,15 @@ import kotlinx.serialization.Serializable
     val subtitleTrackId: String? = null,
     val downloadId: String? = null,
     val positionMs: Long? = null,
-)
+) {
+    constructor(choice: PlayChoice, fromStart: Boolean = false) : this(choice.workId, fromStart, choice.versionId, choice.audioTrackId, choice.subtitleTrackId)
+
+    /** What it plays: the route keeps the choice's fields, as a route is saved by them. */
+    val choice: PlayChoice get() = PlayChoice(workId, versionId, audioTrackId, subtitleTrackId)
+
+    /** Where it starts; null for where it was left. */
+    val startMs: Long? get() = positionMs ?: if (fromStart) 0 else null
+}
 
 /** A show's downloaded episodes. */
 @Serializable data class ShowDownloadsRoute(val seriesId: String, val title: String)
@@ -166,8 +175,7 @@ class MobileNav(
     fun openSeries(episode: EpisodeInfo) = open(WorkRoute(episode.seriesId, episode.seasonId, episode.seasonNumber))
 
     /** Plays a video from the server in the player, with the version and tracks a work's page chose. */
-    fun play(workId: String, fromStart: Boolean = false, versionId: String? = null, audioTrackId: String? = null, subtitleTrackId: String? = null) =
-        play(PlayerRoute(workId, fromStart, versionId, audioTrackId, subtitleTrackId))
+    fun play(choice: PlayChoice, fromStart: Boolean = false) = play(PlayerRoute(choice, fromStart))
 
     /** Plays [route] in the player, or on the TV while one is connected, its remote opening. */
     fun play(route: PlayerRoute) {

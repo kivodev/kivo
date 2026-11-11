@@ -1,5 +1,6 @@
 package com.mmcdole.kivo.core.settings
 
+import co.touchlab.skie.configuration.annotations.DefaultArgumentInterop
 import com.mmcdole.kivo.api.models.QualityRequest
 import com.mmcdole.kivo.api.models.QualityRung
 
@@ -26,6 +27,7 @@ sealed class Quality {
         }
 
     /** As a play request sends it; Auto with the last measured bandwidth, when there is one. */
+    @DefaultArgumentInterop.Enabled
     fun request(bandwidthBps: Long? = null): QualityRequest = when (this) {
         Auto -> QualityRequest("auto", bandwidthBps = bandwidthBps)
         Original -> QualityRequest("original")

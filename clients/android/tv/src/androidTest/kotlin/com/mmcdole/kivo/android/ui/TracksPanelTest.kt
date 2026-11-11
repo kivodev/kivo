@@ -22,7 +22,7 @@ import com.mmcdole.kivo.api.models.SubtitleTrackInfo
 import com.mmcdole.kivo.api.models.Track
 import com.mmcdole.kivo.api.models.TrackType
 import com.mmcdole.kivo.core.display.Display
-import com.mmcdole.kivo.core.player.Subtitles
+import com.mmcdole.kivo.core.player.SUBTITLES_OFF
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -65,7 +65,7 @@ class TracksPanelTest {
     private var closed = false
 
     /** The detail page's panel before a play, with [automatic]; else the player's menu, with Dialogue boost. */
-    private fun open(subtitle: String? = Subtitles.OFF, playing: String? = "a1", automatic: AutomaticTracks? = null) {
+    private fun open(subtitle: String? = SUBTITLES_OFF, playing: String? = "a1", automatic: AutomaticTracks? = null) {
         val tracks = TrackChoices(audio, subtitles, playing, subtitle)
         compose.setContent {
             KivoTheme {
@@ -98,7 +98,7 @@ class TracksPanelTest {
         compose.onNodeWithText("E-AC3 DD+4.0 1024kbs Surround Mix").assertIsDisplayed()
 
         press(Key.DirectionRight)
-        waitForFocus("track:${Subtitles.OFF}")
+        waitForFocus("track:${SUBTITLES_OFF}")
         press(Key.DirectionDown, 18)
         waitForFocus("track:s18")
         press(Key.DirectionCenter)
@@ -136,7 +136,7 @@ class TracksPanelTest {
         waitForFocus("track:automatic-subtitle")
         press(Key.DirectionDown)
         press(Key.DirectionCenter)
-        assertEquals(listOf<String?>("a1", Subtitles.OFF), chosen)
+        assertEquals(listOf<String?>("a1", SUBTITLES_OFF), chosen)
     }
 
     @Test
@@ -155,7 +155,7 @@ class TracksPanelTest {
         compose.setContent {
             KivoTheme {
                 TracksPanel(
-                    tracks = TrackChoices(audio.take(1), emptyList(), "a1", Subtitles.OFF, searchable = true),
+                    tracks = TrackChoices(audio.take(1), emptyList(), "a1", SUBTITLES_OFF, searchable = true),
                     onAudio = { chosen += it },
                     onSubtitle = { chosen += it },
                     onDismiss = { closed = true },
@@ -163,7 +163,7 @@ class TracksPanelTest {
                 )
             }
         }
-        waitForFocus("track:${Subtitles.OFF}")
+        waitForFocus("track:${SUBTITLES_OFF}")
         press(Key.DirectionDown)
         waitForFocus("track:search-subtitles")
         compose.onNodeWithText("Search subtitles…").assertIsDisplayed()
