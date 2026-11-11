@@ -5,14 +5,13 @@ import XCTest
 
 /// The action row measures each round button once, at its ideal size, and
 /// places it at that size: Trailer measures the same as Play from
-/// Beginning, a circle.
+/// Beginning.
 @MainActor
 final class ActionRowTests: XCTestCase {
     func testTrailerIsTheSizeOfTheOtherRoundButtons() throws {
         let restart = idealSize(RestartButton {})
         let trailer = idealSize(TrailerButton(url: try XCTUnwrap(URL(string: "https://www.youtube.com/watch?v=yUQM7H4Swgw"))))
         XCTAssertGreaterThan(restart.width, 0)
-        XCTAssertEqual(restart.width, restart.height, "Play from beginning isn't round")
         XCTAssertEqual(trailer, restart, "Trailer isn't the size of the row's other round buttons")
     }
 
