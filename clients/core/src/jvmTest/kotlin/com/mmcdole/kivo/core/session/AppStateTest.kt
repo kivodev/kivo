@@ -1,5 +1,6 @@
 package com.mmcdole.kivo.core.session
 
+import com.mmcdole.kivo.api.models.DownloadDelivery
 import com.mmcdole.kivo.api.models.DownloadList
 import com.mmcdole.kivo.api.models.ServerInfo
 import com.mmcdole.kivo.core.Compatibility
@@ -45,6 +46,7 @@ import kotlin.test.assertIs
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
+import com.mmcdole.kivo.api.models.Download as ServerDownload
 import com.mmcdole.kivo.core.downloads.db.Download as Row
 
 // Where the app is, as its root shows it from KivoClient.state: opening the
@@ -81,12 +83,14 @@ private suspend fun KivoClient.started(): AppState = state.first { it != AppStat
 
 private suspend fun KivoClient.session(): KivoSession = assertIs<AppState.SignedIn>(started()).session
 
-/** Waits, in real time, for what the servers' own threads do. */
-private suspend fun until(what: String, met: () -> Boolean) = withContext(Dispatchers.Default) {
-    withTimeout(10.seconds) {
-        while (!met()) delay(10)
+/** How many times the server was asked for the downloads, once the syncs under way are over; waits in real time, for the server's own threads. */
+private suspend fun Harness.syncs(): Int = withContext(Dispatchers.Default) {
+    var seen = -1
+    while (seen != servers.seen.count { it == DOWNLOADS }) {
+        seen = servers.seen.count { it == DOWNLOADS }
+        delay(300)
     }
-    assertTrue(met(), what)
+    seen
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -243,20 +247,29 @@ class AppStateTest {
 
     @Test
     fun comingToTheForegroundReadsTheServerAgainAndSyncsTheDownloads() = appTest(withDownloads = true) { h ->
-        h.servers.on("home.test", "GET", "/api/v1/downloads") { json(DownloadList.serializer(), DownloadList(emptyList())) }
+        // A download the server is still preparing, which a sync asks the server about.
+        val preparing = ServerDownload("r1", "w1", "v1", "high", "queued", DownloadDelivery.Conversion, emptyList(), 1, 1, false, emptyList(), emptyList())
+        h.servers.on("home.test", "GET", "/api/v1/downloads") { json(DownloadList.serializer(), DownloadList(listOf(preparing))) }
+        DownloadDatabase(h.device.downloads!!.driver).downloadsQueries.insertDownload(
+            Row(
+                "d1", "server-1", "u1", "r1", "w1", null, null, null, "high", "queued", null, null, null,
+                kivoJson.encodeToString(ServerDownload.serializer(), preparing), "{}", "Night Shift", "movie", null, null, null, null, 1, 1, null, null,
+            ),
+        )
         h.core.start()
         val session = h.core.session()
-        until("the downloads sync as the server opens") { h.servers.seen.count { it == DOWNLOADS } == 1 }
+        val opened = h.syncs()
         h.servers.server("home.test", info("server-1", "Den"))
 
         h.core.setForeground(true)
 
         assertEquals("Den", session.savedServer.first { it.name == "Den" }.name)
-        until("the downloads sync as the app comes to the foreground") { h.servers.seen.count { it == DOWNLOADS } == 2 }
+        assertEquals(opened + 1, h.syncs(), "the downloads sync as the app comes to the foreground")
 
         h.core.setForeground(false)
+        assertEquals(opened + 1, h.syncs(), "and not as it leaves it")
         h.core.setForeground(true)
-        until("and each time it comes back") { h.servers.seen.count { it == DOWNLOADS } == 3 }
+        assertEquals(opened + 2, h.syncs(), "each time it comes back")
     }
 
     @Test

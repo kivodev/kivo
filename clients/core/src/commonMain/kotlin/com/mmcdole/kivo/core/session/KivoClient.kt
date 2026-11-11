@@ -212,6 +212,7 @@ class KivoClient internal constructor(
     /** Tries the server that couldn't be reached again. */
     fun retry() {
         val server = (state.value as? AppState.Unreachable)?.server ?: return
+        mutableState.value = AppState.Starting
         open { enter(server) }
     }
 
@@ -222,6 +223,7 @@ class KivoClient internal constructor(
      */
     fun openOffline() {
         val server = (state.value as? AppState.Unreachable)?.server ?: return
+        mutableState.value = AppState.Starting
         open { enter(server, offline = true) }
     }
 
@@ -262,7 +264,6 @@ class KivoClient internal constructor(
      * unreachable; [offline], signed in whether it answers or not.
      */
     private suspend fun enter(server: SavedServer, offline: Boolean = false) {
-        mutableState.value = AppState.Starting
         val session = try {
             var session = restore(server)
             // The network may still be waking as the app starts, so it's only unreachable once it's stayed so.
