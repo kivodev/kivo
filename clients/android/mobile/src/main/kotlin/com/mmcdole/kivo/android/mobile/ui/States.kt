@@ -3,6 +3,7 @@ package com.mmcdole.kivo.android.mobile.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
@@ -34,16 +35,18 @@ fun Loading(modifier: Modifier = Modifier) {
     Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
 }
 
-/** A heading and a sentence in the middle of the screen, with an action under them. */
+/** A heading and a sentence in the middle of the screen, with actions centred under them. */
 @Composable
-fun Message(title: String, sentence: String?, modifier: Modifier = Modifier, action: (@Composable () -> Unit)? = null) {
+fun Message(title: String, sentence: String?, modifier: Modifier = Modifier, actions: (@Composable ColumnScope.() -> Unit)? = null) {
     Box(modifier.fillMaxSize().padding(space(6)), contentAlignment = Alignment.Center) {
         Column(Modifier.widthIn(max = 420.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(space(2))) {
             Text(title, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
             if (sentence != null) {
                 Text(sentence, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
             }
-            if (action != null) Box(Modifier.padding(top = space(2))) { action() }
+            if (actions != null) {
+                Column(Modifier.padding(top = space(2)), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(space(1)), content = actions)
+            }
         }
     }
 }
@@ -58,13 +61,11 @@ fun Incompatible(problem: Compatibility, server: String, onRetry: () -> Unit, on
     val words = problem.words(LocalResources.current, server) ?: return
     val uris = LocalUriHandler.current
     Message(words.title, words.sentence, modifier.testTag("incompatible")) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(space(1))) {
-            if (problem is Compatibility.AppTooOld) {
-                STORE_LISTING?.let { listing -> Button(onClick = { uris.openUri(listing) }) { Text(stringResource(PlatformR.string.app_too_old_store)) } }
-            }
-            Button(onClick = onRetry) { Text(stringResource(R.string.mobile_try_again)) }
-            OutlinedButton(onClick = onChangeServer) { Text(stringResource(R.string.mobile_change_server)) }
+        if (problem is Compatibility.AppTooOld) {
+            STORE_LISTING?.let { listing -> Button(onClick = { uris.openUri(listing) }) { Text(stringResource(PlatformR.string.app_too_old_store)) } }
         }
+        Button(onClick = onRetry) { Text(stringResource(R.string.mobile_try_again)) }
+        OutlinedButton(onClick = onChangeServer) { Text(stringResource(R.string.mobile_change_server)) }
     }
 }
 
