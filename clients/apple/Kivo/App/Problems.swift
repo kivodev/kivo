@@ -17,9 +17,9 @@ extension Error {
         return RequestProblem.companion.of(error: throwable)
     }
 
-    /// The problem's code: the server's, or `network` when no answer came from it.
-    var problemCode: String {
-        requestProblem.code
+    /// The problem's code, when it's one the app acts on itself.
+    var problemCode: ProblemCode {
+        requestProblem.knownCode
     }
 
     /// The HTTP status of a refusal; nil when no answer came.
@@ -34,7 +34,7 @@ extension Error {
 
     /// Why a list's name wasn't saved, in a sentence.
     var listNameSentence: String {
-        problemCode == "nameTaken" ? String(localized: "You already have a list with that name.") : problemSentence
+        problemCode == .nameTaken ? String(localized: "You already have a list with that name.") : problemSentence
     }
 
     /// A failed subtitle search or download in a sentence; a quota used up

@@ -33,7 +33,7 @@ import kotlinx.serialization.encoding.*
  *
  * @param app The app, such as `kivo-android` or `kivo-web`.
  * @param appVersion 
- * @param platform What a client runs on.
+ * @param platform 
  * @param osVersion 
  * @param deviceModel The device's model, coarse, such as `SHIELD Android TV`, `iPhone16,2` or `Firefox 132`.
  */
@@ -46,8 +46,7 @@ data class ClientDevice (
 
     @SerialName(value = "appVersion") val appVersion: kotlin.String? = null,
 
-    /* What a client runs on. */
-    @SerialName(value = "platform") val platform: kotlin.String? = null,
+    @SerialName(value = "platform") val platform: com.mmcdole.kivo.api.models.ClientPlatform? = null,
 
     @SerialName(value = "osVersion") val osVersion: kotlin.String? = null,
 

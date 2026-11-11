@@ -49,7 +49,7 @@ data class PendingDevice (
     @SerialName(value = "startedAt") @Required val startedAt: kotlin.time.Instant,
 
     /* What it runs on, as its `Kivo-Platform` header said; absent when it gave none. */
-    @SerialName(value = "platform") val platform: kotlin.String? = null
+    @SerialName(value = "platform") val platform: com.mmcdole.kivo.api.models.ClientPlatform? = null
 
 ) {
 

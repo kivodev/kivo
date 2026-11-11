@@ -1,13 +1,17 @@
 package com.mmcdole.kivo.android.mobile
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import com.mmcdole.kivo.api.models.ClientPlatform
 import com.mmcdole.kivo.api.models.CurrentUser
+import com.mmcdole.kivo.api.models.MatchState
 import com.mmcdole.kivo.api.models.PlaybackPreferences
 import com.mmcdole.kivo.api.models.ServerInfo
 import com.mmcdole.kivo.api.models.Session
+import com.mmcdole.kivo.api.models.SessionKind
 import com.mmcdole.kivo.api.models.SubtitleMode
 import com.mmcdole.kivo.api.models.UserLimits
 import com.mmcdole.kivo.api.models.WorkImages
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.auth.ClientIdentity
 import com.mmcdole.kivo.core.auth.SecureStore
@@ -60,8 +64,8 @@ private val json = Json { encodeDefaults = false; explicitNulls = false }
 val anna = CurrentUser("u1", "anna", admin = false, limits = UserLimits(), playback = PlaybackPreferences(SubtitleMode.Smart, true, true, 1.0))
 
 /** A work's summary with no artwork. */
-fun work(id: String, title: String = id, kind: String = "movie") =
-    WorkSummary(id = id, kind = kind, title = title, matchState = "matched", available = true, images = WorkImages())
+fun work(id: String, title: String = id, kind: WorkKind = WorkKind.Movie) =
+    WorkSummary(id = id, kind = kind, title = title, matchState = MatchState.Matched, available = true, images = WorkImages())
 
 class FakeServer {
     private val routes = mutableMapOf<String, suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData>()
@@ -87,7 +91,7 @@ class FakeServer {
         get("/api/v1/users/me", CurrentUser.serializer()) { anna }
         on("POST", "/api/v1/sessions") {
             val now = Instant.fromEpochMilliseconds(0)
-            reply(Session.serializer(), Session("x", "app", "Phone", now, now, true, token = "token"), HttpStatusCode.Created)
+            reply(Session.serializer(), Session("x", SessionKind.App, "Phone", now, now, true, token = "token"), HttpStatusCode.Created)
         }
     }
 }
@@ -122,7 +126,7 @@ class TestDevice(dir: File, transport: DownloadTransport? = null, version: Strin
     override val identity = object : ClientIdentity {
         override val app = "kivo-android"
         override val appVersion = version
-        override val platform = "androidPhone"
+        override val platform = ClientPlatform.AndroidPhone
         override val osVersion = "17"
         override val deviceModel = "test"
     }

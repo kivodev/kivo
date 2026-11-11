@@ -43,26 +43,16 @@ final class GridModel {
         }
     }
 
-    struct Sort: Hashable, Identifiable {
-        let value: String
+    /// A sort a sort menu offers: a library's [GridSort] or a list's [ListSort].
+    struct Sort<Key: SortMenuKey>: Hashable, Identifiable {
+        let value: Key
         let label: String
         /// The direction it sorts in: "A to Z", "Newest first".
         let direction: String
-        var id: String { value }
+        var id: Key { value }
 
         /// The sort in a word or two, for the count line: "A–Z", "Recently added".
-        var short: String {
-            switch value {
-            case "title": String(localized: "A–Z")
-            case "author": String(localized: "Author A–Z")
-            case "addedAt", "dateAdded": String(localized: "Recently added")
-            case "releaseDate": String(localized: "Newest")
-            case "rating": String(localized: "Top rated")
-            case "runtimeMs": String(localized: "Shortest")
-            case "lastPlayedAt": String(localized: "Recently played")
-            default: label
-            }
-        }
+        var short: String { value.short ?? label }
     }
 
     /// What a library lists: its works, or its collections, authors or book series.
@@ -88,9 +78,9 @@ final class GridModel {
     }
 
     struct Played: Hashable, Identifiable {
-        let value: String?
+        let value: WorkPlayState?
         let label: String
-        var id: String { value ?? "" }
+        var id: String { value?.value ?? "" }
     }
 
     /// A books library's narrator, by person ID.
@@ -102,14 +92,14 @@ final class GridModel {
     /// What the grid shows: the tab, and for the works the sort and filters.
     struct Query: Hashable {
         var tab = Tab.titles
-        var sort: Sort
+        var sort: Sort<GridSort>
         var played: Played
         var genres: Set<String> = []
         /// The decade's first year, 1990 for the 1990s; nil for any.
         var decade: Int?
         var contentRatings: Set<String> = []
-        var resolutions: Set<String> = []
-        var dynamicRanges: Set<String> = []
+        var resolutions: Set<Resolution> = []
+        var dynamicRanges: Set<DynamicRange> = []
         var narrator: Narrator?
 
         /// Whether a filter narrows the works.
@@ -125,7 +115,7 @@ final class GridModel {
 
     let library: Library
     /// The sorts this library offers, Title first.
-    let sorts: [Sort]
+    let sorts: [Sort<GridSort>]
     let playedFilters: [Played]
     /// The tab, sort and filters chosen.
     var query: Query
@@ -143,8 +133,8 @@ final class GridModel {
     /// Newest first.
     private(set) var decades: [Int] = []
     private(set) var contentRatings: [String] = []
-    private(set) var resolutions: [String] = []
-    private(set) var dynamicRanges: [String] = []
+    private(set) var resolutions: [Resolution] = []
+    private(set) var dynamicRanges: [DynamicRange] = []
     private(set) var narrators: [Narrator] = []
     /// Counts the grids shown, a new one with each tab, sort or filter.
     private(set) var generation = 0
@@ -170,35 +160,35 @@ final class GridModel {
     /// Opens [library] with the tab, sort and filters this device last used
     /// in it, or with its works in [sort] alone for once, and its first page
     /// if it was seen lately.
-    init(library: Library, session: KivoSession, sort: String? = nil) {
+    init(library: Library, session: KivoSession, sort: GridSort? = nil) {
         self.library = library
         self.session = session
         keeps = sort == nil
-        let books = library.kind == "audiobooks"
+        let books = library.kind == .audiobooks
         sorts = books ? [
-            Sort(value: "title", label: String(localized: "Title"), direction: String(localized: "A to Z")),
-            Sort(value: "author", label: String(localized: "Author"), direction: String(localized: "A to Z")),
-            Sort(value: "addedAt", label: String(localized: "Date added"), direction: String(localized: "Newest first")),
-            Sort(value: "releaseDate", label: String(localized: "Release date"), direction: String(localized: "Newest first")),
+            Sort(value: GridSort.title, label: String(localized: "Title"), direction: String(localized: "A to Z")),
+            Sort(value: GridSort.author, label: String(localized: "Author"), direction: String(localized: "A to Z")),
+            Sort(value: GridSort.addedAt, label: String(localized: "Date added"), direction: String(localized: "Newest first")),
+            Sort(value: GridSort.releaseDate, label: String(localized: "Release date"), direction: String(localized: "Newest first")),
         ] : [
-            Sort(value: "title", label: String(localized: "Title"), direction: String(localized: "A to Z")),
-            Sort(value: "addedAt", label: String(localized: "Date added"), direction: String(localized: "Newest first")),
-        ] + (library.kind == "shows" ? [
-            Sort(value: "lastEpisodeAddedAt", label: String(localized: "Last episode added"), direction: String(localized: "Newest first")),
+            Sort(value: GridSort.title, label: String(localized: "Title"), direction: String(localized: "A to Z")),
+            Sort(value: GridSort.addedAt, label: String(localized: "Date added"), direction: String(localized: "Newest first")),
+        ] + (library.kind == .shows ? [
+            Sort(value: GridSort.lastEpisodeAddedAt, label: String(localized: "Last episode added"), direction: String(localized: "Newest first")),
         ] : []) + [
-            Sort(value: "releaseDate", label: String(localized: "Release date"), direction: String(localized: "Newest first")),
-            Sort(value: "rating", label: String(localized: "Rating"), direction: String(localized: "Highest first")),
-            Sort(value: "runtimeMs", label: String(localized: "Runtime"), direction: String(localized: "Shortest first")),
-            Sort(value: "lastPlayedAt", label: String(localized: "Last played"), direction: String(localized: "Most recent first")),
+            Sort(value: GridSort.releaseDate, label: String(localized: "Release date"), direction: String(localized: "Newest first")),
+            Sort(value: GridSort.rating, label: String(localized: "Rating"), direction: String(localized: "Highest first")),
+            Sort(value: GridSort.runtime, label: String(localized: "Runtime"), direction: String(localized: "Shortest first")),
+            Sort(value: GridSort.lastPlayedAt, label: String(localized: "Last played"), direction: String(localized: "Most recent first")),
         ]
         playedFilters = [
             Played(value: nil, label: String(localized: "All")),
-            Played(value: "unplayed", label: books ? String(localized: "Not started") : String(localized: "Unwatched")),
-            Played(value: "inProgress", label: String(localized: "In progress")),
-            Played(value: "played", label: books ? String(localized: "Finished") : String(localized: "Watched")),
+            Played(value: .unplayed, label: books ? String(localized: "Not started") : String(localized: "Unwatched")),
+            Played(value: .inProgress, label: String(localized: "In progress")),
+            Played(value: .played, label: books ? String(localized: "Finished") : String(localized: "Watched")),
         ]
         var saved: [String: String] = if let sort {
-            ["sort": sort]
+            ["sort": sort.value]
         } else {
             UserDefaults.standard.dictionary(forKey: Self.stateKey(library)) as? [String: String] ?? [:]
         }
@@ -207,16 +197,16 @@ final class GridModel {
             saved = migrated
             UserDefaults.standard.set(saved, forKey: Self.stateKey(library))
         }
-        let list = { (key: String, separator: Character) in Set((saved[key] ?? "").split(separator: separator).map(String.init)) }
+        let list = { (key: String, separator: Character) in (saved[key] ?? "").split(separator: separator).map(String.init) }
         let query = Query(
             tab: saved["tab"].flatMap(Tab.init(rawValue:)) ?? .titles,
-            sort: sorts.first { $0.value == saved["sort"] } ?? sorts[0],
-            played: playedFilters.first { $0.value == saved["played"] } ?? playedFilters[0],
-            genres: list("genres", Self.nameSeparator),
+            sort: sorts.first { $0.value == GridSort.companion.of(value: saved["sort"]) } ?? sorts[0],
+            played: playedFilters.first { $0.value == WorkPlayState.companion.of(value: saved["played"]) } ?? playedFilters[0],
+            genres: Set(list("genres", Self.nameSeparator)),
             decade: saved["decade"].flatMap(Int.init),
-            contentRatings: list("contentRatings", Self.nameSeparator),
-            resolutions: list("resolutions", ","),
-            dynamicRanges: list("dynamicRanges", ","),
+            contentRatings: Set(list("contentRatings", Self.nameSeparator)),
+            resolutions: Set(list("resolutions", ",").map { Resolution.companion.of(value: $0) }.filter { $0 != .unknown }),
+            dynamicRanges: Set(list("dynamicRanges", ",").compactMap { DynamicRange.companion.of(value: $0) }),
             narrator: saved["narrator"].map { Narrator(id: $0, name: saved["narratorName"] ?? "") }
         )
         self.query = query
@@ -247,7 +237,7 @@ final class GridModel {
         UserDefaults.standard.set(has, forKey: Self.collectionsKey(library))
     }
 
-    var isBooks: Bool { library.kind == "audiobooks" }
+    var isBooks: Bool { library.kind == .audiobooks }
 
     /// The shape of the cards on the section showing.
     var style: CardStyle { style(of: shown.tab) }
@@ -259,9 +249,9 @@ final class GridModel {
         case .authors, .bookSeries: .square
         case .titles:
             switch library.kind {
-            case "audiobooks": .square
-            case "videos": .landscape
-            default: .poster
+            case .audiobooks: .square
+            case .videos: .landscape
+            case .movies, .shows, .unknown: .poster
             }
         }
     }
@@ -277,9 +267,9 @@ final class GridModel {
             ]
         }
         let titles = switch library.kind {
-        case "movies": String(localized: "Movies")
-        case "shows": String(localized: "Shows")
-        default: String(localized: "Videos")
+        case .movies: String(localized: "Movies")
+        case .shows: String(localized: "Shows")
+        case .videos, .audiobooks, .unknown: String(localized: "Videos")
         }
         var sections = [Section(tab: .titles, label: titles)]
         if hasCollections == true || query.tab == .collections {
@@ -301,20 +291,20 @@ final class GridModel {
         if query.played.value != nil {
             filters.append(ActiveFilter(id: "played", label: query.played.label) { [playedFilters] in $0.played = playedFilters[0] })
         }
-        for genre in Self.ordered(query.genres, as: genres) {
+        for genre in Self.ordered(query.genres, as: genres, by: \.self) {
             filters.append(ActiveFilter(id: "genre:\(genre)", label: genre) { $0.genres.remove(genre) })
         }
-        for rating in Self.ordered(query.contentRatings, as: contentRatings) {
+        for rating in Self.ordered(query.contentRatings, as: contentRatings, by: \.self) {
             filters.append(ActiveFilter(id: "contentRating:\(rating)", label: rating) { $0.contentRatings.remove(rating) })
         }
         if let decade = query.decade {
             filters.append(ActiveFilter(id: "decade", label: Self.label(decade: decade)) { $0.decade = nil })
         }
-        for resolution in Self.ordered(query.resolutions, as: resolutions) {
-            filters.append(ActiveFilter(id: resolution, label: Self.label(resolution)) { $0.resolutions.remove(resolution) })
+        for resolution in Self.ordered(query.resolutions, as: resolutions, by: \.value) {
+            filters.append(ActiveFilter(id: resolution.value, label: Self.label(resolution)) { $0.resolutions.remove(resolution) })
         }
-        for format in Self.ordered(query.dynamicRanges, as: dynamicRanges) {
-            filters.append(ActiveFilter(id: format, label: Self.label(format)) { $0.dynamicRanges.remove(format) })
+        for format in Self.ordered(query.dynamicRanges, as: dynamicRanges, by: \.value) {
+            filters.append(ActiveFilter(id: format.value, label: Self.label(format)) { $0.dynamicRanges.remove(format) })
         }
         if let narrator = query.narrator {
             let name = narrators.first { $0.id == narrator.id }?.name ?? narrator.name
@@ -404,14 +394,14 @@ final class GridModel {
     func reload() {
         if keeps {
             var state = [
-                "sort": query.sort.value,
+                "sort": query.sort.value.value,
                 "genres": query.genres.sorted().joined(separator: String(Self.nameSeparator)),
                 "contentRatings": query.contentRatings.sorted().joined(separator: String(Self.nameSeparator)),
-                "resolutions": query.resolutions.sorted().joined(separator: ","),
-                "dynamicRanges": query.dynamicRanges.sorted().joined(separator: ","),
+                "resolutions": query.resolutions.map(\.value).sorted().joined(separator: ","),
+                "dynamicRanges": query.dynamicRanges.map(\.value).sorted().joined(separator: ","),
             ]
             state["tab"] = query.tab.rawValue
-            state["played"] = query.played.value
+            state["played"] = query.played.value?.value
             state["decade"] = query.decade.map(String.init)
             state["narrator"] = query.narrator?.id
             state["narratorName"] = query.narrator?.name
@@ -516,9 +506,9 @@ final class GridModel {
         Set(years.map { $0 - $0 % 10 }).sorted(by: >)
     }
 
-    /// [values] in [offered]'s order, then any it doesn't have by name.
-    private static func ordered(_ values: Set<String>, as offered: [String]) -> [String] {
-        offered.filter(values.contains) + values.subtracting(offered).sorted()
+    /// [values] in [offered]'s order, then any it doesn't have by [name].
+    private static func ordered<Value: Hashable>(_ values: Set<Value>, as offered: [Value], by name: (Value) -> String) -> [Value] {
+        offered.filter(values.contains) + values.subtracting(offered).sorted { name($0) < name($1) }
     }
 
     /// Whether the library has collections, by its filters' first answer; a failed read counts as none.
@@ -551,6 +541,8 @@ final class GridModel {
     /// one left empty matches all.
     static func gridQuery(_ query: Query, of library: Library) -> GridQuery {
         let list = { (values: Set<String>) in values.isEmpty ? nil : values.sorted() }
+        let resolutions = query.resolutions.sorted { $0.value < $1.value }
+        let dynamicRanges = query.dynamicRanges.sorted { $0.value < $1.value }
         return GridQuery(
             libraryId: library.id,
             sort: query.sort.value,
@@ -559,8 +551,8 @@ final class GridModel {
             yearFrom: query.decade.map { KotlinInt(value: Int32($0)) },
             yearTo: query.decade.map { KotlinInt(value: Int32($0 + 9)) },
             contentRatings: list(query.contentRatings),
-            resolutions: list(query.resolutions),
-            dynamicRanges: list(query.dynamicRanges),
+            resolutions: resolutions.isEmpty ? nil : resolutions,
+            dynamicRanges: dynamicRanges.isEmpty ? nil : dynamicRanges,
             narratorId: query.narrator?.id
         )
     }
@@ -575,10 +567,10 @@ final class GridModel {
         case .bookSeries: return String(localized: "\(n) series")
         case .titles:
             switch library.kind {
-            case "movies": return one ? String(localized: "1 movie") : String(localized: "\(n) movies")
-            case "shows": return one ? String(localized: "1 show") : String(localized: "\(n) shows")
-            case "audiobooks": return one ? String(localized: "1 book") : String(localized: "\(n) books")
-            default: return one ? String(localized: "1 video") : String(localized: "\(n) videos")
+            case .movies: return one ? String(localized: "1 movie") : String(localized: "\(n) movies")
+            case .shows: return one ? String(localized: "1 show") : String(localized: "\(n) shows")
+            case .audiobooks: return one ? String(localized: "1 book") : String(localized: "\(n) books")
+            case .videos, .unknown: return one ? String(localized: "1 video") : String(localized: "\(n) videos")
             }
         }
     }
@@ -588,16 +580,37 @@ final class GridModel {
         String(localized: "\(String(decade))s")
     }
 
-    /// A resolution or HDR format as its chip and menu name it.
-    static func label(_ value: String) -> String {
-        switch value {
-        case "4k": "4K"
-        case "1080p": "1080p"
-        case "720p": "720p"
-        case "sd": "SD"
-        case "hdr": "HDR"
-        case "dolbyVision": "Dolby Vision"
-        default: value
+    /// A resolution as its chip and menu name it.
+    static func label(_ resolution: Resolution) -> String {
+        switch resolution {
+        case .fourK: "4K"
+        case .p1080: "1080p"
+        case .p720: "720p"
+        case .sd: "SD"
+        case .unknown: resolution.value
+        }
+    }
+
+    /// An HDR format as its chip and menu name it.
+    static func label(_ format: DynamicRange) -> String {
+        switch format {
+        case .hdr: "HDR"
+        case .dolbyVision: "Dolby Vision"
+        }
+    }
+}
+
+extension GridSort: SortMenuKey {
+    var short: String? {
+        switch self {
+        case .title: String(localized: "A–Z")
+        case .author: String(localized: "Author A–Z")
+        case .addedAt: String(localized: "Recently added")
+        case .releaseDate: String(localized: "Newest")
+        case .rating: String(localized: "Top rated")
+        case .runtime: String(localized: "Shortest")
+        case .lastPlayedAt: String(localized: "Recently played")
+        case .lastEpisodeAddedAt: nil
         }
     }
 }

@@ -42,12 +42,14 @@ import com.mmcdole.kivo.android.ui.SkeletonLine
 import com.mmcdole.kivo.android.ui.WorkCard
 import com.mmcdole.kivo.android.ui.cardShapeOf
 import com.mmcdole.kivo.android.ui.prepareCard
+import com.mmcdole.kivo.api.models.ListKind
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkList
 import com.mmcdole.kivo.core.Load
 import kotlinx.coroutines.launch
 
 /** The kinds the TV shows of a list: no books, which aren't on the TV. */
-internal val tvWorkKinds = setOf("movie", "series", "episode", "season", "video", "extra")
+internal val tvWorkKinds = setOf(WorkKind.Movie, WorkKind.Series, WorkKind.Episode, WorkKind.Season, WorkKind.Video, WorkKind.Extra)
 
 /** An open list as a grid, its pages read again in place as the list changes. */
 class ListWorksViewModel(session: ServerSession, listId: String) : ViewModel() {
@@ -113,7 +115,7 @@ fun ListWorksScreen(session: ServerSession, listId: String, name: String, naviga
 
 /** Why an open [list] shows nothing: rules that no longer run, rules matching nothing, or nothing added. */
 internal fun emptyListMessage(list: WorkList?): Int = when {
-    list?.kind != "smart" -> R.string.list_empty
+    list?.kind != ListKind.Smart -> R.string.list_empty
     !list.smart?.errors.isNullOrEmpty() -> R.string.list_rules_broken
     else -> R.string.list_nothing_matches
 }

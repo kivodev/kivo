@@ -12,8 +12,8 @@ final class DownloadWordsTests: XCTestCase {
     private let display = Display()
 
     private func item(
-        _ status: any DownloadStatus, kind: String = "movie", season: Int? = nil, episode: Int? = nil,
-        authors: String? = nil, quality: String = "high", durationMs: Int64? = 2_820_000, size: Int64 = 1_200_000_000, exact: Bool = true,
+        _ status: any DownloadStatus, kind: WorkKind = .movie, season: Int? = nil, episode: Int? = nil,
+        authors: String? = nil, quality: DownloadQuality = .high, durationMs: Int64? = 2_820_000, size: Int64 = 1_200_000_000, exact: Bool = true,
         prepared: Bool = false
     ) -> DownloadItem {
         DownloadItem(
@@ -32,7 +32,7 @@ final class DownloadWordsTests: XCTestCase {
     }
 
     private func episode(_ status: any DownloadStatus, prepared: Bool = true) -> DownloadItem {
-        item(status, kind: "episode", season: 1, episode: 1, prepared: prepared)
+        item(status, kind: .episode, season: 1, episode: 1, prepared: prepared)
     }
 
     private func preparing(_ progress: Double) -> any DownloadStatus {
@@ -44,19 +44,19 @@ final class DownloadWordsTests: XCTestCase {
     }
 
     func testAReadyDownloadSaysHowLongItPlaysAndItsSize() {
-        XCTAssertEqual(DownloadWords.line(item(ready, kind: "episode", season: 1, episode: 2, size: 312_000_000), display: display), "47m · 312 MB")
+        XCTAssertEqual(DownloadWords.line(item(ready, kind: .episode, season: 1, episode: 2, size: 312_000_000), display: display), "47m · 312 MB")
         XCTAssertEqual(DownloadWords.line(item(ready, durationMs: 6_720_000, size: 1_800_000_000), display: display), "1h 52m · 1.8 GB")
         XCTAssertEqual(DownloadWords.line(item(ready, durationMs: nil), display: display), "1.2 GB")
         XCTAssertEqual(
-            DownloadWords.line(item(ready, kind: "book", authors: "Frank Herbert", quality: "original", size: 320_000_000), display: display),
+            DownloadWords.line(item(ready, kind: .book, authors: "Frank Herbert", quality: .original, size: 320_000_000), display: display),
             "Frank Herbert · 320 MB"
         )
         XCTAssertNil(DownloadWords.progress(item(ready)))
     }
 
     func testNoRowSaysAResolution() {
-        let rows = ["high", "standard", "original"].flatMap { quality in
-            [item(ready, quality: quality), item(ready, kind: "episode", season: 1, episode: 1, quality: quality)]
+        let rows = [DownloadQuality.high, .standard, .original].flatMap { quality in
+            [item(ready, quality: quality), item(ready, kind: .episode, season: 1, episode: 1, quality: quality)]
         }
         for row in rows {
             let line = DownloadWords.line(row, display: display)
@@ -64,11 +64,11 @@ final class DownloadWordsTests: XCTestCase {
                 XCTAssertFalse(line.contains(word), "\(line) names a resolution")
             }
         }
-        XCTAssertEqual(DownloadWords.line(show: rows.filter { $0.kind == "episode" }, display: display), "3 episodes · 3.6 GB")
+        XCTAssertEqual(DownloadWords.line(show: rows.filter { $0.kind == .episode }, display: display), "3 episodes · 3.6 GB")
     }
 
     func testAnEpisodesNumberLeadsItsTitleOnItsShowsPage() {
-        let episode = item(ready, kind: "episode", season: 1, episode: 2)
+        let episode = item(ready, kind: .episode, season: 1, episode: 2)
         XCTAssertEqual(DownloadWords.title(episode, numbered: true), "2. Half Loop")
         XCTAssertEqual(DownloadWords.title(episode, numbered: false), "Half Loop")
         XCTAssertEqual(DownloadWords.title(item(ready), numbered: true), "Half Loop")
@@ -143,9 +143,9 @@ final class DownloadWordsTests: XCTestCase {
 
     func testAFinishedShowSaysItsEpisodesAndSize() {
         let episodes = [
-            item(ready, kind: "episode", season: 3, episode: 1, size: 380_000_000),
-            item(ready, kind: "episode", season: 3, episode: 2, size: 410_000_000),
-            item(DownloadStatusFailed(reason: "notEnoughSpace"), kind: "episode", season: 3, episode: 3),
+            item(ready, kind: .episode, season: 3, episode: 1, size: 380_000_000),
+            item(ready, kind: .episode, season: 3, episode: 2, size: 410_000_000),
+            item(DownloadStatusFailed(reason: "notEnoughSpace"), kind: .episode, season: 3, episode: 3),
         ]
         XCTAssertEqual(DownloadWords.line(show: Array(episodes.prefix(2)), display: display), "2 episodes · 790 MB")
         XCTAssertNil(DownloadWords.progress(show: Array(episodes.prefix(2))))
@@ -153,7 +153,7 @@ final class DownloadWordsTests: XCTestCase {
     }
 
     func testAFailedOneSaysOnlyWhy() {
-        let failed = item(DownloadStatusFailed(reason: "notEnoughSpace"), kind: "episode", season: 1, episode: 2)
+        let failed = item(DownloadStatusFailed(reason: "notEnoughSpace"), kind: .episode, season: 1, episode: 2)
         XCTAssertEqual(DownloadWords.line(failed, display: display), "Not enough space")
         XCTAssertEqual(DownloadWords.line(item(DownloadStatusFailed(reason: "checkFailed")), display: display), "Didn't finish")
         XCTAssertEqual(DownloadWords.line(item(DownloadStatusFailed(reason: "notPlayable")), display: display), "Can't play here")

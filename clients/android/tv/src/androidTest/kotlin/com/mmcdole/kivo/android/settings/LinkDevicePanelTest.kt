@@ -13,6 +13,7 @@ import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.requestFocus
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.mmcdole.kivo.android.theme.KivoTheme
+import com.mmcdole.kivo.api.models.ClientPlatform
 import com.mmcdole.kivo.api.models.PendingDevice
 import org.junit.Rule
 import org.junit.Test
@@ -67,7 +68,7 @@ class LinkDevicePanelTest {
 
     @Test
     fun aTypedCodeAsksWithWhatTheServerKnowsAndAllowSignsItIn() {
-        val link = FakeLink(PendingDevice("Living Room", platform = "androidTv", nearby = false, startedAt = Clock.System.now()))
+        val link = FakeLink(PendingDevice("Living Room", platform = ClientPlatform.AndroidTv, nearby = false, startedAt = Clock.System.now()))
         open(link)
 
         assertEquals(listOf("K7Q2M9"), link.looked)
@@ -81,7 +82,7 @@ class LinkDevicePanelTest {
 
     @Test
     fun dontAllowDeniesIt() {
-        val link = FakeLink(PendingDevice("Den", platform = "iPad", nearby = true, startedAt = Clock.System.now()))
+        val link = FakeLink(PendingDevice("Den", platform = ClientPlatform.IPad, nearby = true, startedAt = Clock.System.now()))
         open(link)
 
         compose.onNodeWithTag("linkContext").assertTextEquals("iPad · On your home network · Just now")

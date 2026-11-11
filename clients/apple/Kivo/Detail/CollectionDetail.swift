@@ -86,7 +86,7 @@ struct CollectionDetail: View {
                 .foregroundStyle(palette.text)
                 .accessibilityAddTraits(.isHeader)
             if let count = collection.map({ $0.items.count }) ?? card.map({ Int($0.workCount) }) {
-                let movies = (collection?.source ?? card?.source) == "provider"
+                let movies = (collection?.source ?? card?.source) == .provider
                 Text(movies
                     ? (count == 1 ? String(localized: "1 movie") : String(localized: "\(count) movies"))
                     : (count == 1 ? String(localized: "1 item") : String(localized: "\(count) items")))

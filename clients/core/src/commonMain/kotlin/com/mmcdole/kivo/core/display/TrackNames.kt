@@ -1,6 +1,7 @@
 package com.mmcdole.kivo.core.display
 
 import com.mmcdole.kivo.api.models.PlayTrack
+import com.mmcdole.kivo.api.models.Resolution
 import com.mmcdole.kivo.api.models.Track
 
 /** A track's name in a picker: [name] on one line, and [note], the file's own title, dim under it. */
@@ -19,10 +20,10 @@ fun Display.delivered(track: PlayTrack): String {
     val size = to?.width?.let { width ->
         resolution(
             when {
-                width >= 3200 -> "4k"
-                width >= 1700 -> "1080p"
-                width >= 1200 -> "720p"
-                else -> "sd"
+                width >= 3200 -> Resolution.FourK
+                width >= 1700 -> Resolution.P1080
+                width >= 1200 -> Resolution.P720
+                else -> Resolution.Sd
             },
         )
     }

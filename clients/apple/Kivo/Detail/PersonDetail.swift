@@ -28,9 +28,9 @@ struct PersonDetail: View {
                     }
                     if let person {
                         Overview(text: person.overview)
-                        CardRow(title: String(localized: "Movies"), works: person.works.filter { $0.kind == "movie" })
-                        CardRow(title: String(localized: "Shows"), works: person.works.filter { $0.kind == "series" })
-                        CardRow(title: String(localized: "Other videos"), works: person.works.filter { $0.kind == "video" })
+                        CardRow(title: String(localized: "Movies"), works: person.works.filter { $0.kind == .movie })
+                        CardRow(title: String(localized: "Shows"), works: person.works.filter { $0.kind == .series })
+                        CardRow(title: String(localized: "Other videos"), works: person.works.filter { $0.kind == .video })
                         ForEach(person.bookSeries, id: \.id) { series in
                             CardRow(title: series.name, works: series.items)
                         }

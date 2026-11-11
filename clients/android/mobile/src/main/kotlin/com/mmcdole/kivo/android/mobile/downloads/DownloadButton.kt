@@ -180,7 +180,7 @@ private fun QualitySheet(state: DownloadUiState, onDismiss: () -> Unit, onPick: 
 private fun OptionRow(option: DownloadOption, checked: Boolean, note: String? = null, onClick: () -> Unit) {
     val size = display.size(option.sizeBytes)
     ListItem(
-        headlineContent = { Text(display.downloadQuality(option.quality)) },
+        headlineContent = { Text(DownloadQuality.parseOrNull(option.quality)?.let(display::downloadQuality) ?: option.quality) },
         supportingContent = { Text(note ?: if (option.asIs) size else stringResource(R.string.mobile_up_to_size, size)) },
         trailingContent = { if (checked) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) },
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
@@ -196,7 +196,7 @@ private fun ManageSheet(state: DownloadUiState, actions: DownloadActions, onDism
     ModalBottomSheet(onDismissRequest = onDismiss, modifier = Modifier.testTag("downloadSheet")) {
         SheetTitle(item.title)
         Text(
-            listOf(downloadLine(item), display.downloadQuality(item.quality)).joinToString(" · "),
+            listOfNotNull(downloadLine(item), item.quality?.let(display::downloadQuality)).joinToString(" · "),
             Modifier.padding(horizontal = space(6)).padding(bottom = space(2)),
             style = MaterialTheme.typography.bodyMedium,
             color = if (item.status is DownloadStatus.Failed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,

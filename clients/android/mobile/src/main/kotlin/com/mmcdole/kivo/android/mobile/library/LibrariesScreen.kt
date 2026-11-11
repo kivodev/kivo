@@ -39,12 +39,13 @@ import com.mmcdole.kivo.android.mobile.ui.Loading
 import com.mmcdole.kivo.android.mobile.ui.Message
 import com.mmcdole.kivo.android.mobile.ui.TabTopBar
 import com.mmcdole.kivo.api.models.Library
+import com.mmcdole.kivo.api.models.LibraryKind
 
 /** A library's icon by its kind. */
-fun libraryIcon(kind: String): ImageVector = when (kind) {
-    "shows" -> Icons.Default.Tv
-    "audiobooks" -> Icons.Default.Headphones
-    "videos" -> Icons.Default.PlayCircle
+fun libraryIcon(kind: LibraryKind): ImageVector = when (kind) {
+    LibraryKind.Shows -> Icons.Default.Tv
+    LibraryKind.Audiobooks -> Icons.Default.Headphones
+    LibraryKind.Videos -> Icons.Default.PlayCircle
     else -> Icons.Default.Movie
 }
 

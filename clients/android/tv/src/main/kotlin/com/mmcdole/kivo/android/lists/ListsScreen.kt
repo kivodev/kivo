@@ -75,6 +75,7 @@ import com.mmcdole.kivo.android.ui.focusKey
 import com.mmcdole.kivo.android.ui.map
 import com.mmcdole.kivo.android.ui.raisedOnFocus
 import com.mmcdole.kivo.android.ui.rememberFocusMemory
+import com.mmcdole.kivo.api.models.ListKind
 import com.mmcdole.kivo.api.models.WorkList
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.Load
@@ -83,11 +84,9 @@ import kotlinx.coroutines.flow.map
 /** A list's shelf: the list and its first works, books left out. */
 data class Shelf(val list: WorkList, val works: List<WorkSummary>)
 
-private const val SMART = "smart"
-
 /** The lists as shelves, in their order: Watchlist only with works to show, and a list kind it doesn't know left out. */
 internal fun shelves(lists: List<WorkList>): List<Shelf> = lists
-    .filter { it.kind == "manual" || it.kind == SMART }
+    .filter { it.kind == ListKind.Manual || it.kind == ListKind.Smart }
     .map { list -> Shelf(list, list.items.orEmpty().filter { it.kind in tvWorkKinds }) }
     .filter { !it.list.builtIn || it.works.isNotEmpty() }
 
@@ -231,7 +230,7 @@ private fun ShelfTitle(list: WorkList, empty: Boolean) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(list.name, Modifier.weight(1f, fill = false), style = TvType.large, color = colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        if (list.kind == SMART) {
+        if (list.kind == ListKind.Smart) {
             Row(horizontalArrangement = Arrangement.spacedBy(Kivo.space(1)), verticalAlignment = Alignment.CenterVertically) {
                 KivoIconView(KivoIcon.Sparkle, size = 16.dp, tint = colors.accent)
                 Text(stringResource(R.string.smart_list), style = TvType.small, color = colors.accent, maxLines = 1)

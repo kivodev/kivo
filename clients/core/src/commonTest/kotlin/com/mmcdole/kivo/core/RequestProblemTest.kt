@@ -33,6 +33,19 @@ class RequestProblemTest {
     }
 
     @Test
+    fun theCodesTheAppsActOnAreKnownAndEveryOtherIsUnknown() {
+        assertEquals(ProblemCode.NameTaken, RequestProblem.of(refusal(409, "nameTaken")).knownCode)
+        assertEquals(ProblemCode.StreamLimit, RequestProblem.of(refusal(409, "streamLimit")).knownCode)
+        assertEquals(ProblemCode.WrongPassword, RequestProblem.of(refusal(401, "wrongPassword")).knownCode)
+        assertEquals(ProblemCode.Unknown, RequestProblem.of(refusal(409, "somethingNew")).knownCode)
+        assertEquals("somethingNew", RequestProblem.of(refusal(409, "somethingNew")).code, "the code itself is kept, for its words")
+        assertEquals(ProblemCode.Unknown, RequestProblem.Unreachable.knownCode)
+        assertEquals(ProblemCode.Unknown, RequestProblem.Unexpected.knownCode)
+        for (code in ProblemCode.entries) assertEquals(code, ProblemCode.of(code.value))
+        assertEquals(ProblemCode.Unknown, ProblemCode.of(null))
+    }
+
+    @Test
     fun theServersOwn503sAreAnswersNotNoAnswer() {
         for (code in listOf("transcodeBusy", "providerUnavailable", "notConfigured", "quotaUsed")) {
             val problem = RequestProblem.of(refusal(503, code))

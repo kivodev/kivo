@@ -6,6 +6,7 @@ import com.mmcdole.kivo.android.mobile.app.WorkRoute
 import com.mmcdole.kivo.android.mobile.awaitValue
 import com.mmcdole.kivo.android.mobile.reply
 import com.mmcdole.kivo.api.models.EpisodeInfo
+import com.mmcdole.kivo.api.models.MatchState
 import com.mmcdole.kivo.api.models.PlayCreate
 import com.mmcdole.kivo.api.models.PlayDelivery
 import com.mmcdole.kivo.api.models.PlayPart
@@ -15,6 +16,7 @@ import com.mmcdole.kivo.api.models.TrackDelivery
 import com.mmcdole.kivo.api.models.TrackType
 import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.api.models.WorkImages
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.core.play.PlayerEnd
 import com.mmcdole.kivo.core.play.PlayerStatus
 import com.mmcdole.kivo.core.player.TrackShow
@@ -56,7 +58,7 @@ class PlayerViewModelTest : CoreTest() {
     init {
         server.get("/api/v1/works/m1", WorkDetail.serializer()) {
             WorkDetail(
-                id = "m1", kind = "movie", title = "Charade", matchState = "matched", available = true, images = WorkImages(),
+                id = "m1", kind = WorkKind.Movie, title = "Charade", matchState = MatchState.Matched, available = true, images = WorkImages(),
                 genres = emptyList(), studios = emptyList(), credits = emptyList(), externalIds = emptyList(), versions = emptyList(),
                 extras = emptyList(), collections = emptyList(),
             )

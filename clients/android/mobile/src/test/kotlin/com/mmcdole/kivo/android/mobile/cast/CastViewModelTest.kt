@@ -6,8 +6,10 @@ import com.mmcdole.kivo.android.mobile.awaitValue
 import com.mmcdole.kivo.android.mobile.waitFor
 import com.mmcdole.kivo.android.mobile.reply
 import com.mmcdole.kivo.api.models.CastToken
+import com.mmcdole.kivo.api.models.MatchState
 import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.api.models.WorkImages
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.core.cast.CastLoad
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -73,7 +75,7 @@ class CastViewModelTest : CoreTest() {
         }
         server.get("/api/v1/works/m1", WorkDetail.serializer()) {
             WorkDetail(
-                id = "m1", kind = "movie", title = "Charade", matchState = "matched", available = true, images = WorkImages(),
+                id = "m1", kind = WorkKind.Movie, title = "Charade", matchState = MatchState.Matched, available = true, images = WorkImages(),
                 genres = emptyList(), studios = emptyList(), credits = emptyList(), externalIds = emptyList(), versions = emptyList(),
                 extras = emptyList(), collections = emptyList(), durationMs = 6_000_000,
             )

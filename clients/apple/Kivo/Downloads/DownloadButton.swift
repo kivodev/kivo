@@ -105,7 +105,7 @@ struct DownloadButton: View {
     private func optionToggle(_ option: DownloadOption) -> some View {
         let quality: DownloadQuality? = DownloadQuality.allCases.first { $0.value == option.quality }
         let isSetting: Bool = option.quality == server.app.settings?.downloadQuality.value
-        let name: String = server.display.downloadQuality(quality: option.quality)
+        let name: String = DownloadQuality.companion.parseOrNull(value: option.quality).map { server.display.downloadQuality(quality: $0) } ?? option.quality
         return Toggle(name, isOn: Binding(get: { isSetting }, set: { _ in download(quality) }))
         .accessibilityIdentifier("download-\(option.quality)")
     }

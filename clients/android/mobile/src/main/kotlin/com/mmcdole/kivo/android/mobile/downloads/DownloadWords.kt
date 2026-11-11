@@ -5,6 +5,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.mmcdole.kivo.android.mobile.R
 import com.mmcdole.kivo.android.mobile.ui.display
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.core.display.runtime
 import com.mmcdole.kivo.core.display.size
 import com.mmcdole.kivo.core.downloads.DownloadItem
@@ -123,7 +124,7 @@ fun words(progress: DownloadProgress): String {
 fun downloadLine(item: DownloadItem): String {
     DownloadWords.progress(item)?.let { return words(it) }
     (item.status as? DownloadStatus.Failed)?.let { return display.downloadFailure(it.reason) }
-    val what = if (item.kind == "book") item.authors else item.durationMs?.takeIf { it > 0 }?.let { display.runtime(it) }
+    val what = if (item.kind == WorkKind.Book) item.authors else item.durationMs?.takeIf { it > 0 }?.let { display.runtime(it) }
     return listOfNotNull(what, display.size(item.sizeBytes)).joinToString(" · ")
 }
 

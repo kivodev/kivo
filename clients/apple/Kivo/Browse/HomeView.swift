@@ -22,9 +22,7 @@ struct HomeView: View {
     /// The rows the skeleton shows: Continue Watching's stills and two rows of posters.
     private static let skeletonStyles: [CardStyle] = [.landscape, .poster, .poster]
     /// The rows a card's long press can remove it from.
-    private static let continueRows: Set<String> = ["continueWatching", "continueListening"]
-    /// The row kinds this app shows; a kind it doesn't know is skipped.
-    static let knownRows: Set<String> = continueRows.union(["recentlyAdded", "list"])
+    private static let continueRows: Set<HomeRowKind> = [.continueWatching, .continueListening]
 
     var body: some View {
         SkeletonGate(loaded: home != nil || failure != nil || server.unreachable) {
@@ -32,7 +30,8 @@ struct HomeView: View {
                 MessageView(String(localized: "Couldn't load Home."), sentence: failure.sentence)
                     .frame(maxHeight: .infinity)
             } else if let home {
-                let rows = home.rows.filter { Self.knownRows.contains($0.kind) }
+                // A row kind this app doesn't know is skipped.
+                let rows = home.rows.filter { $0.kind != .unknown }
                 if rows.isEmpty, home.allHidden?.boolValue == true {
                     MessageView(
                         String(localized: "Your Home is empty"),
@@ -115,10 +114,10 @@ struct HomeView: View {
     /// The shape every card of a row of [kind] takes, nil where each
     /// work's own decides: Continue Watching as landscape cards, where the
     /// frame says where you are.
-    private static func fixedStyle(_ kind: String) -> CardStyle? {
+    private static func fixedStyle(_ kind: HomeRowKind) -> CardStyle? {
         switch kind {
-        case "continueWatching": .landscape
-        default: nil
+        case .continueWatching: .landscape
+        case .continueListening, .recentlyAdded, .list, .unknown: nil
         }
     }
 
@@ -139,13 +138,13 @@ struct HomeView: View {
     /// Recently Added's opens its library sorted by date added.
     private func more(of row: HomeRow) -> (() -> Void)? {
         switch row.kind {
-        case "list":
+        case .list:
             guard let list = row.list else { return nil }
             return { server.navigation.paths[.home, default: []].append(.list(list)) }
-        case "recentlyAdded":
+        case .recentlyAdded:
             guard let library = server.library(of: row.library?.id) else { return nil }
-            return { server.navigation.paths[.home, default: []].append(.library(library, sort: "addedAt")) }
-        default:
+            return { server.navigation.paths[.home, default: []].append(.library(library, sort: .addedAt)) }
+        case .continueWatching, .continueListening, .unknown:
             return nil
         }
     }
@@ -153,12 +152,12 @@ struct HomeView: View {
 }
 
 /// A Home row's heading, the same on Home and in Settings.
-func homeRowTitle(kind: String, libraryName: String?, listName: String?) -> String {
+func homeRowTitle(kind: HomeRowKind, libraryName: String?, listName: String?) -> String {
     switch kind {
-    case "continueWatching": String(localized: "Continue Watching")
-    case "continueListening": String(localized: "Continue Listening")
-    case "list": listName ?? ""
-    default:
+    case .continueWatching: String(localized: "Continue Watching")
+    case .continueListening: String(localized: "Continue Listening")
+    case .list: listName ?? ""
+    case .recentlyAdded, .unknown:
         if let libraryName {
             String(localized: "Recently Added in \(libraryName)")
         } else {

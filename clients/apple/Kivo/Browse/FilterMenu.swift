@@ -75,11 +75,11 @@ struct FilterMenu: View {
     }
 
     /// A submenu of [values] to take any of, named with those chosen.
-    private func several(
+    private func several<Value: Hashable>(
         _ title: String,
-        _ values: [String],
-        in set: WritableKeyPath<GridModel.Query, Set<String>>,
-        label: @escaping (String) -> String
+        _ values: [Value],
+        in set: WritableKeyPath<GridModel.Query, Set<Value>>,
+        label: @escaping (Value) -> String
     ) -> some View {
         let chosen = values.filter(model.query[keyPath: set].contains).map(label)
         return Menu {
@@ -96,7 +96,7 @@ struct FilterMenu: View {
     }
 
     /// Whether [value] is in one of the query's sets, as a switch.
-    private func member(_ value: String, of set: WritableKeyPath<GridModel.Query, Set<String>>) -> Binding<Bool> {
+    private func member<Value: Hashable>(_ value: Value, of set: WritableKeyPath<GridModel.Query, Set<Value>>) -> Binding<Bool> {
         Binding(
             get: { model.query[keyPath: set].contains(value) },
             set: { on in

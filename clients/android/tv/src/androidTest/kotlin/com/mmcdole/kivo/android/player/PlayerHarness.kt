@@ -29,12 +29,14 @@ import com.mmcdole.kivo.api.infrastructure.ApiClient
 import com.mmcdole.kivo.api.models.Chapter
 import com.mmcdole.kivo.api.models.Marker
 import com.mmcdole.kivo.api.models.DialogueBoost
+import com.mmcdole.kivo.api.models.MatchState
 import com.mmcdole.kivo.api.models.PlayCreate
 import com.mmcdole.kivo.api.models.EpisodeInfo
 import com.mmcdole.kivo.api.models.PlayDelivery
 import com.mmcdole.kivo.api.models.PlayPart
 import com.mmcdole.kivo.api.models.PlayTrack
 import com.mmcdole.kivo.api.models.PlayStarted
+import com.mmcdole.kivo.api.models.Resolution
 import com.mmcdole.kivo.api.models.ServerInfo
 import com.mmcdole.kivo.api.models.Track
 import com.mmcdole.kivo.api.models.TrackDelivery
@@ -43,6 +45,7 @@ import com.mmcdole.kivo.api.models.Version
 import com.mmcdole.kivo.api.models.VersionPart
 import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.api.models.WorkImages
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.core.auth.SavedServer
 import com.mmcdole.kivo.core.play.PlayerEnd
 import com.mmcdole.kivo.core.session.KivoClient
@@ -343,9 +346,9 @@ class PlayerHarness(private val compose: ComposeContentTestRule, private val clo
 
         fun episode(id: String, number: Int, previousId: String?, nextId: String?) = WorkDetail(
             id = id,
-            kind = "episode",
+            kind = WorkKind.Episode,
             title = "Episode $number",
-            matchState = "matched",
+            matchState = MatchState.Matched,
             available = true,
             images = WorkImages(),
             genres = emptyList(),
@@ -355,7 +358,7 @@ class PlayerHarness(private val compose: ComposeContentTestRule, private val clo
             versions = listOf(
                 Version(
                     id = "$id-version",
-                    resolution = "1080p",
+                    resolution = Resolution.P1080,
                     available = true,
                     durationMs = DURATION_MS,
                     sizeBytes = 1_000_000_000,

@@ -5,6 +5,7 @@ import com.mmcdole.kivo.api.models.PlayPart
 import com.mmcdole.kivo.api.models.PlayStarted
 import com.mmcdole.kivo.api.models.PlayTrack
 import com.mmcdole.kivo.api.models.TrackDelivery
+import com.mmcdole.kivo.api.models.TrackReason
 import com.mmcdole.kivo.api.models.TrackType
 import com.mmcdole.kivo.core.kivoJson
 import kotlin.test.Test
@@ -27,7 +28,7 @@ private val stream = play(
     PlayTrack("t2", TrackType.Subtitle, delivery = TrackDelivery.External, codec = "ass", url = "plays/p1/subtitles/2.ass", fonts = listOf("fonts/f1")),
     PlayTrack("t3", TrackType.Subtitle, selected = true, delivery = TrackDelivery.Stream, codec = "webvtt"),
     PlayTrack("t4", TrackType.Subtitle, delivery = TrackDelivery.File, codec = "hdmv_pgs_subtitle", index = 5),
-    PlayTrack("t5", TrackType.Subtitle, reason = "subtitleCodecUnsupported"),
+    PlayTrack("t5", TrackType.Subtitle, reason = TrackReason.SubtitleCodecUnsupported),
     PlayTrack("off", TrackType.Subtitle, delivery = TrackDelivery.None),
 )
 

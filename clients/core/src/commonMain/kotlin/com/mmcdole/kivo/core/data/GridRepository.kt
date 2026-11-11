@@ -2,8 +2,10 @@ package com.mmcdole.kivo.core.data
 
 import com.mmcdole.kivo.api.models.BookSeriesSummaryPage
 import com.mmcdole.kivo.api.models.CollectionSummaryPage
+import com.mmcdole.kivo.api.models.LibraryKind
 import com.mmcdole.kivo.api.models.PersonRef
 import com.mmcdole.kivo.api.models.PersonSummaryPage
+import com.mmcdole.kivo.api.models.Resolution
 import com.mmcdole.kivo.api.models.WorkQueryRequest
 import com.mmcdole.kivo.api.models.WorkSummaryPage
 import com.mmcdole.kivo.api.result
@@ -23,7 +25,7 @@ import kotlinx.coroutines.flow.map
  */
 internal class GridRepository(private val connection: ServerConnection, private val invalidations: Flow<Invalidation>) {
     /** [limit] works of [query]'s grid from [offset], its library being of [libraryKind]. */
-    suspend fun page(query: GridQuery, libraryKind: String?, offset: Int, limit: Int): WorkSummaryPage = connection.works.queryWorks(
+    suspend fun page(query: GridQuery, libraryKind: LibraryKind?, offset: Int, limit: Int): WorkSummaryPage = connection.works.queryWorks(
         WorkQueryRequest(SmartLists.gridQuery(query, libraryKind), library = query.libraryId, offset = offset.takeIf { it > 0 }, limit = limit),
     ).result()
 
@@ -48,8 +50,13 @@ internal class GridRepository(private val connection: ServerConnection, private 
                 val collections = async { collections(libraryId, 0, 1).total > 0 }
                 val (genres, years, contentRatings, resolutions, dynamicRanges) = values.map { it.await() }
                 LibraryFilters(
-                    genres, years.mapNotNull { it.toIntOrNull() }, contentRatings, resolutions, dynamicRanges,
-                    narrators.await().map { PersonRef(it.value, it.name) }, collections.await(),
+                    genres,
+                    years.mapNotNull { it.toIntOrNull() },
+                    contentRatings,
+                    resolutions.map(Resolution::of).filter { it != Resolution.Unknown },
+                    dynamicRanges.mapNotNull(DynamicRange::of),
+                    narrators.await().map { PersonRef(it.value, it.name) },
+                    collections.await(),
                 )
             }
         }
@@ -80,10 +87,10 @@ data class LibraryFilters(
     val years: List<Int>,
     /** In the order to show them. */
     val contentRatings: List<String>,
-    /** `Resolution`s, largest first. */
-    val resolutions: List<String>,
-    /** `hdr` and `dolbyVision`. */
-    val dynamicRanges: List<String>,
+    /** Largest first; one this version doesn't know is left out. */
+    val resolutions: List<Resolution>,
+    /** One this version doesn't know is left out. */
+    val dynamicRanges: List<DynamicRange>,
     /** An audiobooks library's narrators, by name. */
     val narrators: List<PersonRef>,
     val collections: Boolean,
@@ -92,18 +99,64 @@ data class LibraryFilters(
 /** A library's works grid's sort and filters. */
 data class GridQuery(
     val libraryId: String,
-    /** A sortable field of a work query, such as `title` or `addedAt`, in its own direction; null for `title`. */
-    val sort: String? = null,
-    /** A `playState`: `unplayed`, `inProgress` or `played`. */
-    val played: String? = null,
+    /** Null for [GridSort.Title]. */
+    val sort: GridSort? = null,
+    val played: WorkPlayState? = null,
     val genres: List<String>? = null,
     val yearFrom: Int? = null,
     val yearTo: Int? = null,
     val contentRatings: List<String>? = null,
-    /** `Resolution`s: `4k`, `1080p`, `720p`, `sd`. */
-    val resolutions: List<String>? = null,
-    /** `hdr`, `dolbyVision`. */
-    val dynamicRanges: List<String>? = null,
+    val resolutions: List<Resolution>? = null,
+    val dynamicRanges: List<DynamicRange>? = null,
     /** A narrator's person ID, of an audiobooks library. */
     val narratorId: String? = null,
 )
+
+/** A library grid's sort: a sortable field of a work query, by [value], in its own direction. */
+enum class GridSort(val value: String) {
+    Title("title"),
+    AddedAt("addedAt"),
+    LastEpisodeAddedAt("lastEpisodeAddedAt"),
+    ReleaseDate("releaseDate"),
+    Rating("rating"),
+    Runtime("runtimeMs"),
+    LastPlayedAt("lastPlayedAt"),
+    Author("author"),
+    ;
+
+    override fun toString(): String = value
+
+    companion object {
+        /** The sort [value] names; null for none or one this version doesn't know. */
+        fun of(value: String?): GridSort? = entries.firstOrNull { it.value == value }
+    }
+}
+
+/** How far the user is through a work, as a work query's `playState` field names it by [value]. */
+enum class WorkPlayState(val value: String) {
+    Unplayed("unplayed"),
+    InProgress("inProgress"),
+    Played("played"),
+    ;
+
+    override fun toString(): String = value
+
+    companion object {
+        /** The state [value] names; null for none or one this version doesn't know. */
+        fun of(value: String?): WorkPlayState? = entries.firstOrNull { it.value == value }
+    }
+}
+
+/** A video's dynamic range, as a work query's `dynamicRange` field names it by [value]: `hdr` is any HDR format. */
+enum class DynamicRange(val value: String) {
+    Hdr("hdr"),
+    DolbyVision("dolbyVision"),
+    ;
+
+    override fun toString(): String = value
+
+    companion object {
+        /** The range [value] names; null for none or one this version doesn't know. */
+        fun of(value: String?): DynamicRange? = entries.firstOrNull { it.value == value }
+    }
+}

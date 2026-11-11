@@ -15,7 +15,7 @@ enum DownloadWords {
     static func line(_ item: DownloadItem, display: Display) -> String {
         if let progress = progress(item) { return progress.words }
         if let failed = item.status as? DownloadStatusFailed { return display.downloadFailure(reason: failed.reason) }
-        let what = item.kind == "book"
+        let what = item.kind == .book
             ? item.authors
             : item.durationMs.map(\.int64Value).flatMap { $0 > 0 ? display.runtime(ms: $0) : nil }
         return [what, display.size(bytes: item.sizeBytes)].compactMap { $0 }.joined(separator: " · ")

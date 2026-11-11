@@ -26,7 +26,7 @@ struct DownloadEpisodesSheet: View {
                                 download(wanted, at: option.quality)
                             } label: {
                                 HStack {
-                                    Text(server.display.downloadQuality(quality: option.quality))
+                                    Text(DownloadQuality.companion.parseOrNull(value: option.quality).map { server.display.downloadQuality(quality: $0) } ?? option.quality)
                                         .foregroundStyle(palette.text)
                                     Spacer()
                                     if option.quality == server.app.settings?.downloadQuality.value {

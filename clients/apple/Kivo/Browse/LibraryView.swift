@@ -24,7 +24,7 @@ struct LibraryView: View {
     @State private var savingAsSmartList = false
 
     /// Opens [library] as this device last left it, or with its works in [sort] for once.
-    init(library: Library, server: ServerModel, sort: String? = nil) {
+    init(library: Library, server: ServerModel, sort: GridSort? = nil) {
         _model = State(initialValue: GridModel(library: library, session: server.session, sort: sort))
     }
 
@@ -32,7 +32,7 @@ struct LibraryView: View {
     /// title, or the Collections, Authors or Series tab, which are by name.
     private var takesScrubber: Bool {
         switch model.shown.tab {
-        case .titles: model.shown.sort.value == "title"
+        case .titles: model.shown.sort.value == .title
         case .collections, .authors, .bookSeries: true
         }
     }
@@ -157,10 +157,10 @@ struct LibraryView: View {
     /// The plural the empty state names: "movies", "shows".
     private var plural: String {
         switch model.library.kind {
-        case "movies": String(localized: "movies")
-        case "shows": String(localized: "shows")
-        case "audiobooks": String(localized: "books")
-        default: String(localized: "videos")
+        case .movies: String(localized: "movies")
+        case .shows: String(localized: "shows")
+        case .audiobooks: String(localized: "books")
+        case .videos, .unknown: String(localized: "videos")
         }
     }
 
@@ -250,7 +250,7 @@ struct LibraryView: View {
 
     /// Cast, then filter, in one group; an audiobooks library has no Cast.
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
-        let cast = server.cast.buttonShown && model.library.kind != "audiobooks"
+        let cast = server.cast.buttonShown && model.library.kind != .audiobooks
         if cast || model.query.tab == .titles {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 if cast {

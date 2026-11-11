@@ -4,6 +4,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
+import com.mmcdole.kivo.api.models.ClientPlatform
 import com.mmcdole.kivo.api.models.QualityRequest
 import com.mmcdole.kivo.core.caps.AudioSettings
 import com.mmcdole.kivo.core.caps.PassthroughMode
@@ -65,12 +66,12 @@ class DeviceSettingsStoreTest {
 
     @Test
     fun aPhoneDownloadsAtStandardUntilSetAndAnythingElseAtHigh() = runTest {
-        val phone = DeviceSettingsStore(backgroundScope.tempDataStore(), DownloadQuality.defaultOn("iPhone"))
+        val phone = DeviceSettingsStore(backgroundScope.tempDataStore(), DownloadQuality.defaultOn(ClientPlatform.IPhone))
         assertEquals(DownloadQuality.Standard, phone.values.first().downloadQuality)
         phone.update { it.copy(downloadQuality = DownloadQuality.Original) }
         assertEquals(DownloadQuality.Original, phone.values.first().downloadQuality)
-        for (platform in listOf("iPad", "androidTv", "appleTv")) assertEquals(DownloadQuality.High, DownloadQuality.defaultOn(platform), platform)
-        assertEquals(DownloadQuality.Standard, DownloadQuality.defaultOn("androidPhone"))
+        for (platform in listOf(ClientPlatform.IPad, ClientPlatform.AndroidTv, ClientPlatform.AppleTv)) assertEquals(DownloadQuality.High, DownloadQuality.defaultOn(platform), platform.value)
+        assertEquals(DownloadQuality.Standard, DownloadQuality.defaultOn(ClientPlatform.AndroidPhone))
     }
 
     // Migration (downloads): remove after every client has updated past this release.

@@ -9,12 +9,15 @@ import com.mmcdole.kivo.api.models.CollectionSummary
 import com.mmcdole.kivo.api.models.Home
 import com.mmcdole.kivo.api.models.HomeRowChange
 import com.mmcdole.kivo.api.models.HomeRowInfo
+import com.mmcdole.kivo.api.models.HomeRowKind
 import com.mmcdole.kivo.api.models.Library
+import com.mmcdole.kivo.api.models.ListSort
 import com.mmcdole.kivo.api.models.Person
 import com.mmcdole.kivo.api.models.PersonSummary
 import com.mmcdole.kivo.api.models.SearchResults
 import com.mmcdole.kivo.api.models.WorkField
 import com.mmcdole.kivo.api.models.WorkFieldValue
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkList
 import com.mmcdole.kivo.api.models.WorkQuery
 import com.mmcdole.kivo.api.models.UserState
@@ -77,8 +80,8 @@ class SessionLibrary internal constructor(
 
     fun home(): Flow<Load<Home>> = reachability.load(homeLayout.home().onEach(seen::read))
 
-    /** Home's rows of one `HomeRowKind`, shown or not. */
-    fun home(kind: String): Flow<Load<Home>> = reachability.load(homeLayout.home(kind))
+    /** Home's rows of one kind, shown or not. */
+    fun home(kind: HomeRowKind): Flow<Load<Home>> = reachability.load(homeLayout.home(kind))
 
     /** Every row of Home, in order, shown or not, read again as the layout changes. */
     fun homeRows(): Flow<Load<List<HomeRowInfo>>> = reachability.load(homeLayout.rows())
@@ -100,7 +103,7 @@ class SessionLibrary internal constructor(
         reachability.load(listWorks.lists(counted).onEach { lists -> lists.forEach { seen.read(it.items.orEmpty()) } })
 
     /** A list's works of [kinds], or every kind when null, as a grid, a manual list's in its sort, read again in place as they change. */
-    fun pagedListWorks(listId: String, kinds: List<String>?): GridPager<WorkSummary> = paged(
+    fun pagedListWorks(listId: String, kinds: List<WorkKind>?): GridPager<WorkSummary> = paged(
         "list $listId $kinds",
         listWorks.changes(),
         seen::read,
@@ -117,9 +120,9 @@ class SessionLibrary internal constructor(
     @Throws(Exception::class)
     suspend fun updateList(id: String, name: String?, query: WorkQuery? = null): WorkList = listWorks.update(id, name, query)
 
-    /** Sets the order a manual list is shown in, one of `ListSorts`, on every screen and device. */
+    /** Sets the order a manual list is shown in, on every screen and device. */
     @Throws(Exception::class)
-    suspend fun setListSort(id: String, sort: String): WorkList = listWorks.setSort(id, sort)
+    suspend fun setListSort(id: String, sort: ListSort): WorkList = listWorks.setSort(id, sort)
 
     /** Every work of a manual list in its custom order, whatever its sort, for a screen that moves them. */
     @Throws(Exception::class)

@@ -26,6 +26,7 @@ import com.mmcdole.kivo.android.mobile.ui.WorkAction
 import com.mmcdole.kivo.android.mobile.ui.WorkMarks
 import com.mmcdole.kivo.android.mobile.ui.WorkMenu
 import com.mmcdole.kivo.api.models.EpisodeInfo
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.downloads.DownloadItem
 import kotlinx.serialization.Serializable
@@ -175,12 +176,12 @@ class MobileNav(
 
     /** Plays [work]: a book in the book player, which the mini player shows; a video from its download when it's ready, else from the server. */
     fun play(work: WorkSummary, fromStart: Boolean = false) {
-        if (work.kind == "book") playBook(work.id, fromStart) else play(PlayerRoute(work.id, fromStart, downloadId = readyDownload(work.id)))
+        if (work.kind == WorkKind.Book) playBook(work.id, fromStart) else play(PlayerRoute(work.id, fromStart, downloadId = readyDownload(work.id)))
     }
 
     /** Plays a ready download from its files: a book in the book player, a video in the player. */
     fun playDownload(item: DownloadItem) {
-        if (item.kind == "book") playBook(item.workId, false) else play(PlayerRoute(item.workId, downloadId = item.id))
+        if (item.kind == WorkKind.Book) playBook(item.workId, false) else play(PlayerRoute(item.workId, downloadId = item.id))
     }
 
     /** [route] in Now Playing's place, as Go to book opens the book's page. */

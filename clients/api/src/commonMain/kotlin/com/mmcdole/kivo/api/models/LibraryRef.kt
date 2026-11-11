@@ -33,7 +33,7 @@ import kotlinx.serialization.encoding.*
  *
  * @param id A UUIDv7.
  * @param name 
- * @param kind What a library holds. Skip kinds you don't know.
+ * @param kind 
  */
 @Serializable
 
@@ -44,8 +44,7 @@ data class LibraryRef (
 
     @SerialName(value = "name") @Required val name: kotlin.String,
 
-    /* What a library holds. Skip kinds you don't know. */
-    @SerialName(value = "kind") @Required val kind: kotlin.String
+    @SerialName(value = "kind") @Required val kind: com.mmcdole.kivo.api.models.LibraryKind
 
 ) {
 

@@ -6,9 +6,12 @@ import com.mmcdole.kivo.android.mobile.refuse
 import com.mmcdole.kivo.android.mobile.work
 import com.mmcdole.kivo.api.models.Home
 import com.mmcdole.kivo.api.models.HomeRow
+import com.mmcdole.kivo.api.models.HomeRowKind
 import com.mmcdole.kivo.api.models.Library
+import com.mmcdole.kivo.api.models.LibraryKind
 import com.mmcdole.kivo.api.models.LibraryList
 import com.mmcdole.kivo.api.models.LibraryRef
+import com.mmcdole.kivo.api.models.ListKind
 import com.mmcdole.kivo.api.models.ListRef
 import com.mmcdole.kivo.core.RequestProblem
 import io.ktor.http.HttpStatusCode
@@ -17,13 +20,13 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class HomeViewModelTest : CoreTest() {
-    private val movies = Library("lib1", "Movies", pinned = true, kind = "movies", workCount = 2)
+    private val movies = Library("lib1", "Movies", pinned = true, kind = LibraryKind.Movies, workCount = 2)
 
     private var rows = listOf(
-        HomeRow("continueWatching", "continueWatching", listOf(work("m1"))),
-        HomeRow("someday", "aKindFromLater", listOf(work("m2"))),
-        HomeRow("list:gone", "list", emptyList(), list = ListRef("gone", "Gone", "manual")),
-        HomeRow("recentlyAdded:lib1", "recentlyAdded", listOf(work("m2"), work("m1")), LibraryRef("lib1", "Movies", "movies")),
+        HomeRow("continueWatching", HomeRowKind.ContinueWatching, listOf(work("m1"))),
+        HomeRow("someday", HomeRowKind.Unknown, listOf(work("m2"))),
+        HomeRow("list:gone", HomeRowKind.List, emptyList(), list = ListRef("gone", "Gone", ListKind.Manual)),
+        HomeRow("recentlyAdded:lib1", HomeRowKind.RecentlyAdded, listOf(work("m2"), work("m1")), LibraryRef("lib1", "Movies", LibraryKind.Movies)),
     )
 
     init {
@@ -46,7 +49,7 @@ class HomeViewModelTest : CoreTest() {
     fun aPullReadsHomeAgainAndSaysWhenItsDone() {
         val model = HomeViewModel(signIn())
         awaitValue(model.state) { it.rows?.size == 2 }
-        rows = rows.filter { it.kind != "continueWatching" }
+        rows = rows.filter { it.kind != HomeRowKind.ContinueWatching }
         model.refresh()
         val state = awaitValue(model.state) { it.rows?.size == 1 && !it.refreshing }
         assertEquals("recentlyAdded:lib1", state.rows!!.single().id)

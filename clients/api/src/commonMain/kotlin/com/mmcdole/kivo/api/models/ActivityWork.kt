@@ -32,7 +32,7 @@ import kotlinx.serialization.encoding.*
  * A work as an event names it; an episode by its series, with its season and number.
  *
  * @param workId A UUIDv7.
- * @param kind What a work is: `video` an item of a videos library and `book` an item of an audiobooks library. Skip kinds you don't know. 
+ * @param kind 
  * @param title 
  * @param seasonNumber 
  * @param episodeNumber 
@@ -44,8 +44,7 @@ data class ActivityWork (
     /* A UUIDv7. */
     @SerialName(value = "workId") @Required val workId: kotlin.String,
 
-    /* What a work is: `video` an item of a videos library and `book` an item of an audiobooks library. Skip kinds you don't know.  */
-    @SerialName(value = "kind") @Required val kind: kotlin.String,
+    @SerialName(value = "kind") @Required val kind: com.mmcdole.kivo.api.models.WorkKind,
 
     @SerialName(value = "title") @Required val title: kotlin.String,
 

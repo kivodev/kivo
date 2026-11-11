@@ -13,9 +13,11 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.mmcdole.kivo.android.mobile.theme.KivoMobileTheme
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.core.downloads.DownloadItem
 import com.mmcdole.kivo.core.downloads.DownloadStatus
 import com.mmcdole.kivo.core.downloads.DownloadStorage
+import com.mmcdole.kivo.core.settings.DownloadQuality
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -30,9 +32,9 @@ class DownloadsListTest {
     @get:Rule
     val rule = createComposeRule()
 
-    private fun item(id: String, title: String, status: DownloadStatus, kind: String = "movie", series: String? = null, episode: Int? = null, prepared: Boolean = false) = DownloadItem(
+    private fun item(id: String, title: String, status: DownloadStatus, kind: WorkKind = WorkKind.Movie, series: String? = null, episode: Int? = null, prepared: Boolean = false) = DownloadItem(
         id = id, workId = "w-$id", versionId = "v", title = title, kind = kind, seriesId = series, seriesTitle = series?.let { "Show" },
-        season = episode?.let { 1 }, episode = episode, authors = null, quality = "standard", durationMs = 2_820_000,
+        season = episode?.let { 1 }, episode = episode, authors = null, quality = DownloadQuality.Standard, durationMs = 2_820_000,
         sizeBytes = 327_155_712, sizeExact = true, prepared = prepared, status = status, artworkPath = null, posterPath = null, createdAtMs = 0,
     )
 
@@ -75,8 +77,8 @@ class DownloadsListTest {
     @Test
     fun aShowSaysHowFarItsEpisodesAreAndSwipingAwayAsksBeforeDeletingThemAll() {
         val episodes = listOf(
-            item("e1", "Pilot", DownloadStatus.Ready, "episode", "show", 1),
-            item("e2", "Second", DownloadStatus.Downloading(30, 100, 10), "episode", "show", 2),
+            item("e1", "Pilot", DownloadStatus.Ready, WorkKind.Episode, "show", 1),
+            item("e2", "Second", DownloadStatus.Downloading(30, 100, 10), WorkKind.Episode, "show", 2),
         )
         show(DownloadsUiState(read = true, shows = listOf(ShowDownloads("show", "Show", episodes))))
         rule.onNode(hasTestTag("line") and hasAnyAncestor(hasTestTag("show:Show")), useUnmergedTree = true).assertTextEquals("Downloading · 65%")

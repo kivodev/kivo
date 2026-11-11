@@ -143,7 +143,9 @@ jscpd = rm -rf bin/jscpd && $(JSCPD) --silent --min-tokens 50 --reporters json -
 KOTLIN_OPEN_ENUMS := /^  schemas:/ { s = 1 } s && /^      enum: \[/ { skip = 1 } skip { if (/\]/) skip = 0; next } { print }
 # The enums the apps branch on are hand-written in OpenEnums.kt instead,
 # with an Unknown case for a value a later server adds.
-KOTLIN_ENUMS := TrackType TrackDelivery PlayDelivery DownloadDelivery SubtitleMode
+KOTLIN_ENUMS := TrackType TrackDelivery PlayDelivery DownloadDelivery SubtitleMode WorkKind LibraryKind ListKind ListSort \
+	HomeRowKind MatchState CollectionSource Resolution ClientPlatform SessionKind TrackReason RuleGroupMatch SortDirection \
+	WorkFieldType WorkFieldValueSource
 KOTLIN_ENUM_MAPPINGS := $(subst $(space),$(comma),$(foreach e,$(KOTLIN_ENUMS),$(e)=com.mmcdole.kivo.api.models.$(e)))
 
 # sqlc.yaml has a block per package with a queries/ folder; query runs its own

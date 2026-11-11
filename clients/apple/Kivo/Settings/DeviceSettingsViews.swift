@@ -14,7 +14,7 @@ struct DownloadSettingsView: View {
                     try await app.core.setDownloadQuality(quality: quality)
                 }) {
                     ForEach(DownloadQuality.allCases, id: \.self) { quality in
-                        Text(app.display.downloadQuality(quality: quality.value)).tag(quality)
+                        Text(app.display.downloadQuality(quality: quality)).tag(quality)
                     }
                 }
             } header: {

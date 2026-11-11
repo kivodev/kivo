@@ -201,15 +201,15 @@ struct LinkDeviceView: View {
 
 /// The platforms a client says it runs on, for people.
 enum Platform {
-    static func name(_ platform: String?) -> String? {
+    static func name(_ platform: ClientPlatform?) -> String? {
         switch platform {
-        case "androidTv": String(localized: "Android TV")
-        case "appleTv": String(localized: "Apple TV")
-        case "iPhone": String(localized: "iPhone")
-        case "iPad": String(localized: "iPad")
-        case "androidPhone": String(localized: "Android phone")
-        case "browser": String(localized: "Browser")
-        default: nil
+        case .androidTv: String(localized: "Android TV")
+        case .appleTv: String(localized: "Apple TV")
+        case .iphone: String(localized: "iPhone")
+        case .ipad: String(localized: "iPad")
+        case .androidPhone: String(localized: "Android phone")
+        case .browser: String(localized: "Browser")
+        case .cast, .tizen, .unknown, nil: nil
         }
     }
 }

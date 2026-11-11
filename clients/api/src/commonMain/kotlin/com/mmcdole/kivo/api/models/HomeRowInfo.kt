@@ -34,7 +34,7 @@ import kotlinx.serialization.encoding.*
  * A row of the user's Home layout, as the editor lists it.
  *
  * @param id As `HomeRow.id`.
- * @param kind What a Home row shows: `continueWatching` what to watch on with, videos in progress and each series' episode up next; `continueListening` books in progress; `recentlyAdded` a library's newest works; `list` a list's works. Skip kinds you don't know. 
+ * @param kind 
  * @param shown 
  * @param library For `recentlyAdded`, the library.
  * @param list For `list`, the list.
@@ -47,8 +47,7 @@ data class HomeRowInfo (
     /* As `HomeRow.id`. */
     @SerialName(value = "id") @Required val id: kotlin.String,
 
-    /* What a Home row shows: `continueWatching` what to watch on with, videos in progress and each series' episode up next; `continueListening` books in progress; `recentlyAdded` a library's newest works; `list` a list's works. Skip kinds you don't know.  */
-    @SerialName(value = "kind") @Required val kind: kotlin.String,
+    @SerialName(value = "kind") @Required val kind: com.mmcdole.kivo.api.models.HomeRowKind,
 
     @SerialName(value = "shown") @Required val shown: kotlin.Boolean,
 

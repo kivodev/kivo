@@ -23,7 +23,7 @@ extension WorkDetail {
     /// its own), its content rating and its library.
     convenience init(seriesOf season: WorkSummary) {
         self.init(
-            id: season.season?.seriesId ?? season.id, kind: "series", title: season.season?.seriesTitle ?? season.title,
+            id: season.season?.seriesId ?? season.id, kind: .series, title: season.season?.seriesTitle ?? season.title,
             matchState: season.matchState, available: season.available, images: season.images, genres: [], studios: [],
             credits: [], externalIds: [], versions: [], extras: [], collections: [], year: nil, durationMs: nil,
             communityRating: nil, communityVotes: nil, contentRating: season.contentRating, addedAt: nil, userState: nil,

@@ -35,7 +35,7 @@ import kotlinx.serialization.encoding.*
  *
  * @param id A UUIDv7.
  * @param name 
- * @param kind What a list is. `manual` is works the user added; `smart` is the works rules select. Skip kinds you don't know.
+ * @param kind 
  * @param builtIn Watchlist, which every user has and can't delete or rename.
  * @param workCount Works in the list the user sees. A smart list's is 0 except in `listLists` with `counts`; the first page of its works has the count as `total`. 
  * @param smart 
@@ -51,8 +51,7 @@ data class WorkList (
 
     @SerialName(value = "name") @Required val name: kotlin.String,
 
-    /* What a list is. `manual` is works the user added; `smart` is the works rules select. Skip kinds you don't know. */
-    @SerialName(value = "kind") @Required val kind: kotlin.String,
+    @SerialName(value = "kind") @Required val kind: com.mmcdole.kivo.api.models.ListKind,
 
     /* Watchlist, which every user has and can't delete or rename. */
     @SerialName(value = "builtIn") @Required val builtIn: kotlin.Boolean,
@@ -66,7 +65,7 @@ data class WorkList (
     @SerialName(value = "items") val items: kotlin.collections.List<WorkSummary>? = null,
 
     /* The order a manual list's works are in, wherever they are listed. A smart list has none. */
-    @SerialName(value = "sort") val sort: kotlin.String? = null
+    @SerialName(value = "sort") val sort: com.mmcdole.kivo.api.models.ListSort? = null
 
 ) {
 

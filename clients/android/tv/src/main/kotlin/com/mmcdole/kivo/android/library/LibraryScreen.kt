@@ -99,13 +99,18 @@ import com.mmcdole.kivo.android.ui.focusWhenPlaced
 import com.mmcdole.kivo.android.ui.rememberFocusMemory
 import com.mmcdole.kivo.api.models.CollectionSummary
 import com.mmcdole.kivo.api.models.Library
+import com.mmcdole.kivo.api.models.LibraryKind
+import com.mmcdole.kivo.api.models.Resolution
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.Load
+import com.mmcdole.kivo.core.data.DynamicRange
 import com.mmcdole.kivo.core.data.GridPager
 import com.mmcdole.kivo.core.data.GridPages
 import com.mmcdole.kivo.core.data.GridPages.Companion.RAIL_LETTERS
 import com.mmcdole.kivo.core.data.GridQuery
+import com.mmcdole.kivo.core.data.GridSort
 import com.mmcdole.kivo.core.data.LibraryFilters
+import com.mmcdole.kivo.core.data.WorkPlayState
 import java.text.NumberFormat
 import kotlinx.coroutines.launch
 
@@ -191,33 +196,33 @@ sealed interface LibraryGrid {
 }
 
 /** The sorts the TV offers for [library], as every app offers them, with the title sort's letter rail. */
-private fun sortsOf(library: Library?) = GridValues.sortsOf(library?.kind)
+private fun sortsOf(library: Library?) = sortsOf(library?.kind)
 
 @Composable
-private fun sortName(sort: String) = stringResource(
+private fun sortName(sort: GridSort) = stringResource(
     when (sort) {
-        GridValues.ADDED_AT -> R.string.sort_added
-        GridValues.LAST_EPISODE_ADDED_AT -> R.string.sort_last_episode_added
-        GridValues.RELEASE_DATE -> R.string.sort_release
-        GridValues.RATING -> R.string.sort_rating
-        GridValues.RUNTIME -> R.string.sort_runtime
-        GridValues.LAST_PLAYED_AT -> R.string.sort_last_played
-        GridValues.AUTHOR -> R.string.sort_author
+        GridSort.AddedAt -> R.string.sort_added
+        GridSort.LastEpisodeAddedAt -> R.string.sort_last_episode_added
+        GridSort.ReleaseDate -> R.string.sort_release
+        GridSort.Rating -> R.string.sort_rating
+        GridSort.Runtime -> R.string.sort_runtime
+        GridSort.LastPlayedAt -> R.string.sort_last_played
+        GridSort.Author -> R.string.sort_author
         else -> R.string.sort_title
     },
 )
 
 /** The sort in a word or two, for the count line: "A–Z", "Recently added". */
 @Composable
-private fun sortShort(sort: String) = stringResource(
+private fun sortShort(sort: GridSort) = stringResource(
     when (sort) {
-        GridValues.ADDED_AT -> R.string.sort_short_added
-        GridValues.LAST_EPISODE_ADDED_AT -> R.string.sort_short_last_episode_added
-        GridValues.RELEASE_DATE -> R.string.sort_short_release
-        GridValues.RATING -> R.string.sort_short_rating
-        GridValues.RUNTIME -> R.string.sort_short_runtime
-        GridValues.LAST_PLAYED_AT -> R.string.sort_short_last_played
-        GridValues.AUTHOR -> R.string.sort_author
+        GridSort.AddedAt -> R.string.sort_short_added
+        GridSort.LastEpisodeAddedAt -> R.string.sort_short_last_episode_added
+        GridSort.ReleaseDate -> R.string.sort_short_release
+        GridSort.Rating -> R.string.sort_short_rating
+        GridSort.Runtime -> R.string.sort_short_runtime
+        GridSort.LastPlayedAt -> R.string.sort_short_last_played
+        GridSort.Author -> R.string.sort_author
         else -> R.string.sort_short_title
     },
 )
@@ -227,8 +232,8 @@ private fun sortShort(sort: String) = stringResource(
 private fun countNoun(count: Int, section: Section, library: Library?): String {
     val plural = when {
         section == Section.Collections -> R.plurals.count_collections
-        library?.kind == "movies" -> R.plurals.count_movies
-        library?.kind == "shows" -> R.plurals.count_shows
+        library?.kind == LibraryKind.Movies -> R.plurals.count_movies
+        library?.kind == LibraryKind.Shows -> R.plurals.count_shows
         else -> R.plurals.count_videos
     }
     return pluralStringResource(plural, count, NumberFormat.getIntegerInstance().format(count))
@@ -239,8 +244,8 @@ private fun countNoun(count: Int, section: Section, library: Library?): String {
 private fun emptyFiltered(query: GridQuery, library: Library?): String {
     val noun = stringResource(
         when (library?.kind) {
-            "movies" -> R.string.noun_movies
-            "shows" -> R.string.noun_shows
+            LibraryKind.Movies -> R.string.noun_movies
+            LibraryKind.Shows -> R.string.noun_shows
             else -> R.string.noun_videos
         },
     )
@@ -248,8 +253,8 @@ private fun emptyFiltered(query: GridQuery, library: Library?): String {
     return if (played != null && query.unfiltered().copy(played = played) == query) {
         val state = stringResource(
             when (played) {
-                GridValues.UNPLAYED -> R.string.state_unplayed
-                GridValues.IN_PROGRESS -> R.string.state_in_progress
+                WorkPlayState.Unplayed -> R.string.state_unplayed
+                WorkPlayState.InProgress -> R.string.state_in_progress
                 else -> R.string.state_played
             },
         )
@@ -259,13 +264,13 @@ private fun emptyFiltered(query: GridQuery, library: Library?): String {
     }
 }
 
-private fun resolutionLabel(r: String) = when (r) {
-    "4k" -> "4K"
-    "sd" -> "SD"
-    else -> r
+private fun resolutionLabel(r: Resolution) = when (r) {
+    Resolution.FourK -> "4K"
+    Resolution.Sd -> "SD"
+    else -> r.value
 }
 
-private fun dynamicRangeLabel(range: String) = if (range == GridValues.DOLBY_VISION) "Dolby Vision" else "HDR"
+private fun dynamicRangeLabel(range: DynamicRange) = if (range == DynamicRange.DolbyVision) "Dolby Vision" else "HDR"
 
 /** Where the library's title starts. */
 private val TitleTop = 39.5.dp
@@ -394,8 +399,8 @@ private fun Header(
                 Row(Modifier.padding(top = 13.dp), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                     val titles = stringResource(
                         when (library?.kind) {
-                            "movies" -> R.string.results_movies
-                            "shows" -> R.string.results_shows
+                            LibraryKind.Movies -> R.string.results_movies
+                            LibraryKind.Shows -> R.string.results_shows
                             else -> R.string.section_videos
                         },
                     )
@@ -425,11 +430,11 @@ private fun Header(
                 width = SortMenuWidth,
             ) {
                 ChoiceList(
-                    choices = sorts.map { Choice(it, sortName(it)) },
-                    selected = query.sort,
+                    choices = sorts.map { Choice(it.value, sortName(it)) },
+                    selected = query.sort?.value,
                     onSelect = { id ->
                         panel = null
-                        sorts.firstOrNull { it == id }?.let { model.choose(query.copy(sort = it)) }
+                        sorts.firstOrNull { it.value == id }?.let { model.choose(query.copy(sort = it)) }
                     },
                 )
             }
@@ -556,33 +561,33 @@ private fun FilterPanel(model: LibraryViewModel, query: GridQuery, onClose: () -
     val dynamicRange = stringResource(R.string.dynamic_range)
     val choices = buildList {
         add(Choice("played:", stringResource(R.string.any), section = playedState))
-        add(Choice("played:${GridValues.UNPLAYED}", stringResource(R.string.unplayed), section = playedState))
-        add(Choice("played:${GridValues.IN_PROGRESS}", stringResource(R.string.filter_in_progress), section = playedState))
-        add(Choice("played:${GridValues.PLAYED}", stringResource(R.string.played), section = playedState))
+        add(Choice("played:${WorkPlayState.Unplayed.value}", stringResource(R.string.unplayed), section = playedState))
+        add(Choice("played:${WorkPlayState.InProgress.value}", stringResource(R.string.filter_in_progress), section = playedState))
+        add(Choice("played:${WorkPlayState.Played.value}", stringResource(R.string.played), section = playedState))
         filters?.let { f ->
             add(Choice("decade:", stringResource(R.string.any), section = decade))
             decadesOf(f.years).forEach { add(Choice("decade:$it", stringResource(R.string.decade_label, it), section = decade)) }
             f.genres.forEach { add(Choice("genre:$it", it, section = genre)) }
             f.contentRatings.forEach { add(Choice("contentRating:$it", it, section = contentRating)) }
-            GridValues.resolutions.filter { it in f.resolutions }
-                .forEach { add(Choice("resolution:$it", resolutionLabel(it), section = resolution)) }
-            GridValues.dynamicRanges.filter { it in f.dynamicRanges }
-                .forEach { add(Choice("dynamicRange:$it", dynamicRangeLabel(it), section = dynamicRange)) }
+            Resolution.entries.filter { it in f.resolutions }
+                .forEach { add(Choice("resolution:${it.value}", resolutionLabel(it), section = resolution)) }
+            DynamicRange.entries.filter { it in f.dynamicRanges }
+                .forEach { add(Choice("dynamicRange:${it.value}", dynamicRangeLabel(it), section = dynamicRange)) }
         }
         if (query.filtered) add(Choice("clear", stringResource(R.string.clear_filters), section = " "))
     }
     val ticked = buildSet {
-        add("played:${query.played.orEmpty()}")
+        add("played:${query.played?.value.orEmpty()}")
         add("decade:${query.yearFrom ?: ""}")
         query.genres?.forEach { add("genre:$it") }
         query.contentRatings?.forEach { add("contentRating:$it") }
-        query.resolutions?.forEach { add("resolution:$it") }
-        query.dynamicRanges?.forEach { add("dynamicRange:$it") }
+        query.resolutions?.forEach { add("resolution:${it.value}") }
+        query.dynamicRanges?.forEach { add("dynamicRange:${it.value}") }
     }
     val select = { id: String ->
         val (kind, value) = id.split(':', limit = 2).let { it[0] to it.getOrElse(1) { "" } }
         when (kind) {
-            "played" -> model.choose(query.copy(played = value.takeIf { it in GridValues.playedStates }))
+            "played" -> model.choose(query.copy(played = WorkPlayState.of(value)))
             "decade" -> {
                 val from = value.toIntOrNull()
                 model.choose(query.copy(yearFrom = from, yearTo = from?.plus(9)))
@@ -597,11 +602,12 @@ private fun FilterPanel(model: LibraryViewModel, query: GridQuery, onClose: () -
             }
             "resolution" -> {
                 val now = query.resolutions.orEmpty()
-                model.choose(query.copy(resolutions = (if (value in now) now - value else now + value).ifEmpty { null }))
+                val picked = Resolution.of(value)
+                model.choose(query.copy(resolutions = (if (picked in now) now - picked else now + picked).ifEmpty { null }))
             }
-            "dynamicRange" -> {
+            "dynamicRange" -> DynamicRange.of(value)?.let { picked ->
                 val now = query.dynamicRanges.orEmpty()
-                model.choose(query.copy(dynamicRanges = (if (value in now) now - value else now + value).ifEmpty { null }))
+                model.choose(query.copy(dynamicRanges = (if (picked in now) now - picked else now + picked).ifEmpty { null }))
             }
             "clear" -> {
                 onClose()
@@ -646,7 +652,7 @@ private fun SkeletonCards(library: Library?, choice: GridChoice?, top: Dp) {
 
 /** Landscape cards for a videos library's works, else posters. */
 private fun gridShape(library: Library?, choice: GridChoice?) =
-    if (library?.kind == "videos" && choice?.section != Section.Collections) CardShape.Landscape else CardShape.Poster
+    if (library?.kind == LibraryKind.Videos && choice?.section != Section.Collections) CardShape.Landscape else CardShape.Poster
 
 @Composable
 private fun GridWithRail(

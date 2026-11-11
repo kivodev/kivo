@@ -215,14 +215,14 @@ struct PlayableDetail: View {
             Section {
                 if let previous = episode.previousId {
                     Button {
-                        openWork(WorkRoute(id: previous, kind: "episode"))
+                        openWork(WorkRoute(id: previous, kind: .episode))
                     } label: {
                         Label(String(localized: "Previous episode"), systemImage: "backward.end")
                     }
                 }
                 if let next = episode.nextId {
                     Button {
-                        openWork(WorkRoute(id: next, kind: "episode"))
+                        openWork(WorkRoute(id: next, kind: .episode))
                     } label: {
                         Label(String(localized: "Next episode"), systemImage: "forward.end")
                     }

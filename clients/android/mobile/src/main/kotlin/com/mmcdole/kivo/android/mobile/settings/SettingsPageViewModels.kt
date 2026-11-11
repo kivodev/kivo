@@ -18,6 +18,7 @@ import com.mmcdole.kivo.api.models.Library
 import com.mmcdole.kivo.api.models.LibraryChoice
 import com.mmcdole.kivo.api.models.SubtitleMode
 import com.mmcdole.kivo.core.Load
+import com.mmcdole.kivo.core.ProblemCode
 import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.core.display.QualityOption
 import com.mmcdole.kivo.core.display.quality
@@ -267,9 +268,9 @@ class ChangePasswordViewModel(private val session: KivoSession) : ViewModel() {
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                val code = (e as? ProblemException)?.code
+                val code = ProblemCode.of((e as? ProblemException)?.code)
                 // A wrong current password is the server's refusal of the password, never of the session.
-                if (code == "wrongPassword" || code == "invalidCredentials" || (e as? ProblemException)?.status == 401) {
+                if (code == ProblemCode.WrongPassword || code == ProblemCode.InvalidCredentials || (e as? ProblemException)?.status == 401) {
                     ChangePasswordUiState(wrongPassword = true)
                 } else {
                     ChangePasswordUiState(failure = sentence(RequestProblem.of(e)))

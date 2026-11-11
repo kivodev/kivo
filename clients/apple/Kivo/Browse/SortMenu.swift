@@ -1,10 +1,16 @@
 import SwiftUI
 
+/// What a sort menu sorts by, with the sort in a word or two for the count line.
+protocol SortMenuKey: Hashable {
+    /// "A–Z", "Recently added"; nil to show the sort's label.
+    var short: String? { get }
+}
+
 /// The sort in a word or two ("A–Z", "Recently added"), which opens a menu
 /// of [sorts], each with the direction it sorts in.
-struct SortMenu: View {
-    let sorts: [GridModel.Sort]
-    @Binding var selection: GridModel.Sort
+struct SortMenu<Key: SortMenuKey>: View {
+    let sorts: [GridModel.Sort<Key>]
+    @Binding var selection: GridModel.Sort<Key>
 
     var body: some View {
         Menu {

@@ -71,6 +71,7 @@ import com.mmcdole.kivo.android.ui.raisedOnFocus
 import com.mmcdole.kivo.android.ui.rememberFocusMemory
 import com.mmcdole.kivo.android.ui.roleLabel
 import com.mmcdole.kivo.api.models.SearchResults
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.core.display.problem
 import kotlinx.coroutines.CancellationException
@@ -109,11 +110,11 @@ private val KeyGap = 7.dp
 private fun lastLineKeyWidth(keys: Int) = (KeyboardWidth - KeyGap * (keys - 1)) / keys
 
 /** Search's rows of works, always in this order under People, by the kinds they hold; the TV shows no books. */
-private enum class ResultRow(val title: Int, val kinds: Set<String>, val shape: CardShape) {
-    Movies(R.string.results_movies, setOf("movie"), CardShape.Poster),
-    Shows(R.string.results_shows, setOf("series"), CardShape.Poster),
-    Episodes(R.string.results_episodes, setOf("episode"), CardShape.Landscape),
-    Videos(R.string.results_videos, setOf("video", "extra"), CardShape.Landscape),
+private enum class ResultRow(val title: Int, val kinds: Set<WorkKind>, val shape: CardShape) {
+    Movies(R.string.results_movies, setOf(WorkKind.Movie), CardShape.Poster),
+    Shows(R.string.results_shows, setOf(WorkKind.Series), CardShape.Poster),
+    Episodes(R.string.results_episodes, setOf(WorkKind.Episode), CardShape.Landscape),
+    Videos(R.string.results_videos, setOf(WorkKind.Video, WorkKind.Extra), CardShape.Landscape),
     ;
 
     /** Four posters or two landscape cards across the results. */

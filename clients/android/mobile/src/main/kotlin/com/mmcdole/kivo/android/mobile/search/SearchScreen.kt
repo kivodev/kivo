@@ -60,6 +60,7 @@ import com.mmcdole.kivo.android.mobile.ui.rowCardWidth
 import com.mmcdole.kivo.android.mobile.ui.wideWidth
 import com.mmcdole.kivo.android.mobile.ui.shapeOf
 import com.mmcdole.kivo.api.models.SearchResults
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkSummary
 
 /**
@@ -111,11 +112,11 @@ fun SearchScreen(session: ServerSession, nav: MobileNav) {
 private fun Results(results: SearchResults, nav: MobileNav, openMenu: (WorkMenu) -> Unit, modifier: Modifier) {
     val works = results.works
     val rows = listOf(
-        R.string.mobile_movies to works.filter { it.kind == "movie" },
-        R.string.mobile_shows to works.filter { it.kind == "series" },
-        R.string.mobile_episodes to works.filter { it.kind == "episode" },
-        R.string.mobile_other_videos to works.filter { it.kind == "video" || it.kind == "extra" },
-        R.string.mobile_books to works.filter { it.kind == "book" },
+        R.string.mobile_movies to works.filter { it.kind == WorkKind.Movie },
+        R.string.mobile_shows to works.filter { it.kind == WorkKind.Series },
+        R.string.mobile_episodes to works.filter { it.kind == WorkKind.Episode },
+        R.string.mobile_other_videos to works.filter { it.kind == WorkKind.Video || it.kind == WorkKind.Extra },
+        R.string.mobile_books to works.filter { it.kind == WorkKind.Book },
     ).filter { it.second.isNotEmpty() }
     LazyColumn(modifier.fillMaxSize().testTag("results"), contentPadding = PaddingValues(bottom = space(8))) {
         if (results.people.isNotEmpty()) {
