@@ -14,6 +14,8 @@ final class SignedInUserTests: XCTestCase {
         continueAfterFailure = false
         // Every run signs in as one client, replacing the last run's session.
         app.launchEnvironment["KIVO_CLIENT_ID"] = "kivo-ui-tests"
+        // Sign-in goes straight to the server under test, without browsing the network.
+        app.launchEnvironment["KIVO_SERVER"] = environment["KIVO_DOWNLOAD_SERVER"]
     }
 
     func testTheAvatarShowsWithoutTheServer() throws {
@@ -94,7 +96,7 @@ final class SignedInUserTests: XCTestCase {
         wait(for: [expectation(for: named, evaluatedWith: nil)], timeout: 10)
     }
 
-    /// Signs in to [server] by its typed address, past any server discovery finds.
+    /// Signs in to [server], which sign-in opens on, unless the app still is.
     private func signIn(server: String, username: String) throws {
         let password = try XCTUnwrap(environment["KIVO_DOWNLOAD_PASSWORD"], "set TEST_RUNNER_KIVO_DOWNLOAD_PASSWORD")
         app.launch()
@@ -104,12 +106,6 @@ final class SignedInUserTests: XCTestCase {
         let start = NSPredicate { _, _ in address.exists || user.exists || home.exists }
         wait(for: [expectation(for: start, evaluatedWith: nil)], timeout: 20)
         if home.exists { return }
-        // Discovery may go straight to another server's password.
-        if user.waitForExistence(timeout: 6) { app.buttons["Change server"].tap() }
-        XCTAssert(address.waitForExistence(timeout: 10), "sign-in has no address field")
-        address.tap()
-        address.typeText(server)
-        app.buttons["Continue"].tap()
         XCTAssert(user.waitForExistence(timeout: 15), "the server at \(server) wasn't found")
         user.tap()
         user.typeText(username)

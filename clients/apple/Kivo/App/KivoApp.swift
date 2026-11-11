@@ -1,7 +1,6 @@
 import KivoUI
 import SwiftUI
 
-@main
 struct KivoApp: App {
     @UIApplicationDelegateAdaptor private var delegate: AppDelegate
     @State private var app = AppModel(transport: .shared)

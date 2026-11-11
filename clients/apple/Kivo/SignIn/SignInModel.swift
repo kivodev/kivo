@@ -49,8 +49,13 @@ final class SignInModel {
 
     /// Browses for servers; one found within 3 seconds, while nothing else
     /// was chosen, goes straight to its password. The browse goes on while
-    /// sign-in shows.
+    /// sign-in shows. A server the launch names is connected to instead.
     func discover() async {
+        if let server = Launch.server {
+            address = server
+            await connect()
+            return
+        }
         guard !discovering else { return }
         discovering = true
         browser.start()
