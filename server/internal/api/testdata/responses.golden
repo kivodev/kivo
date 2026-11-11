@@ -2308,7 +2308,7 @@ GET /api/v1/tasks
       "pendingCount": 5,
       "progress": {
         "done": 0,
-        "total": 0
+        "total": 2
       },
       "running": true,
       "section": "library",

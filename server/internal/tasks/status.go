@@ -118,13 +118,15 @@ func (r *Runner) status(ctx context.Context, t *task) (Status, error) {
 	return s, err
 }
 
-// itemStatus fills in an Items task's Status. While its run is working,
-// progress is the items settled out of those settled plus those left.
-// Otherwise progress is that of the first item in flight, if it reports
-// any. Enqueued items get no count of their own here, because whoever
-// enqueued them shows their progress. With no work of its own going on, the
-// task runs while a step of it has items left that its items asked for: it
-// is on that step, with the step's items done out of all those asked for.
+// itemStatus fills in an Items task's Status. Unless the task is
+// Uncounted, progress is the items settled since it was last idle, out of
+// those plus the items left: everything pending while its run is working,
+// otherwise the items in line or in flight. A count of one is left out, so
+// a single item shows only its step. With no count, progress is that of
+// the first item in flight, if it reports any. With no work of its own
+// going on, the task runs while a step of it has items left that its items
+// asked for: it is on that step, with the step's items done out of all
+// those asked for.
 func (r *Runner) itemStatus(ctx context.Context, t *task, s *Status, now time.Time) error {
 	r.mu.Lock()
 	w := t.items
@@ -132,10 +134,7 @@ func (r *Runner) itemStatus(ctx context.Context, t *task, s *Status, now time.Ti
 	steps := r.stepItemsLocked(t)
 	working := t.open != nil && w.pass != nil && r.workingLocked(t, now)
 	s.Running = len(w.busy) > 0 || len(w.queued) > 0 || working || t.ending != nil
-	done := 0
-	if working {
-		done = t.open.done
-	}
+	settled, inLine := w.settled, len(w.asked)+len(w.busy)
 	r.mu.Unlock()
 	defer func() { s.Items = append(s.Items, steps...) }()
 	if !s.Running && len(steps) > 0 {
@@ -150,10 +149,14 @@ func (r *Runner) itemStatus(ctx context.Context, t *task, s *Status, now time.Ti
 		return err
 	}
 	if !w.Uncounted {
+		left := inLine
 		if working {
-			s.Done, s.Total = done, done+c.pending
+			left = c.pending
 		} else {
 			s.PendingCount = c.pending
+		}
+		if total := settled + left; (working || left > 0) && total > 1 {
+			s.Done, s.Total = settled, total
 		}
 	}
 	s.Failures = c.failures

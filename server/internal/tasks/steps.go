@@ -27,6 +27,7 @@ func (r *Runner) EnqueueFor(owner id.ID, name string, items ...id.ID) {
 		panic("tasks: enqueue for an owner on a task that isn't a step: " + name)
 	}
 	w := t.items
+	w.fromIdleLocked()
 	for _, i := range items {
 		if _, ok := w.ownerOf[i]; ok {
 			continue

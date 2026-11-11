@@ -26,6 +26,9 @@ type items struct {
 
 	busy    map[id.ID]*item // in flight
 	counted counted
+	// settled counts the items settled since the task was last idle: no
+	// pass, and nothing in line or in flight.
+	settled int
 
 	// A step task's items enqueued with EnqueueFor, while in line or in
 	// flight: the owner's item each was asked for by, and how far each
@@ -154,6 +157,7 @@ func (r *Runner) keepPassingLocked(t *task, now time.Time) {
 
 // startPassLocked begins a pass over the items t has left.
 func (r *Runner) startPassLocked(t *task) {
+	t.items.fromIdleLocked()
 	t.items.pass = &pass{did: map[id.ID]bool{}}
 	t.signal()
 	r.changed()
@@ -207,19 +211,22 @@ func (w *items) nextListedLocked() *item {
 }
 
 // do does one item and then updates the in-memory state. The item's slot
-// is freed and its pass marks it done. If it settled, its run counts it.
-// If it was enqueued again while in flight, it goes back in line.
-// Otherwise its owner, if it has one, counts it done.
+// is freed and the current pass marks it done, if it came from that pass
+// or was enqueued. If it settled, the current pass's run counts it. If it
+// was enqueued again while in flight, it goes back in line. Otherwise the
+// task counts it settled if it settled, and its owner, if it has one,
+// counts it done.
 func (r *Runner) do(t *task, it *item) {
 	err := guard(it.ctx, func() error { return t.items.Do(it.ctx, it.id) }, "task", t.Name, "item", it.id)
 	cancelled := it.ctx.Err() != nil
+	settled := err == nil && !cancelled
 	it.cancel()
 	r.mu.Lock()
 	w := t.items
 	delete(w.busy, it.id)
-	if p := it.pass; p != nil && p == w.pass {
+	if p := w.pass; p != nil && (it.pass == nil || it.pass == p) {
 		p.did[it.id] = true
-		if t.open != nil && err == nil && !cancelled {
+		if t.open != nil && settled {
 			t.open.done++
 		}
 	}
@@ -227,6 +234,9 @@ func (r *Runner) do(t *task, it *item) {
 		delete(w.requeue, it.id)
 		w.enqueueLocked(it.id)
 	} else {
+		if settled {
+			w.settled++
+		}
 		w.settleOwnedLocked(it.id)
 	}
 	r.mu.Unlock()
@@ -275,6 +285,7 @@ func (r *Runner) Enqueue(name string, items ...id.ID) {
 	if t == nil || t.items == nil {
 		panic("tasks: enqueue on a task with no items: " + name)
 	}
+	t.items.fromIdleLocked()
 	t.items.enqueueLocked(items...)
 	t.signal()
 	r.changed()
@@ -290,6 +301,14 @@ func (w *items) enqueueLocked(items ...id.ID) {
 			w.asked = append(w.asked, i)
 			w.queued[i] = true
 		}
+	}
+}
+
+// fromIdleLocked starts the settled count again if work is beginning from
+// idle.
+func (w *items) fromIdleLocked() {
+	if w.pass == nil && len(w.asked) == 0 && len(w.busy) == 0 {
+		w.settled = 0
 	}
 }
 
