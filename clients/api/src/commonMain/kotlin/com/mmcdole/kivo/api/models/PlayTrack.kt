@@ -70,7 +70,7 @@ data class PlayTrack (
     @SerialName(value = "transcode") val transcode: TrackTranscode? = null,
 
     /* Why the track isn't delivered unchanged in the file, or why choosing it starts a new play, when there's a reason to give. */
-    @SerialName(value = "reason") val reason: kotlin.String? = null,
+    @SerialName(value = "reason") val reason: com.mmcdole.kivo.api.models.TrackReason? = null,
 
     @SerialName(value = "mismatch") val mismatch: CapabilityMismatch? = null,
 

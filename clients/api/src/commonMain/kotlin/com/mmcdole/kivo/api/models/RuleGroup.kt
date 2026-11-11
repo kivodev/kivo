@@ -32,7 +32,7 @@ import kotlinx.serialization.encoding.*
 /**
  * At least one rule or group. The root may hold groups; a group may hold rules only.
  *
- * @param match Whether all of a group's rules and groups must match, or any. Skip values you don't know.
+ * @param match 
  * @param rules 
  * @param groups 
  */
@@ -40,8 +40,7 @@ import kotlinx.serialization.encoding.*
 
 data class RuleGroup (
 
-    /* Whether all of a group's rules and groups must match, or any. Skip values you don't know. */
-    @SerialName(value = "match") @Required val match: kotlin.String,
+    @SerialName(value = "match") @Required val match: com.mmcdole.kivo.api.models.RuleGroupMatch,
 
     @SerialName(value = "rules") val rules: kotlin.collections.List<Rule>? = null,
 

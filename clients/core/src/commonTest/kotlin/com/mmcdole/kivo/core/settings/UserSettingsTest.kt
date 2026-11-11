@@ -2,6 +2,7 @@ package com.mmcdole.kivo.core.settings
 
 import com.mmcdole.kivo.api.ProblemException
 import com.mmcdole.kivo.api.models.Session
+import com.mmcdole.kivo.api.models.SessionKind
 import com.mmcdole.kivo.api.models.SessionList
 import com.mmcdole.kivo.core.FakeServer
 import com.mmcdole.kivo.core.MemoryStore
@@ -23,8 +24,8 @@ class UserSettingsTest {
         val server = FakeServer()
         val at = Instant.fromEpochSeconds(1_800_000_000)
         val sessions = listOf(
-            Session("d1", "app", "Anna's iPhone", at, at, current = true),
-            Session("d2", "app", "Living Room", at, at, current = false),
+            Session("d1", SessionKind.App, "Anna's iPhone", at, at, current = true),
+            Session("d2", SessionKind.App, "Living Room", at, at, current = false),
         )
         server.on("GET", "/api/v1/sessions") { json(SessionList.serializer(), SessionList(sessions)) }
         server.on("DELETE", "/api/v1/sessions/d2") { empty() }

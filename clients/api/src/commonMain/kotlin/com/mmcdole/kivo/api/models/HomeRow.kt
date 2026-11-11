@@ -35,7 +35,7 @@ import kotlinx.serialization.encoding.*
  * 
  *
  * @param id Stable per row: the kind, `recentlyAdded:<libraryId>` or `list:<listId>`. 
- * @param kind What a Home row shows: `continueWatching` what to watch on with, videos in progress and each series' episode up next; `continueListening` books in progress; `recentlyAdded` a library's newest works; `list` a list's works. Skip kinds you don't know. 
+ * @param kind 
  * @param items 
  * @param library For `recentlyAdded`, the library.
  * @param list For `list`, the list.
@@ -47,8 +47,7 @@ data class HomeRow (
     /* Stable per row: the kind, `recentlyAdded:<libraryId>` or `list:<listId>`.  */
     @SerialName(value = "id") @Required val id: kotlin.String,
 
-    /* What a Home row shows: `continueWatching` what to watch on with, videos in progress and each series' episode up next; `continueListening` books in progress; `recentlyAdded` a library's newest works; `list` a list's works. Skip kinds you don't know.  */
-    @SerialName(value = "kind") @Required val kind: kotlin.String,
+    @SerialName(value = "kind") @Required val kind: com.mmcdole.kivo.api.models.HomeRowKind,
 
     @SerialName(value = "items") @Required val items: kotlin.collections.List<WorkSummary>,
 

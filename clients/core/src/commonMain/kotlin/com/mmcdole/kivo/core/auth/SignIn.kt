@@ -7,6 +7,7 @@ import com.mmcdole.kivo.api.models.DeviceCodePoll
 import com.mmcdole.kivo.api.models.DeviceCodeCreate
 import com.mmcdole.kivo.api.models.Session
 import com.mmcdole.kivo.api.models.SessionCreate
+import com.mmcdole.kivo.api.models.SessionKind
 import com.mmcdole.kivo.api.result
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -32,7 +33,7 @@ internal class SignIn(
     /** Signs in with a password; a wrong one is a [ProblemException]. */
     suspend fun withPassword(username: String, password: String): CurrentUser {
         val session = connection.sessions
-            .createSession(SessionCreate(username, password, kind = "app", name = name, clientId = clientId))
+            .createSession(SessionCreate(username, password, kind = SessionKind.App, name = name, clientId = clientId))
             .result()
         return signedIn(session)
     }

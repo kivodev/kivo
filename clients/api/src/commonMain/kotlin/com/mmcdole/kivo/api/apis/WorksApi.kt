@@ -256,7 +256,7 @@ open class WorksApi : ApiClient {
      * @return Home
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getHome(kind: kotlin.collections.List<kotlin.String>? = null): HttpResponse<Home> {
+    open suspend fun getHome(kind: kotlin.collections.List<com.mmcdole.kivo.api.models.HomeRowKind>? = null): HttpResponse<Home> {
 
         val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
 
@@ -459,7 +459,7 @@ open class WorksApi : ApiClient {
      * @return WorkSummaryPage
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun listListWorks(id: kotlin.String, kind: kotlin.collections.List<kotlin.String>? = null, sort: kotlin.String? = null, offset: kotlin.Int? = null, limit: kotlin.Int? = null): HttpResponse<WorkSummaryPage> {
+    open suspend fun listListWorks(id: kotlin.String, kind: kotlin.collections.List<com.mmcdole.kivo.api.models.WorkKind>? = null, sort: com.mmcdole.kivo.api.models.ListSort? = null, offset: kotlin.Int? = null, limit: kotlin.Int? = null): HttpResponse<WorkSummaryPage> {
 
         val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
 

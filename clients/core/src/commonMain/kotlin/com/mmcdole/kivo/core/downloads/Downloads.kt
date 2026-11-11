@@ -11,6 +11,7 @@ import com.mmcdole.kivo.api.models.DownloadEstimate
 import com.mmcdole.kivo.api.models.DownloadEstimateItem
 import com.mmcdole.kivo.api.models.DownloadEstimateRequest
 import com.mmcdole.kivo.api.models.WorkDetail
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.result
 import com.mmcdole.kivo.core.Backoff
 import com.mmcdole.kivo.core.auth.ServerConnection
@@ -20,7 +21,6 @@ import com.mmcdole.kivo.core.kivoJson
 import com.mmcdole.kivo.core.live.Invalidation
 import com.mmcdole.kivo.core.settings.DeviceSettings
 import com.mmcdole.kivo.core.settings.DownloadQuality
-import com.mmcdole.kivo.core.settings.LegacyDownloadQuality
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -318,7 +318,7 @@ internal class Downloads(
                     asked_version = request.versionId, asked_audio = request.audioTrackId, asked_subtitle = request.subtitleTrackId,
                     quality = created.quality, state = QUEUED, progress = null, remaining_ms = null, reason = null,
                     plan = kivoJson.encodeToString(ServerDownload.serializer(), created),
-                    work = kivoJson.encodeToString(WorkDetail.serializer(), work), title = work.title, kind = work.kind,
+                    work = kivoJson.encodeToString(WorkDetail.serializer(), work), title = work.title, kind = work.kind.value,
                     series_id = episode?.seriesId, series_title = episode?.seriesTitle, season = episode?.seasonNumber?.toLong(), episode = episode?.number?.toLong(),
                     size_bytes = created.sizeBytes,
                     created_at = now(), completed_at = null, position_ms = null,
@@ -626,10 +626,9 @@ internal class Downloads(
         }
         fun artwork(name: String) = files.firstOrNull { it.role == ARTWORK && it.name == name && it.state == DONE }?.let { path(it).toString() }
         return DownloadItem(
-            id = row.id, workId = row.work_id, versionId = plan?.versionId ?: row.asked_version.orEmpty(), title = row.title, kind = row.kind,
+            id = row.id, workId = row.work_id, versionId = plan?.versionId ?: row.asked_version.orEmpty(), title = row.title, kind = WorkKind.of(row.kind),
             seriesId = row.series_id, seriesTitle = row.series_title, season = row.season?.toInt(), episode = row.episode?.toInt(),
-            // Migration (downloads): remove after every client has updated past this release.
-            authors = authorsOf(row), quality = LegacyDownloadQuality.current(row.quality),
+            authors = authorsOf(row), quality = DownloadQuality.parseOrNull(row.quality),
             durationMs = plan?.durationMs?.toLong(),
             sizeBytes = row.size_bytes, sizeExact = status == DownloadStatus.Ready || plan?.sizeExact == true,
             prepared = plan?.delivery == DownloadDelivery.Conversion, status = status,
@@ -639,7 +638,7 @@ internal class Downloads(
     }
 
     /** A book's authors, from its work as downloaded. */
-    private fun authorsOf(row: Row): String? = if (row.kind != "book") {
+    private fun authorsOf(row: Row): String? = if (row.kind != WorkKind.Book.value) {
         null
     } else {
         kivoJson.decodeFromString(WorkDetail.serializer(), withTrackNames(row.work)).book?.authors?.takeIf { it.isNotEmpty() }?.joinToString(", ") { it.name }

@@ -53,6 +53,245 @@ enum class SubtitleMode(val value: String) {
     internal object Serializer : OpenEnumSerializer<SubtitleMode>("SubtitleMode", entries, Unknown, { it.value })
 }
 
+/** What a work is: `video` an item of a videos library and `book` an item of an audiobooks library. */
+@Serializable(with = WorkKind.Serializer::class)
+enum class WorkKind(val value: String) {
+    Movie("movie"), Series("series"), Season("season"), Episode("episode"), Extra("extra"), Video("video"), Book("book"), Unknown("");
+
+    override fun toString(): String = value
+
+    companion object {
+        /** The one [value] names; [Unknown] for none or one this version doesn't know. */
+        fun of(value: String?): WorkKind = entries.firstOrNull { it != Unknown && it.value == value } ?: Unknown
+    }
+
+    internal object Serializer : OpenEnumSerializer<WorkKind>("WorkKind", entries, Unknown, { it.value })
+}
+
+/** What a library holds. */
+@Serializable(with = LibraryKind.Serializer::class)
+enum class LibraryKind(val value: String) {
+    Movies("movies"), Shows("shows"), Videos("videos"), Audiobooks("audiobooks"), Unknown("");
+
+    override fun toString(): String = value
+
+    companion object {
+        /** The one [value] names; [Unknown] for none or one this version doesn't know. */
+        fun of(value: String?): LibraryKind = entries.firstOrNull { it != Unknown && it.value == value } ?: Unknown
+    }
+
+    internal object Serializer : OpenEnumSerializer<LibraryKind>("LibraryKind", entries, Unknown, { it.value })
+}
+
+/** What a list is: `manual` is works the user added, `smart` the works rules select. */
+@Serializable(with = ListKind.Serializer::class)
+enum class ListKind(val value: String) {
+    Manual("manual"), Smart("smart"), Unknown("");
+
+    override fun toString(): String = value
+
+    companion object {
+        /** The one [value] names; [Unknown] for none or one this version doesn't know. */
+        fun of(value: String?): ListKind = entries.firstOrNull { it != Unknown && it.value == value } ?: Unknown
+    }
+
+    internal object Serializer : OpenEnumSerializer<ListKind>("ListKind", entries, Unknown, { it.value })
+}
+
+/** The order a manual list is shown in: `custom` the user's own, `title` A to Z, `releaseDate` newest first, `rating` highest first, `dateAdded` latest added to the list first. */
+@Serializable(with = ListSort.Serializer::class)
+enum class ListSort(val value: String) {
+    Custom("custom"), Title("title"), ReleaseDate("releaseDate"), Rating("rating"), DateAdded("dateAdded"), Unknown("");
+
+    override fun toString(): String = value
+
+    companion object {
+        /** The one [value] names; [Unknown] for none or one this version doesn't know. */
+        fun of(value: String?): ListSort = entries.firstOrNull { it != Unknown && it.value == value } ?: Unknown
+    }
+
+    internal object Serializer : OpenEnumSerializer<ListSort>("ListSort", entries, Unknown, { it.value })
+}
+
+/** What a Home row shows. */
+@Serializable(with = HomeRowKind.Serializer::class)
+enum class HomeRowKind(val value: String) {
+    ContinueWatching("continueWatching"), ContinueListening("continueListening"), RecentlyAdded("recentlyAdded"), List("list"), Unknown("");
+
+    override fun toString(): String = value
+
+    companion object {
+        /** The one [value] names; [Unknown] for none or one this version doesn't know. */
+        fun of(value: String?): HomeRowKind = entries.firstOrNull { it != Unknown && it.value == value } ?: Unknown
+    }
+
+    internal object Serializer : OpenEnumSerializer<HomeRowKind>("HomeRowKind", entries, Unknown, { it.value })
+}
+
+/** Whether a work is identified: `identifying` is provisional, its first identification pending, and `unmatched` provisional with no confident match. */
+@Serializable(with = MatchState.Serializer::class)
+enum class MatchState(val value: String) {
+    Matched("matched"), Identifying("identifying"), Unmatched("unmatched"), Unknown("");
+
+    override fun toString(): String = value
+
+    companion object {
+        /** The one [value] names; [Unknown] for none or one this version doesn't know. */
+        fun of(value: String?): MatchState = entries.firstOrNull { it != Unknown && it.value == value } ?: Unknown
+    }
+
+    internal object Serializer : OpenEnumSerializer<MatchState>("MatchState", entries, Unknown, { it.value })
+}
+
+/** Where a collection comes from: `provider` a movie collection, `folder` a videos-library folder. */
+@Serializable(with = CollectionSource.Serializer::class)
+enum class CollectionSource(val value: String) {
+    Provider("provider"), Folder("folder"), Unknown("");
+
+    override fun toString(): String = value
+
+    companion object {
+        /** The one [value] names; [Unknown] for none or one this version doesn't know. */
+        fun of(value: String?): CollectionSource = entries.firstOrNull { it != Unknown && it.value == value } ?: Unknown
+    }
+
+    internal object Serializer : OpenEnumSerializer<CollectionSource>("CollectionSource", entries, Unknown, { it.value })
+}
+
+/** A video's resolution class, largest first. */
+@Serializable(with = Resolution.Serializer::class)
+enum class Resolution(val value: String) {
+    FourK("4k"), P1080("1080p"), P720("720p"), Sd("sd"), Unknown("");
+
+    override fun toString(): String = value
+
+    companion object {
+        /** The one [value] names; [Unknown] for none or one this version doesn't know. */
+        fun of(value: String?): Resolution = entries.firstOrNull { it != Unknown && it.value == value } ?: Unknown
+    }
+
+    internal object Serializer : OpenEnumSerializer<Resolution>("Resolution", entries, Unknown, { it.value })
+}
+
+/** What a client runs on. */
+@Serializable(with = ClientPlatform.Serializer::class)
+enum class ClientPlatform(val value: String) {
+    AndroidTv("androidTv"), AppleTv("appleTv"), IPhone("iPhone"), IPad("iPad"), AndroidPhone("androidPhone"), Browser("browser"), Cast("cast"),
+    Tizen("tizen"), Unknown("");
+
+    override fun toString(): String = value
+
+    companion object {
+        /** The one [value] names; [Unknown] for none or one this version doesn't know. */
+        fun of(value: String?): ClientPlatform = entries.firstOrNull { it != Unknown && it.value == value } ?: Unknown
+    }
+
+    internal object Serializer : OpenEnumSerializer<ClientPlatform>("ClientPlatform", entries, Unknown, { it.value })
+}
+
+/** A `browser` session or an `app`'s. */
+@Serializable(with = SessionKind.Serializer::class)
+enum class SessionKind(val value: String) {
+    Browser("browser"), App("app"), Unknown("");
+
+    override fun toString(): String = value
+
+    companion object {
+        /** The one [value] names; [Unknown] for none or one this version doesn't know. */
+        fun of(value: String?): SessionKind = entries.firstOrNull { it != Unknown && it.value == value } ?: Unknown
+    }
+
+    internal object Serializer : OpenEnumSerializer<SessionKind>("SessionKind", entries, Unknown, { it.value })
+}
+
+/** Why a track isn't delivered unchanged in the file. */
+@Serializable(with = TrackReason.Serializer::class)
+enum class TrackReason(val value: String) {
+    ContainerUnsupported("containerUnsupported"), VideoCodecUnsupported("videoCodecUnsupported"),
+    VideoCodecTagUnsupported("videoCodecTagUnsupported"), VideoProfileUnsupported("videoProfileUnsupported"),
+    VideoLevelUnsupported("videoLevelUnsupported"), VideoBitDepthUnsupported("videoBitDepthUnsupported"),
+    VideoResolutionUnsupported("videoResolutionUnsupported"), VideoFrameRateUnsupported("videoFrameRateUnsupported"),
+    VideoBitrateUnsupported("videoBitrateUnsupported"), VideoRefFramesUnsupported("videoRefFramesUnsupported"),
+    VideoInterlacedUnsupported("videoInterlacedUnsupported"), VideoAnamorphicUnsupported("videoAnamorphicUnsupported"),
+    VideoHdrUnsupported("videoHdrUnsupported"), AudioCodecUnsupported("audioCodecUnsupported"), AudioChannelsUnsupported("audioChannelsUnsupported"),
+    AudioSampleRateUnsupported("audioSampleRateUnsupported"), AudioBitDepthUnsupported("audioBitDepthUnsupported"),
+    AudioProfileUnsupported("audioProfileUnsupported"), SubtitleCodecUnsupported("subtitleCodecUnsupported"),
+    TrackSelectionUnsupported("trackSelectionUnsupported"), StreamCodecUnsupported("streamCodecUnsupported"),
+    DirectPlayDisabled("directPlayDisabled"), BurnSubtitlesEnabled("burnSubtitlesEnabled"), ClientQualityLimit("clientQualityLimit"),
+    RemoteQualityLimit("remoteQualityLimit"), BandwidthLimit("bandwidthLimit"), DialogueBoost("dialogueBoost"),
+    KeyframeIndexMissing("keyframeIndexMissing"), SubtitlePreparing("subtitlePreparing"), Fallback("fallback"), DownloadQuality("downloadQuality"),
+    Unknown("");
+
+    override fun toString(): String = value
+
+    companion object {
+        /** The one [value] names; [Unknown] for none or one this version doesn't know. */
+        fun of(value: String?): TrackReason = entries.firstOrNull { it != Unknown && it.value == value } ?: Unknown
+    }
+
+    internal object Serializer : OpenEnumSerializer<TrackReason>("TrackReason", entries, Unknown, { it.value })
+}
+
+/** Whether all of a group's rules and groups must match, or any. */
+@Serializable(with = RuleGroupMatch.Serializer::class)
+enum class RuleGroupMatch(val value: String) {
+    All("all"), Any("any"), Unknown("");
+
+    override fun toString(): String = value
+
+    companion object {
+        /** The one [value] names; [Unknown] for none or one this version doesn't know. */
+        fun of(value: String?): RuleGroupMatch = entries.firstOrNull { it != Unknown && it.value == value } ?: Unknown
+    }
+
+    internal object Serializer : OpenEnumSerializer<RuleGroupMatch>("RuleGroupMatch", entries, Unknown, { it.value })
+}
+
+/** A sort key's direction. */
+@Serializable(with = SortDirection.Serializer::class)
+enum class SortDirection(val value: String) {
+    Asc("asc"), Desc("desc"), Unknown("");
+
+    override fun toString(): String = value
+
+    companion object {
+        /** The one [value] names; [Unknown] for none or one this version doesn't know. */
+        fun of(value: String?): SortDirection = entries.firstOrNull { it != Unknown && it.value == value } ?: Unknown
+    }
+
+    internal object Serializer : OpenEnumSerializer<SortDirection>("SortDirection", entries, Unknown, { it.value })
+}
+
+/** What a work field's values are. */
+@Serializable(with = WorkFieldType.Serializer::class)
+enum class WorkFieldType(val value: String) {
+    Choice("choice"), Set("set"), Person("person"), Number("number"), Date("date"), Text("text"), Unknown("");
+
+    override fun toString(): String = value
+
+    companion object {
+        /** The one [value] names; [Unknown] for none or one this version doesn't know. */
+        fun of(value: String?): WorkFieldType = entries.firstOrNull { it != Unknown && it.value == value } ?: Unknown
+    }
+
+    internal object Serializer : OpenEnumSerializer<WorkFieldType>("WorkFieldType", entries, Unknown, { it.value })
+}
+
+/** Whether a field's values are few, `inline`, or found with `search`. */
+@Serializable(with = WorkFieldValueSource.Serializer::class)
+enum class WorkFieldValueSource(val value: String) {
+    Inline("inline"), Search("search"), Unknown("");
+
+    override fun toString(): String = value
+
+    companion object {
+        /** The one [value] names; [Unknown] for none or one this version doesn't know. */
+        fun of(value: String?): WorkFieldValueSource = entries.firstOrNull { it != Unknown && it.value == value } ?: Unknown
+    }
+
+    internal object Serializer : OpenEnumSerializer<WorkFieldValueSource>("WorkFieldValueSource", entries, Unknown, { it.value })
+}
+
 /** An enum as its wire string, decoding a string it doesn't know as [unknown]. */
 internal open class OpenEnumSerializer<T : Enum<T>>(
     name: String,

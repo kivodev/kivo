@@ -3,6 +3,7 @@ package com.mmcdole.kivo.core.display
 import com.mmcdole.kivo.api.models.PlayDelivery
 import com.mmcdole.kivo.api.models.PlayStarted
 import com.mmcdole.kivo.api.models.PlayTrack
+import com.mmcdole.kivo.api.models.Resolution
 import com.mmcdole.kivo.api.models.TrackDelivery
 import com.mmcdole.kivo.api.models.TrackType
 import kotlinx.serialization.Serializable
@@ -204,8 +205,8 @@ class Display {
     /** A channel layout as the server sends it ("2.0", "5.1"; "1.0" is "Mono"); else the [count] in words. */
     fun channels(layout: String?, count: Int): String = layout?.let { media.layouts[it] ?: it } ?: channels(count)
 
-    /** A resolution class as the server sends it, in words: `4k` is "4K", `sd` "SD". */
-    fun resolution(resolution: String): String = media.resolutions[resolution] ?: resolution
+    /** A resolution class in words: "4K", "1080p", "SD". */
+    fun resolution(resolution: Resolution): String = media.resolutions[resolution.value] ?: resolution.value
 
     /** An HDR format: "HDR10", "HLG", "Dolby Vision". */
     fun hdr(hdr: String): String = media.hdr[hdr] ?: hdr

@@ -3,6 +3,7 @@ package com.mmcdole.kivo.core.session
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import app.cash.sqldelight.db.SqlDriver
+import com.mmcdole.kivo.api.models.ClientPlatform
 import com.mmcdole.kivo.core.auth.ClientIdentity
 import com.mmcdole.kivo.core.auth.SecureStore
 import com.mmcdole.kivo.core.caps.CapabilityProbe
@@ -27,7 +28,7 @@ interface Device {
     val identity: ClientIdentity
 
     /** What the app runs on, as its sessions say: the identity's platform. */
-    val platform: String get() = identity.platform
+    val platform: ClientPlatform get() = identity.platform
 
     /** The app's preferences, which hold the saved servers, this device's settings and who each session is for. */
     val preferences: DataStore<Preferences>

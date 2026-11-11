@@ -36,7 +36,7 @@ import kotlinx.serialization.encoding.*
  * @param id A UUIDv7.
  * @param name 
  * @param pinned Pinned by the user: shown in its sidebar. Every library is until the user chooses; search finds works in every library either way. 
- * @param kind What a library holds. Skip kinds you don't know.
+ * @param kind 
  * @param workCount Top-level works the user can see.
  * @param folders 
  * @param useLocalMetadata 
@@ -61,8 +61,7 @@ data class Library (
     /* Pinned by the user: shown in its sidebar. Every library is until the user chooses; search finds works in every library either way.  */
     @SerialName(value = "pinned") @Required val pinned: kotlin.Boolean,
 
-    /* What a library holds. Skip kinds you don't know. */
-    @SerialName(value = "kind") @Required val kind: kotlin.String,
+    @SerialName(value = "kind") @Required val kind: com.mmcdole.kivo.api.models.LibraryKind,
 
     /* Top-level works the user can see. */
     @SerialName(value = "workCount") @Required val workCount: kotlin.Int,

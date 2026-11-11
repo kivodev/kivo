@@ -3,17 +3,26 @@ package com.mmcdole.kivo.core.data
 import com.mmcdole.kivo.api.models.BookSeries
 import com.mmcdole.kivo.api.models.BookSeriesSummaryPage
 import com.mmcdole.kivo.api.models.Collection
+import com.mmcdole.kivo.api.models.CollectionSource
 import com.mmcdole.kivo.api.models.CollectionSummaryPage
 import com.mmcdole.kivo.api.models.Home
 import com.mmcdole.kivo.api.models.HomeRow
 import com.mmcdole.kivo.api.infrastructure.ApiClient
+import com.mmcdole.kivo.api.models.HomeRowKind
+import com.mmcdole.kivo.api.models.LibraryKind
+import com.mmcdole.kivo.api.models.ListKind
+import com.mmcdole.kivo.api.models.ListSort
+import com.mmcdole.kivo.api.models.MatchState
 import com.mmcdole.kivo.api.models.Person
 import com.mmcdole.kivo.api.models.PersonSummaryPage
+import com.mmcdole.kivo.api.models.Resolution
 import com.mmcdole.kivo.api.models.Rule
 import com.mmcdole.kivo.api.models.RuleGroup
+import com.mmcdole.kivo.api.models.RuleGroupMatch
 import com.mmcdole.kivo.api.models.SortKey
 import com.mmcdole.kivo.api.models.WorkFieldValue
 import com.mmcdole.kivo.api.models.WorkFieldValueList
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkList
 import com.mmcdole.kivo.api.models.WorkListList
 import com.mmcdole.kivo.api.models.WorkQuery
@@ -41,7 +50,7 @@ class RepositoriesTest {
         var fetches = 0
         server.on("GET", "/api/v1/home") {
             fetches++
-            json(Home.serializer(), Home(listOf(HomeRow("recentlyAdded:l1", "recentlyAdded", emptyList()))))
+            json(Home.serializer(), Home(listOf(HomeRow("recentlyAdded:l1", HomeRowKind.RecentlyAdded, emptyList()))))
         }
         val invalidations = MutableSharedFlow<Invalidation>()
         val homes = mutableListOf<Home>()
@@ -63,7 +72,7 @@ class RepositoriesTest {
     @Test
     fun aCollectionAndAWorksChildrenAreTheirOwnReads() = runTest {
         val server = FakeServer(StandardTestDispatcher(testScheduler))
-        server.on("GET", "/api/v1/collections/c1") { json(Collection.serializer(), Collection("c1", "Dune Collection", WorkImages(), emptyList(), "provider")) }
+        server.on("GET", "/api/v1/collections/c1") { json(Collection.serializer(), Collection("c1", "Dune Collection", WorkImages(), emptyList(), CollectionSource.Provider)) }
         server.on("GET", "/api/v1/works/s1/children") { json(WorkSummaryList.serializer(), WorkSummaryList(emptyList())) }
         val invalidations = MutableSharedFlow<Invalidation>()
         val works = WorkRepository(server.connection(), invalidations)
@@ -130,12 +139,12 @@ class RepositoriesTest {
     @Test
     fun aListIsSortedMovedAndReadInItsCustomOrder() = runTest {
         val server = FakeServer(StandardTestDispatcher(testScheduler))
-        val list = WorkList("l1", "Later", "manual", builtIn = false, workCount = 201, sort = "title")
+        val list = WorkList("l1", "Later", ListKind.Manual, builtIn = false, workCount = 201, sort = ListSort.Title)
         server.on("PATCH", "/api/v1/lists/l1") { json(WorkList.serializer(), list) }
         server.on("POST", "/api/v1/lists/l1/move") { empty() }
         server.on("GET", "/api/v1/lists/l1/works") { request ->
             val offset = request.url.parameters["offset"]?.toInt() ?: 0
-            val works = (offset until minOf(offset + 200, 201)).map { WorkSummary("w$it", "movie", "Movie $it", "matched", true, WorkImages()) }
+            val works = (offset until minOf(offset + 200, 201)).map { WorkSummary("w$it", WorkKind.Movie, "Movie $it", MatchState.Matched, true, WorkImages()) }
             json(WorkSummaryPage.serializer(), WorkSummaryPage(works, total = 201.takeIf { offset == 0 }))
         }
         val lists = ListsRepository(server.connection(), MutableSharedFlow())
@@ -143,7 +152,7 @@ class RepositoriesTest {
         assertEquals("title", ListSorts.of(lists.setSort("l1", ListSorts.TITLE)))
         assertEquals("""{"sort":"title"}""", server.to("PATCH", "/api/v1/lists/l1").single().body)
         assertEquals(ListSorts.CUSTOM, ListSorts.of(list.copy(sort = "shuffled")))
-        assertEquals(null, ListSorts.of(list.copy(kind = "smart", sort = null)))
+        assertEquals(null, ListSorts.of(list.copy(kind = ListKind.Smart, sort = null)))
 
         lists.move("l1", listOf("w3", "w1"), after = "w7")
         lists.move("l1", listOf("w2"), after = null)
@@ -169,8 +178,8 @@ class RepositoriesTest {
         val invalidations = MutableSharedFlow<Invalidation>()
         val grid = GridRepository(server.connection(), invalidations)
 
-        grid.page(GridQuery("l1"), "movies", offset = 0, limit = 60)
-        grid.page(GridQuery("l1", sort = "author", genres = listOf("Drama"), yearFrom = 1990, yearTo = 1999), "audiobooks", offset = 120, limit = 60)
+        grid.page(GridQuery("l1"), LibraryKind.Movies, offset = 0, limit = 60)
+        grid.page(GridQuery("l1", sort = GridSort.Author, genres = listOf("Drama"), yearFrom = 1990, yearTo = 1999), LibraryKind.Audiobooks, offset = 120, limit = 60)
         grid.collections("l1", offset = 60, limit = 60)
         grid.authors("l1", offset = 0, limit = 60)
         grid.bookSeries("l1", offset = 0, limit = 60)
@@ -187,11 +196,11 @@ class RepositoriesTest {
         )
         assertEquals(
             listOf(
-                WorkQueryRequest(WorkQuery(listOf("movie"), sort = listOf(SortKey("title"))), library = "l1", limit = 60),
+                WorkQueryRequest(WorkQuery(listOf(WorkKind.Movie), sort = listOf(SortKey("title"))), library = "l1", limit = 60),
                 WorkQueryRequest(
                     WorkQuery(
-                        listOf("book"),
-                        where = RuleGroup("all", listOf(Rule("genre", "anyOf", listOf("Drama")), Rule("year", "between", listOf("1990", "1999")))),
+                        listOf(WorkKind.Book),
+                        where = RuleGroup(RuleGroupMatch.All, listOf(Rule("genre", "anyOf", listOf("Drama")), Rule("year", "between", listOf("1990", "1999")))),
                         sort = listOf(SortKey("author")),
                     ),
                     library = "l1",
@@ -236,7 +245,7 @@ class RepositoriesTest {
         backgroundScope.launch { grid.filters("l1").collect { read += it } }
         runCurrent()
         assertEquals(
-            LibraryFilters(listOf("Crime", "Drama"), listOf(1995, 2021), listOf("PG", "R"), listOf("4k"), listOf("hdr"), collections = true),
+            LibraryFilters(listOf("Crime", "Drama"), listOf(1995, 2021), listOf("PG", "R"), listOf(Resolution.FourK), listOf(DynamicRange.Hdr), collections = true),
             read.single(),
         )
         assertEquals(

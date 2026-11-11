@@ -32,7 +32,7 @@ import kotlinx.serialization.encoding.*
  * A sortable field, or `random`, which must be the only key.
  *
  * @param `field` 
- * @param direction Skip values you don't know.
+ * @param direction 
  */
 @Serializable
 
@@ -40,8 +40,7 @@ data class SortKey (
 
     @SerialName(value = "field") @Required val `field`: kotlin.String,
 
-    /* Skip values you don't know. */
-    @SerialName(value = "direction") val direction: kotlin.String? = null
+    @SerialName(value = "direction") val direction: com.mmcdole.kivo.api.models.SortDirection? = null
 
 ) {
 

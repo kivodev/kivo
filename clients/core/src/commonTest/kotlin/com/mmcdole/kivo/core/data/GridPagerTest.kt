@@ -2,7 +2,10 @@ package com.mmcdole.kivo.core.data
 
 import com.mmcdole.kivo.api.infrastructure.ApiClient
 import com.mmcdole.kivo.api.models.LetterStart
+import com.mmcdole.kivo.api.models.LibraryKind
+import com.mmcdole.kivo.api.models.MatchState
 import com.mmcdole.kivo.api.models.WorkImages
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkQueryRequest
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.api.models.WorkSummaryPage
@@ -35,7 +38,7 @@ import kotlin.time.Duration.Companion.seconds
 class GridPagerTest {
     private val total = 2_000
 
-    private fun summary(i: Int, prefix: String = "T") = WorkSummary("w$i", "movie", "$prefix$i", "matched", true, WorkImages())
+    private fun summary(i: Int, prefix: String = "T") = WorkSummary("w$i", WorkKind.Movie, "$prefix$i", MatchState.Matched, true, WorkImages())
 
     /** Letters every 100 works: A at 0, B at 100, … */
     private val letters = (0 until 20).map { LetterStart(('A' + it).toString(), it * 100) }
@@ -73,7 +76,7 @@ class GridPagerTest {
         }
 
         fun paged(kept: Int = GridPager.KEPT_PAGES) = GridPager(
-            read = { offset, limit -> GridRepository(connection, invalidations).page(GridQuery("l1"), "movies", offset, limit).let { GridPage(it.items, it.total, it.letters) } },
+            read = { offset, limit -> GridRepository(connection, invalidations).page(GridQuery("l1"), LibraryKind.Movies, offset, limit).let { GridPage(it.items, it.total, it.letters) } },
             changes = GridRepository(connection, invalidations).changes("l1"),
             reachability = connection.reachability,
             known = known,

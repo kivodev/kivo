@@ -1,6 +1,7 @@
 package com.mmcdole.kivo.core.data
 
 import com.mmcdole.kivo.api.ProblemException
+import com.mmcdole.kivo.api.models.MatchState
 import com.mmcdole.kivo.api.models.SubtitleResult
 import com.mmcdole.kivo.api.models.SubtitleResultList
 import com.mmcdole.kivo.api.models.SubtitleTrackInfo
@@ -10,6 +11,7 @@ import com.mmcdole.kivo.api.models.Version
 import com.mmcdole.kivo.api.models.VersionPart
 import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.api.models.WorkImages
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.core.FakeServer
 import com.mmcdole.kivo.core.display.Display
 import com.mmcdole.kivo.core.display.TrackName
@@ -63,7 +65,7 @@ class SubtitleSearchTest {
     fun aDownloadedTrackJoinsItsVersion() {
         val other = version().copy(id = "v2")
         val work = WorkDetail(
-            id = "w1", kind = "movie", title = "Dune", matchState = "matched", available = true, images = WorkImages(),
+            id = "w1", kind = WorkKind.Movie, title = "Dune", matchState = MatchState.Matched, available = true, images = WorkImages(),
             genres = emptyList(), studios = emptyList(), credits = emptyList(), externalIds = emptyList(),
             versions = listOf(version(), other), extras = emptyList(), collections = emptyList(),
         )

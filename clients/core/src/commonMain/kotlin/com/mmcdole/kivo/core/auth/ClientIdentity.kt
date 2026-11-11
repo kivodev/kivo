@@ -1,5 +1,7 @@
 package com.mmcdole.kivo.core.auth
 
+import com.mmcdole.kivo.api.models.ClientPlatform
+
 /**
  * What the app says of itself to the servers it signs in to, in the
  * identity headers of every request the core makes. The server keeps it
@@ -14,8 +16,8 @@ interface ClientIdentity {
     /** The app's semantic version, with its build number as build metadata where it has one, such as `0.3.0+78`. */
     val appVersion: String
 
-    /** What it runs on: `androidTv`, `androidPhone`, `appleTv`, `iPhone` or `iPad`. */
-    val platform: String
+    /** What it runs on. */
+    val platform: ClientPlatform
 
     /** The operating system's version, such as `14` or `17.5`. */
     val osVersion: String
@@ -32,7 +34,7 @@ interface ClientIdentity {
 internal fun identityHeaders(identity: ClientIdentity): Map<String, String> = listOf(
     "Kivo-App" to identity.app,
     "Kivo-App-Version" to identity.appVersion,
-    "Kivo-Platform" to identity.platform,
+    "Kivo-Platform" to identity.platform.value,
     "Kivo-OS-Version" to identity.osVersion,
     "Kivo-Device-Model" to identity.deviceModel,
 ).mapNotNull { (name, value) ->

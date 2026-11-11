@@ -5,16 +5,20 @@ import com.mmcdole.kivo.api.models.CastToken
 import com.mmcdole.kivo.api.models.CurrentUser
 import com.mmcdole.kivo.api.models.DownloadEstimateList
 import com.mmcdole.kivo.api.models.Library
+import com.mmcdole.kivo.api.models.LibraryKind
 import com.mmcdole.kivo.api.models.LibraryList
+import com.mmcdole.kivo.api.models.MatchState
 import com.mmcdole.kivo.api.models.PlaybackPreferences
 import com.mmcdole.kivo.api.models.QualityRequest
 import com.mmcdole.kivo.api.models.QualityRung
 import com.mmcdole.kivo.api.models.ServerInfo
 import com.mmcdole.kivo.api.models.Session
+import com.mmcdole.kivo.api.models.SessionKind
 import com.mmcdole.kivo.api.models.SubtitleMode
 import com.mmcdole.kivo.api.models.UserLimits
 import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.api.models.WorkImages
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.api.models.WorkSummaryPage
 import com.mmcdole.kivo.core.Compatibility
@@ -496,7 +500,7 @@ class KivoSessionTest {
         h.servers.server("home.test", info("server-1", "Basement", localUrls = listOf("http://192.168.1.2:8484")))
         val at = Instant.fromEpochMilliseconds(0)
         h.servers.on("home.test", "POST", "/api/v1/sessions") {
-            json(Session.serializer(), Session("s1", "app", "Living Room", at, at, current = true, token = "tok"), HttpStatusCode.Created)
+            json(Session.serializer(), Session("s1", SessionKind.App, "Living Room", at, at, current = true, token = "tok"), HttpStatusCode.Created)
         }
 
         val session = h.core.signIn(FoundServer("http://home.test", info("server-1", "Basement")), "anna", "secret", "Living Room")
@@ -680,12 +684,12 @@ class KivoSessionTest {
     fun aCardReadInAListIsKnownAndAWorkReadEarlierShowsAtOnce() = runTest {
         val h = Harness(this)
         h.servers.server("home.test", info("server-1"))
-        val summary = WorkSummary("w1", "movie", "Heat", "matched", true, WorkImages(), year = 1995, libraryId = "l1")
+        val summary = WorkSummary("w1", WorkKind.Movie, "Heat", MatchState.Matched, true, WorkImages(), year = 1995, libraryId = "l1")
         val work = WorkDetail(
-            "w1", "movie", "Heat", "matched", true, WorkImages(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList(),
+            "w1", WorkKind.Movie, "Heat", MatchState.Matched, true, WorkImages(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList(),
             emptyList(), emptyList(), year = 1995, overview = "A heist.", libraryId = "l1",
         )
-        h.servers.on("home.test", "GET", "/api/v1/libraries") { json(LibraryList.serializer(), LibraryList(listOf(Library("l1", "Movies", true, "movies", 1)))) }
+        h.servers.on("home.test", "GET", "/api/v1/libraries") { json(LibraryList.serializer(), LibraryList(listOf(Library("l1", "Movies", true, LibraryKind.Movies, 1)))) }
         h.servers.on("home.test", "POST", "/api/v1/works/query") { json(WorkSummaryPage.serializer(), WorkSummaryPage(listOf(summary), 1)) }
         h.servers.on("home.test", "GET", "/api/v1/works/w1") { json(WorkDetail.serializer(), work) }
         h.device.signedInTo("server-1")
@@ -705,7 +709,7 @@ class KivoSessionTest {
     fun theLibrariesLastReadShowAtOnceInTheNextSession() = runTest {
         val h = Harness(this)
         h.servers.server("home.test", info("server-1"))
-        val libraries = listOf(Library("l1", "Movies", true, "movies", 3))
+        val libraries = listOf(Library("l1", "Movies", true, LibraryKind.Movies, 3))
         h.servers.on("home.test", "GET", "/api/v1/libraries") { json(LibraryList.serializer(), LibraryList(libraries)) }
         h.device.signedInTo("server-1")
         val saved = SavedServer("server-1", "server-1", listOf("http://home.test"))

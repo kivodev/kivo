@@ -1,10 +1,15 @@
 package com.mmcdole.kivo.core.data
 
+import com.mmcdole.kivo.api.models.LibraryKind
+import com.mmcdole.kivo.api.models.Resolution
 import com.mmcdole.kivo.api.models.Rule
 import com.mmcdole.kivo.api.models.RuleGroup
+import com.mmcdole.kivo.api.models.RuleGroupMatch
+import com.mmcdole.kivo.api.models.SortDirection
 import com.mmcdole.kivo.api.models.SortKey
 import com.mmcdole.kivo.api.models.WorkField
 import com.mmcdole.kivo.api.models.WorkFieldOp
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkQuery
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -20,7 +25,7 @@ class SmartListsTest {
         name = name,
         type = type,
         ops = ops,
-        kinds = listOf("movie", "series"),
+        kinds = listOf(WorkKind.Movie, WorkKind.Series),
         sortable = sortable,
         valueSource = valueSource,
     )
@@ -40,13 +45,13 @@ class SmartListsTest {
     @Test
     fun aSavedQueryComesBackWhole() {
         val query = WorkQuery(
-            kinds = listOf("movie", "series"),
+            kinds = listOf(WorkKind.Movie, WorkKind.Series),
             where = RuleGroup(
-                "all",
+                RuleGroupMatch.All,
                 rules = listOf(Rule("library", "anyOf", listOf("l1")), Rule("genre", "anyOf", listOf("Comedy"))),
-                groups = listOf(RuleGroup("any", rules = listOf(Rule("year", "between", listOf("1990", "1999"))))),
+                groups = listOf(RuleGroup(RuleGroupMatch.Any, rules = listOf(Rule("year", "between", listOf("1990", "1999"))))),
             ),
-            sort = listOf(SortKey("addedAt", "asc")),
+            sort = listOf(SortKey("addedAt", SortDirection.Asc)),
             maxWorks = 50,
         )
         val draft = SmartLists.draft("90s", query, fields)
@@ -59,7 +64,7 @@ class SmartListsTest {
 
     @Test
     fun aRootMatchingAnyKeepsItsLibraryRuleAmongTheRules() {
-        val query = WorkQuery(listOf("movie"), where = RuleGroup("any", rules = listOf(Rule("library", "anyOf", listOf("l1")), Rule("genre", "anyOf", listOf("Comedy")))))
+        val query = WorkQuery(listOf(WorkKind.Movie), where = RuleGroup(RuleGroupMatch.Any, rules = listOf(Rule("library", "anyOf", listOf("l1")), Rule("genre", "anyOf", listOf("Comedy")))))
         val draft = SmartLists.draft("", query, fields)
         assertEquals("any", draft.match)
         assertTrue(draft.libraries.isEmpty())
@@ -77,7 +82,7 @@ class SmartListsTest {
     fun anUnfinishedRuleIsLeftOutOfTheQueryAndBlocksSaving() {
         val finished = rule("genre", "anyOf", "choice", -1, "Comedy")
         val unfinished = rule("year", "between", "number", 2, "1990", "")
-        val draft = SmartListDraft("Mine", listOf("movie"), rules = listOf(finished, unfinished))
+        val draft = SmartListDraft("Mine", listOf(WorkKind.Movie), rules = listOf(finished, unfinished))
         assertEquals(listOf(finished.toRule()), draft.query.where?.rules)
         assertFalse(draft.isReady)
         assertTrue(draft.copy(rules = listOf(finished)).isReady)
@@ -85,13 +90,13 @@ class SmartListsTest {
 
     @Test
     fun aListNeedsANameAndAKindToSave() {
-        assertFalse(SmartListDraft(" ", listOf("movie")).isReady)
+        assertFalse(SmartListDraft(" ", listOf(WorkKind.Movie)).isReady)
         assertFalse(SmartListDraft("Mine", emptyList()).isReady)
     }
 
     @Test
     fun aGroupWithoutCompleteRulesIsLeftOut() {
-        val draft = SmartListDraft("Mine", listOf("movie"), groups = listOf(GroupDraft("any", rules = listOf(rule("genre", "anyOf", "choice", -1)))))
+        val draft = SmartListDraft("Mine", listOf(WorkKind.Movie), groups = listOf(GroupDraft(RuleGroupMatch.Any, rules = listOf(rule("genre", "anyOf", "choice", -1)))))
         assertNull(draft.query.where)
     }
 
@@ -135,7 +140,7 @@ class SmartListsTest {
 
     @Test
     fun aMalformedValueBlocksSaving() {
-        val draft = SmartListDraft("Mine", listOf("movie"), rules = listOf(rule("year", "anyOf", "number", 1, "abc")))
+        val draft = SmartListDraft("Mine", listOf(WorkKind.Movie), rules = listOf(rule("year", "anyOf", "number", 1, "abc")))
         assertFalse(draft.isReady)
         assertNull(draft.query.where)
     }
@@ -186,40 +191,40 @@ class SmartListsTest {
 
     @Test
     fun aNewerVersionIsRefused() {
-        assertEquals(SmartListRefusal.NewerVersion, SmartLists.refusal(WorkQuery(listOf("movie"), version = 2), fields))
-        assertNull(SmartLists.refusal(WorkQuery(listOf("movie"), version = 1), fields))
+        assertEquals(SmartListRefusal.NewerVersion, SmartLists.refusal(WorkQuery(listOf(WorkKind.Movie), version = 2), fields))
+        assertNull(SmartLists.refusal(WorkQuery(listOf(WorkKind.Movie), version = 1), fields))
     }
 
     @Test
     fun aFieldMissingFromTheCatalogIsRefused() {
-        val nested = WorkQuery(listOf("movie"), where = RuleGroup("all", groups = listOf(RuleGroup("any", rules = listOf(Rule("mood", "anyOf", listOf("Dark")))))))
+        val nested = WorkQuery(listOf(WorkKind.Movie), where = RuleGroup(RuleGroupMatch.All, groups = listOf(RuleGroup(RuleGroupMatch.Any, rules = listOf(Rule("mood", "anyOf", listOf("Dark")))))))
         assertEquals(SmartListRefusal.UnknownField, SmartLists.refusal(nested, fields))
-        assertEquals(SmartListRefusal.UnknownField, SmartLists.refusal(WorkQuery(listOf("movie"), sort = listOf(SortKey("mood"))), fields))
+        assertEquals(SmartListRefusal.UnknownField, SmartLists.refusal(WorkQuery(listOf(WorkKind.Movie), sort = listOf(SortKey("mood"))), fields))
     }
 
     @Test
     fun anOperatorTheFieldDoesntHaveIsRefused() {
-        val query = WorkQuery(listOf("movie"), where = RuleGroup("all", rules = listOf(Rule("genre", "soon", listOf("x")))))
+        val query = WorkQuery(listOf(WorkKind.Movie), where = RuleGroup(RuleGroupMatch.All, rules = listOf(Rule("genre", "soon", listOf("x")))))
         assertEquals(SmartListRefusal.UnknownField, SmartLists.refusal(query, fields))
     }
 
     @Test
     fun aSortOnAFieldThatIsntSortableIsRefused() {
-        assertEquals(SmartListRefusal.UnknownField, SmartLists.refusal(WorkQuery(listOf("movie"), sort = listOf(SortKey("genre"))), fields))
+        assertEquals(SmartListRefusal.UnknownField, SmartLists.refusal(WorkQuery(listOf(WorkKind.Movie), sort = listOf(SortKey("genre"))), fields))
     }
 
     @Test
     fun randomIsASortTheCatalogNeedNotList() {
-        assertNull(SmartLists.refusal(WorkQuery(listOf("movie"), sort = listOf(SortKey(SmartLists.RANDOM_SORT))), fields))
+        assertNull(SmartLists.refusal(WorkQuery(listOf(WorkKind.Movie), sort = listOf(SortKey(SmartLists.RANDOM_SORT))), fields))
     }
 
     @Test
     fun aFilteredGridBecomesAQueryOnItsLibrary() {
         val grid = GridQuery(
-            "l1", sort = "runtimeMs", played = "unplayed", genres = listOf("Drama"), yearFrom = 1990, yearTo = 1999,
-            contentRatings = listOf("R"), resolutions = listOf("720p", "4k"), dynamicRanges = listOf("hdr"),
+            "l1", sort = GridSort.Runtime, played = WorkPlayState.Unplayed, genres = listOf("Drama"), yearFrom = 1990, yearTo = 1999,
+            contentRatings = listOf("R"), resolutions = listOf(Resolution.P720, Resolution.FourK), dynamicRanges = listOf(DynamicRange.Hdr),
         )
-        val query = SmartLists.fromGrid(grid, "movies")
+        val query = SmartLists.fromGrid(grid, LibraryKind.Movies)
         assertEquals(listOf("movie"), query.kinds)
         assertEquals(
             listOf(
@@ -234,34 +239,34 @@ class SmartListsTest {
             query.where?.rules,
         )
         assertEquals(listOf(SortKey("runtimeMs")), query.sort)
-        assertEquals(query.where?.rules?.drop(1), SmartLists.gridQuery(grid, "movies").where?.rules, "the grid's own read has no library rule")
-        assertEquals(query.copy(where = null), SmartLists.gridQuery(grid, "movies").copy(where = null))
+        assertEquals(query.where?.rules?.drop(1), SmartLists.gridQuery(grid, LibraryKind.Movies).where?.rules, "the grid's own read has no library rule")
+        assertEquals(query.copy(where = null), SmartLists.gridQuery(grid, LibraryKind.Movies).copy(where = null))
     }
 
     @Test
     fun aGridWithoutFiltersIsAQueryWithoutRules() {
-        assertNull(SmartLists.gridQuery(GridQuery("l1"), "movies").where)
-        assertEquals(listOf(Rule("year", "gte", listOf("1990"))), SmartLists.gridQuery(GridQuery("l1", yearFrom = 1990), "movies").where?.rules)
-        assertEquals(listOf(Rule("year", "lte", listOf("1999"))), SmartLists.gridQuery(GridQuery("l1", yearTo = 1999), "movies").where?.rules)
+        assertNull(SmartLists.gridQuery(GridQuery("l1"), LibraryKind.Movies).where)
+        assertEquals(listOf(Rule("year", "gte", listOf("1990"))), SmartLists.gridQuery(GridQuery("l1", yearFrom = 1990), LibraryKind.Movies).where?.rules)
+        assertEquals(listOf(Rule("year", "lte", listOf("1999"))), SmartLists.gridQuery(GridQuery("l1", yearTo = 1999), LibraryKind.Movies).where?.rules)
     }
 
     @Test
     fun aGridsSortAndKindMapToTheQuerys() {
-        assertEquals(listOf(SortKey("title")), SmartLists.fromGrid(GridQuery("l"), "shows").sort)
-        assertEquals(listOf("series"), SmartLists.fromGrid(GridQuery("l"), "shows").kinds)
-        assertEquals(listOf(SortKey("author")), SmartLists.fromGrid(GridQuery("l", sort = "author"), "audiobooks").sort)
-        assertEquals(listOf("book"), SmartLists.fromGrid(GridQuery("l", sort = "author"), "audiobooks").kinds)
-        assertEquals(listOf("video"), SmartLists.fromGrid(GridQuery("l"), "videos").kinds)
+        assertEquals(listOf(SortKey("title")), SmartLists.fromGrid(GridQuery("l"), LibraryKind.Shows).sort)
+        assertEquals(listOf("series"), SmartLists.fromGrid(GridQuery("l"), LibraryKind.Shows).kinds)
+        assertEquals(listOf(SortKey("author")), SmartLists.fromGrid(GridQuery("l", sort = GridSort.Author), LibraryKind.Audiobooks).sort)
+        assertEquals(listOf("book"), SmartLists.fromGrid(GridQuery("l", sort = GridSort.Author), LibraryKind.Audiobooks).kinds)
+        assertEquals(listOf("video"), SmartLists.fromGrid(GridQuery("l"), LibraryKind.Videos).kinds)
     }
 
     @Test
     fun theValuesToNameAreThoseOfFieldsThatNameThem() {
         val query = WorkQuery(
-            listOf("movie"),
+            listOf(WorkKind.Movie),
             where = RuleGroup(
-                "all",
+                RuleGroupMatch.All,
                 rules = listOf(Rule("genre", "anyOf", listOf("Comedy")), Rule("year", "anyOf", listOf("1999"))),
-                groups = listOf(RuleGroup("any", rules = listOf(Rule("genre", "anyOf", listOf("Drama"))))),
+                groups = listOf(RuleGroup(RuleGroupMatch.Any, rules = listOf(Rule("genre", "anyOf", listOf("Drama"))))),
             ),
         )
         assertEquals(mapOf("genre" to setOf("Comedy", "Drama")), SmartLists.valuesToName(query, fields))
@@ -271,7 +276,7 @@ class SmartListsTest {
     fun aDraftOnlyEverChangesThroughACopy() {
         val rule = SmartLists.blankRule(field("genre"))!!
         val group = SmartLists.blankGroup(field("year", "number", null))
-        val draft = SmartListDraft("Mine", listOf("movie")).addingRule(rule, null).addingGroup(group).withGroupMatch(group.id, "all")
+        val draft = SmartListDraft("Mine", listOf(WorkKind.Movie)).addingRule(rule, null).addingGroup(group).withGroupMatch(group.id, RuleGroupMatch.All)
         assertEquals(listOf(rule), draft.rules)
         assertEquals("all", draft.groups.single().match)
         val changed = draft.changingRule(rule.id) { it.withValues(listOf("Comedy")) }.removingRule(group.rules.single().id)

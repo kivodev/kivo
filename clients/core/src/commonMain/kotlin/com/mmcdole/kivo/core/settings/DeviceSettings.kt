@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
+import com.mmcdole.kivo.api.models.ClientPlatform
 import com.mmcdole.kivo.api.models.QualityRung
 import com.mmcdole.kivo.core.caps.AudioSettings
 import com.mmcdole.kivo.core.caps.PassthroughMode
@@ -60,8 +61,8 @@ enum class DownloadQuality(val value: String, val height: Int?, val bitrateBps: 
         }
 
         /** The quality a device on [platform] downloads at until it's set: Standard on a phone, else High. */
-        internal fun defaultOn(platform: String): DownloadQuality =
-            if (platform == "iPhone" || platform == "androidPhone") Standard else High
+        internal fun defaultOn(platform: ClientPlatform): DownloadQuality =
+            if (platform == ClientPlatform.IPhone || platform == ClientPlatform.AndroidPhone) Standard else High
     }
 }
 

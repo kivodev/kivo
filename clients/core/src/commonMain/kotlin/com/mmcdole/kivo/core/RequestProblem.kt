@@ -19,6 +19,9 @@ sealed class RequestProblem {
      */
     abstract val code: String
 
+    /** [code] as one of the codes the apps act on themselves. */
+    val knownCode: ProblemCode get() = ProblemCode.of(code)
+
     /**
      * No answer came from the server: the request couldn't be sent or timed
      * out, or a gateway in front of the server answered 502, 503 or 504
@@ -65,5 +68,33 @@ sealed class RequestProblem {
 
         /** A gateway's answers for a server it can't reach, which aren't the server's own unless they carry a problem document. */
         private val GATEWAY_DOWN = 502..504
+    }
+}
+
+/**
+ * The codes the apps act on themselves rather than word as any other: a
+ * server's problem codes and a cast receiver's errors, by [value]. Every
+ * other code is [Unknown].
+ */
+enum class ProblemCode(val value: String) {
+    InvalidCredentials("invalidCredentials"),
+    InvalidRequest("invalidRequest"),
+    NameTaken("nameTaken"),
+    NoFallback("noFallback"),
+    NotFound("notFound"),
+    NotPlayable("notPlayable"),
+    PlaybackFailed("playbackFailed"),
+    PlayEnded("playEnded"),
+    ReceiverOutdated("receiverOutdated"),
+    ServerOutdated("serverOutdated"),
+    SignedOut("signedOut"),
+    StreamLimit("streamLimit"),
+    WrongPassword("wrongPassword"),
+    Unknown(""),
+    ;
+
+    companion object {
+        /** The code [value] names; [Unknown] for any other. */
+        fun of(value: String?): ProblemCode = entries.firstOrNull { it != Unknown && it.value == value } ?: Unknown
     }
 }

@@ -33,7 +33,7 @@ import kotlinx.serialization.encoding.*
  *
  * @param width 
  * @param height 
- * @param resolution A video's resolution class, by its width, since wide films are short: `4k` from 3200 pixels, `1080p` from 1700, `720p` from 1200, else `sd`. The `resolution` field of a work query classes videos the same way. 
+ * @param resolution 
  * @param frameRate 
  * @param profile As the codec names it, such as \"Main 10\".
  * @param hdr Its HDR format, `hdr10`, `hlg` or `dolbyVision`; absent for SDR. An HDR10+ video's is `hdr10`.
@@ -46,8 +46,7 @@ data class VideoTrackInfo (
 
     @SerialName(value = "height") @Required val height: kotlin.Int,
 
-    /* A video's resolution class, by its width, since wide films are short: `4k` from 3200 pixels, `1080p` from 1700, `720p` from 1200, else `sd`. The `resolution` field of a work query classes videos the same way.  */
-    @SerialName(value = "resolution") val resolution: kotlin.String? = null,
+    @SerialName(value = "resolution") val resolution: com.mmcdole.kivo.api.models.Resolution? = null,
 
     @SerialName(value = "frameRate") val frameRate: kotlin.Double? = null,
 

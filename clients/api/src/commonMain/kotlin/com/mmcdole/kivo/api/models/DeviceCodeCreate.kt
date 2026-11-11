@@ -43,7 +43,7 @@ data class DeviceCodeCreate (
     @SerialName(value = "name") @Required val name: kotlin.String,
 
     /* Default `app`. A `browser` link signs in the browser that started it, by cookie. */
-    @SerialName(value = "kind") val kind: kotlin.String? = null,
+    @SerialName(value = "kind") val kind: com.mmcdole.kivo.api.models.SessionKind? = null,
 
     /* The app's own random ID for itself, as at `POST /api/v1/sessions`; the approved session replaces the approving user's session on that client. A browser sends none; its ID is the server's client cookie.  */
     @SerialName(value = "clientId") val clientId: kotlin.String? = null

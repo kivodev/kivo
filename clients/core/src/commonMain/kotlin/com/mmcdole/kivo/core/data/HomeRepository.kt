@@ -3,6 +3,7 @@ package com.mmcdole.kivo.core.data
 import com.mmcdole.kivo.api.models.Home
 import com.mmcdole.kivo.api.models.HomeRowChange
 import com.mmcdole.kivo.api.models.HomeRowInfo
+import com.mmcdole.kivo.api.models.HomeRowKind
 import com.mmcdole.kivo.api.models.HomeRowsUpdate
 import com.mmcdole.kivo.api.result
 import com.mmcdole.kivo.core.auth.ServerConnection
@@ -12,7 +13,7 @@ import kotlinx.coroutines.flow.Flow
 /** Home's rows, refetched when root works, works or the user's state change. */
 internal class HomeRepository(private val connection: ServerConnection, private val invalidations: Flow<Invalidation>) {
     /** The rows Home shows, or with [kind] that kind's rows, shown or not. */
-    fun home(kind: String? = null): Flow<Home> = refreshing(invalidations, { it !is Invalidation.PlayEnded && it != Invalidation.DownloadsChanged }) {
+    fun home(kind: HomeRowKind? = null): Flow<Home> = refreshing(invalidations, { it !is Invalidation.PlayEnded && it != Invalidation.DownloadsChanged }) {
         connection.works.getHome(kind?.let(::listOf)).result()
     }
 

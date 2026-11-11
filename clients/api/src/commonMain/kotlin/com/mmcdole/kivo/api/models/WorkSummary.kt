@@ -40,9 +40,9 @@ import kotlinx.serialization.encoding.*
  * The summary of a work, the same everywhere it appears. Kind-specific data is under the kind's name. 
  *
  * @param id A UUIDv7.
- * @param kind What a work is: `video` an item of a videos library and `book` an item of an audiobooks library. Skip kinds you don't know. 
+ * @param kind 
  * @param title 
- * @param matchState Whether a work is identified: `identifying` is provisional, its first identification pending, and `unmatched` provisional with no confident match. Provisional items are playable. 
+ * @param matchState 
  * @param available False when every version's folder is unreachable.
  * @param images 
  * @param year 
@@ -68,13 +68,11 @@ data class WorkSummary (
     /* A UUIDv7. */
     @SerialName(value = "id") @Required val id: kotlin.String,
 
-    /* What a work is: `video` an item of a videos library and `book` an item of an audiobooks library. Skip kinds you don't know.  */
-    @SerialName(value = "kind") @Required val kind: kotlin.String,
+    @SerialName(value = "kind") @Required val kind: com.mmcdole.kivo.api.models.WorkKind,
 
     @SerialName(value = "title") @Required val title: kotlin.String,
 
-    /* Whether a work is identified: `identifying` is provisional, its first identification pending, and `unmatched` provisional with no confident match. Provisional items are playable.  */
-    @SerialName(value = "matchState") @Required val matchState: kotlin.String,
+    @SerialName(value = "matchState") @Required val matchState: com.mmcdole.kivo.api.models.MatchState,
 
     /* False when every version's folder is unreachable. */
     @SerialName(value = "available") @Required val available: kotlin.Boolean,

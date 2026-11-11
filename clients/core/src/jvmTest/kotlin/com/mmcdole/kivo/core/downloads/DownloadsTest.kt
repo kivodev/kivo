@@ -17,6 +17,7 @@ import com.mmcdole.kivo.api.models.PlayStarted
 import com.mmcdole.kivo.api.models.PlayTrack
 import com.mmcdole.kivo.api.models.ServerInfo
 import com.mmcdole.kivo.api.models.PlaybackPreferences
+import com.mmcdole.kivo.api.models.TrackReason
 import com.mmcdole.kivo.api.models.TrackTranscode
 import com.mmcdole.kivo.api.models.UserLimits
 import com.mmcdole.kivo.api.models.UserState
@@ -34,6 +35,7 @@ import com.mmcdole.kivo.core.live.Invalidation
 import com.mmcdole.kivo.core.player.TrackShow
 import com.mmcdole.kivo.core.problem
 import com.mmcdole.kivo.core.settings.DeviceSettings
+import com.mmcdole.kivo.core.settings.DownloadQuality
 import io.ktor.client.request.HttpRequestData
 import io.ktor.client.engine.mock.MockRequestHandleScope
 import io.ktor.client.engine.mock.respond
@@ -715,10 +717,10 @@ class DownloadsTest {
     private fun plannedTracks(delivery: DownloadDelivery) = if (delivery == DownloadDelivery.Conversion) {
         listOf(
             PlayTrack(
-                "t1", TrackType.Video, selected = true, delivery = TrackDelivery.Stream, codec = "h264", reason = "downloadQuality",
+                "t1", TrackType.Video, selected = true, delivery = TrackDelivery.Stream, codec = "h264", reason = TrackReason.DownloadQuality,
                 transcode = TrackTranscode(1280, 720, 4_000_000, encoder = "CPU"),
             ),
-            PlayTrack("t2", TrackType.Audio, selected = true, delivery = TrackDelivery.Stream, codec = "aac", reason = "downloadQuality", transcode = TrackTranscode(channels = 2)),
+            PlayTrack("t2", TrackType.Audio, selected = true, delivery = TrackDelivery.Stream, codec = "aac", reason = TrackReason.DownloadQuality, transcode = TrackTranscode(channels = 2)),
             PlayTrack("t3", TrackType.Subtitle, selected = true, delivery = TrackDelivery.External, codec = "webvtt", url = "downloads/d1/subtitles/t3.vtt"),
         )
     } else {
@@ -1363,9 +1365,9 @@ class DownloadsTest {
     @Test
     fun qualitiesAreNamedByPurpose() {
         val en = Display()
-        assertEquals("High", en.downloadQuality("high"))
-        assertEquals("Standard", en.downloadQuality("standard"))
-        assertEquals("Original", en.downloadQuality("original"))
+        assertEquals("High", en.downloadQuality(DownloadQuality.High))
+        assertEquals("Standard", en.downloadQuality(DownloadQuality.Standard))
+        assertEquals("Original", en.downloadQuality(DownloadQuality.Original))
     }
 
     // Migration (downloads): remove after every client has updated past this release.
