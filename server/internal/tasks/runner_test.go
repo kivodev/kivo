@@ -777,3 +777,107 @@ func panicOf(f func()) (p any) {
 	f()
 	return nil
 }
+
+// Asked items are counted the way a run's are: those settled since the
+// task was last idle, out of those plus the items still in line or in
+// flight. A single asked item has no count.
+func TestAskedItemsAreCounted(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := newFeature(10, time.Minute)
+		h := newHarness(t, f.task("refresh"))
+		h.window(6, 2)
+		h.start()
+		ids := slices.Clone(f.left)
+		count := func(done, total int) {
+			t.Helper()
+			if s := h.status("refresh"); !s.Running || s.Done != done || s.Total != total {
+				t.Fatalf("running %v, %d of %d, want %d of %d", s.Running, s.Done, s.Total, done, total)
+			}
+		}
+
+		h.r.Enqueue("refresh", ids[0])
+		synctest.Wait()
+		count(0, 0)
+		sleep(time.Minute)
+
+		// A burst starts from zero after the line drained, and one asked
+		// while it works adds to its total.
+		h.r.Enqueue("refresh", ids[1:4]...)
+		synctest.Wait()
+		count(0, 3)
+		sleep(90 * time.Second)
+		count(1, 3)
+		h.r.Enqueue("refresh", ids[4:6]...)
+		synctest.Wait()
+		count(1, 5)
+		sleep(2 * time.Minute)
+		count(3, 5)
+		sleep(2 * time.Minute)
+		if s := h.status("refresh"); s.Running || s.Done != 0 || s.Total != 0 || s.PendingCount != 4 {
+			t.Fatalf("drained: %+v, want idle with 4 left", s)
+		}
+
+		h.r.Enqueue("refresh", ids[6:8]...)
+		synctest.Wait()
+		count(0, 2)
+		sleep(90 * time.Second)
+		count(1, 2)
+		sleep(time.Minute)
+		h.stop()
+		if s := h.status("refresh"); s.Last != nil || f.done() != 8 {
+			t.Fatalf("%+v after %d done, want every asked item done and no run", s.Last, f.done())
+		}
+	})
+}
+
+// Items asked during a run are part of the run's count: settling one adds
+// to done and takes it from what's left, so the total holds, and the pass
+// doesn't do it again.
+func TestItemsAskedDuringARunKeepItsCount(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := newFeature(6, time.Minute)
+		h := newHarness(t, f.task("previews"))
+		h.window(6, 2)
+		h.start()
+		if err := h.r.Start(context.Background(), "previews"); err != nil {
+			t.Fatal(err)
+		}
+		sleep(90 * time.Second)
+		if s := h.status("previews"); s.Done != 1 || s.Total != 6 {
+			t.Fatalf("run: %d of %d, want 1 of 6", s.Done, s.Total)
+		}
+		h.r.Enqueue("previews", f.left[len(f.left)-1])
+		sleep(time.Minute)
+		if s := h.status("previews"); s.Done != 2 || s.Total != 6 {
+			t.Fatalf("run with an asked item: %d of %d, want 2 of 6", s.Done, s.Total)
+		}
+		sleep(time.Hour)
+		h.stop()
+		if s := h.status("previews"); s.Last == nil || s.Last.Summary != "6 done" || len(f.order) != 6 {
+			t.Fatalf("%+v after %d tries, want every item done once", s.Last, len(f.order))
+		}
+	})
+}
+
+// An Uncounted task's asked items show no count of the task's own, only
+// the first item's progress.
+func TestUncountedAskedItemsShowTheirOwnProgress(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := newFeature(3, time.Minute)
+		w := f.items()
+		w.Uncounted = true
+		do := w.Do
+		w.Do = func(ctx context.Context, i id.ID) error {
+			Progress(ctx, "probe", 2, 9)
+			return do(ctx, i)
+		}
+		h := newHarness(t, Task{Name: "scan", Schedule: Every(12 * time.Hour), Work: w})
+		h.start()
+		h.r.Enqueue("scan", f.left...)
+		synctest.Wait()
+		if s := h.status("scan"); !s.Running || s.Step != "probe" || s.Done != 2 || s.Total != 9 {
+			t.Fatalf("%+v, want the first item's own progress", s)
+		}
+		h.stop()
+	})
+}

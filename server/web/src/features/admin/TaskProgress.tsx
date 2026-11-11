@@ -6,8 +6,7 @@ import { useAdminLabels } from "./useAdminLabels";
 
 /**
  * A task's work. While the task runs, it shows what it's doing, with
- * "37 of 120" over a thin bar when there's a count. A run has a count, but
- * work asked for outside a run doesn't. Otherwise it shows a muted
+ * "37 of 120" over a thin bar when there's a count. Otherwise it shows a muted
  * "18,489 left", or nothing when nothing is left.
  */
 export function TaskProgress({ task }: { task: Task }) {
