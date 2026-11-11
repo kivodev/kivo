@@ -18,6 +18,15 @@ final class GridModelTests: XCTestCase {
     /// What the works are called, by index; a test renames some.
     nonisolated(unsafe) private static var prefix = "Title"
     nonisolated(unsafe) private static var failing = false
+    /// The values the library's works have, by field.
+    nonisolated private static let values: [String: [String]] = [
+        "genre": ["Action, Adventure", "Comedy", "Drama"],
+        "year": ["1899", "1985", "1992", "1999", "2003", "2021"],
+        "contentRating": ["G", "PG-13", "R"],
+        "resolution": ["4k", "1080p"],
+        "dynamicRange": ["hdr"],
+        "narrator": ["p1"],
+    ]
 
     private static func letter(_ i: Int) -> String {
         String(UnicodeScalar(UInt8(65 + i * 26 / total)))
@@ -47,7 +56,8 @@ final class GridModelTests: XCTestCase {
         case "/api/v1/libraries/lib/collections":
             return (200, json(["items": [], "total": 0]))
         case let path where path.hasPrefix("/api/v1/work-fields/"):
-            return (200, json(["items": []]))
+            let field = path.dropFirst("/api/v1/work-fields/".count).split(separator: "/").first.map(String.init) ?? ""
+            return (200, json(["items": (values[field] ?? []).map { ["value": $0, "name": $0] }]))
         case worksPath:
             let read = asked(request)
             if failing {
@@ -237,6 +247,99 @@ final class GridModelTests: XCTestCase {
         await grid.ready()
         XCTAssertNil(grid.total)
         XCTAssertEqual(grid.failed?.code, "notFound")
+    }
+
+    func testTheFiltersOfferTheLibrarysValuesWithItsDecadesNewestFirst() async throws {
+        let grid = model()
+        let run = Task { await grid.run() }
+        defer { run.cancel() }
+        try await until("the filters arrive") { !grid.decades.isEmpty }
+        XCTAssertEqual(grid.decades, [2020, 2000, 1990, 1980, 1890])
+        XCTAssertEqual(grid.genres, ["Action, Adventure", "Comedy", "Drama"])
+        XCTAssertEqual(grid.contentRatings, ["G", "PG-13", "R"], "in the server's order")
+        XCTAssertEqual(grid.resolutions, ["4k", "1080p"])
+        XCTAssertEqual(grid.dynamicRanges, ["hdr"])
+        XCTAssertTrue(grid.narrators.isEmpty, "narrators are a books library's")
+        XCTAssertEqual(GridModel.label(decade: 1990), "1990s")
+    }
+
+    func testTheChosenFiltersShowAsChipsEachTakingItselfOff() async throws {
+        let grid = model()
+        let run = Task { await grid.run() }
+        defer { run.cancel() }
+        try await until("the filters arrive") { !grid.genres.isEmpty }
+        grid.query.played = grid.playedFilters[1]
+        grid.query.genres = ["Drama", "Action, Adventure"]
+        grid.query.decade = 1990
+        grid.query.contentRatings = ["R", "G"]
+        grid.query.resolutions = ["1080p", "4k"]
+        grid.query.dynamicRanges = ["hdr"]
+        XCTAssertTrue(grid.query.filtered)
+        XCTAssertEqual(grid.activeFilters.map(\.label), [
+            "Unwatched", "Action, Adventure", "Drama", "G", "R", "1990s", "4K", "1080p", "HDR",
+        ], "each group in the order the filters offer it")
+        let decade = try XCTUnwrap(grid.activeFilters.first { $0.id == "decade" })
+        decade.remove(&grid.query)
+        XCTAssertNil(grid.query.decade)
+        let drama = try XCTUnwrap(grid.activeFilters.first { $0.id == "genre:Drama" })
+        drama.remove(&grid.query)
+        XCTAssertEqual(grid.query.genres, ["Action, Adventure"])
+        let sort = grid.sorts[1]
+        grid.query.sort = sort
+        grid.clearFilters()
+        XCTAssertFalse(grid.query.filtered)
+        XCTAssertTrue(grid.activeFilters.isEmpty)
+        XCTAssertEqual(grid.query.sort, sort, "the sort stays")
+    }
+
+    func testTheChosenFiltersAreKeptForTheLibrary() async throws {
+        let grid = model()
+        grid.query.genres = ["Action, Adventure", "Drama"]
+        grid.query.decade = 1980
+        grid.query.contentRatings = ["PG-13"]
+        grid.query.resolutions = ["4k"]
+        grid.query.narrator = GridModel.Narrator(id: "p1", name: "Ray Porter")
+        grid.reload()
+        let again = model()
+        XCTAssertEqual(again.query, grid.query)
+        XCTAssertEqual(again.activeFilters.last?.label, "Narrated by Ray Porter", "named before the narrators are read")
+    }
+
+    func testTheGridAsksForTheChosenFilters() async throws {
+        let grid = model()
+        let run = Task { await grid.run() }
+        defer { run.cancel() }
+        await grid.ready()
+        let before = server.requests(to: Self.worksPath).count
+        grid.query.played = grid.playedFilters[3]
+        grid.query.genres = ["Drama", "Comedy"]
+        grid.query.decade = 1990
+        grid.query.contentRatings = ["R"]
+        grid.query.dynamicRanges = ["hdr"]
+        grid.reload()
+        try await until("the grid reads again") { server.requests(to: Self.worksPath).count > before }
+        let read = Self.asked(server.requests(to: Self.worksPath)[before])
+        let rules = ((read["query"] as? [String: Any])?["where"] as? [String: Any])?["rules"] as? [[String: Any]] ?? []
+        XCTAssertEqual(rules.map { [$0["field"] as? String ?? "", $0["op"] as? String ?? ""] + ($0["values"] as? [String] ?? []) }, [
+            ["playState", "anyOf", "played"],
+            ["genre", "anyOf", "Comedy", "Drama"],
+            ["year", "between", "1990", "1999"],
+            ["contentRating", "anyOf", "R"],
+            ["dynamicRange", "anyOf", "hdr"],
+        ])
+        XCTAssertEqual(read["library"] as? String, "lib")
+    }
+
+    func testSaveAsSmartListCarriesEveryFilter() {
+        let grid = model()
+        grid.query.genres = ["Drama"]
+        grid.query.decade = 2000
+        grid.query.contentRatings = ["PG-13"]
+        let rules = grid.smartListQuery.where?.rules ?? []
+        XCTAssertEqual(rules.map(\.field), ["library", "genre", "year", "contentRating"])
+        XCTAssertEqual(rules[2].propertyValues, ["2000", "2009"])
+        let books = GridModel.gridQuery(GridModel.Query(sort: grid.sorts[0], played: grid.playedFilters[0], narrator: .init(id: "p1", name: "")), of: library)
+        XCTAssertEqual(books.narratorId, "p1")
     }
 
     // Migration (api-naming): remove after every client has updated past this release.
