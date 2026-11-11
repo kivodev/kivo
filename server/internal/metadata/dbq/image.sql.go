@@ -22,7 +22,7 @@ func (q *Queries) ChooseImage(ctx context.Context, argID id.ID) error {
 }
 
 const collectionImages = `-- name: CollectionImages :many
-SELECT i.id, i.work_id, i.person_id, i.collection_id, i.kind, i.source, i.origin, i.origin_mtime, i.width, i.height, i.blurhash, i.chosen, i.fetched_at FROM collection c
+SELECT i.id, i.work_id, i.person_id, i.collection_id, i.trailer_id, i.kind, i.source, i.origin, i.origin_mtime, i.width, i.height, i.blurhash, i.chosen, i.fetched_at FROM collection c
 JOIN image i ON i.collection_id = c.id
 WHERE c.key = ?1
 ORDER BY i.kind
@@ -43,6 +43,7 @@ func (q *Queries) CollectionImages(ctx context.Context, key string) ([]Image, er
 			&i.WorkID,
 			&i.PersonID,
 			&i.CollectionID,
+			&i.TrailerID,
 			&i.Kind,
 			&i.Source,
 			&i.Origin,
@@ -78,7 +79,7 @@ func (q *Queries) CollectionOf(ctx context.Context, key string) (id.ID, error) {
 }
 
 const deleteCollectionImages = `-- name: DeleteCollectionImages :many
-DELETE FROM image WHERE collection_id = ?1 AND kind = ?2 RETURNING id, work_id, person_id, collection_id, kind, source, origin, origin_mtime, width, height, blurhash, chosen, fetched_at
+DELETE FROM image WHERE collection_id = ?1 AND kind = ?2 RETURNING id, work_id, person_id, collection_id, trailer_id, kind, source, origin, origin_mtime, width, height, blurhash, chosen, fetched_at
 `
 
 type DeleteCollectionImagesParams struct {
@@ -100,6 +101,7 @@ func (q *Queries) DeleteCollectionImages(ctx context.Context, arg DeleteCollecti
 			&i.WorkID,
 			&i.PersonID,
 			&i.CollectionID,
+			&i.TrailerID,
 			&i.Kind,
 			&i.Source,
 			&i.Origin,
@@ -133,7 +135,7 @@ func (q *Queries) DeleteImage(ctx context.Context, argID id.ID) error {
 }
 
 const deletePersonImages = `-- name: DeletePersonImages :many
-DELETE FROM image WHERE person_id = ?1 AND kind = ?2 RETURNING id, work_id, person_id, collection_id, kind, source, origin, origin_mtime, width, height, blurhash, chosen, fetched_at
+DELETE FROM image WHERE person_id = ?1 AND kind = ?2 RETURNING id, work_id, person_id, collection_id, trailer_id, kind, source, origin, origin_mtime, width, height, blurhash, chosen, fetched_at
 `
 
 type DeletePersonImagesParams struct {
@@ -155,6 +157,54 @@ func (q *Queries) DeletePersonImages(ctx context.Context, arg DeletePersonImages
 			&i.WorkID,
 			&i.PersonID,
 			&i.CollectionID,
+			&i.TrailerID,
+			&i.Kind,
+			&i.Source,
+			&i.Origin,
+			&i.OriginMtime,
+			&i.Width,
+			&i.Height,
+			&i.Blurhash,
+			&i.Chosen,
+			&i.FetchedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const deleteTrailerImages = `-- name: DeleteTrailerImages :many
+DELETE FROM image WHERE trailer_id = ?1 AND kind = ?2 RETURNING id, work_id, person_id, collection_id, trailer_id, kind, source, origin, origin_mtime, width, height, blurhash, chosen, fetched_at
+`
+
+type DeleteTrailerImagesParams struct {
+	TrailerID id.ID
+	Kind      string
+}
+
+func (q *Queries) DeleteTrailerImages(ctx context.Context, arg DeleteTrailerImagesParams) ([]Image, error) {
+	rows, err := q.db.QueryContext(ctx, deleteTrailerImages, arg.TrailerID, arg.Kind)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Image
+	for rows.Next() {
+		var i Image
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkID,
+			&i.PersonID,
+			&i.CollectionID,
+			&i.TrailerID,
 			&i.Kind,
 			&i.Source,
 			&i.Origin,
@@ -245,7 +295,7 @@ func (q *Queries) GetArtwork(ctx context.Context, argID id.ID) (Artwork, error) 
 }
 
 const getImage = `-- name: GetImage :one
-SELECT id, work_id, person_id, collection_id, kind, source, origin, origin_mtime, width, height, blurhash, chosen, fetched_at FROM image WHERE id = ?1
+SELECT id, work_id, person_id, collection_id, trailer_id, kind, source, origin, origin_mtime, width, height, blurhash, chosen, fetched_at FROM image WHERE id = ?1
 `
 
 func (q *Queries) GetImage(ctx context.Context, argID id.ID) (Image, error) {
@@ -256,6 +306,7 @@ func (q *Queries) GetImage(ctx context.Context, argID id.ID) (Image, error) {
 		&i.WorkID,
 		&i.PersonID,
 		&i.CollectionID,
+		&i.TrailerID,
 		&i.Kind,
 		&i.Source,
 		&i.Origin,
@@ -369,6 +420,38 @@ func (q *Queries) InsertPersonImage(ctx context.Context, arg InsertPersonImagePa
 	return err
 }
 
+const insertTrailerImage = `-- name: InsertTrailerImage :exec
+INSERT INTO image (id, trailer_id, kind, source, origin, width, height, blurhash, fetched_at)
+VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+`
+
+type InsertTrailerImageParams struct {
+	ID        id.ID
+	TrailerID id.ID
+	Kind      string
+	Source    string
+	Origin    string
+	Width     int64
+	Height    int64
+	Blurhash  string
+	FetchedAt int64
+}
+
+func (q *Queries) InsertTrailerImage(ctx context.Context, arg InsertTrailerImageParams) error {
+	_, err := q.db.ExecContext(ctx, insertTrailerImage,
+		arg.ID,
+		arg.TrailerID,
+		arg.Kind,
+		arg.Source,
+		arg.Origin,
+		arg.Width,
+		arg.Height,
+		arg.Blurhash,
+		arg.FetchedAt,
+	)
+	return err
+}
+
 const knownArtwork = `-- name: KnownArtwork :many
 SELECT id FROM artwork WHERE id IN (SELECT unhex(value) FROM (SELECT CAST(?1 AS TEXT) AS ids), json_each(ids))
 `
@@ -427,7 +510,7 @@ func (q *Queries) KnownImages(ctx context.Context, ids string) ([]id.ID, error) 
 }
 
 const personPhoto = `-- name: PersonPhoto :one
-SELECT i.id, i.work_id, i.person_id, i.collection_id, i.kind, i.source, i.origin, i.origin_mtime, i.width, i.height, i.blurhash, i.chosen, i.fetched_at FROM person_external_id x
+SELECT i.id, i.work_id, i.person_id, i.collection_id, i.trailer_id, i.kind, i.source, i.origin, i.origin_mtime, i.width, i.height, i.blurhash, i.chosen, i.fetched_at FROM person_external_id x
 JOIN image i ON i.person_id = x.person_id AND i.kind = 'photo'
 WHERE x.provider = ?1 AND x.kind = ?2 AND x.ext_id = ?3
 `
@@ -447,6 +530,7 @@ func (q *Queries) PersonPhoto(ctx context.Context, arg PersonPhotoParams) (Image
 		&i.WorkID,
 		&i.PersonID,
 		&i.CollectionID,
+		&i.TrailerID,
 		&i.Kind,
 		&i.Source,
 		&i.Origin,
@@ -508,12 +592,113 @@ func (q *Queries) PutArtwork(ctx context.Context, arg PutArtworkParams) (id.ID, 
 	return id, err
 }
 
-const unmatchedImages = `-- name: UnmatchedImages :many
-SELECT i.id, i.work_id, i.person_id, i.collection_id, i.kind, i.source, i.origin, i.origin_mtime, i.width, i.height, i.blurhash, i.chosen, i.fetched_at FROM work w CROSS JOIN image i ON i.work_id = w.id
-WHERE w.root_id = ?1 AND w.kind <> 'extra'
+const trailerImages = `-- name: TrailerImages :many
+SELECT i.id, i.work_id, i.person_id, i.collection_id, i.trailer_id, i.kind, i.source, i.origin, i.origin_mtime, i.width, i.height, i.blurhash, i.chosen, i.fetched_at FROM trailer t
+JOIN image i ON i.trailer_id = t.id
+WHERE t.work_id = ?1
 `
 
-// The artwork of a movie or series and the seasons and episodes under it.
+// The thumbnails of a work's trailers.
+func (q *Queries) TrailerImages(ctx context.Context, workID id.ID) ([]Image, error) {
+	rows, err := q.db.QueryContext(ctx, trailerImages, workID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Image
+	for rows.Next() {
+		var i Image
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkID,
+			&i.PersonID,
+			&i.CollectionID,
+			&i.TrailerID,
+			&i.Kind,
+			&i.Source,
+			&i.Origin,
+			&i.OriginMtime,
+			&i.Width,
+			&i.Height,
+			&i.Blurhash,
+			&i.Chosen,
+			&i.FetchedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const trailerOf = `-- name: TrailerOf :one
+SELECT id FROM trailer WHERE work_id = ?1 AND site = ?2 AND key = ?3
+`
+
+type TrailerOfParams struct {
+	WorkID id.ID
+	Site   string
+	Key    string
+}
+
+func (q *Queries) TrailerOf(ctx context.Context, arg TrailerOfParams) (id.ID, error) {
+	row := q.db.QueryRowContext(ctx, trailerOf, arg.WorkID, arg.Site, arg.Key)
+	var id id.ID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const trailerThumb = `-- name: TrailerThumb :one
+SELECT i.id, i.work_id, i.person_id, i.collection_id, i.trailer_id, i.kind, i.source, i.origin, i.origin_mtime, i.width, i.height, i.blurhash, i.chosen, i.fetched_at FROM trailer t
+JOIN image i ON i.trailer_id = t.id AND i.kind = 'thumb'
+WHERE t.work_id = ?1 AND t.site = ?2 AND t.key = ?3
+`
+
+type TrailerThumbParams struct {
+	WorkID id.ID
+	Site   string
+	Key    string
+}
+
+// The thumbnail of a work's trailer, named by its video.
+func (q *Queries) TrailerThumb(ctx context.Context, arg TrailerThumbParams) (Image, error) {
+	row := q.db.QueryRowContext(ctx, trailerThumb, arg.WorkID, arg.Site, arg.Key)
+	var i Image
+	err := row.Scan(
+		&i.ID,
+		&i.WorkID,
+		&i.PersonID,
+		&i.CollectionID,
+		&i.TrailerID,
+		&i.Kind,
+		&i.Source,
+		&i.Origin,
+		&i.OriginMtime,
+		&i.Width,
+		&i.Height,
+		&i.Blurhash,
+		&i.Chosen,
+		&i.FetchedAt,
+	)
+	return i, err
+}
+
+const unmatchedImages = `-- name: UnmatchedImages :many
+SELECT i.id, i.work_id, i.person_id, i.collection_id, i.trailer_id, i.kind, i.source, i.origin, i.origin_mtime, i.width, i.height, i.blurhash, i.chosen, i.fetched_at FROM work w CROSS JOIN image i ON i.work_id = w.id
+WHERE w.root_id = ?1 AND w.kind <> 'extra'
+UNION ALL
+SELECT i.id, i.work_id, i.person_id, i.collection_id, i.trailer_id, i.kind, i.source, i.origin, i.origin_mtime, i.width, i.height, i.blurhash, i.chosen, i.fetched_at FROM trailer t CROSS JOIN image i ON i.trailer_id = t.id
+WHERE t.work_id = ?1
+`
+
+// The artwork of a movie or series and the seasons and episodes under it,
+// and the thumbnails of a movie's trailers.
 func (q *Queries) UnmatchedImages(ctx context.Context, workID id.ID) ([]Image, error) {
 	rows, err := q.db.QueryContext(ctx, unmatchedImages, workID)
 	if err != nil {
@@ -528,6 +713,7 @@ func (q *Queries) UnmatchedImages(ctx context.Context, workID id.ID) ([]Image, e
 			&i.WorkID,
 			&i.PersonID,
 			&i.CollectionID,
+			&i.TrailerID,
 			&i.Kind,
 			&i.Source,
 			&i.Origin,
@@ -552,7 +738,7 @@ func (q *Queries) UnmatchedImages(ctx context.Context, workID id.ID) ([]Image, e
 }
 
 const workImages = `-- name: WorkImages :many
-SELECT id, work_id, person_id, collection_id, kind, source, origin, origin_mtime, width, height, blurhash, chosen, fetched_at FROM image WHERE work_id = ?1 ORDER BY kind
+SELECT id, work_id, person_id, collection_id, trailer_id, kind, source, origin, origin_mtime, width, height, blurhash, chosen, fetched_at FROM image WHERE work_id = ?1 ORDER BY kind
 `
 
 func (q *Queries) WorkImages(ctx context.Context, workID id.ID) ([]Image, error) {
@@ -569,6 +755,7 @@ func (q *Queries) WorkImages(ctx context.Context, workID id.ID) ([]Image, error)
 			&i.WorkID,
 			&i.PersonID,
 			&i.CollectionID,
+			&i.TrailerID,
 			&i.Kind,
 			&i.Source,
 			&i.Origin,

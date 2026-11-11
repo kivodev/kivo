@@ -91,6 +91,9 @@ func (f *fixtures) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "image.tmdb.org", "m.media-amazon.com", "images.example.org":
 		w.Write(pngBytes(300, 450))
 		return
+	case "i.ytimg.com":
+		w.Write(pngBytes(320, 180))
+		return
 	default:
 		w.WriteHeader(http.StatusBadGateway)
 		return

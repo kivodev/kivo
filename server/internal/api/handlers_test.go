@@ -482,12 +482,37 @@ func TestBrowseAndDetail(t *testing.T) {
 	e.b.Write(func(ctx context.Context, tx *store.Tx) error {
 		return e.b.Catalog.UpdateMetadata(ctx, tx, heat.ID, catalog.WorkMetadata{
 			Title: heat.Title, Year: heat.Year, Community: &catalog.CommunityRating{Rating: 7.5, Votes: 900},
-			TrailerURL: "https://www.youtube.com/watch?v=abc",
+			Trailers: []catalog.Trailer{
+				{Site: catalog.TrailerYouTube, Key: "abc", Title: "Official Trailer"},
+				{Site: catalog.TrailerYouTube, Key: "def", Title: "Trailer 2"},
+			},
 		})
 	})
+	thumb := id.New()
+	e.b.Write(func(ctx context.Context, tx *store.Tx) error {
+		_, err := tx.ExecContext(ctx, `INSERT INTO image (id, trailer_id, kind, source, origin, width, height, blurhash, fetched_at)
+			SELECT ?, id, 'thumb', 'provider', 'https://i.ytimg.com/vi/abc/maxresdefault.jpg', 1280, 720, 'LEHV6nWB2yk8pyo0adR*.7kCMdnj', 1
+			FROM trailer WHERE key = 'abc'`, thumb)
+		return err
+	})
 	detail := decode[map[string]any](t, e.do("GET", "/api/v1/works/"+e.heat.Work.String(), e.adminToken, nil))
-	if movie, _ := detail["movie"].(map[string]any); movie["trailerUrl"] != "https://www.youtube.com/watch?v=abc" {
-		t.Errorf("detail's movie: %v", detail["movie"])
+	movie, _ := detail["movie"].(map[string]any)
+	trailers, _ := movie["trailers"].([]any)
+	if len(trailers) != 2 {
+		t.Fatalf("detail's movie: %v", detail["movie"])
+	}
+	official, other := trailers[0].(map[string]any), trailers[1].(map[string]any)
+	if official["title"] != "Official Trailer" || official["url"] != "https://www.youtube.com/watch?v=abc" || official["id"] == "" {
+		t.Errorf("the first trailer: %v", official)
+	}
+	if img, _ := official["image"].(map[string]any); img["id"] != thumb.String() || img["width"] != float64(1280) || img["height"] != float64(720) || img["blurhash"] == "" {
+		t.Errorf("the first trailer's image: %v", official["image"])
+	}
+	if _, has := other["image"]; has || other["url"] != "https://www.youtube.com/watch?v=def" {
+		t.Errorf("the second trailer: %v", other)
+	}
+	if _, has := movie["trailerUrl"]; has {
+		t.Errorf("detail's movie still has a trailer link: %v", movie)
 	}
 	for _, sort := range []string{"rating", "myRating"} {
 		page := decode[list](t, grid(map[string]any{"sort": sortBy(sort)}))

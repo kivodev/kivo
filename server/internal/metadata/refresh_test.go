@@ -72,7 +72,6 @@ func TestRefreshMovie(t *testing.T) {
 	for col, want := range map[string]string{
 		"title": "Dune", "original_title": "Dune", "year": "2021", "content_rating": "PG-13", "content_rating_age": "13", "provisional": "0",
 		"community_rating": "7.8", "community_votes": "12345", "original_language": "en",
-		"trailer_url": "https://www.youtube.com/watch?v=n9xhJrPXop4",
 	} {
 		if got := e.column(w, col); got != want {
 			t.Errorf("%s = %q, want %q", col, got, want)

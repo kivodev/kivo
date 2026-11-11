@@ -3582,8 +3582,8 @@ type MovieInfo struct {
 	// Edition The label the movie's folder's edition tag gives it, such as `Final Cut`. Shown after the title wherever it appears.
 	Edition *string `json:"edition,omitempty"`
 
-	// TrailerURL Detail only. The movie's trailer on YouTube, for a client to open; absent when it has none.
-	TrailerURL *string `json:"trailerUrl,omitempty"`
+	// Trailers Detail only. The movie's trailers on YouTube, best first; absent when it has none.
+	Trailers *[]Trailer `json:"trailers,omitempty"`
 }
 
 // NameUpdate defines model for NameUpdate.
@@ -4911,6 +4911,19 @@ type TrackTranscode struct {
 
 // TrackType A track's type.
 type TrackType string
+
+// Trailer A movie's trailer on YouTube, which a client opens there rather than plays.
+type Trailer struct {
+	// ID A UUIDv7.
+	ID ID `json:"id"`
+
+	// Image The trailer's thumbnail; absent until the server has fetched it.
+	Image *ImageRef `json:"image,omitempty"`
+	Title string    `json:"title"`
+
+	// URL The trailer's page on YouTube.
+	URL string `json:"url"`
+}
 
 // TranscodeInfo An HLS play's ffmpeg job, for display only.
 type TranscodeInfo struct {

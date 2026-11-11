@@ -32,6 +32,7 @@ type Image struct {
 	WorkID       id.ID
 	PersonID     id.ID
 	CollectionID id.ID
+	TrailerID    id.ID
 	Kind         string
 	Source       string
 	Origin       string

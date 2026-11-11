@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -92,12 +93,30 @@ type WorkMetadata struct {
 	ContentRating    string
 	ContentRatingAge *int
 	Community        *CommunityRating // nil when the provider has no votes
-	TrailerURL       string           // a movie's trailer; empty for none
+	Trailers         []Trailer        // a movie's trailers, in the order shown; nil leaves them alone
 	Genres, Tags     []string
 	Companies        []string // studios, networks or a book's publisher
 	Credits          []Credit
 	Collection       *CollectionRef // nil leaves collections alone
 	Book             *BookMetadata  // nil for any kind but a book
+}
+
+// Trailer is a movie's trailer on a video site.
+type Trailer struct {
+	Site      string // TrailerYouTube
+	Key       string // the site's ID of the video
+	Title     string
+	Language  string // ISO 639-1; empty when unknown
+	Official  bool
+	Published string // RFC 3339; empty when unknown
+}
+
+// TrailerYouTube is the one site trailers are on.
+const TrailerYouTube = "youtube"
+
+// URL returns the address of the trailer's page on its site.
+func (t Trailer) URL() string {
+	return "https://www.youtube.com/watch?v=" + url.QueryEscape(t.Key)
 }
 
 // CommunityRating is a provider's audience rating. Rating is the average
@@ -136,12 +155,12 @@ const (
 	FieldCompanies     = "companies" // studios, networks, a book's publisher
 	FieldCredits       = "credits"
 
-	// FieldCommunityRating, FieldOriginalLanguage and FieldTrailerURL are
+	// FieldCommunityRating, FieldOriginalLanguage and FieldTrailers are
 	// written only by providers. No admin edit names them, so they never
 	// lock.
 	FieldCommunityRating  = "community_rating"
 	FieldOriginalLanguage = "original_language"
-	FieldTrailerURL       = "trailer_url"
+	FieldTrailers         = "trailers"
 )
 
 // EnsureWork returns the work that in describes, creating it if needed.
@@ -389,7 +408,7 @@ func (c *Catalog) writeMetadata(ctx context.Context, tx *store.Tx, cur dbq.Work,
 		ID: cur.ID, Title: cur.Title, SortTitle: cur.SortTitle, OriginalTitle: cur.OriginalTitle, OriginalLanguage: cur.OriginalLanguage,
 		AltTitles: cur.AltTitles, Year: cur.Year, Overview: cur.Overview, ReleaseDate: cur.ReleaseDate,
 		ContentRating: cur.ContentRating, ContentRatingAge: cur.ContentRatingAge,
-		CommunityRating: cur.CommunityRating, CommunityVotes: cur.CommunityVotes, TrailerUrl: cur.TrailerUrl,
+		CommunityRating: cur.CommunityRating, CommunityVotes: cur.CommunityVotes,
 	}
 	if take(FieldTitle) && m.Title != "" {
 		p.Title = m.Title
@@ -432,9 +451,6 @@ func (c *Catalog) writeMetadata(ctx context.Context, tx *store.Tx, cur dbq.Work,
 			p.CommunityVotes = nullInt(c.Votes)
 		}
 	}
-	if take(FieldTrailerURL) {
-		p.TrailerUrl = nullString(m.TrailerURL)
-	}
 	if err := q.UpdateWorkMetadata(ctx, p); err != nil {
 		return err
 	}
@@ -465,6 +481,11 @@ func (c *Catalog) writeMetadata(ctx context.Context, tx *store.Tx, cur dbq.Work,
 	}
 	if take(FieldCredits) && m.Credits != nil {
 		if err := setCredits(ctx, q, cur.ID, m.Credits); err != nil {
+			return err
+		}
+	}
+	if take(FieldTrailers) && m.Trailers != nil {
+		if err := setTrailers(ctx, q, cur.ID, m.Trailers); err != nil {
 			return err
 		}
 	}
@@ -528,6 +549,33 @@ func setCredits(ctx context.Context, q *dbq.Queries, work id.ID, credits []Credi
 		order[cr.Role]++
 		err = q.InsertCredit(ctx, dbq.InsertCreditParams{
 			WorkID: work, PersonID: person, Role: cr.Role, Ord: int64(order[cr.Role]), Character: nullString(cr.Character),
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// setTrailers replaces a work's trailers. A video listed before keeps its
+// row, and with it the thumbnail that row owns.
+func setTrailers(ctx context.Context, q *dbq.Queries, work id.ID, trailers []Trailer) error {
+	old, err := q.TrailerKeys(ctx, work)
+	if err != nil {
+		return err
+	}
+	for _, o := range old {
+		if slices.ContainsFunc(trailers, func(t Trailer) bool { return t.Site == o.Site && t.Key == o.Key }) {
+			continue
+		}
+		if err := q.DeleteTrailer(ctx, dbq.DeleteTrailerParams{WorkID: work, Site: o.Site, Key: o.Key}); err != nil {
+			return err
+		}
+	}
+	for i, t := range trailers {
+		err := q.PutTrailer(ctx, dbq.PutTrailerParams{
+			ID: id.New(), WorkID: work, Ord: int64(i), Site: t.Site, Key: t.Key, Title: t.Title,
+			Language: nullString(t.Language), Official: t.Official, PublishedAt: nullString(t.Published),
 		})
 		if err != nil {
 			return err
@@ -637,7 +685,8 @@ func (b *Batch) Unmatch(ctx context.Context, work id.ID, title string, year int)
 			return err
 		}
 		for _, clear := range []func(context.Context, id.ID) error{
-			q.DeleteExternalIDs, q.DeleteWorkGenres, q.DeleteWorkTags, q.DeleteWorkCompanies, q.DeleteCredits, q.LeaveAllCollections,
+			q.DeleteExternalIDs, q.DeleteWorkGenres, q.DeleteWorkTags, q.DeleteWorkCompanies, q.DeleteCredits, q.DeleteTrailers,
+			q.LeaveAllCollections,
 		} {
 			if err := clear(ctx, r.ID); err != nil {
 				return err

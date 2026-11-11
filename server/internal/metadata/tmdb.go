@@ -133,6 +133,7 @@ type tmdbPart struct {
 // tmdbVideo is one of the videos TMDb lists for a movie.
 type tmdbVideo struct {
 	Key       string `json:"key"`
+	Name      string `json:"name"`
 	Site      string `json:"site"`
 	Type      string `json:"type"`
 	Official  bool   `json:"official"`
@@ -367,7 +368,7 @@ func (t *tmdb) describeMovie(ctx context.Context, tmdbID, lang string) (*Descrip
 		ContentRatings: map[string]string{},
 		Cast:           castOf(m.Credits.Cast), Crew: crewOf(m.Credits.Crew),
 		Community: m.community(), Images: imagesOf(imgs, m.OriginalLanguage),
-		TrailerURL: trailerOf(m.Videos.Results, lang),
+		Trailers: trailersOf(m.Videos.Results, lang),
 	}
 	for _, a := range m.AlternativeTitles.Titles {
 		d.AltTitles = append(d.AltTitles, a.Title)
@@ -791,10 +792,15 @@ func videoLangs(lang string) string {
 	return strings.Join(slices.Compact([]string{base, "en"}), ",")
 }
 
-// trailerOf returns the YouTube URL of a movie's best trailer, or "" when it
-// has none. Official trailers come first, then the metadata language, then
-// English, then the newest.
-func trailerOf(videos []tmdbVideo, lang string) string {
+// maxTrailers is how many of a movie's trailers are kept. A movie's page
+// shows them in one row, and the best few are the ones worth a place in it.
+const maxTrailers = 5
+
+// trailersOf returns a movie's trailers on YouTube, best first, and at most
+// maxTrailers of them. Official trailers come first, then the metadata
+// language, then English, then the newest. Teasers, clips and featurettes
+// are left out.
+func trailersOf(videos []tmdbVideo, lang string) []catalog.Trailer {
 	base, _, _ := strings.Cut(lang, "-")
 	rank := func(v tmdbVideo) int {
 		switch v.Lang {
@@ -808,10 +814,7 @@ func trailerOf(videos []tmdbVideo, lang string) string {
 	videos = slices.DeleteFunc(slices.Clone(videos), func(v tmdbVideo) bool {
 		return v.Site != "YouTube" || v.Type != "Trailer" || v.Key == ""
 	})
-	if len(videos) == 0 {
-		return ""
-	}
-	best := slices.MinFunc(videos, func(a, b tmdbVideo) int {
+	slices.SortStableFunc(videos, func(a, b tmdbVideo) int {
 		if a.Official != b.Official {
 			if a.Official {
 				return -1
@@ -820,7 +823,19 @@ func trailerOf(videos []tmdbVideo, lang string) string {
 		}
 		return cmp.Or(cmp.Compare(rank(a), rank(b)), cmp.Compare(b.Published, a.Published))
 	})
-	return "https://www.youtube.com/watch?v=" + url.QueryEscape(best.Key)
+	out := []catalog.Trailer{} // non-nil, because an empty list clears the movie's trailers
+	for _, v := range videos {
+		if len(out) == maxTrailers {
+			break
+		}
+		if slices.ContainsFunc(out, func(t catalog.Trailer) bool { return t.Key == v.Key }) {
+			continue
+		}
+		out = append(out, catalog.Trailer{
+			Site: catalog.TrailerYouTube, Key: v.Key, Title: v.Name, Language: v.Lang, Official: v.Official, Published: v.Published,
+		})
+	}
+	return out
 }
 
 // allLanguages reports whether a work's images are fetched in every
