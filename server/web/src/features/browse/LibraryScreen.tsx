@@ -1,6 +1,6 @@
 import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import { useQueries, useQuery } from "@tanstack/react-query";
-import { getRouteApi, Link } from "@tanstack/react-router";
+import { getRouteApi, Link, useLocation } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Button as AriaButton, Checkbox } from "react-aria-components";
 import { useLibrary } from "@/api/libraries";
@@ -77,8 +77,13 @@ function LibraryView({ library }: { library: Library }) {
   const libraryId = library.id;
   const isAdmin = useIsAdmin();
   const [search, setSearch] = useBrowseSearch();
-  // Next time, the library opens as it was left.
-  useEffect(() => storeBrowse(libraryId, search), [libraryId, search]);
+  // Next time, the library opens as it was left, unless this visit is a one-off.
+  // Read as the screen opens: on its way out, the location is already the next page's.
+  const opened = useLocation({ select: (location) => location.state.oneOffSort === true });
+  const [oneOff] = useState(opened);
+  useEffect(() => {
+    if (!oneOff) storeBrowse(libraryId, search);
+  }, [libraryId, search, oneOff]);
   const labels = useBrowseLabels();
   const books = library.kind === "audiobooks";
   const values = useFilterValues(libraryId, books);
