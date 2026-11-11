@@ -81,9 +81,36 @@ public final class com/mmcdole/kivo/core/Load$Loading : com/mmcdole/kivo/core/Lo
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class com/mmcdole/kivo/core/ProblemCode : java/lang/Enum {
+	public static final field Companion Lcom/mmcdole/kivo/core/ProblemCode$Companion;
+	public static final field InvalidCredentials Lcom/mmcdole/kivo/core/ProblemCode;
+	public static final field InvalidRequest Lcom/mmcdole/kivo/core/ProblemCode;
+	public static final field NameTaken Lcom/mmcdole/kivo/core/ProblemCode;
+	public static final field NoFallback Lcom/mmcdole/kivo/core/ProblemCode;
+	public static final field NotFound Lcom/mmcdole/kivo/core/ProblemCode;
+	public static final field NotPlayable Lcom/mmcdole/kivo/core/ProblemCode;
+	public static final field PlayEnded Lcom/mmcdole/kivo/core/ProblemCode;
+	public static final field PlaybackFailed Lcom/mmcdole/kivo/core/ProblemCode;
+	public static final field ReceiverOutdated Lcom/mmcdole/kivo/core/ProblemCode;
+	public static final field ServerOutdated Lcom/mmcdole/kivo/core/ProblemCode;
+	public static final field SignedOut Lcom/mmcdole/kivo/core/ProblemCode;
+	public static final field StreamLimit Lcom/mmcdole/kivo/core/ProblemCode;
+	public static final field Unknown Lcom/mmcdole/kivo/core/ProblemCode;
+	public static final field WrongPassword Lcom/mmcdole/kivo/core/ProblemCode;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun getValue ()Ljava/lang/String;
+	public static fun valueOf (Ljava/lang/String;)Lcom/mmcdole/kivo/core/ProblemCode;
+	public static fun values ()[Lcom/mmcdole/kivo/core/ProblemCode;
+}
+
+public final class com/mmcdole/kivo/core/ProblemCode$Companion {
+	public final fun of (Ljava/lang/String;)Lcom/mmcdole/kivo/core/ProblemCode;
+}
+
 public abstract class com/mmcdole/kivo/core/RequestProblem {
 	public static final field Companion Lcom/mmcdole/kivo/core/RequestProblem$Companion;
 	public abstract fun getCode ()Ljava/lang/String;
+	public final fun getKnownCode ()Lcom/mmcdole/kivo/core/ProblemCode;
 }
 
 public final class com/mmcdole/kivo/core/RequestProblem$Companion {
@@ -136,7 +163,7 @@ public abstract interface class com/mmcdole/kivo/core/auth/ClientIdentity {
 	public abstract fun getAppVersion ()Ljava/lang/String;
 	public abstract fun getDeviceModel ()Ljava/lang/String;
 	public abstract fun getOsVersion ()Ljava/lang/String;
-	public abstract fun getPlatform ()Ljava/lang/String;
+	public abstract fun getPlatform ()Lcom/mmcdole/kivo/api/models/ClientPlatform;
 }
 
 public final class com/mmcdole/kivo/core/auth/LinkCode {
@@ -590,6 +617,43 @@ public final class com/mmcdole/kivo/core/cast/CastStatus$Companion {
 	public final fun parseOrNull (Ljava/lang/String;)Lcom/mmcdole/kivo/core/cast/CastStatus;
 }
 
+public final class com/mmcdole/kivo/core/data/CreditRole : java/lang/Enum {
+	public static final field Actor Lcom/mmcdole/kivo/core/data/CreditRole;
+	public static final field Author Lcom/mmcdole/kivo/core/data/CreditRole;
+	public static final field Companion Lcom/mmcdole/kivo/core/data/CreditRole$Companion;
+	public static final field Director Lcom/mmcdole/kivo/core/data/CreditRole;
+	public static final field Narrator Lcom/mmcdole/kivo/core/data/CreditRole;
+	public static final field Unknown Lcom/mmcdole/kivo/core/data/CreditRole;
+	public static final field Writer Lcom/mmcdole/kivo/core/data/CreditRole;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun getValue ()Ljava/lang/String;
+	public static fun valueOf (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/CreditRole;
+	public static fun values ()[Lcom/mmcdole/kivo/core/data/CreditRole;
+}
+
+public final class com/mmcdole/kivo/core/data/CreditRole$Companion {
+	public final fun of (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/CreditRole;
+}
+
+public final class com/mmcdole/kivo/core/data/CreditsKt {
+	public static final fun getKnownRole (Lcom/mmcdole/kivo/api/models/Credit;)Lcom/mmcdole/kivo/core/data/CreditRole;
+	public static final fun getKnownRole (Lcom/mmcdole/kivo/api/models/PersonSummary;)Lcom/mmcdole/kivo/core/data/CreditRole;
+}
+
+public final class com/mmcdole/kivo/core/data/DynamicRange : java/lang/Enum {
+	public static final field Companion Lcom/mmcdole/kivo/core/data/DynamicRange$Companion;
+	public static final field DolbyVision Lcom/mmcdole/kivo/core/data/DynamicRange;
+	public static final field Hdr Lcom/mmcdole/kivo/core/data/DynamicRange;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun getValue ()Ljava/lang/String;
+	public static fun valueOf (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/DynamicRange;
+	public static fun values ()[Lcom/mmcdole/kivo/core/data/DynamicRange;
+}
+
+public final class com/mmcdole/kivo/core/data/DynamicRange$Companion {
+	public final fun of (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/DynamicRange;
+}
+
 public final class com/mmcdole/kivo/core/data/GridPager {
 	public final fun close ()V
 	public final fun getState ()Lkotlinx/coroutines/flow/StateFlow;
@@ -615,44 +679,64 @@ public final class com/mmcdole/kivo/core/data/GridPages$Companion {
 }
 
 public final class com/mmcdole/kivo/core/data/GridQuery {
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/util/List;Ljava/util/List;Ljava/util/List;)V
-	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/util/List;Ljava/util/List;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Ljava/lang/String;Lcom/mmcdole/kivo/core/data/GridSort;Lcom/mmcdole/kivo/core/data/WorkPlayState;Ljava/util/List;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/util/List;Ljava/util/List;Ljava/util/List;)V
+	public synthetic fun <init> (Ljava/lang/String;Lcom/mmcdole/kivo/core/data/GridSort;Lcom/mmcdole/kivo/core/data/WorkPlayState;Ljava/util/List;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/util/List;Ljava/util/List;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ljava/lang/String;
-	public final fun component2 ()Ljava/lang/String;
-	public final fun component3 ()Ljava/lang/String;
+	public final fun component2 ()Lcom/mmcdole/kivo/core/data/GridSort;
+	public final fun component3 ()Lcom/mmcdole/kivo/core/data/WorkPlayState;
 	public final fun component4 ()Ljava/util/List;
 	public final fun component5 ()Ljava/lang/Integer;
 	public final fun component6 ()Ljava/lang/Integer;
 	public final fun component7 ()Ljava/util/List;
 	public final fun component8 ()Ljava/util/List;
 	public final fun component9 ()Ljava/util/List;
-	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/util/List;Ljava/util/List;Ljava/util/List;)Lcom/mmcdole/kivo/core/data/GridQuery;
-	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/data/GridQuery;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/util/List;Ljava/util/List;Ljava/util/List;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/GridQuery;
+	public final fun copy (Ljava/lang/String;Lcom/mmcdole/kivo/core/data/GridSort;Lcom/mmcdole/kivo/core/data/WorkPlayState;Ljava/util/List;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/util/List;Ljava/util/List;Ljava/util/List;)Lcom/mmcdole/kivo/core/data/GridQuery;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/data/GridQuery;Ljava/lang/String;Lcom/mmcdole/kivo/core/data/GridSort;Lcom/mmcdole/kivo/core/data/WorkPlayState;Ljava/util/List;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/util/List;Ljava/util/List;Ljava/util/List;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/GridQuery;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getContentRatings ()Ljava/util/List;
 	public final fun getDynamicRanges ()Ljava/util/List;
 	public final fun getGenres ()Ljava/util/List;
 	public final fun getLibraryId ()Ljava/lang/String;
-	public final fun getPlayed ()Ljava/lang/String;
+	public final fun getPlayed ()Lcom/mmcdole/kivo/core/data/WorkPlayState;
 	public final fun getResolutions ()Ljava/util/List;
-	public final fun getSort ()Ljava/lang/String;
+	public final fun getSort ()Lcom/mmcdole/kivo/core/data/GridSort;
 	public final fun getYearFrom ()Ljava/lang/Integer;
 	public final fun getYearTo ()Ljava/lang/Integer;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class com/mmcdole/kivo/core/data/GridSort : java/lang/Enum {
+	public static final field AddedAt Lcom/mmcdole/kivo/core/data/GridSort;
+	public static final field Author Lcom/mmcdole/kivo/core/data/GridSort;
+	public static final field Companion Lcom/mmcdole/kivo/core/data/GridSort$Companion;
+	public static final field LastEpisodeAddedAt Lcom/mmcdole/kivo/core/data/GridSort;
+	public static final field LastPlayedAt Lcom/mmcdole/kivo/core/data/GridSort;
+	public static final field Rating Lcom/mmcdole/kivo/core/data/GridSort;
+	public static final field ReleaseDate Lcom/mmcdole/kivo/core/data/GridSort;
+	public static final field Runtime Lcom/mmcdole/kivo/core/data/GridSort;
+	public static final field Title Lcom/mmcdole/kivo/core/data/GridSort;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun getValue ()Ljava/lang/String;
+	public static fun valueOf (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/GridSort;
+	public static fun values ()[Lcom/mmcdole/kivo/core/data/GridSort;
+}
+
+public final class com/mmcdole/kivo/core/data/GridSort$Companion {
+	public final fun of (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/GridSort;
+}
+
 public final class com/mmcdole/kivo/core/data/GroupDraft {
-	public fun <init> (Ljava/lang/String;Ljava/util/List;Ljava/lang/String;)V
-	public synthetic fun <init> (Ljava/lang/String;Ljava/util/List;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public final fun component1 ()Ljava/lang/String;
+	public fun <init> (Lcom/mmcdole/kivo/api/models/RuleGroupMatch;Ljava/util/List;Ljava/lang/String;)V
+	public synthetic fun <init> (Lcom/mmcdole/kivo/api/models/RuleGroupMatch;Ljava/util/List;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lcom/mmcdole/kivo/api/models/RuleGroupMatch;
 	public final fun component2 ()Ljava/util/List;
 	public final fun component3 ()Ljava/lang/String;
-	public final fun copy (Ljava/lang/String;Ljava/util/List;Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/GroupDraft;
-	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/data/GroupDraft;Ljava/lang/String;Ljava/util/List;Ljava/lang/String;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/GroupDraft;
+	public final fun copy (Lcom/mmcdole/kivo/api/models/RuleGroupMatch;Ljava/util/List;Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/GroupDraft;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/data/GroupDraft;Lcom/mmcdole/kivo/api/models/RuleGroupMatch;Ljava/util/List;Ljava/lang/String;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/GroupDraft;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getId ()Ljava/lang/String;
-	public final fun getMatch ()Ljava/lang/String;
+	public final fun getMatch ()Lcom/mmcdole/kivo/api/models/RuleGroupMatch;
 	public final fun getRules ()Ljava/util/List;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
@@ -703,33 +787,28 @@ public final class com/mmcdole/kivo/core/data/LibraryFilters {
 }
 
 public final class com/mmcdole/kivo/core/data/ListSorts {
-	public static final field CUSTOM Ljava/lang/String;
-	public static final field DATE_ADDED Ljava/lang/String;
 	public static final field INSTANCE Lcom/mmcdole/kivo/core/data/ListSorts;
-	public static final field RATING Ljava/lang/String;
-	public static final field RELEASE_DATE Ljava/lang/String;
-	public static final field TITLE Ljava/lang/String;
 	public final fun getAll ()Ljava/util/List;
-	public final fun of (Lcom/mmcdole/kivo/api/models/WorkList;)Ljava/lang/String;
+	public final fun of (Lcom/mmcdole/kivo/api/models/WorkList;)Lcom/mmcdole/kivo/api/models/ListSort;
 }
 
 public final class com/mmcdole/kivo/core/data/RuleDraft {
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;Ljava/util/List;Ljava/lang/String;)V
-	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;Ljava/util/List;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;ILcom/mmcdole/kivo/api/models/WorkFieldType;Ljava/util/List;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;ILcom/mmcdole/kivo/api/models/WorkFieldType;Ljava/util/List;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ljava/lang/String;
 	public final fun component2 ()Ljava/lang/String;
 	public final fun component3 ()I
-	public final fun component4 ()Ljava/lang/String;
+	public final fun component4 ()Lcom/mmcdole/kivo/api/models/WorkFieldType;
 	public final fun component5 ()Ljava/util/List;
 	public final fun component6 ()Ljava/lang/String;
-	public final fun copy (Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;Ljava/util/List;Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/RuleDraft;
-	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/data/RuleDraft;Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;Ljava/util/List;Ljava/lang/String;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/RuleDraft;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;ILcom/mmcdole/kivo/api/models/WorkFieldType;Ljava/util/List;Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/RuleDraft;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/data/RuleDraft;Ljava/lang/String;Ljava/lang/String;ILcom/mmcdole/kivo/api/models/WorkFieldType;Ljava/util/List;Ljava/lang/String;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/RuleDraft;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getArity ()I
 	public final fun getField ()Ljava/lang/String;
 	public final fun getId ()Ljava/lang/String;
 	public final fun getOp ()Ljava/lang/String;
-	public final fun getType ()Ljava/lang/String;
+	public final fun getType ()Lcom/mmcdole/kivo/api/models/WorkFieldType;
 	public final fun getValues ()Ljava/util/List;
 	public fun hashCode ()I
 	public final fun isComplete ()Z
@@ -749,26 +828,26 @@ public final class com/mmcdole/kivo/core/data/SeasonsKt {
 }
 
 public final class com/mmcdole/kivo/core/data/SmartListDraft {
-	public fun <init> (Ljava/lang/String;Ljava/util/List;Ljava/util/Set;Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/lang/Integer;)V
-	public synthetic fun <init> (Ljava/lang/String;Ljava/util/List;Ljava/util/Set;Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/lang/Integer;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Ljava/lang/String;Ljava/util/List;Ljava/util/Set;Lcom/mmcdole/kivo/api/models/RuleGroupMatch;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/lang/Integer;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/util/List;Ljava/util/Set;Lcom/mmcdole/kivo/api/models/RuleGroupMatch;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/lang/Integer;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun addingGroup (Lcom/mmcdole/kivo/core/data/GroupDraft;)Lcom/mmcdole/kivo/core/data/SmartListDraft;
 	public final fun addingRule (Lcom/mmcdole/kivo/core/data/RuleDraft;Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/SmartListDraft;
 	public final fun changingRule (Ljava/lang/String;Lkotlin/jvm/functions/Function1;)Lcom/mmcdole/kivo/core/data/SmartListDraft;
 	public final fun component1 ()Ljava/lang/String;
 	public final fun component2 ()Ljava/util/List;
 	public final fun component3 ()Ljava/util/Set;
-	public final fun component4 ()Ljava/lang/String;
+	public final fun component4 ()Lcom/mmcdole/kivo/api/models/RuleGroupMatch;
 	public final fun component5 ()Ljava/util/List;
 	public final fun component6 ()Ljava/util/List;
 	public final fun component7 ()Ljava/util/List;
 	public final fun component8 ()Ljava/lang/Integer;
-	public final fun copy (Ljava/lang/String;Ljava/util/List;Ljava/util/Set;Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/lang/Integer;)Lcom/mmcdole/kivo/core/data/SmartListDraft;
-	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/data/SmartListDraft;Ljava/lang/String;Ljava/util/List;Ljava/util/Set;Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/lang/Integer;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/SmartListDraft;
+	public final fun copy (Ljava/lang/String;Ljava/util/List;Ljava/util/Set;Lcom/mmcdole/kivo/api/models/RuleGroupMatch;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/lang/Integer;)Lcom/mmcdole/kivo/core/data/SmartListDraft;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/data/SmartListDraft;Ljava/lang/String;Ljava/util/List;Ljava/util/Set;Lcom/mmcdole/kivo/api/models/RuleGroupMatch;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/lang/Integer;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/SmartListDraft;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getGroups ()Ljava/util/List;
 	public final fun getKinds ()Ljava/util/List;
 	public final fun getLibraries ()Ljava/util/Set;
-	public final fun getMatch ()Ljava/lang/String;
+	public final fun getMatch ()Lcom/mmcdole/kivo/api/models/RuleGroupMatch;
 	public final fun getMaxWorks ()Ljava/lang/Integer;
 	public final fun getName ()Ljava/lang/String;
 	public final fun getQuery ()Lcom/mmcdole/kivo/api/models/WorkQuery;
@@ -784,7 +863,7 @@ public final class com/mmcdole/kivo/core/data/SmartListDraft {
 	public final fun showing (Ljava/util/List;)Lcom/mmcdole/kivo/core/data/SmartListDraft;
 	public final fun sorted (Ljava/util/List;)Lcom/mmcdole/kivo/core/data/SmartListDraft;
 	public fun toString ()Ljava/lang/String;
-	public final fun withGroupMatch (Ljava/lang/String;Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/SmartListDraft;
+	public final fun withGroupMatch (Ljava/lang/String;Lcom/mmcdole/kivo/api/models/RuleGroupMatch;)Lcom/mmcdole/kivo/core/data/SmartListDraft;
 }
 
 public final class com/mmcdole/kivo/core/data/SmartListRefusal : java/lang/Enum {
@@ -802,7 +881,7 @@ public final class com/mmcdole/kivo/core/data/SmartLists {
 	public final fun blankGroup (Lcom/mmcdole/kivo/api/models/WorkField;)Lcom/mmcdole/kivo/core/data/GroupDraft;
 	public final fun blankRule (Lcom/mmcdole/kivo/api/models/WorkField;)Lcom/mmcdole/kivo/core/data/RuleDraft;
 	public final fun draft (Ljava/lang/String;Lcom/mmcdole/kivo/api/models/WorkQuery;Ljava/util/List;)Lcom/mmcdole/kivo/core/data/SmartListDraft;
-	public final fun fromGrid (Lcom/mmcdole/kivo/core/data/GridQuery;Ljava/lang/String;)Lcom/mmcdole/kivo/api/models/WorkQuery;
+	public final fun fromGrid (Lcom/mmcdole/kivo/core/data/GridQuery;Lcom/mmcdole/kivo/api/models/LibraryKind;)Lcom/mmcdole/kivo/api/models/WorkQuery;
 	public final fun isPeriod (Ljava/lang/String;)Z
 	public final fun nameKey (Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
 	public final fun period (Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
@@ -871,6 +950,21 @@ public final class com/mmcdole/kivo/core/data/SubtitleSearchProblem$QuotaUsed : 
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class com/mmcdole/kivo/core/data/WorkPlayState : java/lang/Enum {
+	public static final field Companion Lcom/mmcdole/kivo/core/data/WorkPlayState$Companion;
+	public static final field InProgress Lcom/mmcdole/kivo/core/data/WorkPlayState;
+	public static final field Played Lcom/mmcdole/kivo/core/data/WorkPlayState;
+	public static final field Unplayed Lcom/mmcdole/kivo/core/data/WorkPlayState;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun getValue ()Ljava/lang/String;
+	public static fun valueOf (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/WorkPlayState;
+	public static fun values ()[Lcom/mmcdole/kivo/core/data/WorkPlayState;
+}
+
+public final class com/mmcdole/kivo/core/data/WorkPlayState$Companion {
+	public final fun of (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/WorkPlayState;
+}
+
 public final class com/mmcdole/kivo/core/discovery/DiscoveryKt {
 	public static final field SERVICE_TYPE Ljava/lang/String;
 	public static final fun serviceUrl (Ljava/lang/String;IZLjava/lang/String;)Ljava/lang/String;
@@ -903,7 +997,7 @@ public final class com/mmcdole/kivo/core/display/Display {
 	public final fun method (Lcom/mmcdole/kivo/api/models/PlayTrack;)Ljava/lang/String;
 	public final fun method (Ljava/lang/String;)Ljava/lang/String;
 	public final fun reason (Ljava/lang/String;)Ljava/lang/String;
-	public final fun resolution (Ljava/lang/String;)Ljava/lang/String;
+	public final fun resolution (Lcom/mmcdole/kivo/api/models/Resolution;)Ljava/lang/String;
 	public final fun subtitleKind (Lcom/mmcdole/kivo/api/models/PlayTrack;)Ljava/lang/String;
 	public final fun subtitleSource (Ljava/lang/String;)Ljava/lang/String;
 }
@@ -1030,10 +1124,10 @@ public final class com/mmcdole/kivo/core/display/TrackWords$Companion {
 }
 
 public final class com/mmcdole/kivo/core/downloads/DownloadItem {
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Long;JZZLcom/mmcdole/kivo/core/downloads/DownloadStatus;Ljava/lang/String;Ljava/lang/String;J)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lcom/mmcdole/kivo/api/models/WorkKind;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/String;Lcom/mmcdole/kivo/core/settings/DownloadQuality;Ljava/lang/Long;JZZLcom/mmcdole/kivo/core/downloads/DownloadStatus;Ljava/lang/String;Ljava/lang/String;J)V
 	public final fun component1 ()Ljava/lang/String;
 	public final fun component10 ()Ljava/lang/String;
-	public final fun component11 ()Ljava/lang/String;
+	public final fun component11 ()Lcom/mmcdole/kivo/core/settings/DownloadQuality;
 	public final fun component12 ()Ljava/lang/Long;
 	public final fun component13 ()J
 	public final fun component14 ()Z
@@ -1045,13 +1139,13 @@ public final class com/mmcdole/kivo/core/downloads/DownloadItem {
 	public final fun component2 ()Ljava/lang/String;
 	public final fun component3 ()Ljava/lang/String;
 	public final fun component4 ()Ljava/lang/String;
-	public final fun component5 ()Ljava/lang/String;
+	public final fun component5 ()Lcom/mmcdole/kivo/api/models/WorkKind;
 	public final fun component6 ()Ljava/lang/String;
 	public final fun component7 ()Ljava/lang/String;
 	public final fun component8 ()Ljava/lang/Integer;
 	public final fun component9 ()Ljava/lang/Integer;
-	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Long;JZZLcom/mmcdole/kivo/core/downloads/DownloadStatus;Ljava/lang/String;Ljava/lang/String;J)Lcom/mmcdole/kivo/core/downloads/DownloadItem;
-	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/downloads/DownloadItem;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Long;JZZLcom/mmcdole/kivo/core/downloads/DownloadStatus;Ljava/lang/String;Ljava/lang/String;JILjava/lang/Object;)Lcom/mmcdole/kivo/core/downloads/DownloadItem;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lcom/mmcdole/kivo/api/models/WorkKind;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/String;Lcom/mmcdole/kivo/core/settings/DownloadQuality;Ljava/lang/Long;JZZLcom/mmcdole/kivo/core/downloads/DownloadStatus;Ljava/lang/String;Ljava/lang/String;J)Lcom/mmcdole/kivo/core/downloads/DownloadItem;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/downloads/DownloadItem;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lcom/mmcdole/kivo/api/models/WorkKind;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/String;Lcom/mmcdole/kivo/core/settings/DownloadQuality;Ljava/lang/Long;JZZLcom/mmcdole/kivo/core/downloads/DownloadStatus;Ljava/lang/String;Ljava/lang/String;JILjava/lang/Object;)Lcom/mmcdole/kivo/core/downloads/DownloadItem;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getArtworkPath ()Ljava/lang/String;
 	public final fun getAuthors ()Ljava/lang/String;
@@ -1059,10 +1153,10 @@ public final class com/mmcdole/kivo/core/downloads/DownloadItem {
 	public final fun getDurationMs ()Ljava/lang/Long;
 	public final fun getEpisode ()Ljava/lang/Integer;
 	public final fun getId ()Ljava/lang/String;
-	public final fun getKind ()Ljava/lang/String;
+	public final fun getKind ()Lcom/mmcdole/kivo/api/models/WorkKind;
 	public final fun getPosterPath ()Ljava/lang/String;
 	public final fun getPrepared ()Z
-	public final fun getQuality ()Ljava/lang/String;
+	public final fun getQuality ()Lcom/mmcdole/kivo/core/settings/DownloadQuality;
 	public final fun getSeason ()Ljava/lang/Integer;
 	public final fun getSeriesId ()Ljava/lang/String;
 	public final fun getSeriesTitle ()Ljava/lang/String;
@@ -1079,7 +1173,7 @@ public final class com/mmcdole/kivo/core/downloads/DownloadItem {
 public final class com/mmcdole/kivo/core/downloads/DownloadItemKt {
 	public static final fun downloadFailure (Lcom/mmcdole/kivo/core/display/Display;Ljava/lang/String;)Ljava/lang/String;
 	public static final fun downloadProblem (Lcom/mmcdole/kivo/core/display/Display;Ljava/lang/Throwable;)Ljava/lang/String;
-	public static final fun downloadQuality (Lcom/mmcdole/kivo/core/display/Display;Ljava/lang/String;)Ljava/lang/String;
+	public static final fun downloadQuality (Lcom/mmcdole/kivo/core/display/Display;Lcom/mmcdole/kivo/core/settings/DownloadQuality;)Ljava/lang/String;
 }
 
 public final class com/mmcdole/kivo/core/downloads/DownloadRefusedException : java/lang/Exception {
@@ -1657,14 +1751,14 @@ public abstract interface class com/mmcdole/kivo/core/session/Device {
 	public fun getDownloads ()Lcom/mmcdole/kivo/core/session/DownloadDevice;
 	public abstract fun getIdentity ()Lcom/mmcdole/kivo/core/auth/ClientIdentity;
 	public abstract fun getName ()Ljava/lang/String;
-	public fun getPlatform ()Ljava/lang/String;
+	public fun getPlatform ()Lcom/mmcdole/kivo/api/models/ClientPlatform;
 	public abstract fun getPreferences ()Landroidx/datastore/core/DataStore;
 	public abstract fun getSecureStore ()Lcom/mmcdole/kivo/core/auth/SecureStore;
 }
 
 public final class com/mmcdole/kivo/core/session/Device$DefaultImpls {
 	public static fun getDownloads (Lcom/mmcdole/kivo/core/session/Device;)Lcom/mmcdole/kivo/core/session/DownloadDevice;
-	public static fun getPlatform (Lcom/mmcdole/kivo/core/session/Device;)Ljava/lang/String;
+	public static fun getPlatform (Lcom/mmcdole/kivo/core/session/Device;)Lcom/mmcdole/kivo/api/models/ClientPlatform;
 }
 
 public final class com/mmcdole/kivo/core/session/DownloadDevice {
@@ -1841,7 +1935,7 @@ public final class com/mmcdole/kivo/core/session/SessionLibrary {
 	public final fun gridPage (Lcom/mmcdole/kivo/core/data/GridQuery;IILkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun hasCollections (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun home ()Lkotlinx/coroutines/flow/Flow;
-	public final fun home (Ljava/lang/String;)Lkotlinx/coroutines/flow/Flow;
+	public final fun home (Lcom/mmcdole/kivo/api/models/HomeRowKind;)Lkotlinx/coroutines/flow/Flow;
 	public final fun homeRows ()Lkotlinx/coroutines/flow/Flow;
 	public final fun known (Ljava/lang/String;)Lcom/mmcdole/kivo/api/models/WorkSummary;
 	public final fun knownBookSeries (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/Heading;
@@ -1864,7 +1958,7 @@ public final class com/mmcdole/kivo/core/session/SessionLibrary {
 	public final fun resetHomeRows (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun search (Ljava/lang/String;Ljava/lang/Integer;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun setHomeRows (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
-	public final fun setListSort (Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun setListSort (Ljava/lang/String;Lcom/mmcdole/kivo/api/models/ListSort;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun setPlayed (Ljava/lang/String;ZLkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun smartListNames (Lcom/mmcdole/kivo/api/models/WorkQuery;Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun updateList (Ljava/lang/String;Ljava/lang/String;Lcom/mmcdole/kivo/api/models/WorkQuery;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
@@ -1894,22 +1988,22 @@ public final class com/mmcdole/kivo/core/session/SessionPlayback {
 }
 
 public final class com/mmcdole/kivo/core/session/SignedInDevice {
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JZ)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lcom/mmcdole/kivo/api/models/SessionKind;Lcom/mmcdole/kivo/api/models/ClientPlatform;JZ)V
 	public final fun component1 ()Ljava/lang/String;
 	public final fun component2 ()Ljava/lang/String;
-	public final fun component3 ()Ljava/lang/String;
-	public final fun component4 ()Ljava/lang/String;
+	public final fun component3 ()Lcom/mmcdole/kivo/api/models/SessionKind;
+	public final fun component4 ()Lcom/mmcdole/kivo/api/models/ClientPlatform;
 	public final fun component5 ()J
 	public final fun component6 ()Z
-	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JZ)Lcom/mmcdole/kivo/core/session/SignedInDevice;
-	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/session/SignedInDevice;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JZILjava/lang/Object;)Lcom/mmcdole/kivo/core/session/SignedInDevice;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Lcom/mmcdole/kivo/api/models/SessionKind;Lcom/mmcdole/kivo/api/models/ClientPlatform;JZ)Lcom/mmcdole/kivo/core/session/SignedInDevice;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/session/SignedInDevice;Ljava/lang/String;Ljava/lang/String;Lcom/mmcdole/kivo/api/models/SessionKind;Lcom/mmcdole/kivo/api/models/ClientPlatform;JZILjava/lang/Object;)Lcom/mmcdole/kivo/core/session/SignedInDevice;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getCurrent ()Z
 	public final fun getId ()Ljava/lang/String;
-	public final fun getKind ()Ljava/lang/String;
+	public final fun getKind ()Lcom/mmcdole/kivo/api/models/SessionKind;
 	public final fun getLastUsedEpochMs ()J
 	public final fun getName ()Ljava/lang/String;
-	public final fun getPlatform ()Ljava/lang/String;
+	public final fun getPlatform ()Lcom/mmcdole/kivo/api/models/ClientPlatform;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }

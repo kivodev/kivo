@@ -24,7 +24,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class KnownTest {
-    private fun summary(id: String, title: String = id, kind: String = "movie", book: BookInfo? = null, poster: ImageRef? = null) =
+    private fun summary(id: String, title: String = id, kind: WorkKind = WorkKind.Movie, book: BookInfo? = null, poster: ImageRef? = null) =
         WorkSummary(id, kind, title, MatchState.Matched, true, WorkImages(poster = poster), book = book)
 
     private fun work(id: String, title: String, credits: List<Credit>, extras: List<WorkSummary>) = WorkDetail(
@@ -46,10 +46,10 @@ class KnownTest {
     fun aPageIsKnownAsItsCardWithWhatItLists() {
         val known = Known()
         val photo = ImageRef("i1")
-        known.read(work("w1", "Heat", listOf(Credit("p1", "Al Pacino", "actor", photo = photo)), listOf(summary("x1", kind = "extra"))))
+        known.read(work("w1", "Heat", listOf(Credit("p1", "Al Pacino", "actor", photo = photo)), listOf(summary("x1", kind = WorkKind.Extra))))
         assertEquals("Heat", known.work("w1")?.title)
         assertEquals("l1", known.summary("w1")?.libraryId)
-        assertEquals("extra", known.summary("x1")?.kind)
+        assertEquals(WorkKind.Extra, known.summary("x1")?.kind)
         assertEquals(Heading("p1", "Al Pacino", photo), known.personHeading("p1"))
     }
 
@@ -64,7 +64,7 @@ class KnownTest {
             listOf(PersonRef("p2", "Adjoa Andoh")),
             listOf(BookSeriesRef("s1", "Imperial Radch", primary = true)),
         )
-        known.read(listOf(summary("b1", kind = "book", book = book)))
+        known.read(listOf(summary("b1", kind = WorkKind.Book, book = book)))
         known.readBookSeries(listOf(BookSeriesSummary("s2", "Murderbot", 4, cover)))
         assertEquals(Heading("p1", "Ann Leckie", photo), known.personHeading("p1"), "a book's author keeps the photo search showed")
         assertEquals(Heading("p2", "Adjoa Andoh"), known.personHeading("p2"))
@@ -76,7 +76,7 @@ class KnownTest {
     fun aPersonsAndABookSeriesPageAreKnownAsRead() {
         val known = Known()
         val cover = ImageRef("i2")
-        val series = BookSeries("s1", "Imperial Radch", listOf(summary("b1", kind = "book", poster = cover)))
+        val series = BookSeries("s1", "Imperial Radch", listOf(summary("b1", kind = WorkKind.Book, poster = cover)))
         known.read(Person("p1", "Ann Leckie", emptyList(), listOf(series), emptyList(), emptyList()))
         assertEquals("Ann Leckie", known.person("p1")?.name)
         assertEquals(Heading("s1", "Imperial Radch", cover), known.bookSeriesHeading("s1"))

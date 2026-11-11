@@ -35,6 +35,10 @@ import com.mmcdole.kivo.core.FakeServer
 import com.mmcdole.kivo.core.empty
 import com.mmcdole.kivo.core.json
 import com.mmcdole.kivo.core.live.Invalidation
+import io.ktor.client.engine.mock.respond
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.headersOf
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -130,8 +134,9 @@ class RepositoriesTest {
 
         lists.page("l1", offset = 20)
         lists.page("l1", offset = 0, limit = 60)
+        lists.page("l1", offset = 0, kinds = listOf(WorkKind.Movie, WorkKind.Series), sort = ListSort.DateAdded)
         assertEquals(
-            listOf(setOf("offset=20"), setOf("limit=60")),
+            listOf(setOf("offset=20"), setOf("limit=60"), setOf("kind=movie", "kind=series", "sort=dateAdded")),
             server.to("GET", "/api/v1/lists/l1/works").map { it.query.split('&').toSet() },
         )
     }
@@ -149,9 +154,9 @@ class RepositoriesTest {
         }
         val lists = ListsRepository(server.connection(), MutableSharedFlow())
 
-        assertEquals("title", ListSorts.of(lists.setSort("l1", ListSorts.TITLE)))
+        assertEquals(ListSort.Title, ListSorts.of(lists.setSort("l1", ListSort.Title)))
         assertEquals("""{"sort":"title"}""", server.to("PATCH", "/api/v1/lists/l1").single().body)
-        assertEquals(ListSorts.CUSTOM, ListSorts.of(list.copy(sort = "shuffled")))
+        assertEquals(ListSort.Custom, ListSorts.of(list.copy(sort = ListSort.Unknown)))
         assertEquals(null, ListSorts.of(list.copy(kind = ListKind.Smart, sort = null)))
 
         lists.move("l1", listOf("w3", "w1"), after = "w7")
@@ -220,6 +225,40 @@ class RepositoriesTest {
         invalidations.emit(Invalidation.UserStateChanged(listOf("w1")))
         runCurrent()
         assertEquals(2, changes)
+    }
+
+    @Test
+    fun homesRowsOfOneKindAreAskedForByItsName() = runTest {
+        val server = FakeServer(StandardTestDispatcher(testScheduler))
+        server.on("GET", "/api/v1/home") {
+            respond(
+                """{"rows":[{"id":"continueWatching","kind":"continueWatching","items":[]},{"id":"shelf:1","kind":"shelf","items":[]}]}""",
+                HttpStatusCode.OK,
+                headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+        val homes = mutableListOf<Home>()
+        backgroundScope.launch { HomeRepository(server.connection(), MutableSharedFlow()).home(HomeRowKind.ContinueWatching).collect { homes += it } }
+        runCurrent()
+        assertEquals("kind=continueWatching", server.to("GET", "/api/v1/home").single().query)
+        assertEquals(listOf(HomeRowKind.ContinueWatching, HomeRowKind.Unknown), homes.single().rows.map { it.kind }, "a row of a later server's kind is read, for the app to skip")
+    }
+
+    @Test
+    fun aFilterValueALaterServerAddsIsLeftOut() = runTest {
+        val server = FakeServer(StandardTestDispatcher(testScheduler))
+        val values = mapOf("genre" to emptyList(), "year" to emptyList(), "contentRating" to emptyList(), "resolution" to listOf("8k", "4k", "sd"), "dynamicRange" to listOf("hdr", "hdr10000", "dolbyVision"))
+        for ((field, found) in values) {
+            server.on("GET", "/api/v1/work-fields/$field/values") {
+                json(WorkFieldValueList.serializer(), WorkFieldValueList(found.map { WorkFieldValue(it, it) }))
+            }
+        }
+        server.on("GET", "/api/v1/libraries/l1/collections") { json(CollectionSummaryPage.serializer(), CollectionSummaryPage(emptyList(), 0)) }
+        val read = mutableListOf<LibraryFilters>()
+        backgroundScope.launch { GridRepository(server.connection(), MutableSharedFlow()).filters("l1").collect { read += it } }
+        runCurrent()
+        assertEquals(listOf(Resolution.FourK, Resolution.Sd), read.single().resolutions)
+        assertEquals(listOf(DynamicRange.Hdr, DynamicRange.DolbyVision), read.single().dynamicRanges)
     }
 
     @Test

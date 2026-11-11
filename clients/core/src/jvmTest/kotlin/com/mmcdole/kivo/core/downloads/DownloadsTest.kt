@@ -21,6 +21,7 @@ import com.mmcdole.kivo.api.models.TrackReason
 import com.mmcdole.kivo.api.models.TrackTranscode
 import com.mmcdole.kivo.api.models.UserLimits
 import com.mmcdole.kivo.api.models.UserState
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.core.FakeServer
 import com.mmcdole.kivo.core.auth.AddressChange
 import com.mmcdole.kivo.core.auth.NetworkEpoch
@@ -803,6 +804,21 @@ class DownloadsTest {
         assertTrue(h.downloads.files(id).none { it.name == "part-0.m4v" })
     }
 
+    @Test
+    fun aDownloadsKindIsTheWorksAsStored() = runTest {
+        val h = Harness(this)
+        h.connect()
+        val id = h.downloads.download(DownloadRequest("w1"))
+        advanceUntilIdle()
+        assertEquals(WorkKind.Movie, h.item()?.kind)
+        assertEquals(DownloadQuality.High, h.item()?.quality)
+        h.driver.execute(null, "UPDATE download SET kind = 'podcast', quality = 'lossless' WHERE id = '$id'", 0)
+        h.downloads.sync()
+        advanceUntilIdle()
+        assertEquals(WorkKind.Unknown, h.item()?.kind, "a kind this version doesn't know still lists")
+        assertNull(h.item()?.quality)
+    }
+
     // Migration (downloads): remove after every client has updated past this release.
     @Test
     fun anEarlierVersionsDownloadPlaysOnAtItsQualityNow() = runTest {
@@ -818,7 +834,7 @@ class DownloadsTest {
         )
         val item = h.item()
         assertEquals(DownloadStatus.Ready, item?.status)
-        assertEquals("standard", item?.quality)
+        assertEquals(DownloadQuality.Standard, item?.quality)
         assertEquals(true, item?.sizeExact)
         assertNotNull(h.downloads.playable("w1"), "it plays from its files")
         assertEquals("""{"state":"queued","delivery":"conversion","sizeExact":false}""", withSizeExact("""{"state":"queued","delivery":"conversion"}"""))
@@ -1374,8 +1390,8 @@ class DownloadsTest {
     @Test
     fun anEarlierVersionsQualityIsNamedAsItsQualityNow() {
         val en = Display()
-        assertEquals("High", en.downloadQuality("1080p-high"))
-        assertEquals("Standard", en.downloadQuality("480p"))
+        assertEquals("High", en.downloadQuality(DownloadQuality.parseOrNull("1080p-high")!!))
+        assertEquals("Standard", en.downloadQuality(DownloadQuality.parseOrNull("480p")!!))
     }
 }
 

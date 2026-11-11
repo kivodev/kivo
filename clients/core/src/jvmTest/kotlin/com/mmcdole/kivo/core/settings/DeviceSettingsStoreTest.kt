@@ -70,7 +70,7 @@ class DeviceSettingsStoreTest {
         assertEquals(DownloadQuality.Standard, phone.values.first().downloadQuality)
         phone.update { it.copy(downloadQuality = DownloadQuality.Original) }
         assertEquals(DownloadQuality.Original, phone.values.first().downloadQuality)
-        for (platform in listOf("iPad", "androidTv", "appleTv")) assertEquals(DownloadQuality.High, DownloadQuality.defaultOn(platform), platform)
+        for (platform in listOf(ClientPlatform.IPad, ClientPlatform.AndroidTv, ClientPlatform.AppleTv)) assertEquals(DownloadQuality.High, DownloadQuality.defaultOn(platform), platform.value)
         assertEquals(DownloadQuality.Standard, DownloadQuality.defaultOn(ClientPlatform.AndroidPhone))
     }
 

@@ -1,5 +1,6 @@
 package com.mmcdole.kivo.core.auth
 
+import com.mmcdole.kivo.api.models.ClientPlatform
 import com.mmcdole.kivo.core.FakeServer
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -9,7 +10,7 @@ import kotlin.test.assertTrue
 private data class Identity(
     override val app: String = "kivo-android",
     override val appVersion: String = "0.3.0+78",
-    override val platform: String = "androidTv",
+    override val platform: ClientPlatform = ClientPlatform.AndroidTv,
     override val osVersion: String = "14",
     override val deviceModel: String = "SHIELD Android TV",
 ) : ClientIdentity

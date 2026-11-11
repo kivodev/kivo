@@ -2,6 +2,7 @@ package com.mmcdole.kivo.core.session
 
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.mmcdole.kivo.api.models.CastToken
+import com.mmcdole.kivo.api.models.ClientPlatform
 import com.mmcdole.kivo.api.models.CurrentUser
 import com.mmcdole.kivo.api.models.DownloadEstimateList
 import com.mmcdole.kivo.api.models.Library
@@ -166,7 +167,7 @@ private class Disk(override val folder: String) : DownloadDisk {
 
 private class Identity(override val appVersion: String) : ClientIdentity {
     override val app = "kivo-android"
-    override val platform = "androidTv"
+    override val platform = ClientPlatform.AndroidTv
     override val osVersion = "14"
     override val deviceModel = "SHIELD Android TV"
 }
