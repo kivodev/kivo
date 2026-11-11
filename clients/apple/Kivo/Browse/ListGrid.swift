@@ -164,11 +164,11 @@ struct ListGrid: View {
 
     /// "12 titles · Custom order", the sort opening the sort menu.
     private func countLine(_ total: Int, sort: GridModel.Sort<ListSort>) -> some View {
-        HStack(spacing: KivoTokens.spacing * 1.5) {
-            Text(total == 1 ? String(localized: "1 title") : String(localized: "\(total.formatted()) titles"))
-            Text("·")
-            SortMenu(sorts: Self.sorts, selection: Binding(get: { sort }, set: choose))
-        }
+        CountAndSort(
+            count: total == 1 ? String(localized: "1 title") : String(localized: "\(total.formatted()) titles"),
+            sorts: Self.sorts,
+            selection: Binding(get: { sort }, set: choose)
+        )
         .frame(minHeight: 32)
         .font(.footnote)
         .foregroundStyle(palette.textMuted)

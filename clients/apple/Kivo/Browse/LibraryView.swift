@@ -137,12 +137,12 @@ struct LibraryView: View {
     /// "1,996 movies · A–Z", so the count and sort are always in view; the
     /// sort opens the sort menu.
     private var countLine: some View {
-        HStack(spacing: KivoTokens.spacing * 1.5) {
+        Group {
             if let total = model.paged.total {
-                Text(model.noun(total))
                 if model.state.tab == .titles {
-                    Text("·")
-                    sortMenu
+                    CountAndSort(count: model.noun(total), sorts: model.sorts, selection: Binding(get: { model.sort }, set: { model.choose(sort: $0.value) }))
+                } else {
+                    Text(model.noun(total))
                 }
             }
         }
@@ -262,10 +262,6 @@ struct LibraryView: View {
                 }
             }
         }
-    }
-
-    private var sortMenu: some View {
-        SortMenu(sorts: model.sorts, selection: Binding(get: { model.sort }, set: { model.choose(sort: $0.value) }))
     }
 }
 
