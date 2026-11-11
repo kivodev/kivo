@@ -57,49 +57,43 @@ func (s *planner) accelerators(cpu bool) ([]media.Caps, Reason) {
 	return accel, ""
 }
 
-// encoders lists the codecs a video transcode may produce. H.264 is always
-// available, on an accelerator or the CPU. HEVC needs an accelerator,
-// because the CPU's encoder is too slow for playback.
-func (s *planner) encoders(cpu bool) []media.Codec {
-	out := []media.Codec{media.H264}
+// encoders lists what a video transcode may be encoded on: the CPU's
+// H.264, and each accelerator's codecs. The CPU's HEVC isn't listed,
+// because it's too slow for playback.
+func (s *planner) encoders(cpu bool) []Encoder {
+	out := []Encoder{{Codec: media.H264, ToneMap: true, BurnIn: true}}
 	accel, _ := s.accelerators(cpu)
-	if slices.ContainsFunc(accel, func(a media.Caps) bool { _, ok := a.Encoder(media.HEVC); return ok }) {
-		out = append(out, media.HEVC)
+	for _, a := range accel {
+		for _, e := range a.Encoders {
+			out = append(out, Encoder{Codec: e.Codec, ToneMap: a.ToneMap != "", BurnIn: a.BurnIn != ""})
+		}
 	}
 	return out
 }
 
-// chooseAccelerator chooses the encoder for a play's or a download's video
-// transcode, if it has one, and records it on the decision's video track.
-// It picks the best accelerator whose test passed the codec, plus tone
-// mapping and subtitle drawing when the job needs them. Otherwise it falls
-// back to the CPU with H.264, and records the reason when the server has
-// an accelerator.
+// chooseAccelerator names the device for a play's or a download's video
+// transcode, if it has one, on the decision's video track. It's the best
+// accelerator whose test passed the decided codec, plus tone mapping and
+// subtitle drawing when the job needs them. Otherwise it's the CPU, with
+// the reason when the server has an accelerator.
 func (s *planner) chooseAccelerator(c *choice) {
 	i := slices.IndexFunc(c.decision.Tracks, func(t TrackDecision) bool { return t.Type == media.Video && t.Selected && t.Transcoded() })
 	if i < 0 {
 		return
 	}
 	t, v := &c.decision.Tracks[i], c.decision.Tracks[i].Video
-	burnIn := c.decision.burned()
 	accel, why := s.accelerators(c.cpu)
-	for _, codec := range []media.Codec{v.Codec, media.H264} {
-		for _, a := range accel {
-			if _, ok := a.Encoder(codec); !ok || v.HDR == media.ToneMap && a.ToneMap == "" || burnIn && a.BurnIn == "" {
-				continue
-			}
-			if codec != v.Codec {
-				v.Codec, v.Profile = media.H264, "high"
-			}
-			t.Accelerator, t.Encoder, t.SoftwareReason, t.Codec = a.Accelerator, a.Name, "", v.Codec
+	for _, a := range accel {
+		e := Encoder{Codec: v.Codec, ToneMap: a.ToneMap != "", BurnIn: a.BurnIn != ""}
+		if _, ok := a.Encoder(v.Codec); ok && e.does(v.Codec, v.HDR == media.ToneMap, c.decision.burned()) {
+			t.Accelerator, t.Encoder, t.SoftwareReason = a.Accelerator, a.Name, ""
 			return
 		}
 	}
 	if why == "" && len(accel) > 0 {
 		why = ReasonAcceleratorUnsupported
 	}
-	v.Codec, v.Profile = media.H264, "high"
-	t.Accelerator, t.Encoder, t.SoftwareReason, t.Codec = "", "CPU", why, v.Codec
+	t.Accelerator, t.Encoder, t.SoftwareReason = "", "CPU", why
 }
 
 // acceleratorFailed records an accelerator failing a play or a download,

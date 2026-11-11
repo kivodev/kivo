@@ -518,9 +518,9 @@ func (s *Service) open(ctx context.Context, pl *play) error {
 }
 
 // transcodeWithFallback runs a play's or a download's transcode. If the
-// accelerator is busy or fails as the job starts, the failure is recorded
-// and the job runs again on the CPU. The reason goes on the decision's
-// video track.
+// accelerator is busy or fails as the job starts, the failure is recorded,
+// the choice is decided again for the CPU, and the job runs again. The
+// reason goes on the decision's video track.
 func (s *planner) transcodeWithFallback(ctx context.Context, c *choice, run func(transcode.Spec) error) error {
 	// try chooses the encoder for the video, if it transcodes video, and
 	// runs the transcode the decision describes.
@@ -539,6 +539,8 @@ func (s *planner) transcodeWithFallback(ctx context.Context, c *choice, run func
 	// The retry's chooseAccelerator clears the accelerator, so it's read first.
 	s.acceleratorFailed(c, c.accelerator(), err)
 	c.cpu = true
+	c.input.Encoders = s.encoders(true)
+	c.decision = Decide(c.input)
 	return try()
 }
 

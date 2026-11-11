@@ -1125,6 +1125,33 @@ func TestABusyAcceleratorFallsBackToTheCPU(t *testing.T) {
 	}
 }
 
+// A transcode that ends up H.264, because no accelerator both encodes HEVC
+// and does the job, is sized for the client's H.264.
+func TestAnH264TranscodeIsSizedForH264(t *testing.T) {
+	f := newFixture(t, 0)
+	noToneMap := qsv
+	noToneMap.ToneMap = ""
+	f.accel.caps = media.Capabilities{Tested: true, Accelerators: []media.Caps{noToneMap}, CPU: cpu}
+	caps := alike([]string{"mp4"}, true, []VideoEntry{
+		{Codec: "h264", Profiles: []string{"High"}, MaxBitDepth: 8, MaxWidth: 1280, MaxHeight: 720, MaxBitrate: 5_000_000},
+		{Codec: "hevc", Profiles: []string{"Main"}, MaxBitDepth: 8, MaxWidth: 3840, MaxHeight: 2160},
+	}, browser.Audio)
+	want := media.VideoRendition{Codec: media.H264, Profile: "high", BitDepth: 8, Width: 1280, Height: 720, Bitrate: 5_000_000, HDR: media.ToneMap}
+	m := f.hdrMovie("Dune")
+	s, err := f.svc.Start(ctx, f.p, f.v, StartRequest{Work: m.Work, Caps: caps, ClientIP: lan})
+	if v, _ := s.Decision.Selected("video"); err != nil || *v.Video != want || v.Codec != media.H264 || f.media.last().Video != want {
+		t.Fatalf("HDR where the accelerator can't tone-map: %+v %v; the job %+v", v.Video, err, f.media.last().Video)
+	}
+
+	// The same after a busy accelerator sends an HEVC transcode to the CPU.
+	f.accel.caps = media.Capabilities{Tested: true, Accelerators: []media.Caps{qsv}, CPU: cpu}
+	f.media.busy[qsv.Accelerator] = true
+	s, err = f.svc.Start(ctx, f.p, f.v, StartRequest{Work: f.hdrMovie("Arrival").Work, Caps: caps, ClientIP: lan})
+	if v, _ := s.Decision.Selected("video"); err != nil || *v.Video != want || v.Codec != media.H264 || v.SoftwareReason != ReasonAcceleratorFailed || f.media.last().Video != want {
+		t.Fatalf("busy accelerator: %+v %+v %v; the job %+v", v, v.Video, err, f.media.last().Video)
+	}
+}
+
 func TestUnreadableSourceIsRefused(t *testing.T) {
 	f := newFixture(t, 0)
 	f.media.fail = media.ErrSourceUnreadable
