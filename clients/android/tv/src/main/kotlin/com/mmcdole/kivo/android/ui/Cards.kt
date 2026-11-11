@@ -80,6 +80,7 @@ import com.mmcdole.kivo.api.models.CollectionSummary
 import com.mmcdole.kivo.api.models.ImageRef
 import com.mmcdole.kivo.api.models.MatchState
 import com.mmcdole.kivo.api.models.MovieInfo
+import com.mmcdole.kivo.api.models.Trailer
 import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.data.CreditRole
@@ -267,7 +268,9 @@ fun labelledTitle(title: String, movie: MovieInfo?): String = movie?.edition?.le
  * with progress, a played check or unplayed count, an episode's code, at
  * most one status badge; the title and a line under it.
  * Focus adds nothing but the light and scale. A long press of OK, or the
- * Menu key, opens its menu. A null [work], one still loading, is the bare
+ * Menu key, opens its menu. [mark] is a short mark at the artwork's bottom
+ * end, such as a trailer's running time, and [caption] the line under the
+ * title in place of the kind's own. A null [work], one still loading, is the bare
  * card: focusable, so a grid scrolls on into it, and keeping focus as its
  * work arrives.
  */
@@ -278,6 +281,8 @@ fun WorkCard(
     width: Dp,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    mark: String? = null,
+    caption: String? = null,
 ) {
     val menu = LocalWorkMenu.current
     val title = work?.let(::cardTitle).orEmpty()
@@ -293,15 +298,59 @@ fun WorkCard(
             if (work != null) {
                 ArtworkImage(cardImage(work, shape), title, width)
                 CardOverlays(work, shape)
+                if (mark != null) CardMark(mark, Alignment.BottomEnd)
             }
         }
-        if (work != null) WorkCaption(work, title, focus)
+        if (work != null) WorkCaption(work, title, focus, caption)
+    }
+}
+
+/** A short mark on a card's artwork. */
+@Composable
+private fun BoxScope.CardMark(text: String, alignment: Alignment) {
+    val colors = Kivo.colors
+    Text(
+        text,
+        style = TvType.smallStrong,
+        color = colors.onBadge,
+        modifier = Modifier
+            .align(alignment)
+            .padding(Kivo.space(2))
+            .clip(RoundedCornerShape(KivoTokens.Radius.sm))
+            .background(colors.badge)
+            .padding(horizontal = Kivo.space(1)),
+    )
+}
+
+/**
+ * A trailer on YouTube: its thumbnail, marked as leaving for YouTube before
+ * it's opened, then its title. [onClick] opens it there.
+ */
+@Composable
+fun TrailerCard(trailer: Trailer, width: Dp, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val focus = rememberCardFocus()
+    Column(Modifier.width(width).raisedOnFocus()) {
+        CardSurface(
+            onClick = onClick,
+            onLongClick = null,
+            modifier = modifier.testTag("trailer:${trailer.title}").aspectRatio(CardShape.Landscape.aspect),
+            focus = focus,
+        ) {
+            ArtworkImage(trailer.image, trailer.title, width)
+            CardMark("YouTube ↗", Alignment.BottomStart)
+        }
+        val colors = Kivo.colors
+        Column(Modifier.cardCaption(focus)) {
+            Spacer(Modifier.height(CaptionGap))
+            Text(trailer.title, style = TvType.smallStrong, color = colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(stringResource(R.string.opens_in_youtube), style = TvType.small, color = colors.textMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
     }
 }
 
 /** Apart from [WorkCard], so its captions arriving recomposes only them. */
 @Composable
-private fun WorkCaption(work: WorkSummary, title: String, focus: CardFocus) {
+private fun WorkCaption(work: WorkSummary, title: String, focus: CardFocus, caption: String?) {
     val shown = LocalCaptionsShown.current
     val room = shown?.let {
         with(LocalDensity.current) { CaptionGap + TvType.smallStrong.lineHeight.toDp() + TvType.small.lineHeight.toDp() }
@@ -314,7 +363,7 @@ private fun WorkCaption(work: WorkSummary, title: String, focus: CardFocus) {
     Column(Modifier.cardCaption(focus).then(if (room != null) Modifier.height(room) else Modifier)) {
         Spacer(Modifier.height(CaptionGap))
         Text(title, style = TvType.smallStrong, color = colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        cardSubtitle(work)?.let {
+        (caption ?: cardSubtitle(work))?.let {
             Text(it, style = TvType.small, color = colors.textMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }

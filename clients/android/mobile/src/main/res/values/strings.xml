@@ -194,7 +194,6 @@
     <string name="mobile_automatic_named">Automatic (%1$s)</string>
     <string name="mobile_off">Off</string>
     <string name="mobile_more">More</string>
-    <string name="mobile_trailer">Trailer</string>
     <string name="mobile_less">Less</string>
     <string name="mobile_season_n">Season %1$d</string>
     <string name="mobile_seasons">Seasons</string>
@@ -202,6 +201,9 @@
         <item quantity="one">%1$,d unwatched</item>
         <item quantity="other">%1$,d unwatched</item>
     </plurals>
+    <string name="mobile_trailers">Trailers</string>
+    <string name="mobile_in_your_library">In your library</string>
+    <string name="mobile_opens_in_youtube">Opens in YouTube</string>
     <string name="mobile_cast_and_crew">Cast &amp; Crew</string>
     <string name="mobile_role_actor">Actor</string>
     <string name="mobile_role_director">Director</string>

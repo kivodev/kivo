@@ -111,8 +111,9 @@ struct SeriesDetail: View {
             } else if seasonsProblem == nil {
                 EpisodeRowSkeletons(count: (season ?? seasonId.flatMap { server.session.library.known(id: $0) })?.season?.episodeCount?.intValue)
             }
+            TrailersRow(work: series)
             CastRow(credits: series.credits)
-            CardRow(title: String(localized: "Extras"), works: series.extras)
+            CardRow(title: String(localized: "Extras"), works: series.otherExtras())
             Color.clear.frame(height: KivoTokens.spacing * 6).detailRow()
         } actions: {
             UserStateMenuItems(work: series)
