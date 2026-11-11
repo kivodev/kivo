@@ -137,12 +137,9 @@ internal class Servers {
         routes["$host $method $path"] = answer
     }
 
-    /** The session tokens the servers hold, to prove themselves to a probe with. */
-    var tokens: () -> Collection<String> = { emptyList() }
-
     /** A server at [host] that says it's [info], and who the session is for. */
     fun server(host: String, info: ServerInfo) {
-        on(host, "GET", "/api/v1/server") { json(ServerInfo.serializer(), info.copy(proof = proofOf(it, info.id, tokens()))) }
+        on(host, "GET", "/api/v1/server") { json(ServerInfo.serializer(), info.copy(proof = proofOf(it, info.id))) }
         on(host, "GET", "/api/v1/users/me") { json(CurrentUser.serializer(), anna) }
     }
 }
@@ -200,10 +197,6 @@ internal class Harness(scope: TestScope, withDownloads: Boolean = false, appVers
     val servers = Servers()
     val device = TestDevice(withDownloads, appVersion)
     val core = KivoClient(device, servers.engine, scope.backgroundScope)
-
-    init {
-        servers.tokens = { device.secureStore.values.values }
-    }
 }
 
 class KivoSessionTest {
@@ -369,7 +362,7 @@ class KivoSessionTest {
             routing {
                 get("/api/v1/server") {
                     val q = call.request.queryParameters
-                    val proof = proofOf(q["challenge"], q["probeId"], call.request.headers[HttpHeaders.Host].orEmpty(), "server-1", listOf("tok"))
+                    val proof = proofOf(q["challenge"], call.request.headers[HttpHeaders.Host].orEmpty(), "server-1")
                     val info = release(version.get(), minAppVersion = "0.3.0").copy(proof = proof)
                     call.respondText(kivoJson.encodeToString(ServerInfo.serializer(), info), ContentType.Application.Json)
                 }

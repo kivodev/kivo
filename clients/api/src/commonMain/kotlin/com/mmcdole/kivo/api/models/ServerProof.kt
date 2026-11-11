@@ -29,9 +29,10 @@ import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
 
 /**
- * The server's proof, to an app that holds one of its sessions, of where the app's probe reached it. `mac` is HMAC-SHA256, keyed by the session's token hash (SHA-256 of the token's body after `kivo_s_`, decoded), over `kivo-probe-v1`, then the challenge, the server's `id` and `host`, each after its length as two bytes big-endian, then one byte, 1 when `local`. 
+ * The server's proof of where the app's probe reached it. `signature` is Ed25519, by the server's identity key, over `kivo-probe-v2`, then the challenge, the server's `id` and `host`, each after its length as two bytes big-endian, then one byte, 1 when `local`. 
  *
- * @param mac Base64url without padding.
+ * @param signature Base64url without padding.
+ * @param key The server's Ed25519 public key, base64url without padding, which an app that has none yet keeps. 
  * @param host The host the probe reached, as its `Host` header, or a trusted proxy's `X-Forwarded-Host`, names it.
  * @param local Whether the probe came from a local address, after the trusted proxies, as the `localNetworks` setting defines one. 
  */
@@ -40,7 +41,10 @@ import kotlinx.serialization.encoding.*
 data class ServerProof (
 
     /* Base64url without padding. */
-    @SerialName(value = "mac") @Required val mac: kotlin.String,
+    @SerialName(value = "signature") @Required val signature: kotlin.String,
+
+    /* The server's Ed25519 public key, base64url without padding, which an app that has none yet keeps.  */
+    @SerialName(value = "key") @Required val key: kotlin.String,
 
     /* The host the probe reached, as its `Host` header, or a trusted proxy's `X-Forwarded-Host`, names it. */
     @SerialName(value = "host") @Required val host: kotlin.String,

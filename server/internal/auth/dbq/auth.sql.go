@@ -427,16 +427,15 @@ func (q *Queries) InsertPassword(ctx context.Context, arg InsertPasswordParams) 
 }
 
 const insertSession = `-- name: InsertSession :exec
-INSERT INTO session (id, token_hash, probe_id, user_id, kind, name, platform, client_id, created_at, last_used_at,
+INSERT INTO session (id, token_hash, user_id, kind, name, platform, client_id, created_at, last_used_at,
   app, app_version, os_version, device_model)
-VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, NULLIF(CAST(?8 AS TEXT), ''), ?9, ?9,
-  ?10, ?11, ?12, ?13)
+VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULLIF(CAST(?7 AS TEXT), ''), ?8, ?8,
+  ?9, ?10, ?11, ?12)
 `
 
 type InsertSessionParams struct {
 	ID          id.ID
 	TokenHash   []byte
-	ProbeID     []byte
 	UserID      id.ID
 	Kind        string
 	Name        string
@@ -454,7 +453,6 @@ func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) er
 	_, err := q.db.ExecContext(ctx, insertSession,
 		arg.ID,
 		arg.TokenHash,
-		arg.ProbeID,
 		arg.UserID,
 		arg.Kind,
 		arg.Name,
@@ -580,19 +578,6 @@ func (q *Queries) PendingInvites(ctx context.Context, now int64) ([]PendingInvit
 		return nil, err
 	}
 	return items, nil
-}
-
-const probeKey = `-- name: ProbeKey :one
-SELECT token_hash FROM session WHERE probe_id = ?1
-`
-
-// The token hash of the session with this probe ID, which keys the
-// server's proof to a probe from its app.
-func (q *Queries) ProbeKey(ctx context.Context, probeID []byte) ([]byte, error) {
-	row := q.db.QueryRowContext(ctx, probeKey, probeID)
-	var token_hash []byte
-	err := row.Scan(&token_hash)
-	return token_hash, err
 }
 
 const session = `-- name: Session :one

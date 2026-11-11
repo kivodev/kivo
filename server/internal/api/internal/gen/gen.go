@@ -4358,7 +4358,7 @@ type ServerInfo struct {
 	// NewRelease Admins only, once the daily check finds a release newer than `version`.
 	NewRelease *NewRelease `json:"newRelease,omitempty"`
 
-	// Proof With `challenge` and the `probeId` of a session the server holds.
+	// Proof With `challenge`.
 	Proof *ServerProof `json:"proof,omitempty"`
 
 	// PublicURL Signed in, when one is set (the `publicUrl` setting), the address to use away from home.
@@ -4400,22 +4400,25 @@ type ServerProblemList struct {
 	Items []ServerProblem `json:"items"`
 }
 
-// ServerProof The server's proof, to an app that holds one of its sessions, of
-// where the app's probe reached it. `mac` is HMAC-SHA256, keyed by the
-// session's token hash (SHA-256 of the token's body after `kivo_s_`,
-// decoded), over `kivo-probe-v1`, then the challenge, the server's
-// `id` and `host`, each after its length as two bytes big-endian,
-// then one byte, 1 when `local`.
+// ServerProof The server's proof of where the app's probe reached it.
+// `signature` is Ed25519, by the server's identity key, over
+// `kivo-probe-v2`, then the challenge, the server's `id` and `host`,
+// each after its length as two bytes big-endian, then one byte, 1
+// when `local`.
 type ServerProof struct {
 	// Host The host the probe reached, as its `Host` header, or a trusted proxy's `X-Forwarded-Host`, names it.
 	Host string `json:"host"`
+
+	// Key The server's Ed25519 public key, base64url without padding,
+	// which an app that has none yet keeps.
+	Key string `json:"key"`
 
 	// Local Whether the probe came from a local address, after the trusted
 	// proxies, as the `localNetworks` setting defines one.
 	Local bool `json:"local"`
 
-	// Mac Base64url without padding.
-	Mac string `json:"mac"`
+	// Signature Base64url without padding.
+	Signature string `json:"signature"`
 }
 
 // Session A browser or app a user is signed in on.
@@ -4440,6 +4443,11 @@ type Session struct {
 
 	// Name The client's name, such as "Living Room"; empty when a browser gave none.
 	Name string `json:"name"`
+
+	// ServerKey With `token`: the server's Ed25519 public key, base64url without
+	// padding, made on its first start, which signs its `proof` to a
+	// probe. The app keeps it to check the server by.
+	ServerKey *string `json:"serverKey,omitempty"`
 
 	// Token App sessions only, and only in the response that created the session.
 	Token *string `json:"token,omitempty"`
@@ -5739,12 +5747,6 @@ type SearchWorksParams struct {
 type GetServerParams struct {
 	// Challenge 16 to 64 random bytes, new for each probe, base64url without padding.
 	Challenge *string `form:"challenge,omitempty" json:"challenge,omitempty"`
-
-	// ProbeID The app's session's probe ID, base64url without padding: the
-	// first 16 bytes of SHA-256("kivo-probe-id" ‖ the session's token
-	// hash), the hash being SHA-256 of the token's body after
-	// `kivo_s_`, decoded.
-	ProbeID *string `form:"probeId,omitempty" json:"probeId,omitempty"`
 }
 
 // DeleteOtherSessionsParams defines parameters for DeleteOtherSessions.
@@ -8567,19 +8569,6 @@ func (siw *ServerInterfaceWrapper) GetServer(w http.ResponseWriter, r *http.Requ
 			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "challenge"})
 		} else {
 			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "challenge", Err: err})
-		}
-		return
-	}
-
-	// ------------- Optional query parameter "probeId" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "probeId", r.URL.Query(), &params.ProbeID, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "probeId"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "probeId", Err: err})
 		}
 		return
 	}

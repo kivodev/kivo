@@ -34,7 +34,7 @@ fun TvRoot(graph: AppGraph, onExit: () -> Unit) {
         Box(Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }) {
             when (val s = state) {
                 AppState.Starting -> Loading()
-                is AppState.SignedOut -> SignInScreen(graph, s.server)
+                is AppState.SignedOut -> SignInScreen(graph, s.server, s.identityChanged)
                 is AppState.Unreachable -> UnreachableScreen(graph, s.server)
                 is AppState.SignedIn -> when (val signedIn = session?.takeIf { it.session === s.session }) {
                     null -> Loading()

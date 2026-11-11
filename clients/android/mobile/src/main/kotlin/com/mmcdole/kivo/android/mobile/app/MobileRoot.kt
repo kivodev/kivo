@@ -39,7 +39,7 @@ fun MobileRoot(graph: AppGraph) {
             val session by graph.session.collectAsStateWithLifecycle()
             when (val s = state) {
                 AppState.Starting -> Loading()
-                is AppState.SignedOut -> ViewModels(s) { SignInScreen(graph, s.server) }
+                is AppState.SignedOut -> ViewModels(s) { SignInScreen(graph, s.server, s.identityChanged) }
                 is AppState.Unreachable -> Message(stringResource(R.string.mobile_cant_reach, s.server.name), stringResource(R.string.mobile_cant_reach_saved_sentence)) {
                     Column {
                         Button(onClick = graph.core::retry) { Text(stringResource(R.string.mobile_retry)) }

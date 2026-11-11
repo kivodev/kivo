@@ -9,8 +9,13 @@ sealed interface AppState {
     /** Opening the server last signed in to, when there is one. */
     data object Starting : AppState
 
-    /** Signing in: to [server] when the session on it ended, else to one the person chooses. */
-    data class SignedOut(val server: SavedServer?) : AppState
+    /**
+     * Signing in: to [server] when the session on it ended, else to one the
+     * person chooses. [identityChanged] when it ended as the server answered
+     * without the key it gave at sign-in: it was set up again, or it isn't
+     * the server.
+     */
+    data class SignedOut(val server: SavedServer?, val identityChanged: Boolean = false) : AppState
 
     /** The saved server answers at none of its addresses, and the device keeps no downloads of it to open it for. */
     data class Unreachable(val server: SavedServer) : AppState

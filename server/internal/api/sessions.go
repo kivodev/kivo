@@ -22,11 +22,12 @@ func (h *handlers) CreateSession(ctx context.Context, req gen.CreateSessionReque
 
 // issued is a new session on the wire. A browser session gets the session
 // cookie and the client cookie. An app session gets its token, which is
-// shown only once.
+// shown only once, and the server's key.
 func (h *handlers) issued(ctx context.Context, is auth.IssuedSession) signInResponse {
 	out := signInResponse{body: session(is.Session, is.Session.ID)}
 	if is.Session.Kind != auth.SessionBrowser {
 		out.body.Token = &is.Token
+		out.body.ServerKey = ptr(h.serverKey())
 		return out
 	}
 	out.cookies = append(out.cookies, h.sessionCookie(ctx, is.Token))

@@ -71,9 +71,9 @@ export interface paths {
          *     Signed in, it also gets the quality ladder every client's quality
          *     menu shows, and an admin gets a newer release once one is out.
          *
-         *     An app that holds a session sends `challenge` and `probeId` before
-         *     it trusts a plain-HTTP address with its token, and the server
-         *     answers with its `proof` that it holds that session.
+         *     An app that holds a session sends `challenge` before it trusts a
+         *     plain-HTTP address with its token, and the server answers with its
+         *     `proof`, signed by the key it gave the app at sign-in.
          */
         get: operations["getServer"];
         put?: never;
@@ -2906,7 +2906,7 @@ export interface components {
              *     its bitrate as a `limit` quality's `maxBitrateBps`.
              */
             qualityLadder?: components["schemas"]["QualityRung"][];
-            /** @description With `challenge` and the `probeId` of a session the server holds. */
+            /** @description With `challenge`. */
             proof?: components["schemas"]["ServerProof"];
             /** @description Admins only, once the daily check finds a release newer than `version`. */
             newRelease?: components["schemas"]["NewRelease"];
@@ -2919,16 +2919,20 @@ export interface components {
             url: string;
         };
         /**
-         * @description The server's proof, to an app that holds one of its sessions, of
-         *     where the app's probe reached it. `mac` is HMAC-SHA256, keyed by the
-         *     session's token hash (SHA-256 of the token's body after `kivo_s_`,
-         *     decoded), over `kivo-probe-v1`, then the challenge, the server's
-         *     `id` and `host`, each after its length as two bytes big-endian,
-         *     then one byte, 1 when `local`.
+         * @description The server's proof of where the app's probe reached it.
+         *     `signature` is Ed25519, by the server's identity key, over
+         *     `kivo-probe-v2`, then the challenge, the server's `id` and `host`,
+         *     each after its length as two bytes big-endian, then one byte, 1
+         *     when `local`.
          */
         ServerProof: {
             /** @description Base64url without padding. */
-            mac: string;
+            signature: string;
+            /**
+             * @description The server's Ed25519 public key, base64url without padding,
+             *     which an app that has none yet keeps.
+             */
+            key: string;
             /** @description The host the probe reached, as its `Host` header, or a trusted proxy's `X-Forwarded-Host`, names it. */
             host: string;
             /**
@@ -3152,6 +3156,12 @@ export interface components {
             current: boolean;
             /** @description App sessions only, and only in the response that created the session. */
             token?: string;
+            /**
+             * @description With `token`: the server's Ed25519 public key, base64url without
+             *     padding, made on its first start, which signs its `proof` to a
+             *     probe. The app keeps it to check the server by.
+             */
+            serverKey?: string;
         };
         SessionUpdate: {
             /** @description The client's new name. */
@@ -6014,13 +6024,6 @@ export interface operations {
             query?: {
                 /** @description 16 to 64 random bytes, new for each probe, base64url without padding. */
                 challenge?: string;
-                /**
-                 * @description The app's session's probe ID, base64url without padding: the
-                 *     first 16 bytes of SHA-256("kivo-probe-id" ‖ the session's token
-                 *     hash), the hash being SHA-256 of the token's body after
-                 *     `kivo_s_`, decoded.
-                 */
-                probeId?: string;
             };
             header?: never;
             path?: never;

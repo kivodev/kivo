@@ -24,9 +24,9 @@ ON CONFLICT (user_id, kind) DO UPDATE SET secret = excluded.secret, updated_at =
 
 -- name: InsertSession :exec
 -- An empty @client_id is none.
-INSERT INTO session (id, token_hash, probe_id, user_id, kind, name, platform, client_id, created_at, last_used_at,
+INSERT INTO session (id, token_hash, user_id, kind, name, platform, client_id, created_at, last_used_at,
   app, app_version, os_version, device_model)
-VALUES (@id, @token_hash, @probe_id, @user_id, @kind, @name, @platform, NULLIF(CAST(@client_id AS TEXT), ''), @now, @now,
+VALUES (@id, @token_hash, @user_id, @kind, @name, @platform, NULLIF(CAST(@client_id AS TEXT), ''), @now, @now,
   @app, @app_version, @os_version, @device_model);
 
 -- name: DeleteClientSession :exec
@@ -48,11 +48,6 @@ WHERE s.token_hash = @token_hash AND u.disabled = 0;
 SELECT k.id, k.created_by, k.name, k.last_used_at
 FROM api_key k JOIN user u ON u.id = k.created_by
 WHERE k.token_hash = @token_hash AND u.disabled = 0;
-
--- name: ProbeKey :one
--- The token hash of the session with this probe ID, which keys the
--- server's proof to a probe from its app.
-SELECT token_hash FROM session WHERE probe_id = @probe_id;
 
 -- name: SessionAlive :one
 -- A session whose user isn't disabled.

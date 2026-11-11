@@ -87,7 +87,7 @@ struct RootView: View {
             case .starting:
                 ProgressView()
             case let .signedOut(signedOut):
-                SignInView(saved: signedOut.server)
+                SignInView(saved: signedOut.server, identityChanged: signedOut.identityChanged)
             case let .unreachable(unreachable):
                 UnreachableServerView(server: unreachable.server)
             case .signedIn:

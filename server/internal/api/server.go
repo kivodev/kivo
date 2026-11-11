@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"crypto/ed25519"
 	"encoding/base64"
 	"net/netip"
 
@@ -46,31 +47,30 @@ func (h *handlers) GetServer(ctx context.Context, req gen.GetServerRequestObject
 	return gen.GetServer200JSONResponse(out), nil
 }
 
-// proof is the server's answer to a probe's challenge, for the app whose
-// session has the probe's ID. It is nil if the probe lacks an ID or a
-// challenge, or if no session has the ID.
+// proof is the server's answer to a probe's challenge, signed by its
+// identity key. It is nil if the probe has no challenge.
 func (h *handlers) proof(ctx context.Context, p gen.GetServerParams) (*gen.ServerProof, error) {
-	if p.Challenge == nil && p.ProbeID == nil {
+	if p.Challenge == nil {
 		return nil, nil
 	}
-	challenge, err := base64.RawURLEncoding.DecodeString(deref(p.Challenge))
+	challenge, err := base64.RawURLEncoding.DecodeString(*p.Challenge)
 	if err != nil || len(challenge) < 16 || len(challenge) > 64 {
 		return nil, invalid("challenge: 16 to 64 bytes, base64url without padding", field("challenge", "invalid"))
-	}
-	probe, err := base64.RawURLEncoding.DecodeString(deref(p.ProbeID))
-	if err != nil || len(probe) != auth.ProbeIDLen {
-		return nil, invalid("probeId: 16 bytes, base64url without padding", field("probeId", "invalid"))
 	}
 	req := requestOf(ctx)
 	if len(req.host) > maxProbeHost {
 		return nil, nil
 	}
 	claim := auth.ProbeClaim{Challenge: challenge, ServerID: h.deps.Settings.ServerID().String(), Host: req.host, Local: h.deps.Settings.Get().IsLocal(req.ip)}
-	mac, ok, err := h.deps.Auth.Prove(ctx, probe, claim)
-	if err != nil || !ok {
-		return nil, err
-	}
-	return &gen.ServerProof{Mac: base64.RawURLEncoding.EncodeToString(mac), Host: claim.Host, Local: claim.Local}, nil
+	return &gen.ServerProof{
+		Signature: base64.RawURLEncoding.EncodeToString(auth.SignProbe(h.deps.Settings.ServerKey(), claim)),
+		Key:       h.serverKey(), Host: claim.Host, Local: claim.Local,
+	}, nil
+}
+
+// serverKey is the server's public identity key, as an app keeps it.
+func (h *handlers) serverKey() string {
+	return base64.RawURLEncoding.EncodeToString(h.deps.Settings.ServerKey().Public().(ed25519.PublicKey))
 }
 
 // maxProbeHost is the longest host a proof names, which is a DNS name and

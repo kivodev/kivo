@@ -40,6 +40,7 @@ import kotlinx.serialization.encoding.*
  * @param current Whether this is the caller's own session.
  * @param device The app and device, as the session's requests last identified them; absent when they never did.
  * @param token App sessions only, and only in the response that created the session.
+ * @param serverKey With `token`: the server's Ed25519 public key, base64url without padding, made on its first start, which signs its `proof` to a probe. The app keeps it to check the server by. 
  */
 @Serializable
 
@@ -65,7 +66,10 @@ data class Session (
     @SerialName(value = "device") val device: ClientDevice? = null,
 
     /* App sessions only, and only in the response that created the session. */
-    @SerialName(value = "token") val token: kotlin.String? = null
+    @SerialName(value = "token") val token: kotlin.String? = null,
+
+    /* With `token`: the server's Ed25519 public key, base64url without padding, made on its first start, which signs its `proof` to a probe. The app keeps it to check the server by.  */
+    @SerialName(value = "serverKey") val serverKey: kotlin.String? = null
 
 ) {
 

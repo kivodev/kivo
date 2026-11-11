@@ -42,7 +42,7 @@ import kotlinx.serialization.encoding.*
  * @param localUrls Signed in: the server's addresses on its local networks, without container, VM or VPN interfaces (a VPN only when the asker is on it). The asker's own network comes first, then addresses in the `localNetworks` setting, then the rest. 
  * @param publicUrl Signed in, when one is set (the `publicUrl` setting), the address to use away from home.
  * @param qualityLadder Signed in: the quality menu's fixed ladder, highest first, which the quality menu, Home and remote quality and a user's remote limit offer below Auto and Original. A rung is chosen by sending its bitrate as a `limit` quality's `maxBitrateBps`. 
- * @param proof With `challenge` and the `probeId` of a session the server holds.
+ * @param proof With `challenge`.
  * @param newRelease Admins only, once the daily check finds a release newer than `version`.
  */
 @Serializable
@@ -73,7 +73,7 @@ data class ServerInfo (
     /* Signed in: the quality menu's fixed ladder, highest first, which the quality menu, Home and remote quality and a user's remote limit offer below Auto and Original. A rung is chosen by sending its bitrate as a `limit` quality's `maxBitrateBps`.  */
     @SerialName(value = "qualityLadder") val qualityLadder: kotlin.collections.List<QualityRung>? = null,
 
-    /* With `challenge` and the `probeId` of a session the server holds. */
+    /* With `challenge`. */
     @SerialName(value = "proof") val proof: ServerProof? = null,
 
     /* Admins only, once the daily check finds a release newer than `version`. */
