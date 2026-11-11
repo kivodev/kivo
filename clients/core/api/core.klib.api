@@ -656,6 +656,56 @@ sealed interface com.mmcdole.kivo.core.player/TrackShow { // com.mmcdole.kivo.co
     }
 }
 
+sealed interface com.mmcdole.kivo.core.session/AppState { // com.mmcdole.kivo.core.session/AppState|null[0]
+    final class SignedIn : com.mmcdole.kivo.core.session/AppState { // com.mmcdole.kivo.core.session/AppState.SignedIn|null[0]
+        constructor <init>(com.mmcdole.kivo.core.session/KivoSession) // com.mmcdole.kivo.core.session/AppState.SignedIn.<init>|<init>(com.mmcdole.kivo.core.session.KivoSession){}[0]
+
+        final val session // com.mmcdole.kivo.core.session/AppState.SignedIn.session|{}session[0]
+            final fun <get-session>(): com.mmcdole.kivo.core.session/KivoSession // com.mmcdole.kivo.core.session/AppState.SignedIn.session.<get-session>|<get-session>(){}[0]
+
+        final fun component1(): com.mmcdole.kivo.core.session/KivoSession // com.mmcdole.kivo.core.session/AppState.SignedIn.component1|component1(){}[0]
+        final fun copy(com.mmcdole.kivo.core.session/KivoSession = ...): com.mmcdole.kivo.core.session/AppState.SignedIn // com.mmcdole.kivo.core.session/AppState.SignedIn.copy|copy(com.mmcdole.kivo.core.session.KivoSession){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.session/AppState.SignedIn.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.session/AppState.SignedIn.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.mmcdole.kivo.core.session/AppState.SignedIn.toString|toString(){}[0]
+    }
+
+    final class SignedOut : com.mmcdole.kivo.core.session/AppState { // com.mmcdole.kivo.core.session/AppState.SignedOut|null[0]
+        constructor <init>(com.mmcdole.kivo.core.auth/SavedServer?) // com.mmcdole.kivo.core.session/AppState.SignedOut.<init>|<init>(com.mmcdole.kivo.core.auth.SavedServer?){}[0]
+
+        final val server // com.mmcdole.kivo.core.session/AppState.SignedOut.server|{}server[0]
+            final fun <get-server>(): com.mmcdole.kivo.core.auth/SavedServer? // com.mmcdole.kivo.core.session/AppState.SignedOut.server.<get-server>|<get-server>(){}[0]
+
+        final fun component1(): com.mmcdole.kivo.core.auth/SavedServer? // com.mmcdole.kivo.core.session/AppState.SignedOut.component1|component1(){}[0]
+        final fun copy(com.mmcdole.kivo.core.auth/SavedServer? = ...): com.mmcdole.kivo.core.session/AppState.SignedOut // com.mmcdole.kivo.core.session/AppState.SignedOut.copy|copy(com.mmcdole.kivo.core.auth.SavedServer?){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.session/AppState.SignedOut.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.session/AppState.SignedOut.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.mmcdole.kivo.core.session/AppState.SignedOut.toString|toString(){}[0]
+    }
+
+    final class Unreachable : com.mmcdole.kivo.core.session/AppState { // com.mmcdole.kivo.core.session/AppState.Unreachable|null[0]
+        constructor <init>(com.mmcdole.kivo.core.auth/SavedServer, kotlin/Boolean) // com.mmcdole.kivo.core.session/AppState.Unreachable.<init>|<init>(com.mmcdole.kivo.core.auth.SavedServer;kotlin.Boolean){}[0]
+
+        final val hasDownloads // com.mmcdole.kivo.core.session/AppState.Unreachable.hasDownloads|{}hasDownloads[0]
+            final fun <get-hasDownloads>(): kotlin/Boolean // com.mmcdole.kivo.core.session/AppState.Unreachable.hasDownloads.<get-hasDownloads>|<get-hasDownloads>(){}[0]
+        final val server // com.mmcdole.kivo.core.session/AppState.Unreachable.server|{}server[0]
+            final fun <get-server>(): com.mmcdole.kivo.core.auth/SavedServer // com.mmcdole.kivo.core.session/AppState.Unreachable.server.<get-server>|<get-server>(){}[0]
+
+        final fun component1(): com.mmcdole.kivo.core.auth/SavedServer // com.mmcdole.kivo.core.session/AppState.Unreachable.component1|component1(){}[0]
+        final fun component2(): kotlin/Boolean // com.mmcdole.kivo.core.session/AppState.Unreachable.component2|component2(){}[0]
+        final fun copy(com.mmcdole.kivo.core.auth/SavedServer = ..., kotlin/Boolean = ...): com.mmcdole.kivo.core.session/AppState.Unreachable // com.mmcdole.kivo.core.session/AppState.Unreachable.copy|copy(com.mmcdole.kivo.core.auth.SavedServer;kotlin.Boolean){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.session/AppState.Unreachable.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.session/AppState.Unreachable.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.mmcdole.kivo.core.session/AppState.Unreachable.toString|toString(){}[0]
+    }
+
+    final object Starting : com.mmcdole.kivo.core.session/AppState { // com.mmcdole.kivo.core.session/AppState.Starting|null[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.session/AppState.Starting.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.session/AppState.Starting.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.mmcdole.kivo.core.session/AppState.Starting.toString|toString(){}[0]
+    }
+}
+
 sealed interface com.mmcdole.kivo.core.session/LinkProgress { // com.mmcdole.kivo.core.session/LinkProgress|null[0]
     final class Failed : com.mmcdole.kivo.core.session/LinkProgress { // com.mmcdole.kivo.core.session/LinkProgress.Failed|null[0]
         constructor <init>(com.mmcdole.kivo.core/RequestProblem) // com.mmcdole.kivo.core.session/LinkProgress.Failed.<init>|<init>(com.mmcdole.kivo.core.RequestProblem){}[0]
@@ -1946,10 +1996,18 @@ final class com.mmcdole.kivo.core.session/KivoClient { // com.mmcdole.kivo.core.
         final fun <get-servers>(): kotlinx.coroutines.flow/Flow<kotlin.collections/List<com.mmcdole.kivo.core.auth/SavedServer>> // com.mmcdole.kivo.core.session/KivoClient.servers.<get-servers>|<get-servers>(){}[0]
     final val settings // com.mmcdole.kivo.core.session/KivoClient.settings|{}settings[0]
         final fun <get-settings>(): kotlinx.coroutines.flow/Flow<com.mmcdole.kivo.core.settings/DeviceSettings> // com.mmcdole.kivo.core.session/KivoClient.settings.<get-settings>|<get-settings>(){}[0]
+    final val state // com.mmcdole.kivo.core.session/KivoClient.state|{}state[0]
+        final fun <get-state>(): kotlinx.coroutines.flow/StateFlow<com.mmcdole.kivo.core.session/AppState> // com.mmcdole.kivo.core.session/KivoClient.state.<get-state>|<get-state>(){}[0]
 
+    final fun changeServer() // com.mmcdole.kivo.core.session/KivoClient.changeServer|changeServer(){}[0]
     final fun compatibility(com.mmcdole.kivo.api.models/ServerInfo): com.mmcdole.kivo.core/Compatibility // com.mmcdole.kivo.core.session/KivoClient.compatibility|compatibility(com.mmcdole.kivo.api.models.ServerInfo){}[0]
     final fun networkChanged(kotlin/Boolean, kotlin/Boolean) // com.mmcdole.kivo.core.session/KivoClient.networkChanged|networkChanged(kotlin.Boolean;kotlin.Boolean){}[0]
+    final fun openOffline() // com.mmcdole.kivo.core.session/KivoClient.openOffline|openOffline(){}[0]
+    final fun retry() // com.mmcdole.kivo.core.session/KivoClient.retry|retry(){}[0]
+    final fun setForeground(kotlin/Boolean) // com.mmcdole.kivo.core.session/KivoClient.setForeground|setForeground(kotlin.Boolean){}[0]
     final fun signInByLink(com.mmcdole.kivo.core.discovery/FoundServer, kotlin/String): kotlinx.coroutines.flow/Flow<com.mmcdole.kivo.core.session/LinkProgress> // com.mmcdole.kivo.core.session/KivoClient.signInByLink|signInByLink(com.mmcdole.kivo.core.discovery.FoundServer;kotlin.String){}[0]
+    final fun signedIn(com.mmcdole.kivo.core.session/KivoSession) // com.mmcdole.kivo.core.session/KivoClient.signedIn|signedIn(com.mmcdole.kivo.core.session.KivoSession){}[0]
+    final fun start() // com.mmcdole.kivo.core.session/KivoClient.start|start(){}[0]
     final fun transferChanged(com.mmcdole.kivo.core.downloads/TransferEvent) // com.mmcdole.kivo.core.session/KivoClient.transferChanged|transferChanged(com.mmcdole.kivo.core.downloads.TransferEvent){}[0]
     final suspend fun confirmDiscovered(kotlin/String, kotlin.collections/List<kotlin/String>, kotlin/Int, kotlin/Boolean, kotlin/String): com.mmcdole.kivo.core.discovery/FoundServer? // com.mmcdole.kivo.core.session/KivoClient.confirmDiscovered|confirmDiscovered(kotlin.String;kotlin.collections.List<kotlin.String>;kotlin.Int;kotlin.Boolean;kotlin.String){}[0]
     final suspend fun lastSignedIn(): com.mmcdole.kivo.core.auth/SavedServer? // com.mmcdole.kivo.core.session/KivoClient.lastSignedIn|lastSignedIn(){}[0]
@@ -1992,6 +2050,8 @@ final class com.mmcdole.kivo.core.session/KivoSession { // com.mmcdole.kivo.core
         final fun <get-playback>(): com.mmcdole.kivo.core.session/SessionPlayback // com.mmcdole.kivo.core.session/KivoSession.playback.<get-playback>|<get-playback>(){}[0]
     final val savedServer // com.mmcdole.kivo.core.session/KivoSession.savedServer|{}savedServer[0]
         final fun <get-savedServer>(): kotlinx.coroutines.flow/StateFlow<com.mmcdole.kivo.core.auth/SavedServer> // com.mmcdole.kivo.core.session/KivoSession.savedServer.<get-savedServer>|<get-savedServer>(){}[0]
+    final val state // com.mmcdole.kivo.core.session/KivoSession.state|{}state[0]
+        final fun <get-state>(): kotlinx.coroutines.flow/StateFlow<com.mmcdole.kivo.core.session/SessionState> // com.mmcdole.kivo.core.session/KivoSession.state.<get-state>|<get-state>(){}[0]
     final val unreachable // com.mmcdole.kivo.core.session/KivoSession.unreachable|{}unreachable[0]
         final fun <get-unreachable>(): kotlinx.coroutines.flow/StateFlow<kotlin/Boolean> // com.mmcdole.kivo.core.session/KivoSession.unreachable.<get-unreachable>|<get-unreachable>(){}[0]
     final val user // com.mmcdole.kivo.core.session/KivoSession.user|{}user[0]
@@ -2128,6 +2188,31 @@ final class com.mmcdole.kivo.core.session/SessionPlayback { // com.mmcdole.kivo.
     final suspend fun qualityLadder(): kotlin.collections/List<com.mmcdole.kivo.api.models/QualityRung> // com.mmcdole.kivo.core.session/SessionPlayback.qualityLadder|qualityLadder(){}[0]
     final suspend fun qualityMenu(): kotlin.collections/List<com.mmcdole.kivo.core.display/QualityOption> // com.mmcdole.kivo.core.session/SessionPlayback.qualityMenu|qualityMenu(){}[0]
     final suspend fun subtitleResults(com.mmcdole.kivo.api.models/Version): kotlin.collections/List<com.mmcdole.kivo.api.models/SubtitleResult> // com.mmcdole.kivo.core.session/SessionPlayback.subtitleResults|subtitleResults(com.mmcdole.kivo.api.models.Version){}[0]
+}
+
+final class com.mmcdole.kivo.core.session/SessionState { // com.mmcdole.kivo.core.session/SessionState|null[0]
+    constructor <init>(com.mmcdole.kivo.core.auth/SavedServer, com.mmcdole.kivo.core.auth/SignedInUser?, kotlin/Boolean, com.mmcdole.kivo.core/Compatibility, kotlin/String) // com.mmcdole.kivo.core.session/SessionState.<init>|<init>(com.mmcdole.kivo.core.auth.SavedServer;com.mmcdole.kivo.core.auth.SignedInUser?;kotlin.Boolean;com.mmcdole.kivo.core.Compatibility;kotlin.String){}[0]
+
+    final val address // com.mmcdole.kivo.core.session/SessionState.address|{}address[0]
+        final fun <get-address>(): kotlin/String // com.mmcdole.kivo.core.session/SessionState.address.<get-address>|<get-address>(){}[0]
+    final val compatibility // com.mmcdole.kivo.core.session/SessionState.compatibility|{}compatibility[0]
+        final fun <get-compatibility>(): com.mmcdole.kivo.core/Compatibility // com.mmcdole.kivo.core.session/SessionState.compatibility.<get-compatibility>|<get-compatibility>(){}[0]
+    final val server // com.mmcdole.kivo.core.session/SessionState.server|{}server[0]
+        final fun <get-server>(): com.mmcdole.kivo.core.auth/SavedServer // com.mmcdole.kivo.core.session/SessionState.server.<get-server>|<get-server>(){}[0]
+    final val unreachable // com.mmcdole.kivo.core.session/SessionState.unreachable|{}unreachable[0]
+        final fun <get-unreachable>(): kotlin/Boolean // com.mmcdole.kivo.core.session/SessionState.unreachable.<get-unreachable>|<get-unreachable>(){}[0]
+    final val user // com.mmcdole.kivo.core.session/SessionState.user|{}user[0]
+        final fun <get-user>(): com.mmcdole.kivo.core.auth/SignedInUser? // com.mmcdole.kivo.core.session/SessionState.user.<get-user>|<get-user>(){}[0]
+
+    final fun component1(): com.mmcdole.kivo.core.auth/SavedServer // com.mmcdole.kivo.core.session/SessionState.component1|component1(){}[0]
+    final fun component2(): com.mmcdole.kivo.core.auth/SignedInUser? // com.mmcdole.kivo.core.session/SessionState.component2|component2(){}[0]
+    final fun component3(): kotlin/Boolean // com.mmcdole.kivo.core.session/SessionState.component3|component3(){}[0]
+    final fun component4(): com.mmcdole.kivo.core/Compatibility // com.mmcdole.kivo.core.session/SessionState.component4|component4(){}[0]
+    final fun component5(): kotlin/String // com.mmcdole.kivo.core.session/SessionState.component5|component5(){}[0]
+    final fun copy(com.mmcdole.kivo.core.auth/SavedServer = ..., com.mmcdole.kivo.core.auth/SignedInUser? = ..., kotlin/Boolean = ..., com.mmcdole.kivo.core/Compatibility = ..., kotlin/String = ...): com.mmcdole.kivo.core.session/SessionState // com.mmcdole.kivo.core.session/SessionState.copy|copy(com.mmcdole.kivo.core.auth.SavedServer;com.mmcdole.kivo.core.auth.SignedInUser?;kotlin.Boolean;com.mmcdole.kivo.core.Compatibility;kotlin.String){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.session/SessionState.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.session/SessionState.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // com.mmcdole.kivo.core.session/SessionState.toString|toString(){}[0]
 }
 
 final class com.mmcdole.kivo.core.session/SignedInDevice { // com.mmcdole.kivo.core.session/SignedInDevice|null[0]

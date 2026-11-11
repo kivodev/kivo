@@ -1832,6 +1832,51 @@ public final class com/mmcdole/kivo/core/player/UpNextPhase : java/lang/Enum {
 	public static fun values ()[Lcom/mmcdole/kivo/core/player/UpNextPhase;
 }
 
+public abstract interface class com/mmcdole/kivo/core/session/AppState {
+}
+
+public final class com/mmcdole/kivo/core/session/AppState$SignedIn : com/mmcdole/kivo/core/session/AppState {
+	public fun <init> (Lcom/mmcdole/kivo/core/session/KivoSession;)V
+	public final fun component1 ()Lcom/mmcdole/kivo/core/session/KivoSession;
+	public final fun copy (Lcom/mmcdole/kivo/core/session/KivoSession;)Lcom/mmcdole/kivo/core/session/AppState$SignedIn;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/session/AppState$SignedIn;Lcom/mmcdole/kivo/core/session/KivoSession;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/session/AppState$SignedIn;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getSession ()Lcom/mmcdole/kivo/core/session/KivoSession;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/mmcdole/kivo/core/session/AppState$SignedOut : com/mmcdole/kivo/core/session/AppState {
+	public fun <init> (Lcom/mmcdole/kivo/core/auth/SavedServer;)V
+	public final fun component1 ()Lcom/mmcdole/kivo/core/auth/SavedServer;
+	public final fun copy (Lcom/mmcdole/kivo/core/auth/SavedServer;)Lcom/mmcdole/kivo/core/session/AppState$SignedOut;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/session/AppState$SignedOut;Lcom/mmcdole/kivo/core/auth/SavedServer;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/session/AppState$SignedOut;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getServer ()Lcom/mmcdole/kivo/core/auth/SavedServer;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/mmcdole/kivo/core/session/AppState$Starting : com/mmcdole/kivo/core/session/AppState {
+	public static final field INSTANCE Lcom/mmcdole/kivo/core/session/AppState$Starting;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/mmcdole/kivo/core/session/AppState$Unreachable : com/mmcdole/kivo/core/session/AppState {
+	public fun <init> (Lcom/mmcdole/kivo/core/auth/SavedServer;Z)V
+	public final fun component1 ()Lcom/mmcdole/kivo/core/auth/SavedServer;
+	public final fun component2 ()Z
+	public final fun copy (Lcom/mmcdole/kivo/core/auth/SavedServer;Z)Lcom/mmcdole/kivo/core/session/AppState$Unreachable;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/session/AppState$Unreachable;Lcom/mmcdole/kivo/core/auth/SavedServer;ZILjava/lang/Object;)Lcom/mmcdole/kivo/core/session/AppState$Unreachable;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getHasDownloads ()Z
+	public final fun getServer ()Lcom/mmcdole/kivo/core/auth/SavedServer;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public abstract interface class com/mmcdole/kivo/core/session/Device {
 	public abstract fun getCapabilities ()Lcom/mmcdole/kivo/core/caps/CapabilityProbe;
 	public fun getDownloads ()Lcom/mmcdole/kivo/core/session/DownloadDevice;
@@ -1854,25 +1899,32 @@ public final class com/mmcdole/kivo/core/session/KivoClient {
 	public fun <init> (Lcom/mmcdole/kivo/core/session/Device;)V
 	public fun <init> (Lcom/mmcdole/kivo/core/session/Device;Lio/ktor/client/engine/HttpClientEngine;)V
 	public fun <init> (Lcom/mmcdole/kivo/core/session/Device;Lio/ktor/client/engine/HttpClientEngine;Lkotlin/coroutines/CoroutineContext;)V
+	public final fun changeServer ()V
 	public final fun compatibility (Lcom/mmcdole/kivo/api/models/ServerInfo;)Lcom/mmcdole/kivo/core/Compatibility;
 	public final fun confirmDiscovered (Ljava/lang/String;Ljava/util/List;IZLjava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun getDisplay ()Lcom/mmcdole/kivo/core/display/Display;
 	public final fun getServers ()Lkotlinx/coroutines/flow/Flow;
 	public final fun getSettings ()Lkotlinx/coroutines/flow/Flow;
+	public final fun getState ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun lastSignedIn (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun networkChanged (ZZ)V
+	public final fun openOffline ()V
 	public final fun reach (Lcom/mmcdole/kivo/core/auth/SavedServer;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun restore (Lcom/mmcdole/kivo/core/auth/SavedServer;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun retry ()V
 	public final fun savedServers (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun serverAt (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun setCellularDownloads (ZLkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun setDialogueBoost (ZLkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun setDownloadQuality (Lcom/mmcdole/kivo/core/settings/DownloadQuality;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun setForeground (Z)V
 	public final fun setLocalQuality (Lcom/mmcdole/kivo/core/settings/Quality;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun setMaxAudioChannels (ILkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun setRemoteQuality (Lcom/mmcdole/kivo/core/settings/Quality;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun signIn (Lcom/mmcdole/kivo/core/discovery/FoundServer;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun signInByLink (Lcom/mmcdole/kivo/core/discovery/FoundServer;Ljava/lang/String;)Lkotlinx/coroutines/flow/Flow;
+	public final fun signedIn (Lcom/mmcdole/kivo/core/session/KivoSession;)V
+	public final fun start ()V
 	public final fun transferChanged (Lcom/mmcdole/kivo/core/downloads/TransferEvent;)V
 	public final fun updateSettings (Lkotlin/jvm/functions/Function1;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 }
@@ -1894,6 +1946,7 @@ public final class com/mmcdole/kivo/core/session/KivoSession {
 	public final fun getLink ()Lcom/mmcdole/kivo/core/session/SessionLink;
 	public final fun getPlayback ()Lcom/mmcdole/kivo/core/session/SessionPlayback;
 	public final fun getSavedServer ()Lkotlinx/coroutines/flow/StateFlow;
+	public final fun getState ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getUnreachable ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun getUser ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun imageUrl (Ljava/lang/String;I)Ljava/lang/String;
@@ -2079,6 +2132,25 @@ public final class com/mmcdole/kivo/core/session/SessionPlayback {
 	public final fun qualityMenu (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun subtitleResults (Lcom/mmcdole/kivo/api/models/Version;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun videoPlayer (Lcom/mmcdole/kivo/core/player/PlayerEngine;)Lcom/mmcdole/kivo/core/session/VideoPlayer;
+}
+
+public final class com/mmcdole/kivo/core/session/SessionState {
+	public fun <init> (Lcom/mmcdole/kivo/core/auth/SavedServer;Lcom/mmcdole/kivo/core/auth/SignedInUser;ZLcom/mmcdole/kivo/core/Compatibility;Ljava/lang/String;)V
+	public final fun component1 ()Lcom/mmcdole/kivo/core/auth/SavedServer;
+	public final fun component2 ()Lcom/mmcdole/kivo/core/auth/SignedInUser;
+	public final fun component3 ()Z
+	public final fun component4 ()Lcom/mmcdole/kivo/core/Compatibility;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun copy (Lcom/mmcdole/kivo/core/auth/SavedServer;Lcom/mmcdole/kivo/core/auth/SignedInUser;ZLcom/mmcdole/kivo/core/Compatibility;Ljava/lang/String;)Lcom/mmcdole/kivo/core/session/SessionState;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/session/SessionState;Lcom/mmcdole/kivo/core/auth/SavedServer;Lcom/mmcdole/kivo/core/auth/SignedInUser;ZLcom/mmcdole/kivo/core/Compatibility;Ljava/lang/String;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/session/SessionState;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAddress ()Ljava/lang/String;
+	public final fun getCompatibility ()Lcom/mmcdole/kivo/core/Compatibility;
+	public final fun getServer ()Lcom/mmcdole/kivo/core/auth/SavedServer;
+	public final fun getUnreachable ()Z
+	public final fun getUser ()Lcom/mmcdole/kivo/core/auth/SignedInUser;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
 }
 
 public final class com/mmcdole/kivo/core/session/SignedInDevice {
