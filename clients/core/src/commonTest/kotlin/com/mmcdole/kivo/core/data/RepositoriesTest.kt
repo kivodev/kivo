@@ -248,7 +248,10 @@ class RepositoriesTest {
     @Test
     fun aFilterValueALaterServerAddsIsLeftOut() = runTest {
         val server = FakeServer(StandardTestDispatcher(testScheduler))
-        val values = mapOf("genre" to emptyList(), "year" to emptyList(), "contentRating" to emptyList(), "resolution" to listOf("8k", "4k", "sd"), "dynamicRange" to listOf("hdr", "hdr10000", "dolbyVision"))
+        val values = mapOf(
+            "genre" to emptyList(), "year" to emptyList(), "contentRating" to emptyList(), "narrator" to emptyList(),
+            "resolution" to listOf("8k", "4k", "sd"), "dynamicRange" to listOf("hdr", "hdr10000", "dolbyVision"),
+        )
         for ((field, found) in values) {
             server.on("GET", "/api/v1/work-fields/$field/values") {
                 json(WorkFieldValueList.serializer(), WorkFieldValueList(found.map { WorkFieldValue(it, it) }))

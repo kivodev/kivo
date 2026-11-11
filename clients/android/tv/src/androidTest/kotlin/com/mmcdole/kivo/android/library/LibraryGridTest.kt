@@ -125,7 +125,7 @@ class LibraryGridTest {
         }
     }
 
-    private val filterValues = listOf("genre", "year", "contentRating", "resolution", "dynamicRange").map { "/api/v1/work-fields/$it/values" }
+    private val filterValues = listOf("genre", "year", "contentRating", "resolution", "dynamicRange", "narrator").map { "/api/v1/work-fields/$it/values" }
 
     /** A library opens as it was left, and that's kept on the device between tests and runs, as the sort test leaves it. */
     @Before

@@ -42,7 +42,7 @@ class LibraryViewModelTest : CoreTest() {
 
     init {
         server.get("/api/v1/libraries", LibraryList.serializer()) { LibraryList(listOf(movies, books)) }
-        for (field in listOf("genre", "year", "contentRating", "resolution", "dynamicRange")) {
+        for (field in listOf("genre", "year", "contentRating", "resolution", "dynamicRange", "narrator")) {
             server.get("/api/v1/work-fields/$field/values", WorkFieldValueList.serializer()) {
                 WorkFieldValueList(if (field == "resolution") listOf(WorkFieldValue("1080p", "1080p")) else emptyList())
             }
