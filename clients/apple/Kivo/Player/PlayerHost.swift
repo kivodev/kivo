@@ -75,10 +75,9 @@ final class PlayerHost {
     }
 
     /// The last episode of a series played to its end: the player closes on
-    /// the series' page, or, for a download, on the page it opened from.
-    func showSeries(afterPlaying seriesId: String, offline: Bool) {
+    /// the series' page.
+    func showSeries(afterPlaying seriesId: String) {
         shown = false
-        guard !offline else { return }
         let navigation = server.navigation
         if navigation.tab == .downloads { navigation.tab = .home }
         navigation.push(.work(WorkRoute(id: seriesId, kind: .series)))

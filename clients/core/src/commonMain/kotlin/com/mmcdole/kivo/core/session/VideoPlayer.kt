@@ -166,10 +166,14 @@ class VideoPlayer internal constructor(
         change { it.copy(version = version, qualities = qualities) }
     }
 
-    /** Where the core's [end] takes the player: the next episode, from its download when it's ready here, the series or back. */
+    /**
+     * Where the core's [end] takes the player: the next episode, from its
+     * download when it's ready here, the series or back. A download goes
+     * back to where it was played from, since its series' page needs the server.
+     */
     private suspend fun exitAt(end: PlayerEnd): PlayerExit? = when (end) {
         PlayerEnd.PlayNext -> screen.value.next?.let { PlayerExit.Next(PlayChoice(it.id), readyDownload(it.id)) }
-        PlayerEnd.Series -> screen.value.work?.episode?.let { PlayerExit.Series(it.seriesId) }
+        PlayerEnd.Series -> if (!online) PlayerExit.Back else screen.value.work?.episode?.let { PlayerExit.Series(it.seriesId) }
         PlayerEnd.Close -> PlayerExit.Back
     }
 

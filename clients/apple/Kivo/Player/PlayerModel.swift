@@ -381,7 +381,7 @@ final class PlayerModel: PlayerChoices, Scrubbable {
         case let .next(next):
             start(next.choice, downloadId: next.downloadId)
         case let .series(series):
-            server.player.showSeries(afterPlaying: series.seriesId, offline: offline)
+            server.player.showSeries(afterPlaying: series.seriesId)
         case .back:
             server.player.shown = false
         }
