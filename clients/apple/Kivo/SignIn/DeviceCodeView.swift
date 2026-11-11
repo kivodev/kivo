@@ -62,7 +62,7 @@ struct DeviceCodeView: View {
                 case let .waiting(next):
                     waiting = next
                 case let .signedIn(signedIn):
-                    app.signedIn(signedIn.session)
+                    app.core.signedIn(session: signedIn.session)
                     return
                 case .denied:
                     message = String(localized: "Sign-in was declined.")

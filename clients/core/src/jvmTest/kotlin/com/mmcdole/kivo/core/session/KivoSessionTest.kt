@@ -105,21 +105,21 @@ import kotlin.time.Instant
 // starts with this device's settings, against servers answered by Ktor's
 // mock engine by host.
 
-private val ladder = listOf(QualityRung(20_000_000, 1080), QualityRung(8_000_000, 720))
+internal val ladder = listOf(QualityRung(20_000_000, 1080), QualityRung(8_000_000, 720))
 
-private fun info(id: String, name: String = id, localUrls: List<String>? = null) =
+internal fun info(id: String, name: String = id, localUrls: List<String>? = null) =
     ServerInfo(id, name, "1.0", localUrls = localUrls, qualityLadder = ladder)
 
 /** A server at [version] that supports apps from [minAppVersion]. */
-private fun release(version: String, minAppVersion: String? = "0.3.0") =
+internal fun release(version: String, minAppVersion: String? = "0.3.0") =
     ServerInfo("server-1", "Basement", version, minAppVersion = minAppVersion)
 
-private val home = SavedServer("server-1", "Basement", listOf("http://home.test"))
+internal val home = SavedServer("server-1", "Basement", listOf("http://home.test"))
 
-private val anna = CurrentUser("u1", "anna", admin = false, limits = UserLimits(), playback = PlaybackPreferences(SubtitleMode.Smart, true, true, 1.0))
+internal val anna = CurrentUser("u1", "anna", admin = false, limits = UserLimits(), playback = PlaybackPreferences(SubtitleMode.Smart, true, true, 1.0))
 
 /** Servers by host: what each answers, by method and path, and every request they saw as "host METHOD path". */
-private class Servers {
+internal class Servers {
     val seen: MutableList<String> = CopyOnWriteArrayList()
 
     /** Each request's app and app version headers, in order. */
@@ -147,13 +147,13 @@ private class Servers {
     }
 }
 
-private class Probe : CapabilityProbe {
+internal class Probe : CapabilityProbe {
     override suspend fun measure() = Measured(containers = listOf("mp4"), hls = true, video = emptyList(), audio = emptyList(), subtitles = emptyList())
 
     override fun audioSink() = AudioSink()
 }
 
-private class Transport : DownloadTransport {
+internal class Transport : DownloadTransport {
     override fun start(request: TransferRequest) = Unit
 
     override fun stop(id: String) = Unit
@@ -163,20 +163,20 @@ private class Transport : DownloadTransport {
     override fun running() = emptyList<String>()
 }
 
-private class Disk(override val folder: String) : DownloadDisk {
+internal class Disk(override val folder: String) : DownloadDisk {
     override fun freeBytes() = Long.MAX_VALUE
 
     override fun sha256(path: String) = ""
 }
 
-private class Identity(override val appVersion: String) : ClientIdentity {
+internal class Identity(override val appVersion: String) : ClientIdentity {
     override val app = "kivo-android"
     override val platform = ClientPlatform.AndroidTv
     override val osVersion = "14"
     override val deviceModel = "SHIELD Android TV"
 }
 
-private class TestDevice(withDownloads: Boolean, appVersion: String = "1.0") : Device {
+internal class TestDevice(withDownloads: Boolean, appVersion: String = "1.0") : Device {
     override val name = "Living Room"
     override val identity = Identity(appVersion)
     override val preferences = MemoryPreferences()
@@ -196,7 +196,7 @@ private class TestDevice(withDownloads: Boolean, appVersion: String = "1.0") : D
     }
 }
 
-private class Harness(scope: TestScope, withDownloads: Boolean = false, appVersion: String = "1.0") {
+internal class Harness(scope: TestScope, withDownloads: Boolean = false, appVersion: String = "1.0") {
     val servers = Servers()
     val device = TestDevice(withDownloads, appVersion)
     val core = KivoClient(device, servers.engine, scope.backgroundScope)

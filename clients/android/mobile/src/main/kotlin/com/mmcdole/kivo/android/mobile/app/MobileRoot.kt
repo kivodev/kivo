@@ -21,7 +21,7 @@ import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import com.mmcdole.kivo.android.AppGraph
-import com.mmcdole.kivo.android.AppState
+import com.mmcdole.kivo.core.session.AppState
 import com.mmcdole.kivo.android.mobile.R
 import com.mmcdole.kivo.android.mobile.signin.SignInScreen
 import com.mmcdole.kivo.android.mobile.theme.KivoMobileTheme
@@ -35,18 +35,22 @@ fun MobileRoot(graph: AppGraph) {
     KivoMobileTheme {
         // Test tags double as resource IDs, so UI Automator finds controls on a device.
         Surface(Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }, color = MaterialTheme.colorScheme.background) {
-            val state by graph.state.collectAsStateWithLifecycle()
+            val state by graph.core.state.collectAsStateWithLifecycle()
+            val session by graph.session.collectAsStateWithLifecycle()
             when (val s = state) {
                 AppState.Starting -> Loading()
-                is AppState.SigningIn -> ViewModels(s) { SignInScreen(graph, s.server) }
+                is AppState.SignedOut -> ViewModels(s) { SignInScreen(graph, s.server) }
                 is AppState.Unreachable -> Message(stringResource(R.string.mobile_cant_reach, s.server.name), stringResource(R.string.mobile_cant_reach_saved_sentence)) {
                     Column {
-                        Button(onClick = { graph.reach(s.server) }) { Text(stringResource(R.string.mobile_retry)) }
+                        Button(onClick = graph.core::retry) { Text(stringResource(R.string.mobile_retry)) }
                         OutlinedButton(onClick = graph::changeServer) { Text(stringResource(R.string.mobile_change_server)) }
                     }
                 }
-                is AppState.SignedIn -> ViewModels(s.session) {
-                    CompositionLocalProvider(LocalSession provides s.session) { MainScaffold(s.session) }
+                is AppState.SignedIn -> when (val signedIn = session?.takeIf { it.session === s.session }) {
+                    null -> Loading()
+                    else -> ViewModels(signedIn) {
+                        CompositionLocalProvider(LocalSession provides signedIn) { MainScaffold(signedIn) }
+                    }
                 }
             }
         }

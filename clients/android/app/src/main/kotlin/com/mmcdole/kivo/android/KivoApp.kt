@@ -29,7 +29,7 @@ class KivoApp : Application(), HasAppGraph {
             onOpened = { if (tv) WatchNext.refresh(this) },
             onLeft = { if (tv) WatchNext.clear(this) },
         )
-        graph.start()
+        graph.core.start()
         graph.scope.launch {
             graph.sessionPlayers.current.map { it != null }.distinctUntilChanged().filter { it }.collect { PlaybackService.start(this@KivoApp) }
         }

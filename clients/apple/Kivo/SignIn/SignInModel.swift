@@ -131,7 +131,7 @@ final class SignInModel {
                     found: found, username: self.username, password: self.password, name: AppleIdentity.modelName
                 )
                 self.password = ""
-                self.app.signedIn(server)
+                self.app.core.signedIn(session: server)
             } catch {
                 self.message = error.problemSentence
             }

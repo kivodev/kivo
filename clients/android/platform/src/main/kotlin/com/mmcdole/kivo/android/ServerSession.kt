@@ -70,20 +70,6 @@ class ServerSession(val graph: AppGraph, val session: KivoSession, savedGrids: M
     /** [workId]'s download when it's ready to play here; null otherwise. */
     fun readyDownload(workId: String): DownloadItem? = downloads.value.firstOrNull { it.workId == workId && it.status == DownloadStatus.Ready }
 
-    /** Brings the downloads up to date with the server, as the app comes to the foreground. */
-    fun syncDownloads() {
-        val downloads = session.downloads ?: return
-        scope.launch {
-            try {
-                downloads.sync()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                // The next sync tries again.
-            }
-        }
-    }
-
     /** Asks the server what it is again, as Try again does on a server the app doesn't work with. */
     fun checkCompatibility() {
         scope.launch {
@@ -101,19 +87,6 @@ class ServerSession(val graph: AppGraph, val session: KivoSession, savedGrids: M
 
     /** The phone's book player, made as it's first wanted. */
     val books: BookPlayback by bookPlayback
-
-    init {
-        // Who the app is signed in as, read as the server opens; the stored user shows until it answers.
-        graph.scope.launch {
-            try {
-                session.account.currentUser()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                // The live events' next reconnect reads it again.
-            }
-        }
-    }
 
     /** Ends the app's session on the server and forgets the token. */
     fun signOut() {

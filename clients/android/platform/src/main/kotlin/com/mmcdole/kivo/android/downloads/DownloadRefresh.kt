@@ -8,7 +8,7 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.mmcdole.kivo.android.AppState
+import com.mmcdole.kivo.core.session.AppState
 import com.mmcdole.kivo.android.HasAppGraph
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
@@ -26,9 +26,9 @@ import kotlin.time.Duration.Companion.minutes
 class DownloadRefresh(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         val graph = (applicationContext as HasAppGraph).graph
-        val signedIn = withTimeoutOrNull(OPEN_WAIT) { graph.state.first { it !is AppState.Starting } } as? AppState.SignedIn ?: return Result.success()
+        val signedIn = withTimeoutOrNull(OPEN_WAIT) { graph.core.state.first { it !is AppState.Starting } } as? AppState.SignedIn ?: return Result.success()
         val pending = try {
-            signedIn.session.session.downloads?.startReady() == true
+            signedIn.session.downloads?.startReady() == true
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {

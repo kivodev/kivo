@@ -365,9 +365,10 @@ session under that name and the platform. Its screenshots are named
 `SignedInUserTests` runs against the same server, with the same
 environment: it signs in, kills the app, and opens it again with the
 server unreachable, through the proxy's `POST /__unreachable`, which drops
-every connection until `POST /__reachable`. Home's avatar names the user
-while the server can't be reached and once it answers again; then the test
-signs out, which asks first. Its second test opens Settings, which names
+every connection until `POST /__reachable`. The app says it can't reach the
+server, with Retry and Change server; once it answers again, Retry opens
+it, and Home's avatar names the user; then the test signs out, which asks
+first. Its second test opens Settings, which names
 the user, and checks that a wrong current password in Change password says
 so and leaves the app signed in. Its screenshots are named `ios-user-…`.
 `IPadLayoutTests` runs on an iPad Simulator, in landscape, with Windowed Apps

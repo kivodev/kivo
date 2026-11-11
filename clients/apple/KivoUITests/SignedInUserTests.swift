@@ -1,9 +1,10 @@
 import XCTest
 
-/// Who is signed in shows without the server: after signing in, the app is
-/// killed and opened again with the server unreachable, and Home's avatar
-/// still names the user; once the server answers again it still does. Then
-/// it signs out. It runs against the download test's server (FIRST-RUN.md,
+/// A server that can't be reached as the app opens says so: after signing
+/// in, the app is killed and opened again with the server unreachable, and
+/// it names the server it can't reach, with Retry and Change server; once
+/// the server answers again, Retry opens it, and Home's avatar names the
+/// user. Then it signs out. It runs against the download test's server (FIRST-RUN.md,
 /// The download test), whose proxy drops every connection between
 /// `POST /__unreachable` and `POST /__reachable`, with the same environment.
 final class SignedInUserTests: XCTestCase {
@@ -18,7 +19,7 @@ final class SignedInUserTests: XCTestCase {
         app.launchEnvironment["KIVO_SERVER"] = environment["KIVO_DOWNLOAD_SERVER"]
     }
 
-    func testTheAvatarShowsWithoutTheServer() throws {
+    func testAServerThatCantBeReachedSaysSoUntilRetryOpensIt() throws {
         let server = try XCTUnwrap(environment["KIVO_DOWNLOAD_SERVER"], "set TEST_RUNNER_KIVO_DOWNLOAD_SERVER")
         let username = try XCTUnwrap(environment["KIVO_DOWNLOAD_USERNAME"], "set TEST_RUNNER_KIVO_DOWNLOAD_USERNAME")
         let avatar = app.buttons["user"]
@@ -30,16 +31,15 @@ final class SignedInUserTests: XCTestCase {
         proxy(server, "__unreachable")
         defer { proxy(server, "__reachable") }
         app.launch()
-        // Without the server, the app opens on Downloads.
-        XCTAssert(app.tabBars.buttons["Home"].waitForExistence(timeout: 30), "the app didn't open signed in")
-        app.tabBars.buttons["Home"].tap()
+        // Without the server, and with no downloads of it, the app says it can't reach it.
         let unreachable = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Can't reach")).firstMatch
-        XCTAssert(unreachable.waitForExistence(timeout: 30), "Home doesn't say it can't reach the server")
-        expect(avatar, names: username, "without the server")
+        XCTAssert(unreachable.waitForExistence(timeout: 60), "the app doesn't say it can't reach its server")
+        XCTAssert(app.buttons["Change server"].exists, "a server that can't be reached has no Change server")
         keep("ios-user-unreachable")
 
         proxy(server, "__reachable")
-        XCTAssert(app.buttons["work"].firstMatch.waitForExistence(timeout: 60), "Home didn't fill in once the server answered")
+        app.buttons["Retry"].tap()
+        XCTAssert(app.buttons["work"].firstMatch.waitForExistence(timeout: 60), "Retry didn't open the server once it answered")
         expect(avatar, names: username, "once the server answered")
         keep("ios-user-reachable")
 

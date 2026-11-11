@@ -18,9 +18,9 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.mmcdole.kivo.android.AppState
+import com.mmcdole.kivo.core.session.AppState
 import com.mmcdole.kivo.android.HasAppGraph
-import com.mmcdole.kivo.android.ServerSession
+import com.mmcdole.kivo.core.session.KivoSession
 import com.mmcdole.kivo.api.models.HomeRowKind
 import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkSummary
@@ -72,9 +72,9 @@ object WatchNext {
     fun workOf(uri: Uri?): String? = uri?.takeIf { it.scheme == "kivo" && it.host == "work" }?.lastPathSegment
 
     /** Puts [session]'s Continue Watching in the row, in its order, and takes out what's no longer in it. */
-    suspend fun publish(context: Context, session: ServerSession) {
+    suspend fun publish(context: Context, session: KivoSession) {
         // The server didn't answer: the row stays as it was until the next refresh.
-        val home = session.session.library.home(HomeRowKind.ContinueWatching).answer() ?: return
+        val home = session.library.home(HomeRowKind.ContinueWatching).answer() ?: return
         // A work in progress continues; a series' next episode is next.
         val wanted = home.rows.filter { it.kind == HomeRowKind.ContinueWatching }.flatMap { it.items }.map {
             it to if (it.userState?.positionMs != null) WatchNextPrograms.WATCH_NEXT_TYPE_CONTINUE else WatchNextPrograms.WATCH_NEXT_TYPE_NEXT
@@ -95,7 +95,7 @@ object WatchNext {
                 val file = File(art, ref.id)
                 if (!file.exists()) {
                     try {
-                        file.writeBytes(session.session.bytes(session.session.imageUrl(ref.id, ARTWORK_WIDTH)))
+                        file.writeBytes(session.bytes(session.imageUrl(ref.id, ARTWORK_WIDTH)))
                     } catch (e: CancellationException) {
                         throw e
                     } catch (_: Exception) {
@@ -172,11 +172,11 @@ object WatchNext {
 class WatchNextWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         val graph = (applicationContext as HasAppGraph).graph
-        val state = withTimeoutOrNull(30.seconds) { graph.state.first { it !is AppState.Starting } } ?: return Result.success()
+        val state = withTimeoutOrNull(30.seconds) { graph.core.state.first { it !is AppState.Starting } } ?: return Result.success()
         try {
             when (state) {
                 is AppState.SignedIn -> WatchNext.publish(applicationContext, state.session)
-                is AppState.SigningIn -> WatchNext.clear(applicationContext)
+                is AppState.SignedOut -> WatchNext.clear(applicationContext)
                 else -> Unit // The server can't be reached: the row stays as it was until the next try.
             }
         } catch (e: CancellationException) {

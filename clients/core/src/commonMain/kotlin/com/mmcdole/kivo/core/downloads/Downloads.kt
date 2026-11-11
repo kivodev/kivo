@@ -396,6 +396,9 @@ internal class Downloads(
         for (id in ids) delete(id)
     }
 
+    /** Whether the device keeps downloads of the server [serverId]. */
+    suspend fun has(serverId: String): Boolean = withContext(background) { q.downloads(serverId).executeAsList().isNotEmpty() }
+
     /** Deletes every download of a server the app signed out of, with its outbox. */
     suspend fun forget(serverId: String) {
         delete(q.downloads(serverId).executeAsList().map { it.id })

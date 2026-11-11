@@ -123,7 +123,7 @@ fun SignInScreen(graph: AppGraph, server: SavedServer?) {
                 LinkCode(
                     serverName = s.server.info.name,
                     link = { graph.core.signInByLink(s.server, graph.name) },
-                    onSignedIn = { graph.open(it) },
+                    onSignedIn = { graph.core.signedIn(it) },
                     onPassword = { step = Step.Password(s.server) },
                     onChangeServer = { step = Step.Finding },
                 )
@@ -393,7 +393,7 @@ private fun Password(graph: AppGraph, server: FoundServer, onBack: () -> Unit) {
             error = null
             scope.launch {
                 try {
-                    graph.open(graph.core.signIn(server, username.trim(), password, graph.name))
+                    graph.core.signedIn(graph.core.signIn(server, username.trim(), password, graph.name))
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
@@ -501,7 +501,7 @@ fun UnreachableScreen(graph: AppGraph, server: SavedServer) {
     com.mmcdole.kivo.android.ui.Failed(
         problem = RequestProblem.Unreachable,
         server = server.name,
-        onRetry = { graph.reach(server) },
+        onRetry = { graph.core.retry() },
         onChangeServer = { graph.changeServer() },
     )
 }
