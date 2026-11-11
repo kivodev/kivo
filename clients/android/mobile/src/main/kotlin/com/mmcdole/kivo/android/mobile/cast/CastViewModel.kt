@@ -7,6 +7,7 @@ import com.mmcdole.kivo.android.mobile.ui.display
 import com.mmcdole.kivo.android.mobile.ui.sentence
 import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.core.Load
+import com.mmcdole.kivo.core.ProblemCode
 import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.core.cast.CastStatus
 import com.mmcdole.kivo.core.display.problem
@@ -251,13 +252,13 @@ class CastViewModel(private val session: KivoSession, private val link: CastLink
 fun CastProblem.words(unreachable: String, signedOut: String, stopped: String, outdated: String, receiverOutdated: String, notPlayable: String): String = when (this) {
     is CastProblem.Worded -> sentence
     CastProblem.Unreachable -> unreachable
-    is CastProblem.Receiver -> message?.takeIf { it.isNotEmpty() } ?: when (code) {
-        "signedOut" -> signedOut
-        "playEnded" -> stopped
-        "serverOutdated" -> outdated
-        "receiverOutdated" -> receiverOutdated
-        "notPlayable", "noFallback", "playbackFailed" -> notPlayable
-        "invalidRequest" -> display.problem("")
+    is CastProblem.Receiver -> message?.takeIf { it.isNotEmpty() } ?: when (ProblemCode.of(code)) {
+        ProblemCode.SignedOut -> signedOut
+        ProblemCode.PlayEnded -> stopped
+        ProblemCode.ServerOutdated -> outdated
+        ProblemCode.ReceiverOutdated -> receiverOutdated
+        ProblemCode.NotPlayable, ProblemCode.NoFallback, ProblemCode.PlaybackFailed -> notPlayable
+        ProblemCode.InvalidRequest -> display.problem("")
         else -> display.problem(code)
     }
 }

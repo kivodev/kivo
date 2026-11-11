@@ -27,6 +27,8 @@ import com.mmcdole.kivo.android.ui.KivoButton
 import com.mmcdole.kivo.android.ui.SidePanel
 import com.mmcdole.kivo.android.ui.TextInput
 import com.mmcdole.kivo.android.ui.display
+import com.mmcdole.kivo.api.models.ClientPlatform
+import com.mmcdole.kivo.core.ProblemCode
 import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.android.ui.focusWhenPlaced
 import com.mmcdole.kivo.core.display.problem
@@ -92,7 +94,7 @@ internal fun LinkDevicePanel(username: String, actions: LinkActions, onDismiss: 
             LinkStep.Enter -> EnterCode(busy) { typed ->
                 val code = LinkCode.parseOrNull(typed)?.code
                 if (code == null) {
-                    problem = "notFound"
+                    problem = ProblemCode.NotFound.value
                 } else {
                     run { step = LinkStep.Asking(code, actions.pendingDevice(code)) }
                 }
@@ -125,7 +127,7 @@ internal fun LinkDevicePanel(username: String, actions: LinkActions, onDismiss: 
 /** A code that didn't work says to look for a new one; anything else is its problem. */
 @Composable
 private fun linkProblem(code: String): String =
-    if (code == "notFound") stringResource(R.string.link_code_didnt_work) else display.problem(code)
+    if (ProblemCode.of(code) == ProblemCode.NotFound) stringResource(R.string.link_code_didnt_work) else display.problem(code)
 
 @Composable
 private fun EnterCode(busy: Boolean, onContinue: (String) -> Unit) {
@@ -196,13 +198,13 @@ private fun Answered(answered: LinkStep.Answered, onDone: () -> Unit) {
 
 /** A platform for people, such as "Android TV"; null for one this app doesn't know. */
 @Composable
-internal fun platformName(platform: String?): String? = when (platform) {
-    "androidTv" -> stringResource(R.string.platform_android_tv)
-    "appleTv" -> stringResource(R.string.platform_apple_tv)
-    "iPhone" -> stringResource(R.string.platform_iphone)
-    "iPad" -> stringResource(R.string.platform_ipad)
-    "androidPhone" -> stringResource(R.string.platform_android_phone)
-    "browser" -> stringResource(R.string.platform_browser)
+internal fun platformName(platform: ClientPlatform?): String? = when (platform) {
+    ClientPlatform.AndroidTv -> stringResource(R.string.platform_android_tv)
+    ClientPlatform.AppleTv -> stringResource(R.string.platform_apple_tv)
+    ClientPlatform.IPhone -> stringResource(R.string.platform_iphone)
+    ClientPlatform.IPad -> stringResource(R.string.platform_ipad)
+    ClientPlatform.AndroidPhone -> stringResource(R.string.platform_android_phone)
+    ClientPlatform.Browser -> stringResource(R.string.platform_browser)
     else -> null
 }
 

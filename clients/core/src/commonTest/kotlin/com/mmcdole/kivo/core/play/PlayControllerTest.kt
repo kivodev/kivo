@@ -11,6 +11,7 @@ import com.mmcdole.kivo.api.models.QualityRequest
 import com.mmcdole.kivo.api.models.ServerInfo
 import com.mmcdole.kivo.api.models.SubtitleEntry
 import com.mmcdole.kivo.api.models.TrackDelivery
+import com.mmcdole.kivo.api.models.TrackReason
 import com.mmcdole.kivo.api.models.TrackType
 import com.mmcdole.kivo.core.FakeServer
 import com.mmcdole.kivo.core.auth.PICK_REST
@@ -476,8 +477,8 @@ class PlayControllerTest {
     fun whileASubtitleIsBurnedInEveryOtherChoiceStartsANewPlay() = runTest {
         val h = Harness(this)
         val burned = listOf(
-            PlayTrack("t4", TrackType.Subtitle, selected = true, delivery = TrackDelivery.Burn, reason = "burnSubtitlesEnabled"),
-            PlayTrack("t5", TrackType.Subtitle, reason = "burnSubtitlesEnabled"),
+            PlayTrack("t4", TrackType.Subtitle, selected = true, delivery = TrackDelivery.Burn, reason = TrackReason.BurnSubtitlesEnabled),
+            PlayTrack("t5", TrackType.Subtitle, reason = TrackReason.BurnSubtitlesEnabled),
             PlayTrack("off", TrackType.Subtitle),
         )
         h.answerStarts(play("s1", delivery = PlayDelivery.Stream, tracks = burned), play("s2"))
@@ -516,7 +517,7 @@ class PlayControllerTest {
     fun aSubtitleTheAppDrawsPlaysAgainWithoutFilesInPictureInPictureAndAgainWithThemOnLeaving() = runTest {
         val h = Harness(this)
         val inPip = listOf(
-            PlayTrack("t5", TrackType.Subtitle, selected = true, delivery = TrackDelivery.Burn, reason = "subtitleCodecUnsupported"),
+            PlayTrack("t5", TrackType.Subtitle, selected = true, delivery = TrackDelivery.Burn, reason = TrackReason.SubtitleCodecUnsupported),
             PlayTrack("off", TrackType.Subtitle),
         )
         h.answerStarts(play("s1", tracks = fileTracks(subtitle = "t5")), play("s2", startMs = 90_000, tracks = inPip), play("s3"))

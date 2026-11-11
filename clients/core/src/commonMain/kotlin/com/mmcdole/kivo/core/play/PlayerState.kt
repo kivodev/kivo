@@ -3,6 +3,7 @@ package com.mmcdole.kivo.core.play
 import com.mmcdole.kivo.api.models.CapabilityMismatch
 import com.mmcdole.kivo.api.models.PlayStarted
 import com.mmcdole.kivo.api.models.PlaySummary
+import com.mmcdole.kivo.core.ProblemCode
 import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.core.display.Display
 import com.mmcdole.kivo.core.display.problem
@@ -55,7 +56,10 @@ sealed interface PlayerFailure {
         val reason: String? = null,
         val plays: List<PlaySummary>? = null,
         val mismatch: CapabilityMismatch? = null,
-    ) : PlayerFailure
+    ) : PlayerFailure {
+        /** [code] as one of the codes the apps act on themselves. */
+        val knownCode: ProblemCode get() = ProblemCode.of(code)
+    }
 
     /** Stopped elsewhere: by an admin, another client or expiry. The player says so, with the admin's [message] if there is one. */
     data class Ended(val message: String? = null) : PlayerFailure

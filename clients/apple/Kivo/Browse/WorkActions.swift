@@ -42,7 +42,7 @@ struct WorkActions: View {
         } label: {
             SwiftUI.Label(String(localized: "Add to List"), systemImage: "text.badge.plus")
         }
-        if let currentList, currentList.kind == "manual" {
+        if let currentList, currentList.kind == .manual {
             Button {
                 Haptics.success()
                 Task { try? await server.session.library.removeFromList(listId: currentList.id, workId: work.id) }
@@ -56,7 +56,7 @@ struct WorkActions: View {
                 Task { try? await server.session.library.removeFromContinue(workId: work.id) }
             } label: {
                 SwiftUI.Label(
-                    continueRow == "continueListening"
+                    continueRow == .continueListening
                         ? String(localized: "Remove from Continue Listening") : String(localized: "Remove from Continue Watching"),
                     systemImage: "xmark.circle"
                 )
@@ -76,7 +76,7 @@ struct WorkActions: View {
                 SwiftUI.Label(String(localized: "Go to library"), systemImage: "square.grid.2x2")
             }
         }
-        if ["movie", "episode", "video"].contains(work.kind), work.available, server.session.downloads != nil {
+        if [WorkKind.movie, .episode, .video].contains(work.kind), work.available, server.session.downloads != nil {
             Section {
                 if server.download(of: work.id) != nil {
                     Button(role: .destructive) {
@@ -98,7 +98,7 @@ struct WorkActions: View {
 
     /// Plays its download when one is ready, else from the server; a book in the book player, which chooses for itself.
     private func play(fromStart: Bool) {
-        if work.kind == "book" {
+        if work.kind == .book {
             server.listen(work.id, at: fromStart ? 0 : nil)
             return
         }
@@ -109,6 +109,6 @@ struct WorkActions: View {
 extension WorkSummary {
     /// Whether it plays straight from a card: a movie, an episode, a video or a book.
     var playable: Bool {
-        ["movie", "episode", "video", "extra", "book"].contains(kind) && available
+        [WorkKind.movie, .episode, .video, .extra, .book].contains(kind) && available
     }
 }

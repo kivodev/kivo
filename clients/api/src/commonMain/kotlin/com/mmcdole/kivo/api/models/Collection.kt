@@ -37,7 +37,7 @@ import kotlinx.serialization.encoding.*
  * @param name 
  * @param images Its poster, as `CollectionSummary.images` has it, and a movie collection's own backdrop.
  * @param items Its root works the user sees, in release order.
- * @param source Where a collection comes from: `provider` a movie collection, `folder` a videos-library folder. 
+ * @param source 
  */
 @Serializable
 
@@ -54,8 +54,7 @@ data class Collection (
     /* Its root works the user sees, in release order. */
     @SerialName(value = "items") @Required val items: kotlin.collections.List<WorkSummary>,
 
-    /* Where a collection comes from: `provider` a movie collection, `folder` a videos-library folder.  */
-    @SerialName(value = "source") val source: kotlin.String? = null
+    @SerialName(value = "source") val source: com.mmcdole.kivo.api.models.CollectionSource? = null
 
 ) {
 

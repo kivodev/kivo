@@ -4,6 +4,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.mmcdole.kivo.api.ProblemException
 import com.mmcdole.kivo.api.models.CurrentUser
 import com.mmcdole.kivo.api.models.PlaybackPreferences
+import com.mmcdole.kivo.api.models.SessionKind
 import com.mmcdole.kivo.api.models.UserLimits
 import com.mmcdole.kivo.api.models.Session
 import com.mmcdole.kivo.api.models.SubtitleMode
@@ -34,7 +35,7 @@ import kotlin.time.Instant
 private val playback = PlaybackPreferences(SubtitleMode.Forced, true, true, 1.0)
 private val anna = CurrentUser("u1", "anna", admin = false, limits = UserLimits(), playback = playback)
 private val at = Instant.fromEpochSeconds(1_800_000_000)
-private val session = Session("d1", "app", "Anna's phone", at, at, current = true, token = "tok")
+private val session = Session("d1", SessionKind.App, "Anna's phone", at, at, current = true, token = "tok")
 
 private const val TOKEN_KEY = "kivo.token.server-1"
 private val USER_KEY = stringPreferencesKey("kivo.user.server-1")

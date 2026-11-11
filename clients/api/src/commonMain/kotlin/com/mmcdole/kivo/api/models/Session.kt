@@ -33,7 +33,7 @@ import kotlinx.serialization.encoding.*
  * A browser or app a user is signed in on.
  *
  * @param id A UUIDv7.
- * @param kind A `browser` session sets a cookie and expires after 30 idle days; an `app` session returns a token that lasts until revoked. 
+ * @param kind 
  * @param name The client's name, such as \"Living Room\"; empty when a browser gave none.
  * @param createdAt 
  * @param lastUsedAt When it was last used, to within a few minutes.
@@ -48,8 +48,7 @@ data class Session (
     /* A UUIDv7. */
     @SerialName(value = "id") @Required val id: kotlin.String,
 
-    /* A `browser` session sets a cookie and expires after 30 idle days; an `app` session returns a token that lasts until revoked.  */
-    @SerialName(value = "kind") @Required val kind: kotlin.String,
+    @SerialName(value = "kind") @Required val kind: com.mmcdole.kivo.api.models.SessionKind,
 
     /* The client's name, such as \"Living Room\"; empty when a browser gave none. */
     @SerialName(value = "name") @Required val name: kotlin.String,

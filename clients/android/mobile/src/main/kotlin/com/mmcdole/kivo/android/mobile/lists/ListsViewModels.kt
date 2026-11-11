@@ -3,6 +3,8 @@ package com.mmcdole.kivo.android.mobile.lists
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mmcdole.kivo.android.mobile.ui.WorkMarks
+import com.mmcdole.kivo.api.models.ListKind
+import com.mmcdole.kivo.api.models.ListSort
 import com.mmcdole.kivo.api.models.WorkField
 import com.mmcdole.kivo.api.models.WorkList
 import com.mmcdole.kivo.api.models.WorkQuery
@@ -29,10 +31,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-/** The list kinds the phone shows; others are skipped. */
-private const val MANUAL = "manual"
-private const val SMART = "smart"
-
 data class ListsUiState(
     /** The user's lists, My List first, each with its first works; null until read. */
     val lists: List<WorkList>? = null,
@@ -43,11 +41,11 @@ data class ListsUiState(
     val serverName: String = "",
 ) {
     /** The lists the tab shelves, in their order: My List only with something in it, and a list kind it doesn't know left out. */
-    val shelves: List<WorkList> get() = lists.orEmpty().filter { (it.kind == MANUAL || it.kind == SMART) && (!it.builtIn || it.workCount > 0) }
+    val shelves: List<WorkList> get() = lists.orEmpty().filter { (it.kind == ListKind.Manual || it.kind == ListKind.Smart) && (!it.builtIn || it.workCount > 0) }
 }
 
 /** Whether works can be added to and taken off the list. */
-val WorkList.isManual: Boolean get() = kind == MANUAL
+val WorkList.isManual: Boolean get() = kind == ListKind.Manual
 
 /** The Lists tab: the lists with their first works, read again as they change and on a pull to refresh. */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -137,14 +135,14 @@ class ListViewModel(private val session: KivoSession, private val listId: String
     }
 
     /** The sort just chosen here, until the list is read again. */
-    private val chosenSort = MutableStateFlow<String?>(null)
+    private val chosenSort = MutableStateFlow<ListSort?>(null)
 
     /** The order a manual list is shown in; null for a smart list or one not read. */
-    val sort: StateFlow<String?> = combine(list.onEach { chosenSort.value = null }, chosenSort) { list, chosen -> list?.let(ListSorts::of)?.let { chosen ?: it } }
+    val sort: StateFlow<ListSort?> = combine(list.onEach { chosenSort.value = null }, chosenSort) { list, chosen -> list?.let(ListSorts::of)?.let { chosen ?: it } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /** Shows the list in [sort] at once and saves it; a refusal goes back and says why. */
-    fun chooseSort(sort: String) {
+    fun chooseSort(sort: ListSort) {
         chosenSort.value = sort
         viewModelScope.launch {
             val failure = attempt { session.library.setListSort(listId, sort) }
@@ -250,7 +248,7 @@ class AddToListViewModel(private val session: KivoSession, private val workId: S
 
     /** The lists, My List first, with the work's marks; null until both are read. */
     val choices: StateFlow<List<ListChoice>?> = combine(session.library.lists(), work, held) { lists, _, held ->
-        if (held == null) null else lists.getOrNull()?.filter { it.kind == MANUAL }?.map { ListChoice(it, it.id in held) }
+        if (held == null) null else lists.getOrNull()?.filter { it.kind == ListKind.Manual }?.map { ListChoice(it, it.id in held) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun toggle(choice: ListChoice) {

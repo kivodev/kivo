@@ -5,6 +5,7 @@ import com.mmcdole.kivo.android.mobile.awaitValue
 import com.mmcdole.kivo.android.mobile.reply
 import com.mmcdole.kivo.api.models.BookInfo
 import com.mmcdole.kivo.api.models.Chapter
+import com.mmcdole.kivo.api.models.MatchState
 import com.mmcdole.kivo.api.models.PersonRef
 import com.mmcdole.kivo.api.models.PlayDelivery
 import com.mmcdole.kivo.api.models.PlayPart
@@ -14,6 +15,7 @@ import com.mmcdole.kivo.api.models.Version
 import com.mmcdole.kivo.api.models.VersionPart
 import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.api.models.WorkImages
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.core.books.BookAudio
 import com.mmcdole.kivo.core.books.SleepChoice
 import com.mmcdole.kivo.core.books.SleepState
@@ -34,7 +36,7 @@ class BookViewModelsTest : CoreTest() {
     init {
         server.get("/api/v1/works/b1", WorkDetail.serializer()) {
             WorkDetail(
-                id = "b1", kind = "book", title = "The Martian", matchState = "matched", available = true, images = WorkImages(),
+                id = "b1", kind = WorkKind.Book, title = "The Martian", matchState = MatchState.Matched, available = true, images = WorkImages(),
                 genres = emptyList(), studios = emptyList(), credits = emptyList(), externalIds = emptyList(),
                 versions = listOf(
                     Version(

@@ -1,5 +1,6 @@
 package com.mmcdole.kivo.core.downloads
 
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.core.display.Display
 import com.mmcdole.kivo.core.display.fill
@@ -14,8 +15,7 @@ data class DownloadItem(
     val workId: String,
     val versionId: String,
     val title: String,
-    /** The work's kind: `movie`, `episode`, `book` or `video`. */
-    val kind: String,
+    val kind: WorkKind,
     /** An episode's series and its place in it. */
     val seriesId: String?,
     val seriesTitle: String?,
@@ -23,8 +23,8 @@ data class DownloadItem(
     val episode: Int?,
     /** A book's authors, "Frank Herbert, Brian Herbert". */
     val authors: String?,
-    /** A [DownloadQuality]'s name, as the server knows it. */
-    val quality: String,
+    /** Null for one this version doesn't know. */
+    val quality: DownloadQuality?,
     /** How long it plays, as the server's plan of it says; null when the plan isn't readable. */
     val durationMs: Long?,
     /** Its files' size: exact when [sizeExact], else the most the server's conversion can come to. */
@@ -99,11 +99,8 @@ enum class WaitReason {
     Server,
 }
 
-/** A download's quality by its name: "Original", "High" or "Standard". */
-fun Display.downloadQuality(quality: String): String {
-    val q = DownloadQuality.parseOrNull(quality) ?: return quality
-    return table.downloads.qualities[q.value] ?: q.value
-}
+/** A download quality's name: "Original", "High" or "Standard". */
+fun Display.downloadQuality(quality: DownloadQuality): String = table.downloads.qualities[quality.value] ?: quality.value
 
 /** Why a download failed ([DownloadStatus.Failed]): the device's own reason, or the server's reason code. */
 fun Display.downloadFailure(reason: String): String = table.downloads.failures[reason] ?: reason(reason)

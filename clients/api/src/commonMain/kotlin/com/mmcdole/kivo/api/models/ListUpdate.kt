@@ -46,7 +46,7 @@ data class ListUpdate (
     @SerialName(value = "smart") val smart: SmartQuery? = null,
 
     /* Sets the order a manual list is shown in; a smart list has none. */
-    @SerialName(value = "sort") val sort: kotlin.String? = null
+    @SerialName(value = "sort") val sort: com.mmcdole.kivo.api.models.ListSort? = null
 
 ) {
 

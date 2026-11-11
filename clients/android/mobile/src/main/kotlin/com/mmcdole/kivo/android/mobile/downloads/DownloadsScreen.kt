@@ -41,6 +41,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import com.mmcdole.kivo.api.models.WorkKind
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -244,8 +245,8 @@ private fun DownloadRow(item: DownloadItem, model: RowActions, numbered: Boolean
             horizontalArrangement = Arrangement.spacedBy(space(3)),
         ) {
             val (width, height) = when (item.kind) {
-                "episode" -> 96.dp to 54.dp
-                "book" -> 56.dp to 56.dp
+                WorkKind.Episode -> 96.dp to 54.dp
+                WorkKind.Book -> 56.dp to 56.dp
                 else -> 56.dp to 84.dp
             }
             LocalArtwork(item.artworkPath, Modifier.size(width, height))

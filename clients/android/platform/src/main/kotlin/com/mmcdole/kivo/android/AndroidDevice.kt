@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.Preferences
 import app.cash.sqldelight.driver.android.AndroidSqliteDriver
 import com.mmcdole.kivo.android.downloads.WorkTransport
 import com.mmcdole.kivo.android.player.AndroidCapabilityProbe
+import com.mmcdole.kivo.api.models.ClientPlatform
 import com.mmcdole.kivo.core.auth.ClientIdentity
 import com.mmcdole.kivo.core.auth.KeystoreSecureStore
 import com.mmcdole.kivo.core.auth.SecureStore
@@ -48,7 +49,7 @@ class AndroidDevice(context: Context, appVersion: String) : Device {
 
     /** A phone's download transfers; null on a TV. */
     val transport: WorkTransport? =
-        if (identity.platform == AndroidIdentity.PHONE) WorkTransport(context, File(context.filesDir, DOWNLOADS)) else null
+        if (identity.platform == ClientPlatform.AndroidPhone) WorkTransport(context, File(context.filesDir, DOWNLOADS)) else null
 
     override val downloads: DownloadDevice? = transport?.let { transport ->
         androidDownloads(File(context.filesDir, DOWNLOADS).path, transport) { schema -> AndroidSqliteDriver(schema, context, "downloads.db") }
@@ -63,13 +64,10 @@ class AndroidDevice(context: Context, appVersion: String) : Device {
 /** This app on this device, as every request to a server says it, [appVersion] being the version its requests name. */
 class AndroidIdentity(context: Context, override val appVersion: String) : ClientIdentity {
     override val app = "kivo-android"
-    override val platform = if (context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)) "androidTv" else PHONE
+    override val platform =
+        if (context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)) ClientPlatform.AndroidTv else ClientPlatform.AndroidPhone
     override val osVersion: String = Build.VERSION.RELEASE
     override val deviceModel: String = Build.MODEL
-
-    companion object {
-        const val PHONE = "androidPhone"
-    }
 }
 
 /** The system setting that holds the name the TV gives other devices over Bluetooth. */

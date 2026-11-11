@@ -49,7 +49,7 @@ data class LibraryCreate (
     @SerialName(value = "name") @Required val name: kotlin.String,
 
     /* An `audiobooks` library makes no preview thumbnails, so its `previews` is `never`, whatever is sent.  */
-    @SerialName(value = "kind") @Required val kind: kotlin.String,
+    @SerialName(value = "kind") @Required val kind: com.mmcdole.kivo.api.models.LibraryKind,
 
     @SerialName(value = "folders") @Required val folders: kotlin.collections.List<kotlin.String>,
 

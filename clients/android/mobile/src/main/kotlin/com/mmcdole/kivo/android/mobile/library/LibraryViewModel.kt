@@ -12,11 +12,13 @@ import com.mmcdole.kivo.android.mobile.ui.WorkMarks
 import com.mmcdole.kivo.api.models.BookSeriesSummary
 import com.mmcdole.kivo.api.models.CollectionSummary
 import com.mmcdole.kivo.api.models.Library
+import com.mmcdole.kivo.api.models.LibraryKind
 import com.mmcdole.kivo.api.models.PersonSummary
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.data.GridPager
 import com.mmcdole.kivo.core.data.GridQuery
+import com.mmcdole.kivo.core.data.GridSort
 import com.mmcdole.kivo.core.data.LibraryFilters
 import com.mmcdole.kivo.core.session.KivoSession
 import kotlinx.coroutines.CancellationException
@@ -60,17 +62,17 @@ data class LibraryUiState(
 }
 
 /** A tab's cards: authors and series square, collections posters, and works by the library's kind. */
-fun gridShape(kind: String?, tab: LibraryTab): CardShape = when {
+fun gridShape(kind: LibraryKind?, tab: LibraryTab): CardShape = when {
     tab == LibraryTab.Authors || tab == LibraryTab.Series -> CardShape.Square
     tab == LibraryTab.Collections -> CardShape.Poster
-    kind == "audiobooks" -> CardShape.Square
-    kind == "videos" -> CardShape.Landscape
+    kind == LibraryKind.Audiobooks -> CardShape.Square
+    kind == LibraryKind.Videos -> CardShape.Landscape
     else -> CardShape.Poster
 }
 
 /** The tabs a library of [kind] offers: an audiobooks library its authors and series, another its collections when it has any. */
-fun tabsOf(kind: String?, filters: LibraryFilters?, tab: LibraryTab): List<LibraryTab> = when {
-    kind == "audiobooks" -> listOf(LibraryTab.Titles, LibraryTab.Authors, LibraryTab.Series)
+fun tabsOf(kind: LibraryKind?, filters: LibraryFilters?, tab: LibraryTab): List<LibraryTab> = when {
+    kind == LibraryKind.Audiobooks -> listOf(LibraryTab.Titles, LibraryTab.Authors, LibraryTab.Series)
     filters?.collections == true || tab == LibraryTab.Collections -> listOf(LibraryTab.Titles, LibraryTab.Collections)
     else -> listOf(LibraryTab.Titles)
 }
@@ -87,7 +89,7 @@ class LibraryViewModel(
     private val savedGrids: SavedGrids,
     saved: Map<String, GridChoice>,
     private val libraryId: String,
-    private val oneOffSort: String? = null,
+    private val oneOffSort: GridSort? = null,
 ) : ViewModel() {
     private val initial = if (oneOffSort != null) GridChoice(GridQuery(libraryId, sort = oneOffSort)) else gridChoice(saved, libraryId)
 

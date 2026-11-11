@@ -27,11 +27,15 @@ import com.mmcdole.kivo.android.ui.Navigator
 import com.mmcdole.kivo.api.infrastructure.ApiClient
 import com.mmcdole.kivo.api.models.Home
 import com.mmcdole.kivo.api.models.HomeRow
+import com.mmcdole.kivo.api.models.HomeRowKind
 import com.mmcdole.kivo.api.models.Library
+import com.mmcdole.kivo.api.models.LibraryKind
 import com.mmcdole.kivo.api.models.LibraryList
 import com.mmcdole.kivo.api.models.LibraryRef
+import com.mmcdole.kivo.api.models.MatchState
 import com.mmcdole.kivo.api.models.ServerInfo
 import com.mmcdole.kivo.api.models.WorkImages
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.auth.SavedServer
 import com.mmcdole.kivo.core.session.KivoClient
@@ -237,16 +241,16 @@ class HomeRowsTest {
         const val CARDS = 20
         const val HOLD_MS = 3_000L
 
-        val libraries = (0 until ROWS).map { Library("lib$it", "Movies $it", true, "movies", CARDS) }
+        val libraries = (0 until ROWS).map { Library("lib$it", "Movies $it", true, LibraryKind.Movies, CARDS) }
 
         /** Row [r]'s card [i]: its row first, so a tag says where it is. */
         fun name(r: Int, i: Int) = "R$r Title $i"
 
         fun row(r: Int, library: Library) = HomeRow(
             id = "recentlyAdded:${library.id}",
-            kind = "recentlyAdded",
+            kind = HomeRowKind.RecentlyAdded,
             items = (0 until CARDS).map { i ->
-                WorkSummary(id = "w$r-$i", kind = "movie", title = name(r, i), matchState = "matched", available = true, images = WorkImages(), libraryId = library.id)
+                WorkSummary(id = "w$r-$i", kind = WorkKind.Movie, title = name(r, i), matchState = MatchState.Matched, available = true, images = WorkImages(), libraryId = library.id)
             },
             library = LibraryRef(library.id, library.name, library.kind),
         )

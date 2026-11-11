@@ -5,6 +5,7 @@ import com.mmcdole.kivo.api.models.CurrentUser
 import com.mmcdole.kivo.api.models.PlaybackPreferences
 import com.mmcdole.kivo.api.models.DeviceCode
 import com.mmcdole.kivo.api.models.Session
+import com.mmcdole.kivo.api.models.SessionKind
 import com.mmcdole.kivo.api.models.SubtitleMode
 import com.mmcdole.kivo.api.models.UserLimits
 import com.mmcdole.kivo.api.result
@@ -34,7 +35,7 @@ private const val TOKEN_KEY = "kivo.token.server-1"
 
 private val at = Instant.fromEpochSeconds(1_800_000_000)
 
-private val session = Session("d1", "app", "Living Room", at, at, current = true, token = "tok")
+private val session = Session("d1", SessionKind.App, "Living Room", at, at, current = true, token = "tok")
 
 /** Who the server says is signed in, once the token is the app's. */
 private fun FakeServer.signedInAs(user: CurrentUser) = on("GET", "/api/v1/users/me") { json(CurrentUser.serializer(), user) }

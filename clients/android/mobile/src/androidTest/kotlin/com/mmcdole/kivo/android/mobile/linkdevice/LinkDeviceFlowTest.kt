@@ -13,6 +13,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.mmcdole.kivo.android.mobile.theme.KivoMobileTheme
+import com.mmcdole.kivo.api.models.ClientPlatform
 import com.mmcdole.kivo.api.models.PendingDevice
 import org.junit.Rule
 import org.junit.Test
@@ -31,7 +32,7 @@ class LinkDeviceFlowTest {
     fun aTypedCodeShowsTheDeviceAskingAndAllowSignsItIn() {
         val looked = mutableListOf<String>()
         val answers = mutableListOf<Boolean>()
-        val tv = PendingDevice("Living Room", nearby = false, startedAt = Clock.System.now(), platform = "androidTv")
+        val tv = PendingDevice("Living Room", nearby = false, startedAt = Clock.System.now(), platform = ClientPlatform.AndroidTv)
         var state by mutableStateOf(LinkUiState(username = "anna", serverName = "Den"))
         rule.setContent {
             KivoMobileTheme {

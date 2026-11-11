@@ -1,10 +1,15 @@
 package com.mmcdole.kivo.core.data
 
+import com.mmcdole.kivo.api.models.LibraryKind
 import com.mmcdole.kivo.api.models.Rule
 import com.mmcdole.kivo.api.models.RuleGroup
+import com.mmcdole.kivo.api.models.RuleGroupMatch
+import com.mmcdole.kivo.api.models.SortDirection
 import com.mmcdole.kivo.api.models.SortKey
 import com.mmcdole.kivo.api.models.WorkField
 import com.mmcdole.kivo.api.models.WorkFieldOp
+import com.mmcdole.kivo.api.models.WorkFieldType
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkQuery
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -21,7 +26,7 @@ data class RuleDraft(
     val field: String,
     val op: String,
     val arity: Int,
-    val type: String,
+    val type: WorkFieldType,
     val values: List<String>,
     val id: String = newId(),
 ) {
@@ -51,15 +56,15 @@ data class RuleDraft(
 
     private fun validValue(value: String): Boolean = when {
         SmartLists.isPeriod(op) -> PERIOD_FORM.matches(value)
-        type == "number" -> NUMBER_FORM.matches(value.trim()) && value.trim().toDouble().isFinite()
-        type == "date" -> DATE_FORM.matches(value)
+        type == WorkFieldType.Number -> NUMBER_FORM.matches(value.trim()) && value.trim().toDouble().isFinite()
+        type == WorkFieldType.Date -> DATE_FORM.matches(value)
         else -> value.isNotBlank()
     }
 }
 
 /** A group of rules the root holds. */
 data class GroupDraft(
-    val match: String,
+    val match: RuleGroupMatch,
     val rules: List<RuleDraft> = emptyList(),
     val id: String = newId(),
 )
@@ -71,10 +76,10 @@ data class GroupDraft(
  */
 data class SmartListDraft(
     val name: String,
-    val kinds: List<String>,
+    val kinds: List<WorkKind>,
     /** The libraries of the `library` rule, empty for every library. */
     val libraries: Set<String> = emptySet(),
-    val match: String = "all",
+    val match: RuleGroupMatch = RuleGroupMatch.All,
     val rules: List<RuleDraft> = emptyList(),
     val groups: List<GroupDraft> = emptyList(),
     val sort: List<SortKey> = emptyList(),
@@ -100,7 +105,7 @@ data class SmartListDraft(
 
     fun named(name: String): SmartListDraft = copy(name = name)
 
-    fun showing(kinds: List<String>): SmartListDraft = copy(kinds = kinds)
+    fun showing(kinds: List<WorkKind>): SmartListDraft = copy(kinds = kinds)
 
     fun inLibraries(libraries: Set<String>): SmartListDraft = copy(libraries = libraries)
 
@@ -129,7 +134,7 @@ data class SmartListDraft(
 
     fun removingGroup(id: String): SmartListDraft = copy(groups = groups.filter { it.id != id })
 
-    fun withGroupMatch(id: String, match: String): SmartListDraft = copy(groups = groups.map { if (it.id == id) it.copy(match = match) else it })
+    fun withGroupMatch(id: String, match: RuleGroupMatch): SmartListDraft = copy(groups = groups.map { if (it.id == id) it.copy(match = match) else it })
 }
 
 /** Building and reading the smart list builder's rules. */
@@ -145,7 +150,7 @@ object SmartLists {
         val base = SmartListDraft(name, query?.kinds ?: NEW_LIST_KINDS, sort = query?.sort.orEmpty(), maxWorks = query?.maxWorks)
         val root = query?.where ?: return base
         val saved = root.rules.orEmpty()
-        val libraryAt = if (root.match == "all") saved.indexOfFirst { it.field == LIBRARY_FIELD && it.op == ANY_OF } else -1
+        val libraryAt = if (root.match == RuleGroupMatch.All) saved.indexOfFirst { it.field == LIBRARY_FIELD && it.op == ANY_OF } else -1
         return base.copy(
             match = root.match,
             libraries = saved.getOrNull(libraryAt)?.propertyValues.orEmpty().toSet(),
@@ -158,7 +163,7 @@ object SmartLists {
     fun ruleDraft(rule: Rule, fields: List<WorkField>): RuleDraft {
         val field = fields.firstOrNull { it.field == rule.field }
         val arity = field?.ops?.firstOrNull { it.op == rule.op }?.arity ?: -1
-        return RuleDraft(rule.field, rule.op, arity, field?.type.orEmpty(), rule.propertyValues.orEmpty())
+        return RuleDraft(rule.field, rule.op, arity, field?.type ?: WorkFieldType.Unknown, rule.propertyValues.orEmpty())
     }
 
     /** Why a builder can't edit [query], or null if it can. */
@@ -167,42 +172,51 @@ object SmartLists {
         val rules = query.where?.let(::rulesOf).orEmpty()
         val knownRules = rules.all { rule -> fields.any { it.field == rule.field && it.ops.any { op -> op.op == rule.op } } }
         val knownSorts = query.sort.orEmpty().all { key -> key.field == RANDOM_SORT || fields.any { it.field == key.field && it.sortable } }
-        return if (knownRules && knownSorts) null else SmartListRefusal.UnknownField
+        return if (knownRules && knownSorts && knownValues(query)) null else SmartListRefusal.UnknownField
     }
 
+    /** Whether [query] holds no kind, match or direction this version doesn't know: saving one would lose it. */
+    private fun knownValues(query: WorkQuery): Boolean =
+        WorkKind.Unknown !in query.kinds &&
+            query.where?.let(::groupsOf).orEmpty().none { it.match == RuleGroupMatch.Unknown } &&
+            query.sort.orEmpty().none { it.direction == SortDirection.Unknown }
+
     private fun rulesOf(group: RuleGroup): List<Rule> = group.rules.orEmpty() + group.groups.orEmpty().flatMap(::rulesOf)
+
+    private fun groupsOf(group: RuleGroup): List<RuleGroup> = listOf(group) + group.groups.orEmpty().flatMap(::groupsOf)
 
     /** A rule on [field] with its first operator, its values not chosen yet; null when it has no operators. */
     fun blankRule(field: WorkField): RuleDraft? = field.ops.firstOrNull()?.let { op -> RuleDraft(field.field, op.op, op.arity, field.type, slots(op.arity)) }
 
     /** A group matching any, with one blank rule on [field]. */
-    fun blankGroup(field: WorkField): GroupDraft = GroupDraft("any", listOfNotNull(blankRule(field)))
+    fun blankGroup(field: WorkField): GroupDraft = GroupDraft(RuleGroupMatch.Any, listOfNotNull(blankRule(field)))
 
     /** The query for [grid], a library of [libraryKind]: the kinds it lists, its library, its filters and sort, for Save as Smart List. */
-    fun fromGrid(grid: GridQuery, libraryKind: String?): WorkQuery {
+    fun fromGrid(grid: GridQuery, libraryKind: LibraryKind?): WorkQuery {
         val query = gridQuery(grid, libraryKind)
         val library = Rule(LIBRARY_FIELD, ANY_OF, listOf(grid.libraryId))
-        return query.copy(where = RuleGroup("all", listOf(library) + query.where?.rules.orEmpty()))
+        return query.copy(where = RuleGroup(RuleGroupMatch.All, listOf(library) + query.where?.rules.orEmpty()))
     }
 
     /** The query of [grid]'s works, read in its library of [libraryKind]: the kind it lists, its filters and its sort. */
-    internal fun gridQuery(grid: GridQuery, libraryKind: String?): WorkQuery {
+    internal fun gridQuery(grid: GridQuery, libraryKind: LibraryKind?): WorkQuery {
         val rules = buildList {
-            grid.played?.let { add(Rule("playState", ANY_OF, listOf(it))) }
+            grid.played?.let { add(Rule("playState", ANY_OF, listOf(it.value))) }
             grid.genres?.takeIf { it.isNotEmpty() }?.let { add(Rule("genre", ANY_OF, it)) }
             yearRule(grid.yearFrom, grid.yearTo)?.let(::add)
             grid.contentRatings?.takeIf { it.isNotEmpty() }?.let { add(Rule("contentRating", ANY_OF, it)) }
-            grid.resolutions?.takeIf { it.isNotEmpty() }?.let { add(Rule("resolution", ANY_OF, it.sorted())) }
-            grid.dynamicRanges?.takeIf { it.isNotEmpty() }?.let { add(Rule("dynamicRange", ANY_OF, it.sorted())) }
+            grid.resolutions?.takeIf { it.isNotEmpty() }?.let { add(Rule("resolution", ANY_OF, it.map { r -> r.value }.sorted())) }
+            grid.dynamicRanges?.takeIf { it.isNotEmpty() }?.let { add(Rule("dynamicRange", ANY_OF, it.map { r -> r.value }.sorted())) }
+            grid.narratorId?.let { add(Rule("narrator", ANY_OF, listOf(it))) }
         }
         val kind = when (libraryKind) {
-            "movies" -> "movie"
-            "shows" -> "series"
-            "audiobooks" -> "book"
-            else -> "video"
+            LibraryKind.Movies -> WorkKind.Movie
+            LibraryKind.Shows -> WorkKind.Series
+            LibraryKind.Audiobooks -> WorkKind.Book
+            else -> WorkKind.Video
         }
-        val where = if (rules.isEmpty()) null else RuleGroup("all", rules)
-        return WorkQuery(listOf(kind), where = where, sort = listOf(SortKey(grid.sort ?: "title")))
+        val where = if (rules.isEmpty()) null else RuleGroup(RuleGroupMatch.All, rules)
+        return WorkQuery(listOf(kind), where = where, sort = listOf(SortKey((grid.sort ?: GridSort.Title).value)))
     }
 
     /** The rule for the years [from] to [to], either open; null for neither. */
@@ -244,7 +258,7 @@ private const val ANY_OF = "anyOf"
 private const val QUERY_VERSION = 1
 
 /** What a new list shows. */
-private val NEW_LIST_KINDS = listOf("movie")
+private val NEW_LIST_KINDS = listOf(WorkKind.Movie)
 
 private val PERIOD_FORM = Regex("P[1-9][0-9]{0,3}[DWMY]")
 private val DATE_FORM = Regex("[0-9]{4}-[0-9]{2}-[0-9]{2}")

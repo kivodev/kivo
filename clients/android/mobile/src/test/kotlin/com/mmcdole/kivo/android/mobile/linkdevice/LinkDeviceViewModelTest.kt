@@ -4,6 +4,7 @@ import com.mmcdole.kivo.android.mobile.CoreTest
 import com.mmcdole.kivo.android.mobile.awaitValue
 import com.mmcdole.kivo.android.mobile.refuse
 import com.mmcdole.kivo.android.mobile.reply
+import com.mmcdole.kivo.api.models.ClientPlatform
 import com.mmcdole.kivo.api.models.PendingDevice
 import com.mmcdole.kivo.core.auth.SavedServer
 import io.ktor.client.engine.mock.respond
@@ -17,7 +18,7 @@ import kotlin.time.Instant
 
 class LinkDeviceViewModelTest : CoreTest() {
     private val answered = CopyOnWriteArrayList<String>()
-    private val tv = PendingDevice("Living Room", nearby = true, startedAt = Instant.fromEpochMilliseconds(0), platform = "androidTv")
+    private val tv = PendingDevice("Living Room", nearby = true, startedAt = Instant.fromEpochMilliseconds(0), platform = ClientPlatform.AndroidTv)
 
     init {
         server.on("GET", "/api/v1/device-codes/K7Q2M9") { reply(PendingDevice.serializer(), tv) }

@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
+import com.mmcdole.kivo.core.ProblemCode
 import com.mmcdole.kivo.core.data.SubtitleSearch
 import com.mmcdole.kivo.core.player.Markers
 import com.mmcdole.kivo.core.player.SpriteFrame
@@ -1190,7 +1191,7 @@ private fun PlayerError(state: PlayerState, admin: Boolean, onRetry: () -> Unit,
     val colors = Kivo.colors
     val display = LocalSession.current.graph.display
     val problem = failure as? PlayerFailure.Problem
-    val limit = problem?.code == "streamLimit"
+    val limit = problem?.knownCode == ProblemCode.StreamLimit
     val title = when {
         failure is PlayerFailure.Ended -> stringResource(R.string.playback_stopped)
         limit -> stringResource(R.string.stream_limit_title)

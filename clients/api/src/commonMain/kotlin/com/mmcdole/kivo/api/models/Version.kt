@@ -83,7 +83,7 @@ data class Version (
     @SerialName(value = "edition") val edition: kotlin.String? = null,
 
     /* Its video's resolution class; absent without video. */
-    @SerialName(value = "resolution") val resolution: kotlin.String? = null,
+    @SerialName(value = "resolution") val resolution: com.mmcdole.kivo.api.models.Resolution? = null,
 
     /* Its video's HDR format; absent for SDR or without video. */
     @SerialName(value = "hdr") val hdr: kotlin.String? = null,

@@ -23,8 +23,8 @@ struct DownloadsView: View {
         let coming = items.contains {
             $0.status is DownloadStatusQueued || $0.status is DownloadStatusConverting || $0.status is DownloadStatusDownloading
         }
-        let books = items.filter { $0.kind == "book" }
-        let movies = items.filter { $0.kind != "book" && $0.seriesId == nil }
+        let books = items.filter { $0.kind == .book }
+        let movies = items.filter { $0.kind != .book && $0.seriesId == nil }
         let shows = Dictionary(grouping: items.filter { $0.seriesId != nil }) { $0.seriesId ?? "" }
             .sorted { ($0.value.map(\.createdAtMs).max() ?? 0) > ($1.value.map(\.createdAtMs).max() ?? 0) }
         Group {
@@ -458,7 +458,7 @@ struct DownloadRow: View {
     private var content: some View {
         HStack(spacing: KivoTokens.spacing * 3) {
             LocalArtwork(path: item.artworkPath, title: item.title)
-                .frame(width: item.kind == "episode" ? 96 : 56, height: item.kind == "episode" ? 54 : (item.kind == "book" ? 56 : 84))
+                .frame(width: item.kind == .episode ? 96 : 56, height: item.kind == .episode ? 54 : (item.kind == .book ? 56 : 84))
             DownloadText(
                 title: DownloadWords.title(item, numbered: numbered), line: DownloadWords.line(item, display: server.display),
                 failed: item.status is DownloadStatusFailed
@@ -539,7 +539,7 @@ struct DownloadRow: View {
 
     private func play() {
         guard item.status is DownloadStatusReady else { return }
-        if item.kind == "book" {
+        if item.kind == .book {
             server.listen(item.workId)
         } else {
             server.player.play(PlayTarget(workId: item.workId, downloadId: item.id))

@@ -17,9 +17,11 @@ import com.mmcdole.kivo.api.models.PlayStarted
 import com.mmcdole.kivo.api.models.PlayTrack
 import com.mmcdole.kivo.api.models.ServerInfo
 import com.mmcdole.kivo.api.models.PlaybackPreferences
+import com.mmcdole.kivo.api.models.TrackReason
 import com.mmcdole.kivo.api.models.TrackTranscode
 import com.mmcdole.kivo.api.models.UserLimits
 import com.mmcdole.kivo.api.models.UserState
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.core.FakeServer
 import com.mmcdole.kivo.core.auth.AddressChange
 import com.mmcdole.kivo.core.auth.NetworkEpoch
@@ -34,6 +36,7 @@ import com.mmcdole.kivo.core.live.Invalidation
 import com.mmcdole.kivo.core.player.TrackShow
 import com.mmcdole.kivo.core.problem
 import com.mmcdole.kivo.core.settings.DeviceSettings
+import com.mmcdole.kivo.core.settings.DownloadQuality
 import io.ktor.client.request.HttpRequestData
 import io.ktor.client.engine.mock.MockRequestHandleScope
 import io.ktor.client.engine.mock.respond
@@ -715,10 +718,10 @@ class DownloadsTest {
     private fun plannedTracks(delivery: DownloadDelivery) = if (delivery == DownloadDelivery.Conversion) {
         listOf(
             PlayTrack(
-                "t1", TrackType.Video, selected = true, delivery = TrackDelivery.Stream, codec = "h264", reason = "downloadQuality",
+                "t1", TrackType.Video, selected = true, delivery = TrackDelivery.Stream, codec = "h264", reason = TrackReason.DownloadQuality,
                 transcode = TrackTranscode(1280, 720, 4_000_000, encoder = "CPU"),
             ),
-            PlayTrack("t2", TrackType.Audio, selected = true, delivery = TrackDelivery.Stream, codec = "aac", reason = "downloadQuality", transcode = TrackTranscode(channels = 2)),
+            PlayTrack("t2", TrackType.Audio, selected = true, delivery = TrackDelivery.Stream, codec = "aac", reason = TrackReason.DownloadQuality, transcode = TrackTranscode(channels = 2)),
             PlayTrack("t3", TrackType.Subtitle, selected = true, delivery = TrackDelivery.External, codec = "webvtt", url = "downloads/d1/subtitles/t3.vtt"),
         )
     } else {
@@ -801,6 +804,21 @@ class DownloadsTest {
         assertTrue(h.downloads.files(id).none { it.name == "part-0.m4v" })
     }
 
+    @Test
+    fun aDownloadsKindIsTheWorksAsStored() = runTest {
+        val h = Harness(this)
+        h.connect()
+        val id = h.downloads.download(DownloadRequest("w1"))
+        advanceUntilIdle()
+        assertEquals(WorkKind.Movie, h.item()?.kind)
+        assertEquals(DownloadQuality.High, h.item()?.quality)
+        h.driver.execute(null, "UPDATE download SET kind = 'podcast', quality = 'lossless' WHERE id = '$id'", 0)
+        h.downloads.sync()
+        advanceUntilIdle()
+        assertEquals(WorkKind.Unknown, h.item()?.kind, "a kind this version doesn't know still lists")
+        assertNull(h.item()?.quality)
+    }
+
     // Migration (downloads): remove after every client has updated past this release.
     @Test
     fun anEarlierVersionsDownloadPlaysOnAtItsQualityNow() = runTest {
@@ -816,7 +834,7 @@ class DownloadsTest {
         )
         val item = h.item()
         assertEquals(DownloadStatus.Ready, item?.status)
-        assertEquals("standard", item?.quality)
+        assertEquals(DownloadQuality.Standard, item?.quality)
         assertEquals(true, item?.sizeExact)
         assertNotNull(h.downloads.playable("w1"), "it plays from its files")
         assertEquals("""{"state":"queued","delivery":"conversion","sizeExact":false}""", withSizeExact("""{"state":"queued","delivery":"conversion"}"""))
@@ -1363,17 +1381,17 @@ class DownloadsTest {
     @Test
     fun qualitiesAreNamedByPurpose() {
         val en = Display()
-        assertEquals("High", en.downloadQuality("high"))
-        assertEquals("Standard", en.downloadQuality("standard"))
-        assertEquals("Original", en.downloadQuality("original"))
+        assertEquals("High", en.downloadQuality(DownloadQuality.High))
+        assertEquals("Standard", en.downloadQuality(DownloadQuality.Standard))
+        assertEquals("Original", en.downloadQuality(DownloadQuality.Original))
     }
 
     // Migration (downloads): remove after every client has updated past this release.
     @Test
     fun anEarlierVersionsQualityIsNamedAsItsQualityNow() {
         val en = Display()
-        assertEquals("High", en.downloadQuality("1080p-high"))
-        assertEquals("Standard", en.downloadQuality("480p"))
+        assertEquals("High", en.downloadQuality(DownloadQuality.parseOrNull("1080p-high")!!))
+        assertEquals("Standard", en.downloadQuality(DownloadQuality.parseOrNull("480p")!!))
     }
 }
 

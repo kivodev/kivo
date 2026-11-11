@@ -45,6 +45,7 @@ import com.mmcdole.kivo.android.mobile.theme.space
 import com.mmcdole.kivo.android.mobile.ui.wideWidth
 import com.mmcdole.kivo.android.mobile.ui.PageTopBar
 import com.mmcdole.kivo.android.mobile.ui.sentence
+import com.mmcdole.kivo.api.models.SessionKind
 import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.session.SignedInDevice
 
@@ -156,13 +157,13 @@ fun SessionsScreen(session: ServerSession, nav: MobileNav) {
 /** The session's name, or what it is when it has none, as a browser may not. */
 @Composable
 private fun deviceName(device: SignedInDevice): String = device.name.ifEmpty {
-    stringResource(if (device.kind == "browser") R.string.mobile_web_browser else R.string.mobile_app)
+    stringResource(if (device.kind == SessionKind.Browser) R.string.mobile_web_browser else R.string.mobile_app)
 }
 
 /** "Android TV · Last used 3 hours ago", or "Android phone · This device". */
 @Composable
 private fun deviceLine(device: SignedInDevice): String {
-    val kind = platformName(device.platform) ?: stringResource(if (device.kind == "browser") R.string.mobile_platform_browser else R.string.mobile_app)
+    val kind = platformName(device.platform) ?: stringResource(if (device.kind == SessionKind.Browser) R.string.mobile_platform_browser else R.string.mobile_app)
     if (device.current) return "$kind · ${stringResource(R.string.mobile_this_device)}"
     val used = DateUtils.getRelativeTimeSpanString(device.lastUsedEpochMs, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS).toString()
     return "$kind · ${stringResource(R.string.mobile_last_used, used)}"

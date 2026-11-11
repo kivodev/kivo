@@ -13,15 +13,15 @@ public enum CardStyle: Sendable {
     /// The shape a work's card takes where nothing else decides it.
     public static func of(_ work: WorkSummary) -> CardStyle {
         switch work.kind {
-        case "episode", "video", "extra": .landscape
-        case "book": .square
-        default: .poster
+        case .episode, .video, .extra: .landscape
+        case .book: .square
+        case .movie, .series, .season, .unknown: .poster
         }
     }
 
     /// The shape a work's card takes in a list: an episode's is a poster.
     public static func listed(_ work: WorkSummary) -> CardStyle {
-        work.kind == "episode" ? .poster : of(work)
+        work.kind == .episode ? .poster : of(work)
     }
 
     public var aspect: CGFloat {

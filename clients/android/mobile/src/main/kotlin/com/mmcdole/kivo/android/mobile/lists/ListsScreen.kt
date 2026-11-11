@@ -27,7 +27,9 @@ import com.mmcdole.kivo.android.mobile.library.SortSheet
 import com.mmcdole.kivo.android.mobile.ui.Artwork
 import com.mmcdole.kivo.android.mobile.ui.cardCaption
 import com.mmcdole.kivo.android.mobile.ui.cardTitle
+import com.mmcdole.kivo.api.models.ListSort
 import com.mmcdole.kivo.api.models.WorkSummary
+import com.mmcdole.kivo.core.ProblemCode
 import com.mmcdole.kivo.core.data.ListSorts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -402,7 +404,7 @@ fun ListScreen(session: ServerSession, id: String, name: String, nav: MobileNav)
         )
     }
     if (sorting) {
-        SortSheet(ListSorts.all, sort ?: ListSorts.CUSTOM, { listSortName(it) }, { listSortDirection(it) }, model::chooseSort) { sorting = false }
+        SortSheet(ListSorts.all, sort ?: ListSort.Custom, { it.value }, { listSortName(it) }, { listSortDirection(it) }, model::chooseSort) { sorting = false }
     }
     if (renaming) {
         ListNameDialog(
@@ -478,33 +480,33 @@ private fun ListMenu(onReorder: (() -> Unit)?, onRename: (() -> Unit)?, onDelete
 }
 
 @Composable
-private fun listSortName(sort: String) = stringResource(
+private fun listSortName(sort: ListSort) = stringResource(
     when (sort) {
-        ListSorts.TITLE -> R.string.mobile_sort_title
-        ListSorts.RELEASE_DATE -> R.string.mobile_sort_release
-        ListSorts.RATING -> R.string.mobile_sort_rating
-        ListSorts.DATE_ADDED -> R.string.mobile_sort_added_to_list
+        ListSort.Title -> R.string.mobile_sort_title
+        ListSort.ReleaseDate -> R.string.mobile_sort_release
+        ListSort.Rating -> R.string.mobile_sort_rating
+        ListSort.DateAdded -> R.string.mobile_sort_added_to_list
         else -> R.string.mobile_sort_custom
     },
 )
 
 /** Which way a sort runs; the custom order runs as the user put it. */
 @Composable
-private fun listSortDirection(sort: String): String? = when (sort) {
-    ListSorts.TITLE -> R.string.mobile_a_to_z
-    ListSorts.RELEASE_DATE, ListSorts.DATE_ADDED -> R.string.mobile_newest_first
-    ListSorts.RATING -> R.string.mobile_highest_first
+private fun listSortDirection(sort: ListSort): String? = when (sort) {
+    ListSort.Title -> R.string.mobile_a_to_z
+    ListSort.ReleaseDate, ListSort.DateAdded -> R.string.mobile_newest_first
+    ListSort.Rating -> R.string.mobile_highest_first
     else -> null
 }?.let { stringResource(it) }
 
 /** The sort in a word or two, for the count line. */
 @Composable
-private fun listSortShort(sort: String) = stringResource(
+private fun listSortShort(sort: ListSort) = stringResource(
     when (sort) {
-        ListSorts.TITLE -> R.string.mobile_sort_short_title
-        ListSorts.RELEASE_DATE -> R.string.mobile_sort_short_release
-        ListSorts.RATING -> R.string.mobile_sort_short_rating
-        ListSorts.DATE_ADDED -> R.string.mobile_sort_short_added
+        ListSort.Title -> R.string.mobile_sort_short_title
+        ListSort.ReleaseDate -> R.string.mobile_sort_short_release
+        ListSort.Rating -> R.string.mobile_sort_short_rating
+        ListSort.DateAdded -> R.string.mobile_sort_short_added
         else -> R.string.mobile_sort_custom
     },
 )
@@ -692,7 +694,7 @@ private fun ListNameDialog(
 
 @Composable
 internal fun nameProblem(problem: RequestProblem): String =
-    if (problem.code == "nameTaken") stringResource(R.string.mobile_list_name_taken) else sentence(problem)
+    if (problem.knownCode == ProblemCode.NameTaken) stringResource(R.string.mobile_list_name_taken) else sentence(problem)
 
 /** Add to List: New List, then every list ticked when the work's on it, a tap adding or removing it at once; a refused tap goes back and says why. */
 @OptIn(ExperimentalMaterial3Api::class)

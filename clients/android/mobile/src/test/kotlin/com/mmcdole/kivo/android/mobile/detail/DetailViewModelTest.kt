@@ -4,9 +4,12 @@ import com.mmcdole.kivo.android.mobile.CoreTest
 import com.mmcdole.kivo.android.mobile.awaitValue
 import com.mmcdole.kivo.android.mobile.work
 import com.mmcdole.kivo.api.models.EpisodeInfo
+import com.mmcdole.kivo.api.models.ListKind
+import com.mmcdole.kivo.api.models.MatchState
 import com.mmcdole.kivo.api.models.SeasonInfo
 import com.mmcdole.kivo.api.models.SeriesInfo
 import com.mmcdole.kivo.api.models.WorkDetail
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkList
 import com.mmcdole.kivo.api.models.WorkListList
 import com.mmcdole.kivo.api.models.WorkImages
@@ -18,28 +21,28 @@ import kotlin.test.assertTrue
 import kotlin.test.assertNull
 
 class DetailViewModelTest : CoreTest() {
-    private fun detail(id: String, kind: String, title: String = id, season: SeasonInfo? = null, series: SeriesInfo? = null, episode: EpisodeInfo? = null) = WorkDetail(
-        id = id, kind = kind, title = title, matchState = "matched", available = true, images = WorkImages(),
+    private fun detail(id: String, kind: WorkKind, title: String = id, season: SeasonInfo? = null, series: SeriesInfo? = null, episode: EpisodeInfo? = null) = WorkDetail(
+        id = id, kind = kind, title = title, matchState = MatchState.Matched, available = true, images = WorkImages(),
         genres = emptyList(), studios = emptyList(), credits = emptyList(), externalIds = emptyList(), versions = emptyList(),
         extras = emptyList(), collections = emptyList(), season = season, series = series, episode = episode,
     )
 
-    private val season1 = work("s1", "Season 1", "season").copy(season = SeasonInfo(1, "show", "Show", 0))
-    private val season2 = work("s2", "Season 2", "season").copy(season = SeasonInfo(2, "show", "Show", 2))
+    private val season1 = work("s1", "Season 1", WorkKind.Season).copy(season = SeasonInfo(1, "show", "Show", 0))
+    private val season2 = work("s2", "Season 2", WorkKind.Season).copy(season = SeasonInfo(2, "show", "Show", 2))
 
     init {
-        server.get("/api/v1/works/show", WorkDetail.serializer()) { detail("show", "series", "Show", series = SeriesInfo(2)) }
-        server.get("/api/v1/works/s2", WorkDetail.serializer()) { detail("s2", "season", "Season 2", season = SeasonInfo(2, "show", "Show", 2)) }
+        server.get("/api/v1/works/show", WorkDetail.serializer()) { detail("show", WorkKind.Series, "Show", series = SeriesInfo(2)) }
+        server.get("/api/v1/works/s2", WorkDetail.serializer()) { detail("s2", WorkKind.Season, "Season 2", season = SeasonInfo(2, "show", "Show", 2)) }
         server.get("/api/v1/works/show/children", WorkSummaryList.serializer()) { WorkSummaryList(listOf(season1, season2)) }
-        server.get("/api/v1/works/s1/children", WorkSummaryList.serializer()) { WorkSummaryList(listOf(work("e1", kind = "episode"))) }
-        server.get("/api/v1/works/s2/children", WorkSummaryList.serializer()) { WorkSummaryList(listOf(work("e3", kind = "episode"), work("e4", kind = "episode"))) }
-        server.get("/api/v1/works/m1", WorkDetail.serializer()) { detail("m1", "movie", "Charade") }
+        server.get("/api/v1/works/s1/children", WorkSummaryList.serializer()) { WorkSummaryList(listOf(work("e1", kind = WorkKind.Episode))) }
+        server.get("/api/v1/works/s2/children", WorkSummaryList.serializer()) { WorkSummaryList(listOf(work("e3", kind = WorkKind.Episode), work("e4", kind = WorkKind.Episode))) }
+        server.get("/api/v1/works/m1", WorkDetail.serializer()) { detail("m1", WorkKind.Movie, "Charade") }
     }
 
     @Test
     fun aWorkOnMyListSaysSoOnceBothAreRead() {
-        server.get("/api/v1/lists", WorkListList.serializer()) { WorkListList(listOf(WorkList("my", "Watchlist", "manual", builtIn = true, workCount = 1))) }
-        server.get("/api/v1/works/m1", WorkDetail.serializer()) { detail("m1", "movie", "Charade").copy(listIds = listOf("my")) }
+        server.get("/api/v1/lists", WorkListList.serializer()) { WorkListList(listOf(WorkList("my", "Watchlist", ListKind.Manual, builtIn = true, workCount = 1))) }
+        server.get("/api/v1/works/m1", WorkDetail.serializer()) { detail("m1", WorkKind.Movie, "Charade").copy(listIds = listOf("my")) }
         val model = DetailViewModel(signIn(), "m1")
         assertTrue(awaitValue(model.state) { it.work != null && it.myListId != null }.onMyList)
     }

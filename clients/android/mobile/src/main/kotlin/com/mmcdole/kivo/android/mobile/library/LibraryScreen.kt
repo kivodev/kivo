@@ -75,8 +75,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mmcdole.kivo.android.ServerSession
-import com.mmcdole.kivo.android.library.GridValues
 import com.mmcdole.kivo.android.library.filtered
+import com.mmcdole.kivo.android.library.sortsOf
 import com.mmcdole.kivo.android.mobile.R
 import com.mmcdole.kivo.android.mobile.app.BookSeriesRoute
 import com.mmcdole.kivo.android.mobile.app.CollectionRoute
@@ -97,8 +97,13 @@ import com.mmcdole.kivo.android.mobile.ui.WorkMenu
 import com.mmcdole.kivo.android.mobile.ui.WorkMenuHost
 import com.mmcdole.kivo.android.mobile.cast.CastButton
 import com.mmcdole.kivo.android.mobile.ui.display
+import com.mmcdole.kivo.api.models.LibraryKind
+import com.mmcdole.kivo.api.models.Resolution
+import com.mmcdole.kivo.core.data.DynamicRange
 import com.mmcdole.kivo.core.data.GridQuery
+import com.mmcdole.kivo.core.data.GridSort
 import com.mmcdole.kivo.core.data.SmartLists
+import com.mmcdole.kivo.core.data.WorkPlayState
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -109,7 +114,7 @@ import kotlin.math.roundToInt
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LibraryScreen(session: ServerSession, libraryId: String, oneOffSort: String?, nav: MobileNav) {
+fun LibraryScreen(session: ServerSession, libraryId: String, oneOffSort: GridSort?, nav: MobileNav) {
     val model = viewModel {
         LibraryViewModel(session.session, session.graph.savedGrids, session.gridChoices.value, libraryId, oneOffSort)
     }
@@ -120,7 +125,7 @@ fun LibraryScreen(session: ServerSession, libraryId: String, oneOffSort: String?
         modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
         topBar = {
             PageTopBar(state.library?.name.orEmpty(), nav::back, scroll, large = true) {
-                if (state.library?.kind != "audiobooks") CastButton()
+                if (state.library?.kind != LibraryKind.Audiobooks) CastButton()
                 if (state.tab == LibraryTab.Titles) FilterButton(state.query.filtered) { sheet = "filter" }
             }
         },
@@ -145,8 +150,9 @@ fun LibraryScreen(session: ServerSession, libraryId: String, oneOffSort: String?
     }
     when (sheet) {
         "sort" -> SortSheet(
-            GridValues.sortsOf(state.library?.kind),
-            state.query.sort ?: GridValues.TITLE,
+            sortsOf(state.library?.kind),
+            state.query.sort ?: GridSort.Title,
+            { it.value },
             { sortName(it) },
             { sortDirection(it) },
             onSort = { model.chooseQuery(state.query.copy(sort = it)) },
@@ -361,15 +367,16 @@ private fun SkeletonGrid(columns: Int, shape: CardShape, cardWidth: Dp, padding:
     }
 }
 
-/** Sort by: [sorts], each named by [name] with which way it runs, from [direction], under it, and [selected] ticked. */
+/** Sort by: [sorts], each tagged by its [value] and named by [name] with which way it runs, from [direction], under it, and [selected] ticked. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun SortSheet(
-    sorts: List<String>,
-    selected: String,
-    name: @Composable (String) -> String,
-    direction: @Composable (String) -> String?,
-    onSort: (String) -> Unit,
+internal fun <T> SortSheet(
+    sorts: List<T>,
+    selected: T,
+    value: (T) -> String,
+    name: @Composable (T) -> String,
+    direction: @Composable (T) -> String?,
+    onSort: (T) -> Unit,
     onDismiss: () -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss, modifier = Modifier.testTag("sortSheet")) {
@@ -381,7 +388,7 @@ internal fun SortSheet(
                 supportingContent = runs?.let { { Text(it) } },
                 trailingContent = { if (sort == selected) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) },
                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                modifier = Modifier.testTag("sort:$sort").clickable {
+                modifier = Modifier.testTag("sort:${value(sort)}").clickable {
                     onSort(sort)
                     onDismiss()
                 },
@@ -396,7 +403,7 @@ internal fun SortSheet(
 private fun FilterSheet(state: LibraryUiState, onQuery: (GridQuery) -> Unit, onClear: () -> Unit, onSaveSmart: () -> Unit, onDismiss: () -> Unit) {
     val query = state.query
     val filters = state.filters
-    val books = state.library?.kind == "audiobooks"
+    val books = state.library?.kind == LibraryKind.Audiobooks
     ModalBottomSheet(onDismissRequest = onDismiss, modifier = Modifier.testTag("filterSheet")) {
         Column(Modifier.padding(horizontal = space(6)).padding(bottom = space(6)), verticalArrangement = Arrangement.spacedBy(space(2))) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -405,11 +412,11 @@ private fun FilterSheet(state: LibraryUiState, onQuery: (GridQuery) -> Unit, onC
             }
             SheetLabel(stringResource(R.string.mobile_show))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(space(2))) {
-                for (played in listOf(null) + GridValues.playedStates) {
+                for (played in listOf(null) + WorkPlayState.entries) {
                     FilterChip(selected = query.played == played, onClick = { onQuery(query.copy(played = played)) }, label = { Text(playedName(played, books)) })
                 }
             }
-            val resolutions = GridValues.resolutions.filter { filters?.resolutions?.contains(it) == true }
+            val resolutions = Resolution.entries.filter { filters?.resolutions?.contains(it) == true }
             if (resolutions.isNotEmpty()) {
                 SheetLabel(stringResource(R.string.mobile_resolution))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(space(2))) {
@@ -419,7 +426,7 @@ private fun FilterSheet(state: LibraryUiState, onQuery: (GridQuery) -> Unit, onC
                     }
                 }
             }
-            val ranges = GridValues.dynamicRanges.filter { filters?.dynamicRanges?.contains(it) == true }
+            val ranges = DynamicRange.entries.filter { filters?.dynamicRanges?.contains(it) == true }
             if (ranges.isNotEmpty()) {
                 SheetLabel(stringResource(R.string.mobile_dynamic_range))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(space(2))) {
@@ -445,7 +452,7 @@ private fun FilterSheet(state: LibraryUiState, onQuery: (GridQuery) -> Unit, onC
     }
 }
 
-private fun toggled(values: List<String>, value: String) = (if (value in values) values - value else values + value).ifEmpty { null }
+private fun <T> toggled(values: List<T>, value: T) = (if (value in values) values - value else values + value).ifEmpty { null }
 
 @Composable
 private fun SheetLabel(text: String) {
@@ -461,12 +468,12 @@ private fun activeFilters(query: GridQuery): List<Pair<String, GridQuery>> = bui
 }
 
 @Composable
-private fun tabName(tab: LibraryTab, kind: String?): String = stringResource(
+private fun tabName(tab: LibraryTab, kind: LibraryKind?): String = stringResource(
     when (tab) {
         LibraryTab.Titles -> when (kind) {
-            "movies" -> R.string.mobile_tab_movies
-            "shows" -> R.string.mobile_tab_shows
-            "audiobooks" -> R.string.mobile_tab_books
+            LibraryKind.Movies -> R.string.mobile_tab_movies
+            LibraryKind.Shows -> R.string.mobile_tab_shows
+            LibraryKind.Audiobooks -> R.string.mobile_tab_books
             else -> R.string.mobile_tab_videos
         }
         LibraryTab.Collections -> R.string.mobile_collections
@@ -483,9 +490,9 @@ private fun countLine(total: Int, state: LibraryUiState): String {
         LibraryTab.Authors -> R.plurals.mobile_count_authors
         LibraryTab.Series -> R.plurals.mobile_count_series
         LibraryTab.Titles -> when (state.library?.kind) {
-            "movies" -> R.plurals.mobile_count_movies
-            "shows" -> R.plurals.mobile_count_shows
-            "audiobooks" -> R.plurals.mobile_count_books
+            LibraryKind.Movies -> R.plurals.mobile_count_movies
+            LibraryKind.Shows -> R.plurals.mobile_count_shows
+            LibraryKind.Audiobooks -> R.plurals.mobile_count_books
             else -> R.plurals.mobile_count_videos
         }
     }
@@ -498,71 +505,71 @@ private fun emptyFiltered(state: LibraryUiState): String {
     val query = state.query
     val noun = stringResource(
         when (state.library?.kind) {
-            "movies" -> R.string.mobile_noun_movies
-            "shows" -> R.string.mobile_noun_shows
-            "audiobooks" -> R.string.mobile_noun_books
+            LibraryKind.Movies -> R.string.mobile_noun_movies
+            LibraryKind.Shows -> R.string.mobile_noun_shows
+            LibraryKind.Audiobooks -> R.string.mobile_noun_books
             else -> R.string.mobile_noun_videos
         },
     )
     val played = query.played
     return if (played != null && query.copy(played = null).filtered.not()) {
-        stringResource(R.string.mobile_empty_played, playedName(played, state.library?.kind == "audiobooks").lowercase(), noun)
+        stringResource(R.string.mobile_empty_played, playedName(played, state.library?.kind == LibraryKind.Audiobooks).lowercase(), noun)
     } else {
         stringResource(R.string.mobile_empty_filters, noun)
     }
 }
 
 @Composable
-private fun playedName(played: String?, books: Boolean): String = stringResource(
+private fun playedName(played: WorkPlayState?, books: Boolean): String = stringResource(
     when (played) {
         null -> R.string.mobile_all
-        GridValues.UNPLAYED -> if (books) R.string.mobile_not_started else R.string.mobile_unwatched
-        GridValues.IN_PROGRESS -> R.string.mobile_in_progress
+        WorkPlayState.Unplayed -> if (books) R.string.mobile_not_started else R.string.mobile_unwatched
+        WorkPlayState.InProgress -> R.string.mobile_in_progress
         else -> if (books) R.string.mobile_finished else R.string.mobile_watched
     },
 )
 
 @Composable
-private fun sortName(sort: String?) = stringResource(
+private fun sortName(sort: GridSort?) = stringResource(
     when (sort) {
-        GridValues.ADDED_AT -> R.string.mobile_sort_added
-        GridValues.LAST_EPISODE_ADDED_AT -> R.string.mobile_sort_last_episode_added
-        GridValues.RELEASE_DATE -> R.string.mobile_sort_release
-        GridValues.RATING -> R.string.mobile_sort_rating
-        GridValues.RUNTIME -> R.string.mobile_sort_runtime
-        GridValues.LAST_PLAYED_AT -> R.string.mobile_sort_last_played
-        GridValues.AUTHOR -> R.string.mobile_sort_author
+        GridSort.AddedAt -> R.string.mobile_sort_added
+        GridSort.LastEpisodeAddedAt -> R.string.mobile_sort_last_episode_added
+        GridSort.ReleaseDate -> R.string.mobile_sort_release
+        GridSort.Rating -> R.string.mobile_sort_rating
+        GridSort.Runtime -> R.string.mobile_sort_runtime
+        GridSort.LastPlayedAt -> R.string.mobile_sort_last_played
+        GridSort.Author -> R.string.mobile_sort_author
         else -> R.string.mobile_sort_title
     },
 )
 
 @Composable
-private fun sortDirection(sort: String?) = stringResource(
+private fun sortDirection(sort: GridSort?) = stringResource(
     when (sort) {
-        GridValues.RATING -> R.string.mobile_highest_first
-        GridValues.ADDED_AT, GridValues.LAST_EPISODE_ADDED_AT, GridValues.RELEASE_DATE -> R.string.mobile_newest_first
-        GridValues.RUNTIME -> R.string.mobile_shortest_first
-        GridValues.LAST_PLAYED_AT -> R.string.mobile_most_recent_first
+        GridSort.Rating -> R.string.mobile_highest_first
+        GridSort.AddedAt, GridSort.LastEpisodeAddedAt, GridSort.ReleaseDate -> R.string.mobile_newest_first
+        GridSort.Runtime -> R.string.mobile_shortest_first
+        GridSort.LastPlayedAt -> R.string.mobile_most_recent_first
         else -> R.string.mobile_a_to_z
     },
 )
 
 /** The sort in a word or two, for the count line: "A–Z", "Recently added". */
 @Composable
-private fun sortShort(sort: String?) = stringResource(
+private fun sortShort(sort: GridSort?) = stringResource(
     when (sort) {
-        GridValues.ADDED_AT -> R.string.mobile_sort_short_added
-        GridValues.LAST_EPISODE_ADDED_AT -> R.string.mobile_sort_last_episode_added
-        GridValues.RELEASE_DATE -> R.string.mobile_sort_short_release
-        GridValues.RATING -> R.string.mobile_sort_short_rating
-        GridValues.RUNTIME -> R.string.mobile_sort_short_runtime
-        GridValues.LAST_PLAYED_AT -> R.string.mobile_sort_short_last_played
-        GridValues.AUTHOR -> R.string.mobile_sort_author
+        GridSort.AddedAt -> R.string.mobile_sort_short_added
+        GridSort.LastEpisodeAddedAt -> R.string.mobile_sort_last_episode_added
+        GridSort.ReleaseDate -> R.string.mobile_sort_short_release
+        GridSort.Rating -> R.string.mobile_sort_short_rating
+        GridSort.Runtime -> R.string.mobile_sort_short_runtime
+        GridSort.LastPlayedAt -> R.string.mobile_sort_short_last_played
+        GridSort.Author -> R.string.mobile_sort_author
         else -> R.string.mobile_sort_short_title
     },
 )
 
-private fun resolutionName(r: String) = display.resolution(r)
+private fun resolutionName(r: Resolution) = display.resolution(r)
 
 @Composable
-private fun dynamicRangeName(range: String) = stringResource(if (range == GridValues.DOLBY_VISION) R.string.mobile_dolby_vision else R.string.mobile_hdr)
+private fun dynamicRangeName(range: DynamicRange) = stringResource(if (range == DynamicRange.DolbyVision) R.string.mobile_dolby_vision else R.string.mobile_hdr)

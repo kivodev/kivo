@@ -39,9 +39,9 @@ public extension WorkSummary {
     /// The badge for a provisional item: Identifying or Unmatched.
     var matchBadge: String? {
         switch matchState {
-        case "identifying": String(localized: "Identifying")
-        case "unmatched": String(localized: "Unmatched")
-        default: nil
+        case .identifying: String(localized: "Identifying")
+        case .unmatched: String(localized: "Unmatched")
+        case .matched, .unknown: nil
         }
     }
 }

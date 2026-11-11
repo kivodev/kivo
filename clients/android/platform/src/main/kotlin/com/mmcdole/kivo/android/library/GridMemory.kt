@@ -5,46 +5,35 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.mmcdole.kivo.android.ApiNamingMigration
+import com.mmcdole.kivo.api.models.LibraryKind
+import com.mmcdole.kivo.api.models.Resolution
+import com.mmcdole.kivo.core.data.DynamicRange
 import com.mmcdole.kivo.core.data.GridQuery
+import com.mmcdole.kivo.core.data.GridSort
+import com.mmcdole.kivo.core.data.WorkPlayState
 import java.net.URLDecoder
 import java.net.URLEncoder
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-/** The values of the grid's sort and filters this app offers, as a work query names them. */
-object GridValues {
-    const val TITLE = "title"
-    const val ADDED_AT = "addedAt"
-    const val LAST_EPISODE_ADDED_AT = "lastEpisodeAddedAt"
-    const val RELEASE_DATE = "releaseDate"
-    const val RATING = "rating"
-    const val RUNTIME = "runtimeMs"
-    const val LAST_PLAYED_AT = "lastPlayedAt"
-    const val AUTHOR = "author"
-    val sorts = listOf(TITLE, ADDED_AT, LAST_EPISODE_ADDED_AT, RELEASE_DATE, RATING, RUNTIME, LAST_PLAYED_AT, AUTHOR)
-
-    /**
-     * The sorts a library of [kind] offers, in the menu's order: an
-     * audiobooks library's by title, author, date added and release date;
-     * any other's by title, date added, the last episode added for shows,
-     * release date, rating, runtime and last played.
-     */
-    fun sortsOf(kind: String?): List<String> = when (kind) {
-        "audiobooks" -> listOf(TITLE, AUTHOR, ADDED_AT, RELEASE_DATE)
-        "shows" -> listOf(TITLE, ADDED_AT, LAST_EPISODE_ADDED_AT, RELEASE_DATE, RATING, RUNTIME, LAST_PLAYED_AT)
-        else -> listOf(TITLE, ADDED_AT, RELEASE_DATE, RATING, RUNTIME, LAST_PLAYED_AT)
-    }
-
-    const val UNPLAYED = "unplayed"
-    const val IN_PROGRESS = "inProgress"
-    const val PLAYED = "played"
-    val playedStates = listOf(UNPLAYED, IN_PROGRESS, PLAYED)
-
-    /** Largest first. */
-    val resolutions = listOf("4k", "1080p", "720p", "sd")
-
-    const val DOLBY_VISION = "dolbyVision"
-    val dynamicRanges = listOf("hdr", DOLBY_VISION)
+/**
+ * The sorts a library of [kind] offers, in the menu's order: an
+ * audiobooks library's by title, author, date added and release date;
+ * any other's by title, date added, the last episode added for shows,
+ * release date, rating, runtime and last played.
+ */
+fun sortsOf(kind: LibraryKind?): List<GridSort> = when (kind) {
+    LibraryKind.Audiobooks -> listOf(GridSort.Title, GridSort.Author, GridSort.AddedAt, GridSort.ReleaseDate)
+    LibraryKind.Shows -> listOf(
+        GridSort.Title,
+        GridSort.AddedAt,
+        GridSort.LastEpisodeAddedAt,
+        GridSort.ReleaseDate,
+        GridSort.Rating,
+        GridSort.Runtime,
+        GridSort.LastPlayedAt,
+    )
+    else -> listOf(GridSort.Title, GridSort.AddedAt, GridSort.ReleaseDate, GridSort.Rating, GridSort.Runtime, GridSort.LastPlayedAt)
 }
 
 /** A library's section: its works, sorted and filtered, or its collections. */
@@ -86,13 +75,13 @@ fun encodeGrid(choice: GridChoice): String {
     val query = choice.query
     return listOfNotNull(
         "section=collections".takeIf { choice.section == Section.Collections },
-        query.sort?.let { "sort=$it" },
-        query.played?.let { "played=$it" },
+        query.sort?.let { "sort=${it.value}" },
+        query.played?.let { "played=${it.value}" },
         query.yearFrom?.let { "decade=$it" },
         query.genres?.takeIf { it.isNotEmpty() }?.let { "genre=" + encodeNames(it) },
         query.contentRatings?.takeIf { it.isNotEmpty() }?.let { "contentRating=" + encodeNames(it) },
-        query.resolutions?.takeIf { it.isNotEmpty() }?.let { "resolution=" + it.joinToString(",") },
-        query.dynamicRanges?.takeIf { it.isNotEmpty() }?.let { "dynamicRange=" + it.joinToString(",") },
+        query.resolutions?.takeIf { it.isNotEmpty() }?.let { "resolution=" + it.joinToString(",") { resolution -> resolution.value } },
+        query.dynamicRanges?.takeIf { it.isNotEmpty() }?.let { "dynamicRange=" + it.joinToString(",") { range -> range.value } },
     ).joinToString("&")
 }
 
@@ -106,14 +95,14 @@ fun decodeGrid(libraryId: String, text: String): GridChoice {
     val decade = values["decade"]?.toIntOrNull()
     val query = GridQuery(
         libraryId = libraryId,
-        sort = values["sort"]?.takeIf { it in GridValues.sorts } ?: GridValues.TITLE,
-        played = values["played"]?.takeIf { it in GridValues.playedStates },
+        sort = GridSort.of(values["sort"]) ?: GridSort.Title,
+        played = WorkPlayState.of(values["played"]),
         yearFrom = decade,
         yearTo = decade?.plus(9),
         genres = decodeNames(values["genre"]),
         contentRatings = decodeNames(values["contentRating"]),
-        resolutions = GridValues.resolutions.filter { it in list("resolution") }.ifEmpty { null },
-        dynamicRanges = GridValues.dynamicRanges.filter { it in list("dynamicRange") }.ifEmpty { null },
+        resolutions = Resolution.entries.filter { it != Resolution.Unknown && it.value in list("resolution") }.ifEmpty { null },
+        dynamicRanges = DynamicRange.entries.filter { it.value in list("dynamicRange") }.ifEmpty { null },
     )
     return GridChoice(query, if (values["section"] == "collections") Section.Collections else Section.Titles)
 }

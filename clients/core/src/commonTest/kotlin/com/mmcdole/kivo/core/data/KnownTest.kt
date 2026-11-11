@@ -4,9 +4,11 @@ import com.mmcdole.kivo.api.models.BookInfo
 import com.mmcdole.kivo.api.models.BookSeries
 import com.mmcdole.kivo.api.models.BookSeriesRef
 import com.mmcdole.kivo.api.models.BookSeriesSummary
+import com.mmcdole.kivo.api.models.CollectionSource
 import com.mmcdole.kivo.api.models.CollectionSummary
 import com.mmcdole.kivo.api.models.Credit
 import com.mmcdole.kivo.api.models.ImageRef
+import com.mmcdole.kivo.api.models.MatchState
 import com.mmcdole.kivo.api.models.Person
 import com.mmcdole.kivo.api.models.PersonRef
 import com.mmcdole.kivo.api.models.PersonSummary
@@ -15,17 +17,18 @@ import com.mmcdole.kivo.api.models.UserState
 import com.mmcdole.kivo.api.models.Version
 import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.api.models.WorkImages
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkSummary
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class KnownTest {
-    private fun summary(id: String, title: String = id, kind: String = "movie", book: BookInfo? = null, poster: ImageRef? = null) =
-        WorkSummary(id, kind, title, "matched", true, WorkImages(poster = poster), book = book)
+    private fun summary(id: String, title: String = id, kind: WorkKind = WorkKind.Movie, book: BookInfo? = null, poster: ImageRef? = null) =
+        WorkSummary(id, kind, title, MatchState.Matched, true, WorkImages(poster = poster), book = book)
 
     private fun work(id: String, title: String, credits: List<Credit>, extras: List<WorkSummary>) = WorkDetail(
-        id, "movie", title, "matched", true, WorkImages(), emptyList(), emptyList(), credits, emptyList(), emptyList(), extras, emptyList(),
+        id, WorkKind.Movie, title, MatchState.Matched, true, WorkImages(), emptyList(), emptyList(), credits, emptyList(), emptyList(), extras, emptyList(),
         libraryId = "l1",
     )
 
@@ -43,10 +46,10 @@ class KnownTest {
     fun aPageIsKnownAsItsCardWithWhatItLists() {
         val known = Known()
         val photo = ImageRef("i1")
-        known.read(work("w1", "Heat", listOf(Credit("p1", "Al Pacino", "actor", photo = photo)), listOf(summary("x1", kind = "extra"))))
+        known.read(work("w1", "Heat", listOf(Credit("p1", "Al Pacino", "actor", photo = photo)), listOf(summary("x1", kind = WorkKind.Extra))))
         assertEquals("Heat", known.work("w1")?.title)
         assertEquals("l1", known.summary("w1")?.libraryId)
-        assertEquals("extra", known.summary("x1")?.kind)
+        assertEquals(WorkKind.Extra, known.summary("x1")?.kind)
         assertEquals(Heading("p1", "Al Pacino", photo), known.personHeading("p1"))
     }
 
@@ -61,7 +64,7 @@ class KnownTest {
             listOf(PersonRef("p2", "Adjoa Andoh")),
             listOf(BookSeriesRef("s1", "Imperial Radch", primary = true)),
         )
-        known.read(listOf(summary("b1", kind = "book", book = book)))
+        known.read(listOf(summary("b1", kind = WorkKind.Book, book = book)))
         known.readBookSeries(listOf(BookSeriesSummary("s2", "Murderbot", 4, cover)))
         assertEquals(Heading("p1", "Ann Leckie", photo), known.personHeading("p1"), "a book's author keeps the photo search showed")
         assertEquals(Heading("p2", "Adjoa Andoh"), known.personHeading("p2"))
@@ -73,7 +76,7 @@ class KnownTest {
     fun aPersonsAndABookSeriesPageAreKnownAsRead() {
         val known = Known()
         val cover = ImageRef("i2")
-        val series = BookSeries("s1", "Imperial Radch", listOf(summary("b1", kind = "book", poster = cover)))
+        val series = BookSeries("s1", "Imperial Radch", listOf(summary("b1", kind = WorkKind.Book, poster = cover)))
         known.read(Person("p1", "Ann Leckie", emptyList(), listOf(series), emptyList(), emptyList()))
         assertEquals("Ann Leckie", known.person("p1")?.name)
         assertEquals(Heading("s1", "Imperial Radch", cover), known.bookSeriesHeading("s1"))
@@ -85,7 +88,7 @@ class KnownTest {
     @Test
     fun aWorksCollectionsAreKnownByTheirCards() {
         val known = Known()
-        val dune = CollectionSummary("c1", "Dune Collection", 2, WorkImages(poster = ImageRef("i1")), "provider")
+        val dune = CollectionSummary("c1", "Dune Collection", 2, WorkImages(poster = ImageRef("i1")), CollectionSource.Provider)
         known.read(work("w1", "Dune", emptyList(), emptyList()).copy(collections = listOf(dune)))
         assertEquals(dune, known.collectionCard("c1"))
         assertNull(known.summary("c1"), "a collection isn't a work")
@@ -94,7 +97,7 @@ class KnownTest {
     @Test
     fun searchsCollectionsAreKnownByTheirCards() {
         val known = Known()
-        val dune = CollectionSummary("c1", "Dune Collection", 2, WorkImages(poster = ImageRef("i1")), "provider")
+        val dune = CollectionSummary("c1", "Dune Collection", 2, WorkImages(poster = ImageRef("i1")), CollectionSource.Provider)
         known.read(SearchResults(emptyList(), emptyList(), listOf(dune)))
         assertEquals(dune, known.collectionCard("c1"))
     }

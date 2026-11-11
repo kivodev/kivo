@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.mmcdole.kivo.api.models.Library
+import com.mmcdole.kivo.api.models.LibraryKind
 import com.mmcdole.kivo.api.result
 import com.mmcdole.kivo.core.auth.ServerConnection
 import com.mmcdole.kivo.core.kivoJson
@@ -44,7 +45,7 @@ internal class LibraryRepository(
     }
 
     /** A library's kind, by the kept libraries or else the server's; null for one the user doesn't see. */
-    suspend fun kind(libraryId: String): String? {
+    suspend fun kind(libraryId: String): LibraryKind? {
         val library = kept()?.firstOrNull { it.id == libraryId }
             ?: connection.libraries.listLibraries().result().items.firstOrNull { it.id == libraryId }
         return library?.kind

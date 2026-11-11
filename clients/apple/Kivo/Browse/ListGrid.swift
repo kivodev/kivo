@@ -26,7 +26,7 @@ struct ListGrid: View {
     /// The works as rows to drag, while reordering.
     @State private var order: ListOrderModel?
     /// The sort just chosen, until the list is read with it.
-    @State private var chosenSort: GridModel.Sort?
+    @State private var chosenSort: GridModel.Sort<ListSort>?
     @Environment(ServerModel.self) private var server
     @Environment(\.wide) private var wide
     @Environment(\.kivoPalette) private var palette
@@ -44,15 +44,15 @@ struct ListGrid: View {
 
     /// The sorts of a manual list.
     static let sorts = [
-        GridModel.Sort(value: ListSorts.shared.CUSTOM, label: String(localized: "Custom order"), direction: ""),
-        GridModel.Sort(value: ListSorts.shared.TITLE, label: String(localized: "Title"), direction: String(localized: "A to Z")),
-        GridModel.Sort(value: ListSorts.shared.RELEASE_DATE, label: String(localized: "Release date"), direction: String(localized: "Newest first")),
-        GridModel.Sort(value: ListSorts.shared.RATING, label: String(localized: "Rating"), direction: String(localized: "Highest first")),
-        GridModel.Sort(value: ListSorts.shared.DATE_ADDED, label: String(localized: "Date added to list"), direction: String(localized: "Newest first")),
+        GridModel.Sort(value: ListSort.custom, label: String(localized: "Custom order"), direction: ""),
+        GridModel.Sort(value: ListSort.title, label: String(localized: "Title"), direction: String(localized: "A to Z")),
+        GridModel.Sort(value: ListSort.releaseDate, label: String(localized: "Release date"), direction: String(localized: "Newest first")),
+        GridModel.Sort(value: ListSort.rating, label: String(localized: "Rating"), direction: String(localized: "Highest first")),
+        GridModel.Sort(value: ListSort.dateAdded, label: String(localized: "Date added to list"), direction: String(localized: "Newest first")),
     ]
 
     /// A manual list's sort as chosen or as last read, nil for a smart list.
-    private var sort: GridModel.Sort? {
+    private var sort: GridModel.Sort<ListSort>? {
         guard let current, let saved = ListSorts.shared.of(list: current) else { return nil }
         return chosenSort ?? Self.sorts.first { $0.value == saved }
     }
@@ -168,7 +168,7 @@ struct ListGrid: View {
     }
 
     /// "12 titles · Custom order", the sort opening the sort menu.
-    private func countLine(_ total: Int, sort: GridModel.Sort) -> some View {
+    private func countLine(_ total: Int, sort: GridModel.Sort<ListSort>) -> some View {
         HStack(spacing: KivoTokens.spacing * 1.5) {
             Text(total == 1 ? String(localized: "1 title") : String(localized: "\(total.formatted()) titles"))
             Text("·")
@@ -222,7 +222,7 @@ struct ListGrid: View {
         }
     }
 
-    private func choose(_ sort: GridModel.Sort) {
+    private func choose(_ sort: GridModel.Sort<ListSort>) {
         chosenSort = sort
         Task {
             do {
@@ -283,7 +283,7 @@ struct ListGrid: View {
             do {
                 _ = try await server.session.library.updateList(id: list.id, name: name, query: nil)
             } catch {
-                renamingAgain = error.problemCode == "nameTaken"
+                renamingAgain = error.problemCode == .nameTaken
                 problem = error.listNameSentence
             }
         }
@@ -311,6 +311,18 @@ struct ListGrid: View {
         .padding(layout.insets)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("Loading \(title)…"))
+    }
+}
+
+extension ListSort: SortMenuKey {
+    var short: String? {
+        switch self {
+        case .title: String(localized: "A–Z")
+        case .dateAdded: String(localized: "Recently added")
+        case .releaseDate: String(localized: "Newest")
+        case .rating: String(localized: "Top rated")
+        case .custom, .unknown: nil
+        }
     }
 }
 

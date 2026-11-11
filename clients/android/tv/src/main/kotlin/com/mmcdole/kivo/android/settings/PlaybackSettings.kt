@@ -1,5 +1,8 @@
 package com.mmcdole.kivo.android.settings
 
+import com.mmcdole.kivo.api.models.HomeRowKind
+import com.mmcdole.kivo.api.models.LibraryKind
+import com.mmcdole.kivo.api.models.ListKind
 import com.mmcdole.kivo.api.models.SubtitleMode
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -371,7 +374,7 @@ class HomeRowsViewModel(private val session: ServerSession) : ViewModel() {
 
 /** The rows the TV lists of [all]: the kinds Home shows here, and no audiobooks library's. */
 internal fun tvHomeRows(all: List<HomeRowInfo>) = all.filter { row ->
-    row.kind in tvRows && row.library?.kind != "audiobooks"
+    row.kind in tvRows && row.library?.kind != LibraryKind.Audiobooks
 }
 
 /**
@@ -406,13 +409,13 @@ private fun OrderedRow(
 @Composable
 private fun HomeRowIcon(row: HomeRowInfo) {
     val icon = when {
-        row.list?.kind == "smart" -> KivoIcon.Sparkle
-        row.kind == "continueWatching" -> KivoIcon.Play
-        row.kind == "continueListening" -> KivoIcon.Headphones
-        row.kind == "recentlyAdded" -> KivoIcon.Clock
+        row.list?.kind == ListKind.Smart -> KivoIcon.Sparkle
+        row.kind == HomeRowKind.ContinueWatching -> KivoIcon.Play
+        row.kind == HomeRowKind.ContinueListening -> KivoIcon.Headphones
+        row.kind == HomeRowKind.RecentlyAdded -> KivoIcon.Clock
         else -> KivoIcon.List
     }
-    KivoIconView(icon, tint = if (row.list?.kind == "smart") Kivo.colors.accent else Kivo.colors.textMuted)
+    KivoIconView(icon, tint = if (row.list?.kind == ListKind.Smart) Kivo.colors.accent else Kivo.colors.textMuted)
 }
 
 /** Home, on all the user's devices: the rows the TV shows, in order, each shown or not, then Reset Home. */

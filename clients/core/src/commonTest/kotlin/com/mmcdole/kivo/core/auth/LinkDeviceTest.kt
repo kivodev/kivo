@@ -1,6 +1,7 @@
 package com.mmcdole.kivo.core.auth
 
 import com.mmcdole.kivo.api.ProblemException
+import com.mmcdole.kivo.api.models.ClientPlatform
 import com.mmcdole.kivo.api.models.PendingDevice
 import com.mmcdole.kivo.core.FakeServer
 import com.mmcdole.kivo.core.MemoryStore
@@ -16,7 +17,7 @@ import kotlin.test.assertNull
 import kotlin.time.Instant
 
 class LinkDeviceTest {
-    private val asking = PendingDevice("Living Room", platform = "androidTv", nearby = false, startedAt = Instant.parse("2026-10-17T12:00:00Z"))
+    private val asking = PendingDevice("Living Room", platform = ClientPlatform.AndroidTv, nearby = false, startedAt = Instant.parse("2026-10-17T12:00:00Z"))
 
     @Test
     fun showsWhoIsAskingThenApprovesWithThisAppsToken() = runTest {

@@ -1,5 +1,6 @@
 package com.mmcdole.kivo.core.downloads
 
+import com.mmcdole.kivo.api.models.Resolution
 import com.mmcdole.kivo.core.display.Display
 import com.mmcdole.kivo.core.kivoJson
 import kotlinx.serialization.json.JsonArray
@@ -42,7 +43,7 @@ internal fun withTrackNames(work: String): String {
         return JsonObject(t + mapOf("name" to JsonPrimitive(name), "fullName" to JsonPrimitive(name)))
     }
     fun version(v: JsonObject): JsonObject {
-        val name = v.text("edition") ?: v.text("resolution")?.let(display::resolution).orEmpty()
+        val name = v.text("edition") ?: v.text("resolution")?.let { Resolution.of(it).takeIf { r -> r != Resolution.Unknown }?.let(display::resolution) ?: it }.orEmpty()
         val tracks = (v["tracks"] as? JsonArray)?.map { (it as? JsonObject)?.let(::track) ?: it }
         val added = buildMap<String, JsonElement> {
             if ("name" !in v) put("name", JsonPrimitive(name))

@@ -4,6 +4,7 @@ import com.mmcdole.kivo.api.models.Capabilities
 import com.mmcdole.kivo.api.models.FileCapabilities
 import com.mmcdole.kivo.api.models.Chapter
 import com.mmcdole.kivo.api.models.CurrentUser
+import com.mmcdole.kivo.api.models.MatchState
 import com.mmcdole.kivo.api.models.PlayDelivery
 import com.mmcdole.kivo.api.models.PlayStarted
 import com.mmcdole.kivo.api.models.PlayPart
@@ -12,6 +13,7 @@ import com.mmcdole.kivo.api.models.SubtitleMode
 import com.mmcdole.kivo.api.models.UserLimits
 import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.api.models.WorkImages
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.core.FakeServer
 import com.mmcdole.kivo.core.empty
 import com.mmcdole.kivo.core.json
@@ -56,7 +58,7 @@ private fun play(id: String, startMs: Int) = PlayStarted(
 )
 
 private val book = WorkDetail(
-    id = "b1", kind = "book", title = "Project Hail Mary", matchState = "matched", available = true,
+    id = "b1", kind = WorkKind.Book, title = "Project Hail Mary", matchState = MatchState.Matched, available = true,
     images = WorkImages(), genres = emptyList(), studios = emptyList(), credits = emptyList(), externalIds = emptyList(),
     versions = emptyList(), extras = emptyList(), collections = emptyList(),
 )

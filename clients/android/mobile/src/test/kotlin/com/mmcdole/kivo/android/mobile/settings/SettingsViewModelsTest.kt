@@ -11,10 +11,13 @@ import com.mmcdole.kivo.android.settings.SubtitleSize
 import com.mmcdole.kivo.android.settings.movedRow
 import com.mmcdole.kivo.api.models.HomeRowInfo
 import com.mmcdole.kivo.api.models.CurrentUser
+import com.mmcdole.kivo.api.models.HomeRowKind
 import com.mmcdole.kivo.api.models.Library
+import com.mmcdole.kivo.api.models.LibraryKind
 import com.mmcdole.kivo.api.models.LibraryList
 import com.mmcdole.kivo.api.models.ServerInfo
 import com.mmcdole.kivo.api.models.Session
+import com.mmcdole.kivo.api.models.SessionKind
 import com.mmcdole.kivo.api.models.SessionList
 import com.mmcdole.kivo.api.models.QualityRung
 import com.mmcdole.kivo.core.Load
@@ -49,7 +52,7 @@ class SettingsViewModelsTest : CoreTest() {
         }
         val now = Instant.fromEpochMilliseconds(0)
         server.get("/api/v1/sessions", SessionList.serializer()) {
-            SessionList(listOf(Session("x", "app", "Phone", now, now, true), Session("y", "app", "Living Room", now, now, false)))
+            SessionList(listOf(Session("x", SessionKind.App, "Phone", now, now, true), Session("y", SessionKind.App, "Living Room", now, now, false)))
         }
         server.on("DELETE", "/api/v1/sessions/y") {
             sent += "signOut y"
@@ -59,7 +62,7 @@ class SettingsViewModelsTest : CoreTest() {
             if (request.text().contains("\"currentPassword\":\"wrong\"")) refuse(HttpStatusCode.BadRequest, "wrongPassword") else respond("", HttpStatusCode.NoContent)
         }
         server.get("/api/v1/libraries", LibraryList.serializer()) {
-            LibraryList(listOf(Library("l1", "Movies", pinned = true, kind = "movies", workCount = 1), Library("l2", "Shows", pinned = false, kind = "shows", workCount = 1)))
+            LibraryList(listOf(Library("l1", "Movies", pinned = true, kind = LibraryKind.Movies, workCount = 1), Library("l2", "Shows", pinned = false, kind = LibraryKind.Shows, workCount = 1)))
         }
     }
 
@@ -126,12 +129,12 @@ class SettingsViewModelsTest : CoreTest() {
 
     @Test
     fun movingAHomeRowPassesOverKindsThePhoneDoesntList() {
-        val watching = HomeRowInfo("continueWatching", "continueWatching", true)
-        val unknown = HomeRowInfo("later", "aKindFromLater", true)
-        val recent = HomeRowInfo("recentlyAdded:a", "recentlyAdded", true)
+        val watching = HomeRowInfo("continueWatching", HomeRowKind.ContinueWatching, true)
+        val unknown = HomeRowInfo("later", HomeRowKind.Unknown, true)
+        val recent = HomeRowInfo("recentlyAdded:a", HomeRowKind.RecentlyAdded, true)
         val all = listOf(watching, unknown, recent)
 
-        assertEquals(listOf(recent, unknown, watching), movedRow(all, all.filter { it.kind != "aKindFromLater" }, "recentlyAdded:a", -1))
-        assertEquals(all, movedRow(all, all.filter { it.kind != "aKindFromLater" }, "continueWatching", -1))
+        assertEquals(listOf(recent, unknown, watching), movedRow(all, all.filter { it.kind != HomeRowKind.Unknown }, "recentlyAdded:a", -1))
+        assertEquals(all, movedRow(all, all.filter { it.kind != HomeRowKind.Unknown }, "continueWatching", -1))
     }
 }

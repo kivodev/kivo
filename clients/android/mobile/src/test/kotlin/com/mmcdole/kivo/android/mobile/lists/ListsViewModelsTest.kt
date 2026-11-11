@@ -8,16 +8,22 @@ import com.mmcdole.kivo.android.mobile.ui.CardShape
 import com.mmcdole.kivo.android.mobile.ui.listShapeOf
 import com.mmcdole.kivo.android.mobile.ui.shapeOf
 import com.mmcdole.kivo.android.mobile.work
+import com.mmcdole.kivo.api.models.ListKind
+import com.mmcdole.kivo.api.models.ListSort
+import com.mmcdole.kivo.api.models.RuleGroupMatch
+import com.mmcdole.kivo.api.models.MatchState
 import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.api.models.WorkField
 import com.mmcdole.kivo.api.models.WorkFieldList
 import com.mmcdole.kivo.api.models.WorkFieldOp
+import com.mmcdole.kivo.api.models.WorkFieldType
+import com.mmcdole.kivo.api.models.WorkFieldValueSource
 import com.mmcdole.kivo.api.models.WorkImages
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkList
 import com.mmcdole.kivo.api.models.WorkListList
 import com.mmcdole.kivo.api.models.WorkSummaryPage
 import com.mmcdole.kivo.android.mobile.waitFor
-import com.mmcdole.kivo.core.data.ListSorts
 import io.ktor.http.content.OutgoingContent
 import java.util.concurrent.CopyOnWriteArrayList
 import io.ktor.client.engine.mock.respond
@@ -32,16 +38,16 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ListsViewModelsTest : CoreTest() {
-    private val myList = WorkList("my", "Watchlist", "manual", builtIn = true, workCount = 2)
-    private val dateNight = WorkList("d", "Date Night", "manual", builtIn = false, workCount = 1)
-    private var lists = listOf(myList, dateNight, WorkList("x", "Later", "smart", builtIn = false, workCount = 9))
+    private val myList = WorkList("my", "Watchlist", ListKind.Manual, builtIn = true, workCount = 2)
+    private val dateNight = WorkList("d", "Date Night", ListKind.Manual, builtIn = false, workCount = 1)
+    private var lists = listOf(myList, dateNight, WorkList("x", "Later", ListKind.Smart, builtIn = false, workCount = 9))
     private var held = listOf("my")
 
     init {
         server.get("/api/v1/lists", WorkListList.serializer()) { WorkListList(lists) }
         server.get("/api/v1/works/m1", WorkDetail.serializer()) {
             WorkDetail(
-                id = "m1", kind = "movie", title = "m1", matchState = "matched", available = true, images = WorkImages(),
+                id = "m1", kind = WorkKind.Movie, title = "m1", matchState = MatchState.Matched, available = true, images = WorkImages(),
                 genres = emptyList(), studios = emptyList(), credits = emptyList(), externalIds = emptyList(), versions = emptyList(),
                 extras = emptyList(), collections = emptyList(), listIds = held,
             )
@@ -49,7 +55,7 @@ class ListsViewModelsTest : CoreTest() {
         server.on("POST", "/api/v1/lists/d/works") { respond("", HttpStatusCode.NoContent) }
         server.on("DELETE", "/api/v1/lists/my/works/m1") { respond("", HttpStatusCode.NoContent) }
         server.on("POST", "/api/v1/lists") {
-            reply(WorkList.serializer(), WorkList("n", "Road Trip", "manual", builtIn = false, workCount = 0), HttpStatusCode.Created)
+            reply(WorkList.serializer(), WorkList("n", "Road Trip", ListKind.Manual, builtIn = false, workCount = 0), HttpStatusCode.Created)
         }
         server.on("POST", "/api/v1/lists/n/works") { respond("", HttpStatusCode.NoContent) }
         server.on("PATCH", "/api/v1/lists/d") { refuse(HttpStatusCode.Conflict, "nameTaken") }
@@ -57,8 +63,8 @@ class ListsViewModelsTest : CoreTest() {
 
     @Test
     fun theTabShelvesEveryListInItsOrderWithItsFirstWorks() {
-        val smart = WorkList("x", "Later", "smart", builtIn = false, workCount = 9)
-        lists = listOf(myList.copy(items = listOf(work("m1"), work("m2"))), dateNight, smart, WorkList("y", "Other", "future", builtIn = false, workCount = 1))
+        val smart = WorkList("x", "Later", ListKind.Smart, builtIn = false, workCount = 9)
+        lists = listOf(myList.copy(items = listOf(work("m1"), work("m2"))), dateNight, smart, WorkList("y", "Other", ListKind.Unknown, builtIn = false, workCount = 1))
         val model = ListsViewModel(signIn())
         val state = awaitValue(model.state) { it.lists != null }
         assertEquals(listOf("my", "d", "x"), state.shelves.map { it.id })
@@ -106,7 +112,7 @@ class ListsViewModelsTest : CoreTest() {
 
     @Test
     fun aNewRuleWaitsForItsFieldAndOpensOnIt() {
-        val genre = WorkField("genre", "Genre", "choice", listOf(WorkFieldOp("anyOf", -1)), listOf("movie"), sortable = false, valueSource = "inline")
+        val genre = WorkField("genre", "Genre", WorkFieldType.Choice, listOf(WorkFieldOp("anyOf", -1)), listOf(WorkKind.Movie), sortable = false, valueSource = WorkFieldValueSource.Inline)
         server.get("/api/v1/work-fields", WorkFieldList.serializer()) { WorkFieldList(listOf(genre)) }
         val model = SmartListBuilderViewModel(signIn(), null, "", null)
         awaitValue(model.state) { it.draft != null }
@@ -123,7 +129,7 @@ class ListsViewModelsTest : CoreTest() {
 
     @Test
     fun aNewGroupWaitsForItsFieldThenMatchesAnyWithOneBlankRuleOpen() {
-        val genre = WorkField("genre", "Genre", "choice", listOf(WorkFieldOp("anyOf", -1)), listOf("movie"), sortable = false, valueSource = "inline")
+        val genre = WorkField("genre", "Genre", WorkFieldType.Choice, listOf(WorkFieldOp("anyOf", -1)), listOf(WorkKind.Movie), sortable = false, valueSource = WorkFieldValueSource.Inline)
         server.get("/api/v1/work-fields", WorkFieldList.serializer()) { WorkFieldList(listOf(genre)) }
         val model = SmartListBuilderViewModel(signIn(), null, "", null)
         awaitValue(model.state) { it.draft != null }
@@ -134,7 +140,7 @@ class ListsViewModelsTest : CoreTest() {
         val state = model.state.value
         val group = state.draft!!.groups.single()
         val rule = group.rules.single()
-        assertEquals("any", group.match)
+        assertEquals(RuleGroupMatch.Any, group.match)
         assertEquals("genre", rule.field)
         assertTrue(rule.values.isEmpty())
         assertEquals(BuilderPage.EditingRule(rule.id), state.page)
@@ -142,10 +148,10 @@ class ListsViewModelsTest : CoreTest() {
 
     @Test
     fun anEpisodeIsAPosterInAListAndLandscapeElsewhere() {
-        val episode = work("e1", kind = "episode")
+        val episode = work("e1", kind = WorkKind.Episode)
         assertEquals(CardShape.Poster, listShapeOf(episode))
         assertEquals(CardShape.Landscape, shapeOf(episode))
-        assertEquals(CardShape.Landscape, listShapeOf(work("v1", kind = "video")))
+        assertEquals(CardShape.Landscape, listShapeOf(work("v1", kind = WorkKind.Video)))
     }
 
     @Test
@@ -211,19 +217,19 @@ class ListsViewModelsTest : CoreTest() {
 
     @Test
     fun aManualListsSortShowsAsChosenAndARefusedOneGoesBack() {
-        lists = listOf(myList, dateNight.copy(sort = "title"), WorkList("x", "Later", "smart", builtIn = false, workCount = 9))
+        lists = listOf(myList, dateNight.copy(sort = ListSort.Title), WorkList("x", "Later", ListKind.Smart, builtIn = false, workCount = 9))
         val answer = CompletableDeferred<Unit>()
         server.on("PATCH", "/api/v1/lists/d") {
             answer.await()
             refuse(HttpStatusCode.Conflict, "conflict")
         }
         val model = held { ListViewModel(signIn(), "d") }
-        assertEquals(ListSorts.TITLE, awaitValue(model.sort) { it != null })
-        model.chooseSort(ListSorts.RATING)
-        assertEquals(ListSorts.RATING, awaitValue(model.sort) { it != ListSorts.TITLE })
+        assertEquals(ListSort.Title, awaitValue(model.sort) { it != null })
+        model.chooseSort(ListSort.Rating)
+        assertEquals(ListSort.Rating, awaitValue(model.sort) { it != ListSort.Title })
         answer.complete(Unit)
         assertEquals("conflict", awaitValue(model.problem) { it != null }?.code)
-        assertEquals(ListSorts.TITLE, awaitValue(model.sort) { it != ListSorts.RATING })
+        assertEquals(ListSort.Title, awaitValue(model.sort) { it != ListSort.Rating })
 
     }
 

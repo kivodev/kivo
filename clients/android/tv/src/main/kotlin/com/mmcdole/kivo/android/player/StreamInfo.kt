@@ -6,6 +6,7 @@ import com.mmcdole.kivo.api.models.PlayStarted
 import com.mmcdole.kivo.api.models.PlayTrack
 import com.mmcdole.kivo.api.models.QualityRequest
 import com.mmcdole.kivo.api.models.TrackDelivery
+import com.mmcdole.kivo.api.models.TrackReason
 import com.mmcdole.kivo.api.models.TrackType
 import com.mmcdole.kivo.api.models.Version
 import com.mmcdole.kivo.core.display.Display
@@ -69,8 +70,8 @@ fun streamInfo(
         return listOfNotNull(out, t.transcode?.encoder.takeIf { t.type == TrackType.Video }).joinToString(" · ")
     }
     fun why(t: PlayTrack): String? {
-        val reason = t.reason?.takeIf { it != "containerUnsupported" } ?: return null
-        return display.reason(reason) + (t.mismatch?.let { " (${words.limit(it)})" } ?: "")
+        val reason = t.reason?.takeIf { it != TrackReason.ContainerUnsupported } ?: return null
+        return display.reason(reason.value) + (t.mismatch?.let { " (${words.limit(it)})" } ?: "")
     }
     val names = mapOf(TrackType.Video to words.video, TrackType.Audio to words.audio)
     val selected = play.tracks.filter { it.selected == true }
@@ -79,7 +80,7 @@ fun streamInfo(
     // Repackaging is the container's doing, said once on its own row.
     val container = version?.container?.let(display::container)
     if (play.delivery == PlayDelivery.Stream && container != null) {
-        val repackaged = selected.any { it.reason == "containerUnsupported" }
+        val repackaged = selected.any { it.reason == TrackReason.ContainerUnsupported }
         rows += InfoRow(words.container, words.toHls(container), if (repackaged) words.cantPlayContainer(container) else null)
     }
     for (t in selected) {
@@ -109,7 +110,7 @@ fun streamInfo(
 
     val cap = quality?.takeIf { it.mode == "limit" }?.maxBitrateBps
     if (cap != null) {
-        val limited = selected.any { it.reason == "clientQualityLimit" }
+        val limited = selected.any { it.reason == TrackReason.ClientQualityLimit }
         val source = version?.bitrateBps
         rows += InfoRow(
             words.quality,

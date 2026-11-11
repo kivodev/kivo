@@ -20,13 +20,12 @@ struct ListsView: View {
     @State private var counted: [WorkList]?
 
     private static let rowSpacing = KivoTokens.spacing * 7
-    /// The list kinds this app shows; a kind it doesn't know is skipped.
-    private static let knownKinds: Set<String> = ["manual", "smart"]
 
     var body: some View {
         SkeletonGate(loaded: counted != nil || server.listsFailure != nil || server.unreachable) {
             if let counted {
-                let shelves = counted.filter { Self.knownKinds.contains($0.kind) && (!$0.builtIn || $0.workCount > 0) }
+                // A list kind this app doesn't know is skipped.
+                let shelves = counted.filter { $0.kind != .unknown && (!$0.builtIn || $0.workCount > 0) }
                 if shelves.isEmpty {
                     MessageView(
                         String(localized: "Nothing in your lists yet."),
@@ -110,7 +109,7 @@ struct ListsView: View {
             do {
                 _ = try await server.session.library.createList(name: name)
             } catch {
-                namingAgain = error.problemCode == "nameTaken"
+                namingAgain = error.problemCode == .nameTaken
                 problem = error.listNameSentence
             }
         }
@@ -123,7 +122,7 @@ extension WorkList {
         workCount == 1 ? String(localized: "1 title") : String(localized: "\(workCount) titles")
     }
 
-    var isSmart: Bool { kind == "smart" }
+    var isSmart: Bool { kind == .smart }
 
     /// The page a link to the list opens.
     var route: Route {

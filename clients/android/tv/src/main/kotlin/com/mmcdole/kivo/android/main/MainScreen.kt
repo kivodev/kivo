@@ -98,6 +98,7 @@ import com.mmcdole.kivo.android.ui.focusWhenPlaced
 import com.mmcdole.kivo.android.ui.panelProperties
 import com.mmcdole.kivo.android.ui.rememberPanelKeys
 import com.mmcdole.kivo.api.models.Library
+import com.mmcdole.kivo.api.models.LibraryKind
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -126,12 +127,12 @@ private val RailPaddingY = 24.dp
 private val RailIconWidth = RailClosedWidth - 16.dp
 
 /** The libraries the TV shows: every kind but audiobooks. */
-fun tvLibraries(libraries: List<Library>) = libraries.filter { it.kind != "audiobooks" }
+fun tvLibraries(libraries: List<Library>) = libraries.filter { it.kind != LibraryKind.Audiobooks }
 
-fun libraryIcon(kind: String) = when (kind) {
-    "shows" -> KivoIcon.Tv
-    "videos" -> KivoIcon.Video
-    "audiobooks" -> KivoIcon.Book
+fun libraryIcon(kind: LibraryKind) = when (kind) {
+    LibraryKind.Shows -> KivoIcon.Tv
+    LibraryKind.Videos -> KivoIcon.Video
+    LibraryKind.Audiobooks -> KivoIcon.Book
     else -> KivoIcon.Film
 }
 

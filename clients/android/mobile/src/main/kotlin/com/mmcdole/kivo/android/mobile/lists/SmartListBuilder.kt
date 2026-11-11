@@ -66,9 +66,14 @@ import com.mmcdole.kivo.android.mobile.ui.Message
 import com.mmcdole.kivo.android.mobile.ui.PageTopBar
 import com.mmcdole.kivo.android.mobile.ui.sentence
 import com.mmcdole.kivo.android.mobile.ui.wideWidth
+import com.mmcdole.kivo.api.models.RuleGroupMatch
+import com.mmcdole.kivo.api.models.SortDirection
 import com.mmcdole.kivo.api.models.SortKey
 import com.mmcdole.kivo.api.models.WorkField
+import com.mmcdole.kivo.api.models.WorkFieldType
 import com.mmcdole.kivo.api.models.WorkFieldValue
+import com.mmcdole.kivo.api.models.WorkFieldValueSource
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkQuery
 import com.mmcdole.kivo.core.data.RuleDraft
 import com.mmcdole.kivo.core.data.SmartListDraft
@@ -160,10 +165,10 @@ private fun BuilderForm(draft: SmartListDraft, fields: List<WorkField>, state: B
         )
         SettingRow(stringResource(R.string.mobile_show), "smartListShow", detail = draft.kinds.map { kindName(it) }.joinToString(", ")) { model.show(BuilderPage.Kinds) }
         // A root matching any would OR the libraries with the rules.
-        if (draft.match == "all") {
+        if (draft.match == RuleGroupMatch.All) {
             SettingRow(stringResource(R.string.mobile_smart_libraries), "smartListLibraries", detail = librariesLabel(draft, state)) { model.show(BuilderPage.Libraries) }
         }
-        Label(stringResource(if (draft.match == "any") R.string.mobile_smart_match_any else R.string.mobile_smart_match_all))
+        Label(stringResource(if (draft.match == RuleGroupMatch.Any) R.string.mobile_smart_match_any else R.string.mobile_smart_match_all))
         RuleRows(draft.rules, fields, state.names, model)
         ActionRow(stringResource(R.string.mobile_smart_add_rule), "addRule") { model.chooseField(BuilderPage.NewRule(null)) }
         ActionRow(stringResource(R.string.mobile_smart_add_group), "addGroup") { model.chooseField(BuilderPage.NewGroup) }
@@ -242,19 +247,19 @@ private fun RuleRow(rule: RuleDraft, field: WorkField?, names: Map<String, Strin
 
 /** A group's heading, a menu of what the group matches. */
 @Composable
-private fun GroupHeader(match: String, onMatch: (String) -> Unit) {
+private fun GroupHeader(match: RuleGroupMatch, onMatch: (RuleGroupMatch) -> Unit) {
     var open by remember { mutableStateOf(false) }
     Box(Modifier.padding(start = space(4), top = space(4))) {
         Row(Modifier.clickable { open = true }.testTag("groupMatch"), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                stringResource(if (match == "all") R.string.mobile_smart_match_all else R.string.mobile_smart_match_any),
+                stringResource(if (match == RuleGroupMatch.All) R.string.mobile_smart_match_all else R.string.mobile_smart_match_any),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
             )
             Icon(Icons.Default.ArrowDropDown, null, tint = MaterialTheme.colorScheme.primary)
         }
         DropdownMenu(open, onDismissRequest = { open = false }) {
-            for ((value, label) in listOf("any" to R.string.mobile_smart_match_any, "all" to R.string.mobile_smart_match_all)) {
+            for ((value, label) in listOf(RuleGroupMatch.Any to R.string.mobile_smart_match_any, RuleGroupMatch.All to R.string.mobile_smart_match_all)) {
                 DropdownMenuItem(
                     text = { Text(stringResource(label)) },
                     onClick = {
@@ -271,15 +276,15 @@ private fun GroupHeader(match: String, onMatch: (String) -> Unit) {
 /** The sorts the kinds allow: each sortable field in both directions, its own first, the saved one if it isn't among them, and Random. */
 @Composable
 private fun SortRow(draft: SmartListDraft, fields: List<WorkField>, model: SmartListBuilderViewModel) {
-    fun direction(key: SortKey) = key.direction ?: fields.firstOrNull { it.field == key.field }?.defaultDirection ?: "asc"
+    fun direction(key: SortKey) = key.direction ?: fields.firstOrNull { it.field == key.field }?.defaultDirection ?: SortDirection.Asc
     val current = draft.sort.firstOrNull()
-    val currentTag = current?.let { key -> if (key.field == SmartLists.RANDOM_SORT) key.field else "${key.field}:${direction(key)}" } ?: "title:asc"
+    val currentTag = current?.let { key -> if (key.field == SmartLists.RANDOM_SORT) key.field else "${key.field}:${direction(key).value}" } ?: "title:asc"
     val choices = buildList {
         for (field in offeredFields(fields, draft.kinds, current?.field).filter { it.sortable }) {
-            val way = field.defaultDirection ?: "asc"
-            val other = if (way == "asc") "desc" else "asc"
-            add(Triple("${field.field}:$way", sortName(field, way), listOf(SortKey(field.field))))
-            add(Triple("${field.field}:$other", sortName(field, other), listOf(SortKey(field.field, other))))
+            val way = field.defaultDirection ?: SortDirection.Asc
+            val other = if (way == SortDirection.Asc) SortDirection.Desc else SortDirection.Asc
+            add(Triple("${field.field}:${way.value}", sortName(field, way), listOf(SortKey(field.field))))
+            add(Triple("${field.field}:${other.value}", sortName(field, other), listOf(SortKey(field.field, other))))
         }
         val saved = current?.let { key -> fields.firstOrNull { it.field == key.field } }
         if (current != null && saved != null && none { it.first == currentTag }) add(0, Triple(currentTag, sortName(saved, direction(current)), draft.sort))
@@ -311,10 +316,10 @@ private fun CheckRow(title: String, chosen: Boolean, tag: String, onClick: () ->
 
 /** Show: the kinds the catalog offers, in its order, any number of them. */
 @Composable
-private fun KindsPage(draft: SmartListDraft, offered: List<String>, model: SmartListBuilderViewModel) {
+private fun KindsPage(draft: SmartListDraft, offered: List<WorkKind>, model: SmartListBuilderViewModel) {
     SubPage(stringResource(R.string.mobile_show), model) {
         for (kind in offered) {
-            CheckRow(kindName(kind), kind in draft.kinds, "kind:$kind") { model.toggleKind(kind, offered) }
+            CheckRow(kindName(kind), kind in draft.kinds, "kind:${kind.value}") { model.toggleKind(kind, offered) }
         }
     }
 }
@@ -381,7 +386,7 @@ private fun RuleValues(
             for (index in rule.values.indices) {
                 key(index) { TypedValue(rule, field, index, model) }
             }
-            if (field.type == "date") Footnote(stringResource(R.string.mobile_smart_date_note))
+            if (field.type == WorkFieldType.Date) Footnote(stringResource(R.string.mobile_smart_date_note))
             if (field.unit == "ms") Footnote(stringResource(R.string.mobile_smart_minutes_note))
         }
     }
@@ -406,13 +411,13 @@ private fun TypedValue(rule: RuleDraft, field: WorkField, index: Int, model: Sma
             Text(
                 when {
                     rule.arity == 2 -> stringResource(if (index == 0) R.string.mobile_smart_from else R.string.mobile_smart_until)
-                    field.type == "date" -> stringResource(R.string.mobile_smart_date_format)
+                    field.type == WorkFieldType.Date -> stringResource(R.string.mobile_smart_date_format)
                     else -> stringResource(R.string.mobile_smart_value)
                 },
             )
         },
         singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = if (field.type == "number") KeyboardType.Decimal else KeyboardType.Text),
+        keyboardOptions = KeyboardOptions(keyboardType = if (field.type == WorkFieldType.Number) KeyboardType.Decimal else KeyboardType.Text),
         modifier = Modifier.fillMaxWidth().padding(horizontal = space(4), vertical = space(2)).testTag("ruleValue$index"),
     )
 }
@@ -458,7 +463,7 @@ private fun ValueChooser(
     onSearch: (String) -> Unit,
     model: SmartListBuilderViewModel,
 ) {
-    val searches = field.valueSource == "search"
+    val searches = field.valueSource == WorkFieldValueSource.Search
     if (searches) {
         OutlinedTextField(
             value = search,

@@ -43,7 +43,7 @@ import kotlinx.serialization.encoding.*
 
 data class WorkQuery (
 
-    @SerialName(value = "kinds") @Required val kinds: kotlin.collections.List<kotlin.String>,
+    @SerialName(value = "kinds") @Required val kinds: kotlin.collections.List<com.mmcdole.kivo.api.models.WorkKind>,
 
     @SerialName(value = "version") val version: kotlin.Int? = null,
 

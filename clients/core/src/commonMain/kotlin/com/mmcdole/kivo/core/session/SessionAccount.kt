@@ -1,8 +1,10 @@
 package com.mmcdole.kivo.core.session
 
+import com.mmcdole.kivo.api.models.ClientPlatform
 import com.mmcdole.kivo.api.models.CurrentUser
 import com.mmcdole.kivo.api.models.LibraryChoice
 import com.mmcdole.kivo.api.models.PlaybackPreferencesUpdate
+import com.mmcdole.kivo.api.models.SessionKind
 import com.mmcdole.kivo.api.models.SubtitleMode
 import com.mmcdole.kivo.core.player.Autoplay
 import com.mmcdole.kivo.core.settings.UserSettings
@@ -102,10 +104,9 @@ class SessionAccount internal constructor(
 data class SignedInDevice(
     val id: String,
     val name: String,
-    /** `browser` or `app`. */
-    val kind: String,
-    /** Such as `androidTv`, `iPhone` or `browser`; null when the client gave none. */
-    val platform: String?,
+    val kind: SessionKind,
+    /** Null when the client gave none. */
+    val platform: ClientPlatform?,
     val lastUsedEpochMs: Long,
     /** This app's own. */
     val current: Boolean,

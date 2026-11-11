@@ -48,7 +48,9 @@ import com.mmcdole.kivo.android.mobile.ui.WorkMenu
 import com.mmcdole.kivo.android.mobile.ui.WorkMenuHost
 import com.mmcdole.kivo.android.mobile.ui.rowCardWidth
 import com.mmcdole.kivo.android.mobile.ui.shapeOf
+import com.mmcdole.kivo.api.models.CollectionSource
 import com.mmcdole.kivo.api.models.ImageRef
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkSummary
 
 /** A collection: its poster, name and count, then its works. */
@@ -60,7 +62,7 @@ fun CollectionScreen(session: ServerSession, id: String, nav: MobileNav) {
     PageFrame(state, model, nav) { openMenu ->
         WorksGrid(collection?.items.orEmpty(), nav, openMenu) {
             Heading(collection?.name ?: state.name, collection?.images?.poster ?: state.image, round = false) {
-                collection?.items?.size?.let { pluralStringResource(if (collection.source == "provider") R.plurals.mobile_count_movies else R.plurals.mobile_count_items, it, it) }
+                collection?.items?.size?.let { pluralStringResource(if (collection.source == CollectionSource.Provider) R.plurals.mobile_count_movies else R.plurals.mobile_count_items, it, it) }
             }
         }
     }
@@ -108,9 +110,9 @@ fun PersonScreen(session: ServerSession, id: String, nav: MobileNav) {
             }
             if (person != null) {
                 val rows = buildList {
-                    add(names.movies to person.works.filter { it.kind == "movie" })
-                    add(names.shows to person.works.filter { it.kind == "series" })
-                    add(names.otherVideos to person.works.filter { it.kind != "movie" && it.kind != "series" })
+                    add(names.movies to person.works.filter { it.kind == WorkKind.Movie })
+                    add(names.shows to person.works.filter { it.kind == WorkKind.Series })
+                    add(names.otherVideos to person.works.filter { it.kind != WorkKind.Movie && it.kind != WorkKind.Series })
                     person.bookSeries.forEach { add(it.name to it.items) }
                     add(names.books to person.standalone)
                     add(names.narrated to person.narrated)

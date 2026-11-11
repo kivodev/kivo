@@ -1,8 +1,10 @@
 package com.mmcdole.kivo.core.data
 
 import com.mmcdole.kivo.api.models.EpisodeInfo
+import com.mmcdole.kivo.api.models.MatchState
 import com.mmcdole.kivo.api.models.SeasonInfo
 import com.mmcdole.kivo.api.models.WorkImages
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkSummary
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -10,7 +12,7 @@ import kotlin.test.assertNull
 
 class SeasonsTest {
     private fun season(id: String, number: Int) = WorkSummary(
-        id = id, kind = "season", title = if (number == 0) "Specials" else "Season $number", matchState = "matched",
+        id = id, kind = WorkKind.Season, title = if (number == 0) "Specials" else "Season $number", matchState = MatchState.Matched,
         available = true, images = WorkImages(), season = SeasonInfo(number, "sg", "Steins;Gate", 0),
     )
 

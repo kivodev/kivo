@@ -36,7 +36,7 @@ import kotlinx.serialization.encoding.*
  * @param name 
  * @param workCount Its root works the user sees.
  * @param images Its poster: a movie collection's own, which its movies' metadata refreshes fetch, else the poster of its first root work the user sees that has one, in release order. 
- * @param source Where a collection comes from: `provider` a movie collection, `folder` a videos-library folder. 
+ * @param source 
  */
 @Serializable
 
@@ -53,8 +53,7 @@ data class CollectionSummary (
     /* Its poster: a movie collection's own, which its movies' metadata refreshes fetch, else the poster of its first root work the user sees that has one, in release order.  */
     @SerialName(value = "images") @Required val images: WorkImages,
 
-    /* Where a collection comes from: `provider` a movie collection, `folder` a videos-library folder.  */
-    @SerialName(value = "source") val source: kotlin.String? = null
+    @SerialName(value = "source") val source: com.mmcdole.kivo.api.models.CollectionSource? = null
 
 ) {
 

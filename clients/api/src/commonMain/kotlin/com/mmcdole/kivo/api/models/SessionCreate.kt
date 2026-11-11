@@ -46,7 +46,7 @@ data class SessionCreate (
     @SerialName(value = "password") @Required val password: kotlin.String,
 
     /* Default `browser`. */
-    @SerialName(value = "kind") val kind: kotlin.String? = null,
+    @SerialName(value = "kind") val kind: com.mmcdole.kivo.api.models.SessionKind? = null,
 
     /* The client's name, such as \"Living Room\" or \"Firefox on Linux\", shown where the user is signed in and with its plays. */
     @SerialName(value = "name") val name: kotlin.String? = null,
