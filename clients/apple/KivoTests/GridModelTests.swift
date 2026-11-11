@@ -41,6 +41,7 @@ final class GridModelTests: XCTestCase {
     }
 
     private static let worksPath = "/api/v1/works/query"
+    private static let listPath = "/api/v1/lists/l1/works"
 
     /// What a read of the grid asked for: its `WorkQueryRequest`.
     private static func asked(_ request: StubServer.Request) -> [String: Any] {
@@ -58,6 +59,13 @@ final class GridModelTests: XCTestCase {
         case let path where path.hasPrefix("/api/v1/work-fields/"):
             let field = path.dropFirst("/api/v1/work-fields/".count).split(separator: "/").first.map(String.init) ?? ""
             return (200, json(["items": (values[field] ?? []).map { ["value": $0, "name": $0] }]))
+        case listPath:
+            let start = request.query["offset"].flatMap(Int.init) ?? 0
+            let end = min(start + (request.query["limit"].flatMap(Int.init) ?? 60), total)
+            let items = (start..<end).map { i -> [String: Any] in
+                ["id": "w\(i)", "kind": "movie", "title": name(i), "matchState": "matched", "available": true, "images": [:]]
+            }
+            return (200, json(start == 0 ? ["items": items, "total": total] : ["items": items]))
         case worksPath:
             let read = asked(request)
             if failing {
@@ -237,6 +245,25 @@ final class GridModelTests: XCTestCase {
             Self.asked(request)["offset"] as? Int ?? 0
         }
         XCTAssertEqual(Set(starts), [2280, 2340], "the pages where it rests and the one before, none it passed")
+    }
+
+    func testAListsGridReadsOnlyThePagesWhereItComesToRest() async throws {
+        let grid = PagedGrid(session.library.pagedListWorks(listId: "l1", kinds: nil, settleMs: PagedGrid.settleMs))
+        let run = Task { await grid.run() }
+        defer { run.cancel() }
+        await grid.ready()
+        XCTAssertEqual(grid.total, Self.total)
+        XCTAssertEqual(grid.item(at: 0)?.title, Self.name(0))
+        let page = grid.page(containing: 1210)
+        // Cards appearing down the list, as it's flung.
+        for index in stride(from: 0, to: 1230, by: 30) {
+            grid.show(index...index)
+            try await Task.sleep(for: .milliseconds(16))
+        }
+        try await until("where it rests loads") { page.item(at: 1210) != nil }
+        XCTAssertEqual(page.item(at: 1210)?.title, Self.name(1210))
+        let starts = server.requests(to: Self.listPath).compactMap { $0.query["offset"] }
+        XCTAssertEqual(Set(starts), ["1140", "1200"], "the page where it rests and the one before, none it passed")
     }
 
     func testAFirstPageThatCantBeReadSaysWhy() async throws {
