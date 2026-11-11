@@ -294,26 +294,32 @@ func workDetail(d query.WorkDetail, tracks playback.Preferred, marks map[id.ID][
 	if out.Episode != nil {
 		out.Episode.PreviousID, out.Episode.NextID = opt(d.PreviousEpisode), opt(d.NextEpisode)
 	}
-	if len(d.Trailers) > 0 {
-		ts := make([]gen.Trailer, len(d.Trailers))
-		for i, t := range d.Trailers {
-			ts[i] = gen.Trailer{ID: t.ID, Title: t.Title, URL: t.URL, Image: imageRef(t.Image)}
-		}
-		switch {
-		case out.Series != nil:
-			out.Series.Trailers = &ts
-		default:
-			if out.Movie == nil { // a summary has a movie's object only for its edition
-				out.Movie = &gen.MovieInfo{}
-			}
-			out.Movie.Trailers = &ts
-		}
-	}
+	setTrailers(&out, d.Trailers)
 	if b := d.Book; b != nil && out.Book != nil {
 		out.Book.Subtitle, out.Book.Publisher, out.Book.Language = opt(b.Subtitle), opt(b.Publisher), opt(b.Language)
 		out.Book.ReleaseDate, out.Book.Abridged = opt(b.ReleaseDate), b.Abridged
 	}
 	return out
+}
+
+// setTrailers puts a movie's or series' trailers on its movie or series
+// object. A work without trailers gets none.
+func setTrailers(out *gen.WorkDetail, trailers []query.Trailer) {
+	if len(trailers) == 0 {
+		return
+	}
+	ts := make([]gen.Trailer, len(trailers))
+	for i, t := range trailers {
+		ts[i] = gen.Trailer{ID: t.ID, Title: t.Title, URL: t.URL, Image: imageRef(t.Image)}
+	}
+	if out.Series != nil {
+		out.Series.Trailers = &ts
+		return
+	}
+	if out.Movie == nil { // a summary has a movie's object only for its edition
+		out.Movie = &gen.MovieInfo{}
+	}
+	out.Movie.Trailers = &ts
 }
 
 // versions converts a detail page's versions. For an episode or a movie,
