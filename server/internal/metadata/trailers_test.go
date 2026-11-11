@@ -2,6 +2,7 @@ package metadata
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"os"
 	"slices"
@@ -257,6 +258,19 @@ func TestRefreshTrailerWithoutThumbnail(t *testing.T) {
 	want[1] = "8g18jFHCLXk Official Trailer " + ytimg + "8g18jFHCLXk/maxresdefault.jpg"
 	if got := e.trailers(w); !slices.Equal(got, want) {
 		t.Errorf("trailers after a second refresh %v, want %v", got, want)
+	}
+}
+
+// While the thumbnails' site is down the refresh is run again later, as it is
+// for artwork, and that run fetches the thumbnail.
+func TestRefreshTrailerThumbnailOutage(t *testing.T) {
+	e := newEnv(t)
+	_, folder := e.b.Library(catalog.Movies)
+	w := e.movie(folder, "Dune (2021)/Dune (2021).mkv")
+	e.fx.set("/vi/8g18jFHCLXk/maxresdefault.jpg", http.StatusServiceUnavailable)
+
+	if err := e.refresh(w); !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("refresh: %v", err)
 	}
 }
 
