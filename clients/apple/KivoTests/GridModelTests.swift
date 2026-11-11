@@ -175,11 +175,11 @@ final class GridModelTests: XCTestCase {
         defer { run.cancel() }
         await grid.ready()
         let generation = grid.generation
-        grid.query.sort = grid.sorts.first { $0.value == "addedAt" }!
+        grid.query.sort = grid.sorts.first { $0.value == .addedAt }!
         grid.reload()
         try await until("the new order shows") { grid.item(at: 0)?.title == Self.name(Self.total - 1) }
         XCTAssertGreaterThan(grid.generation, generation, "a new grid")
-        XCTAssertEqual(grid.shown.sort.value, "addedAt")
+        XCTAssertEqual(grid.shown.sort.value, .addedAt)
         XCTAssertTrue(grid.letters.isEmpty, "no letters by date")
     }
 
@@ -188,9 +188,9 @@ final class GridModelTests: XCTestCase {
         let run = Task { await grid.run() }
         defer { run.cancel() }
         await grid.ready()
-        grid.query.sort = grid.sorts.first { $0.value == "addedAt" }!
+        grid.query.sort = grid.sorts.first { $0.value == .addedAt }!
         grid.reload()
-        XCTAssertEqual(grid.shown.sort.value, "addedAt", "the new sort shows at once")
+        XCTAssertEqual(grid.shown.sort.value, .addedAt, "the new sort shows at once")
         XCTAssertNil(grid.total, "its placeholders until its first page arrives, not the grid before")
         XCTAssertNil(grid.item(at: 0))
         try await until("its first page arrives") { grid.total == Self.total }
@@ -198,15 +198,15 @@ final class GridModelTests: XCTestCase {
 
     func testASortForOnceOpensWithoutFiltersAndKeepsNothing() async throws {
         UserDefaults.standard.set(["tab": "collections", "sort": "title", "played": "unplayed"], forKey: "grid.lib")
-        let grid = GridModel(library: library, session: session, sort: "addedAt")
+        let grid = GridModel(library: library, session: session, sort: .addedAt)
         let run = Task { await grid.run() }
         defer { run.cancel() }
         await grid.ready()
         XCTAssertEqual(grid.shown.tab, .titles)
-        XCTAssertEqual(grid.shown.sort.value, "addedAt")
+        XCTAssertEqual(grid.shown.sort.value, .addedAt)
         XCTAssertFalse(grid.shown.filtered, "none of the kept filters")
         XCTAssertEqual(grid.item(at: 0)?.title, Self.name(Self.total - 1), "newest first")
-        grid.query.resolutions = ["4k"]
+        grid.query.resolutions = [.fourK]
         grid.reload()
         let kept = UserDefaults.standard.dictionary(forKey: "grid.lib") as? [String: String]
         XCTAssertEqual(kept, ["tab": "collections", "sort": "title", "played": "unplayed"], "the library's own choices stay")
@@ -243,11 +243,64 @@ final class GridModelTests: XCTestCase {
     func testAGridKeptByAnEarlierVersionOpensWithItsFilters() async throws {
         UserDefaults.standard.set(["tab": "titles", "sort": "addedAt", "hdr": "hdr"], forKey: "grid.lib")
         let grid = model()
-        XCTAssertEqual(grid.query.sort.value, "addedAt")
-        XCTAssertEqual(grid.query.dynamicRanges, ["hdr"])
+        XCTAssertEqual(grid.query.sort.value, .addedAt)
+        XCTAssertEqual(grid.query.dynamicRanges, [.hdr])
         let kept = UserDefaults.standard.dictionary(forKey: "grid.lib") as? [String: String]
         XCTAssertEqual(kept?["dynamicRanges"], "hdr", "kept in today's names")
         XCTAssertNil(kept?["hdr"])
+    }
+
+    func testAKeptGridOpensWithItsSortAndFiltersAndKeepsTheirSpelling() async throws {
+        UserDefaults.standard.set([
+            "tab": "titles", "sort": "runtimeMs", "played": "inProgress",
+            "resolutions": "1080p,4k,sd", "dynamicRanges": "dolbyVision,hdr",
+        ], forKey: "grid.lib")
+        let grid = model()
+        XCTAssertEqual(grid.query.sort.value, .runtime)
+        XCTAssertEqual(grid.query.played.value, .inProgress)
+        XCTAssertEqual(grid.query.resolutions, [.fourK, .p1080, .sd])
+        XCTAssertEqual(grid.query.dynamicRanges, [.hdr, .dolbyVision])
+        grid.query.resolutions.insert(.p720)
+        grid.reload()
+        let kept = UserDefaults.standard.dictionary(forKey: "grid.lib") as? [String: String]
+        XCTAssertEqual(kept, [
+            "tab": "titles", "sort": "runtimeMs", "played": "inProgress",
+            "resolutions": "1080p,4k,720p,sd", "dynamicRanges": "dolbyVision,hdr",
+        ])
+    }
+
+    // Migration (api-naming): remove after every client has updated past this release.
+    func testAGridKeptUnderEarlierNamesKeepsItsSortAndFiltersInTodaysNames() async throws {
+        UserDefaults.standard.set([
+            "tab": "titles", "sort": "lastEpisodeAdded", "played": "unplayed", "resolutions": "720p", "hdr": "dolbyVision",
+        ], forKey: "grid.lib")
+        // Only a shows library sorts by the last episode added.
+        let shows = Library(
+            id: library.id, name: "Shows", pinned: true, kind: .shows, workCount: library.workCount, folders: nil, useLocalMetadata: nil,
+            previews: nil, markers: nil, subtitles: nil, refreshDays: nil, metadataLanguage: nil, contentRatingCountry: nil,
+            unmatchedCount: nil, scan: nil
+        )
+        let grid = GridModel(library: shows, session: session)
+        XCTAssertEqual(grid.query.sort.value, .lastEpisodeAddedAt)
+        XCTAssertEqual(grid.query.played.value, .unplayed)
+        XCTAssertEqual(grid.query.resolutions, [.p720])
+        XCTAssertEqual(grid.query.dynamicRanges, [.dolbyVision])
+        grid.reload()
+        let kept = UserDefaults.standard.dictionary(forKey: "grid.lib") as? [String: String]
+        XCTAssertEqual(kept, [
+            "tab": "titles", "sort": "lastEpisodeAddedAt", "played": "unplayed", "resolutions": "720p", "dynamicRanges": "dolbyVision",
+        ])
+    }
+
+    func testAKeptSortOrFilterThisVersionDoesntKnowFallsBack() async throws {
+        UserDefaults.standard.set([
+            "tab": "titles", "sort": "loudness", "played": "abandoned", "resolutions": "8k,4k", "dynamicRanges": "hlg",
+        ], forKey: "grid.lib")
+        let grid = model()
+        XCTAssertEqual(grid.query.sort.value, .title, "the first sort")
+        XCTAssertNil(grid.query.played.value, "all")
+        XCTAssertEqual(grid.query.resolutions, [.fourK])
+        XCTAssertTrue(grid.query.dynamicRanges.isEmpty)
     }
 }
 

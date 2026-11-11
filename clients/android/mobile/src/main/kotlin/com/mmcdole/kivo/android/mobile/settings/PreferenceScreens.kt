@@ -49,6 +49,8 @@ import com.mmcdole.kivo.android.mobile.ui.display
 import com.mmcdole.kivo.android.mobile.ui.sentence
 import com.mmcdole.kivo.android.settings.SubtitleBackground
 import com.mmcdole.kivo.android.settings.SubtitleSize
+import com.mmcdole.kivo.api.models.HomeRowKind
+import com.mmcdole.kivo.api.models.ListKind
 import com.mmcdole.kivo.api.models.PlaybackPreferences
 import com.mmcdole.kivo.api.models.SubtitleMode
 import com.mmcdole.kivo.core.Load
@@ -233,7 +235,7 @@ private fun RemoteCap(bps: Long) = Footnote(stringResource(R.string.mobile_remot
 @Composable
 fun DownloadSettingsScreen(session: ServerSession, nav: MobileNav) {
     val qualityLabel = stringResource(R.string.mobile_download_quality)
-    val qualities = DownloadQuality.entries.map { Choice(it, display.downloadQuality(it.value)) }
+    val qualities = DownloadQuality.entries.map { Choice(it, display.downloadQuality(it)) }
     val cellular = stringResource(R.string.mobile_cellular_downloads)
     val cellularNote = stringResource(R.string.mobile_cellular_downloads_note)
     val usedLabel = stringResource(R.string.mobile_storage_used)
@@ -296,10 +298,10 @@ fun HomeSettingsScreen(session: ServerSession, nav: MobileNav) {
 private fun HomeRowIcon(row: HomeRowInfo) {
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     when {
-        row.list?.kind == "smart" -> Icon(Icons.Default.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary)
-        row.kind == "continueWatching" -> Icon(Icons.Default.PlayArrow, null, tint = muted)
-        row.kind == "continueListening" -> Icon(Icons.Default.Headphones, null, tint = muted)
-        row.kind == "recentlyAdded" -> Icon(Icons.Default.Schedule, null, tint = muted)
+        row.list?.kind == ListKind.Smart -> Icon(Icons.Default.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary)
+        row.kind == HomeRowKind.ContinueWatching -> Icon(Icons.Default.PlayArrow, null, tint = muted)
+        row.kind == HomeRowKind.ContinueListening -> Icon(Icons.Default.Headphones, null, tint = muted)
+        row.kind == HomeRowKind.RecentlyAdded -> Icon(Icons.Default.Schedule, null, tint = muted)
         else -> Icon(Icons.AutoMirrored.Filled.List, null, tint = muted)
     }
 }

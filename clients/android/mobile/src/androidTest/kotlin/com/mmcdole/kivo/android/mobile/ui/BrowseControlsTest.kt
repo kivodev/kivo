@@ -21,8 +21,11 @@ import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.mmcdole.kivo.android.mobile.library.LetterRail
 import com.mmcdole.kivo.android.mobile.theme.KivoMobileTheme
+import com.mmcdole.kivo.api.models.HomeRowKind
+import com.mmcdole.kivo.api.models.MatchState
 import com.mmcdole.kivo.api.models.UserState
 import com.mmcdole.kivo.api.models.WorkImages
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkSummary
 import org.junit.Rule
 import org.junit.Test
@@ -69,7 +72,7 @@ class BrowseControlsTest {
     @Test
     fun talkBackReadsACardsTitleLineAndProgressAsOne() {
         val work = WorkSummary(
-            id = "m1", kind = "movie", title = "Charade", matchState = "matched", available = true, images = WorkImages(), year = 1963,
+            id = "m1", kind = WorkKind.Movie, title = "Charade", matchState = MatchState.Matched, available = true, images = WorkImages(), year = 1963,
             durationMs = 100_000, userState = UserState(played = false, playCount = 0, positionMs = 30_000),
         )
         rule.setContent { KivoMobileTheme { WorkCard(work, CardShape.Poster, 116.dp, onClick = {}, onLongClick = null) } }
@@ -80,14 +83,14 @@ class BrowseControlsTest {
     @Test
     fun aLongPressOpensTheCardsActionsAndOneRunsOnTheWork() {
         val work = WorkSummary(
-            id = "m1", kind = "movie", title = "Charade", matchState = "matched", available = true, images = WorkImages(),
+            id = "m1", kind = WorkKind.Movie, title = "Charade", matchState = MatchState.Matched, available = true, images = WorkImages(),
             durationMs = 100_000, userState = UserState(played = false, playCount = 0, positionMs = 30_000),
         )
         val done = mutableListOf<Pair<WorkAction, String>>()
         rule.setContent {
             KivoMobileTheme {
                 WorkMenuHost({ action, w -> done += action to w.work.id }) { open ->
-                    WorkCard(work, CardShape.Landscape, 260.dp, onClick = {}, onLongClick = { open(WorkMenu(work, CONTINUE_WATCHING)) })
+                    WorkCard(work, CardShape.Landscape, 260.dp, onClick = {}, onLongClick = { open(WorkMenu(work, HomeRowKind.ContinueWatching)) })
                 }
             }
         }

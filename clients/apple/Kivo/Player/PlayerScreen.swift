@@ -541,7 +541,7 @@ private struct PlayerErrorView: View {
         case .ended:
             return (String(localized: "Playback was stopped."), sentence, nil, [])
         case let .problem(problem):
-            let title = problem.code == "streamLimit" ? String(localized: "You're at your stream limit.") : String(localized: "Couldn't play this.")
+            let title = problem.knownCode == .streamLimit ? String(localized: "You're at your stream limit.") : String(localized: "Couldn't play this.")
             return (title, sentence, problem.mismatch.map(StreamInfoView.words), problem.plays ?? [])
         }
     }

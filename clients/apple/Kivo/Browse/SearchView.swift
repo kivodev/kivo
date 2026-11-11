@@ -21,16 +21,16 @@ struct SearchView: View {
     @State private var failed: RequestProblem?
 
     private struct KindRow {
-        let kinds: Set<String>
+        let kinds: Set<WorkKind>
         let title: String
     }
 
     private static let kinds = [
-        KindRow(kinds: ["movie"], title: String(localized: "Movies")),
-        KindRow(kinds: ["series"], title: String(localized: "Shows")),
-        KindRow(kinds: ["episode"], title: String(localized: "Episodes")),
-        KindRow(kinds: ["video", "extra"], title: String(localized: "Other videos")),
-        KindRow(kinds: ["book"], title: String(localized: "Books")),
+        KindRow(kinds: [.movie], title: String(localized: "Movies")),
+        KindRow(kinds: [.series], title: String(localized: "Shows")),
+        KindRow(kinds: [.episode], title: String(localized: "Episodes")),
+        KindRow(kinds: [.video, .extra], title: String(localized: "Other videos")),
+        KindRow(kinds: [.book], title: String(localized: "Books")),
     ]
 
     var body: some View {
@@ -161,7 +161,7 @@ struct SearchView: View {
     private func personDetail(_ person: PersonSummary) -> String {
         let n = Int(person.workCount)
         let titles = n == 1 ? String(localized: "1 title") : String(localized: "\(n) titles")
-        return "\(Words.role(person.role)) · \(titles)"
+        return "\(Words.role(person.knownRole, person.role)) · \(titles)"
     }
 
     private func search(_ text: String) async {

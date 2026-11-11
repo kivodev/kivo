@@ -44,7 +44,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mmcdole.kivo.android.ServerSession
-import com.mmcdole.kivo.android.library.GridValues
 import com.mmcdole.kivo.android.mobile.R
 import com.mmcdole.kivo.android.mobile.app.SettingsPage
 import com.mmcdole.kivo.android.mobile.app.SettingsPageRoute
@@ -55,7 +54,6 @@ import com.mmcdole.kivo.android.mobile.app.SettingsRoute
 import com.mmcdole.kivo.android.mobile.app.handle
 import com.mmcdole.kivo.android.mobile.theme.LocalKivo
 import com.mmcdole.kivo.android.mobile.theme.space
-import com.mmcdole.kivo.android.mobile.ui.CONTINUE_WATCHING
 import com.mmcdole.kivo.android.mobile.ui.CardCorners
 import com.mmcdole.kivo.android.mobile.ui.CardShape
 import com.mmcdole.kivo.android.mobile.ui.Failed
@@ -67,10 +65,13 @@ import com.mmcdole.kivo.android.mobile.ui.WorkMenuHost
 import com.mmcdole.kivo.android.mobile.ui.listShapeOf
 import com.mmcdole.kivo.android.mobile.ui.rowCardWidth
 import com.mmcdole.kivo.android.mobile.ui.shapeOf
+import com.mmcdole.kivo.api.models.HomeRowKind
+import com.mmcdole.kivo.api.models.ListKind
 import com.mmcdole.kivo.api.models.WorkSummary
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.ui.draw.clip
+import com.mmcdole.kivo.core.data.GridSort
 
 /** The gap between a row's cards, and the page's side margin. */
 private val CardGap = 12.dp
@@ -138,7 +139,7 @@ private fun Rows(rows: List<HomeRowUi>, nav: MobileNav, openMenu: (WorkMenu) -> 
             val list = row.list
             val opens: (() -> Unit)? = when {
                 list != null -> { { nav.open(ListRoute(list.id, list.name)) } }
-                row.kind == "recentlyAdded" && library != null -> { { nav.open(LibraryRoute(library.id, GridValues.ADDED_AT)) } }
+                row.kind == HomeRowKind.RecentlyAdded && library != null -> { { nav.open(LibraryRoute(library.id, GridSort.AddedAt.value)) } }
                 else -> null
             }
             Column {
@@ -155,7 +156,7 @@ private fun Rows(rows: List<HomeRowUi>, nav: MobileNav, openMenu: (WorkMenu) -> 
                             shape = shape,
                             width = rowCardWidth(shape),
                             onClick = { nav.openWork(work) },
-                            onLongClick = { openMenu(WorkMenu(work, row.kind, row.list?.takeIf { it.kind == "manual" })) },
+                            onLongClick = { openMenu(WorkMenu(work, row.kind, row.list?.takeIf { it.kind == ListKind.Manual })) },
                         )
                     }
                 }
@@ -202,10 +203,10 @@ private fun RowHeading(title: String, onClick: (() -> Unit)?) {
 }
 
 @Composable
-internal fun rowTitle(kind: String, libraryName: String?, listName: String?): String = when (kind) {
-    CONTINUE_WATCHING -> stringResource(R.string.mobile_row_continue_watching)
-    "continueListening" -> stringResource(R.string.mobile_row_continue_listening)
-    "list" -> listName.orEmpty()
+internal fun rowTitle(kind: HomeRowKind, libraryName: String?, listName: String?): String = when (kind) {
+    HomeRowKind.ContinueWatching -> stringResource(R.string.mobile_row_continue_watching)
+    HomeRowKind.ContinueListening -> stringResource(R.string.mobile_row_continue_listening)
+    HomeRowKind.List -> listName.orEmpty()
     else -> libraryName?.let { stringResource(R.string.mobile_row_recently_added_in, it) } ?: stringResource(R.string.mobile_row_recently_added)
 }
 
@@ -226,8 +227,8 @@ private fun HomeSkeleton() {
 }
 
 /** A row's card shape: Continue Watching is the frames where you stopped, and a list's row is shaped as its grid. */
-private fun rowCardShape(kind: String, work: WorkSummary): CardShape = when (kind) {
-    CONTINUE_WATCHING -> CardShape.Landscape
-    "list" -> listShapeOf(work)
+private fun rowCardShape(kind: HomeRowKind, work: WorkSummary): CardShape = when (kind) {
+    HomeRowKind.ContinueWatching -> CardShape.Landscape
+    HomeRowKind.List -> listShapeOf(work)
     else -> shapeOf(work)
 }

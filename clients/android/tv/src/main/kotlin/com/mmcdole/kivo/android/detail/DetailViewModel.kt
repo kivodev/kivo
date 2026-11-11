@@ -6,6 +6,7 @@ import com.mmcdole.kivo.android.ServerSession
 import com.mmcdole.kivo.android.ui.Loader
 import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.api.models.WorkImages
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkSummary
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.SharingStarted
@@ -44,7 +45,7 @@ class DetailViewModel(private val session: ServerSession, id: String) : ViewMode
         val info = season.season ?: return null
         return session.session.library.known(info.seriesId) ?: WorkSummary(
             id = info.seriesId,
-            kind = "series",
+            kind = WorkKind.Series,
             title = info.seriesTitle,
             matchState = season.matchState,
             available = season.available,

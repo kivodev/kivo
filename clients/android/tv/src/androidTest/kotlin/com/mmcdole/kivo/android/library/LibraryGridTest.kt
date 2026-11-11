@@ -32,10 +32,13 @@ import com.mmcdole.kivo.android.ui.Screen
 import com.mmcdole.kivo.api.infrastructure.ApiClient
 import com.mmcdole.kivo.api.models.LetterStart
 import com.mmcdole.kivo.api.models.Library
+import com.mmcdole.kivo.api.models.LibraryKind
 import com.mmcdole.kivo.api.models.LibraryList
+import com.mmcdole.kivo.api.models.MatchState
 import com.mmcdole.kivo.api.models.ServerInfo
 import com.mmcdole.kivo.api.models.WorkFieldValueList
 import com.mmcdole.kivo.api.models.WorkImages
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkQueryRequest
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.api.models.CollectionSummaryPage
@@ -96,7 +99,7 @@ class LibraryGridTest {
                 val end = minOf(start + (params["limit"]?.toInt() ?: 60), IN_LIST)
                 json(WorkSummaryPage.serializer(), WorkSummaryPage((start until end).map { work(1_000 + it) }, total = IN_LIST))
             }
-            "/api/v1/libraries" -> json(LibraryList.serializer(), LibraryList(listOf(Library("lib", "Movies", true, "movies", TOTAL))))
+            "/api/v1/libraries" -> json(LibraryList.serializer(), LibraryList(listOf(Library("lib", "Movies", true, LibraryKind.Movies, TOTAL))))
             // The library has no collections.
             "/api/v1/libraries/lib/collections" -> json(CollectionSummaryPage.serializer(), CollectionSummaryPage(emptyList(), 0))
             "/api/v1/works/query" -> {
@@ -379,7 +382,7 @@ class LibraryGridTest {
         fun name(i: Int) = "${letter(i)} Title ${i.toString().padStart(4, '0')}"
 
         fun work(i: Int) = WorkSummary(
-            id = "w$i", kind = "movie", title = name(i), matchState = "matched", available = true,
+            id = "w$i", kind = WorkKind.Movie, title = name(i), matchState = MatchState.Matched, available = true,
             images = WorkImages(), libraryId = "lib",
         )
 

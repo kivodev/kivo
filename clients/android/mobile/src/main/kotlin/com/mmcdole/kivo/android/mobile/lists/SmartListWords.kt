@@ -6,7 +6,11 @@ import androidx.compose.ui.res.stringResource
 import com.mmcdole.kivo.android.mobile.R
 import com.mmcdole.kivo.api.models.Rule
 import com.mmcdole.kivo.api.models.RuleGroup
+import com.mmcdole.kivo.api.models.RuleGroupMatch
+import com.mmcdole.kivo.api.models.SortDirection
 import com.mmcdole.kivo.api.models.WorkField
+import com.mmcdole.kivo.api.models.WorkFieldType
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkQuery
 import com.mmcdole.kivo.core.data.RuleDraft
 import com.mmcdole.kivo.core.data.SmartLists
@@ -14,14 +18,14 @@ import java.text.NumberFormat
 
 /** "42 movies", or "42 titles" over more than one kind. */
 @Composable
-internal fun smartCount(count: Int, kinds: List<String>): String = pluralStringResource(
+internal fun smartCount(count: Int, kinds: List<WorkKind>): String = pluralStringResource(
     when (kinds.singleOrNull()) {
-        "movie" -> R.plurals.mobile_count_movies
-        "series" -> R.plurals.mobile_count_shows
-        "season" -> R.plurals.mobile_count_seasons
-        "episode" -> R.plurals.mobile_count_episodes
-        "video" -> R.plurals.mobile_count_videos
-        "book" -> R.plurals.mobile_count_books
+        WorkKind.Movie -> R.plurals.mobile_count_movies
+        WorkKind.Series -> R.plurals.mobile_count_shows
+        WorkKind.Season -> R.plurals.mobile_count_seasons
+        WorkKind.Episode -> R.plurals.mobile_count_episodes
+        WorkKind.Video -> R.plurals.mobile_count_videos
+        WorkKind.Book -> R.plurals.mobile_count_books
         else -> R.plurals.mobile_count_titles
     },
     count,
@@ -29,14 +33,14 @@ internal fun smartCount(count: Int, kinds: List<String>): String = pluralStringR
 )
 
 @Composable
-internal fun kindName(kind: String): String = when (kind) {
-    "movie" -> stringResource(R.string.mobile_tab_movies)
-    "series" -> stringResource(R.string.mobile_tab_shows)
-    "season" -> stringResource(R.string.mobile_seasons)
-    "episode" -> stringResource(R.string.mobile_episodes)
-    "video" -> stringResource(R.string.mobile_tab_videos)
-    "book" -> stringResource(R.string.mobile_tab_books)
-    else -> kind
+internal fun kindName(kind: WorkKind): String = when (kind) {
+    WorkKind.Movie -> stringResource(R.string.mobile_tab_movies)
+    WorkKind.Series -> stringResource(R.string.mobile_tab_shows)
+    WorkKind.Season -> stringResource(R.string.mobile_seasons)
+    WorkKind.Episode -> stringResource(R.string.mobile_episodes)
+    WorkKind.Video -> stringResource(R.string.mobile_tab_videos)
+    WorkKind.Book -> stringResource(R.string.mobile_tab_books)
+    else -> kind.value
 }
 
 /** A field's label by its key, or the catalog's name for one this app doesn't know. */
@@ -71,14 +75,14 @@ internal fun fieldName(field: WorkField): String = when (field.field) {
 }
 
 @Composable
-internal fun opName(op: String, type: String): String = when (op) {
+internal fun opName(op: String, type: WorkFieldType): String = when (op) {
     "anyOf", "eq" -> stringResource(R.string.mobile_smart_op_is)
     "allOf" -> stringResource(R.string.mobile_smart_op_all_of)
     "noneOf" -> stringResource(R.string.mobile_smart_op_is_not)
     "isSet" -> stringResource(R.string.mobile_smart_op_is_set)
     "isNotSet" -> stringResource(R.string.mobile_smart_op_is_not_set)
-    "gte" -> stringResource(if (type == "date") R.string.mobile_smart_op_on_or_after else R.string.mobile_smart_op_at_least)
-    "lte" -> stringResource(if (type == "date") R.string.mobile_smart_op_on_or_before else R.string.mobile_smart_op_at_most)
+    "gte" -> stringResource(if (type == WorkFieldType.Date) R.string.mobile_smart_op_on_or_after else R.string.mobile_smart_op_at_least)
+    "lte" -> stringResource(if (type == WorkFieldType.Date) R.string.mobile_smart_op_on_or_before else R.string.mobile_smart_op_at_most)
     "between" -> stringResource(R.string.mobile_smart_op_between)
     "within" -> stringResource(R.string.mobile_smart_op_within)
     "notWithin" -> stringResource(R.string.mobile_smart_op_not_within)
@@ -90,11 +94,11 @@ internal fun opName(op: String, type: String): String = when (op) {
 
 /** A sort as the Sort row names it: "Rating, highest first". */
 @Composable
-internal fun sortName(field: WorkField, direction: String): String {
-    val ascending = direction == "asc"
+internal fun sortName(field: WorkField, direction: SortDirection): String {
+    val ascending = direction == SortDirection.Asc
     val order = when (field.type) {
-        "date" -> if (ascending) R.string.mobile_smart_oldest_first else R.string.mobile_smart_newest_first
-        "text" -> if (direction == "desc") R.string.mobile_smart_z_to_a else R.string.mobile_smart_a_to_z
+        WorkFieldType.Date -> if (ascending) R.string.mobile_smart_oldest_first else R.string.mobile_smart_newest_first
+        WorkFieldType.Text -> if (direction == SortDirection.Desc) R.string.mobile_smart_z_to_a else R.string.mobile_smart_a_to_z
         else -> when {
             field.unit == "ms" -> if (ascending) R.string.mobile_smart_shortest_first else R.string.mobile_smart_longest_first
             ascending -> R.string.mobile_smart_lowest_first
@@ -155,7 +159,7 @@ private fun phrases(group: RuleGroup, fields: List<WorkField>, names: Map<String
         fields.firstOrNull { it.field == rule.field }?.let { rulePhrase(rule, it, names) }
     }
     val nested = group.groups.orEmpty().map { inner ->
-        val joiner = stringResource(if (inner.match == "all") R.string.mobile_smart_and else R.string.mobile_smart_or)
+        val joiner = stringResource(if (inner.match == RuleGroupMatch.All) R.string.mobile_smart_and else R.string.mobile_smart_or)
         "(${phrases(inner, fields, names).joinToString(" $joiner ")})"
     }
     return rules + nested

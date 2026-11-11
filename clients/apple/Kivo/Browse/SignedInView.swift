@@ -335,7 +335,7 @@ enum Route: Hashable {
     /// A list's works, in a grid.
     case list(ListRef)
     /// A library's works in one sort, for once, as Recently Added's heading opens them.
-    case library(Library, sort: String)
+    case library(Library, sort: GridSort)
     /// A library, opened from the Libraries tab's list of them.
     case librariesPage(Library)
 }
@@ -355,7 +355,7 @@ extension EnvironmentValues {
     @Entry var currentLibraryId: String?
     /// The Home row a card is in, Continue Watching or Continue Listening,
     /// so a long press offers to remove it from that row.
-    @Entry var continueRow: String?
+    @Entry var continueRow: HomeRowKind?
     /// The list a card is shown in, so a long press offers to remove it from that list.
     @Entry var currentList: ListRef?
     /// The window has the wider grids and pages: a regular-width iPad's, which
@@ -379,7 +379,7 @@ struct WorkRoute: Hashable {
     let id: String
     var page = Page.work
     /// The work's kind, when the link knows it, so its page's skeleton takes the page's shape.
-    var kind: String?
+    var kind: WorkKind?
     /// The card it was opened from, which its page shows until it's read.
     var seed: WorkSummary?
     /// The episode a series' page was opened from by Go to series, whose season it opens on.
@@ -392,7 +392,7 @@ struct WorkRoute: Hashable {
         seed = work
     }
 
-    init(id: String, page: Page = .work, kind: String? = nil) {
+    init(id: String, page: Page = .work, kind: WorkKind? = nil) {
         self.id = id
         self.page = page
         self.kind = kind
@@ -401,7 +401,7 @@ struct WorkRoute: Hashable {
     /// Go to series: the episode's series, open on the episode's season.
     init(seriesOf episode: EpisodeInfo) {
         id = episode.seriesId
-        kind = "series"
+        kind = .series
         self.episode = episode
     }
 }
@@ -437,10 +437,10 @@ extension Library {
     /// The library's kind as an SF Symbol.
     var symbol: String {
         switch kind {
-        case "movies": "film"
-        case "shows": "tv"
-        case "audiobooks": "headphones"
-        default: "play.rectangle"
+        case .movies: "film"
+        case .shows: "tv"
+        case .audiobooks: "headphones"
+        case .videos, .unknown: "play.rectangle"
         }
     }
 }

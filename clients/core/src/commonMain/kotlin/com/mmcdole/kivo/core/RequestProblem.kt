@@ -93,6 +93,8 @@ enum class ProblemCode(val value: String) {
     Unknown(""),
     ;
 
+    override fun toString(): String = value
+
     companion object {
         /** The code [value] names; [Unknown] for any other. */
         fun of(value: String?): ProblemCode = entries.firstOrNull { it != Unknown && it.value == value } ?: Unknown

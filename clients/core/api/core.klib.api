@@ -48,6 +48,7 @@ final enum class com.mmcdole.kivo.core.data/CreditRole : kotlin/Enum<com.mmcdole
     final val value // com.mmcdole.kivo.core.data/CreditRole.value|{}value[0]
         final fun <get-value>(): kotlin/String // com.mmcdole.kivo.core.data/CreditRole.value.<get-value>|<get-value>(){}[0]
 
+    final fun toString(): kotlin/String // com.mmcdole.kivo.core.data/CreditRole.toString|toString(){}[0]
     final fun valueOf(kotlin/String): com.mmcdole.kivo.core.data/CreditRole // com.mmcdole.kivo.core.data/CreditRole.valueOf|valueOf#static(kotlin.String){}[0]
     final fun values(): kotlin/Array<com.mmcdole.kivo.core.data/CreditRole> // com.mmcdole.kivo.core.data/CreditRole.values|values#static(){}[0]
 
@@ -65,6 +66,7 @@ final enum class com.mmcdole.kivo.core.data/DynamicRange : kotlin/Enum<com.mmcdo
     final val value // com.mmcdole.kivo.core.data/DynamicRange.value|{}value[0]
         final fun <get-value>(): kotlin/String // com.mmcdole.kivo.core.data/DynamicRange.value.<get-value>|<get-value>(){}[0]
 
+    final fun toString(): kotlin/String // com.mmcdole.kivo.core.data/DynamicRange.toString|toString(){}[0]
     final fun valueOf(kotlin/String): com.mmcdole.kivo.core.data/DynamicRange // com.mmcdole.kivo.core.data/DynamicRange.valueOf|valueOf#static(kotlin.String){}[0]
     final fun values(): kotlin/Array<com.mmcdole.kivo.core.data/DynamicRange> // com.mmcdole.kivo.core.data/DynamicRange.values|values#static(){}[0]
 
@@ -88,6 +90,7 @@ final enum class com.mmcdole.kivo.core.data/GridSort : kotlin/Enum<com.mmcdole.k
     final val value // com.mmcdole.kivo.core.data/GridSort.value|{}value[0]
         final fun <get-value>(): kotlin/String // com.mmcdole.kivo.core.data/GridSort.value.<get-value>|<get-value>(){}[0]
 
+    final fun toString(): kotlin/String // com.mmcdole.kivo.core.data/GridSort.toString|toString(){}[0]
     final fun valueOf(kotlin/String): com.mmcdole.kivo.core.data/GridSort // com.mmcdole.kivo.core.data/GridSort.valueOf|valueOf#static(kotlin.String){}[0]
     final fun values(): kotlin/Array<com.mmcdole.kivo.core.data/GridSort> // com.mmcdole.kivo.core.data/GridSort.values|values#static(){}[0]
 
@@ -117,6 +120,7 @@ final enum class com.mmcdole.kivo.core.data/WorkPlayState : kotlin/Enum<com.mmcd
     final val value // com.mmcdole.kivo.core.data/WorkPlayState.value|{}value[0]
         final fun <get-value>(): kotlin/String // com.mmcdole.kivo.core.data/WorkPlayState.value.<get-value>|<get-value>(){}[0]
 
+    final fun toString(): kotlin/String // com.mmcdole.kivo.core.data/WorkPlayState.toString|toString(){}[0]
     final fun valueOf(kotlin/String): com.mmcdole.kivo.core.data/WorkPlayState // com.mmcdole.kivo.core.data/WorkPlayState.valueOf|valueOf#static(kotlin.String){}[0]
     final fun values(): kotlin/Array<com.mmcdole.kivo.core.data/WorkPlayState> // com.mmcdole.kivo.core.data/WorkPlayState.values|values#static(){}[0]
 
@@ -234,6 +238,7 @@ final enum class com.mmcdole.kivo.core/ProblemCode : kotlin/Enum<com.mmcdole.kiv
     final val value // com.mmcdole.kivo.core/ProblemCode.value|{}value[0]
         final fun <get-value>(): kotlin/String // com.mmcdole.kivo.core/ProblemCode.value.<get-value>|<get-value>(){}[0]
 
+    final fun toString(): kotlin/String // com.mmcdole.kivo.core/ProblemCode.toString|toString(){}[0]
     final fun valueOf(kotlin/String): com.mmcdole.kivo.core/ProblemCode // com.mmcdole.kivo.core/ProblemCode.valueOf|valueOf#static(kotlin.String){}[0]
     final fun values(): kotlin/Array<com.mmcdole.kivo.core/ProblemCode> // com.mmcdole.kivo.core/ProblemCode.values|values#static(){}[0]
 
@@ -560,6 +565,8 @@ sealed interface com.mmcdole.kivo.core.play/PlayerFailure { // com.mmcdole.kivo.
 
         final val code // com.mmcdole.kivo.core.play/PlayerFailure.Problem.code|{}code[0]
             final fun <get-code>(): kotlin/String // com.mmcdole.kivo.core.play/PlayerFailure.Problem.code.<get-code>|<get-code>(){}[0]
+        final val knownCode // com.mmcdole.kivo.core.play/PlayerFailure.Problem.knownCode|{}knownCode[0]
+            final fun <get-knownCode>(): com.mmcdole.kivo.core/ProblemCode // com.mmcdole.kivo.core.play/PlayerFailure.Problem.knownCode.<get-knownCode>|<get-knownCode>(){}[0]
         final val mismatch // com.mmcdole.kivo.core.play/PlayerFailure.Problem.mismatch|{}mismatch[0]
             final fun <get-mismatch>(): com.mmcdole.kivo.api.models/CapabilityMismatch? // com.mmcdole.kivo.core.play/PlayerFailure.Problem.mismatch.<get-mismatch>|<get-mismatch>(){}[0]
         final val plays // com.mmcdole.kivo.core.play/PlayerFailure.Problem.plays|{}plays[0]

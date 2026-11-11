@@ -115,7 +115,7 @@ struct CastRow: View {
                 Text(credit.name)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(palette.text)
-                Text(credit.character ?? Words.role(credit.role))
+                Text(credit.character ?? Words.role(credit.knownRole, credit.role))
                     .font(.caption)
                     .foregroundStyle(palette.textMuted)
             }

@@ -15,8 +15,10 @@ import com.mmcdole.kivo.api.models.DownloadList
 import com.mmcdole.kivo.api.models.DownloadOption
 import com.mmcdole.kivo.api.models.DownloadPart
 import com.mmcdole.kivo.api.models.EpisodeInfo
+import com.mmcdole.kivo.api.models.MatchState
 import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.api.models.WorkImages
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.core.downloads.DownloadStatus
 import com.mmcdole.kivo.core.downloads.DownloadTransport
 import com.mmcdole.kivo.core.downloads.TransferEvent
@@ -86,8 +88,8 @@ class DownloadsViewModelTest : CoreTest() {
     private val asked = CopyOnWriteArrayList<String>()
     private var gate: CompletableDeferred<Unit>? = null
 
-    private fun detail(id: String, kind: String = "movie", episode: EpisodeInfo? = null) = WorkDetail(
-        id = id, kind = kind, title = if (kind == "movie") "Charade" else "Episode $id", matchState = "matched", available = true, images = WorkImages(),
+    private fun detail(id: String, kind: WorkKind = WorkKind.Movie, episode: EpisodeInfo? = null) = WorkDetail(
+        id = id, kind = kind, title = if (kind == WorkKind.Movie) "Charade" else "Episode $id", matchState = MatchState.Matched, available = true, images = WorkImages(),
         genres = emptyList(), studios = emptyList(), credits = emptyList(), externalIds = emptyList(), versions = emptyList(),
         extras = emptyList(), collections = emptyList(), episode = episode, durationMs = 7_200_000,
     )
@@ -103,7 +105,7 @@ class DownloadsViewModelTest : CoreTest() {
         server.get("/api/v1/works/m1", WorkDetail.serializer()) { detail("m1") }
         for (n in 1..2) {
             server.get("/api/v1/works/e$n", WorkDetail.serializer()) {
-                detail("e$n", "episode", EpisodeInfo(seasonNumber = 1, number = n, seriesId = "show", seriesTitle = "Show"))
+                detail("e$n", WorkKind.Episode, EpisodeInfo(seasonNumber = 1, number = n, seriesId = "show", seriesTitle = "Show"))
             }
         }
         server.on("POST", "/api/v1/downloads/estimate") {

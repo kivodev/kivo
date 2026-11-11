@@ -3,9 +3,12 @@ package com.mmcdole.kivo.android.mobile.lists
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mmcdole.kivo.api.models.Library
+import com.mmcdole.kivo.api.models.RuleGroupMatch
 import com.mmcdole.kivo.api.models.SortKey
 import com.mmcdole.kivo.api.models.WorkField
+import com.mmcdole.kivo.api.models.WorkFieldType
 import com.mmcdole.kivo.api.models.WorkFieldValue
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkList
 import com.mmcdole.kivo.api.models.WorkQuery
 import com.mmcdole.kivo.core.RequestProblem
@@ -30,7 +33,7 @@ import kotlinx.coroutines.launch
 internal const val READ_DELAY_MS = 350L
 
 /** The field types this app can edit. */
-private val FieldTypes = setOf("choice", "set", "person", "number", "date", "text")
+private val FieldTypes = setOf(WorkFieldType.Choice, WorkFieldType.Set, WorkFieldType.Person, WorkFieldType.Number, WorkFieldType.Date, WorkFieldType.Text)
 
 /** Where the builder is: its form, or a page the form opened. */
 sealed interface BuilderPage {
@@ -134,7 +137,7 @@ class SmartListBuilderViewModel(
     fun setName(name: String) = changeDraft { it.named(name) }
 
     /** Turns [kind] on or off, keeping the catalog's order [offered]. */
-    fun toggleKind(kind: String, offered: List<String>) = changeDraft { draft ->
+    fun toggleKind(kind: WorkKind, offered: List<WorkKind>) = changeDraft { draft ->
         val others = if (kind in draft.kinds) draft.kinds - kind else draft.kinds + kind
         draft.showing(offered.filter { it in others })
     }
@@ -174,7 +177,7 @@ class SmartListBuilderViewModel(
 
     fun removeGroup(id: String) = changeDraft { it.removingGroup(id) }
 
-    fun setGroupMatch(id: String, match: String) = changeDraft { it.withGroupMatch(id, match) }
+    fun setGroupMatch(id: String, match: RuleGroupMatch) = changeDraft { it.withGroupMatch(id, match) }
 
     fun setSort(sort: List<SortKey>) = changeDraft { it.sorted(sort) }
 
@@ -212,10 +215,10 @@ class SmartListBuilderViewModel(
     }
 }
 
-/** The kinds the catalog offers, in its order. */
-fun offeredKinds(fields: List<WorkField>): List<String> = fields.flatMap { it.kinds }.distinct()
+/** The kinds the catalog offers, in its order, leaving out one this version doesn't know. */
+fun offeredKinds(fields: List<WorkField>): List<WorkKind> = fields.flatMap { it.kinds }.distinct() - WorkKind.Unknown
 
 /** The fields a rule can use for the [kinds] showing, and the one a rule already has, [kept]; `library` is never offered. */
-fun offeredFields(fields: List<WorkField>, kinds: List<String>, kept: String?): List<WorkField> = fields.filter { field ->
+fun offeredFields(fields: List<WorkField>, kinds: List<WorkKind>, kept: String?): List<WorkField> = fields.filter { field ->
     field.field == kept || (field.field != SmartLists.LIBRARY_FIELD && field.kinds.any { it in kinds })
 }

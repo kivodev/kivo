@@ -51,6 +51,7 @@ import com.mmcdole.kivo.android.ui.WorkCard
 import com.mmcdole.kivo.android.ui.focusKey
 import com.mmcdole.kivo.android.ui.rememberFocusMemory
 import com.mmcdole.kivo.api.models.Person
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.core.data.Heading
 
@@ -100,9 +101,9 @@ private val PersonPadding = PaddingValues(start = 24.dp, top = SafeTop, bottom =
 private fun Person(heading: Heading, person: Person?, problem: RequestProblem?, onRetry: () -> Unit, navigator: Navigator) {
     val memory = rememberFocusMemory()
     val rows = listOf(
-        R.string.results_movies to "movie",
-        R.string.results_shows to "series",
-        R.string.results_videos to "video",
+        R.string.results_movies to WorkKind.Movie,
+        R.string.results_shows to WorkKind.Series,
+        R.string.results_videos to WorkKind.Video,
     ).map { (title, kind) -> title to person?.works.orEmpty().filter { it.kind == kind } }.filter { it.second.isNotEmpty() }
     // A focused row sits where the first one starts, under the photo.
     RowsHoldPlace(SafeTop + 160.dp + Kivo.space(8) + RowCardsTop) {

@@ -101,11 +101,11 @@ struct SessionsView: View {
     /// The session's name, or what it is when it has none, as a browser may not.
     private func name(_ session: SignedInDevice) -> String {
         guard session.name.isEmpty else { return session.name }
-        return session.kind == "browser" ? String(localized: "Web browser") : String(localized: "App")
+        return session.kind == .browser ? String(localized: "Web browser") : String(localized: "App")
     }
 
     private func subtitle(_ session: SignedInDevice) -> String {
-        let kind = Platform.name(session.platform) ?? (session.kind == "browser" ? String(localized: "Browser") : String(localized: "App"))
+        let kind = Platform.name(session.platform) ?? (session.kind == .browser ? String(localized: "Browser") : String(localized: "App"))
         if session.current { return "\(kind) · \(ThisDevice.name)" }
         let lastUsed = Date(timeIntervalSince1970: TimeInterval(session.lastUsedEpochMs) / 1000)
         return String(localized: "\(kind) · Last used \(lastUsed.formatted(.relative(presentation: .named)))")

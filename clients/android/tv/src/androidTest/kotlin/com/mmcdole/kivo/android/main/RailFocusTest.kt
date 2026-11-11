@@ -24,6 +24,7 @@ import com.mmcdole.kivo.android.ui.LocalSession
 import com.mmcdole.kivo.api.infrastructure.ApiClient
 import com.mmcdole.kivo.api.models.Home
 import com.mmcdole.kivo.api.models.Library
+import com.mmcdole.kivo.api.models.LibraryKind
 import com.mmcdole.kivo.api.models.LibraryList
 import com.mmcdole.kivo.api.models.ServerInfo
 import com.mmcdole.kivo.core.auth.SavedServer
@@ -57,7 +58,7 @@ class RailFocusTest {
     private var scenario: ActivityScenario<ComponentActivity>? = null
     private var root: ViewRootForTest? = null
 
-    private val libraries = (0 until LIBRARIES).map { Library("lib$it", "Library $it", true, "movies", 10) }
+    private val libraries = (0 until LIBRARIES).map { Library("lib$it", "Library $it", true, LibraryKind.Movies, 10) }
 
     private val server = MockEngine { request ->
         when (request.url.encodedPath) {

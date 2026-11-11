@@ -8,11 +8,11 @@ import UIKit
 final class AppleIdentity: NSObject, ClientIdentity {
     let app = "kivo-apple"
     let appVersion: String
-    let platform: String
+    let platform: ClientPlatform
     let osVersion: String
     let deviceModel: String
 
-    init(appVersion: String, platform: String, osVersion: String, deviceModel: String) {
+    init(appVersion: String, platform: ClientPlatform, osVersion: String, deviceModel: String) {
         self.appVersion = appVersion
         self.platform = platform
         self.osVersion = osVersion
@@ -24,7 +24,7 @@ final class AppleIdentity: NSObject, ClientIdentity {
     static var current: AppleIdentity {
         AppleIdentity(
             appVersion: version(Bundle.main.infoDictionary ?? [:]),
-            platform: UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone",
+            platform: UIDevice.current.userInterfaceIdiom == .pad ? .ipad : .iphone,
             osVersion: UIDevice.current.systemVersion,
             deviceModel: machine
         )

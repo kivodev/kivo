@@ -19,7 +19,9 @@ import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.mmcdole.kivo.android.theme.KivoTheme
 import com.mmcdole.kivo.api.models.EpisodeInfo
+import com.mmcdole.kivo.api.models.MatchState
 import com.mmcdole.kivo.api.models.WorkImages
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkSummary
 import org.junit.Rule
 import org.junit.Test
@@ -125,7 +127,7 @@ class EpisodeCardRowTest {
 
     private companion object {
         fun episode(id: String, number: Int, available: Boolean = true) = WorkSummary(
-            id = id, kind = "episode", title = id, matchState = "matched", available = available, images = WorkImages(),
+            id = id, kind = WorkKind.Episode, title = id, matchState = MatchState.Matched, available = available, images = WorkImages(),
             durationMs = 2_640_000, episode = EpisodeInfo(1, number, "series", "Series", seasonId = "season", overview = "What happens."),
         )
 

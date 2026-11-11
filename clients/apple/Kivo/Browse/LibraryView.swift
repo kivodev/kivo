@@ -24,7 +24,7 @@ struct LibraryView: View {
     @State private var savingAsSmartList = false
 
     /// Opens [library] as this device last left it, or with its works in [sort] for once.
-    init(library: Library, server: ServerModel, sort: String? = nil) {
+    init(library: Library, server: ServerModel, sort: GridSort? = nil) {
         _model = State(initialValue: GridModel(library: library, session: server.session, sort: sort))
     }
 
@@ -32,7 +32,7 @@ struct LibraryView: View {
     /// title, or the Collections, Authors or Series tab, which are by name.
     private var takesScrubber: Bool {
         switch model.shown.tab {
-        case .titles: model.shown.sort.value == "title"
+        case .titles: model.shown.sort.value == .title
         case .collections, .authors, .bookSeries: true
         }
     }
@@ -164,10 +164,10 @@ struct LibraryView: View {
         case .bookSeries: return String(localized: "\(n) series")
         case .titles:
             switch model.library.kind {
-            case "movies": return one ? String(localized: "1 movie") : String(localized: "\(n) movies")
-            case "shows": return one ? String(localized: "1 show") : String(localized: "\(n) shows")
-            case "audiobooks": return one ? String(localized: "1 book") : String(localized: "\(n) books")
-            default: return one ? String(localized: "1 video") : String(localized: "\(n) videos")
+            case .movies: return one ? String(localized: "1 movie") : String(localized: "\(n) movies")
+            case .shows: return one ? String(localized: "1 show") : String(localized: "\(n) shows")
+            case .audiobooks: return one ? String(localized: "1 book") : String(localized: "\(n) books")
+            case .videos, .unknown: return one ? String(localized: "1 video") : String(localized: "\(n) videos")
             }
         }
     }
@@ -175,10 +175,10 @@ struct LibraryView: View {
     /// The plural the empty state names: "movies", "shows".
     private var plural: String {
         switch model.library.kind {
-        case "movies": String(localized: "movies")
-        case "shows": String(localized: "shows")
-        case "audiobooks": String(localized: "books")
-        default: String(localized: "videos")
+        case .movies: String(localized: "movies")
+        case .shows: String(localized: "shows")
+        case .audiobooks: String(localized: "books")
+        case .videos, .unknown: String(localized: "videos")
         }
     }
 
@@ -268,7 +268,7 @@ struct LibraryView: View {
 
     /// Cast, then filter, in one group; an audiobooks library has no Cast.
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
-        let cast = server.cast.buttonShown && model.library.kind != "audiobooks"
+        let cast = server.cast.buttonShown && model.library.kind != .audiobooks
         if cast || model.query.tab == .titles {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 if cast {
@@ -332,7 +332,7 @@ struct LibraryView: View {
     }
 
     /// Whether [value] is in one of the query's sets, as a switch.
-    private func member(_ value: String, of set: WritableKeyPath<GridModel.Query, Set<String>>) -> Binding<Bool> {
+    private func member<Value: Hashable>(_ value: Value, of set: WritableKeyPath<GridModel.Query, Set<Value>>) -> Binding<Bool> {
         Binding(
             get: { model.query[keyPath: set].contains(value) },
             set: { on in

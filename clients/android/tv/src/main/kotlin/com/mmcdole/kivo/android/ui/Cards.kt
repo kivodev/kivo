@@ -75,10 +75,14 @@ import com.mmcdole.kivo.android.ServerSession
 import com.mmcdole.kivo.android.theme.Kivo
 import com.mmcdole.kivo.android.theme.KivoTokens
 import com.mmcdole.kivo.android.theme.TvType
+import com.mmcdole.kivo.api.models.CollectionSource
 import com.mmcdole.kivo.api.models.CollectionSummary
 import com.mmcdole.kivo.api.models.ImageRef
+import com.mmcdole.kivo.api.models.MatchState
 import com.mmcdole.kivo.api.models.MovieInfo
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkSummary
+import com.mmcdole.kivo.core.data.CreditRole
 import com.mmcdole.kivo.core.display.episodeCode
 import com.mmcdole.kivo.core.display.timeLeft
 import kotlinx.coroutines.CoroutineScope
@@ -148,8 +152,8 @@ enum class CardShape(val aspect: Float) {
 
 /** The shape a list's card takes for its own work: a video landscape, an episode by its series' poster, a book square. */
 fun cardShapeOf(work: WorkSummary): CardShape = when (work.kind) {
-    "video", "extra" -> CardShape.Landscape
-    "book" -> CardShape.Square
+    WorkKind.Video, WorkKind.Extra -> CardShape.Landscape
+    WorkKind.Book -> CardShape.Square
     else -> CardShape.Poster
 }
 
@@ -250,8 +254,8 @@ fun cardImage(work: WorkSummary, shape: CardShape): ImageRef? =
 
 /** An episode, or a season bundled in Recently Added, goes by its series. */
 fun cardTitle(work: WorkSummary): String = when {
-    work.kind == "episode" -> work.episode?.seriesTitle ?: work.title
-    work.kind == "season" && work.series?.recentlyAddedCount != null -> work.season?.seriesTitle ?: work.title
+    work.kind == WorkKind.Episode -> work.episode?.seriesTitle ?: work.title
+    work.kind == WorkKind.Season && work.series?.recentlyAddedCount != null -> work.season?.seriesTitle ?: work.title
     else -> labelledTitle(work.title, work.movie)
 }
 
@@ -347,8 +351,8 @@ fun CollectionCard(collection: CollectionSummary?, width: Dp, onClick: () -> Uni
 
 /** How many works a collection has: a movie collection counts its movies; a videos library's folder, what it holds. */
 @Composable
-fun collectionCount(count: Int, source: String?): String =
-    pluralStringResource(if (source == "provider") R.plurals.movies else R.plurals.items, count, count)
+fun collectionCount(count: Int, source: CollectionSource?): String =
+    pluralStringResource(if (source == CollectionSource.Provider) R.plurals.movies else R.plurals.items, count, count)
 
 /**
  * The card at a row's end that opens the rest: the row's card shape and
@@ -542,8 +546,8 @@ internal fun BoxScope.CardOverlays(work: WorkSummary, shape: CardShape, showCode
         )
     }
     val status = when (work.matchState) {
-        "identifying" -> R.string.badge_identifying
-        "unmatched" -> R.string.badge_unmatched
+        MatchState.Identifying -> R.string.badge_identifying
+        MatchState.Unmatched -> R.string.badge_unmatched
         else -> null
     }
     if (status != null) {
@@ -611,18 +615,18 @@ fun progressOf(work: WorkSummary): Float? {
 fun cardSubtitle(work: WorkSummary): String? {
     val added = work.series?.recentlyAddedCount
     return when (work.kind) {
-        "series" -> when {
+        WorkKind.Series -> when {
             added != null -> pluralStringResource(R.plurals.episodes, added, added)
             else -> {
                 val last = work.series?.lastAirYear
                 if (work.year != null && last != null && last != work.year) "${work.year}–$last" else work.year?.toString()
             }
         }
-        "season" -> when {
+        WorkKind.Season -> when {
             added != null -> "${work.title} · " + pluralStringResource(R.plurals.episodes, added, added)
             else -> work.season?.episodeCount?.let { pluralStringResource(R.plurals.episodes, it, it) }
         }
-        "episode" -> {
+        WorkKind.Episode -> {
             val position = work.userState?.positionMs
             val duration = work.durationMs
             if (position != null && duration != null) {
@@ -631,7 +635,7 @@ fun cardSubtitle(work: WorkSummary): String? {
                 work.title
             }
         }
-        "movie" -> {
+        WorkKind.Movie -> {
             val position = work.userState?.positionMs
             val duration = work.durationMs
             // In progress, as in Continue Watching, the time left says where you are.
@@ -674,12 +678,12 @@ fun PersonCard(name: String, image: ImageRef?, detail: String?, onClick: () -> U
 
 /** A credit's role as people read it: Actor, Director, Author. */
 @Composable
-fun roleLabel(role: String): String = when (role) {
-    "actor" -> stringResource(R.string.role_actor)
-    "director" -> stringResource(R.string.role_director)
-    "writer" -> stringResource(R.string.role_writer)
-    "author" -> stringResource(R.string.role_author)
-    "narrator" -> stringResource(R.string.role_narrator)
+fun roleLabel(role: String): String = when (CreditRole.of(role)) {
+    CreditRole.Actor -> stringResource(R.string.role_actor)
+    CreditRole.Director -> stringResource(R.string.role_director)
+    CreditRole.Writer -> stringResource(R.string.role_writer)
+    CreditRole.Author -> stringResource(R.string.role_author)
+    CreditRole.Narrator -> stringResource(R.string.role_narrator)
     else -> role.replaceFirstChar { it.uppercase() }
 }
 

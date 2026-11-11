@@ -100,6 +100,7 @@ import com.mmcdole.kivo.android.mobile.ui.Incompatible
 import com.mmcdole.kivo.android.mobile.ui.LocalWide
 import com.mmcdole.kivo.api.models.Library
 import com.mmcdole.kivo.core.Compatibility
+import com.mmcdole.kivo.core.data.GridSort
 import com.mmcdole.kivo.core.session.KivoSession
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -287,7 +288,7 @@ private fun NavGraphBuilder.tabs(session: ServerSession, nav: MobileNav) {
 
 /** The pages any tab opens, on that tab's back stack. */
 private fun NavGraphBuilder.pages(session: ServerSession, nav: MobileNav, cast: CastViewModel) {
-    composable<LibraryRoute> { val r = it.toRoute<LibraryRoute>(); LibraryScreen(session, r.id, r.sort, nav) }
+    composable<LibraryRoute> { val r = it.toRoute<LibraryRoute>(); LibraryScreen(session, r.id, r.sort?.let(GridSort::of), nav) }
     composable<WorkRoute> { val r = it.toRoute<WorkRoute>(); DetailScreen(session, r.id, r.seasonId, r.seasonNumber, nav) }
     composable<CollectionRoute> { CollectionScreen(session, it.toRoute<CollectionRoute>().id, nav) }
     composable<PersonRoute> { PersonScreen(session, it.toRoute<PersonRoute>().id, nav) }

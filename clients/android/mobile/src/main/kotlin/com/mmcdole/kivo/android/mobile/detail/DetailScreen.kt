@@ -85,6 +85,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.mmcdole.kivo.api.models.WorkKind
 import kotlinx.coroutines.flow.map
 import com.mmcdole.kivo.android.ServerSession
 import com.mmcdole.kivo.android.mobile.R
@@ -159,7 +160,7 @@ fun DetailScreen(session: ServerSession, id: String, seasonId: String?, seasonNu
         }
         return
     }
-    WorkMenuHost({ action, menu -> nav.handle(action, menu, model.marks) }, seriesPage = head.id.takeIf { head.kind == "series" }) { openMenu ->
+    WorkMenuHost({ action, menu -> nav.handle(action, menu, model.marks) }, seriesPage = head.id.takeIf { head.kind == WorkKind.Series }) { openMenu ->
         DetailPage(head, state, model, nav, openMenu)
     }
 }
@@ -181,19 +182,20 @@ private fun DetailPage(head: WorkSummary, state: DetailUiState, model: DetailVie
             item(key = "art") { Backdrop(head, artHeight) }
             item(key = "hero") { Hero(head, state.work, nav) }
             item(key = "actions") {
-                if (head.kind == "series") SeriesActions(head, state, model, nav) else PlayActions(head, state, model, nav)
+                if (head.kind == WorkKind.Series) SeriesActions(head, state, model, nav) else PlayActions(head, state, model, nav)
             }
-            if (head.kind != "series") item(key = "tracks") { state.work?.let { TrackRows(it, state.choices, model) } }
+            if (head.kind != WorkKind.Series) item(key = "tracks") { state.work?.let { TrackRows(it, state.choices, model) } }
             item(key = "overview") { Overview(head.episode?.overview ?: state.work?.overview) }
             when (head.kind) {
-                "series" -> seasonItems(state, model, nav, openMenu)
-                "episode" -> episodeItems(seasonHeading, state, head.id, nav, openMenu)
+                WorkKind.Series -> seasonItems(state, model, nav, openMenu)
+                WorkKind.Episode -> episodeItems(seasonHeading, state, head.id, nav, openMenu)
+                else -> {}
             }
             val credits = state.work?.credits.orEmpty()
             if (credits.isNotEmpty()) item(key = "credits") { CreditsRow(credits, nav) }
             item(key = "end") { Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars).padding(bottom = space(6))) }
         }
-        TopBar(if (titleShown) head.title else null, nav, cast = head.kind != "book", state.work?.movie?.trailerUrl)
+        TopBar(if (titleShown) head.title else null, nav, cast = head.kind != WorkKind.Book, state.work?.movie?.trailerUrl)
     }
 }
 
@@ -255,7 +257,7 @@ private fun BackButton(nav: MobileNav) {
 /** The artwork, 16:10 under the status bar, or [height] high, fading into the page at its foot. */
 @Composable
 private fun Backdrop(head: WorkSummary, height: Dp?) {
-    val image = with(head.images) { if (head.kind == "episode" || head.kind == "video") still ?: backdrop ?: poster else backdrop ?: poster }
+    val image = with(head.images) { if (head.kind == WorkKind.Episode || head.kind == WorkKind.Video) still ?: backdrop ?: poster else backdrop ?: poster }
     val bg = MaterialTheme.colorScheme.background
     Box(Modifier.fillMaxWidth().then(if (height != null) Modifier.height(height) else Modifier.aspectRatio(16f / 10f))) {
         Artwork(image, 960.dp, Modifier.matchParentSize())
@@ -296,7 +298,7 @@ private fun metaLine(head: WorkSummary, work: WorkDetail?): String {
         head.episode?.let { display.episodeCode(it) },
         years ?: head.year?.toString(),
         series?.seasonCount?.let { pluralStringResource(R.plurals.mobile_count_seasons, it, it) },
-        head.durationMs?.takeIf { head.kind != "series" }?.let { display.runtime(it.toLong()) },
+        head.durationMs?.takeIf { head.kind != WorkKind.Series }?.let { display.runtime(it.toLong()) },
         head.communityRating?.takeIf { (head.communityVotes ?: 0) > 0 }?.let { stringResource(R.string.mobile_rating, it) },
         head.contentRating,
         work?.genres?.take(2)?.joinToString(", ")?.ifEmpty { null },
@@ -314,7 +316,7 @@ private fun PlayActions(head: WorkSummary, state: DetailUiState, model: DetailVi
     val choices = state.choices
     val available = if (work == null) head.available else work.available && work.selectedVersion(choices.versionId)?.available == true
     val position = if (work != null) work.resumeAt(choices.versionId) else head.userState?.positionMs
-    val book = head.kind == "book"
+    val book = head.kind == WorkKind.Book
     // A book plays in the book player, from its download when it has one; a video its download when it's ready, with the
     // subtitle chosen here where the download has it, else in the player with the version and tracks chosen here.
     val ready = state.download?.item?.takeIf { it.status == DownloadStatus.Ready }
@@ -333,7 +335,7 @@ private fun PlayActions(head: WorkSummary, state: DetailUiState, model: DetailVi
                 val left = (duration - (position ?: 0)).toLong()
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(space(3))) {
                     progressOf(head)?.let { ProgressBar(it, Modifier.width(72.dp).clip(CircleShape)) }
-                    val parts = listOfNotNull(display.timeLeft(left).takeIf { position != null }, endsAt(left).takeIf { head.kind == "movie" || head.kind == "episode" })
+                    val parts = listOfNotNull(display.timeLeft(left).takeIf { position != null }, endsAt(left).takeIf { head.kind == WorkKind.Movie || head.kind == WorkKind.Episode })
                     Text(parts.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -400,12 +402,12 @@ private fun ActionRow(head: WorkSummary, state: DetailUiState, model: DetailView
     Row(Modifier.fillMaxWidth(), horizontalArrangement = if (LocalWide.current) Arrangement.spacedBy(space(3)) else Arrangement.SpaceEvenly) {
         // At most an even share each, so large text wraps under its icon rather than running into the next.
         val cell = Modifier.weight(1f, fill = false)
-        if (head.kind != "series") {
+        if (head.kind != WorkKind.Series) {
             RoundAction(Icons.Default.Replay, stringResource(R.string.mobile_start_over), "startOver", cell, enabled = startOver != null) { startOver?.invoke() }
             if (download != null && downloads != null && state.work?.available == true) {
                 DownloadButton(
                     download,
-                    book = head.kind == "book",
+                    book = head.kind == WorkKind.Book,
                     DownloadActions(downloads::download, { downloads.pause() }, { downloads.resume() }, { downloads.retry() }, { downloads.remove() }, downloads::problemSeen),
                     cell,
                 )
@@ -423,7 +425,7 @@ private fun ActionRow(head: WorkSummary, state: DetailUiState, model: DetailView
         ) { model.setOnMyList(head, !onMyList) }
         RoundAction(
             if (played) Icons.Default.CheckCircle else Icons.Outlined.CheckCircle,
-            stringResource(if (head.kind == "book") R.string.mobile_finished else R.string.mobile_watched),
+            stringResource(if (head.kind == WorkKind.Book) R.string.mobile_finished else R.string.mobile_watched),
             "watched",
             cell,
             on = played,

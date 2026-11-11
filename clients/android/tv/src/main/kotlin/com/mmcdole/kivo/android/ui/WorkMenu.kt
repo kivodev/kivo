@@ -18,6 +18,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mmcdole.kivo.android.tv.R
 import com.mmcdole.kivo.android.ServerSession
+import com.mmcdole.kivo.api.models.ListKind
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.display.episodeCode
@@ -58,12 +60,12 @@ fun WorkMenuHost(session: ServerSession, navigator: Navigator, content: @Composa
 @Composable
 private fun WorkMenu(work: WorkSummary, continueWatching: Boolean, session: ServerSession, navigator: Navigator, onClose: () -> Unit) {
     val screen = navigator.current.screen
-    val playable = work.available && work.kind in setOf("movie", "episode", "video", "extra")
+    val playable = work.available && work.kind in setOf(WorkKind.Movie, WorkKind.Episode, WorkKind.Video, WorkKind.Extra)
     val started = work.userState?.positionMs != null
     val played = work.userState?.played == true
     val lists by remember(session) { session.session.library.lists() }.collectAsStateWithLifecycle(Load.Loading)
     // A smart list's works are its rules', so only a manual list offers Remove.
-    val openList = (screen as? Screen.ListWorks)?.takeIf { open -> lists.getOrNull()?.any { it.id == open.id && it.kind == "manual" } == true }
+    val openList = (screen as? Screen.ListWorks)?.takeIf { open -> lists.getOrNull()?.any { it.id == open.id && it.kind == ListKind.Manual } == true }
     val seriesId = work.episode?.seriesId
     val libraryId = work.libraryId
     val choices = buildList {

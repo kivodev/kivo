@@ -132,10 +132,13 @@ import com.mmcdole.kivo.api.models.ImageRef
 import com.mmcdole.kivo.api.models.Track
 import com.mmcdole.kivo.api.models.TrackType
 import com.mmcdole.kivo.api.models.WorkDetail
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.RequestProblem
+import com.mmcdole.kivo.core.data.CreditRole
 import com.mmcdole.kivo.core.data.Seasons
 import com.mmcdole.kivo.core.data.SubtitleSearch
+import com.mmcdole.kivo.core.data.knownRole
 import com.mmcdole.kivo.core.data.resumeAt
 import com.mmcdole.kivo.core.data.selectedVersion
 import com.mmcdole.kivo.core.data.summary
@@ -167,10 +170,10 @@ fun DetailScreen(session: ServerSession, id: String, navigator: Navigator, episo
         val season = page.head.season
         when {
             model.seasonOf != null -> SeriesDetail(model, page, id, null, navigator)
-            page.head.kind == "series" -> SeriesDetail(model, page, null, episode, navigator)
-            page.head.kind == "season" && season != null ->
+            page.head.kind == WorkKind.Series -> SeriesDetail(model, page, null, episode, navigator)
+            page.head.kind == WorkKind.Season && season != null ->
                 Shown(model.other(season.seriesId), model.seriesSeed(page.head), session) { SeriesDetail(model, it, page.head.id, null, navigator) }
-            page.head.kind == "episode" -> EpisodeDetail(model, page, navigator)
+            page.head.kind == WorkKind.Episode -> EpisodeDetail(model, page, navigator)
             else -> MovieDetail(model, page, navigator)
         }
     }
@@ -700,7 +703,7 @@ private fun PickerChip(label: String, value: String, hero: HeroLevels, key: Stri
 private fun LazyListScope.extraRows(work: WorkDetail, memory: FocusMemory, navigator: Navigator, firstTop: Dp = RowGap) {
     var top = firstTop
     fun nextTop() = top.also { top = RowGap }
-    val cast = work.credits.filter { it.role == "actor" }.take(20)
+    val cast = work.credits.filter { it.knownRole == CreditRole.Actor }.take(20)
     if (cast.isNotEmpty()) {
         extraRow(R.string.cast, nextTop()) {
             items(cast, key = { it.personId + (it.character ?: "") }) { credit ->

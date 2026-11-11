@@ -5,30 +5,30 @@ import KivoCore
 /// values. A field's label is by its key, or the catalog's name for one this
 /// app doesn't know.
 enum SmartListWords {
-    static func kind(_ kind: String) -> String {
+    static func kind(_ kind: WorkKind) -> String {
         switch kind {
-        case "movie": String(localized: "Movies")
-        case "series": String(localized: "Shows")
-        case "season": String(localized: "Seasons")
-        case "episode": String(localized: "Episodes")
-        case "video": String(localized: "Videos")
-        case "book": String(localized: "Books")
-        default: kind
+        case .movie: String(localized: "Movies")
+        case .series: String(localized: "Shows")
+        case .season: String(localized: "Seasons")
+        case .episode: String(localized: "Episodes")
+        case .video: String(localized: "Videos")
+        case .book: String(localized: "Books")
+        case .extra, .unknown: kind.value
         }
     }
 
     /// "42 movies", or "42 titles" over more than one kind.
-    static func count(_ count: Int, kinds: [String]) -> String {
+    static func count(_ count: Int, kinds: [WorkKind]) -> String {
         let n = count.formatted()
         let one = count == 1
-        switch kinds.count == 1 ? kinds[0] : "" {
-        case "movie": return one ? String(localized: "1 movie") : String(localized: "\(n) movies")
-        case "series": return one ? String(localized: "1 show") : String(localized: "\(n) shows")
-        case "season": return one ? String(localized: "1 season") : String(localized: "\(n) seasons")
-        case "episode": return one ? String(localized: "1 episode") : String(localized: "\(n) episodes")
-        case "video": return one ? String(localized: "1 video") : String(localized: "\(n) videos")
-        case "book": return one ? String(localized: "1 book") : String(localized: "\(n) books")
-        default: return one ? String(localized: "1 title") : String(localized: "\(n) titles")
+        switch kinds.count == 1 ? kinds[0] : nil {
+        case .movie: return one ? String(localized: "1 movie") : String(localized: "\(n) movies")
+        case .series: return one ? String(localized: "1 show") : String(localized: "\(n) shows")
+        case .season: return one ? String(localized: "1 season") : String(localized: "\(n) seasons")
+        case .episode: return one ? String(localized: "1 episode") : String(localized: "\(n) episodes")
+        case .video: return one ? String(localized: "1 video") : String(localized: "\(n) videos")
+        case .book: return one ? String(localized: "1 book") : String(localized: "\(n) books")
+        case .extra, .unknown, nil: return one ? String(localized: "1 title") : String(localized: "\(n) titles")
         }
     }
 
@@ -63,15 +63,15 @@ enum SmartListWords {
         }
     }
 
-    static func op(_ op: String, type: String) -> String {
+    static func op(_ op: String, type: WorkFieldType) -> String {
         switch op {
         case "anyOf", "eq": String(localized: "is")
         case "allOf": String(localized: "is all of")
         case "noneOf": String(localized: "is not")
         case "isSet": String(localized: "is set")
         case "isNotSet": String(localized: "isn't set")
-        case "gte": type == "date" ? String(localized: "on or after") : String(localized: "at least")
-        case "lte": type == "date" ? String(localized: "on or before") : String(localized: "at most")
+        case "gte": type == .date ? String(localized: "on or after") : String(localized: "at least")
+        case "lte": type == .date ? String(localized: "on or before") : String(localized: "at most")
         case "between": String(localized: "between")
         case "within": String(localized: "in the last")
         case "notWithin": String(localized: "not in the last")
@@ -83,13 +83,13 @@ enum SmartListWords {
     }
 
     /// A sort as the Sort row names it: "Rating, highest first".
-    static func sort(_ field: WorkField, direction: String) -> String {
+    static func sort(_ field: WorkField, direction: SortDirection) -> String {
         let order = switch (field.type, direction) {
-        case ("date", "asc"): String(localized: "oldest first")
-        case ("date", _): String(localized: "newest first")
-        case ("text", "desc"): String(localized: "Z to A")
-        case ("text", _): String(localized: "A to Z")
-        case (_, "asc"): field.unit == "ms" ? String(localized: "shortest first") : String(localized: "lowest first")
+        case (.date, .asc): String(localized: "oldest first")
+        case (.date, _): String(localized: "newest first")
+        case (.text, .desc): String(localized: "Z to A")
+        case (.text, _): String(localized: "A to Z")
+        case (_, .asc): field.unit == "ms" ? String(localized: "shortest first") : String(localized: "lowest first")
         default: field.unit == "ms" ? String(localized: "longest first") : String(localized: "highest first")
         }
         return "\(Self.field(field)), \(order)"
@@ -140,7 +140,7 @@ enum SmartListWords {
         }
         let groups = (group.groups ?? []).map { group -> String in
             let inner = phrases(of: group, fields: fields, names: names)
-                .joined(separator: group.match == "all" ? String(localized: " and ") : String(localized: " or "))
+                .joined(separator: group.match == .all ? String(localized: " and ") : String(localized: " or "))
             return "(\(inner))"
         }
         return rules + groups

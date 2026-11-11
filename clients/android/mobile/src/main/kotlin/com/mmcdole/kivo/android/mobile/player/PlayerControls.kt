@@ -93,6 +93,7 @@ import com.mmcdole.kivo.android.mobile.ui.display
 import com.mmcdole.kivo.android.mobile.ui.endsAt
 import com.mmcdole.kivo.api.models.Chapter
 import com.mmcdole.kivo.api.models.WorkDetail
+import com.mmcdole.kivo.core.ProblemCode
 import com.mmcdole.kivo.core.display.clock
 import com.mmcdole.kivo.core.display.episodeCode
 import com.mmcdole.kivo.core.play.PlayerFailure
@@ -460,7 +461,7 @@ fun PlayerErrorPanel(playback: PlayerState, onRetry: () -> Unit, onBack: () -> U
     val problem = failure as? PlayerFailure.Problem
     val title = when {
         failure is PlayerFailure.Ended -> R.string.mobile_playback_stopped
-        problem?.code == "streamLimit" -> R.string.mobile_stream_limit_title
+        problem?.knownCode == ProblemCode.StreamLimit -> R.string.mobile_stream_limit_title
         else -> R.string.mobile_couldnt_play
     }
     Box(Modifier.fillMaxSize().background(colors.playerScrim).testTag("playerError"), contentAlignment = Alignment.Center) {

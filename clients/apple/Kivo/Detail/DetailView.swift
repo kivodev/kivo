@@ -35,7 +35,7 @@ private struct SeededPage: View {
             // A season's own page is its series', open on that season, read at once.
             WorkPage(
                 id: season.seriesId,
-                kind: "series",
+                kind: .series,
                 seed: server.session.library.known(id: season.seriesId).map(WorkDetail.init(summary:)) ?? WorkDetail(seriesOf: seed),
                 seasonId: seed.id,
                 episode: nil
@@ -51,14 +51,14 @@ private struct SeededPage: View {
 /// known.
 private struct WorkPage: View {
     let id: String
-    let kind: String?
+    let kind: WorkKind?
     @State private var seed: WorkDetail?
     let seasonId: String?
     let episode: EpisodeInfo?
     @Environment(ServerModel.self) private var server
     @State private var work: WorkDetail?
 
-    init(id: String, kind: String?, seed: WorkDetail?, seasonId: String?, episode: EpisodeInfo?) {
+    init(id: String, kind: WorkKind?, seed: WorkDetail?, seasonId: String?, episode: EpisodeInfo?) {
         self.id = id
         self.kind = kind
         _seed = State(initialValue: seed)
@@ -97,16 +97,16 @@ private struct WorkPage: View {
 
     @ViewBuilder private func page(_ work: WorkDetail) -> some View {
         switch work.kind {
-        case "series":
+        case .series:
             SeriesDetail(series: work, initialSeasonId: seasonId, episode: episode)
-        case "season":
+        case .season:
             // Read without its card: its series' page, once the season says which.
             if let season = work.season {
-                WorkPage(id: season.seriesId, kind: "series", seed: WorkDetail(seriesOf: work.summary()), seasonId: work.id, episode: nil)
+                WorkPage(id: season.seriesId, kind: .series, seed: WorkDetail(seriesOf: work.summary()), seasonId: work.id, episode: nil)
             }
-        case "book":
+        case .book:
             BookDetail(work: work)
-        default:
+        case .movie, .episode, .extra, .video, .unknown:
             PlayableDetail(work: work)
         }
     }
@@ -166,11 +166,11 @@ struct InlineFailure: View {
 /// A detail page's skeleton, in the page's own frame: an episode's has its
 /// series' line over the title, a series' two round buttons.
 private struct DetailSkeleton: View {
-    let kind: String?
+    let kind: WorkKind?
 
     var body: some View {
-        DetailPage(work: nil, art: nil, eyebrow: kind == "episode" ? (label: "", open: {}) : nil, details: []) {
-            ActionRowSkeleton(roundButtons: kind == "series" ? 2 : 3)
+        DetailPage(work: nil, art: nil, eyebrow: kind == .episode ? (label: "", open: {}) : nil, details: []) {
+            ActionRowSkeleton(roundButtons: kind == .series ? 2 : 3)
                 .actionRowInsets()
             OverviewSkeleton()
         } actions: {

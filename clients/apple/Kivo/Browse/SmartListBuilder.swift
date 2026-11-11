@@ -20,8 +20,6 @@ struct SmartListBuilder: View {
     @State private var failure: String?
     @State private var problem: String?
 
-    private static let fieldTypes: Set<String> = ["choice", "set", "person", "number", "date", "text"]
-
     /// Opens the builder on [list]'s query.
     init(editing list: WorkList) {
         self.list = list
@@ -85,7 +83,7 @@ struct SmartListBuilder: View {
 
     private func load() async {
         do {
-            let catalog = try await server.session.library.workFields().filter { Self.fieldTypes.contains($0.type) }
+            let catalog = try await server.session.library.workFields().filter { $0.type != .unknown }
             fields = catalog
             failure = nil
             if let query, let refusal = SmartLists.shared.refusal(query: query, fields: catalog) {
@@ -147,7 +145,7 @@ private struct SmartListForm: View {
                 }
                 .accessibilityIdentifier("smart-list-show")
                 // A root matching any would OR the libraries with the rules.
-                if draft.match == "all" {
+                if draft.match == .all {
                     NavigationLink {
                         LibrariesPage(draft: $draft)
                     } label: {
@@ -165,7 +163,7 @@ private struct SmartListForm: View {
                 Button(String(localized: "Add Group")) { chooseField(.newGroup) }
                     .accessibilityIdentifier("add-group")
             } header: {
-                Text(draft.match == "any" ? String(localized: "Match Any of These") : String(localized: "Match All of These"))
+                Text(draft.match == .any ? String(localized: "Match Any of These") : String(localized: "Match All of These"))
             }
             ForEach(draft.groups, id: \.id) { group in
                 Section {
@@ -217,9 +215,9 @@ private struct SmartListForm: View {
         .task(id: draft.query.description) { await count() }
     }
 
-    private var offeredKinds: [String] {
-        var seen: Set<String> = []
-        return fields.flatMap(\.kinds).filter { seen.insert($0).inserted }
+    private var offeredKinds: [WorkKind] {
+        var seen: Set<WorkKind> = []
+        return fields.flatMap(\.kinds).filter { $0 != .unknown && seen.insert($0).inserted }
     }
 
     /// The fields a rule can use for the kinds showing, and the one a rule already has.
@@ -294,13 +292,13 @@ private struct SmartListForm: View {
     private func groupHeader(_ group: GroupDraft) -> some View {
         Menu {
             Picker(String(localized: "Match"), selection: Binding(get: { group.match }, set: { draft = draft.withGroupMatch(id: group.id, match: $0) })) {
-                Text("Match Any of These").tag("any")
-                Text("Match All of These").tag("all")
+                Text("Match Any of These").tag(RuleGroupMatch.any)
+                Text("Match All of These").tag(RuleGroupMatch.all)
             }
             .pickerStyle(.inline)
         } label: {
             HStack(spacing: 3) {
-                Text(group.match == "all" ? String(localized: "Match All of These") : String(localized: "Match Any of These"))
+                Text(group.match == .all ? String(localized: "Match All of These") : String(localized: "Match Any of These"))
                 Image(systemName: "chevron.up.chevron.down").font(.caption2.weight(.semibold))
             }
         }
@@ -313,15 +311,15 @@ private struct SmartListForm: View {
     private var sortPicker: some View {
         let current = draft.sort.first
         let currentTag = current.map { key in
-            key.field == SmartLists.shared.RANDOM_SORT ? key.field : "\(key.field):\(direction(of: key))"
+            key.field == SmartLists.shared.RANDOM_SORT ? key.field : "\(key.field):\(direction(of: key).value)"
         } ?? "title:asc"
         let chosenField = current?.field ?? "title"
         var choices: [(tag: String, label: String, keys: [SortKey])] = fields
             .filter { $0.sortable && ($0.field == chosenField || !Set($0.kinds).isDisjoint(with: draft.kinds)) }
             .flatMap { field -> [(tag: String, label: String, keys: [SortKey])] in
-                let own = field.defaultDirection ?? "asc"
-                return [own, own == "asc" ? "desc" : "asc"].map { way in
-                    ("\(field.field):\(way)", SmartListWords.sort(field, direction: way), [SortKey(field: field.field, direction: way)])
+                let own = field.defaultDirection ?? .asc
+                return [own, own == .asc ? SortDirection.desc : .asc].map { way in
+                    ("\(field.field):\(way.value)", SmartListWords.sort(field, direction: way), [SortKey(field: field.field, direction: way)])
                 }
             }
         choices.append((SmartLists.shared.RANDOM_SORT, String(localized: "Random"), [SortKey(field: SmartLists.shared.RANDOM_SORT, direction: nil)]))
@@ -334,8 +332,8 @@ private struct SmartListForm: View {
         .accessibilityIdentifier("smart-list-sort")
     }
 
-    private func direction(of key: SortKey) -> String {
-        key.direction ?? fields.first { $0.field == key.field }?.defaultDirection ?? "asc"
+    private func direction(of key: SortKey) -> SortDirection {
+        key.direction ?? fields.first { $0.field == key.field }?.defaultDirection ?? .asc
     }
 
     /// Reads the count a moment after the rules stop changing.
@@ -386,7 +384,7 @@ private struct FieldsPage: View {
 /// Show: the kinds the catalog offers, in its order, any number of them.
 private struct KindsPage: View {
     @Binding var draft: SmartListDraft
-    let offered: [String]
+    let offered: [WorkKind]
 
     var body: some View {
         List {
@@ -395,7 +393,7 @@ private struct KindsPage: View {
                     let others = draft.kinds.contains(kind) ? draft.kinds.filter { $0 != kind } : draft.kinds + [kind]
                     draft = draft.showing(kinds: offered.filter(others.contains))
                 }
-                .accessibilityIdentifier("kind:\(kind)")
+                .accessibilityIdentifier("kind:\(kind.value)")
             }
         }
         .scrollContentBackground(.hidden)
@@ -517,12 +515,12 @@ private struct RulePage: View {
             Section {
                 ForEach(rule.values.indices, id: \.self) { index in
                     TextField(placeholder(field, index), text: text(field, at: index))
-                        .keyboardType(field.type == "number" ? .decimalPad : .default)
+                        .keyboardType(field.type == .number ? .decimalPad : .default)
                         .autocorrectionDisabled()
                         .accessibilityIdentifier("rule-value-\(index)")
                 }
             } footer: {
-                if field.type == "date" {
+                if field.type == .date {
                     Text("Dates are YYYY-MM-DD.")
                 } else if field.unit == "ms" {
                     Text("In minutes.")
@@ -533,7 +531,7 @@ private struct RulePage: View {
 
     private func placeholder(_ field: WorkField, _ index: Int) -> String {
         if rule.arity == 2 { return index == 0 ? String(localized: "From") : String(localized: "To") }
-        return field.type == "date" ? "YYYY-MM-DD" : String(localized: "Value")
+        return field.type == .date ? "YYYY-MM-DD" : String(localized: "Value")
     }
 
     /// The value at [index] as typed; a duration is typed in minutes and held in milliseconds.
@@ -585,7 +583,7 @@ private struct ValueChooser: View {
     @Binding var search: String
     let found: [WorkFieldValue]
 
-    private var searches: Bool { field.valueSource == "search" }
+    private var searches: Bool { field.valueSource == .search }
 
     var body: some View {
         if searches {

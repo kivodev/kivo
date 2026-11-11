@@ -53,6 +53,7 @@ import com.mmcdole.kivo.android.mobile.R
 import com.mmcdole.kivo.android.mobile.app.MobileNav
 import com.mmcdole.kivo.android.mobile.theme.space
 import com.mmcdole.kivo.android.mobile.ui.PageTopBar
+import com.mmcdole.kivo.api.models.ClientPlatform
 import com.mmcdole.kivo.api.models.PendingDevice
 
 /**
@@ -217,12 +218,12 @@ private fun context(device: PendingDevice): String {
 
 /** The platforms a client says it runs on, for people. */
 @Composable
-fun platformName(platform: String?): String? = when (platform) {
-    "androidTv" -> stringResource(R.string.mobile_platform_android_tv)
-    "appleTv" -> stringResource(R.string.mobile_platform_apple_tv)
-    "iPhone" -> stringResource(R.string.mobile_platform_iphone)
-    "iPad" -> stringResource(R.string.mobile_platform_ipad)
-    "androidPhone" -> stringResource(R.string.mobile_platform_android_phone)
-    "browser" -> stringResource(R.string.mobile_platform_browser)
+fun platformName(platform: ClientPlatform?): String? = when (platform) {
+    ClientPlatform.AndroidTv -> stringResource(R.string.mobile_platform_android_tv)
+    ClientPlatform.AppleTv -> stringResource(R.string.mobile_platform_apple_tv)
+    ClientPlatform.IPhone -> stringResource(R.string.mobile_platform_iphone)
+    ClientPlatform.IPad -> stringResource(R.string.mobile_platform_ipad)
+    ClientPlatform.AndroidPhone -> stringResource(R.string.mobile_platform_android_phone)
+    ClientPlatform.Browser -> stringResource(R.string.mobile_platform_browser)
     else -> null
 }

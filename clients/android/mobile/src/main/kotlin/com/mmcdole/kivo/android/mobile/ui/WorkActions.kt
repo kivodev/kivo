@@ -31,6 +31,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import com.mmcdole.kivo.android.mobile.R
 import com.mmcdole.kivo.android.mobile.theme.space
+import com.mmcdole.kivo.api.models.HomeRowKind
 import com.mmcdole.kivo.api.models.ListRef
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.display.episodeCode
@@ -43,7 +44,7 @@ import kotlinx.coroutines.launch
 enum class WorkAction { Play, PlayFromStart, TogglePlayed, AddToList, RemoveFromList, RemoveFromContinue, GoToSeries }
 
 /** A long-pressed card: the work, the Home row it's in when that's a continue row, and the list it's shown in, when one. */
-data class WorkMenu(val work: WorkSummary, val row: String? = null, val list: ListRef? = null)
+data class WorkMenu(val work: WorkSummary, val row: HomeRowKind? = null, val list: ListRef? = null)
 
 /**
  * The actions of [menu], in order: Play or Resume, Play from beginning once
@@ -59,13 +60,11 @@ fun workActions(menu: WorkMenu, seriesPage: String? = null): List<WorkAction> = 
     add(WorkAction.TogglePlayed)
     add(WorkAction.AddToList)
     if (menu.list != null) add(WorkAction.RemoveFromList)
-    if (menu.row == CONTINUE_WATCHING || menu.row == CONTINUE_LISTENING) add(WorkAction.RemoveFromContinue)
+    if (menu.row == HomeRowKind.ContinueWatching || menu.row == HomeRowKind.ContinueListening) add(WorkAction.RemoveFromContinue)
     val series = work.episode?.seriesId
     if (series != null && series != seriesPage) add(WorkAction.GoToSeries)
 }
 
-const val CONTINUE_WATCHING = "continueWatching"
-const val CONTINUE_LISTENING = "continueListening"
 
 /**
  * The user's marks on works, for a screen's view model: each runs on its
@@ -151,7 +150,7 @@ private fun actionLook(action: WorkAction, menu: WorkMenu): Pair<ImageVector, St
         WorkAction.AddToList -> Icons.AutoMirrored.Filled.PlaylistAdd to stringResource(R.string.mobile_add_to_list)
         WorkAction.RemoveFromList -> Icons.Default.RemoveCircleOutline to stringResource(R.string.mobile_remove_from_list, menu.list?.name.orEmpty())
         WorkAction.RemoveFromContinue -> Icons.Default.RemoveCircleOutline to
-            stringResource(if (menu.row == CONTINUE_LISTENING) R.string.mobile_remove_from_continue_listening else R.string.mobile_remove_from_continue_watching)
+            stringResource(if (menu.row == HomeRowKind.ContinueListening) R.string.mobile_remove_from_continue_listening else R.string.mobile_remove_from_continue_watching)
         WorkAction.GoToSeries -> Icons.AutoMirrored.Filled.ArrowForward to stringResource(R.string.mobile_go_to_series)
     }
 }

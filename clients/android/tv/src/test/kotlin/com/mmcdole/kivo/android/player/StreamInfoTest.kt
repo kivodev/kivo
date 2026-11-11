@@ -7,9 +7,11 @@ import com.mmcdole.kivo.api.models.PlayStarted
 import com.mmcdole.kivo.api.models.PlayPart
 import com.mmcdole.kivo.api.models.PlayTrack
 import com.mmcdole.kivo.api.models.QualityRequest
+import com.mmcdole.kivo.api.models.Resolution
 import com.mmcdole.kivo.api.models.SubtitleTrackInfo
 import com.mmcdole.kivo.api.models.Track
 import com.mmcdole.kivo.api.models.TrackDelivery
+import com.mmcdole.kivo.api.models.TrackReason
 import com.mmcdole.kivo.api.models.TrackTranscode
 import com.mmcdole.kivo.api.models.TrackType
 import com.mmcdole.kivo.api.models.Version
@@ -36,11 +38,11 @@ class StreamInfoTest {
     private val version = Version(
         id = "v", available = true, durationMs = 60_000, sizeBytes = 1, parts = listOf(VersionPart("f", "film.mkv", 60_000, 1)),
         tracks = listOf(
-            Track("tv", TrackType.Video, "hevc", true, "HEVC 4K HDR10", "HEVC Main 10 4K HDR10", video = VideoTrackInfo(3840, 2160, resolution = "4k", profile = "Main 10", hdr = "hdr10")),
+            Track("tv", TrackType.Video, "hevc", true, "HEVC 4K HDR10", "HEVC Main 10 4K HDR10", video = VideoTrackInfo(3840, 2160, resolution = Resolution.FourK, profile = "Main 10", hdr = "hdr10")),
             Track("ta", TrackType.Audio, "truehd", true, "English · 7.1 · TrueHD", "English · TrueHD 7.1 · Default", language = "eng", audio = AudioTrackInfo(8, "7.1")),
             Track("ts", TrackType.Subtitle, "ass", false, "English", "English · ASS · Embedded", language = "eng", subtitle = SubtitleTrackInfo("embedded")),
         ),
-        workIds = listOf("w"), name = "4K HDR", container = "matroska,webm", bitrateBps = 30_000_000, resolution = "4k", hdr = "hdr10",
+        workIds = listOf("w"), name = "4K HDR", container = "matroska,webm", bitrateBps = 30_000_000, resolution = Resolution.FourK, hdr = "hdr10",
     )
 
     private val play = PlayStarted(
@@ -48,12 +50,12 @@ class StreamInfoTest {
         delivery = PlayDelivery.Stream,
         url = "plays/s/hls/index.m3u8",
         tracks = listOf(
-            PlayTrack("tv", TrackType.Video, selected = true, delivery = TrackDelivery.Stream, codec = "hevc", hdr = "hdr10", reason = "containerUnsupported"),
+            PlayTrack("tv", TrackType.Video, selected = true, delivery = TrackDelivery.Stream, codec = "hevc", hdr = "hdr10", reason = TrackReason.ContainerUnsupported),
             PlayTrack(
                 "ta", TrackType.Audio, selected = true, delivery = TrackDelivery.Stream, codec = "aac", transcode = TrackTranscode(channels = 6),
-                reason = "audioChannelsUnsupported", mismatch = CapabilityMismatch("maxChannels", "8", "6"),
+                reason = TrackReason.AudioChannelsUnsupported, mismatch = CapabilityMismatch("maxChannels", "8", "6"),
             ),
-            PlayTrack("ts", TrackType.Subtitle, selected = true, delivery = TrackDelivery.Stream, codec = "webvtt", reason = "subtitlePreparing"),
+            PlayTrack("ts", TrackType.Subtitle, selected = true, delivery = TrackDelivery.Stream, codec = "webvtt", reason = TrackReason.SubtitlePreparing),
             PlayTrack("off", TrackType.Subtitle, delivery = TrackDelivery.None),
         ),
         parts = listOf(PlayPart(60_000)), chapters = emptyList(), bitrateBps = 9_000_000,

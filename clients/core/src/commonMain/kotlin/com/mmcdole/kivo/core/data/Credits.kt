@@ -16,6 +16,8 @@ enum class CreditRole(val value: String) {
     Unknown(""),
     ;
 
+    override fun toString(): String = value
+
     companion object {
         /** The role [value] names; [Unknown] for any other. */
         fun of(value: String?): CreditRole = entries.firstOrNull { it != Unknown && it.value == value } ?: Unknown

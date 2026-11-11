@@ -8,6 +8,7 @@ import com.mmcdole.kivo.android.mobile.downloads.WorkDownloads
 import com.mmcdole.kivo.android.mobile.ui.WorkMarks
 import com.mmcdole.kivo.api.models.EpisodeInfo
 import com.mmcdole.kivo.api.models.WorkDetail
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.RequestProblem
@@ -107,7 +108,7 @@ class DetailViewModel(
         .onEach { load ->
             val read = load.getOrNull()
             val season = read?.season
-            if (read?.kind == "season" && season != null) {
+            if (read?.kind == WorkKind.Season && season != null) {
                 askedSeason.value = read.id
                 target.value = season.seriesId
             }
@@ -115,7 +116,7 @@ class DetailViewModel(
         .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
 
     private val seasons: Flow<Load<List<WorkSummary>>?> = work
-        .map { load -> load.getOrNull()?.takeIf { it.kind == "series" }?.id }
+        .map { load -> load.getOrNull()?.takeIf { it.kind == WorkKind.Series }?.id }
         .distinctUntilChanged()
         .flatMapLatest { series -> if (series == null) flowOf(null) else library.children(series).onStart { emit(Load.Loading) } }
         .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
@@ -128,7 +129,7 @@ class DetailViewModel(
 
     private val episodes: Flow<Load<List<WorkSummary>>?> = combine(
         openSeason.map { it?.id },
-        work.map { load -> load.getOrNull()?.takeIf { it.kind == "episode" }?.episode?.seasonId },
+        work.map { load -> load.getOrNull()?.takeIf { it.kind == WorkKind.Episode }?.episode?.seasonId },
     ) { season, episodeSeason -> season ?: episodeSeason }
         .distinctUntilChanged()
         .flatMapLatest { season -> if (season == null) flowOf(null) else library.children(season).onStart { emit(Load.Loading) } }
@@ -136,8 +137,8 @@ class DetailViewModel(
     /** The work's download: a movie's, episode's, video's or book's, with the version and tracks chosen here. */
     val downloads: WorkDownloads? = session.downloads?.let { downloads ->
         val target = combine(work, choices) { load, c ->
-            load.getOrNull()?.takeIf { it.kind != "series" && it.kind != "season" }?.let {
-                DownloadTarget(it.id, it.kind == "book", c.versionId, c.audioTrackId, c.subtitleTrackId)
+            load.getOrNull()?.takeIf { it.kind != WorkKind.Series && it.kind != WorkKind.Season }?.let {
+                DownloadTarget(it.id, it.kind == WorkKind.Book, c.versionId, c.audioTrackId, c.subtitleTrackId)
             }
         }
         WorkDownloads(downloads, library, target, setting, viewModelScope)
@@ -148,7 +149,7 @@ class DetailViewModel(
 
     val state: StateFlow<DetailUiState> = combine(
         combine(work, seasons, openSeason, episodes, choices) { work, seasons, season, episodes, choices ->
-            val read = work.getOrNull()?.takeIf { it.kind != "season" }
+            val read = work.getOrNull()?.takeIf { it.kind != WorkKind.Season }
             DetailUiState(
                 head = read?.summary() ?: seed(),
                 work = read,

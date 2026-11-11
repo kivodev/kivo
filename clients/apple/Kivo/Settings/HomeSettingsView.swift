@@ -16,12 +16,12 @@ struct HomeSettingsView: View {
     @State private var rowsFailure: RequestProblem?
     @State private var rowsAttempt = 0
 
-    private static let symbols = ["continueWatching": "play", "continueListening": "headphones", "recentlyAdded": "clock"]
+    private static let symbols: [HomeRowKind: String] = [.continueWatching: "play", .continueListening: "headphones", .recentlyAdded: "clock"]
 
     var body: some View {
         List {
             Section {
-                ForEach(rows.filter { HomeView.knownRows.contains($0.kind) }, id: \.id) { row in
+                ForEach(rows.filter { $0.kind != .unknown }, id: \.id) { row in
                     Toggle(isOn: Binding(
                         get: { row.shown },
                         set: { shown in
@@ -44,10 +44,10 @@ struct HomeSettingsView: View {
                     }
                 }
                 .onMove { from, to in
-                    var visible = rows.filter { HomeView.knownRows.contains($0.kind) }
+                    var visible = rows.filter { $0.kind != .unknown }
                     visible.move(fromOffsets: from, toOffset: to)
                     var next = visible.makeIterator()
-                    rows = rows.map { HomeView.knownRows.contains($0.kind) ? next.next() ?? $0 : $0 }
+                    rows = rows.map { $0.kind != .unknown ? next.next() ?? $0 : $0 }
                     save()
                 }
             }
@@ -82,7 +82,7 @@ struct HomeSettingsView: View {
 
     /// A row's icon: what kind of row it is, a smart list's in the accent.
     @ViewBuilder private func icon(of row: HomeRowInfo) -> some View {
-        if row.list?.kind == "smart" {
+        if row.list?.kind == .smart {
             Image(systemName: "sparkles").foregroundStyle(palette.accent)
         } else {
             Image(systemName: Self.symbols[row.kind] ?? "list.bullet").foregroundStyle(palette.textMuted)

@@ -117,6 +117,8 @@ enum class GridSort(val value: String) {
     Author("author"),
     ;
 
+    override fun toString(): String = value
+
     companion object {
         /** The sort [value] names; null for none or one this version doesn't know. */
         fun of(value: String?): GridSort? = entries.firstOrNull { it.value == value }
@@ -130,6 +132,8 @@ enum class WorkPlayState(val value: String) {
     Played("played"),
     ;
 
+    override fun toString(): String = value
+
     companion object {
         /** The state [value] names; null for none or one this version doesn't know. */
         fun of(value: String?): WorkPlayState? = entries.firstOrNull { it.value == value }
@@ -141,6 +145,8 @@ enum class DynamicRange(val value: String) {
     Hdr("hdr"),
     DolbyVision("dolbyVision"),
     ;
+
+    override fun toString(): String = value
 
     companion object {
         /** The range [value] names; null for none or one this version doesn't know. */

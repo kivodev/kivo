@@ -48,7 +48,7 @@ struct StreamInfoView: View {
 
         if play.delivery == .stream, let container = version?.container {
             let name = display.container(container: container)
-            let repackaged = selected.contains { $0.reason == "containerUnsupported" }
+            let repackaged = selected.contains { $0.reason == .containerUnsupported }
             rows.append(Row(
                 label: String(localized: "Container"),
                 value: String(localized: "\(name) → HLS stream"),
@@ -76,7 +76,7 @@ struct StreamInfoView: View {
         rows.append(subtitleRow(play: play, track: source(model.subtitle)))
 
         if !model.offline, let quality = model.quality, let cap = Int64(quality.key) {
-            let limited = selected.contains { $0.reason == "clientQualityLimit" }
+            let limited = selected.contains { $0.reason == .clientQualityLimit }
             let source = version?.bitrateBps?.int64Value
             rows.append(Row(
                 label: String(localized: "Quality"),
@@ -140,8 +140,8 @@ struct StreamInfoView: View {
 
     /// Why a track isn't as the file has it, with the capability it failed; repackaging is the Container line's.
     private func why(_ track: PlayTrack) -> String? {
-        guard let reason = track.reason, reason != "containerUnsupported" else { return nil }
-        let why = model.display.reason(code: reason)
+        guard let reason = track.reason, reason != .containerUnsupported else { return nil }
+        let why = model.display.reason(code: reason.value)
         guard let mismatch = track.mismatch else { return why }
         return "\(why) (\(Self.words(mismatch)))"
     }

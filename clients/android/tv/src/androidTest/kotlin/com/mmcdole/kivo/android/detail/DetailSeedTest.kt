@@ -20,7 +20,9 @@ import com.mmcdole.kivo.api.infrastructure.ApiClient
 import com.mmcdole.kivo.api.models.EpisodeInfo
 import com.mmcdole.kivo.api.models.ImageRef
 import com.mmcdole.kivo.api.models.Library
+import com.mmcdole.kivo.api.models.LibraryKind
 import com.mmcdole.kivo.api.models.LibraryList
+import com.mmcdole.kivo.api.models.MatchState
 import com.mmcdole.kivo.api.models.SeasonInfo
 import com.mmcdole.kivo.api.models.SeriesInfo
 import com.mmcdole.kivo.api.models.ServerInfo
@@ -28,6 +30,7 @@ import com.mmcdole.kivo.api.models.Version
 import com.mmcdole.kivo.api.models.VersionPart
 import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.api.models.WorkImages
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.api.models.WorkSummaryList
 import com.mmcdole.kivo.api.models.WorkSummaryPage
@@ -77,7 +80,7 @@ class DetailSeedTest {
         requests += "${request.method.value} $path"
         when (path) {
             "/api/v1/server" -> json(ServerInfo.serializer(), ServerInfo("detail-test", "Detail test", "1.0"))
-            "/api/v1/libraries" -> json(LibraryList.serializer(), LibraryList(listOf(Library("library", "Movies", true, "movies", 3))))
+            "/api/v1/libraries" -> json(LibraryList.serializer(), LibraryList(listOf(Library("library", "Movies", true, LibraryKind.Movies, 3))))
             "/api/v1/works/query" ->
                 json(WorkSummaryPage.serializer(), WorkSummaryPage(listOf(card, season, card.copy(id = "gone", title = "Ronin")), 3))
             "/api/v1/works/series/children" -> json(WorkSummaryList.serializer(), WorkSummaryList(listOf(season, season2)))
@@ -180,13 +183,13 @@ class DetailSeedTest {
         val backdrop = ImageRef("backdrop", blurhash = "LEHV6nWB2yk8pyo0adR*.7kCMdnj")
 
         val card = WorkSummary(
-            id = "movie", kind = "movie", title = "Heat", matchState = "matched", available = true,
+            id = "movie", kind = WorkKind.Movie, title = "Heat", matchState = MatchState.Matched, available = true,
             images = WorkImages(backdrop = backdrop), year = 1995, durationMs = 10_200_000, communityRating = 8.3,
             communityVotes = 9000, contentRating = "R", libraryId = "library",
         )
 
         val movie = WorkDetail(
-            id = "movie", kind = "movie", title = "Heat", matchState = "matched", available = true,
+            id = "movie", kind = WorkKind.Movie, title = "Heat", matchState = MatchState.Matched, available = true,
             images = WorkImages(backdrop = backdrop), genres = listOf("Crime"), studios = emptyList(), credits = emptyList(),
             externalIds = emptyList(),
             versions = listOf(Version("version", true, 10_200_000, 1_000, listOf(VersionPart("file", "heat.mkv", 10_200_000, 1_000)), emptyList(), listOf("movie"), "1080p")),
@@ -195,23 +198,23 @@ class DetailSeedTest {
         )
 
         val season = WorkSummary(
-            id = "season", kind = "season", title = "Season 1", matchState = "matched", available = true,
+            id = "season", kind = WorkKind.Season, title = "Season 1", matchState = MatchState.Matched, available = true,
             images = WorkImages(backdrop = backdrop), season = SeasonInfo(1, "series", "The Wire", 1, episodeCount = 1),
         )
 
         val season2 = WorkSummary(
-            id = "season-2", kind = "season", title = "Season 2", matchState = "matched", available = true,
+            id = "season-2", kind = WorkKind.Season, title = "Season 2", matchState = MatchState.Matched, available = true,
             images = WorkImages(backdrop = backdrop), season = SeasonInfo(2, "series", "The Wire", 0, episodeCount = 1),
         )
 
         val episode = WorkSummary(
-            id = "episode", kind = "episode", title = "The Target", matchState = "matched", available = true,
+            id = "episode", kind = WorkKind.Episode, title = "The Target", matchState = MatchState.Matched, available = true,
             images = WorkImages(), durationMs = 3_600_000,
             episode = EpisodeInfo(1, 1, "series", "The Wire", seasonId = "season"),
         )
 
         val series = WorkDetail(
-            id = "series", kind = "series", title = "The Wire", matchState = "matched", available = true,
+            id = "series", kind = WorkKind.Series, title = "The Wire", matchState = MatchState.Matched, available = true,
             images = WorkImages(backdrop = backdrop), genres = emptyList(), studios = emptyList(), credits = emptyList(),
             externalIds = emptyList(), versions = emptyList(), extras = emptyList(), collections = emptyList(), year = 2002,
             series = SeriesInfo(1, seasonCount = 2, nextUp = episode), overview = "Baltimore.",

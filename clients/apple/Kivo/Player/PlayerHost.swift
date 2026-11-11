@@ -79,7 +79,7 @@ final class PlayerHost {
         guard !offline else { return }
         let navigation = server.navigation
         if navigation.tab == .downloads { navigation.tab = .home }
-        navigation.push(.work(WorkRoute(id: seriesId, kind: "series")))
+        navigation.push(.work(WorkRoute(id: seriesId, kind: .series)))
     }
 
     /// The player's screen went away: the player stops unless it carries on in Picture in Picture.

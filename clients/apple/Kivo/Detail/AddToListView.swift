@@ -119,7 +119,7 @@ struct AddToListView: View {
                 try await server.session.library.addToList(listId: list.id, workId: workId)
                 held.insert(list.id)
             } catch {
-                namingAgain = error.problemCode == "nameTaken"
+                namingAgain = error.problemCode == .nameTaken
                 problem = error.listNameSentence
             }
         }

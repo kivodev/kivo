@@ -21,6 +21,8 @@ import androidx.work.WorkerParameters
 import com.mmcdole.kivo.android.AppState
 import com.mmcdole.kivo.android.HasAppGraph
 import com.mmcdole.kivo.android.ServerSession
+import com.mmcdole.kivo.api.models.HomeRowKind
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.Load
 import kotlinx.coroutines.CancellationException
@@ -71,11 +73,11 @@ object WatchNext {
 
     /** Puts [session]'s Continue Watching in the row, in its order, and takes out what's no longer in it. */
     suspend fun publish(context: Context, session: ServerSession) {
-        val read = session.session.library.home("continueWatching").first { it !is Load.Loading }
+        val read = session.session.library.home(HomeRowKind.ContinueWatching).first { it !is Load.Loading }
         // The server didn't answer: the row stays as it was until the next refresh.
         val home = read.getOrNull() ?: return
         // A work in progress continues; a series' next episode is next.
-        val wanted = home.rows.filter { it.kind == "continueWatching" }.flatMap { it.items }.map {
+        val wanted = home.rows.filter { it.kind == HomeRowKind.ContinueWatching }.flatMap { it.items }.map {
             it to if (it.userState?.positionMs != null) WatchNextPrograms.WATCH_NEXT_TYPE_CONTINUE else WatchNextPrograms.WATCH_NEXT_TYPE_NEXT
         }
         val unique = wanted.distinctBy { it.first.id }
@@ -145,8 +147,8 @@ object WatchNext {
             .setTitle(episode?.seriesTitle ?: work.title)
         builder.setType(
             when (work.kind) {
-                "episode" -> WatchNextPrograms.TYPE_TV_EPISODE
-                "movie" -> WatchNextPrograms.TYPE_MOVIE
+                WorkKind.Episode -> WatchNextPrograms.TYPE_TV_EPISODE
+                WorkKind.Movie -> WatchNextPrograms.TYPE_MOVIE
                 else -> WatchNextPrograms.TYPE_CLIP
             },
         )

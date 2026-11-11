@@ -52,6 +52,8 @@ import com.mmcdole.kivo.android.ui.LocalCaptionsShown
 import com.mmcdole.kivo.android.ui.LocalCardLight
 import com.mmcdole.kivo.android.ui.LocalContinueWatchingMenu
 import com.mmcdole.kivo.android.ui.LocalWorkMenu
+import com.mmcdole.kivo.api.models.HomeRowKind
+import com.mmcdole.kivo.api.models.LibraryKind
 import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.android.ui.Loader
 import com.mmcdole.kivo.android.ui.with
@@ -91,7 +93,7 @@ data class HomeUi(val rows: List<ShownRow>, val libraries: List<Library>, val al
 data class ShownRow(val row: HomeRow, val library: Library?, val shape: CardShape)
 
 /** The row kinds the TV shows: no book rows, and no kind it doesn't know. */
-internal val tvRows = setOf("continueWatching", "recentlyAdded", "list")
+internal val tvRows = setOf(HomeRowKind.ContinueWatching, HomeRowKind.RecentlyAdded, HomeRowKind.List)
 
 /**
  * The [rows] the TV shows, among the [libraries] it shows: empty rows and
@@ -102,13 +104,13 @@ fun shownRows(rows: List<HomeRow>, libraries: List<Library>): List<ShownRow> {
     val byId = libraries.associateBy { it.id }
     return rows.mapNotNull { listed ->
         // A list can hold books, which aren't on the TV; a row left with none shows nothing.
-        val row = if (listed.kind == "list") listed.copy(items = listed.items.filter { it.kind in tvWorkKinds }) else listed
+        val row = if (listed.kind == HomeRowKind.List) listed.copy(items = listed.items.filter { it.kind in tvWorkKinds }) else listed
         val id = row.library?.id
         val library = id?.let(byId::get)
         when {
             row.kind !in tvRows || row.items.isEmpty() || (id != null && library == null) -> null
             // Continue Watching is the frames where you stopped.
-            row.kind == "continueWatching" || library?.kind == "videos" -> ShownRow(row, library, CardShape.Landscape)
+            row.kind == HomeRowKind.ContinueWatching || library?.kind == LibraryKind.Videos -> ShownRow(row, library, CardShape.Landscape)
             else -> ShownRow(row, library, CardShape.Poster)
         }
     }
@@ -126,7 +128,7 @@ class HomeViewModel(session: ServerSession) : ViewModel() {
             // them at once rather than decoding them as it's composed.
             val rows = load.getOrNull()?.rows ?: return@onEach
             withContext(Dispatchers.Default) {
-                rows.forEach { shown -> shown.row.items.forEach { prepareCard(it, if (shown.row.kind == "list") cardShapeOf(it) else shown.shape) } }
+                rows.forEach { shown -> shown.row.items.forEach { prepareCard(it, if (shown.row.kind == HomeRowKind.List) cardShapeOf(it) else shown.shape) } }
             }
         }
     }
@@ -271,15 +273,15 @@ private fun Rows(ui: HomeUi, navigator: Navigator) {
                         artwork.value = false
                     }
                 }
-                val menu = if (row.kind == "continueWatching") LocalContinueWatchingMenu.current else LocalWorkMenu.current
+                val menu = if (row.kind == HomeRowKind.ContinueWatching) LocalContinueWatchingMenu.current else LocalWorkMenu.current
                 // Raised with its focused card, so the card's glow lies over the row below.
                 Column(Modifier.raisedOnFocus()) {
                     RowTitle(rowTitle(row.kind, library?.name, row.list?.name), Modifier.padding(RowTitlePadding))
                     CompositionLocalProvider(LocalWorkMenu provides menu, LocalArtworkShown provides artwork, LocalCaptionsShown provides captions, LocalCardLight provides cardLight) {
                         CardRow(state = cards) {
-                            items(row.items, key = { it.id }, contentType = { if (row.kind == "list") cardShapeOf(it) else shape }) { work ->
+                            items(row.items, key = { it.id }, contentType = { if (row.kind == HomeRowKind.List) cardShapeOf(it) else shape }) { work ->
                                 val key = "${row.id}/${work.id}"
-                                val cardShape = if (row.kind == "list") cardShapeOf(work) else shape
+                                val cardShape = if (row.kind == HomeRowKind.List) cardShapeOf(work) else shape
                                 WorkCard(
                                     work = work,
                                     shape = cardShape,
@@ -319,8 +321,8 @@ private fun Rows(ui: HomeUi, navigator: Navigator) {
 }
 
 @Composable
-internal fun rowTitle(kind: String, libraryName: String?, listName: String?): String = when (kind) {
-    "continueWatching" -> stringResource(R.string.row_continue_watching)
-    "list" -> listName.orEmpty()
+internal fun rowTitle(kind: HomeRowKind, libraryName: String?, listName: String?): String = when (kind) {
+    HomeRowKind.ContinueWatching -> stringResource(R.string.row_continue_watching)
+    HomeRowKind.List -> listName.orEmpty()
     else -> libraryName?.let { stringResource(R.string.row_recently_added_in, it) } ?: stringResource(R.string.row_recently_added)
 }

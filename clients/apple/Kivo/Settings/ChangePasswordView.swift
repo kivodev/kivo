@@ -93,7 +93,7 @@ struct ChangePasswordView: View {
             failure = nil
             wrongPassword = false
             // A wrong current password is the server's refusal of the password, never of the session.
-            if error.problemCode == "wrongPassword" || error.problemCode == "invalidCredentials" || error.problemStatus == 401 {
+            if error.problemCode == .wrongPassword || error.problemCode == .invalidCredentials || error.problemStatus == 401 {
                 wrongPassword = true
                 field = .current
             } else {

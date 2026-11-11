@@ -414,13 +414,13 @@ extension CastModel {
     /// The receiver's error in words: an admin's own when they stopped the play.
     static func failure(_ code: String, message: String?) -> String {
         if let message, !message.isEmpty { return message }
-        switch code {
-        case "signedOut": return String(localized: "Signed out on the TV.")
-        case "playEnded": return String(localized: "Playback was stopped.")
-        case "serverOutdated": return String(localized: "Update the server to cast to this TV.")
-        case "receiverOutdated": return String(localized: "The TV's receiver is older than the server.")
-        case "notPlayable", "noFallback", "playbackFailed": return String(localized: "This can't be played on this TV.")
-        case "invalidRequest": return Display.app.problem(code: "")
+        switch ProblemCode.companion.of(value: code) {
+        case .signedOut: return String(localized: "Signed out on the TV.")
+        case .playEnded: return String(localized: "Playback was stopped.")
+        case .serverOutdated: return String(localized: "Update the server to cast to this TV.")
+        case .receiverOutdated: return String(localized: "The TV's receiver is older than the server.")
+        case .notPlayable, .noFallback, .playbackFailed: return String(localized: "This can't be played on this TV.")
+        case .invalidRequest: return Display.app.problem(code: "")
         default: return Display.app.problem(code: code)
         }
     }

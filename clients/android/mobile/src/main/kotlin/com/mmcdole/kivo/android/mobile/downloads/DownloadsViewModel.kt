@@ -3,6 +3,7 @@ package com.mmcdole.kivo.android.mobile.downloads
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mmcdole.kivo.android.mobile.ui.display
+import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.core.downloads.DownloadItem
 import com.mmcdole.kivo.core.downloads.DownloadStorage
 import com.mmcdole.kivo.core.downloads.downloadProblem
@@ -66,8 +67,8 @@ class DownloadsViewModel(private val downloads: SessionDownloads, private val se
         val episodes = items.filter { it.seriesId != null }
         DownloadsUiState(
             read = true,
-            books = items.filter { seriesId == null && it.kind == "book" },
-            movies = items.filter { seriesId == null && it.kind != "book" && it.seriesId == null },
+            books = items.filter { seriesId == null && it.kind == WorkKind.Book },
+            movies = items.filter { seriesId == null && it.kind != WorkKind.Book && it.seriesId == null },
             shows = if (seriesId != null) {
                 emptyList()
             } else {

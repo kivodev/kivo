@@ -99,6 +99,7 @@ public final class com/mmcdole/kivo/core/ProblemCode : java/lang/Enum {
 	public static final field WrongPassword Lcom/mmcdole/kivo/core/ProblemCode;
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
 	public final fun getValue ()Ljava/lang/String;
+	public fun toString ()Ljava/lang/String;
 	public static fun valueOf (Ljava/lang/String;)Lcom/mmcdole/kivo/core/ProblemCode;
 	public static fun values ()[Lcom/mmcdole/kivo/core/ProblemCode;
 }
@@ -627,6 +628,7 @@ public final class com/mmcdole/kivo/core/data/CreditRole : java/lang/Enum {
 	public static final field Writer Lcom/mmcdole/kivo/core/data/CreditRole;
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
 	public final fun getValue ()Ljava/lang/String;
+	public fun toString ()Ljava/lang/String;
 	public static fun valueOf (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/CreditRole;
 	public static fun values ()[Lcom/mmcdole/kivo/core/data/CreditRole;
 }
@@ -646,6 +648,7 @@ public final class com/mmcdole/kivo/core/data/DynamicRange : java/lang/Enum {
 	public static final field Hdr Lcom/mmcdole/kivo/core/data/DynamicRange;
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
 	public final fun getValue ()Ljava/lang/String;
+	public fun toString ()Ljava/lang/String;
 	public static fun valueOf (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/DynamicRange;
 	public static fun values ()[Lcom/mmcdole/kivo/core/data/DynamicRange;
 }
@@ -718,6 +721,7 @@ public final class com/mmcdole/kivo/core/data/GridSort : java/lang/Enum {
 	public static final field Title Lcom/mmcdole/kivo/core/data/GridSort;
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
 	public final fun getValue ()Ljava/lang/String;
+	public fun toString ()Ljava/lang/String;
 	public static fun valueOf (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/GridSort;
 	public static fun values ()[Lcom/mmcdole/kivo/core/data/GridSort;
 }
@@ -957,6 +961,7 @@ public final class com/mmcdole/kivo/core/data/WorkPlayState : java/lang/Enum {
 	public static final field Unplayed Lcom/mmcdole/kivo/core/data/WorkPlayState;
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
 	public final fun getValue ()Ljava/lang/String;
+	public fun toString ()Ljava/lang/String;
 	public static fun valueOf (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/WorkPlayState;
 	public static fun values ()[Lcom/mmcdole/kivo/core/data/WorkPlayState;
 }
@@ -1442,6 +1447,7 @@ public final class com/mmcdole/kivo/core/play/PlayerFailure$Problem : com/mmcdol
 	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/play/PlayerFailure$Problem;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Lcom/mmcdole/kivo/api/models/CapabilityMismatch;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/play/PlayerFailure$Problem;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getCode ()Ljava/lang/String;
+	public final fun getKnownCode ()Lcom/mmcdole/kivo/core/ProblemCode;
 	public final fun getMismatch ()Lcom/mmcdole/kivo/api/models/CapabilityMismatch;
 	public final fun getPlays ()Ljava/util/List;
 	public final fun getReason ()Ljava/lang/String;

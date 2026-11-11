@@ -22,7 +22,7 @@ public struct GroupCard: View {
         let n = Int(collection.workCount)
         name = collection.name
         image = collection.images.poster
-        count = collection.source == "provider"
+        count = collection.source == .provider
             ? (n == 1 ? String(localized: "1 movie") : String(localized: "\(n) movies"))
             : (n == 1 ? String(localized: "1 item") : String(localized: "\(n) items"))
         look = .cover
