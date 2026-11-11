@@ -1210,8 +1210,8 @@ func TestLastPlayedIsAWorksOwn(t *testing.T) {
 }
 
 // TestMovieTrailers checks that a movie's page lists its trailers in order,
-// each with its link and the thumbnail it owns, and that no other page has
-// any.
+// each with its link and the thumbnail it owns, that a series' page lists
+// its own, and that no other page has any.
 func TestMovieTrailers(t *testing.T) {
 	h := newHousehold(t)
 	thumb := id.New()
@@ -1238,7 +1238,14 @@ func TestMovieTrailers(t *testing.T) {
 			t.Errorf("%s: the second trailer %+v, image %+v", name, second, second.Image)
 		}
 	}
-	for name, w := range map[string]id.ID{"a movie without trailers": h.bladeRunner.Work, "a series": h.expanse} {
+	d, err := h.q.Detail(ctx, h.friend, h.expanse)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(d.Trailers) != 1 || d.Trailers[0].Title != "Official Trailer" || d.Trailers[0].URL != "https://www.youtube.com/watch?v=kQuTJdE3j2Q" {
+		t.Errorf("the series' trailers %+v", d.Trailers)
+	}
+	for name, w := range map[string]id.ID{"a movie without trailers": h.bladeRunner.Work, "a season": h.expanseS1, "an episode": h.expanse1.Work} {
 		d, err := h.q.Detail(ctx, h.admin, w)
 		if err != nil || len(d.Trailers) != 0 {
 			t.Errorf("%s: trailers %+v, %v", name, d.Trailers, err)

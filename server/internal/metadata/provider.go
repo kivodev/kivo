@@ -79,7 +79,7 @@ type Description struct {
 	Crew                 []Person          // directors and writers
 	Community            *catalog.CommunityRating
 	Collection           *Collection       // set only for a movie
-	Trailers             []catalog.Trailer // a movie's, best first
+	Trailers             []catalog.Trailer // a movie's or series', best first
 	Images               Images
 }
 

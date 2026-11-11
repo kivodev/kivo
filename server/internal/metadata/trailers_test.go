@@ -2,6 +2,7 @@ package metadata
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"os"
 	"slices"
@@ -186,6 +187,50 @@ func TestRefreshTrailers(t *testing.T) {
 	}
 }
 
+// A series keeps its trailers as a movie does, and unmatching it clears
+// them.
+func TestRefreshSeriesTrailers(t *testing.T) {
+	e := newEnv(t)
+	_, folder := e.b.Library(catalog.Shows)
+	series := e.b.Work(catalog.WorkInput{Kind: catalog.KindSeries, Title: "The Expanse",
+		ExternalIDs: []catalog.ExternalID{catalogID("tmdb", "series", "63639")}})
+	e.b.Episode(folder, series, 1, 1)
+
+	e.mustRefresh(series)
+
+	// The newest official trailer first, and no opening credits.
+	want := []string{
+		"expanseS2Tr Season 2 Trailer " + ytimg + "expanseS2Tr/maxresdefault.jpg",
+		"expanseTr01 Official Trailer " + ytimg + "expanseTr01/maxresdefault.jpg",
+	}
+	if got := e.trailers(series); !slices.Equal(got, want) {
+		t.Fatalf("trailers %v, want %v", got, want)
+	}
+	files := e.thumbFiles(series)
+	if len(files) != 2 {
+		t.Fatalf("thumbnail files %v", files)
+	}
+
+	e.b.Write(func(ctx context.Context, tx *store.Tx) error {
+		return e.b.Catalog.Batch(ctx, tx, func(b *catalog.Batch) error {
+			if err := e.s.ClearArtwork(ctx, tx, series); err != nil {
+				return err
+			}
+			return b.Unmatch(ctx, series, "The Expanse", 2015)
+		})
+	})
+	if got := e.strings(`SELECT key FROM trailer UNION ALL SELECT hex(id) FROM image WHERE trailer_id IS NOT NULL`); len(got) != 0 {
+		t.Errorf("after unmatching: %v", got)
+	}
+	for key, ps := range files {
+		for _, p := range ps {
+			if exists(p) {
+				t.Errorf("%s: thumbnail file %s is still there after unmatching", key, p)
+			}
+		}
+	}
+}
+
 // A thumbnail that can't be fetched leaves the trailer without one, and the
 // refresh succeeds.
 func TestRefreshTrailerWithoutThumbnail(t *testing.T) {
@@ -213,6 +258,19 @@ func TestRefreshTrailerWithoutThumbnail(t *testing.T) {
 	want[1] = "8g18jFHCLXk Official Trailer " + ytimg + "8g18jFHCLXk/maxresdefault.jpg"
 	if got := e.trailers(w); !slices.Equal(got, want) {
 		t.Errorf("trailers after a second refresh %v, want %v", got, want)
+	}
+}
+
+// While the thumbnails' site is down the refresh is run again later, as it is
+// for artwork, and that run fetches the thumbnail.
+func TestRefreshTrailerThumbnailOutage(t *testing.T) {
+	e := newEnv(t)
+	_, folder := e.b.Library(catalog.Movies)
+	w := e.movie(folder, "Dune (2021)/Dune (2021).mkv")
+	e.fx.set("/vi/8g18jFHCLXk/maxresdefault.jpg", http.StatusServiceUnavailable)
+
+	if err := e.refresh(w); !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("refresh: %v", err)
 	}
 }
 

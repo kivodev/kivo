@@ -147,6 +147,7 @@ import com.mmcdole.kivo.core.data.resumeAt
 import com.mmcdole.kivo.core.data.selectedVersion
 import com.mmcdole.kivo.core.data.summary
 import com.mmcdole.kivo.core.data.withTrack
+import com.mmcdole.kivo.core.data.youTubeTrailers
 import com.mmcdole.kivo.core.display.Display
 import com.mmcdole.kivo.core.display.clock
 import com.mmcdole.kivo.core.display.episodeCode
@@ -683,13 +684,13 @@ private fun PickerChip(label: String, value: String, hero: HeroLevels, key: Stri
 
 /**
  * Trailers, cast, extras and collections under the hero, the first [firstTop] under it; rows with nothing in them are
- * left out. The Trailers row holds the trailer files in the work's folder, then a movie's trailers on YouTube.
+ * left out. The Trailers row holds the trailer files in the work's folder, then a movie's or series' trailers on YouTube.
  */
 private fun LazyListScope.extraRows(work: WorkDetail, memory: FocusMemory, navigator: Navigator, firstTop: Dp = RowGap) {
     var top = firstTop
     fun nextTop() = top.also { top = RowGap }
     val local = work.localTrailers()
-    val online = work.movie?.trailers.orEmpty()
+    val online = work.youTubeTrailers()
     if (local.isNotEmpty() || online.isNotEmpty()) {
         extraRow(R.string.trailers, nextTop()) {
             items(local, key = { it.id }) { w ->
@@ -700,7 +701,6 @@ private fun LazyListScope.extraRows(work: WorkDetail, memory: FocusMemory, navig
                     { navigator.push(Screen.Work(w.id)) },
                     Modifier.focusKey(memory, "row/${w.id}"),
                     mark = w.durationMs?.let { display.clock(it.toLong()) },
-                    caption = stringResource(R.string.in_your_library),
                 )
             }
             items(online, key = { it.id }) { trailer ->

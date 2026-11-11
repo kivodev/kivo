@@ -13,7 +13,7 @@ import { isTv } from "@/tv/flag";
 export function WorkRows({ work }: { work: WorkDetail }) {
   return (
     <div className="flex flex-col gap-10 px-4 pb-12 sm:px-8 tv:relative">
-      <TrailersRow extras={work.extras} trailers={work.movie?.trailers} />
+      <TrailersRow extras={work.extras} trailers={work.movie?.trailers ?? work.series?.trailers} />
       <CastRow credits={work.credits} />
       <ExtrasRows extras={work.extras} />
       {work.collections.map((c) => (
@@ -42,7 +42,7 @@ function CastRow({ credits }: { credits: readonly Credit[] }) {
 }
 
 /**
- * A movie's trailers: the trailer files in its folder, which play here,
+ * A movie's or series' trailers: the trailer files in its folder, which play here,
  * then its trailers on YouTube, which open there. The packaged TV app never
  * leaves its page, so it shows the files alone.
  */
@@ -64,19 +64,18 @@ function TrailersRow({ extras, trailers = [] }: { extras: readonly WorkSummary[]
         "url" in item ? (
           <TrailerCard trailer={item} />
         ) : (
-          <WorkCard
-            work={item}
-            shape="landscape"
-            badge={item.durationMs ? formatClock(item.durationMs) : undefined}
-            caption={t`In your library`}
-          />
+          <WorkCard work={item} shape="landscape" badge={item.durationMs ? formatClock(item.durationMs) : undefined} />
         )
       }
     />
   );
 }
 
-/** A trailer on YouTube, which opens there in a new tab. Its mark says so before the click. */
+/**
+ * A trailer on YouTube, which opens there in a new tab. Its mark says so
+ * before the click. With no thumbnail the tile is bare, as the title is
+ * under it.
+ */
 function TrailerCard({ trailer }: { trailer: Trailer }) {
   const { t } = useLingui();
   return (
@@ -84,6 +83,7 @@ function TrailerCard({ trailer }: { trailer: Trailer }) {
       href={trailer.url}
       target="_blank"
       rel="noreferrer"
+      aria-label={`${trailer.title}, ${t`Opens in YouTube`}`}
       data-part="card"
       data-kind="trailer"
       className="flex min-w-0 flex-col gap-2 rounded-md"
@@ -91,7 +91,7 @@ function TrailerCard({ trailer }: { trailer: Trailer }) {
       <div className="relative">
         <Artwork
           image={trailer.image}
-          title={trailer.title}
+          title=""
           shape="landscape"
           width={288}
           density={cardDensity}
@@ -102,10 +102,7 @@ function TrailerCard({ trailer }: { trailer: Trailer }) {
           YouTube ↗
         </span>
       </div>
-      <div className="min-w-0 px-0.5">
-        <div className="truncate text-sm font-semibold text-text">{trailer.title}</div>
-        <div className="truncate text-sm text-text-muted">{t`Opens in YouTube`}</div>
-      </div>
+      <div className="min-w-0 truncate px-0.5 text-sm font-semibold text-text">{trailer.title}</div>
     </a>
   );
 }
