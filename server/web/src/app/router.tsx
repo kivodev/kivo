@@ -121,5 +121,7 @@ declare module "@tanstack/history" {
   interface HistoryState {
     /** The card a work's page was opened from, for the page's pending hero. */
     work?: WorkSummary;
+    /** A library opened sorted one way for once, which keeps nothing of the visit. */
+    oneOffSort?: boolean;
   }
 }

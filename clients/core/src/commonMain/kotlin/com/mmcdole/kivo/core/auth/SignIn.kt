@@ -81,7 +81,7 @@ internal class SignIn(
 
     private suspend fun signedIn(session: Session): CurrentUser {
         val token = session.token ?: throw IllegalStateException("an app session came without its token")
-        connection.signIn(token)
+        connection.signIn(token, session.serverKey)
         return connection.users.getCurrentUser().result().also { connection.keep(it) }
     }
 }

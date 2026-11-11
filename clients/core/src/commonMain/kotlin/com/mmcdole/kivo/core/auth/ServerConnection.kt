@@ -82,8 +82,13 @@ import kotlin.time.Duration.Companion.seconds
  * The token goes only where [address] trusts it now ([ServerAddress.carries]):
  * a request that would carry it waits for a trusted address, and isn't
  * sent when there's none; [authorization] gives it for a URL only at one.
- * Its probes prove a plain-HTTP address with the token's [ProbeKey], on the
- * device's [network].
+ * Its probes prove a plain-HTTP address, on the device's [network], by the
+ * server's signature with its [ServerKey]: the one it gave at sign-in, or,
+ * signed in without one, the first that signs a proof. It's kept in the
+ * [preferences] under the server's ID, and a new sign-in replaces it. When
+ * an address answers as the server with a signature that key didn't make,
+ * and none may be trusted with the token, the app signs out
+ * ([identityChanged]).
  */
 internal class ServerConnection(
     val serverId: String,
@@ -95,16 +100,28 @@ internal class ServerConnection(
     addresses: List<String> = listOf(reachedAt),
     private val background: CoroutineContext = Dispatchers.Default,
     pickTime: TimeSource = TimeSource.Monotonic,
-    network: NetworkEpoch = NetworkEpoch(),
+    private val network: NetworkEpoch = NetworkEpoch(),
     private val identity: ClientIdentity? = null,
     private val probes: HttpClient = probeClient(engine, identity),
 ) {
     private val tokenKey = tokenKey(serverId)
     private val token = MutableStateFlow<String?>(null)
-    private val probeKey = MutableStateFlow<ProbeKey?>(null)
     private val mutableSignedIn = MutableStateFlow(false)
     private val userKey = stringPreferencesKey("kivo.user.$serverId")
     private val mutableUser = MutableStateFlow<SignedInUser?>(null)
+    private val serverKeyKey = stringPreferencesKey("kivo.serverKey.$serverId")
+    private val serverKey = MutableStateFlow<ServerKey?>(null)
+
+    /** The network and token a probe last heard the server's ID answer on with a signature its key didn't make. */
+    private val mismatched = MutableStateFlow<Pair<Int, String>?>(null)
+    private val mutableIdentityChanged = MutableStateFlow(false)
+
+    /**
+     * Whether the app signed out as an address answered as the server with
+     * a signature its key didn't make, with no other to trust: the server
+     * was set up again, or it isn't the server. A new sign-in clears it.
+     */
+    val identityChanged: Boolean get() = mutableIdentityChanged.value
 
     /** Orders keeping the user against signing in and out, so a late answer can't outlive the session. */
     private val lock = Mutex()
@@ -147,16 +164,48 @@ internal class ServerConnection(
     /**
      * What [at] says it is, when it may be trusted with the token: an HTTPS
      * address that answers, or, signed in, a plain-HTTP one whose proof to
-     * the probe's challenge is right ([ProbeKey.proves]); signed out, any
-     * that answers, as there's no token to keep from it.
+     * the probe's challenge the server's key signed ([ServerKey.signed]),
+     * that says the probe came from a local network and names the host
+     * probed; signed out, any that answers, as there's no token to keep
+     * from it.
      */
     private suspend fun probe(at: String): ServerInfo? {
         val api = SetupApi(at, probes)
-        if (token.value == null || isSecure(at)) return api.getServer().result()
-        val key = probeKey.value ?: return null
-        val challenge = key.challenge()
-        val info = api.getServer(challenge = ProbeKey.encode(challenge), probeId = key.probeId).result()
-        return info.takeIf { key.proves(it.proof, challenge, serverId, at) }
+        val held = token.value
+        if (held == null || isSecure(at)) return api.getServer().result()
+        val (challenge, sent) = ServerKey.challenge()
+        val info = api.getServer(challenge = sent).result()
+        if (info.id != serverId) return null
+        val kept = serverKey.value
+        val key = kept ?: ServerKey.of(info.proof?.key) ?: return null
+        if (!key.signed(info.proof, challenge, serverId)) {
+            if (kept != null && info.proof != null) mismatched.value = network.now to held
+            return null
+        }
+        val proof = info.proof ?: return null
+        if (!proof.local || !sameHost(proof.host, at)) return null
+        return info.takeIf { kept != null || learn(key) }
+    }
+
+    /** Keeps [key] as the server's when the app has none yet; whether it's the server's now. */
+    private suspend fun learn(key: ServerKey): Boolean = lock.withLock {
+        val kept = serverKey.value
+        if (kept == null && signedIn.value) keepKey(key)
+        kept == null || kept.encoded == key.encoded
+    }
+
+    private suspend fun keepKey(key: ServerKey?) {
+        preferences.edit { if (key == null) it.remove(serverKeyKey) else it[serverKeyKey] = key.encoded }
+        serverKey.value = key
+    }
+
+    /** Whether, on this network, the server's ID answered with a signature its key didn't make, to the token held now. */
+    private fun mismatchedNow(): Boolean = token.value?.let { mismatched.value == (network.now to it) } == true
+
+    /** Signs out, as the server's ID answered with another key's signature where nothing else could be trusted. */
+    private suspend fun signOutForIdentity() {
+        mutableIdentityChanged.value = true
+        signOut()
     }
 
     /** The base URL the server is reached at now. */
@@ -199,22 +248,33 @@ internal class ServerConnection(
      * all of them: the address and what it said of itself; null when none
      * answers as it, or none may be trusted with the token.
      */
-    suspend fun reach(): Pair<String, ServerInfo>? = address.open()
+    suspend fun reach(): Pair<String, ServerInfo>? {
+        address.open()?.let { return it }
+        if (!mismatchedNow()) return null
+        signOutForIdentity()
+        return address.open()
+    }
 
     /** An image by ID at a width in pixels; the server serves the smallest stored width at least that. */
     fun imageUrl(id: String, width: Int): String = apiUrl(imagePath(id, width))
 
-    /** Reads the stored token, and who it's for; whether there is one. Its first `401` signs out. */
+    /** Reads the stored token, who it's for and the server's key; whether there is a token. Its first `401` signs out. */
     suspend fun restore(): Boolean = lock.withLock {
+        serverKey.value = ServerKey.of(preferences.data.first()[serverKeyKey])
         setToken(store.read(tokenKey))
         mutableUser.value = token.value?.let { storedUser() }
         token.value != null
     }
 
-    /** Keeps the token of the session just signed in; who it's for is kept once the server says. */
-    internal suspend fun signIn(sessionToken: String) = lock.withLock {
+    /**
+     * Keeps the token of the session just signed in, and the server's [key]
+     * in place of any before; who it's for is kept once the server says.
+     */
+    internal suspend fun signIn(sessionToken: String, key: String? = null) = lock.withLock {
         store.write(tokenKey, sessionToken)
+        keepKey(ServerKey.of(key))
         forgetUser()
+        mutableIdentityChanged.value = false
         setToken(sessionToken)
     }
 
@@ -261,7 +321,6 @@ internal class ServerConnection(
 
     private fun setToken(value: String?) {
         if (value == token.value) return
-        probeKey.value = value?.let(ProbeKey::of)
         token.value = value
         address.reset()
         mutableSignedIn.value = value != null
@@ -289,7 +348,14 @@ internal class ServerConnection(
                     val header = bearer
                     // A request to the server that would carry the token waits for an address that may be trusted with it.
                     val ours = address.knows(request.url)
-                    if (header != null && ours) address.trusted()
+                    if (header != null && ours) {
+                        try {
+                            address.trusted()
+                        } catch (e: UntrustedAddress) {
+                            if (mismatchedNow()) signOutForIdentity()
+                            throw e
+                        }
+                    }
                     address.rebase(request.url)
                     timeouts.waitOf(request.method, request.url.encodedPath)?.let { wait ->
                         request.timeout {

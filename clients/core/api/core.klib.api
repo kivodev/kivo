@@ -731,13 +731,16 @@ sealed interface com.mmcdole.kivo.core.session/AppState { // com.mmcdole.kivo.co
     }
 
     final class SignedOut : com.mmcdole.kivo.core.session/AppState { // com.mmcdole.kivo.core.session/AppState.SignedOut|null[0]
-        constructor <init>(com.mmcdole.kivo.core.auth/SavedServer?) // com.mmcdole.kivo.core.session/AppState.SignedOut.<init>|<init>(com.mmcdole.kivo.core.auth.SavedServer?){}[0]
+        constructor <init>(com.mmcdole.kivo.core.auth/SavedServer?, kotlin/Boolean = ...) // com.mmcdole.kivo.core.session/AppState.SignedOut.<init>|<init>(com.mmcdole.kivo.core.auth.SavedServer?;kotlin.Boolean){}[0]
 
+        final val identityChanged // com.mmcdole.kivo.core.session/AppState.SignedOut.identityChanged|{}identityChanged[0]
+            final fun <get-identityChanged>(): kotlin/Boolean // com.mmcdole.kivo.core.session/AppState.SignedOut.identityChanged.<get-identityChanged>|<get-identityChanged>(){}[0]
         final val server // com.mmcdole.kivo.core.session/AppState.SignedOut.server|{}server[0]
             final fun <get-server>(): com.mmcdole.kivo.core.auth/SavedServer? // com.mmcdole.kivo.core.session/AppState.SignedOut.server.<get-server>|<get-server>(){}[0]
 
         final fun component1(): com.mmcdole.kivo.core.auth/SavedServer? // com.mmcdole.kivo.core.session/AppState.SignedOut.component1|component1(){}[0]
-        final fun copy(com.mmcdole.kivo.core.auth/SavedServer? = ...): com.mmcdole.kivo.core.session/AppState.SignedOut // com.mmcdole.kivo.core.session/AppState.SignedOut.copy|copy(com.mmcdole.kivo.core.auth.SavedServer?){}[0]
+        final fun component2(): kotlin/Boolean // com.mmcdole.kivo.core.session/AppState.SignedOut.component2|component2(){}[0]
+        final fun copy(com.mmcdole.kivo.core.auth/SavedServer? = ..., kotlin/Boolean = ...): com.mmcdole.kivo.core.session/AppState.SignedOut // com.mmcdole.kivo.core.session/AppState.SignedOut.copy|copy(com.mmcdole.kivo.core.auth.SavedServer?;kotlin.Boolean){}[0]
         final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.session/AppState.SignedOut.equals|equals(kotlin.Any?){}[0]
         final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.session/AppState.SignedOut.hashCode|hashCode(){}[0]
         final fun toString(): kotlin/String // com.mmcdole.kivo.core.session/AppState.SignedOut.toString|toString(){}[0]

@@ -1029,7 +1029,7 @@ class DownloadsTest {
     @Test
     fun transfersComeFromTheHttpsAddressEvenOnAProvenLocalOne() = runTest {
         val h = Harness(this, at = LOCAL, addresses = listOf(LOCAL, PUBLIC))
-        h.server.on("GET", "/api/v1/server") { json(ServerInfo.serializer(), ServerInfo("server-1", "Basement", "1.0", proof = proofOf(it, "server-1", listOf(TOKEN)))) }
+        h.server.on("GET", "/api/v1/server") { json(ServerInfo.serializer(), ServerInfo("server-1", "Basement", "1.0", proof = proofOf(it, "server-1"))) }
         h.connect(TOKEN)
         h.connection.address.repick(AddressChange.Network)
         assertEquals(LOCAL, h.connection.baseUrl)
@@ -1047,7 +1047,7 @@ class DownloadsTest {
         val h = Harness(this, at = LOCAL)
         var impostor = false
         h.server.on("GET", "/api/v1/server") {
-            val proof = proofOf(it, "server-1", listOf(TOKEN)).takeUnless { impostor }
+            val proof = proofOf(it, "server-1").takeUnless { impostor }
             json(ServerInfo.serializer(), ServerInfo("server-1", "Basement", "1.0", proof = proof))
         }
         h.connect(TOKEN)

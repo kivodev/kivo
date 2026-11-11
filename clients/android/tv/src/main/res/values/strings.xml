@@ -28,6 +28,7 @@
     <string name="back">Back</string>
     <string name="link_code_hint">On a signed-in device, scan the QR code, or open Link a device and enter this code.</string>
     <string name="sign_in_declined">Sign-in was declined.</string>
+    <string name="identity_changed">This server\'s identity changed. Sign in again if you reinstalled or moved Kivo. If you didn\'t, don\'t.</string>
     <string name="couldnt_get_sign_in_code">Couldn\'t get a sign-in code.</string>
     <string name="sign_in_with_password">Sign in with password</string>
     <string name="sign_in_to">Sign in to %1$s</string>

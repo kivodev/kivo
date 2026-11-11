@@ -74,11 +74,14 @@ export type BrowseSearch = z.infer<typeof browseSearchSchema>;
 
 const libraryRoute = getRouteApi("/authed/libraries/$libraryId");
 
-/** The library view's URL state, and a change to it, which replaces it in history. */
+/**
+ * The library view's URL state, and a change to it, which replaces it in
+ * history and keeps the visit's history state.
+ */
 export function useBrowseSearch() {
   const search = libraryRoute.useSearch();
   const navigate = libraryRoute.useNavigate();
-  const setSearch = (next: BrowseSearch) => void navigate({ search: next, replace: true });
+  const setSearch = (next: BrowseSearch) => void navigate({ search: next, replace: true, state: true });
   return [search, setSearch] as const;
 }
 
@@ -170,7 +173,8 @@ export function clearFilters(search: BrowseSearch): BrowseSearch {
 
 // A library opens as this browser last left it. Its tab, sort, filters and
 // view are kept per library in the browser's storage. Without storage, as
-// in a private window, a library opens with its defaults.
+// in a private window, a library opens with its defaults. A visit opened
+// sorted one way for once keeps nothing.
 const storageKey = (libraryId: string) => `kivo.library.${libraryId}`;
 
 /** The URL state this browser last used in a library. */

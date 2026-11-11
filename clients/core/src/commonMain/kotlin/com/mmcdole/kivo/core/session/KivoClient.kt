@@ -283,7 +283,7 @@ class KivoClient internal constructor(
         when {
             !session.isSignedIn -> {
                 session.close()
-                mutableState.value = AppState.SignedOut(server)
+                mutableState.value = AppState.SignedOut(server, session.connection.identityChanged)
             }
             session.unreachable.value && !kept -> {
                 session.close()
@@ -301,7 +301,7 @@ class KivoClient internal constructor(
         session.scope.launch { quietly { session.awaitReachable() } }
         session.scope.launch {
             session.awaitSignOut()
-            mutableState.value = AppState.SignedOut(session.savedServer.value)
+            mutableState.value = AppState.SignedOut(session.savedServer.value, session.connection.identityChanged)
             session.close()
         }
     }
@@ -331,9 +331,9 @@ class KivoClient internal constructor(
     /**
      * A saved server, with this device's session on it restored when one is
      * held ([KivoSession.isSignedIn]). It's opened at the address [reach]
-     * would pick, a plain-HTTP one only when it proves itself to the
-     * session, and kept with the addresses it gives now; else at its first,
-     * as [KivoSession.unreachable].
+     * would pick, a plain-HTTP one only when it proves itself with the
+     * server's key, and kept with the addresses it gives now; else at its
+     * first, as [KivoSession.unreachable].
      */
     @Throws(Exception::class)
     suspend fun restore(server: SavedServer): KivoSession {

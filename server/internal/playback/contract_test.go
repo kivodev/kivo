@@ -466,7 +466,7 @@ func TestDecisionGolden(t *testing.T) {
 		name string
 		in   Input
 	}{
-		{"browser, SubRip", Input{Caps: browser, Encoders: []media.Codec{media.H264}, Source: source(srt)}},
+		{"browser, SubRip", Input{Caps: browser, Encoders: cpuOnly, Source: source(srt)}},
 		{"AVPlayer, PGS", Input{Caps: safari, Source: source(pgs)}},
 		{"AVPlayer in picture-in-picture, the external SubRip", Input{Caps: noExternal(safari), Source: source(ext)}},
 		{"Android TV, styled ASS, reading from the file", Input{Caps: selecting, Source: source(ass)}},

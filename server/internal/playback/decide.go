@@ -67,9 +67,9 @@ type Input struct {
 	Settings Settings
 	Limit    Limit
 	Source   Source
-	// Encoders are the codecs a video transcode may produce. H.264 is
-	// always included, and HEVC when an accelerator encodes it.
-	Encoders []media.Codec
+	// Encoders are what a video transcode may be encoded on. H.264 is
+	// always available, on the CPU if nothing else.
+	Encoders []Encoder
 	// Fallback means the play replaces one whose playback failed. Nothing
 	// is played directly or copied. The video and audio are encoded, and a
 	// selected subtitle is burned in rather than drawn by the client.
@@ -80,6 +80,20 @@ type Input struct {
 	// follow. The audio is encoded (media.AudioRendition's DialogueBoost)
 	// and the video copied. Downloads and plays without video ignore it.
 	DialogueBoost bool
+}
+
+// Encoder is a codec a device encodes, and whether that device also
+// tone-maps HDR and draws subtitles.
+type Encoder struct {
+	Codec   media.Codec
+	ToneMap bool
+	BurnIn  bool
+}
+
+// does reports whether the encoder makes codec with the tone mapping and
+// subtitle drawing a job needs.
+func (e Encoder) does(codec media.Codec, toneMap, burnIn bool) bool {
+	return e.Codec == codec && (e.ToneMap || !toneMap) && (e.BurnIn || !burnIn)
 }
 
 // Target is what the client is sent: a stream it plays as it arrives, or
@@ -376,7 +390,7 @@ func decide(in Input) Decision {
 		if in.Target == TargetFile {
 			d.Delivery = DeliverConversion
 		}
-		d.Tracks = append(d.Tracks, in.decideVideo(targetVideo, direct))
+		d.Tracks = append(d.Tracks, in.decideVideo(targetVideo, direct, targetSub.Delivery == DeliverBurn))
 		if src.Audio != nil {
 			d.Tracks = append(d.Tracks, in.decideAudio(targetAudio, direct))
 		}
@@ -450,7 +464,7 @@ func (in Input) directPlayable(video, audio verdict, sub TrackDecision) verdict 
 	return holds
 }
 
-func (in Input) decideVideo(judged, direct verdict) TrackDecision {
+func (in Input) decideVideo(judged, direct verdict, burnIn bool) TrackDecision {
 	v := in.Source.Video
 	t := TrackDecision{Type: media.Video, Track: v.ID, Index: v.Index, Selected: true, Delivery: DeliverStream}
 	switch {
@@ -469,7 +483,7 @@ func (in Input) decideVideo(judged, direct verdict) TrackDecision {
 	default:
 		t.Reason, t.Unmet = judged.why, judged.unmet
 	}
-	t.Video = in.videoTarget(v.Track)
+	t.Video = in.videoTarget(v.Track, burnIn)
 	t.Codec = t.Video.Codec
 	return t
 }
@@ -502,12 +516,13 @@ func (in Input) deliveredHDR(v media.Track, d Delivery, r *media.VideoRendition)
 const maxTranscodeHeight = 1080
 
 // videoTarget is the rendition a video transcode makes. It's 8-bit SDR
-// H.264, or HEVC when the client plays HEVC and an accelerator encodes it.
-// The picture is scaled down to fit the client and the bitrate, and is at
-// most 1080p.
-func (in Input) videoTarget(v media.Track) *media.VideoRendition {
+// H.264, or HEVC when the client plays HEVC and an encoder makes it with
+// the tone mapping and subtitle drawing the job needs. The picture is
+// scaled down to fit the client's decoder of that codec and the bitrate,
+// and is at most 1080p.
+func (in Input) videoTarget(v media.Track, burnIn bool) *media.VideoRendition {
 	r := &media.VideoRendition{Codec: media.H264, Profile: "high", BitDepth: 8}
-	if slices.Contains(in.Encoders, media.HEVC) && in.playsHEVC() {
+	if slices.ContainsFunc(in.Encoders, func(e Encoder) bool { return e.does(media.HEVC, v.HDR(), burnIn) }) && in.playsHEVC() {
 		r.Codec, r.Profile = media.HEVC, "main"
 	}
 	w, h := v.Width, v.Height

@@ -389,6 +389,26 @@ describe("Library view", () => {
     expect(router.state.location.search).toEqual({});
   });
 
+  it("keeps nothing of a visit from Home's Recently Added, and still opens as last left", async () => {
+    serveMockApi();
+    const { router, user } = renderApp(`${movies}?played=played`);
+    await waitFor(() => expect(lastRules()).toEqual([{ field: "playState", op: "anyOf", values: ["played"] }]));
+
+    await router.navigate({ to: "/" });
+    const heading = await screen.findByRole("heading", { name: "Recently Added in Movies" });
+    await user.click(within(heading.closest("[data-row]") as HTMLElement).getByRole("link", { name: "See all" }));
+    await waitFor(() => expect(router.state.location.search).toEqual({ sort: "addedAt" }));
+    expect(lastBrowse()?.query.sort).toEqual([{ field: "addedAt" }]);
+    // What's chosen during the visit isn't kept either.
+    await user.click(screen.getByRole("button", { name: /Sort/ }));
+    await user.click(await screen.findByRole("option", { name: "Release date" }));
+    await waitFor(() => expect(router.state.location.search).toEqual({ sort: "releaseDate" }));
+
+    await router.navigate({ to: "/" });
+    await router.navigate({ to: "/libraries/$libraryId", params: { libraryId: mockIds.movies } });
+    await waitFor(() => expect(router.state.location.search).toEqual({ played: "played" }));
+  });
+
   it("lists unmatched items in the grid with a badge, and filters to them from Match, with no banner", async () => {
     const api = serveMockApi();
     const { router, user } = renderApp(movies);

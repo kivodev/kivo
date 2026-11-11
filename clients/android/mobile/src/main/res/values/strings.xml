@@ -8,6 +8,7 @@
     <string name="mobile_sign_in_another_device">Sign in with another device</string>
     <string name="mobile_another_device_hint">Approve a code on a device that\'s signed in.</string>
     <string name="mobile_last_signed_in">Last signed in</string>
+    <string name="mobile_identity_changed">This server\'s identity changed. Sign in again if you reinstalled or moved Kivo. If you didn\'t, don\'t.</string>
     <string name="mobile_on_this_network">On this network</string>
     <string name="mobile_looking_for_servers">Looking for servers on this network…</string>
     <string name="mobile_no_servers_found">No servers found. Enter the address, or find it on a signed-in device under Settings › Link a device.</string>
@@ -84,6 +85,8 @@
     <string name="mobile_authors">Authors</string>
     <string name="mobile_series">Series</string>
     <string name="mobile_filter">Filter</string>
+    <!-- The Filter button while any filter is on. -->
+    <string name="mobile_filter_on">Filter, on</string>
     <string name="mobile_remove_filter">Remove filter</string>
     <string name="mobile_clear_filters">Clear filters</string>
     <string name="mobile_show">Show</string>

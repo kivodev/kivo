@@ -10,6 +10,8 @@ import com.mmcdole.kivo.core.downloads.db.DownloadDatabase
 import com.mmcdole.kivo.core.json
 import com.mmcdole.kivo.core.kivoJson
 import com.mmcdole.kivo.core.problem
+import com.mmcdole.kivo.core.TestServerKey
+import com.mmcdole.kivo.core.auth.ServerConnection
 import com.mmcdole.kivo.core.proofOf
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
@@ -162,7 +164,7 @@ class AppStateTest {
     fun aServerThatAnswersAsStartingTriesAgainOpensSignedIn() = appTest { h ->
         h.servers.on("home.test", "GET", "/api/v1/server") {
             if (currentTime < 1500) throw IOException("the network is waking")
-            json(ServerInfo.serializer(), info("server-1", "Basement").copy(proof = proofOf(it, "server-1", h.device.secureStore.values.values)))
+            json(ServerInfo.serializer(), info("server-1", "Basement").copy(proof = proofOf(it, "server-1")))
         }
 
         h.core.start()
@@ -177,6 +179,49 @@ class AppStateTest {
         h.core.start()
 
         assertEquals(AppState.SignedOut(home), h.core.state.first { it is AppState.SignedOut })
+    }
+
+    @Test
+    fun aSessionRevokedWhileTheAppWasClosedSignsInToItsServerAgainAtOnce() = appTest { h ->
+        // Revoked, the session is gone from the server: it still proves itself with its key, and refuses the token.
+        h.servers.on("home.test", "GET", "/api/v1/users/me") { problem(HttpStatusCode.Unauthorized, "unauthorized") }
+        val start = currentTime
+
+        h.core.start()
+
+        assertEquals(AppState.SignedOut(home), h.core.state.first { it is AppState.SignedOut || it is AppState.Unreachable })
+        assertTrue(currentTime - start < 3000, "took ${currentTime - start} ms")
+    }
+
+    @Test
+    fun aSessionRevokedWhileTheAppWasClosedSignsInToItsServerAgainAtOnceOverHttps() = appTest(signedInBefore = null) { h ->
+        val secure = SavedServer("server-1", "Basement", listOf("https://home.test"))
+        h.servers.server("home.test", info("server-1", "Basement"))
+        h.servers.on("home.test", "GET", "/api/v1/users/me") { problem(HttpStatusCode.Unauthorized, "unauthorized") }
+        h.device.signedInTo("server-1")
+        h.core.restore(secure).close()
+        val start = currentTime
+
+        h.core.start()
+
+        assertEquals(AppState.SignedOut(secure), h.core.state.first { it is AppState.SignedOut || it is AppState.Unreachable })
+        assertTrue(currentTime - start < 3000, "took ${currentTime - start} ms")
+    }
+
+    @Test
+    fun aServerThatProvesItselfWithAnotherKeySignsInToItAgainSayingItsIdentityChanged() = appTest { h ->
+        // Set up again, or an impostor: it answers as the server, signed by a key that isn't the one the app keeps.
+        val other = TestServerKey()
+        h.servers.on("home.test", "GET", "/api/v1/server") { json(ServerInfo.serializer(), info("server-1", "Basement").copy(proof = proofOf(it, "server-1", other))) }
+        val before = h.servers.seen.size
+        val start = currentTime
+
+        h.core.start()
+
+        assertEquals(AppState.SignedOut(home, identityChanged = true), h.core.state.first { it is AppState.SignedOut || it is AppState.Unreachable })
+        assertTrue(currentTime - start < 3000, "took ${currentTime - start} ms")
+        assertEquals(listOf(SERVER), h.servers.seen.drop(before).distinct(), "nothing but probes, so nothing carries the token")
+        assertFalse(ServerConnection.holdsSession(h.device.secureStore, "server-1"))
     }
 
     @Test
@@ -299,7 +344,7 @@ class AppStateTest {
             routing {
                 get("/api/v1/server") {
                     val q = call.request.queryParameters
-                    val proof = proofOf(q["challenge"], q["probeId"], call.request.headers[HttpHeaders.Host].orEmpty(), "server-1", listOf("tok"))
+                    val proof = proofOf(q["challenge"], call.request.headers[HttpHeaders.Host].orEmpty(), "server-1")
                     call.respondText(kivoJson.encodeToString(ServerInfo.serializer(), info("server-1", "Basement").copy(proof = proof)), ContentType.Application.Json)
                 }
                 webSocket("/api/v1/events") {

@@ -1,43 +1,46 @@
 package com.mmcdole.kivo.core.auth
 
 import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.cinterop.UByteVar
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.convert
+import kotlinx.cinterop.ptr
 import kotlinx.cinterop.reinterpret
 import kotlinx.cinterop.usePinned
-import platform.CoreCrypto.CCHmac
-import platform.CoreCrypto.CC_SHA256
-import platform.CoreCrypto.CC_SHA256_DIGEST_LENGTH
-import platform.CoreCrypto.kCCHmacAlgSHA256
+import platform.CoreFoundation.CFDataCreate
+import platform.CoreFoundation.CFDataRef
+import platform.CoreFoundation.CFDictionaryAddValue
+import platform.CoreFoundation.CFDictionaryCreateMutable
+import platform.CoreFoundation.CFRelease
+import platform.CoreFoundation.kCFTypeDictionaryKeyCallBacks
+import platform.CoreFoundation.kCFTypeDictionaryValueCallBacks
+import platform.Security.SecKeyCreateWithData
+import platform.Security.SecKeyVerifySignature
 import platform.Security.SecRandomCopyBytes
 import platform.Security.errSecSuccess
+import platform.Security.kSecAttrKeyClass
+import platform.Security.kSecAttrKeyClassPublic
+import platform.Security.kSecAttrKeyType
+import platform.Security.kSecAttrKeyTypeECSECPrimeRandom
+import platform.Security.kSecKeyAlgorithmECDSASignatureMessageX962SHA256
 import platform.Security.kSecRandomDefault
 
 @OptIn(ExperimentalForeignApi::class)
-internal actual fun sha256(data: ByteArray): ByteArray {
-    val out = ByteArray(CC_SHA256_DIGEST_LENGTH)
-    val input = if (data.isEmpty()) ByteArray(1) else data
-    input.usePinned { d ->
-        out.usePinned { o -> CC_SHA256(d.addressOf(0), data.size.convert(), o.addressOf(0).reinterpret<UByteVar>()) }
-    }
-    return out
+internal actual fun verifyP256(publicKey: ByteArray, message: ByteArray, signature: ByteArray): Boolean {
+    val attributes = CFDictionaryCreateMutable(null, 2, kCFTypeDictionaryKeyCallBacks.ptr, kCFTypeDictionaryValueCallBacks.ptr)
+    CFDictionaryAddValue(attributes, kSecAttrKeyType, kSecAttrKeyTypeECSECPrimeRandom)
+    CFDictionaryAddValue(attributes, kSecAttrKeyClass, kSecAttrKeyClassPublic)
+    val keyData = data(publicKey)
+    val messageData = data(message)
+    val signatureData = data(signature)
+    val key = SecKeyCreateWithData(keyData, attributes, null)
+    val verified = key != null && SecKeyVerifySignature(key, kSecKeyAlgorithmECDSASignatureMessageX962SHA256, messageData, signatureData, null)
+    listOfNotNull(attributes, keyData, messageData, signatureData, key).forEach { CFRelease(it) }
+    return verified
 }
 
 @OptIn(ExperimentalForeignApi::class)
-internal actual fun hmacSha256(key: ByteArray, data: ByteArray): ByteArray {
-    val out = ByteArray(CC_SHA256_DIGEST_LENGTH)
-    val k = if (key.isEmpty()) ByteArray(1) else key
-    val input = if (data.isEmpty()) ByteArray(1) else data
-    k.usePinned { kp ->
-        input.usePinned { d ->
-            out.usePinned { o ->
-                CCHmac(kCCHmacAlgSHA256, kp.addressOf(0), key.size.convert(), d.addressOf(0), data.size.convert(), o.addressOf(0))
-            }
-        }
-    }
-    return out
-}
+private fun data(bytes: ByteArray): CFDataRef? =
+    if (bytes.isEmpty()) CFDataCreate(null, null, 0) else bytes.usePinned { CFDataCreate(null, it.addressOf(0).reinterpret(), bytes.size.convert()) }
 
 @OptIn(ExperimentalForeignApi::class)
 internal actual fun secureRandom(size: Int): ByteArray {

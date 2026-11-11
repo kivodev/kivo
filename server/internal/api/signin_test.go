@@ -75,7 +75,8 @@ func TestDeviceCode(t *testing.T) {
 	w = e.do("POST", "/kivo/api/v1/device-codes/poll", "", map[string]any{"secret": secret})
 	s := decode[map[string]any](t, w)
 	token, _ := s["token"].(string)
-	if w.Code != http.StatusCreated || token == "" || s["kind"] != "app" || s["name"] != "Living Room" || platformOf(s) != "androidTv" || len(w.Result().Cookies()) != 0 {
+	if w.Code != http.StatusCreated || token == "" || s["serverKey"] == nil || s["kind"] != "app" || s["name"] != "Living Room" || platformOf(s) != "androidTv" ||
+		len(w.Result().Cookies()) != 0 {
 		t.Fatalf("poll once approved: %d %v", w.Code, s)
 	}
 	if u := decode[map[string]any](t, e.do("GET", "/kivo/api/v1/users/me", token, nil)); u["username"] != "nobody" {
