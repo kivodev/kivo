@@ -4401,23 +4401,24 @@ type ServerProblemList struct {
 }
 
 // ServerProof The server's proof of where the app's probe reached it.
-// `signature` is Ed25519, by the server's identity key, over
-// `kivo-probe-v2`, then the challenge, the server's `id` and `host`,
-// each after its length as two bytes big-endian, then one byte, 1
-// when `local`.
+// `signature` is ECDSA P-256 with SHA-256, by the server's identity
+// key, over `kivo-probe-v2`, then the challenge, the server's `id` and
+// `host`, each after its length as two bytes big-endian, then one
+// byte, 1 when `local`.
 type ServerProof struct {
 	// Host The host the probe reached, as its `Host` header, or a trusted proxy's `X-Forwarded-Host`, names it.
 	Host string `json:"host"`
 
-	// Key The server's Ed25519 public key, base64url without padding,
-	// which an app that has none yet keeps.
+	// Key The server's P-256 public key, the uncompressed X9.63 point
+	// (65 bytes), base64url without padding, which an app that has
+	// none yet keeps.
 	Key string `json:"key"`
 
 	// Local Whether the probe came from a local address, after the trusted
 	// proxies, as the `localNetworks` setting defines one.
 	Local bool `json:"local"`
 
-	// Signature Base64url without padding.
+	// Signature ASN.1 DER, base64url without padding.
 	Signature string `json:"signature"`
 }
 
@@ -4444,9 +4445,10 @@ type Session struct {
 	// Name The client's name, such as "Living Room"; empty when a browser gave none.
 	Name string `json:"name"`
 
-	// ServerKey With `token`: the server's Ed25519 public key, base64url without
-	// padding, made on its first start, which signs its `proof` to a
-	// probe. The app keeps it to check the server by.
+	// ServerKey With `token`: the server's P-256 public key, the uncompressed
+	// X9.63 point (65 bytes), base64url without padding, made on its
+	// first start, which signs its `proof` to a probe. The app keeps
+	// it to check the server by.
 	ServerKey *string `json:"serverKey,omitempty"`
 
 	// Token App sessions only, and only in the response that created the session.

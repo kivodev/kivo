@@ -211,7 +211,7 @@ class AppStateTest {
     @Test
     fun aServerThatProvesItselfWithAnotherKeySignsInToItAgainSayingItsIdentityChanged() = appTest { h ->
         // Set up again, or an impostor: it answers as the server, signed by a key that isn't the one the app keeps.
-        val other = TestServerKey(ByteArray(32) { 7 })
+        val other = TestServerKey()
         h.servers.on("home.test", "GET", "/api/v1/server") { json(ServerInfo.serializer(), info("server-1", "Basement").copy(proof = proofOf(it, "server-1", other))) }
         val before = h.servers.seen.size
         val start = currentTime

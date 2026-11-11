@@ -3,7 +3,10 @@ package api
 import (
 	"bytes"
 	"context"
-	"crypto/ed25519"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
@@ -31,21 +34,28 @@ func signed(challenge []byte, serverID, host string, local bool) []byte {
 }
 
 // serverKey is the server's public key, as the server's settings hold it.
-func serverKey(e *env) ed25519.PublicKey {
-	return e.d.Settings.ServerKey().Public().(ed25519.PublicKey)
+func serverKey(e *env) *ecdsa.PublicKey { return &e.d.Settings.ServerKey().PublicKey }
+
+// verifies reports whether sig is key's signature of msg.
+func verifies(key *ecdsa.PublicKey, msg, sig []byte) bool {
+	digest := sha256.Sum256(msg)
+	return ecdsa.VerifyASN1(key, digest[:], sig)
 }
 
 // proves reports whether p is the server's signature over challenge, its
-// ID, host and local, by its key, and names that key.
+// ID, host and local, by its key, and names that key as an app reads it.
 func proves(t *testing.T, e *env, p *gen.ServerProof, challenge []byte, host string, local bool) bool {
 	t.Helper()
 	sig, err := base64.RawURLEncoding.DecodeString(p.Signature)
 	if err != nil {
 		t.Fatal(err)
 	}
-	key := serverKey(e)
-	return p.Key == base64.RawURLEncoding.EncodeToString(key) &&
-		ed25519.Verify(key, signed(challenge, e.d.Settings.ServerID().String(), host, local), sig)
+	raw, err := base64.RawURLEncoding.DecodeString(p.Key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	key, err := ecdsa.ParseUncompressedPublicKey(elliptic.P256(), raw)
+	return err == nil && key.Equal(serverKey(e)) && verifies(key, signed(challenge, e.d.Settings.ServerID().String(), host, local), sig)
 }
 
 var probeChallenge = []byte("0123456789abcdef0123456789abcdef")
@@ -113,7 +123,7 @@ func TestProbeProofCoversItsClaim(t *testing.T) {
 		t.Fatal(err)
 	}
 	id := e.d.Settings.ServerID().String()
-	if !ed25519.Verify(serverKey(e), signed(probeChallenge, id, "192.168.1.20:8484", true), sig) {
+	if !verifies(serverKey(e), signed(probeChallenge, id, "192.168.1.20:8484", true), sig) {
 		t.Fatal("the proof doesn't verify")
 	}
 	for name, msg := range map[string][]byte{
@@ -122,15 +132,15 @@ func TestProbeProofCoversItsClaim(t *testing.T) {
 		"host":      signed(probeChallenge, id, "192.168.1.21:8484", true),
 		"local":     signed(probeChallenge, id, "192.168.1.20:8484", false),
 	} {
-		if ed25519.Verify(serverKey(e), msg, sig) {
+		if verifies(serverKey(e), msg, sig) {
 			t.Errorf("verifies with another %s", name)
 		}
 	}
-	other, _, err := ed25519.GenerateKey(nil)
+	other, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ed25519.Verify(other, signed(probeChallenge, id, "192.168.1.20:8484", true), sig) {
+	if verifies(&other.PublicKey, signed(probeChallenge, id, "192.168.1.20:8484", true), sig) {
 		t.Error("verifies with another key")
 	}
 }
@@ -221,7 +231,11 @@ func TestProbeWithoutASession(t *testing.T) {
 // browser's doesn't.
 func TestSignInGivesTheServerKey(t *testing.T) {
 	e := newEnv(t, serving{})
-	want := base64.RawURLEncoding.EncodeToString(serverKey(e))
+	raw, err := serverKey(e).Bytes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := base64.RawURLEncoding.EncodeToString(raw)
 	w := e.do("POST", "/api/v1/sessions", "", map[string]string{"username": "admin", "password": adminPassword, "kind": "app"})
 	if s := decode[gen.Session](t, w); w.Code != http.StatusCreated || s.ServerKey == nil || *s.ServerKey != want {
 		t.Errorf("app sign-in: %d %+v", w.Code, s)

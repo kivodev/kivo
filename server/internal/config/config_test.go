@@ -2,7 +2,6 @@ package config
 
 import (
 	"context"
-	"crypto/ed25519"
 	"errors"
 	"net/netip"
 	"os"
@@ -155,7 +154,7 @@ func TestServerIdentityIsMadeOnceAndKept(t *testing.T) {
 	if reopened.ServerID() != s.ServerID() {
 		t.Fatalf("server ID %v after a restart, was %v", reopened.ServerID(), s.ServerID())
 	}
-	if len(s.ServerKey()) != ed25519.PrivateKeySize || !s.ServerKey().Equal(reopened.ServerKey()) {
+	if s.ServerKey() == nil || !s.ServerKey().Equal(reopened.ServerKey()) {
 		t.Fatal("the server key changed across a restart")
 	}
 	other, err := Open(ctx, storetest.New(t), Options{})

@@ -24,6 +24,7 @@ import java.io.IOException
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.Signature
+import java.security.spec.ECGenParameterSpec
 import java.util.Base64
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.coroutines.EmptyCoroutineContext
@@ -52,15 +53,15 @@ private enum class Answer { Server, OtherKey, NoProof, NotLocal, OtherHost }
 
 private fun b64(b: ByteArray) = Base64.getUrlEncoder().withoutPadding().encodeToString(b)
 
-private fun ed25519(): KeyPair = KeyPairGenerator.getInstance("Ed25519").generateKeyPair()
+private fun p256(): KeyPair = KeyPairGenerator.getInstance("EC").apply { initialize(ECGenParameterSpec("secp256r1")) }.generateKeyPair()
 
-/** A key pair's public key as the server gives it: its 32 raw bytes, the end of its X.509 encoding. */
-private fun KeyPair.encoded(): String = b64(public.encoded.takeLast(32).toByteArray())
+/** A key pair's public key as the server gives it: the uncompressed point, the end of its X.509 encoding. */
+private fun KeyPair.encoded(): String = b64(public.encoded.takeLast(65).toByteArray())
 
-private val SERVER = ed25519()
-private val OTHER = ed25519()
+private val SERVER = p256()
+private val OTHER = p256()
 
-/** The server's proof, worked out apart from the app's, with the JDK's Ed25519. */
+/** The server's proof, worked out apart from the app's, with the JDK's ECDSA. */
 private fun proof(key: KeyPair, challenge: ByteArray, host: String, local: Boolean): ServerProof {
     val out = java.io.ByteArrayOutputStream()
     out.write("kivo-probe-v2".toByteArray())
@@ -70,7 +71,7 @@ private fun proof(key: KeyPair, challenge: ByteArray, host: String, local: Boole
         out.write(f)
     }
     out.write(if (local) 1 else 0)
-    val signature = Signature.getInstance("Ed25519").apply { initSign(key.private) }.apply { update(out.toByteArray()) }.sign()
+    val signature = Signature.getInstance("SHA256withECDSA").apply { initSign(key.private) }.apply { update(out.toByteArray()) }.sign()
     return ServerProof(b64(signature), key.encoded(), host, local)
 }
 

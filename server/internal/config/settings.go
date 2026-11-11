@@ -3,7 +3,8 @@ package config
 import (
 	"bytes"
 	"context"
-	"crypto/ed25519"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"encoding/json"
 	"errors"
@@ -182,7 +183,7 @@ func (s Settings) Validate() error {
 }
 
 // serverIDKey and serverKeyKey are the setting table's rows for the
-// server's ID and its identity key's seed. Neither is a setting. Both are
+// server's ID and its identity key's private scalar. Neither is a setting. Both are
 // made on first start and never change.
 const (
 	serverIDKey  = "server_id"
@@ -194,7 +195,7 @@ type Store struct {
 	db       *store.DB
 	q        *dbq.Queries
 	serverID id.ID
-	key      ed25519.PrivateKey
+	key      *ecdsa.PrivateKey
 	cur      atomic.Pointer[Settings]
 	mu       sync.Mutex             // serializes Update
 	changed  func(was, is Settings) // Options.Changed
@@ -261,15 +262,21 @@ func (s *Store) loadIdentity(ctx context.Context) error {
 	if err := s.loadOrMake(ctx, serverIDKey, id.New(), &s.serverID); err != nil {
 		return err
 	}
-	seed := make([]byte, ed25519.SeedSize)
-	rand.Read(seed)
-	if err := s.loadOrMake(ctx, serverKeyKey, seed, &seed); err != nil {
+	made, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
 		return err
 	}
-	if len(seed) != ed25519.SeedSize {
-		return fmt.Errorf("server key: %d bytes, not %d", len(seed), ed25519.SeedSize)
+	scalar, err := made.Bytes()
+	if err != nil {
+		return err
 	}
-	s.key = ed25519.NewKeyFromSeed(seed)
+	if err := s.loadOrMake(ctx, serverKeyKey, scalar, &scalar); err != nil {
+		return err
+	}
+	s.key, err = ecdsa.ParseRawPrivateKey(elliptic.P256(), scalar)
+	if err != nil {
+		return fmt.Errorf("server key: %w", err)
+	}
 	return nil
 }
 
@@ -297,9 +304,10 @@ func (s *Store) loadOrMake(ctx context.Context, key string, made, v any) error {
 // the same across restarts and address changes, and a backup carries it.
 func (s *Store) ServerID() id.ID { return s.serverID }
 
-// ServerKey is the server's identity key, which signs its answer to an
-// app's probe. Like the ID, it stays the same and a backup carries it.
-func (s *Store) ServerKey() ed25519.PrivateKey { return s.key }
+// ServerKey is the server's identity key, an ECDSA P-256 key, which signs
+// its answer to an app's probe. Like the ID, it stays the same and a backup
+// carries it.
+func (s *Store) ServerKey() *ecdsa.PrivateKey { return s.key }
 
 // Get returns the current settings. It never blocks. Treat slices in the
 // result as read-only.

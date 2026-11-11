@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"crypto/ed25519"
 	"encoding/base64"
 	"net/netip"
 
@@ -62,15 +61,21 @@ func (h *handlers) proof(ctx context.Context, p gen.GetServerParams) (*gen.Serve
 		return nil, nil
 	}
 	claim := auth.ProbeClaim{Challenge: challenge, ServerID: h.deps.Settings.ServerID().String(), Host: req.host, Local: h.deps.Settings.Get().IsLocal(req.ip)}
+	sig, err := auth.SignProbe(h.deps.Settings.ServerKey(), claim)
+	if err != nil {
+		return nil, err
+	}
 	return &gen.ServerProof{
-		Signature: base64.RawURLEncoding.EncodeToString(auth.SignProbe(h.deps.Settings.ServerKey(), claim)),
-		Key:       h.serverKey(), Host: claim.Host, Local: claim.Local,
+		Signature: base64.RawURLEncoding.EncodeToString(sig), Key: h.serverKey(), Host: claim.Host, Local: claim.Local,
 	}, nil
 }
 
-// serverKey is the server's public identity key, as an app keeps it.
+// serverKey is the server's public identity key as an app keeps it: the
+// uncompressed X9.63 point, base64url.
 func (h *handlers) serverKey() string {
-	return base64.RawURLEncoding.EncodeToString(h.deps.Settings.ServerKey().Public().(ed25519.PublicKey))
+	// A P-256 public key always encodes.
+	b, _ := h.deps.Settings.ServerKey().PublicKey.Bytes()
+	return base64.RawURLEncoding.EncodeToString(b)
 }
 
 // maxProbeHost is the longest host a proof names, which is a DNS name and

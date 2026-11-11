@@ -2920,17 +2920,18 @@ export interface components {
         };
         /**
          * @description The server's proof of where the app's probe reached it.
-         *     `signature` is Ed25519, by the server's identity key, over
-         *     `kivo-probe-v2`, then the challenge, the server's `id` and `host`,
-         *     each after its length as two bytes big-endian, then one byte, 1
-         *     when `local`.
+         *     `signature` is ECDSA P-256 with SHA-256, by the server's identity
+         *     key, over `kivo-probe-v2`, then the challenge, the server's `id` and
+         *     `host`, each after its length as two bytes big-endian, then one
+         *     byte, 1 when `local`.
          */
         ServerProof: {
-            /** @description Base64url without padding. */
+            /** @description ASN.1 DER, base64url without padding. */
             signature: string;
             /**
-             * @description The server's Ed25519 public key, base64url without padding,
-             *     which an app that has none yet keeps.
+             * @description The server's P-256 public key, the uncompressed X9.63 point
+             *     (65 bytes), base64url without padding, which an app that has
+             *     none yet keeps.
              */
             key: string;
             /** @description The host the probe reached, as its `Host` header, or a trusted proxy's `X-Forwarded-Host`, names it. */
@@ -3157,9 +3158,10 @@ export interface components {
             /** @description App sessions only, and only in the response that created the session. */
             token?: string;
             /**
-             * @description With `token`: the server's Ed25519 public key, base64url without
-             *     padding, made on its first start, which signs its `proof` to a
-             *     probe. The app keeps it to check the server by.
+             * @description With `token`: the server's P-256 public key, the uncompressed
+             *     X9.63 point (65 bytes), base64url without padding, made on its
+             *     first start, which signs its `proof` to a probe. The app keeps
+             *     it to check the server by.
              */
             serverKey?: string;
         };

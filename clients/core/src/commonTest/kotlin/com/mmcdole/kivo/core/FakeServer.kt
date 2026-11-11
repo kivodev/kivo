@@ -4,15 +4,8 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.emptyPreferences
 import com.mmcdole.kivo.api.infrastructure.ApiClient
-import com.mmcdole.kivo.api.models.ServerProof
 import com.mmcdole.kivo.core.auth.ClientIdentity
 import com.mmcdole.kivo.core.auth.NetworkEpoch
-import com.mmcdole.kivo.core.auth.encode
-import com.mmcdole.kivo.core.auth.message
-import com.mmcdole.kivo.core.auth.modL
-import com.mmcdole.kivo.core.auth.reduce
-import com.mmcdole.kivo.core.auth.scalarBase
-import com.mmcdole.kivo.core.auth.sha512
 import com.mmcdole.kivo.core.auth.SecureStore
 import com.mmcdole.kivo.core.auth.ServerConnection
 import io.ktor.client.engine.mock.MockEngine
@@ -32,7 +25,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.KSerializer
 import kotlin.coroutines.EmptyCoroutineContext
-import kotlin.io.encoding.Base64
 import kotlin.time.TimeSource
 
 /** A request the fake server saw. */
@@ -117,49 +109,6 @@ fun MockRequestHandleScope.problem(
 )
 
 fun MockRequestHandleScope.empty(status: HttpStatusCode = HttpStatusCode.NoContent) = respond("", status)
-
-private val base64url = Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT)
-
-/** A server's Ed25519 identity key, from its 32-byte [seed], which signs as RFC 8032 says. */
-internal class TestServerKey(seed: ByteArray) {
-    private val hashed = sha512(seed)
-    private val scalar = hashed.copyOf(32).also {
-        it[0] = (it[0].toInt() and 248).toByte()
-        it[31] = (it[31].toInt() and 127 or 64).toByte()
-    }
-    private val public = encode(scalarBase(scalar))
-
-    /** The public key, as the server gives it. */
-    val encoded: String = base64url.encode(public)
-
-    fun sign(message: ByteArray): ByteArray {
-        val r = sha512(hashed.copyOfRange(32, 64) + message).also(::reduce)
-        val big = encode(scalarBase(r))
-        val h = sha512(big + public + message).also(::reduce)
-        val x = LongArray(64)
-        for (i in 0 until 32) x[i] = r[i].toLong() and 0xff
-        for (i in 0 until 32) for (j in 0 until 32) x[i + j] += (h[i].toLong() and 0xff) * (scalar[j].toLong() and 0xff)
-        return big + ByteArray(32).also { modL(it, x) }
-    }
-}
-
-/** The test server's identity key. */
-internal val SERVER_KEY = TestServerKey(ByteArray(32) { it.toByte() })
-
-/**
- * The proof a server with [key] answers a probe [request] with, as reached
- * at the probed host from a local network; null for a request that isn't a
- * probe.
- */
-internal fun proofOf(request: HttpRequestData, serverId: String, key: TestServerKey = SERVER_KEY): ServerProof? =
-    proofOf(request.url.parameters["challenge"], "${request.url.host}:${request.url.port}", serverId, key)
-
-/** The proof to a probe with [challenge] that reached [host]; null without a challenge. */
-internal fun proofOf(challenge: String?, host: String, serverId: String, key: TestServerKey = SERVER_KEY): ServerProof? {
-    if (challenge == null) return null
-    val signature = key.sign(message(base64url.decode(challenge), serverId, host, local = true))
-    return ServerProof(base64url.encode(signature), key.encoded, host, local = true)
-}
 
 /** A [SecureStore] in memory. */
 class MemoryStore(val values: MutableMap<String, String> = mutableMapOf()) : SecureStore {

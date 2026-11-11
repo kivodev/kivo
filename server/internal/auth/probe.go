@@ -1,7 +1,9 @@
 package auth
 
 import (
-	"crypto/ed25519"
+	"crypto/ecdsa"
+	"crypto/rand"
+	"crypto/sha256"
 	"encoding/binary"
 )
 
@@ -15,11 +17,11 @@ type ProbeClaim struct {
 	Local     bool
 }
 
-// SignProbe is the server's proof of claim: an Ed25519 signature by key
-// over "kivo-probe-v2", then the challenge, server ID and host, each
-// preceded by its length as two big-endian bytes, then one byte, which is 1
-// when local and 0 otherwise.
-func SignProbe(key ed25519.PrivateKey, c ProbeClaim) []byte {
+// SignProbe is the server's proof of claim: an ECDSA P-256 signature by
+// key, with SHA-256 and ASN.1 DER encoded, over "kivo-probe-v2", then the
+// challenge, server ID and host, each preceded by its length as two
+// big-endian bytes, then one byte, which is 1 when local and 0 otherwise.
+func SignProbe(key *ecdsa.PrivateKey, c ProbeClaim) ([]byte, error) {
 	msg := []byte("kivo-probe-v2")
 	for _, f := range [][]byte{c.Challenge, []byte(c.ServerID), []byte(c.Host)} {
 		msg = binary.BigEndian.AppendUint16(msg, uint16(len(f)))
@@ -29,5 +31,6 @@ func SignProbe(key ed25519.PrivateKey, c ProbeClaim) []byte {
 	if c.Local {
 		local = 1
 	}
-	return ed25519.Sign(key, append(msg, local))
+	digest := sha256.Sum256(append(msg, local))
+	return ecdsa.SignASN1(rand.Reader, key, digest[:])
 }

@@ -5,8 +5,9 @@ import io.ktor.http.Url
 import kotlin.io.encoding.Base64
 
 /**
- * The server's identity key, its Ed25519 public key as the app keeps it
- * ([encoded], base64url): what tells the server this app signed in to from
+ * The server's identity key, its ECDSA P-256 public key as the app keeps it
+ * ([encoded]: the uncompressed X9.63 point, base64url): what tells the
+ * server this app signed in to from
  * an impostor at a plain-HTTP address. The server signs its answer to a
  * probe's fresh challenge with it, over its ID, the host the probe reached
  * and whether the probe came from a local network ([signed]). Null for an
@@ -16,11 +17,12 @@ internal class ServerKey private constructor(val encoded: String, private val ke
     /** Whether [proof] is this key's signature of [challenge], [serverId] and the host and locality it names. */
     fun signed(proof: ServerProof?, challenge: ByteArray, serverId: String): Boolean {
         val signature = proof?.let { decode(it.signature) } ?: return false
-        return ed25519Verify(key, message(challenge, serverId, proof.host, proof.local), signature)
+        return verifyP256(key, message(challenge, serverId, proof.host, proof.local), signature)
     }
 
     companion object {
-        fun of(encoded: String?): ServerKey? = encoded?.let(::decode)?.takeIf { it.size == 32 }?.let { ServerKey(encoded, it) }
+        fun of(encoded: String?): ServerKey? =
+            encoded?.let(::decode)?.takeIf { it.size == POINT_BYTES && it[0] == UNCOMPRESSED }?.let { ServerKey(encoded, it) }
 
         /** A new challenge for one probe, and how the probe sends it. */
         fun challenge(): Pair<ByteArray, String> = secureRandom(CHALLENGE_BYTES).let { it to base64url.encode(it) }
@@ -36,6 +38,10 @@ private fun decode(text: String): ByteArray? = try {
 }
 
 private const val CHALLENGE_BYTES = 32
+
+/** An uncompressed P-256 point: its tag, then x and y. */
+private const val POINT_BYTES = 65
+private const val UNCOMPRESSED: Byte = 4
 
 /**
  * What the server's signature covers: "kivo-probe-v2", then the challenge,
