@@ -660,6 +660,58 @@ public final class com/mmcdole/kivo/core/data/DynamicRange$Companion {
 	public final fun of (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/DynamicRange;
 }
 
+public abstract class com/mmcdole/kivo/core/data/GridItem {
+	public abstract fun getId ()Ljava/lang/String;
+}
+
+public final class com/mmcdole/kivo/core/data/GridItem$Author : com/mmcdole/kivo/core/data/GridItem {
+	public fun <init> (Lcom/mmcdole/kivo/api/models/PersonSummary;)V
+	public final fun component1 ()Lcom/mmcdole/kivo/api/models/PersonSummary;
+	public final fun copy (Lcom/mmcdole/kivo/api/models/PersonSummary;)Lcom/mmcdole/kivo/core/data/GridItem$Author;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/data/GridItem$Author;Lcom/mmcdole/kivo/api/models/PersonSummary;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/GridItem$Author;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAuthor ()Lcom/mmcdole/kivo/api/models/PersonSummary;
+	public fun getId ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/mmcdole/kivo/core/data/GridItem$BookSeries : com/mmcdole/kivo/core/data/GridItem {
+	public fun <init> (Lcom/mmcdole/kivo/api/models/BookSeriesSummary;)V
+	public final fun component1 ()Lcom/mmcdole/kivo/api/models/BookSeriesSummary;
+	public final fun copy (Lcom/mmcdole/kivo/api/models/BookSeriesSummary;)Lcom/mmcdole/kivo/core/data/GridItem$BookSeries;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/data/GridItem$BookSeries;Lcom/mmcdole/kivo/api/models/BookSeriesSummary;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/GridItem$BookSeries;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getId ()Ljava/lang/String;
+	public final fun getSeries ()Lcom/mmcdole/kivo/api/models/BookSeriesSummary;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/mmcdole/kivo/core/data/GridItem$Collection : com/mmcdole/kivo/core/data/GridItem {
+	public fun <init> (Lcom/mmcdole/kivo/api/models/CollectionSummary;)V
+	public final fun component1 ()Lcom/mmcdole/kivo/api/models/CollectionSummary;
+	public final fun copy (Lcom/mmcdole/kivo/api/models/CollectionSummary;)Lcom/mmcdole/kivo/core/data/GridItem$Collection;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/data/GridItem$Collection;Lcom/mmcdole/kivo/api/models/CollectionSummary;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/GridItem$Collection;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCollection ()Lcom/mmcdole/kivo/api/models/CollectionSummary;
+	public fun getId ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/mmcdole/kivo/core/data/GridItem$Work : com/mmcdole/kivo/core/data/GridItem {
+	public fun <init> (Lcom/mmcdole/kivo/api/models/WorkSummary;)V
+	public final fun component1 ()Lcom/mmcdole/kivo/api/models/WorkSummary;
+	public final fun copy (Lcom/mmcdole/kivo/api/models/WorkSummary;)Lcom/mmcdole/kivo/core/data/GridItem$Work;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/data/GridItem$Work;Lcom/mmcdole/kivo/api/models/WorkSummary;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/GridItem$Work;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getId ()Ljava/lang/String;
+	public final fun getWork ()Lcom/mmcdole/kivo/api/models/WorkSummary;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public final class com/mmcdole/kivo/core/data/GridPager {
 	public final fun close ()V
 	public final fun getState ()Lkotlinx/coroutines/flow/StateFlow;
@@ -674,7 +726,7 @@ public final class com/mmcdole/kivo/core/data/GridPages {
 	public final fun getPages ()Ljava/util/Map;
 	public final fun getProblem ()Lcom/mmcdole/kivo/core/RequestProblem;
 	public final fun getTotal ()Ljava/lang/Integer;
-	public final fun item (I)Ljava/lang/Object;
+	public final fun item (I)Lcom/mmcdole/kivo/core/data/GridItem;
 	public final fun items (I)Ljava/util/List;
 	public final fun letterAt (I)Ljava/lang/String;
 	public final fun letterOffset (Ljava/lang/String;)I
@@ -1978,11 +2030,16 @@ public final class com/mmcdole/kivo/core/session/SessionLibrary {
 	public final fun lists (Z)Lkotlinx/coroutines/flow/Flow;
 	public static synthetic fun lists$default (Lcom/mmcdole/kivo/core/session/SessionLibrary;ZILjava/lang/Object;)Lkotlinx/coroutines/flow/Flow;
 	public final fun moveInList (Ljava/lang/String;Ljava/util/List;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
-	public final fun pagedAuthors (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/GridPager;
-	public final fun pagedBookSeries (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/GridPager;
-	public final fun pagedCollections (Ljava/lang/String;)Lcom/mmcdole/kivo/core/data/GridPager;
-	public final fun pagedListWorks (Ljava/lang/String;Ljava/util/List;)Lcom/mmcdole/kivo/core/data/GridPager;
-	public final fun pagedWorks (Lcom/mmcdole/kivo/core/data/GridQuery;)Lcom/mmcdole/kivo/core/data/GridPager;
+	public final fun pagedAuthors (Ljava/lang/String;J)Lcom/mmcdole/kivo/core/data/GridPager;
+	public static synthetic fun pagedAuthors$default (Lcom/mmcdole/kivo/core/session/SessionLibrary;Ljava/lang/String;JILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/GridPager;
+	public final fun pagedBookSeries (Ljava/lang/String;J)Lcom/mmcdole/kivo/core/data/GridPager;
+	public static synthetic fun pagedBookSeries$default (Lcom/mmcdole/kivo/core/session/SessionLibrary;Ljava/lang/String;JILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/GridPager;
+	public final fun pagedCollections (Ljava/lang/String;J)Lcom/mmcdole/kivo/core/data/GridPager;
+	public static synthetic fun pagedCollections$default (Lcom/mmcdole/kivo/core/session/SessionLibrary;Ljava/lang/String;JILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/GridPager;
+	public final fun pagedListWorks (Ljava/lang/String;Ljava/util/List;J)Lcom/mmcdole/kivo/core/data/GridPager;
+	public static synthetic fun pagedListWorks$default (Lcom/mmcdole/kivo/core/session/SessionLibrary;Ljava/lang/String;Ljava/util/List;JILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/GridPager;
+	public final fun pagedWorks (Lcom/mmcdole/kivo/core/data/GridQuery;J)Lcom/mmcdole/kivo/core/data/GridPager;
+	public static synthetic fun pagedWorks$default (Lcom/mmcdole/kivo/core/session/SessionLibrary;Lcom/mmcdole/kivo/core/data/GridQuery;JILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/GridPager;
 	public final fun person (Ljava/lang/String;)Lkotlinx/coroutines/flow/Flow;
 	public final fun removeFromContinue (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun removeFromList (Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;

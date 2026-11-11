@@ -762,38 +762,6 @@ sealed interface com.mmcdole.kivo.core/Compatibility { // com.mmcdole.kivo.core/
     }
 }
 
-final class <#A: kotlin/Any> com.mmcdole.kivo.core.data/GridPager { // com.mmcdole.kivo.core.data/GridPager|null[0]
-    final val state // com.mmcdole.kivo.core.data/GridPager.state|{}state[0]
-        final fun <get-state>(): kotlinx.coroutines.flow/StateFlow<com.mmcdole.kivo.core.data/GridPages<#A>> // com.mmcdole.kivo.core.data/GridPager.state.<get-state>|<get-state>(){}[0]
-
-    final fun close() // com.mmcdole.kivo.core.data/GridPager.close|close(){}[0]
-    final fun load(kotlin/Int, kotlin/Int) // com.mmcdole.kivo.core.data/GridPager.load|load(kotlin.Int;kotlin.Int){}[0]
-    final suspend fun refresh() // com.mmcdole.kivo.core.data/GridPager.refresh|refresh(){}[0]
-}
-
-final class <#A: kotlin/Any> com.mmcdole.kivo.core.data/GridPages { // com.mmcdole.kivo.core.data/GridPages|null[0]
-    final val letters // com.mmcdole.kivo.core.data/GridPages.letters|{}letters[0]
-        final fun <get-letters>(): kotlin.collections/List<com.mmcdole.kivo.api.models/LetterStart> // com.mmcdole.kivo.core.data/GridPages.letters.<get-letters>|<get-letters>(){}[0]
-    final val pageSize // com.mmcdole.kivo.core.data/GridPages.pageSize|{}pageSize[0]
-        final fun <get-pageSize>(): kotlin/Int // com.mmcdole.kivo.core.data/GridPages.pageSize.<get-pageSize>|<get-pageSize>(){}[0]
-    final val pages // com.mmcdole.kivo.core.data/GridPages.pages|{}pages[0]
-        final fun <get-pages>(): kotlin.collections/Map<kotlin/Int, com.mmcdole.kivo.core/Load<kotlin.collections/List<#A>>> // com.mmcdole.kivo.core.data/GridPages.pages.<get-pages>|<get-pages>(){}[0]
-    final val problem // com.mmcdole.kivo.core.data/GridPages.problem|{}problem[0]
-        final fun <get-problem>(): com.mmcdole.kivo.core/RequestProblem? // com.mmcdole.kivo.core.data/GridPages.problem.<get-problem>|<get-problem>(){}[0]
-    final val total // com.mmcdole.kivo.core.data/GridPages.total|{}total[0]
-        final fun <get-total>(): kotlin/Int? // com.mmcdole.kivo.core.data/GridPages.total.<get-total>|<get-total>(){}[0]
-
-    final fun item(kotlin/Int): #A? // com.mmcdole.kivo.core.data/GridPages.item|item(kotlin.Int){}[0]
-    final fun items(kotlin/Int): kotlin.collections/List<#A>? // com.mmcdole.kivo.core.data/GridPages.items|items(kotlin.Int){}[0]
-    final fun letterAt(kotlin/Int): kotlin/String? // com.mmcdole.kivo.core.data/GridPages.letterAt|letterAt(kotlin.Int){}[0]
-    final fun letterOffset(kotlin/String): kotlin/Int // com.mmcdole.kivo.core.data/GridPages.letterOffset|letterOffset(kotlin.String){}[0]
-
-    final object Companion { // com.mmcdole.kivo.core.data/GridPages.Companion|null[0]
-        final val RAIL_LETTERS // com.mmcdole.kivo.core.data/GridPages.Companion.RAIL_LETTERS|{}RAIL_LETTERS[0]
-            final fun <get-RAIL_LETTERS>(): kotlin.collections/List<kotlin/String> // com.mmcdole.kivo.core.data/GridPages.Companion.RAIL_LETTERS.<get-RAIL_LETTERS>|<get-RAIL_LETTERS>(){}[0]
-    }
-}
-
 final class com.mmcdole.kivo.core.apple/AppleDevice : com.mmcdole.kivo.core.session/Device { // com.mmcdole.kivo.core.apple/AppleDevice|null[0]
     constructor <init>(kotlin/String, kotlin/String, com.mmcdole.kivo.core.auth/ClientIdentity, kotlin/String?, kotlin.collections/List<com.mmcdole.kivo.api.models/SubtitleEntry>, kotlin/Boolean, com.mmcdole.kivo.core.downloads/DownloadTransport) // com.mmcdole.kivo.core.apple/AppleDevice.<init>|<init>(kotlin.String;kotlin.String;com.mmcdole.kivo.core.auth.ClientIdentity;kotlin.String?;kotlin.collections.List<com.mmcdole.kivo.api.models.SubtitleEntry>;kotlin.Boolean;com.mmcdole.kivo.core.downloads.DownloadTransport){}[0]
 
@@ -1234,6 +1202,38 @@ final class com.mmcdole.kivo.core.cast/CastStatus { // com.mmcdole.kivo.core.cas
             final fun <get-ERROR_UNREACHABLE>(): kotlin/String // com.mmcdole.kivo.core.cast/CastStatus.Companion.ERROR_UNREACHABLE.<get-ERROR_UNREACHABLE>|<get-ERROR_UNREACHABLE>(){}[0]
 
         final fun parseOrNull(kotlin/String): com.mmcdole.kivo.core.cast/CastStatus? // com.mmcdole.kivo.core.cast/CastStatus.Companion.parseOrNull|parseOrNull(kotlin.String){}[0]
+    }
+}
+
+final class com.mmcdole.kivo.core.data/GridPager { // com.mmcdole.kivo.core.data/GridPager|null[0]
+    final val state // com.mmcdole.kivo.core.data/GridPager.state|{}state[0]
+        final fun <get-state>(): kotlinx.coroutines.flow/StateFlow<com.mmcdole.kivo.core.data/GridPages> // com.mmcdole.kivo.core.data/GridPager.state.<get-state>|<get-state>(){}[0]
+
+    final fun close() // com.mmcdole.kivo.core.data/GridPager.close|close(){}[0]
+    final fun load(kotlin/Int, kotlin/Int) // com.mmcdole.kivo.core.data/GridPager.load|load(kotlin.Int;kotlin.Int){}[0]
+    final suspend fun refresh() // com.mmcdole.kivo.core.data/GridPager.refresh|refresh(){}[0]
+}
+
+final class com.mmcdole.kivo.core.data/GridPages { // com.mmcdole.kivo.core.data/GridPages|null[0]
+    final val letters // com.mmcdole.kivo.core.data/GridPages.letters|{}letters[0]
+        final fun <get-letters>(): kotlin.collections/List<com.mmcdole.kivo.api.models/LetterStart> // com.mmcdole.kivo.core.data/GridPages.letters.<get-letters>|<get-letters>(){}[0]
+    final val pageSize // com.mmcdole.kivo.core.data/GridPages.pageSize|{}pageSize[0]
+        final fun <get-pageSize>(): kotlin/Int // com.mmcdole.kivo.core.data/GridPages.pageSize.<get-pageSize>|<get-pageSize>(){}[0]
+    final val pages // com.mmcdole.kivo.core.data/GridPages.pages|{}pages[0]
+        final fun <get-pages>(): kotlin.collections/Map<kotlin/Int, com.mmcdole.kivo.core/Load<kotlin.collections/List<com.mmcdole.kivo.core.data/GridItem>>> // com.mmcdole.kivo.core.data/GridPages.pages.<get-pages>|<get-pages>(){}[0]
+    final val problem // com.mmcdole.kivo.core.data/GridPages.problem|{}problem[0]
+        final fun <get-problem>(): com.mmcdole.kivo.core/RequestProblem? // com.mmcdole.kivo.core.data/GridPages.problem.<get-problem>|<get-problem>(){}[0]
+    final val total // com.mmcdole.kivo.core.data/GridPages.total|{}total[0]
+        final fun <get-total>(): kotlin/Int? // com.mmcdole.kivo.core.data/GridPages.total.<get-total>|<get-total>(){}[0]
+
+    final fun item(kotlin/Int): com.mmcdole.kivo.core.data/GridItem? // com.mmcdole.kivo.core.data/GridPages.item|item(kotlin.Int){}[0]
+    final fun items(kotlin/Int): kotlin.collections/List<com.mmcdole.kivo.core.data/GridItem>? // com.mmcdole.kivo.core.data/GridPages.items|items(kotlin.Int){}[0]
+    final fun letterAt(kotlin/Int): kotlin/String? // com.mmcdole.kivo.core.data/GridPages.letterAt|letterAt(kotlin.Int){}[0]
+    final fun letterOffset(kotlin/String): kotlin/Int // com.mmcdole.kivo.core.data/GridPages.letterOffset|letterOffset(kotlin.String){}[0]
+
+    final object Companion { // com.mmcdole.kivo.core.data/GridPages.Companion|null[0]
+        final val RAIL_LETTERS // com.mmcdole.kivo.core.data/GridPages.Companion.RAIL_LETTERS|{}RAIL_LETTERS[0]
+            final fun <get-RAIL_LETTERS>(): kotlin.collections/List<kotlin/String> // com.mmcdole.kivo.core.data/GridPages.Companion.RAIL_LETTERS.<get-RAIL_LETTERS>|<get-RAIL_LETTERS>(){}[0]
     }
 }
 
@@ -2081,11 +2081,11 @@ final class com.mmcdole.kivo.core.session/SessionLibrary { // com.mmcdole.kivo.c
     final fun knownPerson(kotlin/String): com.mmcdole.kivo.core.data/Heading? // com.mmcdole.kivo.core.session/SessionLibrary.knownPerson|knownPerson(kotlin.String){}[0]
     final fun libraries(): kotlinx.coroutines.flow/Flow<com.mmcdole.kivo.core/Load<kotlin.collections/List<com.mmcdole.kivo.api.models/Library>>> // com.mmcdole.kivo.core.session/SessionLibrary.libraries|libraries(){}[0]
     final fun lists(kotlin/Boolean = ...): kotlinx.coroutines.flow/Flow<com.mmcdole.kivo.core/Load<kotlin.collections/List<com.mmcdole.kivo.api.models/WorkList>>> // com.mmcdole.kivo.core.session/SessionLibrary.lists|lists(kotlin.Boolean){}[0]
-    final fun pagedAuthors(kotlin/String): com.mmcdole.kivo.core.data/GridPager<com.mmcdole.kivo.api.models/PersonSummary> // com.mmcdole.kivo.core.session/SessionLibrary.pagedAuthors|pagedAuthors(kotlin.String){}[0]
-    final fun pagedBookSeries(kotlin/String): com.mmcdole.kivo.core.data/GridPager<com.mmcdole.kivo.api.models/BookSeriesSummary> // com.mmcdole.kivo.core.session/SessionLibrary.pagedBookSeries|pagedBookSeries(kotlin.String){}[0]
-    final fun pagedCollections(kotlin/String): com.mmcdole.kivo.core.data/GridPager<com.mmcdole.kivo.api.models/CollectionSummary> // com.mmcdole.kivo.core.session/SessionLibrary.pagedCollections|pagedCollections(kotlin.String){}[0]
-    final fun pagedListWorks(kotlin/String, kotlin.collections/List<com.mmcdole.kivo.api.models/WorkKind>?): com.mmcdole.kivo.core.data/GridPager<com.mmcdole.kivo.api.models/WorkSummary> // com.mmcdole.kivo.core.session/SessionLibrary.pagedListWorks|pagedListWorks(kotlin.String;kotlin.collections.List<com.mmcdole.kivo.api.models.WorkKind>?){}[0]
-    final fun pagedWorks(com.mmcdole.kivo.core.data/GridQuery): com.mmcdole.kivo.core.data/GridPager<com.mmcdole.kivo.api.models/WorkSummary> // com.mmcdole.kivo.core.session/SessionLibrary.pagedWorks|pagedWorks(com.mmcdole.kivo.core.data.GridQuery){}[0]
+    final fun pagedAuthors(kotlin/String, kotlin/Long = ...): com.mmcdole.kivo.core.data/GridPager // com.mmcdole.kivo.core.session/SessionLibrary.pagedAuthors|pagedAuthors(kotlin.String;kotlin.Long){}[0]
+    final fun pagedBookSeries(kotlin/String, kotlin/Long = ...): com.mmcdole.kivo.core.data/GridPager // com.mmcdole.kivo.core.session/SessionLibrary.pagedBookSeries|pagedBookSeries(kotlin.String;kotlin.Long){}[0]
+    final fun pagedCollections(kotlin/String, kotlin/Long = ...): com.mmcdole.kivo.core.data/GridPager // com.mmcdole.kivo.core.session/SessionLibrary.pagedCollections|pagedCollections(kotlin.String;kotlin.Long){}[0]
+    final fun pagedListWorks(kotlin/String, kotlin.collections/List<com.mmcdole.kivo.api.models/WorkKind>?, kotlin/Long = ...): com.mmcdole.kivo.core.data/GridPager // com.mmcdole.kivo.core.session/SessionLibrary.pagedListWorks|pagedListWorks(kotlin.String;kotlin.collections.List<com.mmcdole.kivo.api.models.WorkKind>?;kotlin.Long){}[0]
+    final fun pagedWorks(com.mmcdole.kivo.core.data/GridQuery, kotlin/Long = ...): com.mmcdole.kivo.core.data/GridPager // com.mmcdole.kivo.core.session/SessionLibrary.pagedWorks|pagedWorks(com.mmcdole.kivo.core.data.GridQuery;kotlin.Long){}[0]
     final fun person(kotlin/String): kotlinx.coroutines.flow/Flow<com.mmcdole.kivo.core/Load<com.mmcdole.kivo.api.models/Person>> // com.mmcdole.kivo.core.session/SessionLibrary.person|person(kotlin.String){}[0]
     final fun rereadLibraries() // com.mmcdole.kivo.core.session/SessionLibrary.rereadLibraries|rereadLibraries(){}[0]
     final fun work(kotlin/String): kotlinx.coroutines.flow/Flow<com.mmcdole.kivo.core/Load<com.mmcdole.kivo.api.models/WorkDetail>> // com.mmcdole.kivo.core.session/SessionLibrary.work|work(kotlin.String){}[0]
@@ -2302,6 +2302,71 @@ sealed class com.mmcdole.kivo.core.books/SleepState { // com.mmcdole.kivo.core.b
         final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.books/SleepState.Off.equals|equals(kotlin.Any?){}[0]
         final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.books/SleepState.Off.hashCode|hashCode(){}[0]
         final fun toString(): kotlin/String // com.mmcdole.kivo.core.books/SleepState.Off.toString|toString(){}[0]
+    }
+}
+
+sealed class com.mmcdole.kivo.core.data/GridItem { // com.mmcdole.kivo.core.data/GridItem|null[0]
+    abstract val id // com.mmcdole.kivo.core.data/GridItem.id|{}id[0]
+        abstract fun <get-id>(): kotlin/String // com.mmcdole.kivo.core.data/GridItem.id.<get-id>|<get-id>(){}[0]
+
+    final class Author : com.mmcdole.kivo.core.data/GridItem { // com.mmcdole.kivo.core.data/GridItem.Author|null[0]
+        constructor <init>(com.mmcdole.kivo.api.models/PersonSummary) // com.mmcdole.kivo.core.data/GridItem.Author.<init>|<init>(com.mmcdole.kivo.api.models.PersonSummary){}[0]
+
+        final val author // com.mmcdole.kivo.core.data/GridItem.Author.author|{}author[0]
+            final fun <get-author>(): com.mmcdole.kivo.api.models/PersonSummary // com.mmcdole.kivo.core.data/GridItem.Author.author.<get-author>|<get-author>(){}[0]
+        final val id // com.mmcdole.kivo.core.data/GridItem.Author.id|{}id[0]
+            final fun <get-id>(): kotlin/String // com.mmcdole.kivo.core.data/GridItem.Author.id.<get-id>|<get-id>(){}[0]
+
+        final fun component1(): com.mmcdole.kivo.api.models/PersonSummary // com.mmcdole.kivo.core.data/GridItem.Author.component1|component1(){}[0]
+        final fun copy(com.mmcdole.kivo.api.models/PersonSummary = ...): com.mmcdole.kivo.core.data/GridItem.Author // com.mmcdole.kivo.core.data/GridItem.Author.copy|copy(com.mmcdole.kivo.api.models.PersonSummary){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.data/GridItem.Author.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.data/GridItem.Author.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.mmcdole.kivo.core.data/GridItem.Author.toString|toString(){}[0]
+    }
+
+    final class BookSeries : com.mmcdole.kivo.core.data/GridItem { // com.mmcdole.kivo.core.data/GridItem.BookSeries|null[0]
+        constructor <init>(com.mmcdole.kivo.api.models/BookSeriesSummary) // com.mmcdole.kivo.core.data/GridItem.BookSeries.<init>|<init>(com.mmcdole.kivo.api.models.BookSeriesSummary){}[0]
+
+        final val id // com.mmcdole.kivo.core.data/GridItem.BookSeries.id|{}id[0]
+            final fun <get-id>(): kotlin/String // com.mmcdole.kivo.core.data/GridItem.BookSeries.id.<get-id>|<get-id>(){}[0]
+        final val series // com.mmcdole.kivo.core.data/GridItem.BookSeries.series|{}series[0]
+            final fun <get-series>(): com.mmcdole.kivo.api.models/BookSeriesSummary // com.mmcdole.kivo.core.data/GridItem.BookSeries.series.<get-series>|<get-series>(){}[0]
+
+        final fun component1(): com.mmcdole.kivo.api.models/BookSeriesSummary // com.mmcdole.kivo.core.data/GridItem.BookSeries.component1|component1(){}[0]
+        final fun copy(com.mmcdole.kivo.api.models/BookSeriesSummary = ...): com.mmcdole.kivo.core.data/GridItem.BookSeries // com.mmcdole.kivo.core.data/GridItem.BookSeries.copy|copy(com.mmcdole.kivo.api.models.BookSeriesSummary){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.data/GridItem.BookSeries.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.data/GridItem.BookSeries.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.mmcdole.kivo.core.data/GridItem.BookSeries.toString|toString(){}[0]
+    }
+
+    final class Collection : com.mmcdole.kivo.core.data/GridItem { // com.mmcdole.kivo.core.data/GridItem.Collection|null[0]
+        constructor <init>(com.mmcdole.kivo.api.models/CollectionSummary) // com.mmcdole.kivo.core.data/GridItem.Collection.<init>|<init>(com.mmcdole.kivo.api.models.CollectionSummary){}[0]
+
+        final val collection // com.mmcdole.kivo.core.data/GridItem.Collection.collection|{}collection[0]
+            final fun <get-collection>(): com.mmcdole.kivo.api.models/CollectionSummary // com.mmcdole.kivo.core.data/GridItem.Collection.collection.<get-collection>|<get-collection>(){}[0]
+        final val id // com.mmcdole.kivo.core.data/GridItem.Collection.id|{}id[0]
+            final fun <get-id>(): kotlin/String // com.mmcdole.kivo.core.data/GridItem.Collection.id.<get-id>|<get-id>(){}[0]
+
+        final fun component1(): com.mmcdole.kivo.api.models/CollectionSummary // com.mmcdole.kivo.core.data/GridItem.Collection.component1|component1(){}[0]
+        final fun copy(com.mmcdole.kivo.api.models/CollectionSummary = ...): com.mmcdole.kivo.core.data/GridItem.Collection // com.mmcdole.kivo.core.data/GridItem.Collection.copy|copy(com.mmcdole.kivo.api.models.CollectionSummary){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.data/GridItem.Collection.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.data/GridItem.Collection.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.mmcdole.kivo.core.data/GridItem.Collection.toString|toString(){}[0]
+    }
+
+    final class Work : com.mmcdole.kivo.core.data/GridItem { // com.mmcdole.kivo.core.data/GridItem.Work|null[0]
+        constructor <init>(com.mmcdole.kivo.api.models/WorkSummary) // com.mmcdole.kivo.core.data/GridItem.Work.<init>|<init>(com.mmcdole.kivo.api.models.WorkSummary){}[0]
+
+        final val id // com.mmcdole.kivo.core.data/GridItem.Work.id|{}id[0]
+            final fun <get-id>(): kotlin/String // com.mmcdole.kivo.core.data/GridItem.Work.id.<get-id>|<get-id>(){}[0]
+        final val work // com.mmcdole.kivo.core.data/GridItem.Work.work|{}work[0]
+            final fun <get-work>(): com.mmcdole.kivo.api.models/WorkSummary // com.mmcdole.kivo.core.data/GridItem.Work.work.<get-work>|<get-work>(){}[0]
+
+        final fun component1(): com.mmcdole.kivo.api.models/WorkSummary // com.mmcdole.kivo.core.data/GridItem.Work.component1|component1(){}[0]
+        final fun copy(com.mmcdole.kivo.api.models/WorkSummary = ...): com.mmcdole.kivo.core.data/GridItem.Work // com.mmcdole.kivo.core.data/GridItem.Work.copy|copy(com.mmcdole.kivo.api.models.WorkSummary){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.data/GridItem.Work.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.data/GridItem.Work.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.mmcdole.kivo.core.data/GridItem.Work.toString|toString(){}[0]
     }
 }
 
