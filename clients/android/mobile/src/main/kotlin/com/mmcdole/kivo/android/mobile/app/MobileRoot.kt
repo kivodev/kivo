@@ -1,6 +1,5 @@
 package com.mmcdole.kivo.android.mobile.app
 
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -41,10 +40,8 @@ fun MobileRoot(graph: AppGraph) {
                 AppState.Starting -> Loading()
                 is AppState.SignedOut -> ViewModels(s) { SignInScreen(graph, s.server, s.identityChanged) }
                 is AppState.Unreachable -> Message(stringResource(R.string.mobile_cant_reach, s.server.name), stringResource(R.string.mobile_cant_reach_saved_sentence)) {
-                    Column {
-                        Button(onClick = graph.core::retry) { Text(stringResource(R.string.mobile_retry)) }
-                        OutlinedButton(onClick = graph::changeServer) { Text(stringResource(R.string.mobile_change_server)) }
-                    }
+                    Button(onClick = graph.core::retry) { Text(stringResource(R.string.mobile_retry)) }
+                    OutlinedButton(onClick = graph::changeServer) { Text(stringResource(R.string.mobile_change_server)) }
                 }
                 is AppState.SignedIn -> when (val signedIn = session?.takeIf { it.session === s.session }) {
                     null -> Loading()
