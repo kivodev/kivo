@@ -700,7 +700,6 @@ private fun LazyListScope.extraRows(work: WorkDetail, memory: FocusMemory, navig
                     { navigator.push(Screen.Work(w.id)) },
                     Modifier.focusKey(memory, "row/${w.id}"),
                     mark = w.durationMs?.let { display.clock(it.toLong()) },
-                    caption = stringResource(R.string.in_your_library),
                 )
             }
             items(online, key = { it.id }) { trailer ->

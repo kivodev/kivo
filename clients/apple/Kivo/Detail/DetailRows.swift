@@ -74,8 +74,7 @@ struct TrailersRow: View {
                                     trailer,
                                     style: .landscape,
                                     width: width,
-                                    mark: trailer.durationMs.map { Display.app.clock(ms: $0.int64Value) },
-                                    detail: String(localized: "In your library")
+                                    mark: trailer.durationMs.map { Display.app.clock(ms: $0.int64Value) }
                                 )
                             }
                         }

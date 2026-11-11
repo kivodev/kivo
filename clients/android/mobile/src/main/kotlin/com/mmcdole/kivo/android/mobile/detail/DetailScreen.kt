@@ -786,7 +786,7 @@ private fun TrailersRow(local: List<WorkSummary>, online: List<Trailer>, nav: Mo
                     image = cardImage(work, CardShape.Landscape),
                     mark = work.durationMs?.let { display.clock(it.toLong()) },
                     markAt = Alignment.BottomEnd,
-                    detail = stringResource(R.string.mobile_in_your_library),
+                    opens = null,
                     onClick = { nav.openWork(work) },
                     onLongClick = { openMenu(WorkMenu(work)) },
                 )
@@ -797,7 +797,7 @@ private fun TrailersRow(local: List<WorkSummary>, online: List<Trailer>, nav: Mo
                     image = trailer.image,
                     mark = "YouTube ↗",
                     markAt = Alignment.BottomStart,
-                    detail = stringResource(R.string.mobile_opens_in_youtube),
+                    opens = stringResource(R.string.mobile_opens_in_youtube),
                     onClick = { uris.openUri(trailer.url) },
                     onLongClick = null,
                 )
@@ -806,9 +806,12 @@ private fun TrailersRow(local: List<WorkSummary>, online: List<Trailer>, nav: Mo
     }
 }
 
-/** A trailer's card: its frame with [mark] on it, such as its running time, then its title and [detail]. */
+/**
+ * A trailer's card: its frame with [mark] on it, such as its running time, then its title. [opens], where it opens, is
+ * read out with the title.
+ */
 @Composable
-private fun TrailerCard(title: String, image: ImageRef?, mark: String?, markAt: Alignment, detail: String, onClick: () -> Unit, onLongClick: (() -> Unit)?) {
+private fun TrailerCard(title: String, image: ImageRef?, mark: String?, markAt: Alignment, opens: String?, onClick: () -> Unit, onLongClick: (() -> Unit)?) {
     val width = rowCardWidth(CardShape.Landscape)
     Column(Modifier.width(width)) {
         Box(
@@ -817,7 +820,7 @@ private fun TrailerCard(title: String, image: ImageRef?, mark: String?, markAt: 
                 .aspectRatio(CardShape.Landscape.aspect)
                 .clip(CardCorners)
                 .tapAndHold(onClick, onLongClick)
-                .semantics { contentDescription = listOfNotNull(title, mark, detail).joinToString(", ") }
+                .semantics { contentDescription = listOfNotNull(title, mark, opens).joinToString(", ") }
                 .testTag("trailer:$title"),
         ) {
             Artwork(image, width, Modifier.matchParentSize())
@@ -830,7 +833,7 @@ private fun TrailerCard(title: String, image: ImageRef?, mark: String?, markAt: 
                 )
             }
         }
-        Caption(title, detail, 2)
+        Caption(title, null, 1)
     }
 }
 

@@ -4,24 +4,21 @@ import SwiftUI
 /// A work's card: the artwork with its corner marks and
 /// progress, then the title and a second line, or one line in a grid.
 /// [mark] is a short mark at the artwork's bottom trailing corner, such as
-/// a trailer's running time, and [detail] the second line in place of the
-/// work's own.
+/// a trailer's running time.
 public struct WorkCard: View {
     private let work: WorkSummary
     private let style: CardStyle
     private let width: CGFloat
     private let caption: CardCaption
     private let mark: String?
-    private let detail: String?
     @Environment(\.kivoPalette) private var palette
 
-    public init(_ work: WorkSummary, style: CardStyle? = nil, width: CGFloat, caption: CardCaption = .twoLines, mark: String? = nil, detail: String? = nil) {
+    public init(_ work: WorkSummary, style: CardStyle? = nil, width: CGFloat, caption: CardCaption = .twoLines, mark: String? = nil) {
         self.work = work
         self.style = style ?? CardStyle.of(work)
         self.width = width
         self.caption = caption
         self.mark = mark
-        self.detail = detail
     }
 
     public var body: some View {
@@ -109,7 +106,6 @@ public struct WorkCard: View {
     }
 
     private var secondLine: String? {
-        if let detail { return detail }
         guard work.episode != nil else { return work.caption }
         return [work.title, work.timeLeft].compactMap { $0 }.joined(separator: " · ")
     }

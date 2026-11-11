@@ -74,7 +74,7 @@ describe("Detail page on TV", () => {
     expect([...(row?.querySelectorAll<HTMLElement>('[data-part="card"]') ?? [])].map((c) => c.dataset.kind)).toEqual([
       "extra",
     ]);
-    expect(screen.queryByText("Opens in YouTube")).not.toBeInTheDocument();
+    expect(screen.queryByText("YouTube ↗")).not.toBeInTheDocument();
     press("ArrowRight");
     await waitFor(() => expect(focused()).toBe("restart"));
     press("ArrowRight");

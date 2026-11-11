@@ -66,18 +66,20 @@ describe("Movie page", () => {
     const [local, first, second] = cards as [HTMLElement, HTMLElement, HTMLElement];
     expect(within(local).getByText("Official Trailer")).toBeInTheDocument();
     expect(within(local).getByText("2:00")).toBeInTheDocument();
-    expect(within(local).getByText("In your library")).toBeInTheDocument();
+    expect(within(local).queryByText("In your library")).not.toBeInTheDocument();
     expect(local.querySelector("a")?.getAttribute("href")).toMatch(/^\/works\//);
     // YouTube's open there, in a new tab.
     expect(first).toHaveAttribute("href", "https://www.youtube.com/watch?v=Way9Dexny3w");
     expect(first).toHaveAttribute("target", "_blank");
     expect(within(first).getByText("Official Trailer 3")).toBeInTheDocument();
     expect(within(first).getByText("YouTube ↗")).toBeInTheDocument();
-    expect(within(first).getByText("Opens in YouTube")).toBeInTheDocument();
+    expect(first).toHaveAccessibleName("Official Trailer 3, Opens in YouTube");
+    expect(within(first).queryByText("Opens in YouTube")).not.toBeInTheDocument();
     expect(first.querySelector("img")).not.toBeNull();
-    // One whose thumbnail the server doesn't have shows the titled tile.
+    // One whose thumbnail the server doesn't have shows the bare tile, its title under it alone.
     expect(second).toHaveAttribute("href", "https://www.youtube.com/watch?v=_YUzQa_1RCE");
     expect(second.querySelector("img")).toBeNull();
+    expect(within(second).getAllByText("Official Trailer 2")).toHaveLength(1);
     // No button and no menu item leads to a trailer.
     expect(screen.queryByRole("link", { name: "Trailer" })).not.toBeInTheDocument();
     // The other extras keep their own rows.

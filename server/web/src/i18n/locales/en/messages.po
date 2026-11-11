@@ -861,10 +861,6 @@ msgstr "Subtitle"
 msgid "Search"
 msgstr "Search"
 
-#: src/features/detail/WorkRows.tsx
-msgid "In your library"
-msgstr "In your library"
-
 #: src/features/browse/WorkCard.tsx
 #: src/features/detail/DetailMenu.tsx
 #: src/features/lists/AddToListDialog.tsx

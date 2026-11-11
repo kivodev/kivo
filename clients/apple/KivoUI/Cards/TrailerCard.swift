@@ -2,7 +2,8 @@ import KivoCore
 import SwiftUI
 
 /// A trailer on YouTube: its thumbnail, marked as leaving for YouTube
-/// before it's opened, then its title and where it opens.
+/// before it's opened, then its title. With no thumbnail the tile is bare,
+/// as the title is under it.
 public struct TrailerCard: View {
     private let trailer: Trailer
     private let width: CGFloat
@@ -17,7 +18,7 @@ public struct TrailerCard: View {
         let opens = String(localized: "Opens in YouTube")
         VStack(alignment: .leading, spacing: KivoTokens.spacing) {
             ZStack(alignment: .bottomLeading) {
-                ArtworkImage(trailer.image, title: trailer.title, pointWidth: width)
+                ArtworkImage(trailer.image, title: "", pointWidth: width)
                 Badge(text: "YouTube ↗")
                     .padding(KivoTokens.spacing * 1.5)
             }
@@ -29,17 +30,11 @@ public struct TrailerCard: View {
                     .kivoShadow(palette.cardShadow)
             }
 
-            VStack(alignment: .leading, spacing: 0) {
-                Text(trailer.title)
-                    .kivoStyle(KivoTokens.TextSize.sm, weight: KivoTokens.Weight.medium)
-                    .foregroundStyle(palette.text)
-                    .lineLimit(1)
-                Text(opens)
-                    .kivoStyle(KivoTokens.TextSize.xs)
-                    .foregroundStyle(palette.textMuted)
-                    .lineLimit(1)
-            }
-            .frame(width: width, alignment: .leading)
+            Text(trailer.title)
+                .kivoStyle(KivoTokens.TextSize.sm, weight: KivoTokens.Weight.medium)
+                .foregroundStyle(palette.text)
+                .lineLimit(1)
+                .frame(width: width, alignment: .leading)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(verbatim: "\(trailer.title), \(opens)"))

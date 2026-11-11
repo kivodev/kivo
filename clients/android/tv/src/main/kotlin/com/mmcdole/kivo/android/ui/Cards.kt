@@ -57,6 +57,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.ui.semantics.role
@@ -269,8 +270,7 @@ fun labelledTitle(title: String, movie: MovieInfo?): String = movie?.edition?.le
  * most one status badge; the title and a line under it.
  * Focus adds nothing but the light and scale. A long press of OK, or the
  * Menu key, opens its menu. [mark] is a short mark at the artwork's bottom
- * end, such as a trailer's running time, and [caption] the line under the
- * title in place of the kind's own. A null [work], one still loading, is the bare
+ * end, such as a trailer's running time. A null [work], one still loading, is the bare
  * card: focusable, so a grid scrolls on into it, and keeping focus as its
  * work arrives.
  */
@@ -282,7 +282,6 @@ fun WorkCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     mark: String? = null,
-    caption: String? = null,
 ) {
     val menu = LocalWorkMenu.current
     val title = work?.let(::cardTitle).orEmpty()
@@ -301,7 +300,7 @@ fun WorkCard(
                 if (mark != null) CardMark(mark, Alignment.BottomEnd)
             }
         }
-        if (work != null) WorkCaption(work, title, focus, caption)
+        if (work != null) WorkCaption(work, title, focus)
     }
 }
 
@@ -324,33 +323,37 @@ private fun BoxScope.CardMark(text: String, alignment: Alignment) {
 
 /**
  * A trailer on YouTube: its thumbnail, marked as leaving for YouTube before
- * it's opened, then its title. [onClick] opens it there.
+ * it's opened, then its title. With no thumbnail the tile is bare, as the
+ * title is under it. [onClick] opens it there.
  */
 @Composable
 fun TrailerCard(trailer: Trailer, width: Dp, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val focus = rememberCardFocus()
+    val opens = stringResource(R.string.opens_in_youtube)
     Column(Modifier.width(width).raisedOnFocus()) {
         CardSurface(
             onClick = onClick,
             onLongClick = null,
-            modifier = modifier.testTag("trailer:${trailer.title}").aspectRatio(CardShape.Landscape.aspect),
+            modifier = modifier
+                .testTag("trailer:${trailer.title}")
+                .semantics { contentDescription = "${trailer.title}, $opens" }
+                .aspectRatio(CardShape.Landscape.aspect),
             focus = focus,
         ) {
-            ArtworkImage(trailer.image, trailer.title, width)
+            ArtworkImage(trailer.image, "", width)
             CardMark("YouTube ↗", Alignment.BottomStart)
         }
         val colors = Kivo.colors
         Column(Modifier.cardCaption(focus)) {
             Spacer(Modifier.height(CaptionGap))
             Text(trailer.title, style = TvType.smallStrong, color = colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(stringResource(R.string.opens_in_youtube), style = TvType.small, color = colors.textMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
 
 /** Apart from [WorkCard], so its captions arriving recomposes only them. */
 @Composable
-private fun WorkCaption(work: WorkSummary, title: String, focus: CardFocus, caption: String?) {
+private fun WorkCaption(work: WorkSummary, title: String, focus: CardFocus) {
     val shown = LocalCaptionsShown.current
     val room = shown?.let {
         with(LocalDensity.current) { CaptionGap + TvType.smallStrong.lineHeight.toDp() + TvType.small.lineHeight.toDp() }
@@ -363,7 +366,7 @@ private fun WorkCaption(work: WorkSummary, title: String, focus: CardFocus, capt
     Column(Modifier.cardCaption(focus).then(if (room != null) Modifier.height(room) else Modifier)) {
         Spacer(Modifier.height(CaptionGap))
         Text(title, style = TvType.smallStrong, color = colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        (caption ?: cardSubtitle(work))?.let {
+        cardSubtitle(work)?.let {
             Text(it, style = TvType.small, color = colors.textMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
