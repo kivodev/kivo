@@ -58,18 +58,17 @@ final class PictureInPictureTests: XCTestCase {
             clientId: nil, subtitles: AppModel.subtitles, trackSelection: true, transport: NoTransport()
         ))
         session = try await core.restore(server: SavedServer(id: "pip-test", name: "PiP test", addresses: [address]))
-        player = session.playback.videoPlayer(engine: IdleEngine())
     }
 
     override func tearDown() async throws {
-        player.dispose()
+        player?.dispose()
         session.close()
         server.stop()
     }
 
     func testASubtitleFilePlaysAgainBurnedInAndBackAsAFile() async throws {
         Self.deliveries = ["external", "burn", "external"]
-        try await player.play(choice: PlayChoice(workId: "w1"))
+        play()
         try await until("the subtitle file showing") { self.player.controller.state.value.subtitle is TrackShowExternal }
         XCTAssertEqual(try externalSubtitles(play: 0), ["ass", "hdmv_pgs_subtitle"])
 
@@ -85,7 +84,7 @@ final class PictureInPictureTests: XCTestCase {
 
     func testASubtitleInTheStreamCarriesOn() async throws {
         Self.deliveries = ["stream"]
-        try await player.play(choice: PlayChoice(workId: "w1"))
+        play()
         try await until("the subtitle in the stream") { self.player.controller.state.value.subtitle is TrackShowStream }
 
         player.setOverlayVisible(visible: false)
@@ -93,6 +92,11 @@ final class PictureInPictureTests: XCTestCase {
         player.setOverlayVisible(visible: true)
         try await Task.sleep(for: .milliseconds(500))
         XCTAssertEqual(plays().count, 1, "no new play for a subtitle in the stream")
+    }
+
+    /// A player on w1, which starts its play at once.
+    private func play() {
+        player = session.playback.videoPlayer(engine: IdleEngine(), choice: PlayChoice(workId: "w1"), hideControlsAfterMs: 3_000)
     }
 
     private func plays() -> [StubServer.Request] {

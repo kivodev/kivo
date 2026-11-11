@@ -15,20 +15,24 @@ final class PlayerModel: PlayerChoices, Scrubbable {
     let engine: AVPlayerEngine
     let surface: PlayerSurfaceView
     let display: Display
-    /// Playing a download from its files: no quality, version or other track to choose.
-    private(set) var offline = false
-    /// Where a download playing came from, for stream info's Source line.
-    private(set) var downloadSource: DownloadSource?
     /// The work playing.
     private(set) var workId: String
-    private(set) var state: PlayerState?
-    private(set) var work: WorkDetail?
+    /// The core's player's play.
+    private var playing: Observed<PlayerState>?
+    /// What the core's player shows around the video.
+    private var shown: Observed<PlayerScreenState>?
+    var state: PlayerState? { playing?.value }
+    /// Playing a download from its files: no quality, version or other track to choose.
+    var offline: Bool { shown?.value.offline ?? false }
+    /// Where a download playing came from, for stream info's Source line.
+    var downloadSource: DownloadSource? { shown?.value.downloadSource }
+    var work: WorkDetail? { shown?.value.work }
     /// The next episode, for up next: none without the server unless it's downloaded.
-    private(set) var next: WorkDetail?
-    private(set) var qualities: [QualityOption] = []
-    private(set) var previews: ScrubPreviews?
+    var next: WorkDetail? { shown?.value.next }
+    var qualities: [QualityOption] { shown?.value.qualities ?? [] }
+    var previews: ScrubPreviews? { shown?.value.previews }
     /// What shows over the video by the core's timed rules: the controls, Skip and up next.
-    private(set) var ui: PlayerUi?
+    var ui: PlayerUi? { shown?.value.ui }
     /// The intro, recap or credits marker whose Skip button shows.
     var marker: SkipMarker? { ui?.skipMarker }
     /// Up next's card, for an episode with a next one; it counts down while playing with no sheet open.
@@ -39,17 +43,11 @@ final class PlayerModel: PlayerChoices, Scrubbable {
     var controlsVisible: Bool { ui?.controlsShown ?? true }
     /// The sheet open over the player: Audio & Subtitles, or Playback settings.
     var sheet: PlayerSheet? {
-        didSet {
-            player?.setMenuOpen(open: sheet != nil)
-            waitToHide(again: false)
-        }
+        didSet { player?.setMenuOpen(open: sheet != nil) }
     }
     /// A finger is on the scrub bar.
     var scrubbing = false {
-        didSet {
-            player?.setScrubbing(held: scrubbing)
-            waitToHide(again: false)
-        }
+        didSet { player?.setScrubbing(held: scrubbing) }
     }
     /// The playback speed, 1 for normal.
     private(set) var speed: Float = 1
@@ -62,11 +60,11 @@ final class PlayerModel: PlayerChoices, Scrubbable {
 
     @ObservationIgnored private let server: ServerModel
     @ObservationIgnored private var player: KivoCore.VideoPlayer?
-    @ObservationIgnored private var playId: String?
+    /// The work Now Playing shows.
+    @ObservationIgnored private var nowPlayingWork: WorkDetail?
+    /// The player went where its end took it.
+    @ObservationIgnored private var exited = false
     @ObservationIgnored private var tasks: [Task<Void, Never>] = []
-    /// The controls' wait to hide, while it runs.
-    @ObservationIgnored private var hiding: Task<Void, Never>?
-    @ObservationIgnored private var following: [Task<Void, Never>] = []
     @ObservationIgnored private var pictureInPicture: AVPictureInPictureController?
     @ObservationIgnored private let pictureInPictureEvents = PictureInPictureEvents()
     /// Picture in Picture's handler, told once the player's screen is back.
@@ -96,11 +94,6 @@ final class PlayerModel: PlayerChoices, Scrubbable {
                 self?.tellOverlayShows()
             }
         }
-        tasks.append(Task { [weak self] in
-            guard let self else { return }
-            // Without the menu, Playback Settings offers no quality.
-            qualities = (try? await self.server.session.playback.qualityMenu()) ?? []
-        })
         start(choice, at: positionMs, downloadId: downloadId)
     }
 
@@ -111,64 +104,26 @@ final class PlayerModel: PlayerChoices, Scrubbable {
     /// Picture stay the same across the plays: the last play's picture shows
     /// until the next one's replaces it.
     private func start(_ choice: PlayChoice, at positionMs: Int64? = nil, downloadId: String?) {
-        following.forEach { $0.cancel() }
-        following = []
         player?.handOver()
-        player = nil
-        ui = nil
-        let workId = choice.workId
-        self.workId = workId
-        offline = downloadId != nil
-        downloadSource = nil
+        workId = choice.workId
         // Playback audio, so the video plays with the silent switch on and
         // Picture in Picture and AirPlay are allowed. Set on every play, as
         // the system can reset it.
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
-        load(workId: workId)
-        tasks.append(Task { [weak self, engine, server] in
-            do {
-                let player: KivoCore.VideoPlayer
-                var source: DownloadSource?
-                if let downloadId {
-                    player = try await server.session.playback.offlinePlayer(engine: engine, downloadId: downloadId)
-                    source = player.downloadSource()
-                } else {
-                    player = server.session.playback.videoPlayer(engine: engine)
-                }
-                guard let self, self.workId == workId else {
-                    player.dispose()
-                    return
-                }
-                downloadSource = source
-                attach(player)
-                // The controller reports a play that fails to start in its state.
-                try await player.play(choice: choice, positionMs: positionMs.map { KotlinLong(value: $0) })
-            } catch {
-                // A download that can't play now, such as one that needs the server to check it first.
-                if downloadId != nil { server.player.shown = false }
-            }
-        })
-    }
-
-    /// Plays through [player] from now on, following its state and what it shows over the video.
-    private func attach(_ player: KivoCore.VideoPlayer) {
+        let player = server.session.playback.videoPlayer(
+            engine: engine,
+            choice: choice,
+            hideControlsAfterMs: 3_000,
+            downloadId: downloadId,
+            positionMs: positionMs.map { KotlinLong(value: $0) }
+        )
         self.player = player
+        exited = false
         player.setMenuOpen(open: sheet != nil)
         player.setScrubbing(held: scrubbing)
-        tellEpisode()
         tellOverlayShows()
-        following = [
-            Task { [weak self] in
-                for await state in player.controller.state {
-                    self?.stateChanged(state)
-                }
-            },
-            Task { [weak self] in
-                for await ui in player.ui {
-                    self?.uiChanged(ui)
-                }
-            },
-        ]
+        playing = Observed(player.controller.state)
+        shown = Observed(player.screen) { [weak self] screen in self?.screenChanged(screen, of: player) }
     }
 
     var controller: PlayController? { player?.controller }
@@ -179,10 +134,7 @@ final class PlayerModel: PlayerChoices, Scrubbable {
     var play: PlayStarted? { state?.play }
 
     /// The version the play plays.
-    var version: Version? {
-        guard let play else { return nil }
-        return work?.versions.first { $0.id == play.versionId }
-    }
+    var version: Version? { shown?.value.version }
 
     /// The quality the play applies, as the server says.
     var quality: Quality? {
@@ -273,32 +225,11 @@ final class PlayerModel: PlayerChoices, Scrubbable {
     /// someone is watching, which resets up next's run.
     func input() {
         player?.showControls()
-        waitToHide(again: true)
     }
 
     /// A tap on the video: the controls show, or hide if they're showing.
     func toggleControls() {
         player?.toggleControls()
-        waitToHide(again: true)
-    }
-
-    /// The controls hide 3 seconds after the last input while playing, with
-    /// no sheet open or scrub held; [again] starts a running wait over, as an input does.
-    private func waitToHide(again: Bool) {
-        let waits = controlsVisible && state?.live == true && state?.paused == false && sheet == nil && !scrubbing
-        guard waits else {
-            hiding?.cancel()
-            hiding = nil
-            return
-        }
-        guard again || hiding == nil else { return }
-        hiding?.cancel()
-        hiding = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(3))
-            guard let self, !Task.isCancelled else { return }
-            hiding = nil
-            player?.hideControls()
-        }
     }
 
     /// Sets the playback speed: AVPlayer plays at its default rate from then on.
@@ -322,7 +253,6 @@ final class PlayerModel: PlayerChoices, Scrubbable {
     /// A double tap's skip: it counts as someone watching, and leaves the controls as they are.
     func nudge(by deltaMs: Int64) {
         player?.userActivity()
-        waitToHide(again: true)
         controller?.skip(deltaMs: deltaMs)
     }
 
@@ -359,10 +289,8 @@ final class PlayerModel: PlayerChoices, Scrubbable {
 
     /// The version's tracks gain the subtitle at once, before the work is read again with it, and a new play shows it.
     func downloadSubtitle(_ result: SubtitleResult) async throws {
-        guard let version else { return }
-        let track = try await server.session.playback.addSubtitle(version: version, resultId: result.id)
-        work = work?.withTrack(versionId: version.id, track: track)
-        chooseSubtitle(track.id)
+        input()
+        try await player?.addSubtitle(resultId: result.id)
     }
 
     /// Switches the dialogue boost, kept on this device for later plays: a new play at the position applies it.
@@ -385,7 +313,7 @@ final class PlayerModel: PlayerChoices, Scrubbable {
         controller?.retry()
     }
 
-    /// Up next's Play now: the core's player says to play the next episode (uiChanged).
+    /// Up next's Play now: the core's player says to play the next episode (screenChanged).
     func playNextNow() {
         player?.playNext()
     }
@@ -420,9 +348,7 @@ final class PlayerModel: PlayerChoices, Scrubbable {
 
     /// The player is done: the play stops and everything is released.
     func close() {
-        hiding?.cancel()
         tasks.forEach { $0.cancel() }
-        following.forEach { $0.cancel() }
         pictureInPicture?.stopPictureInPicture()
         restoring?(false)
         restoring = nil
@@ -433,26 +359,6 @@ final class PlayerModel: PlayerChoices, Scrubbable {
 
     // MARK: State
 
-    /// The work and its next episode, for a download as for the server:
-    /// as downloaded while the server doesn't answer.
-    private func load(workId: String) {
-        tasks.append(Task { [weak self, server] in
-            for await load in server.session.playback.playableWork(id: workId) {
-                guard let self, self.workId == workId else { return }
-                guard let work = load.getOrNull() else { continue }
-                self.work = work
-                self.updateNowPlaying()
-                self.tellEpisode()
-                guard let nextId = work.episode?.nextId, self.next?.id != nextId else { continue }
-                // Without the server, the next episode only if it's downloaded.
-                if let next = await server.session.playback.playableWork(id: nextId).answer(), self.workId == workId {
-                    self.next = next
-                    self.tellEpisode()
-                }
-            }
-        })
-    }
-
     /// The core's player learns whether the subtitle overlay can show: not
     /// in Picture in Picture or on an AirPlay device, where only the video
     /// goes, so plays there ask for no subtitle files.
@@ -460,51 +366,25 @@ final class PlayerModel: PlayerChoices, Scrubbable {
         player?.setOverlayVisible(visible: !pictureInPictureActive && !engine.player.isExternalPlaybackActive)
     }
 
-    /// The core's player learns whether the work is an episode with a next one to play, as the two are read.
-    private func tellEpisode() {
-        guard let player, work?.episode != nil else { return }
-        player.setHasNextEpisode(hasNext: next != nil)
-    }
-
-    private func stateChanged(_ state: PlayerState) {
-        self.state = state
-        waitToHide(again: false)
-        if let play = state.play, play.id != playId {
-            playId = play.id
-            previews = nil
-            tasks.append(Task { [weak self, server] in
-                // Without previews, scrubbing shows the time and chapter alone.
-                let previews = try? await server.session.playback.previews(play: play)
-                guard let self, self.playId == play.id else { return }
-                self.previews = previews
-            })
+    /// What [player] shows around the video changed: Now Playing follows
+    /// the work, and once the player is done, the next episode plays in its
+    /// place, or the player gives way to the series' page or closes, once.
+    private func screenChanged(_ screen: PlayerScreenState, of player: KivoCore.VideoPlayer) {
+        guard player === self.player else { return }
+        if let work = screen.work, work !== nowPlayingWork {
+            nowPlayingWork = work
+            updateNowPlaying()
         }
-    }
-
-    /// What shows over the video changed. When the player is done, the next
-    /// episode plays, or the player gives way to the series' page; anything
-    /// else stays with the controls shown.
-    private func uiChanged(_ ui: PlayerUi) {
-        let end = ui.end != self.ui?.end ? ui.end : nil
-        self.ui = ui
-        waitToHide(again: false)
-        switch end {
-        case .playNext:
-            playNext()
-        case .series:
-            guard let episode = work?.episode else { return }
-            server.player.showSeries(afterPlaying: episode.seriesId, offline: offline)
-        case .close, nil:
-            break
+        guard let exit = screen.exit, !exited else { return }
+        exited = true
+        switch onEnum(of: exit) {
+        case let .next(next):
+            start(next.choice, downloadId: next.downloadId)
+        case let .series(series):
+            server.player.showSeries(afterPlaying: series.seriesId, offline: offline)
+        case .back:
+            server.player.shown = false
         }
-    }
-
-    /// The next episode plays: its download when it's ready, as Play does on its page, else from the server.
-    private func playNext() {
-        guard let next else { return }
-        work = nil
-        self.next = nil
-        start(PlayChoice(workId: next.id), downloadId: server.readyDownload(of: next.id)?.id)
     }
 
     // MARK: Picture in Picture and Now Playing

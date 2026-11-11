@@ -1,43 +1,81 @@
 package com.mmcdole.kivo.core.session
 
-import co.touchlab.skie.configuration.annotations.DefaultArgumentInterop
-import com.mmcdole.kivo.core.downloads.DownloadSource
+import com.mmcdole.kivo.api.models.PlayCreate
+import com.mmcdole.kivo.api.models.PlayFallback
+import com.mmcdole.kivo.api.models.PlayStarted
+import com.mmcdole.kivo.api.models.PlayStop
+import com.mmcdole.kivo.api.models.PlayUpdate
+import com.mmcdole.kivo.api.models.QualityRung
+import com.mmcdole.kivo.api.models.WorkDetail
+import com.mmcdole.kivo.core.answer
+import com.mmcdole.kivo.core.data.withTrack
+import com.mmcdole.kivo.core.display.qualityMenu
+import com.mmcdole.kivo.core.downloads.DownloadStatus
 import com.mmcdole.kivo.core.downloads.OfflinePlay
 import com.mmcdole.kivo.core.play.PlayChoice
 import com.mmcdole.kivo.core.play.PlayController
 import com.mmcdole.kivo.core.play.PlayRequest
 import com.mmcdole.kivo.core.play.PlaySource
+import com.mmcdole.kivo.core.play.PlayerEnd
 import com.mmcdole.kivo.core.play.PlayerUi
 import com.mmcdole.kivo.core.play.PlayerUiRules
+import com.mmcdole.kivo.core.play.ServerPlays
 import com.mmcdole.kivo.core.player.PlayerEngine
 import com.mmcdole.kivo.core.settings.Quality
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.distinctUntilChangedBy
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlin.time.Duration
 
 /**
- * The video player ([SessionPlayback.videoPlayer]): the core's [PlayController]
- * over the app's [engine], started with this device's capability report,
- * qualities and dialogue boost, and stopped with a message when the live
- * events say its play ended elsewhere; and what shows over the video ([ui]),
- * by the timed rules every player keeps, from the app's inputs. The app
- * follows [controller]'s state and drives its transport (pause, seek, retry
- * and the like) directly; everything that starts a play goes through here.
- * Its plays are the server's, or with [offline] a download's on the device,
- * which has nothing to fall back to and no download rate to measure.
+ * The video player ([SessionPlayback.videoPlayer]) of one work: the core's
+ * [PlayController] over the app's [engine], started at once with this
+ * device's capability report, qualities and dialogue boost, from the
+ * server, or from a download's files with no server, which has nothing to
+ * fall back to and no download rate to measure; stopped with a message
+ * when the live events say its play ended elsewhere. Around the play, its
+ * [screen]: the work and its next episode, the qualities, the scrub
+ * previews, what shows over the video by the timed rules every player
+ * keeps, from the app's inputs, and where the player goes once it's done.
+ * The app follows [controller]'s state and drives its transport (pause,
+ * seek, retry and the like) directly.
  */
 class VideoPlayer internal constructor(
     private val session: KivoSession,
     private val engine: PlayerEngine,
-    plays: PlaySource,
-    private val offline: OfflinePlay?,
+    private val choice: PlayChoice,
+    private val downloadId: String?,
+    positionMs: Long?,
+    hideControlsAfter: Duration,
 ) {
     private val core = session.core
-    private val online = offline == null
+    private val online = downloadId == null
+    private val job = SupervisorJob(session.scope.coroutineContext[Job])
+    private val scope = CoroutineScope(session.scope.coroutineContext + job)
+
+    private val mutableScreen = MutableStateFlow(PlayerScreenState(offline = !online))
+
+    /** What the screen shows around the video; it changes as the work, the play's version or what shows over the video does, not with the position. */
+    val screen: StateFlow<PlayerScreenState> = mutableScreen.asStateFlow()
+
+    private var ladder = emptyList<QualityRung>()
+
+    /** The download's play once it's open. */
+    private val opened = CompletableDeferred<OfflinePlay>()
 
     val controller: PlayController = PlayController(
-        plays = plays,
+        plays = if (online) ServerPlays(session.connection.plays, session.connection.reachability) else DownloadPlays(opened),
         engine = engine,
         capabilities = { external -> core.report.report(external) },
         scope = core.scope,
@@ -45,43 +83,120 @@ class VideoPlayer internal constructor(
         onEnded = { rules.ended() },
     )
 
-    private val rules: PlayerUiRules = PlayerUiRules(controller.state, controller::seek, core.autoplay, session.scope, core.clock)
+    private val rules: PlayerUiRules = PlayerUiRules(
+        controller.state, controller::seek, core.autoplay, session.scope, core.clock, hideControlsAfter,
+        changed = { ui -> mutableScreen.value = mutableScreen.value.copy(ui = ui) },
+    )
 
-    /**
-     * The controls, Skip Intro, Recap or Credits, up next and where the player
-     * goes once it's done ([PlayerUi.end]), which the app carries out.
-     */
-    val ui: StateFlow<PlayerUi> = rules.ui
+    /** Whether up next was told of a next episode, once it was told anything. */
+    private var toldNext: Boolean? = null
 
-    private val ended = session.scope.launch {
-        session.playsEnded.collect { controller.playEnded(it.playId, it.message) }
-    }
-
-    /** A stream playing holds the server's address where it is while it answers. */
-    private val streaming = session.scope.launch {
+    init {
+        scope.launch { start(positionMs) }
+        scope.launch { session.playsEnded.collect { controller.playEnded(it.playId, it.message) } }
+        // A stream playing holds the server's address where it is while it answers.
         if (online) {
-            controller.state.map { it.live && !it.paused }.distinctUntilChanged()
-                .collect { session.connection.address.streaming(this@VideoPlayer, it) }
+            scope.launch {
+                controller.state.map { it.live && !it.paused }.distinctUntilChanged()
+                    .collect { session.connection.address.streaming(this@VideoPlayer, it) }
+            }
+        }
+        scope.launch { followWork() }
+        scope.launch {
+            // Without the ladder, Quality offers Auto and Original.
+            ladder = quietly { session.playback.qualityLadder() }.orEmpty()
+            changeVersion()
+        }
+        scope.launch { controller.state.map { it.play?.versionId }.distinctUntilChanged().collect { changeVersion() } }
+        scope.launch {
+            // Without previews, the scrub bar shows the time alone.
+            controller.state.map { it.play }.distinctUntilChangedBy { it?.previews }.collectLatest { play ->
+                change { it.copy(previews = null) }
+                val previews = play?.let { quietly { session.playback.previews(it) } } ?: return@collectLatest
+                change { it.copy(previews = previews) }
+            }
+        }
+        scope.launch {
+            rules.end.collect { end ->
+                val exit = end?.let { exitAt(it) } ?: return@collect
+                change { it.copy(exit = exit) }
+            }
         }
     }
 
+    /** Opens the download, when it's one, and starts the play; a download that can't play now, such as one just removed, goes back. */
+    private suspend fun start(positionMs: Long?) {
+        if (downloadId != null) {
+            val offline = quietly { checkNotNull(core.downloads) { "this device keeps no downloads" }.offline(downloadId) }
+                ?: return change { it.copy(exit = PlayerExit.Back) }
+            opened.complete(offline)
+            change { it.copy(downloadSource = offline.source()) }
+        }
+        controller.play(request(choice, positionMs))
+    }
+
     /**
-     * This video is an episode, with a next one to play or not, once the app
-     * knows: up next and the end follow it, and the user's autoplay, read
-     * again from the server when there's a next one.
+     * The work as it changes, and its next episode, read again when the next
+     * one changes or wasn't read: up next and the end follow whether it was
+     * read, which without the server means whether it's downloaded.
      */
-    fun setHasNextEpisode(hasNext: Boolean) {
+    private suspend fun followWork() {
+        session.playback.playableWork(choice.workId).collect { load ->
+            val work = load.getOrNull() ?: return@collect
+            change { it.copy(work = work) }
+            changeVersion()
+            val episode = work.episode ?: return@collect
+            val nextId = episode.nextId
+            val next = nextId?.let { id -> screen.value.next?.takeIf { it.id == id } ?: session.playback.playableWork(id).answer() }
+            change { it.copy(next = next) }
+            if (toldNext != (next != null)) {
+                toldNext = next != null
+                setHasNextEpisode(next != null)
+            }
+        }
+    }
+
+    /** The version playing and its qualities, from the work, the play and the ladder. */
+    private fun changeVersion() {
+        val versionId = controller.state.value.play?.versionId
+        val version = screen.value.work?.versions?.firstOrNull { it.id == versionId }
+        val sourceBps = version?.bitrateBps
+        // Only rungs below the file's own bitrate change anything.
+        val qualities = qualityMenu(ladder.filter { sourceBps == null || it.bitrateBps < sourceBps })
+        change { it.copy(version = version, qualities = qualities) }
+    }
+
+    /** Where the core's [end] takes the player: the next episode, from its download when it's ready here, the series or back. */
+    private suspend fun exitAt(end: PlayerEnd): PlayerExit? = when (end) {
+        PlayerEnd.PlayNext -> screen.value.next?.let { PlayerExit.Next(PlayChoice(it.id), readyDownload(it.id)) }
+        PlayerEnd.Series -> screen.value.work?.episode?.let { PlayerExit.Series(it.seriesId) }
+        PlayerEnd.Close -> PlayerExit.Back
+    }
+
+    private suspend fun readyDownload(workId: String): String? =
+        session.downloads?.items?.first()?.firstOrNull { it.workId == workId && it.status == DownloadStatus.Ready }?.id
+
+    private inline fun change(update: (PlayerScreenState) -> PlayerScreenState) {
+        mutableScreen.value = update(mutableScreen.value)
+    }
+
+    /**
+     * This video is an episode, with a next one to play or not: up next and
+     * the end follow it, and the user's autoplay, read again from the server
+     * when there's a next one.
+     */
+    internal fun setHasNextEpisode(hasNext: Boolean) {
         if (online && hasNext) session.account.readAutoplay()
         rules.episode(hasNext)
     }
 
-    /** Any input: someone is watching, so up next may play on again. */
+    /** Any input: someone is watching, so up next may play on again, and the controls wait again to hide. */
     fun userActivity() = rules.input()
 
     /** Input that shows the controls, such as a tap, a mouse move or a key. */
     fun showControls() = rules.showControls()
 
-    /** The controls hide: a while after the last input while playing, with no menu open or scrub held, or as Back hides them. */
+    /** Hides the controls, as Back does; they also hide by themselves a while after the last input while playing, with no menu open or scrub held. */
     fun hideControls() = rules.hideControls()
 
     /** A tap on the video: the controls hide while playing with no menu open, and show otherwise. */
@@ -99,25 +214,10 @@ class VideoPlayer internal constructor(
     /** Up next's Hide or Watch credits: no card for the rest of the episode, which still plays on at its end. */
     fun hideUpNext() = rules.hideUpNext()
 
-    /** Up next's Play now, or Next: [PlayerUi.end] becomes the next episode. */
+    /** Up next's Play now, or Next: [PlayerScreenState.exit] becomes the next episode. */
     fun playNext() = rules.playNext()
 
-    /**
-     * Starts [choice] with this device's local and remote qualities and its
-     * dialogue boost; the server picks between the qualities, Auto by the
-     * download rate last measured, or measured first. A null [positionMs]
-     * starts at the resume position, 0 at the start.
-     */
-    @DefaultArgumentInterop.Enabled
-    @Throws(Exception::class)
-    suspend fun play(choice: PlayChoice, positionMs: Long? = null) {
-        controller.play(request(choice, positionMs))
-    }
-
-    /** Where the file playing came from, for the stream info's "Source" line; null for the server's play. */
-    fun downloadSource(): DownloadSource? = offline?.source()
-
-    /** The play [play] starts. */
+    /** The play [start] starts. A null [positionMs] starts at the resume position, 0 at the start. */
     internal suspend fun request(choice: PlayChoice, positionMs: Long? = null): PlayRequest {
         val settings = if (online) session.playback.playSettings() else core.settingsNow()
         val auto = settings.localQuality == Quality.Auto || settings.remoteQuality == Quality.Auto
@@ -145,6 +245,20 @@ class VideoPlayer internal constructor(
 
     /** Shows a subtitle track, or `off`: at once, or by a new play at the position ([PlayController.chooseSubtitle]). */
     fun chooseSubtitle(trackId: String) = controller.chooseSubtitle(trackId)
+
+    /**
+     * Adds the subtitle search's result [resultId] to the version playing on
+     * the server and shows it: the version's tracks gain it at once, before
+     * the work is read again with it.
+     */
+    @Throws(Exception::class)
+    suspend fun addSubtitle(resultId: String) {
+        val version = screen.value.version ?: return
+        val track = session.playback.addSubtitle(version, resultId)
+        change { it.copy(work = it.work?.withTrack(version.id, track)) }
+        changeVersion()
+        chooseSubtitle(track.id)
+    }
 
     /**
      * Whether the app can draw over the video: not in picture-in-picture
@@ -183,10 +297,30 @@ class VideoPlayer internal constructor(
     private fun close() {
         val measured = engine.bandwidthBps?.takeIf { online && controller.current?.local == false }
         if (measured != null) core.scope.launch { core.bandwidth.remember(measured) }
-        ended.cancel()
-        streaming.cancel()
+        job.cancel()
         if (online) session.connection.address.streaming(this, false)
         rules.dispose()
     }
 }
 
+/** A download's plays, once [opened]. */
+private class DownloadPlays(private val opened: CompletableDeferred<OfflinePlay>) : PlaySource {
+    override suspend fun start(request: PlayCreate): PlayStarted = opened.await().plays.start(request)
+
+    override suspend fun heartbeat(id: String, heartbeat: PlayUpdate) = opened.await().plays.heartbeat(id, heartbeat)
+
+    override suspend fun reconnect(id: String, heartbeat: PlayUpdate) = opened.await().plays.reconnect(id, heartbeat)
+
+    override suspend fun stop(id: String, stop: PlayStop) = opened.await().plays.stop(id, stop)
+
+    override suspend fun fallback(id: String, request: PlayFallback): PlayStarted = opened.await().plays.fallback(id, request)
+}
+
+/** [read]'s answer; null when it fails. */
+private suspend fun <T> quietly(read: suspend () -> T): T? = try {
+    read()
+} catch (e: CancellationException) {
+    throw e
+} catch (_: Exception) {
+    null
+}

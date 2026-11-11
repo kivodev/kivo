@@ -621,7 +621,7 @@ class KivoSessionTest {
         h.core.updateSettings { it.copy(localQuality = Quality.Limit(8_000_000), remoteQuality = Quality.Limit(3_000_000), dialogueBoost = true) }
         h.core.bandwidth.remember(5_000_000)
         val session = h.core.restore(SavedServer("server-1", "server-1", listOf("http://home.test")))
-        val player = session.playback.videoPlayer(FakeEngine())
+        val player = session.playback.videoPlayer(FakeEngine(), PlayChoice("w1"), hideControlsAfterMs = 3_000)
 
         val request = player.request(PlayChoice("w1", "v1", "a1", "s1"))
 
@@ -643,7 +643,7 @@ class KivoSessionTest {
         h.device.signedInTo("server-1")
         h.core.updateSettings { it.copy(localQuality = Quality.Original, remoteQuality = Quality.Limit(3_000_000)) }
         val session = h.core.restore(SavedServer("server-1", "server-1", listOf("http://home.test")))
-        val player = session.playback.videoPlayer(FakeEngine())
+        val player = session.playback.videoPlayer(FakeEngine(), PlayChoice("w1"), hideControlsAfterMs = 3_000)
 
         val request = player.request(PlayChoice("w1"))
 
@@ -661,7 +661,7 @@ class KivoSessionTest {
         val h = Harness(this)
         h.device.signedInTo("server-1")
         val session = h.core.restore(SavedServer("server-1", "server-1", listOf("http://home.test")))
-        val player = session.playback.videoPlayer(FakeEngine())
+        val player = session.playback.videoPlayer(FakeEngine(), PlayChoice("w1"), hideControlsAfterMs = 3_000)
 
         player.boostDialogue(true)
         testScheduler.runCurrent()
@@ -683,11 +683,11 @@ class KivoSessionTest {
         }
         h.device.signedInTo("server-1")
         val session = h.core.restore(SavedServer("server-1", "server-1", listOf("http://home.test")))
-        val first = session.playback.videoPlayer(FakeEngine())
+        val first = session.playback.videoPlayer(FakeEngine(), PlayChoice("w1"), hideControlsAfterMs = 3_000)
         repeat(2) { h.core.autoplay.playedOnItsOwn() }
         first.dispose()
 
-        val second = session.playback.videoPlayer(FakeEngine())
+        val second = session.playback.videoPlayer(FakeEngine(), PlayChoice("w1"), hideControlsAfterMs = 3_000)
         assertEquals(2, h.core.autoplay.count, "a new player keeps the run")
         val load = session.cast.load("Living Room", PlayChoice("w1"))
         assertTrue("\"autoplayCount\":2" in load.customData)
@@ -719,13 +719,13 @@ class KivoSessionTest {
         }
         h.device.signedInTo("server-1")
         val session = h.core.restore(SavedServer("server-1", "server-1", listOf("http://home.test")))
-        val first = session.playback.videoPlayer(FakeEngine())
+        val first = session.playback.videoPlayer(FakeEngine(), PlayChoice("w1"), hideControlsAfterMs = 3_000)
         first.setHasNextEpisode(hasNext = true)
         assertEquals(UpNextPhase.Waiting, h.core.autoplay.await { it.phase == UpNextPhase.Waiting }?.phase, "off on another device")
         first.dispose()
 
         autoplayNext = true
-        val second = session.playback.videoPlayer(FakeEngine())
+        val second = session.playback.videoPlayer(FakeEngine(), PlayChoice("w1"), hideControlsAfterMs = 3_000)
         second.setHasNextEpisode(hasNext = true)
         assertEquals(UpNextPhase.CountingDown, h.core.autoplay.await { it.phase == UpNextPhase.CountingDown }?.phase, "on again")
         second.dispose()

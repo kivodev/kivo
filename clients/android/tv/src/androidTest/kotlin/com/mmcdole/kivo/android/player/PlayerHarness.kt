@@ -48,8 +48,8 @@ import com.mmcdole.kivo.api.models.WorkImages
 import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.core.auth.SavedServer
 import com.mmcdole.kivo.core.play.PlayChoice
-import com.mmcdole.kivo.core.play.PlayerEnd
 import com.mmcdole.kivo.core.session.KivoClient
+import com.mmcdole.kivo.core.session.PlayerExit
 import com.mmcdole.kivo.core.player.PlayerEngine
 import com.mmcdole.kivo.core.player.TrackShow
 import io.ktor.client.engine.mock.MockEngine
@@ -233,15 +233,14 @@ class PlayerHarness(private val compose: ComposeContentTestRule, private val clo
         val session = runBlocking { core.restore(SavedServer(SERVER_ID, "Player test", listOf("http://kivo.test"))) }
         repeat(3) {
             val engine = FakeVideoEngine()
-            val video = session.playback.videoPlayer(engine)
-            onMain { video.setHasNextEpisode(hasNext = true) }
-            runBlocking { withContext(Dispatchers.Main) { video.play(PlayChoice(EPISODE)) } }
-            waitFor { engine.loaded }
+            val video = runBlocking { withContext(Dispatchers.Main) { session.playback.videoPlayer(engine, PlayChoice(EPISODE), hideControlsAfterMs = 5_000) } }
+            waitFor { engine.loaded && video.screen.value.next != null }
             onMain {
                 engine.ready()
                 engine.end()
             }
-            check(video.ui.value.end == PlayerEnd.PlayNext)
+            waitFor { video.screen.value.exit != null }
+            check(video.screen.value.exit == PlayerExit.Next(PlayChoice(NEXT), downloadId = null))
             onMain { video.dispose() }
         }
     }

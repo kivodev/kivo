@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -51,6 +50,7 @@ import com.mmcdole.kivo.android.ServerSession
 import com.mmcdole.kivo.android.mobile.R
 import com.mmcdole.kivo.android.mobile.app.MobileNav
 import com.mmcdole.kivo.android.mobile.app.PlayerRoute
+import com.mmcdole.kivo.android.mobile.app.WorkRoute
 import com.mmcdole.kivo.android.mobile.cast.LocalCast
 import com.mmcdole.kivo.android.mobile.theme.space
 import com.mmcdole.kivo.android.mobile.ui.display
@@ -58,18 +58,15 @@ import com.mmcdole.kivo.android.player.LoadedPlayer
 import com.mmcdole.kivo.api.models.TrackType
 import com.mmcdole.kivo.core.display.pickerName
 import com.mmcdole.kivo.core.display.quality
-import com.mmcdole.kivo.core.display.qualityMenu
 import com.mmcdole.kivo.core.display.size
 import com.mmcdole.kivo.core.play.PlayerStatus
 import com.mmcdole.kivo.core.player.SKIP_BACK_MS
 import com.mmcdole.kivo.core.player.SKIP_FORWARD_MS
 import com.mmcdole.kivo.core.player.SUBTITLES_OFF
+import com.mmcdole.kivo.core.session.PlayerExit
 import com.mmcdole.kivo.core.settings.Quality
 import io.github.peerless2012.ass.media.widget.AssSubtitleView
 import kotlinx.coroutines.delay
-
-/** The controls hide this long after the last touch while playing. */
-private const val CONTROLS_HIDE_MS = 3_000L
 
 /** A double tap's skips on one side add up while each comes within this long of the last. */
 private const val BURST_MS = 900L
@@ -88,7 +85,7 @@ private const val BURST_MS = 900L
  */
 @Composable
 fun PlayerScreen(session: ServerSession, route: PlayerRoute, nav: MobileNav) {
-    val model = viewModel { PlayerViewModel(session.session, route, { session.readyDownload(it)?.id }, PlayerViewModel.engineFor(session)) }
+    val model = viewModel { PlayerViewModel(session.session, route, PlayerViewModel.engineFor(session)) }
     val state by model.state.collectAsStateWithLifecycle()
     val playback = state.playback
     val live = playback.live
@@ -103,7 +100,7 @@ fun PlayerScreen(session: ServerSession, route: PlayerRoute, nav: MobileNav) {
             else -> false
         },
     )
-    val video = state.version?.tracks?.firstOrNull { it.type == TrackType.Video }?.video
+    val video = state.screen.version?.tracks?.firstOrNull { it.type == TrackType.Video }?.video
     val aspect = pictureInPictureAspect(video?.width, video?.height)
     val pictureInPicture = pictureInPictureOffered()
     if (pictureInPicture) PictureInPicture(live && !playback.paused, aspect, model::togglePlay, model::setPictureInPicture)
@@ -118,26 +115,23 @@ fun PlayerScreen(session: ServerSession, route: PlayerRoute, nav: MobileNav) {
             }
         }
     }
-    LaunchedEffect(Unit) {
-        for (exit in model.exits) {
-            when (exit) {
-                PlayerExit.Back -> nav.back()
-                is PlayerExit.Replace -> nav.replacePlayer(exit.route)
-            }
+    // Done, the player goes where the core says: the next episode, its download when it's ready, the series or back.
+    LaunchedEffect(state.screen.exit) {
+        when (val exit = state.screen.exit) {
+            is PlayerExit.Next -> nav.replacePlayer(PlayerRoute(exit.choice).copy(downloadId = exit.downloadId))
+            is PlayerExit.Series -> nav.replacePlayer(WorkRoute(exit.seriesId))
+            PlayerExit.Back -> nav.back()
+            null -> {}
         }
+    }
+    LaunchedEffect(Unit) {
+        for (id in model.previous) nav.replacePlayer(PlayerRoute(id))
     }
 
     val menus = remember { MenuState() }
     val anchors = remember { MenuAnchors() }
-    var scrubbing by remember { mutableStateOf(false) }
-    var touches by remember { mutableIntStateOf(0) }
-    val visible = state.overlay.controlsShown
+    val visible = state.screen.ui.controlsShown
     LaunchedEffect(menus.open != null) { model.setMenuOpen(menus.open != null) }
-    LaunchedEffect(visible, live, playback.paused, menus.open, scrubbing, touches) {
-        if (!visible || !live || playback.paused || menus.open != null || scrubbing) return@LaunchedEffect
-        delay(CONTROLS_HIDE_MS)
-        model.hideControls()
-    }
     BackHandler { nav.back() }
 
     val failed = playback.status == PlayerStatus.Error && playback.failure != null
@@ -159,10 +153,7 @@ fun PlayerScreen(session: ServerSession, route: PlayerRoute, nav: MobileNav) {
             }
         }
         VideoGestures(
-            onTap = {
-                touches++
-                model.toggleControls()
-            },
+            onTap = model::toggleControls,
             onSkip = { forward ->
                 if (live) {
                     val last = burst
@@ -184,7 +175,7 @@ fun PlayerScreen(session: ServerSession, route: PlayerRoute, nav: MobileNav) {
         val inset = Modifier.windowInsetsPadding(WindowInsets.displayCutout)
         if (visible && !failed) {
             PlayerTopRow(
-                state.work,
+                state.screen.work,
                 onClose = nav::back,
                 onPictureInPicture = if (pictureInPicture) ({ enterPictureInPicture(activity, aspect) }) else null,
                 modifier = Modifier.align(Alignment.TopCenter).then(inset),
@@ -193,15 +184,9 @@ fun PlayerScreen(session: ServerSession, route: PlayerRoute, nav: MobileNav) {
                 state,
                 hasTracks = tracksOffered(state),
                 anchors = anchors,
-                onToggle = {
-                    touches++
-                    model.togglePlay()
-                },
+                onToggle = model::togglePlay,
                 onSkip = model::skip,
-                onScrubbing = { held ->
-                    scrubbing = held
-                    model.setScrubbing(held)
-                },
+                onScrubbing = model::setScrubbing,
                 onSeek = model::seek,
                 onMenu = menus::open,
                 modifier = Modifier.align(Alignment.BottomCenter).then(inset),
@@ -209,8 +194,9 @@ fun PlayerScreen(session: ServerSession, route: PlayerRoute, nav: MobileNav) {
         }
 
         // Above the controls' bar while they show, else near the bottom.
-        val next = state.next
-        val marker = state.overlay.skipMarker
+        val next = state.screen.next
+        val ui = state.screen.ui
+        val marker = ui.skipMarker
         Column(
             Modifier
                 .align(Alignment.BottomEnd)
@@ -219,7 +205,7 @@ fun PlayerScreen(session: ServerSession, route: PlayerRoute, nav: MobileNav) {
             horizontalAlignment = Alignment.End,
             verticalArrangement = Arrangement.spacedBy(space(3)),
         ) {
-            if (next != null && state.overlay.upNext.shows && !failed) UpNextCard(next, state.overlay.upNext, model::playNext, model::hideUpNext)
+            if (next != null && ui.upNext.shows && !failed) UpNextCard(next, ui.upNext, model::playNext, model::hideUpNext)
             if (marker != null && !failed) SkipButton(marker, model::skipMarker)
         }
 
@@ -324,7 +310,7 @@ private fun Video(player: LoadedPlayer?, screen: ScreenSettings) {
 
 /** Whether Audio & Subtitles has something to choose: more than one audio track, or a subtitle track. */
 private fun tracksOffered(state: PlayerUiState): Boolean {
-    val tracks = state.version?.tracks.orEmpty()
+    val tracks = state.screen.version?.tracks.orEmpty()
     return tracks.count { it.type == TrackType.Audio } > 1 || tracks.any { it.type == TrackType.Subtitle }
 }
 
@@ -342,7 +328,7 @@ private val Speeds = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f)
 @Composable
 private fun menuPage(state: PlayerUiState, menu: PlayerMenu, sub: SubMenu?): MenuPage {
     val play = state.playback.play ?: return MenuPage(emptyList())
-    val version = state.version
+    val version = state.screen.version
     val tracks = version?.tracks.orEmpty()
     val audio = tracks.filter { it.type == TrackType.Audio }
     val subtitles = tracks.filter { it.type == TrackType.Subtitle }
@@ -353,7 +339,7 @@ private fun menuPage(state: PlayerUiState, menu: PlayerMenu, sub: SubMenu?): Men
     val sourceBps = version?.bitrateBps
     val cap = play.limitBps
     val selectedQuality = Quality.of(play.quality).key
-    val qualities = qualityMenu(state.ladder.filter { sourceBps == null || it.bitrateBps < sourceBps }).map { option ->
+    val qualities = state.screen.qualities.map { option ->
         val q = option.quality
         MenuItem(
             q.key,
@@ -367,7 +353,7 @@ private fun menuPage(state: PlayerUiState, menu: PlayerMenu, sub: SubMenu?): Men
         )
     }
     val missing = stringResource(R.string.mobile_version_missing)
-    val versions = state.work?.versions.orEmpty().map { v ->
+    val versions = state.screen.work?.versions.orEmpty().map { v ->
         MenuItem(v.id, if (v.available) v.name else missing.format(v.name), display.size(v.sizeBytes), ticked = v.id == play.versionId, enabled = v.available)
     }
     val speeds = Speeds.map { MenuItem(it.toString(), speedLabel(it), ticked = it == state.speed) }

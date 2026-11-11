@@ -25,6 +25,7 @@ import com.mmcdole.kivo.core.downloads.TransferEvent
 import com.mmcdole.kivo.core.downloads.TransferRequest
 import com.mmcdole.kivo.core.play.PlayChoice
 import com.mmcdole.kivo.core.play.PlayerStatus
+import com.mmcdole.kivo.core.session.PlayerExit
 import com.mmcdole.kivo.core.settings.DownloadQuality
 import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpStatusCode
@@ -33,13 +34,11 @@ import io.ktor.http.content.TextContent
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
 import java.io.File
 import java.security.MessageDigest
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -211,15 +210,15 @@ class DownloadsViewModelTest : CoreTest() {
 
         val engine = FakeEngine()
         val player = held { PlayerViewModel(session, PlayerRoute("m1", downloadId = id)) { engine } }
-        val playing = awaitValue(player.state) { it.playback.status == PlayerStatus.Playing && it.work != null }
+        val playing = awaitValue(player.state) { it.playback.status == PlayerStatus.Playing && it.screen.work != null }
         val play = assertNotNull(playing.playback.play)
         assertTrue(play.url.startsWith("file://"), play.url)
         assertTrue(play.url.endsWith("/$id/part-0.mp4"), play.url)
-        assertEquals(true, playing.offline)
-        assertEquals("Charade", playing.work?.title)
+        assertEquals(true, playing.screen.offline)
+        assertEquals("Charade", playing.screen.work?.title)
 
         // Made alone: held would hand back the player above, its kind's one.
         val gone = PlayerViewModel(session, PlayerRoute("m1", downloadId = "nothing")) { FakeEngine() }
-        assertIs<com.mmcdole.kivo.android.mobile.player.PlayerExit.Back>(runBlocking { withTimeout(5_000) { gone.exits.receive() } })
+        assertEquals(PlayerExit.Back, awaitValue(gone.state) { it.screen.exit != null }.screen.exit)
     }
 }

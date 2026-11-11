@@ -7,47 +7,29 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaMetadata
 import com.mmcdole.kivo.android.ServerSession
+import com.mmcdole.kivo.android.settings.ScreenSettings
 import com.mmcdole.kivo.android.ui.Screen
 import com.mmcdole.kivo.android.watchnext.WatchNext
-import com.mmcdole.kivo.api.models.EpisodeInfo
-import com.mmcdole.kivo.api.models.PlayStarted
-import com.mmcdole.kivo.api.models.PreviewManifest
-import com.mmcdole.kivo.api.models.QualityRung
 import com.mmcdole.kivo.api.models.SubtitleResult
-import com.mmcdole.kivo.api.models.Version
-import com.mmcdole.kivo.api.models.WorkDetail
-import com.mmcdole.kivo.core.answer
-import com.mmcdole.kivo.core.data.withTrack
 import com.mmcdole.kivo.core.display.episodeCode
 import com.mmcdole.kivo.core.play.PlayChoice
-import com.mmcdole.kivo.core.play.PlayerEnd
 import com.mmcdole.kivo.core.player.SUBTITLES_OFF
-import com.mmcdole.kivo.android.settings.ScreenSettings
+import com.mmcdole.kivo.core.session.PlayerScreenState
 import com.mmcdole.kivo.core.settings.Quality
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
-/** Where the player goes when it's done. */
-sealed interface PlayerExit {
-    data object Back : PlayerExit
-
-    /** Plays [screen] in its place: the next episode, or another version. */
-    data class Replace(val screen: Screen.Player) : PlayerExit
-
-    /** The last episode ended: its series' page, in the player's place. */
-    data class Series(val seriesId: String) : PlayerExit
-}
+/** The controls hide this long after the last key while playing. */
+private const val CONTROLS_HIDE_MS = 5_000L
 
 /**
  * The player's state behind the screen: the core's video player over the
- * Media3 engine, the work and its next episode for up next, and the choices
- * made in the player (subtitle, audio, dialogue boost, quality, speed),
- * which the core shows at once or by a new play at the position.
+ * Media3 engine, what it shows around the video, and the choices made in
+ * the player (subtitle, audio, dialogue boost, quality, speed), which the
+ * core shows at once or by a new play at the position.
  * The engine is [Media3Engine] unless [engineOf] makes another, given what
  * to call with each loaded player.
  */
@@ -66,22 +48,19 @@ class PlayerViewModel(
 
     /**
      * The core's player: its plays start with this TV's settings, and stop
-     * with a message when they end elsewhere, and what shows over the video,
-     * its [com.mmcdole.kivo.core.session.VideoPlayer.ui], follows its rules.
+     * with a message when they end elsewhere, and what it shows around the
+     * video, [screen], follows its rules.
      */
-    val video = server.playback.videoPlayer(engine)
+    val video = server.playback.videoPlayer(engine, args.choice, CONTROLS_HIDE_MS, positionMs = if (args.fromStart) 0 else null)
 
     val controller = video.controller
 
-    var work by mutableStateOf<WorkDetail?>(null)
-        private set
-    var next by mutableStateOf<WorkDetail?>(null)
+    /** What the core's player shows around the video: the work, its next episode, the qualities, the controls, Skip, up next and where it goes once done. */
+    var screen by mutableStateOf(PlayerScreenState())
         private set
 
     /** How this TV draws subtitles and sets up the display. */
-    var screen by mutableStateOf<ScreenSettings?>(null)
-        private set
-    var ladder by mutableStateOf<List<QualityRung>>(emptyList())
+    var screenSettings by mutableStateOf<ScreenSettings?>(null)
         private set
 
     /** The subtitle track showing, or [SUBTITLES_OFF], as the core's player says. */
@@ -96,47 +75,23 @@ class PlayerViewModel(
     var speed by mutableStateOf(1f)
         private set
 
-    /** The play's preview thumbnails, once ready: the manifest and its URL, which sheets resolve against. */
-    var previews by mutableStateOf<Pair<String, PreviewManifest>?>(null)
-        private set
-
-    val exits = Channel<PlayerExit>(Channel.BUFFERED)
+    /** Another play in the player's place: the episode before, or another version. */
+    val replacements = Channel<Screen.Player>(Channel.BUFFERED)
 
     init {
+        viewModelScope.launch { screenSettings = graph.screenSettings.values.first() }
+        viewModelScope.launch { video.screen.collect { screen = it } }
+        // The media session's title and its Previous and Next, as the work says.
         viewModelScope.launch {
-            video.play(args.choice, positionMs = if (args.fromStart) 0 else null)
-        }
-        viewModelScope.launch { screen = graph.screenSettings.values.first() }
-        viewModelScope.launch {
-            ladder = quietly { server.playback.qualityLadder() } ?: return@launch // The quality menu offers Auto and Original.
-        }
-        viewModelScope.launch {
-            work = fetch(args.choice.workId)?.also { w ->
+            video.screen.map { it.work }.distinctUntilChanged { a, b -> a?.id == b?.id && a?.title == b?.title }.collect { w ->
+                w ?: return@collect
                 val e = w.episode
                 engine.metadata = MediaMetadata.Builder()
                     .setTitle(w.title)
                     .setArtist(e?.let { "${it.seriesTitle} · ${graph.display.episodeCode(it)}" })
                     .build()
-                if (e != null) {
-                    video.setHasNextEpisode(hasNext = e.nextId != null)
-                    engine.playPrevious = ::playPrevious.takeIf { e.previousId != null }
-                    engine.playNext = video::playNext.takeIf { e.nextId != null }
-                }
-            }
-            work?.episode?.nextId?.let { next = fetch(it) }
-        }
-        // Done, the player goes where the core says: the next episode, the series or back.
-        viewModelScope.launch {
-            video.ui.map { it.end }.distinctUntilChanged().collect { end ->
-                exitAt(end, work?.episode)?.let(exits::trySend)
-            }
-        }
-        // Preview thumbnails for the scrub bar, when the play says they're ready.
-        viewModelScope.launch {
-            controller.state.map { it.play }.distinctUntilChangedBy { it?.previews }.collect { play ->
-                previews = null
-                // Without them the bar shows the time and chapter alone.
-                previews = play?.let { quietly { server.playback.previews(it) } }?.let { it.url to it.manifest }
+                engine.playPrevious = ::playPrevious.takeIf { e?.previousId != null }
+                engine.playNext = video::playNext.takeIf { e?.nextId != null }
             }
         }
         // The tracks showing, which the core's player shows on the engine itself.
@@ -148,29 +103,18 @@ class PlayerViewModel(
         }
     }
 
-    /** The work as the server says it is; null when it can't say. */
-    private suspend fun fetch(id: String): WorkDetail? = server.library.work(id).answer()
-
     /** A subtitle track, or off: shown as the play's tracks say, at once or by a new play at the position. */
     fun chooseSubtitle(trackId: String) = video.chooseSubtitle(trackId)
 
-    /** The version [play] plays, once the work is read. */
-    fun version(play: PlayStarted): Version? = work?.versions?.firstOrNull { it.id == play.versionId }
-
-    /** The subtitle search's results for [play]'s version, best first. */
-    suspend fun searchSubtitles(play: PlayStarted): List<SubtitleResult> =
-        server.playback.subtitleResults(checkNotNull(version(play)))
+    /** The subtitle search's results for the version playing, best first. */
+    suspend fun searchSubtitles(): List<SubtitleResult> =
+        server.playback.subtitleResults(checkNotNull(screen.version))
 
     /**
      * Downloads [result] to the server and plays on with it: the version's
      * tracks gain it, and a new play at the position shows it.
      */
-    suspend fun downloadSubtitle(play: PlayStarted, result: SubtitleResult) {
-        val version = checkNotNull(version(play))
-        val track = server.playback.addSubtitle(version, result.id)
-        work = work?.withTrack(version.id, track)
-        chooseSubtitle(track.id)
-    }
+    suspend fun downloadSubtitle(result: SubtitleResult) = video.addSubtitle(result.id)
 
     /** Another audio track: from the file at once, or by a new play at the position keeping the subtitle showing. */
     fun chooseAudio(trackId: String) = video.chooseAudio(trackId)
@@ -190,12 +134,12 @@ class PlayerViewModel(
     }
 
     fun playPrevious() {
-        val previousId = work?.episode?.previousId ?: return
-        exits.trySend(PlayerExit.Replace(Screen.Player(previousId)))
+        val previousId = screen.work?.episode?.previousId ?: return
+        replacements.trySend(Screen.Player(previousId))
     }
 
     fun playVersion(versionId: String) {
-        exits.trySend(PlayerExit.Replace(Screen.Player(PlayChoice(args.choice.workId, versionId = versionId))))
+        replacements.trySend(Screen.Player(PlayChoice(args.choice.workId, versionId = versionId)))
     }
 
     override fun onCleared() {
@@ -203,27 +147,6 @@ class PlayerViewModel(
         engine.unload()
         WatchNext.refresh(graph.context)
     }
-}
-
-/**
- * Where the player goes at the core's [end] of a play: of [episode], or of
- * anything else when it's null; null while it plays on, or for a next
- * episode it doesn't know.
- */
-internal fun exitAt(end: PlayerEnd?, episode: EpisodeInfo?): PlayerExit? = when (end) {
-    PlayerEnd.PlayNext -> episode?.nextId?.let { PlayerExit.Replace(Screen.Player(it)) }
-    PlayerEnd.Series -> episode?.let { PlayerExit.Series(it.seriesId) }
-    PlayerEnd.Close -> PlayerExit.Back
-    null -> null
-}
-
-/** [read]'s answer; null when it fails. */
-private suspend fun <T> quietly(read: suspend () -> T): T? = try {
-    read()
-} catch (e: CancellationException) {
-    throw e
-} catch (_: Exception) {
-    null
 }
 
 /** The device's engine for a play of [session]'s, with this device's audio and frame-rate settings. */
