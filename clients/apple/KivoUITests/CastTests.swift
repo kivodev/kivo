@@ -16,6 +16,8 @@ final class CastTests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app.launchEnvironment["KIVO_CLIENT_ID"] = "kivo-ui-tests"
+        // Sign-in goes straight to the server under test, without browsing the network.
+        app.launchEnvironment["KIVO_SERVER"] = environment["KIVO_SERVER"]
     }
 
     func testCastScreens() throws {
@@ -169,14 +171,7 @@ final class CastTests: XCTestCase {
         let start = NSPredicate { _, _ in address.exists || user.exists || home.exists }
         wait(for: [expectation(for: start, evaluatedWith: nil)], timeout: 20)
         if !home.exists {
-            if !user.waitForExistence(timeout: 6) || !app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", server)).firstMatch.exists {
-                if user.exists { app.buttons["Change server"].tap() }
-                XCTAssert(address.waitForExistence(timeout: 10), "sign-in has no address field")
-                address.tap()
-                address.typeText(server)
-                app.buttons["Continue"].tap()
-                XCTAssert(user.waitForExistence(timeout: 15), "the server at \(server) wasn't found")
-            }
+            XCTAssert(user.waitForExistence(timeout: 15), "the server at \(server) wasn't found")
             user.tap()
             user.typeText(try XCTUnwrap(environment["KIVO_USERNAME"], "set TEST_RUNNER_KIVO_USERNAME"))
             let secret = app.secureTextFields["password"]
