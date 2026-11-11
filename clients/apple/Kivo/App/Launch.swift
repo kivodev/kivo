@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 /// What the environment the app was launched with asks of it.
 enum Launch {
