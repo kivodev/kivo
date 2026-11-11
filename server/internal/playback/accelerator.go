@@ -75,11 +75,12 @@ func (s *planner) encoders(cpu bool) []Encoder {
 // transcode, if it has one, on the decision's video track. It's the best
 // accelerator whose test passed the decided codec, plus tone mapping and
 // subtitle drawing when the job needs them. Otherwise it's the CPU, with
-// the reason when the server has an accelerator.
-func (s *planner) chooseAccelerator(c *choice) {
+// the reason when the server has an accelerator. It reports false when
+// the CPU would have to encode a codec other than H.264.
+func (s *planner) chooseAccelerator(c *choice) bool {
 	i := slices.IndexFunc(c.decision.Tracks, func(t TrackDecision) bool { return t.Type == media.Video && t.Selected && t.Transcoded() })
 	if i < 0 {
-		return
+		return true
 	}
 	t, v := &c.decision.Tracks[i], c.decision.Tracks[i].Video
 	accel, why := s.accelerators(c.cpu)
@@ -87,13 +88,14 @@ func (s *planner) chooseAccelerator(c *choice) {
 		e := Encoder{Codec: v.Codec, ToneMap: a.ToneMap != "", BurnIn: a.BurnIn != ""}
 		if _, ok := a.Encoder(v.Codec); ok && e.does(v.Codec, v.HDR == media.ToneMap, c.decision.burned()) {
 			t.Accelerator, t.Encoder, t.SoftwareReason = a.Accelerator, a.Name, ""
-			return
+			return true
 		}
 	}
 	if why == "" && len(accel) > 0 {
 		why = ReasonAcceleratorUnsupported
 	}
 	t.Accelerator, t.Encoder, t.SoftwareReason = "", "CPU", why
+	return v.Codec == media.H264
 }
 
 // acceleratorFailed records an accelerator failing a play or a download,

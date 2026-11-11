@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -157,9 +158,19 @@ var qsv = media.Caps{
 
 var cpu = media.Caps{Backend: media.Software, Name: "CPU", Encoders: []media.EncoderCaps{{Codec: media.H264, GOP: media.GridGOP}}, ToneMap: media.OnCPU, BurnIn: media.OnCPU}
 
-type fakeAccelerators struct{ caps media.Capabilities }
+type fakeAccelerators struct {
+	caps media.Capabilities
+	// later, when set, replaces caps after the first call.
+	later *media.Capabilities
+	calls atomic.Int32
+}
 
-func (h *fakeAccelerators) Capabilities() media.Capabilities { return h.caps }
+func (h *fakeAccelerators) Capabilities() media.Capabilities {
+	if h.calls.Add(1) > 1 && h.later != nil {
+		return *h.later
+	}
+	return h.caps
+}
 
 // noMedia is the media for markers, previews and subtitles. The tasks they
 // ask for are dropped, so it never reads a file.
@@ -1149,6 +1160,15 @@ func TestAnH264TranscodeIsSizedForH264(t *testing.T) {
 	s, err = f.svc.Start(ctx, f.p, f.v, StartRequest{Work: f.hdrMovie("Arrival").Work, Caps: caps, ClientIP: lan})
 	if v, _ := s.Decision.Selected("video"); err != nil || *v.Video != want || v.Codec != media.H264 || v.SoftwareReason != ReasonAcceleratorFailed || f.media.last().Video != want {
 		t.Fatalf("busy accelerator: %+v %+v %v; the job %+v", v, v.Video, err, f.media.last().Video)
+	}
+
+	// The same when the accelerator is gone by the time the job starts.
+	f.media.busy[qsv.Accelerator] = false
+	f.accel.later = &media.Capabilities{Tested: true, CPU: cpu}
+	f.accel.calls.Store(0)
+	s, err = f.svc.Start(ctx, f.p, f.v, StartRequest{Work: f.hdrMovie("Sicario").Work, Caps: caps, ClientIP: lan})
+	if v, _ := s.Decision.Selected("video"); err != nil || *v.Video != want || v.Codec != media.H264 || v.Encoder != "CPU" || f.media.last().Video != want {
+		t.Fatalf("accelerator gone: %+v %+v %v; the job %+v", v, v.Video, err, f.media.last().Video)
 	}
 }
 

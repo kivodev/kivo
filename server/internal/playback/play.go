@@ -520,12 +520,16 @@ func (s *Service) open(ctx context.Context, pl *play) error {
 // transcodeWithFallback runs a play's or a download's transcode. If the
 // accelerator is busy or fails as the job starts, the failure is recorded,
 // the choice is decided again for the CPU, and the job runs again. The
-// reason goes on the decision's video track.
+// reason goes on the decision's video track. A choice whose codec no
+// accelerator encodes any more is decided again before it runs.
 func (s *planner) transcodeWithFallback(ctx context.Context, c *choice, run func(transcode.Spec) error) error {
 	// try chooses the encoder for the video, if it transcodes video, and
 	// runs the transcode the decision describes.
 	try := func() error {
-		s.chooseAccelerator(c)
+		if !s.chooseAccelerator(c) {
+			s.redecide(c) // the decided codec's accelerator is gone
+			s.chooseAccelerator(c)
+		}
 		spec, err := s.spec(ctx, c)
 		if err != nil {
 			return err
@@ -539,9 +543,14 @@ func (s *planner) transcodeWithFallback(ctx context.Context, c *choice, run func
 	// The retry's chooseAccelerator clears the accelerator, so it's read first.
 	s.acceleratorFailed(c, c.accelerator(), err)
 	c.cpu = true
-	c.input.Encoders = s.encoders(true)
-	c.decision = Decide(c.input)
+	s.redecide(c)
 	return try()
+}
+
+// redecide decides a choice again for the encoders it may use now.
+func (s *planner) redecide(c *choice) {
+	c.input.Encoders = s.encoders(c.cpu)
+	c.decision = Decide(c.input)
 }
 
 // spec builds a play's or a download's transcode from its decision. The
