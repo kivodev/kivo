@@ -68,7 +68,7 @@ struct EpisodeRow: View {
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
             Button {
                 Haptics.success()
-                Task { _ = try? await server.session.library.setPlayed(workId: episode.id, played: !played) }
+                server.session.library.marks.setPlayed(workId: episode.id, played: !played)
             } label: {
                 Label(played ? String(localized: "Unwatched") : String(localized: "Watched"), systemImage: played ? "eye.slash" : "checkmark.circle")
             }

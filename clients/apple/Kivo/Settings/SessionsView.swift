@@ -121,22 +121,18 @@ struct SessionsView: View {
     }
 
     private func signOutEverywhereElse() async {
-        do {
-            try await server.session.account.signOutEverywhereElse()
-            everywhereElseFailure = nil
-            await load()
-        } catch {
-            everywhereElseFailure = error.problemSentence
-        }
+        guard let done = try? await server.session.account.signOutEverywhereElse() else { return }
+        everywhereElseFailure = done.problemOrNull()?.sentence
+        if everywhereElseFailure == nil { await load() }
     }
 
     private func signOut(_ session: SignedInDevice) async {
-        do {
-            try await server.session.account.signOutSession(id: session.id)
+        guard let done = try? await server.session.account.signOutSession(id: session.id) else { return }
+        if let failed = done.problemOrNull() {
+            signOutFailure = (session.id, failed.sentence)
+        } else {
             signOutFailure = nil
             await load()
-        } catch {
-            signOutFailure = (session.id, error.problemSentence)
         }
     }
 }

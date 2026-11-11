@@ -2,7 +2,6 @@ package com.mmcdole.kivo.android.mobile.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.mmcdole.kivo.android.mobile.ui.WorkMarks
 import com.mmcdole.kivo.api.models.SearchResults
 import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.core.session.KivoSession
@@ -41,7 +40,7 @@ class SearchViewModel(private val session: KivoSession, initial: String = "") : 
     private val query = MutableStateFlow(initial)
     private val retries = MutableStateFlow(0)
 
-    val marks = WorkMarks(session.library, viewModelScope)
+    val marks = session.library.marks
 
     /** The server's name, for a search that can't reach it. */
     val serverName: String = session.savedServer.value.name

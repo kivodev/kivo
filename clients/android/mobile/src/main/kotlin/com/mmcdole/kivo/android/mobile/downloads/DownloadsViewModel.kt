@@ -3,6 +3,7 @@ package com.mmcdole.kivo.android.mobile.downloads
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mmcdole.kivo.android.mobile.ui.display
+import com.mmcdole.kivo.android.mobile.ui.sentence
 import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.core.downloads.DownloadItem
 import com.mmcdole.kivo.core.downloads.DownloadStorage
@@ -89,13 +90,13 @@ class DownloadsViewModel(private val downloads: SessionDownloads, private val se
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DownloadsUiState())
 
-    fun delete(ids: List<String>) = act { downloads.delete(ids) }
+    fun delete(ids: List<String>) = act { downloads.delete(ids).problemOrNull()?.let(::sentence) }
 
-    fun pause(id: String) = act { downloads.pause(id) }
+    fun pause(id: String) = act { downloads.pause(id).problemOrNull()?.let(::sentence) }
 
-    fun resume(id: String) = act { downloads.resume(id) }
+    fun resume(id: String) = act { downloads.resume(id).problemOrNull()?.let(::sentence) }
 
-    fun retry(id: String) = act { downloads.retry(id) }
+    fun retry(id: String) = act { display.downloadProblem(downloads.retry(id)) }
 
     fun problemSeen() {
         problem.value = null
@@ -106,16 +107,9 @@ class DownloadsViewModel(private val downloads: SessionDownloads, private val se
         if (state.value.deleted > 0) downloads.deletionsSeen()
     }
 
-    private fun act(call: suspend () -> Unit) {
-        viewModelScope.launch {
-            try {
-                call()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                problem.value = display.downloadProblem(e)
-            }
-        }
+    /** Runs [call], showing the problem it words, when there's one. */
+    private fun act(call: suspend () -> String?) {
+        viewModelScope.launch { call()?.let { problem.value = it } }
     }
 }
 

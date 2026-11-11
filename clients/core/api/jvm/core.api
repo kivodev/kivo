@@ -47,6 +47,33 @@ public final class com/mmcdole/kivo/core/CompatibilityKt {
 	public static final fun compareVersions (Ljava/lang/String;Ljava/lang/String;)Ljava/lang/Integer;
 }
 
+public abstract class com/mmcdole/kivo/core/Done {
+	public final fun getOrNull ()Ljava/lang/Object;
+	public final fun problemOrNull ()Lcom/mmcdole/kivo/core/RequestProblem;
+}
+
+public final class com/mmcdole/kivo/core/Done$Failed : com/mmcdole/kivo/core/Done {
+	public fun <init> (Lcom/mmcdole/kivo/core/RequestProblem;)V
+	public final fun component1 ()Lcom/mmcdole/kivo/core/RequestProblem;
+	public final fun copy (Lcom/mmcdole/kivo/core/RequestProblem;)Lcom/mmcdole/kivo/core/Done$Failed;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/Done$Failed;Lcom/mmcdole/kivo/core/RequestProblem;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/Done$Failed;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getProblem ()Lcom/mmcdole/kivo/core/RequestProblem;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/mmcdole/kivo/core/Done$Ok : com/mmcdole/kivo/core/Done {
+	public fun <init> (Ljava/lang/Object;)V
+	public final fun component1 ()Ljava/lang/Object;
+	public final fun copy (Ljava/lang/Object;)Lcom/mmcdole/kivo/core/Done$Ok;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/Done$Ok;Ljava/lang/Object;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/Done$Ok;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getValue ()Ljava/lang/Object;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public abstract class com/mmcdole/kivo/core/Load {
 	public final fun getOrNull ()Ljava/lang/Object;
 	public final fun problemOrNull ()Lcom/mmcdole/kivo/core/RequestProblem;
@@ -1380,13 +1407,8 @@ public final class com/mmcdole/kivo/core/downloads/DownloadItem {
 
 public final class com/mmcdole/kivo/core/downloads/DownloadItemKt {
 	public static final fun downloadFailure (Lcom/mmcdole/kivo/core/display/Display;Ljava/lang/String;)Ljava/lang/String;
-	public static final fun downloadProblem (Lcom/mmcdole/kivo/core/display/Display;Ljava/lang/Throwable;)Ljava/lang/String;
+	public static final fun downloadProblem (Lcom/mmcdole/kivo/core/display/Display;Lcom/mmcdole/kivo/core/downloads/DownloadStart;)Ljava/lang/String;
 	public static final fun downloadQuality (Lcom/mmcdole/kivo/core/display/Display;Lcom/mmcdole/kivo/core/settings/DownloadQuality;)Ljava/lang/String;
-}
-
-public final class com/mmcdole/kivo/core/downloads/DownloadRefusedException : java/lang/Exception {
-	public fun <init> (Ljava/lang/String;)V
-	public final fun getReason ()Ljava/lang/String;
 }
 
 public final class com/mmcdole/kivo/core/downloads/DownloadSource {
@@ -1396,6 +1418,53 @@ public final class com/mmcdole/kivo/core/downloads/DownloadSource {
 	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/downloads/DownloadSource;Ljava/lang/String;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/downloads/DownloadSource;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getConvertedFrom ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract class com/mmcdole/kivo/core/downloads/DownloadStart {
+}
+
+public final class com/mmcdole/kivo/core/downloads/DownloadStart$Failed : com/mmcdole/kivo/core/downloads/DownloadStart {
+	public fun <init> (Lcom/mmcdole/kivo/core/RequestProblem;)V
+	public final fun component1 ()Lcom/mmcdole/kivo/core/RequestProblem;
+	public final fun copy (Lcom/mmcdole/kivo/core/RequestProblem;)Lcom/mmcdole/kivo/core/downloads/DownloadStart$Failed;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/downloads/DownloadStart$Failed;Lcom/mmcdole/kivo/core/RequestProblem;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/downloads/DownloadStart$Failed;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getProblem ()Lcom/mmcdole/kivo/core/RequestProblem;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/mmcdole/kivo/core/downloads/DownloadStart$NoRoom : com/mmcdole/kivo/core/downloads/DownloadStart {
+	public fun <init> (J)V
+	public final fun component1 ()J
+	public final fun copy (J)Lcom/mmcdole/kivo/core/downloads/DownloadStart$NoRoom;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/downloads/DownloadStart$NoRoom;JILjava/lang/Object;)Lcom/mmcdole/kivo/core/downloads/DownloadStart$NoRoom;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getShortBytes ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/mmcdole/kivo/core/downloads/DownloadStart$Refused : com/mmcdole/kivo/core/downloads/DownloadStart {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lcom/mmcdole/kivo/core/downloads/DownloadStart$Refused;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/downloads/DownloadStart$Refused;Ljava/lang/String;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/downloads/DownloadStart$Refused;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getReason ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/mmcdole/kivo/core/downloads/DownloadStart$Started : com/mmcdole/kivo/core/downloads/DownloadStart {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lcom/mmcdole/kivo/core/downloads/DownloadStart$Started;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/downloads/DownloadStart$Started;Ljava/lang/String;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/downloads/DownloadStart$Started;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getId ()Ljava/lang/String;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }
@@ -1512,11 +1581,6 @@ public abstract interface class com/mmcdole/kivo/core/downloads/DownloadTranspor
 	public abstract fun running ()Ljava/util/List;
 	public abstract fun start (Lcom/mmcdole/kivo/core/downloads/TransferRequest;)V
 	public abstract fun stop (Ljava/lang/String;)V
-}
-
-public final class com/mmcdole/kivo/core/downloads/NotEnoughSpaceException : java/lang/Exception {
-	public fun <init> (J)V
-	public final fun getShortBytes ()J
 }
 
 public abstract interface class com/mmcdole/kivo/core/downloads/TransferEvent {
@@ -2331,6 +2395,7 @@ public final class com/mmcdole/kivo/core/session/SessionLibrary {
 	public final fun createList (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun createSmartList (Ljava/lang/String;Lcom/mmcdole/kivo/api/models/WorkQuery;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun deleteList (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun getMarks ()Lcom/mmcdole/kivo/core/session/WorkMarks;
 	public final fun gridPage (Lcom/mmcdole/kivo/core/data/GridQuery;IILkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun home ()Lkotlinx/coroutines/flow/Flow;
 	public final fun home (Lcom/mmcdole/kivo/api/models/HomeRowKind;)Lkotlinx/coroutines/flow/Flow;
@@ -2443,6 +2508,13 @@ public final class com/mmcdole/kivo/core/session/VideoPlayer {
 	public final fun skipMarker ()V
 	public final fun toggleControls ()V
 	public final fun userActivity ()V
+}
+
+public final class com/mmcdole/kivo/core/session/WorkMarks {
+	public final fun getProblems ()Lkotlinx/coroutines/flow/SharedFlow;
+	public final fun removeFromContinue (Ljava/lang/String;)V
+	public final fun setOnList (Ljava/lang/String;Ljava/lang/String;Z)V
+	public final fun setPlayed (Ljava/lang/String;Z)V
 }
 
 public final class com/mmcdole/kivo/core/settings/DeviceSettings {

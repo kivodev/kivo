@@ -29,6 +29,7 @@ import com.mmcdole.kivo.android.ui.TextInput
 import com.mmcdole.kivo.android.ui.display
 import com.mmcdole.kivo.api.models.ClientPlatform
 import com.mmcdole.kivo.core.ProblemCode
+import com.mmcdole.kivo.core.Done
 import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.android.ui.focusWhenPlaced
 import com.mmcdole.kivo.core.display.problem
@@ -44,9 +45,9 @@ import kotlin.time.Instant
 internal interface LinkActions {
     suspend fun pendingDevice(code: String): PendingDevice
 
-    suspend fun approve(code: String)
+    suspend fun approve(code: String): Done<Unit>
 
-    suspend fun deny(code: String)
+    suspend fun deny(code: String): Done<Unit>
 }
 
 private sealed interface LinkStep {
@@ -89,6 +90,14 @@ internal fun LinkDevicePanel(username: String, actions: LinkActions, onDismiss: 
         }
     }
 
+    /** Allows [asking] or doesn't; a refusal shows its problem and stays on the question. */
+    suspend fun answer(asking: LinkStep.Asking, allowed: Boolean) {
+        when (val done = if (allowed) actions.approve(asking.code) else actions.deny(asking.code)) {
+            is Done.Ok -> step = LinkStep.Answered(asking.request.name, allowed)
+            is Done.Failed -> problem = done.problem.code
+        }
+    }
+
     SidePanel(stringResource(R.string.link_a_device), onDismiss) {
         when (val s = step) {
             LinkStep.Enter -> EnterCode(busy) { typed ->
@@ -103,18 +112,8 @@ internal fun LinkDevicePanel(username: String, actions: LinkActions, onDismiss: 
                 username,
                 s.request,
                 busy,
-                onDeny = {
-                    run {
-                        actions.deny(s.code)
-                        step = LinkStep.Answered(s.request.name, allowed = false)
-                    }
-                },
-                onAllow = {
-                    run {
-                        actions.approve(s.code)
-                        step = LinkStep.Answered(s.request.name, allowed = true)
-                    }
-                },
+                onDeny = { run { answer(s, allowed = false) } },
+                onAllow = { run { answer(s, allowed = true) } },
             )
             is LinkStep.Answered -> Answered(s, onDismiss)
         }

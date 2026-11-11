@@ -3,7 +3,6 @@ package com.mmcdole.kivo.android.mobile.library
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mmcdole.kivo.android.mobile.ui.CardShape
-import com.mmcdole.kivo.android.mobile.ui.WorkMarks
 import com.mmcdole.kivo.core.data.GridSort
 import com.mmcdole.kivo.core.session.GridCardShape
 import com.mmcdole.kivo.core.session.KivoSession
@@ -32,7 +31,7 @@ class LibraryViewModel(session: KivoSession, libraryId: String, oneOffSort: Grid
 
     val state: StateFlow<LibraryGridState> get() = grid.state
 
-    val marks = WorkMarks(session.library, viewModelScope)
+    val marks = session.library.marks
 
     /** Reads the grid again in place, as a pull to refresh does; returns once its first page answers. */
     suspend fun refresh() {

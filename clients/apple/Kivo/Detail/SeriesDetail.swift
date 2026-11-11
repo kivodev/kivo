@@ -215,7 +215,7 @@ struct SeriesDetail: View {
     private func setSeasonPlayed(_ played: Bool) {
         guard let season else { return }
         Haptics.success()
-        Task { _ = try? await server.session.library.setPlayed(workId: season.id, played: played) }
+        server.session.library.marks.setPlayed(workId: season.id, played: played)
     }
 
     private var markSeasonButton: some View {

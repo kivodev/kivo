@@ -8,7 +8,6 @@ import com.mmcdole.kivo.android.settings.ScreenSettings
 import com.mmcdole.kivo.android.settings.ScreenSettingsStore
 import com.mmcdole.kivo.android.settings.SubtitleBackground
 import com.mmcdole.kivo.android.settings.SubtitleSize
-import com.mmcdole.kivo.api.ProblemException
 import com.mmcdole.kivo.api.models.CurrentUser
 import com.mmcdole.kivo.android.mobile.home.shownKinds
 import com.mmcdole.kivo.android.settings.movedRow
@@ -17,6 +16,7 @@ import com.mmcdole.kivo.api.models.HomeRowInfo
 import com.mmcdole.kivo.api.models.Library
 import com.mmcdole.kivo.api.models.LibraryChoice
 import com.mmcdole.kivo.api.models.SubtitleMode
+import com.mmcdole.kivo.core.Done
 import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.answer
 import com.mmcdole.kivo.core.ProblemCode
@@ -153,9 +153,8 @@ class PreferencesViewModel(
     /** Deletes every download of this server, those under way cancelled. */
     fun deleteAllDownloads() {
         val downloads = session.downloads ?: return
-        save {
-            downloads.delete(downloads.items.first().map { it.id })
-            readStorage()
+        report {
+            downloads.delete(downloads.items.first().map { it.id }).also { if (it is Done.Ok) readStorage() }.problemOrNull()
         }
     }
 
@@ -163,19 +162,28 @@ class PreferencesViewModel(
         retry?.invoke()
     }
 
-    private fun account(change: suspend () -> CurrentUser) = save { user.value = Load.Loaded(change()) }
+    private fun account(change: suspend () -> Done<CurrentUser>) = report {
+        change().also { done -> done.getOrNull()?.let { user.value = Load.Loaded(it) } }.problemOrNull()
+    }
 
-    private fun save(change: suspend () -> Unit) {
-        retry = { save(change) }
+    /** Saves a device setting, which throws when it can't. */
+    private fun save(change: suspend () -> Unit) = report {
+        try {
+            change()
+            null
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            RequestProblem.of(e)
+        }
+    }
+
+    /** Makes [change], keeping it for Retry, and says why when it fails. */
+    private fun report(change: suspend () -> RequestProblem?) {
+        retry = { report(change) }
         viewModelScope.launch {
-            try {
-                change()
-                extras.update { it.copy(failure = null) }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                extras.update { it.copy(failure = sentence(RequestProblem.of(e))) }
-            }
+            val problem = change()
+            extras.update { it.copy(failure = problem?.let(::sentence)) }
         }
     }
 }
@@ -226,16 +234,14 @@ class SessionsViewModel(private val session: KivoSession, private val signOutHer
 
     fun signOutEverywhereElse() = act(null) { session.account.signOutEverywhereElse() }
 
-    private fun act(id: String?, call: suspend () -> Unit) {
+    private fun act(id: String?, call: suspend () -> Done<Unit>) {
         viewModelScope.launch {
-            try {
-                call()
-                mutableState.update { it.copy(failure = null) }
-                load()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                mutableState.update { it.copy(failure = id to sentence(RequestProblem.of(e))) }
+            when (val done = call()) {
+                is Done.Ok -> {
+                    mutableState.update { it.copy(failure = null) }
+                    load()
+                }
+                is Done.Failed -> mutableState.update { it.copy(failure = id to sentence(done.problem)) }
             }
         }
     }
@@ -263,18 +269,17 @@ class ChangePasswordViewModel(private val session: KivoSession) : ViewModel() {
         if (current.isEmpty() || password.length < MINIMUM_LENGTH || state.value.changing) return
         mutableState.value = ChangePasswordUiState(changing = true)
         viewModelScope.launch {
-            mutableState.value = try {
-                session.account.changePassword(current, password, signOutOthers)
-                ChangePasswordUiState(changed = true)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                val code = ProblemCode.of((e as? ProblemException)?.code)
-                // A wrong current password is the server's refusal of the password, never of the session.
-                if (code == ProblemCode.WrongPassword || code == ProblemCode.InvalidCredentials || (e as? ProblemException)?.status == 401) {
-                    ChangePasswordUiState(wrongPassword = true)
-                } else {
-                    ChangePasswordUiState(failure = sentence(RequestProblem.of(e)))
+            mutableState.value = when (val done = session.account.changePassword(current, password, signOutOthers)) {
+                is Done.Ok -> ChangePasswordUiState(changed = true)
+                is Done.Failed -> {
+                    val problem = done.problem
+                    val code = problem.knownCode
+                    // A wrong current password is the server's refusal of the password, never of the session.
+                    if (code == ProblemCode.WrongPassword || code == ProblemCode.InvalidCredentials || problem is RequestProblem.SignedOut || (problem as? RequestProblem.Refused)?.status == 401) {
+                        ChangePasswordUiState(wrongPassword = true)
+                    } else {
+                        ChangePasswordUiState(failure = sentence(problem))
+                    }
                 }
             }
         }
@@ -306,7 +311,7 @@ class HomeSettingsViewModel(private val session: KivoSession) : ViewModel() {
     val state: StateFlow<HomeSettingsUiState> = mutableState.asStateFlow()
 
     /** Sends the last change again, for Retry. */
-    private var retrying: (suspend () -> Unit)? = null
+    private var retrying: (suspend () -> RequestProblem?)? = null
 
     private var readingRows: Job? = null
 
@@ -335,7 +340,9 @@ class HomeSettingsViewModel(private val session: KivoSession) : ViewModel() {
     fun moveRow(id: String, by: Int) = changeRows { rows -> movedRow(rows, rows.filter { it.kind in shownKinds }, id, by) }
 
     /** Clears Home's order and hidden rows, and shows the layout as the server has it. */
-    fun resetHome() = send { mutableState.update { it.copy(rows = session.library.resetHomeRows()) } }
+    fun resetHome() = send {
+        session.library.resetHomeRows().also { done -> done.getOrNull()?.let { rows -> mutableState.update { it.copy(rows = rows) } } }.problemOrNull()
+    }
 
     fun retry() {
         val again = retrying ?: return
@@ -345,20 +352,14 @@ class HomeSettingsViewModel(private val session: KivoSession) : ViewModel() {
     private fun changeRows(transform: (List<HomeRowInfo>) -> List<HomeRowInfo>) {
         val after = transform(state.value.rows)
         mutableState.update { it.copy(rows = after) }
-        send { session.library.setHomeRows(after.map { HomeRowChange(it.id, it.shown) }) }
+        send { session.library.setHomeRows(after.map { HomeRowChange(it.id, it.shown) }).problemOrNull() }
     }
 
-    private fun send(call: suspend () -> Unit) {
+    private fun send(call: suspend () -> RequestProblem?) {
         retrying = call
         viewModelScope.launch {
-            try {
-                call()
-                mutableState.update { it.copy(failure = null) }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                mutableState.update { it.copy(failure = sentence(RequestProblem.of(e))) }
-            }
+            val problem = call()
+            mutableState.update { it.copy(failure = problem?.let(::sentence)) }
         }
     }
 }
@@ -380,7 +381,7 @@ class LibrariesSettingsViewModel(private val session: KivoSession) : ViewModel()
     val state: StateFlow<LibrariesUiState> = mutableState.asStateFlow()
 
     /** Sends the last change again, for Retry. */
-    private var retrying: (suspend () -> Unit)? = null
+    private var retrying: (suspend () -> RequestProblem?)? = null
 
     init {
         viewModelScope.launch {
@@ -402,20 +403,14 @@ class LibrariesSettingsViewModel(private val session: KivoSession) : ViewModel()
     private fun change(transform: (List<Library>) -> List<Library>) {
         val after = transform(state.value.libraries)
         mutableState.update { it.copy(libraries = after) }
-        send { session.account.setLibraries(after.map { LibraryChoice(it.id, it.pinned) }) }
+        send { session.account.setLibraries(after.map { LibraryChoice(it.id, it.pinned) }).problemOrNull() }
     }
 
-    private fun send(call: suspend () -> Unit) {
+    private fun send(call: suspend () -> RequestProblem?) {
         retrying = call
         viewModelScope.launch {
-            try {
-                call()
-                mutableState.update { it.copy(failure = null) }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                mutableState.update { it.copy(failure = sentence(RequestProblem.of(e))) }
-            }
+            val problem = call()
+            mutableState.update { it.copy(failure = problem?.let(::sentence)) }
         }
     }
 }

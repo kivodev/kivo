@@ -109,7 +109,7 @@ struct SignedInView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .background, DownloadRefresh.pending(server.downloads) { DownloadRefresh.schedule() }
         }
-        .alert(server.downloadProblem ?? "", isPresented: downloadProblemShown) {
+        .alert(server.problem ?? "", isPresented: problemShown) {
             Button(String(localized: "OK"), role: .cancel) {}
         }
         .fullScreenCover(isPresented: $player.shown, onDismiss: player.dismissed) {
@@ -147,8 +147,8 @@ struct SignedInView: View {
         }
     }
 
-    private var downloadProblemShown: Binding<Bool> {
-        Binding(get: { server.downloadProblem != nil }, set: { if !$0 { server.downloadProblem = nil } })
+    private var problemShown: Binding<Bool> {
+        Binding(get: { server.problem != nil }, set: { if !$0 { server.problem = nil } })
     }
 
     /// Whether Add to List shows.

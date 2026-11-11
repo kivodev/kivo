@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.mmcdole.kivo.android.mobile.downloads.DownloadTarget
 import com.mmcdole.kivo.android.mobile.downloads.DownloadUiState
 import com.mmcdole.kivo.android.mobile.downloads.WorkDownloads
-import com.mmcdole.kivo.android.mobile.ui.WorkMarks
 import com.mmcdole.kivo.api.models.EpisodeInfo
 import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.api.models.WorkKind
@@ -79,7 +78,7 @@ class DetailViewModel(
     private val library = session.library
     private val known = library.known(id)
 
-    val marks = WorkMarks(library, viewModelScope)
+    val marks = library.marks
 
     /** The server's name, for a page that can't reach it. */
     val serverName: String = session.savedServer.value.name
@@ -177,7 +176,7 @@ class DetailViewModel(
 
     fun chooseSubtitle(id: String?) = choices.update { it.copy(subtitleTrackId = id) }
 
-    fun setPlayed(work: WorkSummary, played: Boolean) = marks.setPlayed(work, played)
+    fun setPlayed(work: WorkSummary, played: Boolean) = marks.setPlayed(work.id, played)
 
     /** Adds [work] to My List or takes it off; the live event redraws the page. */
     fun setOnMyList(work: WorkSummary, on: Boolean) {

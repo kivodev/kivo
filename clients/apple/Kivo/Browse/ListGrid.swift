@@ -220,12 +220,9 @@ struct ListGrid: View {
     private func choose(_ sort: GridModel.Sort<ListSort>) {
         chosenSort = sort
         Task {
-            do {
-                _ = try await server.session.library.setListSort(id: list.id, sort: sort.value)
-            } catch {
-                chosenSort = nil
-                problem = error.problemSentence
-            }
+            guard let failed = try? await server.session.library.setListSort(id: list.id, sort: sort.value).problemOrNull() else { return }
+            chosenSort = nil
+            problem = failed.sentence
         }
     }
 
@@ -275,22 +272,19 @@ struct ListGrid: View {
 
     private func rename(_ name: String) {
         Task {
-            do {
-                _ = try await server.session.library.updateList(id: list.id, name: name)
-            } catch {
-                renamingAgain = error.problemCode == .nameTaken
-                problem = error.listNameSentence
-            }
+            guard let failed = try? await server.session.library.updateList(id: list.id, name: name).problemOrNull() else { return }
+            renamingAgain = failed.knownCode == .nameTaken
+            problem = failed.listNameSentence
         }
     }
 
     private func delete() {
         Task {
-            do {
-                try await server.session.library.deleteList(id: list.id)
+            guard let done = try? await server.session.library.deleteList(id: list.id) else { return }
+            if let failed = done.problemOrNull() {
+                problem = failed.sentence
+            } else {
                 dismiss()
-            } catch {
-                problem = error.problemSentence
             }
         }
     }

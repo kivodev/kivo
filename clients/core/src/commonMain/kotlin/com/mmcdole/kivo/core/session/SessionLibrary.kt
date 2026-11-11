@@ -23,7 +23,10 @@ import com.mmcdole.kivo.api.models.UserState
 import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.api.models.WorkSummaryPage
+import com.mmcdole.kivo.core.Done
 import com.mmcdole.kivo.core.Load
+import com.mmcdole.kivo.core.RequestProblem
+import com.mmcdole.kivo.core.done
 import com.mmcdole.kivo.core.Reachability
 import com.mmcdole.kivo.core.auth.ServerConnection
 import com.mmcdole.kivo.core.data.GridItem
@@ -43,14 +46,18 @@ import com.mmcdole.kivo.core.data.SearchRepository
 import com.mmcdole.kivo.core.data.UserStateRepository
 import com.mmcdole.kivo.core.data.WorkRepository
 import com.mmcdole.kivo.core.live.Invalidation
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 
 /**
  * What the session reads of the server's libraries ([KivoSession.library]):
@@ -97,12 +104,12 @@ class SessionLibrary internal constructor(
      * listed ones; the layout as the server has it. [homeRows] reads it
      * again from the live event.
      */
-    @Throws(Exception::class)
-    suspend fun setHomeRows(rows: List<HomeRowChange>): List<HomeRowInfo> = homeLayout.setRows(rows)
+    @Throws(CancellationException::class)
+    suspend fun setHomeRows(rows: List<HomeRowChange>): Done<List<HomeRowInfo>> = done { homeLayout.setRows(rows) }
 
     /** Forgets the order and hidden rows; the layout as the server has it. */
-    @Throws(Exception::class)
-    suspend fun resetHomeRows(): List<HomeRowInfo> = homeLayout.resetRows()
+    @Throws(CancellationException::class)
+    suspend fun resetHomeRows(): Done<List<HomeRowInfo>> = done { homeLayout.resetRows() }
 
     /** The user's lists, My List first, read again as they change; [counted] also counts the smart lists and gives each list its first works, as a Home row has them. */
     @DefaultArgumentInterop.Enabled
@@ -118,29 +125,29 @@ class SessionLibrary internal constructor(
             listWorks.page(listId, offset, limit, kinds).let { GridPage(it.items.map(GridItem::Work), it.total, it.letters) }
         }
 
-    @Throws(Exception::class)
-    suspend fun createList(name: String): WorkList = listWorks.create(name)
+    @Throws(CancellationException::class)
+    suspend fun createList(name: String): Done<WorkList> = done { listWorks.create(name) }
 
     /** Makes a smart list that runs [query]. */
-    @Throws(Exception::class)
-    suspend fun createSmartList(name: String, query: WorkQuery): WorkList = listWorks.create(name, query)
+    @Throws(CancellationException::class)
+    suspend fun createSmartList(name: String, query: WorkQuery): Done<WorkList> = done { listWorks.create(name, query) }
 
     /** Renames a list when [name] is given and, for a smart list, replaces its rules with [query] when given, as one change. */
-    @Throws(Exception::class)
+    @Throws(CancellationException::class)
     @DefaultArgumentInterop.Enabled
-    suspend fun updateList(id: String, name: String?, query: WorkQuery? = null): WorkList = listWorks.update(id, name, query)
+    suspend fun updateList(id: String, name: String?, query: WorkQuery? = null): Done<WorkList> = done { listWorks.update(id, name, query) }
 
     /** Sets the order a manual list is shown in, on every screen and device. */
-    @Throws(Exception::class)
-    suspend fun setListSort(id: String, sort: ListSort): WorkList = listWorks.setSort(id, sort)
+    @Throws(CancellationException::class)
+    suspend fun setListSort(id: String, sort: ListSort): Done<WorkList> = done { listWorks.setSort(id, sort) }
 
     /** Every work of a manual list in its custom order, whatever its sort, for a screen that moves them. */
     @Throws(Exception::class)
     suspend fun listWorksInCustomOrder(listId: String): List<WorkSummary> = listWorks.inCustomOrder(listId).also(seen::read)
 
     /** Puts [workIds], in that order, just after [after] in a manual list's custom order, or first when it's null, and shows the list in that order. */
-    @Throws(Exception::class)
-    suspend fun moveInList(listId: String, workIds: List<String>, after: String?) = listWorks.move(listId, workIds, after)
+    @Throws(CancellationException::class)
+    suspend fun moveInList(listId: String, workIds: List<String>, after: String?): Done<Unit> = done { listWorks.move(listId, workIds, after) }
 
     /** How many works [query] selects, for a builder's live count. */
     @Throws(Exception::class)
@@ -159,14 +166,14 @@ class SessionLibrary internal constructor(
     @Throws(Exception::class)
     suspend fun smartListNames(query: WorkQuery, fields: List<WorkField>): Map<String, String> = listWorks.names(query, fields)
 
-    @Throws(Exception::class)
-    suspend fun deleteList(id: String) = listWorks.delete(id)
+    @Throws(CancellationException::class)
+    suspend fun deleteList(id: String): Done<Unit> = done { listWorks.delete(id) }
 
-    @Throws(Exception::class)
-    suspend fun addToList(listId: String, workId: String) = listWorks.add(listId, workId)
+    @Throws(CancellationException::class)
+    suspend fun addToList(listId: String, workId: String): Done<Unit> = done { listWorks.add(listId, workId) }
 
-    @Throws(Exception::class)
-    suspend fun removeFromList(listId: String, workId: String) = listWorks.remove(listId, workId)
+    @Throws(CancellationException::class)
+    suspend fun removeFromList(listId: String, workId: String): Done<Unit> = done { listWorks.remove(listId, workId) }
 
     /**
      * The libraries the user sees, in their order, read again as they change
@@ -278,10 +285,39 @@ class SessionLibrary internal constructor(
     suspend fun search(query: String, limit: Int?): SearchResults =
         SearchRepository(connection).search(query, limit).also(seen::read)
 
-    @Throws(Exception::class)
-    suspend fun setPlayed(workId: String, played: Boolean): UserState = userState.setPlayed(workId, played)
+    @Throws(CancellationException::class)
+    suspend fun setPlayed(workId: String, played: Boolean): Done<UserState> = done { userState.setPlayed(workId, played) }
 
     /** Takes a work out of Continue Watching or Continue Listening until it's played again; an episode takes its series. */
-    @Throws(Exception::class)
-    suspend fun removeFromContinue(workId: String) = userState.removeFromContinue(workId)
+    @Throws(CancellationException::class)
+    suspend fun removeFromContinue(workId: String): Done<Unit> = done { userState.removeFromContinue(workId) }
+
+    /** The marks a card's or a page's actions make, outliving the screen, and the failures among them to show. */
+    val marks = WorkMarks(this, scope)
+}
+
+/**
+ * The user's marks on works, for any screen: played, on a list, and out of
+ * Continue. Each is made on the session's scope, so leaving the screen
+ * doesn't stop it; every screen showing the work follows the live events,
+ * so a failed mark leaves it as the server has it, and the failure is told
+ * once on [problems], for the app to show.
+ */
+class WorkMarks internal constructor(private val library: SessionLibrary, private val scope: CoroutineScope) {
+    private val failures = MutableSharedFlow<RequestProblem>(extraBufferCapacity = 8)
+
+    /** Each failed mark's problem, once, to whichever collector there is then; none keeps it. */
+    val problems: SharedFlow<RequestProblem> = failures.asSharedFlow()
+
+    fun setPlayed(workId: String, played: Boolean) = mark { library.setPlayed(workId, played) }
+
+    fun setOnList(listId: String, workId: String, on: Boolean) = mark {
+        if (on) library.addToList(listId, workId) else library.removeFromList(listId, workId)
+    }
+
+    fun removeFromContinue(workId: String) = mark { library.removeFromContinue(workId) }
+
+    private fun mark(change: suspend () -> Done<*>) {
+        scope.launch { change().problemOrNull()?.let(failures::tryEmit) }
+    }
 }

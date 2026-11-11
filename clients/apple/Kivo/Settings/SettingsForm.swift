@@ -92,13 +92,14 @@ struct SettingsForm<Account: View, Device: View>: View {
     }
 
     /// Sends a change to the server and keeps the user it answers with.
-    private func save(_ change: @escaping () async throws -> CurrentUser) {
+    private func save(_ change: @escaping () async throws -> Done<CurrentUser>) {
         Task {
-            do {
-                user = try await change()
+            guard let done = try? await change() else { return }
+            if let saved = done.getOrNull() {
+                user = saved
                 accountFailure = nil
-            } catch {
-                accountFailure = SaveFailure(message: error.problemSentence) { save(change) }
+            } else if let failed = done.problemOrNull() {
+                accountFailure = SaveFailure(message: failed.sentence) { save(change) }
             }
         }
     }
@@ -146,10 +147,10 @@ struct DeviceHeading: View {
 /// Sends a change to the account's settings to the server; a refusal leaves
 /// the saved value showing and says why under the page's settings, with Retry.
 struct AccountSave {
-    fileprivate let run: (@escaping () async throws -> CurrentUser) -> Void
+    fileprivate let run: (@escaping () async throws -> Done<CurrentUser>) -> Void
 
     /// A binding showing [value] that sends each change with [send].
-    func binding<Value>(_ value: Value, send: @escaping (Value) async throws -> CurrentUser) -> Binding<Value> {
+    func binding<Value>(_ value: Value, send: @escaping (Value) async throws -> Done<CurrentUser>) -> Binding<Value> {
         Binding(get: { value }, set: { newValue in run { try await send(newValue) } })
     }
 }

@@ -45,13 +45,15 @@ final class ServerModel {
     var asking: Set<String> { onDevice?.asking.value ?? [] }
     /// How many downloads the availability check deleted, until Downloads says so.
     var deletedDownloads: Int32 { onDevice?.deleted.value ?? 0 }
-    /// Why a download asked for from a long press couldn't start, until it's said.
-    var downloadProblem: String?
+    /// Why a download asked for from a long press couldn't start, or a
+    /// mark on a work failed, until it's said.
+    var problem: String?
 
     /// The downloads the device keeps of this server, as the core lists them.
     @ObservationIgnored private let onDevice: (items: Observed<[DownloadItem]>, asking: Observed<Set<String>>, deleted: Observed<Int32>)?
     @ObservationIgnored private var listsTask: Task<Void, Never>?
     @ObservationIgnored private var librariesTask: Task<Void, Never>?
+    @ObservationIgnored private var marksTask: Task<Void, Never>?
 
     init(session: KivoSession, app: AppModel) {
         self.session = session
@@ -77,6 +79,11 @@ final class ServerModel {
                 self?.lists = lists.filter { $0.kind == .manual || $0.kind == .smart }
             }
         }
+        marksTask = Task { [weak self, session] in
+            for await failed in session.library.marks.problems {
+                self?.problem = failed.sentence
+            }
+        }
     }
 
     /// The download of [workId], if there is one.
@@ -85,14 +92,14 @@ final class ServerModel {
     }
 
     /// Downloads [workId] at the download quality setting, keeping why in
-    /// ``downloadProblem`` when it can't start.
+    /// ``problem`` when it can't start.
     func startDownload(_ workId: String) {
         Task {
-            do {
-                _ = try await session.downloads?.download(choice: PlayChoice(workId: workId))
+            guard let start = try? await session.downloads?.download(choice: PlayChoice(workId: workId)) else { return }
+            if let sentence = display.downloadProblem(start: start) {
+                problem = sentence
+            } else {
                 Haptics.success()
-            } catch {
-                downloadProblem = error.downloadSentence
             }
         }
     }
@@ -101,7 +108,12 @@ final class ServerModel {
     func removeDownload(of workId: String) {
         guard let item = download(of: workId) else { return }
         Haptics.success()
-        Task { try? await session.downloads?.delete(id: item.id) }
+        Task { tell(try? await session.downloads?.delete(id: item.id)) }
+    }
+
+    /// Keeps why [done] failed in ``problem``, when it did.
+    func tell<T: AnyObject>(_ done: Done<T>?) {
+        if let failed = done?.problemOrNull() { problem = failed.sentence }
     }
 
     /// The download of [workId] once it's ready, which Play plays rather than streaming.
@@ -158,6 +170,7 @@ final class ServerModel {
     func close() {
         listsTask?.cancel()
         librariesTask?.cancel()
+        marksTask?.cancel()
         player.close()
         book.close()
         cast.close()

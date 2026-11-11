@@ -66,8 +66,9 @@ import kotlin.time.Duration.Companion.milliseconds
  *
  * What it gives the apps keeps to what SKIE bridges safely: every suspend
  * function declares `@Throws`, so a failure reaches Swift as an error rather
- * than ending the app, and no Flow an app collects can fail, since a failure
- * escaping a Flow ends a Swift app.
+ * than ending the app; a change the user makes answers with its failure
+ * ([com.mmcdole.kivo.core.Done]) and throws only when cancelled; and no Flow
+ * an app collects can fail, since a failure escaping a Flow ends a Swift app.
  *
  * Its work runs on the main thread, for the app's life ([scope]); a test
  * gives its own scope, an HTTP [engine] in place of the platform's, and a

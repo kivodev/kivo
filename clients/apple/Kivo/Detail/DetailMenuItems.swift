@@ -8,11 +8,11 @@ struct UserStateMenuItems: View {
 
     var body: some View {
         let played = work.userState?.played == true
-        // The menu shows the state the server's events send back, so a write
-        // that fails leaves it as it was.
+        // The menu shows the state the server's events send back, so a mark
+        // that fails leaves it as it was, and the app says why.
         Button {
             Haptics.success()
-            Task { _ = try? await server.session.library.setPlayed(workId: work.id, played: !played) }
+            server.session.library.marks.setPlayed(workId: work.id, played: !played)
         } label: {
             Label(Words.markPlayed(!played, kind: work.kind), systemImage: played ? "eye.slash" : "checkmark.circle")
         }

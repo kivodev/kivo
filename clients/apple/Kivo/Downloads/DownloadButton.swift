@@ -27,25 +27,25 @@ struct DownloadButton: View {
                     Text(DownloadWords.line(item, display: server.display))
                     if item.status is DownloadStatusFailed {
                         Button {
-                            act { try await server.session.downloads?.retry(id: item.id) }
+                            start { try await $0.retry(id: item.id) }
                         } label: {
                             Label(String(localized: "Retry"), systemImage: "arrow.clockwise")
                         }
                     } else if item.status is DownloadStatusPaused {
                         Button {
-                            act { try await server.session.downloads?.resume(id: item.id) }
+                            change { try await $0.resume(id: item.id) }
                         } label: {
                             Label(String(localized: "Resume download"), systemImage: "arrow.down.circle")
                         }
                     } else if item.status is DownloadStatusDownloading || item.status is DownloadStatusWaiting {
                         Button {
-                            act { try await server.session.downloads?.pause(id: item.id) }
+                            change { try await $0.pause(id: item.id) }
                         } label: {
                             Label(String(localized: "Pause download"), systemImage: "pause.circle")
                         }
                     }
                     Button(role: .destructive) {
-                        act { try await server.session.downloads?.delete(id: item.id) }
+                        change { try await $0.delete(id: item.id) }
                     } label: {
                         Label(String(localized: "Remove download"), systemImage: "trash")
                     }
@@ -109,21 +109,27 @@ struct DownloadButton: View {
 
     /// Downloads at [quality], or the setting's when nil.
     private func download(_ quality: DownloadQuality?) {
-        act {
-            // A book has no tracks to choose.
-            let wanted = work.book == nil ? choice : PlayChoice(workId: work.id, versionId: choice.versionId)
-            _ = try await server.session.downloads?.download(choice: wanted, quality: quality)
-        }
+        // A book has no tracks to choose.
+        let wanted = work.book == nil ? choice : PlayChoice(workId: work.id, versionId: choice.versionId)
+        start { try await $0.download(choice: wanted, quality: quality) }
     }
 
-    private func act(_ action: @escaping () async throws -> Void) {
+    /// Asks for a download, or for a failed one again, saying why it couldn't start.
+    private func start(_ asking: @escaping (SessionDownloads) async throws -> DownloadStart) {
+        act { [display = server.display] in display.downloadProblem(start: try await asking($0)) }
+    }
+
+    /// Changes a download, saying why when it fails.
+    private func change(_ making: @escaping (SessionDownloads) async throws -> Done<KotlinUnit>) {
+        act { try await making($0).problemOrNull()?.sentence }
+    }
+
+    /// Runs [action], showing the problem it words, when there's one.
+    private func act(_ action: @escaping (SessionDownloads) async throws -> String?) {
+        guard let downloads = server.session.downloads else { return }
         Haptics.success()
         Task {
-            do {
-                try await action()
-            } catch {
-                problem = error.downloadSentence
-            }
+            if let sentence = try? await action(downloads) { problem = sentence }
         }
     }
 }

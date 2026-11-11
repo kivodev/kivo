@@ -3,14 +3,17 @@ package com.mmcdole.kivo.core.session
 import co.touchlab.skie.configuration.annotations.DefaultArgumentInterop
 import com.mmcdole.kivo.api.models.DownloadEstimate
 import com.mmcdole.kivo.api.models.DownloadEstimateItem
+import com.mmcdole.kivo.core.Done
+import com.mmcdole.kivo.core.done
 import com.mmcdole.kivo.core.downloads.DownloadItem
-import com.mmcdole.kivo.core.downloads.DownloadRefusedException
 import com.mmcdole.kivo.core.downloads.DownloadRequest
+import com.mmcdole.kivo.core.downloads.DownloadStart
 import com.mmcdole.kivo.core.downloads.DownloadStorage
 import com.mmcdole.kivo.core.downloads.Downloads
-import com.mmcdole.kivo.core.downloads.NotEnoughSpaceException
+import com.mmcdole.kivo.core.downloads.started
 import com.mmcdole.kivo.core.play.PlayChoice
 import com.mmcdole.kivo.core.settings.DownloadQuality
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 
@@ -34,33 +37,31 @@ class SessionDownloads internal constructor(private val downloads: Downloads) {
         choices.map { DownloadEstimateItem(workId = it.workId, versionId = it.versionId, audioTrackId = it.audioTrackId, subtitleTrackId = it.subtitleTrackId) },
     )
 
-    /**
-     * Downloads [choice] at [quality], or the download quality setting's when
-     * null; throws [NotEnoughSpaceException] or [DownloadRefusedException].
-     * Returns the download's ID.
-     */
+    /** Downloads [choice] at [quality], or the download quality setting's when null. */
     @DefaultArgumentInterop.Enabled
-    @Throws(Exception::class)
-    suspend fun download(choice: PlayChoice, quality: DownloadQuality? = null): String =
+    @Throws(CancellationException::class)
+    suspend fun download(choice: PlayChoice, quality: DownloadQuality? = null): DownloadStart = started {
         downloads.download(DownloadRequest(choice.workId, choice.versionId, choice.audioTrackId, choice.subtitleTrackId, quality))
+    }
 
-    @Throws(Exception::class)
-    suspend fun delete(id: String) = downloads.delete(id)
+    @Throws(CancellationException::class)
+    suspend fun delete(id: String): Done<Unit> = done { downloads.delete(id) }
 
     /** Deletes a show's or a selection's downloads, cancelling those still under way. */
-    @Throws(Exception::class)
-    suspend fun delete(ids: List<String>) = downloads.delete(ids)
+    @Throws(CancellationException::class)
+    suspend fun delete(ids: List<String>): Done<Unit> = done { downloads.delete(ids) }
 
-    @Throws(Exception::class)
-    suspend fun retry(id: String) = downloads.retry(id)
+    /** Asks again for a failed download. */
+    @Throws(CancellationException::class)
+    suspend fun retry(id: String): DownloadStart = started { downloads.retry(id); id }
 
     /** Pauses a download coming to the device, keeping what arrived. */
-    @Throws(Exception::class)
-    suspend fun pause(id: String) = downloads.pause(id)
+    @Throws(CancellationException::class)
+    suspend fun pause(id: String): Done<Unit> = done { downloads.pause(id) }
 
     /** Resumes a paused download from where it stopped. */
-    @Throws(Exception::class)
-    suspend fun resume(id: String) = downloads.resume(id)
+    @Throws(CancellationException::class)
+    suspend fun resume(id: String): Done<Unit> = done { downloads.resume(id) }
 
     /** Brings the downloads up to date with the server: on returning to the foreground, and once the server is reached. */
     @Throws(Exception::class)

@@ -818,7 +818,7 @@ internal data class DownloadRequest(
 )
 
 /** The server can't make a download for this app, for [reason], a playback reason code. */
-class DownloadRefusedException(val reason: String) : Exception("download refused: $reason")
+internal class DownloadRefusedException(val reason: String) : Exception("download refused: $reason")
 
 /** How soon after the one before a show's episode must be asked for to come in season and episode order with it. */
 internal val TOGETHER: Duration = 1.minutes

@@ -5,6 +5,7 @@ import com.mmcdole.kivo.android.mobile.ui.sentence
 import com.mmcdole.kivo.api.models.DownloadEstimate
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.Load
+import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.core.downloads.DownloadItem
 import com.mmcdole.kivo.core.downloads.downloadProblem
 import com.mmcdole.kivo.core.play.PlayChoice
@@ -101,17 +102,19 @@ class WorkDownloads(
     fun download(quality: DownloadQuality? = null) {
         val t = targets.value ?: return
         act {
-            if (t.book) downloads.download(PlayChoice(t.choice.workId), DownloadQuality.Original) else downloads.download(t.choice, quality)
+            display.downloadProblem(
+                if (t.book) downloads.download(PlayChoice(t.choice.workId), DownloadQuality.Original) else downloads.download(t.choice, quality),
+            )
         }
     }
 
-    fun pause() = state.value.item?.let { act { downloads.pause(it.id) } }
+    fun pause() = state.value.item?.let { act { downloads.pause(it.id).problemOrNull()?.let(::sentence) } }
 
-    fun resume() = state.value.item?.let { act { downloads.resume(it.id) } }
+    fun resume() = state.value.item?.let { act { downloads.resume(it.id).problemOrNull()?.let(::sentence) } }
 
-    fun retry() = state.value.item?.let { act { downloads.retry(it.id) } }
+    fun retry() = state.value.item?.let { act { display.downloadProblem(downloads.retry(it.id)) } }
 
-    fun remove() = state.value.item?.let { act { downloads.delete(it.id) } }
+    fun remove() = state.value.item?.let { act { downloads.delete(it.id).problemOrNull()?.let(::sentence) } }
 
     /** Opens the episodes sheet for [seasons]' episodes, [season] naming the one season or null for the whole series. */
     fun chooseEpisodes(season: WorkSummary?, seasons: List<WorkSummary>) {
@@ -134,7 +137,7 @@ class WorkDownloads(
                 throw e
             } catch (e: Exception) {
                 sheet.value = null
-                problem.value = display.downloadProblem(e)
+                problem.value = sentence(RequestProblem.of(e))
             }
         }
     }
@@ -145,8 +148,8 @@ class WorkDownloads(
         val downloaded = state.value.downloaded
         sheet.value = null
         act {
-            for (estimate in estimates.filter { it.playable && it.workId !in downloaded }) {
-                downloads.download(PlayChoice(estimate.workId), DownloadQuality.parseOrNull(quality))
+            estimates.filter { it.playable && it.workId !in downloaded }.firstNotNullOfOrNull { estimate ->
+                display.downloadProblem(downloads.download(PlayChoice(estimate.workId), DownloadQuality.parseOrNull(quality)))
             }
         }
     }
@@ -159,15 +162,8 @@ class WorkDownloads(
         problem.value = null
     }
 
-    private fun act(call: suspend () -> Unit) {
-        scope.launch {
-            try {
-                call()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                problem.value = display.downloadProblem(e)
-            }
-        }
+    /** Runs [call], showing the problem it words, when there's one. */
+    private fun act(call: suspend () -> String?) {
+        scope.launch { call()?.let { problem.value = it } }
     }
 }

@@ -15,6 +15,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.mmcdole.kivo.android.theme.KivoTheme
 import com.mmcdole.kivo.api.models.ClientPlatform
 import com.mmcdole.kivo.api.models.PendingDevice
+import com.mmcdole.kivo.core.Done
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -38,12 +39,14 @@ class LinkDevicePanelTest {
 
         override suspend fun pendingDevice(code: String) = asking.also { looked += code }
 
-        override suspend fun approve(code: String) {
+        override suspend fun approve(code: String): Done<Unit> {
             approved += code
+            return Done.Ok(Unit)
         }
 
-        override suspend fun deny(code: String) {
+        override suspend fun deny(code: String): Done<Unit> {
             denied += code
+            return Done.Ok(Unit)
         }
     }
 

@@ -11,6 +11,7 @@ import com.mmcdole.kivo.api.models.WorkFieldValue
 import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkList
 import com.mmcdole.kivo.api.models.WorkQuery
+import com.mmcdole.kivo.core.Done
 import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.core.data.RuleDraft
 import com.mmcdole.kivo.core.data.SmartListDraft
@@ -198,18 +199,11 @@ class SmartListBuilderViewModel(
     fun save(onSaved: (WorkList?) -> Unit) {
         val draft = mutable.value.draft ?: return
         viewModelScope.launch {
-            try {
-                val trimmed = draft.name.trim()
-                if (listId != null) {
-                    session.library.updateList(listId, trimmed, draft.query)
-                    onSaved(null)
-                } else {
-                    onSaved(session.library.createSmartList(trimmed, draft.query))
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                mutable.update { it.copy(problem = RequestProblem.of(e)) }
+            val trimmed = draft.name.trim()
+            val saved = if (listId != null) session.library.updateList(listId, trimmed, draft.query) else session.library.createSmartList(trimmed, draft.query)
+            when (saved) {
+                is Done.Ok -> onSaved(saved.value.takeIf { listId == null })
+                is Done.Failed -> mutable.update { it.copy(problem = saved.problem) }
             }
         }
     }

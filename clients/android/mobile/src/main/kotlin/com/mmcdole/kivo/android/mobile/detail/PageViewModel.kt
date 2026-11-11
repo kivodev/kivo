@@ -2,7 +2,6 @@ package com.mmcdole.kivo.android.mobile.detail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.mmcdole.kivo.android.mobile.ui.WorkMarks
 import com.mmcdole.kivo.api.models.BookSeries
 import com.mmcdole.kivo.api.models.Collection
 import com.mmcdole.kivo.api.models.ImageRef
@@ -35,7 +34,7 @@ class PageViewModel<T : Any>(
 ) : ViewModel() {
     private val retries = MutableStateFlow(0)
 
-    val marks = WorkMarks(session.library, viewModelScope)
+    val marks = session.library.marks
 
     private val initial = PageUiState<T>(name, image)
 

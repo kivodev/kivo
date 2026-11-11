@@ -8,6 +8,7 @@ import com.mmcdole.kivo.core.display.problem
 import com.mmcdole.kivo.core.display.bitrate
 import com.mmcdole.kivo.core.display.size
 import com.mmcdole.kivo.core.settings.DownloadQuality
+import kotlinx.coroutines.CancellationException
 
 /** A download as the Downloads list and a detail page show it. */
 data class DownloadItem(
@@ -106,13 +107,44 @@ fun Display.downloadQuality(quality: DownloadQuality): String = table.downloads.
 fun Display.downloadFailure(reason: String): String = table.downloads.failures[reason] ?: reason(reason)
 
 /**
- * Why a download couldn't start, in a sentence: too little room, with how
- * much to free; the server refusing it; or the request's problem.
+ * What came of asking for a download, or for a failed one again: it's on
+ * its way ([Started]), or why not: too little room on the device
+ * ([NoRoom]), the server can't make it for this app ([Refused], with its
+ * reason code), or the request failed ([Failed]).
  */
-fun Display.downloadProblem(error: Throwable): String = when (error) {
-    is NotEnoughSpaceException -> table.downloads.notEnoughSpace.fill("size" to size(error.shortBytes))
-    is DownloadRefusedException -> if (error.reason == "downloadsNotAllowed") reason(error.reason) else table.downloads.refused
-    else -> problem(RequestProblem.of(error))
+sealed class DownloadStart {
+    data class Started(val id: String) : DownloadStart()
+
+    data class NoRoom(val shortBytes: Long) : DownloadStart()
+
+    data class Refused(val reason: String) : DownloadStart()
+
+    data class Failed(val problem: RequestProblem) : DownloadStart()
+}
+
+/** [ask]'s download as [DownloadStart]; cancellation goes on to the caller. */
+internal suspend fun started(ask: suspend () -> String): DownloadStart = try {
+    DownloadStart.Started(ask())
+} catch (e: CancellationException) {
+    throw e
+} catch (e: NotEnoughSpaceException) {
+    DownloadStart.NoRoom(e.shortBytes)
+} catch (e: DownloadRefusedException) {
+    DownloadStart.Refused(e.reason)
+} catch (e: Exception) {
+    DownloadStart.Failed(RequestProblem.of(e))
+}
+
+/**
+ * Why a download couldn't start, in a sentence: too little room, with how
+ * much to free; the server refusing it; or the request's problem. Null when
+ * it started.
+ */
+fun Display.downloadProblem(start: DownloadStart): String? = when (start) {
+    is DownloadStart.Started -> null
+    is DownloadStart.NoRoom -> table.downloads.notEnoughSpace.fill("size" to size(start.shortBytes))
+    is DownloadStart.Refused -> if (start.reason == "downloadsNotAllowed") reason(start.reason) else table.downloads.refused
+    is DownloadStart.Failed -> problem(start.problem)
 }
 
 /** The device's network as the platform sees it: whether it has one, and whether it's cellular or another expensive one. */

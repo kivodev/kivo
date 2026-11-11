@@ -1,6 +1,8 @@
 package com.mmcdole.kivo.android.mobile.app
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -22,6 +24,8 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.NavigationRailItemDefaults
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
@@ -38,6 +42,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -101,6 +106,7 @@ import com.mmcdole.kivo.android.mobile.settings.LicensesScreen
 import com.mmcdole.kivo.android.mobile.settings.SettingsScreen
 import com.mmcdole.kivo.android.mobile.ui.Incompatible
 import com.mmcdole.kivo.android.mobile.ui.LocalWide
+import com.mmcdole.kivo.android.mobile.ui.sentence
 import com.mmcdole.kivo.api.models.Library
 import com.mmcdole.kivo.core.Compatibility
 import com.mmcdole.kivo.core.data.GridSort
@@ -152,6 +158,11 @@ fun MainScaffold(session: ServerSession) {
         if (!landed && session.session.unreachable.value) nav.select(Tab.Downloads)
         landed = true
     }
+    // A mark a card or page made that failed says so once, over whatever screen is showing.
+    val snackbar = remember { SnackbarHostState() }
+    LaunchedEffect(session.session) {
+        session.session.library.marks.problems.collect { snackbar.showSnackbar(sentence(it)) }
+    }
     val casting by cast.state.collectAsStateWithLifecycle()
     val current = nav.tab
     val model = viewModel { MainViewModel(session.session) }
@@ -187,16 +198,19 @@ fun MainScaffold(session: ServerSession) {
         CompositionLocalProvider(LocalCast provides cast.takeIf { it.offered }, LocalWide provides (suite == NavigationSuiteType.NavigationRail)) {
             if (blocked) {
                 Incompatible(compatibility, session.session.savedServer.collectAsStateWithLifecycle().value.name, session::checkCompatibility, session.graph::changeServer)
-            } else Column(Modifier.fillMaxSize()) {
-                NavHost(controller, startDestination = HomeTab, modifier = Modifier.weight(1f).fillMaxWidth().consumeWindowInsets(suiteInsets)) {
-                    tabs(session, nav)
-                    pages(session, nav, cast)
+            } else Box(Modifier.fillMaxSize()) {
+                Column(Modifier.fillMaxSize()) {
+                    NavHost(controller, startDestination = HomeTab, modifier = Modifier.weight(1f).fillMaxWidth().consumeWindowInsets(suiteInsets)) {
+                        tabs(session, nav)
+                        pages(session, nav, cast)
+                    }
+                    when {
+                        fullScreen -> Unit
+                        casting.active -> CastMiniController(cast, onOpen = { nav.open(CastRemoteRoute) })
+                        book.shown -> MiniPlayer(book, onOpen = { nav.open(NowPlayingRoute) }, onBack = mini::skipBack, onToggle = mini::togglePlay)
+                    }
                 }
-                when {
-                    fullScreen -> Unit
-                    casting.active -> CastMiniController(cast, onOpen = { nav.open(CastRemoteRoute) })
-                    book.shown -> MiniPlayer(book, onOpen = { nav.open(NowPlayingRoute) }, onBack = mini::skipBack, onToggle = mini::togglePlay)
-                }
+                SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).consumeWindowInsets(suiteInsets).safeDrawingPadding())
             }
             nav.addingToList?.let { AddToListSheet(session, it, nav::closeAddToList) }
         }

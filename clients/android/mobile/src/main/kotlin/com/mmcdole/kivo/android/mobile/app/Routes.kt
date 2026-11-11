@@ -23,13 +23,14 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import com.mmcdole.kivo.android.mobile.R
 import com.mmcdole.kivo.android.mobile.ui.WorkAction
-import com.mmcdole.kivo.android.mobile.ui.WorkMarks
+import com.mmcdole.kivo.android.mobile.ui.mark
 import com.mmcdole.kivo.android.mobile.ui.WorkMenu
 import com.mmcdole.kivo.api.models.EpisodeInfo
 import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.downloads.DownloadItem
 import com.mmcdole.kivo.core.play.PlayChoice
+import com.mmcdole.kivo.core.session.WorkMarks
 import kotlinx.serialization.Serializable
 
 // The phone's destinations, type-safe: each tab is a graph with its first
@@ -254,6 +255,6 @@ fun MobileNav.handle(action: WorkAction, menu: WorkMenu, marks: WorkMarks) {
         WorkAction.GoToSeries -> work.episode?.let(::openSeries)
         WorkAction.AddToList -> addToList(work)
         WorkAction.RemoveFromList -> menu.list?.let { marks.setOnList(it.id, work.id, on = false) }
-        else -> marks.apply(action, work)
+        else -> marks.mark(action, work)
     }
 }

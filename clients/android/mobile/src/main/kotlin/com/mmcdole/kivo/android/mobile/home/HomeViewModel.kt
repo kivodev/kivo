@@ -3,7 +3,7 @@ package com.mmcdole.kivo.android.mobile.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mmcdole.kivo.android.mobile.ui.WorkAction
-import com.mmcdole.kivo.android.mobile.ui.WorkMarks
+import com.mmcdole.kivo.android.mobile.ui.mark
 import com.mmcdole.kivo.api.models.HomeRow
 import com.mmcdole.kivo.api.models.HomeRowKind
 import com.mmcdole.kivo.api.models.Library
@@ -59,7 +59,7 @@ class HomeViewModel(private val session: KivoSession) : ViewModel() {
     private val refreshes = MutableStateFlow(0)
     private val refreshing = MutableStateFlow(false)
 
-    val marks = WorkMarks(session.library, viewModelScope)
+    val marks = session.library.marks
 
     // A new collection after a pull answers in place: the core emits no Loading before it.
     private val home = refreshes.flatMapLatest { session.library.home() }.onEach { if (it !is Load.Loading) refreshing.value = false }
@@ -87,5 +87,5 @@ class HomeViewModel(private val session: KivoSession) : ViewModel() {
         refreshes.value++
     }
 
-    fun apply(action: WorkAction, work: WorkSummary) = marks.apply(action, work)
+    fun apply(action: WorkAction, work: WorkSummary) = marks.mark(action, work)
 }

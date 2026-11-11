@@ -2,7 +2,6 @@ package com.mmcdole.kivo.android.mobile.lists
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.mmcdole.kivo.android.mobile.ui.WorkMarks
 import com.mmcdole.kivo.android.mobile.library.GridSettleMs
 import com.mmcdole.kivo.api.models.ListKind
 import com.mmcdole.kivo.api.models.ListSort
@@ -10,6 +9,7 @@ import com.mmcdole.kivo.api.models.WorkField
 import com.mmcdole.kivo.api.models.WorkList
 import com.mmcdole.kivo.api.models.WorkQuery
 import com.mmcdole.kivo.api.models.WorkSummary
+import com.mmcdole.kivo.core.Done
 import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.core.data.GridPager
@@ -51,7 +51,7 @@ val WorkList.isManual: Boolean get() = kind == ListKind.Manual
 /** The Lists tab: the lists with their first works, read again as they change and on a pull to refresh. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ListsViewModel(private val session: KivoSession) : ViewModel() {
-    val marks = WorkMarks(session.library, viewModelScope)
+    val marks = session.library.marks
     private val refreshes = MutableStateFlow(0)
     private val refreshing = MutableStateFlow(false)
 
@@ -74,7 +74,7 @@ class ListsViewModel(private val session: KivoSession) : ViewModel() {
     }
 
     /** Makes a list; the problem when it's refused. */
-    suspend fun create(name: String): RequestProblem? = attempt { session.library.createList(name) }
+    suspend fun create(name: String): RequestProblem? = session.library.createList(name).problemOrNull()
 }
 
 /** What naming a smart list's rules takes: the catalog and its chosen values' names. */
@@ -93,7 +93,7 @@ class ListViewModel(private val session: KivoSession, private val listId: String
     /** The grid, which the paged grid reads and asks pages of as they come into view. */
     val pager: GridPager = session.library.pagedListWorks(listId, null, GridSettleMs)
 
-    val marks = WorkMarks(session.library, viewModelScope)
+    val marks = session.library.marks
 
     private val mutableProblem = MutableStateFlow<RequestProblem?>(null)
 
@@ -146,7 +146,7 @@ class ListViewModel(private val session: KivoSession, private val listId: String
     fun chooseSort(sort: ListSort) {
         chosenSort.value = sort
         viewModelScope.launch {
-            val failure = attempt { session.library.setListSort(listId, sort) }
+            val failure = session.library.setListSort(listId, sort).problemOrNull()
             if (failure != null) {
                 chosenSort.value = null
                 mutableProblem.value = failure
@@ -202,7 +202,7 @@ class ListViewModel(private val session: KivoSession, private val listId: String
         if (index < 0) return
         val after = works.getOrNull(index - 1)?.id
         viewModelScope.launch {
-            val failure = sending.withLock { attempt { session.library.moveInList(listId, listOf(workId), after) } }
+            val failure = sending.withLock { session.library.moveInList(listId, listOf(workId), after) }.problemOrNull()
             if (failure != null) {
                 mutableProblem.value = failure
                 readCustomOrder(closing = false)
@@ -220,10 +220,10 @@ class ListViewModel(private val session: KivoSession, private val listId: String
     }
 
     /** Renames the list; why not, or null once it's done. */
-    suspend fun rename(name: String): RequestProblem? = attempt { session.library.updateList(listId, name, null) }
+    suspend fun rename(name: String): RequestProblem? = session.library.updateList(listId, name, null).problemOrNull()
 
     /** Deletes the list; why not, or null once it's done. */
-    suspend fun delete(): RequestProblem? = attempt { session.library.deleteList(listId) }
+    suspend fun delete(): RequestProblem? = session.library.deleteList(listId).problemOrNull()
 
     override fun onCleared() {
         pager.close()
@@ -257,7 +257,7 @@ class AddToListViewModel(private val session: KivoSession, private val workId: S
         val adding = !choice.holding
         held.update { if (adding) it.orEmpty() + id else it.orEmpty() - id }
         viewModelScope.launch {
-            val failure = attempt { if (adding) session.library.addToList(id, workId) else session.library.removeFromList(id, workId) }
+            val failure = (if (adding) session.library.addToList(id, workId) else session.library.removeFromList(id, workId)).problemOrNull()
             if (failure != null) {
                 held.update { if (adding) it.orEmpty() - id else it.orEmpty() + id }
                 mutableProblem.value = failure
@@ -270,17 +270,8 @@ class AddToListViewModel(private val session: KivoSession, private val workId: S
     }
 
     /** Makes a list with the work on it; why not, or null once it's done. */
-    suspend fun create(name: String): RequestProblem? = attempt {
-        session.library.addToList(session.library.createList(name).id, workId)
+    suspend fun create(name: String): RequestProblem? = when (val made = session.library.createList(name)) {
+        is Done.Ok -> session.library.addToList(made.value.id, workId).problemOrNull()
+        is Done.Failed -> made.problem
     }
-}
-
-/** Runs [call]; the problem when it fails, else null. */
-private suspend fun attempt(call: suspend () -> Unit): RequestProblem? = try {
-    call()
-    null
-} catch (e: CancellationException) {
-    throw e
-} catch (e: Exception) {
-    RequestProblem.of(e)
 }
