@@ -6,7 +6,6 @@ import com.mmcdole.kivo.android.discovery.NsdServiceBrowser
 import com.mmcdole.kivo.android.downloads.DownloadRefresh
 import com.mmcdole.kivo.android.downloads.WorkTransport
 import com.mmcdole.kivo.android.discovery.servers
-import com.mmcdole.kivo.android.library.SavedGrids
 import com.mmcdole.kivo.android.player.SessionPlayers
 import com.mmcdole.kivo.android.settings.ScreenSettingsStore
 import com.mmcdole.kivo.core.discovery.FoundServer
@@ -19,12 +18,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.seconds
 
@@ -42,8 +37,8 @@ interface HasAppGraph {
 /**
  * Everything the app holds for its whole life: the core on this device, the
  * browse for servers on the network, a phone's download transfers, this
- * device's own settings and saved grids, and the signed-in server as the
- * screens keep it ([session]). Where the app is, is the core's to say
+ * device's own settings, and the signed-in server as the screens keep it
+ * ([session]). Where the app is, is the core's to say
  * ([KivoClient.state]); the core never calls back into the app.
  */
 class AppGraph(
@@ -71,9 +66,6 @@ class AppGraph(
 
     val display: Display get() = core.display
 
-    /** The library grids chosen on this TV, kept in the app's preferences. */
-    val savedGrids = SavedGrids(device.preferences)
-
     /** This TV's settings that only the app's screens follow, kept in the app's preferences. */
     val screenSettings = ScreenSettingsStore(device.preferences)
 
@@ -98,7 +90,6 @@ class AppGraph(
     val session: StateFlow<ServerSession?> = mutableSession.asStateFlow()
 
     init {
-        val grids = savedGrids.all.stateIn(scope, SharingStarted.Eagerly, null)
         // Without a dispatch, so the screens have their server by the frame that shows the app signed in.
         scope.launch(Dispatchers.Main.immediate) {
             var before: AppState = AppState.Starting
@@ -106,7 +97,7 @@ class AppGraph(
                 val signedIn = (state as? AppState.SignedIn)?.session
                 if (mutableSession.value?.session !== signedIn) {
                     mutableSession.value?.close()
-                    mutableSession.value = signedIn?.let { ServerSession(this@AppGraph, it, grids.filterNotNull().first()) }
+                    mutableSession.value = signedIn?.let { ServerSession(this@AppGraph, it) }
                 }
                 when {
                     state is AppState.SignedIn -> onOpened()

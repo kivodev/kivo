@@ -14,6 +14,7 @@ final class GridModelTests: XCTestCase {
     private static let total = 3000
     private var server: StubServer!
     private var session: KivoSession!
+    private var address = ""
     private var library: Library!
     /// What the works are called, by index; a test renames some.
     nonisolated(unsafe) private static var prefix = "Title"
@@ -100,16 +101,10 @@ final class GridModelTests: XCTestCase {
     override func setUp() async throws {
         Self.prefix = "Title"
         Self.failing = false
-        UserDefaults.standard.removeObject(forKey: "grid.lib")
+        forgetEarlierGrid()
         server = try StubServer(answer: Self.answer)
-        let address = try await server.start()
-        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let core = KivoClient(device: AppleDevice(
-            directory: directory.path(percentEncoded: false), name: "Test", identity: AppleIdentity.current,
-            clientId: nil, subtitles: [], trackSelection: false, transport: NoTransport()
-        ))
-        session = try await core.restore(server: SavedServer(id: "grid-test", name: "Grid test", addresses: [address]))
+        address = try await server.start()
+        session = try await open()
         for await load in session.library.libraries() {
             if let found = (load.getOrNull() as? [Library])?.first { library = found; break }
         }
@@ -118,7 +113,24 @@ final class GridModelTests: XCTestCase {
     override func tearDown() async throws {
         session.close()
         server.stop()
+        forgetEarlierGrid()
+    }
+
+    /// A session of the app on a device of its own, as the app opens one.
+    private func open() async throws -> KivoSession {
+        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let core = KivoClient(device: AppleDevice(
+            directory: directory.path(percentEncoded: false), name: "Test", identity: AppleIdentity.current,
+            clientId: nil, subtitles: [], trackSelection: false, transport: NoTransport()
+        ))
+        return try await core.restore(server: SavedServer(id: "grid-test", name: "Grid test", addresses: [address]))
+    }
+
+    // Migration (grid-choice): remove after every client has updated past this release.
+    private func forgetEarlierGrid() {
         UserDefaults.standard.removeObject(forKey: "grid.lib")
+        UserDefaults.standard.removeObject(forKey: "grid.lib.collections")
     }
 
     private func model() -> GridModel {
@@ -195,11 +207,11 @@ final class GridModelTests: XCTestCase {
         defer { run.cancel() }
         await grid.ready()
         let generation = grid.generation
-        grid.query.sort = grid.sorts.first { $0.value == .addedAt }!
-        grid.reload()
+        grid.choose(sort: .addedAt)
         try await until("the new order shows") { grid.paged.item(at: 0)?.title == Self.name(Self.total - 1) }
         XCTAssertGreaterThan(grid.generation, generation, "a new grid")
-        XCTAssertEqual(grid.shown.sort.value, .addedAt)
+        XCTAssertEqual(grid.state.sort, .addedAt)
+        XCTAssertEqual(grid.sort.label, "Date added")
         XCTAssertTrue(grid.paged.letters.isEmpty, "no letters by date")
     }
 
@@ -208,28 +220,30 @@ final class GridModelTests: XCTestCase {
         let run = Task { await grid.run() }
         defer { run.cancel() }
         await grid.ready()
-        grid.query.sort = grid.sorts.first { $0.value == .addedAt }!
-        grid.reload()
-        XCTAssertEqual(grid.shown.sort.value, .addedAt, "the new sort shows at once")
+        grid.choose(sort: .addedAt)
+        XCTAssertEqual(grid.state.sort, .addedAt, "the new sort shows at once")
         XCTAssertNil(grid.paged.total, "its placeholders until its first page arrives, not the grid before")
         XCTAssertNil(grid.paged.item(at: 0))
         try await until("its first page arrives") { grid.paged.total == Self.total }
     }
 
     func testASortForOnceOpensWithoutFiltersAndKeepsNothing() async throws {
-        UserDefaults.standard.set(["tab": "collections", "sort": "title", "played": "unplayed"], forKey: "grid.lib")
+        let usual = model()
+        usual.choose(sort: .rating)
+        usual.toggle(GridFilter.Played(state: .unplayed))
         let grid = GridModel(library: library, session: session, sort: .addedAt)
         let run = Task { await grid.run() }
         defer { run.cancel() }
         await grid.ready()
-        XCTAssertEqual(grid.shown.tab, .titles)
-        XCTAssertEqual(grid.shown.sort.value, .addedAt)
-        XCTAssertFalse(grid.shown.filtered, "none of the kept filters")
+        XCTAssertEqual(grid.state.tab, .titles)
+        XCTAssertEqual(grid.state.sort, .addedAt)
+        XCTAssertTrue(grid.state.filters.isEmpty, "none of the kept filters")
         XCTAssertEqual(grid.paged.item(at: 0)?.title, Self.name(Self.total - 1), "newest first")
-        grid.query.resolutions = [.fourK]
-        grid.reload()
-        let kept = UserDefaults.standard.dictionary(forKey: "grid.lib") as? [String: String]
-        XCTAssertEqual(kept, ["tab": "collections", "sort": "title", "played": "unplayed"], "the library's own choices stay")
+        grid.toggle(GridFilter.Resolution(resolution: .fourK))
+        grid.choose(sort: .runtime)
+        let again = model()
+        XCTAssertEqual(again.state.sort, .rating, "the library's own choices stay")
+        XCTAssertEqual(again.state.filters.chosen.map(\.key), ["played:unplayed"])
     }
 
     func testAFlingReadsOnlyThePagesWhereItComesToRest() async throws {
@@ -278,60 +292,82 @@ final class GridModelTests: XCTestCase {
         XCTAssertEqual(grid.paged.failed?.code, "notFound")
     }
 
-    func testTheFiltersOfferTheLibrarysValuesWithItsDecadesNewestFirst() async throws {
+    func testTheFiltersOfferTheLibrarysValuesInTheirGroupsWithEachNamed() async throws {
         let grid = model()
         let run = Task { await grid.run() }
         defer { run.cancel() }
-        try await until("the filters arrive") { !grid.decades.isEmpty }
-        XCTAssertEqual(grid.decades, [2020, 2000, 1990, 1980, 1890])
-        XCTAssertEqual(grid.genres, ["Action, Adventure", "Comedy", "Drama"])
-        XCTAssertEqual(grid.contentRatings, ["G", "PG-13", "R"], "in the server's order")
-        XCTAssertEqual(grid.resolutions, [.fourK, .p1080])
-        XCTAssertEqual(grid.dynamicRanges, [.hdr])
-        XCTAssertTrue(grid.narrators.isEmpty, "narrators are a books library's")
-        XCTAssertEqual(GridModel.label(decade: 1990), "1990s")
+        try await until("the filters arrive") { grid.state.offer.count > 1 }
+        let offer = grid.state.offer
+        XCTAssertEqual(offer.map(\.kind), [.watchStatus, .decade, .genre, .contentRating, .quality], "narrators are a books library's")
+        XCTAssertEqual(offer.map { GridModel.title($0.kind) }, ["Watch status", "Decade", "Genre", "Content rating", "Quality"])
+        XCTAssertEqual(offer[0].values.map { grid.label($0) }, ["Unwatched", "In progress", "Watched"])
+        XCTAssertEqual(offer[1].values.map { grid.label($0) }, ["2020s", "2000s", "1990s", "1980s", "1890s"])
+        XCTAssertEqual(offer[2].values.map { grid.label($0) }, ["Action, Adventure", "Comedy", "Drama"])
+        XCTAssertEqual(offer[3].values.map { grid.label($0) }, ["G", "PG-13", "R"], "in the server's order")
+        XCTAssertEqual(offer[4].values.map { grid.label($0) }, ["4K", "1080p", "HDR"])
+        XCTAssertEqual(grid.label(played: nil), "All")
+        XCTAssertEqual(grid.sections.map(\.label), ["Movies"])
+        XCTAssertEqual(grid.sorts.map(\.label), ["Title", "Date added", "Release date", "Rating", "Runtime", "Last played"])
+        XCTAssertEqual(grid.noun(41), "41 movies")
     }
 
     func testTheChosenFiltersShowAsChipsEachTakingItselfOff() async throws {
         let grid = model()
         let run = Task { await grid.run() }
         defer { run.cancel() }
-        try await until("the filters arrive") { !grid.genres.isEmpty }
-        grid.query.played = grid.playedFilters[1]
-        grid.query.genres = ["Drama", "Action, Adventure"]
-        grid.query.decade = 1990
-        grid.query.contentRatings = ["R", "G"]
-        grid.query.resolutions = [.p1080, .fourK]
-        grid.query.dynamicRanges = [.hdr]
-        XCTAssertTrue(grid.query.filtered)
-        XCTAssertEqual(grid.activeFilters.map(\.label), [
-            "Unwatched", "Action, Adventure", "Drama", "G", "R", "1990s", "4K", "1080p", "HDR",
-        ], "each group in the order the filters offer it")
-        let decade = try XCTUnwrap(grid.activeFilters.first { $0.id == "decade" })
-        decade.remove(&grid.query)
-        XCTAssertNil(grid.query.decade)
-        let drama = try XCTUnwrap(grid.activeFilters.first { $0.id == "genre:Drama" })
-        drama.remove(&grid.query)
-        XCTAssertEqual(grid.query.genres, ["Action, Adventure"])
-        let sort = grid.sorts[1]
-        grid.query.sort = sort
+        try await until("the filters arrive") { grid.state.offer.count > 1 }
+        for filter in [
+            GridFilter.Genre(name: "Drama"), GridFilter.Genre(name: "Action, Adventure"), GridFilter.Decade(year: 1990),
+            GridFilter.ContentRating(name: "R"), GridFilter.ContentRating(name: "G"), GridFilter.Resolution(resolution: .p1080),
+            GridFilter.Resolution(resolution: .fourK), GridFilter.DynamicRange(range: .hdr), GridFilter.Played(state: .unplayed),
+        ] {
+            grid.toggle(filter)
+        }
+        XCTAssertFalse(grid.state.filters.isEmpty)
+        XCTAssertEqual(grid.state.activeFilters.map { grid.chipLabel($0) }, [
+            "Unwatched", "1990s", "Action, Adventure", "Drama", "G", "R", "4K", "1080p", "HDR",
+        ], "the groups in the sheet's order, each as the filters offer it")
+        grid.toggle(GridFilter.Decade(year: 1990))
+        XCTAssertFalse(grid.state.filters.has(filter: GridFilter.Decade(year: 1990)))
+        grid.toggle(GridFilter.Genre(name: "Drama"))
+        XCTAssertEqual(grid.state.activeFilters.map(\.key).filter { $0.hasPrefix("genre:") }, ["genre:Action, Adventure"])
+        grid.choose(tab: .collections)
+        XCTAssertTrue(grid.state.activeFilters.isEmpty, "no chips over a tab they don't filter")
+        grid.choose(tab: .titles)
+        grid.choose(sort: .addedAt)
         grid.clearFilters()
-        XCTAssertFalse(grid.query.filtered)
-        XCTAssertTrue(grid.activeFilters.isEmpty)
-        XCTAssertEqual(grid.query.sort, sort, "the sort stays")
+        XCTAssertTrue(grid.state.filters.isEmpty)
+        XCTAssertTrue(grid.state.activeFilters.isEmpty)
+        XCTAssertEqual(grid.state.sort, .addedAt, "the sort stays")
     }
 
     func testTheChosenFiltersAreKeptForTheLibrary() async throws {
         let grid = model()
-        grid.query.genres = ["Action, Adventure", "Drama"]
-        grid.query.decade = 1980
-        grid.query.contentRatings = ["PG-13"]
-        grid.query.resolutions = [.fourK]
-        grid.query.narrator = GridModel.Narrator(id: "p1", name: "Ray Porter")
-        grid.reload()
+        grid.toggle(GridFilter.Genre(name: "Action, Adventure"))
+        grid.toggle(GridFilter.Genre(name: "Drama"))
+        grid.toggle(GridFilter.Decade(year: 1980))
+        grid.toggle(GridFilter.ContentRating(name: "PG-13"))
+        grid.toggle(GridFilter.Resolution(resolution: .fourK))
+        grid.toggle(GridFilter.Narrator(id: "p1", name: "Ray Porter"))
         let again = model()
-        XCTAssertEqual(again.query, grid.query)
-        XCTAssertEqual(again.activeFilters.last?.label, "Narrated by Ray Porter", "named before the narrators are read")
+        XCTAssertEqual(again.state.filters, grid.state.filters)
+        XCTAssertEqual(again.state.activeFilters.last.map { again.chipLabel($0) }, "Narrated by Ray Porter", "named before the narrators are read")
+    }
+
+    func testTheSheetsChoicesReachTheGridOnceTheyHoldStill() async throws {
+        let grid = model()
+        let run = Task { await grid.run() }
+        defer { run.cancel() }
+        await grid.ready()
+        let before = server.requests(to: Self.worksPath).count
+        let generation = grid.generation
+        grid.toggle(GridFilter.Genre(name: "Drama"), settle: true)
+        grid.toggle(GridFilter.Genre(name: "Comedy"), settle: true)
+        XCTAssertEqual(grid.state.filters.chosen.count, 2, "chosen at once")
+        XCTAssertEqual(grid.generation, generation, "the grid waits")
+        try await until("the grid follows") { grid.generation > generation }
+        try await until("the grid reads again") { server.requests(to: Self.worksPath).count > before }
+        XCTAssertEqual(grid.generation, generation + 1, "one grid for the choices")
     }
 
     func testTheGridAsksForTheChosenFilters() async throws {
@@ -340,12 +376,14 @@ final class GridModelTests: XCTestCase {
         defer { run.cancel() }
         await grid.ready()
         let before = server.requests(to: Self.worksPath).count
-        grid.query.played = grid.playedFilters[3]
-        grid.query.genres = ["Drama", "Comedy"]
-        grid.query.decade = 1990
-        grid.query.contentRatings = ["R"]
-        grid.query.dynamicRanges = [.hdr]
-        grid.reload()
+        var filters = grid.state.filters
+        for filter in [
+            GridFilter.Played(state: .played), GridFilter.Genre(name: "Drama"), GridFilter.Genre(name: "Comedy"), GridFilter.Decade(year: 1990),
+            GridFilter.ContentRating(name: "R"), GridFilter.DynamicRange(range: .hdr),
+        ] {
+            filters = filters.toggling(filter: filter)
+        }
+        grid.choose(filters)
         try await until("the grid reads again") { server.requests(to: Self.worksPath).count > before }
         let read = Self.asked(server.requests(to: Self.worksPath)[before])
         let rules = ((read["query"] as? [String: Any])?["where"] as? [String: Any])?["rules"] as? [[String: Any]] ?? []
@@ -361,79 +399,66 @@ final class GridModelTests: XCTestCase {
 
     func testSaveAsSmartListCarriesEveryFilter() {
         let grid = model()
-        grid.query.genres = ["Drama"]
-        grid.query.decade = 2000
-        grid.query.contentRatings = ["PG-13"]
-        let rules = grid.smartListQuery.where?.rules ?? []
+        grid.toggle(GridFilter.Genre(name: "Drama"))
+        grid.toggle(GridFilter.Decade(year: 2000))
+        grid.toggle(GridFilter.ContentRating(name: "PG-13"))
+        let rules = grid.state.smartListQuery.where?.rules ?? []
         XCTAssertEqual(rules.map(\.field), ["library", "genre", "year", "contentRating"])
         XCTAssertEqual(rules[2].propertyValues, ["2000", "2009"])
-        let books = GridModel.gridQuery(GridModel.Query(sort: grid.sorts[0], played: grid.playedFilters[0], narrator: .init(id: "p1", name: "")), of: library)
-        XCTAssertEqual(books.narratorId, "p1")
     }
 
-    // Migration (api-naming): remove after every client has updated past this release.
-    func testAGridKeptByAnEarlierVersionOpensWithItsFilters() async throws {
-        UserDefaults.standard.set(["tab": "titles", "sort": "addedAt", "hdr": "hdr"], forKey: "grid.lib")
-        let grid = model()
-        XCTAssertEqual(grid.query.sort.value, .addedAt)
-        XCTAssertEqual(grid.query.dynamicRanges, [.hdr])
-        let kept = UserDefaults.standard.dictionary(forKey: "grid.lib") as? [String: String]
-        XCTAssertEqual(kept?["dynamicRanges"], "hdr", "kept in today's names")
-        XCTAssertNil(kept?["hdr"])
-    }
-
-    func testAKeptGridOpensWithItsSortAndFiltersAndKeepsTheirSpelling() async throws {
+    // Migration (grid-choice): remove after every client has updated past this release.
+    func testAGridKeptByAnEarlierVersionOpensAsItWasLeft() async throws {
         UserDefaults.standard.set([
-            "tab": "titles", "sort": "runtimeMs", "played": "inProgress",
-            "resolutions": "1080p,4k,sd", "dynamicRanges": "dolbyVision,hdr",
+            "tab": "collections", "sort": "runtimeMs", "played": "inProgress", "decade": "1990",
+            "genres": "Action, Adventure\nDrama", "contentRatings": "PG-13",
+            "resolutions": "1080p,4k,sd", "dynamicRanges": "dolbyVision,hdr", "narrator": "p1", "narratorName": "Ray Porter",
         ], forKey: "grid.lib")
-        let grid = model()
-        XCTAssertEqual(grid.query.sort.value, .runtime)
-        XCTAssertEqual(grid.query.played.value, .inProgress)
-        XCTAssertEqual(grid.query.resolutions, [.fourK, .p1080, .sd])
-        XCTAssertEqual(grid.query.dynamicRanges, [.hdr, .dolbyVision])
-        grid.query.resolutions.insert(.p720)
-        grid.reload()
-        let kept = UserDefaults.standard.dictionary(forKey: "grid.lib") as? [String: String]
-        XCTAssertEqual(kept, [
-            "tab": "titles", "sort": "runtimeMs", "played": "inProgress", "genres": "", "contentRatings": "",
-            "resolutions": "1080p,4k,720p,sd", "dynamicRanges": "dolbyVision,hdr",
+        UserDefaults.standard.set(true, forKey: "grid.lib.collections")
+        let upgraded = try await open()
+        defer { upgraded.close() }
+
+        let grid = GridModel(library: library, session: upgraded)
+
+        XCTAssertEqual(grid.state.tab, .collections)
+        XCTAssertEqual(grid.state.sort, .runtime)
+        XCTAssertEqual(grid.state.filters.chosen.map(\.key), [
+            "played:inProgress", "decade:1990", "genre:Action, Adventure", "genre:Drama", "contentRating:PG-13",
+            "resolution:1080p", "resolution:4k", "resolution:sd", "dynamicRange:dolbyVision", "dynamicRange:hdr", "narrator:p1",
         ])
+        XCTAssertTrue(grid.state.tabsKnown, "whether it has collections too")
+        XCTAssertEqual(grid.sections.map(\.label), ["Movies", "Collections"])
+        XCTAssertNil(UserDefaults.standard.object(forKey: "grid.lib"), "moved to where it's kept now")
+        XCTAssertNil(UserDefaults.standard.object(forKey: "grid.lib.collections"))
     }
 
+    // Migration (grid-choice): remove after every client has updated past this release.
     // Migration (api-naming): remove after every client has updated past this release.
-    func testAGridKeptUnderEarlierNamesKeepsItsSortAndFiltersInTodaysNames() async throws {
+    func testAGridKeptUnderEarlierNamesOpensInTodaysNames() async throws {
         UserDefaults.standard.set([
             "tab": "titles", "sort": "lastEpisodeAdded", "played": "unplayed", "resolutions": "720p", "hdr": "dolbyVision",
         ], forKey: "grid.lib")
-        // Only a shows library sorts by the last episode added.
-        let shows = Library(
-            id: library.id, name: "Shows", pinned: true, kind: .shows, workCount: library.workCount, folders: nil, useLocalMetadata: nil,
-            previews: nil, markers: nil, subtitles: nil, refreshDays: nil, metadataLanguage: nil, contentRatingCountry: nil,
-            unmatchedCount: nil, scan: nil
-        )
-        let grid = GridModel(library: shows, session: session)
-        XCTAssertEqual(grid.query.sort.value, .lastEpisodeAddedAt)
-        XCTAssertEqual(grid.query.played.value, .unplayed)
-        XCTAssertEqual(grid.query.resolutions, [.p720])
-        XCTAssertEqual(grid.query.dynamicRanges, [.dolbyVision])
-        grid.reload()
-        let kept = UserDefaults.standard.dictionary(forKey: "grid.lib") as? [String: String]
-        XCTAssertEqual(kept, [
-            "tab": "titles", "sort": "lastEpisodeAddedAt", "played": "unplayed", "genres": "", "contentRatings": "",
-            "resolutions": "720p", "dynamicRanges": "dolbyVision",
-        ])
+        let upgraded = try await open()
+        defer { upgraded.close() }
+
+        let grid = GridModel(library: library, session: upgraded)
+
+        XCTAssertEqual(grid.state.sort, .lastEpisodeAddedAt)
+        XCTAssertEqual(grid.state.filters.chosen.map(\.key), ["played:unplayed", "resolution:720p", "dynamicRange:dolbyVision"])
     }
 
+    // Migration (grid-choice): remove after every client has updated past this release.
     func testAKeptSortOrFilterThisVersionDoesntKnowFallsBack() async throws {
         UserDefaults.standard.set([
             "tab": "titles", "sort": "loudness", "played": "abandoned", "resolutions": "8k,4k", "dynamicRanges": "hlg",
         ], forKey: "grid.lib")
-        let grid = model()
-        XCTAssertEqual(grid.query.sort.value, .title, "the first sort")
-        XCTAssertNil(grid.query.played.value, "all")
-        XCTAssertEqual(grid.query.resolutions, [.fourK])
-        XCTAssertTrue(grid.query.dynamicRanges.isEmpty)
+        let upgraded = try await open()
+        defer { upgraded.close() }
+
+        let grid = GridModel(library: library, session: upgraded)
+
+        XCTAssertEqual(grid.state.sort, .title, "the first sort")
+        XCTAssertEqual(grid.state.filters.chosen.map(\.key), ["resolution:4k"])
     }
 }
 

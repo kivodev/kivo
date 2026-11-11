@@ -1,3 +1,4 @@
+import KivoCore
 import KivoUI
 import SwiftUI
 
@@ -16,7 +17,7 @@ struct FilterSheetButton: View {
         Button {
             open = true
         } label: {
-            FilterLabel(on: model.query.filtered)
+            FilterLabel(on: !model.state.filters.isEmpty)
         }
         .tint(palette.text)
         .accessibilityIdentifier("filter")
@@ -39,84 +40,45 @@ struct FilterSheetButton: View {
 struct FilterSheet: View {
     let model: GridModel
     let saveAsSmartList: () -> Void
-    /// The choices, which reach the grid once they've held still.
-    @State private var draft: GridModel.Query
     /// The grid's count, the last one known while the next is read.
     @State private var count: Int?
-    @State private var sending: Task<Void, Never>?
-    @State private var allGenres = false
-    @State private var allNarrators = false
+    /// The long groups opened whole.
+    @State private var whole: Set<FilterGroupKind> = []
     @State private var detent = PresentationDetent.large
     @Environment(\.dismiss) private var dismiss
     @Environment(\.kivoPalette) private var palette
     @Environment(\.dynamicTypeSize) private var typeSize
 
-    /// How long the choices hold still before the grid follows them.
-    private static let settleTime = Duration.milliseconds(300)
-    /// A long group shows this many chips until it's opened whole.
-    private static let shortLength = 9
+    /// All, then each watch status.
+    private static let statuses: [WorkPlayState?] = [nil, .unplayed, .inProgress, .played]
 
     init(model: GridModel, saveAsSmartList: @escaping () -> Void) {
         self.model = model
         self.saveAsSmartList = saveAsSmartList
-        _draft = State(initialValue: model.query)
         _count = State(initialValue: model.paged.total)
     }
+
+    /// The filters chosen, which reach the grid once they've held still.
+    private var chosen: GridFilters { model.state.filters }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: KivoTokens.spacing * 6) {
-                    group(String(localized: "Watch status")) { watchStatus }
-                    if !model.decades.isEmpty {
-                        group(String(localized: "Decade")) {
-                            ForEach(model.decades, id: \.self) { decade in
-                                FilterChip(label: GridModel.label(decade: decade), selected: draft.decade == decade) {
-                                    draft.decade = draft.decade == decade ? nil : decade
+                    ForEach(model.state.offer, id: \.kind) { group in
+                        if group.kind == .watchStatus {
+                            self.group(GridModel.title(group.kind)) { watchStatus }
+                        } else {
+                            self.group(GridModel.title(group.kind), count: group.values.count, whole: group.isLong ? opened(group.kind) : nil) {
+                                ForEach(group.shown(whole: whole.contains(group.kind), chosen: chosen), id: \.key) { value in
+                                    FilterChip(label: model.label(value), selected: chosen.has(filter: value)) {
+                                        model.toggle(value, settle: true)
+                                    }
                                 }
                             }
                         }
                     }
-                    if !model.genres.isEmpty {
-                        let genres = shortened(model.genres, whole: allGenres) { draft.genres.contains($0) }
-                        group(String(localized: "Genre"), count: model.genres.count, whole: $allGenres) {
-                            ForEach(genres, id: \.self) { genre in
-                                FilterChip(label: genre, selected: draft.genres.contains(genre)) { draft.genres.toggle(genre) }
-                            }
-                        }
-                    }
-                    if !model.contentRatings.isEmpty {
-                        group(String(localized: "Content rating")) {
-                            ForEach(model.contentRatings, id: \.self) { rating in
-                                FilterChip(label: rating, selected: draft.contentRatings.contains(rating)) { draft.contentRatings.toggle(rating) }
-                            }
-                        }
-                    }
-                    if !model.resolutions.isEmpty || !model.dynamicRanges.isEmpty {
-                        group(String(localized: "Quality")) {
-                            ForEach(model.resolutions, id: \.self) { resolution in
-                                FilterChip(label: GridModel.label(resolution), selected: draft.resolutions.contains(resolution)) {
-                                    draft.resolutions.toggle(resolution)
-                                }
-                            }
-                            ForEach(model.dynamicRanges, id: \.self) { format in
-                                FilterChip(label: GridModel.label(format), selected: draft.dynamicRanges.contains(format)) {
-                                    draft.dynamicRanges.toggle(format)
-                                }
-                            }
-                        }
-                    }
-                    if !model.narrators.isEmpty {
-                        let narrators = shortened(model.narrators, whole: allNarrators) { draft.narrator == $0 }
-                        group(String(localized: "Narrator"), count: model.narrators.count, whole: $allNarrators) {
-                            ForEach(narrators) { narrator in
-                                FilterChip(label: narrator.name, selected: draft.narrator?.id == narrator.id) {
-                                    draft.narrator = draft.narrator?.id == narrator.id ? nil : narrator
-                                }
-                            }
-                        }
-                    }
-                    if draft.filtered {
+                    if !chosen.isEmpty {
                         Button(String(localized: "Save as Smart List"), systemImage: "sparkles") {
                             saveAsSmartList()
                             dismiss()
@@ -134,8 +96,8 @@ struct FilterSheet: View {
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(String(localized: "Clear")) { draft = model.withoutFilters(draft) }
-                        .disabled(!draft.filtered)
+                    Button(String(localized: "Clear")) { model.clearFilters(settle: true) }
+                        .disabled(chosen.isEmpty)
                         .accessibilityIdentifier("filters-clear")
                 }
             }
@@ -144,37 +106,44 @@ struct FilterSheet: View {
         .presentationDetents([.medium, .large], selection: $detent)
         .presentationDragIndicator(.visible)
         .presentationBackground(palette.surface)
-        .onChange(of: draft) { send() }
         .onChange(of: model.paged.total) {
             if let total = model.paged.total { count = total }
         }
-        .onDisappear {
-            sending?.cancel()
-            if model.query != draft { model.query = draft }
-        }
+        // The grid shows what's chosen as the sheet closes.
+        .onDisappear { model.choose(chosen) }
     }
 
-    /// The choices reach the grid once they've held still.
-    private func send() {
-        sending?.cancel()
-        let draft = draft
-        sending = Task {
-            try? await Task.sleep(for: Self.settleTime)
-            guard !Task.isCancelled else { return }
-            model.query = draft
-        }
+    /// Whether [group] is opened whole, as its All or Fewer button sets it.
+    private func opened(_ group: FilterGroupKind) -> Binding<Bool> {
+        Binding(
+            get: { whole.contains(group) },
+            set: { open in
+                if open { whole.insert(group) } else { whole.remove(group) }
+            }
+        )
+    }
+
+    /// The watch status chosen, All being none.
+    private var played: Binding<WorkPlayState?> {
+        Binding(
+            get: { chosen.played },
+            set: { played in
+                let next = played.map { chosen.choosing(filter: GridFilter.Played(state: $0)) } ?? chosen.clearing(group: .watchStatus)
+                model.choose(next, settle: true)
+            }
+        )
     }
 
     /// All, Unwatched, In progress, Watched: a segmented control, or chips
     /// at the largest text sizes, where the segments would cut their words.
     @ViewBuilder private var watchStatus: some View {
         if typeSize.isAccessibilitySize {
-            ForEach(model.playedFilters) { played in
-                FilterChip(label: played.label, selected: draft.played == played) { draft.played = played }
+            ForEach(Self.statuses, id: \.self) { status in
+                FilterChip(label: model.label(played: status), selected: chosen.played == status) { played.wrappedValue = status }
             }
         } else {
-            Picker(String(localized: "Watch status"), selection: $draft.played) {
-                ForEach(model.playedFilters) { Text($0.label).tag($0) }
+            Picker(String(localized: "Watch status"), selection: played) {
+                ForEach(Self.statuses, id: \.self) { Text(model.label(played: $0)).tag($0) }
             }
             .pickerStyle(.segmented)
             .frame(maxWidth: .infinity)
@@ -195,7 +164,7 @@ struct FilterSheet: View {
                     .foregroundStyle(palette.textMuted)
                     .accessibilityAddTraits(.isHeader)
                 Spacer()
-                if let whole, count > Self.shortLength + 3 {
+                if let whole {
                     Button(whole.wrappedValue ? String(localized: "Fewer") : String(localized: "All \(count)")) {
                         withAnimation(.snappy) { whole.wrappedValue.toggle() }
                     }
@@ -206,12 +175,6 @@ struct FilterSheet: View {
                 chips()
             }
         }
-    }
-
-    /// [values], or while not [whole] and long, the first few and any [chosen].
-    private func shortened<T>(_ values: [T], whole: Bool, chosen: (T) -> Bool) -> [T] {
-        guard !whole, values.count > Self.shortLength + 3 else { return values }
-        return values.enumerated().filter { $0.offset < Self.shortLength || chosen($0.element) }.map(\.element)
     }
 
     /// Show 41 movies, pinned under the groups, which closes the sheet.
@@ -313,12 +276,5 @@ private struct FlowLayout: Layout {
         }
         if !row.indices.isEmpty { rows.append(row) }
         return rows
-    }
-}
-
-private extension Set {
-    /// Takes [element] out if it's in, else puts it in.
-    mutating func toggle(_ element: Element) {
-        if remove(element) == nil { insert(element) }
     }
 }

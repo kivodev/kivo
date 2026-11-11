@@ -31,12 +31,14 @@ import com.mmcdole.kivo.core.data.GridPage
 import com.mmcdole.kivo.core.data.GridPager
 import com.mmcdole.kivo.core.data.GridQuery
 import com.mmcdole.kivo.core.data.GridRepository
+import com.mmcdole.kivo.core.data.GridSort
 import com.mmcdole.kivo.core.data.Heading
 import com.mmcdole.kivo.core.data.HomeRepository
 import com.mmcdole.kivo.core.data.Known
-import com.mmcdole.kivo.core.data.LibraryFilters
 import com.mmcdole.kivo.core.data.LibraryRepository
+import com.mmcdole.kivo.core.data.LibraryTab
 import com.mmcdole.kivo.core.data.ListsRepository
+import com.mmcdole.kivo.core.data.SavedGrids
 import com.mmcdole.kivo.core.data.SearchRepository
 import com.mmcdole.kivo.core.data.UserStateRepository
 import com.mmcdole.kivo.core.data.WorkRepository
@@ -64,6 +66,7 @@ class SessionLibrary internal constructor(
     private val reachability: Reachability,
     private val scope: CoroutineScope,
     preferences: DataStore<Preferences>,
+    private val savedGrids: SavedGrids,
 ) {
     private val works = WorkRepository(connection, invalidations)
     private val listWorks = ListsRepository(connection, invalidations)
@@ -75,6 +78,9 @@ class SessionLibrary internal constructor(
     private val libraryList = LibraryRepository(connection, merge(invalidations, libraryRereads), preferences)
 
     private val seen = Known()
+
+    /** The user's libraries as last read or kept, for a library's grid to open knowing its kind. */
+    private var lastLibraries: List<Library> = emptyList()
 
     private val homeLayout = HomeRepository(connection, invalidations)
 
@@ -105,7 +111,7 @@ class SessionLibrary internal constructor(
 
     /**
      * A list's works of [kinds], or every kind when null, as a grid, a manual list's in its sort, read again in place
-     * as they change; [settleMs] as for [pagedWorks].
+     * as they change; [settleMs] as for [libraryGrid].
      */
     fun pagedListWorks(listId: String, kinds: List<WorkKind>?, settleMs: Long = 0): GridPager =
         paged("list $listId $kinds", listWorks.changes(), settleMs) { offset, limit ->
@@ -168,7 +174,7 @@ class SessionLibrary internal constructor(
      * show before the server answers.
      */
     fun libraries(): Flow<Load<List<Library>>> = flow {
-        emitAll(reachability.load(libraryList.libraries(), libraryList.kept()))
+        emitAll(reachability.load(libraryList.libraries(), libraryList.kept()).onEach { load -> load.getOrNull()?.let { lastLibraries = it } })
     }
 
     /**
@@ -225,44 +231,44 @@ class SessionLibrary internal constructor(
     suspend fun gridPage(query: GridQuery, offset: Int, limit: Int): WorkSummaryPage =
         grid.page(query, libraryList.kind(query.libraryId), offset, limit).also { seen.read(it.items) }
 
-    /** Whether [libraryId] has collections, read one long. */
-    @Throws(Exception::class)
-    suspend fun hasCollections(libraryId: String): Boolean = grid.collections(libraryId, 0, 1).total > 0
-
     /**
-     * The values [libraryId]'s filters offer (its works' genres, content
-     * ratings, years, resolutions and dynamic ranges) and whether it has
-     * collections, read again as the library changes.
+     * [libraryId]'s grid as this device last left it: its tab, sort and
+     * filters, kept as they change; or with [oneOffSort], as from Recently
+     * Added's heading, its works in that sort with no filters, keeping none
+     * of what's chosen. With [settleMs], the pages asked for are read once
+     * the grid has held still that long, as a touch screen's does after a
+     * fling; with none they're read at once.
      */
-    fun filters(libraryId: String): Flow<Load<LibraryFilters>> = reachability.load(grid.filters(libraryId))
+    @DefaultArgumentInterop.Enabled
+    fun libraryGrid(libraryId: String, oneOffSort: GridSort? = null, settleMs: Long = 0): LibraryGrid = LibraryGrid(
+        libraryId,
+        oneOffSort,
+        lastLibraries.firstOrNull { it.id == libraryId },
+        libraries(),
+        reachability.load(grid.filters(libraryId)),
+        savedGrids,
+        { tab, query -> libraryPager(tab, query, settleMs) },
+        scope,
+    )
 
-    /**
-     * A library's works for [query], read again in place as the library or the user's marks change. With [settleMs],
-     * the pages asked for are read once the grid has held still that long, as a touch screen's does after a fling;
-     * with none they're read at once.
-     */
-    fun pagedWorks(query: GridQuery, settleMs: Long = 0): GridPager =
-        paged("works $query", grid.changes(query.libraryId), settleMs) { offset, limit ->
-            grid.page(query, libraryList.kind(query.libraryId), offset, limit).let { GridPage(it.items.map(GridItem::Work), it.total, it.letters) }
+    /** The grid of [tab] of [query]'s library: its works for [query], or its collections, authors or book series by name, each read again in place as the library changes. */
+    private fun libraryPager(tab: LibraryTab, query: GridQuery, settleMs: Long): GridPager {
+        val libraryId = query.libraryId
+        return when (tab) {
+            LibraryTab.Titles -> paged("works $query", grid.changes(libraryId), settleMs) { offset, limit ->
+                grid.page(query, libraryList.kind(libraryId), offset, limit).let { GridPage(it.items.map(GridItem::Work), it.total, it.letters) }
+            }
+            LibraryTab.Collections -> paged("collections $libraryId", grid.changes(libraryId), settleMs) { offset, limit ->
+                grid.collections(libraryId, offset, limit).let { GridPage(it.items.map(GridItem::Collection), it.total, it.letters) }
+            }
+            LibraryTab.Authors -> paged("authors $libraryId", grid.changes(libraryId), settleMs) { offset, limit ->
+                grid.authors(libraryId, offset, limit).let { GridPage(it.items.map(GridItem::Author), it.total, it.letters) }
+            }
+            LibraryTab.BookSeries -> paged("bookSeries $libraryId", grid.changes(libraryId), settleMs) { offset, limit ->
+                grid.bookSeries(libraryId, offset, limit).let { GridPage(it.items.map(GridItem::BookSeries), it.total, it.letters) }
+            }
         }
-
-    /** A library's collections, by name, read again in place as the library changes; [settleMs] as for [pagedWorks]. */
-    fun pagedCollections(libraryId: String, settleMs: Long = 0): GridPager =
-        paged("collections $libraryId", grid.changes(libraryId), settleMs) { offset, limit ->
-            grid.collections(libraryId, offset, limit).let { GridPage(it.items.map(GridItem::Collection), it.total, it.letters) }
-        }
-
-    /** An audiobooks library's authors, by name, read again in place as the library changes; [settleMs] as for [pagedWorks]. */
-    fun pagedAuthors(libraryId: String, settleMs: Long = 0): GridPager =
-        paged("authors $libraryId", grid.changes(libraryId), settleMs) { offset, limit ->
-            grid.authors(libraryId, offset, limit).let { GridPage(it.items.map(GridItem::Author), it.total, it.letters) }
-        }
-
-    /** An audiobooks library's book series, by name, read again in place as the library changes; [settleMs] as for [pagedWorks]. */
-    fun pagedBookSeries(libraryId: String, settleMs: Long = 0): GridPager =
-        paged("bookSeries $libraryId", grid.changes(libraryId), settleMs) { offset, limit ->
-            grid.bookSeries(libraryId, offset, limit).let { GridPage(it.items.map(GridItem::BookSeries), it.total, it.letters) }
-        }
+    }
 
     private fun paged(key: String, changes: Flow<Unit>, settleMs: Long, read: suspend (Int, Int) -> GridPage) =
         GridPager(read, changes, reachability, seen, key, scope, Dispatchers.Default, settleMs)

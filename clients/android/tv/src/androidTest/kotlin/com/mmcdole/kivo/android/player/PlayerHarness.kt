@@ -317,7 +317,7 @@ class PlayerHarness(private val compose: ComposeContentTestRule, private val clo
     private fun session(startMs: Int): ServerSession {
         this.startMs = startMs
         val session = runBlocking { core.restore(SavedServer(SERVER_ID, "Player test", listOf("http://kivo.test"))) }
-        return ServerSession(graph, session, emptyMap())
+        return ServerSession(graph, session)
     }
 
     private fun <T> io.ktor.client.engine.mock.MockRequestHandleScope.json(

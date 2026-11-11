@@ -147,7 +147,7 @@ class DetailSeedTest {
         val core = KivoClient(TestDevice(context, preferences), server)
         val kivo = runBlocking { core.restore(SavedServer("detail-test", "Detail test", listOf("http://kivo.test"))) }
         runBlocking { kivo.library.gridPage(GridQuery("library"), 0, 50) }
-        val session = ServerSession(graph, kivo, emptyMap())
+        val session = ServerSession(graph, kivo)
         val navigator = Navigator()
         compose.setContent {
             KivoTheme {

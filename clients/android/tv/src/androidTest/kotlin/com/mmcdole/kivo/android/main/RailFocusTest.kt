@@ -103,7 +103,7 @@ class RailFocusTest {
         val graph = (context.applicationContext as HasAppGraph).graph
         val core = KivoClient(TestDevice(context, preferences), server)
         val kivo = runBlocking { core.restore(SavedServer("rail-test", "Rail test", listOf("http://kivo.test"))) }
-        val session = ServerSession(graph, kivo, emptyMap())
+        val session = ServerSession(graph, kivo)
         scenario = ActivityScenario.launch(ComponentActivity::class.java).onActivity {
             it.setContent {
                 KivoTheme {

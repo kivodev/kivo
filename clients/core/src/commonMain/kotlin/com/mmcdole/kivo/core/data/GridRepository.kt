@@ -80,7 +80,7 @@ internal class GridRepository(private val connection: ServerConnection, private 
 private val FILTER_FIELDS = listOf("genre", "year", "contentRating", "resolution", "dynamicRange")
 
 /** What a library's filters offer, of the values its works have, and whether it has collections. */
-data class LibraryFilters(
+internal data class LibraryFilters(
     /** By name. */
     val genres: List<String>,
     /** Release years, oldest first. */
@@ -111,6 +111,20 @@ data class GridQuery(
     /** A narrator's person ID, of an audiobooks library. */
     val narratorId: String? = null,
 )
+
+/** What a library lists: its works, its collections, or an audiobooks library's authors or book series; [value] names it where it's saved. */
+enum class LibraryTab(val value: String) {
+    Titles("titles"),
+    Collections("collections"),
+    Authors("authors"),
+    BookSeries("bookSeries"),
+    ;
+
+    companion object {
+        /** The tab [value] names; null for none or one this version doesn't know. */
+        fun of(value: String?): LibraryTab? = entries.firstOrNull { it.value == value }
+    }
+}
 
 /** A library grid's sort: a sortable field of a work query, by [value], in its own direction. */
 enum class GridSort(val value: String) {

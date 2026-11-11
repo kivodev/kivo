@@ -4,7 +4,6 @@ import coil3.ImageLoader
 import coil3.disk.DiskCache
 import coil3.network.ktor3.KtorNetworkFetcherFactory
 import com.mmcdole.kivo.android.books.BookPlayback
-import com.mmcdole.kivo.android.library.GridChoice
 import com.mmcdole.kivo.api.models.Library
 import com.mmcdole.kivo.core.downloads.DownloadItem
 import com.mmcdole.kivo.core.downloads.DownloadStatus
@@ -26,10 +25,10 @@ import java.io.File
 /**
  * The signed-in server as the app's screens keep it: the core's [session]
  * session, and what the screens keep beside it while it's open, the image
- * loader, the library grids' choices, the last search and a phone's downloads. Made when the app signs in or reaches its server,
+ * loader, the last search and a phone's downloads. Made when the app signs in or reaches its server,
  * and dropped on sign-out.
  */
-class ServerSession(val graph: AppGraph, val session: KivoSession, savedGrids: Map<String, GridChoice>) {
+class ServerSession(val graph: AppGraph, val session: KivoSession) {
     /** Work that lasts while this server is open, on the app's scope. */
     private val scope = CoroutineScope(graph.scope.coroutineContext + SupervisorJob(graph.scope.coroutineContext.job))
 
@@ -44,13 +43,6 @@ class ServerSession(val graph: AppGraph, val session: KivoSession, savedGrids: M
 
     /** The last search typed, which Search opens on again. */
     var lastSearch = ""
-
-    /**
-     * The library grids' choices as this device saved them, at hand as a
-     * library opens: [savedGrids] as the server opened, then each save.
-     */
-    val gridChoices: StateFlow<Map<String, GridChoice>> =
-        graph.savedGrids.all.stateIn(scope, SharingStarted.Eagerly, savedGrids)
 
     /** Artwork through the session, so it carries its token; cached on disk per server. */
     val images: ImageLoader = ImageLoader.Builder(graph.context)
