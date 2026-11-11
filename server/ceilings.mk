@@ -29,6 +29,6 @@ UNANSWERED_MAX    := 0
 # Swift's references to Kotlin file classes (XxxKt.), which a file rename breaks.
 SWIFT_KT_MAX      := 0
 # Waits in the apps' video players; the core's VideoPlayer runs the timed rules.
-APP_PLAYER_TIMERS_MAX := 7
+APP_PLAYER_TIMERS_MAX := 5
 # Numbers the apps format themselves rather than through the core's Display.
 APP_FORMATS_MAX       := 5

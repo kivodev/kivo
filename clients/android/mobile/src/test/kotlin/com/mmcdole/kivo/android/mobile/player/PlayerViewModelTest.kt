@@ -2,10 +2,8 @@ package com.mmcdole.kivo.android.mobile.player
 
 import com.mmcdole.kivo.android.mobile.CoreTest
 import com.mmcdole.kivo.android.mobile.app.PlayerRoute
-import com.mmcdole.kivo.android.mobile.app.WorkRoute
 import com.mmcdole.kivo.android.mobile.awaitValue
 import com.mmcdole.kivo.android.mobile.reply
-import com.mmcdole.kivo.api.models.EpisodeInfo
 import com.mmcdole.kivo.api.models.MatchState
 import com.mmcdole.kivo.api.models.PlayCreate
 import com.mmcdole.kivo.api.models.PlayDelivery
@@ -17,7 +15,6 @@ import com.mmcdole.kivo.api.models.TrackType
 import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.api.models.WorkImages
 import com.mmcdole.kivo.api.models.WorkKind
-import com.mmcdole.kivo.core.play.PlayerEnd
 import com.mmcdole.kivo.core.play.PlayerStatus
 import com.mmcdole.kivo.core.player.TrackShow
 import io.ktor.client.engine.mock.respond
@@ -30,7 +27,6 @@ import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
-import kotlin.test.assertNull
 
 class PlayerViewModelTest : CoreTest() {
     private val json = Json { ignoreUnknownKeys = true }
@@ -89,12 +85,12 @@ class PlayerViewModelTest : CoreTest() {
     fun thePagesChoicesStartThePlay() {
         val engine = FakeEngine()
         val model = model(engine)
-        val state = awaitValue(model.state) { it.playback.status == PlayerStatus.Playing && it.work != null }
+        val state = awaitValue(model.state) { it.playback.status == PlayerStatus.Playing && it.screen.work != null }
         val start = starts.single()
         assertEquals("v2", start.versionId)
         assertEquals("a2", start.audioTrackId)
         assertEquals("t1", start.subtitleTrackId)
-        assertEquals("Charade", state.work?.title)
+        assertEquals("Charade", state.screen.work?.title)
         assertIs<TrackShow.External>(engine.shown.last())
     }
 
@@ -120,15 +116,5 @@ class PlayerViewModelTest : CoreTest() {
         model.chooseSpeed(1.5f)
         assertEquals(1.5f, awaitValue(model.state) { it.speed == 1.5f }.speed)
         assertEquals(1.5f, engine.speed)
-    }
-
-    @Test
-    fun thePlayersEndGoesToTheNextEpisodeTheSeriesOrBack() {
-        val episode = EpisodeInfo(seasonNumber = 1, number = 2, seriesId = "show", seriesTitle = "Show", nextId = "e3")
-        assertEquals(PlayerExit.Replace(PlayerRoute("e3")), exitAt(PlayerEnd.PlayNext, episode))
-        assertEquals(PlayerExit.Replace(WorkRoute("show")), exitAt(PlayerEnd.Series, episode))
-        assertEquals(PlayerExit.Back, exitAt(PlayerEnd.Close, null))
-        assertNull(exitAt(PlayerEnd.PlayNext, null))
-        assertEquals(PlayerExit.Replace(PlayerRoute("e3", downloadId = "d3")), exitAt(PlayerEnd.PlayNext, episode) { if (it == "e3") "d3" else null })
     }
 }

@@ -184,7 +184,7 @@ fun PlayerBottomBar(
             durationMs = duration,
             chapters = play?.chapters.orEmpty(),
             enabled = live,
-            preview = { at -> state.previews?.let { SpriteFrame.atOrNull(it.manifest, it.url, at) } },
+            preview = { at -> state.screen.previews?.let { SpriteFrame.atOrNull(it.manifest, it.url, at) } },
             onScrubbing = onScrubbing,
             onSeek = onSeek,
         )

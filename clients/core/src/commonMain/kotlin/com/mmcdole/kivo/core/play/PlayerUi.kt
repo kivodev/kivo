@@ -20,14 +20,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlin.coroutines.CoroutineContext
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 
 /**
  * What a video player shows over the video by the timed rules every player
- * keeps, for the app to draw: the controls, the Skip
- * Intro, Recap or Credits button, up next's card, and where the player goes
- * once it's done.
+ * keeps, for the app to draw: the controls, the Skip Intro, Recap or Credits
+ * button, and up next's card.
  */
 data class PlayerUi(
     /** Whether the controls show. */
@@ -36,12 +36,10 @@ data class PlayerUi(
     val skipMarker: SkipMarker? = null,
     /** Up next's card, which shows while [UpNext.shows]. */
     val upNext: UpNext = UpNext(),
-    /** Where the player goes now, for the app to take it there; null while it plays on. */
-    val end: PlayerEnd? = null,
 )
 
 /** Where a video player goes when it's done. */
-enum class PlayerEnd {
+internal enum class PlayerEnd {
     /** The next episode: up next counted down at the credits, the episode played on at its end, or someone chose it. */
     PlayNext,
 
@@ -55,18 +53,19 @@ enum class PlayerEnd {
 /**
  * The timed rules behind [PlayerUi], over a play's [state]: the controls
  * show as an input, a menu, a held scrub or a pause shows them, and hide as
- * the app hides them, which hides them a while after the last input while
- * playing; Skip shows for
+ * the app hides them, or [hideControlsAfter] the last input while playing
+ * with no menu open or scrub held; Skip shows for
  * [SKIP_SHOWS] as playback enters a marker and with the controls while it
  * stays there; up next at the final credits counts down a second at a time
  * while playing with no menu open, and plays the next episode at zero, and
  * elsewhere counts the seconds left in the episode, unless [autoplay] has it
  * wait, with the user's autoplay off or asking "Still watching?"; and the
- * play's end goes to the next episode, the series or back.
+ * play's end goes to the next episode, the series or back ([end]).
  *
  * Inputs come on the main thread, the state's changes are followed in
  * [scope], and the waits run in [scope] with [clock] in place of its
- * dispatcher's, which a test makes virtual.
+ * dispatcher's, which a test makes virtual. [changed] hears each new [ui]
+ * as it's set.
  */
 internal class PlayerUiRules(
     private val state: StateFlow<PlayerState>,
@@ -74,6 +73,8 @@ internal class PlayerUiRules(
     private val autoplay: Autoplay,
     scope: CoroutineScope,
     clock: CoroutineContext,
+    private val hideControlsAfter: Duration,
+    private val changed: (PlayerUi) -> Unit = {},
 ) {
     private val job = SupervisorJob(scope.coroutineContext[Job])
     private val scope = CoroutineScope(scope.coroutineContext + job)
@@ -82,23 +83,32 @@ internal class PlayerUiRules(
     private val mutableUi = MutableStateFlow(PlayerUi())
     val ui: StateFlow<PlayerUi> = mutableUi.asStateFlow()
 
+    private val mutableEnd = MutableStateFlow<PlayerEnd?>(null)
+
+    /** Where the player goes now; null while it plays on. */
+    val end: StateFlow<PlayerEnd?> = mutableEnd.asStateFlow()
+
     /** Null for anything but an episode; for one, whether it has a next one to play. */
     private var hasNext: Boolean? = null
     private var menuOpen = false
+    private var scrubHeld = false
     private var controls = true
     private var upNext = UpNext()
     private val skip = SkipShow()
     private var markersOf: PlayStarted? = null
     private var markerList = emptyList<SkipMarker>()
-    private var end: PlayerEnd? = null
+    private var ending: PlayerEnd? = null
 
     /** Whether playback went on, live and not paused, at the last change. */
     private var going = false
     private var skipShowing: Job? = null
     private var countdown: Job? = null
 
+    /** The controls' wait to hide, while it runs. */
+    private var hiding: Job? = null
+
     init {
-        this.scope.launch { state.collect(::changed) }
+        this.scope.launch { state.collect(::stateChanged) }
     }
 
     /** This video is an episode, with a next one to play or not. */
@@ -107,10 +117,11 @@ internal class PlayerUiRules(
         update()
     }
 
-    /** Any input: someone is watching, so up next may play on again. */
+    /** Any input: someone is watching, so up next may play on again, and the controls' wait to hide starts over. */
     fun input() {
         autoplay.reset()
         update()
+        waitToHide(again = true)
     }
 
     /** Input that shows the controls. */
@@ -138,6 +149,7 @@ internal class PlayerUiRules(
 
     /** A scrub is held, which shows the controls; or it let go. */
     fun scrubbing(held: Boolean) {
+        scrubHeld = held
         if (held) controls = true
         update()
     }
@@ -162,19 +174,19 @@ internal class PlayerUiRules(
     fun playNext() {
         if (hasNext != true) return
         autoplay.reset()
-        end = PlayerEnd.PlayNext
+        ending = PlayerEnd.PlayNext
         update()
     }
 
     /** The last part played to its end: the next episode plays on, or up next waits for an answer; else the player is done. */
     fun ended() {
-        if (end == PlayerEnd.PlayNext) return
+        if (ending == PlayerEnd.PlayNext) return
         when (playEnd(episode = hasNext != null, hasNext = hasNext == true, autoplayAllowed = autoplay.allowed)) {
             PlayEnd.PlayNext -> playOn()
             PlayEnd.Wait -> upNext = upNext.waits(autoplay.phase)
-            PlayEnd.Series -> end = PlayerEnd.Series
+            PlayEnd.Series -> ending = PlayerEnd.Series
             PlayEnd.Close -> {
-                end = PlayerEnd.Close
+                ending = PlayerEnd.Close
                 controls = true
             }
         }
@@ -186,18 +198,18 @@ internal class PlayerUiRules(
         job.cancel()
     }
 
-    private fun changed(state: PlayerState) {
+    private fun stateChanged(state: PlayerState) {
         // A pause shows the controls.
         if (going && state.live && state.paused) controls = true
         going = state.live && !state.paused
-        if (end == PlayerEnd.Close && !state.ended) end = null
+        if (ending == PlayerEnd.Close && !state.ended) ending = null
         update()
     }
 
     /** The next episode plays on by itself, which extends the run. */
     private fun playOn() {
         autoplay.playedOnItsOwn()
-        end = PlayerEnd.PlayNext
+        ending = PlayerEnd.PlayNext
     }
 
 
@@ -209,7 +221,7 @@ internal class PlayerUiRules(
         if (play != null && hasNext == true) {
             upNext = upNext.at(state.positionMs, play.durationMs.toLong(), autoplay.phase, upNextCredits(markers))
         }
-        countDown(upNext.phase == UpNextPhase.CountingDown && upNext.atCredits && end == null)
+        countDown(upNext.phase == UpNextPhase.CountingDown && upNext.atCredits && ending == null)
         val card = upNext.takeIf { play != null } ?: UpNext()
 
         val marker = play?.let { skip.at(markers, state.positionMs, controls, card.shows) }
@@ -222,7 +234,34 @@ internal class PlayerUiRules(
             }
         }
 
-        mutableUi.value = PlayerUi(controlsShown = controls, skipMarker = marker, upNext = card, end = end)
+        val ui = PlayerUi(controlsShown = controls, skipMarker = marker, upNext = card)
+        if (ui != mutableUi.value) {
+            mutableUi.value = ui
+            changed(ui)
+        }
+        mutableEnd.value = ending
+        waitToHide(again = false)
+    }
+
+    /**
+     * The controls hide [hideControlsAfter] the last input while they show
+     * and playback goes on with no menu open or scrub held; [again] starts a
+     * running wait over, as an input does.
+     */
+    private fun waitToHide(again: Boolean) {
+        val state = state.value
+        if (!controls || !state.live || state.paused || menuOpen || scrubHeld) {
+            hiding?.cancel()
+            hiding = null
+            return
+        }
+        if (hiding != null && !again) return
+        hiding?.cancel()
+        hiding = timers.launch {
+            delay(hideControlsAfter)
+            hiding = null
+            hideControls()
+        }
     }
 
     /** The play's markers, read once per play. */

@@ -56,7 +56,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -128,7 +127,6 @@ import com.mmcdole.kivo.core.display.bitrate
 import com.mmcdole.kivo.core.display.clock
 import com.mmcdole.kivo.core.display.episodeCode
 import com.mmcdole.kivo.core.display.quality
-import com.mmcdole.kivo.core.display.qualityMenu
 import com.mmcdole.kivo.core.display.size
 import com.mmcdole.kivo.android.ui.KivoButton
 import com.mmcdole.kivo.android.ui.KivoIcon
@@ -161,6 +159,7 @@ import com.mmcdole.kivo.core.play.PlayerFailure
 import com.mmcdole.kivo.core.play.failure
 import com.mmcdole.kivo.core.play.PlayerState
 import com.mmcdole.kivo.core.play.PlayerStatus
+import com.mmcdole.kivo.core.session.PlayerExit
 import com.mmcdole.kivo.core.settings.Quality
 import com.mmcdole.kivo.android.settings.SubtitleBackground
 import com.mmcdole.kivo.android.settings.SubtitleSize
@@ -168,9 +167,6 @@ import kotlinx.coroutines.delay
 
 /** A scrub seeks to its target after this long without another step. */
 private const val SCRUB_COMMIT_MS = 1_000L
-
-/** The controls hide this long after the last key while playing. */
-private const val CONTROLS_HIDE_MS = 5_000L
 
 /**
  * The player: the video with its subtitles, controls that show on
@@ -184,7 +180,7 @@ fun PlayerScreen(session: ServerSession, args: Screen.Player, navigator: Navigat
     val state by model.controller.state.collectAsStateWithLifecycle()
     val user by session.session.user.collectAsStateWithLifecycle()
     val current = state.play
-    val work = model.work
+    val work = model.screen.work
     val version = work?.versions?.firstOrNull { it.id == current?.versionId }
     val episode = work?.episode
     val live = state.live
@@ -207,26 +203,29 @@ fun PlayerScreen(session: ServerSession, args: Screen.Player, navigator: Navigat
     // Frame-rate matching, from the version's video track.
     val activity = LocalActivity.current
     val frameRate = version?.tracks?.firstOrNull { it.type == TrackType.Video }?.video?.frameRate
-    val matching = model.screen?.matchesFrameRate == true
+    val matching = model.screenSettings?.matchesFrameRate == true
     DisposableEffect(activity, frameRate, matching) {
         val matcher = activity?.let(::FrameRateMatcher)
         if (matching && frameRate != null) matcher?.match(frameRate.toFloat())
         onDispose { matcher?.release() }
     }
 
-    LaunchedEffect(Unit) {
-        for (exit in model.exits) {
-            when (exit) {
-                PlayerExit.Back -> navigator.pop()
-                is PlayerExit.Replace -> navigator.replace(exit.screen)
-                is PlayerExit.Series -> navigator.returnTo(Screen.Work(exit.seriesId))
-            }
+    // Done, the player goes where the core says: the next episode, the series or back.
+    LaunchedEffect(model.screen.exit) {
+        when (val exit = model.screen.exit) {
+            is PlayerExit.Next -> navigator.replace(Screen.Player(exit.choice))
+            is PlayerExit.Series -> navigator.returnTo(Screen.Work(exit.seriesId))
+            PlayerExit.Back -> navigator.pop()
+            null -> {}
         }
     }
+    LaunchedEffect(Unit) {
+        for (screen in model.replacements) navigator.replace(screen)
+    }
 
-    // The controls, Skip and Up next show by the core's rules, from the inputs given it; the controls hide by the wait below.
+    // The controls, Skip and Up next show by the core's rules, from the inputs given it.
     val video = model.video
-    val ui by video.ui.collectAsStateWithLifecycle()
+    val ui = model.screen.ui
     val visible = ui.controlsShown
     // The menus and panels open over the video, the one showing last: Back goes to the one before it.
     var menus by remember { mutableStateOf(emptyList<PlayerMenu>()) }
@@ -239,14 +238,14 @@ fun PlayerScreen(session: ServerSession, args: Screen.Player, navigator: Navigat
     // Where focus goes as the controls show, when the key that showed them chose; else the scrub bar.
     var revealFocus by remember { mutableStateOf<FocusRequester?>(null) }
 
-    val showUpNext = model.next != null && ui.upNext.shows
+    val showUpNext = model.screen.next != null && ui.upNext.shows
     val stillWatching = showUpNext && ui.upNext.phase == UpNextPhase.StillWatching
     val marker = ui.skipMarker
     // A menu or panel open holds the controls up and up next's countdown.
     LaunchedEffect(menu != null) { video.setMenuOpen(open = menu != null) }
 
     fun reveal(focus: FocusRequester? = null) {
-        if (!video.ui.value.controlsShown) revealFocus = focus
+        if (!video.screen.value.ui.controlsShown) revealFocus = focus
         video.showControls()
     }
 
@@ -285,14 +284,6 @@ fun PlayerScreen(session: ServerSession, args: Screen.Player, navigator: Navigat
     LaunchedEffect(visible) {
         if (!visible) scrubTarget = null
     }
-    // The keys pressed so far: each starts the controls' wait to hide again.
-    var keysPressed by remember { mutableIntStateOf(0) }
-    // Shown while playing with no panel open, the controls hide once the keys stop.
-    LaunchedEffect(visible, live, state.paused, menu != null, keysPressed) {
-        if (!visible || !live || state.paused || menu != null) return@LaunchedEffect
-        delay(CONTROLS_HIDE_MS)
-        hide()
-    }
 
     fun perform(command: PlayerCommand, repeatCount: Int) {
         val c = model.controller
@@ -322,9 +313,8 @@ fun PlayerScreen(session: ServerSession, args: Screen.Player, navigator: Navigat
 
     val failed = state.status == PlayerStatus.Error && state.failure != null
     val keys = rememberKeyDispatcher { code ->
-        // Any input means someone is watching: up next may play on again.
+        // Any input means someone is watching: up next may play on again, and the controls wait again to hide.
         video.userActivity()
-        keysPressed++
         val overlay = when {
             showUpNext -> Overlay.UpNext
             marker != null -> Overlay.Skip
@@ -387,7 +377,7 @@ fun PlayerScreen(session: ServerSession, args: Screen.Player, navigator: Navigat
             .focusable()
             .onPreviewKeyEvent { event -> !failed && keys.dispatch(event.nativeKeyEvent) },
     ) {
-        Video(model.player, model.screen?.subtitleSize, model.screen?.subtitleBackground)
+        Video(model.player, model.screenSettings?.subtitleSize, model.screenSettings?.subtitleBackground)
 
         if (state.status == PlayerStatus.Loading || state.status == PlayerStatus.Buffering || state.status == PlayerStatus.Seeking) {
             Spinner(Modifier.align(Alignment.Center))
@@ -411,7 +401,7 @@ fun PlayerScreen(session: ServerSession, args: Screen.Player, navigator: Navigat
                 playButton = playButton,
                 tracksButton = tracksButton,
                 hasTracks = current?.let { tracksPanelShows(model, it) } == true,
-                preview = { at -> model.previews?.let { (url, manifest) -> SpriteFrame.atOrNull(manifest, url, at) } },
+                preview = { at -> model.screen.previews?.let { SpriteFrame.atOrNull(it.manifest, it.url, at) } },
                 onToggle = { model.controller.togglePlay() },
                 onBack = { model.controller.skip(-SKIP_BACK_MS) },
                 onForward = { model.controller.skip(SKIP_FORWARD_MS) },
@@ -825,7 +815,7 @@ private fun SkipButton(marker: SkipMarker, focus: FocusRequester, onSkip: () -> 
  */
 @Composable
 private fun UpNext(model: PlayerViewModel, upNext: UpNext, play: FocusRequester) {
-    val next = model.next ?: return
+    val next = model.screen.next ?: return
     val colors = Kivo.colors
     val countsDown = upNext.phase == UpNextPhase.CountingDown
     val asks = upNext.phase == UpNextPhase.StillWatching
@@ -891,7 +881,7 @@ private fun tracksPanelShows(model: PlayerViewModel, play: PlayStarted): Boolean
 
 /** The play's version's tracks, the ones playing, and whether its subtitles can be searched for. */
 private fun trackChoices(model: PlayerViewModel, play: PlayStarted): TrackChoices {
-    val version = model.version(play)
+    val version = model.screen.work?.versions?.firstOrNull { it.id == play.versionId }
     val tracks = version?.tracks.orEmpty()
     val audio = tracks.filter { it.type == TrackType.Audio }
     return TrackChoices(
@@ -928,9 +918,9 @@ private fun Menus(
         // A subtitle chosen here plays at once, and Audio & Subtitles shows it chosen.
         PlayerMenu.SubtitleSearch -> SubtitleSearchPanel(
             display = LocalSession.current.graph.display,
-            search = { model.searchSubtitles(play) },
+            search = { model.searchSubtitles() },
             download = {
-                model.downloadSubtitle(play, it)
+                model.downloadSubtitle(it)
                 onBack()
             },
             onDismiss = onBack,
@@ -1043,7 +1033,7 @@ private class MenuAnchors {
  */
 @Composable
 private fun settingsRows(model: PlayerViewModel, play: PlayStarted, quality: QualityChoices): List<Choice> {
-    val versions = model.work?.versions.orEmpty()
+    val versions = model.screen.work?.versions.orEmpty()
     return buildList {
         if (tracksPanelShows(model, play)) add(Choice(PlayerMenu.Tracks.name, stringResource(R.string.audio_and_subtitles)))
         add(Choice(PlayerMenu.Quality.name, stringResource(R.string.quality), value = quality.choices.firstOrNull { it.id == quality.selected }?.label, opens = true))
@@ -1061,14 +1051,12 @@ private class QualityChoices(val choices: List<Choice>, val selected: String)
 /** Auto, Original and the ladder's rungs below the file's own bitrate, those above the server's cap disabled. */
 @Composable
 private fun qualityChoices(model: PlayerViewModel, play: PlayStarted): QualityChoices {
-    val sourceBps = model.work?.versions?.firstOrNull { it.id == play.versionId }?.bitrateBps
+    val sourceBps = model.screen.work?.versions?.firstOrNull { it.id == play.versionId }?.bitrateBps
     val cap = play.limitBps
     val limited = cap?.let { stringResource(R.string.limited_for_play, display.bitrate(it)) }
     val selected = Quality.of(play.quality).key
-    // Only rungs below the file's own bitrate change anything.
-    val rungs = model.ladder.filter { sourceBps == null || it.bitrateBps < sourceBps }
     val autoDetail = stringResource(R.string.auto_detail)
-    val choices = qualityMenu(rungs).map { option ->
+    val choices = model.screen.qualities.map { option ->
         when (val q = option.quality) {
             Quality.Auto -> Choice(q.key, display.quality(option, null), autoDetail)
             Quality.Original -> Choice(q.key, display.quality(option, sourceBps), limited, enabled = cap == null)
@@ -1088,7 +1076,7 @@ private fun qualityChoices(model: PlayerViewModel, play: PlayStarted): QualityCh
 private fun versionChoices(model: PlayerViewModel): List<Choice> {
     val display = LocalSession.current.graph.display
     val missing = stringResource(R.string.version_missing)
-    return model.work?.versions.orEmpty().map { v ->
+    return model.screen.work?.versions.orEmpty().map { v ->
         val codec = v.tracks.firstOrNull { it.type == TrackType.Video }?.let { display.codec(it.codec) }
         Choice(
             v.id,
@@ -1126,7 +1114,7 @@ private fun limitWords(): (CapabilityMismatch) -> String {
 @Composable
 private fun StreamInfoPanel(model: PlayerViewModel, play: PlayStarted, onClose: () -> Unit) {
     val display = LocalSession.current.graph.display
-    val version = model.work?.versions?.firstOrNull { it.id == play.versionId }
+    val version = model.screen.work?.versions?.firstOrNull { it.id == play.versionId }
     val subtitle = model.subtitle
     val words = StreamInfoWords(
         playback = stringResource(R.string.info_playback),

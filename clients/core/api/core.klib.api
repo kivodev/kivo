@@ -178,18 +178,6 @@ final enum class com.mmcdole.kivo.core.downloads/WaitReason : kotlin/Enum<com.mm
     final fun values(): kotlin/Array<com.mmcdole.kivo.core.downloads/WaitReason> // com.mmcdole.kivo.core.downloads/WaitReason.values|values#static(){}[0]
 }
 
-final enum class com.mmcdole.kivo.core.play/PlayerEnd : kotlin/Enum<com.mmcdole.kivo.core.play/PlayerEnd> { // com.mmcdole.kivo.core.play/PlayerEnd|null[0]
-    enum entry Close // com.mmcdole.kivo.core.play/PlayerEnd.Close|null[0]
-    enum entry PlayNext // com.mmcdole.kivo.core.play/PlayerEnd.PlayNext|null[0]
-    enum entry Series // com.mmcdole.kivo.core.play/PlayerEnd.Series|null[0]
-
-    final val entries // com.mmcdole.kivo.core.play/PlayerEnd.entries|#static{}entries[0]
-        final fun <get-entries>(): kotlin.enums/EnumEntries<com.mmcdole.kivo.core.play/PlayerEnd> // com.mmcdole.kivo.core.play/PlayerEnd.entries.<get-entries>|<get-entries>#static(){}[0]
-
-    final fun valueOf(kotlin/String): com.mmcdole.kivo.core.play/PlayerEnd // com.mmcdole.kivo.core.play/PlayerEnd.valueOf|valueOf#static(kotlin.String){}[0]
-    final fun values(): kotlin/Array<com.mmcdole.kivo.core.play/PlayerEnd> // com.mmcdole.kivo.core.play/PlayerEnd.values|values#static(){}[0]
-}
-
 final enum class com.mmcdole.kivo.core.play/PlayerStatus : kotlin/Enum<com.mmcdole.kivo.core.play/PlayerStatus> { // com.mmcdole.kivo.core.play/PlayerStatus|null[0]
     enum entry Buffering // com.mmcdole.kivo.core.play/PlayerStatus.Buffering|null[0]
     enum entry Error // com.mmcdole.kivo.core.play/PlayerStatus.Error|null[0]
@@ -831,6 +819,43 @@ sealed interface com.mmcdole.kivo.core.session/LinkProgress { // com.mmcdole.kiv
         final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.session/LinkProgress.Expired.equals|equals(kotlin.Any?){}[0]
         final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.session/LinkProgress.Expired.hashCode|hashCode(){}[0]
         final fun toString(): kotlin/String // com.mmcdole.kivo.core.session/LinkProgress.Expired.toString|toString(){}[0]
+    }
+}
+
+sealed interface com.mmcdole.kivo.core.session/PlayerExit { // com.mmcdole.kivo.core.session/PlayerExit|null[0]
+    final class Next : com.mmcdole.kivo.core.session/PlayerExit { // com.mmcdole.kivo.core.session/PlayerExit.Next|null[0]
+        constructor <init>(com.mmcdole.kivo.core.play/PlayChoice, kotlin/String?) // com.mmcdole.kivo.core.session/PlayerExit.Next.<init>|<init>(com.mmcdole.kivo.core.play.PlayChoice;kotlin.String?){}[0]
+
+        final val choice // com.mmcdole.kivo.core.session/PlayerExit.Next.choice|{}choice[0]
+            final fun <get-choice>(): com.mmcdole.kivo.core.play/PlayChoice // com.mmcdole.kivo.core.session/PlayerExit.Next.choice.<get-choice>|<get-choice>(){}[0]
+        final val downloadId // com.mmcdole.kivo.core.session/PlayerExit.Next.downloadId|{}downloadId[0]
+            final fun <get-downloadId>(): kotlin/String? // com.mmcdole.kivo.core.session/PlayerExit.Next.downloadId.<get-downloadId>|<get-downloadId>(){}[0]
+
+        final fun component1(): com.mmcdole.kivo.core.play/PlayChoice // com.mmcdole.kivo.core.session/PlayerExit.Next.component1|component1(){}[0]
+        final fun component2(): kotlin/String? // com.mmcdole.kivo.core.session/PlayerExit.Next.component2|component2(){}[0]
+        final fun copy(com.mmcdole.kivo.core.play/PlayChoice = ..., kotlin/String? = ...): com.mmcdole.kivo.core.session/PlayerExit.Next // com.mmcdole.kivo.core.session/PlayerExit.Next.copy|copy(com.mmcdole.kivo.core.play.PlayChoice;kotlin.String?){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.session/PlayerExit.Next.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.session/PlayerExit.Next.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.mmcdole.kivo.core.session/PlayerExit.Next.toString|toString(){}[0]
+    }
+
+    final class Series : com.mmcdole.kivo.core.session/PlayerExit { // com.mmcdole.kivo.core.session/PlayerExit.Series|null[0]
+        constructor <init>(kotlin/String) // com.mmcdole.kivo.core.session/PlayerExit.Series.<init>|<init>(kotlin.String){}[0]
+
+        final val seriesId // com.mmcdole.kivo.core.session/PlayerExit.Series.seriesId|{}seriesId[0]
+            final fun <get-seriesId>(): kotlin/String // com.mmcdole.kivo.core.session/PlayerExit.Series.seriesId.<get-seriesId>|<get-seriesId>(){}[0]
+
+        final fun component1(): kotlin/String // com.mmcdole.kivo.core.session/PlayerExit.Series.component1|component1(){}[0]
+        final fun copy(kotlin/String = ...): com.mmcdole.kivo.core.session/PlayerExit.Series // com.mmcdole.kivo.core.session/PlayerExit.Series.copy|copy(kotlin.String){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.session/PlayerExit.Series.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.session/PlayerExit.Series.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.mmcdole.kivo.core.session/PlayerExit.Series.toString|toString(){}[0]
+    }
+
+    final object Back : com.mmcdole.kivo.core.session/PlayerExit { // com.mmcdole.kivo.core.session/PlayerExit.Back|null[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.session/PlayerExit.Back.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.session/PlayerExit.Back.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.mmcdole.kivo.core.session/PlayerExit.Back.toString|toString(){}[0]
     }
 }
 
@@ -1927,12 +1952,10 @@ final class com.mmcdole.kivo.core.play/PlayerState { // com.mmcdole.kivo.core.pl
 }
 
 final class com.mmcdole.kivo.core.play/PlayerUi { // com.mmcdole.kivo.core.play/PlayerUi|null[0]
-    constructor <init>(kotlin/Boolean = ..., com.mmcdole.kivo.core.player/SkipMarker? = ..., com.mmcdole.kivo.core.player/UpNext = ..., com.mmcdole.kivo.core.play/PlayerEnd? = ...) // com.mmcdole.kivo.core.play/PlayerUi.<init>|<init>(kotlin.Boolean;com.mmcdole.kivo.core.player.SkipMarker?;com.mmcdole.kivo.core.player.UpNext;com.mmcdole.kivo.core.play.PlayerEnd?){}[0]
+    constructor <init>(kotlin/Boolean = ..., com.mmcdole.kivo.core.player/SkipMarker? = ..., com.mmcdole.kivo.core.player/UpNext = ...) // com.mmcdole.kivo.core.play/PlayerUi.<init>|<init>(kotlin.Boolean;com.mmcdole.kivo.core.player.SkipMarker?;com.mmcdole.kivo.core.player.UpNext){}[0]
 
     final val controlsShown // com.mmcdole.kivo.core.play/PlayerUi.controlsShown|{}controlsShown[0]
         final fun <get-controlsShown>(): kotlin/Boolean // com.mmcdole.kivo.core.play/PlayerUi.controlsShown.<get-controlsShown>|<get-controlsShown>(){}[0]
-    final val end // com.mmcdole.kivo.core.play/PlayerUi.end|{}end[0]
-        final fun <get-end>(): com.mmcdole.kivo.core.play/PlayerEnd? // com.mmcdole.kivo.core.play/PlayerUi.end.<get-end>|<get-end>(){}[0]
     final val skipMarker // com.mmcdole.kivo.core.play/PlayerUi.skipMarker|{}skipMarker[0]
         final fun <get-skipMarker>(): com.mmcdole.kivo.core.player/SkipMarker? // com.mmcdole.kivo.core.play/PlayerUi.skipMarker.<get-skipMarker>|<get-skipMarker>(){}[0]
     final val upNext // com.mmcdole.kivo.core.play/PlayerUi.upNext|{}upNext[0]
@@ -1941,8 +1964,7 @@ final class com.mmcdole.kivo.core.play/PlayerUi { // com.mmcdole.kivo.core.play/
     final fun component1(): kotlin/Boolean // com.mmcdole.kivo.core.play/PlayerUi.component1|component1(){}[0]
     final fun component2(): com.mmcdole.kivo.core.player/SkipMarker? // com.mmcdole.kivo.core.play/PlayerUi.component2|component2(){}[0]
     final fun component3(): com.mmcdole.kivo.core.player/UpNext // com.mmcdole.kivo.core.play/PlayerUi.component3|component3(){}[0]
-    final fun component4(): com.mmcdole.kivo.core.play/PlayerEnd? // com.mmcdole.kivo.core.play/PlayerUi.component4|component4(){}[0]
-    final fun copy(kotlin/Boolean = ..., com.mmcdole.kivo.core.player/SkipMarker? = ..., com.mmcdole.kivo.core.player/UpNext = ..., com.mmcdole.kivo.core.play/PlayerEnd? = ...): com.mmcdole.kivo.core.play/PlayerUi // com.mmcdole.kivo.core.play/PlayerUi.copy|copy(kotlin.Boolean;com.mmcdole.kivo.core.player.SkipMarker?;com.mmcdole.kivo.core.player.UpNext;com.mmcdole.kivo.core.play.PlayerEnd?){}[0]
+    final fun copy(kotlin/Boolean = ..., com.mmcdole.kivo.core.player/SkipMarker? = ..., com.mmcdole.kivo.core.player/UpNext = ...): com.mmcdole.kivo.core.play/PlayerUi // com.mmcdole.kivo.core.play/PlayerUi.copy|copy(kotlin.Boolean;com.mmcdole.kivo.core.player.SkipMarker?;com.mmcdole.kivo.core.player.UpNext){}[0]
     final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.play/PlayerUi.equals|equals(kotlin.Any?){}[0]
     final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.play/PlayerUi.hashCode|hashCode(){}[0]
     final fun toString(): kotlin/String // com.mmcdole.kivo.core.play/PlayerUi.toString|toString(){}[0]
@@ -2205,6 +2227,43 @@ final class com.mmcdole.kivo.core.session/LibraryGridState { // com.mmcdole.kivo
     final fun toString(): kotlin/String // com.mmcdole.kivo.core.session/LibraryGridState.toString|toString(){}[0]
 }
 
+final class com.mmcdole.kivo.core.session/PlayerScreenState { // com.mmcdole.kivo.core.session/PlayerScreenState|null[0]
+    constructor <init>(com.mmcdole.kivo.core.play/PlayerUi = ..., com.mmcdole.kivo.api.models/WorkDetail? = ..., com.mmcdole.kivo.api.models/WorkDetail? = ..., com.mmcdole.kivo.api.models/Version? = ..., kotlin.collections/List<com.mmcdole.kivo.core.display/QualityOption> = ..., com.mmcdole.kivo.core.session/ScrubPreviews? = ..., kotlin/Boolean = ..., com.mmcdole.kivo.core.downloads/DownloadSource? = ..., com.mmcdole.kivo.core.session/PlayerExit? = ...) // com.mmcdole.kivo.core.session/PlayerScreenState.<init>|<init>(com.mmcdole.kivo.core.play.PlayerUi;com.mmcdole.kivo.api.models.WorkDetail?;com.mmcdole.kivo.api.models.WorkDetail?;com.mmcdole.kivo.api.models.Version?;kotlin.collections.List<com.mmcdole.kivo.core.display.QualityOption>;com.mmcdole.kivo.core.session.ScrubPreviews?;kotlin.Boolean;com.mmcdole.kivo.core.downloads.DownloadSource?;com.mmcdole.kivo.core.session.PlayerExit?){}[0]
+
+    final val downloadSource // com.mmcdole.kivo.core.session/PlayerScreenState.downloadSource|{}downloadSource[0]
+        final fun <get-downloadSource>(): com.mmcdole.kivo.core.downloads/DownloadSource? // com.mmcdole.kivo.core.session/PlayerScreenState.downloadSource.<get-downloadSource>|<get-downloadSource>(){}[0]
+    final val exit // com.mmcdole.kivo.core.session/PlayerScreenState.exit|{}exit[0]
+        final fun <get-exit>(): com.mmcdole.kivo.core.session/PlayerExit? // com.mmcdole.kivo.core.session/PlayerScreenState.exit.<get-exit>|<get-exit>(){}[0]
+    final val next // com.mmcdole.kivo.core.session/PlayerScreenState.next|{}next[0]
+        final fun <get-next>(): com.mmcdole.kivo.api.models/WorkDetail? // com.mmcdole.kivo.core.session/PlayerScreenState.next.<get-next>|<get-next>(){}[0]
+    final val offline // com.mmcdole.kivo.core.session/PlayerScreenState.offline|{}offline[0]
+        final fun <get-offline>(): kotlin/Boolean // com.mmcdole.kivo.core.session/PlayerScreenState.offline.<get-offline>|<get-offline>(){}[0]
+    final val previews // com.mmcdole.kivo.core.session/PlayerScreenState.previews|{}previews[0]
+        final fun <get-previews>(): com.mmcdole.kivo.core.session/ScrubPreviews? // com.mmcdole.kivo.core.session/PlayerScreenState.previews.<get-previews>|<get-previews>(){}[0]
+    final val qualities // com.mmcdole.kivo.core.session/PlayerScreenState.qualities|{}qualities[0]
+        final fun <get-qualities>(): kotlin.collections/List<com.mmcdole.kivo.core.display/QualityOption> // com.mmcdole.kivo.core.session/PlayerScreenState.qualities.<get-qualities>|<get-qualities>(){}[0]
+    final val ui // com.mmcdole.kivo.core.session/PlayerScreenState.ui|{}ui[0]
+        final fun <get-ui>(): com.mmcdole.kivo.core.play/PlayerUi // com.mmcdole.kivo.core.session/PlayerScreenState.ui.<get-ui>|<get-ui>(){}[0]
+    final val version // com.mmcdole.kivo.core.session/PlayerScreenState.version|{}version[0]
+        final fun <get-version>(): com.mmcdole.kivo.api.models/Version? // com.mmcdole.kivo.core.session/PlayerScreenState.version.<get-version>|<get-version>(){}[0]
+    final val work // com.mmcdole.kivo.core.session/PlayerScreenState.work|{}work[0]
+        final fun <get-work>(): com.mmcdole.kivo.api.models/WorkDetail? // com.mmcdole.kivo.core.session/PlayerScreenState.work.<get-work>|<get-work>(){}[0]
+
+    final fun component1(): com.mmcdole.kivo.core.play/PlayerUi // com.mmcdole.kivo.core.session/PlayerScreenState.component1|component1(){}[0]
+    final fun component2(): com.mmcdole.kivo.api.models/WorkDetail? // com.mmcdole.kivo.core.session/PlayerScreenState.component2|component2(){}[0]
+    final fun component3(): com.mmcdole.kivo.api.models/WorkDetail? // com.mmcdole.kivo.core.session/PlayerScreenState.component3|component3(){}[0]
+    final fun component4(): com.mmcdole.kivo.api.models/Version? // com.mmcdole.kivo.core.session/PlayerScreenState.component4|component4(){}[0]
+    final fun component5(): kotlin.collections/List<com.mmcdole.kivo.core.display/QualityOption> // com.mmcdole.kivo.core.session/PlayerScreenState.component5|component5(){}[0]
+    final fun component6(): com.mmcdole.kivo.core.session/ScrubPreviews? // com.mmcdole.kivo.core.session/PlayerScreenState.component6|component6(){}[0]
+    final fun component7(): kotlin/Boolean // com.mmcdole.kivo.core.session/PlayerScreenState.component7|component7(){}[0]
+    final fun component8(): com.mmcdole.kivo.core.downloads/DownloadSource? // com.mmcdole.kivo.core.session/PlayerScreenState.component8|component8(){}[0]
+    final fun component9(): com.mmcdole.kivo.core.session/PlayerExit? // com.mmcdole.kivo.core.session/PlayerScreenState.component9|component9(){}[0]
+    final fun copy(com.mmcdole.kivo.core.play/PlayerUi = ..., com.mmcdole.kivo.api.models/WorkDetail? = ..., com.mmcdole.kivo.api.models/WorkDetail? = ..., com.mmcdole.kivo.api.models/Version? = ..., kotlin.collections/List<com.mmcdole.kivo.core.display/QualityOption> = ..., com.mmcdole.kivo.core.session/ScrubPreviews? = ..., kotlin/Boolean = ..., com.mmcdole.kivo.core.downloads/DownloadSource? = ..., com.mmcdole.kivo.core.session/PlayerExit? = ...): com.mmcdole.kivo.core.session/PlayerScreenState // com.mmcdole.kivo.core.session/PlayerScreenState.copy|copy(com.mmcdole.kivo.core.play.PlayerUi;com.mmcdole.kivo.api.models.WorkDetail?;com.mmcdole.kivo.api.models.WorkDetail?;com.mmcdole.kivo.api.models.Version?;kotlin.collections.List<com.mmcdole.kivo.core.display.QualityOption>;com.mmcdole.kivo.core.session.ScrubPreviews?;kotlin.Boolean;com.mmcdole.kivo.core.downloads.DownloadSource?;com.mmcdole.kivo.core.session.PlayerExit?){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.session/PlayerScreenState.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.session/PlayerScreenState.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // com.mmcdole.kivo.core.session/PlayerScreenState.toString|toString(){}[0]
+}
+
 final class com.mmcdole.kivo.core.session/ScrubPreviews { // com.mmcdole.kivo.core.session/ScrubPreviews|null[0]
     constructor <init>(kotlin/String, com.mmcdole.kivo.api.models/PreviewManifest) // com.mmcdole.kivo.core.session/ScrubPreviews.<init>|<init>(kotlin.String;com.mmcdole.kivo.api.models.PreviewManifest){}[0]
 
@@ -2310,11 +2369,8 @@ final class com.mmcdole.kivo.core.session/SessionLink { // com.mmcdole.kivo.core
 final class com.mmcdole.kivo.core.session/SessionPlayback { // com.mmcdole.kivo.core.session/SessionPlayback|null[0]
     final fun bookPlayer(com.mmcdole.kivo.core.player/PlayerEngine, com.mmcdole.kivo.core.books/BookAudio): com.mmcdole.kivo.core.books/BookPlayerModel // com.mmcdole.kivo.core.session/SessionPlayback.bookPlayer|bookPlayer(com.mmcdole.kivo.core.player.PlayerEngine;com.mmcdole.kivo.core.books.BookAudio){}[0]
     final fun confirmStillWatching() // com.mmcdole.kivo.core.session/SessionPlayback.confirmStillWatching|confirmStillWatching(){}[0]
-    final fun playableWork(kotlin/String): kotlinx.coroutines.flow/Flow<com.mmcdole.kivo.core/Load<com.mmcdole.kivo.api.models/WorkDetail>> // com.mmcdole.kivo.core.session/SessionPlayback.playableWork|playableWork(kotlin.String){}[0]
-    final fun videoPlayer(com.mmcdole.kivo.core.player/PlayerEngine): com.mmcdole.kivo.core.session/VideoPlayer // com.mmcdole.kivo.core.session/SessionPlayback.videoPlayer|videoPlayer(com.mmcdole.kivo.core.player.PlayerEngine){}[0]
+    final fun videoPlayer(com.mmcdole.kivo.core.player/PlayerEngine, com.mmcdole.kivo.core.play/PlayChoice, kotlin/Long, kotlin/String? = ..., kotlin/Long? = ...): com.mmcdole.kivo.core.session/VideoPlayer // com.mmcdole.kivo.core.session/SessionPlayback.videoPlayer|videoPlayer(com.mmcdole.kivo.core.player.PlayerEngine;com.mmcdole.kivo.core.play.PlayChoice;kotlin.Long;kotlin.String?;kotlin.Long?){}[0]
     final suspend fun addSubtitle(com.mmcdole.kivo.api.models/Version, kotlin/String): com.mmcdole.kivo.api.models/Track // com.mmcdole.kivo.core.session/SessionPlayback.addSubtitle|addSubtitle(com.mmcdole.kivo.api.models.Version;kotlin.String){}[0]
-    final suspend fun offlinePlayer(com.mmcdole.kivo.core.player/PlayerEngine, kotlin/String): com.mmcdole.kivo.core.session/VideoPlayer // com.mmcdole.kivo.core.session/SessionPlayback.offlinePlayer|offlinePlayer(com.mmcdole.kivo.core.player.PlayerEngine;kotlin.String){}[0]
-    final suspend fun previews(com.mmcdole.kivo.api.models/PlayStarted): com.mmcdole.kivo.core.session/ScrubPreviews? // com.mmcdole.kivo.core.session/SessionPlayback.previews|previews(com.mmcdole.kivo.api.models.PlayStarted){}[0]
     final suspend fun qualityLadder(): kotlin.collections/List<com.mmcdole.kivo.api.models/QualityRung> // com.mmcdole.kivo.core.session/SessionPlayback.qualityLadder|qualityLadder(){}[0]
     final suspend fun qualityMenu(): kotlin.collections/List<com.mmcdole.kivo.core.display/QualityOption> // com.mmcdole.kivo.core.session/SessionPlayback.qualityMenu|qualityMenu(){}[0]
     final suspend fun subtitleResults(com.mmcdole.kivo.api.models/Version): kotlin.collections/List<com.mmcdole.kivo.api.models/SubtitleResult> // com.mmcdole.kivo.core.session/SessionPlayback.subtitleResults|subtitleResults(com.mmcdole.kivo.api.models.Version){}[0]
@@ -2376,8 +2432,8 @@ final class com.mmcdole.kivo.core.session/SignedInDevice { // com.mmcdole.kivo.c
 final class com.mmcdole.kivo.core.session/VideoPlayer { // com.mmcdole.kivo.core.session/VideoPlayer|null[0]
     final val controller // com.mmcdole.kivo.core.session/VideoPlayer.controller|{}controller[0]
         final fun <get-controller>(): com.mmcdole.kivo.core.play/PlayController // com.mmcdole.kivo.core.session/VideoPlayer.controller.<get-controller>|<get-controller>(){}[0]
-    final val ui // com.mmcdole.kivo.core.session/VideoPlayer.ui|{}ui[0]
-        final fun <get-ui>(): kotlinx.coroutines.flow/StateFlow<com.mmcdole.kivo.core.play/PlayerUi> // com.mmcdole.kivo.core.session/VideoPlayer.ui.<get-ui>|<get-ui>(){}[0]
+    final val screen // com.mmcdole.kivo.core.session/VideoPlayer.screen|{}screen[0]
+        final fun <get-screen>(): kotlinx.coroutines.flow/StateFlow<com.mmcdole.kivo.core.session/PlayerScreenState> // com.mmcdole.kivo.core.session/VideoPlayer.screen.<get-screen>|<get-screen>(){}[0]
 
     final fun boostDialogue(kotlin/Boolean) // com.mmcdole.kivo.core.session/VideoPlayer.boostDialogue|boostDialogue(kotlin.Boolean){}[0]
     final fun chooseAudio(kotlin/String) // com.mmcdole.kivo.core.session/VideoPlayer.chooseAudio|chooseAudio(kotlin.String){}[0]
@@ -2385,12 +2441,10 @@ final class com.mmcdole.kivo.core.session/VideoPlayer { // com.mmcdole.kivo.core
     final fun chooseSubtitle(kotlin/String) // com.mmcdole.kivo.core.session/VideoPlayer.chooseSubtitle|chooseSubtitle(kotlin.String){}[0]
     final fun chooseVersion(kotlin/String) // com.mmcdole.kivo.core.session/VideoPlayer.chooseVersion|chooseVersion(kotlin.String){}[0]
     final fun dispose() // com.mmcdole.kivo.core.session/VideoPlayer.dispose|dispose(){}[0]
-    final fun downloadSource(): com.mmcdole.kivo.core.downloads/DownloadSource? // com.mmcdole.kivo.core.session/VideoPlayer.downloadSource|downloadSource(){}[0]
     final fun handOver() // com.mmcdole.kivo.core.session/VideoPlayer.handOver|handOver(){}[0]
     final fun hideControls() // com.mmcdole.kivo.core.session/VideoPlayer.hideControls|hideControls(){}[0]
     final fun hideUpNext() // com.mmcdole.kivo.core.session/VideoPlayer.hideUpNext|hideUpNext(){}[0]
     final fun playNext() // com.mmcdole.kivo.core.session/VideoPlayer.playNext|playNext(){}[0]
-    final fun setHasNextEpisode(kotlin/Boolean) // com.mmcdole.kivo.core.session/VideoPlayer.setHasNextEpisode|setHasNextEpisode(kotlin.Boolean){}[0]
     final fun setMenuOpen(kotlin/Boolean) // com.mmcdole.kivo.core.session/VideoPlayer.setMenuOpen|setMenuOpen(kotlin.Boolean){}[0]
     final fun setOverlayVisible(kotlin/Boolean) // com.mmcdole.kivo.core.session/VideoPlayer.setOverlayVisible|setOverlayVisible(kotlin.Boolean){}[0]
     final fun setScrubbing(kotlin/Boolean) // com.mmcdole.kivo.core.session/VideoPlayer.setScrubbing|setScrubbing(kotlin.Boolean){}[0]
@@ -2398,7 +2452,7 @@ final class com.mmcdole.kivo.core.session/VideoPlayer { // com.mmcdole.kivo.core
     final fun skipMarker() // com.mmcdole.kivo.core.session/VideoPlayer.skipMarker|skipMarker(){}[0]
     final fun toggleControls() // com.mmcdole.kivo.core.session/VideoPlayer.toggleControls|toggleControls(){}[0]
     final fun userActivity() // com.mmcdole.kivo.core.session/VideoPlayer.userActivity|userActivity(){}[0]
-    final suspend fun play(com.mmcdole.kivo.core.play/PlayChoice, kotlin/Long? = ...) // com.mmcdole.kivo.core.session/VideoPlayer.play|play(com.mmcdole.kivo.core.play.PlayChoice;kotlin.Long?){}[0]
+    final suspend fun addSubtitle(kotlin/String) // com.mmcdole.kivo.core.session/VideoPlayer.addSubtitle|addSubtitle(kotlin.String){}[0]
 }
 
 final class com.mmcdole.kivo.core.settings/DeviceSettings { // com.mmcdole.kivo.core.settings/DeviceSettings|null[0]

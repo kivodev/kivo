@@ -18,6 +18,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 // The player's timed rules on the test's virtual clock: the controls shown,
@@ -58,20 +59,27 @@ private val creditsToTheEnd = episode.copy(
     ),
 )
 
-private class UiHarness(private val test: TestScope, run: Int = 0, private val play: PlayStarted = episode) {
+/** The rules over a play the test sets; their controls hide by themselves only when [hideAfter] says. */
+private class UiHarness(
+    private val test: TestScope,
+    run: Int = 0,
+    private val play: PlayStarted = episode,
+    hideAfter: Duration = Duration.INFINITE,
+) {
     val state = MutableStateFlow(PlayerState())
     val seeks = mutableListOf<Long>()
     val autoplay = Autoplay().apply { repeat(run) { playedOnItsOwn() } }
-    val rules = PlayerUiRules(state, { seeks += it }, autoplay, test.backgroundScope, EmptyCoroutineContext)
+    val rules = PlayerUiRules(state, { seeks += it }, autoplay, test.backgroundScope, EmptyCoroutineContext, hideAfter)
     val ui get() = rules.ui.value
+    val end get() = rules.end.value
 
     init {
         test.runCurrent()
     }
 
-    /** The video playing at [positionMs], or paused there. */
-    fun at(positionMs: Long, paused: Boolean = false, ended: Boolean = false) {
-        state.value = PlayerState(PlayerStatus.Playing, play, paused = paused, positionMs = positionMs, ended = ended)
+    /** The video playing at [positionMs], or paused there; or, with [status], loading or the like. */
+    fun at(positionMs: Long, paused: Boolean = false, ended: Boolean = false, status: PlayerStatus = PlayerStatus.Playing) {
+        state.value = PlayerState(status, play, paused = paused, positionMs = positionMs, ended = ended)
         test.runCurrent()
     }
 
@@ -83,12 +91,12 @@ private class UiHarness(private val test: TestScope, run: Int = 0, private val p
 
 class PlayerUiTest {
     @Test
-    fun theControlsShowUntilTheAppHidesThem() = runTest {
+    fun theControlsShowUntilTheyHide() = runTest {
         val h = UiHarness(this)
         assertTrue(h.ui.controlsShown, "the controls show as the player opens")
         h.at(600_000)
         h.advance(60_000)
-        assertTrue(h.ui.controlsShown, "the app's wait hides them, not the core's")
+        assertTrue(h.ui.controlsShown, "with no wait, only hiding them hides them")
         h.rules.hideControls()
         assertFalse(h.ui.controlsShown)
 
@@ -223,14 +231,14 @@ class PlayerUiTest {
         h.at(UP_NEXT_MS + 10_000, paused = true)
         h.advance(60_000)
         assertEquals(25, h.ui.upNext.secondsLeft, "a pause holds it")
-        assertNull(h.ui.end)
+        assertNull(h.end)
         h.at(DURATION_MS - 500L)
         assertEquals(1, h.ui.upNext.secondsLeft)
         h.advance(10_000)
-        assertNull(h.ui.end, "nothing plays before the end")
+        assertNull(h.end, "nothing plays before the end")
         h.at(DURATION_MS.toLong(), paused = true, ended = true)
         h.rules.ended()
-        assertEquals(PlayerEnd.PlayNext, h.ui.end)
+        assertEquals(PlayerEnd.PlayNext, h.end)
         assertEquals(1, h.autoplay.count, "it played on by itself")
     }
 
@@ -244,14 +252,14 @@ class PlayerUiTest {
         assertFalse(h.ui.upNext.atCredits, "its second button is Hide")
         assertEquals(35, h.ui.upNext.secondsLeft)
         h.advance(15_000)
-        assertNull(h.ui.end, "no 10-second countdown")
+        assertNull(h.end, "no 10-second countdown")
         h.at(DURATION_MS - 10_000L)
         assertEquals(10, h.ui.upNext.secondsLeft)
         h.advance(15_000)
-        assertNull(h.ui.end)
+        assertNull(h.end)
         h.at(DURATION_MS.toLong(), paused = true, ended = true)
         h.rules.ended()
-        assertEquals(PlayerEnd.PlayNext, h.ui.end)
+        assertEquals(PlayerEnd.PlayNext, h.end)
     }
 
     @Test
@@ -273,9 +281,9 @@ class PlayerUiTest {
         h.at(CREDITS_MS + 4_000)
         h.advance(8_000)
         assertEquals(1, h.ui.upNext.secondsLeft)
-        assertNull(h.ui.end)
+        assertNull(h.end)
         h.advance(1_000)
-        assertEquals(PlayerEnd.PlayNext, h.ui.end)
+        assertEquals(PlayerEnd.PlayNext, h.end)
         assertEquals(1, h.autoplay.count, "it played on by itself")
         h.rules.ended()
         assertEquals(1, h.autoplay.count, "the end doesn't count it twice")
@@ -289,10 +297,10 @@ class PlayerUiTest {
         h.rules.hideUpNext()
         assertFalse(h.ui.upNext.shows)
         h.advance(20_000)
-        assertNull(h.ui.end)
+        assertNull(h.end)
         h.at(DURATION_MS.toLong(), paused = true, ended = true)
         h.rules.ended()
-        assertEquals(PlayerEnd.PlayNext, h.ui.end)
+        assertEquals(PlayerEnd.PlayNext, h.end)
     }
 
     @Test
@@ -334,7 +342,7 @@ class PlayerUiTest {
         h.rules.hideUpNext()
         h.advance(15_000)
         assertFalse(h.ui.upNext.shows)
-        assertNull(h.ui.end, "the credits play on")
+        assertNull(h.end, "the credits play on")
     }
 
     @Test
@@ -344,13 +352,13 @@ class PlayerUiTest {
         h.at(UP_NEXT_MS)
         assertEquals(UpNextPhase.StillWatching, h.ui.upNext.phase)
         h.advance(30_000)
-        assertNull(h.ui.end, "no countdown")
+        assertNull(h.end, "no countdown")
         h.at(DURATION_MS.toLong(), paused = true, ended = true)
         h.rules.ended()
-        assertNull(h.ui.end, "nothing plays on")
+        assertNull(h.end, "nothing plays on")
         assertEquals(UpNextPhase.StillWatching, h.ui.upNext.phase)
         h.rules.playNext()
-        assertEquals(PlayerEnd.PlayNext, h.ui.end)
+        assertEquals(PlayerEnd.PlayNext, h.end)
         assertEquals(0, h.autoplay.count, "choosing it starts the run again")
     }
 
@@ -363,15 +371,15 @@ class PlayerUiTest {
         assertEquals(UpNextPhase.Waiting, h.ui.upNext.phase)
         assertTrue(h.ui.upNext.shows)
         h.advance(30_000)
-        assertNull(h.ui.end, "no countdown")
+        assertNull(h.end, "no countdown")
         h.rules.hideUpNext()
         h.at(DURATION_MS.toLong(), paused = true, ended = true)
         h.rules.ended()
-        assertNull(h.ui.end, "nothing plays on")
+        assertNull(h.end, "nothing plays on")
         assertEquals(UpNextPhase.Waiting, h.ui.upNext.phase, "the card waits at the end")
         assertEquals(0, h.autoplay.count)
         h.rules.playNext()
-        assertEquals(PlayerEnd.PlayNext, h.ui.end)
+        assertEquals(PlayerEnd.PlayNext, h.end)
     }
 
     @Test
@@ -380,7 +388,7 @@ class PlayerUiTest {
         h.rules.episode(hasNext = true)
         h.at(DURATION_MS.toLong(), paused = true, ended = true)
         h.rules.ended()
-        assertEquals(PlayerEnd.PlayNext, h.ui.end)
+        assertEquals(PlayerEnd.PlayNext, h.end)
         assertEquals(3, h.autoplay.count)
         assertFalse(h.autoplay.allowed)
         h.rules.input()
@@ -394,10 +402,10 @@ class PlayerUiTest {
         last.at(UP_NEXT_MS)
         assertFalse(last.ui.upNext.shows, "the last episode has no card")
         last.rules.playNext()
-        assertNull(last.ui.end, "nor a next one to choose")
+        assertNull(last.end, "nor a next one to choose")
         last.at(DURATION_MS.toLong(), paused = true, ended = true)
         last.rules.ended()
-        assertEquals(PlayerEnd.Series, last.ui.end)
+        assertEquals(PlayerEnd.Series, last.end)
 
         val movie = UiHarness(this)
         movie.at(DURATION_MS.toLong())
@@ -405,10 +413,70 @@ class PlayerUiTest {
         movie.at(DURATION_MS.toLong(), paused = true, ended = true)
         movie.rules.hideControls()
         movie.rules.ended()
-        assertEquals(PlayerEnd.Close, movie.ui.end)
+        assertEquals(PlayerEnd.Close, movie.end)
         assertTrue(movie.ui.controlsShown)
         movie.at(0)
-        assertNull(movie.ui.end, "playing again from the start")
+        assertNull(movie.end, "playing again from the start")
+    }
+
+    @Test
+    fun theControlsHideAWhileAfterTheLastInputWhilePlaying() = runTest {
+        val h = UiHarness(this, hideAfter = 3.seconds)
+        h.at(600_000, status = PlayerStatus.Loading)
+        h.advance(10_000)
+        assertTrue(h.ui.controlsShown, "loading, they stay")
+        h.at(600_000)
+        h.advance(2_999)
+        assertTrue(h.ui.controlsShown)
+        h.advance(1)
+        assertFalse(h.ui.controlsShown, "3 seconds after they showed, playing")
+
+        h.rules.showControls()
+        h.advance(2_000)
+        h.rules.input()
+        h.advance(2_000)
+        assertTrue(h.ui.controlsShown, "each input starts the wait again")
+        h.advance(1_000)
+        assertFalse(h.ui.controlsShown)
+
+        h.rules.toggleControls()
+        h.advance(2_000)
+        h.at(602_000)
+        h.advance(1_000)
+        assertFalse(h.ui.controlsShown, "the position moving on doesn't start it again")
+    }
+
+    @Test
+    fun theControlsStayWhilePausedOrWithAMenuOpenOrAScrubHeld() = runTest {
+        val h = UiHarness(this, hideAfter = 5.seconds)
+        h.at(600_000, paused = true)
+        h.advance(60_000)
+        assertTrue(h.ui.controlsShown, "paused")
+        h.at(600_000)
+        h.advance(4_000)
+        h.at(604_000, paused = true)
+        h.advance(60_000)
+        h.at(604_000)
+        h.advance(4_999)
+        assertTrue(h.ui.controlsShown, "a pause stops the wait, and playing again starts it over")
+        h.advance(1)
+        assertFalse(h.ui.controlsShown)
+
+        h.rules.menu(open = true)
+        h.advance(60_000)
+        assertTrue(h.ui.controlsShown, "a menu open")
+        h.rules.menu(open = false)
+        h.advance(4_999)
+        assertTrue(h.ui.controlsShown, "closing it starts the wait over")
+        h.advance(1)
+        assertFalse(h.ui.controlsShown)
+
+        h.rules.scrubbing(held = true)
+        h.advance(60_000)
+        assertTrue(h.ui.controlsShown, "a scrub held")
+        h.rules.scrubbing(held = false)
+        h.advance(5_000)
+        assertFalse(h.ui.controlsShown)
     }
 
     @Test
@@ -420,5 +488,11 @@ class PlayerUiTest {
         h.rules.dispose()
         h.advance(10_000)
         assertEquals(MarkerKind.Intro, h.ui.skipMarker?.kind, "Skip's wait stopped with the player")
+
+        val hiding = UiHarness(this, hideAfter = 3.seconds)
+        hiding.at(600_000)
+        hiding.rules.dispose()
+        hiding.advance(10_000)
+        assertTrue(hiding.ui.controlsShown, "and so did the controls'")
     }
 }
