@@ -60,6 +60,8 @@ type Props = {
 
 const optionClass =
   "cursor-pointer rounded-full border border-border px-3 py-1 text-sm text-text data-selected:border-accent data-selected:bg-surface-hover data-selected:font-semibold";
+/** An option a pointer or a finger picks: at least 44 px tall on a touch screen. */
+const pickedOptionClass = `${optionClass} inline-flex items-center pointer-coarse:min-h-11`;
 
 type Choice = { id: string; label: ReactNode };
 
@@ -108,7 +110,7 @@ function SingleChoice({
     <RadioGroup aria-label={label} value={value} onChange={onChange}>
       <Group label={label}>
         {options.map((o) => (
-          <Radio key={o.id} value={o.id} className={optionClass}>
+          <Radio key={o.id} value={o.id} className={pickedOptionClass}>
             {o.label}
           </Radio>
         ))}
@@ -149,7 +151,7 @@ function MultiChoice({
     <CheckboxGroup aria-label={label} value={[...value]} onChange={onChange}>
       <Group label={label}>
         {options.map((o) => (
-          <Checkbox key={o.id} value={o.id} className={optionClass}>
+          <Checkbox key={o.id} value={o.id} className={pickedOptionClass}>
             {o.label}
           </Checkbox>
         ))}

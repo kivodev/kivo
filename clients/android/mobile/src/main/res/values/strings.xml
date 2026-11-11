@@ -85,6 +85,8 @@
     <string name="mobile_authors">Authors</string>
     <string name="mobile_series">Series</string>
     <string name="mobile_filter">Filter</string>
+    <!-- The Filter button while any filter is on. -->
+    <string name="mobile_filter_on">Filter, on</string>
     <string name="mobile_remove_filter">Remove filter</string>
     <string name="mobile_clear_filters">Clear filters</string>
     <string name="mobile_show">Show</string>

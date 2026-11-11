@@ -218,9 +218,9 @@ private struct FilterChip: View {
                 .foregroundStyle(selected ? palette.onAccent : palette.text)
                 .padding(.horizontal, KivoTokens.spacing * 3.5)
                 .padding(.vertical, KivoTokens.spacing * 2)
-                .frame(minHeight: 36)
-                .background(selected ? palette.accent : palette.surfaceHover, in: RoundedRectangle(cornerRadius: 18))
-                .contentShape(RoundedRectangle(cornerRadius: 18))
+                .frame(minHeight: 44)
+                .background(selected ? palette.accent : palette.surfaceHover, in: RoundedRectangle(cornerRadius: 22))
+                .contentShape(RoundedRectangle(cornerRadius: 22))
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(selected ? .isSelected : [])
