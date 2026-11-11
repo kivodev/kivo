@@ -19,6 +19,9 @@ The server asks these services for data, under their terms:
 - Audnexus, for audiobooks: https://github.com/laxamentumtech/audnexus
 - The Anime-Lists mapping of AniDB to TMDB, which states no license:
   https://github.com/Anime-Lists/anime-lists
+- YouTube's image server (i.ytimg.com), for the thumbnails of the movie
+  trailers TMDB lists. Only the server asks it, by a trailer's video ID,
+  with no key; the apps load the copies the server keeps.
 
 The Go modules built into Kivo follow, each with its license, as
 go-licenses reports them.
