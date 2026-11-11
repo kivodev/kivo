@@ -102,7 +102,7 @@ struct WorkActions: View {
             server.listen(work.id, at: fromStart ? 0 : nil)
             return
         }
-        server.player.play(PlayTarget(workId: work.id, fromStart: fromStart, downloadId: server.readyDownload(of: work.id)?.id))
+        server.player.play(PlayChoice(workId: work.id), fromStart: fromStart, downloadId: server.readyDownload(of: work.id)?.id)
     }
 }
 

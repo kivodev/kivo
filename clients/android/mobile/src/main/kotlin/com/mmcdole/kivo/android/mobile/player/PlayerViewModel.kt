@@ -14,12 +14,13 @@ import com.mmcdole.kivo.api.models.EpisodeInfo
 import com.mmcdole.kivo.api.models.QualityRung
 import com.mmcdole.kivo.api.models.Version
 import com.mmcdole.kivo.api.models.WorkDetail
-import com.mmcdole.kivo.core.Load
+import com.mmcdole.kivo.core.answer
 import com.mmcdole.kivo.core.display.episodeCode
 import com.mmcdole.kivo.core.play.PlayerEnd
 import com.mmcdole.kivo.core.play.PlayerState
 import com.mmcdole.kivo.core.play.PlayerUi
-import com.mmcdole.kivo.core.player.Markers
+import com.mmcdole.kivo.core.player.SKIP_BACK_MS
+import com.mmcdole.kivo.core.player.SKIP_FORWARD_MS
 import com.mmcdole.kivo.core.session.KivoSession
 import com.mmcdole.kivo.core.session.ScrubPreviews
 import com.mmcdole.kivo.core.session.VideoPlayer
@@ -106,7 +107,7 @@ class PlayerViewModel(
             }
             video = player
             follow(player)
-            player.play(route.workId, route.versionId, route.audioTrackId, route.subtitleTrackId, positionMs = route.positionMs ?: if (route.fromStart) 0 else null)
+            player.play(route.choice, route.startMs)
         }
         viewModelScope.launch {
             val ladder = quietly { session.playback.qualityLadder() } ?: return@launch // Quality offers Auto and Original.
@@ -155,7 +156,7 @@ class PlayerViewModel(
     }
 
     /** A work as it was downloaded, when it is, then as the server has it. */
-    private suspend fun fetch(id: String): WorkDetail? = session.playback.playableWork(id).first { it !is Load.Loading }.getOrNull()
+    private suspend fun fetch(id: String): WorkDetail? = session.playback.playableWork(id).answer()
 
     /**
      * What plays now, to carry on with on a TV a Cast session just connected
@@ -187,7 +188,7 @@ class PlayerViewModel(
     /** A double tap's skip on one side of the video: someone is watching, and the controls stay as they are. */
     fun nudge(forward: Boolean) {
         video?.userActivity()
-        video?.controller?.skip(if (forward) Markers.FORWARD_MS else -Markers.BACK_MS)
+        video?.controller?.skip(if (forward) SKIP_FORWARD_MS else -SKIP_BACK_MS)
     }
 
     /** A tap on the video: the controls hide while playing, and show otherwise. */

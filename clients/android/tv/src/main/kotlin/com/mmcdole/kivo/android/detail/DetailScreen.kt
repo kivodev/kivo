@@ -153,14 +153,8 @@ import com.mmcdole.kivo.core.display.episodeCode
 import com.mmcdole.kivo.core.display.runtime
 import com.mmcdole.kivo.core.display.size
 import com.mmcdole.kivo.core.display.timeLeft
-import com.mmcdole.kivo.core.player.Subtitles
-
-/**
- * The detail page's choices, carried into playback. A null version is the
- * work's default one ([selectedVersion]); a null track leaves it to the
- * server.
- */
-private data class Choices(val versionId: String? = null, val audioTrackId: String? = null, val subtitleTrackId: String? = null)
+import com.mmcdole.kivo.core.play.PlayChoice
+import com.mmcdole.kivo.core.player.SUBTITLES_OFF
 
 /**
  * A work's page: a movie or video, a series (a season opens its series on
@@ -408,7 +402,7 @@ private fun MovieDetail(model: DetailViewModel, page: Page, navigator: Navigator
     val memory = rememberFocusMemory()
     val hero = rememberHeroLevels(memory)
     hero.levels = false
-    var choices by rememberChoices()
+    var choices by rememberChoices(page.head.id)
     val head = page.head
     val work = page.work
     DetailFrame(head.images.backdrop) {
@@ -438,7 +432,7 @@ private fun MovieDetail(model: DetailViewModel, page: Page, navigator: Navigator
 }
 
 /** Whether the work, in the version selected, can play; before its versions are read, whether its card says it can. */
-private fun playable(head: WorkSummary, work: WorkDetail?, choices: Choices) = if (work == null) {
+private fun playable(head: WorkSummary, work: WorkDetail?, choices: PlayChoice) = if (work == null) {
     head.available
 } else {
     work.available && work.selectedVersion(choices.versionId)?.available == true
@@ -455,7 +449,7 @@ private fun ActionRow(
     model: DetailViewModel,
     work: WorkSummary,
     read: WorkDetail?,
-    choices: Choices,
+    choices: PlayChoice,
     hero: HeroLevels,
     navigator: Navigator,
     chips: (@Composable () -> Unit)? = null,
@@ -466,7 +460,7 @@ private fun ActionRow(
     val playable = playable(work, read, choices)
     val position = if (read != null) read.resumeAt(choices.versionId) else work.userState?.positionMs
     fun play(fromStart: Boolean) = navigator.push(
-        Screen.Player(work.id, read?.selectedVersion(choices.versionId)?.id ?: choices.versionId, choices.audioTrackId, choices.subtitleTrackId, fromStart),
+        Screen.Player(choices.copy(versionId = read?.selectedVersion(choices.versionId)?.id ?: choices.versionId), fromStart),
     )
     Row(Modifier.heroButtons(hero), horizontalArrangement = Arrangement.spacedBy(HeroGapTight), verticalAlignment = Alignment.CenterVertically) {
         if (!playable) {
@@ -567,11 +561,16 @@ private fun timeLeftLine(positionMs: Int?, durationMs: Int): String {
     return listOfNotNull(display.timeLeft(leftMs).takeIf { positionMs != null }, endsAt(leftMs)).joinToString(" · ")
 }
 
+/**
+ * The detail page's choices for [workId], carried into playback. A null
+ * version is the work's default one ([selectedVersion]); a null track
+ * leaves it to the server.
+ */
 @Composable
-private fun rememberChoices() = rememberSaveable(stateSaver = androidx.compose.runtime.saveable.listSaver(
+private fun rememberChoices(workId: String) = rememberSaveable(workId, stateSaver = androidx.compose.runtime.saveable.listSaver(
     save = { listOf(it.versionId, it.audioTrackId, it.subtitleTrackId) },
-    restore = { Choices(it[0], it[1], it[2]) },
-)) { mutableStateOf(Choices()) }
+    restore = { PlayChoice(workId, it[0], it[1], it[2]) },
+)) { mutableStateOf(PlayChoice(workId)) }
 
 /** The picker whose choices are open, or the subtitle search Audio & Subtitles opens. */
 private enum class Picker { Version, Tracks, SubtitleSearch }
@@ -588,7 +587,7 @@ private enum class Picker { Version, Tracks, SubtitleSearch }
  * episode's page.
  */
 @Composable
-private fun Pickers(read: WorkDetail, choices: Choices, hero: HeroLevels, chips: Boolean = false, onChange: (Choices) -> Unit) {
+private fun Pickers(read: WorkDetail, choices: PlayChoice, hero: HeroLevels, chips: Boolean = false, onChange: (PlayChoice) -> Unit) {
     var downloaded by remember(read) { mutableStateOf(emptyList<Pair<String, Track>>()) }
     val work = downloaded.fold(read) { w, (versionId, track) -> w.withTrack(versionId, track) }
     val version = work.selectedVersion(choices.versionId) ?: return
@@ -599,7 +598,7 @@ private fun Pickers(read: WorkDetail, choices: Choices, hero: HeroLevels, chips:
         subtitleSelected = choices.subtitleTrackId,
         searchable = SubtitleSearch.offered(version),
     )
-    val automatic = AutomaticTracks(version.audioTrackId, version.subtitleTrackId ?: Subtitles.OFF)
+    val automatic = AutomaticTracks(version.audioTrackId, version.subtitleTrackId ?: SUBTITLES_OFF)
     var open by remember { mutableStateOf<Picker?>(null) }
     val offLabel = stringResource(R.string.off)
     val missingLabel = stringResource(R.string.version_missing)
@@ -609,7 +608,7 @@ private fun Pickers(read: WorkDetail, choices: Choices, hero: HeroLevels, chips:
     val audio = choices.audioTrackId ?: automatic.audio
     val subtitle = choices.subtitleTrackId ?: automatic.subtitle
     val audioValue = tracks.audio.firstOrNull { it.id == audio }?.name.takeIf { tracks.audio.size > 1 }
-    val subtitleValue = (if (subtitle == Subtitles.OFF) offLabel else tracks.subtitles.firstOrNull { it.id == subtitle }?.name)
+    val subtitleValue = (if (subtitle == SUBTITLES_OFF) offLabel else tracks.subtitles.firstOrNull { it.id == subtitle }?.name)
         .takeIf { tracks.subtitles.isNotEmpty() || tracks.searchable }
     if (chips) {
         if (work.versions.size > 1) PickerChip(stringResource(R.string.version), version.name, hero, "version") { open = Picker.Version }
@@ -640,7 +639,7 @@ private fun Pickers(read: WorkDetail, choices: Choices, hero: HeroLevels, chips:
             selected = version.id,
             onSelect = {
                 open = null
-                onChange(Choices(versionId = it))
+                onChange(PlayChoice(choices.workId, versionId = it))
             },
             onDismiss = { open = null },
         )
@@ -1035,7 +1034,7 @@ private fun SeasonChip(season: WorkSummary, current: Boolean, modifier: Modifier
 private fun EpisodeDetail(model: DetailViewModel, page: Page, navigator: Navigator) {
     val memory = rememberFocusMemory()
     val hero = rememberHeroLevels(memory)
-    var choices by rememberChoices()
+    var choices by rememberChoices(page.head.id)
     val head = page.head
     val work = page.work
     val e = head.episode

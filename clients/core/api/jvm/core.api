@@ -81,6 +81,10 @@ public final class com/mmcdole/kivo/core/Load$Loading : com/mmcdole/kivo/core/Lo
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class com/mmcdole/kivo/core/LoadKt {
+	public static final fun answer (Lkotlinx/coroutines/flow/Flow;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
 public final class com/mmcdole/kivo/core/ProblemCode : java/lang/Enum {
 	public static final field Companion Lcom/mmcdole/kivo/core/ProblemCode$Companion;
 	public static final field InvalidCredentials Lcom/mmcdole/kivo/core/ProblemCode;
@@ -539,10 +543,9 @@ public final class com/mmcdole/kivo/core/caps/VideoAnswer {
 	public fun toString ()Ljava/lang/String;
 }
 
-public final class com/mmcdole/kivo/core/cast/Cast {
-	public static final field APP_ID Ljava/lang/String;
-	public static final field INSTANCE Lcom/mmcdole/kivo/core/cast/Cast;
-	public static final field NAMESPACE Ljava/lang/String;
+public final class com/mmcdole/kivo/core/cast/CastKt {
+	public static final field CAST_APP_ID Ljava/lang/String;
+	public static final field CAST_NAMESPACE Ljava/lang/String;
 }
 
 public final class com/mmcdole/kivo/core/cast/CastLoad {
@@ -1399,6 +1402,24 @@ public final class com/mmcdole/kivo/core/downloads/WaitReason : java/lang/Enum {
 	public static fun values ()[Lcom/mmcdole/kivo/core/downloads/WaitReason;
 }
 
+public final class com/mmcdole/kivo/core/play/PlayChoice {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lcom/mmcdole/kivo/core/play/PlayChoice;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/play/PlayChoice;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/play/PlayChoice;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAudioTrackId ()Ljava/lang/String;
+	public final fun getSubtitleTrackId ()Ljava/lang/String;
+	public final fun getVersionId ()Ljava/lang/String;
+	public final fun getWorkId ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public final class com/mmcdole/kivo/core/play/PlayController {
 	public final fun getState ()Lkotlinx/coroutines/flow/StateFlow;
 	public final fun pause ()V
@@ -1542,11 +1563,10 @@ public final class com/mmcdole/kivo/core/player/MarkerKind : java/lang/Enum {
 	public static fun values ()[Lcom/mmcdole/kivo/core/player/MarkerKind;
 }
 
-public final class com/mmcdole/kivo/core/player/Markers {
-	public static final field BACK_MS J
-	public static final field FORWARD_MS J
-	public static final field INSTANCE Lcom/mmcdole/kivo/core/player/Markers;
-	public final fun chapterAt (Ljava/util/List;J)Lcom/mmcdole/kivo/api/models/Chapter;
+public final class com/mmcdole/kivo/core/player/MarkersKt {
+	public static final field SKIP_BACK_MS J
+	public static final field SKIP_FORWARD_MS J
+	public static final fun chapterAt (Ljava/util/List;J)Lcom/mmcdole/kivo/api/models/Chapter;
 }
 
 public final class com/mmcdole/kivo/core/player/PartPosition {
@@ -1580,6 +1600,10 @@ public final class com/mmcdole/kivo/core/player/PlayTracks {
 	public final fun selected (Lcom/mmcdole/kivo/api/models/PlayStarted;Lcom/mmcdole/kivo/api/models/TrackType;)Ljava/lang/String;
 	public final fun show (Lcom/mmcdole/kivo/api/models/PlayStarted;Ljava/lang/String;)Lcom/mmcdole/kivo/core/player/TrackShow;
 	public final fun show (Ljava/util/List;Ljava/lang/String;)Lcom/mmcdole/kivo/core/player/TrackShow;
+}
+
+public final class com/mmcdole/kivo/core/player/PlayTracksKt {
+	public static final field SUBTITLES_OFF Ljava/lang/String;
 }
 
 public abstract interface class com/mmcdole/kivo/core/player/PlayerEngine {
@@ -1660,11 +1684,6 @@ public final class com/mmcdole/kivo/core/player/SpriteFrame {
 
 public final class com/mmcdole/kivo/core/player/SpriteFrame$Companion {
 	public final fun atOrNull (Lcom/mmcdole/kivo/api/models/PreviewManifest;Ljava/lang/String;J)Lcom/mmcdole/kivo/core/player/SpriteFrame;
-}
-
-public final class com/mmcdole/kivo/core/player/Subtitles {
-	public static final field INSTANCE Lcom/mmcdole/kivo/core/player/Subtitles;
-	public static final field OFF Ljava/lang/String;
 }
 
 public abstract interface class com/mmcdole/kivo/core/player/TrackShow {
@@ -1792,6 +1811,7 @@ public final class com/mmcdole/kivo/core/session/KivoClient {
 	public final fun networkChanged (ZZ)V
 	public final fun reach (Lcom/mmcdole/kivo/core/auth/SavedServer;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun restore (Lcom/mmcdole/kivo/core/auth/SavedServer;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun savedServers (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun serverAt (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun setCellularDownloads (ZLkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun setDialogueBoost (ZLkotlin/coroutines/Continuation;)Ljava/lang/Object;
@@ -1916,7 +1936,8 @@ public final class com/mmcdole/kivo/core/session/SessionAccount {
 }
 
 public final class com/mmcdole/kivo/core/session/SessionCast {
-	public final fun load (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Long;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun load (Ljava/lang/String;Lcom/mmcdole/kivo/core/play/PlayChoice;Ljava/lang/Long;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun load$default (Lcom/mmcdole/kivo/core/session/SessionCast;Ljava/lang/String;Lcom/mmcdole/kivo/core/play/PlayChoice;Ljava/lang/Long;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
 	public final fun tokenMessage (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 }
 
@@ -1924,8 +1945,9 @@ public final class com/mmcdole/kivo/core/session/SessionDownloads {
 	public final fun delete (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun delete (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun deletionsSeen ()V
-	public final fun download (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lcom/mmcdole/kivo/core/settings/DownloadQuality;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
-	public final fun estimates (Ljava/util/List;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun download (Lcom/mmcdole/kivo/core/play/PlayChoice;Lcom/mmcdole/kivo/core/settings/DownloadQuality;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun download$default (Lcom/mmcdole/kivo/core/session/SessionDownloads;Lcom/mmcdole/kivo/core/play/PlayChoice;Lcom/mmcdole/kivo/core/settings/DownloadQuality;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun estimates (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun getAsking ()Lkotlinx/coroutines/flow/Flow;
 	public final fun getDeleted ()Lkotlinx/coroutines/flow/Flow;
 	public final fun getItems ()Lkotlinx/coroutines/flow/Flow;
@@ -2036,7 +2058,8 @@ public final class com/mmcdole/kivo/core/session/VideoPlayer {
 	public final fun handOver ()V
 	public final fun hideControls ()V
 	public final fun hideUpNext ()V
-	public final fun play (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Long;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun play (Lcom/mmcdole/kivo/core/play/PlayChoice;Ljava/lang/Long;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun play$default (Lcom/mmcdole/kivo/core/session/VideoPlayer;Lcom/mmcdole/kivo/core/play/PlayChoice;Ljava/lang/Long;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
 	public final fun playNext ()V
 	public final fun setHasNextEpisode (Z)V
 	public final fun setMenuOpen (Z)V

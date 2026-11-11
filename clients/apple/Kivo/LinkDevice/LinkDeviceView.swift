@@ -146,11 +146,7 @@ struct LinkDeviceView: View {
             return
         }
         if let other = link.server, other != server.session.savedServer.value.id {
-            var name: String?
-            for await servers in app.core.servers {
-                name = servers.first { $0.id == other }?.name
-                break
-            }
+            let name = try? await app.core.savedServers().first { $0.id == other }?.name
             message = nil
             step = .otherServer(name: name)
             return

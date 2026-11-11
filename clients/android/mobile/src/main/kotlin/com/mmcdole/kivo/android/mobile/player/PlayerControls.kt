@@ -100,7 +100,9 @@ import com.mmcdole.kivo.core.play.PlayerFailure
 import com.mmcdole.kivo.core.play.PlayerState
 import com.mmcdole.kivo.core.play.failure
 import com.mmcdole.kivo.core.player.MarkerKind
-import com.mmcdole.kivo.core.player.Markers
+import com.mmcdole.kivo.core.player.SKIP_BACK_MS
+import com.mmcdole.kivo.core.player.SKIP_FORWARD_MS
+import com.mmcdole.kivo.core.player.chapterAt
 import com.mmcdole.kivo.core.player.SkipMarker
 import com.mmcdole.kivo.core.player.SpriteFrame
 import com.mmcdole.kivo.core.player.UpNext
@@ -196,7 +198,7 @@ fun PlayerBottomBar(
                 )
             }
             Row(Modifier.align(Alignment.Center), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(space(6))) {
-                PlayerIcon(Icons.Default.Replay10, stringResource(R.string.mobile_back_10), { onSkip(-Markers.BACK_MS) }, enabled = live, size = 48.dp)
+                PlayerIcon(Icons.Default.Replay10, stringResource(R.string.mobile_back_10), { onSkip(-SKIP_BACK_MS) }, enabled = live, size = 48.dp)
                 PlayerIcon(
                     if (playback.paused) Icons.Default.PlayArrow else Icons.Default.Pause,
                     stringResource(if (playback.paused) R.string.mobile_play else R.string.mobile_pause),
@@ -205,7 +207,7 @@ fun PlayerBottomBar(
                     size = 56.dp,
                     tag = "playPause",
                 )
-                PlayerIcon(Icons.Default.Forward30, stringResource(R.string.mobile_forward_30), { onSkip(Markers.FORWARD_MS) }, enabled = live, size = 48.dp)
+                PlayerIcon(Icons.Default.Forward30, stringResource(R.string.mobile_forward_30), { onSkip(SKIP_FORWARD_MS) }, enabled = live, size = 48.dp)
             }
             if (play != null) {
                 Row(Modifier.align(Alignment.CenterEnd)) {
@@ -266,7 +268,7 @@ private fun ScrubBar(
                     contentDescription = label
                     stateDescription = value
                     if (enabled && durationMs > 0) {
-                        progressBarRangeInfo = ProgressBarRangeInfo(shown.toFloat(), 0f..durationMs.toFloat(), steps = (durationMs / Markers.BACK_MS).toInt().coerceAtLeast(0))
+                        progressBarRangeInfo = ProgressBarRangeInfo(shown.toFloat(), 0f..durationMs.toFloat(), steps = (durationMs / SKIP_BACK_MS).toInt().coerceAtLeast(0))
                         setProgress { ms ->
                             seek(ms.toLong().coerceIn(0, durationMs))
                             true
@@ -334,7 +336,7 @@ private fun ScrubTarget(at: Long, chapters: List<Chapter>, frame: SpriteFrame?, 
     ) {
         if (frame != null) PreviewFrame(frame)
         Text(
-            listOfNotNull(display.clock(at), Markers.chapterAt(chapters, at)?.title).joinToString(" · "),
+            listOfNotNull(display.clock(at), chapterAt(chapters, at)?.title).joinToString(" · "),
             style = MaterialTheme.typography.labelLarge,
             color = colors.onPlayer,
         )

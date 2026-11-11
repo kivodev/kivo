@@ -23,6 +23,7 @@ import com.mmcdole.kivo.core.downloads.DownloadStatus
 import com.mmcdole.kivo.core.downloads.DownloadTransport
 import com.mmcdole.kivo.core.downloads.TransferEvent
 import com.mmcdole.kivo.core.downloads.TransferRequest
+import com.mmcdole.kivo.core.play.PlayChoice
 import com.mmcdole.kivo.core.play.PlayerStatus
 import com.mmcdole.kivo.core.settings.DownloadQuality
 import io.ktor.client.engine.mock.respond
@@ -166,9 +167,9 @@ class DownloadsViewModelTest : CoreTest() {
         val session = signIn()
         val downloads = session.downloads!!
         runBlocking {
-            downloads.download("m1", null, null, null, null)
-            downloads.download("e1", null, null, null, null)
-            downloads.download("e2", null, null, null, null)
+            downloads.download(PlayChoice("m1"))
+            downloads.download(PlayChoice("e1"))
+            downloads.download(PlayChoice("e2"))
         }
         val model = DownloadsViewModel(downloads)
         val state = awaitValue(model.state) { s -> s.movies.size == 1 && s.shows.singleOrNull()?.episodes?.all { it.status == DownloadStatus.Ready } == true }
@@ -191,7 +192,7 @@ class DownloadsViewModelTest : CoreTest() {
         transport.bytes = { "something else entirely".encodeToByteArray() }
         val session = signIn()
         val model = DownloadsViewModel(session.downloads!!)
-        runBlocking { session.downloads!!.download("m1", null, null, null, null) }
+        runBlocking { session.downloads!!.download(PlayChoice("m1")) }
         val failed = awaitValue(model.state) { it.movies.singleOrNull()?.status is DownloadStatus.Failed }.movies.single()
         assertEquals(DownloadStatus.CHECK_FAILED, (failed.status as DownloadStatus.Failed).reason)
         assertEquals(3, transport.started.count { it.id.endsWith("part-0.mp4") }, "fetched again until the checks run out")
@@ -204,7 +205,7 @@ class DownloadsViewModelTest : CoreTest() {
     @Test
     fun aReadyDownloadPlaysFromItsFileAndAnUnknownOneClosesThePlayer() {
         val session = signIn()
-        val id = runBlocking { session.downloads!!.download("m1", null, null, null, null) }
+        val id = runBlocking { session.downloads!!.download(PlayChoice("m1")) }
         val downloads = DownloadsViewModel(session.downloads!!)
         awaitValue(downloads.state) { it.movies.singleOrNull()?.status == DownloadStatus.Ready }
 

@@ -281,7 +281,7 @@ struct ListGrid: View {
     private func rename(_ name: String) {
         Task {
             do {
-                _ = try await server.session.library.updateList(id: list.id, name: name, query: nil)
+                _ = try await server.session.library.updateList(id: list.id, name: name)
             } catch {
                 renamingAgain = error.problemCode == .nameTaken
                 problem = error.listNameSentence

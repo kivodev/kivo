@@ -1,7 +1,9 @@
 package com.mmcdole.kivo.core.session
 
+import co.touchlab.skie.configuration.annotations.DefaultArgumentInterop
 import com.mmcdole.kivo.core.downloads.DownloadSource
 import com.mmcdole.kivo.core.downloads.OfflinePlay
+import com.mmcdole.kivo.core.play.PlayChoice
 import com.mmcdole.kivo.core.play.PlayController
 import com.mmcdole.kivo.core.play.PlayRequest
 import com.mmcdole.kivo.core.play.PlaySource
@@ -101,36 +103,30 @@ class VideoPlayer internal constructor(
     fun playNext() = rules.playNext()
 
     /**
-     * Starts [workId] with this device's local and remote qualities and its
+     * Starts [choice] with this device's local and remote qualities and its
      * dialogue boost; the server picks between the qualities, Auto by the
-     * download rate last measured, or measured first. Null tracks and
-     * version are the server's defaults. A null [positionMs] starts at the
-     * resume position, 0 at the start.
+     * download rate last measured, or measured first. A null [positionMs]
+     * starts at the resume position, 0 at the start.
      */
+    @DefaultArgumentInterop.Enabled
     @Throws(Exception::class)
-    suspend fun play(workId: String, versionId: String?, audioTrackId: String?, subtitleTrackId: String?, positionMs: Long?) {
-        controller.play(request(workId, versionId, audioTrackId, subtitleTrackId, positionMs))
+    suspend fun play(choice: PlayChoice, positionMs: Long? = null) {
+        controller.play(request(choice, positionMs))
     }
 
     /** Where the file playing came from, for the stream info's "Source" line; null for the server's play. */
     fun downloadSource(): DownloadSource? = offline?.source()
 
     /** The play [play] starts. */
-    internal suspend fun request(
-        workId: String,
-        versionId: String?,
-        audioTrackId: String?,
-        subtitleTrackId: String?,
-        positionMs: Long?,
-    ): PlayRequest {
+    internal suspend fun request(choice: PlayChoice, positionMs: Long? = null): PlayRequest {
         val settings = if (online) session.playback.playSettings() else core.settingsNow()
         val auto = settings.localQuality == Quality.Auto || settings.remoteQuality == Quality.Auto
         val bandwidthBps = if (online && auto) core.bandwidth.forAuto(session.connection) else null
         return PlayRequest(
-            workId = workId,
-            versionId = versionId,
-            audioTrackId = audioTrackId,
-            subtitleTrackId = subtitleTrackId,
+            workId = choice.workId,
+            versionId = choice.versionId,
+            audioTrackId = choice.audioTrackId,
+            subtitleTrackId = choice.subtitleTrackId,
             localQuality = settings.localQuality.request(bandwidthBps),
             remoteQuality = settings.remoteQuality.request(bandwidthBps),
             positionMs = positionMs,

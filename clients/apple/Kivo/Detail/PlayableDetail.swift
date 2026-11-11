@@ -163,7 +163,7 @@ struct PlayableDetail: View {
     }
 
     private var downloadButton: some View {
-        DownloadButton(work: work, versionId: version?.id, audioTrackId: audioTrackId, subtitleTrackId: subtitleTrackId)
+        DownloadButton(work: work, choice: choice)
     }
 
     /// "1 hr 36 min left · Ends at 9:41 PM", while it's in progress.
@@ -222,21 +222,20 @@ struct PlayableDetail: View {
     /// Plays the download when there's one ready, with the subtitle chosen where it has it, else streams.
     private func play(fromStart: Bool) {
         if let download {
-            server.player.play(PlayTarget(workId: work.id, subtitleTrackId: subtitleTrackId, fromStart: fromStart, downloadId: download.id))
+            server.player.play(PlayChoice(workId: work.id, subtitleTrackId: subtitleTrackId), fromStart: fromStart, downloadId: download.id)
         } else {
             stream(fromStart: fromStart)
         }
     }
 
+    /// The work with the version and tracks chosen here.
+    private var choice: PlayChoice {
+        PlayChoice(workId: work.id, versionId: version?.id, audioTrackId: audioTrackId, subtitleTrackId: subtitleTrackId)
+    }
+
     /// Plays from the server, at this device's streaming quality.
     private func stream(fromStart: Bool) {
-        server.player.play(PlayTarget(
-            workId: work.id,
-            versionId: version?.id,
-            audioTrackId: audioTrackId,
-            subtitleTrackId: subtitleTrackId,
-            fromStart: fromStart
-        ))
+        server.player.play(choice, fromStart: fromStart)
     }
 }
 
@@ -268,8 +267,8 @@ private struct TrackChoices: View {
             kind: .subtitles,
             tracks: version?.tracks.filter { $0.type == .subtitle } ?? [],
             selection: $subtitleTrackId,
-            automatic: version?.subtitleTrackId ?? Subtitles.shared.OFF,
-            search: SubtitleSearch.shared.offered(version: version, offline: false) ? { searching = true } : nil
+            automatic: version?.subtitleTrackId ?? SUBTITLES_OFF,
+            search: SubtitleSearch.shared.offered(version: version) ? { searching = true } : nil
         )
         let showsAudio = TrackPicker.shows(.audio, tracks: audio.tracks)
         let showsSubtitles = TrackPicker.shows(.subtitles, tracks: subtitles.tracks, searchable: subtitles.search != nil)

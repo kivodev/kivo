@@ -41,22 +41,20 @@ sealed interface TrackShow {
     data object NewPlay : TrackShow
 }
 
-object Subtitles {
-    /** The subtitle choice that shows none, as plays say it. */
-    const val OFF = "off"
-}
+/** The subtitle choice that shows none, as plays say it. */
+const val SUBTITLES_OFF = "off"
 
 /** What a play's tracks say: which show, and how a choice shows. */
 object PlayTracks {
     /**
      * The track of [type] that [play] shows: for subtitles a track's ID
-     * or [Subtitles.OFF]; null when it has no track of the type.
+     * or [SUBTITLES_OFF]; null when it has no track of the type.
      */
     fun selected(play: PlayStarted, type: TrackType): String? =
         play.tracks.firstOrNull { it.type == type && it.selected == true }?.trackId
-            ?: Subtitles.OFF.takeIf { type == TrackType.Subtitle }
+            ?: SUBTITLES_OFF.takeIf { type == TrackType.Subtitle }
 
-    /** How the player shows [trackId] of [play], a track's ID or [Subtitles.OFF]. */
+    /** How the player shows [trackId] of [play], a track's ID or [SUBTITLES_OFF]. */
     fun show(play: PlayStarted, trackId: String): TrackShow = show(play.tracks, trackId)
 
     /** How the player shows [trackId] of a play's [tracks], such as a cast's ([com.mmcdole.kivo.core.cast.CastStatus.tracks]). */

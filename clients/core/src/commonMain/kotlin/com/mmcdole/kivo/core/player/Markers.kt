@@ -8,15 +8,13 @@ import com.mmcdole.kivo.api.models.Marker as ServerMarker
 // Skip markers: the parts of a video the server marks, an intro, a recap or
 // credits, which the player offers to skip.
 
-object Markers {
-    /** Back 10 seconds and forward 30, with no setting. */
-    const val BACK_MS = 10_000L
-    const val FORWARD_MS = 30_000L
+/** Back 10 seconds and forward 30, with no setting. */
+const val SKIP_BACK_MS = 10_000L
+const val SKIP_FORWARD_MS = 30_000L
 
-    /** The chapter at a position. */
-    fun chapterAt(chapters: List<Chapter>, positionMs: Long): Chapter? =
-        chapters.firstOrNull { positionMs >= it.startMs && positionMs < it.endMs }
-}
+/** The chapter at a position. */
+fun chapterAt(chapters: List<Chapter>, positionMs: Long): Chapter? =
+    chapters.firstOrNull { positionMs >= it.startMs && positionMs < it.endMs }
 
 /** How long Skip shows on its own after playback enters a marker, in wall-clock time. */
 internal val SKIP_SHOWS = 10.seconds

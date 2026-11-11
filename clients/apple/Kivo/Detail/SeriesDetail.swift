@@ -228,11 +228,8 @@ struct SeriesDetail: View {
     private func episodeIds(of seasonIds: [String]) async throws -> [String] {
         var ids: [String] = []
         for seasonId in seasonIds {
-            for await load in server.session.library.children(workId: seasonId) {
-                guard let episodes = load.getOrNull() as? [WorkSummary] else { continue }
-                ids += episodes.map(\.id)
-                break
-            }
+            let episodes = await server.session.library.children(workId: seasonId).answer() as? [WorkSummary]
+            ids += episodes?.map(\.id) ?? []
         }
         return ids
     }
@@ -263,10 +260,10 @@ struct SeriesDetail: View {
         } else if let nextUp = series.series?.nextUp {
             ActionRow(work: series, secondary: secondLine(nextUp)) {
                 PlayButton(label: playLabel(nextUp)) {
-                    server.player.play(PlayTarget(workId: nextUp.id))
+                    server.player.play(PlayChoice(workId: nextUp.id))
                 }
                 if nextUp.progress != nil {
-                    RestartButton { server.player.play(PlayTarget(workId: nextUp.id, fromStart: true)) }
+                    RestartButton { server.player.play(PlayChoice(workId: nextUp.id), fromStart: true) }
                 }
             }
         } else {

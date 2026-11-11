@@ -1,5 +1,6 @@
 package com.mmcdole.kivo.core.session
 
+import co.touchlab.skie.configuration.annotations.DefaultArgumentInterop
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import com.mmcdole.kivo.api.models.BookSeries
@@ -99,6 +100,7 @@ class SessionLibrary internal constructor(
     suspend fun resetHomeRows(): List<HomeRowInfo> = homeLayout.resetRows()
 
     /** The user's lists, My List first, read again as they change; [counted] also counts the smart lists and gives each list its first works, as a Home row has them. */
+    @DefaultArgumentInterop.Enabled
     fun lists(counted: Boolean = false): Flow<Load<List<WorkList>>> =
         reachability.load(listWorks.lists(counted).onEach { lists -> lists.forEach { seen.read(it.items.orEmpty()) } })
 
@@ -118,6 +120,7 @@ class SessionLibrary internal constructor(
 
     /** Renames a list when [name] is given and, for a smart list, replaces its rules with [query] when given, as one change. */
     @Throws(Exception::class)
+    @DefaultArgumentInterop.Enabled
     suspend fun updateList(id: String, name: String?, query: WorkQuery? = null): WorkList = listWorks.update(id, name, query)
 
     /** Sets the order a manual list is shown in, on every screen and device. */

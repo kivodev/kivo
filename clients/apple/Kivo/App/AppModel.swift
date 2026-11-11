@@ -98,12 +98,7 @@ final class AppModel {
                 self?.settings = settings
             }
         }
-        var saved: SavedServer?
-        for await servers in core.servers {
-            saved = servers.last
-            break
-        }
-        guard let saved else {
+        guard let saved = try? await core.savedServers().last else {
             phase = .signedOut(nil)
             return
         }
@@ -146,11 +141,7 @@ final class AppModel {
         guard url.scheme == "kivo", url.host() == "link" else { return }
         let other = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "server" }?.value
         if let other, case let .signedIn(current) = phase, current.session.savedServer.value.id != other {
-            var saved: SavedServer?
-            for await servers in core.servers {
-                saved = servers.first { $0.id == other }
-                break
-            }
+            let saved = try? await core.savedServers().first { $0.id == other }
             if let saved, let session = try? await core.restore(server: saved), session.isSignedIn {
                 current.close()
                 signedIn(session)

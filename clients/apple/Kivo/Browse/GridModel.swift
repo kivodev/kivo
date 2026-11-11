@@ -513,11 +513,7 @@ final class GridModel {
 
     /// Whether the library has collections, by its filters' first answer; a failed read counts as none.
     private func hasCollections() async -> Bool {
-        for await load in session.library.filters(libraryId: library.id) {
-            if let filters = load.getOrNull() { return filters.collections }
-            if load.problemOrNull() != nil { return false }
-        }
-        return false
+        await session.library.filters(libraryId: library.id).answer()?.collections ?? false
     }
 
     /// The grid of [query]'s tab: the works with their sort and filters, or a tab whole.
