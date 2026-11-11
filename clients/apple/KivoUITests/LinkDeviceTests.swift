@@ -23,6 +23,8 @@ final class LinkDeviceTests: XCTestCase {
         password = try XCTUnwrap(environment["KIVO_DOWNLOAD_PASSWORD"], "set TEST_RUNNER_KIVO_DOWNLOAD_PASSWORD")
         // Every run signs in as one client, replacing the last run's session.
         app.launchEnvironment["KIVO_CLIENT_ID"] = "kivo-ui-tests"
+        // Sign-in goes straight to the server under test, without browsing the network.
+        app.launchEnvironment["KIVO_SERVER"] = environment["KIVO_DOWNLOAD_SERVER"]
     }
 
     func testAllowATypedCode() throws {
@@ -90,10 +92,7 @@ final class LinkDeviceTests: XCTestCase {
     func testSignInWithAnotherDevice() throws {
         try signIn()
         signOut()
-        let user = app.textFields["username"]
-        if !user.waitForExistence(timeout: 6) {
-            typeAddress()
-        }
+        XCTAssert(app.textFields["username"].waitForExistence(timeout: 15), "the server at \(server) wasn't found")
         let other = app.buttons["sign-in-with-another-device"]
         XCTAssert(other.waitForExistence(timeout: 5), "no Sign in with another device")
         other.tap()
@@ -128,7 +127,7 @@ final class LinkDeviceTests: XCTestCase {
         app.buttons["Continue"].tap()
     }
 
-    /// Signs in by the typed address, unless the app still is.
+    /// Signs in, unless the app still is.
     private func signIn() throws {
         app.launch()
         let address = app.textFields["address"]
@@ -137,7 +136,7 @@ final class LinkDeviceTests: XCTestCase {
         let start = NSPredicate { _, _ in address.exists || user.exists || home.exists }
         wait(for: [expectation(for: start, evaluatedWith: nil)], timeout: 20)
         if home.exists { return }
-        if !user.waitForExistence(timeout: 6) { typeAddress() }
+        XCTAssert(user.waitForExistence(timeout: 15), "the server at \(server) wasn't found")
         user.tap()
         user.typeText(username)
         let secret = app.secureTextFields["password"]
@@ -150,15 +149,6 @@ final class LinkDeviceTests: XCTestCase {
         if notNow.waitForExistence(timeout: 5) {
             XCTExpectFailure("the sheet went by itself", options: .nonStrict()) { notNow.tap() }
         }
-    }
-
-    private func typeAddress() {
-        let address = app.textFields["address"]
-        XCTAssert(address.waitForExistence(timeout: 10), "sign-in has no address field")
-        address.tap()
-        address.typeText(server)
-        app.buttons["Continue"].tap()
-        XCTAssert(app.textFields["username"].waitForExistence(timeout: 15), "the server at \(server) wasn't found")
     }
 
     private func signOut() {

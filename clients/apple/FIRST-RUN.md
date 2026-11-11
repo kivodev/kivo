@@ -130,7 +130,7 @@ identifier (`AppleIdentity.modelName`).
 
 ## 6. What the UI test covers
 
-Checked in the Simulator by the UI test, against a test server: discovery, a wrong
+Checked in the Simulator by the UI test, against a test server: a wrong
 password ("Wrong username or password."), signing in, reopening signed in,
 Home's rows with artwork, the Libraries menu and a library's grid with its
 chips, sort menu, long press menu and letter scrubber, a movie's page, a
@@ -186,11 +186,33 @@ xcrun simctl spawn booted log stream --level debug --predicate 'process == "Kivo
 `xcodebuild ... build 2>&1 | grep -E 'error:|warning:'` gives the compiler's
 findings alone.
 
+### The unit tests, and a chosen server
+
+`KivoTests` run inside the app, which, as their host, opens an empty window
+and starts nothing of its own: no Bonjour browse, no server, no Cast.
+
+```sh
+xcodebuild -project Kivo.xcodeproj -scheme Kivo \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -derivedDataPath build/DerivedData CODE_SIGNING_ALLOWED=NO \
+  test -only-testing:KivoTests
+```
+
+In a Debug build, `KIVO_SERVER` in the app's environment names the server
+sign-in connects to, in place of browsing the network: it opens on that
+server's password, or on its address with "No server found at that
+address." when nothing answers there. The UI tests launch the app with it;
+by hand, `simctl` passes it with the `SIMCTL_CHILD_` prefix:
+
+```sh
+SIMCTL_CHILD_KIVO_SERVER=http://127.0.0.1:18484 xcrun simctl launch booted com.kivo.player
+```
+
 ### The UI test
 
-`KivoUITests` drives the app against a real server: discovery or the typed
-address, a wrong password and then the right one, Home, a library chosen
-from the Libraries menu and the screens of section 6, and in
+`KivoUITests` drives the app against a real server, launched with
+`KIVO_SERVER` set to it: a wrong password and then the right one, Home, a
+library chosen from the Libraries menu and the screens of section 6, and in
 `testPlayerControls` the player's controls and sheets.
 `testDialogueBoostKeepsPlaying` resumes a video 10:38 in (`KIVO_BOOST_VIDEO`
 in `KIVO_LIBRARY`, Night Shift by default), switches Dialogue boost on,
@@ -241,10 +263,6 @@ on that movie moved on by a few seconds.
 
 Gotchas found writing it:
 
-- Bonjour goes straight to a server's password when it finds one, which
-  may be another server on the network: unless the password screen names
-  `KIVO_SERVER`, the test goes back with Change server and types its
-  address.
 - iOS's "Save Password?" sheet after signing in belongs to
   `com.apple.SafariViewService`, not SpringBoard; the test declines it there.
 - Views under a full-screen cover stay in the accessibility tree, so "the
