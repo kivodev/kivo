@@ -97,13 +97,12 @@ import com.mmcdole.kivo.android.ui.SkeletonLine
 import com.mmcdole.kivo.android.ui.fadeSpec
 import com.mmcdole.kivo.android.ui.focusWhenPlaced
 import com.mmcdole.kivo.android.ui.rememberFocusMemory
-import com.mmcdole.kivo.api.models.CollectionSummary
 import com.mmcdole.kivo.api.models.Library
 import com.mmcdole.kivo.api.models.LibraryKind
 import com.mmcdole.kivo.api.models.Resolution
-import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.data.DynamicRange
+import com.mmcdole.kivo.core.data.GridItem
 import com.mmcdole.kivo.core.data.GridPager
 import com.mmcdole.kivo.core.data.GridPages
 import com.mmcdole.kivo.core.data.GridPages.Companion.RAIL_LETTERS
@@ -165,7 +164,7 @@ class LibraryViewModel(private val session: ServerSession, private val libraryId
         val old = grid
         replaced = keepFocus
         grid = gridOf(next)
-        old.pager.close()
+        old.close()
     }
 
     /** Shows the works with [query], keeping the section. */
@@ -173,26 +172,18 @@ class LibraryViewModel(private val session: ServerSession, private val libraryId
 
     /** Reads the grid again, after its first page failed. */
     fun retry() {
-        viewModelScope.launch { grid.pager.refresh() }
+        viewModelScope.launch { grid.refresh() }
     }
 
     override fun onCleared() {
-        grid.pager.close()
+        grid.close()
     }
 
-    private fun gridOf(choice: GridChoice): LibraryGrid = when (choice.section) {
-        Section.Titles -> LibraryGrid.Works(session.session.library.pagedWorks(choice.query))
-        Section.Collections -> LibraryGrid.Collections(session.session.library.pagedCollections(libraryId))
+    /** The chosen section's grid: its works, or its collections. */
+    private fun gridOf(choice: GridChoice): GridPager = when (choice.section) {
+        Section.Titles -> session.session.library.pagedWorks(choice.query)
+        Section.Collections -> session.session.library.pagedCollections(libraryId)
     }
-}
-
-/** The grid a library shows: its works, or its collections. */
-sealed interface LibraryGrid {
-    val pager: GridPager<*>
-
-    class Works(override val pager: GridPager<WorkSummary>) : LibraryGrid
-
-    class Collections(override val pager: GridPager<CollectionSummary>) : LibraryGrid
 }
 
 /** The sorts the TV offers for [library], as every app offers them, with the title sort's letter rail. */
@@ -315,7 +306,7 @@ fun LibraryScreen(session: ServerSession, libraryId: String, navigator: Navigato
     val libraries by session.libraryList.collectAsStateWithLifecycle()
     val library = libraries?.firstOrNull { it.id == libraryId }
     val shownGrid = model.grid
-    val pages by shownGrid.pager.state.collectAsStateWithLifecycle()
+    val pages by shownGrid.state.collectAsStateWithLifecycle()
     val failed = pages.problem
 
     if (failed != null) {
@@ -346,7 +337,7 @@ fun LibraryScreen(session: ServerSession, libraryId: String, navigator: Navigato
                 animationSpec = fadeSpec(),
                 contentKey = { (grid, gridChoice) -> grid to gridChoice },
             ) { (grid, gridChoice, gridList) ->
-                val gridPages by grid.pager.state.collectAsStateWithLifecycle()
+                val gridPages by grid.state.collectAsStateWithLifecycle()
                 if (gridPages.total == null) {
                     SkeletonCards(library, gridChoice, top)
                 } else {
@@ -656,9 +647,9 @@ private fun gridShape(library: Library?, choice: GridChoice?) =
 
 @Composable
 private fun GridWithRail(
-    shown: LibraryGrid,
+    shown: GridPager,
     grid: LazyListState,
-    pages: GridPages<*>,
+    pages: GridPages,
     choice: GridChoice,
     library: Library?,
     navigator: Navigator,
@@ -693,9 +684,10 @@ private fun GridWithRail(
     }
     val density = LocalDensity.current
     Box(Modifier.fillMaxSize()) {
-        when (shown) {
-            is LibraryGrid.Works -> PagedGrid(shown.pager, grid, shape, navigator, top = top, memory = memory, takesFocus = takesFocus, entry = entry)
-            is LibraryGrid.Collections -> PagedCards(shown.pager, grid, shape, { it.id }, top = top, memory = memory, takesFocus = takesFocus, entry = entry) { c, width, cardModifier ->
+        when (choice.section) {
+            Section.Titles -> PagedGrid(shown, grid, shape, navigator, top = top, memory = memory, takesFocus = takesFocus, entry = entry)
+            Section.Collections -> PagedCards(shown, grid, shape, top = top, memory = memory, takesFocus = takesFocus, entry = entry) { item, width, cardModifier ->
+                val c = (item as? GridItem.Collection)?.collection
                 CollectionCard(c, width, { if (c != null) navigator.push(Screen.Collection(c.id)) }, cardModifier)
             }
         }
@@ -713,7 +705,7 @@ private fun GridWithRail(
                 },
                 onLeft = {
                     val offset = jumpedTo[0]
-                    if (offset != NOT_JUMPED) scope.launch { focusWhenPlaced { shown.itemKey(offset)?.let(memory::requester) } }
+                    if (offset != NOT_JUMPED) scope.launch { focusWhenPlaced { shown.state.value.item(offset)?.id?.let(memory::requester) } }
                     offset != NOT_JUMPED
                 },
                 modifier = Modifier.align(Alignment.TopEnd).padding(top = LetterRailTop, end = SafeEdge),
@@ -724,12 +716,6 @@ private fun GridWithRail(
 
 /** The rail hasn't jumped since it took focus. */
 private const val NOT_JUMPED = -1
-
-/** The focus key of the item at [index], once its page is read. */
-private fun LibraryGrid.itemKey(index: Int): String? = when (this) {
-    is LibraryGrid.Works -> pager.state.value.item(index)?.id
-    is LibraryGrid.Collections -> pager.state.value.item(index)?.id
-}
 
 /**
  * The letter rail: Up and Down move through the letters, OK jumps; the top

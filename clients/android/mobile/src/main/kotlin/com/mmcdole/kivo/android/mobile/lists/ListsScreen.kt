@@ -30,6 +30,7 @@ import com.mmcdole.kivo.android.mobile.ui.cardTitle
 import com.mmcdole.kivo.api.models.ListSort
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.ProblemCode
+import com.mmcdole.kivo.core.data.GridItem
 import com.mmcdole.kivo.core.data.ListSorts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -379,7 +380,8 @@ fun ListScreen(session: ServerSession, id: String, name: String, nav: MobileNav)
                             }
                         } else {
                             WorkMenuHost({ action, menu -> nav.handle(action, menu, model.marks) }) { openMenu ->
-                                PagedGrid(model.pager, grid, columns, PaddingValues(horizontal = space(4), vertical = space(2))) { _, work ->
+                                PagedGrid(model.pager, grid, columns, PaddingValues(horizontal = space(4), vertical = space(2))) { _, item ->
+                                    val work = (item as? GridItem.Work)?.work
                                     WorkCard(
                                         work,
                                         work?.let(::listShapeOf) ?: CardShape.Poster,

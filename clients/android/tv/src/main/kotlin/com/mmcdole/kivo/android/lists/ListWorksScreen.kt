@@ -46,6 +46,7 @@ import com.mmcdole.kivo.api.models.ListKind
 import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkList
 import com.mmcdole.kivo.core.Load
+import com.mmcdole.kivo.core.data.GridItem
 import kotlinx.coroutines.launch
 
 /** The kinds the TV shows of a list: no books, which aren't on the TV. */
@@ -96,9 +97,9 @@ fun ListWorksScreen(session: ServerSession, listId: String, name: String, naviga
                     paged = model.paged,
                     grid = grid,
                     shape = CardShape.Poster,
-                    key = { it.id },
                     prepare = { prepareCard(it, cardShapeOf(it)) },
-                ) { work, width, cardModifier ->
+                ) { item, width, cardModifier ->
+                    val work = (item as? GridItem.Work)?.work
                     if (work == null || work.kind in tvWorkKinds) {
                         WorkCard(work, work?.let(::cardShapeOf) ?: CardShape.Poster, width, { if (work != null) navigator.push(Screen.Work(work.id)) }, cardModifier)
                     }

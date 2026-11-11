@@ -114,6 +114,8 @@ import com.mmcdole.kivo.android.mobile.ui.display
 import com.mmcdole.kivo.api.models.LibraryKind
 import com.mmcdole.kivo.api.models.Resolution
 import com.mmcdole.kivo.core.data.DynamicRange
+import com.mmcdole.kivo.core.data.GridItem
+import com.mmcdole.kivo.core.data.GridPager
 import com.mmcdole.kivo.core.data.GridQuery
 import com.mmcdole.kivo.core.data.GridSort
 import com.mmcdole.kivo.core.data.SmartLists
@@ -240,7 +242,7 @@ private fun Header(state: LibraryUiState, model: LibraryViewModel, modifier: Mod
             }
         }
     }
-    val total = state.grid.pager.state.collectAsStateWithLifecycle().value.total
+    val total = state.grid.state.collectAsStateWithLifecycle().value.total
     CountSortLine(total?.let { countLine(it, state) }.orEmpty(), if (state.tab == LibraryTab.Titles) sortShort(query.sort) else null, onSort)
 }
 
@@ -268,7 +270,7 @@ internal fun CountSortLine(count: String, sort: String?, onSort: () -> Unit) {
 @Composable
 private fun Grid(state: LibraryUiState, model: LibraryViewModel, nav: MobileNav, openMenu: (WorkMenu) -> Unit, top: Dp) {
     val grid = state.grid
-    val pages by grid.pager.state.collectAsStateWithLifecycle()
+    val pages by grid.state.collectAsStateWithLifecycle()
     val problem = pages.problem
     val total = pages.total
     val under = Modifier.padding(top = top)
@@ -306,7 +308,7 @@ private fun Grid(state: LibraryUiState, model: LibraryViewModel, nav: MobileNav,
             if (total == null) {
                 SkeletonGrid(columns, state.shape, cardWidth, padding)
             } else {
-                Cells(grid, list, columns, padding, cardWidth, state.shape, nav, openMenu)
+                Cells(grid, state.tab, list, columns, padding, cardWidth, state.shape, nav, openMenu)
             }
         }
         if (rail && total != null) {
@@ -329,9 +331,11 @@ private fun Grid(state: LibraryUiState, model: LibraryViewModel, nav: MobileNav,
     }
 }
 
+/** The grid's cards, a [tab]'s own placeholder while a card's page is read. */
 @Composable
 private fun Cells(
-    grid: LibraryGrid,
+    grid: GridPager,
+    tab: LibraryTab,
     list: LazyGridState,
     columns: Int,
     padding: PaddingValues,
@@ -340,29 +344,35 @@ private fun Cells(
     nav: MobileNav,
     openMenu: (WorkMenu) -> Unit,
 ) {
-    when (grid) {
-        is LibraryGrid.Works -> PagedGrid(grid.pager, list, columns, padding) { _, work ->
-            WorkCard(
-                work,
-                shape,
-                cardWidth,
-                onClick = { if (work != null) nav.openWork(work) },
-                onLongClick = { if (work != null) openMenu(WorkMenu(work)) },
-                captionLines = if (shape == CardShape.Square) 2 else 1,
-            )
-        }
-        is LibraryGrid.Collections -> PagedGrid(grid.pager, list, columns, padding) { _, collection ->
-            CollectionCard(collection, cardWidth, { if (collection != null) nav.open(CollectionRoute(collection.id)) })
-        }
-        is LibraryGrid.Authors -> PagedGrid(grid.pager, list, columns, padding) { _, author ->
-            NamedCard(author?.name, author?.workCount?.let { pluralStringResource(R.plurals.mobile_count_books, it, it) }, author?.photo, cardWidth, round = true, {
-                if (author != null) nav.open(PersonRoute(author.id))
-            })
-        }
-        is LibraryGrid.Series -> PagedGrid(grid.pager, list, columns, padding) { _, series ->
-            NamedCard(series?.name, series?.bookCount?.let { pluralStringResource(R.plurals.mobile_count_books, it, it) }, series?.cover, cardWidth, round = false, {
-                if (series != null) nav.open(BookSeriesRoute(series.id))
-            })
+    PagedGrid(grid, list, columns, padding) { _, item ->
+        when (tab) {
+            LibraryTab.Titles -> {
+                val work = (item as? GridItem.Work)?.work
+                WorkCard(
+                    work,
+                    shape,
+                    cardWidth,
+                    onClick = { if (work != null) nav.openWork(work) },
+                    onLongClick = { if (work != null) openMenu(WorkMenu(work)) },
+                    captionLines = if (shape == CardShape.Square) 2 else 1,
+                )
+            }
+            LibraryTab.Collections -> {
+                val collection = (item as? GridItem.Collection)?.collection
+                CollectionCard(collection, cardWidth, { if (collection != null) nav.open(CollectionRoute(collection.id)) })
+            }
+            LibraryTab.Authors -> {
+                val author = (item as? GridItem.Author)?.author
+                NamedCard(author?.name, author?.workCount?.let { pluralStringResource(R.plurals.mobile_count_books, it, it) }, author?.photo, cardWidth, round = true, {
+                    if (author != null) nav.open(PersonRoute(author.id))
+                })
+            }
+            LibraryTab.Series -> {
+                val series = (item as? GridItem.BookSeries)?.series
+                NamedCard(series?.name, series?.bookCount?.let { pluralStringResource(R.plurals.mobile_count_books, it, it) }, series?.cover, cardWidth, round = false, {
+                    if (series != null) nav.open(BookSeriesRoute(series.id))
+                })
+            }
         }
     }
 }
@@ -424,7 +434,7 @@ private fun FilterSheet(state: LibraryUiState, model: LibraryViewModel, onSaveSm
     val offer = state.offer
     val books = state.library?.kind == LibraryKind.Audiobooks
     var draft by remember { mutableStateOf(state.query) }
-    val total = state.grid.pager.state.collectAsStateWithLifecycle().value.total
+    val total = state.grid.state.collectAsStateWithLifecycle().value.total
     var count by remember { mutableStateOf(total) }
     LaunchedEffect(total) { if (total != null) count = total }
     var allGenres by rememberSaveable { mutableStateOf(false) }
