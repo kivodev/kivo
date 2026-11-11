@@ -1208,3 +1208,40 @@ func TestLastPlayedIsAWorksOwn(t *testing.T) {
 		}
 	}
 }
+
+// TestMovieTrailers checks that a movie's page lists its trailers in order,
+// each with its link and the thumbnail it owns, and that no other page has
+// any.
+func TestMovieTrailers(t *testing.T) {
+	h := newHousehold(t)
+	thumb := id.New()
+	h.b.Write(func(ctx context.Context, tx *store.Tx) error {
+		_, err := tx.ExecContext(ctx, `INSERT INTO image (id, trailer_id, kind, source, origin, width, height, blurhash, fetched_at)
+			SELECT ?, id, 'thumb', 'provider', 'https://i.ytimg.com/vi/8g18jFHCLXk/sddefault.jpg', 640, 480, 'LEHV6nWB2yk8pyo0adR*.7kCMdnj', 1
+			FROM trailer WHERE key = '8g18jFHCLXk'`, thumb)
+		return err
+	})
+	for name, v := range map[string]users.Viewer{"admin": h.admin, "friend": h.friend} {
+		d, err := h.q.Detail(ctx, v, h.dune.Work)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(d.Trailers) != 2 {
+			t.Fatalf("%s: trailers %+v", name, d.Trailers)
+		}
+		first, second := d.Trailers[0], d.Trailers[1]
+		if first.ID.IsZero() || first.Title != "Official Main Trailer" || first.URL != "https://www.youtube.com/watch?v=n9xhJrPXop4" || first.Image != nil {
+			t.Errorf("%s: the first trailer %+v", name, first)
+		}
+		if second.Title != "Official Trailer" || second.URL != "https://www.youtube.com/watch?v=8g18jFHCLXk" ||
+			second.Image == nil || *second.Image != (query.Image{ID: thumb, Blurhash: "LEHV6nWB2yk8pyo0adR*.7kCMdnj", Width: 640, Height: 480}) {
+			t.Errorf("%s: the second trailer %+v, image %+v", name, second, second.Image)
+		}
+	}
+	for name, w := range map[string]id.ID{"a movie without trailers": h.bladeRunner.Work, "a series": h.expanse} {
+		d, err := h.q.Detail(ctx, h.admin, w)
+		if err != nil || len(d.Trailers) != 0 {
+			t.Errorf("%s: trailers %+v, %v", name, d.Trailers, err)
+		}
+	}
+}

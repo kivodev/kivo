@@ -39,6 +39,7 @@ export type Collection = Schemas["Collection"];
 export type BookSeriesSummary = Schemas["BookSeriesSummary"];
 export type WorkDetail = Schemas["WorkDetail"];
 export type ImageRef = Schemas["ImageRef"];
+export type Trailer = Schemas["Trailer"];
 export type UserState = Schemas["UserState"];
 export type UserStateUpdate = Schemas["UserStateUpdate"];
 export type Version = Schemas["Version"];

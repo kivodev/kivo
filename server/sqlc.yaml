@@ -45,6 +45,8 @@ overrides:
         go_type: bool
       - column: list.built_in
         go_type: bool
+      - column: trailer.official
+        go_type: bool
       - column: work.provisional
         go_type: bool
       - column: work.locked

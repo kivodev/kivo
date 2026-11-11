@@ -38,6 +38,28 @@ VALUES (@id, @collection_id, @kind, @source, @origin, @width, @height, @blurhash
 -- name: DeleteCollectionImages :many
 DELETE FROM image WHERE collection_id = @collection_id AND kind = @kind RETURNING *;
 
+-- name: TrailerImages :many
+-- The thumbnails of a work's trailers.
+SELECT i.* FROM trailer t
+JOIN image i ON i.trailer_id = t.id
+WHERE t.work_id = @work_id;
+
+-- name: TrailerThumb :one
+-- The thumbnail of a work's trailer, named by its video.
+SELECT i.* FROM trailer t
+JOIN image i ON i.trailer_id = t.id AND i.kind = 'thumb'
+WHERE t.work_id = @work_id AND t.site = @site AND t.key = @key;
+
+-- name: TrailerOf :one
+SELECT id FROM trailer WHERE work_id = @work_id AND site = @site AND key = @key;
+
+-- name: InsertTrailerImage :exec
+INSERT INTO image (id, trailer_id, kind, source, origin, width, height, blurhash, fetched_at)
+VALUES (@id, @trailer_id, @kind, @source, @origin, @width, @height, @blurhash, @fetched_at);
+
+-- name: DeleteTrailerImages :many
+DELETE FROM image WHERE trailer_id = @trailer_id AND kind = @kind RETURNING *;
+
 -- name: ChooseImage :exec
 UPDATE image SET chosen = 1 WHERE id = @id;
 
@@ -45,9 +67,13 @@ UPDATE image SET chosen = 1 WHERE id = @id;
 DELETE FROM image WHERE id = @id;
 
 -- name: UnmatchedImages :many
--- The artwork of a movie or series and the seasons and episodes under it.
+-- The artwork of a movie or series and the seasons and episodes under it,
+-- and the thumbnails of a movie's trailers.
 SELECT i.* FROM work w CROSS JOIN image i ON i.work_id = w.id
-WHERE w.root_id = @work_id AND w.kind <> 'extra';
+WHERE w.root_id = @work_id AND w.kind <> 'extra'
+UNION ALL
+SELECT i.* FROM trailer t CROSS JOIN image i ON i.trailer_id = t.id
+WHERE t.work_id = @work_id;
 
 -- name: PutArtwork :one
 -- Records an image Choose artwork lists, keeping its ID if it was listed

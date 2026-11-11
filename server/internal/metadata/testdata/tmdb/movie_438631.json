@@ -56,8 +56,9 @@
     ]
   },
   "videos": {"results": [
-    {"iso_639_1": "en", "key": "newestTeaser", "site": "YouTube", "type": "Teaser", "official": true, "published_at": "2021-09-01T16:00:00.000Z"},
-    {"iso_639_1": "en", "key": "n9xhJrPXop4", "site": "YouTube", "type": "Trailer", "official": true, "published_at": "2021-07-22T16:00:00.000Z"}
+    {"iso_639_1": "en", "name": "Teaser", "key": "newestTeaser", "site": "YouTube", "type": "Teaser", "official": true, "published_at": "2021-09-01T16:00:00.000Z"},
+    {"iso_639_1": "en", "name": "Official Trailer", "key": "8g18jFHCLXk", "site": "YouTube", "type": "Trailer", "official": true, "published_at": "2020-09-09T16:00:00.000Z"},
+    {"iso_639_1": "en", "name": "Official Main Trailer", "key": "n9xhJrPXop4", "site": "YouTube", "type": "Trailer", "official": true, "published_at": "2021-07-22T16:00:00.000Z"}
   ]},
   "translations": {"translations": [
     {"iso_639_1": "en", "data": {"title": "", "overview": "Paul Atreides, a brilliant and gifted young man..."}}

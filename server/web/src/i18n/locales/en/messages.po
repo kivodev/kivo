@@ -861,6 +861,10 @@ msgstr "Subtitle"
 msgid "Search"
 msgstr "Search"
 
+#: src/features/detail/WorkRows.tsx
+msgid "In your library"
+msgstr "In your library"
+
 #: src/features/browse/WorkCard.tsx
 #: src/features/detail/DetailMenu.tsx
 #: src/features/lists/AddToListDialog.tsx
@@ -944,10 +948,6 @@ msgstr "Episodes use the audio and subtitle tracks last chosen for the show."
 #: src/features/lists/SmartListDialog.tsx
 msgid "Unit"
 msgstr "Unit"
-
-#: src/features/detail/MovieDetail.tsx
-msgid "Trailer"
-msgstr "Trailer"
 
 #: src/components/trackLabels.ts
 msgid "{label} (downmix)"
@@ -1129,6 +1129,10 @@ msgstr "Pinned libraries"
 #: src/features/admin/LogsScreen.tsx
 msgid "Info"
 msgstr "Info"
+
+#: src/features/detail/WorkRows.tsx
+msgid "Opens in YouTube"
+msgstr "Opens in YouTube"
 
 #: src/features/player/CastButton.tsx
 msgid "TV volume"

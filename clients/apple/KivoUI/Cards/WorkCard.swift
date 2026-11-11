@@ -3,18 +3,25 @@ import SwiftUI
 
 /// A work's card: the artwork with its corner marks and
 /// progress, then the title and a second line, or one line in a grid.
+/// [mark] is a short mark at the artwork's bottom trailing corner, such as
+/// a trailer's running time, and [detail] the second line in place of the
+/// work's own.
 public struct WorkCard: View {
     private let work: WorkSummary
     private let style: CardStyle
     private let width: CGFloat
     private let caption: CardCaption
+    private let mark: String?
+    private let detail: String?
     @Environment(\.kivoPalette) private var palette
 
-    public init(_ work: WorkSummary, style: CardStyle? = nil, width: CGFloat, caption: CardCaption = .twoLines) {
+    public init(_ work: WorkSummary, style: CardStyle? = nil, width: CGFloat, caption: CardCaption = .twoLines, mark: String? = nil, detail: String? = nil) {
         self.work = work
         self.style = style ?? CardStyle.of(work)
         self.width = width
         self.caption = caption
+        self.mark = mark
+        self.detail = detail
     }
 
     public var body: some View {
@@ -62,6 +69,7 @@ public struct WorkCard: View {
         var parts = [heading]
         if let line = caption == .oneLine ? work.gridDetail : secondLine { parts.append(line) }
         if let episode = work.episode { parts.append(Display.app.episodeCode(episode: episode)) }
+        if let mark { parts.append(mark) }
         if let badge = work.matchBadge { parts.append(badge) }
         if let series = work.series {
             parts.append(series.unplayedCount > 0 ? String(localized: "\(series.unplayedCount) unwatched") : String(localized: "Watched"))
@@ -101,6 +109,7 @@ public struct WorkCard: View {
     }
 
     private var secondLine: String? {
+        if let detail { return detail }
         guard work.episode != nil else { return work.caption }
         return [work.title, work.timeLeft].compactMap { $0 }.joined(separator: " · ")
     }
@@ -122,6 +131,7 @@ public struct WorkCard: View {
                     if !right, let badge = work.matchBadge { Badge(text: badge) }
                     Spacer()
                     if right, let badge = work.matchBadge { Badge(text: badge) }
+                    if let mark { Badge(text: mark) }
                 }
                 .padding(KivoTokens.spacing * 1.5)
             }

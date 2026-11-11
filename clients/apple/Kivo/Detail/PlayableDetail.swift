@@ -4,23 +4,19 @@ import SwiftUI
 
 /// A movie, an episode or another video: Play or Resume, My List and Mark
 /// as Watched, then the overview, the version, audio and subtitle choices,
-/// which carry into playback, cast, extras and collections. An episode has
+/// which carry into playback, trailers, cast, extras and collections. An episode has
 /// its series above its title and its season's episodes below, a shelf of
 /// cards in a regular width and a list in a compact one. Once it's in
 /// progress, a round Play from Beginning sits beside Resume, with the time
 /// left and when it ends under them. Download sits beside My List and Watched. A
 /// ready download is what Play and Resume play, with "Downloaded"
 /// under the actions and Stream Instead and Remove Download in the ⋯ menu.
-/// A movie's Trailer sits beside them in a wide window and in the ⋯ menu
-/// otherwise; the system opens it in the YouTube app if it's installed,
-/// else the browser.
 struct PlayableDetail: View {
     let work: WorkDetail
     @Environment(ServerModel.self) private var server
     @Environment(\.openWork) private var openWork
     @Environment(\.kivoPalette) private var palette
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.wide) private var wide
     /// The version chosen; nil selects the work's default one.
     @State private var versionId: String?
     @State private var audioTrackId: String?
@@ -71,8 +67,9 @@ struct PlayableDetail: View {
                     EpisodeRowSkeletons(count: server.session.library.known(id: seasonId)?.season?.episodeCount?.intValue)
                 }
             }
+            TrailersRow(work: work)
             CastRow(credits: work.credits)
-            CardRow(title: String(localized: "Extras"), works: work.extras)
+            CardRow(title: String(localized: "Extras"), works: work.otherExtras())
             ForEach(work.collections, id: \.id) { collection in
                 CollectionRow(collection: collection)
             }
@@ -141,7 +138,6 @@ struct PlayableDetail: View {
                     .foregroundStyle(palette.danger)
                 HStack(spacing: KivoTokens.spacing * 3) {
                     UserStateButtons(work: work)
-                    trailerButton
                 }
                 .controlSize(.large)
             }
@@ -159,7 +155,6 @@ struct PlayableDetail: View {
                         }
                     } extra: {
                         downloadButton
-                        trailerButton
                     }
                 }
                 DownloadBadge(workId: work.id)
@@ -169,22 +164,6 @@ struct PlayableDetail: View {
 
     private var downloadButton: some View {
         DownloadButton(work: work, choice: choice)
-    }
-
-    private var trailer: URL? {
-        work.movie?.trailerUrl.flatMap { URL(string: $0) }
-    }
-
-    @ViewBuilder private var trailerButton: some View {
-        if wide, let trailer {
-            Link(destination: trailer) {
-                Label(String(localized: "Trailer"), systemImage: "film")
-            }
-            .buttonStyle(.bordered)
-            .buttonBorderShape(.capsule)
-            .tint(palette.text)
-            .accessibilityIdentifier("trailer")
-        }
     }
 
     /// "1 hr 36 min left · Ends at 9:41 PM", while it's in progress.
@@ -235,11 +214,6 @@ struct PlayableDetail: View {
             }
         }
         Section {
-            if !wide, let trailer {
-                Link(destination: trailer) {
-                    Label(String(localized: "Trailer"), systemImage: "film")
-                }
-            }
             UserStateMenuItems(work: work)
             GoToLibraryItem(libraryId: work.libraryId)
         }

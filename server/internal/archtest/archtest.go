@@ -86,7 +86,7 @@ var owns = map[string][]string{
 	"catalog": {"library", "library_folder", "media_file", "media_track", "media_chapter", "media_attachment", "work", "work_library",
 		"work_external_id", "media_version", "media_version_work", "person", "person_external_id", "credit", "genre", "work_genre",
 		"tag", "work_tag", "company", "work_company", "collection", "collection_work", "collection_fts", "work_fts", "person_fts",
-		"book", "book_series", "book_series_book"},
+		"book", "book_series", "book_series_book", "trailer"},
 	"metadata":  {"provider_cache", "image", "artwork", "work.refreshed_at", "work.refresh_error"},
 	"userstate": {"user_state", "play_event", "track_choice", "list_work"},
 	"scan": {"scan_dir", "scan_folder", "media_file.probed", "media_file.probe_error",

@@ -450,7 +450,12 @@ export function createMockApi(): MockApi {
   const dune2 = movie("Dune: Part Two", 2024, {
     id: mockIds.dunePartTwo,
     addedAt: ago(2),
-    movie: { trailerUrl: "https://www.youtube.com/watch?v=Way9Dexny3w" },
+    movie: {
+      trailers: [
+        { id: next(), title: "Official Trailer 3", url: "https://www.youtube.com/watch?v=Way9Dexny3w", image: image() },
+        { id: next(), title: "Official Trailer 2", url: "https://www.youtube.com/watch?v=_YUzQa_1RCE" },
+      ],
+    },
     overview:
       "Paul Atreides unites with Chani and the Fremen while on a path of revenge against the conspirators who destroyed his family.",
     genres: ["Science Fiction", "Adventure"],

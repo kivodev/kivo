@@ -31,7 +31,7 @@ type WorkDetail struct {
 	// metadata provider gives it. A season or episode without one takes its
 	// series' language. It is empty when unknown.
 	OriginalLanguage string
-	TrailerURL       string // a movie's trailer; empty for none
+	Trailers         []Trailer // a movie's trailers on a video site, in the order shown
 	Genres           []string
 	Companies        []string
 	Credits          []Credit             // cast in billing order, then crew
@@ -158,10 +158,29 @@ var detail = stmt("WorkDetail", `
 SELECT coalesce(w.original_title, ''), coalesce(w.overview, ''),
   coalesce(w.content_rating, (SELECT r.content_rating FROM work r WHERE r.id = `+above+`), ''),
   coalesce(w.original_language, (SELECT r.original_language FROM work r WHERE r.id = `+above+`), ''),
-  coalesce(w.locked_fields, ''), coalesce(w.trailer_url, '')
+  coalesce(w.locked_fields, '')
 FROM work w
 WHERE w.id = @work
   AND `+visible)
+
+// Trailer is a movie's trailer on a video site. URL is its page there, for
+// a client to open. Image is its thumbnail, or nil while it has none.
+type Trailer struct {
+	ID    id.ID
+	Title string
+	URL   string
+	Image *Image
+}
+
+// trailers is a movie's trailers in order, each with its thumbnail.
+var trailers = stmt("Trailers", `
+SELECT t.id, t.title, t.site, t.key, `+photoColumns+`
+FROM work w
+JOIN trailer t ON t.work_id = w.id
+LEFT JOIN image i ON i.trailer_id = t.id AND i.kind = 'thumb'
+WHERE w.id = @work
+  AND `+visible+`
+ORDER BY t.ord`)
 
 // visibleTitle is a work's title, if the Viewer may see it, for Titles.
 var visibleTitle = stmt("VisibleTitle", `
@@ -432,7 +451,7 @@ func (s *Service) Detail(ctx context.Context, v users.Viewer, work id.ID) (WorkD
 			return notFound(err)
 		}
 		var locked string
-		if err := rowOf(ctx, tx, detail, args, &d.OriginalTitle, &d.Overview, &d.ContentRating, &d.OriginalLanguage, &locked, &d.TrailerURL); err != nil {
+		if err := rowOf(ctx, tx, detail, args, &d.OriginalTitle, &d.Overview, &d.ContentRating, &d.OriginalLanguage, &locked); err != nil {
 			return notFound(err)
 		}
 		if v.Admin() && locked != "" {
@@ -510,11 +529,24 @@ func (s *Service) Detail(ctx context.Context, v users.Viewer, work id.ID) (WorkD
 }
 
 // byKind reads the fields only some kinds' pages have: the child count of
-// a series or season, a series' next up, an episode's neighbours, and a
+// a series or season, a movie's trailers, a series' next up, an episode's neighbours, and a
 // book's own fields.
 func byKind(ctx context.Context, tx *sql.Tx, vw viewer, args []any, d *WorkDetail) error {
 	if k := d.Summary.Kind; k == catalog.KindSeries || k == catalog.KindSeason {
 		if err := rowOf(ctx, tx, childCount, args, &d.Children); err != nil {
+			return err
+		}
+	}
+	if d.Summary.Kind == catalog.KindMovie {
+		var err error
+		d.Trailers, err = rowsOf(ctx, tx, trailers, args, func(r scanner, t *Trailer) error {
+			var v catalog.Trailer
+			var p photo
+			err := r.Scan(append([]any{&t.ID, &t.Title, &v.Site, &v.Key}, p.dest()...)...)
+			t.URL, t.Image = v.URL(), p.image()
+			return err
+		})
+		if err != nil {
 			return err
 		}
 	}
