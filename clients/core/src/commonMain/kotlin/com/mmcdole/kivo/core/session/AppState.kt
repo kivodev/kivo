@@ -12,12 +12,8 @@ sealed interface AppState {
     /** Signing in: to [server] when the session on it ended, else to one the person chooses. */
     data class SignedOut(val server: SavedServer?) : AppState
 
-    /**
-     * The saved server answers at none of its addresses. With
-     * [hasDownloads], the device keeps downloads of it, which play once
-     * it's opened without it ([KivoClient.openOffline]).
-     */
-    data class Unreachable(val server: SavedServer, val hasDownloads: Boolean) : AppState
+    /** The saved server answers at none of its addresses, and the device keeps no downloads of it to open it for. */
+    data class Unreachable(val server: SavedServer) : AppState
 
     /** Signed in to [session]'s server, until it's signed out or left for another. */
     data class SignedIn(val session: KivoSession) : AppState

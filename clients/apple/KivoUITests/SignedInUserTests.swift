@@ -35,7 +35,6 @@ final class SignedInUserTests: XCTestCase {
         let unreachable = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Can't reach")).firstMatch
         XCTAssert(unreachable.waitForExistence(timeout: 60), "the app doesn't say it can't reach its server")
         XCTAssert(app.buttons["Change server"].exists, "a server that can't be reached has no Change server")
-        XCTAssertFalse(app.buttons["Go to Downloads"].exists, "Go to Downloads shows with no downloads")
         keep("ios-user-unreachable")
 
         proxy(server, "__reachable")

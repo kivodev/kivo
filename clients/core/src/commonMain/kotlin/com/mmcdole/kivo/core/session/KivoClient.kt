@@ -216,17 +216,6 @@ class KivoClient internal constructor(
         open { enter(server) }
     }
 
-    /**
-     * Opens the server that couldn't be reached as the app last signed in
-     * to it, without it answering: what the device keeps of it shows, such
-     * as its downloads, and its reads ask until it answers.
-     */
-    fun openOffline() {
-        val server = (state.value as? AppState.Unreachable)?.server ?: return
-        mutableState.value = AppState.Starting
-        open { enter(server, offline = true) }
-    }
-
     /** The app signed in, as [session]: its server shows, in place of the one open, until it's signed out. */
     fun signedIn(session: KivoSession) {
         opening?.cancel()
@@ -261,13 +250,15 @@ class KivoClient internal constructor(
     /**
      * Opens [server] at the first of its addresses that answers as it:
      * signed in, signing in again when its session has ended, or
-     * unreachable; [offline], signed in whether it answers or not.
+     * unreachable. One that answers nowhere still opens signed in when the
+     * device keeps downloads of it, which play without it; its reads ask
+     * until it answers.
      */
-    private suspend fun enter(server: SavedServer, offline: Boolean = false) {
+    private suspend fun enter(server: SavedServer) {
         val session = try {
             var session = restore(server)
             // The network may still be waking as the app starts, so it's only unreachable once it's stayed so.
-            repeat(if (offline) 0 else REACH_RETRIES) {
+            repeat(REACH_RETRIES) {
                 if (session.unreachable.value) {
                     session.close()
                     delay(REACH_RETRY)
@@ -286,9 +277,9 @@ class KivoClient internal constructor(
                 session.close()
                 mutableState.value = AppState.SignedOut(server)
             }
-            session.unreachable.value && !offline -> {
+            session.unreachable.value && downloads?.has(server.id) != true -> {
                 session.close()
-                mutableState.value = AppState.Unreachable(server, downloads?.has(server.id) == true)
+                mutableState.value = AppState.Unreachable(server)
             }
             else -> show(session)
         }

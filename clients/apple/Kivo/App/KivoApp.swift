@@ -89,7 +89,7 @@ struct RootView: View {
             case let .signedOut(signedOut):
                 SignInView(saved: signedOut.server)
             case let .unreachable(unreachable):
-                UnreachableServerView(server: unreachable.server, hasDownloads: unreachable.hasDownloads)
+                UnreachableServerView(server: unreachable.server)
             case .signedIn:
                 if let server = app.server {
                     if let problem = server.incompatibility, server.downloads.isEmpty {
@@ -105,26 +105,20 @@ struct RootView: View {
     }
 }
 
-/// The saved server answers at none of its addresses, in place of its
-/// screens: Retry tries it again, Change server goes to sign-in, and Go to
-/// Downloads, while the device keeps downloads of it, opens it without it.
+/// The saved server answers at none of its addresses, and the device keeps
+/// no downloads of it, in place of its screens: Retry tries it again, and
+/// Change server goes to sign-in.
 private struct UnreachableServerView: View {
     let server: SavedServer
-    let hasDownloads: Bool
     @Environment(AppModel.self) private var app
 
     var body: some View {
-        VStack(spacing: 0) {
-            MessageView(
-                String(localized: "Can't reach \(server.name)."),
-                sentence: String(localized: "Check your connection, or choose another server."),
-                action: (String(localized: "Retry"), app.core.retry),
-                secondary: (String(localized: "Change server"), app.core.changeServer)
-            )
-            if hasDownloads {
-                Button(String(localized: "Go to Downloads"), action: app.core.openOffline)
-            }
-        }
+        MessageView(
+            String(localized: "Can't reach \(server.name)."),
+            sentence: String(localized: "Check your connection, or choose another server."),
+            action: (String(localized: "Retry"), app.core.retry),
+            secondary: (String(localized: "Change server"), app.core.changeServer)
+        )
         .accessibilityIdentifier("unreachable")
     }
 }

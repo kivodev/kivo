@@ -77,7 +77,9 @@ private fun appTest(
     test(h)
 }
 
-private fun Harness.unreachable() = servers.on("home.test", "GET", "/api/v1/server") { throw IOException("no route to host") }
+private fun Harness.unreachable() {
+    for (path in listOf("/api/v1/server", "/api/v1/users/me")) servers.on("home.test", "GET", path) { throw IOException("no route to host") }
+}
 
 private suspend fun KivoClient.started(): AppState = state.first { it != AppState.Starting }
 
@@ -143,13 +145,13 @@ class AppStateTest {
 
         h.core.start()
 
-        assertEquals(AppState.Unreachable(home, hasDownloads = false), h.core.started())
+        assertEquals(AppState.Unreachable(home), h.core.started())
         assertTrue(currentTime >= 3000, "it's tried twice more, a moment apart, before it's unreachable")
         assertTrue(h.servers.seen.drop(before).count { it == SERVER } >= 3)
 
         h.core.retry()
         assertEquals(AppState.Starting, h.core.state.value)
-        assertEquals(AppState.Unreachable(home, hasDownloads = false), h.core.started(), "it still doesn't answer")
+        assertEquals(AppState.Unreachable(home), h.core.started(), "it still doesn't answer")
 
         h.servers.server("home.test", info("server-1", "Basement"))
         h.core.retry()
@@ -234,15 +236,31 @@ class AppStateTest {
             Row("d1", "server-1", "u1", null, "w1", null, null, null, "standard", "ready", null, null, null, "{}", "{}", "Night Shift", "movie", null, null, null, null, 1, 1, 1, null),
         )
         h.unreachable()
-        h.core.start()
-        assertEquals(AppState.Unreachable(home, hasDownloads = true), h.core.started())
 
-        h.core.openOffline()
+        h.core.start()
         val session = h.core.session()
 
+        assertTrue(currentTime >= 3000, "it's tried twice more before it opens without the server")
         assertTrue(session.isSignedIn)
         assertTrue(session.unreachable.value)
         assertTrue(session.state.first { it.unreachable }.unreachable)
+
+        // Its reads ask until the server answers.
+        h.servers.server("home.test", info("server-1", "Basement"))
+        assertFalse(session.unreachable.first { !it })
+        assertEquals("anna", session.user.first { it != null }?.username)
+    }
+
+    @Test
+    fun anUnreachableServerWithDownloadsOfAnotherServerOnlyIsUnreachable() = appTest(withDownloads = true) { h ->
+        DownloadDatabase(h.device.downloads!!.driver).downloadsQueries.insertDownload(
+            Row("d1", "server-2", "u1", null, "w1", null, null, null, "standard", "ready", null, null, null, "{}", "{}", "Night Shift", "movie", null, null, null, null, 1, 1, 1, null),
+        )
+        h.unreachable()
+
+        h.core.start()
+
+        assertEquals(AppState.Unreachable(home), h.core.started())
     }
 
     @Test

@@ -34,7 +34,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -142,6 +145,12 @@ fun MainScaffold(session: ServerSession) {
             session.graph.linking.value = null
             nav.open(LinkDeviceRoute(link))
         }
+    }
+    // Opened without the server, for what the device keeps of it: its downloads.
+    var landed by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (!landed && session.session.unreachable.value) nav.select(Tab.Downloads)
+        landed = true
     }
     val casting by cast.state.collectAsStateWithLifecycle()
     val current = nav.tab
