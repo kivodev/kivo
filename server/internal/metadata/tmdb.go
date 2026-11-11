@@ -130,7 +130,7 @@ type tmdbPart struct {
 	ReleaseDate string `json:"release_date"`
 }
 
-// tmdbVideo is one of the videos TMDb lists for a movie.
+// tmdbVideo is one of the videos TMDb lists for a movie or series.
 type tmdbVideo struct {
 	Key       string `json:"key"`
 	Name      string `json:"name"`
@@ -177,10 +177,13 @@ type tmdbMovie struct {
 	ExternalIDs  tmdbExternalIDs  `json:"external_ids"`
 	Images       tmdbImageSet     `json:"images"`
 	Translations tmdbTranslations `json:"translations"`
-	Videos       struct {
-		Results []tmdbVideo `json:"results"`
-	} `json:"videos"`
+	Videos       tmdbVideos       `json:"videos"`
 	tmdbVotes
+}
+
+// tmdbVideos is the videos a movie's or series' details append.
+type tmdbVideos struct {
+	Results []tmdbVideo `json:"results"`
 }
 
 // tmdbVotes is TMDb's community rating of a movie, series or episode.
@@ -226,6 +229,7 @@ type tmdbSeries struct {
 	ExternalIDs  tmdbExternalIDs  `json:"external_ids"`
 	Images       tmdbImageSet     `json:"images"`
 	Translations tmdbTranslations `json:"translations"`
+	Videos       tmdbVideos       `json:"videos"`
 	tmdbVotes
 }
 
@@ -413,6 +417,7 @@ func (t *tmdb) describeSeries(ctx context.Context, sr *tmdbSeries, lang string) 
 		ContentRatings: map[string]string{},
 		Cast:           castOf(sr.Credits.Cast), Crew: crewOf(sr.Credits.Crew),
 		Community: sr.community(), Images: imagesOf(imgs, sr.OriginalLanguage),
+		Trailers: trailersOf(sr.Videos.Results, lang),
 	}
 	for _, a := range sr.AlternativeTitles.Results {
 		d.AltTitles = append(d.AltTitles, a.Title)
@@ -792,11 +797,12 @@ func videoLangs(lang string) string {
 	return strings.Join(slices.Compact([]string{base, "en"}), ",")
 }
 
-// maxTrailers is how many of a movie's trailers are kept. A movie's page
-// shows them in one row, and the best few are the ones worth a place in it.
+// maxTrailers is how many of a movie's or series' trailers are kept. Its
+// page shows them in one row, and the best few are the ones worth a place
+// in it.
 const maxTrailers = 5
 
-// trailersOf returns a movie's trailers on YouTube, best first, and at most
+// trailersOf returns a movie's or series' trailers on YouTube, best first, and at most
 // maxTrailers of them. Official trailers come first, then the metadata
 // language, then English, then the newest. Teasers, clips and featurettes
 // are left out.
@@ -823,7 +829,7 @@ func trailersOf(videos []tmdbVideo, lang string) []catalog.Trailer {
 		}
 		return cmp.Or(cmp.Compare(rank(a), rank(b)), cmp.Compare(b.Published, a.Published))
 	})
-	out := []catalog.Trailer{} // non-nil, because an empty list clears the movie's trailers
+	out := []catalog.Trailer{} // non-nil, because an empty list clears the work's trailers
 	for _, v := range videos {
 		if len(out) == maxTrailers {
 			break
@@ -884,7 +890,8 @@ func (t *tmdb) series(ctx context.Context, tmdbID, lang string) (*tmdbSeries, er
 		return seriesTTL(s.ended())
 	}
 	var s tmdbSeries
-	p := detailParams(lang, "alternative_titles", "content_ratings", "credits", "external_ids", "images", "keywords", "translations")
+	p := detailParams(lang, "alternative_titles", "content_ratings", "credits", "external_ids", "images", "keywords", "translations", "videos")
+	p.Set("include_video_language", videoLangs(lang))
 	if err := t.get(ctx, "/tv/"+tmdbID, p, ttl, &s); err != nil {
 		return nil, err
 	}

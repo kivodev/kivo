@@ -134,6 +134,7 @@ import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.data.localTrailers
 import com.mmcdole.kivo.core.data.resumeAt
 import com.mmcdole.kivo.core.data.selectedVersion
+import com.mmcdole.kivo.core.data.youTubeTrailers
 import com.mmcdole.kivo.core.display.clock
 import com.mmcdole.kivo.core.display.episodeCode
 import com.mmcdole.kivo.core.display.pickerName
@@ -199,7 +200,7 @@ private fun DetailPage(head: WorkSummary, state: DetailUiState, model: DetailVie
                 else -> {}
             }
             val local = state.work?.localTrailers().orEmpty()
-            val online = state.work?.movie?.trailers.orEmpty()
+            val online = state.work?.youTubeTrailers().orEmpty()
             if (local.isNotEmpty() || online.isNotEmpty()) item(key = "trailers") { TrailersRow(local, online, nav, openMenu) }
             val credits = state.work?.credits.orEmpty()
             if (credits.isNotEmpty()) item(key = "credits") { CreditsRow(credits, nav) }
@@ -771,7 +772,7 @@ private fun EpisodeSkeleton() {
 }
 
 /**
- * Trailers: the trailer files in the work's folder, each opening its page, then a movie's trailers on YouTube, which
+ * Trailers: the trailer files in the work's folder, each opening its page, then a movie's or series' trailers on YouTube, which
  * the system opens in the YouTube app if it's installed, else the browser.
  */
 @Composable

@@ -13,7 +13,7 @@ import { isTv } from "@/tv/flag";
 export function WorkRows({ work }: { work: WorkDetail }) {
   return (
     <div className="flex flex-col gap-10 px-4 pb-12 sm:px-8 tv:relative">
-      <TrailersRow extras={work.extras} trailers={work.movie?.trailers} />
+      <TrailersRow extras={work.extras} trailers={work.movie?.trailers ?? work.series?.trailers} />
       <CastRow credits={work.credits} />
       <ExtrasRows extras={work.extras} />
       {work.collections.map((c) => (
@@ -42,7 +42,7 @@ function CastRow({ credits }: { credits: readonly Credit[] }) {
 }
 
 /**
- * A movie's trailers: the trailer files in its folder, which play here,
+ * A movie's or series' trailers: the trailer files in its folder, which play here,
  * then its trailers on YouTube, which open there. The packaged TV app never
  * leaves its page, so it shows the files alone.
  */

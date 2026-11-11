@@ -93,7 +93,7 @@ type WorkMetadata struct {
 	ContentRating    string
 	ContentRatingAge *int
 	Community        *CommunityRating // nil when the provider has no votes
-	Trailers         []Trailer        // a movie's trailers, in the order shown; nil leaves them alone
+	Trailers         []Trailer        // a movie's or series' trailers, in the order shown; nil leaves them alone
 	Genres, Tags     []string
 	Companies        []string // studios, networks or a book's publisher
 	Credits          []Credit
@@ -101,7 +101,7 @@ type WorkMetadata struct {
 	Book             *BookMetadata  // nil for any kind but a book
 }
 
-// Trailer is a movie's trailer on a video site.
+// Trailer is a movie's or series' trailer on a video site.
 type Trailer struct {
 	Site      string // TrailerYouTube
 	Key       string // the site's ID of the video

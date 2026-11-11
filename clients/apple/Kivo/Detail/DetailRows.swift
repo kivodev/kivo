@@ -52,7 +52,7 @@ struct CardRow: View {
 }
 
 /// Trailers: the trailer files in the work's folder, each opening its page,
-/// then a movie's trailers on YouTube, which the system opens in the
+/// then a movie's or series' trailers on YouTube, which the system opens in the
 /// YouTube app if it's installed, else the browser.
 struct TrailersRow: View {
     let work: WorkDetail
@@ -60,7 +60,7 @@ struct TrailersRow: View {
 
     var body: some View {
         let local = work.localTrailers()
-        let online = work.movie?.trailers ?? []
+        let online = work.youTubeTrailers()
         if !local.isEmpty || !online.isEmpty {
             let width = CardRow.cardWidth(.landscape, wide: wide)
             VStack(alignment: .leading, spacing: CardRow.headingSpacing) {

@@ -698,7 +698,7 @@ WHERE t.work_id = ?1
 `
 
 // The artwork of a movie or series and the seasons and episodes under it,
-// and the thumbnails of a movie's trailers.
+// and the thumbnails of its trailers.
 func (q *Queries) UnmatchedImages(ctx context.Context, workID id.ID) ([]Image, error) {
 	rows, err := q.db.QueryContext(ctx, unmatchedImages, workID)
 	if err != nil {

@@ -3958,7 +3958,7 @@ export interface components {
             /** @description Detail only. The movie's trailers on YouTube, best first; absent when it has none. */
             trailers?: components["schemas"]["Trailer"][];
         };
-        /** @description A movie's trailer on YouTube, which a client opens there rather than plays. */
+        /** @description A movie's or series' trailer on YouTube, which a client opens there rather than plays. */
         Trailer: {
             id: components["schemas"]["ID"];
             title: string;
@@ -3979,6 +3979,8 @@ export interface components {
             ordering?: string;
             /** @description Detail only. The episode the primary button plays. */
             nextUp?: components["schemas"]["WorkSummary"];
+            /** @description Detail only. The series' trailers on YouTube, best first; absent when it has none. */
+            trailers?: components["schemas"]["Trailer"][];
         };
         SeasonInfo: {
             /** @description 0 is Specials. */

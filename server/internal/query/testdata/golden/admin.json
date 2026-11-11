@@ -2446,7 +2446,14 @@
     "Overview": "",
     "ContentRating": "PG-13",
     "OriginalLanguage": "",
-    "Trailers": null,
+    "Trailers": [
+      {
+        "ID": "<id>",
+        "Title": "Official Trailer",
+        "URL": "https://www.youtube.com/watch?v=kQuTJdE3j2Q",
+        "Image": null
+      }
+    ],
     "Genres": null,
     "Companies": null,
     "Credits": null,

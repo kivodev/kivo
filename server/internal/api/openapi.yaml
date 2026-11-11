@@ -5485,7 +5485,7 @@ components:
 
     Trailer:
       type: object
-      description: A movie's trailer on YouTube, which a client opens there rather than plays.
+      description: A movie's or series' trailer on YouTube, which a client opens there rather than plays.
       required: [id, title, url]
       properties:
         id: {$ref: "#/components/schemas/ID"}
@@ -5517,6 +5517,10 @@ components:
         nextUp:
           $ref: "#/components/schemas/WorkSummary"
           description: Detail only. The episode the primary button plays.
+        trailers:
+          type: array
+          items: {$ref: "#/components/schemas/Trailer"}
+          description: Detail only. The series' trailers on YouTube, best first; absent when it has none.
 
     SeasonInfo:
       type: object

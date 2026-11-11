@@ -31,7 +31,7 @@ type WorkDetail struct {
 	// metadata provider gives it. A season or episode without one takes its
 	// series' language. It is empty when unknown.
 	OriginalLanguage string
-	Trailers         []Trailer // a movie's trailers on a video site, in the order shown
+	Trailers         []Trailer // a movie's or series' trailers on a video site, in the order shown
 	Genres           []string
 	Companies        []string
 	Credits          []Credit             // cast in billing order, then crew
@@ -163,7 +163,7 @@ FROM work w
 WHERE w.id = @work
   AND `+visible)
 
-// Trailer is a movie's trailer on a video site. URL is its page there, for
+// Trailer is a movie's or series' trailer on a video site. URL is its page there, for
 // a client to open. Image is its thumbnail, or nil while it has none.
 type Trailer struct {
 	ID    id.ID
@@ -172,7 +172,7 @@ type Trailer struct {
 	Image *Image
 }
 
-// trailers is a movie's trailers in order, each with its thumbnail.
+// trailers is a movie's or series' trailers in order, each with its thumbnail.
 var trailers = stmt("Trailers", `
 SELECT t.id, t.title, t.site, t.key, `+photoColumns+`
 FROM work w
@@ -529,7 +529,7 @@ func (s *Service) Detail(ctx context.Context, v users.Viewer, work id.ID) (WorkD
 }
 
 // byKind reads the fields only some kinds' pages have: the child count of
-// a series or season, a movie's trailers, a series' next up, an episode's neighbours, and a
+// a series or season, a movie's or series' trailers, a series' next up, an episode's neighbours, and a
 // book's own fields.
 func byKind(ctx context.Context, tx *sql.Tx, vw viewer, args []any, d *WorkDetail) error {
 	if k := d.Summary.Kind; k == catalog.KindSeries || k == catalog.KindSeason {
@@ -537,7 +537,7 @@ func byKind(ctx context.Context, tx *sql.Tx, vw viewer, args []any, d *WorkDetai
 			return err
 		}
 	}
-	if d.Summary.Kind == catalog.KindMovie {
+	if k := d.Summary.Kind; k == catalog.KindMovie || k == catalog.KindSeries {
 		var err error
 		d.Trailers, err = rowsOf(ctx, tx, trailers, args, func(r scanner, t *Trailer) error {
 			var v catalog.Trailer

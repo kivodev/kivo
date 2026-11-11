@@ -4322,6 +4322,9 @@ type SeriesInfo struct {
 	// SeasonCount Detail only.
 	SeasonCount *int `json:"seasonCount,omitempty"`
 
+	// Trailers Detail only. The series' trailers on YouTube, best first; absent when it has none.
+	Trailers *[]Trailer `json:"trailers,omitempty"`
+
 	// UnplayedCount Unplayed episodes.
 	UnplayedCount int `json:"unplayedCount"`
 }
@@ -4912,7 +4915,7 @@ type TrackTranscode struct {
 // TrackType A track's type.
 type TrackType string
 
-// Trailer A movie's trailer on YouTube, which a client opens there rather than plays.
+// Trailer A movie's or series' trailer on YouTube, which a client opens there rather than plays.
 type Trailer struct {
 	// ID A UUIDv7.
 	ID ID `json:"id"`

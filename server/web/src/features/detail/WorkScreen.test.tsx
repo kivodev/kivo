@@ -297,6 +297,16 @@ describe("Series page", () => {
     expect(await screen.findByRole("link", { name: /E4 Reload/ })).toBeInTheDocument();
   });
 
+  it("shows the series' trailers on YouTube in a Trailers row", async () => {
+    serveMockApi();
+    renderApp(`/works/${mockIds.expanse}`);
+    const row = (await screen.findByRole("heading", { name: "Trailers" })).closest("section");
+    if (!row) throw new Error("no Trailers row");
+    const card = within(row).getByRole("link", { name: "Official Trailer, Opens in YouTube" });
+    expect(card).toHaveAttribute("href", "https://www.youtube.com/watch?v=kQuTJdE3j2Q");
+    expect(card).toHaveAttribute("target", "_blank");
+  });
+
   it("asks once before marking a season's episodes played", async () => {
     serveMockApi();
     const { user } = renderApp(`/works/${mockIds.expanse}`);
