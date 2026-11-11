@@ -186,7 +186,7 @@ fun LibraryScreen(session: ServerSession, libraryId: String, oneOffSort: GridSor
 private fun FilterButton(filtered: Boolean, onClick: () -> Unit) {
     IconButton(onClick = onClick, modifier = Modifier.testTag("filter")) {
         Box {
-            Icon(Icons.Default.FilterList, stringResource(R.string.mobile_filter))
+            Icon(Icons.Default.FilterList, stringResource(if (filtered) R.string.mobile_filter_on else R.string.mobile_filter))
             if (filtered) Box(Modifier.align(Alignment.TopEnd).offset(x = 3.dp, y = (-3).dp).size(8.dp).background(MaterialTheme.colorScheme.primary, CircleShape))
         }
     }
@@ -510,11 +510,24 @@ private fun FilterSheet(state: LibraryGridState, model: LibraryViewModel, onSave
     }
 }
 
-/** All, Unwatched, In progress, Watched, or a books library's Not started and Finished. */
+/**
+ * All, Unwatched, In progress, Watched, or a books library's Not started and
+ * Finished: segments, or chips that wrap whole words when a segment can't
+ * hold its word, as at large text.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun WatchStatus(played: WorkPlayState?, books: Boolean, onPlayed: (WorkPlayState?) -> Unit) {
     val states = listOf(null) + WorkPlayState.entries
+    var cut by remember(books, LocalDensity.current.fontScale) { mutableStateOf(false) }
+    if (cut) {
+        ChipFlow {
+            for (state in states) {
+                SheetChip(playedName(state, books), played == state, "played:${state?.value.orEmpty()}") { onPlayed(state) }
+            }
+        }
+        return
+    }
     SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
         states.forEachIndexed { i, state ->
             SegmentedButton(
@@ -523,7 +536,9 @@ private fun WatchStatus(played: WorkPlayState?, books: Boolean, onPlayed: (WorkP
                 shape = SegmentedButtonDefaults.itemShape(i, states.size),
                 icon = {},
                 modifier = Modifier.testTag("played:${state?.value.orEmpty()}"),
-            ) { Text(playedName(state, books), maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            ) {
+                Text(playedName(state, books), maxLines = 1, overflow = TextOverflow.Ellipsis, onTextLayout = { if (it.hasVisualOverflow) cut = true })
+            }
         }
     }
 }
