@@ -140,9 +140,15 @@
     <string name="mobile_noun_shows">shows</string>
     <string name="mobile_noun_videos">videos</string>
     <string name="mobile_noun_books">books</string>
+    <!-- "No unwatched movies": the watch status, then what the library lists. -->
     <string name="mobile_empty_played">No %1$s %2$s</string>
+    <string name="mobile_state_unwatched">unwatched</string>
+    <string name="mobile_state_in_progress">in-progress</string>
+    <string name="mobile_state_watched">watched</string>
+    <string name="mobile_state_unstarted">unstarted</string>
+    <string name="mobile_state_finished">finished</string>
     <string name="mobile_empty_filters">No %1$s match these filters</string>
-    <string name="mobile_nothing_here">Nothing here yet.</string>
+    <string name="mobile_nothing_here">Nothing in this library yet.</string>
 
     <!-- Counts -->
     <plurals name="mobile_count_movies">

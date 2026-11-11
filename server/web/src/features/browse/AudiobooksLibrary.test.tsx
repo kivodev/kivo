@@ -56,6 +56,26 @@ describe("Audiobooks library", () => {
     expect(screen.getByRole("slider", { name: "Jump to letter" })).toBeInTheDocument();
   });
 
+  it("names the watch status as books do, in its chip, an empty result and the filter", async () => {
+    const api = serveMockApi();
+    api.browse[bookIds.audiobooks] = [];
+    const { user, router } = renderApp(`${library}?played=played`);
+    expect(await screen.findByRole("heading", { name: "No finished books" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove filter Finished" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^Filter/ }));
+    for (const name of ["Not started", "In progress", "Finished"]) {
+      expect(await screen.findByRole("radio", { name })).toBeInTheDocument();
+    }
+    expect(screen.queryByRole("radio", { name: "Unwatched" })).not.toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await router.navigate({
+      to: "/libraries/$libraryId",
+      params: { libraryId: bookIds.audiobooks },
+      search: { played: "unplayed" },
+    });
+    expect(await screen.findByRole("heading", { name: "No unstarted books" })).toBeInTheDocument();
+  });
+
   it("filters by narrator, with no video filters", async () => {
     serveMockApi();
     const { user, router } = renderApp(library);

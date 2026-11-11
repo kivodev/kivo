@@ -656,7 +656,15 @@ private fun emptyFiltered(state: LibraryGridState): String {
     )
     val played = state.filters.played
     return if (played != null && state.emptyCase == GridEmptyCase.WatchStatus) {
-        stringResource(R.string.mobile_empty_played, playedName(played, state.library?.kind == LibraryKind.Audiobooks).lowercase(), noun)
+        val books = state.library?.kind == LibraryKind.Audiobooks
+        val name = stringResource(
+            when (played) {
+                WorkPlayState.Unplayed -> if (books) R.string.mobile_state_unstarted else R.string.mobile_state_unwatched
+                WorkPlayState.InProgress -> R.string.mobile_state_in_progress
+                else -> if (books) R.string.mobile_state_finished else R.string.mobile_state_watched
+            },
+        )
+        stringResource(R.string.mobile_empty_played, name, noun)
     } else {
         stringResource(R.string.mobile_empty_filters, noun)
     }

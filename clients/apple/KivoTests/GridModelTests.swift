@@ -306,6 +306,8 @@ final class GridModelTests: XCTestCase {
         XCTAssertEqual(offer[3].values.map { grid.label($0) }, ["G", "PG-13", "R"], "in the server's order")
         XCTAssertEqual(offer[4].values.map { grid.label($0) }, ["4K", "1080p", "HDR"])
         XCTAssertEqual(grid.label(played: nil), "All")
+        XCTAssertEqual([WorkPlayState.unplayed, .inProgress, .played].map { GridModel.emptyName(played: $0, books: false) }, ["unwatched", "in-progress", "watched"])
+        XCTAssertEqual([WorkPlayState.unplayed, .inProgress, .played].map { GridModel.emptyName(played: $0, books: true) }, ["unstarted", "in-progress", "finished"])
         XCTAssertEqual(grid.sections.map(\.label), ["Movies"])
         XCTAssertEqual(grid.sorts.map(\.label), ["Title", "Date added", "Release date", "Rating", "Runtime", "Last played"])
         XCTAssertEqual(grid.noun(41), "41 movies")

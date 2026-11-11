@@ -423,6 +423,10 @@ msgstr "Cast, connecting"
 msgid "Can't show {codec}"
 msgstr "Can't show {codec}"
 
+#: src/features/browse/useBrowseLabels.ts
+msgid "Finished"
+msgstr "Finished"
+
 #: src/features/admin/ActivityList.tsx
 msgid "{episodes} of {series} added to {library}"
 msgstr "{episodes} of {series} added to {library}"
@@ -993,11 +997,6 @@ msgstr "Set password"
 msgid "Dismiss {message}"
 msgstr "Dismiss {message}"
 
-#. placeholder {0}: library.name
-#: src/features/browse/LibraryScreen.tsx
-msgid "{0} is empty."
-msgstr "{0} is empty."
-
 #: src/features/browse/useBrowseLabels.ts
 msgid "{from}s"
 msgstr "{from}s"
@@ -1160,9 +1159,17 @@ msgstr "Disable"
 msgid "Progress"
 msgstr "Progress"
 
+#: src/features/browse/LibraryScreen.tsx
+msgid "Nothing in this library yet."
+msgstr "Nothing in this library yet."
+
 #: src/features/admin/ActivityList.tsx
 msgid "{count, plural, one {# failed sign-in for {user}} other {# failed sign-ins for {user}}}"
 msgstr "{count, plural, one {# failed sign-in for {user}} other {# failed sign-ins for {user}}}"
+
+#: src/features/browse/CountLine.tsx
+msgid "unstarted"
+msgstr "unstarted"
 
 #: src/features/player/PlaybackSettingsMenu.tsx
 msgid "Normal"
@@ -2656,6 +2663,10 @@ msgstr "Highest content rating"
 msgid "is set"
 msgstr "is set"
 
+#: src/features/browse/useBrowseLabels.ts
+msgid "Not started"
+msgstr "Not started"
+
 #: src/features/admin/PlayCards.tsx
 msgid "Bitrate higher than this device plays"
 msgstr "Bitrate higher than this device plays"
@@ -2957,6 +2968,10 @@ msgstr "{maxStreams, plural, one {Up to # stream} other {Up to # streams}}"
 #: src/features/admin/problemActions.ts
 msgid "Turn hardware acceleration back on in Transcoding settings."
 msgstr "Turn hardware acceleration back on in Transcoding settings."
+
+#: src/features/browse/CountLine.tsx
+msgid "finished"
+msgstr "finished"
 
 #: src/features/setup/SetupWizard.tsx
 msgid "Signed in as {username}."
