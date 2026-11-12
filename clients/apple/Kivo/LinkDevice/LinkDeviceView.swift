@@ -158,30 +158,27 @@ struct LinkDeviceView: View {
             message = nil
             step = .confirm(code: link.code, request: request)
         } catch {
-            message = codeFailure(error)
+            message = codeFailure(error.requestProblem)
         }
     }
 
     private func answer(code: String, request: PendingDevice, allow: Bool) async {
         busy = true
         defer { busy = false }
-        do {
-            if allow {
-                try await server.session.link.approve(code: code)
-            } else {
-                try await server.session.link.deny(code: code)
-            }
+        let link = server.session.link
+        guard let done = try? await (allow ? link.approve(code: code) : link.deny(code: code)) else { return }
+        if let failed = done.problemOrNull() {
+            message = codeFailure(failed)
+        } else {
             message = nil
             step = .done(name: request.name, allowed: allow)
-        } catch {
-            message = codeFailure(error)
         }
     }
 
-    private func codeFailure(_ error: Error) -> String {
-        error.problemStatus == 404
+    private func codeFailure(_ problem: RequestProblem) -> String {
+        (problem as? RequestProblem.Refused)?.status == 404
             ? String(localized: "That code didn't work. Check the other device for a new one.")
-            : error.problemSentence
+            : problem.sentence
     }
 
     /// What the server saw of the asking device: "Android TV · On your home network · Just now".

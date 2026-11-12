@@ -51,13 +51,9 @@ struct LibrariesSettingsView: View {
     private func save() {
         let choices = order.map { LibraryChoice(id: $0.id, pinned: pinned.contains($0.id)) }
         Task {
-            do {
-                _ = try await server.session.account.setLibraries(choices: choices)
-                server.reloadLibraries()
-                failure = nil
-            } catch {
-                failure = error.problemSentence
-            }
+            guard let done = try? await server.session.account.setLibraries(choices: choices) else { return }
+            failure = done.problemOrNull()?.sentence
+            if failure == nil { server.reloadLibraries() }
         }
     }
 }

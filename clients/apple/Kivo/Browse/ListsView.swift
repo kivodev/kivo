@@ -106,12 +106,9 @@ struct ListsView: View {
 
     private func create(_ name: String) {
         Task {
-            do {
-                _ = try await server.session.library.createList(name: name)
-            } catch {
-                namingAgain = error.problemCode == .nameTaken
-                problem = error.listNameSentence
-            }
+            guard let failed = try? await server.session.library.createList(name: name).problemOrNull() else { return }
+            namingAgain = failed.knownCode == .nameTaken
+            problem = failed.listNameSentence
         }
     }
 }

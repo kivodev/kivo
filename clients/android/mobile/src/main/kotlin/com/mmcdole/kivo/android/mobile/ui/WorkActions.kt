@@ -35,9 +35,7 @@ import com.mmcdole.kivo.api.models.HomeRowKind
 import com.mmcdole.kivo.api.models.ListRef
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.display.episodeCode
-import com.mmcdole.kivo.core.session.SessionLibrary
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
+import com.mmcdole.kivo.core.session.WorkMarks
 import kotlinx.coroutines.launch
 
 /** What a card's long press offers. */
@@ -66,39 +64,12 @@ fun workActions(menu: WorkMenu, seriesPage: String? = null): List<WorkAction> = 
 }
 
 
-/**
- * The user's marks on works, for a screen's view model: each runs on its
- * [scope], and a failure leaves the card as the server has it, since the
- * live events redraw every screen showing the work.
- */
-class WorkMarks(private val library: SessionLibrary, private val scope: CoroutineScope) {
-    fun setPlayed(work: WorkSummary, played: Boolean) = act { library.setPlayed(work.id, played) }
-
-    fun setOnList(listId: String, workId: String, on: Boolean) = act {
-        if (on) library.addToList(listId, workId) else library.removeFromList(listId, workId)
-    }
-
-    fun removeFromContinue(work: WorkSummary) = act { library.removeFromContinue(work.id) }
-
-    /** Carries out [action]'s mark on [work]; the others are the screen's to do. */
-    fun apply(action: WorkAction, work: WorkSummary) {
-        when (action) {
-            WorkAction.TogglePlayed -> setPlayed(work, work.userState?.played != true)
-            WorkAction.RemoveFromContinue -> removeFromContinue(work)
-            else -> Unit
-        }
-    }
-
-    private fun act(call: suspend () -> Unit) {
-        scope.launch {
-            try {
-                call()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                // The card stays as the server has it.
-            }
-        }
+/** Carries out [action]'s mark on [work]; the others are the screen's to do. */
+fun WorkMarks.mark(action: WorkAction, work: WorkSummary) {
+    when (action) {
+        WorkAction.TogglePlayed -> setPlayed(work.id, work.userState?.played != true)
+        WorkAction.RemoveFromContinue -> removeFromContinue(work.id)
+        else -> Unit
     }
 }
 

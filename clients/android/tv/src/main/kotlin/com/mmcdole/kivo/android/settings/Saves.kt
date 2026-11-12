@@ -3,8 +3,8 @@ package com.mmcdole.kivo.android.settings
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.mmcdole.kivo.core.Done
 import com.mmcdole.kivo.core.RequestProblem
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -20,18 +20,13 @@ class Saves(private val scope: CoroutineScope) {
     var failed by mutableStateOf<FailedSave?>(null)
         private set
 
-    /** Runs [call] for the change made on [row]; when it fails, [undo] puts the row back as it was. */
-    fun save(row: String, undo: () -> Unit = {}, call: suspend () -> Unit) {
+    /** Makes [change], made on [row]; when it fails, [undo] puts the row back as it was. */
+    fun save(row: String, undo: () -> Unit = {}, change: suspend () -> Done<*>) {
         failed = null
         scope.launch {
-            try {
-                call()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                undo()
-                failed = FailedSave(row, RequestProblem.of(e)) { save(row, undo, call) }
-            }
+            val problem = change().problemOrNull() ?: return@launch
+            undo()
+            failed = FailedSave(row, problem) { save(row, undo, change) }
         }
     }
 

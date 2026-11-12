@@ -57,7 +57,7 @@ struct DownloadEpisodesSheet: View {
                 let ids = try await episodes()
                 estimates = try await server.session.downloads?.estimates(choices: ids.map { PlayChoice(workId: $0) }) ?? []
             } catch {
-                problem = error.downloadSentence
+                problem = error.problemSentence
             }
         }
         .alert(problem ?? "", isPresented: Binding(get: { problem != nil }, set: { if !$0 { problem = nil; dismiss() } })) {
@@ -73,17 +73,17 @@ struct DownloadEpisodesSheet: View {
     private func download(_ estimates: [DownloadEstimate], at quality: String) {
         Haptics.success()
         Task {
-            do {
-                for estimate in estimates {
-                    _ = try await server.session.downloads?.download(
-                        choice: PlayChoice(workId: estimate.workId),
-                        quality: DownloadQuality.allCases.first { $0.value == quality }
-                    )
+            for estimate in estimates {
+                guard let start = try? await server.session.downloads?.download(
+                    choice: PlayChoice(workId: estimate.workId),
+                    quality: DownloadQuality.allCases.first { $0.value == quality }
+                ) else { break }
+                if let sentence = server.display.downloadProblem(start: start) {
+                    problem = sentence
+                    return
                 }
-                dismiss()
-            } catch {
-                problem = error.downloadSentence
             }
+            dismiss()
         }
     }
 }

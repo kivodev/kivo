@@ -8,12 +8,10 @@ import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.api.models.WorkImages
 import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkSummary
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 
 /** Whether the page's work, once read, is on the list [listId]. */
 internal fun WorkDetail?.onList(listId: String?): Boolean = listId != null && this?.listIds?.contains(listId) == true
@@ -66,7 +64,7 @@ class DetailViewModel(private val session: ServerSession, id: String) : ViewMode
     fun known(workId: String): WorkSummary? = session.session.library.known(workId)
 
     /** Marks played or unplayed; the live events refresh every screen showing it. */
-    fun setPlayed(workId: String, played: Boolean) = act { session.session.library.setPlayed(workId, played) }
+    fun setPlayed(workId: String, played: Boolean) = session.session.library.marks.setPlayed(workId, played)
 
     /** My List's id, once the lists are read. */
     val myListId: StateFlow<String?> = session.session.library.lists()
@@ -76,18 +74,6 @@ class DetailViewModel(private val session: ServerSession, id: String) : ViewMode
     /** Adds the work to My List or takes it off; the live event redraws the page. */
     fun setOnMyList(workId: String, on: Boolean) {
         val id = myListId.value ?: return
-        act { if (on) session.session.library.addToList(id, workId) else session.session.library.removeFromList(id, workId) }
-    }
-
-    private fun act(call: suspend () -> Unit) {
-        viewModelScope.launch {
-            try {
-                call()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                // The mark shows as it was; the page stays as the server has it.
-            }
-        }
+        session.session.library.marks.setOnList(id, workId, on)
     }
 }

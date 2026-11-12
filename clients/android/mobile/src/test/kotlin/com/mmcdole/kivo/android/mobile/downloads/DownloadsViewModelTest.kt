@@ -19,6 +19,7 @@ import com.mmcdole.kivo.api.models.MatchState
 import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.api.models.WorkImages
 import com.mmcdole.kivo.api.models.WorkKind
+import com.mmcdole.kivo.core.downloads.DownloadStart
 import com.mmcdole.kivo.core.downloads.DownloadStatus
 import com.mmcdole.kivo.core.downloads.DownloadTransport
 import com.mmcdole.kivo.core.downloads.TransferEvent
@@ -204,7 +205,7 @@ class DownloadsViewModelTest : CoreTest() {
     @Test
     fun aReadyDownloadPlaysFromItsFileAndAnUnknownOneClosesThePlayer() {
         val session = signIn()
-        val id = runBlocking { session.downloads!!.download(PlayChoice("m1")) }
+        val id = (runBlocking { session.downloads!!.download(PlayChoice("m1")) } as DownloadStart.Started).id
         val downloads = DownloadsViewModel(session.downloads!!)
         awaitValue(downloads.state) { it.movies.singleOrNull()?.status == DownloadStatus.Ready }
 

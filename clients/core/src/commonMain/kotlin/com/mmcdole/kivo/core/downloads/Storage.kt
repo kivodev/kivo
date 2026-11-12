@@ -48,7 +48,7 @@ internal class Storage(
 data class DownloadStorage(val usedBytes: Long, val freeBytes: Long)
 
 /** The device hasn't room for a download: [shortBytes] more must be freed. */
-class NotEnoughSpaceException(val shortBytes: Long) : Exception("not enough space: $shortBytes bytes short")
+internal class NotEnoughSpaceException(val shortBytes: Long) : Exception("not enough space: $shortBytes bytes short")
 
 /** Room kept free beyond the downloads under way, so the device isn't filled to the last byte. */
 internal const val HEADROOM_BYTES: Long = 256L * 1024 * 1024

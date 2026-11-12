@@ -23,8 +23,6 @@ import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.display.episodeCode
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.launch
 
 /** Opens a work's menu: what a long press of OK, or the Menu key, on its card or row does. */
 val LocalWorkMenu = staticCompositionLocalOf<(WorkSummary) -> Unit> { {} }
@@ -79,18 +77,7 @@ private fun WorkMenu(work: WorkSummary, continueWatching: Boolean, session: Serv
         if (seriesId != null && (screen as? Screen.Work)?.id != seriesId) add(Choice("series", stringResource(R.string.go_to_series)))
         if (screen !is Screen.Library && libraryId != null) add(Choice("library", stringResource(R.string.go_to_library)))
     }
-    val scope = session.graph.scope
-    fun act(call: suspend () -> Unit) {
-        scope.launch {
-            try {
-                call()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                // The card shows as it was; the server has it as it is.
-            }
-        }
-    }
+    val marks = session.session.library.marks
     ChoicePanel(
         title = listOfNotNull(cardTitle(work), work.episode?.let(display::episodeCode)).joinToString(" · "),
         choices = choices,
@@ -100,9 +87,9 @@ private fun WorkMenu(work: WorkSummary, continueWatching: Boolean, session: Serv
             when (id) {
                 "play" -> navigator.push(Screen.Player(work.id))
                 "fromStart" -> navigator.push(Screen.Player(work.id, fromStart = true))
-                "played" -> act { session.session.library.setPlayed(work.id, !played) }
-                "removeFromList" -> openList?.let { list -> act { session.session.library.removeFromList(list.id, work.id) } }
-                "removeFromContinue" -> act { session.session.library.removeFromContinue(work.id) }
+                "played" -> marks.setPlayed(work.id, !played)
+                "removeFromList" -> openList?.let { list -> marks.setOnList(list.id, work.id, on = false) }
+                "removeFromContinue" -> marks.removeFromContinue(work.id)
                 "series" -> work.episode?.let { navigator.push(Screen.Work(it.seriesId, it)) }
                 "library" -> libraryId?.let { navigator.open(Screen.Library(it)) }
             }

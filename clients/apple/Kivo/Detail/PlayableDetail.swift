@@ -183,8 +183,8 @@ struct PlayableDetail: View {
                     }
                 }
                 Button(role: .destructive) {
-                    // A download that can't be removed stays in the list.
-                    Task { try? await server.session.downloads?.delete(id: item.id) }
+                    // A download that can't be removed stays in the list, and the app says why.
+                    Task { server.tell(try? await server.session.downloads?.delete(id: item.id)) }
                 } label: {
                     Label(String(localized: "Remove download"), systemImage: "trash")
                 }

@@ -28,12 +28,12 @@ struct WorkActions: View {
                 }
             }
         }
-        // The card shows the state the server's events send back, so a write
-        // that fails leaves it as it was.
+        // The card shows the state the server's events send back, so a mark
+        // that fails leaves it as it was, and the app says why.
         let played = work.userState?.played == true
         Button {
             Haptics.success()
-            Task { _ = try? await server.session.library.setPlayed(workId: work.id, played: !played) }
+            server.session.library.marks.setPlayed(workId: work.id, played: !played)
         } label: {
             SwiftUI.Label(Words.markPlayed(!played, kind: work.kind), systemImage: played ? "eye.slash" : "checkmark.circle")
         }
@@ -45,7 +45,7 @@ struct WorkActions: View {
         if let currentList, currentList.kind == .manual {
             Button {
                 Haptics.success()
-                Task { try? await server.session.library.removeFromList(listId: currentList.id, workId: work.id) }
+                server.session.library.marks.setOnList(listId: currentList.id, workId: work.id, on: false)
             } label: {
                 SwiftUI.Label(String(localized: "Remove from \(currentList.name)"), systemImage: "minus.circle")
             }
@@ -53,7 +53,7 @@ struct WorkActions: View {
         if let continueRow {
             Button {
                 Haptics.success()
-                Task { try? await server.session.library.removeFromContinue(workId: work.id) }
+                server.session.library.marks.removeFromContinue(workId: work.id)
             } label: {
                 SwiftUI.Label(
                     continueRow == .continueListening

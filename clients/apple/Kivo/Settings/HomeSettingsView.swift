@@ -91,22 +91,22 @@ struct HomeSettingsView: View {
 
     private func save() {
         let changes = rows.map { HomeRowChange(id: $0.id, shown: $0.shown) }
-        run(retry: save) { _ = try await server.session.library.setHomeRows(rows: changes) }
+        run(retry: save) { try await server.session.library.setHomeRows(rows: changes) }
     }
 
     private func reset() {
-        run(retry: reset) { rows = try await server.session.library.resetHomeRows() }
+        run(retry: reset) {
+            let done = try await server.session.library.resetHomeRows()
+            if let reset = done.getOrNull() as? [HomeRowInfo] { rows = reset }
+            return done
+        }
     }
 
-    private func run(retry: @escaping () -> Void, _ call: @escaping () async throws -> Void) {
+    private func run<T: AnyObject>(retry: @escaping () -> Void, _ change: @escaping () async throws -> Done<T>) {
         retrying = retry
         Task {
-            do {
-                try await call()
-                failure = nil
-            } catch {
-                failure = error.problemSentence
-            }
+            guard let done = try? await change() else { return }
+            failure = done.problemOrNull()?.sentence
         }
     }
 }

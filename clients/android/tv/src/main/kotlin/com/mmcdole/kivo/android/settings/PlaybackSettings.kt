@@ -78,7 +78,7 @@ class PlaybackViewModel(private val session: ServerSession) : ViewModel() {
 
     /** Sends [update], made on [row]; the row shows the saved value until the server takes it. */
     fun update(row: String, update: PlaybackPreferencesUpdate) = saves.save(row) {
-        user = Load.Loaded(session.session.account.updatePlayback(update))
+        session.session.account.updatePlayback(update).also { done -> done.getOrNull()?.let { user = Load.Loaded(it) } }
     }
 }
 
@@ -359,7 +359,7 @@ class HomeRowsViewModel(private val session: ServerSession) : ViewModel() {
     fun move(id: String, by: Int) = change("rowmove/$id") { movedRow(it, tvHomeRows(it), id, by) }
 
     fun reset() {
-        saves.save("reset") { all = Load.Loaded(session.session.library.resetHomeRows()) }
+        saves.save("reset") { session.session.library.resetHomeRows().also { done -> done.getOrNull()?.let { all = Load.Loaded(it) } } }
     }
 
     private fun change(row: String, transform: (List<HomeRowInfo>) -> List<HomeRowInfo>) {

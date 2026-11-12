@@ -99,28 +99,27 @@ struct AddToListView: View {
         let adding = !held.contains(list.id)
         if adding { held.insert(list.id) } else { held.remove(list.id) }
         Task {
-            do {
-                if adding {
-                    try await server.session.library.addToList(listId: list.id, workId: workId)
-                } else {
-                    try await server.session.library.removeFromList(listId: list.id, workId: workId)
-                }
-            } catch {
-                if adding { held.remove(list.id) } else { held.insert(list.id) }
-                problem = error.problemSentence
-            }
+            let library = server.session.library
+            guard let failed = try? await (adding ? library.addToList(listId: list.id, workId: workId) : library.removeFromList(listId: list.id, workId: workId))
+                .problemOrNull() else { return }
+            if adding { held.remove(list.id) } else { held.insert(list.id) }
+            problem = failed.sentence
         }
     }
 
     private func create(_ name: String) {
         Task {
-            do {
-                let list = try await server.session.library.createList(name: name)
-                try await server.session.library.addToList(listId: list.id, workId: workId)
+            guard let made = try? await server.session.library.createList(name: name) else { return }
+            guard let list = made.getOrNull() else {
+                namingAgain = made.problemOrNull()?.knownCode == .nameTaken
+                problem = made.problemOrNull()?.listNameSentence
+                return
+            }
+            guard let added = try? await server.session.library.addToList(listId: list.id, workId: workId) else { return }
+            if let failed = added.problemOrNull() {
+                problem = failed.sentence
+            } else {
                 held.insert(list.id)
-            } catch {
-                namingAgain = error.problemCode == .nameTaken
-                problem = error.listNameSentence
             }
         }
     }

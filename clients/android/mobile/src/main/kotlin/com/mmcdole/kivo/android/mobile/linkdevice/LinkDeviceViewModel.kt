@@ -3,8 +3,8 @@ package com.mmcdole.kivo.android.mobile.linkdevice
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mmcdole.kivo.android.mobile.ui.sentence
-import com.mmcdole.kivo.api.ProblemException
 import com.mmcdole.kivo.api.models.PendingDevice
+import com.mmcdole.kivo.core.Done
 import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.core.auth.LinkCode
 import com.mmcdole.kivo.core.auth.SavedServer
@@ -103,8 +103,10 @@ class LinkDeviceViewModel(private val session: KivoSession, private val servers:
     fun answer(allow: Boolean) {
         val confirm = state.value.step as? LinkStep.Confirm ?: return
         run {
-            if (allow) session.link.approve(confirm.code) else session.link.deny(confirm.code)
-            mutableState.update { it.copy(step = LinkStep.Done(confirm.device.name, allow), message = null) }
+            when (val done = if (allow) session.link.approve(confirm.code) else session.link.deny(confirm.code)) {
+                is Done.Ok -> mutableState.update { it.copy(step = LinkStep.Done(confirm.device.name, allow), message = null) }
+                is Done.Failed -> mutableState.update { it.copy(message = message(done.problem)) }
+            }
         }
     }
 
@@ -112,6 +114,10 @@ class LinkDeviceViewModel(private val session: KivoSession, private val servers:
     fun show(step: LinkStep) {
         mutableState.update { it.copy(step = step, message = null) }
     }
+
+    /** A code the server doesn't know is its own message; any other problem is worded. */
+    private fun message(problem: RequestProblem): LinkMessage =
+        if ((problem as? RequestProblem.Refused)?.status == 404) LinkMessage.CodeFailed else LinkMessage.Problem(sentence(problem))
 
     private fun run(call: suspend () -> Unit) {
         mutableState.update { it.copy(busy = true) }
@@ -121,8 +127,7 @@ class LinkDeviceViewModel(private val session: KivoSession, private val servers:
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                val message = if ((e as? ProblemException)?.status == 404) LinkMessage.CodeFailed else LinkMessage.Problem(sentence(RequestProblem.of(e)))
-                mutableState.update { it.copy(message = message) }
+                mutableState.update { it.copy(message = message(RequestProblem.of(e))) }
             } finally {
                 mutableState.update { it.copy(busy = false) }
             }

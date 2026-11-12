@@ -1,6 +1,7 @@
 package com.mmcdole.kivo.android.main
 
 import android.view.KeyEvent
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
@@ -52,6 +53,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
@@ -80,6 +82,8 @@ import com.mmcdole.kivo.android.settings.LicenseTextPage
 import com.mmcdole.kivo.android.settings.LicensesPage
 import com.mmcdole.kivo.android.settings.SettingsScreen
 import com.mmcdole.kivo.android.theme.Kivo
+import com.mmcdole.kivo.android.ui.display
+import com.mmcdole.kivo.core.display.problem
 import com.mmcdole.kivo.android.theme.KivoTokens
 import com.mmcdole.kivo.android.theme.TvType
 import com.mmcdole.kivo.android.ui.Back
@@ -152,6 +156,12 @@ fun MainScreen(session: ServerSession, onExit: () -> Unit) {
     val libraries = remember(all) { tvLibraries(all.orEmpty()) }
 
     val holder = rememberSaveableStateHolder()
+
+    // A mark a card or page made that failed says so once, over any screen.
+    val context = LocalContext.current
+    LaunchedEffect(session) {
+        session.session.library.marks.problems.collect { Toast.makeText(context, display.problem(it), Toast.LENGTH_SHORT).show() }
+    }
 
     // A Watch Next program opens its work's page over Home.
     LaunchedEffect(navigator) {

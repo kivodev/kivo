@@ -191,16 +191,10 @@ struct UserStateButtons: View {
         let onMyList = myList.map { work.listIds?.contains($0.id) == true } ?? false
         let played = work.userState?.played == true
         // The buttons show the state the server's events send back, so a
-        // write that fails leaves them as they were.
+        // mark that fails leaves them as they were, and the app says why.
         Button {
             guard let myList else { return }
-            Task {
-                if onMyList {
-                    try? await server.session.library.removeFromList(listId: myList.id, workId: work.id)
-                } else {
-                    try? await server.session.library.addToList(listId: myList.id, workId: work.id)
-                }
-            }
+            server.session.library.marks.setOnList(listId: myList.id, workId: work.id, on: !onMyList)
         } label: {
             Image(systemName: onMyList ? "text.badge.checkmark" : "text.badge.plus")
                 .roundButtonSymbol()
@@ -214,7 +208,7 @@ struct UserStateButtons: View {
         .sensoryFeedback(.success, trigger: onMyList)
         .accessibilityIdentifier("my-list")
         Button {
-            Task { _ = try? await server.session.library.setPlayed(workId: work.id, played: !played) }
+            server.session.library.marks.setPlayed(workId: work.id, played: !played)
         } label: {
             Image(systemName: played ? "checkmark.circle.fill" : "checkmark.circle")
                 .roundButtonSymbol()

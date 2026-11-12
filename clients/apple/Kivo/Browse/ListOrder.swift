@@ -108,12 +108,9 @@ final class ListOrderModel {
         let after = first > 0 ? order[first - 1].id : nil
         sending = Task { [sending, listId, session] in
             await sending?.value
-            do {
-                try await session.library.moveInList(listId: listId, workIds: moved, after: after)
-            } catch {
-                problem = error.problemSentence
-                await load()
-            }
+            guard let failed = try? await session.library.moveInList(listId: listId, workIds: moved, after: after).problemOrNull() else { return }
+            problem = failed.sentence
+            await load()
         }
     }
 

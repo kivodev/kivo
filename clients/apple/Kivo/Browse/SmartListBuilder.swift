@@ -101,17 +101,19 @@ struct SmartListBuilder: View {
         let name = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
         let query = draft.query
         Task {
-            do {
-                if let list {
-                    _ = try await server.session.library.updateList(id: list.id, name: name, query: query)
-                } else {
-                    let made = try await server.session.library.createSmartList(name: name, query: query)
-                    server.navigation.push(made.route)
-                }
-                dismiss()
-            } catch {
-                problem = error.listNameSentence
+            let library = server.session.library
+            let saving: Done<WorkList>? = if let list {
+                try? await library.updateList(id: list.id, name: name, query: query)
+            } else {
+                try? await library.createSmartList(name: name, query: query)
             }
+            guard let saved = saving else { return }
+            if let failed = saved.problemOrNull() {
+                problem = failed.listNameSentence
+                return
+            }
+            if list == nil, let made = saved.getOrNull() { server.navigation.push(made.route) }
+            dismiss()
         }
     }
 }

@@ -86,19 +86,21 @@ struct ChangePasswordView: View {
     private func change() async {
         changing = true
         defer { changing = false }
-        do {
-            try await server.session.account.changePassword(current: current, password: newPassword, signOutOthers: signOutOthers)
+        guard let done = try? await server.session.account.changePassword(current: current, password: newPassword, signOutOthers: signOutOthers)
+        else { return }
+        guard let problem = done.problemOrNull() else {
             dismiss()
-        } catch {
-            failure = nil
-            wrongPassword = false
-            // A wrong current password is the server's refusal of the password, never of the session.
-            if error.problemCode == .wrongPassword || error.problemCode == .invalidCredentials || error.problemStatus == 401 {
-                wrongPassword = true
-                field = .current
-            } else {
-                failure = error.problemSentence
-            }
+            return
+        }
+        failure = nil
+        wrongPassword = false
+        // A wrong current password is the server's refusal of the password, never of the session.
+        let unauthorized = problem is RequestProblem.SignedOut || (problem as? RequestProblem.Refused)?.status == 401
+        if problem.knownCode == .wrongPassword || problem.knownCode == .invalidCredentials || unauthorized {
+            wrongPassword = true
+            field = .current
+        } else {
+            failure = problem.sentence
         }
     }
 }

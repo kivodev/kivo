@@ -57,7 +57,7 @@ import com.mmcdole.kivo.android.mobile.ui.ActionLabel
 import com.mmcdole.kivo.android.mobile.ui.display
 import com.mmcdole.kivo.api.models.DownloadOption
 import com.mmcdole.kivo.core.display.size
-import com.mmcdole.kivo.core.downloads.DownloadRefusedException
+import com.mmcdole.kivo.core.downloads.DownloadStart
 import com.mmcdole.kivo.core.downloads.DownloadStatus
 import com.mmcdole.kivo.core.downloads.downloadProblem
 import com.mmcdole.kivo.core.downloads.downloadQuality
@@ -97,7 +97,7 @@ fun DownloadButton(state: DownloadUiState, book: Boolean, actions: DownloadActio
             .clickable(enabled = !state.asking) {
                 when {
                     item != null -> sheet = true
-                    estimate != null && !estimate.playable -> refused = estimate.reason?.let { display.reason(it) } ?: display.downloadProblem(DownloadRefusedException(DownloadStatus.NOT_PLAYABLE))
+                    estimate != null && !estimate.playable -> refused = estimate.reason?.let { display.reason(it) } ?: display.downloadProblem(DownloadStart.Refused(DownloadStatus.NOT_PLAYABLE))
                     book -> {
                         ask()
                         actions.download(null)

@@ -282,8 +282,8 @@ private struct DownloadDeletionDialog: ViewModifier {
         ) { deletion in
             Button(String(localized: "Delete"), role: .destructive) {
                 deleted()
-                // Downloads that can't be deleted stay in the list.
-                Task { try? await server.session.downloads?.delete(ids: deletion.ids) }
+                // Downloads that can't be deleted stay in the list, and the app says why.
+                Task { server.tell(try? await server.session.downloads?.delete(ids: deletion.ids)) }
             }
             .accessibilityIdentifier("download-delete-confirm")
         }
@@ -444,8 +444,8 @@ struct DownloadRow: View {
         }
         .swipeActions(edge: .trailing) {
             Button(role: .destructive) {
-                // A download that can't be deleted stays in the list.
-                Task { try? await server.session.downloads?.delete(id: item.id) }
+                // A download that can't be deleted stays in the list, and the app says why.
+                Task { server.tell(try? await server.session.downloads?.delete(id: item.id)) }
             } label: {
                 Label(String(localized: "Delete"), systemImage: "trash")
             }
@@ -488,11 +488,14 @@ struct DownloadRow: View {
                     pause
                 case .paused:
                     ring("arrow.down", label: String(localized: "Resume download"), id: "download-resume") {
-                        try await server.session.downloads?.resume(id: item.id)
+                        try await server.session.downloads?.resume(id: item.id).problemOrNull()?.sentence
                     }
                 case .failed:
                     Button {
-                        act { try await server.session.downloads?.retry(id: item.id) }
+                        act { [server] in
+                            guard let start = try await server.session.downloads?.retry(id: item.id) else { return nil }
+                            return server.display.downloadProblem(start: start)
+                        }
                     } label: {
                         Image(systemName: "arrow.clockwise")
                             .font(.system(size: 13, weight: .bold))
@@ -517,12 +520,12 @@ struct DownloadRow: View {
 
     private var pause: some View {
         ring("pause.fill", label: String(localized: "Pause download"), id: "download-pause") {
-            try await server.session.downloads?.pause(id: item.id)
+            try await server.session.downloads?.pause(id: item.id).problemOrNull()?.sentence
         }
     }
 
     /// The row's ring as a button, with [symbol] in its middle.
-    private func ring(_ symbol: String, label: String, id: String, action: @escaping () async throws -> Void) -> some View {
+    private func ring(_ symbol: String, label: String, id: String, action: @escaping () async throws -> String?) -> some View {
         Button {
             act(action)
         } label: {
@@ -546,13 +549,10 @@ struct DownloadRow: View {
         }
     }
 
-    private func act(_ action: @escaping () async throws -> Void) {
+    /// Runs [action], showing the problem it words, when there's one.
+    private func act(_ action: @escaping () async throws -> String?) {
         Task {
-            do {
-                try await action()
-            } catch {
-                problem = error.downloadSentence
-            }
+            if let sentence = try? await action() { problem = sentence }
         }
     }
 }
