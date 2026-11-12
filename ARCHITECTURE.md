@@ -277,7 +277,6 @@ clients/
   tokens/              generators from tokens.json to Compose and SwiftUI themes
   benchmark/           Android performance benchmarks
 docs/
-  decisions/           architecture decision records
   checklists/          manual release checklists for Safari and TVs
   reverse-proxy.md     running behind a reverse proxy
   reset-password.md    resetting a password from the command line

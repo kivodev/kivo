@@ -177,22 +177,38 @@ func checkCycles(files []goFile) []violation {
 
 // goFile is one non-test Go file under the internal directory. It holds the
 // file's path and package directory, relative to the internal directory,
-// and its import paths.
+// its import paths, and the lines that call time.Now.
 type goFile struct {
 	Path, Pkg string
 	Imports   []string
+	Now       []int
 }
 
-// readFiles parses the imports of every non-test Go file under internalDir.
-// Test files may import anything, since they use other packages' test
-// helpers.
+// readFiles parses every non-test Go file under internalDir. Test files
+// may import anything, since they use other packages' test helpers.
 func readFiles(internalDir string) ([]goFile, error) {
 	var out []goFile
-	err := walkGo(internalDir, parser.ImportsOnly, func(rel string, _ *token.FileSet, f *ast.File) {
+	err := walkGo(internalDir, 0, func(rel string, fset *token.FileSet, f *ast.File) {
 		gf := goFile{Path: rel, Pkg: path.Dir(rel)}
+		clock := ""
 		for _, imp := range f.Imports {
-			gf.Imports = append(gf.Imports, strings.Trim(imp.Path.Value, `"`))
+			p := strings.Trim(imp.Path.Value, `"`)
+			gf.Imports = append(gf.Imports, p)
+			if p == "time" {
+				clock = "time"
+				if imp.Name != nil {
+					clock = imp.Name.Name
+				}
+			}
 		}
+		ast.Inspect(f, func(n ast.Node) bool {
+			if sel, ok := n.(*ast.SelectorExpr); ok && sel.Sel.Name == "Now" {
+				if x, ok := sel.X.(*ast.Ident); ok && clock != "" && x.Name == clock {
+					gf.Now = append(gf.Now, fset.Position(sel.Pos()).Line)
+				}
+			}
+			return true
+		})
 		out = append(out, gf)
 	})
 	return out, err
@@ -305,8 +321,8 @@ func checkSubpackages(files []goFile) []violation {
 }
 
 // checkPure reports files of a pure package that import an internal
-// package outside its list, or an impure standard package or one under it.
-// It also reports pure packages with no files.
+// package outside its list, or an impure standard package or one under it,
+// or that read the clock. It also reports pure packages with no files.
 func checkPure(files []goFile, pure map[string][]string) []violation {
 	var out []violation
 	seen := map[string]bool{}
@@ -322,6 +338,9 @@ func checkPure(files []goFile, pure map[string][]string) []violation {
 				slices.ContainsFunc(impure, func(p string) bool { return imp == p || strings.HasPrefix(imp, p+"/") }) {
 				out = append(out, violation{f.Path, fmt.Sprintf("pure package %s may not import %s", f.Pkg, imp)})
 			}
+		}
+		for _, line := range f.Now {
+			out = append(out, violation{f.Path, fmt.Sprintf("pure package %s may not call time.Now, at line %d", f.Pkg, line)})
 		}
 	}
 	for _, p := range slices.Sorted(maps.Keys(pure)) {

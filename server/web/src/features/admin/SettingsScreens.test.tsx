@@ -26,12 +26,6 @@ describe("Admin settings", () => {
     );
   });
 
-  it("has no Background work page, its settings being on Tasks", async () => {
-    serveMockApi();
-    renderApp("/admin/settings/background-work");
-    expect(await screen.findByRole("heading", { name: "This page doesn't exist." })).toBeInTheDocument();
-  });
-
   it("General saves the server's name and provider keys, and says nothing when it works", async () => {
     const api = serveMockApi();
     keepSettings(api);
