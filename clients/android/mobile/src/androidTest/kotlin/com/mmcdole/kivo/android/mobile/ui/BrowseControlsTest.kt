@@ -73,7 +73,7 @@ class BrowseControlsTest {
     fun talkBackReadsACardsTitleLineAndProgressAsOne() {
         val work = WorkSummary(
             id = "m1", kind = WorkKind.Movie, title = "Charade", matchState = MatchState.Matched, available = true, images = WorkImages(), year = 1963,
-            durationMs = 100_000, userState = UserState(played = false, playCount = 0, positionMs = 30_000),
+            durationMs = 100_000, userState = UserState(played = false, positionMs = 30_000),
         )
         rule.setContent { KivoMobileTheme { WorkCard(work, CardShape.Poster, 116.dp, onClick = {}, onLongClick = null) } }
         rule.onNodeWithTag("card:Charade").assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf("Charade, 1963, 30% watched")))
@@ -84,7 +84,7 @@ class BrowseControlsTest {
     fun aLongPressOpensTheCardsActionsAndOneRunsOnTheWork() {
         val work = WorkSummary(
             id = "m1", kind = WorkKind.Movie, title = "Charade", matchState = MatchState.Matched, available = true, images = WorkImages(),
-            durationMs = 100_000, userState = UserState(played = false, playCount = 0, positionMs = 30_000),
+            durationMs = 100_000, userState = UserState(played = false, positionMs = 30_000),
         )
         val done = mutableListOf<Pair<WorkAction, String>>()
         rule.setContent {

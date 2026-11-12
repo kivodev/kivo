@@ -36,7 +36,6 @@ import kotlinx.serialization.encoding.*
  * @param id A UUIDv7.
  * @param libraries 
  * @param limits 
- * @param createdBy The username of the admin who created it.
  * @param createdAt 
  * @param expiresAt 
  * @param token Only in the response that created the invite.
@@ -51,9 +50,6 @@ data class Invite (
     @SerialName(value = "libraries") @Required val libraries: LibraryAccess,
 
     @SerialName(value = "limits") @Required val limits: UserLimits,
-
-    /* The username of the admin who created it. */
-    @SerialName(value = "createdBy") @Required val createdBy: kotlin.String,
 
     @SerialName(value = "createdAt") @Required val createdAt: kotlin.time.Instant,
 

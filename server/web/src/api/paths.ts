@@ -8,8 +8,6 @@ import type { paths } from "./schema";
  * renamed route fails to compile.
  */
 export const apiPaths = {
-  setup: "/api/v1/setup",
-  currentUser: "/api/v1/users/me",
   sessions: "/api/v1/sessions",
   libraries: "/api/v1/libraries",
   library: "/api/v1/libraries/{id}",

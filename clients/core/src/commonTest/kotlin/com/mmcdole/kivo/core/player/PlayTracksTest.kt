@@ -10,9 +10,7 @@ import com.mmcdole.kivo.api.models.TrackType
 import com.mmcdole.kivo.core.kivoJson
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 private fun play(vararg tracks: PlayTrack) = PlayStarted(
     id = "p1", workId = "w1", versionId = "v1", startMs = 0, durationMs = 1, local = true,
@@ -72,23 +70,5 @@ class PlayTracksTest {
         assertEquals(TrackShow.Burned, PlayTracks.show(burned, "t1"))
         assertEquals(TrackShow.NewPlay, PlayTracks.show(burned, "t2"))
         assertEquals(TrackShow.NewPlay, PlayTracks.show(burned, SUBTITLES_OFF))
-    }
-}
-
-class PictureInPictureTest {
-    @Test
-    fun enteringTakesANewPlayOnlyForASubtitleFileTheAppDraws() {
-        assertTrue(PictureInPicture.enteringNeedsNewPlay(stream, "t2"))
-        assertFalse(PictureInPicture.enteringNeedsNewPlay(stream, "t3"), "streamed: the player shows it there")
-        assertFalse(PictureInPicture.enteringNeedsNewPlay(stream, "t4"), "read from the file by the player")
-        assertFalse(PictureInPicture.enteringNeedsNewPlay(stream, SUBTITLES_OFF))
-        assertFalse(PictureInPicture.enteringNeedsNewPlay(play(PlayTrack("t1", TrackType.Subtitle, selected = true, delivery = TrackDelivery.Burn)), "t1"))
-    }
-
-    @Test
-    fun leavingTakesANewPlayOnlyWhenThePlayBurnedTheSubtitleIn() {
-        assertTrue(PictureInPicture.leavingNeedsNewPlay(play(PlayTrack("t1", TrackType.Subtitle, selected = true, delivery = TrackDelivery.Burn)), "t1"))
-        assertFalse(PictureInPicture.leavingNeedsNewPlay(stream, "t3"))
-        assertFalse(PictureInPicture.leavingNeedsNewPlay(stream, SUBTITLES_OFF))
     }
 }

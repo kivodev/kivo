@@ -162,12 +162,6 @@ func addOverviews(ctx context.Context, tx *sql.Tx, vw viewer, season id.ID, item
 // API's.
 type CollectionSource string
 
-// Collection sources.
-const (
-	FromProvider CollectionSource = "provider" // a movie collection
-	FromFolder   CollectionSource = "folder"   // a videos library's folder
-)
-
 // Collection is a movie collection or a videos library's folder.
 type Collection struct {
 	ID     id.ID

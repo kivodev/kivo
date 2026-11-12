@@ -34,7 +34,7 @@ fun WorkDetail.summary(): WorkSummary = WorkSummary(
  * lists versions in order and plays this same version when a play names
  * none.
  */
-fun WorkDetail.defaultVersion(): Version? = versions.firstOrNull { it.id == userState?.versionId } ?: versions.firstOrNull()
+internal fun WorkDetail.defaultVersion(): Version? = versions.firstOrNull { it.id == userState?.versionId } ?: versions.firstOrNull()
 
 /** The version [versionId] names, else the [defaultVersion]. */
 fun WorkDetail.selectedVersion(versionId: String?): Version? = versions.firstOrNull { it.id == versionId } ?: defaultVersion()

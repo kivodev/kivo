@@ -217,7 +217,7 @@ class KivoSession internal constructor(
 
     /** Returns once this app is signed out: by the user, a `401`, or the live events closing with 4401. */
     @Throws(Exception::class)
-    suspend fun awaitSignOut() {
+    internal suspend fun awaitSignOut() {
         connection.signedIn.first { !it }
     }
 
@@ -231,7 +231,7 @@ class KivoSession internal constructor(
      * stops playing, while none plays.
      */
     @Throws(Exception::class)
-    suspend fun runLiveEvents() = coroutineScope {
+    internal suspend fun runLiveEvents() = coroutineScope {
         val downloads = core.downloads?.let { d -> launch { invalidations.collect { d.invalidated(it) } } }
         val user = launch { userSettings.refreshOn(invalidations) }
         val info = launch {

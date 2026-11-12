@@ -35,7 +35,7 @@ class BookChapters(chapters: List<Chapter>, partDurationsMs: List<Long>) {
     val count: Int get() = list.size
 
     /** The index of the chapter at a position: the last to start at or before it. */
-    fun indexAt(positionMs: Long): Int = list.indexOfLast { it.startMs <= positionMs }.coerceAtLeast(0)
+    internal fun indexAt(positionMs: Long): Int = list.indexOfLast { it.startMs <= positionMs }.coerceAtLeast(0)
 
     /** Where a chapter starts. */
     fun startMs(index: Int): Long = list[index.coerceIn(0, list.lastIndex)].startMs.toLong()
@@ -47,14 +47,14 @@ class BookChapters(chapters: List<Chapter>, partDurationsMs: List<Long>) {
     }
 
     /** Where Previous goes: the chapter's start, or the start of the chapter before within 3 seconds of it. */
-    fun previousMs(positionMs: Long): Long {
+    internal fun previousMs(positionMs: Long): Long {
         val i = indexAt(positionMs)
         val start = startMs(i)
         return if (positionMs - start > RESTART_WITHIN_MS || i == 0) start else startMs(i - 1)
     }
 
     /** Where Next goes: the next chapter's start; null in the last. */
-    fun nextMs(positionMs: Long): Long? = list.getOrNull(indexAt(positionMs) + 1)?.startMs?.toLong()
+    internal fun nextMs(positionMs: Long): Long? = list.getOrNull(indexAt(positionMs) + 1)?.startMs?.toLong()
 
     /** Where a position is in its chapter and in the book, for the seek bar, the progress line and the time left. */
     fun progress(positionMs: Long): BookProgress {
@@ -98,8 +98,6 @@ data class BookProgress(
     /** Whether there's a chapter after this one, for Next. */
     val hasNext: Boolean,
 ) {
-    val chapterRemainingMs: Long get() = chapterDurationMs - chapterElapsedMs
-
     /** How far through the chapter, 0 to 1. */
     val chapterFraction: Double get() = if (chapterDurationMs > 0) chapterElapsedMs.toDouble() / chapterDurationMs else 0.0
 

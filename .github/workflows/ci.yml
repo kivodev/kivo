@@ -73,7 +73,6 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: server/web/package-lock.json
-      # TODO: Playwright against the real server and the test corpus.
       - run: make web
       # Unused code, import cycles and duplicated lines in the web client, each
       # held at its ceiling in server/ceilings.mk.

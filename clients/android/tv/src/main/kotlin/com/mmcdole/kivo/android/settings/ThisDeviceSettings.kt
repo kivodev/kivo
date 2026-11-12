@@ -21,6 +21,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.Text
 import com.mmcdole.kivo.android.tv.R
 import com.mmcdole.kivo.android.ServerSession
+import com.mmcdole.kivo.android.quietly
 import com.mmcdole.kivo.android.theme.Kivo
 import com.mmcdole.kivo.android.theme.TvType
 import com.mmcdole.kivo.android.ui.Choice
@@ -78,16 +79,6 @@ class QualityViewModel(private val session: ServerSession) : ViewModel() {
     init {
         viewModelScope.launch { quietly { rungs = session.session.playback.qualityLadder() } }
         viewModelScope.launch { quietly { remoteCapBps = session.session.account.currentUser().limits.remoteQualityCapBps } }
-    }
-}
-
-private suspend fun quietly(call: suspend () -> Unit) {
-    try {
-        call()
-    } catch (e: CancellationException) {
-        throw e
-    } catch (_: Exception) {
-        // The page shows what it has without it.
     }
 }
 

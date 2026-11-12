@@ -32,17 +32,13 @@ import kotlinx.serialization.encoding.*
  * 
  *
  * @param enabled Whether the play boosts its dialogue.
- * @param cost What the boost changes besides the dialogue, the same whether it's on or off. Absent when nothing.
  */
 @Serializable
 
 data class DialogueBoost (
 
     /* Whether the play boosts its dialogue. */
-    @SerialName(value = "enabled") @Required val enabled: kotlin.Boolean,
-
-    /* What the boost changes besides the dialogue, the same whether it's on or off. Absent when nothing. */
-    @SerialName(value = "cost") val cost: kotlin.String? = null
+    @SerialName(value = "enabled") @Required val enabled: kotlin.Boolean
 
 ) {
 

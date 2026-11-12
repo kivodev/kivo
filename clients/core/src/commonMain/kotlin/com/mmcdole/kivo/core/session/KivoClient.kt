@@ -326,7 +326,7 @@ class KivoClient internal constructor(
 
     /** The last server signed in to that this device still holds a session for; null when there's none. */
     @Throws(Exception::class)
-    suspend fun lastSignedIn(): SavedServer? =
+    internal suspend fun lastSignedIn(): SavedServer? =
         savedServers().lastOrNull { ServerConnection.holdsSession(device.secureStore, it.id) }
 
     /**
@@ -371,8 +371,7 @@ class KivoClient internal constructor(
         val connection = connection(found.info.id, found.baseUrl)
         val states = SignIn(connection, name, clientId()).link().map { state ->
             when (state) {
-                is LinkState.Waiting ->
-                    LinkProgress.Waiting(state.code, state.linkUrl, state.expiresAt.toEpochMilliseconds())
+                is LinkState.Waiting -> LinkProgress.Waiting(state.code, state.linkUrl)
                 is LinkState.SignedIn -> LinkProgress.SignedIn(session(found, connection))
                 LinkState.Denied -> LinkProgress.Denied
                 LinkState.Expired -> LinkProgress.Expired
@@ -455,8 +454,8 @@ private val REACH_RETRY = 1500.milliseconds
 
 /** Where signing in by linking is ([KivoClient.signInByLink]). */
 sealed interface LinkProgress {
-    /** Show [code], and [linkUrl] as a QR code, until [expiresAtEpochMs]. */
-    data class Waiting(val code: String, val linkUrl: String, val expiresAtEpochMs: Long) : LinkProgress
+    /** Show [code], and [linkUrl] as a QR code, until someone answers it. */
+    data class Waiting(val code: String, val linkUrl: String) : LinkProgress
 
     /** Approved: the app is signed in, as [session]. */
     data class SignedIn(val session: KivoSession) : LinkProgress

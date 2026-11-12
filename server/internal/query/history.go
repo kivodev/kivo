@@ -15,13 +15,13 @@ const historyLimit = 50
 
 // PlayEvent is one recorded play of a work, for the watch history pages.
 type PlayEvent struct {
-	ID             id.ID
-	Work           WorkSummary
-	User           id.ID
-	Username       string // who played it
-	Started, Ended time.Time
-	Position       time.Duration // where it stopped
-	Completed      bool          // whether the play reached the played threshold
+	ID        id.ID
+	Work      WorkSummary
+	User      id.ID
+	Username  string // who played it
+	Started   time.Time
+	Position  time.Duration // where it stopped
+	Completed bool          // whether the play reached the played threshold
 }
 
 // History lists the Viewer's own plays, newest first. Plays of works the
@@ -50,7 +50,7 @@ func (s *Service) UserHistory(ctx context.Context, v users.Viewer, user id.ID, a
 
 // plays lists one user's plays: those of @player.
 var plays = stmt("History", `
-SELECT e.id, e.work_id, e.user_id, u.username, e.started_at, e.ended_at, e.position_ms, e.completed
+SELECT e.id, e.work_id, e.user_id, u.username, e.started_at, e.position_ms, e.completed
 FROM play_event e
 JOIN work w ON w.id = e.work_id
 JOIN user u ON u.id = e.user_id
@@ -63,7 +63,7 @@ LIMIT @limit`)
 
 // serverPlays lists every user's plays, for the server-wide history.
 var serverPlays = stmt("ServerHistory", `
-SELECT e.id, e.work_id, e.user_id, u.username, e.started_at, e.ended_at, e.position_ms, e.completed
+SELECT e.id, e.work_id, e.user_id, u.username, e.started_at, e.position_ms, e.completed
 FROM play_event e
 JOIN work w ON w.id = e.work_id
 JOIN user u ON u.id = e.user_id
@@ -100,14 +100,14 @@ func (s *Service) history(ctx context.Context, vw viewer, user id.ID, after Curs
 	err = s.db.Read(ctx, func(tx *sql.Tx) error {
 		type play struct {
 			PlayEvent
-			work               id.ID
-			startedAt, endedAt int64
-			positionMs         int64
+			work       id.ID
+			startedAt  int64
+			positionMs int64
 		}
 		rows, err := rowsOf(ctx, tx, st, vw.args(sql.Named("player", user),
 			sql.Named("after_n", pos.N[0]), sql.Named("after_id", pos.ID[:]), sql.Named("limit", limit+1)),
 			func(r scanner, p *play) error {
-				return r.Scan(&p.ID, &p.work, &p.User, &p.Username, &p.startedAt, &p.endedAt, &p.positionMs, &p.Completed)
+				return r.Scan(&p.ID, &p.work, &p.User, &p.Username, &p.startedAt, &p.positionMs, &p.Completed)
 			})
 		if err != nil {
 			return err
@@ -122,7 +122,7 @@ func (s *Service) history(ctx context.Context, vw viewer, user id.ID, after Curs
 				works[r.work] = c
 			}
 			p := r.PlayEvent
-			p.Work, p.Started, p.Ended = c, time.UnixMilli(r.startedAt).UTC(), time.UnixMilli(r.endedAt).UTC()
+			p.Work, p.Started = c, time.UnixMilli(r.startedAt).UTC()
 			p.Position = time.Duration(r.positionMs) * time.Millisecond
 			items = append(items, p)
 		}

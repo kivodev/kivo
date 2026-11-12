@@ -135,7 +135,7 @@ class CastTest {
              "tracks":[{"trackId":"t0","type":"video","selected":true,"delivery":"stream"},
                        {"trackId":"s1","type":"subtitle","delivery":"stream","codec":"webvtt"},{"trackId":"s2","type":"subtitle"},
                        {"trackId":"off","type":"subtitle","selected":true,"delivery":"none"}],
-             "quality":{"mode":"auto"},"dialogueBoost":{"enabled":true,"cost":"audioAsAac"},
+             "quality":{"mode":"auto"},"dialogueBoost":{"enabled":true},
              "audioTrackId":"a1","local":true,
              "upNext":{"phase":"countingDown","secondsLeft":7}}
             """,
@@ -148,8 +148,6 @@ class CastTest {
         assertEquals(true, status.dialogueBoost?.enabled)
         assertEquals("a1", status.audioTrackId)
         assertEquals(SUBTITLES_OFF, status.subtitleTrackId)
-        assertFalse(status.startsNewPlay("s1"), "streamed: shown at once")
-        assertTrue(status.startsNewPlay("s2"))
         assertEquals(true, status.local)
         assertEquals(UpNext(UpNextPhase.CountingDown, 7), status.upNext)
         assertTrue(status.playing)

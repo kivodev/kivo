@@ -120,7 +120,7 @@ func summary(c query.WorkSummary) gen.WorkSummary {
 			SeriesID: c.Root, SeriesTitle: c.SeriesTitle, SeasonID: opt(c.Parent), Overview: opt(c.Overview),
 		}
 	case catalog.KindExtra:
-		w.Extra = &gen.ExtraInfo{Type: extraType(c.ExtraType), ParentID: opt(c.Parent)}
+		w.Extra = &gen.ExtraInfo{Type: extraType(c.ExtraType)}
 	case catalog.KindBook:
 		w.Book = bookInfo(c.Book)
 	}
@@ -192,8 +192,7 @@ func letterStarts(letters []query.Letter) *[]gen.LetterStart {
 
 func userState(st query.Userstate) gen.UserState {
 	return gen.UserState{
-		Played: st.Played, PlayCount: st.PlayCount,
-		PositionMs: opt(ms(st.Position)), VersionID: opt(st.Version), LastPlayedAt: optTime(st.LastPlayed),
+		Played: st.Played, PositionMs: opt(ms(st.Position)), VersionID: opt(st.Version), LastPlayedAt: optTime(st.LastPlayed),
 	}
 }
 

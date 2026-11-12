@@ -300,12 +300,12 @@ const (
 // book, can only be played directly. For a download, direct stream and
 // transcode produce a conversion to MP4 rather than HLS. It then says how
 // each other choice would show during the play. For a play that can boost
-// its dialogue, the decision says what the boost changes. Decide is a pure
+// its dialogue, the decision says whether it does. Decide is a pure
 // function, with no I/O and no clock.
 func Decide(in Input) Decision {
 	d := decide(in)
 	if d.Playable && in.boostable() {
-		d.DialogueBoost = dialogueBoost(in, d)
+		d.DialogueBoost = &DialogueBoost{Enabled: in.DialogueBoost}
 	}
 	return d
 }

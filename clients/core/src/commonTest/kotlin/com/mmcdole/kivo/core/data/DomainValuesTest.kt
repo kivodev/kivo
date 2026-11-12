@@ -2,7 +2,6 @@ package com.mmcdole.kivo.core.data
 
 import com.mmcdole.kivo.api.models.Credit
 import com.mmcdole.kivo.api.models.PersonSummary
-import com.mmcdole.kivo.api.models.Resolution
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -16,7 +15,6 @@ class DomainValuesTest {
         )
         assertEquals(listOf("unplayed", "inProgress", "played"), WorkPlayState.entries.map { it.value })
         assertEquals(listOf("hdr", "dolbyVision"), DynamicRange.entries.map { it.value })
-        assertEquals(listOf("4k", "1080p", "720p", "sd", ""), Resolution.entries.map { it.value })
     }
 
     @Test

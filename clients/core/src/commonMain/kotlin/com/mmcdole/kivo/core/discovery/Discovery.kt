@@ -81,7 +81,7 @@ internal class Discovery(
  * The base URL of a resolved service: its host and port, `https` when its
  * TXT record says `tls=1`, and its TXT record's `path`.
  */
-fun serviceUrl(host: String, port: Int, tls: Boolean, path: String): String {
+internal fun serviceUrl(host: String, port: Int, tls: Boolean, path: String): String {
     val bracketed = if (':' in host && !host.startsWith("[")) "[${host.substringBefore('%')}]" else host
     return "${if (tls) "https" else "http"}://$bracketed:$port${path.trimEnd('/')}"
 }

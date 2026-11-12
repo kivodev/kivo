@@ -6,7 +6,7 @@ DEADCODE_MAX     := 0
 # Groups of Go clones of 50 tokens or more (dupl -t 50).
 DUPL_MAX         := 28
 # Go functions with a cognitive complexity over 20 (gocognit).
-GOCOGNIT_MAX     := 53
+GOCOGNIT_MAX     := 52
 # api handlers, the operations' and the media routes', with a cognitive
 # complexity over 15 (gocognit): past that, the logic belongs in a service.
 API_HANDLERS_MAX := 0

@@ -107,19 +107,14 @@ func (q *Queries) FirstAuthor(ctx context.Context, workID id.ID) (string, error)
 
 const getBook = `-- name: GetBook :one
 
-SELECT work_id, subtitle, language, abridged FROM book WHERE work_id = ?1
+SELECT work_id, subtitle, language FROM book WHERE work_id = ?1
 `
 
 // Books: the book side table, authors and narrators, and series.
 func (q *Queries) GetBook(ctx context.Context, workID id.ID) (Book, error) {
 	row := q.db.QueryRowContext(ctx, getBook, workID)
 	var i Book
-	err := row.Scan(
-		&i.WorkID,
-		&i.Subtitle,
-		&i.Language,
-		&i.Abridged,
-	)
+	err := row.Scan(&i.WorkID, &i.Subtitle, &i.Language)
 	return i, err
 }
 
@@ -347,25 +342,19 @@ func (q *Queries) PersonWorks(ctx context.Context, personID id.ID) ([]PersonWork
 }
 
 const putBook = `-- name: PutBook :exec
-INSERT INTO book (work_id, subtitle, language, abridged)
-VALUES (?1, ?2, ?3, ?4)
-ON CONFLICT (work_id) DO UPDATE SET subtitle = excluded.subtitle, language = excluded.language, abridged = excluded.abridged
+INSERT INTO book (work_id, subtitle, language)
+VALUES (?1, ?2, ?3)
+ON CONFLICT (work_id) DO UPDATE SET subtitle = excluded.subtitle, language = excluded.language
 `
 
 type PutBookParams struct {
 	WorkID   id.ID
 	Subtitle sql.NullString
 	Language sql.NullString
-	Abridged sql.NullBool
 }
 
 func (q *Queries) PutBook(ctx context.Context, arg PutBookParams) error {
-	_, err := q.db.ExecContext(ctx, putBook,
-		arg.WorkID,
-		arg.Subtitle,
-		arg.Language,
-		arg.Abridged,
-	)
+	_, err := q.db.ExecContext(ctx, putBook, arg.WorkID, arg.Subtitle, arg.Language)
 	return err
 }
 

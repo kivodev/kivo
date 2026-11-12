@@ -4210,22 +4210,14 @@ components:
 
     AcceleratorEncoder:
       type: object
-      required: [codec, gop]
+      required: [codec]
       properties:
         codec: {$ref: "#/components/schemas/EncoderCodec"}
-        gop: {$ref: "#/components/schemas/KeyframePlacement"}
 
     EncoderCodec:
       type: string
       description: A video codec the server encodes.
       enum: [h264, hevc]
-
-    KeyframePlacement:
-      type: string
-      description: |
-        How keyframes meet the segment grid: `grid` is forced on it, and
-        `fixed` is a fixed GOP of one segment, where forcing isn't honored.
-      enum: [grid, fixed]
 
     AcceleratorFormat:
       type: object
@@ -4659,14 +4651,11 @@ components:
     Invite:
       type: object
       description: A pending invite link.
-      required: [id, libraries, limits, createdBy, createdAt, expiresAt]
+      required: [id, libraries, limits, createdAt, expiresAt]
       properties:
         id: {$ref: "#/components/schemas/ID"}
         libraries: {$ref: "#/components/schemas/LibraryAccess"}
         limits: {$ref: "#/components/schemas/UserLimits"}
-        createdBy:
-          type: string
-          description: The username of the admin who created it.
         createdAt: {type: string, format: date-time}
         expiresAt: {type: string, format: date-time}
         token:
@@ -5439,10 +5428,9 @@ components:
     UserState:
       type: object
       description: The user's state for a work. For a series or season, `played` means every episode is.
-      required: [played, playCount]
+      required: [played]
       properties:
         played: {type: boolean}
-        playCount: {type: integer}
         positionMs:
           type: integer
           description: The resume position, when in progress.
@@ -5566,9 +5554,6 @@ components:
       required: [type]
       properties:
         type: {$ref: "#/components/schemas/ExtraType"}
-        parentId:
-          $ref: "#/components/schemas/ID"
-          description: The movie, series or season it belongs to.
 
     ExtraType:
       type: string
@@ -5653,9 +5638,6 @@ components:
         language:
           type: string
           description: Detail only, as its source gives it.
-        abridged:
-          type: boolean
-          description: Detail only; absent when unknown.
         releaseDate:
           type: string
           description: Detail only. `YYYY`, `YYYY-MM` or `YYYY-MM-DD`.
@@ -6455,7 +6437,7 @@ components:
 
     MediaFile:
       type: object
-      required: [id, libraryId, path, sizeBytes, modifiedAt, status, tracks]
+      required: [id, libraryId, path, sizeBytes, status, tracks]
       properties:
         id: {$ref: "#/components/schemas/ID"}
         libraryId: {$ref: "#/components/schemas/ID"}
@@ -6463,7 +6445,6 @@ components:
           type: string
           description: Absolute, as last seen.
         sizeBytes: {type: integer, format: int64}
-        modifiedAt: {type: string, format: date-time}
         status: {$ref: "#/components/schemas/MediaFileStatus"}
         goneAt:
           type: string
@@ -7268,19 +7249,6 @@ components:
         enabled:
           type: boolean
           description: Whether the play boosts its dialogue.
-        cost:
-          $ref: "#/components/schemas/DialogueBoostCost"
-          description: What the boost changes besides the dialogue, the same whether it's on or off. Absent when nothing.
-
-    DialogueBoostCost:
-      type: string
-      description: |
-        What a dialogue boost changes about a play besides the dialogue:
-        `audioAsAac` audio played in its own format, directly or passed
-        through to a receiver, is encoded to AAC; `videoTranscode` the video,
-        which can't be copied into a stream, is encoded too. Clients show
-        it beside the switch, in words from the shared display tables.
-      enum: [audioAsAac, videoTranscode]
 
     PlayPart:
       type: object
@@ -7630,14 +7598,13 @@ components:
     PlayEvent:
       type: object
       description: One play of a work, from start to stop.
-      required: [id, work, userId, username, startedAt, endedAt, positionMs, completed]
+      required: [id, work, userId, username, startedAt, positionMs, completed]
       properties:
         id: {$ref: "#/components/schemas/ID"}
         work: {$ref: "#/components/schemas/WorkSummary"}
         userId: {$ref: "#/components/schemas/ID"}
         username: {type: string}
         startedAt: {type: string, format: date-time}
-        endedAt: {type: string, format: date-time}
         positionMs:
           type: integer
           description: Where playback stopped.

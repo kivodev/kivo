@@ -32,17 +32,13 @@ import kotlinx.serialization.encoding.*
  * 
  *
  * @param codec A video codec the server encodes.
- * @param gop How keyframes meet the segment grid: `grid` is forced on it, and `fixed` is a fixed GOP of one segment, where forcing isn't honored. 
  */
 @Serializable
 
 data class AcceleratorEncoder (
 
     /* A video codec the server encodes. */
-    @SerialName(value = "codec") @Required val codec: kotlin.String,
-
-    /* How keyframes meet the segment grid: `grid` is forced on it, and `fixed` is a fixed GOP of one segment, where forcing isn't honored.  */
-    @SerialName(value = "gop") @Required val gop: kotlin.String
+    @SerialName(value = "codec") @Required val codec: kotlin.String
 
 ) {
 

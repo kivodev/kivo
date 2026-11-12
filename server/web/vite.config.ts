@@ -287,7 +287,6 @@ export default defineConfig({
   resolve: {
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)), "@shared": shared },
   },
-  publicDir: "public",
   server: {
     proxy: { "/api": { target: kivoUrl, ws: true } },
     fs: { allow: [".", shared] },
@@ -298,7 +297,6 @@ export default defineConfig({
     // Chromium 120 per Samsung's web engine spec, so 108 covers both. CSS is
     // not downlevelled.
     ...(tv ? { target: "chrome108", cssTarget: "chrome108" } : {}),
-    assetsDir: "assets",
     // hls.js, about 575 kB and loaded only for an HLS play, is the largest chunk.
     chunkSizeWarningLimit: 600,
     rolldownOptions: {

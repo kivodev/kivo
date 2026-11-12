@@ -4,9 +4,9 @@
 SELECT * FROM book WHERE work_id = @work_id;
 
 -- name: PutBook :exec
-INSERT INTO book (work_id, subtitle, language, abridged)
-VALUES (@work_id, @subtitle, @language, @abridged)
-ON CONFLICT (work_id) DO UPDATE SET subtitle = excluded.subtitle, language = excluded.language, abridged = excluded.abridged;
+INSERT INTO book (work_id, subtitle, language)
+VALUES (@work_id, @subtitle, @language)
+ON CONFLICT (work_id) DO UPDATE SET subtitle = excluded.subtitle, language = excluded.language;
 
 -- name: DeleteRoleCredits :exec
 DELETE FROM credit WHERE work_id = @work_id AND role = @role;

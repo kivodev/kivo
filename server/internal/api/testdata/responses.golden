@@ -13,7 +13,6 @@ POST /api/v1/works/query
       "matchState": "matched",
       "title": "Heatwave Seeded",
       "userState": {
-        "playCount": 0,
         "played": false
       },
       "year": 1995
@@ -44,7 +43,6 @@ POST /api/v1/works/query
       "matchState": "matched",
       "title": "Heatwave Seeded",
       "userState": {
-        "playCount": 0,
         "played": false
       },
       "year": 1995
@@ -114,7 +112,6 @@ POST /api/v1/works/query
       "matchState": "matched",
       "title": "Leviathan Wakes",
       "userState": {
-        "playCount": 0,
         "played": false
       }
     }
@@ -207,7 +204,6 @@ GET /api/v1/works/<id8>/children
       },
       "title": "Season 1",
       "userState": {
-        "playCount": 0,
         "played": false
       }
     }
@@ -288,7 +284,6 @@ POST /api/v1/works/query
       "matchState": "matched",
       "title": "Heatwave Seeded",
       "userState": {
-        "playCount": 0,
         "played": false
       },
       "year": 1995
@@ -336,7 +331,6 @@ GET /api/v1/works/<id1>
   "matchState": "matched",
   "title": "Heatwave Seeded",
   "userState": {
-    "playCount": 0,
     "played": false
   },
   "year": 1995,
@@ -432,7 +426,6 @@ GET /api/v1/search?q=hea
       "matchState": "matched",
       "title": "Heatwave Seeded",
       "userState": {
-        "playCount": 0,
         "played": false
       },
       "year": 1995
@@ -466,7 +459,6 @@ PATCH /api/v1/works/<id1>
   "matchState": "matched",
   "title": "Heat",
   "userState": {
-    "playCount": 0,
     "played": false
   },
   "year": 1996,
@@ -564,7 +556,6 @@ PATCH /api/v1/works/<id1>
   "matchState": "matched",
   "title": "Heat",
   "userState": {
-    "playCount": 0,
     "played": false
   },
   "year": 1996,
@@ -680,7 +671,6 @@ PATCH /api/v1/works/<id1>
   "matchState": "matched",
   "title": "Heat",
   "userState": {
-    "playCount": 0,
     "played": false
   },
   "year": 1996,
@@ -778,7 +768,6 @@ PATCH /api/v1/works/<id1>
   "matchState": "matched",
   "title": "Heat",
   "userState": {
-    "playCount": 0,
     "played": false
   },
   "year": 1996,
@@ -968,7 +957,6 @@ PATCH /api/v1/works/<id8>
       "matchState": "matched",
       "title": "Episode 1",
       "userState": {
-        "playCount": 0,
         "played": false
       }
     },
@@ -977,7 +965,6 @@ PATCH /api/v1/works/<id8>
   },
   "title": "Seeded Series",
   "userState": {
-    "playCount": 0,
     "played": false
   },
   "collections": [],
@@ -1015,7 +1002,6 @@ PATCH /api/v1/works/<id19>
   "matchState": "matched",
   "title": "Episode 1",
   "userState": {
-    "playCount": 0,
     "played": false
   },
   "collections": [],
@@ -1093,7 +1079,6 @@ PATCH /api/v1/works/<id5>
   "matchState": "matched",
   "title": "Leviathan Wakes",
   "userState": {
-    "playCount": 0,
     "played": false
   },
   "year": 2011,
@@ -1195,7 +1180,6 @@ PATCH /api/v1/works/<id5>
   "matchState": "matched",
   "title": "Leviathan Wakes",
   "userState": {
-    "playCount": 0,
     "played": false
   },
   "year": 2011,
@@ -1295,7 +1279,6 @@ PATCH /api/v1/works
       "matchState": "matched",
       "title": "Leviathan Wakes",
       "userState": {
-        "playCount": 0,
         "played": false
       },
       "year": 2011
@@ -1325,7 +1308,6 @@ PATCH /api/v1/works
 PATCH /api/v1/works/<id1>/user-state
 200
 {
-  "playCount": 1,
   "played": true
 }
 
@@ -1538,7 +1520,6 @@ POST /api/v1/works/<id5>/match
   "matchState": "matched",
   "title": "Leviathan Wakes",
   "userState": {
-    "playCount": 0,
     "played": false
   },
   "year": 2011,
@@ -2552,7 +2533,6 @@ POST /api/v1/plays
   ],
   "delivery": "file",
   "dialogueBoost": {
-    "cost": "videoTranscode",
     "enabled": false
   },
   "durationMs": 7200000,
@@ -2648,7 +2628,6 @@ POST /api/v1/plays
   ],
   "delivery": "file",
   "dialogueBoost": {
-    "cost": "videoTranscode",
     "enabled": false
   },
   "durationMs": 7200000,
@@ -2834,7 +2813,6 @@ GET /api/v1/plays
         "matchState": "matched",
         "title": "Heat",
         "userState": {
-          "playCount": 1,
           "played": true
         },
         "year": 1996
@@ -2918,7 +2896,6 @@ GET /api/v1/plays
         "matchState": "matched",
         "title": "Heat",
         "userState": {
-          "playCount": 1,
           "played": true
         },
         "year": 1996
@@ -3012,7 +2989,6 @@ GET /api/v1/plays/<id41>
     "matchState": "matched",
     "title": "Heat",
     "userState": {
-      "playCount": 1,
       "played": true
     },
     "year": 1996
@@ -3168,7 +3144,6 @@ GET /api/v1/plays
         "matchState": "matched",
         "title": "Heat",
         "userState": {
-          "playCount": 1,
           "played": true
         },
         "year": 1996
@@ -3218,7 +3193,6 @@ POST /api/v1/plays
   ],
   "delivery": "file",
   "dialogueBoost": {
-    "cost": "videoTranscode",
     "enabled": false
   },
   "durationMs": 7200000,
@@ -3296,7 +3270,6 @@ GET /api/v1/home
           "title": "Heat",
           "userState": {
             "lastPlayedAt": "<time>",
-            "playCount": 1,
             "played": true,
             "positionMs": 600000,
             "versionId": "<id15>"
@@ -3327,7 +3300,6 @@ GET /api/v1/home
           "matchState": "matched",
           "title": "Episode 1",
           "userState": {
-            "playCount": 0,
             "played": false
           }
         }
@@ -3374,7 +3346,6 @@ GET /api/v1/home
           "matchState": "matched",
           "title": "Leviathan Wakes",
           "userState": {
-            "playCount": 0,
             "played": false
           },
           "year": 2011
@@ -3410,7 +3381,6 @@ GET /api/v1/home
           "title": "Heat",
           "userState": {
             "lastPlayedAt": "<time>",
-            "playCount": 0,
             "played": false,
             "versionId": "<id15>"
           },
@@ -3445,7 +3415,6 @@ GET /api/v1/home
           "matchState": "matched",
           "title": "Episode 1",
           "userState": {
-            "playCount": 0,
             "played": false
           }
         }
@@ -3492,7 +3461,6 @@ GET /api/v1/home
           "matchState": "matched",
           "title": "Leviathan Wakes",
           "userState": {
-            "playCount": 0,
             "played": false
           },
           "year": 2011
@@ -3541,7 +3509,6 @@ GET /api/v1/home?kind=recentlyAdded
           "matchState": "matched",
           "title": "Episode 1",
           "userState": {
-            "playCount": 0,
             "played": false
           }
         }
@@ -3588,7 +3555,6 @@ GET /api/v1/home?kind=recentlyAdded
           "matchState": "matched",
           "title": "Leviathan Wakes",
           "userState": {
-            "playCount": 0,
             "played": false
           },
           "year": 2011

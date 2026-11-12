@@ -265,7 +265,7 @@ func TestUsersAndInvites(t *testing.T) {
 	})
 	inv := decode[map[string]any](t, w)
 	token, _ := inv["token"].(string)
-	if w.Code != http.StatusCreated || token == "" || inv["createdBy"] != "admin" {
+	if w.Code != http.StatusCreated || token == "" {
 		t.Fatalf("create invite: %d %v", w.Code, inv)
 	}
 	if got := decode[map[string]any](t, e.do("GET", "/api/v1/invites", e.adminToken, nil))["items"].([]any); len(got) != 1 || got[0].(map[string]any)["token"] != nil {

@@ -37,7 +37,6 @@ import kotlinx.serialization.encoding.*
  * @param userId A UUIDv7.
  * @param username 
  * @param startedAt 
- * @param endedAt 
  * @param positionMs Where playback stopped.
  * @param completed Whether it reached the played threshold.
  */
@@ -56,8 +55,6 @@ data class PlayEvent (
     @SerialName(value = "username") @Required val username: kotlin.String,
 
     @SerialName(value = "startedAt") @Required val startedAt: kotlin.time.Instant,
-
-    @SerialName(value = "endedAt") @Required val endedAt: kotlin.time.Instant,
 
     /* Where playback stopped. */
     @SerialName(value = "positionMs") @Required val positionMs: kotlin.Int,

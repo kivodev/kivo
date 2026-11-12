@@ -51,9 +51,9 @@ describe("applyUserState", () => {
     matchState: "matched",
     available: true,
     images: {},
-    userState: { played: false, playCount: 0 },
+    userState: { played: false },
   });
-  const played = { played: true, playCount: 1 };
+  const played = { played: true };
 
   it("updates the work's detail and its cards in every list in place, and refetches only Home", () => {
     const qc = new QueryClient();
