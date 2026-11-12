@@ -29,7 +29,10 @@ interface CastLink {
     /** A message on [CAST_NAMESPACE]. */
     fun send(message: String)
 
-    /** Ends the session: [stopCasting] stops the TV too, else it plays on. */
+    /**
+     * Lets go of the session: [stopCasting] ends it and stops the TV, else
+     * the TV plays on, and a later launch may join it again.
+     */
     fun end(stopCasting: Boolean)
 
     /** Stops reporting; the session carries on. */
