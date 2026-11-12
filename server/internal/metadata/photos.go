@@ -37,7 +37,6 @@ func (s *Service) planPhotos(ctx context.Context, authors []*Author) ([]photoPla
 		cur, err := s.q.PersonPhoto(ctx, dbq.PersonPhotoParams{Provider: p.person.Provider, Kind: p.person.Kind, ExtID: p.person.ID})
 		have := err == nil
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			s.deleteEncodedPhotos(plans)
 			return nil, err
 		}
 		switch {
@@ -47,7 +46,6 @@ func (s *Service) planPhotos(ctx context.Context, authors []*Author) ([]photoPla
 		default:
 			img, err := s.encodeRemote(ctx, personPhoto, remoteImage{provider: s.books.Name(), url: *a.Image})
 			if ctx.Err() != nil {
-				s.deleteEncodedPhotos(plans)
 				return nil, ctx.Err()
 			}
 			if err != nil {
@@ -79,12 +77,10 @@ func (s *Service) planCastPhotos(ctx context.Context, photos []remotePhoto) ([]p
 				continue
 			}
 		case !errors.Is(err, sql.ErrNoRows):
-			s.deleteEncodedPhotos(plans)
 			return nil, err
 		}
 		img, err := s.encodeRemote(ctx, personPhoto, ph.image)
 		if ctx.Err() != nil {
-			s.deleteEncodedPhotos(plans)
 			return nil, ctx.Err()
 		}
 		if err != nil {
@@ -144,14 +140,4 @@ func (s *Service) recordPhotos(ctx context.Context, tx *store.Tx, plans []photoP
 		}
 	}
 	return nil
-}
-
-// deleteEncodedPhotos removes the files of encoded photos that won't be
-// recorded.
-func (s *Service) deleteEncodedPhotos(plans []photoPlan) {
-	for _, p := range plans {
-		if p.photo != nil {
-			s.deleteFiles(p.photo.ID, personPhoto)
-		}
-	}
 }

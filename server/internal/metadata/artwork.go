@@ -395,14 +395,8 @@ const maxTries = 3
 // a local file, then the providers' images in order. An admin's choice is
 // never replaced. Encoding happens here, before the refresh's transaction,
 // because nothing does I/O inside a transaction. On error, whatever was
-// encoded is removed.
+// encoded is left for pruneImages.
 func (s *Service) planArtwork(ctx context.Context, w catalog.Work, f *found, l local) (plan artworkPlan, err error) {
-	defer func() {
-		if err != nil {
-			s.deleteEncoded(plan.add)
-			plan = artworkPlan{}
-		}
-	}()
 	rows, err := s.q.WorkImages(ctx, w.ID)
 	if err != nil {
 		return plan, err
@@ -536,17 +530,11 @@ type collectionPlan struct {
 // planCollectionArt picks artwork for the collection a movie's refresh puts
 // it in, from the provider's images of the collection. It works like
 // planArtwork does for a work, and encodes what changed before the refresh's
-// transaction. On error, whatever was encoded is removed.
+// transaction. On error, whatever was encoded is left for pruneImages.
 func (s *Service) planCollectionArt(ctx context.Context, f *found) (plan collectionPlan, err error) {
 	if f == nil || f.meta.Collection == nil {
 		return plan, nil
 	}
-	defer func() {
-		if err != nil {
-			s.deleteEncoded(plan.add)
-			plan = collectionPlan{}
-		}
-	}()
 	plan.key = f.meta.Collection.Key
 	rows, err := s.q.CollectionImages(ctx, plan.key)
 	if err != nil {

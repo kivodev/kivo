@@ -54,12 +54,10 @@ func (s *Service) planTrailers(ctx context.Context, w catalog.Work, m *catalog.W
 				continue
 			}
 		case !errors.Is(err, sql.ErrNoRows):
-			s.deleteEncodedTrailers(plans)
 			return nil, err
 		}
 		p, gone, err := s.fetchThumbnail(ctx, w, t, urls)
 		if err != nil {
-			s.deleteEncodedTrailers(plans)
 			return nil, err
 		}
 		if gone {
@@ -139,12 +137,4 @@ func (s *Service) recordTrailers(ctx context.Context, tx *store.Tx, work id.ID, 
 		}
 	}
 	return nil
-}
-
-// deleteEncodedTrailers removes the files of encoded thumbnails that won't
-// be recorded.
-func (s *Service) deleteEncodedTrailers(plans []trailerPlan) {
-	for _, p := range plans {
-		s.deleteFiles(p.thumb.ID, artworkThumb)
-	}
 }

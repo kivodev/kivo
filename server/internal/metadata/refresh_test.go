@@ -475,7 +475,7 @@ func TestRefreshInFlightAcrossAMatchChange(t *testing.T) {
 
 // A refresh in flight while its root work is unmatched writes nothing,
 // records nothing and keeps no artwork, because nothing describes the root any
-// more.
+// more. The prune removes the files it encoded.
 func TestRefreshInFlightAcrossUnmatch(t *testing.T) {
 	e := newEnv(t)
 	_, folder := e.b.Library(catalog.Movies)
@@ -500,6 +500,42 @@ func TestRefreshInFlightAcrossUnmatch(t *testing.T) {
 	if e.column(w, "refreshed_at") != "" || e.column(w, "refresh_error") != "" {
 		t.Fatalf("an unmatched root work's refresh recorded %q, %q", e.column(w, "refreshed_at"), e.column(w, "refresh_error"))
 	}
+	if files := e.agedPrune(); len(files) != 0 {
+		t.Fatalf("discarded artwork left behind: %v", files)
+	}
+}
+
+// A refresh that fails at its write leaves the images it encoded, and the
+// prune removes them once they are old enough. A successful refresh's images
+// survive the prune.
+func TestFailedRefreshImagesPruned(t *testing.T) {
+	e := newEnv(t)
+	_, folder := e.b.Library(catalog.Movies)
+	w := e.movie(folder, "Dune (2021)/Dune (2021).mkv")
+	e.exec(`CREATE TRIGGER fail_refresh BEFORE INSERT ON image BEGIN SELECT RAISE(ABORT, 'disk full'); END`)
+	if err := e.refresh(w); err == nil || !strings.Contains(err.Error(), "disk full") {
+		t.Fatalf("refresh = %v, want the write to fail", err)
+	}
+	if len(e.cacheFiles()) == 0 {
+		t.Fatal("the failed refresh encoded nothing")
+	}
+	if files := e.agedPrune(); len(files) != 0 {
+		t.Fatalf("the prune kept a failed refresh's images: %v", files)
+	}
+
+	e.exec(`DROP TRIGGER fail_refresh`)
+	e.mustRefresh(w)
+	want := e.cacheFiles()
+	if len(want) == 0 {
+		t.Fatal("the refresh encoded nothing")
+	}
+	if got := e.agedPrune(); !slices.Equal(got, want) {
+		t.Fatalf("after the prune %v, want %v", got, want)
+	}
+}
+
+// cacheFiles lists the files in the image cache.
+func (e *env) cacheFiles() []string {
 	var files []string
 	filepath.WalkDir(e.cache, func(p string, d fs.DirEntry, err error) error {
 		if err == nil && !d.IsDir() {
@@ -507,9 +543,23 @@ func TestRefreshInFlightAcrossUnmatch(t *testing.T) {
 		}
 		return nil
 	})
-	if len(files) != 0 {
-		t.Fatalf("discarded artwork left behind: %v", files)
+	return files
+}
+
+// agedPrune makes every cached file older than pruneAge, prunes, and lists
+// the files left.
+func (e *env) agedPrune() []string {
+	e.t.Helper()
+	old := time.Now().Add(-2 * pruneAge)
+	for _, p := range e.cacheFiles() {
+		if err := os.Chtimes(p, old, old); err != nil {
+			e.t.Fatal(err)
+		}
 	}
+	if _, err := e.s.pruneImages(ctx); err != nil {
+		e.t.Fatal(err)
+	}
+	return e.cacheFiles()
 }
 
 // A work merged or deleted before its refresh has nothing to do.
