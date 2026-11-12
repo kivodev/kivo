@@ -1,5 +1,7 @@
 package com.mmcdole.kivo.core.session
 
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.mmcdole.kivo.api.models.CastToken
 import com.mmcdole.kivo.api.models.ClientPlatform
@@ -29,6 +31,7 @@ import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.MIN_SERVER_VERSION
 import com.mmcdole.kivo.core.MemoryPreferences
 import com.mmcdole.kivo.core.MemoryStore
+import com.mmcdole.kivo.core.SERVER_KEY
 import com.mmcdole.kivo.core.auth.ClientIdentity
 import com.mmcdole.kivo.core.auth.SavedServer
 import com.mmcdole.kivo.core.caps.AudioSink
@@ -187,9 +190,10 @@ internal class TestDevice(withDownloads: Boolean, appVersion: String = "1.0") : 
         DownloadDevice(driver, Disk(File(dir, "downloads").path), Transport())
     }
 
-    /** Holds a session token for [serverId], as an app signed in before does. */
-    fun signedInTo(serverId: String) {
-        secureStore.values["kivo.token.$serverId"] = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString("token-$serverId".toByteArray())
+    /** Holds a session token for [serverId] and the server's key, as an app signed in before does. */
+    fun signedInTo(serverId: String, token: String = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString("token-$serverId".toByteArray())) {
+        secureStore.values["kivo.token.$serverId"] = token
+        runBlocking { preferences.edit { it[stringPreferencesKey("kivo.serverKey.$serverId")] = SERVER_KEY.encoded } }
     }
 }
 
@@ -379,7 +383,7 @@ class KivoSessionTest {
         val scope = CoroutineScope(SupervisorJob())
         try {
             val device = TestDevice(withDownloads = false, appVersion = "0.5.0")
-            device.secureStore.values["kivo.token.server-1"] = "tok"
+            device.signedInTo("server-1", "tok")
             val core = KivoClient(device, null, scope)
             val url = "http://127.0.0.1:${server.engine.resolvedConnectors().first().port}"
             val session = core.restore(SavedServer("server-1", "Basement", listOf(url)))
@@ -498,7 +502,7 @@ class KivoSessionTest {
         h.servers.server("home.test", info("server-1", "Basement", localUrls = listOf("http://192.168.1.2:8484")))
         val at = Instant.fromEpochMilliseconds(0)
         h.servers.on("home.test", "POST", "/api/v1/sessions") {
-            json(Session.serializer(), Session("s1", SessionKind.App, "Living Room", at, at, current = true, token = "tok"), HttpStatusCode.Created)
+            json(Session.serializer(), Session("s1", SessionKind.App, "Living Room", at, at, current = true, token = "tok", serverKey = SERVER_KEY.encoded), HttpStatusCode.Created)
         }
 
         val session = h.core.signIn(FoundServer("http://home.test", info("server-1", "Basement")), "anna", "secret", "Living Room")

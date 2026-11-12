@@ -87,6 +87,7 @@ import com.mmcdole.kivo.api.models.PlayDelivery
 import com.mmcdole.kivo.api.models.SubtitleMode
 import com.mmcdole.kivo.api.models.TrackDelivery
 import com.mmcdole.kivo.api.models.TrackType
+import com.mmcdole.kivo.core.SERVER_KEY
 
 // The download store and its state machine against Ktor's mock engine, a
 // transport the tests drive, and a real SQLite store and folder: transfers
@@ -233,7 +234,7 @@ private class Harness(
     var awaitReachable: suspend () -> Unit = {}
 
     suspend fun connect(token: String = "token") {
-        connection.signIn(token)
+        connection.signIn(token, SERVER_KEY.encoded)
         downloads.attach(DownloadServer(connection, { caps }, unreachable, { awaitReachable() }))
         scope.advanceUntilIdle()
     }
