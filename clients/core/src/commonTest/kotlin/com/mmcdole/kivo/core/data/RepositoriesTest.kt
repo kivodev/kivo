@@ -143,6 +143,16 @@ class RepositoriesTest {
     }
 
     @Test
+    fun theListsPageShelvesAKnownListAndTheBuiltInOneOnlyWithSomethingInIt() {
+        val myList = WorkList("my", "Watchlist", ListKind.Manual, builtIn = true, workCount = 1)
+        val made = WorkList("d", "Date Night", ListKind.Manual, builtIn = false, workCount = 0)
+        val smart = WorkList("s", "90s comedies", ListKind.Smart, builtIn = false, workCount = 0)
+        val later = WorkList("x", "Later", ListKind.Unknown, builtIn = false, workCount = 1)
+        assertEquals(listOf("my", "d", "s"), listOf(myList, made, smart, later).filter { it.hasShelf }.map { it.id })
+        assertEquals(false, myList.copy(workCount = 0).hasShelf)
+    }
+
+    @Test
     fun aListIsSortedMovedAndReadInItsCustomOrder() = runTest {
         val server = FakeServer(StandardTestDispatcher(testScheduler))
         val list = WorkList("l1", "Later", ListKind.Manual, builtIn = false, workCount = 201, sort = ListSort.Title)

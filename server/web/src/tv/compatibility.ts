@@ -58,22 +58,17 @@ function release(version: string): string {
  * `minAppVersion` stand. A version that isn't a release's, or a server
  * that names no oldest app, never makes them incompatible.
  */
-export function compatibility(
-  serverVersion: string,
-  minAppVersion: string | undefined,
-  app: string = appVersion,
-  oldestServer: string = minServerVersion,
-): Compatibility {
-  if ((compareVersions(serverVersion, oldestServer) ?? 0) < 0) {
+export function compatibility(serverVersion: string, minAppVersion: string | undefined): Compatibility {
+  if ((compareVersions(serverVersion, minServerVersion) ?? 0) < 0) {
     return {
       state: "serverTooOld",
       serverVersion: release(serverVersion),
-      minServerVersion: release(oldestServer),
-      appVersion: release(app),
+      minServerVersion,
+      appVersion: release(appVersion),
     };
   }
-  if (minAppVersion !== undefined && (compareVersions(app, minAppVersion) ?? 0) < 0) {
-    return { state: "appTooOld", appVersion: release(app), minAppVersion: release(minAppVersion) };
+  if (minAppVersion !== undefined && (compareVersions(appVersion, minAppVersion) ?? 0) < 0) {
+    return { state: "appTooOld", appVersion: release(appVersion), minAppVersion: release(minAppVersion) };
   }
   return { state: "compatible" };
 }

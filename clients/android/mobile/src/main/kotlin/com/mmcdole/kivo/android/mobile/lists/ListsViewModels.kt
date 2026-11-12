@@ -14,6 +14,7 @@ import com.mmcdole.kivo.core.Load
 import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.core.data.GridPager
 import com.mmcdole.kivo.core.data.ListSorts
+import com.mmcdole.kivo.core.data.hasShelf
 import com.mmcdole.kivo.core.session.KivoSession
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -41,8 +42,8 @@ data class ListsUiState(
     val refreshing: Boolean = false,
     val serverName: String = "",
 ) {
-    /** The lists the tab shelves, in their order: My List only with something in it, and a list kind it doesn't know left out. */
-    val shelves: List<WorkList> get() = lists.orEmpty().filter { (it.kind == ListKind.Manual || it.kind == ListKind.Smart) && (!it.builtIn || it.workCount > 0) }
+    /** The lists the tab shelves, in their order. */
+    val shelves: List<WorkList> get() = lists.orEmpty().filter { it.hasShelf }
 }
 
 /** Whether works can be added to and taken off the list. */

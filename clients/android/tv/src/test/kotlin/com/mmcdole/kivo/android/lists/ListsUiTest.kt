@@ -30,9 +30,10 @@ class ListsUiTest {
     }
 
     @Test
-    fun watchlistHasNoShelfWithNothingToShow() {
+    fun watchlistHasAShelfOnlyWithSomethingInIt() {
         val myList = WorkList("my", "Watchlist", ListKind.Manual, builtIn = true, workCount = 1, items = listOf(work("b1", WorkKind.Book)))
-        assertEquals(emptyList(), shelves(listOf(myList)))
+        assertEquals(listOf(Shelf(myList, emptyList())), shelves(listOf(myList)))
+        assertEquals(emptyList(), shelves(listOf(myList.copy(workCount = 0, items = emptyList()))))
     }
 
     @Test
