@@ -56,7 +56,7 @@ class SignInTest {
         val states = SignIn(connection, "Living Room","client-1").link().toList()
 
         assertEquals(
-            listOf(LinkState.Waiting("ABC234", code.linkUrl, code.expiresAt), LinkState.SignedIn(anna)),
+            listOf(LinkState.Waiting("ABC234", code.linkUrl), LinkState.SignedIn(anna)),
             states,
         )
         assertEquals(

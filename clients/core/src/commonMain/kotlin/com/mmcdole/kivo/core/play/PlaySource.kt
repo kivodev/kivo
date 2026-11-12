@@ -15,7 +15,7 @@ import com.mmcdole.kivo.core.Reachability
  * played in the app without the server. A failure is the API's: a
  * `ProblemException`, a `404` for a play the server has forgotten.
  */
-interface PlaySource {
+internal interface PlaySource {
     suspend fun start(request: PlayCreate): PlayStarted
 
     suspend fun heartbeat(id: String, heartbeat: PlayUpdate)

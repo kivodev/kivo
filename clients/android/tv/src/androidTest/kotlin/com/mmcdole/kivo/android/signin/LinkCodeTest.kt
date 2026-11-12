@@ -25,8 +25,6 @@ import org.junit.runner.RunWith
 import java.io.File
 import java.util.UUID
 import kotlin.test.assertEquals
-import kotlin.time.Clock
-import kotlin.time.Duration.Companion.minutes
 
 // The TV's sign-in code: shown grouped for reading across the room, replaced
 // with a new one when the other device declines, and signed in once allowed.
@@ -44,11 +42,7 @@ class LinkCodeTest {
         preferences.delete()
     }
 
-    private fun waiting(code: String) = LinkProgress.Waiting(
-        code,
-        "http://kivo.local:8484/link?code=$code&server=s-1",
-        (Clock.System.now() + 5.minutes).toEpochMilliseconds(),
-    )
+    private fun waiting(code: String) = LinkProgress.Waiting(code, "http://kivo.local:8484/link?code=$code&server=s-1")
 
     /** A session on a server that doesn't answer, as a signed-in code opens. */
     private fun session(): KivoSession {

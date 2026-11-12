@@ -148,8 +148,6 @@ class CastTest {
         assertEquals(true, status.dialogueBoost?.enabled)
         assertEquals("a1", status.audioTrackId)
         assertEquals(SUBTITLES_OFF, status.subtitleTrackId)
-        assertFalse(status.startsNewPlay("s1"), "streamed: shown at once")
-        assertTrue(status.startsNewPlay("s2"))
         assertEquals(true, status.local)
         assertEquals(UpNext(UpNextPhase.CountingDown, 7), status.upNext)
         assertTrue(status.playing)

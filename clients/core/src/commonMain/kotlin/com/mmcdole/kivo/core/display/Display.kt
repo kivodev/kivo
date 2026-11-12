@@ -11,7 +11,7 @@ import kotlinx.serialization.json.Json
 
 /** The words for tracks, from the display table. */
 @Serializable
-data class TrackWords(
+internal data class TrackWords(
     val unknownLanguage: String,
     val default: String,
     /** The short words a track's name adds: "Forced", "SDH", "Commentary", "Original". */
@@ -20,15 +20,11 @@ data class TrackWords(
     val channels: String,
     /** Where a subtitle lives: `embedded`, `external`, `downloaded`. */
     val sources: Map<String, String>,
-    /** Where a `downloaded` subtitle came from, in its name: "OpenSubtitles". */
-    val downloadedFrom: String,
-    /** A version without video, in the version picker. */
-    val audioOnly: String,
 )
 
 /** The words for a track's flags, as its short name says them. */
 @Serializable
-data class TrackFlags(val forced: String, val hearingImpaired: String, val commentary: String, val original: String)
+internal data class TrackFlags(val forced: String, val hearingImpaired: String, val commentary: String, val original: String)
 
 @Serializable
 internal data class WordsTable(
@@ -114,11 +110,7 @@ internal data class MediaTable(
     val codecs: Map<String, String>,
     val containers: Map<String, String>,
     val channels: Map<String, String>,
-    val layouts: Map<String, String>,
     val resolutions: Map<String, String>,
-    val hdr: Map<String, String>,
-    /** A lossless or premium audio format by its codec, or its codec and profile ("truehd atmos"). */
-    val premiumAudio: Map<String, String>,
 )
 
 private val json = Json { ignoreUnknownKeys = true }
@@ -134,7 +126,7 @@ private val IMAGE_CODECS = setOf("hdmv_pgs_subtitle", "pgs", "dvd_subtitle")
  * How playback is put in words, from the display tables the server and the
  * web client share (`shared/display`), generated into the core: methods,
  * subtitle kinds, reason texts, dialogue boost costs, track words, language
- * names, and codec, container, channel, resolution and HDR names. The server names tracks and versions; bitrates, sizes,
+ * names, and codec, container, channel and resolution names. The server names tracks and versions; bitrates, sizes,
  * runtimes, episode codes, quality choices and problems are put in words
  * here ([bitrate], [problem]), so every app says them alike. Each screen's
  * own words stay in its platform's resources.
@@ -143,7 +135,7 @@ class Display {
     internal val table: WordsTable = words
     internal val languages: LanguageNames = LanguageNames.table
 
-    val tracks: TrackWords get() = table.tracks
+    internal val tracks: TrackWords get() = table.tracks
 
     /** "Direct Play", "Direct Stream" or "Transcode"; an unknown method as sent. */
     fun method(method: String): String = table.methods[method] ?: method
@@ -202,14 +194,8 @@ class Display {
     fun channels(channels: Int): String =
         media.channels[channels.toString()] ?: table.tracks.channels.replace("{channels}", channels.toString())
 
-    /** A channel layout as the server sends it ("2.0", "5.1"; "1.0" is "Mono"); else the [count] in words. */
-    fun channels(layout: String?, count: Int): String = layout?.let { media.layouts[it] ?: it } ?: channels(count)
-
     /** A resolution class in words: "4K", "1080p", "SD". */
     fun resolution(resolution: Resolution): String = media.resolutions[resolution.value] ?: resolution.value
-
-    /** An HDR format: "HDR10", "HLG", "Dolby Vision". */
-    fun hdr(hdr: String): String = media.hdr[hdr] ?: hdr
 
     /** A language tag in words, "English", "Chinese (Traditional)"; "Unknown language" for none. */
     fun language(tag: String?): String = languages.name(tag, table.tracks.unknownLanguage)

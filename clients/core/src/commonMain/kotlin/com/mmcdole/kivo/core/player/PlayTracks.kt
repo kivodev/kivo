@@ -45,7 +45,7 @@ sealed interface TrackShow {
 const val SUBTITLES_OFF = "off"
 
 /** What a play's tracks say: which show, and how a choice shows. */
-object PlayTracks {
+internal object PlayTracks {
     /**
      * The track of [type] that [play] shows: for subtitles a track's ID
      * or [SUBTITLES_OFF]; null when it has no track of the type.
@@ -73,22 +73,4 @@ object PlayTracks {
     }
 
     internal fun delivery(play: PlayStarted, trackId: String): TrackDelivery? = play.tracks.firstOrNull { it.trackId == trackId }?.delivery
-}
-
-/**
- * Picture-in-picture and AirPlay, where only the video goes, so the app
- * can't draw a subtitle file over it: a play there asks without subtitle
- * files ([com.mmcdole.kivo.core.caps.withoutExternal]), entering takes a new play only when the subtitle
- * showing is a file the app draws, and leaving takes one only when the play
- * started there burned it in. The video player follows these rules itself
- * ([com.mmcdole.kivo.core.session.VideoPlayer.overlayShows]).
- */
-object PictureInPicture {
-    /** Whether entering takes a new play: the subtitle showing, [subtitleTrackId] of [play], is a file the app draws. */
-    fun enteringNeedsNewPlay(play: PlayStarted, subtitleTrackId: String): Boolean =
-        PlayTracks.delivery(play, subtitleTrackId) == TrackDelivery.External
-
-    /** Whether leaving takes a new play: [play], started in picture-in-picture, burned in [subtitleTrackId]. */
-    fun leavingNeedsNewPlay(play: PlayStarted, subtitleTrackId: String): Boolean =
-        PlayTracks.delivery(play, subtitleTrackId) == TrackDelivery.Burn
 }

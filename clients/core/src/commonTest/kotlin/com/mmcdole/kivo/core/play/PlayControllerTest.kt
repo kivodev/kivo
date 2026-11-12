@@ -217,7 +217,6 @@ class PlayControllerTest {
         h.engine.current.onReady()
         h.engine.positionMs = 42_000
         h.engine.fail("mediaDecodeError", "x".repeat(2_000))
-        assertTrue(h.controller.state.value.adjusting)
         runCurrent()
 
         val fallback = body(h.server.to("POST", "$START/s1/fallback").single().body)
@@ -230,7 +229,6 @@ class PlayControllerTest {
 
         h.engine.current.onReady()
         h.engine.current.onPlaying()
-        assertEquals(false, h.controller.state.value.adjusting)
 
         // A second failure falls back again, to the CPU.
         h.engine.fail()

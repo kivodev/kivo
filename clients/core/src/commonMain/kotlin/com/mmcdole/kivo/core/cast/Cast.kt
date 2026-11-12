@@ -8,9 +8,7 @@ import com.mmcdole.kivo.api.models.QualityRequest
 import com.mmcdole.kivo.api.result
 import com.mmcdole.kivo.core.auth.ServerConnection
 import com.mmcdole.kivo.core.kivoJson
-import com.mmcdole.kivo.core.player.PlayTracks
 import com.mmcdole.kivo.core.player.SUBTITLES_OFF
-import com.mmcdole.kivo.core.player.TrackShow
 import com.mmcdole.kivo.core.player.UpNext
 import com.mmcdole.kivo.core.player.UpNextPhase
 import kotlinx.serialization.Serializable
@@ -177,18 +175,11 @@ data class CastStatus(
     /** Whether the receiver has a play. */
     val playing: Boolean get() = versionId != null
 
-    /**
-     * Whether choosing [trackId], a track's ID or [SUBTITLES_OFF], takes
-     * the receiver a new play at the position, by its play's tracks; else it
-     * shows the choice at once.
-     */
-    fun startsNewPlay(trackId: String): Boolean = PlayTracks.show(tracks, trackId) == TrackShow.NewPlay
-
     /** Whether the receiver can't reach the server, which it keeps trying. */
     val unreachable: Boolean get() = error == ERROR_UNREACHABLE
 
     companion object {
-        const val ERROR_UNREACHABLE = "serverUnreachable"
+        internal const val ERROR_UNREACHABLE = "serverUnreachable"
 
         /**
          * The receiver's status in [json]: a `kivo.status` message, a media
