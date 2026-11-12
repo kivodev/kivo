@@ -6,8 +6,9 @@ import SwiftUI
 /// seasons and episodes, an episode with its season, or a book, as the
 /// core's `WorkPage` has it. A season opens its series on that season. It
 /// opens at once on what the card it was opened from, or the session, knows
-/// of the work, and fills in as the page is read. A failure shows under the
-/// page's hero, or in its place when nothing was known.
+/// of the work, and fills in as the page is read. A failure, no answer from
+/// the server too, shows under the page's hero, or in its place when
+/// nothing was known.
 struct DetailView: View {
     let kind: WorkKind?
     @State private var model: WorkPageModel
@@ -23,7 +24,7 @@ struct DetailView: View {
         Group {
             if let head = page.head {
                 content(head, page)
-                    .environment(\.detailLoad, DetailLoad(loaded: page.work != nil, problem: refusal, retry: model.page.retry))
+                    .environment(\.detailLoad, DetailLoad(loaded: page.work != nil, problem: page.work == nil ? page.problem : refusal, retry: model.page.retry))
             } else if let refusal {
                 DetailFailed(failure: refusal)
             } else if server.unreachable {
@@ -100,21 +101,23 @@ struct DetailFailed: View {
     }
 }
 
-/// A read that failed, under what the page already shows: what went wrong, with Retry.
+/// A read that failed, under what the page already shows: what went wrong,
+/// or that the server can't be reached and the read retries itself, with Retry.
 struct InlineFailure: View {
     let title: String
     let problem: RequestProblem
     let retry: () -> Void
     @Environment(\.kivoPalette) private var palette
     @Environment(\.wide) private var wide
+    @Environment(ServerModel.self) private var server
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: KivoTokens.spacing * 3) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
+                Text(problem.isUnreachable ? String(localized: "Can't reach \(server.serverName).") : title)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(palette.text)
-                Text(problem.sentence)
+                Text(problem.isUnreachable ? String(localized: "Check your connection. Retrying automatically.") : problem.sentence)
                     .font(.footnote)
                     .foregroundStyle(palette.textMuted)
             }
