@@ -64,7 +64,6 @@ struct LibraryView: View {
                                     GridLayout(width: geometry.size.width, style: model.style, scrubber: takesScrubber, stacked: stacked, wide: wide),
                                     height: geometry.size.height
                                 )
-                                .onAppear { SwitchSignposts.gridShown() }
                             }
                         }
                         .fades(with: model.paged.total != nil || model.paged.failed != nil)

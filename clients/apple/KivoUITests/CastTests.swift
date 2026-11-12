@@ -15,9 +15,6 @@ final class CastTests: XCTestCase {
 
     override func setUpWithError() throws {
         continueAfterFailure = false
-        app.launchEnvironment["KIVO_CLIENT_ID"] = "kivo-ui-tests"
-        // Sign-in goes straight to the server under test, without browsing the network.
-        app.launchEnvironment["KIVO_SERVER"] = environment["KIVO_SERVER"]
     }
 
     func testCastScreens() throws {
@@ -161,27 +158,8 @@ final class CastTests: XCTestCase {
 
     /// Launches the app with the Cast stand-in in [scene], signing in if the Keychain holds no sign-in.
     private func launch(_ scene: String) throws {
-        app.terminate()
         app.launchEnvironment["KIVO_CAST_PREVIEW"] = scene
-        app.launch()
-        let server = try XCTUnwrap(environment["KIVO_SERVER"], "set TEST_RUNNER_KIVO_SERVER")
-        let address = app.textFields["address"]
-        let user = app.textFields["username"]
-        let home = app.buttons["user"]
-        let start = NSPredicate { _, _ in address.exists || user.exists || home.exists }
-        wait(for: [expectation(for: start, evaluatedWith: nil)], timeout: 20)
-        if !home.exists {
-            XCTAssert(user.waitForExistence(timeout: 15), "the server at \(server) wasn't found")
-            user.tap()
-            user.typeText(try XCTUnwrap(environment["KIVO_USERNAME"], "set TEST_RUNNER_KIVO_USERNAME"))
-            let secret = app.secureTextFields["password"]
-            secret.tap()
-            secret.typeText(try XCTUnwrap(environment["KIVO_PASSWORD"], "set TEST_RUNNER_KIVO_PASSWORD"))
-            app.buttons["Sign in"].tap()
-            let notNow = XCUIApplication(bundleIdentifier: "com.apple.SafariViewService").buttons["Not Now"]
-            if notNow.waitForExistence(timeout: 8) { notNow.tap() }
-        }
-        XCTAssert(home.waitForExistence(timeout: 20), "Home didn't show")
+        try signIn(app)
         XCTAssert(app.buttons["work"].firstMatch.waitForExistence(timeout: 20), "Home has no cards")
     }
 
@@ -229,12 +207,5 @@ final class CastTests: XCTestCase {
         XCTAssert(confirm.waitForExistence(timeout: 5), "Sign out didn't ask first")
         confirm.tap()
         XCTAssert(app.textFields["username"].waitForExistence(timeout: 10) || app.textFields["address"].exists, "didn't sign out")
-    }
-
-    private func keep(_ name: String) {
-        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        shot.name = name
-        shot.lifetime = .keepAlways
-        add(shot)
     }
 }

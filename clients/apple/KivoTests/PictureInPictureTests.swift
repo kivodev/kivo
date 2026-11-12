@@ -51,12 +51,7 @@ final class PictureInPictureTests: XCTestCase {
     override func setUp() async throws {
         server = try StubServer { Self.answer($0) }
         let address = try await server.start()
-        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let core = KivoClient(device: AppleDevice(
-            directory: directory.path(percentEncoded: false), name: "Test", identity: AppleIdentity.current,
-            clientId: nil, subtitles: AppModel.subtitles, trackSelection: true, transport: NoTransport()
-        ))
+        let core = try KivoClient.forTests(subtitles: AppModel.subtitles, trackSelection: true)
         session = try await core.restore(server: SavedServer(id: "pip-test", name: "PiP test", addresses: [address]))
     }
 

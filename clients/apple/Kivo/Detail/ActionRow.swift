@@ -86,10 +86,6 @@ struct ActionRowLayout: Layout {
         )
     }
 
-    func updateCache(_ cache: inout Measured, subviews: Subviews) {
-        cache = makeCache(subviews: subviews)
-    }
-
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Measured) -> CGSize {
         guard let primary = subviews.first else { return .zero }
         let width = proposal.width ?? cache.primary.width + cache.beside(spacing: spacing)

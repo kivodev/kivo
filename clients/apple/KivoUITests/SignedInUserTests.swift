@@ -9,21 +9,16 @@ import XCTest
 /// `POST /__unreachable` and `POST /__reachable`, with the same environment.
 final class SignedInUserTests: XCTestCase {
     private let app = XCUIApplication()
-    private let environment = ProcessInfo.processInfo.environment
 
     override func setUpWithError() throws {
         continueAfterFailure = false
-        // Every run signs in as one client, replacing the last run's session.
-        app.launchEnvironment["KIVO_CLIENT_ID"] = "kivo-ui-tests"
-        // Sign-in goes straight to the server under test, without browsing the network.
-        app.launchEnvironment["KIVO_SERVER"] = environment["KIVO_DOWNLOAD_SERVER"]
     }
 
     func testAServerThatCantBeReachedSaysSoUntilRetryOpensIt() throws {
-        let server = try XCTUnwrap(environment["KIVO_DOWNLOAD_SERVER"], "set TEST_RUNNER_KIVO_DOWNLOAD_SERVER")
-        let username = try XCTUnwrap(environment["KIVO_DOWNLOAD_USERNAME"], "set TEST_RUNNER_KIVO_DOWNLOAD_USERNAME")
+        let server = try TestServer.download.address
+        let username = try TestServer.download.username
         let avatar = app.buttons["user"]
-        try signIn(server: server, username: username)
+        try signIn(app, at: .download)
         expect(avatar, names: username, "after signing in")
         keep("ios-user-signed-in")
 
@@ -61,9 +56,8 @@ final class SignedInUserTests: XCTestCase {
     /// Settings names the user, and a wrong current password in Change
     /// password says so under its field and keeps the app signed in.
     func testAWrongCurrentPasswordKeepsTheAppSignedIn() throws {
-        let server = try XCTUnwrap(environment["KIVO_DOWNLOAD_SERVER"], "set TEST_RUNNER_KIVO_DOWNLOAD_SERVER")
-        let username = try XCTUnwrap(environment["KIVO_DOWNLOAD_USERNAME"], "set TEST_RUNNER_KIVO_DOWNLOAD_USERNAME")
-        try signIn(server: server, username: username)
+        let username = try TestServer.download.username
+        try signIn(app, at: .download)
         app.buttons["user"].tap()
         XCTAssert(app.staticTexts[username].waitForExistence(timeout: 10), "Settings doesn't name the user")
         keep("ios-user-settings")
@@ -96,28 +90,6 @@ final class SignedInUserTests: XCTestCase {
         wait(for: [expectation(for: named, evaluatedWith: nil)], timeout: 10)
     }
 
-    /// Signs in to [server], which sign-in opens on, unless the app still is.
-    private func signIn(server: String, username: String) throws {
-        let password = try XCTUnwrap(environment["KIVO_DOWNLOAD_PASSWORD"], "set TEST_RUNNER_KIVO_DOWNLOAD_PASSWORD")
-        app.launch()
-        let address = app.textFields["address"]
-        let user = app.textFields["username"]
-        let home = app.buttons["user"]
-        let start = NSPredicate { _, _ in address.exists || user.exists || home.exists }
-        wait(for: [expectation(for: start, evaluatedWith: nil)], timeout: 20)
-        if home.exists { return }
-        XCTAssert(user.waitForExistence(timeout: 15), "the server at \(server) wasn't found")
-        user.tap()
-        user.typeText(username)
-        let secret = app.secureTextFields["password"]
-        secret.tap()
-        secret.typeText(password)
-        app.buttons["Sign in"].tap()
-        XCTAssert(home.waitForExistence(timeout: 20), "Home didn't show after signing in")
-        let notNow = XCUIApplication(bundleIdentifier: "com.apple.SafariViewService").buttons["Not Now"]
-        if notNow.waitForExistence(timeout: 5) { notNow.tap() }
-    }
-
     /// Asks the proxy in front of the server for [path]: `__unreachable` or `__reachable`.
     private func proxy(_ server: String, _ path: String) {
         var request = URLRequest(url: URL(string: server + "/" + path)!)
@@ -125,12 +97,5 @@ final class SignedInUserTests: XCTestCase {
         let done = expectation(description: path)
         URLSession.shared.dataTask(with: request) { _, _, _ in done.fulfill() }.resume()
         wait(for: [done], timeout: 10)
-    }
-
-    private func keep(_ name: String) {
-        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        shot.name = name
-        shot.lifetime = .keepAlways
-        add(shot)
     }
 }

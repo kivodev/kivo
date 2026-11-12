@@ -50,12 +50,7 @@ final class ListOrderModelTests: XCTestCase {
         Self.refusing = false
         server = try StubServer(answer: Self.answer)
         let address = try await server.start()
-        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let core = KivoClient(device: AppleDevice(
-            directory: directory.path(percentEncoded: false), name: "Test", identity: AppleIdentity.current,
-            clientId: nil, subtitles: [], trackSelection: false, transport: NoTransport()
-        ))
+        let core = try KivoClient.forTests()
         session = try await core.restore(server: SavedServer(id: "order-test", name: "Order test", addresses: [address]))
     }
 

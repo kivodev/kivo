@@ -28,12 +28,7 @@ final class NowPlayingSessionTests: XCTestCase {
     override func setUp() async throws {
         server = try StubServer { Self.answer($0) }
         let address = try await server.start()
-        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let core = KivoClient(device: AppleDevice(
-            directory: directory.path(percentEncoded: false), name: "Test", identity: AppleIdentity.current,
-            clientId: nil, subtitles: [], trackSelection: true, transport: NoTransport()
-        ))
+        let core = try KivoClient.forTests(trackSelection: true)
         let session = try await core.restore(server: SavedServer(id: "now-playing-test", name: "Now Playing test", addresses: [address]))
         self.session = session
         book = BookPlayer(

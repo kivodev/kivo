@@ -5,10 +5,8 @@ import android.net.Uri
 import android.os.SystemClock
 import android.view.KeyEvent
 import androidx.benchmark.macro.CompilationMode
-import androidx.benchmark.macro.ExperimentalMetricApi
 import androidx.benchmark.macro.FrameTimingMetric
 import androidx.benchmark.macro.MacrobenchmarkScope
-import androidx.benchmark.macro.TraceSectionMetric
 import androidx.benchmark.macro.junit4.MacrobenchmarkRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -21,11 +19,9 @@ import org.junit.runner.RunWith
 /**
  * Opening Audio & Subtitles with OK, from the detail page's row and from the
  * player's button: how long from the press to the panel's first frame
- * ([PanelOpenMetric]), the frames it takes, and the app's own sections
- * within it. Each iteration closes the panel with Back and opens it again
+ * ([PanelOpenMetric]) and the frames it takes. Each iteration closes the panel with Back and opens it again
  * in the same process, as someone choosing tracks does.
  */
-@OptIn(ExperimentalMetricApi::class)
 @RunWith(AndroidJUnit4::class)
 class TracksPanelBenchmark {
     @get:Rule
@@ -34,11 +30,7 @@ class TracksPanelBenchmark {
     private val work: String = InstrumentationRegistry.getArguments().getString("work")
         ?: error("Pass the ID of a work with several tracks: -Pandroid.testInstrumentationRunnerArguments.work=<ID>")
 
-    private val metrics = listOf(
-        PanelOpenMetric(),
-        FrameTimingMetric(),
-        TraceSectionMetric("Tracks:names", TraceSectionMetric.Mode.Sum),
-    )
+    private val metrics = listOf(PanelOpenMetric(), FrameTimingMetric())
 
     @Test
     fun openFromDetailPage() = rule.measureRepeated(
@@ -114,7 +106,7 @@ class TracksPanelBenchmark {
         const val ITERATIONS = 10
         const val TIMEOUT_MS = 10_000L
         const val FOCUS_WAIT_MS = 1_000L
-        const val DETAIL_PAGE_ROW = "Audio & subtitles"
+        const val DETAIL_PAGE_ROW = "Audio & Subtitles"
         const val PLAYER_BUTTON = "Audio & Subtitles"
         const val PANEL_HEADING = "Audio"
         const val PLAY = "Play"

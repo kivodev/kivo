@@ -11,24 +11,19 @@ import XCTest
 /// `ios-link-…`.
 final class LinkDeviceTests: XCTestCase {
     private let app = XCUIApplication()
-    private let environment = ProcessInfo.processInfo.environment
     private var server = ""
     private var username = ""
     private var password = ""
 
     override func setUpWithError() throws {
         continueAfterFailure = false
-        server = try XCTUnwrap(environment["KIVO_DOWNLOAD_SERVER"], "set TEST_RUNNER_KIVO_DOWNLOAD_SERVER")
-        username = try XCTUnwrap(environment["KIVO_DOWNLOAD_USERNAME"], "set TEST_RUNNER_KIVO_DOWNLOAD_USERNAME")
-        password = try XCTUnwrap(environment["KIVO_DOWNLOAD_PASSWORD"], "set TEST_RUNNER_KIVO_DOWNLOAD_PASSWORD")
-        // Every run signs in as one client, replacing the last run's session.
-        app.launchEnvironment["KIVO_CLIENT_ID"] = "kivo-ui-tests"
-        // Sign-in goes straight to the server under test, without browsing the network.
-        app.launchEnvironment["KIVO_SERVER"] = environment["KIVO_DOWNLOAD_SERVER"]
+        server = try TestServer.download.address
+        username = try TestServer.download.username
+        password = try TestServer.download.password
     }
 
     func testAllowATypedCode() throws {
-        try signIn()
+        try signIn(app, at: .download)
         let link = try startLink()
         openLinkADevice()
         enter(code: link.code)
@@ -45,7 +40,7 @@ final class LinkDeviceTests: XCTestCase {
     }
 
     func testDontAllow() throws {
-        try signIn()
+        try signIn(app, at: .download)
         let link = try startLink()
         openLinkADevice()
         enter(code: link.code)
@@ -62,7 +57,7 @@ final class LinkDeviceTests: XCTestCase {
     /// With local networks that leave out loopback, the test's own requests
     /// come from outside the home network.
     func testADeviceAwayFromHomeIsWarnedOf() throws {
-        try signIn()
+        try signIn(app, at: .download)
         let token = try apiToken()
         XCTAssertEqual(try call("PATCH", "settings", ["localNetworks": ["203.0.113.0/24"]], token: token).0, 200)
         defer { _ = try? call("PATCH", "settings", ["localNetworks": [String]()], token: token) }
@@ -80,7 +75,7 @@ final class LinkDeviceTests: XCTestCase {
     /// The Simulator has no camera: the launch argument is what the scanner reads.
     func testAScannedCodeOfAnotherServer() throws {
         app.launchArguments += ["-KivoScan", "http://elsewhere:8484/link?code=K7Q2M9&server=01900000-0000-7000-8000-000000000000"]
-        try signIn()
+        try signIn(app, at: .download)
         openLinkADevice()
         XCTAssert(app.staticTexts["This device is signing in to another server."].waitForExistence(timeout: 10), "a code of another server wasn't refused")
         XCTAssertFalse(app.buttons["Allow"].exists, "a code of another server can be allowed")
@@ -90,7 +85,7 @@ final class LinkDeviceTests: XCTestCase {
     /// Signed out, the app shows a code, which the test approves, and lands
     /// on Home, its session named after the device's model.
     func testSignInWithAnotherDevice() throws {
-        try signIn()
+        try signIn(app, at: .download)
         signOut()
         XCTAssert(app.textFields["username"].waitForExistence(timeout: 15), "the server at \(server) wasn't found")
         let other = app.buttons["sign-in-with-another-device"]
@@ -125,30 +120,6 @@ final class LinkDeviceTests: XCTestCase {
         // As people type it: lower case, with a space.
         field.typeText(code.prefix(3).lowercased() + " " + code.suffix(3).lowercased())
         app.buttons["Continue"].tap()
-    }
-
-    /// Signs in, unless the app still is.
-    private func signIn() throws {
-        app.launch()
-        let address = app.textFields["address"]
-        let user = app.textFields["username"]
-        let home = app.buttons["user"]
-        let start = NSPredicate { _, _ in address.exists || user.exists || home.exists }
-        wait(for: [expectation(for: start, evaluatedWith: nil)], timeout: 20)
-        if home.exists { return }
-        XCTAssert(user.waitForExistence(timeout: 15), "the server at \(server) wasn't found")
-        user.tap()
-        user.typeText(username)
-        let secret = app.secureTextFields["password"]
-        secret.tap()
-        secret.typeText(password)
-        app.buttons["Sign in"].tap()
-        XCTAssert(home.waitForExistence(timeout: 20), "Home didn't show after signing in")
-        let notNow = XCUIApplication(bundleIdentifier: "com.apple.SafariViewService").buttons["Not Now"]
-        // The sheet may go by itself between finding the button and tapping it.
-        if notNow.waitForExistence(timeout: 5) {
-            XCTExpectFailure("the sheet went by itself", options: .nonStrict()) { notNow.tap() }
-        }
     }
 
     private func signOut() {
@@ -202,12 +173,5 @@ final class LinkDeviceTests: XCTestCase {
         }.resume()
         wait(for: [done], timeout: 15)
         return result
-    }
-
-    private func keep(_ name: String) {
-        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        shot.name = name
-        shot.lifetime = .keepAlways
-        add(shot)
     }
 }

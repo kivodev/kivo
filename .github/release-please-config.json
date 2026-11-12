@@ -25,9 +25,7 @@
         "clients/apple/project.yml",
         "clients/tizen/config.xml",
         "clients/chromecast/src/config.js",
-        { "type": "json", "path": "clients/chromecast/package.json", "jsonpath": "$.version" },
-        { "type": "json", "path": "clients/chromecast/package-lock.json", "jsonpath": "$.version" },
-        { "type": "json", "path": "clients/chromecast/package-lock.json", "jsonpath": "$.packages[''].version" }
+        { "type": "json", "path": "clients/chromecast/package.json", "jsonpath": "$.version" }
       ]
     }
   }
