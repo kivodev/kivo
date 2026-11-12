@@ -17,10 +17,6 @@ final class LibrarySwitchTests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .phone, "the iPhone's Libraries tab")
-        // Every run signs in as one client, replacing the last run's session.
-        app.launchEnvironment["KIVO_CLIENT_ID"] = "kivo-ui-tests"
-        // Sign-in goes straight to the server under test, without browsing the network.
-        app.launchEnvironment["KIVO_SERVER"] = environment["KIVO_SERVER"]
     }
 
     /// The list of libraries, each opening its page with
@@ -28,7 +24,7 @@ final class LibrarySwitchTests: XCTestCase {
     /// the app opens again on the page last opened.
     func testTheList() throws {
         let library = libraries[0]
-        try signIn()
+        try signIn(app)
         librariesTab.tap()
         let list = app.descendants(matching: .any)["library-list"]
         // The tab opens on the page last opened; choosing it again goes back to the list.
@@ -65,7 +61,7 @@ final class LibrarySwitchTests: XCTestCase {
 
     /// How quickly opening a library from the list shows it.
     func testSwitchingLibraries() throws {
-        try signIn()
+        try signIn(app)
         librariesTab.tap()
         for library in libraries { choose(library) }
 
@@ -110,35 +106,4 @@ final class LibrarySwitchTests: XCTestCase {
         wait(for: [expectation(for: shown, evaluatedWith: nil)], timeout: 20)
     }
 
-    /// Launches the app, signed in already or signing in.
-    private func signIn() throws {
-        app.launch()
-        let address = app.textFields["address"]
-        let user = app.textFields["username"]
-        let home = app.buttons["user"]
-        let start = NSPredicate { _, _ in address.exists || user.exists || home.exists }
-        wait(for: [expectation(for: start, evaluatedWith: nil)], timeout: 20)
-        if !home.exists {
-            let server = try XCTUnwrap(environment["KIVO_SERVER"], "set TEST_RUNNER_KIVO_SERVER")
-            let username = try XCTUnwrap(environment["KIVO_USERNAME"], "set TEST_RUNNER_KIVO_USERNAME")
-            let password = try XCTUnwrap(environment["KIVO_PASSWORD"], "set TEST_RUNNER_KIVO_PASSWORD")
-            XCTAssert(user.waitForExistence(timeout: 15), "the server at \(server) wasn't found")
-            user.tap()
-            user.typeText(username)
-            let secret = app.secureTextFields["password"]
-            secret.tap()
-            secret.typeText(password)
-            app.buttons["Sign in"].tap()
-            let notNow = XCUIApplication(bundleIdentifier: "com.apple.SafariViewService").buttons["Not Now"]
-            if notNow.waitForExistence(timeout: 8) { notNow.tap() }
-        }
-        XCTAssert(home.waitForExistence(timeout: 20), "Home didn't show")
-    }
-
-    private func keep(_ name: String) {
-        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        shot.name = name
-        shot.lifetime = .keepAlways
-        add(shot)
-    }
 }

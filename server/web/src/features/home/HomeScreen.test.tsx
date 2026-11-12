@@ -1,5 +1,6 @@
 import { fireEvent, waitFor, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { act } from "react";
+import { describe, expect, it, vi } from "vitest";
 import { bookIds } from "@/api/mocks/books";
 import type { WorkDetail } from "@/api/schemas";
 import { renderApp, screen } from "@/test/render";
@@ -26,6 +27,57 @@ describe("Home", () => {
     expect(within(continueRow).getByText("S1 · E1")).toBeInTheDocument();
     expect(within(continueRow).getAllByText("Severance")).not.toHaveLength(0);
     expect(within(continueRow).getByText("Good News About Hell")).toBeInTheDocument();
+  });
+
+  it("mounts a row below the fold as it nears the screen, holding its place until then", async () => {
+    // Each row's place stands 1000px below the one before, so the first
+    // two are within a screen of a 768px window and the rest are not.
+    const rect = vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+      const places = [...document.querySelectorAll('[data-part="home"] > *')];
+      const top = places.indexOf(this) * 1000;
+      return {
+        x: 0,
+        y: top,
+        left: 0,
+        top,
+        width: 1024,
+        height: 300,
+        right: 1024,
+        bottom: top + 300,
+        toJSON: () => ({}),
+      };
+    });
+    const observed = new Map<Element, IntersectionObserverCallback>();
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        callback: IntersectionObserverCallback;
+        constructor(callback: IntersectionObserverCallback) {
+          this.callback = callback;
+        }
+        observe(el: Element) {
+          observed.set(el, this.callback);
+        }
+        disconnect() {
+          for (const [el, callback] of observed) if (callback === this.callback) observed.delete(el);
+        }
+      },
+    );
+    try {
+      serveMockApi();
+      renderApp("/");
+      await screen.findByRole("heading", { name: "Continue Watching" });
+      expect(screen.getByRole("heading", { name: "Watchlist" })).toBeInTheDocument();
+      expect(screen.queryByRole("heading", { name: "Recently Added in Movies" })).toBeNull();
+      const placeholder = document.querySelectorAll('[data-part="row-placeholder"]')[0] as Element;
+      expect(placeholder).toBeDefined();
+      act(() => observed.get(placeholder)?.([{ isIntersecting: true } as IntersectionObserverEntry], {} as never));
+      expect(await screen.findByRole("heading", { name: "Recently Added in Movies" })).toBeInTheDocument();
+      expect(screen.queryByRole("heading", { name: "Recently Added in TV Shows" })).toBeNull();
+    } finally {
+      rect.mockRestore();
+      vi.unstubAllGlobals();
+    }
   });
 
   it("opens a list from its row's heading, with each card in its work's own shape", async () => {

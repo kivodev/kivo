@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.transformWhile
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import java.io.IOException
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -399,5 +400,22 @@ class WorkPageTest {
         assertEquals("s2", state.season?.id)
         assertEquals(listOf("e3"), state.episodeIds())
         assertEquals("my", state.myListId)
+    }
+
+    @Test
+    fun aPageOpenedFromItsCardSaysTheServerDoesntAnswer() = runTest {
+        val h = Harness(this)
+        h.servers.server("home.test", info("server-1", "Basement"))
+        h.servers.on("home.test", "GET", "/api/v1/works/m1") { throw IOException("no route to host") }
+        h.device.signedInTo("server-1")
+        val session = h.core.restore(home)
+
+        val page = session.library.workPage("m1", card = card("m1", WorkKind.Movie, "Sintel"))
+        val state = page.until { it.problem != null }
+        page.close()
+
+        assertEquals("Sintel", state.head?.title)
+        assertNull(state.work)
+        assertEquals(RequestProblem.Unreachable, state.problem)
     }
 }

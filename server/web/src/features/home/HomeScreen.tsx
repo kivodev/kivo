@@ -1,6 +1,7 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { homeQueries, homeRowKinds } from "@/api/home";
 import { libraryQueries } from "@/api/libraries";
 import type { HomeRow } from "@/api/schemas";
@@ -10,7 +11,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Icon } from "@/components/Icon";
 import { LoadError } from "@/components/LoadError";
 import { Row } from "@/components/Row";
-import { HomeSkeleton } from "@/components/Skeleton";
+import { HomeSkeleton, RowSkeleton } from "@/components/Skeleton";
 import { WorkCard, workShape } from "@/features/browse/WorkCard";
 import { AddLibraryButton } from "@/features/libraries/AddLibraryButton";
 import { isTv } from "@/tv/flag";
@@ -19,6 +20,36 @@ import { useHomeRowTitle } from "./rowTitle";
 
 /** Rows of books, whose covers are square. */
 const bookRows = new Set<HomeRow["kind"]>(["continueListening"]);
+
+/**
+ * A row that mounts once it comes within a screen of the viewport, and
+ * stays. Until then a skeleton holds its place, so the page doesn't jump.
+ * A row near the screen as Home opens mounts before it first paints. On
+ * TV every row mounts at once, so Down and Back always find their cards.
+ */
+function NearRow({ shape, children }: { shape: "poster" | "landscape" | "square"; children: ReactNode }) {
+  const [near, setNear] = useState(isTv);
+  const placeholder = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = placeholder.current;
+    if (near || !el) return;
+    if (el.getBoundingClientRect().top < window.innerHeight * 2) {
+      setNear(true);
+      return;
+    }
+    const seen = new IntersectionObserver((entries) => entries.some((e) => e.isIntersecting) && setNear(true), {
+      rootMargin: "100% 0px",
+    });
+    seen.observe(el);
+    return () => seen.disconnect();
+  }, [near]);
+  if (near) return children;
+  return (
+    <div ref={placeholder} data-part="row-placeholder" aria-hidden="true">
+      <RowSkeleton shape={shape} />
+    </div>
+  );
+}
 
 /**
  * Home. It shows the rows the server sends that have cards, skipping kinds this client doesn't know.
@@ -92,49 +123,50 @@ export function HomeScreen() {
         // Only a manual list's works can be taken off it.
         const manual = list?.kind === "manual" ? list : undefined;
         return (
-          <Row
-            key={row.id}
-            id={row.kind}
-            focusKey={row.id}
-            autoFocus={index === rows.findIndex((r) => r.items.length > 0)}
-            title={
-              list && !isTv ? (
-                <Link
-                  to="/lists/$listId"
-                  params={{ listId: list.id }}
-                  className="inline-flex items-center gap-1 hover:underline"
-                >
-                  {rowTitle(row)}
-                  <Icon name="chevronRight" className="size-5 text-text-muted" />
-                </Link>
-              ) : (
-                rowTitle(row)
-              )
-            }
-            shape={shape}
-            items={row.items}
-            itemKey={(w) => w.id}
-            renderItem={(w) => (
-              <WorkCard work={w} shape={list ? workShape(w.kind) : shape} continueRow={continueRow} list={manual} />
-            )}
-            action={
-              list && isTv ? (
-                <Link to="/lists/$listId" params={{ listId: list.id }} className="text-sm font-semibold text-text">
-                  <Trans>See all</Trans>
-                </Link>
-              ) : row.library && row.kind === "recentlyAdded" ? (
-                <Link
-                  to="/libraries/$libraryId"
-                  params={{ libraryId: row.library.id }}
-                  search={{ sort: "addedAt" }}
-                  state={{ oneOffSort: true }}
-                  className="text-sm text-text-muted touch-target hover:text-text tv:font-semibold tv:text-text"
-                >
-                  <Trans>See all</Trans>
-                </Link>
-              ) : undefined
-            }
-          />
+          <NearRow key={row.id} shape={shape}>
+            <Row
+              id={row.kind}
+              focusKey={row.id}
+              autoFocus={index === rows.findIndex((r) => r.items.length > 0)}
+              title={
+                list && !isTv ? (
+                  <Link
+                    to="/lists/$listId"
+                    params={{ listId: list.id }}
+                    className="inline-flex items-center gap-1 hover:underline"
+                  >
+                    {rowTitle(row)}
+                    <Icon name="chevronRight" className="size-5 text-text-muted" />
+                  </Link>
+                ) : (
+                  rowTitle(row)
+                )
+              }
+              shape={shape}
+              items={row.items}
+              itemKey={(w) => w.id}
+              renderItem={(w) => (
+                <WorkCard work={w} shape={list ? workShape(w.kind) : shape} continueRow={continueRow} list={manual} />
+              )}
+              action={
+                list && isTv ? (
+                  <Link to="/lists/$listId" params={{ listId: list.id }} className="text-sm font-semibold text-text">
+                    <Trans>See all</Trans>
+                  </Link>
+                ) : row.library && row.kind === "recentlyAdded" ? (
+                  <Link
+                    to="/libraries/$libraryId"
+                    params={{ libraryId: row.library.id }}
+                    search={{ sort: "addedAt" }}
+                    state={{ oneOffSort: true }}
+                    className="text-sm text-text-muted touch-target hover:text-text tv:font-semibold tv:text-text"
+                  >
+                    <Trans>See all</Trans>
+                  </Link>
+                ) : undefined
+              }
+            />
+          </NearRow>
         );
       })}
     </div>

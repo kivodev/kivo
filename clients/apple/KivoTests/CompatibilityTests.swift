@@ -30,12 +30,7 @@ final class CompatibilityTests: XCTestCase {
             request.path == "/api/v1/server" ? (200, Self.info) : (200, #"{"items": []}"#)
         }
         address = try await server.start()
-        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        core = KivoClient(device: AppleDevice(
-            directory: directory.path(percentEncoded: false), name: "iPhone", identity: AppleIdentity.current,
-            clientId: nil, subtitles: [], trackSelection: false, transport: NoTransport()
-        ))
+        core = try KivoClient.forTests(name: "iPhone")
     }
 
     override func tearDown() {

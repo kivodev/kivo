@@ -18,19 +18,14 @@ import XCTest
 /// Each step's screen is kept as an attachment named `ios-dl-…`.
 final class DownloadTests: XCTestCase {
     private let app = XCUIApplication()
-    private let environment = ProcessInfo.processInfo.environment
 
     override func setUpWithError() throws {
         continueAfterFailure = false
-        // Every run signs in as one client, replacing the last run's session.
-        app.launchEnvironment["KIVO_CLIENT_ID"] = "kivo-ui-tests"
-        // Sign-in goes straight to the server under test, without browsing the network.
-        app.launchEnvironment["KIVO_SERVER"] = environment["KIVO_DOWNLOAD_SERVER"]
     }
 
     func testDownloadAndPlayOffline() throws {
-        let server = try XCTUnwrap(environment["KIVO_DOWNLOAD_SERVER"], "set TEST_RUNNER_KIVO_DOWNLOAD_SERVER")
-        try signIn(server: server)
+        let server = try TestServer.download.address
+        try signIn(app, at: .download)
 
         // A book: its original, at once.
         open(library: "Audiobooks")
@@ -150,8 +145,8 @@ final class DownloadTests: XCTestCase {
     /// selected in Edit. Run on a fresh server.sh, as testDownloadAndPlayOffline
     /// stops it. Screenshots are named `ios-dl2-…`.
     func testTitlePagePlaysItsDownloadAndDeleting() throws {
-        let server = try XCTUnwrap(environment["KIVO_DOWNLOAD_SERVER"], "set TEST_RUNNER_KIVO_DOWNLOAD_SERVER")
-        try signIn(server: server)
+        let server = try TestServer.download.address
+        try signIn(app, at: .download)
         let download = app.buttons["download"]
 
         // The book, the movie at Standard, and the show's every episode as it is.
@@ -275,7 +270,7 @@ final class DownloadTests: XCTestCase {
 
     /// Sets the user's place in the server's one movie, past the 2 minutes a video must play to resume.
     private func setMoviePosition(_ server: String, ms: Int) throws {
-        let password = try XCTUnwrap(environment["KIVO_DOWNLOAD_PASSWORD"])
+        let password = try TestServer.download.password
         let session = URLSession(configuration: .ephemeral)
         func call(_ method: String, _ path: String, _ body: [String: Any]? = nil) throws -> [String: Any] {
             var request = URLRequest(url: URL(string: server + "/api/v1/" + path)!)
@@ -312,8 +307,7 @@ final class DownloadTests: XCTestCase {
     /// session, and when it's paused and resumed from its page. The proxy's
     /// log shows each move resuming by range.
     func testAMovieGoesOnAfterTheCellularSettingAndAPause() throws {
-        let server = try XCTUnwrap(environment["KIVO_DOWNLOAD_SERVER"], "set TEST_RUNNER_KIVO_DOWNLOAD_SERVER")
-        try signIn(server: server)
+        try signIn(app, at: .download)
         open(library: "Movies")
         app.buttons["work"].firstMatch.tap()
         let download = app.buttons["download"]
@@ -398,29 +392,6 @@ final class DownloadTests: XCTestCase {
         app.buttons.matching(identifier: "download").matching(NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", text, text)).allElementsBoundByIndex
     }
 
-    /// Signs in to [server], which sign-in opens on, unless the app still is.
-    private func signIn(server: String) throws {
-        let username = try XCTUnwrap(environment["KIVO_DOWNLOAD_USERNAME"], "set TEST_RUNNER_KIVO_DOWNLOAD_USERNAME")
-        let password = try XCTUnwrap(environment["KIVO_DOWNLOAD_PASSWORD"], "set TEST_RUNNER_KIVO_DOWNLOAD_PASSWORD")
-        app.launch()
-        let address = app.textFields["address"]
-        let user = app.textFields["username"]
-        let home = app.buttons["user"]
-        let start = NSPredicate { _, _ in address.exists || user.exists || home.exists }
-        wait(for: [expectation(for: start, evaluatedWith: nil)], timeout: 20)
-        if home.exists { return }
-        XCTAssert(user.waitForExistence(timeout: 15), "the server at \(server) wasn't found")
-        user.tap()
-        user.typeText(username)
-        let secret = app.secureTextFields["password"]
-        secret.tap()
-        secret.typeText(password)
-        app.buttons["Sign in"].tap()
-        XCTAssert(home.waitForExistence(timeout: 20), "Home didn't show after signing in")
-        let notNow = XCUIApplication(bundleIdentifier: "com.apple.SafariViewService").buttons["Not Now"]
-        if notNow.waitForExistence(timeout: 5) { notNow.tap() }
-    }
-
     /// Opens [library] from the Libraries tab's list of libraries.
     private func open(library: String) {
         app.tabBars.buttons["Libraries"].tap()
@@ -442,12 +413,5 @@ final class DownloadTests: XCTestCase {
         let done = expectation(description: "server stopped")
         URLSession.shared.dataTask(with: request) { _, _, _ in done.fulfill() }.resume()
         wait(for: [done], timeout: 10)
-    }
-
-    private func keep(_ name: String) {
-        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        shot.name = name
-        shot.lifetime = .keepAlways
-        add(shot)
     }
 }

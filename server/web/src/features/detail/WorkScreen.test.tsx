@@ -1,5 +1,5 @@
 import { waitFor, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { WorkDetail } from "@/api/schemas";
 import { locationOf, renderApp, screen } from "@/test/render";
 import { http, mockId, mockIds, scenarios, sent, serveMockApi, server } from "@/test/server";
@@ -27,6 +27,42 @@ function holdDetail(id: string): () => void {
   );
   return release;
 }
+
+describe("A work's page while its images load", () => {
+  it("blurs the backdrop behind the hero, and shows its rows' cards in their colour", async () => {
+    // A hash of its own, which no earlier page has drawn without a canvas.
+    serveMockApi((api) => {
+      const images = (api.works[mockIds.dunePartTwo] as WorkDetail).images;
+      if (images.backdrop) images.backdrop.blurhash = "L6PZfSi_.AyE_3t7t7R**0o#DgR4";
+    });
+    const context = {
+      createImageData: (w: number, h: number) => ({ data: new Uint8ClampedArray(w * h * 4) }),
+      putImageData() {},
+    };
+    const draw = vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(context as never);
+    const png = vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue("data:image/png;base64,blur");
+    try {
+      renderApp(`/works/${mockIds.dunePartTwo}`);
+      const backdrop = await waitFor(() => {
+        const el = document.querySelector('[data-part="hero-backdrop"] [data-part="artwork-placeholder"]');
+        if (!el) throw new Error("no backdrop placeholder");
+        return el;
+      });
+      expect(backdrop.tagName).toBe("IMG");
+      expect(backdrop.getAttribute("src")).toBe("data:image/png;base64,blur");
+      const trailers = await waitFor(() => {
+        const el = document.querySelector('[data-part="row"] [data-part="artwork-placeholder"]');
+        if (!el) throw new Error("no card placeholder");
+        return el;
+      });
+      expect(trailers.tagName).toBe("DIV");
+      expect(document.querySelectorAll('img[data-part="artwork-placeholder"]')).toHaveLength(1);
+    } finally {
+      draw.mockRestore();
+      png.mockRestore();
+    }
+  });
+});
 
 describe("Loading a work's page", () => {
   it("shows the hero's shape, with the title and year of the card it was opened from", async () => {

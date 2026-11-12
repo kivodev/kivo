@@ -17,12 +17,7 @@ final class ClientIdentityTests: XCTestCase {
         }
         defer { server.stop() }
         let address = try await server.start()
-        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let core = KivoClient(device: AppleDevice(
-            directory: directory.path(percentEncoded: false), name: "Alex's iPhone", identity: AppleIdentity.current,
-            clientId: nil, subtitles: [], trackSelection: false, transport: NoTransport()
-        ))
+        let core = try KivoClient.forTests(name: "Alex's iPhone")
         let session = try await core.restore(server: SavedServer(id: "identity-test", name: "Identity test", addresses: [address]))
         defer { session.close() }
         for await load in session.library.libraries() where load.getOrNull() != nil { break }

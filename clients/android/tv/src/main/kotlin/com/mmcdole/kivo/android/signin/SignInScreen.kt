@@ -52,6 +52,7 @@ import com.mmcdole.kivo.android.theme.Kivo
 import com.mmcdole.kivo.android.theme.KivoTokens
 import com.mmcdole.kivo.android.theme.TvType
 import com.mmcdole.kivo.android.ui.EmptyState
+import com.mmcdole.kivo.android.ui.FocusMemory
 import com.mmcdole.kivo.android.ui.FocusOnOpen
 import com.mmcdole.kivo.android.ui.Incompatible
 import com.mmcdole.kivo.android.ui.KivoButton
@@ -495,13 +496,17 @@ private val CodeQrGap = 56.dp
 /** The sign-in code's QR code's size: big enough to scan from a seat across the room. */
 private val QrSize = 224.dp
 
-/** The saved server answers at none of its addresses: retrying, with Retry now and Change server. */
+/**
+ * The saved server answers at none of its addresses: retrying, with Retry
+ * now and Change server, focus on the one [focus] last had.
+ */
 @Composable
-fun UnreachableScreen(graph: AppGraph, server: SavedServer) {
+fun UnreachableScreen(graph: AppGraph, server: SavedServer, focus: FocusMemory) {
     com.mmcdole.kivo.android.ui.Failed(
         problem = RequestProblem.Unreachable,
         server = server.name,
         onRetry = { graph.core.retry() },
         onChangeServer = { graph.changeServer() },
+        focus = focus,
     )
 }

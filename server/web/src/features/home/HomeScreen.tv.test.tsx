@@ -5,7 +5,8 @@ import { serveMockApi } from "@/test/server";
 import { stopTv } from "@/tv/start";
 
 // jsdom lays nothing out, so each card gets a place on a 1080p screen from
-// its row and its place in the row: rows 600 apart, cards 260 apart.
+// its row and its place in the row: rows 600 apart, cards 260 apart. A
+// row's box holds its cards, as Up and Down measure rows before cards.
 function layOut() {
   vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
     const el = this as HTMLElement;
@@ -13,10 +14,14 @@ function layOut() {
     let y = 0;
     let width = 1920;
     let height = 1080;
+    const row = [...document.querySelectorAll("[data-row]")].indexOf(el.closest("[data-row]") as Element);
+    if (el.dataset.tvGroup?.startsWith("row:")) {
+      // A row's cards with its title above them.
+      y = 50 + row * 600;
+      height = 450;
+    }
     if (el.dataset.tvFocusKey?.startsWith("card:")) {
       const li = el.closest("li");
-      const rows = [...document.querySelectorAll("[data-row]")];
-      const row = rows.indexOf(el.closest("[data-row]") as Element);
       const column = [...(li?.parentElement?.children ?? [])].indexOf(li as Element);
       x = 250 + column * 260;
       y = 100 + row * 600;
@@ -55,6 +60,23 @@ describe("Home on TV", () => {
     await waitFor(() => expect(focused()).toMatch(/^card:list:/));
     press("ArrowUp");
     await waitFor(() => expect(focused()).toMatch(/^card:continueWatching:/));
+  });
+
+  it("walks every row in order with Down and Up, every row being there from the start", async () => {
+    serveMockApi();
+    renderApp("/");
+    await waitFor(() => expect(focused()).toMatch(/^card:continueWatching:/));
+    expect(document.querySelector('[data-part="row-placeholder"]')).toBeNull();
+    const rows = [...document.querySelectorAll("[data-row]")];
+    const row = () => rows.findIndex((r) => r.contains(document.activeElement));
+    for (let next = 1; next < rows.length; next++) {
+      press("ArrowDown");
+      await waitFor(() => expect(row()).toBe(next));
+    }
+    for (let next = rows.length - 2; next >= 0; next--) {
+      press("ArrowUp");
+      await waitFor(() => expect(row()).toBe(next));
+    }
   });
 
   it("opens a card's page with OK, and Back returns focus to that card", async () => {

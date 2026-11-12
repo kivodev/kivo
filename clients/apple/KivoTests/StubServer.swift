@@ -1,5 +1,29 @@
 import Foundation
+import KivoCore
 import Network
+@testable import Kivo
+
+extension KivoClient {
+    /// A client as the app makes one, in a new temporary directory, whose
+    /// downloads never transfer.
+    @MainActor
+    static func forTests(name: String = "Test", subtitles: [SubtitleEntry] = [], trackSelection: Bool = false) throws -> KivoClient {
+        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return KivoClient(device: AppleDevice(
+            directory: directory.path(percentEncoded: false), name: name, identity: AppleIdentity.current,
+            clientId: nil, subtitles: subtitles, trackSelection: trackSelection, transport: NoTransport()
+        ))
+    }
+}
+
+/// Downloads that never transfer, for a test's device.
+final class NoTransport: NSObject, DownloadTransport {
+    func start(request: TransferRequest) {}
+    func stop(id: String) {}
+    func cancel(id: String) {}
+    func running() -> [String] { [] }
+}
 
 /// A server on localhost for a test: each request's method, path, query,
 /// headers and body go to [answer], whose status and JSON body are sent

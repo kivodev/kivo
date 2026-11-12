@@ -116,12 +116,7 @@ final class GridModelTests: XCTestCase {
 
     /// A session of the app on a device of its own, as the app opens one.
     private func open() async throws -> KivoSession {
-        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let core = KivoClient(device: AppleDevice(
-            directory: directory.path(percentEncoded: false), name: "Test", identity: AppleIdentity.current,
-            clientId: nil, subtitles: [], trackSelection: false, transport: NoTransport()
-        ))
+        let core = try KivoClient.forTests()
         return try await core.restore(server: SavedServer(id: "grid-test", name: "Grid test", addresses: [address]))
     }
 
@@ -400,15 +395,6 @@ final class GridModelTests: XCTestCase {
         XCTAssertEqual(rules.map(\.field), ["library", "genre", "year", "contentRating"])
         XCTAssertEqual(rules[2].propertyValues, ["2000", "2009"])
     }
-}
-
-/// A device that downloads nothing.
-/// Downloads that never transfer, for a test's device.
-final class NoTransport: NSObject, DownloadTransport {
-    func start(request: TransferRequest) {}
-    func stop(id: String) {}
-    func cancel(id: String) {}
-    func running() -> [String] { [] }
 }
 
 private extension GridItem {

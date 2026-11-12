@@ -17,12 +17,7 @@ final class AnswerTests: XCTestCase {
             request.path == "/api/v1/server" ? (200, #"{"id": "answer-test", "name": "Answer test", "version": "1.0"}"#) : Self.libraries
         }
         let address = try await server.start()
-        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let core = KivoClient(device: AppleDevice(
-            directory: directory.path(percentEncoded: false), name: "Test", identity: AppleIdentity.current,
-            clientId: nil, subtitles: [], trackSelection: false, transport: NoTransport()
-        ))
+        let core = try KivoClient.forTests()
         session = try await core.restore(server: SavedServer(id: "answer-test", name: "Answer test", addresses: [address]))
     }
 

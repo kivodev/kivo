@@ -65,26 +65,30 @@ fun EmptyState(
  * A read that failed. Without an answer from the server it's the full-screen
  * "Can't reach {server}. Retrying…", counting down to the next try, with
  * Retry now and Change server; a problem says what it was, with
- * Try again.
+ * Try again. Retry takes focus first; [focus] keeps which button has it
+ * from one showing to the next, as the app's retries show it again.
  */
 @Composable
-fun Failed(problem: RequestProblem, server: String, onRetry: () -> Unit, onChangeServer: () -> Unit) {
-    val retry = remember { FocusRequester() }
-    if (problem is RequestProblem.Unreachable) {
+fun Failed(problem: RequestProblem, server: String, onRetry: () -> Unit, onChangeServer: () -> Unit, focus: FocusMemory = remember { FocusMemory(null) }) {
+    val unreachable = problem is RequestProblem.Unreachable
+    if (unreachable) {
         EmptyState(
             stringResource(R.string.unreachable_title, server),
             stringResource(R.string.unreachable_retrying, retryCountdown(onRetry)),
         ) {
-            KivoButton(stringResource(R.string.retry_now), onRetry, Modifier.focusRequester(retry), primary = true)
-            KivoButton(stringResource(R.string.change_server), onChangeServer)
+            KivoButton(stringResource(R.string.retry_now), onRetry, Modifier.focusKey(focus, RETRY), primary = true)
+            KivoButton(stringResource(R.string.change_server), onChangeServer, Modifier.focusKey(focus, CHANGE_SERVER))
         }
     } else {
         EmptyState(stringResource(R.string.couldnt_load), display.problem(problem)) {
-            KivoButton(stringResource(R.string.try_again), onRetry, Modifier.focusRequester(retry), primary = true)
+            KivoButton(stringResource(R.string.try_again), onRetry, Modifier.focusKey(focus, RETRY), primary = true)
         }
     }
-    LaunchedEffect(problem) { focusWhenPlaced(retry) }
+    LaunchedEffect(problem) { if (unreachable) focus.restore(RETRY) else focusWhenPlaced(focus.requester(RETRY)) }
 }
+
+private const val RETRY = "retry"
+private const val CHANGE_SERVER = "changeServer"
 
 /**
  * A server the app doesn't work with, in place of its sign-in or its

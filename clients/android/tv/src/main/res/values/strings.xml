@@ -57,18 +57,6 @@
     <string name="remove_from_my_list">Remove from Watchlist</string>
     <string name="remove_from_list">Remove from %1$s</string>
     <string name="see_all">See all</string>
-    <plurals name="count_episodes">
-        <item quantity="one">%1$s episode</item>
-        <item quantity="other">%1$s episodes</item>
-    </plurals>
-    <plurals name="count_seasons">
-        <item quantity="one">%1$s season</item>
-        <item quantity="other">%1$s seasons</item>
-    </plurals>
-    <plurals name="count_extras">
-        <item quantity="one">%1$s extra</item>
-        <item quantity="other">%1$s extras</item>
-    </plurals>
     <string name="empty_no_libraries_admin">No libraries</string>
     <string name="empty_no_libraries_admin_sentence">Add libraries in the web app. They appear here as they\'re scanned.</string>
     <string name="empty_no_libraries">No libraries</string>
@@ -102,7 +90,6 @@
     </plurals>
 
     <!-- Library -->
-    <string name="sort">Sort</string>
     <string name="sort_title">Title</string>
     <string name="sort_added">Date added</string>
     <string name="sort_last_episode_added">Last episode added</string>

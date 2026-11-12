@@ -7,12 +7,11 @@ import kotlinx.serialization.json.jsonPrimitive
 import java.util.Locale
 
 // shared/tokens.json as SwiftUI values, for KivoUI. CSS lengths become points
-// at one CSS pixel each (a rem is 16), as iOS sizes a phone's layout; the TV
-// tokens are pixels on a 1080p canvas, which tvOS lays out at 1920 by 1080
-// points, so one to a point. Colours are sRGB components with their alpha;
-// CSS shadows are SwiftUI shadow layers, whose radius is half the CSS blur.
-// Fonts, breakpoints, containers' grid templates and easing are left out: the
-// apps use the system font.
+// at one CSS pixel each (a rem is 16), as iOS sizes a phone's layout. Colours
+// are sRGB components with their alpha; CSS shadows are SwiftUI shadow layers,
+// whose radius is half the CSS blur. Fonts, breakpoints, containers' grid
+// templates, durations, easing and the TV tokens are left out: the app uses
+// the system font and draws no TV interface.
 
 /** The Swift source of the SwiftUI tokens. */
 fun swiftTokens(tokensJson: String): String {
@@ -90,34 +89,17 @@ fun swiftTokens(tokensJson: String): String {
         lengthEnum("Layout", tokens.obj("layout"))
         appendLine()
         lengthEnum("Container", tokens.obj("container"))
-        appendLine()
-        appendLine("    /// In seconds.")
-        appendLine("    public enum Duration {")
-        for ((key, value) in tokens.obj("duration")) {
-            appendLine("        public static let ${name(key)}: Double = ${value.jsonPrimitive.content.removeSuffix("ms").toInt() / 1000.0}")
-        }
-        appendLine("    }")
-        appendLine()
-        val tv = tokens.obj("tv")
-        appendLine("    /// The TV interface's type scale and focus, in points of a 1080p screen.")
-        appendLine("    public enum Tv {")
-        appendLine("        public static let focusRingWidth: CGFloat = ${points(tv.string("focusRingWidth"))}")
-        appendLine("        public static let focusScale: CGFloat = ${tv.string("focusScale")}")
-        appendLine("        public static let cardFocusScale: CGFloat = ${tv.string("cardFocusScale")}")
-        appendLine()
-        textEnum("TextSize", tv.obj("text"), indent = "        ")
-        appendLine("    }")
         appendLine("}")
     }
 }
 
-private fun StringBuilder.textEnum(enumName: String, steps: JsonObject, indent: String = "    ") {
-    appendLine("${indent}public enum $enumName {")
+private fun StringBuilder.textEnum(enumName: String, steps: JsonObject) {
+    appendLine("    public enum $enumName {")
     for ((key, value) in steps) {
         val step = value.jsonObject
-        appendLine("$indent    public static let ${name(key)} = KivoTextStyle(size: ${points(step.string("size"))}, lineHeight: ${points(step.string("lineHeight"))})")
+        appendLine("        public static let ${name(key)} = KivoTextStyle(size: ${points(step.string("size"))}, lineHeight: ${points(step.string("lineHeight"))})")
     }
-    appendLine("$indent}")
+    appendLine("    }")
 }
 
 /** Lengths only: a value that isn't one (a grid template) has no SwiftUI meaning. */

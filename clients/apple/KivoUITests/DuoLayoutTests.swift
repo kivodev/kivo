@@ -11,7 +11,6 @@ import XCTest
 /// changes nothing on the server.
 final class DuoLayoutTests: XCTestCase {
     private let app = XCUIApplication()
-    private let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
     private let environment = ProcessInfo.processInfo.environment
     private var library: String { environment["KIVO_LIBRARY"] ?? "Movies" }
     private var pose: String { environment["KIVO_DUO_POSE"] ?? "outer" }
@@ -19,9 +18,6 @@ final class DuoLayoutTests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .phone, "the iPhone's layouts")
-        app.launchEnvironment["KIVO_CLIENT_ID"] = "kivo-ui-tests"
-        // Sign-in goes straight to the server under test, without browsing the network.
-        app.launchEnvironment["KIVO_SERVER"] = environment["KIVO_SERVER"]
         XCUIDevice.shared.orientation = .portrait
     }
 
@@ -32,7 +28,7 @@ final class DuoLayoutTests: XCTestCase {
     }
 
     func testScreens() throws {
-        try signIn()
+        try signIn(app, home: app.homeTab, allowingLocalNetwork: true)
         // `KIVO_DUO_ORIENTATIONS` picks them, "portrait,landscape" by default:
         // the unfolded display stays landscape, and XCTest's taps turn with
         // the device while its screen doesn't.
@@ -104,32 +100,6 @@ final class DuoLayoutTests: XCTestCase {
     private func tab(_ name: String) {
         let bar = app.tabBars.buttons[name]
         (bar.exists ? bar : app.buttons[name].firstMatch).tap()
-    }
-
-    private func signIn() throws {
-        let server = try XCTUnwrap(environment["KIVO_SERVER"], "set TEST_RUNNER_KIVO_SERVER")
-        let username = try XCTUnwrap(environment["KIVO_USERNAME"], "set TEST_RUNNER_KIVO_USERNAME")
-        let password = try XCTUnwrap(environment["KIVO_PASSWORD"], "set TEST_RUNNER_KIVO_PASSWORD")
-        app.launch()
-        // A first run asks to find devices on the local network.
-        let allow = springboard.buttons["Allow"]
-        if allow.waitForExistence(timeout: 3) { allow.tap() }
-        let address = app.textFields["address"]
-        let user = app.textFields["username"]
-        let home = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Home")).firstMatch
-        let start = NSPredicate { _, _ in address.exists || user.exists || home.exists }
-        wait(for: [expectation(for: start, evaluatedWith: nil)], timeout: 20)
-        if home.exists { return }
-        XCTAssert(user.waitForExistence(timeout: 15), "the server at \(server) wasn't found")
-        user.tap()
-        user.typeText(username)
-        let secret = app.secureTextFields["password"]
-        secret.tap()
-        secret.typeText(password + "\n")
-        XCTAssert(home.waitForExistence(timeout: 20), "Home didn't show after signing in")
-        // iOS's offer to save the password belongs to Safari's view service.
-        let notNow = XCUIApplication(bundleIdentifier: "com.apple.SafariViewService").buttons["Not Now"]
-        if notNow.waitForExistence(timeout: 5) { notNow.tap() }
     }
 
     /// Attaches a screenshot, and in the Simulator also writes it to

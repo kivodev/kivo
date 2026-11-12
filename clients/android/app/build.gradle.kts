@@ -136,7 +136,6 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.13.0")
     // The activity is a fragment activity, for the phone's Cast button's device list.
     implementation("androidx.fragment:fragment-ktx:1.8.9")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.11.0")
     // The phone's playback service and its media session.
     implementation("androidx.media3:media3-session:1.11.1")
     // Installs the baseline profile where no app store does, as on a sideloaded TV.
