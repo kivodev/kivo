@@ -174,6 +174,7 @@ export function emptyWork(id: string, kind: WorkKind, title: string): WorkDetail
     versions: [],
     extras: [],
     collections: [],
+    similar: [],
   };
 }
 
@@ -191,6 +192,7 @@ export function summaryOf(work: WorkDetail): WorkSummary {
     extras: _x,
     listIds: _li,
     collections: _co,
+    similar: _si,
     lockedFields: _l,
     ...summary
   } = work;

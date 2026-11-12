@@ -4478,6 +4478,10 @@ msgstr "Can't reach {0}. Check the address and that the server is running."
 msgid "Refreshing…"
 msgstr "Refreshing…"
 
+#: src/features/detail/WorkRows.tsx
+msgid "More like this"
+msgstr "More like this"
+
 #: src/features/auth/AddressScreen.tsx
 msgid "Connecting without encryption. Press Open to continue."
 msgstr "Connecting without encryption. Press Open to continue."

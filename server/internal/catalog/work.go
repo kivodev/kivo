@@ -94,11 +94,15 @@ type WorkMetadata struct {
 	ContentRatingAge *int
 	Community        *CommunityRating // nil when the provider has no votes
 	Trailers         []Trailer        // a movie's or series' trailers, in the order shown; nil leaves them alone
-	Genres, Tags     []string
-	Companies        []string // studios, networks or a book's publisher
-	Credits          []Credit
-	Collection       *CollectionRef // nil leaves collections alone
-	Book             *BookMetadata  // nil for any kind but a book
+	// Recommendations are the TMDb IDs of the titles of the work's own
+	// kind that TMDb recommends for a movie or series, best first. nil
+	// leaves them alone.
+	Recommendations []string
+	Genres, Tags    []string
+	Companies       []string // studios, networks or a book's publisher
+	Credits         []Credit
+	Collection      *CollectionRef // nil leaves collections alone
+	Book            *BookMetadata  // nil for any kind but a book
 }
 
 // Trailer is a movie's or series' trailer on YouTube.
@@ -482,6 +486,11 @@ func (c *Catalog) writeMetadata(ctx context.Context, tx *store.Tx, cur dbq.Work,
 			return err
 		}
 	}
+	if m.Recommendations != nil {
+		if err := setRecommendations(ctx, q, cur.ID, m.Recommendations); err != nil {
+			return err
+		}
+	}
 	if m.Collection != nil {
 		if err := joinCollection(ctx, tx, cur.ID, *m.Collection); err != nil {
 			return err
@@ -568,6 +577,19 @@ func setTrailers(ctx context.Context, q *dbq.Queries, work id.ID, trailers []Tra
 	for i, t := range trailers {
 		err := q.PutTrailer(ctx, dbq.PutTrailerParams{ID: id.New(), WorkID: work, Ord: int64(i), Key: t.Key, Title: t.Title})
 		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// setRecommendations replaces a work's recommendations.
+func setRecommendations(ctx context.Context, q *dbq.Queries, work id.ID, ids []string) error {
+	if err := q.DeleteRecommendations(ctx, work); err != nil {
+		return err
+	}
+	for i, x := range ids {
+		if err := q.InsertRecommendation(ctx, dbq.InsertRecommendationParams{WorkID: work, Ord: int64(i), ExtID: x}); err != nil {
 			return err
 		}
 	}
@@ -675,7 +697,7 @@ func (b *Batch) Unmatch(ctx context.Context, work id.ID, title string, year int)
 			return err
 		}
 		for _, clear := range []func(context.Context, id.ID) error{
-			q.DeleteExternalIDs, q.DeleteWorkGenres, q.DeleteWorkTags, q.DeleteWorkCompanies, q.DeleteCredits, q.DeleteTrailers,
+			q.DeleteExternalIDs, q.DeleteWorkGenres, q.DeleteWorkTags, q.DeleteWorkCompanies, q.DeleteCredits, q.DeleteTrailers, q.DeleteRecommendations,
 			q.LeaveAllCollections,
 		} {
 			if err := clear(ctx, r.ID); err != nil {

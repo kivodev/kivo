@@ -5146,9 +5146,15 @@ type WorkDetail struct {
 	// RemembersTracks With versions: whether choosing tracks for this work
 	// remembers them for its series, as for an episode when the
 	// user's `rememberTracks` is on (`PlaybackPreferences`).
-	RemembersTracks *bool    `json:"remembersTracks,omitempty"`
-	SortTitle       *string  `json:"sortTitle,omitempty"`
-	Studios         []string `json:"studios"`
+	RemembersTracks *bool `json:"remembersTracks,omitempty"`
+
+	// Similar Titles like a movie, series or book, of its own kind, best
+	// first: up to 20 the user sees and hasn't played, leaving out
+	// the other members of its collections and book series. Empty
+	// for other kinds and when nothing is alike enough.
+	Similar   []WorkSummary `json:"similar"`
+	SortTitle *string       `json:"sortTitle,omitempty"`
+	Studios   []string      `json:"studios"`
 
 	// Versions Playable versions in libraries the user can see. A version
 	// with a missing file isn't listed, and is again if the file

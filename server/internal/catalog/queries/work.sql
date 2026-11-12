@@ -136,6 +136,12 @@ DELETE FROM trailer WHERE work_id = @work_id AND key = @key;
 -- name: DeleteTrailers :exec
 DELETE FROM trailer WHERE work_id = @work_id;
 
+-- name: DeleteRecommendations :exec
+DELETE FROM work_recommendation WHERE work_id = @work_id;
+
+-- name: InsertRecommendation :exec
+INSERT INTO work_recommendation (work_id, ord, ext_id) VALUES (@work_id, @ord, @ext_id);
+
 -- name: CreditNames :many
 SELECT p.name FROM credit c JOIN person p ON p.id = c.person_id WHERE c.work_id = @work_id ORDER BY c.role, c.ord;
 

@@ -24,7 +24,7 @@ var largeTables = []string{
 	"work", "work_library", "work_external_id", "media_file", "media_track", "media_chapter", "media_attachment", "media_version",
 	"media_version_work", "person", "credit", "work_genre", "work_tag", "work_company", "collection_work",
 	"user_state", "play_event", "match", "image", "artwork", "provider_cache", "scan_dir", "activity",
-	"book", "book_series", "book_series_book",
+	"book", "book_series", "book_series_book", "work_recommendation",
 }
 
 // wholeLibrary lists the statements allowed to scan a large table, keyed by

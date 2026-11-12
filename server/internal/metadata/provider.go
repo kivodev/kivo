@@ -80,6 +80,7 @@ type Description struct {
 	Community            *catalog.CommunityRating
 	Collection           *Collection       // set only for a movie
 	Trailers             []catalog.Trailer // a movie's or series', best first
+	Recommendations      []string          // a movie's or series': the TMDb IDs of the titles TMDb recommends, best first
 	Images               Images
 }
 

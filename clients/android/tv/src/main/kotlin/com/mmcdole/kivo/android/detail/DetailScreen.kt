@@ -667,12 +667,19 @@ private fun PickerChip(label: String, value: String, hero: HeroLevels, key: Stri
 }
 
 /**
- * Trailers, cast, extras and collections under the hero, the first [firstTop] under it; rows with nothing in them are
- * left out. The Trailers row holds the trailer files in the work's folder, then a movie's or series' trailers on YouTube.
+ * More like this, trailers, cast, extras and collections under the hero, the first [firstTop] under it; rows with nothing
+ * in them are left out. The Trailers row holds the trailer files in the work's folder, then a movie's or series' trailers on YouTube.
  */
 private fun LazyListScope.extraRows(work: WorkDetail, memory: FocusMemory, navigator: Navigator, firstTop: Dp = RowGap) {
     var top = firstTop
     fun nextTop() = top.also { top = RowGap }
+    if (work.similar.isNotEmpty()) {
+        extraRow(R.string.more_like_this, nextTop()) {
+            items(work.similar, key = { it.id }) { w ->
+                WorkCard(w, CardShape.Poster, PosterWidth, { navigator.push(Screen.Work(w.id)) }, Modifier.focusKey(memory, "row/${w.id}"))
+            }
+        }
+    }
     val local = work.localTrailers()
     val online = work.youTubeTrailers()
     if (local.isNotEmpty() || online.isNotEmpty()) {

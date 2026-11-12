@@ -62,5 +62,10 @@
   ]},
   "translations": {"translations": [
     {"iso_639_1": "en", "data": {"title": "", "overview": "Paul Atreides, a brilliant and gifted young man..."}}
-  ]}
+  ]},
+  "recommendations": {"page": 1, "results": [
+    {"id": 693134, "media_type": "movie", "title": "Dune: Part Two"},
+    {"id": 335984, "media_type": "movie", "title": "Blade Runner 2049"},
+    {"id": 329865, "media_type": "movie", "title": "Arrival"}
+  ], "total_pages": 2, "total_results": 40}
 }

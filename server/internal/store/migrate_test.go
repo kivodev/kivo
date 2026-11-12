@@ -763,3 +763,62 @@ func TestMigrationDropBookAbridged(t *testing.T) {
 		t.Errorf("after deleting a book's work: %s, want 02", got)
 	}
 }
+
+// 0078 adds work_recommendation and the reverse indexes on genres, tags and
+// companies, and makes matched movies and series with a TMDb ID due a
+// refresh. A recommendation leaves with its work.
+func TestMigrationRecommendations(t *testing.T) {
+	ctx := context.Background()
+	db, path := testDB(t, through(t, "_drop_book_abridged.sql"))
+	err := db.Write(ctx, func(ctx context.Context, tx *Tx) error {
+		_, err := tx.ExecContext(ctx, `
+			INSERT INTO work (id, kind, parent_id, root_id, title, sort_title, added_at, provisional, refreshed_at, refresh_error) VALUES
+				(x'01', 'movie', NULL, x'01', 'Dune', 'Dune', 1, 0, 100, NULL),
+				(x'02', 'series', NULL, x'02', 'Bluey', 'Bluey', 1, 0, 200, 'failed'),
+				(x'03', 'season', x'02', x'02', 'Season 1', 'Season 1', 1, 0, 300, NULL),
+				(x'04', 'movie', NULL, x'04', 'home.video', 'home.video', 1, 1, 400, NULL),
+				(x'05', 'book', NULL, x'05', 'Dune', 'Dune', 1, 0, 500, NULL),
+				(x'06', 'movie', NULL, x'06', 'Local', 'Local', 1, 0, 600, NULL);
+			INSERT INTO work_external_id (work_id, provider, kind, ext_id) VALUES
+				(x'01', 'tmdb', 'movie', '438631'), (x'02', 'tmdb', 'series', '82728'), (x'03', 'tmdb', 'season', '1'),
+				(x'04', 'tmdb', 'movie', '1'), (x'05', 'audible', 'book', 'B0'), (x'06', 'imdb', 'movie', 'tt1');`)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+	up, err := open(ctx, path, embeddedMigrations(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer up.Close()
+	read := func(query string) (out string) {
+		t.Helper()
+		if err := up.Reader().QueryRowContext(ctx, query).Scan(&out); err != nil {
+			t.Fatal(err)
+		}
+		return out
+	}
+	if got, want := read(`SELECT group_concat(hex(id) || ':' || coalesce(refreshed_at, '-') || ':' || coalesce(refresh_error, '-'), ' ')
+		FROM (SELECT * FROM work ORDER BY id)`), "01:-:- 02:-:- 03:300:- 04:400:- 05:500:- 06:600:-"; got != want {
+		t.Errorf("refreshes due: %s, want %s", got, want)
+	}
+	if got := read(`SELECT group_concat(name, ',') FROM (SELECT name FROM sqlite_master WHERE type = 'index'
+		AND name IN ('work_genre_genre', 'work_tag_tag', 'work_company_company') ORDER BY name)`); got != "work_company_company,work_genre_genre,work_tag_tag" {
+		t.Errorf("indexes: %s", got)
+	}
+	err = up.Write(ctx, func(ctx context.Context, tx *Tx) error {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO work_recommendation (work_id, ord, ext_id) VALUES (x'01', 0, '693134'), (x'01', 1, '335984')`); err != nil {
+			return err
+		}
+		_, err := tx.ExecContext(ctx, `DELETE FROM work WHERE id = x'01'`)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := read(`SELECT count(*) FROM work_recommendation`); got != "0" {
+		t.Errorf("recommendations after deleting their work: %s", got)
+	}
+}

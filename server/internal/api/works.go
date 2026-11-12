@@ -257,7 +257,7 @@ func workDetail(d query.WorkDetail, tracks playback.Preferred, marks map[id.ID][
 		OriginalTitle: opt(d.OriginalTitle), SortTitle: opt(d.Summary.SortTitle), Overview: opt(d.Overview),
 		Genres: nonNil(d.Genres), Studios: nonNil(d.Companies),
 		Credits: []gen.Credit{}, ExternalIds: []gen.ExternalID{}, Versions: []gen.Version{},
-		Extras: summaries(d.Extras), Collections: each(d.Collections, collectionSummary),
+		Extras: summaries(d.Extras), Collections: each(d.Collections, collectionSummary), Similar: summaries(d.Similar),
 		ListIds: ptr(nonNil(d.ListIDs)),
 	}
 	// A season or episode without its own content rating takes its series'
