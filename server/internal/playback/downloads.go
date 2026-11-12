@@ -49,17 +49,14 @@ type Downloads struct {
 	db *store.DB
 	q  *dbq.Queries
 
-	// mu guards preparing and the fields of each preparation in it,
-	// attempts, and downloadsPrepared.
+	// mu guards preparing and the fields of each preparation in it, and
+	// attempts.
 	mu sync.Mutex
 	// preparing holds the downloads this process is preparing now, by ID.
 	preparing map[id.ID]*preparation
 	// attempts counts the tries at each download whose file couldn't be
 	// read.
 	attempts map[id.ID]int
-	// downloadsPrepared counts the downloads prepared since none were waiting, for
-	// the Downloads task's count.
-	downloadsPrepared int
 }
 
 // NewDownloads returns the downloads of the server whose plays s runs.
@@ -108,7 +105,7 @@ func (p *preparation) progressLocked(now time.Time) (float64, time.Duration) {
 func (s *Downloads) Tasks() []tasks.Task {
 	return []tasks.Task{
 		{Name: TaskPrepareDownloads, Schedule: tasks.OnDemand, Unstoppable: true,
-			Work: tasks.Items{Pending: s.q.OpenDownloads, Do: s.prepare, Limit: s.preparingAtOnce, Uncounted: true}},
+			Work: tasks.Items{Pending: s.q.OpenDownloads, Do: s.prepare, Limit: s.preparingAtOnce}},
 		{Name: taskPruneDownloads, Schedule: tasks.Nightly, Maintenance: true, Work: tasks.Func(s.Prune)},
 	}
 }
