@@ -63,10 +63,14 @@ final class PlayerHost {
         stopCasting()
     }
 
-    /// Stop casting: the TV stops, and the player carries on here from where the TV was.
+    /// Stop casting: the TV stops, and the player carries on here from where
+    /// the TV was. The player opens here directly: the cast model learns of
+    /// the ended session a moment later, so Play would still cast.
     func stopCasting() {
         guard let stopped = server.cast.stopCasting() else { return }
-        play(stopped.choice, at: stopped.positionMs)
+        model?.close()
+        model = PlayerModel(stopped.choice, at: stopped.positionMs, downloadId: nil, server: server)
+        shown = true
     }
 
     /// Nothing plays on the TV any more: the remote closes.

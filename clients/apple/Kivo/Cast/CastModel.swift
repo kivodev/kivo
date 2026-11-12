@@ -34,6 +34,8 @@ final class CastModel: PlayerChoices, Scrubbable {
     @ObservationIgnored private let showDevices: () -> Void
     @ObservationIgnored private var observed: Observed<CastRemoteState>?
     @ObservationIgnored private var connections: Task<Void, Never>?
+    /// Whether the last state had something on the TV.
+    @ObservationIgnored private var wasActive = false
 
     init(session: KivoSession, display: Display) {
         self.session = session
@@ -42,7 +44,7 @@ final class CastModel: PlayerChoices, Scrubbable {
         self.showDevices = showDevices
         remote = session.cast.remote(link: link)
         observed = Observed(remote.state) { [weak self] state in
-            if !state.active { self?.stopped() }
+            self?.changed(state)
         }
         connections = Task { [weak self, remote] in
             for await _ in remote.connections { self?.connected() }
@@ -60,6 +62,14 @@ final class CastModel: PlayerChoices, Scrubbable {
     }
 
     private var state: CastRemoteState { observed?.value ?? remote.state.value }
+
+    /// Tells the app once the TV has nothing on it any more. A state with
+    /// nothing on it yet, as a newly connected TV's before a hand-off's
+    /// cast, isn't a stop: it can arrive after the hand-off began.
+    private func changed(_ state: CastRemoteState) {
+        if wasActive, !state.active { stopped() }
+        wasActive = state.active
+    }
 
     var connection: Connection {
         switch onEnum(of: state.link) {
