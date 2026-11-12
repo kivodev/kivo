@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Mark as Watched again and Add to List, for the ⋯ menu.
 struct UserStateMenuItems: View {
-    let work: WorkDetail
+    let work: WorkSummary
     @Environment(ServerModel.self) private var server
 
     var body: some View {

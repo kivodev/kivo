@@ -12,27 +12,37 @@ import SwiftUI
 /// ready download is what Play and Resume play, with "Downloaded"
 /// under the actions and Stream Instead and Remove Download in the ⋯ menu.
 struct PlayableDetail: View {
-    let work: WorkDetail
+    /// What shows of the work: its page's summary once read.
+    let work: WorkSummary
+    let page: WorkPageState
+    /// Where the version and track choices go.
+    let model: WorkPage
     @Environment(ServerModel.self) private var server
     @Environment(\.openWork) private var openWork
     @Environment(\.kivoPalette) private var palette
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    /// The version chosen; nil selects the work's default one.
-    @State private var versionId: String?
-    @State private var audioTrackId: String?
-    @State private var subtitleTrackId: String?
-    /// The season's episodes; nil until they're read.
-    @State private var season: [WorkSummary]?
-    @State private var seasonProblem: RequestProblem?
-    @State private var seasonAttempt = 0
     /// Subtitles downloaded here, by version, shown until the work is read again with them.
     @State private var downloaded: [(versionId: String, track: Track)] = []
+
+    /// The version chosen; nil selects the work's default one.
+    private var versionId: String? { page.choice.versionId }
 
     /// The version selected: the one chosen, else the one the user last
     /// played while the work still has it, else the first.
     private var version: Version? {
-        let shown = downloaded.reduce(work) { $0.withTrack(versionId: $1.versionId, track: $1.track) }
+        guard let read = page.work else { return nil }
+        let shown = downloaded.reduce(read) { $0.withTrack(versionId: $1.versionId, track: $1.track) }
         return shown.selectedVersion(versionId: versionId)
+    }
+
+    /// The season's episodes; nil until they're read.
+    private var season: [WorkSummary]? {
+        page.episodes?.getOrNull() as? [WorkSummary]
+    }
+
+    /// Why the season's episodes couldn't be read, when the server refused them.
+    private var seasonProblem: RequestProblem? {
+        page.episodes?.problemOrNull().flatMap { $0.isUnreachable ? nil : $0 }
     }
 
     var body: some View {
@@ -46,9 +56,11 @@ struct PlayableDetail: View {
         ) {
             actions
                 .actionRowInsets()
-            Overview(text: work.overview)
-            TrackChoices(work: work, version: version, versionId: $versionId, audioTrackId: $audioTrackId, subtitleTrackId: $subtitleTrackId) { versionId, track in
-                downloaded.append((versionId, track))
+            Overview(text: page.work?.overview)
+            if let read = page.work {
+                TrackChoices(work: read, version: version, choice: page.choice, model: model) { versionId, track in
+                    downloaded.append((versionId, track))
+                }
             }
             if let episode = work.episode, let seasonId = episode.seasonId, season?.isEmpty != true {
                 SectionHeading(title: String(localized: "Season \(episode.seasonNumber)"))
@@ -60,34 +72,24 @@ struct PlayableDetail: View {
                         EpisodeRow(episode: episode, current: episode.id == work.id)
                     }
                 } else if let seasonProblem {
-                    InlineFailure(title: String(localized: "Couldn't load this season."), problem: seasonProblem) { seasonAttempt += 1 }
+                    InlineFailure(title: String(localized: "Couldn't load this season."), problem: seasonProblem, retry: model.retry)
                 } else if horizontalSizeClass == .regular {
                     EpisodeShelfSkeleton()
                 } else {
                     EpisodeRowSkeletons(count: server.session.library.known(id: seasonId)?.season?.episodeCount?.intValue)
                 }
             }
-            TrailersRow(work: work)
-            CastRow(credits: work.credits)
-            CardRow(title: String(localized: "Extras"), works: work.otherExtras())
-            ForEach(work.collections, id: \.id) { collection in
-                CollectionRow(collection: collection)
+            if let read = page.work {
+                TrailersRow(work: read)
+                CastRow(credits: read.credits)
+                CardRow(title: String(localized: "Extras"), works: read.otherExtras())
+                ForEach(read.collections, id: \.id) { collection in
+                    CollectionRow(collection: collection)
+                }
             }
             Color.clear.frame(height: KivoTokens.spacing * 6).detailRow()
         } actions: {
             menu
-        }
-        .task(id: "\(work.episode?.seasonId ?? "")/\(seasonAttempt)") {
-            guard let seasonId = work.episode?.seasonId else { return }
-            seasonProblem = nil
-            for await load in server.session.library.children(workId: seasonId) {
-                if let episodes = load.getOrNull() as? [WorkSummary] {
-                    seasonProblem = nil
-                    season = episodes
-                } else if let problem = load.problemOrNull(), !problem.isUnreachable {
-                    seasonProblem = problem
-                }
-            }
         }
     }
 
@@ -105,8 +107,8 @@ struct PlayableDetail: View {
         if let ms = work.durationMs?.int64Value { parts.append(Display.app.runtime(ms: ms)) }
         if let rating = work.communityRatingText { parts.append(rating) }
         if let content = work.contentRating { parts.append(content) }
-        if work.episode == nil, !work.genres.isEmpty {
-            parts.append(work.genres.prefix(2).joined(separator: ", "))
+        if work.episode == nil, let genres = page.work?.genres, !genres.isEmpty {
+            parts.append(genres.prefix(2).joined(separator: ", "))
         }
         return parts
     }
@@ -121,7 +123,9 @@ struct PlayableDetail: View {
     /// version selected. A version of another edition than the one the
     /// position was saved on starts from the beginning.
     private var resumeLabel: String? {
-        guard work.resumeMs != nil, let position = work.resumeAt(versionId: versionId)?.int64Value else { return nil }
+        guard let resumeMs = work.resumeMs else { return nil }
+        let position = page.work.map { $0.resumeAt(versionId: versionId)?.int64Value } ?? resumeMs
+        guard let position else { return nil }
         return String(localized: "Resume \(Display.app.clock(ms: position))")
     }
 
@@ -137,7 +141,7 @@ struct PlayableDetail: View {
                     .font(.headline)
                     .foregroundStyle(palette.danger)
                 HStack(spacing: KivoTokens.spacing * 3) {
-                    UserStateButtons(work: work)
+                    UserStateButtons(work: work, page: page)
                 }
                 .controlSize(.large)
             }
@@ -146,7 +150,7 @@ struct PlayableDetail: View {
             VStack(spacing: KivoTokens.spacing * 3) {
                 // The end time moves on with the clock.
                 TimelineView(.everyMinute) { context in
-                    ActionRow(work: work, secondary: timeLeft(from: context.date)) {
+                    ActionRow(work: work, page: page, secondary: timeLeft(from: context.date)) {
                         PlayButton(label: resumeLabel ?? String(localized: "Play")) {
                             play(fromStart: false)
                         }
@@ -222,7 +226,7 @@ struct PlayableDetail: View {
     /// Plays the download when there's one ready, with the subtitle chosen where it has it, else streams.
     private func play(fromStart: Bool) {
         if let download {
-            server.player.play(PlayChoice(workId: work.id, subtitleTrackId: subtitleTrackId), fromStart: fromStart, downloadId: download.id)
+            server.player.play(PlayChoice(workId: work.id, subtitleTrackId: page.choice.subtitleTrackId), fromStart: fromStart, downloadId: download.id)
         } else {
             stream(fromStart: fromStart)
         }
@@ -230,7 +234,7 @@ struct PlayableDetail: View {
 
     /// The work with the version and tracks chosen here.
     private var choice: PlayChoice {
-        PlayChoice(workId: work.id, versionId: version?.id, audioTrackId: audioTrackId, subtitleTrackId: subtitleTrackId)
+        PlayChoice(workId: work.id, versionId: version?.id, audioTrackId: page.choice.audioTrackId, subtitleTrackId: page.choice.subtitleTrackId)
     }
 
     /// Plays from the server, at this device's streaming quality.
@@ -241,16 +245,15 @@ struct PlayableDetail: View {
 
 /// The version, audio and subtitle choices, as small
 /// neutral menus: the version only with more than one, and the
-/// TrackPickers, each Automatic until a track is chosen. Subtitles' Search
-/// subtitles opens the search in a sheet; a subtitle downloaded there is
-/// the one chosen for the next play, and [downloaded] shows it among the
-/// tracks.
+/// TrackPickers, each Automatic until a track is chosen; another version
+/// starts its tracks at Automatic. Subtitles' Search subtitles opens the
+/// search in a sheet; a subtitle downloaded there is the one chosen for the
+/// next play, and [downloaded] shows it among the tracks.
 private struct TrackChoices: View {
     let work: WorkDetail
     let version: Version?
-    @Binding var versionId: String?
-    @Binding var audioTrackId: String?
-    @Binding var subtitleTrackId: String?
+    let choice: PlayChoice
+    let model: WorkPage
     let downloaded: (_ versionId: String, _ track: Track) -> Void
     @Environment(ServerModel.self) private var server
     @Environment(\.kivoPalette) private var palette
@@ -260,13 +263,13 @@ private struct TrackChoices: View {
         let audio = TrackPicker(
             kind: .audio,
             tracks: version?.tracks.filter { $0.type == .audio } ?? [],
-            selection: $audioTrackId,
+            selection: Binding(get: { choice.audioTrackId }, set: { model.chooseAudio(id: $0) }),
             automatic: version?.audioTrackId
         )
         let subtitles = TrackPicker(
             kind: .subtitles,
             tracks: version?.tracks.filter { $0.type == .subtitle } ?? [],
-            selection: $subtitleTrackId,
+            selection: Binding(get: { choice.subtitleTrackId }, set: { model.chooseSubtitle(id: $0) }),
             automatic: version?.subtitleTrackId ?? SUBTITLES_OFF,
             search: SubtitleSearch.shared.offered(version: version) ? { searching = true } : nil
         )
@@ -277,15 +280,11 @@ private struct TrackChoices: View {
                 HStack(spacing: KivoTokens.spacing * 2) {
                     if work.versions.count > 1 {
                         choice(String(localized: "Version"), systemImage: "film", value: versionName) {
-                            Picker(String(localized: "Version"), selection: Binding(get: { version?.id ?? "" }, set: { versionId = $0 })) {
+                            Picker(String(localized: "Version"), selection: Binding(get: { version?.id ?? "" }, set: { model.chooseVersion(id: $0) })) {
                                 ForEach(work.versions, id: \.id) { version in
                                     Text("\(version.name) · \(Display.app.size(bytes: version.sizeBytes))").tag(version.id)
                                 }
                             }
-                        }
-                        .onChange(of: version?.id) {
-                            audioTrackId = nil
-                            subtitleTrackId = nil
                         }
                     }
                     if showsAudio {
@@ -308,7 +307,7 @@ private struct TrackChoices: View {
                             download: { result in
                                 let track = try await server.session.playback.addSubtitle(version: version, resultId: result.id)
                                 downloaded(version.id, track)
-                                subtitleTrackId = track.id
+                                model.chooseSubtitle(id: track.id)
                                 searching = false
                             }
                         )

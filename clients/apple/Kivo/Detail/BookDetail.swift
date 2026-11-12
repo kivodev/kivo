@@ -9,20 +9,22 @@ import SwiftUI
 /// the book there. It streams, or plays its download when one is ready,
 /// which the badge under the actions names.
 struct BookDetail: View {
-    let work: WorkDetail
+    /// What shows of the book: its page's summary once read.
+    let work: WorkSummary
+    let page: WorkPageState
     @Environment(ServerModel.self) private var server
     @Environment(\.kivoPalette) private var palette
 
     private var chapters: BookChapters? {
-        work.versions.first.map { BookChapters(version: $0) }
+        page.work?.versions.first.map { BookChapters(version: $0) }
     }
 
     var body: some View {
         DetailPage(work: work, art: work.images.backdrop ?? work.images.poster, details: details) {
             actions
                 .actionRowInsets()
-            Overview(text: work.overview)
-            CastRow(credits: work.credits)
+            Overview(text: page.work?.overview)
+            CastRow(credits: page.work?.credits ?? [])
             if work.available, let chapters, chapters.count > 1 {
                 SectionHeading(title: String(localized: "Chapters"))
                     .detailRow(EdgeInsets(top: 20, leading: 20, bottom: 4, trailing: 20))
@@ -44,14 +46,14 @@ struct BookDetail: View {
         var parts: [String] = []
         if let year = work.year { parts.append(String(year.intValue)) }
         if let ms = work.durationMs?.int64Value { parts.append(Display.app.runtime(ms: ms)) }
-        if !work.genres.isEmpty { parts.append(work.genres.prefix(2).joined(separator: ", ")) }
+        if let genres = page.work?.genres, !genres.isEmpty { parts.append(genres.prefix(2).joined(separator: ", ")) }
         return parts
     }
 
     @ViewBuilder private var actions: some View {
         if work.available {
             VStack(spacing: KivoTokens.spacing * 3) {
-                ActionRow(work: work, secondary: work.timeLeft) {
+                ActionRow(work: work, page: page, secondary: work.timeLeft) {
                     PlayButton(label: work.resumeMs != nil ? String(localized: "Resume") : String(localized: "Play")) {
                         server.listen(work.id)
                     }
@@ -68,7 +70,7 @@ struct BookDetail: View {
                 Text("This file is missing")
                     .font(.headline)
                     .foregroundStyle(palette.danger)
-                HStack(spacing: KivoTokens.spacing * 3) { UserStateButtons(work: work) }
+                HStack(spacing: KivoTokens.spacing * 3) { UserStateButtons(work: work, page: page) }
                     .controlSize(.large)
             }
             .frame(maxWidth: .infinity)

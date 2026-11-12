@@ -1046,9 +1046,17 @@ public final class com/mmcdole/kivo/core/data/RuleDraft {
 	public final fun withValues (Ljava/util/List;)Lcom/mmcdole/kivo/core/data/RuleDraft;
 }
 
-public final class com/mmcdole/kivo/core/data/Seasons {
-	public static final field INSTANCE Lcom/mmcdole/kivo/core/data/Seasons;
-	public final fun openSeason (Ljava/util/List;Ljava/lang/String;Lcom/mmcdole/kivo/api/models/EpisodeInfo;Lcom/mmcdole/kivo/api/models/EpisodeInfo;Z)Lcom/mmcdole/kivo/api/models/WorkSummary;
+public final class com/mmcdole/kivo/core/data/SeasonRef {
+	public fun <init> (Ljava/lang/String;I)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()I
+	public final fun copy (Ljava/lang/String;I)Lcom/mmcdole/kivo/core/data/SeasonRef;
+	public static synthetic fun copy$default (Lcom/mmcdole/kivo/core/data/SeasonRef;Ljava/lang/String;IILjava/lang/Object;)Lcom/mmcdole/kivo/core/data/SeasonRef;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getId ()Ljava/lang/String;
+	public final fun getNumber ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
 }
 
 public final class com/mmcdole/kivo/core/data/SeasonsKt {
@@ -2428,6 +2436,8 @@ public final class com/mmcdole/kivo/core/session/SessionLibrary {
 	public final fun work (Ljava/lang/String;)Lkotlinx/coroutines/flow/Flow;
 	public final fun workFieldValues (Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public final fun workFields (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun workPage (Ljava/lang/String;Lcom/mmcdole/kivo/api/models/WorkSummary;Lcom/mmcdole/kivo/core/data/SeasonRef;)Lcom/mmcdole/kivo/core/session/WorkPage;
+	public static synthetic fun workPage$default (Lcom/mmcdole/kivo/core/session/SessionLibrary;Ljava/lang/String;Lcom/mmcdole/kivo/api/models/WorkSummary;Lcom/mmcdole/kivo/core/data/SeasonRef;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/session/WorkPage;
 }
 
 public final class com/mmcdole/kivo/core/session/SessionLink {
@@ -2515,6 +2525,42 @@ public final class com/mmcdole/kivo/core/session/WorkMarks {
 	public final fun removeFromContinue (Ljava/lang/String;)V
 	public final fun setOnList (Ljava/lang/String;Ljava/lang/String;Z)V
 	public final fun setPlayed (Ljava/lang/String;Z)V
+}
+
+public final class com/mmcdole/kivo/core/session/WorkPage {
+	public final fun chooseAudio (Ljava/lang/String;)V
+	public final fun chooseSeason (Ljava/lang/String;)V
+	public final fun chooseSubtitle (Ljava/lang/String;)V
+	public final fun chooseVersion (Ljava/lang/String;)V
+	public final fun close ()V
+	public final fun getState ()Lkotlinx/coroutines/flow/StateFlow;
+	public final fun retry ()V
+}
+
+public final class com/mmcdole/kivo/core/session/WorkPageState {
+	public final fun component1 ()Lcom/mmcdole/kivo/api/models/WorkSummary;
+	public final fun component2 ()Lcom/mmcdole/kivo/api/models/WorkDetail;
+	public final fun component3 ()Lcom/mmcdole/kivo/core/RequestProblem;
+	public final fun component4 ()Lcom/mmcdole/kivo/core/Load;
+	public final fun component5 ()Lcom/mmcdole/kivo/api/models/WorkSummary;
+	public final fun component6 ()Lcom/mmcdole/kivo/core/Load;
+	public final fun component7 ()Ljava/lang/String;
+	public final fun component8 ()Lcom/mmcdole/kivo/core/play/PlayChoice;
+	public final fun component9 ()Ljava/lang/String;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getChoice ()Lcom/mmcdole/kivo/core/play/PlayChoice;
+	public final fun getEpisodes ()Lcom/mmcdole/kivo/core/Load;
+	public final fun getEpisodesOf ()Ljava/lang/String;
+	public final fun getHead ()Lcom/mmcdole/kivo/api/models/WorkSummary;
+	public final fun getMyListId ()Ljava/lang/String;
+	public final fun getOnMyList ()Z
+	public final fun getPlayed ()Z
+	public final fun getProblem ()Lcom/mmcdole/kivo/core/RequestProblem;
+	public final fun getSeason ()Lcom/mmcdole/kivo/api/models/WorkSummary;
+	public final fun getSeasons ()Lcom/mmcdole/kivo/core/Load;
+	public final fun getWork ()Lcom/mmcdole/kivo/api/models/WorkDetail;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
 }
 
 public final class com/mmcdole/kivo/core/settings/DeviceSettings {

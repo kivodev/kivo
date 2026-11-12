@@ -10,7 +10,8 @@ import SwiftUI
 /// round buttons, it takes the whole width with the round buttons under it.
 /// In a wide window the row keeps to the leading edge.
 struct ActionRow<Primary: View, Extra: View>: View {
-    let work: WorkDetail
+    let work: WorkSummary
+    let page: WorkPageState
     var secondary: String?
     @ViewBuilder let primary: () -> Primary
     @ViewBuilder var extra: () -> Extra
@@ -37,7 +38,7 @@ struct ActionRow<Primary: View, Extra: View>: View {
     }
 
     @ViewBuilder private var roundButtons: some View {
-        UserStateButtons(work: work)
+        UserStateButtons(work: work, page: page)
         extra()
     }
 }
@@ -130,8 +131,8 @@ struct ActionRowLayout: Layout {
 }
 
 extension ActionRow where Extra == EmptyView {
-    init(work: WorkDetail, secondary: String? = nil, @ViewBuilder primary: @escaping () -> Primary) {
-        self.init(work: work, secondary: secondary, primary: primary, extra: { EmptyView() })
+    init(work: WorkSummary, page: WorkPageState, secondary: String? = nil, @ViewBuilder primary: @escaping () -> Primary) {
+        self.init(work: work, page: page, secondary: secondary, primary: primary, extra: { EmptyView() })
     }
 }
 
@@ -182,19 +183,20 @@ struct RestartButton: View {
 
 /// My List and Mark as Watched, as on every detail page: round, neutral buttons.
 struct UserStateButtons: View {
-    let work: WorkDetail
+    let work: WorkSummary
+    let page: WorkPageState
     @Environment(ServerModel.self) private var server
     @Environment(\.kivoPalette) private var palette
 
     var body: some View {
-        let myList = server.myList
-        let onMyList = myList.map { work.listIds?.contains($0.id) == true } ?? false
-        let played = work.userState?.played == true
+        let myListId = page.myListId
+        let onMyList = page.onMyList
+        let played = page.played
         // The buttons show the state the server's events send back, so a
         // mark that fails leaves them as they were, and the app says why.
         Button {
-            guard let myList else { return }
-            server.session.library.marks.setOnList(listId: myList.id, workId: work.id, on: !onMyList)
+            guard let myListId else { return }
+            server.session.library.marks.setOnList(listId: myListId, workId: work.id, on: !onMyList)
         } label: {
             Image(systemName: onMyList ? "text.badge.checkmark" : "text.badge.plus")
                 .roundButtonSymbol()
@@ -204,7 +206,7 @@ struct UserStateButtons: View {
         .buttonStyle(.bordered)
         .buttonBorderShape(.circle)
         .tint(onMyList ? palette.accent : palette.text)
-        .disabled(myList == nil)
+        .disabled(myListId == nil)
         .sensoryFeedback(.success, trigger: onMyList)
         .accessibilityIdentifier("my-list")
         Button {

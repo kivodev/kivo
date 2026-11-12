@@ -131,6 +131,7 @@ import com.mmcdole.kivo.api.models.TrackType
 import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.Load
+import com.mmcdole.kivo.core.data.SeasonRef
 import com.mmcdole.kivo.core.data.localTrailers
 import com.mmcdole.kivo.core.data.resumeAt
 import com.mmcdole.kivo.core.data.selectedVersion
@@ -153,14 +154,14 @@ import com.mmcdole.kivo.core.player.SUBTITLES_OFF
  */
 @Composable
 fun DetailScreen(session: ServerSession, id: String, seasonId: String?, seasonNumber: Int?, nav: MobileNav) {
-    val model = viewModel { DetailViewModel(session.session, id, seasonId, seasonNumber, session.graph.core.settings.map { it.downloadQuality }) }
+    val model = viewModel { DetailViewModel(session.session, id, seasonNumber?.let { SeasonRef(seasonId, it) }, session.graph.core.settings.map { it.downloadQuality }) }
     val state by model.state.collectAsStateWithLifecycle()
-    val head = state.head
-    val problem = state.problem
+    val head = state.page.head
+    val problem = state.page.problem
     if (head == null) {
         if (problem != null) {
             Box(Modifier.fillMaxSize().statusBarsPadding()) {
-                Failed(problem, stringResource(R.string.mobile_couldnt_load_page), model.serverName, model::retry)
+                Failed(problem, stringResource(R.string.mobile_couldnt_load_page), model.serverName, model.page::retry)
                 BackButton(nav)
             }
         } else {
@@ -188,21 +189,21 @@ private fun DetailPage(head: WorkSummary, state: DetailUiState, model: DetailVie
         val artHeight = if (wide) minOf(maxWidth * 9f / 16f, maxHeight * 0.55f) else null
         LazyColumn(Modifier.fillMaxSize().testTag("detail"), state = list) {
             item(key = "art") { Backdrop(head, artHeight) }
-            item(key = "hero") { Hero(head, state.work, nav) }
+            item(key = "hero") { Hero(head, state.page.work, nav) }
             item(key = "actions") {
                 if (head.kind == WorkKind.Series) SeriesActions(head, state, model, nav) else PlayActions(head, state, model, nav)
             }
-            if (head.kind != WorkKind.Series) item(key = "tracks") { state.work?.let { TrackRows(it, state.choices, model) } }
-            item(key = "overview") { Overview(head.episode?.overview ?: state.work?.overview) }
+            if (head.kind != WorkKind.Series) item(key = "tracks") { state.page.work?.let { TrackRows(it, state.page.choice, model) } }
+            item(key = "overview") { Overview(head.episode?.overview ?: state.page.work?.overview) }
             when (head.kind) {
                 WorkKind.Series -> seasonItems(state, model, nav, openMenu)
                 WorkKind.Episode -> episodeItems(seasonHeading, state, head.id, nav, openMenu)
                 else -> {}
             }
-            val local = state.work?.localTrailers().orEmpty()
-            val online = state.work?.youTubeTrailers().orEmpty()
+            val local = state.page.work?.localTrailers().orEmpty()
+            val online = state.page.work?.youTubeTrailers().orEmpty()
             if (local.isNotEmpty() || online.isNotEmpty()) item(key = "trailers") { TrailersRow(local, online, nav, openMenu) }
-            val credits = state.work?.credits.orEmpty()
+            val credits = state.page.work?.credits.orEmpty()
             if (credits.isNotEmpty()) item(key = "credits") { CreditsRow(credits, nav) }
             item(key = "end") { Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars).padding(bottom = space(6))) }
         }
@@ -296,8 +297,8 @@ private fun metaLine(head: WorkSummary, work: WorkDetail?): String {
  */
 @Composable
 private fun PlayActions(head: WorkSummary, state: DetailUiState, model: DetailViewModel, nav: MobileNav) {
-    val work = state.work
-    val choices = state.choices
+    val work = state.page.work
+    val choices = state.page.choice
     val available = if (work == null) head.available else work.available && work.selectedVersion(choices.versionId)?.available == true
     val position = if (work != null) work.resumeAt(choices.versionId) else head.userState?.positionMs
     val book = head.kind == WorkKind.Book
@@ -339,7 +340,7 @@ private fun PlayActions(head: WorkSummary, state: DetailUiState, model: DetailVi
 /** A series' Play: its next episode, or Resume it; its title under. My List and Watched beside. */
 @Composable
 private fun SeriesActions(head: WorkSummary, state: DetailUiState, model: DetailViewModel, nav: MobileNav) {
-    val next = state.work?.series?.nextUp
+    val next = state.page.work?.series?.nextUp
     Column(Modifier.padding(horizontal = space(4), vertical = space(4)).wideWidth(KivoTokens.Container.form), verticalArrangement = Arrangement.spacedBy(space(3))) {
         if (next != null) {
             val position = next.userState?.positionMs
@@ -379,8 +380,8 @@ private fun PlayButton(label: String, onClick: () -> Unit) {
  */
 @Composable
 private fun ActionRow(head: WorkSummary, state: DetailUiState, model: DetailViewModel, startOver: (() -> Unit)?, addToList: () -> Unit) {
-    val onMyList = state.onMyList
-    val played = head.userState?.played == true
+    val onMyList = state.page.onMyList
+    val played = state.page.played
     val download = state.download
     val downloads = model.downloads
     Row(Modifier.fillMaxWidth(), horizontalArrangement = if (LocalWide.current) Arrangement.spacedBy(space(3)) else Arrangement.SpaceEvenly) {
@@ -388,7 +389,7 @@ private fun ActionRow(head: WorkSummary, state: DetailUiState, model: DetailView
         val cell = Modifier.weight(1f, fill = false)
         if (head.kind != WorkKind.Series) {
             RoundAction(Icons.Default.Replay, stringResource(R.string.mobile_start_over), "startOver", cell, enabled = startOver != null) { startOver?.invoke() }
-            if (download != null && downloads != null && state.work?.available == true) {
+            if (download != null && downloads != null && state.page.work?.available == true) {
                 DownloadButton(
                     download,
                     book = head.kind == WorkKind.Book,
@@ -468,11 +469,11 @@ private fun RoundAction(
 @Composable
 private fun SeriesDownload(state: DetailUiState, downloads: WorkDownloads, modifier: Modifier) {
     var open by remember { mutableStateOf(false) }
-    val seasons = state.seasons.orEmpty()
+    val seasons = state.page.seasons?.getOrNull().orEmpty()
     Box(modifier) {
         RoundAction(Icons.Default.Download, stringResource(R.string.mobile_download), "download", enabled = seasons.isNotEmpty()) { open = true }
         DropdownMenu(open, onDismissRequest = { open = false }) {
-            state.season?.let { season ->
+            state.page.season?.let { season ->
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.mobile_download_named, season.title)) },
                     onClick = {
@@ -537,7 +538,7 @@ private fun TrackRows(work: WorkDetail, choices: PlayChoice, model: DetailViewMo
             stringResource(R.string.mobile_version),
             work.versions.map { v -> Choice(v.id, v.name, display.size(v.sizeBytes)) },
             version.id,
-            onPick = { it?.let(model::chooseVersion) },
+            onPick = { it?.let(model.page::chooseVersion) },
             onDismiss = { open = null },
         )
         Picker.Audio -> PickerSheet(
@@ -545,7 +546,7 @@ private fun TrackRows(work: WorkDetail, choices: PlayChoice, model: DetailViewMo
             listOf(Choice(null, stringResource(R.string.mobile_automatic_named, audioName(version.audioTrackId).orEmpty()))) +
                 audio.map { Choice(it.id, it.pickerName.name, it.pickerName.note) },
             choices.audioTrackId,
-            onPick = model::chooseAudio,
+            onPick = model.page::chooseAudio,
             onDismiss = { open = null },
         )
         Picker.Subtitles -> PickerSheet(
@@ -553,7 +554,7 @@ private fun TrackRows(work: WorkDetail, choices: PlayChoice, model: DetailViewMo
             listOf(Choice(null, stringResource(R.string.mobile_automatic_named, subtitleName(version.subtitleTrackId ?: SUBTITLES_OFF).orEmpty())), Choice(SUBTITLES_OFF, off)) +
                 subtitles.map { Choice(it.id, it.pickerName.name, it.pickerName.note) },
             choices.subtitleTrackId,
-            onPick = model::chooseSubtitle,
+            onPick = model.page::chooseSubtitle,
             onDismiss = { open = null },
         )
         null -> Unit
@@ -615,8 +616,8 @@ private fun Overview(text: String?) {
 
 /** A series' season picker, "Season 1 ▾", then the open season's episodes. */
 private fun LazyListScope.seasonItems(state: DetailUiState, model: DetailViewModel, nav: MobileNav, openMenu: (WorkMenu) -> Unit) {
-    val seasons = state.seasons ?: return
-    val season = state.season
+    val seasons = state.page.seasons?.getOrNull() ?: return
+    val season = state.page.season
     item(key = "seasons") {
         var open by remember { mutableStateOf(false) }
         Row(Modifier.padding(horizontal = space(2), vertical = space(2)).wideWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -637,7 +638,7 @@ private fun LazyListScope.seasonItems(state: DetailUiState, model: DetailViewMod
                     Choice(s.id, s.title, if (unplayed > 0) pluralStringResource(R.plurals.mobile_n_unwatched, unplayed, unplayed) else stringResource(R.string.mobile_watched))
                 },
                 season?.id,
-                onPick = { it?.let(model::chooseSeason) },
+                onPick = { it?.let(model.page::chooseSeason) },
                 onDismiss = { open = false },
             )
         }
@@ -656,10 +657,10 @@ private fun LazyListScope.episodeItems(heading: String, state: DetailUiState, cu
 
 /** A season's episodes: rows, or in a wide window a shelf of cards opening on [current], else Next Up. */
 private fun LazyListScope.episodeRows(state: DetailUiState, current: String?, nav: MobileNav, openMenu: (WorkMenu) -> Unit) {
-    when (val episodes = state.episodes) {
+    when (val episodes = state.page.episodes) {
         is Load.Loaded -> {
             item(key = "shelf", contentType = "shelf") {
-                if (LocalWide.current) EpisodeShelf(episodes.value, current, current ?: state.work?.series?.nextUp?.id, nav, openMenu)
+                if (LocalWide.current) EpisodeShelf(episodes.value, current, current ?: state.page.work?.series?.nextUp?.id, nav, openMenu)
             }
             items(episodes.value, key = { "e" + it.id }, contentType = { "episode" }) { episode ->
                 if (!LocalWide.current) EpisodeRow(episode, episode.id == current, { nav.openWork(episode) }, { openMenu(WorkMenu(episode)) })

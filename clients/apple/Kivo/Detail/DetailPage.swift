@@ -14,7 +14,7 @@ import SwiftUI
 /// In a wide window the art is shorter for its width, and the hero and the
 /// rows under it line up on the leading edge, as a desktop page's do.
 struct DetailPage<Rows: View, Actions: View>: View {
-    let work: WorkDetail?
+    let work: WorkSummary?
     let art: ImageRef?
     /// A line above the title, such as an episode's series.
     var eyebrow: (label: String, open: () -> Void)?
@@ -144,7 +144,7 @@ struct DetailPage<Rows: View, Actions: View>: View {
         .frame(maxWidth: .infinity, alignment: wide ? .leading : .center)
     }
 
-    private func hero(_ work: WorkDetail) -> some View {
+    private func hero(_ work: WorkSummary) -> some View {
         VStack(alignment: wide ? .leading : .center, spacing: KivoTokens.spacing * 2) {
             if let eyebrow {
                 Button(action: eyebrow.open) {

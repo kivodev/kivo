@@ -292,7 +292,7 @@ struct BrowseStack<Root: View>: View {
                         switch route {
                         case .work(let route):
                             switch route.page {
-                            case .work: DetailView(route: route)
+                            case .work: DetailView(route: route, server: server).id(route.id)
                             case .person: PersonDetail(id: route.id, author: false)
                             case .author: PersonDetail(id: route.id, author: true)
                             case .bookSeries: BookSeriesDetail(id: route.id)

@@ -135,9 +135,6 @@ final class ServerModel {
 
     var otherLibraries: [Library] { libraries.filter { !$0.pinned } }
 
-    /// My List, once the lists are read.
-    var myList: WorkList? { lists.first(where: \.builtIn) }
-
     /// The library a work is in, by the [libraryId] its card or page names, if it's one of the user's.
     func library(of libraryId: String?) -> Library? {
         guard let libraryId else { return nil }
