@@ -39,5 +39,5 @@ internal fun proofOf(request: HttpRequestData, serverId: String, key: TestServer
 internal fun proofOf(challenge: String?, host: String, serverId: String, key: TestServerKey = SERVER_KEY): ServerProof? {
     if (challenge == null) return null
     val signature = key.sign(message(Base64.getUrlDecoder().decode(challenge), serverId, host, local = true))
-    return ServerProof(base64url.encodeToString(signature), key.encoded, host, local = true)
+    return ServerProof(base64url.encodeToString(signature), host, local = true)
 }

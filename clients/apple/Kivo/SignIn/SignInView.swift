@@ -7,14 +7,12 @@ import SwiftUI
 /// code"; then the password, with "Sign in with another device" under it.
 /// On a wide screen the form keeps to a form's width in the middle. A
 /// server the app doesn't work with says which of them needs an update, in
-/// place of its password. A line under the last server, and over its
-/// password, warns when its session ended as the server's identity changed.
+/// place of its password.
 struct SignInView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.kivoPalette) private var palette
     @State private var model: SignInModel?
     let saved: SavedServer?
-    var identityChanged = false
 
     var body: some View {
         Group {
@@ -25,9 +23,8 @@ struct SignInView: View {
                     Group {
                         if let model {
                             switch model.step {
-                            case .findServer, .incompatible: FindServerForm(model: model, identityChanged: identityChanged)
-                            case let .password(found):
-                                PasswordForm(model: model, found: found, identityChanged: identityChanged && found.info.id == saved?.id)
+                            case .findServer, .incompatible: FindServerForm(model: model)
+                            case let .password(found): PasswordForm(model: model, found: found)
                             }
                         }
                     }
@@ -50,7 +47,6 @@ struct SignInView: View {
 
 private struct FindServerForm: View {
     @Bindable var model: SignInModel
-    let identityChanged: Bool
     @Environment(\.kivoPalette) private var palette
     @State private var scanning = false
 
@@ -65,8 +61,6 @@ private struct FindServerForm: View {
                     }
                 } header: {
                     Text("Last signed in")
-                } footer: {
-                    if identityChanged { IdentityChanged() }
                 }
             }
 
@@ -153,7 +147,6 @@ private struct FindServerForm: View {
 private struct PasswordForm: View {
     @Bindable var model: SignInModel
     let found: FoundServer
-    let identityChanged: Bool
     @Environment(\.kivoPalette) private var palette
     @FocusState private var focus: Field?
 
@@ -161,9 +154,6 @@ private struct PasswordForm: View {
 
     var body: some View {
         Form {
-            if identityChanged {
-                Section { IdentityChanged() }
-            }
             Section {
                 TextField(String(localized: "Username"), text: $model.username)
                     .accessibilityIdentifier("username")
@@ -249,16 +239,5 @@ private extension ToolbarItem {
         } else {
             self
         }
-    }
-}
-
-/// The warning that the last server's session ended as its identity changed.
-private struct IdentityChanged: View {
-    @Environment(\.kivoPalette) private var palette
-
-    var body: some View {
-        Text("This server's identity changed. Sign in again if you reinstalled or moved Kivo. If you didn't, don't.")
-            .foregroundStyle(palette.danger)
-            .accessibilityIdentifier("identityChanged")
     }
 }

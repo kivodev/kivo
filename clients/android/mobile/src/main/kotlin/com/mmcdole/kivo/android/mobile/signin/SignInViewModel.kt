@@ -58,8 +58,6 @@ data class SignInUiState(
     val step: SignInStep = SignInStep.Find,
     /** The last server signed in to, offered first. */
     val saved: SavedServer? = null,
-    /** Whether the session on [saved] ended as the server's identity changed. */
-    val identityChanged: Boolean = false,
     val found: Found = Found(),
     val address: String = "",
     val busy: Boolean = false,
@@ -78,10 +76,9 @@ class SignInViewModel(
     private val findServers: () -> Flow<FoundServer>,
     private val deviceName: String,
     saved: SavedServer?,
-    identityChanged: Boolean = false,
     private val open: suspend (KivoSession) -> Unit,
 ) : ViewModel() {
-    private val form = MutableStateFlow(SignInUiState(saved = saved, identityChanged = identityChanged && saved != null))
+    private val form = MutableStateFlow(SignInUiState(saved = saved))
 
     /** Bumped to look for servers, once the network may be searched. */
     private val searches = MutableStateFlow(0)

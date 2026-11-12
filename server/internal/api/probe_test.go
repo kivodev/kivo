@@ -43,19 +43,14 @@ func verifies(key *ecdsa.PublicKey, msg, sig []byte) bool {
 }
 
 // proves reports whether p is the server's signature over challenge, its
-// ID, host and local, by its key, and names that key as an app reads it.
+// ID, host and local, by its key.
 func proves(t *testing.T, e *env, p *gen.ServerProof, challenge []byte, host string, local bool) bool {
 	t.Helper()
 	sig, err := base64.RawURLEncoding.DecodeString(p.Signature)
 	if err != nil {
 		t.Fatal(err)
 	}
-	raw, err := base64.RawURLEncoding.DecodeString(p.Key)
-	if err != nil {
-		t.Fatal(err)
-	}
-	key, err := ecdsa.ParseUncompressedPublicKey(elliptic.P256(), raw)
-	return err == nil && key.Equal(serverKey(e)) && verifies(key, signed(challenge, e.d.Settings.ServerID().String(), host, local), sig)
+	return verifies(serverKey(e), signed(challenge, e.d.Settings.ServerID().String(), host, local), sig)
 }
 
 var probeChallenge = []byte("0123456789abcdef0123456789abcdef")
