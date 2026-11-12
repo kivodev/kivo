@@ -61,7 +61,6 @@ func (s *Downloads) prepare(ctx context.Context, download id.ID) error {
 	}); err != nil {
 		return err
 	}
-	s.progress(ctx, "")
 	pctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	p := &preparation{user: d.UserID, cancel: cancel, total: duration(c.files)}
@@ -103,41 +102,12 @@ func (s *Downloads) prepare(ctx context.Context, download id.ID) error {
 	s.mu.Lock()
 	delete(s.attempts, d.ID)
 	s.mu.Unlock()
-	err = s.settle(context.WithoutCancel(ctx), d, c, files, why, err)
-	s.preparedOne(context.WithoutCancel(ctx))
-	return err
+	return s.settle(context.WithoutCancel(ctx), d, c, files, why, err)
 }
 
 // StepConvert is the step a download's preparation reports while its
 // conversion is made.
 const StepConvert = "convert"
-
-// progress reports the Downloads task's step and count: the
-// downloads prepared since none were waiting, of those and the ones
-// waiting now, as other tasks count their items. ctx must be the task's.
-func (s *Downloads) progress(ctx context.Context, step string) {
-	open, err := s.q.OpenDownloads(ctx)
-	if err != nil {
-		return
-	}
-	s.mu.Lock()
-	done := s.downloadsPrepared
-	s.mu.Unlock()
-	tasks.Progress(ctx, step, done, done+len(open))
-}
-
-// preparedOne counts a download prepared, or starts the count again once
-// none are waiting.
-func (s *Downloads) preparedOne(ctx context.Context) {
-	open, err := s.q.OpenDownloads(ctx)
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if err == nil && len(open) == 0 {
-		s.downloadsPrepared = 0
-	} else {
-		s.downloadsPrepared++
-	}
-}
 
 // attempt counts one more attempt at a download whose file couldn't be
 // read, and returns how many there have been.
@@ -163,7 +133,7 @@ func (s *Downloads) prepareFiles(ctx context.Context, d dbq.Download, c *choice,
 	s.mu.Lock()
 	p.started = time.Now()
 	s.mu.Unlock()
-	s.progress(ctx, StepConvert)
+	tasks.Progress(ctx, StepConvert, 0, 0)
 	reached := func(at time.Duration) {
 		s.mu.Lock()
 		p.reached = at
@@ -206,7 +176,7 @@ var errSubtitleUnprepared = errors.New("subtitle wasn't prepared")
 // still isn't prepared, the download fails. Other tracks it delivers as
 // separate files are left out if they're missing.
 func (s *Downloads) extractSubtitles(ctx context.Context, c *choice) error {
-	s.progress(ctx, StepExtractSubtitles)
+	tasks.Progress(ctx, StepExtractSubtitles, 0, 0)
 	f := c.files[0]
 	err := s.deps.Subtitles.Prepare(ctx, f.ID)
 	if ctx.Err() != nil {

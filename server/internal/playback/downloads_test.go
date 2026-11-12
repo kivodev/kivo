@@ -589,10 +589,9 @@ func TestADownloadExtractsItsSubtitle(t *testing.T) {
 	}
 	f.await(d.ID, DownloadPreparing)
 	for deadline := time.Now().Add(5 * time.Second); ; time.Sleep(time.Millisecond) {
-		// The Downloads task counts downloads, as other tasks count their
-		// items: none prepared yet, of this one.
+		// The download reports its step. The runner counts the downloads.
 		if items := f.runner.Items(TaskPrepareDownloads); len(items) == 1 && items[0].Step == StepExtractSubtitles {
-			if items[0].Done != 0 || items[0].Total != 1 {
+			if items[0].Done != 0 || items[0].Total != 0 {
 				t.Fatalf("its count: %+v", items[0])
 			}
 			break
@@ -907,4 +906,105 @@ func TestDownloadsPrepareTwoAtOnceOnAnAccelerator(t *testing.T) {
 	if n := f.dl.preparingAtOnce(config.Settings{}); n != 1 {
 		t.Fatalf("with acceleration off: %d", n)
 	}
+}
+
+// The Tasks page counts the downloads prepared since none were waiting,
+// out of those and the ones asked for, and shows a single download's step
+// without a count. After a restart, the downloads still waiting count once
+// they start.
+func TestTheTasksPageCountsDownloadsPrepared(t *testing.T) {
+	f := newFixture(t, 0)
+	f.media.hold = make(chan struct{})
+	r := tasks.New(f.b.DB, f.cfg, events.NewBus(), tasks.Options{})
+	f.svc, f.runner = New(f.b.DB, f.deps(r)), r
+	f.dl = NewDownloads(f.svc)
+	for _, task := range f.dl.Tasks() {
+		r.Add(task)
+	}
+	// All three are asked for before the runner starts, so they're in
+	// line when the first is prepared.
+	var last DownloadStatus
+	for _, title := range []string{"Heat", "Ronin", "Thief"} {
+		last = f.mustDownload(f.movie(title, "mkv", 1).Work, "high")
+	}
+	runCtx, cancel := context.WithCancel(ctx)
+	done := make(chan struct{})
+	go func() { _ = r.Run(runCtx); close(done) }()
+	stop := func() { cancel(); <-done }
+
+	type report struct {
+		Running     bool
+		Step        string
+		Done, Total int
+	}
+	status := func() tasks.Status {
+		all, err := f.runner.Tasks(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, s := range all {
+			if s.Name == TaskPrepareDownloads {
+				return s
+			}
+		}
+		t.Fatal("no prepare task")
+		return tasks.Status{}
+	}
+	// at waits until the nth conversion has begun, or until the task is
+	// idle when n is 0, then checks what the task reports.
+	at := func(n int, want report) {
+		t.Helper()
+		for deadline := time.Now().Add(5 * time.Second); ; time.Sleep(time.Millisecond) {
+			f.media.mu.Lock()
+			converts := len(f.media.converts)
+			f.media.mu.Unlock()
+			s := status()
+			if n == 0 && !s.Running || n > 0 && converts == n && s.Step == StepConvert {
+				got := report{s.Running, s.Step, s.Done, s.Total}
+				t.Logf("conversion %d: %+v, %d pending", n, got, s.PendingCount)
+				if got != want {
+					t.Errorf("conversion %d: %+v, want %+v", n, got, want)
+				}
+				return
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("waiting for conversion %d: %+v", n, s)
+			}
+		}
+	}
+	// next lets the conversion in flight finish and holds the next one.
+	next := func() {
+		f.media.mu.Lock()
+		was := f.media.hold
+		f.media.hold = make(chan struct{})
+		f.media.mu.Unlock()
+		close(was)
+	}
+
+	at(1, report{true, StepConvert, 0, 3})
+	next()
+	at(2, report{true, StepConvert, 1, 3})
+	next()
+	at(3, report{true, StepConvert, 2, 3})
+	next()
+	f.await(last.ID, DownloadReady)
+	at(0, report{})
+
+	f.mustDownload(f.movie("Sicario", "mkv", 1).Work, "high")
+	at(4, report{true, StepConvert, 0, 0})
+	next()
+	at(0, report{})
+
+	// The server stops while one download converts and another waits.
+	first := f.mustDownload(f.movie("Collateral", "mkv", 1).Work, "high")
+	f.mustDownload(f.movie("Insider", "mkv", 1).Work, "high")
+	f.await(first.ID, DownloadPreparing)
+	at(5, report{true, StepConvert, 0, 2})
+	stop()
+	f.downloads()
+	at(6, report{true, StepConvert, 0, 0})
+	next()
+	at(7, report{true, StepConvert, 1, 2})
+	next()
+	at(0, report{})
 }
