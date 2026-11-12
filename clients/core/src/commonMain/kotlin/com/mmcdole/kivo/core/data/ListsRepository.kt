@@ -2,6 +2,7 @@ package com.mmcdole.kivo.core.data
 
 import com.mmcdole.kivo.api.check
 import com.mmcdole.kivo.api.models.ListCreate
+import com.mmcdole.kivo.api.models.ListKind
 import com.mmcdole.kivo.api.models.ListMove
 import com.mmcdole.kivo.api.models.ListSort
 import com.mmcdole.kivo.api.models.ListUpdate
@@ -25,12 +26,12 @@ import kotlinx.coroutines.flow.map
 
 /** The orders a manual list is shown in. */
 object ListSorts {
-    /** The sorts in the order a menu offers them. */
-    val all = listOf(ListSort.Custom, ListSort.Title, ListSort.ReleaseDate, ListSort.Rating, ListSort.DateAdded)
-
     /** A manual list's sort, [ListSort.Custom] for one this app doesn't know; null for a smart list, which has none. */
-    fun of(list: WorkList): ListSort? = list.sort?.let { if (it in all) it else ListSort.Custom }
+    fun of(list: WorkList): ListSort? = list.sort?.let { if (it == ListSort.Unknown) ListSort.Custom else it }
 }
+
+/** Whether the Lists page gives the list a shelf: a kind this app knows, and the built-in list only with something in it. */
+val WorkList.hasShelf: Boolean get() = kind != ListKind.Unknown && (!builtIn || workCount > 0)
 
 /** The user's lists and the works in them, a manual list's in its sort; the live events tell every screen, this app's too. */
 internal class ListsRepository(private val connection: ServerConnection, private val invalidations: Flow<Invalidation>) {

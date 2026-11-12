@@ -79,16 +79,16 @@ import com.mmcdole.kivo.api.models.ListKind
 import com.mmcdole.kivo.api.models.WorkList
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.Load
+import com.mmcdole.kivo.core.data.hasShelf
 import kotlinx.coroutines.flow.map
 
 /** A list's shelf: the list and its first works, books left out. */
 data class Shelf(val list: WorkList, val works: List<WorkSummary>)
 
-/** The lists as shelves, in their order: Watchlist only with works to show, and a list kind it doesn't know left out. */
+/** The lists as shelves, in their order. */
 internal fun shelves(lists: List<WorkList>): List<Shelf> = lists
-    .filter { it.kind == ListKind.Manual || it.kind == ListKind.Smart }
+    .filter { it.hasShelf }
     .map { list -> Shelf(list, list.items.orEmpty().filter { it.kind in tvWorkKinds }) }
-    .filter { !it.list.builtIn || it.works.isNotEmpty() }
 
 /** Lists with their first works, read again as they change. */
 class ListsViewModel(session: ServerSession) : ViewModel() {

@@ -30,14 +30,9 @@ sealed interface Compatibility {
          * release's ([compareVersions]), or a server that names no oldest
          * app, never makes them incompatible.
          */
-        fun of(
-            serverVersion: String,
-            minAppVersion: String?,
-            appVersion: String,
-            minServerVersion: String = MIN_SERVER_VERSION,
-        ): Compatibility {
-            if ((compareVersions(serverVersion, minServerVersion) ?: 0) < 0) {
-                return ServerTooOld(release(serverVersion), release(minServerVersion), release(appVersion))
+        fun of(serverVersion: String, minAppVersion: String?, appVersion: String): Compatibility {
+            if ((compareVersions(serverVersion, MIN_SERVER_VERSION) ?: 0) < 0) {
+                return ServerTooOld(release(serverVersion), MIN_SERVER_VERSION, release(appVersion))
             }
             if (minAppVersion != null && (compareVersions(appVersion, minAppVersion) ?: 0) < 0) {
                 return AppTooOld(release(appVersion), release(minAppVersion))
@@ -56,7 +51,7 @@ sealed interface Compatibility {
  * when either lacks the three numbers, as `dev`, a commit hash or an empty
  * version do.
  */
-fun compareVersions(a: String, b: String): Int? {
+internal fun compareVersions(a: String, b: String): Int? {
     val x = parse(a) ?: return null
     val y = parse(b) ?: return null
     for (i in x.indices) {

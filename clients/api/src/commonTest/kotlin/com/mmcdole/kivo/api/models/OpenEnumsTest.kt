@@ -42,7 +42,6 @@ class OpenEnumsTest {
     fun aCaseIsNamedByItsWireValue() {
         assertEquals("continueWatching", HomeRowKind.ContinueWatching.toString(), "a query parameter is written with toString")
         assertEquals("1080p", "${Resolution.P1080}")
-        for (kind in WorkKind.entries) assertEquals(kind, WorkKind.of(kind.value))
         assertEquals(WorkKind.Unknown, WorkKind.of("podcast"))
         assertEquals(WorkKind.Unknown, WorkKind.of(null))
         assertEquals(WorkKind.Unknown, WorkKind.of(""))

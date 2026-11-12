@@ -24,8 +24,7 @@ struct ListsView: View {
     var body: some View {
         SkeletonGate(loaded: counted != nil || server.listsFailure != nil || server.unreachable) {
             if let counted {
-                // A list kind this app doesn't know is skipped.
-                let shelves = counted.filter { $0.kind != .unknown && (!$0.builtIn || $0.workCount > 0) }
+                let shelves = counted.filter { $0.hasShelf }
                 if shelves.isEmpty {
                     MessageView(
                         String(localized: "Nothing in your lists yet."),

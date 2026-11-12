@@ -39,8 +39,8 @@ class CompatibilityTest {
     @Test
     fun aServerOlderThanTheAppWorksWithIsTooOld() {
         assertEquals(
-            Compatibility.ServerTooOld(serverVersion = "0.5.0", minServerVersion = "0.6.0", appVersion = "0.8.0"),
-            Compatibility.of(serverVersion = "0.5.0", minAppVersion = "0.3.0", appVersion = "0.8.0", minServerVersion = "0.6.0"),
+            Compatibility.ServerTooOld(serverVersion = "0.1.0", minServerVersion = MIN_SERVER_VERSION, appVersion = "0.8.0"),
+            Compatibility.of(serverVersion = "0.1.0", minAppVersion = "0.1.0", appVersion = "0.8.0"),
         )
     }
 
@@ -48,41 +48,36 @@ class CompatibilityTest {
     fun anAppOlderThanTheServerSupportsIsTooOld() {
         assertEquals(
             Compatibility.AppTooOld(appVersion = "0.5.0", minAppVersion = "0.6.0"),
-            Compatibility.of(serverVersion = "0.8.0", minAppVersion = "0.6.0", appVersion = "0.5.0", minServerVersion = "0.3.0"),
+            Compatibility.of(serverVersion = MIN_SERVER_VERSION, minAppVersion = "0.6.0", appVersion = "0.5.0"),
         )
     }
 
     @Test
     fun anAppAndAServerAtEachOthersOldestAreCompatible() {
-        assertEquals(Compatibility.Compatible, Compatibility.of("0.6.0", "0.5.0", "0.5.0", "0.6.0"))
-        assertEquals(Compatibility.Compatible, Compatibility.of("0.9.0", "0.5.0", "0.7.2", "0.6.0"))
+        assertEquals(Compatibility.Compatible, Compatibility.of(MIN_SERVER_VERSION, "0.5.0", "0.5.0"))
+        assertEquals(Compatibility.Compatible, Compatibility.of("99.0.0", "0.5.0", "0.7.2"))
     }
 
     @Test
     fun aBuildPastAReleaseIsNotOlderThanItAndShowsAsIt() {
-        assertEquals(Compatibility.Compatible, Compatibility.of("0.6.0-dev+abc1234", "0.5.0", "0.5.0-dev+abc1234", "0.6.0"))
+        assertEquals(Compatibility.Compatible, Compatibility.of("$MIN_SERVER_VERSION-dev+abc1234", "0.5.0", "0.5.0-dev+abc1234"))
         assertEquals(
-            Compatibility.ServerTooOld("0.5.0", "0.6.0", "0.8.0"),
-            Compatibility.of("0.5.0-dev+abc1234", "0.3.0", "0.8.0+abc1234", "0.6.0"),
+            Compatibility.ServerTooOld("0.1.0", MIN_SERVER_VERSION, "0.8.0"),
+            Compatibility.of("0.1.0-dev+abc1234", "0.1.0", "0.8.0+abc1234"),
         )
     }
 
     @Test
     fun missingOrOddVersionsNeverBlock() {
         // An older server names no oldest app.
-        assertEquals(Compatibility.Compatible, Compatibility.of("0.6.0", null, "0.1.0", "0.6.0"))
+        assertEquals(Compatibility.Compatible, Compatibility.of(MIN_SERVER_VERSION, null, "0.1.0"))
         // A hand build reports a commit, `dev` or nothing.
         for (odd in listOf("dev", "d76b7e0", "")) {
-            assertEquals(Compatibility.Compatible, Compatibility.of(odd, "9.0.0", odd, "9.0.0"), odd)
-            assertEquals(Compatibility.Compatible, Compatibility.of("0.1.0", odd, "0.1.0", odd), odd)
+            assertEquals(Compatibility.Compatible, Compatibility.of(odd, "9.0.0", odd), odd)
+            assertEquals(Compatibility.Compatible, Compatibility.of(MIN_SERVER_VERSION, odd, "0.1.0"), odd)
         }
         // Only the side that can be told is.
-        assertEquals(Compatibility.ServerTooOld("0.1.0", "0.6.0", "dev"), Compatibility.of("0.1.0", "9.0.0", "dev", "0.6.0"))
-        assertEquals(Compatibility.AppTooOld("0.1.0", "0.6.0"), Compatibility.of("dev", "0.6.0", "0.1.0", "0.6.0"))
-    }
-
-    @Test
-    fun theOldestServerIsAReleaseTheAppCanBeToldFrom() {
-        assertEquals(0, compareVersions(MIN_SERVER_VERSION, MIN_SERVER_VERSION))
+        assertEquals(Compatibility.ServerTooOld("0.1.0", MIN_SERVER_VERSION, "dev"), Compatibility.of("0.1.0", "9.0.0", "dev"))
+        assertEquals(Compatibility.AppTooOld("0.1.0", "0.6.0"), Compatibility.of("dev", "0.6.0", "0.1.0"))
     }
 }

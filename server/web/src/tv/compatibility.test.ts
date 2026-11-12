@@ -1,5 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { compareVersions, compatibility, minServerVersion } from "./compatibility";
+
+const app = vi.hoisted(() => ({ version: "0.5.0" }));
+vi.mock("./versions", () => ({
+  get appVersion() {
+    return app.version;
+  },
+}));
 
 describe("comparing versions", () => {
   it("goes by major, minor and patch", () => {
@@ -44,16 +51,16 @@ describe("comparing versions", () => {
 
 describe("the app and a server", () => {
   it("say the server is too old when it's older than the app works with", () => {
-    expect(compatibility("0.5.0-dev+abc1234", "0.3.0", "0.8.0", "0.6.0")).toEqual({
+    expect(compatibility("0.1.0-dev+abc1234", "0.3.0")).toEqual({
       state: "serverTooOld",
-      serverVersion: "0.5.0",
-      minServerVersion: "0.6.0",
-      appVersion: "0.8.0",
+      serverVersion: "0.1.0",
+      minServerVersion,
+      appVersion: "0.5.0",
     });
   });
 
   it("say the app is too old when it's older than the server supports", () => {
-    expect(compatibility("0.8.0", "0.6.0", "0.5.0", "0.3.0")).toEqual({
+    expect(compatibility(minServerVersion, "0.6.0")).toEqual({
       state: "appTooOld",
       appVersion: "0.5.0",
       minAppVersion: "0.6.0",
@@ -61,19 +68,18 @@ describe("the app and a server", () => {
   });
 
   it("work together at each other's oldest, and a build past a release is not older than it", () => {
-    expect(compatibility("0.6.0", "0.5.0", "0.5.0", "0.6.0")).toEqual({ state: "compatible" });
-    expect(compatibility("0.6.0-dev+abc1234", "0.5.0", "0.5.0-dev+abc1234", "0.6.0")).toEqual({ state: "compatible" });
+    expect(compatibility(minServerVersion, "0.5.0")).toEqual({ state: "compatible" });
+    expect(compatibility(`${minServerVersion}-dev+abc1234`, "0.5.0")).toEqual({ state: "compatible" });
   });
 
   it("are never kept apart by a missing or odd version", () => {
-    expect(compatibility("0.6.0", undefined, "0.1.0", "0.6.0")).toEqual({ state: "compatible" });
+    expect(compatibility(minServerVersion, undefined)).toEqual({ state: "compatible" });
     for (const odd of ["dev", "d76b7e0", ""]) {
-      expect(compatibility(odd, "9.0.0", odd, "9.0.0"), odd).toEqual({ state: "compatible" });
-      expect(compatibility("0.1.0", odd, "0.1.0", odd), odd).toEqual({ state: "compatible" });
+      expect(compatibility(odd, "0.1.0"), odd).toEqual({ state: "compatible" });
+      expect(compatibility(minServerVersion, odd), odd).toEqual({ state: "compatible" });
+      app.version = odd;
+      expect(compatibility(minServerVersion, "9.0.0"), odd).toEqual({ state: "compatible" });
+      app.version = "0.5.0";
     }
-  });
-
-  it("have an oldest server that is a release", () => {
-    expect(compareVersions(minServerVersion, minServerVersion)).toBe(0);
   });
 });

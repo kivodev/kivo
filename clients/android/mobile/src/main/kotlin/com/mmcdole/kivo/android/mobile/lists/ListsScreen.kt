@@ -31,7 +31,6 @@ import com.mmcdole.kivo.api.models.ListSort
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.ProblemCode
 import com.mmcdole.kivo.core.data.GridItem
-import com.mmcdole.kivo.core.data.ListSorts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -406,7 +405,7 @@ fun ListScreen(session: ServerSession, id: String, name: String, nav: MobileNav)
         )
     }
     if (sorting) {
-        SortSheet(ListSorts.all, sort ?: ListSort.Custom, { it.value }, { listSortName(it) }, { listSortDirection(it) }, model::chooseSort) { sorting = false }
+        SortSheet(ListSort.entries - ListSort.Unknown, sort ?: ListSort.Custom, { it.value }, { listSortName(it) }, { listSortDirection(it) }, model::chooseSort) { sorting = false }
     }
     if (renaming) {
         ListNameDialog(
