@@ -53,7 +53,7 @@ private val version = Version("v1", true, 600_000, 1_000, emptyList(), emptyList
 
 private fun work(id: String, kind: WorkKind, episode: EpisodeInfo? = null) = WorkDetail(
     id, kind, "Title $id", MatchState.Matched, true, WorkImages(), emptyList(), emptyList(), emptyList(), emptyList(),
-    listOf(version), emptyList(), emptyList(), emptyList(), episode = episode,
+    listOf(version), emptyList(), emptyList(), episode = episode,
 )
 
 private fun episode(number: Int, nextId: String?) = EpisodeInfo(1, number, "s1", "Severance", nextId = nextId)

@@ -49,7 +49,7 @@ class ListsViewModelsTest : CoreTest() {
             WorkDetail(
                 id = "m1", kind = WorkKind.Movie, title = "m1", matchState = MatchState.Matched, available = true, images = WorkImages(),
                 genres = emptyList(), studios = emptyList(), credits = emptyList(), externalIds = emptyList(), versions = emptyList(),
-                extras = emptyList(), collections = emptyList(), similar = emptyList(), listIds = held,
+                extras = emptyList(), collections = emptyList(), listIds = held,
             )
         }
         server.on("POST", "/api/v1/lists/d/works") { respond("", HttpStatusCode.NoContent) }

@@ -735,7 +735,7 @@ class KivoSessionTest {
         val summary = WorkSummary("w1", WorkKind.Movie, "Heat", MatchState.Matched, true, WorkImages(), year = 1995, libraryId = "l1")
         val work = WorkDetail(
             "w1", WorkKind.Movie, "Heat", MatchState.Matched, true, WorkImages(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList(),
-            emptyList(), emptyList(), emptyList(), year = 1995, overview = "A heist.", libraryId = "l1",
+            emptyList(), emptyList(), year = 1995, overview = "A heist.", libraryId = "l1",
         )
         h.servers.on("home.test", "GET", "/api/v1/libraries") { json(LibraryList.serializer(), LibraryList(listOf(Library("l1", "Movies", true, LibraryKind.Movies, 1)))) }
         h.servers.on("home.test", "POST", "/api/v1/works/query") { json(WorkSummaryPage.serializer(), WorkSummaryPage(listOf(summary), 1)) }

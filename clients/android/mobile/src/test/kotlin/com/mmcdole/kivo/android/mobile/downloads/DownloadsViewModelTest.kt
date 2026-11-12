@@ -92,7 +92,7 @@ class DownloadsViewModelTest : CoreTest() {
     private fun detail(id: String, kind: WorkKind = WorkKind.Movie, episode: EpisodeInfo? = null) = WorkDetail(
         id = id, kind = kind, title = if (kind == WorkKind.Movie) "Charade" else "Episode $id", matchState = MatchState.Matched, available = true, images = WorkImages(),
         genres = emptyList(), studios = emptyList(), credits = emptyList(), externalIds = emptyList(), versions = emptyList(),
-        extras = emptyList(), collections = emptyList(), similar = emptyList(), episode = episode, durationMs = 7_200_000,
+        extras = emptyList(), collections = emptyList(), episode = episode, durationMs = 7_200_000,
     )
 
     private fun download(workId: String, id: String = "d-$workId") = Download(

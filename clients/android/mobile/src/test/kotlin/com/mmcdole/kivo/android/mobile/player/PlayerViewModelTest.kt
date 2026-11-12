@@ -56,7 +56,7 @@ class PlayerViewModelTest : CoreTest() {
             WorkDetail(
                 id = "m1", kind = WorkKind.Movie, title = "Charade", matchState = MatchState.Matched, available = true, images = WorkImages(),
                 genres = emptyList(), studios = emptyList(), credits = emptyList(), externalIds = emptyList(), versions = emptyList(),
-                extras = emptyList(), collections = emptyList(), similar = emptyList(),
+                extras = emptyList(), collections = emptyList(),
             )
         }
         server.on("POST", "/api/v1/plays") { request ->

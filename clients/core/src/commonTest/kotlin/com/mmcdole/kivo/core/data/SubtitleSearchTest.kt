@@ -67,7 +67,7 @@ class SubtitleSearchTest {
         val work = WorkDetail(
             id = "w1", kind = WorkKind.Movie, title = "Dune", matchState = MatchState.Matched, available = true, images = WorkImages(),
             genres = emptyList(), studios = emptyList(), credits = emptyList(), externalIds = emptyList(),
-            versions = listOf(version(), other), extras = emptyList(), collections = emptyList(), similar = emptyList(),
+            versions = listOf(version(), other), extras = emptyList(), collections = emptyList(),
         )
         val added = Track("t-new", TrackType.Subtitle, "subrip", false, "", "", subtitle = SubtitleTrackInfo("downloaded"))
         val shown = work.withTrack("v1", added).withTrack("v1", added)

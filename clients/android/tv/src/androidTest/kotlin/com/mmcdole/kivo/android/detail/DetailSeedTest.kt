@@ -193,7 +193,7 @@ class DetailSeedTest {
             images = WorkImages(backdrop = backdrop), genres = listOf("Crime"), studios = emptyList(), credits = emptyList(),
             externalIds = emptyList(),
             versions = listOf(Version("version", true, 10_200_000, 1_000, listOf(VersionPart("file", "heat.mkv", 10_200_000, 1_000)), emptyList(), listOf("movie"), "1080p")),
-            extras = emptyList(), collections = emptyList(), similar = emptyList(), year = 1995, durationMs = 10_200_000, communityRating = 8.3,
+            extras = emptyList(), collections = emptyList(), year = 1995, durationMs = 10_200_000, communityRating = 8.3,
             communityVotes = 9000, contentRating = "R", overview = "A heist.", libraryId = "library",
         )
 
@@ -216,7 +216,7 @@ class DetailSeedTest {
         val series = WorkDetail(
             id = "series", kind = WorkKind.Series, title = "The Wire", matchState = MatchState.Matched, available = true,
             images = WorkImages(backdrop = backdrop), genres = emptyList(), studios = emptyList(), credits = emptyList(),
-            externalIds = emptyList(), versions = emptyList(), extras = emptyList(), collections = emptyList(), similar = emptyList(), year = 2002,
+            externalIds = emptyList(), versions = emptyList(), extras = emptyList(), collections = emptyList(), year = 2002,
             series = SeriesInfo(1, seasonCount = 2, nextUp = episode), overview = "Baltimore.",
         )
     }
