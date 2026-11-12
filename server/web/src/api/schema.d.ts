@@ -2928,12 +2928,6 @@ export interface components {
         ServerProof: {
             /** @description ASN.1 DER, base64url without padding. */
             signature: string;
-            /**
-             * @description The server's P-256 public key, the uncompressed X9.63 point
-             *     (65 bytes), base64url without padding, which an app that has
-             *     none yet keeps.
-             */
-            key: string;
             /** @description The host the probe reached, as its `Host` header, or a trusted proxy's `X-Forwarded-Host`, names it. */
             host: string;
             /**

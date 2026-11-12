@@ -90,14 +90,12 @@ private val askForLocalNetwork = Build.VERSION.SDK_INT >= 37
  * Signing in: choose a server, the last signed in to, one found on the
  * network or a typed address; then its password, or a code a signed-in
  * device approves. A server the app doesn't work with says which of them
- * needs an update, in place of its password. A line under the last server,
- * and over its password, warns when its session ended as the server's
- * identity changed ([identityChanged]).
+ * needs an update, in place of its password.
  */
 @Composable
-fun SignInScreen(graph: AppGraph, saved: SavedServer?, identityChanged: Boolean = false) {
+fun SignInScreen(graph: AppGraph, saved: SavedServer?) {
     val model = viewModel {
-        SignInViewModel(graph.core, graph::findServers, graph.name, saved, identityChanged) { graph.core.signedIn(it) }
+        SignInViewModel(graph.core, graph::findServers, graph.name, saved) { graph.core.signedIn(it) }
     }
     val state by model.state.collectAsStateWithLifecycle()
     BackHandler(enabled = state.step != SignInStep.Find) { model.back() }
@@ -165,7 +163,6 @@ private fun FindServer(state: SignInUiState, model: SignInViewModel) {
     if (saved != null) {
         SectionLabel(stringResource(R.string.mobile_last_signed_in))
         ServerRow(saved.name, null, Icons.Default.History, enabled = !state.busy, tag = "saved") { model.chooseSaved() }
-        if (state.identityChanged) IdentityChanged()
     }
     SectionLabel(stringResource(R.string.mobile_on_this_network))
     for (server in state.found.servers) {
@@ -208,7 +205,6 @@ private fun Password(state: SignInUiState, step: SignInStep.Password, model: Sig
     Spacer(Modifier.height(space(2)))
     Text(stringResource(R.string.mobile_sign_in_to, step.server.info.name), style = MaterialTheme.typography.headlineSmall)
     Muted(step.server.baseUrl.substringAfter("://"))
-    if (state.identityChanged && step.server.info.id == state.saved?.id) IdentityChanged()
     OutlinedTextField(
         value = username,
         onValueChange = { username = it },
@@ -303,17 +299,6 @@ private fun SectionLabel(text: String) {
 @Composable
 private fun Muted(text: String) {
     Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-}
-
-/** The warning that the last server's session ended as its identity changed. */
-@Composable
-private fun IdentityChanged() {
-    Text(
-        stringResource(R.string.mobile_identity_changed),
-        color = MaterialTheme.colorScheme.error,
-        style = MaterialTheme.typography.bodyMedium,
-        modifier = Modifier.testTag("identityChanged"),
-    )
 }
 
 @Composable

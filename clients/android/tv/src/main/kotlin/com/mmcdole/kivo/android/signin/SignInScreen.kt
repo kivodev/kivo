@@ -96,11 +96,10 @@ private fun AppGraph.stepFor(server: FoundServer): Step = stepFor(server, core.c
  * "Enter address" always a step away; then the sign-in code, with the
  * password as the alternative. A session that ended goes straight to the
  * code on its server. A server the app doesn't work with says which of
- * them needs an update, in place of its code. A line on its code warns when
- * the session ended as the server's identity changed ([identityChanged]).
+ * them needs an update, in place of its code.
  */
 @Composable
-fun SignInScreen(graph: AppGraph, server: SavedServer?, identityChanged: Boolean = false) {
+fun SignInScreen(graph: AppGraph, server: SavedServer?) {
     var step by remember { mutableStateOf<Step>(Step.Finding) }
     var reachingSaved by remember { mutableStateOf(server != null) }
     LaunchedEffect(server) {
@@ -127,7 +126,6 @@ fun SignInScreen(graph: AppGraph, server: SavedServer?, identityChanged: Boolean
                     onSignedIn = { graph.core.signedIn(it) },
                     onPassword = { step = Step.Password(s.server) },
                     onChangeServer = { step = Step.Finding },
-                    identityChanged = identityChanged && s.server.info.id == server?.id,
                 )
             }
             is Step.Password -> FormPanel { Password(graph, s.server, onBack = { step = Step.Code(s.server) }) }
@@ -286,7 +284,6 @@ internal fun LinkCode(
     onSignedIn: suspend (KivoSession) -> Unit,
     onPassword: () -> Unit,
     onChangeServer: () -> Unit,
-    identityChanged: Boolean = false,
 ) {
     var waiting by remember { mutableStateOf<LinkProgress.Waiting?>(null) }
     var declined by remember { mutableStateOf(false) }
@@ -338,10 +335,6 @@ internal fun LinkCode(
             Lockup(Modifier.padding(bottom = LockupGap))
             Text(stringResource(R.string.sign_in_title), style = TvType.title, color = Kivo.colors.text)
             Spacer(Modifier.height(CodeStepsGap))
-            if (identityChanged) {
-                Text(stringResource(R.string.identity_changed), style = TvType.body, color = Kivo.colors.danger, modifier = Modifier.testTag("identityChanged"))
-                Spacer(Modifier.height(CodeStepsGap))
-            }
             if (declined) {
                 Text(stringResource(R.string.sign_in_declined), style = TvType.body, color = Kivo.colors.danger, modifier = Modifier.testTag("signInDeclined"))
                 Spacer(Modifier.height(CodeStepsGap))

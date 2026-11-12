@@ -20,7 +20,7 @@ private const val OTHER_KEY = "BLdcS5VyPqCqXLRQ5-JhZ7Ot3LrWmNLh2ROW4HTZXi7h4glC2
 
 class ServerKeyTest {
     private val key = assertNotNull(ServerKey.of(KEY))
-    private val proof = ServerProof(SIGNATURE, KEY, "192.168.1.20:8484", local = true)
+    private val proof = ServerProof(SIGNATURE, "192.168.1.20:8484", local = true)
 
     @Test
     fun theServersSignatureVerifies() {

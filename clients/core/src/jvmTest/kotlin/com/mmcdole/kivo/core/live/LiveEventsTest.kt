@@ -10,6 +10,7 @@ import com.mmcdole.kivo.core.auth.ServerConnection
 import com.mmcdole.kivo.core.kivoJson
 import com.mmcdole.kivo.core.proofOf
 import com.mmcdole.kivo.api.models.ServerInfo
+import com.mmcdole.kivo.core.SERVER_KEY
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -101,6 +102,7 @@ private class EventServer(private val scripts: List<Script>) : AutoCloseable {
         preferences: MemoryPreferences = MemoryPreferences(),
         network: NetworkEpoch = NetworkEpoch(),
     ): ServerConnection {
+        preferences.edit { it[stringPreferencesKey("kivo.serverKey.server-1")] = SERVER_KEY.encoded }
         return ServerConnection("server-1", url(), store, preferences, network = network).also { it.restore() }
     }
 

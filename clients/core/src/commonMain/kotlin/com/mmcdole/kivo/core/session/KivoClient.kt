@@ -284,7 +284,7 @@ class KivoClient internal constructor(
         when {
             !session.isSignedIn -> {
                 session.close()
-                mutableState.value = AppState.SignedOut(server, session.connection.identityChanged)
+                mutableState.value = AppState.SignedOut(server)
             }
             session.unreachable.value && !kept -> {
                 session.close()
@@ -302,7 +302,7 @@ class KivoClient internal constructor(
         session.scope.launch { quietly { session.awaitReachable() } }
         session.scope.launch {
             session.awaitSignOut()
-            mutableState.value = AppState.SignedOut(session.savedServer.value, session.connection.identityChanged)
+            mutableState.value = AppState.SignedOut(session.savedServer.value)
             session.close()
         }
     }

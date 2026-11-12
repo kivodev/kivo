@@ -72,7 +72,7 @@ private fun proof(key: KeyPair, challenge: ByteArray, host: String, local: Boole
     }
     out.write(if (local) 1 else 0)
     val signature = Signature.getInstance("SHA256withECDSA").apply { initSign(key.private) }.apply { update(out.toByteArray()) }.sign()
-    return ServerProof(b64(signature), key.encoded(), host, local)
+    return ServerProof(b64(signature), host, local)
 }
 
 /** The server at its addresses, the local one answering probes as [answer] says, and every request as "host path auth". */
@@ -151,6 +151,7 @@ class AddressTrustTest {
             assertEquals(emptyList(), net.tokenAtLocal(), "$impostor")
             assertNull(c.authorization("$LOCAL/api/v1/images/i1?width=480"), "$impostor")
             assertNull(c.transferBase(), "$impostor")
+            assertTrue(c.signedIn.value, "$impostor")
         }
     }
 
@@ -167,53 +168,20 @@ class AddressTrustTest {
     }
 
     @Test
-    fun anAddressThatAnswersAsTheServerWithAnotherKeySignsOut() = runTest {
-        val net = Net(this)
-        net.answer = Answer.OtherKey
-        val c = net.connection(LOCAL, listOf(LOCAL))
-
-        assertFailsWith<UntrustedAddress> { c.users.getCurrentUser().result() }
-        assertFalse(c.signedIn.value)
-        assertTrue(c.identityChanged)
-        assertEquals(emptyList(), net.tokenAtLocal())
-
-        // Opening it signs out too, and finds it, to sign in to again.
-        val opened = net.connection(LOCAL, listOf(LOCAL))
-        assertEquals(LOCAL, assertNotNull(opened.reach()).first)
-        assertFalse(opened.signedIn.value)
-        assertTrue(opened.identityChanged)
-        assertEquals(emptyList(), net.tokenAtLocal())
-
-        // A new sign-in takes the key it gives.
-        opened.signIn(TOKEN, OTHER.encoded())
-        assertFalse(opened.identityChanged)
-        assertEquals("anna", opened.users.getCurrentUser().result().username)
-    }
-
-    @Test
-    fun signedInWithoutTheServersKeyTheFirstThatSignsIsKept() = runTest {
+    fun signedInWithoutTheServersKeyNoPlainAddressGetsTheToken() = runTest {
         val net = Net(this)
         val c = net.connection(LOCAL, listOf(LOCAL), key = null)
 
-        assertEquals("anna", c.users.getCurrentUser().result().username)
-        assertEquals(SERVER.encoded(), net.preferences.data.first()[stringPreferencesKey("kivo.serverKey.server-1")])
-
-        // From then on it's that key's signature or nothing.
-        net.network.changed()
-        net.answer = Answer.OtherKey
         assertFailsWith<UntrustedAddress> { c.users.getCurrentUser().result() }
-        assertTrue(c.identityChanged)
-        assertEquals(1, net.tokenAtLocal().size)
+        assertEquals(emptyList(), net.tokenAtLocal())
+        assertNull(net.preferences.data.first()[stringPreferencesKey("kivo.serverKey.server-1")])
+        assertTrue(c.signedIn.value)
 
-        // It's kept across a restart, as a session restored there checks it.
-        val restored = ServerConnection(
-            "server-1", LOCAL, MemoryStore(mutableMapOf("kivo.token.server-1" to TOKEN)), net.preferences, net.engine,
-            background = EmptyCoroutineContext, network = net.network,
-        )
-        assertTrue(restored.restore())
-        net.answer = Answer.Server
-        assertEquals(LOCAL, assertNotNull(restored.reach()).first)
-        assertTrue(restored.signedIn.value)
+        // The HTTPS address still serves it.
+        val both = net.connection(LOCAL, listOf(LOCAL, PUBLIC), key = null)
+        assertEquals("anna", both.users.getCurrentUser().result().username)
+        assertEquals(PUBLIC, both.baseUrl)
+        assertEquals(emptyList(), net.tokenAtLocal())
     }
 
     @Test

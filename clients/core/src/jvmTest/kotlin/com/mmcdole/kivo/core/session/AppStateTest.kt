@@ -209,19 +209,17 @@ class AppStateTest {
     }
 
     @Test
-    fun aServerThatProvesItselfWithAnotherKeySignsInToItAgainSayingItsIdentityChanged() = appTest { h ->
+    fun aServerThatProvesItselfWithAnotherKeyCantBeReached() = appTest { h ->
         // Set up again, or an impostor: it answers as the server, signed by a key that isn't the one the app keeps.
         val other = TestServerKey()
         h.servers.on("home.test", "GET", "/api/v1/server") { json(ServerInfo.serializer(), info("server-1", "Basement").copy(proof = proofOf(it, "server-1", other))) }
         val before = h.servers.seen.size
-        val start = currentTime
 
         h.core.start()
 
-        assertEquals(AppState.SignedOut(home, identityChanged = true), h.core.state.first { it is AppState.SignedOut || it is AppState.Unreachable })
-        assertTrue(currentTime - start < 3000, "took ${currentTime - start} ms")
+        assertEquals(AppState.Unreachable(home), h.core.started())
         assertEquals(listOf(SERVER), h.servers.seen.drop(before).distinct(), "nothing but probes, so nothing carries the token")
-        assertFalse(ServerConnection.holdsSession(h.device.secureStore, "server-1"))
+        assertTrue(ServerConnection.holdsSession(h.device.secureStore, "server-1"))
     }
 
     @Test
@@ -362,7 +360,7 @@ class AppStateTest {
         val scope = CoroutineScope(SupervisorJob())
         try {
             val device = TestDevice(withDownloads = false)
-            device.secureStore.values["kivo.token.server-1"] = "tok"
+            device.signedInTo("server-1", "tok")
             val core = KivoClient(device, null, scope)
             val url = "http://127.0.0.1:${server.engine.resolvedConnectors().first().port}"
             core.restore(SavedServer("server-1", "Basement", listOf(url))).close()

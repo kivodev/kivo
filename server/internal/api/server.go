@@ -66,7 +66,7 @@ func (h *handlers) proof(ctx context.Context, p gen.GetServerParams) (*gen.Serve
 		return nil, err
 	}
 	return &gen.ServerProof{
-		Signature: base64.RawURLEncoding.EncodeToString(sig), Key: h.serverKey(), Host: claim.Host, Local: claim.Local,
+		Signature: base64.RawURLEncoding.EncodeToString(sig), Host: claim.Host, Local: claim.Local,
 	}, nil
 }
 
