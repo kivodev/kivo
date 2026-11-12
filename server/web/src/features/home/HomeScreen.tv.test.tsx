@@ -57,6 +57,25 @@ describe("Home on TV", () => {
     await waitFor(() => expect(focused()).toMatch(/^card:continueWatching:/));
   });
 
+  it("moves with Right along a long row to its last card", async () => {
+    serveMockApi();
+    renderApp("/");
+    await waitFor(() => expect(focused()).toMatch(/^card:continueWatching:/));
+    // The third row holds twelve movies, more than the six that fit across.
+    const movies = document.querySelectorAll('[data-part="row-cards"]')[2] as HTMLElement;
+    const cards = () =>
+      [...movies.querySelectorAll<HTMLElement>("[data-tv-focus-key]")].map((c) => c.dataset.tvFocusKey);
+    await waitFor(() => expect(cards().at(-1)).toMatch(/:see-all$/));
+    press("ArrowDown");
+    await waitFor(() => expect(focused()).toMatch(/^card:list:/));
+    press("ArrowDown");
+    await waitFor(() => expect(focused()).toBe(cards()[0]));
+    for (const card of cards().slice(1, 12)) {
+      press("ArrowRight");
+      await waitFor(() => expect(focused()).toBe(card));
+    }
+  });
+
   it("opens a card's page with OK, and Back returns focus to that card", async () => {
     serveMockApi();
     const { router } = renderApp("/");
@@ -77,11 +96,12 @@ describe("Home on TV", () => {
     serveMockApi();
     renderApp("/");
     await waitFor(() => expect(focused()).toMatch(/^card:/));
-    // A row longer than the screen ends in See all; a row of two shows all there is.
+    // A row longer than the screen ends in See all, once all its cards are
+    // in; a row of two shows all there is.
     const long = [...document.querySelectorAll<HTMLElement>('[data-row="recentlyAdded"]')].find(
       (r) => r.querySelectorAll("li:not([data-tv-glow-host])").length > 6,
     );
-    expect(long?.querySelector('[data-part="see-all"]')).not.toBeNull();
+    await waitFor(() => expect(long?.querySelector('[data-part="see-all"]')).not.toBeNull());
     const myList = document.querySelector('[data-row="list"]') as HTMLElement;
     expect(myList.querySelectorAll("li:not([data-tv-glow-host])")).toHaveLength(2);
     expect(myList.querySelector('[data-part="see-all"]')).toBeNull();

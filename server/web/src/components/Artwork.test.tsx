@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { Artwork, ArtworkLoads } from "./Artwork";
 
 describe("Artwork", () => {
@@ -53,6 +53,26 @@ describe("Artwork", () => {
       expect(container.querySelector('[data-part="progress"]')?.parentElement).toBe(frame);
       unmount();
     }
+  });
+
+  it("draws its blurhash after the page is drawn, and decodes each hash once", async () => {
+    const getContext = vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      createImageData: (w: number, h: number) => ({ data: new Uint8ClampedArray(w * h * 4) }),
+      putImageData: () => {},
+    } as never);
+    vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue("data:image/png;base64,blur");
+    const hashed = { id: "hashed", blurhash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4" } as never;
+    const first = render(<Artwork image={hashed} title="Dune" shape="poster" width={120} />);
+    const placeholder = () => first.container.querySelector('[data-part="artwork-placeholder"]');
+    // Until then the frame's plain colour shows.
+    expect(placeholder()).toBeNull();
+    await waitFor(() => expect(placeholder()).toHaveAttribute("src", "data:image/png;base64,blur"));
+    expect(getContext).toHaveBeenCalledTimes(1);
+
+    const again = render(<Artwork image={hashed} title="Dune Messiah" shape="poster" width={120} />);
+    expect(again.container.querySelector('[data-part="artwork-placeholder"]')).not.toBeNull();
+    expect(getContext).toHaveBeenCalledTimes(1);
+    vi.restoreAllMocks();
   });
 
   it("shows a plain titled tile with no artwork", () => {

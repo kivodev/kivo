@@ -21,6 +21,19 @@ import { revealTvCard, revealTvRow, settleTvTrack, tvCardClass } from "./tvLayou
 
 const tvLayout = tokens.tv.web.layout;
 
+/**
+ * How many cards of a shape fit across the window, which no row is wider
+ * than: as many as a TV row holds, or by the cards' width and gap.
+ */
+function cardsAcross(shape: ArtworkShape, tvFit: number): number {
+  if (isTv) return tvFit;
+  const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  const width = Number.parseFloat(
+    shape === "landscape" ? tokens.layout.landscapeMinWidth : tokens.layout.posterMinWidth,
+  );
+  return Math.ceil(window.innerWidth / (width * rem + 16));
+}
+
 type Props<T> = {
   /** The row's heading. Without one, `header` heads the row. */
   title?: ReactNode;
@@ -64,6 +77,12 @@ type Props<T> = {
   enterOn?: string;
   /** On TV, what OK and the arrows do on a card, for a card that does more than open what it links to. */
   cardFocus?: (item: T) => { onPress?: () => void; onArrow?: (direction: string) => boolean };
+  /**
+   * Whether the row first draws only the cards that fit across the window
+   * and one more, and the rest once the page is drawn, for a screen of many
+   * rows that arrive at once, such as Home.
+   */
+  staged?: boolean;
 };
 
 /**
@@ -92,6 +111,7 @@ export function Row<T>({
   enterOn,
   cardFocus,
   endsInAction = false,
+  staged = false,
 }: Props<T>) {
   const { t } = useLingui();
   const generatedKey = useId();
@@ -104,6 +124,20 @@ export function Row<T>({
   // How many cards fit across on TV: the narrow count, or the ones the
   // stylesheet sizes cards by (--layout-tv-*-across, from the tokens).
   const tvFit = narrowAcross ?? Number(shape === "landscape" ? tvLayout.landscapeAcross : tvLayout.posterAcross);
+  // A staged row's cards past the first ones join once it's drawn.
+  const [limit, setLimit] = useState(() => (staged ? cardsAcross(shape, tvFit) + 1 : undefined));
+  useEffect(() => {
+    if (limit === undefined) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const frame = requestAnimationFrame(() => {
+      timer = setTimeout(() => setLimit(undefined));
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(timer);
+    };
+  }, [limit]);
+  const shown = limit === undefined ? items : items.slice(0, limit);
   const section = useRef<HTMLElement>(null);
   const list = useRef<HTMLUListElement>(null);
   const { glows, onFocus: onGlowFocus, onBlur: onGlowBlur } = useFocusGlow(list);
@@ -128,7 +162,7 @@ export function Row<T>({
     const resized = new ResizeObserver(measure);
     resized.observe(el);
     return () => resized.disconnect();
-  }, [measure, items.length]);
+  }, [measure, shown.length]);
 
   // A row whose first card changes goes back to its start. Left alone, the
   // browser keeps the card the row was snapped to in place, and cards put
@@ -141,14 +175,14 @@ export function Row<T>({
 
   // On TV, See all ends only a row longer than the screen, since a shorter
   // row already shows all there is, unless the row always ends in it.
-  const seeAll = isTv && Boolean(action) && (endsInAction || items.length > tvFit);
+  const seeAll = isTv && Boolean(action) && limit === undefined && (endsInAction || items.length > tvFit);
 
   // On TV the track keeps its place through new cards, so it's put back
   // where it belongs once they change, before they show, and as the row's
   // width changes with the window's. Without a focused card it shows the
   // one it enters on, which a screen still hidden as it opens can't lay out
   // until it shows and the row first takes its width.
-  const cards = items.map(itemKey).join("\n");
+  const cards = shown.map(itemKey).join("\n");
   const settle = useEffectEvent(() => {
     const entry = enterOn
       ? list.current?.querySelector(`[data-tv-focus-key="${CSS.escape(`card:${focusKey}:${enterOn}`)}"]`)
@@ -234,7 +268,7 @@ export function Row<T>({
           style={narrow}
           className={`-mx-1 flex snap-x scroll-px-1 gap-4 overflow-x-auto px-1 pb-2 scrollbar-hidden tv:relative tv:mx-0 tv:snap-none tv:gap-(--layout-tv-row-gap) tv:overflow-visible tv:px-0 tv:transition-transform tv:duration-(--duration-glide) tv:ease-out ${across}`}
         >
-          {items.map((item, i) => {
+          {shown.map((item, i) => {
             const key = itemKey(item);
             return (
               <li key={key} className={`shrink-0 snap-start ${width} tv:tv-card-width`}>

@@ -1,5 +1,5 @@
 import { decode, isBlurhashValid } from "blurhash";
-import { createContext, type ReactNode, use, useState } from "react";
+import { createContext, type ReactNode, use, useCallback, useState, useSyncExternalStore } from "react";
 import { imageUrl } from "@/api/images";
 import type { ImageRef } from "@/api/schemas";
 import { isTv } from "@/tv/flag";
@@ -92,6 +92,57 @@ function blurhashUrl(hash: string): string | undefined {
   remember(blurCache, hash);
   blurCache.set(hash, url);
   return url;
+}
+
+/** The artwork waiting for each hash still to be decoded. */
+const blurWaiting = new Map<string, Set<() => void>>();
+let blurScheduled = false;
+
+/**
+ * Decodes the waiting hashes a few milliseconds' worth at a time, starting a
+ * frame after the page is drawn, so a screen of cards shows without waiting
+ * for its placeholders.
+ */
+function decodeWaiting() {
+  const until = performance.now() + 8;
+  for (const [hash, waiting] of blurWaiting) {
+    if (performance.now() > until) break;
+    blurWaiting.delete(hash);
+    blurhashUrl(hash);
+    for (const done of waiting) done();
+  }
+  blurScheduled = blurWaiting.size > 0;
+  if (blurScheduled) setTimeout(decodeWaiting);
+}
+
+function waitForBlurhash(hash: string, done: () => void): () => void {
+  if (blurCache.has(hash)) return () => {};
+  const waiting = blurWaiting.get(hash) ?? new Set();
+  waiting.add(done);
+  blurWaiting.set(hash, waiting);
+  if (!blurScheduled) {
+    blurScheduled = true;
+    requestAnimationFrame(() => setTimeout(decodeWaiting));
+  }
+  return () => {
+    waiting.delete(done);
+    if (waiting.size === 0 && blurWaiting.get(hash) === waiting) blurWaiting.delete(hash);
+  };
+}
+
+/**
+ * The placeholder for a hash: on the web, none until it's decoded after the
+ * page is drawn, then from the cache. A TV's colour costs nothing to read.
+ */
+function useBlurhash(hash: string | undefined): string | undefined {
+  const subscribe = useCallback(
+    (changed: () => void) => (hash && !isTv ? waitForBlurhash(hash, changed) : () => {}),
+    [hash],
+  );
+  return useSyncExternalStore(subscribe, () => {
+    if (!hash) return undefined;
+    return isTv ? blurhashUrl(hash) : blurCache.get(hash);
+  });
 }
 
 // On TV, the tint of a tile with no artwork, fading to the placeholder colour. A
@@ -188,6 +239,7 @@ export function Artwork({
   const [started, setStarted] = useState(false);
   const loads = use(ArtworkLoads) || started;
   if (loads && !started) setStarted(true);
+  const blur = useBlurhash(placeholder ? image?.blurhash : undefined);
   const base = `relative overflow-hidden bg-placeholder ${corners[round]} ${shapes[shape]} ${className}`;
   if (!image && (!isTv || round === "full")) {
     // A person without a photo shows their initials.
@@ -225,7 +277,6 @@ export function Artwork({
       </div>
     );
   }
-  const blur = placeholder && image.blurhash ? blurhashUrl(image.blurhash) : undefined;
   const src = imageUrl(image, width, density);
   // The image fades in over its blurhash as it arrives. An image this page
   // has loaded before, as on returning to a page, shows at once.

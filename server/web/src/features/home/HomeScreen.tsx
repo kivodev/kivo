@@ -1,6 +1,7 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { homeQueries, homeRowKinds } from "@/api/home";
 import { libraryQueries } from "@/api/libraries";
 import type { HomeRow } from "@/api/schemas";
@@ -30,6 +31,10 @@ export function HomeScreen() {
   const isAdmin = useIsAdmin();
   useDocumentTitle(undefined);
   const home = useQuery(homeQueries.rows());
+  // Rows that arrive after the screen opens draw their first cards first, so
+  // they replace the skeleton sooner. Rows already at hand, as on Back, draw
+  // whole, so focus returns at once to a card further along.
+  const [cached] = useState(() => home.data !== undefined);
   const rowTitle = useHomeRowTitle();
   const libraries = useSuspenseQuery(libraryQueries.list()).data.items;
   const rows = (home.data?.rows ?? []).filter((r) => homeRowKinds.has(r.kind));
@@ -96,6 +101,7 @@ export function HomeScreen() {
             key={row.id}
             id={row.kind}
             focusKey={row.id}
+            staged={!cached}
             autoFocus={index === rows.findIndex((r) => r.items.length > 0)}
             title={
               list && !isTv ? (
