@@ -314,7 +314,7 @@ func TestOneSessionPerClient(t *testing.T) {
 // clientId replaces the TV's session, so the list names the TV once.
 func TestPackagedTVSession(t *testing.T) {
 	e := newEnv(t, serving{})
-	for platform, name := range map[string]string{"tizen": "Samsung TV (Tizen 9.0)"} {
+	for platform, name := range map[string]string{"tizen": "Samsung TV (Tizen 9.0)", "webos": "LG TV"} {
 		req := map[string]any{"username": "admin", "password": adminPassword, "kind": "app", "name": name, "clientId": platform + "-1"}
 		signIn := func() string {
 			t.Helper()

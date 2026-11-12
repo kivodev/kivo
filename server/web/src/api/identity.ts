@@ -1,4 +1,4 @@
-import { deviceModel, osVersion } from "@/lib/browser";
+import { browserOf, deviceModel, osVersion } from "@/lib/browser";
 import { isPackaged } from "@/tv/flag";
 import { appVersion } from "@/tv/versions";
 
@@ -18,13 +18,15 @@ export const clientVersion: string = isPackaged
 
 /**
  * The identity headers, a header per field, leaving out what this browser
- * can't say.
+ * can't say. The packaged TV app is one build for both TVs, so it is the LG
+ * TV app where the user agent names webOS, and the Samsung TV app elsewhere.
  */
 export function identityHeaders(userAgent = navigator.userAgent): Record<string, string> {
+  const platform = !isPackaged ? "browser" : browserOf(userAgent, navigator.vendor).webos ? "webos" : "tizen";
   const fields: [string, string | undefined][] = [
-    ["Kivo-App", isPackaged ? "kivo-tizen" : "kivo-web"],
+    ["Kivo-App", isPackaged ? `kivo-${platform}` : "kivo-web"],
     ["Kivo-App-Version", clientVersion],
-    ["Kivo-Platform", isPackaged ? "tizen" : "browser"],
+    ["Kivo-Platform", platform],
     ["Kivo-OS-Version", osVersion(userAgent)],
     ["Kivo-Device-Model", deviceModel(userAgent)],
   ];

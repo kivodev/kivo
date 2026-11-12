@@ -92,13 +92,14 @@ const (
 	PlatformAndroidPhone Platform = "androidPhone"
 	PlatformBrowser      Platform = "browser"
 	PlatformTizen        Platform = "tizen" // the packaged app on a Samsung TV
+	PlatformWebOS        Platform = "webos" // the packaged app on an LG TV
 	PlatformCast         Platform = "cast"  // the Cast receiver
 )
 
 // valid reports whether p is a known platform or empty.
 func (p Platform) valid() bool {
 	switch p {
-	case "", PlatformAndroidTV, PlatformAppleTV, PlatformIPhone, PlatformIPad, PlatformAndroidPhone, PlatformBrowser, PlatformTizen, PlatformCast:
+	case "", PlatformAndroidTV, PlatformAppleTV, PlatformIPhone, PlatformIPad, PlatformAndroidPhone, PlatformBrowser, PlatformTizen, PlatformWebOS, PlatformCast:
 		return true
 	}
 	return false

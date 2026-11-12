@@ -147,7 +147,7 @@ enum class Resolution(public override val value: String) : OpenEnum {
 @Serializable(with = ClientPlatform.Serializer::class)
 enum class ClientPlatform(public override val value: String) : OpenEnum {
     AndroidTv("androidTv"), AppleTv("appleTv"), IPhone("iPhone"), IPad("iPad"), AndroidPhone("androidPhone"), Browser("browser"), Cast("cast"),
-    Tizen("tizen"), Unknown("");
+    Tizen("tizen"), Webos("webos"), Unknown("");
 
     override fun toString(): String = value
 
