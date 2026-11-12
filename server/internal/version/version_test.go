@@ -61,12 +61,6 @@ func TestNewer(t *testing.T) {
 		{"0.3.0+78", "0.3.0+12", false},
 		{"0.3.0+12", "0.3.0+78", false},
 		{"0.4.0", "0.3.0+78", true},
-		// Prereleases, by their identifiers in turn.
-		{"1.0.0-alpha.1", "1.0.0-alpha", true},
-		{"1.0.0-alpha.beta", "1.0.0-alpha.1", true},
-		{"1.0.0-beta.11", "1.0.0-beta.2", true},
-		{"1.0.0-rc.1", "1.0.0-beta.11", true},
-		{"1.0.0", "1.0.0-rc.1", true},
 		// A version it can't read is never newer, nor older.
 		{"v0.5.0", "dev", false},
 		{"dev", "v0.5.0", false},

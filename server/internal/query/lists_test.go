@@ -617,12 +617,6 @@ func TestManualListOrder(t *testing.T) {
 	shown("two moved to the top", users.ListCustom, toys, dune, blade)
 	move(blade, toys, h.hailMary)
 	shown("one moved last, with a work not in the list", users.ListCustom, dune, blade, toys)
-	// Works put between the same two until no place is left between them.
-	for range 40 {
-		move(dune, toys)
-		move(dune, blade)
-	}
-	shown("after 80 moves into one gap", users.ListCustom, dune, blade, toys)
 
 	sort := func(s users.ListSort) {
 		t.Helper()

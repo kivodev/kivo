@@ -229,23 +229,10 @@ type TrackChoice struct {
 	SubtitleKind                    string // off, forced, full or sdh
 }
 
-// TrackChoice returns a user's last choice for a series, if any.
-func (s *Service) TrackChoice(ctx context.Context, user, series id.ID) (TrackChoice, bool, error) {
-	c, err := s.q.GetTrackChoice(ctx, dbq.GetTrackChoiceParams{UserID: user, SeriesID: series})
-	if errors.Is(err, sql.ErrNoRows) {
-		return TrackChoice{}, false, nil
-	}
-	if err != nil {
-		return TrackChoice{}, false, err
-	}
-	return TrackChoice{AudioLanguage: c.AudioLanguage.String, SubtitleLanguage: c.SubtitleLanguage.String, SubtitleKind: c.SubtitleKind.String}, true, nil
-}
-
 // SeriesChoice returns the series whose choice applies to a user's play of
 // a work, and the user's last choice for it, if any. The series is zero
 // unless the user remembers track choices and the work is an episode of a
-// series. When only the choice can't be read, the series is still
-// returned with the error.
+// series, and on any error.
 func (s *Service) SeriesChoice(ctx context.Context, u users.User, work id.ID) (series id.ID, c TrackChoice, ok bool, err error) {
 	if !u.Playback.RememberTracks {
 		return id.ID{}, TrackChoice{}, false, nil
@@ -254,8 +241,15 @@ func (s *Service) SeriesChoice(ctx context.Context, u users.User, work id.ID) (s
 	if err != nil || w.Kind != catalog.KindEpisode || w.Root.IsZero() {
 		return id.ID{}, TrackChoice{}, false, err
 	}
-	c, ok, err = s.TrackChoice(ctx, u.ID, w.Root)
-	return w.Root, c, ok, err
+	row, err := s.q.GetTrackChoice(ctx, dbq.GetTrackChoiceParams{UserID: u.ID, SeriesID: w.Root})
+	if errors.Is(err, sql.ErrNoRows) {
+		return w.Root, TrackChoice{}, false, nil
+	}
+	if err != nil {
+		return id.ID{}, TrackChoice{}, false, err
+	}
+	c = TrackChoice{AudioLanguage: row.AudioLanguage.String, SubtitleLanguage: row.SubtitleLanguage.String, SubtitleKind: row.SubtitleKind.String}
+	return w.Root, c, true, nil
 }
 
 // SetTrackChoice remembers a user's audio and subtitle choice for a series.

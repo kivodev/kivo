@@ -837,9 +837,7 @@ func trailersOf(videos []tmdbVideo, lang string) []catalog.Trailer {
 		if slices.ContainsFunc(out, func(t catalog.Trailer) bool { return t.Key == v.Key }) {
 			continue
 		}
-		out = append(out, catalog.Trailer{
-			Site: catalog.TrailerYouTube, Key: v.Key, Title: v.Name, Language: v.Lang, Official: v.Official, Published: v.Published,
-		})
+		out = append(out, catalog.Trailer{Key: v.Key, Title: v.Name})
 	}
 	return out
 }

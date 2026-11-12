@@ -56,11 +56,6 @@ func (s *Service) RemoveFromList(ctx context.Context, v users.Viewer, list, work
 // is one of the works to move.
 var ErrListAnchor = fault.New(fault.Invalid, "no such work to move after")
 
-// listGap is how far apart a list's places are spaced: far enough that a
-// work is put between two others 32 times over before any other work has
-// to move.
-const listGap = 1 << 32
-
 // MoveInList moves works, in the order given, to just after the work after
 // in the custom order of one of the Viewer's user's lists, or to its top
 // when after is zero, and sets the list to show in that order. A work that
@@ -75,12 +70,15 @@ func (s *Service) MoveInList(ctx context.Context, v users.Viewer, list id.ID, wo
 		if err != nil {
 			return err
 		}
-		places, err := placesAfter(rows, works, after)
+		order, err := moved(rows, works, after)
 		if err != nil {
 			return err
 		}
-		for _, p := range places {
-			if err := q.SetListPlace(ctx, dbq.SetListPlaceParams{ListID: list, WorkID: p.WorkID, Position: p.Position}); err != nil {
+		for i, r := range order {
+			if r.Position == int64(i) {
+				continue
+			}
+			if err := q.SetListPlace(ctx, dbq.SetListPlaceParams{ListID: list, WorkID: r.WorkID, Position: int64(i)}); err != nil {
 				return err
 			}
 		}
@@ -93,19 +91,17 @@ func (s *Service) MoveInList(ctx context.Context, v users.Viewer, list id.ID, wo
 	return nil
 }
 
-// placesAfter is the places to write so that works, those of them in rows,
-// follow after in rows' order, or lead it when after is zero. They are the
-// moved works' alone, between their new neighbours' places, or every
-// work's, spaced out again, when no places are left between those two.
-func placesAfter(rows []dbq.ListPlacesRow, works []id.ID, after id.ID) ([]dbq.ListPlacesRow, error) {
+// moved is rows, in order, with works, those of them in rows, moved to
+// follow after, or to lead when after is zero.
+func moved(rows []dbq.ListPlacesRow, works []id.ID, after id.ID) ([]dbq.ListPlacesRow, error) {
 	if slices.Contains(works, after) {
 		return nil, ErrListAnchor
 	}
-	var moved, rest []dbq.ListPlacesRow
+	var picked, rest []dbq.ListPlacesRow
 	for _, w := range works {
 		i := slices.IndexFunc(rows, func(r dbq.ListPlacesRow) bool { return r.WorkID == w })
-		if i >= 0 && !slices.ContainsFunc(moved, func(r dbq.ListPlacesRow) bool { return r.WorkID == w }) {
-			moved = append(moved, rows[i])
+		if i >= 0 && !slices.ContainsFunc(picked, func(r dbq.ListPlacesRow) bool { return r.WorkID == w }) {
+			picked = append(picked, rows[i])
 		}
 	}
 	for _, r := range rows {
@@ -120,29 +116,7 @@ func placesAfter(rows []dbq.ListPlacesRow, works []id.ID, after id.ID) ([]dbq.Li
 			return nil, ErrListAnchor
 		}
 	}
-	n := int64(len(moved))
-	first, step := int64(listGap), int64(listGap)
-	switch {
-	case len(rest) == 0:
-	case at == 0:
-		first = rest[0].Position - n*listGap
-	case at == len(rest):
-		first = rest[at-1].Position + listGap
-	default:
-		step = (rest[at].Position - rest[at-1].Position) / (n + 1)
-		first = rest[at-1].Position + step
-	}
-	if step > 0 {
-		for i := range moved {
-			moved[i].Position = first + int64(i)*step
-		}
-		return moved, nil
-	}
-	all := slices.Concat(rest[:at], moved, rest[at:])
-	for i := range all {
-		all[i].Position = int64(i+1) * listGap
-	}
-	return all, nil
+	return slices.Concat(rest[:at], picked, rest[at:]), nil
 }
 
 func ownsList(ctx context.Context, q *dbq.Queries, v users.Viewer, list id.ID) error {

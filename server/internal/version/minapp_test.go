@@ -6,7 +6,7 @@ import "testing"
 // and one that exists: no newer than the latest.
 func TestMinApp(t *testing.T) {
 	v, ok := Parse(MinApp)
-	if !ok || len(v.pre) != 0 {
+	if !ok || v.pre {
 		t.Fatalf("MinApp %q isn't a release's major.minor.patch", MinApp)
 	}
 	if Newer(MinApp, latest) {

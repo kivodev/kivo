@@ -398,8 +398,8 @@ func generate(t *testing.T, db *store.DB, s shape) (movies, shows, moviesFolder 
 			`INSERT INTO credit (work_id, person_id, role, ord)
 			 SELECT id, CAST(printf('p%015d', (rid - 1) % 20000 + 1) AS BLOB), 'actor', 1 FROM work WHERE kind = 'movie'`,
 			// Two trailers for each movie and series, each with its thumbnail.
-			`INSERT INTO trailer (id, work_id, ord, site, key, title, official)
-			 SELECT CAST('r' || n.i || substr(CAST(w.id AS TEXT), 1, 1) || substr(CAST(w.id AS TEXT), 4) AS BLOB), w.id, n.i, 'youtube', printf('key%d-%d', w.rid, n.i), printf('Trailer %d', n.i + 1), 1
+			`INSERT INTO trailer (id, work_id, ord, key, title)
+			 SELECT CAST('r' || n.i || substr(CAST(w.id AS TEXT), 1, 1) || substr(CAST(w.id AS TEXT), 4) AS BLOB), w.id, n.i, printf('key%d-%d', w.rid, n.i), printf('Trailer %d', n.i + 1)
 			 FROM work w, (SELECT 0 AS i UNION ALL SELECT 1) n WHERE w.kind IN ('movie', 'series')`,
 			`INSERT INTO image (id, trailer_id, kind, source, origin, width, height, blurhash, fetched_at)
 			 SELECT CAST('i' || substr(CAST(id AS TEXT), 2) AS BLOB), id, 'thumb', 'provider', 'https://i.ytimg.com/vi/' || key || '/maxresdefault.jpg',

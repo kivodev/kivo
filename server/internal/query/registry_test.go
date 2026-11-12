@@ -1,7 +1,6 @@
 package query_test
 
 import (
-	"context"
 	"fmt"
 	"slices"
 	"strings"
@@ -9,9 +8,7 @@ import (
 	"time"
 
 	"github.com/mmcdole/kivo/internal/catalog"
-	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/query"
-	"github.com/mmcdole/kivo/internal/store"
 	"github.com/mmcdole/kivo/internal/store/storetest"
 )
 
@@ -146,88 +143,6 @@ func TestGridSortsAreQueryFields(t *testing.T) {
 	for _, sort := range gridSorts {
 		if !slices.ContainsFunc(fields, func(f query.WorkField) bool { return f.Field == sort && f.Sortable }) {
 			t.Errorf("the grid's sort %s is no sortable field", sort)
-		}
-	}
-}
-
-// A page that walks an index lists the works its query's first page
-// lists, where that page leaves off: for each sort an index holds, as a
-// Viewer with one library of the works, and for a rule naming one library
-// of several.
-func TestWalkedPagesFollowTheFirst(t *testing.T) {
-	db := storetest.New(t)
-	movies, shows, _ := generate(t, db, shape{movies: 300, series: 80, seasons: 2, episodes: 3, airEvery: 86400, moviesElsewhere: 60, seriesElsewhere: 20})
-	// Titles, dates and ratings repeat, so every sort breaks ties.
-	err := db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
-		for _, stmt := range []string{
-			`UPDATE work SET sort_title = printf('Title %d', rid % 40), added_at = 1000 * (rid % 30) WHERE parent_id IS NULL`,
-			`UPDATE work_library SET sort_title = (SELECT w.sort_title FROM work w WHERE w.id = work_id),
-			   added_at = (SELECT w.added_at FROM work w WHERE w.id = work_id), last_added_at = (SELECT w.rid % 20 FROM work w WHERE w.id = work_id),
-			   release_key = (SELECT iif(w.rid % 9, printf('%04d-01-01', 1990 + w.rid % 25), '') FROM work w WHERE w.id = work_id),
-			   runtime_sort = (SELECT iif(w.rid % 7, 60000 * (w.rid % 50), 9223372036854775807) FROM work w WHERE w.id = work_id),
-			   creator_sort = (SELECT iif(w.rid % 5, printf('Author %d', w.rid % 6), '') FROM work w WHERE w.id = work_id)
-			 WHERE is_root`,
-		} {
-			if _, err := tx.ExecContext(ctx, stmt); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	q := query.New(db)
-	some, every := budgetViewer(t, db, "some", movies, shows), budgetViewer(t, db, "every")
-	var walked int
-	query.Observe(t, func(sql string) {
-		if strings.Contains(sql, "FROM work_library wl INDEXED BY work_library_") {
-			walked++
-		}
-	})
-	inMovies := where(query.Rule{Field: "library", Op: "anyOf", Values: []string{movies.String()}})
-	for _, f := range query.IndexedSorts() {
-		for _, kind := range []catalog.WorkKind{catalog.KindMovie, catalog.KindSeries} {
-			wq := query.WorkQuery{Kinds: []catalog.WorkKind{kind}, Sort: []query.SortKey{{Field: f.Field}}}
-			first, err := q.QueryWorks(ctx, some, wq, query.Scope{}, query.GridOptions{Limit: 200})
-			if err != nil {
-				t.Fatal(err)
-			}
-			if first.Total <= 30 || len(first.Items) != min(first.Total, 200) {
-				t.Fatalf("%s by %s: %d works of %d", kind, f.Field, len(first.Items), first.Total)
-			}
-			walked = 0
-			var got []id.ID
-			for offset := 7; offset+13 <= len(first.Items); offset += 13 {
-				p, err := q.QueryWorks(ctx, some, wq, query.Scope{}, query.GridOptions{Offset: offset, Limit: 13})
-				if err != nil {
-					t.Fatal(err)
-				}
-				got = append(got, ids(p.Items)...)
-			}
-			if want := ids(first.Items)[7 : 7+len(got)]; !slices.Equal(got, want) || walked == 0 {
-				t.Errorf("%s by %s: the later pages, %d of them walking an index, list\n%v, and the first page\n%v", kind, f.Field, walked, got, want)
-			}
-		}
-		// Every library's movies are sorted, and one library's walked.
-		for _, tt := range []struct {
-			where *query.RuleGroup
-			walks bool
-		}{{nil, false}, {inMovies, true}} {
-			wq := query.WorkQuery{Kinds: []catalog.WorkKind{catalog.KindMovie}, Where: tt.where, Sort: []query.SortKey{{Field: f.Field}}}
-			first, err := q.QueryWorks(ctx, every, wq, query.Scope{}, query.GridOptions{Limit: 100})
-			if err != nil {
-				t.Fatal(err)
-			}
-			walked = 0
-			later, err := q.QueryWorks(ctx, every, wq, query.Scope{}, query.GridOptions{Offset: 40, Limit: 60})
-			if err != nil {
-				t.Fatal(err)
-			}
-			if !slices.Equal(ids(later.Items), ids(first.Items)[40:]) || (walked > 0) != tt.walks {
-				t.Errorf("movies by %s, in one library %v: the later page walked %d indexes and lists\n%v, and the first page\n%v",
-					f.Field, tt.walks, walked, ids(later.Items), ids(first.Items)[40:])
-			}
 		}
 	}
 }

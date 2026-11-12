@@ -13,7 +13,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"runtime/debug"
 
 	"github.com/mmcdole/kivo/internal/config"
 	kivoversion "github.com/mmcdole/kivo/internal/version"
@@ -26,24 +25,7 @@ import (
 var version, commit string
 
 func init() {
-	if commit == "" {
-		commit = vcsCommit()
-	}
 	version = kivoversion.Of(version, commit)
-}
-
-// vcsCommit is the short commit hash go build stamped, if it had one.
-func vcsCommit() string {
-	info, _ := debug.ReadBuildInfo()
-	if info == nil {
-		return ""
-	}
-	for _, s := range info.Settings {
-		if s.Key == "vcs.revision" && len(s.Value) >= 8 {
-			return s.Value[:8]
-		}
-	}
-	return ""
 }
 
 func main() {

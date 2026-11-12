@@ -176,6 +176,22 @@ func TestQueryReadsAgree(t *testing.T) {
 			}
 		}
 	}
+	// A Viewer of every library pages through an index when a rule names
+	// one library of the kind, and not otherwise.
+	everything := g.viewers[0]
+	sees := g.sees(t, everything.v)
+	inOne := where(query.Rule{Field: "library", Op: "anyOf", Values: []string{g.libs["movies1"].String()}})
+	n := 0
+	for _, f := range query.IndexedSorts() {
+		for _, rules := range []*query.RuleGroup{nil, inOne} {
+			q := query.WorkQuery{Kinds: []catalog.WorkKind{catalog.KindMovie}, Where: rules, Sort: []query.SortKey{{Field: f.Field}}}
+			if _, page, _ := svc.Compiled(t, q, everything.v, now, nil); strings.Contains(page, "INDEXED BY work_library_") != (rules != nil) {
+				t.Errorf("movies by %s, in one library %v: the page walks an index %v", f.Field, rules != nil, rules == nil)
+			}
+			n++
+			check(everything.name, everything.v, sees, q, n)
+		}
+	}
 	t.Logf("%d queries read, %d with works; %d paged through an index and %d from the user's rows", ran, found, walked, keyed)
 	if found < ran/4 || walked == 0 || keyed == 0 {
 		t.Errorf("the matrix compares too little")

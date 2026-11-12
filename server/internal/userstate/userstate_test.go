@@ -597,21 +597,6 @@ func TestPurgedWorkTakesItsState(t *testing.T) {
 	}
 }
 
-func TestTrackChoice(t *testing.T) {
-	f := newFixture(t)
-	series := f.b.Series("Dark")
-	if _, ok, _ := f.s.TrackChoice(ctx, f.user, series); ok {
-		t.Fatal("a choice before any was made")
-	}
-	want := userstate.TrackChoice{AudioLanguage: "de", SubtitleLanguage: "en", SubtitleKind: "full"}
-	if err := f.s.SetTrackChoice(ctx, f.user, series, want); err != nil {
-		t.Fatal(err)
-	}
-	if got, ok, err := f.s.TrackChoice(ctx, f.user, series); !ok || err != nil || got != want {
-		t.Fatalf("got %+v %v %v", got, ok, err)
-	}
-}
-
 func TestSeriesChoice(t *testing.T) {
 	f := newFixture(t)
 	_, shows := f.b.Library(catalog.Shows)
@@ -652,15 +637,6 @@ func TestSeriesChoice(t *testing.T) {
 	}
 	if _, got, ok, err := f.s.SeriesChoice(ctx, remembers, ep.Work); !ok || err != nil || got != full {
 		t.Fatalf("got %+v %v %v; want the newer non-SDH choice", got, ok, err)
-	}
-	// A choice that can't be read still names the series, so a new choice
-	// can be remembered for it.
-	f.b.Write(func(ctx context.Context, tx *store.Tx) error {
-		_, err := tx.ExecContext(ctx, `DROP TABLE track_choice`)
-		return err
-	})
-	if series, _, ok, err := f.s.SeriesChoice(ctx, remembers, ep.Work); series != dark || ok || err == nil {
-		t.Fatalf("got %v %v %v; want the series and an error", series, ok, err)
 	}
 }
 

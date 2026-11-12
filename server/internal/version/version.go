@@ -26,78 +26,55 @@ func Of(set, commit string) string {
 	return out
 }
 
-// Version is a parsed semantic version.
-type Version struct {
-	num [3]int   // major, minor and patch
-	pre []string // the prerelease's identifiers, none for a release
+// semver is a parsed semantic version.
+type semver struct {
+	num [3]int // major, minor and patch
+	pre bool   // a prerelease
 }
 
 // Parse reads a semantic version, such as 0.4.0, 0.3.1-dev+56c0018d or
 // 0.3.0+78, with or without a leading v. Its build metadata, after the +,
 // plays no part in comparing.
-func Parse(s string) (Version, bool) {
+func Parse(s string) (semver, bool) {
 	s = strings.TrimPrefix(s, "v")
 	s, build, hasBuild := strings.Cut(s, "+")
 	if hasBuild && identifiers(build) == nil {
-		return Version{}, false
+		return semver{}, false
 	}
 	core, pre, hasPre := strings.Cut(s, "-")
-	var v Version
-	if hasPre {
-		if v.pre = identifiers(pre); v.pre == nil {
-			return Version{}, false
-		}
+	if hasPre && identifiers(pre) == nil {
+		return semver{}, false
 	}
+	v := semver{pre: hasPre}
 	parts := strings.Split(core, ".")
 	if len(parts) != 3 {
-		return Version{}, false
+		return semver{}, false
 	}
 	for i, p := range parts {
 		n, ok := number(p)
 		if !ok {
-			return Version{}, false
+			return semver{}, false
 		}
 		v.num[i] = n
 	}
 	return v, true
 }
 
-// Compare returns -1, 0 or +1 as v sorts before, with or after w: by
-// major, minor and patch, then a prerelease before its release, and two
-// prereleases by their identifiers in turn, numbers below words.
-func (v Version) Compare(w Version) int {
+// compare returns -1, 0 or +1 as v sorts before, with or after w: by
+// major, minor and patch, then a prerelease before its release.
+func (v semver) compare(w semver) int {
 	for i := range v.num {
 		if c := cmp.Compare(v.num[i], w.num[i]); c != 0 {
 			return c
 		}
 	}
 	switch {
-	case len(v.pre) == 0 && len(w.pre) == 0:
+	case v.pre == w.pre:
 		return 0
-	case len(v.pre) == 0:
-		return 1
-	case len(w.pre) == 0:
+	case v.pre:
 		return -1
 	}
-	for i := range min(len(v.pre), len(w.pre)) {
-		a, aNum := number(v.pre[i])
-		b, bNum := number(w.pre[i])
-		var c int
-		switch {
-		case aNum && bNum:
-			c = cmp.Compare(a, b)
-		case aNum:
-			c = -1
-		case bNum:
-			c = 1
-		default:
-			c = strings.Compare(v.pre[i], w.pre[i])
-		}
-		if c != 0 {
-			return c
-		}
-	}
-	return cmp.Compare(len(v.pre), len(w.pre))
+	return 1
 }
 
 // Newer reports whether version a is newer than b. A version Parse can't
@@ -105,7 +82,7 @@ func (v Version) Compare(w Version) int {
 func Newer(a, b string) bool {
 	x, ok1 := Parse(a)
 	y, ok2 := Parse(b)
-	return ok1 && ok2 && x.Compare(y) > 0
+	return ok1 && ok2 && x.compare(y) > 0
 }
 
 // identifiers splits s into its dot-separated identifiers, each one or
