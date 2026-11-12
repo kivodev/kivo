@@ -77,6 +77,27 @@ jobs:
       # Unused code, import cycles and duplicated lines in the web client, each
       # held at its ceiling in server/ceilings.mk.
       - run: make ceilings-web
+      # The packaged TV app that make web built, opened from a file as the TV
+      # opens it, in Playwright's Chromium.
+      - name: Playwright version
+        id: playwright
+        working-directory: server/web
+        run: echo "version=$(npx playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-chromium
+      - working-directory: server/web
+        run: npx playwright install --with-deps chromium
+      - working-directory: server/web
+        run: npx playwright test -c playwright.packaged-file.config.ts --reporter=list,html
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            server/web/playwright-report
+            server/web/test-results
 
   # The native apps' generated client, their shared core and the theme
   # generator pass their tests on the JVM; the Android app builds, passes
