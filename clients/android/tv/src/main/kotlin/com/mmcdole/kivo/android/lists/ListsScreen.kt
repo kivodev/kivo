@@ -85,10 +85,11 @@ import kotlinx.coroutines.flow.map
 /** A list's shelf: the list and its first works, books left out. */
 data class Shelf(val list: WorkList, val works: List<WorkSummary>)
 
-/** The lists as shelves, in their order. */
+/** The lists as shelves, in their order. A list with nothing the TV plays has none. */
 internal fun shelves(lists: List<WorkList>): List<Shelf> = lists
     .filter { it.hasShelf }
     .map { list -> Shelf(list, list.items.orEmpty().filter { it.kind in tvWorkKinds }) }
+    .filter { it.works.isNotEmpty() }
 
 /** Lists with their first works, read again as they change. */
 class ListsViewModel(session: ServerSession) : ViewModel() {

@@ -18,21 +18,21 @@ class ListsUiTest {
         WorkSummary(id = id, kind = kind, title = id, matchState = MatchState.Matched, available = true, images = WorkImages())
 
     @Test
-    fun everyListIsAShelfInItsOrderWithoutBooks() {
+    fun listsAreShelvesInTheirOrderWithoutBooks() {
         val myList = WorkList("my", "Watchlist", ListKind.Manual, builtIn = true, workCount = 2, items = listOf(work("m1", WorkKind.Movie), work("b1", WorkKind.Book)))
         val smart = WorkList("s", "90s comedies", ListKind.Smart, builtIn = false, workCount = 3, items = listOf(work("m2", WorkKind.Movie)))
         val made = WorkList("d", "Date Night", ListKind.Manual, builtIn = false, workCount = 0, items = emptyList())
         val later = WorkList("x", "Later", ListKind.Unknown, builtIn = false, workCount = 1)
         assertEquals(
-            listOf(Shelf(myList, listOf(work("m1", WorkKind.Movie))), Shelf(smart, smart.items.orEmpty()), Shelf(made, emptyList())),
+            listOf(Shelf(myList, listOf(work("m1", WorkKind.Movie))), Shelf(smart, smart.items.orEmpty())),
             shelves(listOf(myList, smart, made, later)),
         )
     }
 
     @Test
-    fun watchlistHasAShelfOnlyWithSomethingInIt() {
+    fun aListWithNothingTheTvPlaysHasNoShelf() {
         val myList = WorkList("my", "Watchlist", ListKind.Manual, builtIn = true, workCount = 1, items = listOf(work("b1", WorkKind.Book)))
-        assertEquals(listOf(Shelf(myList, emptyList())), shelves(listOf(myList)))
+        assertEquals(emptyList(), shelves(listOf(myList)))
         assertEquals(emptyList(), shelves(listOf(myList.copy(workCount = 0, items = emptyList()))))
     }
 
