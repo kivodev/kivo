@@ -1,12 +1,11 @@
 <!--
-Title: type(scope): description, lowercase, no trailing period. For example:
-  fix(apple): one download percent for the whole job
-  feat(server): Intel OpenCL runtimes for HDR tone mapping
-See CONTRIBUTING.md for the types and scopes.
+Title: type(scope): description. Conventional Commits, lowercase, no
+trailing period, 72 characters at most, in words a user would recognize.
+CONTRIBUTING.md lists the types and scopes.
+
+Body:
+- One plain sentence of what a user now sees or gets.
+- Then at most 3 bullets, one sentence each.
+- One "Migration:", "Breaking:" or "Risk:" line if needed.
+- No file paths, code names, headings or test logs.
 -->
-
-## What and why
-
-
-## How tested
-
