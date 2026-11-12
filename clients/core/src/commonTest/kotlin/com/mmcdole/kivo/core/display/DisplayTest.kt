@@ -26,6 +26,8 @@ class DisplayTest {
         assertEquals("PCM", en.codec("pcm_s16le"))
         assertEquals("WMAPRO", en.codec("wmapro"))
         assertEquals("MKV", en.container("matroska,webm"))
+        assertEquals("5.1", en.channels(6))
+        assertEquals("3 channels", en.channels(3))
     }
 
     @Test

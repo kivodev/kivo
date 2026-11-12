@@ -16,6 +16,8 @@ internal data class TrackWords(
     val default: String,
     /** The short words a track's name adds: "Forced", "SDH", "Commentary", "Original". */
     val flags: TrackFlags,
+    /** With `{channels}` for the count, for layouts without a name. */
+    val channels: String,
     /** Where a subtitle lives: `embedded`, `external`, `downloaded`. */
     val sources: Map<String, String>,
 )
@@ -107,6 +109,7 @@ internal data class DownloadWords(
 internal data class MediaTable(
     val codecs: Map<String, String>,
     val containers: Map<String, String>,
+    val channels: Map<String, String>,
     val resolutions: Map<String, String>,
 )
 
@@ -123,7 +126,7 @@ private val IMAGE_CODECS = setOf("hdmv_pgs_subtitle", "pgs", "dvd_subtitle")
  * How playback is put in words, from the display tables the server and the
  * web client share (`shared/display`), generated into the core: methods,
  * subtitle kinds, reason texts, dialogue boost costs, track words, language
- * names, and codec, container and resolution names. The server names tracks and versions; bitrates, sizes,
+ * names, and codec, container, channel and resolution names. The server names tracks and versions; bitrates, sizes,
  * runtimes, episode codes, quality choices and problems are put in words
  * here ([bitrate], [problem]), so every app says them alike. Each screen's
  * own words stay in its platform's resources.
@@ -186,6 +189,10 @@ class Display {
         val first = container.substringBefore(',')
         return media.containers[first] ?: first.uppercase()
     }
+
+    /** "Stereo", "5.1", "7.1", or the count in words, for a track that names no layout. */
+    fun channels(channels: Int): String =
+        media.channels[channels.toString()] ?: table.tracks.channels.replace("{channels}", channels.toString())
 
     /** A resolution class in words: "4K", "1080p", "SD". */
     fun resolution(resolution: Resolution): String = media.resolutions[resolution.value] ?: resolution.value
