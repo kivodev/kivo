@@ -32,7 +32,6 @@ internal data class WordsTable(
     val subtitleKinds: Map<String, String>,
     val reasons: Map<String, String>,
     val unknownReason: String,
-    val dialogueBoostCosts: Map<String, String>,
     val tracks: TrackWords,
     val numbers: NumberWords,
     /** With `{n}` for the megabits per second. */
@@ -158,9 +157,6 @@ class Display {
 
     /** A sentence for a playback reason code; one this version doesn't know says so. */
     fun reason(code: String): String = table.reasons[code] ?: table.unknownReason
-
-    /** What a dialogue boost costs a play, for the line under its switch: "Plays the audio as AAC while on"; null for a cost this version doesn't know. */
-    fun dialogueBoostCost(cost: String): String? = table.dialogueBoostCosts[cost]
 
     /**
      * "Burned in", "Styled", "Image" or "Plain", for a subtitle track of a

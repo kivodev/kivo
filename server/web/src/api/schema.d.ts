@@ -3075,19 +3075,12 @@ export interface components {
         ProcessedOn: "accelerator" | "cpu";
         AcceleratorEncoder: {
             codec: components["schemas"]["EncoderCodec"];
-            gop: components["schemas"]["KeyframePlacement"];
         };
         /**
          * @description A video codec the server encodes.
          * @enum {string}
          */
         EncoderCodec: "h264" | "hevc";
-        /**
-         * @description How keyframes meet the segment grid: `grid` is forced on it, and
-         *     `fixed` is a fixed GOP of one segment, where forcing isn't honored.
-         * @enum {string}
-         */
-        KeyframePlacement: "grid" | "fixed";
         AcceleratorFormat: {
             codec: string;
             bitDepth: number;
@@ -3384,8 +3377,6 @@ export interface components {
             id: components["schemas"]["ID"];
             libraries: components["schemas"]["LibraryAccess"];
             limits: components["schemas"]["UserLimits"];
-            /** @description The username of the admin who created it. */
-            createdBy: string;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -3934,7 +3925,6 @@ export interface components {
         /** @description The user's state for a work. For a series or season, `played` means every episode is. */
         UserState: {
             played: boolean;
-            playCount: number;
             /** @description The resume position, when in progress. */
             positionMs?: number;
             /**
@@ -4017,8 +4007,6 @@ export interface components {
         };
         ExtraInfo: {
             type: components["schemas"]["ExtraType"];
-            /** @description The movie, series or season it belongs to. */
-            parentId?: components["schemas"]["ID"];
         };
         /**
          * @description What an extra is.
@@ -4073,8 +4061,6 @@ export interface components {
             publisher?: string;
             /** @description Detail only, as its source gives it. */
             language?: string;
-            /** @description Detail only; absent when unknown. */
-            abridged?: boolean;
             /** @description Detail only. `YYYY`, `YYYY-MM` or `YYYY-MM-DD`. */
             releaseDate?: string;
         };
@@ -4639,8 +4625,6 @@ export interface components {
             path: string;
             /** Format: int64 */
             sizeBytes: number;
-            /** Format: date-time */
-            modifiedAt: string;
             status: components["schemas"]["MediaFileStatus"];
             /**
              * Format: date-time
@@ -5243,18 +5227,7 @@ export interface components {
         DialogueBoost: {
             /** @description Whether the play boosts its dialogue. */
             enabled: boolean;
-            /** @description What the boost changes besides the dialogue, the same whether it's on or off. Absent when nothing. */
-            cost?: components["schemas"]["DialogueBoostCost"];
         };
-        /**
-         * @description What a dialogue boost changes about a play besides the dialogue:
-         *     `audioAsAac` audio played in its own format, directly or passed
-         *     through to a receiver, is encoded to AAC; `videoTranscode` the video,
-         *     which can't be copied into a stream, is encoded too. Clients show
-         *     it beside the switch, in words from the shared display tables.
-         * @enum {string}
-         */
-        DialogueBoostCost: "audioAsAac" | "videoTranscode";
         PlayPart: {
             durationMs: number;
             /** @description For `file` delivery, the original. */
@@ -5504,8 +5477,6 @@ export interface components {
             username: string;
             /** Format: date-time */
             startedAt: string;
-            /** Format: date-time */
-            endedAt: string;
             /** @description Where playback stopped. */
             positionMs: number;
             /** @description Whether it reached the played threshold. */

@@ -460,7 +460,7 @@ func playStarted(st playback.Started) gen.PlayStarted {
 	out.Chapters, out.Markers = chapters(st.Chapters), ptr(markerList(st.Markers))
 	out.Quality = quality(st.Quality)
 	if b := st.Decision.DialogueBoost; b != nil {
-		out.DialogueBoost = &gen.DialogueBoost{Enabled: b.Enabled, Cost: optAs[gen.DialogueBoostCost](b.Cost)}
+		out.DialogueBoost = &gen.DialogueBoost{Enabled: b.Enabled}
 	}
 	return out
 }

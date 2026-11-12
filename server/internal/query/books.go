@@ -39,7 +39,6 @@ type SeriesRef struct {
 type Book struct {
 	Subtitle, Publisher, Language string
 	ReleaseDate                   string // YYYY, YYYY-MM or YYYY-MM-DD
-	Abridged                      *bool  // nil when unknown
 }
 
 // Author is an item of an audiobooks library's "Authors" tab.
@@ -436,7 +435,7 @@ var bookOne = stmt("Book", `
 SELECT coalesce(bk.subtitle, ''),
   coalesce((SELECT c.name FROM work_company wc JOIN company c ON c.id = wc.company_id
     WHERE wc.work_id = w.id ORDER BY c.name LIMIT 1), ''),
-  coalesce(bk.language, ''), bk.abridged, coalesce(w.release_date, '')
+  coalesce(bk.language, ''), coalesce(w.release_date, '')
 FROM book bk
 JOIN work w ON w.id = bk.work_id
 WHERE bk.work_id = @work
@@ -445,12 +444,8 @@ WHERE bk.work_id = @work
 // book reads a book's own fields for its detail page.
 func book(ctx context.Context, q querier, args []any) (*Book, error) {
 	var b Book
-	var abridged sql.NullBool
-	if err := rowOf(ctx, q, bookOne, args, &b.Subtitle, &b.Publisher, &b.Language, &abridged, &b.ReleaseDate); err != nil {
+	if err := rowOf(ctx, q, bookOne, args, &b.Subtitle, &b.Publisher, &b.Language, &b.ReleaseDate); err != nil {
 		return nil, notFound(err)
-	}
-	if abridged.Valid {
-		b.Abridged = &abridged.Bool
 	}
 	return &b, nil
 }

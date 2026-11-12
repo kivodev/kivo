@@ -297,7 +297,7 @@ func workDetail(d query.WorkDetail, tracks playback.Preferred, marks map[id.ID][
 	setTrailers(&out, d.Trailers)
 	if b := d.Book; b != nil && out.Book != nil {
 		out.Book.Subtitle, out.Book.Publisher, out.Book.Language = opt(b.Subtitle), opt(b.Publisher), opt(b.Language)
-		out.Book.ReleaseDate, out.Book.Abridged = opt(b.ReleaseDate), b.Abridged
+		out.Book.ReleaseDate = opt(b.ReleaseDate)
 	}
 	return out
 }

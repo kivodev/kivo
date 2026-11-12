@@ -36,7 +36,6 @@ import kotlinx.serialization.encoding.*
  * @param libraryId A UUIDv7.
  * @param path Absolute, as last seen.
  * @param sizeBytes 
- * @param modifiedAt 
  * @param status Whether a file was there when last looked for.
  * @param tracks 
  * @param goneAt For `gone`; purged 30 days later.
@@ -62,8 +61,6 @@ data class MediaFile (
     @SerialName(value = "path") @Required val path: kotlin.String,
 
     @SerialName(value = "sizeBytes") @Required val sizeBytes: kotlin.Long,
-
-    @SerialName(value = "modifiedAt") @Required val modifiedAt: kotlin.time.Instant,
 
     /* Whether a file was there when last looked for. */
     @SerialName(value = "status") @Required val status: kotlin.String,

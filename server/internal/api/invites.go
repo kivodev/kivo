@@ -64,7 +64,7 @@ func (h *handlers) AcceptInviteLink(ctx context.Context, req gen.AcceptInviteLin
 
 func invite(i auth.Invite) gen.Invite {
 	return gen.Invite{
-		ID: i.ID, Libraries: libraryAccess(i.Grants), Limits: userLimits(i.Limits), CreatedBy: i.CreatedBy,
+		ID: i.ID, Libraries: libraryAccess(i.Grants), Limits: userLimits(i.Limits),
 		CreatedAt: i.Created.UTC(), ExpiresAt: i.Expires.UTC(),
 	}
 }

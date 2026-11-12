@@ -8,48 +8,46 @@ import (
 )
 
 // TestDialogueBoost checks that a play that can boost its dialogue says
-// whether it does and what the boost costs, the same whichever way it's
-// switched. With the boost on, the audio is encoded to AAC with the boost,
+// whether it does, whichever way it's switched. With the boost on, the audio is encoded to AAC with the boost,
 // keeping the channels a plain transcode would keep.
 func TestDialogueBoost(t *testing.T) {
 	mkv, mp4 := "matroska,webm", "mov,mp4,m4a,3gp,3g2,mj2"
 	for _, c := range []struct {
 		name      string
 		in        Input
-		cost      DialogueBoostCost
 		channels  int // the boosted audio's channel count
 		boostable bool
 	}{
 		{"5.1 E-AC-3 played directly: to AAC 5.1",
 			Input{Caps: safari, Source: Source{Container: mp4, Video: h264(), Audio: audio("eac3", 6), DefaultAudio: true, Remuxable: true}},
-			CostAudioAsAAC, 6, true},
+			6, true},
 		{"5.1 E-AC-3 to stereo speakers, transcoded anyway: mixed down to stereo, nothing else",
 			Input{Caps: stereoPhone, Source: Source{Container: mp4, Video: h264(), Audio: audio("eac3", 6), DefaultAudio: true, Remuxable: true}},
-			"", 2, true},
+			2, true},
 		{"TrueHD 7.1 passed through: to AAC 5.1",
 			Input{Caps: withAudio(androidTV, "truehd", 8), Source: Source{Container: mkv, Video: h264(), Audio: audio("truehd", 8), DefaultAudio: true, Remuxable: true}},
-			CostAudioAsAAC, 6, true},
+			6, true},
 		{"stereo AAC played directly: AAC again, nothing else",
 			Input{Caps: browser, Source: Source{Container: mp4, Video: h264(), Audio: audio("aac", 2), DefaultAudio: true, Remuxable: true}},
-			"", 2, true},
+			2, true},
 		{"AC-3 copied into a remux: to AAC",
 			Input{Caps: safari, Source: Source{Container: mkv, Video: h264(), Audio: audio("ac3", 6), DefaultAudio: true, Remuxable: true}},
-			CostAudioAsAAC, 6, true},
+			6, true},
 		{"no keyframe index: the video encoded too",
 			Input{Caps: browser, Source: Source{Container: mp4, Video: h264(), Audio: audio("aac", 2), DefaultAudio: true}},
-			CostVideoTranscode, 2, true},
+			2, true},
 		{"a video transcode anyway, Opus copied: to AAC",
 			Input{Caps: browser, Source: Source{Container: mkv, Video: hevc10(), Audio: audio("opus", 2), DefaultAudio: true, Remuxable: true}},
-			CostAudioAsAAC, 2, true},
+			2, true},
 		{"a fallback: nothing else",
 			Input{Caps: safari, Fallback: true, Source: Source{Container: mp4, Video: h264(), Audio: audio("eac3", 6), DefaultAudio: true, Remuxable: true}},
-			"", 6, true},
+			6, true},
 		{"a book: no boost",
-			Input{Caps: browser, Source: Source{Container: mp4, Audio: audio("aac", 2), DefaultAudio: true}}, "", 0, false},
+			Input{Caps: browser, Source: Source{Container: mp4, Audio: audio("aac", 2), DefaultAudio: true}}, 0, false},
 		{"a download: no boost",
-			Input{Caps: safari, Target: TargetFile, Source: Source{Container: mp4, Video: h264(), Audio: audio("eac3", 6), DefaultAudio: true}}, "", 0, false},
+			Input{Caps: safari, Target: TargetFile, Source: Source{Container: mp4, Video: h264(), Audio: audio("eac3", 6), DefaultAudio: true}}, 0, false},
 		{"a client without HLS: no boost",
-			Input{Caps: noHLS(assTV), Source: Source{Container: mkv, Video: h264(), Audio: audio("aac", 2), DefaultAudio: true, Remuxable: true}}, "", 0, false},
+			Input{Caps: noHLS(assTV), Source: Source{Container: mkv, Video: h264(), Audio: audio("aac", 2), DefaultAudio: true, Remuxable: true}}, 0, false},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			for _, on := range []bool{false, true} {
@@ -62,7 +60,7 @@ func TestDialogueBoost(t *testing.T) {
 					}
 					continue
 				}
-				if want := (DialogueBoost{Enabled: on, Cost: c.cost}); d.DialogueBoost == nil || *d.DialogueBoost != want {
+				if want := (DialogueBoost{Enabled: on}); d.DialogueBoost == nil || *d.DialogueBoost != want {
 					t.Fatalf("boost %v: %+v, want %+v", on, d.DialogueBoost, want)
 				}
 				a, _ := d.Selected(media.Audio)

@@ -18,7 +18,6 @@ type File struct {
 	Library   id.ID
 	Path      string // absolute, as last seen
 	Size      int64
-	Modified  time.Time
 	Gone      time.Time // when it went missing; zero while present
 	Container string
 	Duration  time.Duration
@@ -46,7 +45,7 @@ type File struct {
 // are all gone is in no library, so the works filter would hide the files
 // listed here.
 var missingFiles = stmt("MissingFiles", `
-SELECT f.id, r.library_id, r.path, f.rel_path, f.size, f.mtime, f.gone_at,
+SELECT f.id, r.library_id, r.path, f.rel_path, f.size, f.gone_at,
   coalesce(f.container, ''), coalesce(f.duration_ms, 0), coalesce(f.bitrate, 0),
   f.version_id, coalesce(f.part, 0),
   coalesce((SELECT w.title FROM media_version_work vw JOIN work w ON w.id = vw.work_id
@@ -82,7 +81,7 @@ WHERE f.status = 'gone'
 // tracks has one row with no track. A work without versions has one row
 // with no file. A work the Viewer may not see has no rows.
 var workFiles = stmt("WorkFiles", `
-SELECT w.title, f.id, r.library_id, r.path, f.rel_path, f.size, f.mtime, f.status, f.gone_at,
+SELECT w.title, f.id, r.library_id, r.path, f.rel_path, f.size, f.status, f.gone_at,
   f.container, f.duration_ms, f.bitrate, f.version_id, f.part,
   t.id, t.source, t.stream_index, t.type, t.codec, t.language, t.title, t.rel_path,
   t.is_default, t.forced, t.hearing_impaired, t.info
@@ -124,12 +123,12 @@ func (s *Service) MissingFiles(ctx context.Context, v users.Viewer, lib id.ID, a
 			sql.Named("after_gone_at", pos.N[0]), sql.Named("after_id", pos.ID), sql.Named("limit", limit+1)),
 			func(r scanner, f *File) error {
 				var folder, rel string
-				var mtime, goneAt, durationMs, part int64
-				if err := r.Scan(&f.ID, &f.Library, &folder, &rel, &f.Size, &mtime, &goneAt, &f.Container, &durationMs, &f.Bitrate,
+				var goneAt, durationMs, part int64
+				if err := r.Scan(&f.ID, &f.Library, &folder, &rel, &f.Size, &goneAt, &f.Container, &durationMs, &f.Bitrate,
 					&f.Version, &part, &f.Title, &f.Work); err != nil {
 					return err
 				}
-				f.Path, f.Modified, f.Gone = filepath.Join(folder, rel), time.UnixMilli(mtime).UTC(), time.UnixMilli(goneAt).UTC()
+				f.Path, f.Gone = filepath.Join(folder, rel), time.UnixMilli(goneAt).UTC()
 				f.Duration, f.Part = time.Duration(durationMs)*time.Millisecond, max(int(part)-1, 0)
 				return nil
 			})
@@ -159,10 +158,10 @@ func (s *Service) WorkFiles(ctx context.Context, v users.Viewer, work id.ID) ([]
 		var title string
 		var file, lib, version, track id.ID
 		var folder, rel, status, container sql.NullString
-		var size, mtime, goneAt, durationMs, bitrate, part, index sql.NullInt64
+		var size, goneAt, durationMs, bitrate, part, index sql.NullInt64
 		var source, kind, codec, language, trackTitle, trackPath, info sql.NullString
 		var isDefault, forced, hearingImpaired sql.NullBool
-		if err := r.Scan(&title, &file, &lib, &folder, &rel, &size, &mtime, &status, &goneAt, &container, &durationMs, &bitrate,
+		if err := r.Scan(&title, &file, &lib, &folder, &rel, &size, &status, &goneAt, &container, &durationMs, &bitrate,
 			&version, &part, &track, &source, &index, &kind, &codec, &language, &trackTitle, &trackPath,
 			&isDefault, &forced, &hearingImpaired, &info); err != nil {
 			return err
@@ -173,8 +172,8 @@ func (s *Service) WorkFiles(ctx context.Context, v users.Viewer, work id.ID) ([]
 		if len(out) == 0 || out[len(out)-1].ID != file {
 			f := File{
 				ID: file, Library: lib, Path: filepath.Join(folder.String, rel.String), Size: size.Int64,
-				Modified: time.UnixMilli(mtime.Int64).UTC(), Container: container.String,
-				Duration: time.Duration(durationMs.Int64) * time.Millisecond, Bitrate: int(bitrate.Int64),
+				Container: container.String,
+				Duration:  time.Duration(durationMs.Int64) * time.Millisecond, Bitrate: int(bitrate.Int64),
 				Version: version, Part: int(part.Int64) - 1, Title: title,
 				Tracks: []catalog.Track{}, SubtitleFiles: []catalog.SubtitleFile{},
 			}

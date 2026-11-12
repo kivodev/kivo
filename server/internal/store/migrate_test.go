@@ -715,3 +715,51 @@ func TestMigrationTrailerColumns(t *testing.T) {
 		t.Error("a movie listed a video twice")
 	}
 }
+
+// 0077 drops book.abridged. Every book keeps its subtitle and language, and
+// deleting the work still deletes its book.
+func TestMigrationDropBookAbridged(t *testing.T) {
+	ctx := context.Background()
+	db, path := testDB(t, through(t, "_trailer_columns.sql"))
+	err := db.Write(ctx, func(ctx context.Context, tx *Tx) error {
+		_, err := tx.ExecContext(ctx, `
+			INSERT INTO work (id, kind, parent_id, root_id, title, sort_title, added_at) VALUES
+				(x'01', 'book', NULL, x'01', 'Dune', 'Dune', 1), (x'02', 'book', NULL, x'02', 'Heat', 'Heat', 1);
+			INSERT INTO book (work_id, subtitle, language, abridged) VALUES
+				(x'01', 'Book One', 'English', 0), (x'02', NULL, NULL, NULL);`)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+	up, err := open(ctx, path, embeddedMigrations(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer up.Close()
+	read := func(query string) (out string) {
+		t.Helper()
+		if err := up.Reader().QueryRowContext(ctx, query).Scan(&out); err != nil {
+			t.Fatal(err)
+		}
+		return out
+	}
+	if got := read(`SELECT group_concat(name, ',') FROM pragma_table_info('book')`); got != "work_id,subtitle,language" {
+		t.Errorf("book's columns: %s", got)
+	}
+	if got, want := read(`SELECT group_concat(hex(work_id) || ' ' || coalesce(subtitle, '-') || ' ' || coalesce(language, '-'), ', ') FROM (SELECT * FROM book ORDER BY work_id)`),
+		"01 Book One English, 02 - -"; got != want {
+		t.Errorf("books: %s, want %s", got, want)
+	}
+	err = up.Write(ctx, func(ctx context.Context, tx *Tx) error {
+		_, err := tx.ExecContext(ctx, `DELETE FROM work WHERE id = x'01'`)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := read(`SELECT group_concat(hex(work_id), ',') FROM book`); got != "02" {
+		t.Errorf("after deleting a book's work: %s, want 02", got)
+	}
+}

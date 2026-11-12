@@ -333,24 +333,6 @@ func (e CollectionSource) Valid() bool {
 	}
 }
 
-// Defines values for DialogueBoostCost.
-const (
-	DialogueBoostCostAudioAsAac     DialogueBoostCost = "audioAsAac"
-	DialogueBoostCostVideoTranscode DialogueBoostCost = "videoTranscode"
-)
-
-// Valid indicates whether the value is a known member of the DialogueBoostCost enum.
-func (e DialogueBoostCost) Valid() bool {
-	switch e {
-	case DialogueBoostCostAudioAsAac:
-		return true
-	case DialogueBoostCostVideoTranscode:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for DownloadDelivery.
 const (
 	DownloadDeliveryConversion DownloadDelivery = "conversion"
@@ -675,24 +657,6 @@ const (
 func (e KeepAliveMessageType) Valid() bool {
 	switch e {
 	case KeepAliveMessageTypeKeepAlive:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for KeyframePlacement.
-const (
-	KeyframePlacementFixed KeyframePlacement = "fixed"
-	KeyframePlacementGrid  KeyframePlacement = "grid"
-)
-
-// Valid indicates whether the value is a known member of the KeyframePlacement enum.
-func (e KeyframePlacement) Valid() bool {
-	switch e {
-	case KeyframePlacementFixed:
-		return true
-	case KeyframePlacementGrid:
 		return true
 	default:
 		return false
@@ -1857,10 +1821,6 @@ type AcceleratorBackend string
 type AcceleratorEncoder struct {
 	// Codec A video codec the server encodes.
 	Codec EncoderCodec `json:"codec"`
-
-	// Gop How keyframes meet the segment grid: `grid` is forced on it, and
-	// `fixed` is a fixed GOP of one segment, where forcing isn't honored.
-	Gop KeyframePlacement `json:"gop"`
 }
 
 // AcceleratorFormat defines model for AcceleratorFormat.
@@ -2175,9 +2135,6 @@ type AudioTrackInfo struct {
 
 // BookInfo defines model for BookInfo.
 type BookInfo struct {
-	// Abridged Detail only; absent when unknown.
-	Abridged *bool `json:"abridged,omitempty"`
-
 	// Authors In credit order; the first is the primary author.
 	Authors []PersonRef `json:"authors"`
 
@@ -2542,19 +2499,9 @@ type DeviceCodePoll struct {
 
 // DialogueBoost defines model for DialogueBoost.
 type DialogueBoost struct {
-	// Cost What the boost changes besides the dialogue, the same whether it's on or off. Absent when nothing.
-	Cost *DialogueBoostCost `json:"cost,omitempty"`
-
 	// Enabled Whether the play boosts its dialogue.
 	Enabled bool `json:"enabled"`
 }
-
-// DialogueBoostCost What a dialogue boost changes about a play besides the dialogue:
-// `audioAsAac` audio played in its own format, directly or passed
-// through to a receiver, is encoded to AAC; `videoTranscode` the video,
-// which can't be copied into a stream, is encoded too. Clients show
-// it beside the switch, in words from the shared display tables.
-type DialogueBoostCost string
 
 // Directory defines model for Directory.
 type Directory struct {
@@ -2944,9 +2891,6 @@ type ExternalProvider string
 
 // ExtraInfo defines model for ExtraInfo.
 type ExtraInfo struct {
-	// ParentID The movie, series or season it belongs to.
-	ParentID *ID `json:"parentId,omitempty"`
-
 	// Type What an extra is.
 	Type ExtraType `json:"type"`
 }
@@ -3104,9 +3048,6 @@ type ImageRef struct {
 // Invite A pending invite link.
 type Invite struct {
 	CreatedAt time.Time `json:"createdAt"`
-
-	// CreatedBy The username of the admin who created it.
-	CreatedBy string    `json:"createdBy"`
 	ExpiresAt time.Time `json:"expiresAt"`
 
 	// ID A UUIDv7.
@@ -3150,10 +3091,6 @@ type KeepAliveMessage struct {
 
 // KeepAliveMessageType defines model for KeepAliveMessage.Type.
 type KeepAliveMessageType string
-
-// KeyframePlacement How keyframes meet the segment grid: `grid` is forced on it, and
-// `fixed` is a fixed GOP of one segment, where forcing isn't honored.
-type KeyframePlacement string
 
 // LetterStart Where a letter of a grid's letter rail starts, in the grid's order.
 // A work files under the first character of its sort title, so
@@ -3538,8 +3475,7 @@ type MediaFile struct {
 	ID ID `json:"id"`
 
 	// LibraryID A UUIDv7.
-	LibraryID  ID        `json:"libraryId"`
-	ModifiedAt time.Time `json:"modifiedAt"`
+	LibraryID ID `json:"libraryId"`
 
 	// Part Its part in the version, from 0.
 	Part *int `json:"part,omitempty"`
@@ -3813,8 +3749,7 @@ type PlayDelivery string
 // PlayEvent One play of a work, from start to stop.
 type PlayEvent struct {
 	// Completed Whether it reached the played threshold.
-	Completed bool      `json:"completed"`
-	EndedAt   time.Time `json:"endedAt"`
+	Completed bool `json:"completed"`
 
 	// ID A UUIDv7.
 	ID ID `json:"id"`
@@ -5010,7 +4945,6 @@ type UserList struct {
 // UserState The user's state for a work. For a series or season, `played` means every episode is.
 type UserState struct {
 	LastPlayedAt *time.Time `json:"lastPlayedAt,omitempty"`
-	PlayCount    int        `json:"playCount"`
 	Played       bool       `json:"played"`
 
 	// PositionMs The resume position, when in progress.

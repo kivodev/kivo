@@ -107,7 +107,7 @@ class KnownTest {
         fun version(id: String, edition: String? = null) = Version(id, true, 1, 1, emptyList(), emptyList(), emptyList(), "", edition = edition)
         val work = work("w1", "Blade Runner", emptyList(), emptyList()).copy(
             versions = listOf(version("theatrical"), version("theatrical4k"), version("final", "Final Cut")),
-            userState = UserState(played = false, playCount = 0, positionMs = 600_000, versionId = "theatrical"),
+            userState = UserState(played = false, positionMs = 600_000, versionId = "theatrical"),
         )
         assertEquals(600_000, work.resumeAt(null), "the default is the version played")
         assertEquals(600_000, work.resumeAt("theatrical4k"))
@@ -121,7 +121,7 @@ class KnownTest {
         fun version(id: String) = Version(id, true, 1, 1, emptyList(), emptyList(), emptyList(), "")
         val fresh = work("w1", "Blade Runner", emptyList(), emptyList()).copy(versions = listOf(version("first"), version("second")))
         assertEquals("first", fresh.defaultVersion()?.id, "none played")
-        val played = fresh.copy(userState = UserState(played = false, playCount = 1, positionMs = 0, versionId = "second"))
+        val played = fresh.copy(userState = UserState(played = false, positionMs = 0, versionId = "second"))
         assertEquals("second", played.defaultVersion()?.id, "the version last played")
         val gone = fresh.copy(userState = played.userState?.copy(versionId = "gone"))
         assertEquals("first", gone.defaultVersion()?.id, "the version played is gone")

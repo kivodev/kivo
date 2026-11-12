@@ -36,7 +36,7 @@ import kotlin.test.assertTrue
 // tell each failure once, against a server answered by Ktor's mock engine.
 
 class WorkMarksTest {
-    private val played = UserState(played = true, playCount = 1)
+    private val played = UserState(played = true)
 
     private suspend fun TestScope.signedIn(): Pair<Harness, KivoSession> {
         val h = Harness(this)

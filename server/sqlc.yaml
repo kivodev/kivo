@@ -45,18 +45,12 @@ overrides:
         go_type: bool
       - column: list.built_in
         go_type: bool
-      - column: trailer.official
-        go_type: bool
       - column: work.provisional
         go_type: bool
       - column: work.locked
         go_type: bool
       - column: work_library.is_root
         go_type: bool
-      - column: book.abridged
-        go_type:
-          import: database/sql
-          type: NullBool
 sql:
   - engine: sqlite
     schema: internal/store/migrations

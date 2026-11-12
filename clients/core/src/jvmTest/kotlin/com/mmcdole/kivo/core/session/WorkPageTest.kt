@@ -341,7 +341,7 @@ class WorkPageTest {
         assertFalse(page.until { it.myListId == "my" }.onMyList)
 
         // A mark the server made, then the live event it sends.
-        reads.pages["m1"] = detail("m1", WorkKind.Movie, "Charade").copy(listIds = listOf("my"), userState = UserState(played = true, playCount = 1))
+        reads.pages["m1"] = detail("m1", WorkKind.Movie, "Charade").copy(listIds = listOf("my"), userState = UserState(played = true))
         reads.changed()
 
         val marked = page.until { it.onMyList }

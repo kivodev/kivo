@@ -18,7 +18,7 @@ func (h *handlers) ListAccelerators(context.Context, gen.ListAcceleratorsRequest
 			ToneMap: optAs[gen.ProcessedOn](a.ToneMap), BurnIn: optAs[gen.ProcessedOn](a.BurnIn),
 		}
 		for _, e := range a.Encoders {
-			item.Encoders = append(item.Encoders, gen.AcceleratorEncoder{Codec: gen.EncoderCodec(e.Codec), Gop: gen.KeyframePlacement(e.GOP)})
+			item.Encoders = append(item.Encoders, gen.AcceleratorEncoder{Codec: gen.EncoderCodec(e.Codec)})
 		}
 		for _, f := range a.Decoders {
 			item.Decoders = append(item.Decoders, gen.AcceleratorFormat{Codec: string(f.Codec), BitDepth: f.BitDepth})

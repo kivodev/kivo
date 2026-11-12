@@ -14,7 +14,6 @@ type Book struct {
 	WorkID   id.ID
 	Subtitle sql.NullString
 	Language sql.NullString
-	Abridged sql.NullBool
 }
 
 type BookSeries struct {

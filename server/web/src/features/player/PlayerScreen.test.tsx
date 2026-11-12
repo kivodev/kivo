@@ -775,15 +775,6 @@ describe("Player menus", () => {
     expect(plays()[0]?.dialogueBoost).toBe(true);
   });
 
-  it("shows the dialogue boost as a switch alone, without what it costs the play", async () => {
-    const api = serveMockApi();
-    dunePlay(api).dialogueBoost = { enabled: false, cost: "audioAsAac" };
-    const { user } = renderApp(`/watch/${mockIds.dunePartTwo}`);
-    await playing();
-    const boost = within(await tracksMenu(user)).getByRole("menuitemcheckbox", { name: /^Dialogue boost/ });
-    expect(boost).toHaveTextContent(/^Dialogue boost$/);
-  });
-
   it("keeps a show's tracks without saying so in Audio & Subtitles", async () => {
     serveMockApi();
     const { user } = renderApp(`/watch/${mockIds.expanseReload}`);
