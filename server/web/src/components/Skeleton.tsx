@@ -22,7 +22,7 @@ function Loading({ gap, children }: { gap: string; children: ReactNode }) {
 }
 
 /** A row's title and its first cards, laid out as Row lays them out. */
-function RowSkeleton({ shape }: { shape: "poster" | "landscape" }) {
+export function RowSkeleton({ shape }: { shape: "poster" | "landscape" | "square" }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex h-10 items-center">

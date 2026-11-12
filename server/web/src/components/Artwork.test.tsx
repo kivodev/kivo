@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Artwork, ArtworkLoads } from "./Artwork";
 
 describe("Artwork", () => {
@@ -52,6 +52,52 @@ describe("Artwork", () => {
       expect(frame?.className).toContain("overflow-hidden");
       expect(container.querySelector('[data-part="progress"]')?.parentElement).toBe(frame);
       unmount();
+    }
+  });
+
+  it("shows a card's average colour while its image loads, drawing no blur", () => {
+    const draw = vi.spyOn(HTMLCanvasElement.prototype, "getContext");
+    try {
+      const { container } = render(
+        <Artwork
+          image={{ id: "img2", blurhash: "LEHV6nWB2yk8pyo0adR*.7kCMdnj" }}
+          title="Dune"
+          shape="poster"
+          width={120}
+        />,
+      );
+      const placeholder = container.querySelector('[data-part="artwork-placeholder"]') as HTMLElement;
+      expect(placeholder.tagName).toBe("DIV");
+      expect(placeholder.style.backgroundColor).toBe("rgb(151, 150, 149)");
+      expect(draw).not.toHaveBeenCalled();
+    } finally {
+      draw.mockRestore();
+    }
+  });
+
+  it("shows a blurred preview while its image loads when asked", () => {
+    const context = {
+      createImageData: (w: number, h: number) => ({ data: new Uint8ClampedArray(w * h * 4) }),
+      putImageData() {},
+    };
+    const draw = vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(context as never);
+    const png = vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue("data:image/png;base64,blur");
+    try {
+      const { container } = render(
+        <Artwork
+          image={{ id: "img3", blurhash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4" }}
+          title=""
+          shape="landscape"
+          width={1920}
+          blur
+        />,
+      );
+      const placeholder = container.querySelector('[data-part="artwork-placeholder"]');
+      expect(placeholder?.tagName).toBe("IMG");
+      expect(placeholder?.getAttribute("src")).toBe("data:image/png;base64,blur");
+    } finally {
+      draw.mockRestore();
+      png.mockRestore();
     }
   });
 

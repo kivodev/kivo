@@ -78,7 +78,7 @@ export function HeroBackdrop({ image }: { image?: ImageRef }) {
       className="absolute inset-0 -z-10 tv:-top-(--layout-tv-overscan-y) tv:-right-(--layout-tv-overscan-x) tv:bottom-auto tv:-left-(--layout-tv-content-left) tv:h-dvh"
     >
       {image ? (
-        <Artwork image={image} title="" shape="landscape" width={1920} corners="none" className="size-full" />
+        <Artwork image={image} title="" shape="landscape" width={1920} corners="none" className="size-full" blur />
       ) : (
         <div className="size-full bg-linear-to-bl from-surface-raised to-bg" />
       )}
