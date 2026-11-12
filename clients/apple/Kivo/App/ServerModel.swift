@@ -60,7 +60,7 @@ final class ServerModel {
         self.app = app
         state = Observed(session.state)
         book = BookPlayer(session: session, artwork: { Self.artwork(session, at: session.baseUrl) }, display: app.display)
-        cast = CastModel(session: session, core: app.core, display: app.display)
+        cast = CastModel(session: session, display: app.display)
         navigation = Navigation(serverId: session.savedServer.value.id)
         if let downloads = session.downloads {
             onDevice = (Observed([], downloads.items), Observed([], downloads.asking), Observed(0, downloads.deleted.map { $0.int32Value }))

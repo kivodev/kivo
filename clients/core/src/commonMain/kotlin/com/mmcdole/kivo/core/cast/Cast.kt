@@ -112,7 +112,7 @@ internal class CastSender(private val connection: ServerConnection) {
 }
 
 /** The messages senders send the receiver on [CAST_NAMESPACE], as JSON. */
-object CastMessages {
+internal object CastMessages {
     /** Another audio track, a subtitle track or [SUBTITLES_OFF], or both; the receiver starts a new play where it must. */
     fun setTracks(audioTrackId: String?, subtitleTrackId: String?): String = message("kivo.setTracks") {
         audioTrackId?.let { put("audioTrackId", it) }
@@ -195,7 +195,7 @@ data class CastStatus(
          * status' custom data (`{"status": {…}}`), or the status itself; null
          * when it holds none.
          */
-        fun parseOrNull(json: String): CastStatus? {
+        internal fun parseOrNull(json: String): CastStatus? {
             val element = runCatching { kivoJson.parseToJsonElement(json) }.getOrNull() as? JsonObject ?: return null
             val status: JsonElement = (element["status"] as? JsonObject) ?: element
             val wire = runCatching { kivoJson.decodeFromJsonElement(WireStatus.serializer(), status.jsonObject) }.getOrNull() ?: return null

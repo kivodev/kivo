@@ -3,7 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation
 
 // :core, the Kotlin Multiplatform core the native apps share: one package per
 // area over :api. The platforms implement its small interfaces (Device,
-// PlayerEngine, BookAudio, CapabilityProbe, SecureStore, DownloadTransport). The
+// PlayerEngine, CastLink, BookAudio, CapabilityProbe, SecureStore, DownloadTransport). The
 // download store is SQLDelight's, its schema in src/commonMain/sqldelight.
 // The Apple apps get it as KivoCore.xcframework, :api exported with it,
 // through SKIE (`./gradlew :core:assembleKivoCoreDebugXCFramework`, or

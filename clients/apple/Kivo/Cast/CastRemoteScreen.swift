@@ -12,7 +12,7 @@ import SwiftUI
 /// transport's place. With up next showing, the still is
 /// smaller and the rows closer, so everything stays on the screen. The
 /// chevron closes it to the mini controller, and the cast plays on.
-struct CastRemote: View {
+struct CastRemoteScreen: View {
     let cast: CastModel
     let close: () -> Void
     @Environment(\.kivoPalette) private var palette

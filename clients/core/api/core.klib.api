@@ -337,6 +337,29 @@ abstract interface com.mmcdole.kivo.core.caps/CapabilityProbe { // com.mmcdole.k
     abstract suspend fun measure(): com.mmcdole.kivo.core.caps/Measured // com.mmcdole.kivo.core.caps/CapabilityProbe.measure|measure(){}[0]
 }
 
+abstract interface com.mmcdole.kivo.core.cast/CastLink { // com.mmcdole.kivo.core.cast/CastLink|null[0]
+    abstract val positionMs // com.mmcdole.kivo.core.cast/CastLink.positionMs|{}positionMs[0]
+        abstract fun <get-positionMs>(): kotlin/Long // com.mmcdole.kivo.core.cast/CastLink.positionMs.<get-positionMs>|<get-positionMs>(){}[0]
+
+    abstract fun close() // com.mmcdole.kivo.core.cast/CastLink.close|close(){}[0]
+    abstract fun end(kotlin/Boolean) // com.mmcdole.kivo.core.cast/CastLink.end|end(kotlin.Boolean){}[0]
+    abstract fun load(com.mmcdole.kivo.core.cast/CastLoad, kotlin/String, kotlin/String?) // com.mmcdole.kivo.core.cast/CastLink.load|load(com.mmcdole.kivo.core.cast.CastLoad;kotlin.String;kotlin.String?){}[0]
+    abstract fun pause() // com.mmcdole.kivo.core.cast/CastLink.pause|pause(){}[0]
+    abstract fun play() // com.mmcdole.kivo.core.cast/CastLink.play|play(){}[0]
+    abstract fun seek(kotlin/Long) // com.mmcdole.kivo.core.cast/CastLink.seek|seek(kotlin.Long){}[0]
+    abstract fun send(kotlin/String) // com.mmcdole.kivo.core.cast/CastLink.send|send(kotlin.String){}[0]
+    abstract fun setSpeed(kotlin/Float) // com.mmcdole.kivo.core.cast/CastLink.setSpeed|setSpeed(kotlin.Float){}[0]
+    abstract fun setVolume(kotlin/Float) // com.mmcdole.kivo.core.cast/CastLink.setVolume|setVolume(kotlin.Float){}[0]
+    abstract fun start(com.mmcdole.kivo.core.cast/CastLink.Events) // com.mmcdole.kivo.core.cast/CastLink.start|start(com.mmcdole.kivo.core.cast.CastLink.Events){}[0]
+
+    abstract interface Events { // com.mmcdole.kivo.core.cast/CastLink.Events|null[0]
+        abstract fun onLink(com.mmcdole.kivo.core.cast/CastLinkState) // com.mmcdole.kivo.core.cast/CastLink.Events.onLink|onLink(com.mmcdole.kivo.core.cast.CastLinkState){}[0]
+        abstract fun onMedia(com.mmcdole.kivo.core.cast/CastMedia?) // com.mmcdole.kivo.core.cast/CastLink.Events.onMedia|onMedia(com.mmcdole.kivo.core.cast.CastMedia?){}[0]
+        abstract fun onMessage(kotlin/String) // com.mmcdole.kivo.core.cast/CastLink.Events.onMessage|onMessage(kotlin.String){}[0]
+        abstract fun onVolume(kotlin/Float) // com.mmcdole.kivo.core.cast/CastLink.Events.onVolume|onVolume(kotlin.Float){}[0]
+    }
+}
+
 abstract interface com.mmcdole.kivo.core.downloads/DownloadTransport { // com.mmcdole.kivo.core.downloads/DownloadTransport|null[0]
     abstract fun cancel(kotlin/String) // com.mmcdole.kivo.core.downloads/DownloadTransport.cancel|cancel(kotlin.String){}[0]
     abstract fun running(): kotlin.collections/List<kotlin/String> // com.mmcdole.kivo.core.downloads/DownloadTransport.running|running(){}[0]
@@ -396,6 +419,42 @@ abstract interface com.mmcdole.kivo.core.session/Device { // com.mmcdole.kivo.co
         open fun <get-downloads>(): com.mmcdole.kivo.core.session/DownloadDevice? // com.mmcdole.kivo.core.session/Device.downloads.<get-downloads>|<get-downloads>(){}[0]
     open val platform // com.mmcdole.kivo.core.session/Device.platform|{}platform[0]
         open fun <get-platform>(): com.mmcdole.kivo.api.models/ClientPlatform // com.mmcdole.kivo.core.session/Device.platform.<get-platform>|<get-platform>(){}[0]
+}
+
+sealed interface com.mmcdole.kivo.core.cast/CastLinkState { // com.mmcdole.kivo.core.cast/CastLinkState|null[0]
+    final class Connected : com.mmcdole.kivo.core.cast/CastLinkState { // com.mmcdole.kivo.core.cast/CastLinkState.Connected|null[0]
+        constructor <init>(kotlin/String, kotlin/Boolean) // com.mmcdole.kivo.core.cast/CastLinkState.Connected.<init>|<init>(kotlin.String;kotlin.Boolean){}[0]
+
+        final val device // com.mmcdole.kivo.core.cast/CastLinkState.Connected.device|{}device[0]
+            final fun <get-device>(): kotlin/String // com.mmcdole.kivo.core.cast/CastLinkState.Connected.device.<get-device>|<get-device>(){}[0]
+        final val resumed // com.mmcdole.kivo.core.cast/CastLinkState.Connected.resumed|{}resumed[0]
+            final fun <get-resumed>(): kotlin/Boolean // com.mmcdole.kivo.core.cast/CastLinkState.Connected.resumed.<get-resumed>|<get-resumed>(){}[0]
+
+        final fun component1(): kotlin/String // com.mmcdole.kivo.core.cast/CastLinkState.Connected.component1|component1(){}[0]
+        final fun component2(): kotlin/Boolean // com.mmcdole.kivo.core.cast/CastLinkState.Connected.component2|component2(){}[0]
+        final fun copy(kotlin/String = ..., kotlin/Boolean = ...): com.mmcdole.kivo.core.cast/CastLinkState.Connected // com.mmcdole.kivo.core.cast/CastLinkState.Connected.copy|copy(kotlin.String;kotlin.Boolean){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.cast/CastLinkState.Connected.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.cast/CastLinkState.Connected.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.mmcdole.kivo.core.cast/CastLinkState.Connected.toString|toString(){}[0]
+    }
+
+    final object Connecting : com.mmcdole.kivo.core.cast/CastLinkState { // com.mmcdole.kivo.core.cast/CastLinkState.Connecting|null[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.cast/CastLinkState.Connecting.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.cast/CastLinkState.Connecting.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.mmcdole.kivo.core.cast/CastLinkState.Connecting.toString|toString(){}[0]
+    }
+
+    final object Disconnected : com.mmcdole.kivo.core.cast/CastLinkState { // com.mmcdole.kivo.core.cast/CastLinkState.Disconnected|null[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.cast/CastLinkState.Disconnected.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.cast/CastLinkState.Disconnected.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.mmcdole.kivo.core.cast/CastLinkState.Disconnected.toString|toString(){}[0]
+    }
+
+    final object Unavailable : com.mmcdole.kivo.core.cast/CastLinkState { // com.mmcdole.kivo.core.cast/CastLinkState.Unavailable|null[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.cast/CastLinkState.Unavailable.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.cast/CastLinkState.Unavailable.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.mmcdole.kivo.core.cast/CastLinkState.Unavailable.toString|toString(){}[0]
+    }
 }
 
 sealed interface com.mmcdole.kivo.core.data/SubtitleSearchProblem { // com.mmcdole.kivo.core.data/SubtitleSearchProblem|null[0]
@@ -760,6 +819,43 @@ sealed interface com.mmcdole.kivo.core.session/AppState { // com.mmcdole.kivo.co
         final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.session/AppState.Starting.equals|equals(kotlin.Any?){}[0]
         final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.session/AppState.Starting.hashCode|hashCode(){}[0]
         final fun toString(): kotlin/String // com.mmcdole.kivo.core.session/AppState.Starting.toString|toString(){}[0]
+    }
+}
+
+sealed interface com.mmcdole.kivo.core.session/CastProblem { // com.mmcdole.kivo.core.session/CastProblem|null[0]
+    final class Receiver : com.mmcdole.kivo.core.session/CastProblem { // com.mmcdole.kivo.core.session/CastProblem.Receiver|null[0]
+        constructor <init>(kotlin/String, kotlin/String?) // com.mmcdole.kivo.core.session/CastProblem.Receiver.<init>|<init>(kotlin.String;kotlin.String?){}[0]
+
+        final val code // com.mmcdole.kivo.core.session/CastProblem.Receiver.code|{}code[0]
+            final fun <get-code>(): kotlin/String // com.mmcdole.kivo.core.session/CastProblem.Receiver.code.<get-code>|<get-code>(){}[0]
+        final val message // com.mmcdole.kivo.core.session/CastProblem.Receiver.message|{}message[0]
+            final fun <get-message>(): kotlin/String? // com.mmcdole.kivo.core.session/CastProblem.Receiver.message.<get-message>|<get-message>(){}[0]
+
+        final fun component1(): kotlin/String // com.mmcdole.kivo.core.session/CastProblem.Receiver.component1|component1(){}[0]
+        final fun component2(): kotlin/String? // com.mmcdole.kivo.core.session/CastProblem.Receiver.component2|component2(){}[0]
+        final fun copy(kotlin/String = ..., kotlin/String? = ...): com.mmcdole.kivo.core.session/CastProblem.Receiver // com.mmcdole.kivo.core.session/CastProblem.Receiver.copy|copy(kotlin.String;kotlin.String?){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.session/CastProblem.Receiver.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.session/CastProblem.Receiver.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.mmcdole.kivo.core.session/CastProblem.Receiver.toString|toString(){}[0]
+    }
+
+    final class Refused : com.mmcdole.kivo.core.session/CastProblem { // com.mmcdole.kivo.core.session/CastProblem.Refused|null[0]
+        constructor <init>(com.mmcdole.kivo.core/RequestProblem) // com.mmcdole.kivo.core.session/CastProblem.Refused.<init>|<init>(com.mmcdole.kivo.core.RequestProblem){}[0]
+
+        final val problem // com.mmcdole.kivo.core.session/CastProblem.Refused.problem|{}problem[0]
+            final fun <get-problem>(): com.mmcdole.kivo.core/RequestProblem // com.mmcdole.kivo.core.session/CastProblem.Refused.problem.<get-problem>|<get-problem>(){}[0]
+
+        final fun component1(): com.mmcdole.kivo.core/RequestProblem // com.mmcdole.kivo.core.session/CastProblem.Refused.component1|component1(){}[0]
+        final fun copy(com.mmcdole.kivo.core/RequestProblem = ...): com.mmcdole.kivo.core.session/CastProblem.Refused // com.mmcdole.kivo.core.session/CastProblem.Refused.copy|copy(com.mmcdole.kivo.core.RequestProblem){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.session/CastProblem.Refused.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.session/CastProblem.Refused.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.mmcdole.kivo.core.session/CastProblem.Refused.toString|toString(){}[0]
+    }
+
+    final object Unreachable : com.mmcdole.kivo.core.session/CastProblem { // com.mmcdole.kivo.core.session/CastProblem.Unreachable|null[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.session/CastProblem.Unreachable.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.session/CastProblem.Unreachable.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // com.mmcdole.kivo.core.session/CastProblem.Unreachable.toString|toString(){}[0]
     }
 }
 
@@ -1286,6 +1382,47 @@ final class com.mmcdole.kivo.core.cast/CastLoad { // com.mmcdole.kivo.core.cast/
     final fun toString(): kotlin/String // com.mmcdole.kivo.core.cast/CastLoad.toString|toString(){}[0]
 }
 
+final class com.mmcdole.kivo.core.cast/CastMedia { // com.mmcdole.kivo.core.cast/CastMedia|null[0]
+    constructor <init>(kotlin/String, com.mmcdole.kivo.core.cast/CastMedia.State, kotlin/Long, kotlin/Long, kotlin/Float, kotlin/String?) // com.mmcdole.kivo.core.cast/CastMedia.<init>|<init>(kotlin.String;com.mmcdole.kivo.core.cast.CastMedia.State;kotlin.Long;kotlin.Long;kotlin.Float;kotlin.String?){}[0]
+
+    final val durationMs // com.mmcdole.kivo.core.cast/CastMedia.durationMs|{}durationMs[0]
+        final fun <get-durationMs>(): kotlin/Long // com.mmcdole.kivo.core.cast/CastMedia.durationMs.<get-durationMs>|<get-durationMs>(){}[0]
+    final val positionMs // com.mmcdole.kivo.core.cast/CastMedia.positionMs|{}positionMs[0]
+        final fun <get-positionMs>(): kotlin/Long // com.mmcdole.kivo.core.cast/CastMedia.positionMs.<get-positionMs>|<get-positionMs>(){}[0]
+    final val speed // com.mmcdole.kivo.core.cast/CastMedia.speed|{}speed[0]
+        final fun <get-speed>(): kotlin/Float // com.mmcdole.kivo.core.cast/CastMedia.speed.<get-speed>|<get-speed>(){}[0]
+    final val state // com.mmcdole.kivo.core.cast/CastMedia.state|{}state[0]
+        final fun <get-state>(): com.mmcdole.kivo.core.cast/CastMedia.State // com.mmcdole.kivo.core.cast/CastMedia.state.<get-state>|<get-state>(){}[0]
+    final val status // com.mmcdole.kivo.core.cast/CastMedia.status|{}status[0]
+        final fun <get-status>(): kotlin/String? // com.mmcdole.kivo.core.cast/CastMedia.status.<get-status>|<get-status>(){}[0]
+    final val workId // com.mmcdole.kivo.core.cast/CastMedia.workId|{}workId[0]
+        final fun <get-workId>(): kotlin/String // com.mmcdole.kivo.core.cast/CastMedia.workId.<get-workId>|<get-workId>(){}[0]
+
+    final fun component1(): kotlin/String // com.mmcdole.kivo.core.cast/CastMedia.component1|component1(){}[0]
+    final fun component2(): com.mmcdole.kivo.core.cast/CastMedia.State // com.mmcdole.kivo.core.cast/CastMedia.component2|component2(){}[0]
+    final fun component3(): kotlin/Long // com.mmcdole.kivo.core.cast/CastMedia.component3|component3(){}[0]
+    final fun component4(): kotlin/Long // com.mmcdole.kivo.core.cast/CastMedia.component4|component4(){}[0]
+    final fun component5(): kotlin/Float // com.mmcdole.kivo.core.cast/CastMedia.component5|component5(){}[0]
+    final fun component6(): kotlin/String? // com.mmcdole.kivo.core.cast/CastMedia.component6|component6(){}[0]
+    final fun copy(kotlin/String = ..., com.mmcdole.kivo.core.cast/CastMedia.State = ..., kotlin/Long = ..., kotlin/Long = ..., kotlin/Float = ..., kotlin/String? = ...): com.mmcdole.kivo.core.cast/CastMedia // com.mmcdole.kivo.core.cast/CastMedia.copy|copy(kotlin.String;com.mmcdole.kivo.core.cast.CastMedia.State;kotlin.Long;kotlin.Long;kotlin.Float;kotlin.String?){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.cast/CastMedia.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.cast/CastMedia.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // com.mmcdole.kivo.core.cast/CastMedia.toString|toString(){}[0]
+
+    final enum class State : kotlin/Enum<com.mmcdole.kivo.core.cast/CastMedia.State> { // com.mmcdole.kivo.core.cast/CastMedia.State|null[0]
+        enum entry Buffering // com.mmcdole.kivo.core.cast/CastMedia.State.Buffering|null[0]
+        enum entry Loading // com.mmcdole.kivo.core.cast/CastMedia.State.Loading|null[0]
+        enum entry Paused // com.mmcdole.kivo.core.cast/CastMedia.State.Paused|null[0]
+        enum entry Playing // com.mmcdole.kivo.core.cast/CastMedia.State.Playing|null[0]
+
+        final val entries // com.mmcdole.kivo.core.cast/CastMedia.State.entries|#static{}entries[0]
+            final fun <get-entries>(): kotlin.enums/EnumEntries<com.mmcdole.kivo.core.cast/CastMedia.State> // com.mmcdole.kivo.core.cast/CastMedia.State.entries.<get-entries>|<get-entries>#static(){}[0]
+
+        final fun valueOf(kotlin/String): com.mmcdole.kivo.core.cast/CastMedia.State // com.mmcdole.kivo.core.cast/CastMedia.State.valueOf|valueOf#static(kotlin.String){}[0]
+        final fun values(): kotlin/Array<com.mmcdole.kivo.core.cast/CastMedia.State> // com.mmcdole.kivo.core.cast/CastMedia.State.values|values#static(){}[0]
+    }
+}
+
 final class com.mmcdole.kivo.core.cast/CastStatus { // com.mmcdole.kivo.core.cast/CastStatus|null[0]
     constructor <init>(kotlin/String?, kotlin/String?, kotlin/String?, kotlin.collections/List<com.mmcdole.kivo.api.models/PlayTrack>, com.mmcdole.kivo.api.models/QualityRequest?, kotlin/Long?, com.mmcdole.kivo.api.models/DialogueBoost?, kotlin/String?, kotlin/String?, kotlin/Boolean?, com.mmcdole.kivo.core.player/UpNext, kotlin/String?, kotlin/String?) // com.mmcdole.kivo.core.cast/CastStatus.<init>|<init>(kotlin.String?;kotlin.String?;kotlin.String?;kotlin.collections.List<com.mmcdole.kivo.api.models.PlayTrack>;com.mmcdole.kivo.api.models.QualityRequest?;kotlin.Long?;com.mmcdole.kivo.api.models.DialogueBoost?;kotlin.String?;kotlin.String?;kotlin.Boolean?;com.mmcdole.kivo.core.player.UpNext;kotlin.String?;kotlin.String?){}[0]
 
@@ -1342,8 +1479,6 @@ final class com.mmcdole.kivo.core.cast/CastStatus { // com.mmcdole.kivo.core.cas
     final object Companion { // com.mmcdole.kivo.core.cast/CastStatus.Companion|null[0]
         final const val ERROR_UNREACHABLE // com.mmcdole.kivo.core.cast/CastStatus.Companion.ERROR_UNREACHABLE|{}ERROR_UNREACHABLE[0]
             final fun <get-ERROR_UNREACHABLE>(): kotlin/String // com.mmcdole.kivo.core.cast/CastStatus.Companion.ERROR_UNREACHABLE.<get-ERROR_UNREACHABLE>|<get-ERROR_UNREACHABLE>(){}[0]
-
-        final fun parseOrNull(kotlin/String): com.mmcdole.kivo.core.cast/CastStatus? // com.mmcdole.kivo.core.cast/CastStatus.Companion.parseOrNull|parseOrNull(kotlin.String){}[0]
     }
 }
 
@@ -2085,6 +2220,86 @@ final class com.mmcdole.kivo.core.player/UpNext { // com.mmcdole.kivo.core.playe
     final fun toString(): kotlin/String // com.mmcdole.kivo.core.player/UpNext.toString|toString(){}[0]
 }
 
+final class com.mmcdole.kivo.core.session/CastRemote { // com.mmcdole.kivo.core.session/CastRemote|null[0]
+    final val connections // com.mmcdole.kivo.core.session/CastRemote.connections|{}connections[0]
+        final fun <get-connections>(): kotlinx.coroutines.flow/Flow<kotlin/String> // com.mmcdole.kivo.core.session/CastRemote.connections.<get-connections>|<get-connections>(){}[0]
+    final val state // com.mmcdole.kivo.core.session/CastRemote.state|{}state[0]
+        final fun <get-state>(): kotlinx.coroutines.flow/StateFlow<com.mmcdole.kivo.core.session/CastRemoteState> // com.mmcdole.kivo.core.session/CastRemote.state.<get-state>|<get-state>(){}[0]
+
+    final fun boostDialogue(kotlin/Boolean) // com.mmcdole.kivo.core.session/CastRemote.boostDialogue|boostDialogue(kotlin.Boolean){}[0]
+    final fun cast(com.mmcdole.kivo.core.play/PlayChoice, kotlin/Long? = ...): kotlin/Boolean // com.mmcdole.kivo.core.session/CastRemote.cast|cast(com.mmcdole.kivo.core.play.PlayChoice;kotlin.Long?){}[0]
+    final fun chooseAudio(kotlin/String) // com.mmcdole.kivo.core.session/CastRemote.chooseAudio|chooseAudio(kotlin.String){}[0]
+    final fun chooseQuality(com.mmcdole.kivo.core.settings/Quality) // com.mmcdole.kivo.core.session/CastRemote.chooseQuality|chooseQuality(com.mmcdole.kivo.core.settings.Quality){}[0]
+    final fun chooseSubtitle(kotlin/String) // com.mmcdole.kivo.core.session/CastRemote.chooseSubtitle|chooseSubtitle(kotlin.String){}[0]
+    final fun chooseVersion(kotlin/String) // com.mmcdole.kivo.core.session/CastRemote.chooseVersion|chooseVersion(kotlin.String){}[0]
+    final fun close() // com.mmcdole.kivo.core.session/CastRemote.close|close(){}[0]
+    final fun disconnect() // com.mmcdole.kivo.core.session/CastRemote.disconnect|disconnect(){}[0]
+    final fun hideUpNext() // com.mmcdole.kivo.core.session/CastRemote.hideUpNext|hideUpNext(){}[0]
+    final fun playNext() // com.mmcdole.kivo.core.session/CastRemote.playNext|playNext(){}[0]
+    final fun retry() // com.mmcdole.kivo.core.session/CastRemote.retry|retry(){}[0]
+    final fun seek(kotlin/Long) // com.mmcdole.kivo.core.session/CastRemote.seek|seek(kotlin.Long){}[0]
+    final fun setSpeed(kotlin/Float) // com.mmcdole.kivo.core.session/CastRemote.setSpeed|setSpeed(kotlin.Float){}[0]
+    final fun setVolume(kotlin/Float) // com.mmcdole.kivo.core.session/CastRemote.setVolume|setVolume(kotlin.Float){}[0]
+    final fun skip(kotlin/Long) // com.mmcdole.kivo.core.session/CastRemote.skip|skip(kotlin.Long){}[0]
+    final fun stopCasting(): com.mmcdole.kivo.core.session/ResumePoint? // com.mmcdole.kivo.core.session/CastRemote.stopCasting|stopCasting(){}[0]
+    final fun togglePlay() // com.mmcdole.kivo.core.session/CastRemote.togglePlay|togglePlay(){}[0]
+    final suspend fun addSubtitle(kotlin/String) // com.mmcdole.kivo.core.session/CastRemote.addSubtitle|addSubtitle(kotlin.String){}[0]
+}
+
+final class com.mmcdole.kivo.core.session/CastRemoteState { // com.mmcdole.kivo.core.session/CastRemoteState|null[0]
+    final val active // com.mmcdole.kivo.core.session/CastRemoteState.active|{}active[0]
+        final fun <get-active>(): kotlin/Boolean // com.mmcdole.kivo.core.session/CastRemoteState.active.<get-active>|<get-active>(){}[0]
+    final val connected // com.mmcdole.kivo.core.session/CastRemoteState.connected|{}connected[0]
+        final fun <get-connected>(): kotlin/Boolean // com.mmcdole.kivo.core.session/CastRemoteState.connected.<get-connected>|<get-connected>(){}[0]
+    final val device // com.mmcdole.kivo.core.session/CastRemoteState.device|{}device[0]
+        final fun <get-device>(): kotlin/String? // com.mmcdole.kivo.core.session/CastRemoteState.device.<get-device>|<get-device>(){}[0]
+    final val durationMs // com.mmcdole.kivo.core.session/CastRemoteState.durationMs|{}durationMs[0]
+        final fun <get-durationMs>(): kotlin/Long // com.mmcdole.kivo.core.session/CastRemoteState.durationMs.<get-durationMs>|<get-durationMs>(){}[0]
+    final val link // com.mmcdole.kivo.core.session/CastRemoteState.link|{}link[0]
+        final fun <get-link>(): com.mmcdole.kivo.core.cast/CastLinkState // com.mmcdole.kivo.core.session/CastRemoteState.link.<get-link>|<get-link>(){}[0]
+    final val loading // com.mmcdole.kivo.core.session/CastRemoteState.loading|{}loading[0]
+        final fun <get-loading>(): kotlin/String? // com.mmcdole.kivo.core.session/CastRemoteState.loading.<get-loading>|<get-loading>(){}[0]
+    final val media // com.mmcdole.kivo.core.session/CastRemoteState.media|{}media[0]
+        final fun <get-media>(): com.mmcdole.kivo.core.cast/CastMedia? // com.mmcdole.kivo.core.session/CastRemoteState.media.<get-media>|<get-media>(){}[0]
+    final val next // com.mmcdole.kivo.core.session/CastRemoteState.next|{}next[0]
+        final fun <get-next>(): com.mmcdole.kivo.api.models/WorkDetail? // com.mmcdole.kivo.core.session/CastRemoteState.next.<get-next>|<get-next>(){}[0]
+    final val playing // com.mmcdole.kivo.core.session/CastRemoteState.playing|{}playing[0]
+        final fun <get-playing>(): kotlin/Boolean // com.mmcdole.kivo.core.session/CastRemoteState.playing.<get-playing>|<get-playing>(){}[0]
+    final val positionMs // com.mmcdole.kivo.core.session/CastRemoteState.positionMs|{}positionMs[0]
+        final fun <get-positionMs>(): kotlin/Long // com.mmcdole.kivo.core.session/CastRemoteState.positionMs.<get-positionMs>|<get-positionMs>(){}[0]
+    final val problem // com.mmcdole.kivo.core.session/CastRemoteState.problem|{}problem[0]
+        final fun <get-problem>(): com.mmcdole.kivo.core.session/CastProblem? // com.mmcdole.kivo.core.session/CastRemoteState.problem.<get-problem>|<get-problem>(){}[0]
+    final val qualities // com.mmcdole.kivo.core.session/CastRemoteState.qualities|{}qualities[0]
+        final fun <get-qualities>(): kotlin.collections/List<com.mmcdole.kivo.core.display/QualityOption> // com.mmcdole.kivo.core.session/CastRemoteState.qualities.<get-qualities>|<get-qualities>(){}[0]
+    final val quality // com.mmcdole.kivo.core.session/CastRemoteState.quality|{}quality[0]
+        final fun <get-quality>(): com.mmcdole.kivo.core.settings/Quality? // com.mmcdole.kivo.core.session/CastRemoteState.quality.<get-quality>|<get-quality>(){}[0]
+    final val status // com.mmcdole.kivo.core.session/CastRemoteState.status|{}status[0]
+        final fun <get-status>(): com.mmcdole.kivo.core.cast/CastStatus? // com.mmcdole.kivo.core.session/CastRemoteState.status.<get-status>|<get-status>(){}[0]
+    final val version // com.mmcdole.kivo.core.session/CastRemoteState.version|{}version[0]
+        final fun <get-version>(): com.mmcdole.kivo.api.models/Version? // com.mmcdole.kivo.core.session/CastRemoteState.version.<get-version>|<get-version>(){}[0]
+    final val volume // com.mmcdole.kivo.core.session/CastRemoteState.volume|{}volume[0]
+        final fun <get-volume>(): kotlin/Float // com.mmcdole.kivo.core.session/CastRemoteState.volume.<get-volume>|<get-volume>(){}[0]
+    final val waiting // com.mmcdole.kivo.core.session/CastRemoteState.waiting|{}waiting[0]
+        final fun <get-waiting>(): kotlin/Boolean // com.mmcdole.kivo.core.session/CastRemoteState.waiting.<get-waiting>|<get-waiting>(){}[0]
+    final val work // com.mmcdole.kivo.core.session/CastRemoteState.work|{}work[0]
+        final fun <get-work>(): com.mmcdole.kivo.api.models/WorkDetail? // com.mmcdole.kivo.core.session/CastRemoteState.work.<get-work>|<get-work>(){}[0]
+
+    final fun component1(): com.mmcdole.kivo.core.cast/CastLinkState // com.mmcdole.kivo.core.session/CastRemoteState.component1|component1(){}[0]
+    final fun component10(): kotlin.collections/List<com.mmcdole.kivo.core.display/QualityOption> // com.mmcdole.kivo.core.session/CastRemoteState.component10|component10(){}[0]
+    final fun component11(): com.mmcdole.kivo.core.settings/Quality? // com.mmcdole.kivo.core.session/CastRemoteState.component11|component11(){}[0]
+    final fun component2(): com.mmcdole.kivo.core.cast/CastMedia? // com.mmcdole.kivo.core.session/CastRemoteState.component2|component2(){}[0]
+    final fun component3(): com.mmcdole.kivo.core.cast/CastStatus? // com.mmcdole.kivo.core.session/CastRemoteState.component3|component3(){}[0]
+    final fun component4(): com.mmcdole.kivo.api.models/WorkDetail? // com.mmcdole.kivo.core.session/CastRemoteState.component4|component4(){}[0]
+    final fun component5(): com.mmcdole.kivo.api.models/WorkDetail? // com.mmcdole.kivo.core.session/CastRemoteState.component5|component5(){}[0]
+    final fun component6(): kotlin/Long // com.mmcdole.kivo.core.session/CastRemoteState.component6|component6(){}[0]
+    final fun component7(): kotlin/String? // com.mmcdole.kivo.core.session/CastRemoteState.component7|component7(){}[0]
+    final fun component8(): com.mmcdole.kivo.core.session/CastProblem? // com.mmcdole.kivo.core.session/CastRemoteState.component8|component8(){}[0]
+    final fun component9(): kotlin/Float // com.mmcdole.kivo.core.session/CastRemoteState.component9|component9(){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.session/CastRemoteState.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.session/CastRemoteState.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // com.mmcdole.kivo.core.session/CastRemoteState.toString|toString(){}[0]
+}
+
 final class com.mmcdole.kivo.core.session/DownloadDevice // com.mmcdole.kivo.core.session/DownloadDevice|null[0]
 
 final class com.mmcdole.kivo.core.session/KivoClient { // com.mmcdole.kivo.core.session/KivoClient|null[0]
@@ -2264,6 +2479,22 @@ final class com.mmcdole.kivo.core.session/PlayerScreenState { // com.mmcdole.kiv
     final fun toString(): kotlin/String // com.mmcdole.kivo.core.session/PlayerScreenState.toString|toString(){}[0]
 }
 
+final class com.mmcdole.kivo.core.session/ResumePoint { // com.mmcdole.kivo.core.session/ResumePoint|null[0]
+    constructor <init>(com.mmcdole.kivo.core.play/PlayChoice, kotlin/Long) // com.mmcdole.kivo.core.session/ResumePoint.<init>|<init>(com.mmcdole.kivo.core.play.PlayChoice;kotlin.Long){}[0]
+
+    final val choice // com.mmcdole.kivo.core.session/ResumePoint.choice|{}choice[0]
+        final fun <get-choice>(): com.mmcdole.kivo.core.play/PlayChoice // com.mmcdole.kivo.core.session/ResumePoint.choice.<get-choice>|<get-choice>(){}[0]
+    final val positionMs // com.mmcdole.kivo.core.session/ResumePoint.positionMs|{}positionMs[0]
+        final fun <get-positionMs>(): kotlin/Long // com.mmcdole.kivo.core.session/ResumePoint.positionMs.<get-positionMs>|<get-positionMs>(){}[0]
+
+    final fun component1(): com.mmcdole.kivo.core.play/PlayChoice // com.mmcdole.kivo.core.session/ResumePoint.component1|component1(){}[0]
+    final fun component2(): kotlin/Long // com.mmcdole.kivo.core.session/ResumePoint.component2|component2(){}[0]
+    final fun copy(com.mmcdole.kivo.core.play/PlayChoice = ..., kotlin/Long = ...): com.mmcdole.kivo.core.session/ResumePoint // com.mmcdole.kivo.core.session/ResumePoint.copy|copy(com.mmcdole.kivo.core.play.PlayChoice;kotlin.Long){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.session/ResumePoint.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.session/ResumePoint.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // com.mmcdole.kivo.core.session/ResumePoint.toString|toString(){}[0]
+}
+
 final class com.mmcdole.kivo.core.session/ScrubPreviews { // com.mmcdole.kivo.core.session/ScrubPreviews|null[0]
     constructor <init>(kotlin/String, com.mmcdole.kivo.api.models/PreviewManifest) // com.mmcdole.kivo.core.session/ScrubPreviews.<init>|<init>(kotlin.String;com.mmcdole.kivo.api.models.PreviewManifest){}[0]
 
@@ -2296,8 +2527,7 @@ final class com.mmcdole.kivo.core.session/SessionAccount { // com.mmcdole.kivo.c
 }
 
 final class com.mmcdole.kivo.core.session/SessionCast { // com.mmcdole.kivo.core.session/SessionCast|null[0]
-    final suspend fun load(kotlin/String, com.mmcdole.kivo.core.play/PlayChoice, kotlin/Long? = ...): com.mmcdole.kivo.core.cast/CastLoad // com.mmcdole.kivo.core.session/SessionCast.load|load(kotlin.String;com.mmcdole.kivo.core.play.PlayChoice;kotlin.Long?){}[0]
-    final suspend fun tokenMessage(kotlin/String): kotlin/String // com.mmcdole.kivo.core.session/SessionCast.tokenMessage|tokenMessage(kotlin.String){}[0]
+    final fun remote(com.mmcdole.kivo.core.cast/CastLink): com.mmcdole.kivo.core.session/CastRemote // com.mmcdole.kivo.core.session/SessionCast.remote|remote(com.mmcdole.kivo.core.cast.CastLink){}[0]
 }
 
 final class com.mmcdole.kivo.core.session/SessionDownloads { // com.mmcdole.kivo.core.session/SessionDownloads|null[0]
@@ -3012,17 +3242,6 @@ sealed class com.mmcdole.kivo.core/RequestProblem { // com.mmcdole.kivo.core/Req
         final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core/RequestProblem.Unreachable.hashCode|hashCode(){}[0]
         final fun toString(): kotlin/String // com.mmcdole.kivo.core/RequestProblem.Unreachable.toString|toString(){}[0]
     }
-}
-
-final object com.mmcdole.kivo.core.cast/CastMessages { // com.mmcdole.kivo.core.cast/CastMessages|null[0]
-    final fun getStatus(): kotlin/String // com.mmcdole.kivo.core.cast/CastMessages.getStatus|getStatus(){}[0]
-    final fun hideUpNext(): kotlin/String // com.mmcdole.kivo.core.cast/CastMessages.hideUpNext|hideUpNext(){}[0]
-    final fun playNext(): kotlin/String // com.mmcdole.kivo.core.cast/CastMessages.playNext|playNext(){}[0]
-    final fun setDialogueBoost(kotlin/Boolean): kotlin/String // com.mmcdole.kivo.core.cast/CastMessages.setDialogueBoost|setDialogueBoost(kotlin.Boolean){}[0]
-    final fun setQuality(com.mmcdole.kivo.api.models/QualityRequest, com.mmcdole.kivo.api.models/QualityRequest): kotlin/String // com.mmcdole.kivo.core.cast/CastMessages.setQuality|setQuality(com.mmcdole.kivo.api.models.QualityRequest;com.mmcdole.kivo.api.models.QualityRequest){}[0]
-    final fun setTracks(kotlin/String?, kotlin/String?): kotlin/String // com.mmcdole.kivo.core.cast/CastMessages.setTracks|setTracks(kotlin.String?;kotlin.String?){}[0]
-    final fun setVersion(kotlin/String): kotlin/String // com.mmcdole.kivo.core.cast/CastMessages.setVersion|setVersion(kotlin.String){}[0]
-    final fun token(kotlin/String): kotlin/String // com.mmcdole.kivo.core.cast/CastMessages.token|token(kotlin.String){}[0]
 }
 
 final object com.mmcdole.kivo.core.data/ListSorts { // com.mmcdole.kivo.core.data/ListSorts|null[0]

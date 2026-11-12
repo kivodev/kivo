@@ -111,7 +111,7 @@ fun PlayerScreen(session: ServerSession, route: PlayerRoute, nav: MobileNav) {
         LaunchedEffect(cast) {
             cast.connections.collect {
                 val handoff = model.handOff() ?: return@collect
-                if (cast.cast(handoff)) nav.replacePlayerWithRemote()
+                if (cast.cast(handoff.choice, handoff.startMs)) nav.replacePlayerWithRemote()
             }
         }
     }

@@ -74,14 +74,20 @@ import com.mmcdole.kivo.android.mobile.theme.space
 import com.mmcdole.kivo.android.mobile.ui.Artwork
 import com.mmcdole.kivo.android.mobile.ui.CardCorners
 import com.mmcdole.kivo.android.mobile.ui.display
+import com.mmcdole.kivo.android.mobile.ui.sentence
 import com.mmcdole.kivo.api.models.WorkDetail
+import com.mmcdole.kivo.core.ProblemCode
+import com.mmcdole.kivo.core.cast.CastLinkState
+import com.mmcdole.kivo.core.display.problem
+import com.mmcdole.kivo.core.session.CastProblem
+import com.mmcdole.kivo.core.session.CastRemote
 import com.mmcdole.kivo.core.display.clock
 import com.mmcdole.kivo.core.display.episodeCode
 import com.mmcdole.kivo.core.player.SKIP_BACK_MS
 import com.mmcdole.kivo.core.player.SKIP_FORWARD_MS
 
 /** Casting, for the screens that show it: null where Google Play services isn't, and nothing casts. */
-val LocalCast = staticCompositionLocalOf<CastViewModel?> { null }
+val LocalCast = staticCompositionLocalOf<CastRemote?> { null }
 
 /**
  * The Cast button: Google's MediaRouteButton, in the top bar's colour,
@@ -91,9 +97,9 @@ val LocalCast = staticCompositionLocalOf<CastViewModel?> { null }
  */
 @Composable
 fun CastButton(modifier: Modifier = Modifier) {
-    val cast = LocalCast.current?.takeIf { it.offered } ?: return
+    val cast = LocalCast.current ?: return
     val state by cast.state.collectAsStateWithLifecycle()
-    if (state.link == LinkState.Unavailable) return
+    if (state.link == CastLinkState.Unavailable) return
     AndroidView(
         factory = { context ->
             MediaRouteButton(ContextThemeWrapper(context, CAST_THEME)).also {
@@ -128,16 +134,21 @@ class CastControllerFragment : MediaRouteControllerDialogFragment() {
     override fun onCreateControllerDialog(context: Context, savedInstanceState: Bundle?) = MediaRouteControllerDialog(ContextThemeWrapper(context, CAST_THEME))
 }
 
-/** "Can't reach the server.", or why the cast stopped, in words. */
+/** "Can't reach the server.", or why the cast stopped, in words: an admin's own when they stopped the play. */
 @Composable
-private fun CastProblem.words(): String = words(
-    unreachable = stringResource(R.string.mobile_cast_unreachable),
-    signedOut = stringResource(R.string.mobile_cast_signed_out),
-    stopped = stringResource(R.string.mobile_playback_stopped),
-    outdated = stringResource(R.string.mobile_cast_server_outdated),
-    receiverOutdated = stringResource(R.string.mobile_cast_receiver_outdated),
-    notPlayable = stringResource(R.string.mobile_cast_not_playable),
-)
+private fun CastProblem.words(): String = when (this) {
+    is CastProblem.Refused -> sentence(problem)
+    CastProblem.Unreachable -> stringResource(R.string.mobile_cast_unreachable)
+    is CastProblem.Receiver -> message?.takeIf { it.isNotEmpty() } ?: when (ProblemCode.of(code)) {
+        ProblemCode.SignedOut -> stringResource(R.string.mobile_cast_signed_out)
+        ProblemCode.PlayEnded -> stringResource(R.string.mobile_playback_stopped)
+        ProblemCode.ServerOutdated -> stringResource(R.string.mobile_cast_server_outdated)
+        ProblemCode.ReceiverOutdated -> stringResource(R.string.mobile_cast_receiver_outdated)
+        ProblemCode.NotPlayable, ProblemCode.NoFallback, ProblemCode.PlaybackFailed -> stringResource(R.string.mobile_cast_not_playable)
+        ProblemCode.InvalidRequest -> display.problem("")
+        else -> display.problem(code)
+    }
+}
 
 /** The movie, or the episode's series. */
 private fun title(work: WorkDetail?): String = work?.episode?.seriesTitle ?: work?.title.orEmpty()
@@ -156,7 +167,7 @@ private fun line(work: WorkDetail?): String? {
  * with Retry. A tap opens the remote.
  */
 @Composable
-fun CastMiniController(cast: CastViewModel, onOpen: () -> Unit) {
+fun CastMiniController(cast: CastRemote, onOpen: () -> Unit) {
     val state by cast.state.collectAsStateWithLifecycle()
     Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh, modifier = Modifier.fillMaxWidth().testTag("castMini")) {
         Row(
@@ -197,7 +208,7 @@ fun CastMiniController(cast: CastViewModel, onOpen: () -> Unit) {
  * cast plays on; once nothing plays on the TV it closes.
  */
 @Composable
-fun CastRemoteScreen(cast: CastViewModel, onClose: () -> Unit, onContinueHere: (PlayerRoute) -> Unit) {
+fun CastRemoteScreen(cast: CastRemote, onClose: () -> Unit, onContinueHere: (PlayerRoute) -> Unit) {
     val state by cast.state.collectAsStateWithLifecycle()
     var scrubbing by remember { mutableStateOf<Float?>(null) }
     Column(
@@ -266,7 +277,7 @@ fun CastRemoteScreen(cast: CastViewModel, onClose: () -> Unit, onContinueHere: (
         }
         Spacer(Modifier.height(space(4)))
         RemoteRow(Icons.Default.PhoneAndroid, stringResource(R.string.mobile_stop_casting), stringResource(R.string.mobile_continue_on_phone), "stopCasting") {
-            cast.stopCasting()?.let(onContinueHere) ?: onClose()
+            cast.stopCasting()?.let { onContinueHere(PlayerRoute(it.choice).copy(positionMs = it.positionMs)) } ?: onClose()
         }
         RemoteRow(Icons.Default.Tv, stringResource(R.string.mobile_disconnect), stringResource(R.string.mobile_keep_playing_on_tv), "disconnect") {
             cast.disconnect()

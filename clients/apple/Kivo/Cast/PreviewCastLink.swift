@@ -16,8 +16,8 @@ enum CastPreview {
     static var scene: String? { ProcessInfo.processInfo.environment["KIVO_CAST_PREVIEW"] }
 }
 
-final class PreviewCastLink: CastLink {
-    weak var delegate: CastLinkDelegate?
+final class PreviewCastLink: KivoCore.CastLink {
+    private var events: (any CastLinkEvents)?
     private let scene: String
     private let session: KivoSession
     private let device = "Living Room TV"
@@ -32,39 +32,39 @@ final class PreviewCastLink: CastLink {
     init(scene: String, session: KivoSession) {
         self.scene = scene
         self.session = session
-        Task { @MainActor [weak self] in self?.begin() }
     }
 
-    private func begin() {
+    func start(events: any CastLinkEvents) {
+        self.events = events
         switch scene {
-        case "found": delegate?.linkChanged(.disconnected, device: nil)
-        case "connecting": delegate?.linkChanged(.connecting, device: device)
+        case "found": events.onLink(state: CastLinkStateDisconnected.shared)
+        case "connecting": events.onLink(state: CastLinkStateConnecting.shared)
         default: connect()
         }
     }
 
     private func connect() {
         connected = true
-        delegate?.linkChanged(.connected(resumed: false), device: device)
-        delegate?.volumeChanged(volume)
+        events?.onLink(state: CastLinkStateConnected(device: device, resumed: false))
+        events?.onVolume(volume: volume)
     }
 
-    var positionSeconds: Double {
+    var positionMs: Int64 {
         guard let media else { return 0 }
-        let base = Double(media.positionMs) / 1000
-        return media.state == .playing ? base + Date().timeIntervalSince(startedAt) * Double(media.rate) : base
+        guard media.state == .playing else { return media.positionMs }
+        return media.positionMs + Int64(Date().timeIntervalSince(startedAt) * 1000 * Double(media.speed))
     }
 
     func showDevices() {
         guard !connected else { return }
-        delegate?.linkChanged(.connecting, device: device)
+        events?.onLink(state: CastLinkStateConnecting.shared)
         Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(1.5))
             self?.connect()
         }
     }
 
-    func load(_ load: CastLoad, title: String, image: URL?) {
+    func load(load: CastLoad, title: String, imageUrl: String?) {
         let custom = (try? JSONSerialization.jsonObject(with: Data(load.customData.utf8))) as? [String: Any] ?? [:]
         Task { @MainActor [weak self, session] in
             let work = await session.library.work(id: load.contentId).answer()
@@ -99,35 +99,35 @@ final class PreviewCastLink: CastLink {
             // The receiver stops its player and says why.
             status = ["error": "playbackFailed", "workId": work.id]
             broadcast()
-            delegate?.mediaChanged(nil)
+            events?.onMedia(media: nil)
             return
         case "upNext":
             positionMs = max(durationMs - 42_000, 0)
             status["upNext"] = ["phase": "countingDown", "secondsLeft": 7]
         default: break
         }
-        emit(CastMedia(workId: work.id, state: state, positionMs: positionMs, durationMs: durationMs, rate: 1, status: nil))
+        emit(CastMedia(workId: work.id, state: state, positionMs: positionMs, durationMs: durationMs, speed: 1, status: nil))
     }
 
     func play() { change(.playing) }
 
     func pause() { change(.paused) }
 
-    func seek(to seconds: Double) {
+    func seek(positionMs: Int64) {
         guard let media else { return }
-        emit(CastMedia(workId: media.workId, state: media.state, positionMs: Int64(seconds * 1000), durationMs: media.durationMs, rate: media.rate, status: nil))
+        emit(CastMedia(workId: media.workId, state: media.state, positionMs: positionMs, durationMs: media.durationMs, speed: media.speed, status: nil))
     }
 
-    func setRate(_ rate: Float) {
+    func setSpeed(speed: Float) {
         guard let media else { return }
-        emit(CastMedia(workId: media.workId, state: media.state, positionMs: Int64(positionSeconds * 1000), durationMs: media.durationMs, rate: rate, status: nil))
+        emit(CastMedia(workId: media.workId, state: media.state, positionMs: positionMs, durationMs: media.durationMs, speed: speed, status: nil))
     }
 
-    func setVolume(_ volume: Float) {
+    func setVolume(volume: Float) {
         self.volume = volume
     }
 
-    func send(_ message: String) {
+    func send(message: String) {
         guard let body = (try? JSONSerialization.jsonObject(with: Data(message.utf8))) as? [String: Any] else { return }
         switch body["type"] as? String {
         case "kivo.setTracks":
@@ -153,21 +153,23 @@ final class PreviewCastLink: CastLink {
     func end(stopCasting: Bool) {
         connected = false
         media = nil
-        delegate?.mediaChanged(nil)
-        delegate?.linkChanged(.disconnected, device: nil)
+        events?.onMedia(media: nil)
+        events?.onLink(state: CastLinkStateDisconnected.shared)
     }
 
-    func close() {}
+    func close() {
+        events = nil
+    }
 
     private func change(_ state: CastMedia.State) {
         guard let media else { return }
-        emit(CastMedia(workId: media.workId, state: state, positionMs: Int64(positionSeconds * 1000), durationMs: media.durationMs, rate: media.rate, status: nil))
+        emit(CastMedia(workId: media.workId, state: state, positionMs: positionMs, durationMs: media.durationMs, speed: media.speed, status: nil))
     }
 
     private func emit(_ media: CastMedia) {
         self.media = media
         startedAt = Date()
-        delegate?.mediaChanged(media)
+        events?.onMedia(media: media)
         broadcast()
     }
 
@@ -205,7 +207,7 @@ final class PreviewCastLink: CastLink {
         var message = status
         message["type"] = "kivo.status"
         guard let data = try? JSONSerialization.data(withJSONObject: message) else { return }
-        delegate?.received(String(decoding: data, as: UTF8.self))
+        events?.onMessage(message: String(decoding: data, as: UTF8.self))
     }
 }
 #endif
