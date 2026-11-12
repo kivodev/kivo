@@ -208,7 +208,7 @@ func TestCheckPureFindsImport(t *testing.T) {
 		}},
 		{Path: "markers/detect/b.go", Pkg: "markers/detect", Imports: []string{
 			"os", "os/exec", "database/sql", module + "/internal/store", module + "/internal/media/ffmpeg",
-		}},
+		}, Now: []int{12}},
 		{Path: "markers/a.go", Pkg: "markers", Imports: []string{"os", module + "/internal/store"}},
 	}
 	vs := checkPure(files, map[string][]string{"markers/detect": {"media"}, "rules": {}})
@@ -216,8 +216,8 @@ func TestCheckPureFindsImport(t *testing.T) {
 	for _, v := range vs {
 		got = append(got, v.File)
 	}
-	if want := slices.Repeat([]string{"markers/detect/b.go"}, 5); !slices.Equal(got, append(want, "pure")) {
-		t.Fatalf("got %v, want b.go's five imports and rules' missing package", vs)
+	if want := slices.Repeat([]string{"markers/detect/b.go"}, 6); !slices.Equal(got, append(want, "pure")) {
+		t.Fatalf("got %v, want b.go's five imports, its clock read and rules' missing package", vs)
 	}
 }
 
