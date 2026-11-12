@@ -20,16 +20,13 @@ final class IPadLayoutTests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .pad, "the iPad's layouts")
-        app.launchEnvironment["KIVO_CLIENT_ID"] = "kivo-ui-tests"
-        // Sign-in goes straight to the server under test, without browsing the network.
-        app.launchEnvironment["KIVO_SERVER"] = environment["KIVO_SERVER"]
         XCUIDevice.shared.orientation = .landscapeLeft
     }
 
     /// The sidebar's tabs and account, a work from a library's tab, its
     /// player's popover and Close, and the View menu's shortcuts.
     func testTheSidebarAtFullScreen() throws {
-        try signIn()
+        try signIn(app, home: app.homeTab, allowingLocalNetwork: true)
         fill()
         XCTAssert(sidebarItem("Lists").waitForExistence(timeout: 10), "the sidebar has no Lists")
         XCTAssert(sidebarItem(library).exists, "the sidebar has no \(library)")
@@ -81,7 +78,7 @@ final class IPadLayoutTests: XCTestCase {
     /// A work's page open in a library's tab stays open as the window
     /// narrows to the iPhone's layout and widens again.
     func testTheOpenPageSurvivesAResize() throws {
-        try signIn()
+        try signIn(app, home: app.homeTab, allowingLocalNetwork: true)
         fill()
         XCTAssert(sidebarItem(library).waitForExistence(timeout: 10), "the sidebar has no \(library)")
         sidebarItem(library).tap()
@@ -113,7 +110,7 @@ final class IPadLayoutTests: XCTestCase {
     /// A third of the screen is the iPhone's layout: the tab bar with
     /// Libraries, whose list opens a library, Lists, and Search.
     func testAThirdOfTheScreenIsTheIPhoneLayout() throws {
-        try signIn()
+        try signIn(app, home: app.homeTab, allowingLocalNetwork: true)
         resize(toFraction: 0.33)
         let libraries = app.tabBars.buttons["Libraries"].exists ? app.tabBars.buttons["Libraries"] : app.buttons["Libraries"].firstMatch
         XCTAssert(libraries.waitForExistence(timeout: 10), "a third of the screen has no Libraries tab")
@@ -145,7 +142,7 @@ final class IPadLayoutTests: XCTestCase {
     /// nothing on the server.
     func testSeasonPillsAtFullScreen() throws {
         let series = environment["KIVO_SERIES"] ?? "Severance"
-        try signIn()
+        try signIn(app, home: app.homeTab, allowingLocalNetwork: true)
         fill()
         sidebarItem("Search").tap()
         let field = app.searchFields.firstMatch
@@ -215,31 +212,6 @@ final class IPadLayoutTests: XCTestCase {
 
     // MARK: Steps
 
-    private func signIn() throws {
-        let server = try XCTUnwrap(environment["KIVO_SERVER"], "set TEST_RUNNER_KIVO_SERVER")
-        let username = try XCTUnwrap(environment["KIVO_USERNAME"], "set TEST_RUNNER_KIVO_USERNAME")
-        let password = try XCTUnwrap(environment["KIVO_PASSWORD"], "set TEST_RUNNER_KIVO_PASSWORD")
-        app.launch()
-        // A first run asks to find devices on the local network.
-        let allow = springboard.buttons["Allow"]
-        if allow.waitForExistence(timeout: 3) { allow.tap() }
-        let address = app.textFields["address"]
-        let user = app.textFields["username"]
-        let home = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Home")).firstMatch
-        let start = NSPredicate { _, _ in address.exists || user.exists || home.exists }
-        wait(for: [expectation(for: start, evaluatedWith: nil)], timeout: 20)
-        if home.exists { return }
-        XCTAssert(user.waitForExistence(timeout: 15), "the server at \(server) wasn't found")
-        user.tap()
-        user.typeText(username)
-        let secret = app.secureTextFields["password"]
-        secret.tap()
-        secret.typeText(password + "\n")
-        XCTAssert(home.waitForExistence(timeout: 20), "Home didn't show after signing in")
-        // iPadOS's offer to save the password goes away with the next tap
-        // elsewhere, so it's left alone.
-    }
-
     /// A tab in the sidebar, which shows as a cell or a button.
     private func sidebarItem(_ name: String) -> XCUIElement {
         let cell = app.cells.matching(NSPredicate(format: "label == %@", name)).firstMatch
@@ -286,12 +258,5 @@ final class IPadLayoutTests: XCTestCase {
         let button = springboard.buttons[item]
         XCTAssert(button.waitForExistence(timeout: 3), "the window controls have no \(item)")
         button.tap()
-    }
-
-    private func keep(_ name: String) {
-        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        shot.name = name
-        shot.lifetime = .keepAlways
-        add(shot)
     }
 }

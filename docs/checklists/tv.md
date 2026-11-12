@@ -41,7 +41,6 @@ Use a library with a direct-play MP4 (H.264 and AAC), an MKV with embedded SubRi
 - [ ] A wrong address or a server that's switched off brings the address screen back with the error, the old address still in the field, and a correct address then works.
 - [ ] The address field takes text from the on-screen keyboard and the remote's digits, and Back from the address screen exits the app.
 - [ ] A server on https with a valid certificate works; an address with or without `https://` on one with a self-signed certificate says it couldn't connect securely, names the certificate and suggests `http://`, and doesn't fall back to http.
-- [ ] Exit: on Home, Back to Exit Kivo?, then Exit, leaves for the TV's home screen, with no address screen left on screen. Repeat after opening a work, going back with Back, and moving between a few rail destinations, so the app's own history has entries before and after the current one.
 
 ## Packaged app
 
@@ -55,8 +54,8 @@ The packaged app (`clients/tizen`) holds the TV build in its `.wgt` and talks to
 - [ ] The token persists: close the app from the TV's Home key and reopen it, put the TV in standby for ten minutes and wake it, and restart the server; each time the app comes back to Home signed in with no address or sign-in screen between.
 - [ ] Settings › About shows the app's version and the server's version.
 - [ ] Sign out: Settings › Sign out shows the sign-in screen with the address kept, and the session is gone from Where you're signed in. Revoking the TV's session from the web client signs the TV out within 30 seconds, to the sign-in screen. Change server shows the address screen with the saved address in the field, and the session is gone; with the server switched off, Change server still shows the address screen.
-- [ ] Exit: on Home, Back to Exit Kivo?, then Exit, leaves for the TV's home screen at once, through the Tizen API; the same after 50 screens opened (rail destinations, works, Back). Back on the address screen and on the sign-in screen exits the app.
-- [ ] Media keys: in the player, Play (415), Pause (19), Play/Pause (Tizen 10252), Stop (413), Fast forward (417), Rewind (412), Previous (10232), Next (10233) and Info (457) each act once, Previous and Next playing the previous or next episode. With a book docked, Play/Pause pauses and resumes it on any screen, and Previous and Next move it by chapter.
+- [ ] Exit: on Home, Back to Exit Kivo?, then Exit, leaves for the TV's home screen at once, through the Tizen API, with no address screen left on screen; the same after 50 screens opened (rail destinations, works, Back), so the app's own history has entries before and after the current one. Back on the address screen and on the sign-in screen exits the app.
+- [ ] Media keys: in the player, Play (415), Pause (19), Play/Pause (Tizen 10252), Stop (413), Fast forward (417), Rewind (412), Previous (10232), Next (10233) and Info (457) each act once, Previous and Next playing the previous or next episode. With a book docked, Play/Pause pauses and resumes it on any screen, and Previous and Next move it by chapter. The app registers the keys as it starts; to check that holds, start it fresh, play a direct-play film and press Play/Pause on the physical remote: it should pause and resume the film, not do nothing or show the TV's own media bar. Record any key that doesn't arrive, and check the player still works with OK, the arrows and Back.
 - [ ] Panel: on a 4K TV, a 4K file the TV decodes plays as Direct Play; on a 1080p TV the capability report in the server's play diagnostics caps video at 20 Mb/s.
 - [ ] Error reports from the packaged app show on the Logs page with the app's version as the build, the route's template and the TV's engine.
 - [ ] Deep use: open 50 screens, play a film, seek, leave the player and return; routes work throughout (the URL bar in the remote inspector shows `index.html#/...`), and nothing navigates away from the package's page.
@@ -98,7 +97,6 @@ Check each screen with the arrows, OK and the Back key (Tizen 10009).
 - [ ] A far seek (an hour ahead) plays within a few seconds at the right place.
 - [ ] A burned-in ASS track and a burned-in PGS track show at the right size and timing, with no second copy drawn by the page.
 - [ ] A SubRip track chosen from the menu shows and follows seeks; Off hides it.
-- [ ] Media keys: Play (415), Pause (19), Play/Pause (Tizen 10252), Stop (413), Fast forward (417) and Rewind (412) do what they say, and each press does it once. The packaged app registers them as it starts; to check the registration holds, start the app fresh, play a direct-play film, and press Play/Pause on the physical remote: it should pause and then resume the film, not do nothing or show the TV's own media bar. Then Stop, Fast forward, Rewind and Info. Record any key that doesn't arrive, and check the player still works with OK, the arrows and Back.
 - [ ] Info (457) opens and closes the stream info over everything, including a menu.
 - [ ] OK with the controls hidden shows them and doesn't pause; Left and Right seek 10 seconds, held they scrub faster and seek once on release; Back hides the controls, then leaves.
 - [ ] Skip Intro and Up next take focus, and OK on them acts once.

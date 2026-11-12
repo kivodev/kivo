@@ -486,9 +486,9 @@ final class SignInAndPlayTests: XCTestCase {
 
     /// Sets the user's place in the work titled [title] in [library] through the API.
     private func setPosition(of title: String, in library: String, ms: Int) throws {
-        let server = try XCTUnwrap(environment["KIVO_SERVER"], "set TEST_RUNNER_KIVO_SERVER")
-        let username = try XCTUnwrap(environment["KIVO_USERNAME"], "set TEST_RUNNER_KIVO_USERNAME")
-        let password = try XCTUnwrap(environment["KIVO_PASSWORD"], "set TEST_RUNNER_KIVO_PASSWORD")
+        let server = try TestServer.main.address
+        let username = try TestServer.main.username
+        let password = try TestServer.main.password
         let base = server.contains("://") ? server : "http://\(server):8484"
         let session = URLSession(configuration: .ephemeral)
         func call(_ method: String, _ path: String, _ body: [String: Any]? = nil) throws -> [String: Any] {
@@ -609,9 +609,9 @@ final class SignInAndPlayTests: XCTestCase {
     /// sign-in from a last run; returns the user button that marks Home.
     @discardableResult
     private func signIn(showingSteps: Bool = false) throws -> XCUIElement {
-        let server = try XCTUnwrap(environment["KIVO_SERVER"], "set TEST_RUNNER_KIVO_SERVER")
-        let username = try XCTUnwrap(environment["KIVO_USERNAME"], "set TEST_RUNNER_KIVO_USERNAME")
-        let password = try XCTUnwrap(environment["KIVO_PASSWORD"], "set TEST_RUNNER_KIVO_PASSWORD")
+        let server = try TestServer.main.address
+        let username = try TestServer.main.username
+        let password = try TestServer.main.password
 
         app.launch()
 
@@ -691,16 +691,6 @@ final class SignInAndPlayTests: XCTestCase {
             Thread.sleep(forTimeInterval: 0.5)
         }
         return condition()
-    }
-
-    /// Keeps the screen in the result bundle, and with `KIVO_SHOTS_DIR`
-    /// set, writes it there as a PNG too.
-    private func keep(_ name: String) {
-        let screenshot = XCUIScreen.main.screenshot()
-        add(named(name, screenshot))
-        if let dir = environment["KIVO_SHOTS_DIR"] {
-            try? screenshot.pngRepresentation.write(to: URL(fileURLWithPath: dir).appendingPathComponent("\(name).png"))
-        }
     }
 
     private func named(_ name: String, _ screenshot: XCUIScreenshot) -> XCTAttachment {

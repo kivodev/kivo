@@ -14,14 +14,10 @@ final class BookPlayerTests: XCTestCase {
 
     override func setUpWithError() throws {
         continueAfterFailure = false
-        // Every run signs in as one client, replacing the last run's session.
-        app.launchEnvironment["KIVO_CLIENT_ID"] = "kivo-ui-tests"
-        // Sign-in goes straight to the server under test, without browsing the network.
-        app.launchEnvironment["KIVO_SERVER"] = environment["KIVO_SERVER"]
     }
 
     func testListening() throws {
-        try signIn()
+        try signIn(app)
         openBook()
         keep("ios-book-detail")
 
@@ -172,42 +168,10 @@ final class BookPlayerTests: XCTestCase {
         sleep(1)
     }
 
-    /// Launches the app, signed in already or signing in.
-    private func signIn() throws {
-        let server = try XCTUnwrap(environment["KIVO_SERVER"], "set TEST_RUNNER_KIVO_SERVER")
-        let username = try XCTUnwrap(environment["KIVO_USERNAME"], "set TEST_RUNNER_KIVO_USERNAME")
-        let password = try XCTUnwrap(environment["KIVO_PASSWORD"], "set TEST_RUNNER_KIVO_PASSWORD")
-        app.launch()
-        let address = app.textFields["address"]
-        let user = app.textFields["username"]
-        let home = app.buttons["user"]
-        let start = NSPredicate { _, _ in address.exists || user.exists || home.exists }
-        wait(for: [expectation(for: start, evaluatedWith: nil)], timeout: 20)
-        if !home.exists {
-            XCTAssert(user.waitForExistence(timeout: 15), "the server at \(server) wasn't found")
-            user.tap()
-            user.typeText(username)
-            let secret = app.secureTextFields["password"]
-            secret.tap()
-            secret.typeText(password)
-            app.buttons["Sign in"].tap()
-            let notNow = XCUIApplication(bundleIdentifier: "com.apple.SafariViewService").buttons["Not Now"]
-            if notNow.waitForExistence(timeout: 8) { notNow.tap() }
-        }
-        XCTAssert(home.waitForExistence(timeout: 20), "Home didn't show")
-    }
-
     /// Taps a menu's item once its menu has opened.
     private func tapWhenHittable(_ element: XCUIElement) {
         XCTAssert(element.waitForExistence(timeout: 5), "\(element) didn't show")
         sleep(1)
         element.tap()
-    }
-
-    private func keep(_ name: String) {
-        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        shot.name = name
-        shot.lifetime = .keepAlways
-        add(shot)
     }
 }

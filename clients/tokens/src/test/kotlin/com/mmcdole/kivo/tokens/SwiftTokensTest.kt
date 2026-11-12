@@ -32,16 +32,14 @@ class SwiftTokensTest {
         assertContains(source, "    public let cardShadow: [KivoShadow]")
         assertContains(source, "static let dark = KivoPalette(")
         assertContains(source, "        scheme: .light,")
-        // A rem is 16 points; TV pixels on a 1080p canvas are points too.
+        // A rem is 16 points.
         assertContains(source, "public static let spacing: CGFloat = 4")
         assertContains(source, "public static let sidebarWidth: CGFloat = 240")
         assertContains(source, "public static let base = KivoTextStyle(size: 16, lineHeight: 24)")
-        assertContains(source, "public static let base = KivoTextStyle(size: 28, lineHeight: 40)")
         assertContains(source, "public static let xl2 = KivoTextStyle(size: 28, lineHeight: 36)")
-        assertContains(source, "public static let focusRingWidth: CGFloat = 4")
         assertContains(source, "public static let poster: CGFloat = 2.0 / 3.0")
-        assertContains(source, "public static let fast: Double = 0.15")
         assertEquals(false, "posterGrid" in source)
+        assertEquals(false, "enum Tv" in source)
     }
 
     @Test

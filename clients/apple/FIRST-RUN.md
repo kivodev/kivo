@@ -227,7 +227,10 @@ sleep timer, goes to the next chapter, shows the light theme, and stops.
 placeholder, types "name of the rose" (`KIVO_SEARCH`), opens a result and
 comes Back to the same query and results without the keyboard, keeps them
 across another tab, and taps Search on a result's page to go back to the
-results with the field focused; its screenshots are named `ios-search-…`. It reads the server and the account from the environment;
+results with the field focused; its screenshots are named `ios-search-…`.
+Its second test chooses Search after each other tab twice, putting the
+keyboard away first with the field's Close, and checks each time that the
+field has the cursor with the keyboard up. It reads the server and the account from the environment;
 `xcodebuild test` passes a variable prefixed `TEST_RUNNER_` into the test
 runner without the prefix. Keep the password out of the shell's history and
 the repository, for example in a file only you can read:
@@ -382,8 +385,3 @@ the system's window controls, the Left tile and then the resize corner, to a
 third of the screen, where it finds the iPhone's tab bar with the list of libraries
 and Search, and it checks a work's page stays open while the window narrows
 and widens again. Its screenshots are named `ipad-…`.
-`SearchFocusTests` runs against the same server and environment: it
-chooses Search the first time, after each other tab twice (putting the
-keyboard away first with the field's Close, as the keyboard covers the tab
-bar), and again on a result's page, and checks each time that the field has
-the cursor with the keyboard up.
