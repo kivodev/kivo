@@ -94,7 +94,7 @@ info:
 
     Every request a Kivo app makes says what is asking, a header per field:
 
-    - `Kivo-App`: the app, such as `kivo-android`, `kivo-apple`, `kivo-web` or `kivo-tizen`.
+    - `Kivo-App`: the app, such as `kivo-android`, `kivo-apple`, `kivo-web`, `kivo-tizen` or `kivo-webos`.
     - `Kivo-App-Version`: its semantic version, with the build number as
       build metadata where it has one, such as `0.3.0+78`. The web client
       sends its server's version.
@@ -4478,7 +4478,7 @@ components:
     ClientPlatform:
       type: string
       description: What a client runs on.
-      enum: [androidTv, appleTv, iPhone, iPad, androidPhone, browser, cast, tizen]
+      enum: [androidTv, appleTv, iPhone, iPad, androidPhone, browser, cast, tizen, webos]
 
     ClientDevice:
       type: object

@@ -202,7 +202,7 @@ enum Platform {
         case .ipad: String(localized: "iPad")
         case .androidPhone: String(localized: "Android phone")
         case .browser: String(localized: "Browser")
-        case .cast, .tizen, .unknown, nil: nil
+        case .cast, .tizen, .webos, .unknown, nil: nil
         }
     }
 }

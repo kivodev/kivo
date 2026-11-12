@@ -289,6 +289,7 @@ const (
 	ClientPlatformIPad         ClientPlatform = "iPad"
 	ClientPlatformIPhone       ClientPlatform = "iPhone"
 	ClientPlatformTizen        ClientPlatform = "tizen"
+	ClientPlatformWebos        ClientPlatform = "webos"
 )
 
 // Valid indicates whether the value is a known member of the ClientPlatform enum.
@@ -309,6 +310,8 @@ func (e ClientPlatform) Valid() bool {
 	case ClientPlatformIPhone:
 		return true
 	case ClientPlatformTizen:
+		return true
+	case ClientPlatformWebos:
 		return true
 	default:
 		return false
