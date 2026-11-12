@@ -2,6 +2,7 @@ package com.mmcdole.kivo.android.mobile.downloads
 
 import com.mmcdole.kivo.android.mobile.ui.display
 import com.mmcdole.kivo.android.mobile.ui.sentence
+import com.mmcdole.kivo.android.quietly
 import com.mmcdole.kivo.api.models.DownloadEstimate
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.Load

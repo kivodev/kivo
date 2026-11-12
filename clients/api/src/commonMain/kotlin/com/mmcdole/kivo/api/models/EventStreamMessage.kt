@@ -8,7 +8,6 @@ import kotlinx.serialization.descriptors.buildClassSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonDecoder
-import kotlinx.serialization.json.JsonEncoder
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
@@ -48,16 +47,8 @@ sealed interface EventStreamMessage {
             }
         }
 
-        override fun serialize(encoder: Encoder, value: EventStreamMessage) {
-            val output = encoder as? JsonEncoder ?: throw SerializationException("EventStreamMessage is written as JSON")
-            val frame = when (value) {
-                is Snapshot -> output.json.encodeToJsonElement(SnapshotMessage.serializer(), value.message)
-                is Event -> output.json.encodeToJsonElement(EventMessage.serializer(), value.message)
-                is Resync -> output.json.encodeToJsonElement(ResyncMessage.serializer(), value.message)
-                is KeepAlive -> output.json.encodeToJsonElement(KeepAliveMessage.serializer(), value.message)
-                Unknown -> throw SerializationException("an unknown frame can't be written")
-            }
-            output.encodeJsonElement(frame)
-        }
+        /** Clients send nothing on the socket. */
+        override fun serialize(encoder: Encoder, value: EventStreamMessage): Unit =
+            throw SerializationException("EventStreamMessage is only read")
     }
 }

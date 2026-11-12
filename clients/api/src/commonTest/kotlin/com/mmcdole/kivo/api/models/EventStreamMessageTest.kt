@@ -34,10 +34,4 @@ class EventStreamMessageTest {
         val event = decode("""{"type":"event","kind":"somethingNew","extra":true}""")
         assertEquals("somethingNew", (event as EventStreamMessage.Event).message.kind)
     }
-
-    @Test
-    fun framesRoundTrip() {
-        val frame = EventStreamMessage.Event(EventMessage(EventMessage.Type.event, kind = "tasksChanged"))
-        assertEquals(frame, decode(json.encodeToString(EventStreamMessage.serializer(), frame)))
-    }
 }
