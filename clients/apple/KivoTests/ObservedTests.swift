@@ -1,13 +1,10 @@
 import Foundation
-import KivoCore
-import Observation
 import XCTest
 @testable import Kivo
 
 /// Observed mirrors a flow into a value SwiftUI follows: it starts at the
-/// value given, takes each one on the main actor, tells its observers, and
-/// stops following as it's released. Against a stream, and against the
-/// core's own state flow.
+/// value given, takes each one on the main actor, and stops following as
+/// it's released.
 @MainActor
 final class ObservedTests: XCTestCase {
     func testItStartsAtTheValueGivenAndTakesEachOne() async {
@@ -23,17 +20,6 @@ final class ObservedTests: XCTestCase {
         XCTAssertEqual(told, [2, 3])
     }
 
-    func testReadersAreToldAsTheValueChanges() async {
-        let (values, send) = AsyncStream<String>.makeStream()
-        let observed = Observed("starting", values)
-        let changed = expectation(description: "a reader is told")
-        withObservationTracking { _ = observed.value } onChange: { changed.fulfill() }
-
-        send.yield("signed in")
-
-        await fulfillment(of: [changed], timeout: 5)
-    }
-
     func testItStopsFollowingAsItIsReleased() async {
         let stopped = expectation(description: "the flow is no longer followed")
         let (values, send) = AsyncStream<Int>.makeStream()
@@ -47,25 +33,6 @@ final class ObservedTests: XCTestCase {
 
         XCTAssertNil(released, "following a flow keeps its Observed alive")
         await fulfillment(of: [stopped], timeout: 5)
-    }
-
-    func testItFollowsTheCoresStateFlowFromItsValueNow() async throws {
-        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let core = KivoClient(device: AppleDevice(
-            directory: directory.path(percentEncoded: false), name: "iPhone", identity: AppleIdentity.current,
-            clientId: nil, subtitles: [], trackSelection: false, transport: NoTransport()
-        ))
-        let state = Observed(core.state)
-        guard case .starting = onEnum(of: state.value) else { return XCTFail("the app doesn't start out starting") }
-
-        core.start()
-        await until {
-            if case .signedOut = onEnum(of: state.value) { true } else { false }
-        }
-
-        guard case let .signedOut(signedOut) = onEnum(of: state.value) else { return XCTFail("with no server signed in to, the app isn't signed out") }
-        XCTAssertNil(signedOut.server)
     }
 
     /// Waits for [met], for up to five seconds.

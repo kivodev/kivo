@@ -2,19 +2,11 @@ import KivoCore
 import KivoUI
 import SwiftUI
 
-/// The app's App Store listing, which "Update Kivo" links to. Nil until
-/// the app has one, and the screen then has no link.
-enum StoreListing {
-    static let url: URL? = nil
-}
-
 /// Why the app and a server don't work together, as its screen says it: a
 /// title and a sentence. Nil when they do.
 struct Incompatibility: Equatable {
     let title: String
     let sentence: String
-    /// The app is the one to update, not the server.
-    let appTooOld: Bool
 
     init?(_ compatibility: Compatibility, server: String) {
         switch onEnum(of: compatibility) {
@@ -23,11 +15,9 @@ struct Incompatibility: Equatable {
         case let .serverTooOld(old):
             title = String(localized: "This server needs an update")
             sentence = String(localized: "Kivo \(old.appVersion) works with server \(old.minServerVersion) or newer. \(server) runs \(old.serverVersion). Ask whoever runs it to update.")
-            appTooOld = false
         case let .appTooOld(old):
             title = String(localized: "Update Kivo")
             sentence = String(localized: "\(server) needs Kivo \(old.minAppVersion) or newer. You have \(old.appVersion).")
-            appTooOld = true
         }
     }
 }
@@ -43,24 +33,19 @@ struct CompatibilityView: View {
     @State private var retrying = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            MessageView(
-                problem.title,
-                sentence: problem.sentence,
-                action: (String(localized: "Try again"), {
-                    guard !retrying else { return }
-                    retrying = true
-                    Task {
-                        await retry()
-                        retrying = false
-                    }
-                }),
-                secondary: (String(localized: "Change server"), changeServer)
-            )
-            if problem.appTooOld, let url = StoreListing.url {
-                Link(String(localized: "Open the App Store"), destination: url)
-            }
-        }
+        MessageView(
+            problem.title,
+            sentence: problem.sentence,
+            action: (String(localized: "Try again"), {
+                guard !retrying else { return }
+                retrying = true
+                Task {
+                    await retry()
+                    retrying = false
+                }
+            }),
+            secondary: (String(localized: "Change server"), changeServer)
+        )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(palette.bg)
         .accessibilityIdentifier("incompatible")

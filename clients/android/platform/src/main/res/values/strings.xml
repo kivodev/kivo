@@ -12,5 +12,4 @@
     <!-- The server's name, the oldest app it supports and the app's version. -->
     <string name="app_too_old_title">Update Kivo</string>
     <string name="app_too_old_sentence">%1$s needs Kivo %2$s or newer. You have %3$s.</string>
-    <string name="app_too_old_store">Get the update</string>
 </resources>

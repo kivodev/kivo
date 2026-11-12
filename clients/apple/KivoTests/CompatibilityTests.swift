@@ -52,7 +52,6 @@ final class CompatibilityTests: XCTestCase {
         XCTAssertEqual(problem.title, "This server needs an update")
         XCTAssertTrue(problem.sentence.hasPrefix("Kivo \(appVersion) works with server "), problem.sentence)
         XCTAssertTrue(problem.sentence.hasSuffix(" or newer. Den runs 0.0.1. Ask whoever runs it to update."), problem.sentence)
-        XCTAssertFalse(problem.appTooOld)
     }
 
     func testAnAppTooOldForTheServerSaysSoInPlaceOfItsPassword() async throws {
@@ -64,7 +63,6 @@ final class CompatibilityTests: XCTestCase {
         }
         XCTAssertEqual(problem.title, "Update Kivo")
         XCTAssertEqual(problem.sentence, "Den needs Kivo 99.0.0 or newer. You have \(appVersion).")
-        XCTAssertTrue(problem.appTooOld)
     }
 
     func testAServerTheAppWorksWithGoesToItsPassword() async throws {
