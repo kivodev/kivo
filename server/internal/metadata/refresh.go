@@ -137,6 +137,9 @@ func (s *Service) refreshWork(ctx context.Context, work id.ID) error {
 // artwork of a movie's collection and of its trailers. It writes them all in one transaction. It
 // also records when the work was refreshed, unless a provider was down.
 //
+// Images are encoded into the cache before the transaction. If the refresh
+// fails or writes nothing, the files it encoded are left for pruneImages.
+//
 // A work that was unmatched meanwhile gets nothing written, because nothing
 // describes it. That covers a work that became provisional or now sits under
 // a provisional root work.
@@ -190,20 +193,14 @@ func (s *Service) refresh(ctx context.Context, work id.ID, fr Freshness) error {
 	}
 	trailers, err := s.planTrailers(ctx, w, meta)
 	if err != nil {
-		s.deleteEncodedPhotos(photos)
 		return err
 	}
 	plan, err := s.planArtwork(ctx, w, f, l)
 	if err != nil {
-		s.deleteEncodedPhotos(photos)
-		s.deleteEncodedTrailers(trailers)
 		return err
 	}
 	coll, err := s.planCollectionArt(ctx, f)
 	if err != nil {
-		s.deleteEncoded(plan.add)
-		s.deleteEncodedPhotos(photos)
-		s.deleteEncodedTrailers(trailers)
 		return err
 	}
 
@@ -244,10 +241,6 @@ func (s *Service) refresh(ctx context.Context, work id.ID, fr Freshness) error {
 		err = fmt.Errorf("write the refresh: %w", err)
 	}
 	if err != nil || !wrote {
-		s.deleteEncoded(plan.add)
-		s.deleteEncoded(coll.add)
-		s.deleteEncodedPhotos(photos)
-		s.deleteEncodedTrailers(trailers)
 		return err
 	}
 	for _, r := range plan.remove {

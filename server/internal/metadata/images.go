@@ -294,13 +294,6 @@ func webpSize(b []byte) (w, h int, err error) {
 	return 0, 0, bad
 }
 
-// deleteEncoded removes the files of encoded images that won't be recorded.
-func (s *Service) deleteEncoded(add []dbq.InsertImageParams) {
-	for _, p := range add {
-		s.deleteFiles(p.ID, p.Kind)
-	}
-}
-
 // deleteImage removes a deleted image's files, and the original of an
 // upload.
 func (s *Service) deleteImage(row dbq.Image) {
