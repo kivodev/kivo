@@ -175,10 +175,15 @@ export function clearFilters(search: BrowseSearch): BrowseSearch {
 // sorted one way for once keeps nothing.
 const storageKey = (libraryId: string) => `kivo.library.${libraryId}`;
 
-/** The URL state this browser last used in a library. */
+/**
+ * The URL state this browser last used in a library. A value it doesn't
+ * know, as from an older version, is left out, key and all, so a library
+ * kept with nothing known opens with its defaults.
+ */
 export function storedBrowse(libraryId: string): BrowseSearch {
   const stored = browseSearchSchema.safeParse(readStoredJson(storageKey(libraryId)) ?? {});
-  return stored.success ? stored.data : {};
+  if (!stored.success) return {};
+  return Object.fromEntries(Object.entries(stored.data).filter(([, value]) => value !== undefined));
 }
 
 export function storeBrowse(libraryId: string, search: BrowseSearch): void {
