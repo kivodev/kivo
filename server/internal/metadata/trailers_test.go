@@ -232,7 +232,8 @@ func TestRefreshSeriesTrailers(t *testing.T) {
 }
 
 // A thumbnail that can't be fetched leaves the trailer without one, and the
-// refresh succeeds.
+// refresh succeeds. A trailer with no thumbnail at any size is dropped, since
+// its video is gone.
 func TestRefreshTrailerWithoutThumbnail(t *testing.T) {
 	e := newEnv(t)
 	_, folder := e.b.Library(catalog.Movies)
@@ -244,7 +245,7 @@ func TestRefreshTrailerWithoutThumbnail(t *testing.T) {
 
 	e.mustRefresh(w)
 
-	want := []string{"n9xhJrPXop4 Official Main Trailer -", "8g18jFHCLXk Official Trailer -"}
+	want := []string{"8g18jFHCLXk Official Trailer -"}
 	if got := e.trailers(w); !slices.Equal(got, want) {
 		t.Fatalf("trailers %v, want %v", got, want)
 	}
@@ -255,7 +256,7 @@ func TestRefreshTrailerWithoutThumbnail(t *testing.T) {
 	// The next refresh fetches what the last couldn't.
 	e.fx.set("/vi/8g18jFHCLXk/maxresdefault.jpg", 0)
 	e.mustRefresh(w)
-	want[1] = "8g18jFHCLXk Official Trailer " + ytimg + "8g18jFHCLXk/maxresdefault.jpg"
+	want[0] = "8g18jFHCLXk Official Trailer " + ytimg + "8g18jFHCLXk/maxresdefault.jpg"
 	if got := e.trailers(w); !slices.Equal(got, want) {
 		t.Errorf("trailers after a second refresh %v, want %v", got, want)
 	}

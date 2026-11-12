@@ -37,59 +37,69 @@ type trailerPlan struct {
 // planTrailers encodes the thumbnails of the trailers a refresh writes,
 // before the refresh's transaction. A trailer that has its thumbnail keeps
 // it. A thumbnail that can't be used is logged and skipped, since the
-// trailer is shown without one. An outage of its site is returned, as it is
-// for artwork, so the refresh runs again once the site is back.
+// trailer is shown without one. A trailer whose site has no thumbnail at any
+// size is dropped from m, since its video is gone. An outage of its site is
+// returned, as it is for artwork, so the refresh runs again once the site is
+// back.
 func (s *Service) planTrailers(ctx context.Context, w catalog.Work, m *catalog.WorkMetadata) ([]trailerPlan, error) {
 	if m == nil {
 		return nil, nil
 	}
 	var plans []trailerPlan
+	kept := m.Trailers[:0]
 	for _, t := range m.Trailers {
 		urls := thumbnailsOf(t)
 		cur, err := s.q.TrailerThumb(ctx, dbq.TrailerThumbParams{WorkID: w.ID, Site: t.Site, Key: t.Key})
 		switch {
 		case err == nil:
 			if slices.Contains(urls, cur.Origin) && s.present(cur) {
+				kept = append(kept, t)
 				continue
 			}
 		case !errors.Is(err, sql.ErrNoRows):
 			s.deleteEncodedTrailers(plans)
 			return nil, err
 		}
-		p, err := s.fetchThumbnail(ctx, w, t, urls)
+		p, gone, err := s.fetchThumbnail(ctx, w, t, urls)
 		if err != nil {
 			s.deleteEncodedTrailers(plans)
 			return nil, err
 		}
+		if gone {
+			continue
+		}
+		kept = append(kept, t)
 		if p != nil {
 			plans = append(plans, *p)
 		}
 	}
+	m.Trailers = kept
 	return plans, nil
 }
 
 // fetchThumbnail encodes the largest thumbnail a trailer has. It returns
-// nil when the trailer has none that can be used.
-func (s *Service) fetchThumbnail(ctx context.Context, w catalog.Work, t catalog.Trailer, urls []string) (*trailerPlan, error) {
+// nil when the trailer has none that can be used, and gone when its site has
+// none at any size.
+func (s *Service) fetchThumbnail(ctx context.Context, w catalog.Work, t catalog.Trailer, urls []string) (_ *trailerPlan, gone bool, _ error) {
 	for _, u := range urls {
 		img, err := s.encodeRemote(ctx, artworkThumb, remoteImage{provider: t.Site, url: u})
 		switch {
 		case ctx.Err() != nil:
-			return nil, ctx.Err()
+			return nil, false, ctx.Err()
 		case errors.Is(err, ErrNotFound):
 			continue // the video has no thumbnail this large
 		case errors.Is(err, ErrUnavailable):
-			return nil, err
+			return nil, false, err
 		case err != nil:
 			slog.WarnContext(ctx, "metadata: trailer thumbnail skipped", "work", w.ID, "site", t.Site, "err", err)
-			return nil, nil
+			return nil, false, nil
 		}
 		return &trailerPlan{site: t.Site, key: t.Key, thumb: dbq.InsertTrailerImageParams{
 			ID: img.ID, Kind: artworkThumb, Source: sourceProvider, Origin: u,
 			Width: img.Width, Height: img.Height, Blurhash: img.Blurhash, FetchedAt: time.Now().UnixMilli(),
-		}}, nil
+		}}, false, nil
 	}
-	return nil, nil
+	return nil, len(urls) > 0, nil
 }
 
 // recordTrailers writes the trailers' thumbnails in the refresh's
