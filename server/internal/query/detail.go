@@ -46,6 +46,10 @@ type WorkDetail struct {
 	Versions    []Version
 	Extras      []WorkSummary
 	Collections []Collection
+	// Similar is the titles like a movie, series or book, best first, for
+	// its More like this row. It is empty for other kinds and when nothing
+	// is alike enough.
+	Similar []WorkSummary
 	// Children is how many seasons a series has, or how many episodes a
 	// season has, counted as Children lists them. It is zero for other kinds.
 	Children int
@@ -509,7 +513,7 @@ func (s *Service) Detail(ctx context.Context, v users.Viewer, work id.ID) (WorkD
 		return WorkDetail{}, err
 	}
 	head := []WorkSummary{d.Summary}
-	lists := [][]WorkSummary{head, d.Extras}
+	lists := [][]WorkSummary{head, d.Extras, d.Similar}
 	var next []WorkSummary
 	if d.NextUp != nil {
 		next = []WorkSummary{*d.NextUp}
@@ -529,9 +533,16 @@ func (s *Service) Detail(ctx context.Context, v users.Viewer, work id.ID) (WorkD
 }
 
 // byKind reads the fields only some kinds' pages have: the child count of
-// a series or season, a movie's or series' trailers, a series' next up, an episode's neighbours, and a
-// book's own fields.
+// a series or season, a movie's or series' trailers, a series' next up, an episode's neighbours, a
+// book's own fields, and the titles like a movie, series or book.
 func byKind(ctx context.Context, tx *sql.Tx, vw viewer, args []any, d *WorkDetail) error {
+	d.Similar = []WorkSummary{}
+	if k := d.Summary.Kind; k == catalog.KindMovie || k == catalog.KindSeries || k == catalog.KindBook {
+		var err error
+		if d.Similar, err = summaries(ctx, tx, similar, args); err != nil {
+			return err
+		}
+	}
 	if k := d.Summary.Kind; k == catalog.KindSeries || k == catalog.KindSeason {
 		if err := rowOf(ctx, tx, childCount, args, &d.Children); err != nil {
 			return err

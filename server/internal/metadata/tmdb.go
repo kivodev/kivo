@@ -174,11 +174,32 @@ type tmdbMovie struct {
 	Keywords struct {
 		Keywords []tmdbName `json:"keywords"`
 	} `json:"keywords"`
-	ExternalIDs  tmdbExternalIDs  `json:"external_ids"`
-	Images       tmdbImageSet     `json:"images"`
-	Translations tmdbTranslations `json:"translations"`
-	Videos       tmdbVideos       `json:"videos"`
+	ExternalIDs     tmdbExternalIDs     `json:"external_ids"`
+	Images          tmdbImageSet        `json:"images"`
+	Translations    tmdbTranslations    `json:"translations"`
+	Videos          tmdbVideos          `json:"videos"`
+	Recommendations tmdbRecommendations `json:"recommendations"`
 	tmdbVotes
+}
+
+// tmdbRecommendations is the first page of the titles TMDb recommends for
+// a movie or series, which its details append.
+type tmdbRecommendations struct {
+	Results []struct {
+		ID int `json:"id"`
+	} `json:"results"`
+}
+
+// ids returns the recommended titles' IDs, best first. It is never nil,
+// because an empty list clears the work's recommendations.
+func (r tmdbRecommendations) ids() []string {
+	out := []string{}
+	for _, x := range r.Results {
+		if x.ID > 0 {
+			out = append(out, strconv.Itoa(x.ID))
+		}
+	}
+	return out
 }
 
 // tmdbVideos is the videos a movie's or series' details append.
@@ -226,10 +247,11 @@ type tmdbSeries struct {
 	Keywords struct {
 		Results []tmdbName `json:"results"`
 	} `json:"keywords"`
-	ExternalIDs  tmdbExternalIDs  `json:"external_ids"`
-	Images       tmdbImageSet     `json:"images"`
-	Translations tmdbTranslations `json:"translations"`
-	Videos       tmdbVideos       `json:"videos"`
+	ExternalIDs     tmdbExternalIDs     `json:"external_ids"`
+	Images          tmdbImageSet        `json:"images"`
+	Translations    tmdbTranslations    `json:"translations"`
+	Videos          tmdbVideos          `json:"videos"`
+	Recommendations tmdbRecommendations `json:"recommendations"`
 	tmdbVotes
 }
 
@@ -372,7 +394,7 @@ func (t *tmdb) describeMovie(ctx context.Context, tmdbID, lang string) (*Descrip
 		ContentRatings: map[string]string{},
 		Cast:           castOf(m.Credits.Cast), Crew: crewOf(m.Credits.Crew),
 		Community: m.community(), Images: imagesOf(imgs, m.OriginalLanguage),
-		Trailers: trailersOf(m.Videos.Results, lang),
+		Trailers: trailersOf(m.Videos.Results, lang), Recommendations: m.Recommendations.ids(),
 	}
 	for _, a := range m.AlternativeTitles.Titles {
 		d.AltTitles = append(d.AltTitles, a.Title)
@@ -417,7 +439,7 @@ func (t *tmdb) describeSeries(ctx context.Context, sr *tmdbSeries, lang string) 
 		ContentRatings: map[string]string{},
 		Cast:           castOf(sr.Credits.Cast), Crew: crewOf(sr.Credits.Crew),
 		Community: sr.community(), Images: imagesOf(imgs, sr.OriginalLanguage),
-		Trailers: trailersOf(sr.Videos.Results, lang),
+		Trailers: trailersOf(sr.Videos.Results, lang), Recommendations: sr.Recommendations.ids(),
 	}
 	for _, a := range sr.AlternativeTitles.Results {
 		d.AltTitles = append(d.AltTitles, a.Title)
@@ -860,7 +882,7 @@ func (t *tmdb) movie(ctx context.Context, tmdbID, lang string) (*tmdbMovie, erro
 		return movieTTL(m.ReleaseDate, time.Now())
 	}
 	var m tmdbMovie
-	p := detailParams(lang, "alternative_titles", "credits", "external_ids", "images", "keywords", "release_dates", "translations", "videos")
+	p := detailParams(lang, "alternative_titles", "credits", "external_ids", "images", "keywords", "recommendations", "release_dates", "translations", "videos")
 	p.Set("include_video_language", videoLangs(lang)) // without it TMDb lists only videos in the request's language
 	if err := t.get(ctx, "/movie/"+tmdbID, p, ttl, &m); err != nil {
 		return nil, err
@@ -888,7 +910,7 @@ func (t *tmdb) series(ctx context.Context, tmdbID, lang string) (*tmdbSeries, er
 		return seriesTTL(s.ended())
 	}
 	var s tmdbSeries
-	p := detailParams(lang, "alternative_titles", "content_ratings", "credits", "external_ids", "images", "keywords", "translations", "videos")
+	p := detailParams(lang, "alternative_titles", "content_ratings", "credits", "external_ids", "images", "keywords", "recommendations", "translations", "videos")
 	p.Set("include_video_language", videoLangs(lang))
 	if err := t.get(ctx, "/tv/"+tmdbID, p, ttl, &s); err != nil {
 		return nil, err

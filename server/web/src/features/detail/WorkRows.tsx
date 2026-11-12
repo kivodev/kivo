@@ -9,10 +9,11 @@ import { markClass, WorkCard } from "@/features/browse/WorkCard";
 import { formatClock } from "@/i18n/format";
 import { isTv } from "@/tv/flag";
 
-/** Trailers, then cast and crew, then the other extras by type, then each collection's other members. */
+/** More like this, trailers, then cast and crew, then the other extras by type, then each collection's other members. */
 export function WorkRows({ work }: { work: WorkDetail }) {
   return (
     <div className="flex flex-col gap-10 px-4 pb-12 sm:px-8 tv:relative">
+      <SimilarRow similar={work.similar} />
       <TrailersRow extras={work.extras} trailers={work.movie?.trailers ?? work.series?.trailers} />
       <CastRow credits={work.credits} />
       <ExtrasRows extras={work.extras} />
@@ -20,6 +21,22 @@ export function WorkRows({ work }: { work: WorkDetail }) {
         <CollectionRow key={c.id} collection={c} currentId={work.id} />
       ))}
     </div>
+  );
+}
+
+/** The titles like this one, best first. A page with none has no row. */
+export function SimilarRow({ similar = [] }: { similar?: readonly WorkSummary[] }) {
+  const { t } = useLingui();
+  if (similar.length === 0) return null;
+  return (
+    <Row
+      id="similar"
+      title={t`More like this`}
+      shape="poster"
+      items={similar}
+      itemKey={(w) => w.id}
+      renderItem={(w) => <WorkCard work={w} shape="poster" />}
+    />
   );
 }
 

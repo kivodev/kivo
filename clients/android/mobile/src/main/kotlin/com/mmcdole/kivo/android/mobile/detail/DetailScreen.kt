@@ -203,6 +203,8 @@ private fun DetailPage(head: WorkSummary, state: DetailUiState, model: DetailVie
                 WorkKind.Episode -> episodeItems(seasonHeading, state, head.id, nav, openMenu)
                 else -> {}
             }
+            val similar = state.page.work?.similar.orEmpty()
+            if (similar.isNotEmpty()) item(key = "similar") { WorksRow(stringResource(R.string.mobile_more_like_this), similar, nav, openMenu) }
             val local = state.page.work?.localTrailers().orEmpty()
             val online = state.page.work?.youTubeTrailers().orEmpty()
             if (local.isNotEmpty() || online.isNotEmpty()) item(key = "trailers") { TrailersRow(local, online, nav, openMenu) }

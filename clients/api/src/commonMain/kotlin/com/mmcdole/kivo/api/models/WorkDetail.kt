@@ -76,6 +76,7 @@ import kotlinx.serialization.encoding.*
  * @param sortTitle 
  * @param overview 
  * @param remembersTracks With versions: whether choosing tracks for this work remembers them for its series, as for an episode when the user's `rememberTracks` is on (`PlaybackPreferences`). 
+ * @param similar Titles like a movie, series or book, of its own kind, best first: up to 20 the user sees and hasn't played, leaving out the other members of its collections and book series. Absent for other kinds and when nothing is alike enough. 
  * @param listIds The user's lists holding the work; the server always sends it.
  * @param lockedFields Admins only. Fields an admin edited, shown with a lock icon.
  */
@@ -158,6 +159,9 @@ data class WorkDetail (
 
     /* With versions: whether choosing tracks for this work remembers them for its series, as for an episode when the user's `rememberTracks` is on (`PlaybackPreferences`).  */
     @SerialName(value = "remembersTracks") val remembersTracks: kotlin.Boolean? = null,
+
+    /* Titles like a movie, series or book, of its own kind, best first: up to 20 the user sees and hasn't played, leaving out the other members of its collections and book series. Absent for other kinds and when nothing is alike enough.  */
+    @SerialName(value = "similar") val similar: kotlin.collections.List<WorkSummary>? = null,
 
     /* The user's lists holding the work; the server always sends it. */
     @SerialName(value = "listIds") val listIds: kotlin.collections.List<kotlin.String>? = null,

@@ -15,6 +15,7 @@ import { Overview } from "./Overview";
 import { PlayFromStartButton } from "./PlaybackControls";
 import { defaultVersion } from "./versions";
 import { WatchToggles } from "./WatchToggles";
+import { SimilarRow } from "./WorkRows";
 
 /** People as links to their pages, joined with commas. `kind` keeps the focus keys apart for a person who is both. */
 function People({ people, kind }: { people: readonly PersonRef[]; kind: "author" | "narrator" }) {
@@ -54,8 +55,8 @@ const LinkLine = isTv ? "div" : "p";
 /**
  * A book's page. It shows the square cover, the authors and narrators as
  * links to their pages, the series with the book's position in it, and
- * the details. Then come Play or Resume with the time left, the chapters,
- * each starting playback there, and the files.
+ * the details. Then come Play or Resume with the time left, the books like
+ * it, the chapters, each starting playback there, and the files.
  */
 export function BookDetail({ work }: { work: WorkDetail }) {
   const { t } = useLingui();
@@ -162,6 +163,7 @@ export function BookDetail({ work }: { work: WorkDetail }) {
           )}
         </div>
       </section>
+      <SimilarRow similar={work.similar} />
       {chapters.length > 0 && (
         <section data-part="book-chapters" className="flex max-w-prose flex-col gap-2">
           <h2 className="text-lg font-semibold">

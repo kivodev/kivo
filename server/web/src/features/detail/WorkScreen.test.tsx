@@ -2,7 +2,7 @@ import { waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { WorkDetail } from "@/api/schemas";
 import { locationOf, renderApp, screen } from "@/test/render";
-import { http, mockId, mockIds, scenarios, sent, serveMockApi, server } from "@/test/server";
+import { http, mockId, mockIds, scenarios, sent, serveMockApi, server, summaryOf } from "@/test/server";
 
 /** Dune: Part Two's versions, 4K HDR first. */
 const dune4K = mockId(110);
@@ -124,6 +124,27 @@ describe("Movie page", () => {
     renderApp(`/works/${mockIds.dune}`);
     expect(await screen.findByRole("heading", { name: "Dune" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Trailers" })).not.toBeInTheDocument();
+  });
+
+  it("shows the titles like it in a More like this row above the Trailers row, and no row without any", async () => {
+    serveMockApi((api) => {
+      const similar = [mockIds.bladeRunner, mockIds.missingReel].map((id) => summaryOf(api.works[id] as WorkDetail));
+      (api.works[mockIds.dunePartTwo] as WorkDetail).similar = similar;
+    });
+    const { unmount } = renderApp(`/works/${mockIds.dunePartTwo}`);
+    const row = (await screen.findByRole("heading", { name: "More like this" })).closest("section");
+    if (!row) throw new Error("no More like this row");
+    const cards = [...row.querySelectorAll<HTMLElement>('[data-part="card"]')];
+    expect(cards.map((c) => c.querySelector("a")?.getAttribute("href"))).toEqual([
+      `/works/${mockIds.bladeRunner}`,
+      `/works/${mockIds.missingReel}`,
+    ]);
+    const headings = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
+    expect(headings.indexOf("More like this")).toBe(headings.indexOf("Trailers") - 1);
+    unmount();
+    renderApp(`/works/${mockIds.dune}`);
+    expect(await screen.findByRole("heading", { name: "Dune" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "More like this" })).not.toBeInTheDocument();
   });
 
   it("offers Resume with the time, Play from beginning beside it, the time left and end under it, and the pickers", async () => {

@@ -295,6 +295,10 @@ func workDetail(d query.WorkDetail, tracks playback.Preferred, marks map[id.ID][
 		out.Episode.PreviousID, out.Episode.NextID = opt(d.PreviousEpisode), opt(d.NextEpisode)
 	}
 	setTrailers(&out, d.Trailers)
+	if len(d.Similar) > 0 {
+		similar := summaries(d.Similar)
+		out.Similar = &similar
+	}
 	if b := d.Book; b != nil && out.Book != nil {
 		out.Book.Subtitle, out.Book.Publisher, out.Book.Language = opt(b.Subtitle), opt(b.Publisher), opt(b.Language)
 		out.Book.ReleaseDate = opt(b.ReleaseDate)

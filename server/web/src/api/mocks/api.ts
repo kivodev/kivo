@@ -191,6 +191,7 @@ export function summaryOf(work: WorkDetail): WorkSummary {
     extras: _x,
     listIds: _li,
     collections: _co,
+    similar: _si,
     lockedFields: _l,
     ...summary
   } = work;

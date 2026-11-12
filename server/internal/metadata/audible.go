@@ -141,8 +141,8 @@ type audnexusBook struct {
 }
 
 // Book returns a book by its ASIN from Audnexus, in the country's store.
-// Only Audnexus genres of type "genre" become the book's genres. Its tags
-// aren't used.
+// Audnexus genres of type "genre" become the book's genres, and those of
+// type "tag", Audible's finer categories, its tags.
 func (a *audible) Book(ctx context.Context, country, asin string, fr Freshness) (*Book, error) {
 	var r audnexusBook
 	if err := a.audnexus(ctx, "books", audibleRegion(country), asin, fr, func(body []byte) time.Duration {
@@ -156,7 +156,7 @@ func (a *audible) Book(ctx context.Context, country, asin string, fr Freshness) 
 	}
 	b := &Book{
 		ID: r.ASIN, Title: clean(r.Title, maxTitle), Subtitle: optText(r.Subtitle, maxTitle),
-		Authors: bookAuthors(r.Authors), Narrators: []string{}, Genres: []string{}, Series: []BookSeries{},
+		Authors: bookAuthors(r.Authors), Narrators: []string{}, Genres: []string{}, Tags: []string{}, Series: []BookSeries{},
 		Description: optText(plainText(r.Summary), maxOverview), Publisher: optText(r.Publisher, maxName),
 		ReleaseDate: optDate(r.Released), Duration: r.Runtime.minutes(),
 	}
@@ -167,8 +167,11 @@ func (a *audible) Book(ctx context.Context, country, asin string, fr Freshness) 
 		b.Narrators = appendNew(b.Narrators, clean(n.Name, maxName))
 	}
 	for _, g := range r.Genres {
-		if g.Type == "genre" {
+		switch g.Type {
+		case "genre":
 			b.Genres = appendNew(b.Genres, clean(g.Name, maxName))
+		case "tag":
+			b.Tags = appendNew(b.Tags, clean(g.Name, maxName))
 		}
 	}
 	for _, s := range []*audnexusSeries{r.SeriesPrimary, r.SeriesSecondary} {

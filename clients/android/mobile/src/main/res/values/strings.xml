@@ -221,6 +221,7 @@
         <item quantity="one">%1$,d unwatched</item>
         <item quantity="other">%1$,d unwatched</item>
     </plurals>
+    <string name="mobile_more_like_this">More like this</string>
     <string name="mobile_trailers">Trailers</string>
     <string name="mobile_opens_in_youtube">Opens in YouTube</string>
     <string name="mobile_cast_and_crew">Cast &amp; Crew</string>

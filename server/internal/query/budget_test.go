@@ -392,6 +392,17 @@ func generate(t *testing.T, db *store.DB, s shape) (movies, shows, moviesFolder 
 			 WHERE work_id IN (SELECT id FROM work WHERE kind = 'episode')`,
 			`INSERT INTO genre (name) VALUES ('Drama'), ('Comedy'), ('Action')`,
 			`INSERT INTO work_genre (work_id, genre_id) SELECT id, rid % 3 + 1 FROM work WHERE parent_id IS NULL`,
+			// TMDb IDs for the movies and series, 20 recommendations each
+			// among them, 8 keywords from 500, the first of them from 20, and a studio from 300, for
+			// More like this.
+			`INSERT INTO work_external_id (work_id, provider, kind, ext_id) SELECT id, 'tmdb', kind, CAST(rid AS TEXT) FROM work WHERE parent_id IS NULL`,
+			`WITH RECURSIVE n(i) AS (SELECT 0 UNION ALL SELECT i + 1 FROM n WHERE i < 19)
+			 INSERT INTO work_recommendation (work_id, ord, ext_id) SELECT w.id, n.i, CAST((w.rid * 7 + n.i * 131) % (@n_movies + @n_series) + 1 AS TEXT) FROM work w, n WHERE w.parent_id IS NULL`,
+			`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 500) INSERT INTO tag (name) SELECT printf('keyword %d', i) FROM n`,
+			`WITH RECURSIVE n(i) AS (SELECT 0 UNION ALL SELECT i + 1 FROM n WHERE i < 7)
+			 INSERT OR IGNORE INTO work_tag (work_id, tag_id) SELECT w.id, CASE n.i WHEN 0 THEN w.rid % 20 + 1 ELSE (w.rid * 31 + n.i * 977) % 500 + 1 END FROM work w, n WHERE w.parent_id IS NULL`,
+			`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 300) INSERT INTO company (name) SELECT printf('Studio %d', i) FROM n`,
+			`INSERT INTO work_company (work_id, company_id) SELECT id, rid % 300 + 1 FROM work WHERE parent_id IS NULL`,
 			// 20,000 people, each an actor in two movies.
 			`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 20000)
 			 INSERT INTO person (id, name, sort_name) SELECT CAST(printf('p%015d', i) AS BLOB), printf('Mary Actor %d', i), printf('Mary Actor %d', i) FROM n`,

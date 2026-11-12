@@ -5,8 +5,8 @@ import SwiftUI
 /// A book's page: Play, or Resume with the time left, which starts the
 /// book player where the user left off in any app or browser, and Play
 /// from beginning beside it; My List, Mark as Finished and Download; the
-/// overview, its authors and narrators, and its chapters, each starting
-/// the book there. It streams, or plays its download when one is ready,
+/// overview, the books like it, its authors and narrators, and its
+/// chapters, each starting the book there. It streams, or plays its download when one is ready,
 /// which the badge under the actions names.
 struct BookDetail: View {
     /// What shows of the book: its page's summary once read.
@@ -24,6 +24,7 @@ struct BookDetail: View {
             actions
                 .actionRowInsets()
             Overview(text: page.work?.overview)
+            CardRow(title: String(localized: "More like this"), works: page.work?.similar ?? [])
             CastRow(credits: page.work?.credits ?? [])
             if work.available, let chapters, chapters.count > 1 {
                 SectionHeading(title: String(localized: "Chapters"))

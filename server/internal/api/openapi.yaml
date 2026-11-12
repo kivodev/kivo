@@ -5923,6 +5923,14 @@ components:
               type: array
               description: Collections this work is in.
               items: {$ref: "#/components/schemas/CollectionSummary"}
+            similar:
+              type: array
+              description: |
+                Titles like a movie, series or book, of its own kind, best
+                first: up to 20 the user sees and hasn't played, leaving out
+                the other members of its collections and book series.
+                Absent for other kinds and when nothing is alike enough.
+              items: {$ref: "#/components/schemas/WorkSummary"}
             listIds:
               type: array
               description: The user's lists holding the work; the server always sends it.

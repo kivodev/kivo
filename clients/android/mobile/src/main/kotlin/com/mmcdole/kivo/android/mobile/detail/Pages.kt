@@ -172,7 +172,7 @@ private fun WorksGrid(works: List<WorkSummary>, nav: MobileNav, openMenu: (WorkM
 
 /** A titled row of works' cards. */
 @Composable
-private fun WorksRow(title: String, works: List<WorkSummary>, nav: MobileNav, openMenu: (WorkMenu) -> Unit) {
+internal fun WorksRow(title: String, works: List<WorkSummary>, nav: MobileNav, openMenu: (WorkMenu) -> Unit) {
     Column(Modifier.padding(top = space(4))) {
         Text(title, Modifier.padding(horizontal = space(4), vertical = space(2)), style = MaterialTheme.typography.titleMedium)
         LazyRow(contentPadding = PaddingValues(horizontal = space(4)), horizontalArrangement = Arrangement.spacedBy(12.dp)) {

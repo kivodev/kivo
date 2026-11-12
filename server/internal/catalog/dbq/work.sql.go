@@ -112,6 +112,15 @@ func (q *Queries) DeleteExternalIDs(ctx context.Context, workID id.ID) error {
 	return err
 }
 
+const deleteRecommendations = `-- name: DeleteRecommendations :exec
+DELETE FROM work_recommendation WHERE work_id = ?1
+`
+
+func (q *Queries) DeleteRecommendations(ctx context.Context, workID id.ID) error {
+	_, err := q.db.ExecContext(ctx, deleteRecommendations, workID)
+	return err
+}
+
 const deleteTrailer = `-- name: DeleteTrailer :exec
 DELETE FROM trailer WHERE work_id = ?1 AND key = ?2
 `
@@ -434,6 +443,21 @@ func (q *Queries) InsertPersonExternalID(ctx context.Context, arg InsertPersonEx
 		arg.ExtID,
 		arg.PersonID,
 	)
+	return err
+}
+
+const insertRecommendation = `-- name: InsertRecommendation :exec
+INSERT INTO work_recommendation (work_id, ord, ext_id) VALUES (?1, ?2, ?3)
+`
+
+type InsertRecommendationParams struct {
+	WorkID id.ID
+	Ord    int64
+	ExtID  string
+}
+
+func (q *Queries) InsertRecommendation(ctx context.Context, arg InsertRecommendationParams) error {
+	_, err := q.db.ExecContext(ctx, insertRecommendation, arg.WorkID, arg.Ord, arg.ExtID)
 	return err
 }
 
