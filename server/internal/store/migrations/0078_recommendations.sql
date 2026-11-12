@@ -16,7 +16,10 @@ CREATE INDEX work_company_company ON work_company (company_id, work_id);
 
 -- metadata -------------------------------------------------------------------
 -- Matched movies and series are made due a refresh, which fills in their
--- recommendations.
+-- recommendations, and books with an ASIN, which fills in their tags from
+-- Audible's finer categories.
 UPDATE work SET refreshed_at = NULL, refresh_error = NULL
-WHERE kind IN ('movie', 'series') AND NOT provisional
-  AND EXISTS (SELECT 1 FROM work_external_id x WHERE x.work_id = work.id AND x.provider = 'tmdb');
+WHERE (kind IN ('movie', 'series') AND NOT provisional
+    AND EXISTS (SELECT 1 FROM work_external_id x WHERE x.work_id = work.id AND x.provider = 'tmdb'))
+  OR (kind = 'book'
+    AND EXISTS (SELECT 1 FROM work_external_id x WHERE x.work_id = work.id AND x.provider = 'audible' AND x.kind = 'book'));

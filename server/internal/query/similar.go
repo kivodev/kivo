@@ -10,7 +10,9 @@ import "github.com/mmcdole/kivo/internal/catalog"
 //   - 50 for each director or author the two share,
 //   - 15 for each narrator they share, or actor billed in the top 5 of both,
 //   - 10 for each genre they share,
-//   - 5 for each tag and each company they share,
+//   - 5 for each tag they share, or 10 between books, whose tags are
+//     Audible's finer categories,
+//   - 5 for each company they share,
 //
 // and one that scores under 20 is left out. Ties go by community rating,
 // then by title. The other members of the work's collections and book
@@ -35,7 +37,9 @@ FROM (
     UNION ALL
     SELECT o.work_id, 10 FROM work_genre g JOIN work_genre o ON o.genre_id = g.genre_id WHERE g.work_id = @work
     UNION ALL
-    SELECT o.work_id, 5 FROM work_tag g JOIN work_tag o ON o.tag_id = g.tag_id WHERE g.work_id = @work
+    SELECT o.work_id, CASE WHEN s.kind = 'book' THEN 10 ELSE 5 END
+    FROM work s CROSS JOIN work_tag g ON g.work_id = s.id CROSS JOIN work_tag o ON o.tag_id = g.tag_id
+    WHERE s.id = @work
     UNION ALL
     SELECT o.work_id, 5 FROM work_company g JOIN work_company o ON o.company_id = g.company_id WHERE g.work_id = @work
   ) m

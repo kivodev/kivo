@@ -181,3 +181,22 @@ func TestSimilarLeavesOut(t *testing.T) {
 		}
 	}
 }
+
+// TestSimilarBooksByCategory checks that a book's tags, Audible's finer
+// categories, count 10 between books: two books by different authors that
+// share one and a genre are alike enough, and a shared tag alone isn't.
+func TestSimilarBooksByCategory(t *testing.T) {
+	h := newHousehold(t)
+	h.metadata(h.hailMary, catalog.WorkMetadata{Tags: []string{"Space Opera"}})
+	h.book([]string{"Pierce Brown/Red Rising/Red Rising.m4b"}, catalog.WorkMetadata{
+		Title: "Red Rising", Year: 2014, ReleaseDate: "2014", Genres: []string{"Science Fiction"}, Tags: []string{"Space Opera"},
+		Book: &catalog.BookMetadata{Authors: []string{"Pierce Brown"}, Narrators: []string{"Tim Gerard Reynolds"}, Series: []catalog.SeriesRef{}},
+	})
+	h.book([]string{"Becky Chambers/Long Way/Long Way.m4b"}, catalog.WorkMetadata{
+		Title: "The Long Way", Year: 2015, ReleaseDate: "2015", Tags: []string{"Space Opera"},
+		Book: &catalog.BookMetadata{Authors: []string{"Becky Chambers"}, Narrators: []string{"Rachel Dulude"}, Series: []catalog.SeriesRef{}},
+	})
+	if got, want := h.similarTo(h.admin, h.hailMary), []string{"Red Rising"}; !slices.Equal(got, want) {
+		t.Errorf("like Project Hail Mary: %q, want %q", got, want)
+	}
+}

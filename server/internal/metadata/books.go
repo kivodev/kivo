@@ -315,10 +315,10 @@ func currentASIN(w catalog.Work) string {
 // The provider's description, publisher and release date fill fields the
 // files leave empty. Its series apply only to a book in no series, and its
 // authors and narrators only to a book with none. Authors whose names match
-// the provider's gain the provider's IDs for them. Genres come only from
-// providers, so with no book they are cleared.
+// the provider's gain the provider's IDs for them. Genres and tags come
+// only from providers, so with no book they are cleared.
 func fillBook(m *catalog.WorkMetadata, b *Book, provider string) {
-	m.Genres = []string{}
+	m.Genres, m.Tags = []string{}, []string{}
 	if b == nil {
 		return
 	}
@@ -328,6 +328,9 @@ func fillBook(m *catalog.WorkMetadata, b *Book, provider string) {
 	}
 	if b.Genres != nil {
 		m.Genres = b.Genres
+	}
+	if b.Tags != nil {
+		m.Tags = b.Tags
 	}
 	if len(m.Companies) == 0 && b.Publisher != nil {
 		m.Companies = []string{*b.Publisher}

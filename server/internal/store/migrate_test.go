@@ -765,8 +765,8 @@ func TestMigrationDropBookAbridged(t *testing.T) {
 }
 
 // 0078 adds work_recommendation and the reverse indexes on genres, tags and
-// companies, and makes matched movies and series with a TMDb ID due a
-// refresh. A recommendation leaves with its work.
+// companies, and makes matched movies and series with a TMDb ID, and
+// books with an ASIN, due a refresh. A recommendation leaves with its work.
 func TestMigrationRecommendations(t *testing.T) {
 	ctx := context.Background()
 	db, path := testDB(t, through(t, "_drop_book_abridged.sql"))
@@ -778,7 +778,8 @@ func TestMigrationRecommendations(t *testing.T) {
 				(x'03', 'season', x'02', x'02', 'Season 1', 'Season 1', 1, 0, 300, NULL),
 				(x'04', 'movie', NULL, x'04', 'home.video', 'home.video', 1, 1, 400, NULL),
 				(x'05', 'book', NULL, x'05', 'Dune', 'Dune', 1, 0, 500, NULL),
-				(x'06', 'movie', NULL, x'06', 'Local', 'Local', 1, 0, 600, NULL);
+				(x'06', 'movie', NULL, x'06', 'Local', 'Local', 1, 0, 600, NULL),
+				(x'07', 'book', NULL, x'07', 'Notes', 'Notes', 1, 0, 700, NULL);
 			INSERT INTO work_external_id (work_id, provider, kind, ext_id) VALUES
 				(x'01', 'tmdb', 'movie', '438631'), (x'02', 'tmdb', 'series', '82728'), (x'03', 'tmdb', 'season', '1'),
 				(x'04', 'tmdb', 'movie', '1'), (x'05', 'audible', 'book', 'B0'), (x'06', 'imdb', 'movie', 'tt1');`)
@@ -801,7 +802,7 @@ func TestMigrationRecommendations(t *testing.T) {
 		return out
 	}
 	if got, want := read(`SELECT group_concat(hex(id) || ':' || coalesce(refreshed_at, '-') || ':' || coalesce(refresh_error, '-'), ' ')
-		FROM (SELECT * FROM work ORDER BY id)`), "01:-:- 02:-:- 03:300:- 04:400:- 05:500:- 06:600:-"; got != want {
+		FROM (SELECT * FROM work ORDER BY id)`), "01:-:- 02:-:- 03:300:- 04:400:- 05:-:- 06:600:- 07:700:-"; got != want {
 		t.Errorf("refreshes due: %s, want %s", got, want)
 	}
 	if got := read(`SELECT group_concat(name, ',') FROM (SELECT name FROM sqlite_master WHERE type = 'index'

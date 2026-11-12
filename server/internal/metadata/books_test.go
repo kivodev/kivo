@@ -39,6 +39,10 @@ func (e *env) genres(work id.ID) []string {
 	return e.strings(`SELECT g.name FROM work_genre wg JOIN genre g ON g.id = wg.genre_id WHERE wg.work_id = ? ORDER BY g.name`, work)
 }
 
+func (e *env) tags(work id.ID) []string {
+	return e.strings(`SELECT t.name FROM work_tag wt JOIN tag t ON t.id = wt.tag_id WHERE wt.work_id = ? ORDER BY t.name`, work)
+}
+
 func (e *env) asin(work id.ID) string {
 	return strings.Join(e.strings(`SELECT ext_id FROM work_external_id WHERE work_id = ? AND provider = 'audible' AND kind = 'book'`, work), ",")
 }
@@ -83,6 +87,9 @@ func TestBookByASIN(t *testing.T) {
 	}
 	if got := e.genres(w); !reflect.DeepEqual(got, []string{"Science Fiction & Fantasy"}) {
 		t.Errorf("genres %q", got) // Audnexus's tags aren't genres
+	}
+	if got := e.tags(w); !reflect.DeepEqual(got, []string{"Hard Science Fiction", "Science Fiction"}) {
+		t.Errorf("tags %q", got) // Audible's finer categories
 	}
 	if e.publisher(w) != "Audible Studios" || e.column(w, "release_date") != "2021-05-04" || e.column(w, "year") != "2021" {
 		t.Errorf("publisher %q, release %q, year %q", e.publisher(w), e.column(w, "release_date"), e.column(w, "year"))
@@ -285,8 +292,8 @@ func TestBookProviderOutage(t *testing.T) {
 		t.Fatalf("refresh: %v", err)
 	}
 	if !strings.HasPrefix(e.column(w, "overview"), "Ryland Grace") || e.publisher(w) != "Audible Studios" ||
-		!reflect.DeepEqual(e.genres(w), []string{"Science Fiction & Fantasy"}) || e.asin(w) != "B08G9PRS1K" {
-		t.Errorf("Audible's description lost: %q %q %q %q", e.column(w, "overview"), e.publisher(w), e.genres(w), e.asin(w))
+		!reflect.DeepEqual(e.genres(w), []string{"Science Fiction & Fantasy"}) || len(e.tags(w)) != 2 || e.asin(w) != "B08G9PRS1K" {
+		t.Errorf("Audible's description lost: %q %q %q %q %q", e.column(w, "overview"), e.publisher(w), e.genres(w), e.tags(w), e.asin(w))
 	}
 	if after := e.images(w)[artworkPoster]; after.ID != before.ID {
 		t.Errorf("cover replaced: %+v", after)

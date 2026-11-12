@@ -152,8 +152,9 @@ type Book struct {
 	Narrators   []string
 	Description *string // plain text
 	Publisher   *string
-	ReleaseDate *string // YYYY-MM-DD
-	Genres      []string
+	ReleaseDate *string      // YYYY-MM-DD
+	Genres      []string     // broad categories, such as Science Fiction & Fantasy
+	Tags        []string     // finer categories, such as Space Opera
 	Series      []BookSeries // the primary series first
 	Duration    *time.Duration
 	Cover       *string // the cover's URL, which never reaches a client
