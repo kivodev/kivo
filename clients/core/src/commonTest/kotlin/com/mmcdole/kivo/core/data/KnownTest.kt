@@ -28,7 +28,7 @@ class KnownTest {
         WorkSummary(id, kind, title, MatchState.Matched, true, WorkImages(poster = poster), book = book)
 
     private fun work(id: String, title: String, credits: List<Credit>, extras: List<WorkSummary>) = WorkDetail(
-        id, WorkKind.Movie, title, MatchState.Matched, true, WorkImages(), emptyList(), emptyList(), credits, emptyList(), emptyList(), extras, emptyList(),
+        id, WorkKind.Movie, title, MatchState.Matched, true, WorkImages(), emptyList(), emptyList(), credits, emptyList(), emptyList(), extras, emptyList(), emptyList(),
         libraryId = "l1",
     )
 

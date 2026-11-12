@@ -17,7 +17,7 @@ class TrailersTest {
         WorkSummary(id, WorkKind.Extra, id, MatchState.Matched, true, WorkImages(), extra = type?.let { ExtraInfo(it) })
 
     private fun work(extras: List<WorkSummary>) = WorkDetail(
-        "w1", WorkKind.Movie, "Dune", MatchState.Matched, true, WorkImages(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), extras, emptyList(),
+        "w1", WorkKind.Movie, "Dune", MatchState.Matched, true, WorkImages(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), extras, emptyList(), emptyList(),
         libraryId = "l1",
     )
 

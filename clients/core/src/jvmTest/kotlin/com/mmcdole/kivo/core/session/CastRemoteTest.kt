@@ -45,7 +45,7 @@ private val version = Version("v1", true, 6_000_000, 1_000, emptyList(), emptyLi
 
 private fun work(id: String, kind: WorkKind, title: String, episode: EpisodeInfo? = null) = WorkDetail(
     id, kind, title, MatchState.Matched, true, WorkImages(), emptyList(), emptyList(), emptyList(), emptyList(),
-    listOf(version), emptyList(), emptyList(), durationMs = 6_000_000, episode = episode,
+    listOf(version), emptyList(), emptyList(), emptyList(), durationMs = 6_000_000, episode = episode,
 )
 
 private val movie = work("m1", WorkKind.Movie, "Charade")

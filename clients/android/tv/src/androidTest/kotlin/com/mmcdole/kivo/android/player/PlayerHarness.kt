@@ -370,6 +370,7 @@ class PlayerHarness(private val compose: ComposeContentTestRule, private val clo
             ),
             extras = emptyList(),
             collections = emptyList(),
+            similar = emptyList(),
             durationMs = DURATION_MS,
             episode = EpisodeInfo(seasonNumber = 1, number = number, seriesId = "series", seriesTitle = "The Series", previousId = previousId, nextId = nextId),
         )

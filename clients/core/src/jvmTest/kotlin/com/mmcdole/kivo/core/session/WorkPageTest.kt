@@ -44,7 +44,7 @@ import kotlin.test.assertTrue
 private fun detail(id: String, kind: WorkKind, title: String = id, season: SeasonInfo? = null, series: SeriesInfo? = null, episode: EpisodeInfo? = null) = WorkDetail(
     id = id, kind = kind, title = title, matchState = MatchState.Matched, available = true, images = WorkImages(),
     genres = emptyList(), studios = emptyList(), credits = emptyList(), externalIds = emptyList(), versions = emptyList(),
-    extras = emptyList(), collections = emptyList(), season = season, series = series, episode = episode,
+    extras = emptyList(), collections = emptyList(), similar = emptyList(), season = season, series = series, episode = episode,
 )
 
 private fun card(id: String, kind: WorkKind, title: String = id, season: SeasonInfo? = null, episode: EpisodeInfo? = null) = WorkSummary(

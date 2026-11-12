@@ -44,7 +44,7 @@ class BookViewModelsTest : CoreTest() {
                         tracks = emptyList(), workIds = listOf("b1"), name = "M4B", chapters = chapters,
                     ),
                 ),
-                extras = emptyList(), collections = emptyList(),
+                extras = emptyList(), collections = emptyList(), similar = emptyList(),
                 book = BookInfo(authors = listOf(PersonRef("p1", "Andy Weir")), narrators = listOf(PersonRef("p2", "Ray Porter")), series = emptyList()),
                 userState = UserState(played = false, positionMs = 90_000),
             )

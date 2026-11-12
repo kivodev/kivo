@@ -60,7 +60,7 @@ private fun play(id: String, startMs: Int) = PlayStarted(
 private val book = WorkDetail(
     id = "b1", kind = WorkKind.Book, title = "Project Hail Mary", matchState = MatchState.Matched, available = true,
     images = WorkImages(), genres = emptyList(), studios = emptyList(), credits = emptyList(), externalIds = emptyList(),
-    versions = emptyList(), extras = emptyList(), collections = emptyList(),
+    versions = emptyList(), extras = emptyList(), collections = emptyList(), similar = emptyList(),
 )
 
 private val capabilities = Capabilities(
