@@ -113,6 +113,7 @@ import com.mmcdole.kivo.android.mobile.ui.wideWidth
 import com.mmcdole.kivo.android.mobile.cast.CastButton
 import com.mmcdole.kivo.android.mobile.ui.Failed
 import com.mmcdole.kivo.android.mobile.ui.NamedCard
+import com.mmcdole.kivo.android.mobile.ui.sentence
 import com.mmcdole.kivo.android.mobile.ui.ProgressBar
 import com.mmcdole.kivo.android.mobile.ui.WorkMenu
 import com.mmcdole.kivo.android.mobile.ui.WorkMenuHost
@@ -131,6 +132,7 @@ import com.mmcdole.kivo.api.models.TrackType
 import com.mmcdole.kivo.api.models.WorkDetail
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.Load
+import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.core.data.SeasonRef
 import com.mmcdole.kivo.core.data.localTrailers
 import com.mmcdole.kivo.core.data.resumeAt
@@ -157,16 +159,16 @@ fun DetailScreen(session: ServerSession, id: String, seasonId: String?, seasonNu
     val model = viewModel { DetailViewModel(session.session, id, seasonNumber?.let { SeasonRef(seasonId, it) }, session.graph.core.settings.map { it.downloadQuality }) }
     val state by model.state.collectAsStateWithLifecycle()
     val head = state.page.head
-    val failure = state.failure
-    if (failure != null) {
-        Box(Modifier.fillMaxSize().statusBarsPadding()) {
-            Failed(failure, stringResource(R.string.mobile_couldnt_load_page), model.serverName, model.page::retry)
-            BackButton(nav)
-        }
-        return
-    }
+    val problem = state.page.problem
     if (head == null) {
-        DetailSkeleton(nav)
+        if (problem != null) {
+            Box(Modifier.fillMaxSize().statusBarsPadding()) {
+                Failed(problem, stringResource(R.string.mobile_couldnt_load_page), model.serverName, model.page::retry)
+                BackButton(nav)
+            }
+        } else {
+            DetailSkeleton(nav)
+        }
         return
     }
     WorkMenuHost({ action, menu -> nav.handle(action, menu, model.marks) }, seriesPage = head.id.takeIf { head.kind == WorkKind.Series }) { openMenu ->
@@ -190,6 +192,7 @@ private fun DetailPage(head: WorkSummary, state: DetailUiState, model: DetailVie
         LazyColumn(Modifier.fillMaxSize().testTag("detail"), state = list) {
             item(key = "art") { Backdrop(head, artHeight) }
             item(key = "hero") { Hero(head, state.page.work, nav) }
+            state.refusal?.let { problem -> item(key = "refusal") { InlineFailure(problem, model.page::retry) } }
             item(key = "actions") {
                 if (head.kind == WorkKind.Series) SeriesActions(head, state, model, nav) else PlayActions(head, state, model, nav)
             }
@@ -208,6 +211,21 @@ private fun DetailPage(head: WorkSummary, state: DetailUiState, model: DetailVie
             item(key = "end") { Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars).padding(bottom = space(6))) }
         }
         TopBar(if (titleShown) head.title else null, nav, cast = head.kind != WorkKind.Book)
+    }
+}
+
+/** Why the page couldn't be read, under what's known of the work: what the server said, with Retry. */
+@Composable
+private fun InlineFailure(problem: RequestProblem, onRetry: () -> Unit) {
+    Row(
+        Modifier.padding(horizontal = space(4), vertical = space(2)).wideWidth().fillMaxWidth().testTag("pageFailed"),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.mobile_couldnt_load_page), style = MaterialTheme.typography.titleSmall)
+            Text(sentence(problem), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        TextButton(onClick = onRetry) { Text(stringResource(R.string.mobile_retry)) }
     }
 }
 

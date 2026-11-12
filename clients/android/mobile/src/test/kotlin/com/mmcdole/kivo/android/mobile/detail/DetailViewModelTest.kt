@@ -15,12 +15,12 @@ class DetailViewModelTest : CoreTest() {
     }
 
     @Test
-    fun aWorkTheServerNoLongerHasFailsThePageThoughItsCardIsKnown() {
+    fun aWorkTheServerNoLongerHasIsRefusedUnderItsCard() {
         val session = signIn()
         runBlocking { session.library.search("cha", null) }
         val model = held { DetailViewModel(session, "m1") }
         val state = awaitValue(model.state) { it.page.problem != null }
         assertEquals("Charade", state.page.head?.title)
-        assertEquals(ProblemCode.NotFound, state.failure?.knownCode)
+        assertEquals(ProblemCode.NotFound, state.refusal?.knownCode)
     }
 }

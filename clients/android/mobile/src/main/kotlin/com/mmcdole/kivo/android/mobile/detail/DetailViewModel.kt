@@ -7,7 +7,6 @@ import com.mmcdole.kivo.android.mobile.downloads.DownloadUiState
 import com.mmcdole.kivo.android.mobile.downloads.WorkDownloads
 import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkSummary
-import com.mmcdole.kivo.core.ProblemCode
 import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.core.data.SeasonRef
 import com.mmcdole.kivo.core.session.KivoSession
@@ -28,10 +27,10 @@ data class DetailUiState(
     val download: DownloadUiState? = null,
 ) {
     /**
-     * Why the page shows a failure in place of the work: it couldn't be
-     * read and nothing is known of it, or the server no longer has it.
+     * Why the server refused the work's page, as for a work it no longer
+     * has, while what was known of the work shows: under its title, with Retry.
      */
-    val failure: RequestProblem? = page.problem?.takeIf { page.head == null || (page.work == null && it.knownCode == ProblemCode.NotFound) }
+    val refusal: RequestProblem? = page.problem?.takeIf { page.head != null && page.work == null && it !is RequestProblem.Unreachable }
 }
 
 /**
