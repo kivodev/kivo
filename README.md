@@ -2,7 +2,7 @@
 
 Open-source streaming for the media you own.
 
-Kivo is a self-hosted media server for movies, TV shows, home videos and audiobooks. Point it at your folders and it fetches artwork and details, then streams to apps on phones, tablets, TVs and the web. No cloud account required.
+Kivo is a self-hosted media server for movies, TV shows, videos and audiobooks. Point it at your folders and it fetches artwork and details, then streams to apps on phones, tablets, TVs and the web. No cloud account required.
 
 ## Status
 
