@@ -9,7 +9,8 @@ import (
 	"time"
 )
 
-// minFree is the free space below which a Room's disk counts as full.
+// minFree is the free space below which a Room's disk counts as full,
+// unless the Room sets its own Floor.
 const minFree = 1 << 30
 
 // ErrDiskFull means a Room's disk is almost full. The work that writes to
@@ -27,6 +28,9 @@ type Room struct {
 	Problem Problem
 	// Free reads the free space on a path's disk. Nil reads the real disk.
 	Free func(path string) (uint64, error)
+	// Floor is the free space below which the disk counts as full. Zero
+	// means minFree.
+	Floor uint64
 
 	mu   sync.Mutex
 	full *Problem
@@ -38,8 +42,12 @@ func (r *Room) Check() error {
 	if free == nil {
 		free = freeSpace
 	}
+	floor := r.Floor
+	if floor == 0 {
+		floor = minFree
+	}
 	n, err := free(r.Dir)
-	if err != nil || n >= minFree {
+	if err != nil || n >= floor {
 		r.setFull(false)
 		return nil
 	}

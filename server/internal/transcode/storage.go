@@ -4,18 +4,26 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/mmcdole/kivo/internal/health"
 )
 
-// defaultFloor is the free space below which new streams are refused, so a
-// full disk never drops every running stream. There's no size cap, so this
-// is the only guard.
-const defaultFloor = 5 << 30
+// floor is the free space below which new streams are refused, so a full
+// disk never drops every running stream. There's no size cap, so this is
+// the only guard.
+const floor = 5 << 30
 
 // storage keeps each stream's segments, and each download's conversion, in
 // a separate directory under dir.
 type storage struct {
-	dir   string
-	floor uint64
+	dir  string
+	disk health.Room
+}
+
+// newStorage returns storage under dir. free reads the disk's free space,
+// and nil reads the real disk.
+func newStorage(dir string, free func(string) (uint64, error)) storage {
+	return storage{dir: dir, disk: health.Room{Dir: dir, Free: free, Floor: floor}}
 }
 
 // reset removes whatever a crash left behind and makes dir.
@@ -26,13 +34,9 @@ func (s *storage) reset() error {
 	return os.MkdirAll(s.dir, 0o755)
 }
 
-// room checks the free space against the floor.
+// room returns ErrStorageFull while the disk is below the floor.
 func (s *storage) room() error {
-	free, err := freeSpace(s.dir)
-	if err != nil {
-		return err
-	}
-	if free < s.floor {
+	if s.disk.Check() != nil {
 		return ErrStorageFull
 	}
 	return nil

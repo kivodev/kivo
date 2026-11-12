@@ -29,7 +29,6 @@ type Stream struct {
 	initDone []bool        // whether each part's init segment is on disk
 	job      *job          // nil when no job is running
 	closed   bool
-	idle     *time.Timer
 	jobs     sync.WaitGroup // tracks every started job until it exits
 	count    int            // the number of jobs started, used to number their scratch files
 }
@@ -41,7 +40,6 @@ func (s *Stream) Playlist(name string) ([]byte, error) {
 	if !ok {
 		return nil, fmt.Errorf("%w: playlist %s", ErrNotFound, name)
 	}
-	s.Touch()
 	return b, nil
 }
 
@@ -56,7 +54,6 @@ func (s *Stream) Playlist(name string) ([]byte, error) {
 // segment is written along with its video, so text segments behave the
 // same way.
 func (s *Stream) Segment(ctx context.Context, name string) (string, error) {
-	s.Touch()
 	if p, ok := parseInit(name); ok && p < len(s.spec.Parts) {
 		return s.init(ctx, name, p)
 	}
@@ -191,16 +188,6 @@ func (s *Stream) init(ctx context.Context, name string, p int) (string, error) {
 	})
 }
 
-// Touch marks the stream active by resetting the idle timer. Heartbeats
-// call it.
-func (s *Stream) Touch() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if !s.closed {
-		s.idle.Reset(idleTimeout)
-	}
-}
-
 // Job describes the stream's job.
 func (s *Stream) Job() JobInfo {
 	s.mu.Lock()
@@ -232,20 +219,10 @@ func (s *Stream) Job() JobInfo {
 func (s *Stream) Close() {
 	s.mu.Lock()
 	s.closed = true
-	s.idle.Stop()
 	s.stopLocked()
 	s.mu.Unlock()
 	s.jobs.Wait()
 	_ = os.RemoveAll(s.dir)
-}
-
-// idleStop kills the job of a stream that has had no request for
-// idleTimeout, whether the job is paused or not. The stream stays, and its
-// next request starts a new job.
-func (s *Stream) idleStop() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.stopLocked()
 }
 
 func (s *Stream) path(i int) string { return filepath.Join(s.dir, segmentName(i)) }

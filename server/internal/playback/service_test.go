@@ -8,7 +8,6 @@ import (
 	"errors"
 	"iter"
 	"log/slog"
-	"math"
 	"net/netip"
 	"os"
 	"path/filepath"
@@ -287,7 +286,18 @@ func (f *fixture) published(kind events.Kind) []events.Event {
 	return out
 }
 
-func newFixture(t *testing.T, floor uint64) *fixture {
+// freeSpace returns transcode options for a disk with free bytes free. Zero
+// reads the real disk.
+func freeSpace(free uint64) transcode.Options {
+	if free == 0 {
+		return transcode.Options{}
+	}
+	return transcode.Options{Free: func(string) (uint64, error) { return free, nil }}
+}
+
+// newFixture returns a fixture whose transcode disk has free bytes free.
+// Zero reads the real disk.
+func newFixture(t *testing.T, free uint64) *fixture {
 	f := &fixture{t: t, b: catalogtest.New(t), media: &instantMedia{busy: map[media.Accelerator]bool{}}, accel: &fakeAccelerators{}, requested: &requests{}, bus: events.NewBus()}
 	f.sub = f.bus.Subscribe(func(events.Scope) bool { return true })
 	t.Cleanup(f.sub.Close)
@@ -306,7 +316,7 @@ func newFixture(t *testing.T, floor uint64) *fixture {
 	f.v = f.viewer()
 	f.state = userstate.New(f.b.DB, userstate.Deps{Catalog: f.b.Catalog, Settings: f.cfg, Activity: f.activity, Events: events.NewBus()})
 	f.tcDir = filepath.Join(t.TempDir(), "tc")
-	if f.tc, err = transcode.New(transcode.Deps{Media: f.media, Keys: every2s{}, Dir: f.tcDir, Downloads: filepath.Join(t.TempDir(), "downloads")}, transcode.Options{Floor: floor}); err != nil {
+	if f.tc, err = transcode.New(transcode.Deps{Media: f.media, Keys: every2s{}, Dir: f.tcDir, Downloads: filepath.Join(t.TempDir(), "downloads")}, freeSpace(free)); err != nil {
 		t.Fatal(err)
 	}
 	f.markers = markers.New(f.b.DB, markers.Deps{Catalog: f.b.Catalog, Media: noMedia{}, Tasks: discard{}, Settings: f.cfg, CacheDir: t.TempDir()})
@@ -589,6 +599,35 @@ func TestUnknownAndExpiredAreTheSame(t *testing.T) {
 	}
 }
 
+// An expired play's transcode is closed: its job is stopped and its
+// segments are removed.
+func TestExpiryStopsTheTranscode(t *testing.T) {
+	f := newFixture(t, 0)
+	s := f.mustStart(f.movie("Ronin", "mkv", 1).Work) // a remux
+	f.svc.mu.Lock()
+	pl := f.svc.plays[s.ID]
+	f.svc.mu.Unlock()
+	if pl.tc == nil {
+		t.Fatal("the play has no transcode")
+	}
+	if _, err := pl.tc.Segment(ctx, "0.m4s"); err != nil || pl.tc.Job().State == "" {
+		t.Fatalf("the first segment: %v, job %q", err, pl.tc.Job().State)
+	}
+	f.svc.mu.Lock()
+	pl.seen = time.Now().Add(-playTimeout - time.Second)
+	f.svc.mu.Unlock()
+	f.svc.endExpired(ctx)
+	if st := pl.tc.Job().State; st != "" {
+		t.Fatalf("an expired play's job is %s", st)
+	}
+	if _, err := pl.tc.Segment(ctx, "1.m4s"); !errors.Is(err, transcode.ErrClosed) {
+		t.Fatalf("a segment after expiry: %v", err)
+	}
+	if entries, err := os.ReadDir(f.tcDir); err != nil || len(entries) != 0 {
+		t.Fatalf("segment folders left: %v %v", entries, err)
+	}
+}
+
 func TestRevocationAppliesAtTheNextRequest(t *testing.T) {
 	for name, revoke := range map[string]func(f *fixture){
 		"session signed out": func(f *fixture) {
@@ -757,7 +796,7 @@ func TestRemoteCap(t *testing.T) {
 }
 
 func TestBelowTheFloorRemuxIsRefusedDirectPlayWorks(t *testing.T) {
-	f := newFixture(t, math.MaxUint64)
+	f := newFixture(t, 1<<20)
 	_, err := f.start(f.movie("Ronin", "mkv", 1).Work, lan)
 	var refused *RefusedError
 	if !errors.As(err, &refused) || !errors.Is(err, ErrTranscodeBusy) || refused.Reason != RefuseStorageFull {
