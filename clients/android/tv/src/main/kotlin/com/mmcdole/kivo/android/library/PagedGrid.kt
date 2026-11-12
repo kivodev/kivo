@@ -63,19 +63,15 @@ import com.mmcdole.kivo.android.ui.WorkCard
 import com.mmcdole.kivo.android.ui.awaitSettled
 import com.mmcdole.kivo.android.ui.focusKey
 import com.mmcdole.kivo.android.ui.focusWhenPlaced
-import com.mmcdole.kivo.android.ui.prepareCard
 import com.mmcdole.kivo.android.ui.raisedOnFocus
 import com.mmcdole.kivo.android.ui.rememberFocusMemory
 import com.mmcdole.kivo.android.ui.rememberCardLight
 import com.mmcdole.kivo.android.ui.rememberOneMovePerFrame
-import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.data.GridItem
 import com.mmcdole.kivo.core.data.GridPager
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 /** Cards across a grid of [shape]. */
@@ -135,7 +131,7 @@ fun PagedGrid(
     memory: FocusMemory = rememberFocusMemory(),
     takesFocus: () -> Boolean = { true },
     entry: FocusRequester = remember { FocusRequester() },
-) = PagedCards(paged, grid, shape, modifier, top, memory, takesFocus, entry, prepare = { prepareCard(it, shape) }) { item, width, cardModifier ->
+) = PagedCards(paged, grid, shape, modifier, top, memory, takesFocus, entry) { item, width, cardModifier ->
     val work = (item as? GridItem.Work)?.work
     WorkCard(work, shape, width, { if (work != null) navigator.push(Screen.Work(work.id)) }, cardModifier)
 }
@@ -146,8 +142,7 @@ fun PagedGrid(
  * find the card above or below even before its line has scrolled into view.
  * As it's shown it focuses the card focused last, else the first, unless
  * [takesFocus] says to leave focus where it is. [card] draws an item, null
- * while its page is read; [prepare] readies a work's card off the main
- * thread before it shows. It fills the screen's height, its first line [top]
+ * while its page is read. It fills the screen's height, its first line [top]
  * down, leaving that room for a header that [scrollsWith] it; a focused card
  * scrolls only as far as shows its line. [entry] moves focus into its cards, for a header over it: focus search
  * from there passes the grid over, as it starts above the header rather than below.
@@ -162,7 +157,6 @@ fun PagedCards(
     memory: FocusMemory = rememberFocusMemory(),
     takesFocus: () -> Boolean = { true },
     entry: FocusRequester = remember { FocusRequester() },
-    prepare: (WorkSummary) -> Unit = {},
     card: @Composable (item: GridItem?, width: Dp, modifier: Modifier) -> Unit,
 ) {
     val pages by paged.state.collectAsState()
@@ -203,8 +197,6 @@ fun PagedCards(
                 val count = paged.state.value.total ?: 0
                 val near = ((visible.first - 4) * columns).coerceAtLeast(0)..((visible.last + 5) * columns - 1).coerceAtMost(count - 1)
                 paged.load(near.first, near.last)
-                val read = paged.state.value
-                withContext(Dispatchers.Default) { near.forEach { i -> (read.item(i) as? GridItem.Work)?.work?.let(prepare) } }
             }
     }
 

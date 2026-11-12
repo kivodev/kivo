@@ -199,8 +199,7 @@ final class GridModel {
 
     /// [state]'s grid as the screen draws it.
     private static func paged(_ state: LibraryGridState) -> PagedGrid {
-        let style = style(state)
-        return PagedGrid(state.pager) { $0.artwork(style) }
+        PagedGrid(state.pager)
     }
 
     // MARK: Words

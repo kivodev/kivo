@@ -263,7 +263,7 @@ private fun Backdrop(head: WorkSummary, height: Dp?) {
     val image = with(head.images) { if (head.kind == WorkKind.Episode || head.kind == WorkKind.Video) still ?: backdrop ?: poster else backdrop ?: poster }
     val bg = MaterialTheme.colorScheme.background
     Box(Modifier.fillMaxWidth().then(if (height != null) Modifier.height(height) else Modifier.aspectRatio(16f / 10f))) {
-        Artwork(image, 960.dp, Modifier.matchParentSize())
+        Artwork(image, 960.dp, Modifier.matchParentSize(), blur = true)
         Box(Modifier.matchParentSize().background(Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.45f), 0.3f to Color.Transparent, 0.7f to Color.Transparent, 1f to bg)))
     }
 }

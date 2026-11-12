@@ -6,6 +6,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -14,6 +17,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.size.Dimension
 import coil3.size.Size
+import com.mmcdole.kivo.android.Blurhash
 import com.mmcdole.kivo.android.ServerSession
 import com.mmcdole.kivo.android.mobile.theme.LocalKivo
 import com.mmcdole.kivo.api.models.ImageRef
@@ -29,12 +33,14 @@ internal fun artworkWidth(px: Int): Int = Widths.firstOrNull { it >= px } ?: Wid
 
 /**
  * [image] at [width], through the session's image loader, cropped to fill
- * the box; the placeholder colour while it loads, or when there's none.
+ * the box; its average colour while it loads, or with [blur] the whole
+ * blurhash, as for a page's large artwork; the placeholder colour when
+ * there's none.
  * It asks the server for the stored width that covers the box, and decodes
  * it at that size.
  */
 @Composable
-fun Artwork(image: ImageRef?, width: Dp, modifier: Modifier = Modifier, contentScale: ContentScale = ContentScale.Crop) {
+fun Artwork(image: ImageRef?, width: Dp, modifier: Modifier = Modifier, contentScale: ContentScale = ContentScale.Crop, blur: Boolean = false) {
     val placeholder = LocalKivo.current.placeholder
     if (image == null) {
         Box(modifier.background(placeholder))
@@ -43,6 +49,8 @@ fun Artwork(image: ImageRef?, width: Dp, modifier: Modifier = Modifier, contentS
     val session = LocalSession.current
     val context = LocalContext.current
     val px = with(LocalDensity.current) { artworkWidth(width.roundToPx()) }
+    val loading = remember(image.blurhash) { image.blurhash?.let(Blurhash::averageColor)?.let { Color(it) } } ?: placeholder
+    val blurred = remember(image.blurhash, blur) { if (blur) image.blurhash?.let(Blurhash::bitmap)?.let { BitmapPainter(it.asImageBitmap()) } else null }
     val request = remember(image.id, px) {
         ImageRequest.Builder(context).data(session.session.imageUrl(image.id, px)).size(Size(px, Dimension.Undefined)).build()
     }
@@ -50,7 +58,8 @@ fun Artwork(image: ImageRef?, width: Dp, modifier: Modifier = Modifier, contentS
         model = request,
         contentDescription = null,
         imageLoader = session.images,
-        modifier = modifier.background(placeholder),
+        placeholder = blurred,
+        modifier = modifier.background(loading),
         contentScale = contentScale,
     )
 }

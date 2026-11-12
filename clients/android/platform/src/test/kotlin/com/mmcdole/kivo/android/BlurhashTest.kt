@@ -1,4 +1,4 @@
-package com.mmcdole.kivo.android.ui
+package com.mmcdole.kivo.android
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -39,5 +39,19 @@ class BlurhashTest {
         assertNull(Blurhash.decode("LEHV6n", 8, 8))
         assertNull(Blurhash.decode("LEHV6nWB2yk8pyo0adR*.7kCMdn", 8, 8))
         assertNull(Blurhash.decode("L\"HV6nWB2yk8pyo0adR*.7kCMdnj", 8, 8))
+    }
+
+    @Test
+    fun theAverageColourIsTheFirstComponent() {
+        assertEquals(0xFF3366CC.toInt(), Blurhash.averageColor(encode83(0, 1) + encode83(0, 1) + encode83(0x3366CC, 4)))
+        // The real hash's first component, its third to sixth characters.
+        assertEquals(0xFF979695.toInt(), Blurhash.averageColor("LEHV6nWB2yk8pyo0adR*.7kCMdnj"))
+    }
+
+    @Test
+    fun aMalformedHashHasNoAverageColour() {
+        assertNull(Blurhash.averageColor("LEHV6n"))
+        assertNull(Blurhash.averageColor("LEHV6nWB2yk8pyo0adR*.7kCMdn"))
+        assertNull(Blurhash.averageColor("LEH\"6nWB2yk8pyo0adR*.7kCMdnj"))
     }
 }

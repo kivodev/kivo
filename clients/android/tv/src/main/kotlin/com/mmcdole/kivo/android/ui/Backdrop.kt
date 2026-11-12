@@ -16,6 +16,7 @@ import androidx.compose.ui.geometry.toRect
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -25,6 +26,7 @@ import coil3.request.ImageRequest
 import coil3.request.transformations
 import coil3.size.Size
 import coil3.transform.Transformation
+import com.mmcdole.kivo.android.Blurhash
 import com.mmcdole.kivo.android.theme.Kivo
 import com.mmcdole.kivo.android.theme.KivoTokens
 import com.mmcdole.kivo.api.models.ImageRef
@@ -44,7 +46,8 @@ fun Backdrop(image: ImageRef, width: Dp, layers: List<Brush>, modifier: Modifier
     val session = LocalSession.current
     val context = LocalContext.current
     val pixels = with(LocalDensity.current) { width.roundToPx() }
-    val placeholder = remember(image.blurhash) { image.blurhash?.let(BlurhashCache::painter) }
+    // The whole blur, decoded once per page, so it isn't kept.
+    val placeholder = remember(image.blurhash) { image.blurhash?.let(Blurhash::bitmap)?.let { BitmapPainter(it.asImageBitmap()) } }
     val painted = remember(layers) { PaintedOver(layers) }
     val request = remember(image.id, pixels, painted) {
         ImageRequest.Builder(context)

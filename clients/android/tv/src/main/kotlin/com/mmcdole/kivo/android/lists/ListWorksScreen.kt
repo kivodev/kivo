@@ -41,7 +41,6 @@ import com.mmcdole.kivo.android.ui.SkeletonGate
 import com.mmcdole.kivo.android.ui.SkeletonLine
 import com.mmcdole.kivo.android.ui.WorkCard
 import com.mmcdole.kivo.android.ui.cardShapeOf
-import com.mmcdole.kivo.android.ui.prepareCard
 import com.mmcdole.kivo.api.models.ListKind
 import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkList
@@ -97,7 +96,6 @@ fun ListWorksScreen(session: ServerSession, listId: String, name: String, naviga
                     paged = model.paged,
                     grid = grid,
                     shape = CardShape.Poster,
-                    prepare = { prepareCard(it, cardShapeOf(it)) },
                 ) { item, width, cardModifier ->
                     val work = (item as? GridItem.Work)?.work
                     if (work == null || work.kind in tvWorkKinds) {
