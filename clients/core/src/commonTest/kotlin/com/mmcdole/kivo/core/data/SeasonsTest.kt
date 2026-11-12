@@ -23,44 +23,44 @@ class SeasonsTest {
 
     @Test
     fun goToSeriesOpensTheEpisodesSeasonBeforeTheSeriesIsRead() {
-        assertEquals("s1", Seasons.openSeason(seasons, null, episode(1, "s1"), null, seriesRead = false)?.id)
-        assertEquals("s0", Seasons.openSeason(seasons, null, episode(0, "s0"), null, seriesRead = false)?.id)
+        assertEquals("s1", Seasons.openSeason(seasons, SeasonRef("s1", 1), null, seriesRead = false)?.id)
+        assertEquals("s0", Seasons.openSeason(seasons, SeasonRef("s0", 0), null, seriesRead = false)?.id)
     }
 
     @Test
-    fun anEpisodesSeasonIsFoundByNumberWhenItsIdIsMissingOrUnlisted() {
-        assertEquals("s1", Seasons.openSeason(seasons, null, episode(1, null), null, seriesRead = false)?.id)
-        assertEquals("s0", Seasons.openSeason(seasons, null, episode(0, "gone"), null, seriesRead = false)?.id)
+    fun anAskedSeasonIsFoundByNumberWhenItsIdIsMissingOrUnlisted() {
+        assertEquals("s1", Seasons.openSeason(seasons, SeasonRef(null, 1), null, seriesRead = false)?.id)
+        assertEquals("s0", Seasons.openSeason(seasons, SeasonRef("gone", 0), null, seriesRead = false)?.id)
     }
 
     @Test
     fun aSeasonAskedForButNotListedOpensTheFirstRegularSeasonAtOnce() {
-        assertEquals("s1", Seasons.openSeason(seasons, "gone", null, null, seriesRead = false)?.id)
-        assertEquals("s1", Seasons.openSeason(listOf(season("s0", 0), season("s1", 1)), null, episode(4, "gone"), null, seriesRead = false)?.id)
-        assertEquals("s0", Seasons.openSeason(listOf(season("s0", 0)), "gone", null, null, seriesRead = false)?.id, "Specials alone")
+        assertEquals("s1", Seasons.openSeason(seasons, SeasonRef("gone", 7), null, seriesRead = false)?.id)
+        assertEquals("s1", Seasons.openSeason(listOf(season("s0", 0), season("s1", 1)), SeasonRef("gone", 4), null, seriesRead = false)?.id)
+        assertEquals("s0", Seasons.openSeason(listOf(season("s0", 0)), SeasonRef("gone", 3), null, seriesRead = false)?.id, "Specials alone")
     }
 
     @Test
-    fun aSeasonsCardOpensThatSeason() {
-        assertEquals("s0", Seasons.openSeason(seasons, "s0", null, episode(1, "s1"), seriesRead = true)?.id)
+    fun aSeasonsCardOpensThatSeasonWhereverNextUpIs() {
+        assertEquals("s0", Seasons.openSeason(seasons, SeasonRef("s0", 0), episode(1, "s1"), seriesRead = true)?.id)
     }
 
     @Test
     fun withNoneAskedItWaitsForTheSeriesThenOpensNextUpsSeason() {
         val nextUp = episode(0, "s0")
-        assertNull(Seasons.openSeason(seasons, null, null, nextUp, seriesRead = false))
-        assertEquals("s0", Seasons.openSeason(seasons, null, null, nextUp, seriesRead = true)?.id)
-        assertEquals("s0", Seasons.openSeason(seasons, null, null, episode(0, null), seriesRead = true)?.id)
+        assertNull(Seasons.openSeason(seasons, null, nextUp, seriesRead = false))
+        assertEquals("s0", Seasons.openSeason(seasons, null, nextUp, seriesRead = true)?.id)
+        assertEquals("s0", Seasons.openSeason(seasons, null, episode(0, null), seriesRead = true)?.id)
     }
 
     @Test
     fun withoutNextUpOrAReadSeriesItOpensTheFirstRegularSeason() {
-        assertEquals("s1", Seasons.openSeason(listOf(season("s0", 0), season("s1", 1)), null, null, null, seriesRead = true)?.id)
-        assertEquals("s1", Seasons.openSeason(seasons, null, null, episode(7, "gone"), seriesRead = true)?.id, "Next Up's season unlisted")
+        assertEquals("s1", Seasons.openSeason(listOf(season("s0", 0), season("s1", 1)), null, null, seriesRead = true)?.id)
+        assertEquals("s1", Seasons.openSeason(seasons, null, episode(7, "gone"), seriesRead = true)?.id, "Next Up's season unlisted")
     }
 
     @Test
     fun noSeasonsOpenNone() {
-        assertNull(Seasons.openSeason(emptyList(), "s1", episode(1, "s1"), null, seriesRead = true))
+        assertNull(Seasons.openSeason(emptyList(), SeasonRef("s1", 1), null, seriesRead = true))
     }
 }

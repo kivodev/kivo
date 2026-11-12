@@ -1537,6 +1537,22 @@ final class com.mmcdole.kivo.core.data/RuleDraft { // com.mmcdole.kivo.core.data
     final fun withValues(kotlin.collections/List<kotlin/String>): com.mmcdole.kivo.core.data/RuleDraft // com.mmcdole.kivo.core.data/RuleDraft.withValues|withValues(kotlin.collections.List<kotlin.String>){}[0]
 }
 
+final class com.mmcdole.kivo.core.data/SeasonRef { // com.mmcdole.kivo.core.data/SeasonRef|null[0]
+    constructor <init>(kotlin/String?, kotlin/Int) // com.mmcdole.kivo.core.data/SeasonRef.<init>|<init>(kotlin.String?;kotlin.Int){}[0]
+
+    final val id // com.mmcdole.kivo.core.data/SeasonRef.id|{}id[0]
+        final fun <get-id>(): kotlin/String? // com.mmcdole.kivo.core.data/SeasonRef.id.<get-id>|<get-id>(){}[0]
+    final val number // com.mmcdole.kivo.core.data/SeasonRef.number|{}number[0]
+        final fun <get-number>(): kotlin/Int // com.mmcdole.kivo.core.data/SeasonRef.number.<get-number>|<get-number>(){}[0]
+
+    final fun component1(): kotlin/String? // com.mmcdole.kivo.core.data/SeasonRef.component1|component1(){}[0]
+    final fun component2(): kotlin/Int // com.mmcdole.kivo.core.data/SeasonRef.component2|component2(){}[0]
+    final fun copy(kotlin/String? = ..., kotlin/Int = ...): com.mmcdole.kivo.core.data/SeasonRef // com.mmcdole.kivo.core.data/SeasonRef.copy|copy(kotlin.String?;kotlin.Int){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.data/SeasonRef.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.data/SeasonRef.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // com.mmcdole.kivo.core.data/SeasonRef.toString|toString(){}[0]
+}
+
 final class com.mmcdole.kivo.core.data/SmartListDraft { // com.mmcdole.kivo.core.data/SmartListDraft|null[0]
     constructor <init>(kotlin/String, kotlin.collections/List<com.mmcdole.kivo.api.models/WorkKind>, kotlin.collections/Set<kotlin/String> = ..., com.mmcdole.kivo.api.models/RuleGroupMatch = ..., kotlin.collections/List<com.mmcdole.kivo.core.data/RuleDraft> = ..., kotlin.collections/List<com.mmcdole.kivo.core.data/GroupDraft> = ..., kotlin.collections/List<com.mmcdole.kivo.api.models/SortKey> = ..., kotlin/Int? = ...) // com.mmcdole.kivo.core.data/SmartListDraft.<init>|<init>(kotlin.String;kotlin.collections.List<com.mmcdole.kivo.api.models.WorkKind>;kotlin.collections.Set<kotlin.String>;com.mmcdole.kivo.api.models.RuleGroupMatch;kotlin.collections.List<com.mmcdole.kivo.core.data.RuleDraft>;kotlin.collections.List<com.mmcdole.kivo.core.data.GroupDraft>;kotlin.collections.List<com.mmcdole.kivo.api.models.SortKey>;kotlin.Int?){}[0]
 
@@ -2331,6 +2347,7 @@ final class com.mmcdole.kivo.core.session/SessionLibrary { // com.mmcdole.kivo.c
     final fun person(kotlin/String): kotlinx.coroutines.flow/Flow<com.mmcdole.kivo.core/Load<com.mmcdole.kivo.api.models/Person>> // com.mmcdole.kivo.core.session/SessionLibrary.person|person(kotlin.String){}[0]
     final fun rereadLibraries() // com.mmcdole.kivo.core.session/SessionLibrary.rereadLibraries|rereadLibraries(){}[0]
     final fun work(kotlin/String): kotlinx.coroutines.flow/Flow<com.mmcdole.kivo.core/Load<com.mmcdole.kivo.api.models/WorkDetail>> // com.mmcdole.kivo.core.session/SessionLibrary.work|work(kotlin.String){}[0]
+    final fun workPage(kotlin/String, com.mmcdole.kivo.api.models/WorkSummary? = ..., com.mmcdole.kivo.core.data/SeasonRef? = ...): com.mmcdole.kivo.core.session/WorkPage // com.mmcdole.kivo.core.session/SessionLibrary.workPage|workPage(kotlin.String;com.mmcdole.kivo.api.models.WorkSummary?;com.mmcdole.kivo.core.data.SeasonRef?){}[0]
     final suspend fun addToList(kotlin/String, kotlin/String): com.mmcdole.kivo.core/Done<kotlin/Unit> // com.mmcdole.kivo.core.session/SessionLibrary.addToList|addToList(kotlin.String;kotlin.String){}[0]
     final suspend fun countMatching(com.mmcdole.kivo.api.models/WorkQuery): kotlin/Int // com.mmcdole.kivo.core.session/SessionLibrary.countMatching|countMatching(com.mmcdole.kivo.api.models.WorkQuery){}[0]
     final suspend fun createList(kotlin/String): com.mmcdole.kivo.core/Done<com.mmcdole.kivo.api.models/WorkList> // com.mmcdole.kivo.core.session/SessionLibrary.createList|createList(kotlin.String){}[0]
@@ -2454,6 +2471,56 @@ final class com.mmcdole.kivo.core.session/WorkMarks { // com.mmcdole.kivo.core.s
     final fun removeFromContinue(kotlin/String) // com.mmcdole.kivo.core.session/WorkMarks.removeFromContinue|removeFromContinue(kotlin.String){}[0]
     final fun setOnList(kotlin/String, kotlin/String, kotlin/Boolean) // com.mmcdole.kivo.core.session/WorkMarks.setOnList|setOnList(kotlin.String;kotlin.String;kotlin.Boolean){}[0]
     final fun setPlayed(kotlin/String, kotlin/Boolean) // com.mmcdole.kivo.core.session/WorkMarks.setPlayed|setPlayed(kotlin.String;kotlin.Boolean){}[0]
+}
+
+final class com.mmcdole.kivo.core.session/WorkPage { // com.mmcdole.kivo.core.session/WorkPage|null[0]
+    final val state // com.mmcdole.kivo.core.session/WorkPage.state|{}state[0]
+        final fun <get-state>(): kotlinx.coroutines.flow/StateFlow<com.mmcdole.kivo.core.session/WorkPageState> // com.mmcdole.kivo.core.session/WorkPage.state.<get-state>|<get-state>(){}[0]
+
+    final fun chooseAudio(kotlin/String?) // com.mmcdole.kivo.core.session/WorkPage.chooseAudio|chooseAudio(kotlin.String?){}[0]
+    final fun chooseSeason(kotlin/String) // com.mmcdole.kivo.core.session/WorkPage.chooseSeason|chooseSeason(kotlin.String){}[0]
+    final fun chooseSubtitle(kotlin/String?) // com.mmcdole.kivo.core.session/WorkPage.chooseSubtitle|chooseSubtitle(kotlin.String?){}[0]
+    final fun chooseVersion(kotlin/String) // com.mmcdole.kivo.core.session/WorkPage.chooseVersion|chooseVersion(kotlin.String){}[0]
+    final fun close() // com.mmcdole.kivo.core.session/WorkPage.close|close(){}[0]
+    final fun retry() // com.mmcdole.kivo.core.session/WorkPage.retry|retry(){}[0]
+}
+
+final class com.mmcdole.kivo.core.session/WorkPageState { // com.mmcdole.kivo.core.session/WorkPageState|null[0]
+    final val choice // com.mmcdole.kivo.core.session/WorkPageState.choice|{}choice[0]
+        final fun <get-choice>(): com.mmcdole.kivo.core.play/PlayChoice // com.mmcdole.kivo.core.session/WorkPageState.choice.<get-choice>|<get-choice>(){}[0]
+    final val episodes // com.mmcdole.kivo.core.session/WorkPageState.episodes|{}episodes[0]
+        final fun <get-episodes>(): com.mmcdole.kivo.core/Load<kotlin.collections/List<com.mmcdole.kivo.api.models/WorkSummary>>? // com.mmcdole.kivo.core.session/WorkPageState.episodes.<get-episodes>|<get-episodes>(){}[0]
+    final val episodesOf // com.mmcdole.kivo.core.session/WorkPageState.episodesOf|{}episodesOf[0]
+        final fun <get-episodesOf>(): kotlin/String? // com.mmcdole.kivo.core.session/WorkPageState.episodesOf.<get-episodesOf>|<get-episodesOf>(){}[0]
+    final val head // com.mmcdole.kivo.core.session/WorkPageState.head|{}head[0]
+        final fun <get-head>(): com.mmcdole.kivo.api.models/WorkSummary? // com.mmcdole.kivo.core.session/WorkPageState.head.<get-head>|<get-head>(){}[0]
+    final val myListId // com.mmcdole.kivo.core.session/WorkPageState.myListId|{}myListId[0]
+        final fun <get-myListId>(): kotlin/String? // com.mmcdole.kivo.core.session/WorkPageState.myListId.<get-myListId>|<get-myListId>(){}[0]
+    final val onMyList // com.mmcdole.kivo.core.session/WorkPageState.onMyList|{}onMyList[0]
+        final fun <get-onMyList>(): kotlin/Boolean // com.mmcdole.kivo.core.session/WorkPageState.onMyList.<get-onMyList>|<get-onMyList>(){}[0]
+    final val played // com.mmcdole.kivo.core.session/WorkPageState.played|{}played[0]
+        final fun <get-played>(): kotlin/Boolean // com.mmcdole.kivo.core.session/WorkPageState.played.<get-played>|<get-played>(){}[0]
+    final val problem // com.mmcdole.kivo.core.session/WorkPageState.problem|{}problem[0]
+        final fun <get-problem>(): com.mmcdole.kivo.core/RequestProblem? // com.mmcdole.kivo.core.session/WorkPageState.problem.<get-problem>|<get-problem>(){}[0]
+    final val season // com.mmcdole.kivo.core.session/WorkPageState.season|{}season[0]
+        final fun <get-season>(): com.mmcdole.kivo.api.models/WorkSummary? // com.mmcdole.kivo.core.session/WorkPageState.season.<get-season>|<get-season>(){}[0]
+    final val seasons // com.mmcdole.kivo.core.session/WorkPageState.seasons|{}seasons[0]
+        final fun <get-seasons>(): com.mmcdole.kivo.core/Load<kotlin.collections/List<com.mmcdole.kivo.api.models/WorkSummary>>? // com.mmcdole.kivo.core.session/WorkPageState.seasons.<get-seasons>|<get-seasons>(){}[0]
+    final val work // com.mmcdole.kivo.core.session/WorkPageState.work|{}work[0]
+        final fun <get-work>(): com.mmcdole.kivo.api.models/WorkDetail? // com.mmcdole.kivo.core.session/WorkPageState.work.<get-work>|<get-work>(){}[0]
+
+    final fun component1(): com.mmcdole.kivo.api.models/WorkSummary? // com.mmcdole.kivo.core.session/WorkPageState.component1|component1(){}[0]
+    final fun component2(): com.mmcdole.kivo.api.models/WorkDetail? // com.mmcdole.kivo.core.session/WorkPageState.component2|component2(){}[0]
+    final fun component3(): com.mmcdole.kivo.core/RequestProblem? // com.mmcdole.kivo.core.session/WorkPageState.component3|component3(){}[0]
+    final fun component4(): com.mmcdole.kivo.core/Load<kotlin.collections/List<com.mmcdole.kivo.api.models/WorkSummary>>? // com.mmcdole.kivo.core.session/WorkPageState.component4|component4(){}[0]
+    final fun component5(): com.mmcdole.kivo.api.models/WorkSummary? // com.mmcdole.kivo.core.session/WorkPageState.component5|component5(){}[0]
+    final fun component6(): com.mmcdole.kivo.core/Load<kotlin.collections/List<com.mmcdole.kivo.api.models/WorkSummary>>? // com.mmcdole.kivo.core.session/WorkPageState.component6|component6(){}[0]
+    final fun component7(): kotlin/String? // com.mmcdole.kivo.core.session/WorkPageState.component7|component7(){}[0]
+    final fun component8(): com.mmcdole.kivo.core.play/PlayChoice // com.mmcdole.kivo.core.session/WorkPageState.component8|component8(){}[0]
+    final fun component9(): kotlin/String? // com.mmcdole.kivo.core.session/WorkPageState.component9|component9(){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.session/WorkPageState.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.session/WorkPageState.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // com.mmcdole.kivo.core.session/WorkPageState.toString|toString(){}[0]
 }
 
 final class com.mmcdole.kivo.core.settings/DeviceSettings { // com.mmcdole.kivo.core.settings/DeviceSettings|null[0]
@@ -2968,10 +3035,6 @@ final object com.mmcdole.kivo.core.data/ListSorts { // com.mmcdole.kivo.core.dat
         final fun <get-all>(): kotlin.collections/List<com.mmcdole.kivo.api.models/ListSort> // com.mmcdole.kivo.core.data/ListSorts.all.<get-all>|<get-all>(){}[0]
 
     final fun of(com.mmcdole.kivo.api.models/WorkList): com.mmcdole.kivo.api.models/ListSort? // com.mmcdole.kivo.core.data/ListSorts.of|of(com.mmcdole.kivo.api.models.WorkList){}[0]
-}
-
-final object com.mmcdole.kivo.core.data/Seasons { // com.mmcdole.kivo.core.data/Seasons|null[0]
-    final fun openSeason(kotlin.collections/List<com.mmcdole.kivo.api.models/WorkSummary>, kotlin/String?, com.mmcdole.kivo.api.models/EpisodeInfo?, com.mmcdole.kivo.api.models/EpisodeInfo?, kotlin/Boolean): com.mmcdole.kivo.api.models/WorkSummary? // com.mmcdole.kivo.core.data/Seasons.openSeason|openSeason(kotlin.collections.List<com.mmcdole.kivo.api.models.WorkSummary>;kotlin.String?;com.mmcdole.kivo.api.models.EpisodeInfo?;com.mmcdole.kivo.api.models.EpisodeInfo?;kotlin.Boolean){}[0]
 }
 
 final object com.mmcdole.kivo.core.data/SmartLists { // com.mmcdole.kivo.core.data/SmartLists|null[0]

@@ -33,7 +33,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -138,14 +137,12 @@ import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.core.data.CreditRole
-import com.mmcdole.kivo.core.data.Seasons
 import com.mmcdole.kivo.core.data.SubtitleSearch
 import com.mmcdole.kivo.core.data.knownRole
 import com.mmcdole.kivo.core.data.localTrailers
 import com.mmcdole.kivo.core.data.otherExtras
 import com.mmcdole.kivo.core.data.resumeAt
 import com.mmcdole.kivo.core.data.selectedVersion
-import com.mmcdole.kivo.core.data.summary
 import com.mmcdole.kivo.core.data.withTrack
 import com.mmcdole.kivo.core.data.youTubeTrailers
 import com.mmcdole.kivo.core.display.Display
@@ -156,6 +153,8 @@ import com.mmcdole.kivo.core.display.size
 import com.mmcdole.kivo.core.display.timeLeft
 import com.mmcdole.kivo.core.play.PlayChoice
 import com.mmcdole.kivo.core.player.SUBTITLES_OFF
+import com.mmcdole.kivo.core.session.WorkPage
+import com.mmcdole.kivo.core.session.WorkPageState
 
 /**
  * A work's page: a movie or video, a series (a season opens its series on
@@ -164,45 +163,41 @@ import com.mmcdole.kivo.core.player.SUBTITLES_OFF
  */
 @Composable
 fun DetailScreen(session: ServerSession, id: String, navigator: Navigator, episode: EpisodeInfo? = null) {
-    val model = viewModel(key = id) { DetailViewModel(session, id) }
-    Shown(model.work, model.seed, session) { page ->
-        val season = page.head.season
-        when {
-            model.seasonOf != null -> SeriesDetail(model, page, id, null, navigator)
-            page.head.kind == WorkKind.Series -> SeriesDetail(model, page, null, episode, navigator)
-            page.head.kind == WorkKind.Season && season != null ->
-                Shown(model.other(season.seriesId), model.seriesSeed(page.head), session) { SeriesDetail(model, it, page.head.id, null, navigator) }
-            page.head.kind == WorkKind.Episode -> EpisodeDetail(model, page, navigator)
+    val model = viewModel(key = id) { DetailViewModel(session, id, episode) }
+    val state by model.page.state.collectAsStateWithLifecycle()
+    Shown(state, model, session) { page ->
+        when (page.head.kind) {
+            WorkKind.Series -> SeriesDetail(model, page, navigator)
+            WorkKind.Episode -> EpisodeDetail(model, page, navigator)
             else -> MovieDetail(model, page, navigator)
         }
     }
 }
 
 /**
- * A page as far as it's known: [head], what shows at once, and [work] once
- * it's read, or the [problem] reading it, which [retry] reads again.
+ * A page as far as it's known: [head], what shows at once, and the page's
+ * [state], with the work once it's read, or the [problem] reading it,
+ * which [retry] reads again.
  */
-private class Page(val head: WorkSummary, val work: WorkDetail?, val problem: RequestProblem?, val retry: () -> Unit)
+private class Page(val head: WorkSummary, val state: WorkPageState, val retry: () -> Unit) {
+    val work: WorkDetail? get() = state.work
+    val problem: RequestProblem? get() = state.problem.takeIf { state.work == null }
+}
 
 /**
- * A page's read: at once from [seed] when something's known of the work,
- * else its skeleton after a moment; a failure fills the screen only when
- * nothing's known. A page read stays while a later read fails.
+ * A page at once from what's known of the work, else its skeleton after a
+ * moment; a failure fills the screen only when nothing's known.
  */
 @Composable
-private fun Shown(loader: Loader<WorkDetail>, seed: WorkSummary?, session: ServerSession, content: @Composable (Page) -> Unit) {
-    val state by loader.state.collectAsStateWithLifecycle()
-    var read by remember(loader) { mutableStateOf<WorkDetail?>(null) }
-    state.getOrNull()?.let { read = it }
-    val work = read
-    val head = remember(work) { work?.summary() } ?: seed
-    val problem = state.problemOrNull()
+private fun Shown(state: WorkPageState, model: DetailViewModel, session: ServerSession, content: @Composable (Page) -> Unit) {
+    val head = state.head
+    val problem = state.problem
     if (head == null && problem != null) {
-        Failed(problem, session.session.baseUrl, loader::retry, session.graph::changeServer)
+        Failed(problem, session.session.baseUrl, model.page::retry, session.graph::changeServer)
         return
     }
     SkeletonGate(head, { SkeletonHero(Modifier.padding(start = 24.dp, top = 120.dp)) }) {
-        content(Page(it, work, problem.takeIf { work == null }, loader::retry))
+        content(Page(it, state, model.page::retry))
     }
 }
 
@@ -403,7 +398,7 @@ private fun MovieDetail(model: DetailViewModel, page: Page, navigator: Navigator
     val memory = rememberFocusMemory()
     val hero = rememberHeroLevels(memory)
     hero.levels = false
-    var choices by rememberChoices(page.head.id)
+    val choices = page.state.choice
     val head = page.head
     val work = page.work
     DetailFrame(head.images.backdrop) {
@@ -414,13 +409,13 @@ private fun MovieDetail(model: DetailViewModel, page: Page, navigator: Navigator
                     Spacer(Modifier.height(HeroGap))
                     HeroLine(metaLine(head, work, display))
                     Spacer(Modifier.height(HeroGap))
-                    ActionRow(model, head, work, choices, hero, navigator)
+                    ActionRow(model, page, choices, hero, navigator)
                     Spacer(Modifier.height(HeroGapTight))
                     TimeLeft(head.userState?.positionMs, head.durationMs)
                     Spacer(Modifier.height(HeroGap))
                     // Two lines of pickers' room, as the Samsung TV app's wrap, so the description holds its place.
                     Box(Modifier.heightIn(min = 66.5.dp)) {
-                        if (work != null) Pickers(work, choices, hero) { choices = it }
+                        if (work != null) Pickers(work, choices, model.page, hero)
                     }
                     Spacer(Modifier.height(HeroGap))
                     OverviewSlot(hero, page, head.title, work?.overview)
@@ -448,16 +443,16 @@ private fun playable(head: WorkSummary, work: WorkDetail?, choices: PlayChoice) 
 @Composable
 private fun ActionRow(
     model: DetailViewModel,
-    work: WorkSummary,
-    read: WorkDetail?,
+    page: Page,
     choices: PlayChoice,
     hero: HeroLevels,
     navigator: Navigator,
     chips: (@Composable () -> Unit)? = null,
 ) {
-    val played = work.userState?.played == true
-    val myListId by model.myListId.collectAsStateWithLifecycle()
-    val onMyList = read.onList(myListId)
+    val work = page.head
+    val read = page.work
+    val played = page.state.played
+    val onMyList = page.state.onMyList
     val playable = playable(work, read, choices)
     val position = if (read != null) read.resumeAt(choices.versionId) else work.userState?.positionMs
     fun play(fromStart: Boolean) = navigator.push(
@@ -562,17 +557,6 @@ private fun timeLeftLine(positionMs: Int?, durationMs: Int): String {
     return listOfNotNull(display.timeLeft(leftMs).takeIf { positionMs != null }, endsAt(leftMs)).joinToString(" · ")
 }
 
-/**
- * The detail page's choices for [workId], carried into playback. A null
- * version is the work's default one ([selectedVersion]); a null track
- * leaves it to the server.
- */
-@Composable
-private fun rememberChoices(workId: String) = rememberSaveable(workId, stateSaver = androidx.compose.runtime.saveable.listSaver(
-    save = { listOf(it.versionId, it.audioTrackId, it.subtitleTrackId) },
-    restore = { PlayChoice(workId, it[0], it[1], it[2]) },
-)) { mutableStateOf(PlayChoice(workId)) }
-
 /** The picker whose choices are open, or the subtitle search Audio & Subtitles opens. */
 private enum class Picker { Version, Tracks, SubtitleSearch }
 
@@ -588,7 +572,7 @@ private enum class Picker { Version, Tracks, SubtitleSearch }
  * episode's page.
  */
 @Composable
-private fun Pickers(read: WorkDetail, choices: PlayChoice, hero: HeroLevels, chips: Boolean = false, onChange: (PlayChoice) -> Unit) {
+private fun Pickers(read: WorkDetail, choices: PlayChoice, page: WorkPage, hero: HeroLevels, chips: Boolean = false) {
     var downloaded by remember(read) { mutableStateOf(emptyList<Pair<String, Track>>()) }
     val work = downloaded.fold(read) { w, (versionId, track) -> w.withTrack(versionId, track) }
     val version = work.selectedVersion(choices.versionId) ?: return
@@ -640,15 +624,15 @@ private fun Pickers(read: WorkDetail, choices: PlayChoice, hero: HeroLevels, chi
             selected = version.id,
             onSelect = {
                 open = null
-                onChange(PlayChoice(choices.workId, versionId = it))
+                page.chooseVersion(it)
             },
             onDismiss = { open = null },
         )
         Picker.Tracks -> TracksPanel(
             tracks = tracks,
             automatic = automatic,
-            onAudio = { onChange(choices.copy(audioTrackId = it)) },
-            onSubtitle = { onChange(choices.copy(subtitleTrackId = it)) },
+            onAudio = page::chooseAudio,
+            onSubtitle = page::chooseSubtitle,
             onDismiss = { open = null },
             onSearch = { open = Picker.SubtitleSearch },
         )
@@ -660,7 +644,7 @@ private fun Pickers(read: WorkDetail, choices: PlayChoice, hero: HeroLevels, chi
                 download = { result ->
                     val track = session.session.playback.addSubtitle(version, result.id)
                     downloaded = downloaded + (version.id to track)
-                    onChange(choices.copy(subtitleTrackId = track.id))
+                    page.chooseSubtitle(track.id)
                     open = Picker.Tracks
                 },
                 onDismiss = { open = Picker.Tracks },
@@ -764,32 +748,23 @@ private fun seasonLabel(number: Int?) = if (number == 0) stringResource(R.string
 /**
  * A series: Next Up as the primary action, the season strip
  * (none for a single season), and the open season's episodes as a row of
- * cards that opens on Next Up, opening on
- * the season whose page this is, or Go to series' [episode]'s, else the
- * season holding Next Up, as [Seasons.openSeason] picks. Its seasons
- * are read with the series; until they're in, placeholders hold their place.
+ * cards that opens on Next Up, on the season the page opens on. Until the
+ * seasons are in, placeholders hold their place.
  */
 @Composable
-private fun SeriesDetail(model: DetailViewModel, page: Page, seasonId: String?, episode: EpisodeInfo?, navigator: Navigator) {
+private fun SeriesDetail(model: DetailViewModel, page: Page, navigator: Navigator) {
     val memory = rememberFocusMemory()
     val hero = rememberHeroLevels(memory)
     val head = page.head
     val work = page.work
-    val seasonsLoader = model.children(head.id)
-    val seasonsState by seasonsLoader.state.collectAsStateWithLifecycle()
-    val seasons = seasonsState.getOrNull()?.sortedBy { if (it.season?.number == 0) Int.MAX_VALUE else it.season?.number ?: 0 }
+    val state = page.state
+    val seasonsState = state.seasons
+    val seasons = seasonsState?.getOrNull()
     val nextUp = work?.series?.nextUp
-    var chosen by rememberSaveable { mutableStateOf<String?>(null) }
-    // Which season holds Next Up is known once the series is read.
-    val open = seasons?.let { listed ->
-        listed.firstOrNull { it.id == chosen } ?: Seasons.openSeason(listed, seasonId, episode, nextUp?.episode, seriesRead = work != null || page.problem != null)
-    }
+    val open = state.season
+    val episodesState = state.episodes
     // The season on screen keeps its row until the chosen one's episodes are ready.
-    var shown by remember { mutableStateOf<Pair<WorkSummary, List<WorkSummary>>?>(null) }
-    val episodesLoader = open?.let { model.children(it.id) }
-    val episodesState = episodesLoader?.state?.collectAsStateWithLifecycle()?.value
-    val episodes = episodesState?.getOrNull()
-    if (open != null && episodes != null && shown != (open to episodes)) shown = open to episodes
+    val shown = episodesState?.getOrNull()?.let { episodes -> seasons?.firstOrNull { it.id == state.episodesOf }?.let { it to episodes } }
     var confirming by remember { mutableStateOf(false) }
     var confirmingSeason by remember { mutableStateOf<WorkSummary?>(null) }
 
@@ -802,9 +777,8 @@ private fun SeriesDetail(model: DetailViewModel, page: Page, seasonId: String?, 
         head.communityRating?.let { "★ ${formatRating(it)}" },
         head.contentRating,
     ).joinToString(" · ")
-    val played = head.userState?.played == true
-    val myListId by model.myListId.collectAsStateWithLifecycle()
-    val onMyList = work.onList(myListId)
+    val played = state.played
+    val onMyList = state.onMyList
     val server = LocalSession.current.session.baseUrl
 
     val pills = remember { FocusRequester() }
@@ -855,10 +829,10 @@ private fun SeriesDetail(model: DetailViewModel, page: Page, seasonId: String?, 
                     Spacer(Modifier.height(24.dp))
                 }
             }
-            val seasonsProblem = seasonsState.problemOrNull()
+            val seasonsProblem = seasonsState?.problemOrNull()
             val episodesProblem = episodesState?.problemOrNull()
             if (seasonsProblem != null) {
-                item { InlineFailed(seasonsProblem, server, seasonsLoader::retry) }
+                item { InlineFailed(seasonsProblem, server, page.retry) }
             } else if (seasons?.isEmpty() != true) {
                 item(key = "episodes") {
                     // Its strip, heading and cards come to the screen's top together, the hero wholly away rather than half.
@@ -866,7 +840,7 @@ private fun SeriesDetail(model: DetailViewModel, page: Page, seasonId: String?, 
                     Column(Modifier.bringsTopIntoView(above).raisedOnFocus()) {
                         when {
                             strip -> {
-                                SeasonStrip(seasons.orEmpty(), open, memory, pills, toCards) { chosen = it }
+                                SeasonStrip(seasons.orEmpty(), open, memory, pills, toCards, model.page::chooseSeason)
                                 Spacer(Modifier.height(CardsUnderHeading))
                             }
                             // As many seasons as the series is known to have; a single season has no strip.
@@ -886,7 +860,7 @@ private fun SeriesDetail(model: DetailViewModel, page: Page, seasonId: String?, 
                             }
                         }
                         when {
-                            episodesProblem != null -> InlineFailed(episodesProblem, server, episodesLoader::retry, Modifier.padding(top = CardsUnderHeading))
+                            episodesProblem != null -> InlineFailed(episodesProblem, server, page.retry, Modifier.padding(top = CardsUnderHeading))
                             current != null -> key(current.first.id) {
                                 EpisodeCardRow(
                                     current.second,
@@ -1034,7 +1008,7 @@ private fun SeasonChip(season: WorkSummary, current: Boolean, modifier: Modifier
 private fun EpisodeDetail(model: DetailViewModel, page: Page, navigator: Navigator) {
     val memory = rememberFocusMemory()
     val hero = rememberHeroLevels(memory)
-    var choices by rememberChoices(page.head.id)
+    val choices = page.state.choice
     val head = page.head
     val work = page.work
     val e = head.episode
@@ -1053,15 +1027,13 @@ private fun EpisodeDetail(model: DetailViewModel, page: Page, navigator: Navigat
                     Spacer(Modifier.height(HeroGapTight))
                     EpisodeLine(head)
                     Spacer(Modifier.height(HeroGapTight))
-                    ActionRow(model, head, work, choices, hero, navigator, chips = {
-                        if (work != null) Pickers(work, choices, hero, chips = true) { choices = it }
+                    ActionRow(model, page, choices, hero, navigator, chips = {
+                        if (work != null) Pickers(work, choices, model.page, hero, chips = true)
                     })
                     Spacer(Modifier.height(HeroGap))
                     OverviewSlot(hero, page, head.title, work?.overview, lines = 5, width = EpisodeBlockWidth, textWidth = EpisodeTextWidth)
                     Spacer(Modifier.height(HeroGap))
-                    e?.seasonId?.let { seasonId ->
-                        val loader = model.children(seasonId)
-                        val state = loader.state.collectAsStateWithLifecycle().value
+                    if (e != null) page.state.episodes?.let { state ->
                         val episodes = state.getOrNull()
                         val problem = state.problemOrNull()
                         hero.below = cards.takeIf { episodes != null }
@@ -1080,7 +1052,7 @@ private fun EpisodeDetail(model: DetailViewModel, page: Page, navigator: Navigat
                                 navigator = navigator,
                                 modifier = Modifier.rowPlace(top = FocusBleed - CardsUnderHeading),
                             )
-                            problem != null -> InlineFailed(problem, LocalSession.current.session.baseUrl, loader::retry, Modifier.padding(top = CardsUnderHeading))
+                            problem != null -> InlineFailed(problem, LocalSession.current.session.baseUrl, page.retry, Modifier.padding(top = CardsUnderHeading))
                             else -> EpisodeCardRowSkeleton(Modifier.padding(top = CardsUnderHeading))
                         }
                     }

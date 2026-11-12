@@ -42,6 +42,7 @@ import com.mmcdole.kivo.core.data.LibraryRepository
 import com.mmcdole.kivo.core.data.LibraryTab
 import com.mmcdole.kivo.core.data.ListsRepository
 import com.mmcdole.kivo.core.data.SavedGrids
+import com.mmcdole.kivo.core.data.SeasonRef
 import com.mmcdole.kivo.core.data.SearchRepository
 import com.mmcdole.kivo.core.data.UserStateRepository
 import com.mmcdole.kivo.core.data.WorkRepository
@@ -53,6 +54,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.merge
@@ -232,6 +235,26 @@ class SessionLibrary internal constructor(
     /** A series' seasons or a season's episodes. */
     fun children(workId: String): Flow<Load<List<WorkSummary>>> =
         reachability.load(works.children(workId).onEach(seen::read))
+
+    /**
+     * A work's page, shown at once from [card], the card it was opened
+     * from, else from what the session has read of it; a series' opens on
+     * the season [openOn] names, as Go to series asks.
+     */
+    @DefaultArgumentInterop.Enabled
+    fun workPage(id: String, card: WorkSummary? = null, openOn: SeasonRef? = null): WorkPage = WorkPage(
+        id,
+        card,
+        openOn,
+        WorkPageReads(
+            work = ::work,
+            children = ::children,
+            known = ::known,
+            myListId = lists().map { load -> load.getOrNull()?.firstOrNull { it.builtIn }?.id }.distinctUntilChanged(),
+            retryNow = reachability::retryNow,
+        ),
+        scope,
+    )
 
     /** [limit] works of a library's grid from [offset], such as one long to ask whether a filter finds any. */
     @Throws(Exception::class)

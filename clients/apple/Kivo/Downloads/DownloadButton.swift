@@ -12,7 +12,7 @@ import SwiftUI
 /// warning when it failed, and its menu says so, with Pause or Resume
 /// while it comes, Retry when it failed, and Remove Download.
 struct DownloadButton: View {
-    let work: WorkDetail
+    let work: WorkSummary
     /// The work with the version and tracks chosen on its page.
     let choice: PlayChoice
     @Environment(ServerModel.self) private var server

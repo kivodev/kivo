@@ -10,31 +10,20 @@ import SwiftUI
 /// that marks it watched or unwatched, and its episodes a shelf of cards
 /// that opens on Next Up; in a compact one they're a "Season 1 ▾" menu,
 /// each with its unwatched count or Watched, and Mark Season as Watched,
-/// over a list of episode rows. It opens on the season asked for, or Go to series'
-/// episode's, else the one holding Next Up, as the core's `Seasons.openSeason`
-/// picks; Specials are last, as the server orders them. The ⋯ menu downloads the season or the whole series.
+/// over a list of episode rows. It opens on the season the core's `WorkPage`
+/// opens it on; Specials are last, as the server orders them. The ⋯ menu
+/// downloads the season or the whole series.
 struct SeriesDetail: View {
-    let series: WorkDetail
-    /// The season asked for, by a season's card; its episodes are read beside the seasons.
-    let initialSeasonId: String?
-    /// The episode Go to series came from; its season's episodes are read beside the seasons.
-    let episode: EpisodeInfo?
+    /// What shows of the series: its page's summary once read.
+    let series: WorkSummary
+    let page: WorkPageState
+    /// Where a season chosen goes.
+    let model: WorkPage
     @Environment(ServerModel.self) private var server
     @Environment(\.kivoPalette) private var palette
     @Environment(\.wide) private var wide
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.detailLoad) private var load
-    @State private var seasons: [WorkSummary] = []
-    /// Until the seasons are read: whether they have been, and why they couldn't be.
-    @State private var seasonsRead = false
-    @State private var seasonsProblem: RequestProblem?
-    @State private var seasonsAttempt = 0
-    /// The season picked from the menu or a pill, or the one the page opened on, kept as Next Up moves.
-    @State private var chosen: String?
-    /// The open season's episodes, the last season's kept until the next's are read; nil until the first are.
-    @State private var episodes: [WorkSummary]?
-    @State private var episodesProblem: RequestProblem?
-    @State private var episodesAttempt = 0
     @State private var confirmingPlayed = false
     @State private var confirmingCheck = false
     @State private var downloading: EpisodesToDownload?
@@ -52,33 +41,41 @@ struct SeriesDetail: View {
         }
     }
 
-    /// The open season: the one chosen, else, once the seasons are read,
-    /// the one the page opens on, worked out from what's read so far each
-    /// time the page is drawn rather than set when a read lands; before
-    /// they're read, the one asked for, so its episodes are read beside them.
-    private var seasonId: String? {
-        if let chosen, seasons.contains(where: { $0.id == chosen }) { return chosen }
-        guard seasonsRead else { return initialSeasonId ?? episode?.seasonId }
-        return Seasons.shared.openSeason(
-            seasons: seasons,
-            seasonId: initialSeasonId,
-            episode: episode,
-            nextUp: series.series?.nextUp?.episode,
-            seriesRead: load.loaded || load.problem != nil
-        )?.id
+    private var seasons: [WorkSummary] {
+        page.seasons?.getOrNull() as? [WorkSummary] ?? []
     }
 
-    private var season: WorkSummary? {
-        seasons.first { $0.id == seasonId }
+    private var seasonsRead: Bool {
+        page.seasons?.getOrNull() != nil
+    }
+
+    /// Why the seasons couldn't be read, when the server refused them.
+    private var seasonsProblem: RequestProblem? {
+        page.seasons?.problemOrNull().flatMap { $0.isUnreachable ? nil : $0 }
+    }
+
+    /// The open season, once the seasons are read.
+    private var season: WorkSummary? { page.season }
+
+    private var seasonId: String? { page.season?.id }
+
+    /// The episodes shown: the open season's, the last season's kept until the next's are read; nil until the first are.
+    private var episodes: [WorkSummary]? {
+        page.episodes?.getOrNull() as? [WorkSummary]
+    }
+
+    /// Why the open season's episodes couldn't be read, when the server refused them.
+    private var episodesProblem: RequestProblem? {
+        page.episodes?.problemOrNull().flatMap { $0.isUnreachable ? nil : $0 }
     }
 
     var body: some View {
         DetailPage(work: series, art: series.images.backdrop ?? series.images.poster, details: details) {
             actions
                 .actionRowInsets()
-            Overview(text: series.overview)
+            Overview(text: page.work?.overview)
             if let seasonsProblem {
-                InlineFailure(title: String(localized: "Couldn't load the seasons."), problem: seasonsProblem) { seasonsAttempt += 1 }
+                InlineFailure(title: String(localized: "Couldn't load the seasons."), problem: seasonsProblem, retry: model.retry)
             } else if !seasonsRead {
                 seasonsSkeleton
             } else if !seasons.isEmpty, horizontalSizeClass == .regular {
@@ -97,11 +94,11 @@ struct SeriesDetail: View {
                     .detailRow(EdgeInsets(top: 20, leading: 20, bottom: 4, trailing: 20))
             }
             if let episodesProblem {
-                InlineFailure(title: String(localized: "Couldn't load this season."), problem: episodesProblem) { episodesAttempt += 1 }
+                InlineFailure(title: String(localized: "Couldn't load this season."), problem: episodesProblem, retry: model.retry)
             } else if let episodes, horizontalSizeClass == .regular {
                 EpisodeShelf(episodes: episodes, focus: series.series?.nextUp?.id)
                     // Each season's shelf starts at its own beginning, or its Next Up.
-                    .id(seasonId)
+                    .id(page.episodesOf)
             } else if let episodes {
                 ForEach(episodes, id: \.id) { episode in
                     EpisodeRow(episode: episode)
@@ -109,11 +106,13 @@ struct SeriesDetail: View {
             } else if seasonsProblem == nil, horizontalSizeClass == .regular {
                 EpisodeShelfSkeleton()
             } else if seasonsProblem == nil {
-                EpisodeRowSkeletons(count: (season ?? seasonId.flatMap { server.session.library.known(id: $0) })?.season?.episodeCount?.intValue)
+                EpisodeRowSkeletons(count: (season ?? page.episodesOf.flatMap { server.session.library.known(id: $0) })?.season?.episodeCount?.intValue)
             }
-            TrailersRow(work: series)
-            CastRow(credits: series.credits)
-            CardRow(title: String(localized: "Extras"), works: series.otherExtras())
+            if let read = page.work {
+                TrailersRow(work: read)
+                CastRow(credits: read.credits)
+                CardRow(title: String(localized: "Extras"), works: read.otherExtras())
+            }
             Color.clear.frame(height: KivoTokens.spacing * 6).detailRow()
         } actions: {
             UserStateMenuItems(work: series)
@@ -142,34 +141,6 @@ struct SeriesDetail: View {
             case .series:
                 DownloadEpisodesSheet(title: String(localized: "Download series")) {
                     try await episodeIds(of: seasons.map(\.id))
-                }
-            }
-        }
-        .task(id: "\(series.id)/\(seasonsAttempt)") {
-            seasonsProblem = nil
-            for await load in server.session.library.children(workId: series.id) {
-                if let children = load.getOrNull() as? [WorkSummary] {
-                    seasonsProblem = nil
-                    seasons = children
-                    seasonsRead = true
-                } else if let problem = load.problemOrNull(), !problem.isUnreachable {
-                    seasonsProblem = problem
-                }
-            }
-        }
-        // The season the page opened on stays open as Next Up moves on.
-        .onChange(of: seasonId) { _, id in
-            if seasonsRead, chosen == nil { chosen = id }
-        }
-        .task(id: "\(seasonId ?? "")/\(episodesAttempt)") {
-            guard let seasonId else { return }
-            episodesProblem = nil
-            for await load in server.session.library.children(workId: seasonId) {
-                if let children = load.getOrNull() as? [WorkSummary] {
-                    episodesProblem = nil
-                    episodes = children
-                } else if let problem = load.problemOrNull(), !problem.isUnreachable {
-                    episodesProblem = problem
                 }
             }
         }
@@ -258,7 +229,7 @@ struct SeriesDetail: View {
             ActionRowSkeleton(roundButtons: 2)
                 .frame(maxWidth: .infinity, alignment: wide ? .leading : .center)
         } else if let nextUp = series.series?.nextUp {
-            ActionRow(work: series, secondary: secondLine(nextUp)) {
+            ActionRow(work: series, page: page, secondary: secondLine(nextUp)) {
                 PlayButton(label: playLabel(nextUp)) {
                     server.player.play(PlayChoice(workId: nextUp.id))
                 }
@@ -267,7 +238,7 @@ struct SeriesDetail: View {
                 }
             }
         } else {
-            HStack(spacing: KivoTokens.spacing * 3) { UserStateButtons(work: series) }
+            HStack(spacing: KivoTokens.spacing * 3) { UserStateButtons(work: series, page: page) }
                 .controlSize(.large)
                 .frame(maxWidth: .infinity)
         }
@@ -291,7 +262,7 @@ struct SeriesDetail: View {
     private var seasonMenu: some View {
         HStack {
             Menu {
-                Picker(String(localized: "Season"), selection: Binding(get: { seasonId }, set: { chosen = $0 })) {
+                Picker(String(localized: "Season"), selection: Binding(get: { seasonId }, set: { id in if let id { model.chooseSeason(id: id) } })) {
                     ForEach(seasons, id: \.id) { season in
                         Button {} label: {
                             Text(season.title)
@@ -364,7 +335,7 @@ struct SeriesDetail: View {
         let selected = season.id == seasonId
         let unplayed = season.season?.unplayedCount ?? 0
         return Button {
-            chosen = season.id
+            model.chooseSeason(id: season.id)
         } label: {
             HStack(spacing: KivoTokens.spacing * 1.5) {
                 Text(seasonLabel(season))
