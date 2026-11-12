@@ -39,7 +39,6 @@ import kotlinx.serialization.encoding.*
  * @param subtitle Detail only.
  * @param publisher Detail only.
  * @param language Detail only, as its source gives it.
- * @param abridged Detail only; absent when unknown.
  * @param releaseDate Detail only. `YYYY`, `YYYY-MM` or `YYYY-MM-DD`.
  */
 @Serializable
@@ -62,9 +61,6 @@ data class BookInfo (
 
     /* Detail only, as its source gives it. */
     @SerialName(value = "language") val language: kotlin.String? = null,
-
-    /* Detail only; absent when unknown. */
-    @SerialName(value = "abridged") val abridged: kotlin.Boolean? = null,
 
     /* Detail only. `YYYY`, `YYYY-MM` or `YYYY-MM-DD`. */
     @SerialName(value = "releaseDate") val releaseDate: kotlin.String? = null

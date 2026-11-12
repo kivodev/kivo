@@ -12,7 +12,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 
 class WorkActionsTest {
-    private val started = work("m1").copy(durationMs = 100_000, userState = UserState(played = false, playCount = 0, positionMs = 40_000))
+    private val started = work("m1").copy(durationMs = 100_000, userState = UserState(played = false, positionMs = 40_000))
 
     @Test
     fun aStartedMovieInContinueWatchingOffersEverything() {

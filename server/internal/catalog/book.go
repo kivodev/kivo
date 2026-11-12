@@ -30,12 +30,9 @@ const (
 	FieldASIN      = "asin"
 )
 
-// Fields of a book that only metadata sources write. No admin edit names
-// them, so they never lock.
-const (
-	FieldLanguage = "language"
-	FieldAbridged = "abridged"
-)
+// FieldLanguage is a book field that only metadata sources write. No admin
+// edit names it, so it never locks.
+const FieldLanguage = "language"
 
 // A book's credit roles. The first author is the book's primary author.
 const (
@@ -53,7 +50,6 @@ var ASIN = ExternalID{Provider: "audible", Kind: "book"}
 // WorkMetadata.ReleaseDate.
 type BookMetadata struct {
 	Subtitle, Language string
-	Abridged           *bool // nil when unknown
 	// Authors and Narrators are ordered names, used as written.
 	Authors, Narrators []string
 	// AuthorIDs maps names in Authors to a provider's IDs for them. The IDs
@@ -86,18 +82,12 @@ func writeBook(ctx context.Context, q *dbq.Queries, work id.ID, b *BookMetadata,
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return err
 	}
-	row := dbq.PutBookParams{WorkID: work, Subtitle: cur.Subtitle, Language: cur.Language, Abridged: cur.Abridged}
+	row := dbq.PutBookParams{WorkID: work, Subtitle: cur.Subtitle, Language: cur.Language}
 	if take(FieldSubtitle) {
 		row.Subtitle = nullString(strings.TrimSpace(b.Subtitle))
 	}
 	if take(FieldLanguage) {
 		row.Language = nullString(strings.TrimSpace(b.Language))
-	}
-	if take(FieldAbridged) {
-		row.Abridged = sql.NullBool{}
-		if b.Abridged != nil {
-			row.Abridged = sql.NullBool{Bool: *b.Abridged, Valid: true}
-		}
 	}
 	if err := q.PutBook(ctx, row); err != nil {
 		return err

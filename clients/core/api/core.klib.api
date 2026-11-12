@@ -1758,7 +1758,6 @@ final class com.mmcdole.kivo.core.display/Display { // com.mmcdole.kivo.core.dis
     final fun channels(kotlin/String?, kotlin/Int): kotlin/String // com.mmcdole.kivo.core.display/Display.channels|channels(kotlin.String?;kotlin.Int){}[0]
     final fun codec(kotlin/String): kotlin/String // com.mmcdole.kivo.core.display/Display.codec|codec(kotlin.String){}[0]
     final fun container(kotlin/String): kotlin/String // com.mmcdole.kivo.core.display/Display.container|container(kotlin.String){}[0]
-    final fun dialogueBoostCost(kotlin/String): kotlin/String? // com.mmcdole.kivo.core.display/Display.dialogueBoostCost|dialogueBoostCost(kotlin.String){}[0]
     final fun hdr(kotlin/String): kotlin/String // com.mmcdole.kivo.core.display/Display.hdr|hdr(kotlin.String){}[0]
     final fun language(kotlin/String?): kotlin/String // com.mmcdole.kivo.core.display/Display.language|language(kotlin.String?){}[0]
     final fun method(com.mmcdole.kivo.api.models/PlayStarted): kotlin/String // com.mmcdole.kivo.core.display/Display.method|method(com.mmcdole.kivo.api.models.PlayStarted){}[0]

@@ -14,7 +14,6 @@ function played(api: MockApi) {
       userId: mockId(7001),
       username: "anna",
       startedAt: "2026-10-01T20:00:00Z",
-      endedAt: "2026-10-01T21:12:03Z",
       positionMs: 4_323_000,
       completed: false,
     },

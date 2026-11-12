@@ -32,17 +32,13 @@ import kotlinx.serialization.encoding.*
  * 
  *
  * @param type What an extra is.
- * @param parentId The movie, series or season it belongs to.
  */
 @Serializable
 
 data class ExtraInfo (
 
     /* What an extra is. */
-    @SerialName(value = "type") @Required val type: kotlin.String,
-
-    /* The movie, series or season it belongs to. */
-    @SerialName(value = "parentId") val parentId: kotlin.String? = null
+    @SerialName(value = "type") @Required val type: kotlin.String
 
 ) {
 

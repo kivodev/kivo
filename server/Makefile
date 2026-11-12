@@ -154,7 +154,7 @@ KOTLIN_ENUM_MAPPINGS := $(subst $(space),$(comma),$(foreach e,$(KOTLIN_ENUMS),$(
 # leaves no file behind; .openapi-generator-ignore keeps the hand-written ones.
 generate: $(OPENAPI_GENERATOR)
 	go generate $(GO_PKGS)
-	@if [ -f sqlc.yaml ]; then $(SQLC) generate; fi
+	$(SQLC) generate
 	$(OPENAPI_TS) internal/api/openapi.yaml -o web/src/api/schema.d.ts
 	@if [ -f $(KOTLIN_API)/.openapi-generator/FILES ]; then cd $(KOTLIN_API) && xargs rm -f < .openapi-generator/FILES; fi
 	awk '$(KOTLIN_OPEN_ENUMS)' internal/api/openapi.yaml > bin/openapi-kotlin.yaml

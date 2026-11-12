@@ -35,7 +35,7 @@ func playEventFeed(p query.Page[query.PlayEvent]) gen.PlayEventFeed {
 	for _, e := range p.Items {
 		out.Items = append(out.Items, gen.PlayEvent{
 			ID: e.ID, Work: summary(e.Work), UserID: e.User, Username: e.Username,
-			StartedAt: e.Started, EndedAt: e.Ended, PositionMs: ms(e.Position), Completed: e.Completed,
+			StartedAt: e.Started, PositionMs: ms(e.Position), Completed: e.Completed,
 		})
 	}
 	return out

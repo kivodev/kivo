@@ -183,7 +183,7 @@ describe("Movie page", () => {
   it("selects the version last played, with no Auto entry", async () => {
     serveMockApi((api) => {
       const work = api.works[mockIds.dunePartTwo] as WorkDetail;
-      work.userState = { ...work.userState, played: false, playCount: 1, versionId: dune1080 };
+      work.userState = { ...work.userState, played: false, versionId: dune1080 };
     });
     const { user } = renderApp(`/works/${mockIds.dunePartTwo}`);
     expect(await screen.findByRole("link", { name: "Resume 1:12:03" })).toHaveAttribute(

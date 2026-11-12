@@ -11,7 +11,6 @@ import com.mmcdole.kivo.api.models.TrackType
 import com.mmcdole.kivo.core.settings.Quality
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 
 class DisplayTest {
     private val en = Display()
@@ -28,13 +27,6 @@ class DisplayTest {
         assertEquals("MKV", en.container("matroska,webm"))
         assertEquals("5.1", en.channels(6))
         assertEquals("3 channels", en.channels(3))
-    }
-
-    @Test
-    fun saysWhatADialogueBoostCosts() {
-        assertEquals("Plays the audio as AAC while on", en.dialogueBoostCost("audioAsAac"))
-        assertEquals("Converts the video and audio while on", en.dialogueBoostCost("videoTranscode"))
-        assertNull(en.dialogueBoostCost("somethingNew"))
     }
 
     @Test

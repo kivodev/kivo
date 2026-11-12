@@ -57,10 +57,6 @@
     "downloadsNotAllowed": "Downloads aren't allowed for this account."
   },
   "unknownReason": "This version of Kivo doesn't know why.",
-  "dialogueBoostCosts": {
-    "audioAsAac": "Plays the audio as AAC while on",
-    "videoTranscode": "Converts the video and audio while on"
-  },
   "tracks": {
     "unknownLanguage": "Unknown language",
     "default": "Default",

@@ -88,7 +88,7 @@ final class PreviewCastLink: KivoCore.CastLink {
         if let audio { status["audioTrackId"] = audio }
         if let subtitle = custom["subtitleTrackId"] as? String ?? version?.subtitleTrackId, subtitle != "off" { status["subtitleTrackId"] = subtitle }
         status["tracks"] = tracks()
-        if let boost = custom["dialogueBoost"] as? Bool, boost { status["dialogueBoost"] = ["enabled": true, "cost": "audioAsAac"] }
+        if let boost = custom["dialogueBoost"] as? Bool, boost { status["dialogueBoost"] = ["enabled": true] }
         if let nextId = work.episode?.nextId { status["nextWorkId"] = nextId }
         var positionMs = Int64((seconds ?? Double(work.userState?.positionMs?.int64Value ?? 0) / 1000) * 1000)
         var state = CastMedia.State.playing
@@ -137,7 +137,7 @@ final class PreviewCastLink: KivoCore.CastLink {
             }
             status["tracks"] = tracks()
         case "kivo.setDialogueBoost":
-            status["dialogueBoost"] = (body["enabled"] as? Bool) == true ? ["enabled": true, "cost": "audioAsAac"] : nil
+            status["dialogueBoost"] = (body["enabled"] as? Bool) == true ? ["enabled": true] : nil
         case "kivo.setVersion":
             status["versionId"] = body["versionId"]
         case "kivo.setQuality":

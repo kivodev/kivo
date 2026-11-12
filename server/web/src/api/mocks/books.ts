@@ -158,7 +158,7 @@ export function addBooks(
     const w: WorkDetail = {
       ...emptyWork(id, "book", title),
       images: { poster: image() },
-      userState: { played: false, playCount: 0 },
+      userState: { played: false },
       libraryId: library.id,
       ...extra,
     };
@@ -228,8 +228,8 @@ export function addBooks(
   // Project Hail Mary is half listened to. Leviathan Wakes is finished, so
   // The Churn is next in The Expanse.
   const hailMaryAt = 485 * minute;
-  hailMary.userState = { played: false, playCount: 0, positionMs: hailMaryAt };
-  leviathan.userState = { played: true, playCount: 1 };
+  hailMary.userState = { played: false, positionMs: hailMaryAt };
+  leviathan.userState = { played: true };
   const books = [caliban, leviathan, hailMary, churn];
   for (const b of books) api.starts[b.id] = bookPlay(b, b === hailMary ? hailMaryAt : 0);
   api.browse[library.id] = books.map(summaryOf);

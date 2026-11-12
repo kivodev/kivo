@@ -346,8 +346,8 @@ func TestAcceleratorsAndNowPlaying(t *testing.T) {
 	}
 }
 
-// TestPlayDialogueBoost checks that a play says whether it boosts dialogue
-// and what the boost costs, and that a boosted play is a stream. The
+// TestPlayDialogueBoost checks that a play says whether it boosts dialogue,
+// and that a boosted play is a stream. The
 // seeded file plays directly but has no keyframe index, so a stream would
 // also encode its video, which this server's media can't do.
 func TestPlayDialogueBoost(t *testing.T) {
@@ -361,7 +361,7 @@ func TestPlayDialogueBoost(t *testing.T) {
 		t.Fatalf("start: %d %s", w.Code, w.Body.String())
 	}
 	plain := decode[map[string]any](t, w)
-	if b, _ := plain["dialogueBoost"].(map[string]any); b["enabled"] != false || b["cost"] != "videoTranscode" {
+	if b, _ := plain["dialogueBoost"].(map[string]any); b["enabled"] != false {
 		t.Fatalf("a play without the boost: %v", plain["dialogueBoost"])
 	}
 	if w := start(map[string]any{"dialogueBoost": true}); w.Code != http.StatusConflict || !strings.Contains(w.Body.String(), `"transcodeFailed"`) {
@@ -383,8 +383,7 @@ func TestPlayStartedDialogueBoost(t *testing.T) {
 	}{
 		{nil, nil},
 		{&playback.DialogueBoost{}, &gen.DialogueBoost{}},
-		{&playback.DialogueBoost{Enabled: true, Cost: playback.CostAudioAsAAC},
-			&gen.DialogueBoost{Enabled: true, Cost: ptr(gen.DialogueBoostCostAudioAsAac)}},
+		{&playback.DialogueBoost{Enabled: true}, &gen.DialogueBoost{Enabled: true}},
 	} {
 		got := playStarted(playback.Started{Decision: playback.Decision{DialogueBoost: c.in}}).DialogueBoost
 		if !reflect.DeepEqual(got, c.want) {

@@ -1309,7 +1309,6 @@ public final class com/mmcdole/kivo/core/display/Display {
 	public final fun channels (Ljava/lang/String;I)Ljava/lang/String;
 	public final fun codec (Ljava/lang/String;)Ljava/lang/String;
 	public final fun container (Ljava/lang/String;)Ljava/lang/String;
-	public final fun dialogueBoostCost (Ljava/lang/String;)Ljava/lang/String;
 	public final fun getTracks ()Lcom/mmcdole/kivo/core/display/TrackWords;
 	public final fun hdr (Ljava/lang/String;)Ljava/lang/String;
 	public final fun language (Ljava/lang/String;)Ljava/lang/String;
