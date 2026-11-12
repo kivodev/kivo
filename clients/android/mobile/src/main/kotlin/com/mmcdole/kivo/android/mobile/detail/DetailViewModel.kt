@@ -7,6 +7,8 @@ import com.mmcdole.kivo.android.mobile.downloads.DownloadUiState
 import com.mmcdole.kivo.android.mobile.downloads.WorkDownloads
 import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkSummary
+import com.mmcdole.kivo.core.ProblemCode
+import com.mmcdole.kivo.core.RequestProblem
 import com.mmcdole.kivo.core.data.SeasonRef
 import com.mmcdole.kivo.core.session.KivoSession
 import com.mmcdole.kivo.core.session.WorkPage
@@ -24,7 +26,13 @@ data class DetailUiState(
     val page: WorkPageState,
     /** The work's download, and a season's or series' episodes to download; null on a device that keeps none. */
     val download: DownloadUiState? = null,
-)
+) {
+    /**
+     * Why the page shows a failure in place of the work: it couldn't be
+     * read and nothing is known of it, or the server no longer has it.
+     */
+    val failure: RequestProblem? = page.problem?.takeIf { page.head == null || (page.work == null && it.knownCode == ProblemCode.NotFound) }
+}
 
 /**
  * A work's page: the core's [page], open on the season [openOn] names, as

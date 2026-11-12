@@ -157,16 +157,16 @@ fun DetailScreen(session: ServerSession, id: String, seasonId: String?, seasonNu
     val model = viewModel { DetailViewModel(session.session, id, seasonNumber?.let { SeasonRef(seasonId, it) }, session.graph.core.settings.map { it.downloadQuality }) }
     val state by model.state.collectAsStateWithLifecycle()
     val head = state.page.head
-    val problem = state.page.problem
-    if (head == null) {
-        if (problem != null) {
-            Box(Modifier.fillMaxSize().statusBarsPadding()) {
-                Failed(problem, stringResource(R.string.mobile_couldnt_load_page), model.serverName, model.page::retry)
-                BackButton(nav)
-            }
-        } else {
-            DetailSkeleton(nav)
+    val failure = state.failure
+    if (failure != null) {
+        Box(Modifier.fillMaxSize().statusBarsPadding()) {
+            Failed(failure, stringResource(R.string.mobile_couldnt_load_page), model.serverName, model.page::retry)
+            BackButton(nav)
         }
+        return
+    }
+    if (head == null) {
+        DetailSkeleton(nav)
         return
     }
     WorkMenuHost({ action, menu -> nav.handle(action, menu, model.marks) }, seriesPage = head.id.takeIf { head.kind == WorkKind.Series }) { openMenu ->
