@@ -2,70 +2,11 @@ import Foundation
 import GoogleCast
 import KivoCore
 
-/// The Cast session as the cast model drives it: Google's SDK, or in a
-/// debug build a stand-in for the Simulator, which finds no Cast devices.
-@MainActor
-protocol CastLink: AnyObject {
-    var delegate: CastLinkDelegate? { get set }
-    /// Where the receiver's media is now, between status updates.
-    var positionSeconds: Double { get }
-    /// The system's list of Cast devices to connect to.
-    func showDevices()
-    /// [image] is the work's artwork, for Google Home and the phone's cast notification.
-    func load(_ load: CastLoad, title: String, image: URL?)
-    func play()
-    func pause()
-    func seek(to seconds: Double)
-    func setRate(_ rate: Float)
-    func setVolume(_ volume: Float)
-    /// A message on Kivo's namespace.
-    func send(_ message: String)
-    /// Ends the session: [stopCasting] stops the TV too, else it plays on.
-    func end(stopCasting: Bool)
-    /// Stops following the session, which carries on: the app signed out.
-    func close()
-}
-
-@MainActor
-protocol CastLinkDelegate: AnyObject {
-    func linkChanged(_ state: CastLinkState, device: String?)
-    func volumeChanged(_ volume: Float)
-    func mediaChanged(_ media: CastMedia?)
-    func received(_ message: String)
-}
-
-/// Whether Cast devices are found, and the session with one.
-enum CastLinkState: Equatable {
-    /// None found, as off Wi-Fi.
-    case unavailable
-    case disconnected
-    case connecting
-    /// Connected, newly or again after the app was away: [resumed] says which.
-    case connected(resumed: Bool)
-}
-
-/// The receiver's media: what plays, where, and its status.
-struct CastMedia: Equatable {
-    enum State {
-        case loading
-        case buffering
-        case playing
-        case paused
-    }
-
-    let workId: String
-    let state: State
-    let positionMs: Int64
-    let durationMs: Int64
-    let rate: Float
-    /// The receiver's `customData`, as JSON, which the core reads.
-    let status: String?
-}
-
 /// Google Cast: the shared context set up with Kivo's receiver, its session
-/// manager and the session's media client, and Kivo's namespace.
-final class GoogleCastLink: NSObject, CastLink {
-    weak var delegate: CastLinkDelegate?
+/// manager and the session's media client, and Kivo's namespace, as the
+/// core's cast remote drives it.
+final class GoogleCastLink: NSObject, KivoCore.CastLink {
+    private var events: (any CastLinkEvents)?
     private var channel: KivoChannel?
     private var client: GCKRemoteMediaClient?
 
@@ -79,30 +20,30 @@ final class GoogleCastLink: NSObject, CastLink {
         GCKCastContext.setSharedInstanceWith(options)
     }
 
-    override init() {
-        super.init()
-        let context = GCKCastContext.sharedInstance()
-        context.sessionManager.add(self)
-        NotificationCenter.default.addObserver(self, selector: #selector(castStateChanged), name: .gckCastStateDidChange, object: context)
-        if let session = context.sessionManager.currentCastSession { attach(session) }
-    }
-
-    var positionSeconds: Double { client?.approximateStreamPosition() ?? 0 }
-
-    func start() {
-        castStateChanged()
-        if let status = client?.mediaStatus { mediaChanged(status) }
-    }
-
-    func showDevices() {
+    /// The system's list of Cast devices to connect to.
+    static func showDevices() {
         GCKCastContext.sharedInstance().presentCastDialog()
     }
 
-    func load(_ load: CastLoad, title: String, image: URL?) {
+    var positionMs: Int64 { Int64((client?.approximateStreamPosition() ?? 0) * 1000) }
+
+    func start(events: any CastLinkEvents) {
+        self.events = events
+        let context = GCKCastContext.sharedInstance()
+        context.sessionManager.add(self)
+        NotificationCenter.default.addObserver(self, selector: #selector(castStateChanged), name: .gckCastStateDidChange, object: context)
+        if let session = context.sessionManager.currentCastSession {
+            attach(session, resumed: true)
+        } else {
+            castStateChanged()
+        }
+    }
+
+    func load(load: CastLoad, title: String, imageUrl: String?) {
         guard let client else { return }
         let metadata = GCKMediaMetadata(metadataType: .movie)
         metadata.setString(title, forKey: kGCKMetadataKeyTitle)
-        if let image { metadata.addImage(GCKImage(url: image, width: 480, height: 720)) }
+        if let image = imageUrl.flatMap(URL.init(string:)) { metadata.addImage(GCKImage(url: image, width: 480, height: 720)) }
         let media = GCKMediaInformationBuilder()
         media.contentID = load.contentId
         media.entity = load.entity
@@ -120,19 +61,19 @@ final class GoogleCastLink: NSObject, CastLink {
 
     func pause() { client?.pause() }
 
-    func seek(to seconds: Double) {
+    func seek(positionMs: Int64) {
         let options = GCKMediaSeekOptions()
-        options.interval = seconds
+        options.interval = Double(positionMs) / 1000
         client?.seek(with: options)
     }
 
-    func setRate(_ rate: Float) { client?.setPlaybackRate(rate) }
+    func setSpeed(speed: Float) { client?.setPlaybackRate(speed) }
 
-    func setVolume(_ volume: Float) {
+    func setVolume(volume: Float) {
         GCKCastContext.sharedInstance().sessionManager.currentCastSession?.setDeviceVolume(volume)
     }
 
-    func send(_ message: String) {
+    func send(message: String) {
         channel?.sendTextMessage(message, error: nil)
     }
 
@@ -145,41 +86,43 @@ final class GoogleCastLink: NSObject, CastLink {
         context.sessionManager.remove(self)
         NotificationCenter.default.removeObserver(self)
         client?.remove(self)
-        delegate = nil
+        events = nil
     }
 
+    /// Found devices and connecting; a connected session is reported as it starts or resumes.
     @objc private func castStateChanged() {
-        let context = GCKCastContext.sharedInstance()
-        let name = context.sessionManager.currentCastSession?.device.friendlyName
-        switch context.castState {
-        case .noDevicesAvailable: delegate?.linkChanged(.unavailable, device: nil)
-        case .notConnected: delegate?.linkChanged(.disconnected, device: nil)
-        case .connecting: delegate?.linkChanged(.connecting, device: name)
-        case .connected: delegate?.linkChanged(.connected(resumed: false), device: name)
-        @unknown default: delegate?.linkChanged(.disconnected, device: nil)
+        switch GCKCastContext.sharedInstance().castState {
+        case .noDevicesAvailable: events?.onLink(state: CastLinkStateUnavailable.shared)
+        case .notConnected: events?.onLink(state: CastLinkStateDisconnected.shared)
+        case .connecting: events?.onLink(state: CastLinkStateConnecting.shared)
+        case .connected: break
+        @unknown default: events?.onLink(state: CastLinkStateDisconnected.shared)
         }
     }
 
-    private func attach(_ session: GCKCastSession) {
+    private func attach(_ session: GCKCastSession, resumed: Bool) {
+        client?.remove(self)
         let channel = KivoChannel(namespace: CAST_NAMESPACE)
-        channel.received = { [weak self] in self?.delegate?.received($0) }
+        channel.received = { [weak self] in self?.events?.onMessage(message: $0) }
         session.add(channel)
         self.channel = channel
         client = session.remoteMediaClient
         client?.add(self)
-        delegate?.volumeChanged(session.currentDeviceVolume)
+        events?.onVolume(volume: session.currentDeviceVolume)
+        events?.onLink(state: CastLinkStateConnected(device: session.device.friendlyName ?? "", resumed: resumed))
+        mediaChanged(client?.mediaStatus)
     }
 
     private func detach() {
         client?.remove(self)
         client = nil
         channel = nil
-        delegate?.mediaChanged(nil)
+        events?.onMedia(media: nil)
     }
 
     private func mediaChanged(_ status: GCKMediaStatus?) {
         guard let status, let info = status.mediaInformation, let workId = info.contentID else {
-            delegate?.mediaChanged(nil)
+            events?.onMedia(media: nil)
             return
         }
         let state: CastMedia.State
@@ -191,7 +134,7 @@ final class GoogleCastLink: NSObject, CastLink {
         case .idle, .unknown:
             // Idle with media is a load under way; finished, stopped or failed leaves nothing playing.
             guard status.idleReason == GCKMediaPlayerIdleReason.none else {
-                delegate?.mediaChanged(nil)
+                events?.onMedia(media: nil)
                 return
             }
             state = .loading
@@ -200,12 +143,12 @@ final class GoogleCastLink: NSObject, CastLink {
         let custom = status.customData
             .flatMap { JSONSerialization.isValidJSONObject($0) ? try? JSONSerialization.data(withJSONObject: $0) : nil }
             .map { String(decoding: $0, as: UTF8.self) }
-        delegate?.mediaChanged(CastMedia(
+        events?.onMedia(media: CastMedia(
             workId: workId,
             state: state,
             positionMs: Int64(status.streamPosition * 1000),
             durationMs: Int64(max(info.streamDuration, 0) * 1000),
-            rate: status.playbackRate,
+            speed: status.playbackRate,
             status: custom
         ))
     }
@@ -213,13 +156,11 @@ final class GoogleCastLink: NSObject, CastLink {
 
 extension GoogleCastLink: GCKSessionManagerListener {
     func sessionManager(_ sessionManager: GCKSessionManager, didStart session: GCKCastSession) {
-        attach(session)
-        delegate?.linkChanged(.connected(resumed: false), device: session.device.friendlyName)
+        attach(session, resumed: false)
     }
 
     func sessionManager(_ sessionManager: GCKSessionManager, didResumeCastSession session: GCKCastSession) {
-        attach(session)
-        delegate?.linkChanged(.connected(resumed: true), device: session.device.friendlyName)
+        attach(session, resumed: true)
     }
 
     func sessionManager(_ sessionManager: GCKSessionManager, didEnd session: GCKCastSession, withError error: Error?) {
@@ -233,7 +174,7 @@ extension GoogleCastLink: GCKSessionManagerListener {
     }
 
     func sessionManager(_ sessionManager: GCKSessionManager, castSession session: GCKCastSession, didReceiveDeviceVolume volume: Float, muted: Bool) {
-        delegate?.volumeChanged(muted ? 0 : volume)
+        events?.onVolume(volume: muted ? 0 : volume)
     }
 }
 

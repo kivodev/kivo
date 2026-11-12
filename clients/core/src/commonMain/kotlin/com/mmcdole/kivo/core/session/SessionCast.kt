@@ -1,14 +1,17 @@
 package com.mmcdole.kivo.core.session
 
-import co.touchlab.skie.configuration.annotations.DefaultArgumentInterop
+import com.mmcdole.kivo.core.cast.CastLink
 import com.mmcdole.kivo.core.cast.CastLoad
 import com.mmcdole.kivo.core.cast.CastRequest
 import com.mmcdole.kivo.core.cast.CastSender
 import com.mmcdole.kivo.core.play.PlayChoice
 
-/** Casting to a Cast device ([KivoSession.cast]): what a cast's LOAD carries, and a cast token for one joined again. */
+/** Casting to a Cast device ([KivoSession.cast]). */
 class SessionCast internal constructor(private val session: KivoSession) {
     private val sender = CastSender(session.connection)
+
+    /** The remote for the Cast session [link] reports, which it follows from now until it's closed. */
+    fun remote(link: CastLink): CastRemote = CastRemote(session, link)
 
     /**
      * The LOAD that casts [choice] to the Cast device [receiverName], with a
@@ -17,9 +20,7 @@ class SessionCast internal constructor(private val session: KivoSession) {
      * input. A null [positionMs] starts at the resume position. A video cast
      * stops the book playing here, keeping its place.
      */
-    @DefaultArgumentInterop.Enabled
-    @Throws(Exception::class)
-    suspend fun load(receiverName: String, choice: PlayChoice, positionMs: Long? = null): CastLoad {
+    internal suspend fun load(receiverName: String, choice: PlayChoice, positionMs: Long? = null): CastLoad {
         session.playback.stopBook()
         val settings = session.playback.playSettings()
         return sender.load(
@@ -39,6 +40,5 @@ class SessionCast internal constructor(private val session: KivoSession) {
     }
 
     /** `kivo.token` with a new cast token for [receiverName], for a cast this app joins again. */
-    @Throws(Exception::class)
-    suspend fun tokenMessage(receiverName: String): String = sender.tokenMessage(receiverName)
+    internal suspend fun tokenMessage(receiverName: String): String = sender.tokenMessage(receiverName)
 }

@@ -76,6 +76,7 @@ import com.mmcdole.kivo.android.mobile.cast.CastRemoteScreen
 import com.mmcdole.kivo.android.mobile.cast.CastViewModel
 import com.mmcdole.kivo.android.mobile.cast.GoogleCastLink
 import com.mmcdole.kivo.android.mobile.cast.LocalCast
+import com.mmcdole.kivo.core.session.CastRemote
 import com.mmcdole.kivo.android.mobile.downloads.DownloadsScreen
 import com.mmcdole.kivo.android.mobile.downloads.ShowDownloadsScreen
 import com.mmcdole.kivo.android.mobile.linkdevice.LinkDeviceScreen
@@ -142,8 +143,10 @@ fun MainScaffold(session: ServerSession) {
     val controller = rememberNavController()
     val context = LocalContext.current
     val mini = viewModel { MiniPlayerViewModel(session.books.model) }
-    val cast = viewModel { CastViewModel(session.session, GoogleCastLink.available(context.applicationContext)) }
-    val nav = remember(controller) { MobileNav(controller, playBook = mini::play, readyDownload = { session.readyDownload(it)?.id }, cast = cast::cast) }
+    val cast = viewModel { CastViewModel(session.session, GoogleCastLink.available(context.applicationContext)) }.remote
+    val nav = remember(controller) {
+        MobileNav(controller, playBook = mini::play, readyDownload = { session.readyDownload(it)?.id }, cast = { cast?.cast(it.choice, it.startMs) == true })
+    }
     val entry by controller.currentBackStackEntryAsState()
     LaunchedEffect(entry) { nav.follow(entry) }
     LaunchedEffect(Unit) {
@@ -163,7 +166,7 @@ fun MainScaffold(session: ServerSession) {
     LaunchedEffect(session.session) {
         session.session.library.marks.problems.collect { snackbar.showSnackbar(sentence(it)) }
     }
-    val casting by cast.state.collectAsStateWithLifecycle()
+    val casting = cast?.state?.collectAsStateWithLifecycle()?.value
     val current = nav.tab
     val model = viewModel { MainViewModel(session.session) }
     val pinned by model.pinned.collectAsStateWithLifecycle()
@@ -195,7 +198,7 @@ fun MainScaffold(session: ServerSession) {
             NavigationSuiteType.None -> WindowInsets(0)
             else -> WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)
         }
-        CompositionLocalProvider(LocalCast provides cast.takeIf { it.offered }, LocalWide provides (suite == NavigationSuiteType.NavigationRail)) {
+        CompositionLocalProvider(LocalCast provides cast,LocalWide provides (suite == NavigationSuiteType.NavigationRail)) {
             if (blocked) {
                 Incompatible(compatibility, session.session.savedServer.collectAsStateWithLifecycle().value.name, session::checkCompatibility, session.graph::changeServer)
             } else Box(Modifier.fillMaxSize()) {
@@ -206,7 +209,7 @@ fun MainScaffold(session: ServerSession) {
                     }
                     when {
                         fullScreen -> Unit
-                        casting.active -> CastMiniController(cast, onOpen = { nav.open(CastRemoteRoute) })
+                        cast != null && casting?.active == true -> CastMiniController(cast, onOpen = { nav.open(CastRemoteRoute) })
                         book.shown -> MiniPlayer(book, onOpen = { nav.open(NowPlayingRoute) }, onBack = mini::skipBack, onToggle = mini::togglePlay)
                     }
                 }
@@ -310,7 +313,7 @@ private fun NavGraphBuilder.tabs(session: ServerSession, nav: MobileNav) {
 }
 
 /** The pages any tab opens, on that tab's back stack. */
-private fun NavGraphBuilder.pages(session: ServerSession, nav: MobileNav, cast: CastViewModel) {
+private fun NavGraphBuilder.pages(session: ServerSession, nav: MobileNav, cast: CastRemote?) {
     composable<LibraryRoute> { val r = it.toRoute<LibraryRoute>(); LibraryScreen(session, r.id, r.sort?.let(GridSort::of), nav) }
     composable<WorkRoute> { val r = it.toRoute<WorkRoute>(); DetailScreen(session, r.id, r.seasonId, r.seasonNumber, nav) }
     composable<CollectionRoute> { CollectionScreen(session, it.toRoute<CollectionRoute>().id, nav) }
@@ -327,6 +330,8 @@ private fun NavGraphBuilder.pages(session: ServerSession, nav: MobileNav, cast: 
     composable<ShowDownloadsRoute> { val r = it.toRoute<ShowDownloadsRoute>(); ShowDownloadsScreen(session, r.seriesId, r.title, nav) }
     composable<LinkDeviceRoute> { LinkDeviceScreen(session, it.toRoute<LinkDeviceRoute>().link, nav) }
     composable<CastRemoteRoute> {
+        // Only a phone that casts opens it.
+        cast ?: return@composable
         val state by cast.state.collectAsStateWithLifecycle()
         // Once nothing plays on the TV, or it's let go, the remote closes.
         LaunchedEffect(state.active) { if (!state.active) nav.back() }

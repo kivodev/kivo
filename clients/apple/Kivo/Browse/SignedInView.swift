@@ -117,7 +117,7 @@ struct SignedInView: View {
                 if let model = player.model {
                     PlayerScreen(model: model)
                 } else if server.cast.active {
-                    CastRemote(cast: server.cast, close: { player.shown = false })
+                    CastRemoteScreen(cast: server.cast, close: { player.shown = false })
                 }
             }
             .environment(\.artworkSource, server.artwork)

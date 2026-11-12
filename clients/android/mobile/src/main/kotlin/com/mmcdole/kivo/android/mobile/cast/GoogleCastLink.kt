@@ -17,80 +17,19 @@ import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.common.images.WebImage
 import com.mmcdole.kivo.core.cast.CAST_NAMESPACE
+import com.mmcdole.kivo.core.cast.CastLink
+import com.mmcdole.kivo.core.cast.CastLinkState
 import com.mmcdole.kivo.core.cast.CastLoad
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import com.mmcdole.kivo.core.cast.CastMedia
 import org.json.JSONObject
-
-/** Whether Cast devices are found, and the session with one. */
-sealed interface LinkState {
-    /** None found, as off Wi-Fi. */
-    data object Unavailable : LinkState
-
-    data object Disconnected : LinkState
-
-    data object Connecting : LinkState
-
-    /** Connected to [device], newly or again after the app was away: [resumed] says which. */
-    data class Connected(val device: String, val resumed: Boolean) : LinkState
-}
-
-/** The receiver's media: what plays, where, and its `customData`, as JSON, which the core reads. */
-data class CastMedia(val workId: String, val state: State, val positionMs: Long, val durationMs: Long, val status: String?) {
-    enum class State { Loading, Buffering, Playing, Paused }
-}
-
-/** The Cast session as the cast model drives it: Google's SDK, or a test's stand-in. */
-interface CastLink {
-    val state: StateFlow<LinkState>
-    val media: StateFlow<CastMedia?>
-
-    /** The TV's volume, 0 to 1. */
-    val volume: StateFlow<Float>
-
-    /** Messages on Kivo's namespace. */
-    val messages: SharedFlow<String>
-
-    /** Where the receiver's media is now, between status updates. */
-    val positionMs: Long
-
-    /** [imageUrl] is the work's artwork, for Google Home and the cast notification. */
-    fun load(load: CastLoad, title: String, imageUrl: String?)
-
-    fun play()
-
-    fun pause()
-
-    fun seek(positionMs: Long)
-
-    fun setVolume(volume: Float)
-
-    fun send(message: String)
-
-    /** Ends the session: [stopCasting] stops the TV too, else it plays on. */
-    fun end(stopCasting: Boolean)
-
-    /** Stops following the session, which carries on: the app signed out. */
-    fun close()
-}
 
 /**
  * Google Cast: the shared context, set up with Kivo's receiver
- * ([CastOptions]), its session manager and the session's media client, and
+ * ([CastSetup]), its session manager and the session's media client, and
  * Kivo's namespace. Made only where Google Play services is ([available]).
  */
 class GoogleCastLink private constructor(private val context: CastContext) : CastLink {
-    private val mutableState = MutableStateFlow<LinkState>(LinkState.Unavailable)
-    override val state: StateFlow<LinkState> = mutableState.asStateFlow()
-    private val mutableMedia = MutableStateFlow<CastMedia?>(null)
-    override val media: StateFlow<CastMedia?> = mutableMedia.asStateFlow()
-    private val mutableVolume = MutableStateFlow(0f)
-    override val volume: StateFlow<Float> = mutableVolume.asStateFlow()
-    override val messages = MutableSharedFlow<String>(extraBufferCapacity = 8)
-
+    private var events: CastLink.Events? = null
     private var session: CastSession? = null
     private val client: RemoteMediaClient? get() = session?.remoteMediaClient
 
@@ -104,22 +43,18 @@ class GoogleCastLink private constructor(private val context: CastContext) : Cas
 
     private val castListener = object : com.google.android.gms.cast.Cast.Listener() {
         override fun onVolumeChanged() {
-            mutableVolume.value = session?.volume?.toFloat() ?: 0f
+            events?.onVolume(session?.volume?.toFloat() ?: 0f)
         }
     }
 
     private val sessions = object : SessionManagerListener<CastSession> {
-        override fun onSessionStarting(session: CastSession) {
-            mutableState.value = LinkState.Connecting
-        }
+        override fun onSessionStarting(session: CastSession) = report(CastLinkState.Connecting)
 
         override fun onSessionStarted(session: CastSession, sessionId: String) = attach(session, resumed = false)
 
         override fun onSessionResumed(session: CastSession, wasSuspended: Boolean) = attach(session, resumed = true)
 
-        override fun onSessionResuming(session: CastSession, sessionId: String) {
-            mutableState.value = LinkState.Connecting
-        }
+        override fun onSessionResuming(session: CastSession, sessionId: String) = report(CastLinkState.Connecting)
 
         override fun onSessionStartFailed(session: CastSession, error: Int) = detach()
 
@@ -129,18 +64,17 @@ class GoogleCastLink private constructor(private val context: CastContext) : Cas
 
         override fun onSessionEnded(session: CastSession, error: Int) = detach()
 
-        override fun onSessionSuspended(session: CastSession, reason: Int) {
-            mutableState.value = LinkState.Connecting
-        }
+        override fun onSessionSuspended(session: CastSession, reason: Int) = report(CastLinkState.Connecting)
     }
 
-    init {
+    override val positionMs: Long get() = client?.approximateStreamPosition ?: 0
+
+    override fun start(events: CastLink.Events) {
+        this.events = events
         context.addCastStateListener(castState)
         context.sessionManager.addSessionManagerListener(sessions, CastSession::class.java)
         context.sessionManager.currentCastSession?.takeIf { it.isConnected }?.let { attach(it, resumed = true) } ?: changed(context.castState)
     }
-
-    override val positionMs: Long get() = client?.approximateStreamPosition ?: 0
 
     override fun load(load: CastLoad, title: String, imageUrl: String?) {
         val client = client ?: return
@@ -174,6 +108,10 @@ class GoogleCastLink private constructor(private val context: CastContext) : Cas
         client?.seek(MediaSeekOptions.Builder().setPosition(positionMs).build())
     }
 
+    override fun setSpeed(speed: Float) {
+        client?.setPlaybackRate(speed.toDouble())
+    }
+
     override fun setVolume(volume: Float) {
         session?.volume = volume.toDouble()
     }
@@ -187,36 +125,42 @@ class GoogleCastLink private constructor(private val context: CastContext) : Cas
     }
 
     override fun close() {
+        events = null
         context.removeCastStateListener(castState)
         context.sessionManager.removeSessionManagerListener(sessions, CastSession::class.java)
-        client?.unregisterCallback(mediaCallback)
-        session?.removeCastListener(castListener)
+        session?.let { detachClient(it) }
+    }
+
+    private fun report(state: CastLinkState) {
+        events?.onLink(state)
     }
 
     private fun changed(castState: Int) {
         if (session != null) return
-        mutableState.value = when (castState) {
-            CastState.NO_DEVICES_AVAILABLE -> LinkState.Unavailable
-            CastState.CONNECTING -> LinkState.Connecting
-            else -> LinkState.Disconnected
-        }
+        report(
+            when (castState) {
+                CastState.NO_DEVICES_AVAILABLE -> CastLinkState.Unavailable
+                CastState.CONNECTING -> CastLinkState.Connecting
+                else -> CastLinkState.Disconnected
+            },
+        )
     }
 
     private fun attach(session: CastSession, resumed: Boolean) {
         this.session?.let { detachClient(it) }
         this.session = session
-        session.setMessageReceivedCallbacks(CAST_NAMESPACE) { _, _, message -> messages.tryEmit(message) }
+        session.setMessageReceivedCallbacks(CAST_NAMESPACE) { _, _, message -> events?.onMessage(message) }
         session.addCastListener(castListener)
         session.remoteMediaClient?.registerCallback(mediaCallback)
-        mutableVolume.value = session.volume.toFloat()
-        mutableState.value = LinkState.Connected(session.castDevice?.friendlyName.orEmpty(), resumed)
+        events?.onVolume(session.volume.toFloat())
+        report(CastLinkState.Connected(session.castDevice?.friendlyName.orEmpty(), resumed))
         mediaChanged()
     }
 
     private fun detach() {
         session?.let { detachClient(it) }
         session = null
-        mutableMedia.value = null
+        events?.onMedia(null)
         changed(context.castState)
     }
 
@@ -231,7 +175,7 @@ class GoogleCastLink private constructor(private val context: CastContext) : Cas
         val info = status?.mediaInfo
         val workId = info?.contentId
         if (status == null || workId == null) {
-            mutableMedia.value = null
+            events?.onMedia(null)
             return
         }
         val state = when (status.playerState) {
@@ -243,11 +187,13 @@ class GoogleCastLink private constructor(private val context: CastContext) : Cas
             else -> if (status.idleReason == MediaStatus.IDLE_REASON_NONE) {
                 CastMedia.State.Loading
             } else {
-                mutableMedia.value = null
+                events?.onMedia(null)
                 return
             }
         }
-        mutableMedia.value = CastMedia(workId, state, status.streamPosition, info.streamDuration.coerceAtLeast(0), status.customData?.toString())
+        events?.onMedia(
+            CastMedia(workId, state, status.streamPosition, info.streamDuration.coerceAtLeast(0), status.playbackRate.toFloat(), status.customData?.toString()),
+        )
     }
 
     companion object {

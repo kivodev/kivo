@@ -19,7 +19,7 @@ final class PlayerHost {
 
     init(server: ServerModel) {
         self.server = server
-        server.cast.connected = { [weak self] _ in self?.handOffToCast() }
+        server.cast.connected = { [weak self] in self?.handOffToCast() }
         server.cast.stopped = { [weak self] in self?.castStopped() }
     }
 
