@@ -85,8 +85,7 @@ func (s *planner) chooseAccelerator(c *choice) bool {
 	t, v := &c.decision.Tracks[i], c.decision.Tracks[i].Video
 	accel, why := s.accelerators(c.cpu)
 	for _, a := range accel {
-		e := Encoder{Codec: v.Codec, ToneMap: a.ToneMap != "", BurnIn: a.BurnIn != ""}
-		if _, ok := a.Encoder(v.Codec); ok && e.does(v.Codec, v.HDR == media.ToneMap, c.decision.burned()) {
+		if _, ok := a.Encoder(v.Codec); ok && (a.ToneMap != "" || v.HDR != media.ToneMap) && (a.BurnIn != "" || !c.decision.burned()) {
 			t.Accelerator, t.Encoder, t.SoftwareReason = a.Accelerator, a.Name, ""
 			return true
 		}

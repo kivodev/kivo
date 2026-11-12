@@ -174,7 +174,7 @@ type Trailer struct {
 
 // trailers is a movie's or series' trailers in order, each with its thumbnail.
 var trailers = stmt("Trailers", `
-SELECT t.id, t.title, t.site, t.key, `+photoColumns+`
+SELECT t.id, t.title, t.key, `+photoColumns+`
 FROM work w
 JOIN trailer t ON t.work_id = w.id
 LEFT JOIN image i ON i.trailer_id = t.id AND i.kind = 'thumb'
@@ -542,7 +542,7 @@ func byKind(ctx context.Context, tx *sql.Tx, vw viewer, args []any, d *WorkDetai
 		d.Trailers, err = rowsOf(ctx, tx, trailers, args, func(r scanner, t *Trailer) error {
 			var v catalog.Trailer
 			var p photo
-			err := r.Scan(append([]any{&t.ID, &t.Title, &v.Site, &v.Key}, p.dest()...)...)
+			err := r.Scan(append([]any{&t.ID, &t.Title, &v.Key}, p.dest()...)...)
 			t.URL, t.Image = v.URL(), p.image()
 			return err
 		})

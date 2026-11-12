@@ -90,8 +90,8 @@ func newHousehold(t *testing.T) *household {
 		Community: &catalog.CommunityRating{Rating: 8.1, Votes: 5000},
 		Genres:    []string{"Science Fiction", "Adventure"}, Companies: []string{"Legendary"},
 		Trailers: []catalog.Trailer{
-			{Site: catalog.TrailerYouTube, Key: "n9xhJrPXop4", Title: "Official Main Trailer", Language: "en", Official: true},
-			{Site: catalog.TrailerYouTube, Key: "8g18jFHCLXk", Title: "Official Trailer", Language: "en", Official: true},
+			{Key: "n9xhJrPXop4", Title: "Official Main Trailer"},
+			{Key: "8g18jFHCLXk", Title: "Official Trailer"},
 		},
 		Credits: []catalog.Credit{
 			{Name: "Timothée Chalamet", Role: "actor", Character: "Paul Atreides"},
@@ -144,7 +144,7 @@ func newHousehold(t *testing.T) *household {
 	h.expanse = h.series("The Expanse", rankPG13)
 	h.metadata(h.expanse, catalog.WorkMetadata{
 		ContentRating: certs[rankPG13], ContentRatingAge: ptr(rankPG13), Community: &catalog.CommunityRating{Rating: 8.4, Votes: 3000},
-		Trailers: []catalog.Trailer{{Site: catalog.TrailerYouTube, Key: "kQuTJdE3j2Q", Title: "Official Trailer", Language: "en", Official: true}},
+		Trailers: []catalog.Trailer{{Key: "kQuTJdE3j2Q", Title: "Official Trailer"}},
 	})
 	h.expanse1 = h.episode(h.expanse, 1, 1)
 	h.expanse2 = h.episode(h.expanse, 1, 2)

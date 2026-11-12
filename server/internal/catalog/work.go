@@ -101,20 +101,13 @@ type WorkMetadata struct {
 	Book             *BookMetadata  // nil for any kind but a book
 }
 
-// Trailer is a movie's or series' trailer on a video site.
+// Trailer is a movie's or series' trailer on YouTube.
 type Trailer struct {
-	Site      string // TrailerYouTube
-	Key       string // the site's ID of the video
-	Title     string
-	Language  string // ISO 639-1; empty when unknown
-	Official  bool
-	Published string // RFC 3339; empty when unknown
+	Key   string // YouTube's ID of the video
+	Title string
 }
 
-// TrailerYouTube is the one site trailers are on.
-const TrailerYouTube = "youtube"
-
-// URL returns the address of the trailer's page on its site.
+// URL returns the address of the trailer's page on YouTube.
 func (t Trailer) URL() string {
 	return "https://www.youtube.com/watch?v=" + url.QueryEscape(t.Key)
 }
@@ -565,18 +558,15 @@ func setTrailers(ctx context.Context, q *dbq.Queries, work id.ID, trailers []Tra
 		return err
 	}
 	for _, o := range old {
-		if slices.ContainsFunc(trailers, func(t Trailer) bool { return t.Site == o.Site && t.Key == o.Key }) {
+		if slices.ContainsFunc(trailers, func(t Trailer) bool { return t.Key == o }) {
 			continue
 		}
-		if err := q.DeleteTrailer(ctx, dbq.DeleteTrailerParams{WorkID: work, Site: o.Site, Key: o.Key}); err != nil {
+		if err := q.DeleteTrailer(ctx, dbq.DeleteTrailerParams{WorkID: work, Key: o}); err != nil {
 			return err
 		}
 	}
 	for i, t := range trailers {
-		err := q.PutTrailer(ctx, dbq.PutTrailerParams{
-			ID: id.New(), WorkID: work, Ord: int64(i), Site: t.Site, Key: t.Key, Title: t.Title,
-			Language: nullString(t.Language), Official: t.Official, PublishedAt: nullString(t.Published),
-		})
+		err := q.PutTrailer(ctx, dbq.PutTrailerParams{ID: id.New(), WorkID: work, Ord: int64(i), Key: t.Key, Title: t.Title})
 		if err != nil {
 			return err
 		}

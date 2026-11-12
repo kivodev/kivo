@@ -31,16 +31,16 @@ func Path(dir string, x id.ID, elem ...string) string {
 	return filepath.Join(append([]string{dir, s[len(s)-2:]}, elem...)...)
 }
 
-// Leaf names the folder, inside a file's cache folder, that holds the
+// leaf names the folder, inside a file's cache folder, that holds the
 // file's result for one generation. The name is the generation, followed by
 // "v" and the version when the version is above 0. A result of an earlier
 // version counts as not made.
-func Leaf(gen int64, version int) string {
-	leaf := strconv.FormatInt(gen, 10)
+func leaf(gen int64, version int) string {
+	name := strconv.FormatInt(gen, 10)
 	if version > 0 {
-		leaf += "v" + strconv.Itoa(version)
+		name += "v" + strconv.Itoa(version)
 	}
-	return leaf
+	return name
 }
 
 // MakeTemp makes a folder inside dir's Temp folder to build a
@@ -55,14 +55,14 @@ func MakeTemp(dir string) (string, error) {
 }
 
 // Results keeps one result per file in a cache folder, for the file's
-// current generation, at Dir/xx/<file>/<Leaf>/ (see Path and Leaf). A
+// current generation, at Dir/xx/<file>/<leaf>/ (see Path and leaf). A
 // result is built in a folder from MakeTemp and placed whole, so a
 // result that is in place is complete. It's safe for concurrent use once
 // its fields are set.
 type Results struct {
 	// Dir is the cache folder.
 	Dir string
-	// Version is the current version of the results, as in Leaf.
+	// Version is the current version of the results, as in leaf.
 	Version int
 	// Generations reads the current generation of each given file that
 	// still has a row.
@@ -74,7 +74,7 @@ type Results struct {
 
 // Path returns the folder of a file's result at a generation.
 func (r Results) Path(file id.ID, gen int64) string {
-	return Path(r.Dir, file, file.String(), Leaf(gen, r.Version))
+	return Path(r.Dir, file, file.String(), leaf(gen, r.Version))
 }
 
 // Has reports whether a file's result is made at a generation.
@@ -115,7 +115,7 @@ const pruneStep = 500
 // still have a result. A file's generation is read again before each
 // removal, so a result placed meanwhile is kept.
 //
-// progress, if set, is told how many of the files with results have been
+// progress is told how many of the files with results have been
 // looked at, with an empty step. It has the same shape as tasks.Progress,
 // so a prune task passes that.
 func (r Results) Prune(ctx context.Context, progress func(ctx context.Context, step string, done, total int)) (removed, kept int, err error) {
@@ -133,9 +133,7 @@ func (r Results) Prune(ctx context.Context, progress func(ctx context.Context, s
 	}
 	for i, c := range all {
 		if i%pruneStep == 0 {
-			if progress != nil {
-				progress(ctx, "", i, len(all))
-			}
+			progress(ctx, "", i, len(all))
 			if err := ctx.Err(); err != nil {
 				return removed, 0, err
 			}
@@ -215,14 +213,14 @@ func (c cachedFile) prune(gen int64, version int, latest func() (int64, error)) 
 	}
 	removed := 0
 	for _, e := range entries {
-		if e.Name() == Leaf(gen, version) {
+		if e.Name() == leaf(gen, version) {
 			continue
 		}
 		l, err := latest()
 		if err != nil {
 			return removed, err
 		}
-		if e.Name() == Leaf(l, version) {
+		if e.Name() == leaf(l, version) {
 			continue
 		}
 		if err := os.RemoveAll(filepath.Join(c.dir, e.Name())); err != nil {

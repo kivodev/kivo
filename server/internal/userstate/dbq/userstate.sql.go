@@ -14,7 +14,7 @@ import (
 
 const addToList = `-- name: AddToList :exec
 INSERT INTO list_work (list_id, work_id, added_at, position)
-SELECT ?1, ?2, ?3, coalesce(min(position), 0) - 4294967296 FROM list_work WHERE list_id = ?1
+SELECT ?1, ?2, ?3, coalesce(min(position), 0) - 1 FROM list_work WHERE list_id = ?1
 ON CONFLICT (list_id, work_id) DO NOTHING
 `
 
@@ -24,8 +24,8 @@ type AddToListParams struct {
 	At     int64
 }
 
-// The work goes first in the list's custom order: a place before its
-// lowest. A work already in the list keeps its place.
+// The work goes first in the list's custom order, before its lowest
+// position. A work already in the list keeps its place.
 func (q *Queries) AddToList(ctx context.Context, arg AddToListParams) error {
 	_, err := q.db.ExecContext(ctx, addToList, arg.ListID, arg.WorkID, arg.At)
 	return err

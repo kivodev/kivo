@@ -1472,7 +1472,7 @@ func (f *fixture) extract(file id.ID, font string, stored bool) string {
 	if err != nil {
 		f.t.Fatal(err)
 	}
-	dir := cachedir.Path(filepath.Join(f.cache, "subtitles"), file, file.String(), cachedir.Leaf(cf.Generation, 0))
+	dir := cachedir.Results{Dir: filepath.Join(f.cache, "subtitles")}.Path(file, cf.Generation)
 	f.put(dir, "", "")
 	for _, t := range cf.Tracks {
 		format, ok := media.Codec(t.Codec).SubtitleFormat()
@@ -1503,7 +1503,7 @@ func (f *fixture) makePreviews(file id.ID) string {
 	if err != nil {
 		f.t.Fatal(err)
 	}
-	dir := cachedir.Path(filepath.Join(f.cache, "previews"), file, file.String(), cachedir.Leaf(cf.Generation, 0))
+	dir := cachedir.Results{Dir: filepath.Join(f.cache, "previews")}.Path(file, cf.Generation)
 	b, err := json.Marshal(media.Previews{Interval: 10 * time.Second, Width: 320, Height: 180, Columns: 10, Rows: 10, Sheets: 3})
 	if err != nil {
 		f.t.Fatal(err)

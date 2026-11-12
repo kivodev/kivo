@@ -503,114 +503,6 @@ func TestMigrationQueryCollapse(t *testing.T) {
 	}
 }
 
-// 0071 rebuilds the sorts' indexes with is_root in them. Each still holds
-// a library's top-level works alone, in its order, and a read of them in
-// that order takes its rows from the index without the table.
-func TestMigrationSortIndexesCover(t *testing.T) {
-	ctx := context.Background()
-	db, path := testDB(t, through(t, "_query_collapse.sql"))
-	err := db.Write(ctx, func(ctx context.Context, tx *Tx) error {
-		_, err := tx.ExecContext(ctx, `
-			INSERT INTO library (id, name, kind, created_at) VALUES (x'b1', 'Shows', 'shows', 1);
-			INSERT INTO work (id, kind, parent_id, root_id, title, sort_title, added_at) VALUES
-				(x'01', 'series', NULL, x'01', 'B', 'B', 3),
-				(x'02', 'series', NULL, x'02', 'A', 'A', 2),
-				(x'03', 'season', x'01', x'01', 'Season 1', 'Season 1', 9);
-			INSERT INTO work_library (library_id, work_id, is_root, sort_title, added_at) VALUES
-				(x'b1', x'01', 1, 'B', 3), (x'b1', x'02', 1, 'A', 2), (x'b1', x'03', 0, 'Season 1', 9);`)
-		return err
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	db.Close()
-	up, err := open(ctx, path, embeddedMigrations(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer up.Close()
-	for index, column := range map[string]string{
-		"work_library_title": "sort_title", "work_library_release": "release_key", "work_library_runtime": "runtime_sort",
-		"work_library_rating": "rating_sort", "work_library_creator": "creator_sort", "work_library_last_added": "last_added_at",
-		"work_library_added": "added_at",
-	} {
-		var columns string
-		var partial bool
-		err := up.Reader().QueryRowContext(ctx, `
-			SELECT (SELECT group_concat(name, ',') FROM pragma_index_info(l.name)), l.partial
-			FROM pragma_index_list('work_library') l WHERE l.name = ?`, index).Scan(&columns, &partial)
-		want := "library_id," + column + ",sort_title,work_id,is_root"
-		if column == "sort_title" {
-			want = "library_id,sort_title,work_id,is_root"
-		}
-		if err != nil || columns != want || !partial {
-			t.Errorf("%s holds %s, partial %v, %v; want %s of the top-level works", index, columns, partial, err, want)
-		}
-		read := `SELECT hex(wl.work_id) FROM work_library wl INDEXED BY ` + index + `
-			WHERE wl.library_id = x'b1' AND wl.is_root ORDER BY wl.` + column
-		var plan []string
-		rows, err := up.Reader().QueryContext(ctx, "EXPLAIN QUERY PLAN "+read)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for rows.Next() {
-			var id, parent, unused int
-			var detail string
-			if err := rows.Scan(&id, &parent, &unused, &detail); err != nil {
-				t.Fatal(err)
-			}
-			plan = append(plan, detail)
-		}
-		rows.Close()
-		if want := []string{"SEARCH wl USING COVERING INDEX " + index + " (library_id=?)"}; !slices.Equal(plan, want) {
-			t.Errorf("%s: the read's plan is %q, want %q", index, plan, want)
-		}
-	}
-	var titled, added string
-	err = up.Reader().QueryRowContext(ctx, `SELECT
-		(SELECT group_concat(hex(work_id), ',') FROM (SELECT work_id FROM work_library INDEXED BY work_library_title
-			WHERE library_id = x'b1' AND is_root ORDER BY sort_title)),
-		(SELECT group_concat(hex(work_id), ',') FROM (SELECT work_id FROM work_library INDEXED BY work_library_added
-			WHERE library_id = x'b1' AND is_root ORDER BY added_at DESC))`).Scan(&titled, &added)
-	if err != nil || titled != "02,01" || added != "01,02" {
-		t.Errorf("by title %s and by added %s, %v; want 02,01 and 01,02", titled, added, err)
-	}
-}
-
-// 0072 drops the index of works by sort title, which no read uses, and
-// leaves the works as they were.
-func TestMigrationDropsWorkSortTitle(t *testing.T) {
-	ctx := context.Background()
-	db, path := testDB(t, through(t, "_sort_indexes_cover.sql"))
-	var before int
-	if err := db.Reader().QueryRowContext(ctx, `SELECT count(*) FROM sqlite_master WHERE type = 'index' AND name = 'work_sort_title'`).Scan(&before); err != nil || before != 1 {
-		t.Fatalf("before: %d indexes named work_sort_title, %v; want 1", before, err)
-	}
-	err := db.Write(ctx, func(ctx context.Context, tx *Tx) error {
-		_, err := tx.ExecContext(ctx, `
-			INSERT INTO work (id, kind, parent_id, root_id, title, sort_title, added_at) VALUES
-				(x'01', 'movie', NULL, x'01', 'b', 'b', 1), (x'02', 'movie', NULL, x'02', 'A', 'A', 2);`)
-		return err
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	db.Close()
-	up, err := open(ctx, path, embeddedMigrations(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer up.Close()
-	var after int
-	var titles string
-	err = up.Reader().QueryRowContext(ctx, `SELECT
-		(SELECT count(*) FROM sqlite_master WHERE name = 'work_sort_title'),
-		(SELECT group_concat(sort_title, ',') FROM (SELECT sort_title FROM work ORDER BY sort_title))`).Scan(&after, &titles)
-	if err != nil || after != 0 || titles != "A,b" {
-		t.Errorf("after: %d indexes named work_sort_title, works %q, %v; want none and A,b", after, titles, err)
-	}
-}
-
 // 0073 gives every list the custom sort and every work in one a place,
 // 2^32 apart, in the order the list was shown in: most recently added
 // first, then by title. The works keep when they were added, and still
@@ -716,10 +608,9 @@ func TestMigrationTrailers(t *testing.T) {
 		}
 		return out
 	}
-	if got, want := read(`SELECT group_concat(hex(work_id) || ' ' || ord || ' ' || site || ' ' || key || ' ' || title || ' ' || official || ' ' ||
-		coalesce(language, '-') || ' ' || coalesce(published_at, '-') || ' ' || length(id) || ' ' || substr(hex(id), 13, 1), ', ')
+	if got, want := read(`SELECT group_concat(hex(work_id) || ' ' || ord || ' ' || key || ' ' || title || ' ' || length(id) || ' ' || substr(hex(id), 13, 1), ', ')
 		FROM (SELECT * FROM trailer ORDER BY work_id)`),
-		"01 0 youtube n9xhJrPXop4 Trailer 0 - - 16 7, 03 0 youtube LjLamj-b0I8 Trailer 0 - - 16 7"; got != want {
+		"01 0 n9xhJrPXop4 Trailer 16 7, 03 0 LjLamj-b0I8 Trailer 16 7"; got != want {
 		t.Errorf("trailers: %s, want %s", got, want)
 	}
 	if got := read(`SELECT count(*) FROM pragma_table_info('work') WHERE name = 'trailer_url'`); got != "0" {
@@ -764,5 +655,63 @@ func TestMigrationTrailers(t *testing.T) {
 	}
 	if got := read(`SELECT (SELECT count(*) FROM trailer WHERE work_id = x'01') || ' ' || (SELECT group_concat(hex(id), ',') FROM (SELECT id FROM image ORDER BY id))`); got != "0 E2,E3" {
 		t.Errorf("after deleting the movie: %s, want no trailer and only the other owners' images", got)
+	}
+}
+
+// 0076 drops the trailer columns only ranking used. Every trailer keeps its
+// ID, order, video, title and thumbnail, a movie still lists a video once,
+// and lists keep their order.
+func TestMigrationTrailerColumns(t *testing.T) {
+	ctx := context.Background()
+	db, path := testDB(t, through(t, "_drop_probe_id.sql"))
+	err := db.Write(ctx, func(ctx context.Context, tx *Tx) error {
+		_, err := tx.ExecContext(ctx, `
+			INSERT INTO user (id, username, admin, all_libraries, created_at) VALUES (x'a1', 'anna', 0, 1, 1);
+			INSERT INTO list (id, user_id, name, built_in, created_at) VALUES (x'c1', x'a1', 'Watchlist', 1, 1);
+			INSERT INTO work (id, kind, parent_id, root_id, title, sort_title, added_at) VALUES
+				(x'01', 'movie', NULL, x'01', 'Dune', 'Dune', 1), (x'02', 'movie', NULL, x'02', 'Heat', 'Heat', 1),
+				(x'03', 'movie', NULL, x'03', 'Alien', 'Alien', 1);
+			INSERT INTO list_work (list_id, work_id, added_at, position) VALUES
+				(x'c1', x'01', 1, 4294967296), (x'c1', x'02', 2, -4294967296), (x'c1', x'03', 3, 6442450944);
+			INSERT INTO trailer (id, work_id, ord, site, key, title, language, official, published_at) VALUES
+				(x'd1', x'01', 1, 'youtube', 'n9xhJrPXop4', 'Main Trailer', 'en', 1, '2021-07-22T15:00:00.000Z'),
+				(x'd2', x'01', 0, 'youtube', '8g18jFHCLXk', 'Trailer', NULL, 0, NULL);
+			INSERT INTO image (id, trailer_id, kind, source, origin, width, height, blurhash, fetched_at) VALUES
+				(x'e1', x'd1', 'thumb', 'provider', 'https://i.ytimg.com/vi/n9xhJrPXop4/maxresdefault.jpg', 1280, 720, 'hash', 1);`)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+	up, err := open(ctx, path, embeddedMigrations(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer up.Close()
+	read := func(query string) (out string) {
+		t.Helper()
+		if err := up.Reader().QueryRowContext(ctx, query).Scan(&out); err != nil {
+			t.Fatal(err)
+		}
+		return out
+	}
+	if got, want := read(`SELECT group_concat(hex(t.id) || ' ' || t.ord || ' ' || t.key || ' ' || t.title || ' ' || iif(i.id IS NULL, '-', hex(i.id)), ', ')
+		FROM (SELECT * FROM trailer ORDER BY ord) t LEFT JOIN image i ON i.trailer_id = t.id`),
+		"D2 0 8g18jFHCLXk Trailer -, D1 1 n9xhJrPXop4 Main Trailer E1"; got != want {
+		t.Errorf("trailers: %s, want %s", got, want)
+	}
+	if got := read(`SELECT group_concat(name, ',') FROM pragma_table_info('trailer')`); got != "id,work_id,ord,key,title" {
+		t.Errorf("trailer's columns: %s", got)
+	}
+	if got := read(`SELECT group_concat(hex(work_id), ',') FROM (SELECT work_id FROM list_work WHERE list_id = x'c1' ORDER BY position)`); got != "02,01,03" {
+		t.Errorf("the list's order: %s, want 02,01,03", got)
+	}
+	err = up.Write(ctx, func(ctx context.Context, tx *Tx) error {
+		_, err := tx.ExecContext(ctx, `INSERT INTO trailer (id, work_id, ord, key, title) VALUES (x'd3', x'01', 2, 'n9xhJrPXop4', 'Again')`)
+		return err
+	})
+	if err == nil {
+		t.Error("a movie listed a video twice")
 	}
 }

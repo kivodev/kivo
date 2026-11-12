@@ -199,7 +199,7 @@ func (e *env) makePreviews() string {
 	if err != nil {
 		e.t.Fatal(err)
 	}
-	dir := cachedir.Path(filepath.Join(e.cache, "previews"), f.ID, f.ID.String(), cachedir.Leaf(f.Generation, 0))
+	dir := cachedir.Results{Dir: filepath.Join(e.cache, "previews")}.Path(f.ID, f.Generation)
 	b, err := json.Marshal(media.Previews{Interval: 10 * time.Second, Width: 320, Height: 180, Columns: 10, Rows: 10, Sheets: 1})
 	if err != nil {
 		e.t.Fatal(err)

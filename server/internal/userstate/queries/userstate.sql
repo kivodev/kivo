@@ -102,10 +102,10 @@ ON CONFLICT (user_id, series_id) DO UPDATE SET
 SELECT user_id, query IS NOT NULL AS smart FROM list WHERE id = @id;
 
 -- name: AddToList :exec
--- The work goes first in the list's custom order: a place before its
--- lowest. A work already in the list keeps its place.
+-- The work goes first in the list's custom order, before its lowest
+-- position. A work already in the list keeps its place.
 INSERT INTO list_work (list_id, work_id, added_at, position)
-SELECT @list_id, @work_id, @at, coalesce(min(position), 0) - 4294967296 FROM list_work WHERE list_id = @list_id
+SELECT @list_id, @work_id, @at, coalesce(min(position), 0) - 1 FROM list_work WHERE list_id = @list_id
 ON CONFLICT (list_id, work_id) DO NOTHING;
 
 -- name: ListPlaces :many

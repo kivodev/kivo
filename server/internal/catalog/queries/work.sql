@@ -122,18 +122,16 @@ DELETE FROM credit WHERE work_id = @work_id;
 INSERT INTO credit (work_id, person_id, role, ord, character) VALUES (@work_id, @person_id, @role, @ord, @character);
 
 -- name: TrailerKeys :many
-SELECT site, key FROM trailer WHERE work_id = @work_id;
+SELECT key FROM trailer WHERE work_id = @work_id;
 
 -- name: PutTrailer :exec
 -- Records a work's trailer. A video the work already lists keeps its row,
 -- and so its thumbnail.
-INSERT INTO trailer (id, work_id, ord, site, key, title, language, official, published_at)
-VALUES (@id, @work_id, @ord, @site, @key, @title, @language, @official, @published_at)
-ON CONFLICT (work_id, site, key) DO UPDATE SET ord = excluded.ord, title = excluded.title, language = excluded.language,
-  official = excluded.official, published_at = excluded.published_at;
+INSERT INTO trailer (id, work_id, ord, key, title) VALUES (@id, @work_id, @ord, @key, @title)
+ON CONFLICT (work_id, key) DO UPDATE SET ord = excluded.ord, title = excluded.title;
 
 -- name: DeleteTrailer :exec
-DELETE FROM trailer WHERE work_id = @work_id AND site = @site AND key = @key;
+DELETE FROM trailer WHERE work_id = @work_id AND key = @key;
 
 -- name: DeleteTrailers :exec
 DELETE FROM trailer WHERE work_id = @work_id;

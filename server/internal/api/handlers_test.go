@@ -483,8 +483,8 @@ func TestBrowseAndDetail(t *testing.T) {
 		return e.b.Catalog.UpdateMetadata(ctx, tx, heat.ID, catalog.WorkMetadata{
 			Title: heat.Title, Year: heat.Year, Community: &catalog.CommunityRating{Rating: 7.5, Votes: 900},
 			Trailers: []catalog.Trailer{
-				{Site: catalog.TrailerYouTube, Key: "abc", Title: "Official Trailer"},
-				{Site: catalog.TrailerYouTube, Key: "def", Title: "Trailer 2"},
+				{Key: "abc", Title: "Official Trailer"},
+				{Key: "def", Title: "Trailer 2"},
 			},
 		})
 	})
@@ -561,7 +561,7 @@ func TestBrowseAndDetail(t *testing.T) {
 	e.b.Write(func(ctx context.Context, tx *store.Tx) error {
 		return e.b.Catalog.UpdateMetadata(ctx, tx, e.series, catalog.WorkMetadata{
 			Title:    "Seeded Series",
-			Trailers: []catalog.Trailer{{Site: catalog.TrailerYouTube, Key: "ser", Title: "Series Trailer"}},
+			Trailers: []catalog.Trailer{{Key: "ser", Title: "Series Trailer"}},
 		})
 	})
 	sd := decode[map[string]any](t, e.do("GET", "/api/v1/works/"+e.series.String(), e.adminToken, nil))

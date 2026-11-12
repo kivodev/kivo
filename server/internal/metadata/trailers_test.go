@@ -47,7 +47,7 @@ func TestTrailersOf(t *testing.T) {
 	} {
 		var got []string
 		for _, tr := range trailersOf(tc.videos, tc.lang) {
-			if tr.Site != catalog.TrailerYouTube || tr.Title != "Trailer "+tr.Key {
+			if tr.Title != "Trailer "+tr.Key {
 				t.Errorf("%s: trailer %+v", tc.name, tr)
 			}
 			got = append(got, tr.Key)
@@ -75,7 +75,7 @@ func (e *env) thumbFiles(work id.ID) map[string][]string {
 	e.t.Helper()
 	out := map[string][]string{}
 	for _, key := range e.strings(`SELECT key FROM trailer WHERE work_id = ?`, work) {
-		r, err := e.s.q.TrailerThumb(ctx, dbq.TrailerThumbParams{WorkID: work, Site: catalog.TrailerYouTube, Key: key})
+		r, err := e.s.q.TrailerThumb(ctx, dbq.TrailerThumbParams{WorkID: work, Key: key})
 		if err != nil {
 			continue
 		}
@@ -142,9 +142,9 @@ func TestRefreshTrailers(t *testing.T) {
 	gone := id.New()
 	e.b.Write(func(ctx context.Context, tx *store.Tx) error {
 		return e.b.Catalog.UpdateMetadata(ctx, tx, w, catalog.WorkMetadata{Trailers: []catalog.Trailer{
-			{Site: catalog.TrailerYouTube, Key: "n9xhJrPXop4", Title: "Official Main Trailer"},
-			{Site: catalog.TrailerYouTube, Key: "8g18jFHCLXk", Title: "Official Trailer"},
-			{Site: catalog.TrailerYouTube, Key: "withdrawn", Title: "Withdrawn"},
+			{Key: "n9xhJrPXop4", Title: "Official Main Trailer"},
+			{Key: "8g18jFHCLXk", Title: "Official Trailer"},
+			{Key: "withdrawn", Title: "Withdrawn"},
 		}})
 	})
 	e.b.Write(func(ctx context.Context, tx *store.Tx) error {
@@ -283,7 +283,7 @@ func TestTrailerThumbnailIsAnImage(t *testing.T) {
 	w := e.movie(folder, "Dune (2021)/Dune (2021).mkv")
 	e.mustRefresh(w)
 
-	r, err := e.s.q.TrailerThumb(ctx, dbq.TrailerThumbParams{WorkID: w, Site: catalog.TrailerYouTube, Key: "n9xhJrPXop4"})
+	r, err := e.s.q.TrailerThumb(ctx, dbq.TrailerThumbParams{WorkID: w, Key: "n9xhJrPXop4"})
 	if err != nil {
 		t.Fatal(err)
 	}

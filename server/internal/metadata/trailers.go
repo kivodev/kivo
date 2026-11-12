@@ -20,9 +20,6 @@ import (
 // The 640×480 and 480×360 ones pad the picture to 4:3, and the last exists
 // for every video.
 func thumbnailsOf(t catalog.Trailer) []string {
-	if t.Site != catalog.TrailerYouTube {
-		return nil
-	}
 	base := "https://i.ytimg.com/vi/" + t.Key + "/"
 	return []string{base + "maxresdefault.jpg", base + "sddefault.jpg", base + "hqdefault.jpg"}
 }
@@ -30,8 +27,8 @@ func thumbnailsOf(t catalog.Trailer) []string {
 // trailerPlan is a trailer's thumbnail, already encoded, for a refresh to
 // record.
 type trailerPlan struct {
-	site, key string
-	thumb     dbq.InsertTrailerImageParams
+	key   string
+	thumb dbq.InsertTrailerImageParams
 }
 
 // planTrailers encodes the thumbnails of the trailers a refresh writes,
@@ -49,7 +46,7 @@ func (s *Service) planTrailers(ctx context.Context, w catalog.Work, m *catalog.W
 	kept := m.Trailers[:0]
 	for _, t := range m.Trailers {
 		urls := thumbnailsOf(t)
-		cur, err := s.q.TrailerThumb(ctx, dbq.TrailerThumbParams{WorkID: w.ID, Site: t.Site, Key: t.Key})
+		cur, err := s.q.TrailerThumb(ctx, dbq.TrailerThumbParams{WorkID: w.ID, Key: t.Key})
 		switch {
 		case err == nil:
 			if slices.Contains(urls, cur.Origin) && s.present(cur) {
@@ -82,7 +79,7 @@ func (s *Service) planTrailers(ctx context.Context, w catalog.Work, m *catalog.W
 // none at any size.
 func (s *Service) fetchThumbnail(ctx context.Context, w catalog.Work, t catalog.Trailer, urls []string) (_ *trailerPlan, gone bool, _ error) {
 	for _, u := range urls {
-		img, err := s.encodeRemote(ctx, artworkThumb, remoteImage{provider: t.Site, url: u})
+		img, err := s.encodeRemote(ctx, artworkThumb, remoteImage{provider: provYouTube, url: u})
 		switch {
 		case ctx.Err() != nil:
 			return nil, false, ctx.Err()
@@ -91,10 +88,10 @@ func (s *Service) fetchThumbnail(ctx context.Context, w catalog.Work, t catalog.
 		case errors.Is(err, ErrUnavailable):
 			return nil, false, err
 		case err != nil:
-			slog.WarnContext(ctx, "metadata: trailer thumbnail skipped", "work", w.ID, "site", t.Site, "err", err)
+			slog.WarnContext(ctx, "metadata: trailer thumbnail skipped", "work", w.ID, "err", err)
 			return nil, false, nil
 		}
-		return &trailerPlan{site: t.Site, key: t.Key, thumb: dbq.InsertTrailerImageParams{
+		return &trailerPlan{key: t.Key, thumb: dbq.InsertTrailerImageParams{
 			ID: img.ID, Kind: artworkThumb, Source: sourceProvider, Origin: u,
 			Width: img.Width, Height: img.Height, Blurhash: img.Blurhash, FetchedAt: time.Now().UnixMilli(),
 		}}, false, nil
@@ -119,7 +116,7 @@ func (s *Service) recordTrailers(ctx context.Context, tx *store.Tx, work id.ID, 
 		}
 	}
 	for _, p := range plans {
-		trailer, err := q.TrailerOf(ctx, dbq.TrailerOfParams{WorkID: work, Site: p.site, Key: p.key})
+		trailer, err := q.TrailerOf(ctx, dbq.TrailerOfParams{WorkID: work, Key: p.key})
 		if errors.Is(err, sql.ErrNoRows) {
 			tx.AfterCommit(func() { s.deleteFiles(p.thumb.ID, artworkThumb) })
 			continue

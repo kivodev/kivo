@@ -638,17 +638,16 @@ func (q *Queries) TrailerImages(ctx context.Context, workID id.ID) ([]Image, err
 }
 
 const trailerOf = `-- name: TrailerOf :one
-SELECT id FROM trailer WHERE work_id = ?1 AND site = ?2 AND key = ?3
+SELECT id FROM trailer WHERE work_id = ?1 AND key = ?2
 `
 
 type TrailerOfParams struct {
 	WorkID id.ID
-	Site   string
 	Key    string
 }
 
 func (q *Queries) TrailerOf(ctx context.Context, arg TrailerOfParams) (id.ID, error) {
-	row := q.db.QueryRowContext(ctx, trailerOf, arg.WorkID, arg.Site, arg.Key)
+	row := q.db.QueryRowContext(ctx, trailerOf, arg.WorkID, arg.Key)
 	var id id.ID
 	err := row.Scan(&id)
 	return id, err
@@ -657,18 +656,17 @@ func (q *Queries) TrailerOf(ctx context.Context, arg TrailerOfParams) (id.ID, er
 const trailerThumb = `-- name: TrailerThumb :one
 SELECT i.id, i.work_id, i.person_id, i.collection_id, i.trailer_id, i.kind, i.source, i.origin, i.origin_mtime, i.width, i.height, i.blurhash, i.chosen, i.fetched_at FROM trailer t
 JOIN image i ON i.trailer_id = t.id AND i.kind = 'thumb'
-WHERE t.work_id = ?1 AND t.site = ?2 AND t.key = ?3
+WHERE t.work_id = ?1 AND t.key = ?2
 `
 
 type TrailerThumbParams struct {
 	WorkID id.ID
-	Site   string
 	Key    string
 }
 
 // The thumbnail of a work's trailer, named by its video.
 func (q *Queries) TrailerThumb(ctx context.Context, arg TrailerThumbParams) (Image, error) {
-	row := q.db.QueryRowContext(ctx, trailerThumb, arg.WorkID, arg.Site, arg.Key)
+	row := q.db.QueryRowContext(ctx, trailerThumb, arg.WorkID, arg.Key)
 	var i Image
 	err := row.Scan(
 		&i.ID,

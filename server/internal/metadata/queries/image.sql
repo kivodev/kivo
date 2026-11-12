@@ -48,10 +48,10 @@ WHERE t.work_id = @work_id;
 -- The thumbnail of a work's trailer, named by its video.
 SELECT i.* FROM trailer t
 JOIN image i ON i.trailer_id = t.id AND i.kind = 'thumb'
-WHERE t.work_id = @work_id AND t.site = @site AND t.key = @key;
+WHERE t.work_id = @work_id AND t.key = @key;
 
 -- name: TrailerOf :one
-SELECT id FROM trailer WHERE work_id = @work_id AND site = @site AND key = @key;
+SELECT id FROM trailer WHERE work_id = @work_id AND key = @key;
 
 -- name: InsertTrailerImage :exec
 INSERT INTO image (id, trailer_id, kind, source, origin, width, height, blurhash, fetched_at)

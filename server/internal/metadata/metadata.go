@@ -137,6 +137,7 @@ const (
 	provAudible    = "audible"
 	provAudnexus   = "audnexus"
 	provAnimeLists = "animelists"
+	provYouTube    = "youtube"
 )
 
 // Query is what identify searches for.

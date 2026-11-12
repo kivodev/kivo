@@ -134,7 +134,7 @@ func TestPruneKeepsOnlyCurrentResults(t *testing.T) {
 	place(kept, 5)
 	place(changed, 2)
 	place(gone, 1)
-	oldVersion := Path(r.Dir, kept, kept.String(), Leaf(5, 1))
+	oldVersion := Path(r.Dir, kept, kept.String(), leaf(5, 1))
 	if err := os.MkdirAll(oldVersion, 0o755); err != nil {
 		t.Fatal(err)
 	}

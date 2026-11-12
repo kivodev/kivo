@@ -113,17 +113,16 @@ func (q *Queries) DeleteExternalIDs(ctx context.Context, workID id.ID) error {
 }
 
 const deleteTrailer = `-- name: DeleteTrailer :exec
-DELETE FROM trailer WHERE work_id = ?1 AND site = ?2 AND key = ?3
+DELETE FROM trailer WHERE work_id = ?1 AND key = ?2
 `
 
 type DeleteTrailerParams struct {
 	WorkID id.ID
-	Site   string
 	Key    string
 }
 
 func (q *Queries) DeleteTrailer(ctx context.Context, arg DeleteTrailerParams) error {
-	_, err := q.db.ExecContext(ctx, deleteTrailer, arg.WorkID, arg.Site, arg.Key)
+	_, err := q.db.ExecContext(ctx, deleteTrailer, arg.WorkID, arg.Key)
 	return err
 }
 
@@ -688,22 +687,16 @@ func (q *Queries) PersonExternalIDs(ctx context.Context, personID id.ID) ([]Pers
 }
 
 const putTrailer = `-- name: PutTrailer :exec
-INSERT INTO trailer (id, work_id, ord, site, key, title, language, official, published_at)
-VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
-ON CONFLICT (work_id, site, key) DO UPDATE SET ord = excluded.ord, title = excluded.title, language = excluded.language,
-  official = excluded.official, published_at = excluded.published_at
+INSERT INTO trailer (id, work_id, ord, key, title) VALUES (?1, ?2, ?3, ?4, ?5)
+ON CONFLICT (work_id, key) DO UPDATE SET ord = excluded.ord, title = excluded.title
 `
 
 type PutTrailerParams struct {
-	ID          id.ID
-	WorkID      id.ID
-	Ord         int64
-	Site        string
-	Key         string
-	Title       string
-	Language    sql.NullString
-	Official    bool
-	PublishedAt sql.NullString
+	ID     id.ID
+	WorkID id.ID
+	Ord    int64
+	Key    string
+	Title  string
 }
 
 // Records a work's trailer. A video the work already lists keeps its row,
@@ -713,12 +706,8 @@ func (q *Queries) PutTrailer(ctx context.Context, arg PutTrailerParams) error {
 		arg.ID,
 		arg.WorkID,
 		arg.Ord,
-		arg.Site,
 		arg.Key,
 		arg.Title,
-		arg.Language,
-		arg.Official,
-		arg.PublishedAt,
 	)
 	return err
 }
@@ -801,27 +790,22 @@ func (q *Queries) SetOrdering(ctx context.Context, arg SetOrderingParams) (int64
 }
 
 const trailerKeys = `-- name: TrailerKeys :many
-SELECT site, key FROM trailer WHERE work_id = ?1
+SELECT key FROM trailer WHERE work_id = ?1
 `
 
-type TrailerKeysRow struct {
-	Site string
-	Key  string
-}
-
-func (q *Queries) TrailerKeys(ctx context.Context, workID id.ID) ([]TrailerKeysRow, error) {
+func (q *Queries) TrailerKeys(ctx context.Context, workID id.ID) ([]string, error) {
 	rows, err := q.db.QueryContext(ctx, trailerKeys, workID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []TrailerKeysRow
+	var items []string
 	for rows.Next() {
-		var i TrailerKeysRow
-		if err := rows.Scan(&i.Site, &i.Key); err != nil {
+		var key string
+		if err := rows.Scan(&key); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, key)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err

@@ -185,7 +185,6 @@ func trailers(ts []catalog.Trailer) []catalog.Trailer {
 	out := []catalog.Trailer{} // non-nil, because an empty list clears the field
 	for _, t := range ts {
 		t.Title = cmp.Or(clean(t.Title, maxTitle), "Trailer")
-		t.Language = languageCode(t.Language)
 		out = append(out, t)
 	}
 	return out
