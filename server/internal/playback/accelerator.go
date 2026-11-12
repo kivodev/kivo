@@ -65,10 +65,15 @@ func (s *planner) encoders(cpu bool) []Encoder {
 	accel, _ := s.accelerators(cpu)
 	for _, a := range accel {
 		for _, e := range a.Encoders {
-			out = append(out, Encoder{Codec: e.Codec, ToneMap: a.ToneMap != "", BurnIn: a.BurnIn != ""})
+			out = append(out, encoderOn(a, e.Codec))
 		}
 	}
 	return out
+}
+
+// encoderOn is codec as accelerator a encodes it.
+func encoderOn(a media.Caps, codec media.Codec) Encoder {
+	return Encoder{Codec: codec, ToneMap: a.ToneMap != "", BurnIn: a.BurnIn != ""}
 }
 
 // chooseAccelerator names the device for a play's or a download's video
@@ -85,7 +90,7 @@ func (s *planner) chooseAccelerator(c *choice) bool {
 	t, v := &c.decision.Tracks[i], c.decision.Tracks[i].Video
 	accel, why := s.accelerators(c.cpu)
 	for _, a := range accel {
-		if _, ok := a.Encoder(v.Codec); ok && (a.ToneMap != "" || v.HDR != media.ToneMap) && (a.BurnIn != "" || !c.decision.burned()) {
+		if _, ok := a.Encoder(v.Codec); ok && encoderOn(a, v.Codec).does(v.Codec, v.HDR == media.ToneMap, c.decision.burned()) {
 			t.Accelerator, t.Encoder, t.SoftwareReason = a.Accelerator, a.Name, ""
 			return true
 		}

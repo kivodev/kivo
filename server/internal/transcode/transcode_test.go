@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"iter"
 	"log/slog"
-	"math"
 	"os"
 	"path/filepath"
 	"slices"
@@ -292,7 +291,7 @@ func fixture(t *testing.T, m *fakeMedia) (*Transcoder, Spec) {
 		m.pace = 100 * time.Millisecond
 	}
 	dir := t.TempDir()
-	tr, err := New(Deps{Media: m, Keys: fakeKeys{keys: m.keys, complete: true}, Dir: filepath.Join(dir, "transcode"), Downloads: filepath.Join(dir, "downloads")}, Options{Floor: 1})
+	tr, err := New(Deps{Media: m, Keys: fakeKeys{keys: m.keys, complete: true}, Dir: filepath.Join(dir, "transcode"), Downloads: filepath.Join(dir, "downloads")}, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1002,31 +1001,20 @@ func TestOlderFarRequestWaitsForTheNewerJob(t *testing.T) {
 	})
 }
 
-// Once the newer request's job ends or is idle-killed, the older request
-// starts a job of its own.
+// Once the newer request's job reaches the end of the file, the older
+// request starts a job of its own.
 func TestOlderRequestStartsAJobOnceTheNewerJobIsGone(t *testing.T) {
-	for _, tt := range []struct {
-		name, far string
-		wait      time.Duration
-	}{
-		{"end of file", "95.m4s", 0},
-		{"idle kill", "50.m4s", idleTimeout + time.Second},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			synctest.Test(t, func(t *testing.T) {
-				m := &fakeMedia{}
-				_, waiter := replaced(t, m, ctx, tt.far)
-				time.Sleep(tt.wait)
-				r := <-waiter
-				if r.err != nil || read(t, r.path) != "[1m0s][1m2s][1m4s]" {
-					t.Fatalf("the older request: %v", r.err)
-				}
-				if jobs := m.jobs(); len(jobs) != 4 || jobs[3].Start != time.Minute {
-					t.Fatalf("%d jobs, want the fourth from segment 10", len(jobs))
-				}
-			})
-		})
-	}
+	synctest.Test(t, func(t *testing.T) {
+		m := &fakeMedia{}
+		_, waiter := replaced(t, m, ctx, "95.m4s")
+		r := <-waiter
+		if r.err != nil || read(t, r.path) != "[1m0s][1m2s][1m4s]" {
+			t.Fatalf("the older request: %v", r.err)
+		}
+		if jobs := m.jobs(); len(jobs) != 4 || jobs[3].Start != time.Minute {
+			t.Fatalf("%d jobs, want the fourth from segment 10", len(jobs))
+		}
+	})
 }
 
 // A new request for the older request's segment takes the job back and
@@ -1069,20 +1057,6 @@ func TestInitRequestTakesTheJobFromAnOlderRequest(t *testing.T) {
 		}
 		if r := <-waiter; r.err != nil {
 			t.Fatalf("the older request: %v", r.err)
-		}
-	})
-}
-
-// A job that's stopped under a waiting request doesn't fail it. The request
-// starts a new job.
-func TestStoppedJobsWaiterStartsANewJob(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		m := &fakeMedia{pace: idleTimeout} // the idle kill comes before the first segment
-		tr, spec := fixture(t, m)
-		s, _ := tr.Open(ctx, spec, 0)
-		defer s.Close()
-		if _, err := s.Segment(ctx, "0.m4s"); err != nil || len(m.jobs()) != 2 {
-			t.Fatalf("waiting through an idle kill: %v, %d jobs", err, len(m.jobs()))
 		}
 	})
 }
@@ -1183,31 +1157,6 @@ func TestCancelledRequestStopsWaiting(t *testing.T) {
 	})
 }
 
-func TestIdleKillsTheJobNotTheStream(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		m := &fakeMedia{pace: 2 * time.Second} // real time, so the job doesn't reach the end first
-		tr, spec := fixture(t, m)
-		s, _ := tr.Open(ctx, spec, 0)
-		defer s.Close()
-		for range 3 {
-			time.Sleep(time.Minute)
-			s.Touch() // heartbeats keep it alive
-		}
-		synctest.Wait()
-		if s.Job().State == "" { // the job should be running, or paused well ahead of the player
-			t.Fatal("killed while heartbeats came in")
-		}
-		time.Sleep(idleTimeout + time.Second)
-		synctest.Wait()
-		if s.Job().State != "" {
-			t.Fatal("an idle stream's job is still running")
-		}
-		if _, err := s.Segment(ctx, "90.m4s"); err != nil || len(m.jobs()) != 2 {
-			t.Fatalf("the next request after an idle kill: %v, %d jobs", err, len(m.jobs()))
-		}
-	})
-}
-
 func TestCloseRemovesTheStreamAndFloorRefuses(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		m := &fakeMedia{}
@@ -1225,7 +1174,7 @@ func TestCloseRemovesTheStreamAndFloorRefuses(t *testing.T) {
 			t.Fatalf("after close: %v", err)
 		}
 
-		tr.st.floor = math.MaxUint64
+		tr.st.disk.Free = func(string) (uint64, error) { return floor - 1, nil }
 		if _, err := tr.Open(ctx, spec, 0); !errors.Is(err, ErrStorageFull) {
 			t.Fatalf("below the floor: %v", err)
 		}
@@ -1522,8 +1471,7 @@ func TestOlderRequestDoesNotDelayTheNewerJobsPause(t *testing.T) {
 		if _, err := s.Segment(ctx, "40.m4s"); err != nil {
 			t.Fatal(err)
 		}
-		// A 2 s segment a second encodes 90 s in 45 s, well short of the
-		// idle kill.
+		// A 2 s segment a second encodes 90 s in 45 s.
 		time.Sleep(90 * time.Second)
 		synctest.Wait()
 		s.mu.Lock()
@@ -1702,7 +1650,7 @@ func TestDownloadWritesOneFilePerPart(t *testing.T) {
 	if names, _ := tr.Downloads(); len(names) != 0 {
 		t.Fatalf("failed conversions left %v", names)
 	}
-	tr.dl.floor = math.MaxUint64
+	tr.dl.disk.Free = func(string) (uint64, error) { return floor - 1, nil }
 	if _, err := tr.Download(ctx, "c", spec, func(time.Duration) {}); !errors.Is(err, ErrStorageFull) {
 		t.Fatalf("below the floor: %v", err)
 	}

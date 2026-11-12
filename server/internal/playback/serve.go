@@ -40,9 +40,6 @@ func (s *Service) authorize(ctx context.Context, sid id.ID) (*play, error) {
 	s.mu.Lock()
 	pl.seen = time.Now()
 	s.mu.Unlock()
-	if pl.tc != nil {
-		pl.tc.Touch()
-	}
 	return pl, nil
 }
 

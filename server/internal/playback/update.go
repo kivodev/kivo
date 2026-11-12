@@ -98,9 +98,6 @@ func (s *Service) heartbeat(ctx context.Context, pl *play, h Heartbeat) error {
 		slog.DebugContext(ctx, "playback: seek", "work", pl.work, "client", pl.client, "summary", pl.decision.Summary(),
 			"first_frame", h.SeekToFirstFrame.Round(time.Millisecond))
 	}
-	if pl.tc != nil {
-		pl.tc.Touch()
-	}
 	if switched {
 		if user, err := s.deps.Users.User(ctx, pl.user); err != nil {
 			slog.WarnContext(ctx, "playback: remember track choice", "work", pl.work, "err", err)

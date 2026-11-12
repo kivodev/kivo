@@ -368,7 +368,7 @@ func TestAFailedDownloadSaysWhyAndRetries(t *testing.T) {
 	f.await(d.ID, DownloadReady)
 
 	// A full disk is reported as the reason.
-	f.tc = mustTranscoder(t, f.media, 1<<62)
+	f.tc = mustTranscoder(t, f.media, 1<<20)
 	f.downloads()
 	d = f.mustDownload(f.movie("Ronin", "mkv", 1).Work, "high")
 	if got := f.await(d.ID, DownloadFailed); got.Reason != RefuseStorageFull {
@@ -546,11 +546,11 @@ func (a *asks) list() []string {
 	return slices.Clone(a.l)
 }
 
-// mustTranscoder returns a transcoder for media that refuses downloads
-// when free space is below floor.
-func mustTranscoder(t *testing.T, m transcode.Media, floor uint64) *transcode.Transcoder {
+// mustTranscoder returns a transcoder for media on a disk with free bytes
+// free.
+func mustTranscoder(t *testing.T, m transcode.Media, free uint64) *transcode.Transcoder {
 	t.Helper()
-	tc, err := transcode.New(transcode.Deps{Media: m, Keys: every2s{}, Dir: t.TempDir(), Downloads: t.TempDir()}, transcode.Options{Floor: floor})
+	tc, err := transcode.New(transcode.Deps{Media: m, Keys: every2s{}, Dir: t.TempDir(), Downloads: t.TempDir()}, freeSpace(free))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -112,12 +112,9 @@ type Deps struct {
 
 // Options configures a Transcoder.
 type Options struct {
-	Floor uint64 // the free bytes below which streams and conversions are refused; defaults to 5 GB
+	// Free reads the free space on a path's disk. Nil reads the real disk.
+	Free func(path string) (uint64, error)
 }
-
-// idleTimeout is how long a stream goes without a request before its job is
-// killed.
-const idleTimeout = 2 * time.Minute
 
 // Transcoder runs one ffmpeg job per play's stream, and runs download
 // conversions. It only knows about files and renditions. It never knows
@@ -131,13 +128,10 @@ type Transcoder struct {
 // New returns a transcoder, and clears whatever a crash left in d.Dir.
 // Download conversions in d.Downloads are kept across restarts.
 func New(d Deps, opt Options) (*Transcoder, error) {
-	if opt.Floor == 0 {
-		opt.Floor = defaultFloor
-	}
 	t := &Transcoder{
 		deps: d,
-		st:   storage{dir: d.Dir, floor: opt.Floor},
-		dl:   storage{dir: d.Downloads, floor: opt.Floor},
+		st:   newStorage(d.Dir, opt.Free),
+		dl:   newStorage(d.Downloads, opt.Free),
 	}
 	if err := errors.Join(t.st.reset(), os.MkdirAll(t.dl.dir, 0o755)); err != nil {
 		return t, err
@@ -175,7 +169,6 @@ func (t *Transcoder) Open(ctx context.Context, s Spec, start time.Duration) (*St
 		}
 	}
 	ss.mu.Lock()
-	ss.idle = time.AfterFunc(idleTimeout, ss.idleStop)
 	j := ss.startLocked(segmentAt(plan, start))
 	ss.mu.Unlock()
 	if s.encoded() {

@@ -36,8 +36,8 @@ type job struct {
 // JobState is the state of a stream's job.
 type JobState string
 
-// Job states. A stopped job (by a far seek or an idle kill) is gone, so it
-// has no state.
+// Job states. A stopped job (by a far seek or the stream's end) is gone, so
+// it has no state.
 const (
 	JobRunning JobState = "running"
 	JobPaused  JobState = "paused" // far enough ahead of the player
@@ -421,7 +421,7 @@ func (j *job) restLocked() {
 }
 
 // stopped reports whether an error only means the job was stopped, by a
-// far seek, an idle kill, or the stream's end. It checks for the media
+// far seek or the stream's end. It checks for the media
 // package's own cancellation error as well as the context's.
 func stopped(err error) bool {
 	return errors.Is(err, context.Canceled) || errors.Is(err, media.ErrCancelled)

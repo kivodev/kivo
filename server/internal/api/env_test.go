@@ -268,7 +268,7 @@ func newEnv(t *testing.T, o serving) *env {
 			return catalog.OpenFolder(path)
 		},
 	})
-	tc, err := transcode.New(transcode.Deps{Media: noMedia{}, Keys: noMedia{}, Dir: t.TempDir(), Downloads: t.TempDir()}, transcode.Options{Floor: 1})
+	tc, err := transcode.New(transcode.Deps{Media: noMedia{}, Keys: noMedia{}, Dir: t.TempDir(), Downloads: t.TempDir()}, transcode.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
