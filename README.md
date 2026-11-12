@@ -2,7 +2,7 @@
 
 Open-source streaming for the media you own.
 
-Kivo is a self-hosted media server for movies, TV shows, home videos and audiobooks. Add your media folders and Kivo matches them, downloads artwork and details, and streams to apps on phones, tablets, TVs and the web. It plays the original file when the device supports it and transcodes when it doesn't. No cloud account required.
+Kivo is a self-hosted media server for movies, TV shows, home videos and audiobooks. Point it at your folders and it fetches artwork and details, then streams to apps on phones, tablets, TVs and the web. No cloud account required.
 
 ## Status
 
@@ -44,7 +44,7 @@ Then open `http://<server>:8484` to create an admin account and add libraries.
 - Keep `/data` on a local disk, not a network share.
 - `--device /dev/dri` enables hardware transcoding on Intel and AMD GPUs. Without it, Kivo transcodes on the CPU.
 - Host networking lets the apps discover the server on your network.
-- Once a day Kivo asks GitHub for its latest release, sending nothing about your server, so admins see when a new one is out. Set `KIVO_UPDATE_CHECK=false` (or `update_check = false` in `server.toml`) to turn it off.
+- Kivo checks GitHub once a day for a new release and sends nothing about your server. Set `KIVO_UPDATE_CHECK=false` to turn it off.
 
 See also: [reverse proxy setup](docs/reverse-proxy.md), [resetting a password](docs/reset-password.md).
 
@@ -55,9 +55,9 @@ See also: [reverse proxy setup](docs/reverse-proxy.md), [resetting a password](d
 
 ## Acknowledgements
 
-Kivo transcodes with [jellyfin-ffmpeg](https://github.com/jellyfin/jellyfin-ffmpeg), the Jellyfin project's ffmpeg build, which adds the GPU tone mapping and driver fixes Kivo relies on. It's licensed under the GPL and ships alongside Kivo as a separate program.
+Kivo transcodes with [jellyfin-ffmpeg](https://github.com/jellyfin/jellyfin-ffmpeg) (GPL), shipped alongside it as a separate program.
 
-Movie and TV metadata comes from [TMDB](https://www.themoviedb.org). Audiobook metadata comes from [Audnexus](https://github.com/laxamentumtech/audnexus). The thumbnails of the movie trailers TMDB lists come from YouTube's image server, which only the Kivo server asks.
+Metadata comes from [TMDB](https://www.themoviedb.org) for movies and TV, and [Audnexus](https://github.com/laxamentumtech/audnexus) for audiobooks.
 
 ## License
 
