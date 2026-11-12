@@ -7,6 +7,11 @@ describe("a library's kept view", () => {
       "kivo.library.lib1",
       JSON.stringify({ sort: "bogus", hdr: ["dolbyVision"], match: "unmatched", played: "unplayed" }),
     );
-    expect(storedBrowse("lib1")).toEqual({ played: "unplayed" });
+    expect(storedBrowse("lib1")).toStrictEqual({ played: "unplayed" });
+  });
+
+  it("reads as the defaults when all it holds is a sort it doesn't know", () => {
+    localStorage.setItem("kivo.library.lib2", JSON.stringify({ sort: "lastEpisodeAdded" }));
+    expect(storedBrowse("lib2")).toStrictEqual({});
   });
 });
