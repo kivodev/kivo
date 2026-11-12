@@ -75,7 +75,7 @@ sealed interface DownloadStatus {
 
     companion object {
         /** The device hasn't the room for it. */
-        const val NOT_ENOUGH_SPACE = "notEnoughSpace"
+        internal const val NOT_ENOUGH_SPACE = "notEnoughSpace"
 
         /** A file kept arriving other than the server said it would. */
         const val CHECK_FAILED = "checkFailed"

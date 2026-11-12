@@ -367,14 +367,6 @@ abstract interface com.mmcdole.kivo.core.downloads/DownloadTransport { // com.mm
     abstract fun stop(kotlin/String) // com.mmcdole.kivo.core.downloads/DownloadTransport.stop|stop(kotlin.String){}[0]
 }
 
-abstract interface com.mmcdole.kivo.core.play/PlaySource { // com.mmcdole.kivo.core.play/PlaySource|null[0]
-    abstract suspend fun fallback(kotlin/String, com.mmcdole.kivo.api.models/PlayFallback): com.mmcdole.kivo.api.models/PlayStarted // com.mmcdole.kivo.core.play/PlaySource.fallback|fallback(kotlin.String;com.mmcdole.kivo.api.models.PlayFallback){}[0]
-    abstract suspend fun heartbeat(kotlin/String, com.mmcdole.kivo.api.models/PlayUpdate) // com.mmcdole.kivo.core.play/PlaySource.heartbeat|heartbeat(kotlin.String;com.mmcdole.kivo.api.models.PlayUpdate){}[0]
-    abstract suspend fun reconnect(kotlin/String, com.mmcdole.kivo.api.models/PlayUpdate) // com.mmcdole.kivo.core.play/PlaySource.reconnect|reconnect(kotlin.String;com.mmcdole.kivo.api.models.PlayUpdate){}[0]
-    abstract suspend fun start(com.mmcdole.kivo.api.models/PlayCreate): com.mmcdole.kivo.api.models/PlayStarted // com.mmcdole.kivo.core.play/PlaySource.start|start(com.mmcdole.kivo.api.models.PlayCreate){}[0]
-    abstract suspend fun stop(kotlin/String, com.mmcdole.kivo.api.models/PlayStop) // com.mmcdole.kivo.core.play/PlaySource.stop|stop(kotlin.String;com.mmcdole.kivo.api.models.PlayStop){}[0]
-}
-
 abstract interface com.mmcdole.kivo.core.player/PlayerEngine { // com.mmcdole.kivo.core.player/PlayerEngine|null[0]
     abstract val bandwidthBps // com.mmcdole.kivo.core.player/PlayerEngine.bandwidthBps|{}bandwidthBps[0]
         abstract fun <get-bandwidthBps>(): kotlin/Long? // com.mmcdole.kivo.core.player/PlayerEngine.bandwidthBps.<get-bandwidthBps>|<get-bandwidthBps>(){}[0]
@@ -590,8 +582,6 @@ sealed interface com.mmcdole.kivo.core.downloads/DownloadStatus { // com.mmcdole
     final object Companion { // com.mmcdole.kivo.core.downloads/DownloadStatus.Companion|null[0]
         final const val CHECK_FAILED // com.mmcdole.kivo.core.downloads/DownloadStatus.Companion.CHECK_FAILED|{}CHECK_FAILED[0]
             final fun <get-CHECK_FAILED>(): kotlin/String // com.mmcdole.kivo.core.downloads/DownloadStatus.Companion.CHECK_FAILED.<get-CHECK_FAILED>|<get-CHECK_FAILED>(){}[0]
-        final const val NOT_ENOUGH_SPACE // com.mmcdole.kivo.core.downloads/DownloadStatus.Companion.NOT_ENOUGH_SPACE|{}NOT_ENOUGH_SPACE[0]
-            final fun <get-NOT_ENOUGH_SPACE>(): kotlin/String // com.mmcdole.kivo.core.downloads/DownloadStatus.Companion.NOT_ENOUGH_SPACE.<get-NOT_ENOUGH_SPACE>|<get-NOT_ENOUGH_SPACE>(){}[0]
         final const val NOT_PLAYABLE // com.mmcdole.kivo.core.downloads/DownloadStatus.Companion.NOT_PLAYABLE|{}NOT_PLAYABLE[0]
             final fun <get-NOT_PLAYABLE>(): kotlin/String // com.mmcdole.kivo.core.downloads/DownloadStatus.Companion.NOT_PLAYABLE.<get-NOT_PLAYABLE>|<get-NOT_PLAYABLE>(){}[0]
     }
@@ -887,19 +877,16 @@ sealed interface com.mmcdole.kivo.core.session/LinkProgress { // com.mmcdole.kiv
     }
 
     final class Waiting : com.mmcdole.kivo.core.session/LinkProgress { // com.mmcdole.kivo.core.session/LinkProgress.Waiting|null[0]
-        constructor <init>(kotlin/String, kotlin/String, kotlin/Long) // com.mmcdole.kivo.core.session/LinkProgress.Waiting.<init>|<init>(kotlin.String;kotlin.String;kotlin.Long){}[0]
+        constructor <init>(kotlin/String, kotlin/String) // com.mmcdole.kivo.core.session/LinkProgress.Waiting.<init>|<init>(kotlin.String;kotlin.String){}[0]
 
         final val code // com.mmcdole.kivo.core.session/LinkProgress.Waiting.code|{}code[0]
             final fun <get-code>(): kotlin/String // com.mmcdole.kivo.core.session/LinkProgress.Waiting.code.<get-code>|<get-code>(){}[0]
-        final val expiresAtEpochMs // com.mmcdole.kivo.core.session/LinkProgress.Waiting.expiresAtEpochMs|{}expiresAtEpochMs[0]
-            final fun <get-expiresAtEpochMs>(): kotlin/Long // com.mmcdole.kivo.core.session/LinkProgress.Waiting.expiresAtEpochMs.<get-expiresAtEpochMs>|<get-expiresAtEpochMs>(){}[0]
         final val linkUrl // com.mmcdole.kivo.core.session/LinkProgress.Waiting.linkUrl|{}linkUrl[0]
             final fun <get-linkUrl>(): kotlin/String // com.mmcdole.kivo.core.session/LinkProgress.Waiting.linkUrl.<get-linkUrl>|<get-linkUrl>(){}[0]
 
         final fun component1(): kotlin/String // com.mmcdole.kivo.core.session/LinkProgress.Waiting.component1|component1(){}[0]
         final fun component2(): kotlin/String // com.mmcdole.kivo.core.session/LinkProgress.Waiting.component2|component2(){}[0]
-        final fun component3(): kotlin/Long // com.mmcdole.kivo.core.session/LinkProgress.Waiting.component3|component3(){}[0]
-        final fun copy(kotlin/String = ..., kotlin/String = ..., kotlin/Long = ...): com.mmcdole.kivo.core.session/LinkProgress.Waiting // com.mmcdole.kivo.core.session/LinkProgress.Waiting.copy|copy(kotlin.String;kotlin.String;kotlin.Long){}[0]
+        final fun copy(kotlin/String = ..., kotlin/String = ...): com.mmcdole.kivo.core.session/LinkProgress.Waiting // com.mmcdole.kivo.core.session/LinkProgress.Waiting.copy|copy(kotlin.String;kotlin.String){}[0]
         final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.session/LinkProgress.Waiting.equals|equals(kotlin.Any?){}[0]
         final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.session/LinkProgress.Waiting.hashCode|hashCode(){}[0]
         final fun toString(): kotlin/String // com.mmcdole.kivo.core.session/LinkProgress.Waiting.toString|toString(){}[0]
@@ -1121,9 +1108,6 @@ final class com.mmcdole.kivo.core.books/BookChapters { // com.mmcdole.kivo.core.
         final fun <get-list>(): kotlin.collections/List<com.mmcdole.kivo.api.models/Chapter> // com.mmcdole.kivo.core.books/BookChapters.list.<get-list>|<get-list>(){}[0]
 
     final fun endMs(kotlin/Int): kotlin/Long // com.mmcdole.kivo.core.books/BookChapters.endMs|endMs(kotlin.Int){}[0]
-    final fun indexAt(kotlin/Long): kotlin/Int // com.mmcdole.kivo.core.books/BookChapters.indexAt|indexAt(kotlin.Long){}[0]
-    final fun nextMs(kotlin/Long): kotlin/Long? // com.mmcdole.kivo.core.books/BookChapters.nextMs|nextMs(kotlin.Long){}[0]
-    final fun previousMs(kotlin/Long): kotlin/Long // com.mmcdole.kivo.core.books/BookChapters.previousMs|previousMs(kotlin.Long){}[0]
     final fun progress(kotlin/Long): com.mmcdole.kivo.core.books/BookProgress // com.mmcdole.kivo.core.books/BookChapters.progress|progress(kotlin.Long){}[0]
     final fun startMs(kotlin/Int): kotlin/Long // com.mmcdole.kivo.core.books/BookChapters.startMs|startMs(kotlin.Int){}[0]
 }
@@ -1209,8 +1193,6 @@ final class com.mmcdole.kivo.core.books/BookProgress { // com.mmcdole.kivo.core.
         final fun <get-chapterFraction>(): kotlin/Double // com.mmcdole.kivo.core.books/BookProgress.chapterFraction.<get-chapterFraction>|<get-chapterFraction>(){}[0]
     final val chapterIndex // com.mmcdole.kivo.core.books/BookProgress.chapterIndex|{}chapterIndex[0]
         final fun <get-chapterIndex>(): kotlin/Int // com.mmcdole.kivo.core.books/BookProgress.chapterIndex.<get-chapterIndex>|<get-chapterIndex>(){}[0]
-    final val chapterRemainingMs // com.mmcdole.kivo.core.books/BookProgress.chapterRemainingMs|{}chapterRemainingMs[0]
-        final fun <get-chapterRemainingMs>(): kotlin/Long // com.mmcdole.kivo.core.books/BookProgress.chapterRemainingMs.<get-chapterRemainingMs>|<get-chapterRemainingMs>(){}[0]
     final val chapterStartMs // com.mmcdole.kivo.core.books/BookProgress.chapterStartMs|{}chapterStartMs[0]
         final fun <get-chapterStartMs>(): kotlin/Long // com.mmcdole.kivo.core.books/BookProgress.chapterStartMs.<get-chapterStartMs>|<get-chapterStartMs>(){}[0]
     final val chapterTitle // com.mmcdole.kivo.core.books/BookProgress.chapterTitle|{}chapterTitle[0]
@@ -1473,13 +1455,9 @@ final class com.mmcdole.kivo.core.cast/CastStatus { // com.mmcdole.kivo.core.cas
     final fun copy(kotlin/String? = ..., kotlin/String? = ..., kotlin/String? = ..., kotlin.collections/List<com.mmcdole.kivo.api.models/PlayTrack> = ..., com.mmcdole.kivo.api.models/QualityRequest? = ..., kotlin/Long? = ..., com.mmcdole.kivo.api.models/DialogueBoost? = ..., kotlin/String? = ..., kotlin/String? = ..., kotlin/Boolean? = ..., com.mmcdole.kivo.core.player/UpNext = ..., kotlin/String? = ..., kotlin/String? = ...): com.mmcdole.kivo.core.cast/CastStatus // com.mmcdole.kivo.core.cast/CastStatus.copy|copy(kotlin.String?;kotlin.String?;kotlin.String?;kotlin.collections.List<com.mmcdole.kivo.api.models.PlayTrack>;com.mmcdole.kivo.api.models.QualityRequest?;kotlin.Long?;com.mmcdole.kivo.api.models.DialogueBoost?;kotlin.String?;kotlin.String?;kotlin.Boolean?;com.mmcdole.kivo.core.player.UpNext;kotlin.String?;kotlin.String?){}[0]
     final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.cast/CastStatus.equals|equals(kotlin.Any?){}[0]
     final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.cast/CastStatus.hashCode|hashCode(){}[0]
-    final fun startsNewPlay(kotlin/String): kotlin/Boolean // com.mmcdole.kivo.core.cast/CastStatus.startsNewPlay|startsNewPlay(kotlin.String){}[0]
     final fun toString(): kotlin/String // com.mmcdole.kivo.core.cast/CastStatus.toString|toString(){}[0]
 
-    final object Companion { // com.mmcdole.kivo.core.cast/CastStatus.Companion|null[0]
-        final const val ERROR_UNREACHABLE // com.mmcdole.kivo.core.cast/CastStatus.Companion.ERROR_UNREACHABLE|{}ERROR_UNREACHABLE[0]
-            final fun <get-ERROR_UNREACHABLE>(): kotlin/String // com.mmcdole.kivo.core.cast/CastStatus.Companion.ERROR_UNREACHABLE.<get-ERROR_UNREACHABLE>|<get-ERROR_UNREACHABLE>(){}[0]
-    }
+    final object Companion // com.mmcdole.kivo.core.cast/CastStatus.Companion|null[0]
 }
 
 final class com.mmcdole.kivo.core.data/FilterGroup { // com.mmcdole.kivo.core.data/FilterGroup|null[0]
@@ -1751,14 +1729,10 @@ final class com.mmcdole.kivo.core.discovery/FoundServer { // com.mmcdole.kivo.co
 final class com.mmcdole.kivo.core.display/Display { // com.mmcdole.kivo.core.display/Display|null[0]
     constructor <init>() // com.mmcdole.kivo.core.display/Display.<init>|<init>(){}[0]
 
-    final val tracks // com.mmcdole.kivo.core.display/Display.tracks|{}tracks[0]
-        final fun <get-tracks>(): com.mmcdole.kivo.core.display/TrackWords // com.mmcdole.kivo.core.display/Display.tracks.<get-tracks>|<get-tracks>(){}[0]
-
     final fun channels(kotlin/Int): kotlin/String // com.mmcdole.kivo.core.display/Display.channels|channels(kotlin.Int){}[0]
-    final fun channels(kotlin/String?, kotlin/Int): kotlin/String // com.mmcdole.kivo.core.display/Display.channels|channels(kotlin.String?;kotlin.Int){}[0]
     final fun codec(kotlin/String): kotlin/String // com.mmcdole.kivo.core.display/Display.codec|codec(kotlin.String){}[0]
     final fun container(kotlin/String): kotlin/String // com.mmcdole.kivo.core.display/Display.container|container(kotlin.String){}[0]
-    final fun hdr(kotlin/String): kotlin/String // com.mmcdole.kivo.core.display/Display.hdr|hdr(kotlin.String){}[0]
+    final fun dialogueBoostCost(kotlin/String): kotlin/String? // com.mmcdole.kivo.core.display/Display.dialogueBoostCost|dialogueBoostCost(kotlin.String){}[0]
     final fun language(kotlin/String?): kotlin/String // com.mmcdole.kivo.core.display/Display.language|language(kotlin.String?){}[0]
     final fun method(com.mmcdole.kivo.api.models/PlayStarted): kotlin/String // com.mmcdole.kivo.core.display/Display.method|method(com.mmcdole.kivo.api.models.PlayStarted){}[0]
     final fun method(com.mmcdole.kivo.api.models/PlayTrack): kotlin/String // com.mmcdole.kivo.core.display/Display.method|method(com.mmcdole.kivo.api.models.PlayTrack){}[0]
@@ -1785,41 +1759,6 @@ final class com.mmcdole.kivo.core.display/QualityOption { // com.mmcdole.kivo.co
     final fun toString(): kotlin/String // com.mmcdole.kivo.core.display/QualityOption.toString|toString(){}[0]
 }
 
-final class com.mmcdole.kivo.core.display/TrackFlags { // com.mmcdole.kivo.core.display/TrackFlags|null[0]
-    constructor <init>(kotlin/String, kotlin/String, kotlin/String, kotlin/String) // com.mmcdole.kivo.core.display/TrackFlags.<init>|<init>(kotlin.String;kotlin.String;kotlin.String;kotlin.String){}[0]
-
-    final val commentary // com.mmcdole.kivo.core.display/TrackFlags.commentary|{}commentary[0]
-        final fun <get-commentary>(): kotlin/String // com.mmcdole.kivo.core.display/TrackFlags.commentary.<get-commentary>|<get-commentary>(){}[0]
-    final val forced // com.mmcdole.kivo.core.display/TrackFlags.forced|{}forced[0]
-        final fun <get-forced>(): kotlin/String // com.mmcdole.kivo.core.display/TrackFlags.forced.<get-forced>|<get-forced>(){}[0]
-    final val hearingImpaired // com.mmcdole.kivo.core.display/TrackFlags.hearingImpaired|{}hearingImpaired[0]
-        final fun <get-hearingImpaired>(): kotlin/String // com.mmcdole.kivo.core.display/TrackFlags.hearingImpaired.<get-hearingImpaired>|<get-hearingImpaired>(){}[0]
-    final val original // com.mmcdole.kivo.core.display/TrackFlags.original|{}original[0]
-        final fun <get-original>(): kotlin/String // com.mmcdole.kivo.core.display/TrackFlags.original.<get-original>|<get-original>(){}[0]
-
-    final fun component1(): kotlin/String // com.mmcdole.kivo.core.display/TrackFlags.component1|component1(){}[0]
-    final fun component2(): kotlin/String // com.mmcdole.kivo.core.display/TrackFlags.component2|component2(){}[0]
-    final fun component3(): kotlin/String // com.mmcdole.kivo.core.display/TrackFlags.component3|component3(){}[0]
-    final fun component4(): kotlin/String // com.mmcdole.kivo.core.display/TrackFlags.component4|component4(){}[0]
-    final fun copy(kotlin/String = ..., kotlin/String = ..., kotlin/String = ..., kotlin/String = ...): com.mmcdole.kivo.core.display/TrackFlags // com.mmcdole.kivo.core.display/TrackFlags.copy|copy(kotlin.String;kotlin.String;kotlin.String;kotlin.String){}[0]
-    final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.display/TrackFlags.equals|equals(kotlin.Any?){}[0]
-    final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.display/TrackFlags.hashCode|hashCode(){}[0]
-    final fun toString(): kotlin/String // com.mmcdole.kivo.core.display/TrackFlags.toString|toString(){}[0]
-
-    final object $serializer : kotlinx.serialization.internal/GeneratedSerializer<com.mmcdole.kivo.core.display/TrackFlags> { // com.mmcdole.kivo.core.display/TrackFlags.$serializer|null[0]
-        final val descriptor // com.mmcdole.kivo.core.display/TrackFlags.$serializer.descriptor|{}descriptor[0]
-            final fun <get-descriptor>(): kotlinx.serialization.descriptors/SerialDescriptor // com.mmcdole.kivo.core.display/TrackFlags.$serializer.descriptor.<get-descriptor>|<get-descriptor>(){}[0]
-
-        final fun childSerializers(): kotlin/Array<kotlinx.serialization/KSerializer<*>> // com.mmcdole.kivo.core.display/TrackFlags.$serializer.childSerializers|childSerializers(){}[0]
-        final fun deserialize(kotlinx.serialization.encoding/Decoder): com.mmcdole.kivo.core.display/TrackFlags // com.mmcdole.kivo.core.display/TrackFlags.$serializer.deserialize|deserialize(kotlinx.serialization.encoding.Decoder){}[0]
-        final fun serialize(kotlinx.serialization.encoding/Encoder, com.mmcdole.kivo.core.display/TrackFlags) // com.mmcdole.kivo.core.display/TrackFlags.$serializer.serialize|serialize(kotlinx.serialization.encoding.Encoder;com.mmcdole.kivo.core.display.TrackFlags){}[0]
-    }
-
-    final object Companion { // com.mmcdole.kivo.core.display/TrackFlags.Companion|null[0]
-        final fun serializer(): kotlinx.serialization/KSerializer<com.mmcdole.kivo.core.display/TrackFlags> // com.mmcdole.kivo.core.display/TrackFlags.Companion.serializer|serializer(){}[0]
-    }
-}
-
 final class com.mmcdole.kivo.core.display/TrackName { // com.mmcdole.kivo.core.display/TrackName|null[0]
     constructor <init>(kotlin/String, kotlin/String? = ...) // com.mmcdole.kivo.core.display/TrackName.<init>|<init>(kotlin.String;kotlin.String?){}[0]
 
@@ -1834,52 +1773,6 @@ final class com.mmcdole.kivo.core.display/TrackName { // com.mmcdole.kivo.core.d
     final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.display/TrackName.equals|equals(kotlin.Any?){}[0]
     final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.display/TrackName.hashCode|hashCode(){}[0]
     final fun toString(): kotlin/String // com.mmcdole.kivo.core.display/TrackName.toString|toString(){}[0]
-}
-
-final class com.mmcdole.kivo.core.display/TrackWords { // com.mmcdole.kivo.core.display/TrackWords|null[0]
-    constructor <init>(kotlin/String, kotlin/String, com.mmcdole.kivo.core.display/TrackFlags, kotlin/String, kotlin.collections/Map<kotlin/String, kotlin/String>, kotlin/String, kotlin/String) // com.mmcdole.kivo.core.display/TrackWords.<init>|<init>(kotlin.String;kotlin.String;com.mmcdole.kivo.core.display.TrackFlags;kotlin.String;kotlin.collections.Map<kotlin.String,kotlin.String>;kotlin.String;kotlin.String){}[0]
-
-    final val audioOnly // com.mmcdole.kivo.core.display/TrackWords.audioOnly|{}audioOnly[0]
-        final fun <get-audioOnly>(): kotlin/String // com.mmcdole.kivo.core.display/TrackWords.audioOnly.<get-audioOnly>|<get-audioOnly>(){}[0]
-    final val channels // com.mmcdole.kivo.core.display/TrackWords.channels|{}channels[0]
-        final fun <get-channels>(): kotlin/String // com.mmcdole.kivo.core.display/TrackWords.channels.<get-channels>|<get-channels>(){}[0]
-    final val default // com.mmcdole.kivo.core.display/TrackWords.default|{}default[0]
-        final fun <get-default>(): kotlin/String // com.mmcdole.kivo.core.display/TrackWords.default.<get-default>|<get-default>(){}[0]
-    final val downloadedFrom // com.mmcdole.kivo.core.display/TrackWords.downloadedFrom|{}downloadedFrom[0]
-        final fun <get-downloadedFrom>(): kotlin/String // com.mmcdole.kivo.core.display/TrackWords.downloadedFrom.<get-downloadedFrom>|<get-downloadedFrom>(){}[0]
-    final val flags // com.mmcdole.kivo.core.display/TrackWords.flags|{}flags[0]
-        final fun <get-flags>(): com.mmcdole.kivo.core.display/TrackFlags // com.mmcdole.kivo.core.display/TrackWords.flags.<get-flags>|<get-flags>(){}[0]
-    final val sources // com.mmcdole.kivo.core.display/TrackWords.sources|{}sources[0]
-        final fun <get-sources>(): kotlin.collections/Map<kotlin/String, kotlin/String> // com.mmcdole.kivo.core.display/TrackWords.sources.<get-sources>|<get-sources>(){}[0]
-    final val unknownLanguage // com.mmcdole.kivo.core.display/TrackWords.unknownLanguage|{}unknownLanguage[0]
-        final fun <get-unknownLanguage>(): kotlin/String // com.mmcdole.kivo.core.display/TrackWords.unknownLanguage.<get-unknownLanguage>|<get-unknownLanguage>(){}[0]
-
-    final fun component1(): kotlin/String // com.mmcdole.kivo.core.display/TrackWords.component1|component1(){}[0]
-    final fun component2(): kotlin/String // com.mmcdole.kivo.core.display/TrackWords.component2|component2(){}[0]
-    final fun component3(): com.mmcdole.kivo.core.display/TrackFlags // com.mmcdole.kivo.core.display/TrackWords.component3|component3(){}[0]
-    final fun component4(): kotlin/String // com.mmcdole.kivo.core.display/TrackWords.component4|component4(){}[0]
-    final fun component5(): kotlin.collections/Map<kotlin/String, kotlin/String> // com.mmcdole.kivo.core.display/TrackWords.component5|component5(){}[0]
-    final fun component6(): kotlin/String // com.mmcdole.kivo.core.display/TrackWords.component6|component6(){}[0]
-    final fun component7(): kotlin/String // com.mmcdole.kivo.core.display/TrackWords.component7|component7(){}[0]
-    final fun copy(kotlin/String = ..., kotlin/String = ..., com.mmcdole.kivo.core.display/TrackFlags = ..., kotlin/String = ..., kotlin.collections/Map<kotlin/String, kotlin/String> = ..., kotlin/String = ..., kotlin/String = ...): com.mmcdole.kivo.core.display/TrackWords // com.mmcdole.kivo.core.display/TrackWords.copy|copy(kotlin.String;kotlin.String;com.mmcdole.kivo.core.display.TrackFlags;kotlin.String;kotlin.collections.Map<kotlin.String,kotlin.String>;kotlin.String;kotlin.String){}[0]
-    final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.display/TrackWords.equals|equals(kotlin.Any?){}[0]
-    final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.display/TrackWords.hashCode|hashCode(){}[0]
-    final fun toString(): kotlin/String // com.mmcdole.kivo.core.display/TrackWords.toString|toString(){}[0]
-
-    final object $serializer : kotlinx.serialization.internal/GeneratedSerializer<com.mmcdole.kivo.core.display/TrackWords> { // com.mmcdole.kivo.core.display/TrackWords.$serializer|null[0]
-        final val descriptor // com.mmcdole.kivo.core.display/TrackWords.$serializer.descriptor|{}descriptor[0]
-            final fun <get-descriptor>(): kotlinx.serialization.descriptors/SerialDescriptor // com.mmcdole.kivo.core.display/TrackWords.$serializer.descriptor.<get-descriptor>|<get-descriptor>(){}[0]
-
-        final fun childSerializers(): kotlin/Array<kotlinx.serialization/KSerializer<*>> // com.mmcdole.kivo.core.display/TrackWords.$serializer.childSerializers|childSerializers(){}[0]
-        final fun deserialize(kotlinx.serialization.encoding/Decoder): com.mmcdole.kivo.core.display/TrackWords // com.mmcdole.kivo.core.display/TrackWords.$serializer.deserialize|deserialize(kotlinx.serialization.encoding.Decoder){}[0]
-        final fun serialize(kotlinx.serialization.encoding/Encoder, com.mmcdole.kivo.core.display/TrackWords) // com.mmcdole.kivo.core.display/TrackWords.$serializer.serialize|serialize(kotlinx.serialization.encoding.Encoder;com.mmcdole.kivo.core.display.TrackWords){}[0]
-    }
-
-    final object Companion { // com.mmcdole.kivo.core.display/TrackWords.Companion|null[0]
-        final val $childSerializers // com.mmcdole.kivo.core.display/TrackWords.Companion.$childSerializers|{}$childSerializers[0]
-
-        final fun serializer(): kotlinx.serialization/KSerializer<com.mmcdole.kivo.core.display/TrackWords> // com.mmcdole.kivo.core.display/TrackWords.Companion.serializer|serializer(){}[0]
-    }
 }
 
 final class com.mmcdole.kivo.core.downloads/DownloadItem { // com.mmcdole.kivo.core.downloads/DownloadItem|null[0]
@@ -2041,10 +1934,8 @@ final class com.mmcdole.kivo.core.play/PlayController { // com.mmcdole.kivo.core
 }
 
 final class com.mmcdole.kivo.core.play/PlayerState { // com.mmcdole.kivo.core.play/PlayerState|null[0]
-    constructor <init>(com.mmcdole.kivo.core.play/PlayerStatus = ..., com.mmcdole.kivo.api.models/PlayStarted? = ..., kotlin/Boolean = ..., kotlin/Long = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., com.mmcdole.kivo.core.play/PlayerFailure? = ..., kotlin/String? = ..., kotlin/String? = ..., kotlin/String = ..., com.mmcdole.kivo.core.player/TrackShow = ...) // com.mmcdole.kivo.core.play/PlayerState.<init>|<init>(com.mmcdole.kivo.core.play.PlayerStatus;com.mmcdole.kivo.api.models.PlayStarted?;kotlin.Boolean;kotlin.Long;kotlin.Boolean;kotlin.Boolean;com.mmcdole.kivo.core.play.PlayerFailure?;kotlin.String?;kotlin.String?;kotlin.String;com.mmcdole.kivo.core.player.TrackShow){}[0]
+    constructor <init>(com.mmcdole.kivo.core.play/PlayerStatus = ..., com.mmcdole.kivo.api.models/PlayStarted? = ..., kotlin/Boolean = ..., kotlin/Long = ..., kotlin/Boolean = ..., com.mmcdole.kivo.core.play/PlayerFailure? = ..., kotlin/String? = ..., kotlin/String? = ..., kotlin/String = ..., com.mmcdole.kivo.core.player/TrackShow = ...) // com.mmcdole.kivo.core.play/PlayerState.<init>|<init>(com.mmcdole.kivo.core.play.PlayerStatus;com.mmcdole.kivo.api.models.PlayStarted?;kotlin.Boolean;kotlin.Long;kotlin.Boolean;com.mmcdole.kivo.core.play.PlayerFailure?;kotlin.String?;kotlin.String?;kotlin.String;com.mmcdole.kivo.core.player.TrackShow){}[0]
 
-    final val adjusting // com.mmcdole.kivo.core.play/PlayerState.adjusting|{}adjusting[0]
-        final fun <get-adjusting>(): kotlin/Boolean // com.mmcdole.kivo.core.play/PlayerState.adjusting.<get-adjusting>|<get-adjusting>(){}[0]
     final val audioTrackId // com.mmcdole.kivo.core.play/PlayerState.audioTrackId|{}audioTrackId[0]
         final fun <get-audioTrackId>(): kotlin/String? // com.mmcdole.kivo.core.play/PlayerState.audioTrackId.<get-audioTrackId>|<get-audioTrackId>(){}[0]
     final val detail // com.mmcdole.kivo.core.play/PlayerState.detail|{}detail[0]
@@ -2069,17 +1960,16 @@ final class com.mmcdole.kivo.core.play/PlayerState { // com.mmcdole.kivo.core.pl
         final fun <get-subtitleTrackId>(): kotlin/String // com.mmcdole.kivo.core.play/PlayerState.subtitleTrackId.<get-subtitleTrackId>|<get-subtitleTrackId>(){}[0]
 
     final fun component1(): com.mmcdole.kivo.core.play/PlayerStatus // com.mmcdole.kivo.core.play/PlayerState.component1|component1(){}[0]
-    final fun component10(): kotlin/String // com.mmcdole.kivo.core.play/PlayerState.component10|component10(){}[0]
-    final fun component11(): com.mmcdole.kivo.core.player/TrackShow // com.mmcdole.kivo.core.play/PlayerState.component11|component11(){}[0]
+    final fun component10(): com.mmcdole.kivo.core.player/TrackShow // com.mmcdole.kivo.core.play/PlayerState.component10|component10(){}[0]
     final fun component2(): com.mmcdole.kivo.api.models/PlayStarted? // com.mmcdole.kivo.core.play/PlayerState.component2|component2(){}[0]
     final fun component3(): kotlin/Boolean // com.mmcdole.kivo.core.play/PlayerState.component3|component3(){}[0]
     final fun component4(): kotlin/Long // com.mmcdole.kivo.core.play/PlayerState.component4|component4(){}[0]
     final fun component5(): kotlin/Boolean // com.mmcdole.kivo.core.play/PlayerState.component5|component5(){}[0]
-    final fun component6(): kotlin/Boolean // com.mmcdole.kivo.core.play/PlayerState.component6|component6(){}[0]
-    final fun component7(): com.mmcdole.kivo.core.play/PlayerFailure? // com.mmcdole.kivo.core.play/PlayerState.component7|component7(){}[0]
+    final fun component6(): com.mmcdole.kivo.core.play/PlayerFailure? // com.mmcdole.kivo.core.play/PlayerState.component6|component6(){}[0]
+    final fun component7(): kotlin/String? // com.mmcdole.kivo.core.play/PlayerState.component7|component7(){}[0]
     final fun component8(): kotlin/String? // com.mmcdole.kivo.core.play/PlayerState.component8|component8(){}[0]
-    final fun component9(): kotlin/String? // com.mmcdole.kivo.core.play/PlayerState.component9|component9(){}[0]
-    final fun copy(com.mmcdole.kivo.core.play/PlayerStatus = ..., com.mmcdole.kivo.api.models/PlayStarted? = ..., kotlin/Boolean = ..., kotlin/Long = ..., kotlin/Boolean = ..., kotlin/Boolean = ..., com.mmcdole.kivo.core.play/PlayerFailure? = ..., kotlin/String? = ..., kotlin/String? = ..., kotlin/String = ..., com.mmcdole.kivo.core.player/TrackShow = ...): com.mmcdole.kivo.core.play/PlayerState // com.mmcdole.kivo.core.play/PlayerState.copy|copy(com.mmcdole.kivo.core.play.PlayerStatus;com.mmcdole.kivo.api.models.PlayStarted?;kotlin.Boolean;kotlin.Long;kotlin.Boolean;kotlin.Boolean;com.mmcdole.kivo.core.play.PlayerFailure?;kotlin.String?;kotlin.String?;kotlin.String;com.mmcdole.kivo.core.player.TrackShow){}[0]
+    final fun component9(): kotlin/String // com.mmcdole.kivo.core.play/PlayerState.component9|component9(){}[0]
+    final fun copy(com.mmcdole.kivo.core.play/PlayerStatus = ..., com.mmcdole.kivo.api.models/PlayStarted? = ..., kotlin/Boolean = ..., kotlin/Long = ..., kotlin/Boolean = ..., com.mmcdole.kivo.core.play/PlayerFailure? = ..., kotlin/String? = ..., kotlin/String? = ..., kotlin/String = ..., com.mmcdole.kivo.core.player/TrackShow = ...): com.mmcdole.kivo.core.play/PlayerState // com.mmcdole.kivo.core.play/PlayerState.copy|copy(com.mmcdole.kivo.core.play.PlayerStatus;com.mmcdole.kivo.api.models.PlayStarted?;kotlin.Boolean;kotlin.Long;kotlin.Boolean;com.mmcdole.kivo.core.play.PlayerFailure?;kotlin.String?;kotlin.String?;kotlin.String;com.mmcdole.kivo.core.player.TrackShow){}[0]
     final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.play/PlayerState.equals|equals(kotlin.Any?){}[0]
     final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.play/PlayerState.hashCode|hashCode(){}[0]
     final fun toString(): kotlin/String // com.mmcdole.kivo.core.play/PlayerState.toString|toString(){}[0]
@@ -2325,7 +2215,6 @@ final class com.mmcdole.kivo.core.session/KivoClient { // com.mmcdole.kivo.core.
     final fun start() // com.mmcdole.kivo.core.session/KivoClient.start|start(){}[0]
     final fun transferChanged(com.mmcdole.kivo.core.downloads/TransferEvent) // com.mmcdole.kivo.core.session/KivoClient.transferChanged|transferChanged(com.mmcdole.kivo.core.downloads.TransferEvent){}[0]
     final suspend fun confirmDiscovered(kotlin/String, kotlin.collections/List<kotlin/String>, kotlin/Int, kotlin/Boolean, kotlin/String): com.mmcdole.kivo.core.discovery/FoundServer? // com.mmcdole.kivo.core.session/KivoClient.confirmDiscovered|confirmDiscovered(kotlin.String;kotlin.collections.List<kotlin.String>;kotlin.Int;kotlin.Boolean;kotlin.String){}[0]
-    final suspend fun lastSignedIn(): com.mmcdole.kivo.core.auth/SavedServer? // com.mmcdole.kivo.core.session/KivoClient.lastSignedIn|lastSignedIn(){}[0]
     final suspend fun reach(com.mmcdole.kivo.core.auth/SavedServer): com.mmcdole.kivo.core.discovery/FoundServer? // com.mmcdole.kivo.core.session/KivoClient.reach|reach(com.mmcdole.kivo.core.auth.SavedServer){}[0]
     final suspend fun restore(com.mmcdole.kivo.core.auth/SavedServer): com.mmcdole.kivo.core.session/KivoSession // com.mmcdole.kivo.core.session/KivoClient.restore|restore(com.mmcdole.kivo.core.auth.SavedServer){}[0]
     final suspend fun savedServers(): kotlin.collections/List<com.mmcdole.kivo.core.auth/SavedServer> // com.mmcdole.kivo.core.session/KivoClient.savedServers|savedServers(){}[0]
@@ -2378,9 +2267,7 @@ final class com.mmcdole.kivo.core.session/KivoSession { // com.mmcdole.kivo.core
     final fun mediaUrl(kotlin/String): kotlin/String // com.mmcdole.kivo.core.session/KivoSession.mediaUrl|mediaUrl(kotlin.String){}[0]
     final fun retryNow() // com.mmcdole.kivo.core.session/KivoSession.retryNow|retryNow(){}[0]
     final suspend fun awaitReachable() // com.mmcdole.kivo.core.session/KivoSession.awaitReachable|awaitReachable(){}[0]
-    final suspend fun awaitSignOut() // com.mmcdole.kivo.core.session/KivoSession.awaitSignOut|awaitSignOut(){}[0]
     final suspend fun bytes(kotlin/String): kotlin/ByteArray // com.mmcdole.kivo.core.session/KivoSession.bytes|bytes(kotlin.String){}[0]
-    final suspend fun runLiveEvents() // com.mmcdole.kivo.core.session/KivoSession.runLiveEvents|runLiveEvents(){}[0]
     final suspend fun serverInfo(): com.mmcdole.kivo.api.models/ServerInfo // com.mmcdole.kivo.core.session/KivoSession.serverInfo|serverInfo(){}[0]
     final suspend fun signOut() // com.mmcdole.kivo.core.session/KivoSession.signOut|signOut(){}[0]
 }
@@ -2601,7 +2488,6 @@ final class com.mmcdole.kivo.core.session/SessionLink { // com.mmcdole.kivo.core
 
 final class com.mmcdole.kivo.core.session/SessionPlayback { // com.mmcdole.kivo.core.session/SessionPlayback|null[0]
     final fun bookPlayer(com.mmcdole.kivo.core.player/PlayerEngine, com.mmcdole.kivo.core.books/BookAudio): com.mmcdole.kivo.core.books/BookPlayerModel // com.mmcdole.kivo.core.session/SessionPlayback.bookPlayer|bookPlayer(com.mmcdole.kivo.core.player.PlayerEngine;com.mmcdole.kivo.core.books.BookAudio){}[0]
-    final fun confirmStillWatching() // com.mmcdole.kivo.core.session/SessionPlayback.confirmStillWatching|confirmStillWatching(){}[0]
     final fun videoPlayer(com.mmcdole.kivo.core.player/PlayerEngine, com.mmcdole.kivo.core.play/PlayChoice, kotlin/Long, kotlin/String? = ..., kotlin/Long? = ...): com.mmcdole.kivo.core.session/VideoPlayer // com.mmcdole.kivo.core.session/SessionPlayback.videoPlayer|videoPlayer(com.mmcdole.kivo.core.player.PlayerEngine;com.mmcdole.kivo.core.play.PlayChoice;kotlin.Long;kotlin.String?;kotlin.Long?){}[0]
     final suspend fun addSubtitle(com.mmcdole.kivo.api.models/Version, kotlin/String): com.mmcdole.kivo.api.models/Track // com.mmcdole.kivo.core.session/SessionPlayback.addSubtitle|addSubtitle(com.mmcdole.kivo.api.models.Version;kotlin.String){}[0]
     final suspend fun qualityLadder(): kotlin.collections/List<com.mmcdole.kivo.api.models/QualityRung> // com.mmcdole.kivo.core.session/SessionPlayback.qualityLadder|qualityLadder(){}[0]
@@ -3271,17 +3157,6 @@ final object com.mmcdole.kivo.core.data/SubtitleSearch { // com.mmcdole.kivo.cor
     final fun problem(kotlin/Throwable): com.mmcdole.kivo.core.data/SubtitleSearchProblem // com.mmcdole.kivo.core.data/SubtitleSearch.problem|problem(kotlin.Throwable){}[0]
 }
 
-final object com.mmcdole.kivo.core.player/PictureInPicture { // com.mmcdole.kivo.core.player/PictureInPicture|null[0]
-    final fun enteringNeedsNewPlay(com.mmcdole.kivo.api.models/PlayStarted, kotlin/String): kotlin/Boolean // com.mmcdole.kivo.core.player/PictureInPicture.enteringNeedsNewPlay|enteringNeedsNewPlay(com.mmcdole.kivo.api.models.PlayStarted;kotlin.String){}[0]
-    final fun leavingNeedsNewPlay(com.mmcdole.kivo.api.models/PlayStarted, kotlin/String): kotlin/Boolean // com.mmcdole.kivo.core.player/PictureInPicture.leavingNeedsNewPlay|leavingNeedsNewPlay(com.mmcdole.kivo.api.models.PlayStarted;kotlin.String){}[0]
-}
-
-final object com.mmcdole.kivo.core.player/PlayTracks { // com.mmcdole.kivo.core.player/PlayTracks|null[0]
-    final fun selected(com.mmcdole.kivo.api.models/PlayStarted, com.mmcdole.kivo.api.models/TrackType): kotlin/String? // com.mmcdole.kivo.core.player/PlayTracks.selected|selected(com.mmcdole.kivo.api.models.PlayStarted;com.mmcdole.kivo.api.models.TrackType){}[0]
-    final fun show(com.mmcdole.kivo.api.models/PlayStarted, kotlin/String): com.mmcdole.kivo.core.player/TrackShow // com.mmcdole.kivo.core.player/PlayTracks.show|show(com.mmcdole.kivo.api.models.PlayStarted;kotlin.String){}[0]
-    final fun show(kotlin.collections/List<com.mmcdole.kivo.api.models/PlayTrack>, kotlin/String): com.mmcdole.kivo.core.player/TrackShow // com.mmcdole.kivo.core.player/PlayTracks.show|show(kotlin.collections.List<com.mmcdole.kivo.api.models.PlayTrack>;kotlin.String){}[0]
-}
-
 final const val com.mmcdole.kivo.core.cast/CAST_APP_ID // com.mmcdole.kivo.core.cast/CAST_APP_ID|{}CAST_APP_ID[0]
     final fun <get-CAST_APP_ID>(): kotlin/String // com.mmcdole.kivo.core.cast/CAST_APP_ID.<get-CAST_APP_ID>|<get-CAST_APP_ID>(){}[0]
 final const val com.mmcdole.kivo.core.cast/CAST_NAMESPACE // com.mmcdole.kivo.core.cast/CAST_NAMESPACE|{}CAST_NAMESPACE[0]
@@ -3307,7 +3182,6 @@ final val com.mmcdole.kivo.core.display/pickerName // com.mmcdole.kivo.core.disp
     final fun (com.mmcdole.kivo.api.models/Track).<get-pickerName>(): com.mmcdole.kivo.core.display/TrackName // com.mmcdole.kivo.core.display/pickerName.<get-pickerName>|<get-pickerName>@com.mmcdole.kivo.api.models.Track(){}[0]
 
 final fun (com.mmcdole.kivo.api.models/EpisodeInfo).com.mmcdole.kivo.core.data/isoAirDate(): kotlin/String? // com.mmcdole.kivo.core.data/isoAirDate|isoAirDate@com.mmcdole.kivo.api.models.EpisodeInfo(){}[0]
-final fun (com.mmcdole.kivo.api.models/WorkDetail).com.mmcdole.kivo.core.data/defaultVersion(): com.mmcdole.kivo.api.models/Version? // com.mmcdole.kivo.core.data/defaultVersion|defaultVersion@com.mmcdole.kivo.api.models.WorkDetail(){}[0]
 final fun (com.mmcdole.kivo.api.models/WorkDetail).com.mmcdole.kivo.core.data/localTrailers(): kotlin.collections/List<com.mmcdole.kivo.api.models/WorkSummary> // com.mmcdole.kivo.core.data/localTrailers|localTrailers@com.mmcdole.kivo.api.models.WorkDetail(){}[0]
 final fun (com.mmcdole.kivo.api.models/WorkDetail).com.mmcdole.kivo.core.data/otherExtras(): kotlin.collections/List<com.mmcdole.kivo.api.models/WorkSummary> // com.mmcdole.kivo.core.data/otherExtras|otherExtras@com.mmcdole.kivo.api.models.WorkDetail(){}[0]
 final fun (com.mmcdole.kivo.api.models/WorkDetail).com.mmcdole.kivo.core.data/resumeAt(kotlin/String?): kotlin/Int? // com.mmcdole.kivo.core.data/resumeAt|resumeAt@com.mmcdole.kivo.api.models.WorkDetail(kotlin.String?){}[0]
@@ -3332,7 +3206,6 @@ final fun (com.mmcdole.kivo.core.display/Display).com.mmcdole.kivo.core.download
 final fun (com.mmcdole.kivo.core.display/Display).com.mmcdole.kivo.core.downloads/downloadProblem(com.mmcdole.kivo.core.downloads/DownloadStart): kotlin/String? // com.mmcdole.kivo.core.downloads/downloadProblem|downloadProblem@com.mmcdole.kivo.core.display.Display(com.mmcdole.kivo.core.downloads.DownloadStart){}[0]
 final fun (com.mmcdole.kivo.core.display/Display).com.mmcdole.kivo.core.downloads/downloadQuality(com.mmcdole.kivo.core.settings/DownloadQuality): kotlin/String // com.mmcdole.kivo.core.downloads/downloadQuality|downloadQuality@com.mmcdole.kivo.core.display.Display(com.mmcdole.kivo.core.settings.DownloadQuality){}[0]
 final fun (com.mmcdole.kivo.core.display/Display).com.mmcdole.kivo.core.play/failure(com.mmcdole.kivo.core.play/PlayerFailure): kotlin/String // com.mmcdole.kivo.core.play/failure|failure@com.mmcdole.kivo.core.display.Display(com.mmcdole.kivo.core.play.PlayerFailure){}[0]
-final fun com.mmcdole.kivo.core.discovery/serviceUrl(kotlin/String, kotlin/Int, kotlin/Boolean, kotlin/String): kotlin/String // com.mmcdole.kivo.core.discovery/serviceUrl|serviceUrl(kotlin.String;kotlin.Int;kotlin.Boolean;kotlin.String){}[0]
 final fun com.mmcdole.kivo.core.display/qualityMenu(kotlin.collections/List<com.mmcdole.kivo.api.models/QualityRung>): kotlin.collections/List<com.mmcdole.kivo.core.display/QualityOption> // com.mmcdole.kivo.core.display/qualityMenu|qualityMenu(kotlin.collections.List<com.mmcdole.kivo.api.models.QualityRung>){}[0]
 final fun com.mmcdole.kivo.core.player/chapterAt(kotlin.collections/List<com.mmcdole.kivo.api.models/Chapter>, kotlin/Long): com.mmcdole.kivo.api.models/Chapter? // com.mmcdole.kivo.core.player/chapterAt|chapterAt(kotlin.collections.List<com.mmcdole.kivo.api.models.Chapter>;kotlin.Long){}[0]
 final suspend fun <#A: kotlin/Any> (kotlinx.coroutines.flow/Flow<com.mmcdole.kivo.core/Load<#A>>).com.mmcdole.kivo.core/answer(): #A? // com.mmcdole.kivo.core/answer|answer@kotlinx.coroutines.flow.Flow<com.mmcdole.kivo.core.Load<0:0>>(){0§<kotlin.Any>}[0]

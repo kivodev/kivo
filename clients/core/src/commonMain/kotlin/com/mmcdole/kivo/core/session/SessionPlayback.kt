@@ -119,7 +119,7 @@ class SessionPlayback internal constructor(private val session: KivoSession) {
      * again, starts up next's run of episodes played on without input again,
      * as any input in a player does.
      */
-    fun confirmStillWatching() {
+    internal fun confirmStillWatching() {
         core.autoplay.reset()
     }
 

@@ -9,8 +9,8 @@ import com.mmcdole.kivo.api.models.PlayStarted
 import com.mmcdole.kivo.api.models.PlayCreate
 import com.mmcdole.kivo.api.models.PlayStop
 import com.mmcdole.kivo.api.models.QualityRequest
+import com.mmcdole.kivo.api.models.TrackDelivery
 import com.mmcdole.kivo.api.models.TrackType
-import com.mmcdole.kivo.core.player.PictureInPicture
 import com.mmcdole.kivo.core.player.PlayTracks
 import com.mmcdole.kivo.core.player.PlayerError
 import com.mmcdole.kivo.core.player.PlayerEngine
@@ -200,19 +200,15 @@ class PlayController internal constructor(
      * on an AirPlay device, where only the video goes. While it can't,
      * plays ask for no subtitle files; a subtitle file showing as it goes
      * there plays again from the position without one, and coming back, a
-     * subtitle the play started there burned in plays again as before
-     * ([PictureInPicture]).
+     * subtitle the play started there burned in plays again as before.
      */
     internal fun setOverlayVisible(visible: Boolean) {
         if (visible == askExternal) return
         askExternal = visible
         val play = current ?: return
         val trackId = state.value.subtitleTrackId
-        val newPlay = if (visible) {
-            playWithoutExternal && PictureInPicture.leavingNeedsNewPlay(play, trackId)
-        } else {
-            PictureInPicture.enteringNeedsNewPlay(play, trackId)
-        }
+        val delivery = PlayTracks.delivery(play, trackId)
+        val newPlay = if (visible) playWithoutExternal && delivery == TrackDelivery.Burn else delivery == TrackDelivery.External
         if (newPlay) switchTracks { it.copy(subtitleTrackId = trackId) }
     }
 

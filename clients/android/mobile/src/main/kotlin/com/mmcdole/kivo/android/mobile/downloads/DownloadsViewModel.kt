@@ -3,13 +3,13 @@ package com.mmcdole.kivo.android.mobile.downloads
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mmcdole.kivo.android.mobile.ui.display
+import com.mmcdole.kivo.android.quietly
 import com.mmcdole.kivo.android.mobile.ui.sentence
 import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.core.downloads.DownloadItem
 import com.mmcdole.kivo.core.downloads.DownloadStorage
 import com.mmcdole.kivo.core.downloads.downloadProblem
 import com.mmcdole.kivo.core.session.SessionDownloads
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -111,13 +111,4 @@ class DownloadsViewModel(private val downloads: SessionDownloads, private val se
     private fun act(call: suspend () -> String?) {
         viewModelScope.launch { call()?.let { problem.value = it } }
     }
-}
-
-/** [read]'s answer; null when it fails. */
-internal suspend fun <T> quietly(read: suspend () -> T): T? = try {
-    read()
-} catch (e: CancellationException) {
-    throw e
-} catch (_: Exception) {
-    null
 }

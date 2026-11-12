@@ -2292,6 +2292,7 @@
     ["zho", "Chinese"],
     ["zxx", "No linguistic content"],
     ["zh-Hant", "Traditional Chinese"],
+    ["zh-Hant-TW", "Chinese (Traditional, Taiwan)"],
     ["zh-TW", "Chinese (Taiwan)"],
     ["zh-Hans", "Simplified Chinese"],
     ["pt-BR", "Brazilian Portuguese"],
