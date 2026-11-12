@@ -1,5 +1,6 @@
 package com.mmcdole.kivo.android
 
+import android.graphics.Bitmap
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.pow
@@ -7,11 +8,15 @@ import kotlin.math.withSign
 
 /**
  * Decodes a blurhash (blurha.sh), the placeholder the server computes for
- * each image so artwork never loads over a grey box: the whole blur as ARGB
- * pixels, or just its average colour; null for a malformed hash.
+ * each image so artwork never loads over a grey box: the whole blur, as ARGB
+ * pixels or a small bitmap, or just its average colour; null for a malformed hash.
  */
 object Blurhash {
     private const val DIGITS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz#$%*+,-.:;=?@[]^_{|}~"
+
+    /** The whole blur as a small bitmap, for a page's large artwork. */
+    fun bitmap(hash: String, size: Int = 32): Bitmap? =
+        decode(hash, size, size)?.let { Bitmap.createBitmap(it, size, size, Bitmap.Config.ARGB_8888) }
 
     /** The image's average colour, opaque ARGB: the hash's first component, read without decoding the rest. */
     fun averageColor(hash: String): Int? {

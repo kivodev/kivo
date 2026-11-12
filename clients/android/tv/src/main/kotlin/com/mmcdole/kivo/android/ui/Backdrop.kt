@@ -46,7 +46,8 @@ fun Backdrop(image: ImageRef, width: Dp, layers: List<Brush>, modifier: Modifier
     val session = LocalSession.current
     val context = LocalContext.current
     val pixels = with(LocalDensity.current) { width.roundToPx() }
-    val placeholder = remember(image.blurhash) { image.blurhash?.let(::blurPainter) }
+    // The whole blur, decoded once per page, so it isn't kept.
+    val placeholder = remember(image.blurhash) { image.blurhash?.let(Blurhash::bitmap)?.let { BitmapPainter(it.asImageBitmap()) } }
     val painted = remember(layers) { PaintedOver(layers) }
     val request = remember(image.id, pixels, painted) {
         ImageRequest.Builder(context)
@@ -75,14 +76,6 @@ fun Backdrop(image: ImageRef, width: Dp, layers: List<Brush>, modifier: Modifier
         )
     }
 }
-
-/** The blurhash's whole blur, small: drawn once per page, so it isn't kept. */
-private fun blurPainter(hash: String): BitmapPainter? {
-    val pixels = Blurhash.decode(hash, BLUR_SIZE, BLUR_SIZE) ?: return null
-    return BitmapPainter(Bitmap.createBitmap(pixels, BLUR_SIZE, BLUR_SIZE, Bitmap.Config.ARGB_8888).asImageBitmap())
-}
-
-private const val BLUR_SIZE = 32
 
 /**
  * Paints [layers] over the decoded image, each across all of it, dithered, as
