@@ -183,6 +183,10 @@ struct UserStateButtons: View {
     let page: WorkPageState
     @Environment(ServerModel.self) private var server
     @Environment(\.kivoPalette) private var palette
+    // What a tap last asked for, so a symbol animates when that answer
+    // arrives and not when a read or another device changes it.
+    @State private var askedOnList: Bool?
+    @State private var askedPlayed: Bool?
 
     var body: some View {
         let myListId = page.myListId
@@ -192,31 +196,33 @@ struct UserStateButtons: View {
         // mark that fails leaves them as they were, and the app says why.
         Button {
             guard let myListId else { return }
+            Haptics.success()
+            askedOnList = !onMyList
             server.session.library.marks.setOnList(listId: myListId, workId: work.id, on: !onMyList)
         } label: {
             Image(systemName: onMyList ? "text.badge.checkmark" : "text.badge.plus")
                 .roundButtonSymbol()
-                .contentTransition(.symbolEffect(.replace))
+                .symbolReplace(animated: askedOnList == onMyList)
                 .accessibilityLabel(onMyList ? Text("Remove from Watchlist") : Text("Add to Watchlist"))
         }
         .buttonStyle(.bordered)
         .buttonBorderShape(.circle)
         .tint(onMyList ? palette.accent : palette.text)
         .disabled(myListId == nil)
-        .sensoryFeedback(.success, trigger: onMyList)
         .accessibilityIdentifier("my-list")
         Button {
+            Haptics.success()
+            askedPlayed = !played
             server.session.library.marks.setPlayed(workId: work.id, played: !played)
         } label: {
             Image(systemName: played ? "checkmark.circle.fill" : "checkmark.circle")
                 .roundButtonSymbol()
-                .contentTransition(.symbolEffect(.replace))
+                .symbolReplace(animated: askedPlayed == played)
                 .accessibilityLabel(Text(Words.markPlayed(!played, kind: work.kind)))
         }
         .buttonStyle(.bordered)
         .buttonBorderShape(.circle)
         .tint(palette.text)
-        .sensoryFeedback(.success, trigger: played)
         .accessibilityIdentifier("watched")
     }
 }
@@ -234,6 +240,11 @@ extension View {
     /// A round button's symbol, at the size every one has.
     func roundButtonSymbol() -> some View {
         modifier(RoundButtonSymbol())
+    }
+
+    /// Swaps a symbol with the replace effect when [animated], else at once.
+    func symbolReplace(animated: Bool) -> some View {
+        contentTransition(animated ? .symbolEffect(.replace) : .identity)
     }
 
     /// A text button's label, tall enough to tap: 44 points at least.

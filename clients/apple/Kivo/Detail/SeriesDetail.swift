@@ -26,6 +26,9 @@ struct SeriesDetail: View {
     @Environment(\.detailLoad) private var load
     @State private var confirmingPlayed = false
     @State private var confirmingCheck = false
+    // The watched state a tap last asked for, by season, so the check
+    // animates only when that answer arrives.
+    @State private var askedSeasonPlayed: [String: Bool] = [:]
     @State private var downloading: EpisodesToDownload?
 
     /// What the download sheet is for.
@@ -186,6 +189,7 @@ struct SeriesDetail: View {
     private func setSeasonPlayed(_ played: Bool) {
         guard let season else { return }
         Haptics.success()
+        askedSeasonPlayed[season.id] = played
         server.session.library.marks.setPlayed(workId: season.id, played: played)
     }
 
@@ -301,7 +305,8 @@ struct SeriesDetail: View {
                 .tapTarget()
             }
             .accessibilityIdentifier("season")
-            .sensoryFeedback(.selection, trigger: seasonId)
+            // Not for the season the page opens on.
+            .sensoryFeedback(.selection, trigger: seasonId) { old, _ in old != nil }
             // On the menu, so a popover points at it.
             .confirmationDialog(markSeasonTitle, isPresented: $confirmingPlayed, titleVisibility: .visible) {
                 markSeasonButton
@@ -324,7 +329,8 @@ struct SeriesDetail: View {
                 .padding(.horizontal, 20)
             }
             .scrollClipDisabled()
-            .sensoryFeedback(.selection, trigger: seasonId)
+            // Not for the season the page opens on.
+            .sensoryFeedback(.selection, trigger: seasonId) { old, _ in old != nil }
             .onAppear {
                 if let seasonId { proxy.scrollTo(seasonId, anchor: .center) }
             }
@@ -385,7 +391,7 @@ struct SeriesDetail: View {
                     Image(systemName: played ? "checkmark.circle.fill" : "checkmark.circle")
                         .font(.title3)
                         .foregroundStyle(played ? palette.accent : palette.textMuted)
-                        .contentTransition(.symbolEffect(.replace))
+                        .symbolReplace(animated: askedSeasonPlayed[season.id] == played)
                         .frame(minWidth: 44, minHeight: 44)
                         .contentShape(Rectangle())
                 }
