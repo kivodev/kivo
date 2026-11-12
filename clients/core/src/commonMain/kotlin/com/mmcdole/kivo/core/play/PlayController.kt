@@ -256,13 +256,13 @@ class PlayController internal constructor(
         dispatch(PlayerAction.Fail(PlayerFailure.Ended(message)))
     }
 
-    /** The app is leaving the player or going to the background: stop the play, keeping the request. */
+    /**
+     * The app is leaving the player or going to the background: stop the
+     * play, keeping the request. A play still starting is stopped as its
+     * answer comes.
+     */
     fun stopOnExit() {
-        val play = current ?: return
-        stop(play.id, positionMs())
-        this.current = null
-        generation++
-        release()
+        end()
     }
 
     /** The app came back after [stopOnExit]: start again where it was. */
