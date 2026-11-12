@@ -16,8 +16,7 @@ public final class com/mmcdole/kivo/core/Compatibility$AppTooOld : com/mmcdole/k
 }
 
 public final class com/mmcdole/kivo/core/Compatibility$Companion {
-	public final fun of (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lcom/mmcdole/kivo/core/Compatibility;
-	public static synthetic fun of$default (Lcom/mmcdole/kivo/core/Compatibility$Companion;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lcom/mmcdole/kivo/core/Compatibility;
+	public final fun of (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lcom/mmcdole/kivo/core/Compatibility;
 }
 
 public final class com/mmcdole/kivo/core/Compatibility$Compatible : com/mmcdole/kivo/core/Compatibility {
@@ -44,7 +43,6 @@ public final class com/mmcdole/kivo/core/Compatibility$ServerTooOld : com/mmcdol
 
 public final class com/mmcdole/kivo/core/CompatibilityKt {
 	public static final field MIN_SERVER_VERSION Ljava/lang/String;
-	public static final fun compareVersions (Ljava/lang/String;Ljava/lang/String;)Ljava/lang/Integer;
 }
 
 public abstract class com/mmcdole/kivo/core/Done {
@@ -1016,8 +1014,11 @@ public final class com/mmcdole/kivo/core/data/LibraryTab$Companion {
 
 public final class com/mmcdole/kivo/core/data/ListSorts {
 	public static final field INSTANCE Lcom/mmcdole/kivo/core/data/ListSorts;
-	public final fun getAll ()Ljava/util/List;
 	public final fun of (Lcom/mmcdole/kivo/api/models/WorkList;)Lcom/mmcdole/kivo/api/models/ListSort;
+}
+
+public final class com/mmcdole/kivo/core/data/ListsRepositoryKt {
+	public static final fun getHasShelf (Lcom/mmcdole/kivo/api/models/WorkList;)Z
 }
 
 public final class com/mmcdole/kivo/core/data/RuleDraft {

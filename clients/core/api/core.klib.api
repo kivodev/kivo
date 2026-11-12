@@ -899,7 +899,7 @@ sealed interface com.mmcdole.kivo.core/Compatibility { // com.mmcdole.kivo.core/
     }
 
     final object Companion { // com.mmcdole.kivo.core/Compatibility.Companion|null[0]
-        final fun of(kotlin/String, kotlin/String?, kotlin/String, kotlin/String = ...): com.mmcdole.kivo.core/Compatibility // com.mmcdole.kivo.core/Compatibility.Companion.of|of(kotlin.String;kotlin.String?;kotlin.String;kotlin.String){}[0]
+        final fun of(kotlin/String, kotlin/String?, kotlin/String): com.mmcdole.kivo.core/Compatibility // com.mmcdole.kivo.core/Compatibility.Companion.of|of(kotlin.String;kotlin.String?;kotlin.String){}[0]
     }
 
     final object Compatible : com.mmcdole.kivo.core/Compatibility { // com.mmcdole.kivo.core/Compatibility.Compatible|null[0]
@@ -3029,9 +3029,6 @@ final object com.mmcdole.kivo.core.cast/CastMessages { // com.mmcdole.kivo.core.
 }
 
 final object com.mmcdole.kivo.core.data/ListSorts { // com.mmcdole.kivo.core.data/ListSorts|null[0]
-    final val all // com.mmcdole.kivo.core.data/ListSorts.all|{}all[0]
-        final fun <get-all>(): kotlin.collections/List<com.mmcdole.kivo.api.models/ListSort> // com.mmcdole.kivo.core.data/ListSorts.all.<get-all>|<get-all>(){}[0]
-
     final fun of(com.mmcdole.kivo.api.models/WorkList): com.mmcdole.kivo.api.models/ListSort? // com.mmcdole.kivo.core.data/ListSorts.of|of(com.mmcdole.kivo.api.models.WorkList){}[0]
 }
 
@@ -3085,6 +3082,8 @@ final const val com.mmcdole.kivo.core.player/SUBTITLES_OFF // com.mmcdole.kivo.c
 final const val com.mmcdole.kivo.core/MIN_SERVER_VERSION // com.mmcdole.kivo.core/MIN_SERVER_VERSION|{}MIN_SERVER_VERSION[0]
     final fun <get-MIN_SERVER_VERSION>(): kotlin/String // com.mmcdole.kivo.core/MIN_SERVER_VERSION.<get-MIN_SERVER_VERSION>|<get-MIN_SERVER_VERSION>(){}[0]
 
+final val com.mmcdole.kivo.core.data/hasShelf // com.mmcdole.kivo.core.data/hasShelf|@com.mmcdole.kivo.api.models.WorkList{}hasShelf[0]
+    final fun (com.mmcdole.kivo.api.models/WorkList).<get-hasShelf>(): kotlin/Boolean // com.mmcdole.kivo.core.data/hasShelf.<get-hasShelf>|<get-hasShelf>@com.mmcdole.kivo.api.models.WorkList(){}[0]
 final val com.mmcdole.kivo.core.data/knownRole // com.mmcdole.kivo.core.data/knownRole|@com.mmcdole.kivo.api.models.Credit{}knownRole[0]
     final fun (com.mmcdole.kivo.api.models/Credit).<get-knownRole>(): com.mmcdole.kivo.core.data/CreditRole // com.mmcdole.kivo.core.data/knownRole.<get-knownRole>|<get-knownRole>@com.mmcdole.kivo.api.models.Credit(){}[0]
 final val com.mmcdole.kivo.core.data/knownRole // com.mmcdole.kivo.core.data/knownRole|@com.mmcdole.kivo.api.models.PersonSummary{}knownRole[0]
@@ -3121,5 +3120,4 @@ final fun (com.mmcdole.kivo.core.display/Display).com.mmcdole.kivo.core.play/fai
 final fun com.mmcdole.kivo.core.discovery/serviceUrl(kotlin/String, kotlin/Int, kotlin/Boolean, kotlin/String): kotlin/String // com.mmcdole.kivo.core.discovery/serviceUrl|serviceUrl(kotlin.String;kotlin.Int;kotlin.Boolean;kotlin.String){}[0]
 final fun com.mmcdole.kivo.core.display/qualityMenu(kotlin.collections/List<com.mmcdole.kivo.api.models/QualityRung>): kotlin.collections/List<com.mmcdole.kivo.core.display/QualityOption> // com.mmcdole.kivo.core.display/qualityMenu|qualityMenu(kotlin.collections.List<com.mmcdole.kivo.api.models.QualityRung>){}[0]
 final fun com.mmcdole.kivo.core.player/chapterAt(kotlin.collections/List<com.mmcdole.kivo.api.models/Chapter>, kotlin/Long): com.mmcdole.kivo.api.models/Chapter? // com.mmcdole.kivo.core.player/chapterAt|chapterAt(kotlin.collections.List<com.mmcdole.kivo.api.models.Chapter>;kotlin.Long){}[0]
-final fun com.mmcdole.kivo.core/compareVersions(kotlin/String, kotlin/String): kotlin/Int? // com.mmcdole.kivo.core/compareVersions|compareVersions(kotlin.String;kotlin.String){}[0]
 final suspend fun <#A: kotlin/Any> (kotlinx.coroutines.flow/Flow<com.mmcdole.kivo.core/Load<#A>>).com.mmcdole.kivo.core/answer(): #A? // com.mmcdole.kivo.core/answer|answer@kotlinx.coroutines.flow.Flow<com.mmcdole.kivo.core.Load<0:0>>(){0§<kotlin.Any>}[0]
