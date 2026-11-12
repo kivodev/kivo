@@ -1,0 +1,12 @@
+{
+  "id": "com.kivo.player",
+  "version": "0.3.0",
+  "vendor": "Kivo",
+  "type": "web",
+  "main": "index.html",
+  "title": "Kivo",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "resolution": "1920x1080",
+  "disableBackHistoryAPI": true
+}
