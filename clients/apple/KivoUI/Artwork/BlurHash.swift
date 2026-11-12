@@ -1,13 +1,13 @@
 import CoreGraphics
 import Foundation
 
-/// Decodes a BlurHash (blurha.sh) into a small image: the placeholder the
-/// server sends with each image, drawn while the image loads so artwork is
-/// never a grey box.
+/// Decodes a BlurHash (blurha.sh): the placeholder the server sends with
+/// each image, drawn while the image loads so artwork is never a grey box,
+/// as a small image or just its average colour.
 public enum BlurHash {
     nonisolated(unsafe) private static let cache = NSCache<NSString, CGImage>()
 
-    /// The hash decoded, from the cache, so a card's placeholder is decoded
+    /// The hash decoded, from the cache, so a page's placeholder is decoded
     /// once; decoded here and now when it isn't there yet.
     static func cached(_ hash: String) -> CGImage? {
         if let hit = cache.object(forKey: hash as NSString) { return hit }
@@ -16,12 +16,16 @@ public enum BlurHash {
         return decoded
     }
 
-    /// Decodes [hashes] into the cache off the main thread, so the cards
-    /// about to show them find them there.
-    public static func prepare(_ hashes: [String]) async {
-        await Task.detached(priority: .userInitiated) {
-            for hash in hashes { _ = cached(hash) }
-        }.value
+    /// The image's average colour, the hash's first component, read without
+    /// decoding the rest; nil for a malformed hash.
+    public static func averageColor(_ hash: String) -> CGColor? {
+        let chars = Array(hash)
+        guard chars.count >= 6, let sizeFlag = decode83(chars[0...0]),
+              chars.count == 4 + 2 * (sizeFlag / 9 + 1) * (sizeFlag % 9 + 1),
+              let dc = decode83(chars[2..<6])
+        else { return nil }
+        func channel(_ shift: Int) -> CGFloat { CGFloat((dc >> shift) & 255) / 255 }
+        return CGColor(srgbRed: channel(16), green: channel(8), blue: channel(0), alpha: 1)
     }
 
     /// The hash as a `width` by `height` image; nil for a malformed hash.

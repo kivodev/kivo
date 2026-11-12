@@ -2,23 +2,27 @@ import KivoCore
 import NukeUI
 import SwiftUI
 
-/// An image of a work, filling its frame: the blurhash while it loads, the
-/// image fading in over it unless it was already in memory or Reduce Motion
-/// is on, and a titled tile in a neutral colour when there's no image.
+/// An image of a work, filling its frame: its average colour while it
+/// loads, or the whole blurhash for a page's large artwork, the image fading
+/// in over it unless it was already in memory or Reduce Motion is on, and a
+/// titled tile in a neutral colour when there's no image.
 public struct ArtworkImage: View {
     private let image: ImageRef?
     private let title: String
     private let pointWidth: CGFloat
+    private let blur: Bool
     @Environment(\.artworkSource) private var source
     @Environment(\.displayScale) private var displayScale
     @Environment(\.kivoPalette) private var palette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// [pointWidth] is about how wide it shows, for the size to fetch.
-    public init(_ image: ImageRef?, title: String, pointWidth: CGFloat) {
+    /// [pointWidth] is about how wide it shows, for the size to fetch;
+    /// [blur] shows the whole blurhash while it loads rather than its colour.
+    public init(_ image: ImageRef?, title: String, pointWidth: CGFloat, blur: Bool = false) {
         self.image = image
         self.title = title
         self.pointWidth = pointWidth
+        self.blur = blur
     }
 
     /// The images fill whatever frame the view is given: they're overlays on
@@ -41,8 +45,10 @@ public struct ArtworkImage: View {
     }
 
     @ViewBuilder private var placeholder: some View {
-        if let hash = image?.blurhash, let blurred = BlurHash.cached(hash) {
+        if blur, let hash = image?.blurhash, let blurred = BlurHash.cached(hash) {
             Image(decorative: blurred, scale: 1).resizable().scaledToFill()
+        } else if let hash = image?.blurhash, let color = BlurHash.averageColor(hash) {
+            Color(cgColor: color)
         } else {
             ZStack {
                 palette.placeholder

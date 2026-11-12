@@ -71,19 +71,15 @@ import com.mmcdole.kivo.android.ui.cardShapeOf
 import com.mmcdole.kivo.android.ui.awaitSettled
 import com.mmcdole.kivo.android.ui.cardWidth
 import com.mmcdole.kivo.android.ui.focusKey
-import com.mmcdole.kivo.android.ui.prepareCard
 import com.mmcdole.kivo.android.ui.raisedOnFocus
 import com.mmcdole.kivo.android.ui.rememberFocusMemory
 import com.mmcdole.kivo.android.ui.rememberCardLight
 import com.mmcdole.kivo.android.ui.rememberOneMovePerFrame
 import com.mmcdole.kivo.api.models.HomeRow
 import com.mmcdole.kivo.api.models.Library
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 /** Home's rows the TV shows, with the libraries it shows. */
@@ -122,13 +118,6 @@ class HomeViewModel(session: ServerSession) : ViewModel() {
             home.with(libraries) { home, libraries ->
                 val shown = tvLibraries(libraries)
                 HomeUi(shownRows(home.rows, shown), shown, home.allHidden == true)
-            }
-        }.onEach { load ->
-            // The cards' blurhashes are decoded here, off the main thread, so a row that comes into view draws
-            // them at once rather than decoding them as it's composed.
-            val rows = load.getOrNull()?.rows ?: return@onEach
-            withContext(Dispatchers.Default) {
-                rows.forEach { shown -> shown.row.items.forEach { prepareCard(it, if (shown.row.kind == HomeRowKind.List) cardShapeOf(it) else shown.shape) } }
             }
         }
     }

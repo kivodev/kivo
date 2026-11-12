@@ -23,8 +23,6 @@ final class PagedGrid {
     final class Page {
         fileprivate(set) var items: [GridItem]?
         @ObservationIgnored fileprivate let offset: Int
-        /// The items on their way to [items], their blurhashes being decoded.
-        @ObservationIgnored fileprivate var coming: [GridItem]?
 
         fileprivate init(offset: Int) {
             self.offset = offset
@@ -50,13 +48,10 @@ final class PagedGrid {
     @ObservationIgnored private var pages: [Int: Page] = [:]
     @ObservationIgnored private let grid: GridPager
     @ObservationIgnored private let pageSize: Int
-    /// The image a card shows, its blurhash decoded before the card shows; with none, cards show as they arrive.
-    @ObservationIgnored private let artwork: ((GridItem) -> ImageRef?)?
     @ObservationIgnored private var closed = false
 
-    init(_ grid: GridPager, artwork: ((GridItem) -> ImageRef?)? = nil) {
+    init(_ grid: GridPager) {
         self.grid = grid
-        self.artwork = artwork
         pageSize = Int(grid.state.value.pageSize)
         apply(grid.state.value, atOnce: true)
     }
@@ -130,8 +125,7 @@ final class PagedGrid {
     }
 
     /// Shows [state]; set only where changed, so a read that finds nothing
-    /// new redraws nothing. A page's cards show once their blurhashes are
-    /// decoded, or [atOnce], for those seen before.
+    /// new redraws nothing; [atOnce] shows a first page seen before.
     private func apply(_ state: GridPages, atOnce: Bool = false) {
         guard !closed else { return }
         if total == nil, !atOnce, state.problem == nil, holdsFirstPage() { return }
@@ -141,19 +135,7 @@ final class PagedGrid {
         if failed != state.problem { failed = state.problem }
         for (number, page) in pages {
             let items = state.items(page: Int32(number))
-            guard items != page.items, items != page.coming else { continue }
-            guard let items, let artwork, !atOnce else {
-                page.coming = nil
-                page.items = items
-                continue
-            }
-            page.coming = items
-            Task {
-                await BlurHash.prepare(items.compactMap { artwork($0)?.blurhash })
-                guard page.coming == items else { return }
-                page.coming = nil
-                page.items = items
-            }
+            if items != page.items { page.items = items }
         }
     }
 }

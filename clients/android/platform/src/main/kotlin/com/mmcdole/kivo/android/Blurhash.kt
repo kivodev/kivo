@@ -1,4 +1,4 @@
-package com.mmcdole.kivo.android.ui
+package com.mmcdole.kivo.android
 
 import kotlin.math.PI
 import kotlin.math.cos
@@ -7,11 +7,20 @@ import kotlin.math.withSign
 
 /**
  * Decodes a blurhash (blurha.sh), the placeholder the server computes for
- * each image so artwork never loads over a grey box, into
- * ARGB pixels; null for a malformed hash.
+ * each image so artwork never loads over a grey box: the whole blur as ARGB
+ * pixels, or just its average colour; null for a malformed hash.
  */
 object Blurhash {
     private const val DIGITS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz#$%*+,-.:;=?@[]^_{|}~"
+
+    /** The image's average colour, opaque ARGB: the hash's first component, read without decoding the rest. */
+    fun averageColor(hash: String): Int? {
+        if (hash.length < 6) return null
+        val size = decode83(hash, 0, 1) ?: return null
+        if (hash.length != 4 + 2 * (size / 9 + 1) * (size % 9 + 1)) return null
+        val dc = decode83(hash, 2, 6) ?: return null
+        return (0xFF shl 24) or (dc and 0xFFFFFF)
+    }
 
     fun decode(hash: String, width: Int, height: Int): IntArray? {
         if (hash.length < 6) return null

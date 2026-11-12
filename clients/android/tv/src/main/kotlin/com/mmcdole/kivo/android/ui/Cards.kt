@@ -1,7 +1,5 @@
 package com.mmcdole.kivo.android.ui
 
-import android.graphics.Bitmap
-import android.util.LruCache
 import android.view.KeyEvent as AndroidKeyEvent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
@@ -39,14 +37,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.draw.innerShadow
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.shadow.Shadow
-import androidx.compose.ui.graphics.painter.BitmapPainter
-import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.input.key.onKeyEvent
@@ -72,6 +68,7 @@ import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.request.crossfade
 import com.mmcdole.kivo.android.tv.R
+import com.mmcdole.kivo.android.Blurhash
 import com.mmcdole.kivo.android.ServerSession
 import com.mmcdole.kivo.android.theme.Kivo
 import com.mmcdole.kivo.android.theme.KivoTokens
@@ -97,7 +94,7 @@ import kotlinx.coroutines.launch
 /** The signed-in server, for artwork and media URLs. */
 val LocalSession = staticCompositionLocalOf<ServerSession> { error("no server session") }
 
-/** Whether artwork may load: until it may, it shows its blurhash, as for cards a list is scrolling past. */
+/** Whether artwork may load: until it may, it shows its average colour, as for cards a list is scrolling past. */
 val LocalArtworkShown = staticCompositionLocalOf<State<Boolean>> { mutableStateOf(true) }
 
 /**
@@ -160,7 +157,7 @@ fun cardShapeOf(work: WorkSummary): CardShape = when (work.kind) {
 }
 
 /**
- * Artwork at the size it's shown, its blurhash first; without artwork, a
+ * Artwork at the size it's shown, its average colour first; without artwork, a
  * titled tile in the placeholder colour, never a broken image.
  */
 @Composable
@@ -186,7 +183,7 @@ fun Artwork(
 /** The widest artwork decoded to an ordinary bitmap: cards and stills, not backdrops. */
 private val CardArtworkMaxWidth = 400.dp
 
-/** What [Artwork] shows in its frame: the image over its blurhash, or without one the title. */
+/** What [Artwork] shows in its frame: the image over its average colour, or without one the title. */
 @Composable
 internal fun ArtworkImage(image: ImageRef?, title: String, width: Dp) {
     if (image == null) {
@@ -203,9 +200,9 @@ internal fun ArtworkImage(image: ImageRef?, title: String, width: Dp) {
     }
     val session = LocalSession.current
     val pixels = with(LocalDensity.current) { width.roundToPx() }
-    val placeholder = remember(image.blurhash) { image.blurhash?.let(BlurhashCache::painter) }
+    val placeholder = remember(image.blurhash) { image.blurhash?.let(Blurhash::averageColor)?.let { ColorPainter(Color(it)) } }
     val context = LocalContext.current
-    // Over its blurhash as it arrives; at once when it's already in memory.
+    // Over its average colour as it arrives; at once when it's already in memory.
     val request = remember(image.id, pixels) {
         ImageRequest.Builder(context)
             .data(session.session.imageUrl(image.id, pixels))
@@ -230,24 +227,6 @@ internal fun ArtworkImage(image: ImageRef?, title: String, width: Dp) {
         contentScale = ContentScale.Crop,
         modifier = Modifier.fillMaxSize(),
     )
-}
-
-/** Blurhashes decoded once each, small, as the same artwork shows again and again while lists scroll. */
-internal object BlurhashCache {
-    private const val SIZE = 32
-    private val bitmaps = LruCache<String, ImageBitmap>(256)
-
-    fun painter(hash: String): Painter? = bitmap(hash)?.let(::BitmapPainter)
-
-    fun bitmap(hash: String): ImageBitmap? = bitmaps[hash] ?: run {
-        val pixels = Blurhash.decode(hash, SIZE, SIZE) ?: return null
-        Bitmap.createBitmap(pixels, SIZE, SIZE, Bitmap.Config.ARGB_8888).asImageBitmap().also { bitmaps.put(hash, it) }
-    }
-}
-
-/** Decodes the blurhash of [work]'s card ahead of it, such as off the main thread, so the card shows it without decoding it. */
-fun prepareCard(work: WorkSummary, shape: CardShape) {
-    cardImage(work, shape)?.blurhash?.let(BlurhashCache::bitmap)
 }
 
 /** The card's picture: a still or backdrop on landscape cards, else the poster. */

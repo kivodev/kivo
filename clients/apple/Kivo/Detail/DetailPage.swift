@@ -92,7 +92,7 @@ struct DetailPage<Rows: View, Actions: View>: View {
             if work == nil {
                 SkeletonBlock(radius: 0)
             } else {
-                ArtworkImage(art, title: "", pointWidth: wide ? 1024 : 430)
+                ArtworkImage(art, title: "", pointWidth: wide ? 1024 : 430, blur: true)
             }
         }
             .frame(maxWidth: .infinity)
