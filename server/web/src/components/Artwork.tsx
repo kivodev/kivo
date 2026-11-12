@@ -15,7 +15,7 @@ const shapes: Record<ArtworkShape, string> = {
 
 const corners = { md: "rounded-md", full: "rounded-full", none: "" } as const;
 
-// The most blurhash placeholders and loaded image URLs remembered. The
+// The most blurred placeholders and loaded image URLs remembered. The
 // latest ones are kept, so a long grid scrolled end to end holds no more
 // than this.
 const remembered = 1000;
@@ -64,26 +64,22 @@ function averageColour(hash: string): string | undefined {
   return colour <= 0xffffff ? `#${colour.toString(16).padStart(6, "0")}` : undefined;
 }
 
-/** A TV tile's average colour, or a tiny blurhash image for the web. */
+/** A tiny image of the hash, blurred as the artwork it stands for. */
 function blurhashUrl(hash: string): string | undefined {
   if (blurCache.has(hash)) return blurCache.get(hash);
   let url: string | undefined;
   try {
-    if (isTv) {
-      url = averageColour(hash);
-    } else {
-      const size = 32;
-      blurCanvas ??= document.createElement("canvas");
-      const canvas = blurCanvas;
-      canvas.width = size;
-      canvas.height = size;
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        const data = ctx.createImageData(size, size);
-        data.data.set(decode(hash, size, size));
-        ctx.putImageData(data, 0, 0);
-        url = canvas.toDataURL();
-      }
+    const size = 32;
+    blurCanvas ??= document.createElement("canvas");
+    const canvas = blurCanvas;
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      const data = ctx.createImageData(size, size);
+      data.data.set(decode(hash, size, size));
+      ctx.putImageData(data, 0, 0);
+      url = canvas.toDataURL();
     }
   } catch {
     // A hash that doesn't decode gets no placeholder.
@@ -149,14 +145,20 @@ type Props = {
   /** Cropped to the shape by default. Contained for a logo. */
   fit?: "cover" | "contain";
   className?: string;
+  /**
+   * Whether a blurred preview shows while the image loads, as on a title's
+   * page, rather than the image's average colour. A TV always shows the colour.
+   */
+  blur?: boolean;
   /** Shown over the artwork and clipped to its corners, such as a progress bar along its bottom. */
   children?: ReactNode;
 };
 
 /**
- * Artwork that loads lazily over its blurhash. With no artwork it shows a
- * titled tile in a neutral colour, never a broken image. On TV that tile
- * has a soft tint picked by the title and the library kind's icon.
+ * Artwork that loads lazily over its blurhash's average colour, or its
+ * blur. With no artwork it shows a titled tile in a neutral colour, never a
+ * broken image. On TV that tile has a soft tint picked by the title and the
+ * library kind's icon.
  */
 export function Artwork({
   image,
@@ -169,6 +171,7 @@ export function Artwork({
   corners: round = "md",
   fit = "cover",
   className = "",
+  blur = false,
   children,
 }: Props) {
   const [arrived, setArrived] = useState(false);
@@ -225,30 +228,32 @@ export function Artwork({
       </div>
     );
   }
-  const blur = placeholder && image.blurhash ? blurhashUrl(image.blurhash) : undefined;
+  const hash = placeholder ? image.blurhash : undefined;
+  const preview = hash && blur && !isTv ? blurhashUrl(hash) : undefined;
+  const colour = hash && !preview ? averageColour(hash) : undefined;
   const src = imageUrl(image, width, density);
-  // The image fades in over its blurhash as it arrives. An image this page
+  // The image fades in over its placeholder as it arrives. An image this page
   // has loaded before, as on returning to a page, shows at once.
   const opacity = arrived ? "transition-opacity duration-fade ease-out" : loadedImages.has(src) ? "" : "opacity-0";
   return (
     <div data-part={part} className={base}>
-      {blur &&
-        (isTv ? (
-          <div
-            data-part="artwork-placeholder"
-            aria-hidden="true"
-            className="absolute inset-0"
-            style={{ backgroundColor: blur }}
-          />
-        ) : (
-          <img
-            data-part="artwork-placeholder"
-            src={blur}
-            alt=""
-            aria-hidden="true"
-            className="absolute inset-0 size-full object-cover"
-          />
-        ))}
+      {preview && (
+        <img
+          data-part="artwork-placeholder"
+          src={preview}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 size-full object-cover"
+        />
+      )}
+      {colour && (
+        <div
+          data-part="artwork-placeholder"
+          aria-hidden="true"
+          className="absolute inset-0"
+          style={{ backgroundColor: colour }}
+        />
+      )}
       {loads ? (
         <img
           src={src}

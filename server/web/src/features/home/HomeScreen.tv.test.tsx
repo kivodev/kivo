@@ -57,6 +57,20 @@ describe("Home on TV", () => {
     await waitFor(() => expect(focused()).toMatch(/^card:continueWatching:/));
   });
 
+  it("reaches a lower row with Down, every row being there from the start", async () => {
+    serveMockApi();
+    renderApp("/");
+    await waitFor(() => expect(focused()).toMatch(/^card:continueWatching:/));
+    expect(document.querySelector('[data-part="row-placeholder"]')).toBeNull();
+    const rows = [...document.querySelectorAll("[data-row]")];
+    const row = () => rows.findIndex((r) => r.contains(document.activeElement));
+    for (const next of [1, 2]) {
+      press("ArrowDown");
+      await waitFor(() => expect(row()).toBe(next));
+    }
+    expect(rows[2]?.getAttribute("data-row")).toBe("recentlyAdded");
+  });
+
   it("opens a card's page with OK, and Back returns focus to that card", async () => {
     serveMockApi();
     const { router } = renderApp("/");
