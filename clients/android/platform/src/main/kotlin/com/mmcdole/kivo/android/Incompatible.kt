@@ -4,12 +4,6 @@ import android.content.res.Resources
 import com.mmcdole.kivo.android.platform.R
 import com.mmcdole.kivo.core.Compatibility
 
-/**
- * The app's store listing, which "Update Kivo" links to. Null until the app
- * has one, and the screen then has no link.
- */
-val STORE_LISTING: String? = null
-
 /** What the screen for a server the app doesn't work with says: its [title] and a [sentence] under it. */
 data class IncompatibleWords(val title: String, val sentence: String)
 

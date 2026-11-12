@@ -16,14 +16,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.mmcdole.kivo.android.STORE_LISTING
 import com.mmcdole.kivo.android.mobile.R
-import com.mmcdole.kivo.android.platform.R as PlatformR
 import com.mmcdole.kivo.android.mobile.theme.space
 import com.mmcdole.kivo.android.words
 import com.mmcdole.kivo.core.Compatibility
@@ -59,11 +56,7 @@ fun Message(title: String, sentence: String?, modifier: Modifier = Modifier, act
 @Composable
 fun Incompatible(problem: Compatibility, server: String, onRetry: () -> Unit, onChangeServer: () -> Unit, modifier: Modifier = Modifier) {
     val words = problem.words(LocalResources.current, server) ?: return
-    val uris = LocalUriHandler.current
     Message(words.title, words.sentence, modifier.testTag("incompatible")) {
-        if (problem is Compatibility.AppTooOld) {
-            STORE_LISTING?.let { listing -> Button(onClick = { uris.openUri(listing) }) { Text(stringResource(PlatformR.string.app_too_old_store)) } }
-        }
         Button(onClick = onRetry) { Text(stringResource(R.string.mobile_try_again)) }
         OutlinedButton(onClick = onChangeServer) { Text(stringResource(R.string.mobile_change_server)) }
     }
