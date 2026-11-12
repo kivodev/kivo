@@ -93,19 +93,30 @@ Several of these rules are enforced by tests in `internal/archtest` rather than 
 
 `server/internal/api/openapi.yaml` is the contract between the server and every client. The server generates its request and response types from it with oapi-codegen, and also embeds the spec at run time: each operation's access level is declared there (`x-kivo-access`), and the server refuses to start if an operation lacks one. The web client gets TypeScript types from it with openapi-typescript (`server/web/src/api/schema.d.ts`), and the native apps get a Kotlin client from openapi-generator (`clients/api`). Generated code is committed and checked in CI, so a change to the spec shows up as a change to every client.
 
-The contract is long-lived and grows by addition. Clients treat enum values as open strings and ignore fields they don't know, so an older app keeps working against a newer server. The few enums the native apps branch on (a track's type, its delivery, a play's and a download's delivery, the subtitle mode) are Kotlin enums with an `Unknown` case for a value they don't know.
+The contract is long-lived and grows by addition. Clients treat enum values as open strings and ignore fields they don't know, so an older app keeps working against a newer server. The values the native apps branch on, such as kinds, sorts, states, track types and deliveries, are Kotlin enums with an `Unknown` case for a value they don't know.
 
 ### The shared Kotlin core
 
-The native apps are two UI codebases on one Kotlin Multiplatform core (`clients/core`). Everything that must behave the same on every device lives there: the server connection and sign-in, server discovery, the play protocol, capability reports, the library repositories, live events, downloads, settings and the words used for formats. The core imports no UI toolkit and no player; each platform implements a handful of small interfaces (the device, the player engine, book audio, the capability probe, download transport and secure storage).
+The native apps are two UI codebases on one Kotlin Multiplatform core (`clients/core`). Everything that must behave the same on every device lives there: the server connection and sign-in, discovery, the play protocol, capability reports, live events, downloads, settings, format words and the main screens' models. The core imports no UI toolkit and no player; each platform implements a handful of small interfaces (the device, the player engine, book audio, the capability probe, download transport, secure storage and, on phones, the Cast link).
 
-Apps reach the core through two objects in its `session` package: `KivoClient`, one per app, and `KivoSession`, one per signed-in server. Reads are exposed as flows that refresh themselves when live events say something changed. The core talks to the server through the generated `:api` module over Ktor, and keeps downloads in a SQLDelight database. Swift sees the core through SKIE, so suspend functions become `async throws` and flows become async sequences.
+Apps reach the core through two objects in its `session` package: `KivoClient`, one per app, and `KivoSession`, one per signed-in server. The client's state is what the app's root shows: starting, signing in, can't reach the server, or signed in. A session hands out screen models, each a state flow the screen draws plus the actions it takes:
+
+- **Library grid.** A library's tabs, sort and filters, remembered per device, and its paged grid.
+- **Detail page.** A movie, series, season or episode, with seasons, episodes, versions, track choices and My List.
+- **Video player.** The play controller over the platform's engine, and the screen around it: the next episode, qualities, scrub previews, when the controls hide, and where the player goes when it's done.
+- **Book player.** Chapters, speed and the sleep timer.
+- **Cast remote.** The Cast session, what the TV plays, and where to carry on here when casting stops.
+- **Marks.** Played, on a list and out of Continue, which outlive the screen that made them.
+
+A change the user makes returns done or a problem rather than throwing, so every app reports the same failures. Reads are flows that refresh themselves when live events say something changed. Layout, navigation, words, the player engine and platform services such as Picture in Picture and background transfers stay native.
+
+The core talks to the server through the generated `:api` module over Ktor, and keeps downloads in a SQLDelight database. Swift sees the core through SKIE, so suspend functions become `async throws` and flows become async sequences.
 
 ### The clients
 
 - **Web** (`server/web`). React and TypeScript, built with Vite, with TanStack Router and Query, hls.js for streams, and JASSUB and libpgs for styled and image subtitles. It holds every admin screen as well as the viewing app, and it's embedded into the server binary at build time. A TV build of the same code (`VITE_KIVO_TV=1`) adds remote-control focus navigation for television screens.
 - **iPhone and iPad** (`clients/apple`). SwiftUI, with AVPlayer for playback, its own overlay for styled and image subtitles, background downloads, AirPlay, Picture in Picture, and a Google Cast sender. The project is generated from `project.yml` with XcodeGen.
-- **Android TV and Google TV** (`clients/android`). Jetpack Compose with Compose for TV, and Media3 for playback. It runs on Fire TV too. One APK in four modules: `app` (the application and its one activity, which picks the TV or phone interface at launch), `tv` (the TV screens), `mobile` (the phone screens, with downloads and a Google Cast sender) and `platform` (the core's Android implementations, such as the Media3 engine, the capability probe and the downloads' transfers on WorkManager, and the state both interfaces share).
+- **Android TV, Google TV and Android phones** (`clients/android`). Jetpack Compose with Compose for TV, and Media3 for playback. It runs on Fire TV too. One APK in four modules: `app` picks the TV or phone interface at launch, `tv` and `mobile` hold their screens (the phone's with downloads and a Google Cast sender), and `platform` holds the core's Android implementations, such as the Media3 engine and the downloads' transfers on WorkManager.
 - **Samsung TV** (`clients/tizen`). The web client's TV build packaged into a Tizen web app, so the app's code ships in the package and only data, artwork and media come from the server. It keeps an app session's token rather than a cookie, and uses Samsung's own player for direct play.
 - **Cast receiver** (`clients/chromecast`). A Google Cast Web Receiver: a static page with no build step, no server address and no secret in it. One hosted copy serves every Kivo server, since each cast names its own server.
 
@@ -121,7 +132,7 @@ Changes are found three ways: a file watcher on local disks (fsnotify), a period
 
 Each new or changed file is probed with ffprobe. The probe stores tracks, chapters and a summary, and a hash of the file's first and last bytes. When a new file matches a known file that has disappeared (same size, same edge hash), the scan treats it as a move and keeps the old row's ID and everything attached to it.
 
-Identification is a task of its own, which a scan hands its probed files to as it ends. It works per top-level folder. It classifies files (extras, disc rips, multi-part files, ignored files), groups them into versions, and decides which work the folder is. It trusts sources in order: a manual match, an ID in a folder or file name such as `{tmdb-438631}`, an NFO file or embedded tags, the folder structure, and finally the file name alone, which is parsed and searched. The parser (`parse`) follows the folder and naming conventions people already use, and is tested against published fixture sets in `server/testdata/naming`. Audiobooks are identified from their folder layout and tags and then filled in from Audible.
+Identification is a task of its own, which a scan hands its probed files to as it ends, and which shows as the scan's last step. It works per top-level folder. It classifies files (extras, disc rips, multi-part files, ignored files), groups them into versions, and decides which work the folder is. It trusts sources in order: a manual match, an ID in a folder or file name such as `{tmdb-438631}`, an NFO file or embedded tags, the folder structure, and finally the file name alone, which is parsed and searched. The parser (`parse`) follows the folder and naming conventions people already use, and is tested against published fixture sets in `server/testdata/naming`. Audiobooks are identified from their folder layout and tags and then filled in from Audible.
 
 A file shows up as soon as it's probed: before any provider has answered, it appears as a provisional work titled from its name. Metadata and artwork arrive later from TMDb (movies and shows), Audible through Audnexus (books) and the Anime-Lists mapping (anime IDs), all fetched through `egress`. A movie's trailers on YouTube are kept as links; the thumbnail of each is fetched from YouTube's image server (`i.ytimg.com`) by the server and stored like any artwork, so no app loads anything from YouTube until a trailer is opened there.
 
@@ -135,11 +146,13 @@ Each component is the only writer of its own tables, and writes that span compon
 
 ### Background work
 
-All background work runs as tasks of one in-memory runner (`internal/tasks`): scans, identification, metadata refreshes, previews, markers, subtitle extraction, download preparation, library deletion, cleanups and database backups. Each task is one row on the admin Tasks page.
+All background work runs as tasks of one in-memory runner (`internal/tasks`): scans, identification, metadata refreshes, previews, markers, subtitle extraction, download preparation, removing libraries and folders, cache prunes and database backups. Each task is one row on the admin Tasks page, and the runner counts every task's progress the same way, from its items.
 
 A task's work is either one function or a list of items, and it runs nightly, every so often, or on demand. The runner keeps no durable queue. A task that works through items reads what's pending from its feature's own tables every time it looks for work (for example, the files with no previews at their current generation), and records each outcome in those same tables. A feature can also enqueue items to be done now; those wait in memory only. So a restart loses nothing: whatever wasn't finished, enqueued or not, is still pending in the database. Every file has a generation number that changes when its content does, and background results are committed only if the generation still matches, so a result for an old version of a file is dropped.
 
-Nightly tasks run in a maintenance window the admin sets. On-demand tasks, such as preparing downloads, have no runs and do items as they're enqueued. Newly added media is enqueued, so it can be processed immediately. Background ffmpeg runs at low OS priority so it stays out of playback's way.
+Nightly tasks run in a maintenance window the admin sets. On-demand tasks, such as preparing downloads, have no runs: they do items as they're enqueued, and pick up anything still pending at startup and each hour. Newly added media is enqueued, so it can be processed immediately. Background ffmpeg runs at low OS priority so it stays out of playback's way.
+
+Metadata refreshes run nightly on each library's refresh days, or at once when asked, and a failed one is listed on the Tasks page for retry. Image files nothing refers to, including any a failed refresh encoded, are removed by the nightly prune.
 
 ### A play, from capability report to stream
 
@@ -176,7 +189,7 @@ Any track that isn't played directly moves the whole play to HLS, and a burned-i
 
 Every track carries a reason code for its rung, named for the capability or limit it failed, such as an unsupported codec, a bandwidth limit or a missing keyframe index. Clients word these from the shared display tables, so the player's stream info can say exactly why something is transcoding. A play that can't be made at all is refused with its own code, and clients tell "busy, try later" apart from "not playable".
 
-**Transcoding.** A video transcode produces 8-bit SDR H.264, or HEVC where the client plays it and an accelerator can encode it, at no more than 1080p. Each play runs one ffmpeg process from the play position, writing fragmented MP4 to a pipe. Kivo's own splitter (`media/container`, built on mp4ff) cuts it into segments, each served as soon as it's complete, and the full playlist is written up front so the player can seek anywhere. A seek into segments already made is served from disk; a far seek stops the job and starts a new one at the seek point. When a job gets far enough ahead of the player, `transcode` pauses it and resumes it as the player catches up. A play keeps one encoder for its whole life, because all its segments share one initialization segment.
+**Transcoding.** A video transcode produces 8-bit SDR H.264, or HEVC where the client plays it and an accelerator can encode it, at no more than 1080p. Each play runs one ffmpeg process from the play position, writing fragmented MP4 to a pipe. Kivo's own splitter (`media/container`, built on mp4ff) cuts it into segments, each served as soon as it's complete, and the full playlist is written up front so the player can seek anywhere. A seek into segments already made is served from disk; a far seek stops the job and starts a new one at the seek point. When a job gets far enough ahead of the player, `transcode` pauses it and resumes it as the player catches up. A play keeps one encoder for its whole life, because all its segments share one initialization segment, and its transcode runs until the play ends. New streams are refused while the cache disk is below a free-space floor.
 
 **Fill-to-cap rate control.** A stream's bitrate is a cap it never exceeds: the lowest of the quality the user picked, the account's or server's remote limit for plays from outside the local networks, and a share of measured bandwidth for Auto. Every encoder runs in VBR with the cap as its peak and an average just under it, so a stream fills its budget and stays inside it, the same way on every backend. The quality menu offers a fixed ladder of caps, each labelled with the height a transcode at that cap is sent at.
 
@@ -196,7 +209,7 @@ The iPhone, iPad and Android phone apps download books, movies and episodes to p
 
 The server plans a download the way it plans a play, but always as whole files. It sends the original when the device plays it and it's no larger than the tier allows; otherwise it converts to one MP4 per part in **one pass**, copying what it can (remuxing when only the container is wrong, copying video and converting audio when that's enough) and encoding video only when it must. Unlike a stream, a conversion aims at a picture quality under the tier's cap rather than filling the cap, so easy material produces smaller files. Subtitles are prepared before a download is ready, so a finished download is complete even if the device goes offline as soon as it has it.
 
-Downloads are a server resource of their own. A download that needs conversion waits in line for the Downloads task, which prepares them in order at low priority and reports its place in line, progress and time left. Converted files are kept until the app confirms it has them, or for a limited time.
+Downloads are a server resource of their own. A download that needs conversion waits in line for the Downloads task, which prepares them in the order they were asked for, at low priority, without counting against the server's transcode limit. Each download reports whether it's waiting or preparing, with its progress and time left. Converted files are kept until the app has them or no longer wants them, or for a limited time.
 
 **Transfer** runs in the platform's background transfer service, so it continues with the app closed and resumes by HTTP range after a drop or relaunch; each file's size and SHA-256 are checked on arrival. Progress made offline goes to an outbox that's sent when the server is reachable, and the newest position wins across devices.
 
@@ -240,7 +253,7 @@ Kivo ships a patched ffmpeg build (jellyfin-ffmpeg) for its GPU tone-mapping fil
 
 **The server decides.** Anything two clients would otherwise both work out (the playback rung and its reason, default tracks, next up, sorting, the quality ladder) comes from the server. Clients measure their device, report it and play what they're told. This keeps behavior consistent across platforms and makes new clients cheaper.
 
-**Tasks read their work from the data.** Background tasks keep no queue; they ask the database what's left. There's no queue to drift out of step with the data, and a restart loses nothing.
+**Tasks read their work from the data.** Tasks ask the database what's left rather than keep a queue, so nothing drifts out of step with the data and a restart loses nothing.
 
 **A shared core, native UI.** Policy lives once, in Kotlin, and is tested once. Each platform keeps a native UI and its native player, which suits video playback and TV remote navigation better than a shared UI would.
 
@@ -270,7 +283,7 @@ shared/
 clients/
   api/                 the Kotlin API client, generated from openapi.yaml
   core/                the Kotlin Multiplatform core shared by the native apps
-  android/             the Android TV and Google TV app
+  android/             the Android app, for TVs and phones
   apple/               the iPhone and iPad app (SwiftUI, XcodeGen); see FIRST-RUN.md
   tizen/               the Samsung TV packaging of the web client's TV build
   chromecast/          the Google Cast Web Receiver
@@ -278,7 +291,6 @@ clients/
   benchmark/           Android performance benchmarks
 docs/
   decisions/           architecture decision records
-  checklists/          manual release checklists for Safari and TVs
   reverse-proxy.md     running behind a reverse proxy
   reset-password.md    resetting a password from the command line
 ```
