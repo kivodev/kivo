@@ -1,6 +1,4 @@
 import type { QualityRequest } from "@/api/schemas";
-// Migration (api-naming): remove after every client has updated past this release.
-import { migrateLocalQuality } from "@/lib/apiNamingMigration";
 import { qualityKey, qualityOf } from "./quality";
 import { readStored, writeStored } from "./storage";
 
@@ -50,8 +48,6 @@ function oneOf<T extends string>(value: string | undefined, choices: readonly T[
 }
 
 export function deviceSettings(): DeviceSettings {
-  // Migration (api-naming): remove after every client has updated past this release.
-  migrateLocalQuality(keys.localQuality);
   return {
     localQuality: qualityOf(readStored(keys.localQuality)),
     remoteQuality: qualityOf(readStored(keys.remoteQuality)),

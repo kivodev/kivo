@@ -925,7 +925,6 @@ final class com.mmcdole.kivo.core.apple/AppleDevice : com.mmcdole.kivo.core.sess
     final val secureStore // com.mmcdole.kivo.core.apple/AppleDevice.secureStore|{}secureStore[0]
         final fun <get-secureStore>(): com.mmcdole.kivo.core.auth/SecureStore // com.mmcdole.kivo.core.apple/AppleDevice.secureStore.<get-secureStore>|<get-secureStore>(){}[0]
 
-    final suspend fun takeAppSettings(): kotlin.collections/Map<kotlin/String, kotlin/String> // com.mmcdole.kivo.core.apple/AppleDevice.takeAppSettings|takeAppSettings(){}[0]
 }
 
 final class com.mmcdole.kivo.core.auth/LinkCode { // com.mmcdole.kivo.core.auth/LinkCode|null[0]

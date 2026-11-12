@@ -2,8 +2,6 @@ import { getRouteApi } from "@tanstack/react-router";
 import { z } from "zod";
 import type { Library, MatchState, Resolution, Rule, WorkKind, WorkQuery } from "@/api/schemas";
 import type { GridRequest } from "@/api/works";
-// Migration (api-naming): remove after every client has updated past this release.
-import { migrateStoredBrowse } from "@/lib/apiNamingMigration";
 import { readStoredJson, writeStoredJson } from "@/lib/storage";
 
 // The library view's URL state: sort, filters, view and tab. A sort is the
@@ -179,8 +177,7 @@ const storageKey = (libraryId: string) => `kivo.library.${libraryId}`;
 
 /** The URL state this browser last used in a library. */
 export function storedBrowse(libraryId: string): BrowseSearch {
-  // Migration (api-naming): remove after every client has updated past this release.
-  const stored = browseSearchSchema.safeParse(migrateStoredBrowse(readStoredJson(storageKey(libraryId)) ?? {}));
+  const stored = browseSearchSchema.safeParse(readStoredJson(storageKey(libraryId)) ?? {});
   return stored.success ? stored.data : {};
 }
 

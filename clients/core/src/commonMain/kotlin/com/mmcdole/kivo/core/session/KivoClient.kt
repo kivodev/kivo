@@ -25,9 +25,9 @@ import com.mmcdole.kivo.core.downloads.Downloads
 import com.mmcdole.kivo.core.downloads.NetworkPath
 import com.mmcdole.kivo.core.downloads.TransferEvent
 import com.mmcdole.kivo.core.downloads.db.DownloadDatabase
-import com.mmcdole.kivo.core.downloads.quietly
 import com.mmcdole.kivo.core.play.Bandwidth
 import com.mmcdole.kivo.core.player.Autoplay
+import com.mmcdole.kivo.core.quietly
 import com.mmcdole.kivo.core.settings.DeviceSettings
 import com.mmcdole.kivo.core.settings.DeviceSettingsStore
 import com.mmcdole.kivo.core.settings.DownloadQuality

@@ -64,8 +64,8 @@ internal enum class PlayerEnd {
  *
  * Inputs come on the main thread, the state's changes are followed in
  * [scope], and the waits run in [scope] with [clock] in place of its
- * dispatcher's, which a test makes virtual. [changed] hears each new [ui]
- * as it's set.
+ * dispatcher's, which a test makes virtual. [changed] hears each new
+ * [PlayerUi] as it's set.
  */
 internal class PlayerUiRules(
     private val state: StateFlow<PlayerState>,
@@ -74,14 +74,13 @@ internal class PlayerUiRules(
     scope: CoroutineScope,
     clock: CoroutineContext,
     private val hideControlsAfter: Duration,
-    private val changed: (PlayerUi) -> Unit = {},
+    private val changed: (PlayerUi) -> Unit,
 ) {
     private val job = SupervisorJob(scope.coroutineContext[Job])
     private val scope = CoroutineScope(scope.coroutineContext + job)
     private val timers = CoroutineScope(scope.coroutineContext + job + clock)
 
-    private val mutableUi = MutableStateFlow(PlayerUi())
-    val ui: StateFlow<PlayerUi> = mutableUi.asStateFlow()
+    private var ui = PlayerUi()
 
     private val mutableEnd = MutableStateFlow<PlayerEnd?>(null)
 
@@ -156,7 +155,7 @@ internal class PlayerUiRules(
 
     /** Skip: playback goes to the marker's end, and the button stays away for that marker. */
     fun skipMarker() {
-        val marker = ui.value.skipMarker ?: return
+        val marker = ui.skipMarker ?: return
         autoplay.reset()
         skip.skip()
         seek(marker.endMs)
@@ -234,10 +233,10 @@ internal class PlayerUiRules(
             }
         }
 
-        val ui = PlayerUi(controlsShown = controls, skipMarker = marker, upNext = card)
-        if (ui != mutableUi.value) {
-            mutableUi.value = ui
-            changed(ui)
+        val now = PlayerUi(controlsShown = controls, skipMarker = marker, upNext = card)
+        if (now != ui) {
+            ui = now
+            changed(now)
         }
         mutableEnd.value = ending
         waitToHide(again = false)

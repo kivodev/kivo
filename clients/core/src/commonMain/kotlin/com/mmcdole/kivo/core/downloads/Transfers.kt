@@ -12,6 +12,7 @@ import com.mmcdole.kivo.core.downloads.Downloads.Companion.READY
 import com.mmcdole.kivo.core.downloads.Downloads.Companion.TRANSFERRING
 import com.mmcdole.kivo.core.downloads.Downloads.Companion.inOrder
 import com.mmcdole.kivo.core.downloads.db.DownloadsQueries
+import com.mmcdole.kivo.core.quietly
 import com.mmcdole.kivo.core.settings.DeviceSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job

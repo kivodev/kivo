@@ -25,7 +25,7 @@ class DomainValuesTest {
         for (sort in GridSort.entries) assertEquals(sort, GridSort.of(sort.value))
         for (state in WorkPlayState.entries) assertEquals(state, WorkPlayState.of(state.value))
         for (range in DynamicRange.entries) assertEquals(range, DynamicRange.of(range.value))
-        assertNull(GridSort.of("lastEpisodeAdded"), "the spelling before the rename isn't a sort: its migration renames it first")
+        assertNull(GridSort.of("lastEpisodeAdded"))
         assertNull(GridSort.of(null))
         assertNull(WorkPlayState.of("skipped"))
         assertNull(DynamicRange.of("hdr10000"))

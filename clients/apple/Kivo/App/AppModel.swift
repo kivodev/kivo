@@ -86,7 +86,6 @@ final class AppModel {
     func start() async {
         guard !started else { return }
         started = true
-        await takeAppSettings()
         await transport.prepare()
         core.start()
     }
@@ -98,15 +97,6 @@ final class AppModel {
         guard server?.session !== session else { return }
         server?.close()
         server = session.map { ServerModel(session: $0, app: self) }
-    }
-
-    /// Keeps the settings an earlier version kept in the core here, once.
-    private func takeAppSettings() async {
-        guard let taken = try? await device.takeAppSettings() else { return }
-        if let theme = taken["theme"].flatMap(Theme.init(rawValue:)) { self.theme = theme }
-        if let size = taken["subtitleSize"].flatMap(SubtitleSize.init(rawValue:)) { subtitleSize = size }
-        if let background = taken["subtitleBackground"].flatMap(SubtitleBackground.init(rawValue:)) { subtitleBackground = background }
-        if let on = taken["keepScreenOn"] { keepScreenOn = on == "true" }
     }
 
     /// The downloads' background refresh: starts the transfers of what the
