@@ -169,7 +169,14 @@ func (s *Service) refresh(ctx context.Context, work id.ID, fr Freshness) error {
 		meta   *catalog.WorkMetadata
 		photos []photoPlan
 		later  error // a book provider's outage, returned after the local data is written
+		enc    encoded
+		keep   bool // the refresh was written, so what it encoded stays
 	)
+	defer func() {
+		if !keep {
+			s.deleteEncoded(enc)
+		}
+	}()
 	switch w.Kind {
 	case catalog.KindBook:
 		b, err := s.describeBook(ctx, w, country, fr)
@@ -177,33 +184,27 @@ func (s *Service) refresh(ctx context.Context, work id.ID, fr Freshness) error {
 			return err
 		}
 		meta, l.cover, f, later = b.meta, b.cover, b.found, b.later
-		if photos, err = s.planPhotos(ctx, b.authors); err != nil {
+		if photos, err = s.planPhotos(ctx, b.authors, &enc); err != nil {
 			return err
 		}
 	default:
 		meta = merge(w, f, l.nfo, country)
 		if f != nil {
-			if photos, err = s.planCastPhotos(ctx, credited(w, meta, f.photos)); err != nil {
+			if photos, err = s.planCastPhotos(ctx, credited(w, meta, f.photos), &enc); err != nil {
 				return err
 			}
 		}
 	}
-	trailers, err := s.planTrailers(ctx, w, meta)
+	trailers, err := s.planTrailers(ctx, w, meta, &enc)
 	if err != nil {
-		s.deleteEncodedPhotos(photos)
 		return err
 	}
-	plan, err := s.planArtwork(ctx, w, f, l)
+	plan, err := s.planArtwork(ctx, w, f, l, &enc)
 	if err != nil {
-		s.deleteEncodedPhotos(photos)
-		s.deleteEncodedTrailers(trailers)
 		return err
 	}
-	coll, err := s.planCollectionArt(ctx, f)
+	coll, err := s.planCollectionArt(ctx, f, &enc)
 	if err != nil {
-		s.deleteEncoded(plan.add)
-		s.deleteEncodedPhotos(photos)
-		s.deleteEncodedTrailers(trailers)
 		return err
 	}
 
@@ -241,15 +242,12 @@ func (s *Service) refresh(ctx context.Context, work id.ID, fr Freshness) error {
 		return record(ctx, q, plan)
 	})
 	if err != nil {
-		err = fmt.Errorf("write the refresh: %w", err)
+		return fmt.Errorf("write the refresh: %w", err)
 	}
-	if err != nil || !wrote {
-		s.deleteEncoded(plan.add)
-		s.deleteEncoded(coll.add)
-		s.deleteEncodedPhotos(photos)
-		s.deleteEncodedTrailers(trailers)
-		return err
+	if !wrote {
+		return nil
 	}
+	keep = true
 	for _, r := range plan.remove {
 		s.deleteFiles(r.ID, r.Kind)
 	}

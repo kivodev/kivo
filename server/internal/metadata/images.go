@@ -294,10 +294,23 @@ func webpSize(b []byte) (w, h int, err error) {
 	return 0, 0, bad
 }
 
+// encoded lists the images a refresh has encoded into the cache, so a
+// refresh that fails can delete them all.
+type encoded []encodedImage
+
+type encodedImage struct {
+	id   id.ID
+	kind string
+}
+
+func (e *encoded) add(img id.ID, kind string) {
+	*e = append(*e, encodedImage{img, kind})
+}
+
 // deleteEncoded removes the files of encoded images that won't be recorded.
-func (s *Service) deleteEncoded(add []dbq.InsertImageParams) {
-	for _, p := range add {
-		s.deleteFiles(p.ID, p.Kind)
+func (s *Service) deleteEncoded(enc encoded) {
+	for _, e := range enc {
+		s.deleteFiles(e.id, e.kind)
 	}
 }
 

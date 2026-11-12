@@ -512,6 +512,69 @@ func TestRefreshInFlightAcrossUnmatch(t *testing.T) {
 	}
 }
 
+// A refresh whose write fails leaves none of the images it encoded in the
+// cache. One that is written keeps them all.
+func TestFailedRefreshWriteDeletesEncoded(t *testing.T) {
+	e := newEnv(t)
+	_, folder := e.b.Library(catalog.Movies)
+	w := e.movie(folder, "Dune (2021)/Dune (2021).mkv")
+	cached := func() []string {
+		var files []string
+		filepath.WalkDir(e.cache, func(p string, d fs.DirEntry, err error) error {
+			if err == nil && !d.IsDir() {
+				files = append(files, p)
+			}
+			return nil
+		})
+		return files
+	}
+
+	// The work's artwork is recorded last, after the photos and thumbnails.
+	e.exec(`CREATE TRIGGER refuse_artwork BEFORE INSERT ON image WHEN NEW.work_id IS NOT NULL
+		BEGIN SELECT RAISE(ABORT, 'refused'); END`)
+	if err := e.refresh(w); err == nil || !strings.Contains(err.Error(), "refused") {
+		t.Fatalf("refresh: %v, want the write refused", err)
+	}
+	if e.img.(*fakeImager).count() == 0 {
+		t.Fatal("nothing was encoded")
+	}
+	if files := cached(); len(files) != 0 {
+		t.Fatalf("a failed refresh left files behind: %v", files)
+	}
+
+	e.exec(`DROP TRIGGER refuse_artwork`)
+	e.mustRefresh(w)
+	rows, err := e.b.DB.Reader().Query(`SELECT id, kind FROM image`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	var want []string
+	kinds := map[string]bool{}
+	for rows.Next() {
+		var img id.ID
+		var kind string
+		if err := rows.Scan(&img, &kind); err != nil {
+			t.Fatal(err)
+		}
+		kinds[kind] = true
+		for _, width := range imageWidths[kind] {
+			want = append(want, e.s.path(img, width))
+		}
+	}
+	for _, kind := range []string{artworkPoster, personPhoto, artworkThumb} {
+		if !kinds[kind] {
+			t.Errorf("no %s recorded: %v", kind, kinds)
+		}
+	}
+	got := cached()
+	slices.Sort(got)
+	slices.Sort(want)
+	if !slices.Equal(got, want) {
+		t.Fatalf("cache %v, want the recorded images' files %v", got, want)
+	}
+}
+
 // A work merged or deleted before its refresh has nothing to do.
 func TestRefreshWorkGone(t *testing.T) {
 	e := newEnv(t)

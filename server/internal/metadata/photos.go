@@ -26,8 +26,8 @@ type photoPlan struct {
 // planPhotos encodes the authors' photos that changed, before the refresh's
 // transaction. A photo that can't be fetched or used is logged, and the
 // author keeps their current photo. Photos only add to a book, so a failure
-// isn't fatal.
-func (s *Service) planPhotos(ctx context.Context, authors []*Author) ([]photoPlan, error) {
+// isn't fatal. What it encodes is added to enc.
+func (s *Service) planPhotos(ctx context.Context, authors []*Author, enc *encoded) ([]photoPlan, error) {
 	var plans []photoPlan
 	for _, a := range authors {
 		p := photoPlan{person: catalog.ExternalID{Provider: s.books.Name(), Kind: kindAuthor, ID: a.ID}, describe: true}
@@ -37,7 +37,6 @@ func (s *Service) planPhotos(ctx context.Context, authors []*Author) ([]photoPla
 		cur, err := s.q.PersonPhoto(ctx, dbq.PersonPhotoParams{Provider: p.person.Provider, Kind: p.person.Kind, ExtID: p.person.ID})
 		have := err == nil
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			s.deleteEncodedPhotos(plans)
 			return nil, err
 		}
 		switch {
@@ -47,13 +46,13 @@ func (s *Service) planPhotos(ctx context.Context, authors []*Author) ([]photoPla
 		default:
 			img, err := s.encodeRemote(ctx, personPhoto, remoteImage{provider: s.books.Name(), url: *a.Image})
 			if ctx.Err() != nil {
-				s.deleteEncodedPhotos(plans)
 				return nil, ctx.Err()
 			}
 			if err != nil {
 				slog.WarnContext(ctx, "metadata: author photo skipped", "author", a.ID, "err", err)
 				break
 			}
+			enc.add(img.ID, personPhoto)
 			p.photo = &dbq.InsertPersonImageParams{
 				ID: img.ID, Kind: personPhoto, Source: sourceProvider, Origin: *a.Image,
 				Width: img.Width, Height: img.Height, Blurhash: img.Blurhash, FetchedAt: time.Now().UnixMilli(),
@@ -68,8 +67,9 @@ func (s *Service) planPhotos(ctx context.Context, authors []*Author) ([]photoPla
 // before the refresh's transaction. It covers each person who has no photo,
 // or whose photo from this provider changed. A photo from another provider,
 // such as an author's from Audnexus, is kept. A photo that can't be fetched
-// or used is logged and skipped, since photos only add to a page.
-func (s *Service) planCastPhotos(ctx context.Context, photos []remotePhoto) ([]photoPlan, error) {
+// or used is logged and skipped, since photos only add to a page. What it
+// encodes is added to enc.
+func (s *Service) planCastPhotos(ctx context.Context, photos []remotePhoto, enc *encoded) ([]photoPlan, error) {
 	var plans []photoPlan
 	for _, ph := range photos {
 		cur, err := s.q.PersonPhoto(ctx, dbq.PersonPhotoParams{Provider: ph.person.Provider, Kind: ph.person.Kind, ExtID: ph.person.ID})
@@ -79,18 +79,17 @@ func (s *Service) planCastPhotos(ctx context.Context, photos []remotePhoto) ([]p
 				continue
 			}
 		case !errors.Is(err, sql.ErrNoRows):
-			s.deleteEncodedPhotos(plans)
 			return nil, err
 		}
 		img, err := s.encodeRemote(ctx, personPhoto, ph.image)
 		if ctx.Err() != nil {
-			s.deleteEncodedPhotos(plans)
 			return nil, ctx.Err()
 		}
 		if err != nil {
 			slog.WarnContext(ctx, "metadata: person photo skipped", "provider", ph.person.Provider, "person", ph.person.ID, "err", err)
 			continue
 		}
+		enc.add(img.ID, personPhoto)
 		plans = append(plans, photoPlan{person: ph.person, photo: &dbq.InsertPersonImageParams{
 			ID: img.ID, Kind: personPhoto, Source: sourceProvider, Origin: ph.image.url,
 			Width: img.Width, Height: img.Height, Blurhash: img.Blurhash, FetchedAt: time.Now().UnixMilli(),
@@ -144,14 +143,4 @@ func (s *Service) recordPhotos(ctx context.Context, tx *store.Tx, plans []photoP
 		}
 	}
 	return nil
-}
-
-// deleteEncodedPhotos removes the files of encoded photos that won't be
-// recorded.
-func (s *Service) deleteEncodedPhotos(plans []photoPlan) {
-	for _, p := range plans {
-		if p.photo != nil {
-			s.deleteFiles(p.photo.ID, personPhoto)
-		}
-	}
 }

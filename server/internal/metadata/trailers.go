@@ -37,8 +37,8 @@ type trailerPlan struct {
 // trailer is shown without one. A trailer whose site has no thumbnail at any
 // size is dropped from m, since its video is gone. An outage of its site is
 // returned, as it is for artwork, so the refresh runs again once the site is
-// back.
-func (s *Service) planTrailers(ctx context.Context, w catalog.Work, m *catalog.WorkMetadata) ([]trailerPlan, error) {
+// back. What it encodes is added to enc.
+func (s *Service) planTrailers(ctx context.Context, w catalog.Work, m *catalog.WorkMetadata, enc *encoded) ([]trailerPlan, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -54,12 +54,10 @@ func (s *Service) planTrailers(ctx context.Context, w catalog.Work, m *catalog.W
 				continue
 			}
 		case !errors.Is(err, sql.ErrNoRows):
-			s.deleteEncodedTrailers(plans)
 			return nil, err
 		}
 		p, gone, err := s.fetchThumbnail(ctx, w, t, urls)
 		if err != nil {
-			s.deleteEncodedTrailers(plans)
 			return nil, err
 		}
 		if gone {
@@ -68,6 +66,7 @@ func (s *Service) planTrailers(ctx context.Context, w catalog.Work, m *catalog.W
 		kept = append(kept, t)
 		if p != nil {
 			plans = append(plans, *p)
+			enc.add(p.thumb.ID, artworkThumb)
 		}
 	}
 	m.Trailers = kept
@@ -139,12 +138,4 @@ func (s *Service) recordTrailers(ctx context.Context, tx *store.Tx, work id.ID, 
 		}
 	}
 	return nil
-}
-
-// deleteEncodedTrailers removes the files of encoded thumbnails that won't
-// be recorded.
-func (s *Service) deleteEncodedTrailers(plans []trailerPlan) {
-	for _, p := range plans {
-		s.deleteFiles(p.thumb.ID, artworkThumb)
-	}
 }

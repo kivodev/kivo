@@ -394,15 +394,9 @@ const maxTries = 3
 // planArtwork picks each kind's artwork and encodes what changed. It prefers
 // a local file, then the providers' images in order. An admin's choice is
 // never replaced. Encoding happens here, before the refresh's transaction,
-// because nothing does I/O inside a transaction. On error, whatever was
-// encoded is removed.
-func (s *Service) planArtwork(ctx context.Context, w catalog.Work, f *found, l local) (plan artworkPlan, err error) {
-	defer func() {
-		if err != nil {
-			s.deleteEncoded(plan.add)
-			plan = artworkPlan{}
-		}
-	}()
+// because nothing does I/O inside a transaction. What it encodes is added to
+// enc.
+func (s *Service) planArtwork(ctx context.Context, w catalog.Work, f *found, l local, enc *encoded) (plan artworkPlan, err error) {
 	rows, err := s.q.WorkImages(ctx, w.ID)
 	if err != nil {
 		return plan, err
@@ -417,6 +411,7 @@ func (s *Service) planArtwork(ctx context.Context, w catalog.Work, f *found, l l
 		replace := func(p dbq.InsertImageParams) {
 			p.WorkID, p.FetchedAt = w.ID, now.UnixMilli()
 			plan.add = append(plan.add, p)
+			enc.add(p.ID, p.Kind)
 			if have {
 				plan.remove = append(plan.remove, c)
 			}
@@ -536,17 +531,11 @@ type collectionPlan struct {
 // planCollectionArt picks artwork for the collection a movie's refresh puts
 // it in, from the provider's images of the collection. It works like
 // planArtwork does for a work, and encodes what changed before the refresh's
-// transaction. On error, whatever was encoded is removed.
-func (s *Service) planCollectionArt(ctx context.Context, f *found) (plan collectionPlan, err error) {
+// transaction. What it encodes is added to enc.
+func (s *Service) planCollectionArt(ctx context.Context, f *found, enc *encoded) (plan collectionPlan, err error) {
 	if f == nil || f.meta.Collection == nil {
 		return plan, nil
 	}
-	defer func() {
-		if err != nil {
-			s.deleteEncoded(plan.add)
-			plan = collectionPlan{}
-		}
-	}()
 	plan.key = f.meta.Collection.Key
 	rows, err := s.q.CollectionImages(ctx, plan.key)
 	if err != nil {
@@ -566,6 +555,7 @@ func (s *Service) planCollectionArt(ctx context.Context, f *found) (plan collect
 		case p != nil:
 			p.FetchedAt = now
 			plan.add = append(plan.add, *p)
+			enc.add(p.ID, p.Kind)
 		case gone:
 			plan.drop = append(plan.drop, kind)
 		}
