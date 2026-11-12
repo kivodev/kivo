@@ -80,7 +80,7 @@ struct PlayableDetail: View {
                 }
             }
             if let read = page.work {
-                CardRow(title: String(localized: "More like this"), works: read.similar)
+                CardRow(title: String(localized: "More like this"), works: read.similar ?? [])
                 TrailersRow(work: read)
                 CastRow(credits: read.credits)
                 CardRow(title: String(localized: "Extras"), works: read.otherExtras())

@@ -257,7 +257,7 @@ func workDetail(d query.WorkDetail, tracks playback.Preferred, marks map[id.ID][
 		OriginalTitle: opt(d.OriginalTitle), SortTitle: opt(d.Summary.SortTitle), Overview: opt(d.Overview),
 		Genres: nonNil(d.Genres), Studios: nonNil(d.Companies),
 		Credits: []gen.Credit{}, ExternalIds: []gen.ExternalID{}, Versions: []gen.Version{},
-		Extras: summaries(d.Extras), Collections: each(d.Collections, collectionSummary), Similar: summaries(d.Similar),
+		Extras: summaries(d.Extras), Collections: each(d.Collections, collectionSummary),
 		ListIds: ptr(nonNil(d.ListIDs)),
 	}
 	// A season or episode without its own content rating takes its series'
@@ -295,6 +295,10 @@ func workDetail(d query.WorkDetail, tracks playback.Preferred, marks map[id.ID][
 		out.Episode.PreviousID, out.Episode.NextID = opt(d.PreviousEpisode), opt(d.NextEpisode)
 	}
 	setTrailers(&out, d.Trailers)
+	if len(d.Similar) > 0 {
+		similar := summaries(d.Similar)
+		out.Similar = &similar
+	}
 	if b := d.Book; b != nil && out.Book != nil {
 		out.Book.Subtitle, out.Book.Publisher, out.Book.Language = opt(b.Subtitle), opt(b.Publisher), opt(b.Language)
 		out.Book.ReleaseDate = opt(b.ReleaseDate)

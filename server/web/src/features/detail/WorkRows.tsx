@@ -25,7 +25,7 @@ export function WorkRows({ work }: { work: WorkDetail }) {
 }
 
 /** The titles like this one, best first. A page with none has no row. */
-export function SimilarRow({ similar }: { similar: readonly WorkSummary[] }) {
+export function SimilarRow({ similar = [] }: { similar?: readonly WorkSummary[] }) {
   const { t } = useLingui();
   if (similar.length === 0) return null;
   return (

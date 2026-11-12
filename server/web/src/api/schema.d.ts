@@ -4232,10 +4232,10 @@ export interface components {
             /**
              * @description Titles like a movie, series or book, of its own kind, best
              *     first: up to 20 the user sees and hasn't played, leaving out
-             *     the other members of its collections and book series. Empty
-             *     for other kinds and when nothing is alike enough.
+             *     the other members of its collections and book series.
+             *     Absent for other kinds and when nothing is alike enough.
              */
-            similar: components["schemas"]["WorkSummary"][];
+            similar?: components["schemas"]["WorkSummary"][];
             /** @description The user's lists holding the work; the server always sends it. */
             listIds?: components["schemas"]["ID"][];
             /** @description Admins only. Fields an admin edited, shown with a lock icon. */

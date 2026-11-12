@@ -673,9 +673,10 @@ private fun PickerChip(label: String, value: String, hero: HeroLevels, key: Stri
 private fun LazyListScope.extraRows(work: WorkDetail, memory: FocusMemory, navigator: Navigator, firstTop: Dp = RowGap) {
     var top = firstTop
     fun nextTop() = top.also { top = RowGap }
-    if (work.similar.isNotEmpty()) {
+    val similar = work.similar.orEmpty()
+    if (similar.isNotEmpty()) {
         extraRow(R.string.more_like_this, nextTop()) {
-            items(work.similar, key = { it.id }) { w ->
+            items(similar, key = { it.id }) { w ->
                 WorkCard(w, CardShape.Poster, PosterWidth, { navigator.push(Screen.Work(w.id)) }, Modifier.focusKey(memory, "row/${w.id}"))
             }
         }

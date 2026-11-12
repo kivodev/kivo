@@ -342,7 +342,6 @@ GET /api/v1/works/<id1>
   "listIds": [],
   "lockedFields": [],
   "remembersTracks": false,
-  "similar": [],
   "sortTitle": "Heatwave Seeded",
   "studios": [],
   "versions": [
@@ -476,7 +475,6 @@ PATCH /api/v1/works/<id1>
   ],
   "overview": "A heist.",
   "remembersTracks": false,
-  "similar": [],
   "sortTitle": "Heat",
   "studios": [],
   "versions": [
@@ -575,7 +573,6 @@ PATCH /api/v1/works/<id1>
   ],
   "overview": "A heist.",
   "remembersTracks": false,
-  "similar": [],
   "sortTitle": "Heat",
   "studios": [],
   "versions": [
@@ -691,7 +688,6 @@ PATCH /api/v1/works/<id1>
   ],
   "overview": "A heist.",
   "remembersTracks": false,
-  "similar": [],
   "sortTitle": "Heat",
   "studios": [],
   "versions": [
@@ -793,7 +789,6 @@ PATCH /api/v1/works/<id1>
   ],
   "overview": "A heist.",
   "remembersTracks": false,
-  "similar": [],
   "sortTitle": "Heat",
   "studios": [
     "Warner"
@@ -981,7 +976,6 @@ PATCH /api/v1/works/<id8>
   "lockedFields": [
     "title"
   ],
-  "similar": [],
   "sortTitle": "Seeded Series",
   "studios": [],
   "versions": []
@@ -1020,7 +1014,6 @@ PATCH /api/v1/works/<id19>
     "episode.airDate"
   ],
   "remembersTracks": true,
-  "similar": [],
   "sortTitle": "Episode 1",
   "studios": [],
   "versions": [
@@ -1122,7 +1115,6 @@ PATCH /api/v1/works/<id5>
     "book.subtitle"
   ],
   "remembersTracks": false,
-  "similar": [],
   "sortTitle": "Leviathan Wakes",
   "studios": [
     "Orbit"
@@ -1224,7 +1216,6 @@ PATCH /api/v1/works/<id5>
     "book.subtitle"
   ],
   "remembersTracks": false,
-  "similar": [],
   "sortTitle": "Leviathan Wakes",
   "studios": [],
   "versions": [
@@ -1568,7 +1559,6 @@ POST /api/v1/works/<id5>/match
     "genres"
   ],
   "remembersTracks": false,
-  "similar": [],
   "sortTitle": "Leviathan Wakes",
   "studios": [],
   "versions": [

@@ -174,7 +174,6 @@ export function emptyWork(id: string, kind: WorkKind, title: string): WorkDetail
     versions: [],
     extras: [],
     collections: [],
-    similar: [],
   };
 }
 

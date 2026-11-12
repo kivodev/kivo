@@ -57,7 +57,6 @@ import kotlinx.serialization.encoding.*
  * @param versions Playable versions in libraries the user can see. A version with a missing file isn't listed, and is again if the file returns within 30 days. Untagged versions come first, then each edition by label, ignoring case; within an edition, the taller picture comes first, then the larger size. A play that names no version plays the one the user last played (`UserState.versionId`) while it's listed here, else the first. Empty for series and seasons. 
  * @param extras Extras, as summaries of kind `extra`.
  * @param collections Collections this work is in.
- * @param similar Titles like a movie, series or book, of its own kind, best first: up to 20 the user sees and hasn't played, leaving out the other members of its collections and book series. Empty for other kinds and when nothing is alike enough. 
  * @param year 
  * @param durationMs The default version's duration.
  * @param communityRating TMDb's community rating of a movie, series or episode: the average of its users' votes, 0 to 10. Absent when it has no votes. 
@@ -77,6 +76,7 @@ import kotlinx.serialization.encoding.*
  * @param sortTitle 
  * @param overview 
  * @param remembersTracks With versions: whether choosing tracks for this work remembers them for its series, as for an episode when the user's `rememberTracks` is on (`PlaybackPreferences`). 
+ * @param similar Titles like a movie, series or book, of its own kind, best first: up to 20 the user sees and hasn't played, leaving out the other members of its collections and book series. Absent for other kinds and when nothing is alike enough. 
  * @param listIds The user's lists holding the work; the server always sends it.
  * @param lockedFields Admins only. Fields an admin edited, shown with a lock icon.
  */
@@ -114,9 +114,6 @@ data class WorkDetail (
 
     /* Collections this work is in. */
     @SerialName(value = "collections") @Required val collections: kotlin.collections.List<CollectionSummary>,
-
-    /* Titles like a movie, series or book, of its own kind, best first: up to 20 the user sees and hasn't played, leaving out the other members of its collections and book series. Empty for other kinds and when nothing is alike enough.  */
-    @SerialName(value = "similar") @Required val similar: kotlin.collections.List<WorkSummary>,
 
     @SerialName(value = "year") val year: kotlin.Int? = null,
 
@@ -162,6 +159,9 @@ data class WorkDetail (
 
     /* With versions: whether choosing tracks for this work remembers them for its series, as for an episode when the user's `rememberTracks` is on (`PlaybackPreferences`).  */
     @SerialName(value = "remembersTracks") val remembersTracks: kotlin.Boolean? = null,
+
+    /* Titles like a movie, series or book, of its own kind, best first: up to 20 the user sees and hasn't played, leaving out the other members of its collections and book series. Absent for other kinds and when nothing is alike enough.  */
+    @SerialName(value = "similar") val similar: kotlin.collections.List<WorkSummary>? = null,
 
     /* The user's lists holding the work; the server always sends it. */
     @SerialName(value = "listIds") val listIds: kotlin.collections.List<kotlin.String>? = null,

@@ -5880,7 +5880,7 @@ components:
       allOf:
         - {$ref: "#/components/schemas/WorkSummary"}
         - type: object
-          required: [genres, studios, credits, externalIds, versions, extras, collections, similar]
+          required: [genres, studios, credits, externalIds, versions, extras, collections]
           properties:
             originalTitle: {type: string}
             sortTitle: {type: string}
@@ -5928,8 +5928,8 @@ components:
               description: |
                 Titles like a movie, series or book, of its own kind, best
                 first: up to 20 the user sees and hasn't played, leaving out
-                the other members of its collections and book series. Empty
-                for other kinds and when nothing is alike enough.
+                the other members of its collections and book series.
+                Absent for other kinds and when nothing is alike enough.
               items: {$ref: "#/components/schemas/WorkSummary"}
             listIds:
               type: array

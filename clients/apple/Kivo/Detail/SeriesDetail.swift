@@ -112,7 +112,7 @@ struct SeriesDetail: View {
                 EpisodeRowSkeletons(count: (season ?? page.episodesOf.flatMap { server.session.library.known(id: $0) })?.season?.episodeCount?.intValue)
             }
             if let read = page.work {
-                CardRow(title: String(localized: "More like this"), works: read.similar)
+                CardRow(title: String(localized: "More like this"), works: read.similar ?? [])
                 TrailersRow(work: read)
                 CastRow(credits: read.credits)
                 CardRow(title: String(localized: "Extras"), works: read.otherExtras())
