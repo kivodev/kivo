@@ -6,6 +6,7 @@ import Network
 extension KivoClient {
     /// A client as the app makes one, in a new temporary directory, whose
     /// downloads never transfer.
+    @MainActor
     static func forTests(name: String = "Test", subtitles: [SubtitleEntry] = [], trackSelection: Bool = false) throws -> KivoClient {
         let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
