@@ -239,6 +239,17 @@ class VideoPlayerTest {
     }
 
     @Test
+    fun aDownloadedLastEpisodeGoesBackWhereItWasPlayedFrom() = runTest {
+        val p = Players(this, withDownloads = true, works = listOf(first, last))
+        p.downloaded("d2", last)
+        val engine = FakeEngine()
+        val player = p.session().playback.videoPlayer(engine, PlayChoice("e2"), hideControlsAfterMs = 3_000, downloadId = "d2").playing(engine)
+
+        assertEquals(PlayerExit.Back, player.end(engine), "not its series' page, even with the server there")
+        player.dispose()
+    }
+
+    @Test
     fun offlineTheNextEpisodeIsOnlyOneDownloaded() = runTest {
         val p = Players(this, withDownloads = true, works = listOf(first, last))
         p.downloaded("d1", first)
@@ -248,7 +259,7 @@ class VideoPlayerTest {
         val alone = session.playback.videoPlayer(engine, PlayChoice("e1"), hideControlsAfterMs = 3_000, downloadId = "d1").playing(engine)
 
         assertNull(alone.screen.value.next, "its next isn't downloaded, and the server doesn't answer")
-        assertEquals(PlayerExit.Series("s1"), alone.end(engine), "so it ends as the last one does")
+        assertEquals(PlayerExit.Back, alone.end(engine), "so it ends as the last one does: back, as its series needs the server")
         alone.dispose()
 
         p.downloaded("d2", last)

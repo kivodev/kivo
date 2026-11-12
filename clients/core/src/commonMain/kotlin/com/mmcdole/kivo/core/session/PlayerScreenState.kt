@@ -37,9 +37,9 @@ sealed interface PlayerExit {
     /** The next episode, from its download [downloadId] when one is ready here. */
     data class Next(val choice: PlayChoice, val downloadId: String?) : PlayerExit
 
-    /** The last episode ended: its series' page. */
+    /** The last episode ended, played from the server: its series' page. */
     data class Series(val seriesId: String) : PlayerExit
 
-    /** Anything else ended, or a download couldn't play: back where playback started. */
+    /** Anything else ended, a download among them, or a download couldn't play: back where playback started. */
     data object Back : PlayerExit
 }
