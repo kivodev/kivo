@@ -1,9 +1,8 @@
 package com.mmcdole.kivo.core.settings
 
-import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.mmcdole.kivo.api.models.ClientPlatform
 import com.mmcdole.kivo.api.models.QualityRequest
 import com.mmcdole.kivo.core.caps.AudioSettings
@@ -13,7 +12,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 
 class DeviceSettingsStoreTest {
     @Test
@@ -33,19 +31,6 @@ class DeviceSettingsStoreTest {
 
         settings.update { it.copy(audio = it.audio.copy(maxChannels = null)) }
         assertEquals(null, settings.values.first().audio.maxChannels)
-    }
-
-    // Migration (api-naming): remove after every client has updated past this release.
-    @Test
-    fun anEarlierVersionsHomeQualityReadsAsTheLocalQualityUntilTheNextSave() = runTest {
-        val store = backgroundScope.tempDataStore()
-        val settings = DeviceSettingsStore(store)
-        val earlier = stringPreferencesKey("kivo.quality.home")
-        store.edit { it[earlier] = "8000000" }
-        assertEquals(Quality.Limit(8_000_000), settings.values.first().localQuality)
-        settings.update { it.copy(dialogueBoost = true) }
-        assertNull(store.data.first()[earlier])
-        assertEquals("8000000", store.data.first()[stringPreferencesKey("kivo.quality.local")])
     }
 
     @Test
@@ -93,49 +78,15 @@ class DeviceSettingsStoreTest {
     }
 
     @Test
-    fun anEarlierVersionsRemoveWhenFinishedIsIgnoredAndGoesAtTheNextSave() = runTest {
+    fun aValueItDoesntKnowReadsAsTheDefault() = runTest {
         val store = backgroundScope.tempDataStore()
-        val settings = DeviceSettingsStore(store)
-        val retired = booleanPreferencesKey("kivo.download.removeWhenFinished")
-        store.edit { it[retired] = false }
-        assertEquals(DeviceSettings(), settings.values.first())
-
-        settings.update { it.copy(cellularDownloads = true) }
-        assertEquals(DeviceSettings(cellularDownloads = true), settings.values.first())
-        assertNull(store.data.first()[retired])
-    }
-
-    @Test
-    fun anEarlierVersionsPassthroughOnIsAutoAndItsFormatsGoAtTheNextSave() = runTest {
-        val store = backgroundScope.tempDataStore()
-        val settings = DeviceSettingsStore(store)
-        val formatsOff = stringSetPreferencesKey("kivo.audio.passthroughOff")
-        for ((stored, mode) in listOf("On" to PassthroughMode.Auto, "Auto" to PassthroughMode.Auto, "Off" to PassthroughMode.Off)) {
-            store.edit {
-                it[stringPreferencesKey("kivo.audio.passthrough")] = stored
-                it[formatsOff] = setOf("TrueHd")
-            }
-            assertEquals(mode, settings.values.first().audio.passthrough, stored)
-        }
-        settings.update { it.copy(dialogueBoost = true) }
-        assertNull(store.data.first()[formatsOff])
-    }
-
-    @Test
-    fun theAppsOwnSettingsAreLeftForTheAppAndTakenOnce() = runTest {
-        val store = backgroundScope.tempDataStore()
-        val frameRate = booleanPreferencesKey("kivo.frameRateMatching")
         store.edit {
-            it[stringPreferencesKey("kivo.theme")] = "Light"
-            it[stringPreferencesKey("kivo.subtitleSize")] = "Large"
-            it[booleanPreferencesKey("kivo.download.keepScreenOn")] = false
-            it[frameRate] = false
+            it[stringPreferencesKey("kivo.quality.local")] = "bogus"
+            it[stringPreferencesKey("kivo.audio.passthrough")] = "On"
+            it[intPreferencesKey("kivo.audio.maxChannels")] = 4
+            it[stringPreferencesKey("kivo.quality.home")] = "8000000"
         }
-        DeviceSettingsStore(store).update { it.copy(dialogueBoost = true) }
-
-        assertEquals(mapOf("theme" to "Light", "subtitleSize" to "Large", "keepScreenOn" to "false"), takeEarlierAppSettings(store))
-        assertEquals(emptyMap(), takeEarlierAppSettings(store))
-        assertEquals(false, store.data.first()[frameRate], "the Android app's own, in the same store")
+        assertEquals(DeviceSettings(), DeviceSettingsStore(store).values.first())
     }
 
     @Test

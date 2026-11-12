@@ -8,6 +8,7 @@ import com.mmcdole.kivo.api.models.Resolution
 import com.mmcdole.kivo.core.kivoJson
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -30,8 +31,6 @@ internal data class SavedGrid(
 internal class SavedGrids(
     private val store: DataStore<Preferences>,
     private val scope: CoroutineScope,
-    // Migration (grid-choice): remove after every client has updated past this release.
-    private val earlier: EarlierGridDefaults = platformGridDefaults,
 ) {
     private val grids = HashMap<String, SavedGrid>()
     private var loaded = false
@@ -43,9 +42,7 @@ internal class SavedGrids(
     suspend fun load() {
         if (loaded) return
         try {
-            // Migration (grid-choice): remove after every client has updated past this release.
-            val preferences = moveEarlierGrids(store, earlier)
-            for ((key, value) in preferences.asMap()) {
+            for ((key, value) in store.data.first().asMap()) {
                 val libraryId = key.name.takeIf { it.startsWith(PREFIX) }?.removePrefix(PREFIX) ?: continue
                 grids[libraryId] = decode(value as? String ?: continue) ?: continue
             }

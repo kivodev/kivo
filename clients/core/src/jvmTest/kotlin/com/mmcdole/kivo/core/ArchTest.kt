@@ -36,7 +36,7 @@ class ArchTest {
             "", "auth", "books", "caps", "cast", "data", "discovery", "display", "downloads", "live", "play", "player",
             "settings",
         ),
-        "apple" to setOf("auth", "caps", "downloads", "session", "settings"),
+        "apple" to setOf("auth", "caps", "downloads", "session"),
     )
 
     /**

@@ -1,12 +1,12 @@
 package com.mmcdole.kivo.core.auth
 
 import com.mmcdole.kivo.api.models.ServerInfo
+import com.mmcdole.kivo.core.quietly
 import io.ktor.http.URLBuilder
 import io.ktor.http.URLProtocol
 import io.ktor.http.Url
 import io.ktor.http.encodedPath
 import io.ktor.http.isSecure
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.channels.Channel
@@ -359,14 +359,6 @@ internal suspend fun pickAddress(
     this.coroutineContext.cancelChildren()
     val best = answered.filter { isLocal(it.first) }.ifEmpty { answered }
     best.firstOrNull { it.first == prefer } ?: best.firstOrNull()
-}
-
-private suspend fun <T> quietly(block: suspend () -> T): T? = try {
-    block()
-} catch (e: CancellationException) {
-    throw e
-} catch (_: Exception) {
-    null
 }
 
 /**

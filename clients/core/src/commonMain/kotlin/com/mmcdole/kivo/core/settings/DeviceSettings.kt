@@ -7,7 +7,6 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.mmcdole.kivo.api.models.ClientPlatform
 import com.mmcdole.kivo.api.models.QualityRung
 import com.mmcdole.kivo.core.caps.AudioSettings
@@ -94,10 +93,9 @@ internal class DeviceSettingsStore(
     }
 
     private fun Preferences.read() = DeviceSettings(
-        localQuality = Quality.of(this[Keys.localQuality] ?: Legacy.localQuality(this)),
+        localQuality = Quality.of(this[Keys.localQuality]),
         remoteQuality = Quality.of(this[Keys.remoteQuality]),
         audio = AudioSettings(
-            // An earlier version's On reads as Auto.
             passthrough = enumOf(this[Keys.passthrough], PassthroughMode.Auto),
             maxChannels = this[Keys.maxAudioChannels]?.takeIf { it in listOf(2, 6, 8) },
         ),
@@ -114,9 +112,6 @@ internal class DeviceSettingsStore(
         set(Keys.dialogueBoost, values.dialogueBoost)
         set(Keys.downloadQuality, values.downloadQuality.value)
         set(Keys.cellularDownloads, values.cellularDownloads)
-        remove(Keys.removeWhenFinished)
-        remove(Keys.passthroughOff)
-        Legacy.remove(this)
     }
 
     private object Keys {
@@ -127,24 +122,6 @@ internal class DeviceSettingsStore(
         val dialogueBoost = booleanPreferencesKey("kivo.audio.dialogueBoost")
         val downloadQuality = stringPreferencesKey("kivo.download.quality")
         val cellularDownloads = booleanPreferencesKey("kivo.download.cellular")
-        // Settings no longer kept: an earlier version's value goes at the next save.
-        val removeWhenFinished = booleanPreferencesKey("kivo.download.removeWhenFinished")
-        val passthroughOff = stringSetPreferencesKey("kivo.audio.passthroughOff")
-    }
-
-    // Migration (api-naming): remove after every client has updated past this release.
-    /** The local quality as an earlier version stored it, read until the next save writes it anew. */
-    private object Legacy {
-        // Migration (api-naming): remove after every client has updated past this release.
-        private val localQuality = stringPreferencesKey("kivo.quality.home")
-
-        // Migration (api-naming): remove after every client has updated past this release.
-        fun localQuality(prefs: Preferences): String? = prefs[localQuality]
-
-        // Migration (api-naming): remove after every client has updated past this release.
-        fun remove(prefs: MutablePreferences) {
-            prefs.remove(localQuality)
-        }
     }
 }
 

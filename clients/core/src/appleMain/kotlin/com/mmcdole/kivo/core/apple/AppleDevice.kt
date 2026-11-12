@@ -17,7 +17,6 @@ import com.mmcdole.kivo.core.downloads.DownloadTransport
 import com.mmcdole.kivo.core.downloads.db.DownloadDatabase
 import com.mmcdole.kivo.core.session.Device
 import com.mmcdole.kivo.core.session.DownloadDevice
-import com.mmcdole.kivo.core.settings.takeEarlierAppSettings
 import okio.Path.Companion.toPath
 
 /**
@@ -52,15 +51,6 @@ class AppleDevice(
     override val secureStore: SecureStore = KeychainSecureStore()
 
     override val capabilities: CapabilityProbe = AppleCapabilityProbe(subtitles, trackSelection)
-
-    /**
-     * The settings an earlier version kept in [preferences] for the app's
-     * own screens, which the app keeps itself now: `theme`, `subtitleSize`,
-     * `subtitleBackground` and `keepScreenOn`, those set, as text. They're
-     * removed as they're taken, so the app takes them once.
-     */
-    @Throws(Exception::class)
-    suspend fun takeAppSettings(): Map<String, String> = takeEarlierAppSettings(preferences)
 
     override val downloads = DownloadDevice(
         NativeSqliteDriver(DownloadDatabase.Schema, "downloads.db", onConfiguration = {

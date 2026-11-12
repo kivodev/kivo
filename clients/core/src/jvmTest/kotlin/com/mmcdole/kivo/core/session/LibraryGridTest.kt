@@ -1,6 +1,5 @@
 package com.mmcdole.kivo.core.session
 
-import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.mmcdole.kivo.api.models.CollectionSummaryPage
 import com.mmcdole.kivo.api.models.Library
@@ -15,10 +14,7 @@ import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.api.models.WorkQueryRequest
 import com.mmcdole.kivo.api.models.WorkSummary
 import com.mmcdole.kivo.api.models.WorkSummaryPage
-import com.mmcdole.kivo.core.MemoryPreferences
 import com.mmcdole.kivo.core.data.DynamicRange
-import com.mmcdole.kivo.core.data.EarlierGridDefault
-import com.mmcdole.kivo.core.data.EarlierGridDefaults
 import com.mmcdole.kivo.core.data.FilterGroup
 import com.mmcdole.kivo.core.data.FilterGroupKind
 import com.mmcdole.kivo.core.data.GridFilter
@@ -28,8 +24,6 @@ import com.mmcdole.kivo.core.data.LibraryTab
 import com.mmcdole.kivo.core.data.SavedGrid
 import com.mmcdole.kivo.core.data.SavedGrids
 import com.mmcdole.kivo.core.data.WorkPlayState
-import com.mmcdole.kivo.core.data.earlierAndroidGrid
-import com.mmcdole.kivo.core.data.earlierAppleGrid
 import com.mmcdole.kivo.core.json
 import com.mmcdole.kivo.core.kivoJson
 import io.ktor.http.content.OutgoingContent
@@ -52,8 +46,7 @@ import kotlin.test.assertTrue
 
 // A library's grid as its screen gets it from SessionLibrary.libraryGrid:
 // what a library of each kind offers, the rules of choosing, what's kept on
-// the device and what an earlier app kept, against a server answered by
-// Ktor's mock engine.
+// the device, against a server answered by Ktor's mock engine.
 
 private val movies = Library("movies", "Movies", true, LibraryKind.Movies, 3)
 private val shows = Library("shows", "Shows", true, LibraryKind.Shows, 3)
@@ -544,124 +537,5 @@ class LibraryGridTest {
         val whole = SavedGrid(LibraryTab.BookSeries, GridSort.Author, filters(unplayed, nineties, action, GridFilter.ContentRating("PG-13"), fourK, hdr, ray), collections = false)
         assertEquals(whole, SavedGrids.decode(SavedGrids.encode(whole)))
         assertEquals(SavedGrid(), SavedGrids.decode(SavedGrids.encode(SavedGrid())))
-    }
-
-    // Migration (grid-choice): remove after every client has updated past this release.
-    @Test
-    fun aGridAnEarlierAndroidAppSavedOpensAsItWasLeft() = runTest {
-        val grids = Grids(this)
-        val earlier = "section=collections&sort=rating&played=unplayed&decade=1990&genre=Action+%26+Adventure,Sci-Fi%2C+Fantasy" +
-            "&contentRating=PG-13&resolution=4k,1080p&dynamicRange=hdr,dolbyVision"
-        grids.h.device.preferences.edit {
-            it[stringPreferencesKey("grid.movies")] = earlier
-            it[stringPreferencesKey("grid.books")] = "sort=author&genre=Fantasy&narrator=p1"
-            it[stringPreferencesKey("grid.shows")] = ""
-        }
-
-        val session = grids.session()
-
-        val reopened = session.library.libraryGrid("movies").state.value
-        assertEquals(LibraryTab.Collections, reopened.tab)
-        assertEquals(GridSort.Rating, reopened.sort)
-        assertEquals(
-            filters(
-                unplayed, nineties, GridFilter.Genre("Action & Adventure"), GridFilter.Genre("Sci-Fi, Fantasy"), GridFilter.ContentRating("PG-13"),
-                fourK, GridFilter.Resolution(Resolution.P1080), hdr, GridFilter.DynamicRange(DynamicRange.DolbyVision),
-            ),
-            reopened.filters,
-        )
-        val inBooks = session.library.libraryGrid("books").state.value
-        assertEquals(GridSort.Author, inBooks.sort)
-        assertEquals(filters(GridFilter.Genre("Fantasy"), GridFilter.Narrator("p1", null)), inBooks.filters)
-        assertEquals(SavedGrid(), SavedGrids.decode(grids.kept("shows")!!))
-
-        val preferences = grids.h.device.preferences.data.first()
-        assertEquals(emptyList(), preferences.asMap().keys.map { it.name }.filter { it.startsWith("grid.") }, "moved, not copied")
-        assertEquals(reopened.filters, grids.session().library.libraryGrid("movies").state.value.filters, "and there the next time")
-    }
-
-    // Migration (grid-choice): remove after every client has updated past this release.
-    @Test
-    fun anEarlierAndroidGridKeepsWhatThisVersionKnowsOfIt() {
-        assertEquals(SavedGrid(), earlierAndroidGrid(""))
-        assertEquals(
-            SavedGrid(filters = filters(unplayed, GridFilter.Resolution(Resolution.Sd))),
-            earlierAndroidGrid("kind=collection&section=bogus&sort=bogus&played=unplayed&resolution=8k,sd&dynamicRange=hdr10plus&view=list"),
-        )
-        // Migration (api-naming): remove after every client has updated past this release.
-        assertEquals(SavedGrid(sort = GridSort.LastEpisodeAddedAt, filters = filters(hdr)), earlierAndroidGrid("sort=lastEpisodeAdded&hdr=hdr"))
-    }
-
-    // Migration (grid-choice): remove after every client has updated past this release.
-    @Test
-    fun aGridAnEarlierAppleAppKeptOpensAsItWasLeft() = runTest {
-        val store = MemoryPreferences()
-        var forgotten = 0
-        val defaults = mapOf(
-            "movies" to EarlierGridDefault(
-                mapOf(
-                    "tab" to "collections", "sort" to "rating", "played" to "unplayed", "decade" to "1990",
-                    "genres" to "Action & Adventure\nSci-Fi, Fantasy", "contentRatings" to "PG-13", "resolutions" to "1080p,4k",
-                    "dynamicRanges" to "dolbyVision,hdr",
-                ),
-                collections = true,
-            ),
-            "books" to EarlierGridDefault(
-                mapOf(
-                    "tab" to "bookSeries", "sort" to "author", "genres" to "", "contentRatings" to "", "resolutions" to "", "dynamicRanges" to "",
-                    "narrator" to "p1", "narratorName" to "Ray Porter",
-                ),
-                collections = null,
-            ),
-            "videos" to EarlierGridDefault(emptyMap(), collections = false),
-            "shows" to EarlierGridDefault(mapOf("sort" to "addedAt"), collections = null),
-        )
-        store.edit { it[SavedGrids.key("shows")] = SavedGrids.encode(SavedGrid(sort = GridSort.Runtime)) }
-        val saved = SavedGrids(store, backgroundScope, EarlierGridDefaults({ defaults }, { forgotten++ }))
-
-        saved.load()
-
-        assertEquals(
-            SavedGrid(
-                LibraryTab.Collections,
-                GridSort.Rating,
-                filters(
-                    unplayed, nineties, GridFilter.Genre("Action & Adventure"), GridFilter.Genre("Sci-Fi, Fantasy"), GridFilter.ContentRating("PG-13"),
-                    fourK, GridFilter.Resolution(Resolution.P1080), hdr, GridFilter.DynamicRange(DynamicRange.DolbyVision),
-                ),
-                collections = true,
-            ),
-            saved.of("movies"),
-        )
-        assertEquals(SavedGrid(LibraryTab.BookSeries, GridSort.Author, filters(ray)), saved.of("books"))
-        assertEquals(SavedGrid(collections = false), saved.of("videos"), "whether it has collections, known before it was ever changed")
-        assertEquals(SavedGrid(sort = GridSort.Runtime), saved.of("shows"), "a library saved since keeps what it has")
-        assertEquals(1, forgotten)
-        assertEquals(saved.of("movies"), SavedGrids.decode(store.data.first()[SavedGrids.key("movies")]!!), "kept where this version keeps it")
-
-        val next = SavedGrids(store, backgroundScope, EarlierGridDefaults({ emptyMap() }, { forgotten++ }))
-        next.load()
-        assertEquals(saved.of("movies"), next.of("movies"))
-        assertEquals(1, forgotten, "nothing to forget once moved")
-    }
-
-    // Migration (grid-choice): remove after every client has updated past this release.
-    @Test
-    fun anEarlierAppleGridKeepsWhatThisVersionKnowsOfIt() {
-        assertEquals(SavedGrid(), earlierAppleGrid(EarlierGridDefault(emptyMap(), null)))
-        assertEquals(
-            SavedGrid(filters = filters(GridFilter.Narrator("p1", null))),
-            earlierAppleGrid(EarlierGridDefault(mapOf("tab" to "shelves", "sort" to "bogus", "played" to "maybe", "resolutions" to "8k", "narrator" to "p1", "narratorName" to ""), null)),
-        )
-        // Migration (api-naming): remove after every client has updated past this release.
-        assertEquals(
-            SavedGrid(sort = GridSort.LastEpisodeAddedAt, filters = filters(hdr)),
-            earlierAppleGrid(EarlierGridDefault(mapOf("sort" to "lastEpisodeAdded", "hdr" to "hdr"), null)),
-        )
-        assertEquals(
-            SavedGrid(filters = filters(GridFilter.DynamicRange(DynamicRange.DolbyVision))),
-            earlierAppleGrid(EarlierGridDefault(mapOf("hdr" to "hdr", "dynamicRanges" to "dolbyVision"), null)),
-            "the name it has now wins",
-        )
     }
 }

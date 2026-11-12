@@ -19,9 +19,9 @@ import com.mmcdole.kivo.core.auth.imagePath
 import com.mmcdole.kivo.core.downloads.db.DownloadDatabase
 import com.mmcdole.kivo.core.kivoJson
 import com.mmcdole.kivo.core.live.Invalidation
+import com.mmcdole.kivo.core.quietly
 import com.mmcdole.kivo.core.settings.DeviceSettings
 import com.mmcdole.kivo.core.settings.DownloadQuality
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -836,14 +836,3 @@ internal fun DownloadDisk.path(f: FileRow) = dir(f.download_id) / f.name
 
 /** A file's transfer, as the transport knows it: its download and name. */
 internal val FileRow.transferId: String get() = "${download_id}/${name}"
-
-/** Runs [block], leaving a failure for the next sync to try again. */
-internal suspend fun quietly(block: suspend () -> Unit) {
-    try {
-        block()
-    } catch (e: CancellationException) {
-        throw e
-    } catch (_: Exception) {
-        // The server can't be reached, or refused: the next sync tries again.
-    }
-}

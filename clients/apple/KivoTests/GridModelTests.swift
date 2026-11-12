@@ -101,7 +101,6 @@ final class GridModelTests: XCTestCase {
     override func setUp() async throws {
         Self.prefix = "Title"
         Self.failing = false
-        forgetEarlierGrid()
         server = try StubServer(answer: Self.answer)
         address = try await server.start()
         session = try await open()
@@ -113,7 +112,6 @@ final class GridModelTests: XCTestCase {
     override func tearDown() async throws {
         session.close()
         server.stop()
-        forgetEarlierGrid()
     }
 
     /// A session of the app on a device of its own, as the app opens one.
@@ -125,12 +123,6 @@ final class GridModelTests: XCTestCase {
             clientId: nil, subtitles: [], trackSelection: false, transport: NoTransport()
         ))
         return try await core.restore(server: SavedServer(id: "grid-test", name: "Grid test", addresses: [address]))
-    }
-
-    // Migration (grid-choice): remove after every client has updated past this release.
-    private func forgetEarlierGrid() {
-        UserDefaults.standard.removeObject(forKey: "grid.lib")
-        UserDefaults.standard.removeObject(forKey: "grid.lib.collections")
     }
 
     private func model() -> GridModel {
@@ -407,60 +399,6 @@ final class GridModelTests: XCTestCase {
         let rules = grid.state.smartListQuery.where?.rules ?? []
         XCTAssertEqual(rules.map(\.field), ["library", "genre", "year", "contentRating"])
         XCTAssertEqual(rules[2].propertyValues, ["2000", "2009"])
-    }
-
-    // Migration (grid-choice): remove after every client has updated past this release.
-    func testAGridKeptByAnEarlierVersionOpensAsItWasLeft() async throws {
-        UserDefaults.standard.set([
-            "tab": "collections", "sort": "runtimeMs", "played": "inProgress", "decade": "1990",
-            "genres": "Action, Adventure\nDrama", "contentRatings": "PG-13",
-            "resolutions": "1080p,4k,sd", "dynamicRanges": "dolbyVision,hdr", "narrator": "p1", "narratorName": "Ray Porter",
-        ], forKey: "grid.lib")
-        UserDefaults.standard.set(true, forKey: "grid.lib.collections")
-        let upgraded = try await open()
-        defer { upgraded.close() }
-
-        let grid = GridModel(library: library, session: upgraded)
-
-        XCTAssertEqual(grid.state.tab, .collections)
-        XCTAssertEqual(grid.state.sort, .runtime)
-        XCTAssertEqual(grid.state.filters.chosen.map(\.key), [
-            "played:inProgress", "decade:1990", "genre:Action, Adventure", "genre:Drama", "contentRating:PG-13",
-            "resolution:1080p", "resolution:4k", "resolution:sd", "dynamicRange:dolbyVision", "dynamicRange:hdr", "narrator:p1",
-        ])
-        XCTAssertTrue(grid.state.tabsKnown, "whether it has collections too")
-        XCTAssertEqual(grid.sections.map(\.label), ["Movies", "Collections"])
-        XCTAssertNil(UserDefaults.standard.object(forKey: "grid.lib"), "moved to where it's kept now")
-        XCTAssertNil(UserDefaults.standard.object(forKey: "grid.lib.collections"))
-    }
-
-    // Migration (grid-choice): remove after every client has updated past this release.
-    // Migration (api-naming): remove after every client has updated past this release.
-    func testAGridKeptUnderEarlierNamesOpensInTodaysNames() async throws {
-        UserDefaults.standard.set([
-            "tab": "titles", "sort": "lastEpisodeAdded", "played": "unplayed", "resolutions": "720p", "hdr": "dolbyVision",
-        ], forKey: "grid.lib")
-        let upgraded = try await open()
-        defer { upgraded.close() }
-
-        let grid = GridModel(library: library, session: upgraded)
-
-        XCTAssertEqual(grid.state.sort, .lastEpisodeAddedAt)
-        XCTAssertEqual(grid.state.filters.chosen.map(\.key), ["played:unplayed", "resolution:720p", "dynamicRange:dolbyVision"])
-    }
-
-    // Migration (grid-choice): remove after every client has updated past this release.
-    func testAKeptSortOrFilterThisVersionDoesntKnowFallsBack() async throws {
-        UserDefaults.standard.set([
-            "tab": "titles", "sort": "loudness", "played": "abandoned", "resolutions": "8k,4k", "dynamicRanges": "hlg",
-        ], forKey: "grid.lib")
-        let upgraded = try await open()
-        defer { upgraded.close() }
-
-        let grid = GridModel(library: library, session: upgraded)
-
-        XCTAssertEqual(grid.state.sort, .title, "the first sort")
-        XCTAssertEqual(grid.state.filters.chosen.map(\.key), ["resolution:4k"])
     }
 }
 

@@ -21,8 +21,8 @@ import com.mmcdole.kivo.core.play.PlayerUi
 import com.mmcdole.kivo.core.play.PlayerUiRules
 import com.mmcdole.kivo.core.play.ServerPlays
 import com.mmcdole.kivo.core.player.PlayerEngine
+import com.mmcdole.kivo.core.quietly
 import com.mmcdole.kivo.core.settings.Quality
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -318,13 +318,4 @@ private class DownloadPlays(private val opened: CompletableDeferred<OfflinePlay>
     override suspend fun stop(id: String, stop: PlayStop) = opened.await().plays.stop(id, stop)
 
     override suspend fun fallback(id: String, request: PlayFallback): PlayStarted = opened.await().plays.fallback(id, request)
-}
-
-/** [read]'s answer; null when it fails. */
-private suspend fun <T> quietly(read: suspend () -> T): T? = try {
-    read()
-} catch (e: CancellationException) {
-    throw e
-} catch (_: Exception) {
-    null
 }

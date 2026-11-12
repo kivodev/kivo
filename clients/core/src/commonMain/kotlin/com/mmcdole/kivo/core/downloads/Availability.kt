@@ -4,6 +4,7 @@ import com.mmcdole.kivo.api.models.DownloadCheck
 import com.mmcdole.kivo.api.models.DownloadRef
 import com.mmcdole.kivo.api.result
 import com.mmcdole.kivo.core.downloads.db.DownloadsQueries
+import com.mmcdole.kivo.core.quietly
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.StateFlow

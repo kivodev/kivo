@@ -69,8 +69,9 @@ private class UiHarness(
     val state = MutableStateFlow(PlayerState())
     val seeks = mutableListOf<Long>()
     val autoplay = Autoplay().apply { repeat(run) { playedOnItsOwn() } }
-    val rules = PlayerUiRules(state, { seeks += it }, autoplay, test.backgroundScope, EmptyCoroutineContext, hideAfter)
-    val ui get() = rules.ui.value
+    var ui = PlayerUi()
+        private set
+    val rules = PlayerUiRules(state, { seeks += it }, autoplay, test.backgroundScope, EmptyCoroutineContext, hideAfter) { ui = it }
     val end get() = rules.end.value
 
     init {
