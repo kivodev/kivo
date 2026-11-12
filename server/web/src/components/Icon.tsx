@@ -44,7 +44,6 @@ const paths = {
   refresh: "M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6",
   signOut: "M15 4h4v16h-4M10 8l-4 4 4 4M6 12h11",
   network: "M10 3h4v5h-4zM3 16h4v5H3zM17 16h4v5h-4zM12 8v4M5 16v-4h14v4",
-  calendar: "M4 5h16v16H4zM4 10h16M8 3v4M16 3v4",
   plus: "M12 5v14M5 12h14",
   pencil: "M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4",
   lock: "M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4",
@@ -66,17 +65,17 @@ const paths = {
 } as const;
 
 // Filled icons, used for the on state of a stroke icon. The shape is
-// filled in, with an optional stroke cut out of it.
+// filled in, with a stroke cut out of it.
 const filled = {
   checkCircleFill: { fill: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z", cut: "M8 12.5l3 3 5-6" },
-} as const satisfies Record<string, { fill: string; cut?: string }>;
+} as const;
 
 export type IconName = keyof typeof paths | keyof typeof filled;
 
 export function Icon({ name, className = "size-5" }: { name: IconName; className?: string }) {
   const mask = `icon-${useId().replace(/[^\w-]/g, "")}`;
   if (name in filled) {
-    const shape: { fill: string; cut?: string } = filled[name as keyof typeof filled];
+    const shape = filled[name as keyof typeof filled];
     return (
       <svg
         viewBox="0 0 24 24"
@@ -89,13 +88,11 @@ export function Icon({ name, className = "size-5" }: { name: IconName; className
         aria-hidden="true"
         focusable="false"
       >
-        {shape.cut && (
-          <mask id={mask}>
-            <rect width="24" height="24" fill="white" stroke="none" />
-            <path d={shape.cut} fill="none" stroke="black" />
-          </mask>
-        )}
-        <path d={shape.fill} mask={shape.cut ? `url(#${mask})` : undefined} />
+        <mask id={mask}>
+          <rect width="24" height="24" fill="white" stroke="none" />
+          <path d={shape.cut} fill="none" stroke="black" />
+        </mask>
+        <path d={shape.fill} mask={`url(#${mask})`} />
       </svg>
     );
   }

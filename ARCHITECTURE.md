@@ -290,7 +290,6 @@ clients/
   tokens/              generators from tokens.json to Compose and SwiftUI themes
   benchmark/           Android performance benchmarks
 docs/
-  decisions/           architecture decision records
   reverse-proxy.md     running behind a reverse proxy
   reset-password.md    resetting a password from the command line
 ```

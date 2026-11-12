@@ -1632,12 +1632,6 @@ export const scenarios = {
   manyResults(api: MockApi) {
     api.search = [...(api.browse[mockIds.movies] ?? []), ...(api.browse[mockIds.shows] ?? [])];
   },
-  /** Search finds nothing. */
-  noResults(api: MockApi) {
-    api.search = [];
-    api.searchPeople = [];
-    api.searchCollections = [];
-  },
   /**
    * Dune: Part Two and The Expanse's "Reload" really play, in the browser:
    * a ten-minute file of a still picture with two silent audio tracks

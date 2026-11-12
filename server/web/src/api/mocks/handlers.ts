@@ -183,16 +183,9 @@ export function createHandlers(api: MockApi) {
       if (kind !== "app") return response(201).json(api.session);
       return response(201).json({ ...api.session, kind, token: api.session.token ?? mockAppToken });
     }),
-    http.get("/api/v1/sessions/current", ({ response }) =>
-      api.signedIn ? response(200).json(api.session) : unauthenticated(),
-    ),
     http.delete("/api/v1/sessions/current", ({ response }) => response(204).empty()),
     http.get("/api/v1/sessions", ({ response }) => response(200).json({ items: api.sessions })),
     http.delete("/api/v1/sessions", ({ response }) => response(204).empty()),
-    http.get("/api/v1/sessions/{id}", ({ params, response }) => {
-      const session = api.sessions.find((s) => s.id === params.id);
-      return session ? response(200).json(session) : notFound();
-    }),
     http.patch("/api/v1/sessions/{id}", async ({ params, request, response }) => {
       const session = api.sessions.find((s) => s.id === params.id);
       if (!session) return notFound();
@@ -204,10 +197,6 @@ export function createHandlers(api: MockApi) {
     ),
     http.get("/api/v1/api-keys", ({ response }) => response(200).json({ items: api.apiKeys })),
     http.post("/api/v1/api-keys", ({ response }) => response(201).json(api.createdApiKey)),
-    http.get("/api/v1/api-keys/{id}", ({ params, response }) => {
-      const key = api.apiKeys.find((k) => k.id === params.id);
-      return key ? response(200).json(key) : notFound();
-    }),
     http.delete("/api/v1/api-keys/{id}", ({ params, response }) =>
       api.apiKeys.some((k) => k.id === params.id) ? response(204).empty() : notFound(),
     ),
@@ -675,10 +664,6 @@ export function createHandlers(api: MockApi) {
     // measure.
     http.get("/api/v1/bandwidth-test", ({ response }) => response(204).empty()),
     http.get("/api/v1/plays", ({ response }) => response(200).json({ items: api.plays })),
-    http.get("/api/v1/plays/{id}", ({ params, response }) => {
-      const play = api.plays.find((s) => s.id === params.id);
-      return play ? response(200).json(play) : notFound();
-    }),
     http.get("/api/v1/users/me/play-events", ({ response }) => response(200).json({ items: api.history })),
     http.get("/api/v1/play-events", ({ response }) => response(200).json({ items: api.history })),
 

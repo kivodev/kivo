@@ -20,7 +20,6 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.11.0")
             api("io.ktor:ktor-client-core:$ktorVersion")
             api("io.ktor:ktor-client-content-negotiation:$ktorVersion")

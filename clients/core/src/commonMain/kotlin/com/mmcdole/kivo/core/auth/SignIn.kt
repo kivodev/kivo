@@ -14,7 +14,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlin.time.Duration.Companion.seconds
-import kotlin.time.Instant
 
 /**
  * Signing this app in to a server: by username and password, or by a
@@ -47,7 +46,7 @@ internal class SignIn(
      */
     fun link(): Flow<LinkState> = flow {
         val link = connection.sessions.createDeviceCode(DeviceCodeCreate(name, clientId = clientId)).result()
-        emit(LinkState.Waiting(link.code, link.linkUrl, link.expiresAt))
+        emit(LinkState.Waiting(link.code, link.linkUrl))
         val interval = link.interval.seconds
         while (true) {
             var wait = interval
@@ -89,7 +88,7 @@ internal class SignIn(
 /** Where a link code is. */
 internal sealed interface LinkState {
     /** Show [code], and [linkUrl] as text and as a QR code, until someone answers it. */
-    data class Waiting(val code: String, val linkUrl: String, val expiresAt: Instant) : LinkState
+    data class Waiting(val code: String, val linkUrl: String) : LinkState
 
     /** Approved: this app is signed in. */
     data class SignedIn(val user: CurrentUser) : LinkState

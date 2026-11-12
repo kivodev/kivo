@@ -16,8 +16,6 @@ data class PlayerState(
     val paused: Boolean = true,
     /** On the version's timeline. While seeking, the target. */
     val positionMs: Long = 0,
-    /** A fallback is starting at the same position. */
-    val adjusting: Boolean = false,
     val ended: Boolean = false,
     val failure: PlayerFailure? = null,
     /** What the engine said when it failed, for diagnostics. */
@@ -128,7 +126,7 @@ internal fun PlayerState.reduce(action: PlayerAction): PlayerState = when (actio
     )
     is PlayerAction.Started ->
         copy(status = PlayerStatus.Loading, play = action.play, positionMs = action.play.startMs.toLong(), ended = false)
-    is PlayerAction.Fallback -> copy(status = PlayerStatus.Loading, adjusting = true, detail = action.detail)
+    is PlayerAction.Fallback -> copy(status = PlayerStatus.Loading, detail = action.detail)
     is PlayerAction.Shown -> copy(audioTrackId = action.audioTrackId, subtitleTrackId = action.subtitleTrackId, subtitle = action.subtitle)
     PlayerAction.Ready -> if (status == PlayerStatus.Loading) copy(status = PlayerStatus.Playing) else this
     PlayerAction.Play -> copy(paused = false, ended = false)
@@ -141,7 +139,6 @@ internal fun PlayerState.reduce(action: PlayerAction): PlayerState = when (actio
             copy(
                 status = if (status == PlayerStatus.Seeking) PlayerStatus.Seeking else PlayerStatus.Playing,
                 paused = false,
-                adjusting = false,
             )
         }
     is PlayerAction.Seek -> if (live) copy(status = PlayerStatus.Seeking, positionMs = action.positionMs, ended = false) else this
@@ -152,7 +149,6 @@ internal fun PlayerState.reduce(action: PlayerAction): PlayerState = when (actio
         copy(
             status = PlayerStatus.Error,
             failure = action.failure,
-            adjusting = false,
             paused = true,
             detail = action.detail ?: detail,
         )

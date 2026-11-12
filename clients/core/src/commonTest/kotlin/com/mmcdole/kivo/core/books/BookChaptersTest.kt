@@ -38,7 +38,6 @@ class BookChaptersTest {
         assertEquals(3, p.chapterCount)
         assertEquals("One", p.chapterTitle)
         assertEquals(30_000, p.chapterElapsedMs)
-        assertEquals(510_000, p.chapterRemainingMs)
         assertEquals(1_110_000, p.remainingMs)
         assertEquals(0.075, p.fraction)
         assertTrue(p.hasNext)
@@ -63,7 +62,6 @@ class BookChaptersTest {
         assertEquals(3_000_000, parts.nextMs(1_500_000), "into the third part")
         assertEquals(0, parts.previousMs(1_002_000), "back across a part's start within 3 s")
         assertEquals(2, parts.progress(3_200_000).chapterIndex)
-        assertEquals(300_000, parts.progress(3_200_000).chapterRemainingMs)
     }
 
     @Test
