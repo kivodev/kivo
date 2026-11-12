@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
@@ -14,6 +15,7 @@ import com.mmcdole.kivo.core.session.AppState
 import com.mmcdole.kivo.android.signin.SignInScreen
 import com.mmcdole.kivo.android.signin.UnreachableScreen
 import com.mmcdole.kivo.android.theme.KivoTheme
+import com.mmcdole.kivo.android.ui.FocusMemory
 import com.mmcdole.kivo.android.ui.Incompatible
 import com.mmcdole.kivo.android.ui.Loading
 import com.mmcdole.kivo.android.ui.LocalSession
@@ -29,13 +31,16 @@ fun TvRoot(graph: AppGraph, onExit: () -> Unit) {
     KivoTheme {
         val state by graph.core.state.collectAsStateWithLifecycle()
         val session by graph.session.collectAsStateWithLifecycle()
+        // Each retry opens the server again, by way of Starting, so the
+        // unreachable screen keeps its focus here until the server opens.
+        val unreachableFocus = remember(state is AppState.Unreachable || state == AppState.Starting) { FocusMemory(null) }
         // Test tags double as resource IDs, so UI Automator finds controls on a device.
         // The window's background is the page's, so nothing here paints the whole screen again.
         Box(Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }) {
             when (val s = state) {
                 AppState.Starting -> Loading()
                 is AppState.SignedOut -> SignInScreen(graph, s.server)
-                is AppState.Unreachable -> UnreachableScreen(graph, s.server)
+                is AppState.Unreachable -> UnreachableScreen(graph, s.server, unreachableFocus)
                 is AppState.SignedIn -> when (val signedIn = session?.takeIf { it.session === s.session }) {
                     null -> Loading()
                     else -> {
