@@ -77,8 +77,16 @@ final class GoogleCastLink: NSObject, KivoCore.CastLink {
         channel?.sendTextMessage(message, error: nil)
     }
 
+    /// Keeping the TV playing suspends the session rather than ending it:
+    /// the SDK stops the TV on an end whenever this is the only phone
+    /// connected. The next launch joins the TV again.
     func end(stopCasting: Bool) {
-        GCKCastContext.sharedInstance().sessionManager.endSessionAndStopCasting(stopCasting)
+        let sessions = GCKCastContext.sharedInstance().sessionManager
+        if stopCasting {
+            sessions.endSessionAndStopCasting(true)
+        } else {
+            sessions.suspendSession(with: .appBackgrounded)
+        }
     }
 
     func close() {
