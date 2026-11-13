@@ -2,14 +2,15 @@ import { startBackKeys, stopBackKeys } from "./back";
 import { forgetFocus } from "./focusMemory";
 import { startSpatial, stopSpatial } from "./spatial";
 import { registerMediaKeys } from "./tizen";
+import { logWebosHdr } from "./webos";
 
 let started = false;
 
 /**
  * Starts the TV build: data-tv on the root, which switches the tokens to
  * the TV scale (tv.web in shared/tokens.json), the Back keys, the media
- * keys in the packaged app, and spatial navigation. Calling it again does
- * nothing.
+ * keys in the packaged app, and spatial navigation. On an LG TV it logs the
+ * panel's HDR answers for testing. Calling it again does nothing.
  */
 export function startTv() {
   if (started) return;
@@ -18,6 +19,7 @@ export function startTv() {
   startBackKeys();
   registerMediaKeys();
   startSpatial();
+  void logWebosHdr();
 }
 
 /** Stops the TV build, for tests. */

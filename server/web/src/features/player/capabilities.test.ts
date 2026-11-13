@@ -354,6 +354,23 @@ describe("report on an LG TV", () => {
     expect(audio(report(probe(plays), chrome), "dts")).toBeUndefined();
   });
 
+  it("plays no DTS on the 2020 to 2022 models, webOS 5, 6 and 22, as Jellyfin's web client keeps it off there", () => {
+    const lg = (webosVersion: number, options: string[] = []) =>
+      audio(report(probe([...plays, ...options], { tv: true, packaged: true }), { ...webos, webosVersion }), "dts");
+    for (const version of [5, 6, 22]) {
+      expect(lg(version)).toBeUndefined();
+      expect(lg(version, ['video/mp4; codecs="dts-"'])).toBeUndefined();
+    }
+    for (const version of [4, 23, 24, 25])
+      expect(lg(version)).toEqual({ codec: "dts", delivery: ["file"], maxChannels: 8 });
+  });
+
+  it("asks the video element about DTS where the webOS version is unknown", () => {
+    const unknown = { ...webos, webosVersion: 0 };
+    expect(audio(report(probe(plays, { tv: true }), unknown), "dts")).toBeUndefined();
+    expect(audio(report(probe([...plays, 'video/mp4; codecs="dts-"'], { tv: true }), unknown), "dts")).toBeDefined();
+  });
+
   it("switches between a file's audio tracks", () => {
     expect(tv({ audioTracks: true }).file?.trackSelection).toBe(true);
   });

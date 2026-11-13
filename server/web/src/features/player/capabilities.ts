@@ -199,8 +199,11 @@ export function report(probe: Probe, p: Browser): Capabilities {
   // Samsung's TVs decode E-AC-3, Atmos's too, in 5.1 at most.
   if (ac3 && (tizen || can('audio/mp4; codecs="ec-3"'))) add("eac3", stream(ac3InHls), tizen ? { maxChannels: 6 } : {});
   if (tizen || (mp3 && (p.chrome || p.edge || (p.firefox && p.version >= 83)) && !p.android)) add("mp2", stream(true));
-  // Samsung TVs from Tizen 4 play no DTS. An LG TV plays it.
-  if (webos || (p.tizen < 4 && (can(mp4("dts-")) || can(mp4("dts+"))))) add("dts", ["file"]);
+  // Samsung TVs from Tizen 4 play no DTS, nor do LG TVs from 2020 to 2022
+  // (webOS 5, 6 and 22), as Jellyfin's web client keeps it. Other LG TVs
+  // play it. One whose webOS version is unknown is asked, as Jellyfin does.
+  const noDts = p.tizen >= 4 || (p.webosVersion >= 5 && p.webosVersion < 23);
+  if (!noDts && (p.webosVersion > 0 || can(mp4("dts-")) || can(mp4("dts+")))) add("dts", ["file"]);
   if (tizen) for (const codec of ["pcm_s16le", "pcm_s24le", "aac_latm"]) add(codec, ["file"]);
   // A Samsung TV's video element plays Opus files only in MKV and WebM;
   // AVPlay plays it in any container Samsung lists it in.

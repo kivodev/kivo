@@ -44,8 +44,36 @@ describe("browserOf", () => {
     expect(browserOf(frame2025, "")).toMatchObject({ tizen: 9, chromium: "120.0.6099.5" });
   });
 
-  it("reads an LG TV, which gives no webOS version", () => {
+  it("reads an LG TV", () => {
     expect(browserOf(webOs, "")).toMatchObject({ webos: true, tizen: 0, tv: true, chromium: "108.0.5359.211" });
+    expect(browserOf(chrome, google).webosVersion).toBe(0);
+  });
+
+  it("works out an LG TV's webOS version from its Chrome version, as Jellyfin's web client does", () => {
+    const lg = (chrome: string) =>
+      browserOf(
+        `Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chrome} Safari/537.36 WebAppManager`,
+        "",
+      ).webosVersion;
+    expect(lg("38.0.2125.122")).toBe(3);
+    expect(lg("53.0.2785.34")).toBe(4);
+    expect(lg("68.0.3440.106")).toBe(5);
+    expect(lg("79.0.3945.79")).toBe(6);
+    expect(lg("87.0.4280.88")).toBe(22);
+    expect(lg("94.0.4606.128")).toBe(23);
+    expect(lg("108.0.5359.211")).toBe(24);
+    expect(lg("120.0.6099.270")).toBe(25);
+  });
+
+  it("reads webOS 1 and 2, which name no Chrome, by their Safari version", () => {
+    const app = (safari: string) =>
+      `Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/${safari} (KHTML, like Gecko) Large Screen WebAppManager Safari/${safari}`;
+    expect(browserOf(app("538.2"), "").webosVersion).toBe(2);
+    expect(browserOf(app("537.41"), "").webosVersion).toBe(1);
+  });
+
+  it("can't tell the webOS version of LG's own browser, whose Chrome version doesn't follow webOS's", () => {
+    expect(browserOf(`${webOs} NetCast`, "")).toMatchObject({ webos: true, webosVersion: 0 });
   });
 
   it("says nothing of an engine it doesn't name", () => {

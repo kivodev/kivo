@@ -17,8 +17,10 @@ export type Browser = {
   tv: boolean;
   /** The Samsung TV's Tizen version, such as 6.5; 0 elsewhere. */
   tizen: number;
-  /** An LG TV, which doesn't give its webOS version. */
+  /** An LG TV. */
   webos: boolean;
+  /** The LG TV's webOS version, such as 5 or 22; 0 elsewhere, or where its user agent doesn't tell. */
+  webosVersion: number;
   /** The browser's major version; for Safari, its Version/. */
   version: number;
   /** The engine's Chromium version, such as "120.0.6099.5", where the user agent names it. */
@@ -50,6 +52,7 @@ export function browserOf(userAgent: string, vendor: string, touchPoints = 0): B
       : firefox
         ? /firefox\/(\d+)/
         : /chrome\/(\d+)/;
+  const webos = /web0s|webos/.test(ua);
   const chromium = (/\bChrome\/(\d+(?:\.\d+)*)/.exec(userAgent) ??
     /like Gecko\) (\d+(?:\.\d+){3})\//.exec(userAgent))?.[1];
   return {
@@ -63,10 +66,40 @@ export function browserOf(userAgent: string, vendor: string, touchPoints = 0): B
     mobile: ios || android,
     tv: /tizen|web0s|webos|smart-tv|smarttv|\baft[a-z]|crkey|bravia/.test(ua),
     tizen,
-    webos: /web0s|webos/.test(ua),
+    webos,
+    webosVersion: webos ? webosVersion(ua) : 0,
     version: Number(token.exec(ua)?.[1] ?? 0),
     ...(chromium ? { chromium } : {}),
   };
+}
+
+/**
+ * An LG TV's webOS version, which its user agent doesn't name, from the
+ * Chrome version each webOS release ships, by Jellyfin's web client's map
+ * (src/scripts/browser.js). webOS 1 and 2 name no Chrome, only Safari. LG's
+ * own browser (NetCast) carries a Chrome of its own, so it is 0, as is
+ * anything else the map doesn't place.
+ */
+function webosVersion(ua: string): number {
+  const chrome = Number(/chrome\/(\d+)/.exec(ua)?.[1] ?? 0);
+  if (!chrome) {
+    const safari = Number(/safari\/(\d+)/.exec(ua)?.[1] ?? 0);
+    return safari >= 538 ? 2 : safari >= 537 ? 1 : 0;
+  }
+  if (ua.includes("netcast")) return 0;
+  const releases: [number, number][] = [
+    [120, 25],
+    [108, 24],
+    [94, 23],
+    [87, 22],
+    [79, 6],
+    [68, 5],
+    [53, 4],
+    [38, 3],
+    [34, 2],
+    [26, 1],
+  ];
+  return releases.find(([from]) => chrome >= from)?.[1] ?? 0;
 }
 
 /** This browser. */
