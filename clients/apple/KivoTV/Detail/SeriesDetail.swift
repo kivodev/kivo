@@ -4,8 +4,7 @@ import SwiftUI
 
 /// A series: its title, details and overview; Play or Resume of Next Up,
 /// with Play from beginning beside it once it's started, My List, watched
-/// and ⋯, and under them the time left in Next Up once it's started,
-/// "30 min left"; then the seasons as tabs, the open one lit, and the open season's
+/// and ⋯; then the seasons as tabs, the open one lit, and the open season's
 /// episodes as a row of cards that opens on Next Up; then more like this, trailers, cast and
 /// extras. It opens on the season the core's `WorkPage` opens it on.
 struct SeriesDetail: View {
@@ -13,7 +12,6 @@ struct SeriesDetail: View {
     let page: WorkPageState
     let model: WorkPage
     @Environment(ServerModel.self) private var server
-    @Environment(\.kivoPalette) private var palette
     /// Whether Play has focus, which it takes as the page opens.
     @FocusState private var playFocused: Bool
 
@@ -46,9 +44,6 @@ struct SeriesDetail: View {
                     UserStateButtons(work: series, page: page)
                     MoreMenu(work: series)
                 }
-                Text(series.series?.nextUp?.timeLeft ?? " ")
-                    .kivoStyle(KivoTokens.TextSize.xs)
-                    .foregroundStyle(palette.textMuted)
             }
         } rows: {
             if seasons.count > 1 {

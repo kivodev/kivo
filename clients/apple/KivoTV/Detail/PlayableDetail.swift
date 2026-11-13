@@ -5,8 +5,8 @@ import SwiftUI
 /// A movie, an episode or another video: its title, details and overview;
 /// Play or Resume, with Play from beginning beside Resume, My List,
 /// watched, the version, audio and subtitle choices, which carry into
-/// playback, and ⋯; under them the time left and when it ends once it's
-/// started. An episode has its series above its title, which opens the
+/// playback, and ⋯; under them when it would end, after the time left
+/// once it's started. An episode has its series above its title, which opens the
 /// series, and its season's episodes below, opening on it. Then more like
 /// this, trailers, cast, extras and collections.
 struct PlayableDetail: View {
@@ -41,7 +41,7 @@ struct PlayableDetail: View {
                 HeroTitle(work: work, details: DetailWords.details(work, genres: page.work?.genres), overview: page.work.map { $0.overview } ?? " ")
                 actions
                 TimelineView(.everyMinute) { context in
-                    Text(DetailWords.timeLeft(work, from: context.date) ?? " ")
+                    Text(DetailWords.endsLine(work, from: context.date) ?? " ")
                         .kivoStyle(KivoTokens.TextSize.xs)
                         .foregroundStyle(palette.textMuted)
                 }

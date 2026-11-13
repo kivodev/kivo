@@ -66,6 +66,15 @@ enum DetailWords {
         return [timeLeft, Words.endsAt(kind: work.kind, remainingMs: duration - resumeMs, from: now)].compactMap { $0 }.joined(separator: " · ")
     }
 
+    /// "Ends at 9:41 PM" for a movie or an episode, after its time left,
+    /// "1 hr 36 min left · Ends at 9:41 PM", once it's started.
+    static func endsLine(_ work: WorkSummary, from now: Date) -> String? {
+        guard let duration = work.durationMs?.int64Value,
+              let ends = Words.endsAt(kind: work.kind, remainingMs: duration - (work.resumeMs ?? 0), from: now)
+        else { return nil }
+        return [work.timeLeft, ends].compactMap { $0 }.joined(separator: " · ")
+    }
+
     /// A series' Play: "Play S1 E1", or "Resume 12:03" for Next Up in progress.
     static func play(nextUp: WorkSummary) -> String {
         if nextUp.progress != nil, let position = nextUp.userState?.positionMs?.int64Value {
