@@ -152,6 +152,7 @@ private struct SystemPlayer: UIViewControllerRepresentable {
         private var action: PlayerAction?
         private var overlay: SubtitleOverlayView?
         private var following: Task<Void, Never>?
+        private var selection: NSObjectProtocol?
         private var presented = false
         private weak var alert: UIAlertController?
 
@@ -223,9 +224,31 @@ private struct SystemPlayer: UIViewControllerRepresentable {
             info.title = String(localized: "Stream info")
             controller.customInfoViewControllers = [info]
             following = Task { [weak self] in await self?.follow() }
+            // The system's own Audio menu lists a file's audio tracks too: one chosen there plays through the core's player.
+            selection = NotificationCenter.default.addObserver(forName: AVPlayerItem.mediaSelectionDidChangeNotification, object: nil, queue: .main) { [weak self] note in
+                MainActor.assumeIsolated {
+                    guard let item = note.object as? AVPlayerItem else { return }
+                    self?.followAudio(of: item)
+                }
+            }
+        }
+
+        /// Plays the audio track [item] has selected as the core's choice, when it isn't already.
+        private func followAudio(of item: AVPlayerItem) {
+            guard let playback, item === playback.engine.player.currentItem else { return }
+            Task {
+                // The version lists the file's audio tracks in the file's order, as the item's options are.
+                guard let position = await playback.engine.selectedAudioPosition(in: item),
+                      let audio = playback.version?.tracks.filter({ $0.type == .audio }),
+                      audio.indices.contains(position)
+                else { return }
+                let chosen = audio[position].id
+                if chosen != playback.audioTrackId { playback.chooseAudio(chosen) }
+            }
         }
 
         func detach() {
+            if let selection { NotificationCenter.default.removeObserver(selection) }
             following?.cancel()
             overlay?.show(nil) { _ in Data() }
             if let controller, controller.presentingViewController != nil {

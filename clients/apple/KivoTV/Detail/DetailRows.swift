@@ -160,9 +160,9 @@ struct CollectionView: View {
                 MessageView(String(localized: "Couldn't load this page."), sentence: failure.sentence)
                     .frame(maxWidth: .infinity)
             } else if let collection {
-                LazyVGrid(columns: Array(repeating: GridItem(.fixed(TVLayout.rowWidth(.poster)), spacing: TVLayout.cardGap, alignment: .top), count: 6), alignment: .leading, spacing: TVLayout.cardGap) {
+                LazyVGrid(columns: Array(repeating: GridItem(.fixed(TVLayout.rowWidth(.poster)), spacing: TVLayout.cardGap, alignment: .top), count: 6), alignment: .leading, spacing: TVLayout.lineGap) {
                     ForEach(collection.items, id: \.id) { work in
-                        WorkLockup(work: work, style: .poster, width: TVLayout.rowWidth(.poster), caption: .oneLine)
+                        WorkLockup(work: work, style: .poster, width: TVLayout.rowWidth(.poster))
                     }
                 }
                 .focusSection()

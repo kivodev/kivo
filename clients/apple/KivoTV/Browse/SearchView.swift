@@ -85,8 +85,8 @@ struct PersonLockup: View {
     @Environment(\.kivoPalette) private var palette
 
     var body: some View {
-        VStack(spacing: KivoTokens.spacing * 3) {
-            PersonPhoto(photo, name: name, size: 180)
+        VStack(spacing: KivoTokens.spacing) {
+            PersonPhoto(photo, name: name, size: TVLayout.personWidth)
                 .cardLift()
             VStack(spacing: 2) {
                 Text(name)
@@ -98,6 +98,6 @@ struct PersonLockup: View {
             }
             .lineLimit(1)
         }
-        .frame(width: 200)
+        .frame(width: TVLayout.personWidth)
     }
 }

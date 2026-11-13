@@ -348,6 +348,16 @@ final class AVPlayerEngine: NSObject, PlayerEngine {
         }
     }
 
+    /// Which of the file's audio tracks, in its order, [item] has selected,
+    /// as the system's own menu may choose it; nil for a stream, or none.
+    func selectedAudioPosition(in item: AVPlayerItem) async -> Int? {
+        guard !hls,
+              let group = try? await item.asset.loadMediaSelectionGroup(for: .audible),
+              let option = item.currentMediaSelection.selectedMediaOption(in: group)
+        else { return nil }
+        return group.options.filter { $0.mediaType == .audio }.firstIndex(of: option)
+    }
+
     private static let legible: Set<AVMediaType> = [.subtitle, .text, .closedCaption]
 
     /// The option of a group's [options] that plays the file's track at

@@ -34,9 +34,9 @@ private struct LibraryGrid: View {
     }
 
     /// Posters and squares across the grid, and landscape cards.
-    private var columns: Int { model.style == .landscape ? 3 : 6 }
+    private var columns: Int { TVLayout.gridColumns(model.style) }
 
-    private var cardWidth: CGFloat { TVLayout.rowWidth(model.style) }
+    private var cardWidth: CGFloat { TVLayout.gridWidth(model.style) }
 
     /// Whether the grid is by name, which the letters go with.
     private var lettered: Bool {
@@ -144,7 +144,7 @@ private struct LibraryGrid: View {
                 emptyMessage
                     .frame(maxWidth: .infinity)
             } else {
-                LazyVGrid(columns: grid, alignment: .leading, spacing: TVLayout.cardGap) {
+                LazyVGrid(columns: grid, alignment: .leading, spacing: TVLayout.lineGap) {
                     ForEach(0..<total, id: \.self) { index in
                         GridCell(page: model.paged.page(containing: index), index: index, style: model.style, width: cardWidth)
                             .id(index)
@@ -161,9 +161,9 @@ private struct LibraryGrid: View {
             MessageView(String(localized: "Couldn't load this library."), sentence: failed.sentence)
                 .frame(maxWidth: .infinity)
         } else {
-            LazyVGrid(columns: grid, alignment: .leading, spacing: TVLayout.cardGap) {
+            LazyVGrid(columns: grid, alignment: .leading, spacing: TVLayout.lineGap) {
                 ForEach(0..<columns * 2, id: \.self) { _ in
-                    SkeletonCard(style: model.style, width: cardWidth, caption: .oneLine)
+                    SkeletonCard(style: model.style, width: cardWidth)
                 }
             }
         }
@@ -206,41 +206,56 @@ private struct GridCell: View {
     var body: some View {
         switch onEnum(of: page.item(at: index)) {
         case .work(let item):
-            WorkLockup(work: item.work, style: style, width: width, caption: .oneLine)
+            WorkLockup(work: item.work, style: style, width: width)
         case .collection(let item):
             Button {
                 openWork(WorkRoute(id: item.collection.id, page: .collection))
             } label: {
-                GroupCard(item.collection, width: width, caption: .oneLine)
+                GroupCard(item.collection, width: width)
             }
             .buttonStyle(.borderless)
         case .author, .bookSeries, nil:
-            SkeletonCard(style: style, width: width, caption: .oneLine)
+            SkeletonCard(style: style, width: width)
         }
     }
 }
 
-/// The letters the grid's titles start with, top to bottom; Select jumps the grid to one.
+/// The letters the grid's titles start with, top to bottom, sharing the
+/// screen's height from under Filter down to its bottom margin; Select
+/// jumps the grid to one.
 private struct LetterColumn: View {
     let letters: [LetterStart]
     let jump: (LetterStart) -> Void
 
+    /// Where the letters start and end, from the screen's top and bottom.
+    private static let top: CGFloat = 220
+    private static let bottom: CGFloat = 54
+    /// The most a letter takes.
+    private static let tallest: CGFloat = 34
+
     var body: some View {
-        VStack(spacing: 0) {
-            ForEach(letters, id: \.letter) { start in
-                Button(start.letter) { jump(start) }
-                    .buttonStyle(LetterStyle())
+        GeometryReader { geometry in
+            let frame = geometry.frame(in: .global)
+            let screen = frame.maxY + geometry.safeAreaInsets.bottom
+            let above = max(0, Self.top - frame.minY)
+            let room = min(frame.maxY, screen - Self.bottom) - frame.minY - above
+            let slot = min(Self.tallest, room / CGFloat(max(letters.count, 1)))
+            VStack(spacing: 0) {
+                ForEach(letters, id: \.letter) { start in
+                    Button(start.letter) { jump(start) }
+                        .buttonStyle(LetterStyle(height: slot))
+                }
             }
+            .focusSection()
+            .padding(.top, above)
         }
-        .focusSection()
-        // Beside the grid, under the header.
-        .padding(.top, 200)
-        .frame(maxHeight: .infinity, alignment: .top)
+        .frame(width: 84)
     }
 }
 
-/// A letter: muted, lit in a pill while focused.
+/// A letter [height] tall: muted, lit in a pill while focused.
 private struct LetterStyle: ButtonStyle {
+    let height: CGFloat
     @Environment(\.isFocused) private var focused
     @Environment(\.kivoPalette) private var palette
 
@@ -248,8 +263,9 @@ private struct LetterStyle: ButtonStyle {
         configuration.label
             .font(.kivo(KivoTokens.TextSize.xs, weight: KivoTokens.Weight.semibold))
             .foregroundStyle(focused ? palette.bg : palette.textMuted)
-            .frame(width: 64, height: 34)
+            .frame(width: 70, height: height)
             .background(focused ? palette.text : .clear, in: Capsule())
+            .frame(width: 84)
             .scaleEffect(configuration.isPressed ? 0.95 : 1)
             .animation(.easeOut(duration: 0.15), value: focused)
     }

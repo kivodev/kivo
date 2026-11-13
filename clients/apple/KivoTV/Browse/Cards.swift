@@ -2,18 +2,36 @@ import KivoCore
 import KivoUI
 import SwiftUI
 
-/// The TV's card sizes and gaps, in points on the 1080p canvas.
+/// The TV's card sizes and gaps, in points on the 1080p canvas: the Android
+/// TV app's, at two points to its dp.
 enum TVLayout {
-    /// The gap between cards in a row, which leaves a focused card's lift clear of its neighbours.
-    static let cardGap: CGFloat = 48
+    /// The gap between cards, which leaves a focused card's lift clear of its neighbours.
+    static let cardGap: CGFloat = 56
     /// The gap between rows.
-    static let rowGap: CGFloat = 56
+    static let rowGap: CGFloat = 42
     /// A row's title's gap to its cards.
     static let titleGap: CGFloat = 20
+    /// The gap between a grid's lines.
+    static let lineGap: CGFloat = 40
+    /// An episode card's width in a season's row.
+    static let episodeWidth: CGFloat = 362
+    /// A person's card's width, their round photo's too.
+    static let personWidth: CGFloat = 224
 
     /// A card's width in a row: posters and squares, or landscape cards.
     static func rowWidth(_ style: CardStyle) -> CGFloat {
         style == .landscape ? 500 : 220
+    }
+
+    /// A card's width in a grid, six posters or three landscape cards
+    /// across, which leaves room for the letters beside a library's.
+    static func gridWidth(_ style: CardStyle) -> CGFloat {
+        style == .landscape ? 472 : 208
+    }
+
+    /// Cards across a grid.
+    static func gridColumns(_ style: CardStyle) -> Int {
+        style == .landscape ? 3 : 6
     }
 }
 

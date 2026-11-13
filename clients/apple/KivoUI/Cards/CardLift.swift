@@ -8,9 +8,15 @@ public extension View {
     @ViewBuilder func cardLift() -> some View {
         #if os(tvOS)
         hoverEffect(.highlight)
-            .padding(.bottom, KivoTokens.spacing * 4)
+            .padding(.bottom, cardLiftRoom)
         #else
         self
         #endif
     }
 }
+
+#if os(tvOS)
+/// The room under a card's artwork for its lift, which with the card's own
+/// gap over its caption leaves the caption 32 points under the artwork.
+let cardLiftRoom = KivoTokens.spacing * 7
+#endif

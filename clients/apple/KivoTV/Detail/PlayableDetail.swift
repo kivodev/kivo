@@ -19,6 +19,8 @@ struct PlayableDetail: View {
     /// Subtitles downloaded here, by version, shown until the work is read again with them.
     @State private var downloaded: [(versionId: String, track: Track)] = []
     @State private var searching = false
+    /// Whether Play has focus, which it takes as the page opens.
+    @FocusState private var playFocused: Bool
 
     /// The version selected: the one chosen, else the one the user last
     /// played while the work still has it, else the first.
@@ -52,6 +54,7 @@ struct PlayableDetail: View {
                 DetailRows(work: read)
             }
         }
+        .defaultFocus($playFocused, true)
         .sheet(isPresented: $searching) {
             if let version {
                 SubtitleSearchList(
@@ -86,6 +89,7 @@ struct PlayableDetail: View {
                 } label: {
                     Label(resume ?? String(localized: "Play"), systemImage: Symbols.play)
                 }
+                .focused($playFocused)
                 if resume != nil {
                     Button {
                         play(fromStart: true)

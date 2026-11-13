@@ -88,4 +88,14 @@ final class TVRulesTests: XCTestCase {
         XCTAssertNil(TopShelfLink(URL(string: "https://work/w1")!))
         XCTAssertEqual(TopShelfLink(TopShelfLink.play("w1").url), .play("w1"))
     }
+
+    func testOverviewEndsAtAWordWhenItRunsPastItsLines() {
+        XCTAssertNil(HeroOverview.cut("A short overview."))
+        let long = Array(repeating: "Grace has one chance to survive the night.", count: 12).joined(separator: " ")
+        let cut = try? XCTUnwrap(HeroOverview.cut(long))
+        XCTAssertEqual(cut?.last, "…")
+        let kept = String(cut?.dropLast() ?? "")
+        XCTAssert(long.hasPrefix(kept))
+        XCTAssertEqual(long[long.index(long.startIndex, offsetBy: kept.count)...].first.map { $0 == " " || $0 == "." }, true)
+    }
 }

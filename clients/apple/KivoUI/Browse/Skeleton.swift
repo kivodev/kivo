@@ -92,6 +92,10 @@ public struct SkeletonCard: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: KivoTokens.spacing) {
             SkeletonBlock(width: width, height: width / style.aspect, radius: person ? width / 2 : KivoTokens.Radius.md)
+            #if os(tvOS)
+                // Where a card's caption sits under the room for its lift.
+                .padding(.bottom, cardLiftRoom)
+            #endif
             CaptionSkeleton(caption: caption, width: width)
         }
     }

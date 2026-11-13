@@ -14,6 +14,8 @@ struct SeriesDetail: View {
     let model: WorkPage
     @Environment(ServerModel.self) private var server
     @Environment(\.kivoPalette) private var palette
+    /// Whether Play has focus, which it takes as the page opens.
+    @FocusState private var playFocused: Bool
 
     private var seasons: [WorkSummary] {
         page.seasons?.getOrNull() as? [WorkSummary] ?? []
@@ -30,6 +32,7 @@ struct SeriesDetail: View {
                         } label: {
                             Label(DetailWords.play(nextUp: nextUp), systemImage: Symbols.play)
                         }
+                        .focused($playFocused)
                         if nextUp.progress != nil {
                             Button {
                                 server.play(nextUp.id, fromStart: true)
@@ -62,6 +65,7 @@ struct SeriesDetail: View {
                 DetailRows(work: read, collections: false)
             }
         }
+        .defaultFocus($playFocused, true)
     }
 
     /// The seasons as pills, "S1" with its unwatched count or a check, the open one outlined in the accent.
@@ -128,7 +132,7 @@ struct SeasonRow: View {
                             }
                         } else {
                             ForEach(0..<4, id: \.self) { _ in
-                                SkeletonCard(style: .landscape, width: EpisodeLockup.width)
+                                SkeletonCard(style: .landscape, width: TVLayout.episodeWidth)
                             }
                         }
                     }
@@ -147,7 +151,6 @@ struct SeasonRow: View {
 /// it the user is or a check once watched, then its number and title, and
 /// its runtime or the time left.
 struct EpisodeLockup: View {
-    static let width: CGFloat = 400
     let episode: WorkSummary
     @Environment(\.openWork) private var openWork
     @Environment(\.kivoPalette) private var palette
@@ -156,14 +159,14 @@ struct EpisodeLockup: View {
         Button {
             openWork(WorkRoute(episode))
         } label: {
-            VStack(alignment: .leading, spacing: KivoTokens.spacing * 2) {
+            VStack(alignment: .leading, spacing: KivoTokens.spacing) {
                 ZStack(alignment: .bottom) {
-                    ArtworkImage(episode.images.still ?? episode.images.backdrop, title: episode.title, pointWidth: Self.width)
+                    ArtworkImage(episode.images.still ?? episode.images.backdrop, title: episode.title, pointWidth: TVLayout.episodeWidth)
                     if let progress = episode.progress {
                         ProgressBar(value: progress)
                     }
                 }
-                .frame(width: Self.width, height: Self.width / CardStyle.landscape.aspect)
+                .frame(width: TVLayout.episodeWidth, height: TVLayout.episodeWidth / CardStyle.landscape.aspect)
                 .overlay(alignment: .topTrailing) {
                     if episode.userState?.played == true {
                         PlayedCheck().padding(KivoTokens.spacing * 2)
@@ -182,7 +185,7 @@ struct EpisodeLockup: View {
                         .foregroundStyle(palette.textMuted)
                         .lineLimit(1)
                 }
-                .frame(width: Self.width, alignment: .leading)
+                .frame(width: TVLayout.episodeWidth, alignment: .leading)
             }
         }
         .buttonStyle(.borderless)

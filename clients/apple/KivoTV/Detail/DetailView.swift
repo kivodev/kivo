@@ -64,6 +64,11 @@ struct DetailPage<Hero: View, Rows: View>: View {
     @ViewBuilder let hero: () -> Hero
     @ViewBuilder let rows: () -> Rows
     @Environment(\.kivoPalette) private var palette
+    /// How dark the backdrop is, from 0 at the top of the page to 1 once it has scrolled [dimmedAt], in twentieths.
+    @State private var dim: CGFloat = 0
+
+    /// How far it scrolls before the backdrop is as dark as it gets.
+    private static var dimmedAt: CGFloat { 400 }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -82,6 +87,8 @@ struct DetailPage<Hero: View, Rows: View>: View {
                 .overlay {
                     LinearGradient(colors: [palette.bg.opacity(0), palette.bg], startPoint: .center, endPoint: .bottom)
                 }
+                // Darkening as the rows come up over it, so they read on any artwork.
+                .overlay { palette.bg.opacity(dim * 0.85).animation(.linear(duration: 0.2), value: dim) }
                 .ignoresSafeArea()
             ScrollView {
                 VStack(alignment: .leading, spacing: TVLayout.rowGap) {
@@ -97,6 +104,11 @@ struct DetailPage<Hero: View, Rows: View>: View {
                 .padding(.bottom, TVLayout.rowGap)
             }
             .scrollClipDisabled()
+            .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                (min(1, max(0, geometry.contentOffset.y + geometry.contentInsets.top) / Self.dimmedAt) * 20).rounded() / 20
+            } action: { _, level in
+                dim = level
+            }
         }
     }
 }
@@ -130,13 +142,104 @@ struct HeroTitle: View {
                     .foregroundStyle(palette.textMuted)
             }
             if let overview {
-                Text(overview)
-                    .kivoStyle(KivoTokens.TextSize.sm)
-                    .foregroundStyle(palette.text.opacity(0.85))
-                    .lineLimit(3, reservesSpace: true)
-                    .frame(maxWidth: 1000, alignment: .leading)
+                HeroOverview(title: work.labelledTitle, text: overview)
             }
         }
+    }
+}
+
+/// A hero's overview, its paragraphs run together, in three lines ended at
+/// a word with an ellipsis. When it's cut short, it takes focus, says More,
+/// and Select shows the whole of it.
+struct HeroOverview: View {
+    let title: String
+    let text: String
+    @Environment(\.kivoPalette) private var palette
+    @State private var open = false
+
+    private static let lines = 3
+    /// The text's width, short of the overview's, which More sits at the end of.
+    private static let textWidth: CGFloat = 940
+    private static let width: CGFloat = 1036
+
+    var body: some View {
+        let whole = text.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        let cut = Self.cut(whole)
+        Button {
+            open = true
+        } label: {
+            ZStack(alignment: .bottomTrailing) {
+                Text(cut ?? whole)
+                    .kivoStyle(KivoTokens.TextSize.sm)
+                    .foregroundStyle(palette.text.opacity(0.85))
+                    .lineLimit(Self.lines, reservesSpace: true)
+                    .frame(width: Self.textWidth, alignment: .leading)
+                    .frame(width: Self.width, alignment: .leading)
+                if cut != nil {
+                    Text("More")
+                        .kivoStyle(KivoTokens.TextSize.xs, weight: KivoTokens.Weight.semibold)
+                        .foregroundStyle(palette.text)
+                }
+            }
+        }
+        .buttonStyle(OverviewStyle())
+        .disabled(cut == nil)
+        .sheet(isPresented: $open) {
+            VStack(alignment: .leading, spacing: KivoTokens.spacing * 8) {
+                Text(title)
+                    .kivoStyle(KivoTokens.TextSize.xl2, weight: KivoTokens.Weight.bold)
+                    .foregroundStyle(palette.text)
+                Text(whole)
+                    .kivoStyle(KivoTokens.TextSize.base)
+                    .foregroundStyle(palette.text)
+            }
+            .frame(maxWidth: 1200, alignment: .leading)
+        }
+    }
+
+    /// [text] ended at the last word that leaves room for an ellipsis in
+    /// the overview's lines, or nil when the whole of it fits.
+    static func cut(_ text: String) -> String? {
+        let font = UIFont.systemFont(ofSize: KivoTokens.TextSize.sm.size)
+        let room = font.lineHeight * (CGFloat(lines) + 0.5)
+        func fits(_ text: String) -> Bool {
+            let bounds = (text as NSString).boundingRect(
+                with: CGSize(width: textWidth, height: .greatestFiniteMagnitude),
+                options: .usesLineFragmentOrigin,
+                attributes: [.font: font],
+                context: nil
+            )
+            return bounds.height <= room
+        }
+        guard !fits(text) else { return nil }
+        let words = text.split(separator: " ")
+        var low = 0
+        var high = words.count - 1
+        while low < high {
+            let mid = (low + high + 1) / 2
+            if fits(words[..<mid].joined(separator: " ") + "…") { low = mid } else { high = mid - 1 }
+        }
+        let kept = words[..<low].joined(separator: " ").trimmingCharacters(in: .punctuationCharacters.union(.whitespaces))
+        return kept + "…"
+    }
+}
+
+/// The overview: a ring around it while it has focus.
+private struct OverviewStyle: ButtonStyle {
+    @Environment(\.isFocused) private var focused
+    @Environment(\.kivoPalette) private var palette
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.horizontal, 21)
+            .padding(.vertical, 7)
+            .overlay {
+                RoundedRectangle(cornerRadius: KivoTokens.Radius.md)
+                    .strokeBorder(focused ? palette.focus : .clear, lineWidth: 4)
+            }
+            .padding(.horizontal, -21)
+            .padding(.vertical, -7)
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
     }
 }
 

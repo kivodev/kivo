@@ -109,7 +109,7 @@ private struct ListWorksGrid: View {
                         MessageView(String(localized: "Nothing in this list yet"))
                             .frame(maxWidth: .infinity)
                     } else {
-                        LazyVGrid(columns: Array(repeating: GridItem(.fixed(TVLayout.rowWidth(.poster)), spacing: TVLayout.cardGap, alignment: .top), count: 6), alignment: .leading, spacing: TVLayout.cardGap) {
+                        LazyVGrid(columns: Array(repeating: GridItem(.fixed(TVLayout.gridWidth(.poster)), spacing: TVLayout.cardGap, alignment: .top), count: TVLayout.gridColumns(.poster)), alignment: .leading, spacing: TVLayout.lineGap) {
                             ForEach(0..<total, id: \.self) { index in
                                 ListCell(page: paged.page(containing: index), index: index)
                                     .id(index)
@@ -141,9 +141,9 @@ private struct ListCell: View {
 
     var body: some View {
         if case let .work(item) = onEnum(of: page.item(at: index)) {
-            WorkLockup(work: item.work, style: CardStyle.listed(item.work), width: TVLayout.rowWidth(.poster), caption: .oneLine)
+            WorkLockup(work: item.work, style: CardStyle.listed(item.work), width: TVLayout.gridWidth(.poster))
         } else {
-            SkeletonCard(style: .poster, width: TVLayout.rowWidth(.poster), caption: .oneLine)
+            SkeletonCard(style: .poster, width: TVLayout.gridWidth(.poster))
         }
     }
 }
