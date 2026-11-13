@@ -19,7 +19,8 @@ struct SearchView: View {
         ScrollView {
             let results = model?.results
             if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                EmptyView()
+                MessageView(String(localized: "Type to search every library."))
+                    .frame(maxWidth: .infinity)
             } else if let results {
                 if results.works.allSatisfy({ $0.kind == .book }) && results.people.isEmpty && results.collections.isEmpty {
                     MessageView(String(localized: "No results for “\(model?.searched ?? "")”."))

@@ -212,7 +212,8 @@ private struct LinkCodePanel: View {
                                 .font(.system(size: KivoTokens.TextSize.xl3.size, weight: .semibold, design: .monospaced))
                                 .foregroundStyle(palette.text)
                                 .accessibilityIdentifier("link-code")
-                                .accessibilityLabel(waiting?.code ?? "")
+                                // Read a character at a time; the label stays the bare code.
+                                .accessibilityLabel(Text(verbatim: waiting?.code ?? "").speechSpellsOutCharacters())
                             Text(found.info.name)
                                 .kivoStyle(KivoTokens.TextSize.sm)
                                 .foregroundStyle(palette.textSubtle)

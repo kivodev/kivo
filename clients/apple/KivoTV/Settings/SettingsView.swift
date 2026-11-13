@@ -51,14 +51,16 @@ private struct AccountSettingsView: View {
     @State private var confirming: Action?
 
     var body: some View {
-        List {
-            Section {
+        VStack(alignment: .leading, spacing: KivoTokens.spacing * 10) {
+            Text("\(server.user?.username ?? "") · \(server.serverName)")
+                .font(.headline)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, KivoTokens.spacing * 4)
+            List {
                 Button(String(localized: "Switch account")) { confirming = .switchAccount }
                 Button(String(localized: "Change server")) { confirming = .changeServer }
                 NavigationLink(String(localized: "Link a device")) { LinkDeviceView() }
                 Button(String(localized: "Sign out")) { confirming = .signOut }
-            } header: {
-                Text("\(server.user?.username ?? "") · \(server.serverName)")
             }
         }
         .frame(maxWidth: 1100)

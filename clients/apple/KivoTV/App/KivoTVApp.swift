@@ -1,6 +1,7 @@
 import KivoCore
 import KivoUI
 import SwiftUI
+import UIKit
 
 /// The app, or an empty window while it hosts the unit tests: no session
 /// and no discovery.
@@ -21,6 +22,8 @@ struct KivoTVApp: App {
 
     init() {
         ArtworkSource.configureCaches()
+        // What's typed in Search reads in the primary text colour, not the placeholder's grey.
+        UITextField.appearance(whenContainedInInstancesOf: [UISearchBar.self]).textColor = .white
     }
 
     var body: some Scene {
