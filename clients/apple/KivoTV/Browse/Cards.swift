@@ -136,3 +136,24 @@ struct SkeletonCardRow: View {
         }
     }
 }
+
+/// One of a row of tabs, such as a series' seasons: white and lifted while
+/// focused, as the system's buttons are, the [current] one on a lit platter
+/// while focus is elsewhere, the rest bare and muted.
+struct TabStyle: ButtonStyle {
+    let current: Bool
+    @Environment(\.isFocused) private var focused
+    @Environment(\.kivoPalette) private var palette
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.kivo(KivoTokens.TextSize.sm, weight: KivoTokens.Weight.semibold))
+            .foregroundStyle(focused ? .black : current ? palette.text : palette.textMuted)
+            .padding(.horizontal, KivoTokens.spacing * 8)
+            .padding(.vertical, KivoTokens.spacing * 4)
+            .background(focused ? .white : .white.opacity(current ? 0.2 : 0), in: Capsule())
+            .scaleEffect(configuration.isPressed ? 0.97 : focused ? 1.06 : 1)
+            .shadow(color: .black.opacity(focused ? 0.35 : 0), radius: 14, y: 8)
+            .animation(.easeOut(duration: 0.15), value: focused)
+    }
+}

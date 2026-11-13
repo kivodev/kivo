@@ -2,11 +2,12 @@ import KivoCore
 import KivoUI
 import SwiftUI
 
-/// A library's grid: its name, unless its tab names it, with Filter at the right, which gets a dot
-/// while any filter is on; its sections when it has collections; the count
-/// line, "237 movies · A–Z", which opens Sort; then posters, or landscape
-/// cards for other videos, and at the right the letters of the title sort,
-/// which jump the grid. The grid's pages load where it rests (GridModel),
+/// A library's grid under one row: its name, unless its tab names it, its
+/// sections when it has collections, the count, "237 movies · A–Z", which
+/// opens Sort, and Filter at the right, which gets a dot while any filter
+/// is on. Then posters, or landscape cards for other videos, focus coming
+/// in on the first, and at the right the letters of the title sort, which
+/// jump the grid. The grid's pages load where it rests (GridModel),
 /// a new section, sort or filter showing from the top at once.
 struct LibraryView: View {
     let library: Library
@@ -27,6 +28,10 @@ private struct LibraryGrid: View {
     @Environment(\.kivoPalette) private var palette
     @Environment(\.artworkSource) private var artworkSource
     @State private var prefetcher = CardPrefetcher()
+    @FocusState private var focus: GridPlace?
+    /// Whether a card has had focus since the grid showed; until one has,
+    /// focus coming to the header goes on to the first card.
+    @State private var entered = false
 
     init(library: Library, titled: Bool, server: ServerModel) {
         self.titled = titled
@@ -66,6 +71,15 @@ private struct LibraryGrid: View {
                 }
             }
         }
+        .onChange(of: focus) { _, place in
+            switch place {
+            case .card: entered = true
+            case .header where !entered && (model.paged.total ?? 0) > 0:
+                // Once this move of focus has settled.
+                Task { focus = .card(0) }
+            default: break
+            }
+        }
         .task { await model.run() }
         .environment(\.currentLibraryId, model.library.id)
     }
@@ -73,31 +87,30 @@ private struct LibraryGrid: View {
     // MARK: Header
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: KivoTokens.spacing * 6) {
-            HStack(alignment: .firstTextBaseline) {
-                if titled {
-                    Text(model.library.name)
-                        .kivoStyle(KivoTokens.TextSize.xl2, weight: KivoTokens.Weight.bold)
-                        .foregroundStyle(palette.text)
-                        .lineLimit(1)
-                }
-                Spacer()
-                if model.state.tab == .titles {
-                    LibraryFilterMenu(model: model)
-                }
+        HStack(alignment: .center, spacing: KivoTokens.spacing * 6) {
+            if titled {
+                Text(model.library.name)
+                    .kivoStyle(KivoTokens.TextSize.xl2, weight: KivoTokens.Weight.bold)
+                    .foregroundStyle(palette.text)
+                    .lineLimit(1)
             }
             if model.state.tabsKnown, model.sections.count > 1 {
-                Picker(String(localized: "Section"), selection: Binding(get: { model.state.tab.value }, set: { value in
-                    if let section = model.sections.first(where: { $0.tab.value == value }) { model.choose(tab: section.tab) }
-                })) {
+                HStack(spacing: KivoTokens.spacing * 2) {
                     ForEach(model.sections) { section in
-                        Text(section.label).tag(section.tab.value)
+                        Button(section.label) { model.choose(tab: section.tab) }
+                            .buttonStyle(TabStyle(current: section.id == model.state.tab.value))
+                            .focused($focus, equals: .header)
                     }
                 }
-                .pickerStyle(.segmented)
-                .fixedSize()
             }
             countLine
+                .focused($focus, equals: .header)
+            Spacer(minLength: 0)
+            // Once the grid is in, so that focus doesn't settle here before it can go to the first card.
+            if model.state.tab == .titles, model.paged.total != nil {
+                LibraryFilterMenu(model: model)
+                    .focused($focus, equals: .header)
+            }
         }
         .focusSection()
     }
@@ -146,7 +159,7 @@ private struct LibraryGrid: View {
             } else {
                 LazyVGrid(columns: grid, alignment: .leading, spacing: TVLayout.lineGap) {
                     ForEach(0..<total, id: \.self) { index in
-                        GridCell(page: model.paged.page(containing: index), index: index, style: model.style, width: cardWidth)
+                        GridCell(page: model.paged.page(containing: index), index: index, style: model.style, width: cardWidth, focus: $focus)
                             .id(index)
                     }
                 }
@@ -194,6 +207,12 @@ private struct LibraryGrid: View {
     }
 }
 
+/// Where focus is on a library's screen: its header, or a card by its place in the grid.
+private enum GridPlace: Hashable {
+    case header
+    case card(Int)
+}
+
 /// A card of the grid, or its skeleton until its page arrives. It reads its
 /// own page alone, so a page arriving updates only that page's cards.
 private struct GridCell: View {
@@ -201,12 +220,14 @@ private struct GridCell: View {
     let index: Int
     let style: CardStyle
     let width: CGFloat
+    let focus: FocusState<GridPlace?>.Binding
     @Environment(\.openWork) private var openWork
 
     var body: some View {
         switch onEnum(of: page.item(at: index)) {
         case .work(let item):
             WorkLockup(work: item.work, style: style, width: width)
+                .focused(focus, equals: .card(index))
         case .collection(let item):
             Button {
                 openWork(WorkRoute(id: item.collection.id, page: .collection))
@@ -214,6 +235,7 @@ private struct GridCell: View {
                 GroupCard(item.collection, width: width)
             }
             .buttonStyle(.borderless)
+            .focused(focus, equals: .card(index))
         case .author, .bookSeries, nil:
             SkeletonCard(style: style, width: width)
         }
