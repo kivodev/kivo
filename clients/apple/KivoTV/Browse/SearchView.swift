@@ -57,7 +57,7 @@ struct SearchView: View {
                 } label: {
                     PersonLockup(name: person.name, photo: person.photo, detail: SearchModel.detail(person))
                 }
-                .buttonStyle(.borderless)
+                .buttonStyle(PersonLockup.Style())
             }
         }
     }
@@ -83,11 +83,16 @@ struct PersonLockup: View {
     let photo: ImageRef?
     let detail: String?
     @Environment(\.kivoPalette) private var palette
+    @Environment(\.isFocused) private var focused
 
     var body: some View {
         VStack(spacing: KivoTokens.spacing) {
+            // The round photo itself lifts, without the square platter of the system's highlight.
             PersonPhoto(photo, name: name, size: TVLayout.personWidth)
-                .cardLift()
+                .scaleEffect(focused ? 1.1 : 1)
+                .shadow(color: .black.opacity(focused ? 0.45 : 0), radius: 18, y: 12)
+                .animation(.easeOut(duration: 0.15), value: focused)
+                .padding(.bottom, KivoTokens.spacing * 7)
             VStack(spacing: 2) {
                 Text(name)
                     .kivoStyle(KivoTokens.TextSize.sm, weight: KivoTokens.Weight.medium)
@@ -99,5 +104,13 @@ struct PersonLockup: View {
             .lineLimit(1)
         }
         .frame(width: TVLayout.personWidth)
+    }
+
+    /// A person's button, which leaves focus to the photo's lift, with no platter of its own.
+    struct Style: ButtonStyle {
+        func makeBody(configuration: Configuration) -> some View {
+            configuration.label
+                .scaleEffect(configuration.isPressed ? 0.97 : 1)
+        }
     }
 }

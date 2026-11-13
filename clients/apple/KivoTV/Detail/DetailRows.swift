@@ -64,7 +64,7 @@ struct DetailRows: View {
                     } label: {
                         PersonLockup(name: credit.name, photo: credit.photo, detail: credit.character ?? Words.role(credit.knownRole, credit.role))
                     }
-                    .buttonStyle(.borderless)
+                    .buttonStyle(PersonLockup.Style())
                 }
             }
         }
