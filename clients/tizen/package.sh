@@ -43,6 +43,12 @@ if grep -Eiq '<(script|link)[^>]+(src|href)="(https?:)?//' "$page"; then
   echo "package.sh: $page loads a script or stylesheet from another origin" >&2
   exit 1
 fi
+# The app needs Samsung's webapis script, which only npm run build:packaged
+# adds.
+if ! grep -q '<script src="\$WEBAPIS/webapis/webapis.js"></script>' "$page"; then
+  echo "package.sh: $page doesn't load Samsung's webapis script" >&2
+  exit 1
+fi
 
 # Tizen applies config.xml's policy as well as the page's, and its default
 # would block the player's blob: media, so config.xml carries the same one.

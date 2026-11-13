@@ -8,7 +8,7 @@ The Samsung TV app: the web client's TV build packaged into a Tizen web app. Its
 bash package.sh
 ```
 
-This runs `npm run build:packaged` in `server/web` (the TV build with `VITE_KIVO_TV=1 VITE_KIVO_PACKAGED=1`, written to `dist-packaged`, beside the `dist` the server embeds), copies it into `www/`, and writes an unsigned `build/kivo-tizen.wgt` of `config.xml`, `icon.png` and `www/`. To package a build made already, give its folder: `bash package.sh ../../server/web/dist-packaged`. Before packaging it checks that `www/index.html` has a Content-Security-Policy meta without `'unsafe-inline'` or `'unsafe-eval'` and loads no script or stylesheet from another origin, which Samsung refuses, and that `config.xml` carries the same policy.
+This runs `npm run build:packaged` in `server/web` (the TV build with `VITE_KIVO_TV=1 VITE_KIVO_PACKAGED=1`, and `KIVO_TIZEN=1` for Samsung's `webapis` script, written to `dist-packaged`, beside the `dist` the server embeds), copies it into `www/`, and writes an unsigned `build/kivo-tizen.wgt` of `config.xml`, `icon.png` and `www/`. To package a build made already, give its folder: `bash package.sh ../../server/web/dist-packaged`. Before packaging it checks that `www/index.html` has a Content-Security-Policy meta without `'unsafe-inline'` or `'unsafe-eval'` and loads no script or stylesheet from another origin, which Samsung refuses, that `config.xml` carries the same policy, and that the page loads Samsung's `webapis` script.
 
 `www/` and `build/` are build output and aren't committed.
 

@@ -24,6 +24,7 @@
         "clients/android/app/build.gradle.kts",
         "clients/apple/project.yml",
         "clients/tizen/config.xml",
+        { "type": "json", "path": "clients/webos/appinfo.json", "jsonpath": "$.version" },
         "clients/chromecast/src/config.js",
         { "type": "json", "path": "clients/chromecast/package.json", "jsonpath": "$.version" }
       ]
