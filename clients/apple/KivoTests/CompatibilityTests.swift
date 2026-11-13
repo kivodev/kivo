@@ -60,11 +60,11 @@ final class CompatibilityTests: XCTestCase {
         XCTAssertEqual(problem.sentence, "Den needs Kivo 99.0.0 or newer. You have \(appVersion).")
     }
 
-    func testAServerTheAppWorksWithGoesToItsPassword() async throws {
+    func testAServerTheAppWorksWithGoesToItsSignIn() async throws {
         for (version, oldest) in [(appVersion, appVersion as String?), ("99.0.0", nil), ("dev", "dev"), ("d76b7e0", "")] {
             Self.serverIs(version: version, minAppVersion: oldest)
             let found = try await core.serverAt(address: address)
-            guard case .password = SignInModel.step(for: found, core.compatibility(info: found.info)) else {
+            guard case .server = SignInModel.step(for: found, core.compatibility(info: found.info)) else {
                 return XCTFail("a server at \(version) that supports apps from \(oldest ?? "any") is refused")
             }
         }

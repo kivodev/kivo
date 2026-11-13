@@ -321,3 +321,9 @@ extension GridSort: SortMenuKey {
         }
     }
 }
+
+/// What a sort menu sorts by, with the sort in a word or two for the count line.
+protocol SortMenuKey: Hashable {
+    /// "A–Z", "Recently added"; nil to show the sort's label.
+    var short: String? { get }
+}

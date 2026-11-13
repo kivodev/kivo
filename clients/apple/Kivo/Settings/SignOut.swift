@@ -2,18 +2,8 @@ import KivoCore
 import SwiftUI
 import UIKit
 
-/// This device in the app's words: "This iPhone", or "This iPad" on an iPad.
-enum ThisDevice {
+extension ThisDevice {
     private static var pad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
-
-    static var name: String {
-        pad ? String(localized: "This iPad") : String(localized: "This iPhone")
-    }
-
-    /// The question before signing this device out.
-    static var signOutQuestion: String {
-        pad ? String(localized: "Sign out of this iPad?") : String(localized: "Sign out of this iPhone?")
-    }
 
     /// What signing this device out does to its downloads.
     static var downloadsDeleted: String {

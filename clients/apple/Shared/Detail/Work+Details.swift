@@ -16,6 +16,11 @@ extension WorkSummary {
         return String(format: "★ %.1f", rating)
     }
 
+    /// Whether it plays straight from a card: a movie, an episode, a video or a book.
+    var playable: Bool {
+        [WorkKind.movie, .episode, .video, .extra, .book].contains(kind) && available
+    }
+
     /// Where the user is in it; nil unless it's in progress.
     var resumeMs: Int64? {
         guard let position = userState?.positionMs?.int64Value, position > 0, userState?.played != true else { return nil }

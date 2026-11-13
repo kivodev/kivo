@@ -43,6 +43,18 @@ class SwiftTokensTest {
     }
 
     @Test
+    fun tvOSTakesTheTvTypeScale() {
+        val source = swiftTokens(shared)
+        val tv = source.substringAfter("#if os(tvOS)").substringBefore("#else")
+        // As the web's TV build maps them: xs and sm to the TV's sm, 2xl to its title.
+        assertContains(tv, "public static let xs = KivoTextStyle(size: 24, lineHeight: 32)")
+        assertContains(tv, "public static let sm = KivoTextStyle(size: 24, lineHeight: 32)")
+        assertContains(tv, "public static let base = KivoTextStyle(size: 28, lineHeight: 40)")
+        assertContains(tv, "public static let xl2 = KivoTextStyle(size: 48, lineHeight: 60)")
+        assertContains(source.substringAfter("#else"), "public static let base = KivoTextStyle(size: 16, lineHeight: 24)")
+    }
+
+    @Test
     fun aThemeMissingAColourIsRefused() {
         val broken = shared.replace("\"surface-raised\": \"#ffffff\",", "")
         assertFailsWith<IllegalArgumentException> { swiftTokens(broken) }

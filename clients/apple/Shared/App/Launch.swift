@@ -22,20 +22,9 @@ enum Launch {
     }
 }
 
-/// The app, or an empty window while it hosts the unit tests: no session,
-/// no discovery and no Cast.
-@main
-enum KivoMain {
-    static func main() {
-        if Launch.isTestHost {
-            TestHostApp.main()
-        } else {
-            KivoApp.main()
-        }
-    }
-}
-
-private struct TestHostApp: App {
+/// The empty window an app shows while it hosts the unit tests: no
+/// session, no discovery.
+struct TestHostApp: App {
     var body: some Scene {
         WindowGroup { EmptyView() }
     }

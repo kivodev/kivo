@@ -2,8 +2,9 @@
 # Writes Licenses.plist into the app: each Swift package the build checked
 # out (Nuke, the Google Cast SDK's package, libass-build) with its license,
 # as LicensePlist reads them from the checkouts, for Open source licenses
-# (Kivo/Settings/LicensesView.swift). Xcode runs it last in the app's build,
-# before signing.
+# (Kivo/Settings/LicensesView.swift, KivoTV/Settings/LicensesView.swift).
+# The Apple TV app links no Cast SDK, so its list leaves it out. Xcode runs
+# it last in each app's build, before signing.
 # LicensePlist's release is fetched once into build/tools and checked
 # against its hash, and reads only the checkouts, with no network. A
 # package without a license fails the build.
@@ -29,7 +30,15 @@ fi
 derived="${BUILD_DIR%%/Build/*}"
 out="$DERIVED_FILE_DIR/LicensePlist"
 rm -rf "$out"
-"$tool" \
+config=()
+case "$PLATFORM_NAME" in
+    appletv*)
+        mkdir -p "$DERIVED_FILE_DIR"
+        printf 'exclude:\n  - name: google-cast-ios-sdk\n' > "$DERIVED_FILE_DIR/LicensePlist.yml"
+        config=(--config-path "$DERIVED_FILE_DIR/LicensePlist.yml")
+        ;;
+esac
+"$tool" ${config[@]+"${config[@]}"} \
     --xcodeproj-path "$apple/Kivo.xcodeproj" \
     --sandbox-mode \
     --package-sources-path "$derived/SourcePackages" \

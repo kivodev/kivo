@@ -29,6 +29,7 @@ public struct TrailerCard: View {
                     .fill(palette.placeholder)
                     .kivoShadow(palette.cardShadow)
             }
+            .cardLift()
 
             Text(trailer.title)
                 .kivoStyle(KivoTokens.TextSize.sm, weight: KivoTokens.Weight.medium)

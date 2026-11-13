@@ -166,7 +166,7 @@ struct RestartButton: View {
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: "arrow.counterclockwise")
+            Image(systemName: Symbols.playFromBeginning)
                 .roundButtonSymbol()
                 .accessibilityLabel(Text("Play from beginning"))
         }
@@ -200,7 +200,7 @@ struct UserStateButtons: View {
             askedOnList = !onMyList
             server.session.library.marks.setOnList(listId: myListId, workId: work.id, on: !onMyList)
         } label: {
-            Image(systemName: onMyList ? "text.badge.checkmark" : "text.badge.plus")
+            Image(systemName: Symbols.myList(onMyList))
                 .roundButtonSymbol()
                 .symbolReplace(animated: askedOnList == onMyList)
                 .accessibilityLabel(onMyList ? Text("Remove from Watchlist") : Text("Add to Watchlist"))
@@ -215,7 +215,7 @@ struct UserStateButtons: View {
             askedPlayed = !played
             server.session.library.marks.setPlayed(workId: work.id, played: !played)
         } label: {
-            Image(systemName: played ? "checkmark.circle.fill" : "checkmark.circle")
+            Image(systemName: Symbols.watched(played))
                 .roundButtonSymbol()
                 .symbolReplace(animated: askedPlayed == played)
                 .accessibilityLabel(Text(Words.markPlayed(!played, kind: work.kind)))

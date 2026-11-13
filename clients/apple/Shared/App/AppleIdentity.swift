@@ -3,7 +3,7 @@ import KivoCore
 import UIKit
 
 /// The app and device as every request to a server says them: the app's
-/// version, iPhone or iPad, the system's version and the machine
+/// version, iPhone, iPad or Apple TV, the system's version and the machine
 /// identifier ("iPhone16,2"). Never the device's name or its screen.
 final class AppleIdentity: NSObject, ClientIdentity {
     let app = "kivo-apple"
@@ -24,10 +24,20 @@ final class AppleIdentity: NSObject, ClientIdentity {
     static var current: AppleIdentity {
         AppleIdentity(
             appVersion: version(Bundle.main.infoDictionary ?? [:]),
-            platform: UIDevice.current.userInterfaceIdiom == .pad ? .ipad : .iphone,
+            platform: platform,
             osVersion: UIDevice.current.systemVersion,
             deviceModel: machine
         )
+    }
+
+    /// What the app runs on, by the device's idiom.
+    @MainActor
+    private static var platform: ClientPlatform {
+        switch UIDevice.current.userInterfaceIdiom {
+        case .pad: .ipad
+        case .tv: .appleTv
+        default: .iphone
+        }
     }
 
     /// The app's version as its requests say it: the marketing version with
@@ -41,7 +51,7 @@ final class AppleIdentity: NSObject, ClientIdentity {
 
     /// The device's model by its marketing name, such as "iPhone 17 Pro",
     /// which names its sessions: the machine identifier's, the simulated
-    /// device's in the Simulator, else "iPhone" or "iPad".
+    /// device's in the Simulator, else "iPhone", "iPad" or "Apple TV".
     @MainActor
     static var modelName: String {
         let identifier = ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? machine
@@ -83,5 +93,7 @@ final class AppleIdentity: NSObject, ClientIdentity {
         "iPad16,5": "iPad Pro 13-inch (M4)", "iPad16,6": "iPad Pro 13-inch (M4)",
         "iPad17,1": "iPad Pro 11-inch (M5)", "iPad17,2": "iPad Pro 11-inch (M5)",
         "iPad17,3": "iPad Pro 13-inch (M5)", "iPad17,4": "iPad Pro 13-inch (M5)",
+        "AppleTV5,3": "Apple TV HD", "AppleTV6,2": "Apple TV 4K", "AppleTV11,1": "Apple TV 4K (2nd generation)",
+        "AppleTV14,1": "Apple TV 4K (3rd generation)",
     ]
 }

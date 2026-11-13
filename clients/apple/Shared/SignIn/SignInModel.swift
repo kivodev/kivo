@@ -2,25 +2,27 @@ import Foundation
 import KivoCore
 import Observation
 
-/// Signing in on the phone: find the server (the one signed in to last,
-/// Bonjour on this network, a typed address, or a scanned server-address
+/// Signing in: find the server (the one signed in to last, Bonjour on
+/// this network, a typed address, or on a phone a scanned server-address
 /// QR code), then a username and password, or a code another signed-in
 /// device approves, which make this app's session, named after the
-/// device's model ("iPhone 17 Pro").
+/// device's model ("iPhone 17 Pro"). The iPhone asks for the password
+/// first and the Apple TV shows the code first.
 @MainActor
 @Observable
 final class SignInModel {
     enum Step {
         case findServer
-        case password(FoundServer)
+        /// A server the app works with, to sign in to.
+        case server(FoundServer)
         /// The app and the server don't work together: one of them needs an update.
         case incompatible(FoundServer, Incompatibility)
     }
 
-    /// Where a server found goes, by how the app and it stand: its password
+    /// Where a server found goes, by how the app and it stand: its sign-in
     /// when they work together, else why they don't.
     static func step(for found: FoundServer, _ compatibility: Compatibility) -> Step {
-        Incompatibility(compatibility, server: found.info.name).map { .incompatible(found, $0) } ?? .password(found)
+        Incompatibility(compatibility, server: found.info.name).map { .incompatible(found, $0) } ?? .server(found)
     }
 
     let saved: SavedServer?
@@ -155,4 +157,9 @@ final class SignInModel {
         }
         busy = false
     }
+}
+
+/// A sign-in code in two groups of three, "K7Q-2M9", to read across a room.
+func groupedCode(_ code: String) -> String {
+    code.count == 6 ? "\(code.prefix(3))-\(code.suffix(3))" : code
 }

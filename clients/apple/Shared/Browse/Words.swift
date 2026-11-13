@@ -35,3 +35,18 @@ enum Words {
         }
     }
 }
+
+/// A Home row's heading, the same on Home and in Settings.
+func homeRowTitle(kind: HomeRowKind, libraryName: String?, listName: String?) -> String {
+    switch kind {
+    case .continueWatching: String(localized: "Continue Watching")
+    case .continueListening: String(localized: "Continue Listening")
+    case .list: listName ?? ""
+    case .recentlyAdded, .unknown:
+        if let libraryName {
+            String(localized: "Recently Added in \(libraryName)")
+        } else {
+            String(localized: "Recently Added")
+        }
+    }
+}
