@@ -184,16 +184,8 @@ struct HeroOverview: View {
         }
         .buttonStyle(OverviewStyle())
         .disabled(cut == nil)
-        .sheet(isPresented: $open) {
-            VStack(alignment: .leading, spacing: KivoTokens.spacing * 8) {
-                Text(title)
-                    .kivoStyle(KivoTokens.TextSize.xl2, weight: KivoTokens.Weight.bold)
-                    .foregroundStyle(palette.text)
-                Text(whole)
-                    .kivoStyle(KivoTokens.TextSize.base)
-                    .foregroundStyle(palette.text)
-            }
-            .frame(maxWidth: 1200, alignment: .leading)
+        .fullScreenCover(isPresented: $open) {
+            OverviewText(title: title, text: text)
         }
     }
 
@@ -224,22 +216,47 @@ struct HeroOverview: View {
     }
 }
 
-/// The overview: a ring around it while it has focus.
+/// The overview: a platter lights behind it and it lifts while it has
+/// focus, as the system's focusable text does.
 private struct OverviewStyle: ButtonStyle {
     @Environment(\.isFocused) private var focused
-    @Environment(\.kivoPalette) private var palette
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .padding(.horizontal, 21)
             .padding(.vertical, 7)
-            .overlay {
-                RoundedRectangle(cornerRadius: KivoTokens.Radius.md)
-                    .strokeBorder(focused ? palette.focus : .clear, lineWidth: 4)
-            }
+            .background(.white.opacity(focused ? 0.16 : 0), in: RoundedRectangle(cornerRadius: KivoTokens.Radius.md))
+            .scaleEffect(configuration.isPressed ? 0.98 : focused ? 1.02 : 1)
+            .shadow(color: .black.opacity(focused ? 0.3 : 0), radius: 16, y: 8)
+            .animation(.easeOut(duration: 0.15), value: focused)
             .padding(.horizontal, -21)
             .padding(.vertical, -7)
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+    }
+}
+
+/// The whole of an overview over the dimmed screen, under its work's
+/// title, as the system shows a description's More; Menu closes it.
+private struct OverviewText: View {
+    let title: String
+    let text: String
+    @Environment(\.kivoPalette) private var palette
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: KivoTokens.spacing * 8) {
+            Text(title)
+                .kivoStyle(KivoTokens.TextSize.xl2, weight: KivoTokens.Weight.bold)
+                .foregroundStyle(palette.text)
+            Text(text.trimmingCharacters(in: .whitespacesAndNewlines))
+                .kivoStyle(KivoTokens.TextSize.base)
+                .foregroundStyle(palette.text)
+                .lineSpacing(KivoTokens.spacing * 2)
+                .minimumScaleFactor(0.6)
+        }
+        .frame(maxWidth: 1200, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(.ultraThickMaterial)
+        .background(palette.bg.opacity(0.6))
+        .ignoresSafeArea()
     }
 }
 
