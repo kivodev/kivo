@@ -4,8 +4,8 @@ import SwiftUI
 
 /// A series: its title, details and overview; Play or Resume of Next Up,
 /// with Play from beginning beside it once it's started, My List, watched
-/// and ⋯, and under them what Play plays, "S1 · E4 · Reload · 30 min left";
-/// then the seasons as tabs, the open one lit, and the open season's
+/// and ⋯, and under them the time left in Next Up once it's started,
+/// "30 min left"; then the seasons as tabs, the open one lit, and the open season's
 /// episodes as a row of cards that opens on Next Up; then more like this, trailers, cast and
 /// extras. It opens on the season the core's `WorkPage` opens it on.
 struct SeriesDetail: View {
@@ -46,7 +46,7 @@ struct SeriesDetail: View {
                     UserStateButtons(work: series, page: page)
                     MoreMenu(work: series)
                 }
-                Text(series.series?.nextUp.map(Self.nextUpLine) ?? " ")
+                Text(series.series?.nextUp?.timeLeft ?? " ")
                     .kivoStyle(KivoTokens.TextSize.xs)
                     .foregroundStyle(palette.textMuted)
             }
@@ -66,13 +66,6 @@ struct SeriesDetail: View {
             }
         }
         .defaultFocus($playFocused, true)
-    }
-
-    /// What Play plays: "S1 · E4 · Reload", with the time left once it's started.
-    private static func nextUpLine(_ nextUp: WorkSummary) -> String {
-        [nextUp.episode.map { Display.app.episodeCode(episode: $0) }, nextUp.title, nextUp.timeLeft]
-            .compactMap { $0 }
-            .joined(separator: " · ")
     }
 
     /// The seasons as tabs, "Season 1" with a check once watched, the open one lit.
