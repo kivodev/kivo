@@ -3,10 +3,10 @@ import KivoUI
 import SwiftUI
 
 /// A series: its title, details and overview; Play or Resume of Next Up,
-/// with Play from beginning beside it once it's started and the episode's
-/// title and runtime under it, My List, watched and ⋯; then the seasons as
-/// pills, the open one outlined, and the open season's episodes as a row of
-/// cards that opens on Next Up; then more like this, trailers, cast and
+/// with Play from beginning beside it once it's started, My List, watched
+/// and ⋯, and under them what Play plays, "S1 · E4 · Reload · 30 min left";
+/// then the seasons as tabs, the open one lit, and the open season's
+/// episodes as a row of cards that opens on Next Up; then more like this, trailers, cast and
 /// extras. It opens on the season the core's `WorkPage` opens it on.
 struct SeriesDetail: View {
     let series: WorkSummary
@@ -46,7 +46,7 @@ struct SeriesDetail: View {
                     UserStateButtons(work: series, page: page)
                     MoreMenu(work: series)
                 }
-                Text(series.series?.nextUp.map(DetailWords.secondLine(nextUp:)) ?? " ")
+                Text(series.series?.nextUp.map(Self.nextUpLine) ?? " ")
                     .kivoStyle(KivoTokens.TextSize.xs)
                     .foregroundStyle(palette.textMuted)
             }
@@ -68,7 +68,14 @@ struct SeriesDetail: View {
         .defaultFocus($playFocused, true)
     }
 
-    /// The seasons as pills, "S1" with its unwatched count or a check, the open one outlined in the accent.
+    /// What Play plays: "S1 · E4 · Reload", with the time left once it's started.
+    private static func nextUpLine(_ nextUp: WorkSummary) -> String {
+        [nextUp.episode.map { Display.app.episodeCode(episode: $0) }, nextUp.title, nextUp.timeLeft]
+            .compactMap { $0 }
+            .joined(separator: " · ")
+    }
+
+    /// The seasons as tabs, "Season 1" with a check once watched, the open one lit.
     private var seasonPills: some View {
         ScrollView(.horizontal) {
             HStack(spacing: KivoTokens.spacing * 6) {
@@ -77,18 +84,13 @@ struct SeriesDetail: View {
                         model.chooseSeason(id: season.id)
                     } label: {
                         HStack(spacing: KivoTokens.spacing * 2) {
-                            Text(DetailWords.seasonLabel(season))
+                            Text(Self.seasonName(season))
                             if season.userState?.played == true {
                                 Image(systemName: "checkmark")
-                            } else if let unplayed = season.season?.unplayedCount, unplayed > 0 {
-                                Text(String(unplayed)).foregroundStyle(.secondary)
                             }
                         }
                     }
-                    .overlay {
-                        Capsule().strokeBorder(season.id == page.season?.id ? palette.accent : .clear, lineWidth: 3)
-                    }
-                    .buttonBorderShape(.capsule)
+                    .buttonStyle(TabStyle(current: season.id == page.season?.id))
                     .accessibilityLabel(Text(season.title))
                     .accessibilityValue(Text(DetailWords.seasonState(season)))
                 }
@@ -96,6 +98,12 @@ struct SeriesDetail: View {
         }
         .scrollClipDisabled()
         .focusSection()
+    }
+
+    /// "Season 3", or Specials for season 0, or the season's title without a number.
+    private static func seasonName(_ season: WorkSummary) -> String {
+        guard let number = season.season?.number else { return season.title }
+        return number == 0 ? String(localized: "Specials") : String(localized: "Season \(number)")
     }
 }
 
@@ -122,12 +130,16 @@ struct SeasonRow: View {
                         .foregroundStyle(palette.textMuted)
                 }
             }
+            // The count ends over the fourth card's right edge.
+            .frame(width: TVLayout.episodeWidth * 4 + TVLayout.cardGap * 3)
             ScrollViewReader { scroller in
                 ScrollView(.horizontal) {
                     LazyHStack(alignment: .top, spacing: TVLayout.cardGap) {
                         if let episodes {
+                            // A row with no synopses keeps its cards a line shorter.
+                            let lines = episodes.contains { $0.synopsis != nil } ? 2 : 1
                             ForEach(episodes, id: \.id) { episode in
-                                EpisodeLockup(episode: episode)
+                                EpisodeLockup(episode: episode, lines: lines)
                                     .id(episode.id)
                             }
                         } else {
@@ -149,9 +161,11 @@ struct SeasonRow: View {
 
 /// An episode's card in its season's row: its still, with how far through
 /// it the user is or a check once watched, then its number and title, and
-/// its runtime or the time left.
+/// its runtime, or the time left in the accent, running into [lines] lines
+/// of its synopsis.
 struct EpisodeLockup: View {
     let episode: WorkSummary
+    var lines = 1
     @Environment(\.openWork) private var openWork
     @Environment(\.kivoPalette) private var palette
 
@@ -180,15 +194,31 @@ struct EpisodeLockup: View {
                         .kivoStyle(KivoTokens.TextSize.sm, weight: KivoTokens.Weight.medium)
                         .foregroundStyle(palette.text)
                         .lineLimit(1)
-                    Text(episode.timeLeft ?? episode.durationMs.map { Display.app.runtime(ms: $0.int64Value) } ?? " ")
+                    detail
                         .kivoStyle(KivoTokens.TextSize.xs)
                         .foregroundStyle(palette.textMuted)
-                        .lineLimit(1)
+                        .lineLimit(lines, reservesSpace: true)
+                        .multilineTextAlignment(.leading)
                 }
                 .frame(width: TVLayout.episodeWidth, alignment: .leading)
             }
         }
         .buttonStyle(.borderless)
         .contextMenu { WorkMenu(work: episode) }
+    }
+
+    /// The runtime, or the time left in the accent, then the synopsis.
+    private var detail: Text {
+        let time = (episode.timeLeft ?? episode.durationMs.map { Display.app.runtime(ms: $0.int64Value) }).map {
+            Text(verbatim: $0)
+                .fontWeight(KivoTokens.Weight.medium)
+                .foregroundStyle(episode.timeLeft != nil ? palette.accent : palette.text)
+        }
+        switch (time, episode.synopsis) {
+        case let (time?, synopsis?): return Text("\(time) · \(synopsis)")
+        case let (time?, nil): return time
+        case let (nil, synopsis?): return Text(verbatim: synopsis)
+        case (nil, nil): return Text(verbatim: " ")
+        }
     }
 }

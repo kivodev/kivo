@@ -223,16 +223,6 @@ private extension View {
 }
 
 private extension WorkSummary {
-    /// An episode's synopsis on one line, without markup; nil when it has none.
-    var synopsis: String? {
-        guard let overview = episode?.overview else { return nil }
-        let text = overview
-            .replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
-            .split(whereSeparator: \.isWhitespace)
-            .joined(separator: " ")
-        return text.isEmpty ? nil : text
-    }
-
     /// "4. Reload", or "1–2. Pilot / The Big Empty" for a multi-episode file.
     var episodeHeading: String {
         guard let info = episode else { return title }

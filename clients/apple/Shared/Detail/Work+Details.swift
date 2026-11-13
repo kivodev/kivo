@@ -21,6 +21,16 @@ extension WorkSummary {
         [WorkKind.movie, .episode, .video, .extra, .book].contains(kind) && available
     }
 
+    /// An episode's synopsis on one line, without markup; nil when it has none.
+    var synopsis: String? {
+        guard let overview = episode?.overview else { return nil }
+        let text = overview
+            .replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
+            .split(whereSeparator: \.isWhitespace)
+            .joined(separator: " ")
+        return text.isEmpty ? nil : text
+    }
+
     /// Where the user is in it; nil unless it's in progress.
     var resumeMs: Int64? {
         guard let position = userState?.positionMs?.int64Value, position > 0, userState?.played != true else { return nil }
