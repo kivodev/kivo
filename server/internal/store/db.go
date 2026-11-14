@@ -10,7 +10,6 @@ import (
 	"log/slog"
 	"path/filepath"
 	"runtime"
-	"sync"
 	"time"
 
 	"github.com/mmcdole/kivo/internal/health"
@@ -23,10 +22,9 @@ var migrations embed.FS
 // connection, which serializes every write, and a read-only pool for
 // everything else.
 type DB struct {
-	path    string
-	writer  *sql.DB
-	reader  *sql.DB
-	writeMu sync.Mutex // held for the whole of each Write
+	path   string
+	writer *sql.DB
+	reader *sql.DB
 
 	problems []health.Problem
 }

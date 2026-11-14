@@ -315,6 +315,53 @@ func TestNestedWritePanicsInTests(t *testing.T) {
 	t.Fatal("nested Write did not panic")
 }
 
+// The next write doesn't wait for a committed write's after-commit work,
+// such as deleting files.
+func TestAfterCommitRunsOnceTheWriterIsFree(t *testing.T) {
+	db, _ := testDB(t, basic)
+	ctx := context.Background()
+	var next error
+	err := db.Write(ctx, func(ctx context.Context, tx *Tx) error {
+		tx.AfterCommit(func() {
+			next = db.Write(context.Background(), func(ctx context.Context, tx *Tx) error {
+				_, err := tx.ExecContext(ctx, `INSERT INTO item (name) VALUES ('b')`)
+				return err
+			})
+		})
+		_, err := tx.ExecContext(ctx, `INSERT INTO item (name) VALUES ('a')`)
+		return err
+	})
+	if err != nil || next != nil {
+		t.Fatalf("Write = %v, a write from its after-commit = %v; want nil, nil", err, next)
+	}
+}
+
+// A write waiting behind another stops waiting when its context ends.
+func TestWriteWaitingForTheWriterIsCancelled(t *testing.T) {
+	db, _ := testDB(t, basic)
+	inWrite, release := make(chan struct{}), make(chan struct{})
+	done := make(chan error)
+	go func() {
+		done <- db.Write(context.Background(), func(ctx context.Context, tx *Tx) error {
+			close(inWrite)
+			<-release
+			return nil
+		})
+	}()
+	<-inWrite
+	defer func() {
+		close(release)
+		<-done
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	err := db.Write(ctx, func(context.Context, *Tx) error { return nil })
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("Write behind a held writer = %v, want DeadlineExceeded", err)
+	}
+}
+
 func TestReadersProceedDuringWrite(t *testing.T) {
 	db, _ := testDB(t, basic)
 	ctx := context.Background()
