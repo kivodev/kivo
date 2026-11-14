@@ -63,8 +63,12 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -545,9 +549,9 @@ fun TextPanel(title: String, text: String, onDismiss: () -> Unit) {
 
 /**
  * An overview, its paragraphs run together for the most text in [lines]
- * lines, [textWidth] wide. When it doesn't fit, the whole block, [width]
- * wide, is one stop with a plain outline and a small More at the end of its
- * last line, and OK opens it in full ([TextPanel]), paragraphs and all; when
+ * lines, [width] wide. When it doesn't fit, it ends at a word with an
+ * ellipsis and a small More, the whole block is one stop with a plain
+ * outline, and OK opens it in full ([TextPanel]), paragraphs and all; when
  * it fits it takes no focus. [onClamped] hears which, for what moves focus
  * around it. Focus shows only in the outline's drawing, so it recomposes
  * nothing.
@@ -559,14 +563,27 @@ fun Overview(
     modifier: Modifier = Modifier,
     lines: Int = 3,
     width: Dp = 518.dp,
-    textWidth: Dp = 470.dp,
     onClamped: (Boolean) -> Unit = {},
 ) {
     var open by remember { mutableStateOf(false) }
-    var clamped by remember(text) { mutableStateOf(false) }
     val focused = remember { mutableStateOf(false) }
     val colors = Kivo.colors
-    val shown = remember(text) { oneLine(text) }
+    val measurer = rememberTextMeasurer()
+    val widthPx = with(LocalDensity.current) { width.roundToPx() }
+    val more = stringResource(R.string.more)
+    val moreStyle = TvType.smallStrong.toSpanStyle().copy(color = colors.text)
+    val shown = remember(text, lines, widthPx, more, moreStyle) {
+        fun fits(shown: AnnotatedString) =
+            !measurer.measure(shown, TvType.body, maxLines = lines, constraints = Constraints(maxWidth = widthPx)).didOverflowHeight
+        fun withMore(cut: String) = buildAnnotatedString {
+            append("$cut ")
+            withStyle(moreStyle) { append(more) }
+        }
+        val whole = AnnotatedString(oneLine(text))
+        if (fits(whole)) whole else withMore(cutAtWord(whole.text) { fits(withMore(it)) })
+    }
+    val clamped = shown.spanStyles.isNotEmpty()
+    LaunchedEffect(clamped) { onClamped(clamped) }
     Box(
         modifier
             .width(width)
@@ -599,19 +616,24 @@ fun Overview(
             maxLines = lines,
             minLines = lines,
             overflow = TextOverflow.Ellipsis,
-            onTextLayout = {
-                if (clamped != it.didOverflowHeight) {
-                    clamped = it.didOverflowHeight
-                    onClamped(clamped)
-                }
-            },
-            modifier = Modifier.width(textWidth),
         )
-        if (clamped) {
-            Text(stringResource(R.string.more), style = TvType.smallStrong, color = colors.text, modifier = Modifier.align(Alignment.BottomEnd))
-        }
     }
     if (open) TextPanel(title, text) { open = false }
+}
+
+/**
+ * [text] ended at the last word that [fits] with an ellipsis after it,
+ * any punctuation before the ellipsis dropped.
+ */
+internal fun cutAtWord(text: String, fits: (String) -> Boolean): String {
+    val words = text.split(' ')
+    var low = 0
+    var high = words.size - 1
+    while (low < high) {
+        val mid = (low + high + 1) / 2
+        if (fits(words.subList(0, mid).joinToString(" ") + "…")) low = mid else high = mid - 1
+    }
+    return words.subList(0, low).joinToString(" ").trimEnd { it.isWhitespace() || !it.isLetterOrDigit() } + "…"
 }
 
 /** How far a focused overview's outline stands clear of its text, across and down. */

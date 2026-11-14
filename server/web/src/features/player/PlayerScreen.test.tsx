@@ -806,7 +806,7 @@ describe("Player menus", () => {
     expect(within(await settingsMenu(user)).getByRole("menuitem", { name: /^Speed/ })).toHaveTextContent("1.5×");
   }, 15_000);
 
-  it("says in the top bar when the play ends, at the speed chosen", async () => {
+  it("says under the time left when the play ends, at the speed chosen", async () => {
     serveMockApi();
     const { user } = renderApp(`/watch/${mockIds.dunePartTwo}`);
     await playing();
@@ -816,7 +816,7 @@ describe("Player menus", () => {
       const now = Date.now();
       return [now - 2000, now].map((at) => `Ends at ${formatEndTime(at + left / rate)}`);
     };
-    const bar = document.querySelector('[data-part="player-top-bar"]') as HTMLElement;
+    const bar = document.querySelector('[data-part="player-controls"]') as HTMLElement;
     expect(endsAt(1)).toContain(within(bar).getByText(/^Ends at /).textContent);
     await user.click(within(await settingsSubmenu(user, "Speed")).getByRole("menuitemradio", { name: "2×" }));
     await waitFor(() => expect(endsAt(2)).toContain(within(bar).getByText(/^Ends at /).textContent));

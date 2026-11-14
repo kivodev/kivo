@@ -4,13 +4,12 @@ import { lazy, type ReactNode, Suspense, useState } from "react";
 import { subtitlesOff } from "@/api/playback";
 import type { WorkDetail } from "@/api/schemas";
 import { Button, buttonClass } from "@/components/Button";
-import { useEndsAt } from "@/components/endsAt";
 import { Icon } from "@/components/Icon";
 import { Select } from "@/components/Select";
 import { automaticTrack, TrackPicker, trackChoices } from "@/components/TrackPicker";
 import { versionOption } from "@/components/trackLabels";
 import type { WatchSearch } from "@/features/player/watchSearch";
-import { formatClock, formatTimeLeft } from "@/i18n/format";
+import { formatClock } from "@/i18n/format";
 import { isTv } from "@/tv/flag";
 import { TvFocusable, TvFocusGroup } from "@/tv/focus";
 import { type DetailSearch, useDetailSearch } from "./detailSearch";
@@ -46,30 +45,19 @@ function playSearchOf(work: WorkDetail, search: DetailSearch): WatchSearch {
   return { version: selectedVersion(work, search.version)?.id, audio: search.audio, subtitle: search.subtitle };
 }
 
-/**
- * The line under the buttons, the time left once the work has started and
- * when it would end ("1 hr 34 min left · Ends at 9:42 PM"), and Play from
- * beginning once it has started.
- */
-export function useResumeParts(work: WorkDetail) {
+/** Play from beginning, the button beside Resume once the work has started. */
+export function usePlayFromStart(work: WorkDetail): (() => void) | undefined {
   const [search] = useDetailSearch();
   const navigate = useNavigate();
-  const playable = canPlay(work, search);
-  const position = playable ? resumeAt(work, search) : undefined;
-  const remaining = playable && work.durationMs ? work.durationMs - (position ?? 0) : undefined;
-  const endsAt = useEndsAt(remaining);
-  const left = position && remaining !== undefined ? formatTimeLeft(remaining) : undefined;
-  return {
-    playing: [left, endsAt].filter(Boolean).join(" · ") || undefined,
-    onPlayFromStart: position
-      ? () =>
-          void navigate({
-            to: "/watch/$workId",
-            params: { workId: work.id },
-            search: { ...playSearchOf(work, search), from: "start" },
-          })
-      : undefined,
-  };
+  const position = canPlay(work, search) ? resumeAt(work, search) : undefined;
+  return position
+    ? () =>
+        void navigate({
+          to: "/watch/$workId",
+          params: { workId: work.id },
+          search: { ...playSearchOf(work, search), from: "start" },
+        })
+    : undefined;
 }
 
 /** Play from beginning, a round button beside Resume. */

@@ -66,7 +66,7 @@ struct UprightControls: View {
         // 44-point targets, which overlap the gaps between them.
         VStack(alignment: .leading, spacing: 0) {
             PlayerTitle(model: model)
-            ScrubBar(model: model)
+            ScrubBar(model: model, endsAt: model.endsAt(from:))
             HStack(spacing: 0) {
                 Transport(model: model)
                 Spacer(minLength: 0)
@@ -167,7 +167,7 @@ struct TabletopControls: View {
             .font(PlayerGlyph.transportTile)
             .frame(minHeight: 72, maxHeight: 143)
             .sensoryFeedback(.impact(weight: .light), trigger: paused) { _, _ in model.controlsVisible }
-            ScrubBar(model: model)
+            ScrubBar(model: model, endsAt: model.endsAt(from:))
                 .padding(.horizontal, KivoTokens.spacing * 4)
                 .frame(height: 51)
                 .playerTile()
@@ -283,7 +283,7 @@ struct ControlBar: View {
     var body: some View {
         HStack(spacing: KivoTokens.spacing * 2) {
             Transport(model: model)
-            ScrubBar(model: model)
+            ScrubBar(model: model, endsAt: model.endsAt(from:))
             if fill || panels {
                 HStack(spacing: 0) {
                     if fill {
@@ -410,14 +410,10 @@ struct PlayerTitle: View {
                 }
             }
             .font(.headline)
-            // The end time moves on while paused too.
-            TimelineView(.everyMinute) { context in
-                let line = [model.subtitleLine, model.endsAt(from: context.date)].compactMap { $0 }.joined(separator: " · ")
-                if !line.isEmpty {
-                    Text(line)
-                        .font(.footnote)
-                        .foregroundStyle(.white.opacity(0.75))
-                }
+            if let line = model.subtitleLine {
+                Text(line)
+                    .font(.footnote)
+                    .foregroundStyle(.white.opacity(0.75))
             }
         }
         .lineLimit(1)

@@ -20,9 +20,11 @@ protocol Scrubbable: AnyObject {
 /// finely the further the finger slides up or down away from the bar (half,
 /// quarter and fine speed), with the time, the chapter and the preview
 /// frame in a bubble above; it seeks on release. Chapters are ticks, and
-/// crossing one ticks.
+/// crossing one ticks. [endsAt] says under the time left when the play
+/// ends, from a moment, following the clock.
 struct ScrubBar: View {
     let model: any Scrubbable
+    var endsAt: ((Date) -> String?)?
     @Environment(\.kivoPalette) private var palette
     @State private var target: Double?
     @State private var lastX: CGFloat = 0
@@ -43,6 +45,20 @@ struct ScrubBar: View {
         }
         .font(.caption.monospacedDigit().weight(.medium))
         .foregroundStyle(.white.opacity(0.9))
+        // Inside the bar's height, so the controls around it keep their places.
+        .overlay(alignment: .bottomTrailing) {
+            if let endsAt {
+                TimelineView(.everyMinute) { context in
+                    if let line = endsAt(context.date) {
+                        Text(line)
+                            .font(.caption2.monospacedDigit().weight(.medium))
+                            .foregroundStyle(.white.opacity(0.75))
+                            .fixedSize()
+                    }
+                }
+                .allowsHitTesting(false)
+            }
+        }
         .sensoryFeedback(.selection, trigger: chapterIndex)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("Playback position"))
