@@ -117,7 +117,11 @@ func run(ctx context.Context, boot config.Bootstrap, logs *health.Logs, bus *eve
 		return err
 	}
 
-	// Every long-running part has an owner here and stops with ctx.
+	// Every long-running part has an owner here. It runs until the HTTP
+	// servers have stopped, so no request is still starting a play or a
+	// write when it stops.
+	work, stopWork := context.WithCancel(context.WithoutCancel(ctx))
+	defer stopWork()
 	runners := map[string]func(context.Context) error{
 		"tasks":    s.runner.Run,
 		"auth":     s.auth.Run,
@@ -130,16 +134,17 @@ func run(ctx context.Context, boot config.Bootstrap, logs *health.Logs, bus *eve
 	errs := make(chan error, len(runners)+len(boot.Listen)) // one slot per runner and listener, so no send ever blocks
 	for name, run := range runners {
 		wg.Go(func() {
-			if err := run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			if err := run(work); err != nil && !errors.Is(err, context.Canceled) {
 				errs <- fmt.Errorf("%s: %w", name, err)
 				stop()
 			}
 		})
 	}
 	// Capabilities stays empty until the accelerator test finishes, seconds after start.
-	wg.Go(func() { s.ffmpeg.DetectAccelerators(ctx, filepath.Join(boot.CacheDir, "media")) })
-	if err := s.listen(ctx, &wg, errs, stop); err != nil {
-		stop()
+	wg.Go(func() { s.ffmpeg.DetectAccelerators(work, filepath.Join(boot.CacheDir, "media")) })
+	shutdown, err := s.listen(ctx, errs, stop)
+	if err != nil {
+		stopWork()
 		wg.Wait()
 		return err
 	}
@@ -148,6 +153,8 @@ func run(ctx context.Context, boot config.Bootstrap, logs *health.Logs, bus *eve
 	<-ctx.Done()
 	slog.InfoContext(ctx, "kivo: stopping")
 	stopping := time.Now()
+	shutdown()
+	stopWork()
 	wg.Wait() // playback ends its plays, writing their positions, and stops their ffmpeg jobs
 	slog.InfoContext(ctx, "kivo: stopped", "took", time.Since(stopping).Round(time.Millisecond))
 	close(errs)
@@ -289,21 +296,45 @@ func (s *server) settingsChanged(was, is config.Settings) {
 	}
 }
 
-// listen serves the API on every listen address until ctx ends. The HTTP
-// servers time out reading headers and idle kept-alive connections. They
-// set no read or write timeout, because that would end a long media
-// stream. The api package limits each request's body and each write
-// instead. Live-event sockets are closed first on shutdown, because
-// http.Server.Shutdown doesn't close hijacked connections.
-func (s *server) listen(ctx context.Context, wg *sync.WaitGroup, errs chan<- error, stop func()) error {
+// shutdownWait is how long requests in flight get to finish on shutdown.
+// Media streams are cut off when it's up.
+const shutdownWait = 10 * time.Second
+
+// listen serves the API on every listen address until shutdown is called.
+// The HTTP servers time out reading headers and idle kept-alive
+// connections. They set no read or write timeout, because that would end a
+// long media stream. The api package limits each request's body and each
+// write instead. shutdown closes the live-event sockets first, because
+// http.Server.Shutdown doesn't close hijacked connections, then waits for
+// the requests in flight, up to shutdownWait.
+func (s *server) listen(ctx context.Context, errs chan<- error, stop func()) (shutdown func(), err error) {
+	var servers []*http.Server
+	var serving sync.WaitGroup
+	shutdown = func() {
+		s.api.Close()
+		sctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), shutdownWait)
+		defer cancel()
+		var wg sync.WaitGroup
+		for _, srv := range servers {
+			wg.Go(func() {
+				if srv.Shutdown(sctx) != nil {
+					_ = srv.Close()
+				}
+			})
+		}
+		wg.Wait()
+		serving.Wait()
+	}
 	for _, addr := range s.boot.Listen {
 		ln, err := net.Listen("tcp", addr)
 		if err != nil {
-			return err
+			shutdown()
+			return nil, err
 		}
 		srv := &http.Server{Handler: s.api, ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 2 * time.Minute}
+		servers = append(servers, srv)
 		slog.InfoContext(ctx, "kivo: listening", "addr", ln.Addr().String(), "tls", s.boot.TLSCert != "")
-		wg.Go(func() {
+		serving.Go(func() {
 			var err error
 			if s.boot.TLSCert != "" {
 				err = srv.ServeTLS(ln, s.boot.TLSCert, s.boot.TLSKey)
@@ -315,15 +346,8 @@ func (s *server) listen(ctx context.Context, wg *sync.WaitGroup, errs chan<- err
 				stop()
 			}
 		})
-		wg.Go(func() {
-			<-ctx.Done()
-			s.api.Close()
-			sctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
-			defer cancel()
-			_ = srv.Shutdown(sctx)
-		})
 	}
-	return nil
+	return shutdown, nil
 }
 
 // advertise announces the server on the local network until ctx ends.
