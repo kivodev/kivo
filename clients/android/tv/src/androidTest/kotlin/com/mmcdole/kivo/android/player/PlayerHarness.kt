@@ -387,7 +387,7 @@ class PlayerHarness(private val compose: ComposeContentTestRule, private val clo
             parts = listOf(PlayPart(DURATION_MS)),
             chapters = chapters,
             markers = markers,
-            dialogueBoost = DialogueBoost(enabled = false, cost = "audioAsAac"),
+            dialogueBoost = DialogueBoost(enabled = false),
         )
     }
 }
