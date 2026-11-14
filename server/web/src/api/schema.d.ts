@@ -744,7 +744,7 @@ export interface paths {
          * List libraries
          * @description The libraries the user may see, in its own order.
          *     The libraries the user placed (`libraries` in
-         *     `CurrentUserUpdate`), then any others in the order they were added.
+         *     `CurrentUserUpdate`), then any others A to Z by name.
          */
         get: operations["listLibraries"];
         put?: never;
@@ -3282,7 +3282,7 @@ export interface components {
             /**
              * @description The sidebar's libraries, in the order the user wants them, each
              *     pinned or not; it replaces the last order. A library left out is
-             *     pinned after the listed ones, in the order libraries were added,
+             *     pinned after the listed ones, A to Z by name,
              *     as every library is until the user sets this. Home doesn't follow
              *     it.
              */

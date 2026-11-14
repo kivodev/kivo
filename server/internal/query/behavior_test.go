@@ -410,7 +410,7 @@ func TestHomeRows(t *testing.T) {
 }
 
 // TestPinnedLibraries checks a user's own library order. Every library is
-// pinned, in the server's order, until the user chooses otherwise. A
+// pinned, A to Z by name, until the user chooses otherwise. A
 // library the user hasn't placed, or gets back after losing it, is pinned
 // at the end. Home has rows for pinned libraries only, and search still
 // finds the rest.
@@ -462,12 +462,12 @@ func TestPinnedLibraries(t *testing.T) {
 	}
 	check("granted back", h.friend, entry{h.shows, true}, entry{h.movies, true})
 
-	// Libraries the user didn't place follow, in the server's order.
+	// Libraries the user didn't place follow, A to Z by name.
 	if err := us.EditPreferences(ctx, h.admin, users.PreferencesChange{Libraries: &[]users.LibraryChoice{{Library: h.books, Pinned: true}, {Library: h.shows}}}); err != nil {
 		t.Fatal(err)
 	}
 	check("admin", h.admin, entry{h.books, true}, entry{h.shows, false},
-		entry{h.movies, true}, entry{h.private, true}, entry{h.uhd, true})
+		entry{h.movies, true}, entry{h.uhd, true}, entry{h.private, true})
 
 	for name, libs := range map[string][]users.LibraryChoice{
 		"not granted": {{Library: h.private, Pinned: true}},

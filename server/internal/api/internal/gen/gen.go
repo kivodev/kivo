@@ -2453,7 +2453,7 @@ type CurrentUserPasswordChange struct {
 type CurrentUserUpdate struct {
 	// Libraries The sidebar's libraries, in the order the user wants them, each
 	// pinned or not; it replaces the last order. A library left out is
-	// pinned after the listed ones, in the order libraries were added,
+	// pinned after the listed ones, A to Z by name,
 	// as every library is until the user sets this. Home doesn't follow
 	// it.
 	Libraries *[]LibraryChoice `json:"libraries,omitempty"`

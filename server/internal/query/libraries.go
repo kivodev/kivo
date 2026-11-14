@@ -40,7 +40,7 @@ type AdminLibrary struct {
 
 // libraryList lists the libraries in the user's own order, with whether
 // each is pinned. A library the user hasn't placed is pinned, and comes
-// after the placed ones in the order libraries were added. A library being
+// after the placed ones, A to Z by name. A library being
 // deleted leaves the list at once. Its items leave the other lists as its
 // delete-library job deletes their files.
 var libraryList = stmt("Libraries", `
@@ -49,7 +49,7 @@ FROM library l
 LEFT JOIN user_library ul ON ul.user_id = @user AND ul.library_id = l.id
 WHERE l.deleting_at IS NULL
   AND `+libraryVisible+`
-ORDER BY ul.position IS NULL, ul.position, l.created_at, l.id`)
+ORDER BY ul.position IS NULL, ul.position, l.name COLLATE NOCASE, l.id`)
 
 // homeLibraries lists the libraries in the server's order, for Home's
 // rows. The user's own order and pins are the sidebar's.
@@ -114,8 +114,7 @@ func libraryKind(ctx context.Context, q querier, vw viewer, lib id.ID) (kind cat
 }
 
 // Libraries returns the libraries the Viewer may see, in the user's own
-// order: the ones the user placed, then the rest in the order they were
-// added.
+// order: the ones the user placed, then the rest A to Z by name.
 func (s *Service) Libraries(ctx context.Context, v users.Viewer) ([]Library, error) {
 	var out []Library
 	err := s.db.Read(ctx, func(tx *sql.Tx) error {

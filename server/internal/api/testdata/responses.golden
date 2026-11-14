@@ -1801,6 +1801,30 @@ GET /api/v1/libraries
       "folders": [
         {
           "id": "<id32>",
+          "path": "/media/audiobooks4",
+          "reachable": true
+        }
+      ],
+      "id": "<id6>",
+      "kind": "audiobooks",
+      "markers": "never",
+      "name": "audiobooks 4",
+      "pinned": true,
+      "previews": "never",
+      "refreshDays": 0,
+      "scan": {
+        "libraryId": "<id6>",
+        "state": "idle"
+      },
+      "subtitles": "never",
+      "unmatchedCount": 0,
+      "useLocalMetadata": false,
+      "workCount": 1
+    },
+    {
+      "folders": [
+        {
+          "id": "<id33>",
           "path": "<tmp>",
           "reachable": true
         }
@@ -1824,7 +1848,7 @@ GET /api/v1/libraries
     {
       "folders": [
         {
-          "id": "<id33>",
+          "id": "<id34>",
           "path": "/media/shows2",
           "reachable": true
         }
@@ -1844,30 +1868,6 @@ GET /api/v1/libraries
       "unmatchedCount": 0,
       "useLocalMetadata": false,
       "workCount": 1
-    },
-    {
-      "folders": [
-        {
-          "id": "<id34>",
-          "path": "/media/audiobooks4",
-          "reachable": true
-        }
-      ],
-      "id": "<id6>",
-      "kind": "audiobooks",
-      "markers": "never",
-      "name": "audiobooks 4",
-      "pinned": true,
-      "previews": "never",
-      "refreshDays": 0,
-      "scan": {
-        "libraryId": "<id6>",
-        "state": "idle"
-      },
-      "subtitles": "never",
-      "unmatchedCount": 0,
-      "useLocalMetadata": false,
-      "workCount": 1
     }
   ]
 }
@@ -1877,6 +1877,13 @@ GET /api/v1/libraries
 200
 {
   "items": [
+    {
+      "id": "<id6>",
+      "kind": "audiobooks",
+      "name": "audiobooks 4",
+      "pinned": true,
+      "workCount": 1
+    },
     {
       "id": "<id2>",
       "kind": "movies",
@@ -1888,13 +1895,6 @@ GET /api/v1/libraries
       "id": "<id10>",
       "kind": "shows",
       "name": "shows 2",
-      "pinned": true,
-      "workCount": 1
-    },
-    {
-      "id": "<id6>",
-      "kind": "audiobooks",
-      "name": "audiobooks 4",
       "pinned": true,
       "workCount": 1
     }
@@ -1917,6 +1917,30 @@ GET /api/v1/libraries?limit=1&after=bogus
       "folders": [
         {
           "id": "<id32>",
+          "path": "/media/audiobooks4",
+          "reachable": true
+        }
+      ],
+      "id": "<id6>",
+      "kind": "audiobooks",
+      "markers": "never",
+      "name": "audiobooks 4",
+      "pinned": true,
+      "previews": "never",
+      "refreshDays": 0,
+      "scan": {
+        "libraryId": "<id6>",
+        "state": "idle"
+      },
+      "subtitles": "never",
+      "unmatchedCount": 0,
+      "useLocalMetadata": false,
+      "workCount": 1
+    },
+    {
+      "folders": [
+        {
+          "id": "<id33>",
           "path": "<tmp>",
           "reachable": true
         }
@@ -1940,7 +1964,7 @@ GET /api/v1/libraries?limit=1&after=bogus
     {
       "folders": [
         {
-          "id": "<id33>",
+          "id": "<id34>",
           "path": "/media/shows2",
           "reachable": true
         }
@@ -1960,30 +1984,6 @@ GET /api/v1/libraries?limit=1&after=bogus
       "unmatchedCount": 0,
       "useLocalMetadata": false,
       "workCount": 1
-    },
-    {
-      "folders": [
-        {
-          "id": "<id34>",
-          "path": "/media/audiobooks4",
-          "reachable": true
-        }
-      ],
-      "id": "<id6>",
-      "kind": "audiobooks",
-      "markers": "never",
-      "name": "audiobooks 4",
-      "pinned": true,
-      "previews": "never",
-      "refreshDays": 0,
-      "scan": {
-        "libraryId": "<id6>",
-        "state": "idle"
-      },
-      "subtitles": "never",
-      "unmatchedCount": 0,
-      "useLocalMetadata": false,
-      "workCount": 1
     }
   ]
 }
@@ -1994,7 +1994,7 @@ GET /api/v1/libraries/<id2>
 {
   "folders": [
     {
-      "id": "<id32>",
+      "id": "<id33>",
       "path": "<tmp>",
       "reachable": true
     }
