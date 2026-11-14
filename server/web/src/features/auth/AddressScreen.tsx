@@ -14,7 +14,7 @@ import { TvFocusGroup } from "@/tv/focus";
 import { TvControl } from "@/tv/forms/TvControl";
 import { packagedServer, setPackagedServer } from "@/tv/packaged";
 import { focusTv } from "@/tv/spatial";
-import { parseAddress } from "./address";
+import { addressCandidates, type ServerAddress } from "./address";
 
 const addressRoute = getRouteApi("/server");
 
@@ -52,9 +52,10 @@ function statusOf({ unready, failed }: Search): Status {
 }
 
 /**
- * The packaged TV app's first screen: one field and Open. Open asks the address what
- * it is, and keeps a Kivo server's address and ID. The app then starts
- * again on that server, or goes on when it's the one the app started on.
+ * The packaged TV app's first screen: one field and Open. Open asks the
+ * address what it is, at each URL it may mean at once, and keeps the
+ * address and ID of the first Kivo server among them, in their order. The
+ * app then starts again on that server, or goes on when it's the one the app started on.
  * The app also comes here when its kept server didn't answer as it
  * started, or isn't Kivo, with the address in the field to open again or
  * change, and from sign-in's, Settings' and a load error's Change server.
@@ -101,11 +102,26 @@ export function AddressScreen() {
     return true;
   });
 
+  // The first Kivo server among the candidates, in their order; else the
+  // first that answered as something else; else the first, unanswered.
+  const probeAll = async (candidates: ServerAddress[]) => {
+    const asked = candidates.map((address) => ({ address, answer: probeServer(address.base) }));
+    const answered: { address: ServerAddress; probe: ServerProbe }[] = [];
+    for (const { address, answer } of asked) {
+      const found = { address, probe: await answer };
+      if (found.probe.result === "kivo") return found;
+      answered.push(found);
+    }
+    const best = answered.find((found) => found.probe.result === "other") ?? answered[0];
+    if (best === undefined) throw new Error("an address has at least one URL");
+    return best;
+  };
+
   const open = async () => {
     const typed = text.trim();
-    const address = parseAddress(typed);
+    const candidates = addressCandidates(typed);
     const mine = ++attempt.current;
-    if (address === undefined) {
+    if (candidates === undefined) {
       setStatus({ kind: "invalid" });
       return;
     }
@@ -114,18 +130,19 @@ export function AddressScreen() {
     const waking = setTimeout(() => {
       if (current()) setStatus({ kind: "waking" });
     }, wakingAfterMs);
-    let probe: ServerProbe;
+    let found: { address: ServerAddress; probe: ServerProbe };
     try {
-      probe = await probeServer(address.base);
-      if (current() && probe.result === "none") {
+      found = await probeAll(candidates);
+      if (current() && found.probe.result === "none") {
         setStatus({ kind: "waking" });
         await new Promise((resolve) => setTimeout(resolve, retryAfterMs));
-        if (current()) probe = await probeServer(address.base);
+        if (current()) found = await probeAll(candidates);
       }
     } finally {
       clearTimeout(waking);
     }
     if (!current()) return;
+    const { address, probe } = found;
     if (probe.result === "other") {
       setStatus({ kind: "other", text: typed });
       focusTv("address:field");
@@ -133,8 +150,9 @@ export function AddressScreen() {
     }
     if (probe.result === "none") {
       // The engine reports a refused certificate and an address with
-      // nothing listening alike, so the message covers both.
-      setStatus({ kind: address.secure ? "insecure" : "unreachable", text: typed });
+      // nothing listening alike, so an address typed with https:// alone
+      // is told both; one without a scheme was tried over plain HTTP too.
+      setStatus({ kind: candidates.length === 1 && address.secure ? "insecure" : "unreachable", text: typed });
       focusTv("address:field");
       return;
     }

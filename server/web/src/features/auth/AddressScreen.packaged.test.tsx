@@ -12,7 +12,7 @@ vi.mock("@/tv/exit", () => ({ exitApp: vi.fn() }));
 // on either side of it.
 
 /** Renders a fresh install, types an address and presses Open. The server answers the probe with `probe` when given. */
-async function open(address: string, version = "2.0.0", probe?: () => Response) {
+async function open(address: string, version = "2.0.0", probe?: Parameters<typeof untyped.get>[1]) {
   const api = serveMockApi(scenarios.signedOut, (api) => {
     api.server.version = version;
   });
@@ -39,10 +39,10 @@ describe("The packaged app's address screen", () => {
     expect(sent("GET", "/users/me")).toHaveLength(0);
   });
 
-  it("opens an address without a scheme over https only, keeps the server and starts the app again on it", async () => {
+  it("opens an address without a scheme over https when it answers there, keeps the server and starts the app again on it", async () => {
     const { api, router } = await open("nas.local:8484");
     await waitFor(() => expect(restartApp).toHaveBeenCalledOnce());
-    expect(probes()).toEqual(["https://nas.local:8484/api/v1/server"]);
+    expect(probes()).toEqual(["https://nas.local:8484/api/v1/server", "http://nas.local:8484/api/v1/server"]);
     expect(packagedServer()).toEqual({ address: "https://nas.local:8484", serverId: api.server.id });
     expect(locationOf(router)).toBe("/server");
   });
@@ -63,7 +63,18 @@ describe("The packaged app's address screen", () => {
     expect(packagedServer()).toEqual({ address: "https://nas.local/tv", serverId: api.server.id });
   });
 
-  it("opens plain HTTP only when typed with http://, after saying it's unencrypted", async () => {
+  it("opens an address without a scheme over plain HTTP when https doesn't answer, after saying it's unencrypted", async () => {
+    const { api, user } = await open("nas.local", undefined, ({ request }) =>
+      request.url.startsWith("https:") ? HttpResponse.error() : undefined,
+    );
+    expect(await screen.findByText("Connecting without encryption. Press Open to continue.")).toBeInTheDocument();
+    expect(packagedServer()).toBeUndefined();
+    await user.click(screen.getByRole("button", { name: "Open" }));
+    await waitFor(() => expect(restartApp).toHaveBeenCalledOnce());
+    expect(packagedServer()).toEqual({ address: "http://nas.local:8484", serverId: api.server.id });
+  });
+
+  it("opens an address typed with http:// at that URL alone, after saying it's unencrypted", async () => {
     const { api, user } = await open("http://nas.local:8484");
     expect(await screen.findByText("Connecting without encryption. Press Open to continue.")).toBeInTheDocument();
     expect(packagedServer()).toBeUndefined();
@@ -89,16 +100,24 @@ describe("The packaged app's address screen", () => {
     expect(packagedServer()).toBeUndefined();
   });
 
-  it("tries an address that doesn't answer once more, then says it couldn't connect securely", {
+  it("tries an address that doesn't answer once more, then says it can't reach it", {
     timeout: 15_000,
   }, async () => {
     await open("nas.local", undefined, () => HttpResponse.error());
     expect(await screen.findByText("Waking the server…")).toBeInTheDocument();
+    expect(await screen.findByText(/^Can't reach nas.local\./, undefined, { timeout: 8000 })).toBeInTheDocument();
+    expect(probes()).toHaveLength(6);
+    expect(packagedServer()).toBeUndefined();
+  });
+
+  it("says it couldn't connect securely to an address typed with https:// that doesn't answer", {
+    timeout: 15_000,
+  }, async () => {
+    await open("https://nas.local", undefined, () => HttpResponse.error());
     expect(
-      await screen.findByText(/^Couldn't connect securely to nas.local\./, undefined, { timeout: 8000 }),
+      await screen.findByText(/^Couldn't connect securely to https:\/\/nas.local\./, undefined, { timeout: 8000 }),
     ).toBeInTheDocument();
     expect(probes()).toHaveLength(2);
-    expect(packagedServer()).toBeUndefined();
   });
 
   it("forgets the kept server's token when it opens a new one, revoking its session there", async () => {
