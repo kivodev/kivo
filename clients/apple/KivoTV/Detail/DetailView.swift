@@ -149,8 +149,8 @@ struct HeroTitle: View {
 }
 
 /// A hero's overview, its paragraphs run together, in three lines ended at
-/// a word with an ellipsis. When it's cut short, it takes focus, says More,
-/// and Select shows the whole of it.
+/// a word with an ellipsis. When it's cut short, More follows the ellipsis,
+/// it takes focus, and Select shows the whole of it.
 struct HeroOverview: View {
     let title: String
     let text: String
@@ -158,9 +158,10 @@ struct HeroOverview: View {
     @State private var open = false
 
     private static let lines = 3
-    /// The text's width, short of the overview's, which More sits at the end of.
-    private static let textWidth: CGFloat = 940
-    private static let width: CGFloat = 1036
+    private static let width: CGFloat = 940
+    private static var moreFont: UIFont {
+        .systemFont(ofSize: KivoTokens.TextSize.xs.size, weight: .semibold)
+    }
 
     var body: some View {
         let whole = text.split(whereSeparator: \.isWhitespace).joined(separator: " ")
@@ -168,19 +169,11 @@ struct HeroOverview: View {
         Button {
             open = true
         } label: {
-            ZStack(alignment: .bottomTrailing) {
-                Text(cut ?? whole)
-                    .kivoStyle(KivoTokens.TextSize.sm)
-                    .foregroundStyle(palette.text.opacity(0.85))
-                    .lineLimit(Self.lines, reservesSpace: true)
-                    .frame(width: Self.textWidth, alignment: .leading)
-                    .frame(width: Self.width, alignment: .leading)
-                if cut != nil {
-                    Text("More")
-                        .kivoStyle(KivoTokens.TextSize.xs, weight: KivoTokens.Weight.semibold)
-                        .foregroundStyle(palette.text)
-                }
-            }
+            (cut.map { Text("\($0) \(Text("More").font(Font(Self.moreFont)).foregroundStyle(palette.text))") } ?? Text(whole))
+                .kivoStyle(KivoTokens.TextSize.sm)
+                .foregroundStyle(palette.text.opacity(0.85))
+                .lineLimit(Self.lines, reservesSpace: true)
+                .frame(width: Self.width, alignment: .leading)
         }
         .buttonStyle(OverviewStyle())
         .disabled(cut == nil)
@@ -189,16 +182,19 @@ struct HeroOverview: View {
         }
     }
 
-    /// [text] ended at the last word that leaves room for an ellipsis in
+    /// [text] ended at the last word that leaves room for an ellipsis and More in
     /// the overview's lines, or nil when the whole of it fits.
     static func cut(_ text: String) -> String? {
         let font = UIFont.systemFont(ofSize: KivoTokens.TextSize.sm.size)
         let room = font.lineHeight * (CGFloat(lines) + 0.5)
-        func fits(_ text: String) -> Bool {
-            let bounds = (text as NSString).boundingRect(
-                with: CGSize(width: textWidth, height: .greatestFiniteMagnitude),
+        func fits(_ text: String, more: Bool = false) -> Bool {
+            let shown = NSMutableAttributedString(string: text, attributes: [.font: font])
+            if more {
+                shown.append(NSAttributedString(string: " More", attributes: [.font: moreFont]))
+            }
+            let bounds = shown.boundingRect(
+                with: CGSize(width: width, height: .greatestFiniteMagnitude),
                 options: .usesLineFragmentOrigin,
-                attributes: [.font: font],
                 context: nil
             )
             return bounds.height <= room
@@ -209,7 +205,7 @@ struct HeroOverview: View {
         var high = words.count - 1
         while low < high {
             let mid = (low + high + 1) / 2
-            if fits(words[..<mid].joined(separator: " ") + "…") { low = mid } else { high = mid - 1 }
+            if fits(words[..<mid].joined(separator: " ") + "…", more: true) { low = mid } else { high = mid - 1 }
         }
         let kept = words[..<low].joined(separator: " ").trimmingCharacters(in: .punctuationCharacters.union(.whitespaces))
         return kept + "…"
