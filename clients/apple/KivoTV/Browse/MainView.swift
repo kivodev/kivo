@@ -75,19 +75,28 @@ struct BrowseStack<Root: View>: View {
         NavigationStack(path: path) {
             root()
                 .navigationDestination(for: Route.self) { route in
-                    switch route {
-                    case let .work(work):
-                        DetailView(route: work)
-                    case let .list(list):
-                        ListWorksView(list: list)
-                    case let .library(library):
-                        LibraryView(library: library)
+                    Group {
+                        switch route {
+                        case let .work(work):
+                            DetailView(route: work)
+                        case let .list(list):
+                            ListWorksView(list: list)
+                        case let .library(library):
+                            LibraryView(library: library)
+                        }
                     }
+                    // A pushed page doesn't take the stack's environment, so each is given it.
+                    .environment(\.openWork, openWork)
                 }
         }
-        .environment(\.openWork, OpenWork { route in
+        .environment(\.openWork, openWork)
+    }
+
+    /// Pushes a work's page onto this tab's stack.
+    private var openWork: OpenWork {
+        OpenWork { route in
             server.navigation.paths[tab, default: []].append(.work(route))
-        })
+        }
     }
 
     private var path: Binding<[Route]> {
