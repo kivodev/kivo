@@ -8,7 +8,7 @@ import (
 )
 
 // latest is the latest release, which release-please raises as it tags one.
-const latest = "0.3.0" // x-release-please-version
+const latest = "0.4.0" // x-release-please-version
 
 // Of returns the version a build reports. set is the version a release
 // build is given, reported as it is. Without one it's the patch after the
