@@ -416,7 +416,7 @@ fun PlayerScreen(session: ServerSession, args: Screen.Player, navigator: Navigat
         }
 
         // Above the scrub bar, in from the screen's cropped edges as the controls are.
-        Column(Modifier.align(Alignment.BottomEnd).padding(end = SafeEdge, bottom = SafeTop + 91.dp), horizontalAlignment = Alignment.End) {
+        Column(Modifier.align(Alignment.BottomEnd).padding(end = SafeEdge, bottom = SafeTop + 107.dp), horizontalAlignment = Alignment.End) {
             if (showUpNext) {
                 UpNext(model, ui.upNext, playNow)
                 Spacer(Modifier.height(Kivo.space(3)))
@@ -539,16 +539,6 @@ private fun Controls(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(title, style = TvType.large, color = colors.onPlayer, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-            // When the video ends at the speed it plays at, from the position.
-            val durationMs = play?.durationMs?.toLong() ?: 0
-            if (durationMs > 0) {
-                Text(
-                    endsAt(((durationMs - state.positionMs) / speed).toLong()),
-                    style = TvType.body,
-                    color = colors.onPlayerMuted,
-                    modifier = Modifier.padding(start = Kivo.space(4)),
-                )
-            }
         }
         Column(
             Modifier
@@ -558,12 +548,14 @@ private fun Controls(
                 .padding(start = SafeEdge, end = SafeEdge, top = 28.dp, bottom = SafeTop),
             verticalArrangement = Arrangement.spacedBy(7.dp),
         ) {
-            // The time played and the time left either side of the bar.
+            // The time played and the time left either side of the bar, and under the time left when
+            // the video ends at the speed it plays at, from the position.
             val duration = play?.durationMs?.toLong() ?: 0
             ScrubBar(
                 positionMs = state.positionMs,
                 target = scrubTarget,
                 durationMs = duration,
+                endsAt = if (duration > 0) endsAt(((duration - state.positionMs) / speed).toLong()) else null,
                 chapters = play?.chapters.orEmpty(),
                 live = live,
                 preview = preview,
@@ -617,15 +609,17 @@ private fun Controls(
 }
 
 /**
- * The scrub bar: chapter marks as ticks; with focus, Left and Right go to
- * [onScrub] and OK, as it's released, to [onOk]; a [target] shows above the bar with its
- * preview frame (once the play's previews are ready), time and chapter.
+ * The scrub bar: chapter marks as ticks, and [endsAt] under the time left;
+ * with focus, Left and Right go to [onScrub] and OK, as it's released, to
+ * [onOk]; a [target] shows above the bar with its preview frame (once the
+ * play's previews are ready), time and chapter.
  */
 @Composable
 private fun ScrubBar(
     positionMs: Long,
     target: Long?,
     durationMs: Long,
+    endsAt: String?,
     chapters: List<Chapter>,
     live: Boolean,
     preview: (Long) -> SpriteFrame?,
@@ -719,6 +713,9 @@ private fun ScrubBar(
                 maxLines = 1,
                 modifier = Modifier.width(leftWidth),
             )
+        }
+        if (endsAt != null) {
+            Text(endsAt, style = TvType.small, color = colors.onPlayerMuted, maxLines = 1, modifier = Modifier.align(Alignment.End))
         }
     }
 }

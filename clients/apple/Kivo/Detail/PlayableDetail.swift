@@ -7,8 +7,8 @@ import SwiftUI
 /// which carry into playback, trailers, cast, extras and collections. An episode has
 /// its series above its title and its season's episodes below, a shelf of
 /// cards in a regular width and a list in a compact one. Once it's in
-/// progress, a round Play from Beginning sits beside Resume, with the time
-/// left and when it ends under them. Download sits beside My List and Watched. A
+/// progress, a round Play from Beginning sits beside Resume. Download sits
+/// beside My List and Watched. A
 /// ready download is what Play and Resume play, with "Downloaded"
 /// under the actions and Stream Instead and Remove Download in the ⋯ menu.
 struct PlayableDetail: View {
@@ -149,18 +149,15 @@ struct PlayableDetail: View {
             .frame(maxWidth: .infinity)
         } else {
             VStack(spacing: KivoTokens.spacing * 3) {
-                // The end time moves on with the clock.
-                TimelineView(.everyMinute) { context in
-                    ActionRow(work: work, page: page, secondary: timeLeft(from: context.date)) {
-                        PlayButton(label: resumeLabel ?? String(localized: "Play")) {
-                            play(fromStart: false)
-                        }
-                        if resumeLabel != nil {
-                            RestartButton { play(fromStart: true) }
-                        }
-                    } extra: {
-                        downloadButton
+                ActionRow(work: work, page: page) {
+                    PlayButton(label: resumeLabel ?? String(localized: "Play")) {
+                        play(fromStart: false)
                     }
+                    if resumeLabel != nil {
+                        RestartButton { play(fromStart: true) }
+                    }
+                } extra: {
+                    downloadButton
                 }
                 DownloadBadge(workId: work.id)
             }
@@ -169,12 +166,6 @@ struct PlayableDetail: View {
 
     private var downloadButton: some View {
         DownloadButton(work: work, choice: choice)
-    }
-
-    /// "1 hr 36 min left · Ends at 9:41 PM", while it's in progress.
-    private func timeLeft(from now: Date) -> String? {
-        guard let timeLeft = work.timeLeft, let resumeMs = work.resumeMs, let duration = work.durationMs?.int64Value else { return nil }
-        return [timeLeft, Words.endsAt(kind: work.kind, remainingMs: duration - resumeMs, from: now)].compactMap { $0 }.joined(separator: " · ")
     }
 
     @ViewBuilder private var menu: some View {

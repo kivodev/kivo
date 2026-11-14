@@ -119,7 +119,6 @@ import com.mmcdole.kivo.android.mobile.ui.WorkMenu
 import com.mmcdole.kivo.android.mobile.ui.WorkMenuHost
 import com.mmcdole.kivo.android.mobile.ui.cardImage
 import com.mmcdole.kivo.android.mobile.ui.display
-import com.mmcdole.kivo.android.mobile.ui.endsAt
 import com.mmcdole.kivo.android.mobile.ui.labelledTitle
 import com.mmcdole.kivo.android.mobile.ui.markPlayedLabel
 import com.mmcdole.kivo.android.mobile.ui.progressOf
@@ -311,9 +310,9 @@ private fun metaLine(head: WorkSummary, work: WorkDetail?): String {
 }
 
 /**
- * Play, or Resume with the time and how far in, as a pill across the page;
- * then Play from beginning, Download, My List and Watched. "This file is
- * missing" in Play's place when nothing can play.
+ * Play, or Resume with the time, as a pill across the page, and how far in
+ * a started book is; then Play from beginning, Download, My List and
+ * Watched. "This file is missing" in Play's place when nothing can play.
  */
 @Composable
 private fun PlayActions(head: WorkSummary, state: DetailUiState, model: DetailViewModel, nav: MobileNav) {
@@ -336,12 +335,10 @@ private fun PlayActions(head: WorkSummary, state: DetailUiState, model: DetailVi
                 if (position != null && !book) stringResource(R.string.mobile_resume_at, display.clock(position.toLong())) else stringResource(if (position != null) R.string.mobile_resume else R.string.mobile_play),
             ) { play(fromStart = false) }
             val duration = head.durationMs
-            if (duration != null) {
-                val left = (duration - (position ?: 0)).toLong()
+            if (book && duration != null && position != null) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(space(3))) {
                     progressOf(head)?.let { ProgressBar(it, Modifier.width(72.dp).clip(CircleShape)) }
-                    val parts = listOfNotNull(display.timeLeft(left).takeIf { position != null }, endsAt(left).takeIf { head.kind == WorkKind.Movie || head.kind == WorkKind.Episode })
-                    Text(parts.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(display.timeLeft((duration - position).toLong()), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         } else {

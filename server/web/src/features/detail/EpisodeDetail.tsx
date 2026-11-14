@@ -11,7 +11,7 @@ import { isTv } from "@/tv/flag";
 import { TvFocusable } from "@/tv/focus";
 import { communityRating, DetailHeader } from "./DetailHeader";
 import { EpisodeList, EpisodeShelf } from "./EpisodeList";
-import { PlayActions, PlaybackPickers, useResumeParts } from "./PlaybackControls";
+import { PlayActions, PlaybackPickers, usePlayFromStart } from "./PlaybackControls";
 import { WorkRows } from "./WorkRows";
 
 type Props = { work: WorkDetail };
@@ -23,8 +23,7 @@ type Props = { work: WorkDetail };
  *
  * On TV it's one screen that never scrolls to reach its episodes. The title
  * stands alone with the code at the head of its details, as in the Apple
- * app's wide layout, and when it ends with them. The track pickers are in the
- * row of buttons, and the overview has the room left, up to seven lines. The
+ * app's wide layout. The track pickers are in the row of buttons, and the overview has the room left, up to seven lines. The
  * season is a row of cards that opens on this episode, which has its
  * neighbours, so it needs no previous and next. Play has focus as the page
  * opens.
@@ -32,7 +31,7 @@ type Props = { work: WorkDetail };
 export function EpisodeDetail({ work }: Props) {
   const { t } = useLingui();
   const episode = work.episode;
-  const resume = useResumeParts(work);
+  const onPlayFromStart = usePlayFromStart(work);
   const still = work.images.still;
   // The series backdrop stands in for a missing still.
   const series = useQuery({ ...workQueries.detail(episode?.seriesId ?? ""), enabled: !!episode && !still });
@@ -51,7 +50,6 @@ export function EpisodeDetail({ work }: Props) {
     communityRating(work),
     work.contentRating,
   ].filter(Boolean);
-  if (isTv && resume.playing) meta.push(resume.playing);
   const seasonHeading = (
     <h2 className="text-lg font-semibold">{seasonNumber === 0 ? t`Specials` : t`Season ${seasonNumber}`}</h2>
   );
@@ -92,8 +90,7 @@ export function EpisodeDetail({ work }: Props) {
         }
         meta={<p className="text-sm text-text-muted">{meta.join(" · ")}</p>}
         primary={<PlayActions work={work} />}
-        playing={isTv ? undefined : resume.playing}
-        onPlayFromStart={resume.onPlayFromStart}
+        onPlayFromStart={onPlayFromStart}
         holdOverview
         tvWide
         actions={isTv ? <PlaybackPickers work={work} chips /> : undefined}

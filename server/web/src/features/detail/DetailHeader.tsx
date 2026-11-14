@@ -23,7 +23,7 @@ type Props = {
   meta?: ReactNode;
   /** The primary button, with a short label such as Play, Resume 5:56 or Play S1 E1. */
   primary?: ReactNode;
-  /** What the primary button plays, shown under the buttons, such as "Reload · 30 min left · Ends at 9:42 PM". */
+  /** What the primary button plays, shown under the buttons, such as "S1 · E3 · Reload · 30 min left". */
   playing?: ReactNode;
   /** Play from beginning, a button beside the primary one once there's progress. */
   onPlayFromStart?: () => void;

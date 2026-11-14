@@ -147,7 +147,7 @@ describe("Movie page", () => {
     expect(screen.queryByRole("heading", { name: "More like this" })).not.toBeInTheDocument();
   });
 
-  it("offers Resume with the time, Play from beginning beside it, the time left and end under it, and the pickers", async () => {
+  it("offers Resume with the time, Play from beginning beside it, nothing under it, and the pickers", async () => {
     serveMockApi();
     const { router, user } = renderApp(`/works/${mockIds.dunePartTwo}`);
     expect(await screen.findByRole("heading", { name: "Dune: Part Two" })).toBeInTheDocument();
@@ -156,7 +156,7 @@ describe("Movie page", () => {
       "href",
       `/watch/${mockIds.dunePartTwo}?version=${dune4K}`,
     );
-    expect(screen.getByText(/^1 hr 34 min left · Ends at \d{1,2}:\d\d/)).toBeInTheDocument();
+    expect(screen.queryByText(/ left|Ends at/)).not.toBeInTheDocument();
     await waitFor(() => expect(document.title).toBe("Dune: Part Two – Kivo"));
     expect(screen.queryByRole("link", { name: /from the start/ })).not.toBeInTheDocument();
     // Nothing played yet, so the first version is selected, and tracks
@@ -274,9 +274,8 @@ describe("Movie page", () => {
     await user.click(screen.getByRole("button", { name: /Version/ }));
     await user.click(await screen.findByRole("option", { name: /^Final Cut · 4K HDR/ }));
     expect(await screen.findByRole("link", { name: "Play" })).toBeInTheDocument();
-    // Started from the beginning, it has no time left to show or start over from, only its end.
+    // Started from the beginning, it has nothing to start over from.
     expect(screen.queryByRole("button", { name: "Play from beginning" })).not.toBeInTheDocument();
-    expect(screen.getByText(/^Ends at \d{1,2}:\d\d/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Version/ }));
     await user.click(await screen.findByRole("option", { name: /^1080p/ }));
     expect(await screen.findByRole("link", { name: /^Resume/ })).toBeInTheDocument();

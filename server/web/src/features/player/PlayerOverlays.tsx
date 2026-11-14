@@ -20,21 +20,10 @@ export function LoadingSpinner() {
 }
 
 /**
- * TopBar shows Back, the name of what plays, and when it ends. A remote has
- * its own Back, so it finds nothing to focus up here.
+ * TopBar shows Back and the name of what plays. A remote has its own Back,
+ * so it finds nothing to focus up here.
  */
-export function TopBar({
-  remote,
-  title,
-  endsAt,
-  onExit,
-}: {
-  remote: boolean;
-  title: string;
-  /** "Ends at 9:42 PM", once the play's length is known. */
-  endsAt: string | undefined;
-  onExit: () => void;
-}) {
+export function TopBar({ remote, title, onExit }: { remote: boolean; title: string; onExit: () => void }) {
   const { t } = useLingui();
   return (
     <header
@@ -47,11 +36,6 @@ export function TopBar({
         </AriaButton>
       )}
       <h1 className="min-w-0 flex-1 truncate text-lg font-semibold">{title}</h1>
-      {endsAt && (
-        <p data-part="ends-at" className="shrink-0 text-sm text-on-player-muted">
-          {endsAt}
-        </p>
-      )}
     </header>
   );
 }
