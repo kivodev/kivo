@@ -1,6 +1,6 @@
 {
   "id": "com.kivo.player",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "vendor": "Kivo",
   "type": "web",
   "main": "index.html",
