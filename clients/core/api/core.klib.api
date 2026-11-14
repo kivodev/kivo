@@ -990,12 +990,12 @@ sealed interface com.mmcdole.kivo.core/Compatibility { // com.mmcdole.kivo.core/
 }
 
 final class com.mmcdole.kivo.core.apple/AppleDevice : com.mmcdole.kivo.core.session/Device { // com.mmcdole.kivo.core.apple/AppleDevice|null[0]
-    constructor <init>(kotlin/String, kotlin/String, com.mmcdole.kivo.core.auth/ClientIdentity, kotlin/String?, kotlin.collections/List<com.mmcdole.kivo.api.models/SubtitleEntry>, kotlin/Boolean, com.mmcdole.kivo.core.downloads/DownloadTransport) // com.mmcdole.kivo.core.apple/AppleDevice.<init>|<init>(kotlin.String;kotlin.String;com.mmcdole.kivo.core.auth.ClientIdentity;kotlin.String?;kotlin.collections.List<com.mmcdole.kivo.api.models.SubtitleEntry>;kotlin.Boolean;com.mmcdole.kivo.core.downloads.DownloadTransport){}[0]
+    constructor <init>(kotlin/String, kotlin/String, com.mmcdole.kivo.core.auth/ClientIdentity, kotlin/String?, kotlin.collections/List<com.mmcdole.kivo.api.models/SubtitleEntry>, kotlin/Boolean, com.mmcdole.kivo.core.downloads/DownloadTransport?) // com.mmcdole.kivo.core.apple/AppleDevice.<init>|<init>(kotlin.String;kotlin.String;com.mmcdole.kivo.core.auth.ClientIdentity;kotlin.String?;kotlin.collections.List<com.mmcdole.kivo.api.models.SubtitleEntry>;kotlin.Boolean;com.mmcdole.kivo.core.downloads.DownloadTransport?){}[0]
 
     final val capabilities // com.mmcdole.kivo.core.apple/AppleDevice.capabilities|{}capabilities[0]
         final fun <get-capabilities>(): com.mmcdole.kivo.core.caps/CapabilityProbe // com.mmcdole.kivo.core.apple/AppleDevice.capabilities.<get-capabilities>|<get-capabilities>(){}[0]
     final val downloads // com.mmcdole.kivo.core.apple/AppleDevice.downloads|{}downloads[0]
-        final fun <get-downloads>(): com.mmcdole.kivo.core.session/DownloadDevice // com.mmcdole.kivo.core.apple/AppleDevice.downloads.<get-downloads>|<get-downloads>(){}[0]
+        final fun <get-downloads>(): com.mmcdole.kivo.core.session/DownloadDevice? // com.mmcdole.kivo.core.apple/AppleDevice.downloads.<get-downloads>|<get-downloads>(){}[0]
     final val identity // com.mmcdole.kivo.core.apple/AppleDevice.identity|{}identity[0]
         final fun <get-identity>(): com.mmcdole.kivo.core.auth/ClientIdentity // com.mmcdole.kivo.core.apple/AppleDevice.identity.<get-identity>|<get-identity>(){}[0]
     final val name // com.mmcdole.kivo.core.apple/AppleDevice.name|{}name[0]

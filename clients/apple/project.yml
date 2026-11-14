@@ -8,6 +8,7 @@ options:
   bundleIdPrefix: com.kivo
   deploymentTarget:
     iOS: "18.0"
+    tvOS: "18.0"
   createIntermediateGroups: true
   groupSortPosition: top
 
@@ -21,8 +22,30 @@ settings:
     # which Swift 6's checking would reject at every async call into the core.
     SWIFT_VERSION: "5.0"
     SWIFT_STRICT_CONCURRENCY: minimal
-    TARGETED_DEVICE_FAMILY: "1,2"
     ENABLE_USER_SCRIPT_SANDBOXING: NO
+
+settingGroups:
+  # The version both apps and the Top Shelf extension say.
+  appVersion:
+    MARKETING_VERSION: 0.3.0 # x-release-please-version
+    # A small counter, raised for each TestFlight upload: Google Cast
+    # aborts at launch on a long one (2026102401), so the iPhone app's
+    # build stops on more than four digits.
+    CURRENT_PROJECT_VERSION: 1
+  # The Kotlin core is a static framework: the system frameworks it calls
+  # are linked into each app, with the C++ runtime Kotlin/Native needs.
+  coreLinking:
+    OTHER_LDFLAGS:
+      - $(inherited)
+      - -framework Security
+      - -framework VideoToolbox
+      - -framework CoreMedia
+      - -framework AVFAudio
+      - -lc++
+      # The download store's SQLite, through SQLDelight's native driver.
+      - -lsqlite3
+      # libass converts text encodings with the system's iconv.
+      - -liconv
 
 packages:
   Nuke:
@@ -50,14 +73,30 @@ aggregateTargets:
 targets:
   # The SwiftUI the Apple apps share: the theme, artwork, cards, chips, the
   # letter scrubber, skeletons and the empty states. Static, so the
-  # Kotlin core it imports is linked once, into the app.
+  # Kotlin core it imports is linked once, into the app. The chips and the
+  # letter scrubber are touch controls, the iPhone's alone, as is a page's
+  # background under the navigation bar.
   KivoUI:
     type: framework.static
-    platform: iOS
+    platform: auto
+    supportedDestinations: [iOS, tvOS]
     sources:
       - path: KivoUI
         excludes:
           - "Generated/**"
+          - "Browse/ChipBar.swift"
+          - "Browse/LetterScrubber.swift"
+          - "Theme/PageBackground.swift"
+      - path: KivoUI/Browse/ChipBar.swift
+        group: KivoUI/Browse
+        destinationFilters: [iOS]
+      - path: KivoUI/Browse/LetterScrubber.swift
+        group: KivoUI/Browse
+        destinationFilters: [iOS]
+      # The Apple TV's pages are the app's own background.
+      - path: KivoUI/Theme/PageBackground.swift
+        group: KivoUI/Theme
+        destinationFilters: [iOS]
       - path: KivoUI/Generated/Tokens.swift
         optional: true
         group: KivoUI/Generated
@@ -74,13 +113,15 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.kivo.player.ui
         GENERATE_INFOPLIST_FILE: YES
         SKIP_INSTALL: YES
+        TARGETED_DEVICE_FAMILY: "1,2,3"
 
-  # The iPhone and iPad app.
+  # The iPhone and iPad app, with the code it shares with the Apple TV app.
   Kivo:
     type: application
     platform: iOS
     sources:
       - path: Kivo
+      - path: Shared
       # Open source licenses' other sources: the core's libraries, which
       # scripts/build-core.sh exports with the core, and the terms no
       # package manager reports, with their texts.
@@ -115,29 +156,13 @@ targets:
       - package: Libass
         product: libass
     settings:
+      groups: [appVersion, coreLinking]
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(KIVO_BUNDLE_ID)
         PRODUCT_NAME: Kivo
-        MARKETING_VERSION: 0.3.0 # x-release-please-version
-        # A small counter, raised for each TestFlight upload: Google Cast
-        # aborts at launch on a long one (2026102401), so the build stops
-        # on more than four digits.
-        CURRENT_PROJECT_VERSION: 1
+        TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
-        # The Kotlin core is a static framework: the system frameworks it
-        # calls are linked here, with the C++ runtime Kotlin/Native needs.
-        OTHER_LDFLAGS:
-          - $(inherited)
-          - -framework Security
-          - -framework VideoToolbox
-          - -framework CoreMedia
-          - -framework AVFAudio
-          - -lc++
-          # The download store's SQLite, through SQLDelight's native driver.
-          - -lsqlite3
-          # libass converts text encodings with the system's iconv.
-          - -liconv
     info:
       path: Kivo/Info.plist
       properties:
@@ -197,6 +222,139 @@ targets:
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
 
+  # The Apple TV app, with the code it shares with the iPhone app, and the
+  # Top Shelf extension, which shows Continue Watching from what the app
+  # leaves in their shared app group.
+  KivoTV:
+    type: application
+    platform: tvOS
+    sources:
+      - path: KivoTV
+      - path: Shared
+      - path: KivoTopShelf/TopShelfItems.swift
+        group: KivoTopShelf
+      - path: Frameworks/KivoCore-licenses.json
+        optional: true
+        buildPhase: resources
+      - path: ../../shared/credits
+        type: folder
+        buildPhase: resources
+    postBuildScripts:
+      - name: Open source licenses
+        script: '"$SRCROOT/scripts/licenses.sh"'
+        basedOnDependencyAnalysis: false
+    dependencies:
+      - target: KivoCore
+      - target: KivoUI
+        embed: false
+      - framework: Frameworks/KivoCore.xcframework
+        embed: false
+      - package: Nuke
+        product: NukeUI
+      - package: Libass
+        product: libass
+      - target: KivoTopShelf
+    settings:
+      groups: [appVersion, coreLinking]
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(KIVO_BUNDLE_ID)
+        PRODUCT_NAME: Kivo
+        TARGETED_DEVICE_FAMILY: "3"
+        ASSETCATALOG_COMPILER_APPICON_NAME: App Icon & Top Shelf Image
+    entitlements:
+      path: KivoTV/KivoTV.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.$(KIVO_BUNDLE_ID)
+    info:
+      path: KivoTV/Info.plist
+      properties:
+        CFBundleDisplayName: Kivo
+        CFBundleDevelopmentRegion: en
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        ITSAppUsesNonExemptEncryption: false
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+          UIImageName: LaunchMark
+        UIUserInterfaceStyle: Dark
+        # The app group the Top Shelf extension reads Continue Watching from.
+        KivoAppGroup: group.$(KIVO_BUNDLE_ID)
+        # Reaching a server on the local network, and finding it by Bonjour
+        # as the _kivo._tcp service it advertises.
+        NSLocalNetworkUsageDescription: Kivo finds and connects to your Kivo server on this network.
+        NSBonjourServices:
+          - _kivo._tcp
+        # kivo://work/{id} and kivo://play/{id}, which Top Shelf's items open.
+        CFBundleURLTypes:
+          - CFBundleURLName: com.kivo.player.link
+            CFBundleURLSchemes:
+              - kivo
+        # A self-hosted server is often plain HTTP on the local network, as
+        # the iPhone app says.
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+
+  KivoTopShelf:
+    type: tv-app-extension
+    platform: tvOS
+    sources:
+      - path: KivoTopShelf
+    settings:
+      groups: [appVersion]
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(KIVO_BUNDLE_ID).topshelf
+        PRODUCT_NAME: KivoTopShelf
+        TARGETED_DEVICE_FAMILY: "3"
+    entitlements:
+      path: KivoTopShelf/KivoTopShelf.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.$(KIVO_BUNDLE_ID)
+    info:
+      path: KivoTopShelf/Info.plist
+      properties:
+        CFBundleDisplayName: Kivo
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        KivoAppGroup: group.$(KIVO_BUNDLE_ID)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.tv-top-shelf
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ContentProvider
+
+  # The Apple TV app's logic that runs without a server, hosted in the app.
+  KivoTVTests:
+    type: bundle.unit-test
+    platform: tvOS
+    sources:
+      - path: KivoTVTests
+    dependencies:
+      - target: KivoTV
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(KIVO_BUNDLE_ID).tvtests
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "3"
+        # The app is named Kivo, as the iPhone's is, not after its target.
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Kivo.app/Kivo
+        BUNDLE_LOADER: $(TEST_HOST)
+
+  # Drives the Apple TV app with the remote against a real server
+  # (KivoTVUITests/SignInAndPlayTests.swift says which environment it reads).
+  KivoTVUITests:
+    type: bundle.ui-testing
+    platform: tvOS
+    sources:
+      - path: KivoTVUITests
+    dependencies:
+      - target: KivoTV
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(KIVO_BUNDLE_ID).tvuitests
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "3"
+        TEST_TARGET_NAME: KivoTV
+
   # The app's logic that runs without a server, hosted in the app.
   KivoTests:
     type: bundle.unit-test
@@ -209,6 +367,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(KIVO_BUNDLE_ID).tests
         GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
 
   # Drives the app against a real server (KivoUITests/SignInAndPlayTests.swift
   # says which environment it reads).
@@ -223,6 +382,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(KIVO_BUNDLE_ID).uitests
         GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
         TEST_TARGET_NAME: Kivo
 
 schemes:
@@ -239,5 +399,20 @@ schemes:
       targets:
         - KivoTests
         - KivoUITests
+    archive:
+      config: Release
+  KivoTV:
+    build:
+      targets:
+        KivoCore: all
+        KivoUI: all
+        KivoTV: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - KivoTVTests
+        - KivoTVUITests
     archive:
       config: Release

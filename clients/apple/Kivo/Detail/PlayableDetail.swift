@@ -94,40 +94,13 @@ struct PlayableDetail: View {
         }
     }
 
-    /// "1989 · 1h 42m · ★ 6.8 · PG · Comedy, Horror"; an episode's "S1 · E4 · Jan 28, 2018 · 44m".
     private var details: [String] {
-        var parts: [String] = []
-        if let episode = work.episode {
-            parts.append(Display.app.episodeCode(episode: episode))
-            if let date = airDate(episode) {
-                parts.append(date.formatted(date: .abbreviated, time: .omitted))
-            }
-        } else if let year = work.year {
-            parts.append(String(year.intValue))
-        }
-        if let ms = work.durationMs?.int64Value { parts.append(Display.app.runtime(ms: ms)) }
-        if let rating = work.communityRatingText { parts.append(rating) }
-        if let content = work.contentRating { parts.append(content) }
-        if work.episode == nil, let genres = page.work?.genres, !genres.isEmpty {
-            parts.append(genres.prefix(2).joined(separator: ", "))
-        }
-        return parts
+        DetailWords.details(work, genres: page.work?.genres)
     }
 
-    /// The air date, sent as `YYYY-MM-DD`.
-    private func airDate(_ episode: EpisodeInfo) -> Date? {
-        guard let parts = episode.isoAirDate()?.split(separator: "-").compactMap({ Int($0) }), parts.count == 3 else { return nil }
-        return Calendar.current.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2]))
-    }
-
-    /// "Resume 5:56", when the user has somewhere to resume from on the
-    /// version selected. A version of another edition than the one the
-    /// position was saved on starts from the beginning.
+    /// "Resume 5:56", on the version selected.
     private var resumeLabel: String? {
-        guard let resumeMs = work.resumeMs else { return nil }
-        let position = page.work.map { $0.resumeAt(versionId: versionId)?.int64Value } ?? resumeMs
-        guard let position else { return nil }
-        return String(localized: "Resume \(Display.app.clock(ms: position))")
+        DetailWords.resume(work, read: page.work, versionId: versionId)
     }
 
     /// The download Play plays, once it's ready.
@@ -151,7 +124,7 @@ struct PlayableDetail: View {
             VStack(spacing: KivoTokens.spacing * 3) {
                 // The end time moves on with the clock.
                 TimelineView(.everyMinute) { context in
-                    ActionRow(work: work, page: page, secondary: timeLeft(from: context.date)) {
+                    ActionRow(work: work, page: page, secondary: DetailWords.timeLeft(work, from: context.date)) {
                         PlayButton(label: resumeLabel ?? String(localized: "Play")) {
                             play(fromStart: false)
                         }
@@ -169,12 +142,6 @@ struct PlayableDetail: View {
 
     private var downloadButton: some View {
         DownloadButton(work: work, choice: choice)
-    }
-
-    /// "1 hr 36 min left · Ends at 9:41 PM", while it's in progress.
-    private func timeLeft(from now: Date) -> String? {
-        guard let timeLeft = work.timeLeft, let resumeMs = work.resumeMs, let duration = work.durationMs?.int64Value else { return nil }
-        return [timeLeft, Words.endsAt(kind: work.kind, remainingMs: duration - resumeMs, from: now)].compactMap { $0 }.joined(separator: " · ")
     }
 
     @ViewBuilder private var menu: some View {
@@ -280,7 +247,7 @@ private struct TrackChoices: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: KivoTokens.spacing * 2) {
                     if work.versions.count > 1 {
-                        choice(String(localized: "Version"), systemImage: "film", value: versionName) {
+                        choice(String(localized: "Version"), systemImage: Symbols.version, value: versionName) {
                             Picker(String(localized: "Version"), selection: Binding(get: { version?.id ?? "" }, set: { model.chooseVersion(id: $0) })) {
                                 ForEach(work.versions, id: \.id) { version in
                                     Text("\(version.name) · \(Display.app.size(bytes: version.sizeBytes))").tag(version.id)
@@ -289,10 +256,10 @@ private struct TrackChoices: View {
                         }
                     }
                     if showsAudio {
-                        choice(audio.title, systemImage: "speaker.wave.2", value: audio.value) { audio }
+                        choice(audio.title, systemImage: Symbols.audio, value: audio.value) { audio }
                     }
                     if showsSubtitles {
-                        choice(subtitles.title, systemImage: "captions.bubble", value: subtitles.value) { subtitles }
+                        choice(subtitles.title, systemImage: Symbols.subtitles, value: subtitles.value) { subtitles }
                     }
                 }
                 .padding(.horizontal, 20)

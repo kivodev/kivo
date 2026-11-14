@@ -25,27 +25,11 @@ public extension View {
             .tint(palette.accent)
     }
 
-    /// Gives a page of a navigation stack the palette's background as the
-    /// stack's own, so it fills the screen under the bars in every state the
-    /// page shows, loading and unreachable included, and through a push or
-    /// pop. A page without it shows the system's background.
-    func kivoPageBackground() -> some View {
-        modifier(PageBackground())
-    }
-
     /// The card shadow, or any of the palette's layered shadows.
     func kivoShadow(_ layers: [KivoShadow]) -> some View {
         layers.reduce(AnyView(self)) { view, layer in
             AnyView(view.shadow(color: layer.color, radius: layer.radius, x: layer.x, y: layer.y))
         }
-    }
-}
-
-private struct PageBackground: ViewModifier {
-    @Environment(\.kivoPalette) private var palette
-
-    func body(content: Content) -> some View {
-        content.containerBackground(palette.bg, for: .navigation)
     }
 }
 

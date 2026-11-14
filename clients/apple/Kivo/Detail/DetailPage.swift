@@ -74,7 +74,7 @@ struct DetailPage<Rows: View, Actions: View>: View {
                     Menu {
                         actions()
                     } label: {
-                        Label(String(localized: "More"), systemImage: "ellipsis")
+                        Label(String(localized: "More"), systemImage: Symbols.more)
                     }
                     .tint(palette.text)
                     .disabled(work == nil)

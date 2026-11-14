@@ -9,9 +9,11 @@ import java.util.Locale
 // shared/tokens.json as SwiftUI values, for KivoUI. CSS lengths become points
 // at one CSS pixel each (a rem is 16), as iOS sizes a phone's layout. Colours
 // are sRGB components with their alpha; CSS shadows are SwiftUI shadow layers,
-// whose radius is half the CSS blur. Fonts, breakpoints, containers' grid
-// templates, durations, easing and the TV tokens are left out: the app uses
-// the system font and draws no TV interface.
+// whose radius is half the CSS blur. On tvOS each step of the type scale is
+// the TV's, as the web's TV build maps them, a TV pixel a point on the 1080p
+// canvas both share. Fonts, breakpoints, containers' grid templates,
+// durations, easing and the rest of the TV tokens are left out: the apps use
+// the system font, and the Apple TV app lays itself out.
 
 /** The Swift source of the SwiftUI tokens. */
 fun swiftTokens(tokensJson: String): String {
@@ -68,7 +70,7 @@ fun swiftTokens(tokensJson: String): String {
         appendLine("    /// The spacing unit: every gap and padding is a multiple of it.")
         appendLine("    public static let spacing: CGFloat = ${points(tokens.string("spacing"))}")
         appendLine()
-        textEnum("TextSize", tokens.obj("text"))
+        textEnum("TextSize", tokens.obj("text"), tokens.obj("tv"))
         appendLine()
         appendLine("    public enum Weight {")
         for ((key, value) in tokens.obj("fontWeight")) {
@@ -93,12 +95,21 @@ fun swiftTokens(tokensJson: String): String {
     }
 }
 
-private fun StringBuilder.textEnum(enumName: String, steps: JsonObject) {
+/** The type scale's steps, each on tvOS the TV step the web's TV build maps it to ([tv]'s `web.text`). */
+private fun StringBuilder.textEnum(enumName: String, steps: JsonObject, tv: JsonObject) {
+    val tvSteps = tv.obj("text")
+    val tvOf = tv.obj("web").obj("text")
+    fun style(step: JsonObject) = "KivoTextStyle(size: ${points(step.string("size"))}, lineHeight: ${points(step.string("lineHeight"))})"
     appendLine("    public enum $enumName {")
-    for ((key, value) in steps) {
-        val step = value.jsonObject
-        appendLine("        public static let ${name(key)} = KivoTextStyle(size: ${points(step.string("size"))}, lineHeight: ${points(step.string("lineHeight"))})")
+    appendLine("        #if os(tvOS)")
+    for (key in steps.keys) {
+        appendLine("        public static let ${name(key)} = ${style(tvSteps.obj(tvOf.string(key)))}")
     }
+    appendLine("        #else")
+    for ((key, value) in steps) {
+        appendLine("        public static let ${name(key)} = ${style(value.jsonObject)}")
+    }
+    appendLine("        #endif")
     appendLine("    }")
 }
 

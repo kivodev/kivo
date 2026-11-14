@@ -40,16 +40,3 @@ protocol PlayerChoices: AnyObject {
     /// Downloads a result to the server, adds its track to the version and plays on with it.
     func downloadSubtitle(_ result: SubtitleResult) async throws
 }
-
-/// What Stream info shows: the play's tracks, each as it's delivered, the play's delivery and where it plays.
-struct StreamInfo {
-    let tracks: [PlayTrack]
-    /// `stream` or `file`; nil on a cast, which only the TV knows.
-    let delivery: PlayDelivery?
-    let local: Bool
-    let bitrateBps: Int64?
-    /// Where a download playing came from.
-    let downloadSource: DownloadSource?
-    /// The Cast device playing it.
-    let client: String?
-}

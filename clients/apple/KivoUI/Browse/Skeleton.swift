@@ -92,6 +92,10 @@ public struct SkeletonCard: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: KivoTokens.spacing) {
             SkeletonBlock(width: width, height: width / style.aspect, radius: person ? width / 2 : KivoTokens.Radius.md)
+            #if os(tvOS)
+                // Where a card's caption sits under the room for its lift.
+                .padding(.bottom, cardLiftRoom)
+            #endif
             CaptionSkeleton(caption: caption, width: width)
         }
     }
@@ -104,15 +108,18 @@ public struct SkeletonRow<Heading: View>: View {
     private let width: CGFloat
     private let spacing: CGFloat
     private let inset: CGFloat
+    private let gap: CGFloat
     private let heading: Heading
 
     /// [heading] is a blank line in the row's heading style; [spacing] is
-    /// between the heading and the cards, [inset] the row's leading edge.
-    public init(style: CardStyle, width: CGFloat, spacing: CGFloat, inset: CGFloat, @ViewBuilder heading: () -> Heading) {
+    /// between the heading and the cards, [inset] the row's leading edge,
+    /// and [gap] between its cards.
+    public init(style: CardStyle, width: CGFloat, spacing: CGFloat, inset: CGFloat, gap: CGFloat = KivoTokens.spacing * 3, @ViewBuilder heading: () -> Heading) {
         self.style = style
         self.width = width
         self.spacing = spacing
         self.inset = inset
+        self.gap = gap
         self.heading = heading()
     }
 
@@ -122,7 +129,7 @@ public struct SkeletonRow<Heading: View>: View {
                 .skeletonLine(width: 160)
                 .padding(.horizontal, inset)
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(alignment: .top, spacing: KivoTokens.spacing * 3) {
+                HStack(alignment: .top, spacing: gap) {
                     ForEach(0..<6, id: \.self) { _ in SkeletonCard(style: style, width: width) }
                 }
                 .padding(.horizontal, inset)

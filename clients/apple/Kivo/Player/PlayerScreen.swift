@@ -224,14 +224,6 @@ struct PlayerScreen: View {
         .animation(.easeInOut(duration: 0.2), value: model.controlsVisible)
     }
 
-    private func skipLabel(_ marker: SkipMarker) -> String {
-        switch marker.kind {
-        case .credits: String(localized: "Skip Credits")
-        case .recap: String(localized: "Skip Recap")
-        default: String(localized: "Skip Intro")
-        }
-    }
-
     /// Loading, buffering, or the failure itself. The spinner takes the play
     /// button's place while the controls show.
     @ViewBuilder private func status(controlsShown: Bool) -> some View {
@@ -531,19 +523,8 @@ private struct PlayerErrorView: View {
         .background(palette.playerScrim.ignoresSafeArea())
     }
 
-    /// The failure in words, the capability a file failed, and for the stream limit what plays where.
-    private var words: (title: String, sentence: String, limit: String?, plays: [PlaySummary]) {
-        guard let failure = state.failure else {
-            return (String(localized: "Couldn't play this."), model.display.problem(code: "internal"), nil, [])
-        }
-        let sentence = model.display.failure(failure: failure)
-        switch onEnum(of: failure) {
-        case .ended:
-            return (String(localized: "Playback was stopped."), sentence, nil, [])
-        case let .problem(problem):
-            let title = problem.knownCode == .streamLimit ? String(localized: "You're at your stream limit.") : String(localized: "Couldn't play this.")
-            return (title, sentence, problem.mismatch.map(StreamInfoView.words), problem.plays ?? [])
-        }
+    private var words: PlayerFailureWords {
+        PlayerFailureWords(state.failure, display: model.display)
     }
 }
 

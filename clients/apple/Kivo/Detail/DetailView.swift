@@ -56,29 +56,6 @@ struct DetailView: View {
     }
 }
 
-/// A work's page as the core keeps it, followed for its view, which closes it as it goes.
-@MainActor
-@Observable
-final class WorkPageModel {
-    @ObservationIgnored let page: WorkPage
-    private let observed: Observed<WorkPageState>
-
-    var state: WorkPageState { observed.value }
-
-    init(route: WorkRoute, session: KivoSession) {
-        page = session.library.workPage(
-            id: route.id,
-            card: route.seed,
-            openOn: route.episode.map { SeasonRef(id: $0.seasonId, number: $0.seasonNumber) }
-        )
-        observed = Observed(page.state)
-    }
-
-    deinit {
-        page.close()
-    }
-}
-
 /// How far a detail page's read has got: whether the page is read or shows
 /// only what was known when it opened, and why the read failed, with Retry.
 struct DetailLoad {

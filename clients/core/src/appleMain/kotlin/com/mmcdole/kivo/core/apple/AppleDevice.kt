@@ -20,19 +20,21 @@ import com.mmcdole.kivo.core.session.DownloadDevice
 import okio.Path.Companion.toPath
 
 /**
- * An iPhone or iPad as the core runs on it: the Keychain, VideoToolbox and
- * AVAudioSession, and downloads by the app's background `URLSession`.
+ * An iPhone, iPad or Apple TV as the core runs on it: the Keychain,
+ * VideoToolbox and AVAudioSession, and on a device that keeps downloads,
+ * downloads by the app's background `URLSession`.
  *
- * [directory] is the app's Application Support folder, which holds the
- * app's preferences, the download store and the downloads; [name] is the
- * device's name; [identity] is the app and device as every request says them, its
- * platform `iPhone` or `iPad`; [clientId], when given, is the client ID it
+ * [directory] is the folder that holds the app's preferences and, with
+ * downloads, the download store and the downloads; [name] is the device's
+ * name; [identity] is the app and device as every request says them, its
+ * platform `iPhone`, `iPad` or `Apple TV`; [clientId], when given, is the client ID it
  * signs in with in place of this install's own, as UI tests launch the app
  * with; [subtitles] are the subtitles the app shows,
  * each with the deliveries it shows it in, and [trackSelection] whether its
  * player plays any audio track of a file, for the capability report;
  * [transport] is the app's background `URLSession`, which reports to
- * [com.mmcdole.kivo.core.session.KivoClient.transferred].
+ * [com.mmcdole.kivo.core.session.KivoClient.transferChanged], or null on a
+ * device that keeps no downloads.
  */
 class AppleDevice(
     directory: String,
@@ -41,7 +43,7 @@ class AppleDevice(
     clientId: String?,
     subtitles: List<SubtitleEntry>,
     trackSelection: Boolean,
-    transport: DownloadTransport,
+    transport: DownloadTransport?,
 ) : Device {
     override val preferences: DataStore<Preferences> = PreferenceDataStoreFactory.createWithPath(
         migrations = listOfNotNull(clientId?.let(::fixedClientId)),
@@ -52,11 +54,13 @@ class AppleDevice(
 
     override val capabilities: CapabilityProbe = AppleCapabilityProbe(subtitles, trackSelection)
 
-    override val downloads = DownloadDevice(
-        NativeSqliteDriver(DownloadDatabase.Schema, "downloads.db", onConfiguration = {
-            it.copy(extendedConfig = DatabaseConfiguration.Extended(basePath = directory))
-        }),
-        AppleDownloadDisk("$directory/Downloads"),
-        transport,
-    )
+    override val downloads = transport?.let {
+        DownloadDevice(
+            NativeSqliteDriver(DownloadDatabase.Schema, "downloads.db", onConfiguration = { config ->
+                config.copy(extendedConfig = DatabaseConfiguration.Extended(basePath = directory))
+            }),
+            AppleDownloadDisk("$directory/Downloads"),
+            it,
+        )
+    }
 }

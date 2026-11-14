@@ -24,7 +24,7 @@ struct SignInView: View {
                         if let model {
                             switch model.step {
                             case .findServer, .incompatible: FindServerForm(model: model)
-                            case let .password(found): PasswordForm(model: model, found: found)
+                            case let .server(found): PasswordForm(model: model, found: found)
                             }
                         }
                     }

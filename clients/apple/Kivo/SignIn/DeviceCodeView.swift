@@ -27,7 +27,7 @@ struct DeviceCodeView: View {
                         .foregroundStyle(palette.textMuted)
                     QRCode(text: waiting.linkUrl)
                         .frame(maxWidth: 240)
-                    Text(Self.grouped(waiting.code))
+                    Text(groupedCode(waiting.code))
                         .font(.system(.largeTitle, design: .monospaced).weight(.semibold))
                         .accessibilityIdentifier("link-code")
                         .accessibilityLabel(waiting.code)
@@ -76,10 +76,5 @@ struct DeviceCodeView: View {
                 }
             }
         }
-    }
-
-    /// A code in two groups of three, "K7Q-2M9", to read across a room.
-    static func grouped(_ code: String) -> String {
-        code.count == 6 ? "\(code.prefix(3))-\(code.suffix(3))" : code
     }
 }
