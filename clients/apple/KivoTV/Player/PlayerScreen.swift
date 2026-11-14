@@ -9,10 +9,11 @@ import SwiftUI
 /// choose the audio, subtitles, quality and version as the core's player
 /// says; Skip Intro, Recap or Credits, and up next's Play now, are its
 /// contextual actions; the chapters are its markers; Stream info is a tab
-/// of its Info panel. Subtitle files the system can't draw, PGS and styled
-/// ASS, are drawn over the video. A stopped play says why, with Try again,
-/// another version where there is one, and Back. Menu leaves it as it
-/// leaves the system's player, telling [closed].
+/// of its Info panel; when the play would end is under its title. Subtitle
+/// files the system can't draw, PGS and styled ASS, are drawn over the
+/// video. A stopped play says why, with Try again, another version where
+/// there is one, and Back. Menu leaves it as it leaves the system's
+/// player, telling [closed].
 struct PlayerScreen: View {
     let playback: VideoPlayback
     let closed: () -> Void
@@ -152,6 +153,7 @@ private struct SystemPlayer: UIViewControllerRepresentable {
         private var action: PlayerAction?
         private var overlay: SubtitleOverlayView?
         private var following: Task<Void, Never>?
+        private var ending: Task<Void, Never>?
         private var selection: NSObjectProtocol?
         private var presented = false
         private weak var alert: UIAlertController?
@@ -224,6 +226,7 @@ private struct SystemPlayer: UIViewControllerRepresentable {
             info.title = String(localized: "Stream info")
             controller.customInfoViewControllers = [info]
             following = Task { [weak self] in await self?.follow() }
+            ending = Task { [weak self] in await self?.followEnd() }
             // The system's own Audio menu lists a file's audio tracks too: one chosen there plays through the core's player.
             selection = NotificationCenter.default.addObserver(forName: AVPlayerItem.mediaSelectionDidChangeNotification, object: nil, queue: .main) { [weak self] note in
                 MainActor.assumeIsolated {
@@ -250,6 +253,7 @@ private struct SystemPlayer: UIViewControllerRepresentable {
         func detach() {
             if let selection { NotificationCenter.default.removeObserver(selection) }
             following?.cancel()
+            ending?.cancel()
             overlay?.show(nil) { _ in Data() }
             if let controller, controller.presentingViewController != nil {
                 controller.dismiss(animated: true)
@@ -275,6 +279,16 @@ private struct SystemPlayer: UIViewControllerRepresentable {
                         continuation.resume()
                     }
                 }
+            }
+        }
+
+        /// Keeps when the play would end, "Ends at 9:41 PM", under the
+        /// title the system's player shows, as playing, pausing and
+        /// seeking move it.
+        private func followEnd() async {
+            while !Task.isCancelled, let playback {
+                playback.subtitleNote = playback.endsAt(from: .now)
+                try? await Task.sleep(for: .seconds(1))
             }
         }
 

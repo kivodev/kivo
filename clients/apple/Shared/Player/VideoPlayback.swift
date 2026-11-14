@@ -63,6 +63,11 @@ final class VideoPlayback {
     var overlayVisible = true {
         didSet { player?.setOverlayVisible(visible: overlayVisible) }
     }
+    /// What the system's player says after an episode's series under the
+    /// title, as Apple TV's "Ends at 9:41 PM"; nil for nothing.
+    @ObservationIgnored var subtitleNote: String? {
+        didSet { if subtitleNote != oldValue { updateNowPlaying() } }
+    }
     /// Told where the player goes once a play ends without a next episode, once per play.
     @ObservationIgnored var exited: (Exit) -> Void = { _ in }
 
@@ -360,9 +365,9 @@ final class VideoPlayback {
     }
 
     /// What Now Playing and the system's player show of the work: the
-    /// title, the series, the overview and the poster, on every item the
-    /// engine loads. The poster comes through the artwork caches, so one
-    /// seen before shows without the server.
+    /// title, the series and the subtitle note, the overview and the
+    /// poster, on every item the engine loads. The poster comes through the
+    /// artwork caches, so one seen before shows without the server.
     private func updateNowPlaying() {
         guard let work else { return }
         let image = work.images.poster ?? work.images.still
@@ -375,9 +380,11 @@ final class VideoPlayback {
                 self.updateNowPlaying()
             })
         }
+        let parts = [work.episode?.seriesTitle, subtitleNote].compactMap { $0 }
+        let subtitle = parts.isEmpty ? nil : parts.joined(separator: " · ")
         engine.metadata = [
             Self.metadataItem(.commonIdentifierTitle, work.title as NSString),
-            work.episode.map { Self.metadataItem(.iTunesMetadataTrackSubTitle, $0.seriesTitle as NSString) },
+            subtitle.map { Self.metadataItem(.iTunesMetadataTrackSubTitle, $0 as NSString) },
             work.overview.map { Self.metadataItem(.commonIdentifierDescription, $0 as NSString) },
             poster?.data.map { Self.metadataItem(.commonIdentifierArtwork, $0 as NSData, dataType: kCMMetadataBaseDataType_JPEG as String) },
         ].compactMap { $0 }
