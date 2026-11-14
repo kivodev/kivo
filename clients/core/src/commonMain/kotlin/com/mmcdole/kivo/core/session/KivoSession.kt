@@ -318,7 +318,7 @@ class KivoSession internal constructor(
 }
 
 /** How long the device's network is let settle, as it changes in a burst, before the address is picked again. */
-private val NETWORK_SETTLE = 1.seconds
+internal val NETWORK_SETTLE = 1.seconds
 
 /** How often the foreground app on a public address looks for a local one. */
 private val LOCAL_CHECK_EVERY = 2.minutes

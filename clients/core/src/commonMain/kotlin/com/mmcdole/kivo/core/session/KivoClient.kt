@@ -36,6 +36,7 @@ import com.mmcdole.kivo.core.settings.Quality
 import io.ktor.client.engine.HttpClientEngine
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.channels.BufferOverflow
@@ -48,6 +49,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
@@ -320,6 +322,11 @@ class KivoClient internal constructor(
                     session.scope.launch { quietly { session.downloads?.sync() } }
                     quietly { session.runLiveEvents() }
                 }
+        }
+        // A server that couldn't be reached is tried again whenever the device gets a network.
+        scope.launch {
+            @OptIn(FlowPreview::class)
+            networkChanges.debounce(NETWORK_SETTLE).collect { retry() }
         }
     }
 
