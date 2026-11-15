@@ -42,6 +42,7 @@ import com.mmcdole.kivo.api.models.NameUpdate
 import com.mmcdole.kivo.api.models.Person
 import com.mmcdole.kivo.api.models.Problem
 import com.mmcdole.kivo.api.models.SearchResults
+import com.mmcdole.kivo.api.models.TracksUpdate
 import com.mmcdole.kivo.api.models.UserState
 import com.mmcdole.kivo.api.models.UserStateUpdate
 import com.mmcdole.kivo.api.models.WorkDetail
@@ -1227,6 +1228,40 @@ open class WorksApi : ApiClient {
         val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.PATCH,
             "/api/v1/works/{id}".replace("{" + "id" + "}", "$id"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return jsonRequest(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+
+    /**
+     * Choose tracks for a series
+     * Sets the caller&#39;s audio and subtitle choice for an episode&#39;s series, which every episode&#39;s play then starts with when its request chooses no tracks, as choosing tracks for a play does (&#x60;remembersTracks&#x60;). The choice is kept by language and kind, so it applies to every version and file. A track must be one of the episode&#39;s versions&#39; (&#x60;400&#x60; otherwise). &#x60;default&#x60; forgets that part of the choice, so plays go back to the caller&#39;s preferences for it; forgetting both forgets the series&#39; choice. A part not sent stays as it is. A work that isn&#39;t an episode is &#x60;404&#x60;, and &#x60;409&#x60; when the caller&#39;s &#x60;rememberTracks&#x60; is off. 
+     * @param id 
+     * @param tracksUpdate 
+     * @return WorkDetail
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun updateWorkTracks(id: kotlin.String, tracksUpdate: TracksUpdate): HttpResponse<WorkDetail> {
+
+        val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
+
+        val localVariableBody = tracksUpdate
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.PATCH,
+            "/api/v1/works/{id}/user-state/tracks".replace("{" + "id" + "}", "$id"),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,

@@ -1369,6 +1369,37 @@ export interface paths {
         patch: operations["updateWorkUserState"];
         trace?: never;
     };
+    "/api/v1/works/{id}/user-state/tracks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Choose tracks for a series
+         * @description Sets the caller's audio and subtitle choice for an episode's
+         *     series, which every episode's play then starts with when its
+         *     request chooses no tracks, as choosing tracks for a play does
+         *     (`remembersTracks`). The choice is kept by language and kind, so
+         *     it applies to every version and file. A track must be one of the
+         *     episode's versions' (`400` otherwise). `default` forgets that part
+         *     of the choice, so plays go back to the caller's preferences for
+         *     it; forgetting both forgets the series' choice. A part not sent
+         *     stays as it is. A work that isn't an episode is `404`, and `409`
+         *     when the caller's `rememberTracks` is off.
+         */
+        patch: operations["updateWorkTracks"];
+        trace?: never;
+    };
     "/api/v1/works/{id}/user-state/remove-from-continue": {
         parameters: {
             query?: never;
@@ -3936,6 +3967,12 @@ export interface components {
             /** Format: date-time */
             lastPlayedAt?: string;
         };
+        TracksUpdate: {
+            /** @description An audio track's `id`, or `default`. */
+            audioTrackId?: string;
+            /** @description A subtitle track's `id`, `off`, or `default`. */
+            subtitleTrackId?: string;
+        };
         UserStateUpdate: {
             played?: boolean;
             /** @description An offline position on the version's timeline; needs `playedAt` and `versionId`. */
@@ -4225,6 +4262,12 @@ export interface components {
              *     user's `rememberTracks` is on (`PlaybackPreferences`).
              */
             remembersTracks?: boolean;
+            /**
+             * @description With versions: whether the caller has a choice for this
+             *     work's series now (`updateWorkTracks`), which the versions'
+             *     `audioTrackId` and `subtitleTrackId` follow.
+             */
+            tracksRemembered?: boolean;
             /** @description Extras, as summaries of kind `extra`. */
             extras: components["schemas"]["WorkSummary"][];
             /** @description Collections this work is in. */
@@ -4341,6 +4384,17 @@ export interface components {
              *     subtitles start off.
              */
             subtitleTrackId?: components["schemas"]["ID"];
+            /**
+             * @description The audio track a play would start with without the series'
+             *     choice (`tracksRemembered`): the caller's preferences and the
+             *     file's own flags. Absent when the version has no audio.
+             */
+            defaultAudioTrackId?: components["schemas"]["ID"];
+            /**
+             * @description The subtitle track a play would start with without the
+             *     series' choice; absent when subtitles would start off.
+             */
+            defaultSubtitleTrackId?: components["schemas"]["ID"];
             /** @description The works this version covers, in order; more than one for a multi-episode file. */
             workIds: components["schemas"]["ID"][];
             /**
@@ -7889,6 +7943,37 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+            default: components["responses"]["Error"];
+        };
+    };
+    updateWorkTracks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TracksUpdate"];
+            };
+        };
+        responses: {
+            /** @description The episode's detail, with the tracks its plays now start with. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkDetail"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
             default: components["responses"]["Error"];
         };
     };

@@ -1970,6 +1970,42 @@ paths:
         "404": {$ref: "#/components/responses/NotFound"}
         default: {$ref: "#/components/responses/Error"}
 
+  /api/v1/works/{id}/user-state/tracks:
+    parameters:
+      - {$ref: "#/components/parameters/ID"}
+    patch:
+      operationId: updateWorkTracks
+      summary: Choose tracks for a series
+      description: |
+        Sets the caller's audio and subtitle choice for an episode's
+        series, which every episode's play then starts with when its
+        request chooses no tracks, as choosing tracks for a play does
+        (`remembersTracks`). The choice is kept by language and kind, so
+        it applies to every version and file. A track must be one of the
+        episode's versions' (`400` otherwise). `default` forgets that part
+        of the choice, so plays go back to the caller's preferences for
+        it; forgetting both forgets the series' choice. A part not sent
+        stays as it is. A work that isn't an episode is `404`, and `409`
+        when the caller's `rememberTracks` is off.
+      tags: [works]
+      x-kivo-access: viewer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/TracksUpdate"}
+      responses:
+        "200":
+          description: The episode's detail, with the tracks its plays now start with.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/WorkDetail"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        default: {$ref: "#/components/responses/Error"}
+
   /api/v1/works/{id}/user-state/remove-from-continue:
     parameters:
       - {$ref: "#/components/parameters/ID"}
@@ -5442,6 +5478,18 @@ components:
             edition starts from the beginning.
         lastPlayedAt: {type: string, format: date-time}
 
+    TracksUpdate:
+      type: object
+      properties:
+        audioTrackId:
+          type: string
+          maxLength: 36
+          description: An audio track's `id`, or `default`.
+        subtitleTrackId:
+          type: string
+          maxLength: 36
+          description: A subtitle track's `id`, `off`, or `default`.
+
     UserStateUpdate:
       type: object
       properties:
@@ -5915,6 +5963,12 @@ components:
                 With versions: whether choosing tracks for this work
                 remembers them for its series, as for an episode when the
                 user's `rememberTracks` is on (`PlaybackPreferences`).
+            tracksRemembered:
+              type: boolean
+              description: |
+                With versions: whether the caller has a choice for this
+                work's series now (`updateWorkTracks`), which the versions'
+                `audioTrackId` and `subtitleTrackId` follow.
             extras:
               type: array
               description: Extras, as summaries of kind `extra`.
@@ -6071,6 +6125,17 @@ components:
             The subtitle track the caller's play of this version starts
             with when the request chooses none (`PlayCreate`); absent when
             subtitles start off.
+        defaultAudioTrackId:
+          $ref: "#/components/schemas/ID"
+          description: |
+            The audio track a play would start with without the series'
+            choice (`tracksRemembered`): the caller's preferences and the
+            file's own flags. Absent when the version has no audio.
+        defaultSubtitleTrackId:
+          $ref: "#/components/schemas/ID"
+          description: |
+            The subtitle track a play would start with without the
+            series' choice; absent when subtitles would start off.
         workIds:
           type: array
           description: The works this version covers, in order; more than one for a multi-episode file.

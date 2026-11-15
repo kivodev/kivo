@@ -173,6 +173,7 @@ function version(
     parts: [{ fileId: `${id.slice(0, -5)}f${id.slice(-4)}`, name: `${name}.mkv`, durationMs, sizeBytes }],
     tracks: structuredClone(tracks),
     audioTrackId: audio?.id,
+    defaultAudioTrackId: audio?.id,
     workIds: [workId],
   };
 }

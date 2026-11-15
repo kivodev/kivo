@@ -98,6 +98,9 @@ ON CONFLICT (user_id, series_id) DO UPDATE SET
   audio_language = excluded.audio_language, subtitle_language = excluded.subtitle_language,
   subtitle_kind = excluded.subtitle_kind, updated_at = excluded.updated_at;
 
+-- name: DeleteTrackChoice :exec
+DELETE FROM track_choice WHERE user_id = @user_id AND series_id = @series_id;
+
 -- name: ListOwner :one
 SELECT user_id, query IS NOT NULL AS smart FROM list WHERE id = @id;
 

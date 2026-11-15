@@ -2632,6 +2632,10 @@ msgstr "Retry all"
 msgid "{count, plural, one {# show} other {# shows}}"
 msgstr "{count, plural, one {# show} other {# shows}}"
 
+#: src/components/TrackPicker.tsx
+msgid "Default ({plays})"
+msgstr "Default ({plays})"
+
 #. placeholder {0}: open.season?.unplayedCount ?? 0
 #: src/features/detail/SeriesDetail.tsx
 msgid "Mark {0} episodes as watched?"
@@ -2929,6 +2933,10 @@ msgstr "Debug"
 #: src/features/admin/TranscodingScreen.tsx
 msgid "Hardware acceleration"
 msgstr "Hardware acceleration"
+
+#: src/components/TrackPicker.tsx
+msgid "Default"
+msgstr "Default"
 
 #: src/app/AppShell.tsx
 #: src/features/admin/AdminLayout.tsx

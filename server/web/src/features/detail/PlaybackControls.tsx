@@ -3,6 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { lazy, type ReactNode, Suspense, useState } from "react";
 import { subtitlesOff } from "@/api/playback";
 import type { WorkDetail } from "@/api/schemas";
+import { useChooseTracks } from "@/api/works";
 import { Button, buttonClass } from "@/components/Button";
 import { Icon } from "@/components/Icon";
 import { Select } from "@/components/Select";
@@ -129,7 +130,26 @@ export function PlaybackPickers({ work, chips = false }: { work: WorkDetail; chi
   const pickVersion = (id: string) => setSearch({ version: id });
   const pickTrack = (key: "audio" | "subtitle", id: string) =>
     setSearch({ ...search, [key]: id === automaticTrack ? undefined : id });
-  const remembered = work.remembersTracks === true;
+  // An episode keeps a track chosen for its show, so the next play of any
+  // episode starts with it. Otherwise the choice is for the next play only.
+  const keeps = work.remembersTracks === true && version !== undefined;
+  const choose = useChooseTracks();
+  const pick = (key: "audio" | "subtitle", id: string) => {
+    if (!keeps) return pickTrack(key, id);
+    const value = id === automaticTrack ? "default" : id;
+    choose.mutate(
+      {
+        params: { path: { id: work.id } },
+        body: key === "audio" ? { audioTrackId: value } : { subtitleTrackId: value },
+      },
+      // A choice the server won't keep still applies to the next play.
+      {
+        onSuccess: () => search[key] !== undefined && setSearch({ ...search, [key]: undefined }),
+        onError: () => pickTrack(key, id),
+      },
+    );
+  };
+  const remembered = keeps && work.tracksRemembered === true;
   const [searching, setSearching] = useState(false);
   const fileId = version?.parts[0]?.fileId;
   // Subtitle search's results are a web-only list for now, so the TV build
@@ -138,17 +158,23 @@ export function PlaybackPickers({ work, chips = false }: { work: WorkDetail; chi
   const audio = {
     kind: "audio",
     tracks: tracks.filter((tr) => tr.type === "audio"),
-    automatic: version?.audioTrackId,
+    automatic: keeps ? version.defaultAudioTrackId : version?.audioTrackId,
     remembered,
+    resets: keeps,
   } as const;
   const subtitle = {
     kind: "subtitle",
     tracks: tracks.filter((tr) => tr.type === "subtitle"),
     offId: subtitlesOff,
-    automatic: version?.subtitleTrackId ?? subtitlesOff,
+    automatic: (keeps ? version.defaultSubtitleTrackId : version?.subtitleTrackId) ?? subtitlesOff,
     remembered,
+    resets: keeps,
     extra: canSearch ? [{ id: searchSubtitles, label: t`Search subtitles…` }] : [],
   } as const;
+  // A kept choice shows as the track it plays, and as Default when that's
+  // the track a play would start with anyway.
+  const selected = (key: "audio" | "subtitle", plays: string, automatic: string | undefined) =>
+    search[key] ?? (keeps && plays !== automatic ? plays : automaticTrack);
 
   const pickers = (
     <div data-part="pickers" className={chips ? "contents" : "flex flex-wrap gap-x-6 gap-y-1"}>
@@ -169,8 +195,8 @@ export function PlaybackPickers({ work, chips = false }: { work: WorkDetail; chi
           <TrackPicker
             {...audio}
             chip={chips}
-            selected={search.audio ?? automaticTrack}
-            onChange={(id) => pickTrack("audio", id)}
+            selected={selected("audio", version?.audioTrackId ?? "", audio.automatic)}
+            onChange={(id) => pick("audio", id)}
           />
         </TvFocusable>
       )}
@@ -179,8 +205,8 @@ export function PlaybackPickers({ work, chips = false }: { work: WorkDetail; chi
           <TrackPicker
             {...subtitle}
             chip={chips}
-            selected={search.subtitle ?? automaticTrack}
-            onChange={(id) => (id === searchSubtitles ? setSearching(true) : pickTrack("subtitle", id))}
+            selected={selected("subtitle", version?.subtitleTrackId ?? subtitlesOff, subtitle.automatic)}
+            onChange={(id) => (id === searchSubtitles ? setSearching(true) : pick("subtitle", id))}
           />
         </TvFocusable>
       )}
@@ -192,7 +218,7 @@ export function PlaybackPickers({ work, chips = false }: { work: WorkDetail; chi
             onClose={() => setSearching(false)}
             onDownloaded={(trackId) => {
               setSearching(false);
-              pickTrack("subtitle", trackId);
+              pick("subtitle", trackId);
             }}
           />
         </Suspense>
