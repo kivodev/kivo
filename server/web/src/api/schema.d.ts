@@ -4265,7 +4265,7 @@ export interface components {
             /**
              * @description With versions: whether the caller has a choice for this
              *     work's series now (`updateWorkTracks`), which the versions'
-             *     `audioTrackId` and `subtitleTrackId` follow.
+             *     chosen tracks follow.
              */
             tracksRemembered?: boolean;
             /** @description Extras, as summaries of kind `extra`. */
