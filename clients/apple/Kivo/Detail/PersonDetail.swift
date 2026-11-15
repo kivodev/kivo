@@ -20,30 +20,29 @@ struct PersonDetail: View {
     var body: some View {
         Group {
             if let heading = person.map({ Heading(id: $0.id, name: $0.name, image: $0.photo) }) ?? server.session.library.knownPerson(id: id) {
-                List {
-                    header(heading)
-                        .detailRow(Self.headerInsets)
-                    if let failure {
-                        InlineFailure(title: String(localized: "Couldn't load this page."), problem: failure) { attempt += 1 }
-                    }
-                    if let person {
-                        Overview(text: person.overview)
-                        CardRow(title: String(localized: "Movies"), works: person.works.filter { $0.kind == .movie })
-                        CardRow(title: String(localized: "Shows"), works: person.works.filter { $0.kind == .series })
-                        CardRow(title: String(localized: "Other videos"), works: person.works.filter { $0.kind == .video })
-                        ForEach(person.bookSeries, id: \.id) { series in
-                            CardRow(title: series.name, works: series.items)
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        header(heading)
+                            .detailRow(Self.headerInsets)
+                        if let failure {
+                            InlineFailure(title: String(localized: "Couldn't load this page."), problem: failure) { attempt += 1 }
                         }
-                        CardRow(title: person.bookSeries.isEmpty ? String(localized: "Books") : String(localized: "Other books"), works: person.standalone)
-                        CardRow(title: String(localized: "Narrated"), works: person.narrated)
-                    } else if failure == nil {
-                        CardRowSkeleton(style: author ? .square : .poster)
+                        if let person {
+                            Overview(text: person.overview)
+                            CardRow(title: String(localized: "Movies"), works: person.works.filter { $0.kind == .movie })
+                            CardRow(title: String(localized: "Shows"), works: person.works.filter { $0.kind == .series })
+                            CardRow(title: String(localized: "Other videos"), works: person.works.filter { $0.kind == .video })
+                            ForEach(person.bookSeries, id: \.id) { series in
+                                CardRow(title: series.name, works: series.items)
+                            }
+                            CardRow(title: person.bookSeries.isEmpty ? String(localized: "Books") : String(localized: "Other books"), works: person.standalone)
+                            CardRow(title: String(localized: "Narrated"), works: person.narrated)
+                        } else if failure == nil {
+                            CardRowSkeleton(style: author ? .square : .poster)
+                        }
+                        Color.clear.frame(height: KivoTokens.spacing * 6).detailRow()
                     }
-                    Color.clear.frame(height: KivoTokens.spacing * 6).detailRow()
                 }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
-                .environment(\.defaultMinListRowHeight, 0)
             } else if let failure {
                 DetailFailed(failure: failure)
             } else if server.unreachable {
@@ -76,20 +75,19 @@ struct PersonDetail: View {
     /// The page's skeleton: the photo, name and count, and a row of posters
     /// or covers. Few people have a biography, so it has none.
     private var skeleton: some View {
-        List {
-            VStack(spacing: Self.headerSpacing) {
-                SkeletonBlock(width: Self.photoSize, height: Self.photoSize, radius: Self.photoSize / 2)
-                Text(verbatim: " ").font(Self.nameFont).skeletonLine(width: 180, alignment: .center)
-                Text(verbatim: " ").font(.footnote).skeletonLine(width: 90, alignment: .center)
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                VStack(spacing: Self.headerSpacing) {
+                    SkeletonBlock(width: Self.photoSize, height: Self.photoSize, radius: Self.photoSize / 2)
+                    Text(verbatim: " ").font(Self.nameFont).skeletonLine(width: 180, alignment: .center)
+                    Text(verbatim: " ").font(.footnote).skeletonLine(width: 90, alignment: .center)
+                }
+                .frame(maxWidth: .infinity)
+                .detailRow(Self.headerInsets)
+                CardRowSkeleton(style: author ? .square : .poster)
             }
-            .frame(maxWidth: .infinity)
-            .detailRow(Self.headerInsets)
-            CardRowSkeleton(style: author ? .square : .poster)
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
         .scrollDisabled(true)
-        .environment(\.defaultMinListRowHeight, 0)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("Loading…"))
     }

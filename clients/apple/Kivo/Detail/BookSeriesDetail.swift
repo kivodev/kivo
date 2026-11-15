@@ -16,27 +16,26 @@ struct BookSeriesDetail: View {
     var body: some View {
         Group {
             if let heading = series.map({ Heading(id: $0.id, name: $0.name, image: Self.cover(of: $0)) }) ?? server.session.library.knownBookSeries(id: id) {
-                List {
-                    header(heading)
-                        .detailRow(Self.headerInsets)
-                    if let failure {
-                        InlineFailure(title: String(localized: "Couldn't load this page."), problem: failure) { attempt += 1 }
-                    } else {
-                        LazyVGrid(columns: Self.columns, spacing: Self.rowSpacing) {
-                            if let series {
-                                ForEach(series.items, id: \.id) { book in
-                                    WorkLink(work: book) { WorkCard(book, style: .square, width: Self.cardWidth) }
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        header(heading)
+                            .detailRow(Self.headerInsets)
+                        if let failure {
+                            InlineFailure(title: String(localized: "Couldn't load this page."), problem: failure) { attempt += 1 }
+                        } else {
+                            LazyVGrid(columns: Self.columns, spacing: Self.rowSpacing) {
+                                if let series {
+                                    ForEach(series.items, id: \.id) { book in
+                                        WorkLink(work: book) { WorkCard(book, style: .square, width: Self.cardWidth) }
+                                    }
+                                } else {
+                                    ForEach(0..<3, id: \.self) { _ in SkeletonCard(style: .square, width: Self.cardWidth) }
                                 }
-                            } else {
-                                ForEach(0..<3, id: \.self) { _ in SkeletonCard(style: .square, width: Self.cardWidth) }
                             }
+                            .detailRow()
                         }
-                        .detailRow()
                     }
                 }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
-                .environment(\.defaultMinListRowHeight, 0)
             } else if let failure {
                 DetailFailed(failure: failure)
             } else if server.unreachable {
@@ -72,24 +71,23 @@ struct BookSeriesDetail: View {
     /// The page's skeleton: the cover with the room its stack takes above
     /// it, the name and count, and a row of covers.
     private var skeleton: some View {
-        List {
-            VStack(spacing: Self.headerSpacing) {
-                SkeletonBlock(width: Self.coverSize, height: Self.coverSize)
-                    .padding(.top, 10)
-                Text(verbatim: " ").font(Self.nameFont).skeletonLine(width: 200, alignment: .center)
-                Text(verbatim: " ").font(.footnote).skeletonLine(width: 60, alignment: .center)
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                VStack(spacing: Self.headerSpacing) {
+                    SkeletonBlock(width: Self.coverSize, height: Self.coverSize)
+                        .padding(.top, 10)
+                    Text(verbatim: " ").font(Self.nameFont).skeletonLine(width: 200, alignment: .center)
+                    Text(verbatim: " ").font(.footnote).skeletonLine(width: 60, alignment: .center)
+                }
+                .frame(maxWidth: .infinity)
+                .detailRow(Self.headerInsets)
+                LazyVGrid(columns: Self.columns, spacing: Self.rowSpacing) {
+                    ForEach(0..<3, id: \.self) { _ in SkeletonCard(style: .square, width: Self.cardWidth) }
+                }
+                .detailRow()
             }
-            .frame(maxWidth: .infinity)
-            .detailRow(Self.headerInsets)
-            LazyVGrid(columns: Self.columns, spacing: Self.rowSpacing) {
-                ForEach(0..<3, id: \.self) { _ in SkeletonCard(style: .square, width: Self.cardWidth) }
-            }
-            .detailRow()
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
         .scrollDisabled(true)
-        .environment(\.defaultMinListRowHeight, 0)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("Loading…"))
     }
