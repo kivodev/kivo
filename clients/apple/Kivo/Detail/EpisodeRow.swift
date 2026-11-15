@@ -5,12 +5,11 @@ import SwiftUI
 /// An episode in a season's list, as a compact width shows them: its still
 /// with the progress bar, "1. Title", the runtime or time left, and a check
 /// once watched, then up to three lines of its synopsis.
-/// Tapping opens its page; swiping marks it watched or unwatched, and a
-/// long press has Play and the rest.
+/// Tapping opens its page, and a long press has Play, Mark as Watched
+/// and the rest.
 struct EpisodeRow: View {
     let episode: WorkSummary
     var current = false
-    @Environment(ServerModel.self) private var server
     @Environment(\.openWork) private var openWork
     @Environment(\.kivoPalette) private var palette
 
@@ -65,15 +64,6 @@ struct EpisodeRow: View {
         .buttonStyle(.plain)
         .accessibilityIdentifier("episode")
         .contextMenu { WorkActions(work: episode, showsSeries: false) }
-        .swipeActions(edge: .leading, allowsFullSwipe: true) {
-            Button {
-                Haptics.success()
-                server.session.library.marks.setPlayed(workId: episode.id, played: !played)
-            } label: {
-                Label(played ? String(localized: "Unwatched") : String(localized: "Watched"), systemImage: played ? "eye.slash" : "checkmark.circle")
-            }
-            .tint(played ? .gray : palette.accent)
-        }
         .detailRow(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
     }
 
@@ -216,7 +206,7 @@ private struct EpisodeCard: View {
 }
 
 private extension View {
-    /// The list row of an episode shelf, under the season's heading.
+    /// The page row of an episode shelf, under the season's heading.
     func shelfInsets() -> some View {
         detailRow(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
     }

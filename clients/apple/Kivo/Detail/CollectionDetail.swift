@@ -24,29 +24,28 @@ struct CollectionDetail: View {
         let card = server.session.library.knownCollection(id: id)
         Group {
             if let name = collection?.name ?? card?.name {
-                List {
-                    header(name, card: card)
-                        .detailRow(Self.headerInsets)
-                    if let failure {
-                        InlineFailure(title: String(localized: "Couldn't load this collection."), problem: failure) { attempt += 1 }
-                    } else {
-                        LazyVGrid(columns: Self.columns, spacing: KivoTokens.spacing * 4) {
-                            if let collection {
-                                ForEach(collection.items, id: \.id) { work in
-                                    WorkLink(work: work) { WorkCard(work, width: Self.cardWidth, caption: .oneLine) }
-                                }
-                            } else {
-                                ForEach(0..<min(Int(card?.workCount ?? 6), 12), id: \.self) { _ in
-                                    SkeletonCard(style: .poster, width: Self.cardWidth, caption: .oneLine)
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        header(name, card: card)
+                            .detailRow(Self.headerInsets)
+                        if let failure {
+                            InlineFailure(title: String(localized: "Couldn't load this collection."), problem: failure) { attempt += 1 }
+                        } else {
+                            LazyVGrid(columns: Self.columns, spacing: KivoTokens.spacing * 4) {
+                                if let collection {
+                                    ForEach(collection.items, id: \.id) { work in
+                                        WorkLink(work: work) { WorkCard(work, width: Self.cardWidth, caption: .oneLine) }
+                                    }
+                                } else {
+                                    ForEach(0..<min(Int(card?.workCount ?? 6), 12), id: \.self) { _ in
+                                        SkeletonCard(style: .poster, width: Self.cardWidth, caption: .oneLine)
+                                    }
                                 }
                             }
+                            .detailRow()
                         }
-                        .detailRow()
                     }
                 }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
-                .environment(\.defaultMinListRowHeight, 0)
             } else if let failure {
                 DetailFailed(failure: failure)
             } else if server.unreachable {

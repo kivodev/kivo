@@ -210,7 +210,54 @@ final class IPadLayoutTests: XCTestCase {
         keep("ipad-third-seasons")
     }
 
+    /// A long press on a card in a season's shelf is that episode's menu:
+    /// Mark as Watched from the second card marks the second episode and
+    /// leaves the first as it was. The series is `KIVO_SERIES` (Severance
+    /// by default), found by Search; the mark is undone at the end.
+    func testAShelfCardsLongPressIsItsOwn() throws {
+        let series = environment["KIVO_SERIES"] ?? "Severance"
+        try signIn(app, home: app.homeTab, allowingLocalNetwork: true)
+        fill()
+        sidebarItem("Search").tap()
+        let field = app.searchFields.firstMatch
+        XCTAssert(field.waitForExistence(timeout: 10), "Search has no field")
+        field.tap()
+        field.typeText(series + "\n")
+        let result = app.buttons.matching(NSPredicate(format: "identifier == %@ AND (label == %@ OR label BEGINSWITH %@)", "work", series, series + ",")).firstMatch
+        XCTAssert(result.waitForExistence(timeout: 15), "Search didn't find \(series)")
+        sleep(2)
+        result.tap()
+        XCTAssert(app.buttons["play"].waitForExistence(timeout: 20), "\(series)'s page has no Play")
+
+        let episodes = app.buttons.matching(identifier: "episode")
+        if !episodes.element(boundBy: 1).waitForExistence(timeout: 5) { app.swipeUp() }
+        let first = episodes.element(boundBy: 0)
+        let second = episodes.element(boundBy: 1)
+        XCTAssert(second.waitForExistence(timeout: 10), "the season has fewer than two episodes")
+        XCTAssertEqual(first.frame.minY, second.frame.minY, "full screen's episodes aren't a shelf")
+        let firstLabel = first.label
+        let watched = second.label.contains(", Watched")
+
+        toggleWatched(second)
+        let marked = NSPredicate { _, _ in second.label.contains(", Watched") != watched }
+        XCTAssertEqual(XCTWaiter.wait(for: [expectation(for: marked, evaluatedWith: nil)], timeout: 10), .completed, "the second card's menu didn't mark the second episode")
+        XCTAssertEqual(first.label, firstLabel, "the second card's menu marked the first episode")
+        keep("ipad-shelf-card-menu")
+
+        toggleWatched(second)
+        let undone = NSPredicate { _, _ in second.label.contains(", Watched") == watched }
+        XCTAssertEqual(XCTWaiter.wait(for: [expectation(for: undone, evaluatedWith: nil)], timeout: 10), .completed, "the mark wasn't undone")
+    }
+
     // MARK: Steps
+
+    /// Long-presses [card] and chooses its menu's Mark as Watched or Mark as Unwatched.
+    private func toggleWatched(_ card: XCUIElement) {
+        card.press(forDuration: 1.2)
+        let mark = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Mark as")).firstMatch
+        XCTAssert(mark.waitForExistence(timeout: 5), "the card's long press has no Mark as Watched")
+        mark.tap()
+    }
 
     /// A tab in the sidebar, which shows as a cell or a button.
     private func sidebarItem(_ name: String) -> XCUIElement {
