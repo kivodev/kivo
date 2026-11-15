@@ -5179,7 +5179,7 @@ type WorkDetail struct {
 
 	// TracksRemembered With versions: whether the caller has a choice for this
 	// work's series now (`updateWorkTracks`), which the versions'
-	// `audioTrackId` and `subtitleTrackId` follow.
+	// chosen tracks follow.
 	TracksRemembered *bool `json:"tracksRemembered,omitempty"`
 
 	// Versions Playable versions in libraries the user can see. A version

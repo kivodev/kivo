@@ -29,12 +29,14 @@ openapi.yaml:
     - '#/components/schemas/WorkUpdate/properties/book/properties/releaseDate/description'
     - '#/components/schemas/SeriesInfo/properties/ordering/description'
     - '#/components/schemas/WorkUpdate/properties/series/properties/ordering/description'
-    # A track's ID or off.
+    # A track's ID, off, or default.
     - '#/components/schemas/PlayCreate/properties/subtitleTrackId/description'
     - '#/components/schemas/PlayUpdate/properties/subtitleTrackId/description'
     - '#/components/schemas/PlayTrack/properties/trackId/description'
     - '#/components/schemas/DownloadCreate/properties/subtitleTrackId/description'
     - '#/components/schemas/DownloadEstimateItem/properties/subtitleTrackId/description'
+    - '#/components/schemas/TracksUpdate/properties/audioTrackId/description'
+    - '#/components/schemas/TracksUpdate/properties/subtitleTrackId/description'
     # Not strings: the values named are other fields'.
     - '#/components/schemas/Problem/properties/retryAfterSeconds/description'
     - '#/components/schemas/UserStateUpdate/properties/positionMs/description'
