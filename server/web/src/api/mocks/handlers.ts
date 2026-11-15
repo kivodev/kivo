@@ -526,6 +526,23 @@ export function createHandlers(api: MockApi) {
       if (played !== undefined && (work.kind === "series" || work.kind === "season")) mark(params.id, played);
       return response(200).json(work.userState);
     }),
+    // A choice applies to the episode's versions; the mock keeps no
+    // choice for the rest of the show.
+    http.patch("/api/v1/works/{id}/user-state/tracks", async ({ params, request, response }) => {
+      const work = api.works[params.id];
+      if (!work?.remembersTracks) return notFound();
+      const { audioTrackId: audio, subtitleTrackId: subtitle } = await request.json();
+      for (const v of work.versions) {
+        if (audio !== undefined) v.audioTrackId = audio === "default" ? v.defaultAudioTrackId : audio;
+        if (subtitle !== undefined)
+          v.subtitleTrackId =
+            subtitle === "default" ? v.defaultSubtitleTrackId : subtitle === "off" ? undefined : subtitle;
+      }
+      work.tracksRemembered = work.versions.some(
+        (v) => v.audioTrackId !== v.defaultAudioTrackId || v.subtitleTrackId !== v.defaultSubtitleTrackId,
+      );
+      return response(200).json(work);
+    }),
     http.post("/api/v1/works/{id}/user-state/remove-from-continue", ({ params, response }) => {
       for (const row of api.home.rows) {
         if (row.kind === "continueWatching" || row.kind === "continueListening")

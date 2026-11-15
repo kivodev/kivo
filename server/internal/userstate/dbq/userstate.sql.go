@@ -56,6 +56,20 @@ func (q *Queries) DeleteStates(ctx context.Context, workID id.ID) error {
 	return err
 }
 
+const deleteTrackChoice = `-- name: DeleteTrackChoice :exec
+DELETE FROM track_choice WHERE user_id = ?1 AND series_id = ?2
+`
+
+type DeleteTrackChoiceParams struct {
+	UserID   id.ID
+	SeriesID id.ID
+}
+
+func (q *Queries) DeleteTrackChoice(ctx context.Context, arg DeleteTrackChoiceParams) error {
+	_, err := q.db.ExecContext(ctx, deleteTrackChoice, arg.UserID, arg.SeriesID)
+	return err
+}
+
 const deleteWorkFromLists = `-- name: DeleteWorkFromLists :exec
 DELETE FROM list_work WHERE work_id = ?1
 `

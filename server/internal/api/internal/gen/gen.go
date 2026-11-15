@@ -4858,6 +4858,15 @@ type TrackTranscode struct {
 // TrackType A track's type.
 type TrackType string
 
+// TracksUpdate defines model for TracksUpdate.
+type TracksUpdate struct {
+	// AudioTrackID An audio track's `id`, or `default`.
+	AudioTrackID *string `json:"audioTrackId,omitempty"`
+
+	// SubtitleTrackID A subtitle track's `id`, `off`, or `default`.
+	SubtitleTrackID *string `json:"subtitleTrackId,omitempty"`
+}
+
 // Trailer A movie's or series' trailer on YouTube, which a client opens there rather than plays.
 type Trailer struct {
 	// ID A UUIDv7.
@@ -5005,9 +5014,18 @@ type Version struct {
 	// Chapters A book's chapters on the version's timeline, as a play lists
 	// them, for its page to list and start playback at; absent
 	// for other kinds.
-	Chapters   *[]Chapter `json:"chapters,omitempty"`
-	Container  *string    `json:"container,omitempty"`
-	DurationMs int        `json:"durationMs"`
+	Chapters  *[]Chapter `json:"chapters,omitempty"`
+	Container *string    `json:"container,omitempty"`
+
+	// DefaultAudioTrackID The audio track a play would start with without the series'
+	// choice (`tracksRemembered`): the caller's preferences and the
+	// file's own flags. Absent when the version has no audio.
+	DefaultAudioTrackID *ID `json:"defaultAudioTrackId,omitempty"`
+
+	// DefaultSubtitleTrackID The subtitle track a play would start with without the
+	// series' choice; absent when subtitles would start off.
+	DefaultSubtitleTrackID *ID `json:"defaultSubtitleTrackId,omitempty"`
+	DurationMs             int `json:"durationMs"`
 
 	// Edition The cut its files' edition tag names, such as `Final Cut`;
 	// absent for an untagged version.
@@ -5158,6 +5176,11 @@ type WorkDetail struct {
 	Similar   *[]WorkSummary `json:"similar,omitempty"`
 	SortTitle *string        `json:"sortTitle,omitempty"`
 	Studios   []string       `json:"studios"`
+
+	// TracksRemembered With versions: whether the caller has a choice for this
+	// work's series now (`updateWorkTracks`), which the versions'
+	// `audioTrackId` and `subtitleTrackId` follow.
+	TracksRemembered *bool `json:"tracksRemembered,omitempty"`
 
 	// Versions Playable versions in libraries the user can see. A version
 	// with a missing file isn't listed, and is again if the file
@@ -5873,6 +5896,9 @@ type MatchWorkJSONRequestBody = FixMatchRequest
 // UpdateWorkUserStateJSONRequestBody defines body for UpdateWorkUserState for application/json ContentType.
 type UpdateWorkUserStateJSONRequestBody = UserStateUpdate
 
+// UpdateWorkTracksJSONRequestBody defines body for UpdateWorkTracks for application/json ContentType.
+type UpdateWorkTracksJSONRequestBody = TracksUpdate
+
 // AsSnapshotMessage returns the union data inside the EventStreamMessage as a SnapshotMessage
 func (t EventStreamMessage) AsSnapshotMessage() (SnapshotMessage, error) {
 	var body SnapshotMessage
@@ -6414,6 +6440,9 @@ type ServerInterface interface {
 	// RemoveFromContinue Remove from Continue Watching
 	// (POST /api/v1/works/{id}/user-state/remove-from-continue)
 	RemoveFromContinue(w http.ResponseWriter, r *http.Request, id ID)
+	// UpdateWorkTracks Choose tracks for a series
+	// (PATCH /api/v1/works/{id}/user-state/tracks)
+	UpdateWorkTracks(w http.ResponseWriter, r *http.Request, id ID)
 	// GetHealth Get health
 	// (GET /healthz)
 	GetHealth(w http.ResponseWriter, r *http.Request)
@@ -9678,6 +9707,32 @@ func (siw *ServerInterfaceWrapper) RemoveFromContinue(w http.ResponseWriter, r *
 	handler.ServeHTTP(w, r)
 }
 
+// UpdateWorkTracks operation middleware
+func (siw *ServerInterfaceWrapper) UpdateWorkTracks(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateWorkTracks(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetHealth operation middleware
 func (siw *ServerInterfaceWrapper) GetHealth(w http.ResponseWriter, r *http.Request) {
 
@@ -9886,6 +9941,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/api/v1/works/{id}", wrapper.UpdateWork)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/works/{id}/children", wrapper.ListWorkChildren)
 	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/api/v1/works/{id}/user-state", wrapper.UpdateWorkUserState)
+	m.HandleFunc(http.MethodPatch+" "+options.BaseURL+"/api/v1/works/{id}/user-state/tracks", wrapper.UpdateWorkTracks)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/works/{id}/user-state/remove-from-continue", wrapper.RemoveFromContinue)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/works/{id}/matches", wrapper.ListWorkMatches)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/works/{id}/match", wrapper.MatchWork)
@@ -20254,6 +20310,110 @@ func (response RemoveFromContinuedefaultApplicationProblemPlusJSONResponse) Visi
 	return err
 }
 
+type UpdateWorkTracksRequestObject struct {
+	ID   ID `json:"id"`
+	Body *UpdateWorkTracksJSONRequestBody
+}
+
+type UpdateWorkTracksResponseObject interface {
+	VisitUpdateWorkTracksResponse(w http.ResponseWriter) error
+}
+
+type UpdateWorkTracks200JSONResponse WorkDetail
+
+func (response UpdateWorkTracks200JSONResponse) VisitUpdateWorkTracksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateWorkTracks400ApplicationProblemPlusJSONResponse struct {
+	BadRequestApplicationProblemPlusJSONResponse
+}
+
+func (response UpdateWorkTracks400ApplicationProblemPlusJSONResponse) VisitUpdateWorkTracksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateWorkTracks401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response UpdateWorkTracks401ApplicationProblemPlusJSONResponse) VisitUpdateWorkTracksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateWorkTracks404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response UpdateWorkTracks404ApplicationProblemPlusJSONResponse) VisitUpdateWorkTracksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateWorkTracks409ApplicationProblemPlusJSONResponse struct {
+	ConflictApplicationProblemPlusJSONResponse
+}
+
+func (response UpdateWorkTracks409ApplicationProblemPlusJSONResponse) VisitUpdateWorkTracksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateWorkTracksdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response UpdateWorkTracksdefaultApplicationProblemPlusJSONResponse) VisitUpdateWorkTracksResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetHealthRequestObject struct {
 }
 
@@ -20657,6 +20817,9 @@ type StrictServerInterface interface {
 	// RemoveFromContinue Remove from Continue Watching
 	// (POST /api/v1/works/{id}/user-state/remove-from-continue)
 	RemoveFromContinue(ctx context.Context, request RemoveFromContinueRequestObject) (RemoveFromContinueResponseObject, error)
+	// UpdateWorkTracks Choose tracks for a series
+	// (PATCH /api/v1/works/{id}/user-state/tracks)
+	UpdateWorkTracks(ctx context.Context, request UpdateWorkTracksRequestObject) (UpdateWorkTracksResponseObject, error)
 	// GetHealth Get health
 	// (GET /healthz)
 	GetHealth(ctx context.Context, request GetHealthRequestObject) (GetHealthResponseObject, error)
@@ -24087,6 +24250,39 @@ func (sh *strictHandler) RemoveFromContinue(w http.ResponseWriter, r *http.Reque
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(RemoveFromContinueResponseObject); ok {
 		if err := validResponse.VisitRemoveFromContinueResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateWorkTracks operation middleware
+func (sh *strictHandler) UpdateWorkTracks(w http.ResponseWriter, r *http.Request, id ID) {
+	var request UpdateWorkTracksRequestObject
+
+	request.ID = id
+
+	var body UpdateWorkTracksJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateWorkTracks(ctx, request.(UpdateWorkTracksRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateWorkTracks")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateWorkTracksResponseObject); ok {
+		if err := validResponse.VisitUpdateWorkTracksResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

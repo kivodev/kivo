@@ -4,7 +4,10 @@ import type { Track } from "@/api/schemas";
 import { type Option, Select } from "./Select";
 import { trackOptions } from "./trackLabels";
 
-/** The choice that leaves the track to the server, which picks by the user's settings. */
+/**
+ * The choice that leaves the track to the server, which picks by the
+ * user's settings, or for a show whose choices are kept, forgets them.
+ */
 export const automaticTrack = "automatic";
 
 type Choices = {
@@ -20,6 +23,12 @@ type Choices = {
   automatic?: string;
   /** Says a choice is kept for the rest of the show. */
   remembered?: boolean;
+  /**
+   * Whether choosing a track keeps it for the show. Automatic is then
+   * Default, which forgets the show's choice, labelled with the track a
+   * play goes back to.
+   */
+  resets?: boolean;
   /** Options after the tracks, such as Search subtitles. */
   extra?: readonly Option[];
 };
@@ -46,6 +55,7 @@ export function trackChoices({
   offId,
   automatic,
   remembered,
+  resets = false,
   extra = [],
 }: Choices): TrackChoices | undefined {
   const choices: Option[] = [
@@ -60,7 +70,13 @@ export function trackChoices({
       : automatic === offId
         ? i18n._(msg`Off`)
         : tracks.find((t) => t.id === automatic)?.name;
-  const automaticLabel = plays ? i18n._(msg`Automatic (${plays})`) : i18n._(msg`Automatic`);
+  const automaticLabel = resets
+    ? plays
+      ? i18n._(msg`Default (${plays})`)
+      : i18n._(msg`Default`)
+    : plays
+      ? i18n._(msg`Automatic (${plays})`)
+      : i18n._(msg`Automatic`);
   return {
     label: kind === "audio" ? i18n._(msg`Audio`) : i18n._(msg`Subtitles`),
     description: remembered ? i18n._(msg`Remembered for this show`) : undefined,

@@ -486,11 +486,29 @@ describe("Episode page", () => {
       fullName: "English · SRT · External",
       subtitle: { source: "external" },
     });
-    renderApp(`/works/${mockIds.expanseReload}`);
-    expect(await screen.findByRole("button", { name: /Automatic \(Off\)/ })).toBeInTheDocument();
-    expect(screen.getByText("Remembered for this show")).toBeInTheDocument();
+    const { router, user } = renderApp(`/works/${mockIds.expanseReload}`);
+    expect(await screen.findByRole("button", { name: /Default \(Off\)/ })).toBeInTheDocument();
+    expect(screen.queryByText("Remembered for this show")).not.toBeInTheDocument();
     // One audio track, so there's nothing to choose.
     expect(screen.queryByRole("button", { name: /Audio/ })).not.toBeInTheDocument();
+
+    // A pick is kept for the show at once, rather than held for the next
+    // play, so the play asks for no track.
+    await user.click(screen.getByRole("button", { name: /Default \(Off\)/ }));
+    await user.click(await screen.findByRole("option", { name: /^English/ }));
+    expect(await screen.findByText("Remembered for this show")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /English/ })).toBeInTheDocument();
+    expect(router.state.location.search).toEqual({});
+    expect(screen.getByRole("link", { name: "Play" })).toHaveAttribute(
+      "href",
+      `/watch/${mockIds.expanseReload}?version=${api.works[mockIds.expanseReload]?.versions[0]?.id}`,
+    );
+
+    // Default forgets it.
+    await user.click(screen.getByRole("button", { name: /English/ }));
+    await user.click(await screen.findByRole("option", { name: "Default (Off)" }));
+    await waitFor(() => expect(screen.queryByText("Remembered for this show")).not.toBeInTheDocument());
+    expect(screen.getByRole("button", { name: /Default \(Off\)/ })).toBeInTheDocument();
   });
 
   it("falls back to the series backdrop without a still", async () => {

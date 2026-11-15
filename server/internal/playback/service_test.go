@@ -29,6 +29,7 @@ import (
 	"github.com/mmcdole/kivo/internal/catalog/catalogtest"
 	"github.com/mmcdole/kivo/internal/config"
 	"github.com/mmcdole/kivo/internal/events"
+	"github.com/mmcdole/kivo/internal/fault"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/markers"
 	"github.com/mmcdole/kivo/internal/media"
@@ -2059,6 +2060,101 @@ func TestPreferredIsWhatAPlayStartsWith(t *testing.T) {
 	if p, err := f.svc.Preferred(ctx, f.v, m.Work); err != nil || p.Remembers {
 		t.Fatalf("a movie: %+v, %v", p, err)
 	}
+}
+
+func TestChoosingOnlyAudioLeavesSubtitlesToTheMode(t *testing.T) {
+	f := newFixture(t, 0)
+	series, shows := f.b.Series("Cowboy Bebop"), f.folderOf(catalog.Shows)
+	e1, e2 := f.b.Episode(shows, series, 1, 1), f.b.Episode(shows, series, 1, 2)
+	f.anime(e1.File)
+	f.anime(e2.File)
+	en, smart := "en", users.SubtitlesSmart
+	if err := f.users.EditPreferences(ctx, f.v, users.PreferencesChange{Playback: &users.PlaybackChange{SubtitleLanguage: &en, SubtitleMode: &smart}}); err != nil {
+		t.Fatal(err)
+	}
+	japanese := f.stream(e1.File, 2)
+	if _, err := f.svc.Start(ctx, f.p, f.v, StartRequest{Work: e1.Work, Caps: browser, ClientIP: lan, AudioTrack: &japanese}); err != nil {
+		t.Fatal(err)
+	}
+	// Japanese audio in smart mode shows full English subtitles.
+	if s := f.mustStart(e2.Work); audioOf(s) != f.stream(e2.File, 2) || subtitleOf(s) != f.stream(e2.File, 3) {
+		t.Fatalf("the next episode: audio %v, subtitles %v", audioOf(s), subtitleOf(s))
+	}
+}
+
+func TestChooseTracksSetsTheSeriesChoice(t *testing.T) {
+	f := newFixture(t, 0)
+	series, shows := f.b.Series("Cowboy Bebop"), f.folderOf(catalog.Shows)
+	e1, e2 := f.b.Episode(shows, series, 1, 1), f.b.Episode(shows, series, 1, 2)
+	f.anime(e1.File)
+	f.anime(e2.File)
+	choose := func(pick TrackPick) {
+		t.Helper()
+		if err := f.svc.ChooseTracks(ctx, f.v, e1.Work, pick); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// next returns the second episode's preferred and default tracks as
+	// stream indexes (-1 for none), and whether its series has a choice.
+	next := func() (audio, sub, defAudio, defSub int, remembered bool) {
+		t.Helper()
+		p, err := f.svc.Preferred(ctx, f.v, e2.Work)
+		if err != nil {
+			t.Fatal(err)
+		}
+		index := func(track id.ID) int {
+			for i := range 6 {
+				if f.stream(e2.File, i) == track {
+					return i
+				}
+			}
+			return -1
+		}
+		v, d := p.Versions[e2.Version], p.Defaults[e2.Version]
+		return index(v.Audio), index(v.Subtitle), index(d.Audio), index(d.Subtitle), p.Remembered
+	}
+	check := func(name string, audio, sub int, remembered bool) {
+		t.Helper()
+		a, s, da, ds, r := next()
+		if a != audio || s != sub || da != 1 || ds != 4 || r != remembered {
+			t.Errorf("%s: audio %d, subtitles %d, defaults %d %d, remembered %v", name, a, s, da, ds, r)
+		}
+	}
+	check("no choice", 1, 4, false)
+
+	japanese, sdh, off := f.stream(e1.File, 2), f.stream(e1.File, 5), id.ID{}
+	choose(TrackPick{Audio: &japanese})
+	check("Japanese", 2, -1, true) // forced mode has no forced Japanese track
+	choose(TrackPick{Subtitle: &sdh})
+	check("SDH", 2, 5, true)
+	choose(TrackPick{Subtitle: &off})
+	check("off", 2, -1, true)
+	choose(TrackPick{ForgetAudio: true})
+	check("audio forgotten", 1, -1, true)
+	choose(TrackPick{ForgetSubtitle: true})
+	check("both forgotten", 1, 4, false)
+
+	m := f.b.Movie(f.folder, "Akira", 1988)
+	f.anime(m.File)
+	other := f.stream(m.File, 2)
+	if err := f.svc.ChooseTracks(ctx, f.v, e1.Work, TrackPick{Audio: &other}); err == nil || !isKind(err, fault.Invalid) {
+		t.Errorf("another file's track: %v", err)
+	}
+	if err := f.svc.ChooseTracks(ctx, f.v, m.Work, TrackPick{Audio: &other}); !errors.Is(err, ErrNotFound) {
+		t.Errorf("a movie: %v", err)
+	}
+	if err := f.users.EditPreferences(ctx, f.v, users.PreferencesChange{Playback: &users.PlaybackChange{RememberTracks: new(false)}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.svc.ChooseTracks(ctx, f.v, e1.Work, TrackPick{Audio: &japanese}); !errors.Is(err, ErrNotRemembered) {
+		t.Errorf("not remembering: %v", err)
+	}
+}
+
+// isKind reports whether err's first fault is of kind k.
+func isKind(err error, k fault.Kind) bool {
+	f, ok := fault.Of(err)
+	return ok && f.Kind() == k
 }
 
 func TestAChosenTrackNamesItsVersion(t *testing.T) {

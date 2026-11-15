@@ -223,7 +223,8 @@ func (s *Service) LastVersion(ctx context.Context, user, work id.ID) (id.ID, err
 }
 
 // TrackChoice is the audio and subtitle tracks a user last chose for a
-// series, by language and kind.
+// series, by language and kind. An empty AudioLanguage or SubtitleKind is
+// no choice of that part, which leaves it to the user's preferences.
 type TrackChoice struct {
 	AudioLanguage, SubtitleLanguage string
 	SubtitleKind                    string // off, forced, full or sdh
@@ -252,9 +253,13 @@ func (s *Service) SeriesChoice(ctx context.Context, u users.User, work id.ID) (s
 	return w.Root, c, true, nil
 }
 
-// SetTrackChoice remembers a user's audio and subtitle choice for a series.
+// SetTrackChoice remembers a user's audio and subtitle choice for a
+// series. A choice of neither part forgets the series' choice.
 func (s *Service) SetTrackChoice(ctx context.Context, user, series id.ID, c TrackChoice) error {
 	err := s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
+		if c.AudioLanguage == "" && c.SubtitleKind == "" {
+			return dbq.New(tx).DeleteTrackChoice(ctx, dbq.DeleteTrackChoiceParams{UserID: user, SeriesID: series})
+		}
 		return dbq.New(tx).SetTrackChoice(ctx, dbq.SetTrackChoiceParams{
 			UserID: user, SeriesID: series, AudioLanguage: nullString(c.AudioLanguage),
 			SubtitleLanguage: nullString(c.SubtitleLanguage), SubtitleKind: nullString(c.SubtitleKind), UpdatedAt: time.Now().UnixMilli(),

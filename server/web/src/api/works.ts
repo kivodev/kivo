@@ -258,6 +258,21 @@ export function useUpdateUserState() {
   });
 }
 
+/**
+ * Choose the tracks every episode of an episode's show starts with, for
+ * you. The episode's page takes the server's answer, and other episodes'
+ * pages refetch.
+ */
+export function useChooseTracks() {
+  const queryClient = useQueryClient();
+  return $api.useMutation("patch", "/api/v1/works/{id}/user-state/tracks", {
+    onSuccess: (work) => {
+      queryClient.setQueryData(workQueries.detail(work.id).queryKey, work);
+      void invalidatePaths(queryClient, [apiPaths.work]);
+    },
+  });
+}
+
 /** Take a work out of Continue Watching or Continue Listening, for you. */
 export function useRemoveFromContinue() {
   const queryClient = useQueryClient();
