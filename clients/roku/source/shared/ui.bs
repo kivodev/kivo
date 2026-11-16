@@ -70,6 +70,17 @@ namespace KivoUi
         return minutes.ToStr() + ":" + seconds
     end function
 
+    ' A date as people read it: "2017-02-04" is "Feb 4, 2017".
+    function date(iso as dynamic) as string
+        if iso = invalid then return ""
+        parts = iso.Split("-")
+        if parts.Count() < 3 then return iso
+        months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        month = parts[1].ToInt()
+        if month < 1 or month > 12 then return iso
+        return months[month - 1] + " " + parts[2].Left(2).ToInt().ToStr() + ", " + parts[0]
+    end function
+
     ' [count] with its noun, one or other: plural(3, "episode", "episodes") is "3 episodes".
     function plural(count as integer, one as string, other as string) as string
         if count = 1 then return "1 " + one
