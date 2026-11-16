@@ -33,7 +33,7 @@ sub onFound(event as object)
     m.probe = invalid
     if found.error <> invalid
         m.status.color = KivoTokens.Color.danger
-        m.status.text = found.error
+        m.status.text = "No server found at that address."
         return
     end if
     minimum = found.server.minAppVersion

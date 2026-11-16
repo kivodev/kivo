@@ -1,14 +1,19 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<!-- Signs the Roku in by linking: shows a code to approve on a device
-     that's signed in, and polls until it's approved or denied. -->
+<!-- Signs the Roku in, as the Android TV app's sign-in code: the code to
+     approve on a signed-in device, polled until it's approved, with the
+     server's name, and Sign in with password below. A code that expires
+     is replaced; one declined says so over its replacement. * uses
+     another server. -->
 <component name="LinkScreen" extends="KivoScreen">
   <children>
-    <Label id="title" translation="[160, 120]" text="Link this Roku" />
+    <Label id="title" translation="[160, 120]" text="Sign in" />
     <Label id="hint" translation="[160, 200]" width="1600" wrap="true"
       text="On a signed-in device, open this link, or open Link a device and enter this code." />
     <Label id="link" translation="[160, 320]" width="1600" />
     <Label id="code" translation="[160, 420]" />
+    <Label id="server" translation="[160, 580]" width="1600" />
     <Label id="status" translation="[160, 640]" width="1600" wrap="true" />
+    <ButtonGroup id="actions" translation="[160, 740]" layoutDirection="horiz" itemSpacings="[24]" minWidth="400" />
     <Label id="options" translation="[160, 920]" width="1600"
       text="Press * to use another server." />
     <Timer id="poll" repeat="true" />
