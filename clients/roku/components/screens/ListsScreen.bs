@@ -1,0 +1,79 @@
+import "pkg:/source/generated/api.bs"
+import "pkg:/source/generated/tokens.bs"
+import "pkg:/source/shared/content.bs"
+import "pkg:/source/shared/display.bs"
+import "pkg:/source/shared/session.bs"
+import "pkg:/source/shared/ui.bs"
+
+sub init()
+    m.rows = m.top.FindNode("rows")
+    m.status = m.top.FindNode("status")
+    KivoUi.style(m.top.FindNode("heading"), KivoTokens.TextSize.xl, KivoTokens.Color.text, true)
+    KivoUi.style(m.status, KivoTokens.TextSize.base, KivoTokens.Color.textMuted)
+    font = CreateObject("roSGNode", "Font")
+    font.uri = "font:BoldSystemFontFile"
+    font.size = KivoTokens.TextSize.base
+    m.rows.rowLabelFont = font
+    m.rows.rowLabelColor = KivoTokens.Color.text
+    m.rows.ObserveField("rowItemSelected", "onCard")
+    load()
+end sub
+
+sub focus()
+    m.rows.SetFocus(true)
+    if m.loaded = true then load()
+end sub
+
+sub load()
+    m.task = Kivo.send(KivoApi.listLists({ counts: true }), "onLists")
+end sub
+
+sub onLists(event as object)
+    response = event.GetData()
+    m.task = invalid
+    if response.code = 401
+        m.top.navigate = { signedOut: true }
+        return
+    end if
+    if response.code <> 200
+        m.status.text = KivoDisplay.problem(response)
+        return
+    end if
+    m.loaded = true
+    root = CreateObject("roSGNode", "ContentNode")
+    sizes = []
+    heights = []
+    for each list in response.body.items
+        works = list.items
+        if works = invalid then works = []
+        row = KivoContent.row(list.name + "  ·  " + list.workCount.ToStr(), works, false)
+        ' See all, at the row's end: the list's page.
+        row.AppendChild(KivoContent.blank())
+        more = row.GetChild(row.GetChildCount() - 1)
+        more.listId = list.id
+        more.title = "See all"
+        more.caption = list.name
+        root.AppendChild(row)
+        size = KivoContent.rowSize(false)
+        if KivoContent.allBooks(works) then size = KivoContent.squareRowSize()
+        sizes.Push(size.item)
+        heights.Push(size.height)
+    end for
+    if root.GetChildCount() = 0
+        m.status.text = "No lists yet. Add a title to a list from its page with *."
+        return
+    end if
+    m.status.text = ""
+    was = m.rows.rowItemFocused
+    m.rows.rowItemSize = sizes
+    m.rows.rowHeights = heights
+    m.rows.content = root
+    if was <> invalid and was.Count() = 2 and was[0] >= 0 and was[0] < root.GetChildCount()
+        if was[1] < root.GetChild(was[0]).GetChildCount() then m.rows.jumpToRowItem = was
+    end if
+end sub
+
+sub onCard()
+    at = m.rows.rowItemSelected
+    m.top.navigate = KivoContent.target(m.rows.content.GetChild(at[0]).GetChild(at[1]))
+end sub

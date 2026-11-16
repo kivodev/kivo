@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- The user's lists, each a row of its first works ending in See all,
+     which opens the list's page. -->
+<component name="ListsScreen" extends="KivoScreen">
+  <children>
+    <Label id="heading" translation="[96, 48]" text="Lists" />
+    <Label id="status" translation="[96, 160]" width="1700" wrap="true" />
+    <RowList id="rows" translation="[96, 130]" itemComponentName="PosterItem"
+      itemSize="[1824, 470]" numRows="3" rowItemSpacing="[[24, 0]]" itemSpacing="[0, 40]"
+      showRowLabel="[true]" rowLabelOffset="[[0, 12]]" rowFocusAnimationStyle="floatingFocus" />
+  </children>
+</component>
