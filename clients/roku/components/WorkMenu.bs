@@ -1,0 +1,90 @@
+import "pkg:/source/generated/api.bs"
+import "pkg:/source/shared/display.bs"
+import "pkg:/source/shared/session.bs"
+
+sub init()
+    m.panel = m.top.FindNode("panel")
+    m.panel.ObserveField("chosen", "onChosen")
+    m.panel.ObserveField("closed", "onClosed")
+    m.top.visible = false
+end sub
+
+' Opens the menu of [card] (a card's ContentNode) in [where].
+sub open(card as object, where = {} as object)
+    if card = invalid or card.workId = "" then return
+    m.card = card
+    m.where = where
+    playable = card.available and (card.kind = "movie" or card.kind = "episode" or card.kind = "video" or card.kind = "extra")
+    started = card.positionMs >= 0
+    items = []
+    if playable
+        label = "Play"
+        if started then label = "Resume"
+        items.Push({ id: "play", label: label })
+        if started then items.Push({ id: "fromStart", label: "Play from beginning" })
+    end if
+    if card.played
+        items.Push({ id: "played", label: "Mark as unwatched" })
+    else
+        items.Push({ id: "played", label: "Mark as watched" })
+    end if
+    if where.listId <> invalid and where.listId <> "" then items.Push({ id: "removeFromList", label: "Remove from " + where.listName })
+    if where.row = "continueWatching" then items.Push({ id: "removeFromContinue", label: "Remove from Continue Watching" })
+    if card.episodeSeriesId <> "" and where.seriesId <> card.episodeSeriesId then items.Push({ id: "series", label: "Go to series" })
+    if where.library <> true and card.libraryId <> "" then items.Push({ id: "library", label: "Go to library" })
+    title = card.title
+    if card.code <> "" then title = title + " · " + card.code
+    m.panel.title = title
+    m.panel.note = ""
+    m.panel.checkedId = ""
+    m.panel.items = items
+    m.panel.visible = true
+    m.top.visible = true
+    m.panel.callFunc("focus")
+end sub
+
+sub focus()
+    m.panel.callFunc("focus")
+end sub
+
+sub close()
+    m.panel.visible = false
+    m.top.visible = false
+    m.top.closed = true
+end sub
+
+sub onClosed()
+    close()
+end sub
+
+sub onChosen()
+    id = m.panel.chosen
+    card = m.card
+    close()
+    if id = "play"
+        m.top.navigate = { screen: "PlayerScreen", params: { id: card.workId } }
+    else if id = "fromStart"
+        m.top.navigate = { screen: "PlayerScreen", params: { id: card.workId, fromStart: true } }
+    else if id = "played"
+        m.task = Kivo.send(KivoApi.updateWorkUserState(card.workId, { played: not card.played }), "onDone")
+    else if id = "removeFromList"
+        m.task = Kivo.send(KivoApi.removeListWork(m.where.listId, card.workId), "onDone")
+    else if id = "removeFromContinue"
+        m.task = Kivo.send(KivoApi.removeFromContinue(card.workId), "onDone")
+    else if id = "series"
+        m.top.navigate = { screen: "DetailScreen", params: { id: card.episodeSeriesId } }
+    else if id = "library"
+        m.top.navigate = { screen: "LibraryScreen", params: { id: card.libraryId } }
+    end if
+end sub
+
+' A mark that failed says why, once, over the screen.
+sub onDone(event as object)
+    m.task = invalid
+    response = event.GetData()
+    if response.code >= 300
+        m.top.problem = KivoDisplay.problem(response)
+        return
+    end if
+    m.top.changed = true
+end sub

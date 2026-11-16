@@ -4,6 +4,7 @@ import "pkg:/source/shared/ui.bs"
 
 sub init()
     m.ground = m.top.FindNode("ground")
+    m.tile = m.top.FindNode("tile")
     m.art = m.top.FindNode("art")
     m.track = m.top.FindNode("track")
     m.progress = m.top.FindNode("progress")
@@ -11,8 +12,21 @@ sub init()
     m.caption = m.top.FindNode("caption")
     m.played = m.top.FindNode("played")
     m.playedGround = m.top.FindNode("playedGround")
+    m.code = m.top.FindNode("code")
+    m.codeGround = m.top.FindNode("codeGround")
+    m.status = m.top.FindNode("status")
+    m.statusGround = m.top.FindNode("statusGround")
+    m.unplayed = m.top.FindNode("unplayed")
+    m.unplayedGround = m.top.FindNode("unplayedGround")
     m.playedGround.color = KivoTokens.Color.badge
+    m.codeGround.color = KivoTokens.Color.badge
+    m.statusGround.color = KivoTokens.Color.badge
+    m.unplayedGround.color = KivoTokens.Color.accent
     KivoUi.style(m.played, KivoTokens.TextSize.sm, KivoTokens.Color.onBadge, true)
+    KivoUi.style(m.code, KivoTokens.TextSize.sm, KivoTokens.Color.onBadge, true)
+    KivoUi.style(m.status, KivoTokens.TextSize.sm, KivoTokens.Color.onBadge, true)
+    KivoUi.style(m.unplayed, KivoTokens.TextSize.sm, KivoTokens.Color.onAccent, true)
+    KivoUi.style(m.tile, KivoTokens.TextSize.base, KivoTokens.Color.onPlaceholder)
     m.ground.color = KivoTokens.Color.placeholder
     m.track.color = KivoTokens.Color.progressTrack
     m.progress.color = KivoTokens.Color.progress
@@ -25,6 +39,9 @@ sub onSize()
     h = m.top.height - KivoContent.captionHeight
     m.ground.width = w
     m.ground.height = h
+    m.tile.width = w - 32
+    m.tile.height = h
+    m.tile.translation = [16, 0]
     m.art.width = w
     m.art.height = h
     m.track.width = w
@@ -42,13 +59,54 @@ end sub
 sub onContent()
     content = m.top.itemContent
     if content = invalid then return
+    w = m.top.width
+    h = m.top.height - KivoContent.captionHeight
     m.art.uri = content.imageUri
+    ' Without artwork, a titled tile in the placeholder colour, never a broken image.
+    m.tile.text = ""
+    if content.imageUri = "" then m.tile.text = content.title
+    if content.dashed = true then m.tile.text = "See all"
     m.title.text = content.title
+    if content.dashed = true then m.title.text = ""
     m.caption.text = content.caption
-    m.played.visible = content.played
-    m.playedGround.visible = content.played
+    m.art.opacity = 1
+    if content.available = false then m.art.opacity = 0.5
+    ' An unplayed count, else a played check, at the top end.
+    count = content.unplayed
+    m.unplayed.visible = count > 0
+    m.unplayedGround.visible = count > 0
+    if count > 0
+        m.unplayed.text = count.ToStr()
+        width = 24 + 14 * count.ToStr().Len()
+        if width < 36 then width = 36
+        m.unplayed.width = width
+        m.unplayedGround.width = width
+        m.unplayed.translation = [w - width - 8, 8]
+        m.unplayedGround.translation = [w - width - 8, 8]
+    end if
+    m.played.visible = content.played and count = 0
+    m.playedGround.visible = m.played.visible
+    ' An episode's code at the bottom start, and a status at the bottom end.
+    badge(m.code, m.codeGround, content.code, 8, h - 44, false)
+    badge(m.status, m.statusGround, content.status, w - 8, h - 44, true)
     shown = content.progress > 0
     m.track.visible = shown
     m.progress.visible = shown
-    if shown then m.progress.width = m.top.width * content.progress
+    if shown then m.progress.width = w * content.progress
+end sub
+
+' A badge of [text] on its ground at [x], [y]: from x, or ending there when [fromEnd].
+sub badge(label as object, ground as object, text as string, x as integer, y as integer, fromEnd as boolean)
+    label.visible = text <> ""
+    ground.visible = text <> ""
+    if text = "" then return
+    label.width = 0
+    label.text = text
+    width = label.BoundingRect().width + 16
+    if fromEnd then x = x - width
+    ground.width = width
+    label.width = width
+    label.horizAlign = "center"
+    ground.translation = [x, y]
+    label.translation = [x, y]
 end sub

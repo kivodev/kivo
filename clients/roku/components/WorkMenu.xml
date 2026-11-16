@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- A card's menu, on *, as the Android TV app's WorkMenu: Play or
+     Resume, Play from beginning once there's progress, Mark as watched or
+     unwatched, Remove from the manual list that's open, Remove from
+     Continue Watching in that row, Go to series for an episode (except on
+     its series' page) and Go to library outside a library's grid. open()
+     takes the card (a PosterItem's content) and where it is: { row:
+     "continueWatching", listId, listName, seriesId, library: true }. It
+     sets navigate for a screen to open, and changed once a mark is made,
+     for the screen to read itself again. -->
+<component name="WorkMenu" extends="Group">
+  <interface>
+    <field id="navigate" type="assocarray" alwaysNotify="true" />
+    <field id="changed" type="boolean" alwaysNotify="true" />
+    <field id="problem" type="string" alwaysNotify="true" />
+    <field id="closed" type="boolean" alwaysNotify="true" />
+    <function name="open" />
+    <function name="focus" />
+  </interface>
+  <children>
+    <MenuPanel id="panel" visible="false" />
+  </children>
+</component>

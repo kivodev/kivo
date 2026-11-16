@@ -22,19 +22,66 @@ namespace KivoUi
     function episodeCode(episode as dynamic) as string
         if episode = invalid or episode.seasonNumber = invalid or episode.number = invalid then return ""
         words = KivoDisplay.tables().words.episodeCode
-        return words.one.Replace("{season}", episode.seasonNumber.ToStr()).Replace("{episode}", episode.number.ToStr())
+        place = words.one
+        if episode.endNumber <> invalid and episode.endNumber <> episode.number then place = words.range.Replace("{end}", episode.endNumber.ToStr())
+        return place.Replace("{season}", episode.seasonNumber.ToStr()).Replace("{episode}", episode.number.ToStr())
     end function
 
-    ' A duration in words, such as "1h 52m", from the shared words.
+    ' A runtime in words, such as "1h 52m", from the shared words; empty without one.
     function duration(ms as dynamic) as string
         if ms = invalid or ms <= 0 then return ""
         words = KivoDisplay.tables().words.durations
-        minutes = Int(ms / 60000)
+        return KivoUi.inHours(ms, words.minutes, words.hours, words.hoursMinutes)
+    end function
+
+    ' Time left in whole minutes, at least one: "18 min left", "1 hr 34 min left".
+    function timeLeft(ms as dynamic) as string
+        if ms = invalid then return ""
+        words = KivoDisplay.tables().words.durations
+        return KivoUi.inHours(ms, words.minutesLeft, words.hoursLeft, words.hoursMinutesLeft)
+    end function
+
+    ' Whole minutes, rounded and at least one, in minutes under an hour,
+    ' else in hours and the minutes over, as the core words them.
+    function inHours(ms as dynamic, inMinutes as string, inWholeHours as string, inHoursMinutes as string) as string
+        if ms < 0 then ms = 0
+        minutes = Int((ms + 30000) / 60000)
+        if minutes < 1 then minutes = 1
         hours = Int(minutes / 60)
-        minutes = minutes mod 60
-        if hours = 0 then return words.minutes.Replace("{minutes}", minutes.ToStr())
-        if minutes = 0 then return words.hours.Replace("{hours}", hours.ToStr())
-        return words.hoursMinutes.Replace("{hours}", hours.ToStr()).Replace("{minutes}", minutes.ToStr())
+        rest = minutes mod 60
+        if minutes < 60 then return inMinutes.Replace("{minutes}", rest.ToStr())
+        if rest = 0 then return inWholeHours.Replace("{hours}", hours.ToStr())
+        return inHoursMinutes.Replace("{hours}", hours.ToStr()).Replace("{minutes}", rest.ToStr())
+    end function
+
+    ' A position as a clock: "4:05", or "1:02:03" from an hour.
+    function clock(ms as dynamic) as string
+        if ms = invalid or ms < 0 then ms = 0
+        total = Int(ms / 1000)
+        hours = Int(total / 3600)
+        minutes = Int((total mod 3600) / 60)
+        seconds = (total mod 60).ToStr()
+        if seconds.Len() < 2 then seconds = "0" + seconds
+        if hours > 0
+            m2 = minutes.ToStr()
+            if m2.Len() < 2 then m2 = "0" + m2
+            return hours.ToStr() + ":" + m2 + ":" + seconds
+        end if
+        return minutes.ToStr() + ":" + seconds
+    end function
+
+    ' [count] with its noun, one or other: plural(3, "episode", "episodes") is "3 episodes".
+    function plural(count as integer, one as string, other as string) as string
+        if count = 1 then return "1 " + one
+        return count.ToStr() + " " + other
+    end function
+
+    ' A community rating as the Android TV app shows it: "★ 8.5".
+    function rating(value as dynamic) as string
+        if value = invalid then return ""
+        tenths = Int(value * 10 + 0.5)
+        text = Int(tenths / 10).ToStr() + "." + (tenths mod 10).ToStr()
+        return "★ " + text
     end function
 
 end namespace

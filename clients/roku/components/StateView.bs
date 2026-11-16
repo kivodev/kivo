@@ -1,0 +1,67 @@
+import "pkg:/source/generated/tokens.bs"
+import "pkg:/source/shared/ui.bs"
+
+sub init()
+    m.heading = m.top.FindNode("heading")
+    m.line = m.top.FindNode("line")
+    m.actions = m.top.FindNode("actions")
+    m.tick = m.top.FindNode("tick")
+    KivoUi.style(m.heading, KivoTokens.TextSize.lg, KivoTokens.Color.text, true)
+    KivoUi.style(m.line, KivoTokens.TextSize.base, KivoTokens.Color.textMuted)
+    m.actions.ObserveField("buttonSelected", "onSelected")
+    m.tick.ObserveField("fire", "onTick")
+    m.left = 0
+end sub
+
+sub onText()
+    m.heading.text = m.top.title
+    m.line.text = m.top.sentence
+    if m.left > 0 then m.line.text = "Retrying in " + m.left.ToStr() + " s…"
+end sub
+
+sub onButtons()
+    labels = []
+    for each item in m.top.buttons
+        labels.Push(item.label)
+    end for
+    m.actions.buttons = labels
+    m.actions.visible = labels.Count() > 0
+end sub
+
+sub onCountdown()
+    m.left = m.top.countdown
+    m.tick.control = "stop"
+    if m.left > 0 then m.tick.control = "start"
+    onText()
+end sub
+
+sub onTick()
+    if not m.top.visible
+        m.tick.control = "stop"
+        return
+    end if
+    m.left = m.left - 1
+    if m.left <= 0
+        m.tick.control = "stop"
+        m.left = 0
+        if m.top.buttons.Count() > 0 then m.top.action = m.top.buttons[0].id
+        return
+    end if
+    onText()
+end sub
+
+sub onSelected()
+    i = m.actions.buttonSelected
+    if i < 0 or i >= m.top.buttons.Count() then return
+    m.tick.control = "stop"
+    m.left = 0
+    m.top.action = m.top.buttons[i].id
+end sub
+
+sub focus()
+    if m.actions.visible
+        m.actions.SetFocus(true)
+    else
+        m.top.SetFocus(true)
+    end if
+end sub
