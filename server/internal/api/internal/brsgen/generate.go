@@ -14,9 +14,21 @@ import (
 type operation struct {
 	id, summary, method, path string
 	pathParams                []string // in the order the path names them
-	query                     []string
+	query                     []queryParam
 	body                      string // the request body's media type; empty without one
+	bodySchema                *yaml.Node
+	answerSchema              *yaml.Node // a JSON answer's schema, when it has one
+	media                     string     // a success answer's media type when it isn't JSON
 	public                    bool
+	queryType, bodyType       string // set as the interfaces are made
+	answerType                string
+}
+
+// queryParam is a query parameter of an operation.
+type queryParam struct {
+	name     string
+	required bool
+	schema   *yaml.Node
 }
 
 // enum is a named string enum of the contract.
@@ -41,11 +53,28 @@ func generate(spec []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return render(ops, enums(root), models(root)), nil
+	g := newModeler(root)
+	for i := range ops {
+		op := &ops[i]
+		if len(op.query) > 0 {
+			op.queryType = g.query(op.id, op.query)
+		}
+		if op.body != "" {
+			op.bodyType = "object"
+			if op.body == "application/json" {
+				op.bodyType = g.schemaType(op.id, "Body", op.bodySchema)
+			}
+		}
+		if op.answerSchema != nil {
+			op.answerType = g.schemaType(op.id, "Answer", op.answerSchema)
+		}
+	}
+	return render(ops, enums(root), g.all()), nil
 }
 
 func operations(root *yaml.Node) ([]operation, error) {
 	params := lookup(lookup(root, "components"), "parameters")
+	responses := lookup(lookup(root, "components"), "responses")
 	paths := lookup(root, "paths")
 	if paths == nil {
 		return nil, errors.New("no paths")
@@ -60,7 +89,7 @@ func operations(root *yaml.Node) ([]operation, error) {
 			if node == nil {
 				continue
 			}
-			op, err := parseOperation(path, m, node, shared, params)
+			op, err := parseOperation(path, m, node, shared, params, responses)
 			if err != nil {
 				return nil, err
 			}
@@ -76,7 +105,7 @@ func operations(root *yaml.Node) ([]operation, error) {
 
 var pathParam = regexp.MustCompile(`\{([^}]+)\}`)
 
-func parseOperation(path, method string, node, shared, params *yaml.Node) (operation, error) {
+func parseOperation(path, method string, node, shared, params, responses *yaml.Node) (operation, error) {
 	op := operation{
 		id:      scalar(node, "operationId"),
 		summary: scalar(node, "summary"),
@@ -96,17 +125,46 @@ func parseOperation(path, method string, node, shared, params *yaml.Node) (opera
 		for _, p := range list.Content {
 			p = resolve(p, params)
 			if scalar(p, "in") == "query" {
-				op.query = append(op.query, scalar(p, "name"))
+				op.query = append(op.query, queryParam{scalar(p, "name"), scalar(p, "required") == "true", lookup(p, "schema")})
 			}
 		}
 	}
 	if body := lookup(lookup(node, "requestBody"), "content"); body != nil && len(body.Content) > 0 {
 		op.body = body.Content[0].Value
+		op.bodySchema = lookup(body.Content[1], "schema")
 	}
+	op.answerSchema, op.media = success(lookup(node, "responses"), responses)
 	if security := lookup(node, "security"); security != nil && security.Kind == yaml.SequenceNode && len(security.Content) == 0 {
 		op.public = true
 	}
 	return op, nil
+}
+
+// success returns the schema of an operation's first 2xx JSON answer, or,
+// when that answer isn't JSON, its media type.
+func success(list, shared *yaml.Node) (*yaml.Node, string) {
+	if list == nil {
+		return nil, ""
+	}
+	for i := 0; i+1 < len(list.Content); i += 2 {
+		code := list.Content[i].Value
+		if len(code) != 3 || code[0] != '2' {
+			continue
+		}
+		r := list.Content[i+1]
+		if ref := scalar(r, "$ref"); ref != "" {
+			r = lookup(shared, strings.TrimPrefix(ref, "#/components/responses/"))
+		}
+		content := lookup(r, "content")
+		if content == nil || len(content.Content) == 0 {
+			return nil, ""
+		}
+		if json := lookup(content, "application/json"); json != nil {
+			return lookup(json, "schema"), ""
+		}
+		return nil, content.Content[0].Value
+	}
+	return nil, ""
 }
 
 // resolve follows a parameter's $ref into components.parameters.
@@ -162,38 +220,73 @@ func render(ops []operation, enums []enum, models []model) []byte {
 const header = `' Generated from server/internal/api/openapi.yaml by make generate in
 ' server/ (internal/api/internal/brsgen). Don't edit.
 '
-' A function per operation returns the request to send: its method, its
-' path from the API root, its query and JSON body (invalid when it has
-' none), the body's media type, and whether it carries the session's token.
-' The app's request task sends it. An interface per object schema
-' describes the JSON both ways; it exists only for the compiler, so an
-' answer is still the object ParseJson gives.
+' A function per operation returns the request to send, typed by its
+' query, path and body; the app's request task sends it. One with a JSON
+' answer has an Answer function that gives the response's body as its
+' type, and a GET whose answer isn't JSON (an image, a stream, subtitles)
+' has a Url function for the node that fetches it. An interface per object
+' schema describes the JSON both ways; it exists only for the compiler, so
+' an answer is still the object ParseJson gives.
 
 `
 
 const pathEscape = `
+    ' A request to send: its method, its path from the server's address, its
+    ' query and JSON body, the body's media type, and whether it carries the
+    ' session's token.
+    interface Request
+        method as string
+        path as string
+        query as dynamic
+        body as dynamic
+        contentType as dynamic
+        auth as boolean
+    end interface
+
     ' A path parameter, escaped for the URL.
     function pathEscape(value as string) as string
         return CreateObject("roUrlTransfer").Escape(value)
     end function
+
+    ' A query's fields as a URL query, each escaped; an array's values each
+    ' make a pair of their own. Empty without fields.
+    function queryString(query as dynamic) as string
+        if query = invalid or query.Count() = 0 then return ""
+        transfer = CreateObject("roUrlTransfer")
+        pairs = []
+        for each key in query
+            values = query[key]
+            if type(values) <> "roArray" then values = [values]
+            for each value in values
+                if value <> invalid then pairs.Push(transfer.Escape(key) + "=" + transfer.Escape(value.ToStr()))
+            end for
+        end for
+        if pairs.Count() = 0 then return ""
+        return "?" + pairs.Join("&")
+    end function
 `
 
 func writeOperation(b *bytes.Buffer, op operation) {
-	var args []string
+	var args, names []string
 	for _, p := range op.pathParams {
 		args = append(args, identifier(p)+" as string")
+		names = append(names, identifier(p))
 	}
 	if op.body != "" {
-		args = append(args, "body as object")
+		args = append(args, "body as "+qualified(op.bodyType))
 	}
 	if len(op.query) > 0 {
-		args = append(args, "query = invalid as object")
+		args = append(args, "query = invalid as "+qualified(op.queryType))
 	}
 	fmt.Fprintf(b, "\n    ' %s: %s %s.\n", op.summary, op.method, op.path)
 	if len(op.query) > 0 {
-		fmt.Fprintf(b, "    ' Query: %s.\n", strings.Join(op.query, ", "))
+		var q []string
+		for _, p := range op.query {
+			q = append(q, p.name)
+		}
+		fmt.Fprintf(b, "    ' Query: %s.\n", strings.Join(q, ", "))
 	}
-	fmt.Fprintf(b, "    function %s(%s) as object\n", op.id, strings.Join(args, ", "))
+	fmt.Fprintf(b, "    function %s(%s) as KivoApi.Request\n", op.id, strings.Join(args, ", "))
 	query, body, media := "invalid", "invalid", "invalid"
 	if len(op.query) > 0 {
 		query = "query"
@@ -204,6 +297,25 @@ func writeOperation(b *bytes.Buffer, op operation) {
 	fmt.Fprintf(b, "        return { method: %s, path: %s, query: %s, body: %s, contentType: %s, auth: %t }\n",
 		quote(op.method), pathExpr(op.path), query, body, media, !op.public)
 	b.WriteString("    end function\n")
+	if op.answerType != "" {
+		fmt.Fprintf(b, "\n    ' %s's answer, as its type.\n", op.id)
+		fmt.Fprintf(b, "    function %sAnswer(response as object) as %s\n", op.id, qualified(op.answerType))
+		b.WriteString("        return response.body\n    end function\n")
+	}
+	if op.media != "" && op.method == "GET" {
+		urlArgs := append([]string{"base as string"}, args...)
+		call := strings.Join(names, ", ")
+		if len(op.query) > 0 {
+			if call != "" {
+				call += ", "
+			}
+			call += "query"
+		}
+		fmt.Fprintf(b, "\n    ' %s's URL from the server address [base], for a node that fetches its %s itself.\n", op.id, op.media)
+		fmt.Fprintf(b, "    function %sUrl(%s) as string\n", op.id, strings.Join(urlArgs, ", "))
+		fmt.Fprintf(b, "        request = KivoApi.%s(%s)\n", op.id, call)
+		b.WriteString("        return base + request.path + KivoApi.queryString(request.query)\n    end function\n")
+	}
 }
 
 // pathExpr is the path as a BrighterScript expression, each parameter escaped.

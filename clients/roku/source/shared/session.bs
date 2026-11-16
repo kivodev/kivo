@@ -141,7 +141,7 @@ namespace Kivo
     ' The URL of an image (an ImageRef) at about [width] pixels; empty without one.
     function imageUrl(image as dynamic, width as integer) as string
         if image = invalid or image.id = invalid then return ""
-        return m.global.server + KivoApi.getImage(image.id).path + "?width=" + width.ToStr()
+        return KivoApi.getImageUrl(m.global.server, image.id, { width: width })
     end function
 
 end namespace

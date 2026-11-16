@@ -1,7 +1,7 @@
 
     interface Detail
         id as string
-        kind as Kind
+        kind as KivoApi.Kind
         optional title as string
         optional sizeBytes as integer or longinteger
         optional count as integer
@@ -9,16 +9,16 @@
         optional addedAt as string
         optional played as boolean
         optional tags as string[]
-        optional children as Summary[]
+        optional children as KivoApi.Summary[]
         optional sizes as object
         optional settings as object
-        optional book as SummaryBook
+        optional book as KivoApi.SummaryBook
         overview as string
     end interface
 
     interface Summary
         id as string
-        kind as Kind
+        kind as KivoApi.Kind
         optional title as string
         optional sizeBytes as integer or longinteger
         optional count as integer
@@ -26,10 +26,10 @@
         optional addedAt as string
         optional played as boolean
         optional tags as string[]
-        optional children as Summary[]
+        optional children as KivoApi.Summary[]
         optional sizes as object
         optional settings as object
-        optional book as SummaryBook
+        optional book as KivoApi.SummaryBook
     end interface
 
     interface SummaryBook

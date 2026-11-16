@@ -29,11 +29,17 @@ type field struct {
 // has no interface: its one use is the live events socket, which the Roku
 // app doesn't open.
 func models(root *yaml.Node) []model {
+	return newModeler(root).all()
+}
+
+// newModeler makes the interfaces of every object schema; an operation's
+// query and inline bodies add theirs as they're met.
+func newModeler(root *yaml.Node) *modeler {
 	schemas := lookup(lookup(root, "components"), "schemas")
-	if schemas == nil {
-		return nil
-	}
 	g := &modeler{schemas: schemas, taken: map[string]bool{}, inline: map[*yaml.Node]string{}}
+	if schemas == nil {
+		return g
+	}
 	for i := 0; i+1 < len(schemas.Content); i += 2 {
 		g.taken[strings.ToLower(schemas.Content[i].Value)] = true
 	}
@@ -43,8 +49,39 @@ func models(root *yaml.Node) []model {
 			g.object(name, s)
 		}
 	}
-	sort.SliceStable(g.out, func(i, j int) bool { return g.out[i].name < g.out[j].name })
-	return g.out
+	return g
+}
+
+// all returns the interfaces made, by name.
+func (g *modeler) all() []model {
+	out := append([]model(nil), g.out...)
+	sort.SliceStable(out, func(i, j int) bool { return out[i].name < out[j].name })
+	return out
+}
+
+// query adds an interface for an operation's query parameters, named after
+// it (listLibraries' is ListLibrariesQuery), and returns its name.
+func (g *modeler) query(op string, params []queryParam) string {
+	name := g.nested(pascal(op) + "Query")
+	m := model{name: name}
+	for _, p := range params {
+		m.fields = append(m.fields, field{name: p.name, typ: g.typeOf(name, p.name, p.schema), optional: !p.required})
+	}
+	g.out = append(g.out, m)
+	return name
+}
+
+// schemaType is the type of a request or answer body: a named schema's
+// interface, or the type of an inline one.
+func (g *modeler) schemaType(op, role string, s *yaml.Node) string {
+	if s == nil {
+		return "object"
+	}
+	t := g.typeOf(pascal(op), role, s)
+	if t == "dynamic" || strings.Contains(t, " or ") {
+		return "object"
+	}
+	return t
 }
 
 type modeler struct {
@@ -231,7 +268,25 @@ func writeModel(b *bytes.Buffer, m model) {
 		if f.optional {
 			opt = "optional "
 		}
-		fmt.Fprintf(b, "        %s%s as %s\n", opt, f.name, f.typ)
+		fmt.Fprintf(b, "        %s%s as %s\n", opt, f.name, qualified(f.typ))
 	}
 	b.WriteString("    end interface\n")
+}
+
+var builtin = map[string]bool{
+	"string": true, "boolean": true, "integer": true, "longinteger": true, "float": true, "double": true,
+	"object": true, "dynamic": true,
+}
+
+// qualified names a generated type with its namespace, as the 0.x compiler
+// needs to find an interface in a signature: Summary[] is KivoApi.Summary[].
+func qualified(t string) string {
+	parts := strings.Split(t, " or ")
+	for i, p := range parts {
+		base := strings.TrimSuffix(p, "[]")
+		if !builtin[base] {
+			parts[i] = "KivoApi." + p
+		}
+	}
+	return strings.Join(parts, " or ")
 }

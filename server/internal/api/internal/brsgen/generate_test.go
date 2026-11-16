@@ -48,11 +48,12 @@ func TestEachOperationDescribesItsRequest(t *testing.T) {
 	src := string(out)
 	for _, want := range []string{
 		"namespace KivoApi\n",
-		"    function listWorkChildren(id as string) as object\n",
+		"    function listWorkChildren(id as string) as KivoApi.Request\n",
 		`path: "/api/v1/works/" + KivoApi.pathEscape(id) + "/children", query: invalid, body: invalid, contentType: invalid, auth: true }`,
-		"    function createDeviceCode(body as object) as object\n",
+		"    function createDeviceCode(body as object) as KivoApi.Request\n",
 		`body: body, contentType: "application/json", auth: false }`,
-		"    ' Query: after, limit.\n    function listLibraries(query = invalid as object) as object\n",
+		"    ' Query: after, limit.\n    function listLibraries(query = invalid as KivoApi.ListLibrariesQuery) as KivoApi.Request\n",
+		"    interface ListLibrariesQuery\n        optional after as dynamic\n        optional limit as dynamic\n    end interface\n",
 		"    enum Resolution\n        _4k = \"4k\"\n        _1080p = \"1080p\"\n        sd = \"sd\"\n    end enum\n",
 		"end namespace\n",
 	} {
@@ -95,8 +96,11 @@ func TestTheContractGenerates(t *testing.T) {
 	}
 	src := string(out)
 	for _, want := range []string{
-		"    function pollDeviceCode(body as object) as object\n",
-		"    function startPlay(body as object) as object\n",
+		"    function pollDeviceCode(body as KivoApi.DeviceCodePoll) as KivoApi.Request\n",
+		"    function pollDeviceCodeAnswer(response as object) as KivoApi.Session\n",
+		"    function startPlay(body as KivoApi.PlayCreate) as KivoApi.Request\n",
+		"    function getImageUrl(base as string, id as string, query = invalid as KivoApi.GetImageQuery) as string\n",
+		"    interface WorkDetail\n",
 		"        roku = \"roku\"\n",
 	} {
 		if !strings.Contains(src, want) {
