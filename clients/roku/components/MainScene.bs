@@ -4,6 +4,7 @@ import "pkg:/source/shared/session.bs"
 ' A screen's navigate field is one of:
 '   { screen, params }  show that screen over this one
 '   { screen, params, replace: true }  show it in place of every screen
+'   { screen, params, swap: true }  show it in place of this one
 '   { back: true }  return to the screen underneath
 '   { signedOut: true }  forget the session and link the device again
 
@@ -21,11 +22,14 @@ sub init()
     end if
 end sub
 
-sub show(name as string, params as object, replace as boolean)
+sub show(name as string, params as object, replace as boolean, swap = false as boolean)
     if replace
         while m.stack.GetChildCount() > 0
             m.stack.RemoveChildIndex(m.stack.GetChildCount() - 1)
         end while
+    else if swap and m.stack.GetChildCount() > 0
+        m.stack.RemoveChildIndex(m.stack.GetChildCount() - 1)
+        if m.stack.GetChildCount() > 0 then m.stack.GetChild(m.stack.GetChildCount() - 1).visible = false
     else if m.stack.GetChildCount() > 0
         m.stack.GetChild(m.stack.GetChildCount() - 1).visible = false
     end if
@@ -56,7 +60,7 @@ sub onNavigate(event as object)
     else if nav.screen <> invalid
         params = nav.params
         if params = invalid then params = {}
-        show(nav.screen, params, nav.replace = true)
+        show(nav.screen, params, nav.replace = true, nav.swap = true)
     end if
 end sub
 

@@ -5,6 +5,7 @@ import "pkg:/source/shared/display.bs"
 import "pkg:/source/shared/session.bs"
 import "pkg:/source/shared/tracks.bs"
 import "pkg:/source/shared/ui.bs"
+import "pkg:/source/shared/upnext.bs"
 
 sub init()
     m.video = m.top.FindNode("video")
@@ -13,15 +14,33 @@ sub init()
     m.status = m.top.FindNode("status")
     m.menu = m.top.FindNode("menu")
     m.heartbeat = m.top.FindNode("heartbeat")
+    m.second = m.top.FindNode("second")
+    m.skip = m.top.FindNode("skip")
+    m.upNext = m.top.FindNode("upNext")
+    m.upNextButtons = m.top.FindNode("upNextButtons")
+    m.upNextStill = m.top.FindNode("upNextStill")
+    m.upNextHeading = m.top.FindNode("upNextHeading")
+    m.upNextTitle = m.top.FindNode("upNextTitle")
+    m.upNextCountdown = m.top.FindNode("upNextCountdown")
+    m.top.FindNode("upNextGround").color = KivoTokens.Color.playerPanel
+    KivoUi.style(m.upNextHeading, KivoTokens.TextSize.sm, KivoTokens.Color.onPlayerMuted, true)
+    KivoUi.style(m.upNextTitle, KivoTokens.TextSize.base, KivoTokens.Color.onPlayer, true)
+    KivoUi.style(m.upNextCountdown, KivoTokens.TextSize.sm, KivoTokens.Color.onPlayerMuted)
     m.infoGround.color = KivoTokens.Color.playerPanel
     KivoUi.style(m.info, KivoTokens.TextSize.sm, KivoTokens.Color.onPlayer)
     KivoUi.style(m.status, KivoTokens.TextSize.lg, KivoTokens.Color.onPlayer)
     m.video.ObserveField("state", "onState")
     m.video.ObserveField("contentIndex", "onPart")
     m.heartbeat.ObserveField("fire", "report")
+    m.second.ObserveField("fire", "onSecond")
+    m.video.ObserveField("position", "onPosition")
+    m.skip.ObserveField("buttonSelected", "onSkip")
+    m.upNextButtons.ObserveField("buttonSelected", "onUpNextButton")
+    m.autoplayNext = true
+    m.tasks = {}
+    m.tasks.user = Kivo.send(KivoApi.getCurrentUser(), "onUser")
     m.menu.ObserveField("chosen", "onMenuChosen")
     m.menu.ObserveField("closed", "onMenuClosed")
-    m.tasks = {}
     m.play = invalid
     m.leaving = false
     m.top.ObserveField("params", "load")
@@ -30,9 +49,18 @@ end sub
 sub focus()
     if m.menu.visible
         m.menu.callFunc("focus")
+    else if m.upNext.visible
+        m.upNextButtons.SetFocus(true)
     else
         m.video.SetFocus(true)
     end if
+end sub
+
+' The user's autoplay preference, which up next follows; on until it's read.
+sub onUser(event as object)
+    m.tasks.user = invalid
+    response = event.GetData()
+    if response.code = 200 and response.body.playback <> invalid then m.autoplayNext = response.body.playback.autoplayNext <> false
 end sub
 
 ' The work first, for its versions and tracks, then the play: the
@@ -40,6 +68,12 @@ end sub
 sub load()
     params = m.top.params
     m.request = { versionId: params.versionId, audioTrackId: params.audioTrackId, subtitleTrackId: params.subtitleTrackId }
+    m.play = invalid
+    m.leaving = false
+    m.fellBack = false
+    m.next = invalid
+    hideUpNext("hidden")
+    m.skip.visible = false
     m.status.text = "Loading…"
     m.tasks.work = Kivo.send(KivoApi.getWork(params.id), "onWork")
 end sub
@@ -52,9 +86,19 @@ sub onWork(event as object)
         return
     end if
     m.work = response.body
+    ' An episode's next one, for up next.
+    if m.work.episode <> invalid and m.work.episode.nextId <> invalid
+        m.tasks.next = Kivo.send(KivoApi.getWork(m.work.episode.nextId), "onNext")
+    end if
     position = invalid
     if m.top.params.fromStart = true then position = 0
     begin(position)
+end sub
+
+sub onNext(event as object)
+    m.tasks.next = invalid
+    response = event.GetData()
+    if response.code = 200 then m.next = response.body
 end sub
 
 ' Asks for a play of the request from [position] (invalid for the resume point).
@@ -86,6 +130,9 @@ end sub
 sub start(play as object)
     m.play = play
     m.version = KivoTracks.version(m.work, play.versionId)
+    m.markers = KivoUpNext.known(play)
+    m.credits = KivoUpNext.credits(m.markers)
+    m.skipAt = { startMs: -1, shownFor: 0, skipped: false }
     m.shownAudio = invalid
     m.shownSubtitle = invalid
     m.partOffsets = []
@@ -118,6 +165,12 @@ sub start(play as object)
         content.url = mediaUrl(play.url)
         content.streamFormat = format
         content.PlayStart = play.startMs / 1000
+        bif = bifUrl(play)
+        if bif <> ""
+            content.FHDBifUrl = bif
+            content.HDBifUrl = bif
+            content.SDBifUrl = bif
+        end if
         m.video.contentIsPlaylist = false
         m.video.content = content
     end if
@@ -127,7 +180,20 @@ sub start(play as object)
     m.info.text = infoText(play)
     m.video.control = "play"
     m.heartbeat.control = "start"
+    m.second.control = "start"
 end sub
+
+' The previews as one BIF file beside their manifest, which the Video
+' node shows while seeking; empty until they're made.
+function bifUrl(play as object) as string
+    if play.previews = invalid or play.previews.ready <> true or play.previews.url = invalid then return ""
+    url = play.previews.url
+    slash = -1
+    for i = 0 to url.Len() - 1
+        if url.Mid(i, 1) = "/" then slash = i
+    end for
+    return mediaUrl(url.Left(slash + 1) + "previews.bif")
+end function
 
 ' A media URL of the play, which is relative to the API root and carries its own credential.
 function mediaUrl(url as string) as string
@@ -163,9 +229,7 @@ end sub
 sub onState()
     state = m.video.state
     if state = "finished"
-        position = 0
-        if m.play <> invalid then position = m.play.durationMs
-        leave(position)
+        ended()
     else if state = "error"
         failed()
     else if state = "playing" and m.play <> invalid and m.shownSubtitle = invalid
@@ -188,6 +252,192 @@ sub report()
     if m.shownAudio <> invalid and m.shownAudio <> KivoTracks.selected(m.play, "audio") then body.audioTrackId = m.shownAudio
     if m.shownSubtitle <> invalid and m.shownSubtitle <> KivoTracks.selected(m.play, "subtitle") then body.subtitleTrackId = m.shownSubtitle
     m.tasks.update = Kivo.send(KivoApi.updatePlay(m.play.id, body), "onReported")
+end sub
+
+sub onPosition()
+    if m.play = invalid or m.leaving then return
+    position = positionMs()
+    updateSkip(position)
+    updateUpNext(position)
+end sub
+
+' Skip shows as playback enters a marker and goes on its own ten seconds
+' later; Skip hides it for that marker, and a seek back into the marker
+' shows it again. Skip Credits gives way to up next.
+sub updateSkip(position as integer)
+    marker = KivoUpNext.markerAt(m.markers, position)
+    markerStart = -1
+    if marker <> invalid then markerStart = marker.startMs
+    if markerStart <> m.skipAt.startMs then m.skipAt = { startMs: markerStart, shownFor: 0, skipped: false }
+    shown = marker <> invalid and not m.skipAt.skipped and m.skipAt.shownFor < KivoUpNext.skipShowsSeconds
+    if shown and marker.kind = "credits" and m.upNext.visible then shown = false
+    if shown and not m.skip.visible
+        m.skip.text = KivoUpNext.skipLabel(marker.kind)
+        m.skip.visible = true
+        if not m.menu.visible and not m.upNext.visible then m.skip.SetFocus(true)
+    else if not shown and m.skip.visible
+        hideSkip()
+    end if
+end sub
+
+sub hideSkip()
+    focused = m.skip.HasFocus()
+    m.skip.visible = false
+    if focused then m.video.SetFocus(true)
+end sub
+
+sub onSkip()
+    marker = KivoUpNext.markerAt(m.markers, positionMs())
+    m.skipAt.skipped = true
+    hideSkip()
+    m.global.autoplayRun = 0
+    if marker <> invalid then m.video.seek = (marker.endMs - m.partOffset) / 1000
+end sub
+
+' Up next for an episode with a next one: it appears near the end, as the
+' user's autoplay has it: counting down, waiting with autoplay off, or
+' after three episodes played on without input, asking "Still watching?".
+' A position before its time hides it again.
+sub updateUpNext(position as integer)
+    if m.next = invalid then return
+    duration = m.play.durationMs
+    showAt = KivoUpNext.atMs(duration, m.credits)
+    threshold = showAt
+    if showAt < 0 then threshold = duration - KivoUpNext.minLeftMs
+    if position < threshold
+        if m.upNextPhase <> "hidden" then hideUpNext("hidden")
+        return
+    end if
+    if m.upNextPhase = "counting" and not m.upNextAtCredits
+        m.upNextSeconds = secondsToEnd(position, duration)
+        showUpNext()
+        return
+    end if
+    if m.upNextPhase <> "hidden" or showAt < 0 or duration - position < KivoUpNext.minLeftMs then return
+    m.upNextAtCredits = m.credits <> invalid and showAt = m.credits.startMs
+    m.upNextPhase = autoplayPhase()
+    m.upNextSeconds = KivoUpNext.countdownSeconds
+    if not m.upNextAtCredits and m.upNextPhase = "counting" then m.upNextSeconds = secondsToEnd(position, duration)
+    showUpNext()
+    m.upNextButtons.SetFocus(true)
+end sub
+
+function secondsToEnd(position as integer, duration as integer) as integer
+    left = duration - position
+    if left < 0 then left = 0
+    return Int((left + 999) / 1000)
+end function
+
+' How up next appears: counting down, waiting with autoplay off, or still watching.
+function autoplayPhase() as string
+    if not m.autoplayNext then return "waiting"
+    if m.global.autoplayRun < KivoUpNext.autoplayLimit then return "counting"
+    return "still"
+end function
+
+sub showUpNext()
+    still = m.upNextPhase = "still"
+    m.upNextHeading.text = "Up Next"
+    if still then m.upNextHeading.text = "Still watching?"
+    title = m.next.title
+    if m.next.episode <> invalid then title = KivoUi.episodeCode(m.next.episode) + " · " + title
+    m.upNextTitle.text = title
+    m.upNextStill.uri = Kivo.imageUrl(m.next.images.still, 256)
+    m.upNextCountdown.text = ""
+    if m.upNextPhase = "counting" then m.upNextCountdown.text = "Playing in " + m.upNextSeconds.ToStr()
+    second = "Hide"
+    if m.upNextAtCredits then second = "Watch Credits"
+    labels = ["Play Now", second]
+    if still then labels = ["Keep Watching", "Hide"]
+    if m.upNextButtons.buttons.Join("|") <> labels.Join("|") then m.upNextButtons.buttons = labels
+    m.upNext.visible = true
+    if m.skip.visible and KivoUpNext.markerAt(m.markers, positionMs()) <> invalid and KivoUpNext.markerAt(m.markers, positionMs()).kind = "credits" then hideSkip()
+end sub
+
+' Hides up next, leaving it in [phase]: "hidden" until its time comes
+' again, or "dismissed" for the rest of the episode.
+sub hideUpNext(phase as string)
+    m.upNextPhase = phase
+    if m.upNext.visible
+        focused = m.upNextButtons.IsInFocusChain()
+        m.upNext.visible = false
+        if focused then m.video.SetFocus(true)
+    end if
+end sub
+
+sub onUpNextButton()
+    if m.upNextButtons.buttonSelected = 0
+        playNext(false)
+    else
+        hideUpNext("dismissed")
+        if m.play = invalid then leave(0)
+    end if
+end sub
+
+' A second passed: Skip's time runs, and the countdown at the credits runs
+' while playing with no menu open, playing the next episode at zero.
+sub onSecond()
+    if m.skip.visible then m.skipAt.shownFor = m.skipAt.shownFor + 1
+    if m.skip.visible and m.skipAt.shownFor >= KivoUpNext.skipShowsSeconds then hideSkip()
+    if m.upNextPhase = "counting" and m.upNextAtCredits and m.video.state = "playing" and not m.menu.visible and m.upNext.visible
+        m.upNextSeconds = m.upNextSeconds - 1
+        if m.upNextSeconds <= 0
+            playNext(true)
+            return
+        end if
+        showUpNext()
+    end if
+end sub
+
+' The video played to its end: an episode plays the next one when
+' autoplay allows, or waits on up next, or opens the series once the last
+' one ends; anything else goes back.
+sub ended()
+    duration = 0
+    if m.play <> invalid then duration = m.play.durationMs
+    follows = KivoUpNext.playEnd(m.work.episode <> invalid, m.next <> invalid, autoplayPhase() = "counting")
+    if follows = "next"
+        playNext(true)
+    else if follows = "wait"
+        stopQuietly(duration)
+        m.upNextAtCredits = false
+        m.upNextPhase = autoplayPhase()
+        if m.upNextPhase = "counting" then m.upNextPhase = "waiting"
+        showUpNext()
+        m.upNextButtons.SetFocus(true)
+    else if follows = "series"
+        stopQuietly(duration)
+        m.leaving = true
+        m.top.navigate = { screen: "DetailScreen", params: { id: m.work.episode.seriesId }, swap: true }
+    else
+        leave(duration)
+    end if
+end sub
+
+' Plays the next episode in this player, from its resume point: by itself
+' at the end or the countdown's zero ([onItsOwn]), which extends the run
+' of episodes played without input, or because the user asked.
+sub playNext(onItsOwn as boolean)
+    if m.next = invalid then return
+    if onItsOwn
+        m.global.autoplayRun = m.global.autoplayRun + 1
+    else
+        m.global.autoplayRun = 0
+    end if
+    position = 0
+    if m.play <> invalid then position = positionMs()
+    if m.video.state = "finished" and m.play <> invalid then position = m.play.durationMs
+    stopQuietly(position)
+    m.top.params = { id: m.next.id }
+end sub
+
+' Stops the play at [position] without leaving the player.
+sub stopQuietly(position as integer)
+    m.heartbeat.control = "stop"
+    m.second.control = "stop"
+    m.video.control = "stop"
+    if m.play <> invalid then Kivo.send(KivoApi.stopPlay(m.play.id, { positionMs: position }), "onSwitchStopped")
+    m.play = invalid
 end sub
 
 sub onReported(event as object)
@@ -414,6 +664,7 @@ sub leave(position as integer)
     end if
     m.leaving = true
     m.heartbeat.control = "stop"
+    m.second.control = "stop"
     m.video.control = "stop"
     if m.play = invalid
         if m.tasks.start = invalid then m.top.navigate = { back: true }
@@ -437,8 +688,31 @@ function onKeyEvent(key as string, press as boolean) as boolean
         return true
     end if
     if key = "options"
+        m.global.autoplayRun = 0
         openMenu()
         return true
     end if
+    ' Up next's and Skip's buttons take OK and their own arrows; any other
+    ' key goes back to the video, which a later press then reaches.
+    if m.upNext.visible and m.upNextButtons.IsInFocusChain() or m.skip.visible and m.skip.HasFocus()
+        m.video.SetFocus(true)
+        if key = "play" then m.video.control = pauseOrResume()
+        return true
+    end if
+    if (key = "up" or key = "down") and m.video.HasFocus()
+        if m.upNext.visible
+            m.upNextButtons.SetFocus(true)
+            return true
+        end if
+        if m.skip.visible
+            m.skip.SetFocus(true)
+            return true
+        end if
+    end if
     return false
+end function
+
+function pauseOrResume() as string
+    if m.video.state = "paused" then return "resume"
+    return "pause"
 end function

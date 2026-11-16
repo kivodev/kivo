@@ -9,7 +9,8 @@ sub main()
     screen.SetMessagePort(port)
     saved = Kivo.saved()
     globals = screen.GetGlobalNode()
-    globals.AddFields({ server: saved.server, serverId: saved.serverId, token: saved.token, clientId: saved.clientId })
+    ' autoplayRun counts episodes played on by themselves without input, across players.
+    globals.AddFields({ server: saved.server, serverId: saved.serverId, token: saved.token, clientId: saved.clientId, autoplayRun: 0 })
     screen.CreateScene("MainScene")
     screen.Show()
     while true

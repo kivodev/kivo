@@ -2377,7 +2377,10 @@ export interface paths {
         };
         /**
          * Get preview thumbnails
-         * @description Start from `PlayStarted.previews.url`, the manifest; it names the sheets. Also answers `HEAD`.
+         * @description Start from `PlayStarted.previews.url`, the manifest; it names the
+         *     sheets. Beside the manifest, `previews.bif` is every frame as one
+         *     BIF file, each a JPEG, as a Roku's video player shows them while
+         *     seeking. Also answers `HEAD`.
          */
         get: operations["getPlayPreview"];
         put?: never;
@@ -9168,7 +9171,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The manifest or a sheet. */
+            /** @description The manifest, a sheet, or the BIF file. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -9176,6 +9179,7 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PreviewManifest"];
                     "image/webp": string;
+                    "application/octet-stream": string;
                 };
             };
             404: components["responses"]["NotFound"];

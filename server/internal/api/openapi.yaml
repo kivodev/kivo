@@ -3178,17 +3178,23 @@ paths:
     get:
       operationId: getPlayPreview
       summary: Get preview thumbnails
-      description: Start from `PlayStarted.previews.url`, the manifest; it names the sheets. Also answers `HEAD`.
+      description: |
+        Start from `PlayStarted.previews.url`, the manifest; it names the
+        sheets. Beside the manifest, `previews.bif` is every frame as one
+        BIF file, each a JPEG, as a Roku's video player shows them while
+        seeking. Also answers `HEAD`.
       tags: [media]
       x-kivo-access: play
       security: []
       responses:
         "200":
-          description: The manifest or a sheet.
+          description: The manifest, a sheet, or the BIF file.
           content:
             application/json:
               schema: {$ref: "#/components/schemas/PreviewManifest"}
             image/webp:
+              schema: {type: string, format: binary}
+            application/octet-stream:
               schema: {type: string, format: binary}
         "404": {$ref: "#/components/responses/NotFound"}
         default: {$ref: "#/components/responses/Error"}
