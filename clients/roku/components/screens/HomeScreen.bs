@@ -2,6 +2,7 @@ import "pkg:/source/generated/api.bs"
 import "pkg:/source/generated/tokens.bs"
 import "pkg:/source/shared/content.bs"
 import "pkg:/source/shared/display.bs"
+import "pkg:/source/shared/session.bs"
 import "pkg:/source/shared/ui.bs"
 
 sub init()
@@ -15,10 +16,19 @@ sub init()
     m.rows.rowLabelFont = font
     m.rows.rowLabelColor = KivoTokens.Color.text
     m.rows.ObserveField("rowItemSelected", "onSelected")
+    KivoUi.style(m.top.FindNode("hint"), KivoTokens.TextSize.sm, KivoTokens.Color.textSubtle)
+    m.nav = m.top.FindNode("nav")
+    m.nav.ObserveField("chosen", "onNav")
+    m.nav.ObserveField("closed", "closeNav")
+    m.libraries = []
     load()
 end sub
 
 sub focus()
+    if m.nav.visible
+        m.nav.callFunc("focus")
+        return
+    end if
     m.rows.SetFocus(true)
     ' What's in progress may have changed while another screen showed.
     if m.loaded = true then load()
@@ -26,6 +36,54 @@ end sub
 
 sub load()
     m.task = Kivo.send(KivoApi.getHome(), "onHome")
+    m.librariesTask = Kivo.send(KivoApi.listLibraries(), "onLibraries")
+end sub
+
+' The libraries the user sees, pinned ones first, for the menu.
+sub onLibraries(event as object)
+    m.librariesTask = invalid
+    response = event.GetData()
+    if response.code <> 200 then return
+    pinned = []
+    others = []
+    for each lib in response.body.items
+        if lib.pinned = true
+            pinned.Push(lib)
+        else
+            others.Push(lib)
+        end if
+    end for
+    pinned.Append(others)
+    m.libraries = pinned
+end sub
+
+' The menu: each library, then the app's other pages.
+sub openNav()
+    items = []
+    for each lib in m.libraries
+        items.Push({ id: "library:" + lib.id, label: lib.name })
+    end for
+    m.nav.title = "Kivo"
+    m.nav.checkedId = ""
+    m.nav.items = items
+    m.nav.visible = true
+    m.nav.callFunc("focus")
+end sub
+
+sub closeNav()
+    m.nav.visible = false
+    m.rows.SetFocus(true)
+end sub
+
+sub onNav()
+    id = m.nav.chosen
+    closeNav()
+    if id.Left(8) = "library:"
+        libraryId = id.Mid(8)
+        for each lib in m.libraries
+            if lib.id = libraryId then m.top.navigate = { screen: "LibraryScreen", params: { id: lib.id, name: lib.name, kind: lib.kind } }
+        end for
+    end if
 end sub
 
 sub onHome(event as object)
@@ -88,6 +146,10 @@ end sub
 function onKeyEvent(key as string, press as boolean) as boolean
     if press and key = "OK" and m.loaded <> true
         load()
+        return true
+    end if
+    if press and key = "left" and not m.nav.visible
+        openNav()
         return true
     end if
     return false

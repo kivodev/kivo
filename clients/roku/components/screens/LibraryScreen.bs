@@ -1,0 +1,444 @@
+import "pkg:/source/generated/api.bs"
+import "pkg:/source/generated/tokens.bs"
+import "pkg:/source/shared/content.bs"
+import "pkg:/source/shared/display.bs"
+import "pkg:/source/shared/grid.bs"
+import "pkg:/source/shared/session.bs"
+import "pkg:/source/shared/ui.bs"
+
+sub init()
+    m.heading = m.top.FindNode("heading")
+    m.bar = m.top.FindNode("bar")
+    m.status = m.top.FindNode("status")
+    m.grid = m.top.FindNode("grid")
+    m.menu = m.top.FindNode("menu")
+    KivoUi.style(m.heading, KivoTokens.TextSize.xl, KivoTokens.Color.text, true)
+    KivoUi.style(m.status, KivoTokens.TextSize.base, KivoTokens.Color.textMuted)
+    m.bar.ObserveField("buttonSelected", "onBar")
+    m.grid.ObserveField("itemSelected", "onCard")
+    m.grid.ObserveField("itemFocused", "onFocused")
+    m.menu.ObserveField("chosen", "onMenuChosen")
+    m.menu.ObserveField("closed", "onMenuClosed")
+    m.tasks = {}
+    m.generation = 0
+    m.tab = "titles"
+    m.sort = "title"
+    m.filters = KivoGrid.emptyFilters()
+    m.values = {}
+    m.hasCollections = false
+    m.top.ObserveField("params", "start")
+end sub
+
+sub focus()
+    if m.menu.visible
+        m.menu.callFunc("focus")
+    else if m.grid.content <> invalid and m.grid.content.GetChildCount() > 0
+        m.grid.SetFocus(true)
+        ' What's played may have changed while another screen showed.
+        if m.loaded = true then reload()
+    else
+        m.bar.SetFocus(true)
+    end if
+end sub
+
+sub start()
+    m.kind = m.top.params.kind
+    m.heading.text = m.top.params.name
+    shape()
+    ' Whether it has collections, for the tab, and what its filters offer.
+    m.tasks.hasCollections = Kivo.send(KivoApi.listLibraryCollections(m.top.params.id, { limit: 1 }), "onHasCollections")
+    for each field in ["genre", "year", "contentRating", "resolution", "dynamicRange", "narrator"]
+        task = Kivo.send(KivoApi.listWorkFieldValues(field, { library: m.top.params.id }), "onValues")
+        task.AddFields({ fieldName: field })
+        m.tasks["values" + field] = task
+    end for
+    showBar()
+    reload()
+end sub
+
+' The grid's cards: posters, square covers for books, or stills for videos.
+sub shape()
+    if m.tab = "titles" and m.kind = "videos"
+        m.grid.numColumns = 3
+        m.grid.itemSize = [480, 350]
+    else if m.tab <> "collections" and m.kind = "audiobooks"
+        m.grid.numColumns = 6
+        m.grid.itemSize = [240, 320]
+    else
+        m.grid.numColumns = 6
+        m.grid.itemSize = [240, 440]
+    end if
+end sub
+
+sub onHasCollections(event as object)
+    m.tasks.hasCollections = invalid
+    response = event.GetData()
+    if response.code = 200 and response.body.items.Count() > 0
+        m.hasCollections = true
+        showBar()
+    end if
+end sub
+
+sub onValues(event as object)
+    task = event.GetRoSGNode()
+    m.tasks.Delete("values" + task.fieldName)
+    response = event.GetData()
+    if response.code = 200 then m.values[task.fieldName] = response.body.items
+end sub
+
+' The bar: the tabs, then for titles Sort, Filter and, sorted by title, A-Z.
+sub showBar()
+    labels = []
+    m.barActions = []
+    tabs = KivoGrid.tabs(m.kind, m.hasCollections)
+    if tabs.Count() > 1
+        for each item in tabs
+            label = item.label
+            if item.id = m.tab then label = "• " + label
+            labels.Push(label)
+            m.barActions.Push({ tab: item.id })
+        end for
+    end if
+    if m.tab = "titles"
+        labels.Push("Sort: " + KivoGrid.sortLabel(m.kind, m.sort))
+        m.barActions.Push({ menu: "sort" })
+        filter = "Filter"
+        if KivoGrid.filtered(m.filters) then filter = "Filter •"
+        labels.Push(filter)
+        m.barActions.Push({ menu: "filter" })
+        if m.letters <> invalid and m.letters.Count() > 0
+            labels.Push("A–Z")
+            m.barActions.Push({ menu: "letters" })
+        end if
+    end if
+    focused = m.bar.buttonFocused
+    m.bar.buttons = labels
+    if focused >= 0 and focused < labels.Count() then m.bar.focusButton = focused
+end sub
+
+' Reads the grid again from its first page, keeping the focus where it was.
+sub reload()
+    m.pages = {}
+    m.generation = m.generation + 1
+    fetch(0)
+end sub
+
+' Asks for the page from [offset] of the grid the tab, sort and filters make.
+sub fetch(offset as integer)
+    key = offset.ToStr()
+    if m.pages[key] <> invalid then return
+    m.pages[key] = "loading"
+    id = m.top.params.id
+    query = { offset: offset, limit: KivoGrid.pageSize }
+    request = invalid
+    if m.tab = "titles"
+        request = KivoApi.queryWorks(KivoGrid.request(id, m.kind, m.sort, m.filters, offset))
+    else if m.tab = "collections"
+        request = KivoApi.listLibraryCollections(id, query)
+    else if m.tab = "authors"
+        request = KivoApi.listLibraryAuthors(id, query)
+    else
+        request = KivoApi.listLibraryBookSeries(id, query)
+    end if
+    task = Kivo.send(request, "onPage")
+    task.AddFields({ offset: offset, generation: m.generation })
+    m.tasks["page" + key] = task
+end sub
+
+sub onPage(event as object)
+    task = event.GetRoSGNode()
+    m.tasks.Delete("page" + task.offset.ToStr())
+    if task.generation <> m.generation then return
+    response = event.GetData()
+    if response.code = 401
+        m.top.navigate = { signedOut: true }
+        return
+    end if
+    if response.code <> 200
+        m.pages.Delete(task.offset.ToStr())
+        m.status.text = KivoDisplay.problem(response)
+        return
+    end if
+    page = response.body
+    if task.offset = 0 then lay(page)
+    fillPage(task.offset, page.items)
+end sub
+
+' The first page: as many blank cards as the grid has, and the letters.
+sub lay(page as object)
+    total = page.items.Count()
+    if page.total <> invalid then total = page.total
+    m.letters = page.letters
+    if m.sort <> "title" then m.letters = invalid
+    showBar()
+    m.loaded = true
+    was = m.grid.itemFocused
+    root = CreateObject("roSGNode", "ContentNode")
+    for i = 1 to total
+        root.AppendChild(KivoContent.blank())
+    end for
+    m.grid.content = root
+    if total = 0
+        m.status.text = "Nothing here."
+        if KivoGrid.filtered(m.filters) then m.status.text = "Nothing matches these filters."
+        m.bar.SetFocus(true)
+        return
+    end if
+    m.status.text = ""
+    if was >= 0 and was < total
+        m.grid.jumpToItem = was
+        ensure(was)
+    end if
+    if not m.menu.visible and not m.bar.IsInFocusChain() then m.grid.SetFocus(true)
+end sub
+
+sub fillPage(offset as integer, items as object)
+    root = m.grid.content
+    if root = invalid then return
+    for i = 0 to items.Count() - 1
+        node = root.GetChild(offset + i)
+        if node <> invalid then fillCard(node, items[i])
+    end for
+    m.pages[offset.ToStr()] = "done"
+end sub
+
+sub fillCard(node as object, item as object)
+    if m.tab = "titles"
+        KivoContent.fill(node, item, m.kind = "videos")
+        return
+    end if
+    node.title = item.name
+    if m.tab = "collections"
+        node.collectionId = item.id
+        node.imageUri = Kivo.imageUrl(item.images.poster, 240)
+        node.caption = item.workCount.ToStr() + " titles"
+    else if m.tab = "authors"
+        node.personId = item.id
+        node.imageUri = Kivo.imageUrl(item.photo, 240)
+        node.caption = item.workCount.ToStr() + " books"
+    else
+        node.bookSeriesId = item.id
+        node.imageUri = Kivo.imageUrl(item.cover, 240)
+        node.caption = item.bookCount.ToStr() + " books"
+    end if
+end sub
+
+' The pages of the cards around [index] that aren't read yet.
+sub ensure(index as integer)
+    size = KivoGrid.pageSize
+    page = Int(index / size) * size
+    fetch(page)
+    if index - page > size - 12 and m.grid.content <> invalid and page + size < m.grid.content.GetChildCount() then fetch(page + size)
+    if index - page < 12 and page > 0 then fetch(page - size)
+end sub
+
+sub onFocused()
+    if m.grid.itemFocused >= 0 then ensure(m.grid.itemFocused)
+end sub
+
+sub onCard()
+    node = m.grid.content.GetChild(m.grid.itemSelected)
+    if node = invalid or (node.workId = "" and node.personId = "" and node.collectionId = "" and node.bookSeriesId = "") then return
+    m.top.navigate = KivoContent.target(node)
+end sub
+
+sub onBar()
+    action = m.barActions[m.bar.buttonSelected]
+    if action.tab <> invalid
+        if action.tab = m.tab then return
+        m.tab = action.tab
+        shape()
+        showBar()
+        m.grid.jumpToItem = 0
+        reload()
+    else if action.menu = "sort"
+        showMenu("sort", "Sort by", KivoGrid.sorts(m.kind), m.sort)
+    else if action.menu = "filter"
+        openFilters()
+    else if action.menu = "letters"
+        items = []
+        for each letter in m.letters
+            items.Push({ id: letter.offset.ToStr(), label: letter.letter })
+        end for
+        showMenu("letters", "Jump to", items, "")
+    end if
+end sub
+
+sub showMenu(page as string, title as string, items as object, checked as string)
+    m.menuPage = page
+    m.menu.title = title
+    m.menu.note = ""
+    m.menu.checkedId = checked
+    m.menu.items = items
+    m.menu.visible = true
+    m.menu.callFunc("focus")
+end sub
+
+' The filters' first page: each with what it's set to.
+sub openFilters()
+    f = m.filters
+    items = [{ id: "played", label: "Watched: " + playedLabel(f.played) }]
+    if has("genre") then items.Push({ id: "genre", label: "Genre: " + countLabel(f.genres) })
+    if has("year") then items.Push({ id: "decade", label: "Decade: " + anyOr(f.decade, f.decade + "s") })
+    if has("contentRating") then items.Push({ id: "contentRating", label: "Rating: " + countLabel(f.contentRatings) })
+    if has("resolution") then items.Push({ id: "resolution", label: "Resolution: " + countLabel(f.resolutions) })
+    if has("dynamicRange") then items.Push({ id: "dynamicRange", label: "Dynamic range: " + countLabel(f.dynamicRanges) })
+    if m.kind = "audiobooks" and has("narrator") then items.Push({ id: "narrator", label: "Narrator: " + anyOr(f.narrator, nameOf("narrator", f.narrator)) })
+    if KivoGrid.filtered(f) then items.Push({ id: "clear", label: "Clear filters" })
+    showMenu("filters", "Filter", items, "")
+end sub
+
+function has(field as string) as boolean
+    return m.values[field] <> invalid and m.values[field].Count() > 0
+end function
+
+function playedLabel(played as string) as string
+    labels = { unplayed: "Unwatched", inProgress: "In progress", played: "Watched" }
+    if labels[played] <> invalid then return labels[played]
+    return "Any"
+end function
+
+function countLabel(values as object) as string
+    if values.Count() = 0 then return "Any"
+    if values.Count() = 1 then return values[0]
+    return values.Count().ToStr() + " chosen"
+end function
+
+function anyOr(value as string, shown as string) as string
+    if value = "" then return "Any"
+    return shown
+end function
+
+function nameOf(field as string, value as string) as string
+    for each item in m.values[field]
+        if item.value = value then return item.name
+    end for
+    return value
+end function
+
+' A filter's page: one choice for watched, decade and narrator, any of
+' several, each checked, for the others.
+sub openFilter(field as string)
+    m.filterField = field
+    f = m.filters
+    if field = "played"
+        items = [{ id: "", label: "Any" }, { id: "unplayed", label: "Unwatched" }, { id: "inProgress", label: "In progress" }, { id: "played", label: "Watched" }]
+        showMenu("filter", "Watched", items, anyId(f.played))
+    else if field = "decade"
+        years = []
+        for each item in m.values.year
+            years.Push(item.value)
+        end for
+        items = [{ id: "", label: "Any" }]
+        for each decade in KivoGrid.decades(years)
+            items.Push({ id: decade, label: decade + "s" })
+        end for
+        showMenu("filter", "Decade", items, anyId(f.decade))
+    else if field = "narrator"
+        items = [{ id: "", label: "Any" }]
+        for each item in m.values.narrator
+            items.Push({ id: item.value, label: item.name })
+        end for
+        showMenu("filter", "Narrator", items, anyId(f.narrator))
+    else
+        chosen = f[listKey(field)]
+        items = []
+        for each item in m.values[field]
+            label = item.name
+            if KivoGrid.contains(chosen, item.value) then label = "✓ " + label
+            items.Push({ id: item.value, label: label })
+        end for
+        titles = { genre: "Genre", contentRating: "Rating", resolution: "Resolution", dynamicRange: "Dynamic range" }
+        showMenu("filterMany", titles[field], items, "")
+    end if
+end sub
+
+' The radio list's ID for a filter set to nothing, which "Any" has.
+function anyId(value as string) as string
+    if value = "" then return " "
+    return value
+end function
+
+function listKey(field as string) as string
+    keys = { genre: "genres", contentRating: "contentRatings", resolution: "resolutions", dynamicRange: "dynamicRanges" }
+    return keys[field]
+end function
+
+sub onMenuChosen()
+    id = m.menu.chosen
+    page = m.menuPage
+    if page = "sort"
+        closeMenu()
+        if id <> m.sort
+            m.sort = id
+            showBar()
+            m.grid.jumpToItem = 0
+            reload()
+        end if
+    else if page = "letters"
+        closeMenu()
+        offset = id.ToInt()
+        m.grid.jumpToItem = offset
+        ensure(offset)
+        m.grid.SetFocus(true)
+    else if page = "filters"
+        if id = "clear"
+            m.filters = KivoGrid.emptyFilters()
+            filtersChanged()
+            openFilters()
+        else
+            openFilter(id)
+        end if
+    else if page = "filter"
+        field = m.filterField
+        if field = "played"
+            m.filters.played = id
+        else
+            m.filters[field] = id
+        end if
+        filtersChanged()
+        openFilters()
+    else if page = "filterMany"
+        key = listKey(m.filterField)
+        m.filters[key] = KivoGrid.toggled(m.filters[key], id)
+        filtersChanged()
+        openFilter(m.filterField)
+    end if
+end sub
+
+sub filtersChanged()
+    showBar()
+    m.grid.jumpToItem = 0
+    reload()
+end sub
+
+sub onMenuClosed()
+    if m.menuPage = "filter" or m.menuPage = "filterMany"
+        openFilters()
+        return
+    end if
+    closeMenu()
+end sub
+
+sub closeMenu()
+    m.menu.visible = false
+    m.menuPage = invalid
+    m.bar.SetFocus(true)
+end sub
+
+function onKeyEvent(key as string, press as boolean) as boolean
+    if not press then return false
+    if key = "down" and m.bar.IsInFocusChain() and m.grid.content <> invalid and m.grid.content.GetChildCount() > 0
+        m.grid.SetFocus(true)
+        return true
+    end if
+    if key = "up" and m.grid.IsInFocusChain()
+        m.bar.SetFocus(true)
+        return true
+    end if
+    if key = "options" and not m.menu.visible and m.tab = "titles"
+        openFilters()
+        return true
+    end if
+    return false
+end function

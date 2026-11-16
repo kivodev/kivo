@@ -19,7 +19,12 @@ namespace KivoContent
     end function
 
     function card(work as object, landscape as boolean) as object
-        node = KivoContent.blank()
+        return KivoContent.fill(KivoContent.blank(), work, landscape)
+    end function
+
+    ' Puts [work] on the card [node], as card makes it, for a grid that
+    ' lists blank cards first and fills them a page at a time.
+    function fill(node as object, work as object, landscape as boolean) as object
         node.workId = work.id
         node.kind = work.kind
         node.played = work.userState <> invalid and work.userState.played = true
@@ -42,7 +47,7 @@ namespace KivoContent
     ' collection), its artwork, caption and progress, and whether it's played.
     function blank() as object
         node = CreateObject("roSGNode", "ContentNode")
-        node.AddFields({ workId: "", personId: "", collectionId: "", kind: "", imageUri: "", caption: "", progress: 0.0, played: false })
+        node.AddFields({ workId: "", personId: "", collectionId: "", bookSeriesId: "", kind: "", imageUri: "", caption: "", progress: 0.0, played: false })
         return node
     end function
 
@@ -95,6 +100,7 @@ namespace KivoContent
     function target(card as object) as object
         if card.personId <> "" then return { screen: "RowsScreen", params: { kind: "person", id: card.personId } }
         if card.collectionId <> "" then return { screen: "RowsScreen", params: { kind: "collection", id: card.collectionId } }
+        if card.bookSeriesId <> "" then return { screen: "RowsScreen", params: { kind: "bookSeries", id: card.bookSeriesId } }
         return { screen: "DetailScreen", params: { id: card.workId } }
     end function
 

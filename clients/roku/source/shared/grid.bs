@@ -1,0 +1,117 @@
+' A library's grid as the other apps have it (the core's GridQuery and
+' SmartLists.gridQuery): its tabs, its sorts, and its filters as a work
+' query's rules.
+namespace KivoGrid
+
+    ' Works a grid asks for at a time.
+    const pageSize = 60
+
+    ' The tabs a library of [kind] has: its titles, then collections when
+    ' it has any, and an audiobooks library's authors and book series.
+    function tabs(kind as string, hasCollections as boolean) as object
+        out = [{ id: "titles", label: "Titles" }]
+        if hasCollections then out.Push({ id: "collections", label: "Collections" })
+        if kind = "audiobooks"
+            out.Push({ id: "authors", label: "Authors" })
+            out.Push({ id: "bookSeries", label: "Series" })
+        end if
+        return out
+    end function
+
+    ' The sorts a library of [kind] offers, each a work query's sort field.
+    function sorts(kind as string) as object
+        out = [{ id: "title", label: "Title" }]
+        if kind = "audiobooks" then out.Push({ id: "author", label: "Author" })
+        out.Push({ id: "addedAt", label: "Date added" })
+        if kind = "shows" then out.Push({ id: "lastEpisodeAddedAt", label: "Episode added" })
+        out.Push({ id: "releaseDate", label: "Release date" })
+        if kind <> "audiobooks" then out.Push({ id: "rating", label: "Rating" })
+        if kind <> "shows" then out.Push({ id: "runtimeMs", label: "Runtime" })
+        out.Push({ id: "lastPlayedAt", label: "Last played" })
+        return out
+    end function
+
+    function sortLabel(kind as string, sort as string) as string
+        for each item in KivoGrid.sorts(kind)
+            if item.id = sort then return item.label
+        end for
+        return "Title"
+    end function
+
+    ' The work kind a library of [kind] lists.
+    function workKind(kind as string) as string
+        if kind = "movies" then return "movie"
+        if kind = "shows" then return "series"
+        if kind = "audiobooks" then return "book"
+        return "video"
+    end function
+
+    ' The filters a grid has: played, genres, decade, content ratings,
+    ' resolutions, dynamic ranges and, for books, a narrator.
+    function emptyFilters() as object
+        return { played: "", genres: [], decade: "", contentRatings: [], resolutions: [], dynamicRanges: [], narrator: "" }
+    end function
+
+    function filtered(filters as object) as boolean
+        return filters.played <> "" or filters.genres.Count() > 0 or filters.decade <> "" or filters.contentRatings.Count() > 0 or filters.resolutions.Count() > 0 or filters.dynamicRanges.Count() > 0 or filters.narrator <> ""
+    end function
+
+    ' The work query request of a library's grid: its kind, sorted by
+    ' [sort], with the filters as rules all of which must match.
+    function request(libraryId as string, kind as string, sort as string, filters as object, offset as integer) as object
+        rules = []
+        if filters.played <> "" then rules.Push({ field: "playState", op: "anyOf", values: [filters.played] })
+        if filters.genres.Count() > 0 then rules.Push({ field: "genre", op: "anyOf", values: filters.genres })
+        if filters.decade <> ""
+            first = filters.decade.ToInt()
+            rules.Push({ field: "year", op: "between", values: [first.ToStr(), (first + 9).ToStr()] })
+        end if
+        if filters.contentRatings.Count() > 0 then rules.Push({ field: "contentRating", op: "anyOf", values: filters.contentRatings })
+        if filters.resolutions.Count() > 0 then rules.Push({ field: "resolution", op: "anyOf", values: filters.resolutions })
+        if filters.dynamicRanges.Count() > 0 then rules.Push({ field: "dynamicRange", op: "anyOf", values: filters.dynamicRanges })
+        if filters.narrator <> "" then rules.Push({ field: "narrator", op: "anyOf", values: [filters.narrator] })
+        query = { kinds: [KivoGrid.workKind(kind)], sort: [{ field: sort }] }
+        if rules.Count() > 0 then query.where = { match: "all", rules: rules }
+        body = { query: query, library: libraryId, limit: KivoGrid.pageSize }
+        if offset > 0 then body.offset = offset
+        return body
+    end function
+
+    ' The decades of [years] (release years as strings), newest first, as "1990".
+    function decades(years as object) as object
+        seen = {}
+        out = []
+        for each year in years
+            decade = (Int(year.ToInt() / 10) * 10).ToStr()
+            if year.ToInt() > 0 and seen[decade] = invalid
+                seen[decade] = true
+                out.Push(decade)
+            end if
+        end for
+        out.Sort("r")
+        return out
+    end function
+
+    ' [list] with [value] taken out when it's there, else put in.
+    function toggled(list as object, value as string) as object
+        out = []
+        found = false
+        for each item in list
+            if item = value
+                found = true
+            else
+                out.Push(item)
+            end if
+        end for
+        if not found then out.Push(value)
+        return out
+    end function
+
+    function contains(list as object, value as string) as boolean
+        for each item in list
+            if item = value then return true
+        end for
+        return false
+    end function
+
+end namespace

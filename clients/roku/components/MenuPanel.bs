@@ -17,6 +17,17 @@ sub init()
     end for
 end sub
 
+' The panel's place: 720 pixels along the right edge, or the left.
+sub onSide()
+    x = 1200
+    if m.top.side = "left" then x = 0
+    m.top.FindNode("ground").translation = [x, 0]
+    m.heading.translation = [x + 64, 72]
+    m.noteLabel.translation = [x + 64, 128]
+    m.list.translation = [x + 64, 200]
+    m.radio.translation = [x + 64, 200]
+end sub
+
 sub onTitle()
     m.heading.text = m.top.title
     m.noteLabel.text = m.top.note
@@ -65,7 +76,9 @@ sub onSelected(event as object)
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
-    if press and (key = "back" or key = "left" or key = "options")
+    away = "left"
+    if m.top.side = "left" then away = "right"
+    if press and (key = "back" or key = away or key = "options")
         m.top.closed = true
         return true
     end if

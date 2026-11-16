@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<!-- Home: the user's rows, as the server lists them. -->
+<!-- Home: the user's rows, as the server lists them. Left from a row's
+     first card opens the menu: the libraries and the app's other pages. -->
 <component name="HomeScreen" extends="KivoScreen">
   <children>
     <Label id="heading" translation="[96, 48]" text="Home" />
+    <Label id="hint" translation="[1300, 60]" width="524" horizAlign="right" text="◀ Menu" />
     <Label id="status" translation="[96, 160]" width="1700" wrap="true" />
     <RowList id="rows" translation="[96, 130]" itemComponentName="PosterItem"
       itemSize="[1824, 470]" numRows="3" rowItemSpacing="[[24, 0]]" itemSpacing="[0, 40]"
       showRowLabel="[true]" rowLabelOffset="[[0, 12]]" rowFocusAnimationStyle="floatingFocus"
       vertFocusAnimationStyle="fixedFocusWrap" />
+    <MenuPanel id="nav" side="left" visible="false" />
   </children>
 </component>

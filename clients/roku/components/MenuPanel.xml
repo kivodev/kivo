@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<!-- A panel along the right edge listing items, each { id, label }, under
+<!-- A panel along the right edge, or the left with side "left", listing items, each { id, label }, under
      a title and an optional note. With checkedId set it's a choice: the
      items show as radio buttons with that one checked. Choosing an item
      sets chosen to its id; Back sets closed. -->
 <component name="MenuPanel" extends="Group">
   <interface>
+    <field id="side" type="string" value="right" onChange="onSide" />
     <field id="title" type="string" onChange="onTitle" />
     <field id="note" type="string" onChange="onTitle" />
     <field id="items" type="array" onChange="onItems" />
