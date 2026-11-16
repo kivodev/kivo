@@ -12,6 +12,7 @@
   "devDependencies": {
     "@rokucommunity/bslint": "0.8.47",
     "brighterscript": "0.73.8",
+    "bsc1": "npm:brighterscript@1.0.0-alpha.57",
     "rooibos-roku": "5.17.0"
   }
 }
