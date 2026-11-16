@@ -1,0 +1,48 @@
+paths: {}
+components:
+  schemas:
+    Kind:
+      type: string
+      enum: [movie, series]
+    Name:
+      type: string
+      maxLength: 10
+    Summary:
+      type: object
+      required: [id, kind]
+      properties:
+        id: {type: string, format: uuid}
+        kind: {$ref: "#/components/schemas/Kind"}
+        title: {$ref: "#/components/schemas/Name"}
+        sizeBytes: {type: integer, format: int64}
+        count: {type: integer}
+        rating: {type: number, format: double}
+        addedAt: {type: string, format: date-time}
+        played: {type: boolean}
+        tags:
+          type: array
+          items: {type: string}
+        children:
+          type: array
+          items: {$ref: "#/components/schemas/Summary"}
+        sizes:
+          type: array
+          items: {type: integer, format: int64}
+        settings: {type: object}
+        book:
+          type: object
+          required: [author]
+          properties:
+            author: {type: string}
+    Detail:
+      allOf:
+        - {$ref: "#/components/schemas/Summary"}
+        - type: object
+          required: [overview]
+          properties:
+            overview: {type: string}
+            count: {type: integer, description: replaces the summary's}
+    Message:
+      oneOf:
+        - {$ref: "#/components/schemas/Summary"}
+        - {$ref: "#/components/schemas/Detail"}

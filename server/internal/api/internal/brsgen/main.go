@@ -1,8 +1,9 @@
 // Command brsgen writes the Roku app's API description from openapi.yaml:
 // a BrighterScript function per operation that returns the request to
 // send (its method, path, query, body and whether it carries the session's
-// token), and an enum per named string enum of the contract. The app's
-// request task sends the requests; answers stay as ParseJson gives them.
+// token), an enum per named string enum and an interface per object schema
+// of the contract. The app's request task sends the requests; the
+// interfaces only type what ParseJson gives, for the compiler.
 //
 //	brsgen <openapi.yaml> <output.bs>
 package main

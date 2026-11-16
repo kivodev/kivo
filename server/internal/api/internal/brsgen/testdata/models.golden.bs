@@ -1,0 +1,37 @@
+
+    interface Detail
+        id as string
+        kind as Kind
+        optional title as string
+        optional sizeBytes as integer or longinteger
+        optional count as integer
+        optional rating as integer or float or double
+        optional addedAt as string
+        optional played as boolean
+        optional tags as string[]
+        optional children as Summary[]
+        optional sizes as object
+        optional settings as object
+        optional book as SummaryBook
+        overview as string
+    end interface
+
+    interface Summary
+        id as string
+        kind as Kind
+        optional title as string
+        optional sizeBytes as integer or longinteger
+        optional count as integer
+        optional rating as integer or float or double
+        optional addedAt as string
+        optional played as boolean
+        optional tags as string[]
+        optional children as Summary[]
+        optional sizes as object
+        optional settings as object
+        optional book as SummaryBook
+    end interface
+
+    interface SummaryBook
+        author as string
+    end interface

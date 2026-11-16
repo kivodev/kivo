@@ -4,7 +4,9 @@
 ' A function per operation returns the request to send: its method, its
 ' path from the API root, its query and JSON body (invalid when it has
 ' none), the body's media type, and whether it carries the session's token.
-' The app's request task sends it; answers are left as ParseJson gives them.
+' The app's request task sends it. An interface per object schema
+' describes the JSON both ways; it exists only for the compiler, so an
+' answer is still the object ParseJson gives.
 
 namespace KivoApi
 
@@ -1189,4 +1191,1609 @@ namespace KivoApi
         logsChanged = "logsChanged"
         activityChanged = "activityChanged"
     end enum
+
+    interface Accelerator
+        id as string
+        backend as AcceleratorBackend
+        name as string
+        encoders as AcceleratorEncoder[]
+        decoders as AcceleratorFormat[]
+        optional toneMap as ProcessedOn
+        optional burnIn as ProcessedOn
+        optional problem as AcceleratorProblem
+    end interface
+
+    interface AcceleratorEncoder
+        codec as EncoderCodec
+    end interface
+
+    interface AcceleratorFormat
+        codec as string
+        bitDepth as integer
+    end interface
+
+    interface AcceleratorList
+        tested as boolean
+        items as Accelerator[]
+    end interface
+
+    interface AcceleratorProblem
+        reason as AcceleratorProblemReason
+        optional detail as string
+    end interface
+
+    interface Accepted
+        optional queued as integer
+    end interface
+
+    interface ActivityAdded
+        libraryName as string
+        work as ActivityWork
+        count as integer
+    end interface
+
+    interface ActivityEvent
+        id as string
+        occurredAt as string
+        kind as ActivityKind
+        optional play as ActivityPlay
+        optional added as ActivityAdded
+        optional signIn as ActivitySignIn
+        optional joined as ActivityJoined
+        optional password as ActivityPassword
+        optional task as ActivityTask
+        optional problem as ActivityProblem
+    end interface
+
+    interface ActivityFeed
+        items as ActivityEvent[]
+        optional next as string
+    end interface
+
+    interface ActivityJoined
+        userId as string
+        username as string
+        optional addedBy as string
+    end interface
+
+    interface ActivityPassword
+        userId as string
+        username as string
+        optional changedBy as string
+        optional address as string
+        optional commandLine as boolean
+    end interface
+
+    interface ActivityPlay
+        userId as string
+        username as string
+        work as ActivityWork
+        optional clientName as string
+        local as boolean
+    end interface
+
+    interface ActivityProblem
+        id as string
+        code as string
+        message as string
+        severity as ProblemSeverity
+    end interface
+
+    interface ActivitySignIn
+        optional userId as string
+        optional username as string
+        optional clientName as string
+        address as string
+        local as boolean
+        optional count as integer
+    end interface
+
+    interface ActivityTask
+        task as TaskName
+        optional summary as string
+        optional error as string
+        failedCount as integer
+    end interface
+
+    interface ActivityWork
+        workId as string
+        kind as WorkKind
+        title as string
+        optional seasonNumber as integer
+        optional episodeNumber as integer
+    end interface
+
+    interface ApiKey
+        id as string
+        name as string
+        createdAt as string
+        optional lastUsedAt as string
+        optional token as string
+    end interface
+
+    interface ApiKeyCreate
+        name as string
+    end interface
+
+    interface ApiKeyList
+        items as ApiKey[]
+    end interface
+
+    interface Artwork
+        id as string
+        type as ArtworkType
+        source as ArtworkSource
+        optional provider as ArtworkProvider
+        optional language as string
+        optional width as integer
+        optional height as integer
+        selected as boolean
+        image as ImageRef
+    end interface
+
+    interface ArtworkList
+        items as Artwork[]
+    end interface
+
+    interface ArtworkUpload
+        type as ArtworkType
+        file as string
+    end interface
+
+    interface AudioEntry
+        codec as string
+        delivery as CapabilityDelivery[]
+        optional containers as string[]
+        maxChannels as integer
+        optional maxSampleRate as integer
+        optional maxBitDepth as integer
+        optional profiles as string[]
+    end interface
+
+    interface AudioTrackInfo
+        channels as integer
+        optional layout as string
+        optional profile as AudioProfile
+    end interface
+
+    interface BookInfo
+        authors as PersonRef[]
+        narrators as PersonRef[]
+        series as BookSeriesRef[]
+        optional subtitle as string
+        optional publisher as string
+        optional language as string
+        optional releaseDate as string
+    end interface
+
+    interface BookSeries
+        id as string
+        name as string
+        items as WorkSummary[]
+    end interface
+
+    interface BookSeriesRef
+        id as string
+        name as string
+        optional position as string
+        primary as boolean
+    end interface
+
+    interface BookSeriesSummary
+        id as string
+        name as string
+        bookCount as integer
+        optional cover as ImageRef
+    end interface
+
+    interface BookSeriesSummaryPage
+        items as BookSeriesSummary[]
+        total as integer
+        optional letters as LetterStart[]
+    end interface
+
+    interface BookSeriesUpdate
+        name as string
+        optional position as string
+        optional primary as boolean
+    end interface
+
+    interface Capabilities
+        optional file as FileCapabilities
+        video as VideoEntry[]
+        audio as AudioEntry[]
+        subtitles as SubtitleEntry[]
+    end interface
+
+    interface CapabilityMismatch
+        field as string
+        optional declared as string
+        actual as string
+    end interface
+
+    interface CastToken
+        token as string
+        expiresAt as string
+        serverId as string
+        urls as string[]
+    end interface
+
+    interface CastTokenCreate
+        receiverName as string
+        receiverKind as CastReceiverKind
+    end interface
+
+    interface Chapter
+        startMs as integer
+        endMs as integer
+        optional title as string
+    end interface
+
+    interface ClientDevice
+        optional app as string
+        optional appVersion as string
+        optional platform as ClientPlatform
+        optional osVersion as string
+        optional deviceModel as string
+    end interface
+
+    interface ClientEngine
+        optional platform as string
+        optional tizenVersion as string
+        optional chromiumVersion as string
+    end interface
+
+    interface ClientErrorReport
+        kind as ClientErrorKind
+        message as string
+        optional stack as string[]
+        optional route as string
+        optional version as string
+        optional engine as ClientEngine
+    end interface
+
+    interface Collection
+        id as string
+        name as string
+        optional source as CollectionSource
+        images as WorkImages
+        items as WorkSummary[]
+    end interface
+
+    interface CollectionSummary
+        id as string
+        name as string
+        workCount as integer
+        optional source as CollectionSource
+        images as WorkImages
+    end interface
+
+    interface CollectionSummaryPage
+        items as CollectionSummary[]
+        total as integer
+        optional letters as LetterStart[]
+    end interface
+
+    interface ContentRating
+        name as string
+        age as integer
+    end interface
+
+    interface ContentRatingList
+        items as ContentRating[]
+    end interface
+
+    interface Credit
+        personId as string
+        name as string
+        role as string
+        optional character as string
+        optional photo as ImageRef
+    end interface
+
+    interface CurrentUser
+        id as string
+        username as string
+        admin as boolean
+        limits as UserLimits
+        playback as PlaybackPreferences
+    end interface
+
+    interface CurrentUserPasswordChange
+        currentPassword as string
+        password as string
+        signOutOthers as boolean
+    end interface
+
+    interface CurrentUserUpdate
+        optional playback as PlaybackPreferencesUpdate
+        optional libraries as LibraryChoice[]
+    end interface
+
+    interface DeviceCode
+        code as string
+        secret as string
+        expiresAt as string
+        interval as integer
+        linkUrl as string
+    end interface
+
+    interface DeviceCodeCreate
+        name as string
+        optional kind as SessionKind
+        optional clientId as string
+    end interface
+
+    interface DeviceCodePoll
+        secret as string
+    end interface
+
+    interface DialogueBoost
+        enabled as boolean
+    end interface
+
+    interface Directory
+        name as string
+        path as string
+    end interface
+
+    interface DirectoryList
+        items as Directory[]
+    end interface
+
+    interface DolbyVisionEntry
+        profile as integer
+        optional compat as integer[]
+        optional el as boolean
+    end interface
+
+    interface Download
+        id as string
+        workId as string
+        versionId as string
+        quality as DownloadQuality
+        state as DownloadState
+        optional progress as integer or float or double
+        optional remainingMs as integer
+        optional reason as RefusalReason
+        delivery as DownloadDelivery
+        tracks as PlayTrack[]
+        durationMs as integer
+        sizeBytes as integer or longinteger
+        sizeExact as boolean
+        parts as DownloadPart[]
+        chapters as Chapter[]
+        optional markers as Marker[]
+        optional expiresAt as string
+    end interface
+
+    interface DownloadAvailability
+        workId as string
+        versionId as string
+        available as boolean
+    end interface
+
+    interface DownloadCheck
+        items as DownloadRef[]
+    end interface
+
+    interface DownloadCheckResult
+        items as DownloadAvailability[]
+    end interface
+
+    interface DownloadCreate
+        workId as string
+        optional versionId as string
+        optional audioTrackId as string
+        optional subtitleTrackId as string
+        capabilities as Capabilities
+        optional settings as PlaybackSettings
+        optional quality as DownloadQuality
+    end interface
+
+    interface DownloadEstimate
+        workId as string
+        optional versionId as string
+        playable as boolean
+        optional reason as RefusalReason
+        options as DownloadOption[]
+    end interface
+
+    interface DownloadEstimateItem
+        workId as string
+        optional versionId as string
+        optional audioTrackId as string
+        optional subtitleTrackId as string
+    end interface
+
+    interface DownloadEstimateList
+        items as DownloadEstimate[]
+    end interface
+
+    interface DownloadEstimateRequest
+        items as DownloadEstimateItem[]
+        capabilities as Capabilities
+        optional settings as PlaybackSettings
+    end interface
+
+    interface DownloadList
+        items as Download[]
+    end interface
+
+    interface DownloadOption
+        quality as DownloadQuality
+        sizeBytes as integer or longinteger
+        asIs as boolean
+        delivery as DownloadDelivery
+    end interface
+
+    interface DownloadPart
+        durationMs as integer
+        url as string
+        contentType as string
+        optional sizeBytes as integer or longinteger
+        optional etag as string
+        optional sha256 as string
+    end interface
+
+    interface DownloadRef
+        workId as string
+        versionId as string
+    end interface
+
+    interface EpisodeInfo
+        seasonNumber as integer
+        number as integer
+        optional endNumber as integer
+        optional airDate as string
+        seriesId as string
+        seriesTitle as string
+        optional seasonId as string
+        optional previousId as string
+        optional nextId as string
+        optional overview as string
+    end interface
+
+    interface EventMessage
+        type as string
+        kind as EventKind
+        optional workId as string
+        optional libraryIds as string[]
+        optional playId as string
+        optional message as string
+        optional problemCount as integer
+        optional workIds as string[]
+    end interface
+
+    interface ExternalId
+        provider as ExternalProvider
+        kind as string
+        id as string
+    end interface
+
+    interface ExtraInfo
+        type as ExtraType
+    end interface
+
+    interface FieldError
+        field as string
+        code as FieldErrorCode
+    end interface
+
+    interface FileCapabilities
+        containers as string[]
+        optional trackSelection as boolean
+    end interface
+
+    interface FileSubtitleAdd
+        resultId as string
+    end interface
+
+    interface FixMatchRequest
+        matchId as string
+    end interface
+
+    interface Health
+        status as HealthStatus
+    end interface
+
+    interface Home
+        rows as HomeRow[]
+        optional allHidden as boolean
+    end interface
+
+    interface HomeRow
+        id as string
+        kind as HomeRowKind
+        optional library as LibraryRef
+        optional list as ListRef
+        items as WorkSummary[]
+    end interface
+
+    interface HomeRowChange
+        id as string
+        shown as boolean
+    end interface
+
+    interface HomeRowInfo
+        id as string
+        kind as HomeRowKind
+        optional library as LibraryRef
+        optional list as ListRef
+        shown as boolean
+        optional broken as boolean
+    end interface
+
+    interface HomeRowInfoList
+        items as HomeRowInfo[]
+    end interface
+
+    interface HomeRowsUpdate
+        items as HomeRowChange[]
+    end interface
+
+    interface ImageRef
+        id as string
+        optional blurhash as string
+        optional width as integer
+        optional height as integer
+    end interface
+
+    interface Invite
+        id as string
+        libraries as LibraryAccess
+        limits as UserLimits
+        createdAt as string
+        expiresAt as string
+        optional token as string
+    end interface
+
+    interface InviteCreate
+        libraries as LibraryAccess
+        optional limits as UserLimits
+        expiresAt as string
+    end interface
+
+    interface InviteLink
+        invitedBy as string
+        serverName as string
+        expiresAt as string
+    end interface
+
+    interface InviteList
+        items as Invite[]
+    end interface
+
+    interface KeepAliveMessage
+        type as string
+    end interface
+
+    interface LetterStart
+        letter as string
+        offset as integer
+    end interface
+
+    interface Library
+        id as string
+        name as string
+        pinned as boolean
+        kind as LibraryKind
+        workCount as integer
+        optional folders as LibraryFolder[]
+        optional useLocalMetadata as boolean
+        optional previews as ProcessingSchedule
+        optional markers as ProcessingSchedule
+        optional subtitles as ProcessingSchedule
+        optional refreshDays as integer
+        optional metadataLanguage as string
+        optional contentRatingCountry as string
+        optional unmatchedCount as integer
+        optional scan as LibraryScanStatus
+    end interface
+
+    interface LibraryAccess
+        all as boolean
+        libraryIds as string[]
+    end interface
+
+    interface LibraryChoice
+        id as string
+        pinned as boolean
+    end interface
+
+    interface LibraryCreate
+        name as string
+        kind as LibraryKind
+        folders as string[]
+        optional useLocalMetadata as boolean
+        optional previews as ProcessingSchedule
+        optional markers as ProcessingSchedule
+        optional subtitles as ProcessingSchedule
+        optional refreshDays as integer
+        optional metadataLanguage as string
+        optional contentRatingCountry as string
+    end interface
+
+    interface LibraryFolder
+        id as string
+        path as string
+        reachable as boolean
+        optional lastScanAt as string
+    end interface
+
+    interface LibraryList
+        items as Library[]
+    end interface
+
+    interface LibraryRef
+        id as string
+        name as string
+        kind as LibraryKind
+    end interface
+
+    interface LibraryScanStatus
+        libraryId as string
+        state as LibraryScanState
+        optional progress as ScanProgress
+    end interface
+
+    interface LibraryUpdate
+        optional name as string
+        optional folders as string[]
+        optional useLocalMetadata as boolean
+        optional previews as ProcessingSchedule
+        optional markers as ProcessingSchedule
+        optional subtitles as ProcessingSchedule
+        optional refreshDays as integer
+        optional metadataLanguage as string
+        optional contentRatingCountry as string
+    end interface
+
+    interface ListCreate
+        name as string
+        optional smart as SmartQuery
+    end interface
+
+    interface ListMove
+        workIds as string[]
+        optional after as string
+    end interface
+
+    interface ListRef
+        id as string
+        name as string
+        kind as ListKind
+    end interface
+
+    interface ListUpdate
+        optional name as string
+        optional smart as SmartQuery
+        optional sort as ListSort
+    end interface
+
+    interface ListWorkAdd
+        workId as string
+    end interface
+
+    interface LogAttr
+        key as string
+        value as string
+    end interface
+
+    interface LogLine
+        id as string
+        loggedAt as string
+        level as LogLevel
+        message as string
+        attributes as LogAttr[]
+    end interface
+
+    interface LogLineFeed
+        items as LogLine[]
+        optional next as string
+        optional total as integer
+    end interface
+
+    interface Marker
+        kind as MarkerKind
+        startMs as integer
+        endMs as integer
+        source as MarkerSource
+        optional final as boolean
+    end interface
+
+    interface Match
+        id as string
+        provider as ExternalProvider
+        kind as MatchKind
+        title as string
+        optional originalTitle as string
+        optional year as integer
+        optional overview as string
+        optional score as integer
+        optional subtitle as string
+        optional authors as string[]
+        optional narrators as string[]
+        optional durationMs as integer
+    end interface
+
+    interface MatchList
+        items as Match[]
+    end interface
+
+    interface MediaFile
+        id as string
+        libraryId as string
+        path as string
+        sizeBytes as integer or longinteger
+        status as MediaFileStatus
+        optional goneAt as string
+        optional versionId as string
+        optional part as integer
+        optional title as string
+        optional workId as string
+        optional container as string
+        optional durationMs as integer
+        optional bitrateBps as integer or longinteger
+        tracks as Track[]
+    end interface
+
+    interface MediaFileFeed
+        items as MediaFile[]
+        optional next as string
+        optional total as integer
+    end interface
+
+    interface MediaFileList
+        items as MediaFile[]
+    end interface
+
+    interface MovieInfo
+        optional edition as string
+        optional trailers as Trailer[]
+    end interface
+
+    interface NameUpdate
+        name as string
+    end interface
+
+    interface NewRelease
+        version as string
+        url as string
+    end interface
+
+    interface ParentalControls
+        optional maxAge as integer
+        blockUnrated as boolean
+    end interface
+
+    interface PasswordChange
+        password as string
+    end interface
+
+    interface PendingDevice
+        name as string
+        optional platform as ClientPlatform
+        nearby as boolean
+        startedAt as string
+    end interface
+
+    interface Person
+        id as string
+        name as string
+        optional overview as string
+        optional photo as ImageRef
+        works as WorkSummary[]
+        bookSeries as BookSeries[]
+        standalone as WorkSummary[]
+        narrated as WorkSummary[]
+    end interface
+
+    interface PersonRef
+        id as string
+        name as string
+    end interface
+
+    interface PersonSummary
+        id as string
+        name as string
+        optional photo as ImageRef
+        role as string
+        workCount as integer
+    end interface
+
+    interface PersonSummaryPage
+        items as PersonSummary[]
+        total as integer
+        optional letters as LetterStart[]
+    end interface
+
+    interface Play
+        id as string
+        workId as string
+        title as string
+        optional work as WorkSummary
+        optional versionId as string
+        userId as string
+        username as string
+        optional clientName as string
+        optional address as string
+        startedAt as string
+        state as PlayState
+        local as boolean
+        positionMs as integer
+        optional durationMs as integer
+        optional bitrateBps as integer or longinteger
+        optional bandwidthBps as integer or longinteger
+        optional device as ClientDevice
+        delivery as PlayDelivery
+        optional videoProcessing as ProcessedOn
+        tracks as PlayTrack[]
+        optional sourceTracks as Track[]
+        optional transcode as TranscodeInfo
+        optional seekToFirstFrameMs as integer[]
+    end interface
+
+    interface PlayCreate
+        workId as string
+        optional versionId as string
+        optional positionMs as integer
+        optional audioTrackId as string
+        optional subtitleTrackId as string
+        capabilities as Capabilities
+        optional settings as PlaybackSettings
+        optional dialogueBoost as boolean
+    end interface
+
+    interface PlayEvent
+        id as string
+        work as WorkSummary
+        userId as string
+        username as string
+        startedAt as string
+        positionMs as integer
+        completed as boolean
+    end interface
+
+    interface PlayEventFeed
+        items as PlayEvent[]
+        optional next as string
+        optional total as integer
+    end interface
+
+    interface PlayFallback
+        positionMs as integer
+        code as PlayerErrorCode
+        optional detail as string
+    end interface
+
+    interface PlayList
+        items as Play[]
+    end interface
+
+    interface PlayPart
+        durationMs as integer
+        optional url as string
+    end interface
+
+    interface PlayStarted
+        id as string
+        workId as string
+        versionId as string
+        startMs as integer
+        durationMs as integer
+        local as boolean
+        optional bitrateBps as integer or longinteger
+        optional limitBps as integer or longinteger
+        delivery as PlayDelivery
+        url as string
+        tracks as PlayTrack[]
+        parts as PlayPart[]
+        optional previews as PreviewsDelivery
+        chapters as Chapter[]
+        optional markers as Marker[]
+        optional quality as QualityRequest
+        optional dialogueBoost as DialogueBoost
+    end interface
+
+    interface PlayStop
+        optional positionMs as integer
+        optional message as string
+        optional code as PlayerErrorCode
+        optional detail as string
+    end interface
+
+    interface PlaySummary
+        id as string
+        workId as string
+        title as string
+        optional clientName as string
+        startedAt as string
+    end interface
+
+    interface PlayTrack
+        trackId as string
+        type as TrackType
+        optional selected as boolean
+        optional delivery as TrackDelivery
+        optional codec as string
+        optional hdr as HdrFormat
+        optional transcode as TrackTranscode
+        optional reason as TrackReason
+        optional mismatch as CapabilityMismatch
+        optional index as integer
+        optional url as string
+        optional fonts as string[]
+    end interface
+
+    interface PlayUpdate
+        positionMs as integer
+        state as PlayState
+        optional seekToFirstFrameMs as integer
+        optional bandwidthBps as integer or longinteger
+        optional subtitleTrackId as string
+        optional audioTrackId as string
+    end interface
+
+    interface PlaybackPreferences
+        optional audioLanguage as string
+        optional subtitleLanguage as string
+        subtitleMode as SubtitleMode
+        rememberTracks as boolean
+        autoplayNext as boolean
+        bookSpeed as integer or float or double
+    end interface
+
+    interface PlaybackPreferencesUpdate
+        optional audioLanguage as string
+        optional subtitleLanguage as string
+        optional subtitleMode as SubtitleMode
+        optional rememberTracks as boolean
+        optional autoplayNext as boolean
+        optional bookSpeed as integer or float or double
+    end interface
+
+    interface PlaybackSettings
+        optional localQuality as QualityRequest
+        optional remoteQuality as QualityRequest
+        optional directPlay as boolean
+        optional burnSubtitles as boolean
+    end interface
+
+    interface PreviewManifest
+        intervalMs as integer
+        width as integer
+        height as integer
+        columns as integer
+        rows as integer
+        sheets as string[]
+    end interface
+
+    interface PreviewsDelivery
+        ready as boolean
+        optional url as string
+    end interface
+
+    interface Problem
+        type as string
+        title as string
+        status as integer
+        optional detail as string
+        optional instance as string
+        code as ProblemCode
+        requestId as string
+        optional reason as RefusalReason
+        optional mismatch as CapabilityMismatch
+        optional retryAfterSeconds as integer
+        optional errors as FieldError[]
+        optional plays as PlaySummary[]
+        optional message as string
+        optional resetsAt as string
+    end interface
+
+    interface QualityRequest
+        mode as QualityMode
+        optional maxBitrateBps as integer or longinteger
+        optional bandwidthBps as integer or longinteger
+    end interface
+
+    interface QualityRung
+        bitrateBps as integer or longinteger
+        height as integer
+    end interface
+
+    interface ResyncMessage
+        type as string
+    end interface
+
+    interface Rule
+        field as string
+        op as string
+        optional values as string[]
+    end interface
+
+    interface RuleGroup
+        match as RuleGroupMatch
+        optional rules as Rule[]
+        optional groups as RuleGroup[]
+    end interface
+
+    interface ScanProgress
+        step as ScanStep
+        done as integer
+        total as integer
+        optional remainingMs as integer
+    end interface
+
+    interface ScanRequest
+        optional full as boolean
+    end interface
+
+    interface SearchResults
+        works as WorkSummary[]
+        people as PersonSummary[]
+        collections as CollectionSummary[]
+    end interface
+
+    interface SeasonInfo
+        number as integer
+        seriesId as string
+        seriesTitle as string
+        optional episodeCount as integer
+        unplayedCount as integer
+    end interface
+
+    interface SeriesInfo
+        optional seasonCount as integer
+        unplayedCount as integer
+        optional recentlyAddedCount as integer
+        optional lastAirYear as integer
+        optional ordering as string
+        optional nextUp as WorkSummary
+        optional trailers as Trailer[]
+    end interface
+
+    interface ServerInfo
+        id as string
+        name as string
+        version as string
+        optional minAppVersion as string
+        optional castProtocol as integer
+        optional localUrls as string[]
+        optional publicUrl as string
+        optional qualityLadder as QualityRung[]
+        optional proof as ServerProof
+        optional newRelease as NewRelease
+    end interface
+
+    interface ServerProblem
+        id as string
+        component as string
+        code as string
+        message as string
+        severity as ProblemSeverity
+        raisedAt as string
+    end interface
+
+    interface ServerProblemList
+        items as ServerProblem[]
+    end interface
+
+    interface ServerProof
+        signature as string
+        host as string
+        local as boolean
+    end interface
+
+    interface Session
+        id as string
+        kind as SessionKind
+        name as string
+        optional device as ClientDevice
+        createdAt as string
+        lastUsedAt as string
+        current as boolean
+        optional token as string
+        optional serverKey as string
+    end interface
+
+    interface SessionCreate
+        username as string
+        password as string
+        optional kind as SessionKind
+        optional name as string
+        optional clientId as string
+    end interface
+
+    interface SessionList
+        items as Session[]
+    end interface
+
+    interface SessionUpdate
+        name as string
+    end interface
+
+    interface Settings
+        serverName as string
+        metadataLanguage as string
+        contentRatingCountry as string
+        openSubtitlesKey as string
+        openSubtitlesUsername as string
+        openSubtitlesPasswordSet as boolean
+        fileWatching as boolean
+        playedThreshold as integer or float or double
+        localNetworks as string[]
+        accelerator as string
+        videoTranscodeLimit as integer
+        maintenanceStartHour as integer
+        maintenanceEndHour as integer
+        previewsAtOnce as integer
+        markersAtOnce as integer
+        publicUrl as string
+        remoteQualityCapBps as integer or longinteger
+    end interface
+
+    interface SettingsUpdate
+        optional serverName as string
+        optional metadataLanguage as string
+        optional contentRatingCountry as string
+        optional playedThreshold as integer or float or double
+        optional openSubtitlesKey as string
+        optional openSubtitlesUsername as string
+        optional openSubtitlesPassword as string
+        optional fileWatching as boolean
+        optional localNetworks as string[]
+        optional accelerator as string
+        optional videoTranscodeLimit as integer
+        optional maintenanceStartHour as integer
+        optional maintenanceEndHour as integer
+        optional previewsAtOnce as integer
+        optional markersAtOnce as integer
+        optional publicUrl as string
+        optional remoteQualityCapBps as integer or longinteger
+    end interface
+
+    interface SetupState
+        required as boolean
+        serverName as string
+    end interface
+
+    interface SmartQuery
+        query as WorkQuery
+    end interface
+
+    interface SnapshotMessage
+        type as string
+        serverVersion as string
+        optional problemCount as integer
+    end interface
+
+    interface SortKey
+        field as string
+        optional direction as SortDirection
+    end interface
+
+    interface SubtitleEntry
+        codec as string
+        delivery as CapabilityDelivery[]
+        optional containers as string[]
+    end interface
+
+    interface SubtitleResult
+        id as string
+        language as string
+        optional release as string
+        downloads as integer
+        hashMatch as boolean
+        forced as boolean
+        hearingImpaired as boolean
+    end interface
+
+    interface SubtitleResultList
+        items as SubtitleResult[]
+    end interface
+
+    interface SubtitleTrackInfo
+        source as SubtitleSource
+    end interface
+
+    interface Task
+        id as TaskName
+        section as TaskSection
+        optional lastRun as TaskRun
+        nightly as boolean
+        optional nextRunAt as string
+        optional progress as TaskProgress
+        pendingCount as integer
+        optional failedCount as integer
+        running as boolean
+        stoppable as boolean
+    end interface
+
+    interface TaskFailure
+        itemId as string
+        optional title as string
+        reason as string
+        failedAt as string
+    end interface
+
+    interface TaskFailureList
+        items as TaskFailure[]
+    end interface
+
+    interface TaskList
+        items as Task[]
+    end interface
+
+    interface TaskProgress
+        optional step as TaskStep
+        done as integer
+        total as integer
+    end interface
+
+    interface TaskRetry
+        optional itemIds as string[]
+    end interface
+
+    interface TaskRun
+        finishedAt as string
+        optional summary as string
+        optional error as string
+    end interface
+
+    interface Track
+        id as string
+        type as TrackType
+        codec as string
+        optional language as string
+        optional title as string
+        default as boolean
+        name as string
+        fullName as string
+        optional forced as boolean
+        optional hearingImpaired as boolean
+        optional commentary as boolean
+        optional original as boolean
+        optional video as VideoTrackInfo
+        optional audio as AudioTrackInfo
+        optional subtitle as SubtitleTrackInfo
+    end interface
+
+    interface TrackTranscode
+        optional width as integer
+        optional height as integer
+        optional bitrateBps as integer or longinteger
+        optional channels as integer
+        optional encoder as string
+    end interface
+
+    interface TracksUpdate
+        optional audioTrackId as string
+        optional subtitleTrackId as string
+    end interface
+
+    interface Trailer
+        id as string
+        title as string
+        url as string
+        optional image as ImageRef
+    end interface
+
+    interface TranscodeInfo
+        optional state as TranscodeState
+        optional encodedMs as integer
+        optional speed as integer or float or double
+        optional command as string
+        optional exitCode as integer
+        optional stderr as string
+    end interface
+
+    interface User
+        id as string
+        username as string
+        admin as boolean
+        disabled as boolean
+        onlyAdmin as boolean
+        libraries as LibraryAccess
+        limits as UserLimits
+        parental as ParentalControls
+        createdAt as string
+    end interface
+
+    interface UserCreate
+        username as string
+        password as string
+        optional admin as boolean
+        libraries as LibraryAccess
+        optional limits as UserLimits
+        optional parental as ParentalControls
+    end interface
+
+    interface UserLimits
+        optional maxStreams as integer
+        optional remoteQualityCapBps as integer or longinteger
+    end interface
+
+    interface UserList
+        items as User[]
+    end interface
+
+    interface UserState
+        played as boolean
+        optional positionMs as integer
+        optional versionId as string
+        optional lastPlayedAt as string
+    end interface
+
+    interface UserStateUpdate
+        optional played as boolean
+        optional positionMs as integer
+        optional playedAt as string
+        optional versionId as string
+    end interface
+
+    interface UserUpdate
+        optional username as string
+        optional admin as boolean
+        optional disabled as boolean
+        optional libraries as LibraryAccess
+        optional limits as UserLimits
+        optional parental as ParentalControls
+    end interface
+
+    interface Version
+        id as string
+        optional edition as string
+        optional resolution as Resolution
+        optional hdr as HdrFormat
+        available as boolean
+        optional libraryId as string
+        optional container as string
+        durationMs as integer
+        sizeBytes as integer or longinteger
+        optional bitrateBps as integer or longinteger
+        parts as VersionPart[]
+        tracks as Track[]
+        optional audioTrackId as string
+        optional subtitleTrackId as string
+        optional defaultAudioTrackId as string
+        optional defaultSubtitleTrackId as string
+        workIds as string[]
+        name as string
+        optional chapterCount as integer
+        optional chapters as Chapter[]
+        optional markers as Marker[]
+    end interface
+
+    interface VersionPart
+        fileId as string
+        name as string
+        durationMs as integer
+        sizeBytes as integer or longinteger
+    end interface
+
+    interface VideoEntry
+        codec as string
+        delivery as CapabilityDelivery[]
+        optional containers as string[]
+        optional tags as string[]
+        optional profiles as string[]
+        optional maxLevel as integer or float or double
+        optional maxBitDepth as integer
+        optional maxWidth as integer
+        optional maxHeight as integer
+        optional maxFrameRate as integer or float or double
+        optional maxBitrateBps as integer or longinteger
+        optional maxRefFrames as integer
+        optional interlaced as boolean
+        optional anamorphic as boolean
+        optional hdr as HdrFormat[]
+        optional dolbyVision as DolbyVisionEntry[]
+        optional doviFallback as boolean
+    end interface
+
+    interface VideoTrackInfo
+        width as integer
+        height as integer
+        optional resolution as Resolution
+        optional frameRate as integer or float or double
+        optional profile as string
+        optional hdr as HdrFormat
+    end interface
+
+    interface WorkDetail
+        id as string
+        kind as WorkKind
+        title as string
+        optional year as integer
+        optional durationMs as integer
+        optional communityRating as integer or float or double
+        optional communityVotes as integer
+        optional contentRating as string
+        optional addedAt as string
+        matchState as MatchState
+        available as boolean
+        images as WorkImages
+        optional userState as UserState
+        optional movie as MovieInfo
+        optional series as SeriesInfo
+        optional season as SeasonInfo
+        optional episode as EpisodeInfo
+        optional extra as ExtraInfo
+        optional book as BookInfo
+        optional libraryId as string
+        optional path as string
+        optional originalTitle as string
+        optional sortTitle as string
+        optional overview as string
+        genres as string[]
+        studios as string[]
+        credits as Credit[]
+        externalIds as ExternalId[]
+        versions as Version[]
+        optional remembersTracks as boolean
+        optional tracksRemembered as boolean
+        extras as WorkSummary[]
+        collections as CollectionSummary[]
+        optional similar as WorkSummary[]
+        optional listIds as string[]
+        optional lockedFields as string[]
+    end interface
+
+    interface WorkField
+        field as string
+        name as string
+        type as WorkFieldType
+        ops as WorkFieldOp[]
+        kinds as WorkKind[]
+        sortable as boolean
+        optional defaultDirection as SortDirection
+        optional unit as string
+        optional valueSource as WorkFieldValueSource
+    end interface
+
+    interface WorkFieldList
+        items as WorkField[]
+    end interface
+
+    interface WorkFieldOp
+        op as string
+        arity as integer
+    end interface
+
+    interface WorkFieldValue
+        value as string
+        name as string
+    end interface
+
+    interface WorkFieldValueList
+        items as WorkFieldValue[]
+    end interface
+
+    interface WorkImages
+        optional poster as ImageRef
+        optional backdrop as ImageRef
+        optional still as ImageRef
+        optional logo as ImageRef
+    end interface
+
+    interface WorkList
+        id as string
+        name as string
+        kind as ListKind
+        builtIn as boolean
+        workCount as integer
+        optional smart as WorkListSmart
+        optional items as WorkSummary[]
+        optional sort as ListSort
+    end interface
+
+    interface WorkListList
+        items as WorkList[]
+    end interface
+
+    interface WorkListSmart
+        query as WorkQuery
+        optional errors as FieldError[]
+    end interface
+
+    interface WorkQuery
+        optional version as integer
+        kinds as WorkKind[]
+        optional where as RuleGroup
+        optional sort as SortKey[]
+        optional maxWorks as integer
+    end interface
+
+    interface WorkQueryRequest
+        query as WorkQuery
+        optional library as string
+        optional unmatched as boolean
+        optional offset as integer
+        optional limit as integer
+    end interface
+
+    interface WorkSummary
+        id as string
+        kind as WorkKind
+        title as string
+        optional year as integer
+        optional durationMs as integer
+        optional communityRating as integer or float or double
+        optional communityVotes as integer
+        optional contentRating as string
+        optional addedAt as string
+        matchState as MatchState
+        available as boolean
+        images as WorkImages
+        optional userState as UserState
+        optional movie as MovieInfo
+        optional series as SeriesInfo
+        optional season as SeasonInfo
+        optional episode as EpisodeInfo
+        optional extra as ExtraInfo
+        optional book as BookInfo
+        optional libraryId as string
+        optional path as string
+    end interface
+
+    interface WorkSummaryFeed
+        items as WorkSummary[]
+        optional next as string
+    end interface
+
+    interface WorkSummaryList
+        items as WorkSummary[]
+    end interface
+
+    interface WorkSummaryPage
+        items as WorkSummary[]
+        optional total as integer
+        optional letters as LetterStart[]
+    end interface
+
+    interface WorkUpdate
+        optional title as string
+        optional sortTitle as string
+        optional originalTitle as string
+        optional year as integer
+        optional overview as string
+        optional contentRating as string
+        optional genres as string[]
+        optional studios as string[]
+        optional episode as WorkUpdateEpisode
+        optional book as WorkUpdateBook
+        optional series as WorkUpdateSeries
+    end interface
+
+    interface WorkUpdateBook
+        optional subtitle as string
+        optional publisher as string
+        optional releaseDate as string
+        optional asin as string
+        optional authors as string[]
+        optional narrators as string[]
+        optional series as BookSeriesUpdate[]
+    end interface
+
+    interface WorkUpdateEpisode
+        optional airDate as string
+    end interface
+
+    interface WorkUpdateSeries
+        optional ordering as string
+    end interface
+
+    interface WorksUpdate
+        workIds as string[]
+        optional authors as string[]
+        optional narrators as string[]
+        optional genres as string[]
+        optional series as WorksUpdateSeries
+    end interface
+
+    interface WorksUpdateSeries
+        name as string
+        optional keepPosition as boolean
+    end interface
 end namespace

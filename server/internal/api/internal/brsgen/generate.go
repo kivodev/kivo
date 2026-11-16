@@ -41,7 +41,7 @@ func generate(spec []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return render(ops, enums(root)), nil
+	return render(ops, enums(root), models(root)), nil
 }
 
 func operations(root *yaml.Node) ([]operation, error) {
@@ -141,7 +141,7 @@ func enums(root *yaml.Node) []enum {
 	return out
 }
 
-func render(ops []operation, enums []enum) []byte {
+func render(ops []operation, enums []enum, models []model) []byte {
 	var b bytes.Buffer
 	b.WriteString(header)
 	b.WriteString("namespace KivoApi\n")
@@ -151,6 +151,9 @@ func render(ops []operation, enums []enum) []byte {
 	}
 	for _, e := range enums {
 		writeEnum(&b, e)
+	}
+	for _, m := range models {
+		writeModel(&b, m)
 	}
 	b.WriteString("end namespace\n")
 	return b.Bytes()
@@ -162,7 +165,9 @@ const header = `' Generated from server/internal/api/openapi.yaml by make genera
 ' A function per operation returns the request to send: its method, its
 ' path from the API root, its query and JSON body (invalid when it has
 ' none), the body's media type, and whether it carries the session's token.
-' The app's request task sends it; answers are left as ParseJson gives them.
+' The app's request task sends it. An interface per object schema
+' describes the JSON both ways; it exists only for the compiler, so an
+' answer is still the object ParseJson gives.
 
 `
 
