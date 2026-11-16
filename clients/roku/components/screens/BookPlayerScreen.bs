@@ -1,0 +1,431 @@
+import "pkg:/source/generated/api.bs"
+import "pkg:/source/generated/tokens.bs"
+import "pkg:/source/shared/capabilities.bs"
+import "pkg:/source/shared/display.bs"
+import "pkg:/source/shared/session.bs"
+import "pkg:/source/shared/ui.bs"
+
+' Back and forward, as the other apps skip.
+const skipBackMs = 10000
+const skipForwardMs = 30000
+
+sub init()
+    m.audio = m.top.FindNode("audio")
+    m.controls = m.top.FindNode("controls")
+    m.menu = m.top.FindNode("menu")
+    m.status = m.top.FindNode("status")
+    m.heartbeat = m.top.FindNode("heartbeat")
+    m.second = m.top.FindNode("second")
+    m.top.FindNode("track").color = KivoTokens.Color.progressTrack
+    m.top.FindNode("fill").color = KivoTokens.Color.progress
+    KivoUi.style(m.top.FindNode("title"), KivoTokens.TextSize.title, KivoTokens.Color.text, true)
+    KivoUi.style(m.top.FindNode("people"), KivoTokens.TextSize.base, KivoTokens.Color.textMuted)
+    KivoUi.style(m.top.FindNode("chapter"), KivoTokens.TextSize.lg, KivoTokens.Color.text)
+    KivoUi.style(m.top.FindNode("elapsed"), KivoTokens.TextSize.sm, KivoTokens.Color.textMuted)
+    KivoUi.style(m.top.FindNode("left"), KivoTokens.TextSize.sm, KivoTokens.Color.textMuted)
+    KivoUi.style(m.status, KivoTokens.TextSize.base, KivoTokens.Color.textMuted)
+    m.audio.notificationInterval = 1
+    m.audio.ObserveField("state", "onState")
+    m.audio.ObserveField("position", "onPosition")
+    m.audio.ObserveField("contentIndex", "onPart")
+    m.controls.ObserveField("buttonSelected", "onControl")
+    m.menu.ObserveField("chosen", "onMenuChosen")
+    m.menu.ObserveField("closed", "closeMenu")
+    m.heartbeat.ObserveField("fire", "report")
+    m.second.ObserveField("fire", "onSecond")
+    m.tasks = {}
+    m.play = invalid
+    m.leaving = false
+    m.partOffset = 0
+    m.sleep = invalid
+    m.top.ObserveField("params", "load")
+end sub
+
+sub focus()
+    if m.menu.visible
+        m.menu.callFunc("focus")
+    else
+        m.controls.SetFocus(true)
+    end if
+end sub
+
+sub load()
+    m.status.text = "Loading…"
+    m.tasks.work = Kivo.send(KivoApi.getWork(m.top.params.id), "onWork")
+end sub
+
+sub onWork(event as object)
+    response = event.GetData()
+    m.tasks.work = invalid
+    if response.code <> 200
+        m.status.text = KivoDisplay.problem(response)
+        return
+    end if
+    m.work = response.body
+    m.top.FindNode("title").text = m.work.title
+    m.top.FindNode("people").text = people(m.work.book)
+    m.top.FindNode("cover").uri = Kivo.imageUrl(m.work.images.poster, 560)
+    body = { workId: m.work.id, capabilities: KivoPlayer.capabilities(), settings: { directPlay: true } }
+    if m.top.params.positionMs <> invalid then body.positionMs = m.top.params.positionMs
+    m.tasks.start = Kivo.send(KivoApi.startPlay(body), "onStarted")
+end sub
+
+' "By the authors · Read by the narrators".
+function people(book as dynamic) as string
+    if book = invalid then return ""
+    parts = []
+    if book.authors <> invalid and book.authors.Count() > 0 then parts.Push("By " + names(book.authors))
+    if book.narrators <> invalid and book.narrators.Count() > 0 then parts.Push("Read by " + names(book.narrators))
+    return parts.Join("  ·  ")
+end function
+
+function names(refs as object) as string
+    out = []
+    for each ref in refs
+        out.Push(ref.name)
+    end for
+    return out.Join(", ")
+end function
+
+sub onStarted(event as object)
+    response = event.GetData()
+    m.tasks.start = invalid
+    if response.code <> 201
+        m.status.text = KivoDisplay.problem(response)
+        return
+    end if
+    if m.leaving
+        Kivo.send(KivoApi.stopPlay(response.body.id, { positionMs: response.body.startMs }), "onStopped")
+        return
+    end if
+    start(response.body)
+end sub
+
+' Plays the book's parts in turn from the start position: one file, or a
+' file a chapter; a stream plays as HLS.
+sub start(play as object)
+    m.play = play
+    m.chapters = play.chapters
+    m.partOffsets = []
+    offset = 0
+    for each part in play.parts
+        m.partOffsets.Push(offset)
+        offset = offset + part.durationMs
+    end for
+    content = CreateObject("roSGNode", "ContentNode")
+    format = "mp4"
+    if play.delivery = "stream" then format = "hls"
+    if play.delivery = "file" and play.parts.Count() > 1
+        first = 0
+        for i = 0 to play.parts.Count() - 1
+            if play.startMs >= m.partOffsets[i] then first = i
+            part = content.CreateChild("ContentNode")
+            part.url = mediaUrl(play.parts[i].url)
+            part.streamFormat = format
+            part.title = m.work.title
+        end for
+        m.partOffset = m.partOffsets[first]
+        content.GetChild(first).PlayStart = (play.startMs - m.partOffset) / 1000
+        m.audio.contentIsPlaylist = true
+        m.audio.content = content
+        m.audio.nextContentIndex = first
+    else
+        content.url = mediaUrl(play.url)
+        content.streamFormat = format
+        content.PlayStart = play.startMs / 1000
+        content.title = m.work.title
+        m.audio.contentIsPlaylist = false
+        m.audio.content = content
+    end if
+    m.status.text = ""
+    m.audio.control = "play"
+    m.heartbeat.control = "start"
+    m.second.control = "start"
+    showControls()
+    onPosition()
+end sub
+
+function mediaUrl(url as string) as string
+    return m.global.server + "/api/v1/" + url
+end function
+
+function positionMs() as integer
+    return m.partOffset + Int(m.audio.position * 1000)
+end function
+
+sub onPart()
+    i = m.audio.contentIndex
+    if m.partOffsets <> invalid and i >= 0 and i < m.partOffsets.Count() then m.partOffset = m.partOffsets[i]
+end sub
+
+sub showControls()
+    pause = "Pause"
+    if m.audio.state = "paused" then pause = "Play"
+    labels = ["−10s", pause, "+30s", "Chapters", sleepLabel()]
+    focused = m.controls.buttonFocused
+    m.controls.buttons = labels
+    if focused >= 0 then m.controls.focusButton = focused else m.controls.focusButton = 1
+end sub
+
+function sleepLabel() as string
+    if m.sleep = invalid then return "Sleep timer"
+    if m.sleep.endOfChapter then return "Sleep: chapter end"
+    return "Sleep: " + Int((m.sleep.leftMs + 59999) / 60000).ToStr() + " min"
+end function
+
+' The chapter playing and the place in it, or in the book without chapters.
+sub onPosition()
+    if m.play = invalid then return
+    position = positionMs()
+    chapter = chapterAt(position)
+    from = 0
+    upto = m.play.durationMs
+    title = ""
+    if chapter <> invalid
+        from = chapter.startMs
+        upto = chapter.endMs
+        if chapter.title <> invalid then title = chapter.title
+    end if
+    m.top.FindNode("chapter").text = title
+    length = upto - from
+    done = position - from
+    if length > 0 then m.top.FindNode("fill").width = 960 * done / length
+    m.top.FindNode("elapsed").text = clock(done)
+    m.top.FindNode("left").text = "−" + clock(length - done)
+end sub
+
+function chapterAt(position as integer) as dynamic
+    if m.chapters = invalid then return invalid
+    for each chapter in m.chapters
+        if position >= chapter.startMs and position < chapter.endMs then return chapter
+    end for
+    return invalid
+end function
+
+' A length as h:mm:ss or m:ss.
+function clock(ms as integer) as string
+    if ms < 0 then ms = 0
+    seconds = Int(ms / 1000)
+    h = Int(seconds / 3600)
+    mm = Int((seconds mod 3600) / 60)
+    ss = seconds mod 60
+    pad = function(n as integer) as string
+        if n < 10 then return "0" + n.ToStr()
+        return n.ToStr()
+    end function
+    if h > 0 then return h.ToStr() + ":" + pad(mm) + ":" + pad(ss)
+    return mm.ToStr() + ":" + pad(ss)
+end function
+
+sub onState()
+    state = m.audio.state
+    if state = "finished"
+        position = 0
+        if m.play <> invalid then position = m.play.durationMs
+        leave(position)
+        return
+    end if
+    if state = "error"
+        m.status.text = "This book couldn't play on this Roku."
+        if m.play <> invalid then Kivo.send(KivoApi.stopPlay(m.play.id, { positionMs: positionMs(), code: KivoApi.PlayerErrorCode.mediaDecodeError, detail: m.audio.errorMsg }), "onStopped")
+        m.play = invalid
+        return
+    end if
+    if m.play <> invalid then showControls()
+    report()
+end sub
+
+sub report()
+    if m.play = invalid or m.leaving or m.tasks.update <> invalid then return
+    states = { playing: KivoApi.PlayState.playing, paused: KivoApi.PlayState.paused, buffering: KivoApi.PlayState.buffering }
+    state = states[m.audio.state]
+    if state = invalid then return
+    m.tasks.update = Kivo.send(KivoApi.updatePlay(m.play.id, { positionMs: positionMs(), state: state }), "onReported")
+end sub
+
+sub onReported(event as object)
+    m.tasks.update = invalid
+    if event.GetData().code = 410 and not m.leaving
+        m.leaving = true
+        m.heartbeat.control = "stop"
+        m.audio.control = "stop"
+        m.play = invalid
+        m.status.text = KivoDisplay.tables().words.playStopped
+    end if
+end sub
+
+' Moves to [target] on the book's timeline, within its part's file or another's.
+sub seekTo(target as integer)
+    if m.play = invalid then return
+    if target < 0 then target = 0
+    if target > m.play.durationMs - 1000 then target = m.play.durationMs - 1000
+    if m.audio.contentIsPlaylist
+        part = 0
+        for i = 0 to m.partOffsets.Count() - 1
+            if target >= m.partOffsets[i] then part = i
+        end for
+        if part <> m.audio.contentIndex
+            m.audio.content.GetChild(part).PlayStart = (target - m.partOffsets[part]) / 1000
+            m.audio.nextContentIndex = part
+            m.audio.control = "skipcontent"
+            m.partOffset = m.partOffsets[part]
+            return
+        end if
+    end if
+    m.audio.seek = (target - m.partOffset) / 1000
+end sub
+
+sub togglePlay()
+    if m.audio.state = "playing"
+        m.audio.control = "pause"
+    else if m.audio.state = "paused"
+        m.audio.control = "resume"
+    end if
+end sub
+
+sub onControl()
+    i = m.controls.buttonSelected
+    if i = 0
+        seekTo(positionMs() - skipBackMs)
+    else if i = 1
+        togglePlay()
+    else if i = 2
+        seekTo(positionMs() + skipForwardMs)
+    else if i = 3
+        openChapters()
+    else if i = 4
+        openSleep()
+    end if
+end sub
+
+sub openChapters()
+    if m.chapters = invalid or m.chapters.Count() = 0 then return
+    items = []
+    current = chapterAt(positionMs())
+    checked = "0"
+    for i = 0 to m.chapters.Count() - 1
+        chapter = m.chapters[i]
+        title = "Chapter " + (i + 1).ToStr()
+        if chapter.title <> invalid and chapter.title <> "" then title = chapter.title
+        items.Push({ id: i.ToStr(), label: title + "  ·  " + clock(chapter.endMs - chapter.startMs) })
+        if current <> invalid and current.startMs = chapter.startMs then checked = i.ToStr()
+    end for
+    m.menuPage = "chapters"
+    m.menu.title = "Chapters"
+    m.menu.note = ""
+    m.menu.checkedId = checked
+    m.menu.items = items
+    m.menu.visible = true
+    m.menu.callFunc("focus")
+end sub
+
+' The sleep timer: off, a number of minutes of playing, or the chapter's end.
+sub openSleep()
+    items = [{ id: "off", label: "Off" }]
+    for each minutes in [5, 10, 15, 30, 45, 60]
+        items.Push({ id: minutes.ToStr(), label: minutes.ToStr() + " minutes" })
+    end for
+    if m.chapters <> invalid and m.chapters.Count() > 0 then items.Push({ id: "chapter", label: "End of chapter" })
+    checked = "off"
+    if m.sleep <> invalid then checked = m.sleep.choice
+    m.menuPage = "sleep"
+    m.menu.title = "Sleep timer"
+    m.menu.note = ""
+    m.menu.checkedId = checked
+    m.menu.items = items
+    m.menu.visible = true
+    m.menu.callFunc("focus")
+end sub
+
+sub onMenuChosen()
+    id = m.menu.chosen
+    page = m.menuPage
+    closeMenu()
+    if page = "chapters"
+        seekTo(m.chapters[id.ToInt()].startMs)
+    else if page = "sleep"
+        if id = "off"
+            m.sleep = invalid
+        else if id = "chapter"
+            m.sleep = { choice: id, endOfChapter: true, leftMs: 0 }
+        else
+            m.sleep = { choice: id, endOfChapter: false, leftMs: id.ToInt() * 60000 }
+        end if
+        showControls()
+    end if
+end sub
+
+sub closeMenu()
+    m.menu.visible = false
+    m.menuPage = invalid
+    m.controls.SetFocus(true)
+end sub
+
+' A second of playing counts down the sleep timer, which pauses the book
+' when it runs out, or at the end of the chapter it was set in.
+sub onSecond()
+    if m.sleep = invalid or m.audio.state <> "playing" then return
+    if m.sleep.endOfChapter
+        chapter = chapterAt(positionMs())
+        if m.sleep.chapterEnd = invalid and chapter <> invalid then m.sleep.chapterEnd = chapter.endMs
+        if m.sleep.chapterEnd <> invalid and positionMs() >= m.sleep.chapterEnd - 1000 then sleepNow()
+        return
+    end if
+    m.sleep.leftMs = m.sleep.leftMs - 1000
+    if m.sleep.leftMs <= 0
+        sleepNow()
+    else
+        showControls()
+    end if
+end sub
+
+sub sleepNow()
+    m.sleep = invalid
+    m.audio.control = "pause"
+    showControls()
+end sub
+
+sub leave(position as integer)
+    m.leaving = true
+    m.heartbeat.control = "stop"
+    m.second.control = "stop"
+    m.audio.control = "stop"
+    if m.play = invalid
+        if m.tasks.start = invalid then m.top.navigate = { back: true }
+        return
+    end if
+    m.tasks.stop = Kivo.send(KivoApi.stopPlay(m.play.id, { positionMs: position }), "onStopped")
+    m.play = invalid
+end sub
+
+sub onStopped()
+    m.tasks.stop = invalid
+    if m.leaving then m.top.navigate = { back: true }
+end sub
+
+function onKeyEvent(key as string, press as boolean) as boolean
+    if not press then return false
+    if key = "back"
+        position = 0
+        if m.play <> invalid then position = positionMs()
+        leave(position)
+        return true
+    end if
+    if key = "play"
+        togglePlay()
+        return true
+    end if
+    if key = "rewind" or key = "replay"
+        seekTo(positionMs() - skipBackMs)
+        return true
+    end if
+    if key = "fastforward"
+        seekTo(positionMs() + skipForwardMs)
+        return true
+    end if
+    if key = "options"
+        openChapters()
+        return true
+    end if
+    return false
+end function

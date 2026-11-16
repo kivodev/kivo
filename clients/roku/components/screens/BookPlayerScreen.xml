@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Plays a book in the Audio node: its cover, title and people, the
+     chapter playing with its place, and the controls: back 10 seconds,
+     play or pause, forward 30, chapters and the sleep timer. The remote's
+     play, rewind and fast-forward keys work too. It tells the server where
+     it is every ten seconds and when it stops. -->
+<component name="BookPlayerScreen" extends="KivoScreen">
+  <children>
+    <Audio id="audio" />
+    <Poster id="cover" translation="[160, 200]" width="560" height="560" loadDisplayMode="scaleToFit" />
+    <Label id="title" translation="[800, 200]" width="960" wrap="true" maxLines="2" />
+    <Label id="people" translation="[800, 340]" width="960" wrap="true" maxLines="2" />
+    <Label id="chapter" translation="[800, 460]" width="960" />
+    <Rectangle id="track" translation="[800, 530]" width="960" height="8" />
+    <Rectangle id="fill" translation="[800, 530]" width="0" height="8" />
+    <Label id="elapsed" translation="[800, 556]" width="480" />
+    <Label id="left" translation="[1280, 556]" width="480" horizAlign="right" />
+    <ButtonGroup id="controls" translation="[800, 660]" layoutDirection="horiz" itemSpacings="[16]" minWidth="180" />
+    <Label id="status" translation="[800, 800]" width="960" wrap="true" />
+    <MenuPanel id="menu" visible="false" />
+    <Timer id="heartbeat" duration="10" repeat="true" />
+    <Timer id="second" duration="1" repeat="true" />
+  </children>
+</component>

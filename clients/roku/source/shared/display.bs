@@ -170,16 +170,16 @@ namespace KivoDisplay
     function preferenceLanguages() as object
         table = KivoDisplay.tables().languages.languages
         byName = {}
-        names = []
+        sorted = []
         for each code in table
             if code.Len() = 2 and byName[table[code]] = invalid
                 byName[table[code]] = code
-                names.Push(table[code])
+                sorted.Push(table[code])
             end if
         end for
-        names.Sort("i")
+        sorted.Sort("i")
         out = []
-        for each name in names
+        for each name in sorted
             out.Push({ id: byName[name], label: name })
         end for
         return out
