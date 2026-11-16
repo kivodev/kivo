@@ -39,19 +39,21 @@ type enum struct {
 
 var methods = []string{"get", "put", "post", "patch", "delete", "head"}
 
-// generate returns the BrighterScript source for the spec.
-func generate(spec []byte) ([]byte, error) {
+// generate returns the BrighterScript sources for the spec: the
+// operations, and the types (enums and interfaces) they and the app use.
+// The types compile to nothing, so any file may import them.
+func generate(spec []byte) (api, types []byte, err error) {
 	var doc yaml.Node
 	if err := yaml.Unmarshal(spec, &doc); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if len(doc.Content) == 0 {
-		return nil, errors.New("empty spec")
+		return nil, nil, errors.New("empty spec")
 	}
 	root := doc.Content[0]
 	ops, err := operations(root)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	g := newModeler(root)
 	for i := range ops {
@@ -69,7 +71,8 @@ func generate(spec []byte) ([]byte, error) {
 			op.answerType = g.schemaType(op.id, "Answer", op.answerSchema)
 		}
 	}
-	return render(ops, enums(root), g.all()), nil
+	api, types = render(ops, enums(root), g.all())
+	return api, types, nil
 }
 
 func operations(root *yaml.Node) ([]operation, error) {
@@ -199,22 +202,26 @@ func enums(root *yaml.Node) []enum {
 	return out
 }
 
-func render(ops []operation, enums []enum, models []model) []byte {
-	var b bytes.Buffer
-	b.WriteString(header)
-	b.WriteString("namespace KivoApi\n")
-	b.WriteString(pathEscape)
+func render(ops []operation, enums []enum, models []model) (api, types []byte) {
+	var a, t bytes.Buffer
+	a.WriteString(header)
+	a.WriteString("import \"pkg:/source/generated/types.bs\"\n\nnamespace KivoApi\n")
+	a.WriteString(helpers)
 	for _, op := range ops {
-		writeOperation(&b, op)
+		writeOperation(&a, op)
 	}
+	a.WriteString("end namespace\n")
+	t.WriteString(typesHeader)
+	t.WriteString("namespace KivoApi\n")
+	t.WriteString(request)
 	for _, e := range enums {
-		writeEnum(&b, e)
+		writeEnum(&t, e)
 	}
 	for _, m := range models {
-		writeModel(&b, m)
+		writeModel(&t, m)
 	}
-	b.WriteString("end namespace\n")
-	return b.Bytes()
+	t.WriteString("end namespace\n")
+	return a.Bytes(), t.Bytes()
 }
 
 const header = `' Generated from server/internal/api/openapi.yaml by make generate in
@@ -224,13 +231,22 @@ const header = `' Generated from server/internal/api/openapi.yaml by make genera
 ' query, path and body; the app's request task sends it. One with a JSON
 ' answer has an Answer function that gives the response's body as its
 ' type, and a GET whose answer isn't JSON (an image, a stream, subtitles)
-' has a Url function for the node that fetches it. An interface per object
-' schema describes the JSON both ways; it exists only for the compiler, so
-' an answer is still the object ParseJson gives.
+' has a Url function for the node that fetches it. The types are in
+' types.bs.
 
 `
 
-const pathEscape = `
+const typesHeader = `' Generated from server/internal/api/openapi.yaml by make generate in
+' server/ (internal/api/internal/brsgen). Don't edit.
+'
+' The API's types: an enum per named string enum and an interface per
+' object schema, describing the JSON both ways. They exist only for the
+' compiler (an answer is still the object ParseJson gives), so they cost
+' nothing at run time and any file may import them.
+
+`
+
+const request = `
     ' A request to send: its method, its path from the server's address, its
     ' query and JSON body, the body's media type, and whether it carries the
     ' session's token.
@@ -242,7 +258,9 @@ const pathEscape = `
         contentType as dynamic
         auth as boolean
     end interface
+`
 
+const helpers = `
     ' A path parameter, escaped for the URL.
     function pathEscape(value as string) as string
         return CreateObject("roUrlTransfer").Escape(value)

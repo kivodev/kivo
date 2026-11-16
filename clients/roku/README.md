@@ -2,7 +2,7 @@
 
 The Roku app: a SceneGraph app in BrighterScript, compiled to the zip a Roku sideloads. Roku runs no web code, so it shares no code with the TV web build; it shares the contract and the tables instead, each generated or packaged from the one source:
 
-- `source/generated/api.bs`: a function per API operation returning the request to send, and an enum per named string enum, written from `server/internal/api/openapi.yaml` by `make generate` in `server/` (`internal/api/internal/brsgen`). `make check-generated` fails while it's stale.
+- `source/generated/api.bs` and `types.bs`, written from `server/internal/api/openapi.yaml` by `make generate` in `server/` (`internal/api/internal/brsgen`); `make check-generated` fails while they're stale. `api.bs` has a function per operation returning the request to send, typed by its query, path and body, an `Answer` function giving a JSON answer as its type, and a `Url` function for an image, stream or subtitle a node fetches itself. `types.bs` has an enum per named string enum and an interface per object schema. The types exist only for the compiler, so any file may import `types.bs` at no cost; compare a field with an enum member (`KivoApi.WorkKind.movie`), never a string.
 - `source/generated/tokens.bs`: the dark theme's colours and the TV type scale and layout, written from `shared/tokens.json` by `./gradlew :tokens:rokuTokens` in `clients/`. `:tokens:test` fails while it's stale.
 - `display/`: `shared/display`'s words and language tables, packaged as they are (`bsconfig.json`) and read by `source/shared/display.bs`.
 - `images/`: the channel poster and splash, rendered from `shared/brand` by `shared/brand/render.sh` (needs `rsvg-convert`).
@@ -30,6 +30,8 @@ npm run build
 ```
 
 This compiles the app with BrighterScript (`bsc`), checks it with bslint, and writes `build/kivo-roku.zip`. `npm run check` compiles the app and its tests without packaging, as CI does.
+
+The app builds with BrighterScript 0.73, which reads the generated interfaces but doesn't check them. `npm run check:types` checks the app against them with BrighterScript 1 (an alpha, so only for this check): a misspelt field, a wrong argument or a body missing a required field fails it. It also compiles `typecheck/bad.bs`, which must fail on its misspelt field, so a check that stopped reading the types can't pass. Name a component field something other than a built-in method (`items`, `next`, `count`), which BrighterScript 1 reads as the method. It expects BrighterScript 1 at `node_modules/.bin/bsc1`, or at `BSC1`.
 
 ## Sideload
 

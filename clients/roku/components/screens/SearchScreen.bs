@@ -71,6 +71,7 @@ sub onResults(event as object)
     if task.generation <> m.generation then return
     m.task = invalid
     response = event.GetData()
+    answer = KivoApi.searchWorksAnswer(response)
     if response.code = 401
         m.top.navigate = { signedOut: true }
         return
@@ -80,7 +81,7 @@ sub onResults(event as object)
         KivoStates.failed(m.state, response)
         return
     end if
-    results = response.body
+    results = answer
     root = CreateObject("roSGNode", "ContentNode")
     sizes = []
     heights = []

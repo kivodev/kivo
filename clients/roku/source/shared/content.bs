@@ -1,3 +1,4 @@
+import "pkg:/source/generated/types.bs"
 import "pkg:/source/shared/session.bs"
 import "pkg:/source/shared/ui.bs"
 
@@ -33,14 +34,14 @@ namespace KivoContent
     function tvLibraries(libraries as object) as object
         out = []
         for each library in libraries
-            if library.kind <> "audiobooks" then out.Push(library)
+            if library.kind <> KivoApi.LibraryKind.audiobooks then out.Push(library)
         end for
         return out
     end function
 
     ' A row of cards: [works] (WorkSummary list) under [title], drawn as
     ' posters, or as landscape stills when [landscape].
-    function row(title as string, works as object, landscape as boolean) as object
+    function row(title as string, works as KivoApi.WorkSummary[], landscape as boolean) as object
         node = CreateObject("roSGNode", "ContentNode")
         node.title = title
         for each work in works
@@ -49,13 +50,13 @@ namespace KivoContent
         return node
     end function
 
-    function card(work as object, landscape as boolean) as object
+    function card(work as KivoApi.WorkSummary, landscape as boolean) as object
         return KivoContent.fill(KivoContent.blank(), work, landscape)
     end function
 
     ' Puts [work] on the card [node], as card makes it, for a grid that
     ' lists blank cards first and fills them a page at a time.
-    function fill(node as object, work as object, landscape as boolean) as object
+    function fill(node as object, work as KivoApi.WorkSummary, landscape as boolean) as object
         node.workId = work.id
         node.kind = work.kind
         node.played = work.userState <> invalid and work.userState.played = true
@@ -94,9 +95,9 @@ namespace KivoContent
 
     ' A card's title: an episode, or a season bundled in Recently Added,
     ' goes by its series; a movie with its edition, "Blade Runner · Final Cut".
-    function cardTitle(work as object) as string
-        if work.kind = "episode" and work.episode <> invalid and work.episode.seriesTitle <> invalid then return work.episode.seriesTitle
-        if work.kind = "season" and work.series <> invalid and work.series.recentlyAddedCount <> invalid and work.season <> invalid and work.season.seriesTitle <> invalid then return work.season.seriesTitle
+    function cardTitle(work as KivoApi.WorkSummary) as string
+        if work.kind = KivoApi.WorkKind.episode and work.episode <> invalid and work.episode.seriesTitle <> invalid then return work.episode.seriesTitle
+        if work.kind = KivoApi.WorkKind.season and work.series <> invalid and work.series.recentlyAddedCount <> invalid and work.season <> invalid and work.season.seriesTitle <> invalid then return work.season.seriesTitle
         if work.movie <> invalid and work.movie.edition <> invalid and work.movie.edition <> "" then return work.title + " · " + work.movie.edition
         return work.title
     end function
@@ -173,12 +174,12 @@ namespace KivoContent
     ' The line under a card's title, as the Android TV app's: a show's
     ' years or its new episodes, a season's episodes, an episode's title
     ' and time left, a movie's time left in progress, else the year.
-    function caption(work as object) as string
+    function caption(work as KivoApi.WorkSummary) as string
         position = invalid
         if work.userState <> invalid then position = work.userState.positionMs
         added = invalid
         if work.series <> invalid then added = work.series.recentlyAddedCount
-        if work.kind = "series"
+        if work.kind = KivoApi.WorkKind.series
             if added <> invalid then return KivoUi.plural(added, "episode", "episodes")
             last = invalid
             if work.series <> invalid then last = work.series.lastAirYear
@@ -186,16 +187,16 @@ namespace KivoContent
             if work.year <> invalid then return work.year.ToStr()
             return ""
         end if
-        if work.kind = "season"
+        if work.kind = KivoApi.WorkKind.season
             if added <> invalid then return work.title + " · " + KivoUi.plural(added, "episode", "episodes")
             if work.season <> invalid and work.season.episodeCount <> invalid then return KivoUi.plural(work.season.episodeCount, "episode", "episodes")
             return ""
         end if
-        if work.kind = "episode"
+        if work.kind = KivoApi.WorkKind.episode
             if position <> invalid and work.durationMs <> invalid then return work.title + " · " + KivoUi.timeLeft(work.durationMs - position)
             return work.title
         end if
-        if work.kind = "movie" and position <> invalid and work.durationMs <> invalid then return KivoUi.timeLeft(work.durationMs - position)
+        if work.kind = KivoApi.WorkKind.movie and position <> invalid and work.durationMs <> invalid then return KivoUi.timeLeft(work.durationMs - position)
         if work.year <> invalid then return work.year.ToStr()
         return ""
     end function

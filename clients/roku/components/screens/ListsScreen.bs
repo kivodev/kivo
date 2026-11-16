@@ -45,6 +45,7 @@ end sub
 
 sub onLists(event as object)
     response = event.GetData()
+    answer = KivoApi.listListsAnswer(response)
     m.task = invalid
     if response.code = 401
         m.top.navigate = { signedOut: true }
@@ -60,7 +61,7 @@ sub onLists(event as object)
     root = CreateObject("roSGNode", "ContentNode")
     sizes = []
     heights = []
-    for each list in response.body.items
+    for each list in answer.items
         ' A shelf for a list of a kind this app knows, Watchlist only with
         ' something in it, and none for a list with nothing the TV plays.
         known = list.kind = KivoApi.ListKind.manual or list.kind = KivoApi.ListKind.smart
@@ -92,7 +93,7 @@ sub onLists(event as object)
 end sub
 
 ' A shelf's heading: the list's name, a smart list's mark, and how many titles it has.
-function shelfTitle(list as object) as string
+function shelfTitle(list as KivoApi.WorkList) as string
     parts = [list.name]
     if list.kind = KivoApi.ListKind.smart then parts.Push("Smart list")
     parts.Push(KivoUi.plural(list.workCount, "title", "titles"))

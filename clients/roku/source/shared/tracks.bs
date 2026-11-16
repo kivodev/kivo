@@ -1,3 +1,4 @@
+import "pkg:/source/generated/types.bs"
 ' A work's versions and tracks as the pickers list them: the title page's
 ' (before a play) and the player's (of a play's tracks).
 namespace KivoTracks
@@ -10,7 +11,7 @@ namespace KivoTracks
 
     ' The version a play of [work] starts with: [versionId] when listed,
     ' else the one the user last played, else the first; invalid without any.
-    function version(work as object, versionId = "" as string) as dynamic
+    function version(work as KivoApi.WorkDetail, versionId = "" as string) as dynamic
         versions = work.versions
         if versions = invalid or versions.Count() = 0 then return invalid
         wanted = versionId
@@ -61,7 +62,7 @@ namespace KivoTracks
     end function
 
     ' The versions as a picker lists them, by name.
-    function versionItems(work as object) as object
+    function versionItems(work as KivoApi.WorkDetail) as object
         out = []
         if work.versions = invalid then return out
         for each v in work.versions
@@ -74,7 +75,7 @@ namespace KivoTracks
 
     ' The track of [kind] a play shows (a PlayStarted's tracks): its ID,
     ' "off" for subtitles showing none, or empty.
-    function selected(play as object, kind as string) as string
+    function selected(play as KivoApi.PlayStarted, kind as string) as string
         for each track in play.tracks
             if track.type = kind and track.selected = true then return track.trackId
         end for
@@ -87,22 +88,22 @@ namespace KivoTracks
     ' its type), "file" (the file's stream index), "burn", "off" or "new"
     ' for a new play at the position with it. The server says which in the
     ' play's tracks; the app keeps no rules of its own.
-    function show(play as object, trackId as string) as object
+    function show(play as KivoApi.PlayStarted, trackId as string) as object
         chosen = invalid
         for each track in play.tracks
             if track.trackId = trackId then chosen = track
         end for
         if chosen = invalid or chosen.delivery = invalid then return { how: "new", index: -1 }
-        if chosen.delivery = "stream"
+        if chosen.delivery = KivoApi.TrackDelivery.stream
             position = 0
             for each track in play.tracks
                 if track.trackId = trackId then return { how: "stream", index: position }
-                if track.type = chosen.type and track.delivery = "stream" then position = position + 1
+                if track.type = chosen.type and track.delivery = KivoApi.TrackDelivery.stream then position = position + 1
             end for
         end if
-        if chosen.delivery = "file" and chosen.index <> invalid then return { how: "file", index: chosen.index }
-        if chosen.delivery = "burn" then return { how: "burn", index: -1 }
-        if chosen.delivery = "none" then return { how: "off", index: -1 }
+        if chosen.delivery = KivoApi.TrackDelivery.file and chosen.index <> invalid then return { how: "file", index: chosen.index }
+        if chosen.delivery = KivoApi.TrackDelivery.burn then return { how: "burn", index: -1 }
+        if chosen.delivery = KivoApi.TrackDelivery.none then return { how: "off", index: -1 }
         return { how: "new", index: -1 }
     end function
 

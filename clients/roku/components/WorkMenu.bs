@@ -14,7 +14,7 @@ sub open(card as object, where = {} as object)
     if card = invalid or card.workId = "" then return
     m.card = card
     m.where = where
-    playable = card.available and (card.kind = "movie" or card.kind = "episode" or card.kind = "video" or card.kind = "extra")
+    playable = card.available and (card.kind = KivoApi.WorkKind.movie or card.kind = KivoApi.WorkKind.episode or card.kind = KivoApi.WorkKind.video or card.kind = KivoApi.WorkKind.extra)
     started = card.positionMs >= 0
     items = []
     if playable

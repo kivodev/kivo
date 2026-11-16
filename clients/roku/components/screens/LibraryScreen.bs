@@ -89,7 +89,7 @@ end sub
 
 ' The grid's cards: posters, or stills for videos.
 sub shape()
-    if m.tab = "titles" and m.kind = "videos"
+    if m.tab = "titles" and m.kind = KivoApi.LibraryKind.videos
         m.grid.numColumns = 3
         m.grid.itemSize = [480, 350]
     else
@@ -101,12 +101,13 @@ end sub
 sub onLibrary(event as object)
     m.tasks.library = invalid
     response = event.GetData()
+    answer = KivoApi.getLibraryAnswer(response)
     if response.code <> 200
         KivoStates.failed(m.state, response)
         m.state.callFunc("focus")
         return
     end if
-    m.top.params = { id: response.body.id, name: response.body.name, kind: response.body.kind }
+    m.top.params = { id: answer.id, name: answer.name, kind: answer.kind }
 end sub
 
 ' Keeps what's chosen for this library, to open on next time.
@@ -117,7 +118,8 @@ end sub
 sub onHasCollections(event as object)
     m.tasks.hasCollections = invalid
     response = event.GetData()
-    if response.code = 200 and response.body.items.Count() > 0
+    answer = KivoApi.listLibraryCollectionsAnswer(response)
+    if response.code = 200 and answer.items.Count() > 0
         m.hasCollections = true
         showBar()
     end if
@@ -127,7 +129,8 @@ sub onValues(event as object)
     task = event.GetRoSGNode()
     m.tasks.Delete("values" + task.fieldName)
     response = event.GetData()
-    if response.code = 200 then m.values[task.fieldName] = response.body.items
+    answer = KivoApi.listWorkFieldValuesAnswer(response)
+    if response.code = 200 then m.values[task.fieldName] = answer.items
 end sub
 
 ' The bar, as the Android TV app's header: the sections (Collections
@@ -267,7 +270,7 @@ end sub
 
 sub fillCard(node as object, item as object)
     if m.tab = "titles"
-        KivoContent.fill(node, item, m.kind = "videos")
+        KivoContent.fill(node, item, m.kind = KivoApi.LibraryKind.videos)
         return
     end if
     KivoContent.collection(node, item)

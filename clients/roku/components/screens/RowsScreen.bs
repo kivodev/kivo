@@ -121,15 +121,16 @@ end sub
 ' A list's works, a page at a time until the last (up to a thousand).
 sub onListWorks(event as object)
     response = event.GetData()
+    answer = KivoApi.listListWorksAnswer(response)
     m.tasks.works = invalid
     if response.code <> 200
         m.rows.visible = false
         KivoStates.failed(m.state, response)
         return
     end if
-    if response.body.total <> invalid then m.listTotal = response.body.total
-    m.listWorks.Append(response.body.items)
-    if response.body.items.Count() > 0 and m.listWorks.Count() < m.listTotal and m.listWorks.Count() < 1000
+    if answer.total <> invalid then m.listTotal = answer.total
+    m.listWorks.Append(answer.items)
+    if answer.items.Count() > 0 and m.listWorks.Count() < m.listTotal and m.listWorks.Count() < 1000
         m.tasks.works = Kivo.send(KivoApi.listListWorks(m.top.params.id, { kind: KivoContent.tvKinds(), limit: 100, offset: m.listWorks.Count() }), "onListWorks")
         return
     end if
@@ -140,7 +141,7 @@ sub onListWorks(event as object)
 end sub
 
 ' Why an open list shows nothing: rules that no longer run, rules matching nothing, or nothing added.
-function emptyListMessage(list as object) as string
+function emptyListMessage(list as KivoApi.WorkList) as string
     if list.kind <> KivoApi.ListKind.smart then return "Nothing in this list yet."
     if list.smart <> invalid and list.smart.errors <> invalid and list.smart.errors.Count() > 0 then return "These rules no longer work."
     return "Nothing matches these rules."

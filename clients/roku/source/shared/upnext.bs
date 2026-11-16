@@ -1,3 +1,4 @@
+import "pkg:/source/generated/types.bs"
 ' Skip markers and up next, as the other apps' players have them (the
 ' core's Markers and UpNext): when Skip shows, when up next appears and
 ' what follows the end of an episode.
@@ -17,11 +18,11 @@ namespace KivoUpNext
     const autoplayLimit = 3
 
     ' A play's markers this app knows, none shorter than markerMinMs.
-    function known(play as object) as object
+    function known(play as KivoApi.PlayStarted) as object
         out = []
         if play.markers = invalid then return out
         for each marker in play.markers
-            if (marker.kind = "intro" or marker.kind = "recap" or marker.kind = "credits") and marker.endMs - marker.startMs >= KivoUpNext.markerMinMs
+            if (marker.kind = KivoApi.MarkerKind.intro or marker.kind = KivoApi.MarkerKind.recap or marker.kind = KivoApi.MarkerKind.credits) and marker.endMs - marker.startMs >= KivoUpNext.markerMinMs
                 out.Push({ kind: marker.kind, startMs: marker.startMs, endMs: marker.endMs, final: marker.final = true })
             end if
         end for
@@ -29,7 +30,7 @@ namespace KivoUpNext
     end function
 
     ' The marker at [position], or invalid.
-    function markerAt(markers as object, position as integer) as dynamic
+    function markerAt(markers as KivoApi.Marker[], position as integer) as dynamic
         for each marker in markers
             if position >= marker.startMs and position < marker.endMs then return marker
         end for
@@ -37,10 +38,10 @@ namespace KivoUpNext
     end function
 
     ' The final credits up next appears at, or invalid.
-    function credits(markers as object) as dynamic
+    function credits(markers as KivoApi.Marker[]) as dynamic
         last = invalid
         for each marker in markers
-            if marker.kind = "credits" then last = marker
+            if marker.kind = KivoApi.MarkerKind.credits then last = marker
         end for
         if last <> invalid and last.final then return last
         return invalid

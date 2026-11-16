@@ -35,9 +35,10 @@ end sub
 sub onServer(event as object)
     m.tasks.server = invalid
     response = event.GetData()
-    if response.code = 200 and response.body.name <> invalid
-        m.server.text = response.body.name
-        m.top.FindNode("title").text = "Sign in to " + response.body.name
+    answer = KivoApi.getServerAnswer(response)
+    if response.code = 200 and answer.name <> invalid
+        m.server.text = answer.name
+        m.top.FindNode("title").text = "Sign in to " + answer.name
     end if
 end sub
 
@@ -52,6 +53,7 @@ end sub
 
 sub onCode(event as object)
     response = event.GetData()
+    answer = KivoApi.createDeviceCodeAnswer(response)
     m.task = invalid
     if response.code <> 201
         m.status.color = KivoTokens.Color.danger
@@ -60,7 +62,7 @@ sub onCode(event as object)
         return
     end if
     m.actions.buttons = ["Sign in with password"]
-    code = response.body
+    code = answer
     m.secret = code.secret
     m.code.text = KivoUi.groupedCode(code.code)
     m.link.text = code.linkUrl
@@ -158,10 +160,11 @@ end sub
 sub onSignedIn(event as object)
     m.tasks.signIn = invalid
     response = event.GetData()
-    if response.code = 201 and response.body <> invalid and response.body.token <> invalid
+    answer = KivoApi.createSessionAnswer(response)
+    if response.code = 201 and answer <> invalid and answer.token <> invalid
         m.poll.control = "stop"
-        Kivo.saveToken(response.body.token)
-        m.global.token = response.body.token
+        Kivo.saveToken(answer.token)
+        m.global.token = answer.token
         m.top.navigate = { screen: "HomeScreen", replace: true }
         return
     end if

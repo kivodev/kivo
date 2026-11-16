@@ -67,15 +67,17 @@ end sub
 sub onUser(event as object)
     m.tasks.user = invalid
     response = event.GetData()
-    if response.code = 200 then m.admin = response.body.admin = true
+    answer = KivoApi.getCurrentUserAnswer(response)
+    if response.code = 200 then m.admin = answer.admin = true
 end sub
 
 ' The libraries the TV shows (not audiobooks), in the user's order.
 sub onLibraries(event as object)
     m.tasks.libraries = invalid
     response = event.GetData()
+    answer = KivoApi.listLibrariesAnswer(response)
     m.librariesRead = true
-    if response.code = 200 then m.libraries = KivoContent.tvLibraries(response.body.items)
+    if response.code = 200 then m.libraries = KivoContent.tvLibraries(answer.items)
     showRows()
 end sub
 
@@ -150,6 +152,7 @@ end sub
 
 sub onHome(event as object)
     response = event.GetData()
+    answer = KivoApi.getHomeAnswer(response)
     m.tasks.home = invalid
     if response.code = 401
         m.top.navigate = { signedOut: true }
@@ -161,7 +164,7 @@ sub onHome(event as object)
         if not m.nav.visible and not m.menu.visible then m.state.callFunc("focus")
         return
     end if
-    m.homeBody = response.body
+    m.homeBody = answer
     showRows()
 end sub
 
@@ -200,7 +203,7 @@ sub showRows()
         if row.library <> invalid then library = shownLibrary(row.library.id)
         title = rowTitle(row, library)
         if title <> invalid and row.items.Count() > 0 and (row.library = invalid or library <> invalid)
-            landscape = row.kind = KivoApi.HomeRowKind.continueWatching or (library <> invalid and library.kind = "videos")
+            landscape = row.kind = KivoApi.HomeRowKind.continueWatching or (library <> invalid and library.kind = KivoApi.LibraryKind.videos)
             node = KivoContent.row(title, row.items, landscape)
             if row.kind = KivoApi.HomeRowKind.list and row.list <> invalid then node.AppendChild(KivoContent.seeAll(row.list.id))
             root.AppendChild(node)
@@ -244,7 +247,7 @@ end sub
 
 ' A Home row's title, as the Android TV app words it; invalid for a kind
 ' the TV doesn't show.
-function rowTitle(row as object, library as dynamic) as dynamic
+function rowTitle(row as KivoApi.HomeRow, library as dynamic) as dynamic
     if row.kind = KivoApi.HomeRowKind.continueWatching then return "Continue Watching"
     if row.kind = KivoApi.HomeRowKind.list
         if row.list <> invalid then return row.list.name

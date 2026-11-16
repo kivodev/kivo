@@ -1,3 +1,4 @@
+import "pkg:/source/generated/types.bs"
 ' Words for tracks, from the shared display tables (shared/display, packaged
 ' under pkg:/display), as the other apps word them: a language tag's name
 ' and what a transcoded track becomes. The shared vectors hold all three
@@ -96,7 +97,7 @@ namespace KivoDisplay
     ' A play's track as delivered (a PlayTrack): its codec and, transcoded,
     ' a video's resolution, classed by its width as the server classes
     ' versions ("H.264 1080p"), or audio's channels ("AAC 5.1").
-    function delivered(track as object) as string
+    function delivered(track as KivoApi.PlayTrack) as string
         out = { codec: track.codec }
         if out.codec = invalid then out.codec = ""
         t = track.transcode
@@ -120,18 +121,18 @@ namespace KivoDisplay
     ' How a play shows, by its video's delivery (or its audio's without
     ' video): Direct Play from the file, Direct Stream when the stream copies
     ' it, else Transcode.
-    function method(tracks as object) as string
+    function method(tracks as KivoApi.PlayTrack[]) as string
         methods = KivoDisplay.tables().words.methods
         shown = invalid
         for each track in tracks
-            if track.selected = true and track.type = "video" then shown = track
+            if track.selected = true and track.type = KivoApi.TrackType.video then shown = track
         end for
         if shown = invalid
             for each track in tracks
-                if track.selected = true and track.type = "audio" then shown = track
+                if track.selected = true and track.type = KivoApi.TrackType.audio then shown = track
             end for
         end if
-        if shown = invalid or shown.delivery = "file" then return methods.directPlay
+        if shown = invalid or shown.delivery = KivoApi.TrackDelivery.file then return methods.directPlay
         if shown.transcode = invalid then return methods.directStream
         return methods.transcode
     end function
@@ -157,8 +158,8 @@ namespace KivoDisplay
     ' 8 Mb/s", else its bitrate.
     function quality(pick as dynamic, ladder as object) as string
         words = KivoDisplay.tables().words.quality
-        if pick = invalid or pick.mode = "auto" then return words.auto
-        if pick.mode = "original" then return words.original
+        if pick = invalid or pick.mode = KivoApi.QualityMode.auto then return words.auto
+        if pick.mode = KivoApi.QualityMode.original then return words.original
         for each rung in ladder
             if rung.bitrateBps = pick.maxBitrateBps then return words.rung.Replace("{height}", rung.height.ToStr()).Replace("{bitrate}", KivoDisplay.bitrate(rung.bitrateBps))
         end for

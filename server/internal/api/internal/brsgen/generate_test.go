@@ -41,11 +41,11 @@ components:
 `
 
 func TestEachOperationDescribesItsRequest(t *testing.T) {
-	out, err := generate([]byte(spec))
+	api, types, err := generate([]byte(spec))
 	if err != nil {
 		t.Fatal(err)
 	}
-	src := string(out)
+	src := string(api) + string(types)
 	for _, want := range []string{
 		"namespace KivoApi\n",
 		"    function listWorkChildren(id as string) as KivoApi.Request\n",
@@ -76,12 +76,12 @@ func TestEnumMembersAreDistinctAndSafe(t *testing.T) {
 	if b.Len() > 0 {
 		t.Error(b.String())
 	}
-	out, err := generate([]byte("paths: {}\ncomponents:\n  schemas:\n    Case:\n      type: string\n      enum: [SD, sd]\n"))
+	_, types, err := generate([]byte("paths: {}\ncomponents:\n  schemas:\n    Case:\n      type: string\n      enum: [SD, sd]\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(out), "SD = \"SD\"\n        sd_2 = \"sd\"\n") {
-		t.Errorf("case-insensitive names must differ:\n%s", out)
+	if !strings.Contains(string(types), "SD = \"SD\"\n        sd_2 = \"sd\"\n") {
+		t.Errorf("case-insensitive names must differ:\n%s", types)
 	}
 }
 
@@ -90,11 +90,11 @@ func TestTheContractGenerates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := generate(data)
+	api, types, err := generate(data)
 	if err != nil {
 		t.Fatal(err)
 	}
-	src := string(out)
+	src := string(api) + string(types)
 	for _, want := range []string{
 		"    function pollDeviceCode(body as KivoApi.DeviceCodePoll) as KivoApi.Request\n",
 		"    function pollDeviceCodeAnswer(response as object) as KivoApi.Session\n",
@@ -111,7 +111,7 @@ func TestTheContractGenerates(t *testing.T) {
 
 func TestADuplicateOperationIdIsRefused(t *testing.T) {
 	dup := "paths:\n  /a:\n    get: {operationId: getA}\n  /b:\n    get: {operationId: geta}\n"
-	if _, err := generate([]byte(dup)); err == nil {
+	if _, _, err := generate([]byte(dup)); err == nil {
 		t.Error("operationIds that differ only in case collide in BrightScript")
 	}
 }

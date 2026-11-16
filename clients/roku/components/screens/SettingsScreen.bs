@@ -80,12 +80,13 @@ end sub
 sub onUser(event as object)
     m.tasks.user = invalid
     response = event.GetData()
+    answer = KivoApi.getCurrentUserAnswer(response)
     if response.code = 401
         m.top.navigate = { signedOut: true }
         return
     end if
     if response.code = 200
-        m.user = response.body
+        m.user = answer
     else
         m.status.text = "Couldn't load this. " + KivoDisplay.problem(response)
     end if
@@ -95,9 +96,10 @@ end sub
 sub onServer(event as object)
     m.tasks.server = invalid
     response = event.GetData()
+    answer = KivoApi.getServerAnswer(response)
     if response.code = 200
-        m.server = response.body
-        if response.body.qualityLadder <> invalid then m.ladder = response.body.qualityLadder
+        m.server = answer
+        if answer.qualityLadder <> invalid then m.ladder = answer.qualityLadder
     end if
     show()
 end sub
@@ -113,7 +115,8 @@ end sub
 sub onLibraries(event as object)
     m.tasks.libraries = invalid
     response = event.GetData()
-    if response.code = 200 then m.libraries = response.body.items
+    answer = KivoApi.listLibrariesAnswer(response)
+    if response.code = 200 then m.libraries = answer.items
     if response.code <> 200 then m.status.text = "Couldn't load this. " + KivoDisplay.problem(response)
     show()
 end sub
@@ -210,7 +213,7 @@ function tvHomeRows() as object
     books = {}
     if m.libraries <> invalid
         for each lib in m.libraries
-            if lib.kind = "audiobooks" then books[lib.id] = true
+            if lib.kind = KivoApi.LibraryKind.audiobooks then books[lib.id] = true
         end for
     end if
     for each row in m.homeRows
@@ -220,7 +223,7 @@ function tvHomeRows() as object
     return out
 end function
 
-function homeRowName(row as object) as string
+function homeRowName(row as KivoApi.HomeRowInfo) as string
     if row.kind = KivoApi.HomeRowKind.continueWatching then return "Continue Watching"
     if row.kind = KivoApi.HomeRowKind.list and row.list <> invalid then return row.list.name
     if row.library <> invalid then return "Recently Added in " + row.library.name
@@ -254,8 +257,8 @@ sub onSetting()
         end for
         pick = Kivo.qualities()[id]
         checked = "auto"
-        if pick <> invalid and pick.mode = "original" then checked = "original"
-        if pick <> invalid and pick.mode = "limit" then checked = pick.maxBitrateBps.ToStr()
+        if pick <> invalid and pick.mode = KivoApi.QualityMode.original then checked = "original"
+        if pick <> invalid and pick.mode = KivoApi.QualityMode.limit then checked = pick.maxBitrateBps.ToStr()
         title = "Local network quality"
         if id = "remoteQuality" then title = "Remote quality"
         showMenu(title, items, checked)
@@ -520,13 +523,14 @@ end sub
 sub onPending(event as object)
     m.tasks.link = invalid
     response = event.GetData()
+    answer = KivoApi.getDeviceCodeAnswer(response)
     if response.code <> 200
         note = KivoDisplay.problem(response)
         if response.code = 404 or response.code = 410 then note = "That code didn't work. Check the other device for a new one."
         askCode(note)
         return
     end if
-    device = response.body
+    device = answer
     lines = []
     where = "Not on your home network"
     if device.nearby = true then where = "On your home network"
@@ -553,8 +557,9 @@ end sub
 sub onSaved(event as object)
     m.tasks.save = invalid
     response = event.GetData()
+    answer = KivoApi.updateCurrentUserAnswer(response)
     if response.code = 200
-        m.user = response.body
+        m.user = answer
         m.status.text = ""
     else
         m.status.text = "Couldn't save. " + KivoDisplay.problem(response)

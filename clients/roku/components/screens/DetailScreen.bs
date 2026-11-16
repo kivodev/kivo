@@ -87,8 +87,9 @@ end sub
 sub onLists(event as object)
     m.tasks.lists = invalid
     response = event.GetData()
+    answer = KivoApi.listListsAnswer(response)
     if response.code <> 200 then return
-    for each list in response.body.items
+    for each list in answer.items
         if list.builtIn = true then m.myListId = list.id
     end for
     if m.work <> invalid then show(m.work)
@@ -96,6 +97,7 @@ end sub
 
 sub onWork(event as object)
     response = event.GetData()
+    answer = KivoApi.getWorkAnswer(response)
     m.tasks.work = invalid
     if response.code = 401
         m.top.navigate = { signedOut: true }
@@ -111,14 +113,14 @@ sub onWork(event as object)
         return
     end if
     ' A season opens its series on it.
-    if response.body.kind = KivoApi.WorkKind.season and response.body.season <> invalid and response.body.season.seriesId <> invalid
-        m.openSeason = response.body.id
-        m.top.params = { id: response.body.season.seriesId }
+    if answer.kind = KivoApi.WorkKind.season and answer.season <> invalid and answer.season.seriesId <> invalid
+        m.openSeason = answer.id
+        m.top.params = { id: answer.season.seriesId }
         return
     end if
     KivoStates.clear(m.state)
     first = m.work = invalid
-    m.work = response.body
+    m.work = answer
     show(m.work)
     if m.work.kind = KivoApi.WorkKind.series
         ' Episodes' progress moves on too, so they're read again each time.
@@ -140,7 +142,7 @@ end sub
 ' beginning, Audio & Subtitles, Watchlist and Watched; "This file is
 ' missing" in Play's place when no version can play. A series' Play is
 ' its Next Up, "Play S1 E2", with what it plays under the buttons.
-sub show(work as object)
+sub show(work as KivoApi.WorkDetail)
     m.eyebrow.text = ""
     if work.episode <> invalid and work.episode.seriesTitle <> invalid then m.eyebrow.text = work.episode.seriesTitle
     title = work.title
@@ -200,11 +202,11 @@ sub show(work as object)
     if focused >= 0 and focused < labels.Count() then m.buttons.focusButton = focused
 end sub
 
-function played(work as object) as boolean
+function played(work as KivoApi.WorkDetail) as boolean
     return work.userState <> invalid and work.userState.played = true
 end function
 
-function onMyList(work as object) as boolean
+function onMyList(work as KivoApi.WorkDetail) as boolean
     if m.myListId = invalid or work.listIds = invalid then return false
     for each id in work.listIds
         if id = m.myListId then return true
@@ -214,7 +216,7 @@ end function
 
 ' What Play plays: the work itself when its version can play, or a
 ' series' Next Up; invalid when nothing plays.
-function playTarget(work as object) as dynamic
+function playTarget(work as KivoApi.WorkDetail) as dynamic
     playable = [KivoApi.WorkKind.movie, KivoApi.WorkKind.episode, KivoApi.WorkKind.video, KivoApi.WorkKind.extra]
     for each kind in playable
         if work.kind = kind
@@ -230,7 +232,7 @@ function playTarget(work as object) as dynamic
     return invalid
 end function
 
-function positionOf(work as object) as dynamic
+function positionOf(work as KivoApi.WorkSummary) as dynamic
     if work.userState = invalid then return invalid
     return work.userState.positionMs
 end function
@@ -238,7 +240,7 @@ end function
 ' The details line, as the Android TV app's: a movie's "2019 · 2h 12m ·
 ' ★ 8.1 · PG-13 · Drama, Thriller"; a series' years, seasons, rating and
 ' content rating; an episode's "S3 · E4 · Feb 4, 2017 · 44m · ★ 8.5 · TV-14".
-function details(work as object) as object
+function details(work as KivoApi.WorkDetail) as object
     parts = []
     if work.kind = KivoApi.WorkKind.series
         last = invalid
@@ -282,13 +284,14 @@ end function
 ' A series' seasons: each one's episodes, asked at once, shown in order once all have answered.
 sub onChildren(event as object)
     response = event.GetData()
+    answer = KivoApi.listWorkChildrenAnswer(response)
     m.tasks.children = invalid
     if response.code <> 200
         m.problem.text = KivoDisplay.problem(response)
         showRows()
         return
     end if
-    children = response.body.items
+    children = answer.items
     m.seasons = []
     for i = 0 to children.Count() - 1
         number = invalid
@@ -306,8 +309,9 @@ sub onSeason(event as object)
     i = task.seasonIndex
     m.tasks.Delete("season" + i.ToStr())
     response = event.GetData()
+    answer = KivoApi.listWorkChildrenAnswer(response)
     m.seasons[i].episodes = []
-    if response.code = 200 then m.seasons[i].episodes = response.body.items
+    if response.code = 200 then m.seasons[i].episodes = answer.items
     for each season in m.seasons
         if season.episodes = invalid then return
     end for
@@ -352,7 +356,7 @@ sub showRows()
     extras = []
     if m.work.extras <> invalid
         for each extra in m.work.extras
-            if extra.extra <> invalid and extra.extra.type = "trailer"
+            if extra.extra <> invalid and extra.extra.type = KivoApi.ExtraType.trailer
                 trailers.Push(extra)
             else
                 extras.Push(extra)
@@ -444,7 +448,7 @@ sub onMarked(event as object)
     load()
 end sub
 
-function picksTracks(work as object) as boolean
+function picksTracks(work as KivoApi.WorkDetail) as boolean
     v = KivoTracks.version(work, chosenVersion())
     if v = invalid then return false
     return KivoTracks.tracksOf(v, "audio").Count() > 1 or KivoTracks.tracksOf(v, "subtitle").Count() > 0 or work.versions.Count() > 1
@@ -568,9 +572,10 @@ end function
 ' The series' choice changed; the page shows the tracks plays start with now.
 sub onTracks(event as object)
     response = event.GetData()
+    answer = KivoApi.updateWorkTracksAnswer(response)
     m.tasks.tracks = invalid
     if response.code = 200
-        m.work = response.body
+        m.work = answer
         show(m.work)
     else if response.code = 409
         ' Remembering was turned off meanwhile: the pick is for the next play.
@@ -673,7 +678,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
     if key = "play" and m.rows.IsInFocusChain() and m.rows.content <> invalid
         at = m.rows.rowItemFocused
         card = m.rows.content.GetChild(at[0]).GetChild(at[1])
-        if card <> invalid and card.workId <> "" and card.kind = "episode" and card.available
+        if card <> invalid and card.workId <> "" and card.kind = KivoApi.WorkKind.episode and card.available
             m.top.navigate = { screen: "PlayerScreen", params: { id: card.workId } }
             return true
         end if

@@ -18,8 +18,8 @@ OPENAPI_GENERATOR_VERSION := 7.26.0
 OPENAPI_GENERATOR_SHA256  := 1760050094997b9cc790cc1350be095f15da8c08a996b184d3eadc4ccda5e35e
 OPENAPI_GENERATOR         := bin/openapi-generator-cli-$(OPENAPI_GENERATOR_VERSION).jar
 KOTLIN_API                := ../clients/api
-# The Roku app's API description, which go generate writes (internal/api/internal/brsgen).
-ROKU_API                  := ../clients/roku/source/generated/api.bs
+# The Roku app's API operations and types, which go generate writes (internal/api/internal/brsgen).
+ROKU_API                  := ../clients/roku/source/generated/api.bs ../clients/roku/source/generated/types.bs
 # A release build is given its version, as in make build VERSION=0.4.0. Any
 # other reports the patch after the latest release as a dev build, with its
 # commit: 0.3.1-dev+56c0018d (internal/version).
