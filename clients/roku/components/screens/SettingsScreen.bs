@@ -72,7 +72,7 @@ sub onSection()
 end sub
 
 sub enterPane()
-    if m.items.Count() = 0 then return
+    if m.paneItems.Count() = 0 then return
     m.inPane = true
     m.list.SetFocus(true)
 end sub
@@ -176,7 +176,7 @@ sub show()
         items.Push({ id: "fact", label: "Server: " + serverAddress() })
         items.Push({ id: "credits", label: "Credits" })
     end if
-    m.items = items
+    m.paneItems = items
     m.paneTitle.text = m.groups[sectionIndex()].label
     m.scope.text = scope
     root = CreateObject("roSGNode", "ContentNode")
@@ -244,7 +244,7 @@ function languageLabel(tag as dynamic, fallback as string) as string
 end function
 
 sub onSetting()
-    item = m.items[m.list.itemSelected]
+    item = m.paneItems[m.list.itemSelected]
     id = item.id
     m.setting = id
     if id = "localQuality" or id = "remoteQuality"

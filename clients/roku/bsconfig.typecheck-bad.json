@@ -1,0 +1,6 @@
+{
+  "rootDir": ".",
+  "files": ["manifest", "source/generated/api.bs", { "src": "typecheck/bad.bs", "dest": "source/bad.bs" }],
+  "createPackage": false,
+  "stagingDir": "build/typecheck-bad"
+}

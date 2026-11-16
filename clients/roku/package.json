@@ -6,7 +6,8 @@
   "scripts": {
     "build": "bsc --project bsconfig.json",
     "build:tests": "bsc --project bsconfig.tests.json",
-    "check": "bsc --project bsconfig.json --create-package false && bsc --project bsconfig.tests.json --create-package false"
+    "check": "bsc --project bsconfig.json --create-package false && bsc --project bsconfig.tests.json --create-package false",
+    "check:types": "sh scripts/check-types.sh"
   },
   "devDependencies": {
     "@rokucommunity/bslint": "0.8.47",

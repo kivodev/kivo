@@ -93,7 +93,7 @@ sub load()
     m.failureGround.visible = false
     m.leaving = false
     m.fellBack = false
-    m.next = invalid
+    m.nextWork = invalid
     hideUpNext("hidden")
     m.skip.visible = false
     m.status.text = "Loading…"
@@ -120,7 +120,7 @@ end sub
 sub onNext(event as object)
     m.tasks.next = invalid
     response = event.GetData()
-    if response.code = 200 then m.next = response.body
+    if response.code = 200 then m.nextWork = response.body
 end sub
 
 ' Asks for a play of the request from [position] (invalid for the resume point).
@@ -329,7 +329,7 @@ end sub
 ' after three episodes played on without input, asking "Still watching?".
 ' A position before its time hides it again.
 sub updateUpNext(position as integer)
-    if m.next = invalid then return
+    if m.nextWork = invalid then return
     duration = m.play.durationMs
     showAt = KivoUpNext.atMs(duration, m.credits)
     threshold = showAt
@@ -369,10 +369,10 @@ sub showUpNext()
     still = m.upNextPhase = "still"
     m.upNextHeading.text = "UP NEXT"
     if still then m.upNextHeading.text = "STILL WATCHING?"
-    title = m.next.title
-    if m.next.episode <> invalid then title = KivoUi.episodeCode(m.next.episode) + " · " + title
+    title = m.nextWork.title
+    if m.nextWork.episode <> invalid then title = KivoUi.episodeCode(m.nextWork.episode) + " · " + title
     m.upNextTitle.text = title
-    m.upNextStill.uri = Kivo.imageUrl(m.next.images.still, 256)
+    m.upNextStill.uri = Kivo.imageUrl(m.nextWork.images.still, 256)
     m.upNextCountdown.text = ""
     if m.upNextPhase = "counting" then m.upNextCountdown.text = "Playing in " + m.upNextSeconds.ToStr() + " s"
     ' Play now, with Watch credits at the credits, else Hide, as on Android TV.
@@ -425,7 +425,7 @@ end sub
 sub ended()
     duration = 0
     if m.play <> invalid then duration = m.play.durationMs
-    follows = KivoUpNext.playEnd(m.work.episode <> invalid, m.next <> invalid, autoplayPhase() = "counting")
+    follows = KivoUpNext.playEnd(m.work.episode <> invalid, m.nextWork <> invalid, autoplayPhase() = "counting")
     if follows = "next"
         playNext(true)
     else if follows = "wait"
@@ -448,7 +448,7 @@ end sub
 ' at the end or the countdown's zero ([onItsOwn]), which extends the run
 ' of episodes played without input, or because the user asked.
 sub playNext(onItsOwn as boolean)
-    if m.next = invalid then return
+    if m.nextWork = invalid then return
     if onItsOwn
         m.global.autoplayRun = m.global.autoplayRun + 1
     else
@@ -458,7 +458,7 @@ sub playNext(onItsOwn as boolean)
     if m.play <> invalid then position = positionMs()
     if m.video.state = "finished" and m.play <> invalid then position = m.play.durationMs
     stopQuietly(position)
-    m.top.params = { id: m.next.id }
+    m.top.params = { id: m.nextWork.id }
 end sub
 
 ' Stops the play at [position] without leaving the player.

@@ -1,0 +1,7 @@
+{
+  "extends": "bsconfig.json",
+  "plugins": [],
+  "createPackage": false,
+  "stagingDir": "build/typecheck",
+  "diagnosticFilters": ["deprecated-bsconfig-option"]
+}
