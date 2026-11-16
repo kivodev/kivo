@@ -41,7 +41,11 @@ sub focus()
     if m.loaded = true then load()
 end sub
 
+' Reads Home and the libraries again; the rows show once both are back,
+' as a row of a library the TV doesn't show is left out.
 sub load()
+    m.homeBody = invalid
+    m.librariesRead = false
     m.task = Kivo.send(KivoApi.getHome(), "onHome")
     m.librariesTask = Kivo.send(KivoApi.listLibraries(), "onLibraries")
 end sub
@@ -50,10 +54,14 @@ end sub
 sub onLibraries(event as object)
     m.librariesTask = invalid
     response = event.GetData()
-    if response.code <> 200 then return
+    m.librariesRead = true
+    if response.code <> 200
+        showRows()
+        return
+    end if
     pinned = []
     others = []
-    for each lib in response.body.items
+    for each lib in KivoContent.tvLibraries(response.body.items)
         if lib.pinned = true
             pinned.Push(lib)
         else
@@ -62,6 +70,7 @@ sub onLibraries(event as object)
     end for
     pinned.Append(others)
     m.libraries = pinned
+    showRows()
 end sub
 
 ' The menu: each library, then the app's other pages.
@@ -112,13 +121,24 @@ sub onHome(event as object)
         m.status.text = KivoDisplay.problem(response) + " Press OK to try again."
         return
     end if
+    m.homeBody = response.body
+    showRows()
+end sub
+
+' Home's rows, once both Home and the libraries are read.
+sub showRows()
+    if m.homeBody = invalid or m.librariesRead <> true then return
     m.loaded = true
     root = CreateObject("roSGNode", "ContentNode")
     sizes = []
     heights = []
     m.rowKinds = []
-    for each row in response.body.rows
+    for each row in m.homeBody.rows
         title = rowTitle(row)
+        ' A list can hold books, which aren't on the TV; a row left with none shows nothing.
+        if row.kind = KivoApi.HomeRowKind.list then row.items = KivoContent.tvWorks(row.items)
+        ' A row of a library the TV doesn't show (an audiobooks library's) is left out.
+        if row.library <> invalid and not shownLibrary(row.library.id) then title = invalid
         if title <> invalid and row.items.Count() > 0
             landscape = row.kind = KivoApi.HomeRowKind.continueWatching
             root.AppendChild(KivoContent.row(title, row.items, landscape))
@@ -143,10 +163,17 @@ sub onHome(event as object)
     end if
 end sub
 
-' A Home row's title, as the other apps word it; invalid for a kind this app doesn't know.
+function shownLibrary(id as string) as boolean
+    for each lib in m.libraries
+        if lib.id = id then return true
+    end for
+    return false
+end function
+
+' A Home row's title, as the Android TV app words it; invalid for a kind
+' the TV doesn't show (no book rows) or doesn't know.
 function rowTitle(row as object) as dynamic
     if row.kind = KivoApi.HomeRowKind.continueWatching then return "Continue Watching"
-    if row.kind = KivoApi.HomeRowKind.continueListening then return "Continue Listening"
     if row.kind = KivoApi.HomeRowKind.list and row.list <> invalid then return row.list.name
     if row.kind = KivoApi.HomeRowKind.recentlyAdded
         if row.library <> invalid then return "Recently Added in " + row.library.name
@@ -175,7 +202,6 @@ sub openMore()
     end if
     kind = m.rowKinds[at[0]]
     if kind = KivoApi.HomeRowKind.continueWatching then items.Push({ id: "continue", label: "Remove from Continue Watching" })
-    if kind = KivoApi.HomeRowKind.continueListening then items.Push({ id: "continue", label: "Remove from Continue Listening" })
     m.more.title = card.title
     m.more.checkedId = ""
     m.more.items = items

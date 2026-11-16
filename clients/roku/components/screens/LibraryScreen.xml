@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<!-- A library's grid: its tabs (titles, collections, and an audiobooks
-     library's authors and series), then Sort, Filter and A-Z for its
+<!-- A library's grid: its tabs (titles, then collections when it has
+     any), then Sort, Filter and A-Z for its
      titles, over a grid that reads a page at a time around the focus.
      params is { id, name, kind }. -->
 <component name="LibraryScreen" extends="KivoScreen">

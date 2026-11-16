@@ -6,26 +6,20 @@ namespace KivoGrid
     ' Works a grid asks for at a time.
     const pageSize = 60
 
-    ' The tabs a library of [kind] has: its titles, then collections when
-    ' it has any, and an audiobooks library's authors and book series.
-    function tabs(kind as string, hasCollections as boolean) as object
+    ' The tabs a library has: its titles, then collections when it has any.
+    function tabs(hasCollections as boolean) as object
         out = [{ id: "titles", label: "Titles" }]
         if hasCollections then out.Push({ id: "collections", label: "Collections" })
-        if kind = "audiobooks"
-            out.Push({ id: "authors", label: "Authors" })
-            out.Push({ id: "bookSeries", label: "Series" })
-        end if
         return out
     end function
 
     ' The sorts a library of [kind] offers, each a work query's sort field.
     function sorts(kind as string) as object
         out = [{ id: "title", label: "Title" }]
-        if kind = "audiobooks" then out.Push({ id: "author", label: "Author" })
         out.Push({ id: "addedAt", label: "Date added" })
         if kind = "shows" then out.Push({ id: "lastEpisodeAddedAt", label: "Episode added" })
         out.Push({ id: "releaseDate", label: "Release date" })
-        if kind <> "audiobooks" then out.Push({ id: "rating", label: "Rating" })
+        out.Push({ id: "rating", label: "Rating" })
         if kind <> "shows" then out.Push({ id: "runtimeMs", label: "Runtime" })
         out.Push({ id: "lastPlayedAt", label: "Last played" })
         return out
@@ -42,18 +36,17 @@ namespace KivoGrid
     function workKind(kind as string) as string
         if kind = "movies" then return "movie"
         if kind = "shows" then return "series"
-        if kind = "audiobooks" then return "book"
         return "video"
     end function
 
     ' The filters a grid has: played, genres, decade, content ratings,
-    ' resolutions, dynamic ranges and, for books, a narrator.
+    ' resolutions and dynamic ranges.
     function emptyFilters() as object
-        return { played: "", genres: [], decade: "", contentRatings: [], resolutions: [], dynamicRanges: [], narrator: "" }
+        return { played: "", genres: [], decade: "", contentRatings: [], resolutions: [], dynamicRanges: [] }
     end function
 
     function filtered(filters as object) as boolean
-        return filters.played <> "" or filters.genres.Count() > 0 or filters.decade <> "" or filters.contentRatings.Count() > 0 or filters.resolutions.Count() > 0 or filters.dynamicRanges.Count() > 0 or filters.narrator <> ""
+        return filters.played <> "" or filters.genres.Count() > 0 or filters.decade <> "" or filters.contentRatings.Count() > 0 or filters.resolutions.Count() > 0 or filters.dynamicRanges.Count() > 0
     end function
 
     ' The work query request of a library's grid: its kind, sorted by
@@ -69,7 +62,6 @@ namespace KivoGrid
         if filters.contentRatings.Count() > 0 then rules.Push({ field: "contentRating", op: "anyOf", values: filters.contentRatings })
         if filters.resolutions.Count() > 0 then rules.Push({ field: "resolution", op: "anyOf", values: filters.resolutions })
         if filters.dynamicRanges.Count() > 0 then rules.Push({ field: "dynamicRange", op: "anyOf", values: filters.dynamicRanges })
-        if filters.narrator <> "" then rules.Push({ field: "narrator", op: "anyOf", values: [filters.narrator] })
         query = { kinds: [KivoGrid.workKind(kind)], sort: [{ field: sort }] }
         if rules.Count() > 0 then query.where = { match: "all", rules: rules }
         body = { query: query, library: libraryId, limit: KivoGrid.pageSize }

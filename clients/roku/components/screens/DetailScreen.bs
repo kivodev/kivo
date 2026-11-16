@@ -101,7 +101,7 @@ sub show(work as object)
             m.actions.Push({ id: target.id, fromStart: false })
         end if
     end if
-    if target <> invalid and target.id = work.id and work.kind <> KivoApi.WorkKind.book and picksTracks(work)
+    if target <> invalid and target.id = work.id and picksTracks(work)
         labels.Push("Audio & Subtitles")
         m.actions.Push({ tracks: true })
     end if
@@ -112,7 +112,7 @@ end sub
 
 ' What Play plays: the work itself, or a show's episode up next; invalid when nothing plays.
 function playTarget(work as object) as dynamic
-    playable = [KivoApi.WorkKind.movie, KivoApi.WorkKind.episode, KivoApi.WorkKind.video, KivoApi.WorkKind.extra, KivoApi.WorkKind.book]
+    playable = [KivoApi.WorkKind.movie, KivoApi.WorkKind.episode, KivoApi.WorkKind.video, KivoApi.WorkKind.extra]
     for each kind in playable
         if work.kind = kind and work.available = true then return { id: work.id, positionMs: positionOf(work) }
     end for
@@ -213,13 +213,6 @@ sub onButton()
     action = m.actions[m.buttons.buttonSelected]
     if action.tracks = true
         openMenu()
-        return
-    end if
-    if m.work.kind = KivoApi.WorkKind.book
-        ' A book plays in the book player, from its place or the start.
-        params = { id: action.id }
-        if action.fromStart then params.positionMs = 0
-        m.top.navigate = { screen: "BookPlayerScreen", params: params }
         return
     end if
     params = { id: action.id, fromStart: action.fromStart }

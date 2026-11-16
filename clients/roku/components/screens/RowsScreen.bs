@@ -42,8 +42,6 @@ sub load()
         request = KivoApi.getPerson(params.id)
     else if params.kind = "collection"
         request = KivoApi.getCollection(params.id)
-    else if params.kind = "bookSeries"
-        request = KivoApi.getBookSeries(params.id)
     else if params.kind = "list"
         request = KivoApi.getList(params.id)
     end if
@@ -69,7 +67,7 @@ sub onPage(event as object)
         m.heading.text = page.name
         m.listWorks = []
         m.listTotal = 0
-        m.tasks.works = Kivo.send(KivoApi.listListWorks(page.id, { limit: 100 }), "onListWorks")
+        m.tasks.works = Kivo.send(KivoApi.listListWorks(page.id, { kind: KivoContent.tvKinds(), limit: 100 }), "onListWorks")
         return
     end if
     m.loaded = true
@@ -84,14 +82,14 @@ sub onPage(event as object)
             m.overview.translation = [288, 150]
             m.overview.width = 1500
         end if
-        sections.Push({ title: "Movies & Shows", works: page.works })
-        for each series in page.bookSeries
-            sections.Push({ title: series.name, works: series.items })
+        ' Movies, shows and other videos; a person's books aren't on the TV.
+        for each row in [{ title: "Movies", kind: "movie" }, { title: "Shows", kind: "series" }, { title: "Other videos", kind: "video" }]
+            works = []
+            for each work in page.works
+                if work.kind = row.kind then works.Push(work)
+            end for
+            sections.Push({ title: row.title, works: works })
         end for
-        title = "Books"
-        if page.bookSeries.Count() > 0 then title = "Other books"
-        sections.Push({ title: title, works: page.standalone })
-        sections.Push({ title: "Narrated", works: page.narrated })
     else
         m.heading.text = page.name
         if page.images <> invalid then m.backdrop.uri = Kivo.imageUrl(page.images.backdrop, 1920)
@@ -111,7 +109,7 @@ sub onListWorks(event as object)
     if response.body.total <> invalid then m.listTotal = response.body.total
     m.listWorks.Append(response.body.items)
     if response.body.items.Count() > 0 and m.listWorks.Count() < m.listTotal and m.listWorks.Count() < 1000
-        m.tasks.works = Kivo.send(KivoApi.listListWorks(m.top.params.id, { limit: 100, offset: m.listWorks.Count() }), "onListWorks")
+        m.tasks.works = Kivo.send(KivoApi.listListWorks(m.top.params.id, { kind: KivoContent.tvKinds(), limit: 100, offset: m.listWorks.Count() }), "onListWorks")
         return
     end if
     m.loaded = true
@@ -141,9 +139,7 @@ sub showSections(sections as object)
     heights = []
     for each section in sections
         if section.works <> invalid and section.works.Count() > 0
-            square = KivoContent.allBooks(section.works)
             size = KivoContent.rowSize(false)
-            if square then size = KivoContent.squareRowSize()
             root.AppendChild(KivoContent.row(section.title, section.works, false))
             sizes.Push(size.item)
             heights.Push(size.height)

@@ -47,7 +47,7 @@ sub start()
     shape()
     ' Whether it has collections, for the tab, and what its filters offer.
     m.tasks.hasCollections = Kivo.send(KivoApi.listLibraryCollections(m.top.params.id, { limit: 1 }), "onHasCollections")
-    for each field in ["genre", "year", "contentRating", "resolution", "dynamicRange", "narrator"]
+    for each field in ["genre", "year", "contentRating", "resolution", "dynamicRange"]
         task = Kivo.send(KivoApi.listWorkFieldValues(field, { library: m.top.params.id }), "onValues")
         task.AddFields({ fieldName: field })
         m.tasks["values" + field] = task
@@ -56,14 +56,11 @@ sub start()
     reload()
 end sub
 
-' The grid's cards: posters, square covers for books, or stills for videos.
+' The grid's cards: posters, or stills for videos.
 sub shape()
     if m.tab = "titles" and m.kind = "videos"
         m.grid.numColumns = 3
         m.grid.itemSize = [480, 350]
-    else if m.tab <> "collections" and m.kind = "audiobooks"
-        m.grid.numColumns = 6
-        m.grid.itemSize = [240, 320]
     else
         m.grid.numColumns = 6
         m.grid.itemSize = [240, 440]
@@ -90,7 +87,7 @@ end sub
 sub showBar()
     labels = []
     m.barActions = []
-    tabs = KivoGrid.tabs(m.kind, m.hasCollections)
+    tabs = KivoGrid.tabs(m.hasCollections)
     if tabs.Count() > 1
         for each item in tabs
             label = item.label
@@ -133,12 +130,8 @@ sub fetch(offset as integer)
     request = invalid
     if m.tab = "titles"
         request = KivoApi.queryWorks(KivoGrid.request(id, m.kind, m.sort, m.filters, offset))
-    else if m.tab = "collections"
-        request = KivoApi.listLibraryCollections(id, query)
-    else if m.tab = "authors"
-        request = KivoApi.listLibraryAuthors(id, query)
     else
-        request = KivoApi.listLibraryBookSeries(id, query)
+        request = KivoApi.listLibraryCollections(id, query)
     end if
     task = Kivo.send(request, "onPage")
     task.AddFields({ offset: offset, generation: m.generation })
@@ -208,19 +201,9 @@ sub fillCard(node as object, item as object)
         return
     end if
     node.title = item.name
-    if m.tab = "collections"
-        node.collectionId = item.id
-        node.imageUri = Kivo.imageUrl(item.images.poster, 240)
-        node.caption = item.workCount.ToStr() + " titles"
-    else if m.tab = "authors"
-        node.personId = item.id
-        node.imageUri = Kivo.imageUrl(item.photo, 240)
-        node.caption = item.workCount.ToStr() + " books"
-    else
-        node.bookSeriesId = item.id
-        node.imageUri = Kivo.imageUrl(item.cover, 240)
-        node.caption = item.bookCount.ToStr() + " books"
-    end if
+    node.collectionId = item.id
+    node.imageUri = Kivo.imageUrl(item.images.poster, 240)
+    node.caption = item.workCount.ToStr() + " titles"
 end sub
 
 ' The pages of the cards around [index] that aren't read yet.
@@ -238,7 +221,7 @@ end sub
 
 sub onCard()
     node = m.grid.content.GetChild(m.grid.itemSelected)
-    if node = invalid or (node.workId = "" and node.personId = "" and node.collectionId = "" and node.bookSeriesId = "") then return
+    if node = invalid or (node.workId = "" and node.collectionId = "") then return
     m.top.navigate = KivoContent.target(node)
 end sub
 
@@ -283,7 +266,6 @@ sub openFilters()
     if has("contentRating") then items.Push({ id: "contentRating", label: "Rating: " + countLabel(f.contentRatings) })
     if has("resolution") then items.Push({ id: "resolution", label: "Resolution: " + countLabel(f.resolutions) })
     if has("dynamicRange") then items.Push({ id: "dynamicRange", label: "Dynamic range: " + countLabel(f.dynamicRanges) })
-    if m.kind = "audiobooks" and has("narrator") then items.Push({ id: "narrator", label: "Narrator: " + anyOr(f.narrator, nameOf("narrator", f.narrator)) })
     if KivoGrid.filtered(f) then items.Push({ id: "clear", label: "Clear filters" })
     showMenu("filters", "Filter", items, "")
 end sub
@@ -309,14 +291,7 @@ function anyOr(value as string, shown as string) as string
     return shown
 end function
 
-function nameOf(field as string, value as string) as string
-    for each item in m.values[field]
-        if item.value = value then return item.name
-    end for
-    return value
-end function
-
-' A filter's page: one choice for watched, decade and narrator, any of
+' A filter's page: one choice for watched and decade, any of
 ' several, each checked, for the others.
 sub openFilter(field as string)
     m.filterField = field
@@ -334,12 +309,6 @@ sub openFilter(field as string)
             items.Push({ id: decade, label: decade + "s" })
         end for
         showMenu("filter", "Decade", items, anyId(f.decade))
-    else if field = "narrator"
-        items = [{ id: "", label: "Any" }]
-        for each item in m.values.narrator
-            items.Push({ id: item.value, label: item.name })
-        end for
-        showMenu("filter", "Narrator", items, anyId(f.narrator))
     else
         chosen = f[listKey(field)]
         items = []

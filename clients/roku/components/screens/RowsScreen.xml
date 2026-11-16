@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!-- A page of works in rows under a heading: a person's (their photo,
-     biography and what they're credited on, wrote or narrated), a
-     collection's, a book series' or a list's. params is { kind, id }:
-     kind is person, collection, bookSeries or list. -->
+     biography and their movies, shows and other videos), a collection's
+     or a list's. params is { kind, id }: kind is person, collection or
+     list. -->
 <component name="RowsScreen" extends="KivoScreen">
   <children>
     <Poster id="backdrop" width="1920" height="1080" loadDisplayMode="scaleToZoom" />

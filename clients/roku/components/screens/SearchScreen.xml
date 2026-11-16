@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!-- Search: the on-screen keyboard, and as the words change, the results
-     in rows: movies, shows, episodes, books and videos, people and
+     in rows: movies, shows, episodes and videos, people and
      collections. -->
 <component name="SearchScreen" extends="KivoScreen">
   <children>

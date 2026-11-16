@@ -73,7 +73,6 @@ sub onResults(event as object)
         { kind: "movie", title: "Movies", landscape: false },
         { kind: "series", title: "Shows", landscape: false },
         { kind: "episode", title: "Episodes", landscape: true },
-        { kind: "book", title: "Books", landscape: false },
         { kind: "video", title: "Videos", landscape: true }
     ]
     for each group in groups
@@ -84,7 +83,6 @@ sub onResults(event as object)
         if works.Count() > 0
             root.AppendChild(KivoContent.row(group.title, works, group.landscape))
             size = KivoContent.rowSize(group.landscape)
-            if group.kind = "book" then size = KivoContent.squareRowSize()
             sizes.Push(size.item)
             heights.Push(size.height)
         end if

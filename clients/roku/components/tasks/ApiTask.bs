@@ -52,12 +52,17 @@ function fetch(base as string, request as object) as object
     return { code: code, body: body, error: "" }
 end function
 
-' The query's fields as a URL query, each escaped; empty without any.
+' The query's fields as a URL query, each escaped, an array's values each
+' as its own pair (the spec's form style, exploded); empty without any.
 function queryString(transfer as object, query as dynamic) as string
     if query = invalid or query.Count() = 0 then return ""
     pairs = []
     for each key in query
-        pairs.Push(transfer.Escape(key) + "=" + transfer.Escape(query[key].ToStr()))
+        values = query[key]
+        if type(values) <> "roArray" then values = [values]
+        for each value in values
+            pairs.Push(transfer.Escape(key) + "=" + transfer.Escape(value.ToStr()))
+        end for
     end for
     return "?" + pairs.Join("&")
 end function

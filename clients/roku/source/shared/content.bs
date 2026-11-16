@@ -7,6 +7,37 @@ namespace KivoContent
     ' Below a card's artwork, the caption's height.
     const captionHeight = 80
 
+    ' The work kinds the TV shows: no books, which aren't on the TV.
+    function tvKinds() as object
+        return ["movie", "series", "episode", "season", "video", "extra"]
+    end function
+
+    function isTvKind(kind as string) as boolean
+        for each tv in KivoContent.tvKinds()
+            if tv = kind then return true
+        end for
+        return false
+    end function
+
+    ' [works] without the kinds the TV doesn't show.
+    function tvWorks(works as dynamic) as object
+        out = []
+        if works = invalid then return out
+        for each work in works
+            if KivoContent.isTvKind(work.kind) then out.Push(work)
+        end for
+        return out
+    end function
+
+    ' The libraries the TV shows: every kind but audiobooks.
+    function tvLibraries(libraries as object) as object
+        out = []
+        for each library in libraries
+            if library.kind <> "audiobooks" then out.Push(library)
+        end for
+        return out
+    end function
+
     ' A row of cards: [works] (WorkSummary list) under [title], drawn as
     ' posters, or as landscape stills when [landscape].
     function row(title as string, works as object, landscape as boolean) as object
@@ -47,7 +78,7 @@ namespace KivoContent
     ' collection), its artwork, caption and progress, and whether it's played.
     function blank() as object
         node = CreateObject("roSGNode", "ContentNode")
-        node.AddFields({ workId: "", personId: "", collectionId: "", bookSeriesId: "", listId: "", kind: "", imageUri: "", caption: "", progress: 0.0, played: false })
+        node.AddFields({ workId: "", personId: "", collectionId: "", listId: "", kind: "", imageUri: "", caption: "", progress: 0.0, played: false })
         return node
     end function
 
@@ -100,7 +131,6 @@ namespace KivoContent
     function target(card as object) as object
         if card.personId <> "" then return { screen: "RowsScreen", params: { kind: "person", id: card.personId } }
         if card.collectionId <> "" then return { screen: "RowsScreen", params: { kind: "collection", id: card.collectionId } }
-        if card.bookSeriesId <> "" then return { screen: "RowsScreen", params: { kind: "bookSeries", id: card.bookSeriesId } }
         if card.listId <> "" then return { screen: "RowsScreen", params: { kind: "list", id: card.listId } }
         return { screen: "DetailScreen", params: { id: card.workId } }
     end function
@@ -110,20 +140,6 @@ namespace KivoContent
     function rowSize(landscape as boolean) as object
         size = KivoContent.cardSize(landscape)
         return { item: [size[0], size[1] + KivoContent.captionHeight], height: size[1] + KivoContent.captionHeight + 60 }
-    end function
-
-    ' A row of book covers' sizes, square, as rowSize gives them.
-    function squareRowSize() as object
-        return { item: [240, 240 + KivoContent.captionHeight], height: 240 + KivoContent.captionHeight + 60 }
-    end function
-
-    ' Whether every work of [works] is a book, whose covers are square.
-    function allBooks(works as object) as boolean
-        if works.Count() = 0 then return false
-        for each work in works
-            if work.kind <> "book" then return false
-        end for
-        return true
     end function
 
     ' A card's artwork's width and height: six posters across a row, or three stills.

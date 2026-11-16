@@ -44,20 +44,21 @@ sub onLists(event as object)
     sizes = []
     heights = []
     for each list in response.body.items
-        works = list.items
-        if works = invalid then works = []
-        row = KivoContent.row(list.name + "  ·  " + list.workCount.ToStr(), works, false)
-        ' See all, at the row's end: the list's page.
-        row.AppendChild(KivoContent.blank())
-        more = row.GetChild(row.GetChildCount() - 1)
-        more.listId = list.id
-        more.title = "See all"
-        more.caption = list.name
-        root.AppendChild(row)
-        size = KivoContent.rowSize(false)
-        if KivoContent.allBooks(works) then size = KivoContent.squareRowSize()
-        sizes.Push(size.item)
-        heights.Push(size.height)
+        ' Books left out; a list with nothing the TV plays has no row.
+        works = KivoContent.tvWorks(list.items)
+        if works.Count() > 0
+            row = KivoContent.row(list.name + "  ·  " + list.workCount.ToStr(), works, false)
+            ' See all, at the row's end: the list's page.
+            row.AppendChild(KivoContent.blank())
+            more = row.GetChild(row.GetChildCount() - 1)
+            more.listId = list.id
+            more.title = "See all"
+            more.caption = list.name
+            root.AppendChild(row)
+            size = KivoContent.rowSize(false)
+            sizes.Push(size.item)
+            heights.Push(size.height)
+        end if
     end for
     if root.GetChildCount() = 0
         m.status.text = "No lists yet. Add a title to a list from its page with *."
