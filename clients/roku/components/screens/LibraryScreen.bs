@@ -4,21 +4,31 @@ import "pkg:/source/shared/content.bs"
 import "pkg:/source/shared/display.bs"
 import "pkg:/source/shared/grid.bs"
 import "pkg:/source/shared/session.bs"
+import "pkg:/source/shared/states.bs"
 import "pkg:/source/shared/ui.bs"
 
 sub init()
     m.heading = m.top.FindNode("heading")
     m.bar = m.top.FindNode("bar")
     m.status = m.top.FindNode("status")
+    m.problem = m.top.FindNode("problem")
     m.grid = m.top.FindNode("grid")
     m.menu = m.top.FindNode("menu")
     KivoUi.style(m.heading, KivoTokens.TextSize.xl, KivoTokens.Color.text, true)
     KivoUi.style(m.status, KivoTokens.TextSize.base, KivoTokens.Color.textMuted)
+    KivoUi.style(m.problem, KivoTokens.TextSize.sm, KivoTokens.Color.danger)
     m.bar.ObserveField("buttonSelected", "onBar")
     m.grid.ObserveField("itemSelected", "onCard")
     m.grid.ObserveField("itemFocused", "onFocused")
     m.menu.ObserveField("chosen", "onMenuChosen")
     m.menu.ObserveField("closed", "onMenuClosed")
+    m.state = m.top.FindNode("state")
+    m.state.ObserveField("action", "onState")
+    m.cardMenu = m.top.FindNode("cardMenu")
+    m.cardMenu.ObserveField("navigate", "onCardMenuNavigate")
+    m.cardMenu.ObserveField("changed", "reload")
+    m.cardMenu.ObserveField("problem", "onCardMenuProblem")
+    m.cardMenu.ObserveField("closed", "onCardMenuClosed")
     m.tasks = {}
     m.generation = 0
     m.tab = "titles"
@@ -32,6 +42,10 @@ end sub
 sub focus()
     if m.menu.visible
         m.menu.callFunc("focus")
+    else if m.cardMenu.visible
+        m.cardMenu.callFunc("focus")
+    else if m.state.visible and m.state.buttons.Count() > 0
+        m.state.callFunc("focus")
     else if m.grid.content <> invalid and m.grid.content.GetChildCount() > 0
         m.grid.SetFocus(true)
         ' What's played may have changed while another screen showed.
@@ -41,9 +55,26 @@ sub focus()
     end if
 end sub
 
+' Opens on the section, sort and filters this device last used in the
+' library. Opened by its ID alone, as Go to library does, it reads the
+' library first.
 sub start()
+    if m.top.params.kind = invalid
+        m.tasks.library = Kivo.send(KivoApi.getLibrary(m.top.params.id), "onLibrary")
+        return
+    end if
     m.kind = m.top.params.kind
     m.heading.text = m.top.params.name
+    saved = Kivo.savedGrid(m.top.params.id)
+    if saved <> invalid
+        if saved.tab <> invalid then m.tab = saved.tab
+        if saved.sort <> invalid then m.sort = saved.sort
+        if saved.filters <> invalid
+            filters = KivoGrid.emptyFilters()
+            filters.Append(saved.filters)
+            m.filters = filters
+        end if
+    end if
     shape()
     ' Whether it has collections, for the tab, and what its filters offer.
     m.tasks.hasCollections = Kivo.send(KivoApi.listLibraryCollections(m.top.params.id, { limit: 1 }), "onHasCollections")
@@ -67,6 +98,22 @@ sub shape()
     end if
 end sub
 
+sub onLibrary(event as object)
+    m.tasks.library = invalid
+    response = event.GetData()
+    if response.code <> 200
+        KivoStates.failed(m.state, response)
+        m.state.callFunc("focus")
+        return
+    end if
+    m.top.params = { id: response.body.id, name: response.body.name, kind: response.body.kind }
+end sub
+
+' Keeps what's chosen for this library, to open on next time.
+sub remember()
+    Kivo.saveGrid(m.top.params.id, { tab: m.tab, sort: m.sort, filters: m.filters })
+end sub
+
 sub onHasCollections(event as object)
     m.tasks.hasCollections = invalid
     response = event.GetData()
@@ -83,11 +130,14 @@ sub onValues(event as object)
     if response.code = 200 then m.values[task.fieldName] = response.body.items
 end sub
 
-' The bar: the tabs, then for titles Sort, Filter and, sorted by title, A-Z.
+' The bar, as the Android TV app's header: the sections (Collections
+' when it has any), the count line ("237 movies · A–Z"), which opens
+' Sort, Filter, with a dot while any filter is on, and for the title
+' sort the letters.
 sub showBar()
     labels = []
     m.barActions = []
-    tabs = KivoGrid.tabs(m.hasCollections)
+    tabs = KivoGrid.tabs(m.kind, m.hasCollections)
     if tabs.Count() > 1
         for each item in tabs
             label = item.label
@@ -96,9 +146,17 @@ sub showBar()
             m.barActions.Push({ tab: item.id })
         end for
     end if
+    if m.total <> invalid
+        count = KivoGrid.countNoun(m.total, m.tab, m.kind)
+        if m.tab = "titles"
+            labels.Push(count + " · " + KivoGrid.sortShort(m.sort))
+            m.barActions.Push({ menu: "sort" })
+        else
+            labels.Push(count)
+            m.barActions.Push({ none: true })
+        end if
+    end if
     if m.tab = "titles"
-        labels.Push("Sort: " + KivoGrid.sortLabel(m.kind, m.sort))
-        m.barActions.Push({ menu: "sort" })
         filter = "Filter"
         if KivoGrid.filtered(m.filters) then filter = "Filter •"
         labels.Push(filter)
@@ -115,6 +173,7 @@ end sub
 
 ' Reads the grid again from its first page, keeping the focus where it was.
 sub reload()
+    m.problem.text = ""
     m.pages = {}
     m.generation = m.generation + 1
     fetch(0)
@@ -149,7 +208,11 @@ sub onPage(event as object)
     end if
     if response.code <> 200
         m.pages.Delete(task.offset.ToStr())
-        m.status.text = KivoDisplay.problem(response)
+        if task.offset = 0
+            m.grid.visible = false
+            KivoStates.failed(m.state, response)
+            if not m.menu.visible then m.state.callFunc("focus")
+        end if
         return
     end if
     page = response.body
@@ -163,6 +226,7 @@ sub lay(page as object)
     if page.total <> invalid then total = page.total
     m.letters = page.letters
     if m.sort <> "title" then m.letters = invalid
+    m.total = total
     showBar()
     m.loaded = true
     was = m.grid.itemFocused
@@ -172,12 +236,18 @@ sub lay(page as object)
     end for
     m.grid.content = root
     if total = 0
-        m.status.text = "Nothing here."
-        if KivoGrid.filtered(m.filters) then m.status.text = "Nothing matches these filters."
-        m.bar.SetFocus(true)
+        m.grid.visible = false
+        if m.tab = "titles" and KivoGrid.filtered(m.filters)
+            KivoStates.empty(m.state, KivoGrid.emptyFiltered(m.filters, m.kind), "", [{ id: "clearFilters", label: "Clear filters" }])
+            if not m.menu.visible then m.state.callFunc("focus")
+        else
+            KivoStates.empty(m.state, "Nothing in this library yet.", "")
+            m.bar.SetFocus(true)
+        end if
         return
     end if
-    m.status.text = ""
+    KivoStates.clear(m.state)
+    m.grid.visible = true
     if was >= 0 and was < total
         m.grid.jumpToItem = was
         ensure(was)
@@ -200,10 +270,7 @@ sub fillCard(node as object, item as object)
         KivoContent.fill(node, item, m.kind = "videos")
         return
     end if
-    node.title = item.name
-    node.collectionId = item.id
-    node.imageUri = Kivo.imageUrl(item.images.poster, 240)
-    node.caption = item.workCount.ToStr() + " titles"
+    KivoContent.collection(node, item)
 end sub
 
 ' The pages of the cards around [index] that aren't read yet.
@@ -225,11 +292,41 @@ sub onCard()
     m.top.navigate = KivoContent.target(node)
 end sub
 
+sub onState()
+    action = m.state.action
+    if action = "retry"
+        if m.kind = invalid
+            start()
+        else
+            reload()
+        end if
+    else if action = "changeServer"
+        m.top.navigate = { changeServer: true }
+    else if action = "clearFilters"
+        m.filters = KivoGrid.emptyFilters()
+        filtersChanged()
+    end if
+end sub
+
+sub onCardMenuNavigate()
+    m.top.navigate = m.cardMenu.navigate
+end sub
+
+sub onCardMenuProblem()
+    m.problem.text = m.cardMenu.problem
+end sub
+
+sub onCardMenuClosed()
+    m.grid.SetFocus(true)
+end sub
+
 sub onBar()
     action = m.barActions[m.bar.buttonSelected]
     if action.tab <> invalid
         if action.tab = m.tab then return
         m.tab = action.tab
+        m.total = invalid
+        remember()
         shape()
         showBar()
         m.grid.jumpToItem = 0
@@ -257,13 +354,15 @@ sub showMenu(page as string, title as string, items as object, checked as string
     m.menu.callFunc("focus")
 end sub
 
-' The filters' first page: each with what it's set to.
+' The filters' first page, in the Android TV panel's order: the watch
+' status, decade, genre and content rating, then the resolutions and
+' dynamic ranges the library has; each with what it's set to.
 sub openFilters()
     f = m.filters
-    items = [{ id: "played", label: "Watched: " + playedLabel(f.played) }]
-    if has("genre") then items.Push({ id: "genre", label: "Genre: " + countLabel(f.genres) })
+    items = [{ id: "played", label: "Watch status: " + playedLabel(f.played) }]
     if has("year") then items.Push({ id: "decade", label: "Decade: " + anyOr(f.decade, f.decade + "s") })
-    if has("contentRating") then items.Push({ id: "contentRating", label: "Rating: " + countLabel(f.contentRatings) })
+    if has("genre") then items.Push({ id: "genre", label: "Genre: " + countLabel(f.genres) })
+    if has("contentRating") then items.Push({ id: "contentRating", label: "Content rating: " + countLabel(f.contentRatings) })
     if has("resolution") then items.Push({ id: "resolution", label: "Resolution: " + countLabel(f.resolutions) })
     if has("dynamicRange") then items.Push({ id: "dynamicRange", label: "Dynamic range: " + countLabel(f.dynamicRanges) })
     if KivoGrid.filtered(f) then items.Push({ id: "clear", label: "Clear filters" })
@@ -298,7 +397,7 @@ sub openFilter(field as string)
     f = m.filters
     if field = "played"
         items = [{ id: "", label: "Any" }, { id: "unplayed", label: "Unwatched" }, { id: "inProgress", label: "In progress" }, { id: "played", label: "Watched" }]
-        showMenu("filter", "Watched", items, anyId(f.played))
+        showMenu("filter", "Watch status", items, anyId(f.played))
     else if field = "decade"
         years = []
         for each item in m.values.year
@@ -317,7 +416,7 @@ sub openFilter(field as string)
             if KivoGrid.contains(chosen, item.value) then label = "✓ " + label
             items.Push({ id: item.value, label: label })
         end for
-        titles = { genre: "Genre", contentRating: "Rating", resolution: "Resolution", dynamicRange: "Dynamic range" }
+        titles = { genre: "Genre", contentRating: "Content rating", resolution: "Resolution", dynamicRange: "Dynamic range" }
         showMenu("filterMany", titles[field], items, "")
     end if
 end sub
@@ -340,6 +439,7 @@ sub onMenuChosen()
         closeMenu()
         if id <> m.sort
             m.sort = id
+            remember()
             showBar()
             m.grid.jumpToItem = 0
             reload()
@@ -352,9 +452,10 @@ sub onMenuChosen()
         m.grid.SetFocus(true)
     else if page = "filters"
         if id = "clear"
+            ' Clear filters turns them all off and closes the panel.
             m.filters = KivoGrid.emptyFilters()
+            closeMenu()
             filtersChanged()
-            openFilters()
         else
             openFilter(id)
         end if
@@ -376,6 +477,7 @@ sub onMenuChosen()
 end sub
 
 sub filtersChanged()
+    remember()
     showBar()
     m.grid.jumpToItem = 0
     reload()
@@ -405,8 +507,14 @@ function onKeyEvent(key as string, press as boolean) as boolean
         m.bar.SetFocus(true)
         return true
     end if
-    if key = "options" and not m.menu.visible and m.tab = "titles"
-        openFilters()
+    ' * on a card opens its menu; in the bar, the filters.
+    if key = "options" and not m.menu.visible and not m.cardMenu.visible
+        if m.grid.IsInFocusChain() and m.grid.content <> invalid
+            card = m.grid.content.GetChild(m.grid.itemFocused)
+            if card <> invalid and card.workId <> "" then m.cardMenu.callFunc("open", card, { library: true })
+        else if m.tab = "titles"
+            openFilters()
+        end if
         return true
     end if
     return false

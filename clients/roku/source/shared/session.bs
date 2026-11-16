@@ -64,6 +64,26 @@ namespace Kivo
         section.Flush()
     end sub
 
+    ' What this device last chose in a library's grid (its tab, sort and
+    ' filters), to open it on next time; invalid for none.
+    function savedGrid(libraryId as string) as dynamic
+        saved = CreateObject("roRegistrySection", "kivo-grids").Read(libraryId)
+        if saved = "" then return invalid
+        return ParseJson(saved)
+    end function
+
+    sub saveGrid(libraryId as string, grid as object)
+        section = CreateObject("roRegistrySection", "kivo-grids")
+        section.Write(libraryId, FormatJson(grid))
+        section.Flush()
+    end sub
+
+    ' The last search typed while this server is open, which Search opens on.
+    function lastSearch() as string
+        if m.global.lastSearch = invalid then return ""
+        return m.global.lastSearch
+    end function
+
     ' The identity headers every request carries (Client identity in the
     ' contract). The manifest's major, minor and build versions are the
     ' release's semantic version.

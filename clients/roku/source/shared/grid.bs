@@ -1,3 +1,5 @@
+import "pkg:/source/shared/ui.bs"
+
 ' A library's grid as the other apps have it (the core's GridQuery and
 ' SmartLists.gridQuery): its tabs, its sorts, and its filters as a work
 ' query's rules.
@@ -6,30 +8,52 @@ namespace KivoGrid
     ' Works a grid asks for at a time.
     const pageSize = 60
 
-    ' The tabs a library has: its titles, then collections when it has any.
-    function tabs(hasCollections as boolean) as object
-        out = [{ id: "titles", label: "Titles" }]
+    ' The sections a library of [kind] has: its titles, named by what they
+    ' are (Movies, Shows, Videos), then Collections when it has any.
+    function tabs(kind as string, hasCollections as boolean) as object
+        names = { movies: "Movies", shows: "Shows" }
+        name = names[kind]
+        if name = invalid then name = "Videos"
+        out = [{ id: "titles", label: name }]
         if hasCollections then out.Push({ id: "collections", label: "Collections" })
         return out
     end function
 
-    ' The sorts a library of [kind] offers, each a work query's sort field.
+    ' The sorts a library of [kind] offers, each a work query's sort field,
+    ' as the core's sortsOf lists them.
     function sorts(kind as string) as object
-        out = [{ id: "title", label: "Title" }]
-        out.Push({ id: "addedAt", label: "Date added" })
-        if kind = "shows" then out.Push({ id: "lastEpisodeAddedAt", label: "Episode added" })
-        out.Push({ id: "releaseDate", label: "Release date" })
-        out.Push({ id: "rating", label: "Rating" })
-        if kind <> "shows" then out.Push({ id: "runtimeMs", label: "Runtime" })
-        out.Push({ id: "lastPlayedAt", label: "Last played" })
+        out = [{ id: "title", label: "Title" }, { id: "addedAt", label: "Date added" }]
+        if kind = "shows" then out.Push({ id: "lastEpisodeAddedAt", label: "Last episode added" })
+        out.Append([{ id: "releaseDate", label: "Release date" }, { id: "rating", label: "Rating" }, { id: "runtimeMs", label: "Runtime" }, { id: "lastPlayedAt", label: "Last played" }])
         return out
     end function
 
-    function sortLabel(kind as string, sort as string) as string
-        for each item in KivoGrid.sorts(kind)
-            if item.id = sort then return item.label
-        end for
-        return "Title"
+    ' A sort in a word or two, for the count line: "A–Z", "Recently added".
+    function sortShort(sort as string) as string
+        words = { title: "A–Z", addedAt: "Recently added", lastEpisodeAddedAt: "Last episode added", releaseDate: "Newest", rating: "Top rated", runtimeMs: "Shortest", lastPlayedAt: "Recently played" }
+        if words[sort] <> invalid then return words[sort]
+        return "A–Z"
+    end function
+
+    ' "237 movies", "5 collections": how many of what the section lists.
+    function countNoun(count as integer, section as string, kind as string) as string
+        if section = "collections" then return KivoUi.plural(count, "collection", "collections")
+        if kind = "movies" then return KivoUi.plural(count, "movie", "movies")
+        if kind = "shows" then return KivoUi.plural(count, "show", "shows")
+        return KivoUi.plural(count, "video", "videos")
+    end function
+
+    ' "No unwatched movies" for the watch status alone, else "No movies match these filters".
+    function emptyFiltered(filters as object, kind as string) as string
+        nouns = { movies: "movies", shows: "shows" }
+        noun = nouns[kind]
+        if noun = invalid then noun = "videos"
+        onlyPlayed = filters.played <> "" and filters.genres.Count() = 0 and filters.decade = "" and filters.contentRatings.Count() = 0 and filters.resolutions.Count() = 0 and filters.dynamicRanges.Count() = 0
+        if onlyPlayed
+            states = { unplayed: "unwatched", inProgress: "in-progress", played: "watched" }
+            return "No " + states[filters.played] + " " + noun
+        end if
+        return "No " + noun + " match these filters"
     end function
 
     ' The work kind a library of [kind] lists.
