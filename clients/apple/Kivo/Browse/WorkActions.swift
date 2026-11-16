@@ -3,7 +3,7 @@ import SwiftUI
 
 /// The actions on a work, for its long press menu and an episode row's;
 /// a movie, episode or video also downloads at the download quality
-/// setting, or removes its download.
+/// setting, a book its original, or removes its download.
 struct WorkActions: View {
     let work: WorkSummary
     var showsSeries = true
@@ -76,7 +76,7 @@ struct WorkActions: View {
                 SwiftUI.Label(String(localized: "Go to library"), systemImage: "square.grid.2x2")
             }
         }
-        if [WorkKind.movie, .episode, .video].contains(work.kind), work.available, server.session.downloads != nil {
+        if [WorkKind.movie, .episode, .video, .book].contains(work.kind), work.available, server.session.downloads != nil {
             Section {
                 if server.download(of: work.id) != nil {
                     Button(role: .destructive) {
