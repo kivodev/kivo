@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!-- Plays a work in the Video node, telling the server where it is every
-     ten seconds and when it stops. * opens the menu: audio, subtitles,
-     version and how it plays. Skip shows in a marker, and up next near
-     an episode's end. -->
+     ten seconds and when it stops. * opens Playback Settings, as the
+     Android TV app's: audio, subtitles, the dialogue boost, quality,
+     version, stream info and an episode's previous and next ones. Skip
+     shows in a marker, and up next near an episode's end. -->
 <component name="PlayerScreen" extends="KivoScreen">
   <children>
     <Video id="video" width="1920" height="1080" enableUI="true" notificationInterval="1" />
@@ -18,6 +19,8 @@
       <Label id="upNextCountdown" translation="[312, 150]" width="376" />
       <ButtonGroup id="upNextButtons" translation="[32, 220]" layoutDirection="horiz" itemSpacings="[24]" minWidth="300" />
     </Group>
+    <Rectangle id="failureGround" width="1920" height="1080" visible="false" />
+    <StateView id="failure" translation="[360, 400]" textWidth="1200" visible="false" />
     <MenuPanel id="menu" visible="false" />
     <Timer id="heartbeat" duration="10" repeat="true" />
     <Timer id="second" duration="1" repeat="true" />

@@ -64,6 +64,19 @@ namespace Kivo
         section.Flush()
     end sub
 
+    ' Whether plays boost dialogue, kept on this device, as on Android TV.
+    function dialogueBoost() as boolean
+        return CreateObject("roRegistrySection", Kivo.registrySection).Read("dialogueBoost") = "true"
+    end function
+
+    sub saveDialogueBoost(on as boolean)
+        section = CreateObject("roRegistrySection", Kivo.registrySection)
+        value = "false"
+        if on then value = "true"
+        section.Write("dialogueBoost", value)
+        section.Flush()
+    end sub
+
     ' What this device last chose in a library's grid (its tab, sort and
     ' filters), to open it on next time; invalid for none.
     function savedGrid(libraryId as string) as dynamic

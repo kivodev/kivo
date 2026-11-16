@@ -37,8 +37,17 @@ sub init()
     m.skip.ObserveField("buttonSelected", "onSkip")
     m.upNextButtons.ObserveField("buttonSelected", "onUpNextButton")
     m.autoplayNext = true
+    m.admin = false
+    m.ladder = []
     m.tasks = {}
     m.tasks.user = Kivo.send(KivoApi.getCurrentUser(), "onUser")
+    m.tasks.server = Kivo.send(KivoApi.getServer(), "onServer")
+    m.failure = m.top.FindNode("failure")
+    m.failureGround = m.top.FindNode("failureGround")
+    m.failureGround.color = KivoTokens.Color.playerScrim
+    m.failure.ObserveField("action", "onFailureAction")
+    ' A quality chosen in the player lasts for this video, at home or away.
+    m.videoQuality = invalid
     m.menu.ObserveField("chosen", "onMenuChosen")
     m.menu.ObserveField("closed", "onMenuClosed")
     m.play = invalid
@@ -49,6 +58,8 @@ end sub
 sub focus()
     if m.menu.visible
         m.menu.callFunc("focus")
+    else if m.failure.visible
+        m.failure.callFunc("focus")
     else if m.upNext.visible
         m.upNextButtons.SetFocus(true)
     else
@@ -61,14 +72,25 @@ sub onUser(event as object)
     m.tasks.user = invalid
     response = event.GetData()
     if response.code = 200 and response.body.playback <> invalid then m.autoplayNext = response.body.playback.autoplayNext <> false
+    if response.code = 200 then m.admin = response.body.admin = true
+end sub
+
+' The server's quality ladder, for Quality's choices.
+sub onServer(event as object)
+    m.tasks.server = invalid
+    response = event.GetData()
+    if response.code = 200 and response.body.qualityLadder <> invalid then m.ladder = response.body.qualityLadder
 end sub
 
 ' The work first, for its versions and tracks, then the play: the
 ' request's version and tracks when it names them, else the server's.
 sub load()
     params = m.top.params
-    m.request = { versionId: params.versionId, audioTrackId: params.audioTrackId, subtitleTrackId: params.subtitleTrackId }
+    if m.request = invalid or m.request.workId <> params.id then m.videoQuality = invalid
+    m.request = { workId: params.id, versionId: params.versionId, audioTrackId: params.audioTrackId, subtitleTrackId: params.subtitleTrackId }
     m.play = invalid
+    m.failure.visible = false
+    m.failureGround.visible = false
     m.leaving = false
     m.fellBack = false
     m.next = invalid
@@ -82,7 +104,7 @@ sub onWork(event as object)
     response = event.GetData()
     m.tasks.work = invalid
     if response.code <> 200
-        fail(KivoDisplay.problem(response))
+        fail(response)
         return
     end if
     m.work = response.body
@@ -104,8 +126,14 @@ end sub
 ' Asks for a play of the request from [position] (invalid for the resume point).
 sub begin(position as dynamic)
     settings = Kivo.qualities()
+    if m.videoQuality <> invalid
+        settings.localQuality = m.videoQuality
+        settings.remoteQuality = m.videoQuality
+    end if
     settings.directPlay = true
     body = { workId: m.work.id, capabilities: KivoPlayer.capabilities(), settings: settings }
+    ' The dialogue boost, kept in this device's settings for later plays.
+    if Kivo.dialogueBoost() then body.dialogueBoost = true
     if position <> invalid then body.positionMs = position
     for each key in ["versionId", "audioTrackId", "subtitleTrackId"]
         if m.request[key] <> invalid and m.request[key] <> "" then body[key] = m.request[key]
@@ -117,7 +145,7 @@ sub onStarted(event as object)
     response = event.GetData()
     m.tasks.start = invalid
     if response.code <> 201
-        fail(KivoDisplay.problem(response))
+        fail(response)
         return
     end if
     if m.leaving
@@ -339,18 +367,18 @@ end function
 
 sub showUpNext()
     still = m.upNextPhase = "still"
-    m.upNextHeading.text = "Up Next"
-    if still then m.upNextHeading.text = "Still watching?"
+    m.upNextHeading.text = "UP NEXT"
+    if still then m.upNextHeading.text = "STILL WATCHING?"
     title = m.next.title
     if m.next.episode <> invalid then title = KivoUi.episodeCode(m.next.episode) + " · " + title
     m.upNextTitle.text = title
     m.upNextStill.uri = Kivo.imageUrl(m.next.images.still, 256)
     m.upNextCountdown.text = ""
-    if m.upNextPhase = "counting" then m.upNextCountdown.text = "Playing in " + m.upNextSeconds.ToStr()
+    if m.upNextPhase = "counting" then m.upNextCountdown.text = "Playing in " + m.upNextSeconds.ToStr() + " s"
+    ' Play now, with Watch credits at the credits, else Hide, as on Android TV.
     second = "Hide"
-    if m.upNextAtCredits then second = "Watch Credits"
-    labels = ["Play Now", second]
-    if still then labels = ["Keep Watching", "Hide"]
+    if m.upNextAtCredits then second = "Watch credits"
+    labels = ["Play now", second]
     if m.upNextButtons.buttons.Join("|") <> labels.Join("|") then m.upNextButtons.buttons = labels
     m.upNext.visible = true
     if m.skip.visible and KivoUpNext.markerAt(m.markers, positionMs()) <> invalid and KivoUpNext.markerAt(m.markers, positionMs()).kind = "credits" then hideSkip()
@@ -449,7 +477,7 @@ sub onReported(event as object)
         m.leaving = true
         m.heartbeat.control = "stop"
         m.video.control = "stop"
-        m.status.text = KivoDisplay.tables().words.playStopped
+        fail({ code: 410, body: invalid, ended: true })
     end if
 end sub
 
@@ -466,7 +494,7 @@ sub failed()
     end if
     Kivo.send(KivoApi.stopPlay(m.play.id, error), "onStopped")
     m.play = invalid
-    fail("This video couldn't play on this Roku.")
+    fail({ code: 0, body: invalid, decode: true })
 end sub
 
 sub onFallback(event as object)
@@ -476,13 +504,62 @@ sub onFallback(event as object)
         start(response.body)
     else
         m.play = invalid
-        fail(KivoDisplay.problem(response))
+        fail(response)
     end if
 end sub
 
-sub fail(message as string)
+' Playback stopped, as the Android TV app says it: what failed in a line
+' ("Couldn't play this.", "Stream limit reached" or, ended elsewhere,
+' "Playback was stopped."), the reason, then Try again, Play another
+' version where there's one, and Back; an admin also sees the problem's code.
+sub fail(response as object)
     m.video.control = "stop"
-    m.status.text = message
+    m.heartbeat.control = "stop"
+    m.status.text = ""
+    code = ""
+    if response.body <> invalid and response.body.code <> invalid then code = response.body.code
+    title = "Couldn't play this."
+    if code = "streamLimit" then title = "Stream limit reached"
+    if response.ended = true then title = "Playback was stopped."
+    sentence = KivoDisplay.problem(response)
+    if response.decode = true then sentence = "This Roku couldn't decode the video."
+    if response.ended = true then sentence = KivoDisplay.tables().words.playStopped
+    if code = "streamLimit" and response.body.plays <> invalid
+        for each other in response.body.plays
+            line = [other.title]
+            if other.clientName <> invalid then line.Push(other.clientName)
+            sentence = sentence + Chr(10) + line.Join(" · ")
+        end for
+    end if
+    if m.admin and code <> ""
+        reason = ""
+        if response.body.reason <> invalid then reason = " (" + response.body.reason + ")"
+        sentence = sentence + Chr(10) + code + reason
+    end if
+    buttons = [{ id: "retry", label: "Try again" }]
+    if m.work <> invalid and m.work.versions <> invalid and m.work.versions.Count() > 1 then buttons.Push({ id: "other", label: "Play another version" })
+    buttons.Push({ id: "back", label: "Back" })
+    m.failure.title = title
+    m.failure.sentence = sentence
+    m.failure.buttons = buttons
+    m.failure.visible = true
+    m.failureGround.visible = true
+    m.failure.callFunc("focus")
+end sub
+
+sub onFailureAction()
+    action = m.failure.action
+    m.failure.visible = false
+    m.failureGround.visible = false
+    if action = "retry"
+        m.top.params = { id: m.top.params.id, versionId: m.request.versionId, audioTrackId: m.request.audioTrackId, subtitleTrackId: m.request.subtitleTrackId }
+    else if action = "other"
+        m.menuFrom = "failure"
+        showMenu("version", "Version", KivoTracks.versionItems(m.work), "")
+    else
+        m.leaving = true
+        m.top.navigate = { back: true }
+    end if
 end sub
 
 ' Plays on from the current position as a new play, with [change] (some of
@@ -559,23 +636,58 @@ function currentSubtitle() as string
     return KivoTracks.selected(m.play, "subtitle")
 end function
 
-' The menu's first page: each choice with what it is now.
+' Playback Settings, on *, with the player's track buttons: Audio,
+' Subtitles and the dialogue boost, then Quality, Version (with several)
+' and Stream info, and an episode's previous and next ones, each with
+' what it is now.
 sub openMenu()
     if m.play = invalid then return
     items = []
     if KivoTracks.tracksOf(m.version, "audio").Count() > 0
         items.Push({ id: "audio", label: "Audio: " + KivoTracks.name(m.version, currentAudio()) })
     end if
-    items.Push({ id: "subtitle", label: "Subtitles: " + KivoTracks.name(m.version, currentSubtitle()) })
+    subtitle = KivoTracks.name(m.version, currentSubtitle())
+    if subtitle = "" then subtitle = "Off"
+    items.Push({ id: "subtitle", label: "Subtitles: " + subtitle })
+    boost = "Off"
+    if m.play.dialogueBoost = true then boost = "On"
+    items.Push({ id: "boost", label: "Dialogue boost: " + boost })
+    items.Push({ id: "quality", label: "Quality: " + KivoDisplay.quality(m.play.quality, m.ladder) })
     if m.work.versions <> invalid and m.work.versions.Count() > 1
         items.Push({ id: "version", label: "Version: " + m.version.name })
     end if
-    if m.work.tracksRemembered = true then items.Push({ id: "forget", label: "Use the default tracks" })
-    info = "Show playback info"
-    if m.info.visible then info = "Hide playback info"
-    items.Push({ id: "info", label: info })
-    showMenu("menu", "Options", items, "")
+    items.Push({ id: "info", label: "Stream info" })
+    if m.work.episode <> invalid
+        if m.work.episode.previousId <> invalid then items.Push({ id: "previous", label: "Previous episode" })
+        if m.work.episode.nextId <> invalid then items.Push({ id: "next", label: "Next episode" })
+    end if
+    m.menuFrom = "menu"
+    showMenu("menu", "Playback Settings", items, "")
 end sub
+
+' Quality's choices: Auto, Original and the ladder's rungs below the
+' file's own bitrate, those above the server's cap for this play left out.
+function qualityItems() as object
+    words = KivoDisplay.tables().words.quality
+    items = [{ id: "auto", label: words.auto }]
+    cap = m.play.limitBps
+    if cap = invalid then items.Push({ id: "original", label: words.original })
+    source = invalid
+    if m.version <> invalid then source = m.version.bitrateBps
+    for each rung in m.ladder
+        if (source = invalid or rung.bitrateBps < source) and (cap = invalid or rung.bitrateBps <= cap)
+            items.Push({ id: rung.bitrateBps.ToStr(), label: KivoDisplay.quality({ mode: "limit", maxBitrateBps: rung.bitrateBps }, m.ladder) })
+        end if
+    end for
+    return items
+end function
+
+function qualityChecked() as string
+    q = m.play.quality
+    if q = invalid or q.mode = "auto" then return "auto"
+    if q.mode = "original" then return "original"
+    return q.maxBitrateBps.ToStr()
+end function
 
 ' Shows the menu's [page], listing [items] with [checked] checked when it's a choice.
 sub showMenu(page as string, title as string, items as object, checked as string)
@@ -600,23 +712,45 @@ sub onMenuChosen()
             showMenu("subtitle", "Subtitles", trackItems("subtitle"), currentSubtitle())
         else if id = "version"
             showMenu("version", "Version", KivoTracks.versionItems(m.work), m.version.id)
-        else if id = "forget"
+        else if id = "quality"
+            showMenu("quality", "Quality", qualityItems(), qualityChecked())
+        else if id = "boost"
             closeMenu()
-            m.tasks.forget = Kivo.send(KivoApi.updateWorkTracks(m.work.id, { audioTrackId: KivoTracks.automatic, subtitleTrackId: KivoTracks.automatic }), "onForgot")
+            ' Kept for later plays; this one plays on from the position with it.
+            Kivo.saveDialogueBoost(m.play.dialogueBoost <> true)
+            switchTo({})
         else if id = "info"
             shown = not m.info.visible
             m.info.visible = shown
             m.infoGround.visible = shown
             closeMenu()
+        else if id = "previous" or id = "next"
+            closeMenu()
+            target = m.work.episode.nextId
+            if id = "previous" then target = m.work.episode.previousId
+            m.global.autoplayRun = 0
+            stopQuietly(positionMs())
+            m.top.params = { id: target }
         end if
         return
     end if
     page = m.menuPage
+    from = m.menuFrom
     closeMenu()
+    if from = "failure" and page = "version"
+        ' Another version, from the start of the failed play's place.
+        m.top.params = { id: m.top.params.id, versionId: id }
+        return
+    end if
     if page = "audio"
         chooseAudio(id)
     else if page = "subtitle"
         chooseSubtitle(id)
+    else if page = "quality"
+        quality = { mode: "limit", maxBitrateBps: id.ToInt() }
+        if id = "auto" or id = "original" then quality = { mode: id }
+        m.videoQuality = quality
+        switchTo({})
     else if page = "version" and id <> m.version.id
         switchTo({ versionId: id, audioTrackId: invalid, subtitleTrackId: invalid })
     end if
@@ -634,16 +768,14 @@ function trackItems(kind as string) as object
     return out
 end function
 
-' The series' choice is forgotten: the play starts again with the tracks
-' the user's preferences and the file choose.
-sub onForgot(event as object)
-    m.tasks.forget = invalid
-    if event.GetData().code <> 200 then return
-    m.work = event.GetData().body
-    switchTo({ audioTrackId: invalid, subtitleTrackId: invalid })
-end sub
-
 sub onMenuClosed()
+    if m.menuFrom = "failure"
+        closeMenu()
+        m.failure.visible = true
+        m.failureGround.visible = true
+        m.failure.callFunc("focus")
+        return
+    end if
     if m.menuPage <> "menu"
         openMenu()
         return
@@ -654,7 +786,7 @@ end sub
 sub closeMenu()
     m.menu.visible = false
     m.menuPage = invalid
-    m.video.SetFocus(true)
+    if m.menuFrom <> "failure" then m.video.SetFocus(true)
 end sub
 
 ' Stops the play at [position] and returns to the page underneath once
@@ -683,13 +815,18 @@ end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
     if not press then return false
+    if key = "back" and m.failure.visible
+        m.leaving = true
+        m.top.navigate = { back: true }
+        return true
+    end if
     if key = "back"
         position = 0
         if m.play <> invalid then position = positionMs()
         leave(position)
         return true
     end if
-    if key = "options"
+    if key = "options" and not m.failure.visible
         m.global.autoplayRun = 0
         openMenu()
         return true
