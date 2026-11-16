@@ -1,8 +1,11 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"net/url"
+
+	"rsc.io/qr"
 
 	"github.com/mmcdole/kivo/internal/api/internal/gen"
 	"github.com/mmcdole/kivo/internal/auth"
@@ -24,14 +27,44 @@ func (h *handlers) CreateDeviceCode(ctx context.Context, req gen.CreateDeviceCod
 	if err != nil {
 		return nil, err
 	}
+	return gen.CreateDeviceCode201JSONResponse{
+		Code: dl.Code, Secret: dl.Secret, ExpiresAt: dl.Expires.UTC(), Interval: int(dl.Interval.Seconds()), LinkURL: h.linkURL(r, dl.Code),
+	}, nil
+}
+
+// linkURL is the web client's /link page for code, at the address the
+// request reached the server by, with the server's ID.
+func (h *handlers) linkURL(r *request, code string) string {
 	scheme := "http"
 	if r.secure {
 		scheme = "https"
 	}
-	query := url.Values{"code": {dl.Code}, "server": {h.deps.Settings.ServerID().String()}}
+	query := url.Values{"code": {code}, "server": {h.deps.Settings.ServerID().String()}}
 	link := url.URL{Scheme: scheme, Host: r.host, Path: h.deps.BasePath + "/link", RawQuery: query.Encode()}
-	return gen.CreateDeviceCode201JSONResponse{
-		Code: dl.Code, Secret: dl.Secret, ExpiresAt: dl.Expires.UTC(), Interval: int(dl.Interval.Seconds()), LinkURL: link.String(),
+	return link.String()
+}
+
+// qrScale is a QR module's size in pixels: about 450 pixels across for a
+// link, which a phone reads from across a room on a TV.
+const qrScale = 10
+
+// GetDeviceCodeQr draws a waiting code's link as a QR code, for a device
+// that can show an image but can't draw one. It encodes only the link
+// createDeviceCode gives, never the caller's text.
+func (h *handlers) GetDeviceCodeQr(ctx context.Context, req gen.GetDeviceCodeQrRequestObject) (gen.GetDeviceCodeQrResponseObject, error) {
+	r := requestOf(ctx)
+	if err := h.deps.Auth.DeviceCodeWaiting(req.Code, r.ip); err != nil {
+		return nil, err
+	}
+	code, err := qr.Encode(h.linkURL(r, req.Code), qr.M)
+	if err != nil {
+		return nil, err
+	}
+	code.Scale = qrScale
+	png := code.PNG()
+	return gen.GetDeviceCodeQr200ImagePngResponse{
+		Body: bytes.NewReader(png), ContentLength: int64(len(png)),
+		Headers: gen.GetDeviceCodeQr200ResponseHeaders{CacheControl: ptr("no-store")},
 	}, nil
 }
 

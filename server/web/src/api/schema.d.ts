@@ -404,6 +404,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/device-codes/{code}/qr": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The code the device shows, in any case, with or without spaces or a hyphen. */
+                code: components["parameters"]["UserCode"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Get device code QR
+         * @description A PNG QR code of the code's `linkUrl`, dark on light with a quiet
+         *     zone, for a device that can show an image but can't draw one. It
+         *     encodes only the server's own link for a waiting code. A code that
+         *     is unknown, expired or already answered is `404`, and counts as a
+         *     wrong poll does.
+         */
+        get: operations["getDeviceCodeQr"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/device-codes/{code}/approve": {
         parameters: {
             query?: never;
@@ -6591,6 +6618,33 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+            default: components["responses"]["Error"];
+        };
+    };
+    getDeviceCodeQr: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The code the device shows, in any case, with or without spaces or a hyphen. */
+                code: components["parameters"]["UserCode"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The QR code. */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
             404: components["responses"]["NotFound"];
             429: components["responses"]["TooManyRequests"];
             default: components["responses"]["Error"];

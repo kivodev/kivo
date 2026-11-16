@@ -433,6 +433,39 @@ open class SessionsApi : ApiClient {
 
 
     /**
+     * Get device code QR
+     * A PNG QR code of the code&#39;s &#x60;linkUrl&#x60;, dark on light with a quiet zone, for a device that can show an image but can&#39;t draw one. It encodes only the server&#39;s own link for a waiting code. A code that is unknown, expired or already answered is &#x60;404&#x60;, and counts as a wrong poll does. 
+     * @param code The code the device shows, in any case, with or without spaces or a hyphen.
+     * @return com.mmcdole.kivo.api.infrastructure.OctetByteArray
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun getDeviceCodeQr(code: kotlin.String): HttpResponse<com.mmcdole.kivo.api.infrastructure.OctetByteArray> {
+
+        val localVariableAuthNames = listOf<String>()
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/api/v1/device-codes/{code}/qr".replace("{" + "code" + "}", "$code"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = false,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
      * Get session
      * One of the caller&#39;s own, or any for an admin; anyone else&#39;s is &#x60;404&#x60;.
      * @param id 

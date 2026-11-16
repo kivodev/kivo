@@ -259,6 +259,17 @@ namespace KivoApi
         return response.body
     end function
 
+    ' Get device code QR: GET /api/v1/device-codes/{code}/qr.
+    function getDeviceCodeQr(code as string) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/device-codes/" + KivoApi.pathEscape(code) + "/qr", query: invalid, body: invalid, contentType: invalid, auth: false }
+    end function
+
+    ' getDeviceCodeQr's URL from the server address [base], for a node that fetches its image/png itself.
+    function getDeviceCodeQrUrl(base as string, code as string) as string
+        request = KivoApi.getDeviceCodeQr(code)
+        return base + request.path + KivoApi.queryString(request.query)
+    end function
+
     ' Approve device sign-in: POST /api/v1/device-codes/{code}/approve.
     function approveDeviceCode(code as string) as KivoApi.Request
         return { method: "POST", path: "/api/v1/device-codes/" + KivoApi.pathEscape(code) + "/approve", query: invalid, body: invalid, contentType: invalid, auth: true }

@@ -760,6 +760,34 @@ paths:
         "429": {$ref: "#/components/responses/TooManyRequests"}
         default: {$ref: "#/components/responses/Error"}
 
+  /api/v1/device-codes/{code}/qr:
+    parameters:
+      - {$ref: "#/components/parameters/UserCode"}
+    get:
+      operationId: getDeviceCodeQr
+      summary: Get device code QR
+      description: |
+        A PNG QR code of the code's `linkUrl`, dark on light with a quiet
+        zone, for a device that can show an image but can't draw one. It
+        encodes only the server's own link for a waiting code. A code that
+        is unknown, expired or already answered is `404`, and counts as a
+        wrong poll does.
+      tags: [sessions]
+      x-kivo-access: public
+      security: []
+      responses:
+        "200":
+          description: The QR code.
+          headers:
+            Cache-Control:
+              schema: {type: string}
+          content:
+            image/png:
+              schema: {type: string, format: binary}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "429": {$ref: "#/components/responses/TooManyRequests"}
+        default: {$ref: "#/components/responses/Error"}
+
   /api/v1/device-codes/{code}/approve:
     parameters:
       - {$ref: "#/components/parameters/UserCode"}
