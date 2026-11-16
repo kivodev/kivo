@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!-- A work's page: its backdrop, title, details and overview, Play or
-     Resume, and for a show or a season its episodes by season. -->
+     Resume, Audio & Subtitles for one with versions, and for a show or a
+     season its episodes by season. -->
 <component name="DetailScreen" extends="KivoScreen">
   <children>
     <Poster id="backdrop" width="1920" height="1080" loadDisplayMode="scaleToZoom" />
@@ -14,5 +15,6 @@
       itemSize="[1824, 420]" numRows="2" rowItemSize="[[480, 350]]" rowHeights="[420]"
       rowItemSpacing="[[24, 0]]" itemSpacing="[0, 40]" showRowLabel="[true]" rowLabelOffset="[[0, 12]]"
       rowFocusAnimationStyle="floatingFocus" visible="false" />
+    <MenuPanel id="menu" visible="false" />
   </children>
 </component>

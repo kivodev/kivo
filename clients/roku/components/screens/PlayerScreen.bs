@@ -3,6 +3,7 @@ import "pkg:/source/generated/tokens.bs"
 import "pkg:/source/shared/capabilities.bs"
 import "pkg:/source/shared/display.bs"
 import "pkg:/source/shared/session.bs"
+import "pkg:/source/shared/tracks.bs"
 import "pkg:/source/shared/ui.bs"
 
 sub init()
@@ -10,6 +11,7 @@ sub init()
     m.info = m.top.FindNode("info")
     m.infoGround = m.top.FindNode("infoGround")
     m.status = m.top.FindNode("status")
+    m.menu = m.top.FindNode("menu")
     m.heartbeat = m.top.FindNode("heartbeat")
     m.infoGround.color = KivoTokens.Color.playerPanel
     KivoUi.style(m.info, KivoTokens.TextSize.sm, KivoTokens.Color.onPlayer)
@@ -17,6 +19,8 @@ sub init()
     m.video.ObserveField("state", "onState")
     m.video.ObserveField("contentIndex", "onPart")
     m.heartbeat.ObserveField("fire", "report")
+    m.menu.ObserveField("chosen", "onMenuChosen")
+    m.menu.ObserveField("closed", "onMenuClosed")
     m.tasks = {}
     m.play = invalid
     m.leaving = false
@@ -24,13 +28,20 @@ sub init()
 end sub
 
 sub focus()
-    m.video.SetFocus(true)
+    if m.menu.visible
+        m.menu.callFunc("focus")
+    else
+        m.video.SetFocus(true)
+    end if
 end sub
 
-' The work first, for its versions' containers, then the play.
+' The work first, for its versions and tracks, then the play: the
+' request's version and tracks when it names them, else the server's.
 sub load()
+    params = m.top.params
+    m.request = { versionId: params.versionId, audioTrackId: params.audioTrackId, subtitleTrackId: params.subtitleTrackId }
     m.status.text = "Loading…"
-    m.tasks.work = Kivo.send(KivoApi.getWork(m.top.params.id), "onWork")
+    m.tasks.work = Kivo.send(KivoApi.getWork(params.id), "onWork")
 end sub
 
 sub onWork(event as object)
@@ -41,8 +52,18 @@ sub onWork(event as object)
         return
     end if
     m.work = response.body
+    position = invalid
+    if m.top.params.fromStart = true then position = 0
+    begin(position)
+end sub
+
+' Asks for a play of the request from [position] (invalid for the resume point).
+sub begin(position as dynamic)
     body = { workId: m.work.id, capabilities: KivoPlayer.capabilities(), settings: { directPlay: true } }
-    if m.top.params.fromStart = true then body.positionMs = 0
+    if position <> invalid then body.positionMs = position
+    for each key in ["versionId", "audioTrackId", "subtitleTrackId"]
+        if m.request[key] <> invalid and m.request[key] <> "" then body[key] = m.request[key]
+    end for
     m.tasks.start = Kivo.send(KivoApi.startPlay(body), "onStarted")
 end sub
 
@@ -53,12 +74,20 @@ sub onStarted(event as object)
         fail(KivoDisplay.problem(response))
         return
     end if
+    if m.leaving
+        ' Back was pressed while it started.
+        Kivo.send(KivoApi.stopPlay(response.body.id, { positionMs: response.body.startMs }), "onStopped")
+        return
+    end if
     start(response.body)
 end sub
 
 ' Plays a started play (a PlayStarted) from its start position.
 sub start(play as object)
     m.play = play
+    m.version = KivoTracks.version(m.work, play.versionId)
+    m.shownAudio = invalid
+    m.shownSubtitle = invalid
     m.partOffsets = []
     offset = 0
     for each part in play.parts
@@ -92,6 +121,8 @@ sub start(play as object)
         m.video.contentIsPlaylist = false
         m.video.content = content
     end if
+    ' Subtitles in the stream show once the video knows its renditions (onState).
+    m.video.suppressCaptions = KivoTracks.selected(play, "subtitle") = KivoTracks.off
     m.status.text = ""
     m.info.text = infoText(play)
     m.video.control = "play"
@@ -137,18 +168,26 @@ sub onState()
         leave(position)
     else if state = "error"
         failed()
+    else if state = "playing" and m.play <> invalid and m.shownSubtitle = invalid
+        ' The stream's renditions are known now: show the play's subtitle.
+        showSubtitle(KivoTracks.selected(m.play, "subtitle"), false)
+        report()
     else if state = "playing" or state = "paused" or state = "buffering"
         report()
     end if
 end sub
 
-' Tells the server where the play is and what it's doing.
+' Tells the server where the play is and what it's doing, and the tracks
+' it shows when they're other than the play's own.
 sub report()
     if m.play = invalid or m.leaving or m.tasks.update <> invalid then return
     states = { playing: KivoApi.PlayState.playing, paused: KivoApi.PlayState.paused, buffering: KivoApi.PlayState.buffering }
     state = states[m.video.state]
     if state = invalid then return
-    m.tasks.update = Kivo.send(KivoApi.updatePlay(m.play.id, { positionMs: positionMs(), state: state }), "onReported")
+    body = { positionMs: positionMs(), state: state }
+    if m.shownAudio <> invalid and m.shownAudio <> KivoTracks.selected(m.play, "audio") then body.audioTrackId = m.shownAudio
+    if m.shownSubtitle <> invalid and m.shownSubtitle <> KivoTracks.selected(m.play, "subtitle") then body.subtitleTrackId = m.shownSubtitle
+    m.tasks.update = Kivo.send(KivoApi.updatePlay(m.play.id, body), "onReported")
 end sub
 
 sub onReported(event as object)
@@ -194,6 +233,178 @@ sub fail(message as string)
     m.status.text = message
 end sub
 
+' Plays on from the current position as a new play, with [change] (some of
+' versionId, audioTrackId and subtitleTrackId) applied to the request.
+sub switchTo(change as object)
+    if m.play = invalid then return
+    position = positionMs()
+    m.request.Append(change)
+    m.heartbeat.control = "stop"
+    m.video.control = "stop"
+    Kivo.send(KivoApi.stopPlay(m.play.id, { positionMs: position }), "onSwitchStopped")
+    m.play = invalid
+    m.fellBack = false
+    m.status.text = "Loading…"
+    begin(position)
+end sub
+
+sub onSwitchStopped()
+end sub
+
+' Plays an audio track: a rendition of the stream at once, the heartbeats
+' reporting it so the server remembers it; else by a new play at the
+' position, with the subtitle showing.
+sub chooseAudio(trackId as string)
+    if m.play = invalid or trackId = currentAudio() then return
+    show = KivoTracks.show(m.play, trackId)
+    renditions = m.video.availableAudioTracks
+    if show.how = "stream" and renditions <> invalid and show.index < renditions.Count()
+        m.video.audioTrack = renditions[show.index].Track
+        m.shownAudio = trackId
+        report()
+        return
+    end if
+    switchTo({ versionId: m.play.versionId, audioTrackId: trackId, subtitleTrackId: currentSubtitle() })
+end sub
+
+' Shows a subtitle track, or off, as the play's tracks say: a rendition of
+' the stream at once, else by a new play at the position.
+sub chooseSubtitle(trackId as string)
+    if m.play = invalid or trackId = currentSubtitle() then return
+    if not showSubtitle(trackId, true)
+        switchTo({ versionId: m.play.versionId, audioTrackId: currentAudio(), subtitleTrackId: trackId })
+    end if
+end sub
+
+' Shows [trackId] in the video without a new play, reporting it when
+' [chosen]; false when only a new play shows it.
+function showSubtitle(trackId as string, chosen as boolean) as boolean
+    show = KivoTracks.show(m.play, trackId)
+    renditions = m.video.availableSubtitleTracks
+    if show.how = "off" or trackId = KivoTracks.off
+        m.video.suppressCaptions = true
+    else if show.how = "stream" and renditions <> invalid and show.index < renditions.Count()
+        m.video.globalCaptionMode = "On"
+        m.video.subtitleTrack = renditions[show.index].TrackName
+        m.video.suppressCaptions = false
+    else if show.how = "burn"
+        m.video.suppressCaptions = true
+    else
+        return false
+    end if
+    m.shownSubtitle = trackId
+    if chosen then report()
+    return true
+end function
+
+function currentAudio() as string
+    if m.shownAudio <> invalid then return m.shownAudio
+    return KivoTracks.selected(m.play, "audio")
+end function
+
+function currentSubtitle() as string
+    if m.shownSubtitle <> invalid then return m.shownSubtitle
+    return KivoTracks.selected(m.play, "subtitle")
+end function
+
+' The menu's first page: each choice with what it is now.
+sub openMenu()
+    if m.play = invalid then return
+    items = []
+    if KivoTracks.tracksOf(m.version, "audio").Count() > 0
+        items.Push({ id: "audio", label: "Audio: " + KivoTracks.name(m.version, currentAudio()) })
+    end if
+    items.Push({ id: "subtitle", label: "Subtitles: " + KivoTracks.name(m.version, currentSubtitle()) })
+    if m.work.versions <> invalid and m.work.versions.Count() > 1
+        items.Push({ id: "version", label: "Version: " + m.version.name })
+    end if
+    if m.work.tracksRemembered = true then items.Push({ id: "forget", label: "Use the default tracks" })
+    info = "Show playback info"
+    if m.info.visible then info = "Hide playback info"
+    items.Push({ id: "info", label: info })
+    showMenu("menu", "Options", items, "")
+end sub
+
+' Shows the menu's [page], listing [items] with [checked] checked when it's a choice.
+sub showMenu(page as string, title as string, items as object, checked as string)
+    m.menuPage = page
+    m.menu.title = title
+    m.menu.note = ""
+    if page <> "menu" and m.work.remembersTracks = true and page <> "version"
+        m.menu.note = "Remembered for this show"
+    end if
+    m.menu.checkedId = checked
+    m.menu.items = items
+    m.menu.visible = true
+    m.menu.callFunc("focus")
+end sub
+
+sub onMenuChosen()
+    id = m.menu.chosen
+    if m.menuPage = "menu"
+        if id = "audio"
+            showMenu("audio", "Audio", trackItems("audio"), currentAudio())
+        else if id = "subtitle"
+            showMenu("subtitle", "Subtitles", trackItems("subtitle"), currentSubtitle())
+        else if id = "version"
+            showMenu("version", "Version", KivoTracks.versionItems(m.work), m.version.id)
+        else if id = "forget"
+            closeMenu()
+            m.tasks.forget = Kivo.send(KivoApi.updateWorkTracks(m.work.id, { audioTrackId: KivoTracks.automatic, subtitleTrackId: KivoTracks.automatic }), "onForgot")
+        else if id = "info"
+            shown = not m.info.visible
+            m.info.visible = shown
+            m.infoGround.visible = shown
+            closeMenu()
+        end if
+        return
+    end if
+    page = m.menuPage
+    closeMenu()
+    if page = "audio"
+        chooseAudio(id)
+    else if page = "subtitle"
+        chooseSubtitle(id)
+    else if page = "version" and id <> m.version.id
+        switchTo({ versionId: id, audioTrackId: invalid, subtitleTrackId: invalid })
+    end if
+end sub
+
+' The tracks of [kind] the play offers, each by its name; Off first for subtitles.
+function trackItems(kind as string) as object
+    out = []
+    if kind = "subtitle" then out.Push({ id: KivoTracks.off, label: "Off" })
+    for each track in KivoTracks.tracksOf(m.version, kind)
+        label = track.name
+        if track.title <> invalid and track.title.Trim() <> "" then label = label + " · " + track.title.Trim()
+        out.Push({ id: track.id, label: label })
+    end for
+    return out
+end function
+
+' The series' choice is forgotten: the play starts again with the tracks
+' the user's preferences and the file choose.
+sub onForgot(event as object)
+    m.tasks.forget = invalid
+    if event.GetData().code <> 200 then return
+    m.work = event.GetData().body
+    switchTo({ audioTrackId: invalid, subtitleTrackId: invalid })
+end sub
+
+sub onMenuClosed()
+    if m.menuPage <> "menu"
+        openMenu()
+        return
+    end if
+    closeMenu()
+end sub
+
+sub closeMenu()
+    m.menu.visible = false
+    m.menuPage = invalid
+    m.video.SetFocus(true)
+end sub
+
 ' Stops the play at [position] and returns to the page underneath once
 ' the server has heard.
 sub leave(position as integer)
@@ -205,7 +416,7 @@ sub leave(position as integer)
     m.heartbeat.control = "stop"
     m.video.control = "stop"
     if m.play = invalid
-        m.top.navigate = { back: true }
+        if m.tasks.start = invalid then m.top.navigate = { back: true }
         return
     end if
     m.tasks.stop = Kivo.send(KivoApi.stopPlay(m.play.id, { positionMs: position }), "onStopped")
@@ -226,9 +437,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
         return true
     end if
     if key = "options"
-        shown = not m.info.visible
-        m.info.visible = shown
-        m.infoGround.visible = shown
+        openMenu()
         return true
     end if
     return false

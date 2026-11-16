@@ -3,6 +3,7 @@ import "pkg:/source/generated/tokens.bs"
 import "pkg:/source/shared/content.bs"
 import "pkg:/source/shared/display.bs"
 import "pkg:/source/shared/session.bs"
+import "pkg:/source/shared/tracks.bs"
 import "pkg:/source/shared/ui.bs"
 
 sub init()
@@ -25,6 +26,11 @@ sub init()
     m.episodes.rowLabelColor = KivoTokens.Color.text
     m.buttons.ObserveField("buttonSelected", "onButton")
     m.episodes.ObserveField("rowItemSelected", "onEpisode")
+    m.menu = m.top.FindNode("menu")
+    m.menu.ObserveField("chosen", "onMenuChosen")
+    m.menu.ObserveField("closed", "onMenuClosed")
+    ' A movie's picks, which apply to its next play only.
+    m.choice = {}
     m.tasks = {}
     m.top.ObserveField("params", "load")
 end sub
@@ -36,7 +42,9 @@ sub focus()
 end sub
 
 sub takeFocus()
-    if m.buttons.buttons.Count() > 0
+    if m.menu.visible
+        m.menu.callFunc("focus")
+    else if m.buttons.buttons.Count() > 0
         m.buttons.SetFocus(true)
     else if m.episodes.visible
         m.episodes.SetFocus(true)
@@ -87,6 +95,10 @@ sub show(work as object)
             labels.Push("Play")
             m.actions.Push({ id: target.id, fromStart: false })
         end if
+    end if
+    if target <> invalid and target.id = work.id and picksTracks(work)
+        labels.Push("Audio & Subtitles")
+        m.actions.Push({ tracks: true })
     end if
     focused = m.buttons.buttonFocused
     m.buttons.buttons = labels
@@ -166,7 +178,155 @@ end sub
 
 sub onButton()
     action = m.actions[m.buttons.buttonSelected]
-    m.top.navigate = { screen: "PlayerScreen", params: action }
+    if action.tracks = true
+        openMenu()
+        return
+    end if
+    params = { id: action.id, fromStart: action.fromStart }
+    if action.id = m.work.id then params.Append(m.choice)
+    m.top.navigate = { screen: "PlayerScreen", params: params }
+end sub
+
+' Whether the page offers Audio & Subtitles: a work with a version that
+' has more than one audio track or any subtitle.
+function picksTracks(work as object) as boolean
+    v = KivoTracks.version(work, chosenVersion())
+    if v = invalid then return false
+    return KivoTracks.tracksOf(v, "audio").Count() > 1 or KivoTracks.tracksOf(v, "subtitle").Count() > 0 or work.versions.Count() > 1
+end function
+
+' Whether a pick here is remembered for the series rather than for the next play.
+function remembers() as boolean
+    return m.work.remembersTracks = true
+end function
+
+function chosenVersion() as string
+    if m.choice.versionId <> invalid then return m.choice.versionId
+    return ""
+end function
+
+' The menu's first page: each choice with the track a play starts with now.
+sub openMenu()
+    v = KivoTracks.version(m.work, chosenVersion())
+    items = []
+    if KivoTracks.tracksOf(v, "audio").Count() > 0
+        items.Push({ id: "audio", label: "Audio: " + KivoTracks.name(v, startsWith(v, "audio")) })
+    end if
+    subtitle = KivoTracks.name(v, startsWith(v, "subtitle"))
+    if subtitle = "" then subtitle = "Off"
+    items.Push({ id: "subtitle", label: "Subtitles: " + subtitle })
+    if m.work.versions.Count() > 1 then items.Push({ id: "version", label: "Version: " + v.name })
+    showMenu("menu", "Audio & Subtitles", items, "")
+end sub
+
+' The track of [kind] a play of version [v] starts with: the pick made
+' here for a movie, else the server's (which follows the series' choice).
+function startsWith(v as object, kind as string) as dynamic
+    key = kind + "TrackId"
+    if not remembers() and m.choice[key] <> invalid then return m.choice[key]
+    return v[key]
+end function
+
+sub showMenu(page as string, title as string, items as object, checked as string)
+    m.menuPage = page
+    m.menu.title = title
+    m.menu.note = ""
+    if page <> "version" and remembers()
+        if m.work.tracksRemembered = true
+            m.menu.note = "Remembered for this show"
+        else
+            m.menu.note = "A pick here is kept for the whole show."
+        end if
+    end if
+    m.menu.checkedId = checked
+    m.menu.items = items
+    m.menu.visible = true
+    m.menu.callFunc("focus")
+end sub
+
+sub onMenuChosen()
+    id = m.menu.chosen
+    v = KivoTracks.version(m.work, chosenVersion())
+    page = m.menuPage
+    if page = "menu"
+        if id = "version"
+            showMenu("version", "Version", KivoTracks.versionItems(m.work), v.id)
+        else
+            showMenu(id, menuTitle(id), KivoTracks.items(v, id, automaticOf(v, id)), checkedOf(v, id))
+        end if
+        return
+    end if
+    if page = "version"
+        ' A version change resets the picks: tracks belong to one version.
+        m.choice = { versionId: id }
+        openMenu()
+        return
+    end if
+    key = page + "TrackId"
+    if remembers()
+        body = {}
+        body[key] = id
+        m.tasks.tracks = Kivo.send(KivoApi.updateWorkTracks(m.work.id, body), "onTracks")
+        return
+    end if
+    if id = KivoTracks.automatic
+        m.choice.Delete(key)
+    else
+        m.choice[key] = id
+    end if
+    openMenu()
+end sub
+
+function menuTitle(kind as string) as string
+    if kind = "audio" then return "Audio"
+    return "Subtitles"
+end function
+
+' The track "Default" stands for: without the series' choice for an
+' episode that remembers tracks, else the server's own.
+function automaticOf(v as object, kind as string) as dynamic
+    if kind = "audio"
+        if remembers() then return v.defaultAudioTrackId
+        return v.audioTrackId
+    end if
+    if remembers() then return v.defaultSubtitleTrackId
+    return v.subtitleTrackId
+end function
+
+' The item checked: the series' choice or this page's pick, else Default.
+function checkedOf(v as object, kind as string) as string
+    key = kind + "TrackId"
+    if remembers()
+        if m.work.tracksRemembered <> true then return KivoTracks.automatic
+        if v[key] = invalid then return KivoTracks.off
+        return v[key]
+    end if
+    if m.choice[key] <> invalid then return m.choice[key]
+    return KivoTracks.automatic
+end function
+
+' The series' choice changed; the page shows the tracks plays start with now.
+sub onTracks(event as object)
+    response = event.GetData()
+    m.tasks.tracks = invalid
+    if response.code = 200
+        m.work = response.body
+        show(m.work)
+    else if response.code = 409
+        ' Remembering was turned off meanwhile: the pick is for the next play.
+        m.work.remembersTracks = false
+    end if
+    openMenu()
+end sub
+
+sub onMenuClosed()
+    if m.menuPage <> "menu"
+        openMenu()
+        return
+    end if
+    m.menu.visible = false
+    m.menuPage = invalid
+    m.buttons.SetFocus(true)
 end sub
 
 sub onEpisode()
