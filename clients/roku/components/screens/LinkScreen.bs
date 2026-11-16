@@ -110,11 +110,12 @@ end sub
 
 sub onPolled(event as object)
     response = event.GetData()
+    answer = KivoApi.pollDeviceCodeAnswer(response)
     m.task = invalid
-    if response.code = 201 and response.body <> invalid and response.body.token <> invalid
+    if response.code = 201 and answer <> invalid and answer.token <> invalid
         m.poll.control = "stop"
-        Kivo.saveToken(response.body.token)
-        m.global.token = response.body.token
+        Kivo.saveToken(answer.token)
+        m.global.token = answer.token
         m.top.navigate = { screen: "HomeScreen", replace: true }
     else if response.code = 403
         ' One declined says so over its replacement.

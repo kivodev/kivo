@@ -66,8 +66,8 @@ end sub
 sub onSection()
     m.group = m.groups[m.sections.itemFocused].id
     m.status.text = ""
-    if m.group = "home" and m.homeRows = invalid then m.tasks.home = Kivo.send(KivoApi.listHomeRows(), "onHomeRows")
-    if m.group = "libraries" and m.libraries = invalid then m.tasks.libraries = Kivo.send(KivoApi.listLibraries(), "onLibraries")
+    if m.group = "home" and homeRowList() = invalid then m.tasks.home = Kivo.send(KivoApi.listHomeRows(), "onHomeRows")
+    if m.group = "libraries" and libraryList() = invalid then m.tasks.libraries = Kivo.send(KivoApi.listLibraries(), "onLibraries")
     show()
 end sub
 
@@ -107,7 +107,8 @@ end sub
 sub onHomeRows(event as object)
     m.tasks.home = invalid
     response = event.GetData()
-    if response.code = 200 then m.homeRows = response.body.items
+    answer = KivoApi.listHomeRowsAnswer(response)
+    if response.code = 200 then m.homeRows = answer.items
     if response.code <> 200 then m.status.text = "Couldn't load this. " + KivoDisplay.problem(response)
     show()
 end sub
@@ -127,11 +128,11 @@ sub show()
     scope = ""
     g = m.group
     pb = invalid
-    if m.user <> invalid then pb = m.user.playback
+    if currentUser() <> invalid then pb = currentUser().playback
     serverName = m.global.server
-    if m.server <> invalid and m.server.name <> invalid then serverName = m.server.name
+    if serverInfo() <> invalid and serverInfo().name <> invalid then serverName = serverInfo().name
     if g = "account"
-        if m.user <> invalid then items.Push({ id: "who", label: "Signed in to " + serverName + " · " + m.user.username })
+        if currentUser() <> invalid then items.Push({ id: "who", label: "Signed in to " + serverName + " · " + currentUser().username })
         items.Push({ id: "switchAccount", label: "Switch account" })
         items.Push({ id: "changeServer", label: "Change server" })
         items.Push({ id: "linkDevice", label: "Link a device" })
@@ -152,11 +153,11 @@ sub show()
     else if g = "quality"
         scope = "This TV"
         qualities = Kivo.qualities()
-        items.Push({ id: "localQuality", label: "Local network quality: " + KivoDisplay.quality(qualities.localQuality, m.ladder) })
-        remote = "Remote quality: " + KivoDisplay.quality(qualities.remoteQuality, m.ladder)
-        if m.user <> invalid and m.user.limits <> invalid and m.user.limits.remoteQualityCapBps <> invalid then remote = remote + "  (Limited to " + KivoDisplay.bitrate(m.user.limits.remoteQualityCapBps) + " by the server.)"
+        items.Push({ id: "localQuality", label: "Local network quality: " + KivoDisplay.quality(qualities.localQuality, ladderRungs()) })
+        remote = "Remote quality: " + KivoDisplay.quality(qualities.remoteQuality, ladderRungs())
+        if currentUser() <> invalid and currentUser().limits <> invalid and currentUser().limits.remoteQualityCapBps <> invalid then remote = remote + "  (Limited to " + KivoDisplay.bitrate(currentUser().limits.remoteQualityCapBps) + " by the server.)"
         items.Push({ id: "remoteQuality", label: remote })
-    else if g = "home" and m.homeRows <> invalid
+    else if g = "home" and homeRowList() <> invalid
         scope = "All your devices"
         for each row in tvHomeRows()
             mark = "Off"
@@ -164,9 +165,9 @@ sub show()
             items.Push({ id: "row:" + row.id, label: homeRowName(row) + ": " + mark })
         end for
         items.Push({ id: "resetHome", label: "Reset Home" })
-    else if g = "libraries" and m.libraries <> invalid
+    else if g = "libraries" and libraryList() <> invalid
         scope = "All your devices"
-        shown = KivoContent.tvLibraries(m.libraries)
+        shown = KivoContent.tvLibraries(libraryList())
         if shown.Count() = 0 then items.Push({ id: "none", label: "No libraries yet" })
         for each lib in shown
             mark = "Not pinned"
@@ -175,7 +176,7 @@ sub show()
         end for
     else if g = "about"
         items.Push({ id: "fact", label: "App version: " + CreateObject("roAppInfo").GetVersion() })
-        if m.server <> invalid then items.Push({ id: "fact", label: "Server version: " + m.server.version })
+        if serverInfo() <> invalid then items.Push({ id: "fact", label: "Server version: " + serverInfo().version })
         items.Push({ id: "fact", label: "Server: " + serverAddress() })
         items.Push({ id: "credits", label: "Credits" })
     end if
@@ -200,9 +201,9 @@ end function
 
 ' The server's address, for a browser to manage it: its public URL when it has one, else its first local URL.
 function serverAddress() as string
-    if m.server <> invalid
-        if m.server.publicUrl <> invalid and m.server.publicUrl <> "" then return m.server.publicUrl
-        if m.server.localUrls <> invalid and m.server.localUrls.Count() > 0 then return m.server.localUrls[0]
+    if serverInfo() <> invalid
+        if serverInfo().publicUrl <> invalid and serverInfo().publicUrl <> "" then return serverInfo().publicUrl
+        if serverInfo().localUrls <> invalid and serverInfo().localUrls.Count() > 0 then return serverInfo().localUrls[0]
     end if
     return m.global.server
 end function
@@ -211,12 +212,12 @@ end function
 function tvHomeRows() as object
     out = []
     books = {}
-    if m.libraries <> invalid
-        for each lib in m.libraries
+    if libraryList() <> invalid
+        for each lib in libraryList()
             if lib.kind = KivoApi.LibraryKind.audiobooks then books[lib.id] = true
         end for
     end if
-    for each row in m.homeRows
+    for each row in homeRowList()
         known = row.kind = KivoApi.HomeRowKind.continueWatching or row.kind = KivoApi.HomeRowKind.recentlyAdded or row.kind = KivoApi.HomeRowKind.list
         if known and (row.library = invalid or books[row.library.id] <> true) then out.Push(row)
     end for
@@ -251,9 +252,9 @@ sub onSetting()
     id = item.id
     m.setting = id
     if id = "localQuality" or id = "remoteQuality"
-        items = [{ id: "auto", label: KivoDisplay.quality(invalid, m.ladder) }, { id: "original", label: KivoDisplay.quality({ mode: "original" }, m.ladder) }]
-        for each rung in m.ladder
-            items.Push({ id: rung.bitrateBps.ToStr(), label: KivoDisplay.quality({ mode: "limit", maxBitrateBps: rung.bitrateBps }, m.ladder) })
+        items = [{ id: "auto", label: KivoDisplay.quality(invalid, ladderRungs()) }, { id: "original", label: KivoDisplay.quality({ mode: "original" }, ladderRungs()) }]
+        for each rung in ladderRungs()
+            items.Push({ id: rung.bitrateBps.ToStr(), label: KivoDisplay.quality({ mode: "limit", maxBitrateBps: rung.bitrateBps }, ladderRungs()) })
         end for
         pick = Kivo.qualities()[id]
         checked = "auto"
@@ -267,7 +268,7 @@ sub onSetting()
         if id = "subtitleLanguage" then first = "Server default"
         items = [{ id: " ", label: first }]
         items.Append(KivoDisplay.preferenceLanguages())
-        checked = m.user.playback[id]
+        checked = currentUser().playback[id]
         if checked = invalid or checked = "" then checked = " "
         title = "Audio language"
         if id = "subtitleLanguage" then title = "Subtitle language"
@@ -277,10 +278,10 @@ sub onSetting()
         for each mode in ["none", "forced", "smart", "always"]
             items.Push({ id: mode, label: modeLabel(mode) })
         end for
-        showMenu("Show subtitles", items, m.user.playback.subtitleMode)
+        showMenu("Show subtitles", items, currentUser().playback.subtitleMode)
     else if id = "rememberTracks" or id = "autoplayNext"
         body = {}
-        body[id] = m.user.playback[id] <> true
+        body[id] = currentUser().playback[id] <> true
         save(body)
     else if id = "dialogueBoost"
         Kivo.saveDialogueBoost(not Kivo.dialogueBoost())
@@ -337,7 +338,7 @@ sub libraryMenu(libraryId as string)
     m.confirming = invalid
     m.libraryId = libraryId
     pinned = false
-    for each lib in m.libraries
+    for each lib in libraryList()
         if lib.id = libraryId then pinned = lib.pinned = true
     end for
     toggle = "Pin"
@@ -415,7 +416,7 @@ end sub
 
 ' Shows or hides a Home row, or moves it past the next row the TV lists.
 sub changeRow(action as string)
-    all = m.homeRows
+    all = homeRowList()
     shownIds = []
     for each row in tvHomeRows()
         shownIds.Push(row.id)
@@ -441,11 +442,11 @@ end sub
 ' the others, such as audiobooks libraries, staying where they are.
 sub changeLibrary(action as string)
     shownIds = []
-    for each lib in KivoContent.tvLibraries(m.libraries)
+    for each lib in KivoContent.tvLibraries(libraryList())
         shownIds.Push(lib.id)
     end for
     order = []
-    for each lib in m.libraries
+    for each lib in libraryList()
         order.Push({ id: lib.id, pinned: lib.pinned = true })
     end for
     i = indexOf(order, m.libraryId)
@@ -537,7 +538,7 @@ sub onPending(event as object)
     lines.Push(where)
     if device.nearby <> true then lines.Push("This device isn't on your home network. Only allow it if it's yours and you started signing in on it just now.")
     username = ""
-    if m.user <> invalid then username = m.user.username
+    if currentUser() <> invalid then username = currentUser().username
     m.linkName = device.name
     m.confirming = "link"
     m.setting = "link"
@@ -596,4 +597,29 @@ function onKeyEvent(key as string, press as boolean) as boolean
         return true
     end if
     return false
+end function
+
+' The signed-in user, as its type.
+function currentUser() as KivoApi.CurrentUser
+    return m.user
+end function
+
+' The server's info, as its type.
+function serverInfo() as KivoApi.ServerInfo
+    return m.server
+end function
+
+' The server's libraries, as its type.
+function libraryList() as KivoApi.Library[]
+    return m.libraries
+end function
+
+' Home's rows, for showing, hiding and ordering, as its type.
+function homeRowList() as KivoApi.HomeRowInfo[]
+    return m.homeRows
+end function
+
+' The server's quality rungs, as its type.
+function ladderRungs() as KivoApi.QualityRung[]
+    return m.ladder
 end function

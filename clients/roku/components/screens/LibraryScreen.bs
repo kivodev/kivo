@@ -164,7 +164,7 @@ sub showBar()
         if KivoGrid.filtered(m.filters) then filter = "Filter •"
         labels.Push(filter)
         m.barActions.Push({ menu: "filter" })
-        if m.letters <> invalid and m.letters.Count() > 0
+        if letterStarts() <> invalid and letterStarts().Count() > 0
             labels.Push("A–Z")
             m.barActions.Push({ menu: "letters" })
         end if
@@ -196,7 +196,7 @@ sub fetch(offset as integer)
         request = KivoApi.listLibraryCollections(id, query)
     end if
     task = Kivo.send(request, "onPage")
-    task.AddFields({ offset: offset, generation: m.generation })
+    task.AddFields({ offset: offset, generation: m.generation, tab: m.tab })
     m.tasks["page" + key] = task
 end sub
 
@@ -218,13 +218,19 @@ sub onPage(event as object)
         end if
         return
     end if
-    page = response.body
+    ' The titles tab asked for works, the collections tab for collections.
+    page = invalid
+    if task.tab = "titles"
+        page = KivoApi.queryWorksAnswer(response)
+    else
+        page = KivoApi.listLibraryCollectionsAnswer(response)
+    end if
     if task.offset = 0 then lay(page)
     fillPage(task.offset, page.items)
 end sub
 
 ' The first page: as many blank cards as the grid has, and the letters.
-sub lay(page as object)
+sub lay(page as KivoApi.WorkSummaryPage or KivoApi.CollectionSummaryPage)
     total = page.items.Count()
     if page.total <> invalid then total = page.total
     m.letters = page.letters
@@ -340,7 +346,7 @@ sub onBar()
         openFilters()
     else if action.menu = "letters"
         items = []
-        for each letter in m.letters
+        for each letter in letterStarts()
             items.Push({ id: letter.offset.ToStr(), label: letter.letter })
         end for
         showMenu("letters", "Jump to", items, "")
@@ -373,7 +379,8 @@ sub openFilters()
 end sub
 
 function has(field as string) as boolean
-    return m.values[field] <> invalid and m.values[field].Count() > 0
+    values = fieldValues(field)
+    return values <> invalid and values.Count() > 0
 end function
 
 function playedLabel(played as string) as string
@@ -403,7 +410,7 @@ sub openFilter(field as string)
         showMenu("filter", "Watch status", items, anyId(f.played))
     else if field = "decade"
         years = []
-        for each item in m.values.year
+        for each item in fieldValues("year")
             years.Push(item.value)
         end for
         items = [{ id: "", label: "Any" }]
@@ -414,7 +421,7 @@ sub openFilter(field as string)
     else
         chosen = f[listKey(field)]
         items = []
-        for each item in m.values[field]
+        for each item in fieldValues(field)
             label = item.name
             if KivoGrid.contains(chosen, item.value) then label = "✓ " + label
             items.Push({ id: item.value, label: label })
@@ -521,4 +528,14 @@ function onKeyEvent(key as string, press as boolean) as boolean
         return true
     end if
     return false
+end function
+
+' Where each letter starts in the grid, as its type.
+function letterStarts() as KivoApi.LetterStart[]
+    return m.letters
+end function
+
+' A filter field's values in this library, as their type; invalid until read.
+function fieldValues(field as string) as KivoApi.WorkFieldValue[]
+    return m.values[field]
 end function

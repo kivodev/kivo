@@ -54,68 +54,79 @@ end sub
 sub load()
     m.problem.text = ""
     params = m.top.params
-    request = invalid
     if params.kind = "person"
-        request = KivoApi.getPerson(params.id)
+        m.tasks.page = Kivo.send(KivoApi.getPerson(params.id), "onPerson")
     else if params.kind = "collection"
-        request = KivoApi.getCollection(params.id)
+        m.tasks.page = Kivo.send(KivoApi.getCollection(params.id), "onCollection")
     else if params.kind = "list"
-        request = KivoApi.getList(params.id)
+        m.tasks.page = Kivo.send(KivoApi.getList(params.id), "onList")
     end if
-    if request = invalid then return
-    m.tasks.page = Kivo.send(request, "onPage")
 end sub
 
-sub onPage(event as object)
-    response = event.GetData()
+' Whether the page's answer came; otherwise it says why, or signs out.
+function answered(response as object) as boolean
     m.tasks.page = invalid
     if response.code = 401
         m.top.navigate = { signedOut: true }
-        return
+        return false
     end if
     if response.code <> 200
         m.rows.visible = false
         KivoStates.failed(m.state, response)
         if not m.menu.visible then m.state.callFunc("focus")
-        return
+        return false
     end if
-    page = response.body
-    kind = m.top.params.kind
-    m.heading.text = page.name
-    if kind = "list"
-        ' An open list's works the TV shows (no books) come a page at a time.
-        m.list = page
-        m.listWorks = []
-        m.listTotal = 0
-        m.tasks.works = Kivo.send(KivoApi.listListWorks(page.id, { kind: KivoContent.tvKinds(), limit: 100 }), "onListWorks")
-        return
-    end if
+    return true
+end function
+
+' A person: their movies, shows and other videos; a person's books aren't on the TV.
+sub onPerson(event as object)
+    response = event.GetData()
+    if not answered(response) then return
+    person = KivoApi.getPersonAnswer(response)
+    m.heading.text = person.name
     m.loaded = true
-    sections = []
-    if kind = "person"
-        ' Their movies, shows and other videos; a person's books aren't on the TV.
-        if page.overview <> invalid then m.overview.text = page.overview
-        if page.photo <> invalid
-            m.photo.uri = Kivo.imageUrl(page.photo, 160)
-            m.photo.visible = true
-            m.heading.translation = [288, 72]
-            m.overview.translation = [288, 150]
-            m.overview.width = 1500
-        end if
-        for each row in [{ title: "Movies", kind: "movie" }, { title: "Shows", kind: "series" }, { title: "Other videos", kind: "video" }]
-            works = []
-            for each work in page.works
-                if work.kind = row.kind then works.Push(work)
-            end for
-            sections.Push({ title: row.title, works: works })
-        end for
-        showSections(sections, "No titles available")
-    else
-        ' A collection: its name and count over its backdrop, then its works as posters in a row.
-        m.overview.text = KivoContent.collectionCount(page.items.Count(), page.source)
-        if page.images <> invalid then m.backdrop.uri = Kivo.imageUrl(page.images.backdrop, 1920)
-        showSections([{ title: "", works: page.items }], "")
+    if person.overview <> invalid then m.overview.text = person.overview
+    if person.photo <> invalid
+        m.photo.uri = Kivo.imageUrl(person.photo, 160)
+        m.photo.visible = true
+        m.heading.translation = [288, 72]
+        m.overview.translation = [288, 150]
+        m.overview.width = 1500
     end if
+    sections = []
+    for each row in [{ title: "Movies", kind: KivoApi.WorkKind.movie }, { title: "Shows", kind: KivoApi.WorkKind.series }, { title: "Other videos", kind: KivoApi.WorkKind.video }]
+        works = []
+        for each work in person.works
+            if work.kind = row.kind then works.Push(work)
+        end for
+        sections.Push({ title: row.title, works: works })
+    end for
+    showSections(sections, "No titles available")
+end sub
+
+' A collection: its name and count over its backdrop, then its works as posters in a row.
+sub onCollection(event as object)
+    response = event.GetData()
+    if not answered(response) then return
+    collection = KivoApi.getCollectionAnswer(response)
+    m.heading.text = collection.name
+    m.loaded = true
+    m.overview.text = KivoContent.collectionCount(collection.items.Count(), collection.source)
+    if collection.images <> invalid then m.backdrop.uri = Kivo.imageUrl(collection.images.backdrop, 1920)
+    showSections([{ title: "", works: collection.items }], "")
+end sub
+
+' An open list: its works the TV shows (no books) come a page at a time.
+sub onList(event as object)
+    response = event.GetData()
+    if not answered(response) then return
+    list = KivoApi.getListAnswer(response)
+    m.heading.text = list.name
+    m.list = list
+    m.listWorks = []
+    m.listTotal = 0
+    m.tasks.works = Kivo.send(KivoApi.listListWorks(list.id, { kind: KivoContent.tvKinds(), limit: 100 }), "onListWorks")
 end sub
 
 ' A list's works, a page at a time until the last (up to a thousand).
@@ -129,16 +140,21 @@ sub onListWorks(event as object)
         return
     end if
     if answer.total <> invalid then m.listTotal = answer.total
-    m.listWorks.Append(answer.items)
-    if answer.items.Count() > 0 and m.listWorks.Count() < m.listTotal and m.listWorks.Count() < 1000
-        m.tasks.works = Kivo.send(KivoApi.listListWorks(m.top.params.id, { kind: KivoContent.tvKinds(), limit: 100, offset: m.listWorks.Count() }), "onListWorks")
+    listWorkItems().Append(answer.items)
+    if answer.items.Count() > 0 and listWorkItems().Count() < m.listTotal and listWorkItems().Count() < 1000
+        m.tasks.works = Kivo.send(KivoApi.listListWorks(m.top.params.id, { kind: KivoContent.tvKinds(), limit: 100, offset: listWorkItems().Count() }), "onListWorks")
         return
     end if
     m.loaded = true
     m.overview.text = ""
     if m.listTotal > 0 then m.overview.text = KivoUi.plural(m.listTotal, "title", "titles")
-    showSections(chunks(m.listWorks), emptyListMessage(m.list))
+    showSections(chunks(listWorkItems()), emptyListMessage(openList()))
 end sub
+
+' The open list, as its type.
+function openList() as KivoApi.WorkList
+    return m.list
+end function
 
 ' Why an open list shows nothing: rules that no longer run, rules matching nothing, or nothing added.
 function emptyListMessage(list as KivoApi.WorkList) as string
@@ -213,9 +229,10 @@ sub openMenu()
     card = m.rows.content.GetChild(at[0]).GetChild(at[1])
     if card = invalid or card.workId = "" then return
     where = {}
-    if m.top.params.kind = "list" and m.list <> invalid and m.list.kind = KivoApi.ListKind.manual
-        where.listId = m.list.id
-        where.listName = m.list.name
+    list = openList()
+    if m.top.params.kind = "list" and list <> invalid and list.kind = KivoApi.ListKind.manual
+        where.listId = list.id
+        where.listName = list.name
     end if
     m.menu.callFunc("open", card, where)
 end sub
@@ -238,4 +255,9 @@ function onKeyEvent(key as string, press as boolean) as boolean
         return true
     end if
     return false
+end function
+
+' The open list's works read so far, as its type.
+function listWorkItems() as KivoApi.WorkSummary[]
+    return m.listWorks
 end function

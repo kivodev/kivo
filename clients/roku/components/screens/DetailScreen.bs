@@ -60,7 +60,7 @@ end sub
 sub focus()
     takeFocus()
     ' Progress may have moved on while the player showed.
-    if m.work <> invalid then load()
+    if shownWork() <> invalid then load()
 end sub
 
 sub takeFocus()
@@ -92,7 +92,7 @@ sub onLists(event as object)
     for each list in answer.items
         if list.builtIn = true then m.myListId = list.id
     end for
-    if m.work <> invalid then show(m.work)
+    if shownWork() <> invalid then show(shownWork())
 end sub
 
 sub onWork(event as object)
@@ -104,7 +104,7 @@ sub onWork(event as object)
         return
     end if
     if response.code <> 200
-        if m.work = invalid
+        if shownWork() = invalid
             KivoStates.failed(m.state, response)
             m.state.callFunc("focus")
         else
@@ -119,17 +119,17 @@ sub onWork(event as object)
         return
     end if
     KivoStates.clear(m.state)
-    first = m.work = invalid
+    first = shownWork() = invalid
     m.work = answer
-    show(m.work)
-    if m.work.kind = KivoApi.WorkKind.series
+    show(shownWork())
+    if shownWork().kind = KivoApi.WorkKind.series
         ' Episodes' progress moves on too, so they're read again each time.
-        m.tasks.children = Kivo.send(KivoApi.listWorkChildren(m.work.id), "onChildren")
-    else if m.work.kind = KivoApi.WorkKind.episode and m.work.episode.seasonId <> invalid
+        m.tasks.children = Kivo.send(KivoApi.listWorkChildren(shownWork().id), "onChildren")
+    else if shownWork().kind = KivoApi.WorkKind.episode and shownWork().episode.seasonId <> invalid
         ' An episode's page has its season's row of cards, opening on it.
-        task = Kivo.send(KivoApi.listWorkChildren(m.work.episode.seasonId), "onSeason")
+        task = Kivo.send(KivoApi.listWorkChildren(shownWork().episode.seasonId), "onSeason")
         task.AddFields({ seasonIndex: 0 })
-        m.seasons = [{ id: m.work.episode.seasonId, number: m.work.episode.seasonNumber, episodes: invalid }]
+        m.seasons = [{ id: shownWork().episode.seasonId, number: shownWork().episode.seasonNumber, episodes: invalid }]
         m.tasks.season0 = task
     else
         showRows()
@@ -338,8 +338,8 @@ sub showRows()
     heights = []
     entry = invalid
     if m.seasons <> invalid
-        entryId = m.work.id
-        if m.work.series <> invalid and m.work.series.nextUp <> invalid then entryId = m.work.series.nextUp.id
+        entryId = shownWork().id
+        if shownWork().series <> invalid and shownWork().series.nextUp <> invalid then entryId = shownWork().series.nextUp.id
         for each season in m.seasons
             if season.episodes <> invalid and season.episodes.Count() > 0
                 for i = 0 to season.episodes.Count() - 1
@@ -350,12 +350,12 @@ sub showRows()
             end if
         end for
     end if
-    similar = m.work.similar
+    similar = shownWork().similar
     if similar <> invalid and similar.Count() > 0 then addRow(root, sizes, heights, KivoContent.row("More like this", similar, false), false)
     trailers = []
     extras = []
-    if m.work.extras <> invalid
-        for each extra in m.work.extras
+    if shownWork().extras <> invalid
+        for each extra in shownWork().extras
             if extra.extra <> invalid and extra.extra.type = KivoApi.ExtraType.trailer
                 trailers.Push(extra)
             else
@@ -365,14 +365,14 @@ sub showRows()
     end if
     if trailers.Count() > 0 then addRow(root, sizes, heights, KivoContent.row("Trailers", trailers, true), true)
     cast = []
-    if m.work.credits <> invalid
-        for each credit in m.work.credits
+    if shownWork().credits <> invalid
+        for each credit in shownWork().credits
             if credit.role = "actor" and cast.Count() < 20 then cast.Push({ personId: credit.personId, name: credit.name, photo: credit.photo, caption: credit.character })
         end for
     end if
     if cast.Count() > 0 then addRow(root, sizes, heights, KivoContent.people("Cast", cast), false)
     if extras.Count() > 0 then addRow(root, sizes, heights, KivoContent.row("Extras", extras, true), true)
-    if m.work.collections <> invalid and m.work.collections.Count() > 0 then addRow(root, sizes, heights, KivoContent.collections("Collections", m.work.collections), false)
+    if shownWork().collections <> invalid and shownWork().collections.Count() > 0 then addRow(root, sizes, heights, KivoContent.collections("Collections", shownWork().collections), false)
     if root.GetChildCount() = 0
         m.rows.visible = false
         return
@@ -405,18 +405,18 @@ sub onButton()
         return
     end if
     if action.myList = true
-        if onMyList(m.work)
-            m.tasks.mark = Kivo.send(KivoApi.removeListWork(m.myListId, m.work.id), "onMarked")
+        if onMyList(shownWork())
+            m.tasks.mark = Kivo.send(KivoApi.removeListWork(m.myListId, shownWork().id), "onMarked")
         else
-            m.tasks.mark = Kivo.send(KivoApi.addListWork(m.myListId, { workId: m.work.id }), "onMarked")
+            m.tasks.mark = Kivo.send(KivoApi.addListWork(m.myListId, { workId: shownWork().id }), "onMarked")
         end if
         return
     end if
     if action.played = true
         ' A series asks before marking its unplayed episodes watched.
         count = 0
-        if m.work.series <> invalid and m.work.series.unplayedCount <> invalid then count = m.work.series.unplayedCount
-        if not played(m.work) and m.work.kind = KivoApi.WorkKind.series and count > 1
+        if shownWork().series <> invalid and shownWork().series.unplayedCount <> invalid then count = shownWork().series.unplayedCount
+        if not played(shownWork()) and shownWork().kind = KivoApi.WorkKind.series and count > 1
             m.menuPage = "confirm"
             m.menu.title = "Mark " + count.ToStr() + " episodes as watched?"
             m.menu.note = ""
@@ -426,16 +426,16 @@ sub onButton()
             m.menu.callFunc("focus")
             return
         end if
-        setPlayed(not played(m.work))
+        setPlayed(not played(shownWork()))
         return
     end if
     params = { id: action.id, fromStart: action.fromStart }
-    if action.id = m.work.id then params.Append(m.choice)
+    if action.id = shownWork().id then params.Append(m.choice)
     m.top.navigate = { screen: "PlayerScreen", params: params }
 end sub
 
 sub setPlayed(value as boolean)
-    m.tasks.mark = Kivo.send(KivoApi.updateWorkUserState(m.work.id, { played: value }), "onMarked")
+    m.tasks.mark = Kivo.send(KivoApi.updateWorkUserState(shownWork().id, { played: value }), "onMarked")
 end sub
 
 sub onMarked(event as object)
@@ -456,7 +456,7 @@ end function
 
 ' Whether a pick here is remembered for the series rather than for the next play.
 function remembers() as boolean
-    return m.work.remembersTracks = true
+    return shownWork().remembersTracks = true
 end function
 
 function chosenVersion() as string
@@ -467,7 +467,7 @@ end function
 ' The menu's first page: each choice with the track a play starts with now.
 sub openMenu()
     m.moreFrom = "page"
-    v = KivoTracks.version(m.work, chosenVersion())
+    v = KivoTracks.version(shownWork(), chosenVersion())
     items = []
     if KivoTracks.tracksOf(v, "audio").Count() > 0
         items.Push({ id: "audio", label: "Audio: " + KivoTracks.name(v, startsWith(v, "audio")) })
@@ -475,7 +475,7 @@ sub openMenu()
     subtitle = KivoTracks.name(v, startsWith(v, "subtitle"))
     if subtitle = "" then subtitle = "Off"
     items.Push({ id: "subtitle", label: "Subtitles: " + subtitle })
-    if m.work.versions.Count() > 1 then items.Push({ id: "version", label: "Version: " + v.name })
+    if shownWork().versions.Count() > 1 then items.Push({ id: "version", label: "Version: " + v.name })
     showMenu("menu", "Audio & Subtitles", items, "")
 end sub
 
@@ -492,7 +492,7 @@ sub showMenu(page as string, title as string, items as object, checked as string
     m.menu.title = title
     m.menu.note = ""
     if page <> "version" and remembers()
-        if m.work.tracksRemembered = true
+        if shownWork().tracksRemembered = true
             m.menu.note = "Remembered for this show"
         else
             m.menu.note = "A pick here is kept for the whole show."
@@ -511,10 +511,10 @@ sub onMenuChosen()
         onMoreChosen(id)
         return
     end if
-    v = KivoTracks.version(m.work, chosenVersion())
+    v = KivoTracks.version(shownWork(), chosenVersion())
     if page = "menu"
         if id = "version"
-            showMenu("version", "Version", KivoTracks.versionItems(m.work), v.id)
+            showMenu("version", "Version", KivoTracks.versionItems(shownWork()), v.id)
         else
             showMenu(id, menuTitle(id), KivoTracks.items(v, id, automaticOf(v, id)), checkedOf(v, id))
         end if
@@ -530,7 +530,7 @@ sub onMenuChosen()
     if remembers()
         body = {}
         body[key] = id
-        m.tasks.tracks = Kivo.send(KivoApi.updateWorkTracks(m.work.id, body), "onTracks")
+        m.tasks.tracks = Kivo.send(KivoApi.updateWorkTracks(shownWork().id, body), "onTracks")
         return
     end if
     if id = KivoTracks.automatic
@@ -561,7 +561,7 @@ end function
 function checkedOf(v as object, kind as string) as string
     key = kind + "TrackId"
     if remembers()
-        if m.work.tracksRemembered <> true then return KivoTracks.automatic
+        if shownWork().tracksRemembered <> true then return KivoTracks.automatic
         if v[key] = invalid then return KivoTracks.off
         return v[key]
     end if
@@ -576,7 +576,7 @@ sub onTracks(event as object)
     m.tasks.tracks = invalid
     if response.code = 200
         m.work = answer
-        show(m.work)
+        show(shownWork())
     else if response.code = 409
         ' Remembering was turned off meanwhile: the pick is for the next play.
         m.work.remembersTracks = false
@@ -614,16 +614,16 @@ sub openMore()
         card = m.rows.content.GetChild(at[0]).GetChild(at[1])
         if card = invalid or card.workId = "" then return
         where = {}
-        if m.work.kind = KivoApi.WorkKind.series then where.seriesId = m.work.id
+        if shownWork().kind = KivoApi.WorkKind.series then where.seriesId = shownWork().id
         m.cardMenu.callFunc("open", card, where)
         return
     end if
     items = []
-    if m.work.episode <> invalid and m.work.episode.seriesId <> invalid then items.Push({ id: "series", label: "Go to series" })
-    if m.work.libraryId <> invalid then items.Push({ id: "library", label: "Go to library" })
+    if shownWork().episode <> invalid and shownWork().episode.seriesId <> invalid then items.Push({ id: "series", label: "Go to series" })
+    if shownWork().libraryId <> invalid then items.Push({ id: "library", label: "Go to library" })
     if items.Count() = 0 then return
     m.menuPage = "more"
-    m.menu.title = m.work.title
+    m.menu.title = shownWork().title
     m.menu.note = ""
     m.menu.checkedId = ""
     m.menu.items = items
@@ -637,9 +637,9 @@ sub onMoreChosen(id as string)
     if page = "confirm"
         if id = "yes" then setPlayed(true)
     else if id = "series"
-        m.top.navigate = { screen: "DetailScreen", params: { id: m.work.episode.seriesId } }
+        m.top.navigate = { screen: "DetailScreen", params: { id: shownWork().episode.seriesId } }
     else if id = "library"
-        m.top.navigate = { screen: "LibraryScreen", params: { id: m.work.libraryId } }
+        m.top.navigate = { screen: "LibraryScreen", params: { id: shownWork().libraryId } }
     end if
 end sub
 
@@ -670,7 +670,7 @@ end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
     if not press then return false
-    if key = "options" and m.work <> invalid and not m.menu.visible and not m.cardMenu.visible
+    if key = "options" and shownWork() <> invalid and not m.menu.visible and not m.cardMenu.visible
         openMore()
         return true
     end if
@@ -692,4 +692,9 @@ function onKeyEvent(key as string, press as boolean) as boolean
         return true
     end if
     return false
+end function
+
+' The title this page shows, as its type.
+function shownWork() as KivoApi.WorkDetail
+    return m.work
 end function

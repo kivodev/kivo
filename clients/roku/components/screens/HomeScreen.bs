@@ -86,7 +86,7 @@ end sub
 sub openNav()
     items = [{ id: "search", label: "Search" }, { id: "home", label: "Home" }, { id: "lists", label: "Lists" }]
     others = 0
-    for each lib in m.libraries
+    for each lib in tvLibraryList()
         if lib.pinned = true
             items.Push({ id: "library:" + lib.id, label: lib.name })
         else
@@ -120,7 +120,7 @@ sub onNav()
         m.top.navigate = { screen: "SettingsScreen", params: {} }
     else if id = "more"
         items = []
-        for each lib in m.libraries
+        for each lib in tvLibraryList()
             if lib.pinned <> true then items.Push({ id: lib.id, label: lib.name })
         end for
         m.more.title = "More libraries"
@@ -145,7 +145,7 @@ sub closeMore()
 end sub
 
 sub openLibrary(id as string)
-    for each lib in m.libraries
+    for each lib in tvLibraryList()
         if lib.id = id then m.top.navigate = { screen: "LibraryScreen", params: { id: lib.id, name: lib.name, kind: lib.kind } }
     end for
 end sub
@@ -178,7 +178,7 @@ sub onState()
 end sub
 
 function shownLibrary(id as string) as dynamic
-    for each lib in m.libraries
+    for each lib in tvLibraryList()
         if lib.id = id then return lib
     end for
     return invalid
@@ -190,13 +190,13 @@ end function
 ' library's rows are landscape, the others posters; a list ends in See
 ' all. Once both Home and the libraries are read.
 sub showRows()
-    if m.homeBody = invalid or m.librariesRead <> true then return
+    if homeAnswer() = invalid or m.librariesRead <> true then return
     m.loaded = true
     root = CreateObject("roSGNode", "ContentNode")
     sizes = []
     heights = []
     m.shownRows = []
-    for each row in m.homeBody.rows
+    for each row in homeAnswer().rows
         ' A list can hold books, which aren't on the TV; a row left with none shows nothing.
         if row.kind = KivoApi.HomeRowKind.list then row.items = KivoContent.tvWorks(row.items)
         library = invalid
@@ -234,11 +234,11 @@ end sub
 ' What an empty Home says: no libraries (an admin adds them in the web
 ' app; anyone else asks one), every row hidden, or nothing scanned yet.
 sub showEmpty()
-    if m.libraries.Count() = 0 and m.admin
+    if tvLibraryList().Count() = 0 and m.admin
         KivoStates.empty(m.state, "No libraries", "Add libraries in the web app. They appear here as they're scanned.")
-    else if m.libraries.Count() = 0
+    else if tvLibraryList().Count() = 0
         KivoStates.empty(m.state, "No libraries", "Ask an admin for access.")
-    else if m.homeBody.allHidden = true
+    else if homeAnswer().allHidden = true
         KivoStates.empty(m.state, "Your Home is empty", "Choose its rows in Settings, under Home.")
     else
         KivoStates.empty(m.state, "Nothing here yet", "Items appear here as libraries are scanned.")
@@ -312,4 +312,14 @@ function onKeyEvent(key as string, press as boolean) as boolean
         end if
     end if
     return false
+end function
+
+' Home's rows, as the server sent them, as its type.
+function homeAnswer() as KivoApi.Home
+    return m.homeBody
+end function
+
+' The libraries the TV shows, as its type.
+function tvLibraryList() as KivoApi.Library[]
+    return m.libraries
 end function
