@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!-- Home: the user's rows, as the server lists them. Left from a row's
-     first card opens the menu: the libraries and the app's other pages. -->
+     first card opens the menu: the libraries and the app's other pages.
+     * on a card: mark it watched or unwatched, take it off Continue
+     Watching, or go to an episode's series. -->
 <component name="HomeScreen" extends="KivoScreen">
   <children>
     <Label id="heading" translation="[96, 48]" text="Home" />
@@ -11,5 +13,6 @@
       showRowLabel="[true]" rowLabelOffset="[[0, 12]]" rowFocusAnimationStyle="floatingFocus"
       vertFocusAnimationStyle="fixedFocusWrap" />
     <MenuPanel id="nav" side="left" visible="false" />
+    <MenuPanel id="more" visible="false" />
   </children>
 </component>

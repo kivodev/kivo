@@ -19,6 +19,24 @@ sub init()
         show("LinkScreen", {}, true)
     else
         show("HomeScreen", {}, true)
+        openDeepLink()
+    end if
+    m.global.ObserveField("deepLink", "openDeepLink")
+end sub
+
+' A deep link, signed in: Home, and over it a movie's or an episode's
+' player, as Roku's search and home screen expect, or any other work's
+' page. A link that comes while the app runs goes over Home again.
+sub openDeepLink()
+    link = m.global.deepLink
+    if link = invalid or link.contentId = "" or m.global.server = "" or m.global.token = "" then return
+    m.global.deepLink = { contentId: "", mediaType: "" }
+    if m.stack.GetChildCount() <> 1 or m.stack.GetChild(0).subtype() <> "HomeScreen" then show("HomeScreen", {}, true)
+    playable = { movie: true, episode: true, shortFormVideo: true, special: true }
+    if playable[link.mediaType] = true
+        show("PlayerScreen", { id: link.contentId }, false)
+    else
+        show("DetailScreen", { id: link.contentId }, false)
     end if
 end sub
 
@@ -69,5 +87,30 @@ function onKeyEvent(key as string, press as boolean) as boolean
         back()
         return true
     end if
+    if press and key = "back" and m.top.dialog = invalid
+        askToExit()
+        return true
+    end if
     return false
 end function
+
+' Back on the first screen asks before the app closes.
+sub askToExit()
+    dialog = CreateObject("roSGNode", "StandardMessageDialog")
+    dialog.title = "Exit Kivo?"
+    dialog.buttons = ["Exit", "Cancel"]
+    dialog.ObserveField("buttonSelected", "onExitAnswer")
+    dialog.ObserveField("wasClosed", "onExitClosed")
+    m.top.dialog = dialog
+end sub
+
+sub onExitAnswer()
+    exiting = m.top.dialog.buttonSelected = 0
+    m.top.dialog.close = true
+    if exiting then m.global.exit = true
+end sub
+
+sub onExitClosed()
+    m.top.dialog = invalid
+    if m.stack.GetChildCount() > 0 then m.stack.GetChild(m.stack.GetChildCount() - 1).callFunc("focus")
+end sub

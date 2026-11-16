@@ -20,6 +20,9 @@ sub init()
     m.nav = m.top.FindNode("nav")
     m.nav.ObserveField("chosen", "onNav")
     m.nav.ObserveField("closed", "closeNav")
+    m.more = m.top.FindNode("more")
+    m.more.ObserveField("chosen", "onMore")
+    m.more.ObserveField("closed", "closeMore")
     m.libraries = []
     load()
 end sub
@@ -27,6 +30,10 @@ end sub
 sub focus()
     if m.nav.visible
         m.nav.callFunc("focus")
+        return
+    end if
+    if m.more.visible
+        m.more.callFunc("focus")
         return
     end if
     m.rows.SetFocus(true)
@@ -109,11 +116,13 @@ sub onHome(event as object)
     root = CreateObject("roSGNode", "ContentNode")
     sizes = []
     heights = []
+    m.rowKinds = []
     for each row in response.body.rows
         title = rowTitle(row)
         if title <> invalid and row.items.Count() > 0
             landscape = row.kind = KivoApi.HomeRowKind.continueWatching
             root.AppendChild(KivoContent.row(title, row.items, landscape))
+            m.rowKinds.Push(row.kind)
             size = KivoContent.cardSize(landscape)
             sizes.Push([size[0], size[1] + KivoContent.captionHeight])
             heights.Push(size[1] + KivoContent.captionHeight + 60)
@@ -151,7 +160,60 @@ sub onSelected()
     m.top.navigate = KivoContent.target(m.rows.content.GetChild(at[0]).GetChild(at[1]))
 end sub
 
+' * on a card: what can be done with its work.
+sub openMore()
+    if m.rows.content = invalid then return
+    at = m.rows.rowItemFocused
+    card = m.rows.content.GetChild(at[0]).GetChild(at[1])
+    if card = invalid or card.workId = "" then return
+    m.moreCard = card
+    items = []
+    if card.played
+        items.Push({ id: "unplayed", label: "Mark as unwatched" })
+    else
+        items.Push({ id: "played", label: "Mark as watched" })
+    end if
+    kind = m.rowKinds[at[0]]
+    if kind = KivoApi.HomeRowKind.continueWatching then items.Push({ id: "continue", label: "Remove from Continue Watching" })
+    if kind = KivoApi.HomeRowKind.continueListening then items.Push({ id: "continue", label: "Remove from Continue Listening" })
+    m.more.title = card.title
+    m.more.checkedId = ""
+    m.more.items = items
+    m.more.visible = true
+    m.more.callFunc("focus")
+end sub
+
+sub closeMore()
+    m.more.visible = false
+    m.rows.SetFocus(true)
+end sub
+
+sub onMore()
+    id = m.more.chosen
+    workId = m.moreCard.workId
+    closeMore()
+    if id = "played" or id = "unplayed"
+        m.changeTask = Kivo.send(KivoApi.updateWorkUserState(workId, { played: id = "played" }), "onChanged")
+    else if id = "continue"
+        m.changeTask = Kivo.send(KivoApi.removeFromContinue(workId), "onChanged")
+    end if
+end sub
+
+sub onChanged(event as object)
+    m.changeTask = invalid
+    response = event.GetData()
+    if response.code >= 300
+        m.status.text = KivoDisplay.problem(response)
+        return
+    end if
+    load()
+end sub
+
 function onKeyEvent(key as string, press as boolean) as boolean
+    if press and key = "options" and not m.nav.visible and not m.more.visible
+        openMore()
+        return true
+    end if
     if press and key = "OK" and m.loaded <> true
         load()
         return true
