@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!-- A work's page: its backdrop, title, details and overview, Play or
-     Resume, Audio & Subtitles for one with versions, and for a show or a
-     season its episodes by season. -->
+     Resume, Audio & Subtitles for one with versions, then rows: a show's
+     or a season's episodes by season, More like this, extras, its
+     collections, and the cast. * opens more: mark it watched, add it to a
+     list. -->
 <component name="DetailScreen" extends="KivoScreen">
   <children>
     <Poster id="backdrop" width="1920" height="1080" loadDisplayMode="scaleToZoom" />
@@ -10,9 +12,10 @@
     <Label id="details" translation="[96, 230]" width="1300" />
     <Label id="overview" translation="[96, 290]" width="1100" wrap="true" maxLines="4" />
     <ButtonGroup id="buttons" translation="[96, 480]" layoutDirection="horiz" itemSpacings="[24]" minWidth="320" />
+    <Label id="hint" translation="[96, 560]" width="1700" text="Press * for more" />
     <Label id="status" translation="[96, 590]" width="1700" wrap="true" />
-    <RowList id="episodes" translation="[96, 600]" itemComponentName="PosterItem"
-      itemSize="[1824, 420]" numRows="2" rowItemSize="[[480, 350]]" rowHeights="[420]"
+    <RowList id="rows" translation="[96, 620]" itemComponentName="PosterItem"
+      itemSize="[1824, 470]" numRows="2" rowItemSize="[[480, 350]]" rowHeights="[420]"
       rowItemSpacing="[[24, 0]]" itemSpacing="[0, 40]" showRowLabel="[true]" rowLabelOffset="[[0, 12]]"
       rowFocusAnimationStyle="floatingFocus" visible="false" />
     <MenuPanel id="menu" visible="false" />

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!-- A card in a RowList: the work's artwork with its progress along the
-     foot, its title and a caption under it. -->
+     foot and a check once played, its title and a caption under it. -->
 <component name="PosterItem" extends="Group">
   <interface>
     <field id="itemContent" type="node" onChange="onContent" />
@@ -12,6 +12,8 @@
     <Poster id="art" loadDisplayMode="scaleToZoom" />
     <Rectangle id="track" visible="false" height="6" />
     <Rectangle id="progress" visible="false" height="6" />
+    <Rectangle id="playedGround" width="40" height="40" visible="false" />
+    <Label id="played" width="40" height="40" horizAlign="center" vertAlign="center" text="✓" visible="false" />
     <Label id="title" horizAlign="left" />
     <Label id="caption" horizAlign="left" />
   </children>

@@ -13,7 +13,8 @@ sub init()
     m.overview = m.top.FindNode("overview")
     m.buttons = m.top.FindNode("buttons")
     m.status = m.top.FindNode("status")
-    m.episodes = m.top.FindNode("episodes")
+    m.rows = m.top.FindNode("rows")
+    KivoUi.style(m.top.FindNode("hint"), KivoTokens.TextSize.sm, KivoTokens.Color.textSubtle)
     m.top.FindNode("scrim").color = KivoTokens.Color.scrim
     KivoUi.style(m.title, KivoTokens.TextSize.title, KivoTokens.Color.text, true)
     KivoUi.style(m.details, KivoTokens.TextSize.base, KivoTokens.Color.textMuted)
@@ -22,10 +23,11 @@ sub init()
     font = CreateObject("roSGNode", "Font")
     font.uri = "font:BoldSystemFontFile"
     font.size = KivoTokens.TextSize.base
-    m.episodes.rowLabelFont = font
-    m.episodes.rowLabelColor = KivoTokens.Color.text
+    m.rows.rowLabelFont = font
+    m.rows.rowLabelColor = KivoTokens.Color.text
     m.buttons.ObserveField("buttonSelected", "onButton")
-    m.episodes.ObserveField("rowItemSelected", "onEpisode")
+    m.rows.ObserveField("rowItemSelected", "onCard")
+    m.seasons = invalid
     m.menu = m.top.FindNode("menu")
     m.menu.ObserveField("chosen", "onMenuChosen")
     m.menu.ObserveField("closed", "onMenuClosed")
@@ -46,8 +48,8 @@ sub takeFocus()
         m.menu.callFunc("focus")
     else if m.buttons.buttons.Count() > 0
         m.buttons.SetFocus(true)
-    else if m.episodes.visible
-        m.episodes.SetFocus(true)
+    else if m.rows.visible
+        m.rows.SetFocus(true)
     else
         m.top.SetFocus(true)
     end if
@@ -71,8 +73,11 @@ sub onWork(event as object)
     first = m.work = invalid
     m.work = response.body
     show(m.work)
-    if first and (m.work.kind = KivoApi.WorkKind.series or m.work.kind = KivoApi.WorkKind.season)
+    if m.work.kind = KivoApi.WorkKind.series or m.work.kind = KivoApi.WorkKind.season
+        ' Episodes' progress moves on too, so they're read again each time.
         m.tasks.children = Kivo.send(KivoApi.listWorkChildren(m.work.id), "onChildren")
+    else
+        showRows()
     end if
     if first then takeFocus()
 end sub
@@ -139,7 +144,8 @@ sub onChildren(event as object)
     if response.code <> 200 then return
     children = response.body.items
     if m.work.kind = KivoApi.WorkKind.season
-        showSeasons([{ title: m.work.title, episodes: children }])
+        m.seasons = [{ title: m.work.title, episodes: children }]
+        showRows()
         return
     end if
     ' A show's seasons: each one's episodes, asked at once, shown in order once all have answered.
@@ -162,18 +168,45 @@ sub onSeason(event as object)
     for each season in m.seasons
         if season.episodes = invalid then return
     end for
-    showSeasons(m.seasons)
+    showRows()
 end sub
 
-sub showSeasons(seasons as object)
+' The rows under the buttons: the episodes by season, More like this,
+' extras, the work's collections and its cast. A reload keeps the focus
+' on the card it was on, where that's still there.
+sub showRows()
     root = CreateObject("roSGNode", "ContentNode")
-    for each season in seasons
-        if season.episodes.Count() > 0 then root.AppendChild(KivoContent.row(season.title, season.episodes, true))
-    end for
-    if root.GetChildCount() = 0 then return
-    m.episodes.content = root
-    m.episodes.visible = true
-    if m.buttons.buttons.Count() = 0 then m.episodes.SetFocus(true)
+    sizes = []
+    heights = []
+    if m.seasons <> invalid
+        for each season in m.seasons
+            if season.episodes <> invalid and season.episodes.Count() > 0 then addRow(root, sizes, heights, KivoContent.row(season.title, season.episodes, true), true)
+        end for
+    end if
+    if m.work.similar <> invalid and m.work.similar.Count() > 0 then addRow(root, sizes, heights, KivoContent.row("More like this", m.work.similar, false), false)
+    if m.work.extras <> invalid and m.work.extras.Count() > 0 then addRow(root, sizes, heights, KivoContent.row("Extras", m.work.extras, true), true)
+    if m.work.collections <> invalid and m.work.collections.Count() > 0 then addRow(root, sizes, heights, KivoContent.collections("Collections", m.work.collections), false)
+    if m.work.credits <> invalid and m.work.credits.Count() > 0 then addRow(root, sizes, heights, KivoContent.people("Cast & Crew", m.work.credits), false)
+    if root.GetChildCount() = 0
+        m.rows.visible = false
+        return
+    end if
+    was = m.rows.rowItemFocused
+    m.rows.rowItemSize = sizes
+    m.rows.rowHeights = heights
+    m.rows.content = root
+    m.rows.visible = true
+    if was <> invalid and was.Count() = 2 and was[0] >= 0 and was[0] < root.GetChildCount()
+        if was[1] < root.GetChild(was[0]).GetChildCount() then m.rows.jumpToRowItem = was
+    end if
+    if m.buttons.buttons.Count() = 0 and not m.menu.visible then m.rows.SetFocus(true)
+end sub
+
+sub addRow(root as object, sizes as object, heights as object, row as object, landscape as boolean)
+    size = KivoContent.rowSize(landscape)
+    root.AppendChild(row)
+    sizes.Push(size.item)
+    heights.Push(size.height)
 end sub
 
 sub onButton()
@@ -207,6 +240,7 @@ end function
 
 ' The menu's first page: each choice with the track a play starts with now.
 sub openMenu()
+    m.moreFrom = "page"
     v = KivoTracks.version(m.work, chosenVersion())
     items = []
     if KivoTracks.tracksOf(v, "audio").Count() > 0
@@ -246,8 +280,12 @@ end sub
 
 sub onMenuChosen()
     id = m.menu.chosen
-    v = KivoTracks.version(m.work, chosenVersion())
     page = m.menuPage
+    if page = "more" or page = "lists"
+        onMoreChosen(id)
+        return
+    end if
+    v = KivoTracks.version(m.work, chosenVersion())
     if page = "menu"
         if id = "version"
             showMenu("version", "Version", KivoTracks.versionItems(m.work), v.id)
@@ -320,28 +358,171 @@ sub onTracks(event as object)
 end sub
 
 sub onMenuClosed()
-    if m.menuPage <> "menu"
+    if m.menuPage = "lists"
+        openMore()
+        return
+    end if
+    if m.menuPage <> "menu" and m.menuPage <> "more"
         openMenu()
         return
     end if
-    m.menu.visible = false
-    m.menuPage = invalid
-    m.buttons.SetFocus(true)
+    closeMenu()
 end sub
 
-sub onEpisode()
-    at = m.episodes.rowItemSelected
-    item = m.episodes.content.GetChild(at[0]).GetChild(at[1])
-    m.top.navigate = { screen: "DetailScreen", params: { id: item.workId } }
+sub closeMenu()
+    m.menu.visible = false
+    m.menuPage = invalid
+    if m.moreFrom = "rows" and m.rows.visible
+        m.rows.SetFocus(true)
+    else if m.buttons.buttons.Count() > 0
+        m.buttons.SetFocus(true)
+    else
+        takeFocus()
+    end if
+end sub
+
+' More, on *: for the card in focus in the rows, else for the page's
+' work, mark it watched or unwatched; for the page's work, add it to or
+' take it off a list; an episode card's series.
+sub openMore()
+    m.moreFrom = "page"
+    m.moreWork = { id: m.work.id, played: m.work.userState <> invalid and m.work.userState.played = true, kind: m.work.kind }
+    if m.rows.IsInFocusChain() and m.rows.content <> invalid
+        at = m.rows.rowItemFocused
+        card = m.rows.content.GetChild(at[0]).GetChild(at[1])
+        if card = invalid or card.workId = "" then return
+        m.moreFrom = "rows"
+        m.moreWork = { id: card.workId, played: card.played, kind: card.kind }
+    end if
+    items = []
+    if m.moreWork.played
+        items.Push({ id: "unplayed", label: "Mark as unwatched" })
+    else
+        items.Push({ id: "played", label: "Mark as watched" })
+    end if
+    if m.moreFrom = "page" then items.Push({ id: "lists", label: "Add to list…" })
+    if m.moreFrom = "page" and m.work.episode <> invalid then items.Push({ id: "series", label: "Go to series" })
+    m.menuPage = "more"
+    m.menu.title = "More"
+    m.menu.note = ""
+    m.menu.checkedId = ""
+    m.menu.items = items
+    m.menu.visible = true
+    m.menu.callFunc("focus")
+end sub
+
+sub onMoreChosen(id as string)
+    if m.menuPage = "lists"
+        toggleList(id)
+        return
+    end if
+    if id = "played" or id = "unplayed"
+        closeMenu()
+        m.tasks.played = Kivo.send(KivoApi.updateWorkUserState(m.moreWork.id, { played: id = "played" }), "onPlayed")
+    else if id = "lists"
+        m.tasks.lists = Kivo.send(KivoApi.listLists(), "onLists")
+    else if id = "series"
+        closeMenu()
+        m.top.navigate = { screen: "DetailScreen", params: { id: m.work.episode.seriesId } }
+    end if
+end sub
+
+sub onPlayed(event as object)
+    m.tasks.played = invalid
+    if event.GetData().code <> 200
+        m.status.text = KivoDisplay.problem(event.GetData())
+        return
+    end if
+    load()
+end sub
+
+' The user's lists that hold works by hand, each checked when it holds the page's work.
+sub onLists(event as object)
+    m.tasks.lists = invalid
+    response = event.GetData()
+    if response.code <> 200
+        m.status.text = KivoDisplay.problem(response)
+        closeMenu()
+        return
+    end if
+    m.lists = []
+    for each list in response.body.items
+        if list.kind = KivoApi.ListKind.manual then m.lists.Push(list)
+    end for
+    showLists()
+end sub
+
+sub showLists()
+    held = {}
+    if m.work.listIds <> invalid
+        for each listId in m.work.listIds
+            held[listId] = true
+        end for
+    end if
+    items = []
+    for each list in m.lists
+        label = list.name
+        if held[list.id] = true then label = "✓ " + label
+        items.Push({ id: list.id, label: label })
+    end for
+    m.menuPage = "lists"
+    m.menu.title = "Lists"
+    m.menu.note = ""
+    if items.Count() = 0 then m.menu.note = "Make a list in Kivo on another device first."
+    m.menu.checkedId = ""
+    m.menu.items = items
+    m.menu.visible = true
+    m.menu.callFunc("focus")
+end sub
+
+' Puts the page's work on the list, or takes it off when it's there.
+sub toggleList(listId as string)
+    held = false
+    if m.work.listIds <> invalid
+        for each id in m.work.listIds
+            if id = listId then held = true
+        end for
+    end if
+    if held
+        m.tasks.list = Kivo.send(KivoApi.removeListWork(listId, m.work.id), "onListChanged")
+    else
+        m.tasks.list = Kivo.send(KivoApi.addListWork(listId, { workId: m.work.id }), "onListChanged")
+    end if
+end sub
+
+sub onListChanged(event as object)
+    m.tasks.list = invalid
+    response = event.GetData()
+    if response.code >= 300
+        m.menu.note = KivoDisplay.problem(response)
+        return
+    end if
+    m.tasks.work = Kivo.send(KivoApi.getWork(m.work.id), "onListWork")
+end sub
+
+sub onListWork(event as object)
+    m.tasks.work = invalid
+    response = event.GetData()
+    if response.code = 200 then m.work = response.body
+    if m.menuPage = "lists" then showLists()
+end sub
+
+sub onCard()
+    at = m.rows.rowItemSelected
+    m.top.navigate = KivoContent.target(m.rows.content.GetChild(at[0]).GetChild(at[1]))
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
     if not press then return false
-    if key = "down" and m.buttons.IsInFocusChain() and m.episodes.visible
-        m.episodes.SetFocus(true)
+    if key = "options" and m.work <> invalid and not m.menu.visible
+        openMore()
         return true
     end if
-    if key = "up" and m.episodes.IsInFocusChain() and m.buttons.buttons.Count() > 0
+    if key = "down" and m.buttons.IsInFocusChain() and m.rows.visible
+        m.rows.SetFocus(true)
+        return true
+    end if
+    if key = "up" and m.rows.IsInFocusChain() and m.buttons.buttons.Count() > 0
         m.buttons.SetFocus(true)
         return true
     end if

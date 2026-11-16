@@ -1,0 +1,170 @@
+import "pkg:/source/generated/api.bs"
+import "pkg:/source/generated/tokens.bs"
+import "pkg:/source/shared/content.bs"
+import "pkg:/source/shared/display.bs"
+import "pkg:/source/shared/session.bs"
+import "pkg:/source/shared/ui.bs"
+
+' Cards across a row of a long list, which the page breaks into rows.
+const across = 6
+
+sub init()
+    m.rows = m.top.FindNode("rows")
+    m.status = m.top.FindNode("status")
+    m.heading = m.top.FindNode("heading")
+    m.overview = m.top.FindNode("overview")
+    m.photo = m.top.FindNode("photo")
+    m.backdrop = m.top.FindNode("backdrop")
+    m.top.FindNode("scrim").color = KivoTokens.Color.scrim
+    KivoUi.style(m.heading, KivoTokens.TextSize.title, KivoTokens.Color.text, true)
+    KivoUi.style(m.overview, KivoTokens.TextSize.base, KivoTokens.Color.textMuted)
+    KivoUi.style(m.status, KivoTokens.TextSize.base, KivoTokens.Color.textMuted)
+    font = CreateObject("roSGNode", "Font")
+    font.uri = "font:BoldSystemFontFile"
+    font.size = KivoTokens.TextSize.base
+    m.rows.rowLabelFont = font
+    m.rows.rowLabelColor = KivoTokens.Color.text
+    m.rows.ObserveField("rowItemSelected", "onCard")
+    m.tasks = {}
+    m.top.ObserveField("params", "load")
+end sub
+
+sub focus()
+    m.rows.SetFocus(true)
+    ' Progress and what's played may have changed while another screen showed.
+    if m.loaded = true then load()
+end sub
+
+sub load()
+    params = m.top.params
+    request = invalid
+    if params.kind = "person"
+        request = KivoApi.getPerson(params.id)
+    else if params.kind = "collection"
+        request = KivoApi.getCollection(params.id)
+    else if params.kind = "bookSeries"
+        request = KivoApi.getBookSeries(params.id)
+    else if params.kind = "list"
+        request = KivoApi.getList(params.id)
+    end if
+    if request = invalid then return
+    m.tasks.page = Kivo.send(request, "onPage")
+end sub
+
+sub onPage(event as object)
+    response = event.GetData()
+    m.tasks.page = invalid
+    if response.code = 401
+        m.top.navigate = { signedOut: true }
+        return
+    end if
+    if response.code <> 200
+        m.status.text = KivoDisplay.problem(response)
+        return
+    end if
+    page = response.body
+    kind = m.top.params.kind
+    if kind = "list"
+        ' A list's works come a page at a time (listListWorks).
+        m.heading.text = page.name
+        m.listWorks = []
+        m.listTotal = 0
+        m.tasks.works = Kivo.send(KivoApi.listListWorks(page.id, { limit: 100 }), "onListWorks")
+        return
+    end if
+    m.loaded = true
+    sections = []
+    if kind = "person"
+        m.heading.text = page.name
+        if page.overview <> invalid then m.overview.text = page.overview
+        if page.photo <> invalid
+            m.photo.uri = Kivo.imageUrl(page.photo, 160)
+            m.photo.visible = true
+            m.heading.translation = [288, 72]
+            m.overview.translation = [288, 150]
+            m.overview.width = 1500
+        end if
+        sections.Push({ title: "Movies & Shows", works: page.works })
+        for each series in page.bookSeries
+            sections.Push({ title: series.name, works: series.items })
+        end for
+        title = "Books"
+        if page.bookSeries.Count() > 0 then title = "Other books"
+        sections.Push({ title: title, works: page.standalone })
+        sections.Push({ title: "Narrated", works: page.narrated })
+    else
+        m.heading.text = page.name
+        if page.images <> invalid then m.backdrop.uri = Kivo.imageUrl(page.images.backdrop, 1920)
+        sections = chunks(page.items)
+    end if
+    showSections(sections)
+end sub
+
+' A list's works, a page at a time until the last (up to a thousand).
+sub onListWorks(event as object)
+    response = event.GetData()
+    m.tasks.works = invalid
+    if response.code <> 200
+        m.status.text = KivoDisplay.problem(response)
+        return
+    end if
+    if response.body.total <> invalid then m.listTotal = response.body.total
+    m.listWorks.Append(response.body.items)
+    if response.body.items.Count() > 0 and m.listWorks.Count() < m.listTotal and m.listWorks.Count() < 1000
+        m.tasks.works = Kivo.send(KivoApi.listListWorks(m.top.params.id, { limit: 100, offset: m.listWorks.Count() }), "onListWorks")
+        return
+    end if
+    m.loaded = true
+    showSections(chunks(m.listWorks))
+end sub
+
+' A long list of works as rows of [across] cards, the first under no title.
+function chunks(works as object) as object
+    out = []
+    row = []
+    for each work in works
+        row.Push(work)
+        if row.Count() = across
+            out.Push({ title: "", works: row })
+            row = []
+        end if
+    end for
+    if row.Count() > 0 then out.Push({ title: "", works: row })
+    return out
+end function
+
+' Shows the sections that have works, each as a row; a reload keeps the
+' focus on the card it was on.
+sub showSections(sections as object)
+    root = CreateObject("roSGNode", "ContentNode")
+    sizes = []
+    heights = []
+    for each section in sections
+        if section.works <> invalid and section.works.Count() > 0
+            square = KivoContent.allBooks(section.works)
+            size = KivoContent.rowSize(false)
+            if square then size = KivoContent.squareRowSize()
+            root.AppendChild(KivoContent.row(section.title, section.works, false))
+            sizes.Push(size.item)
+            heights.Push(size.height)
+        end if
+    end for
+    if root.GetChildCount() = 0
+        m.status.text = "Nothing here yet."
+        return
+    end if
+    m.status.text = ""
+    was = m.rows.rowItemFocused
+    m.rows.rowItemSize = sizes
+    m.rows.rowHeights = heights
+    m.rows.content = root
+    if was <> invalid and was.Count() = 2 and was[0] >= 0 and was[0] < root.GetChildCount()
+        if was[1] < root.GetChild(was[0]).GetChildCount() then m.rows.jumpToRowItem = was
+    end if
+    m.rows.SetFocus(true)
+end sub
+
+sub onCard()
+    at = m.rows.rowItemSelected
+    m.top.navigate = KivoContent.target(m.rows.content.GetChild(at[0]).GetChild(at[1]))
+end sub

@@ -82,8 +82,7 @@ end function
 
 sub onSelected()
     at = m.rows.rowItemSelected
-    item = m.rows.content.GetChild(at[0]).GetChild(at[1])
-    m.top.navigate = { screen: "DetailScreen", params: { id: item.workId } }
+    m.top.navigate = KivoContent.target(m.rows.content.GetChild(at[0]).GetChild(at[1]))
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean

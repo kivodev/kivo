@@ -19,8 +19,10 @@ namespace KivoContent
     end function
 
     function card(work as object, landscape as boolean) as object
-        node = CreateObject("roSGNode", "ContentNode")
-        node.AddFields({ workId: work.id, kind: work.kind, imageUri: "", caption: "", progress: 0.0 })
+        node = KivoContent.blank()
+        node.workId = work.id
+        node.kind = work.kind
+        node.played = work.userState <> invalid and work.userState.played = true
         node.title = work.title
         size = KivoContent.cardSize(landscape)
         image = work.images.poster
@@ -36,6 +38,48 @@ namespace KivoContent
         return node
     end function
 
+    ' A card with nothing on it yet: what it opens (a work, a person or a
+    ' collection), its artwork, caption and progress, and whether it's played.
+    function blank() as object
+        node = CreateObject("roSGNode", "ContentNode")
+        node.AddFields({ workId: "", personId: "", collectionId: "", kind: "", imageUri: "", caption: "", progress: 0.0, played: false })
+        return node
+    end function
+
+    ' A row of people: a work's cast and crew, each with their photo and
+    ' their character or role.
+    function people(title as string, credits as object) as object
+        node = CreateObject("roSGNode", "ContentNode")
+        node.title = title
+        for each credit in credits
+            node.AppendChild(KivoContent.blank())
+            card = node.GetChild(node.GetChildCount() - 1)
+            card.personId = credit.personId
+            card.title = credit.name
+            card.imageUri = Kivo.imageUrl(credit.photo, 240)
+            if credit.character <> invalid and credit.character <> ""
+                card.caption = credit.character
+            else if credit.role <> invalid
+                card.caption = credit.role
+            end if
+        end for
+        return node
+    end function
+
+    ' A row of collections (CollectionSummary), each by its poster and name.
+    function collections(title as string, items as object) as object
+        node = CreateObject("roSGNode", "ContentNode")
+        node.title = title
+        for each item in items
+            node.AppendChild(KivoContent.blank())
+            card = node.GetChild(node.GetChildCount() - 1)
+            card.collectionId = item.id
+            card.title = item.name
+            if item.images <> invalid then card.imageUri = Kivo.imageUrl(item.images.poster, 240)
+        end for
+        return node
+    end function
+
     ' An episode by its series and code, else its title.
     function caption(work as object) as string
         if work.episode <> invalid
@@ -45,6 +89,34 @@ namespace KivoContent
         end if
         if work.year <> invalid then return work.year.ToStr()
         return ""
+    end function
+
+    ' Where a card goes: a work's page, a person's or a collection's.
+    function target(card as object) as object
+        if card.personId <> "" then return { screen: "RowsScreen", params: { kind: "person", id: card.personId } }
+        if card.collectionId <> "" then return { screen: "RowsScreen", params: { kind: "collection", id: card.collectionId } }
+        return { screen: "DetailScreen", params: { id: card.workId } }
+    end function
+
+    ' A row's cards' sizes, for a RowList's rowItemSize, and its height,
+    ' for rowHeights: posters, or landscape stills when [landscape].
+    function rowSize(landscape as boolean) as object
+        size = KivoContent.cardSize(landscape)
+        return { item: [size[0], size[1] + KivoContent.captionHeight], height: size[1] + KivoContent.captionHeight + 60 }
+    end function
+
+    ' A row of book covers' sizes, square, as rowSize gives them.
+    function squareRowSize() as object
+        return { item: [240, 240 + KivoContent.captionHeight], height: 240 + KivoContent.captionHeight + 60 }
+    end function
+
+    ' Whether every work of [works] is a book, whose covers are square.
+    function allBooks(works as object) as boolean
+        if works.Count() = 0 then return false
+        for each work in works
+            if work.kind <> "book" then return false
+        end for
+        return true
     end function
 
     ' A card's artwork's width and height: six posters across a row, or three stills.

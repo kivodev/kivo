@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- A page of works in rows under a heading: a person's (their photo,
+     biography and what they're credited on, wrote or narrated), a
+     collection's, a book series' or a list's. params is { kind, id }:
+     kind is person, collection, bookSeries or list. -->
+<component name="RowsScreen" extends="KivoScreen">
+  <children>
+    <Poster id="backdrop" width="1920" height="1080" loadDisplayMode="scaleToZoom" />
+    <Rectangle id="scrim" width="1920" height="1080" />
+    <Poster id="photo" translation="[96, 72]" width="160" height="240" loadDisplayMode="scaleToZoom" visible="false" />
+    <Label id="heading" translation="[96, 72]" width="1500" wrap="true" maxLines="2" />
+    <Label id="overview" translation="[96, 150]" width="1500" wrap="true" maxLines="3" />
+    <Label id="status" translation="[96, 360]" width="1700" wrap="true" />
+    <RowList id="rows" translation="[96, 340]" itemComponentName="PosterItem"
+      itemSize="[1824, 470]" numRows="2" rowItemSpacing="[[24, 0]]" itemSpacing="[0, 40]"
+      showRowLabel="[true]" rowLabelOffset="[[0, 12]]" rowFocusAnimationStyle="floatingFocus" />
+  </children>
+</component>

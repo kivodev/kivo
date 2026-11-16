@@ -9,6 +9,10 @@ sub init()
     m.progress = m.top.FindNode("progress")
     m.title = m.top.FindNode("title")
     m.caption = m.top.FindNode("caption")
+    m.played = m.top.FindNode("played")
+    m.playedGround = m.top.FindNode("playedGround")
+    m.playedGround.color = KivoTokens.Color.badge
+    KivoUi.style(m.played, KivoTokens.TextSize.sm, KivoTokens.Color.onBadge, true)
     m.ground.color = KivoTokens.Color.placeholder
     m.track.color = KivoTokens.Color.progressTrack
     m.progress.color = KivoTokens.Color.progress
@@ -30,6 +34,8 @@ sub onSize()
     m.title.translation = [0, h + 8]
     m.caption.width = w
     m.caption.translation = [0, h + 42]
+    m.played.translation = [w - 48, 8]
+    m.playedGround.translation = [w - 48, 8]
     onContent()
 end sub
 
@@ -39,6 +45,8 @@ sub onContent()
     m.art.uri = content.imageUri
     m.title.text = content.title
     m.caption.text = content.caption
+    m.played.visible = content.played
+    m.playedGround.visible = content.played
     shown = content.progress > 0
     m.track.visible = shown
     m.progress.visible = shown
