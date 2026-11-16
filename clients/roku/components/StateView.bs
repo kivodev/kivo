@@ -13,6 +13,11 @@ sub init()
     m.left = 0
 end sub
 
+sub onWidth()
+    m.heading.width = m.top.textWidth
+    m.line.width = m.top.textWidth
+end sub
+
 sub onText()
     m.heading.text = m.top.title
     m.line.text = m.top.sentence

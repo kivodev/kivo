@@ -10,6 +10,7 @@
     <field id="sentence" type="string" onChange="onText" />
     <field id="buttons" type="array" onChange="onButtons" />
     <field id="countdown" type="integer" onChange="onCountdown" />
+    <field id="textWidth" type="integer" value="1500" onChange="onWidth" />
     <field id="action" type="string" alwaysNotify="true" />
     <function name="focus" />
   </interface>

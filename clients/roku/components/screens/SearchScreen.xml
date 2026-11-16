@@ -1,15 +1,18 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<!-- Search: the on-screen keyboard, and as the words change, the results
-     in rows: movies, shows, episodes and videos, people and
-     collections. -->
+<!-- Search, as the Android TV app's: the on-screen keyboard, and as the
+     words change, the people who match in a row, then a row of results
+     per kind (movies, shows, episodes and other videos), then the
+     collections that match. * on a card opens its menu. -->
 <component name="SearchScreen" extends="KivoScreen">
   <children>
     <Label id="heading" translation="[96, 48]" text="Search" />
     <MiniKeyboard id="keyboard" translation="[96, 130]" />
-    <Label id="status" translation="[760, 140]" width="1100" wrap="true" />
+    <StateView id="state" translation="[760, 140]" textWidth="1060" visible="false" />
+    <Label id="problem" translation="[760, 1000]" width="1100" />
     <RowList id="rows" translation="[760, 130]" itemComponentName="PosterItem"
       itemSize="[1100, 470]" numRows="2" rowItemSpacing="[[24, 0]]" itemSpacing="[0, 40]"
       showRowLabel="[true]" rowLabelOffset="[[0, 12]]" rowFocusAnimationStyle="floatingFocus" visible="false" />
-    <Timer id="typing" duration="0.4" repeat="false" />
+    <WorkMenu id="menu" />
+    <Timer id="typing" duration="0.35" repeat="false" />
   </children>
 </component>

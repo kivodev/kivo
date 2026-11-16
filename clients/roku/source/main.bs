@@ -12,7 +12,7 @@ sub main(args as dynamic)
     saved = Kivo.saved()
     globals = screen.GetGlobalNode()
     ' autoplayRun counts episodes played on by themselves without input, across players.
-    globals.AddFields({ server: saved.server, serverId: saved.serverId, token: saved.token, clientId: saved.clientId, autoplayRun: 0, deepLink: deepLinkOf(args), exit: false })
+    globals.AddFields({ server: saved.server, serverId: saved.serverId, token: saved.token, clientId: saved.clientId, autoplayRun: 0, lastSearch: "", deepLink: deepLinkOf(args), exit: false })
     globals.ObserveField("exit", port)
     input = CreateObject("roInput")
     input.SetMessagePort(port)

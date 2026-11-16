@@ -3,15 +3,17 @@ import "pkg:/source/generated/tokens.bs"
 import "pkg:/source/shared/content.bs"
 import "pkg:/source/shared/display.bs"
 import "pkg:/source/shared/session.bs"
+import "pkg:/source/shared/states.bs"
 import "pkg:/source/shared/ui.bs"
 
 sub init()
     m.keyboard = m.top.FindNode("keyboard")
     m.rows = m.top.FindNode("rows")
-    m.status = m.top.FindNode("status")
+    m.state = m.top.FindNode("state")
     m.typing = m.top.FindNode("typing")
+    m.problem = m.top.FindNode("problem")
     KivoUi.style(m.top.FindNode("heading"), KivoTokens.TextSize.xl, KivoTokens.Color.text, true)
-    KivoUi.style(m.status, KivoTokens.TextSize.base, KivoTokens.Color.textMuted)
+    KivoUi.style(m.problem, KivoTokens.TextSize.sm, KivoTokens.Color.danger)
     font = CreateObject("roSGNode", "Font")
     font.uri = "font:BoldSystemFontFile"
     font.size = KivoTokens.TextSize.base
@@ -20,20 +22,31 @@ sub init()
     m.keyboard.ObserveField("text", "onText")
     m.typing.ObserveField("fire", "search")
     m.rows.ObserveField("rowItemSelected", "onCard")
-    m.status.text = "Type a title or a name."
+    m.state.ObserveField("action", "onState")
+    m.menu = m.top.FindNode("menu")
+    m.menu.ObserveField("navigate", "onMenuNavigate")
+    m.menu.ObserveField("changed", "search")
+    m.menu.ObserveField("problem", "onMenuProblem")
+    m.menu.ObserveField("closed", "onMenuClosed")
     m.generation = 0
+    ' It opens on the last search typed while this server is open, searched again at once.
+    m.keyboard.text = Kivo.lastSearch()
+    search()
 end sub
 
 sub focus()
-    if m.rows.visible and m.wasInRows = true
+    if m.menu.visible
+        m.menu.callFunc("focus")
+    else if m.rows.visible and m.wasInRows = true
         m.rows.SetFocus(true)
     else
         m.keyboard.SetFocus(true)
     end if
 end sub
 
-' Searches once typing pauses.
+' Searches once typing pauses for about 350 ms, keeping the last results meanwhile.
 sub onText()
+    m.global.lastSearch = m.keyboard.text
     m.typing.control = "stop"
     m.typing.control = "start"
 end sub
@@ -41,16 +54,18 @@ end sub
 sub search()
     words = m.keyboard.text.Trim()
     m.generation = m.generation + 1
-    if words.Len() < 2
+    if words = ""
         m.rows.visible = false
-        m.status.text = "Type a title or a name."
+        KivoStates.empty(m.state, "Type to search every library.", "")
         return
     end if
-    task = Kivo.send(KivoApi.searchWorks({ q: words, limit: 20 }), "onResults")
+    task = Kivo.send(KivoApi.searchWorks({ q: words, limit: 50 }), "onResults")
     task.AddFields({ generation: m.generation })
     m.task = task
 end sub
 
+' The people who match in a row, then a row of results per kind, then
+' the collections that match, as on Android TV; the TV shows no books.
 sub onResults(event as object)
     task = event.GetRoSGNode()
     if task.generation <> m.generation then return
@@ -61,58 +76,75 @@ sub onResults(event as object)
         return
     end if
     if response.code <> 200
-        m.status.text = KivoDisplay.problem(response)
         m.rows.visible = false
+        KivoStates.failed(m.state, response)
         return
     end if
     results = response.body
     root = CreateObject("roSGNode", "ContentNode")
     sizes = []
     heights = []
+    if results.people.Count() > 0
+        credits = []
+        for each person in results.people
+            caption = KivoUi.plural(person.workCount, "title", "titles")
+            role = KivoContent.roleLabel(person.role)
+            if role <> "" then caption = role + " · " + caption
+            credits.Push({ personId: person.id, name: person.name, photo: person.photo, caption: caption })
+        end for
+        root.AppendChild(KivoContent.people("People", credits))
+        addSize(sizes, heights, false)
+    end if
     groups = [
-        { kind: "movie", title: "Movies", landscape: false },
-        { kind: "series", title: "Shows", landscape: false },
-        { kind: "episode", title: "Episodes", landscape: true },
-        { kind: "video", title: "Videos", landscape: true }
+        { kinds: ["movie"], title: "Movies", landscape: false },
+        { kinds: ["series"], title: "Shows", landscape: false },
+        { kinds: ["episode"], title: "Episodes", landscape: true },
+        { kinds: ["video", "extra"], title: "Other videos", landscape: true }
     ]
     for each group in groups
         works = []
         for each work in results.works
-            if work.kind = group.kind then works.Push(work)
+            for each kind in group.kinds
+                if work.kind = kind then works.Push(work)
+            end for
         end for
         if works.Count() > 0
             root.AppendChild(KivoContent.row(group.title, works, group.landscape))
-            size = KivoContent.rowSize(group.landscape)
-            sizes.Push(size.item)
-            heights.Push(size.height)
+            addSize(sizes, heights, group.landscape)
         end if
     end for
-    if results.people.Count() > 0
-        credits = []
-        for each person in results.people
-            credits.Push({ personId: person.id, name: person.name, photo: person.photo, role: person.role })
-        end for
-        root.AppendChild(KivoContent.people("People", credits))
-        size = KivoContent.rowSize(false)
-        sizes.Push(size.item)
-        heights.Push(size.height)
-    end if
     if results.collections.Count() > 0
         root.AppendChild(KivoContent.collections("Collections", results.collections))
-        size = KivoContent.rowSize(false)
-        sizes.Push(size.item)
-        heights.Push(size.height)
+        addSize(sizes, heights, false)
     end if
     if root.GetChildCount() = 0
         m.rows.visible = false
-        m.status.text = "Nothing found for “" + m.keyboard.text.Trim() + "”."
+        KivoStates.empty(m.state, "No results for “" + m.keyboard.text.Trim() + "”.", "", [{ id: "clear", label: "Clear search" }])
         return
     end if
-    m.status.text = ""
+    KivoStates.clear(m.state)
     m.rows.rowItemSize = sizes
     m.rows.rowHeights = heights
     m.rows.content = root
     m.rows.visible = true
+end sub
+
+sub addSize(sizes as object, heights as object, landscape as boolean)
+    size = KivoContent.rowSize(landscape)
+    sizes.Push(size.item)
+    heights.Push(size.height)
+end sub
+
+sub onState()
+    action = m.state.action
+    if action = "clear"
+        m.keyboard.text = ""
+        m.keyboard.SetFocus(true)
+    else if action = "retry"
+        search()
+    else if action = "changeServer"
+        m.top.navigate = { changeServer: true }
+    end if
 end sub
 
 sub onCard()
@@ -121,13 +153,36 @@ sub onCard()
     m.top.navigate = KivoContent.target(m.rows.content.GetChild(at[0]).GetChild(at[1]))
 end sub
 
+sub onMenuNavigate()
+    m.wasInRows = true
+    m.top.navigate = m.menu.navigate
+end sub
+
+sub onMenuProblem()
+    m.problem.text = m.menu.problem
+end sub
+
+sub onMenuClosed()
+    if m.rows.visible then m.rows.SetFocus(true)
+end sub
+
 function onKeyEvent(key as string, press as boolean) as boolean
     if not press then return false
-    if key = "right" and m.keyboard.IsInFocusChain() and m.rows.visible
-        m.rows.SetFocus(true)
+    if key = "options" and m.rows.IsInFocusChain() and not m.menu.visible
+        at = m.rows.rowItemFocused
+        card = m.rows.content.GetChild(at[0]).GetChild(at[1])
+        if card <> invalid and card.workId <> "" then m.menu.callFunc("open", card, {})
         return true
     end if
-    if key = "left" and m.rows.IsInFocusChain()
+    if key = "right" and m.keyboard.IsInFocusChain() and (m.rows.visible or m.state.visible and m.state.buttons.Count() > 0)
+        if m.rows.visible
+            m.rows.SetFocus(true)
+        else
+            m.state.callFunc("focus")
+        end if
+        return true
+    end if
+    if key = "left" and (m.rows.IsInFocusChain() or m.state.IsInFocusChain())
         m.wasInRows = false
         m.keyboard.SetFocus(true)
         return true
