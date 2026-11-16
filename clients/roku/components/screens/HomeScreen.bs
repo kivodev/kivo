@@ -59,7 +59,7 @@ end sub
 
 ' The menu: each library, then the app's other pages.
 sub openNav()
-    items = []
+    items = [{ id: "search", label: "Search" }]
     for each lib in m.libraries
         items.Push({ id: "library:" + lib.id, label: lib.name })
     end for
@@ -79,7 +79,9 @@ end sub
 sub onNav()
     id = m.nav.chosen
     closeNav()
-    if id = "lists"
+    if id = "search"
+        m.top.navigate = { screen: "SearchScreen", params: {} }
+    else if id = "lists"
         m.top.navigate = { screen: "ListsScreen", params: {} }
     else if id.Left(8) = "library:"
         libraryId = id.Mid(8)

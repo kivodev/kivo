@@ -1,0 +1,138 @@
+import "pkg:/source/generated/api.bs"
+import "pkg:/source/generated/tokens.bs"
+import "pkg:/source/shared/content.bs"
+import "pkg:/source/shared/display.bs"
+import "pkg:/source/shared/session.bs"
+import "pkg:/source/shared/ui.bs"
+
+sub init()
+    m.keyboard = m.top.FindNode("keyboard")
+    m.rows = m.top.FindNode("rows")
+    m.status = m.top.FindNode("status")
+    m.typing = m.top.FindNode("typing")
+    KivoUi.style(m.top.FindNode("heading"), KivoTokens.TextSize.xl, KivoTokens.Color.text, true)
+    KivoUi.style(m.status, KivoTokens.TextSize.base, KivoTokens.Color.textMuted)
+    font = CreateObject("roSGNode", "Font")
+    font.uri = "font:BoldSystemFontFile"
+    font.size = KivoTokens.TextSize.base
+    m.rows.rowLabelFont = font
+    m.rows.rowLabelColor = KivoTokens.Color.text
+    m.keyboard.ObserveField("text", "onText")
+    m.typing.ObserveField("fire", "search")
+    m.rows.ObserveField("rowItemSelected", "onCard")
+    m.status.text = "Type a title or a name."
+    m.generation = 0
+end sub
+
+sub focus()
+    if m.rows.visible and m.wasInRows = true
+        m.rows.SetFocus(true)
+    else
+        m.keyboard.SetFocus(true)
+    end if
+end sub
+
+' Searches once typing pauses.
+sub onText()
+    m.typing.control = "stop"
+    m.typing.control = "start"
+end sub
+
+sub search()
+    words = m.keyboard.text.Trim()
+    m.generation = m.generation + 1
+    if words.Len() < 2
+        m.rows.visible = false
+        m.status.text = "Type a title or a name."
+        return
+    end if
+    task = Kivo.send(KivoApi.searchWorks({ q: words, limit: 20 }), "onResults")
+    task.AddFields({ generation: m.generation })
+    m.task = task
+end sub
+
+sub onResults(event as object)
+    task = event.GetRoSGNode()
+    if task.generation <> m.generation then return
+    m.task = invalid
+    response = event.GetData()
+    if response.code = 401
+        m.top.navigate = { signedOut: true }
+        return
+    end if
+    if response.code <> 200
+        m.status.text = KivoDisplay.problem(response)
+        m.rows.visible = false
+        return
+    end if
+    results = response.body
+    root = CreateObject("roSGNode", "ContentNode")
+    sizes = []
+    heights = []
+    groups = [
+        { kind: "movie", title: "Movies", landscape: false },
+        { kind: "series", title: "Shows", landscape: false },
+        { kind: "episode", title: "Episodes", landscape: true },
+        { kind: "book", title: "Books", landscape: false },
+        { kind: "video", title: "Videos", landscape: true }
+    ]
+    for each group in groups
+        works = []
+        for each work in results.works
+            if work.kind = group.kind then works.Push(work)
+        end for
+        if works.Count() > 0
+            root.AppendChild(KivoContent.row(group.title, works, group.landscape))
+            size = KivoContent.rowSize(group.landscape)
+            if group.kind = "book" then size = KivoContent.squareRowSize()
+            sizes.Push(size.item)
+            heights.Push(size.height)
+        end if
+    end for
+    if results.people.Count() > 0
+        credits = []
+        for each person in results.people
+            credits.Push({ personId: person.id, name: person.name, photo: person.photo, role: person.role })
+        end for
+        root.AppendChild(KivoContent.people("People", credits))
+        size = KivoContent.rowSize(false)
+        sizes.Push(size.item)
+        heights.Push(size.height)
+    end if
+    if results.collections.Count() > 0
+        root.AppendChild(KivoContent.collections("Collections", results.collections))
+        size = KivoContent.rowSize(false)
+        sizes.Push(size.item)
+        heights.Push(size.height)
+    end if
+    if root.GetChildCount() = 0
+        m.rows.visible = false
+        m.status.text = "Nothing found for “" + m.keyboard.text.Trim() + "”."
+        return
+    end if
+    m.status.text = ""
+    m.rows.rowItemSize = sizes
+    m.rows.rowHeights = heights
+    m.rows.content = root
+    m.rows.visible = true
+end sub
+
+sub onCard()
+    at = m.rows.rowItemSelected
+    m.wasInRows = true
+    m.top.navigate = KivoContent.target(m.rows.content.GetChild(at[0]).GetChild(at[1]))
+end sub
+
+function onKeyEvent(key as string, press as boolean) as boolean
+    if not press then return false
+    if key = "right" and m.keyboard.IsInFocusChain() and m.rows.visible
+        m.rows.SetFocus(true)
+        return true
+    end if
+    if key = "left" and m.rows.IsInFocusChain()
+        m.wasInRows = false
+        m.keyboard.SetFocus(true)
+        return true
+    end if
+    return false
+end function

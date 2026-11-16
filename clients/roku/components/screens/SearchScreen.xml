@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Search: the on-screen keyboard, and as the words change, the results
+     in rows: movies, shows, episodes, books and videos, people and
+     collections. -->
+<component name="SearchScreen" extends="KivoScreen">
+  <children>
+    <Label id="heading" translation="[96, 48]" text="Search" />
+    <MiniKeyboard id="keyboard" translation="[96, 130]" />
+    <Label id="status" translation="[760, 140]" width="1100" wrap="true" />
+    <RowList id="rows" translation="[760, 130]" itemComponentName="PosterItem"
+      itemSize="[1100, 470]" numRows="2" rowItemSpacing="[[24, 0]]" itemSpacing="[0, 40]"
+      showRowLabel="[true]" rowLabelOffset="[[0, 12]]" rowFocusAnimationStyle="floatingFocus" visible="false" />
+    <Timer id="typing" duration="0.4" repeat="false" />
+  </children>
+</component>
