@@ -143,6 +143,48 @@ namespace KivoDisplay
         return KivoDisplay.lookup(t.media.channels, key, t.words.tracks.channels.Replace("{channels}", key))
     end function
 
+    ' A bitrate in megabits a second, such as "8 Mb/s" or "1.5 Mb/s".
+    function bitrate(bps as dynamic) as string
+        t = KivoDisplay.tables().words
+        tenths = Int(bps / 100000 + 0.5)
+        n = Int(tenths / 10).ToStr()
+        if tenths mod 10 <> 0 and tenths < 100 then n = n + t.numbers.decimal + (tenths mod 10).ToStr()
+        return t.bitrate.Replace("{n}", n)
+    end function
+
+    ' A quality pick (QualityRequest, invalid for Auto) in words: Auto,
+    ' Original, or a rung of the server's ladder (QualityRung list), "1080p ·
+    ' 8 Mb/s", else its bitrate.
+    function quality(pick as dynamic, ladder as object) as string
+        words = KivoDisplay.tables().words.quality
+        if pick = invalid or pick.mode = "auto" then return words.auto
+        if pick.mode = "original" then return words.original
+        for each rung in ladder
+            if rung.bitrateBps = pick.maxBitrateBps then return words.rung.Replace("{height}", rung.height.ToStr()).Replace("{bitrate}", KivoDisplay.bitrate(rung.bitrateBps))
+        end for
+        return KivoDisplay.bitrate(pick.maxBitrateBps)
+    end function
+
+    ' The languages a preference offers: each two-letter language of the
+    ' shared table, by name.
+    function preferenceLanguages() as object
+        table = KivoDisplay.tables().languages.languages
+        byName = {}
+        names = []
+        for each code in table
+            if code.Len() = 2 and byName[table[code]] = invalid
+                byName[table[code]] = code
+                names.Push(table[code])
+            end if
+        end for
+        names.Sort("i")
+        out = []
+        for each name in names
+            out.Push({ id: byName[name], label: name })
+        end for
+        return out
+    end function
+
     ' What went wrong with a request (an ApiTask response), in the shared
     ' words: a network failure when no answer came, else the problem's code.
     function problem(response as object) as string

@@ -1,0 +1,201 @@
+import "pkg:/source/generated/api.bs"
+import "pkg:/source/generated/tokens.bs"
+import "pkg:/source/shared/display.bs"
+import "pkg:/source/shared/session.bs"
+import "pkg:/source/shared/ui.bs"
+
+sub init()
+    m.list = m.top.FindNode("list")
+    m.status = m.top.FindNode("status")
+    m.menu = m.top.FindNode("menu")
+    KivoUi.style(m.top.FindNode("heading"), KivoTokens.TextSize.xl, KivoTokens.Color.text, true)
+    KivoUi.style(m.status, KivoTokens.TextSize.base, KivoTokens.Color.textMuted)
+    m.list.color = KivoTokens.Color.text
+    m.list.focusedColor = KivoTokens.Color.onAccent
+    m.list.focusBitmapBlendColor = KivoTokens.Color.accent
+    m.list.ObserveField("itemSelected", "onSetting")
+    m.menu.ObserveField("chosen", "onChosen")
+    m.menu.ObserveField("closed", "closeMenu")
+    m.tasks = {}
+    m.ladder = []
+    m.user = invalid
+    m.tasks.user = Kivo.send(KivoApi.getCurrentUser(), "onUser")
+    m.tasks.server = Kivo.send(KivoApi.getServer(), "onServer")
+    show()
+end sub
+
+sub focus()
+    if m.menu.visible
+        m.menu.callFunc("focus")
+    else
+        m.list.SetFocus(true)
+    end if
+end sub
+
+sub onUser(event as object)
+    m.tasks.user = invalid
+    response = event.GetData()
+    if response.code = 401
+        m.top.navigate = { signedOut: true }
+        return
+    end if
+    if response.code = 200
+        m.user = response.body
+    else
+        m.status.text = KivoDisplay.problem(response)
+    end if
+    show()
+end sub
+
+sub onServer(event as object)
+    m.tasks.server = invalid
+    response = event.GetData()
+    if response.code = 200
+        m.serverName = response.body.name
+        if response.body.qualityLadder <> invalid then m.ladder = response.body.qualityLadder
+    end if
+    show()
+end sub
+
+' The settings, each with what it's set to; the account's once it's read.
+sub show()
+    qualities = Kivo.qualities()
+    m.items = [
+        { id: "localQuality", label: "Quality at home: " + KivoDisplay.quality(qualities.localQuality, m.ladder) },
+        { id: "remoteQuality", label: "Quality away from home: " + KivoDisplay.quality(qualities.remoteQuality, m.ladder) }
+    ]
+    if m.user <> invalid
+        pb = m.user.playback
+        m.items.Push({ id: "audioLanguage", label: "Audio language: " + languageLabel(pb.audioLanguage, "Original") })
+        m.items.Push({ id: "subtitleMode", label: "Show subtitles: " + modeLabel(pb.subtitleMode) })
+        m.items.Push({ id: "subtitleLanguage", label: "Subtitle language: " + languageLabel(pb.subtitleLanguage, "The server's language") })
+        m.items.Push({ id: "rememberTracks", label: "Remember choices per show: " + onOff(pb.rememberTracks) })
+        m.items.Push({ id: "autoplayNext", label: "Play the next episode by itself: " + onOff(pb.autoplayNext) })
+    end if
+    server = m.global.server
+    if m.serverName <> invalid then server = m.serverName + " · " + m.global.server
+    if m.user <> invalid then m.items.Push({ id: "account", label: "Signed in as " + m.user.username })
+    m.items.Push({ id: "switch", label: "Server: " + server })
+    m.items.Push({ id: "signOut", label: "Sign out" })
+    root = CreateObject("roSGNode", "ContentNode")
+    for each item in m.items
+        root.CreateChild("ContentNode").title = item.label
+    end for
+    focused = m.list.itemFocused
+    m.list.content = root
+    if focused >= 0 and focused < m.items.Count() then m.list.jumpToItem = focused
+    if not m.menu.visible then m.list.SetFocus(true)
+end sub
+
+function onOff(value as dynamic) as string
+    if value = true then return "On"
+    return "Off"
+end function
+
+function modeLabel(mode as string) as string
+    labels = { none: "Never", forced: "Only forced", smart: "When the audio is in another language", always: "Always" }
+    if labels[mode] <> invalid then return labels[mode]
+    return mode
+end function
+
+function languageLabel(tag as dynamic, fallback as string) as string
+    if tag = invalid or tag = "" then return fallback
+    return KivoDisplay.languageName(tag)
+end function
+
+sub onSetting()
+    id = m.items[m.list.itemSelected].id
+    m.setting = id
+    if id = "localQuality" or id = "remoteQuality"
+        items = [{ id: "auto", label: KivoDisplay.quality(invalid, m.ladder) }, { id: "original", label: KivoDisplay.quality({ mode: "original" }, m.ladder) }]
+        for each rung in m.ladder
+            items.Push({ id: rung.bitrateBps.ToStr(), label: KivoDisplay.quality({ mode: "limit", maxBitrateBps: rung.bitrateBps }, m.ladder) })
+        end for
+        pick = Kivo.qualities()[id]
+        checked = "auto"
+        if pick <> invalid and pick.mode = "original" then checked = "original"
+        if pick <> invalid and pick.mode = "limit" then checked = pick.maxBitrateBps.ToStr()
+        title = "Quality at home"
+        if id = "remoteQuality" then title = "Quality away from home"
+        showMenu(title, items, checked)
+    else if id = "audioLanguage" or id = "subtitleLanguage"
+        first = "Original"
+        if id = "subtitleLanguage" then first = "The server's language"
+        items = [{ id: " ", label: first }]
+        items.Append(KivoDisplay.preferenceLanguages())
+        checked = m.user.playback[id]
+        if checked = invalid or checked = "" then checked = " "
+        title = "Audio language"
+        if id = "subtitleLanguage" then title = "Subtitle language"
+        showMenu(title, items, checked)
+    else if id = "subtitleMode"
+        items = []
+        for each mode in ["none", "forced", "smart", "always"]
+            items.Push({ id: mode, label: modeLabel(mode) })
+        end for
+        showMenu("Show subtitles", items, m.user.playback.subtitleMode)
+    else if id = "rememberTracks" or id = "autoplayNext"
+        body = {}
+        body[id] = m.user.playback[id] <> true
+        save(body)
+    else if id = "switch"
+        m.top.navigate = { screen: "ServerScreen", params: {}, replace: true }
+    else if id = "signOut"
+        m.tasks.signOut = Kivo.send(KivoApi.deleteCurrentSession(), "onSignedOut")
+    end if
+end sub
+
+sub showMenu(title as string, items as object, checked as string)
+    m.menu.title = title
+    m.menu.note = ""
+    m.menu.checkedId = checked
+    m.menu.items = items
+    m.menu.visible = true
+    m.menu.callFunc("focus")
+end sub
+
+sub closeMenu()
+    m.menu.visible = false
+    m.list.SetFocus(true)
+end sub
+
+sub onChosen()
+    id = m.menu.chosen
+    setting = m.setting
+    closeMenu()
+    if setting = "localQuality" or setting = "remoteQuality"
+        quality = { mode: "limit", maxBitrateBps: id.ToInt() }
+        if id = "auto" or id = "original" then quality = { mode: id }
+        Kivo.saveQuality(setting, quality)
+        show()
+    else if setting = "audioLanguage" or setting = "subtitleLanguage"
+        body = {}
+        body[setting] = id.Trim()
+        save(body)
+    else if setting = "subtitleMode"
+        save({ subtitleMode: id })
+    end if
+end sub
+
+' Changes the account's playback preferences, which every app follows.
+sub save(playback as object)
+    m.tasks.save = Kivo.send(KivoApi.updateCurrentUser({ playback: playback }), "onSaved")
+end sub
+
+sub onSaved(event as object)
+    m.tasks.save = invalid
+    response = event.GetData()
+    if response.code = 200
+        m.user = response.body
+        m.status.text = ""
+    else
+        m.status.text = KivoDisplay.problem(response)
+    end if
+    show()
+end sub
+
+' Signed out on the server, or not, the device forgets its session.
+sub onSignedOut()
+    m.tasks.signOut = invalid
+    m.top.navigate = { signedOut: true }
+end sub

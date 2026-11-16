@@ -64,6 +64,7 @@ sub openNav()
         items.Push({ id: "library:" + lib.id, label: lib.name })
     end for
     items.Push({ id: "lists", label: "Lists" })
+    items.Push({ id: "settings", label: "Settings" })
     m.nav.title = "Kivo"
     m.nav.checkedId = ""
     m.nav.items = items
@@ -83,6 +84,8 @@ sub onNav()
         m.top.navigate = { screen: "SearchScreen", params: {} }
     else if id = "lists"
         m.top.navigate = { screen: "ListsScreen", params: {} }
+    else if id = "settings"
+        m.top.navigate = { screen: "SettingsScreen", params: {} }
     else if id.Left(8) = "library:"
         libraryId = id.Mid(8)
         for each lib in m.libraries

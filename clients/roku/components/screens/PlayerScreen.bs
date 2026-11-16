@@ -103,7 +103,9 @@ end sub
 
 ' Asks for a play of the request from [position] (invalid for the resume point).
 sub begin(position as dynamic)
-    body = { workId: m.work.id, capabilities: KivoPlayer.capabilities(), settings: { directPlay: true } }
+    settings = Kivo.qualities()
+    settings.directPlay = true
+    body = { workId: m.work.id, capabilities: KivoPlayer.capabilities(), settings: settings }
     if position <> invalid then body.positionMs = position
     for each key in ["versionId", "audioTrackId", "subtitleTrackId"]
         if m.request[key] <> invalid and m.request[key] <> "" then body[key] = m.request[key]

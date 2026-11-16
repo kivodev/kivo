@@ -42,6 +42,28 @@ namespace Kivo
         section.Flush()
     end sub
 
+    ' This device's quality picks (QualityRequest), at home and away, for a
+    ' play's settings; absent ones are Auto.
+    function qualities() as object
+        section = CreateObject("roRegistrySection", Kivo.registrySection)
+        out = {}
+        for each key in ["localQuality", "remoteQuality"]
+            saved = section.Read(key)
+            if saved <> ""
+                quality = ParseJson(saved)
+                if quality <> invalid then out[key] = quality
+            end if
+        end for
+        return out
+    end function
+
+    ' Keeps a quality pick (QualityRequest) for [key], localQuality or remoteQuality.
+    sub saveQuality(key as string, quality as object)
+        section = CreateObject("roRegistrySection", Kivo.registrySection)
+        section.Write(key, FormatJson(quality))
+        section.Flush()
+    end sub
+
     ' The identity headers every request carries (Client identity in the
     ' contract). The manifest's major, minor and build versions are the
     ' release's semantic version.

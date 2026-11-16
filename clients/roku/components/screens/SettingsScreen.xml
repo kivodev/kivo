@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Settings: this Roku's playback quality at home and away; the
+     account's audio and subtitle preferences, remembering choices per show
+     and autoplay; the server, and signing out. -->
+<component name="SettingsScreen" extends="KivoScreen">
+  <children>
+    <Label id="heading" translation="[96, 48]" text="Settings" />
+    <Label id="status" translation="[96, 980]" width="1700" wrap="true" />
+    <LabelList id="list" translation="[96, 140]" itemSize="[1100, 64]" numRows="12" vertFocusAnimationStyle="floatingFocus" />
+    <MenuPanel id="menu" visible="false" />
+  </children>
+</component>
