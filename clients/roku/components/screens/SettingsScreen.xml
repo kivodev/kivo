@@ -1,12 +1,19 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<!-- Settings: this Roku's playback quality at home and away; the
-     account's audio and subtitle preferences, remembering choices per show
-     and autoplay; the server, and signing out. -->
+<!-- Settings, as the Android TV app's: its sections in a list and,
+     beside them, the settings of the one focused there: Account,
+     Playback, Audio, Subtitles, Quality, Home, Libraries and About.
+     Right or OK goes into the settings; Left and Back come back to the
+     sections. A setting's choices open in a panel at the right; what
+     can't be taken back asks first. -->
 <component name="SettingsScreen" extends="KivoScreen">
   <children>
     <Label id="heading" translation="[96, 48]" text="Settings" />
-    <Label id="status" translation="[96, 980]" width="1700" wrap="true" />
-    <LabelList id="list" translation="[96, 140]" itemSize="[1100, 64]" numRows="12" vertFocusAnimationStyle="floatingFocus" />
+    <LabelList id="sections" translation="[96, 140]" itemSize="[420, 64]" numRows="12" vertFocusAnimationStyle="floatingFocus" />
+    <Rectangle id="line" translation="[560, 140]" width="2" height="820" />
+    <Label id="paneTitle" translation="[620, 60]" width="1200" />
+    <Label id="scope" translation="[620, 104]" width="1200" />
+    <LabelList id="list" translation="[620, 140]" itemSize="[1200, 64]" numRows="12" vertFocusAnimationStyle="floatingFocus" />
+    <Label id="status" translation="[620, 990]" width="1200" wrap="true" />
     <MenuPanel id="menu" visible="false" />
   </children>
 </component>
