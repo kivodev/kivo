@@ -3,28 +3,43 @@ import "pkg:/source/generated/tokens.bs"
 import "pkg:/source/shared/content.bs"
 import "pkg:/source/shared/display.bs"
 import "pkg:/source/shared/session.bs"
+import "pkg:/source/shared/states.bs"
 import "pkg:/source/shared/ui.bs"
 
 sub init()
     m.rows = m.top.FindNode("rows")
-    m.status = m.top.FindNode("status")
     KivoUi.style(m.top.FindNode("heading"), KivoTokens.TextSize.xl, KivoTokens.Color.text, true)
-    KivoUi.style(m.status, KivoTokens.TextSize.base, KivoTokens.Color.textMuted)
     font = CreateObject("roSGNode", "Font")
     font.uri = "font:BoldSystemFontFile"
     font.size = KivoTokens.TextSize.base
     m.rows.rowLabelFont = font
     m.rows.rowLabelColor = KivoTokens.Color.text
     m.rows.ObserveField("rowItemSelected", "onCard")
+    m.state = m.top.FindNode("state")
+    m.state.ObserveField("action", "onState")
+    m.problem = m.top.FindNode("problem")
+    KivoUi.style(m.problem, KivoTokens.TextSize.sm, KivoTokens.Color.danger)
+    m.menu = m.top.FindNode("menu")
+    m.menu.ObserveField("navigate", "onMenuNavigate")
+    m.menu.ObserveField("changed", "load")
+    m.menu.ObserveField("problem", "onMenuProblem")
+    m.menu.ObserveField("closed", "onMenuClosed")
     load()
 end sub
 
 sub focus()
-    m.rows.SetFocus(true)
+    if m.menu.visible
+        m.menu.callFunc("focus")
+    else if m.state.visible and m.state.buttons.Count() > 0
+        m.state.callFunc("focus")
+    else
+        m.rows.SetFocus(true)
+    end if
     if m.loaded = true then load()
 end sub
 
 sub load()
+    m.problem.text = ""
     m.task = Kivo.send(KivoApi.listLists({ counts: true }), "onLists")
 end sub
 
@@ -36,7 +51,9 @@ sub onLists(event as object)
         return
     end if
     if response.code <> 200
-        m.status.text = KivoDisplay.problem(response)
+        m.rows.visible = false
+        KivoStates.failed(m.state, response)
+        if not m.menu.visible then m.state.callFunc("focus")
         return
     end if
     m.loaded = true
@@ -44,16 +61,13 @@ sub onLists(event as object)
     sizes = []
     heights = []
     for each list in response.body.items
-        ' Books left out; a list with nothing the TV plays has no row.
+        ' A shelf for a list of a kind this app knows, Watchlist only with
+        ' something in it, and none for a list with nothing the TV plays.
+        known = list.kind = KivoApi.ListKind.manual or list.kind = KivoApi.ListKind.smart
         works = KivoContent.tvWorks(list.items)
-        if works.Count() > 0
-            row = KivoContent.row(list.name + "  ·  " + list.workCount.ToStr(), works, false)
-            ' See all, at the row's end: the list's page.
-            row.AppendChild(KivoContent.blank())
-            more = row.GetChild(row.GetChildCount() - 1)
-            more.listId = list.id
-            more.title = "See all"
-            more.caption = list.name
+        if known and (list.builtIn <> true or list.workCount > 0) and works.Count() > 0
+            row = KivoContent.row(shelfTitle(list), works, false)
+            row.AppendChild(KivoContent.seeAll(list.id))
             root.AppendChild(row)
             size = KivoContent.rowSize(false)
             sizes.Push(size.item)
@@ -61,10 +75,12 @@ sub onLists(event as object)
         end if
     end for
     if root.GetChildCount() = 0
-        m.status.text = "No lists yet. Add a title to a list from its page with *."
+        m.rows.visible = false
+        KivoStates.empty(m.state, "Nothing in your lists yet.", "Add something to Watchlist from its page.")
         return
     end if
-    m.status.text = ""
+    KivoStates.clear(m.state)
+    m.rows.visible = true
     was = m.rows.rowItemFocused
     m.rows.rowItemSize = sizes
     m.rows.rowHeights = heights
@@ -72,7 +88,51 @@ sub onLists(event as object)
     if was <> invalid and was.Count() = 2 and was[0] >= 0 and was[0] < root.GetChildCount()
         if was[1] < root.GetChild(was[0]).GetChildCount() then m.rows.jumpToRowItem = was
     end if
+    if not m.menu.visible then m.rows.SetFocus(true)
 end sub
+
+' A shelf's heading: the list's name, a smart list's mark, and how many titles it has.
+function shelfTitle(list as object) as string
+    parts = [list.name]
+    if list.kind = KivoApi.ListKind.smart then parts.Push("Smart list")
+    parts.Push(KivoUi.plural(list.workCount, "title", "titles"))
+    return parts.Join("  ·  ")
+end function
+
+sub onState()
+    if m.state.action = "retry"
+        load()
+    else if m.state.action = "changeServer"
+        m.top.navigate = { changeServer: true }
+    end if
+end sub
+
+sub openMenu()
+    if m.rows.content = invalid or not m.rows.visible then return
+    at = m.rows.rowItemFocused
+    card = m.rows.content.GetChild(at[0]).GetChild(at[1])
+    if card <> invalid and card.workId <> "" then m.menu.callFunc("open", card, {})
+end sub
+
+sub onMenuNavigate()
+    m.top.navigate = m.menu.navigate
+end sub
+
+sub onMenuProblem()
+    m.problem.text = m.menu.problem
+end sub
+
+sub onMenuClosed()
+    if m.rows.visible then m.rows.SetFocus(true)
+end sub
+
+function onKeyEvent(key as string, press as boolean) as boolean
+    if press and key = "options" and not m.menu.visible
+        openMenu()
+        return true
+    end if
+    return false
+end function
 
 sub onCard()
     at = m.rows.rowItemSelected

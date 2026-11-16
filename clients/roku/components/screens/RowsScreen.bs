@@ -3,39 +3,56 @@ import "pkg:/source/generated/tokens.bs"
 import "pkg:/source/shared/content.bs"
 import "pkg:/source/shared/display.bs"
 import "pkg:/source/shared/session.bs"
+import "pkg:/source/shared/states.bs"
 import "pkg:/source/shared/ui.bs"
 
-' Cards across a row of a long list, which the page breaks into rows.
+' Cards across a line of an open list, which the page breaks into lines.
 const across = 6
 
 sub init()
     m.rows = m.top.FindNode("rows")
-    m.status = m.top.FindNode("status")
+    m.state = m.top.FindNode("state")
     m.heading = m.top.FindNode("heading")
     m.overview = m.top.FindNode("overview")
     m.photo = m.top.FindNode("photo")
     m.backdrop = m.top.FindNode("backdrop")
+    m.problem = m.top.FindNode("problem")
     m.top.FindNode("scrim").color = KivoTokens.Color.scrim
     KivoUi.style(m.heading, KivoTokens.TextSize.title, KivoTokens.Color.text, true)
     KivoUi.style(m.overview, KivoTokens.TextSize.base, KivoTokens.Color.textMuted)
-    KivoUi.style(m.status, KivoTokens.TextSize.base, KivoTokens.Color.textMuted)
+    KivoUi.style(m.problem, KivoTokens.TextSize.sm, KivoTokens.Color.danger)
     font = CreateObject("roSGNode", "Font")
     font.uri = "font:BoldSystemFontFile"
     font.size = KivoTokens.TextSize.base
     m.rows.rowLabelFont = font
     m.rows.rowLabelColor = KivoTokens.Color.text
     m.rows.ObserveField("rowItemSelected", "onCard")
+    m.state.ObserveField("action", "onState")
+    m.menu = m.top.FindNode("menu")
+    m.menu.ObserveField("navigate", "onMenuNavigate")
+    m.menu.ObserveField("changed", "load")
+    m.menu.ObserveField("problem", "onMenuProblem")
+    m.menu.ObserveField("closed", "onMenuClosed")
     m.tasks = {}
     m.top.ObserveField("params", "load")
 end sub
 
 sub focus()
-    m.rows.SetFocus(true)
+    if m.menu.visible
+        m.menu.callFunc("focus")
+    else if m.state.visible and m.state.buttons.Count() > 0
+        m.state.callFunc("focus")
+    else if m.rows.visible
+        m.rows.SetFocus(true)
+    else
+        m.top.SetFocus(true)
+    end if
     ' Progress and what's played may have changed while another screen showed.
     if m.loaded = true then load()
 end sub
 
 sub load()
+    m.problem.text = ""
     params = m.top.params
     request = invalid
     if params.kind = "person"
@@ -57,14 +74,17 @@ sub onPage(event as object)
         return
     end if
     if response.code <> 200
-        m.status.text = KivoDisplay.problem(response)
+        m.rows.visible = false
+        KivoStates.failed(m.state, response)
+        if not m.menu.visible then m.state.callFunc("focus")
         return
     end if
     page = response.body
     kind = m.top.params.kind
+    m.heading.text = page.name
     if kind = "list"
-        ' A list's works come a page at a time (listListWorks).
-        m.heading.text = page.name
+        ' An open list's works the TV shows (no books) come a page at a time.
+        m.list = page
         m.listWorks = []
         m.listTotal = 0
         m.tasks.works = Kivo.send(KivoApi.listListWorks(page.id, { kind: KivoContent.tvKinds(), limit: 100 }), "onListWorks")
@@ -73,7 +93,7 @@ sub onPage(event as object)
     m.loaded = true
     sections = []
     if kind = "person"
-        m.heading.text = page.name
+        ' Their movies, shows and other videos; a person's books aren't on the TV.
         if page.overview <> invalid then m.overview.text = page.overview
         if page.photo <> invalid
             m.photo.uri = Kivo.imageUrl(page.photo, 160)
@@ -82,7 +102,6 @@ sub onPage(event as object)
             m.overview.translation = [288, 150]
             m.overview.width = 1500
         end if
-        ' Movies, shows and other videos; a person's books aren't on the TV.
         for each row in [{ title: "Movies", kind: "movie" }, { title: "Shows", kind: "series" }, { title: "Other videos", kind: "video" }]
             works = []
             for each work in page.works
@@ -90,12 +109,13 @@ sub onPage(event as object)
             end for
             sections.Push({ title: row.title, works: works })
         end for
+        showSections(sections, "No titles available")
     else
-        m.heading.text = page.name
+        ' A collection: its name and count over its backdrop, then its works as posters in a row.
+        m.overview.text = KivoContent.collectionCount(page.items.Count(), page.source)
         if page.images <> invalid then m.backdrop.uri = Kivo.imageUrl(page.images.backdrop, 1920)
-        sections = chunks(page.items)
+        showSections([{ title: "", works: page.items }], "")
     end if
-    showSections(sections)
 end sub
 
 ' A list's works, a page at a time until the last (up to a thousand).
@@ -103,7 +123,8 @@ sub onListWorks(event as object)
     response = event.GetData()
     m.tasks.works = invalid
     if response.code <> 200
-        m.status.text = KivoDisplay.problem(response)
+        m.rows.visible = false
+        KivoStates.failed(m.state, response)
         return
     end if
     if response.body.total <> invalid then m.listTotal = response.body.total
@@ -113,10 +134,19 @@ sub onListWorks(event as object)
         return
     end if
     m.loaded = true
-    showSections(chunks(m.listWorks))
+    m.overview.text = ""
+    if m.listTotal > 0 then m.overview.text = KivoUi.plural(m.listTotal, "title", "titles")
+    showSections(chunks(m.listWorks), emptyListMessage(m.list))
 end sub
 
-' A long list of works as rows of [across] cards, the first under no title.
+' Why an open list shows nothing: rules that no longer run, rules matching nothing, or nothing added.
+function emptyListMessage(list as object) as string
+    if list.kind <> KivoApi.ListKind.smart then return "Nothing in this list yet."
+    if list.smart <> invalid and list.smart.errors <> invalid and list.smart.errors.Count() > 0 then return "These rules no longer work."
+    return "Nothing matches these rules."
+end function
+
+' A long list of works as lines of [across] cards, under no title.
 function chunks(works as object) as object
     out = []
     row = []
@@ -131,9 +161,9 @@ function chunks(works as object) as object
     return out
 end function
 
-' Shows the sections that have works, each as a row; a reload keeps the
-' focus on the card it was on.
-sub showSections(sections as object)
+' Shows the sections that have works, each as a row, or [empty] without
+' any; a reload keeps the focus on the card it was on.
+sub showSections(sections as object, empty as string)
     root = CreateObject("roSGNode", "ContentNode")
     sizes = []
     heights = []
@@ -146,10 +176,12 @@ sub showSections(sections as object)
         end if
     end for
     if root.GetChildCount() = 0
-        m.status.text = "Nothing here yet."
+        m.rows.visible = false
+        if empty <> "" then KivoStates.empty(m.state, empty, "")
         return
     end if
-    m.status.text = ""
+    KivoStates.clear(m.state)
+    m.rows.visible = true
     was = m.rows.rowItemFocused
     m.rows.rowItemSize = sizes
     m.rows.rowHeights = heights
@@ -157,10 +189,52 @@ sub showSections(sections as object)
     if was <> invalid and was.Count() = 2 and was[0] >= 0 and was[0] < root.GetChildCount()
         if was[1] < root.GetChild(was[0]).GetChildCount() then m.rows.jumpToRowItem = was
     end if
-    m.rows.SetFocus(true)
+    if not m.menu.visible then m.rows.SetFocus(true)
 end sub
 
 sub onCard()
     at = m.rows.rowItemSelected
     m.top.navigate = KivoContent.target(m.rows.content.GetChild(at[0]).GetChild(at[1]))
 end sub
+
+sub onState()
+    if m.state.action = "retry"
+        load()
+    else if m.state.action = "changeServer"
+        m.top.navigate = { changeServer: true }
+    end if
+end sub
+
+' * on a card: its menu, which on a manual list's page can take it off the list.
+sub openMenu()
+    if m.rows.content = invalid or not m.rows.visible then return
+    at = m.rows.rowItemFocused
+    card = m.rows.content.GetChild(at[0]).GetChild(at[1])
+    if card = invalid or card.workId = "" then return
+    where = {}
+    if m.top.params.kind = "list" and m.list <> invalid and m.list.kind = KivoApi.ListKind.manual
+        where.listId = m.list.id
+        where.listName = m.list.name
+    end if
+    m.menu.callFunc("open", card, where)
+end sub
+
+sub onMenuNavigate()
+    m.top.navigate = m.menu.navigate
+end sub
+
+sub onMenuProblem()
+    m.problem.text = m.menu.problem
+end sub
+
+sub onMenuClosed()
+    if m.rows.visible then m.rows.SetFocus(true)
+end sub
+
+function onKeyEvent(key as string, press as boolean) as boolean
+    if press and key = "options" and not m.menu.visible
+        openMenu()
+        return true
+    end if
+    return false
+end function
