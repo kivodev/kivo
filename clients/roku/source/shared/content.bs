@@ -1,0 +1,56 @@
+import "pkg:/source/shared/session.bs"
+import "pkg:/source/shared/ui.bs"
+
+' Works as ContentNodes for the RowLists' cards (components/PosterItem).
+namespace KivoContent
+
+    ' Below a card's artwork, the caption's height.
+    const captionHeight = 80
+
+    ' A row of cards: [works] (WorkSummary list) under [title], drawn as
+    ' posters, or as landscape stills when [landscape].
+    function row(title as string, works as object, landscape as boolean) as object
+        node = CreateObject("roSGNode", "ContentNode")
+        node.title = title
+        for each work in works
+            node.AppendChild(KivoContent.card(work, landscape))
+        end for
+        return node
+    end function
+
+    function card(work as object, landscape as boolean) as object
+        node = CreateObject("roSGNode", "ContentNode")
+        node.AddFields({ workId: work.id, kind: work.kind, imageUri: "", caption: "", progress: 0.0 })
+        node.title = work.title
+        size = KivoContent.cardSize(landscape)
+        image = work.images.poster
+        if landscape
+            image = work.images.still
+            if image = invalid then image = work.images.backdrop
+        end if
+        node.imageUri = Kivo.imageUrl(image, size[0])
+        node.caption = KivoContent.caption(work)
+        if work.userState <> invalid and work.userState.positionMs <> invalid and work.durationMs <> invalid and work.durationMs > 0
+            node.progress = work.userState.positionMs / work.durationMs
+        end if
+        return node
+    end function
+
+    ' An episode by its series and code, else its title.
+    function caption(work as object) as string
+        if work.episode <> invalid
+            code = KivoUi.episodeCode(work.episode)
+            if work.episode.seriesTitle <> invalid then return work.episode.seriesTitle + " · " + code
+            return code
+        end if
+        if work.year <> invalid then return work.year.ToStr()
+        return ""
+    end function
+
+    ' A card's artwork's width and height: six posters across a row, or three stills.
+    function cardSize(landscape as boolean) as object
+        if landscape then return [480, 270]
+        return [240, 360]
+    end function
+
+end namespace

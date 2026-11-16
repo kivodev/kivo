@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- A card in a RowList: the work's artwork with its progress along the
+     foot, its title and a caption under it. -->
+<component name="PosterItem" extends="Group">
+  <interface>
+    <field id="itemContent" type="node" onChange="onContent" />
+    <field id="width" type="float" onChange="onSize" />
+    <field id="height" type="float" onChange="onSize" />
+  </interface>
+  <children>
+    <Rectangle id="ground" />
+    <Poster id="art" loadDisplayMode="scaleToZoom" />
+    <Rectangle id="track" visible="false" height="6" />
+    <Rectangle id="progress" visible="false" height="6" />
+    <Label id="title" horizAlign="left" />
+    <Label id="caption" horizAlign="left" />
+  </children>
+</component>

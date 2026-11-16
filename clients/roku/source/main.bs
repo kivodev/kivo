@@ -1,0 +1,19 @@
+import "pkg:/source/shared/session.bs"
+
+' The app: one SceneGraph screen showing MainScene, with what the device
+' keeps (Kivo.saved) on the global node, where every component and task
+' reads the server's address and the session's token.
+sub main()
+    screen = CreateObject("roSGScreen")
+    port = CreateObject("roMessagePort")
+    screen.SetMessagePort(port)
+    saved = Kivo.saved()
+    globals = screen.GetGlobalNode()
+    globals.AddFields({ server: saved.server, serverId: saved.serverId, token: saved.token, clientId: saved.clientId })
+    screen.CreateScene("MainScene")
+    screen.Show()
+    while true
+        event = Wait(0, port)
+        if type(event) = "roSGScreenEvent" and event.IsScreenClosed() then return
+    end while
+end sub

@@ -1,0 +1,46 @@
+import "pkg:/source/generated/tokens.bs"
+import "pkg:/source/shared/content.bs"
+import "pkg:/source/shared/ui.bs"
+
+sub init()
+    m.ground = m.top.FindNode("ground")
+    m.art = m.top.FindNode("art")
+    m.track = m.top.FindNode("track")
+    m.progress = m.top.FindNode("progress")
+    m.title = m.top.FindNode("title")
+    m.caption = m.top.FindNode("caption")
+    m.ground.color = KivoTokens.Color.placeholder
+    m.track.color = KivoTokens.Color.progressTrack
+    m.progress.color = KivoTokens.Color.progress
+    KivoUi.style(m.title, KivoTokens.TextSize.sm, KivoTokens.Color.text)
+    KivoUi.style(m.caption, KivoTokens.TextSize.sm, KivoTokens.Color.textMuted)
+end sub
+
+sub onSize()
+    w = m.top.width
+    h = m.top.height - KivoContent.captionHeight
+    m.ground.width = w
+    m.ground.height = h
+    m.art.width = w
+    m.art.height = h
+    m.track.width = w
+    m.track.translation = [0, h - 6]
+    m.progress.translation = [0, h - 6]
+    m.title.width = w
+    m.title.translation = [0, h + 8]
+    m.caption.width = w
+    m.caption.translation = [0, h + 42]
+    onContent()
+end sub
+
+sub onContent()
+    content = m.top.itemContent
+    if content = invalid then return
+    m.art.uri = content.imageUri
+    m.title.text = content.title
+    m.caption.text = content.caption
+    shown = content.progress > 0
+    m.track.visible = shown
+    m.progress.visible = shown
+    if shown then m.progress.width = m.top.width * content.progress
+end sub

@@ -1,0 +1,23 @@
+{
+  "extends": "bsconfig.json",
+  "files": [
+    "manifest",
+    "source/**/*",
+    "components/**/*",
+    "images/**/*",
+    { "src": "tests/**/*", "dest": "source/tests" },
+    { "src": "../../shared/display/en.json", "dest": "display/en.json" },
+    { "src": "../../shared/display/media.json", "dest": "display/media.json" },
+    { "src": "../../shared/display/languages/en.json", "dest": "display/languages.json" },
+    { "src": "../../shared/display/languages/aliases.json", "dest": "display/aliases.json" },
+    { "src": "../../shared/display/vectors/tracks.json", "dest": "vectors/tracks.json" }
+  ],
+  "stagingDir": "build/tests-staging",
+  "outFile": "build/kivo-roku-tests.zip",
+  "plugins": ["@rokucommunity/bslint", "rooibos-roku"],
+  "rooibos": {
+    "showOnlyFailures": false,
+    "catchCrashes": true,
+    "failFast": false
+  }
+}

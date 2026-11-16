@@ -3286,7 +3286,7 @@ export interface components {
          * @description What a client runs on.
          * @enum {string}
          */
-        ClientPlatform: "androidTv" | "appleTv" | "iPhone" | "iPad" | "androidPhone" | "browser" | "cast" | "tizen" | "webos";
+        ClientPlatform: "androidTv" | "appleTv" | "iPhone" | "iPad" | "androidPhone" | "browser" | "cast" | "tizen" | "webos" | "roku";
         /**
          * @description An app and the device it runs on, as its identity headers name
          *     them (Client identity, above).

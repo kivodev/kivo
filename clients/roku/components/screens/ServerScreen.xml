@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Asks for the server's address and finds the server there. -->
+<component name="ServerScreen" extends="KivoScreen">
+  <children>
+    <Label id="title" translation="[160, 96]" text="Connect to your Kivo server" />
+    <Label id="hint" translation="[160, 168]" width="1600" wrap="true"
+      text="Type its address, such as 192.168.1.20, nas:8484 or kivo.example.com." />
+    <Keyboard id="keyboard" translation="[160, 260]" />
+    <Button id="connect" translation="[160, 760]" text="Connect" minWidth="320" showFocusFootprint="true" />
+    <Label id="status" translation="[160, 860]" width="1600" wrap="true" />
+  </children>
+</component>

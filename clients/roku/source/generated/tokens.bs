@@ -1,0 +1,84 @@
+' Generated from shared/tokens.json by :tokens (./gradlew :tokens:rokuTokens). Don't edit.
+
+' The dark theme's colours.
+namespace KivoTokens.Color
+    const bg = "0x0D0E12FF"
+    const surface = "0x15171DFF"
+    const surfaceRaised = "0x1D2028FF"
+    const surfaceHover = "0x262A34FF"
+    const border = "0x2C303BFF"
+    const text = "0xECEEF2FF"
+    const textMuted = "0x9DA3AFFF"
+    const textSubtle = "0x6D7380FF"
+    const accent = "0x8B9CFFFF"
+    const accentHover = "0xA3B1FFFF"
+    const onAccent = "0x0D0E12FF"
+    const danger = "0xF0656BFF"
+    const warning = "0xF2B84BFF"
+    const success = "0x4CC38AFF"
+    const focus = "0xFFFFFFFF"
+    const scrim = "0x0D0E12D9"
+    const scrimSoft = "0x0D0E1266"
+    const badge = "0x000000B3"
+    const onBadge = "0xFFFFFFFF"
+    const placeholder = "0x23262FFF"
+    const onPlaceholder = "0x9DA3AFFF"
+    const progressTrack = "0xFFFFFF40"
+    const progress = "0x8B9CFFFF"
+    const player = "0x000000FF"
+    const onPlayer = "0xFFFFFFFF"
+    const onPlayerMuted = "0xFFFFFFB3"
+    const playerScrim = "0x000000B3"
+    const playerPanel = "0x15171DF2"
+    const playerTrack = "0xFFFFFF4D"
+    const subtitleBox = "0x000000BF"
+end namespace
+
+' The TV type scale's sizes, in pixels.
+namespace KivoTokens.TextSize
+    const sm = 24
+    const base = 28
+    const lg = 32
+    const xl = 40
+    const title = 48
+    const display = 72
+end namespace
+
+' The TV type scale's line heights, in pixels.
+namespace KivoTokens.LineHeight
+    const sm = 32
+    const base = 40
+    const lg = 44
+    const xl = 52
+    const title = 60
+    const display = 88
+end namespace
+
+' The TV layout's lengths in pixels, and its cards across a row.
+namespace KivoTokens.Layout
+    const overscanX = 48
+    const overscanY = 32
+    const railLeft = 16
+    const railItemSize = 64
+    const railInset = 8
+    const railOpenWidth = 480
+    const rowBleed = 72
+    const rowGap = 56
+    const cardCaptionShift = 16
+    const posterAcross = 6
+    const landscapeAcross = 3
+end namespace
+
+' How a focused item shows.
+namespace KivoTokens.Focus
+    const ringWidth = 4
+    const scale = 1.05
+    const cardScale = 1.1
+end namespace
+
+' Width over height.
+namespace KivoTokens.Aspect
+    const poster = 0.6667
+    const landscape = 1.7778
+    const square = 1.0000
+end namespace

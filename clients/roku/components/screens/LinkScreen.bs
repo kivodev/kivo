@@ -1,0 +1,87 @@
+import "pkg:/source/generated/api.bs"
+import "pkg:/source/generated/tokens.bs"
+import "pkg:/source/shared/session.bs"
+import "pkg:/source/shared/ui.bs"
+
+sub init()
+    m.link = m.top.FindNode("link")
+    m.code = m.top.FindNode("code")
+    m.status = m.top.FindNode("status")
+    m.poll = m.top.FindNode("poll")
+    KivoUi.style(m.top.FindNode("title"), KivoTokens.TextSize.title, KivoTokens.Color.text)
+    KivoUi.style(m.top.FindNode("hint"), KivoTokens.TextSize.base, KivoTokens.Color.textMuted)
+    KivoUi.style(m.link, KivoTokens.TextSize.lg, KivoTokens.Color.accent)
+    KivoUi.style(m.code, KivoTokens.TextSize.display, KivoTokens.Color.text, true)
+    KivoUi.style(m.status, KivoTokens.TextSize.base, KivoTokens.Color.textMuted)
+    KivoUi.style(m.top.FindNode("options"), KivoTokens.TextSize.sm, KivoTokens.Color.textSubtle)
+    m.poll.ObserveField("fire", "onPoll")
+    m.secret = ""
+    newCode()
+end sub
+
+' Asks the server for a code to show.
+sub newCode()
+    m.poll.control = "stop"
+    m.secret = ""
+    name = CreateObject("roDeviceInfo").GetFriendlyName()
+    if name = "" then name = "Roku"
+    m.task = Kivo.send(KivoApi.createDeviceCode({ name: name, kind: KivoApi.SessionKind.app, clientId: m.global.clientId }), "onCode")
+end sub
+
+sub onCode(event as object)
+    response = event.GetData()
+    m.task = invalid
+    if response.code <> 201
+        m.status.color = KivoTokens.Color.danger
+        m.status.text = KivoDisplay.problem(response) + " Press OK to try again."
+        return
+    end if
+    code = response.body
+    m.secret = code.secret
+    m.code.text = KivoUi.groupedCode(code.code)
+    m.link.text = code.linkUrl
+    m.status.color = KivoTokens.Color.textMuted
+    m.status.text = "Waiting for approval…"
+    interval = code.interval
+    if interval = invalid or interval < 1 then interval = 5
+    m.poll.duration = interval
+    m.poll.control = "start"
+end sub
+
+sub onPoll()
+    if m.secret = "" or m.task <> invalid then return
+    m.task = Kivo.send(KivoApi.pollDeviceCode({ secret: m.secret }), "onPolled")
+end sub
+
+sub onPolled(event as object)
+    response = event.GetData()
+    m.task = invalid
+    if response.code = 201 and response.body <> invalid and response.body.token <> invalid
+        m.poll.control = "stop"
+        Kivo.saveToken(response.body.token)
+        m.global.token = response.body.token
+        m.top.navigate = { screen: "HomeScreen", replace: true }
+    else if response.code = 403
+        m.poll.control = "stop"
+        m.secret = ""
+        m.status.color = KivoTokens.Color.danger
+        m.status.text = "The code was denied. Press OK for a new one."
+    else if response.code = 410
+        newCode()
+    end if
+    ' 202 is still waiting; a refusal to poll this often (429) or no answer waits for the next poll.
+end sub
+
+function onKeyEvent(key as string, press as boolean) as boolean
+    if not press then return false
+    if key = "OK" and m.secret = ""
+        newCode()
+        return true
+    end if
+    if key = "options"
+        m.poll.control = "stop"
+        m.top.navigate = { screen: "ServerScreen", replace: true }
+        return true
+    end if
+    return false
+end function

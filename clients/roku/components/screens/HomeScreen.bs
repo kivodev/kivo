@@ -1,0 +1,95 @@
+import "pkg:/source/generated/api.bs"
+import "pkg:/source/generated/tokens.bs"
+import "pkg:/source/shared/content.bs"
+import "pkg:/source/shared/display.bs"
+import "pkg:/source/shared/ui.bs"
+
+sub init()
+    m.rows = m.top.FindNode("rows")
+    m.status = m.top.FindNode("status")
+    KivoUi.style(m.top.FindNode("heading"), KivoTokens.TextSize.xl, KivoTokens.Color.text, true)
+    KivoUi.style(m.status, KivoTokens.TextSize.base, KivoTokens.Color.textMuted)
+    font = CreateObject("roSGNode", "Font")
+    font.uri = "font:BoldSystemFontFile"
+    font.size = KivoTokens.TextSize.base
+    m.rows.rowLabelFont = font
+    m.rows.rowLabelColor = KivoTokens.Color.text
+    m.rows.ObserveField("rowItemSelected", "onSelected")
+    load()
+end sub
+
+sub focus()
+    m.rows.SetFocus(true)
+    ' What's in progress may have changed while another screen showed.
+    if m.loaded = true then load()
+end sub
+
+sub load()
+    m.task = Kivo.send(KivoApi.getHome(), "onHome")
+end sub
+
+sub onHome(event as object)
+    response = event.GetData()
+    m.task = invalid
+    if response.code = 401
+        m.top.navigate = { signedOut: true }
+        return
+    end if
+    if response.code <> 200
+        m.status.text = KivoDisplay.problem(response) + " Press OK to try again."
+        return
+    end if
+    m.loaded = true
+    root = CreateObject("roSGNode", "ContentNode")
+    sizes = []
+    heights = []
+    for each row in response.body.rows
+        title = rowTitle(row)
+        if title <> invalid and row.items.Count() > 0
+            landscape = row.kind = KivoApi.HomeRowKind.continueWatching
+            root.AppendChild(KivoContent.row(title, row.items, landscape))
+            size = KivoContent.cardSize(landscape)
+            sizes.Push([size[0], size[1] + KivoContent.captionHeight])
+            heights.Push(size[1] + KivoContent.captionHeight + 60)
+        end if
+    end for
+    if root.GetChildCount() = 0
+        m.status.text = "Nothing to show yet. Add a library on the server, or show its rows on Home."
+        return
+    end if
+    m.status.text = ""
+    ' A reload keeps the focus on the card it was on, where that's still there.
+    was = m.rows.rowItemFocused
+    m.rows.rowItemSize = sizes
+    m.rows.rowHeights = heights
+    m.rows.content = root
+    if was <> invalid and was.Count() = 2 and was[0] >= 0 and was[0] < root.GetChildCount()
+        if was[1] < root.GetChild(was[0]).GetChildCount() then m.rows.jumpToRowItem = was
+    end if
+end sub
+
+' A Home row's title, as the other apps word it; invalid for a kind this app doesn't know.
+function rowTitle(row as object) as dynamic
+    if row.kind = KivoApi.HomeRowKind.continueWatching then return "Continue Watching"
+    if row.kind = KivoApi.HomeRowKind.continueListening then return "Continue Listening"
+    if row.kind = KivoApi.HomeRowKind.list and row.list <> invalid then return row.list.name
+    if row.kind = KivoApi.HomeRowKind.recentlyAdded
+        if row.library <> invalid then return "Recently Added in " + row.library.name
+        return "Recently Added"
+    end if
+    return invalid
+end function
+
+sub onSelected()
+    at = m.rows.rowItemSelected
+    item = m.rows.content.GetChild(at[0]).GetChild(at[1])
+    m.top.navigate = { screen: "DetailScreen", params: { id: item.workId } }
+end sub
+
+function onKeyEvent(key as string, press as boolean) as boolean
+    if press and key = "OK" and m.loaded <> true
+        load()
+        return true
+    end if
+    return false
+end function

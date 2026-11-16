@@ -1,0 +1,18 @@
+title=Kivo
+subtitle=Your own media server
+# x-release-please-start-major
+major_version=0
+# x-release-please-end
+# x-release-please-start-minor
+minor_version=3
+# x-release-please-end
+# x-release-please-start-patch
+build_version=0
+# x-release-please-end
+mm_icon_focus_fhd=pkg:/images/icon-fhd.png
+mm_icon_focus_hd=pkg:/images/icon-hd.png
+splash_screen_fhd=pkg:/images/splash-fhd.png
+splash_color=#0D0E12
+splash_min_time=0
+ui_resolutions=fhd
+supports_input_launch=1

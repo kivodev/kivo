@@ -1,0 +1,69 @@
+import "pkg:/source/generated/tokens.bs"
+import "pkg:/source/shared/session.bs"
+
+' A screen's navigate field is one of:
+'   { screen, params }  show that screen over this one
+'   { screen, params, replace: true }  show it in place of every screen
+'   { back: true }  return to the screen underneath
+'   { signedOut: true }  forget the session and link the device again
+
+sub init()
+    m.top.backgroundColor = KivoTokens.Color.bg
+    m.top.backgroundUri = ""
+    m.top.FindNode("ground").color = KivoTokens.Color.bg
+    m.stack = m.top.FindNode("stack")
+    if m.global.server = ""
+        show("ServerScreen", {}, true)
+    else if m.global.token = ""
+        show("LinkScreen", {}, true)
+    else
+        show("HomeScreen", {}, true)
+    end if
+end sub
+
+sub show(name as string, params as object, replace as boolean)
+    if replace
+        while m.stack.GetChildCount() > 0
+            m.stack.RemoveChildIndex(m.stack.GetChildCount() - 1)
+        end while
+    else if m.stack.GetChildCount() > 0
+        m.stack.GetChild(m.stack.GetChildCount() - 1).visible = false
+    end if
+    screen = CreateObject("roSGNode", name)
+    screen.params = params
+    screen.ObserveField("navigate", "onNavigate")
+    m.stack.AppendChild(screen)
+    screen.callFunc("focus")
+end sub
+
+sub back()
+    count = m.stack.GetChildCount()
+    if count < 2 then return
+    m.stack.RemoveChildIndex(count - 1)
+    top = m.stack.GetChild(count - 2)
+    top.visible = true
+    top.callFunc("focus")
+end sub
+
+sub onNavigate(event as object)
+    nav = event.GetData()
+    if nav.signedOut = true
+        Kivo.saveToken("")
+        m.global.token = ""
+        show("LinkScreen", {}, true)
+    else if nav.back = true
+        back()
+    else if nav.screen <> invalid
+        params = nav.params
+        if params = invalid then params = {}
+        show(nav.screen, params, nav.replace = true)
+    end if
+end sub
+
+function onKeyEvent(key as string, press as boolean) as boolean
+    if press and key = "back" and m.stack.GetChildCount() > 1
+        back()
+        return true
+    end if
+    return false
+end function

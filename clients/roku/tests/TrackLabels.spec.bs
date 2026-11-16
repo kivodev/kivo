@@ -1,0 +1,50 @@
+' The shared conformance vectors (shared/display/vectors/tracks.json), which
+' the web client's and the core's tests also read: language names and what
+' a transcoded track becomes.
+namespace tests
+
+    @suite("track labels")
+    class TrackLabelsTests extends rooibos.BaseTestSuite
+
+        protected override sub setup()
+            m.vectors = ParseJson(ReadAsciiFile("pkg:/vectors/tracks.json"))
+        end sub
+
+        @describe("shared vectors")
+
+        @it("names every language as the other apps do")
+        sub _()
+            for each pair in m.vectors.languages
+                m.assertEqual(KivoDisplay.languageName(pair[0]), pair[1], "language " + FormatJson(pair[0]))
+            end for
+        end sub
+
+        @it("words every transcode output as the other apps do")
+        sub _()
+            for each pair in m.vectors.outputs
+                m.assertEqual(KivoDisplay.output(pair[0]), pair[1], "output " + FormatJson(pair[0]))
+            end for
+        end sub
+
+        @describe("unknown languages")
+
+        @it("calls no tag, und and null the unknown language")
+        sub _()
+            unknown = KivoDisplay.tables().words.tracks.unknownLanguage
+            m.assertEqual(KivoDisplay.languageName(invalid), unknown)
+            m.assertEqual(KivoDisplay.languageName("und"), unknown)
+            m.assertEqual(KivoDisplay.languageName(" null "), unknown)
+        end sub
+
+        @describe("delivered tracks")
+
+        @it("classes a transcoded video by its width, as the server classes versions")
+        sub _()
+            m.assertEqual(KivoDisplay.delivered({ codec: "h264", transcode: { width: 1916 } }), "H.264 1080p")
+            m.assertEqual(KivoDisplay.delivered({ codec: "aac", transcode: { channels: 6 } }), "AAC 5.1")
+            m.assertEqual(KivoDisplay.delivered({ codec: "hevc" }), "HEVC")
+        end sub
+
+    end class
+
+end namespace

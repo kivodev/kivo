@@ -1,0 +1,63 @@
+import "pkg:/source/generated/api.bs"
+import "pkg:/source/shared/session.bs"
+
+const timeoutMs = 20000
+
+sub init()
+    m.top.functionName = "work"
+end sub
+
+sub work()
+    base = m.top.base
+    if base = "" then base = m.global.server
+    m.top.response = fetch(base, m.top.request)
+end sub
+
+' The request's answer, or an error without one.
+function fetch(base as string, request as object) as object
+    port = CreateObject("roMessagePort")
+    transfer = CreateObject("roUrlTransfer")
+    transfer.SetMessagePort(port)
+    transfer.SetUrl(base + request.path + queryString(transfer, request.query))
+    transfer.SetRequest(request.method)
+    transfer.RetainBodyOnError(true)
+    if base.Left(8) = "https://"
+        transfer.SetCertificatesFile("common:/certs/ca-bundle.crt")
+        transfer.InitClientCertificates()
+    end if
+    headers = Kivo.identityHeaders()
+    headers["Accept"] = "application/json"
+    if request.auth = true and m.global.token <> "" then headers["Authorization"] = "Bearer " + m.global.token
+    if request.body <> invalid then headers["Content-Type"] = request.contentType
+    transfer.SetHeaders(headers)
+    started = false
+    if request.body <> invalid
+        started = transfer.AsyncPostFromString(FormatJson(request.body))
+    else if request.method = "GET"
+        started = transfer.AsyncGetToString()
+    else
+        started = transfer.AsyncPostFromString("")
+    end if
+    if not started then return { code: 0, body: invalid, error: "couldn't start the request" }
+    event = Wait(timeoutMs, port)
+    if type(event) <> "roUrlEvent"
+        transfer.AsyncCancel()
+        return { code: 0, body: invalid, error: "the server didn't answer" }
+    end if
+    code = event.GetResponseCode()
+    if code <= 0 then return { code: code, body: invalid, error: event.GetFailureReason() }
+    text = event.GetString()
+    body = invalid
+    if text <> "" then body = ParseJson(text)
+    return { code: code, body: body, error: "" }
+end function
+
+' The query's fields as a URL query, each escaped; empty without any.
+function queryString(transfer as object, query as dynamic) as string
+    if query = invalid or query.Count() = 0 then return ""
+    pairs = []
+    for each key in query
+        pairs.Push(transfer.Escape(key) + "=" + transfer.Escape(query[key].ToStr()))
+    end for
+    return "?" + pairs.Join("&")
+end function

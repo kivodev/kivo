@@ -1,0 +1,18 @@
+{
+  "rootDir": ".",
+  "files": [
+    "manifest",
+    "source/**/*",
+    "components/**/*",
+    "images/**/*",
+    { "src": "../../shared/display/en.json", "dest": "display/en.json" },
+    { "src": "../../shared/display/media.json", "dest": "display/media.json" },
+    { "src": "../../shared/display/languages/en.json", "dest": "display/languages.json" },
+    { "src": "../../shared/display/languages/aliases.json", "dest": "display/aliases.json" }
+  ],
+  "stagingDir": "build/staging",
+  "outFile": "build/kivo-roku.zip",
+  "autoImportComponentScript": true,
+  "plugins": ["@rokucommunity/bslint"],
+  "diagnosticFilters": []
+}

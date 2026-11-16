@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Finds the server at a typed address: asks each URL the address may
+     mean at once and sets result to { url, server } for the first of them,
+     in their order, that answers as a Kivo server, or { error }. -->
+<component name="ProbeTask" extends="Task">
+  <interface>
+    <field id="address" type="string" />
+    <field id="result" type="assocarray" />
+  </interface>
+</component>

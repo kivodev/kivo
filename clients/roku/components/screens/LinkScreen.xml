@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Signs the Roku in by linking: shows a code to approve on a device
+     that's signed in, and polls until it's approved or denied. -->
+<component name="LinkScreen" extends="KivoScreen">
+  <children>
+    <Label id="title" translation="[160, 120]" text="Link this Roku" />
+    <Label id="hint" translation="[160, 200]" width="1600" wrap="true"
+      text="On a signed-in device, open this link, or open Link a device and enter this code." />
+    <Label id="link" translation="[160, 320]" width="1600" />
+    <Label id="code" translation="[160, 420]" />
+    <Label id="status" translation="[160, 640]" width="1600" wrap="true" />
+    <Label id="options" translation="[160, 920]" width="1600"
+      text="Press * to use another server." />
+    <Timer id="poll" repeat="true" />
+  </children>
+</component>

@@ -1,0 +1,67 @@
+import "pkg:/source/generated/tokens.bs"
+import "pkg:/source/shared/session.bs"
+import "pkg:/source/shared/ui.bs"
+
+sub init()
+    m.keyboard = m.top.FindNode("keyboard")
+    m.connect = m.top.FindNode("connect")
+    m.status = m.top.FindNode("status")
+    KivoUi.style(m.top.FindNode("title"), KivoTokens.TextSize.title, KivoTokens.Color.text)
+    KivoUi.style(m.top.FindNode("hint"), KivoTokens.TextSize.base, KivoTokens.Color.textMuted)
+    KivoUi.style(m.status, KivoTokens.TextSize.base, KivoTokens.Color.textMuted)
+    m.keyboard.text = m.global.server
+    m.connect.ObserveField("buttonSelected", "onConnect")
+end sub
+
+sub focus()
+    m.keyboard.SetFocus(true)
+end sub
+
+sub onConnect()
+    address = m.keyboard.text.Trim()
+    if address = "" then return
+    m.status.color = KivoTokens.Color.textMuted
+    m.status.text = "Connecting…"
+    m.probe = CreateObject("roSGNode", "ProbeTask")
+    m.probe.address = address
+    m.probe.ObserveField("result", "onFound")
+    m.probe.control = "RUN"
+end sub
+
+sub onFound(event as object)
+    found = event.GetData()
+    m.probe = invalid
+    if found.error <> invalid
+        m.status.color = KivoTokens.Color.danger
+        m.status.text = found.error
+        return
+    end if
+    minimum = found.server.minAppVersion
+    if minimum <> invalid and Kivo.isOlder(CreateObject("roAppInfo").GetVersion(), minimum)
+        m.status.color = KivoTokens.Color.danger
+        m.status.text = "This server needs Kivo " + minimum + " or later on this Roku."
+        return
+    end if
+    Kivo.saveServer(found.url, found.server.id)
+    if m.global.serverId <> found.server.id then m.global.token = ""
+    m.global.server = found.url
+    m.global.serverId = found.server.id
+    if m.global.token = ""
+        m.top.navigate = { screen: "LinkScreen", replace: true }
+    else
+        m.top.navigate = { screen: "HomeScreen", replace: true }
+    end if
+end sub
+
+function onKeyEvent(key as string, press as boolean) as boolean
+    if not press then return false
+    if key = "down" and m.keyboard.IsInFocusChain()
+        m.connect.SetFocus(true)
+        return true
+    end if
+    if key = "up" and m.connect.HasFocus()
+        m.keyboard.SetFocus(true)
+        return true
+    end if
+    return false
+end function

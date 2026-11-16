@@ -288,6 +288,7 @@ const (
 	ClientPlatformCast         ClientPlatform = "cast"
 	ClientPlatformIPad         ClientPlatform = "iPad"
 	ClientPlatformIPhone       ClientPlatform = "iPhone"
+	ClientPlatformRoku         ClientPlatform = "roku"
 	ClientPlatformTizen        ClientPlatform = "tizen"
 	ClientPlatformWebos        ClientPlatform = "webos"
 )
@@ -308,6 +309,8 @@ func (e ClientPlatform) Valid() bool {
 	case ClientPlatformIPad:
 		return true
 	case ClientPlatformIPhone:
+		return true
+	case ClientPlatformRoku:
 		return true
 	case ClientPlatformTizen:
 		return true

@@ -1,0 +1,40 @@
+import "pkg:/source/shared/display.bs"
+
+' Small helpers the screens share for drawing.
+namespace KivoUi
+
+    ' Sets a label's system font at [size] pixels, bold when asked, and its colour.
+    sub style(label as object, size as integer, color as string, bold = false as boolean)
+        font = CreateObject("roSGNode", "Font")
+        font.uri = "font:SystemFontFile"
+        if bold then font.uri = "font:BoldSystemFontFile"
+        font.size = size
+        label.font = font
+        label.color = color
+    end sub
+
+    ' A link code as shown, in two groups of three, such as "K7Q-2M9".
+    function groupedCode(code as string) as string
+        return code.Left(3) + "-" + code.Mid(3)
+    end function
+
+    ' An episode's code, such as "S1 · E2", from the shared words.
+    function episodeCode(episode as dynamic) as string
+        if episode = invalid or episode.seasonNumber = invalid or episode.number = invalid then return ""
+        words = KivoDisplay.tables().words.episodeCode
+        return words.one.Replace("{season}", episode.seasonNumber.ToStr()).Replace("{episode}", episode.number.ToStr())
+    end function
+
+    ' A duration in words, such as "1h 52m", from the shared words.
+    function duration(ms as dynamic) as string
+        if ms = invalid or ms <= 0 then return ""
+        words = KivoDisplay.tables().words.durations
+        minutes = Int(ms / 60000)
+        hours = Int(minutes / 60)
+        minutes = minutes mod 60
+        if hours = 0 then return words.minutes.Replace("{minutes}", minutes.ToStr())
+        if minutes = 0 then return words.hours.Replace("{hours}", hours.ToStr())
+        return words.hoursMinutes.Replace("{hours}", hours.ToStr()).Replace("{minutes}", minutes.ToStr())
+    end function
+
+end namespace

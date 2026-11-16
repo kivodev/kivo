@@ -1,0 +1,189 @@
+import "pkg:/source/generated/api.bs"
+import "pkg:/source/generated/tokens.bs"
+import "pkg:/source/shared/content.bs"
+import "pkg:/source/shared/display.bs"
+import "pkg:/source/shared/session.bs"
+import "pkg:/source/shared/ui.bs"
+
+sub init()
+    m.backdrop = m.top.FindNode("backdrop")
+    m.title = m.top.FindNode("title")
+    m.details = m.top.FindNode("details")
+    m.overview = m.top.FindNode("overview")
+    m.buttons = m.top.FindNode("buttons")
+    m.status = m.top.FindNode("status")
+    m.episodes = m.top.FindNode("episodes")
+    m.top.FindNode("scrim").color = KivoTokens.Color.scrim
+    KivoUi.style(m.title, KivoTokens.TextSize.title, KivoTokens.Color.text, true)
+    KivoUi.style(m.details, KivoTokens.TextSize.base, KivoTokens.Color.textMuted)
+    KivoUi.style(m.overview, KivoTokens.TextSize.base, KivoTokens.Color.text)
+    KivoUi.style(m.status, KivoTokens.TextSize.base, KivoTokens.Color.textMuted)
+    font = CreateObject("roSGNode", "Font")
+    font.uri = "font:BoldSystemFontFile"
+    font.size = KivoTokens.TextSize.base
+    m.episodes.rowLabelFont = font
+    m.episodes.rowLabelColor = KivoTokens.Color.text
+    m.buttons.ObserveField("buttonSelected", "onButton")
+    m.episodes.ObserveField("rowItemSelected", "onEpisode")
+    m.tasks = {}
+    m.top.ObserveField("params", "load")
+end sub
+
+sub focus()
+    takeFocus()
+    ' Progress may have moved on while the player showed.
+    if m.work <> invalid then load()
+end sub
+
+sub takeFocus()
+    if m.buttons.buttons.Count() > 0
+        m.buttons.SetFocus(true)
+    else if m.episodes.visible
+        m.episodes.SetFocus(true)
+    else
+        m.top.SetFocus(true)
+    end if
+end sub
+
+sub load()
+    m.tasks.work = Kivo.send(KivoApi.getWork(m.top.params.id), "onWork")
+end sub
+
+sub onWork(event as object)
+    response = event.GetData()
+    m.tasks.work = invalid
+    if response.code = 401
+        m.top.navigate = { signedOut: true }
+        return
+    end if
+    if response.code <> 200
+        m.status.text = KivoDisplay.problem(response)
+        return
+    end if
+    first = m.work = invalid
+    m.work = response.body
+    show(m.work)
+    if first and (m.work.kind = KivoApi.WorkKind.series or m.work.kind = KivoApi.WorkKind.season)
+        m.tasks.children = Kivo.send(KivoApi.listWorkChildren(m.work.id), "onChildren")
+    end if
+    if first then takeFocus()
+end sub
+
+sub show(work as object)
+    m.title.text = work.title
+    m.details.text = details(work).Join("  ·  ")
+    if work.overview <> invalid then m.overview.text = work.overview
+    m.backdrop.uri = Kivo.imageUrl(work.images.backdrop, 1920)
+    labels = []
+    m.actions = []
+    target = playTarget(work)
+    if target <> invalid
+        if target.positionMs <> invalid and target.positionMs > 0
+            labels.Push("Resume")
+            m.actions.Push({ id: target.id, fromStart: false })
+            labels.Push("Play from beginning")
+            m.actions.Push({ id: target.id, fromStart: true })
+        else
+            labels.Push("Play")
+            m.actions.Push({ id: target.id, fromStart: false })
+        end if
+    end if
+    focused = m.buttons.buttonFocused
+    m.buttons.buttons = labels
+    if focused >= 0 and focused < labels.Count() then m.buttons.focusButton = focused
+end sub
+
+' What Play plays: the work itself, or a show's episode up next; invalid when nothing plays.
+function playTarget(work as object) as dynamic
+    playable = [KivoApi.WorkKind.movie, KivoApi.WorkKind.episode, KivoApi.WorkKind.video, KivoApi.WorkKind.extra]
+    for each kind in playable
+        if work.kind = kind and work.available = true then return { id: work.id, positionMs: positionOf(work) }
+    end for
+    if work.series <> invalid and work.series.nextUp <> invalid
+        return { id: work.series.nextUp.id, positionMs: positionOf(work.series.nextUp) }
+    end if
+    return invalid
+end function
+
+function positionOf(work as object) as dynamic
+    if work.userState = invalid then return invalid
+    return work.userState.positionMs
+end function
+
+' The details line: an episode's code, the year, the content rating and the runtime.
+function details(work as object) as object
+    parts = []
+    if work.episode <> invalid then parts.Push(KivoUi.episodeCode(work.episode))
+    if work.year <> invalid then parts.Push(work.year.ToStr())
+    if work.contentRating <> invalid then parts.Push(work.contentRating)
+    runtime = KivoUi.duration(work.durationMs)
+    if runtime <> "" then parts.Push(runtime)
+    return parts
+end function
+
+sub onChildren(event as object)
+    response = event.GetData()
+    m.tasks.children = invalid
+    if response.code <> 200 then return
+    children = response.body.items
+    if m.work.kind = KivoApi.WorkKind.season
+        showSeasons([{ title: m.work.title, episodes: children }])
+        return
+    end if
+    ' A show's seasons: each one's episodes, asked at once, shown in order once all have answered.
+    m.seasons = []
+    for i = 0 to children.Count() - 1
+        m.seasons.Push({ title: children[i].title, episodes: invalid })
+        task = Kivo.send(KivoApi.listWorkChildren(children[i].id), "onSeason")
+        task.AddFields({ seasonIndex: i })
+        m.tasks["season" + i.ToStr()] = task
+    end for
+end sub
+
+sub onSeason(event as object)
+    task = event.GetRoSGNode()
+    i = task.seasonIndex
+    m.tasks.Delete("season" + i.ToStr())
+    response = event.GetData()
+    m.seasons[i].episodes = []
+    if response.code = 200 then m.seasons[i].episodes = response.body.items
+    for each season in m.seasons
+        if season.episodes = invalid then return
+    end for
+    showSeasons(m.seasons)
+end sub
+
+sub showSeasons(seasons as object)
+    root = CreateObject("roSGNode", "ContentNode")
+    for each season in seasons
+        if season.episodes.Count() > 0 then root.AppendChild(KivoContent.row(season.title, season.episodes, true))
+    end for
+    if root.GetChildCount() = 0 then return
+    m.episodes.content = root
+    m.episodes.visible = true
+    if m.buttons.buttons.Count() = 0 then m.episodes.SetFocus(true)
+end sub
+
+sub onButton()
+    action = m.actions[m.buttons.buttonSelected]
+    m.top.navigate = { screen: "PlayerScreen", params: action }
+end sub
+
+sub onEpisode()
+    at = m.episodes.rowItemSelected
+    item = m.episodes.content.GetChild(at[0]).GetChild(at[1])
+    m.top.navigate = { screen: "DetailScreen", params: { id: item.workId } }
+end sub
+
+function onKeyEvent(key as string, press as boolean) as boolean
+    if not press then return false
+    if key = "down" and m.buttons.IsInFocusChain() and m.episodes.visible
+        m.episodes.SetFocus(true)
+        return true
+    end if
+    if key = "up" and m.episodes.IsInFocusChain() and m.buttons.buttons.Count() > 0
+        m.buttons.SetFocus(true)
+        return true
+    end if
+    return false
+end function

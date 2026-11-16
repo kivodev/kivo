@@ -1,0 +1,178 @@
+' Words for tracks, from the shared display tables (shared/display, packaged
+' under pkg:/display), as the other apps word them: a language tag's name
+' and what a transcoded track becomes. The shared vectors hold all three
+' to the same answers (tests/TrackLabels.spec.bs).
+namespace KivoDisplay
+
+    ' The tables, read once per thread.
+    function tables() as object
+        aa = GetGlobalAA()
+        if aa.kivoDisplay = invalid
+            aa.kivoDisplay = {
+                words: ParseJson(ReadAsciiFile("pkg:/display/en.json")),
+                media: ParseJson(ReadAsciiFile("pkg:/display/media.json")),
+                languages: ParseJson(ReadAsciiFile("pkg:/display/languages.json")),
+                aliases: ParseJson(ReadAsciiFile("pkg:/display/aliases.json"))
+            }
+        end if
+        return aa.kivoDisplay
+    end function
+
+    ' A language tag in words: a dialect by its own name ("American
+    ' English"), else the language with its script and region ("Chinese
+    ' (Traditional, Taiwan)"). An ISO 639-2 code is read as its language
+    ' ("eng" is English). A tag that isn't one shows as it is; no tag, und or
+    ' "null" is the unknown language.
+    function languageName(tag as dynamic) as string
+        t = KivoDisplay.tables()
+        unknown = t.words.tracks.unknownLanguage
+        if tag = invalid or tag.Trim() = "" or LCase(tag.Trim()) = "null" then return unknown
+        parts = KivoDisplay.splitTag(tag)
+        if parts = invalid then return tag
+        alias = t.aliases[parts.language]
+        if alias <> invalid
+            canonical = KivoDisplay.splitTag(alias)
+            if canonical <> invalid
+                parts.language = canonical.language
+                if parts.script = "" then parts.script = canonical.script
+                if parts.region = "" then parts.region = canonical.region
+            end if
+        end if
+        if parts.language = "und" then return unknown
+        table = t.languages
+        name = KivoDisplay.lookup(table.languages, parts.language, parts.language)
+        if parts.script = "" or parts.region = ""
+            dialect = table.languages[parts.language + "-" + parts.script + parts.region]
+            if dialect <> invalid then return dialect
+        end if
+        pieces = []
+        if parts.script <> "" then pieces.Push(KivoDisplay.bracketed(KivoDisplay.lookup(table.scripts, parts.script, parts.script)))
+        if parts.region <> "" then pieces.Push(KivoDisplay.bracketed(KivoDisplay.lookup(table.regions, parts.region, parts.region)))
+        if pieces.Count() = 0 then return name
+        piece = pieces[0]
+        for i = 1 to pieces.Count() - 1
+            piece = table.separator.Replace("{0}", piece).Replace("{1}", pieces[i])
+        end for
+        return table.pattern.Replace("{0}", name).Replace("{1}", piece)
+    end function
+
+    ' A tag's language, script and region in their canonical case; invalid
+    ' for anything else, such as a variant.
+    function splitTag(tag as string) as object
+        parts = tag.Replace("_", "-").Split("-")
+        language = LCase(parts[0])
+        if language.Len() < 2 or language.Len() > 3 or not KivoDisplay.isLetters(language) then return invalid
+        script = ""
+        region = ""
+        for i = 1 to parts.Count() - 1
+            p = parts[i]
+            if script = "" and region = "" and p.Len() = 4 and KivoDisplay.isLetters(p)
+                script = UCase(p.Left(1)) + LCase(p.Mid(1))
+            else if region = "" and p.Len() = 2 and KivoDisplay.isLetters(p)
+                region = UCase(p)
+            else if region = "" and p.Len() = 3 and KivoDisplay.isDigits(p)
+                region = p
+            else
+                return invalid
+            end if
+        end for
+        return { language: language, script: script, region: region }
+    end function
+
+    ' What a transcoded track becomes: its codec, then a video's resolution
+    ' class ("H.264 1080p") or audio's channels ("AAC 5.1"). [out] has the
+    ' fields of a TrackOutput: codec, and resolution or channels.
+    function output(out as object) as string
+        media = KivoDisplay.tables().media
+        words = [KivoDisplay.lookup(media.codecs, out.codec, UCase(out.codec))]
+        if out.resolution <> invalid
+            words.Push(KivoDisplay.lookup(media.resolutions, out.resolution, out.resolution))
+        else if out.channels <> invalid
+            words.Push(KivoDisplay.channelLayout(out.channels))
+        end if
+        return words.Join(" ")
+    end function
+
+    ' A play's track as delivered (a PlayTrack): its codec and, transcoded,
+    ' a video's resolution, classed by its width as the server classes
+    ' versions ("H.264 1080p"), or audio's channels ("AAC 5.1").
+    function delivered(track as object) as string
+        out = { codec: track.codec }
+        if out.codec = invalid then out.codec = ""
+        t = track.transcode
+        if t <> invalid
+            if t.width <> invalid
+                out.resolution = KivoDisplay.resolutionOf(t.width)
+            else if t.channels <> invalid
+                out.channels = t.channels
+            end if
+        end if
+        return KivoDisplay.output(out)
+    end function
+
+    function resolutionOf(width as integer) as string
+        if width >= 3200 then return "4k"
+        if width >= 1700 then return "1080p"
+        if width >= 1200 then return "720p"
+        return "sd"
+    end function
+
+    ' How a play shows, by its video's delivery (or its audio's without
+    ' video): Direct Play from the file, Direct Stream when the stream copies
+    ' it, else Transcode.
+    function method(tracks as object) as string
+        methods = KivoDisplay.tables().words.methods
+        shown = invalid
+        for each track in tracks
+            if track.selected = true and track.type = "video" then shown = track
+        end for
+        if shown = invalid
+            for each track in tracks
+                if track.selected = true and track.type = "audio" then shown = track
+            end for
+        end if
+        if shown = invalid or shown.delivery = "file" then return methods.directPlay
+        if shown.transcode = invalid then return methods.directStream
+        return methods.transcode
+    end function
+
+    ' "Mono", "Stereo", "5.1" or "7.1" for a channel count, else the count in words.
+    function channelLayout(channels as integer) as string
+        t = KivoDisplay.tables()
+        key = channels.ToStr()
+        return KivoDisplay.lookup(t.media.channels, key, t.words.tracks.channels.Replace("{channels}", key))
+    end function
+
+    ' What went wrong with a request (an ApiTask response), in the shared
+    ' words: a network failure when no answer came, else the problem's code.
+    function problem(response as object) as string
+        words = KivoDisplay.tables().words
+        code = "network"
+        if response.code > 0
+            code = ""
+            if response.body <> invalid and response.body.code <> invalid then code = response.body.code
+        end if
+        return KivoDisplay.lookup(words.problems, code, words.unknownProblem)
+    end function
+
+    ' table[key] when the table has it, else [fallback].
+    function lookup(table as object, key as string, fallback as string) as string
+        value = table[key]
+        if value = invalid then return fallback
+        return value
+    end function
+
+    ' Brackets inside a name become square, as Intl's do inside the pattern's parentheses.
+    function bracketed(name as string) as string
+        return name.Replace("(", "[").Replace(")", "]")
+    end function
+
+    function isLetters(s as string) as boolean
+        return CreateObject("roRegex", "^[A-Za-z]+$", "").IsMatch(s)
+    end function
+
+    function isDigits(s as string) as boolean
+        return CreateObject("roRegex", "^[0-9]+$", "").IsMatch(s)
+    end function
+
+end namespace

@@ -1,0 +1,235 @@
+import "pkg:/source/generated/api.bs"
+import "pkg:/source/generated/tokens.bs"
+import "pkg:/source/shared/capabilities.bs"
+import "pkg:/source/shared/display.bs"
+import "pkg:/source/shared/session.bs"
+import "pkg:/source/shared/ui.bs"
+
+sub init()
+    m.video = m.top.FindNode("video")
+    m.info = m.top.FindNode("info")
+    m.infoGround = m.top.FindNode("infoGround")
+    m.status = m.top.FindNode("status")
+    m.heartbeat = m.top.FindNode("heartbeat")
+    m.infoGround.color = KivoTokens.Color.playerPanel
+    KivoUi.style(m.info, KivoTokens.TextSize.sm, KivoTokens.Color.onPlayer)
+    KivoUi.style(m.status, KivoTokens.TextSize.lg, KivoTokens.Color.onPlayer)
+    m.video.ObserveField("state", "onState")
+    m.video.ObserveField("contentIndex", "onPart")
+    m.heartbeat.ObserveField("fire", "report")
+    m.tasks = {}
+    m.play = invalid
+    m.leaving = false
+    m.top.ObserveField("params", "load")
+end sub
+
+sub focus()
+    m.video.SetFocus(true)
+end sub
+
+' The work first, for its versions' containers, then the play.
+sub load()
+    m.status.text = "Loading…"
+    m.tasks.work = Kivo.send(KivoApi.getWork(m.top.params.id), "onWork")
+end sub
+
+sub onWork(event as object)
+    response = event.GetData()
+    m.tasks.work = invalid
+    if response.code <> 200
+        fail(KivoDisplay.problem(response))
+        return
+    end if
+    m.work = response.body
+    body = { workId: m.work.id, capabilities: KivoPlayer.capabilities(), settings: { directPlay: true } }
+    if m.top.params.fromStart = true then body.positionMs = 0
+    m.tasks.start = Kivo.send(KivoApi.startPlay(body), "onStarted")
+end sub
+
+sub onStarted(event as object)
+    response = event.GetData()
+    m.tasks.start = invalid
+    if response.code <> 201
+        fail(KivoDisplay.problem(response))
+        return
+    end if
+    start(response.body)
+end sub
+
+' Plays a started play (a PlayStarted) from its start position.
+sub start(play as object)
+    m.play = play
+    m.partOffsets = []
+    offset = 0
+    for each part in play.parts
+        m.partOffsets.Push(offset)
+        offset = offset + part.durationMs
+    end for
+    m.partOffset = 0
+    format = KivoPlayer.streamFormat(play.delivery, containerOf(play.versionId))
+    content = CreateObject("roSGNode", "ContentNode")
+    content.title = m.work.title
+    if play.delivery = "file" and play.parts.Count() > 1
+        ' A version in parts plays them in turn, from the part the start is in.
+        first = 0
+        for i = 0 to play.parts.Count() - 1
+            if play.startMs >= m.partOffsets[i] then first = i
+        end for
+        for i = 0 to play.parts.Count() - 1
+            part = content.CreateChild("ContentNode")
+            part.url = mediaUrl(play.parts[i].url)
+            part.streamFormat = format
+            part.title = m.work.title
+        end for
+        content.GetChild(first).PlayStart = (play.startMs - m.partOffsets[first]) / 1000
+        m.video.contentIsPlaylist = true
+        m.video.content = content
+        m.video.nextContentIndex = first
+    else
+        content.url = mediaUrl(play.url)
+        content.streamFormat = format
+        content.PlayStart = play.startMs / 1000
+        m.video.contentIsPlaylist = false
+        m.video.content = content
+    end if
+    m.status.text = ""
+    m.info.text = infoText(play)
+    m.video.control = "play"
+    m.heartbeat.control = "start"
+end sub
+
+' A media URL of the play, which is relative to the API root and carries its own credential.
+function mediaUrl(url as string) as string
+    return m.global.server + "/api/v1/" + url
+end function
+
+function containerOf(versionId as string) as dynamic
+    if m.work.versions = invalid then return invalid
+    for each version in m.work.versions
+        if version.id = versionId then return version.container
+    end for
+    return invalid
+end function
+
+function infoText(play as object) as string
+    lines = [KivoDisplay.method(play.tracks)]
+    for each track in play.tracks
+        if track.selected = true and track.type <> "subtitle" then lines.Push(KivoDisplay.delivered(track))
+    end for
+    return lines.Join(Chr(10))
+end function
+
+' Where the play is on its version's timeline, in milliseconds.
+function positionMs() as integer
+    return m.partOffset + Int(m.video.position * 1000)
+end function
+
+sub onPart()
+    i = m.video.contentIndex
+    if m.partOffsets <> invalid and i >= 0 and i < m.partOffsets.Count() then m.partOffset = m.partOffsets[i]
+end sub
+
+sub onState()
+    state = m.video.state
+    if state = "finished"
+        position = 0
+        if m.play <> invalid then position = m.play.durationMs
+        leave(position)
+    else if state = "error"
+        failed()
+    else if state = "playing" or state = "paused" or state = "buffering"
+        report()
+    end if
+end sub
+
+' Tells the server where the play is and what it's doing.
+sub report()
+    if m.play = invalid or m.leaving or m.tasks.update <> invalid then return
+    states = { playing: KivoApi.PlayState.playing, paused: KivoApi.PlayState.paused, buffering: KivoApi.PlayState.buffering }
+    state = states[m.video.state]
+    if state = invalid then return
+    m.tasks.update = Kivo.send(KivoApi.updatePlay(m.play.id, { positionMs: positionMs(), state: state }), "onReported")
+end sub
+
+sub onReported(event as object)
+    m.tasks.update = invalid
+    ' The play ended elsewhere: an admin stopped it, or the user did on another device.
+    if event.GetData().code = 410 and not m.leaving
+        m.leaving = true
+        m.heartbeat.control = "stop"
+        m.video.control = "stop"
+        m.status.text = KivoDisplay.tables().words.playStopped
+    end if
+end sub
+
+' Playback failed: the first time the server retries it as a transcode,
+' then the play stops and says why.
+sub failed()
+    if m.play = invalid then return
+    m.heartbeat.control = "stop"
+    error = { positionMs: positionMs(), code: KivoApi.PlayerErrorCode.mediaDecodeError, detail: m.video.errorMsg }
+    if m.fellBack <> true
+        m.fellBack = true
+        m.tasks.fallback = Kivo.send(KivoApi.fallbackPlay(m.play.id, error), "onFallback")
+        return
+    end if
+    Kivo.send(KivoApi.stopPlay(m.play.id, error), "onStopped")
+    m.play = invalid
+    fail("This video couldn't play on this Roku.")
+end sub
+
+sub onFallback(event as object)
+    response = event.GetData()
+    m.tasks.fallback = invalid
+    if response.code = 201
+        start(response.body)
+    else
+        m.play = invalid
+        fail(KivoDisplay.problem(response))
+    end if
+end sub
+
+sub fail(message as string)
+    m.video.control = "stop"
+    m.status.text = message
+end sub
+
+' Stops the play at [position] and returns to the page underneath once
+' the server has heard.
+sub leave(position as integer)
+    if m.leaving and m.play = invalid
+        m.top.navigate = { back: true }
+        return
+    end if
+    m.leaving = true
+    m.heartbeat.control = "stop"
+    m.video.control = "stop"
+    if m.play = invalid
+        m.top.navigate = { back: true }
+        return
+    end if
+    m.tasks.stop = Kivo.send(KivoApi.stopPlay(m.play.id, { positionMs: position }), "onStopped")
+    m.play = invalid
+end sub
+
+sub onStopped()
+    m.tasks.stop = invalid
+    if m.leaving then m.top.navigate = { back: true }
+end sub
+
+function onKeyEvent(key as string, press as boolean) as boolean
+    if not press then return false
+    if key = "back"
+        position = 0
+        if m.play <> invalid then position = positionMs()
+        leave(position)
+        return true
+    end if
+    if key = "options"
+        shown = not m.info.visible
+        m.info.visible = shown
+        m.infoGround.visible = shown
+        return true
+    end if
+    return false
+end function

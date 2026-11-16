@@ -1,0 +1,1192 @@
+' Generated from server/internal/api/openapi.yaml by make generate in
+' server/ (internal/api/internal/brsgen). Don't edit.
+'
+' A function per operation returns the request to send: its method, its
+' path from the API root, its query and JSON body (invalid when it has
+' none), the body's media type, and whether it carries the session's token.
+' The app's request task sends it; answers are left as ParseJson gives them.
+
+namespace KivoApi
+
+    ' A path parameter, escaped for the URL.
+    function pathEscape(value as string) as string
+        return CreateObject("roUrlTransfer").Escape(value)
+    end function
+
+    ' Get health: GET /healthz.
+    function getHealth() as object
+        return { method: "GET", path: "/healthz", query: invalid, body: invalid, contentType: invalid, auth: false }
+    end function
+
+    ' Get setup status: GET /api/v1/setup.
+    function getSetup() as object
+        return { method: "GET", path: "/api/v1/setup", query: invalid, body: invalid, contentType: invalid, auth: false }
+    end function
+
+    ' Complete setup: POST /api/v1/setup.
+    function completeSetup(body as object) as object
+        return { method: "POST", path: "/api/v1/setup", query: invalid, body: body, contentType: "application/json", auth: false }
+    end function
+
+    ' Get server info: GET /api/v1/server.
+    ' Query: challenge.
+    function getServer(query = invalid as object) as object
+        return { method: "GET", path: "/api/v1/server", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Get settings: GET /api/v1/settings.
+    function getSettings() as object
+        return { method: "GET", path: "/api/v1/settings", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Update settings: PATCH /api/v1/settings.
+    function updateSettings(body as object) as object
+        return { method: "PATCH", path: "/api/v1/settings", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' List folders: GET /api/v1/directories.
+    ' Query: path.
+    function listDirectories(query = invalid as object) as object
+        return { method: "GET", path: "/api/v1/directories", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' List accelerators: GET /api/v1/accelerators.
+    function listAccelerators() as object
+        return { method: "GET", path: "/api/v1/accelerators", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' List content ratings: GET /api/v1/content-ratings.
+    ' Query: workId.
+    function listContentRatings(query = invalid as object) as object
+        return { method: "GET", path: "/api/v1/content-ratings", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' List sessions: GET /api/v1/sessions.
+    ' Query: userId.
+    function listSessions(query = invalid as object) as object
+        return { method: "GET", path: "/api/v1/sessions", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Sign in: POST /api/v1/sessions.
+    function createSession(body as object) as object
+        return { method: "POST", path: "/api/v1/sessions", query: invalid, body: body, contentType: "application/json", auth: false }
+    end function
+
+    ' Sign out other sessions: DELETE /api/v1/sessions.
+    ' Query: except.
+    function deleteOtherSessions(query = invalid as object) as object
+        return { method: "DELETE", path: "/api/v1/sessions", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Get current session: GET /api/v1/sessions/current.
+    function getCurrentSession() as object
+        return { method: "GET", path: "/api/v1/sessions/current", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Sign out: DELETE /api/v1/sessions/current.
+    function deleteCurrentSession() as object
+        return { method: "DELETE", path: "/api/v1/sessions/current", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Get session: GET /api/v1/sessions/{id}.
+    function getSession(id as string) as object
+        return { method: "GET", path: "/api/v1/sessions/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Rename session: PATCH /api/v1/sessions/{id}.
+    function updateSession(id as string, body as object) as object
+        return { method: "PATCH", path: "/api/v1/sessions/" + KivoApi.pathEscape(id), query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Revoke session: DELETE /api/v1/sessions/{id}.
+    function deleteSession(id as string) as object
+        return { method: "DELETE", path: "/api/v1/sessions/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' List API keys: GET /api/v1/api-keys.
+    function listApiKeys() as object
+        return { method: "GET", path: "/api/v1/api-keys", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Create API key: POST /api/v1/api-keys.
+    function createApiKey(body as object) as object
+        return { method: "POST", path: "/api/v1/api-keys", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Get API key: GET /api/v1/api-keys/{id}.
+    function getApiKey(id as string) as object
+        return { method: "GET", path: "/api/v1/api-keys/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Revoke API key: DELETE /api/v1/api-keys/{id}.
+    function deleteApiKey(id as string) as object
+        return { method: "DELETE", path: "/api/v1/api-keys/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Start device sign-in: POST /api/v1/device-codes.
+    function createDeviceCode(body as object) as object
+        return { method: "POST", path: "/api/v1/device-codes", query: invalid, body: body, contentType: "application/json", auth: false }
+    end function
+
+    ' Check device sign-in: POST /api/v1/device-codes/poll.
+    function pollDeviceCode(body as object) as object
+        return { method: "POST", path: "/api/v1/device-codes/poll", query: invalid, body: body, contentType: "application/json", auth: false }
+    end function
+
+    ' Get pending device: GET /api/v1/device-codes/{code}.
+    function getDeviceCode(code as string) as object
+        return { method: "GET", path: "/api/v1/device-codes/" + KivoApi.pathEscape(code), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Approve device sign-in: POST /api/v1/device-codes/{code}/approve.
+    function approveDeviceCode(code as string) as object
+        return { method: "POST", path: "/api/v1/device-codes/" + KivoApi.pathEscape(code) + "/approve", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Deny device sign-in: POST /api/v1/device-codes/{code}/deny.
+    function denyDeviceCode(code as string) as object
+        return { method: "POST", path: "/api/v1/device-codes/" + KivoApi.pathEscape(code) + "/deny", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Create cast token: POST /api/v1/cast-tokens.
+    function createCastToken(body as object) as object
+        return { method: "POST", path: "/api/v1/cast-tokens", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Delete cast token: DELETE /api/v1/cast-tokens/current.
+    function deleteCurrentCastToken() as object
+        return { method: "DELETE", path: "/api/v1/cast-tokens/current", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' List users: GET /api/v1/users.
+    function listUsers() as object
+        return { method: "GET", path: "/api/v1/users", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Create user: POST /api/v1/users.
+    function createUser(body as object) as object
+        return { method: "POST", path: "/api/v1/users", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Get current user: GET /api/v1/users/me.
+    function getCurrentUser() as object
+        return { method: "GET", path: "/api/v1/users/me", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Update current user: PATCH /api/v1/users/me.
+    function updateCurrentUser(body as object) as object
+        return { method: "PATCH", path: "/api/v1/users/me", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Change own password: POST /api/v1/users/me/change-password.
+    function changeCurrentUserPassword(body as object) as object
+        return { method: "POST", path: "/api/v1/users/me/change-password", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Get user: GET /api/v1/users/{id}.
+    function getUser(id as string) as object
+        return { method: "GET", path: "/api/v1/users/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Update user: PATCH /api/v1/users/{id}.
+    function updateUser(id as string, body as object) as object
+        return { method: "PATCH", path: "/api/v1/users/" + KivoApi.pathEscape(id), query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Delete user: DELETE /api/v1/users/{id}.
+    function deleteUser(id as string) as object
+        return { method: "DELETE", path: "/api/v1/users/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Set user password: POST /api/v1/users/{id}/set-password.
+    function setUserPassword(id as string, body as object) as object
+        return { method: "POST", path: "/api/v1/users/" + KivoApi.pathEscape(id) + "/set-password", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' List invites: GET /api/v1/invites.
+    function listInvites() as object
+        return { method: "GET", path: "/api/v1/invites", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Create invite: POST /api/v1/invites.
+    function createInvite(body as object) as object
+        return { method: "POST", path: "/api/v1/invites", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Revoke invite: DELETE /api/v1/invites/{id}.
+    function deleteInvite(id as string) as object
+        return { method: "DELETE", path: "/api/v1/invites/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Get invite link: GET /api/v1/invite-links/{token}.
+    function getInviteLink(token as string) as object
+        return { method: "GET", path: "/api/v1/invite-links/" + KivoApi.pathEscape(token), query: invalid, body: invalid, contentType: invalid, auth: false }
+    end function
+
+    ' Accept invite: POST /api/v1/invite-links/{token}/accept.
+    function acceptInviteLink(token as string, body as object) as object
+        return { method: "POST", path: "/api/v1/invite-links/" + KivoApi.pathEscape(token) + "/accept", query: invalid, body: body, contentType: "application/json", auth: false }
+    end function
+
+    ' List libraries: GET /api/v1/libraries.
+    function listLibraries() as object
+        return { method: "GET", path: "/api/v1/libraries", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Create library: POST /api/v1/libraries.
+    function createLibrary(body as object) as object
+        return { method: "POST", path: "/api/v1/libraries", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Get library: GET /api/v1/libraries/{id}.
+    function getLibrary(id as string) as object
+        return { method: "GET", path: "/api/v1/libraries/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Update library: PATCH /api/v1/libraries/{id}.
+    function updateLibrary(id as string, body as object) as object
+        return { method: "PATCH", path: "/api/v1/libraries/" + KivoApi.pathEscape(id), query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Delete library: DELETE /api/v1/libraries/{id}.
+    function deleteLibrary(id as string) as object
+        return { method: "DELETE", path: "/api/v1/libraries/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' List library collections: GET /api/v1/libraries/{id}/collections.
+    ' Query: offset, limit.
+    function listLibraryCollections(id as string, query = invalid as object) as object
+        return { method: "GET", path: "/api/v1/libraries/" + KivoApi.pathEscape(id) + "/collections", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' List library authors: GET /api/v1/libraries/{id}/authors.
+    ' Query: offset, limit.
+    function listLibraryAuthors(id as string, query = invalid as object) as object
+        return { method: "GET", path: "/api/v1/libraries/" + KivoApi.pathEscape(id) + "/authors", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' List library book series: GET /api/v1/libraries/{id}/book-series.
+    ' Query: offset, limit.
+    function listLibraryBookSeries(id as string, query = invalid as object) as object
+        return { method: "GET", path: "/api/v1/libraries/" + KivoApi.pathEscape(id) + "/book-series", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Scan library: POST /api/v1/libraries/{id}/scan.
+    function scanLibrary(id as string, body as object) as object
+        return { method: "POST", path: "/api/v1/libraries/" + KivoApi.pathEscape(id) + "/scan", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Stop library scan: POST /api/v1/libraries/{id}/stop-scan.
+    function stopLibraryScan(id as string) as object
+        return { method: "POST", path: "/api/v1/libraries/" + KivoApi.pathEscape(id) + "/stop-scan", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Refresh library metadata: POST /api/v1/libraries/{id}/refresh-metadata.
+    function refreshLibraryMetadata(id as string) as object
+        return { method: "POST", path: "/api/v1/libraries/" + KivoApi.pathEscape(id) + "/refresh-metadata", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Get Home rows: GET /api/v1/home.
+    ' Query: kind.
+    function getHome(query = invalid as object) as object
+        return { method: "GET", path: "/api/v1/home", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' List Home rows: GET /api/v1/home/rows.
+    function listHomeRows() as object
+        return { method: "GET", path: "/api/v1/home/rows", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Change the Home layout: PATCH /api/v1/home/rows.
+    function updateHomeRows(body as object) as object
+        return { method: "PATCH", path: "/api/v1/home/rows", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Reset the Home layout: POST /api/v1/home/rows/reset.
+    function resetHomeRows() as object
+        return { method: "POST", path: "/api/v1/home/rows/reset", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' List the user's lists: GET /api/v1/lists.
+    ' Query: counts.
+    function listLists(query = invalid as object) as object
+        return { method: "GET", path: "/api/v1/lists", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Create a list: POST /api/v1/lists.
+    function createList(body as object) as object
+        return { method: "POST", path: "/api/v1/lists", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Get a list: GET /api/v1/lists/{id}.
+    function getList(id as string) as object
+        return { method: "GET", path: "/api/v1/lists/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Update a list: PATCH /api/v1/lists/{id}.
+    function updateList(id as string, body as object) as object
+        return { method: "PATCH", path: "/api/v1/lists/" + KivoApi.pathEscape(id), query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Delete a list: DELETE /api/v1/lists/{id}.
+    function deleteList(id as string) as object
+        return { method: "DELETE", path: "/api/v1/lists/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' List a list's works: GET /api/v1/lists/{id}/works.
+    ' Query: kind, sort, offset, limit.
+    function listListWorks(id as string, query = invalid as object) as object
+        return { method: "GET", path: "/api/v1/lists/" + KivoApi.pathEscape(id) + "/works", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Add a work to a list: POST /api/v1/lists/{id}/works.
+    function addListWork(id as string, body as object) as object
+        return { method: "POST", path: "/api/v1/lists/" + KivoApi.pathEscape(id) + "/works", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Move works in a list's custom order: POST /api/v1/lists/{id}/move.
+    function moveListWorks(id as string, body as object) as object
+        return { method: "POST", path: "/api/v1/lists/" + KivoApi.pathEscape(id) + "/move", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Remove a work from a list: DELETE /api/v1/lists/{id}/works/{workId}.
+    function removeListWork(id as string, workId as string) as object
+        return { method: "DELETE", path: "/api/v1/lists/" + KivoApi.pathEscape(id) + "/works/" + KivoApi.pathEscape(workId), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Update books: PATCH /api/v1/works.
+    function updateWorks(body as object) as object
+        return { method: "PATCH", path: "/api/v1/works", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Run a work query: POST /api/v1/works/query.
+    function queryWorks(body as object) as object
+        return { method: "POST", path: "/api/v1/works/query", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' List the fields rules can use: GET /api/v1/work-fields.
+    function listWorkFields() as object
+        return { method: "GET", path: "/api/v1/work-fields", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' List a field's values: GET /api/v1/work-fields/{field}/values.
+    ' Query: q, library, ids.
+    function listWorkFieldValues(field as string, query = invalid as object) as object
+        return { method: "GET", path: "/api/v1/work-fields/" + KivoApi.pathEscape(field) + "/values", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Get work: GET /api/v1/works/{id}.
+    function getWork(id as string) as object
+        return { method: "GET", path: "/api/v1/works/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Update work: PATCH /api/v1/works/{id}.
+    function updateWork(id as string, body as object) as object
+        return { method: "PATCH", path: "/api/v1/works/" + KivoApi.pathEscape(id), query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' List seasons or episodes: GET /api/v1/works/{id}/children.
+    function listWorkChildren(id as string) as object
+        return { method: "GET", path: "/api/v1/works/" + KivoApi.pathEscape(id) + "/children", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Update user state: PATCH /api/v1/works/{id}/user-state.
+    function updateWorkUserState(id as string, body as object) as object
+        return { method: "PATCH", path: "/api/v1/works/" + KivoApi.pathEscape(id) + "/user-state", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Choose tracks for a series: PATCH /api/v1/works/{id}/user-state/tracks.
+    function updateWorkTracks(id as string, body as object) as object
+        return { method: "PATCH", path: "/api/v1/works/" + KivoApi.pathEscape(id) + "/user-state/tracks", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Remove from Continue Watching: POST /api/v1/works/{id}/user-state/remove-from-continue.
+    function removeFromContinue(id as string) as object
+        return { method: "POST", path: "/api/v1/works/" + KivoApi.pathEscape(id) + "/user-state/remove-from-continue", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Search matches: GET /api/v1/works/{id}/matches.
+    ' Query: query, year, author, provider.
+    function listWorkMatches(id as string, query = invalid as object) as object
+        return { method: "GET", path: "/api/v1/works/" + KivoApi.pathEscape(id) + "/matches", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Match work: POST /api/v1/works/{id}/match.
+    function matchWork(id as string, body as object) as object
+        return { method: "POST", path: "/api/v1/works/" + KivoApi.pathEscape(id) + "/match", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Unmatch work: POST /api/v1/works/{id}/unmatch.
+    function unmatchWork(id as string) as object
+        return { method: "POST", path: "/api/v1/works/" + KivoApi.pathEscape(id) + "/unmatch", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Refresh work metadata: POST /api/v1/works/{id}/refresh-metadata.
+    function refreshWorkMetadata(id as string) as object
+        return { method: "POST", path: "/api/v1/works/" + KivoApi.pathEscape(id) + "/refresh-metadata", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' List artwork: GET /api/v1/works/{id}/artwork.
+    ' Query: type.
+    function listWorkArtwork(id as string, query = invalid as object) as object
+        return { method: "GET", path: "/api/v1/works/" + KivoApi.pathEscape(id) + "/artwork", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Upload artwork: POST /api/v1/works/{id}/artwork.
+    function uploadWorkArtwork(id as string, body as object) as object
+        return { method: "POST", path: "/api/v1/works/" + KivoApi.pathEscape(id) + "/artwork", query: invalid, body: body, contentType: "multipart/form-data", auth: true }
+    end function
+
+    ' Select artwork: POST /api/v1/works/{id}/artwork/{artworkId}/select.
+    function selectWorkArtwork(id as string, artworkId as string) as object
+        return { method: "POST", path: "/api/v1/works/" + KivoApi.pathEscape(id) + "/artwork/" + KivoApi.pathEscape(artworkId) + "/select", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Get collection: GET /api/v1/collections/{id}.
+    function getCollection(id as string) as object
+        return { method: "GET", path: "/api/v1/collections/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' List unmatched works: GET /api/v1/unmatched-works.
+    ' Query: after, limit.
+    function listUnmatchedWorks(query = invalid as object) as object
+        return { method: "GET", path: "/api/v1/unmatched-works", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Get person: GET /api/v1/people/{id}.
+    function getPerson(id as string) as object
+        return { method: "GET", path: "/api/v1/people/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Rename person: PATCH /api/v1/people/{id}.
+    function updatePerson(id as string, body as object) as object
+        return { method: "PATCH", path: "/api/v1/people/" + KivoApi.pathEscape(id), query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Get book series: GET /api/v1/book-series/{id}.
+    function getBookSeries(id as string) as object
+        return { method: "GET", path: "/api/v1/book-series/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Rename book series: PATCH /api/v1/book-series/{id}.
+    function updateBookSeries(id as string, body as object) as object
+        return { method: "PATCH", path: "/api/v1/book-series/" + KivoApi.pathEscape(id), query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Search works: GET /api/v1/search.
+    ' Query: q, limit.
+    function searchWorks(query = invalid as object) as object
+        return { method: "GET", path: "/api/v1/search", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' List work files: GET /api/v1/works/{id}/files.
+    function listWorkFiles(id as string) as object
+        return { method: "GET", path: "/api/v1/works/" + KivoApi.pathEscape(id) + "/files", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' List missing files: GET /api/v1/files.
+    ' Query: status, libraryId, after, limit.
+    function listFiles(query = invalid as object) as object
+        return { method: "GET", path: "/api/v1/files", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Delete missing files: DELETE /api/v1/files.
+    ' Query: status.
+    function deleteMissingFiles(query = invalid as object) as object
+        return { method: "DELETE", path: "/api/v1/files", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Delete missing file: DELETE /api/v1/files/{id}.
+    function deleteFile(id as string) as object
+        return { method: "DELETE", path: "/api/v1/files/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Search subtitles: GET /api/v1/files/{id}/subtitle-results.
+    ' Query: language.
+    function listFileSubtitleResults(id as string, query = invalid as object) as object
+        return { method: "GET", path: "/api/v1/files/" + KivoApi.pathEscape(id) + "/subtitle-results", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Add subtitle: POST /api/v1/files/{id}/subtitles.
+    function addFileSubtitle(id as string, body as object) as object
+        return { method: "POST", path: "/api/v1/files/" + KivoApi.pathEscape(id) + "/subtitles", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' List tasks: GET /api/v1/tasks.
+    function listTasks() as object
+        return { method: "GET", path: "/api/v1/tasks", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Run task: POST /api/v1/tasks/{task}/run.
+    function runTask(task as string) as object
+        return { method: "POST", path: "/api/v1/tasks/" + KivoApi.pathEscape(task) + "/run", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Stop task: POST /api/v1/tasks/{task}/stop.
+    function stopTask(task as string) as object
+        return { method: "POST", path: "/api/v1/tasks/" + KivoApi.pathEscape(task) + "/stop", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' List task failures: GET /api/v1/tasks/{task}/failures.
+    function listTaskFailures(task as string) as object
+        return { method: "GET", path: "/api/v1/tasks/" + KivoApi.pathEscape(task) + "/failures", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Retry failed items: POST /api/v1/tasks/{task}/retry.
+    function retryTask(task as string, body as object) as object
+        return { method: "POST", path: "/api/v1/tasks/" + KivoApi.pathEscape(task) + "/retry", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' List activity: GET /api/v1/activity.
+    ' Query: group, after, limit.
+    function listActivity(query = invalid as object) as object
+        return { method: "GET", path: "/api/v1/activity", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' List problems: GET /api/v1/problems.
+    function listProblems() as object
+        return { method: "GET", path: "/api/v1/problems", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Dismiss problem: DELETE /api/v1/problems/{id}.
+    function dismissProblem(id as string) as object
+        return { method: "DELETE", path: "/api/v1/problems/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' List own watch history: GET /api/v1/users/me/play-events.
+    ' Query: after, limit.
+    function listCurrentUserPlayEvents(query = invalid as object) as object
+        return { method: "GET", path: "/api/v1/users/me/play-events", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' List watch history: GET /api/v1/play-events.
+    ' Query: userId, after, limit.
+    function listPlayEvents(query = invalid as object) as object
+        return { method: "GET", path: "/api/v1/play-events", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' List plays: GET /api/v1/plays.
+    function listPlays() as object
+        return { method: "GET", path: "/api/v1/plays", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Start play: POST /api/v1/plays.
+    function startPlay(body as object) as object
+        return { method: "POST", path: "/api/v1/plays", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Get play: GET /api/v1/plays/{id}.
+    function getPlay(id as string) as object
+        return { method: "GET", path: "/api/v1/plays/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Send play heartbeat: PATCH /api/v1/plays/{id}.
+    function updatePlay(id as string, body as object) as object
+        return { method: "PATCH", path: "/api/v1/plays/" + KivoApi.pathEscape(id), query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Stop play: POST /api/v1/plays/{id}/stop.
+    function stopPlay(id as string, body as object) as object
+        return { method: "POST", path: "/api/v1/plays/" + KivoApi.pathEscape(id) + "/stop", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Retry play as transcode: POST /api/v1/plays/{id}/fallback.
+    function fallbackPlay(id as string, body as object) as object
+        return { method: "POST", path: "/api/v1/plays/" + KivoApi.pathEscape(id) + "/fallback", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Get bandwidth test: GET /api/v1/bandwidth-test.
+    ' Query: size.
+    function getBandwidthTest(query = invalid as object) as object
+        return { method: "GET", path: "/api/v1/bandwidth-test", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Get HLS playlist or segment: GET /api/v1/plays/{id}/hls/{name}.
+    function getPlayHls(id as string, name as string) as object
+        return { method: "GET", path: "/api/v1/plays/" + KivoApi.pathEscape(id) + "/hls/" + KivoApi.pathEscape(name), query: invalid, body: invalid, contentType: invalid, auth: false }
+    end function
+
+    ' Get play file: GET /api/v1/plays/{id}/files/{part}.
+    function getPlayFile(id as string, part as string) as object
+        return { method: "GET", path: "/api/v1/plays/" + KivoApi.pathEscape(id) + "/files/" + KivoApi.pathEscape(part), query: invalid, body: invalid, contentType: invalid, auth: false }
+    end function
+
+    ' Get play subtitle: GET /api/v1/plays/{id}/subtitles/{name}.
+    function getPlaySubtitle(id as string, name as string) as object
+        return { method: "GET", path: "/api/v1/plays/" + KivoApi.pathEscape(id) + "/subtitles/" + KivoApi.pathEscape(name), query: invalid, body: invalid, contentType: invalid, auth: false }
+    end function
+
+    ' Get preview thumbnails: GET /api/v1/plays/{id}/previews/{name}.
+    function getPlayPreview(id as string, name as string) as object
+        return { method: "GET", path: "/api/v1/plays/" + KivoApi.pathEscape(id) + "/previews/" + KivoApi.pathEscape(name), query: invalid, body: invalid, contentType: invalid, auth: false }
+    end function
+
+    ' Check downloads: POST /api/v1/downloads/check.
+    function checkDownloads(body as object) as object
+        return { method: "POST", path: "/api/v1/downloads/check", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Estimate downloads: POST /api/v1/downloads/estimate.
+    function estimateDownloads(body as object) as object
+        return { method: "POST", path: "/api/v1/downloads/estimate", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' List downloads: GET /api/v1/downloads.
+    function listDownloads() as object
+        return { method: "GET", path: "/api/v1/downloads", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Create download: POST /api/v1/downloads.
+    function createDownload(body as object) as object
+        return { method: "POST", path: "/api/v1/downloads", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Get download: GET /api/v1/downloads/{id}.
+    function getDownload(id as string) as object
+        return { method: "GET", path: "/api/v1/downloads/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Delete download: DELETE /api/v1/downloads/{id}.
+    function deleteDownload(id as string) as object
+        return { method: "DELETE", path: "/api/v1/downloads/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Retry download: POST /api/v1/downloads/{id}/retry.
+    function retryDownload(id as string) as object
+        return { method: "POST", path: "/api/v1/downloads/" + KivoApi.pathEscape(id) + "/retry", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Get download file: GET /api/v1/downloads/{id}/files/{part}.
+    function getDownloadFile(id as string, part as string) as object
+        return { method: "GET", path: "/api/v1/downloads/" + KivoApi.pathEscape(id) + "/files/" + KivoApi.pathEscape(part), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Get download subtitle: GET /api/v1/downloads/{id}/subtitles/{name}.
+    function getDownloadSubtitle(id as string, name as string) as object
+        return { method: "GET", path: "/api/v1/downloads/" + KivoApi.pathEscape(id) + "/subtitles/" + KivoApi.pathEscape(name), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Get font: GET /api/v1/fonts/{sha256}.
+    function getFont(sha256 as string) as object
+        return { method: "GET", path: "/api/v1/fonts/" + KivoApi.pathEscape(sha256), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Get image: GET /api/v1/images/{id}.
+    ' Query: width.
+    function getImage(id as string, query = invalid as object) as object
+        return { method: "GET", path: "/api/v1/images/" + KivoApi.pathEscape(id), query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Get metrics: GET /api/v1/metrics.
+    function getMetrics() as object
+        return { method: "GET", path: "/api/v1/metrics", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' List log lines: GET /api/v1/logs.
+    ' Query: level, q, after, limit.
+    function listLogs(query = invalid as object) as object
+        return { method: "GET", path: "/api/v1/logs", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Download log file: GET /api/v1/logs/file.
+    function getLogFile() as object
+        return { method: "GET", path: "/api/v1/logs/file", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Report client error: POST /api/v1/client-errors.
+    function reportClientError(body as object) as object
+        return { method: "POST", path: "/api/v1/client-errors", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Open event stream: GET /api/v1/events.
+    function openEventStream() as object
+        return { method: "GET", path: "/api/v1/events", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    enum ProblemCode
+        invalidRequest = "invalidRequest"
+        unauthenticated = "unauthenticated"
+        invalidCredentials = "invalidCredentials"
+        wrongPassword = "wrongPassword"
+        forbidden = "forbidden"
+        crossOrigin = "crossOrigin"
+        denied = "denied"
+        notFound = "notFound"
+        expired = "expired"
+        notReady = "notReady"
+        rangeNotSatisfiable = "rangeNotSatisfiable"
+        conflict = "conflict"
+        alreadySetUp = "alreadySetUp"
+        nameTaken = "nameTaken"
+        lastAdmin = "lastAdmin"
+        ownUser = "ownUser"
+        fileStillPresent = "fileStillPresent"
+        kindMismatch = "kindMismatch"
+        notStoppable = "notStoppable"
+        streamLimit = "streamLimit"
+        notPlayable = "notPlayable"
+        noFallback = "noFallback"
+        playEnded = "playEnded"
+        throttled = "throttled"
+        rateLimited = "rateLimited"
+        providerUnavailable = "providerUnavailable"
+        notConfigured = "notConfigured"
+        quotaUsed = "quotaUsed"
+        transcodeBusy = "transcodeBusy"
+        transcodeFailed = "transcodeFailed"
+        internal = "internal"
+    end enum
+
+    enum FieldErrorCode
+        required = "required"
+        _invalid = "invalid"
+        tooShort = "tooShort"
+        tooLong = "tooLong"
+        tooLarge = "tooLarge"
+        unsupported = "unsupported"
+        outOfRange = "outOfRange"
+        unknownEpisodeGroup = "unknownEpisodeGroup"
+        notABook = "notABook"
+    end enum
+
+    enum HealthStatus
+        ok = "ok"
+        starting = "starting"
+        stopping = "stopping"
+    end enum
+
+    enum AcceleratorBackend
+        vaapi = "vaapi"
+        qsv = "qsv"
+        nvenc = "nvenc"
+        videotoolbox = "videotoolbox"
+    end enum
+
+    enum ProcessedOn
+        accelerator = "accelerator"
+        cpu = "cpu"
+    end enum
+
+    enum EncoderCodec
+        h264 = "h264"
+        hevc = "hevc"
+    end enum
+
+    enum AcceleratorProblemReason
+        noDeviceNode = "noDeviceNode"
+        noPermission = "noPermission"
+        noDriver = "noDriver"
+        testFailed = "testFailed"
+    end enum
+
+    enum SessionKind
+        browser = "browser"
+        app = "app"
+    end enum
+
+    enum CastReceiverKind
+        web = "web"
+        androidTv = "androidTv"
+    end enum
+
+    enum ClientPlatform
+        androidTv = "androidTv"
+        appleTv = "appleTv"
+        iPhone = "iPhone"
+        iPad = "iPad"
+        androidPhone = "androidPhone"
+        browser = "browser"
+        cast = "cast"
+        tizen = "tizen"
+        webos = "webos"
+        roku = "roku"
+    end enum
+
+    enum SubtitleMode
+        none = "none"
+        forced = "forced"
+        smart = "smart"
+        always = "always"
+    end enum
+
+    enum LibraryKind
+        movies = "movies"
+        shows = "shows"
+        videos = "videos"
+        audiobooks = "audiobooks"
+    end enum
+
+    enum ProcessingSchedule
+        never = "never"
+        nightly = "nightly"
+        nightlyAndAdded = "nightlyAndAdded"
+    end enum
+
+    enum LibraryScanState
+        idle = "idle"
+        scanning = "scanning"
+        unreachable = "unreachable"
+    end enum
+
+    enum ScanStep
+        walk = "walk"
+        probe = "probe"
+        identify = "identify"
+    end enum
+
+    enum RuleGroupMatch
+        all = "all"
+        any = "any"
+    end enum
+
+    enum SortDirection
+        asc = "asc"
+        desc = "desc"
+    end enum
+
+    enum WorkFieldType
+        choice = "choice"
+        set = "set"
+        person = "person"
+        number = "number"
+        date = "date"
+        text = "text"
+    end enum
+
+    enum WorkFieldValueSource
+        inline = "inline"
+        search = "search"
+    end enum
+
+    enum ListKind
+        manual = "manual"
+        smart = "smart"
+    end enum
+
+    enum ListSort
+        custom = "custom"
+        title = "title"
+        releaseDate = "releaseDate"
+        rating = "rating"
+        dateAdded = "dateAdded"
+    end enum
+
+    enum HomeRowKind
+        continueWatching = "continueWatching"
+        continueListening = "continueListening"
+        recentlyAdded = "recentlyAdded"
+        list = "list"
+    end enum
+
+    enum WorkKind
+        movie = "movie"
+        series = "series"
+        season = "season"
+        episode = "episode"
+        extra = "extra"
+        video = "video"
+        book = "book"
+    end enum
+
+    enum MatchState
+        matched = "matched"
+        identifying = "identifying"
+        unmatched = "unmatched"
+    end enum
+
+    enum ExtraType
+        trailer = "trailer"
+        featurette = "featurette"
+        behindTheScenes = "behindTheScenes"
+        deletedScene = "deletedScene"
+        interview = "interview"
+        scene = "scene"
+        short = "short"
+        other = "other"
+    end enum
+
+    enum CollectionSource
+        provider = "provider"
+        folder = "folder"
+    end enum
+
+    enum ExternalProvider
+        tmdb = "tmdb"
+        tvdb = "tvdb"
+        imdb = "imdb"
+        anidb = "anidb"
+        audible = "audible"
+    end enum
+
+    enum TrackType
+        video = "video"
+        audio = "audio"
+        subtitle = "subtitle"
+    end enum
+
+    enum Resolution
+        _4k = "4k"
+        _1080p = "1080p"
+        _720p = "720p"
+        sd = "sd"
+    end enum
+
+    enum HdrFormat
+        hdr10 = "hdr10"
+        hdr10plus = "hdr10plus"
+        hlg = "hlg"
+        dolbyVision = "dolbyVision"
+    end enum
+
+    enum AudioProfile
+        atmos = "atmos"
+        dtsX = "dtsX"
+        dtsHdMa = "dtsHdMa"
+        dtsHdHra = "dtsHdHra"
+    end enum
+
+    enum SubtitleSource
+        embedded = "embedded"
+        external = "external"
+        downloaded = "downloaded"
+    end enum
+
+    enum MarkerKind
+        intro = "intro"
+        recap = "recap"
+        credits = "credits"
+    end enum
+
+    enum MarkerSource
+        chapter = "chapter"
+        fingerprint = "fingerprint"
+        manual = "manual"
+    end enum
+
+    enum MatchKind
+        movie = "movie"
+        series = "series"
+        book = "book"
+    end enum
+
+    enum ArtworkType
+        poster = "poster"
+        backdrop = "backdrop"
+        logo = "logo"
+        still = "still"
+    end enum
+
+    enum ArtworkSource
+        provider = "provider"
+        local = "local"
+        upload = "upload"
+    end enum
+
+    enum ArtworkProvider
+        tmdb = "tmdb"
+    end enum
+
+    enum MediaFileStatus
+        present = "present"
+        gone = "gone"
+    end enum
+
+    enum TaskName
+        scan_libraries = "scan-libraries"
+        prune_gone_files = "prune-gone-files"
+        refresh_metadata = "refresh-metadata"
+        prune_provider_cache = "prune-provider-cache"
+        make_previews = "make-previews"
+        prune_previews = "prune-previews"
+        find_markers = "find-markers"
+        prune_markers = "prune-markers"
+        extract_subtitles = "extract-subtitles"
+        prune_subtitles = "prune-subtitles"
+        prepare_downloads = "prepare-downloads"
+        prune_downloads = "prune-downloads"
+        library_changes = "library-changes"
+        prune_activity = "prune-activity"
+        make_backup = "make-backup"
+        optimize_database = "optimize-database"
+    end enum
+
+    enum TaskSection
+        onDemand = "onDemand"
+        library = "library"
+        maintenance = "maintenance"
+    end enum
+
+    enum TaskStep
+        walk = "walk"
+        probe = "probe"
+        identify = "identify"
+        extractSubtitles = "extractSubtitles"
+        convert = "convert"
+    end enum
+
+    enum ProblemSeverity
+        info = "info"
+        warning = "warning"
+        error = "error"
+    end enum
+
+    enum ClientErrorKind
+        error = "error"
+        unhandledRejection = "unhandledRejection"
+        render = "render"
+        chunk = "chunk"
+    end enum
+
+    enum LogLevel
+        debug = "debug"
+        info = "info"
+        warning = "warning"
+        error = "error"
+    end enum
+
+    enum CapabilityDelivery
+        file = "file"
+        stream = "stream"
+        external = "external"
+    end enum
+
+    enum QualityMode
+        auto = "auto"
+        original = "original"
+        limit = "limit"
+    end enum
+
+    enum PlayDelivery
+        file = "file"
+        stream = "stream"
+    end enum
+
+    enum TrackDelivery
+        file = "file"
+        stream = "stream"
+        external = "external"
+        burn = "burn"
+        none = "none"
+    end enum
+
+    enum TrackReason
+        containerUnsupported = "containerUnsupported"
+        videoCodecUnsupported = "videoCodecUnsupported"
+        videoCodecTagUnsupported = "videoCodecTagUnsupported"
+        videoProfileUnsupported = "videoProfileUnsupported"
+        videoLevelUnsupported = "videoLevelUnsupported"
+        videoBitDepthUnsupported = "videoBitDepthUnsupported"
+        videoResolutionUnsupported = "videoResolutionUnsupported"
+        videoFrameRateUnsupported = "videoFrameRateUnsupported"
+        videoBitrateUnsupported = "videoBitrateUnsupported"
+        videoRefFramesUnsupported = "videoRefFramesUnsupported"
+        videoInterlacedUnsupported = "videoInterlacedUnsupported"
+        videoAnamorphicUnsupported = "videoAnamorphicUnsupported"
+        videoHdrUnsupported = "videoHdrUnsupported"
+        audioCodecUnsupported = "audioCodecUnsupported"
+        audioChannelsUnsupported = "audioChannelsUnsupported"
+        audioSampleRateUnsupported = "audioSampleRateUnsupported"
+        audioBitDepthUnsupported = "audioBitDepthUnsupported"
+        audioProfileUnsupported = "audioProfileUnsupported"
+        subtitleCodecUnsupported = "subtitleCodecUnsupported"
+        trackSelectionUnsupported = "trackSelectionUnsupported"
+        streamCodecUnsupported = "streamCodecUnsupported"
+        directPlayDisabled = "directPlayDisabled"
+        burnSubtitlesEnabled = "burnSubtitlesEnabled"
+        clientQualityLimit = "clientQualityLimit"
+        remoteQualityLimit = "remoteQualityLimit"
+        bandwidthLimit = "bandwidthLimit"
+        dialogueBoost = "dialogueBoost"
+        keyframeIndexMissing = "keyframeIndexMissing"
+        subtitlePreparing = "subtitlePreparing"
+        fallback = "fallback"
+        downloadQuality = "downloadQuality"
+    end enum
+
+    enum RefusalReason
+        noTracks = "noTracks"
+        fileUnplayable = "fileUnplayable"
+        subtitleUnplayable = "subtitleUnplayable"
+        keyframeIndexMissing = "keyframeIndexMissing"
+        transcodeFailed = "transcodeFailed"
+        transcodeLimit = "transcodeLimit"
+        storageFull = "storageFull"
+        downloadsNotAllowed = "downloadsNotAllowed"
+        sourceUnreadable = "sourceUnreadable"
+        subtitlesUnavailable = "subtitlesUnavailable"
+        planUnreadable = "planUnreadable"
+    end enum
+
+    enum DownloadQuality
+        original = "original"
+        high = "high"
+        standard = "standard"
+    end enum
+
+    enum DownloadState
+        queued = "queued"
+        preparing = "preparing"
+        ready = "ready"
+        failed = "failed"
+    end enum
+
+    enum DownloadDelivery
+        file = "file"
+        conversion = "conversion"
+    end enum
+
+    enum PlayState
+        playing = "playing"
+        paused = "paused"
+        buffering = "buffering"
+        ended = "ended"
+    end enum
+
+    enum PlayerErrorCode
+        mediaDecodeError = "mediaDecodeError"
+        mediaSourceError = "mediaSourceError"
+        networkError = "networkError"
+        unsupported = "unsupported"
+    end enum
+
+    enum TranscodeState
+        running = "running"
+        paused = "paused"
+        done = "done"
+        failed = "failed"
+    end enum
+
+    enum ActivityGroup
+        plays = "plays"
+        added = "added"
+        signIns = "signIns"
+        server = "server"
+    end enum
+
+    enum ActivityKind
+        playStarted = "playStarted"
+        playFinished = "playFinished"
+        added = "added"
+        signedIn = "signedIn"
+        signInFailed = "signInFailed"
+        userJoined = "userJoined"
+        passwordChanged = "passwordChanged"
+        taskEnded = "taskEnded"
+        problemRaised = "problemRaised"
+    end enum
+
+    enum EventKind
+        workChanged = "workChanged"
+        libraryChanged = "libraryChanged"
+        userStateChanged = "userStateChanged"
+        homeChanged = "homeChanged"
+        listsChanged = "listsChanged"
+        playEnded = "playEnded"
+        downloadsChanged = "downloadsChanged"
+        tasksChanged = "tasksChanged"
+        playsChanged = "playsChanged"
+        problemsChanged = "problemsChanged"
+        logsChanged = "logsChanged"
+        activityChanged = "activityChanged"
+    end enum
+end namespace

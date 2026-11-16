@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Plays a work in the Video node, telling the server where it is every
+     ten seconds and when it stops. * shows how it plays. -->
+<component name="PlayerScreen" extends="KivoScreen">
+  <children>
+    <Video id="video" width="1920" height="1080" enableUI="true" />
+    <Rectangle id="infoGround" translation="[64, 48]" width="820" height="200" visible="false" />
+    <Label id="info" translation="[96, 72]" width="760" wrap="true" visible="false" />
+    <Label id="status" translation="[160, 480]" width="1600" wrap="true" horizAlign="center" />
+    <Timer id="heartbeat" duration="10" repeat="true" />
+  </children>
+</component>

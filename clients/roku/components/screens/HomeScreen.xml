@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Home: the user's rows, as the server lists them. -->
+<component name="HomeScreen" extends="KivoScreen">
+  <children>
+    <Label id="heading" translation="[96, 48]" text="Home" />
+    <Label id="status" translation="[96, 160]" width="1700" wrap="true" />
+    <RowList id="rows" translation="[96, 130]" itemComponentName="PosterItem"
+      itemSize="[1824, 470]" numRows="3" rowItemSpacing="[[24, 0]]" itemSpacing="[0, 40]"
+      showRowLabel="[true]" rowLabelOffset="[[0, 12]]" rowFocusAnimationStyle="floatingFocus"
+      vertFocusAnimationStyle="fixedFocusWrap" />
+  </children>
+</component>
