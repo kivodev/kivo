@@ -9,7 +9,7 @@ The Roku app: a SceneGraph app in BrighterScript, compiled to the zip a Roku sid
 
 The Android TV app is the reference this app is built against, screen by screen; `PARITY.md` lists what it does on each screen and what this app does instead, and any change to a TV screen updates it.
 
-It finds the server at a typed address, HTTPS first, as the other apps do, and signs in with a code to approve on a signed-in device, or with a password. Books aren't on the TV, as on Android TV: audiobook libraries, book rows and books in lists, search and person pages are left out. Then:
+It finds the server at a typed address, HTTPS first, as the other apps do, and signs in with a code to approve on a signed-in device, shown with a QR code of its link that the server draws (`getDeviceCodeQr`), or with a password. Books aren't on the TV, as on Android TV: audiobook libraries, book rows and books in lists, search and person pages are left out. Then:
 
 - Home: the rows the TV shows, Continue Watching and a videos library's landscape, a list's ending in See all. Left from a row's first card opens the menu in the rail's place (Search, Home, Lists, the pinned libraries, More libraries, Settings).
 - `*` on any card opens its menu, as a long press does on Android TV: Play or Resume, Play from beginning, Mark as watched, Remove from the open list or from Continue Watching, Go to series and Go to library.
@@ -43,6 +43,6 @@ The Rooibos tests in `tests/` hold the track words to the shared vectors (`share
 
 ## Not done yet
 
-`PARITY.md` has each one with its reason. In short: finding servers on the network, the QR code on the sign-in screen, subtitle search, playback speed, YouTube trailers, live events, and loading skeletons.
+`PARITY.md` has each one with its reason. In short: finding servers on the network, subtitle search, playback speed, YouTube trailers, live events, and loading skeletons.
 
-None of it has run on a Roku yet. The first sideload should check: images (the server serves WebP), HLS with fMP4 segments, a version in parts, Back from the player, subtitle and audio switches inside an HLS stream, Skip and up next, BIF previews while seeking, a deep link, the exit dialog, the card badges' sizes, the keyboard dialogs of password sign-in and Link a device, and the settings' two panes.
+None of it has run on a Roku yet. The first sideload should check: images (the server serves WebP), HLS with fMP4 segments, a version in parts, Back from the player, subtitle and audio switches inside an HLS stream, Skip and up next, BIF previews while seeking, a deep link, the exit dialog, the card badges' sizes, the keyboard dialogs of password sign-in and Link a device, the sign-in QR code scanned from a phone across the room, and the settings' two panes.

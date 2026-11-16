@@ -19,7 +19,7 @@ Books aren't on the TV: Android TV leaves out audiobook libraries, book rows on 
 | "Server address", "Such as 192.168.1.20, nas:8484 or https://kivo.example.com", "Connecting…", "No server found at that address." | The same words | a | |
 | A typed address tries HTTPS first, then HTTP | The same | same | Ported from the core. |
 | A server the app doesn't work with says which needs an update, with Try again and Change server | Says the server needs a newer Kivo on this Roku | b | One line rather than a screen. |
-| The sign-in code in a panel with a QR code of its link, "Sign in to {server}", the server's name under the code | The code, the link written out, "Sign in to {server}" and the server's name | c | No QR code: a QR encoder on the Roku couldn't be checked against a reference here. |
+| The sign-in code in a panel with a QR code of its link, "Sign in to {server}", the server's name under the code | The code with a QR code of its link at the right, drawn by the server, "Sign in to {server}" and the server's name; the link is written out instead if the QR code doesn't load | a | The Roku can't draw a QR code, so the server draws it as a PNG for a waiting code. |
 | A code that expires is replaced; one declined says "Sign-in was declined." over its replacement | The same | a | |
 | "Couldn't get a sign-in code." with Try again | The same | a | |
 | Sign in with password: the username, Next, then the password naming the username; Back from the password returns to the username | The same, in Roku's keyboard dialogs | a | Roku keyboards (b). |

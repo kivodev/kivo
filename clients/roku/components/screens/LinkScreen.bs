@@ -15,6 +15,9 @@ sub init()
     KivoUi.style(m.status, KivoTokens.TextSize.base, KivoTokens.Color.textMuted)
     KivoUi.style(m.top.FindNode("options"), KivoTokens.TextSize.sm, KivoTokens.Color.textSubtle)
     m.poll.ObserveField("fire", "onPoll")
+    m.qr = m.top.FindNode("qr")
+    m.qr.ObserveField("loadStatus", "onQrLoaded")
+    m.top.FindNode("qrGround").color = KivoTokens.Color.surfaceRaised
     m.server = m.top.FindNode("server")
     KivoUi.style(m.server, KivoTokens.TextSize.base, KivoTokens.Color.textMuted)
     m.server.text = m.global.server
@@ -46,6 +49,7 @@ end sub
 sub newCode()
     m.poll.control = "stop"
     m.secret = ""
+    showQr("")
     name = CreateObject("roDeviceInfo").GetFriendlyName()
     if name = "" then name = "Roku"
     m.task = Kivo.send(KivoApi.createDeviceCode({ name: name, kind: KivoApi.SessionKind.app, clientId: m.global.clientId }), "onCode")
@@ -66,6 +70,7 @@ sub onCode(event as object)
     m.secret = code.secret
     m.code.text = KivoUi.groupedCode(code.code)
     m.link.text = code.linkUrl
+    showQr(code.code)
     m.status.color = KivoTokens.Color.textMuted
     m.status.text = ""
     if m.declined
@@ -76,6 +81,26 @@ sub onCode(event as object)
     if interval = invalid or interval < 1 then interval = 5
     m.poll.duration = interval
     m.poll.control = "start"
+end sub
+
+' Shows the QR code of [code]'s link, or the empty panel while there's
+' no code. The link is written out instead when the QR code doesn't load.
+sub showQr(code as string)
+    m.link.visible = false
+    if code = ""
+        m.qr.uri = ""
+        m.qr.visible = false
+        return
+    end if
+    m.qr.visible = true
+    m.qr.uri = KivoApi.getDeviceCodeQrUrl(m.global.server, code)
+end sub
+
+sub onQrLoaded()
+    if m.qr.loadStatus = "failed" and m.qr.uri <> ""
+        m.qr.visible = false
+        m.link.visible = true
+    end if
 end sub
 
 sub onPoll()
