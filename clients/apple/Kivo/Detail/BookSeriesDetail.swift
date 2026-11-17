@@ -3,8 +3,10 @@ import KivoUI
 import SwiftUI
 
 /// A book series' page: its first cover on a stack, its name
-/// and how many books, then the books in series order. The cover and name
-/// show at once where a list read lately showed them.
+/// and how many books, then the books in series order, each with its
+/// "Book 2" over its title and its author only when it isn't the one most
+/// of the books share. The cover and name show at once where a list read
+/// lately showed them.
 struct BookSeriesDetail: View {
     let id: String
     @Environment(ServerModel.self) private var server
@@ -25,8 +27,18 @@ struct BookSeriesDetail: View {
                         } else {
                             LazyVGrid(columns: Self.columns, spacing: Self.rowSpacing) {
                                 if let series {
+                                    let namesAuthors = series.namesAuthors
                                     ForEach(series.items, id: \.id) { book in
-                                        WorkLink(work: book) { WorkCard(book, style: .square, width: Self.cardWidth) }
+                                        WorkLink(work: book) {
+                                            WorkCard(
+                                                book,
+                                                style: .square,
+                                                width: Self.cardWidth,
+                                                overline: series.overline(of: book),
+                                                secondLine: series.authorLine(of: book),
+                                                showsSecondLine: namesAuthors
+                                            )
+                                        }
                                     }
                                 } else {
                                     ForEach(0..<3, id: \.self) { _ in SkeletonCard(style: .square, width: Self.cardWidth) }

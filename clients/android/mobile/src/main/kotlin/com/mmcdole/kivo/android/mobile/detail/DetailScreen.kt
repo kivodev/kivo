@@ -90,6 +90,7 @@ import com.mmcdole.kivo.api.models.WorkKind
 import kotlinx.coroutines.flow.map
 import com.mmcdole.kivo.android.ServerSession
 import com.mmcdole.kivo.android.mobile.R
+import com.mmcdole.kivo.android.mobile.app.BookSeriesRoute
 import com.mmcdole.kivo.android.mobile.app.MobileNav
 import com.mmcdole.kivo.android.mobile.app.PersonRoute
 import com.mmcdole.kivo.android.mobile.app.PlayerRoute
@@ -269,7 +270,7 @@ private fun Backdrop(head: WorkSummary, height: Dp?) {
     }
 }
 
-/** The title, an episode's series over it, and the details line. */
+/** The title, an episode's series or a book's series and place in it over it, and the details line. */
 @Composable
 private fun Hero(head: WorkSummary, work: WorkDetail?, nav: MobileNav) {
     val wide = LocalWide.current
@@ -281,6 +282,11 @@ private fun Hero(head: WorkSummary, work: WorkDetail?, nav: MobileNav) {
     ) {
         head.episode?.let { episode ->
             TextButton(onClick = { nav.openSeries(episode) }) { Text(episode.seriesTitle) }
+        }
+        (head.book ?: work?.book)?.primarySeries()?.let { series ->
+            TextButton(onClick = { nav.open(BookSeriesRoute(series.id)) }) {
+                Text(series.position?.let { stringResource(R.string.mobile_book_series_place, series.name, it) } ?: series.name)
+            }
         }
         Text(
             labelledTitle(head.title, head.movie),

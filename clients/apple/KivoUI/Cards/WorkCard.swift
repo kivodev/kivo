@@ -4,21 +4,39 @@ import SwiftUI
 /// A work's card: the artwork with its corner marks and
 /// progress, then the title and a second line, or one line in a grid.
 /// [mark] is a short mark at the artwork's bottom trailing corner, such as
-/// a trailer's running time.
+/// a trailer's running time. With two lines, [overline] is a small muted
+/// line over the title, such as a book's "Book 2" in its series ("" keeps
+/// its space); [secondLine] says the second line in place of the work's
+/// own ("" keeps it blank), and [showsSecondLine] false leaves it out.
 public struct WorkCard: View {
     private let work: WorkSummary
     private let style: CardStyle
     private let width: CGFloat
     private let caption: CardCaption
     private let mark: String?
+    private let overline: String?
+    private let secondLineText: String?
+    private let showsSecondLine: Bool
     @Environment(\.kivoPalette) private var palette
 
-    public init(_ work: WorkSummary, style: CardStyle? = nil, width: CGFloat, caption: CardCaption = .twoLines, mark: String? = nil) {
+    public init(
+        _ work: WorkSummary,
+        style: CardStyle? = nil,
+        width: CGFloat,
+        caption: CardCaption = .twoLines,
+        mark: String? = nil,
+        overline: String? = nil,
+        secondLine: String? = nil,
+        showsSecondLine: Bool = true
+    ) {
         self.work = work
         self.style = style ?? CardStyle.of(work)
         self.width = width
         self.caption = caption
         self.mark = mark
+        self.overline = overline
+        self.secondLineText = secondLine
+        self.showsSecondLine = showsSecondLine
     }
 
     public var body: some View {
@@ -40,15 +58,23 @@ public struct WorkCard: View {
             switch caption {
             case .twoLines:
                 VStack(alignment: .leading, spacing: 0) {
+                    if let overline {
+                        Text(overline)
+                            .kivoStyle(KivoTokens.TextSize.xs, weight: KivoTokens.Weight.medium)
+                            .foregroundStyle(palette.textMuted)
+                            .lineLimit(1, reservesSpace: true)
+                    }
                     Text(heading)
                         .kivoStyle(KivoTokens.TextSize.sm, weight: KivoTokens.Weight.medium)
                         .foregroundStyle(palette.text)
                         .lineLimit(1)
-                    // Kept when there's no second line, so cards in a row are one height.
-                    Text(secondLine ?? "")
-                        .kivoStyle(KivoTokens.TextSize.xs)
-                        .foregroundStyle(palette.textMuted)
-                        .lineLimit(1, reservesSpace: true)
+                    if showsSecondLine {
+                        // Kept when there's no second line, so cards in a row are one height.
+                        Text(shownSecondLine ?? "")
+                            .kivoStyle(KivoTokens.TextSize.xs)
+                            .foregroundStyle(palette.textMuted)
+                            .lineLimit(1, reservesSpace: true)
+                    }
                 }
                 .frame(width: width, alignment: .leading)
             case .oneLine:
@@ -63,8 +89,8 @@ public struct WorkCard: View {
 
     /// What VoiceOver reads: the title and the second line, and the marks on the artwork.
     private var accessibilityText: String {
-        var parts = [heading]
-        if let line = caption == .oneLine ? work.gridDetail : secondLine { parts.append(line) }
+        var parts = [overline, heading].compactMap { $0 }.filter { !$0.isEmpty }
+        if let line = caption == .oneLine ? work.gridDetail : (showsSecondLine ? shownSecondLine : nil), !line.isEmpty { parts.append(line) }
         if let episode = work.episode { parts.append(Display.app.episodeCode(episode: episode)) }
         if let mark { parts.append(mark) }
         if let badge = work.matchBadge { parts.append(badge) }
@@ -103,6 +129,11 @@ public struct WorkCard: View {
     /// An episode's card is headed by its show, its code on the artwork.
     private var heading: String {
         work.episode?.seriesTitle ?? work.labelledTitle
+    }
+
+    /// The second line as the card says it: the one it was given, else the work's own.
+    private var shownSecondLine: String? {
+        secondLineText ?? secondLine
     }
 
     private var secondLine: String? {
