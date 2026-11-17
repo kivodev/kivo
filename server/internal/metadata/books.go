@@ -312,9 +312,10 @@ func currentASIN(w catalog.Work) string {
 // fillBook fills the gaps in the description from a book's files with the
 // provider's book b. What the files say wins, except for the description.
 //
-// The provider's description replaces the files' description tag, which
-// often labels one file rather than the book. Its publisher and release
-// date fill fields the files leave empty. Its series apply only to a book in no series, and its
+// The provider's description replaces the files' description tag, which in
+// downloaded releases is often missing, wrong or copied between files. Its
+// publisher and release date fill fields the files leave empty. Its series
+// apply only to a book in no series, and its
 // authors and narrators only to a book with none. Authors whose names match
 // the provider's gain the provider's IDs for them. Genres and tags come
 // only from providers, so with no book they are cleared.

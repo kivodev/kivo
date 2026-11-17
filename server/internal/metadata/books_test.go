@@ -226,7 +226,7 @@ func TestBookLocalBeatsProvider(t *testing.T) {
 	}
 }
 
-// A description tag that labels one of a book's files gives way to the
+// A wrong description tag in a book's files gives way to the
 // description of the book Match names, and stays out while Audible is down.
 func TestBookMatchDescriptionBeatsTag(t *testing.T) {
 	e := newEnv(t)
