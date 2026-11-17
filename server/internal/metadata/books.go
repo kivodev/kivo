@@ -110,11 +110,14 @@ func (s *Service) MatchBook(ctx context.Context, work id.ID, asin string) error 
 }
 
 // acceptBook accepts a search result whose running time is within the
-// larger of durationSlack and durationShare of the files' running time. The
-// slack exists because Audible gives running times in whole minutes.
+// larger of durationSlack and durationShare of the files' running time.
+// Audible rounds running times to whole minutes, and releases often pad
+// each chapter file with a few seconds of silence, so a book split into
+// many files runs a few percent long. Abridged and other editions differ
+// by far more.
 const (
 	durationSlack = 3 * time.Minute
-	durationShare = 0.02
+	durationShare = 0.05
 )
 
 // acceptBook picks the search result that is the book. A candidate must

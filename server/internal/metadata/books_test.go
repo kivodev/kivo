@@ -166,7 +166,8 @@ func TestAcceptBook(t *testing.T) {
 	}{
 		{"closest", "The Martian", []string{"Andy Weir"}, 653, "bray"},
 		{"closest of two in the slack", "The Martian", []string{"Andy Weir"}, 662, "wheaton"},
-		{"the slack is 2% of a long book", "The Martian", []string{"Andy Weir"}, 641, "bray"},
+		{"the slack is 5% of a long book", "The Martian", []string{"Andy Weir"}, 622, "bray"},
+		{"just past the slack", "The Martian", []string{"Andy Weir"}, 620, ""},
 		{"too far from either", "The Martian", []string{"Andy Weir"}, 600, ""},
 		{"another author", "The Martian", []string{"Ray Bradbury"}, 653, ""},
 		{"with its subtitle", "The Martian: Classroom Edition", []string{"Andy Weir"}, 664, "wheaton"},
