@@ -3816,10 +3816,6 @@ msgstr "Trailers"
 msgid "Paused"
 msgstr "Paused"
 
-#: src/features/detail/BookDetail.tsx
-msgid "Book {position} of {link}"
-msgstr "Book {position} of {link}"
-
 #: src/features/admin/OverviewScreen.tsx
 msgid "Details"
 msgstr "Details"

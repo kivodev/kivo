@@ -79,8 +79,9 @@ fun Modifier.tapAndHold(onClick: () -> Unit, onLongClick: (() -> Unit)?): Modifi
 /**
  * A work's card: artwork in [shape], [width] wide, with a played check or
  * unplayed count and a progress bar, then its title and, in [captionLines]
- * of two, the line under it. Null [work] is a placeholder while its page
- * is read.
+ * of two, the line under it: [detail] when given ("" keeps it blank), else
+ * the work's own. [overline] is a small line over the title. Null [work]
+ * is a placeholder while its page is read.
  */
 @Composable
 fun WorkCard(
@@ -91,6 +92,8 @@ fun WorkCard(
     onLongClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
     captionLines: Int = 2,
+    overline: String? = null,
+    detail: String? = null,
 ) {
     Column(modifier.width(width)) {
         Box(
@@ -100,7 +103,7 @@ fun WorkCard(
                 .clip(CardCorners)
                 .then(
                     if (work != null) {
-                        val label = cardLabel(work)
+                        val label = cardLabel(work, overline, detail.takeIf { captionLines > 1 })
                         Modifier.tapAndHold(onClick, onLongClick).semantics { contentDescription = label }.testTag("card:${work.title}")
                     } else {
                         Modifier
@@ -115,7 +118,7 @@ fun WorkCard(
                 progressOf(work)?.let { ProgressBar(it, Modifier.align(Alignment.BottomCenter)) }
             }
         }
-        Caption(work?.let(::cardTitle), work?.let(::cardCaption), captionLines)
+        Caption(work?.let(::cardTitle), detail ?: work?.let(::cardCaption), captionLines, overline)
     }
 }
 
@@ -125,11 +128,12 @@ fun WorkCard(
  * watched or a series' unwatched count, and how far in it is.
  */
 @Composable
-private fun cardLabel(work: WorkSummary): String {
+private fun cardLabel(work: WorkSummary, overline: String?, detail: String?): String {
     val unplayed = work.series?.unplayedCount ?: work.season?.unplayedCount
     return listOfNotNull(
+        overline?.takeIf { it.isNotEmpty() },
         cardTitle(work),
-        cardCaption(work),
+        (detail ?: cardCaption(work))?.takeIf { it.isNotEmpty() },
         when {
             unplayed != null && unplayed > 0 -> pluralStringResource(R.plurals.mobile_n_unwatched, unplayed, unplayed)
             work.userState?.played == true || unplayed == 0 -> stringResource(R.string.mobile_watched)
@@ -139,12 +143,27 @@ private fun cardLabel(work: WorkSummary): String {
     ).joinToString(", ")
 }
 
-/** A card's caption under its artwork: the title, and the line under it, which keeps its room. TalkBack reads them with the artwork. */
+/**
+ * A card's caption under its artwork: the title, and the line under it,
+ * which keeps its room. [overline] is a small muted line over the title,
+ * such as a book's "Book 2" in its series ("" keeps its room). TalkBack
+ * reads them with the artwork.
+ */
 @Composable
-fun Caption(title: String?, detail: String?, lines: Int) {
+fun Caption(title: String?, detail: String?, lines: Int, overline: String? = null) {
+    if (overline != null) {
+        Text(
+            overline,
+            Modifier.padding(top = space(2)).clearAndSetSemantics {},
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
     Text(
         title.orEmpty(),
-        Modifier.padding(top = space(2)).clearAndSetSemantics {},
+        Modifier.padding(top = if (overline != null) 0.dp else space(2)).clearAndSetSemantics {},
         style = MaterialTheme.typography.bodyMedium,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
