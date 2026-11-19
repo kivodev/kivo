@@ -121,6 +121,13 @@ func (s *Server) trusted(ip netip.Addr) bool {
 // streams for as long as the client plays.
 const writeStall = 10 * time.Minute
 
+// readFromChunk bounds one ReadFrom call so writeStall refreshes during a
+// long stream rather than cutting it off once the whole call has lasted
+// writeStall. 256 KiB stays comfortably within writeStall even for low-bitrate
+// audiobooks (~131 s at 16 kbps) while keeping sendfile syscall overhead
+// negligible on fast downloads.
+const readFromChunk = 256 << 10
+
 // statusWriter records the status a handler sent, and gives each write
 // writeStall to finish.
 type statusWriter struct {
@@ -128,6 +135,10 @@ type statusWriter struct {
 	rc     *http.ResponseController
 	status int
 }
+
+// writerOnly hides io.ReaderFrom so io.Copy falls back to Write without
+// recursing into statusWriter.ReadFrom.
+type writerOnly struct{ io.Writer }
 
 func (w *statusWriter) WriteHeader(code int) {
 	if w.status == 0 {
@@ -142,6 +153,44 @@ func (w *statusWriter) Write(b []byte) (int, error) {
 	}
 	_ = w.rc.SetWriteDeadline(time.Now().Add(writeStall))
 	return w.ResponseWriter.Write(b)
+}
+
+// ReadFrom delegates to the underlying ResponseWriter in chunks so
+// http.ServeContent can use sendfile while still refreshing writeStall.
+// Go's net.sendFile unwraps at most one *io.LimitedReader, so a caller's
+// LimitedReader is unwrapped before each chunk wraps the source in one.
+func (w *statusWriter) ReadFrom(r io.Reader) (int64, error) {
+	if w.status == 0 {
+		w.status = http.StatusOK
+	}
+	rf, ok := w.ResponseWriter.(io.ReaderFrom)
+	if !ok {
+		return io.Copy(writerOnly{w}, r)
+	}
+	src := r
+	lr, limited := r.(*io.LimitedReader)
+	if limited {
+		src = lr.R
+	}
+	var total int64
+	for {
+		chunk := int64(readFromChunk)
+		if limited {
+			if lr.N <= 0 {
+				return total, nil
+			}
+			chunk = min(chunk, lr.N)
+		}
+		_ = w.rc.SetWriteDeadline(time.Now().Add(writeStall))
+		n, err := rf.ReadFrom(&io.LimitedReader{R: src, N: chunk})
+		total += n
+		if limited {
+			lr.N -= n
+		}
+		if err != nil || n < chunk {
+			return total, err
+		}
+	}
 }
 
 func (w *statusWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
