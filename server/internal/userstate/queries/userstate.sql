@@ -77,8 +77,48 @@ ON CONFLICT (play_id, work_id) DO UPDATE SET
 -- it finished the work.
 SELECT ended_at, completed FROM play_event WHERE play_id = @play_id AND work_id = @work_id;
 
+-- name: MergeEvents :exec
+-- Each play the two works share keeps the later end and its position, and
+-- counts as completed if either did. Every row selected is a play already
+-- on into, so it updates that event and its new id is never stored.
+INSERT INTO play_event (id, user_id, work_id, version_id, play_id, started_at, ended_at, position_ms, completed)
+SELECT randomblob(16), f.user_id, t.work_id, f.version_id, f.play_id, f.started_at, f.ended_at, f.position_ms, f.completed
+FROM play_event AS f JOIN play_event AS t ON t.play_id = f.play_id AND t.work_id = @into
+WHERE f.work_id = @from
+ON CONFLICT (play_id, work_id) DO UPDATE SET
+  ended_at = max(ended_at, excluded.ended_at),
+  position_ms = CASE WHEN excluded.ended_at > ended_at THEN excluded.position_ms ELSE position_ms END,
+  completed = completed OR excluded.completed;
+
+-- name: DeleteCollidingEvents :exec
+DELETE FROM play_event
+WHERE play_event.work_id = @from
+  AND play_event.play_id IN (SELECT g.play_id FROM play_event AS g WHERE g.work_id = @into);
+
 -- name: MoveEvents :exec
 UPDATE play_event SET work_id = @into WHERE work_id = @from;
+
+-- name: CollidingVersionEvents :many
+SELECT f.user_id, f.completed AS from_completed, t.completed AS into_completed
+FROM play_event f
+JOIN play_event t ON t.play_id = f.play_id AND t.work_id = @into
+WHERE f.work_id = @from AND f.version_id = @version_id;
+
+-- name: MergeVersionEvents :exec
+-- As MergeEvents, for the plays of one version.
+INSERT INTO play_event (id, user_id, work_id, version_id, play_id, started_at, ended_at, position_ms, completed)
+SELECT randomblob(16), f.user_id, t.work_id, f.version_id, f.play_id, f.started_at, f.ended_at, f.position_ms, f.completed
+FROM play_event AS f JOIN play_event AS t ON t.play_id = f.play_id AND t.work_id = @into
+WHERE f.work_id = @from AND f.version_id = @version_id
+ON CONFLICT (play_id, work_id) DO UPDATE SET
+  ended_at = max(ended_at, excluded.ended_at),
+  position_ms = CASE WHEN excluded.ended_at > ended_at THEN excluded.position_ms ELSE position_ms END,
+  completed = completed OR excluded.completed;
+
+-- name: DeleteCollidingVersionEvents :exec
+DELETE FROM play_event
+WHERE play_event.work_id = @from AND play_event.version_id = @version_id
+  AND play_event.play_id IN (SELECT g.play_id FROM play_event AS g WHERE g.work_id = @into);
 
 -- name: MoveVersionEvents :many
 -- A version's own plays follow it to the episode it now covers.

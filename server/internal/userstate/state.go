@@ -281,6 +281,12 @@ func (s *Service) SetTrackChoice(ctx context.Context, user, series id.ID, c Trac
 //     counts twice.
 func (s *Service) MergeEpisode(ctx context.Context, tx *store.Tx, from, into id.ID) error {
 	q := dbq.New(tx)
+	if err := q.MergeEvents(ctx, dbq.MergeEventsParams{Into: into, From: from}); err != nil {
+		return err
+	}
+	if err := q.DeleteCollidingEvents(ctx, dbq.DeleteCollidingEventsParams{From: from, Into: into}); err != nil {
+		return err
+	}
 	if err := q.MoveEvents(ctx, dbq.MoveEventsParams{Into: into, From: from}); err != nil {
 		return err
 	}
@@ -345,43 +351,86 @@ func union(a, b dbq.UserState, completedEvents int64) dbq.PutStateParams {
 // episode keeps its rating and any played mark set by hand.
 // An episode left with no version (Move.Emptied) that was never an episode
 // of the series' match is then merged into its replacement by MergeEpisode.
+type playDelta struct{ lost, gained int64 }
+
 func (s *Service) FollowVersion(ctx context.Context, tx *store.Tx, r catalog.Reassignment) error {
 	q := dbq.New(tx)
 	for _, m := range r.Moves {
-		a, b := m.From, m.To
-		moved, err := q.MoveVersionEvents(ctx, dbq.MoveVersionEventsParams{Into: b, From: a, VersionID: r.Version})
-		if err != nil {
+		if err := followMove(ctx, q, r.Version, m.From, m.To); err != nil {
 			return err
-		}
-		plays := map[id.ID]int64{}
-		for _, ev := range moved {
-			n := plays[ev.UserID]
-			if ev.Completed {
-				n++
-			}
-			plays[ev.UserID] = n
-		}
-		states, err := q.StatesOfWork(ctx, a)
-		if err != nil {
-			return err
-		}
-		for _, sa := range states {
-			if _, ok := plays[sa.UserID]; !ok {
-				plays[sa.UserID] = 0
-			}
-		}
-		for user, n := range plays {
-			if err := moveResume(ctx, q, user, a, b, n); err != nil {
-				return err
-			}
 		}
 	}
 	return nil
 }
 
-// moveResume moves the resume position and n plays from a to b. Once its
-// last play has moved, a is no longer played.
-func moveResume(ctx context.Context, q *dbq.Queries, user, a, b id.ID, n int64) error {
+// followMove moves version's plays on a to b, with each user's resume
+// position on a from version and the play counts that follow them.
+func followMove(ctx context.Context, q *dbq.Queries, version, a, b id.ID) error {
+	deltas, err := mergeVersionCollisions(ctx, q, version, a, b)
+	if err != nil {
+		return err
+	}
+	moved, err := q.MoveVersionEvents(ctx, dbq.MoveVersionEventsParams{Into: b, From: a, VersionID: version})
+	if err != nil {
+		return err
+	}
+	for _, ev := range moved {
+		d := deltas[ev.UserID]
+		if ev.Completed {
+			d.lost++
+			d.gained++
+		}
+		deltas[ev.UserID] = d
+	}
+	states, err := q.StatesOfWork(ctx, a)
+	if err != nil {
+		return err
+	}
+	for _, sa := range states {
+		if _, ok := deltas[sa.UserID]; !ok && sa.Resumable && sa.VersionID == version {
+			deltas[sa.UserID] = playDelta{}
+		}
+	}
+	for user, d := range deltas {
+		if err := moveResume(ctx, q, user, a, b, version, d); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// mergeVersionCollisions merges into b the events of version's plays that
+// are on both a and b, and returns each user's play deltas: a completed
+// play leaves a, and counts on b unless b's event was completed already.
+func mergeVersionCollisions(ctx context.Context, q *dbq.Queries, version, a, b id.ID) (map[id.ID]playDelta, error) {
+	deltas := map[id.ID]playDelta{}
+	colliding, err := q.CollidingVersionEvents(ctx, dbq.CollidingVersionEventsParams{Into: b, From: a, VersionID: version})
+	if err != nil || len(colliding) == 0 {
+		return deltas, err
+	}
+	for _, ev := range colliding {
+		d := deltas[ev.UserID]
+		if ev.FromCompleted {
+			d.lost++
+			if !ev.IntoCompleted {
+				d.gained++
+			}
+		}
+		deltas[ev.UserID] = d
+	}
+	if err := q.MergeVersionEvents(ctx, dbq.MergeVersionEventsParams{Into: b, From: a, VersionID: version}); err != nil {
+		return nil, err
+	}
+	if err := q.DeleteCollidingVersionEvents(ctx, dbq.DeleteCollidingVersionEventsParams{From: a, VersionID: version, Into: b}); err != nil {
+		return nil, err
+	}
+	return deltas, nil
+}
+
+// moveResume moves version's resume position and play deltas from a to b.
+// Once its last play has moved, a is no longer played. Rows that didn't
+// change are not rewritten.
+func moveResume(ctx context.Context, q *dbq.Queries, user, a, b, version id.ID, d playDelta) error {
 	sa, err := getState(ctx, q, user, a)
 	if err != nil {
 		return err
@@ -390,16 +439,28 @@ func moveResume(ctx context.Context, q *dbq.Queries, user, a, b id.ID, n int64) 
 	if err != nil {
 		return err
 	}
-	if sa.Resumable && sa.LastPlayedAt.Int64 >= sb.LastPlayedAt.Int64 {
+	var movedResume bool
+	if sa.Resumable && sa.VersionID == version && sa.LastPlayedAt.Int64 >= sb.LastPlayedAt.Int64 {
 		sb.PositionMs, sb.Resumable, sb.LastPlayedAt, sb.VersionID = sa.PositionMs, sa.Resumable, sa.LastPlayedAt, sa.VersionID
 		sa.PositionMs, sa.Resumable = 0, false
+		movedResume = true
 	}
-	sb.PlayCount += n
-	sa.PlayCount = max(0, sa.PlayCount-n)
-	sa.Played = sa.Played && (n == 0 || sa.PlayCount > 0)
-	sb.Played = sb.Played || n > 0
+	if !movedResume && d.lost == 0 && d.gained == 0 {
+		return nil
+	}
+	sb.PlayCount += d.gained
+	sa.PlayCount = max(0, sa.PlayCount-d.lost)
+	sa.Played = sa.Played && (d.lost == 0 || sa.PlayCount > 0)
+	sb.Played = sb.Played || d.gained > 0
 	now := time.Now().UnixMilli()
-	for _, st := range []dbq.UserState{sa, sb} {
+	var write []dbq.UserState
+	if movedResume || d.lost > 0 {
+		write = append(write, sa)
+	}
+	if movedResume || d.gained > 0 {
+		write = append(write, sb)
+	}
+	for _, st := range write {
 		err := q.PutState(ctx, dbq.PutStateParams{
 			UserID: st.UserID, WorkID: st.WorkID, Played: st.Played, PlayCount: st.PlayCount, PositionMs: st.PositionMs,
 			Resumable: st.Resumable, VersionID: st.VersionID, Rating: st.Rating, LastPlayedAt: st.LastPlayedAt, UpdatedAt: now,
