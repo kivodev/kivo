@@ -80,10 +80,23 @@ const (
 // stream sends the events c may see on conn until the client leaves, the
 // server stops, or the credential stops authenticating.
 func (s *Server) stream(ctx context.Context, conn *websocket.Conn, c caller) {
+	// sendCtx cancels in-flight writes when the server stops so Close doesn't
+	// wait out writeTimeout on a stalled socket, while keeping ctx separate
+	// so idle connections still take the StatusGoingAway branch below.
+	sendCtx, cancelSend := context.WithCancel(ctx)
+	defer cancelSend()
+	go func() {
+		select {
+		case <-s.closing:
+			cancelSend()
+		case <-sendCtx.Done():
+		}
+	}()
+
 	v := c.viewer
 	sub := s.deps.Events.Subscribe(scopeFilter(v))
 	defer func() { sub.Close() }()
-	if s.send(ctx, conn, s.snapshot(ctx, v)) != nil {
+	if s.send(sendCtx, conn, s.snapshot(sendCtx, v)) != nil {
 		return
 	}
 	// resync starts over with the current Viewer. It opens a new
@@ -92,8 +105,8 @@ func (s *Server) stream(ctx context.Context, conn *websocket.Conn, c caller) {
 	resync := func() bool {
 		sub.Close()
 		sub = s.deps.Events.Subscribe(scopeFilter(v))
-		return s.send(ctx, conn, gen.ResyncMessage{Type: gen.ResyncMessageTypeResync}) == nil &&
-			s.send(ctx, conn, s.snapshot(ctx, v)) == nil
+		return s.send(sendCtx, conn, gen.ResyncMessage{Type: gen.ResyncMessageTypeResync}) == nil &&
+			s.send(sendCtx, conn, s.snapshot(sendCtx, v)) == nil
 	}
 	tick := time.NewTicker(recheckEvery)
 	defer tick.Stop()
@@ -107,7 +120,7 @@ func (s *Server) stream(ctx context.Context, conn *websocket.Conn, c caller) {
 			_ = conn.Close(websocket.StatusGoingAway, "server stopping")
 			return
 		case <-alive.C:
-			if s.send(ctx, conn, gen.KeepAliveMessage{Type: gen.KeepAliveMessageTypeKeepAlive}) != nil {
+			if s.send(sendCtx, conn, gen.KeepAliveMessage{Type: gen.KeepAliveMessageTypeKeepAlive}) != nil {
 				return
 			}
 		case <-tick.C:
@@ -130,7 +143,7 @@ func (s *Server) stream(ctx context.Context, conn *websocket.Conn, c caller) {
 				}
 				continue
 			}
-			if msg, ok := eventMessage(e, v); ok && s.send(ctx, conn, msg) != nil {
+			if msg, ok := eventMessage(e, v); ok && s.send(sendCtx, conn, msg) != nil {
 				return
 			}
 		}
