@@ -331,6 +331,16 @@ func (w *rangeWriter) Write(b []byte) (int, error) {
 	return w.ResponseWriter.Write(b)
 }
 
+func (w *rangeWriter) ReadFrom(r io.Reader) (int64, error) {
+	if w.status == http.StatusRequestedRangeNotSatisfiable && !w.wrote {
+		return io.Copy(io.Discard, r)
+	}
+	w.wrote = true
+	return io.Copy(w.ResponseWriter, r)
+}
+
+func (w *rangeWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
+
 // parseStartRequest is a request to play a work, from the client that
 // sent req.
 func parseStartRequest(b *gen.StartPlayJSONRequestBody, req *request) (playback.StartRequest, error) {
