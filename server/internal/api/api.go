@@ -106,13 +106,9 @@ type Server struct {
 	stopping atomic.Bool
 }
 
-// New builds the server. It fails if an operation in the spec has no known
-// x-kivo-access, so a route can never be served without one.
+// New builds the server.
 func New(d Deps, opt Options) (*Server, error) {
-	routes, err := embeddedRoutes()
-	if err != nil {
-		return nil, err
-	}
+	routes := specRoutes
 	if opt.Logger == nil {
 		opt.Logger = slog.Default()
 	}
