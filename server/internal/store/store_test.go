@@ -680,3 +680,46 @@ func TestUpgradeSnapshotsFirst(t *testing.T) {
 		t.Fatalf("snapshot at version %d, want 1", v)
 	}
 }
+
+// The reader pool keeps every opened reader warm instead of tearing down
+// connections past database/sql's default idle limit of 2, and every pooled
+// connection gets the cache_size and temp_store pragmas.
+func TestReaderPoolIdleAndPragmas(t *testing.T) {
+	ctx := context.Background()
+	db, _ := testDB(t, basic)
+
+	readers := max(4, runtime.NumCPU())
+	conns := make([]*sql.Conn, readers)
+	for i := range conns {
+		c, err := db.Reader().Conn(ctx)
+		if err != nil {
+			t.Fatalf("conn %d: %v", i, err)
+		}
+		conns[i] = c
+	}
+	for _, c := range conns {
+		if err := c.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	st := db.Reader().Stats()
+	if st.Idle != readers || st.MaxIdleClosed != 0 {
+		t.Errorf("reader pool stats: idle=%d maxIdleClosed=%d, want %d 0", st.Idle, st.MaxIdleClosed, readers)
+	}
+
+	for name, pool := range map[string]*sql.DB{"writer": db.writer, "reader": db.reader} {
+		var cacheSize, tempStore int
+		if err := pool.QueryRowContext(ctx, `PRAGMA cache_size`).Scan(&cacheSize); err != nil {
+			t.Fatalf("%s cache_size: %v", name, err)
+		}
+		if cacheSize != -8000 {
+			t.Errorf("%s cache_size = %d, want -8000", name, cacheSize)
+		}
+		if err := pool.QueryRowContext(ctx, `PRAGMA temp_store`).Scan(&tempStore); err != nil {
+			t.Fatalf("%s temp_store: %v", name, err)
+		}
+		if tempStore != 2 {
+			t.Errorf("%s temp_store = %d, want 2 (MEMORY)", name, tempStore)
+		}
+	}
+}
