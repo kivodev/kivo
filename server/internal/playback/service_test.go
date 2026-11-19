@@ -2288,3 +2288,126 @@ func trackID(f catalog.File, kind media.TrackKind, index int) id.ID {
 	}
 	return id.ID{}
 }
+
+// countingKeys records how many times the transcoder asked for keyframes
+// and returns the configured index.
+type countingKeys struct {
+	mu       sync.Mutex
+	calls    int
+	keys     []media.Keyframe
+	complete bool
+}
+
+func (k *countingKeys) Keyframes(context.Context, string) ([]media.Keyframe, bool, error) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	k.calls++
+	return k.keys, k.complete, nil
+}
+
+func (k *countingKeys) reset(keys []media.Keyframe, complete bool) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	k.calls, k.keys, k.complete = 0, keys, complete
+}
+
+func (k *countingKeys) count() int {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	return k.calls
+}
+
+// TestKeyframesReadOnlyForVideoCopy verifies that container keyframes are
+// only read when the stream decision actually copies video, and that a
+// missing index falls back to encoding with ReasonKeyframeIndexMissing.
+func TestKeyframesReadOnlyForVideoCopy(t *testing.T) {
+	f := newFixture(t, 0)
+	keys := &countingKeys{}
+	tc, err := transcode.New(transcode.Deps{
+		Media: f.media, Keys: keys, Dir: f.tcDir, Downloads: filepath.Join(t.TempDir(), "downloads"),
+	}, transcode.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.tc = tc
+	f.svc = New(f.b.DB, f.deps(discard{}))
+	t.Cleanup(func() { f.svc.endAll(ctx) })
+
+	mp4 := f.movie("Direct", "mp4", 8_000_000)
+	mkv := f.movie("Remux", "mkv", 8_000_000)
+
+	var good []media.Keyframe
+	for at := time.Duration(0); at < 3*time.Hour; at += 7 * time.Second {
+		good = append(good, media.Keyframe{Time: at})
+	}
+
+	// 1. Direct play: 0 keyframe reads.
+	keys.reset(good, true)
+	st, err := f.svc.Start(ctx, f.p, f.v, StartRequest{Work: mp4.Work, Caps: browser, ClientIP: lan})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Decision.Delivery != DeliverFile {
+		t.Fatalf("direct play delivery = %s, want file", st.Decision.Delivery)
+	}
+	if n := keys.count(); n != 0 {
+		t.Errorf("direct play read keyframes %d times, want 0", n)
+	}
+
+	// 2. Encoded video (bitrate cap): 0 keyframe reads.
+	keys.reset(good, true)
+	st, err = f.svc.Start(ctx, f.p, f.v, StartRequest{
+		Work: mkv.Work, Caps: browser, ClientIP: lan,
+		Quality: Quality{Mode: QualityLimit, MaxBitrate: 4_000_000},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v, ok := st.Decision.Selected(media.Video); !ok || !v.Transcoded() {
+		t.Fatalf("capped play video = %+v, want transcoded", v)
+	}
+	if n := keys.count(); n != 0 {
+		t.Errorf("encoded video read keyframes %d times, want 0", n)
+	}
+
+	// 3. Copy with a good index: 1 read, and the keyframes reach the transcode spec.
+	keys.reset(good, true)
+	st, err = f.svc.Start(ctx, f.p, f.v, StartRequest{Work: mkv.Work, Caps: browser, ClientIP: lan})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v, ok := st.Decision.Selected(media.Video); !ok || st.Decision.Delivery != DeliverStream || v.Video == nil || v.Video.Codec != media.Copy {
+		t.Fatalf("remux decision = %s %+v, want stream copy", st.Decision.Delivery, v)
+	}
+	if n := keys.count(); n != 1 {
+		t.Errorf("copy with good index read keyframes %d times, want 1", n)
+	}
+	f.svc.mu.Lock()
+	pl := f.svc.plays[st.ID]
+	f.svc.mu.Unlock()
+	spec, err := f.svc.spec(ctx, &pl.choice)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(spec.Parts) != 1 || !slices.Equal(spec.Parts[0].Keyframes, good) {
+		t.Errorf("transcode spec keyframes len = %d, want %d matching good index", len(spec.Parts[0].Keyframes), len(good))
+	}
+	playlist, err := f.svc.HLS(ctx, st.ID, "main.m3u8")
+	if err != nil || !strings.Contains(string(playlist.Data), "#EXTINF:7.000,") {
+		t.Errorf("remux playlist didn't use 7s keyframe spans: err=%v\n%s", err, playlist.Data)
+	}
+
+	// 4. Copy with no index: 1 read, re-decided as an encode with ReasonKeyframeIndexMissing.
+	keys.reset(nil, false)
+	st, err = f.svc.Start(ctx, f.p, f.v, StartRequest{Work: mkv.Work, Caps: browser, ClientIP: lan})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := keys.count(); n != 1 {
+		t.Errorf("copy with no index read keyframes %d times, want 1", n)
+	}
+	v, ok := st.Decision.Selected(media.Video)
+	if !ok || st.Decision.Delivery != DeliverStream || !v.Transcoded() || v.Reason != ReasonKeyframeIndexMissing {
+		t.Fatalf("copy with no index video = %+v, want transcoded with %s", v, ReasonKeyframeIndexMissing)
+	}
+}
