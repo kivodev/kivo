@@ -248,9 +248,10 @@ func (f *fetcher) remote(ctx context.Context, r request) ([]byte, error) {
 // it is logged rather than returned.
 func (f *fetcher) store(ctx context.Context, r request, body []byte, ttl time.Duration) {
 	now := time.Now()
+	packed := pack(body)
 	err := f.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
 		return dbq.New(tx).PutCached(ctx, dbq.PutCachedParams{
-			Provider: r.provider, Key: r.key, Body: pack(body), FetchedAt: now.UnixMilli(), ExpiresAt: now.Add(ttl).UnixMilli(),
+			Provider: r.provider, Key: r.key, Body: packed, FetchedAt: now.UnixMilli(), ExpiresAt: now.Add(ttl).UnixMilli(),
 		})
 	})
 	if err != nil {
