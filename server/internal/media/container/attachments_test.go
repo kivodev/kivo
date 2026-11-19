@@ -37,18 +37,18 @@ func TestCopyAttachment(t *testing.T) {
 	b := readFixture(t, "attachments.mkv")
 	for n, want := range wantAttachments {
 		var out bytes.Buffer
-		if err := CopyAttachment(bytes.NewReader(b), int64(len(b)), n, &out); err != nil {
+		if err := copyAttachment(bytes.NewReader(b), int64(len(b)), n, &out); err != nil {
 			t.Fatal(err)
 		}
 		if h := sha256.Sum256(out.Bytes()); hex.EncodeToString(h[:]) != want.SHA256 {
 			t.Errorf("attachment %d: %d bytes, not %s's", n, out.Len(), want.Filename)
 		}
 	}
-	if err := CopyAttachment(bytes.NewReader(b), int64(len(b)), len(wantAttachments), io.Discard); !errors.Is(err, media.ErrSourceCorrupt) {
+	if err := copyAttachment(bytes.NewReader(b), int64(len(b)), len(wantAttachments), io.Discard); !errors.Is(err, media.ErrSourceCorrupt) {
 		t.Errorf("past the last: %v", err)
 	}
 	mp4 := readFixture(t, "h264.mp4")
-	if err := CopyAttachment(bytes.NewReader(mp4), int64(len(mp4)), 0, io.Discard); !errors.Is(err, media.ErrSourceCorrupt) {
+	if err := copyAttachment(bytes.NewReader(mp4), int64(len(mp4)), 0, io.Discard); !errors.Is(err, media.ErrSourceCorrupt) {
 		t.Errorf("an MP4's: %v", err)
 	}
 }
@@ -110,10 +110,10 @@ func TestAttachmentsSkipsBadOnes(t *testing.T) {
 	if want := []media.AttachedFile{wantAttachments[0], wantAttachments[2]}; !reflect.DeepEqual(got, want) {
 		t.Errorf("got  %+v\nwant %+v", got, want)
 	}
-	// CopyAttachment counts attachments as Attachments lists them, so the
+	// copyAttachment counts attachments as Attachments lists them, so the
 	// skipped one isn't counted.
 	var out bytes.Buffer
-	if err := CopyAttachment(bytes.NewReader(b), int64(len(b)), 1, &out); err != nil {
+	if err := copyAttachment(bytes.NewReader(b), int64(len(b)), 1, &out); err != nil {
 		t.Fatal(err)
 	}
 	if h := sha256.Sum256(out.Bytes()); hex.EncodeToString(h[:]) != wantAttachments[2].SHA256 {
@@ -157,6 +157,68 @@ func TestAttachmentsTruncated(t *testing.T) {
 	}
 }
 
+func TestCopyAttachmentsSinglePass(t *testing.T) {
+	b := readFixture(t, "attachments.mkv")
+
+	var singleReads, singleZero int
+	rSingle := &countingReaderAt{r: bytes.NewReader(b), reads: &singleReads, zero: &singleZero}
+	if err := copyAttachment(rSingle, int64(len(b)), 0, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+
+	var batchReads, batchZero int
+	rBatch := &countingReaderAt{r: bytes.NewReader(b), reads: &batchReads, zero: &batchZero}
+	var got []int
+	err := CopyAttachments(rBatch, int64(len(b)), []int{0, 1, 2}, func(n int, data io.Reader) error {
+		got = append(got, n)
+		h := sha256.New()
+		if _, err := io.Copy(h, data); err != nil {
+			return err
+		}
+		if sum := hex.EncodeToString(h.Sum(nil)); sum != wantAttachments[n].SHA256 {
+			t.Errorf("attachment %d hash = %s, want %s", n, sum, wantAttachments[n].SHA256)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, []int{0, 1, 2}) {
+		t.Errorf("visited indices = %v, want [0 1 2]", got)
+	}
+	if batchZero != singleZero {
+		t.Errorf("offset-0 reads = %d for 3 attachments, want %d (parsed once)", batchZero, singleZero)
+	}
+	if batchReads >= 3*singleReads {
+		t.Errorf("batch ReadAt calls = %d, expected far fewer than 3x single (%d)", batchReads, 3*singleReads)
+	}
+
+	// Destination errors propagate unwrapped; out-of-range indices are corrupt.
+	dstErr := errors.New("disk full")
+	err = CopyAttachments(bytes.NewReader(b), int64(len(b)), []int{0}, func(int, io.Reader) error { return dstErr })
+	if !errors.Is(err, dstErr) || errors.Is(err, media.ErrSourceUnreadable) {
+		t.Errorf("dst error = %v, want unwrapped dstErr", err)
+	}
+	err = CopyAttachments(bytes.NewReader(b), int64(len(b)), []int{0, len(wantAttachments)}, func(int, io.Reader) error { return nil })
+	if !errors.Is(err, media.ErrSourceCorrupt) {
+		t.Errorf("out of range = %v, want ErrSourceCorrupt", err)
+	}
+}
+
+type countingReaderAt struct {
+	r     io.ReaderAt
+	reads *int
+	zero  *int
+}
+
+func (c *countingReaderAt) ReadAt(p []byte, off int64) (int, error) {
+	*c.reads++
+	if off == 0 {
+		*c.zero++
+	}
+	return c.r.ReadAt(p, off)
+}
+
 func TestFontType(t *testing.T) {
 	for head, want := range map[string]string{
 		"\x00\x01\x00\x00rest": "font/ttf", "OTTOrest": "font/otf", "ttcfrest": "font/collection",
@@ -166,4 +228,12 @@ func TestFontType(t *testing.T) {
 			t.Errorf("FontType(%q) = %q, want %q", head, got, want)
 		}
 	}
+}
+
+// copyAttachment copies to w the bytes of the nth file an MKV carries.
+func copyAttachment(r io.ReaderAt, size int64, n int, w io.Writer) error {
+	return CopyAttachments(r, size, []int{n}, func(_ int, data io.Reader) error {
+		_, err := io.Copy(w, data)
+		return err
+	})
 }
