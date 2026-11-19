@@ -329,6 +329,53 @@ func TestMoveProbedDuringTheRunStays(t *testing.T) {
 	}
 }
 
+// If two concurrent probes pick the same gone file as their move source,
+// the first relinks it and the second falls back to storing itself as a new
+// file instead of overwriting the first.
+func TestConcurrentRelinkFallsBackToNewFile(t *testing.T) {
+	h := newHarness(t)
+	l := h.library(catalog.Movies, "/m")
+	folder, fsys := l.Folders[0].ID, h.folders["/m"]
+	orig := h.movie(folder, fsys, "A/a.mkv", "same bytes")
+	fsys.remove("A/a.mkv", time.Now())
+	fsys.write("B/a.mkv", "same bytes", time.Now())
+	fsys.write("C/a.mkv", "same bytes", time.Now())
+	h.mustScan(folder)
+
+	moved, err := h.b.Catalog.File(ctx, orig.file)
+	if err != nil || moved.Present {
+		t.Fatalf("orig file = %+v, %v; want gone", moved, err)
+	}
+	files := h.files(folder)
+	fb, err := h.b.Catalog.File(ctx, files["B/a.mkv"].ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fc, err := h.b.Catalog.File(ctx, files["C/a.mkv"].ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	probe := catalog.Probe{Summary: catalog.ProbeSummary{Container: "matroska", Duration: time.Hour}}
+	for _, f := range []catalog.File{fb, fc} {
+		if err := h.b.DB.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
+			return h.s.storeProbe(ctx, tx, l, f, moved, probe)
+		}); err != nil {
+			t.Fatalf("storeProbe %s: %v", f.RelPath, err)
+		}
+	}
+
+	after := h.files(folder)
+	if len(after) != 2 || !after["B/a.mkv"].Present || !after["C/a.mkv"].Present {
+		t.Fatalf("after concurrent relink: %v, want both B/a.mkv and C/a.mkv present", after)
+	}
+	if after["B/a.mkv"].ID != orig.file {
+		t.Errorf("B/a.mkv ID = %s, want relinked %s", after["B/a.mkv"].ID, orig.file)
+	}
+	if after["C/a.mkv"].ID != fc.ID {
+		t.Errorf("C/a.mkv ID = %s, want kept %s", after["C/a.mkv"].ID, fc.ID)
+	}
+}
+
 // A scan may find tens of thousands of files missing at once, such as when
 // a branch of a share drops out. That is more than one statement could
 // bind, so it marks them gone in batches. It records the directory only
