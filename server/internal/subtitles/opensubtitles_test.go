@@ -74,6 +74,9 @@ func (o *fakeOpenSubtitles) answer(raw string, h http.Header, body []byte) egres
 		}
 		return ok(`{"user": {"allowed_downloads": 20, "level": "Sub leecher", "vip": false}, "token": "os-token", "status": 200}`)
 	case "/api/v1/download":
+		if h.Get("Authorization") == "Bearer expired-token" {
+			return egress.Response{Status: http.StatusUnauthorized, Header: http.Header{}}
+		}
 		if strings.Contains(string(body), "9999") {
 			return egress.Response{Status: http.StatusNotFound, Header: http.Header{}}
 		}
@@ -295,6 +298,27 @@ func TestOpenSubtitlesKeyRejected(t *testing.T) {
 	}
 	if len(problemCodes(d)) != 0 {
 		t.Fatalf("health %v", problemCodes(d))
+	}
+}
+
+// An expired OpenSubtitles account token gets a 401 on download. The client
+// signs in again and retries once without raising openSubtitlesKeyRejected.
+func TestOpenSubtitlesExpiredTokenRefreshes(t *testing.T) {
+	d := newDownloads(t)
+	d.setOpenSubtitles("os-key", "anna", "pw")
+	a := d.s.openSubtitles.account(d.settings.Get())
+	a.mu.Lock()
+	a.token = "expired-token"
+	a.mu.Unlock()
+
+	if _, err := d.s.fetch(ctx, "7001.en"); err != nil {
+		t.Fatalf("download with expired token: %v", err)
+	}
+	if d.remote.count("/api/v1/login") != 1 || d.remote.count("/api/v1/download") != 2 {
+		t.Errorf("logins=%d downloads=%d, want 1 and 2", d.remote.count("/api/v1/login"), d.remote.count("/api/v1/download"))
+	}
+	if len(problemCodes(d)) != 0 {
+		t.Errorf("health %v after token refresh, want none", problemCodes(d))
 	}
 }
 
