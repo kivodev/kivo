@@ -465,17 +465,32 @@ func (o *openSubtitles) download(ctx context.Context, a *account, file int) (nam
 		return "", nil, &QuotaError{Reset: reset}
 	}
 	a.mu.Unlock()
-	h := a.header()
-	h.Set("Content-Type", "application/json")
-	if tok, err := o.login(ctx, a); err != nil {
-		return "", nil, err
-	} else if tok != "" {
-		h.Set("Authorization", "Bearer "+tok)
-	}
 	body, _ := json.Marshal(map[string]int{"file_id": file})
-	resp, err := o.post(ctx, openSubtitlesAPI+"/download", h, body)
-	if err != nil {
-		return "", nil, err
+	var resp egress.Response
+	for attempt := range 2 {
+		h := a.header()
+		h.Set("Content-Type", "application/json")
+		tok, err := o.login(ctx, a)
+		if err != nil {
+			return "", nil, err
+		}
+		if tok != "" {
+			h.Set("Authorization", "Bearer "+tok)
+		}
+		resp, err = o.post(ctx, openSubtitlesAPI+"/download", h, body)
+		if err != nil {
+			return "", nil, err
+		}
+		if resp.Status != http.StatusUnauthorized || tok == "" || attempt > 0 {
+			break
+		}
+		// Account tokens expire after ~24h; sign in once and retry before
+		// treating 401 as a rejected API key.
+		a.mu.Lock()
+		if a.token == tok {
+			a.token = ""
+		}
+		a.mu.Unlock()
 	}
 	var d osDownload
 	_ = json.Unmarshal(resp.Body, &d)
