@@ -199,12 +199,14 @@ func (f *fetcher) once(ctx context.Context, key string, fn func() ([]byte, error
 	c := &call{done: make(chan struct{})}
 	f.calls[key] = c
 	f.mu.Unlock()
+	defer func() {
+		f.mu.Lock()
+		delete(f.calls, key)
+		f.mu.Unlock()
+		close(c.done)
+	}()
 
 	c.body, c.err = fn()
-	f.mu.Lock()
-	delete(f.calls, key)
-	f.mu.Unlock()
-	close(c.done)
 	return c.body, c.err
 }
 
