@@ -570,6 +570,131 @@ func TestMergeEpisodeUnionsState(t *testing.T) {
 	}
 }
 
+// FollowVersion only moves a resume position that belongs to the moved
+// version, and doesn't fabricate empty rows or bump UpdatedAt for users
+// whose state wasn't affected.
+func TestFollowVersionKeepsOtherVersionsResumeAndSkipsUntouchedUsers(t *testing.T) {
+	f := newFixture(t)
+	a, b := f.episodes(100 * time.Minute)
+	file, err := f.b.Catalog.File(ctx, a.File)
+	if err != nil {
+		t.Fatal(err)
+	}
+	other := f.b.File(file.Folder, "Dark/Season 01/S01E01 4K.mkv")
+	f.setDuration(other, 100*time.Minute)
+	keep := f.b.Version([]id.ID{other}, a.Work)
+
+	// f.user has a resume position on keep (NOT the moved version a.Version).
+	f.play(id.New(), keep, 35*time.Minute)
+	// ben has a hand-marked played state on a and nothing on a.Version.
+	benID := f.newUser("ben")
+	ben, err := users.New(f.b.DB, events.NewBus()).Viewer(ctx, benID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.s.Update(ctx, ben, a.Work, userstate.Change{Played: new(true)}); err != nil {
+		t.Fatal(err)
+	}
+
+	var benUpdatedBefore int64
+	if err := f.b.DB.Reader().QueryRow(`SELECT updated_at FROM user_state WHERE user_id = ? AND work_id = ?`, benID, a.Work).Scan(&benUpdatedBefore); err != nil {
+		t.Fatal(err)
+	}
+
+	f.b.Write(func(ctx context.Context, tx *store.Tx) error {
+		return f.b.Catalog.Batch(ctx, tx, func(cb *catalog.Batch) error {
+			r, err := cb.ReassignVersion(ctx, a.Version, []id.ID{b.Work})
+			if err != nil {
+				return err
+			}
+			return f.s.FollowVersion(ctx, tx, r)
+		})
+	})
+
+	sa := f.state(f.user, a.Work)
+	if !sa.Resumable || sa.PositionMs != (35*time.Minute).Milliseconds() {
+		t.Errorf("other version's resume on a was altered: %+v", sa)
+	}
+	var bRows int
+	if err := f.b.DB.Reader().QueryRow(`SELECT count(*) FROM user_state WHERE work_id = ?`, b.Work).Scan(&bRows); err != nil || bRows != 0 {
+		t.Errorf("fabricated %d user_state rows on b, want 0 (err=%v)", bRows, err)
+	}
+	var benUpdatedAfter int64
+	if err := f.b.DB.Reader().QueryRow(`SELECT updated_at FROM user_state WHERE user_id = ? AND work_id = ?`, benID, a.Work).Scan(&benUpdatedAfter); err != nil {
+		t.Fatal(err)
+	}
+	if benUpdatedAfter != benUpdatedBefore {
+		t.Errorf("untouched user's updated_at changed from %d to %d", benUpdatedBefore, benUpdatedAfter)
+	}
+}
+
+// Multi-episode plays share one play_id across episodes. Both MergeEpisode
+// and FollowVersion must merge colliding (play_id, work_id) rows instead of
+// failing the unique index or double-counting plays.
+func TestPlayEventCollisionsOnMergeAndFollow(t *testing.T) {
+	t.Run("MergeEpisode", func(t *testing.T) {
+		f := newFixture(t)
+		a, b := f.episodes(100 * time.Minute)
+		file, err := f.b.Catalog.File(ctx, a.File)
+		if err != nil {
+			t.Fatal(err)
+		}
+		multiFile := f.b.File(file.Folder, "Dark/Season 01/S01E01-E02.mkv")
+		f.setDuration(multiFile, 100*time.Minute)
+		multi := f.b.Version([]id.ID{multiFile}, a.Work, b.Work)
+
+		// One play_id writes events on both a and b.
+		playID := id.New()
+		f.play(playID, multi, 99*time.Minute)
+
+		f.b.Write(func(ctx context.Context, tx *store.Tx) error {
+			if err := f.s.MergeEpisode(ctx, tx, a.Work, b.Work); err != nil {
+				return err
+			}
+			return f.b.Catalog.Batch(ctx, tx, func(cb *catalog.Batch) error { return cb.MergeEpisode(ctx, a.Work, b.Work) })
+		})
+
+		var count int
+		if err := f.b.DB.Reader().QueryRow(`SELECT count(*) FROM play_event WHERE play_id = ? AND work_id = ?`, playID, b.Work).Scan(&count); err != nil || count != 1 {
+			t.Fatalf("merged play_event rows = %d (err=%v), want 1", count, err)
+		}
+		if st := f.state(f.user, b.Work); !st.Played || st.PlayCount != 1 {
+			t.Errorf("merged state = %+v, want played with PlayCount 1", st)
+		}
+	})
+
+	t.Run("FollowVersion", func(t *testing.T) {
+		f := newFixture(t)
+		a, b := f.episodes(100 * time.Minute)
+		file, err := f.b.Catalog.File(ctx, a.File)
+		if err != nil {
+			t.Fatal(err)
+		}
+		multiFile := f.b.File(file.Folder, "Dark/Season 01/S01E01-E02.mkv")
+		f.setDuration(multiFile, 100*time.Minute)
+		multi := f.b.Version([]id.ID{multiFile}, a.Work, b.Work)
+
+		playID := id.New()
+		f.play(playID, multi, 99*time.Minute)
+
+		// Reassigning multi to only b moves a's row onto b, colliding on play_id.
+		f.b.Write(func(ctx context.Context, tx *store.Tx) error {
+			return f.s.FollowVersion(ctx, tx, catalog.Reassignment{
+				Version: multi,
+				Moves:   []catalog.Move{{From: a.Work, To: b.Work}},
+			})
+		})
+
+		sa, sb := f.state(f.user, a.Work), f.state(f.user, b.Work)
+		if sa.Played || sa.PlayCount != 0 {
+			t.Errorf("a state after collision follow = %+v, want unplayed PlayCount 0", sa)
+		}
+		if !sb.Played || sb.PlayCount != 1 {
+			t.Errorf("b state after collision follow = %+v, want played PlayCount 1 (no double count)", sb)
+		}
+	})
+}
+
 // A work purged with nothing left takes its watch state, plays and track
 // choices with it.
 func TestPurgedWorkTakesItsState(t *testing.T) {

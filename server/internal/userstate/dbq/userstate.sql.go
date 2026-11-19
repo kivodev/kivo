@@ -261,6 +261,119 @@ func (q *Queries) MoveEvents(ctx context.Context, arg MoveEventsParams) error {
 	return err
 }
 
+const mergeEvents = `-- name: MergeEvents :exec
+UPDATE play_event AS t
+SET ended_at = max(t.ended_at, f.ended_at),
+    position_ms = CASE WHEN f.ended_at > t.ended_at THEN f.position_ms ELSE t.position_ms END,
+    completed = t.completed OR f.completed
+FROM play_event AS f
+WHERE t.work_id = ?1 AND f.work_id = ?2 AND t.play_id = f.play_id
+`
+
+type MergeEventsParams struct {
+	Into id.ID
+	From id.ID
+}
+
+func (q *Queries) MergeEvents(ctx context.Context, arg MergeEventsParams) error {
+	_, err := q.db.ExecContext(ctx, mergeEvents, arg.Into, arg.From)
+	return err
+}
+
+const deleteCollidingEvents = `-- name: DeleteCollidingEvents :exec
+DELETE FROM play_event
+WHERE work_id = ?1 AND play_id IN (SELECT play_id FROM play_event WHERE work_id = ?2)
+`
+
+type DeleteCollidingEventsParams struct {
+	From id.ID
+	Into id.ID
+}
+
+func (q *Queries) DeleteCollidingEvents(ctx context.Context, arg DeleteCollidingEventsParams) error {
+	_, err := q.db.ExecContext(ctx, deleteCollidingEvents, arg.From, arg.Into)
+	return err
+}
+
+const collidingVersionEvents = `-- name: CollidingVersionEvents :many
+SELECT f.user_id, f.completed AS from_completed, t.completed AS into_completed
+FROM play_event f
+JOIN play_event t ON t.play_id = f.play_id AND t.work_id = ?1
+WHERE f.work_id = ?2 AND f.version_id = ?3
+`
+
+type CollidingVersionEventsParams struct {
+	Into      id.ID
+	From      id.ID
+	VersionID id.ID
+}
+
+type CollidingVersionEventsRow struct {
+	UserID        id.ID
+	FromCompleted bool
+	IntoCompleted bool
+}
+
+func (q *Queries) CollidingVersionEvents(ctx context.Context, arg CollidingVersionEventsParams) ([]CollidingVersionEventsRow, error) {
+	rows, err := q.db.QueryContext(ctx, collidingVersionEvents, arg.Into, arg.From, arg.VersionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CollidingVersionEventsRow
+	for rows.Next() {
+		var i CollidingVersionEventsRow
+		if err := rows.Scan(&i.UserID, &i.FromCompleted, &i.IntoCompleted); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const mergeVersionEvents = `-- name: MergeVersionEvents :exec
+UPDATE play_event AS t
+SET ended_at = max(t.ended_at, f.ended_at),
+    position_ms = CASE WHEN f.ended_at > t.ended_at THEN f.position_ms ELSE t.position_ms END,
+    completed = t.completed OR f.completed
+FROM play_event AS f
+WHERE t.work_id = ?1 AND f.work_id = ?2 AND f.version_id = ?3 AND t.play_id = f.play_id
+`
+
+type MergeVersionEventsParams struct {
+	Into      id.ID
+	From      id.ID
+	VersionID id.ID
+}
+
+func (q *Queries) MergeVersionEvents(ctx context.Context, arg MergeVersionEventsParams) error {
+	_, err := q.db.ExecContext(ctx, mergeVersionEvents, arg.Into, arg.From, arg.VersionID)
+	return err
+}
+
+const deleteCollidingVersionEvents = `-- name: DeleteCollidingVersionEvents :exec
+DELETE FROM play_event
+WHERE work_id = ?1 AND version_id = ?2
+  AND play_id IN (SELECT play_id FROM play_event WHERE work_id = ?3)
+`
+
+type DeleteCollidingVersionEventsParams struct {
+	From      id.ID
+	VersionID id.ID
+	Into      id.ID
+}
+
+func (q *Queries) DeleteCollidingVersionEvents(ctx context.Context, arg DeleteCollidingVersionEventsParams) error {
+	_, err := q.db.ExecContext(ctx, deleteCollidingVersionEvents, arg.From, arg.VersionID, arg.Into)
+	return err
+}
+
 const moveListWorks = `-- name: MoveListWorks :exec
 UPDATE OR IGNORE list_work SET work_id = ?1 WHERE work_id = ?2
 `
