@@ -21,6 +21,7 @@ type job struct {
 	from, next int // the first segment, and the next one it will produce
 	reading    int // the furthest segment requested of the job since it started
 	cancel     context.CancelFunc
+	done       chan struct{} // closed once run exits and ffmpeg has released its resources
 	exited     bool
 	err        error        // set as the job exits
 	out        media.Output // nil until ffmpeg has started
@@ -66,7 +67,24 @@ type JobInfo struct {
 // next segment's first fragment arrives. That way it's served without
 // waiting for the segment after it. The matching text segment is written
 // just before, from the cues read by then.
-func (s *Stream) run(ctx context.Context, j *job) {
+func (s *Stream) run(ctx context.Context, j, prev *job) {
+	defer close(j.done)
+	if prev != nil {
+		// Wait for the replaced job to exit before spawning a new ffmpeg so
+		// accelerator sessions and system resources are released first.
+		<-prev.done
+		if ctx.Err() != nil {
+			s.mu.Lock()
+			j.err, j.exited = ctx.Err(), true
+			j.restLocked()
+			s.wakeLocked()
+			s.mu.Unlock()
+			return
+		}
+		s.mu.Lock()
+		j.began = time.Now()
+		s.mu.Unlock()
+	}
 	start := time.Now()
 	file := s.spec.Parts[s.plan[j.from].Part].ID
 	slog.DebugContext(ctx, "transcode: job started", "file", file, "from", j.from, "at", s.plan[j.from].Start,
@@ -187,14 +205,12 @@ func (s *Stream) produce(ctx context.Context, j *job) error {
 			s.mu.Lock()
 			have := s.done[i]
 			s.mu.Unlock()
-			if !have {
-				if f, err = os.CreateTemp(s.dir, "seg-*.tmp"); err != nil {
-					return err
-				}
+			if have {
+				return nil // caught up to segments already on disk
 			}
-		}
-		if f == nil {
-			continue
+			if f, err = os.CreateTemp(s.dir, "seg-*.tmp"); err != nil {
+				return err
+			}
 		}
 		if _, err := f.Write(seg.Data); err != nil {
 			return err
