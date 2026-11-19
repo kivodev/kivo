@@ -116,20 +116,20 @@ var summaryColumns = `w.id, w.kind, w.title, w.sort_title, w.parent_id, w.root_i
   coalesce(w.year, 0) AS year, coalesce(w.parent_number, 0) AS parent_number, coalesce(w.number, 0) AS number,
   coalesce(CASE WHEN w.kind = 'episode' THEN (
     SELECT max(o.number) FROM media_version_work b JOIN work o ON o.id = b.work_id
-    WHERE b.version_id = (SELECT a.version_id FROM media_version_work a WHERE a.work_id = w.id AND a.ord = 0
+    WHERE b.version_id = (SELECT min(a.version_id) FROM media_version_work a WHERE a.work_id = w.id AND a.ord = 0
       AND EXISTS (SELECT 1 FROM media_version_work c WHERE c.version_id = a.version_id AND c.ord > 0)
       AND NOT EXISTS (SELECT 1 FROM media_file g WHERE g.version_id = a.version_id AND g.status = 'gone')))
   END, 0) AS number_end,
   coalesce(CASE WHEN w.kind = 'episode' THEN (
     SELECT group_concat(t, ' / ') FROM (SELECT o.title AS t FROM media_version_work b JOIN work o ON o.id = b.work_id
-      WHERE b.version_id = (SELECT a.version_id FROM media_version_work a WHERE a.work_id = w.id AND a.ord = 0
+      WHERE b.version_id = (SELECT min(a.version_id) FROM media_version_work a WHERE a.work_id = w.id AND a.ord = 0
         AND EXISTS (SELECT 1 FROM media_version_work c WHERE c.version_id = a.version_id AND c.ord > 0)
         AND NOT EXISTS (SELECT 1 FROM media_file g WHERE g.version_id = a.version_id AND g.status = 'gone'))
       ORDER BY b.ord))
   END, '') AS combined_title,
   coalesce(w.release_date, '') AS release_date, coalesce(w.extra_type, '') AS extra_type, coalesce(w.edition, '') AS edition,
   coalesce((SELECT sum(df.duration_ms) FROM media_file df
-    WHERE df.version_id = (SELECT dw.version_id FROM media_version_work dw WHERE dw.work_id = w.id
+    WHERE df.version_id = (SELECT min(dw.version_id) FROM media_version_work dw WHERE dw.work_id = w.id
       AND NOT EXISTS (SELECT 1 FROM media_file g WHERE g.version_id = dw.version_id AND g.status = 'gone'))), 0) AS duration_ms,
   w.added_at, w.provisional,
   w.kind NOT IN ('series', 'season') AND NOT EXISTS (
