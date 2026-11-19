@@ -48,7 +48,7 @@ type layer struct {
 var layers = []layer{
 	{"helpers", []string{"fault", "id", "events", "health", "keylock", "atomicfile", "cachedir", "egress", "parse", "version"}},
 	{"domain", []string{"store", "config", "media", "discovery", "tasks", "users", "auth", "catalog", "activity",
-		"query", "metadata", "userstate", "release"}},
+		"query", "metadata", "userstate"}},
 	{"features", []string{"scan", "identify", "previews", "subtitles", "markers", "transcode", "playback"}},
 	{"api", []string{"api"}},
 }
@@ -66,7 +66,6 @@ var outbound = map[string][]string{
 var pure = map[string][]string{
 	"markers/detect": {"id", "media"},
 	"parse":          {},
-	"version":        {},
 }
 
 // impure are the standard packages that reach outside the program.

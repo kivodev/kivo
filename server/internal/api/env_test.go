@@ -41,7 +41,7 @@ import (
 	"github.com/mmcdole/kivo/internal/playback"
 	"github.com/mmcdole/kivo/internal/previews"
 	"github.com/mmcdole/kivo/internal/query"
-	"github.com/mmcdole/kivo/internal/release"
+	kivoversion "github.com/mmcdole/kivo/internal/version"
 	"github.com/mmcdole/kivo/internal/scan"
 	"github.com/mmcdole/kivo/internal/subtitles"
 	"github.com/mmcdole/kivo/internal/tasks"
@@ -223,13 +223,13 @@ const (
 type serving struct {
 	Options
 	BasePath, Version string
-	Newer             release.Release // the newer release, if its version is set
+	Newer             kivoversion.Release // the newer release, if its version is set
 }
 
 // newer is the release checker's answer.
-type newer release.Release
+type newer kivoversion.Release
 
-func (n newer) Newer() (release.Release, bool) { return release.Release(n), n.Version != "" }
+func (n newer) Newer() (kivoversion.Release, bool) { return kivoversion.Release(n), n.Version != "" }
 
 func newEnv(t *testing.T, o serving) *env {
 	t.Helper()

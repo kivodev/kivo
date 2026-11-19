@@ -1,5 +1,6 @@
 // Package version is Kivo's version: the release the repository is at,
-// the version a build reports, and how two versions compare.
+// the version a build reports, how two versions compare, and checking
+// GitHub for a newer published release.
 //
 // Versions are semantic versions, such as 0.4.0. A build that isn't a
 // release reports the patch after the latest release as a prerelease, with
