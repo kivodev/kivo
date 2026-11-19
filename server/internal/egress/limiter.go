@@ -44,13 +44,17 @@ type Outage struct {
 
 // Wait blocks until the caller's turn, or until ctx ends.
 func (l *Limiter) Wait(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	l.mu.Lock()
 	now := time.Now()
 	at := now
 	if l.next.After(now) {
 		at = l.next
 	}
-	l.next = at.Add(l.Every)
+	next := at.Add(l.Every)
+	l.next = next
 	l.mu.Unlock()
 	if !at.After(now) {
 		return nil
@@ -61,6 +65,11 @@ func (l *Limiter) Wait(ctx context.Context) error {
 	case <-t.C:
 		return nil
 	case <-ctx.Done():
+		l.mu.Lock()
+		if l.next.Equal(next) {
+			l.next = at
+		}
+		l.mu.Unlock()
 		return ctx.Err()
 	}
 }
