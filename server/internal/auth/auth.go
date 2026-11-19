@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/netip"
+	"sync"
 	"time"
 
 	"github.com/mmcdole/kivo/internal/activity"
@@ -185,12 +186,14 @@ type client struct {
 
 // Service verifies credentials and issues and checks sessions.
 type Service struct {
-	db       *store.DB
-	q        *dbq.Queries
-	deps     Deps
-	hasher   *hasher
-	throttle *throttle
-	codes    *deviceCodes
+	db        *store.DB
+	q         *dbq.Queries
+	deps      Deps
+	hasher    *hasher
+	throttle  *throttle
+	codes     *deviceCodes
+	touchedMu sync.Mutex
+	touched   map[id.ID]time.Time
 }
 
 // Deps are auth's collaborators.
@@ -213,6 +216,7 @@ func New(db *store.DB, d Deps) *Service {
 		hasher:   newHasher(defaultParams),
 		throttle: newThrottle(),
 		codes:    newDeviceCodes(),
+		touched:  map[id.ID]time.Time{},
 	}
 }
 
