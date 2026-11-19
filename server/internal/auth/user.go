@@ -12,6 +12,7 @@ import (
 	"github.com/mmcdole/kivo/internal/auth/dbq"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/users"
+	"github.com/mmcdole/kivo/internal/userstate"
 )
 
 // CreateUser creates a user with a password, as when an admin adds someone
@@ -136,6 +137,9 @@ func (s *Service) ChangePassword(ctx context.Context, c Caller, r PasswordChange
 func (s *Service) createUser(ctx context.Context, tx *store.Tx, u users.NewUser, phc string) (users.User, error) {
 	out, err := s.deps.Users.CreateUser(ctx, tx, u)
 	if err != nil {
+		return users.User{}, err
+	}
+	if err := userstate.CreateMyList(ctx, tx, out.ID, out.Created); err != nil {
 		return users.User{}, err
 	}
 	err = dbq.New(tx).InsertPassword(ctx, dbq.InsertPasswordParams{

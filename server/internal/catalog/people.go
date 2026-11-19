@@ -10,7 +10,6 @@ import (
 	"github.com/mmcdole/kivo/internal/catalog/dbq"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/store"
-	"github.com/mmcdole/kivo/internal/users"
 )
 
 // RenamePerson renames an author or narrator and returns the resulting
@@ -18,7 +17,8 @@ import (
 //
 // Renaming to someone else's name merges the two. Every credit and
 // external ID moves to the other person, the oldest with that name, who is
-// returned. The renamed person is deleted.
+// returned, and the OnPersonMerge hook runs. The renamed person is
+// deleted.
 //
 // Either way, each of the person's books counts as edited, so its authors
 // or narrators are locked and a rescan keeps the change. The person's works
@@ -91,8 +91,10 @@ func (c *Catalog) RenamePerson(ctx context.Context, person id.ID, name string) (
 		if err := q.MovePersonExternalIDs(ctx, dbq.MovePersonExternalIDsParams{Into: into, From: person}); err != nil {
 			return err
 		}
-		if err := users.MovePersonInQueries(ctx, tx, person, into); err != nil {
-			return err
+		if c.personMerged != nil {
+			if err := c.personMerged(ctx, tx, person, into); err != nil {
+				return err
+			}
 		}
 		return reindexPerson(ctx, tx, person, func() error { return q.DeletePerson(ctx, person) })
 	})

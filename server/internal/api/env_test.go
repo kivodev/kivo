@@ -41,13 +41,13 @@ import (
 	"github.com/mmcdole/kivo/internal/playback"
 	"github.com/mmcdole/kivo/internal/previews"
 	"github.com/mmcdole/kivo/internal/query"
-	kivoversion "github.com/mmcdole/kivo/internal/version"
 	"github.com/mmcdole/kivo/internal/scan"
 	"github.com/mmcdole/kivo/internal/subtitles"
 	"github.com/mmcdole/kivo/internal/tasks"
 	"github.com/mmcdole/kivo/internal/transcode"
 	"github.com/mmcdole/kivo/internal/users"
 	"github.com/mmcdole/kivo/internal/userstate"
+	kivoversion "github.com/mmcdole/kivo/internal/version"
 )
 
 var ctx = context.Background()
@@ -249,6 +249,7 @@ func newEnv(t *testing.T, o serving) *env {
 	e.d.Activity = activity.New(db, events.NewBus())
 	e.d.Auth = auth.New(db, auth.Deps{Users: e.d.Users, Settings: settings, Activity: e.d.Activity})
 	e.d.Metadata = metadata.New(db, metadata.Deps{Catalog: e.b.Catalog, Imager: fakeImager{}, Settings: e.d.Settings, Events: e.d.Events, Tasks: e.asks, CacheDir: t.TempDir(), ImageDir: t.TempDir()}, metadata.Options{})
+	e.b.Catalog.OnPersonMerge(userstate.MovePersonInQueries)
 	e.d.Userstate = userstate.New(db, userstate.Deps{Catalog: e.b.Catalog, Settings: settings, Activity: e.d.Activity, Events: e.d.Events})
 	e.cache = t.TempDir()
 	e.d.Markers = markers.New(db, markers.Deps{Catalog: e.b.Catalog, Media: noMedia{}, Tasks: e.asks, Settings: e.d.Settings, CacheDir: e.cache})
@@ -298,7 +299,7 @@ func newEnv(t *testing.T, o serving) *env {
 	// granted is deleted.
 	var nobody users.User
 	e.b.Write(func(ctx context.Context, tx *store.Tx) error {
-		if nobody, err = e.d.Users.CreateUser(ctx, tx, users.NewUser{Username: "nobody", Grants: users.Grants{All: true}}); err != nil {
+		if nobody, err = e.createUser(ctx, tx, users.NewUser{Username: "nobody", Grants: users.Grants{All: true}}); err != nil {
 			return err
 		}
 		_, err = tx.ExecContext(ctx, `UPDATE user SET all_libraries = 0 WHERE id = ?`, nobody.ID)
@@ -475,4 +476,13 @@ var clientCaps = map[string]any{
 	"video":     []map[string]any{{"codec": "h264", "delivery": []string{"file", "stream"}}},
 	"audio":     []map[string]any{{"codec": "aac", "delivery": []string{"file", "stream"}, "maxChannels": 2}},
 	"subtitles": []map[string]any{{"codec": "webvtt", "delivery": []string{"stream", "external"}}},
+}
+
+// createUser creates a user with My List, as signing up does.
+func (e *env) createUser(ctx context.Context, tx *store.Tx, u users.NewUser) (users.User, error) {
+	out, err := e.d.Users.CreateUser(ctx, tx, u)
+	if err != nil {
+		return out, err
+	}
+	return out, userstate.CreateMyList(ctx, tx, out.ID, out.Created)
 }
