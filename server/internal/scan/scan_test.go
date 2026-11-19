@@ -762,12 +762,14 @@ func TestChangedNFOInAShowFolderReidentifiesIt(t *testing.T) {
 
 // fakeNotifier delivers events and errors a test sends.
 type fakeNotifier struct {
-	events chan fsnotify.Event
-	errs   chan error
-	added  []string
+	events  chan fsnotify.Event
+	errs    chan error
+	added   []string
+	removed []string
 }
 
 func (f *fakeNotifier) Add(p string) error            { f.added = append(f.added, p); return nil }
+func (f *fakeNotifier) Remove(p string) error         { f.removed = append(f.removed, p); return nil }
 func (f *fakeNotifier) Events() <-chan fsnotify.Event { return f.events }
 func (f *fakeNotifier) Errors() <-chan error          { return f.errs }
 func (f *fakeNotifier) Close() error                  { return nil }
@@ -957,6 +959,92 @@ func TestWatcherScansEachDirectoryOnceQuiet(t *testing.T) {
 		synctest.Wait()
 		if got := h.scanRequests(); len(got) != 2 || !slices.Contains(got, n.String()+" .") || !slices.Contains(got, m.String()+" .") {
 			t.Fatalf("after an overflow: %v", got)
+		}
+	})
+}
+
+// Create events only add watches for directories (not regular files),
+// Remove/Rename events drop the directory and its subtree so recreating the
+// same path watches it again, and turning file watching off cancels any
+// in-flight quiet timer goroutines cleanly.
+func TestWatcherWatchesOnlyDirsAndRewatchesRecreated(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		root := t.TempDir()
+		h := newHarness(t)
+		libID, err := h.s.AddLibrary(ctx, catalog.LibraryInput{Name: "Shows", Kind: catalog.Shows, Folders: []string{root}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		l, err := h.b.Catalog.Library(ctx, libID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		folderID := l.Folders[0].ID
+
+		fake := &fakeNotifier{events: make(chan fsnotify.Event), errs: make(chan error)}
+		h.s.newNotifier = func() (notifier, error) { return fake, nil }
+		wctx, stop := context.WithCancel(ctx)
+		done := make(chan error, 1)
+		go func() { done <- h.s.Watch(wctx) }()
+		defer func() { stop(); <-done }()
+		synctest.Wait()
+
+		// A newly created regular file must not gain a watch, though its
+		// parent directory is still scheduled for scanning.
+		filePath := filepath.Join(root, "movie.mkv")
+		if err := os.WriteFile(filePath, []byte("x"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		fake.events <- fsnotify.Event{Name: filePath, Op: fsnotify.Create}
+		synctest.Wait()
+		if slices.Contains(fake.added, filePath) {
+			t.Fatalf("regular file %s was watched: %v", filePath, fake.added)
+		}
+
+		// Creating a directory and a nested directory adds watches for both.
+		showDir := filepath.Join(root, "Show")
+		seasonDir := filepath.Join(showDir, "Season 01")
+		if err := os.MkdirAll(seasonDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		fake.events <- fsnotify.Event{Name: showDir, Op: fsnotify.Create}
+		fake.events <- fsnotify.Event{Name: seasonDir, Op: fsnotify.Create}
+		synctest.Wait()
+		if !slices.Contains(fake.added, showDir) || !slices.Contains(fake.added, seasonDir) {
+			t.Fatalf("new directories not watched: added=%v", fake.added)
+		}
+
+		// Removing Show drops both Show and Show/Season 01 from watched,
+		// so recreating Show at the same path watches it again.
+		fake.added = nil
+		fake.removed = nil
+		fake.events <- fsnotify.Event{Name: showDir, Op: fsnotify.Remove}
+		synctest.Wait()
+		if !slices.Contains(fake.removed, showDir) || !slices.Contains(fake.removed, seasonDir) {
+			t.Fatalf("removed=%v, want both %s and %s", fake.removed, showDir, seasonDir)
+		}
+		fake.events <- fsnotify.Event{Name: showDir, Op: fsnotify.Create}
+		synctest.Wait()
+		if !slices.Contains(fake.added, showDir) {
+			t.Fatalf("recreated directory %s was not re-watched: added=%v", showDir, fake.added)
+		}
+
+		// Turning file watching off while a quiet timer is armed/firing must
+		// not leave any timer goroutine blocked (synctest verifies no leak).
+		h.clearRequests()
+		fake.events <- fsnotify.Event{Name: filepath.Join(showDir, "ep1.mkv"), Op: fsnotify.Write}
+		synctest.Wait()
+		if err := h.settings.Update(ctx, func(s *config.Settings) error {
+			s.FileWatching = false
+			return nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+		h.s.FileWatchingChanged()
+		time.Sleep(quiet + time.Second)
+		synctest.Wait()
+		if got := h.scanRequests(); len(got) != 0 {
+			t.Fatalf("unexpected scan requests after turning watching off: %v (folder %s)", got, folderID)
 		}
 	})
 }
