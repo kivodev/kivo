@@ -389,21 +389,18 @@ func (r *Runner) Stop(ctx context.Context, name string, items ...id.ID) error {
 		return ErrNotStoppable
 	}
 	if len(items) > 0 {
+		drop := make(map[id.ID]bool, len(items))
 		for _, i := range items {
-			t.items.stopLocked(i)
+			drop[i] = true
 		}
+		t.items.stopManyLocked(drop)
 		r.stopStepsLocked(t, items...)
 		r.mu.Unlock()
 		r.changed()
 		return nil
 	}
 	if w := t.items; w != nil {
-		for i := range w.busy {
-			w.stopLocked(i)
-		}
-		for i := range w.queued {
-			w.stopLocked(i)
-		}
+		w.stopAllLocked()
 		r.stopStepsLocked(t)
 	}
 	ended := r.cutLocked(t)
