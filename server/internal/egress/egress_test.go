@@ -265,3 +265,33 @@ func TestBodyCap(t *testing.T) {
 		t.Fatalf("a body at the cap: %d bytes, %v", len(resp.Body), err)
 	}
 }
+
+func TestLimiterWaitReturnsCancelledSlot(t *testing.T) {
+	l := &Limiter{Every: 50 * time.Millisecond}
+	// Take the first immediate slot.
+	if err := l.Wait(ctx); err != nil {
+		t.Fatal(err)
+	}
+	// Already-cancelled contexts must not reserve slots.
+	done, cancel := context.WithCancel(ctx)
+	cancel()
+	for range 20 {
+		if err := l.Wait(done); !errors.Is(err, context.Canceled) {
+			t.Fatalf("cancelled Wait = %v, want Canceled", err)
+		}
+	}
+	// A caller that cancels while waiting must return the tail slot.
+	short, cancelShort := context.WithTimeout(ctx, 5*time.Millisecond)
+	defer cancelShort()
+	if err := l.Wait(short); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("short Wait = %v, want DeadlineExceeded", err)
+	}
+	// The next live caller should only wait for the single remaining interval.
+	start := time.Now()
+	if err := l.Wait(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if took := time.Since(start); took > 150*time.Millisecond {
+		t.Errorf("Wait after cancellations took %v, expected ~50ms", took)
+	}
+}
