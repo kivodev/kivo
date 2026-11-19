@@ -12,6 +12,11 @@ import (
 	"github.com/mmcdole/kivo/internal/media"
 )
 
+// maxMdatGrow caps the upfront buffer pre-allocation for an mdat box. It
+// avoids repeated doublings on normal segments while keeping a truncated
+// stream from allocating maxMdat bytes up front.
+const maxMdatGrow = 16 << 20
+
 // Splitter cuts the fragmented MP4 a transcode writes into its
 // initialization segment and media segments, one per fragment. ffmpeg
 // starts a fragment at each video keyframe, so each segment begins on a
@@ -162,6 +167,7 @@ func (s *Splitter) readFragment() (time.Duration, bool, []byte, error) {
 			return 0, false, nil, corrupt("mp4: mdat is %d bytes", mdat.size)
 		}
 		buf := bytes.NewBuffer(data)
+		buf.Grow(int(min(mdat.size, maxMdatGrow)))
 		if err := s.copyBody(buf, mdat); err != nil {
 			return 0, false, nil, err
 		}
