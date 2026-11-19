@@ -442,10 +442,14 @@ func (e *env) move(lib catalog.Library, file id.ID, rel string) {
 	e.t.Helper()
 	found := e.add(lib, rel)[0]
 	e.b.Write(func(ctx context.Context, tx *store.Tx) error {
-		if err := e.b.MarkGone(ctx, tx, file); err != nil {
-			return err
-		}
-		if err := e.b.Catalog.Relink(ctx, tx, file, found); err != nil {
+		return e.b.MarkGone(ctx, tx, file)
+	})
+	gone, err := e.b.Catalog.File(ctx, file)
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	e.b.Write(func(ctx context.Context, tx *store.Tx) error {
+		if err := e.b.Catalog.Relink(ctx, tx, gone, found); err != nil {
 			return err
 		}
 		return e.id.Reidentify(ctx, tx, []id.ID{file})

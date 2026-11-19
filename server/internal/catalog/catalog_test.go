@@ -346,10 +346,14 @@ func TestRootIsInOneLibrary(t *testing.T) {
 	})
 	moved := b.File(folder2, "Heat (1995)/Heat (1995).mkv")
 	b.Write(func(ctx context.Context, tx *store.Tx) error {
-		if err := b.MarkGone(ctx, tx, heat.File); err != nil {
-			return err
-		}
-		return b.Catalog.Relink(ctx, tx, heat.File, moved)
+		return b.MarkGone(ctx, tx, heat.File)
+	})
+	goneHeat, err := b.Catalog.File(ctx, heat.File)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b.Write(func(ctx context.Context, tx *store.Tx) error {
+		return b.Catalog.Relink(ctx, tx, goneHeat, moved)
 	})
 	if err := move(heat.Work, lib2); err != nil {
 		t.Fatal(err)
@@ -668,8 +672,12 @@ func TestRelink(t *testing.T) {
 	_, folder := b.Library(catalog.Movies)
 	m := b.Movie(folder, "Heat", 1995)
 	b.Write(func(ctx context.Context, tx *store.Tx) error { return b.MarkGone(ctx, tx, m.File) })
+	gone, err := b.Catalog.File(ctx, m.File)
+	if err != nil {
+		t.Fatal(err)
+	}
 	found := b.File(folder, "Renamed/Heat.mkv")
-	b.Write(func(ctx context.Context, tx *store.Tx) error { return b.Catalog.Relink(ctx, tx, m.File, found) })
+	b.Write(func(ctx context.Context, tx *store.Tx) error { return b.Catalog.Relink(ctx, tx, gone, found) })
 
 	f, err := b.Catalog.File(ctx, m.File)
 	if err != nil || f.RelPath != "Renamed/Heat.mkv" || !f.Present {
@@ -682,9 +690,23 @@ func TestRelink(t *testing.T) {
 		t.Fatal("the relinked movie isn't available")
 	}
 	other := b.Movie(folder, "Other", 2000)
-	err = write(t, b, func(ctx context.Context, tx *store.Tx) error { return b.Catalog.Relink(ctx, tx, m.File, other.File) })
+	err = write(t, b, func(ctx context.Context, tx *store.Tx) error { return b.Catalog.Relink(ctx, tx, gone, other.File) })
 	if !errors.Is(err, catalog.ErrInvalid) {
 		t.Fatalf("relinking onto a file with a version: %v", err)
+	}
+
+	// A second relink racing on the same gone snapshot returns ErrStale and
+	// leaves both rows intact.
+	second := b.File(folder, "Copy/Heat.mkv")
+	err = write(t, b, func(ctx context.Context, tx *store.Tx) error { return b.Catalog.Relink(ctx, tx, gone, second) })
+	if !errors.Is(err, catalog.ErrStale) {
+		t.Fatalf("relinking an already-moved file: %v, want ErrStale", err)
+	}
+	if f, err := b.Catalog.File(ctx, m.File); err != nil || f.RelPath != "Renamed/Heat.mkv" {
+		t.Fatalf("first relink overwritten: %+v, %v", f, err)
+	}
+	if f, err := b.Catalog.File(ctx, second); err != nil || f.RelPath != "Copy/Heat.mkv" {
+		t.Fatalf("second file lost: %+v, %v", f, err)
 	}
 }
 
@@ -696,7 +718,7 @@ func TestMarkGoneOnlyAtTheMissingPath(t *testing.T) {
 	m := b.Movie(folder, "Heat", 1995)
 	old, _ := b.Catalog.File(ctx, m.File)
 	found := b.File(folder, "Renamed/Heat.mkv")
-	b.Write(func(ctx context.Context, tx *store.Tx) error { return b.Catalog.Relink(ctx, tx, m.File, found) })
+	b.Write(func(ctx context.Context, tx *store.Tx) error { return b.Catalog.Relink(ctx, tx, old, found) })
 
 	b.Write(func(ctx context.Context, tx *store.Tx) error {
 		return b.Catalog.MarkGone(ctx, tx, folder, []catalog.FileRef{{ID: m.File, RelPath: old.RelPath}})
