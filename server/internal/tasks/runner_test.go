@@ -15,6 +15,7 @@ import (
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/store"
 	"github.com/mmcdole/kivo/internal/store/storetest"
+	"github.com/mmcdole/kivo/internal/tasks/dbq"
 )
 
 // feature stands in for an item task's tables, in memory. It holds the
@@ -412,6 +413,73 @@ func TestFuncRuns(t *testing.T) {
 		}
 		if s := h.status("optimize-database"); s.Last == nil || s.Last.Error != "disk I/O error" {
 			t.Fatalf("a failed run: %+v", s.Last)
+		}
+	})
+}
+
+// An interval task counts from its last run's end, through restarts. A run
+// that isn't due yet waits out the rest of its interval, and one that came
+// due while the server was down begins at startup.
+func TestARestartKeepsAnIntervalTasksTime(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		runs := 0
+		h := newHarness(t, Task{Name: "scan-libraries", Schedule: Every(12 * time.Hour), Work: Func(func(context.Context) error {
+			runs++
+			return nil
+		})})
+		h.start()
+		sleep(12*time.Hour + time.Minute)
+		h.stop() // a restart
+		if runs != 1 {
+			t.Fatalf("%d runs in the first 12 hours, want 1", runs)
+		}
+
+		h.start()
+		sleep(11 * time.Hour)
+		h.stop() // another, before the next run is due
+		if runs != 1 {
+			t.Fatalf("%d runs 11 hours after the first, want 1", runs)
+		}
+
+		h.start()
+		sleep(2 * time.Hour)
+		h.stop()
+		if runs != 2 {
+			t.Fatalf("%d runs 13 hours after the first, want 2", runs)
+		}
+
+		time.Sleep(13 * time.Hour) // the server is down while the next run comes due
+		h.start()
+		defer h.stop()
+		if runs != 3 {
+			t.Fatalf("%d runs, want the run that came due to begin at startup", runs)
+		}
+	})
+}
+
+// An interval task whose last run's end is ahead of the clock counts from
+// the server's start, so a clock set back doesn't put its runs off.
+func TestAnIntervalTaskCountsFromStartupWhenItsLastRunIsAhead(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		runs := 0
+		h := newHarness(t, Task{Name: "scan-libraries", Schedule: Every(12 * time.Hour), Work: Func(func(context.Context) error {
+			runs++
+			return nil
+		})})
+		err := h.db.Write(context.Background(), func(ctx context.Context, tx *store.Tx) error {
+			return dbq.New(tx).EndRun(ctx, dbq.EndRunParams{Name: "scan-libraries", Finished: time.Now().Add(30 * 24 * time.Hour).UnixMilli()})
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		h.start()
+		defer h.stop()
+		if next := h.status("scan-libraries").Next; !next.Equal(time.Now().Add(12 * time.Hour)) {
+			t.Fatalf("next run %v, want 12 hours after startup", next)
+		}
+		sleep(12*time.Hour + time.Minute)
+		if runs != 1 {
+			t.Fatalf("%d runs 12 hours after startup, want 1", runs)
 		}
 	})
 }
