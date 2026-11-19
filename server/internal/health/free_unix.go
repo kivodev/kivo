@@ -2,7 +2,12 @@
 
 package health
 
-import "golang.org/x/sys/unix"
+import (
+	"errors"
+	"syscall"
+
+	"golang.org/x/sys/unix"
+)
 
 // freeSpace returns the space available to an unprivileged user on path's
 // disk.
@@ -13,3 +18,5 @@ func freeSpace(path string) (uint64, error) {
 	}
 	return st.Bavail * uint64(st.Bsize), nil
 }
+
+func isDiskFull(err error) bool { return errors.Is(err, syscall.ENOSPC) }
