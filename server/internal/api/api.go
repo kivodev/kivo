@@ -22,7 +22,7 @@ import (
 	"github.com/mmcdole/kivo/internal/metadata"
 	"github.com/mmcdole/kivo/internal/playback"
 	"github.com/mmcdole/kivo/internal/query"
-	"github.com/mmcdole/kivo/internal/release"
+	kivoversion "github.com/mmcdole/kivo/internal/version"
 	"github.com/mmcdole/kivo/internal/scan"
 	"github.com/mmcdole/kivo/internal/subtitles"
 	"github.com/mmcdole/kivo/internal/tasks"
@@ -64,7 +64,7 @@ type Deps struct {
 	Version string
 	// Release has the newer release, if one is out, for admins' server info.
 	Release interface {
-		Newer() (release.Release, bool)
+		Newer() (kivoversion.Release, bool)
 	}
 	// BasePath serves everything under a subpath, such as /kivo, behind a
 	// reverse proxy. It is empty for the root. Otherwise it has a leading

@@ -30,7 +30,7 @@ import (
 	"github.com/mmcdole/kivo/internal/playback"
 	"github.com/mmcdole/kivo/internal/previews"
 	"github.com/mmcdole/kivo/internal/query"
-	"github.com/mmcdole/kivo/internal/release"
+	kivoversion "github.com/mmcdole/kivo/internal/version"
 	"github.com/mmcdole/kivo/internal/scan"
 	"github.com/mmcdole/kivo/internal/store"
 	"github.com/mmcdole/kivo/internal/subtitles"
@@ -65,7 +65,7 @@ type server struct {
 	ffmpeg     *ffmpeg.Runner
 	problems   *health.Registry
 	discovery  *discovery.Responder
-	release    *release.Checker
+	release    *kivoversion.Checker
 	api        *api.Server
 }
 
@@ -258,7 +258,7 @@ func wire(ctx context.Context, boot config.Bootstrap, logs *health.Logs, bus *ev
 	s.discovery = discovery.New(discovery.Deps{
 		Settings: s.settings, Version: version, Listen: boot.Listen, TLS: boot.TLSCert != "", BasePath: boot.BasePath,
 	})
-	s.release = release.New(release.Options{Version: version, Check: boot.UpdateCheck})
+	s.release = kivoversion.NewChecker(kivoversion.CheckOptions{Version: version, Check: boot.UpdateCheck})
 	s.api, err = api.New(api.Deps{
 		Users: s.users, Auth: s.auth, Activity: s.activity, Query: s.query, Playback: s.playback, Downloads: s.downloads,
 		Scan: s.scanner, Identify: s.identifier, Metadata: s.metadata, Userstate: s.userstate,
