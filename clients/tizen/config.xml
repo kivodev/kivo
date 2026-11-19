@@ -4,7 +4,7 @@
      but data, artwork and media. Tizen 8 (2024 TVs, Chromium 108) is the oldest engine the TV
      build runs on. -->
 <widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets"
-        id="https://github.com/mmcdole/kivo/clients/tizen" version="0.3.0" viewmodes="maximized"> <!-- x-release-please-version -->
+        id="https://github.com/mmcdole/kivo/clients/tizen" version="0.4.0" viewmodes="maximized"> <!-- x-release-please-version -->
     <tizen:application id="kivoplayer.Kivo" package="kivoplayer" required_version="8.0"/>
     <name>Kivo</name>
     <icon src="icon.png"/>

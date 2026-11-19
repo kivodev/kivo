@@ -13,7 +13,7 @@ plugins {
 
 // The app's version, which release-please stamps, and its build number, which every request names in the app's
 // version with it: -PbuildNumber when a build stamps one, else 0.
-val appVersion = "0.3.0" // x-release-please-version
+val appVersion = "0.4.0" // x-release-please-version
 val buildNumber: Int = providers.gradleProperty("buildNumber").orNull?.toInt() ?: 0
 
 // versionCode = (major * 10000 + minor * 100 + patch) * 1000 + buildNumber, so 0.3.0 build 12 is 300012. It rises

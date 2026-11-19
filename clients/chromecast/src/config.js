@@ -18,4 +18,4 @@ export const APP = 'kivo-cast';
 export const PLATFORM = 'cast';
 
 /** The receiver's version, as package.json gives it. */
-export const VERSION = '0.3.0'; // x-release-please-version
+export const VERSION = '0.4.0'; // x-release-please-version

@@ -118,7 +118,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(KIVO_BUNDLE_ID)
         PRODUCT_NAME: Kivo
-        MARKETING_VERSION: 0.3.0 # x-release-please-version
+        MARKETING_VERSION: 0.4.0 # x-release-please-version
         # A small counter, raised for each TestFlight upload: Google Cast
         # aborts at launch on a long one (2026102401), so the build stops
         # on more than four digits.
