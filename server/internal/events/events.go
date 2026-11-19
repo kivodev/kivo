@@ -197,11 +197,17 @@ func (b *Bus) deliver(e Event) {
 
 // merge adds e to the waiting events of its kind. If a waiting event's
 // scope has the same User and AdminOnly, e merges into it and their
-// libraries are joined. Otherwise e is added as a new event.
+// libraries are joined. Empty Libraries means everyone, so merging an
+// unscoped event with a library-scoped one stays unscoped. Otherwise e is
+// added as a new event.
 func merge(waiting []Event, e Event) []Event {
 	for i, w := range waiting {
 		if w.Scope.User == e.Scope.User && w.Scope.AdminOnly == e.Scope.AdminOnly {
-			waiting[i].Scope.Libraries = join(w.Scope.Libraries, e.Scope.Libraries)
+			if len(w.Scope.Libraries) == 0 || len(e.Scope.Libraries) == 0 {
+				waiting[i].Scope.Libraries = nil
+			} else {
+				waiting[i].Scope.Libraries = join(w.Scope.Libraries, e.Scope.Libraries)
+			}
 			return waiting
 		}
 	}
@@ -239,13 +245,26 @@ func (s *Sub) Close() {
 	s.end(nil)
 }
 
-// end closes s. The caller holds bus.mu.
+// end closes s. The caller holds bus.mu. When closing due to lag, buffered
+// stale events are drained first so the subscriber sees the close and
+// resyncs immediately.
 func (s *Sub) end(err error) {
 	if s.closed {
 		return
 	}
 	s.closed = true
 	s.err = err
+	if err != nil {
+		for {
+			select {
+			case <-s.ch:
+			default:
+				close(s.ch)
+				delete(s.bus.subs, s)
+				return
+			}
+		}
+	}
 	close(s.ch)
 	delete(s.bus.subs, s)
 }
