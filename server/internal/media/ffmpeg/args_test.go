@@ -484,6 +484,43 @@ func TestStereoDownmix(t *testing.T) {
 	}
 }
 
+// TestSampleChainFilterIndices checks that every backend's sampleGraph
+// filter names match the actual 0-based filter positions in the joined -vf
+// chain, including multi-filter scales like qsvD3D11's hwmap,vpp_qsv.
+func TestSampleChainFilterIndices(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		b    *backend
+		node string
+	}{
+		{"software", software, ""},
+		{"vaapi", vaapi, "/dev/dri/renderD128"},
+		{"qsv", qsv, "/dev/dri/renderD128"},
+		{"qsv-d3d11", qsvD3D11, "1"},
+		{"nvenc", nvenc, "0"},
+		{"videotoolbox", videoToolbox, ""},
+	} {
+		chain, g := sampleChain(sdr1080, testDevice(tt.b, tt.node, media.GridGOP))
+		filters := strings.Split(strings.Join(chain, ","), ",")
+		for i, name := range g.black {
+			var idx int
+			if _, err := fmt.Sscanf(name, "Parsed_blackframe_%d", &idx); err != nil {
+				t.Fatalf("%s: bad blackframe name %q: %v", tt.name, name, err)
+			}
+			if idx < 0 || idx >= len(filters) || !strings.HasPrefix(filters[idx], "blackframe=") {
+				t.Errorf("%s: black[%d]=%q points to filter %q (all: %v)", tt.name, i, name, filters[min(max(idx, 0), len(filters)-1)], filters)
+			}
+		}
+		var metaIdx int
+		if _, err := fmt.Sscanf(g.metadata, "Parsed_metadata_%d", &metaIdx); err != nil {
+			t.Fatalf("%s: bad metadata name %q: %v", tt.name, g.metadata, err)
+		}
+		if metaIdx < 0 || metaIdx >= len(filters) || !strings.HasPrefix(filters[metaIdx], "metadata=") {
+			t.Errorf("%s: metadata=%q points to filter %q (all: %v)", tt.name, g.metadata, filters[min(max(metaIdx, 0), len(filters)-1)], filters)
+		}
+	}
+}
+
 // slashed writes the file: paths in args with /, as the golden files have
 // them, whatever separator the OS joined them with.
 func slashed(args []string) []string {

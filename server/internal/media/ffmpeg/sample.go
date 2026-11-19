@@ -104,9 +104,14 @@ func sampleChain(src media.Track, dev *device) ([]string, sampleGraph) {
 		chain = append(chain, crop, fmt.Sprintf("scale=%d:-2:flags=area", media.SampleWidth), "format=yuv420p")
 	} else {
 		// The frame is scaled whole on the device, so the crop keeps about
-		// SampleWidth pixels.
+		// SampleWidth pixels. Split on commas because a backend's scale can
+		// return multiple filters (e.g. QSV's hwmap,vpp_qsv), and len(chain)
+		// is used below as ffmpeg's Parsed_<name>_<N> filter index.
 		w, h := fit(src.Width, src.Height, media.SampleWidth*10/9, 0)
-		chain = append(chain, dev.b.scale(w, h, true), "hwdownload", "format=nv12", crop, "format=yuv420p")
+		if sc := dev.b.scale(w, h, true); sc != "" {
+			chain = append(chain, strings.Split(sc, ",")...)
+		}
+		chain = append(chain, "hwdownload", "format=nv12", crop, "format=yuv420p")
 	}
 	var g sampleGraph
 	for i, level := range media.BlackLevels {
