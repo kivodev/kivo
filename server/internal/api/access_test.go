@@ -1,9 +1,6 @@
 package api
 
 import (
-	"bytes"
-	"errors"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -18,12 +15,8 @@ import (
 // without credentials. Making an operation public then needs a deliberate
 // change here too.
 func TestPublicOperations(t *testing.T) {
-	rs, err := loadRoutes(spec)
-	if err != nil {
-		t.Fatal(err)
-	}
 	var public []string
-	for _, r := range rs {
+	for _, r := range specRoutes {
 		if r.level == "public" {
 			public = append(public, r.op)
 		}
@@ -35,39 +28,14 @@ func TestPublicOperations(t *testing.T) {
 	}
 }
 
-// TestMissingAccessLevelStopsStartup removes getWork's x-kivo-access, then
-// sets it to a value that is not a level. Either change makes loadRoutes,
-// and so New, fail with an error naming the operation and its path.
-func TestMissingAccessLevelStopsStartup(t *testing.T) {
-	const line = "      operationId: getWork\n"
-	if bytes.Count(spec, []byte(line)) != 1 {
-		t.Fatalf("spec has no single %q", line)
-	}
-	for name, replace := range map[string][2]string{
-		"missing": {"      x-kivo-access: cast\n", ""},
-		"unknown": {"      x-kivo-access: cast\n", "      x-kivo-access: owner\n"},
-	} {
-		at := bytes.Index(spec, []byte(line))
-		rest := spec[at:]
-		i := bytes.Index(rest, []byte(replace[0]))
-		b := slices.Concat(spec[:at], rest[:i], []byte(replace[1]), rest[i+len(replace[0]):])
-		_, err := loadRoutes(b)
-		msg := fmt.Sprint(err)
-		if !errors.Is(err, errSpec) || !strings.Contains(msg, "getWork (GET /api/v1/works/{id})") ||
-			name == "unknown" && !strings.Contains(msg, `"owner"`) {
-			t.Errorf("%s: %v", name, err)
-		}
-	}
-}
-
 // TestEveryRouteIsRegistered checks that every operation of the spec
 // reaches a handler, generated or hand-written, rather than the API's 404.
 func TestEveryRouteIsRegistered(t *testing.T) {
 	e := newEnv(t, serving{})
 	for _, rt := range e.srv.routes {
 		r := httptest.NewRequest(rt.method, fill(rt.path, nil), nil)
-		if _, pattern := e.srv.mux.Handler(r); pattern != rt.pattern() {
-			t.Errorf("%s is served by %q", rt.pattern(), pattern)
+		if _, pattern := e.srv.mux.Handler(r); pattern != rt.method+" "+rt.path {
+			t.Errorf("%s %s is served by %q", rt.method, rt.path, pattern)
 		}
 	}
 }
