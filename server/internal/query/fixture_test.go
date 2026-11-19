@@ -440,9 +440,12 @@ func (h *household) viewer(name string, u users.NewUser) users.Viewer {
 	}
 	var user id.ID
 	h.b.Write(func(ctx context.Context, tx *store.Tx) error {
-		u, err := svc.CreateUser(ctx, tx, u)
-		user = u.ID
-		return err
+		created, err := svc.CreateUser(ctx, tx, u)
+		if err != nil {
+			return err
+		}
+		user = created.ID
+		return userstate.CreateMyList(ctx, tx, created.ID, created.Created)
 	})
 	h.names[user] = "user:" + name
 	return h.mustViewer(user)

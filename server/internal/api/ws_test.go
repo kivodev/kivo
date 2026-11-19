@@ -203,7 +203,7 @@ func TestLibraryChangedNamesWhatEachSees(t *testing.T) {
 	var friend users.User
 	e.b.Write(func(ctx context.Context, tx *store.Tx) error {
 		var err error
-		friend, err = e.d.Users.CreateUser(ctx, tx, users.NewUser{Username: "friend", Grants: users.Grants{Libraries: []id.ID{e.lib}}})
+		friend, err = e.createUser(ctx, tx, users.NewUser{Username: "friend", Grants: users.Grants{Libraries: []id.ID{e.lib}}})
 		return err
 	})
 	admin, actx := e.dial(e.adminToken)

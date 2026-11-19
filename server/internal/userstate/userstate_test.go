@@ -99,8 +99,11 @@ func (f *fixture) newUser(name string) id.ID {
 	var p id.ID
 	f.b.Write(func(ctx context.Context, tx *store.Tx) error {
 		user, err := u.CreateUser(ctx, tx, users.NewUser{Username: name, Grants: users.Grants{All: true}})
+		if err != nil {
+			return err
+		}
 		p = user.ID
-		return err
+		return userstate.CreateMyList(ctx, tx, user.ID, user.Created)
 	})
 	return p
 }

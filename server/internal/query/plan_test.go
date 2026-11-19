@@ -16,6 +16,7 @@ import (
 	"github.com/mmcdole/kivo/internal/store"
 	"github.com/mmcdole/kivo/internal/store/storetest"
 	"github.com/mmcdole/kivo/internal/users"
+	"github.com/mmcdole/kivo/internal/userstate"
 )
 
 // largeTables grow with the library or with use. A query may search them
@@ -34,29 +35,29 @@ var largeTables = []string{
 // of a field's values, and the test suite's
 // invariants.
 var wholeLibrary = map[string]string{
-	"users/users.sql.SavedListQueries":  "once at startup, to log smart lists that no longer compile",
-	"catalog/invariants.sql":            "CheckInvariants, run after every test",
-	"previews/previews.sql.Pending":     "what the previews task has left, or Make preview thumbnails on a library",
-	"subtitles/subtitles.sql.Pending":   "media_track_extracted holds only ASS, SSA and PGS tracks",
-	"markers/markers.sql.CountPending":  "how many files the markers task has left, for Tasks",
-	"markers/markers.sql.MarkerSeasons": "what the markers task has left, or Find intro and credits on a library",
-	"markers/markers.sql.PruneMarkers":  "the nightly cache prune",
-	"scan/scan.sql.AllDirs":             "the file watcher's startup listing of every directory",
-	"query/MissingCount":                "the Missing files total: media_file_gone holds only gone files",
-	"catalog/work.sql.EmptyWorks":       "the nightly deletion of works with nothing left",
-	"scan/scan.sql.Behind":              "media_file_behind holds only files a scan hasn't caught up with",
-	"scan/scan.sql.ProbeFailures":       "media_file_probe_failed holds only files that failed to probe",
-	"metadata/work.sql.FailedRefreshes": "work_refresh_failed holds only works whose refresh failed",
-	"query/ValuesActor":                 "a field's values for a rule, read when the builder opens the field",
-	"query/ValuesAuthor":                "a field's values for a rule, read when the builder opens the field",
-	"query/ValuesBookSeries":            "a field's values for a rule, read when the builder opens the field",
-	"query/ValuesCollection":            "a field's values for a rule, read when the builder opens the field",
-	"query/ValuesCompany":               "a field's values for a rule, read when the builder opens the field",
-	"query/ValuesContentRating":         "a field's values for a rule, read when the builder opens the field",
-	"query/ValuesDirector":              "a field's values for a rule, read when the builder opens the field",
-	"query/ValuesGenre":                 "a field's values for a rule, read when the builder opens the field",
-	"query/ValuesNarrator":              "a field's values for a rule, read when the builder opens the field",
-	"query/ValuesTag":                   "a field's values for a rule, read when the builder opens the field",
+	"userstate/userstate.sql.SavedListQueries": "once at startup, to log smart lists that no longer compile",
+	"catalog/invariants.sql":                   "CheckInvariants, run after every test",
+	"previews/previews.sql.Pending":            "what the previews task has left, or Make preview thumbnails on a library",
+	"subtitles/subtitles.sql.Pending":          "media_track_extracted holds only ASS, SSA and PGS tracks",
+	"markers/markers.sql.CountPending":         "how many files the markers task has left, for Tasks",
+	"markers/markers.sql.MarkerSeasons":        "what the markers task has left, or Find intro and credits on a library",
+	"markers/markers.sql.PruneMarkers":         "the nightly cache prune",
+	"scan/scan.sql.AllDirs":                    "the file watcher's startup listing of every directory",
+	"query/MissingCount":                       "the Missing files total: media_file_gone holds only gone files",
+	"catalog/work.sql.EmptyWorks":              "the nightly deletion of works with nothing left",
+	"scan/scan.sql.Behind":                     "media_file_behind holds only files a scan hasn't caught up with",
+	"scan/scan.sql.ProbeFailures":              "media_file_probe_failed holds only files that failed to probe",
+	"metadata/work.sql.FailedRefreshes":        "work_refresh_failed holds only works whose refresh failed",
+	"query/ValuesActor":                        "a field's values for a rule, read when the builder opens the field",
+	"query/ValuesAuthor":                       "a field's values for a rule, read when the builder opens the field",
+	"query/ValuesBookSeries":                   "a field's values for a rule, read when the builder opens the field",
+	"query/ValuesCollection":                   "a field's values for a rule, read when the builder opens the field",
+	"query/ValuesCompany":                      "a field's values for a rule, read when the builder opens the field",
+	"query/ValuesContentRating":                "a field's values for a rule, read when the builder opens the field",
+	"query/ValuesDirector":                     "a field's values for a rule, read when the builder opens the field",
+	"query/ValuesGenre":                        "a field's values for a rule, read when the builder opens the field",
+	"query/ValuesNarrator":                     "a field's values for a rule, read when the builder opens the field",
+	"query/ValuesTag":                          "a field's values for a rule, read when the builder opens the field",
 
 	"identify/catalog.sql.CountUnidentified": "how many files the identify task has left, for Tasks: media_file_behind holds only files not yet probed or identified",
 }
@@ -348,7 +349,7 @@ func TestManualListsStartAtTheList(t *testing.T) {
 				db = analyzed(t, db)
 			}
 			q := query.New(db)
-			for _, sort := range []users.ListSort{users.ListCustom, users.ListTitle, users.ListReleaseDate, users.ListRating, users.ListDateAdded} {
+			for _, sort := range []userstate.ListSort{userstate.ListCustom, userstate.ListTitle, userstate.ListReleaseDate, userstate.ListRating, userstate.ListDateAdded} {
 				for _, only := range [][]catalog.WorkKind{nil, {catalog.KindMovie}} {
 					counted, page, args := q.CompiledList(v, lists[0].id, sort, only)
 					for name, stmt := range map[string]string{"counted": counted, "page": page} {
@@ -366,7 +367,7 @@ func TestManualListsStartAtTheList(t *testing.T) {
 								reads = append(reads, covering.Replace(listIndex.ReplaceAllString(step, "SEARCH lw ")))
 							}
 						}
-						if cut, _, _ := strings.Cut(got, "\nSCAN p\n"); sort == users.ListCustom &&
+						if cut, _, _ := strings.Cut(got, "\nSCAN p\n"); sort == userstate.ListCustom &&
 							(strings.Contains(cut, "TEMP B-TREE FOR ORDER BY") || !strings.Contains(cut, "SEARCH lw USING COVERING INDEX list_work_position (list_id=?)")) {
 							t.Errorf("%s: a page in the custom order doesn't walk the places unsorted:\n%s", st.key(), got)
 						}

@@ -141,8 +141,34 @@ ON CONFLICT (user_id, series_id) DO UPDATE SET
 -- name: DeleteTrackChoice :exec
 DELETE FROM track_choice WHERE user_id = @user_id AND series_id = @series_id;
 
--- name: ListOwner :one
-SELECT user_id, query IS NOT NULL AS smart FROM list WHERE id = @id;
+-- name: InsertList :exec
+INSERT INTO list (id, user_id, name, built_in, query, created_at) VALUES (@id, @user_id, @name, @built_in, @query, @created_at);
+
+-- name: CountLists :one
+SELECT count(*) FROM list WHERE user_id = @user_id;
+
+-- name: GetList :one
+SELECT id, built_in, query IS NOT NULL AS smart FROM list WHERE id = @id AND user_id = @user_id;
+
+-- name: MovePersonInListQueries :exec
+-- A person merged into another keeps the rules that name them.
+UPDATE list SET query = replace(query, CAST(@from AS TEXT), CAST(@into AS TEXT))
+WHERE query LIKE '%' || CAST(@from AS TEXT) || '%';
+
+-- name: SetListQuery :exec
+UPDATE list SET query = @query WHERE id = @id;
+
+-- name: RenameList :exec
+UPDATE list SET name = @name WHERE id = @id;
+
+-- name: SetListSort :exec
+UPDATE list SET sort = @sort WHERE id = @id;
+
+-- name: DeleteList :exec
+DELETE FROM list WHERE id = @id;
+
+-- name: SavedListQueries :many
+SELECT id, query FROM list WHERE query IS NOT NULL;
 
 -- name: AddToList :exec
 -- The work goes first in the list's custom order, before its lowest

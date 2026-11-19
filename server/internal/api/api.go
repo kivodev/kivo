@@ -22,12 +22,12 @@ import (
 	"github.com/mmcdole/kivo/internal/metadata"
 	"github.com/mmcdole/kivo/internal/playback"
 	"github.com/mmcdole/kivo/internal/query"
-	kivoversion "github.com/mmcdole/kivo/internal/version"
 	"github.com/mmcdole/kivo/internal/scan"
 	"github.com/mmcdole/kivo/internal/subtitles"
 	"github.com/mmcdole/kivo/internal/tasks"
 	"github.com/mmcdole/kivo/internal/users"
 	"github.com/mmcdole/kivo/internal/userstate"
+	kivoversion "github.com/mmcdole/kivo/internal/version"
 )
 
 // Deps are the services the handlers call and facts about the server.

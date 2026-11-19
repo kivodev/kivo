@@ -30,7 +30,6 @@ import (
 	"github.com/mmcdole/kivo/internal/playback"
 	"github.com/mmcdole/kivo/internal/previews"
 	"github.com/mmcdole/kivo/internal/query"
-	kivoversion "github.com/mmcdole/kivo/internal/version"
 	"github.com/mmcdole/kivo/internal/scan"
 	"github.com/mmcdole/kivo/internal/store"
 	"github.com/mmcdole/kivo/internal/subtitles"
@@ -38,6 +37,7 @@ import (
 	"github.com/mmcdole/kivo/internal/transcode"
 	"github.com/mmcdole/kivo/internal/users"
 	"github.com/mmcdole/kivo/internal/userstate"
+	kivoversion "github.com/mmcdole/kivo/internal/version"
 	"github.com/mmcdole/kivo/web"
 )
 
@@ -196,15 +196,16 @@ func wire(ctx context.Context, boot config.Bootstrap, logs *health.Logs, bus *ev
 	s.activity = activity.New(db, bus)
 	s.runner = tasks.New(db, s.settings, bus, tasks.Options{Ended: s.activity.TaskRunEnded})
 	s.catalog = catalog.New(db, bus)
+	s.catalog.OnPersonMerge(userstate.MovePersonInQueries)
 	s.users = users.New(db, bus)
 	s.auth = auth.New(db, auth.Deps{Users: s.users, Settings: s.settings, Activity: s.activity})
 	s.query = query.New(db)
-	if saved, err := s.users.SavedListQueries(ctx); err != nil {
+	s.userstate = userstate.New(db, userstate.Deps{Catalog: s.catalog, Settings: s.settings, Activity: s.activity, Events: bus})
+	if saved, err := s.userstate.SavedListQueries(ctx); err != nil {
 		slog.WarnContext(ctx, "kivo: can't check the smart lists", "err", err)
 	} else {
 		query.LogBrokenSmartLists(ctx, saved)
 	}
-	s.userstate = userstate.New(db, userstate.Deps{Catalog: s.catalog, Settings: s.settings, Activity: s.activity, Events: bus})
 	s.metadata = metadata.New(db, metadata.Deps{
 		Catalog: s.catalog, Imager: s.ffmpeg, Settings: s.settings, Events: bus, Tasks: s.runner,
 		CacheDir: boot.CacheDir, ImageDir: filepath.Join(boot.DataDir, "images"),

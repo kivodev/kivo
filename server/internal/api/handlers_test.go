@@ -1108,7 +1108,7 @@ func TestSubtitleSearchIsForViewers(t *testing.T) {
 	var viewer users.User
 	e.b.Write(func(ctx context.Context, tx *store.Tx) error {
 		var err error
-		viewer, err = e.d.Users.CreateUser(ctx, tx, users.NewUser{Username: "eva", Grants: users.Grants{All: true}})
+		viewer, err = e.createUser(ctx, tx, users.NewUser{Username: "eva", Grants: users.Grants{All: true}})
 		return err
 	})
 	token := e.session(viewer.ID)
