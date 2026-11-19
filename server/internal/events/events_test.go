@@ -35,8 +35,8 @@ func TestPublishNeverBlocksAndLaggardIsClosed(t *testing.T) {
 	for range slow.C() {
 		n++
 	}
-	if n != buffer || !errors.Is(slow.Err(), ErrLagged) {
-		t.Fatalf("slow got %d events, err %v; want %d, ErrLagged", n, slow.Err(), buffer)
+	if n != 0 || !errors.Is(slow.Err(), ErrLagged) {
+		t.Fatalf("slow got %d stale events, err %v; want 0, ErrLagged", n, slow.Err())
 	}
 	if ok.Err() != nil {
 		t.Fatalf("reader that kept up lagged: %v", ok.Err())
@@ -159,6 +159,21 @@ func TestLibraryChangedJoinsLibraries(t *testing.T) {
 			t.Fatalf("got %+v; want one naming x", got)
 		}
 	})
+}
+
+func TestMergePreservesUnscopedLibraries(t *testing.T) {
+	lib := id.New()
+	unscoped := Event{Kind: LibraryChanged}
+	scoped := Event{Kind: LibraryChanged, Scope: Scope{Libraries: []id.ID{lib}}}
+
+	got := merge(merge(nil, unscoped), scoped)
+	if len(got) != 1 || len(got[0].Scope.Libraries) != 0 {
+		t.Fatalf("unscoped + scoped = %+v, want unscoped", got)
+	}
+	got = merge(merge(nil, scoped), unscoped)
+	if len(got) != 1 || len(got[0].Scope.Libraries) != 0 {
+		t.Fatalf("scoped + unscoped = %+v, want unscoped", got)
+	}
 }
 
 // downloadsChanged goes out at most once a second, as one event for each
