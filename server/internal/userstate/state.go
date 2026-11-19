@@ -356,60 +356,75 @@ type playDelta struct{ lost, gained int64 }
 func (s *Service) FollowVersion(ctx context.Context, tx *store.Tx, r catalog.Reassignment) error {
 	q := dbq.New(tx)
 	for _, m := range r.Moves {
-		a, b := m.From, m.To
-		deltas := map[id.ID]playDelta{}
-		colliding, err := q.CollidingVersionEvents(ctx, dbq.CollidingVersionEventsParams{Into: b, From: a, VersionID: r.Version})
-		if err != nil {
+		if err := followMove(ctx, q, r.Version, m.From, m.To); err != nil {
 			return err
-		}
-		if len(colliding) > 0 {
-			for _, ev := range colliding {
-				d := deltas[ev.UserID]
-				if ev.FromCompleted {
-					d.lost++
-					if !ev.IntoCompleted {
-						d.gained++
-					}
-				}
-				deltas[ev.UserID] = d
-			}
-			if err := q.MergeVersionEvents(ctx, dbq.MergeVersionEventsParams{Into: b, From: a, VersionID: r.Version}); err != nil {
-				return err
-			}
-			if err := q.DeleteCollidingVersionEvents(ctx, dbq.DeleteCollidingVersionEventsParams{From: a, VersionID: r.Version, Into: b}); err != nil {
-				return err
-			}
-		}
-		moved, err := q.MoveVersionEvents(ctx, dbq.MoveVersionEventsParams{Into: b, From: a, VersionID: r.Version})
-		if err != nil {
-			return err
-		}
-		for _, ev := range moved {
-			d := deltas[ev.UserID]
-			if ev.Completed {
-				d.lost++
-				d.gained++
-			}
-			deltas[ev.UserID] = d
-		}
-		states, err := q.StatesOfWork(ctx, a)
-		if err != nil {
-			return err
-		}
-		for _, sa := range states {
-			if sa.Resumable && sa.VersionID == r.Version {
-				if _, ok := deltas[sa.UserID]; !ok {
-					deltas[sa.UserID] = playDelta{}
-				}
-			}
-		}
-		for user, d := range deltas {
-			if err := moveResume(ctx, q, user, a, b, r.Version, d); err != nil {
-				return err
-			}
 		}
 	}
 	return nil
+}
+
+// followMove moves version's plays on a to b, with each user's resume
+// position on a from version and the play counts that follow them.
+func followMove(ctx context.Context, q *dbq.Queries, version, a, b id.ID) error {
+	deltas, err := mergeVersionCollisions(ctx, q, version, a, b)
+	if err != nil {
+		return err
+	}
+	moved, err := q.MoveVersionEvents(ctx, dbq.MoveVersionEventsParams{Into: b, From: a, VersionID: version})
+	if err != nil {
+		return err
+	}
+	for _, ev := range moved {
+		d := deltas[ev.UserID]
+		if ev.Completed {
+			d.lost++
+			d.gained++
+		}
+		deltas[ev.UserID] = d
+	}
+	states, err := q.StatesOfWork(ctx, a)
+	if err != nil {
+		return err
+	}
+	for _, sa := range states {
+		if _, ok := deltas[sa.UserID]; !ok && sa.Resumable && sa.VersionID == version {
+			deltas[sa.UserID] = playDelta{}
+		}
+	}
+	for user, d := range deltas {
+		if err := moveResume(ctx, q, user, a, b, version, d); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// mergeVersionCollisions merges into b the events of version's plays that
+// are on both a and b, and returns each user's play deltas: a completed
+// play leaves a, and counts on b unless b's event was completed already.
+func mergeVersionCollisions(ctx context.Context, q *dbq.Queries, version, a, b id.ID) (map[id.ID]playDelta, error) {
+	deltas := map[id.ID]playDelta{}
+	colliding, err := q.CollidingVersionEvents(ctx, dbq.CollidingVersionEventsParams{Into: b, From: a, VersionID: version})
+	if err != nil || len(colliding) == 0 {
+		return deltas, err
+	}
+	for _, ev := range colliding {
+		d := deltas[ev.UserID]
+		if ev.FromCompleted {
+			d.lost++
+			if !ev.IntoCompleted {
+				d.gained++
+			}
+		}
+		deltas[ev.UserID] = d
+	}
+	if err := q.MergeVersionEvents(ctx, dbq.MergeVersionEventsParams{Into: b, From: a, VersionID: version}); err != nil {
+		return nil, err
+	}
+	if err := q.DeleteCollidingVersionEvents(ctx, dbq.DeleteCollidingVersionEventsParams{From: a, VersionID: version, Into: b}); err != nil {
+		return nil, err
+	}
+	return deltas, nil
 }
 
 // moveResume moves version's resume position and play deltas from a to b.

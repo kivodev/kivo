@@ -646,6 +646,7 @@ func TestPlayEventCollisionsOnMergeAndFollow(t *testing.T) {
 		// One play_id writes events on both a and b.
 		playID := id.New()
 		f.play(playID, multi, 99*time.Minute)
+		want := f.diverge(playID, a.Work, b.Work)
 
 		f.b.Write(func(ctx context.Context, tx *store.Tx) error {
 			if err := f.s.MergeEpisode(ctx, tx, a.Work, b.Work); err != nil {
@@ -661,6 +662,7 @@ func TestPlayEventCollisionsOnMergeAndFollow(t *testing.T) {
 		if st := f.state(f.user, b.Work); !st.Played || st.PlayCount != 1 {
 			t.Errorf("merged state = %+v, want played with PlayCount 1", st)
 		}
+		f.checkMerged(playID, b.Work, want)
 	})
 
 	t.Run("FollowVersion", func(t *testing.T) {
@@ -676,6 +678,7 @@ func TestPlayEventCollisionsOnMergeAndFollow(t *testing.T) {
 
 		playID := id.New()
 		f.play(playID, multi, 99*time.Minute)
+		want := f.diverge(playID, a.Work, b.Work)
 
 		// Reassigning multi to only b moves a's row onto b, colliding on play_id.
 		f.b.Write(func(ctx context.Context, tx *store.Tx) error {
@@ -692,7 +695,44 @@ func TestPlayEventCollisionsOnMergeAndFollow(t *testing.T) {
 		if !sb.Played || sb.PlayCount != 1 {
 			t.Errorf("b state after collision follow = %+v, want played PlayCount 1 (no double count)", sb)
 		}
+		f.checkMerged(playID, b.Work, want)
 	})
+}
+
+// mergedEvent is what a play's event holds after a merge.
+type mergedEvent struct {
+	EndedAt, PositionMS int64
+	Completed           bool
+}
+
+// diverge makes the play's event on from end later than its event on into,
+// at another position, and returns what the merged event must hold: from's
+// end and position, completed as before.
+func (f *fixture) diverge(play, from, into id.ID) mergedEvent {
+	f.t.Helper()
+	var want mergedEvent
+	f.b.Write(func(ctx context.Context, tx *store.Tx) error {
+		_, err := tx.ExecContext(ctx, `UPDATE play_event SET ended_at = ended_at + 60000, position_ms = 1234
+			WHERE play_id = ? AND work_id = ?`, play, from)
+		if err == nil {
+			err = tx.QueryRowContext(ctx, `SELECT f.ended_at, f.position_ms, f.completed OR t.completed
+				FROM play_event f JOIN play_event t ON t.play_id = f.play_id AND t.work_id = ?
+				WHERE f.play_id = ? AND f.work_id = ?`, into, play, from).Scan(&want.EndedAt, &want.PositionMS, &want.Completed)
+		}
+		return err
+	})
+	return want
+}
+
+// checkMerged checks the play's one event on work holds want.
+func (f *fixture) checkMerged(play, work id.ID, want mergedEvent) {
+	f.t.Helper()
+	var got mergedEvent
+	err := f.b.DB.Reader().QueryRow(`SELECT ended_at, position_ms, completed FROM play_event WHERE play_id = ? AND work_id = ?`, play, work).
+		Scan(&got.EndedAt, &got.PositionMS, &got.Completed)
+	if err != nil || got != want {
+		f.t.Errorf("merged event = %+v (%v), want %+v", got, err, want)
+	}
 }
 
 // A work purged with nothing left takes its watch state, plays and track
