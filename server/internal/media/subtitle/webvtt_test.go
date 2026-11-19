@@ -39,7 +39,8 @@ Style: Default,Arial
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 Dialogue: 0,0:00:10.00,0:00:12.50,Default,,0,0,0,,{\an8\i1}Later, with commas\Nand a break
 Dialogue: 0,0:00:02.10,0:00:03.00,Default,,0,0,0,,Earlier
-Dialogue: 0,0:00:04.00,0:00:05.00,Default,,0,0,0,,{\p1}
+Dialogue: 0,0:00:04.00,0:00:05.00,Default,,0,0,0,,{\p1}m 0 0 l 100 0 100 100 0 100{\p0}
+Dialogue: 0,0:00:05.00,0:00:06.00,Default,,0,0,0,,{\pos(100,200)\p2}m 0 0 l 50 50
 Comment: 0,0:00:01.00,0:00:02.00,Default,,0,0,0,,not shown
 `
 	got, err := WebVTT([]byte(src), media.ASS)
@@ -49,6 +50,35 @@ Comment: 0,0:00:01.00,0:00:02.00,Default,,0,0,0,,not shown
 	want := "WEBVTT\n\n00:00:02.100 --> 00:00:03.000\nEarlier\n\n00:00:10.000 --> 00:00:12.500 line:0\nLater, with commas\nand a break\n"
 	if string(got) != want {
 		t.Fatalf("got\n%q\nwant\n%q", got, want)
+	}
+}
+
+func TestASSDrawingMode(t *testing.T) {
+	for _, tc := range []struct {
+		name, line, want string
+	}{
+		{"whole line drawing", `{\p1}m 0 0 l 100 0 100 100 0 100{\p0}`, ""},
+		{"unclosed drawing", `{\p4\c&HFFFFFF&}m 0 0 l 50 50`, ""},
+		{"text around drawing", `Hello {\p1}m 0 0 l 10 10{\p0}world`, "Hello world"},
+		{"reset exits drawing", `{\p1}m 0 0 l 10 10{\r}Back`, "Back"},
+		{"pos is not drawing", `{\pos(100,200)\an8}Sign text`, "Sign text"},
+		{"pbo is not drawing", `{\pbo-10}Sign text`, "Sign text"},
+		{"toggled in same block", `{\p1\p0}Kept`, "Kept"},
+	} {
+		src := "[Events]\nFormat: Start, End, Text\nDialogue: 0:00:01.00,0:00:02.00," + tc.line + "\n"
+		got, err := Cues([]byte(src), media.ASS)
+		if err != nil {
+			t.Fatalf("%s: %v", tc.name, err)
+		}
+		if tc.want == "" {
+			if len(got) != 0 {
+				t.Errorf("%s: got %+v, want cue dropped", tc.name, got)
+			}
+			continue
+		}
+		if len(got) != 1 || got[0].Text != tc.want {
+			t.Errorf("%s: got %+v, want %q", tc.name, got, tc.want)
+		}
 	}
 }
 
