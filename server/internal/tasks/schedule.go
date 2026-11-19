@@ -117,15 +117,18 @@ func (r *Runner) workingLocked(t *task, now time.Time) bool {
 
 // nextLocked is when t's schedule next begins a run, as of now. For a night
 // task it is the window's next opening. For an interval task it is the
-// interval after the later of the last run's end and the server's start.
-// For an on-demand task it is zero.
+// interval after its last run's end, whichever start of the server that run
+// was in, so a run that came due while the server was down begins at
+// startup. A task with no run yet counts from the server's start, and so
+// does one whose last run's end is ahead of the clock. For an on-demand
+// task it is zero.
 func (r *Runner) nextLocked(t *task, now time.Time) time.Time {
 	switch {
 	case t.Schedule == Nightly:
 		return r.window().Next(now)
 	case t.Schedule.every > 0:
 		from := r.boot
-		if t.last != nil && t.last.At.After(from) {
+		if t.last != nil && !t.last.At.After(now) {
 			from = t.last.At
 		}
 		return from.Add(t.Schedule.every)

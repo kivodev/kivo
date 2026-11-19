@@ -84,7 +84,9 @@ var (
 	Nightly = Schedule{nightly: true}
 )
 
-// Every begins a run d after the last one ended.
+// Every begins a run d after the last one ended, whichever start of the
+// server that was in: a run that came due while the server was down begins
+// at startup. Until the task's first run, d counts from the server's start.
 func Every(d time.Duration) Schedule { return Schedule{every: d} }
 
 // Work is what a task does. It is a Func or Items.
