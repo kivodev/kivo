@@ -255,12 +255,13 @@ func (s *Stream) firstOf(p int) int {
 
 // startLocked replaces the running job with one starting at segment i.
 func (s *Stream) startLocked(i int) *job {
+	prev := s.job
 	s.stopLocked()
 	ctx, cancel := context.WithCancel(context.Background())
 	s.count++
-	j := &job{seq: s.count, from: i, next: i, reading: i, cancel: cancel, began: time.Now()}
+	j := &job{seq: s.count, from: i, next: i, reading: i, cancel: cancel, done: make(chan struct{}), began: time.Now()}
 	s.job = j
-	s.jobs.Go(func() { s.run(ctx, j) })
+	s.jobs.Go(func() { s.run(ctx, j, prev) })
 	return j
 }
 

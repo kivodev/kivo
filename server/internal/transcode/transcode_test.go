@@ -1725,3 +1725,98 @@ func TestInitNames(t *testing.T) {
 		}
 	}
 }
+
+// A job that catches up to segments already on disk stops cleanly instead
+// of re-encoding and discarding the rest of the file.
+func TestJobStopsAtExistingSegment(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m := &fakeMedia{}
+		tr, spec := fixture(t, m)
+		s, err := tr.Open(ctx, encodedSpec(spec, ""), 20*time.Second) // segment 10
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer s.Close()
+		// Seek back before segment 10 (to segment 7 at 14s). The new job
+		// should write 7, 8, 9 and stop once it reaches segment 10.
+		if _, err := s.Segment(ctx, "7.m4s"); err != nil {
+			t.Fatal(err)
+		}
+		time.Sleep(time.Second)
+		synctest.Wait()
+		j := s.Job()
+		if j.State != JobDone || j.Next != 10 {
+			t.Fatalf("job after catching up to segment 10 = %+v, want JobDone at Next=10", j)
+		}
+	})
+}
+
+// Rapid seeks must wait for the previous ffmpeg job to exit before spawning
+// the next one, so at most one encoder session is active per stream.
+func TestSeekWaitsForPreviousJobToExit(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		base := &fakeMedia{}
+		m := &slowCloseMedia{fakeMedia: base, closeDelay: 200 * time.Millisecond}
+		tr, spec := fixture(t, m.fakeMedia)
+		tr.deps.Media = m
+		s, err := tr.Open(ctx, encodedSpec(spec, "nvenc:0"), 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer s.Close()
+
+		// Trigger a far seek that replaces the running job while its Close
+		// takes 200ms.
+		if _, err := s.Segment(ctx, "50.m4s"); err != nil {
+			t.Fatal(err)
+		}
+		m.mu.Lock()
+		peak := m.maxActive
+		m.mu.Unlock()
+		if peak > 1 {
+			t.Fatalf("max concurrent Transcode outputs = %d, want 1", peak)
+		}
+	})
+}
+
+type slowCloseMedia struct {
+	*fakeMedia
+	closeDelay time.Duration
+	mu         sync.Mutex
+	active     int
+	maxActive  int
+}
+
+func (m *slowCloseMedia) Transcode(ctx context.Context, req media.TranscodeRequest) (media.Output, error) {
+	m.mu.Lock()
+	m.active++
+	m.maxActive = max(m.maxActive, m.active)
+	m.mu.Unlock()
+	out, err := m.fakeMedia.Transcode(ctx, req)
+	if err != nil {
+		m.mu.Lock()
+		m.active--
+		m.mu.Unlock()
+		return nil, err
+	}
+	return &slowCloseOutput{Output: out, m: m}, nil
+}
+
+type slowCloseOutput struct {
+	media.Output
+	m      *slowCloseMedia
+	closed bool
+}
+
+func (o *slowCloseOutput) Close() error {
+	if o.closed {
+		return nil
+	}
+	o.closed = true
+	time.Sleep(o.m.closeDelay)
+	err := o.Output.Close()
+	o.m.mu.Lock()
+	o.m.active--
+	o.m.mu.Unlock()
+	return err
+}
