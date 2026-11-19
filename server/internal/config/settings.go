@@ -243,14 +243,26 @@ func Open(ctx context.Context, db *store.DB, opt Options) (*Store, error) {
 			continue
 		}
 		// The value is checked alone over the defaults. The defaults are
-		// valid, so any error comes from this value.
+		// valid, so any error comes from this value. Maintenance start and end
+		// depend on each other, so avoid a false collision against the other's
+		// default here and validate the combined window after the loop.
 		alone := Defaults()
 		fieldsByKey(&alone)[r.Key].Set(v.Elem())
+		if r.Key == "maintenance_start" && alone.MaintenanceStart == alone.MaintenanceEnd {
+			alone.MaintenanceEnd = (alone.MaintenanceEnd + 1) % 24
+		} else if r.Key == "maintenance_end" && alone.MaintenanceStart == alone.MaintenanceEnd {
+			alone.MaintenanceStart = (alone.MaintenanceStart + 1) % 24
+		}
 		if err := alone.Validate(); err != nil {
 			slog.WarnContext(ctx, "config: ignoring invalid setting", "key", r.Key, "err", err)
 			continue
 		}
 		f.Set(v.Elem())
+	}
+	if cur.MaintenanceStart == cur.MaintenanceEnd {
+		d := Defaults()
+		slog.WarnContext(ctx, "config: ignoring invalid maintenance window", "start", cur.MaintenanceStart, "end", cur.MaintenanceEnd)
+		cur.MaintenanceStart, cur.MaintenanceEnd = d.MaintenanceStart, d.MaintenanceEnd
 	}
 	s.cur.Store(&cur)
 	return s, nil
