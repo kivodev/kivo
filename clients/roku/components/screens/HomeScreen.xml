@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Home, as the Android TV app's: the server's rows the TV shows, empty
+     ones left out. Left from a row's first card opens the menu in the
+     rail's place: Search, Home, Lists, the pinned libraries, More
+     libraries and Settings. * on a card opens its menu (WorkMenu). Back
+     away from the first card moves focus to it; on it, it asks "Exit
+     Kivo?". -->
+<component name="HomeScreen" extends="KivoScreen">
+  <children>
+    <Label id="hint" translation="[1300, 40]" width="524" horizAlign="right" text="◀ Menu" />
+    <StateView id="state" translation="[96, 200]" visible="false" />
+    <Label id="problem" translation="[96, 1000]" width="1700" />
+    <RowList id="rows" translation="[96, 90]" itemComponentName="PosterItem"
+      itemSize="[1824, 470]" numRows="3" rowItemSpacing="[[24, 0]]" itemSpacing="[0, 40]"
+      showRowLabel="[true]" rowLabelOffset="[[0, 12]]" rowFocusAnimationStyle="floatingFocus"
+      vertFocusAnimationStyle="fixedFocusWrap" />
+    <MenuPanel id="nav" side="left" visible="false" />
+    <MenuPanel id="more" visible="false" />
+    <WorkMenu id="menu" />
+  </children>
+</component>

@@ -1,0 +1,38 @@
+import "pkg:/source/shared/display.bs"
+
+' What a StateView shows, as the Android TV app's screen states word it.
+namespace KivoStates
+
+    ' A read that failed. Without an answer from the server: "Can't reach
+    ' {server}.", retrying in 10 seconds, with Retry now and Change
+    ' server; else "Couldn't load this." with the problem and Try again.
+    sub failed(view as object, response as object)
+        if response.code = 0
+            view.title = "Can't reach " + m.global.server + "."
+            view.sentence = ""
+            view.buttons = [{ id: "retry", label: "Retry now" }, { id: "changeServer", label: "Change server" }]
+            view.countdown = 10
+        else
+            view.countdown = 0
+            view.title = "Couldn't load this."
+            view.sentence = KivoDisplay.problem(response)
+            view.buttons = [{ id: "retry", label: "Try again" }]
+        end if
+        view.visible = true
+    end sub
+
+    ' An empty state: [title], [sentence] and its [buttons], if any.
+    sub empty(view as object, title as string, sentence as string, buttons = [] as object)
+        view.countdown = 0
+        view.title = title
+        view.sentence = sentence
+        view.buttons = buttons
+        view.visible = true
+    end sub
+
+    sub clear(view as object)
+        view.countdown = 0
+        view.visible = false
+    end sub
+
+end namespace

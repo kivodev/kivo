@@ -1,0 +1,38 @@
+namespace Kivo
+
+    ' The base URLs a typed server address may mean, best first, with no
+    ' trailing slash and any base path kept, as the other apps read one. An
+    ' address that names its scheme means that URL alone, port 8484 when plain
+    ' HTTP names none. One that doesn't is tried over HTTPS first, as behind a
+    ' proxy: on its port when it names one, else on HTTPS's own, then over
+    ' plain HTTP on 8484 and on HTTP's own.
+    function addressCandidates(address as string) as object
+        trimmed = address.Trim()
+        while trimmed.Len() > 0 and trimmed.Right(1) = "/"
+            trimmed = trimmed.Left(trimmed.Len() - 1)
+        end while
+        named = trimmed.InStr("://") >= 0
+        withScheme = trimmed
+        if not named then withScheme = "http://" + trimmed
+        cut = withScheme.InStr("://")
+        scheme = withScheme.Left(cut)
+        rest = withScheme.Mid(cut + 3)
+        slash = rest.InStr("/")
+        host = rest
+        path = ""
+        if slash >= 0
+            host = rest.Left(slash)
+            path = rest.Mid(slash)
+        end if
+        hasPort = host.InStr(":") >= 0
+        if host.Left(1) = "[" then hasPort = host.InStr("]:") >= 0
+        if named
+            port = ""
+            if not hasPort and scheme = "http" then port = ":8484"
+            return [scheme + "://" + host + port + path]
+        end if
+        if hasPort then return ["https://" + host + path, "http://" + host + path]
+        return ["https://" + host + path, "http://" + host + ":8484" + path, "http://" + host + path]
+    end function
+
+end namespace

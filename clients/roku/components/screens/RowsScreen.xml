@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- A page of works in rows under a heading, as the Android TV app's: a
+     person's (their photo, biography and their movies, shows and other
+     videos), a collection's (its name and count, then its works) or an
+     open list's (its name and count, then its works the TV shows, a line
+     at a time). params is { kind, id }: kind is person, collection or
+     list. * on a card opens its menu. -->
+<component name="RowsScreen" extends="KivoScreen">
+  <children>
+    <Poster id="backdrop" width="1920" height="1080" loadDisplayMode="scaleToZoom" />
+    <Rectangle id="scrim" width="1920" height="1080" />
+    <Poster id="photo" translation="[96, 72]" width="160" height="240" loadDisplayMode="scaleToZoom" visible="false" />
+    <Label id="heading" translation="[96, 72]" width="1500" wrap="true" maxLines="2" />
+    <Label id="overview" translation="[96, 150]" width="1500" wrap="true" maxLines="3" />
+    <StateView id="state" translation="[96, 360]" visible="false" />
+    <Label id="problem" translation="[96, 1000]" width="1700" />
+    <RowList id="rows" translation="[96, 340]" itemComponentName="PosterItem"
+      itemSize="[1824, 470]" numRows="2" rowItemSpacing="[[24, 0]]" itemSpacing="[0, 40]"
+      showRowLabel="[true]" rowLabelOffset="[[0, 12]]" rowFocusAnimationStyle="floatingFocus" />
+    <WorkMenu id="menu" />
+  </children>
+</component>

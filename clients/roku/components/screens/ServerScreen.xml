@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Enter address, as the Android TV app's: the server's address, and
+     the server found there. Finding servers on the network isn't done on
+     Roku (see PARITY.md). -->
+<component name="ServerScreen" extends="KivoScreen">
+  <children>
+    <Label id="title" translation="[160, 96]" text="Server address" />
+    <Label id="hint" translation="[160, 168]" width="1600" wrap="true"
+      text="Such as 192.168.1.20, nas:8484 or https://kivo.example.com" />
+    <Keyboard id="keyboard" translation="[160, 260]" />
+    <Button id="connect" translation="[160, 760]" text="Connect" minWidth="320" showFocusFootprint="true" />
+    <Label id="status" translation="[160, 860]" width="1600" wrap="true" />
+  </children>
+</component>

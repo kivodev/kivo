@@ -29,8 +29,8 @@ func TestPublicOperations(t *testing.T) {
 		}
 	}
 	slices.Sort(public)
-	if want := []string{"acceptInviteLink", "completeSetup", "createDeviceCode", "createSession", "getHealth", "getImage", "getInviteLink",
-		"getServer", "getSetup", "pollDeviceCode"}; !slices.Equal(public, want) {
+	if want := []string{"acceptInviteLink", "completeSetup", "createDeviceCode", "createSession", "getDeviceCodeQr", "getHealth", "getImage",
+		"getInviteLink", "getServer", "getSetup", "pollDeviceCode"}; !slices.Equal(public, want) {
 		t.Errorf("public operations %v, want %v", public, want)
 	}
 }

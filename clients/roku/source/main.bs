@@ -1,0 +1,40 @@
+import "pkg:/source/shared/session.bs"
+
+' The app: one SceneGraph screen showing MainScene, with what the device
+' keeps (Kivo.saved) on the global node, where every component and task
+' reads the server's address and the session's token. A deep link, at
+' launch ([args]) or while running (roInput), goes to the scene as the
+' global deepLink; the scene's exit closes the app.
+sub main(args as dynamic)
+    screen = CreateObject("roSGScreen")
+    port = CreateObject("roMessagePort")
+    screen.SetMessagePort(port)
+    saved = Kivo.saved()
+    globals = screen.GetGlobalNode()
+    ' autoplayRun counts episodes played on by themselves without input, across players.
+    globals.AddFields({ server: saved.server, serverId: saved.serverId, token: saved.token, clientId: saved.clientId, autoplayRun: 0, lastSearch: "", deepLink: deepLinkOf(args), exit: false })
+    globals.ObserveField("exit", port)
+    input = CreateObject("roInput")
+    input.SetMessagePort(port)
+    screen.CreateScene("MainScene")
+    screen.Show()
+    while true
+        event = Wait(0, port)
+        kind = type(event)
+        if kind = "roSGScreenEvent" and event.IsScreenClosed() then return
+        if kind = "roSGNodeEvent" and event.GetField() = "exit" and event.GetData() = true then return
+        if kind = "roInputEvent" and event.IsInput()
+            link = deepLinkOf(event.GetInfo())
+            if link.contentId <> "" then globals.deepLink = link
+        end if
+    end while
+end sub
+
+' A launch's or an input's deep link: the work's ID and Roku's media type.
+function deepLinkOf(args as dynamic) as object
+    link = { contentId: "", mediaType: "" }
+    if args = invalid then return link
+    if args.contentId <> invalid then link.contentId = args.contentId
+    if args.mediaType <> invalid then link.mediaType = args.mediaType
+    return link
+end function

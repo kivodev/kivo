@@ -1,0 +1,86 @@
+import "pkg:/source/generated/tokens.bs"
+import "pkg:/source/shared/ui.bs"
+
+sub init()
+    m.list = m.top.FindNode("list")
+    m.radio = m.top.FindNode("radio")
+    m.heading = m.top.FindNode("heading")
+    m.noteLabel = m.top.FindNode("noteLabel")
+    m.top.FindNode("ground").color = KivoTokens.Color.playerPanel
+    KivoUi.style(m.heading, KivoTokens.TextSize.lg, KivoTokens.Color.onPlayer, true)
+    KivoUi.style(m.noteLabel, KivoTokens.TextSize.sm, KivoTokens.Color.onPlayerMuted)
+    for each list in [m.list, m.radio]
+        list.color = KivoTokens.Color.onPlayerMuted
+        list.focusedColor = KivoTokens.Color.onAccent
+        list.focusBitmapBlendColor = KivoTokens.Color.accent
+        list.ObserveField("itemSelected", "onSelected")
+    end for
+end sub
+
+' The panel's place: 720 pixels along the right edge, or the left.
+sub onSide()
+    x = 1200
+    if m.top.side = "left" then x = 0
+    m.top.FindNode("ground").translation = [x, 0]
+    m.heading.translation = [x + 64, 72]
+    m.noteLabel.translation = [x + 64, 128]
+    m.list.translation = [x + 64, 200]
+    m.radio.translation = [x + 64, 200]
+end sub
+
+sub onTitle()
+    m.heading.text = m.top.title
+    m.noteLabel.text = m.top.note
+    m.noteLabel.visible = m.top.note <> ""
+end sub
+
+' Lists the items, as radio buttons when one is checked, with the focus
+' on the checked one.
+sub onItems()
+    root = CreateObject("roSGNode", "ContentNode")
+    checked = 0
+    for i = 0 to m.top.items.Count() - 1
+        item = m.top.items[i]
+        node = root.CreateChild("ContentNode")
+        node.title = item.label
+        if item.id = m.top.checkedId then checked = i
+    end for
+    choice = m.top.checkedId <> ""
+    m.list.visible = not choice
+    m.radio.visible = choice
+    shown = m.list
+    if choice
+        shown = m.radio
+        m.radio.content = root
+        m.radio.checkedItem = checked
+        m.radio.jumpToItem = checked
+    else
+        m.list.content = root
+        m.list.jumpToItem = 0
+    end if
+    if m.top.IsInFocusChain() then shown.SetFocus(true)
+end sub
+
+sub focus()
+    if m.radio.visible
+        m.radio.SetFocus(true)
+    else
+        m.list.SetFocus(true)
+    end if
+end sub
+
+sub onSelected(event as object)
+    i = event.GetData()
+    if i < 0 or i >= m.top.items.Count() then return
+    m.top.chosen = m.top.items[i].id
+end sub
+
+function onKeyEvent(key as string, press as boolean) as boolean
+    away = "left"
+    if m.top.side = "left" then away = "right"
+    if press and (key = "back" or key = away or key = "options")
+        m.top.closed = true
+        return true
+    end if
+    return false
+end function

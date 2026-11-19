@@ -1,0 +1,129 @@
+import "pkg:/source/generated/api.bs"
+import "pkg:/source/generated/tokens.bs"
+import "pkg:/source/shared/session.bs"
+
+' A screen's navigate field is one of:
+'   { screen, params }  show that screen over this one
+'   { screen, params, replace: true }  show it in place of every screen
+'   { screen, params, swap: true }  show it in place of this one
+'   { back: true }  return to the screen underneath
+'   { signedOut: true }  forget the session and link the device again
+'   { changeServer: true }  sign out and find a server again
+
+sub init()
+    m.top.backgroundColor = KivoTokens.Color.bg
+    m.top.backgroundUri = ""
+    m.top.FindNode("ground").color = KivoTokens.Color.bg
+    m.stack = m.top.FindNode("stack")
+    if m.global.server = ""
+        show("ServerScreen", {}, true)
+    else if m.global.token = ""
+        show("LinkScreen", {}, true)
+    else
+        show("HomeScreen", {}, true)
+        openDeepLink()
+    end if
+    m.global.ObserveField("deepLink", "openDeepLink")
+end sub
+
+' A deep link, signed in: Home, and over it a movie's or an episode's
+' player, as Roku's search and home screen expect, or any other work's
+' page. A link that comes while the app runs goes over Home again.
+sub openDeepLink()
+    link = m.global.deepLink
+    if link = invalid or link.contentId = "" or m.global.server = "" or m.global.token = "" then return
+    m.global.deepLink = { contentId: "", mediaType: "" }
+    if m.stack.GetChildCount() <> 1 or m.stack.GetChild(0).subtype() <> "HomeScreen" then show("HomeScreen", {}, true)
+    playable = { movie: true, episode: true, shortFormVideo: true, special: true }
+    if playable[link.mediaType] = true
+        show("PlayerScreen", { id: link.contentId }, false)
+    else
+        show("DetailScreen", { id: link.contentId }, false)
+    end if
+end sub
+
+sub show(name as string, params as object, replace as boolean, swap = false as boolean)
+    if replace
+        while m.stack.GetChildCount() > 0
+            m.stack.RemoveChildIndex(m.stack.GetChildCount() - 1)
+        end while
+    else if swap and m.stack.GetChildCount() > 0
+        m.stack.RemoveChildIndex(m.stack.GetChildCount() - 1)
+        if m.stack.GetChildCount() > 0 then m.stack.GetChild(m.stack.GetChildCount() - 1).visible = false
+    else if m.stack.GetChildCount() > 0
+        m.stack.GetChild(m.stack.GetChildCount() - 1).visible = false
+    end if
+    screen = CreateObject("roSGNode", name)
+    screen.params = params
+    screen.ObserveField("navigate", "onNavigate")
+    m.stack.AppendChild(screen)
+    screen.callFunc("focus")
+end sub
+
+sub back()
+    count = m.stack.GetChildCount()
+    if count < 2 then return
+    m.stack.RemoveChildIndex(count - 1)
+    top = m.stack.GetChild(count - 2)
+    top.visible = true
+    top.callFunc("focus")
+end sub
+
+sub onNavigate(event as object)
+    nav = event.GetData()
+    if nav.signedOut = true
+        Kivo.saveToken("")
+        m.global.token = ""
+        show("LinkScreen", {}, true)
+    else if nav.changeServer = true
+        ' Signs this Roku out and looks for a server again, as Change server does on Android TV.
+        if m.global.token <> "" then m.signingOut = Kivo.send(KivoApi.deleteCurrentSession(), "onSignedOutQuietly")
+        Kivo.saveToken("")
+        m.global.token = ""
+        show("ServerScreen", {}, true)
+    else if nav.back = true
+        back()
+    else if nav.screen <> invalid
+        params = nav.params
+        if params = invalid then params = {}
+        show(nav.screen, params, nav.replace = true, nav.swap = true)
+    end if
+end sub
+
+function onKeyEvent(key as string, press as boolean) as boolean
+    if press and key = "back" and m.stack.GetChildCount() > 1
+        back()
+        return true
+    end if
+    if press and key = "back" and m.top.dialog = invalid
+        askToExit()
+        return true
+    end if
+    return false
+end function
+
+sub onSignedOutQuietly()
+    m.signingOut = invalid
+end sub
+
+' Back on the first screen asks before the app closes, with No focused
+' first, as on Android TV.
+sub askToExit()
+    dialog = CreateObject("roSGNode", "StandardMessageDialog")
+    dialog.title = "Exit Kivo?"
+    dialog.buttons = ["No", "Exit"]
+    dialog.ObserveField("buttonSelected", "onExitAnswer")
+    dialog.ObserveField("wasClosed", "onExitClosed")
+    m.top.dialog = dialog
+end sub
+
+sub onExitAnswer()
+    exiting = m.top.dialog.buttonSelected = 1
+    m.top.dialog.close = true
+    if exiting then m.global.exit = true
+end sub
+
+sub onExitClosed()
+    m.top.dialog = invalid
+    if m.stack.GetChildCount() > 0 then m.stack.GetChild(m.stack.GetChildCount() - 1).callFunc("focus")
+end sub

@@ -1,0 +1,7 @@
+' A deliberate mistake the type check must find: check:types fails unless
+' the compiler reports the misspelt field below, so a check that stopped
+' reading the generated types can't pass quietly. Not part of the app.
+
+function misspeltField(work as KivoApi.WorkSummary) as string
+    return work.titel
+end function

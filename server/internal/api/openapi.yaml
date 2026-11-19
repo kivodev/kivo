@@ -94,7 +94,7 @@ info:
 
     Every request a Kivo app makes says what is asking, a header per field:
 
-    - `Kivo-App`: the app, such as `kivo-android`, `kivo-apple`, `kivo-web`, `kivo-tizen` or `kivo-webos`.
+    - `Kivo-App`: the app, such as `kivo-android`, `kivo-apple`, `kivo-web`, `kivo-tizen`, `kivo-webos` or `kivo-roku`.
     - `Kivo-App-Version`: its semantic version, with the build number as
       build metadata where it has one, such as `0.3.0+78`. The web client
       sends its server's version.
@@ -756,6 +756,34 @@ paths:
             application/json:
               schema: {$ref: "#/components/schemas/PendingDevice"}
         "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "429": {$ref: "#/components/responses/TooManyRequests"}
+        default: {$ref: "#/components/responses/Error"}
+
+  /api/v1/device-codes/{code}/qr:
+    parameters:
+      - {$ref: "#/components/parameters/UserCode"}
+    get:
+      operationId: getDeviceCodeQr
+      summary: Get device code QR
+      description: |
+        A PNG QR code of the code's `linkUrl`, dark on light with a quiet
+        zone, for a device that can show an image but can't draw one. It
+        encodes only the server's own link for a waiting code. A code that
+        is unknown, expired or already answered is `404`, and counts as a
+        wrong poll does.
+      tags: [sessions]
+      x-kivo-access: public
+      security: []
+      responses:
+        "200":
+          description: The QR code.
+          headers:
+            Cache-Control:
+              schema: {type: string}
+          content:
+            image/png:
+              schema: {type: string, format: binary}
         "404": {$ref: "#/components/responses/NotFound"}
         "429": {$ref: "#/components/responses/TooManyRequests"}
         default: {$ref: "#/components/responses/Error"}
@@ -3178,17 +3206,23 @@ paths:
     get:
       operationId: getPlayPreview
       summary: Get preview thumbnails
-      description: Start from `PlayStarted.previews.url`, the manifest; it names the sheets. Also answers `HEAD`.
+      description: |
+        Start from `PlayStarted.previews.url`, the manifest; it names the
+        sheets. Beside the manifest, `previews.bif` is every frame as one
+        BIF file, each a JPEG, as a Roku's video player shows them while
+        seeking. Also answers `HEAD`.
       tags: [media]
       x-kivo-access: play
       security: []
       responses:
         "200":
-          description: The manifest or a sheet.
+          description: The manifest, a sheet, or the BIF file.
           content:
             application/json:
               schema: {$ref: "#/components/schemas/PreviewManifest"}
             image/webp:
+              schema: {type: string, format: binary}
+            application/octet-stream:
               schema: {type: string, format: binary}
         "404": {$ref: "#/components/responses/NotFound"}
         default: {$ref: "#/components/responses/Error"}
@@ -4514,7 +4548,7 @@ components:
     ClientPlatform:
       type: string
       description: What a client runs on.
-      enum: [androidTv, appleTv, iPhone, iPad, androidPhone, browser, cast, tizen, webos]
+      enum: [androidTv, appleTv, iPhone, iPad, androidPhone, browser, cast, tizen, webos, roku]
 
     ClientDevice:
       type: object

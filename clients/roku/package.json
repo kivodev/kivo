@@ -1,0 +1,18 @@
+{
+  "name": "kivo-roku",
+  "private": true,
+  "version": "0.3.0",
+  "description": "The Roku app: SceneGraph and BrighterScript, compiled to a sideloadable zip.",
+  "scripts": {
+    "build": "bsc --project bsconfig.json",
+    "build:tests": "bsc --project bsconfig.tests.json",
+    "check": "bsc --project bsconfig.json --create-package false && bsc --project bsconfig.tests.json --create-package false",
+    "check:types": "sh scripts/check-types.sh"
+  },
+  "devDependencies": {
+    "@rokucommunity/bslint": "0.8.47",
+    "brighterscript": "0.73.8",
+    "bsc1": "npm:brighterscript@1.0.0-alpha.57",
+    "rooibos-roku": "5.17.0"
+  }
+}

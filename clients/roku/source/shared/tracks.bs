@@ -1,0 +1,110 @@
+import "pkg:/source/generated/types.bs"
+' A work's versions and tracks as the pickers list them: the title page's
+' (before a play) and the player's (of a play's tracks).
+namespace KivoTracks
+
+    ' The subtitle choice that shows none, as plays say it.
+    const off = "off"
+    ' The picker choice that clears a pick: the series' choice for an
+    ' episode that remembers tracks, else the play's own default.
+    const automatic = "default"
+
+    ' The version a play of [work] starts with: [versionId] when listed,
+    ' else the one the user last played, else the first; invalid without any.
+    function version(work as KivoApi.WorkDetail, versionId = "" as string) as dynamic
+        versions = work.versions
+        if versions = invalid or versions.Count() = 0 then return invalid
+        wanted = versionId
+        if wanted = "" and work.userState <> invalid and work.userState.versionId <> invalid then wanted = work.userState.versionId
+        for each v in versions
+            if v.id = wanted then return v
+        end for
+        return versions[0]
+    end function
+
+    ' The version's tracks of [kind] (a TrackType).
+    function tracksOf(version as dynamic, kind as string) as object
+        out = []
+        if version = invalid or version.tracks = invalid then return out
+        for each track in version.tracks
+            if track.type = kind then out.Push(track)
+        end for
+        return out
+    end function
+
+    ' A track's name in a picker, "Off" for no subtitle; empty for an unknown ID.
+    function name(version as dynamic, trackId as dynamic) as string
+        if trackId = invalid or trackId = "" then return ""
+        if trackId = KivoTracks.off then return "Off"
+        if version = invalid or version.tracks = invalid then return ""
+        for each track in version.tracks
+            if track.id = trackId then return track.name
+        end for
+        return ""
+    end function
+
+    ' A picker's items for [kind] of [version]: first "Default (…)" naming
+    ' the track [automaticId] stands for, then for subtitles Off, then each
+    ' track by its name, with its title after it when the file gives one.
+    function items(version as dynamic, kind as string, automaticId as dynamic) as object
+        shown = KivoTracks.name(version, automaticId)
+        if shown = "" and kind = "subtitle" then shown = "Off"
+        first = "Default"
+        if shown <> "" then first = "Default (" + shown + ")"
+        out = [{ id: KivoTracks.automatic, label: first }]
+        if kind = "subtitle" then out.Push({ id: KivoTracks.off, label: "Off" })
+        for each track in KivoTracks.tracksOf(version, kind)
+            label = track.name
+            if track.title <> invalid and track.title.Trim() <> "" then label = label + " · " + track.title.Trim()
+            out.Push({ id: track.id, label: label })
+        end for
+        return out
+    end function
+
+    ' The versions as a picker lists them, by name.
+    function versionItems(work as KivoApi.WorkDetail) as object
+        out = []
+        if work.versions = invalid then return out
+        for each v in work.versions
+            label = v.name
+            if v.available <> true then label = label + " (missing)"
+            out.Push({ id: v.id, label: label })
+        end for
+        return out
+    end function
+
+    ' The track of [kind] a play shows (a PlayStarted's tracks): its ID,
+    ' "off" for subtitles showing none, or empty.
+    function selected(play as KivoApi.PlayStarted, kind as string) as string
+        for each track in play.tracks
+            if track.type = kind and track.selected = true then return track.trackId
+        end for
+        if kind = "subtitle" then return KivoTracks.off
+        return ""
+    end function
+
+    ' How the player shows [trackId] of a play: { how, index } where how is
+    ' "stream" (the HLS rendition at index among the stream's renditions of
+    ' its type), "file" (the file's stream index), "burn", "off" or "new"
+    ' for a new play at the position with it. The server says which in the
+    ' play's tracks; the app keeps no rules of its own.
+    function show(play as KivoApi.PlayStarted, trackId as string) as object
+        chosen = invalid
+        for each track in play.tracks
+            if track.trackId = trackId then chosen = track
+        end for
+        if chosen = invalid or chosen.delivery = invalid then return { how: "new", index: -1 }
+        if chosen.delivery = KivoApi.TrackDelivery.stream
+            position = 0
+            for each track in play.tracks
+                if track.trackId = trackId then return { how: "stream", index: position }
+                if track.type = chosen.type and track.delivery = KivoApi.TrackDelivery.stream then position = position + 1
+            end for
+        end if
+        if chosen.delivery = KivoApi.TrackDelivery.file and chosen.index <> invalid then return { how: "file", index: chosen.index }
+        if chosen.delivery = KivoApi.TrackDelivery.burn then return { how: "burn", index: -1 }
+        if chosen.delivery = KivoApi.TrackDelivery.none then return { how: "off", index: -1 }
+        return { how: "new", index: -1 }
+    end function
+
+end namespace

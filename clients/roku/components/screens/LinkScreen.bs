@@ -1,0 +1,209 @@
+import "pkg:/source/generated/api.bs"
+import "pkg:/source/generated/tokens.bs"
+import "pkg:/source/shared/session.bs"
+import "pkg:/source/shared/ui.bs"
+
+sub init()
+    m.link = m.top.FindNode("link")
+    m.code = m.top.FindNode("code")
+    m.status = m.top.FindNode("status")
+    m.poll = m.top.FindNode("poll")
+    KivoUi.style(m.top.FindNode("title"), KivoTokens.TextSize.title, KivoTokens.Color.text)
+    KivoUi.style(m.top.FindNode("hint"), KivoTokens.TextSize.base, KivoTokens.Color.textMuted)
+    KivoUi.style(m.link, KivoTokens.TextSize.lg, KivoTokens.Color.accent)
+    KivoUi.style(m.code, KivoTokens.TextSize.display, KivoTokens.Color.text, true)
+    KivoUi.style(m.status, KivoTokens.TextSize.base, KivoTokens.Color.textMuted)
+    KivoUi.style(m.top.FindNode("options"), KivoTokens.TextSize.sm, KivoTokens.Color.textSubtle)
+    m.poll.ObserveField("fire", "onPoll")
+    m.qr = m.top.FindNode("qr")
+    m.qr.ObserveField("loadStatus", "onQrLoaded")
+    m.top.FindNode("qrGround").color = KivoTokens.Color.surfaceRaised
+    m.server = m.top.FindNode("server")
+    KivoUi.style(m.server, KivoTokens.TextSize.base, KivoTokens.Color.textMuted)
+    m.server.text = m.global.server
+    m.actions = m.top.FindNode("actions")
+    m.actions.buttons = ["Sign in with password"]
+    m.actions.ObserveField("buttonSelected", "onAction")
+    m.tasks = {}
+    m.tasks.server = Kivo.send(KivoApi.getServer(), "onServer")
+    m.secret = ""
+    m.declined = false
+    newCode()
+end sub
+
+sub focus()
+    m.actions.SetFocus(true)
+end sub
+
+sub onServer(event as object)
+    m.tasks.server = invalid
+    response = event.GetData()
+    answer = KivoApi.getServerAnswer(response)
+    if response.code = 200 and answer.name <> invalid
+        m.server.text = answer.name
+        m.top.FindNode("title").text = "Sign in to " + answer.name
+    end if
+end sub
+
+' Asks the server for a code to show.
+sub newCode()
+    m.poll.control = "stop"
+    m.secret = ""
+    showQr("")
+    name = CreateObject("roDeviceInfo").GetFriendlyName()
+    if name = "" then name = "Roku"
+    m.task = Kivo.send(KivoApi.createDeviceCode({ name: name, kind: KivoApi.SessionKind.app, clientId: m.global.clientId }), "onCode")
+end sub
+
+sub onCode(event as object)
+    response = event.GetData()
+    answer = KivoApi.createDeviceCodeAnswer(response)
+    m.task = invalid
+    if response.code <> 201
+        m.status.color = KivoTokens.Color.danger
+        m.status.text = "Couldn't get a sign-in code. " + KivoDisplay.problem(response)
+        m.actions.buttons = ["Try again", "Sign in with password"]
+        return
+    end if
+    m.actions.buttons = ["Sign in with password"]
+    code = answer
+    m.secret = code.secret
+    m.code.text = KivoUi.groupedCode(code.code)
+    m.link.text = code.linkUrl
+    showQr(code.code)
+    m.status.color = KivoTokens.Color.textMuted
+    m.status.text = ""
+    if m.declined
+        m.status.color = KivoTokens.Color.danger
+        m.status.text = "Sign-in was declined."
+    end if
+    interval = code.interval
+    if interval = invalid or interval < 1 then interval = 5
+    m.poll.duration = interval
+    m.poll.control = "start"
+end sub
+
+' Shows the QR code of [code]'s link, or the empty panel while there's
+' no code. The link is written out instead when the QR code doesn't load.
+sub showQr(code as string)
+    m.link.visible = false
+    if code = ""
+        m.qr.uri = ""
+        m.qr.visible = false
+        return
+    end if
+    m.qr.visible = true
+    m.qr.uri = KivoApi.getDeviceCodeQrUrl(m.global.server, code)
+end sub
+
+sub onQrLoaded()
+    if m.qr.loadStatus = "failed" and m.qr.uri <> ""
+        m.qr.visible = false
+        m.link.visible = true
+    end if
+end sub
+
+sub onPoll()
+    if m.secret = "" or m.task <> invalid then return
+    m.task = Kivo.send(KivoApi.pollDeviceCode({ secret: m.secret }), "onPolled")
+end sub
+
+sub onPolled(event as object)
+    response = event.GetData()
+    answer = KivoApi.pollDeviceCodeAnswer(response)
+    m.task = invalid
+    if response.code = 201 and answer <> invalid and answer.token <> invalid
+        m.poll.control = "stop"
+        Kivo.saveToken(answer.token)
+        m.global.token = answer.token
+        m.top.navigate = { screen: "HomeScreen", replace: true }
+    else if response.code = 403
+        ' One declined says so over its replacement.
+        m.declined = true
+        newCode()
+    else if response.code = 410
+        newCode()
+    end if
+    ' 202 is still waiting; a refusal to poll this often (429) or no answer waits for the next poll.
+end sub
+
+sub onAction()
+    label = m.actions.buttons[m.actions.buttonSelected]
+    if label = "Try again"
+        newCode()
+    else
+        askUsername("")
+    end if
+end sub
+
+' Signing in with a password, a step at a time: the username, then Next,
+' then the password, which names the username it goes with.
+sub askUsername(note as string)
+    dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
+    dialog.title = "Username"
+    if note <> "" then dialog.message = [note]
+    if m.username <> invalid then dialog.text = m.username
+    dialog.buttons = ["Next", "Back"]
+    dialog.ObserveField("buttonSelected", "onUsername")
+    m.dialog = dialog
+    m.top.GetScene().dialog = dialog
+end sub
+
+sub onUsername()
+    if m.dialog.buttonSelected <> 0
+        m.dialog.close = true
+        return
+    end if
+    m.username = m.dialog.text.Trim()
+    m.dialog.close = true
+    if m.username = "" then return
+    dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
+    dialog.title = "Password"
+    dialog.message = ["As " + m.username]
+    dialog.secureMode = true
+    dialog.buttons = ["Sign in", "Back"]
+    dialog.ObserveField("buttonSelected", "onPassword")
+    m.dialog = dialog
+    m.top.GetScene().dialog = dialog
+end sub
+
+sub onPassword()
+    if m.dialog.buttonSelected <> 0
+        m.dialog.close = true
+        ' Back from the password returns to the username, kept as typed.
+        askUsername("")
+        return
+    end if
+    password = m.dialog.text
+    m.dialog.close = true
+    name = CreateObject("roDeviceInfo").GetFriendlyName()
+    if name = "" then name = "Roku"
+    m.status.color = KivoTokens.Color.textMuted
+    m.status.text = "Signing in…"
+    m.tasks.signIn = Kivo.send(KivoApi.createSession({ username: m.username, password: password, kind: KivoApi.SessionKind.app, name: name, clientId: m.global.clientId }), "onSignedIn")
+end sub
+
+sub onSignedIn(event as object)
+    m.tasks.signIn = invalid
+    response = event.GetData()
+    answer = KivoApi.createSessionAnswer(response)
+    if response.code = 201 and answer <> invalid and answer.token <> invalid
+        m.poll.control = "stop"
+        Kivo.saveToken(answer.token)
+        m.global.token = answer.token
+        m.top.navigate = { screen: "HomeScreen", replace: true }
+        return
+    end if
+    m.status.text = ""
+    askUsername(KivoDisplay.problem(response))
+end sub
+
+function onKeyEvent(key as string, press as boolean) as boolean
+    if not press then return false
+    if key = "options"
+        m.poll.control = "stop"
+        m.top.navigate = { screen: "ServerScreen", replace: true }
+        return true
+    end if
+    return false
+end function

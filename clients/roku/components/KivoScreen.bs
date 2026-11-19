@@ -1,0 +1,4 @@
+' A screen that names nothing to focus takes the focus itself.
+sub focus()
+    m.top.SetFocus(true)
+end sub

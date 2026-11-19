@@ -15,11 +15,14 @@ require (
 	github.com/brutella/dnssd v1.2.14
 	github.com/coder/websocket v1.8.14
 	github.com/fsnotify/fsnotify v1.9.0
+	github.com/makiuchi-d/gozxing v0.1.1
 	github.com/miekg/dns v1.1.61
+	golang.org/x/image v0.46.0
 	golang.org/x/net v0.59.0
 	golang.org/x/sync v0.23.0
 	golang.org/x/term v0.46.0
 	gopkg.in/yaml.v3 v3.0.1
+	rsc.io/qr v0.2.0
 )
 
 require (
@@ -30,6 +33,7 @@ require (
 	github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae // indirect
 	golang.org/x/mod v0.41.0 // indirect
 	golang.org/x/tools v0.50.0 // indirect
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 )
 
 require (

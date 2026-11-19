@@ -1,0 +1,1272 @@
+' Generated from server/internal/api/openapi.yaml by make generate in
+' server/ (internal/api/internal/brsgen). Don't edit.
+'
+' A function per operation returns the request to send, typed by its
+' query, path and body; the app's request task sends it. One with a JSON
+' answer has an Answer function that gives the response's body as its
+' type, and a GET whose answer isn't JSON (an image, a stream, subtitles)
+' has a Url function for the node that fetches it. The types are in
+' types.bs.
+
+import "pkg:/source/generated/types.bs"
+
+namespace KivoApi
+
+    ' A path parameter, escaped for the URL.
+    function pathEscape(value as string) as string
+        return CreateObject("roUrlTransfer").Escape(value)
+    end function
+
+    ' A query's fields as a URL query, each escaped; an array's values each
+    ' make a pair of their own. Empty without fields.
+    function queryString(query as dynamic) as string
+        if query = invalid or query.Count() = 0 then return ""
+        transfer = CreateObject("roUrlTransfer")
+        pairs = []
+        for each key in query
+            values = query[key]
+            if type(values) <> "roArray" then values = [values]
+            for each value in values
+                if value <> invalid then pairs.Push(transfer.Escape(key) + "=" + transfer.Escape(value.ToStr()))
+            end for
+        end for
+        if pairs.Count() = 0 then return ""
+        return "?" + pairs.Join("&")
+    end function
+
+    ' Get health: GET /healthz.
+    function getHealth() as KivoApi.Request
+        return { method: "GET", path: "/healthz", query: invalid, body: invalid, contentType: invalid, auth: false }
+    end function
+
+    ' getHealth's answer, as its type.
+    function getHealthAnswer(response as object) as KivoApi.Health
+        return response.body
+    end function
+
+    ' Get setup status: GET /api/v1/setup.
+    function getSetup() as KivoApi.Request
+        return { method: "GET", path: "/api/v1/setup", query: invalid, body: invalid, contentType: invalid, auth: false }
+    end function
+
+    ' getSetup's answer, as its type.
+    function getSetupAnswer(response as object) as KivoApi.SetupState
+        return response.body
+    end function
+
+    ' Complete setup: POST /api/v1/setup.
+    function completeSetup(body as KivoApi.SessionCreate) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/setup", query: invalid, body: body, contentType: "application/json", auth: false }
+    end function
+
+    ' completeSetup's answer, as its type.
+    function completeSetupAnswer(response as object) as KivoApi.Session
+        return response.body
+    end function
+
+    ' Get server info: GET /api/v1/server.
+    ' Query: challenge.
+    function getServer(query = invalid as KivoApi.GetServerQuery) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/server", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' getServer's answer, as its type.
+    function getServerAnswer(response as object) as KivoApi.ServerInfo
+        return response.body
+    end function
+
+    ' Get settings: GET /api/v1/settings.
+    function getSettings() as KivoApi.Request
+        return { method: "GET", path: "/api/v1/settings", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' getSettings's answer, as its type.
+    function getSettingsAnswer(response as object) as KivoApi.Settings
+        return response.body
+    end function
+
+    ' Update settings: PATCH /api/v1/settings.
+    function updateSettings(body as KivoApi.SettingsUpdate) as KivoApi.Request
+        return { method: "PATCH", path: "/api/v1/settings", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' updateSettings's answer, as its type.
+    function updateSettingsAnswer(response as object) as KivoApi.Settings
+        return response.body
+    end function
+
+    ' List folders: GET /api/v1/directories.
+    ' Query: path.
+    function listDirectories(query = invalid as KivoApi.ListDirectoriesQuery) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/directories", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listDirectories's answer, as its type.
+    function listDirectoriesAnswer(response as object) as KivoApi.DirectoryList
+        return response.body
+    end function
+
+    ' List accelerators: GET /api/v1/accelerators.
+    function listAccelerators() as KivoApi.Request
+        return { method: "GET", path: "/api/v1/accelerators", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listAccelerators's answer, as its type.
+    function listAcceleratorsAnswer(response as object) as KivoApi.AcceleratorList
+        return response.body
+    end function
+
+    ' List content ratings: GET /api/v1/content-ratings.
+    ' Query: workId.
+    function listContentRatings(query = invalid as KivoApi.ListContentRatingsQuery) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/content-ratings", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listContentRatings's answer, as its type.
+    function listContentRatingsAnswer(response as object) as KivoApi.ContentRatingList
+        return response.body
+    end function
+
+    ' List sessions: GET /api/v1/sessions.
+    ' Query: userId.
+    function listSessions(query = invalid as KivoApi.ListSessionsQuery) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/sessions", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listSessions's answer, as its type.
+    function listSessionsAnswer(response as object) as KivoApi.SessionList
+        return response.body
+    end function
+
+    ' Sign in: POST /api/v1/sessions.
+    function createSession(body as KivoApi.SessionCreate) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/sessions", query: invalid, body: body, contentType: "application/json", auth: false }
+    end function
+
+    ' createSession's answer, as its type.
+    function createSessionAnswer(response as object) as KivoApi.Session
+        return response.body
+    end function
+
+    ' Sign out other sessions: DELETE /api/v1/sessions.
+    ' Query: except.
+    function deleteOtherSessions(query = invalid as KivoApi.DeleteOtherSessionsQuery) as KivoApi.Request
+        return { method: "DELETE", path: "/api/v1/sessions", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Get current session: GET /api/v1/sessions/current.
+    function getCurrentSession() as KivoApi.Request
+        return { method: "GET", path: "/api/v1/sessions/current", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' getCurrentSession's answer, as its type.
+    function getCurrentSessionAnswer(response as object) as KivoApi.Session
+        return response.body
+    end function
+
+    ' Sign out: DELETE /api/v1/sessions/current.
+    function deleteCurrentSession() as KivoApi.Request
+        return { method: "DELETE", path: "/api/v1/sessions/current", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Get session: GET /api/v1/sessions/{id}.
+    function getSession(id as string) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/sessions/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' getSession's answer, as its type.
+    function getSessionAnswer(response as object) as KivoApi.Session
+        return response.body
+    end function
+
+    ' Rename session: PATCH /api/v1/sessions/{id}.
+    function updateSession(id as string, body as KivoApi.SessionUpdate) as KivoApi.Request
+        return { method: "PATCH", path: "/api/v1/sessions/" + KivoApi.pathEscape(id), query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' updateSession's answer, as its type.
+    function updateSessionAnswer(response as object) as KivoApi.Session
+        return response.body
+    end function
+
+    ' Revoke session: DELETE /api/v1/sessions/{id}.
+    function deleteSession(id as string) as KivoApi.Request
+        return { method: "DELETE", path: "/api/v1/sessions/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' List API keys: GET /api/v1/api-keys.
+    function listApiKeys() as KivoApi.Request
+        return { method: "GET", path: "/api/v1/api-keys", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listApiKeys's answer, as its type.
+    function listApiKeysAnswer(response as object) as KivoApi.ApiKeyList
+        return response.body
+    end function
+
+    ' Create API key: POST /api/v1/api-keys.
+    function createApiKey(body as KivoApi.ApiKeyCreate) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/api-keys", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' createApiKey's answer, as its type.
+    function createApiKeyAnswer(response as object) as KivoApi.ApiKey
+        return response.body
+    end function
+
+    ' Get API key: GET /api/v1/api-keys/{id}.
+    function getApiKey(id as string) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/api-keys/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' getApiKey's answer, as its type.
+    function getApiKeyAnswer(response as object) as KivoApi.ApiKey
+        return response.body
+    end function
+
+    ' Revoke API key: DELETE /api/v1/api-keys/{id}.
+    function deleteApiKey(id as string) as KivoApi.Request
+        return { method: "DELETE", path: "/api/v1/api-keys/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Start device sign-in: POST /api/v1/device-codes.
+    function createDeviceCode(body as KivoApi.DeviceCodeCreate) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/device-codes", query: invalid, body: body, contentType: "application/json", auth: false }
+    end function
+
+    ' createDeviceCode's answer, as its type.
+    function createDeviceCodeAnswer(response as object) as KivoApi.DeviceCode
+        return response.body
+    end function
+
+    ' Check device sign-in: POST /api/v1/device-codes/poll.
+    function pollDeviceCode(body as KivoApi.DeviceCodePoll) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/device-codes/poll", query: invalid, body: body, contentType: "application/json", auth: false }
+    end function
+
+    ' pollDeviceCode's answer, as its type.
+    function pollDeviceCodeAnswer(response as object) as KivoApi.Session
+        return response.body
+    end function
+
+    ' Get pending device: GET /api/v1/device-codes/{code}.
+    function getDeviceCode(code as string) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/device-codes/" + KivoApi.pathEscape(code), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' getDeviceCode's answer, as its type.
+    function getDeviceCodeAnswer(response as object) as KivoApi.PendingDevice
+        return response.body
+    end function
+
+    ' Get device code QR: GET /api/v1/device-codes/{code}/qr.
+    function getDeviceCodeQr(code as string) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/device-codes/" + KivoApi.pathEscape(code) + "/qr", query: invalid, body: invalid, contentType: invalid, auth: false }
+    end function
+
+    ' getDeviceCodeQr's URL from the server address [base], for a node that fetches its image/png itself.
+    function getDeviceCodeQrUrl(base as string, code as string) as string
+        request = KivoApi.getDeviceCodeQr(code)
+        return base + request.path + KivoApi.queryString(request.query)
+    end function
+
+    ' Approve device sign-in: POST /api/v1/device-codes/{code}/approve.
+    function approveDeviceCode(code as string) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/device-codes/" + KivoApi.pathEscape(code) + "/approve", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Deny device sign-in: POST /api/v1/device-codes/{code}/deny.
+    function denyDeviceCode(code as string) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/device-codes/" + KivoApi.pathEscape(code) + "/deny", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Create cast token: POST /api/v1/cast-tokens.
+    function createCastToken(body as KivoApi.CastTokenCreate) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/cast-tokens", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' createCastToken's answer, as its type.
+    function createCastTokenAnswer(response as object) as KivoApi.CastToken
+        return response.body
+    end function
+
+    ' Delete cast token: DELETE /api/v1/cast-tokens/current.
+    function deleteCurrentCastToken() as KivoApi.Request
+        return { method: "DELETE", path: "/api/v1/cast-tokens/current", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' List users: GET /api/v1/users.
+    function listUsers() as KivoApi.Request
+        return { method: "GET", path: "/api/v1/users", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listUsers's answer, as its type.
+    function listUsersAnswer(response as object) as KivoApi.UserList
+        return response.body
+    end function
+
+    ' Create user: POST /api/v1/users.
+    function createUser(body as KivoApi.UserCreate) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/users", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' createUser's answer, as its type.
+    function createUserAnswer(response as object) as KivoApi.User
+        return response.body
+    end function
+
+    ' Get current user: GET /api/v1/users/me.
+    function getCurrentUser() as KivoApi.Request
+        return { method: "GET", path: "/api/v1/users/me", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' getCurrentUser's answer, as its type.
+    function getCurrentUserAnswer(response as object) as KivoApi.CurrentUser
+        return response.body
+    end function
+
+    ' Update current user: PATCH /api/v1/users/me.
+    function updateCurrentUser(body as KivoApi.CurrentUserUpdate) as KivoApi.Request
+        return { method: "PATCH", path: "/api/v1/users/me", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' updateCurrentUser's answer, as its type.
+    function updateCurrentUserAnswer(response as object) as KivoApi.CurrentUser
+        return response.body
+    end function
+
+    ' Change own password: POST /api/v1/users/me/change-password.
+    function changeCurrentUserPassword(body as KivoApi.CurrentUserPasswordChange) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/users/me/change-password", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Get user: GET /api/v1/users/{id}.
+    function getUser(id as string) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/users/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' getUser's answer, as its type.
+    function getUserAnswer(response as object) as KivoApi.User
+        return response.body
+    end function
+
+    ' Update user: PATCH /api/v1/users/{id}.
+    function updateUser(id as string, body as KivoApi.UserUpdate) as KivoApi.Request
+        return { method: "PATCH", path: "/api/v1/users/" + KivoApi.pathEscape(id), query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' updateUser's answer, as its type.
+    function updateUserAnswer(response as object) as KivoApi.User
+        return response.body
+    end function
+
+    ' Delete user: DELETE /api/v1/users/{id}.
+    function deleteUser(id as string) as KivoApi.Request
+        return { method: "DELETE", path: "/api/v1/users/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Set user password: POST /api/v1/users/{id}/set-password.
+    function setUserPassword(id as string, body as KivoApi.PasswordChange) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/users/" + KivoApi.pathEscape(id) + "/set-password", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' List invites: GET /api/v1/invites.
+    function listInvites() as KivoApi.Request
+        return { method: "GET", path: "/api/v1/invites", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listInvites's answer, as its type.
+    function listInvitesAnswer(response as object) as KivoApi.InviteList
+        return response.body
+    end function
+
+    ' Create invite: POST /api/v1/invites.
+    function createInvite(body as KivoApi.InviteCreate) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/invites", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' createInvite's answer, as its type.
+    function createInviteAnswer(response as object) as KivoApi.Invite
+        return response.body
+    end function
+
+    ' Revoke invite: DELETE /api/v1/invites/{id}.
+    function deleteInvite(id as string) as KivoApi.Request
+        return { method: "DELETE", path: "/api/v1/invites/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Get invite link: GET /api/v1/invite-links/{token}.
+    function getInviteLink(token as string) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/invite-links/" + KivoApi.pathEscape(token), query: invalid, body: invalid, contentType: invalid, auth: false }
+    end function
+
+    ' getInviteLink's answer, as its type.
+    function getInviteLinkAnswer(response as object) as KivoApi.InviteLink
+        return response.body
+    end function
+
+    ' Accept invite: POST /api/v1/invite-links/{token}/accept.
+    function acceptInviteLink(token as string, body as KivoApi.SessionCreate) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/invite-links/" + KivoApi.pathEscape(token) + "/accept", query: invalid, body: body, contentType: "application/json", auth: false }
+    end function
+
+    ' acceptInviteLink's answer, as its type.
+    function acceptInviteLinkAnswer(response as object) as KivoApi.Session
+        return response.body
+    end function
+
+    ' List libraries: GET /api/v1/libraries.
+    function listLibraries() as KivoApi.Request
+        return { method: "GET", path: "/api/v1/libraries", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listLibraries's answer, as its type.
+    function listLibrariesAnswer(response as object) as KivoApi.LibraryList
+        return response.body
+    end function
+
+    ' Create library: POST /api/v1/libraries.
+    function createLibrary(body as KivoApi.LibraryCreate) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/libraries", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' createLibrary's answer, as its type.
+    function createLibraryAnswer(response as object) as KivoApi.Library
+        return response.body
+    end function
+
+    ' Get library: GET /api/v1/libraries/{id}.
+    function getLibrary(id as string) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/libraries/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' getLibrary's answer, as its type.
+    function getLibraryAnswer(response as object) as KivoApi.Library
+        return response.body
+    end function
+
+    ' Update library: PATCH /api/v1/libraries/{id}.
+    function updateLibrary(id as string, body as KivoApi.LibraryUpdate) as KivoApi.Request
+        return { method: "PATCH", path: "/api/v1/libraries/" + KivoApi.pathEscape(id), query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' updateLibrary's answer, as its type.
+    function updateLibraryAnswer(response as object) as KivoApi.Library
+        return response.body
+    end function
+
+    ' Delete library: DELETE /api/v1/libraries/{id}.
+    function deleteLibrary(id as string) as KivoApi.Request
+        return { method: "DELETE", path: "/api/v1/libraries/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' deleteLibrary's answer, as its type.
+    function deleteLibraryAnswer(response as object) as KivoApi.Accepted
+        return response.body
+    end function
+
+    ' List library collections: GET /api/v1/libraries/{id}/collections.
+    ' Query: offset, limit.
+    function listLibraryCollections(id as string, query = invalid as KivoApi.ListLibraryCollectionsQuery) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/libraries/" + KivoApi.pathEscape(id) + "/collections", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listLibraryCollections's answer, as its type.
+    function listLibraryCollectionsAnswer(response as object) as KivoApi.CollectionSummaryPage
+        return response.body
+    end function
+
+    ' List library authors: GET /api/v1/libraries/{id}/authors.
+    ' Query: offset, limit.
+    function listLibraryAuthors(id as string, query = invalid as KivoApi.ListLibraryAuthorsQuery) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/libraries/" + KivoApi.pathEscape(id) + "/authors", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listLibraryAuthors's answer, as its type.
+    function listLibraryAuthorsAnswer(response as object) as KivoApi.PersonSummaryPage
+        return response.body
+    end function
+
+    ' List library book series: GET /api/v1/libraries/{id}/book-series.
+    ' Query: offset, limit.
+    function listLibraryBookSeries(id as string, query = invalid as KivoApi.ListLibraryBookSeriesQuery) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/libraries/" + KivoApi.pathEscape(id) + "/book-series", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listLibraryBookSeries's answer, as its type.
+    function listLibraryBookSeriesAnswer(response as object) as KivoApi.BookSeriesSummaryPage
+        return response.body
+    end function
+
+    ' Scan library: POST /api/v1/libraries/{id}/scan.
+    function scanLibrary(id as string, body as KivoApi.ScanRequest) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/libraries/" + KivoApi.pathEscape(id) + "/scan", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' scanLibrary's answer, as its type.
+    function scanLibraryAnswer(response as object) as KivoApi.Accepted
+        return response.body
+    end function
+
+    ' Stop library scan: POST /api/v1/libraries/{id}/stop-scan.
+    function stopLibraryScan(id as string) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/libraries/" + KivoApi.pathEscape(id) + "/stop-scan", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Refresh library metadata: POST /api/v1/libraries/{id}/refresh-metadata.
+    function refreshLibraryMetadata(id as string) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/libraries/" + KivoApi.pathEscape(id) + "/refresh-metadata", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' refreshLibraryMetadata's answer, as its type.
+    function refreshLibraryMetadataAnswer(response as object) as KivoApi.Accepted
+        return response.body
+    end function
+
+    ' Get Home rows: GET /api/v1/home.
+    ' Query: kind.
+    function getHome(query = invalid as KivoApi.GetHomeQuery) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/home", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' getHome's answer, as its type.
+    function getHomeAnswer(response as object) as KivoApi.Home
+        return response.body
+    end function
+
+    ' List Home rows: GET /api/v1/home/rows.
+    function listHomeRows() as KivoApi.Request
+        return { method: "GET", path: "/api/v1/home/rows", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listHomeRows's answer, as its type.
+    function listHomeRowsAnswer(response as object) as KivoApi.HomeRowInfoList
+        return response.body
+    end function
+
+    ' Change the Home layout: PATCH /api/v1/home/rows.
+    function updateHomeRows(body as KivoApi.HomeRowsUpdate) as KivoApi.Request
+        return { method: "PATCH", path: "/api/v1/home/rows", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' updateHomeRows's answer, as its type.
+    function updateHomeRowsAnswer(response as object) as KivoApi.HomeRowInfoList
+        return response.body
+    end function
+
+    ' Reset the Home layout: POST /api/v1/home/rows/reset.
+    function resetHomeRows() as KivoApi.Request
+        return { method: "POST", path: "/api/v1/home/rows/reset", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' resetHomeRows's answer, as its type.
+    function resetHomeRowsAnswer(response as object) as KivoApi.HomeRowInfoList
+        return response.body
+    end function
+
+    ' List the user's lists: GET /api/v1/lists.
+    ' Query: counts.
+    function listLists(query = invalid as KivoApi.ListListsQuery) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/lists", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listLists's answer, as its type.
+    function listListsAnswer(response as object) as KivoApi.WorkListList
+        return response.body
+    end function
+
+    ' Create a list: POST /api/v1/lists.
+    function createList(body as KivoApi.ListCreate) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/lists", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' createList's answer, as its type.
+    function createListAnswer(response as object) as KivoApi.WorkList
+        return response.body
+    end function
+
+    ' Get a list: GET /api/v1/lists/{id}.
+    function getList(id as string) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/lists/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' getList's answer, as its type.
+    function getListAnswer(response as object) as KivoApi.WorkList
+        return response.body
+    end function
+
+    ' Update a list: PATCH /api/v1/lists/{id}.
+    function updateList(id as string, body as KivoApi.ListUpdate) as KivoApi.Request
+        return { method: "PATCH", path: "/api/v1/lists/" + KivoApi.pathEscape(id), query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' updateList's answer, as its type.
+    function updateListAnswer(response as object) as KivoApi.WorkList
+        return response.body
+    end function
+
+    ' Delete a list: DELETE /api/v1/lists/{id}.
+    function deleteList(id as string) as KivoApi.Request
+        return { method: "DELETE", path: "/api/v1/lists/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' List a list's works: GET /api/v1/lists/{id}/works.
+    ' Query: kind, sort, offset, limit.
+    function listListWorks(id as string, query = invalid as KivoApi.ListListWorksQuery) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/lists/" + KivoApi.pathEscape(id) + "/works", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listListWorks's answer, as its type.
+    function listListWorksAnswer(response as object) as KivoApi.WorkSummaryPage
+        return response.body
+    end function
+
+    ' Add a work to a list: POST /api/v1/lists/{id}/works.
+    function addListWork(id as string, body as KivoApi.ListWorkAdd) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/lists/" + KivoApi.pathEscape(id) + "/works", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Move works in a list's custom order: POST /api/v1/lists/{id}/move.
+    function moveListWorks(id as string, body as KivoApi.ListMove) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/lists/" + KivoApi.pathEscape(id) + "/move", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Remove a work from a list: DELETE /api/v1/lists/{id}/works/{workId}.
+    function removeListWork(id as string, workId as string) as KivoApi.Request
+        return { method: "DELETE", path: "/api/v1/lists/" + KivoApi.pathEscape(id) + "/works/" + KivoApi.pathEscape(workId), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Update books: PATCH /api/v1/works.
+    function updateWorks(body as KivoApi.WorksUpdate) as KivoApi.Request
+        return { method: "PATCH", path: "/api/v1/works", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' updateWorks's answer, as its type.
+    function updateWorksAnswer(response as object) as KivoApi.WorkSummaryList
+        return response.body
+    end function
+
+    ' Run a work query: POST /api/v1/works/query.
+    function queryWorks(body as KivoApi.WorkQueryRequest) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/works/query", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' queryWorks's answer, as its type.
+    function queryWorksAnswer(response as object) as KivoApi.WorkSummaryPage
+        return response.body
+    end function
+
+    ' List the fields rules can use: GET /api/v1/work-fields.
+    function listWorkFields() as KivoApi.Request
+        return { method: "GET", path: "/api/v1/work-fields", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listWorkFields's answer, as its type.
+    function listWorkFieldsAnswer(response as object) as KivoApi.WorkFieldList
+        return response.body
+    end function
+
+    ' List a field's values: GET /api/v1/work-fields/{field}/values.
+    ' Query: q, library, ids.
+    function listWorkFieldValues(field as string, query = invalid as KivoApi.ListWorkFieldValuesQuery) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/work-fields/" + KivoApi.pathEscape(field) + "/values", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listWorkFieldValues's answer, as its type.
+    function listWorkFieldValuesAnswer(response as object) as KivoApi.WorkFieldValueList
+        return response.body
+    end function
+
+    ' Get work: GET /api/v1/works/{id}.
+    function getWork(id as string) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/works/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' getWork's answer, as its type.
+    function getWorkAnswer(response as object) as KivoApi.WorkDetail
+        return response.body
+    end function
+
+    ' Update work: PATCH /api/v1/works/{id}.
+    function updateWork(id as string, body as KivoApi.WorkUpdate) as KivoApi.Request
+        return { method: "PATCH", path: "/api/v1/works/" + KivoApi.pathEscape(id), query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' updateWork's answer, as its type.
+    function updateWorkAnswer(response as object) as KivoApi.WorkDetail
+        return response.body
+    end function
+
+    ' List seasons or episodes: GET /api/v1/works/{id}/children.
+    function listWorkChildren(id as string) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/works/" + KivoApi.pathEscape(id) + "/children", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listWorkChildren's answer, as its type.
+    function listWorkChildrenAnswer(response as object) as KivoApi.WorkSummaryList
+        return response.body
+    end function
+
+    ' Update user state: PATCH /api/v1/works/{id}/user-state.
+    function updateWorkUserState(id as string, body as KivoApi.UserStateUpdate) as KivoApi.Request
+        return { method: "PATCH", path: "/api/v1/works/" + KivoApi.pathEscape(id) + "/user-state", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' updateWorkUserState's answer, as its type.
+    function updateWorkUserStateAnswer(response as object) as KivoApi.UserState
+        return response.body
+    end function
+
+    ' Choose tracks for a series: PATCH /api/v1/works/{id}/user-state/tracks.
+    function updateWorkTracks(id as string, body as KivoApi.TracksUpdate) as KivoApi.Request
+        return { method: "PATCH", path: "/api/v1/works/" + KivoApi.pathEscape(id) + "/user-state/tracks", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' updateWorkTracks's answer, as its type.
+    function updateWorkTracksAnswer(response as object) as KivoApi.WorkDetail
+        return response.body
+    end function
+
+    ' Remove from Continue Watching: POST /api/v1/works/{id}/user-state/remove-from-continue.
+    function removeFromContinue(id as string) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/works/" + KivoApi.pathEscape(id) + "/user-state/remove-from-continue", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Search matches: GET /api/v1/works/{id}/matches.
+    ' Query: query, year, author, provider.
+    function listWorkMatches(id as string, query = invalid as KivoApi.ListWorkMatchesQuery) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/works/" + KivoApi.pathEscape(id) + "/matches", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listWorkMatches's answer, as its type.
+    function listWorkMatchesAnswer(response as object) as KivoApi.MatchList
+        return response.body
+    end function
+
+    ' Match work: POST /api/v1/works/{id}/match.
+    function matchWork(id as string, body as KivoApi.FixMatchRequest) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/works/" + KivoApi.pathEscape(id) + "/match", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' matchWork's answer, as its type.
+    function matchWorkAnswer(response as object) as KivoApi.WorkDetail
+        return response.body
+    end function
+
+    ' Unmatch work: POST /api/v1/works/{id}/unmatch.
+    function unmatchWork(id as string) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/works/" + KivoApi.pathEscape(id) + "/unmatch", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' unmatchWork's answer, as its type.
+    function unmatchWorkAnswer(response as object) as KivoApi.WorkDetail
+        return response.body
+    end function
+
+    ' Refresh work metadata: POST /api/v1/works/{id}/refresh-metadata.
+    function refreshWorkMetadata(id as string) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/works/" + KivoApi.pathEscape(id) + "/refresh-metadata", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' refreshWorkMetadata's answer, as its type.
+    function refreshWorkMetadataAnswer(response as object) as KivoApi.Accepted
+        return response.body
+    end function
+
+    ' List artwork: GET /api/v1/works/{id}/artwork.
+    ' Query: type.
+    function listWorkArtwork(id as string, query = invalid as KivoApi.ListWorkArtworkQuery) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/works/" + KivoApi.pathEscape(id) + "/artwork", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listWorkArtwork's answer, as its type.
+    function listWorkArtworkAnswer(response as object) as KivoApi.ArtworkList
+        return response.body
+    end function
+
+    ' Upload artwork: POST /api/v1/works/{id}/artwork.
+    function uploadWorkArtwork(id as string, body as object) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/works/" + KivoApi.pathEscape(id) + "/artwork", query: invalid, body: body, contentType: "multipart/form-data", auth: true }
+    end function
+
+    ' uploadWorkArtwork's answer, as its type.
+    function uploadWorkArtworkAnswer(response as object) as KivoApi.Artwork
+        return response.body
+    end function
+
+    ' Select artwork: POST /api/v1/works/{id}/artwork/{artworkId}/select.
+    function selectWorkArtwork(id as string, artworkId as string) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/works/" + KivoApi.pathEscape(id) + "/artwork/" + KivoApi.pathEscape(artworkId) + "/select", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' selectWorkArtwork's answer, as its type.
+    function selectWorkArtworkAnswer(response as object) as KivoApi.Artwork
+        return response.body
+    end function
+
+    ' Get collection: GET /api/v1/collections/{id}.
+    function getCollection(id as string) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/collections/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' getCollection's answer, as its type.
+    function getCollectionAnswer(response as object) as KivoApi.Collection
+        return response.body
+    end function
+
+    ' List unmatched works: GET /api/v1/unmatched-works.
+    ' Query: after, limit.
+    function listUnmatchedWorks(query = invalid as KivoApi.ListUnmatchedWorksQuery) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/unmatched-works", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listUnmatchedWorks's answer, as its type.
+    function listUnmatchedWorksAnswer(response as object) as KivoApi.WorkSummaryFeed
+        return response.body
+    end function
+
+    ' Get person: GET /api/v1/people/{id}.
+    function getPerson(id as string) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/people/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' getPerson's answer, as its type.
+    function getPersonAnswer(response as object) as KivoApi.Person
+        return response.body
+    end function
+
+    ' Rename person: PATCH /api/v1/people/{id}.
+    function updatePerson(id as string, body as KivoApi.NameUpdate) as KivoApi.Request
+        return { method: "PATCH", path: "/api/v1/people/" + KivoApi.pathEscape(id), query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' updatePerson's answer, as its type.
+    function updatePersonAnswer(response as object) as KivoApi.Person
+        return response.body
+    end function
+
+    ' Get book series: GET /api/v1/book-series/{id}.
+    function getBookSeries(id as string) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/book-series/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' getBookSeries's answer, as its type.
+    function getBookSeriesAnswer(response as object) as KivoApi.BookSeries
+        return response.body
+    end function
+
+    ' Rename book series: PATCH /api/v1/book-series/{id}.
+    function updateBookSeries(id as string, body as KivoApi.NameUpdate) as KivoApi.Request
+        return { method: "PATCH", path: "/api/v1/book-series/" + KivoApi.pathEscape(id), query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' updateBookSeries's answer, as its type.
+    function updateBookSeriesAnswer(response as object) as KivoApi.BookSeries
+        return response.body
+    end function
+
+    ' Search works: GET /api/v1/search.
+    ' Query: q, limit.
+    function searchWorks(query = invalid as KivoApi.SearchWorksQuery) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/search", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' searchWorks's answer, as its type.
+    function searchWorksAnswer(response as object) as KivoApi.SearchResults
+        return response.body
+    end function
+
+    ' List work files: GET /api/v1/works/{id}/files.
+    function listWorkFiles(id as string) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/works/" + KivoApi.pathEscape(id) + "/files", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listWorkFiles's answer, as its type.
+    function listWorkFilesAnswer(response as object) as KivoApi.MediaFileList
+        return response.body
+    end function
+
+    ' List missing files: GET /api/v1/files.
+    ' Query: status, libraryId, after, limit.
+    function listFiles(query = invalid as KivoApi.ListFilesQuery) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/files", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listFiles's answer, as its type.
+    function listFilesAnswer(response as object) as KivoApi.MediaFileFeed
+        return response.body
+    end function
+
+    ' Delete missing files: DELETE /api/v1/files.
+    ' Query: status.
+    function deleteMissingFiles(query = invalid as KivoApi.DeleteMissingFilesQuery) as KivoApi.Request
+        return { method: "DELETE", path: "/api/v1/files", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Delete missing file: DELETE /api/v1/files/{id}.
+    function deleteFile(id as string) as KivoApi.Request
+        return { method: "DELETE", path: "/api/v1/files/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Search subtitles: GET /api/v1/files/{id}/subtitle-results.
+    ' Query: language.
+    function listFileSubtitleResults(id as string, query = invalid as KivoApi.ListFileSubtitleResultsQuery) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/files/" + KivoApi.pathEscape(id) + "/subtitle-results", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listFileSubtitleResults's answer, as its type.
+    function listFileSubtitleResultsAnswer(response as object) as KivoApi.SubtitleResultList
+        return response.body
+    end function
+
+    ' Add subtitle: POST /api/v1/files/{id}/subtitles.
+    function addFileSubtitle(id as string, body as KivoApi.FileSubtitleAdd) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/files/" + KivoApi.pathEscape(id) + "/subtitles", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' addFileSubtitle's answer, as its type.
+    function addFileSubtitleAnswer(response as object) as KivoApi.Track
+        return response.body
+    end function
+
+    ' List tasks: GET /api/v1/tasks.
+    function listTasks() as KivoApi.Request
+        return { method: "GET", path: "/api/v1/tasks", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listTasks's answer, as its type.
+    function listTasksAnswer(response as object) as KivoApi.TaskList
+        return response.body
+    end function
+
+    ' Run task: POST /api/v1/tasks/{task}/run.
+    function runTask(task as string) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/tasks/" + KivoApi.pathEscape(task) + "/run", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Stop task: POST /api/v1/tasks/{task}/stop.
+    function stopTask(task as string) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/tasks/" + KivoApi.pathEscape(task) + "/stop", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' List task failures: GET /api/v1/tasks/{task}/failures.
+    function listTaskFailures(task as string) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/tasks/" + KivoApi.pathEscape(task) + "/failures", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listTaskFailures's answer, as its type.
+    function listTaskFailuresAnswer(response as object) as KivoApi.TaskFailureList
+        return response.body
+    end function
+
+    ' Retry failed items: POST /api/v1/tasks/{task}/retry.
+    function retryTask(task as string, body as KivoApi.TaskRetry) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/tasks/" + KivoApi.pathEscape(task) + "/retry", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' List activity: GET /api/v1/activity.
+    ' Query: group, after, limit.
+    function listActivity(query = invalid as KivoApi.ListActivityQuery) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/activity", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listActivity's answer, as its type.
+    function listActivityAnswer(response as object) as KivoApi.ActivityFeed
+        return response.body
+    end function
+
+    ' List problems: GET /api/v1/problems.
+    function listProblems() as KivoApi.Request
+        return { method: "GET", path: "/api/v1/problems", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listProblems's answer, as its type.
+    function listProblemsAnswer(response as object) as KivoApi.ServerProblemList
+        return response.body
+    end function
+
+    ' Dismiss problem: DELETE /api/v1/problems/{id}.
+    function dismissProblem(id as string) as KivoApi.Request
+        return { method: "DELETE", path: "/api/v1/problems/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' List own watch history: GET /api/v1/users/me/play-events.
+    ' Query: after, limit.
+    function listCurrentUserPlayEvents(query = invalid as KivoApi.ListCurrentUserPlayEventsQuery) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/users/me/play-events", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listCurrentUserPlayEvents's answer, as its type.
+    function listCurrentUserPlayEventsAnswer(response as object) as KivoApi.PlayEventFeed
+        return response.body
+    end function
+
+    ' List watch history: GET /api/v1/play-events.
+    ' Query: userId, after, limit.
+    function listPlayEvents(query = invalid as KivoApi.ListPlayEventsQuery) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/play-events", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listPlayEvents's answer, as its type.
+    function listPlayEventsAnswer(response as object) as KivoApi.PlayEventFeed
+        return response.body
+    end function
+
+    ' List plays: GET /api/v1/plays.
+    function listPlays() as KivoApi.Request
+        return { method: "GET", path: "/api/v1/plays", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listPlays's answer, as its type.
+    function listPlaysAnswer(response as object) as KivoApi.PlayList
+        return response.body
+    end function
+
+    ' Start play: POST /api/v1/plays.
+    function startPlay(body as KivoApi.PlayCreate) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/plays", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' startPlay's answer, as its type.
+    function startPlayAnswer(response as object) as KivoApi.PlayStarted
+        return response.body
+    end function
+
+    ' Get play: GET /api/v1/plays/{id}.
+    function getPlay(id as string) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/plays/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' getPlay's answer, as its type.
+    function getPlayAnswer(response as object) as KivoApi.Play
+        return response.body
+    end function
+
+    ' Send play heartbeat: PATCH /api/v1/plays/{id}.
+    function updatePlay(id as string, body as KivoApi.PlayUpdate) as KivoApi.Request
+        return { method: "PATCH", path: "/api/v1/plays/" + KivoApi.pathEscape(id), query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Stop play: POST /api/v1/plays/{id}/stop.
+    function stopPlay(id as string, body as KivoApi.PlayStop) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/plays/" + KivoApi.pathEscape(id) + "/stop", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Retry play as transcode: POST /api/v1/plays/{id}/fallback.
+    function fallbackPlay(id as string, body as KivoApi.PlayFallback) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/plays/" + KivoApi.pathEscape(id) + "/fallback", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' fallbackPlay's answer, as its type.
+    function fallbackPlayAnswer(response as object) as KivoApi.PlayStarted
+        return response.body
+    end function
+
+    ' Get bandwidth test: GET /api/v1/bandwidth-test.
+    ' Query: size.
+    function getBandwidthTest(query = invalid as KivoApi.GetBandwidthTestQuery) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/bandwidth-test", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' getBandwidthTest's URL from the server address [base], for a node that fetches its application/octet-stream itself.
+    function getBandwidthTestUrl(base as string, query = invalid as KivoApi.GetBandwidthTestQuery) as string
+        request = KivoApi.getBandwidthTest(query)
+        return base + request.path + KivoApi.queryString(request.query)
+    end function
+
+    ' Get HLS playlist or segment: GET /api/v1/plays/{id}/hls/{name}.
+    function getPlayHls(id as string, name as string) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/plays/" + KivoApi.pathEscape(id) + "/hls/" + KivoApi.pathEscape(name), query: invalid, body: invalid, contentType: invalid, auth: false }
+    end function
+
+    ' getPlayHls's URL from the server address [base], for a node that fetches its application/vnd.apple.mpegurl itself.
+    function getPlayHlsUrl(base as string, id as string, name as string) as string
+        request = KivoApi.getPlayHls(id, name)
+        return base + request.path + KivoApi.queryString(request.query)
+    end function
+
+    ' Get play file: GET /api/v1/plays/{id}/files/{part}.
+    function getPlayFile(id as string, part as string) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/plays/" + KivoApi.pathEscape(id) + "/files/" + KivoApi.pathEscape(part), query: invalid, body: invalid, contentType: invalid, auth: false }
+    end function
+
+    ' getPlayFile's URL from the server address [base], for a node that fetches its video/* itself.
+    function getPlayFileUrl(base as string, id as string, part as string) as string
+        request = KivoApi.getPlayFile(id, part)
+        return base + request.path + KivoApi.queryString(request.query)
+    end function
+
+    ' Get play subtitle: GET /api/v1/plays/{id}/subtitles/{name}.
+    function getPlaySubtitle(id as string, name as string) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/plays/" + KivoApi.pathEscape(id) + "/subtitles/" + KivoApi.pathEscape(name), query: invalid, body: invalid, contentType: invalid, auth: false }
+    end function
+
+    ' getPlaySubtitle's URL from the server address [base], for a node that fetches its text/vtt itself.
+    function getPlaySubtitleUrl(base as string, id as string, name as string) as string
+        request = KivoApi.getPlaySubtitle(id, name)
+        return base + request.path + KivoApi.queryString(request.query)
+    end function
+
+    ' Get preview thumbnails: GET /api/v1/plays/{id}/previews/{name}.
+    function getPlayPreview(id as string, name as string) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/plays/" + KivoApi.pathEscape(id) + "/previews/" + KivoApi.pathEscape(name), query: invalid, body: invalid, contentType: invalid, auth: false }
+    end function
+
+    ' getPlayPreview's answer, as its type.
+    function getPlayPreviewAnswer(response as object) as KivoApi.PreviewManifest
+        return response.body
+    end function
+
+    ' Check downloads: POST /api/v1/downloads/check.
+    function checkDownloads(body as KivoApi.DownloadCheck) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/downloads/check", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' checkDownloads's answer, as its type.
+    function checkDownloadsAnswer(response as object) as KivoApi.DownloadCheckResult
+        return response.body
+    end function
+
+    ' Estimate downloads: POST /api/v1/downloads/estimate.
+    function estimateDownloads(body as KivoApi.DownloadEstimateRequest) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/downloads/estimate", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' estimateDownloads's answer, as its type.
+    function estimateDownloadsAnswer(response as object) as KivoApi.DownloadEstimateList
+        return response.body
+    end function
+
+    ' List downloads: GET /api/v1/downloads.
+    function listDownloads() as KivoApi.Request
+        return { method: "GET", path: "/api/v1/downloads", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listDownloads's answer, as its type.
+    function listDownloadsAnswer(response as object) as KivoApi.DownloadList
+        return response.body
+    end function
+
+    ' Create download: POST /api/v1/downloads.
+    function createDownload(body as KivoApi.DownloadCreate) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/downloads", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' createDownload's answer, as its type.
+    function createDownloadAnswer(response as object) as KivoApi.Download
+        return response.body
+    end function
+
+    ' Get download: GET /api/v1/downloads/{id}.
+    function getDownload(id as string) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/downloads/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' getDownload's answer, as its type.
+    function getDownloadAnswer(response as object) as KivoApi.Download
+        return response.body
+    end function
+
+    ' Delete download: DELETE /api/v1/downloads/{id}.
+    function deleteDownload(id as string) as KivoApi.Request
+        return { method: "DELETE", path: "/api/v1/downloads/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' Retry download: POST /api/v1/downloads/{id}/retry.
+    function retryDownload(id as string) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/downloads/" + KivoApi.pathEscape(id) + "/retry", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' retryDownload's answer, as its type.
+    function retryDownloadAnswer(response as object) as KivoApi.Download
+        return response.body
+    end function
+
+    ' Get download file: GET /api/v1/downloads/{id}/files/{part}.
+    function getDownloadFile(id as string, part as string) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/downloads/" + KivoApi.pathEscape(id) + "/files/" + KivoApi.pathEscape(part), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' getDownloadFile's URL from the server address [base], for a node that fetches its video/* itself.
+    function getDownloadFileUrl(base as string, id as string, part as string) as string
+        request = KivoApi.getDownloadFile(id, part)
+        return base + request.path + KivoApi.queryString(request.query)
+    end function
+
+    ' Get download subtitle: GET /api/v1/downloads/{id}/subtitles/{name}.
+    function getDownloadSubtitle(id as string, name as string) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/downloads/" + KivoApi.pathEscape(id) + "/subtitles/" + KivoApi.pathEscape(name), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' getDownloadSubtitle's URL from the server address [base], for a node that fetches its text/vtt itself.
+    function getDownloadSubtitleUrl(base as string, id as string, name as string) as string
+        request = KivoApi.getDownloadSubtitle(id, name)
+        return base + request.path + KivoApi.queryString(request.query)
+    end function
+
+    ' Get font: GET /api/v1/fonts/{sha256}.
+    function getFont(sha256 as string) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/fonts/" + KivoApi.pathEscape(sha256), query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' getFont's URL from the server address [base], for a node that fetches its font/ttf itself.
+    function getFontUrl(base as string, sha256 as string) as string
+        request = KivoApi.getFont(sha256)
+        return base + request.path + KivoApi.queryString(request.query)
+    end function
+
+    ' Get image: GET /api/v1/images/{id}.
+    ' Query: width.
+    function getImage(id as string, query = invalid as KivoApi.GetImageQuery) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/images/" + KivoApi.pathEscape(id), query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' getImage's URL from the server address [base], for a node that fetches its image/webp itself.
+    function getImageUrl(base as string, id as string, query = invalid as KivoApi.GetImageQuery) as string
+        request = KivoApi.getImage(id, query)
+        return base + request.path + KivoApi.queryString(request.query)
+    end function
+
+    ' Get metrics: GET /api/v1/metrics.
+    function getMetrics() as KivoApi.Request
+        return { method: "GET", path: "/api/v1/metrics", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' getMetrics's URL from the server address [base], for a node that fetches its text/plain itself.
+    function getMetricsUrl(base as string) as string
+        request = KivoApi.getMetrics()
+        return base + request.path + KivoApi.queryString(request.query)
+    end function
+
+    ' List log lines: GET /api/v1/logs.
+    ' Query: level, q, after, limit.
+    function listLogs(query = invalid as KivoApi.ListLogsQuery) as KivoApi.Request
+        return { method: "GET", path: "/api/v1/logs", query: query, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' listLogs's answer, as its type.
+    function listLogsAnswer(response as object) as KivoApi.LogLineFeed
+        return response.body
+    end function
+
+    ' Download log file: GET /api/v1/logs/file.
+    function getLogFile() as KivoApi.Request
+        return { method: "GET", path: "/api/v1/logs/file", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+
+    ' getLogFile's URL from the server address [base], for a node that fetches its text/plain itself.
+    function getLogFileUrl(base as string) as string
+        request = KivoApi.getLogFile()
+        return base + request.path + KivoApi.queryString(request.query)
+    end function
+
+    ' Report client error: POST /api/v1/client-errors.
+    function reportClientError(body as KivoApi.ClientErrorReport) as KivoApi.Request
+        return { method: "POST", path: "/api/v1/client-errors", query: invalid, body: body, contentType: "application/json", auth: true }
+    end function
+
+    ' Open event stream: GET /api/v1/events.
+    function openEventStream() as KivoApi.Request
+        return { method: "GET", path: "/api/v1/events", query: invalid, body: invalid, contentType: invalid, auth: true }
+    end function
+end namespace

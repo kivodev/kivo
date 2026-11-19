@@ -1,0 +1,80 @@
+import "pkg:/source/generated/types.bs"
+' Skip markers and up next, as the other apps' players have them (the
+' core's Markers and UpNext): when Skip shows, when up next appears and
+' what follows the end of an episode.
+namespace KivoUpNext
+
+    ' A marker shorter than this has no Skip.
+    const markerMinMs = 3000
+    ' Seconds Skip shows on its own after playback enters a marker.
+    const skipShowsSeconds = 10
+    ' Seconds up next counts down at the final credits.
+    const countdownSeconds = 10
+    ' An episode shorter than this has no up next.
+    const minEpisodeMs = 600000
+    ' Up next appears only with at least this long left.
+    const minLeftMs = 20000
+    ' Episodes played on without input before up next asks "Still watching?".
+    const autoplayLimit = 3
+
+    ' A play's markers this app knows, none shorter than markerMinMs.
+    function known(play as KivoApi.PlayStarted) as object
+        out = []
+        if play.markers = invalid then return out
+        for each marker in play.markers
+            if (marker.kind = KivoApi.MarkerKind.intro or marker.kind = KivoApi.MarkerKind.recap or marker.kind = KivoApi.MarkerKind.credits) and marker.endMs - marker.startMs >= KivoUpNext.markerMinMs
+                out.Push({ kind: marker.kind, startMs: marker.startMs, endMs: marker.endMs, final: marker.final = true })
+            end if
+        end for
+        return out
+    end function
+
+    ' The marker at [position], or invalid.
+    function markerAt(markers as KivoApi.Marker[], position as integer) as dynamic
+        for each marker in markers
+            if position >= marker.startMs and position < marker.endMs then return marker
+        end for
+        return invalid
+    end function
+
+    ' The final credits up next appears at, or invalid.
+    function credits(markers as KivoApi.Marker[]) as dynamic
+        last = invalid
+        for each marker in markers
+            if marker.kind = KivoApi.MarkerKind.credits then last = marker
+        end for
+        if last <> invalid and last.final then return last
+        return invalid
+    end function
+
+    ' Where up next appears in an episode of [durationMs]: 30 seconds
+    ' before the end, 35 at 40 minutes or more, 40 at 50 minutes or more,
+    ' or at the final credits if that's sooner; -1 for a short one.
+    function atMs(durationMs as integer, finalCredits as dynamic) as integer
+        if durationMs < KivoUpNext.minEpisodeMs then return -1
+        lead = 30000
+        if durationMs >= 2400000 then lead = 35000
+        if durationMs >= 3000000 then lead = 40000
+        at = durationMs - lead
+        if finalCredits <> invalid and finalCredits.startMs < at then at = finalCredits.startMs
+        return at
+    end function
+
+    ' The Skip button's words for a marker's kind.
+    function skipLabel(kind as string) as string
+        if kind = "intro" then return "Skip Intro"
+        if kind = "recap" then return "Skip Recap"
+        return "Skip Credits"
+    end function
+
+    ' What follows an episode or another work playing to its end: "next"
+    ' plays the next episode, "wait" shows up next until answered,
+    ' "series" opens the series' page, "close" goes back.
+    function playEnd(episode as boolean, hasNext as boolean, autoplayAllowed as boolean) as string
+        if not episode then return "close"
+        if not hasNext then return "series"
+        if autoplayAllowed then return "next"
+        return "wait"
+    end function
+
+end namespace

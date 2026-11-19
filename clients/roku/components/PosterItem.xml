@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- A card in a RowList or grid, as the Android TV app's WorkCard: the
+     artwork (or the title on a tile without it) with its progress along
+     the foot, an episode's code, an unplayed count or a played check, at
+     most one status badge, and the title and a line under it. A See all
+     card is the tile with "See all" on its face. -->
+<component name="PosterItem" extends="Group">
+  <interface>
+    <field id="itemContent" type="node" onChange="onContent" />
+    <field id="width" type="float" onChange="onSize" />
+    <field id="height" type="float" onChange="onSize" />
+  </interface>
+  <children>
+    <Rectangle id="ground" />
+    <Label id="tile" horizAlign="center" vertAlign="center" wrap="true" maxLines="3" />
+    <Poster id="art" loadDisplayMode="scaleToZoom" />
+    <Rectangle id="track" visible="false" height="6" />
+    <Rectangle id="progress" visible="false" height="6" />
+    <Rectangle id="codeGround" height="32" visible="false" />
+    <Label id="code" height="32" vertAlign="center" visible="false" />
+    <Rectangle id="statusGround" height="32" visible="false" />
+    <Label id="status" height="32" vertAlign="center" visible="false" />
+    <Rectangle id="playedGround" width="40" height="40" visible="false" />
+    <Label id="played" width="40" height="40" horizAlign="center" vertAlign="center" text="✓" visible="false" />
+    <Rectangle id="unplayedGround" height="36" visible="false" />
+    <Label id="unplayed" height="36" horizAlign="center" vertAlign="center" visible="false" />
+    <Label id="title" horizAlign="left" />
+    <Label id="caption" horizAlign="left" />
+  </children>
+</component>

@@ -1,0 +1,94 @@
+' What this Roku plays, measured on it, for a play's request (Capabilities
+' in the contract). The Video node plays MP4, MKV and HLS with fMP4
+' segments; a codec counts where the device says it decodes it.
+namespace KivoPlayer
+
+    function capabilities() as object
+        device = CreateObject("roDeviceInfo")
+        containers = ["mp4", "mov", "mkv"]
+        return {
+            file: { containers: containers, trackSelection: false },
+            video: KivoPlayer.videoEntries(device, containers),
+            audio: KivoPlayer.audioEntries(device, containers),
+            ' WebVTT in the stream is the only text the app shows; the server
+            ' converts other text subtitles to it and burns in image ones.
+            subtitles: [{ codec: "webvtt", delivery: ["stream"] }]
+        }
+    end function
+
+    function videoEntries(device as object, containers as object) as object
+        size = KivoPlayer.screenSize(device)
+        entries = []
+        h264Level = 4.1
+        if device.CanDecodeVideo({ Codec: "mpeg4 avc", Profile: "high", Level: "5.1" }).result = true then h264Level = 5.1
+        entries.Push({
+            codec: "h264", delivery: ["file", "stream"], containers: containers,
+            profiles: ["Constrained Baseline", "Baseline", "Main", "High"], maxLevel: h264Level, maxBitDepth: 8,
+            maxWidth: size.w, maxHeight: size.h
+        })
+        if device.CanDecodeVideo({ Codec: "hevc", Profile: "main" }).result = true
+            profiles = ["Main"]
+            depth = 8
+            if device.CanDecodeVideo({ Codec: "hevc", Profile: "main 10" }).result = true
+                profiles.Push("Main 10")
+                depth = 10
+            end if
+            entries.Push({
+                codec: "hevc", delivery: ["file", "stream"], containers: containers, tags: ["hvc1", "hev1"],
+                profiles: profiles, maxBitDepth: depth, maxWidth: size.w, maxHeight: size.h, hdr: KivoPlayer.hdrFormats(device)
+            })
+        end if
+        for each codec in ["vp9", "av1"]
+            if device.CanDecodeVideo({ Codec: codec }).result = true
+                entries.Push({ codec: codec, delivery: ["file"], containers: ["mkv"], maxWidth: size.w, maxHeight: size.h })
+            end if
+        end for
+        return entries
+    end function
+
+    function audioEntries(device as object, containers as object) as object
+        aacChannels = 2
+        if device.CanDecodeAudio({ Codec: "aac", ChCnt: 6 }).result = true then aacChannels = 6
+        entries = [{ codec: "aac", delivery: ["file", "stream"], containers: containers, maxChannels: aacChannels }]
+        ' Dolby Digital plays decoded or passed through to the TV or receiver.
+        for each codec in ["ac3", "eac3"]
+            if device.CanDecodeAudio({ Codec: codec, ChCnt: 6 }).result = true
+                entries.Push({ codec: codec, delivery: ["file", "stream"], containers: containers, maxChannels: 6 })
+            end if
+        end for
+        for each codec in ["mp3", "flac"]
+            if device.CanDecodeAudio({ Codec: codec }).result = true
+                entries.Push({ codec: codec, delivery: ["file"], containers: ["mkv", "mp4"], maxChannels: 2 })
+            end if
+        end for
+        return entries
+    end function
+
+    ' The HDR formats the display shows, of the contract's hdr10, hdr10plus and hlg.
+    function hdrFormats(device as object) as object
+        shown = device.GetDisplayProperties()
+        formats = []
+        if shown.Hdr10 = true then formats.Push("hdr10")
+        if shown.Hdr10Plus = true then formats.Push("hdr10plus")
+        if shown.HLG = true then formats.Push("hlg")
+        return formats
+    end function
+
+    ' The largest picture the video mode shows: 4K in a 2160p mode, else 1080p or 720p.
+    function screenSize(device as object) as object
+        mode = device.GetVideoMode()
+        if mode.Left(4) = "2160" then return { w: 3840, h: 2160 }
+        if mode.Left(3) = "720" then return { w: 1280, h: 720 }
+        return { w: 1920, h: 1080 }
+    end function
+
+    ' The Video node's streamFormat for a delivery and a version's container
+    ' (ffmpeg's format name, such as "matroska,webm").
+    function streamFormat(delivery as string, container as dynamic) as string
+        if delivery = "stream" then return "hls"
+        if container = invalid then return "mp4"
+        if container.InStr("matroska") >= 0 then return "mkv"
+        return "mp4"
+    end function
+
+end namespace

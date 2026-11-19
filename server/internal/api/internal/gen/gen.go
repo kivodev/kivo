@@ -288,6 +288,7 @@ const (
 	ClientPlatformCast         ClientPlatform = "cast"
 	ClientPlatformIPad         ClientPlatform = "iPad"
 	ClientPlatformIPhone       ClientPlatform = "iPhone"
+	ClientPlatformRoku         ClientPlatform = "roku"
 	ClientPlatformTizen        ClientPlatform = "tizen"
 	ClientPlatformWebos        ClientPlatform = "webos"
 )
@@ -308,6 +309,8 @@ func (e ClientPlatform) Valid() bool {
 	case ClientPlatformIPad:
 		return true
 	case ClientPlatformIPhone:
+		return true
+	case ClientPlatformRoku:
 		return true
 	case ClientPlatformTizen:
 		return true
@@ -6131,6 +6134,9 @@ type ServerInterface interface {
 	// DenyDeviceCode Deny device sign-in
 	// (POST /api/v1/device-codes/{code}/deny)
 	DenyDeviceCode(w http.ResponseWriter, r *http.Request, code UserCode)
+	// GetDeviceCodeQr Get device code QR
+	// (GET /api/v1/device-codes/{code}/qr)
+	GetDeviceCodeQr(w http.ResponseWriter, r *http.Request, code UserCode)
 	// ListDirectories List folders
 	// (GET /api/v1/directories)
 	ListDirectories(w http.ResponseWriter, r *http.Request, params ListDirectoriesParams)
@@ -6893,6 +6899,32 @@ func (siw *ServerInterfaceWrapper) DenyDeviceCode(w http.ResponseWriter, r *http
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DenyDeviceCode(w, r, code)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetDeviceCodeQr operation middleware
+func (siw *ServerInterfaceWrapper) GetDeviceCodeQr(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "code" -------------
+	var code UserCode
+
+	err = runtime.BindStyledParameterWithOptions("simple", "code", r.PathValue("code"), &code, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "code", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetDeviceCodeQr(w, r, code)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -9891,6 +9923,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/device-codes", wrapper.CreateDeviceCode)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/device-codes/poll", wrapper.PollDeviceCode)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/device-codes/{code}", wrapper.GetDeviceCode)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/device-codes/{code}/qr", wrapper.GetDeviceCodeQr)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/device-codes/{code}/approve", wrapper.ApproveDeviceCode)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/device-codes/{code}/deny", wrapper.DenyDeviceCode)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/cast-tokens", wrapper.CreateCastToken)
@@ -11574,6 +11607,94 @@ type DenyDeviceCodedefaultApplicationProblemPlusJSONResponse struct {
 }
 
 func (response DenyDeviceCodedefaultApplicationProblemPlusJSONResponse) VisitDenyDeviceCodeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetDeviceCodeQrRequestObject struct {
+	Code UserCode `json:"code"`
+}
+
+type GetDeviceCodeQrResponseObject interface {
+	VisitGetDeviceCodeQrResponse(w http.ResponseWriter) error
+}
+
+type GetDeviceCodeQr200ResponseHeaders struct {
+	CacheControl *string
+}
+
+type GetDeviceCodeQr200ImagePngResponse struct {
+	Body          io.Reader
+	Headers       GetDeviceCodeQr200ResponseHeaders
+	ContentLength int64
+}
+
+func (response GetDeviceCodeQr200ImagePngResponse) VisitGetDeviceCodeQrResponse(w http.ResponseWriter) error {
+
+	w.Header().Set("Content-Type", "image/png")
+	if response.ContentLength != 0 {
+		w.Header().Set("Content-Length", fmt.Sprint(response.ContentLength))
+	}
+	if response.Headers.CacheControl != nil {
+		w.Header().Set("Cache-Control", fmt.Sprint(*response.Headers.CacheControl))
+	}
+	w.WriteHeader(200)
+
+	if closer, ok := response.Body.(io.ReadCloser); ok {
+		defer closer.Close()
+	}
+	_, err := io.Copy(w, response.Body)
+	return err
+}
+
+type GetDeviceCodeQr404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response GetDeviceCodeQr404ApplicationProblemPlusJSONResponse) VisitGetDeviceCodeQrResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetDeviceCodeQr429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response GetDeviceCodeQr429ApplicationProblemPlusJSONResponse) VisitGetDeviceCodeQrResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetDeviceCodeQrdefaultApplicationProblemPlusJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response GetDeviceCodeQrdefaultApplicationProblemPlusJSONResponse) VisitGetDeviceCodeQrResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
@@ -20508,6 +20629,9 @@ type StrictServerInterface interface {
 	// DenyDeviceCode Deny device sign-in
 	// (POST /api/v1/device-codes/{code}/deny)
 	DenyDeviceCode(ctx context.Context, request DenyDeviceCodeRequestObject) (DenyDeviceCodeResponseObject, error)
+	// GetDeviceCodeQr Get device code QR
+	// (GET /api/v1/device-codes/{code}/qr)
+	GetDeviceCodeQr(ctx context.Context, request GetDeviceCodeQrRequestObject) (GetDeviceCodeQrResponseObject, error)
 	// ListDirectories List folders
 	// (GET /api/v1/directories)
 	ListDirectories(ctx context.Context, request ListDirectoriesRequestObject) (ListDirectoriesResponseObject, error)
@@ -21377,6 +21501,32 @@ func (sh *strictHandler) DenyDeviceCode(w http.ResponseWriter, r *http.Request, 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(DenyDeviceCodeResponseObject); ok {
 		if err := validResponse.VisitDenyDeviceCodeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetDeviceCodeQr operation middleware
+func (sh *strictHandler) GetDeviceCodeQr(w http.ResponseWriter, r *http.Request, code UserCode) {
+	var request GetDeviceCodeQrRequestObject
+
+	request.Code = code
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetDeviceCodeQr(ctx, request.(GetDeviceCodeQrRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetDeviceCodeQr")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetDeviceCodeQrResponseObject); ok {
+		if err := validResponse.VisitGetDeviceCodeQrResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
