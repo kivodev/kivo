@@ -162,6 +162,8 @@ func TestForwardedForOnlyFromTrustedProxy(t *testing.T) {
 		{"10.0.0.2:1234", "198.51.100.1", "https", "198.51.100.1", true},
 		{"10.0.0.2:1234", "198.51.100.1, 10.0.0.3", "", "198.51.100.1", false}, // proxies chained
 		{"10.0.0.2:1234", "6.6.6.6, 198.51.100.1", "http", "198.51.100.1", false},
+		{"10.0.0.2:1234", "198.51.100.1", "http, https", "198.51.100.1", true},  // rightmost proto wins
+		{"10.0.0.2:1234", "198.51.100.1", "https, http", "198.51.100.1", false}, // rightmost proto wins
 		{"10.0.0.2:1234", "", "", "10.0.0.2", false},
 	} {
 		r := httptest.NewRequest("GET", "/", nil)

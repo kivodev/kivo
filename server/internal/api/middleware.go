@@ -98,13 +98,27 @@ func (s *Server) client(r *http.Request) (ip netip.Addr, secure bool, host strin
 			break
 		}
 	}
-	if proto, _, _ := strings.Cut(r.Header.Get("X-Forwarded-Proto"), ","); strings.TrimSpace(proto) != "" {
-		secure = strings.EqualFold(strings.TrimSpace(proto), "https")
+	if proto := lastForwarded(r.Header.Values("X-Forwarded-Proto")); proto != "" {
+		secure = strings.EqualFold(proto, "https")
 	}
-	if fh, _, _ := strings.Cut(r.Header.Get("X-Forwarded-Host"), ","); strings.TrimSpace(fh) != "" {
-		host = strings.TrimSpace(fh)
+	if fh := lastForwarded(r.Header.Values("X-Forwarded-Host")); fh != "" {
+		host = fh
 	}
 	return ip, secure, host
+}
+
+// lastForwarded returns the rightmost non-empty comma-separated value across
+// repeated header lines, which is the value appended by the trusted proxy.
+func lastForwarded(vals []string) string {
+	for i := len(vals) - 1; i >= 0; i-- {
+		parts := strings.Split(vals[i], ",")
+		for j := len(parts) - 1; j >= 0; j-- {
+			if s := strings.TrimSpace(parts[j]); s != "" {
+				return s
+			}
+		}
+	}
+	return ""
 }
 
 func (s *Server) trusted(ip netip.Addr) bool {
