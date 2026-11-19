@@ -94,14 +94,26 @@ func (r *Runner) stepItemsLocked(t *task) []Item {
 // are cancelled and those in line are dropped. A step's items that no item
 // of t asked for go on.
 func (r *Runner) stopStepsLocked(t *task, owners ...id.ID) {
+	var only map[id.ID]bool
+	if len(owners) > 0 {
+		only = make(map[id.ID]bool, len(owners))
+		for _, o := range owners {
+			only[o] = true
+		}
+	}
 	for _, s := range r.stepsLocked(t) {
 		w := s.items
+		var drop map[id.ID]bool
 		for i, owner := range w.ownerOf {
-			if len(owners) == 0 || slices.Contains(owners, owner) {
+			if only == nil || only[owner] {
 				delete(w.ownerOf, i)
 				delete(w.owned, owner)
-				w.stopLocked(i)
+				if drop == nil {
+					drop = map[id.ID]bool{}
+				}
+				drop[i] = true
 			}
 		}
+		w.stopManyLocked(drop)
 	}
 }
