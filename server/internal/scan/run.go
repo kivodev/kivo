@@ -31,11 +31,12 @@ type run struct {
 	known   map[string]dbq.ListDirsRow // directories as of the last run
 	kids    map[string][]string        // known directories by parent, sorted
 	listed  map[string]dirState        // directories listed this run, to record at the end
-	seen    map[string]bool            // directories present this run, listed or not
+	seen    map[string]bool            // directories whose records stay: present this run, or unreadable
 	visits  map[dirKey]bool            // directories walked this run, by device and inode
 	linkOut bool                       // whether a link leaving the folder was skipped this run
 	gone    []catalog.FileRef          // files missing from where they were, with that path
 	added   int
+	failed  int // directories that couldn't be read this run
 }
 
 // scan scans one library. It walks the library's folders, or only the
@@ -118,7 +119,7 @@ func (s *Scanner) scanFolder(ctx context.Context, folderID id.ID, dir string) er
 		s.clearProblem("symlink:" + folder.ID.String()) // every directory was listed, and no link left the folder
 	}
 	slog.InfoContext(ctx, "scan: finished", "folder", folder.Path, "dir", r.dir, "full", r.full, "seen", len(r.seen), "listed", len(r.listed),
-		"new_or_changed", r.added, "gone", len(r.gone), "duration", time.Since(r.now).Round(time.Millisecond))
+		"new_or_changed", r.added, "gone", len(r.gone), "unreadable", r.failed, "duration", time.Since(r.now).Round(time.Millisecond))
 	return nil
 }
 
