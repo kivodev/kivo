@@ -4,13 +4,13 @@ Native Windows builds are in progress ([#9](https://github.com/kivodev/kivo/issu
 
 ## With the installer
 
-Run `kivo-server-<version>-windows-x64-setup.exe` from [Releases](https://github.com/kivodev/kivo/releases). It installs Kivo to Program Files, lets it through the firewall on private networks, adds it to the Start menu and starts it when you sign in. Uninstalling keeps your library in `%ProgramData%\Kivo`.
+Run `kivo-<version>-windows-x64-installer.exe` from [Releases](https://github.com/kivodev/kivo/releases). It installs Kivo to Program Files, lets it through the firewall on private networks, adds it to the Start menu and starts it when you sign in. Uninstalling keeps your library in `%ProgramData%\Kivo`.
 
 The installer isn't signed yet, so Windows SmartScreen may warn about it. Choose More info, then Run anyway.
 
 ## From the zip
 
-Download `kivo-server-<version>-windows-x64.zip` from [Releases](https://github.com/kivodev/kivo/releases) and unzip it anywhere. It holds:
+Download `kivo-<version>-windows-x64.zip` from [Releases](https://github.com/kivodev/kivo/releases) and unzip it anywhere. It holds:
 
 - `kivow.exe`, the server with a tray icon and no console window
 - `kivo.exe`, the same server for a terminal, and the admin commands

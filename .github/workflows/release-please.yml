@@ -147,5 +147,5 @@ jobs:
           VERSION: ${{ steps.release.outputs.version }}
         run: >-
           gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber
-          "server/bin/windows/kivo-server-$VERSION-windows-x64-setup.exe"
-          "server/bin/windows/kivo-server-$VERSION-windows-x64.zip"
+          "server/bin/windows/kivo-$VERSION-windows-x64-installer.exe"
+          "server/bin/windows/kivo-$VERSION-windows-x64.zip"

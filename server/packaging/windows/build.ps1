@@ -1,6 +1,6 @@
 # Builds the Windows installer and portable zip into server\bin\windows:
-# kivo-server-<version>-windows-x64-setup.exe and
-# kivo-server-<version>-windows-x64.zip. Needs Go, Node and Inno Setup 6.
+# kivo-<version>-windows-x64-installer.exe and
+# kivo-<version>-windows-x64.zip. Needs Go, Node and Inno Setup 6.
 # The release workflow runs it on a Windows runner.
 #
 #   .\server\packaging\windows\build.ps1 -Version 0.3.1
@@ -84,6 +84,6 @@ Copy-Item "$server\cmd\kivo\kivo.ico" $stage
 
 # Signing goes here: kivo.exe and kivow.exe now, and the installer through iscc's SignTool.
 
-Compress-Archive -Path "$stage\*" -DestinationPath "$out\kivo-server-$Version-windows-x64.zip"
+Compress-Archive -Path "$stage\*" -DestinationPath "$out\kivo-$Version-windows-x64.zip"
 & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Q "/DVersion=$Version" "/DStage=$stage" "/O$out" "$PSScriptRoot\kivo.iss"
 Remove-Item -Recurse -Force $stage
