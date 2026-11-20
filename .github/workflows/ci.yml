@@ -1,11 +1,9 @@
 name: ci
 
-# A pull request and a push to main run the unit tests their files can
-# affect: the server's Go tests and the Cast receiver's. Everything else
-# (lint and ceilings, Windows, the web client, the native apps' build) costs
-# more and runs only by hand: Actions > ci > Run workflow, or
-# `gh workflow run ci`, which runs every job. A newer push to a pull request
-# cancels its older run.
+# A pull request and a push to main run the jobs their files can affect. A
+# run by hand (Actions > ci > Run workflow, or `gh workflow run ci`) runs
+# every job, and is the only run that builds and keeps the Android release
+# APK. A newer push to a pull request cancels its older run.
 on:
   pull_request:
   push:
@@ -20,8 +18,8 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # Which jobs run. By hand, all of them. Otherwise only the unit tests, and
-  # only those the change's files can affect.
+  # Which jobs run: by hand, all of them, and otherwise those the change's
+  # files can affect. A change to this workflow runs them all.
   changes:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -31,6 +29,8 @@ jobs:
     outputs:
       full: ${{ steps.files.outputs.full }}
       server: ${{ steps.files.outputs.server }}
+      web: ${{ steps.files.outputs.web }}
+      clients: ${{ steps.files.outputs.clients }}
       chromecast: ${{ steps.files.outputs.chromecast }}
     steps:
       - id: files
@@ -41,7 +41,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
-            printf '%s\n' full=true server=true chromecast=true >> "$GITHUB_OUTPUT"
+            printf '%s\n' full=true server=true web=true clients=true chromecast=true >> "$GITHUB_OUTPUT"
             exit 0
           fi
           files=.github/workflows/ci.yml
@@ -54,20 +54,23 @@ jobs:
           only() { printf '%s\n' "$files" | grep -E "$1" | grep -Evq "$2"; }
           out() { if "${@:2}"; then echo "$1=true"; else echo "$1=false"; fi >> "$GITHUB_OUTPUT"; }
           workflow='^\.github/workflows/ci\.yml$'
+          make='^server/(Makefile|ceilings\.mk)$'
           echo full=false >> "$GITHUB_OUTPUT"
-          # The Go server: all of server/ but the web client, whose Go
-          # package still counts.
-          server() { has "$workflow" || only '^server/' '^server/web/' || has '^server/web/[^/]*\.go$'; }
+          # The Go server and what's generated from its spec: all of server/
+          # but the web client, whose Go package and generated types count.
+          server() { has "$workflow|^shared/|^clients/api/|^server/web/[^/]*\.go$|^server/web/src/api/schema\.d\.ts$" || only '^server/' '^server/web/'; }
+          web() { has "$workflow|$make|^server/web/|^shared/|^clients/tizen/"; }
+          # The Gradle build: everything in clients/ but the web-based apps.
+          clients() { has "$workflow|$make|^shared/" || only '^clients/' '^clients/(chromecast|tizen|webos)/'; }
           chromecast() { has "$workflow|^clients/chromecast/"; }
-          out server server
-          out chromecast chromecast
+          for job in server web clients chromecast; do out $job $job; done
           cat "$GITHUB_OUTPUT"
 
   # Everything about the server's code but its tests: it builds, passes
   # lint, stays under its ceilings, and its generated files are current.
   server-checks:
     needs: changes
-    if: needs.changes.outputs.full == 'true'
+    if: needs.changes.outputs.server == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -140,7 +143,7 @@ jobs:
   # that need it skip.
   windows:
     needs: changes
-    if: needs.changes.outputs.full == 'true'
+    if: needs.changes.outputs.server == 'true'
     runs-on: windows-latest
     timeout-minutes: 25
     defaults:
@@ -156,7 +159,7 @@ jobs:
 
   web:
     needs: changes
-    if: needs.changes.outputs.full == 'true'
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -197,13 +200,13 @@ jobs:
             server/web/test-results
 
   # The native apps' generated client, their shared core and the theme
-  # generator pass their tests on the JVM; the Android app builds, passes
-  # lint and its unit tests, and its release APK, the one that ships, is kept
-  # as an artifact. The runner's Android SDK builds the core's Android target
-  # and the app.
+  # generator pass their tests on the JVM; the Android app passes lint and
+  # its unit tests. A run by hand also builds its release APK, the one that
+  # ships, and keeps it as an artifact. The runner's Android SDK builds the
+  # core's Android target and the app.
   clients:
     needs: changes
-    if: needs.changes.outputs.full == 'true'
+    if: needs.changes.outputs.clients == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -235,6 +238,7 @@ jobs:
       # new key each run, and its APK installs only after the old app, and
       # its sign-in, is uninstalled.
       - name: Debug key
+        if: needs.changes.outputs.full == 'true'
         env:
           KEYSTORE: ${{ secrets.ANDROID_DEBUG_KEYSTORE }}
         run: |
@@ -245,10 +249,13 @@ jobs:
             printf '%s' "$KEYSTORE" | base64 -d > ~/.android/debug.keystore
           fi
       - run: >-
-          ./gradlew :android:app:assembleRelease :android:app:lintDebug
+          ./gradlew :android:app:lintDebug
           :android:app:testDebugUnitTest :android:tv:testDebugUnitTest :android:platform:testDebugUnitTest
           :android:tv:compileDebugAndroidTestKotlin
-      - uses: actions/upload-artifact@v7
+      - if: needs.changes.outputs.full == 'true'
+        run: ./gradlew :android:app:assembleRelease
+      - if: needs.changes.outputs.full == 'true'
+        uses: actions/upload-artifact@v7
         with:
           name: kivo-android-release
           retention-days: 7
