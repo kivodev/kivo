@@ -58,8 +58,14 @@ notices:
 build:
 	CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT)" -o bin/kivo ./cmd/kivo
 
+# The race detector also checks SQLite's own code, which makes a database
+# test some 20 times slower. query's tests are single reads with nothing to
+# race, so they run without it. Search is the exception: it reads on two
+# connections at once, so its tests run again with it.
 test:
-	go test -race $(GO_PKGS)
+	go test -race $$(go list $(GO_PKGS) | grep -v '/internal/query$$')
+	go test ./internal/query
+	go test -race -run Search ./internal/query
 
 # The read budgets, timed alone and without the race detector, printing
 # each read's times; a plain go test skips them.
