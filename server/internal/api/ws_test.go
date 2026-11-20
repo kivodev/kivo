@@ -242,14 +242,43 @@ func TestEventStreamClosesOnShutdown(t *testing.T) {
 	e := newEnv(t, serving{})
 	conn, ctx := e.dial(e.adminToken)
 	read(t, ctx, conn)
-	e.srv.Close()
+	closed := make(chan struct{})
+	go func() {
+		defer close(closed)
+		e.srv.Close()
+	}()
 	_, _, err := conn.Read(ctx)
 	if websocket.CloseStatus(err) != websocket.StatusGoingAway {
 		t.Errorf("read after Close: %v", err)
 	}
+	<-closed
 	if w := e.do("GET", "/healthz", "", nil); w.Code != http.StatusServiceUnavailable {
 		t.Errorf("healthz while stopping: %d", w.Code)
 	}
+}
+
+// A socket with events waiting when the server stops is still told the
+// server is going away, rather than dropped.
+func TestEventStreamClosesOnShutdownWithEventsWaiting(t *testing.T) {
+	e := newEnv(t, serving{})
+	conn, ctx := e.dial(e.adminToken)
+	read(t, ctx, conn)
+	for range 20 {
+		e.d.Events.Publish(events.Event{Kind: events.WorkChanged, Data: id.New()})
+	}
+	closed := make(chan struct{})
+	go func() {
+		defer close(closed)
+		e.srv.Close()
+	}()
+	var err error
+	for err == nil {
+		_, _, err = conn.Read(ctx)
+	}
+	if websocket.CloseStatus(err) != websocket.StatusGoingAway {
+		t.Errorf("read after Close: %v", err)
+	}
+	<-closed
 }
 
 func TestEventStreamNoCredentialsNoSocket(t *testing.T) {
