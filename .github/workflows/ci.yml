@@ -1,9 +1,11 @@
 name: ci
 
-# Runs on every pull request, on every push to main, and by hand
-# (`gh workflow run ci`). A pull request and a push run only the jobs their
-# files can affect; a run by hand runs them all. A newer push to a pull
-# request cancels its older run.
+# A pull request and a push to main run the unit tests their files can
+# affect: the server's Go tests and the Cast receiver's. Everything else
+# (lint and ceilings, Windows, the web client, the native apps' build) costs
+# more and runs only by hand: Actions > ci > Run workflow, or
+# `gh workflow run ci`, which runs every job. A newer push to a pull request
+# cancels its older run.
 on:
   pull_request:
   push:
@@ -18,8 +20,8 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # Which jobs the change's files can affect. A run by hand, and a change to
-  # this workflow, run them all.
+  # Which jobs run. By hand, all of them. Otherwise only the unit tests, and
+  # only those the change's files can affect.
   changes:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -27,9 +29,8 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
+      full: ${{ steps.files.outputs.full }}
       server: ${{ steps.files.outputs.server }}
-      web: ${{ steps.files.outputs.web }}
-      clients: ${{ steps.files.outputs.clients }}
       chromecast: ${{ steps.files.outputs.chromecast }}
     steps:
       - id: files
@@ -39,32 +40,34 @@ jobs:
           BEFORE: ${{ github.event.before }}
         run: |
           set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            printf '%s\n' full=true server=true chromecast=true >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           files=.github/workflows/ci.yml
           if [ -n "$PR" ]; then
             files=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[].filename')
-          elif [ "$GITHUB_EVENT_NAME" = push ] && ! printf '%s' "$BEFORE" | grep -Eq '^0*$'; then
+          elif ! printf '%s' "$BEFORE" | grep -Eq '^0*$'; then
             files=$(gh api "repos/$GITHUB_REPOSITORY/compare/$BEFORE...$GITHUB_SHA" --jq '.files[].filename')
           fi
           has() { printf '%s\n' "$files" | grep -Eq "$1"; }
           only() { printf '%s\n' "$files" | grep -E "$1" | grep -Evq "$2"; }
-          run() { echo "$1=true" >> "$GITHUB_OUTPUT"; }
-          skip() { echo "$1=false" >> "$GITHUB_OUTPUT"; }
-          all=false
-          if has '^\.github/workflows/ci\.yml$'; then all=true; fi
-          # The Go server and what's generated from its spec. In server/web
-          # that is the Go package and the TypeScript types.
-          if $all || only '^server/' '^server/web/' || has '^server/web/[^/]*\.go$|^server/web/src/api/schema\.d\.ts$|^shared/|^clients/api/'; then run server; else skip server; fi
-          if $all || has '^server/web/|^shared/|^clients/tizen/|^server/(Makefile|ceilings\.mk)$'; then run web; else skip web; fi
-          # The Gradle build: everything in clients/ but the web-based apps.
-          if $all || only '^clients/' '^clients/(chromecast|tizen|webos)/' || has '^shared/|^server/(Makefile|ceilings\.mk)$'; then run clients; else skip clients; fi
-          if $all || has '^clients/chromecast/'; then run chromecast; else skip chromecast; fi
+          out() { if "${@:2}"; then echo "$1=true"; else echo "$1=false"; fi >> "$GITHUB_OUTPUT"; }
+          workflow='^\.github/workflows/ci\.yml$'
+          echo full=false >> "$GITHUB_OUTPUT"
+          # The Go server: all of server/ but the web client, whose Go
+          # package still counts.
+          server() { has "$workflow" || only '^server/' '^server/web/' || has '^server/web/[^/]*\.go$'; }
+          chromecast() { has "$workflow|^clients/chromecast/"; }
+          out server server
+          out chromecast chromecast
           cat "$GITHUB_OUTPUT"
 
   # Everything about the server's code but its tests: it builds, passes
   # lint, stays under its ceilings, and its generated files are current.
   server-checks:
     needs: changes
-    if: needs.changes.outputs.server == 'true'
+    if: needs.changes.outputs.full == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -137,7 +140,7 @@ jobs:
   # that need it skip.
   windows:
     needs: changes
-    if: needs.changes.outputs.server == 'true'
+    if: needs.changes.outputs.full == 'true'
     runs-on: windows-latest
     timeout-minutes: 25
     defaults:
@@ -153,7 +156,7 @@ jobs:
 
   web:
     needs: changes
-    if: needs.changes.outputs.web == 'true'
+    if: needs.changes.outputs.full == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -188,6 +191,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: playwright-report
+          retention-days: 7
           path: |
             server/web/playwright-report
             server/web/test-results
@@ -199,7 +203,7 @@ jobs:
   # and the app.
   clients:
     needs: changes
-    if: needs.changes.outputs.clients == 'true'
+    if: needs.changes.outputs.full == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -247,6 +251,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: kivo-android-release
+          retention-days: 7
           path: clients/android/app/build/outputs/apk/release/app-release.apk
 
   # The Cast receiver's logic under a stand-in for the Cast framework. It has
