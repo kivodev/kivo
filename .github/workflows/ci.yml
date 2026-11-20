@@ -1,13 +1,78 @@
 name: ci
 
-# Run by hand (Actions › ci › Run workflow, or `gh workflow run ci`); the
-# same checks run locally before each merge.
+# A pull request and a push to main run the jobs their files can affect. A
+# run by hand (Actions > ci > Run workflow, or `gh workflow run ci`) runs
+# every job, and is the only run that builds and keeps the Android release
+# APK. A newer push to a pull request cancels its older run.
 on:
+  pull_request:
+  push:
+    branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  server:
+  # Which jobs run: by hand, all of them, and otherwise those the change's
+  # files can affect. A change to this workflow runs them all.
+  changes:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      full: ${{ steps.files.outputs.full }}
+      server: ${{ steps.files.outputs.server }}
+      web: ${{ steps.files.outputs.web }}
+      clients: ${{ steps.files.outputs.clients }}
+      chromecast: ${{ steps.files.outputs.chromecast }}
+    steps:
+      - id: files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            printf '%s\n' full=true server=true web=true clients=true chromecast=true >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          files=.github/workflows/ci.yml
+          if [ -n "$PR" ]; then
+            files=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[].filename')
+          elif ! printf '%s' "$BEFORE" | grep -Eq '^0*$'; then
+            files=$(gh api "repos/$GITHUB_REPOSITORY/compare/$BEFORE...$GITHUB_SHA" --jq '.files[].filename')
+          fi
+          has() { printf '%s\n' "$files" | grep -Eq "$1"; }
+          only() { printf '%s\n' "$files" | grep -E "$1" | grep -Evq "$2"; }
+          out() { if "${@:2}"; then echo "$1=true"; else echo "$1=false"; fi >> "$GITHUB_OUTPUT"; }
+          workflow='^\.github/workflows/ci\.yml$'
+          make='^server/(Makefile|ceilings\.mk)$'
+          echo full=false >> "$GITHUB_OUTPUT"
+          # The Go server and what's generated from its spec: all of server/
+          # but the web client, whose Go package and generated types count.
+          server() { has "$workflow|^shared/|^clients/api/|^server/web/[^/]*\.go$|^server/web/src/api/schema\.d\.ts$" || only '^server/' '^server/web/'; }
+          web() { has "$workflow|$make|^server/web/|^shared/|^clients/tizen/"; }
+          # The Gradle build: everything in clients/ but the web-based apps.
+          clients() { has "$workflow|$make|^shared/" || only '^clients/' '^clients/(chromecast|tizen|webos)/'; }
+          chromecast() { has "$workflow|^clients/chromecast/"; }
+          for job in server web clients chromecast; do out $job $job; done
+          cat "$GITHUB_OUTPUT"
+
+  # Everything about the server's code but its tests: it builds, passes
+  # lint, stays under its ceilings, and its generated files are current.
+  server-checks:
+    needs: changes
+    if: needs.changes.outputs.server == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: server
@@ -16,7 +81,7 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: server/go.mod
-          cache-dependency-path: server/go.mod
+          cache-dependency-path: server/go.sum
       # For the OpenAPI lint and the TypeScript client generator, run with npx.
       - uses: actions/setup-node@v7
         with:
@@ -26,30 +91,24 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      # The end-to-end test (cmd/kivo) and media's real-ffmpeg tests need it.
-      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
       - run: make build
       - run: make lint
       # Dead code, clones, complexity and duplicated lines in the Go code and
       # the SQL, each held at its ceiling in server/ceilings.mk.
       - run: make ceilings-server
-      - run: make test
-        env:
-          KIVO_FFMPEG: /usr/bin/ffmpeg
-      # Shared runners vary too much to hold millisecond budgets, so here the
-      # read budgets are a report; make budget on real hardware enforces them.
-      - run: make budget
-        continue-on-error: true
-        env:
-          KIVO_BUDGET_SCALE: "3"
       - run: make check-generated
       # THIRD-PARTY-NOTICES.txt, which the image and the Windows build ship.
       - run: make notices
 
-  # The server's Go tests on Windows. There's no ffmpeg here, so the tests
-  # that need it skip.
-  windows:
-    runs-on: windows-latest
+  # The server's Go tests, with the race detector.
+  server-test:
+    needs: changes
+    if: needs.changes.outputs.server == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      JELLYFIN_FFMPEG: 8.1.3-1
+      JELLYFIN_FFMPEG_SHA256: b86dc023c64a5a9a410e6e3a938a970460214fae78f31c1553c9f88f1c289b6a
     defaults:
       run:
         working-directory: server
@@ -58,11 +117,51 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version-file: server/go.mod
-          cache-dependency-path: server/go.mod
+          cache-dependency-path: server/go.sum
+      # The end-to-end test (cmd/kivo) and media's real-ffmpeg tests run the
+      # ffmpeg the image ships (JELLYFIN_FFMPEG in server/Dockerfile), as its
+      # portable build. It's kept in the Actions cache, so a run downloads
+      # nothing once one run has.
+      - uses: actions/cache@v5
+        id: ffmpeg
+        with:
+          path: ~/ffmpeg
+          key: jellyfin-ffmpeg-${{ env.JELLYFIN_FFMPEG }}-portable-linux64
+      - if: steps.ffmpeg.outputs.cache-hit != 'true'
+        run: |
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/ffmpeg.tar.xz" "https://github.com/jellyfin/jellyfin-ffmpeg/releases/download/v$JELLYFIN_FFMPEG/jellyfin-ffmpeg_${JELLYFIN_FFMPEG}_portable_linux64-gpl.tar.xz"
+          echo "$JELLYFIN_FFMPEG_SHA256  $RUNNER_TEMP/ffmpeg.tar.xz" | sha256sum -c -
+          mkdir -p ~/ffmpeg && tar -xJf "$RUNNER_TEMP/ffmpeg.tar.xz" -C ~/ffmpeg
+      - run: |
+          ~/ffmpeg/ffmpeg -version | head -1
+          echo "KIVO_FFMPEG=$HOME/ffmpeg/ffmpeg" >> "$GITHUB_ENV"
+          echo "KIVO_FFPROBE=$HOME/ffmpeg/ffprobe" >> "$GITHUB_ENV"
+          echo "$HOME/ffmpeg" >> "$GITHUB_PATH"
+      - run: make test
+
+  # The server's Go tests on Windows. There's no ffmpeg here, so the tests
+  # that need it skip.
+  windows:
+    needs: changes
+    if: needs.changes.outputs.server == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
       - run: go test ./cmd/... ./internal/... ./web
 
   web:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: server
@@ -95,17 +194,21 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: playwright-report
+          retention-days: 7
           path: |
             server/web/playwright-report
             server/web/test-results
 
   # The native apps' generated client, their shared core and the theme
-  # generator pass their tests on the JVM; the Android app builds, passes
-  # lint and its unit tests, and its release APK, the one that ships, is kept
-  # as an artifact. The runner's Android SDK builds the core's Android target
-  # and the app.
+  # generator pass their tests on the JVM; the Android app passes lint and
+  # its unit tests. A run by hand also builds its release APK, the one that
+  # ships, and keeps it as an artifact. The runner's Android SDK builds the
+  # core's Android target and the app.
   clients:
+    needs: changes
+    if: needs.changes.outputs.clients == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: clients
@@ -135,6 +238,7 @@ jobs:
       # new key each run, and its APK installs only after the old app, and
       # its sign-in, is uninstalled.
       - name: Debug key
+        if: needs.changes.outputs.full == 'true'
         env:
           KEYSTORE: ${{ secrets.ANDROID_DEBUG_KEYSTORE }}
         run: |
@@ -145,18 +249,25 @@ jobs:
             printf '%s' "$KEYSTORE" | base64 -d > ~/.android/debug.keystore
           fi
       - run: >-
-          ./gradlew :android:app:assembleRelease :android:app:lintDebug
+          ./gradlew :android:app:lintDebug
           :android:app:testDebugUnitTest :android:tv:testDebugUnitTest :android:platform:testDebugUnitTest
           :android:tv:compileDebugAndroidTestKotlin
-      - uses: actions/upload-artifact@v7
+      - if: needs.changes.outputs.full == 'true'
+        run: ./gradlew :android:app:assembleRelease
+      - if: needs.changes.outputs.full == 'true'
+        uses: actions/upload-artifact@v7
         with:
           name: kivo-android-release
+          retention-days: 7
           path: clients/android/app/build/outputs/apk/release/app-release.apk
 
   # The Cast receiver's logic under a stand-in for the Cast framework. It has
   # no dependencies and no build.
   chromecast:
+    needs: changes
+    if: needs.changes.outputs.chromecast == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     defaults:
       run:
         working-directory: clients/chromecast
