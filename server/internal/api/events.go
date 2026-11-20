@@ -72,6 +72,9 @@ var keepAliveEvery = 25 * time.Second
 
 const (
 	writeTimeout = 10 * time.Second
+	// closeGrace is how long a write in flight when the server stops gets
+	// to finish before it's cut off.
+	closeGrace = time.Second
 	// closeSessionEnded closes a socket whose session no longer
 	// authenticates. Clients respond by signing in again.
 	closeSessionEnded websocket.StatusCode = 4401
@@ -80,18 +83,24 @@ const (
 // stream sends the events c may see on conn until the client leaves, the
 // server stops, or the credential stops authenticating.
 func (s *Server) stream(ctx context.Context, conn *websocket.Conn, c caller) {
-	// sendCtx cancels in-flight writes when the server stops so Close doesn't
-	// wait out writeTimeout on a stalled socket, while keeping ctx separate
-	// so idle connections still take the StatusGoingAway branch below.
+	// sendCtx cuts off a write still in flight closeGrace after the server
+	// stops, so Close doesn't wait out writeTimeout on a stalled socket. A
+	// cancelled write drops the connection, so a write that can finish gets
+	// the grace, and its socket still closes with StatusGoingAway below.
 	sendCtx, cancelSend := context.WithCancel(ctx)
 	defer cancelSend()
 	go func() {
 		select {
 		case <-s.closing:
-			cancelSend()
+			select {
+			case <-time.After(closeGrace):
+				cancelSend()
+			case <-sendCtx.Done():
+			}
 		case <-sendCtx.Done():
 		}
 	}()
+	goAway := func() { _ = conn.Close(websocket.StatusGoingAway, "server stopping") }
 
 	v := c.viewer
 	sub := s.deps.Events.Subscribe(scopeFilter(v))
@@ -113,11 +122,18 @@ func (s *Server) stream(ctx context.Context, conn *websocket.Conn, c caller) {
 	alive := time.NewTicker(keepAliveEvery)
 	defer alive.Stop()
 	for {
+		// The server stopping comes before anything else that's ready.
+		select {
+		case <-s.closing:
+			goAway()
+			return
+		default:
+		}
 		select {
 		case <-ctx.Done():
 			return
 		case <-s.closing:
-			_ = conn.Close(websocket.StatusGoingAway, "server stopping")
+			goAway()
 			return
 		case <-alive.C:
 			if s.send(sendCtx, conn, gen.KeepAliveMessage{Type: gen.KeepAliveMessageTypeKeepAlive}) != nil {
