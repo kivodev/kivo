@@ -49,7 +49,7 @@ func (tr *transcript) do(method, path, token string, body any) map[string]any {
 var (
 	uuidPattern = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
 	timePattern = regexp.MustCompile(`\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})`)
-	tmpPattern  = regexp.MustCompile(regexp.QuoteMeta(slashed(os.TempDir())) + `/[^"/]+/\d+`)
+	tmpPattern  = regexp.MustCompile(regexp.QuoteMeta(slashed(filepath.Clean(os.TempDir()))) + `/[^"/]+/\d+`)
 	// A Windows path, in JSON or a request line, is written as the golden
 	// file has it: with / and no drive.
 	winPath    = regexp.MustCompile(`[A-Z]:\\[^"\n]*`)
