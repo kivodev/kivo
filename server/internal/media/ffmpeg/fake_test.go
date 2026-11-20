@@ -162,15 +162,6 @@ func splitBoxes(b []byte) (init []byte, frags [][]byte) {
 	return init, frags
 }
 
-// useFake makes the test binary act out mode, replaying file, for the rest
-// of the test.
-func useFake(t *testing.T, mode, file string) *Runner {
-	t.Setenv(fakeMode, mode)
-	t.Setenv(fakeFile, file)
-	t.Setenv("GORACE", "atexit_sleep_ms=0") // a race-enabled fake would linger a second on exit
-	return New(os.Args[0], os.Args[0])
-}
-
 // fixture returns the absolute path of a file in media's testdata.
 func fixture(t *testing.T, name string) string {
 	t.Helper()

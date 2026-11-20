@@ -1,6 +1,6 @@
 # Tools run at pinned versions through `go run`, so nothing needs installing.
 SQLC        := go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.29.0
-STATICCHECK := go run honnef.co/go/tools/cmd/staticcheck@2026.1
+STATICCHECK := go run honnef.co/go/tools/cmd/staticcheck@2026.2.2
 DEADCODE    := go run golang.org/x/tools/cmd/deadcode@v0.51.0
 DUPL        := go run github.com/mibk/dupl@v1.1.0
 GOCOGNIT    := go run github.com/uudashr/gocognit/cmd/gocognit@v1.2.1
