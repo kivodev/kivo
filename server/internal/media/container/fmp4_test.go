@@ -2,6 +2,7 @@ package container
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"io"
 	"testing"
@@ -118,6 +119,92 @@ func TestSplitterNoOutput(t *testing.T) {
 
 // samplesOf returns every sample of the fragments in segs, decoded against
 // init, which must hold one track.
+func TestSplitterGivesAudioToASegmentWithout(t *testing.T) {
+	// ffmpeg writes fragments without audio before the audio starts and
+	// after it ends. Their segments' audio has no samples but is still a
+	// fragment, placed where the video is.
+	data := withoutAudio(t, readFixture(t, "remux-h264.mp4"), 1)
+	init, segs, err := split(t, data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := mp4.DecodeFile(bytes.NewReader(append(bytes.Clone(init.Audio), segs[1].Audio...)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	audio := f.Init.Moov.Trak
+	frag := f.Segments[0].Fragments[0]
+	if len(frag.Moof.Trafs) != 1 || frag.Moof.Traf.Tfhd.TrackID != audio.Tkhd.TrackID {
+		t.Fatal("the audio isn't a fragment of the audio track")
+	}
+	if n := len(frag.Moof.Traf.Truns); n != 0 {
+		t.Fatalf("%d runs of audio", n)
+	}
+	got := time.Duration(frag.Moof.Traf.Tfdt.BaseMediaDecodeTime()) * time.Second / time.Duration(audio.Mdia.Mdhd.Timescale)
+	if want := segs[1].Start + media.TimestampOffset; got < want-time.Millisecond || got > want+time.Millisecond {
+		t.Fatalf("audio at %v, video at %v", got, want)
+	}
+	for i, s := range segs {
+		if i != 1 && len(s.Audio) <= len(segs[1].Audio) {
+			t.Fatalf("segment %d lost its audio", i)
+		}
+	}
+}
+
+// withoutAudio returns muxed fMP4 with the audio taken out of fragment n,
+// counting from 0. Its samples' bytes stay in the mdat, unreferenced.
+func withoutAudio(t *testing.T, data []byte, n int) []byte {
+	t.Helper()
+	f, err := mp4.DecodeFile(bytes.NewReader(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var audio uint32
+	for _, trak := range f.Init.Moov.Traks {
+		if trak.Mdia.Hdlr.HandlerType == "soun" {
+			audio = trak.Tkhd.TrackID
+		}
+	}
+	var out []byte
+	for pos, k := 0, 0; pos < len(data); {
+		size := int(binary.BigEndian.Uint32(data[pos:]))
+		b := data[pos : pos+size]
+		pos += size
+		if string(b[4:8]) != "moof" {
+			out = append(out, b...)
+			continue
+		}
+		if k++; k-1 != n {
+			out = append(out, b...)
+			continue
+		}
+		bx, err := mp4.DecodeBox(0, bytes.NewReader(b))
+		if err != nil {
+			t.Fatal(err)
+		}
+		moof := bx.(*mp4.MoofBox)
+		kept := &mp4.MoofBox{}
+		_ = kept.AddChild(moof.Mfhd)
+		for _, traf := range moof.Trafs {
+			if traf.Tfhd.TrackID != audio {
+				_ = kept.AddChild(traf)
+			}
+		}
+		shrink := int32(moof.Size() - kept.Size())
+		for _, traf := range kept.Trafs {
+			for _, trun := range traf.Truns {
+				trun.DataOffset -= shrink
+			}
+		}
+		var w bytes.Buffer
+		if err := kept.Encode(&w); err != nil {
+			t.Fatal(err)
+		}
+		out = append(out, w.Bytes()...)
+	}
+	return out
+}
+
 func samplesOf(t *testing.T, init []byte, segs [][]byte) (uint32, []mp4.FullSample) {
 	t.Helper()
 	var id uint32

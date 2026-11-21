@@ -31,8 +31,9 @@ type Splitter struct {
 	r io.Reader
 
 	init  []byte
-	audio []byte // the audio's initialization segment, when it's split from the video
-	lead  *track // the track whose fragments make segments, which is video if there is any
+	audio []byte   // the audio's initialization segment, when it's split from the video
+	lead  *track   // the track whose fragments make segments, which is video if there is any
+	rest  []*track // the tracks beside the lead, when the audio is split from the video
 	trexs map[uint32]*mp4.TrexBox
 	carry []byte // boxes read since the last segment, such as styp or a fragment without video
 	// carryAudio is the audio of fragments read since the last segment.
@@ -150,6 +151,16 @@ func (s *Splitter) splitInit(moov *mp4.MoovBox) (video, audio []byte, err error)
 		}
 	}
 	isLead := func(id uint32) bool { return id == s.lead.id }
+	for _, trak := range tracks(moov) {
+		if isLead(trak.Tkhd.TrackID) {
+			continue
+		}
+		tr, err := readTrack(moov, trak)
+		if err != nil {
+			return nil, nil, err
+		}
+		s.rest = append(s.rest, tr)
+	}
 	if video, err = moovOf(moov, isLead); err != nil {
 		return nil, nil, err
 	}
@@ -198,7 +209,7 @@ type fragment struct {
 	start time.Duration // the presentation time of its first lead-track sample, on the source's timeline
 	lead  bool          // whether it has a lead-track sample
 	data  []byte        // the fragment, or its video when the audio is split
-	audio []byte        // its audio when the audio is split; nil when it has none
+	audio []byte        // its audio when the audio is split, which has no samples when the fragment has video but no audio
 }
 
 // readFragment reads boxes through the next mdat.
@@ -228,6 +239,9 @@ func (s *Splitter) readFragment() (fragment, error) {
 		if s.audio != nil {
 			before := len(data) - len(body) // the boxes before the moof
 			video, audio, err := splitFragment(moof, f.data[before:], s.lead.id, s.trexs)
+			if err == nil && audio == nil && f.lead {
+				audio, err = emptyFragment(moof.Mfhd, f.start+media.TimestampOffset, s.rest)
+			}
 			if err != nil {
 				return fragment{}, err
 			}

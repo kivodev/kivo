@@ -3,6 +3,8 @@ package container
 import (
 	"bytes"
 	"encoding/binary"
+	"math/bits"
+	"time"
 
 	"github.com/Eyevinn/mp4ff/mp4"
 )
@@ -130,4 +132,30 @@ func trafData(traf *mp4.TrafBox, frag []byte, trex *mp4.TrexBox, payload []byte,
 		payload = append(payload, frag[off:off+size]...)
 	}
 	return payload, at, nil
+}
+
+// emptyFragment returns a fragment of tracks that has no samples, for a
+// fragment of the lead track that has none of theirs, such as before the
+// audio starts or after it ends. Each track's decode time begins at start,
+// where the lead track's first sample shows. So a segment without audio is
+// still one a player can read, placed where the video's is.
+func emptyFragment(mfhd *mp4.MfhdBox, start time.Duration, tracks []*track) ([]byte, error) {
+	out := &mp4.MoofBox{}
+	if mfhd != nil {
+		_ = out.AddChild(mfhd)
+	}
+	for _, tr := range tracks {
+		traf := &mp4.TrafBox{}
+		_ = traf.AddChild(mp4.CreateTfhd(tr.id))
+		hi, lo := bits.Mul64(uint64(max(start, 0)), uint64(tr.timescale))
+		at, _ := bits.Div64(hi, lo, uint64(time.Second))
+		_ = traf.AddChild(mp4.CreateTfdt(at))
+		_ = out.AddChild(traf)
+	}
+	var b bytes.Buffer
+	if err := out.Encode(&b); err != nil {
+		return nil, corrupt("mp4: encode moof: %v", err)
+	}
+	b.Write([]byte{0, 0, 0, 8, 'm', 'd', 'a', 't'})
+	return b.Bytes(), nil
 }
