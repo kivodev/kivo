@@ -67,6 +67,24 @@ describe("Admin settings", () => {
     await waitFor(() => expect(password).toHaveValue(""));
   });
 
+  it.each([
+    ["key", "OpenSubtitles API key", "/openSubtitlesKey", "OpenSubtitles refused this key."],
+    ["account", "OpenSubtitles password", "/openSubtitlesPassword", "OpenSubtitles refused this username or password."],
+  ])("General says under the field when OpenSubtitles refused the %s", async (_, label, field, hint) => {
+    const api = serveMockApi();
+    api.settings = { ...api.settings, openSubtitlesUsername: "anna", openSubtitlesPasswordSet: true };
+    server.use(
+      http.patch("/api/v1/settings", () => problem(400, "invalidRequest", { errors: [{ field, code: "invalid" }] })),
+    );
+    const { user } = renderApp("/admin/settings/general");
+    const input = await screen.findByLabelText(label);
+    await user.type(input, "wrong");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText(hint)).toBeInTheDocument();
+    expect(input).toHaveAccessibleDescription(expect.stringContaining(hint));
+    expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+  });
+
   it("shows the save bar only with a change, and Discard puts the saved settings back", async () => {
     serveMockApi();
     const { user } = renderApp("/admin/settings/network");

@@ -31,6 +31,19 @@ type SubtitleSearch struct {
 // downloadFormats are the subtitle file formats kept as downloaded tracks.
 var downloadFormats = []string{"srt", "ass", "ssa", "vtt"}
 
+// CheckCredentials asks OpenSubtitles whether it accepts credentials that
+// differ from the saved ones, before they're saved. It asks nothing when
+// they're as saved, or when there's no key. It returns ErrKeyRejected or
+// ErrAccountRejected, each about its settings field, when OpenSubtitles
+// refuses them, and ErrUnavailable when it can't say.
+func (s *Service) CheckCredentials(ctx context.Context, key, user, password string) error {
+	st := s.deps.Settings.Get()
+	if key == "" || (key == st.OpenSubtitlesKey && user == st.OpenSubtitlesUsername && password == st.OpenSubtitlesPassword) {
+		return nil
+	}
+	return s.openSubtitles.check(ctx, key, user, password)
+}
+
 // SearchSubtitles searches OpenSubtitles for subtitles for a file the
 // viewer can see. Results are ordered best first, as rank orders them,
 // with SDH first when the viewer's last subtitles for the file's series

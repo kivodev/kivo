@@ -1007,6 +1007,10 @@ msgstr "In list"
 msgid "Score {score}"
 msgstr "Score {score}"
 
+#: src/features/admin/GeneralSettingsScreen.tsx
+msgid "OpenSubtitles refused this key."
+msgstr "OpenSubtitles refused this key."
+
 #: src/features/home/HomeScreen.tsx
 msgid "Your Home is empty"
 msgstr "Your Home is empty"
@@ -3747,6 +3751,10 @@ msgstr "Loading folders…"
 #: src/features/admin/LogsScreen.tsx
 msgid "Errors"
 msgstr "Errors"
+
+#: src/features/admin/GeneralSettingsScreen.tsx
+msgid "OpenSubtitles refused this username or password."
+msgstr "OpenSubtitles refused this username or password."
 
 #: src/features/player/castProtocol.ts
 msgid "Signed out on the TV."

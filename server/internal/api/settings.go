@@ -13,6 +13,14 @@ func (h *handlers) GetSettings(context.Context, gen.GetSettingsRequestObject) (g
 
 func (h *handlers) UpdateSettings(ctx context.Context, req gen.UpdateSettingsRequestObject) (gen.UpdateSettingsResponseObject, error) {
 	b := req.Body
+	// Changed OpenSubtitles credentials are saved only once it accepts them.
+	next := h.deps.Settings.Get()
+	set(&next.OpenSubtitlesKey, b.OpenSubtitlesKey)
+	set(&next.OpenSubtitlesUsername, b.OpenSubtitlesUsername)
+	set(&next.OpenSubtitlesPassword, b.OpenSubtitlesPassword)
+	if err := h.deps.Subtitles.CheckCredentials(ctx, next.OpenSubtitlesKey, next.OpenSubtitlesUsername, next.OpenSubtitlesPassword); err != nil {
+		return nil, err
+	}
 	err := h.deps.Settings.Update(ctx, func(st *config.Settings) error {
 		if b.ServerName != nil {
 			st.ServerName = *b.ServerName
