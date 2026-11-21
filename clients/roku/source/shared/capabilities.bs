@@ -47,9 +47,13 @@ namespace KivoPlayer
     end function
 
     function audioEntries(device as object, containers as object) as object
-        aacChannels = 2
-        if device.CanDecodeAudio({ Codec: "aac", ChCnt: 6 }).result = true then aacChannels = 6
-        entries = [{ codec: "aac", delivery: ["file", "stream"], containers: containers, maxChannels: aacChannels }]
+        fileAACChannels = 2
+        if device.CanDecodeAudio({ Codec: "aac", ChCnt: 6 }).result = true then fileAACChannels = 6
+        ' Roku's HLS plays AAC in stereo only, so 5.1 in a stream goes out as E-AC-3.
+        entries = [
+            { codec: "aac", delivery: ["file"], containers: containers, maxChannels: fileAACChannels },
+            { codec: "aac", delivery: ["stream"], maxChannels: 2 }
+        ]
         ' Dolby Digital plays decoded or passed through to the TV or receiver.
         for each codec in ["ac3", "eac3"]
             if device.CanDecodeAudio({ Codec: codec, ChCnt: 6 }).result = true
