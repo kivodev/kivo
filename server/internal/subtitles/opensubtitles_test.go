@@ -16,6 +16,7 @@ import (
 	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/config"
 	"github.com/mmcdole/kivo/internal/egress"
+	"github.com/mmcdole/kivo/internal/fault"
 )
 
 // fakeOpenSubtitles answers requests the way OpenSubtitles does. Its
@@ -58,6 +59,8 @@ func (o *fakeOpenSubtitles) answer(raw string, h http.Header, body []byte) egres
 		return egress.Response{Status: status, Header: http.Header{}}
 	case u.Host == "dl.opensubtitles.com":
 		return ok("1\r\n00:00:01,000 --> 00:00:02,000\r\nThe spice must flow.\r\n")
+	case u.Path == "/api/v1/login" && h.Get("Api-Key") == "unknown-key":
+		return egress.Response{Status: http.StatusForbidden, Header: http.Header{}, Body: []byte(`{"message": "You cannot consume this service"}`)}
 	case h.Get("Api-Key") != "os-key" || !strings.HasPrefix(h.Get("User-Agent"), "Kivo v"):
 		return egress.Response{Status: http.StatusUnauthorized, Header: http.Header{}}
 	}
@@ -298,6 +301,48 @@ func TestOpenSubtitlesKeyRejected(t *testing.T) {
 	}
 	if len(problemCodes(d)) != 0 {
 		t.Fatalf("health %v", problemCodes(d))
+	}
+}
+
+// Changed credentials are checked by signing in, without touching the saved
+// account or its outage. A key or an account OpenSubtitles refuses is an
+// error about its settings field. Credentials as saved, and no key, ask
+// nothing.
+func TestCheckCredentials(t *testing.T) {
+	d := newDownloads(t)
+	fieldOf := func(err error) string {
+		f, _ := fault.FieldOf(err)
+		return f.Name
+	}
+	if err := d.s.CheckCredentials(ctx, "os-key", "", ""); err != nil || d.remote.count("/api/v1/login") != 0 {
+		t.Fatalf("the saved key: %v, %d sign-ins", err, d.remote.count("/api/v1/login"))
+	}
+	if err := d.s.CheckCredentials(ctx, "", "anna", "pw"); err != nil || d.remote.count("/api/v1/login") != 0 {
+		t.Fatalf("no key: %v, %d sign-ins", err, d.remote.count("/api/v1/login"))
+	}
+	if err := d.s.CheckCredentials(ctx, "unknown-key", "", ""); !errors.Is(err, ErrKeyRejected) || fieldOf(err) != "/openSubtitlesKey" {
+		t.Fatalf("an unknown key: %v about %q", err, fieldOf(err))
+	}
+	if err := d.s.CheckCredentials(ctx, "os-key", "anna", "wrong"); !errors.Is(err, ErrAccountRejected) || fieldOf(err) != "/openSubtitlesPassword" {
+		t.Fatalf("a wrong password: %v about %q", err, fieldOf(err))
+	}
+	if err := d.s.CheckCredentials(ctx, "os-key", "anna", "pw"); err != nil {
+		t.Fatalf("a good account: %v", err)
+	}
+	if len(problemCodes(d)) != 0 {
+		t.Fatalf("checking raised %v", problemCodes(d))
+	}
+	// A key alone is accepted when the sign-in is refused only for having no account.
+	d.setOpenSubtitles("", "", "")
+	if err := d.s.CheckCredentials(ctx, "os-key", "", ""); err != nil {
+		t.Fatalf("a key alone: %v", err)
+	}
+	d.remote.set(http.StatusBadGateway)
+	if err := d.s.CheckCredentials(ctx, "os-key", "anna", "pw"); !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("OpenSubtitles down: %v", err)
+	}
+	if len(problemCodes(d)) != 0 {
+		t.Fatalf("a failed check raised %v", problemCodes(d))
 	}
 }
 

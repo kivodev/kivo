@@ -63,7 +63,16 @@ var (
 	// errLoginRejected means OpenSubtitles refused the account's username or
 	// password.
 	errLoginRejected = fmt.Errorf("%w: OpenSubtitles rejected the account", ErrUnavailable)
+	// ErrKeyRejected means OpenSubtitles refuses the API key being checked.
+	ErrKeyRejected = fault.New(fault.Invalid, "OpenSubtitles rejected the API key")
+	// ErrAccountRejected means OpenSubtitles refuses the username or
+	// password being checked.
+	ErrAccountRejected = fault.New(fault.Invalid, "OpenSubtitles rejected the username or password")
 )
+
+// keyRefusal is the message of OpenSubtitles' 403 for an API key it doesn't
+// know. It answers searches whatever the key.
+const keyRefusal = "You cannot consume this service"
 
 // QuotaError is ErrQuota with the time the quota resets. The time is zero
 // when OpenSubtitles didn't say.
@@ -580,6 +589,37 @@ func (o *openSubtitles) login(ctx context.Context, a *account) (string, error) {
 	a.token, a.loginRejected = r.Token, time.Time{}
 	a.mu.Unlock()
 	return r.Token, nil
+}
+
+// check asks OpenSubtitles whether it accepts key, and user and password
+// when there's a user, by signing in. It returns ErrKeyRejected or
+// ErrAccountRejected when it refuses them, and ErrUnavailable when it can't
+// say. It asks even while requests are backed off, and leaves the outage
+// and the saved account as they are.
+func (o *openSubtitles) check(ctx context.Context, key, user, password string) error {
+	if err := o.limit.Wait(ctx); err != nil {
+		return err
+	}
+	h := (&account{key: key}).header()
+	h.Set("Content-Type", "application/json")
+	body, _ := json.Marshal(map[string]string{"username": user, "password": password})
+	resp, err := o.get.Post(ctx, openSubtitlesAPI+"/login", h, body)
+	switch {
+	case ctx.Err() != nil:
+		return ctx.Err()
+	case err != nil:
+		return fmt.Errorf("%w: OpenSubtitles: %w", ErrUnavailable, err)
+	case resp.Status == http.StatusForbidden && strings.Contains(string(resp.Body), keyRefusal):
+		return fault.About(ErrKeyRejected, fault.Field{Name: "/openSubtitlesKey", Code: "invalid"})
+	case resp.Status == http.StatusOK:
+		return nil
+	case resp.Status == http.StatusUnauthorized || resp.Status == http.StatusBadRequest:
+		if user == "" {
+			return nil // the key was accepted, and there's no account to sign in
+		}
+		return fault.About(ErrAccountRejected, fault.Field{Name: "/openSubtitlesPassword", Code: "invalid"})
+	}
+	return fmt.Errorf("%w: the OpenSubtitles sign-in answered %d", ErrUnavailable, resp.Status)
 }
 
 // post sends one POST through OpenSubtitles' spacing and outage rules.

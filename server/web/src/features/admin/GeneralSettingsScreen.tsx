@@ -29,7 +29,11 @@ export function GeneralSettingsScreen() {
   const clearPassword = openSubtitlesUsername === "" && settings.openSubtitlesPasswordSet;
   const openSubtitlesPassword = newPassword !== "" || clearPassword ? newPassword : undefined;
   const serverNameError = save.invalid("/serverName", t`Enter a name.`);
-  const openSubtitlesKeyError = save.invalid("/openSubtitlesKey");
+  const openSubtitlesKeyError = save.invalid("/openSubtitlesKey", t`OpenSubtitles refused this key.`);
+  const openSubtitlesPasswordError = save.invalid(
+    "/openSubtitlesPassword",
+    t`OpenSubtitles refused this username or password.`,
+  );
   return (
     <AdminPage page="settings-general" title={t`General`}>
       <SettingsForm
@@ -80,6 +84,7 @@ export function GeneralSettingsScreen() {
                     <Trans>Required if a username is set.</Trans>
                   )
                 }
+                error={openSubtitlesPasswordError}
               >
                 <TextField
                   type="password"
