@@ -19,9 +19,9 @@ export const fileQueries = {
       { select: (page) => page.total ?? page.items.length },
     ),
 
-  /** The Missing files list, newest first, one keyset page at a time. */
-  missing: () => {
-    const query = { status: "gone" as const, limit: pageSize };
+  /** A library's Missing files list, newest first, one keyset page at a time. */
+  missing: (libraryId: string) => {
+    const query = { status: "gone" as const, libraryId, limit: pageSize };
     return keysetPages(["get", apiPaths.files, { params: { query } }, "pages"] as const, async (after, signal) => {
       const { data, error } = await client.GET("/api/v1/files", {
         signal,

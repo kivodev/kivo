@@ -2279,12 +2279,15 @@ paths:
       summary: List unmatched works
       description: |
         Backs the Unmatched list.
-        Every library's unmatched items, library by library and each by
-        title, each summary with its `path`. A feed, read in order by
-        `after`.
+        The unmatched items of every library, or with `libraryId` of one,
+        library by library and each by title, each summary with its `path`.
+        A feed, read in order by `after`.
       tags: [works]
       x-kivo-access: admin
       parameters:
+        - name: libraryId
+          in: query
+          schema: {$ref: "#/components/schemas/ID"}
         - {$ref: "#/components/parameters/After"}
         - {$ref: "#/components/parameters/Limit"}
       responses:
@@ -2497,9 +2500,9 @@ paths:
       operationId: deleteMissingFiles
       summary: Delete missing files
       description: |
-        Forgets every gone file and its versions, as `DELETE
-        /api/v1/files/{id}` does one. Works and watch state stay; the disk
-        is never touched.
+        Forgets every gone file and its versions, or with `libraryId` one
+        library's, as `DELETE /api/v1/files/{id}` does one. Works and watch
+        state stay; the disk is never touched.
       tags: [files]
       x-kivo-access: admin
       parameters:
@@ -2510,6 +2513,9 @@ paths:
           schema:
             type: string
             enum: [gone]
+        - name: libraryId
+          in: query
+          schema: {$ref: "#/components/schemas/ID"}
       responses:
         "204":
           description: Deleted.

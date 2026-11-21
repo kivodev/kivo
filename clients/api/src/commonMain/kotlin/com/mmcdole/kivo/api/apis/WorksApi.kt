@@ -526,13 +526,14 @@ open class WorksApi : ApiClient {
 
     /**
      * List unmatched works
-     * Backs the Unmatched list. Every library&#39;s unmatched items, library by library and each by title, each summary with its &#x60;path&#x60;. A feed, read in order by &#x60;after&#x60;. 
+     * Backs the Unmatched list. The unmatched items of every library, or with &#x60;libraryId&#x60; of one, library by library and each by title, each summary with its &#x60;path&#x60;. A feed, read in order by &#x60;after&#x60;. 
+     * @param libraryId  (optional)
      * @param after The &#x60;next&#x60; cursor from the previous page. (optional)
      * @param limit Page size. The default and the most a page holds depend on the listing. (optional)
      * @return WorkSummaryFeed
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun listUnmatchedWorks(after: kotlin.String? = null, limit: kotlin.Int? = null): HttpResponse<WorkSummaryFeed> {
+    open suspend fun listUnmatchedWorks(libraryId: kotlin.String? = null, after: kotlin.String? = null, limit: kotlin.Int? = null): HttpResponse<WorkSummaryFeed> {
 
         val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
 
@@ -540,6 +541,7 @@ open class WorksApi : ApiClient {
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
+        libraryId?.apply { localVariableQuery["libraryId"] = listOf("$libraryId") }
         after?.apply { localVariableQuery["after"] = listOf("$after") }
         limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
         val localVariableHeaders = mutableMapOf<String, String>()

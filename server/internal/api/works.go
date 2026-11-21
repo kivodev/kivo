@@ -45,14 +45,14 @@ func (h *handlers) GetCollection(ctx context.Context, req gen.GetCollectionReque
 }
 
 // ListUnmatchedWorks returns a page of the Unmatched list, which holds the
-// unmatched works of every library.
+// unmatched works of one library or of every library.
 func (h *handlers) ListUnmatchedWorks(ctx context.Context, req gen.ListUnmatchedWorksRequestObject) (gen.ListUnmatchedWorksResponseObject, error) {
 	p := req.Params
 	pg, err := pagingOf(p.After, p.Limit)
 	if err != nil {
 		return nil, err
 	}
-	page, err := h.deps.Query.Unmatched(ctx, callerOf(ctx).viewer, query.Cursor(pg.after), pg.limit)
+	page, err := h.deps.Query.Unmatched(ctx, callerOf(ctx).viewer, deref(p.LibraryID), query.Cursor(pg.after), pg.limit)
 	if err != nil {
 		return nil, err
 	}

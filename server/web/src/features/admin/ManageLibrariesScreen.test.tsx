@@ -2,7 +2,7 @@ import { waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { MockApi } from "@/api/mocks/api";
 import type { Library } from "@/api/schemas";
-import { renderApp, screen } from "@/test/render";
+import { locationOf, renderApp, screen } from "@/test/render";
 import { mockIds, onRequest, scenarios, sendEvent, sent, serveMockApi } from "@/test/server";
 
 const rowOf = (name: string) => {
@@ -20,11 +20,34 @@ describe("Admin Libraries", () => {
     renderApp("/admin/libraries");
     await screen.findByRole("heading", { name: "Libraries" });
     const row = rowOf("Movies");
-    expect(within(row).getByText("238 movies").closest("p")).toHaveTextContent(/^238 movies · Scanned 2 hours ago$/);
+    expect(within(row).getByText("238 movies").closest("p")).toHaveTextContent(/^238 movies · Scanned 2 hours ago/);
     expect(within(row).getByText("Scanned 2 hours ago").closest("time")).toHaveAttribute("title");
     expect(within(row).queryByText("/mnt/user/Movies")).not.toBeInTheDocument();
     expect(row.querySelector('[data-part="scan"]')).toBeNull();
     expect(within(rowOf("TV Shows")).getByText("Not scanned yet")).toBeInTheDocument();
+  });
+
+  it("counts a library's unmatched titles and missing files on its line, each opening its page", async () => {
+    serveMockApi();
+    const { router, user } = renderApp("/admin/libraries");
+    await screen.findByRole("heading", { name: "Libraries" });
+    const row = rowOf("Movies");
+    expect(await within(row).findByRole("link", { name: "1 missing file" })).toHaveAttribute(
+      "href",
+      `/admin/libraries/${mockIds.movies}/missing-files`,
+    );
+    expect(within(row).getByText("238 movies").closest("p")).toHaveTextContent(
+      /^238 movies · Scanned 2 hours ago · 1 unmatched · 1 missing file$/,
+    );
+    expect(within(rowOf("Home Videos")).queryByRole("link")).not.toBeInTheDocument();
+    await user.click(within(row).getByRole("link", { name: "1 unmatched" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Unmatched in Movies" })).toBeInTheDocument();
+    expect(locationOf(router)).toBe(`/admin/libraries/${mockIds.movies}/unmatched`);
+    expect(
+      within(screen.getByRole("navigation", { name: "Admin" })).getByRole("link", { name: "Libraries" }),
+    ).toHaveAttribute("aria-current", "page");
+    await user.click(screen.getByRole("link", { name: "Libraries ›" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Libraries" })).toBeInTheDocument();
   });
 
   it("warns of a folder it can't reach", async () => {
@@ -92,15 +115,20 @@ describe("Admin Libraries", () => {
     expect(sent("POST", `/libraries/${mockIds.movies}/refresh-metadata`)).toHaveLength(1);
   });
 
-  it("offers refresh, edit and delete in a library's menu", async () => {
+  it("offers its lists, refresh, edit and delete in a library's menu", async () => {
     serveMockApi();
-    const { user } = renderApp("/admin/libraries");
+    const { router, user } = renderApp("/admin/libraries");
     await user.click(await screen.findByRole("button", { name: "More actions for TV Shows" }));
     expect((await screen.findAllByRole("menuitem")).map((m) => m.textContent)).toEqual([
+      "Unmatched",
+      "Missing files",
       "Refresh all metadata",
       "Edit",
       "Delete library",
     ]);
+    await user.click(screen.getByRole("menuitem", { name: "Missing files" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Missing files in TV Shows" })).toBeInTheDocument();
+    expect(locationOf(router)).toBe(`/admin/libraries/${mockIds.shows}/missing-files`);
   });
 
   it("names the refresh metadata setting's choices", async () => {

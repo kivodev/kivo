@@ -5585,7 +5585,8 @@ type ListDirectoriesParams struct {
 // DeleteMissingFilesParams defines parameters for DeleteMissingFiles.
 type DeleteMissingFilesParams struct {
 	// Status The files to delete; only `gone`.
-	Status DeleteMissingFilesParamsStatus `form:"status" json:"status"`
+	Status    DeleteMissingFilesParamsStatus `form:"status" json:"status"`
+	LibraryID *ID                            `form:"libraryId,omitempty" json:"libraryId,omitempty"`
 }
 
 // DeleteMissingFilesParamsStatus defines parameters for DeleteMissingFiles.
@@ -5729,6 +5730,8 @@ type ListSessionsParams struct {
 
 // ListUnmatchedWorksParams defines parameters for ListUnmatchedWorks.
 type ListUnmatchedWorksParams struct {
+	LibraryID *ID `form:"libraryId,omitempty" json:"libraryId,omitempty"`
+
 	// After The `next` cursor from the previous page.
 	After *After `form:"after,omitempty" json:"after,omitempty"`
 
@@ -7087,6 +7090,19 @@ func (siw *ServerInterfaceWrapper) DeleteMissingFiles(w http.ResponseWriter, r *
 			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "status"})
 		} else {
 			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "status", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "libraryId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "libraryId", r.URL.Query(), &params.LibraryID, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "libraryId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "libraryId", Err: err})
 		}
 		return
 	}
@@ -8921,6 +8937,19 @@ func (siw *ServerInterfaceWrapper) ListUnmatchedWorks(w http.ResponseWriter, r *
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params ListUnmatchedWorksParams
+
+	// ------------- Optional query parameter "libraryId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "libraryId", r.URL.Query(), &params.LibraryID, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "libraryId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "libraryId", Err: err})
+		}
+		return
+	}
 
 	// ------------- Optional query parameter "after" -------------
 

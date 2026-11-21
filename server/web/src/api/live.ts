@@ -8,9 +8,9 @@ import type { EventMessage, EventStreamMessage, SnapshotMessage } from "./schema
 import { recheckServer } from "./server";
 
 // Live events, over one WebSocket per tab. Each event kind maps to one
-// cache operation. The problem count updates in place. Other changes
-// invalidate by path in one-second batches. Nothing polls. On reconnect,
-// the new snapshot is applied and the queries kept live are refetched.
+// cache operation. Changes invalidate by path in one-second batches.
+// Nothing polls. On reconnect, the new snapshot is applied and the queries
+// kept live are refetched.
 
 /** What the live events said about one play. */
 export type PlayNews = {
@@ -21,7 +21,7 @@ export type PlayNews = {
 };
 
 export const liveQueries = {
-  /** The latest snapshot. problemsChanged events keep its problem count current. */
+  /** The latest snapshot. */
   snapshot: () =>
     queryOptions<SnapshotMessage>({ queryKey: ["live", "snapshot"], queryFn: skipToken, staleTime: Infinity }),
   /** What playEnded said about a play, for the player to watch. */
@@ -34,7 +34,6 @@ export type Scope = { ids: readonly string[] };
 
 export type CacheOp =
   | { kind: "invalidate"; path: ApiPath; scope?: Scope }
-  | { kind: "updateProblemCount"; problemCount: number }
   | { kind: "updatePlay"; playId: string; ended: true; message?: string }
   | { kind: "setSnapshot"; snapshot: SnapshotMessage }
   | { kind: "refetchAll" };
@@ -90,12 +89,7 @@ export function planEvent(event: EventMessage): CacheOp[] {
     case "activityChanged":
       return [invalidate(apiPaths.activity)];
     case "problemsChanged":
-      return [
-        ...(event.problemCount === undefined
-          ? []
-          : [{ kind: "updateProblemCount", problemCount: event.problemCount } as const]),
-        invalidate(apiPaths.problems),
-      ];
+      return [];
     case "playEnded":
       return event.playId
         ? [
@@ -168,11 +162,6 @@ export function createCacheSync(queryClient: QueryClient, batchMs = 1000) {
           ended: true,
           message: op.message,
         });
-        return;
-      case "updateProblemCount":
-        queryClient.setQueryData(liveQueries.snapshot().queryKey, (s) =>
-          s ? { ...s, problemCount: op.problemCount } : s,
-        );
         return;
       case "refetchAll":
         pending.clear();

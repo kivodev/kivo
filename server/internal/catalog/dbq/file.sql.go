@@ -412,18 +412,30 @@ func (q *Queries) GetFile(ctx context.Context, argID id.ID) (GetFileRow, error) 
 }
 
 const goneBatch = `-- name: GoneBatch :many
-SELECT id FROM media_file WHERE status = 'gone' AND gone_at <= CAST(?1 AS INTEGER) LIMIT ?2
+SELECT f.id FROM media_file f
+WHERE f.status = 'gone' AND f.gone_at <= CAST(?1 AS INTEGER)
+  AND (CAST(?2 AS BOOLEAN)
+    OR f.folder_id IN (SELECT r.id FROM library_folder r WHERE r.library_id = ?3))
+LIMIT ?4
 `
 
 type GoneBatchParams struct {
-	Before int64
-	Limit  int64
+	Before     int64
+	AnyLibrary bool
+	Library    id.ID
+	Limit      int64
 }
 
-// At most @limit of the files gone at or before @before: one batch of the
-// prune task, or of deleting every missing file.
+// At most @limit of the files gone at or before @before, of every library
+// or of @library: one batch of the prune task, or of deleting every missing
+// file.
 func (q *Queries) GoneBatch(ctx context.Context, arg GoneBatchParams) ([]id.ID, error) {
-	rows, err := q.db.QueryContext(ctx, goneBatch, arg.Before, arg.Limit)
+	rows, err := q.db.QueryContext(ctx, goneBatch,
+		arg.Before,
+		arg.AnyLibrary,
+		arg.Library,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}

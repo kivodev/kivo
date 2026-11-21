@@ -140,11 +140,12 @@ open class FilesApi : ApiClient {
 
     /**
      * Delete missing files
-     * Forgets every gone file and its versions, as &#x60;DELETE /api/v1/files/{id}&#x60; does one. Works and watch state stay; the disk is never touched. 
+     * Forgets every gone file and its versions, or with &#x60;libraryId&#x60; one library&#39;s, as &#x60;DELETE /api/v1/files/{id}&#x60; does one. Works and watch state stay; the disk is never touched. 
      * @param status The files to delete; only &#x60;gone&#x60;.
+     * @param libraryId  (optional)
      * @return void
      */
-    open suspend fun deleteMissingFiles(status: StatusDeleteMissingFiles): HttpResponse<Unit> {
+    open suspend fun deleteMissingFiles(status: StatusDeleteMissingFiles, libraryId: kotlin.String? = null): HttpResponse<Unit> {
 
         val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
 
@@ -153,6 +154,7 @@ open class FilesApi : ApiClient {
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         status?.apply { localVariableQuery["status"] = listOf("${ status.value }") }
+        libraryId?.apply { localVariableQuery["libraryId"] = listOf("$libraryId") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
         val localVariableConfig = RequestConfig<kotlin.Any?>(

@@ -86,13 +86,6 @@ describe("planEvent", () => {
     ]);
   });
 
-  it("updates the problem count in place and refetches the problems", () => {
-    expect(planEvent({ type: "event", kind: "problemsChanged", problemCount: 3 })).toEqual([
-      { kind: "updateProblemCount", problemCount: 3 },
-      { kind: "invalidate", path: apiPaths.problems },
-    ]);
-  });
-
   it("maps tasksChanged to the tasks and what their work changes: failures, libraries' scans and counts, works' files, missing files", () => {
     expect(planEvent({ type: "event", kind: "tasksChanged" })).toEqual([
       { kind: "invalidate", path: apiPaths.tasks },
@@ -230,12 +223,6 @@ describe("createCacheSync", () => {
     const state = (id: string) => queryClient.getQueryState(["get", apiPaths.work, { params: { path: { id } } }]);
     expect(state(work)?.isInvalidated).toBe(true);
     expect(state(other)?.isInvalidated).toBe(false);
-  });
-
-  it("updates the problem count in place", () => {
-    queryClient.setQueryData(liveQueries.snapshot().queryKey, snapshot());
-    createCacheSync(queryClient).apply({ kind: "updateProblemCount", problemCount: 9 });
-    expect(queryClient.getQueryData(liveQueries.snapshot().queryKey)?.problemCount).toBe(9);
   });
 
   it("records a play's news in place", () => {

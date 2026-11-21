@@ -15,35 +15,19 @@ const lineOf = (label: string) =>
     return line as HTMLElement;
   });
 
-/** The Needs attention line that says `text`, and its one link. */
-const attention = (text: string) =>
-  waitFor(() => {
-    const items = [...document.querySelectorAll<HTMLElement>('[data-part="attention"]')];
-    const item = items.find((i) => i.textContent?.includes(text));
-    if (!item) throw new Error(`no line says ${text}: ${items.map((i) => i.textContent).join(" | ")}`);
-    return within(item).getByRole("link");
-  });
-
 const section = (name: string) => screen.queryByRole("heading", { level: 2, name: new RegExp(`^${name}`) });
 
 describe("Admin entry", () => {
-  it("shows admins Admin, with a dot while problems are open, and opens the overview", async () => {
+  it("shows admins Admin, which opens the overview", async () => {
     serveMockApi();
     const { router, user } = renderApp("/");
-    const admin = await screen.findByRole("link", { name: "Admin, with open problems" });
+    const admin = await screen.findByRole("link", { name: "Admin" });
     await user.click(admin);
     expect(await screen.findByRole("heading", { name: "Overview" })).toBeInTheDocument();
     expect(locationOf(router)).toBe("/admin");
     expect(
       within(screen.getByRole("navigation", { name: "Admin" })).getByRole("link", { name: "Overview" }),
     ).toHaveAttribute("aria-current", "page");
-  });
-
-  it("has no dot once the problems are gone", async () => {
-    const api = serveMockApi();
-    api.snapshot.problemCount = 0;
-    renderApp("/");
-    expect(await screen.findByRole("link", { name: "Admin" })).toBeInTheDocument();
   });
 
   it("is hidden from viewers, and the admin area doesn't exist for them", async () => {
@@ -90,44 +74,6 @@ describe("New release", () => {
 });
 
 describe("Overview", () => {
-  it("on a busy evening lists what needs attention, each with its one link", async () => {
-    serveMockApi(scenarios.busy);
-    renderApp("/admin");
-    expect(await attention("6 failed sign-ins in the last day")).toHaveAttribute(
-      "href",
-      "/admin/activity?show=signIns",
-    );
-    expect(await attention("/mnt/user/TV can't be reached")).toHaveAttribute("href", "/admin/libraries");
-    // A provider that's down clears itself, so there's nothing to do and
-    // it's not listed.
-    expect(screen.queryByText(/TMDb is not responding/)).not.toBeInTheDocument();
-    expect(await attention("2 unmatched")).toHaveAttribute("href", "/admin/unmatched");
-    expect(await attention("1 missing file")).toHaveAttribute("href", "/admin/missing-files");
-    const previews = await attention("Preview thumbnails failed for 2 files");
-    expect(previews).toHaveAttribute("href", "/admin/tasks/make-previews");
-    expect(await attention("Refresh metadata failed for 12 titles")).toHaveAttribute(
-      "href",
-      "/admin/tasks/refresh-metadata",
-    );
-    expect(await attention("Back up database failed")).toHaveAttribute("href", "/admin/tasks");
-  });
-
-  it("counts every library's unmatched root works on one line, with Review for the Unmatched page", async () => {
-    const api = serveMockApi(scenarios.busy);
-    const [movies, shows, videos] = api.libraries;
-    if (!movies || !shows || !videos) throw new Error("the mock has three libraries");
-    movies.unmatchedCount = 3;
-    shows.unmatchedCount = 2;
-    videos.unmatchedCount = 1_200;
-    const { router, user } = renderApp("/admin");
-    const review = await attention("1,205 unmatched");
-    expect(review.closest('[data-part="attention"]')).toHaveTextContent(/^1,205 unmatchedReview$/);
-    expect(review).toHaveTextContent("Review");
-    await user.click(review);
-    expect(await screen.findByRole("heading", { level: 1, name: "Unmatched" })).toBeInTheDocument();
-    expect(locationOf(router)).toBe("/admin/unmatched");
-  });
-
   it("on a busy evening shows the plays with their summary, the work going on and the latest activity", async () => {
     serveMockApi(scenarios.busy);
     renderApp("/admin");
@@ -161,7 +107,6 @@ describe("Overview", () => {
     expect(await screen.findByRole("button", { name: /^The Expanse, anna/ })).toBeInTheDocument();
     expect(section("Now playing")).toHaveTextContent(/^Now playing1 playing · 8\.2 Mb\/s$/);
     expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(1);
-    expect(section("Needs attention")).toBeNull();
     expect(section("Working now")).toBeNull();
     expect(section("Activity")).toBeNull();
     // Nor the version, uptime or scans the Overview once had.
@@ -186,14 +131,9 @@ describe("Overview", () => {
     expect(screen.queryByText("Nothing playing")).toBeNull();
   });
 
-  it("follows what needs attention and the activity as the server tells of changes", async () => {
+  it("follows the activity as the server tells of changes", async () => {
     const api = serveMockApi();
     renderApp("/admin");
-    await attention("Preview thumbnails failed for 2 files");
-    for (const t of api.tasks) if (t.failedCount !== undefined) t.failedCount = 0;
-    sendEvent({ type: "event", kind: "tasksChanged" });
-    await waitFor(() => expect(document.body).not.toHaveTextContent("Preview thumbnails failed"), { timeout: 3000 });
-
     api.activity.unshift({
       id: mockId(8999),
       occurredAt: new Date().toISOString(),

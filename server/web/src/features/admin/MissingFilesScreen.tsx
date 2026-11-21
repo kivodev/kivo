@@ -1,6 +1,6 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useSuspenseInfiniteQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { getRouteApi, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { fileQueries, useDeleteFile, useDeleteMissingFiles } from "@/api/files";
 import { libraryQueries } from "@/api/libraries";
@@ -9,34 +9,34 @@ import { Button } from "@/components/Button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { EmptyState } from "@/components/EmptyState";
 import { FormError } from "@/components/FormError";
-import { Section } from "@/components/Section";
 import { formatDateTime } from "@/i18n/format";
 import { AdminPage, AdminRow } from "./AdminPage";
 
+const route = getRouteApi("/authed/admin/libraries/$libraryId/missing-files");
+
 /**
- * Missing files, grouped by library. These are files gone from disk, kept
- * for 30 days so a moved or returning file keeps its watch state. Each has
- * Forget, and the page has Forget all.
+ * A library's missing files. These are files gone from disk, kept for 30
+ * days so a moved or returning file keeps its watch state. Each has Forget,
+ * and the page has Forget all.
  */
 export function MissingFilesScreen() {
   const { t } = useLingui();
-  const files = useSuspenseInfiniteQuery(fileQueries.missing());
+  const { libraryId } = route.useParams();
+  const files = useSuspenseInfiniteQuery(fileQueries.missing(libraryId));
   const libraries = useSuspenseQuery(libraryQueries.list()).data.items;
+  const name = libraries.find((l) => l.id === libraryId)?.name ?? "";
   const forgetAll = useDeleteMissingFiles();
   const [confirming, setConfirming] = useState(false);
   const items = files.data.pages.flatMap((p) => p.items);
-  // Each library's files, in the libraries' order. Files of a library that
-  // has since been deleted go last.
-  const groups = [...libraries.map((l) => ({ id: l.id, name: l.name })), { id: "", name: t`Other libraries` }]
-    .map((g) => ({
-      ...g,
-      files: items.filter((f) => (g.id === "" ? !libraries.some((l) => l.id === f.libraryId) : f.libraryId === g.id)),
-    }))
-    .filter((g) => g.files.length > 0);
   return (
     <AdminPage
       page="missing-files"
-      title={t`Missing files`}
+      parent={
+        <Link to="/admin/libraries" className="hover:text-text hover:underline">
+          <Trans>Libraries ›</Trans>
+        </Link>
+      }
+      title={t`Missing files in ${name}`}
       actions={
         items.length > 0 && (
           <Button isPending={forgetAll.isPending} onPress={() => setConfirming(true)}>
@@ -52,15 +52,11 @@ export function MissingFilesScreen() {
       {items.length === 0 ? (
         <EmptyState title={t`No missing files`} />
       ) : (
-        groups.map((g) => (
-          <Section key={g.id} title={g.name}>
-            <ul className="flex flex-col gap-2">
-              {g.files.map((file) => (
-                <MissingFileRow key={file.id} file={file} />
-              ))}
-            </ul>
-          </Section>
-        ))
+        <ul className="flex flex-col gap-2">
+          {items.map((file) => (
+            <MissingFileRow key={file.id} file={file} />
+          ))}
+        </ul>
       )}
       {files.hasNextPage && (
         <Button
@@ -75,13 +71,13 @@ export function MissingFilesScreen() {
       )}
       <ConfirmDialog
         isOpen={confirming}
-        title={t`Forget every missing file?`}
+        title={t`Forget every missing file in ${name}?`}
         confirmLabel={t`Forget all`}
         tone="danger"
         onCancel={() => setConfirming(false)}
         onConfirm={() => {
           setConfirming(false);
-          forgetAll.mutate({ params: { query: { status: "gone" } } });
+          forgetAll.mutate({ params: { query: { status: "gone", libraryId } } });
         }}
       >
         <Trans>Files that reappear are treated as new. Watch state is kept. Nothing on disk is deleted.</Trans>
