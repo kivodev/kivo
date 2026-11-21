@@ -269,6 +269,23 @@ class BookPlayerModelTest {
     }
 
     @Test
+    fun aChapterChosenAfterEndOfChapterPausedRestartsTheTimerForThatChapter() = runTest {
+        val h = Harness(this)
+        h.start()
+        h.model.setSpeed(1.0)
+        h.at(100_000)
+        h.model.setSleep(SleepChoice.EndOfChapter)
+        h.at(300_200)
+        advanceTimeBy(251)
+        assertTrue(h.engine.paused)
+        assertEquals(SleepChoice.EndOfChapter, h.model.state.value.sleepRestart)
+
+        h.model.playChapter(0)
+        val sleep = assertIs<SleepState.Running>(h.model.state.value.sleep)
+        assertEquals(300_000, sleep.remainingMs, "to the end of the chapter chosen, not the one after")
+    }
+
+    @Test
     fun endOfChapterPausesAtTheChaptersEndAndFollowsAChapterMove() = runTest {
         val h = Harness(this)
         h.start()

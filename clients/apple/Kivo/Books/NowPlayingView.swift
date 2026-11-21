@@ -18,6 +18,8 @@ struct NowPlayingView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .title2) private var textScale: CGFloat = 1
     @State private var chaptersShown = false
+    /// How tall everything but the cover is, upright.
+    @State private var controlsHeight: CGFloat = 0
 
     var body: some View {
         GeometryReader { geometry in
@@ -25,14 +27,15 @@ struct NowPlayingView: View {
                 landscape(geometry.size)
             } else {
                 // The largest cover that leaves the controls whole; at the largest text sizes it scrolls.
-                ViewThatFits(in: .vertical) {
-                    portrait(cover: coverSize(geometry.size))
-                    portrait(cover: 160)
-                    portrait(cover: 110)
+                let room = geometry.size.height - controlsHeight - KivoTokens.spacing * (Self.gaps.reduce(0, +) + Self.bottomGap)
+                if room >= 110 {
+                    portrait(cover: min(coverSize(geometry.size), room))
+                } else {
                     ScrollView { portrait(cover: 110) }
                 }
             }
         }
+        .onPreferenceChange(ControlsHeight.self) { controlsHeight = $0 }
         .background { CoverBackground(work: book.work) }
         .presentationDragIndicator(.visible)
         .sheet(isPresented: $chaptersShown) {
@@ -44,21 +47,21 @@ struct NowPlayingView: View {
 
     private func portrait(cover size: CGFloat) -> some View {
         VStack(spacing: 0) {
-            header(top: KivoTokens.spacing * 4)
-            Spacer(minLength: KivoTokens.spacing * 2)
+            header(top: KivoTokens.spacing * 4).countedHeight()
+            Spacer(minLength: KivoTokens.spacing * Self.gaps[0])
             cover(size)
-            Spacer(minLength: KivoTokens.spacing * 4)
-            titles
-            Spacer(minLength: KivoTokens.spacing * 4)
-            ChapterSeekBar(book: book, chaptersShown: $chaptersShown)
-            Spacer(minLength: KivoTokens.spacing * 3)
-            failure
-            transportRow
-            Spacer(minLength: KivoTokens.spacing * 3)
-            BottomRow(book: book, chaptersShown: $chaptersShown)
+            Spacer(minLength: KivoTokens.spacing * Self.gaps[1])
+            titles.countedHeight()
+            Spacer(minLength: KivoTokens.spacing * Self.gaps[2])
+            ChapterSeekBar(book: book, chaptersShown: $chaptersShown).countedHeight()
+            Spacer(minLength: KivoTokens.spacing * Self.gaps[3])
+            failure.countedHeight()
+            transportRow.countedHeight()
+            Spacer(minLength: KivoTokens.spacing * Self.gaps[4])
+            BottomRow(book: book, chaptersShown: $chaptersShown).countedHeight()
         }
         .padding(.horizontal, 28)
-        .padding(.bottom, KivoTokens.spacing * 2)
+        .padding(.bottom, KivoTokens.spacing * Self.bottomGap)
         .frame(maxWidth: 560)
         .frame(maxWidth: .infinity)
     }
@@ -92,6 +95,10 @@ struct NowPlayingView: View {
             BottomRow(book: book, chaptersShown: $chaptersShown, captions: false)
         }
     }
+
+    /// The least space between the upright stack's parts, in spacing units, and under it: what the cover's room is less.
+    private static let gaps: [CGFloat] = [2, 4, 4, 3, 3]
+    private static let bottomGap: CGFloat = 2
 
     private func coverSize(_ size: CGSize) -> CGFloat {
         max(160, min(size.width - 56, size.height * 0.4))
@@ -223,6 +230,21 @@ struct NowPlayingView: View {
         book.expanded = false
         if server.navigation.tab == .downloads { server.navigation.tab = .home }
         server.navigation.push(.work(route))
+    }
+}
+
+/// The heights of Now Playing's controls, summed, for the room they leave the cover.
+private struct ControlsHeight: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value += nextValue()
+    }
+}
+
+private extension View {
+    func countedHeight() -> some View {
+        background(GeometryReader { Color.clear.preference(key: ControlsHeight.self, value: $0.size.height) })
     }
 }
 

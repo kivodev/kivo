@@ -79,6 +79,8 @@ final class BookPlayer {
     /// The last book is being put back, paused: it leaves other apps' audio alone until it plays.
     @ObservationIgnored private var restoring = false
     @ObservationIgnored private var sessionActive = false
+    /// Signing out, which gives the audio back as Stop listening does.
+    @ObservationIgnored private var closing = false
     /// Stop listening forgets the book as it unloads.
     @ObservationIgnored private var forgetBook = false
     /// The book loaded, as kept in UserDefaults for the next launch.
@@ -134,8 +136,17 @@ final class BookPlayer {
     }
 
     func togglePlay() {
-        wantsPlaying = !playing || failureLine != nil
+        if !playing || failureLine != nil { intendsToPlay() } else { wantsPlaying = false }
         model.togglePlay()
+    }
+
+    /// The listener asked for it to play: a book put back paused is theirs again, its failures shown.
+    private func intendsToPlay() {
+        wantsPlaying = true
+        if restoring {
+            restoring = false
+            takeAudioSession()
+        }
     }
 
     func skipBack() { model.skipBack() }
@@ -147,7 +158,7 @@ final class BookPlayer {
     func nextChapter() { model.nextChapter() }
 
     func playChapter(_ index: Int) {
-        wantsPlaying = true
+        intendsToPlay()
         model.playChapter(index: Int32(index))
     }
 
@@ -172,6 +183,7 @@ final class BookPlayer {
         stateTask?.cancel()
         if loaded {
             loaded = false
+            closing = true
             unloaded()
         }
         savedBook = nil
@@ -255,6 +267,8 @@ final class BookPlayer {
         restoring = false
         wantsPlaying = false
         resumeAfterInterruption = false
+        // Stop listening gives the audio back; a video starting takes it over instead.
+        let releasesAudio = forgetBook || closing
         if forgetBook {
             forgetBook = false
             savedBook = nil
@@ -271,7 +285,7 @@ final class BookPlayer {
         // The video player's mode again.
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
         // Other apps' audio plays on, unless a video has the session now.
-        if sessionActive, !videoPlaying() {
+        if sessionActive, releasesAudio, !videoPlaying() {
             try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         }
         sessionActive = false
@@ -347,7 +361,7 @@ final class BookPlayer {
             guard let self else { return .commandFailed }
             switch action {
             case .play:
-                wantsPlaying = true
+                intendsToPlay()
                 model.resume()
             case .pause:
                 wantsPlaying = false

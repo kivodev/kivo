@@ -33,8 +33,9 @@ struct TabCommands: Commands {
 }
 
 /// The Playback menu while the video player or the book's Now Playing
-/// shows: Play or Pause on Space, Back 10 seconds and Forward 30 seconds on
-/// the arrows, and Close on ⌘-period.
+/// shows: Play or Pause on Space, Back 10 seconds and Forward 30 seconds,
+/// on the arrows for a video (a book's Now Playing has lists they move
+/// through), and Close on ⌘-period.
 struct PlaybackCommands: Commands {
     let app: AppModel
 
@@ -50,11 +51,11 @@ struct PlaybackCommands: Commands {
                 Button(String(localized: "Back 10 seconds")) {
                     if let player { player.skip(by: -SKIP_BACK_MS) } else { book?.skipBack() }
                 }
-                .keyboardShortcut(.leftArrow, modifiers: [])
+                .keyboardShortcut(player == nil ? nil : KeyboardShortcut(.leftArrow, modifiers: []))
                 Button(String(localized: "Forward 30 seconds")) {
                     if let player { player.skip(by: SKIP_FORWARD_MS) } else { book?.skipForward() }
                 }
-                .keyboardShortcut(.rightArrow, modifiers: [])
+                .keyboardShortcut(player == nil ? nil : KeyboardShortcut(.rightArrow, modifiers: []))
                 Divider()
                 Button(String(localized: "Close player")) {
                     if player != nil { app.server?.player.shown = false } else { book?.expanded = false }

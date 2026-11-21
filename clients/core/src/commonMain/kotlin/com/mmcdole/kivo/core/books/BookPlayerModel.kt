@@ -70,7 +70,7 @@ class BookPlayerModel internal constructor(
     private var restartOpenedAt = 0L
 
     /** Where the sleep timer left the book as it paused it: the next chapter's start after End of chapter. */
-    private var restartFromMs = 0L
+    private var restartFromMs: Long? = null
     private var restartClosing: Job? = null
 
     /** A speed chosen here that the server hasn't taken yet: its own isn't read over it. */
@@ -150,7 +150,7 @@ class BookPlayerModel internal constructor(
     fun togglePlay() {
         if (controller == null) opensPaused = false
         if (retry()) return
-        if (state.value.sleepRestart != null) resumeRestartingSleep() else controller?.togglePlay()
+        if (state.value.sleepRestart != null && !state.value.playing) resumeRestartingSleep() else controller?.togglePlay()
     }
 
     /** Plays on; a book that failed is tried again, as the lock screen's Play asks. */
@@ -171,7 +171,9 @@ class BookPlayerModel internal constructor(
     fun seek(positionMs: Long) {
         val controller = controller ?: return
         controller.seek(positionMs)
-        aimSleep(positionMs.coerceIn(0, state.value.chapters?.durationMs ?: positionMs))
+        val target = positionMs.coerceIn(0, state.value.chapters?.durationMs ?: positionMs)
+        aimSleep(target)
+        if (state.value.sleepRestart != null) restartFromMs = target
     }
 
     /** The seek bar's seek on release, [offsetMs] into the chapter at [index], the one it spanned. */
@@ -243,10 +245,10 @@ class BookPlayerModel internal constructor(
                         val seeks = chapterEndMs < (s.chapters?.durationMs ?: 0)
                         if (seeks) controller?.seek(chapterEndMs)
                         audio.restoreVolume()
-                        openSleepRestart(running.choice, if (seeks) chapterEndMs else 0)
+                        openSleepRestart(running.choice, if (seeks) chapterEndMs else null)
                     } else {
                         apply(command)
-                        if (command == SleepCommand.Pause) openSleepRestart(running.choice, 0)
+                        if (command == SleepCommand.Pause) openSleepRestart(running.choice, null)
                     }
                     publishSleep()
                 }
@@ -309,11 +311,11 @@ class BookPlayerModel internal constructor(
         closeSleepRestart()
         controller?.resume()
         // The engine may still say where it was before End of chapter's seek to the next one.
-        if (choice != null) startSleep(choice, positionMs ?: maxOf(position(), from))
+        if (choice != null) startSleep(choice, positionMs ?: from ?: position())
     }
 
     /** The sleep timer paused the book, leaving it at [fromMs] if it moved it: a play soon starts it again. */
-    private fun openSleepRestart(choice: SleepChoice, fromMs: Long) {
+    private fun openSleepRestart(choice: SleepChoice, fromMs: Long?) {
         restartClosing?.cancel()
         restartOpenedAt = now()
         restartFromMs = fromMs
