@@ -463,7 +463,10 @@ class LibraryGridTest {
         grid.choose(filters(ray))
         for (tab in listOf(LibraryTab.Authors, LibraryTab.BookSeries)) {
             grid.choose(tab)
-            assertEquals(tab, grids.session().library.libraryGrid("books").state.value.tab)
+            // Closed, so it can't keep this tab over the next once its library's values come.
+            val opened = grids.session().library.libraryGrid("books")
+            assertEquals(tab, opened.state.value.tab)
+            opened.close()
         }
 
         val reopened = grids.session().library.libraryGrid("books").state.value
