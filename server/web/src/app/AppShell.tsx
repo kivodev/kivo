@@ -1,10 +1,10 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link, Outlet, useMatchRoute, useParams } from "@tanstack/react-router";
 import { type ReactElement, type ReactNode, useEffect } from "react";
 import { Button as AriaButton, Focusable, Header, MenuSection, Tooltip, TooltipTrigger } from "react-aria-components";
 import { libraryQueries } from "@/api/libraries";
-import { liveQueries, useLiveEvents } from "@/api/live";
+import { useLiveEvents } from "@/api/live";
 import { errorCode } from "@/api/problem";
 import type { Library } from "@/api/schemas";
 import { useSignOutHere } from "@/api/session";
@@ -292,28 +292,14 @@ function MoreLibraries({ libraries }: { libraries: Library[] }) {
   );
 }
 
-/**
- * Admin, for admins, with a dot while the problems page has open problems.
- */
+/** Admin, for admins. */
 function AdminEntry() {
   const { t } = useLingui();
-  const problemCount = useQuery(liveQueries.snapshot()).data?.problemCount ?? 0;
   return (
     <RailTooltip label={t`Admin`}>
       <Focusable>
-        <Link
-          to="/admin"
-          className={navItem}
-          activeProps={activeNav}
-          aria-label={problemCount > 0 ? t`Admin, with open problems` : t`Admin`}
-          data-part="admin-entry"
-        >
-          <span className="relative shrink-0">
-            <Icon name="shield" className="size-5" />
-            {problemCount > 0 && (
-              <span data-part="problems-dot" className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-danger" />
-            )}
-          </span>
+        <Link to="/admin" className={navItem} activeProps={activeNav} data-part="admin-entry">
+          <Icon name="shield" className="size-5 shrink-0" />
           <span className={navLabel}>
             <Trans>Admin</Trans>
           </span>

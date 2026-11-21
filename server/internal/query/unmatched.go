@@ -13,8 +13,8 @@ import (
 )
 
 // unmatchedWorks reads a page of the Unmatched list: the unmatched works of
-// every library, as the libraries' grids hold them, library by library and
-// then by title. Each comes with the first file, by path, of the work or
+// one library or of every library, as the libraries' grids hold them,
+// library by library and then by title. Each comes with the first file, by path, of the work or
 // its descendants in that library.
 var unmatchedWorks = stmt("UnmatchedWorks", `
 WITH page AS (
@@ -23,6 +23,7 @@ WITH page AS (
   JOIN library l ON l.id = wl.library_id
   JOIN work w ON w.id = wl.work_id
   WHERE wl.is_root AND w.provisional AND l.deleting_at IS NULL
+    AND (@any_library OR wl.library_id = @library)
     AND (wl.library_id, wl.sort_title, wl.work_id) > (@after_library, @after_title, @after_id)
     AND `+libraryVisible+`
     AND `+visible+`
@@ -42,11 +43,12 @@ LEFT JOIN media_file f ON f.id = (
 LEFT JOIN library_folder r ON r.id = f.folder_id
 ORDER BY p.lib, p.t, p.id`)
 
-// Unmatched pages the Unmatched list: the unmatched works of every library
-// the Viewer sees, library by library and then by title. Each summary
-// carries its Path. The page holds at most limit works, or the default
-// number when limit is 0. It has no total.
-func (s *Service) Unmatched(ctx context.Context, v users.Viewer, after Cursor, limit int) (Page[WorkSummary], error) {
+// Unmatched pages the Unmatched list: the unmatched works of one library,
+// or of every library the Viewer sees when lib is the zero ID, library by
+// library and then by title. Each summary carries its Path. The page holds
+// at most limit works, or the default number when limit is 0. It has no
+// total.
+func (s *Service) Unmatched(ctx context.Context, v users.Viewer, lib id.ID, after Cursor, limit int) (Page[WorkSummary], error) {
 	vw := viewerOf(v)
 	const list = "unmatched"
 	limit, err := pageLimit(limit)
@@ -64,7 +66,8 @@ func (s *Service) Unmatched(ctx context.Context, v users.Viewer, after Cursor, l
 			sortTitle     string
 			folder, rel   string
 		}
-		rows, err := rowsOf(ctx, tx, unmatchedWorks, vw.args(sql.Named("after_library", pos.Library[:]),
+		rows, err := rowsOf(ctx, tx, unmatchedWorks, vw.args(sql.Named("library", lib), sql.Named("any_library", lib.IsZero()),
+			sql.Named("after_library", pos.Library[:]),
 			sql.Named("after_title", pos.Title), sql.Named("after_id", pos.ID[:]), sql.Named("limit", limit+1)),
 			func(r scanner, x *row) error {
 				return r.Scan(&x.work, &x.library, &x.sortTitle, &x.folder, &x.rel)

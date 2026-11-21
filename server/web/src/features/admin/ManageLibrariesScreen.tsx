@@ -1,7 +1,8 @@
 import { Plural, Trans, useLingui } from "@lingui/react/macro";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { fileQueries } from "@/api/files";
 import {
   libraryQueries,
   useDeleteLibrary,
@@ -120,6 +121,9 @@ function LastScan({ library }: { library: Library }) {
   );
 }
 
+// A count on a library's line that opens the page listing what it counts.
+const reviewLink = "whitespace-nowrap underline underline-offset-2 hover:text-text";
+
 type Open = "refresh" | "edit" | "delete" | undefined;
 
 function LibraryRow({
@@ -131,6 +135,9 @@ function LibraryRow({
   added: boolean;
 }) {
   const { t } = useLingui();
+  const navigate = useNavigate();
+  const unmatched = library.unmatchedCount ?? 0;
+  const missing = useQuery(fileQueries.missingCount(library.id)).data ?? 0;
   const scan = useScanLibrary();
   const stop = useStopLibraryScan();
   const refresh = useRefreshLibraryMetadata();
@@ -164,6 +171,30 @@ function LibraryRow({
             <span className="whitespace-nowrap">
               <LastScan library={library} />
             </span>
+            {unmatched > 0 && (
+              <>
+                {" · "}
+                <Link
+                  to="/admin/libraries/$libraryId/unmatched"
+                  params={{ libraryId: library.id }}
+                  className={reviewLink}
+                >
+                  <Plural value={unmatched} one="# unmatched" other="# unmatched" />
+                </Link>
+              </>
+            )}
+            {missing > 0 && (
+              <>
+                {" · "}
+                <Link
+                  to="/admin/libraries/$libraryId/missing-files"
+                  params={{ libraryId: library.id }}
+                  className={reviewLink}
+                >
+                  <Plural value={missing} one="# missing file" other="# missing files" />
+                </Link>
+              </>
+            )}
           </p>
         </div>
         <Button size="sm" aria-label={t`Scan ${name}`} isPending={scan.isPending} onPress={() => scan.mutate(path)}>
@@ -173,6 +204,21 @@ function LibraryRow({
           <Button aria-label={t`More actions for ${name}`} variant="ghost" size="sm">
             <Icon name="more" />
           </Button>
+          <MenuItem
+            onAction={() =>
+              void navigate({ to: "/admin/libraries/$libraryId/unmatched", params: { libraryId: library.id } })
+            }
+          >
+            <Trans>Unmatched</Trans>
+          </MenuItem>
+          <MenuItem
+            onAction={() =>
+              void navigate({ to: "/admin/libraries/$libraryId/missing-files", params: { libraryId: library.id } })
+            }
+          >
+            <Trans>Missing files</Trans>
+          </MenuItem>
+          <MenuSeparator />
           <MenuItem isDisabled={refresh.isPending} onAction={() => setOpen("refresh")}>
             <Trans>Refresh all metadata</Trans>
           </MenuItem>

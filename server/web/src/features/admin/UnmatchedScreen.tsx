@@ -1,44 +1,47 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useSuspenseInfiniteQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { getRouteApi, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { libraryQueries } from "@/api/libraries";
 import type { WorkSummary } from "@/api/schemas";
 import { workQueries } from "@/api/works";
 import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
-import { Section } from "@/components/Section";
 import { AdminPage, AdminRow } from "./AdminPage";
 import { FixMatchDialog } from "./FixMatchDialog";
 
+const route = getRouteApi("/authed/admin/libraries/$libraryId/unmatched");
+
 /**
- * Unmatched, grouped by library. These are the root works no provider
+ * A library's unmatched titles. These are the root works no provider
  * matched, each with what it was parsed from and Fix match. A matched one leaves
  * the list.
  */
 export function UnmatchedScreen() {
   const { t } = useLingui();
-  const works = useSuspenseInfiniteQuery(workQueries.unmatched());
+  const { libraryId } = route.useParams();
+  const works = useSuspenseInfiniteQuery(workQueries.unmatched(libraryId));
   const libraries = useSuspenseQuery(libraryQueries.list()).data.items;
+  const name = libraries.find((l) => l.id === libraryId)?.name ?? "";
   const items = works.data.pages.flatMap((p) => p.items);
-  // Each library's root works, in the libraries' order.
-  const groups = libraries
-    .map((l) => ({ id: l.id, name: l.name, works: items.filter((w) => w.libraryId === l.id) }))
-    .filter((g) => g.works.length > 0);
   return (
-    <AdminPage page="unmatched" title={t`Unmatched`}>
+    <AdminPage
+      page="unmatched"
+      parent={
+        <Link to="/admin/libraries" className="hover:text-text hover:underline">
+          <Trans>Libraries ›</Trans>
+        </Link>
+      }
+      title={t`Unmatched in ${name}`}
+    >
       {items.length === 0 ? (
         <EmptyState title={t`Nothing unmatched`} />
       ) : (
-        groups.map((g) => (
-          <Section key={g.id} title={g.name}>
-            <ul className="flex flex-col gap-2">
-              {g.works.map((work) => (
-                <UnmatchedRow key={work.id} work={work} />
-              ))}
-            </ul>
-          </Section>
-        ))
+        <ul className="flex flex-col gap-2">
+          {items.map((work) => (
+            <UnmatchedRow key={work.id} work={work} />
+          ))}
+        </ul>
       )}
       {works.hasNextPage && (
         <Button

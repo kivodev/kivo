@@ -1634,9 +1634,9 @@ export interface paths {
         /**
          * List unmatched works
          * @description Backs the Unmatched list.
-         *     Every library's unmatched items, library by library and each by
-         *     title, each summary with its `path`. A feed, read in order by
-         *     `after`.
+         *     The unmatched items of every library, or with `libraryId` of one,
+         *     library by library and each by title, each summary with its `path`.
+         *     A feed, read in order by `after`.
          */
         get: operations["listUnmatchedWorks"];
         put?: never;
@@ -1788,9 +1788,9 @@ export interface paths {
         post?: never;
         /**
          * Delete missing files
-         * @description Forgets every gone file and its versions, as `DELETE
-         *     /api/v1/files/{id}` does one. Works and watch state stay; the disk
-         *     is never touched.
+         * @description Forgets every gone file and its versions, or with `libraryId` one
+         *     library's, as `DELETE /api/v1/files/{id}` does one. Works and watch
+         *     state stay; the disk is never touched.
          */
         delete: operations["deleteMissingFiles"];
         options?: never;
@@ -8237,6 +8237,7 @@ export interface operations {
     listUnmatchedWorks: {
         parameters: {
             query?: {
+                libraryId?: components["schemas"]["ID"];
                 /** @description The `next` cursor from the previous page. */
                 after?: components["parameters"]["After"];
                 /** @description Page size. The default and the most a page holds depend on the listing. */
@@ -8466,6 +8467,7 @@ export interface operations {
             query: {
                 /** @description The files to delete; only `gone`. */
                 status: "gone";
+                libraryId?: components["schemas"]["ID"];
             };
             header?: never;
             path?: never;

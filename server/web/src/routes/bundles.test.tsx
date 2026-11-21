@@ -13,7 +13,7 @@ import { watchRoute } from "./watch";
 describe("web route bundles", () => {
   it("keeps every admin page available on web", () => {
     const router = createAppRouter(createQueryClient(), createMemoryHistory());
-    expect(Object.keys(router.routesByPath).filter((path) => path.startsWith("/admin"))).toHaveLength(17);
+    expect(Object.keys(router.routesByPath).filter((path) => path.startsWith("/admin"))).toHaveLength(16);
     expect(router.routesByPath["/admin/settings/api-keys"]).toBeDefined();
   });
 

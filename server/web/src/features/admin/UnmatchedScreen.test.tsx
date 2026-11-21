@@ -4,27 +4,38 @@ import type { WorkDetail } from "@/api/schemas";
 import { locationOf, renderApp, screen } from "@/test/render";
 import { mockId, mockIds, onRequest, scenarios, sent, serveMockApi } from "@/test/server";
 
-const section = (name: string) => screen.getByRole("heading", { name }).closest("section") as HTMLElement;
+const page = `/admin/libraries/${mockIds.movies}/unmatched`;
 
 describe("Unmatched", () => {
-  it("lists each unmatched root work under its library with its year and what it was parsed from", async () => {
+  it("lists a library's unmatched root works, each with its year and what it was parsed from", async () => {
     serveMockApi(scenarios.busy);
-    renderApp("/admin/unmatched");
+    renderApp(page);
     expect(await screen.findByText("/mnt/user/Movies/Holiday 2019 Final.mkv")).toBeInTheDocument();
-    const movies = section("Movies");
-    expect(within(movies).getByRole("link", { name: "Holiday 2019 Final" })).toHaveAttribute(
+    expect(screen.getByRole("heading", { level: 1, name: "Unmatched in Movies" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Holiday 2019 Final" })).toHaveAttribute(
       "href",
       `/works/${mockIds.holiday}`,
     );
-    expect(within(movies).getByText("2019")).toBeInTheDocument();
-    const shows = section("TV Shows");
-    expect(within(shows).getByRole("link", { name: "the.night.shift" })).toHaveAttribute(
+    expect(screen.getByText("2019")).toBeInTheDocument();
+    expect(screen.queryByText("the.night.shift")).not.toBeInTheDocument();
+    expect(document.querySelectorAll('[data-part="unmatched-title"]')).toHaveLength(1);
+  });
+
+  it("lists another library's own", async () => {
+    serveMockApi(scenarios.busy);
+    renderApp(`/admin/libraries/${mockIds.shows}/unmatched`);
+    expect(await screen.findByRole("link", { name: "the.night.shift" })).toHaveAttribute(
       "href",
       `/works/${mockIds.nightShift}`,
     );
-    expect(within(shows).getByText("/mnt/user/TV/the.night.shift.2024")).toBeInTheDocument();
-    expect(within(movies).queryByText("the.night.shift")).not.toBeInTheDocument();
-    expect(document.querySelectorAll('[data-part="unmatched-title"]')).toHaveLength(2);
+    expect(screen.getByText("/mnt/user/TV/the.night.shift.2024")).toBeInTheDocument();
+    expect(screen.queryByText("Holiday 2019 Final")).not.toBeInTheDocument();
+  });
+
+  it("has no page for a library that isn't there", async () => {
+    serveMockApi(scenarios.busy);
+    renderApp(`/admin/libraries/${mockId(1)}/unmatched`);
+    expect(await screen.findByRole("heading", { name: "This page doesn't exist." })).toBeInTheDocument();
   });
 
   it("fixes a match in the dialog, and the matched root work leaves the list while the page stays", async () => {
@@ -34,7 +45,7 @@ describe("Unmatched", () => {
       api.works[mockIds.holiday] = api.works[mockIds.dune] as WorkDetail;
       api.unmatched = api.unmatched.filter((w) => w.id !== mockIds.holiday);
     });
-    const { router, user } = renderApp("/admin/unmatched");
+    const { router, user } = renderApp(page);
     await user.click(await screen.findByRole("button", { name: "Fix match for Holiday 2019 Final" }));
     const dialog = await screen.findByRole("dialog", { name: "Fix match: Holiday 2019 Final" });
     expect(within(dialog).getByRole("textbox", { name: "Title" })).toHaveValue("Holiday 2019 Final");
@@ -42,15 +53,14 @@ describe("Unmatched", () => {
 
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     await waitFor(() => expect(screen.queryByText("Holiday 2019 Final")).not.toBeInTheDocument());
-    expect(screen.queryByRole("heading", { name: "Movies" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "the.night.shift" })).toBeInTheDocument();
-    expect(locationOf(router)).toBe("/admin/unmatched");
+    expect(await screen.findByRole("heading", { name: "Nothing unmatched" })).toBeInTheDocument();
+    expect(locationOf(router)).toBe(page);
     expect(sent("POST", `/works/${mockIds.holiday}/match`)[0]?.body).toEqual({ matchId: "tmdb-1" });
   });
 
   it("says when nothing is unmatched", async () => {
     serveMockApi(scenarios.quiet);
-    renderApp("/admin/unmatched");
+    renderApp(page);
     expect(await screen.findByRole("heading", { name: "Nothing unmatched" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Show more" })).not.toBeInTheDocument();
   });
@@ -66,7 +76,7 @@ describe("Unmatched", () => {
         path: `/mnt/user/Movies/untitled.${i}.mkv`,
       }));
     });
-    const { user } = renderApp("/admin/unmatched");
+    const { user } = renderApp(page);
     expect(await screen.findByText("untitled.99")).toBeInTheDocument();
     expect(screen.queryByText("untitled.100")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Show more" }));

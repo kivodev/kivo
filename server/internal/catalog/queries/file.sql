@@ -111,9 +111,14 @@ WHERE folder_id = @folder_id
 ORDER BY rel_path;
 
 -- name: GoneBatch :many
--- At most @limit of the files gone at or before @before: one batch of the
--- prune task, or of deleting every missing file.
-SELECT id FROM media_file WHERE status = 'gone' AND gone_at <= CAST(@before AS INTEGER) LIMIT @limit;
+-- At most @limit of the files gone at or before @before, of every library
+-- or of @library: one batch of the prune task, or of deleting every missing
+-- file.
+SELECT f.id FROM media_file f
+WHERE f.status = 'gone' AND f.gone_at <= CAST(@before AS INTEGER)
+  AND (CAST(@any_library AS BOOLEAN)
+    OR f.folder_id IN (SELECT r.id FROM library_folder r WHERE r.library_id = @library))
+LIMIT @limit;
 
 -- name: PutSubtitleFile :one
 -- A subtitle file keeps its ID while it stays at its path.

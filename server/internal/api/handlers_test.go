@@ -708,6 +708,9 @@ func TestUnmatch(t *testing.T) {
 		!strings.HasSuffix(fmt.Sprint(un.Items[0]["path"]), ".mkv") || un.Items[0]["libraryId"] != e.lib.String() {
 		t.Errorf("unmatched list %+v", un)
 	}
+	if un := decode[list](t, e.do("GET", "/api/v1/unmatched-works?libraryId="+id.New().String(), e.adminToken, nil)); len(un.Items) != 0 {
+		t.Errorf("another library's unmatched list %+v", un)
+	}
 	if r := e.do("GET", "/api/v1/unmatched-works", e.nobodyToken, nil); r.Code != http.StatusForbidden || problemCode(r) != codeForbidden {
 		t.Errorf("a viewer's unmatched list: %d %s", r.Code, r.Body.String())
 	}
@@ -863,7 +866,14 @@ func TestFiles(t *testing.T) {
 	if w := e.do("DELETE", "/api/v1/files?status=present", e.adminToken, nil); w.Code != http.StatusBadRequest {
 		t.Errorf("delete present files: %d", w.Code)
 	}
-	if w := e.do("DELETE", "/api/v1/files?status=gone", e.adminToken, nil); w.Code != http.StatusNoContent {
+	// Forget all for one library leaves the others' files.
+	if w := e.do("DELETE", "/api/v1/files?status=gone&libraryId="+id.New().String(), e.adminToken, nil); w.Code != http.StatusNoContent {
+		t.Errorf("delete another library's missing: %d %s", w.Code, w.Body.String())
+	}
+	if gone := decode[list](t, e.do("GET", "/api/v1/files?status=gone", e.adminToken, nil)); len(gone.Items) != 1 {
+		t.Errorf("after deleting another library's missing: %+v", gone)
+	}
+	if w := e.do("DELETE", "/api/v1/files?status=gone&libraryId="+e.lib.String(), e.adminToken, nil); w.Code != http.StatusNoContent {
 		t.Errorf("delete all missing: %d %s", w.Code, w.Body.String())
 	}
 	if gone := decode[list](t, e.do("GET", "/api/v1/files?status=gone", e.adminToken, nil)); len(gone.Items) != 0 {

@@ -17,12 +17,13 @@ import (
 
 // TestUnmatched checks that the Unmatched list holds every library's
 // unmatched works, library by library, each with what it was parsed from.
-// It also checks paging by cursor and filtering by the Viewer.
+// It also checks one library's list, paging by cursor and filtering by the
+// Viewer.
 func TestUnmatched(t *testing.T) {
 	ctx := context.Background()
 	h := newHousehold(t)
 
-	p, err := h.q.Unmatched(ctx, h.admin, "", 0)
+	p, err := h.q.Unmatched(ctx, h.admin, id.ID{}, "", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,11 +38,19 @@ func TestUnmatched(t *testing.T) {
 		}
 	}
 
+	// One library's list holds its own works only.
+	if p, err = h.q.Unmatched(ctx, h.admin, h.shows, "", 0); err != nil {
+		t.Fatal(err)
+	}
+	if got := ids(p.Items); !slices.Equal(got, want[1:]) {
+		t.Errorf("Unmatched of Shows = %v, want %v", got, want[1:])
+	}
+
 	// With one work per page, the cursor walks from Movies to Shows.
 	var got []id.ID
 	var after query.Cursor
 	for range 3 {
-		p, err := h.q.Unmatched(ctx, h.admin, after, 1)
+		p, err := h.q.Unmatched(ctx, h.admin, id.ID{}, after, 1)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -63,7 +72,7 @@ func TestUnmatched(t *testing.T) {
 		{"kid", h.kid, nil}, // blocks unrated works, as unmatched ones are
 		{"nobody", h.nobody, nil},
 	} {
-		p, err := h.q.Unmatched(ctx, c.v, "", 0)
+		p, err := h.q.Unmatched(ctx, c.v, id.ID{}, "", 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -72,14 +81,14 @@ func TestUnmatched(t *testing.T) {
 		}
 	}
 
-	if _, err := h.q.Unmatched(ctx, h.admin, "bogus", 0); !errors.Is(err, query.ErrInvalid) {
+	if _, err := h.q.Unmatched(ctx, h.admin, id.ID{}, "bogus", 0); !errors.Is(err, query.ErrInvalid) {
 		t.Errorf("a bogus cursor: %v, want ErrInvalid", err)
 	}
 	history, err := json.Marshal(map[string]any{"l": "history", "n": []int64{1}, "i": h.dune.Work})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := h.q.Unmatched(ctx, h.admin, query.Cursor(base64.RawURLEncoding.EncodeToString(history)), 0); !errors.Is(err, query.ErrInvalid) {
+	if _, err := h.q.Unmatched(ctx, h.admin, id.ID{}, query.Cursor(base64.RawURLEncoding.EncodeToString(history)), 0); !errors.Is(err, query.ErrInvalid) {
 		t.Errorf("another list's cursor: %v, want ErrInvalid", err)
 	}
 }

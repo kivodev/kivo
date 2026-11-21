@@ -491,11 +491,13 @@ export function createHandlers(api: MockApi) {
     }),
     // The Unmatched list. The mock's cursor is an index.
     http.get("/api/v1/unmatched-works", ({ query, response }) => {
+      const libraryId = query.get("libraryId");
+      const items = api.unmatched.filter((w) => !libraryId || w.libraryId === libraryId);
       const start = Number(query.get("after") ?? 0);
-      const end = start + Number(query.get("limit") ?? api.unmatched.length);
+      const end = start + Number(query.get("limit") ?? items.length);
       return response(200).json({
-        items: api.unmatched.slice(start, end),
-        next: end < api.unmatched.length ? String(end) : undefined,
+        items: items.slice(start, end),
+        next: end < items.length ? String(end) : undefined,
       });
     }),
     http.get("/api/v1/works/{id}", ({ params, response }) => {

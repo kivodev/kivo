@@ -262,13 +262,14 @@ func (c *Catalog) DeleteMissing(ctx context.Context, file id.ID) error {
 }
 
 // DeleteAllMissing deletes every file that is missing when an admin asks,
-// as DeleteMissing does for one file. It writes one batch at a time. It
-// deletes the files that went missing at or before the moment it's called,
-// including that millisecond.
-func (c *Catalog) DeleteAllMissing(ctx context.Context) error {
+// as DeleteMissing does for one file. It deletes one library's files, or
+// every library's when lib is the zero ID. It writes one batch at a time.
+// It deletes the files that went missing at or before the moment it's
+// called, including that millisecond.
+func (c *Catalog) DeleteAllMissing(ctx context.Context, lib id.ID) error {
 	now := time.Now()
 	err := c.db.Drain(ctx, func(ctx context.Context, tx *store.Tx) (int, error) {
-		return c.PruneGone(ctx, tx, now)
+		return c.pruneGone(ctx, tx, lib, now)
 	})
 	return err
 }
@@ -277,7 +278,15 @@ func (c *Catalog) DeleteAllMissing(ctx context.Context) error {
 // DeleteFiles does, and returns how many it deleted. It is a store.Drain
 // step.
 func (c *Catalog) PruneGone(ctx context.Context, tx *store.Tx, t time.Time) (int, error) {
-	files, err := dbq.New(tx).GoneBatch(ctx, dbq.GoneBatchParams{Before: t.UnixMilli(), Limit: store.BatchSize})
+	return c.pruneGone(ctx, tx, id.ID{}, t)
+}
+
+// pruneGone is PruneGone for one library, or for every library when lib is
+// the zero ID.
+func (c *Catalog) pruneGone(ctx context.Context, tx *store.Tx, lib id.ID, t time.Time) (int, error) {
+	files, err := dbq.New(tx).GoneBatch(ctx, dbq.GoneBatchParams{
+		Before: t.UnixMilli(), AnyLibrary: lib.IsZero(), Library: lib, Limit: store.BatchSize,
+	})
 	if err != nil {
 		return 0, err
 	}

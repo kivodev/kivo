@@ -51,7 +51,7 @@ func (h *handlers) DeleteMissingFiles(ctx context.Context, req gen.DeleteMissing
 	if !req.Params.Status.Valid() {
 		return nil, invalid("status is gone", field("/status", "invalid"))
 	}
-	if err := h.deps.Catalog.DeleteAllMissing(ctx); err != nil {
+	if err := h.deps.Catalog.DeleteAllMissing(ctx, deref(req.Params.LibraryID)); err != nil {
 		return nil, err
 	}
 	return gen.DeleteMissingFiles204Response{}, nil
