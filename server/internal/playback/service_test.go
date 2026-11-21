@@ -84,7 +84,7 @@ func (m *instantMedia) Transcode(ctx context.Context, req media.TranscodeRequest
 	if m.fail != nil {
 		return nil, &media.Error{Op: "transcode", Kind: m.fail}
 	}
-	o := &instantOutput{start: req.Start, step: 2 * time.Second}
+	o := &instantOutput{start: req.Start, step: 2 * time.Second, split: req.Video.Codec != "" && len(req.Audio) > 0}
 	if req.Video.Codec != media.Copy {
 		o.step, o.failAfter = req.SegmentDuration, m.failAfter
 	}
@@ -124,9 +124,16 @@ func (m *instantMedia) last() media.TranscodeRequest {
 type instantOutput struct {
 	start, step time.Duration
 	failAfter   int
+	split       bool // the audio is apart from the video, as the media package splits it
 }
 
-func (o *instantOutput) Init() ([]byte, error) { return []byte("init"), nil }
+func (o *instantOutput) Init() (media.Init, error) {
+	init := media.Init{Data: []byte("init")}
+	if o.split {
+		init.Audio = []byte("audio init")
+	}
+	return init, nil
+}
 func (o *instantOutput) Segments() iter.Seq2[media.Segment, error] {
 	return func(yield func(media.Segment, error) bool) {
 		n := 0
@@ -135,7 +142,11 @@ func (o *instantOutput) Segments() iter.Seq2[media.Segment, error] {
 				yield(media.Segment{}, &media.Error{Op: "transcode", Kind: media.ErrEncoderFailed})
 				return
 			}
-			if !yield(media.Segment{Start: t, Data: []byte("x")}, nil) {
+			seg := media.Segment{Start: t, Data: []byte("x")}
+			if o.split {
+				seg.Audio = []byte("a")
+			}
+			if !yield(seg, nil) {
 				return
 			}
 		}
@@ -448,8 +459,11 @@ func TestDirectPlayAndRemux(t *testing.T) {
 	if err != nil || len(pl.Data) == 0 || pl.Type != "application/vnd.apple.mpegurl" {
 		t.Fatalf("playlist: %v", err)
 	}
-	if _, err := f.svc.HLS(ctx, s.ID, "3.m4s"); err != nil {
-		t.Fatalf("segment: %v", err)
+	if m, err := f.svc.HLS(ctx, s.ID, "3.m4s"); err != nil || m.Type != "video/mp4" {
+		t.Fatalf("segment: %+v %v", m, err)
+	}
+	if m, err := f.svc.HLS(ctx, s.ID, "audio-3.m4s"); err != nil || m.Type != "audio/mp4" {
+		t.Fatalf("audio segment: %+v %v", m, err)
 	}
 	if _, err := f.svc.HLS(ctx, s.ID, "../etc/passwd.m3u8"); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("bad name: %v", err)
@@ -1473,7 +1487,7 @@ func TestSubtitles(t *testing.T) {
 		t.Fatalf("external subtitles %+v", s.ExternalSubtitles)
 	}
 	pl, err := f.svc.HLS(ctx, s.ID, "index.m3u8")
-	if err != nil || strings.Count(string(pl.Data), "TYPE=SUBTITLES") != 3 || strings.Count(string(pl.Data), "DEFAULT=YES") != 1 ||
+	if err != nil || strings.Count(string(pl.Data), "TYPE=SUBTITLES") != 3 || defaultSubtitles(pl.Data) != 1 ||
 		!strings.Contains(string(pl.Data), `DEFAULT=YES,AUTOSELECT=YES,FORCED=NO,STABLE-RENDITION-ID="`+fr.String()+`"`) {
 		t.Fatalf("the multivariant playlist: %v\n%s", err, pl.Data)
 	}
@@ -1645,9 +1659,21 @@ func TestTextTracksStreamInHLS(t *testing.T) {
 		t.Fatalf("external subtitles %+v", s.ExternalSubtitles)
 	}
 	if pl, err := f.svc.HLS(ctx, s.ID, transcode.PlaylistName); err != nil || strings.Count(string(pl.Data), "TYPE=SUBTITLES") != 1 ||
-		strings.Contains(string(pl.Data), "DEFAULT=YES") {
+		defaultSubtitles(pl.Data) != 0 {
 		t.Fatalf("playlist with the styled track drawn: %v\n%s", err, pl.Data)
 	}
+}
+
+// defaultSubtitles counts the subtitle renditions a multivariant playlist
+// shows from the start.
+func defaultSubtitles(pl []byte) int {
+	n := 0
+	for line := range strings.Lines(string(pl)) {
+		if strings.Contains(line, "TYPE=SUBTITLES") && strings.Contains(line, "DEFAULT=YES") {
+			n++
+		}
+	}
+	return n
 }
 
 // A play decides styled subtitles once, as it starts. Prepared ASS is
