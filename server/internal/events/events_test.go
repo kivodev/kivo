@@ -207,7 +207,7 @@ func TestOtherKindsGoOutAtOnce(t *testing.T) {
 	b := NewBus()
 	s := b.Subscribe(all)
 	defer s.Close()
-	for _, k := range []Kind{WorkChanged, UserStateChanged, PlayEnded, ProblemsChanged, WorkChanged} {
+	for _, k := range []Kind{WorkChanged, UserStateChanged, PlayEnded, ListsChanged, WorkChanged} {
 		b.Publish(Event{Kind: k})
 	}
 	if got := collect(s); len(got) != 5 {

@@ -63,7 +63,6 @@ export type TaskName = Schemas["TaskName"];
 export type TaskRun = Schemas["TaskRun"];
 export type TaskFailure = Schemas["TaskFailure"];
 export type SettingsUpdate = Schemas["SettingsUpdate"];
-export type ServerProblem = Schemas["ServerProblem"];
 export type ActivityEvent = Schemas["ActivityEvent"];
 export type ActivityGroup = Schemas["ActivityGroup"];
 export type LogLine = Schemas["LogLine"];

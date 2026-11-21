@@ -33,7 +33,6 @@ import kotlinx.serialization.encoding.*
  *
  * @param type 
  * @param serverVersion 
- * @param problemCount Admins only. Open problems, for the dot on Admin.
  */
 @Serializable
 
@@ -41,10 +40,7 @@ data class SnapshotMessage (
 
     @SerialName(value = "type") @Required val type: SnapshotMessage.Type,
 
-    @SerialName(value = "serverVersion") @Required val serverVersion: kotlin.String,
-
-    /* Admins only. Open problems, for the dot on Admin. */
-    @SerialName(value = "problemCount") val problemCount: kotlin.Int? = null
+    @SerialName(value = "serverVersion") @Required val serverVersion: kotlin.String
 
 ) {
 

@@ -176,8 +176,6 @@ src/commonMain/kotlin/com/mmcdole/kivo/api/models/SearchResults.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/SeasonInfo.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/SeriesInfo.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/ServerInfo.kt
-src/commonMain/kotlin/com/mmcdole/kivo/api/models/ServerProblem.kt
-src/commonMain/kotlin/com/mmcdole/kivo/api/models/ServerProblemList.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/ServerProof.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/Session.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/SessionCreate.kt

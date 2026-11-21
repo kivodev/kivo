@@ -47,9 +47,6 @@ const (
 	// PlaysChanged says a play started or ended, or a heartbeat moved its
 	// position or paused it. It is admin-only.
 	PlaysChanged Kind = "playsChanged"
-	// ProblemsChanged says the open problems changed. It is admin-only.
-	// Data is the number of open problems, as an int.
-	ProblemsChanged Kind = "problemsChanged"
 	// HomeChanged says a user's Home layout changed. It is scoped to the
 	// user.
 	HomeChanged Kind = "homeChanged"

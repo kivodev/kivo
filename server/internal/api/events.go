@@ -105,7 +105,7 @@ func (s *Server) stream(ctx context.Context, conn *websocket.Conn, c caller) {
 	v := c.viewer
 	sub := s.deps.Events.Subscribe(scopeFilter(v))
 	defer func() { sub.Close() }()
-	if s.send(sendCtx, conn, s.snapshot(sendCtx, v)) != nil {
+	if s.send(sendCtx, conn, s.snapshot()) != nil {
 		return
 	}
 	// resync starts over with the current Viewer. It opens a new
@@ -115,7 +115,7 @@ func (s *Server) stream(ctx context.Context, conn *websocket.Conn, c caller) {
 		sub.Close()
 		sub = s.deps.Events.Subscribe(scopeFilter(v))
 		return s.send(sendCtx, conn, gen.ResyncMessage{Type: gen.ResyncMessageTypeResync}) == nil &&
-			s.send(sendCtx, conn, s.snapshot(sendCtx, v)) == nil
+			s.send(sendCtx, conn, s.snapshot()) == nil
 	}
 	tick := time.NewTicker(recheckEvery)
 	defer tick.Stop()
@@ -205,12 +205,8 @@ func scopeFilter(v users.Viewer) func(events.Scope) bool {
 	}
 }
 
-func (s *Server) snapshot(ctx context.Context, v users.Viewer) gen.SnapshotMessage {
-	msg := gen.SnapshotMessage{Type: gen.SnapshotMessageTypeSnapshot, ServerVersion: s.deps.Version}
-	if v.Admin() {
-		msg.ProblemCount = ptr(len(s.deps.Problems.Open(ctx)))
-	}
-	return msg
+func (s *Server) snapshot() gen.SnapshotMessage {
+	return gen.SnapshotMessage{Type: gen.SnapshotMessageTypeSnapshot, ServerVersion: s.deps.Version}
 }
 
 // eventMessage is an event on the wire, as v may see it. Kinds without a
@@ -239,12 +235,6 @@ func eventMessage(e events.Event, v users.Viewer) (gen.EventMessage, bool) {
 			return msg, false
 		}
 		msg.PlayID, msg.Message = &d.Play, opt(d.Message)
-	case events.ProblemsChanged:
-		n, ok := e.Data.(int)
-		if !ok {
-			return msg, false
-		}
-		msg.ProblemCount = &n
 	case events.DownloadsChanged, events.PlaysChanged, events.TasksChanged, events.LogsChanged, events.ActivityChanged, events.HomeChanged, events.ListsChanged:
 	default:
 		return msg, false

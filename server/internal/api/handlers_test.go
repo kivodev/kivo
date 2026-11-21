@@ -881,25 +881,12 @@ func TestFiles(t *testing.T) {
 	}
 }
 
-func TestProblemsAndMetrics(t *testing.T) {
+// The metrics count the open problems.
+func TestMetrics(t *testing.T) {
 	e := newEnv(t, serving{})
-	since := time.Now().Add(-time.Hour)
-	e.reported.problems = []health.Problem{{Component: "scan", Code: "folderUnreachable", Message: "library /mnt/tv unreachable", RaisedAt: since, Severity: health.Error}}
-	ps := decode[list](t, e.do("GET", "/api/v1/problems", e.adminToken, nil))
-	if len(ps.Items) != 1 || ps.Items[0]["severity"] != "error" {
-		t.Fatalf("problems %+v", ps)
-	}
-	if w := e.do("DELETE", "/api/v1/problems/"+ps.Items[0]["id"].(string), e.adminToken, nil); w.Code != http.StatusNoContent {
-		t.Errorf("dismiss: %d", w.Code)
-	}
-	if ps := decode[list](t, e.do("GET", "/api/v1/problems", e.adminToken, nil)); len(ps.Items) != 0 {
-		t.Errorf("after dismissing %+v", ps)
-	}
-	if w := e.do("DELETE", "/api/v1/problems/nope", e.adminToken, nil); w.Code != http.StatusNotFound {
-		t.Errorf("dismiss unknown: %d", w.Code)
-	}
+	e.reported.problems = []health.Problem{{Component: "scan", Code: "folderUnreachable", Message: "library /mnt/tv unreachable", RaisedAt: time.Now().Add(-time.Hour), Severity: health.Error}}
 	w := e.do("GET", "/api/v1/metrics", e.adminToken, nil)
-	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `kivo_http_requests_total{route="GET /api/v1/problems",status="2xx"} 2`) {
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "kivo_problems 1\n") {
 		t.Errorf("metrics: %d %s", w.Code, w.Body.String())
 	}
 }
