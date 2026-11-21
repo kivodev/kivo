@@ -33,10 +33,24 @@ namespace KivoPlayer
                 profiles.Push("Main 10")
                 depth = 10
             end if
-            entries.Push({
-                codec: "hevc", delivery: ["file", "stream"], containers: containers, tags: ["hvc1", "hev1"],
-                profiles: profiles, maxBitDepth: depth, maxWidth: size.w, maxHeight: size.h, hdr: KivoPlayer.hdrFormats(device)
-            })
+            ' Dolby Vision with no listed profile plays as its base layer: HDR10, HLG or SDR.
+            hevc = {
+                codec: "hevc", delivery: ["file", "stream"], containers: containers, tags: ["hvc1", "hev1", "dvh1", "dvhe"],
+                profiles: profiles, maxBitDepth: depth, maxWidth: size.w, maxHeight: size.h, hdr: KivoPlayer.hdrFormats(device),
+                doviFallback: true
+            }
+            level = KivoPlayer.hevcLevel(device, profiles[profiles.Count() - 1])
+            if level > 0 then hevc.maxLevel = level
+            entries.Push(hevc)
+            ' A Dolby Vision display shows profile 5 from MP4 only; in MKV its colours come out wrong.
+            if device.GetDisplayProperties().DolbyVision = true
+                vision = {}
+                vision.Append(hevc)
+                vision.delivery = ["file"]
+                vision.containers = ["mp4", "mov"]
+                vision.dolbyVision = [{ profile: 5 }]
+                entries.Push(vision)
+            end if
         end if
         for each codec in ["vp9", "av1"]
             if device.CanDecodeVideo({ Codec: codec }).result = true
@@ -56,16 +70,38 @@ namespace KivoPlayer
         ]
         ' Dolby Digital plays decoded or passed through to the TV or receiver.
         for each codec in ["ac3", "eac3"]
-            if device.CanDecodeAudio({ Codec: codec, ChCnt: 6 }).result = true
-                entries.Push({ codec: codec, delivery: ["file", "stream"], containers: containers, maxChannels: 6 })
+            channels = KivoPlayer.mostChannels(device, codec, [8, 6])
+            if channels > 0
+                entries.Push({ codec: codec, delivery: ["file", "stream"], containers: containers, maxChannels: channels })
+            else if codec = "ac3" and device.GetAudioOutputChannel() = "5.1 surround"
+                ' Some Rokus set to 5.1 output deny AC-3 they pass through from MKV.
+                entries.Push({ codec: codec, delivery: ["file"], containers: ["mkv"], maxChannels: 6 })
             end if
         end for
-        for each codec in ["mp3", "flac"]
-            if device.CanDecodeAudio({ Codec: codec }).result = true
-                entries.Push({ codec: codec, delivery: ["file"], containers: ["mkv", "mp4"], maxChannels: 2 })
-            end if
+        ' DTS mostly plays passed through to a receiver that takes it.
+        for each codec in ["dts", "mp3", "flac", "alac", "opus", "vorbis"]
+            channels = KivoPlayer.mostChannels(device, codec, [8, 6, 2])
+            if channels > 0 then entries.Push({ codec: codec, delivery: ["file"], containers: ["mkv", "mp4"], maxChannels: channels })
         end for
         return entries
+    end function
+
+    ' The most channels of a codec the device plays, of those offered from
+    ' most to fewest, or 0 when it plays none.
+    function mostChannels(device as object, codec as string, offered as object) as integer
+        for each channels in offered
+            if device.CanDecodeAudio({ Codec: codec, ChCnt: channels }).result = true then return channels
+        end for
+        return 0
+    end function
+
+    ' The highest HEVC level the device decodes a profile at, or 0 when it
+    ' doesn't say.
+    function hevcLevel(device as object, profile as string) as float
+        for each level in ["5.1", "5.0", "4.1"]
+            if device.CanDecodeVideo({ Codec: "hevc", Profile: LCase(profile), Level: level }).result = true then return level.ToFloat()
+        end for
+        return 0.0
     end function
 
     ' The HDR formats the display shows, of the contract's hdr10, hdr10plus and hlg.
