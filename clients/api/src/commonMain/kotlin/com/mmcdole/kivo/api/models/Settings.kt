@@ -48,6 +48,7 @@ import kotlinx.serialization.encoding.*
  * @param markersAtOnce How many files are fingerprinted for intro and credits markers at once, in the maintenance window and outside it. 
  * @param publicUrl The address apps use away from home, such as `https://kivo.example.com`; empty when the server isn't reachable from outside. Signed-in apps get it from `GET /api/v1/server`. 
  * @param remoteQualityCapBps The most a stream outside the local networks may use, for a user without a remote streaming limit of their own; 0 is no limit. 
+ * @param openSubtitlesRefused Set while OpenSubtitles refuses the saved API key, or the saved username or password. 
  */
 @Serializable
 
@@ -102,10 +103,24 @@ data class Settings (
     @SerialName(value = "publicUrl") @Required val publicUrl: kotlin.String,
 
     /* The most a stream outside the local networks may use, for a user without a remote streaming limit of their own; 0 is no limit.  */
-    @SerialName(value = "remoteQualityCapBps") @Required val remoteQualityCapBps: kotlin.Long
+    @SerialName(value = "remoteQualityCapBps") @Required val remoteQualityCapBps: kotlin.Long,
+
+    /* Set while OpenSubtitles refuses the saved API key, or the saved username or password.  */
+    @SerialName(value = "openSubtitlesRefused") val openSubtitlesRefused: Settings.OpenSubtitlesRefused? = null
 
 ) {
 
+    /**
+     * Set while OpenSubtitles refuses the saved API key, or the saved username or password. 
+     *
+     * Values: key,account
+     */
+    @Serializable
+    enum class OpenSubtitlesRefused(val value: kotlin.String) {
+        @SerialName(value = "key") key("key"),
+        @SerialName(value = "account") account("account");
+        override fun toString(): kotlin.String = value
+    }
 
 }
 

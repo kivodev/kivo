@@ -677,6 +677,21 @@ func (o *openSubtitles) reject() error {
 	return fmt.Errorf("%w: OpenSubtitles until %s: the API key was rejected", ErrUnavailable, out.Until.Format(time.RFC3339))
 }
 
+// refused says what OpenSubtitles refuses of the credentials in st: "key",
+// "account", or "" while it refuses neither.
+func (o *openSubtitles) refused(st config.Settings) string {
+	a := o.account(st)
+	switch {
+	case a == nil:
+		return ""
+	case o.limit.Outage().Rejected:
+		return "key"
+	case !a.rejected().IsZero():
+		return "account"
+	}
+	return ""
+}
+
 // health lists OpenSubtitles' problems: it's down, or it refuses the key
 // or the account in st.
 func (o *openSubtitles) health(st config.Settings) []health.Problem {

@@ -261,8 +261,8 @@ func TestOpenSubtitlesAccountRejected(t *testing.T) {
 	if _, err := d.s.fetch(ctx, "7001.en"); !errors.Is(err, ErrUnavailable) {
 		t.Fatalf("refused account: %v", err)
 	}
-	if !slices.Contains(problemCodes(d), "openSubtitlesAccountRejected") {
-		t.Fatalf("health %v", problemCodes(d))
+	if !slices.Contains(problemCodes(d), "openSubtitlesAccountRejected") || d.s.Refused() != "account" {
+		t.Fatalf("health %v, refused %q", problemCodes(d), d.s.Refused())
 	}
 	// Searching needs no account, so it keeps working.
 	if _, err := d.s.search(ctx, f, nil); err != nil {
@@ -273,8 +273,8 @@ func TestOpenSubtitlesAccountRejected(t *testing.T) {
 	}
 
 	d.setOpenSubtitles("os-key", "anna", "pw")
-	if slices.Contains(problemCodes(d), "openSubtitlesAccountRejected") {
-		t.Fatalf("still raised after a change: %v", problemCodes(d))
+	if slices.Contains(problemCodes(d), "openSubtitlesAccountRejected") || d.s.Refused() != "" {
+		t.Fatalf("still raised after a change: %v, refused %q", problemCodes(d), d.s.Refused())
 	}
 	if _, err := d.s.fetch(ctx, "7001.en"); err != nil {
 		t.Fatal(err)
@@ -297,10 +297,13 @@ func TestOpenSubtitlesKeyRejected(t *testing.T) {
 	if _, err := d.s.fetch(ctx, "7001.en"); !errors.Is(err, ErrUnavailable) {
 		t.Fatalf("download with a refused key: %v", err)
 	}
-	if !slices.Contains(problemCodes(d), "openSubtitlesKeyRejected") {
-		t.Fatalf("health %v", problemCodes(d))
+	if !slices.Contains(problemCodes(d), "openSubtitlesKeyRejected") || d.s.Refused() != "key" {
+		t.Fatalf("health %v, refused %q", problemCodes(d), d.s.Refused())
 	}
 	d.setOpenSubtitles("os-key", "", "")
+	if d.s.Refused() != "" {
+		t.Fatalf("a new key is still refused: %q", d.s.Refused())
+	}
 	if _, err := d.s.fetch(ctx, "7001.en"); err != nil {
 		t.Fatalf("a new key: %v", err)
 	}

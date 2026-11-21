@@ -2941,6 +2941,12 @@ export interface components {
             /** @description Whether the OpenSubtitles account has a password; the password itself is never sent. */
             openSubtitlesPasswordSet: boolean;
             /**
+             * @description Set while OpenSubtitles refuses the saved API key, or the saved
+             *     username or password.
+             * @enum {string}
+             */
+            openSubtitlesRefused?: "key" | "account";
+            /**
              * @description Scan a folder as soon as files in it change. Off, changes are
              *     found by the scan of every library every 12 hours, or a scan an
              *     admin starts.

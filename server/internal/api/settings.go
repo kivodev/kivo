@@ -8,7 +8,7 @@ import (
 )
 
 func (h *handlers) GetSettings(context.Context, gen.GetSettingsRequestObject) (gen.GetSettingsResponseObject, error) {
-	return gen.GetSettings200JSONResponse(settings(h.deps.Settings.Get())), nil
+	return gen.GetSettings200JSONResponse(h.settings()), nil
 }
 
 func (h *handlers) UpdateSettings(ctx context.Context, req gen.UpdateSettingsRequestObject) (gen.UpdateSettingsResponseObject, error) {
@@ -52,12 +52,16 @@ func (h *handlers) UpdateSettings(ctx context.Context, req gen.UpdateSettingsReq
 	if err != nil {
 		return nil, err
 	}
-	return gen.UpdateSettings200JSONResponse(settings(h.deps.Settings.Get())), nil
+	return gen.UpdateSettings200JSONResponse(h.settings()), nil
 }
 
-func settings(st config.Settings) gen.Settings {
+// settings is the saved settings, with what OpenSubtitles refuses of its
+// credentials.
+func (h *handlers) settings() gen.Settings {
+	st := h.deps.Settings.Get()
 	return gen.Settings{
-		ServerName: st.ServerName, MetadataLanguage: st.MetadataLanguage, ContentRatingCountry: st.ContentRatingCountry,
+		OpenSubtitlesRefused: optAs[gen.SettingsOpenSubtitlesRefused](h.deps.Subtitles.Refused()),
+		ServerName:           st.ServerName, MetadataLanguage: st.MetadataLanguage, ContentRatingCountry: st.ContentRatingCountry,
 		PlayedThreshold: st.PlayedThreshold, OpenSubtitlesKey: st.OpenSubtitlesKey,
 		OpenSubtitlesUsername: st.OpenSubtitlesUsername, OpenSubtitlesPasswordSet: st.OpenSubtitlesPassword != "",
 		FileWatching: st.FileWatching, LocalNetworks: nonNil(st.LocalNetworks),

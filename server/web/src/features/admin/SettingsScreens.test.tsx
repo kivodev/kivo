@@ -85,6 +85,33 @@ describe("Admin settings", () => {
     expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
   });
 
+  it("General says under the key that OpenSubtitles refuses the saved one, until it's edited", async () => {
+    const api = serveMockApi();
+    api.settings = { ...api.settings, openSubtitlesKey: "old-key", openSubtitlesRefused: "key" };
+    const { user } = renderApp("/admin/settings/general");
+    const key = await screen.findByRole("textbox", { name: "OpenSubtitles API key" });
+    expect(key).toHaveAccessibleDescription(expect.stringContaining("OpenSubtitles refuses this key."));
+    expect(screen.queryByText("OpenSubtitles refuses this username or password.")).not.toBeInTheDocument();
+    await user.type(key, "2");
+    expect(screen.queryByText("OpenSubtitles refuses this key.")).not.toBeInTheDocument();
+  });
+
+  it("General says under the password that OpenSubtitles refuses the saved account", async () => {
+    const api = serveMockApi();
+    api.settings = {
+      ...api.settings,
+      openSubtitlesUsername: "anna",
+      openSubtitlesPasswordSet: true,
+      openSubtitlesRefused: "account",
+    };
+    renderApp("/admin/settings/general");
+    const password = await screen.findByLabelText("OpenSubtitles password");
+    expect(password).toHaveAccessibleDescription(
+      expect.stringContaining("OpenSubtitles refuses this username or password."),
+    );
+    expect(screen.queryByText("OpenSubtitles refuses this key.")).not.toBeInTheDocument();
+  });
+
   it("shows the save bar only with a change, and Discard puts the saved settings back", async () => {
     serveMockApi();
     const { user } = renderApp("/admin/settings/network");
