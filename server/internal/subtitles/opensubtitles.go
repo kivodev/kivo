@@ -334,7 +334,7 @@ func (o *openSubtitles) searchRemote(ctx context.Context, a *account, q string) 
 	case resp.Status == http.StatusNotFound:
 		o.limit.Recovered()
 		return nil, ttlNotFound, nil
-	case resp.Status == http.StatusUnauthorized:
+	case resp.Status == http.StatusForbidden:
 		return nil, 0, o.reject()
 	case resp.Status == http.StatusTooManyRequests || resp.Status >= 500:
 		return nil, 0, o.failed(resp.RetryAfter(), fmt.Errorf("status %d", resp.Status))
@@ -493,8 +493,7 @@ func (o *openSubtitles) download(ctx context.Context, a *account, file int) (nam
 		if resp.Status != http.StatusUnauthorized || tok == "" || attempt > 0 {
 			break
 		}
-		// Account tokens expire after ~24h; sign in once and retry before
-		// treating 401 as a rejected API key.
+		// Account tokens expire after ~24h; sign in once and retry.
 		a.mu.Lock()
 		if a.token == tok {
 			a.token = ""
@@ -511,11 +510,13 @@ func (o *openSubtitles) download(ctx context.Context, a *account, file int) (nam
 		return "", nil, &QuotaError{Reset: reset}
 	case http.StatusNotFound, http.StatusGone:
 		return "", nil, fmt.Errorf("%w: subtitle file %d", ErrNotFound, file)
+	case http.StatusForbidden:
+		return "", nil, o.reject()
 	case http.StatusUnauthorized:
 		a.mu.Lock()
 		a.token = "" // sign in again next time, in case the token expired
 		a.mu.Unlock()
-		return "", nil, o.reject()
+		return "", nil, fmt.Errorf("the OpenSubtitles download answered %d", resp.Status)
 	default:
 		return "", nil, fmt.Errorf("the OpenSubtitles download answered %d", resp.Status)
 	}
@@ -569,6 +570,9 @@ func (o *openSubtitles) login(ctx context.Context, a *account) (string, error) {
 	resp, err := o.post(ctx, openSubtitlesAPI+"/login", h, body)
 	if err != nil {
 		return "", err
+	}
+	if resp.Status == http.StatusForbidden {
+		return "", o.reject()
 	}
 	if resp.Status == http.StatusUnauthorized || resp.Status == http.StatusBadRequest {
 		a.mu.Lock()

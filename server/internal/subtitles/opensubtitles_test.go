@@ -22,7 +22,8 @@ import (
 // fakeOpenSubtitles answers requests the way OpenSubtitles does. Its
 // searches come from testdata, in the shape the API returns, trimmed to
 // the fields Kivo reads. No test touches the network. The egress client's
-// own rules are tested in its package.
+// own rules are tested in its package. It answers searches whatever the
+// key, and refuses an unknown key's sign-ins and downloads with a 403.
 type fakeOpenSubtitles struct {
 	mu     sync.Mutex
 	hits   map[string]int // path → requests seen
@@ -59,10 +60,10 @@ func (o *fakeOpenSubtitles) answer(raw string, h http.Header, body []byte) egres
 		return egress.Response{Status: status, Header: http.Header{}}
 	case u.Host == "dl.opensubtitles.com":
 		return ok("1\r\n00:00:01,000 --> 00:00:02,000\r\nThe spice must flow.\r\n")
-	case u.Path == "/api/v1/login" && h.Get("Api-Key") == "unknown-key":
-		return egress.Response{Status: http.StatusForbidden, Header: http.Header{}, Body: []byte(`{"message": "You cannot consume this service"}`)}
-	case h.Get("Api-Key") != "os-key" || !strings.HasPrefix(h.Get("User-Agent"), "Kivo v"):
+	case !strings.HasPrefix(h.Get("User-Agent"), "Kivo v"):
 		return egress.Response{Status: http.StatusUnauthorized, Header: http.Header{}}
+	case h.Get("Api-Key") != "os-key" && u.Path != "/api/v1/subtitles":
+		return egress.Response{Status: http.StatusForbidden, Header: http.Header{}, Body: []byte(`{"message": "You cannot consume this service"}`)}
 	}
 	switch u.Path {
 	case "/api/v1/subtitles":
@@ -283,24 +284,37 @@ func TestOpenSubtitlesAccountRejected(t *testing.T) {
 	}
 }
 
-// A key OpenSubtitles refuses raises a problem. A new key is tried at
-// once, and clears the problem when it works.
+// A key OpenSubtitles refuses raises a problem when a download or a
+// sign-in is refused, since searches are answered whatever the key. A new
+// key is tried at once, and clears the problem when it works.
 func TestOpenSubtitlesKeyRejected(t *testing.T) {
 	d := newDownloads(t)
 	f := d.catalogFile()
 	d.setOpenSubtitles("bad-key", "", "")
-	if _, err := d.s.search(ctx, f, nil); !errors.Is(err, ErrUnavailable) {
-		t.Fatalf("a refused key: %v", err)
+	if _, err := d.s.search(ctx, f, nil); err != nil {
+		t.Fatalf("search with a refused key: %v", err)
+	}
+	if _, err := d.s.fetch(ctx, "7001.en"); !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("download with a refused key: %v", err)
 	}
 	if !slices.Contains(problemCodes(d), "openSubtitlesKeyRejected") {
 		t.Fatalf("health %v", problemCodes(d))
 	}
 	d.setOpenSubtitles("os-key", "", "")
-	if _, err := d.s.search(ctx, f, nil); err != nil {
+	if _, err := d.s.fetch(ctx, "7001.en"); err != nil {
 		t.Fatalf("a new key: %v", err)
 	}
 	if len(problemCodes(d)) != 0 {
 		t.Fatalf("health %v", problemCodes(d))
+	}
+
+	// A sign-in refused for its key is the key's problem, not the account's.
+	d.setOpenSubtitles("bad-key", "anna", "pw")
+	if _, err := d.s.fetch(ctx, "7001.en"); !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("sign-in with a refused key: %v", err)
+	}
+	if got := problemCodes(d); !slices.Equal(got, []string{"openSubtitlesKeyRejected"}) {
+		t.Fatalf("health %v, want the key's problem only", got)
 	}
 }
 
