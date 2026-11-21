@@ -376,6 +376,69 @@ func TestConcurrentRelinkFallsBackToNewFile(t *testing.T) {
 	}
 }
 
+// A known file moved onto another known file's path replaces it there. The
+// file at that path is probed as a changed file, and keeps its ID and
+// version. The moved file's old row stays gone.
+func TestMoveOntoAKnownFileProbesItAsChanged(t *testing.T) {
+	h := newHarness(t)
+	l := h.library(catalog.Movies, "/m")
+	folder, fsys := l.Folders[0].ID, h.folders["/m"]
+	kept := h.movie(folder, fsys, "A/a.mkv", "first")
+	replacement := h.movie(folder, fsys, "B/b.mkv", "other bytes")
+	h.identifyAll()
+	fsys.rename("B/b.mkv", "A/a.mkv", time.Now())
+	h.mustScan(folder)
+	h.probeAll()
+
+	if got := h.unprobed(l.ID); len(got) != 0 {
+		t.Fatalf("unprobed %v; want the replaced file probed", got)
+	}
+	f, err := h.b.Catalog.File(ctx, kept.file)
+	if err != nil || !f.Present || f.RelPath != "A/a.mkv" || f.Size != int64(len("other bytes")) || f.Probe.EdgeHash == nil {
+		t.Fatalf("file %+v, %v; want the replaced file probed at its path", f, err)
+	}
+	if v, err := h.b.Catalog.Version(ctx, kept.version); err != nil || !slices.Equal(v.Works, []id.ID{kept.work}) {
+		t.Fatalf("version %+v, %v; want it kept with its work", v, err)
+	}
+	if got := h.unidentified(folder); !slices.Equal(got, []id.ID{kept.file}) {
+		t.Fatalf("unidentified %v; want the replaced file identified again", got)
+	}
+	if g, err := h.b.Catalog.File(ctx, replacement.file); err != nil || g.Present || g.RelPath != "B/b.mkv" {
+		t.Fatalf("moved file's old row %+v, %v; want it gone at its old path", g, err)
+	}
+}
+
+// One part of a two-part version moved to another library is a new file
+// there, because a version's parts stay in one library.
+func TestMoveOfOnePartToAnotherLibraryIsANewFile(t *testing.T) {
+	h := newHarness(t)
+	from, to := h.library(catalog.Movies, "/m"), h.library(catalog.Movies, "/n")
+	fromFolder, toFolder := from.Folders[0].ID, to.Folders[0].ID
+	h.folders["/m"].write("A/a-pt1.mkv", "part one", old)
+	h.folders["/m"].write("A/a-pt2.mkv", "part two!", old)
+	h.mustScan(fromFolder)
+	h.probeAll()
+	parts := h.files(fromFolder)
+	pt1, pt2 := parts["A/a-pt1.mkv"].ID, parts["A/a-pt2.mkv"].ID
+	h.b.Version([]id.ID{pt1, pt2}, h.b.Work(catalog.WorkInput{Kind: catalog.KindMovie, Title: "A"}))
+	h.folders["/m"].remove("A/a-pt1.mkv", time.Now())
+	h.folders["/n"].write("A/a-pt1.mkv", "part one", old)
+	h.mustScan(fromFolder)
+	h.mustScan(toFolder)
+	h.probeAll()
+
+	if got := h.unprobed(to.ID); len(got) != 0 {
+		t.Fatalf("unprobed %v; want the moved part probed", got)
+	}
+	found := h.files(toFolder)["A/a-pt1.mkv"]
+	if found.ID == pt1 || !found.Present {
+		t.Fatalf("file %+v; want a new file in the other library", found)
+	}
+	if g, err := h.b.Catalog.File(ctx, pt1); err != nil || g.Present || g.Library != from.ID {
+		t.Fatalf("the part's old row %+v, %v; want it gone in its own library", g, err)
+	}
+}
+
 // A scan may find tens of thousands of files missing at once, such as when
 // a branch of a share drops out. That is more than one statement could
 // bind, so it marks them gone in batches. It records the directory only
