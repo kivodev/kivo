@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
 
@@ -66,6 +67,10 @@ class PlayController internal constructor(
     private var generation = 0
     private var heartbeat: Job? = null
     private var seekStartedAt: TimeSource.Monotonic.ValueTimeMark? = null
+
+    /** Where the seek under way goes, and from where: the engine may say where it was until it lands. */
+    private var seekTargetMs = 0L
+    private var seekFromMs = 0L
     private var waiting = false
     private var lastPositionMs = 0L
 
@@ -99,9 +104,10 @@ class PlayController internal constructor(
     /**
      * Starts a play, ending the current one first. Its media stays in the
      * engine, paused, until the new play's replaces it, so the picture never
-     * goes empty between them.
+     * goes empty between them. A [paused] one stays paused once its media
+     * is ready, until it's resumed.
      */
-    internal fun play(request: PlayRequest) {
+    internal fun play(request: PlayRequest, paused: Boolean = false) {
         val generation = end(keepMedia = true)
         this.request = request
         shownSubtitle = null
@@ -111,6 +117,10 @@ class PlayController internal constructor(
         reconnected = false
         request.positionMs?.let { lastPositionMs = it }
         dispatch(PlayerAction.Start)
+        if (paused) {
+            startPaused = true
+            dispatch(PlayerAction.Pause)
+        }
         scope.launch {
             try {
                 val body = PlayCreate(
@@ -219,17 +229,37 @@ class PlayController internal constructor(
         val duration = current?.durationMs ?: return
         if (!loaded) return
         val target = positionMs.coerceIn(0, duration.toLong())
+        seekFromMs = positionMs()
         seekStartedAt = TimeSource.Monotonic.markNow()
+        seekTargetMs = target
         dispatch(PlayerAction.Seek(target))
         engine.seek(target)
     }
 
-    fun skip(deltaMs: Long) = seek(positionMs() + deltaMs)
+    /** Moves by [deltaMs] from [targetMs], so skips in quick succession add up. */
+    fun skip(deltaMs: Long) = seek(targetMs() + deltaMs)
+
+    /**
+     * Where it's going: the position a seek under way goes to, while the
+     * engine still says about where it was before it, and for [SEEK_SETTLE]
+     * at most, in case the engine never says it landed; else [positionMs].
+     */
+    fun targetMs(): Long {
+        val position = positionMs()
+        val started = seekStartedAt
+        if (!loaded || started == null || started.elapsedNow() >= SEEK_SETTLE) return position
+        val moved = abs(position - seekFromMs)
+        return if (moved <= SEEK_DRIFT_MS && moved < abs(position - seekTargetMs)) seekTargetMs else position
+    }
 
     fun togglePlay() = if (engine.paused) resume() else pause()
 
     fun resume() {
-        if (!loaded) return
+        if (!loaded) {
+            // Asked to play while its media loads: it plays once ready.
+            startPaused = false
+            return
+        }
         if (state.value.ended) seek(0)
         engine.play()
     }
@@ -424,8 +454,7 @@ class PlayController internal constructor(
             } catch (e: Exception) {
                 if (generation != this@PlayController.generation) return@launch
                 if (isGone(e)) {
-                    this@PlayController.current = null
-                    switchTo { it.copy(positionMs = positionMs) }
+                    startAgain(positionMs, paused)
                     return@launch
                 }
                 end()
@@ -444,6 +473,7 @@ class PlayController internal constructor(
     private fun fallBack(failure: PlayerError) {
         val play = current ?: return
         val positionMs = positionMs()
+        val paused = state.value.paused
         val generation = ++generation
         release(keepMedia = true)
         val retry = canFallBack && fallbacks < MAX_FALLBACKS
@@ -477,8 +507,7 @@ class PlayController internal constructor(
                 if (generation != this@PlayController.generation) return@launch
                 if (isGone(e)) {
                     // The server restarted and forgot the play: start a new one here.
-                    this@PlayController.current = null
-                    switchTo { it.copy(positionMs = positionMs) }
+                    startAgain(positionMs, paused)
                     return@launch
                 }
                 end()
@@ -510,11 +539,21 @@ class PlayController internal constructor(
             } catch (e: Exception) {
                 // An unknown play means the server restarted: start again at the saved position.
                 if (isGone(e) && play === this@PlayController.current) {
-                    this@PlayController.current = null
-                    switchTo { it.copy(positionMs = body.positionMs.toLong()) }
+                    startAgain(body.positionMs.toLong(), this@PlayController.state.value.paused)
                 }
             }
         }
+    }
+
+    /**
+     * Starts a play the server forgot again at [positionMs], with no stop
+     * for the forgotten one. A [paused] one stays paused once its media is
+     * ready: a book paused until its play expired doesn't play by itself.
+     */
+    private fun startAgain(positionMs: Long, paused: Boolean) {
+        current = null
+        val last = request ?: return
+        play(last.copy(positionMs = positionMs), paused)
     }
 
     /** Saves the position and ends a play, without waiting or minding failure. */
@@ -543,6 +582,12 @@ private const val MAX_FALLBACKS = 2
 
 /** How often a play reports its position while playing. */
 internal val HEARTBEAT_INTERVAL = 10.seconds
+
+/** How long a seek's target stands in for the engine's position while the engine hasn't said it landed. */
+private val SEEK_SETTLE = 2.seconds
+
+/** How far the engine's position may play on from where a seek started and still be taken as not there yet: [SEEK_SETTLE] at the fastest speed. */
+private const val SEEK_DRIFT_MS = 6_000L
 
 /** What to play: the screen's choices, or the player's own on a switch. */
 internal data class PlayRequest(

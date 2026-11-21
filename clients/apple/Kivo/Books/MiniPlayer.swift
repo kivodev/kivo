@@ -10,6 +10,9 @@ import SwiftUI
 struct MiniPlayer: View {
     let book: BookPlayer
     var compact = false
+    /// The book's progress as a ring round Play or Pause, where no bar shows it.
+    var ring = false
+    @Environment(\.kivoPalette) private var palette
 
     var body: some View {
         HStack(spacing: KivoTokens.spacing * 3) {
@@ -17,9 +20,9 @@ struct MiniPlayer: View {
                 book.expanded = true
             } label: {
                 HStack(spacing: KivoTokens.spacing * 3) {
-                    BookCover(work: book.work, size: compact ? 28 : 40)
+                    BookCover(poster: book.poster, title: book.title, size: compact ? 28 : 40)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(book.work?.title ?? "")
+                        Text(book.title)
                             .font(.subheadline.weight(.semibold))
                             .lineLimit(1)
                         if !compact, let line = book.miniLine {
@@ -34,14 +37,28 @@ struct MiniPlayer: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityValue(Text(compact ? book.failureLine ?? "" : ""))
             .accessibilityHint(Text("Opens Now Playing"))
             .accessibilityIdentifier("miniOpen")
             if !compact {
                 button("gobackward.10", label: String(localized: "Back 10 seconds"), action: book.skipBack)
                     .accessibilityIdentifier("miniBack")
             }
-            PlayPauseButton(book: book, size: compact ? 17 : 22)
+            PlayPauseButton(book: book, size: compact ? 17 : (ring ? 18 : 22))
                 .frame(width: 36, height: 36)
+                .background {
+                    if ring {
+                        ZStack {
+                            Circle().stroke(Color.primary.opacity(0.18), lineWidth: 2)
+                            Circle()
+                                .trim(from: 0, to: book.fraction)
+                                .stroke(palette.accent, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                                .rotationEffect(.degrees(-90))
+                        }
+                        .padding(1)
+                        .accessibilityHidden(true)
+                    }
+                }
                 .accessibilityIdentifier("miniPlay")
             if !compact {
                 button("goforward.30", label: String(localized: "Forward 30 seconds"), action: book.skipForward)
@@ -70,7 +87,7 @@ struct MiniPlayer: View {
     }
 }
 
-/// Play or Pause, a spinner while the book opens.
+/// Play or Pause, a spinner while the book opens, and Try again when it can't play.
 struct PlayPauseButton: View {
     let book: BookPlayer
     var size: CGFloat
@@ -81,7 +98,7 @@ struct PlayPauseButton: View {
                 if book.loading {
                     ProgressView()
                 } else {
-                    Image(systemName: book.playing ? "pause.fill" : "play.fill")
+                    Image(systemName: symbol)
                         .font(.system(size: size, weight: .semibold))
                         .contentTransition(.symbolEffect(.replace))
                 }
@@ -90,7 +107,18 @@ struct PlayPauseButton: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(book.playing ? Text("Pause") : Text("Play"))
+        .accessibilityLabel(label)
+    }
+
+    private var symbol: String {
+        if book.failureLine != nil { return "arrow.clockwise" }
+        return book.playing ? "pause.fill" : "play.fill"
+    }
+
+    private var label: Text {
+        if book.loading { return Text("Loading") }
+        if book.failureLine != nil { return Text("Try again") }
+        return book.playing ? Text("Pause") : Text("Play")
     }
 }
 
@@ -104,7 +132,7 @@ struct MiniPlayerAccessory: View {
 
     var body: some View {
         // The accessory takes the system's appearance rather than the app's theme: the theme's colours, explicitly.
-        MiniPlayer(book: book, compact: placement == .inline)
+        MiniPlayer(book: book, compact: placement == .inline, ring: true)
             .foregroundStyle(palette.text, palette.textMuted)
             .environment(\.colorScheme, palette.scheme)
     }

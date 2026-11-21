@@ -99,7 +99,7 @@ struct WorkActions: View {
     /// Plays its download when one is ready, else from the server; a book in the book player, which chooses for itself.
     private func play(fromStart: Bool) {
         if work.kind == .book {
-            server.listen(work.id, at: fromStart ? 0 : nil)
+            server.listen(work.id, at: fromStart ? 0 : nil, title: work.title, poster: work.images.poster)
             return
         }
         server.player.play(PlayChoice(workId: work.id), fromStart: fromStart, downloadId: server.readyDownload(of: work.id)?.id)

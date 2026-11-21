@@ -6,8 +6,9 @@ package com.mmcdole.kivo.core.books
  * place. Minutes count down only while the book plays, so a pause doesn't
  * spend them; the end of the chapter is measured from the position at the
  * speed playing. Choosing again starts it afresh, and Off stops it, either
- * one undoing a fade under way. The player [tick]s it several times a second
- * while it runs and does what it says.
+ * one undoing a fade under way, as moving back out of the chapter's end
+ * does. The player [tick]s it several times a second while it runs and does
+ * what it says.
  */
 internal class SleepTimer {
     var state: SleepState = SleepState.Off
@@ -53,6 +54,8 @@ internal class SleepTimer {
             !playing -> if (fading) SleepCommand.RestoreVolume.also { fading = false } else null
             remainingMs <= 0 -> SleepCommand.Pause
             remainingMs <= SLEEP_FADE_MS && !fading -> SleepCommand.FadeOut(remainingMs).also { fading = true }
+            // Moved back out of the chapter's last 10 seconds: it fades again when it's there again.
+            remainingMs > SLEEP_FADE_MS && fading -> SleepCommand.RestoreVolume.also { fading = false }
             else -> null
         }
         state = if (command == SleepCommand.Pause) {
@@ -111,3 +114,6 @@ internal sealed interface SleepCommand {
 
 /** How long the book fades out before the sleep timer pauses it. */
 internal const val SLEEP_FADE_MS = 10_000L
+
+/** How long after the sleep timer pauses the book a play starts the timer again. */
+internal const val SLEEP_RESTART_WINDOW_MS = 15_000L

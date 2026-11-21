@@ -32,6 +32,8 @@ final class BookPlayer {
     private(set) var chapterIndex: Int32?
     /// "Chapter 12 · 4 hr 21 min left", or why it isn't playing.
     private(set) var miniLine: String?
+    /// Why it isn't playing, while it isn't: Play tries again.
+    private(set) var failureLine: String?
     /// How far through the book, to a thousandth.
     private(set) var fraction: Double = 0
     private(set) var hasNext = false
@@ -39,12 +41,29 @@ final class BookPlayer {
     private(set) var speed: Double = 1
     /// The sleep timer while it runs, its time left to the second.
     private(set) var sleep: SleepShown?
+    /// The timer that Play starts again, for the 15 seconds after it paused the book.
+    private(set) var sleepRestart: SleepChoice?
+    /// When that play stops starting it again, for the countdown.
+    private(set) var sleepRestartEnds = Date.distantPast
+    /// The title and cover the page that played the book already had, shown until the book is read.
+    private var knownTitle: String?
+    private var knownPoster: ImageRef?
+
+    /// The book's title, the page's while the book opens.
+    var title: String { work?.title ?? knownTitle ?? "" }
+
+    /// The book's cover, the page's while the book opens.
+    var poster: ImageRef? { work?.images.poster ?? knownPoster }
+
+    /// Whether a video player has the audio, which the book then leaves to it. The server sets it.
+    @ObservationIgnored var videoPlaying: () -> Bool = { false }
 
     @ObservationIgnored private let engine: AVPlayerEngine
     @ObservationIgnored private let audio: BookAudioOutput
     /// Artwork at the server's address in use.
     @ObservationIgnored private let artwork: () -> ArtworkSource
-    @ObservationIgnored private var tasks: [Task<Void, Never>] = []
+    @ObservationIgnored private var stateTask: Task<Void, Never>?
+    @ObservationIgnored private var coverTask: Task<Void, Never>?
     @ObservationIgnored private var observers: [NSObjectProtocol] = []
     /// Now Playing and the remote commands, the book's own, as the video
     /// player has its own: the system sends them to the app's active session,
@@ -55,23 +74,34 @@ final class BookPlayer {
     @ObservationIgnored private var coverOf: String?
     @ObservationIgnored private var published: (key: NowPlayingKey, elapsedMs: Int64, at: Date)?
     @ObservationIgnored private var resumeAfterInterruption = false
+    /// The listener's last word, play or pause, whatever the engine is doing at the moment.
+    @ObservationIgnored private var wantsPlaying = false
+    /// The last book is being put back, paused: it leaves other apps' audio alone until it plays.
+    @ObservationIgnored private var restoring = false
+    @ObservationIgnored private var sessionActive = false
+    /// Stop listening forgets the book as it unloads.
+    @ObservationIgnored private var forgetBook = false
+    /// The book loaded, as kept in UserDefaults for the next launch.
+    @ObservationIgnored private var savedBook: String?
+    @ObservationIgnored private let lastBookKey: String
 
     @ObservationIgnored private let display: Display
 
     init(session: KivoSession, artwork: @escaping () -> ArtworkSource, display: Display) {
         self.artwork = artwork
         self.display = display
+        lastBookKey = "lastBook.\(session.savedServer.value.id)"
         engine = AVPlayerEngine(baseUrl: { session.baseUrl }, subtitleStyle: SubtitleStyle(size: .medium, background: .none))
         engine.pitchAlgorithm = .spectral
         audio = BookAudioOutput(player: engine.player)
         nowPlaying = MPNowPlayingSession(players: [engine.player])
         model = session.playback.bookPlayer(engine: engine, audio: audio)
         state = model.state.value
-        tasks.append(Task { [weak self, model] in
+        stateTask = Task { [weak self, model] in
             for await state in model.state {
                 self?.changed(state)
             }
-        })
+        }
         setUpCommands()
         observeAudioSession()
     }
@@ -83,11 +113,30 @@ final class BookPlayer {
     // MARK: Commands
 
     /// Plays a book from where the user left it, or from [positionMs], such as a chapter's start.
-    func play(_ workId: String, at positionMs: Int64? = nil) {
+    /// The page's [title] and [poster] show while the book opens.
+    func play(_ workId: String, at positionMs: Int64? = nil, title: String? = nil, poster: ImageRef? = nil) {
+        knownTitle = title
+        knownPoster = poster
+        restoring = false
+        forgetBook = false
+        wantsPlaying = true
         model.play(workId: workId, positionMs: positionMs.map { KotlinLong(value: $0) })
     }
 
-    func togglePlay() { model.togglePlay() }
+    /// Puts back the book that was loaded when the app last ran, paused at
+    /// its place, where [canOpen] says it can be read.
+    func restore(canOpen: (String) -> Bool) {
+        guard !loaded, !videoPlaying(),
+              let workId = UserDefaults.standard.string(forKey: lastBookKey), canOpen(workId)
+        else { return }
+        restoring = true
+        model.load(workId: workId)
+    }
+
+    func togglePlay() {
+        wantsPlaying = !playing || failureLine != nil
+        model.togglePlay()
+    }
 
     func skipBack() { model.skipBack() }
 
@@ -97,7 +146,10 @@ final class BookPlayer {
 
     func nextChapter() { model.nextChapter() }
 
-    func playChapter(_ index: Int) { model.playChapter(index: Int32(index)) }
+    func playChapter(_ index: Int) {
+        wantsPlaying = true
+        model.playChapter(index: Int32(index))
+    }
 
     func seek(chapter index: Int32, offsetMs: Int64) { model.seekInChapter(index: index, offsetMs: offsetMs) }
 
@@ -110,13 +162,20 @@ final class BookPlayer {
     /// Stop listening: the place is saved and the player goes.
     func stop() {
         expanded = false
+        forgetBook = loaded
         model.stop()
     }
 
     /// Signed out: the book stops and the lock screen lets go.
     func close() {
         model.stop()
-        tasks.forEach { $0.cancel() }
+        stateTask?.cancel()
+        if loaded {
+            loaded = false
+            unloaded()
+        }
+        savedBook = nil
+        UserDefaults.standard.removeObject(forKey: lastBookKey)
         observers.forEach(NotificationCenter.default.removeObserver)
         for (command, target) in commands { command.removeTarget(target) }
         commands = []
@@ -128,32 +187,56 @@ final class BookPlayer {
     private func changed(_ next: BookPlayerState) {
         let wasLoaded = loaded
         state = next
+        if restoring, next.failure != nil {
+            // Not there to put back: no mini player rather than its error.
+            restoring = false
+            model.stop()
+            return
+        }
         update(\.loaded, next.workId != nil)
         update(\.work, next.work)
         update(\.playing, next.playing)
         update(\.loading, next.player.status == .loading && next.failure == nil)
         update(\.chapterIndex, next.progress?.chapterIndex)
-        update(\.miniLine, next.failure.map { display.failure(failure: $0) } ?? next.progress.map(BookWords.miniLine))
+        let failureLine = next.failure.map { display.failure(failure: $0) }
+        update(\.failureLine, failureLine)
+        update(\.miniLine, failureLine ?? next.progress.map { BookWords.miniLine($0, speed: next.speed) })
         update(\.fraction, ((next.progress?.fraction ?? 0) * 1000).rounded() / 1000)
         update(\.hasNext, next.progress?.hasNext == true)
         update(\.speed, next.speed)
         update(\.sleep, (next.sleep as? SleepState.Running).map { SleepShown(choice: $0.choice, seconds: ($0.remainingMs + 999) / 1000) })
+        if next.sleepRestart != nil, sleepRestart == nil {
+            sleepRestartEnds = Date().addingTimeInterval(Double(BookPlayerModel.companion.SLEEP_RESTART_MS) / 1000)
+            wantsPlaying = false
+        }
+        update(\.sleepRestart, next.sleepRestart)
+        if next.failure != nil || next.player.ended { wantsPlaying = false }
         if next.workId == nil {
             if wasLoaded { unloaded() }
             return
         }
+        if savedBook != next.workId {
+            savedBook = next.workId
+            UserDefaults.standard.set(next.workId, forKey: lastBookKey)
+        }
         if !wasLoaded { activateAudio() }
+        if next.playing {
+            restoring = false
+            takeAudioSession()
+        }
         if let work = next.work, coverOf != work.id {
             coverOf = work.id
             cover = nil
+            coverTask?.cancel()
+            coverTask = nil
             if let image = work.images.poster {
-                tasks.append(Task { [weak self, artwork = artwork()] in
+                coverTask = Task { [weak self, artwork = artwork()] in
                     let loaded = await artwork.image(id: image.id, pixelWidth: 600)
                     guard let self, self.coverOf == work.id else { return }
                     self.cover = loaded
                     self.published = nil
                     self.publishNowPlaying()
-                })
+                }
             }
         }
         publishNowPlaying()
@@ -167,6 +250,18 @@ final class BookPlayer {
     /// The book stopped, by Stop listening, a video starting or signing out.
     private func unloaded() {
         expanded = false
+        knownTitle = nil
+        knownPoster = nil
+        restoring = false
+        wantsPlaying = false
+        resumeAfterInterruption = false
+        if forgetBook {
+            forgetBook = false
+            savedBook = nil
+            UserDefaults.standard.removeObject(forKey: lastBookKey)
+        }
+        coverTask?.cancel()
+        coverTask = nil
         coverOf = nil
         cover = nil
         published = nil
@@ -175,16 +270,27 @@ final class BookPlayer {
         for (command, _) in commands { command.isEnabled = false }
         // The video player's mode again.
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
+        // Other apps' audio plays on, unless a video has the session now.
+        if sessionActive, !videoPlaying() {
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        }
+        sessionActive = false
     }
 
     /// Spoken audio that plays in the background and over AirPlay as
     /// long-form audio, with the book's commands as the active Now Playing.
+    /// A book put back paused takes the session only as it plays.
     private func activateAudio() {
-        let session = AVAudioSession.sharedInstance()
-        try? session.setCategory(.playback, mode: .spokenAudio, policy: .longFormAudio)
-        try? session.setActive(true)
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, policy: .longFormAudio)
+        if !restoring { takeAudioSession() }
         for (command, _) in commands { command.isEnabled = true }
         nowPlaying.becomeActiveIfPossible { _ in }
+    }
+
+    private func takeAudioSession() {
+        guard !sessionActive else { return }
+        sessionActive = true
+        try? AVAudioSession.sharedInstance().setActive(true)
     }
 
     // MARK: Interruptions and routes
@@ -199,7 +305,7 @@ final class BookPlayer {
         })
     }
 
-    /// A call or Siri took the audio: the player paused itself; afterwards it plays on if it was playing and iOS says it may.
+    /// A call or Siri took the audio: the player paused itself; afterwards it plays on if the listener had it playing and iOS says it may.
     private func interrupted(_ note: Notification) {
         guard loaded,
               let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
@@ -207,10 +313,14 @@ final class BookPlayer {
         else { return }
         switch type {
         case .began:
-            resumeAfterInterruption = playing
+            resumeAfterInterruption = wantsPlaying
+            wantsPlaying = false
         case .ended:
             let options = (note.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt).map(AVAudioSession.InterruptionOptions.init) ?? []
-            if resumeAfterInterruption, options.contains(.shouldResume) { model.resume() }
+            if resumeAfterInterruption, options.contains(.shouldResume) {
+                wantsPlaying = true
+                model.resume()
+            }
             resumeAfterInterruption = false
         @unknown default:
             break
@@ -223,6 +333,7 @@ final class BookPlayer {
               let raw = note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt,
               AVAudioSession.RouteChangeReason(rawValue: raw) == .oldDeviceUnavailable
         else { return }
+        wantsPlaying = false
         model.pause()
     }
 
@@ -235,9 +346,13 @@ final class BookPlayer {
         commands = RemoteCommands.setUp(nowPlaying.remoteCommandCenter, for: .book, enabled: false) { [weak self] action, event in
             guard let self else { return .commandFailed }
             switch action {
-            case .play: model.resume()
-            case .pause: model.pause()
-            case .togglePlay: model.togglePlay()
+            case .play:
+                wantsPlaying = true
+                model.resume()
+            case .pause:
+                wantsPlaying = false
+                model.pause()
+            case .togglePlay: togglePlay()
             case .skipBack: model.skipBack()
             case .skipForward: model.skipForward()
             case .seek:
@@ -253,10 +368,12 @@ final class BookPlayer {
     /// the rate and the cover. Between, the system runs the clock from the rate.
     private func publishNowPlaying() {
         guard let work = state.work, let progress else { return }
-        let key = NowPlayingKey(workId: work.id, chapter: progress.chapterIndex, playing: playing, speed: state.speed)
+        // The clock runs only while the book does: not while it buffers or seeks.
+        let running = playing && state.player.status == .playing
+        let key = NowPlayingKey(workId: work.id, chapter: progress.chapterIndex, playing: playing, running: running, speed: state.speed)
         if let published, published.key == key {
             // The clock as the system runs it; further off than 2 seconds is a seek.
-            let ran = playing ? Int64(Date().timeIntervalSince(published.at) * 1000 * state.speed) : 0
+            let ran = running ? Int64(Date().timeIntervalSince(published.at) * 1000 * state.speed) : 0
             if abs(published.elapsedMs + ran - progress.chapterElapsedMs) < 2000 { return }
         }
         published = (key, progress.chapterElapsedMs, Date())
@@ -266,7 +383,7 @@ final class BookPlayer {
             authors: BookWords.authors(work),
             durationMs: progress.chapterDurationMs,
             elapsedMs: progress.chapterElapsedMs,
-            playing: playing,
+            playing: running,
             speed: state.speed
         )
         if let cover {
@@ -308,5 +425,6 @@ private struct NowPlayingKey: Equatable {
     let workId: String
     let chapter: Int32
     let playing: Bool
+    let running: Bool
     let speed: Double
 }

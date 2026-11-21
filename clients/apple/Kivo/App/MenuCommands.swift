@@ -32,26 +32,36 @@ struct TabCommands: Commands {
     }
 }
 
-/// The Playback menu while the video player shows: Play or Pause on Space,
-/// Back 10 seconds and Forward 30 seconds on the arrows, and Close on ⌘-period.
+/// The Playback menu while the video player or the book's Now Playing
+/// shows: Play or Pause on Space, Back 10 seconds and Forward 30 seconds on
+/// the arrows, and Close on ⌘-period.
 struct PlaybackCommands: Commands {
     let app: AppModel
 
     var body: some Commands {
         CommandMenu(String(localized: "Playback")) {
             let player = app.server.flatMap { $0.player.shown ? $0.player.model : nil }
+            let book = app.server.flatMap { !$0.player.shown && $0.book.loaded && $0.book.expanded ? $0.book : nil }
             Group {
-                Button(String(localized: "Play or pause")) { player?.togglePlay() }
-                    .keyboardShortcut(.space, modifiers: [])
-                Button(String(localized: "Back 10 seconds")) { player?.skip(by: -SKIP_BACK_MS) }
-                    .keyboardShortcut(.leftArrow, modifiers: [])
-                Button(String(localized: "Forward 30 seconds")) { player?.skip(by: SKIP_FORWARD_MS) }
-                    .keyboardShortcut(.rightArrow, modifiers: [])
+                Button(String(localized: "Play or pause")) {
+                    if let player { player.togglePlay() } else { book?.togglePlay() }
+                }
+                .keyboardShortcut(.space, modifiers: [])
+                Button(String(localized: "Back 10 seconds")) {
+                    if let player { player.skip(by: -SKIP_BACK_MS) } else { book?.skipBack() }
+                }
+                .keyboardShortcut(.leftArrow, modifiers: [])
+                Button(String(localized: "Forward 30 seconds")) {
+                    if let player { player.skip(by: SKIP_FORWARD_MS) } else { book?.skipForward() }
+                }
+                .keyboardShortcut(.rightArrow, modifiers: [])
                 Divider()
-                Button(String(localized: "Close player")) { app.server?.player.shown = false }
-                    .keyboardShortcut(".", modifiers: .command)
+                Button(String(localized: "Close player")) {
+                    if player != nil { app.server?.player.shown = false } else { book?.expanded = false }
+                }
+                .keyboardShortcut(".", modifiers: .command)
             }
-            .disabled(player == nil)
+            .disabled(player == nil && book == nil)
         }
     }
 }

@@ -51,15 +51,32 @@ struct BookDetail: View {
         return parts
     }
 
+    /// The book player has this book: its button pauses and resumes it there.
+    private var loaded: Bool { server.book.work?.id == work.id }
+
+    /// "15h 2m left of 19h 38m", for a book in progress.
+    private var leftOf: String? {
+        guard work.timeLeft != nil, let position = work.userState?.positionMs?.int64Value, let duration = work.durationMs?.int64Value else { return nil }
+        return BookWords.leftOf(positionMs: position, durationMs: duration)
+    }
+
     @ViewBuilder private var actions: some View {
         if work.available {
             VStack(spacing: KivoTokens.spacing * 3) {
-                ActionRow(work: work, page: page, secondary: work.timeLeft) {
-                    PlayButton(label: work.resumeMs != nil ? String(localized: "Resume") : String(localized: "Play")) {
-                        server.listen(work.id)
+                ActionRow(work: work, page: page, secondary: leftOf) {
+                    if loaded {
+                        BookPlayButton(
+                            label: server.book.playing ? String(localized: "Pause") : String(localized: "Resume"),
+                            symbol: server.book.playing ? "pause.fill" : "play.fill",
+                            action: server.book.togglePlay
+                        )
+                    } else {
+                        PlayButton(label: work.resumeMs != nil ? String(localized: "Resume") : String(localized: "Play")) {
+                            server.listen(work.id, title: work.title, poster: work.images.poster)
+                        }
                     }
                     if work.resumeMs != nil {
-                        RestartButton { server.listen(work.id, at: 0) }
+                        RestartButton { server.listen(work.id, at: 0, title: work.title, poster: work.images.poster) }
                     }
                 } extra: {
                     DownloadButton(work: work, choice: PlayChoice(workId: work.id))
@@ -81,7 +98,7 @@ struct BookDetail: View {
     private func chapterRow(index: Int, chapter: Chapter) -> some View {
         let current = server.book.work?.id == work.id && server.book.chapterIndex.map(Int.init) == index
         return Button {
-            server.listen(work.id, at: Int64(chapter.startMs))
+            server.listen(work.id, at: Int64(chapter.startMs), title: work.title, poster: work.images.poster)
         } label: {
             HStack(spacing: KivoTokens.spacing * 3) {
                 Text(BookWords.chapter(title: chapter.title, index: index))
@@ -90,7 +107,7 @@ struct BookDetail: View {
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
                 Spacer(minLength: KivoTokens.spacing * 2)
-                Text(Display.app.clock(ms: Int64(chapter.startMs)))
+                Text(Display.app.clock(ms: Int64(chapter.endMs - chapter.startMs)))
                     .font(.subheadline.monospacedDigit())
                     .foregroundStyle(palette.textMuted)
             }
@@ -98,7 +115,34 @@ struct BookDetail: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(current ? .isSelected : [])
         .accessibilityIdentifier("bookChapter")
         .detailRow(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+    }
+}
+
+/// Pause or Resume for the book the player has, in the play button's shape.
+private struct BookPlayButton: View {
+    let label: String
+    let symbol: String
+    let action: () -> Void
+    @Environment(\.kivoPalette) private var palette
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: KivoTokens.spacing * 2) {
+                Image(systemName: symbol)
+                Text(label)
+                    .lineLimit(1)
+                    .fixedSize()
+            }
+            .font(.headline)
+            .foregroundStyle(palette.onAccent)
+            .frame(maxWidth: .infinity)
+        }
+        .accessibilityLabel(Text(label))
+        .buttonStyle(.borderedProminent)
+        .buttonBorderShape(.capsule)
+        .accessibilityIdentifier("play")
     }
 }
