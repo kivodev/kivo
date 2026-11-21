@@ -88,8 +88,6 @@ export function planEvent(event: EventMessage): CacheOp[] {
       return [invalidate(apiPaths.logs)];
     case "activityChanged":
       return [invalidate(apiPaths.activity)];
-    case "problemsChanged":
-      return [];
     case "playEnded":
       return event.playId
         ? [

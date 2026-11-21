@@ -52,7 +52,7 @@ info:
        A list that isn't paged comes back whole, with neither: an item's
        children and files, a collection's root works, Search, Home, and the
        short lists the server holds whole (libraries, users, sessions,
-       plays, problems, folders, artwork choices and matches). Filters are plain
+       plays, folders, artwork choices and matches). Filters are plain
        query parameters, repeated for several values, a range as its
        `From` and `To`.
     6. **Errors.** Every non-2xx response is `application/problem+json`
@@ -208,7 +208,7 @@ tags:
   - name: events
     description: The live-events WebSocket. Served by a hand-written handler.
   - name: health
-    description: Liveness, the problems page and the server log.
+    description: Liveness and the server log.
 
 paths:
   /healthz:
@@ -2767,46 +2767,6 @@ paths:
         "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
-        default: {$ref: "#/components/responses/Error"}
-
-  /api/v1/problems:
-    get:
-      operationId: listProblems
-      summary: List problems
-      description: |
-        Backs the Problems page. Open problems, newest first. Resolved
-        problems close themselves.
-      tags: [health]
-      x-kivo-access: admin
-      responses:
-        "200":
-          description: Problems.
-          content:
-            application/json:
-              schema: {$ref: "#/components/schemas/ServerProblemList"}
-        "401": {$ref: "#/components/responses/Unauthorized"}
-        "403": {$ref: "#/components/responses/Forbidden"}
-        default: {$ref: "#/components/responses/Error"}
-
-  /api/v1/problems/{id}:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        description: A problem's opaque ID.
-        schema: {type: string}
-    delete:
-      operationId: dismissProblem
-      summary: Dismiss problem
-      description: It stays hidden until it resolves and comes back.
-      tags: [health]
-      x-kivo-access: admin
-      responses:
-        "204":
-          description: Dismissed.
-        "401": {$ref: "#/components/responses/Unauthorized"}
-        "403": {$ref: "#/components/responses/Forbidden"}
-        "404": {$ref: "#/components/responses/NotFound"}
         default: {$ref: "#/components/responses/Error"}
 
   /api/v1/users/me/play-events:
@@ -6703,38 +6663,10 @@ components:
           description: Why it failed, in words for an admin.
         failedAt: {type: string, format: date-time}
 
-    ServerProblem:
-      type: object
-      description: An open issue on the problems page, such as "library /mnt/tv unreachable for 2 h".
-      required: [id, component, code, message, severity, raisedAt]
-      properties:
-        id:
-          type: string
-          description: Opaque and stable while the problem is open.
-        component:
-          type: string
-          description: The reporting part of the server, such as `scan`.
-        code:
-          type: string
-          description: Stable, for translating and choosing the fix action, such as `folderUnreachable`.
-        message:
-          type: string
-          description: English, written for an admin; shown when the client has no translation for `code`.
-        severity: {$ref: "#/components/schemas/ProblemSeverity"}
-        raisedAt: {type: string, format: date-time}
-
     ProblemSeverity:
       type: string
       description: How much a server problem matters.
       enum: [info, warning, error]
-
-    ServerProblemList:
-      type: object
-      required: [items]
-      properties:
-        items:
-          type: array
-          items: {$ref: "#/components/schemas/ServerProblem"}
 
     LogLine:
       type: object
@@ -7955,7 +7887,7 @@ components:
       properties:
         id:
           type: string
-          description: The problem's ID, as `GET /api/v1/problems` names it.
+          description: The problem's component and code, such as `scan.folderUnreachable`.
         code: {type: string}
         message: {type: string}
         severity: {$ref: "#/components/schemas/ProblemSeverity"}
@@ -8005,9 +7937,6 @@ components:
           type: string
           enum: [snapshot]
         serverVersion: {type: string}
-        problemCount:
-          type: integer
-          description: Admins only. Open problems, for the dot on Admin.
 
     EventMessage:
       type: object
@@ -8050,8 +7979,6 @@ components:
         - `playsChanged`: admins only. A play started or ended, or a
           heartbeat reported its position; refetch the plays and the play
           events.
-        - `problemsChanged` (`problemCount`): admins only. The open problems
-          changed; refetch them.
         - `logsChanged`: admins only. The server logged lines at Info or
           above; refetch the recent log.
         - `activityChanged`: admins only. An event was recorded; refetch
@@ -8068,7 +7995,6 @@ components:
           items: {$ref: "#/components/schemas/ID"}
         playId: {$ref: "#/components/schemas/ID"}
         message: {type: string}
-        problemCount: {type: integer}
         workIds:
           type: array
           items: {$ref: "#/components/schemas/ID"}
@@ -8077,7 +8003,7 @@ components:
       type: string
       description: What an event says changed. Skip kinds you don't know.
       enum: [workChanged, libraryChanged, userStateChanged, homeChanged, listsChanged, playEnded, downloadsChanged,
-        tasksChanged, playsChanged, problemsChanged, logsChanged, activityChanged]
+        tasksChanged, playsChanged, logsChanged, activityChanged]
 
     ResyncMessage:
       type: object

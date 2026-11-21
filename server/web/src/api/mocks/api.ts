@@ -26,7 +26,6 @@ import type {
   PlayStarted,
   PlayTrack,
   ServerInfo,
-  ServerProblem,
   Session,
   Settings,
   SetupState,
@@ -126,7 +125,6 @@ export type MockApi = {
   tasks: Task[];
   /** The failed items of each task that keeps failures. */
   taskFailures: Record<string, TaskFailure[]>;
-  problems: ServerProblem[];
   logs: LogLine[];
   accelerators: AcceleratorList;
   /** What starting a play of each work answers. */

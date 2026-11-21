@@ -2033,50 +2033,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/problems": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List problems
-         * @description Backs the Problems page. Open problems, newest first. Resolved
-         *     problems close themselves.
-         */
-        get: operations["listProblems"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/problems/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A problem's opaque ID. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /**
-         * Dismiss problem
-         * @description It stays hidden until it resolves and comes back.
-         */
-        delete: operations["dismissProblem"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/users/me/play-events": {
         parameters: {
             query?: never;
@@ -4819,28 +4775,11 @@ export interface components {
             /** Format: date-time */
             failedAt: string;
         };
-        /** @description An open issue on the problems page, such as "library /mnt/tv unreachable for 2 h". */
-        ServerProblem: {
-            /** @description Opaque and stable while the problem is open. */
-            id: string;
-            /** @description The reporting part of the server, such as `scan`. */
-            component: string;
-            /** @description Stable, for translating and choosing the fix action, such as `folderUnreachable`. */
-            code: string;
-            /** @description English, written for an admin; shown when the client has no translation for `code`. */
-            message: string;
-            severity: components["schemas"]["ProblemSeverity"];
-            /** Format: date-time */
-            raisedAt: string;
-        };
         /**
          * @description How much a server problem matters.
          * @enum {string}
          */
         ProblemSeverity: "info" | "warning" | "error";
-        ServerProblemList: {
-            items: components["schemas"]["ServerProblem"][];
-        };
         /** @description One line of the server's log. */
         LogLine: {
             /** @description Opaque; later lines sort after it. Pass it as `after` for the lines since. */
@@ -5731,7 +5670,7 @@ export interface components {
         };
         /** @description `problemRaised`: a problem as it was raised. */
         ActivityProblem: {
-            /** @description The problem's ID, as `GET /api/v1/problems` names it. */
+            /** @description The problem's component and code, such as `scan.folderUnreachable`. */
             id: string;
             code: string;
             message: string;
@@ -5760,8 +5699,6 @@ export interface components {
              */
             type: "snapshot";
             serverVersion: string;
-            /** @description Admins only. Open problems, for the dot on Admin. */
-            problemCount?: number;
         };
         /**
          * @description A hint that something changed. It carries IDs and counts only;
@@ -5802,8 +5739,6 @@ export interface components {
          *     - `playsChanged`: admins only. A play started or ended, or a
          *       heartbeat reported its position; refetch the plays and the play
          *       events.
-         *     - `problemsChanged` (`problemCount`): admins only. The open problems
-         *       changed; refetch them.
          *     - `logsChanged`: admins only. The server logged lines at Info or
          *       above; refetch the recent log.
          *     - `activityChanged`: admins only. An event was recorded; refetch
@@ -5820,14 +5755,13 @@ export interface components {
             libraryIds?: components["schemas"]["ID"][];
             playId?: components["schemas"]["ID"];
             message?: string;
-            problemCount?: number;
             workIds?: components["schemas"]["ID"][];
         };
         /**
          * @description What an event says changed. Skip kinds you don't know.
          * @enum {string}
          */
-        EventKind: "workChanged" | "libraryChanged" | "userStateChanged" | "homeChanged" | "listsChanged" | "playEnded" | "downloadsChanged" | "tasksChanged" | "playsChanged" | "problemsChanged" | "logsChanged" | "activityChanged";
+        EventKind: "workChanged" | "libraryChanged" | "userStateChanged" | "homeChanged" | "listsChanged" | "playEnded" | "downloadsChanged" | "tasksChanged" | "playsChanged" | "logsChanged" | "activityChanged";
         /** @description The client fell behind and events were dropped. Treat every live-kept query as stale and refetch; a fresh `snapshot` follows. */
         ResyncMessage: {
             /**
@@ -8737,54 +8671,6 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
-            default: components["responses"]["Error"];
-        };
-    };
-    listProblems: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Problems. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ServerProblemList"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            default: components["responses"]["Error"];
-        };
-    };
-    dismissProblem: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A problem's opaque ID. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Dismissed. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
             default: components["responses"]["Error"];
         };
     };

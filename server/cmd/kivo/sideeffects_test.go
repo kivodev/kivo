@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"net/http"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
@@ -21,8 +20,6 @@ import (
 // effects happen, as its services publish them on the bus:
 //   - Creating and renaming a library publishes libraryChanged.
 //   - A user's state change and a play's end publish userStateChanged.
-//   - Raising a problem (once the problems are read) and dismissing it
-//     publish problemsChanged.
 //
 // It needs ffmpeg and ffprobe on the PATH.
 func TestSideEffects(t *testing.T) {
@@ -35,11 +32,8 @@ func TestSideEffects(t *testing.T) {
 		t.Skip("needs ffmpeg and ffprobe")
 	}
 	dir := t.TempDir()
-	media, empty := filepath.Join(dir, "media"), filepath.Join(dir, "empty")
+	media := filepath.Join(dir, "media")
 	makeMovie(t, ffmpeg, filepath.Join(media, "Short Film (1999)", "Short Film (1999).mp4"), 10*time.Second)
-	if err := os.MkdirAll(empty, 0o755); err != nil {
-		t.Fatal(err)
-	}
 
 	boot := config.DefaultBootstrap()
 	boot.Listen = []string{freeAddr(t)}
@@ -102,27 +96,6 @@ func TestSideEffects(t *testing.T) {
 		d, ok := e.Data.(playback.Ended)
 		return e.Kind == events.PlayEnded && ok && d.Play.String() == play.ID
 	})
-
-	// A folder found empty raises a problem, and dismissing it clears it.
-	opened := func(n int) func(events.Event) bool {
-		return func(e events.Event) bool { return e.Kind == events.ProblemsChanged && e.Data == n }
-	}
-	var problems struct{ Items []struct{ ID string } }
-	c.call("GET", "/api/v1/problems", nil, http.StatusOK, &problems)
-	before := len(problems.Items)
-	c.call("POST", "/api/v1/libraries", map[string]any{"name": "Empty", "kind": "movies", "folders": []string{empty}}, http.StatusCreated, nil)
-	i := -1
-	for deadline := time.Now().Add(30 * time.Second); i < 0 && time.Now().Before(deadline); time.Sleep(200 * time.Millisecond) {
-		c.call("GET", "/api/v1/problems", nil, http.StatusOK, &problems)
-		i = slices.IndexFunc(problems.Items, func(p struct{ ID string }) bool { return p.ID == "scan.folderUnreachable" })
-	}
-	if i < 0 {
-		t.Fatalf("problems %+v", problems)
-	}
-	w.waitFor("problemsChanged for an unreachable folder", opened(before+1))
-	c.call("DELETE", "/api/v1/problems/"+problems.Items[i].ID, nil, http.StatusNoContent, nil)
-	w.waitFor("problemsChanged after a dismissal", opened(before))
-
 }
 
 func everyone(events.Scope) bool { return true }

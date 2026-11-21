@@ -642,8 +642,6 @@ export function createHandlers(api: MockApi) {
     http.post("/api/v1/tasks/{task}/retry", ({ params, response }) =>
       api.taskFailures[params.task] ? response(204).empty() : notFound(),
     ),
-    http.get("/api/v1/problems", ({ response }) => response(200).json({ items: api.problems })),
-    http.delete("/api/v1/problems/{id}", ({ response }) => response(204).empty()),
     // The cursor is the last event's ID.
     http.get("/api/v1/activity", ({ query, response }) => {
       const group = query.get("group");

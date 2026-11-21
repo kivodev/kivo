@@ -245,7 +245,7 @@ func wire(ctx context.Context, boot config.Bootstrap, logs *health.Logs, bus *ev
 		Activity: s.activity, Subtitles: s.subtitles, Previews: s.previews, Accelerators: s.ffmpeg, Events: bus,
 	})
 	s.downloads = playback.NewDownloads(s.playback)
-	s.problems = health.NewRegistry([]health.Reporter{db, s.metadata, s.scanner, s.previews, s.subtitles, s.markers, s.playback, s.activity}, bus, health.RegistryOptions{
+	s.problems = health.NewRegistry([]health.Reporter{db, s.metadata, s.scanner, s.previews, s.subtitles, s.markers, s.playback, s.activity}, health.RegistryOptions{
 		Raised: func(ctx context.Context, raised []health.OpenProblem) {
 			if err := s.activity.ProblemsRaised(ctx, raised); err != nil {
 				slog.WarnContext(ctx, "kivo: record problems raised", "err", err)

@@ -287,7 +287,7 @@ func newEnv(t *testing.T, o serving) *env {
 	e.d.Version, e.d.BasePath, e.d.Release = o.Version, o.BasePath, newer(o.Newer)
 	e.d.Discovery = discovery.New(discovery.Deps{Settings: settings, Version: o.Version, Listen: []string{":8484", "127.0.0.1:9000"}, BasePath: o.BasePath})
 	e.reported = &reported{}
-	e.d.Problems = health.NewRegistry([]health.Reporter{e.d.Scan, e.d.Playback, e.reported}, e.d.Events, health.RegistryOptions{})
+	e.d.Problems = health.NewRegistry([]health.Reporter{e.d.Scan, e.d.Playback, e.reported}, health.RegistryOptions{})
 
 	iss, err := e.d.Auth.Setup(ctx, auth.SignInRequest{Username: "admin", Password: adminPassword, Kind: auth.SessionApp, Name: "Test"})
 	if err != nil {

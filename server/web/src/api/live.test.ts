@@ -20,7 +20,6 @@ const work = "0190a000-0000-7000-8000-000000000003";
 const snapshot = (serverVersion = "1.0.0"): SnapshotMessage => ({
   type: "snapshot",
   serverVersion,
-  problemCount: 2,
 });
 
 describe("planEvent", () => {

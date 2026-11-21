@@ -31,7 +31,7 @@ import kotlinx.serialization.encoding.*
 /**
  * `problemRaised`: a problem as it was raised.
  *
- * @param id The problem's ID, as `GET /api/v1/problems` names it.
+ * @param id The problem's component and code, such as `scan.folderUnreachable`.
  * @param code 
  * @param message 
  * @param severity How much a server problem matters.
@@ -40,7 +40,7 @@ import kotlinx.serialization.encoding.*
 
 data class ActivityProblem (
 
-    /* The problem's ID, as `GET /api/v1/problems` names it. */
+    /* The problem's component and code, such as `scan.folderUnreachable`. */
     @SerialName(value = "id") @Required val id: kotlin.String,
 
     @SerialName(value = "code") @Required val code: kotlin.String,
