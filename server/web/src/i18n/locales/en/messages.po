@@ -703,10 +703,6 @@ msgstr "Scanned {ago}"
 msgid "On a signed-in device, scan the QR code, or open Link a device and enter this code."
 msgstr "On a signed-in device, scan the QR code, or open Link a device and enter this code."
 
-#: src/features/search/SearchScreen.tsx
-msgid "View unmatched items"
-msgstr "View unmatched items"
-
 #. placeholder {0}: list.name
 #. placeholder {0}: work.title
 #: src/features/browse/WorkCard.tsx

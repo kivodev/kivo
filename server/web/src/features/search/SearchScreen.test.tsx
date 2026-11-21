@@ -1,7 +1,7 @@
 import { waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { renderApp, screen } from "@/test/render";
-import { http, mockIds, scenarios, sent, serveMockApi, server } from "@/test/server";
+import { http, mockIds, sent, serveMockApi, server } from "@/test/server";
 
 describe("Search", () => {
   it("keeps the query in the URL and groups results by kind", async () => {
@@ -90,28 +90,14 @@ describe("Search", () => {
     expect(screen.getByRole("link", { name: /^Dune: Part Two/ })).toBeInTheDocument();
   });
 
-  it("says when nothing matched, and points admins at Unmatched", async () => {
+  it("says when nothing matched", async () => {
     const api = serveMockApi();
     api.search = [];
     api.searchPeople = [];
     api.searchCollections = [];
     const { router, user } = renderApp("/search?q=dnue");
     expect(await screen.findByRole("heading", { name: "No results for “dnue”." })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "View unmatched items" })).toHaveAttribute(
-      "href",
-      `/libraries/${mockIds.movies}?matchState=unmatched`,
-    );
     await user.click(screen.getByRole("button", { name: "Clear search" }));
     await waitFor(() => expect(router.state.location.search).toEqual({}));
-  });
-
-  it("doesn't point viewers at Unmatched", async () => {
-    const api = serveMockApi(scenarios.viewer);
-    api.search = [];
-    api.searchPeople = [];
-    api.searchCollections = [];
-    renderApp("/search?q=dnue");
-    await screen.findByRole("heading", { name: "No results for “dnue”." });
-    expect(screen.queryByText("View unmatched items")).not.toBeInTheDocument();
   });
 });
