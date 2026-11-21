@@ -13,15 +13,16 @@ Kivo is pre-1.0. The API and settings may change between releases.
 Available:
 
 - iPhone and iPad
+- Android phones and tablets
 - Android TV and Google TV (also Fire TV)
 - Web
 - Samsung Smart TV
+- LG Smart TV
 
 Coming soon:
 
-- Android phones and tablets
-- LG Smart TV
 - Apple TV
+- Roku
 - VR
 
 ## Server
