@@ -244,7 +244,7 @@ class PlayController internal constructor(
      * engine still says about where it was before it, and for [SEEK_SETTLE]
      * at most, in case the engine never says it landed; else [positionMs].
      */
-    fun targetMs(): Long {
+    internal fun targetMs(): Long {
         val position = positionMs()
         val started = seekStartedAt
         if (!loaded || started == null || started.elapsedNow() >= SEEK_SETTLE) return position

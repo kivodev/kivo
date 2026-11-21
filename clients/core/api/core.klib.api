@@ -1118,6 +1118,7 @@ final class com.mmcdole.kivo.core.books/BookPlayerModel { // com.mmcdole.kivo.co
     final val state // com.mmcdole.kivo.core.books/BookPlayerModel.state|{}state[0]
         final fun <get-state>(): kotlinx.coroutines.flow/StateFlow<com.mmcdole.kivo.core.books/BookPlayerState> // com.mmcdole.kivo.core.books/BookPlayerModel.state.<get-state>|<get-state>(){}[0]
 
+    final fun load(kotlin/String) // com.mmcdole.kivo.core.books/BookPlayerModel.load|load(kotlin.String){}[0]
     final fun nextChapter() // com.mmcdole.kivo.core.books/BookPlayerModel.nextChapter|nextChapter(){}[0]
     final fun pause() // com.mmcdole.kivo.core.books/BookPlayerModel.pause|pause(){}[0]
     final fun play(kotlin/String, kotlin/Long? = ...) // com.mmcdole.kivo.core.books/BookPlayerModel.play|play(kotlin.String;kotlin.Long?){}[0]
@@ -1136,13 +1137,16 @@ final class com.mmcdole.kivo.core.books/BookPlayerModel { // com.mmcdole.kivo.co
     final fun togglePlay() // com.mmcdole.kivo.core.books/BookPlayerModel.togglePlay|togglePlay(){}[0]
 
     final object Companion { // com.mmcdole.kivo.core.books/BookPlayerModel.Companion|null[0]
+        final const val SLEEP_RESTART_MS // com.mmcdole.kivo.core.books/BookPlayerModel.Companion.SLEEP_RESTART_MS|{}SLEEP_RESTART_MS[0]
+            final fun <get-SLEEP_RESTART_MS>(): kotlin/Long // com.mmcdole.kivo.core.books/BookPlayerModel.Companion.SLEEP_RESTART_MS.<get-SLEEP_RESTART_MS>|<get-SLEEP_RESTART_MS>(){}[0]
+
         final val SPEEDS // com.mmcdole.kivo.core.books/BookPlayerModel.Companion.SPEEDS|{}SPEEDS[0]
             final fun <get-SPEEDS>(): kotlin.collections/List<kotlin/Double> // com.mmcdole.kivo.core.books/BookPlayerModel.Companion.SPEEDS.<get-SPEEDS>|<get-SPEEDS>(){}[0]
     }
 }
 
 final class com.mmcdole.kivo.core.books/BookPlayerState { // com.mmcdole.kivo.core.books/BookPlayerState|null[0]
-    constructor <init>(kotlin/String? = ..., com.mmcdole.kivo.api.models/WorkDetail? = ..., kotlin/Boolean = ..., com.mmcdole.kivo.core.play/PlayerState = ..., com.mmcdole.kivo.core.books/BookChapters? = ..., com.mmcdole.kivo.core.books/BookProgress? = ..., kotlin/Double = ..., com.mmcdole.kivo.core.books/SleepState = ..., com.mmcdole.kivo.core.play/PlayerFailure? = ...) // com.mmcdole.kivo.core.books/BookPlayerState.<init>|<init>(kotlin.String?;com.mmcdole.kivo.api.models.WorkDetail?;kotlin.Boolean;com.mmcdole.kivo.core.play.PlayerState;com.mmcdole.kivo.core.books.BookChapters?;com.mmcdole.kivo.core.books.BookProgress?;kotlin.Double;com.mmcdole.kivo.core.books.SleepState;com.mmcdole.kivo.core.play.PlayerFailure?){}[0]
+    constructor <init>(kotlin/String? = ..., com.mmcdole.kivo.api.models/WorkDetail? = ..., kotlin/Boolean = ..., com.mmcdole.kivo.core.play/PlayerState = ..., com.mmcdole.kivo.core.books/BookChapters? = ..., com.mmcdole.kivo.core.books/BookProgress? = ..., kotlin/Double = ..., com.mmcdole.kivo.core.books/SleepState = ..., com.mmcdole.kivo.core.books/SleepChoice? = ..., com.mmcdole.kivo.core.play/PlayerFailure? = ...) // com.mmcdole.kivo.core.books/BookPlayerState.<init>|<init>(kotlin.String?;com.mmcdole.kivo.api.models.WorkDetail?;kotlin.Boolean;com.mmcdole.kivo.core.play.PlayerState;com.mmcdole.kivo.core.books.BookChapters?;com.mmcdole.kivo.core.books.BookProgress?;kotlin.Double;com.mmcdole.kivo.core.books.SleepState;com.mmcdole.kivo.core.books.SleepChoice?;com.mmcdole.kivo.core.play.PlayerFailure?){}[0]
 
     final val chapters // com.mmcdole.kivo.core.books/BookPlayerState.chapters|{}chapters[0]
         final fun <get-chapters>(): com.mmcdole.kivo.core.books/BookChapters? // com.mmcdole.kivo.core.books/BookPlayerState.chapters.<get-chapters>|<get-chapters>(){}[0]
@@ -1158,6 +1162,8 @@ final class com.mmcdole.kivo.core.books/BookPlayerState { // com.mmcdole.kivo.co
         final fun <get-progress>(): com.mmcdole.kivo.core.books/BookProgress? // com.mmcdole.kivo.core.books/BookPlayerState.progress.<get-progress>|<get-progress>(){}[0]
     final val sleep // com.mmcdole.kivo.core.books/BookPlayerState.sleep|{}sleep[0]
         final fun <get-sleep>(): com.mmcdole.kivo.core.books/SleepState // com.mmcdole.kivo.core.books/BookPlayerState.sleep.<get-sleep>|<get-sleep>(){}[0]
+    final val sleepRestart // com.mmcdole.kivo.core.books/BookPlayerState.sleepRestart|{}sleepRestart[0]
+        final fun <get-sleepRestart>(): com.mmcdole.kivo.core.books/SleepChoice? // com.mmcdole.kivo.core.books/BookPlayerState.sleepRestart.<get-sleepRestart>|<get-sleepRestart>(){}[0]
     final val speed // com.mmcdole.kivo.core.books/BookPlayerState.speed|{}speed[0]
         final fun <get-speed>(): kotlin/Double // com.mmcdole.kivo.core.books/BookPlayerState.speed.<get-speed>|<get-speed>(){}[0]
     final val work // com.mmcdole.kivo.core.books/BookPlayerState.work|{}work[0]
@@ -1166,6 +1172,7 @@ final class com.mmcdole.kivo.core.books/BookPlayerState { // com.mmcdole.kivo.co
         final fun <get-workId>(): kotlin/String? // com.mmcdole.kivo.core.books/BookPlayerState.workId.<get-workId>|<get-workId>(){}[0]
 
     final fun component1(): kotlin/String? // com.mmcdole.kivo.core.books/BookPlayerState.component1|component1(){}[0]
+    final fun component10(): com.mmcdole.kivo.core.play/PlayerFailure? // com.mmcdole.kivo.core.books/BookPlayerState.component10|component10(){}[0]
     final fun component2(): com.mmcdole.kivo.api.models/WorkDetail? // com.mmcdole.kivo.core.books/BookPlayerState.component2|component2(){}[0]
     final fun component3(): kotlin/Boolean // com.mmcdole.kivo.core.books/BookPlayerState.component3|component3(){}[0]
     final fun component4(): com.mmcdole.kivo.core.play/PlayerState // com.mmcdole.kivo.core.books/BookPlayerState.component4|component4(){}[0]
@@ -1173,8 +1180,8 @@ final class com.mmcdole.kivo.core.books/BookPlayerState { // com.mmcdole.kivo.co
     final fun component6(): com.mmcdole.kivo.core.books/BookProgress? // com.mmcdole.kivo.core.books/BookPlayerState.component6|component6(){}[0]
     final fun component7(): kotlin/Double // com.mmcdole.kivo.core.books/BookPlayerState.component7|component7(){}[0]
     final fun component8(): com.mmcdole.kivo.core.books/SleepState // com.mmcdole.kivo.core.books/BookPlayerState.component8|component8(){}[0]
-    final fun component9(): com.mmcdole.kivo.core.play/PlayerFailure? // com.mmcdole.kivo.core.books/BookPlayerState.component9|component9(){}[0]
-    final fun copy(kotlin/String? = ..., com.mmcdole.kivo.api.models/WorkDetail? = ..., kotlin/Boolean = ..., com.mmcdole.kivo.core.play/PlayerState = ..., com.mmcdole.kivo.core.books/BookChapters? = ..., com.mmcdole.kivo.core.books/BookProgress? = ..., kotlin/Double = ..., com.mmcdole.kivo.core.books/SleepState = ..., com.mmcdole.kivo.core.play/PlayerFailure? = ...): com.mmcdole.kivo.core.books/BookPlayerState // com.mmcdole.kivo.core.books/BookPlayerState.copy|copy(kotlin.String?;com.mmcdole.kivo.api.models.WorkDetail?;kotlin.Boolean;com.mmcdole.kivo.core.play.PlayerState;com.mmcdole.kivo.core.books.BookChapters?;com.mmcdole.kivo.core.books.BookProgress?;kotlin.Double;com.mmcdole.kivo.core.books.SleepState;com.mmcdole.kivo.core.play.PlayerFailure?){}[0]
+    final fun component9(): com.mmcdole.kivo.core.books/SleepChoice? // com.mmcdole.kivo.core.books/BookPlayerState.component9|component9(){}[0]
+    final fun copy(kotlin/String? = ..., com.mmcdole.kivo.api.models/WorkDetail? = ..., kotlin/Boolean = ..., com.mmcdole.kivo.core.play/PlayerState = ..., com.mmcdole.kivo.core.books/BookChapters? = ..., com.mmcdole.kivo.core.books/BookProgress? = ..., kotlin/Double = ..., com.mmcdole.kivo.core.books/SleepState = ..., com.mmcdole.kivo.core.books/SleepChoice? = ..., com.mmcdole.kivo.core.play/PlayerFailure? = ...): com.mmcdole.kivo.core.books/BookPlayerState // com.mmcdole.kivo.core.books/BookPlayerState.copy|copy(kotlin.String?;com.mmcdole.kivo.api.models.WorkDetail?;kotlin.Boolean;com.mmcdole.kivo.core.play.PlayerState;com.mmcdole.kivo.core.books.BookChapters?;com.mmcdole.kivo.core.books.BookProgress?;kotlin.Double;com.mmcdole.kivo.core.books.SleepState;com.mmcdole.kivo.core.books.SleepChoice?;com.mmcdole.kivo.core.play.PlayerFailure?){}[0]
     final fun equals(kotlin/Any?): kotlin/Boolean // com.mmcdole.kivo.core.books/BookPlayerState.equals|equals(kotlin.Any?){}[0]
     final fun hashCode(): kotlin/Int // com.mmcdole.kivo.core.books/BookPlayerState.hashCode|hashCode(){}[0]
     final fun toString(): kotlin/String // com.mmcdole.kivo.core.books/BookPlayerState.toString|toString(){}[0]
