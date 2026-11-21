@@ -1179,6 +1179,10 @@ msgstr "Play another version"
 msgid "Play next episode automatically"
 msgstr "Play next episode automatically"
 
+#: src/features/admin/GeneralSettingsScreen.tsx
+msgid "OpenSubtitles refuses this key."
+msgstr "OpenSubtitles refuses this key."
+
 #: src/features/browse/FilterPanel.tsx
 msgid "Watch status"
 msgstr "Watch status"
@@ -1782,6 +1786,10 @@ msgstr "Tasks"
 #: src/features/admin/NetworkSettingsScreen.tsx
 msgid "Public URL"
 msgstr "Public URL"
+
+#: src/features/admin/GeneralSettingsScreen.tsx
+msgid "OpenSubtitles refuses this username or password."
+msgstr "OpenSubtitles refuses this username or password."
 
 #. placeholder {0}: book.title
 #: src/features/player/MiniPlayer.tsx

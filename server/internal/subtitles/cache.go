@@ -28,6 +28,12 @@ func (s *Service) complete(file id.ID, gen int64) (bool, error) {
 
 // Health implements health.Reporter. It reports a full cache disk, and
 // OpenSubtitles being down or refusing the key or the account.
+// Refused says what OpenSubtitles refuses of the saved credentials: "key",
+// "account", or "" while it refuses neither.
+func (s *Service) Refused() string {
+	return s.openSubtitles.refused(s.deps.Settings.Get())
+}
+
 func (s *Service) Health(ctx context.Context) []health.Problem {
 	return append(s.room.Health(ctx), s.openSubtitles.health(s.deps.Settings.Get())...)
 }

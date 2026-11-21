@@ -4059,6 +4059,12 @@ components:
         openSubtitlesPasswordSet:
           type: boolean
           description: Whether the OpenSubtitles account has a password; the password itself is never sent.
+        openSubtitlesRefused:
+          type: string
+          enum: [key, account]
+          description: |
+            Set while OpenSubtitles refuses the saved API key, or the saved
+            username or password.
         fileWatching:
           type: boolean
           description: |

@@ -1296,6 +1296,24 @@ func (e SessionKind) Valid() bool {
 	}
 }
 
+// Defines values for SettingsOpenSubtitlesRefused.
+const (
+	SettingsOpenSubtitlesRefusedAccount SettingsOpenSubtitlesRefused = "account"
+	SettingsOpenSubtitlesRefusedKey     SettingsOpenSubtitlesRefused = "key"
+)
+
+// Valid indicates whether the value is a known member of the SettingsOpenSubtitlesRefused enum.
+func (e SettingsOpenSubtitlesRefused) Valid() bool {
+	switch e {
+	case SettingsOpenSubtitlesRefusedAccount:
+		return true
+	case SettingsOpenSubtitlesRefusedKey:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for SnapshotMessageType.
 const (
 	SnapshotMessageTypeSnapshot SnapshotMessageType = "snapshot"
@@ -4436,6 +4454,10 @@ type Settings struct {
 	// OpenSubtitlesPasswordSet Whether the OpenSubtitles account has a password; the password itself is never sent.
 	OpenSubtitlesPasswordSet bool `json:"openSubtitlesPasswordSet"`
 
+	// OpenSubtitlesRefused Set while OpenSubtitles refuses the saved API key, or the saved
+	// username or password.
+	OpenSubtitlesRefused *SettingsOpenSubtitlesRefused `json:"openSubtitlesRefused,omitempty"`
+
 	// OpenSubtitlesUsername An OpenSubtitles account, which raises the daily download quota; empty for none.
 	OpenSubtitlesUsername string `json:"openSubtitlesUsername"`
 
@@ -4461,6 +4483,10 @@ type Settings struct {
 	// VideoTranscodeLimit Simultaneous video transcodes the server runs; 0 is no limit.
 	VideoTranscodeLimit int `json:"videoTranscodeLimit"`
 }
+
+// SettingsOpenSubtitlesRefused Set while OpenSubtitles refuses the saved API key, or the saved
+// username or password.
+type SettingsOpenSubtitlesRefused string
 
 // SettingsUpdate defines model for SettingsUpdate.
 type SettingsUpdate struct {
