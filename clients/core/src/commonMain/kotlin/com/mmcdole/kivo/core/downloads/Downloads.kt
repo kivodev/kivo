@@ -517,6 +517,13 @@ internal class Downloads(
         }
     }
 
+    /** Offline play of a download paused: where it is goes to the server now, when it's answering, for the user's other devices. */
+    internal fun paused() {
+        val s = server.value ?: return
+        if (s.unreachable.value) return
+        scope.launch { quietly { outbox.send(s) } }
+    }
+
     /** Tells the server to forget its copies of the downloads every file of which is here. */
     private suspend fun forgetFetched() {
         val s = server.value ?: return

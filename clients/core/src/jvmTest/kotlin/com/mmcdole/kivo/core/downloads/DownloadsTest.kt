@@ -14,6 +14,7 @@ import com.mmcdole.kivo.api.models.DownloadList
 import com.mmcdole.kivo.api.models.DownloadOption
 import com.mmcdole.kivo.api.models.DownloadPart
 import com.mmcdole.kivo.api.models.PlayStarted
+import com.mmcdole.kivo.api.models.PlayUpdate
 import com.mmcdole.kivo.api.models.PlayTrack
 import com.mmcdole.kivo.api.models.ServerInfo
 import com.mmcdole.kivo.api.models.PlaybackPreferences
@@ -713,6 +714,27 @@ class DownloadsTest {
         advanceUntilIdle()
         assertEquals(1, h.server.to("PATCH", "/api/v1/works/w1/user-state").size)
         assertEquals(3_000_000, h.startMs(id))
+    }
+
+    @Test
+    fun pausingOfflinePlaySendsWhereItIsWhileTheServerAnswers() = runTest {
+        val (h, id) = heldBack(CompletableDeferred(Unit), serverPosition = 0)
+        val plays = h.downloads.offline(id).plays
+        advanceUntilIdle()
+        val sent = { h.server.to("PATCH", "/api/v1/works/w1/user-state") }
+
+        plays.heartbeat("p", PlayUpdate(1_600_000, "playing"))
+        advanceUntilIdle()
+        val before = sent().size
+        plays.heartbeat("p", PlayUpdate(1_700_000, "paused"))
+        advanceUntilIdle()
+        assertEquals(before + 1, sent().size, "a pause sends the outbox")
+        assertTrue(sent().last().body.contains("1700000"))
+
+        h.unreachable.value = true
+        plays.heartbeat("p", PlayUpdate(1_800_000, "paused"))
+        advanceUntilIdle()
+        assertEquals(before + 1, sent().size, "not while the server isn't answering: it stays in the outbox")
     }
 
     /** The plan's tracks for an HEVC 1080p source with 5.1 AC-3, as the server makes them for [delivery]. */

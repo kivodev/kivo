@@ -17,6 +17,7 @@ import com.mmcdole.kivo.api.models.WorkKind
 import com.mmcdole.kivo.core.FakeServer
 import com.mmcdole.kivo.core.empty
 import com.mmcdole.kivo.core.json
+import com.mmcdole.kivo.core.problem
 import com.mmcdole.kivo.core.play.FakeEngine
 import com.mmcdole.kivo.core.play.PlayerStatus
 import com.mmcdole.kivo.core.play.ServerPlays
@@ -93,10 +94,16 @@ private class Harness(val scope: TestScope, startMs: Int = 0) {
     val engine = FakeEngine()
     val audio = FakeAudio()
     val connection = server.connection()
+
+    /** Whether the book can't be opened, as with no server and no download. */
+    var openFails = false
     val model = BookPlayerModel(
         engine = engine,
         audio = audio,
-        open = { BookSource(book, ServerPlays(connection.plays, connection.reachability), downloaded = false) },
+        open = {
+            if (openFails) throw IllegalStateException("no answer")
+            BookSource(book, ServerPlays(connection.plays, connection.reachability), downloaded = false)
+        },
         capabilities = { capabilities },
         userSettings = UserSettings(connection),
         scope = scope.backgroundScope,
@@ -262,6 +269,23 @@ class BookPlayerModelTest {
     }
 
     @Test
+    fun aChapterChosenAfterEndOfChapterPausedRestartsTheTimerForThatChapter() = runTest {
+        val h = Harness(this)
+        h.start()
+        h.model.setSpeed(1.0)
+        h.at(100_000)
+        h.model.setSleep(SleepChoice.EndOfChapter)
+        h.at(300_200)
+        advanceTimeBy(251)
+        assertTrue(h.engine.paused)
+        assertEquals(SleepChoice.EndOfChapter, h.model.state.value.sleepRestart)
+
+        h.model.playChapter(0)
+        val sleep = assertIs<SleepState.Running>(h.model.state.value.sleep)
+        assertEquals(300_000, sleep.remainingMs, "to the end of the chapter chosen, not the one after")
+    }
+
+    @Test
     fun endOfChapterPausesAtTheChaptersEndAndFollowsAChapterMove() = runTest {
         val h = Harness(this)
         h.start()
@@ -308,5 +332,220 @@ class BookPlayerModelTest {
         assertEquals(1, h.server.to("POST", START).size)
         assertEquals(900_000, h.engine.seeks.last())
         assertEquals(false, h.engine.paused)
+    }
+
+    @Test
+    fun aBookThatCouldntBeOpenedOpensAgainOnPlay() = runTest {
+        val h = Harness(this, startMs = 420_000)
+        h.openFails = true
+        h.model.play("b1")
+        runCurrent()
+        assertEquals(PlayerStatus.Error, h.model.state.value.player.status)
+        assertTrue(h.server.to("POST", START).isEmpty())
+
+        h.model.resume()
+        runCurrent()
+        assertEquals(PlayerStatus.Error, h.model.state.value.player.status, "still not there")
+
+        h.openFails = false
+        h.model.togglePlay()
+        runCurrent()
+        h.engine.current.onReady()
+        runCurrent()
+        val state = h.model.state.value
+        assertEquals(PlayerStatus.Playing, state.player.status)
+        assertNull(state.failure)
+        assertEquals(false, h.engine.paused)
+        assertEquals(420_000, state.progress?.positionMs, "from where the user left it")
+        assertEquals(1, h.server.to("POST", START).size)
+    }
+
+    @Test
+    fun resumeTriesAFailedPlayAgainAsTheLockScreensPlayAsks() = runTest {
+        val h = Harness(this)
+        h.start()
+        h.at(450_000)
+        h.engine.fail()
+        runCurrent()
+        assertEquals(PlayerStatus.Error, h.model.state.value.player.status)
+
+        h.model.resume()
+        runCurrent()
+        val starts = h.server.to("POST", START)
+        assertEquals(2, starts.size)
+        assertEquals(450_000, body(starts[1].body)["positionMs"]?.jsonPrimitive?.int)
+        h.engine.current.onReady()
+        runCurrent()
+        assertEquals(PlayerStatus.Playing, h.model.state.value.player.status)
+        assertEquals(false, h.engine.paused)
+    }
+
+    @Test
+    fun aPlayWithinFifteenSecondsOfTheSleepTimersPauseStartsItAgain() = runTest {
+        val h = Harness(this)
+        h.start()
+        h.model.setSleep(SleepChoice.Minutes(5))
+        advanceTimeBy(300_001)
+        assertTrue(h.engine.paused)
+        assertEquals(SleepChoice.Minutes(5), h.model.state.value.sleepRestart)
+
+        advanceTimeBy(14_000)
+        h.model.resume()
+        assertEquals(false, h.engine.paused)
+        assertEquals(SleepState.Running(SleepChoice.Minutes(5), 300_000, fading = false), h.model.state.value.sleep)
+        assertNull(h.model.state.value.sleepRestart)
+
+        // Again, by the headphones' button and by the book's page.
+        advanceTimeBy(300_001)
+        assertTrue(h.engine.paused)
+        h.model.togglePlay()
+        assertEquals(false, h.engine.paused)
+        assertIs<SleepState.Running>(h.model.state.value.sleep)
+        advanceTimeBy(300_001)
+        assertTrue(h.engine.paused)
+        h.model.play("b1")
+        assertEquals(false, h.engine.paused)
+        assertIs<SleepState.Running>(h.model.state.value.sleep)
+    }
+
+    @Test
+    fun aPlayLaterThanFifteenSecondsAfterTheSleepTimersPauseJustPlays() = runTest {
+        val h = Harness(this)
+        h.start()
+        h.model.setSleep(SleepChoice.Minutes(5))
+        advanceTimeBy(300_001)
+        assertEquals(SleepChoice.Minutes(5), h.model.state.value.sleepRestart)
+
+        advanceTimeBy(16_000)
+        assertNull(h.model.state.value.sleepRestart, "the 15 seconds passed")
+        h.model.togglePlay()
+        assertEquals(false, h.engine.paused)
+        assertEquals(SleepState.Off, h.model.state.value.sleep)
+        advanceTimeBy(600_000)
+        assertEquals(false, h.engine.paused, "it plays on")
+    }
+
+    @Test
+    fun onlyTheSleepTimersOwnPauseLetsAPlayStartItAgainAndOffEndsThat() = runTest {
+        val h = Harness(this)
+        h.start()
+        h.model.setSleep(SleepChoice.Minutes(5))
+        h.model.pause()
+        assertNull(h.model.state.value.sleepRestart, "the user's pause")
+        h.model.resume()
+
+        advanceTimeBy(300_001)
+        assertEquals(SleepChoice.Minutes(5), h.model.state.value.sleepRestart)
+        h.model.stopSleep()
+        assertNull(h.model.state.value.sleepRestart)
+        h.model.resume()
+        assertEquals(false, h.engine.paused)
+        assertEquals(SleepState.Off, h.model.state.value.sleep)
+    }
+
+    @Test
+    fun endOfChapterStartedAgainByAPlayRunsToTheNextChaptersEnd() = runTest {
+        val h = Harness(this)
+        h.start()
+        h.model.setSpeed(1.0)
+        h.at(100_000)
+        h.model.setSleep(SleepChoice.EndOfChapter)
+        h.at(300_100)
+        advanceTimeBy(251)
+        assertTrue(h.engine.paused)
+        assertEquals(300_000, h.engine.seeks.last())
+        assertEquals(SleepChoice.EndOfChapter, h.model.state.value.sleepRestart)
+
+        // The engine still says where it was before the seek.
+        h.engine.positionMs = 299_950
+        h.model.togglePlay()
+        assertEquals(false, h.engine.paused)
+        assertEquals(SleepState.Running(SleepChoice.EndOfChapter, 600_000, fading = false), h.model.state.value.sleep)
+    }
+
+    @Test
+    fun aLoadedBookWaitsPausedAtItsPlaceUntilPlayed() = runTest {
+        val h = Harness(this, startMs = 420_000)
+        h.model.load("b1")
+        runCurrent()
+        h.engine.current.onReady()
+        runCurrent()
+
+        val state = h.model.state.value
+        assertEquals("b1", state.workId)
+        assertEquals(book, state.work)
+        assertTrue(h.engine.paused, "it doesn't play by itself")
+        assertEquals(false, state.playing)
+        assertEquals(PlayerStatus.Playing, state.player.status)
+        assertEquals(420_000, assertIs<BookProgress>(state.progress).positionMs, "at the user's place")
+        assertEquals(1, h.server.to("POST", START).size)
+
+        h.model.load("b1")
+        runCurrent()
+        assertEquals(1, h.server.to("POST", START).size, "the book loaded stays as it is")
+
+        h.model.resume()
+        assertEquals(false, h.engine.paused, "Play plays on")
+    }
+
+    @Test
+    fun aPlayOfABookStillLoadingPausedPlaysItOnceReady() = runTest {
+        val h = Harness(this)
+        h.model.load("b1")
+        runCurrent()
+        h.model.resume()
+        h.engine.current.onReady()
+        runCurrent()
+        assertEquals(false, h.engine.paused)
+    }
+
+    @Test
+    fun skipsTappedQuicklyAddUp() = runTest {
+        val h = Harness(this)
+        h.start()
+        h.at(100_000)
+
+        // The engine still says where it was while each seek is under way.
+        h.engine.seeksLand = false
+        h.model.skipForward()
+        h.model.skipForward()
+        h.model.skipForward()
+        assertEquals(190_000, h.engine.seeks.last(), "three taps: 90 s on")
+        h.model.skipBack()
+        assertEquals(180_000, h.engine.seeks.last())
+
+        // Landed and played on: a skip is from where it plays.
+        h.engine.seeksLand = true
+        h.engine.current.onSeeked()
+        h.at(200_000)
+        h.model.skipForward()
+        assertEquals(230_000, h.engine.seeks.last())
+    }
+
+    @Test
+    fun aSpeedChosenElsewhereIsReadWhenAnotherBookOpens() = runTest {
+        val h = Harness(this)
+        h.start()
+        assertEquals(1.25, h.model.state.value.speed)
+
+        h.server.on("GET", "/api/v1/users/me") { json(CurrentUser.serializer(), CurrentUser("u1", "anna", false, UserLimits(), PlaybackPreferences(SubtitleMode.Smart, true, true, 2.0))) }
+        h.model.play("b2")
+        runCurrent()
+        assertEquals(2.0, h.model.state.value.speed, "the speed chosen on another device")
+        assertEquals(2.0, h.audio.speeds.last())
+    }
+
+    @Test
+    fun aSpeedChosenHereThatTheServerDidntTakeIsKeptWhenAnotherBookOpens() = runTest {
+        val h = Harness(this)
+        h.start()
+        h.server.on("PATCH", "/api/v1/users/me") { problem(HttpStatusCode.ServiceUnavailable, "unavailable") }
+        h.model.setSpeed(1.5)
+        runCurrent()
+
+        h.model.play("b2")
+        runCurrent()
+        assertEquals(1.5, h.model.state.value.speed, "the server still has the old one: this device's choice stands")
+        assertEquals(1.5, h.audio.speeds.last())
     }
 }

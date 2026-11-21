@@ -65,6 +65,7 @@ internal class OfflinePlay internal constructor(
 
         override suspend fun heartbeat(id: String, heartbeat: PlayUpdate) {
             downloads.record(this@OfflinePlay.id, heartbeat.positionMs.toLong())
+            if (heartbeat.state == "paused") downloads.paused()
         }
 
         /** The files are here: there's no server to wait for. */

@@ -13,31 +13,29 @@ import SwiftUI
 struct NowPlayingView: View {
     let book: BookPlayer
     @Environment(ServerModel.self) private var server
+    @Environment(\.kivoPalette) private var palette
+    @Environment(\.verticalSizeClass) private var verticalSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @ScaledMetric(relativeTo: .title2) private var textScale: CGFloat = 1
     @State private var chaptersShown = false
+    /// How tall everything but the cover is, upright.
+    @State private var controlsHeight: CGFloat = 0
 
     var body: some View {
         GeometryReader { geometry in
-            VStack(spacing: 0) {
-                header
-                Spacer(minLength: KivoTokens.spacing * 2)
-                BookCover(work: book.work, size: coverSize(geometry.size), radius: 12)
-                    .shadow(color: .black.opacity(0.28), radius: 24, y: 12)
-                    .scaleEffect(book.playing ? 1 : 0.9)
-                    .animation(.spring(duration: 0.4, bounce: 0.25), value: book.playing)
-                Spacer(minLength: KivoTokens.spacing * 4)
-                titles
-                Spacer(minLength: KivoTokens.spacing * 4)
-                ChapterSeekBar(book: book)
-                Spacer(minLength: KivoTokens.spacing * 3)
-                transport
-                Spacer(minLength: KivoTokens.spacing * 3)
-                BottomRow(book: book, chaptersShown: $chaptersShown)
+            if verticalSize == .compact {
+                landscape(geometry.size)
+            } else {
+                // The largest cover that leaves the controls whole; at the largest text sizes it scrolls.
+                let room = geometry.size.height - controlsHeight - KivoTokens.spacing * (Self.gaps.reduce(0, +) + Self.bottomGap)
+                if room >= 110 {
+                    portrait(cover: min(coverSize(geometry.size), room))
+                } else {
+                    ScrollView { portrait(cover: 110) }
+                }
             }
-            .padding(.horizontal, 28)
-            .padding(.bottom, KivoTokens.spacing * 2)
-            .frame(maxWidth: 560)
-            .frame(maxWidth: .infinity)
         }
+        .onPreferenceChange(ControlsHeight.self) { controlsHeight = $0 }
         .background { CoverBackground(work: book.work) }
         .presentationDragIndicator(.visible)
         .sheet(isPresented: $chaptersShown) {
@@ -47,12 +45,110 @@ struct NowPlayingView: View {
         }
     }
 
+    private func portrait(cover size: CGFloat) -> some View {
+        VStack(spacing: 0) {
+            header(top: KivoTokens.spacing * 4).countedHeight()
+            Spacer(minLength: KivoTokens.spacing * Self.gaps[0])
+            cover(size)
+            Spacer(minLength: KivoTokens.spacing * Self.gaps[1])
+            titles.countedHeight()
+            Spacer(minLength: KivoTokens.spacing * Self.gaps[2])
+            ChapterSeekBar(book: book, chaptersShown: $chaptersShown).countedHeight()
+            Spacer(minLength: KivoTokens.spacing * Self.gaps[3])
+            failure.countedHeight()
+            transportRow.countedHeight()
+            Spacer(minLength: KivoTokens.spacing * Self.gaps[4])
+            BottomRow(book: book, chaptersShown: $chaptersShown).countedHeight()
+        }
+        .padding(.horizontal, 28)
+        .padding(.bottom, KivoTokens.spacing * Self.bottomGap)
+        .frame(maxWidth: 560)
+        .frame(maxWidth: .infinity)
+    }
+
+    /// A phone on its side: the cover beside the controls, which scroll if they still don't fit.
+    private func landscape(_ size: CGSize) -> some View {
+        HStack(spacing: 28) {
+            cover(max(120, min(size.height - 40, size.width * 0.3)))
+            ViewThatFits(in: .vertical) {
+                landscapeControls
+                ScrollView { landscapeControls }
+            }
+            .frame(maxWidth: 560)
+        }
+        .padding(.horizontal, 28)
+        .padding(.vertical, KivoTokens.spacing * 2)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var landscapeControls: some View {
+        VStack(spacing: 0) {
+            header(top: KivoTokens.spacing * 2)
+            Spacer(minLength: KivoTokens.spacing)
+            titles
+            Spacer(minLength: KivoTokens.spacing * 2)
+            ChapterSeekBar(book: book, chaptersShown: $chaptersShown)
+            Spacer(minLength: KivoTokens.spacing * 2)
+            failure
+            transportRow
+            Spacer(minLength: KivoTokens.spacing * 2)
+            BottomRow(book: book, chaptersShown: $chaptersShown, captions: false)
+        }
+    }
+
+    /// The least space between the upright stack's parts, in spacing units, and under it: what the cover's room is less.
+    private static let gaps: [CGFloat] = [2, 4, 4, 3, 3]
+    private static let bottomGap: CGFloat = 2
+
     private func coverSize(_ size: CGSize) -> CGFloat {
         max(160, min(size.width - 56, size.height * 0.4))
     }
 
-    private var header: some View {
+    private func cover(_ size: CGFloat) -> some View {
+        BookCover(poster: book.poster, title: book.title, size: size, radius: 12)
+            .shadow(color: .black.opacity(0.28), radius: 24, y: 12)
+            .scaleEffect(book.playing || reduceMotion ? 1 : 0.9)
+            .animation(reduceMotion ? nil : .spring(duration: 0.4, bounce: 0.25), value: book.playing)
+    }
+
+    @ViewBuilder private var failure: some View {
+        if let line = book.failureLine {
+            Label(line, systemImage: "exclamationmark.circle")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.bottom, KivoTokens.spacing * 2)
+                .accessibilityIdentifier("nowPlayingFailure")
+        }
+    }
+
+    private var transportRow: some View {
+        transport
+            .overlay(alignment: .top) {
+                if let choice = book.sleepRestart {
+                    SleepRestartPopover(choice: choice, ends: book.sleepRestartEnds, restart: book.togglePlay)
+                        .fixedSize()
+                        .offset(y: -64)
+                        .transition(.scale(scale: 0.9, anchor: .bottom).combined(with: .opacity))
+                }
+            }
+            .animation(.spring(duration: 0.3), value: book.sleepRestart != nil)
+    }
+
+    private func header(top: CGFloat) -> some View {
         HStack {
+            Button {
+                book.expanded = false
+            } label: {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 17, weight: .semibold))
+                    .frame(width: 36, height: 36)
+                    .background(.ultraThinMaterial, in: Circle())
+            }
+            .tint(.primary)
+            .accessibilityLabel(Text("Close"))
+            .accessibilityIdentifier("nowPlayingClose")
             Spacer()
             Menu {
                 if let work = book.work {
@@ -77,12 +173,12 @@ struct NowPlayingView: View {
             .accessibilityLabel(Text("More"))
             .accessibilityIdentifier("nowPlayingMore")
         }
-        .padding(.top, KivoTokens.spacing * 4)
+        .padding(.top, top)
     }
 
     private var titles: some View {
         VStack(spacing: KivoTokens.spacing) {
-            Text(book.work?.title ?? "")
+            Text(book.title)
                 .font(.title2.weight(.bold))
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
@@ -100,8 +196,11 @@ struct NowPlayingView: View {
             Spacer()
             transportButton("gobackward.10", size: 28, label: String(localized: "Back 10 seconds"), identifier: "back10", action: book.skipBack)
             Spacer()
-            PlayPauseButton(book: book, size: 46)
-                .frame(width: 76, height: 76)
+            PlayPauseButton(book: book, size: 30 * glyphScale)
+                .foregroundStyle(palette.onAccent)
+                .tint(palette.onAccent)
+                .frame(width: 72, height: 72)
+                .background(palette.accent, in: Circle())
                 .accessibilityIdentifier("nowPlayingPlay")
             Spacer()
             transportButton("goforward.30", size: 28, label: String(localized: "Forward 30 seconds"), identifier: "forward30", action: book.skipForward)
@@ -114,7 +213,7 @@ struct NowPlayingView: View {
     private func transportButton(_ symbol: String, size: CGFloat, label: String, identifier: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: size, weight: .semibold))
+                .font(.system(size: size * glyphScale, weight: .semibold))
                 .frame(width: 52, height: 52)
                 .contentShape(Rectangle())
         }
@@ -123,11 +222,29 @@ struct NowPlayingView: View {
         .accessibilityIdentifier(identifier)
     }
 
+    /// The transport's glyphs grow with the text, as far as five of them still fit a phone.
+    private var glyphScale: CGFloat { min(textScale, 1.2) }
+
     /// A person's page or the book's, on the tab showing, with Now Playing closed.
     private func open(_ route: WorkRoute) {
         book.expanded = false
         if server.navigation.tab == .downloads { server.navigation.tab = .home }
         server.navigation.push(.work(route))
+    }
+}
+
+/// The heights of Now Playing's controls, summed, for the room they leave the cover.
+private struct ControlsHeight: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value += nextValue()
+    }
+}
+
+private extension View {
+    func countedHeight() -> some View {
+        background(GeometryReader { Color.clear.preference(key: ControlsHeight.self, value: $0.size.height) })
     }
 }
 
@@ -189,6 +306,7 @@ private struct PeopleLine: View {
 /// line, and where the chapter is in the book with the time left.
 private struct ChapterSeekBar: View {
     let book: BookPlayer
+    @Binding var chaptersShown: Bool
     /// While a finger is on the bar: the chapter it spans and how far along it.
     @State private var drag: (chapter: Int32, fraction: Double)?
 
@@ -198,11 +316,20 @@ private struct ChapterSeekBar: View {
         let duration = progress?.chapterDurationMs ?? 0
         let elapsed = Int64(fraction * Double(duration))
         VStack(spacing: KivoTokens.spacing * 1.5) {
-            Text(progress.map(BookWords.chapter) ?? " ")
-                .font(.subheadline.weight(.semibold))
-                .lineLimit(1)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .accessibilityIdentifier("chapterTitle")
+            HStack(spacing: KivoTokens.spacing) {
+                Text(progress.map(BookWords.chapter) ?? " ")
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                    .accessibilityIdentifier("chapterTitle")
+                    .accessibilityAction(named: Text("Show chapters")) { chaptersShown = true }
+                Image(systemName: "chevron.down")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .onTapGesture { chaptersShown = true }
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
                     Capsule().fill(Color.primary.opacity(0.18))
@@ -211,8 +338,16 @@ private struct ChapterSeekBar: View {
                 }
                 .frame(height: drag == nil ? 6 : 10)
                 .frame(maxHeight: .infinity)
+                .overlay(alignment: .leading) {
+                    let size: CGFloat = drag == nil ? 14 : 20
+                    Circle()
+                        .fill(Color.primary)
+                        .frame(width: size, height: size)
+                        .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
+                        .offset(x: geometry.size.width * fraction - size / 2)
+                }
                 .contentShape(Rectangle())
-                .gesture(DragGesture(minimumDistance: 0)
+                .gesture(DragGesture(minimumDistance: 6)
                     .onChanged { value in
                         guard let progress else { return }
                         let at = min(1, max(0, value.location.x / max(1, geometry.size.width)))
@@ -226,14 +361,18 @@ private struct ChapterSeekBar: View {
                     })
                 .animation(.easeOut(duration: 0.15), value: drag == nil)
             }
-            .frame(height: 22)
+            .frame(height: 44)
+            .padding(.vertical, -11)
+            .sensoryFeedback(.selection, trigger: drag != nil)
             .accessibilityElement()
             .accessibilityLabel(Text("Chapter position"))
-            .accessibilityValue(Text(Display.app.clock(ms: elapsed)))
+            .accessibilityValue(Text("\(Display.app.clock(ms: elapsed)) of \(Display.app.clock(ms: duration))"))
             .accessibilityAdjustableAction { direction in
+                guard let progress else { return }
+                let step: Int64 = 15000
                 switch direction {
-                case .increment: book.skipForward()
-                case .decrement: book.skipBack()
+                case .increment: book.seek(chapter: progress.chapterIndex, offsetMs: min(duration, elapsed + step))
+                case .decrement: book.seek(chapter: progress.chapterIndex, offsetMs: max(0, elapsed - step))
                 @unknown default: break
                 }
             }
@@ -255,7 +394,7 @@ private struct ChapterSeekBar: View {
             .frame(height: 3)
             .padding(.top, KivoTokens.spacing * 2)
             .accessibilityHidden(true)
-            Text(progress.map(BookWords.bookLine) ?? " ")
+            Text(progress.map { BookWords.bookLine($0, speed: book.speed) } ?? " ")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -264,10 +403,11 @@ private struct ChapterSeekBar: View {
     }
 }
 
-/// Speed, Sleep, Chapters and AirPlay.
+/// Speed, Sleep, Chapters and AirPlay, each named under its glyph where there's the height for it.
 private struct BottomRow: View {
     let book: BookPlayer
     @Binding var chaptersShown: Bool
+    var captions = true
 
     var body: some View {
         HStack {
@@ -278,18 +418,41 @@ private struct BottomRow: View {
             Button {
                 chaptersShown = true
             } label: {
-                Image(systemName: "list.bullet")
-                    .font(.system(size: 19, weight: .semibold))
-                    .frame(width: 64, height: 44)
+                item(Text("Chapters")) {
+                    Image(systemName: "list.bullet")
+                        .font(.system(size: 19, weight: .semibold))
+                }
             }
             .buttonStyle(TransportButtonStyle())
             .accessibilityLabel(Text("Chapters"))
             .accessibilityIdentifier("chapters")
             Spacer()
-            RoutePicker()
-                .frame(width: 64, height: 44)
-                .accessibilityLabel(Text("AirPlay"))
+            item(Text("AirPlay")) {
+                RoutePicker()
+                    .frame(width: 64)
+                    .accessibilityLabel(Text("AirPlay"))
+            }
         }
+        .dynamicTypeSize(...DynamicTypeSize.xxLarge)
+    }
+
+    /// A control of the row, its name under it.
+    private func item<Content: View>(_ caption: Text, @ViewBuilder _ content: () -> Content) -> some View {
+        VStack(spacing: 2) {
+            content()
+                .frame(height: captions ? 28 : 44)
+            if captions {
+                caption
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .accessibilityHidden(true)
+            }
+        }
+        .frame(width: 64)
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
     }
 
     /// The user's speed for books, 0.5× to 3×, the same in every app.
@@ -302,9 +465,10 @@ private struct BottomRow: View {
             }
             .pickerStyle(.inline)
         } label: {
-            Text(BookWords.speed(book.speed))
-                .font(.system(size: 16, weight: .bold).monospacedDigit())
-                .frame(width: 64, height: 44)
+            item(Text("Speed")) {
+                Text(BookWords.speed(book.speed))
+                    .font(.system(size: 16, weight: .bold).monospacedDigit())
+            }
         }
         .tint(.primary)
         .accessibilityLabel(Text("Speed \(BookWords.speed(book.speed))"))
@@ -320,35 +484,89 @@ private struct BottomRow: View {
                 Divider()
             }
             ForEach(Array(choices.enumerated()), id: \.offset) { _, choice in
-                Button(BookWords.sleep(choice)) { book.setSleep(choice) }
-            }
-        } label: {
-            Group {
-                if let running {
-                    if running.choice is SleepChoice.EndOfChapter {
-                        Label(String(localized: "End of chapter"), systemImage: "moon.zzz.fill")
+                Button {
+                    book.setSleep(choice)
+                } label: {
+                    if running?.choice == choice {
+                        Label(BookWords.sleep(choice), systemImage: "checkmark")
                     } else {
-                        Label(Display.app.clock(ms: running.seconds * 1000), systemImage: "moon.zzz.fill")
-                            .monospacedDigit()
+                        Text(BookWords.sleep(choice))
                     }
-                } else {
-                    Image(systemName: "moon.zzz")
                 }
             }
-            .font(.system(size: running == nil ? 19 : 14, weight: .semibold))
-            .labelStyle(SleepLabelStyle())
-            .frame(minWidth: 64, minHeight: 44)
+        } label: {
+            item(Text("Sleep")) {
+                Group {
+                    if let running {
+                        Label(Display.app.clock(ms: running.seconds * 1000), systemImage: "moon.zzz.fill")
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    } else {
+                        Image(systemName: "moon.zzz")
+                    }
+                }
+                .font(.system(size: running == nil ? 19 : 14, weight: .semibold))
+                .labelStyle(SleepLabelStyle())
+            }
         }
         .tint(.primary)
         .accessibilityLabel(Text("Sleep timer"))
+        .accessibilityValue(running.map { Text("\(BookWords.sleep($0.choice)), \(Display.app.clock(ms: $0.seconds * 1000)) left") } ?? Text("Off"))
         .accessibilityIdentifier("sleep")
     }
 
     private var choices: [SleepChoice] {
-        let all: [SleepChoice] = SleepChoice.companion.MINUTES.map { SleepChoice.Minutes(minutes: $0.int32Value) } + [SleepChoice.EndOfChapter.shared]
-        guard let last = book.model.lastSleep else { return all }
-        return [last] + all.filter { $0 != last }
+        SleepChoice.companion.MINUTES.map { SleepChoice.Minutes(minutes: $0.int32Value) } + [SleepChoice.EndOfChapter.shared]
     }
+}
+
+/// Over Play for the 15 seconds after the sleep timer pauses the book: a
+/// ring counting them down, and what a play, or a tap here, starts again.
+private struct SleepRestartPopover: View {
+    let choice: SleepChoice
+    let ends: Date
+    let restart: () -> Void
+    @Environment(\.kivoPalette) private var palette
+
+    var body: some View {
+        Button(action: restart) {
+            HStack(spacing: KivoTokens.spacing * 3) {
+                TimelineView(.periodic(from: .now, by: 0.1)) { context in
+                    let left = max(0, ends.timeIntervalSince(context.date))
+                    ZStack {
+                        Circle().stroke(Color.primary.opacity(0.18), lineWidth: 3)
+                        Circle()
+                            .trim(from: 0, to: left / window)
+                            .stroke(palette.accent, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                            .rotationEffect(.degrees(-90))
+                        Text(verbatim: "\(Int(left.rounded(.up)))")
+                            .font(.subheadline.monospacedDigit().weight(.bold))
+                    }
+                    .frame(width: 36, height: 36)
+                }
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Sleep timer ended")
+                        .font(.subheadline.weight(.semibold))
+                    Text("Play for \(BookWords.sleepAgain(choice))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.leading, KivoTokens.spacing * 3)
+            .padding(.trailing, KivoTokens.spacing * 5)
+            .padding(.vertical, KivoTokens.spacing * 2.5)
+            .background(.regularMaterial, in: Capsule())
+            .shadow(color: .black.opacity(0.25), radius: 16, y: 6)
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("Sleep timer ended. Play for \(BookWords.sleepAgain(choice))"))
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("sleepRestart")
+    }
+
+    private var window: Double { Double(BookPlayerModel.companion.SLEEP_RESTART_MS) / 1000 }
 }
 
 /// The moon and the time left beside it.
@@ -366,6 +584,7 @@ private struct ChapterList: View {
     let book: BookPlayer
     @Environment(\.dismiss) private var dismiss
     @Environment(\.kivoPalette) private var palette
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         NavigationStack {
@@ -381,7 +600,7 @@ private struct ChapterList: View {
                                 Group {
                                     if current {
                                         Image(systemName: book.playing ? "waveform" : "speaker.fill")
-                                            .symbolEffect(.variableColor.iterative, isActive: book.playing)
+                                            .symbolEffect(.variableColor.iterative, isActive: book.playing && !reduceMotion)
                                             .foregroundStyle(palette.accent)
                                     } else {
                                         Text(verbatim: "\(index + 1)")

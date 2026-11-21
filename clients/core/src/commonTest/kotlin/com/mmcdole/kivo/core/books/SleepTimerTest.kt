@@ -65,4 +65,16 @@ class SleepTimerTest {
         assertEquals(SleepCommand.Pause, timer.tick(250, playing = true, chapterLeftMs = -100, speed = 1.0), "past the end")
         assertEquals(SleepState.Off, timer.state)
     }
+
+    @Test
+    fun movingBackOutOfTheChaptersEndUndoesTheFadeAndItFadesAgainThere() {
+        val timer = SleepTimer()
+        timer.set(SleepChoice.EndOfChapter, chapterLeftMs = 20_000)
+        assertEquals(SleepCommand.FadeOut(8_000), timer.tick(250, playing = true, chapterLeftMs = 8_000))
+
+        assertEquals(SleepCommand.RestoreVolume, timer.tick(250, playing = true, chapterLeftMs = 18_000), "skipped back: heard again")
+        assertEquals(SleepState.Running(SleepChoice.EndOfChapter, 18_000, fading = false), timer.state)
+        assertNull(timer.tick(250, playing = true, chapterLeftMs = 17_750))
+        assertEquals(SleepCommand.FadeOut(9_000), timer.tick(250, playing = true, chapterLeftMs = 9_000))
+    }
 }

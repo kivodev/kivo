@@ -315,6 +315,72 @@ class PlayControllerTest {
     }
 
     @Test
+    fun aForgottenPlayThatWasPausedStartsAgainPaused() = runTest {
+        val h = Harness(this)
+        h.answerStarts(play("s1"), play("s2", startMs = 30_000))
+        h.acceptBeats("s1")
+        h.acceptBeats("s2")
+        h.controller.play(PlayRequest("w1"))
+        runCurrent()
+        h.engine.current.onReady()
+        h.engine.positionMs = 30_000
+        h.controller.pause()
+        runCurrent()
+
+        // Paused past the play's expiry: the next heartbeat's 404 starts it again, still paused.
+        h.server.on("PATCH", "$START/s1") { problem(HttpStatusCode.NotFound, "notFound") }
+        advanceTimeBy(HEARTBEAT_INTERVAL)
+        runCurrent()
+        assertEquals("s2", h.controller.current?.id)
+        h.engine.current.onReady()
+        assertTrue(h.engine.paused, "it doesn't play by itself")
+        assertTrue(h.controller.state.value.paused)
+        assertEquals(PlayerStatus.Playing, h.controller.state.value.status)
+        assertEquals(30_000, h.controller.state.value.positionMs)
+
+        h.controller.resume()
+        assertEquals(false, h.engine.paused, "and plays when asked")
+    }
+
+    @Test
+    fun skipsWhileASeekIsUnderWayAddUp() = runTest {
+        val h = Harness(this)
+        h.answerStarts(play("s1"))
+        h.acceptBeats("s1")
+        h.controller.play(PlayRequest("w1"))
+        runCurrent()
+        h.engine.current.onReady()
+        h.engine.positionMs = 60_000
+
+        h.engine.seeksLand = false
+        h.controller.skip(30_000)
+        h.controller.skip(30_000)
+        assertEquals(120_000, h.engine.seeks.last())
+
+        h.engine.seeksLand = true
+        h.engine.current.onSeeked()
+        h.engine.positionMs = 125_000
+        h.controller.skip(-10_000)
+        assertEquals(115_000, h.engine.seeks.last(), "landed: from where it plays")
+    }
+
+    @Test
+    fun aPlayStartedPausedStaysPausedOnceReady() = runTest {
+        val h = Harness(this)
+        h.answerStarts(play("s1", startMs = 30_000))
+        h.acceptBeats("s1")
+        h.controller.play(PlayRequest("w1"), paused = true)
+        runCurrent()
+        assertTrue(h.controller.state.value.paused)
+        h.engine.current.onReady()
+        assertTrue(h.engine.paused)
+        assertEquals(PlayerStatus.Playing, h.controller.state.value.status)
+
+        h.controller.resume()
+        assertEquals(false, h.engine.paused)
+    }
+
+    @Test
     fun stopsOnExitAndStartsAgainOnReturn() = runTest {
         val h = Harness(this)
         h.answerStarts(play("s1"), play("s2", startMs = 90_000))

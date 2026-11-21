@@ -39,7 +39,9 @@ import kotlin.time.TimeSource
  * pause, 10 seconds back and 30 forward, a seek within the chapter, previous
  * chapter with the 3-second rule, next chapter, a chapter from the list, the
  * speed, which it saves for the user on every device, the sleep timer, and
- * stop, which saves the place, as a video starting does.
+ * stop, which saves the place, as a video starting does. A play within 15
+ * seconds of the sleep timer pausing the book starts the timer again; a play
+ * of a book that failed tries it again.
  *
  * Call it on one thread, [scope]'s, as the controller.
  */
@@ -63,8 +65,20 @@ class BookPlayerModel internal constructor(
 
     /** Where End of chapter pauses: the end of the chapter playing when it was set or last moved. */
     private var chapterEndMs = 0L
-    private var speedRead = false
+
+    /** When the sleep timer paused the book, on [now]'s clock, while a play starts it again. */
+    private var restartOpenedAt = 0L
+
+    /** Where the sleep timer left the book as it paused it: the next chapter's start after End of chapter. */
+    private var restartFromMs: Long? = null
+    private var restartClosing: Job? = null
+
+    /** A speed chosen here that the server hasn't taken yet: its own isn't read over it. */
     private var speedChosen = false
+    private var speedChoices = 0
+
+    /** Whether the book being opened stays paused once it's ready ([load]), until a play. */
+    private var opensPaused = false
 
     /** The last sleep timer chosen, which the menu offers first. */
     val lastSleep: SleepChoice? get() = sleep.last
@@ -78,10 +92,25 @@ class BookPlayerModel internal constructor(
         val loaded = controller
         if (state.value.workId == workId && loaded?.current != null) {
             positionMs?.let { seek(it) }
-            loaded.resume()
+            resumeRestartingSleep(positionMs)
             return
         }
+        open(workId, positionMs, paused = false)
+    }
+
+    /**
+     * Opens a book as [play] does and leaves it paused where the user left
+     * it, for the mini player and the lock screen to show, as when the app
+     * starts again with the book it had: a play plays on. The book already
+     * here stays as it is.
+     */
+    fun load(workId: String) {
+        if (state.value.workId != workId) open(workId, null, paused = true)
+    }
+
+    private fun open(workId: String, positionMs: Long?, paused: Boolean) {
         close()
+        opensPaused = paused
         mutableState.value = BookPlayerState(
             workId = workId,
             player = PlayerState(status = PlayerStatus.Loading, positionMs = positionMs ?: 0),
@@ -113,33 +142,38 @@ class BookPlayerModel internal constructor(
             )
             this@BookPlayerModel.controller = controller
             audio.setSpeed(state.value.speed)
-            controller.play(PlayRequest(workId, positionMs = positionMs))
+            controller.play(PlayRequest(workId, positionMs = positionMs), paused = opensPaused)
             controller.state.collect(::follow)
         }
     }
 
     fun togglePlay() {
-        val controller = controller ?: return
-        if (state.value.player.status == PlayerStatus.Error) controller.retry() else controller.togglePlay()
+        if (controller == null) opensPaused = false
+        if (retry()) return
+        if (state.value.sleepRestart != null && !state.value.playing) resumeRestartingSleep() else controller?.togglePlay()
     }
 
+    /** Plays on; a book that failed is tried again, as the lock screen's Play asks. */
     fun resume() {
-        controller?.resume()
+        opensPaused = false
+        if (!retry()) resumeRestartingSleep()
     }
 
     fun pause() {
         controller?.pause()
     }
 
-    fun skipBack() = seek(position() - SKIP_BACK_MS)
+    fun skipBack() = seek(target() - SKIP_BACK_MS)
 
-    fun skipForward() = seek(position() + SKIP_FORWARD_MS)
+    fun skipForward() = seek(target() + SKIP_FORWARD_MS)
 
     /** Moves to a position on the book's timeline. */
     fun seek(positionMs: Long) {
         val controller = controller ?: return
         controller.seek(positionMs)
-        aimSleep(positionMs.coerceIn(0, state.value.chapters?.durationMs ?: positionMs))
+        val target = positionMs.coerceIn(0, state.value.chapters?.durationMs ?: positionMs)
+        aimSleep(target)
+        if (state.value.sleepRestart != null) restartFromMs = target
     }
 
     /** The seek bar's seek on release, [offsetMs] into the chapter at [index], the one it spanned. */
@@ -171,11 +205,13 @@ class BookPlayerModel internal constructor(
     /** Sets the speed here at once and for the user on every device, shared with the web. */
     fun setSpeed(speed: Double) {
         speedChosen = true
+        val choice = ++speedChoices
         mutableState.update { it.copy(speed = speed) }
         audio.setSpeed(speed)
         scope.launch {
             try {
                 userSettings.updatePlayback(PlaybackPreferencesUpdate(bookSpeed = speed))
+                if (choice == speedChoices) speedChosen = false
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
@@ -185,9 +221,13 @@ class BookPlayerModel internal constructor(
     }
 
     /** Starts the sleep timer afresh. */
-    fun setSleep(choice: SleepChoice) {
-        aimSleep(position(), choice)
-        apply(sleep.set(choice, chapterEndMs - position(), state.value.speed))
+    fun setSleep(choice: SleepChoice) = startSleep(choice, position())
+
+    /** Starts the sleep timer afresh, for a book at [positionMs]. */
+    private fun startSleep(choice: SleepChoice, positionMs: Long) {
+        closeSleepRestart()
+        aimSleep(positionMs, choice)
+        apply(sleep.set(choice, chapterEndMs - positionMs, state.value.speed))
         publishSleep()
         if (sleeping?.isActive != true) {
             sleeping = scope.launch {
@@ -202,10 +242,13 @@ class BookPlayerModel internal constructor(
                     last = at
                     if (command == SleepCommand.Pause && running.choice == SleepChoice.EndOfChapter) {
                         controller?.pause()
-                        if (chapterEndMs < (s.chapters?.durationMs ?: 0)) controller?.seek(chapterEndMs)
+                        val seeks = chapterEndMs < (s.chapters?.durationMs ?: 0)
+                        if (seeks) controller?.seek(chapterEndMs)
                         audio.restoreVolume()
+                        openSleepRestart(running.choice, if (seeks) chapterEndMs else null)
                     } else {
                         apply(command)
+                        if (command == SleepCommand.Pause) openSleepRestart(running.choice, null)
                     }
                     publishSleep()
                 }
@@ -215,6 +258,7 @@ class BookPlayerModel internal constructor(
 
     /** Turns the sleep timer off. */
     fun stopSleep() {
+        closeSleepRestart()
         apply(sleep.off())
         publishSleep()
     }
@@ -236,12 +280,57 @@ class BookPlayerModel internal constructor(
         controller?.dispose()
         controller = null
         chaptersOf = null
+        closeSleepRestart()
         apply(sleep.off())
         sleeping?.cancel()
         sleeping = null
     }
 
     private fun position(): Long = controller?.positionMs() ?: state.value.player.positionMs
+
+    /** Where a skip is from: where a seek under way goes, so skips in quick succession add up. */
+    private fun target(): Long = controller?.targetMs() ?: state.value.player.positionMs
+
+    /** Tries a book that failed again: its play, or the book itself when it couldn't be opened, from where the user left it. */
+    private fun retry(): Boolean {
+        val s = state.value
+        if (s.player.status != PlayerStatus.Error) return false
+        val controller = controller
+        if (controller != null) controller.retry() else play(s.workId ?: return false)
+        return true
+    }
+
+    /**
+     * Plays on, and within [SLEEP_RESTART_WINDOW_MS] of the sleep timer
+     * pausing the book starts the timer again as it was set, for a book
+     * the play moved to [positionMs] if it did.
+     */
+    private fun resumeRestartingSleep(positionMs: Long? = null) {
+        val choice = state.value.sleepRestart?.takeIf { now() - restartOpenedAt <= SLEEP_RESTART_WINDOW_MS }
+        val from = restartFromMs
+        closeSleepRestart()
+        controller?.resume()
+        // The engine may still say where it was before End of chapter's seek to the next one.
+        if (choice != null) startSleep(choice, positionMs ?: from ?: position())
+    }
+
+    /** The sleep timer paused the book, leaving it at [fromMs] if it moved it: a play soon starts it again. */
+    private fun openSleepRestart(choice: SleepChoice, fromMs: Long?) {
+        restartClosing?.cancel()
+        restartOpenedAt = now()
+        restartFromMs = fromMs
+        mutableState.update { it.copy(sleepRestart = choice) }
+        restartClosing = scope.launch {
+            delay(SLEEP_RESTART_WINDOW_MS)
+            mutableState.update { it.copy(sleepRestart = null) }
+        }
+    }
+
+    private fun closeSleepRestart() {
+        restartClosing?.cancel()
+        restartClosing = null
+        if (state.value.sleepRestart != null) mutableState.update { it.copy(sleepRestart = null) }
+    }
 
     private fun follow(player: PlayerState) {
         mutableState.update { s ->
@@ -258,6 +347,7 @@ class BookPlayerModel internal constructor(
 
     /** The book played to its end: the sleep timer has nothing left to do. */
     private fun ended() {
+        closeSleepRestart()
         apply(sleep.off())
         publishSleep()
     }
@@ -285,21 +375,24 @@ class BookPlayerModel internal constructor(
         mutableState.update { it.copy(sleep = sleep.state) }
     }
 
-    /** The user's speed, read once, unless one is chosen here first. */
+    /**
+     * The user's speed, read as each book opens, so one chosen on another
+     * device since is this one's too; not over one chosen here that the
+     * server hasn't taken, or chosen while it's read.
+     */
     private fun readSpeed() {
-        if (speedRead) return
-        speedRead = true
+        val choices = speedChoices
         scope.launch {
             try {
                 val speed = userSettings.current().playback.bookSpeed
-                if (!speedChosen) {
+                if (!speedChosen && choices == speedChoices) {
                     mutableState.update { it.copy(speed = speed) }
                     if (controller != null) audio.setSpeed(speed)
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
-                speedRead = false
+                // Offline: the speed it has stays.
             }
         }
     }
@@ -307,6 +400,9 @@ class BookPlayerModel internal constructor(
     companion object {
         /** The speeds a book plays at, 1 being normal. */
         val SPEEDS: List<Double> = listOf(0.5, 0.75, 0.8, 0.9, 1.0, 1.1, 1.2, 1.25, 1.3, 1.4, 1.5, 1.6, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0)
+
+        /** How long [BookPlayerState.sleepRestart] stays set, for the countdown shown with it. */
+        const val SLEEP_RESTART_MS: Long = SLEEP_RESTART_WINDOW_MS
     }
 }
 
@@ -324,6 +420,8 @@ data class BookPlayerState(
     /** The user's speed for books. */
     val speed: Double = 1.0,
     val sleep: SleepState = SleepState.Off,
+    /** The sleep timer's choice while a play starts it again: for 15 seconds after it paused the book. */
+    val sleepRestart: SleepChoice? = null,
     /** Why it isn't playing: the play's failure, or the book couldn't be opened. */
     val failure: PlayerFailure? = null,
 ) {
