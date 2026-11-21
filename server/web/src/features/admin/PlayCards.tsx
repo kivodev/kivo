@@ -648,7 +648,7 @@ function useLeaving(plays: Play[]): Shown[] {
 }
 
 /**
- * Plays as cards in a grid of one to three columns. A card opens its
+ * Plays as cards in a grid, as many across as fit. A card opens its
  * play's details beside the page. A play that ends fades out, and when
  * none are left, `empty` shows.
  */
@@ -659,7 +659,7 @@ export function PlayCards({ plays, empty }: { plays: Play[]; empty: ReactNode })
   if (shown.length === 0) return empty;
   return (
     <>
-      <ul data-part="plays" className="grid gap-4 pt-1 sm:grid-cols-2 2xl:grid-cols-3">
+      <ul data-part="plays" className="grid grid-cols-(--layout-play-card-grid) gap-4 pt-1">
         {shown.map(({ play, leaving }) => (
           <li
             key={play.id}
