@@ -159,3 +159,81 @@ func emptyFragment(mfhd *mp4.MfhdBox, start time.Duration, tracks []*track) ([]b
 	b.Write([]byte{0, 0, 0, 8, 'm', 'd', 'a', 't'})
 	return b.Bytes(), nil
 }
+
+// trimBefore drops, from a job's first fragment, the other tracks' samples
+// that decode before the lead track's first sample. A job that starts
+// partway into a file seeks to the source keyframe before its start.
+// Encoded video and encoded audio are cut to the start, but copied audio
+// comes from that keyframe on, up to a whole source GOP early. Muxed, a
+// player places those samples by their timestamps, before the video. As a
+// segment of its own, the audio must cover the same span as the video's:
+// a player that lays segments end to end (Media Source's sequence mode,
+// which Shaka uses for HLS) would otherwise play all the audio after it
+// late by that much, and count the extra as audio buffered ahead. Every
+// later fragment's audio already starts at its video's first decode time,
+// because ffmpeg interleaves by decode time, so cutting there also joins
+// the segment to the one an earlier job wrote before it.
+func trimBefore(moof *mp4.MoofBox, lead *track, rest []*track, trexs map[uint32]*mp4.TrexBox) {
+	cut, ok := leadDecodeTime(moof, lead.id)
+	if !ok {
+		return
+	}
+	for _, traf := range moof.Trafs {
+		if traf.Tfhd == nil || traf.Tfdt == nil {
+			continue
+		}
+		for _, tr := range rest {
+			if tr.id == traf.Tfhd.TrackID {
+				trimTraf(traf, tr.timescale, trexs[tr.id], cut, lead.timescale)
+			}
+		}
+	}
+}
+
+// leadDecodeTime returns the decode time of the lead track's first sample
+// in moof, in the lead track's timescale.
+func leadDecodeTime(moof *mp4.MoofBox, lead uint32) (uint64, bool) {
+	for _, traf := range moof.Trafs {
+		if traf.Tfhd != nil && traf.Tfdt != nil && traf.Tfhd.TrackID == lead {
+			return traf.Tfdt.BaseMediaDecodeTime(), true
+		}
+	}
+	return 0, false
+}
+
+// trimTraf drops traf's samples that decode before cut, in units of
+// 1/cutScale seconds, and moves its decode time to the first one kept. The
+// kept samples' bytes stay where they are in the mdat; each run's data
+// offset moves past the dropped ones. A run whose first sample has flags of
+// its own is left alone, since dropping that sample would change them.
+func trimTraf(traf *mp4.TrafBox, scale uint32, trex *mp4.TrexBox, cut uint64, cutScale uint32) {
+	at := traf.Tfdt.BaseMediaDecodeTime()
+	for _, trun := range traf.Truns {
+		if !trun.HasDataOffset() || trun.HasFirstSampleFlags() {
+			break
+		}
+		trun.AddSampleDefaultValues(traf.Tfhd, trex)
+		n, skip := 0, int32(0)
+		for n < len(trun.Samples) && earlier(at, scale, cut, cutScale) {
+			at += uint64(trun.Samples[n].Dur)
+			skip += int32(trun.Samples[n].Size)
+			n++
+		}
+		trun.Samples = trun.Samples[n:]
+		trun.DataOffset += skip
+		if len(trun.Samples) > 0 {
+			break
+		}
+	}
+	if at != traf.Tfdt.BaseMediaDecodeTime() {
+		traf.Tfdt.SetBaseMediaDecodeTime(at)
+	}
+}
+
+// earlier reports whether time a, in units of 1/as seconds, is before time
+// b, in units of 1/bs seconds.
+func earlier(a uint64, as uint32, b uint64, bs uint32) bool {
+	ah, al := bits.Mul64(a, uint64(bs))
+	bh, bl := bits.Mul64(b, uint64(as))
+	return ah < bh || (ah == bh && al < bl)
+}

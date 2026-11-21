@@ -151,30 +151,109 @@ func TestSplitterGivesAudioToASegmentWithout(t *testing.T) {
 	}
 }
 
+func TestSplitterTrimsAudioBeforeTheVideo(t *testing.T) {
+	// A job that starts partway in gets copied audio from the source
+	// keyframe before its start. The first segment's audio starts with the
+	// video, and later segments are unchanged.
+	plain := readFixture(t, "remux-h264.mp4")
+	_, want, err := split(t, plain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	init, segs, err := split(t, delayVideo(t, plain, 500*time.Millisecond))
+	if err != nil {
+		t.Fatal(err)
+	}
+	videoAt := firstDecodeTime(t, init.Data, segs[0].Data)
+	audioAt := firstDecodeTime(t, init.Audio, segs[0].Audio)
+	if audioAt < videoAt-time.Millisecond || audioAt > videoAt+30*time.Millisecond {
+		t.Fatalf("audio starts at %v, video at %v", audioAt, videoAt)
+	}
+	if len(segs[0].Audio) >= len(want[0].Audio) {
+		t.Fatal("the first segment's audio wasn't trimmed")
+	}
+	for i := 1; i < len(segs); i++ {
+		if !bytes.Equal(segs[i].Audio, want[i].Audio) {
+			t.Fatalf("segment %d's audio changed", i)
+		}
+	}
+}
+
+// firstDecodeTime returns when seg's first sample decodes, read with init.
+func firstDecodeTime(t *testing.T, init, seg []byte) time.Duration {
+	t.Helper()
+	f, err := mp4.DecodeFile(bytes.NewReader(append(bytes.Clone(init), seg...)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ts := f.Init.Moov.Trak.Mdia.Mdhd.Timescale
+	at := f.Segments[0].Fragments[0].Moof.Traf.Tfdt.BaseMediaDecodeTime()
+	return time.Duration(at) * time.Second / time.Duration(ts)
+}
+
+// delayVideo returns muxed fMP4 with its first fragment's video decoding d
+// later, so that fragment's audio starts before its video.
+func delayVideo(t *testing.T, data []byte, d time.Duration) []byte {
+	t.Helper()
+	video, scale := trackOf(t, data, "vide")
+	return editMoof(t, data, 0, func(moof *mp4.MoofBox) {
+		for _, traf := range moof.Trafs {
+			if traf.Tfhd.TrackID == video {
+				traf.Tfdt.SetBaseMediaDecodeTime(traf.Tfdt.BaseMediaDecodeTime() + uint64(d*time.Duration(scale)/time.Second))
+			}
+		}
+	})
+}
+
 // withoutAudio returns muxed fMP4 with the audio taken out of fragment n,
 // counting from 0. Its samples' bytes stay in the mdat, unreferenced.
 func withoutAudio(t *testing.T, data []byte, n int) []byte {
+	t.Helper()
+	audio, _ := trackOf(t, data, "soun")
+	return editMoof(t, data, n, func(moof *mp4.MoofBox) {
+		kept := moof.Trafs[:0]
+		for _, traf := range moof.Trafs {
+			if traf.Tfhd.TrackID != audio {
+				kept = append(kept, traf)
+			}
+		}
+		moof.Trafs = kept
+		moof.Children = []mp4.Box{moof.Mfhd}
+		for _, traf := range kept {
+			moof.Children = append(moof.Children, traf)
+		}
+	})
+}
+
+// trackOf returns the ID and timescale of the file's track with handler.
+func trackOf(t *testing.T, data []byte, handler string) (uint32, uint32) {
 	t.Helper()
 	f, err := mp4.DecodeFile(bytes.NewReader(data))
 	if err != nil {
 		t.Fatal(err)
 	}
-	var audio uint32
 	for _, trak := range f.Init.Moov.Traks {
-		if trak.Mdia.Hdlr.HandlerType == "soun" {
-			audio = trak.Tkhd.TrackID
+		if trak.Mdia.Hdlr.HandlerType == handler {
+			return trak.Tkhd.TrackID, trak.Mdia.Mdhd.Timescale
 		}
 	}
+	t.Fatalf("no %s track", handler)
+	return 0, 0
+}
+
+// editMoof returns data with edit applied to moof n, counting from 0. The
+// data offsets, which count from the moof, follow any change in its size.
+func editMoof(t *testing.T, data []byte, n int, edit func(*mp4.MoofBox)) []byte {
+	t.Helper()
 	var out []byte
 	for pos, k := 0, 0; pos < len(data); {
 		size := int(binary.BigEndian.Uint32(data[pos:]))
 		b := data[pos : pos+size]
 		pos += size
-		if string(b[4:8]) != "moof" {
-			out = append(out, b...)
-			continue
+		if string(b[4:8]) == "moof" {
+			k++
 		}
-		if k++; k-1 != n {
+		if string(b[4:8]) != "moof" || k-1 != n {
 			out = append(out, b...)
 			continue
 		}
@@ -183,21 +262,16 @@ func withoutAudio(t *testing.T, data []byte, n int) []byte {
 			t.Fatal(err)
 		}
 		moof := bx.(*mp4.MoofBox)
-		kept := &mp4.MoofBox{}
-		_ = kept.AddChild(moof.Mfhd)
+		was := moof.Size()
+		edit(moof)
+		grow := int32(moof.Size()) - int32(was)
 		for _, traf := range moof.Trafs {
-			if traf.Tfhd.TrackID != audio {
-				_ = kept.AddChild(traf)
-			}
-		}
-		shrink := int32(moof.Size() - kept.Size())
-		for _, traf := range kept.Trafs {
 			for _, trun := range traf.Truns {
-				trun.DataOffset -= shrink
+				trun.DataOffset += grow
 			}
 		}
 		var w bytes.Buffer
-		if err := kept.Encode(&w); err != nil {
+		if err := moof.Encode(&w); err != nil {
 			t.Fatal(err)
 		}
 		out = append(out, w.Bytes()...)

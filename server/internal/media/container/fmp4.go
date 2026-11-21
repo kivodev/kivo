@@ -38,6 +38,7 @@ type Splitter struct {
 	carry []byte // boxes read since the last segment, such as styp or a fragment without video
 	// carryAudio is the audio of fragments read since the last segment.
 	carryAudio []byte
+	begun      bool // the first fragment of the lead track has been read
 	last       time.Duration
 	err        error
 }
@@ -237,18 +238,32 @@ func (s *Splitter) readFragment() (fragment, error) {
 			return fragment{}, err
 		}
 		if s.audio != nil {
-			before := len(data) - len(body) // the boxes before the moof
-			video, audio, err := splitFragment(moof, f.data[before:], s.lead.id, s.trexs)
-			if err == nil && audio == nil && f.lead {
-				audio, err = emptyFragment(moof.Mfhd, f.start+media.TimestampOffset, s.rest)
-			}
-			if err != nil {
+			if err := s.splitAudio(&f, moof, len(data)-len(body)); err != nil {
 				return fragment{}, err
 			}
-			f.data, f.audio = append(f.data[:before:before], video...), audio
 		}
 		return f, nil
 	}
+}
+
+// splitAudio cuts f's audio out into f.audio. before is how many bytes of
+// f.data come before its moof. The first fragment with video loses the
+// audio that decodes before it (trimBefore), and a fragment with video but
+// no audio gets an audio fragment without samples (emptyFragment).
+func (s *Splitter) splitAudio(f *fragment, moof *mp4.MoofBox, before int) error {
+	if f.lead && !s.begun {
+		s.begun = true
+		trimBefore(moof, s.lead, s.rest, s.trexs)
+	}
+	video, audio, err := splitFragment(moof, f.data[before:], s.lead.id, s.trexs)
+	if err == nil && audio == nil && f.lead {
+		audio, err = emptyFragment(moof.Mfhd, f.start+media.TimestampOffset, s.rest)
+	}
+	if err != nil {
+		return err
+	}
+	f.data, f.audio = append(f.data[:before:before], video...), audio
+	return nil
 }
 
 func decodeMoof(b []byte) (*mp4.MoofBox, error) {
