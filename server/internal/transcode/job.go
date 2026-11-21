@@ -167,11 +167,15 @@ func (s *Stream) produce(ctx context.Context, j *job) error {
 	}
 
 	cur := -1
-	var f *os.File // the segment being written; nil while skipping a segment already on disk
+	// f is the segment being written, and a its audio when that's apart
+	// from the video. Both are nil while skipping a segment already on disk.
+	var f, a *os.File
 	defer func() {
-		if f != nil {
-			f.Close()
-			os.Remove(f.Name())
+		for _, t := range []*os.File{f, a} {
+			if t != nil {
+				t.Close()
+				os.Remove(t.Name())
+			}
 		}
 	}()
 	// finish puts the segment being written in place, after its text.
@@ -181,10 +185,10 @@ func (s *Stream) produce(ctx context.Context, j *job) error {
 				return err
 			}
 		}
-		if err := s.commit(j, cur, f); err != nil {
+		if err := s.commit(j, cur, f, a); err != nil {
 			return err
 		}
-		f = nil
+		f, a = nil, nil
 		return nil
 	}
 	for seg, err := range out.Segments() {
@@ -211,9 +215,19 @@ func (s *Stream) produce(ctx context.Context, j *job) error {
 			if f, err = os.CreateTemp(s.dir, "seg-*.tmp"); err != nil {
 				return err
 			}
+			if s.spec.splitAudio() {
+				if a, err = os.CreateTemp(s.dir, "seg-*.tmp"); err != nil {
+					return err
+				}
+			}
 		}
 		if _, err := f.Write(seg.Data); err != nil {
 			return err
+		}
+		if a != nil {
+			if _, err := a.Write(seg.Audio); err != nil {
+				return err
+			}
 		}
 		// Encoded video has one fragment per segment, so a segment is done
 		// when its fragment is. A copied video segment ends only when the
@@ -336,9 +350,18 @@ const (
 	resumeLead = 60 * time.Second
 )
 
-// commit renames a finished segment into place and wakes the waiting
-// requests. It pauses the job once it's far enough ahead of the player.
-func (s *Stream) commit(j *job, i int, f *os.File) error {
+// commit renames a finished segment, and its audio when that's apart
+// from the video, into place and wakes the waiting requests. It pauses the
+// job once it's far enough ahead of the player.
+func (s *Stream) commit(j *job, i int, f, a *os.File) error {
+	if a != nil {
+		if err := a.Close(); err != nil {
+			return err
+		}
+		if err := os.Rename(a.Name(), s.audioPath(i)); err != nil {
+			return err
+		}
+	}
 	if err := f.Close(); err != nil {
 		return err
 	}
@@ -361,19 +384,32 @@ func (s *Stream) commit(j *job, i int, f *os.File) error {
 	return nil
 }
 
-// writeInit puts part p's init segment in place, only once. A stream keeps
-// one rendition and one encoder, so every job's init segment for a part is
-// the same.
-func (s *Stream) writeInit(p int, b []byte) error {
+// errNoSplitAudio means a job's output didn't split its audio from its
+// video the way the stream's playlists name it.
+var errNoSplitAudio = errors.New("output's audio isn't split from its video as the playlists say")
+
+// writeInit puts part p's init segments in place, only once. A stream
+// keeps one rendition and one encoder, so every job's init segments for a
+// part are the same.
+func (s *Stream) writeInit(p int, init media.Init) error {
 	s.mu.Lock()
 	have := s.initDone[p]
 	s.mu.Unlock()
 	if have {
 		return nil
 	}
+	if s.spec.splitAudio() != (init.Audio != nil) {
+		return errNoSplitAudio
+	}
 	// A stopped job may still be writing its own copy, so each job writes
-	// its own temporary file.
-	if err := atomicfile.Write(filepath.Join(s.dir, initName(p)), b); err != nil {
+	// its own temporary file. The audio's goes first, since the video's
+	// marks both in place.
+	if init.Audio != nil {
+		if err := atomicfile.Write(filepath.Join(s.dir, audioInitName(p)), init.Audio); err != nil {
+			return err
+		}
+	}
+	if err := atomicfile.Write(filepath.Join(s.dir, initName(p)), init.Data); err != nil {
 		return err
 	}
 	s.mu.Lock()

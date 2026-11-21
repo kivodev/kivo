@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"slices"
 	"time"
 
 	"github.com/Eyevinn/mp4ff/mp4"
@@ -21,14 +22,24 @@ const maxMdatGrow = 16 << 20
 // initialization segment and media segments, one per fragment. ffmpeg
 // starts a fragment at each video keyframe, so each segment begins on a
 // keyframe. Each segment is returned as soon as its fragment is complete.
+//
+// When the output has video and audio, the audio is split from the video:
+// it gets an initialization segment of its own, and each segment's audio
+// is a fragment of its own, cut from the same fragment as the video. So
+// the audio's segments cover the same spans as the video's.
 type Splitter struct {
 	r io.Reader
 
 	init  []byte
-	lead  *track // the track whose fragments make segments, which is video if there is any
+	audio []byte   // the audio's initialization segment, when it's split from the video
+	lead  *track   // the track whose fragments make segments, which is video if there is any
+	rest  []*track // the tracks beside the lead, when the audio is split from the video
+	trexs map[uint32]*mp4.TrexBox
 	carry []byte // boxes read since the last segment, such as styp or a fragment without video
-	last  time.Duration
-	err   error
+	// carryAudio is the audio of fragments read since the last segment.
+	carryAudio []byte
+	last       time.Duration
+	err        error
 }
 
 // NewSplitter reads ffmpeg's output from r.
@@ -63,49 +74,100 @@ func (s *Splitter) Init() (init []byte, err error) {
 			raw = append(raw, body...)
 			continue
 		}
-		moov, err := s.readInit(body)
+		moov, audio, err := s.readInit(body)
 		if err != nil {
 			return nil, s.fail(err)
+		}
+		if audio != nil {
+			s.audio = append(slices.Clone(raw), audio...)
 		}
 		s.init = append(raw, moov...)
 		return s.init, nil
 	}
 }
 
+// AudioInit returns the audio's initialization segment, when the audio is
+// split from the video, or nil. It's known once Init has returned.
+func (s *Splitter) AudioInit() []byte { return s.audio }
+
 // readInit finds the lead track and returns the moov, retagged if needed.
-func (s *Splitter) readInit(b []byte) ([]byte, error) {
+// When the audio is split from the video, it returns the video's moov and
+// the audio's.
+func (s *Splitter) readInit(b []byte) (moovB, audio []byte, err error) {
 	bx, err := decode(b)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	moov, ok := bx.(*mp4.MoovBox)
 	if !ok {
-		return nil, corrupt("mp4: bad moov")
+		return nil, nil, corrupt("mp4: bad moov")
 	}
 	if s.lead, err = leadTrack(moov); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if s.lead == nil {
-		return nil, corrupt("mp4: no tracks")
+		return nil, nil, corrupt("mp4: no tracks")
 	}
-	retag := false
+	retagged := retagHEV1(moov)
+	video, _, err := videoTrack(moov)
+	switch {
+	case err != nil:
+		return nil, nil, err
+	case video != nil && len(tracks(moov)) > 1:
+		return s.splitInit(moov)
+	case !retagged:
+		return b, nil, nil
+	}
+	var out bytes.Buffer
+	if err := moov.Encode(&out); err != nil {
+		return nil, nil, corrupt("mp4: re-encode moov: %v", err)
+	}
+	return out.Bytes(), nil, nil
+}
+
+// retagHEV1 retags each HEVC track tagged hev1 as hvc1, and reports
+// whether there was one.
+func retagHEV1(moov *mp4.MoovBox) bool {
+	retagged := false
 	for _, trak := range moov.Traks {
 		if trak.Mdia == nil || trak.Mdia.Minf == nil || trak.Mdia.Minf.Stbl == nil || trak.Mdia.Minf.Stbl.Stsd == nil {
 			continue
 		}
 		if e := trak.Mdia.Minf.Stbl.Stsd.HvcX; e != nil && e.Type() == "hev1" {
 			e.SetType("hvc1")
-			retag = true
+			retagged = true
 		}
 	}
-	if !retag {
-		return b, nil
+	return retagged
+}
+
+// splitInit returns the video's moov and the audio's, the lead track and
+// the rest, and keeps every track's defaults for splitting fragments.
+func (s *Splitter) splitInit(moov *mp4.MoovBox) (video, audio []byte, err error) {
+	s.trexs = map[uint32]*mp4.TrexBox{}
+	if moov.Mvex != nil {
+		for _, x := range moov.Mvex.Trexs {
+			s.trexs[x.TrackID] = x
+		}
 	}
-	var out bytes.Buffer
-	if err := moov.Encode(&out); err != nil {
-		return nil, corrupt("mp4: re-encode moov: %v", err)
+	isLead := func(id uint32) bool { return id == s.lead.id }
+	for _, trak := range tracks(moov) {
+		if isLead(trak.Tkhd.TrackID) {
+			continue
+		}
+		tr, err := readTrack(moov, trak)
+		if err != nil {
+			return nil, nil, err
+		}
+		s.rest = append(s.rest, tr)
 	}
-	return out.Bytes(), nil
+	if video, err = moovOf(moov, isLead); err != nil {
+		return nil, nil, err
+	}
+	if audio, err = moovOf(moov, func(id uint32) bool { return !isLead(id) }); err != nil {
+		return nil, nil, err
+	}
+	return video, audio, nil
 }
 
 // Next returns the next segment, or io.EOF after the last.
@@ -118,7 +180,7 @@ func (s *Splitter) Next() (seg media.Segment, err error) {
 	}
 	defer s.recoverPanic(&err)
 	for {
-		start, lead, data, err := s.readFragment()
+		f, err := s.readFragment()
 		if err == io.EOF {
 			s.err = io.EOF
 			return media.Segment{}, io.EOF
@@ -126,65 +188,103 @@ func (s *Splitter) Next() (seg media.Segment, err error) {
 		if err != nil {
 			return media.Segment{}, s.fail(err)
 		}
-		if !lead {
-			s.carry = append(s.carry, data...)
+		if !f.lead {
+			s.carry = append(s.carry, f.data...)
+			s.carryAudio = append(s.carryAudio, f.audio...)
 			continue
 		}
 		if len(s.carry) > 0 {
-			data, s.carry = append(s.carry, data...), nil
+			f.data, s.carry = append(s.carry, f.data...), nil
 		}
-		return media.Segment{Start: start, Data: data}, nil
+		if len(s.carryAudio) > 0 {
+			f.audio, s.carryAudio = append(s.carryAudio, f.audio...), nil
+		}
+		return media.Segment{Start: f.start, Data: f.data, Audio: f.audio}, nil
 	}
 }
 
-// readFragment reads boxes through the next mdat. It returns the
-// presentation time of the fragment's first lead-track sample, on the
-// source's timeline, and whether there is one.
-func (s *Splitter) readFragment() (time.Duration, bool, []byte, error) {
+// fragment is one fragment as read: the boxes before it, its moof and its
+// mdat.
+type fragment struct {
+	start time.Duration // the presentation time of its first lead-track sample, on the source's timeline
+	lead  bool          // whether it has a lead-track sample
+	data  []byte        // the fragment, or its video when the audio is split
+	audio []byte        // its audio when the audio is split, which has no samples when the fragment has video but no audio
+}
+
+// readFragment reads boxes through the next mdat.
+func (s *Splitter) readFragment() (fragment, error) {
 	var data []byte
 	for {
 		// At the end, boxes after the last fragment (mfra) are dropped.
 		bx, body, err := s.readBox(maxOther)
 		if err != nil {
-			return 0, false, nil, err
+			return fragment{}, err
 		}
 		data = append(data, body...)
 		if bx.typ != "moof" {
 			continue
 		}
-		start, lead, err := s.fragmentStart(body)
+		moof, err := decodeMoof(body)
 		if err != nil {
-			return 0, false, nil, err
+			return fragment{}, err
 		}
-		mdat, err := s.readHeader()
-		if err != nil {
-			return 0, false, nil, noEOF(err)
+		f := fragment{}
+		if f.start, f.lead, err = s.fragmentStart(moof); err != nil {
+			return fragment{}, err
 		}
-		if mdat.typ != "mdat" {
-			return 0, false, nil, corrupt("mp4: %s after moof", mdat.typ)
+		if f.data, err = s.readMdat(data); err != nil {
+			return fragment{}, err
 		}
-		if mdat.size > maxMdat {
-			return 0, false, nil, corrupt("mp4: mdat is %d bytes", mdat.size)
+		if s.audio != nil {
+			before := len(data) - len(body) // the boxes before the moof
+			video, audio, err := splitFragment(moof, f.data[before:], s.lead.id, s.trexs)
+			if err == nil && audio == nil && f.lead {
+				audio, err = emptyFragment(moof.Mfhd, f.start+media.TimestampOffset, s.rest)
+			}
+			if err != nil {
+				return fragment{}, err
+			}
+			f.data, f.audio = append(f.data[:before:before], video...), audio
 		}
-		buf := bytes.NewBuffer(data)
-		buf.Grow(int(min(mdat.size, maxMdatGrow)))
-		if err := s.copyBody(buf, mdat); err != nil {
-			return 0, false, nil, err
-		}
-		return start, lead, buf.Bytes(), nil
+		return f, nil
 	}
 }
 
-// fragmentStart reads the lead track's start from a moof.
-func (s *Splitter) fragmentStart(b []byte) (time.Duration, bool, error) {
+func decodeMoof(b []byte) (*mp4.MoofBox, error) {
 	bx, err := decode(b)
 	if err != nil {
-		return 0, false, err
+		return nil, err
 	}
 	moof, ok := bx.(*mp4.MoofBox)
 	if !ok {
-		return 0, false, corrupt("mp4: bad moof")
+		return nil, corrupt("mp4: bad moof")
 	}
+	return moof, nil
+}
+
+// readMdat reads the mdat that follows a moof, and returns it after data.
+func (s *Splitter) readMdat(data []byte) ([]byte, error) {
+	mdat, err := s.readHeader()
+	if err != nil {
+		return nil, noEOF(err)
+	}
+	if mdat.typ != "mdat" {
+		return nil, corrupt("mp4: %s after moof", mdat.typ)
+	}
+	if mdat.size > maxMdat {
+		return nil, corrupt("mp4: mdat is %d bytes", mdat.size)
+	}
+	buf := bytes.NewBuffer(data)
+	buf.Grow(int(min(mdat.size, maxMdatGrow)))
+	if err := s.copyBody(buf, mdat); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// fragmentStart reads the lead track's start from a moof.
+func (s *Splitter) fragmentStart(moof *mp4.MoofBox) (time.Duration, bool, error) {
 	for smp := range s.lead.samples(moof) {
 		start := s.lead.pts(smp.dts, smp.CompositionTimeOffset) - media.TimestampOffset
 		if start <= s.last {

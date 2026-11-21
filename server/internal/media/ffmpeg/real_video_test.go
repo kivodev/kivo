@@ -94,10 +94,10 @@ func TestRealVideoTranscode(t *testing.T) {
 					// The source's keyframes are irregular. The output's are
 					// on the grid, so each segment is one grid step.
 					checkSegments(t, init, segs, grid(start, 6*time.Second, 30*time.Second))
-					if w, h := pictureSize(t, init); w != 160 || h != 90 {
+					if w, h := pictureSize(t, init.Data); w != 160 || h != 90 {
 						t.Errorf("picture is %d×%d, want 160×90", w, h)
 					}
-					if codec == media.HEVC && !bytes.Contains(init, []byte("hvc1")) {
+					if codec == media.HEVC && !bytes.Contains(init.Data, []byte("hvc1")) {
 						t.Error("HEVC init segment isn't tagged hvc1")
 					}
 				})
@@ -113,7 +113,7 @@ func TestRealVideoFrameRateCap(t *testing.T) {
 		Source: videoTrack(t, m, path), Video: media.VideoRendition{Codec: media.H264, FrameRate: 10, Bitrate: 300_000}}
 	init, segs := transcode(t, m, req)
 	checkSegments(t, init, segs, grid(6*time.Second, 4*time.Second, 30*time.Second))
-	f, err := mp4.DecodeFile(bytes.NewReader(append(bytes.Clone(init), segs[0].Data...)))
+	f, err := mp4.DecodeFile(bytes.NewReader(append(bytes.Clone(init.Data), segs[0].Data...)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,7 +211,7 @@ func TestRealInterlaced(t *testing.T) {
 				Video: media.VideoRendition{Codec: media.H264, Bitrate: 500_000}}
 			init, segs := transcode(t, m, req)
 			checkSegments(t, init, segs, grid(start, 2*time.Second, 8*time.Second))
-			b := bytes.Clone(init)
+			b := bytes.Clone(init.Data)
 			for _, s := range segs {
 				b = append(b, s.Data...)
 			}

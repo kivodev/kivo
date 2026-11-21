@@ -61,8 +61,8 @@ func TestFakeRemux(t *testing.T) {
 	}
 	defer out.Close()
 	init, err := out.Init()
-	if err != nil || len(init) == 0 {
-		t.Fatalf("Init: %d bytes, %v", len(init), err)
+	if err != nil || len(init.Data) == 0 {
+		t.Fatalf("Init: %d bytes, %v", len(init.Data), err)
 	}
 	starts, err := collect(out)
 	if err != nil {
