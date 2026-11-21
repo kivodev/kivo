@@ -126,9 +126,12 @@ func (s *Scanner) storeProbe(ctx context.Context, tx *store.Tx, lib catalog.Libr
 		// identify runs, which keeps the old ID with everything attached to
 		// it. The file is then identified again where it now is. If another
 		// concurrent probe already relinked moved (or it was pruned), fall
-		// back to storing f as a new file.
+		// back to storing f as a new file. A merge the catalog refuses also
+		// leaves f as its own file: f has a version already, because the
+		// move replaced a known file, or moved's version has parts that
+		// stay in another library.
 		err := s.deps.Catalog.Relink(ctx, tx, moved, f.ID)
-		if err != nil && !errors.Is(err, catalog.ErrStale) && !errors.Is(err, catalog.ErrNotFound) {
+		if err != nil && !errors.Is(err, catalog.ErrStale) && !errors.Is(err, catalog.ErrNotFound) && !errors.Is(err, catalog.ErrInvalid) {
 			return err
 		}
 		if err == nil {
