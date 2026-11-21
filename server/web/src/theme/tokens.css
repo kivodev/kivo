@@ -74,6 +74,7 @@
   --layout-grid-gap: 1rem;
   --layout-poster-grid: repeat(auto-fill, minmax(var(--layout-poster-min-width), 1fr));
   --layout-landscape-grid: repeat(auto-fill, minmax(var(--layout-landscape-min-width), 1fr));
+  --layout-play-card-grid: repeat(auto-fill, minmax(min(20rem, 100%), 1fr));
   --layout-hero-min-height: 28rem;
   --layout-still-width: 10rem;
   --layout-card-caption-height: 3rem;
