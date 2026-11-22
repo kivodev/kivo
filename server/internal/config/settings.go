@@ -38,8 +38,12 @@ type Settings struct {
 	OpenSubtitlesUsername string `setting:"opensubtitles_username"`
 	OpenSubtitlesPassword string `setting:"opensubtitles_password"`
 	// FileWatching scans a folder as soon as its files change. When it is
-	// off, the rescan every 12 hours finds changes.
+	// off, the rescan finds changes.
 	FileWatching bool `setting:"file_watching"`
+	// RescanEvery is how often every library is scanned, in whole minutes
+	// from 15 to 1440, which is a day. The rescan finds the files that
+	// file watching misses.
+	RescanEvery int `setting:"rescan_every"`
 	// LocalNetworks are the CIDR ranges whose clients count as local. Empty
 	// means private, loopback and link-local addresses. Any other range,
 	// such as Tailscale's 100.64.0.0/10, is local only once listed here.
@@ -87,6 +91,7 @@ func Defaults() Settings {
 		ContentRatingCountry: "US",
 		PlayedThreshold:      0.9,
 		FileWatching:         true,
+		RescanEvery:          12 * 60,
 		Accelerator:          AcceleratorAuto,
 		MaintenanceStart:     2,
 		MaintenanceEnd:       6,
@@ -140,6 +145,9 @@ func (s Settings) Validate() error {
 	}
 	if s.PlayedThreshold < 0.5 || s.PlayedThreshold > 1 {
 		errs = append(errs, fmt.Errorf("played_threshold: %v is not between 0.5 and 1", s.PlayedThreshold))
+	}
+	if s.RescanEvery < 15 || s.RescanEvery > 24*60 {
+		errs = append(errs, fmt.Errorf("rescan_every: %d is not from 15 to 1440 minutes", s.RescanEvery))
 	}
 	for _, n := range s.LocalNetworks {
 		if _, err := netip.ParsePrefix(n); err != nil {

@@ -157,6 +157,11 @@ func (h *harness) status(name string) Status {
 	return Status{}
 }
 
+// fixed is an interval that no setting changes.
+func fixed(d time.Duration) func(config.Settings) time.Duration {
+	return func(config.Settings) time.Duration { return d }
+}
+
 // sleep moves the bubble's clock on and lets everything settle.
 func sleep(d time.Duration) {
 	time.Sleep(d)
@@ -423,7 +428,7 @@ func TestFuncRuns(t *testing.T) {
 func TestARestartKeepsAnIntervalTasksTime(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		runs := 0
-		h := newHarness(t, Task{Name: "scan-libraries", Schedule: Every(12 * time.Hour), Work: Func(func(context.Context) error {
+		h := newHarness(t, Task{Name: "scan-libraries", Schedule: Every(fixed(12 * time.Hour)), Work: Func(func(context.Context) error {
 			runs++
 			return nil
 		})})
@@ -462,7 +467,7 @@ func TestARestartKeepsAnIntervalTasksTime(t *testing.T) {
 func TestAnIntervalTaskCountsFromStartupWhenItsLastRunIsAhead(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		runs := 0
-		h := newHarness(t, Task{Name: "scan-libraries", Schedule: Every(12 * time.Hour), Work: Func(func(context.Context) error {
+		h := newHarness(t, Task{Name: "scan-libraries", Schedule: Every(fixed(12 * time.Hour)), Work: Func(func(context.Context) error {
 			runs++
 			return nil
 		})})
@@ -484,6 +489,65 @@ func TestAnIntervalTaskCountsFromStartupWhenItsLastRunIsAhead(t *testing.T) {
 	})
 }
 
+// An interval task's interval follows the settings. A saved change moves
+// the next run without a restart, and a run the change makes due begins at
+// the next check.
+func TestAnIntervalFollowsTheSettings(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var runs atomic.Int32
+		every := func(st config.Settings) time.Duration { return time.Duration(st.RescanEvery) * time.Minute }
+		h := newHarness(t, Task{Name: "scan-libraries", Schedule: Every(every), Work: Func(func(context.Context) error {
+			runs.Add(1)
+			return nil
+		})})
+		set := func(minutes int) {
+			t.Helper()
+			err := h.settings.Update(context.Background(), func(s *config.Settings) error {
+				s.RescanEvery = minutes
+				return nil
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+		next := func() time.Duration {
+			s := h.status("scan-libraries")
+			return s.Next.Sub(s.Last.At)
+		}
+		h.start()
+		defer h.stop()
+		sleep(12*time.Hour + 30*time.Second)
+		if runs.Load() != 1 || next() != 12*time.Hour {
+			t.Fatalf("%d runs in the first 12 hours, the next %v after, want 1 and 12 hours", runs.Load(), next())
+		}
+
+		set(30)
+		if got := h.status("scan-libraries").Every; next() != 30*time.Minute || got != 30*time.Minute {
+			t.Fatalf("next run %v after the last, with an interval of %v, want 30 minutes", next(), got)
+		}
+		sleep(29 * time.Minute)
+		if runs.Load() != 1 {
+			t.Fatalf("%d runs 29 minutes after the first, want 1", runs.Load())
+		}
+		sleep(time.Minute)
+		if runs.Load() != 2 {
+			t.Fatalf("%d runs 30 minutes after the first, want 2", runs.Load())
+		}
+
+		set(24 * 60)
+		sleep(12 * time.Hour)
+		if runs.Load() != 2 || next() != 24*time.Hour {
+			t.Fatalf("%d runs 12 hours after the second, the next %v after, want 2 and 24 hours", runs.Load(), next())
+		}
+
+		set(15)
+		sleep(time.Minute)
+		if runs.Load() != 3 {
+			t.Fatalf("%d runs, want the run the change made due to begin", runs.Load())
+		}
+	})
+}
+
 // A scheduled task with nothing wanted of it shows no next run.
 func TestUnwantedHasNoNextRun(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
@@ -500,6 +564,8 @@ func TestUnwantedHasNoNextRun(t *testing.T) {
 		}
 		if s := h.status("make-backup"); s.Next.IsZero() {
 			t.Fatal("a task without Wanted has no next run")
+		} else if s.Every != 0 {
+			t.Fatalf("a night task has an interval of %v", s.Every)
 		}
 		wanted = true
 		if s := h.status("make-previews"); s.Next.IsZero() {
@@ -542,7 +608,7 @@ func TestEndedHearsOfRunsThatDidSomething(t *testing.T) {
 			Task{Name: "optimize-database", Schedule: Nightly, Maintenance: true, Work: Func(func(ctx context.Context) error {
 				return errors.New("disk I/O error")
 			})},
-			Task{Name: "scan-libraries", Schedule: Every(2 * time.Hour), Work: Func(func(ctx context.Context) error {
+			Task{Name: "scan-libraries", Schedule: Every(fixed(2 * time.Hour)), Work: Func(func(ctx context.Context) error {
 				every++
 				Summarize(ctx, "Scanned")
 				return nil
@@ -939,7 +1005,7 @@ func TestUncountedAskedItemsShowTheirOwnProgress(t *testing.T) {
 			Progress(ctx, "probe", 2, 9)
 			return do(ctx, i)
 		}
-		h := newHarness(t, Task{Name: "scan", Schedule: Every(12 * time.Hour), Work: w})
+		h := newHarness(t, Task{Name: "scan", Schedule: Every(fixed(12 * time.Hour)), Work: w})
 		h.start()
 		h.r.Enqueue("scan", f.left...)
 		synctest.Wait()

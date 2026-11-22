@@ -37,7 +37,8 @@ import kotlinx.serialization.encoding.*
  * @param openSubtitlesKey An OpenSubtitles API key; without one, subtitles aren't searched or downloaded.
  * @param openSubtitlesUsername An OpenSubtitles account, which raises the daily download quota; empty for none.
  * @param openSubtitlesPasswordSet Whether the OpenSubtitles account has a password; the password itself is never sent.
- * @param fileWatching Scan a folder as soon as files in it change. Off, changes are found by the scan of every library every 12 hours, or a scan an admin starts. 
+ * @param fileWatching Scan a folder as soon as files in it change. Off, changes are found by the scan of every library every `rescanEveryMinutes`, or a scan an admin starts. 
+ * @param rescanEveryMinutes How often every library is scanned, in minutes. The scan finds the files that file watching misses. 
  * @param playedThreshold The fraction of a work that, once played, marks it played, such as 0.9.
  * @param localNetworks CIDR ranges whose clients are local. Empty means private (RFC 1918 and unique local), loopback and link-local addresses. Another range, such as Tailscale's 100.64.0.0/10, is local only once listed. 
  * @param accelerator The video accelerator transcodes use: `auto` (the tested accelerators, best first), `none` (the CPU), or one accelerator's `id` from `GET /api/v1/accelerators`, such as `qsv:/dev/dri/renderD128`. 
@@ -72,8 +73,11 @@ data class Settings (
     /* Whether the OpenSubtitles account has a password; the password itself is never sent. */
     @SerialName(value = "openSubtitlesPasswordSet") @Required val openSubtitlesPasswordSet: kotlin.Boolean,
 
-    /* Scan a folder as soon as files in it change. Off, changes are found by the scan of every library every 12 hours, or a scan an admin starts.  */
+    /* Scan a folder as soon as files in it change. Off, changes are found by the scan of every library every `rescanEveryMinutes`, or a scan an admin starts.  */
     @SerialName(value = "fileWatching") @Required val fileWatching: kotlin.Boolean,
+
+    /* How often every library is scanned, in minutes. The scan finds the files that file watching misses.  */
+    @SerialName(value = "rescanEveryMinutes") @Required val rescanEveryMinutes: kotlin.Int,
 
     /* The fraction of a work that, once played, marks it played, such as 0.9. */
     @SerialName(value = "playedThreshold") @Required val playedThreshold: kotlin.Double,

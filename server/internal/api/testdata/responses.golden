@@ -2460,6 +2460,7 @@ GET /api/v1/tasks
 {
   "items": [
     {
+      "everyMinutes": 720,
       "failedCount": 0,
       "id": "scan-libraries",
       "nextRunAt": "<time>",

@@ -36,6 +36,7 @@ func (h *handlers) UpdateSettings(ctx context.Context, req gen.UpdateSettingsReq
 		set(&st.OpenSubtitlesUsername, b.OpenSubtitlesUsername)
 		set(&st.OpenSubtitlesPassword, b.OpenSubtitlesPassword)
 		set(&st.FileWatching, b.FileWatching)
+		set(&st.RescanEvery, b.RescanEveryMinutes)
 		if b.LocalNetworks != nil {
 			st.LocalNetworks = *b.LocalNetworks
 		}
@@ -64,7 +65,7 @@ func (h *handlers) settings() gen.Settings {
 		ServerName:           st.ServerName, MetadataLanguage: st.MetadataLanguage, ContentRatingCountry: st.ContentRatingCountry,
 		PlayedThreshold: st.PlayedThreshold, OpenSubtitlesKey: st.OpenSubtitlesKey,
 		OpenSubtitlesUsername: st.OpenSubtitlesUsername, OpenSubtitlesPasswordSet: st.OpenSubtitlesPassword != "",
-		FileWatching: st.FileWatching, LocalNetworks: nonNil(st.LocalNetworks),
+		FileWatching: st.FileWatching, RescanEveryMinutes: st.RescanEvery, LocalNetworks: nonNil(st.LocalNetworks),
 		Accelerator: st.Accelerator, VideoTranscodeLimit: st.VideoTranscodeLimit,
 		MaintenanceStartHour: st.MaintenanceStart, MaintenanceEndHour: st.MaintenanceEnd, PreviewsAtOnce: st.PreviewsAtOnce, MarkersAtOnce: st.MarkersAtOnce,
 		PublicURL: st.PublicURL, RemoteQualityCapBps: st.RemoteQualityCap,

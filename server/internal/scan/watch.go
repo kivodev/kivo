@@ -52,7 +52,7 @@ func newFSNotifier() (notifier, error) {
 //
 // Hitting inotify's watch limit, which every container of the user shares,
 // is reported, not fatal. So is an event overflow. NFS and SMB send no
-// events either, so the rescan every 12 hours is the backstop.
+// events either, so the timed rescan is the backstop.
 func (s *Scanner) Watch(ctx context.Context) error {
 	for {
 		if s.watching() {
@@ -188,7 +188,7 @@ func (w *watcher) add(path string) {
 		w.full = true
 		w.s.setProblem("watch", health.Problem{
 			Component: "scan", Code: "watchLimit", Severity: health.Info, RaisedAt: time.Now(),
-			Message: "The file watch limit (fs.inotify.max_user_watches) is reached. Some folders are only checked by the 12-hour rescan.",
+			Message: "The file watch limit (fs.inotify.max_user_watches) is reached. Some folders are only checked by the timed rescan.",
 		})
 	case err == nil:
 		w.watched[path] = true

@@ -411,6 +411,19 @@ func TestOpenPreservesMaintenanceWindow(t *testing.T) {
 	}
 }
 
+func TestRescanEvery(t *testing.T) {
+	if every := Defaults().RescanEvery; every != 12*60 {
+		t.Errorf("default %d minutes, want 12 hours", every)
+	}
+	for n, ok := range map[int]bool{0: false, 14: false, 15: true, 12 * 60: true, 24 * 60: true, 24*60 + 1: false} {
+		s := Defaults()
+		s.RescanEvery = n
+		if err := s.Validate(); (err == nil) != ok {
+			t.Errorf("%d: %v", n, err)
+		}
+	}
+}
+
 func TestPreviewsAtOnce(t *testing.T) {
 	for n, ok := range map[int]bool{0: false, 1: true, 3: true, 8: true, 9: false} {
 		s := Defaults()

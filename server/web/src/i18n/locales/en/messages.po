@@ -546,6 +546,10 @@ msgstr "Android TV"
 msgid "Items appear here as the library's folders are scanned."
 msgstr "Items appear here as the library's folders are scanned."
 
+#: src/features/admin/TasksScreen.tsx
+msgid "Finds files the folder watcher misses."
+msgstr "Finds files the folder watcher misses."
+
 #: src/features/admin/AddUserButton.tsx
 #: src/features/admin/CreateInviteButton.tsx
 #: src/features/admin/TranscodingScreen.tsx
@@ -872,6 +876,10 @@ msgstr "Add to List"
 msgid "Appearance"
 msgstr "Appearance"
 
+#: src/features/admin/LibrarySettingsScreen.tsx
+msgid "Network shares may not report changes. All libraries are also scanned every {interval}."
+msgstr "Network shares may not report changes. All libraries are also scanned every {interval}."
+
 #: src/features/admin/UserScreen.tsx
 #: src/features/user/SettingsScreen.tsx
 msgid "Account"
@@ -923,10 +931,6 @@ msgstr "Match {title}"
 #: src/features/user/Sessions.tsx
 msgid "Sign out {device}"
 msgstr "Sign out {device}"
-
-#: src/features/admin/LibrarySettingsScreen.tsx
-msgid "Network shares may not report changes. All libraries are also scanned every 12 hours."
-msgstr "Network shares may not report changes. All libraries are also scanned every 12 hours."
 
 #: src/features/detail/SeriesDetail.tsx
 #: src/features/lists/smartLabels.ts
@@ -1151,10 +1155,6 @@ msgstr "Delete"
 msgid "Disable"
 msgstr "Disable"
 
-#: src/features/admin/TasksScreen.tsx
-msgid "Progress"
-msgstr "Progress"
-
 #: src/features/browse/LibraryScreen.tsx
 msgid "Nothing in this library yet."
 msgstr "Nothing in this library yet."
@@ -1260,6 +1260,10 @@ msgstr "shows"
 #: src/features/admin/FixMatchDialog.tsx
 msgid "No matches. Try a different title or remove the year."
 msgstr "No matches. Try a different title or remove the year."
+
+#: src/features/admin/TasksScreen.tsx
+msgid "New files"
+msgstr "New files"
 
 #: src/components/ConfirmDialog.tsx
 #: src/components/SubmitForm.tsx
@@ -2343,6 +2347,10 @@ msgstr "Certification country"
 msgid "Try again"
 msgstr "Try again"
 
+#: src/features/admin/intervals.ts
+msgid "{minutes, plural, one {minute} other {# minutes}}"
+msgstr "{minutes, plural, one {minute} other {# minutes}}"
+
 #: src/features/admin/TranscodingScreen.tsx
 msgid "CPU only"
 msgstr "CPU only"
@@ -2747,6 +2755,10 @@ msgstr "Intro and credits at once"
 #: src/i18n/playback.ts
 msgid "{field}: {actual}, none declared"
 msgstr "{field}: {actual}, none declared"
+
+#: src/features/admin/TasksScreen.tsx
+msgid "Rescan libraries"
+msgstr "Rescan libraries"
 
 #: src/features/admin/problemActions.ts
 msgid "Raise fs.inotify.max_user_watches on the host to watch every folder."
@@ -3744,6 +3756,10 @@ msgstr "This device is signing in to another server. You're signed in to {server
 msgid "Clear filters"
 msgstr "Clear filters"
 
+#: src/features/admin/intervals.ts
+msgid "Every {interval}"
+msgstr "Every {interval}"
+
 #: src/features/user/SettingsScreen.tsx
 msgid "Limited to {capped} by the server."
 msgstr "Limited to {capped} by the server."
@@ -3894,6 +3910,11 @@ msgstr "Clear search"
 #: src/features/auth/SignInScreen.tsx
 msgid "Sign in with password"
 msgstr "Sign in with password"
+
+#. placeholder {0}: minutes / 60
+#: src/features/admin/intervals.ts
+msgid "{0, plural, one {hour} other {# hours}}"
+msgstr "{0, plural, one {hour} other {# hours}}"
 
 #: src/features/admin/PlayCards.tsx
 msgid "The viewer can resume from where it stopped."

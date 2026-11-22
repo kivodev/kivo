@@ -4034,9 +4034,9 @@ components:
     Settings:
       type: object
       required: [serverName, metadataLanguage, contentRatingCountry, playedThreshold, openSubtitlesKey,
-        openSubtitlesUsername, openSubtitlesPasswordSet, fileWatching, localNetworks, accelerator,
-        videoTranscodeLimit, maintenanceStartHour, maintenanceEndHour, previewsAtOnce, markersAtOnce, publicUrl,
-        remoteQualityCapBps]
+        openSubtitlesUsername, openSubtitlesPasswordSet, fileWatching, rescanEveryMinutes, localNetworks,
+        accelerator, videoTranscodeLimit, maintenanceStartHour, maintenanceEndHour, previewsAtOnce, markersAtOnce,
+        publicUrl, remoteQualityCapBps]
       properties:
         serverName:
           type: string
@@ -4069,8 +4069,15 @@ components:
           type: boolean
           description: |
             Scan a folder as soon as files in it change. Off, changes are
-            found by the scan of every library every 12 hours, or a scan an
-            admin starts.
+            found by the scan of every library every `rescanEveryMinutes`,
+            or a scan an admin starts.
+        rescanEveryMinutes:
+          type: integer
+          minimum: 15
+          maximum: 1440
+          description: |
+            How often every library is scanned, in minutes. The scan finds
+            the files that file watching misses.
         playedThreshold:
           type: number
           format: double
@@ -4150,6 +4157,7 @@ components:
           type: string
           description: The OpenSubtitles account's password; empty for none.
         fileWatching: {type: boolean}
+        rescanEveryMinutes: {type: integer, minimum: 15, maximum: 1440}
         localNetworks:
           type: array
           items: {type: string}
@@ -6554,6 +6562,11 @@ components:
         nightly:
           type: boolean
           description: Its runs begin as the maintenance window opens; else every so often.
+        everyMinutes:
+          type: integer
+          description: |
+            How long after a run's end its next begins, for a task that runs
+            every so often. Absent in `onDemand` and for a nightly task.
         nextRunAt:
           type: string
           format: date-time

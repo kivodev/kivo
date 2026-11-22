@@ -68,7 +68,8 @@ type StepOf struct {
 // OnDemand.
 type Schedule struct {
 	nightly bool
-	every   time.Duration
+	// every gives the interval. It is a pointer so that schedules compare.
+	every *func(config.Settings) time.Duration
 }
 
 var (
@@ -84,10 +85,14 @@ var (
 	Nightly = Schedule{nightly: true}
 )
 
-// Every begins a run d after the last one ended, whichever start of the
-// server that was in: a run that came due while the server was down begins
-// at startup. Until the task's first run, d counts from the server's start.
-func Every(d time.Duration) Schedule { return Schedule{every: d} }
+// Every begins a run an interval after the last one ended, whichever start
+// of the server that was in: a run that came due while the server was down
+// begins at startup. Until the task's first run, the interval counts from
+// the server's start. The interval is read each time the schedule is
+// checked.
+func Every(interval func(config.Settings) time.Duration) Schedule {
+	return Schedule{every: &interval}
+}
 
 // Work is what a task does. It is a Func or Items.
 type Work interface{ work() }
@@ -159,6 +164,9 @@ type Status struct {
 	// Next is when the schedule next begins a run. It is zero for an
 	// on-demand task and for a task that isn't wanted.
 	Next time.Time
+	// Every is an interval task's interval now. It is zero for any other
+	// task.
+	Every time.Duration
 	// Running is true while the task has items in flight or enqueued, or
 	// has a run working, or a step of it has items left that its items
 	// asked for.

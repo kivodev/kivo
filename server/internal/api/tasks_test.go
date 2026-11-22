@@ -44,19 +44,24 @@ func TestTasks(t *testing.T) {
 	}
 
 	scans := e.task("scan-libraries")
-	if scans["section"] != "library" || scans["nightly"] != false || scans["nextRunAt"] == nil || scans["failedCount"] != 0.0 ||
+	if scans["section"] != "library" || scans["nightly"] != false || scans["everyMinutes"] != 720.0 || scans["nextRunAt"] == nil || scans["failedCount"] != 0.0 ||
 		scans["running"] != false || scans["stoppable"] != false || scans["progress"] != nil || scans["lastRun"] != nil {
 		t.Errorf("scans %v", scans)
 	}
-	if prune := e.task("prune-previews"); prune["section"] != "maintenance" || prune["nightly"] != true || prune["nextRunAt"] == nil ||
+	if prune := e.task("prune-previews"); prune["section"] != "maintenance" || prune["nightly"] != true || prune["everyMinutes"] != nil || prune["nextRunAt"] == nil ||
 		prune["failedCount"] != nil || prune["progress"] != nil {
 		t.Errorf("previews cleanup %v", prune)
 	}
 	if subs := e.task("extract-subtitles"); subs["section"] != "library" || subs["nightly"] != true || subs["nextRunAt"] == nil || subs["failedCount"] != 0.0 {
 		t.Errorf("subtitles %v", subs)
 	}
-	if downloads := e.task("prepare-downloads"); downloads["section"] != "onDemand" || downloads["failedCount"] != nil || downloads["running"] != false {
+	if downloads := e.task("prepare-downloads"); downloads["section"] != "onDemand" || downloads["everyMinutes"] != nil || downloads["failedCount"] != nil || downloads["running"] != false {
 		t.Errorf("downloads %v", downloads)
+	}
+	// The scan's interval is the rescan setting's.
+	e.do("PATCH", "/api/v1/settings", e.adminToken, map[string]any{"rescanEveryMinutes": 30})
+	if scans := e.task("scan-libraries"); scans["everyMinutes"] != 30.0 {
+		t.Errorf("scans %v after the rescan setting is 30 minutes", scans)
 	}
 
 	// After Run now, the task is running, has progress, and can be

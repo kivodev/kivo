@@ -91,8 +91,13 @@ func TestSettings(t *testing.T) {
 	})
 	st = decode[map[string]any](t, w)
 	if w.Code != http.StatusOK || st["fileWatching"] != false || st["maintenanceStartHour"] != 23.0 || st["maintenanceEndHour"] != 4.0 ||
-		st["previewsAtOnce"] != 6.0 || st["markersAtOnce"] != 3.0 {
+		st["previewsAtOnce"] != 6.0 || st["markersAtOnce"] != 3.0 || st["rescanEveryMinutes"] != 720.0 {
 		t.Errorf("update: %d %v", w.Code, st)
+	}
+	w = e.do("PATCH", "/api/v1/settings", e.adminToken, map[string]any{"rescanEveryMinutes": 15})
+	st = decode[map[string]any](t, e.do("GET", "/api/v1/settings", e.adminToken, nil))
+	if w.Code != http.StatusOK || st["rescanEveryMinutes"] != 15.0 || st["maintenanceStartHour"] != 23.0 {
+		t.Errorf("rescan every 15 minutes: %d %v", w.Code, st)
 	}
 	// The OpenSubtitles password is written, never read back.
 	w = e.do("PATCH", "/api/v1/settings", e.adminToken, map[string]any{"openSubtitlesPassword": "hunter22"})
@@ -104,7 +109,7 @@ func TestSettings(t *testing.T) {
 		t.Errorf("password cleared: %v", st)
 	}
 	for _, bad := range []map[string]any{{"playedThreshold": 3}, {"maintenanceEndHour": 23}, {"maintenanceStartHour": 24}, {"previewsAtOnce": 0}, {"previewsAtOnce": 9},
-		{"markersAtOnce": 0}, {"markersAtOnce": 5}} {
+		{"markersAtOnce": 0}, {"markersAtOnce": 5}, {"rescanEveryMinutes": 14}, {"rescanEveryMinutes": 1441}} {
 		w = e.do("PATCH", "/api/v1/settings", e.adminToken, bad)
 		if w.Code != http.StatusBadRequest || problemCode(w) != codeInvalidRequest {
 			t.Errorf("%v: %d %s", bad, w.Code, w.Body.String())

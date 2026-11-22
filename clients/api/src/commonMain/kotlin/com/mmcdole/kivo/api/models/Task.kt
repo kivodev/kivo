@@ -40,6 +40,7 @@ import kotlinx.serialization.encoding.*
  * @param running It has items in flight or asked for, or a run working.
  * @param stoppable Stop applies (`POST /api/v1/tasks/{task}/stop`): it's running, and isn't work that always finishes, such as downloads and library changes. 
  * @param lastRun 
+ * @param everyMinutes How long after a run's end its next begins, for a task that runs every so often. Absent in `onDemand` and for a nightly task. 
  * @param nextRunAt When its next run begins. Absent in `onDemand`, and for a task whose work every library is set to never do, such as refreshing metadata, preview thumbnails or intro and credits. 
  * @param progress 
  * @param failedCount Its items that failed for good (`GET /api/v1/tasks/{task}/failures`). Absent for a task that keeps no failures. 
@@ -67,6 +68,9 @@ data class Task (
     @SerialName(value = "stoppable") @Required val stoppable: kotlin.Boolean,
 
     @SerialName(value = "lastRun") val lastRun: TaskRun? = null,
+
+    /* How long after a run's end its next begins, for a task that runs every so often. Absent in `onDemand` and for a nightly task.  */
+    @SerialName(value = "everyMinutes") val everyMinutes: kotlin.Int? = null,
 
     /* When its next run begins. Absent in `onDemand`, and for a task whose work every library is set to never do, such as refreshing metadata, preview thumbnails or intro and credits.  */
     @SerialName(value = "nextRunAt") val nextRunAt: kotlin.time.Instant? = null,
