@@ -2,10 +2,11 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { useState } from "react";
+import { libraryQueries } from "@/api/libraries";
 import { useUpdateSettings } from "@/api/settings";
 import { useCompleteSetup } from "@/api/setup";
 import { currentUserQueries, usernameMaxLength } from "@/api/users";
-import { Button } from "@/components/Button";
+import { Button, type ButtonVariant } from "@/components/Button";
 import { useDocumentTitle } from "@/components/documentTitle";
 import { FormError } from "@/components/FormError";
 import { Logo } from "@/components/Logo";
@@ -59,12 +60,7 @@ export function SetupWizard() {
         </p>
         <h1 className="mt-1 mb-6 text-2xl font-semibold">{titles[step]}</h1>
         {step === "admin" && <AdminStep onDone={next} />}
-        {step === "libraries" && (
-          <div className="flex flex-col gap-6">
-            <LibrarySetup />
-            <StepNav onBack={back} onNext={next} nextLabel={t`Next`} />
-          </div>
-        )}
+        {step === "libraries" && <LibrariesStep onBack={back} onNext={next} />}
         {step === "metadata" && <MetadataStep onBack={back} onDone={next} />}
         {step === "remote" && (
           <div className="flex flex-col gap-6">
@@ -74,28 +70,64 @@ export function SetupWizard() {
             <StepNav onBack={back} onNext={next} nextLabel={t`Set up later`} />
           </div>
         )}
-        {step === "done" && (
-          <div className="flex flex-col gap-6">
-            <p className="text-text-muted">
-              <Trans>Scanning libraries. Items appear on Home as they're found.</Trans>
-            </p>
-            <StepNav onBack={back} onNext={() => void navigate({ to: "/" })} nextLabel={t`Go to Home`} />
-          </div>
-        )}
+        {step === "done" && <DoneStep onBack={back} onNext={() => void navigate({ to: "/" })} />}
       </div>
     </main>
   );
 }
 
-function StepNav({ onBack, onNext, nextLabel }: { onBack: () => void; onNext: () => void; nextLabel: string }) {
+type NavProps = {
+  onBack: () => void;
+  onNext: () => void;
+  nextLabel: string;
+  /** Secondary where going on isn't the step's main action. */
+  nextVariant?: ButtonVariant;
+};
+
+function StepNav({ onBack, onNext, nextLabel, nextVariant = "primary" }: NavProps) {
   return (
     <div className="flex justify-between gap-2">
       <Button onPress={onBack}>
         <Trans>Back</Trans>
       </Button>
-      <Button variant="primary" onPress={onNext}>
+      <Button variant={nextVariant} onPress={onNext}>
         {nextLabel}
       </Button>
+    </div>
+  );
+}
+
+/** The libraries step. Going on without a library is skipping it, and says so. */
+function LibrariesStep({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
+  const { t } = useLingui();
+  const none = (useQuery(libraryQueries.list()).data?.items.length ?? 0) === 0;
+  return (
+    <div className="flex flex-col gap-6">
+      <LibrarySetup />
+      <StepNav
+        onBack={onBack}
+        onNext={onNext}
+        nextLabel={none ? t`Skip for now` : t`Next`}
+        nextVariant={none ? "secondary" : "primary"}
+      />
+    </div>
+  );
+}
+
+/** The last step, which says what happens next: the first scans, or that there's no library yet. */
+function DoneStep({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
+  const { t } = useLingui();
+  const none = (useQuery(libraryQueries.list()).data?.items.length ?? 0) === 0;
+  return (
+    <div className="flex flex-col gap-6">
+      <p className="text-text-muted">
+        {none ? (
+          <Trans>No libraries yet. Add one from Home when you're ready.</Trans>
+        ) : (
+          <Trans>Scanning libraries. Items appear on Home as they're found.</Trans>
+        )}
+      </p>
+      <StepNav onBack={onBack} onNext={onNext} nextLabel={t`Go to Home`} />
     </div>
   );
 }
