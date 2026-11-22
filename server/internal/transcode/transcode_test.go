@@ -200,9 +200,10 @@ func (o *fakeOutput) Cues(i int) ([]media.Cue, error) {
 }
 
 // split reports whether the output splits its audio from its video, as
-// the media package does when it has both.
+// the media package does when it has both and isn't asked to keep them
+// muxed.
 func (o *fakeOutput) split() bool {
-	return o.req.Video.Codec != "" && len(o.req.Audio) > 0 && !o.m.unsplit
+	return o.req.Video.Codec != "" && len(o.req.Audio) > 0 && !o.req.MuxedAudio && !o.m.unsplit
 }
 
 func (o *fakeOutput) Init() (media.Init, error) {
@@ -383,6 +384,44 @@ func TestAudioIsARenditionOfItsOwn(t *testing.T) {
 		}
 		if _, err := s.Segment(ctx, "audio-init-1.mp4"); !errors.Is(err, ErrNotFound) {
 			t.Fatalf("a second part's audio init: %v", err)
+		}
+	})
+}
+
+func TestMuxedAudioStaysInTheVideoSegments(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m := &fakeMedia{}
+		tr, spec := fixture(t, m)
+		spec.Audio = []media.AudioOut{{Track: 1, Source: "eac3", Out: media.AudioRendition{Codec: media.Copy}}}
+		spec.MuxedAudio = true
+		s, err := tr.Open(ctx, spec, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer s.Close()
+		if pl, _ := s.Playlist(PlaylistName); strings.Contains(string(pl), "EXT-X-MEDIA") || strings.Contains(string(pl), "AUDIO") {
+			t.Fatalf("multivariant playlist:\n%s", pl)
+		}
+		if _, err := s.Playlist(audioPlaylist); !errors.Is(err, ErrNotFound) {
+			t.Fatalf("an audio playlist for muxed audio: %v", err)
+		}
+		if p, err := s.Segment(ctx, "init.mp4"); err != nil || read(t, p) != "init" {
+			t.Fatalf("init: %v", err)
+		}
+		if p, err := s.Segment(ctx, "1.m4s"); err != nil || read(t, p) != "[6s][8s][10s]" {
+			t.Fatalf("segment 1: %v", err)
+		}
+		for _, name := range []string{"audio-init.mp4", "audio-1.m4s"} {
+			if _, err := s.Segment(ctx, name); !errors.Is(err, ErrNotFound) {
+				t.Fatalf("%s for muxed audio: %v", name, err)
+			}
+		}
+		m.mu.Lock()
+		defer m.mu.Unlock()
+		for _, r := range m.requests {
+			if !r.MuxedAudio {
+				t.Fatal("a job asked for split audio")
+			}
 		}
 	})
 }

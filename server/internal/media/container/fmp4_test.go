@@ -16,7 +16,14 @@ import (
 
 func split(t *testing.T, data []byte) (media.Init, []media.Segment, error) {
 	t.Helper()
-	s := NewSplitter(bytes.NewReader(data))
+	return splitWith(t, data, false)
+}
+
+// splitWith splits data, keeping its audio muxed with its video when
+// muxedAudio is set.
+func splitWith(t *testing.T, data []byte, muxedAudio bool) (media.Init, []media.Segment, error) {
+	t.Helper()
+	s := NewSplitter(bytes.NewReader(data), muxedAudio)
 	b, err := s.Init()
 	if err != nil {
 		return media.Init{}, nil, err
@@ -112,7 +119,7 @@ func TestSplitterTruncated(t *testing.T) {
 }
 
 func TestSplitterNoOutput(t *testing.T) {
-	_, err := NewSplitter(bytes.NewReader(nil)).Init()
+	_, err := NewSplitter(bytes.NewReader(nil), false).Init()
 	if !errors.Is(err, media.ErrSourceCorrupt) {
 		t.Fatalf("err = %v, want ErrSourceCorrupt", err)
 	}
@@ -561,6 +568,54 @@ func TestSplitterSplitsAudio(t *testing.T) {
 					if g.DecodeTime != w.DecodeTime || g.Dur != w.Dur || g.Flags != w.Flags ||
 						g.CompositionTimeOffset != w.CompositionTimeOffset || !bytes.Equal(g.Data, w.Data) {
 						t.Fatalf("%s sample %d differs", c.name, i)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestSplitterKeepsMuxedAudio(t *testing.T) {
+	for _, fixture := range []string{"remux-h264.mp4", "remux-hevc.mp4"} {
+		t.Run(fixture, func(t *testing.T) {
+			data := readFixture(t, fixture)
+			init, segs, err := splitWith(t, data, true)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if init.Audio != nil {
+				t.Fatal("an audio init segment for muxed audio")
+			}
+			joined := bytes.Clone(init.Data)
+			for i, s := range segs {
+				if s.Audio != nil {
+					t.Fatalf("segment %d has audio apart from its video", i)
+				}
+				f, err := mp4.DecodeFile(bytes.NewReader(append(bytes.Clone(init.Data), s.Data...)))
+				if err != nil {
+					t.Fatalf("segment %d: %v", i, err)
+				}
+				held := map[uint32]bool{}
+				for _, frag := range f.Segments[0].Fragments {
+					for _, traf := range frag.Moof.Trafs {
+						held[traf.Tfhd.TrackID] = true
+					}
+				}
+				if len(f.Init.Moov.Traks) != 2 || len(held) != 2 {
+					t.Fatalf("segment %d holds tracks %v of %d", i, held, len(f.Init.Moov.Traks))
+				}
+				joined = append(joined, s.Data...)
+			}
+			// Both tracks keep every sample, as ffmpeg muxed them.
+			for _, handler := range []string{"vide", "soun"} {
+				id, _ := trackOf(t, data, handler)
+				got, want := muxedSamples(t, joined, id), muxedSamples(t, data, id)
+				if len(got) != len(want) {
+					t.Fatalf("%s: %d samples, want %d", handler, len(got), len(want))
+				}
+				for i := range want {
+					if got[i].DecodeTime != want[i].DecodeTime || !bytes.Equal(got[i].Data, want[i].Data) {
+						t.Fatalf("%s sample %d differs", handler, i)
 					}
 				}
 			}

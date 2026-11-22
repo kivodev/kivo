@@ -3037,7 +3037,8 @@ paths:
         Start from `PlayStarted.delivery.url`, the multivariant playlist;
         playlists refer to the rest with relative URIs. With video, the
         audio is an audio rendition there, with fragmented MP4 segments of
-        its own covering the video's. A subtitle the play streams is a
+        its own covering the video's, unless the client asked for it inside
+        the video's segments (`StreamCapabilities.muxedAudio`). A subtitle the play streams is a
         subtitle rendition there, with WebVTT segments covering the
         video's. A segment that isn't ready yet is waited for.
         A segment whose transcode failed is `500` with code
@@ -6842,6 +6843,9 @@ components:
         file:
           $ref: "#/components/schemas/FileCapabilities"
           description: Files it plays whole, the original or a download. Absent, it plays none.
+        stream:
+          $ref: "#/components/schemas/StreamCapabilities"
+          description: How it plays the HLS stream. Absent, every default applies.
         video:
           type: array
           items: {$ref: "#/components/schemas/VideoEntry"}
@@ -6868,12 +6872,26 @@ components:
             one, so choosing another audio track keeps the file. Default
             false.
 
+    StreamCapabilities:
+      type: object
+      description: |
+        How a client plays the HLS stream. Whether it streams at all is said
+        by its entries with `stream` delivery.
+      properties:
+        muxedAudio:
+          type: boolean
+          description: |
+            It needs the audio inside the video's segments. Otherwise, with
+            video, the audio is a rendition of its own (`EXT-X-MEDIA`).
+            Default false.
+
     CapabilityDelivery:
       type: string
       description: |
         How a track reaches the client: `file` inside the played file;
         `stream` inside the HLS stream (fragmented MP4, with the audio a
-        rendition apart from the video, and WebVTT subtitle renditions); `external` a subtitle sent to the client as
+        rendition apart from the video unless `StreamCapabilities.muxedAudio`
+        says otherwise, and WebVTT subtitle renditions); `external` a subtitle sent to the client as
         its own file, which the client draws. A track's source, also
         `external` for a subtitle file next to the video, is where it lives,
         not how it's delivered.

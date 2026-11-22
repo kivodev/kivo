@@ -2242,14 +2242,18 @@ type Capabilities struct {
 	Audio []AudioEntry `json:"audio"`
 
 	// File Files it plays whole, the original or a download. Absent, it plays none.
-	File      *FileCapabilities `json:"file,omitempty"`
-	Subtitles []SubtitleEntry   `json:"subtitles"`
-	Video     []VideoEntry      `json:"video"`
+	File *FileCapabilities `json:"file,omitempty"`
+
+	// Stream How it plays the HLS stream. Absent, every default applies.
+	Stream    *StreamCapabilities `json:"stream,omitempty"`
+	Subtitles []SubtitleEntry     `json:"subtitles"`
+	Video     []VideoEntry        `json:"video"`
 }
 
 // CapabilityDelivery How a track reaches the client: `file` inside the played file;
 // `stream` inside the HLS stream (fragmented MP4, with the audio a
-// rendition apart from the video, and WebVTT subtitle renditions); `external` a subtitle sent to the client as
+// rendition apart from the video unless `StreamCapabilities.muxedAudio`
+// says otherwise, and WebVTT subtitle renditions); `external` a subtitle sent to the client as
 // its own file, which the client draws. A track's source, also
 // `external` for a subtitle file next to the video, is where it lives,
 // not how it's delivered.
@@ -4555,6 +4559,15 @@ type SortKey struct {
 	// Direction Skip values you don't know.
 	Direction *SortDirection `json:"direction,omitempty"`
 	Field     string         `json:"field"`
+}
+
+// StreamCapabilities How a client plays the HLS stream. Whether it streams at all is said
+// by its entries with `stream` delivery.
+type StreamCapabilities struct {
+	// MuxedAudio It needs the audio inside the video's segments. Otherwise, with
+	// video, the audio is a rendition of its own (`EXT-X-MEDIA`).
+	// Default false.
+	MuxedAudio *bool `json:"muxedAudio,omitempty"`
 }
 
 // SubtitleEntry A subtitle codec a client shows, and how. The server converts a

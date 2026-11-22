@@ -84,7 +84,7 @@ func (m *instantMedia) Transcode(ctx context.Context, req media.TranscodeRequest
 	if m.fail != nil {
 		return nil, &media.Error{Op: "transcode", Kind: m.fail}
 	}
-	o := &instantOutput{start: req.Start, step: 2 * time.Second, split: req.Video.Codec != "" && len(req.Audio) > 0}
+	o := &instantOutput{start: req.Start, step: 2 * time.Second, split: req.Video.Codec != "" && len(req.Audio) > 0 && !req.MuxedAudio}
 	if req.Video.Codec != media.Copy {
 		o.step, o.failAfter = req.SegmentDuration, m.failAfter
 	}
@@ -467,6 +467,31 @@ func TestDirectPlayAndRemux(t *testing.T) {
 	}
 	if _, err := f.svc.HLS(ctx, s.ID, "../etc/passwd.m3u8"); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("bad name: %v", err)
+	}
+}
+
+// A client that asks for muxed audio gets the stream without an audio
+// rendition, its audio inside the video's segments.
+func TestMuxedAudioStream(t *testing.T) {
+	f := newFixture(t, 0)
+	mkv := f.movie("Ronin", "mkv", 8_000_000)
+	caps := browser
+	caps.Stream.MuxedAudio = true
+	s, err := f.svc.Start(ctx, f.p, f.v, StartRequest{Work: mkv.Work, Caps: caps, ClientIP: lan})
+	if err != nil || s.Decision.Delivery != DeliverStream {
+		t.Fatalf("start: %+v %v", s.Decision, err)
+	}
+	if !f.media.last().MuxedAudio {
+		t.Fatal("the job splits the audio")
+	}
+	if pl, err := f.svc.HLS(ctx, s.ID, transcode.PlaylistName); err != nil || strings.Contains(string(pl.Data), "TYPE=AUDIO") {
+		t.Fatalf("playlist: %v\n%s", err, pl.Data)
+	}
+	if m, err := f.svc.HLS(ctx, s.ID, "3.m4s"); err != nil || m.Type != "video/mp4" {
+		t.Fatalf("segment: %+v %v", m, err)
+	}
+	if _, err := f.svc.HLS(ctx, s.ID, "audio-3.m4s"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("audio segment: %v", err)
 	}
 }
 

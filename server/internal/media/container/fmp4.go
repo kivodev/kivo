@@ -23,12 +23,14 @@ const maxMdatGrow = 16 << 20
 // starts a fragment at each video keyframe, so each segment begins on a
 // keyframe. Each segment is returned as soon as its fragment is complete.
 //
-// When the output has video and audio, the audio is split from the video:
-// it gets an initialization segment of its own, and each segment's audio
-// is a fragment of its own, cut from the same fragment as the video. So
-// the audio's segments cover the same spans as the video's.
+// When the output has video and audio, the audio is split from the video,
+// unless the Splitter keeps them muxed: it gets an initialization segment
+// of its own, and each segment's audio is a fragment of its own, cut from
+// the same fragment as the video. So the audio's segments cover the same
+// spans as the video's.
 type Splitter struct {
-	r io.Reader
+	r     io.Reader
+	muxed bool // the audio stays inside the video's fragments
 
 	init  []byte
 	audio []byte   // the audio's initialization segment, when it's split from the video
@@ -43,9 +45,10 @@ type Splitter struct {
 	err        error
 }
 
-// NewSplitter reads ffmpeg's output from r.
-func NewSplitter(r io.Reader) *Splitter {
-	return &Splitter{r: r, last: -1 << 63}
+// NewSplitter reads ffmpeg's output from r. With muxedAudio, the audio is
+// never split from the video.
+func NewSplitter(r io.Reader, muxedAudio bool) *Splitter {
+	return &Splitter{r: r, muxed: muxedAudio, last: -1 << 63}
 }
 
 // Init returns the initialization segment, reading it first if needed. An
@@ -114,7 +117,7 @@ func (s *Splitter) readInit(b []byte) (moovB, audio []byte, err error) {
 	switch {
 	case err != nil:
 		return nil, nil, err
-	case video != nil && len(tracks(moov)) > 1:
+	case video != nil && len(tracks(moov)) > 1 && !s.muxed:
 		return s.splitInit(moov)
 	case !retagged:
 		return b, nil, nil
