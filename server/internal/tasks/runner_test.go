@@ -492,6 +492,28 @@ func TestAnIntervalTaskCountsFromStartupWhenItsLastRunIsAhead(t *testing.T) {
 // An interval task's interval follows the settings. A saved change moves
 // the next run without a restart, and a run the change makes due begins at
 // the next check.
+func TestAnOverdueRunIsDueNow(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		every := func(st config.Settings) time.Duration { return time.Duration(st.RescanEvery) * time.Minute }
+		h := newHarness(t, Task{Name: "scan-libraries", Schedule: Every(every), Work: Func(func(context.Context) error {
+			return nil
+		})})
+		h.start()
+		defer h.stop()
+		sleep(20*time.Hour + 30*time.Second)
+		err := h.settings.Update(context.Background(), func(s *config.Settings) error {
+			s.RescanEvery = 15
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if next := h.status("scan-libraries").Next; !next.Equal(time.Now()) {
+			t.Fatalf("next run %v with the interval cut to less than the time since the last, want now, %v", next, time.Now())
+		}
+	})
+}
+
 func TestAnIntervalFollowsTheSettings(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		var runs atomic.Int32

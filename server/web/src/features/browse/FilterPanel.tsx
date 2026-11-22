@@ -234,7 +234,7 @@ export function FilterPanel({ values, labels, books }: Props) {
       </Button>
       <Popover
         placement="bottom end"
-        className="w-80 rounded-lg border border-border bg-surface-raised p-4 shadow-overlay tv:w-160 tv:overflow-y-auto"
+        className="w-80 rounded-lg border border-border bg-surface-raised p-4 shadow-overlay tv:w-160"
       >
         <Dialog aria-label={t`Filters`} className="flex flex-col gap-5 outline-none">
           <TvFocusGroup focusKey="filters" trap className="flex flex-col gap-5">

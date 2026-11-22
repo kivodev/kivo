@@ -120,9 +120,10 @@ func (r *Runner) workingLocked(t *task, now time.Time) bool {
 // interval after its last run's end, whichever start of the server that run
 // was in, so a run that came due while the server was down begins at
 // startup. The interval is read from the settings each time, so a change
-// applies without a restart. A task with no run yet counts from the
-// server's start, and so does one whose last run's end is ahead of the
-// clock. For an on-demand task it is zero.
+// applies without a restart. A run that is overdue is due now, never in
+// the past. A task with no run yet counts from the server's start, and so
+// does one whose last run's end is ahead of the clock. For an on-demand
+// task it is zero.
 func (r *Runner) nextLocked(t *task, now time.Time) time.Time {
 	switch {
 	case t.Schedule == Nightly:
@@ -132,7 +133,10 @@ func (r *Runner) nextLocked(t *task, now time.Time) time.Time {
 		if t.last != nil && !t.last.At.After(now) {
 			from = t.last.At
 		}
-		return from.Add(r.every(t))
+		if next := from.Add(r.every(t)); next.After(now) {
+			return next
+		}
+		return now
 	}
 	return time.Time{}
 }
