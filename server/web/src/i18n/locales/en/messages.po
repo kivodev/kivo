@@ -2555,10 +2555,6 @@ msgstr "Can't play this codec tag"
 msgid "Container"
 msgstr "Container"
 
-#: src/features/admin/ManageLibrariesScreen.tsx
-msgid "{missing, plural, one {# missing file} other {# missing files}}"
-msgstr "{missing, plural, one {# missing file} other {# missing files}}"
-
 #: src/features/browse/CountLine.tsx
 msgid "Recently played"
 msgstr "Recently played"
@@ -3983,10 +3979,6 @@ msgstr "Connect this TV to another server."
 #: src/features/player/PlayerError.tsx
 msgid "Player"
 msgstr "Player"
-
-#: src/features/admin/ManageLibrariesScreen.tsx
-msgid "{unmatched, plural, one {# unmatched} other {# unmatched}}"
-msgstr "{unmatched, plural, one {# unmatched} other {# unmatched}}"
 
 #. placeholder {0}: row.why
 #: src/features/player/StreamInfo.tsx

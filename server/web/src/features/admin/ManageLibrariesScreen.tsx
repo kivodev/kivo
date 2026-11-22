@@ -23,7 +23,7 @@ import { ModalDialog } from "@/components/ModalDialog";
 import { AddLibraryButton } from "@/features/libraries/AddLibraryButton";
 import { EditLibraryForm } from "@/features/libraries/EditLibraryForm";
 import { formatDateTime, formatTimeAgo } from "@/i18n/format";
-import { AdminList, AdminListItem, AdminPage, mutedLink } from "./AdminPage";
+import { AdminList, AdminListItem, AdminPage } from "./AdminPage";
 import { ScanLine } from "./ScanLine";
 
 /**
@@ -168,30 +168,6 @@ function LibraryRow({
             <span className="whitespace-nowrap">
               <LastScan library={library} />
             </span>
-            {unmatched > 0 && (
-              <>
-                {" · "}
-                <Link
-                  to="/admin/libraries/$libraryId/unmatched"
-                  params={{ libraryId: library.id }}
-                  className={mutedLink}
-                >
-                  <Plural value={unmatched} one="# unmatched" other="# unmatched" />
-                </Link>
-              </>
-            )}
-            {missing > 0 && (
-              <>
-                {" · "}
-                <Link
-                  to="/admin/libraries/$libraryId/missing-files"
-                  params={{ libraryId: library.id }}
-                  className={mutedLink}
-                >
-                  <Plural value={missing} one="# missing file" other="# missing files" />
-                </Link>
-              </>
-            )}
           </p>
         </div>
         <Button size="sm" aria-label={t`Scan ${name}`} isPending={scan.isPending} onPress={() => scan.mutate(path)}>
@@ -202,18 +178,26 @@ function LibraryRow({
             <Icon name="more" />
           </Button>
           <MenuItem
+            textValue={t`Unmatched`}
             onAction={() =>
               void navigate({ to: "/admin/libraries/$libraryId/unmatched", params: { libraryId: library.id } })
             }
           >
-            <Trans>Unmatched</Trans>
+            <span className="flex-1">
+              <Trans>Unmatched</Trans>
+            </span>
+            {unmatched > 0 && <span className="text-text-muted tabular-nums">{unmatched}</span>}
           </MenuItem>
           <MenuItem
+            textValue={t`Missing files`}
             onAction={() =>
               void navigate({ to: "/admin/libraries/$libraryId/missing-files", params: { libraryId: library.id } })
             }
           >
-            <Trans>Missing files</Trans>
+            <span className="flex-1">
+              <Trans>Missing files</Trans>
+            </span>
+            {missing > 0 && <span className="text-text-muted tabular-nums">{missing}</span>}
           </MenuItem>
           <MenuSeparator />
           <MenuItem isDisabled={refresh.isPending} onAction={() => setOpen("refresh")}>

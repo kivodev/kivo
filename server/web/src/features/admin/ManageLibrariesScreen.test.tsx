@@ -27,20 +27,18 @@ describe("Admin Libraries", () => {
     expect(within(rowOf("TV Shows")).getByText("Not scanned yet")).toBeInTheDocument();
   });
 
-  it("counts a library's unmatched titles and missing files on its line, each opening its page", async () => {
+  it("counts a library's unmatched titles and missing files in its menu, each opening its page", async () => {
     serveMockApi();
     const { router, user } = renderApp("/admin/libraries");
     await screen.findByRole("heading", { name: "Libraries" });
     const row = rowOf("Movies");
-    expect(await within(row).findByRole("link", { name: "1 missing file" })).toHaveAttribute(
-      "href",
-      `/admin/libraries/${mockIds.movies}/missing-files`,
+    expect(within(row).getByText("238 movies").closest("p")).toHaveTextContent(/^238 movies · Scanned 2 hours ago$/);
+    await user.click(within(row).getByRole("button", { name: "More actions for Movies" }));
+    await waitFor(() =>
+      expect(screen.getByRole("menuitem", { name: /^Missing files/ })).toHaveTextContent(/^Missing files1$/),
     );
-    expect(within(row).getByText("238 movies").closest("p")).toHaveTextContent(
-      /^238 movies · Scanned 2 hours ago · 1 unmatched · 1 missing file$/,
-    );
-    expect(within(rowOf("Home Videos")).queryByRole("link")).not.toBeInTheDocument();
-    await user.click(within(row).getByRole("link", { name: "1 unmatched" }));
+    expect(screen.getByRole("menuitem", { name: /^Unmatched/ })).toHaveTextContent(/^Unmatched1$/);
+    await user.click(screen.getByRole("menuitem", { name: /^Unmatched/ }));
     expect(await screen.findByRole("heading", { level: 1, name: "Unmatched in Movies" })).toBeInTheDocument();
     expect(locationOf(router)).toBe(`/admin/libraries/${mockIds.movies}/unmatched`);
     expect(
