@@ -132,9 +132,18 @@ func (r *Runner) nextLocked(t *task, now time.Time) time.Time {
 		if t.last != nil && !t.last.At.After(now) {
 			from = t.last.At
 		}
-		return from.Add((*t.Schedule.every)(r.settings.Get()))
+		return from.Add(r.every(t))
 	}
 	return time.Time{}
+}
+
+// every is an interval task's interval in the settings, or zero for any
+// other task.
+func (r *Runner) every(t *task) time.Duration {
+	if t.Schedule.every == nil {
+		return 0
+	}
+	return (*t.Schedule.every)(r.settings.Get())
 }
 
 // window is the maintenance window in the settings, read each time so a

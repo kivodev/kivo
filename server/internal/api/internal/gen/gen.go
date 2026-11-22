@@ -4630,6 +4630,10 @@ type SubtitleTrackInfo struct {
 // Task A row of the Tasks page: "Preview thumbnails · 8 h ago · Nightly ·
 // 14,486 of 32,975 · 2 failed".
 type Task struct {
+	// EveryMinutes How long after a run's end its next begins, for a task that runs
+	// every so often. Absent in `onDemand` and for a nightly task.
+	EveryMinutes *int `json:"everyMinutes,omitempty"`
+
 	// FailedCount Its items that failed for good (`GET
 	// /api/v1/tasks/{task}/failures`). Absent for a task that keeps no
 	// failures.

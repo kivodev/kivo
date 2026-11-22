@@ -52,6 +52,13 @@ export function AdminPage({ page, title, badges, description, actions, parent, n
   );
 }
 
+/**
+ * The look of muted words that open something, such as a library's count
+ * of missing files or a task's schedule: underlined, and brighter under
+ * the pointer.
+ */
+export const mutedLink = "whitespace-nowrap underline underline-offset-2 hover:text-text";
+
 /** One entry of an admin list, as a bordered row with its text and then its actions. */
 export function AdminRow({ part, children, actions }: { part?: string; children: ReactNode; actions?: ReactNode }) {
   return (
@@ -117,7 +124,7 @@ export function AdminColumn({ children }: { children?: ReactNode }) {
   return (
     <th
       scope="col"
-      className="px-3 py-2.5 text-left text-xs font-semibold whitespace-nowrap text-text-muted first:pl-4"
+      className="px-2 py-2.5 text-left text-xs font-semibold whitespace-nowrap text-text-muted first:pl-4"
     >
       {children}
     </th>
@@ -136,6 +143,6 @@ export function AdminTableRow({ part, children }: { part?: string; children: Rea
 /** A cell of an AdminTable. `action` marks the last cell, which holds the row's action at its end. */
 export function AdminCell({ action = false, children }: { action?: boolean; children?: ReactNode }) {
   return (
-    <td className={`px-3 whitespace-nowrap first:pl-4 last:pr-4 ${action ? "py-2 text-right" : "py-3"}`}>{children}</td>
+    <td className={`px-2 whitespace-nowrap first:pl-4 last:pr-4 ${action ? "py-2 text-right" : "py-3"}`}>{children}</td>
   );
 }

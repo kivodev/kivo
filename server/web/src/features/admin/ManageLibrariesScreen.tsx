@@ -23,7 +23,7 @@ import { ModalDialog } from "@/components/ModalDialog";
 import { AddLibraryButton } from "@/features/libraries/AddLibraryButton";
 import { EditLibraryForm } from "@/features/libraries/EditLibraryForm";
 import { formatDateTime, formatTimeAgo } from "@/i18n/format";
-import { AdminList, AdminListItem, AdminPage } from "./AdminPage";
+import { AdminList, AdminListItem, AdminPage, mutedLink } from "./AdminPage";
 import { ScanLine } from "./ScanLine";
 
 /**
@@ -121,9 +121,6 @@ function LastScan({ library }: { library: Library }) {
   );
 }
 
-// A count on a library's line that opens the page listing what it counts.
-const reviewLink = "whitespace-nowrap underline underline-offset-2 hover:text-text";
-
 type Open = "refresh" | "edit" | "delete" | undefined;
 
 function LibraryRow({
@@ -177,7 +174,7 @@ function LibraryRow({
                 <Link
                   to="/admin/libraries/$libraryId/unmatched"
                   params={{ libraryId: library.id }}
-                  className={reviewLink}
+                  className={mutedLink}
                 >
                   <Plural value={unmatched} one="# unmatched" other="# unmatched" />
                 </Link>
@@ -189,7 +186,7 @@ function LibraryRow({
                 <Link
                   to="/admin/libraries/$libraryId/missing-files"
                   params={{ libraryId: library.id }}
-                  className={reviewLink}
+                  className={mutedLink}
                 >
                   <Plural value={missing} one="# missing file" other="# missing files" />
                 </Link>

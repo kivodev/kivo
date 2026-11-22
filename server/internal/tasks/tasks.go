@@ -164,6 +164,9 @@ type Status struct {
 	// Next is when the schedule next begins a run. It is zero for an
 	// on-demand task and for a task that isn't wanted.
 	Next time.Time
+	// Every is an interval task's interval now. It is zero for any other
+	// task.
+	Every time.Duration
 	// Running is true while the task has items in flight or enqueued, or
 	// has a run working, or a step of it has items left that its items
 	// asked for.

@@ -6562,6 +6562,11 @@ components:
         nightly:
           type: boolean
           description: Its runs begin as the maintenance window opens; else every so often.
+        everyMinutes:
+          type: integer
+          description: |
+            How long after a run's end its next begins, for a task that runs
+            every so often. Absent in `onDemand` and for a nightly task.
         nextRunAt:
           type: string
           format: date-time

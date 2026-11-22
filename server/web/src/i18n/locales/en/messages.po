@@ -2351,7 +2351,7 @@ msgstr "Certification country"
 msgid "Try again"
 msgstr "Try again"
 
-#: src/features/admin/rescanOptions.ts
+#: src/features/admin/intervals.ts
 msgid "{minutes, plural, one {minute} other {# minutes}}"
 msgstr "{minutes, plural, one {minute} other {# minutes}}"
 
@@ -3760,7 +3760,7 @@ msgstr "This device is signing in to another server. You're signed in to {server
 msgid "Clear filters"
 msgstr "Clear filters"
 
-#: src/features/admin/rescanOptions.ts
+#: src/features/admin/intervals.ts
 msgid "Every {interval}"
 msgstr "Every {interval}"
 
@@ -3916,7 +3916,7 @@ msgid "Sign in with password"
 msgstr "Sign in with password"
 
 #. placeholder {0}: minutes / 60
-#: src/features/admin/rescanOptions.ts
+#: src/features/admin/intervals.ts
 msgid "{0, plural, one {hour} other {# hours}}"
 msgstr "{0, plural, one {hour} other {# hours}}"
 

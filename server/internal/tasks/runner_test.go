@@ -522,8 +522,8 @@ func TestAnIntervalFollowsTheSettings(t *testing.T) {
 		}
 
 		set(30)
-		if next() != 30*time.Minute {
-			t.Fatalf("next run %v after the last, want 30 minutes", next())
+		if got := h.status("scan-libraries").Every; next() != 30*time.Minute || got != 30*time.Minute {
+			t.Fatalf("next run %v after the last, with an interval of %v, want 30 minutes", next(), got)
 		}
 		sleep(29 * time.Minute)
 		if runs.Load() != 1 {
@@ -564,6 +564,8 @@ func TestUnwantedHasNoNextRun(t *testing.T) {
 		}
 		if s := h.status("make-backup"); s.Next.IsZero() {
 			t.Fatal("a task without Wanted has no next run")
+		} else if s.Every != 0 {
+			t.Fatalf("a night task has an interval of %v", s.Every)
 		}
 		wanted = true
 		if s := h.status("make-previews"); s.Next.IsZero() {

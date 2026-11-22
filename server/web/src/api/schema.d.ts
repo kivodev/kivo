@@ -4699,6 +4699,11 @@ export interface components {
             /** @description Its runs begin as the maintenance window opens; else every so often. */
             nightly: boolean;
             /**
+             * @description How long after a run's end its next begins, for a task that runs
+             *     every so often. Absent in `onDemand` and for a nightly task.
+             */
+            everyMinutes?: number;
+            /**
              * Format: date-time
              * @description When its next run begins. Absent in `onDemand`, and for a task
              *     whose work every library is set to never do, such as refreshing

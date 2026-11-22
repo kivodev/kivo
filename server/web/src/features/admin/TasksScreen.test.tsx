@@ -114,7 +114,7 @@ describe("Tasks", () => {
     ]);
   });
 
-  it("lists the Library tasks with the same columns as Maintenance: last run, next run, progress and the action", async () => {
+  it("lists the Library tasks with the same columns as Maintenance: schedule, last run, next run, progress and the action", async () => {
     serveMockApi();
     renderApp("/admin/tasks");
     await screen.findByRole("heading", { name: "Library" });
@@ -123,7 +123,7 @@ describe("Tasks", () => {
         within(section(name))
           .getAllByRole("columnheader")
           .map((h) => h.textContent),
-      ).toEqual(["Task", "Last run", "Next run", "Progress", ""]);
+      ).toEqual(["Task", "Schedule", "Last run", "Next run", "Progress", ""]);
     }
     const library = section("Library");
     expect(rows(library).map((r) => cells(r)[0])).toEqual([
@@ -136,20 +136,27 @@ describe("Tasks", () => {
     ]);
     expect(cells(rowOf(library, "Scan all libraries"))).toEqual([
       "Scan all libraries",
+      "Every 12 hours",
       "3 hours ago",
       expect.stringMatching(/\d:\d\d\s[AP]M$/),
       "Reading files37 of 120",
       "Stop",
     ]);
-    expect(cells(rowOf(library, "Refresh metadata")).slice(2)).toEqual(["Nightly", "", "Run now"]);
+    expect(cells(rowOf(library, "Refresh metadata")).slice(1)).toEqual([
+      "Nightly",
+      "8 hours ago",
+      expect.stringMatching(/\d:\d\d\s[AP]M$/),
+      "",
+      "Run now",
+    ]);
     const previews = rowOf(library, "Preview thumbnails");
-    expect(cells(previews).slice(3)).toEqual(["18,489 left", "Run now"]);
+    expect(cells(previews).slice(4)).toEqual(["18,489 left", "Run now"]);
     expect(within(previews).queryByRole("progressbar")).not.toBeInTheDocument();
     expect(within(previews).getByRole("link", { name: "Preview thumbnails" })).toHaveAttribute(
       "href",
       "/admin/tasks/make-previews",
     );
-    expect(cells(rowOf(library, "Intro and credits")).slice(3)).toEqual(["Analyzing312 of 1,516", "Stop"]);
+    expect(cells(rowOf(library, "Intro and credits")).slice(4)).toEqual(["Analyzing312 of 1,516", "Stop"]);
     expect(within(rowOf(library, "Remove missing files")).queryByRole("link")).not.toBeInTheDocument();
 
     expect(rows(section("Maintenance")).map((r) => cells(r)[0])).toEqual([
@@ -169,7 +176,7 @@ describe("Tasks", () => {
     renderApp("/admin/tasks");
     await screen.findByRole("heading", { name: "Maintenance" });
     const backup = rowOf(section("Maintenance"), "Back up database");
-    expect(cells(backup)[1]).toBe("Failed 8 hours ago");
+    expect(cells(backup)[2]).toBe("Failed 8 hours ago");
     expect(within(backup).getByText("8 hours ago")).toHaveAttribute(
       "title",
       expect.stringContaining("The backup folder is full."),
@@ -181,28 +188,51 @@ describe("Tasks", () => {
     delete taskOf(api.tasks, "find-markers").nextRunAt;
     renderApp("/admin/tasks");
     await screen.findByRole("heading", { name: "Library" });
-    expect(cells(rowOf(section("Library"), "Intro and credits"))[2]).toBe("—");
+    expect(cells(rowOf(section("Library"), "Intro and credits")).slice(1, 4)).toEqual(["Nightly", "8 hours ago", "—"]);
   });
 
-  it("opens Schedule from a task's next run, whether it runs nightly or every so often", async () => {
+  it("says each task's schedule in Schedule's own words, and opens Schedule from it", async () => {
     const api = serveMockApi();
-    delete taskOf(api.tasks, "find-markers").nextRunAt;
+    api.settings = { ...api.settings, rescanEveryMinutes: 45 };
+    taskOf(api.tasks, "scan-libraries").everyMinutes = 45;
     const { user } = renderApp("/admin/tasks");
     await screen.findByRole("heading", { name: "Library" });
-    const library = section("Library");
-    for (const [task, next] of [
-      ["Refresh metadata", "Nightly"],
-      ["Scan all libraries", /\d:\d\d\s[AP]M$/],
+    for (const [table, task, schedule] of [
+      ["Library", "Refresh metadata", "Nightly"],
+      ["Maintenance", "Back up database", "Nightly"],
+      ["Library", "Scan all libraries", "Every 45 minutes"],
     ] as const) {
-      await user.click(within(rowOf(library, task)).getByRole("button", { name: next }));
-      const schedule = await screen.findByRole("dialog", { name: "Schedule" });
-      expect(within(schedule).getByRole("button", { name: /Nightly start/ })).toHaveTextContent(/^2:00\sAM/);
+      const row = rowOf(section(table), task);
+      expect(cells(row)[1]).toBe(schedule);
+      await user.click(within(row).getByRole("button", { name: schedule }));
+      const dialog = await screen.findByRole("dialog", { name: "Schedule" });
+      expect(within(dialog).getByRole("button", { name: /Rescan libraries/ })).toHaveTextContent(/^Every 45 minutes/);
       await user.keyboard("{Escape}");
       await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     }
-    // A task with no next run has only its action.
-    const unscheduled = within(rowOf(library, "Intro and credits")).getAllByRole("button");
-    expect(unscheduled.map((b) => b.textContent)).toEqual(["Stop"]);
+  });
+
+  it("shows a nightly task's next run as a time, which opens nothing", async () => {
+    serveMockApi();
+    renderApp("/admin/tasks");
+    await screen.findByRole("heading", { name: "Library" });
+    const row = rowOf(section("Library"), "Refresh metadata");
+    expect(cells(row)[3]).toMatch(/^\d{1,2}:\d\d\s[AP]M$/);
+    expect(
+      within(row)
+        .getAllByRole("button")
+        .map((b) => b.textContent),
+    ).toEqual(["Nightly", "Run now"]);
+  });
+
+  it("shows a muted — as the schedule of a task that says none", async () => {
+    const api = serveMockApi();
+    delete taskOf(api.tasks, "scan-libraries").everyMinutes;
+    renderApp("/admin/tasks");
+    await screen.findByRole("heading", { name: "Library" });
+    const row = rowOf(section("Library"), "Scan all libraries");
+    expect(cells(row)[1]).toBe("—");
+    expect(within(row).queryByRole("button", { name: "—" })).not.toBeInTheDocument();
   });
 
   it("shows On demand rows only while they have work, and hides On demand when none does", async () => {
@@ -215,11 +245,11 @@ describe("Tasks", () => {
     expect(rows(onDemand).map((r) => cells(r)[0])).toEqual(["Downloads", "Library changes"]);
     // Work that was asked for has no count. It shows only what it's
     // doing, with no bar.
-    expect(cells(rowOf(onDemand, "Downloads"))).toEqual(["Downloads", "", "", "Preparing", ""]);
+    expect(cells(rowOf(onDemand, "Downloads"))).toEqual(["Downloads", "", "", "", "Preparing", ""]);
     expect(within(rowOf(onDemand, "Downloads")).queryByRole("progressbar")).not.toBeInTheDocument();
     // Library changes finishes what it starts, so it has neither Stop nor
     // Run now.
-    expect(cells(rowOf(onDemand, "Library changes"))).toEqual(["Library changes", "", "", "Removing", ""]);
+    expect(cells(rowOf(onDemand, "Library changes"))).toEqual(["Library changes", "", "", "", "Removing", ""]);
 
     for (const id of ["prepare-downloads", "library-changes"]) {
       const task = taskOf(api.tasks, id);
@@ -237,7 +267,7 @@ describe("Tasks", () => {
     const { user } = renderApp("/admin/tasks");
     await screen.findByRole("heading", { name: "Library" });
     const scans = rowOf(section("Library"), "Scan all libraries");
-    expect(cells(scans)[3]).toBe("Matching120 of 768");
+    expect(cells(scans)[4]).toBe("Matching120 of 768");
     expect(within(scans).getByRole("progressbar")).toBeInTheDocument();
     expect(screen.queryByText(/Identif/)).not.toBeInTheDocument();
     await user.click(within(scans).getByRole("button", { name: "Stop Scan all libraries" }));
@@ -250,7 +280,7 @@ describe("Tasks", () => {
     Object.assign(taskOf(api.tasks, "scan-libraries"), { running: false, stoppable: false, progress: undefined });
     sendEvent({ type: "event", kind: "tasksChanged" });
     await waitFor(() =>
-      expect(cells(rowOf(section("Library"), "Scan all libraries")).slice(3)).toEqual(["", "Run now"]),
+      expect(cells(rowOf(section("Library"), "Scan all libraries")).slice(4)).toEqual(["", "Run now"]),
     );
   });
 

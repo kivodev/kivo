@@ -1109,6 +1109,7 @@ export function createMockApi(): MockApi {
         id: "scan-libraries",
         section: "library",
         nightly: false,
+        everyMinutes: 720,
         lastRun: taskRun("Scanned 3 folders", { finishedAt: ago(3 / 24) }),
         nextRunAt: new Date(now + 9 * hour).toISOString(),
         progress: { step: "probe", done: 37, total: 120 },

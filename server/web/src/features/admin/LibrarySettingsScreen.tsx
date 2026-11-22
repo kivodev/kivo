@@ -8,7 +8,7 @@ import { Switch } from "@/components/Switch";
 import { contentRatingCountries, metadataLanguages } from "@/i18n/metadataLocales";
 import { useDraft } from "@/lib/draft";
 import { AdminPage } from "./AdminPage";
-import { rescanInterval } from "./rescanOptions";
+import { intervalOf } from "./intervals";
 import { SettingsForm, useSettingsSave } from "./SettingsForm";
 
 /**
@@ -20,7 +20,7 @@ export function LibrarySettingsScreen() {
   const { t } = useLingui();
   const settings = useSuspenseQuery(settingsQueries.current()).data;
   const save = useSettingsSave();
-  const interval = rescanInterval(settings.rescanEveryMinutes);
+  const interval = intervalOf(settings.rescanEveryMinutes);
   const { draft, edit, discard } = useDraft({
     fileWatching: settings.fileWatching,
     metadataLanguage: settings.metadataLanguage,
