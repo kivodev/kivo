@@ -2248,7 +2248,8 @@ export interface paths {
          * @description Start from `PlayStarted.delivery.url`, the multivariant playlist;
          *     playlists refer to the rest with relative URIs. With video, the
          *     audio is an audio rendition there, with fragmented MP4 segments of
-         *     its own covering the video's. A subtitle the play streams is a
+         *     its own covering the video's, unless the client asked for it inside
+         *     the video's segments (`StreamCapabilities.muxedAudio`). A subtitle the play streams is a
          *     subtitle rendition there, with WebVTT segments covering the
          *     video's. A segment that isn't ready yet is waited for.
          *     A segment whose transcode failed is `500` with code
@@ -4915,6 +4916,8 @@ export interface components {
         Capabilities: {
             /** @description Files it plays whole, the original or a download. Absent, it plays none. */
             file?: components["schemas"]["FileCapabilities"];
+            /** @description How it plays the HLS stream. Absent, every default applies. */
+            stream?: components["schemas"]["StreamCapabilities"];
             video: components["schemas"]["VideoEntry"][];
             audio: components["schemas"]["AudioEntry"][];
             subtitles: components["schemas"]["SubtitleEntry"][];
@@ -4931,9 +4934,22 @@ export interface components {
             trackSelection?: boolean;
         };
         /**
+         * @description How a client plays the HLS stream. Whether it streams at all is said
+         *     by its entries with `stream` delivery.
+         */
+        StreamCapabilities: {
+            /**
+             * @description It needs the audio inside the video's segments. Otherwise, with
+             *     video, the audio is a rendition of its own (`EXT-X-MEDIA`).
+             *     Default false.
+             */
+            muxedAudio?: boolean;
+        };
+        /**
          * @description How a track reaches the client: `file` inside the played file;
          *     `stream` inside the HLS stream (fragmented MP4, with the audio a
-         *     rendition apart from the video, and WebVTT subtitle renditions); `external` a subtitle sent to the client as
+         *     rendition apart from the video unless `StreamCapabilities.muxedAudio`
+         *     says otherwise, and WebVTT subtitle renditions); `external` a subtitle sent to the client as
          *     its own file, which the client draws. A track's source, also
          *     `external` for a subtitle file next to the video, is where it lives,
          *     not how it's delivered.

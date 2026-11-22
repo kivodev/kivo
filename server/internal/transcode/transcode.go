@@ -76,6 +76,9 @@ type Spec struct {
 	// them in its file, in order.
 	Text        []TextTrack
 	Accelerator media.Accelerator // empty means the CPU
+	// MuxedAudio keeps a stream's audio inside its video segments, for a
+	// client that can't play it as a rendition of its own.
+	MuxedAudio bool
 }
 
 // TextTrack is a text subtitle track delivered with the video. A stream
@@ -100,8 +103,9 @@ type TextTrack struct {
 }
 
 // splitAudio reports whether the stream carries its audio apart from its
-// video, as a rendition of its own. It does whenever it has both.
-func (s Spec) splitAudio() bool { return s.Video.Codec != "" && len(s.Audio) > 0 }
+// video, as a rendition of its own. It does whenever it has both, unless
+// MuxedAudio is set.
+func (s Spec) splitAudio() bool { return !s.MuxedAudio && s.Video.Codec != "" && len(s.Audio) > 0 }
 
 // encoded reports whether the spec encodes video, rather than copying it.
 func (s Spec) encoded() bool { return s.Video.Codec != media.Copy }

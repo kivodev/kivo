@@ -198,7 +198,7 @@ open class MediaApi : ApiClient {
 
     /**
      * Get HLS playlist or segment
-     * Start from &#x60;PlayStarted.delivery.url&#x60;, the multivariant playlist; playlists refer to the rest with relative URIs. With video, the audio is an audio rendition there, with fragmented MP4 segments of its own covering the video&#39;s. A subtitle the play streams is a subtitle rendition there, with WebVTT segments covering the video&#39;s. A segment that isn&#39;t ready yet is waited for. A segment whose transcode failed is &#x60;500&#x60; with code &#x60;transcodeFailed&#x60;: report it through the fallback request. Also answers &#x60;HEAD&#x60;. 
+     * Start from &#x60;PlayStarted.delivery.url&#x60;, the multivariant playlist; playlists refer to the rest with relative URIs. With video, the audio is an audio rendition there, with fragmented MP4 segments of its own covering the video&#39;s, unless the client asked for it inside the video&#39;s segments (&#x60;StreamCapabilities.muxedAudio&#x60;). A subtitle the play streams is a subtitle rendition there, with WebVTT segments covering the video&#39;s. A segment that isn&#39;t ready yet is waited for. A segment whose transcode failed is &#x60;500&#x60; with code &#x60;transcodeFailed&#x60;: report it through the fallback request. Also answers &#x60;HEAD&#x60;. 
      * @param id The play&#39;s ID; it is the credential for this route.
      * @param name An opaque name produced by the server; clients only follow URLs, never build names.
      * @return kotlin.String

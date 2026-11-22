@@ -33,6 +33,9 @@ var (
 // delivery means nothing, and is left out.
 func parseCapabilities(c gen.Capabilities) playback.Capabilities {
 	var out playback.Capabilities
+	if c.Stream != nil {
+		out.Stream = playback.StreamCaps{MuxedAudio: deref(c.Stream.MuxedAudio)}
+	}
 	if c.File != nil {
 		out.File = &playback.FileCaps{Containers: c.File.Containers, TrackSelection: deref(c.File.TrackSelection)}
 	}

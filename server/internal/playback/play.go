@@ -610,6 +610,7 @@ func (s *planner) spec(ctx context.Context, c *choice) (transcode.Spec, error) {
 		}
 		spec.Audio = []media.AudioOut{out}
 	}
+	spec.MuxedAudio = c.input.Caps.Stream.MuxedAudio
 	return spec, nil
 }
 

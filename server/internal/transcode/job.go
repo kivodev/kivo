@@ -139,7 +139,7 @@ func (s *Stream) produce(ctx context.Context, j *job) error {
 		Path: s.spec.Parts[part].Path, Start: s.plan[j.from].Start, SegmentDuration: gridSegment,
 		Seek:       s.seek(j),
 		VideoTrack: s.spec.VideoTrack, Source: s.spec.Source, Video: s.spec.Video, Audio: s.spec.Audio,
-		BurnIn: s.spec.BurnIn, Accelerator: s.spec.Accelerator,
+		BurnIn: s.spec.BurnIn, Accelerator: s.spec.Accelerator, MuxedAudio: s.spec.MuxedAudio,
 	}
 	text := make([]*textWriter, len(s.spec.Text))
 	for k, t := range s.spec.Text {
