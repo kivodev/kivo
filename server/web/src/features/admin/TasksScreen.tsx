@@ -2,7 +2,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { Dialog, DialogTrigger, Separator } from "react-aria-components";
+import { Button as AriaButton, Dialog, DialogTrigger, Separator } from "react-aria-components";
 import type { SettingsUpdate, Task } from "@/api/schemas";
 import { settingsQueries, useUpdateSettings } from "@/api/settings";
 import { taskQueries } from "@/api/tasks";
@@ -90,7 +90,12 @@ const upTo = (most: number) =>
  * how many files at once get preview thumbnails made and intros and
  * credits found. A change saves at once.
  */
-function ScheduleButton() {
+function Schedule({
+  children,
+}: {
+  /** The button that opens it. */
+  children: ReactNode;
+}) {
   const { t } = useLingui();
   const settings = useSuspenseQuery(settingsQueries.current()).data;
   const update = useUpdateSettings();
@@ -100,10 +105,7 @@ function ScheduleButton() {
   const pending = update.isPending;
   return (
     <DialogTrigger>
-      <Button size="sm">
-        <Icon name="settings" className="size-4" />
-        <Trans>Schedule</Trans>
-      </Button>
+      {children}
       <Popover placement="bottom end" className="w-80">
         <Dialog aria-label={t`Schedule`} data-part="schedule" className="flex flex-col gap-4 p-3 outline-none">
           <ScheduleGroup title={<Trans>Nightly window</Trans>}>
@@ -167,6 +169,18 @@ function ScheduleButton() {
         </Dialog>
       </Popover>
     </DialogTrigger>
+  );
+}
+
+/** The page's button for Schedule. */
+function ScheduleButton() {
+  return (
+    <Schedule>
+      <Button size="sm">
+        <Icon name="settings" className="size-4" />
+        <Trans>Schedule</Trans>
+      </Button>
+    </Schedule>
   );
 }
 
@@ -302,14 +316,18 @@ function LastRun({ task }: { task: Task }) {
  *    with its weekday or date when it's past the next day.
  *  - A muted "—" when every library is set never to do the task's work.
  *
- * Nothing shows in On demand.
+ * A next run opens Schedule. Nothing shows in On demand.
  */
 function NextRun({ task, now }: { task: Task; now: number }) {
   if (task.section === "onDemand") return null;
   if (!task.nextRunAt) return <span className="text-text-muted">—</span>;
   return (
-    <time dateTime={task.nextRunAt} title={formatDateTime(task.nextRunAt)} className="text-text-muted">
-      {task.nightly ? <Trans>Nightly</Trans> : formatUpcoming(task.nextRunAt, now)}
-    </time>
+    <Schedule>
+      <AriaButton className="-mx-1 inline-flex cursor-pointer items-center rounded-sm px-1 touch-target text-text-muted hover:text-text">
+        <time dateTime={task.nextRunAt} title={formatDateTime(task.nextRunAt)}>
+          {task.nightly ? <Trans>Nightly</Trans> : formatUpcoming(task.nextRunAt, now)}
+        </time>
+      </AriaButton>
+    </Schedule>
   );
 }

@@ -184,6 +184,27 @@ describe("Tasks", () => {
     expect(cells(rowOf(section("Library"), "Intro and credits"))[2]).toBe("—");
   });
 
+  it("opens Schedule from a task's next run, whether it runs nightly or every so often", async () => {
+    const api = serveMockApi();
+    delete taskOf(api.tasks, "find-markers").nextRunAt;
+    const { user } = renderApp("/admin/tasks");
+    await screen.findByRole("heading", { name: "Library" });
+    const library = section("Library");
+    for (const [task, next] of [
+      ["Refresh metadata", "Nightly"],
+      ["Scan all libraries", /\d:\d\d\s[AP]M$/],
+    ] as const) {
+      await user.click(within(rowOf(library, task)).getByRole("button", { name: next }));
+      const schedule = await screen.findByRole("dialog", { name: "Schedule" });
+      expect(within(schedule).getByRole("button", { name: /Nightly start/ })).toHaveTextContent(/^2:00\sAM/);
+      await user.keyboard("{Escape}");
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    }
+    // A task with no next run has only its action.
+    const unscheduled = within(rowOf(library, "Intro and credits")).getAllByRole("button");
+    expect(unscheduled.map((b) => b.textContent)).toEqual(["Stop"]);
+  });
+
   it("shows On demand rows only while they have work, and hides On demand when none does", async () => {
     const api = serveMockApi();
     Object.assign(taskOf(api.tasks, "library-changes"), { progress: { done: 0, total: 0 }, running: true });
