@@ -18,11 +18,21 @@ function parentOf(path: string): string | undefined {
   return trimmed.slice(0, i === 0 || trimmed[i - 1] === ":" ? i + 1 : i);
 }
 
+type Props = {
+  /** Shown only while open. It keeps its place while closed. */
+  isOpen: boolean;
+  /** The folders chosen so far, which can't be chosen again. */
+  chosen: readonly string[];
+  onPick: (path: string) => void;
+  onClose: () => void;
+};
+
 /**
  * Picks one of the server's folders. It browses from the server's mounts,
- * or goes to a typed path on Enter.
+ * or goes to a typed path on Enter. After a pick it shows the folder
+ * above, where the next one is likely to be.
  */
-export function FolderPicker({ onPick }: { onPick: (path: string) => void }) {
+export function FolderPicker({ isOpen, chosen, onPick, onClose }: Props) {
   const { t } = useLingui();
   const [path, setPath] = useState<string | undefined>(undefined);
   const [typed, setTyped] = useState("");
@@ -32,8 +42,10 @@ export function FolderPicker({ onPick }: { onPick: (path: string) => void }) {
     setTyped(to ?? "");
   };
 
+  if (!isOpen) return null;
+  const taken = path !== undefined && chosen.includes(path);
   return (
-    <div className="flex flex-col gap-2 rounded-md border border-border bg-bg p-2">
+    <div data-part="folder-picker" className="flex flex-col gap-2 rounded-md border border-accent bg-bg p-2">
       <div className="flex items-center gap-2 px-1">
         <Button
           size="sm"
@@ -56,11 +68,6 @@ export function FolderPicker({ onPick }: { onPick: (path: string) => void }) {
             className="h-8 w-full rounded-sm border border-transparent bg-transparent px-1 font-mono text-sm text-text outline-none placeholder:text-text-muted data-focused:border-accent pointer-coarse:text-base"
           />
         </TextField>
-        {path !== undefined && (
-          <Button size="sm" variant="primary" onPress={() => onPick(path)}>
-            <Trans>Add this folder</Trans>
-          </Button>
-        )}
       </div>
       <ul className="max-h-60 overflow-auto">
         {folders.isPending && (
@@ -90,6 +97,29 @@ export function FolderPicker({ onPick }: { onPick: (path: string) => void }) {
           </li>
         ))}
       </ul>
+      <div className="flex justify-end gap-2 border-t border-border px-1 pt-2">
+        <Button size="sm" variant="ghost" onPress={onClose}>
+          <Trans>Close</Trans>
+        </Button>
+        <Button
+          size="sm"
+          variant="primary"
+          isDisabled={path === undefined || taken}
+          onPress={() => {
+            if (path === undefined) return;
+            go(parentOf(path));
+            onPick(path);
+          }}
+        >
+          {path === undefined ? (
+            <Trans>Open a folder first</Trans>
+          ) : taken ? (
+            <Trans>Already added</Trans>
+          ) : (
+            <Trans>Use this folder</Trans>
+          )}
+        </Button>
+      </div>
     </div>
   );
 }
