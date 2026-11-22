@@ -97,37 +97,38 @@ function StepNav({ onBack, onNext, nextLabel, nextVariant = "primary" }: NavProp
   );
 }
 
+type StepProps = { onBack: () => void; onNext: () => void };
+
+/** Whether setup has added no library yet. */
+function useNoLibraries(): boolean {
+  return (useQuery(libraryQueries.list()).data?.items.length ?? 0) === 0;
+}
+
 /** The libraries step. Going on without a library is skipping it, and says so. */
-function LibrariesStep({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
+function LibrariesStep(nav: StepProps) {
   const { t } = useLingui();
-  const none = (useQuery(libraryQueries.list()).data?.items.length ?? 0) === 0;
+  const none = useNoLibraries();
   return (
     <div className="flex flex-col gap-6">
       <LibrarySetup />
-      <StepNav
-        onBack={onBack}
-        onNext={onNext}
-        nextLabel={none ? t`Skip for now` : t`Next`}
-        nextVariant={none ? "secondary" : "primary"}
-      />
+      <StepNav {...nav} nextLabel={none ? t`Skip for now` : t`Next`} nextVariant={none ? "secondary" : "primary"} />
     </div>
   );
 }
 
 /** The last step, which says what happens next: the first scans, or that there's no library yet. */
-function DoneStep({ onBack, onNext }: { onBack: () => void; onNext: () => void }) {
+function DoneStep(nav: StepProps) {
   const { t } = useLingui();
-  const none = (useQuery(libraryQueries.list()).data?.items.length ?? 0) === 0;
   return (
     <div className="flex flex-col gap-6">
       <p className="text-text-muted">
-        {none ? (
+        {useNoLibraries() ? (
           <Trans>No libraries yet. Add one from Home when you're ready.</Trans>
         ) : (
           <Trans>Scanning libraries. Items appear on Home as they're found.</Trans>
         )}
       </p>
-      <StepNav onBack={onBack} onNext={onNext} nextLabel={t`Go to Home`} />
+      <StepNav {...nav} nextLabel={t`Go to Home`} />
     </div>
   );
 }
