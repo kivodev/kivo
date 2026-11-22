@@ -606,6 +606,7 @@ func (s *planner) spec(ctx context.Context, c *choice) (transcode.Spec, error) {
 		out := media.AudioOut{Track: audio.Index, Out: *audio.Audio}
 		if src := c.input.Source.Audio; src != nil {
 			out.Source, out.SourceChannels, out.Language = src.Codec, src.Channels, src.Language
+			spec.AudioTitle = cmp.Or(src.Title, src.Language)
 		}
 		spec.Audio = []media.AudioOut{out}
 	}

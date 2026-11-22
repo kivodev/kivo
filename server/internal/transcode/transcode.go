@@ -63,6 +63,9 @@ type Spec struct {
 	Source     media.Track          // the video track as probed; required to encode video
 	Video      media.VideoRendition // Codec is media.Copy for a remux or an audio-only transcode
 	Audio      []media.AudioOut
+	// AudioTitle is what a player's own menu shows for the audio, when the
+	// stream carries it apart from the video.
+	AudioTitle string
 	BurnIn     *media.SubtitleRef
 	// Fonts are the font files a text BurnIn uses, wherever they're
 	// stored. The job reads them from its own folder, named by BurnIn's
@@ -95,6 +98,10 @@ type TextTrack struct {
 	SDH      bool                 // it's for the deaf and hard of hearing
 	Default  bool                 // the rendition the player shows from the start
 }
+
+// splitAudio reports whether the stream carries its audio apart from its
+// video, as a rendition of its own. It does whenever it has both.
+func (s Spec) splitAudio() bool { return s.Video.Codec != "" && len(s.Audio) > 0 }
 
 // encoded reports whether the spec encodes video, rather than copying it.
 func (s Spec) encoded() bool { return s.Video.Codec != media.Copy }

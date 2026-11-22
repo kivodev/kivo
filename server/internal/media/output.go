@@ -17,8 +17,9 @@ const TimestampOffset = 10 * time.Second
 // Output is a running transcode job. Init and Segments read the job's
 // output as it is written. Close stops the job and must always be called.
 type Output interface {
-	// Init returns the initialization segment, waiting until it is written.
-	Init() ([]byte, error)
+	// Init returns the initialization segments, waiting until they are
+	// written.
+	Init() (Init, error)
 	// Segments yields segments in order, each as soon as it is complete.
 	// It may be ranged over once.
 	Segments() iter.Seq2[Segment, error]
@@ -38,14 +39,22 @@ type Output interface {
 	Close() error
 }
 
-// Segment is one media segment of a transcode. It is one fragment, with
-// video and audio together, from one video keyframe to the next. Copied
-// video keeps the source's keyframes, so its segments are as long as the
-// source's GOPs. Encoded video has its keyframes on the request's grid, so
-// each of its segments is one grid step.
+// Init is a transcode's initialization segments.
+type Init struct {
+	Data  []byte // the video's, or the audio's when there is no video
+	Audio []byte // the audio's when there is video too; nil otherwise
+}
+
+// Segment is one media segment of a transcode, from one video keyframe to
+// the next. Its video and its audio are separate fragments that cover the
+// same span, so a player fetches them as separate renditions. Copied video
+// keeps the source's keyframes, so its segments are as long as the source's
+// GOPs. Encoded video has its keyframes on the request's grid, so each of
+// its segments is one grid step.
 type Segment struct {
 	Start time.Duration // read from the output, on the source's timeline
-	Data  []byte
+	Data  []byte        // the video, or the audio when there is no video
+	Audio []byte        // the audio when there is video too; nil otherwise
 }
 
 // Cue is one event of a text subtitle track, on the source's timeline.

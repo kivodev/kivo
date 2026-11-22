@@ -3035,9 +3035,11 @@ paths:
       summary: Get HLS playlist or segment
       description: |
         Start from `PlayStarted.delivery.url`, the multivariant playlist;
-        playlists refer to the rest with relative URIs. A subtitle the
-        play streams is a subtitle rendition there, with WebVTT segments
-        covering the video's. A segment that isn't ready yet is waited for.
+        playlists refer to the rest with relative URIs. With video, the
+        audio is an audio rendition there, with fragmented MP4 segments of
+        its own covering the video's. A subtitle the play streams is a
+        subtitle rendition there, with WebVTT segments covering the
+        video's. A segment that isn't ready yet is waited for.
         A segment whose transcode failed is `500` with code
         `transcodeFailed`: report it through the fallback request. Also
         answers `HEAD`.
@@ -6870,8 +6872,8 @@ components:
       type: string
       description: |
         How a track reaches the client: `file` inside the played file;
-        `stream` inside the HLS stream (fragmented MP4, and WebVTT
-        subtitle renditions); `external` a subtitle sent to the client as
+        `stream` inside the HLS stream (fragmented MP4, with the audio a
+        rendition apart from the video, and WebVTT subtitle renditions); `external` a subtitle sent to the client as
         its own file, which the client draws. A track's source, also
         `external` for a subtitle file next to the video, is where it lives,
         not how it's delivered.

@@ -2248,8 +2248,8 @@ type Capabilities struct {
 }
 
 // CapabilityDelivery How a track reaches the client: `file` inside the played file;
-// `stream` inside the HLS stream (fragmented MP4, and WebVTT
-// subtitle renditions); `external` a subtitle sent to the client as
+// `stream` inside the HLS stream (fragmented MP4, with the audio a
+// rendition apart from the video, and WebVTT subtitle renditions); `external` a subtitle sent to the client as
 // its own file, which the client draws. A track's source, also
 // `external` for a subtitle file next to the video, is where it lives,
 // not how it's delivered.
