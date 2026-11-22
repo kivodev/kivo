@@ -160,6 +160,7 @@ func (s *Splitter) splitInit(moov *mp4.MoovBox) (video, audio []byte, err error)
 		if err != nil {
 			return nil, nil, err
 		}
+		tr.silence = aacSilence(trak)
 		s.rest = append(s.rest, tr)
 	}
 	if video, err = moovOf(moov, isLead); err != nil {
@@ -248,14 +249,19 @@ func (s *Splitter) readFragment() (fragment, error) {
 
 // splitAudio cuts f's audio out into f.audio. before is how many bytes of
 // f.data come before its moof. The first fragment with video loses the
-// audio that decodes before it (trimBefore), and a fragment with video but
-// no audio gets an audio fragment without samples (emptyFragment).
+// audio that decodes before it (trimBefore). Audio missing from the start
+// of a fragment with video, or from all of it, is filled with silence where
+// that can be made (fillAudio). Otherwise a fragment with video but no
+// audio gets an audio fragment without samples (emptyFragment).
 func (s *Splitter) splitAudio(f *fragment, moof *mp4.MoofBox, before int) error {
 	if f.lead && !s.begun {
 		s.begun = true
 		trimBefore(moof, s.lead, s.rest, s.trexs)
 	}
 	video, audio, err := splitFragment(moof, f.data[before:], s.lead.id, s.trexs)
+	if err == nil && f.lead && len(s.rest) == 1 && s.rest[0].silence != nil {
+		audio, err = fillAudio(moof, audio, s.lead, s.rest[0])
+	}
 	if err == nil && audio == nil && f.lead {
 		audio, err = emptyFragment(moof.Mfhd, f.start+media.TimestampOffset, s.rest)
 	}

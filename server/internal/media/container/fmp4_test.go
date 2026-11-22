@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"testing"
 	"time"
@@ -121,9 +122,10 @@ func TestSplitterNoOutput(t *testing.T) {
 // init, which must hold one track.
 func TestSplitterGivesAudioToASegmentWithout(t *testing.T) {
 	// ffmpeg writes fragments without audio before the audio starts and
-	// after it ends. Their segments' audio has no samples but is still a
-	// fragment, placed where the video is.
-	data := withoutAudio(t, readFixture(t, "remux-h264.mp4"), 1)
+	// after it ends. Where silence can't be made for the audio, such a
+	// segment's audio has no samples but is still a fragment, placed where
+	// the video is.
+	data := withoutAudio(t, withAudioObjectType(t, readFixture(t, "remux-h264.mp4"), 5), 1)
 	init, segs, err := split(t, data)
 	if err != nil {
 		t.Fatal(err)
@@ -149,6 +151,189 @@ func TestSplitterGivesAudioToASegmentWithout(t *testing.T) {
 			t.Fatalf("segment %d lost its audio", i)
 		}
 	}
+}
+
+func TestSplitterFillsASegmentWithoutAudioWithSilence(t *testing.T) {
+	// A player that lays a rendition's segments end to end puts whatever
+	// audio comes next where a segment without any should be. AAC-LC gets
+	// silent frames covering the segment instead.
+	plain := readFixture(t, "remux-h264.mp4")
+	_, want, err := split(t, plain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	init, segs, err := split(t, withoutAudio(t, plain, 1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	video := span(t, init.Data, segs[1].Data)
+	audio := span(t, init.Audio, segs[1].Audio)
+	const frame = 128 * time.Millisecond // 1024 samples at the fixture's 8 kHz
+	if audio.from < video.from || audio.from >= video.from+frame {
+		t.Errorf("silence starts at %v, video at %v", audio.from, video.from)
+	}
+	if audio.to < video.to || audio.to >= video.to+frame {
+		t.Errorf("silence ends at %v, video at %v", audio.to, video.to)
+	}
+	_, samples := samplesOf(t, init.Audio, [][]byte{segs[1].Audio})
+	for i, s := range samples {
+		if !bytes.Equal(s.Data, silentAAC(1)) || !mp4.IsSyncSampleFlags(s.Flags) {
+			t.Fatalf("sample %d isn't a silent frame: % x", i, s.Data)
+		}
+	}
+	for i := range segs {
+		if i != 1 && !bytes.Equal(segs[i].Audio, want[i].Audio) {
+			t.Fatalf("segment %d's audio changed", i)
+		}
+	}
+}
+
+func TestSplitterFillsAudioThatStartsLateWithSilence(t *testing.T) {
+	// A file's audio track can begin after its video. The first segment's
+	// audio then starts with silence, so it begins with the video, and the
+	// audio's own samples follow at their own times.
+	plain := readFixture(t, "remux-h264.mp4")
+	_, want, err := split(t, plain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const dropped = 5
+	init, segs, err := split(t, withoutFirstAudio(t, plain, dropped))
+	if err != nil {
+		t.Fatal(err)
+	}
+	video := span(t, init.Data, segs[0].Data)
+	audio := span(t, init.Audio, segs[0].Audio)
+	const frame = 128 * time.Millisecond
+	if audio.from < video.from || audio.from >= video.from+frame {
+		t.Errorf("audio starts at %v, video at %v", audio.from, video.from)
+	}
+	_, got := samplesOf(t, init.Audio, [][]byte{segs[0].Audio})
+	_, whole := samplesOf(t, init.Audio, [][]byte{want[0].Audio})
+	fill := len(got) - (len(whole) - dropped)
+	if fill < dropped-1 || fill > dropped {
+		t.Fatalf("%d silent frames for %d missing ones", fill, dropped)
+	}
+	for i, s := range got {
+		if i < fill {
+			if !bytes.Equal(s.Data, silentAAC(1)) {
+				t.Fatalf("sample %d isn't a silent frame", i)
+			}
+			continue
+		}
+		if w := whole[i-fill+dropped]; !bytes.Equal(s.Data, w.Data) || s.DecodeTime != w.DecodeTime {
+			t.Fatalf("sample %d isn't the audio's own sample at its own time", i)
+		}
+		if i > 0 && s.DecodeTime != got[i-1].DecodeTime+uint64(got[i-1].Dur) {
+			t.Fatalf("a gap before sample %d", i)
+		}
+	}
+	for i := 1; i < len(segs); i++ {
+		if !bytes.Equal(segs[i].Audio, want[i].Audio) {
+			t.Fatalf("segment %d's audio changed", i)
+		}
+	}
+}
+
+func TestSilentAAC(t *testing.T) {
+	// One long window per channel with no scale factor bands: a single
+	// channel element, a channel pair with a shared window, and the 5.1
+	// layout's centre, two pairs and LFE.
+	for config, want := range map[int]string{
+		1: "00000007",
+		2: "21000000001c",
+		6: "00000001080000000023000000000c000000e0",
+	} {
+		if got := fmt.Sprintf("%x", silentAAC(config)); got != want {
+			t.Errorf("channel configuration %d: %s, want %s", config, got, want)
+		}
+	}
+	for _, config := range []int{0, 8, 15} {
+		if silentAAC(config) != nil {
+			t.Errorf("channel configuration %d has no standard layout", config)
+		}
+	}
+}
+
+// timeSpan is when a segment's samples decode, from the first to the end of
+// the last.
+type timeSpan struct{ from, to time.Duration }
+
+// span returns when seg's samples decode, read with init.
+func span(t *testing.T, init, seg []byte) timeSpan {
+	t.Helper()
+	f, err := mp4.DecodeFile(bytes.NewReader(append(bytes.Clone(init), seg...)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	scale := time.Duration(f.Init.Moov.Trak.Mdia.Mdhd.Timescale)
+	_, samples := samplesOf(t, init, [][]byte{seg})
+	if len(samples) == 0 {
+		t.Fatal("no samples")
+	}
+	last := samples[len(samples)-1]
+	return timeSpan{time.Duration(samples[0].DecodeTime) * time.Second / scale, time.Duration(last.DecodeTime+uint64(last.Dur)) * time.Second / scale}
+}
+
+// withoutFirstAudio returns muxed fMP4 whose first fragment has lost its
+// first n audio samples, as when the audio track begins after the video.
+func withoutFirstAudio(t *testing.T, data []byte, n int) []byte {
+	t.Helper()
+	audio, _ := trackOf(t, data, "soun")
+	f, err := mp4.DecodeFile(bytes.NewReader(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	trex, _ := f.Init.Moov.Mvex.GetTrex(audio)
+	return editMoof(t, data, 0, func(moof *mp4.MoofBox) {
+		for _, traf := range moof.Trafs {
+			if traf.Tfhd.TrackID != audio {
+				continue
+			}
+			trun := traf.Truns[0]
+			trun.AddSampleDefaultValues(traf.Tfhd, trex)
+			at, skip := traf.Tfdt.BaseMediaDecodeTime(), int32(0)
+			for _, s := range trun.Samples[:n] {
+				at += uint64(s.Dur)
+				skip += int32(s.Size)
+			}
+			trun.Samples = trun.Samples[n:]
+			trun.DataOffset += skip
+			traf.Tfdt.SetBaseMediaDecodeTime(at)
+		}
+	})
+}
+
+// withAudioObjectType returns muxed fMP4 whose audio says it's another
+// MPEG-4 audio object type than AAC-LC, in the five bits that begin its
+// decoder configuration.
+func withAudioObjectType(t *testing.T, data []byte, objectType byte) []byte {
+	t.Helper()
+	f, err := mp4.DecodeFile(bytes.NewReader(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, trak := range f.Init.Moov.Traks {
+		if trak.Mdia.Hdlr.HandlerType != "soun" {
+			continue
+		}
+		config := trak.Mdia.Minf.Stbl.Stsd.Mp4a.Esds.DecConfigDescriptor.DecSpecificInfo.DecConfig
+		// The configuration ends the esds box's decoder-specific
+		// descriptor, a few bytes after the box's name.
+		esds := bytes.Index(data, []byte("esds"))
+		if esds < 0 {
+			t.Fatal("no esds box")
+		}
+		at := bytes.LastIndex(data[esds:esds+64], config)
+		if at < 0 {
+			t.Fatal("can't find the audio's decoder configuration")
+		}
+		out := bytes.Clone(data)
+		out[esds+at] = objectType<<3 | out[esds+at]&7
+		return out
+	}
+	t.Fatal("no audio track")
+	return nil
 }
 
 func TestSplitterTrimsAudioBeforeTheVideo(t *testing.T) {
