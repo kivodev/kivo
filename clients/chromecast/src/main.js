@@ -28,6 +28,7 @@ options.playbackConfig = new cf.PlaybackConfig();
 // timestamp, which the server's segments carry, so the order they arrive in
 // can't matter. The playlists are exact, so a seek needn't also fetch the
 // segment before the one it lands in.
+// https://github.com/shaka-project/shaka-player/issues/11035
 options.playbackConfig.shakaConfig = {
   manifest: { hls: { sequenceMode: false } },
   streaming: { inaccurateManifestTolerance: 0 },
