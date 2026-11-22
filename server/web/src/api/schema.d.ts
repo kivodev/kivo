@@ -2948,10 +2948,15 @@ export interface components {
             openSubtitlesRefused?: "key" | "account";
             /**
              * @description Scan a folder as soon as files in it change. Off, changes are
-             *     found by the scan of every library every 12 hours, or a scan an
-             *     admin starts.
+             *     found by the scan of every library every `rescanEveryMinutes`,
+             *     or a scan an admin starts.
              */
             fileWatching: boolean;
+            /**
+             * @description How often every library is scanned, in minutes. The scan finds
+             *     the files that file watching misses.
+             */
+            rescanEveryMinutes: number;
             /**
              * Format: double
              * @description The fraction of a work that, once played, marks it played, such as 0.9.
@@ -3018,6 +3023,7 @@ export interface components {
             /** @description The OpenSubtitles account's password; empty for none. */
             openSubtitlesPassword?: string;
             fileWatching?: boolean;
+            rescanEveryMinutes?: number;
             localNetworks?: string[];
             accelerator?: string;
             videoTranscodeLimit?: number;

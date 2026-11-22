@@ -27,7 +27,7 @@ const (
 type Runner struct {
 	db       *store.DB
 	q        *dbq.Queries
-	settings *config.Store // holds the window and the limits
+	settings *config.Store // holds the window, the limits and the intervals
 	bus      *events.Bus
 	ended    func(ctx context.Context, tx *store.Tx, e RunEnd) error // Options.Ended
 
@@ -47,10 +47,11 @@ type Options struct {
 	Ended func(ctx context.Context, tx *store.Tx, e RunEnd) error
 }
 
-// New returns a runner over db's task table. The window and the limits are
-// read from settings each time they're needed. The runner publishes
-// tasksChanged on bus at every change the Tasks pages show, and for
-// progress at most every 5 seconds. Add the tasks, then call Run.
+// New returns a runner over db's task table. The window, the limits and
+// the intervals are read from settings each time they're needed. The
+// runner publishes tasksChanged on bus at every change the Tasks pages
+// show, and for progress at most every 5 seconds. Add the tasks, then call
+// Run.
 func New(db *store.DB, settings *config.Store, bus *events.Bus, opt Options) *Runner {
 	if opt.Ended == nil {
 		opt.Ended = func(context.Context, *store.Tx, RunEnd) error { return nil }

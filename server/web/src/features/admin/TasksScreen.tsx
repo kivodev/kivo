@@ -14,6 +14,7 @@ import { Section } from "@/components/Section";
 import { Select } from "@/components/Select";
 import { formatCount, formatDateTime, formatUpcoming } from "@/i18n/format";
 import { AdminCell, AdminColumn, AdminPage, AdminTable, AdminTableRow } from "./AdminPage";
+import { useRescanOptions } from "./rescanOptions";
 import { useRunNotices } from "./runNotices";
 import { RunButton, StopButton } from "./TaskButtons";
 import { TaskProgress } from "./TaskProgress";
@@ -28,10 +29,11 @@ const actionWidth = "w-18";
 
 /**
  * The Tasks page. It shows when the nightly tasks run, with Schedule to
- * change that and how many files are worked on at once. Then comes
- * On demand, the work done as it's asked for, shown only while it's busy.
- * Then come the Library and Maintenance tasks. Each row has its last and
- * next run, its progress or how much is left, and Stop or Run now.
+ * change that, how often libraries are rescanned and how many files are
+ * worked on at once. Then comes On demand, the work done as it's asked
+ * for, shown only while it's busy. Then come the Library and Maintenance
+ * tasks. Each row has its last and next run, its progress or how much is
+ * left, and Stop or Run now.
  */
 export function TasksScreen() {
   const { t } = useLingui();
@@ -84,14 +86,16 @@ const upTo = (most: number) =>
 
 /**
  * Schedule, which opens the settings for the nightly window's hours, in
- * the server's time. It also sets how many files at once get preview
- * thumbnails made and intros and credits found. A change saves at once.
+ * the server's time. It also sets how often libraries are rescanned, and
+ * how many files at once get preview thumbnails made and intros and
+ * credits found. A change saves at once.
  */
 function ScheduleButton() {
   const { t } = useLingui();
   const settings = useSuspenseQuery(settingsQueries.current()).data;
   const update = useUpdateSettings();
   const hours = useHours();
+  const rescans = useRescanOptions(settings.rescanEveryMinutes);
   const save = (body: SettingsUpdate) => update.mutate({ body });
   const pending = update.isPending;
   return (
@@ -124,8 +128,23 @@ function ScheduleButton() {
             </div>
           </ScheduleGroup>
           <Separator className="border-t border-border" />
+          <ScheduleGroup title={<Trans>New files</Trans>}>
+            <ScheduleRow label={<Trans>Rescan libraries</Trans>}>
+              <Select
+                label={t`Rescan libraries`}
+                options={rescans}
+                selected={String(settings.rescanEveryMinutes)}
+                onChange={(minutes) => save({ rescanEveryMinutes: Number(minutes) })}
+                isDisabled={pending}
+              />
+            </ScheduleRow>
+            <p className="text-xs text-text-muted">
+              <Trans>Finds files the folder watcher misses.</Trans>
+            </p>
+          </ScheduleGroup>
+          <Separator className="border-t border-border" />
           <ScheduleGroup title={<Trans>Files at once</Trans>}>
-            <AtOnceRow label={<Trans>Preview thumbnails</Trans>}>
+            <ScheduleRow label={<Trans>Preview thumbnails</Trans>}>
               <Select
                 label={t`Preview thumbnails at once`}
                 options={upTo(8)}
@@ -133,8 +152,8 @@ function ScheduleButton() {
                 onChange={(n) => save({ previewsAtOnce: Number(n) })}
                 isDisabled={pending}
               />
-            </AtOnceRow>
-            <AtOnceRow label={<Trans>Intro and credits</Trans>}>
+            </ScheduleRow>
+            <ScheduleRow label={<Trans>Intro and credits</Trans>}>
               <Select
                 label={t`Intro and credits at once`}
                 options={upTo(4)}
@@ -142,7 +161,7 @@ function ScheduleButton() {
                 onChange={(n) => save({ markersAtOnce: Number(n) })}
                 isDisabled={pending}
               />
-            </AtOnceRow>
+            </ScheduleRow>
           </ScheduleGroup>
           <FormError error={update.error} />
         </Dialog>
@@ -161,8 +180,8 @@ function ScheduleGroup({ title, children }: { title: ReactNode; children: ReactN
   );
 }
 
-/** How many files a task works on at once, shown as its name and then its select. */
-function AtOnceRow({ label, children }: { label: ReactNode; children: ReactNode }) {
+/** A setting of Schedule, shown as its name and then its select. */
+function ScheduleRow({ label, children }: { label: ReactNode; children: ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-4 text-sm">
       <span aria-hidden>{label}</span>

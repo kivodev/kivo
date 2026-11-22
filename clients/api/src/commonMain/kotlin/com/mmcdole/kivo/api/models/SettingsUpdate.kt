@@ -39,6 +39,7 @@ import kotlinx.serialization.encoding.*
  * @param openSubtitlesUsername 
  * @param openSubtitlesPassword The OpenSubtitles account's password; empty for none.
  * @param fileWatching 
+ * @param rescanEveryMinutes 
  * @param localNetworks 
  * @param accelerator 
  * @param videoTranscodeLimit 
@@ -69,6 +70,8 @@ data class SettingsUpdate (
     @SerialName(value = "openSubtitlesPassword") val openSubtitlesPassword: kotlin.String? = null,
 
     @SerialName(value = "fileWatching") val fileWatching: kotlin.Boolean? = null,
+
+    @SerialName(value = "rescanEveryMinutes") val rescanEveryMinutes: kotlin.Int? = null,
 
     @SerialName(value = "localNetworks") val localNetworks: kotlin.collections.List<kotlin.String>? = null,
 

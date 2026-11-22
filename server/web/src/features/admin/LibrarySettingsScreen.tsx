@@ -8,6 +8,7 @@ import { Switch } from "@/components/Switch";
 import { contentRatingCountries, metadataLanguages } from "@/i18n/metadataLocales";
 import { useDraft } from "@/lib/draft";
 import { AdminPage } from "./AdminPage";
+import { rescanInterval } from "./rescanOptions";
 import { SettingsForm, useSettingsSave } from "./SettingsForm";
 
 /**
@@ -19,6 +20,7 @@ export function LibrarySettingsScreen() {
   const { t } = useLingui();
   const settings = useSuspenseQuery(settingsQueries.current()).data;
   const save = useSettingsSave();
+  const interval = rescanInterval(settings.rescanEveryMinutes);
   const { draft, edit, discard } = useDraft({
     fileWatching: settings.fileWatching,
     metadataLanguage: settings.metadataLanguage,
@@ -34,7 +36,7 @@ export function LibrarySettingsScreen() {
               <SettingsRow
                 label={<Trans>Scan when files change</Trans>}
                 description={
-                  <Trans>Network shares may not report changes. All libraries are also scanned every 12 hours.</Trans>
+                  <Trans>Network shares may not report changes. All libraries are also scanned every {interval}.</Trans>
                 }
               >
                 <Switch isSelected={draft.fileWatching} onChange={(fileWatching) => edit({ fileWatching })} />

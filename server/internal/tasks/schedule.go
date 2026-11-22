@@ -68,7 +68,7 @@ func (r *Runner) dueLocked(t *task, now time.Time, open bool) bool {
 	case t.Schedule == Nightly:
 		return open && (t.last == nil || t.last.At.Before(r.window().Opened(now)))
 	}
-	return t.Schedule.every > 0 && !now.Before(r.nextLocked(t, now))
+	return t.Schedule.every != nil && !now.Before(r.nextLocked(t, now))
 }
 
 // goOnLocked lets t's work go on where it may. A Func task's loop is woken
@@ -119,19 +119,20 @@ func (r *Runner) workingLocked(t *task, now time.Time) bool {
 // task it is the window's next opening. For an interval task it is the
 // interval after its last run's end, whichever start of the server that run
 // was in, so a run that came due while the server was down begins at
-// startup. A task with no run yet counts from the server's start, and so
-// does one whose last run's end is ahead of the clock. For an on-demand
-// task it is zero.
+// startup. The interval is read from the settings each time, so a change
+// applies without a restart. A task with no run yet counts from the
+// server's start, and so does one whose last run's end is ahead of the
+// clock. For an on-demand task it is zero.
 func (r *Runner) nextLocked(t *task, now time.Time) time.Time {
 	switch {
 	case t.Schedule == Nightly:
 		return r.window().Next(now)
-	case t.Schedule.every > 0:
+	case t.Schedule.every != nil:
 		from := r.boot
 		if t.last != nil && !t.last.At.After(now) {
 			from = t.last.At
 		}
-		return from.Add(t.Schedule.every)
+		return from.Add((*t.Schedule.every)(r.settings.Get()))
 	}
 	return time.Time{}
 }

@@ -77,6 +77,43 @@ describe("Tasks", () => {
     await choose("Intro and credits at once", "3", { markersAtOnce: 3 }, 3);
   });
 
+  it("sets how often libraries are rescanned in Schedule, saving the choice at once", async () => {
+    serveMockApi();
+    const { user } = renderApp("/admin/tasks");
+    await user.click(await screen.findByRole("button", { name: "Schedule" }));
+    const schedule = await screen.findByRole("dialog", { name: "Schedule" });
+    expect(schedule).toHaveTextContent("Finds files the folder watcher misses.");
+    const rescan = within(schedule).getByRole("button", { name: /Rescan libraries/ });
+    expect(rescan).toHaveTextContent(/^Every 12 hours/);
+    await user.click(rescan);
+    expect((await screen.findAllByRole("option")).map((o) => o.textContent)).toEqual([
+      "Every 15 minutes",
+      "Every 30 minutes",
+      "Every hour",
+      "Every 6 hours",
+      "Every 12 hours",
+      "Every 24 hours",
+    ]);
+    await user.click(screen.getByRole("option", { name: "Every 15 minutes" }));
+    await waitFor(() => expect(sent("PATCH", "/settings")[0]?.body).toEqual({ rescanEveryMinutes: 15 }));
+  });
+
+  it("lists a rescan interval that is none of the usual choices among them", async () => {
+    const api = serveMockApi();
+    api.settings = { ...api.settings, rescanEveryMinutes: 45 };
+    const { user } = renderApp("/admin/tasks");
+    await user.click(await screen.findByRole("button", { name: "Schedule" }));
+    const rescan = await screen.findByRole("button", { name: /Rescan libraries/ });
+    expect(rescan).toHaveTextContent(/^Every 45 minutes/);
+    await user.click(rescan);
+    expect((await screen.findAllByRole("option")).map((o) => o.textContent).slice(0, 4)).toEqual([
+      "Every 15 minutes",
+      "Every 30 minutes",
+      "Every 45 minutes",
+      "Every hour",
+    ]);
+  });
+
   it("lists the Library tasks with the same columns as Maintenance: last run, next run, progress and the action", async () => {
     serveMockApi();
     renderApp("/admin/tasks");

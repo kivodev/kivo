@@ -892,6 +892,7 @@ export function createMockApi(): MockApi {
       openSubtitlesUsername: "",
       openSubtitlesPasswordSet: false,
       fileWatching: true,
+      rescanEveryMinutes: 720,
       localNetworks: [],
       accelerator: "auto",
       videoTranscodeLimit: 0,

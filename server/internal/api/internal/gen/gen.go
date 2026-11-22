@@ -4422,8 +4422,8 @@ type Settings struct {
 	ContentRatingCountry string `json:"contentRatingCountry"`
 
 	// FileWatching Scan a folder as soon as files in it change. Off, changes are
-	// found by the scan of every library every 12 hours, or a scan an
-	// admin starts.
+	// found by the scan of every library every `rescanEveryMinutes`,
+	// or a scan an admin starts.
 	FileWatching bool `json:"fileWatching"`
 
 	// LocalNetworks CIDR ranges whose clients are local. Empty means private
@@ -4477,6 +4477,10 @@ type Settings struct {
 	// without a remote streaming limit of their own; 0 is no limit.
 	RemoteQualityCapBps int64 `json:"remoteQualityCapBps"`
 
+	// RescanEveryMinutes How often every library is scanned, in minutes. The scan finds
+	// the files that file watching misses.
+	RescanEveryMinutes int `json:"rescanEveryMinutes"`
+
 	// ServerName Shown to clients and on the network.
 	ServerName string `json:"serverName"`
 
@@ -4507,6 +4511,7 @@ type SettingsUpdate struct {
 	PreviewsAtOnce        *int     `json:"previewsAtOnce,omitempty"`
 	PublicURL             *string  `json:"publicUrl,omitempty"`
 	RemoteQualityCapBps   *int64   `json:"remoteQualityCapBps,omitempty"`
+	RescanEveryMinutes    *int     `json:"rescanEveryMinutes,omitempty"`
 	ServerName            *string  `json:"serverName,omitempty"`
 	VideoTranscodeLimit   *int     `json:"videoTranscodeLimit,omitempty"`
 }

@@ -147,6 +147,9 @@ describe("Admin settings", () => {
     const { user } = renderApp("/admin/settings/library");
     const watching = await screen.findByRole("switch", { name: "Scan when files change" });
     expect(watching).toBeChecked();
+    expect(watching).toHaveAccessibleDescription(
+      "Network shares may not report changes. All libraries are also scanned every 12 hours.",
+    );
     expect(screen.getByRole("button", { name: /Metadata language/ })).toHaveTextContent("American English");
     expect(screen.getByRole("button", { name: /Certification country/ })).toHaveTextContent("United States");
     expect(screen.getByRole("textbox", { name: "Played threshold" })).toHaveValue("90%");
@@ -164,6 +167,15 @@ describe("Admin settings", () => {
         contentRatingCountry: "US",
         playedThreshold: 0.95,
       }),
+    );
+  });
+
+  it("Library says how often libraries are rescanned, as Schedule on the Tasks page sets it", async () => {
+    const api = serveMockApi();
+    api.settings = { ...api.settings, rescanEveryMinutes: 60 };
+    renderApp("/admin/settings/library");
+    expect(await screen.findByRole("switch", { name: "Scan when files change" })).toHaveAccessibleDescription(
+      "Network shares may not report changes. All libraries are also scanned every hour.",
     );
   });
 
