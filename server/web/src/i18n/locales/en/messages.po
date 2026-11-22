@@ -433,6 +433,10 @@ msgstr "{episodes} of {series} added to {library}"
 msgid "Show files"
 msgstr "Show files"
 
+#: src/features/libraries/LibrarySetup.tsx
+msgid "A library is a set of folders that hold one kind of media, such as your movies."
+msgstr "A library is a set of folders that hold one kind of media, such as your movies."
+
 #: src/features/admin/useAdminLabels.ts
 msgid "Extracting subtitles"
 msgstr "Extracting subtitles"
@@ -1912,6 +1916,10 @@ msgstr "This list was made by a newer version of Kivo, so it can't be edited her
 msgid "Play {0}"
 msgstr "Play {0}"
 
+#: src/features/setup/SetupWizard.tsx
+msgid "Skip for now"
+msgstr "Skip for now"
+
 #: src/features/admin/ChooseArtworkDialog.tsx
 msgid "Current"
 msgstr "Current"
@@ -2136,6 +2144,10 @@ msgstr "API key"
 #: src/features/admin/problemActions.ts
 msgid "Set a working tmdb_key in server.toml or KIVO_TMDB_KEY, then restart the server."
 msgstr "Set a working tmdb_key in server.toml or KIVO_TMDB_KEY, then restart the server."
+
+#: src/features/libraries/LibrarySetup.tsx
+msgid "Add another library"
+msgstr "Add another library"
 
 #: src/features/admin/TranscodingScreen.tsx
 msgid "Test encode failed."
@@ -2577,6 +2589,7 @@ msgstr "Connection too slow"
 msgid "Artwork type"
 msgstr "Artwork type"
 
+#: src/features/libraries/LibrarySetup.tsx
 #: src/features/user/SettingsScreen.tsx
 msgid "No libraries yet"
 msgstr "No libraries yet"
@@ -3313,6 +3326,10 @@ msgstr "Book series"
 msgid "Nothing unmatched"
 msgstr "Nothing unmatched"
 
+#: src/features/setup/SetupWizard.tsx
+msgid "No libraries yet. Add one from Home when you're ready."
+msgstr "No libraries yet. Add one from Home when you're ready."
+
 #: src/components/TranscodeDiagnostics.tsx
 msgid "Running"
 msgstr "Running"
@@ -3392,10 +3409,6 @@ msgstr "Started. View progress in <0>Tasks</0>."
 #: src/components/LetterRail.tsx
 msgid "Jump to letter"
 msgstr "Jump to letter"
-
-#: src/features/libraries/LibrarySetup.tsx
-msgid "Add the folders that hold your movies and shows. You can skip this and add libraries later."
-msgstr "Add the folders that hold your movies and shows. You can skip this and add libraries later."
 
 #: src/components/deviceCode.ts
 msgid "iPhone"
