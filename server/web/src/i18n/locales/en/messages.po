@@ -7,6 +7,10 @@ msgstr ""
 "X-Generator: @lingui/cli\n"
 "Language: en\n"
 
+#: src/features/libraries/FoldersField.tsx
+msgid "Add folder"
+msgstr "Add folder"
+
 #: src/features/admin/EditBookForm.tsx
 #: src/features/detail/BookDetail.tsx
 msgid "Publisher"
@@ -409,6 +413,10 @@ msgstr "Decoding on CPU"
 msgid "Still watching?"
 msgstr "Still watching?"
 
+#: src/features/libraries/FolderPicker.tsx
+msgid "Use this folder"
+msgstr "Use this folder"
+
 #: src/features/browse/CountLine.tsx
 msgid "movies"
 msgstr "movies"
@@ -627,10 +635,6 @@ msgstr "Copied"
 #: src/i18n/playback.ts
 msgid "{kind} ({codec})"
 msgstr "{kind} ({codec})"
-
-#: src/features/libraries/FolderPicker.tsx
-msgid "Add this folder"
-msgstr "Add this folder"
 
 #: src/features/admin/ApiKeysScreen.tsx
 #: src/features/detail/RenameDialog.tsx
@@ -1392,6 +1396,10 @@ msgstr "Local file"
 #: src/features/admin/ActivityScreen.tsx
 msgid "Today"
 msgstr "Today"
+
+#: src/features/libraries/FoldersField.tsx
+msgid "Add another folder"
+msgstr "Add another folder"
 
 #: src/features/user/SettingsScreen.tsx
 msgid "None"
@@ -2963,6 +2971,10 @@ msgstr "Full screen"
 msgid "Files that reappear are treated as new. Watch state is kept. Nothing on disk is deleted."
 msgstr "Files that reappear are treated as new. Watch state is kept. Nothing on disk is deleted."
 
+#: src/features/libraries/FoldersField.tsx
+msgid "Choose where this library's files are."
+msgstr "Choose where this library's files are."
+
 #: src/features/admin/LibrarySettingsScreen.tsx
 msgid "Progress at which a title is marked played."
 msgstr "Progress at which a title is marked played."
@@ -3456,6 +3468,10 @@ msgstr "Interviews"
 msgid "Server"
 msgstr "Server"
 
+#: src/features/libraries/FolderPicker.tsx
+msgid "Open a folder first"
+msgstr "Open a folder first"
+
 #: src/features/player/StreamInfo.tsx
 msgid "Delivery"
 msgstr "Delivery"
@@ -3807,6 +3823,10 @@ msgstr "Debug lines appear when the server's log level is debug."
 #: src/features/setup/SetupWizard.tsx
 msgid "Go to Home"
 msgstr "Go to Home"
+
+#: src/features/libraries/FolderPicker.tsx
+msgid "Already added"
+msgstr "Already added"
 
 #: src/features/auth/LinkScreen.tsx
 msgid "Show server address"
@@ -4363,6 +4383,7 @@ msgstr "Clear all"
 #: src/features/admin/ChooseArtworkDialog.tsx
 #: src/features/admin/ShowFilesDialog.tsx
 #: src/features/detail/Overview.tsx
+#: src/features/libraries/FolderPicker.tsx
 #: src/features/lists/SmartListDialog.tsx
 #: src/features/user/CreditsDialog.tsx
 #: src/features/user/LicensesDialog.tsx

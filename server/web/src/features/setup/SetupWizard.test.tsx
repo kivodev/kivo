@@ -48,10 +48,11 @@ describe("First-run setup", () => {
     await user.click(screen.getByRole("radio", { name: "Movies" }));
     await user.clear(screen.getByLabelText("Name"));
     await user.type(screen.getByLabelText("Name"), "Films");
+    await user.click(screen.getByRole("button", { name: "Add folder" }));
     await user.click(await screen.findByRole("button", { name: "mnt" }));
     await user.click(await screen.findByRole("button", { name: "user" }));
     await user.click(await screen.findByRole("button", { name: "Movies" }));
-    await user.click(await screen.findByRole("button", { name: "Add this folder" }));
+    await user.click(await screen.findByRole("button", { name: "Use this folder" }));
     expect(screen.getByRole("button", { name: "Remove /mnt/user/Movies" })).toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "Add library" }));
     // The dialog closes, and the step lists the library with its folder.

@@ -213,11 +213,14 @@ describe("Admin Libraries", () => {
     await user.click(await screen.findByRole("option", { name: "German (Germany)" }));
     await user.click(within(dialog).getByRole("button", { name: /Certification country/ }));
     await user.click(await screen.findByRole("option", { name: "Germany" }));
-    // Add a second folder through the folder picker.
+    // Add a second folder through the folder picker, which closes on the pick.
+    await user.click(within(dialog).getByRole("button", { name: "Add another folder" }));
     await user.click(await within(dialog).findByRole("button", { name: "mnt" }));
     await user.click(await within(dialog).findByRole("button", { name: "user" }));
     await user.click(await within(dialog).findByRole("button", { name: "TV" }));
-    await user.click(within(dialog).getByRole("button", { name: "Add this folder" }));
+    await user.click(within(dialog).getByRole("button", { name: "Use this folder" }));
+    expect(within(dialog).queryByRole("button", { name: "Use this folder" })).not.toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Remove /mnt/user/TV" })).toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
@@ -241,10 +244,11 @@ describe("Admin Libraries", () => {
     const save = within(dialog).getByRole("button", { name: "Save" });
     expect(save).toBeDisabled();
     await user.click(within(dialog).getByRole("button", { name: "Remove /mnt/user/Movies" }));
+    await user.click(within(dialog).getByRole("button", { name: "Add folder" }));
     await user.click(await within(dialog).findByRole("button", { name: "mnt" }));
     await user.click(await within(dialog).findByRole("button", { name: "user" }));
     await user.click(await within(dialog).findByRole("button", { name: "TV" }));
-    await user.click(within(dialog).getByRole("button", { name: "Add this folder" }));
+    await user.click(within(dialog).getByRole("button", { name: "Use this folder" }));
     await user.click(save);
     const confirm = await screen.findByRole("alertdialog", { name: "Remove 1 folder?" });
     expect(confirm).toHaveTextContent("/mnt/user/Movies");
@@ -261,11 +265,21 @@ describe("Admin Libraries", () => {
     const { user } = renderApp("/admin/libraries");
     await user.click(await screen.findByRole("button", { name: "Add library" }));
     const dialog = await screen.findByRole("dialog", { name: "Add a library" });
+    // The picker is closed until asked for, and can't use the list of mounts.
+    expect(within(dialog).queryByRole("textbox", { name: "Folder path" })).not.toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Add folder" }));
+    expect(within(dialog).getByRole("button", { name: "Open a folder first" })).toBeDisabled();
     await user.type(within(dialog).getByRole("textbox", { name: "Folder path" }), "/mnt/user{Enter}");
     expect(await within(dialog).findByRole("button", { name: "TV" })).toBeInTheDocument();
     expect(sent("POST", "/libraries")).toHaveLength(0);
-    await user.click(within(dialog).getByRole("button", { name: "Add this folder" }));
+    await user.click(within(dialog).getByRole("button", { name: "Use this folder" }));
     expect(within(dialog).getByRole("button", { name: "Remove /mnt/user" })).toBeInTheDocument();
+    // It reopens on the folder above, where a chosen folder can't be chosen again.
+    await user.click(within(dialog).getByRole("button", { name: "Add another folder" }));
+    await user.click(await within(dialog).findByRole("button", { name: "user" }));
+    expect(within(dialog).getByRole("button", { name: "Already added" })).toBeDisabled();
+    await user.click(within(dialog).getByRole("button", { name: "Close" }));
+    expect(within(dialog).queryByRole("textbox", { name: "Folder path" })).not.toBeInTheDocument();
   });
 
   it("deletes a library after asking", async () => {
