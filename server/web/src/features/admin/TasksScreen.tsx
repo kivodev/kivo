@@ -21,8 +21,8 @@ import { TaskProgress } from "./TaskProgress";
 import { useAdminLabels, useHours } from "./useAdminLabels";
 import { When } from "./When";
 
-/** The tables' columns: task, schedule, last run, next run, progress, action. */
-const columns = ["", "w-33", "w-38", "w-22", "w-46", "w-24"];
+/** The tables' columns: task, schedule, last run, next run, action. */
+const columns = ["", "w-34", "w-68", "w-24", "w-25"];
 
 /** The action buttons' width, the same in every row. */
 const actionWidth = "w-18";
@@ -32,8 +32,8 @@ const actionWidth = "w-18";
  * change that, how often libraries are rescanned and how many files are
  * worked on at once. Then comes On demand, the work done as it's asked
  * for, shown only while it's busy. Then come the Library and Maintenance
- * tasks. Each row has its schedule, which opens Schedule, its last and
- * next run, its progress or how much is left, and Stop or Run now.
+ * tasks. Each row has its schedule, which opens Schedule, its last run
+ * or its progress while it runs, its next run, and Stop or Run now.
  */
 export function TasksScreen() {
   const { t } = useLingui();
@@ -223,9 +223,6 @@ function TaskTable({ tasks, now }: { tasks: Task[]; now: number }) {
           <AdminColumn>
             <Trans>Next run</Trans>
           </AdminColumn>
-          <AdminColumn>
-            <Trans>Progress</Trans>
-          </AdminColumn>
           <AdminColumn />
         </>
       }
@@ -239,8 +236,8 @@ function TaskTable({ tasks, now }: { tasks: Task[]; now: number }) {
 
 /**
  * A task's row. It has the task's name, linking to its page when it keeps
- * failures, then its schedule, its last run, its next run and its
- * progress. Last comes Stop while the task can be stopped, or else Run now.
+ * failures, then its schedule, its last run or its progress, and its
+ * next run. Last comes Stop while the task can be stopped, or else Run now.
  */
 function TaskRow({ task, now }: { task: Task; now: number }) {
   const { taskName } = useAdminLabels();
@@ -265,9 +262,6 @@ function TaskRow({ task, now }: { task: Task; now: number }) {
       <AdminCell>
         <NextRun task={task} now={now} />
       </AdminCell>
-      <AdminCell>
-        <TaskProgress task={task} />
-      </AdminCell>
       <AdminCell action>
         {task.stoppable ? (
           <StopButton task={task} className={actionWidth} />
@@ -280,16 +274,34 @@ function TaskRow({ task, now }: { task: Task; now: number }) {
 }
 
 /**
+ * A task's progress while it runs, and otherwise when it last finished.
+ * What's left for its next run follows on the same line, as in "8 hours
+ * ago · 18,489 left". On demand has no runs, so there it is the progress
+ * or what's left alone.
+ */
+function LastRun({ task }: { task: Task }) {
+  if (task.progress || task.section === "onDemand") return <TaskProgress task={task} />;
+  return (
+    <>
+      <Finished task={task} />
+      {task.pendingCount > 0 && (
+        <span className="text-text-muted">
+          {" · "}
+          <TaskProgress task={task} />
+        </span>
+      )}
+    </>
+  );
+}
+
+/**
  * When a task last finished.
  *  - "8 hours ago", with the exact time and the summary on hover.
  *  - "Failed 8 hours ago", with the reason on hover.
  *  - A muted "Never".
- *
- * Nothing shows in On demand.
  */
-function LastRun({ task }: { task: Task }) {
+function Finished({ task }: { task: Task }) {
   const last = task.lastRun;
-  if (task.section === "onDemand") return null;
   if (!last) {
     return (
       <span className="text-text-muted">

@@ -1155,10 +1155,6 @@ msgstr "Delete"
 msgid "Disable"
 msgstr "Disable"
 
-#: src/features/admin/TasksScreen.tsx
-msgid "Progress"
-msgstr "Progress"
-
 #: src/features/browse/LibraryScreen.tsx
 msgid "Nothing in this library yet."
 msgstr "Nothing in this library yet."
