@@ -494,10 +494,10 @@ func TestAnIntervalTaskCountsFromStartupWhenItsLastRunIsAhead(t *testing.T) {
 // the next check.
 func TestAnIntervalFollowsTheSettings(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		runs := 0
+		var runs atomic.Int32
 		every := func(st config.Settings) time.Duration { return time.Duration(st.RescanEvery) * time.Minute }
 		h := newHarness(t, Task{Name: "scan-libraries", Schedule: Every(every), Work: Func(func(context.Context) error {
-			runs++
+			runs.Add(1)
 			return nil
 		})})
 		set := func(minutes int) {
@@ -517,8 +517,8 @@ func TestAnIntervalFollowsTheSettings(t *testing.T) {
 		h.start()
 		defer h.stop()
 		sleep(12*time.Hour + 30*time.Second)
-		if runs != 1 || next() != 12*time.Hour {
-			t.Fatalf("%d runs in the first 12 hours, the next %v after, want 1 and 12 hours", runs, next())
+		if runs.Load() != 1 || next() != 12*time.Hour {
+			t.Fatalf("%d runs in the first 12 hours, the next %v after, want 1 and 12 hours", runs.Load(), next())
 		}
 
 		set(30)
@@ -526,24 +526,24 @@ func TestAnIntervalFollowsTheSettings(t *testing.T) {
 			t.Fatalf("next run %v after the last, want 30 minutes", next())
 		}
 		sleep(29 * time.Minute)
-		if runs != 1 {
-			t.Fatalf("%d runs 29 minutes after the first, want 1", runs)
+		if runs.Load() != 1 {
+			t.Fatalf("%d runs 29 minutes after the first, want 1", runs.Load())
 		}
 		sleep(time.Minute)
-		if runs != 2 {
-			t.Fatalf("%d runs 30 minutes after the first, want 2", runs)
+		if runs.Load() != 2 {
+			t.Fatalf("%d runs 30 minutes after the first, want 2", runs.Load())
 		}
 
 		set(24 * 60)
 		sleep(12 * time.Hour)
-		if runs != 2 || next() != 24*time.Hour {
-			t.Fatalf("%d runs 12 hours after the second, the next %v after, want 2 and 24 hours", runs, next())
+		if runs.Load() != 2 || next() != 24*time.Hour {
+			t.Fatalf("%d runs 12 hours after the second, the next %v after, want 2 and 24 hours", runs.Load(), next())
 		}
 
 		set(15)
 		sleep(time.Minute)
-		if runs != 3 {
-			t.Fatalf("%d runs, want the run the change made due to begin", runs)
+		if runs.Load() != 3 {
+			t.Fatalf("%d runs, want the run the change made due to begin", runs.Load())
 		}
 	})
 }
