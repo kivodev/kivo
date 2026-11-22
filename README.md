@@ -53,6 +53,7 @@ See also: [reverse proxy setup](docs/reverse-proxy.md), [resetting a password](d
 
 - [Architecture](ARCHITECTURE.md)
 - [Contributing](CONTRIBUTING.md)
+- [Discord](https://discord.gg/PqPzTyBrtr)
 
 ## Acknowledgements
 
