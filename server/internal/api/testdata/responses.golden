@@ -2036,7 +2036,7 @@ GET /api/v1/libraries
         "libraryId": "<id2>",
         "state": "idle"
       },
-      "subtitles": "nightlyAndAdded",
+      "subtitles": "nightly",
       "unmatchedCount": 0,
       "useLocalMetadata": false,
       "workCount": 1
@@ -2051,7 +2051,7 @@ GET /api/v1/libraries
       ],
       "id": "<id10>",
       "kind": "shows",
-      "markers": "nightlyAndAdded",
+      "markers": "nightly",
       "name": "shows 2",
       "pinned": true,
       "previews": "nightly",
@@ -2060,7 +2060,7 @@ GET /api/v1/libraries
         "libraryId": "<id10>",
         "state": "idle"
       },
-      "subtitles": "nightlyAndAdded",
+      "subtitles": "nightly",
       "unmatchedCount": 0,
       "useLocalMetadata": false,
       "workCount": 1
@@ -2152,7 +2152,7 @@ GET /api/v1/libraries?limit=1&after=bogus
         "libraryId": "<id2>",
         "state": "idle"
       },
-      "subtitles": "nightlyAndAdded",
+      "subtitles": "nightly",
       "unmatchedCount": 0,
       "useLocalMetadata": false,
       "workCount": 1
@@ -2167,7 +2167,7 @@ GET /api/v1/libraries?limit=1&after=bogus
       ],
       "id": "<id10>",
       "kind": "shows",
-      "markers": "nightlyAndAdded",
+      "markers": "nightly",
       "name": "shows 2",
       "pinned": true,
       "previews": "nightly",
@@ -2176,7 +2176,7 @@ GET /api/v1/libraries?limit=1&after=bogus
         "libraryId": "<id10>",
         "state": "idle"
       },
-      "subtitles": "nightlyAndAdded",
+      "subtitles": "nightly",
       "unmatchedCount": 0,
       "useLocalMetadata": false,
       "workCount": 1
@@ -2206,7 +2206,7 @@ GET /api/v1/libraries/<id2>
     "libraryId": "<id2>",
     "state": "idle"
   },
-  "subtitles": "nightlyAndAdded",
+  "subtitles": "nightly",
   "unmatchedCount": 0,
   "useLocalMetadata": false,
   "workCount": 1
@@ -2310,7 +2310,7 @@ POST /api/v1/libraries
   ],
   "id": "<id36>",
   "kind": "shows",
-  "markers": "nightlyAndAdded",
+  "markers": "nightly",
   "name": "Shows",
   "pinned": true,
   "previews": "never",
@@ -2319,7 +2319,7 @@ POST /api/v1/libraries
     "libraryId": "<id36>",
     "state": "scanning"
   },
-  "subtitles": "nightlyAndAdded",
+  "subtitles": "nightly",
   "unmatchedCount": 0,
   "useLocalMetadata": true,
   "workCount": 0
@@ -2338,7 +2338,7 @@ PATCH /api/v1/libraries/<id36>
   ],
   "id": "<id36>",
   "kind": "shows",
-  "markers": "nightlyAndAdded",
+  "markers": "nightly",
   "name": "TV",
   "pinned": true,
   "previews": "never",
@@ -2347,7 +2347,7 @@ PATCH /api/v1/libraries/<id36>
     "libraryId": "<id36>",
     "state": "scanning"
   },
-  "subtitles": "nightlyAndAdded",
+  "subtitles": "nightly",
   "unmatchedCount": 0,
   "useLocalMetadata": false,
   "workCount": 0
@@ -2376,7 +2376,7 @@ GET /api/v1/libraries/<id36>
   ],
   "id": "<id36>",
   "kind": "shows",
-  "markers": "nightlyAndAdded",
+  "markers": "nightly",
   "name": "TV",
   "pinned": true,
   "previews": "never",
@@ -2385,7 +2385,7 @@ GET /api/v1/libraries/<id36>
     "libraryId": "<id36>",
     "state": "scanning"
   },
-  "subtitles": "nightlyAndAdded",
+  "subtitles": "nightly",
   "unmatchedCount": 0,
   "useLocalMetadata": false,
   "workCount": 0

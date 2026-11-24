@@ -301,7 +301,7 @@ func TestLibraries(t *testing.T) {
 	dir := t.TempDir()
 	w := e.do("POST", "/api/v1/libraries", e.adminToken, map[string]any{"name": "Shows", "kind": "shows", "folders": []string{dir}, "previews": "nightlyAndAdded"})
 	lib := decode[map[string]any](t, w)
-	if w.Code != http.StatusCreated || lib["previews"] != "nightlyAndAdded" || lib["subtitles"] != "nightlyAndAdded" || lib["useLocalMetadata"] != true {
+	if w.Code != http.StatusCreated || lib["previews"] != "nightlyAndAdded" || lib["markers"] != "nightly" || lib["subtitles"] != "nightly" || lib["useLocalMetadata"] != true {
 		t.Fatalf("create: %d %v", w.Code, lib)
 	}
 	path := "/api/v1/libraries/" + lib["id"].(string)

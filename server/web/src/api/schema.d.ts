@@ -3546,9 +3546,9 @@ export interface components {
             useLocalMetadata?: boolean;
             /** @description Default `nightly`. */
             previews?: components["schemas"]["ProcessingSchedule"];
-            /** @description Default `nightlyAndAdded`; `never` for a library of any kind but `shows`, whatever is sent. */
+            /** @description Default `nightly`; `never` for a library of any kind but `shows`, whatever is sent. */
             markers?: components["schemas"]["ProcessingSchedule"];
-            /** @description Default `nightlyAndAdded`; `never` for an `audiobooks` library, whatever is sent. */
+            /** @description Default `nightly`; `never` for an `audiobooks` library, whatever is sent. */
             subtitles?: components["schemas"]["ProcessingSchedule"];
             /** @description Default 30. */
             refreshDays?: components["schemas"]["RefreshDays"];

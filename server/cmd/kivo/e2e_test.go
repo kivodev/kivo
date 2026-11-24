@@ -68,7 +68,7 @@ func TestEndToEnd(t *testing.T) {
 	c.waitHealthy()
 	c.call("POST", "/api/v1/setup", map[string]any{"username": "admin", "password": "correct horse battery"}, http.StatusCreated, nil)
 	var lib struct{ ID string }
-	c.call("POST", "/api/v1/libraries", map[string]any{"name": "Movies", "kind": "movies", "folders": []string{media}, "previews": "nightlyAndAdded"}, http.StatusCreated, &lib)
+	c.call("POST", "/api/v1/libraries", map[string]any{"name": "Movies", "kind": "movies", "folders": []string{media}, "previews": "nightlyAndAdded", "subtitles": "nightlyAndAdded"}, http.StatusCreated, &lib)
 
 	// The scan, the probe and identify's first pass put both films in the
 	// library.

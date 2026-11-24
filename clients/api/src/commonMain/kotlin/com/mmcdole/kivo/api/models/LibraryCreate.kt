@@ -36,8 +36,8 @@ import kotlinx.serialization.encoding.*
  * @param folders 
  * @param useLocalMetadata Default true.
  * @param previews Default `nightly`.
- * @param markers Default `nightlyAndAdded`; `never` for a library of any kind but `shows`, whatever is sent.
- * @param subtitles Default `nightlyAndAdded`; `never` for an `audiobooks` library, whatever is sent.
+ * @param markers Default `nightly`; `never` for a library of any kind but `shows`, whatever is sent.
+ * @param subtitles Default `nightly`; `never` for an `audiobooks` library, whatever is sent.
  * @param refreshDays Default 30.
  * @param metadataLanguage Empty or absent for the server's.
  * @param contentRatingCountry Empty or absent for the server's.
@@ -59,10 +59,10 @@ data class LibraryCreate (
     /* Default `nightly`. */
     @SerialName(value = "previews") val previews: kotlin.String? = null,
 
-    /* Default `nightlyAndAdded`; `never` for a library of any kind but `shows`, whatever is sent. */
+    /* Default `nightly`; `never` for a library of any kind but `shows`, whatever is sent. */
     @SerialName(value = "markers") val markers: kotlin.String? = null,
 
-    /* Default `nightlyAndAdded`; `never` for an `audiobooks` library, whatever is sent. */
+    /* Default `nightly`; `never` for an `audiobooks` library, whatever is sent. */
     @SerialName(value = "subtitles") val subtitles: kotlin.String? = null,
 
     /* Default 30. */
