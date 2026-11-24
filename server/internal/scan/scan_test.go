@@ -550,6 +550,9 @@ func TestProbeAsksForExtractedSubtitles(t *testing.T) {
 		"plain.mkv": {{Index: 2, Kind: media.Subtitle, Codec: "subrip"}, {Index: 3, Kind: media.Subtitle, Codec: "mov_text"}},
 	}
 	l := h.library(catalog.Movies, "/m")
+	if err := h.s.EditLibrary(ctx, l.ID, catalog.LibraryChange{Subtitles: new(catalog.NightlyAndAdded)}); err != nil {
+		t.Fatal(err)
+	}
 	folder, fsys := l.Folders[0].ID, h.folders["/m"]
 	for _, name := range []string{"anime.mkv", "old.mkv", "film.mkv", "plain.mkv"} {
 		fsys.write("A/"+name, name, old)

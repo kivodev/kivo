@@ -3213,7 +3213,7 @@ type LibraryCreate struct {
 	// `previews` is `never`, whatever is sent.
 	Kind LibraryKind `json:"kind"`
 
-	// Markers Default `nightlyAndAdded`; `never` for a library of any kind but `shows`, whatever is sent.
+	// Markers Default `nightly`; `never` for a library of any kind but `shows`, whatever is sent.
 	Markers *ProcessingSchedule `json:"markers,omitempty"`
 
 	// MetadataLanguage Empty or absent for the server's.
@@ -3226,7 +3226,7 @@ type LibraryCreate struct {
 	// RefreshDays Default 30.
 	RefreshDays *RefreshDays `json:"refreshDays,omitempty"`
 
-	// Subtitles Default `nightlyAndAdded`; `never` for an `audiobooks` library, whatever is sent.
+	// Subtitles Default `nightly`; `never` for an `audiobooks` library, whatever is sent.
 	Subtitles *ProcessingSchedule `json:"subtitles,omitempty"`
 
 	// UseLocalMetadata Default true.

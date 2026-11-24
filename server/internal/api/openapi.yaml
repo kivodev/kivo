@@ -4879,10 +4879,10 @@ components:
           description: Default `nightly`.
         markers:
           $ref: "#/components/schemas/ProcessingSchedule"
-          description: Default `nightlyAndAdded`; `never` for a library of any kind but `shows`, whatever is sent.
+          description: Default `nightly`; `never` for a library of any kind but `shows`, whatever is sent.
         subtitles:
           $ref: "#/components/schemas/ProcessingSchedule"
-          description: Default `nightlyAndAdded`; `never` for an `audiobooks` library, whatever is sent.
+          description: Default `nightly`; `never` for an `audiobooks` library, whatever is sent.
         refreshDays:
           $ref: "#/components/schemas/RefreshDays"
           description: Default 30.
