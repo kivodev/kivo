@@ -3495,25 +3495,18 @@
   ],
   "libraries": [
     {
+      "ID": "library:Audiobooks",
+      "Name": "Audiobooks",
+      "Kind": "audiobooks",
+      "Pinned": true,
+      "Items": 3
+    },
+    {
       "ID": "library:Movies",
       "Name": "Movies",
       "Kind": "movies",
       "Pinned": true,
       "Items": 6
-    },
-    {
-      "ID": "library:Shows",
-      "Name": "Shows",
-      "Kind": "shows",
-      "Pinned": true,
-      "Items": 3
-    },
-    {
-      "ID": "library:Private",
-      "Name": "Private",
-      "Kind": "movies",
-      "Pinned": true,
-      "Items": 1
     },
     {
       "ID": "library:Movies 4K",
@@ -3523,9 +3516,16 @@
       "Items": 1
     },
     {
-      "ID": "library:Audiobooks",
-      "Name": "Audiobooks",
-      "Kind": "audiobooks",
+      "ID": "library:Private",
+      "Name": "Private",
+      "Kind": "movies",
+      "Pinned": true,
+      "Items": 1
+    },
+    {
+      "ID": "library:Shows",
+      "Name": "Shows",
+      "Kind": "shows",
       "Pinned": true,
       "Items": 3
     }

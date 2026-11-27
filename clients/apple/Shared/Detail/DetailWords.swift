@@ -60,12 +60,6 @@ enum DetailWords {
         return String(localized: "Resume \(Display.app.clock(ms: position))")
     }
 
-    /// "1 hr 36 min left · Ends at 9:41 PM", while [work] is in progress.
-    static func timeLeft(_ work: WorkSummary, from now: Date) -> String? {
-        guard let timeLeft = work.timeLeft, let resumeMs = work.resumeMs, let duration = work.durationMs?.int64Value else { return nil }
-        return [timeLeft, Words.endsAt(kind: work.kind, remainingMs: duration - resumeMs, from: now)].compactMap { $0 }.joined(separator: " · ")
-    }
-
     /// A series' Play: "Play S1 E1", or "Resume 12:03" for Next Up in progress.
     static func play(nextUp: WorkSummary) -> String {
         if nextUp.progress != nil, let position = nextUp.userState?.positionMs?.int64Value {

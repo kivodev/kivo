@@ -1,13 +1,10 @@
-import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { useQueries, useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 import { activityQueries } from "@/api/activity";
-import { fileQueries } from "@/api/files";
 import { libraryQueries } from "@/api/libraries";
 import { playQueries } from "@/api/playback";
-import { problemQueries } from "@/api/problems";
 import type { Play } from "@/api/schemas";
 import { serverQueries } from "@/api/server";
 import { taskQueries } from "@/api/tasks";
@@ -20,7 +17,6 @@ import { readStored, writeStored } from "@/lib/storage";
 import { ActivityList } from "./ActivityList";
 import { AdminList, AdminListItem, AdminPage } from "./AdminPage";
 import { PlayCards } from "./PlayCards";
-import { useProblemActions } from "./problemActions";
 import { ScanLine } from "./ScanLine";
 import { useAdminLabels } from "./useAdminLabels";
 
@@ -60,123 +56,6 @@ function NewRelease() {
     >
       <Trans>Kivo {version} is available</Trans>
     </Banner>
-  );
-}
-
-type Attention = { key: string; tone: "danger" | "warning"; text: ReactNode; action: ReactNode };
-
-/**
- * What needs an admin, errors first. Each open problem with a fix, the
- * unmatched root works, the missing files, and each task's failed items or
- * failed run gets a line. Nothing shows when there's nothing to do.
- */
-function NeedsAttention() {
-  const { t } = useLingui();
-  const libraries = useSuspenseQuery(libraryQueries.list()).data.items;
-  const problems = useSuspenseQuery(problemQueries.list()).data.items;
-  const tasks = useQuery(taskQueries.list()).data?.items ?? [];
-  const missing = useQueries({ queries: libraries.map((l) => fileQueries.missingCount(l.id)) });
-  const actionOf = useProblemActions();
-  const { taskName } = useAdminLabels();
-
-  // A problem with nothing to do, such as a provider that's down, clears
-  // itself. It stays on the Problems page only.
-  const items: Attention[] = problems.flatMap((p) => {
-    const action = actionOf(p.code);
-    if (!action) return [];
-    return {
-      key: p.id,
-      tone: p.severity === "error" ? "danger" : "warning",
-      text: p.message,
-      action: action?.page ? (
-        <Link to={action.page} search={action.search ?? {}} className={actionLink}>
-          {action.link ?? t`Fix`}
-        </Link>
-      ) : (
-        <Link to="/admin/problems" className={actionLink}>
-          <Trans>Details</Trans>
-        </Link>
-      ),
-    };
-  });
-  // Unmatched root works and missing files get a line each, linking to their
-  // pages, which group them by library.
-  const unmatched = libraries.reduce((sum, l) => sum + (l.unmatchedCount ?? 0), 0);
-  if (unmatched > 0) {
-    items.push({
-      key: "unmatched",
-      tone: "warning",
-      text: plural(unmatched, { one: "# unmatched", other: "# unmatched" }),
-      action: (
-        <Link to="/admin/unmatched" className={actionLink}>
-          <Trans>Review</Trans>
-        </Link>
-      ),
-    });
-  }
-  const gone = missing.reduce((sum, q) => sum + (q.data ?? 0), 0);
-  if (gone > 0) {
-    items.push({
-      key: "missing",
-      tone: "warning",
-      text: plural(gone, { one: "# missing file", other: "# missing files" }),
-      action: (
-        <Link to="/admin/missing-files" className={actionLink}>
-          <Trans>Review</Trans>
-        </Link>
-      ),
-    });
-  }
-  for (const task of tasks) {
-    const name = taskName(task);
-    const failed = task.failedCount ?? 0;
-    if (failed > 0) {
-      items.push({
-        key: `failed-${task.id}`,
-        tone: "warning",
-        text:
-          task.id === "refresh-metadata"
-            ? plural(failed, { one: `${name} failed for # title`, other: `${name} failed for # titles` })
-            : plural(failed, { one: `${name} failed for # file`, other: `${name} failed for # files` }),
-        action: (
-          <Link to="/admin/tasks/$task" params={{ task: task.id }} className={actionLink}>
-            <Trans>Review</Trans>
-          </Link>
-        ),
-      });
-    }
-    if (task.lastRun?.error) {
-      items.push({
-        key: `run-${task.id}`,
-        tone: "danger",
-        text: <Trans>{name} failed</Trans>,
-        action: (
-          <Link to="/admin/tasks" className={actionLink}>
-            <Trans>Review</Trans>
-          </Link>
-        ),
-      });
-    }
-  }
-  if (items.length === 0) return null;
-  items.sort((a, b) => Number(b.tone === "danger") - Number(a.tone === "danger"));
-  return (
-    <Section title={<Trans>Needs attention</Trans>}>
-      <AdminList>
-        {items.map((item) => (
-          <AdminListItem key={item.key} part="attention">
-            <div className="flex items-center gap-3">
-              <span
-                aria-hidden="true"
-                className={`size-2 shrink-0 rounded-full ${item.tone === "danger" ? "bg-danger" : "bg-warning"}`}
-              />
-              <span className="min-w-0 flex-1">{item.text}</span>
-              {item.action}
-            </div>
-          </AdminListItem>
-        ))}
-      </AdminList>
-    </Section>
   );
 }
 
@@ -298,8 +177,7 @@ function LatestActivity() {
 
 /**
  * The admin home, in one column. It shows a newer release when one is out,
- * then what's playing, what's working, what needs attention, and the latest
- * activity.
+ * then what's playing, what's working, and the latest activity.
  */
 export function OverviewScreen() {
   const { t } = useLingui();
@@ -308,7 +186,6 @@ export function OverviewScreen() {
       <NewRelease />
       <NowPlaying />
       <WorkingNow />
-      <NeedsAttention />
       <LatestActivity />
     </AdminPage>
   );

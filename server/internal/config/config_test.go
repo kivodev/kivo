@@ -359,6 +359,71 @@ func TestMaintenanceWindow(t *testing.T) {
 	}
 }
 
+// Maintenance windows whose start equals the default end (6) or whose end
+// equals the default start (2) must survive a restart intact, while a stored
+// zero-length window (start == end) resets both hours to the defaults.
+func TestOpenPreservesMaintenanceWindow(t *testing.T) {
+	ctx := context.Background()
+	for _, want := range [][2]int{{6, 10}, {0, 2}, {6, 2}} {
+		db := storetest.New(t)
+		s, err := Open(ctx, db, Options{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := s.Update(ctx, func(c *Settings) error {
+			c.MaintenanceStart, c.MaintenanceEnd = want[0], want[1]
+			return nil
+		}); err != nil {
+			t.Fatalf("save %v: %v", want, err)
+		}
+		reopened, err := Open(ctx, db, Options{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := reopened.Get()
+		if got.MaintenanceStart != want[0] || got.MaintenanceEnd != want[1] {
+			t.Errorf("window %v reloaded as [%d %d]", want, got.MaintenanceStart, got.MaintenanceEnd)
+		}
+	}
+
+	// A corrupt stored pair with start == end resets both to defaults without
+	// affecting other valid stored settings.
+	db := storetest.New(t)
+	if err := db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
+		q := dbq.New(tx)
+		if err := q.UpsertSetting(ctx, dbq.UpsertSettingParams{Key: "maintenance_start", Value: `5`}); err != nil {
+			return err
+		}
+		if err := q.UpsertSetting(ctx, dbq.UpsertSettingParams{Key: "maintenance_end", Value: `5`}); err != nil {
+			return err
+		}
+		return q.UpsertSetting(ctx, dbq.UpsertSettingParams{Key: "server_name", Value: `"Den"`})
+	}); err != nil {
+		t.Fatal(err)
+	}
+	reopened, err := Open(ctx, db, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, def := reopened.Get(), Defaults()
+	if got.MaintenanceStart != def.MaintenanceStart || got.MaintenanceEnd != def.MaintenanceEnd || got.ServerName != "Den" {
+		t.Errorf("corrupt window reloaded as %+v, want defaults [%d %d] and ServerName Den", got, def.MaintenanceStart, def.MaintenanceEnd)
+	}
+}
+
+func TestRescanEvery(t *testing.T) {
+	if every := Defaults().RescanEvery; every != 12*60 {
+		t.Errorf("default %d minutes, want 12 hours", every)
+	}
+	for n, ok := range map[int]bool{0: false, 14: false, 15: true, 12 * 60: true, 24 * 60: true, 24*60 + 1: false} {
+		s := Defaults()
+		s.RescanEvery = n
+		if err := s.Validate(); (err == nil) != ok {
+			t.Errorf("%d: %v", n, err)
+		}
+	}
+}
+
 func TestPreviewsAtOnce(t *testing.T) {
 	for n, ok := range map[int]bool{0: false, 1: true, 3: true, 8: true, 9: false} {
 		s := Defaults()

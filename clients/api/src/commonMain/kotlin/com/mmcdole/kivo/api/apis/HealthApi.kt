@@ -28,7 +28,6 @@ import com.mmcdole.kivo.api.models.ClientErrorReport
 import com.mmcdole.kivo.api.models.Health
 import com.mmcdole.kivo.api.models.LogLineFeed
 import com.mmcdole.kivo.api.models.Problem
-import com.mmcdole.kivo.api.models.ServerProblemList
 
 import com.mmcdole.kivo.api.infrastructure.*
 import io.ktor.client.HttpClient
@@ -58,38 +57,6 @@ open class HealthApi : ApiClient {
         baseUrl: String,
         httpClient: HttpClient
     ): super(baseUrl = baseUrl, httpClient = httpClient)
-
-    /**
-     * Dismiss problem
-     * It stays hidden until it resolves and comes back.
-     * @param id A problem&#39;s opaque ID.
-     * @return void
-     */
-    open suspend fun dismissProblem(id: kotlin.String): HttpResponse<Unit> {
-
-        val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
-
-        val localVariableBody = 
-            io.ktor.client.utils.EmptyContent
-
-        val localVariableQuery = mutableMapOf<String, List<String>>()
-        val localVariableHeaders = mutableMapOf<String, String>()
-
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
-            RequestMethod.DELETE,
-            "/api/v1/problems/{id}".replace("{" + "id" + "}", "$id"),
-            query = localVariableQuery,
-            headers = localVariableHeaders,
-            requiresAuthentication = true,
-        )
-
-        return request(
-            localVariableConfig,
-            localVariableBody,
-            localVariableAuthNames
-        ).wrap()
-    }
-
 
     /**
      * Get health
@@ -252,38 +219,6 @@ open class HealthApi : ApiClient {
         val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.GET,
             "/api/v1/logs",
-            query = localVariableQuery,
-            headers = localVariableHeaders,
-            requiresAuthentication = true,
-        )
-
-        return request(
-            localVariableConfig,
-            localVariableBody,
-            localVariableAuthNames
-        ).wrap()
-    }
-
-
-    /**
-     * List problems
-     * Backs the Problems page. Open problems, newest first. Resolved problems close themselves. 
-     * @return ServerProblemList
-     */
-    @Suppress("UNCHECKED_CAST")
-    open suspend fun listProblems(): HttpResponse<ServerProblemList> {
-
-        val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
-
-        val localVariableBody = 
-            io.ktor.client.utils.EmptyContent
-
-        val localVariableQuery = mutableMapOf<String, List<String>>()
-        val localVariableHeaders = mutableMapOf<String, String>()
-
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
-            RequestMethod.GET,
-            "/api/v1/problems",
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,

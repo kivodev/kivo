@@ -7,11 +7,14 @@ import (
 	"net/netip"
 	"os"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"testing/synctest"
 	"time"
 
 	"github.com/mmcdole/kivo/internal/activity"
+	"github.com/mmcdole/kivo/internal/auth/dbq"
 	"github.com/mmcdole/kivo/internal/config"
 	"github.com/mmcdole/kivo/internal/events"
 	"github.com/mmcdole/kivo/internal/id"
@@ -719,6 +722,128 @@ func (f *fixture) newUser(name string) id.ID {
 		f.t.Fatal(err)
 	}
 	return u.ID
+}
+
+// Concurrent requests for the same stale credential only touch the database
+// once per staleAfter window; the rest return without waiting for the writer.
+// A failed write releases the claim, and pruneTouched drops expired entries.
+func TestMarkUsedDeduplicatesConcurrentBurst(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+	iss := f.setUp()
+
+	// Backdate the session so it is stale.
+	old := time.Now().Add(-2 * staleAfter).Truncate(time.Millisecond)
+	if err := f.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
+		_, err := tx.ExecContext(ctx, `UPDATE session SET last_used_at = ? WHERE id = ?`, old.UnixMilli(), iss.Session.ID)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Hold the single writer so any request that tries to write blocks until
+	// release is closed.
+	locked := make(chan struct{})
+	release := make(chan struct{})
+	writerDone := make(chan error, 1)
+	go func() {
+		writerDone <- f.db.Write(ctx, func(ctx context.Context, _ *store.Tx) error {
+			close(locked)
+			<-release
+			return nil
+		})
+	}()
+	<-locked
+
+	const burst = 16
+	done := make(chan error, burst)
+	for range burst {
+		go func() {
+			_, err := f.auth.Authenticate(ctx, iss.Token)
+			done <- err
+		}()
+	}
+
+	// burst-1 requests must finish immediately without waiting on the writer.
+	for i := range burst - 1 {
+		select {
+		case err := <-done:
+			if err != nil {
+				t.Fatalf("burst auth %d: %v", i, err)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatalf("only %d/%d non-writing requests finished while writer was held", i, burst-1)
+		}
+	}
+
+	// Releasing the writer lets the single touch finish and update last_used_at.
+	close(release)
+	if err := <-writerDone; err != nil {
+		t.Fatal(err)
+	}
+	if err := <-done; err != nil {
+		t.Fatalf("touching auth: %v", err)
+	}
+	var ms int64
+	if err := f.db.Reader().QueryRow(`SELECT last_used_at FROM session WHERE id = ?`, iss.Session.ID).Scan(&ms); err != nil {
+		t.Fatal(err)
+	}
+	if !time.UnixMilli(ms).After(old) {
+		t.Errorf("last_used_at = %v, want after %v", time.UnixMilli(ms), old)
+	}
+
+	// Direct markUsed burst counts exactly one touch callback.
+	key := id.New()
+	now := time.Now()
+	var touches atomic.Int32
+	var wg sync.WaitGroup
+	start := make(chan struct{})
+	for range burst {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			f.auth.markUsed(ctx, key, now.Add(-2*staleAfter), now, func(context.Context, *dbq.Queries, int64) error {
+				touches.Add(1)
+				return nil
+			})
+		}()
+	}
+	close(start)
+	wg.Wait()
+	if got := touches.Load(); got != 1 {
+		t.Errorf("concurrent markUsed ran touch %d times, want 1", got)
+	}
+
+	// A failed write releases the claim so a subsequent call retries it.
+	retryKey := id.New()
+	canceled, cancel := context.WithCancel(ctx)
+	cancel()
+	var retries atomic.Int32
+	f.auth.markUsed(canceled, retryKey, now.Add(-2*staleAfter), now, func(context.Context, *dbq.Queries, int64) error {
+		retries.Add(1)
+		return nil
+	})
+	f.auth.markUsed(ctx, retryKey, now.Add(-2*staleAfter), now, func(context.Context, *dbq.Queries, int64) error {
+		retries.Add(1)
+		return nil
+	})
+	if got := retries.Load(); got != 1 {
+		t.Errorf("retry after failed touch ran %d times, want 1", got)
+	}
+
+	// pruneTouched clears stale entries while keeping recent ones.
+	freshKey := id.New()
+	later := now.Add(staleAfter + time.Millisecond)
+	f.auth.claimTouch(freshKey, later)
+	f.auth.pruneTouched(later)
+	f.auth.touchedMu.Lock()
+	_, hasOld := f.auth.touched[key]
+	_, hasFresh := f.auth.touched[freshKey]
+	f.auth.touchedMu.Unlock()
+	if hasOld || !hasFresh {
+		t.Errorf("after pruneTouched: hasOld=%v hasFresh=%v, want false true", hasOld, hasFresh)
+	}
 }
 
 func ptr[T any](v T) *T { return &v }

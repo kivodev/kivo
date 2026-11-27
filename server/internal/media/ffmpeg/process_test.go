@@ -61,8 +61,8 @@ func TestFakeRemux(t *testing.T) {
 	}
 	defer out.Close()
 	init, err := out.Init()
-	if err != nil || len(init) == 0 {
-		t.Fatalf("Init: %d bytes, %v", len(init), err)
+	if err != nil || len(init.Data) == 0 {
+		t.Fatalf("Init: %d bytes, %v", len(init.Data), err)
 	}
 	starts, err := collect(out)
 	if err != nil {
@@ -350,4 +350,13 @@ func TestFakeImage(t *testing.T) {
 	if err != nil || string(got) != string(want) {
 		t.Errorf("Image returned %q, %v; want the tool's output", got, err)
 	}
+}
+
+// useFake makes the test binary act out mode, replaying file, for the rest
+// of the test.
+func useFake(t *testing.T, mode, file string) *Runner {
+	t.Setenv(fakeMode, mode)
+	t.Setenv(fakeFile, file)
+	t.Setenv("GORACE", "atexit_sleep_ms=0") // a race-enabled fake would linger a second on exit
+	return New(os.Args[0], os.Args[0])
 }

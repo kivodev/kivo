@@ -370,7 +370,7 @@ export function PlayerScreen({ remote = false, autoplayRun, onAutoplayRun }: Pro
         data-surface
         className={`absolute inset-0 flex flex-col justify-between pr-(--layout-safe-area-right) pb-(--layout-safe-area-bottom) pl-(--layout-safe-area-left) transition-opacity tv:px-(--layout-tv-overscan-x) tv:py-(--layout-tv-overscan-y) ${visible ? "opacity-100" : "opacity-0"}`}
       >
-        <TopBar remote={remote} title={title} endsAt={endsAt} onExit={exit} />
+        <TopBar remote={remote} title={title} onExit={exit} />
 
         <div
           ref={controlsRef}
@@ -384,6 +384,7 @@ export function PlayerScreen({ remote = false, autoplayRun, onAutoplayRun }: Pro
               positionMs={state.positionMs}
               target={scrubbing.target}
               thumbRef={thumbRef}
+              endsAt={endsAt}
               onSeek={(ms) => control((c) => c.seek(ms))}
             />
           ) : (

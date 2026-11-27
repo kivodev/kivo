@@ -63,7 +63,16 @@ var (
 	// errLoginRejected means OpenSubtitles refused the account's username or
 	// password.
 	errLoginRejected = fmt.Errorf("%w: OpenSubtitles rejected the account", ErrUnavailable)
+	// ErrKeyRejected means OpenSubtitles refuses the API key being checked.
+	ErrKeyRejected = fault.New(fault.Invalid, "OpenSubtitles rejected the API key")
+	// ErrAccountRejected means OpenSubtitles refuses the username or
+	// password being checked.
+	ErrAccountRejected = fault.New(fault.Invalid, "OpenSubtitles rejected the username or password")
 )
+
+// keyRefusal is the message of OpenSubtitles' 403 for an API key it doesn't
+// know. It answers searches whatever the key.
+const keyRefusal = "You cannot consume this service"
 
 // QuotaError is ErrQuota with the time the quota resets. The time is zero
 // when OpenSubtitles didn't say.
@@ -325,7 +334,7 @@ func (o *openSubtitles) searchRemote(ctx context.Context, a *account, q string) 
 	case resp.Status == http.StatusNotFound:
 		o.limit.Recovered()
 		return nil, ttlNotFound, nil
-	case resp.Status == http.StatusUnauthorized:
+	case resp.Status == http.StatusForbidden:
 		return nil, 0, o.reject()
 	case resp.Status == http.StatusTooManyRequests || resp.Status >= 500:
 		return nil, 0, o.failed(resp.RetryAfter(), fmt.Errorf("status %d", resp.Status))
@@ -465,17 +474,31 @@ func (o *openSubtitles) download(ctx context.Context, a *account, file int) (nam
 		return "", nil, &QuotaError{Reset: reset}
 	}
 	a.mu.Unlock()
-	h := a.header()
-	h.Set("Content-Type", "application/json")
-	if tok, err := o.login(ctx, a); err != nil {
-		return "", nil, err
-	} else if tok != "" {
-		h.Set("Authorization", "Bearer "+tok)
-	}
 	body, _ := json.Marshal(map[string]int{"file_id": file})
-	resp, err := o.post(ctx, openSubtitlesAPI+"/download", h, body)
-	if err != nil {
-		return "", nil, err
+	var resp egress.Response
+	for attempt := range 2 {
+		h := a.header()
+		h.Set("Content-Type", "application/json")
+		tok, err := o.login(ctx, a)
+		if err != nil {
+			return "", nil, err
+		}
+		if tok != "" {
+			h.Set("Authorization", "Bearer "+tok)
+		}
+		resp, err = o.post(ctx, openSubtitlesAPI+"/download", h, body)
+		if err != nil {
+			return "", nil, err
+		}
+		if resp.Status != http.StatusUnauthorized || tok == "" || attempt > 0 {
+			break
+		}
+		// Account tokens expire after ~24h; sign in once and retry.
+		a.mu.Lock()
+		if a.token == tok {
+			a.token = ""
+		}
+		a.mu.Unlock()
 	}
 	var d osDownload
 	_ = json.Unmarshal(resp.Body, &d)
@@ -487,11 +510,13 @@ func (o *openSubtitles) download(ctx context.Context, a *account, file int) (nam
 		return "", nil, &QuotaError{Reset: reset}
 	case http.StatusNotFound, http.StatusGone:
 		return "", nil, fmt.Errorf("%w: subtitle file %d", ErrNotFound, file)
+	case http.StatusForbidden:
+		return "", nil, o.reject()
 	case http.StatusUnauthorized:
 		a.mu.Lock()
 		a.token = "" // sign in again next time, in case the token expired
 		a.mu.Unlock()
-		return "", nil, o.reject()
+		return "", nil, fmt.Errorf("the OpenSubtitles download answered %d", resp.Status)
 	default:
 		return "", nil, fmt.Errorf("the OpenSubtitles download answered %d", resp.Status)
 	}
@@ -546,6 +571,9 @@ func (o *openSubtitles) login(ctx context.Context, a *account) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if resp.Status == http.StatusForbidden {
+		return "", o.reject()
+	}
 	if resp.Status == http.StatusUnauthorized || resp.Status == http.StatusBadRequest {
 		a.mu.Lock()
 		if a.loginRejected.IsZero() {
@@ -565,6 +593,37 @@ func (o *openSubtitles) login(ctx context.Context, a *account) (string, error) {
 	a.token, a.loginRejected = r.Token, time.Time{}
 	a.mu.Unlock()
 	return r.Token, nil
+}
+
+// check asks OpenSubtitles whether it accepts key, and user and password
+// when there's a user, by signing in. It returns ErrKeyRejected or
+// ErrAccountRejected when it refuses them, and ErrUnavailable when it can't
+// say. It asks even while requests are backed off, and leaves the outage
+// and the saved account as they are.
+func (o *openSubtitles) check(ctx context.Context, key, user, password string) error {
+	if err := o.limit.Wait(ctx); err != nil {
+		return err
+	}
+	h := (&account{key: key}).header()
+	h.Set("Content-Type", "application/json")
+	body, _ := json.Marshal(map[string]string{"username": user, "password": password})
+	resp, err := o.get.Post(ctx, openSubtitlesAPI+"/login", h, body)
+	switch {
+	case ctx.Err() != nil:
+		return ctx.Err()
+	case err != nil:
+		return fmt.Errorf("%w: OpenSubtitles: %w", ErrUnavailable, err)
+	case resp.Status == http.StatusForbidden && strings.Contains(string(resp.Body), keyRefusal):
+		return fault.About(ErrKeyRejected, fault.Field{Name: "/openSubtitlesKey", Code: "invalid"})
+	case resp.Status == http.StatusOK:
+		return nil
+	case resp.Status == http.StatusUnauthorized || resp.Status == http.StatusBadRequest:
+		if user == "" {
+			return nil // the key was accepted, and there's no account to sign in
+		}
+		return fault.About(ErrAccountRejected, fault.Field{Name: "/openSubtitlesPassword", Code: "invalid"})
+	}
+	return fmt.Errorf("%w: the OpenSubtitles sign-in answered %d", ErrUnavailable, resp.Status)
 }
 
 // post sends one POST through OpenSubtitles' spacing and outage rules.
@@ -616,6 +675,21 @@ func (o *openSubtitles) reject() error {
 	out := o.limit.Rejected(time.Now())
 	slog.Error("subtitles: OpenSubtitles rejected the API key")
 	return fmt.Errorf("%w: OpenSubtitles until %s: the API key was rejected", ErrUnavailable, out.Until.Format(time.RFC3339))
+}
+
+// refused says what OpenSubtitles refuses of the credentials in st: "key",
+// "account", or "" while it refuses neither.
+func (o *openSubtitles) refused(st config.Settings) string {
+	a := o.account(st)
+	switch {
+	case a == nil:
+		return ""
+	case o.limit.Outage().Rejected:
+		return "key"
+	case !a.rejected().IsZero():
+		return "account"
+	}
+	return ""
 }
 
 // health lists OpenSubtitles' problems: it's down, or it refuses the key

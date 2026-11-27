@@ -2,7 +2,7 @@ import { waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { MockApi } from "@/api/mocks/api";
 import type { Library } from "@/api/schemas";
-import { renderApp, screen } from "@/test/render";
+import { locationOf, renderApp, screen } from "@/test/render";
 import { mockIds, onRequest, scenarios, sendEvent, sent, serveMockApi } from "@/test/server";
 
 const rowOf = (name: string) => {
@@ -20,11 +20,32 @@ describe("Admin Libraries", () => {
     renderApp("/admin/libraries");
     await screen.findByRole("heading", { name: "Libraries" });
     const row = rowOf("Movies");
-    expect(within(row).getByText("238 movies").closest("p")).toHaveTextContent(/^238 movies · Scanned 2 hours ago$/);
+    expect(within(row).getByText("238 movies").closest("p")).toHaveTextContent(/^238 movies · Scanned 2 hours ago/);
     expect(within(row).getByText("Scanned 2 hours ago").closest("time")).toHaveAttribute("title");
     expect(within(row).queryByText("/mnt/user/Movies")).not.toBeInTheDocument();
     expect(row.querySelector('[data-part="scan"]')).toBeNull();
     expect(within(rowOf("TV Shows")).getByText("Not scanned yet")).toBeInTheDocument();
+  });
+
+  it("counts a library's unmatched titles and missing files in its menu, each opening its page", async () => {
+    serveMockApi();
+    const { router, user } = renderApp("/admin/libraries");
+    await screen.findByRole("heading", { name: "Libraries" });
+    const row = rowOf("Movies");
+    expect(within(row).getByText("238 movies").closest("p")).toHaveTextContent(/^238 movies · Scanned 2 hours ago$/);
+    await user.click(within(row).getByRole("button", { name: "More actions for Movies" }));
+    await waitFor(() =>
+      expect(screen.getByRole("menuitem", { name: /^Missing files/ })).toHaveTextContent(/^Missing files1$/),
+    );
+    expect(screen.getByRole("menuitem", { name: /^Unmatched/ })).toHaveTextContent(/^Unmatched1$/);
+    await user.click(screen.getByRole("menuitem", { name: /^Unmatched/ }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Unmatched in Movies" })).toBeInTheDocument();
+    expect(locationOf(router)).toBe(`/admin/libraries/${mockIds.movies}/unmatched`);
+    expect(
+      within(screen.getByRole("navigation", { name: "Admin" })).getByRole("link", { name: "Libraries" }),
+    ).toHaveAttribute("aria-current", "page");
+    await user.click(screen.getByRole("link", { name: "Libraries ›" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Libraries" })).toBeInTheDocument();
   });
 
   it("warns of a folder it can't reach", async () => {
@@ -92,15 +113,20 @@ describe("Admin Libraries", () => {
     expect(sent("POST", `/libraries/${mockIds.movies}/refresh-metadata`)).toHaveLength(1);
   });
 
-  it("offers refresh, edit and delete in a library's menu", async () => {
+  it("offers its lists, refresh, edit and delete in a library's menu", async () => {
     serveMockApi();
-    const { user } = renderApp("/admin/libraries");
+    const { router, user } = renderApp("/admin/libraries");
     await user.click(await screen.findByRole("button", { name: "More actions for TV Shows" }));
     expect((await screen.findAllByRole("menuitem")).map((m) => m.textContent)).toEqual([
+      "Unmatched",
+      "Missing files",
       "Refresh all metadata",
       "Edit",
       "Delete library",
     ]);
+    await user.click(screen.getByRole("menuitem", { name: "Missing files" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Missing files in TV Shows" })).toBeInTheDocument();
+    expect(locationOf(router)).toBe(`/admin/libraries/${mockIds.shows}/missing-files`);
   });
 
   it("names the refresh metadata setting's choices", async () => {
@@ -185,11 +211,14 @@ describe("Admin Libraries", () => {
     await user.click(await screen.findByRole("option", { name: "German (Germany)" }));
     await user.click(within(dialog).getByRole("button", { name: /Certification country/ }));
     await user.click(await screen.findByRole("option", { name: "Germany" }));
-    // Add a second folder through the folder picker.
+    // Add a second folder through the folder picker, which closes on the pick.
+    await user.click(within(dialog).getByRole("button", { name: "Add another folder" }));
     await user.click(await within(dialog).findByRole("button", { name: "mnt" }));
     await user.click(await within(dialog).findByRole("button", { name: "user" }));
     await user.click(await within(dialog).findByRole("button", { name: "TV" }));
-    await user.click(within(dialog).getByRole("button", { name: "Add this folder" }));
+    await user.click(within(dialog).getByRole("button", { name: "Use this folder" }));
+    expect(within(dialog).queryByRole("button", { name: "Use this folder" })).not.toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Remove /mnt/user/TV" })).toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
@@ -213,10 +242,11 @@ describe("Admin Libraries", () => {
     const save = within(dialog).getByRole("button", { name: "Save" });
     expect(save).toBeDisabled();
     await user.click(within(dialog).getByRole("button", { name: "Remove /mnt/user/Movies" }));
+    await user.click(within(dialog).getByRole("button", { name: "Add folder" }));
     await user.click(await within(dialog).findByRole("button", { name: "mnt" }));
     await user.click(await within(dialog).findByRole("button", { name: "user" }));
     await user.click(await within(dialog).findByRole("button", { name: "TV" }));
-    await user.click(within(dialog).getByRole("button", { name: "Add this folder" }));
+    await user.click(within(dialog).getByRole("button", { name: "Use this folder" }));
     await user.click(save);
     const confirm = await screen.findByRole("alertdialog", { name: "Remove 1 folder?" });
     expect(confirm).toHaveTextContent("/mnt/user/Movies");
@@ -233,11 +263,21 @@ describe("Admin Libraries", () => {
     const { user } = renderApp("/admin/libraries");
     await user.click(await screen.findByRole("button", { name: "Add library" }));
     const dialog = await screen.findByRole("dialog", { name: "Add a library" });
+    // The picker is closed until asked for, and can't use the list of mounts.
+    expect(within(dialog).queryByRole("textbox", { name: "Folder path" })).not.toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Add folder" }));
+    expect(within(dialog).getByRole("button", { name: "Open a folder first" })).toBeDisabled();
     await user.type(within(dialog).getByRole("textbox", { name: "Folder path" }), "/mnt/user{Enter}");
     expect(await within(dialog).findByRole("button", { name: "TV" })).toBeInTheDocument();
     expect(sent("POST", "/libraries")).toHaveLength(0);
-    await user.click(within(dialog).getByRole("button", { name: "Add this folder" }));
+    await user.click(within(dialog).getByRole("button", { name: "Use this folder" }));
     expect(within(dialog).getByRole("button", { name: "Remove /mnt/user" })).toBeInTheDocument();
+    // It reopens on the folder above, where a chosen folder can't be chosen again.
+    await user.click(within(dialog).getByRole("button", { name: "Add another folder" }));
+    await user.click(await within(dialog).findByRole("button", { name: "user" }));
+    expect(within(dialog).getByRole("button", { name: "Already added" })).toBeDisabled();
+    await user.click(within(dialog).getByRole("button", { name: "Close" }));
+    expect(within(dialog).queryByRole("textbox", { name: "Folder path" })).not.toBeInTheDocument();
   });
 
   it("deletes a library after asking", async () => {

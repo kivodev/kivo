@@ -161,6 +161,48 @@ class AppStateTest {
     }
 
     @Test
+    fun aServerUnreachableWhileTheAppWasInTheBackgroundIsTriedAgainAsItComesToTheForeground() = appTest { h ->
+        h.unreachable()
+        h.core.start()
+        assertEquals(AppState.Unreachable(home), h.core.started())
+        h.servers.server("home.test", info("server-1", "Basement"))
+
+        h.core.setForeground(true)
+
+        assertEquals(AppState.Starting, h.core.state.value, "the app never shows the stale result")
+        assertFalse(h.core.session().unreachable.value)
+    }
+
+    @Test
+    fun aServerThatCouldntBeReachedIsTriedAgainAsTheNetworkComesBack() = appTest { h ->
+        h.unreachable()
+        h.core.start()
+        assertEquals(AppState.Unreachable(home), h.core.started())
+        h.servers.server("home.test", info("server-1", "Basement"))
+
+        h.core.networkChanged(online = false, expensive = false)
+        testScheduler.advanceTimeBy(5.seconds)
+        assertEquals(AppState.Unreachable(home), h.core.state.value, "losing the network tries nothing")
+
+        h.core.networkChanged(online = true, expensive = false)
+        testScheduler.advanceTimeBy(NETWORK_SETTLE)
+        testScheduler.runCurrent()
+
+        assertEquals(AppState.Starting, h.core.state.value, "it tries again once the network has settled")
+        assertFalse(h.core.session().unreachable.value)
+    }
+
+    @Test
+    fun comingToTheForegroundLeavesAServerThatIsOpenAsItIs() = appTest { h ->
+        h.core.start()
+        val session = h.core.session()
+
+        h.core.setForeground(true)
+
+        assertSame(session, assertIs<AppState.SignedIn>(h.core.state.value).session)
+    }
+
+    @Test
     fun aServerThatAnswersAsStartingTriesAgainOpensSignedIn() = appTest { h ->
         h.servers.on("home.test", "GET", "/api/v1/server") {
             if (currentTime < 1500) throw IOException("the network is waking")

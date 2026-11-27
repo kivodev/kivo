@@ -95,6 +95,8 @@ func pragmas() url.Values {
 	q.Add("_pragma", "foreign_keys(1)")
 	q.Add("_pragma", "busy_timeout(10000)")
 	q.Add("_pragma", "synchronous(NORMAL)")
+	q.Add("_pragma", "cache_size(-8000)")
+	q.Add("_pragma", "temp_store(MEMORY)")
 	return q
 }
 

@@ -326,6 +326,63 @@ describe("report on a Samsung TV from Tizen 8", () => {
   });
 });
 
+describe("report on an LG TV", () => {
+  const webos = browserOf(
+    "Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.6834.207 Safari/537.36 WebAppManager",
+    "Google Inc.",
+  );
+  // What a 2024 LG's video element answers: no MKV and no DTS, though it plays both.
+  const plays = [
+    'video/mp4; codecs="avc1.42E01E, mp4a.40.2"',
+    'video/mp4; codecs="avc1.640029, mp4a.40.2"',
+    "hvc1.1.L120",
+    "hvc1.2.4.L153",
+    'audio/mp4; codecs="ac-3"',
+    'audio/mp4; codecs="ec-3"',
+  ];
+  const tv = (options: Partial<Probe> = {}) => report(probe(plays, { tv: true, packaged: true, ...options }), webos);
+
+  it("plays MKV files, which its video element doesn't answer for", () => {
+    const caps = tv();
+    expect(entry(caps, "h264")?.containers).toEqual(["mp4", "mkv"]);
+    expect(entry(caps, "hevc")?.containers).toEqual(["mp4", "mkv"]);
+    expect(caps.file?.containers).toContain("mkv");
+  });
+
+  it("plays DTS from a file, which its video element doesn't answer for", () => {
+    expect(audio(tv(), "dts")).toEqual({ codec: "dts", delivery: ["file"], maxChannels: 8 });
+    expect(audio(report(probe(plays), chrome), "dts")).toBeUndefined();
+  });
+
+  it("plays no DTS on the 2020 to 2022 models, webOS 5, 6 and 22, as Jellyfin's web client keeps it off there", () => {
+    const lg = (webosVersion: number, options: string[] = []) =>
+      audio(report(probe([...plays, ...options], { tv: true, packaged: true }), { ...webos, webosVersion }), "dts");
+    for (const version of [5, 6, 22]) {
+      expect(lg(version)).toBeUndefined();
+      expect(lg(version, ['video/mp4; codecs="dts-"'])).toBeUndefined();
+    }
+    for (const version of [4, 23, 24, 25])
+      expect(lg(version)).toEqual({ codec: "dts", delivery: ["file"], maxChannels: 8 });
+  });
+
+  it("asks the video element about DTS where the webOS version is unknown", () => {
+    const unknown = { ...webos, webosVersion: 0 };
+    expect(audio(report(probe(plays, { tv: true }), unknown), "dts")).toBeUndefined();
+    expect(audio(report(probe([...plays, 'video/mp4; codecs="dts-"'], { tv: true }), unknown), "dts")).toBeDefined();
+  });
+
+  it("switches between a file's audio tracks", () => {
+    expect(tv({ audioTracks: true }).file?.trackSelection).toBe(true);
+  });
+
+  it("declares HDR unless the panel says it shows none", () => {
+    const hdr = ["hdr10", "hdr10plus", "hlg"];
+    expect(entry(tv({ hdrPanel: true }), "hevc")?.hdr).toEqual(hdr);
+    expect(entry(tv(), "hevc")?.hdr).toEqual(hdr);
+    expect(entry(tv({ hdrPanel: false }), "hevc")?.hdr).toBeUndefined();
+  });
+});
+
 describe("withoutExternal", () => {
   it("leaves out external subtitles, and any entry with nothing left", () => {
     const caps: Capabilities = {

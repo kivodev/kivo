@@ -1,6 +1,6 @@
 import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { type MouseEvent, useRef, useState } from "react";
+import { type MouseEvent, type ReactNode, useRef, useState } from "react";
 import { mergeProps, useLongPress } from "react-aria";
 import { useSetInList } from "@/api/lists";
 import type { ListRef, UserStateUpdate, WorkKind, WorkSummary } from "@/api/schemas";
@@ -143,6 +143,10 @@ type Props = {
   list?: ListRef;
   /** A short mark at the artwork's bottom left, such as a trailer's running time. */
   badge?: string;
+  /** A small muted line above the title, such as a book's "Book 2" in its series. */
+  overline?: ReactNode;
+  /** The line under the title in place of the kind's own. */
+  subtitle?: ReactNode;
 };
 
 /**
@@ -197,7 +201,17 @@ const aspects: Record<ArtworkShape, string> = {
  * shows the ⋯ alone. On TV the card is only a link, which its row or grid
  * focuses: nothing hovers, and a remote's OK opens it.
  */
-export function WorkCard({ work, shape, width, inLibrary = false, continueRow, list, badge }: Props) {
+export function WorkCard({
+  work,
+  shape,
+  width,
+  inLibrary = false,
+  continueRow,
+  list,
+  badge,
+  overline,
+  subtitle,
+}: Props) {
   const { t } = useLingui();
   const navigate = useNavigate();
   const update = useUpdateUserState();
@@ -290,9 +304,14 @@ export function WorkCard({ work, shape, width, inLibrary = false, continueRow, l
         </div>
         {/* On TV the caption lines up with the artwork's edge. */}
         <div className="min-w-0 px-0.5 tv:px-0">
+          {overline !== undefined && (
+            <div data-part="card-overline" className="truncate text-xs font-medium text-text-muted">
+              {overline}
+            </div>
+          )}
           <div className="truncate text-sm font-semibold text-text">{title}</div>
           <div className="truncate text-sm text-text-muted">
-            <Subtitle work={work} />
+            {subtitle === undefined ? <Subtitle work={work} /> : subtitle}
           </div>
         </div>
       </Link>

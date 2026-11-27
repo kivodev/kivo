@@ -74,8 +74,8 @@ type LibraryInput struct {
 	Folders          []string // absolute folder paths
 	UseLocalMetadata bool
 	Previews         Schedule // defaults to Nightly
-	Markers          Schedule // defaults to NightlyAndAdded in a shows library
-	Subtitles        Schedule // defaults to NightlyAndAdded
+	Markers          Schedule // defaults to Nightly in a shows library
+	Subtitles        Schedule // defaults to Nightly
 	RefreshDays      int      // 30, 60 or 90, or 0 for never
 	// MetadataLanguage is a BCP 47 tag and ContentRatingCountry is an ISO
 	// 3166-1 alpha-2 code. They override the server's settings for this
@@ -98,11 +98,13 @@ type LibraryChange struct {
 
 // NewLibrary returns the input to create a library of the given kind, with
 // ch applied to a new library's defaults. By default a library uses local
-// metadata, makes preview thumbnails nightly, finds markers and extracts
-// subtitles nightly and as media is added, refreshes metadata every 30
-// days, and uses the server's metadata language and content rating country.
+// metadata, makes preview thumbnails, finds markers and extracts subtitles
+// nightly, refreshes metadata every 30 days, and uses the server's metadata
+// language and content rating country. The nightly default keeps a new
+// library's files from all being read at once, outside the maintenance
+// window.
 func NewLibrary(kind LibraryKind, ch LibraryChange) LibraryInput {
-	return ch.apply(Library{Kind: kind, UseLocalMetadata: true, Previews: Nightly, Markers: NightlyAndAdded, Subtitles: NightlyAndAdded, RefreshDays: 30})
+	return ch.apply(Library{Kind: kind, UseLocalMetadata: true, Previews: Nightly, Markers: Nightly, Subtitles: Nightly, RefreshDays: 30})
 }
 
 // apply returns the library's settings with the change made.
@@ -323,14 +325,14 @@ func (in LibraryInput) previews() Schedule {
 
 func (in LibraryInput) markers() Schedule {
 	if in.Markers == "" {
-		return NightlyAndAdded
+		return Nightly
 	}
 	return in.Markers
 }
 
 func (in LibraryInput) subtitles() Schedule {
 	if in.Subtitles == "" {
-		return NightlyAndAdded
+		return Nightly
 	}
 	return in.Subtitles
 }

@@ -191,7 +191,7 @@ func TestRealRemux(t *testing.T) {
 				init, segs := transcode(t, m, req)
 				// One segment per keyframe, from start.
 				checkSegments(t, init, segs, keys[k:])
-				if strings.HasPrefix(name, "hevc") && (!bytes.Contains(init, []byte("hvc1")) || bytes.Contains(init, []byte("hev1"))) {
+				if strings.HasPrefix(name, "hevc") && (!bytes.Contains(init.Data, []byte("hvc1")) || bytes.Contains(init.Data, []byte("hev1"))) {
 					t.Error("HEVC init segment isn't tagged hvc1")
 				}
 			})
@@ -208,11 +208,11 @@ func TestRealAudioTranscode(t *testing.T) {
 		Audio: []media.AudioOut{{Track: 1, Out: media.AudioRendition{Codec: media.AAC, Channels: 1, Bitrate: 96000}}}}
 	init, segs := transcode(t, m, req)
 	checkSegments(t, init, segs, keys[2:])
-	f, err := mp4.DecodeFile(bytes.NewReader(init))
+	f, err := mp4.DecodeFile(bytes.NewReader(init.Audio))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if a := f.Init.Moov.Traks[1].Mdia.Minf.Stbl.Stsd.Mp4a; a == nil || a.ChannelCount != 1 {
+	if a := f.Init.Moov.Traks[0].Mdia.Minf.Stbl.Stsd.Mp4a; a == nil || a.ChannelCount != 1 {
 		t.Errorf("audio sample entry %+v, want mono AAC", a)
 	}
 }
@@ -256,11 +256,11 @@ func TestRealSurround(t *testing.T) {
 						SampleRate: 48000, DialogueBoost: tt.boost}}}}
 			init, segs := transcode(t, m, req)
 			checkSegments(t, init, segs, []time.Duration{0})
-			f, err := mp4.DecodeFile(bytes.NewReader(init))
+			f, err := mp4.DecodeFile(bytes.NewReader(init.Audio))
 			if err != nil {
 				t.Fatal(err)
 			}
-			if a := f.Init.Moov.Traks[1].Mdia.Minf.Stbl.Stsd.Mp4a; a == nil || int(a.ChannelCount) != tt.channels {
+			if a := f.Init.Moov.Traks[0].Mdia.Minf.Stbl.Stsd.Mp4a; a == nil || int(a.ChannelCount) != tt.channels {
 				t.Errorf("audio sample entry %+v, want %d-channel AAC", a, tt.channels)
 			}
 		})
@@ -268,7 +268,7 @@ func TestRealSurround(t *testing.T) {
 }
 
 // transcode runs req to the end and returns its output.
-func transcode(t *testing.T, m *Runner, req media.TranscodeRequest) ([]byte, []media.Segment) {
+func transcode(t *testing.T, m *Runner, req media.TranscodeRequest) (media.Init, []media.Segment) {
 	t.Helper()
 	out, err := m.Transcode(t.Context(), req)
 	if err != nil {
@@ -293,51 +293,94 @@ func transcode(t *testing.T, m *Runner, req media.TranscodeRequest) ([]byte, []m
 }
 
 // checkSegments checks that segments start at the wanted keyframes, each on
-// a sync sample. It checks that every track's decode times continue from
-// one segment to the next without a gap. It also checks that the whole
-// output decodes cleanly.
-func checkSegments(t *testing.T, init []byte, segs []media.Segment, want []time.Duration) {
+// a sync sample. It checks the video and, when it's split from the video,
+// the audio as renditions of their own: each segment holds only its
+// rendition's track, its decode times continue from one segment to the
+// next without a gap, and the whole rendition decodes cleanly. Each audio
+// segment begins within an audio frame of its video segment.
+func checkSegments(t *testing.T, init media.Init, segs []media.Segment, want []time.Duration) {
 	t.Helper()
 	if len(segs) != len(want) {
 		t.Fatalf("got %d segments, want %d starting at %v", len(segs), len(want), want)
 	}
-	f, err := mp4.DecodeFile(bytes.NewReader(init))
-	if err != nil {
-		t.Fatal(err)
-	}
-	trex := map[uint32]*mp4.TrexBox{}
-	for _, x := range f.Init.Moov.Mvex.Trexs {
-		trex[x.TrackID] = x
-	}
-	next := map[uint32]uint64{} // each track's decode time after the last segment
-	all := bytes.Clone(init)
+	video, audio := make([][]byte, len(segs)), make([][]byte, len(segs))
 	for i, seg := range segs {
 		if d := seg.Start - want[i]; d < -time.Millisecond || d > time.Millisecond {
 			t.Errorf("segment %d starts at %v, want %v", i, seg.Start, want[i])
 		}
-		all = append(all, seg.Data...)
-		sf, err := mp4.DecodeFile(bytes.NewReader(append(bytes.Clone(init), seg.Data...)))
-		if err != nil {
-			t.Fatal(err)
+		video[i], audio[i] = seg.Data, seg.Audio
+	}
+	videoStarts := checkRendition(t, "video", init.Data, video, true)
+	if init.Audio == nil {
+		return
+	}
+	audioStarts := checkRendition(t, "audio", init.Audio, audio, false)
+	for i := range segs {
+		// An AAC frame at 8 kHz, the corpus's rate, is 128 ms.
+		if d := audioStarts[i] - videoStarts[i]; d < -130*time.Millisecond || d > 130*time.Millisecond {
+			t.Errorf("audio segment %d begins at %v, its video at %v", i, audioStarts[i], videoStarts[i])
 		}
+	}
+}
+
+// checkRendition checks one rendition's segments against its init segment,
+// and returns when each segment's first sample decodes. With keyframes,
+// each segment must begin on a sync sample.
+func checkRendition(t *testing.T, name string, init []byte, segs [][]byte, keyframes bool) []time.Duration {
+	t.Helper()
+	f, err := mp4.DecodeFile(bytes.NewReader(init))
+	if err != nil {
+		t.Fatal(name, err)
+	}
+	if len(f.Init.Moov.Traks) != 1 {
+		t.Fatalf("%s init segment has %d tracks", name, len(f.Init.Moov.Traks))
+	}
+	trak := f.Init.Moov.Traks[0]
+	id, scale := trak.Tkhd.TrackID, trak.Mdia.Mdhd.Timescale
+	trex, _ := f.Init.Moov.Mvex.GetTrex(id)
+	var starts []time.Duration
+	var next uint64 // the decode time after the last segment
+	all := bytes.Clone(init)
+	for i, seg := range segs {
+		all = append(all, seg...)
+		sf, err := mp4.DecodeFile(bytes.NewReader(append(bytes.Clone(init), seg...)))
+		if err != nil {
+			t.Fatal(name, i, err)
+		}
+		first := true
 		for _, frag := range sf.Segments[0].Fragments {
 			for _, traf := range frag.Moof.Trafs {
-				id, dts := traf.Tfhd.TrackID, traf.Tfdt.BaseMediaDecodeTime()
-				if prev, ok := next[id]; ok && prev != dts {
-					t.Errorf("segment %d: track %d decodes from %d, the last ended at %d", i, id, dts, prev)
+				dts := traf.Tfdt.BaseMediaDecodeTime()
+				if traf.Tfhd.TrackID != id {
+					t.Fatalf("%s segment %d holds track %d", name, i, traf.Tfhd.TrackID)
+				}
+				if i > 0 && first && next != dts {
+					t.Errorf("%s segment %d decodes from %d, the last ended at %d", name, i, dts, next)
+				}
+				if first {
+					starts = append(starts, time.Duration(dts)*time.Second/time.Duration(scale))
+				}
+				// mp4ff reads every sample's bytes, so an offset outside
+				// the mdat fails here.
+				if _, err := frag.GetFullSamples(trex); err != nil {
+					t.Fatalf("%s segment %d: %v", name, i, err)
 				}
 				var dur uint64
 				for j, trun := range traf.Truns {
-					dur += trun.AddSampleDefaultValues(traf.Tfhd, trex[id])
-					if id == 1 && j == 0 && !mp4.IsSyncSampleFlags(trun.Samples[0].Flags) {
-						t.Errorf("segment %d doesn't start on a keyframe", i)
+					dur += trun.AddSampleDefaultValues(traf.Tfhd, trex)
+					if keyframes && first && j == 0 && !mp4.IsSyncSampleFlags(trun.Samples[0].Flags) {
+						t.Errorf("%s segment %d doesn't start on a keyframe", name, i)
 					}
 				}
-				next[id] = dts + dur
+				next, first = dts+dur, false
 			}
+		}
+		if first {
+			t.Fatalf("%s segment %d has no samples", name, i)
 		}
 	}
 	decodes(t, all)
+	return starts
 }
 
 // decodes checks that ffmpeg decodes b without complaint.

@@ -237,7 +237,7 @@ struct CardRowSkeleton: View {
 }
 
 extension View {
-    /// The list row of a row of cards or faces.
+    /// The page row of a row of cards or faces.
     func cardRowInsets() -> some View {
         detailRow(EdgeInsets(top: 16, leading: 0, bottom: 8, trailing: 0))
     }

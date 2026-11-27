@@ -10,6 +10,8 @@ import { formatClock, formatDate, formatRuntime } from "@/i18n/format";
 import { isTv } from "@/tv/flag";
 import { TvFocusable, TvFocusGroup } from "@/tv/focus";
 import { TvControl } from "@/tv/forms/TvControl";
+import { BookNumber } from "./BookShelf";
+import { primarySeries } from "./bookSeries";
 import { DetailMenu } from "./DetailMenu";
 import { Overview } from "./Overview";
 import { PlayFromStartButton } from "./PlaybackControls";
@@ -53,15 +55,17 @@ function Fact({ label, children }: { label: ReactNode; children: ReactNode }) {
 const LinkLine = isTv ? "div" : "p";
 
 /**
- * A book's page. It shows the square cover, the authors and narrators as
- * links to their pages, the series with the book's position in it, and
- * the details. Then come Play or Resume with the time left, the books like
+ * A book's page. It shows the square cover, its primary series above the
+ * title with the book's place in it ("The First Law · Book 2", the series
+ * a link to its page), the authors and narrators as links to their pages,
+ * and the details. Then come Play or Resume with the time left, the books like
  * it, the chapters, each starting playback there, and the files.
  */
 export function BookDetail({ work }: { work: WorkDetail }) {
   const { t } = useLingui();
   const { play } = useBookPlayer();
   const book = work.book ?? { authors: [], narrators: [], series: [] };
+  const series = primarySeries(book);
   const version = defaultVersion(work);
   const position = work.userState?.positionMs;
   const playable = work.available && version?.available === true;
@@ -81,6 +85,25 @@ export function BookDetail({ work }: { work: WorkDetail }) {
           <Artwork image={work.images.poster} title={work.title} shape="square" width={480} part="cover" blur />
         </div>
         <div className="flex max-w-prose flex-col gap-3">
+          {series && (
+            <LinkLine data-part="book-series" className="text-sm text-text-muted">
+              <TvControl focusKey={`book-series:${series.id}`} className="inline-block">
+                <Link
+                  to="/book-series/$seriesId"
+                  params={{ seriesId: series.id }}
+                  className="font-semibold text-text hover:underline"
+                >
+                  {series.name}
+                </Link>
+              </TvControl>
+              {series.position && (
+                <>
+                  {" · "}
+                  <BookNumber position={series.position} />
+                </>
+              )}
+            </LinkLine>
+          )}
           <h1 className="text-3xl font-bold text-text">{work.title}</h1>
           {book.subtitle && <p className="text-lg text-text-muted">{book.subtitle}</p>}
           {book.authors.length > 0 && (
@@ -97,31 +120,6 @@ export function BookDetail({ work }: { work: WorkDetail }) {
               </Trans>
             </LinkLine>
           )}
-          {book.series.map((s) => {
-            const link = (
-              <TvControl focusKey={`book-series:${s.id}`} className="inline-block">
-                <Link
-                  to="/book-series/$seriesId"
-                  params={{ seriesId: s.id }}
-                  className="font-semibold text-text hover:text-accent"
-                >
-                  {s.name}
-                </Link>
-              </TvControl>
-            );
-            const position = s.position;
-            return (
-              <LinkLine key={s.id} data-part="book-series" className="text-sm text-text-muted">
-                {position ? (
-                  <Trans>
-                    Book {position} of {link}
-                  </Trans>
-                ) : (
-                  link
-                )}
-              </LinkLine>
-            );
-          })}
           <p className="text-sm text-text-muted">
             {meta.map((m, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: the parts are fixed in order.

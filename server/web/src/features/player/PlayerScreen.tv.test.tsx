@@ -197,7 +197,8 @@ describe("Player on a TV remote", () => {
 
     // Choosing from a list applies it and closes the menu.
     await user.keyboard("{ArrowDown}{Enter}");
-    await screen.findByRole("menu", { name: "Speed" });
+    const speeds = await screen.findByRole("menu", { name: "Speed" });
+    await waitFor(() => expect(within(speeds).getByRole("menuitemradio", { name: "Normal" })).toHaveFocus());
     await user.keyboard("{ArrowDown}{ArrowDown}{Enter}");
     expect(video().playbackRate).toBe(1.5);
     await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());

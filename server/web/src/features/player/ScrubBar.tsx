@@ -24,6 +24,8 @@ type Props = {
   target?: number;
   /** The slider's thumb, which takes focus. */
   thumbRef?: RefObject<HTMLInputElement | null>;
+  /** "Ends at 9:42 PM", under the time left. */
+  endsAt?: string;
   onSeek: (positionMs: number) => void;
 };
 
@@ -32,7 +34,7 @@ type Props = {
  * target, it shows the target time, chapter name and preview frame above
  * the bar. A drag's seek happens on release.
  */
-export function ScrubBar({ play, positionMs, target, thumbRef, onSeek }: Props) {
+export function ScrubBar({ play, positionMs, target, thumbRef, endsAt, onSeek }: Props) {
   const { t } = useLingui();
   const [dragMs, setDragMs] = useState<number | undefined>();
   const durationMs = play.durationMs;
@@ -40,51 +42,58 @@ export function ScrubBar({ play, positionMs, target, thumbRef, onSeek }: Props) 
   const shownMs = targetMs ?? positionMs;
   const ticks = play.chapters.filter((c) => c.startMs > 0 && c.startMs < durationMs);
 
-  // The time played and the time left sit on either side.
+  // The time played and the time left sit on either side, and when it ends under the time left.
   return (
-    <div className="flex items-center gap-3 sm:gap-4">
-      <span className="shrink-0 text-sm text-on-player tabular-nums">{formatClock(shownMs)}</span>
-      <Slider
-        data-part="scrub-bar"
-        aria-label={t`Seek`}
-        minValue={0}
-        maxValue={durationMs}
-        step={stepMs}
-        value={shownMs}
-        onChange={setDragMs}
-        onChangeEnd={(ms) => {
-          setDragMs(undefined);
-          onSeek(ms);
-        }}
-        className="min-w-0 flex-1"
-      >
-        <SliderTrack className="group relative flex h-6 w-full cursor-pointer items-center">
-          <div className="relative h-1 w-full rounded-full bg-player-track group-hover:h-1.5">
-            <div
-              className="absolute inset-y-0 left-0 w-(--played) rounded-full bg-progress"
-              style={{ "--played": percent(shownMs, durationMs) } as CSSProperties}
-            />
-            {ticks.map((c) => (
-              <span
-                key={c.startMs}
-                data-part="chapter-tick"
-                className="absolute inset-y-0 left-(--at) w-0.5 bg-on-player-muted"
-                style={{ "--at": percent(c.startMs, durationMs) } as CSSProperties}
+    <div>
+      <div className="flex items-center gap-3 sm:gap-4">
+        <span className="shrink-0 text-sm text-on-player tabular-nums">{formatClock(shownMs)}</span>
+        <Slider
+          data-part="scrub-bar"
+          aria-label={t`Seek`}
+          minValue={0}
+          maxValue={durationMs}
+          step={stepMs}
+          value={shownMs}
+          onChange={setDragMs}
+          onChangeEnd={(ms) => {
+            setDragMs(undefined);
+            onSeek(ms);
+          }}
+          className="min-w-0 flex-1"
+        >
+          <SliderTrack className="group relative flex h-6 w-full cursor-pointer items-center">
+            <div className="relative h-1 w-full rounded-full bg-player-track group-hover:h-1.5">
+              <div
+                className="absolute inset-y-0 left-0 w-(--played) rounded-full bg-progress"
+                style={{ "--played": percent(shownMs, durationMs) } as CSSProperties}
               />
-            ))}
-          </div>
-          {targetMs !== undefined && <ScrubPreview play={play} positionMs={targetMs} />}
-          <SliderThumb
-            inputRef={thumbRef}
-            // On TV a focused thumb grows in a halo, as a lit control does, rather than taking a ring.
-            // It grows from its top left, which its transform centres, so it stays on the bar.
-            className="top-1/2 size-4 rounded-full bg-on-player shadow-overlay data-dragging:scale-125 data-focus-visible:outline-2 data-focus-visible:outline-focus tv:origin-top-left tv:transition-transform tv:data-focused:scale-150 tv:data-focused:ring-4 tv:data-focused:ring-on-player-muted tv:data-focus-visible:outline-none"
-          />
-        </SliderTrack>
-      </Slider>
-      <span className="shrink-0 text-sm text-on-player tabular-nums">
-        −{formatClock(Math.max(0, durationMs - shownMs))}
-      </span>
+              {ticks.map((c) => (
+                <span
+                  key={c.startMs}
+                  data-part="chapter-tick"
+                  className="absolute inset-y-0 left-(--at) w-0.5 bg-on-player-muted"
+                  style={{ "--at": percent(c.startMs, durationMs) } as CSSProperties}
+                />
+              ))}
+            </div>
+            {targetMs !== undefined && <ScrubPreview play={play} positionMs={targetMs} />}
+            <SliderThumb
+              inputRef={thumbRef}
+              // On TV a focused thumb grows in a halo, as a lit control does, rather than taking a ring.
+              // It grows from its top left, which its transform centres, so it stays on the bar.
+              className="top-1/2 size-4 rounded-full bg-on-player shadow-overlay data-dragging:scale-125 data-focus-visible:outline-2 data-focus-visible:outline-focus tv:origin-top-left tv:transition-transform tv:data-focused:scale-150 tv:data-focused:ring-4 tv:data-focused:ring-on-player-muted tv:data-focus-visible:outline-none"
+            />
+          </SliderTrack>
+        </Slider>
+        <span className="shrink-0 text-sm text-on-player tabular-nums">
+          −{formatClock(Math.max(0, durationMs - shownMs))}
+        </span>
+      </div>
+      {endsAt && (
+        <p data-part="ends-at" className="text-right text-sm text-on-player-muted tabular-nums">
+          {endsAt}
+        </p>
+      )}
     </div>
   );
 }

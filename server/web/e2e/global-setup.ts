@@ -192,7 +192,13 @@ export default async function globalSetup() {
   const setup = await api.post("/api/v1/setup", { data: { username: "admin", password } });
   if (!setup.ok()) throw new Error(`e2e setup: setup: ${setup.status()} ${await setup.text()}`);
   const library = await api.post("/api/v1/libraries", {
-    data: { name: "Movies", kind: "movies", folders: [media], previews: "nightlyAndAdded" },
+    data: {
+      name: "Movies",
+      kind: "movies",
+      folders: [media],
+      previews: "nightlyAndAdded",
+      subtitles: "nightlyAndAdded",
+    },
   });
   if (!library.ok()) throw new Error(`e2e setup: library: ${library.status()} ${await library.text()}`);
   const { id: libraryId } = (await library.json()) as { id: string };

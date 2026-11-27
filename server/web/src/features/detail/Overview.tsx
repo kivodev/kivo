@@ -73,37 +73,82 @@ function PageOverview({ text, lines = 4, hold = false }: Props) {
   );
 }
 
+/** More, as it follows the ellipsis of a cut description. */
+const moreClass = "text-sm font-semibold text-text";
+
+/**
+ * `text` ended at the last word that leaves room for an ellipsis and More
+ * in `el`'s lines, or undefined when the whole of it fits. It measures on a
+ * hidden copy of `el`, which clamps its lines.
+ */
+export function cutOverview(el: HTMLElement, text: string, more: string): string | undefined {
+  const fits = (shown: HTMLElement) => shown.scrollHeight <= shown.clientHeight + 1;
+  const copy = el.cloneNode(false) as HTMLElement;
+  copy.removeAttribute("id");
+  copy.style.cssText = "position:absolute;visibility:hidden;left:0;right:0;";
+  el.parentElement?.append(copy);
+  const label = document.createElement("span");
+  label.className = moreClass;
+  label.textContent = more;
+  const tryCut = (shown: string) => {
+    copy.replaceChildren(`${shown} `, label);
+    return fits(copy);
+  };
+  try {
+    copy.textContent = text;
+    if (fits(copy)) return undefined;
+    const words = text.split(/\s+/);
+    let low = 0;
+    let high = words.length - 1;
+    while (low < high) {
+      const mid = Math.ceil((low + high) / 2);
+      if (tryCut(`${words.slice(0, mid).join(" ")}…`)) low = mid;
+      else high = mid - 1;
+    }
+    const kept = words.slice(0, low).join(" ");
+    return `${kept.replace(/[\s\p{P}]+$/u, "")}…`;
+  } finally {
+    copy.remove();
+  }
+}
+
 /**
  * A description on TV, which shows as many lines as its page has room for.
- * Only when there's more does it take focus, the whole block, and OK opens
- * the full text in a panel beside the page. A remote can't aim at a small
- * More link, and expanding in place would move everything under it.
+ * When there's more it ends at a word with an ellipsis and More, it takes
+ * focus, the whole block, and OK opens the full text in a panel beside the
+ * page. A remote can't aim at a small More link, and expanding in place
+ * would move everything under it.
  */
 function TvOverview({ text, tvLines = 3, hold = false, title }: Props) {
   const { t } = useLingui();
   const ref = useRef<HTMLParagraphElement>(null);
-  const [clamped, setClamped] = useState(false);
+  const [cut, setCut] = useState<string>();
   const [open, setOpen] = useState(false);
+  const more = t`More`;
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: a new text is measured again.
   useLayoutEffect(() => {
     const el = ref.current;
-    if (el) setClamped(el.scrollHeight > el.clientHeight + 1);
-  }, [text]);
+    setCut(el && text ? cutOverview(el, text, more) : undefined);
+  }, [text, more]);
 
   const held = hold ? (tvLines === 7 ? "min-h-7lh" : "min-h-3lh") : "";
   return (
-    <div data-part="overview" className="relative pr-24">
+    <div data-part="overview" className="relative">
       {/* Its paragraphs run together here, for the most text in its lines; the panel keeps them apart. */}
       <p ref={ref} className={`text-text-muted ${tvLines === 7 ? "line-clamp-7" : "line-clamp-3"} ${held}`}>
-        {text}
+        {cut === undefined ? (
+          text
+        ) : (
+          <>
+            {cut}{" "}
+            <span aria-hidden="true" className={moreClass}>
+              {more}
+            </span>
+          </>
+        )}
       </p>
-      {clamped && (
+      {cut !== undefined && (
         <>
-          {/* At the end of its last line, so the hint takes no line of its own. */}
-          <span aria-hidden="true" className="absolute right-0 bottom-0 text-sm font-semibold text-text">
-            <Trans>More</Trans>
-          </span>
           <TvFocusable
             focusKey="overview"
             face="none"

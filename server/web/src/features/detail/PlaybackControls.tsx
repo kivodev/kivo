@@ -3,14 +3,14 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { lazy, type ReactNode, Suspense, useState } from "react";
 import { subtitlesOff } from "@/api/playback";
 import type { WorkDetail } from "@/api/schemas";
+import { useChooseTracks } from "@/api/works";
 import { Button, buttonClass } from "@/components/Button";
-import { useEndsAt } from "@/components/endsAt";
 import { Icon } from "@/components/Icon";
 import { Select } from "@/components/Select";
 import { automaticTrack, TrackPicker, trackChoices } from "@/components/TrackPicker";
 import { versionOption } from "@/components/trackLabels";
 import type { WatchSearch } from "@/features/player/watchSearch";
-import { formatClock, formatTimeLeft } from "@/i18n/format";
+import { formatClock } from "@/i18n/format";
 import { isTv } from "@/tv/flag";
 import { TvFocusable, TvFocusGroup } from "@/tv/focus";
 import { type DetailSearch, useDetailSearch } from "./detailSearch";
@@ -46,30 +46,19 @@ function playSearchOf(work: WorkDetail, search: DetailSearch): WatchSearch {
   return { version: selectedVersion(work, search.version)?.id, audio: search.audio, subtitle: search.subtitle };
 }
 
-/**
- * The line under the buttons, the time left once the work has started and
- * when it would end ("1 hr 34 min left · Ends at 9:42 PM"), and Play from
- * beginning once it has started.
- */
-export function useResumeParts(work: WorkDetail) {
+/** Play from beginning, the button beside Resume once the work has started. */
+export function usePlayFromStart(work: WorkDetail): (() => void) | undefined {
   const [search] = useDetailSearch();
   const navigate = useNavigate();
-  const playable = canPlay(work, search);
-  const position = playable ? resumeAt(work, search) : undefined;
-  const remaining = playable && work.durationMs ? work.durationMs - (position ?? 0) : undefined;
-  const endsAt = useEndsAt(remaining);
-  const left = position && remaining !== undefined ? formatTimeLeft(remaining) : undefined;
-  return {
-    playing: [left, endsAt].filter(Boolean).join(" · ") || undefined,
-    onPlayFromStart: position
-      ? () =>
-          void navigate({
-            to: "/watch/$workId",
-            params: { workId: work.id },
-            search: { ...playSearchOf(work, search), from: "start" },
-          })
-      : undefined,
-  };
+  const position = canPlay(work, search) ? resumeAt(work, search) : undefined;
+  return position
+    ? () =>
+        void navigate({
+          to: "/watch/$workId",
+          params: { workId: work.id },
+          search: { ...playSearchOf(work, search), from: "start" },
+        })
+    : undefined;
 }
 
 /** Play from beginning, a round button beside Resume. */
@@ -141,7 +130,26 @@ export function PlaybackPickers({ work, chips = false }: { work: WorkDetail; chi
   const pickVersion = (id: string) => setSearch({ version: id });
   const pickTrack = (key: "audio" | "subtitle", id: string) =>
     setSearch({ ...search, [key]: id === automaticTrack ? undefined : id });
-  const remembered = work.remembersTracks === true;
+  // An episode keeps a track chosen for its show, so the next play of any
+  // episode starts with it. Otherwise the choice is for the next play only.
+  const keeps = work.remembersTracks === true && version !== undefined;
+  const choose = useChooseTracks();
+  const pick = (key: "audio" | "subtitle", id: string) => {
+    if (!keeps) return pickTrack(key, id);
+    const value = id === automaticTrack ? "default" : id;
+    choose.mutate(
+      {
+        params: { path: { id: work.id } },
+        body: key === "audio" ? { audioTrackId: value } : { subtitleTrackId: value },
+      },
+      // A choice the server won't keep still applies to the next play.
+      {
+        onSuccess: () => search[key] !== undefined && setSearch({ ...search, [key]: undefined }),
+        onError: () => pickTrack(key, id),
+      },
+    );
+  };
+  const remembered = keeps && work.tracksRemembered === true;
   const [searching, setSearching] = useState(false);
   const fileId = version?.parts[0]?.fileId;
   // Subtitle search's results are a web-only list for now, so the TV build
@@ -150,17 +158,23 @@ export function PlaybackPickers({ work, chips = false }: { work: WorkDetail; chi
   const audio = {
     kind: "audio",
     tracks: tracks.filter((tr) => tr.type === "audio"),
-    automatic: version?.audioTrackId,
+    automatic: keeps ? version.defaultAudioTrackId : version?.audioTrackId,
     remembered,
+    resets: keeps,
   } as const;
   const subtitle = {
     kind: "subtitle",
     tracks: tracks.filter((tr) => tr.type === "subtitle"),
     offId: subtitlesOff,
-    automatic: version?.subtitleTrackId ?? subtitlesOff,
+    automatic: (keeps ? version.defaultSubtitleTrackId : version?.subtitleTrackId) ?? subtitlesOff,
     remembered,
+    resets: keeps,
     extra: canSearch ? [{ id: searchSubtitles, label: t`Search subtitles…` }] : [],
   } as const;
+  // A kept choice shows as the track it plays, and as Default when that's
+  // the track a play would start with anyway.
+  const selected = (key: "audio" | "subtitle", plays: string, automatic: string | undefined) =>
+    search[key] ?? (keeps && plays !== automatic ? plays : automaticTrack);
 
   const pickers = (
     <div data-part="pickers" className={chips ? "contents" : "flex flex-wrap gap-x-6 gap-y-1"}>
@@ -181,8 +195,8 @@ export function PlaybackPickers({ work, chips = false }: { work: WorkDetail; chi
           <TrackPicker
             {...audio}
             chip={chips}
-            selected={search.audio ?? automaticTrack}
-            onChange={(id) => pickTrack("audio", id)}
+            selected={selected("audio", version?.audioTrackId ?? "", audio.automatic)}
+            onChange={(id) => pick("audio", id)}
           />
         </TvFocusable>
       )}
@@ -191,8 +205,8 @@ export function PlaybackPickers({ work, chips = false }: { work: WorkDetail; chi
           <TrackPicker
             {...subtitle}
             chip={chips}
-            selected={search.subtitle ?? automaticTrack}
-            onChange={(id) => (id === searchSubtitles ? setSearching(true) : pickTrack("subtitle", id))}
+            selected={selected("subtitle", version?.subtitleTrackId ?? subtitlesOff, subtitle.automatic)}
+            onChange={(id) => (id === searchSubtitles ? setSearching(true) : pick("subtitle", id))}
           />
         </TvFocusable>
       )}
@@ -204,7 +218,7 @@ export function PlaybackPickers({ work, chips = false }: { work: WorkDetail; chi
             onClose={() => setSearching(false)}
             onDownloaded={(trackId) => {
               setSearching(false);
-              pickTrack("subtitle", trackId);
+              pick("subtitle", trackId);
             }}
           />
         </Suspense>

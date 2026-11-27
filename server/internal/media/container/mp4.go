@@ -75,6 +75,7 @@ type track struct {
 	shift     time.Duration // added to each composition time by the edit list
 	mediaTime int64         // subtracted from each composition time by the edit list
 	next      uint64        // decode time after the last fragment read
+	silence   *silence      // what fills its missing audio, when it can be made
 }
 
 // mp4Keyframes walks the file's top-level boxes. It reads moov and each

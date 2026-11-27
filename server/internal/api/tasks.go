@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"time"
 
 	"github.com/mmcdole/kivo/internal/api/internal/gen"
 	"github.com/mmcdole/kivo/internal/id"
@@ -31,6 +32,9 @@ func task(t tasks.Status) gen.Task {
 	}
 	if t.Last != nil {
 		out.LastRun = &gen.TaskRun{FinishedAt: t.Last.At.UTC(), Summary: opt(t.Last.Summary), Error: opt(t.Last.Error)}
+	}
+	if t.Every > 0 {
+		out.EveryMinutes = ptr(int(t.Every / time.Minute))
 	}
 	if !t.Next.IsZero() {
 		out.NextRunAt = ptr(t.Next.UTC())

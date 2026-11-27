@@ -10,7 +10,11 @@ import com.mmcdole.kivo.core.auth.pickAddress
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration
 
@@ -49,10 +53,46 @@ internal class Discovery(
         return null
     }
 
-    /** The server at a typed address, such as `192.168.1.20`, `nas:8484` or `https://kivo.example.com`. */
+    /**
+     * The server at a typed address, such as `192.168.1.20`, `nas:8484` or
+     * `https://kivo.example.com`. An address that names its scheme is asked
+     * at that URL alone; one that doesn't is asked at each of
+     * [addressCandidates] at once, for at most [timeout] each, and the
+     * first of them, in their order, that answers wins. When none answers,
+     * it fails as the first did.
+     */
     suspend fun serverAt(address: String): FoundServer {
-        val url = normalizeAddress(address)
-        return FoundServer(url, info(url))
+        val urls = addressCandidates(address)
+        if (urls.size == 1) return FoundServer(urls.single(), info(urls.single()))
+        return withContext(context) { firstAnswering(urls) }
+    }
+
+    /** The server at the first of [urls], in their order, that answers within [timeout]; asked all at once. */
+    private suspend fun firstAnswering(urls: List<String>): FoundServer = coroutineScope {
+        val answers = urls.map { url ->
+            async {
+                try {
+                    withTimeout(timeout) { Result.success(FoundServer(url, info(url))) }
+                } catch (_: TimeoutCancellationException) {
+                    // Not a cancellation to whoever asked: the address just didn't answer.
+                    Result.failure(IllegalStateException("$url didn't answer within $timeout"))
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Result.failure(e)
+                }
+            }
+        }
+        var first: Throwable? = null
+        for (answer in answers) {
+            val result = answer.await()
+            result.getOrNull()?.let { found ->
+                answers.forEach { it.cancel() }
+                return@coroutineScope found
+            }
+            if (first == null) first = result.exceptionOrNull()
+        }
+        throw first!!
     }
 
     /**
@@ -87,18 +127,25 @@ internal fun serviceUrl(host: String, port: Int, tls: Boolean, path: String): St
 }
 
 /**
- * A typed address as a base URL: `http://` when it names no scheme, port
- * [DEFAULT_PORT] when plain HTTP names none, and no trailing slash, keeping
- * any base path (`https://example.com/kivo`).
+ * The base URLs a typed address may mean, best first, with no trailing
+ * slash and any base path kept (`https://example.com/kivo`). One that names
+ * its scheme means that URL alone, port [DEFAULT_PORT] when plain HTTP
+ * names none. One that doesn't is tried over HTTPS first, as behind a
+ * proxy: on its port when it names one, else on HTTPS's own, then over
+ * plain HTTP on [DEFAULT_PORT] and on HTTP's own.
  */
-internal fun normalizeAddress(address: String): String {
+internal fun addressCandidates(address: String): List<String> {
     val trimmed = address.trim().trimEnd('/')
-    val withScheme = if ("://" in trimmed) trimmed else "http://$trimmed"
+    val named = "://" in trimmed
+    val withScheme = if (named) trimmed else "http://$trimmed"
     val scheme = withScheme.substringBefore("://")
     val rest = withScheme.substringAfter("://")
     val host = rest.substringBefore('/')
     val path = rest.removePrefix(host)
     val hasPort = if (host.startsWith("[")) "]:" in host else ':' in host
-    val port = if (!hasPort && scheme == "http") ":$DEFAULT_PORT" else ""
-    return "$scheme://$host$port$path"
+    return when {
+        named -> listOf("$scheme://$host${if (!hasPort && scheme == "http") ":$DEFAULT_PORT" else ""}$path")
+        hasPort -> listOf("https://$host$path", "http://$host$path")
+        else -> listOf("https://$host$path", "http://$host:$DEFAULT_PORT$path", "http://$host$path")
+    }
 }

@@ -400,9 +400,12 @@ func (s *planner) decideVersion(ctx context.Context, v catalog.Version, r StartR
 		}
 		src.Subtitle = &src.Subtitles[i]
 	}
+	// Assume the container's keyframe index is usable until a stream
+	// decision actually chooses to copy video. Remuxable is only consulted
+	// in decideVideo for stream copies, so it cannot affect direct play or
+	// an already-encoded decision; for those plays it stays true unchecked.
 	if src.Video != nil && base.Target == TargetStream {
-		c.keyframes = s.remuxKeyframes(ctx, c.files)
-		src.Remuxable = c.keyframes != nil
+		src.Remuxable = true
 	}
 	c.input = base
 	c.input.Source = src
@@ -410,7 +413,25 @@ func (s *planner) decideVersion(ctx context.Context, v catalog.Version, r StartR
 	if r.AudioTrack == nil && c.decision.Delivery != DeliverFile {
 		c.playableAudio(audio)
 	}
+	if c.copiesVideoStream() {
+		c.keyframes = s.remuxKeyframes(ctx, c.files)
+		if c.keyframes == nil {
+			c.input.Source.Remuxable = false
+			c.decision = Decide(c.input)
+		}
+	}
 	return c, nil
+}
+
+// copiesVideoStream reports whether the decision streams HLS with copied
+// video, which is the only path that needs container keyframes to cut
+// segments.
+func (c *choice) copiesVideoStream() bool {
+	if c.decision.Delivery != DeliverStream {
+		return false
+	}
+	v, ok := c.decision.Selected(media.Video)
+	return ok && v.Video != nil && v.Video.Codec == media.Copy
 }
 
 // playableAudio switches a play that can't play its file directly to
@@ -585,9 +606,11 @@ func (s *planner) spec(ctx context.Context, c *choice) (transcode.Spec, error) {
 		out := media.AudioOut{Track: audio.Index, Out: *audio.Audio}
 		if src := c.input.Source.Audio; src != nil {
 			out.Source, out.SourceChannels, out.Language = src.Codec, src.Channels, src.Language
+			spec.AudioTitle = cmp.Or(src.Title, src.Language)
 		}
 		spec.Audio = []media.AudioOut{out}
 	}
+	spec.MuxedAudio = c.input.Caps.Stream.MuxedAudio
 	return spec, nil
 }
 

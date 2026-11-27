@@ -100,7 +100,7 @@ final class SignInModel {
         }
     }
 
-    /// The server at the typed address: `http://` and port 8484 when it names none.
+    /// The server at the typed address: tried over HTTPS first, then plain HTTP, when it names no scheme.
     func connect() async {
         let typed = address.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !typed.isEmpty else { return }

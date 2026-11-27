@@ -12,7 +12,6 @@ import type {
   LogLine,
   MediaFile,
   PlayStarted,
-  ServerProblem,
   SubtitleTrackInfo,
   TaskRun,
   Track,
@@ -173,6 +172,7 @@ function version(
     parts: [{ fileId: `${id.slice(0, -5)}f${id.slice(-4)}`, name: `${name}.mkv`, durationMs, sizeBytes }],
     tracks: structuredClone(tracks),
     audioTrackId: audio?.id,
+    defaultAudioTrackId: audio?.id,
     workIds: [workId],
   };
 }
@@ -742,24 +742,6 @@ export function createMockApi(): MockApi {
     message,
     attributes: Object.entries(attrs).map(([key, value]) => ({ key, value })),
   });
-  const problems: ServerProblem[] = [
-    {
-      id: "scan:folderUnreachable:tv",
-      component: "scan",
-      code: "folderUnreachable",
-      message: "/mnt/user/TV can't be reached (no such file or directory). Nothing in it has been removed.",
-      severity: "warning",
-      raisedAt: ago(0),
-    },
-    {
-      id: "metadata:tmdbUnavailable",
-      component: "metadata",
-      code: "tmdbUnavailable",
-      message: "TMDb is not responding; metadata updates wait until it is back",
-      severity: "warning",
-      raisedAt: ago(1),
-    },
-  ];
   const artwork: Artwork[] = (["poster", "backdrop", "logo"] as const).flatMap((type, t) => {
     const current = dune2.images[type];
     const offered = [1, 2, 3].map((i): Artwork => {
@@ -910,6 +892,7 @@ export function createMockApi(): MockApi {
       openSubtitlesUsername: "",
       openSubtitlesPasswordSet: false,
       fileWatching: true,
+      rescanEveryMinutes: 720,
       localNetworks: [],
       accelerator: "auto",
       videoTranscodeLimit: 0,
@@ -1126,6 +1109,7 @@ export function createMockApi(): MockApi {
         id: "scan-libraries",
         section: "library",
         nightly: false,
+        everyMinutes: 720,
         lastRun: taskRun("Scanned 3 folders", { finishedAt: ago(3 / 24) }),
         nextRunAt: new Date(now + 9 * hour).toISOString(),
         progress: { step: "probe", done: 37, total: 120 },
@@ -1244,7 +1228,6 @@ export function createMockApi(): MockApi {
         stoppable: false,
       },
     ],
-    problems,
     logs: [
       logLine(1, "info", "kivo: starting", { version: "1.0.0" }),
       logLine(2, "info", "scan: finished", { root: "/mnt/user/Movies", seen: "236", took: "4.2s" }),
@@ -1354,7 +1337,6 @@ export function createMockApi(): MockApi {
     snapshot: {
       type: "snapshot",
       serverVersion: "1.0.0",
-      problemCount: problems.length,
     },
     authors: [],
     bookSeries: [],
@@ -1407,7 +1389,7 @@ export const scenarios = {
   viewer(api: MockApi) {
     api.currentUser.admin = false;
     api.users = [];
-    api.snapshot = { type: "snapshot", serverVersion: api.snapshot.serverVersion, problemCount: 0 };
+    api.snapshot = { type: "snapshot", serverVersion: api.snapshot.serverVersion };
   },
   /** The Movies library's first scan is running. Its files have been found, and it's reading them. */
   scanning(api: MockApi) {
@@ -1571,9 +1553,9 @@ export const scenarios = {
   },
   /**
    * A busy evening. Three people are watching, Movies' first scan is
-   * reading its files, and there's a run of failed sign-ins and an unmatched series
-   * in TV Shows. These come on top of the sample's problems, unmatched
-   * root work, missing file and failed tasks.
+   * reading its files, and there's an unmatched series in TV Shows. These
+   * come on top of the sample's unmatched root work, missing file and
+   * failed tasks.
    */
   busy(api: MockApi) {
     scenarios.nowPlaying(api);
@@ -1588,23 +1570,11 @@ export const scenarios = {
     api.unmatched = [...api.unmatched, { ...summaryOf(nightShift), path: "/mnt/user/TV/the.night.shift.2024" }];
     const shows = api.libraries.find((l) => l.id === mockIds.shows);
     if (shows) shows.unmatchedCount = 1;
-    const signIns: ServerProblem = {
-      id: "activity.signInsFailed",
-      component: "activity",
-      code: "signInsFailed",
-      message: "6 failed sign-ins in the last day",
-      severity: "warning",
-      raisedAt: new Date().toISOString(),
-    };
-    api.problems = [signIns, ...api.problems];
-    api.snapshot.problemCount = api.problems.length;
   },
   /** A quiet day, with one play and nothing else to report. */
   quiet(api: MockApi) {
     scenarios.nowPlaying(api);
     api.plays = api.plays.slice(0, 1);
-    api.problems = [];
-    api.snapshot.problemCount = 0;
     api.missingFiles = [];
     api.activity = [];
     api.unmatched = [];

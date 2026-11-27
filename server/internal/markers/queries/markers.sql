@@ -19,7 +19,7 @@ FROM work e
 JOIN media_version_work vw ON vw.work_id = e.id
 JOIN media_file f ON f.version_id = vw.version_id
 JOIN library_folder r ON r.id = f.folder_id
-WHERE e.parent_id = @season AND e.kind = 'episode' AND f.status = 'present' AND f.duration_ms IS NOT NULL
+WHERE e.parent_id = @season AND e.kind = 'episode' AND f.status = 'present' AND f.duration_ms > 0
 ORDER BY e.number, e.id, f.version_id, f.part;
 
 -- name: EpisodeFiles :many

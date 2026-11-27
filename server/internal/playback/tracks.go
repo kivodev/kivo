@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"github.com/mmcdole/kivo/internal/catalog"
+	"github.com/mmcdole/kivo/internal/fault"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/media"
 	"github.com/mmcdole/kivo/internal/users"
@@ -67,24 +68,132 @@ func (s *Service) remember(ctx context.Context, pl *play, p trackPrefs, ch chose
 	if p.series.IsZero() || ch.audio == nil && ch.subtitle == nil {
 		return
 	}
-	c := userstate.TrackChoice{SubtitleKind: "off"}
+	var c userstate.TrackChoice
 	if p.choice != nil {
 		c = *p.choice
 	}
+	c = choiceWith(c, pl.files[0], ch)
+	if err := s.deps.Userstate.SetTrackChoice(ctx, pl.user, p.series, c); err != nil {
+		slog.WarnContext(ctx, "playback: remember track choice", "work", pl.work, "err", err)
+	}
+}
+
+// choiceWith returns c with the tracks chosen in ch, which are file f's,
+// by language and kind. A part ch doesn't choose stays as c has it, and
+// the zero subtitle turns subtitles off.
+func choiceWith(c userstate.TrackChoice, f catalog.File, ch chosen) userstate.TrackChoice {
 	if ch.audio != nil {
-		if i := slices.IndexFunc(pl.files[0].Tracks, func(t catalog.Track) bool { return t.ID == *ch.audio }); i >= 0 {
-			c.AudioLanguage = media.BaseLanguage(pl.files[0].Tracks[i].Language)
+		if i := slices.IndexFunc(f.Tracks, func(t catalog.Track) bool { return t.ID == *ch.audio }); i >= 0 {
+			c.AudioLanguage = media.BaseLanguage(f.Tracks[i].Language)
 		}
 	}
 	if ch.subtitle != nil {
 		c.SubtitleLanguage, c.SubtitleKind = "", "off"
-		if sub, ok := subtitleTrack(pl.files[0], *ch.subtitle); ok {
+		if sub, ok := subtitleTrack(f, *ch.subtitle); ok {
 			c.SubtitleLanguage, c.SubtitleKind = media.BaseLanguage(sub.lang), sub.kind()
 		}
 	}
-	if err := s.deps.Userstate.SetTrackChoice(ctx, pl.user, p.series, c); err != nil {
-		slog.WarnContext(ctx, "playback: remember track choice", "work", pl.work, "err", err)
+	return c
+}
+
+// ErrNotRemembered means the user doesn't remember track choices, so a
+// series has no choice to set.
+var ErrNotRemembered = fault.New(fault.Conflict, "track choices aren't remembered")
+
+var errUnknownTrack = fault.New(fault.Invalid, "not a track of the work's versions")
+
+// TrackPick is the tracks a user picks on an episode's page for its
+// series. A nil track leaves that part of the series' choice as it is,
+// and the zero subtitle is off. Forget clears a part, so plays go back to
+// the user's preferences for it.
+type TrackPick struct {
+	Audio, Subtitle             *id.ID
+	ForgetAudio, ForgetSubtitle bool
+}
+
+// ChooseTracks sets the viewer's choice for the series of an episode,
+// which every episode's play then starts with. The tracks must be in one
+// of the episode's versions. It's ErrNotFound for a work that isn't an
+// episode the viewer can see, and ErrNotRemembered when the user doesn't
+// remember choices.
+func (s *Service) ChooseTracks(ctx context.Context, v users.Viewer, work id.ID, pick TrackPick) error {
+	if err := s.deps.Catalog.Visible(ctx, v, work); err != nil {
+		return err
 	}
+	u, err := s.deps.Users.User(ctx, v.User())
+	if err != nil {
+		return err
+	}
+	if !u.Playback.RememberTracks {
+		return ErrNotRemembered
+	}
+	series, c, _, err := s.deps.Userstate.SeriesChoice(ctx, u, work)
+	if err != nil {
+		return err
+	}
+	if series.IsZero() {
+		return ErrNotFound
+	}
+	files, err := s.firstParts(ctx, work)
+	if err != nil {
+		return err
+	}
+	if c, err = picked(c, files, pick); err != nil {
+		return err
+	}
+	return s.deps.Userstate.SetTrackChoice(ctx, u.ID, series, c)
+}
+
+// picked returns c with pick applied, its tracks being in one of files.
+func picked(c userstate.TrackChoice, files []catalog.File, pick TrackPick) (userstate.TrackChoice, error) {
+	if pick.ForgetAudio {
+		c.AudioLanguage = ""
+	}
+	if pick.ForgetSubtitle {
+		c.SubtitleLanguage, c.SubtitleKind = "", ""
+	}
+	if a := pick.Audio; a != nil {
+		i := slices.IndexFunc(files, func(f catalog.File) bool {
+			return slices.ContainsFunc(f.Tracks, func(t catalog.Track) bool { return t.ID == *a && media.TrackKind(t.Type) == media.Audio })
+		})
+		if i < 0 {
+			return c, fault.About(errUnknownTrack, fault.Field{Name: "/audioTrackId", Code: "invalid"})
+		}
+		c = choiceWith(c, files[i], chosen{audio: a})
+	}
+	if sub := pick.Subtitle; sub != nil {
+		var f catalog.File // off needs no file
+		if !sub.IsZero() {
+			i := slices.IndexFunc(files, func(f catalog.File) bool { _, ok := subtitleTrack(f, *sub); return ok })
+			if i < 0 {
+				return c, fault.About(errUnknownTrack, fault.Field{Name: "/subtitleTrackId", Code: "invalid"})
+			}
+			f = files[i]
+		}
+		c = choiceWith(c, f, chosen{subtitle: sub})
+	}
+	return c, nil
+}
+
+// firstParts returns the first part's file of each of a work's versions,
+// which hold the tracks its plays choose from.
+func (s *Service) firstParts(ctx context.Context, work id.ID) ([]catalog.File, error) {
+	versions, err := s.deps.Catalog.VersionsOf(ctx, work)
+	if err != nil {
+		return nil, err
+	}
+	var out []catalog.File
+	for _, ver := range versions {
+		if len(ver.Parts) == 0 {
+			continue
+		}
+		f, err := s.deps.Catalog.File(ctx, ver.Parts[0])
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, f)
+	}
+	return out, nil
 }
 
 // Tracks are the audio and subtitle tracks a play starts with. A zero
@@ -97,10 +206,15 @@ type Tracks struct {
 // choose no tracks.
 type Preferred struct {
 	Versions map[id.ID]Tracks // keyed by version
+	// Defaults is what Versions would be without the series' choice: the
+	// user's preferences and the file's own flags.
+	Defaults map[id.ID]Tracks
 	// Remembers reports whether choosing tracks for the work remembers
 	// them for its series. That's true for an episode when the user
 	// remembers choices.
 	Remembers bool
+	// Remembered reports whether the series has a choice now.
+	Remembered bool
 }
 
 // Preferred returns the tracks that the viewer's play of each of a work's
@@ -116,7 +230,9 @@ func (s *Service) Preferred(ctx context.Context, v users.Viewer, work id.ID) (Pr
 	if err != nil {
 		return Preferred{}, err
 	}
-	out := Preferred{Versions: map[id.ID]Tracks{}, Remembers: !p.series.IsZero()}
+	out := Preferred{Versions: map[id.ID]Tracks{}, Defaults: map[id.ID]Tracks{}, Remembers: !p.series.IsZero(), Remembered: p.choice != nil}
+	defaults := p
+	defaults.choice = nil
 	for _, ver := range versions {
 		if len(ver.Parts) == 0 {
 			continue
@@ -125,7 +241,7 @@ func (s *Service) Preferred(ctx context.Context, v users.Viewer, work id.ID) (Pr
 		if err != nil {
 			return Preferred{}, err
 		}
-		out.Versions[ver.ID] = preferredTracks(f, p)
+		out.Versions[ver.ID], out.Defaults[ver.ID] = preferredTracks(f, p), preferredTracks(f, defaults)
 	}
 	return out, nil
 }
@@ -254,9 +370,9 @@ func pickSubtitle(f catalog.File, audio *media.Track, p trackPrefs) id.ID {
 	full := func(s subTrack) bool { return !s.forced }
 	forced := func(s subTrack) bool { return s.forced }
 
-	if c := p.choice; c != nil {
+	if c := p.choice; c != nil && c.SubtitleKind != "" {
 		switch c.SubtitleKind {
-		case "off", "":
+		case "off":
 			return id.ID{}
 		case "forced":
 			if i := first(c.SubtitleLanguage, forced); !i.IsZero() {

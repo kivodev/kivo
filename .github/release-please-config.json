@@ -3,6 +3,7 @@
   "include-component-in-tag": false,
   "bump-minor-pre-major": true,
   "bump-patch-for-minor-pre-major": false,
+  "pull-request-title-pattern": "chore: release ${version}",
   "changelog-sections": [
     { "type": "feat", "section": "Features" },
     { "type": "fix", "section": "Bug Fixes" },
@@ -24,6 +25,7 @@
         "clients/android/app/build.gradle.kts",
         "clients/apple/project.yml",
         "clients/tizen/config.xml",
+        { "type": "json", "path": "clients/webos/appinfo.json", "jsonpath": "$.version" },
         "clients/chromecast/src/config.js",
         { "type": "json", "path": "clients/chromecast/package.json", "jsonpath": "$.version" }
       ]

@@ -109,13 +109,14 @@ struct InlineFailure: View {
     }
 }
 
-/// A detail page's skeleton, in the page's own frame: an episode's has its
-/// series' line over the title, a series' two round buttons.
+/// A detail page's skeleton, in the page's own frame: an episode's and a
+/// book's have their series' line over the title, a series' two round
+/// buttons.
 private struct DetailSkeleton: View {
     let kind: WorkKind?
 
     var body: some View {
-        DetailPage(work: nil, art: nil, eyebrow: kind == .episode ? (label: "", open: {}) : nil, details: []) {
+        DetailPage(work: nil, art: nil, eyebrow: kind == .episode || kind == .book ? (label: "", open: {}) : nil, details: []) {
             ActionRowSkeleton(roundButtons: kind == .series ? 2 : 3)
                 .actionRowInsets()
             OverviewSkeleton()

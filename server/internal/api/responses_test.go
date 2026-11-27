@@ -49,7 +49,7 @@ func (tr *transcript) do(method, path, token string, body any) map[string]any {
 var (
 	uuidPattern = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
 	timePattern = regexp.MustCompile(`\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})`)
-	tmpPattern  = regexp.MustCompile(regexp.QuoteMeta(slashed(os.TempDir())) + `/[^"/]+/\d+`)
+	tmpPattern  = regexp.MustCompile(regexp.QuoteMeta(slashed(filepath.Clean(os.TempDir()))) + `/[^"/]+/\d+`)
 	// A Windows path, in JSON or a request line, is written as the golden
 	// file has it: with / and no drive.
 	winPath    = regexp.MustCompile(`[A-Z]:\\[^"\n]*`)
@@ -99,7 +99,7 @@ func TestResponses(t *testing.T) {
 	var friend users.User
 	e.b.Write(func(ctx context.Context, tx *store.Tx) error {
 		var err error
-		friend, err = e.d.Users.CreateUser(ctx, tx, users.NewUser{Username: "friend", Grants: users.Grants{All: true}})
+		friend, err = e.createUser(ctx, tx, users.NewUser{Username: "friend", Grants: users.Grants{All: true}})
 		return err
 	})
 	friendToken := e.session(friend.ID)
@@ -164,6 +164,12 @@ func TestResponses(t *testing.T) {
 	tr.do("PATCH", works+heat+"/user-state", admin, map[string]any{"positionMs": 1000})
 	tr.do("PATCH", works+heat+"/user-state", admin, map[string]any{"positionMs": -1, "playedAt": "2026-01-02T03:04:05Z", "versionId": id.New()})
 	tr.do("PATCH", works+heat+"/user-state", nobody, map[string]any{"played": true})
+	tr.do("PATCH", works+episode+"/user-state/tracks", admin, map[string]any{"audioTrackId": "nope"})
+	tr.do("PATCH", works+episode+"/user-state/tracks", admin, map[string]any{"audioTrackId": id.New()})
+	tr.do("PATCH", works+episode+"/user-state/tracks", admin, map[string]any{"subtitleTrackId": "off"})
+	tr.do("PATCH", works+episode+"/user-state/tracks", admin, map[string]any{"subtitleTrackId": "default"})
+	tr.do("PATCH", works+heat+"/user-state/tracks", admin, map[string]any{"subtitleTrackId": "off"})
+	tr.do("PATCH", works+episode+"/user-state/tracks", nobody, map[string]any{"subtitleTrackId": "off"})
 	tr.do("GET", works+heat+"/matches?provider=audible", admin, nil)
 	tr.do("GET", works+episode+"/matches?provider=tmdb&query=tmdb-0", admin, nil)
 	tr.do("GET", works+book.String()+"/matches?provider=tmdb", admin, nil)

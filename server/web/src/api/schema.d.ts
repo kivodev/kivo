@@ -744,7 +744,7 @@ export interface paths {
          * List libraries
          * @description The libraries the user may see, in its own order.
          *     The libraries the user placed (`libraries` in
-         *     `CurrentUserUpdate`), then any others in the order they were added.
+         *     `CurrentUserUpdate`), then any others A to Z by name.
          */
         get: operations["listLibraries"];
         put?: never;
@@ -1369,6 +1369,37 @@ export interface paths {
         patch: operations["updateWorkUserState"];
         trace?: never;
     };
+    "/api/v1/works/{id}/user-state/tracks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Choose tracks for a series
+         * @description Sets the caller's audio and subtitle choice for an episode's
+         *     series, which every episode's play then starts with when its
+         *     request chooses no tracks, as choosing tracks for a play does
+         *     (`remembersTracks`). The choice is kept by language and kind, so
+         *     it applies to every version and file. A track must be one of the
+         *     episode's versions' (`400` otherwise). `default` forgets that part
+         *     of the choice, so plays go back to the caller's preferences for
+         *     it; forgetting both forgets the series' choice. A part not sent
+         *     stays as it is. A work that isn't an episode is `404`, and `409`
+         *     when the caller's `rememberTracks` is off.
+         */
+        patch: operations["updateWorkTracks"];
+        trace?: never;
+    };
     "/api/v1/works/{id}/user-state/remove-from-continue": {
         parameters: {
             query?: never;
@@ -1603,9 +1634,9 @@ export interface paths {
         /**
          * List unmatched works
          * @description Backs the Unmatched list.
-         *     Every library's unmatched items, library by library and each by
-         *     title, each summary with its `path`. A feed, read in order by
-         *     `after`.
+         *     The unmatched items of every library, or with `libraryId` of one,
+         *     library by library and each by title, each summary with its `path`.
+         *     A feed, read in order by `after`.
          */
         get: operations["listUnmatchedWorks"];
         put?: never;
@@ -1757,9 +1788,9 @@ export interface paths {
         post?: never;
         /**
          * Delete missing files
-         * @description Forgets every gone file and its versions, as `DELETE
-         *     /api/v1/files/{id}` does one. Works and watch state stay; the disk
-         *     is never touched.
+         * @description Forgets every gone file and its versions, or with `libraryId` one
+         *     library's, as `DELETE /api/v1/files/{id}` does one. Works and watch
+         *     state stay; the disk is never touched.
          */
         delete: operations["deleteMissingFiles"];
         options?: never;
@@ -2002,50 +2033,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/problems": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List problems
-         * @description Backs the Problems page. Open problems, newest first. Resolved
-         *     problems close themselves.
-         */
-        get: operations["listProblems"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/problems/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A problem's opaque ID. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /**
-         * Dismiss problem
-         * @description It stays hidden until it resolves and comes back.
-         */
-        delete: operations["dismissProblem"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/users/me/play-events": {
         parameters: {
             query?: never;
@@ -2259,9 +2246,12 @@ export interface paths {
         /**
          * Get HLS playlist or segment
          * @description Start from `PlayStarted.delivery.url`, the multivariant playlist;
-         *     playlists refer to the rest with relative URIs. A subtitle the
-         *     play streams is a subtitle rendition there, with WebVTT segments
-         *     covering the video's. A segment that isn't ready yet is waited for.
+         *     playlists refer to the rest with relative URIs. With video, the
+         *     audio is an audio rendition there, with fragmented MP4 segments of
+         *     its own covering the video's, unless the client asked for it inside
+         *     the video's segments (`StreamCapabilities.muxedAudio`). A subtitle the play streams is a
+         *     subtitle rendition there, with WebVTT segments covering the
+         *     video's. A segment that isn't ready yet is waited for.
          *     A segment whose transcode failed is `500` with code
          *     `transcodeFailed`: report it through the fallback request. Also
          *     answers `HEAD`.
@@ -2954,11 +2944,22 @@ export interface components {
             /** @description Whether the OpenSubtitles account has a password; the password itself is never sent. */
             openSubtitlesPasswordSet: boolean;
             /**
+             * @description Set while OpenSubtitles refuses the saved API key, or the saved
+             *     username or password.
+             * @enum {string}
+             */
+            openSubtitlesRefused?: "key" | "account";
+            /**
              * @description Scan a folder as soon as files in it change. Off, changes are
-             *     found by the scan of every library every 12 hours, or a scan an
-             *     admin starts.
+             *     found by the scan of every library every `rescanEveryMinutes`,
+             *     or a scan an admin starts.
              */
             fileWatching: boolean;
+            /**
+             * @description How often every library is scanned, in minutes. The scan finds
+             *     the files that file watching misses.
+             */
+            rescanEveryMinutes: number;
             /**
              * Format: double
              * @description The fraction of a work that, once played, marks it played, such as 0.9.
@@ -3025,6 +3026,7 @@ export interface components {
             /** @description The OpenSubtitles account's password; empty for none. */
             openSubtitlesPassword?: string;
             fileWatching?: boolean;
+            rescanEveryMinutes?: number;
             localNetworks?: string[];
             accelerator?: string;
             videoTranscodeLimit?: number;
@@ -3282,7 +3284,7 @@ export interface components {
             /**
              * @description The sidebar's libraries, in the order the user wants them, each
              *     pinned or not; it replaces the last order. A library left out is
-             *     pinned after the listed ones, in the order libraries were added,
+             *     pinned after the listed ones, A to Z by name,
              *     as every library is until the user sets this. Home doesn't follow
              *     it.
              */
@@ -3544,9 +3546,9 @@ export interface components {
             useLocalMetadata?: boolean;
             /** @description Default `nightly`. */
             previews?: components["schemas"]["ProcessingSchedule"];
-            /** @description Default `nightlyAndAdded`; `never` for a library of any kind but `shows`, whatever is sent. */
+            /** @description Default `nightly`; `never` for a library of any kind but `shows`, whatever is sent. */
             markers?: components["schemas"]["ProcessingSchedule"];
-            /** @description Default `nightlyAndAdded`; `never` for an `audiobooks` library, whatever is sent. */
+            /** @description Default `nightly`; `never` for an `audiobooks` library, whatever is sent. */
             subtitles?: components["schemas"]["ProcessingSchedule"];
             /** @description Default 30. */
             refreshDays?: components["schemas"]["RefreshDays"];
@@ -3936,6 +3938,12 @@ export interface components {
             /** Format: date-time */
             lastPlayedAt?: string;
         };
+        TracksUpdate: {
+            /** @description An audio track's `id`, or `default`. */
+            audioTrackId?: string;
+            /** @description A subtitle track's `id`, `off`, or `default`. */
+            subtitleTrackId?: string;
+        };
         UserStateUpdate: {
             played?: boolean;
             /** @description An offline position on the version's timeline; needs `playedAt` and `versionId`. */
@@ -4225,6 +4233,12 @@ export interface components {
              *     user's `rememberTracks` is on (`PlaybackPreferences`).
              */
             remembersTracks?: boolean;
+            /**
+             * @description With versions: whether the caller has a choice for this
+             *     work's series now (`updateWorkTracks`), which the versions'
+             *     chosen tracks follow.
+             */
+            tracksRemembered?: boolean;
             /** @description Extras, as summaries of kind `extra`. */
             extras: components["schemas"]["WorkSummary"][];
             /** @description Collections this work is in. */
@@ -4341,6 +4355,17 @@ export interface components {
              *     subtitles start off.
              */
             subtitleTrackId?: components["schemas"]["ID"];
+            /**
+             * @description The audio track a play would start with without the series'
+             *     choice (`tracksRemembered`): the caller's preferences and the
+             *     file's own flags. Absent when the version has no audio.
+             */
+            defaultAudioTrackId?: components["schemas"]["ID"];
+            /**
+             * @description The subtitle track a play would start with without the
+             *     series' choice; absent when subtitles would start off.
+             */
+            defaultSubtitleTrackId?: components["schemas"]["ID"];
             /** @description The works this version covers, in order; more than one for a multi-episode file. */
             workIds: components["schemas"]["ID"][];
             /**
@@ -4677,6 +4702,11 @@ export interface components {
             /** @description Its runs begin as the maintenance window opens; else every so often. */
             nightly: boolean;
             /**
+             * @description How long after a run's end its next begins, for a task that runs
+             *     every so often. Absent in `onDemand` and for a nightly task.
+             */
+            everyMinutes?: number;
+            /**
              * Format: date-time
              * @description When its next run begins. Absent in `onDemand`, and for a task
              *     whose work every library is set to never do, such as refreshing
@@ -4765,28 +4795,11 @@ export interface components {
             /** Format: date-time */
             failedAt: string;
         };
-        /** @description An open issue on the problems page, such as "library /mnt/tv unreachable for 2 h". */
-        ServerProblem: {
-            /** @description Opaque and stable while the problem is open. */
-            id: string;
-            /** @description The reporting part of the server, such as `scan`. */
-            component: string;
-            /** @description Stable, for translating and choosing the fix action, such as `folderUnreachable`. */
-            code: string;
-            /** @description English, written for an admin; shown when the client has no translation for `code`. */
-            message: string;
-            severity: components["schemas"]["ProblemSeverity"];
-            /** Format: date-time */
-            raisedAt: string;
-        };
         /**
          * @description How much a server problem matters.
          * @enum {string}
          */
         ProblemSeverity: "info" | "warning" | "error";
-        ServerProblemList: {
-            items: components["schemas"]["ServerProblem"][];
-        };
         /** @description One line of the server's log. */
         LogLine: {
             /** @description Opaque; later lines sort after it. Pass it as `after` for the lines since. */
@@ -4903,6 +4916,8 @@ export interface components {
         Capabilities: {
             /** @description Files it plays whole, the original or a download. Absent, it plays none. */
             file?: components["schemas"]["FileCapabilities"];
+            /** @description How it plays the HLS stream. Absent, every default applies. */
+            stream?: components["schemas"]["StreamCapabilities"];
             video: components["schemas"]["VideoEntry"][];
             audio: components["schemas"]["AudioEntry"][];
             subtitles: components["schemas"]["SubtitleEntry"][];
@@ -4919,9 +4934,22 @@ export interface components {
             trackSelection?: boolean;
         };
         /**
+         * @description How a client plays the HLS stream. Whether it streams at all is said
+         *     by its entries with `stream` delivery.
+         */
+        StreamCapabilities: {
+            /**
+             * @description It needs the audio inside the video's segments. Otherwise, with
+             *     video, the audio is a rendition of its own (`EXT-X-MEDIA`).
+             *     Default false.
+             */
+            muxedAudio?: boolean;
+        };
+        /**
          * @description How a track reaches the client: `file` inside the played file;
-         *     `stream` inside the HLS stream (fragmented MP4, and WebVTT
-         *     subtitle renditions); `external` a subtitle sent to the client as
+         *     `stream` inside the HLS stream (fragmented MP4, with the audio a
+         *     rendition apart from the video unless `StreamCapabilities.muxedAudio`
+         *     says otherwise, and WebVTT subtitle renditions); `external` a subtitle sent to the client as
          *     its own file, which the client draws. A track's source, also
          *     `external` for a subtitle file next to the video, is where it lives,
          *     not how it's delivered.
@@ -5677,7 +5705,7 @@ export interface components {
         };
         /** @description `problemRaised`: a problem as it was raised. */
         ActivityProblem: {
-            /** @description The problem's ID, as `GET /api/v1/problems` names it. */
+            /** @description The problem's component and code, such as `scan.folderUnreachable`. */
             id: string;
             code: string;
             message: string;
@@ -5706,8 +5734,6 @@ export interface components {
              */
             type: "snapshot";
             serverVersion: string;
-            /** @description Admins only. Open problems, for the dot on Admin. */
-            problemCount?: number;
         };
         /**
          * @description A hint that something changed. It carries IDs and counts only;
@@ -5748,8 +5774,6 @@ export interface components {
          *     - `playsChanged`: admins only. A play started or ended, or a
          *       heartbeat reported its position; refetch the plays and the play
          *       events.
-         *     - `problemsChanged` (`problemCount`): admins only. The open problems
-         *       changed; refetch them.
          *     - `logsChanged`: admins only. The server logged lines at Info or
          *       above; refetch the recent log.
          *     - `activityChanged`: admins only. An event was recorded; refetch
@@ -5766,14 +5790,13 @@ export interface components {
             libraryIds?: components["schemas"]["ID"][];
             playId?: components["schemas"]["ID"];
             message?: string;
-            problemCount?: number;
             workIds?: components["schemas"]["ID"][];
         };
         /**
          * @description What an event says changed. Skip kinds you don't know.
          * @enum {string}
          */
-        EventKind: "workChanged" | "libraryChanged" | "userStateChanged" | "homeChanged" | "listsChanged" | "playEnded" | "downloadsChanged" | "tasksChanged" | "playsChanged" | "problemsChanged" | "logsChanged" | "activityChanged";
+        EventKind: "workChanged" | "libraryChanged" | "userStateChanged" | "homeChanged" | "listsChanged" | "playEnded" | "downloadsChanged" | "tasksChanged" | "playsChanged" | "logsChanged" | "activityChanged";
         /** @description The client fell behind and events were dropped. Treat every live-kept query as stale and refetch; a fresh `snapshot` follows. */
         ResyncMessage: {
             /**
@@ -7892,6 +7915,37 @@ export interface operations {
             default: components["responses"]["Error"];
         };
     };
+    updateWorkTracks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TracksUpdate"];
+            };
+        };
+        responses: {
+            /** @description The episode's detail, with the tracks its plays now start with. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkDetail"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            default: components["responses"]["Error"];
+        };
+    };
     removeFromContinue: {
         parameters: {
             query?: never;
@@ -8152,6 +8206,7 @@ export interface operations {
     listUnmatchedWorks: {
         parameters: {
             query?: {
+                libraryId?: components["schemas"]["ID"];
                 /** @description The `next` cursor from the previous page. */
                 after?: components["parameters"]["After"];
                 /** @description Page size. The default and the most a page holds depend on the listing. */
@@ -8381,6 +8436,7 @@ export interface operations {
             query: {
                 /** @description The files to delete; only `gone`. */
                 status: "gone";
+                libraryId?: components["schemas"]["ID"];
             };
             header?: never;
             path?: never;
@@ -8650,54 +8706,6 @@ export interface operations {
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
-            default: components["responses"]["Error"];
-        };
-    };
-    listProblems: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Problems. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ServerProblemList"];
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            default: components["responses"]["Error"];
-        };
-    };
-    dismissProblem: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description A problem's opaque ID. */
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Dismissed. */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
             default: components["responses"]["Error"];
         };
     };

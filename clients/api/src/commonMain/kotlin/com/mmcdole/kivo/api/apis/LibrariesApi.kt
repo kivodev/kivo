@@ -164,7 +164,7 @@ open class LibrariesApi : ApiClient {
 
     /**
      * List libraries
-     * The libraries the user may see, in its own order. The libraries the user placed (&#x60;libraries&#x60; in &#x60;CurrentUserUpdate&#x60;), then any others in the order they were added. 
+     * The libraries the user may see, in its own order. The libraries the user placed (&#x60;libraries&#x60; in &#x60;CurrentUserUpdate&#x60;), then any others A to Z by name. 
      * @return LibraryList
      */
     @Suppress("UNCHECKED_CAST")

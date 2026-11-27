@@ -41,7 +41,8 @@ func (r *run) walk(ctx context.Context, dir string) error {
 		if dir == "." {
 			return err
 		}
-		return nil // it vanished since its parent was listed, and the next run will see that
+		r.unread(ctx, dir, err)
+		return nil
 	}
 	if key, ok := keyOf(info); ok {
 		if r.visits[key] {
@@ -95,6 +96,35 @@ func (r *run) mustList(dir string, mtime time.Time) bool {
 	return false
 }
 
+// unread leaves dir, which couldn't be read, to the next run. An error
+// doesn't say that the directory is gone: only a listing of its parent
+// without it does. So what's recorded at and below dir stays, and the next
+// run walks it again. A directory with no record gets one dated now, which
+// the next run lists whatever its mtime.
+func (r *run) unread(ctx context.Context, dir string, err error) {
+	gone := errors.Is(err, fs.ErrNotExist) // it vanished during the run
+	switch _, known := r.known[dir]; {
+	case known:
+		r.keep(dir)
+	case !gone:
+		r.seen[dir] = true
+		r.listed[dir] = dirState{mtime: r.now}
+	}
+	if !gone {
+		r.failed++
+		slog.WarnContext(ctx, "scan: directory unreadable; nothing under it changes", "dir", join(r.folder.Path, dir), "err", err)
+	}
+}
+
+// keep marks dir and every known directory below it as seen, so the run
+// leaves their records as they are.
+func (r *run) keep(dir string) {
+	r.seen[dir] = true
+	for _, sub := range r.kids[dir] {
+		r.keep(sub)
+	}
+}
+
 // leaveOut treats dir as absent: whatever was catalogued below it is gone.
 func (r *run) leaveOut(ctx context.Context, dir string) error {
 	under, err := r.s.deps.Catalog.FilesUnder(ctx, r.folder.ID, dir)
@@ -116,10 +146,8 @@ func (r *run) leaveOut(ctx context.Context, dir string) error {
 func (r *run) list(ctx context.Context, dir string, mtime time.Time) ([]string, error) {
 	entries, err := fs.ReadDir(r.fsys, dir)
 	if err != nil {
-		// The directory is unreadable, often because of a permissions
-		// mistake. Everything under it is left as it was, and it's tried
-		// again next run.
-		slog.WarnContext(ctx, "scan: directory unreadable; nothing under it changes", "dir", join(r.folder.Path, dir), "err", err)
+		// Often a permissions mistake, or a share that dropped out.
+		r.unread(ctx, dir, err)
 		return nil, nil
 	}
 	if ignored(entries) {
@@ -139,8 +167,14 @@ func (r *run) list(ctx context.Context, dir string, mtime time.Time) ([]string, 
 			continue
 		}
 		info, err := e.Info()
+		if errors.Is(err, fs.ErrNotExist) {
+			continue // removed since the listing
+		}
 		if err != nil {
-			continue
+			// An entry that can't be examined isn't known to be gone, so
+			// the listing can't settle anything.
+			r.unread(ctx, dir, err)
+			return nil, nil
 		}
 		if e.Type()&fs.ModeSymlink != 0 {
 			// os.Root refuses links that leave the folder, so those are

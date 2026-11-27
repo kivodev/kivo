@@ -4,6 +4,7 @@ import { deviceSettings } from "@/lib/deviceSettings";
 import { readStoredJson, writeStoredJson } from "@/lib/storage";
 import { isPackaged, isTv } from "@/tv/flag";
 import { avplay, fullHdPanel, hdrPanel } from "@/tv/tizen";
+import { webosHdrPanel } from "@/tv/webos";
 
 // The capability report: what this browser plays, from the media element's
 // canPlayType and the rules Jellyfin's web client keeps for the answers each
@@ -30,7 +31,7 @@ export type Probe = {
   packaged: boolean;
   /** Whether the TV says its panel is 1080p (the packaged app's productinfo). */
   fullHdPanel: boolean;
-  /** Whether the TV says its panel shows HDR (the packaged app's avinfo); undefined where it can't say. */
+  /** Whether the TV says its panel shows HDR (Samsung's avinfo, or an LG's display); undefined where it can't say. */
   hdrPanel: boolean | undefined;
   /** Whether the packaged app plays files with Samsung's native player, AVPlay, rather than the video element. */
   avplay: boolean;
@@ -48,19 +49,26 @@ const hlsTypes = ["application/x-mpegurl", "application/vnd.apple.mpegURL"];
 export function report(probe: Probe, p: Browser): Capabilities {
   const can = probe.canPlay;
   const tizen = p.tizen > 0;
-  const mkv = tizen || (!p.firefox && (can("video/x-matroska") || can("video/mkv") || p.edge));
+  // An LG TV's video element plays through the TV's own media pipeline,
+  // which plays more than canPlayType answers for. A 2024 LG (Chromium 132)
+  // played MKV with H.264 and HEVC to 4K HDR10, and DTS, AC-3 and E-AC-3
+  // audio, switching between a file's audio tracks, while answering no to
+  // MKV and to DTS.
+  const webos = p.webos;
+  const mkv = tizen || webos || (!p.firefox && (can("video/x-matroska") || can("video/mkv") || p.edge));
   // WebM is unreliable from Safari 17.
   const webm = !p.safari || (p.version >= 15 && p.version < 17);
   const stream = (ok: boolean): CapabilityDelivery[] => (probe.hls && ok ? ["file", "stream"] : ["file"]);
   const files = (...containers: string[]) => [...containers, ...(mkv ? ["mkv"] : [])];
 
-  // A Samsung TV whose panel says it shows no HDR is sent the SDR its
-  // transcode makes, rather than HDR it would show washed out.
+  // A Samsung or LG TV whose panel says it shows no HDR is sent the SDR its
+  // transcode makes, rather than HDR it would show washed out. An LG's
+  // browser is Chrome by its user agent.
   const hdr: VideoEntry["hdr"] =
-    (tizen && probe.hdrPanel !== false) ||
+    ((tizen || webos) && probe.hdrPanel !== false) ||
     (p.safari && (p.ios || p.mac)) ||
     (p.edge && p.version >= 121) ||
-    (p.chrome && !p.mobile) ||
+    (p.chrome && !p.mobile && !webos) ||
     (p.firefox && p.mac && p.version >= 100)
       ? ["hdr10", "hdr10plus", "hlg"]
       : undefined;
@@ -191,8 +199,11 @@ export function report(probe: Probe, p: Browser): Capabilities {
   // Samsung's TVs decode E-AC-3, Atmos's too, in 5.1 at most.
   if (ac3 && (tizen || can('audio/mp4; codecs="ec-3"'))) add("eac3", stream(ac3InHls), tizen ? { maxChannels: 6 } : {});
   if (tizen || (mp3 && (p.chrome || p.edge || (p.firefox && p.version >= 83)) && !p.android)) add("mp2", stream(true));
-  // Samsung TVs from Tizen 4 play no DTS.
-  if (p.tizen < 4 && (can(mp4("dts-")) || can(mp4("dts+")))) add("dts", ["file"]);
+  // Samsung TVs from Tizen 4 play no DTS, nor do LG TVs from 2020 to 2022
+  // (webOS 5, 6 and 22), as Jellyfin's web client keeps it. Other LG TVs
+  // play it. One whose webOS version is unknown is asked, as Jellyfin does.
+  const noDts = p.tizen >= 4 || (p.webosVersion >= 5 && p.webosVersion < 23);
+  if (!noDts && (p.webosVersion > 0 || can(mp4("dts-")) || can(mp4("dts+")))) add("dts", ["file"]);
   if (tizen) for (const codec of ["pcm_s16le", "pcm_s24le", "aac_latm"]) add(codec, ["file"]);
   // A Samsung TV's video element plays Opus files only in MKV and WebM;
   // AVPlay plays it in any container Samsung lists it in.
@@ -328,7 +339,7 @@ function browserProbe(): Probe {
     tv: isTv,
     packaged: isPackaged,
     fullHdPanel: fullHdPanel(),
-    hdrPanel: hdrPanel(),
+    hdrPanel: hdrPanel() ?? webosHdrPanel(),
     avplay: isPackaged && avplay() !== undefined,
     videoOnlyFullscreen: currentBrowser().ios,
   };

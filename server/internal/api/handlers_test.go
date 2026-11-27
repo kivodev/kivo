@@ -91,8 +91,13 @@ func TestSettings(t *testing.T) {
 	})
 	st = decode[map[string]any](t, w)
 	if w.Code != http.StatusOK || st["fileWatching"] != false || st["maintenanceStartHour"] != 23.0 || st["maintenanceEndHour"] != 4.0 ||
-		st["previewsAtOnce"] != 6.0 || st["markersAtOnce"] != 3.0 {
+		st["previewsAtOnce"] != 6.0 || st["markersAtOnce"] != 3.0 || st["rescanEveryMinutes"] != 720.0 {
 		t.Errorf("update: %d %v", w.Code, st)
+	}
+	w = e.do("PATCH", "/api/v1/settings", e.adminToken, map[string]any{"rescanEveryMinutes": 15})
+	st = decode[map[string]any](t, e.do("GET", "/api/v1/settings", e.adminToken, nil))
+	if w.Code != http.StatusOK || st["rescanEveryMinutes"] != 15.0 || st["maintenanceStartHour"] != 23.0 {
+		t.Errorf("rescan every 15 minutes: %d %v", w.Code, st)
 	}
 	// The OpenSubtitles password is written, never read back.
 	w = e.do("PATCH", "/api/v1/settings", e.adminToken, map[string]any{"openSubtitlesPassword": "hunter22"})
@@ -104,7 +109,7 @@ func TestSettings(t *testing.T) {
 		t.Errorf("password cleared: %v", st)
 	}
 	for _, bad := range []map[string]any{{"playedThreshold": 3}, {"maintenanceEndHour": 23}, {"maintenanceStartHour": 24}, {"previewsAtOnce": 0}, {"previewsAtOnce": 9},
-		{"markersAtOnce": 0}, {"markersAtOnce": 5}} {
+		{"markersAtOnce": 0}, {"markersAtOnce": 5}, {"rescanEveryMinutes": 14}, {"rescanEveryMinutes": 1441}} {
 		w = e.do("PATCH", "/api/v1/settings", e.adminToken, bad)
 		if w.Code != http.StatusBadRequest || problemCode(w) != codeInvalidRequest {
 			t.Errorf("%v: %d %s", bad, w.Code, w.Body.String())
@@ -296,7 +301,7 @@ func TestLibraries(t *testing.T) {
 	dir := t.TempDir()
 	w := e.do("POST", "/api/v1/libraries", e.adminToken, map[string]any{"name": "Shows", "kind": "shows", "folders": []string{dir}, "previews": "nightlyAndAdded"})
 	lib := decode[map[string]any](t, w)
-	if w.Code != http.StatusCreated || lib["previews"] != "nightlyAndAdded" || lib["subtitles"] != "nightlyAndAdded" || lib["useLocalMetadata"] != true {
+	if w.Code != http.StatusCreated || lib["previews"] != "nightlyAndAdded" || lib["markers"] != "nightly" || lib["subtitles"] != "nightly" || lib["useLocalMetadata"] != true {
 		t.Fatalf("create: %d %v", w.Code, lib)
 	}
 	path := "/api/v1/libraries/" + lib["id"].(string)
@@ -708,6 +713,9 @@ func TestUnmatch(t *testing.T) {
 		!strings.HasSuffix(fmt.Sprint(un.Items[0]["path"]), ".mkv") || un.Items[0]["libraryId"] != e.lib.String() {
 		t.Errorf("unmatched list %+v", un)
 	}
+	if un := decode[list](t, e.do("GET", "/api/v1/unmatched-works?libraryId="+id.New().String(), e.adminToken, nil)); len(un.Items) != 0 {
+		t.Errorf("another library's unmatched list %+v", un)
+	}
 	if r := e.do("GET", "/api/v1/unmatched-works", e.nobodyToken, nil); r.Code != http.StatusForbidden || problemCode(r) != codeForbidden {
 		t.Errorf("a viewer's unmatched list: %d %s", r.Code, r.Body.String())
 	}
@@ -863,7 +871,14 @@ func TestFiles(t *testing.T) {
 	if w := e.do("DELETE", "/api/v1/files?status=present", e.adminToken, nil); w.Code != http.StatusBadRequest {
 		t.Errorf("delete present files: %d", w.Code)
 	}
-	if w := e.do("DELETE", "/api/v1/files?status=gone", e.adminToken, nil); w.Code != http.StatusNoContent {
+	// Forget all for one library leaves the others' files.
+	if w := e.do("DELETE", "/api/v1/files?status=gone&libraryId="+id.New().String(), e.adminToken, nil); w.Code != http.StatusNoContent {
+		t.Errorf("delete another library's missing: %d %s", w.Code, w.Body.String())
+	}
+	if gone := decode[list](t, e.do("GET", "/api/v1/files?status=gone", e.adminToken, nil)); len(gone.Items) != 1 {
+		t.Errorf("after deleting another library's missing: %+v", gone)
+	}
+	if w := e.do("DELETE", "/api/v1/files?status=gone&libraryId="+e.lib.String(), e.adminToken, nil); w.Code != http.StatusNoContent {
 		t.Errorf("delete all missing: %d %s", w.Code, w.Body.String())
 	}
 	if gone := decode[list](t, e.do("GET", "/api/v1/files?status=gone", e.adminToken, nil)); len(gone.Items) != 0 {
@@ -871,25 +886,12 @@ func TestFiles(t *testing.T) {
 	}
 }
 
-func TestProblemsAndMetrics(t *testing.T) {
+// The metrics count the open problems.
+func TestMetrics(t *testing.T) {
 	e := newEnv(t, serving{})
-	since := time.Now().Add(-time.Hour)
-	e.reported.problems = []health.Problem{{Component: "scan", Code: "folderUnreachable", Message: "library /mnt/tv unreachable", RaisedAt: since, Severity: health.Error}}
-	ps := decode[list](t, e.do("GET", "/api/v1/problems", e.adminToken, nil))
-	if len(ps.Items) != 1 || ps.Items[0]["severity"] != "error" {
-		t.Fatalf("problems %+v", ps)
-	}
-	if w := e.do("DELETE", "/api/v1/problems/"+ps.Items[0]["id"].(string), e.adminToken, nil); w.Code != http.StatusNoContent {
-		t.Errorf("dismiss: %d", w.Code)
-	}
-	if ps := decode[list](t, e.do("GET", "/api/v1/problems", e.adminToken, nil)); len(ps.Items) != 0 {
-		t.Errorf("after dismissing %+v", ps)
-	}
-	if w := e.do("DELETE", "/api/v1/problems/nope", e.adminToken, nil); w.Code != http.StatusNotFound {
-		t.Errorf("dismiss unknown: %d", w.Code)
-	}
+	e.reported.problems = []health.Problem{{Component: "scan", Code: "folderUnreachable", Message: "library /mnt/tv unreachable", RaisedAt: time.Now().Add(-time.Hour), Severity: health.Error}}
 	w := e.do("GET", "/api/v1/metrics", e.adminToken, nil)
-	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `kivo_http_requests_total{route="GET /api/v1/problems",status="2xx"} 2`) {
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "kivo_problems 1\n") {
 		t.Errorf("metrics: %d %s", w.Code, w.Body.String())
 	}
 }
@@ -1108,7 +1110,7 @@ func TestSubtitleSearchIsForViewers(t *testing.T) {
 	var viewer users.User
 	e.b.Write(func(ctx context.Context, tx *store.Tx) error {
 		var err error
-		viewer, err = e.d.Users.CreateUser(ctx, tx, users.NewUser{Username: "eva", Grants: users.Grants{All: true}})
+		viewer, err = e.createUser(ctx, tx, users.NewUser{Username: "eva", Grants: users.Grants{All: true}})
 		return err
 	})
 	token := e.session(viewer.ID)

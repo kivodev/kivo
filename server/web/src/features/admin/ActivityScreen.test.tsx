@@ -104,7 +104,7 @@ describe("Activity", () => {
     ]);
   });
 
-  it("opens filtered, as Needs attention's link to failed sign-ins does", async () => {
+  it("opens filtered by its address", async () => {
     serveMockApi();
     renderApp("/admin/activity?show=plays");
     await waitFor(() => expect(rows()).toHaveLength(4));

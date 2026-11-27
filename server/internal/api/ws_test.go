@@ -56,7 +56,7 @@ func read(t *testing.T, ctx context.Context, conn *websocket.Conn) map[string]an
 func TestEventStream(t *testing.T) {
 	e := newEnv(t, serving{Version: "1.2.3"})
 	conn, ctx := e.dial(e.adminToken)
-	if m := read(t, ctx, conn); m["type"] != "snapshot" || m["serverVersion"] != "1.2.3" || m["problemCount"] == nil {
+	if m := read(t, ctx, conn); m["type"] != "snapshot" || m["serverVersion"] != "1.2.3" {
 		t.Fatalf("first frame %v", m)
 	}
 
@@ -85,15 +85,10 @@ func TestEventStream(t *testing.T) {
 		t.Fatalf("play ended %v", m)
 	}
 
-	// Admin-only hints. problemsChanged arrives at once with its count.
-	// The others arrive as their interval ends.
+	// Admin-only hints arrive as their interval ends.
 	e.d.Events.Publish(events.Event{Kind: events.TasksChanged, Scope: events.Scope{AdminOnly: true}})
 	e.d.Events.Publish(events.Event{Kind: events.PlaysChanged, Scope: events.Scope{AdminOnly: true}})
 	e.d.Events.Publish(events.Event{Kind: events.LogsChanged, Scope: events.Scope{AdminOnly: true}})
-	e.d.Events.Publish(events.Event{Kind: events.ProblemsChanged, Scope: events.Scope{AdminOnly: true}, Data: 2})
-	if m := read(t, ctx, conn); m["kind"] != "problemsChanged" || m["problemCount"] != 2.0 {
-		t.Fatalf("got %v; want problemsChanged with its count", m)
-	}
 	got := map[any]bool{}
 	for range 3 {
 		got[read(t, ctx, conn)["kind"]] = true
@@ -119,16 +114,15 @@ func TestEventStream(t *testing.T) {
 	}
 }
 
-// The snapshot carries the version to everyone. It carries the count of
-// open problems to admins only.
+// The snapshot carries the version to everyone.
 func TestSnapshotVersion(t *testing.T) {
 	e := newEnv(t, serving{Version: "999eb08"})
 	conn, ctx := e.dial(e.adminToken)
-	if m := read(t, ctx, conn); m["serverVersion"] != "999eb08" || m["problemCount"] == nil {
+	if m := read(t, ctx, conn); m["serverVersion"] != "999eb08" {
 		t.Errorf("admin snapshot %v", m)
 	}
 	conn, ctx = e.dial(e.nobodyToken)
-	if m := read(t, ctx, conn); m["serverVersion"] != "999eb08" || m["problemCount"] != nil {
+	if m := read(t, ctx, conn); m["serverVersion"] != "999eb08" {
 		t.Errorf("viewer snapshot %v", m)
 	}
 }
@@ -203,7 +197,7 @@ func TestLibraryChangedNamesWhatEachSees(t *testing.T) {
 	var friend users.User
 	e.b.Write(func(ctx context.Context, tx *store.Tx) error {
 		var err error
-		friend, err = e.d.Users.CreateUser(ctx, tx, users.NewUser{Username: "friend", Grants: users.Grants{Libraries: []id.ID{e.lib}}})
+		friend, err = e.createUser(ctx, tx, users.NewUser{Username: "friend", Grants: users.Grants{Libraries: []id.ID{e.lib}}})
 		return err
 	})
 	admin, actx := e.dial(e.adminToken)
@@ -242,14 +236,43 @@ func TestEventStreamClosesOnShutdown(t *testing.T) {
 	e := newEnv(t, serving{})
 	conn, ctx := e.dial(e.adminToken)
 	read(t, ctx, conn)
-	e.srv.Close()
+	closed := make(chan struct{})
+	go func() {
+		defer close(closed)
+		e.srv.Close()
+	}()
 	_, _, err := conn.Read(ctx)
 	if websocket.CloseStatus(err) != websocket.StatusGoingAway {
 		t.Errorf("read after Close: %v", err)
 	}
+	<-closed
 	if w := e.do("GET", "/healthz", "", nil); w.Code != http.StatusServiceUnavailable {
 		t.Errorf("healthz while stopping: %d", w.Code)
 	}
+}
+
+// A socket with events waiting when the server stops is still told the
+// server is going away, rather than dropped.
+func TestEventStreamClosesOnShutdownWithEventsWaiting(t *testing.T) {
+	e := newEnv(t, serving{})
+	conn, ctx := e.dial(e.adminToken)
+	read(t, ctx, conn)
+	for range 20 {
+		e.d.Events.Publish(events.Event{Kind: events.WorkChanged, Data: id.New()})
+	}
+	closed := make(chan struct{})
+	go func() {
+		defer close(closed)
+		e.srv.Close()
+	}()
+	var err error
+	for err == nil {
+		_, _, err = conn.Read(ctx)
+	}
+	if websocket.CloseStatus(err) != websocket.StatusGoingAway {
+		t.Errorf("read after Close: %v", err)
+	}
+	<-closed
 }
 
 func TestEventStreamNoCredentialsNoSocket(t *testing.T) {

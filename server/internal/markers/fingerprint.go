@@ -107,17 +107,33 @@ func (s *Service) settled(ctx context.Context, file id.ID, rules int64) (bool, e
 }
 
 // waiting reports whether any of a season's files is still to be read,
-// meaning it is neither fingerprinted nor failed.
+// meaning it is neither fingerprinted nor failed. It reads the season's file
+// list directly rather than loading full catalog.File records for every
+// episode.
 func (s *Service) waiting(ctx context.Context, season id.ID) (bool, error) {
-	sn, err := s.season(ctx, season)
-	if err != nil {
+	if _, err := s.q.Season(ctx, season); errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	} else if err != nil {
 		return false, err
 	}
-	for _, f := range sn.files {
-		if s.fingerprinted(f.ID, f.Generation) {
+	rows, err := s.q.SeasonFiles(ctx, season)
+	if err != nil || len(rows) == 0 {
+		return false, err
+	}
+	lib, err := s.deps.Catalog.Library(ctx, rows[0].LibraryID)
+	if err != nil || lib.Markers == catalog.Never {
+		return false, err
+	}
+	seen := make(map[id.ID]bool, len(rows))
+	for _, row := range rows {
+		if seen[row.ID] {
 			continue
 		}
-		failed, err := s.settled(ctx, f.ID, -1) // no rules version is -1, so only a failure counts
+		seen[row.ID] = true
+		if s.fingerprinted(row.ID, row.Generation) {
+			continue
+		}
+		failed, err := s.settled(ctx, row.ID, -1) // no rules version is -1, so only a failure counts
 		if err != nil || !failed {
 			return !failed, err
 		}

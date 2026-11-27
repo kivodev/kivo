@@ -29,7 +29,12 @@ export function SubtitleCanvas({ videoRef, shown }: Props) {
     if (isTv) return;
     if (!video || !layer || !kind || !url) return;
     const canvas = document.createElement("canvas");
-    canvas.className = kind === "pgs" ? "absolute inset-0 size-full object-contain" : "absolute";
+    // Just under full opacity keeps the browser compositing the canvas over
+    // the video itself. Fully opaque, a GPU path in some Chromium builds on
+    // Windows (seen in Brave) shows the canvas's transparent pixels as black
+    // after a while, hiding the video behind the subtitles.
+    const shown = "opacity-99";
+    canvas.className = kind === "pgs" ? `absolute inset-0 size-full object-contain ${shown}` : `absolute ${shown}`;
     layer.append(canvas);
     let stop: (() => void) | undefined;
     let stopped = false;

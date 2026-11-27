@@ -112,7 +112,13 @@ func TestAdvertise(t *testing.T) {
 
 	r, settings := newResponder(t, Deps{Listen: []string{":8484"}})
 	id := settings.ServerID().String()
-	instance := "Kivo." + ServiceType + ".local."
+	// Named for its ID, so no other server on the network shares its
+	// instance name.
+	name := "Kivo-" + id
+	if err := settings.Update(context.Background(), func(c *config.Settings) error { c.ServerName = name; return nil }); err != nil {
+		t.Fatal(err)
+	}
+	instance := name + "." + ServiceType + ".local."
 	ctx, stop := context.WithCancel(context.Background())
 	var wg sync.WaitGroup
 	wg.Go(func() {
@@ -132,10 +138,8 @@ func TestAdvertise(t *testing.T) {
 	// A query from a port other than 5353 is answered by unicast to it.
 	q := new(dns.Msg)
 	q.SetQuestion(ServiceType+".local.", dns.TypePTR)
-	answer := query(t, ifi, q)
-	if ptrTo(answer, instance) == nil {
-		t.Errorf("the query's answer %v", answer)
-	}
+	answer := query(t, ifi, q, func(m *dns.Msg) bool { return ptrTo(m, instance) != nil })
+	checkService(t, answer, instance, id)
 
 	stop()
 	bye := awaitResponse(t, group, func(m *dns.Msg) bool {
@@ -164,8 +168,9 @@ func awaitResponse(t *testing.T, conn *net.UDPConn, match func(*dns.Msg) bool) *
 }
 
 // query sends q to the mDNS group out of ifi, from a port of its own, and
-// returns the answer.
-func query(t *testing.T, ifi *net.Interface, q *dns.Msg) *dns.Msg {
+// returns the first answer that matches. Other responders on the network
+// may answer too.
+func query(t *testing.T, ifi *net.Interface, q *dns.Msg, match func(*dns.Msg) bool) *dns.Msg {
 	t.Helper()
 	conn, err := net.ListenUDP("udp4", &net.UDPAddr{})
 	if err != nil {
@@ -183,7 +188,7 @@ func query(t *testing.T, ifi *net.Interface, q *dns.Msg) *dns.Msg {
 		t.Fatal(err)
 	}
 	_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
-	return awaitResponse(t, conn, func(*dns.Msg) bool { return true })
+	return awaitResponse(t, conn, match)
 }
 
 func ptrTo(m *dns.Msg, instance string) *dns.PTR {

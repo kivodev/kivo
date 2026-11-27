@@ -27,7 +27,7 @@ const (
 type Runner struct {
 	db       *store.DB
 	q        *dbq.Queries
-	settings *config.Store // holds the window and the limits
+	settings *config.Store // holds the window, the limits and the intervals
 	bus      *events.Bus
 	ended    func(ctx context.Context, tx *store.Tx, e RunEnd) error // Options.Ended
 
@@ -47,10 +47,11 @@ type Options struct {
 	Ended func(ctx context.Context, tx *store.Tx, e RunEnd) error
 }
 
-// New returns a runner over db's task table. The window and the limits are
-// read from settings each time they're needed. The runner publishes
-// tasksChanged on bus at every change the Tasks pages show, and for
-// progress at most every 5 seconds. Add the tasks, then call Run.
+// New returns a runner over db's task table. The window, the limits and
+// the intervals are read from settings each time they're needed. The
+// runner publishes tasksChanged on bus at every change the Tasks pages
+// show, and for progress at most every 5 seconds. Add the tasks, then call
+// Run.
 func New(db *store.DB, settings *config.Store, bus *events.Bus, opt Options) *Runner {
 	if opt.Ended == nil {
 		opt.Ended = func(context.Context, *store.Tx, RunEnd) error { return nil }
@@ -389,21 +390,18 @@ func (r *Runner) Stop(ctx context.Context, name string, items ...id.ID) error {
 		return ErrNotStoppable
 	}
 	if len(items) > 0 {
+		drop := make(map[id.ID]bool, len(items))
 		for _, i := range items {
-			t.items.stopLocked(i)
+			drop[i] = true
 		}
+		t.items.stopManyLocked(drop)
 		r.stopStepsLocked(t, items...)
 		r.mu.Unlock()
 		r.changed()
 		return nil
 	}
 	if w := t.items; w != nil {
-		for i := range w.busy {
-			w.stopLocked(i)
-		}
-		for i := range w.queued {
-			w.stopLocked(i)
-		}
+		w.stopAllLocked()
 		r.stopStepsLocked(t)
 	}
 	ended := r.cutLocked(t)

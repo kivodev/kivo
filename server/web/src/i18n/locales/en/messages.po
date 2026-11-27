@@ -7,6 +7,10 @@ msgstr ""
 "X-Generator: @lingui/cli\n"
 "Language: en\n"
 
+#: src/features/libraries/FoldersField.tsx
+msgid "Add folder"
+msgstr "Add folder"
+
 #: src/features/admin/EditBookForm.tsx
 #: src/features/detail/BookDetail.tsx
 msgid "Publisher"
@@ -91,7 +95,6 @@ msgid "This browser"
 msgstr "This browser"
 
 #: src/features/admin/ActivityList.tsx
-#: src/features/admin/OverviewScreen.tsx
 #: src/features/admin/runNotices.ts
 msgid "{name} failed"
 msgstr "{name} failed"
@@ -274,7 +277,6 @@ msgid "Light"
 msgstr "Light"
 
 #: src/features/admin/OverviewScreen.tsx
-#: src/features/admin/ProblemsScreen.tsx
 msgid "Dismiss"
 msgstr "Dismiss"
 
@@ -328,7 +330,7 @@ msgstr "Shown on the device you're signing in."
 msgid "More"
 msgstr "More"
 
-#: src/features/admin/MissingFilesScreen.tsx
+#: src/features/admin/ManageLibrariesScreen.tsx
 msgid "Missing files"
 msgstr "Missing files"
 
@@ -411,6 +413,10 @@ msgstr "Decoding on CPU"
 msgid "Still watching?"
 msgstr "Still watching?"
 
+#: src/features/libraries/FolderPicker.tsx
+msgid "Use this folder"
+msgstr "Use this folder"
+
 #: src/features/browse/CountLine.tsx
 msgid "movies"
 msgstr "movies"
@@ -434,6 +440,10 @@ msgstr "{episodes} of {series} added to {library}"
 #: src/features/admin/ItemAdminMenu.tsx
 msgid "Show files"
 msgstr "Show files"
+
+#: src/features/libraries/LibrarySetup.tsx
+msgid "A library is a set of folders that hold one kind of media, such as your movies."
+msgstr "A library is a set of folders that hold one kind of media, such as your movies."
 
 #: src/features/admin/useAdminLabels.ts
 msgid "Extracting subtitles"
@@ -467,10 +477,6 @@ msgstr "Book {position}"
 #: src/features/admin/PlayCards.tsx
 msgid "{clock} ahead"
 msgstr "{clock} ahead"
-
-#: src/features/admin/OverviewScreen.tsx
-msgid "{failed, plural, one {{name} failed for # title} other {{name} failed for # titles}}"
-msgstr "{failed, plural, one {{name} failed for # title} other {{name} failed for # titles}}"
 
 #: src/features/admin/FixMatchDialog.tsx
 msgid "Match: {title}"
@@ -506,7 +512,6 @@ msgstr "API keys"
 msgid "New Smart List"
 msgstr "New Smart List"
 
-#: src/features/admin/OverviewScreen.tsx
 #: src/features/admin/problemActions.ts
 msgid "Review"
 msgstr "Review"
@@ -540,6 +545,10 @@ msgstr "Android TV"
 #: src/features/browse/LibraryScreen.tsx
 msgid "Items appear here as the library's folders are scanned."
 msgstr "Items appear here as the library's folders are scanned."
+
+#: src/features/admin/TasksScreen.tsx
+msgid "Finds files the folder watcher misses."
+msgstr "Finds files the folder watcher misses."
 
 #: src/features/admin/AddUserButton.tsx
 #: src/features/admin/CreateInviteButton.tsx
@@ -631,10 +640,6 @@ msgstr "Copied"
 msgid "{kind} ({codec})"
 msgstr "{kind} ({codec})"
 
-#: src/features/libraries/FolderPicker.tsx
-msgid "Add this folder"
-msgstr "Add this folder"
-
 #: src/features/admin/ApiKeysScreen.tsx
 #: src/features/detail/RenameDialog.tsx
 #: src/features/libraries/AddLibraryForm.tsx
@@ -709,10 +714,6 @@ msgstr "Scanned {ago}"
 #: src/features/auth/SignInScreen.tsx
 msgid "On a signed-in device, scan the QR code, or open Link a device and enter this code."
 msgstr "On a signed-in device, scan the QR code, or open Link a device and enter this code."
-
-#: src/features/search/SearchScreen.tsx
-msgid "View unmatched items"
-msgstr "View unmatched items"
 
 #. placeholder {0}: list.name
 #. placeholder {0}: work.title
@@ -875,6 +876,10 @@ msgstr "Add to List"
 msgid "Appearance"
 msgstr "Appearance"
 
+#: src/features/admin/LibrarySettingsScreen.tsx
+msgid "Network shares may not report changes. All libraries are also scanned every {interval}."
+msgstr "Network shares may not report changes. All libraries are also scanned every {interval}."
+
 #: src/features/admin/UserScreen.tsx
 #: src/features/user/SettingsScreen.tsx
 msgid "Account"
@@ -926,10 +931,6 @@ msgstr "Match {title}"
 #: src/features/user/Sessions.tsx
 msgid "Sign out {device}"
 msgstr "Sign out {device}"
-
-#: src/features/admin/LibrarySettingsScreen.tsx
-msgid "Network shares may not report changes. All libraries are also scanned every 12 hours."
-msgstr "Network shares may not report changes. All libraries are also scanned every 12 hours."
 
 #: src/features/detail/SeriesDetail.tsx
 #: src/features/lists/smartLabels.ts
@@ -993,10 +994,6 @@ msgstr "Sign-ins"
 msgid "Set password"
 msgstr "Set password"
 
-#: src/features/admin/ProblemsScreen.tsx
-msgid "Dismiss {message}"
-msgstr "Dismiss {message}"
-
 #: src/features/browse/useBrowseLabels.ts
 msgid "{from}s"
 msgstr "{from}s"
@@ -1017,6 +1014,10 @@ msgstr "In list"
 #: src/features/admin/FixMatchDialog.tsx
 msgid "Score {score}"
 msgstr "Score {score}"
+
+#: src/features/admin/GeneralSettingsScreen.tsx
+msgid "OpenSubtitles refused this key."
+msgstr "OpenSubtitles refused this key."
 
 #: src/features/home/HomeScreen.tsx
 msgid "Your Home is empty"
@@ -1088,7 +1089,6 @@ msgid "Match <0/> of These"
 msgstr "Match <0/> of These"
 
 #: src/features/admin/ActivityList.tsx
-#: src/features/admin/OverviewScreen.tsx
 msgid "Fix"
 msgstr "Fix"
 
@@ -1155,10 +1155,6 @@ msgstr "Delete"
 msgid "Disable"
 msgstr "Disable"
 
-#: src/features/admin/TasksScreen.tsx
-msgid "Progress"
-msgstr "Progress"
-
 #: src/features/browse/LibraryScreen.tsx
 msgid "Nothing in this library yet."
 msgstr "Nothing in this library yet."
@@ -1186,6 +1182,10 @@ msgstr "Play another version"
 #: src/features/user/SettingsScreen.tsx
 msgid "Play next episode automatically"
 msgstr "Play next episode automatically"
+
+#: src/features/admin/GeneralSettingsScreen.tsx
+msgid "OpenSubtitles refuses this key."
+msgstr "OpenSubtitles refuses this key."
 
 #: src/features/browse/FilterPanel.tsx
 msgid "Watch status"
@@ -1260,6 +1260,10 @@ msgstr "shows"
 #: src/features/admin/FixMatchDialog.tsx
 msgid "No matches. Try a different title or remove the year."
 msgstr "No matches. Try a different title or remove the year."
+
+#: src/features/admin/TasksScreen.tsx
+msgid "New files"
+msgstr "New files"
 
 #: src/components/ConfirmDialog.tsx
 #: src/components/SubmitForm.tsx
@@ -1381,10 +1385,6 @@ msgstr "Missing files are kept for 30 days. A moved or restored file keeps its w
 msgid "{playing} playing"
 msgstr "{playing} playing"
 
-#: src/features/admin/OverviewScreen.tsx
-msgid "{gone, plural, one {# missing file} other {# missing files}}"
-msgstr "{gone, plural, one {# missing file} other {# missing files}}"
-
 #: src/features/admin/useAdminLabels.ts
 msgid "Reading files"
 msgstr "Reading files"
@@ -1400,6 +1400,10 @@ msgstr "Local file"
 #: src/features/admin/ActivityScreen.tsx
 msgid "Today"
 msgstr "Today"
+
+#: src/features/libraries/FoldersField.tsx
+msgid "Add another folder"
+msgstr "Add another folder"
 
 #: src/features/user/SettingsScreen.tsx
 msgid "None"
@@ -1584,10 +1588,6 @@ msgstr "Sort"
 msgid "{failed} failed"
 msgstr "{failed} failed"
 
-#: src/features/admin/OverviewScreen.tsx
-msgid "Needs attention"
-msgstr "Needs attention"
-
 #. placeholder {0}: formatTimeOfDay(play.startedAt)
 #: src/features/admin/PlayCards.tsx
 msgid "Started {0}"
@@ -1767,6 +1767,11 @@ msgstr "Not the file's default track"
 msgid "{name} wasn't signed in"
 msgstr "{name} wasn't signed in"
 
+#: src/features/admin/MissingFilesScreen.tsx
+#: src/features/admin/UnmatchedScreen.tsx
+msgid "Libraries ›"
+msgstr "Libraries ›"
+
 #: src/features/browse/CountLine.tsx
 msgid "in-progress"
 msgstr "in-progress"
@@ -1793,6 +1798,10 @@ msgstr "Tasks"
 #: src/features/admin/NetworkSettingsScreen.tsx
 msgid "Public URL"
 msgstr "Public URL"
+
+#: src/features/admin/GeneralSettingsScreen.tsx
+msgid "OpenSubtitles refuses this username or password."
+msgstr "OpenSubtitles refuses this username or password."
 
 #. placeholder {0}: book.title
 #: src/features/player/MiniPlayer.tsx
@@ -1919,6 +1928,10 @@ msgstr "This list was made by a newer version of Kivo, so it can't be edited her
 msgid "Play {0}"
 msgstr "Play {0}"
 
+#: src/features/setup/SetupWizard.tsx
+msgid "Skip for now"
+msgstr "Skip for now"
+
 #: src/features/admin/ChooseArtworkDialog.tsx
 msgid "Current"
 msgstr "Current"
@@ -1954,7 +1967,7 @@ msgstr "Folders"
 msgid "Intro and credits markers"
 msgstr "Intro and credits markers"
 
-#: src/features/admin/UnmatchedScreen.tsx
+#: src/features/admin/ManageLibrariesScreen.tsx
 #: src/features/browse/useBrowseLabels.ts
 #: src/features/browse/WorkCard.tsx
 #: src/features/detail/EpisodeList.tsx
@@ -2144,6 +2157,10 @@ msgstr "API key"
 msgid "Set a working tmdb_key in server.toml or KIVO_TMDB_KEY, then restart the server."
 msgstr "Set a working tmdb_key in server.toml or KIVO_TMDB_KEY, then restart the server."
 
+#: src/features/libraries/LibrarySetup.tsx
+msgid "Add another library"
+msgstr "Add another library"
+
 #: src/features/admin/TranscodingScreen.tsx
 msgid "Test encode failed."
 msgstr "Test encode failed."
@@ -2329,6 +2346,10 @@ msgstr "Certification country"
 #: src/features/player/PlayerError.tsx
 msgid "Try again"
 msgstr "Try again"
+
+#: src/features/admin/intervals.ts
+msgid "{minutes, plural, one {minute} other {# minutes}}"
+msgstr "{minutes, plural, one {minute} other {# minutes}}"
 
 #: src/features/admin/TranscodingScreen.tsx
 msgid "CPU only"
@@ -2580,13 +2601,10 @@ msgstr "Connection too slow"
 msgid "Artwork type"
 msgstr "Artwork type"
 
+#: src/features/libraries/LibrarySetup.tsx
 #: src/features/user/SettingsScreen.tsx
 msgid "No libraries yet"
 msgstr "No libraries yet"
-
-#: src/features/admin/MissingFilesScreen.tsx
-msgid "Other libraries"
-msgstr "Other libraries"
 
 #: src/features/admin/ActivityList.tsx
 msgid "{user} joined from an invite"
@@ -2632,6 +2650,10 @@ msgstr "Retry all"
 msgid "{count, plural, one {# show} other {# shows}}"
 msgstr "{count, plural, one {# show} other {# shows}}"
 
+#: src/components/TrackPicker.tsx
+msgid "Default ({plays})"
+msgstr "Default ({plays})"
+
 #. placeholder {0}: open.season?.unplayedCount ?? 0
 #: src/features/detail/SeriesDetail.tsx
 msgid "Mark {0} episodes as watched?"
@@ -2640,6 +2662,10 @@ msgstr "Mark {0} episodes as watched?"
 #: src/features/lists/smartLabels.ts
 msgid "longest first"
 msgstr "longest first"
+
+#: src/features/admin/UnmatchedScreen.tsx
+msgid "Unmatched in {name}"
+msgstr "Unmatched in {name}"
 
 #: src/features/auth/LinkScreen.tsx
 msgid "Not on your home network"
@@ -2725,6 +2751,10 @@ msgstr "Intro and credits at once"
 #: src/i18n/playback.ts
 msgid "{field}: {actual}, none declared"
 msgstr "{field}: {actual}, none declared"
+
+#: src/features/admin/TasksScreen.tsx
+msgid "Rescan libraries"
+msgstr "Rescan libraries"
 
 #: src/features/admin/problemActions.ts
 msgid "Raise fs.inotify.max_user_watches on the host to watch every folder."
@@ -2930,6 +2960,10 @@ msgstr "Debug"
 msgid "Hardware acceleration"
 msgstr "Hardware acceleration"
 
+#: src/components/TrackPicker.tsx
+msgid "Default"
+msgstr "Default"
+
 #: src/app/AppShell.tsx
 #: src/features/admin/AdminLayout.tsx
 #: src/features/admin/UserScreen.tsx
@@ -2941,13 +2975,13 @@ msgstr "Watch history"
 msgid "Full screen"
 msgstr "Full screen"
 
-#: src/features/admin/ProblemsScreen.tsx
-msgid "Problems"
-msgstr "Problems"
-
 #: src/features/admin/MissingFilesScreen.tsx
 msgid "Files that reappear are treated as new. Watch state is kept. Nothing on disk is deleted."
 msgstr "Files that reappear are treated as new. Watch state is kept. Nothing on disk is deleted."
+
+#: src/features/libraries/FoldersField.tsx
+msgid "Choose where this library's files are."
+msgstr "Choose where this library's files are."
 
 #: src/features/admin/LibrarySettingsScreen.tsx
 msgid "Progress at which a title is marked played."
@@ -3042,10 +3076,6 @@ msgstr "Use address ranges such as 192.168.1.0/24, separated by commas."
 #: src/features/user/SettingsScreen.tsx
 msgid "Original language"
 msgstr "Original language"
-
-#: src/app/AppShell.tsx
-msgid "Admin, with open problems"
-msgstr "Admin, with open problems"
 
 #: src/features/admin/problemActions.ts
 msgid "Re-enter the OpenSubtitles username and password in General settings."
@@ -3148,6 +3178,10 @@ msgstr "Refresh metadata"
 #: src/features/admin/problemActions.ts
 msgid "Move the symlink targets into the library folder, or remove the symlinks."
 msgstr "Move the symlink targets into the library folder, or remove the symlinks."
+
+#: src/features/admin/MissingFilesScreen.tsx
+msgid "Forget every missing file in {name}?"
+msgstr "Forget every missing file in {name}?"
 
 #: src/features/admin/UserScreen.tsx
 msgid "Devices"
@@ -3312,6 +3346,10 @@ msgstr "Book series"
 msgid "Nothing unmatched"
 msgstr "Nothing unmatched"
 
+#: src/features/setup/SetupWizard.tsx
+msgid "No libraries yet. Add one from Home when you're ready."
+msgstr "No libraries yet. Add one from Home when you're ready."
+
 #: src/components/TranscodeDiagnostics.tsx
 msgid "Running"
 msgstr "Running"
@@ -3351,6 +3389,10 @@ msgstr "Unmute"
 msgid "{name} {0}-bit"
 msgstr "{name} {0}-bit"
 
+#: src/features/admin/MissingFilesScreen.tsx
+msgid "Missing files in {name}"
+msgstr "Missing files in {name}"
+
 #: src/features/admin/TranscodingScreen.tsx
 msgid "Pass /dev/dri, or the NVIDIA devices, to the container."
 msgstr "Pass /dev/dri, or the NVIDIA devices, to the container."
@@ -3387,10 +3429,6 @@ msgstr "Started. View progress in <0>Tasks</0>."
 #: src/components/LetterRail.tsx
 msgid "Jump to letter"
 msgstr "Jump to letter"
-
-#: src/features/libraries/LibrarySetup.tsx
-msgid "Add the folders that hold your movies and shows. You can skip this and add libraries later."
-msgstr "Add the folders that hold your movies and shows. You can skip this and add libraries later."
 
 #: src/components/deviceCode.ts
 msgid "iPhone"
@@ -3437,6 +3475,10 @@ msgstr "Interviews"
 #: src/features/admin/GeneralSettingsScreen.tsx
 msgid "Server"
 msgstr "Server"
+
+#: src/features/libraries/FolderPicker.tsx
+msgid "Open a folder first"
+msgstr "Open a folder first"
 
 #: src/features/player/StreamInfo.tsx
 msgid "Delivery"
@@ -3519,10 +3561,6 @@ msgstr "Primary"
 #: src/features/browse/BatchEditDialog.tsx
 msgid "Position in the series"
 msgstr "Position in the series"
-
-#: src/features/admin/ProblemsScreen.tsx
-msgid "No problems"
-msgstr "No problems"
 
 #: src/features/libraries/FolderPicker.tsx
 msgid "No folders inside."
@@ -3714,6 +3752,10 @@ msgstr "This device is signing in to another server. You're signed in to {server
 msgid "Clear filters"
 msgstr "Clear filters"
 
+#: src/features/admin/intervals.ts
+msgid "Every {interval}"
+msgstr "Every {interval}"
+
 #: src/features/user/SettingsScreen.tsx
 msgid "Limited to {capped} by the server."
 msgstr "Limited to {capped} by the server."
@@ -3755,6 +3797,10 @@ msgstr "Loading folders…"
 msgid "Errors"
 msgstr "Errors"
 
+#: src/features/admin/GeneralSettingsScreen.tsx
+msgid "OpenSubtitles refused this username or password."
+msgstr "OpenSubtitles refused this username or password."
+
 #: src/features/player/castProtocol.ts
 msgid "Signed out on the TV."
 msgstr "Signed out on the TV."
@@ -3790,6 +3836,10 @@ msgstr "Debug lines appear when the server's log level is debug."
 msgid "Go to Home"
 msgstr "Go to Home"
 
+#: src/features/libraries/FolderPicker.tsx
+msgid "Already added"
+msgstr "Already added"
+
 #: src/features/auth/LinkScreen.tsx
 msgid "Show server address"
 msgstr "Show server address"
@@ -3807,14 +3857,6 @@ msgstr "Trailers"
 #: src/features/player/CastButton.tsx
 msgid "Paused"
 msgstr "Paused"
-
-#: src/features/detail/BookDetail.tsx
-msgid "Book {position} of {link}"
-msgstr "Book {position} of {link}"
-
-#: src/features/admin/OverviewScreen.tsx
-msgid "Details"
-msgstr "Details"
 
 #: src/features/lists/ListsScreen.tsx
 msgid "Nothing in this list yet"
@@ -3864,6 +3906,11 @@ msgstr "Clear search"
 #: src/features/auth/SignInScreen.tsx
 msgid "Sign in with password"
 msgstr "Sign in with password"
+
+#. placeholder {0}: minutes / 60
+#: src/features/admin/intervals.ts
+msgid "{0, plural, one {hour} other {# hours}}"
+msgstr "{0, plural, one {hour} other {# hours}}"
 
 #: src/features/admin/PlayCards.tsx
 msgid "The viewer can resume from where it stopped."
@@ -3932,10 +3979,6 @@ msgstr "Connect this TV to another server."
 #: src/features/player/PlayerError.tsx
 msgid "Player"
 msgstr "Player"
-
-#: src/features/admin/OverviewScreen.tsx
-msgid "{unmatched, plural, one {# unmatched} other {# unmatched}}"
-msgstr "{unmatched, plural, one {# unmatched} other {# unmatched}}"
 
 #. placeholder {0}: row.why
 #: src/features/player/StreamInfo.tsx
@@ -4036,10 +4079,6 @@ msgstr "Manage"
 #: src/features/player/PlayerOverlays.tsx
 msgid "Skip Credits"
 msgstr "Skip Credits"
-
-#: src/features/admin/OverviewScreen.tsx
-msgid "{failed, plural, one {{name} failed for # file} other {{name} failed for # files}}"
-msgstr "{failed, plural, one {{name} failed for # file} other {{name} failed for # files}}"
 
 #: src/features/admin/PlayCards.tsx
 msgid "Source"
@@ -4357,6 +4396,7 @@ msgstr "Clear all"
 #: src/features/admin/ChooseArtworkDialog.tsx
 #: src/features/admin/ShowFilesDialog.tsx
 #: src/features/detail/Overview.tsx
+#: src/features/libraries/FolderPicker.tsx
 #: src/features/lists/SmartListDialog.tsx
 #: src/features/user/CreditsDialog.tsx
 #: src/features/user/LicensesDialog.tsx
@@ -4391,10 +4431,6 @@ msgstr "Also sets the Audible store used for book metadata."
 #: src/features/browse/useBrowseLabels.ts
 msgid "Until {to}"
 msgstr "Until {to}"
-
-#: src/features/admin/MissingFilesScreen.tsx
-msgid "Forget every missing file?"
-msgstr "Forget every missing file?"
 
 #: src/features/player/SubtitleSearch.tsx
 msgid "Exact match"

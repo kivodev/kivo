@@ -51,6 +51,8 @@ import kotlinx.serialization.encoding.*
  * @param bitrateBps 
  * @param audioTrackId The audio track the caller's play of this version starts with when the request chooses none (`PlayCreate`); absent when the version has no audio. 
  * @param subtitleTrackId The subtitle track the caller's play of this version starts with when the request chooses none (`PlayCreate`); absent when subtitles start off. 
+ * @param defaultAudioTrackId The audio track a play would start with without the series' choice (`tracksRemembered`): the caller's preferences and the file's own flags. Absent when the version has no audio. 
+ * @param defaultSubtitleTrackId The subtitle track a play would start with without the series' choice; absent when subtitles would start off. 
  * @param chapterCount Chapters on the version's timeline: each part's own, and for a part of several with none, the part itself, as a book of per-chapter files has them. A part's chapters are left out unless they are in order, don't overlap and fit in its file. 
  * @param chapters A book's chapters on the version's timeline, as a play lists them, for its page to list and start playback at; absent for other kinds. 
  * @param markers An episode's or a movie's markers on the version's timeline, as a play of it has them; absent for other kinds. 
@@ -100,6 +102,12 @@ data class Version (
 
     /* The subtitle track the caller's play of this version starts with when the request chooses none (`PlayCreate`); absent when subtitles start off.  */
     @SerialName(value = "subtitleTrackId") val subtitleTrackId: kotlin.String? = null,
+
+    /* The audio track a play would start with without the series' choice (`tracksRemembered`): the caller's preferences and the file's own flags. Absent when the version has no audio.  */
+    @SerialName(value = "defaultAudioTrackId") val defaultAudioTrackId: kotlin.String? = null,
+
+    /* The subtitle track a play would start with without the series' choice; absent when subtitles would start off.  */
+    @SerialName(value = "defaultSubtitleTrackId") val defaultSubtitleTrackId: kotlin.String? = null,
 
     /* Chapters on the version's timeline: each part's own, and for a part of several with none, the part itself, as a book of per-chapter files has them. A part's chapters are left out unless they are in order, don't overlap and fit in its file.  */
     @SerialName(value = "chapterCount") val chapterCount: kotlin.Int? = null,

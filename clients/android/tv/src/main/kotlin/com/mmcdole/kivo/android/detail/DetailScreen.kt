@@ -90,7 +90,6 @@ import com.mmcdole.kivo.android.ui.InlineFailed
 import com.mmcdole.kivo.android.ui.FocusRail
 import com.mmcdole.kivo.android.ui.FocusMemory
 import com.mmcdole.kivo.android.ui.IconButton
-import com.mmcdole.kivo.android.ui.endsAt
 import com.mmcdole.kivo.android.ui.KivoButton
 import com.mmcdole.kivo.android.ui.KivoIcon
 import com.mmcdole.kivo.android.ui.KivoIconView
@@ -319,9 +318,8 @@ private val OverviewLine = 20.dp
 private val HeroWidth = 518.dp
 private val WideWidth = 808.dp
 
-/** An episode's description: its text, and its block, which leaves room for More. */
-private val EpisodeTextWidth = 532.dp
-private val EpisodeBlockWidth = 616.dp
+/** How wide an episode's description goes. */
+private val EpisodeOverviewWidth = 616.dp
 
 /** A season's row: its pills, and its cards under its heading. */
 private val PillHeight = 31.5.dp
@@ -355,7 +353,6 @@ private fun OverviewSlot(
     text: String?,
     lines: Int = 3,
     width: Dp = HeroWidth,
-    textWidth: Dp = 470.dp,
 ) {
     Box(Modifier.heightIn(min = OverviewLine * lines)) {
         if (!text.isNullOrBlank()) {
@@ -365,7 +362,6 @@ private fun OverviewSlot(
                 Modifier.focusKey(hero.memory, HeroLevels.OVERVIEW),
                 lines = lines,
                 width = width,
-                textWidth = textWidth,
                 onClamped = { hero.overviewStops = it },
             )
         } else {
@@ -410,8 +406,6 @@ private fun MovieDetail(model: DetailViewModel, page: Page, navigator: Navigator
                     HeroLine(metaLine(head, work, display))
                     Spacer(Modifier.height(HeroGap))
                     ActionRow(model, page, choices, hero, navigator)
-                    Spacer(Modifier.height(HeroGapTight))
-                    TimeLeft(head.userState?.positionMs, head.durationMs)
                     Spacer(Modifier.height(HeroGap))
                     // Two lines of pickers' room, as the Samsung TV app's wrap, so the description holds its place.
                     Box(Modifier.heightIn(min = 66.5.dp)) {
@@ -542,19 +536,6 @@ private fun MoreButton(work: WorkSummary, hero: HeroLevels, navigator: Navigator
             onDismiss = { open = false },
         )
     }
-}
-
-/** "1 hr 34 min left · Ends at 9:42 PM" under the buttons once a work is started, else when it would end. */
-@Composable
-private fun TimeLeft(positionMs: Int?, durationMs: Int?) {
-    HeroLine(if (durationMs == null) "" else timeLeftLine(positionMs, durationMs))
-}
-
-/** The time left once a work is started and when it would end, each second as the clock moves. */
-@Composable
-private fun timeLeftLine(positionMs: Int?, durationMs: Int): String {
-    val leftMs = (durationMs - (positionMs ?: 0)).toLong()
-    return listOfNotNull(display.timeLeft(leftMs).takeIf { positionMs != null }, endsAt(leftMs)).joinToString(" · ")
 }
 
 /** The picker whose choices are open, or the subtitle search Audio & Subtitles opens. */
@@ -1008,7 +989,7 @@ private fun SeasonChip(season: WorkSummary, current: Boolean, modifier: Modifier
 /**
  * An episode: its still behind it, one screen that doesn't scroll to reach
  * its season. The series' name, leading back to the series; its title on one
- * line and "S3 · E4 · date · runtime · Ends at"; Play or Resume with the track
+ * line and "S3 · E4 · date · runtime"; Play or Resume with the track
  * pickers along its row; up to six lines of description; and its season's
  * row of cards, opening on this episode, whose neighbours are a move away.
  */
@@ -1039,7 +1020,7 @@ private fun EpisodeDetail(model: DetailViewModel, page: Page, navigator: Navigat
                         if (work != null) Pickers(work, choices, model.page, hero, chips = true)
                     })
                     Spacer(Modifier.height(HeroGap))
-                    OverviewSlot(hero, page, head.title, work?.overview, lines = 5, width = EpisodeBlockWidth, textWidth = EpisodeTextWidth)
+                    OverviewSlot(hero, page, head.title, work?.overview, lines = 5, width = EpisodeOverviewWidth)
                     Spacer(Modifier.height(HeroGap))
                     if (e != null) page.state.episodes?.let { state ->
                         val episodes = state.getOrNull()
@@ -1098,7 +1079,7 @@ private fun SeriesLink(episode: EpisodeInfo, hero: HeroLevels, navigator: Naviga
 /** How far the series' name's focus reaches past its text, which lines up with the title. */
 private val SeriesLinkPadding = 6.dp
 
-/** An episode's details, "S3 · E4 · Feb 4, 2017 · 44m · ★ 8.5 · TV-14 · Ends at 4:57 PM"; only this follows the clock. */
+/** An episode's details, "S3 · E4 · Feb 4, 2017 · 44m · ★ 8.5 · TV-14". */
 @Composable
 private fun EpisodeLine(head: WorkSummary) {
     val e = head.episode
@@ -1109,7 +1090,6 @@ private fun EpisodeLine(head: WorkSummary) {
             head.durationMs?.let { display.runtime(it.toLong()) },
             head.communityRating?.let { "★ ${formatRating(it)}" },
             head.contentRating,
-            head.durationMs?.let { timeLeftLine(head.userState?.positionMs, it) },
         ).joinToString(" · "),
     )
 }

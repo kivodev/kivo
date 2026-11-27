@@ -6,8 +6,8 @@ import SwiftUI
 /// bleed to the top edge, under the status bar and the floating back,
 /// Cast and ⋯ buttons (no Cast on a book's), darkening into the page below it, with the title, its logo
 /// where there is one, and the details line over its foot. The rest of the
-/// page is a list, so episode rows can be swiped. The art follows the
-/// scroll and stretches when pulled down; the title comes into the top bar
+/// page is a stack, not a list, so each card in a shelf keeps its own long
+/// press menu. The art follows the scroll and stretches when pulled down; the title comes into the top bar
 /// once the hero has scrolled away. Without a work, it's the page's
 /// skeleton: the art's place and the hero's lines, over [rows]' skeletons.
 /// A read that failed says why under the hero, over what's known.
@@ -40,18 +40,17 @@ struct DetailPage<Rows: View, Actions: View>: View {
                     .offset(y: -max(0, scroll))
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     .ignoresSafeArea()
-                List {
-                    hero
-                        .frame(maxWidth: .infinity, minHeight: artHeight, alignment: wide ? .bottomLeading : .bottom)
-                        .detailRow(EdgeInsets(top: 0, leading: 20, bottom: 12, trailing: 20))
-                    if let problem = load.problem {
-                        InlineFailure(title: String(localized: "Couldn't load this page."), problem: problem, retry: load.retry)
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        hero
+                            .frame(maxWidth: .infinity, minHeight: artHeight, alignment: wide ? .bottomLeading : .bottom)
+                            .detailRow(EdgeInsets(top: 0, leading: 20, bottom: 12, trailing: 20))
+                        if let problem = load.problem {
+                            InlineFailure(title: String(localized: "Couldn't load this page."), problem: problem, retry: load.retry)
+                        }
+                        rows()
                     }
-                    rows()
                 }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
-                .environment(\.defaultMinListRowHeight, 0)
                 .onScrollGeometryChange(for: CGFloat.self) { geometry in
                     geometry.contentOffset.y + geometry.contentInsets.top
                 } action: { _, offset in
@@ -178,11 +177,9 @@ struct DetailPage<Rows: View, Actions: View>: View {
 }
 
 extension View {
-    /// A detail page's list row: no separator or background, with its own insets.
+    /// A detail page's row, with its own insets.
     func detailRow(_ insets: EdgeInsets = EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20)) -> some View {
-        listRowInsets(insets)
-            .listRowSeparator(.hidden)
-            .listRowBackground(Color.clear)
+        padding(insets)
     }
 
     /// In a wide window, at most [width] wide on the leading edge; in a

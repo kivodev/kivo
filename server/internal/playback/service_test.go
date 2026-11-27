@@ -29,6 +29,7 @@ import (
 	"github.com/mmcdole/kivo/internal/catalog/catalogtest"
 	"github.com/mmcdole/kivo/internal/config"
 	"github.com/mmcdole/kivo/internal/events"
+	"github.com/mmcdole/kivo/internal/fault"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/markers"
 	"github.com/mmcdole/kivo/internal/media"
@@ -83,7 +84,7 @@ func (m *instantMedia) Transcode(ctx context.Context, req media.TranscodeRequest
 	if m.fail != nil {
 		return nil, &media.Error{Op: "transcode", Kind: m.fail}
 	}
-	o := &instantOutput{start: req.Start, step: 2 * time.Second}
+	o := &instantOutput{start: req.Start, step: 2 * time.Second, split: req.Video.Codec != "" && len(req.Audio) > 0 && !req.MuxedAudio}
 	if req.Video.Codec != media.Copy {
 		o.step, o.failAfter = req.SegmentDuration, m.failAfter
 	}
@@ -123,9 +124,16 @@ func (m *instantMedia) last() media.TranscodeRequest {
 type instantOutput struct {
 	start, step time.Duration
 	failAfter   int
+	split       bool // the audio is apart from the video, as the media package splits it
 }
 
-func (o *instantOutput) Init() ([]byte, error) { return []byte("init"), nil }
+func (o *instantOutput) Init() (media.Init, error) {
+	init := media.Init{Data: []byte("init")}
+	if o.split {
+		init.Audio = []byte("audio init")
+	}
+	return init, nil
+}
 func (o *instantOutput) Segments() iter.Seq2[media.Segment, error] {
 	return func(yield func(media.Segment, error) bool) {
 		n := 0
@@ -134,7 +142,11 @@ func (o *instantOutput) Segments() iter.Seq2[media.Segment, error] {
 				yield(media.Segment{}, &media.Error{Op: "transcode", Kind: media.ErrEncoderFailed})
 				return
 			}
-			if !yield(media.Segment{Start: t, Data: []byte("x")}, nil) {
+			seg := media.Segment{Start: t, Data: []byte("x")}
+			if o.split {
+				seg.Audio = []byte("a")
+			}
+			if !yield(seg, nil) {
 				return
 			}
 		}
@@ -447,11 +459,39 @@ func TestDirectPlayAndRemux(t *testing.T) {
 	if err != nil || len(pl.Data) == 0 || pl.Type != "application/vnd.apple.mpegurl" {
 		t.Fatalf("playlist: %v", err)
 	}
-	if _, err := f.svc.HLS(ctx, s.ID, "3.m4s"); err != nil {
-		t.Fatalf("segment: %v", err)
+	if m, err := f.svc.HLS(ctx, s.ID, "3.m4s"); err != nil || m.Type != "video/mp4" {
+		t.Fatalf("segment: %+v %v", m, err)
+	}
+	if m, err := f.svc.HLS(ctx, s.ID, "audio-3.m4s"); err != nil || m.Type != "audio/mp4" {
+		t.Fatalf("audio segment: %+v %v", m, err)
 	}
 	if _, err := f.svc.HLS(ctx, s.ID, "../etc/passwd.m3u8"); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("bad name: %v", err)
+	}
+}
+
+// A client that asks for muxed audio gets the stream without an audio
+// rendition, its audio inside the video's segments.
+func TestMuxedAudioStream(t *testing.T) {
+	f := newFixture(t, 0)
+	mkv := f.movie("Ronin", "mkv", 8_000_000)
+	caps := browser
+	caps.Stream.MuxedAudio = true
+	s, err := f.svc.Start(ctx, f.p, f.v, StartRequest{Work: mkv.Work, Caps: caps, ClientIP: lan})
+	if err != nil || s.Decision.Delivery != DeliverStream {
+		t.Fatalf("start: %+v %v", s.Decision, err)
+	}
+	if !f.media.last().MuxedAudio {
+		t.Fatal("the job splits the audio")
+	}
+	if pl, err := f.svc.HLS(ctx, s.ID, transcode.PlaylistName); err != nil || strings.Contains(string(pl.Data), "TYPE=AUDIO") {
+		t.Fatalf("playlist: %v\n%s", err, pl.Data)
+	}
+	if m, err := f.svc.HLS(ctx, s.ID, "3.m4s"); err != nil || m.Type != "video/mp4" {
+		t.Fatalf("segment: %+v %v", m, err)
+	}
+	if _, err := f.svc.HLS(ctx, s.ID, "audio-3.m4s"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("audio segment: %v", err)
 	}
 }
 
@@ -1472,7 +1512,7 @@ func TestSubtitles(t *testing.T) {
 		t.Fatalf("external subtitles %+v", s.ExternalSubtitles)
 	}
 	pl, err := f.svc.HLS(ctx, s.ID, "index.m3u8")
-	if err != nil || strings.Count(string(pl.Data), "TYPE=SUBTITLES") != 3 || strings.Count(string(pl.Data), "DEFAULT=YES") != 1 ||
+	if err != nil || strings.Count(string(pl.Data), "TYPE=SUBTITLES") != 3 || defaultSubtitles(pl.Data) != 1 ||
 		!strings.Contains(string(pl.Data), `DEFAULT=YES,AUTOSELECT=YES,FORCED=NO,STABLE-RENDITION-ID="`+fr.String()+`"`) {
 		t.Fatalf("the multivariant playlist: %v\n%s", err, pl.Data)
 	}
@@ -1644,9 +1684,21 @@ func TestTextTracksStreamInHLS(t *testing.T) {
 		t.Fatalf("external subtitles %+v", s.ExternalSubtitles)
 	}
 	if pl, err := f.svc.HLS(ctx, s.ID, transcode.PlaylistName); err != nil || strings.Count(string(pl.Data), "TYPE=SUBTITLES") != 1 ||
-		strings.Contains(string(pl.Data), "DEFAULT=YES") {
+		defaultSubtitles(pl.Data) != 0 {
 		t.Fatalf("playlist with the styled track drawn: %v\n%s", err, pl.Data)
 	}
+}
+
+// defaultSubtitles counts the subtitle renditions a multivariant playlist
+// shows from the start.
+func defaultSubtitles(pl []byte) int {
+	n := 0
+	for line := range strings.Lines(string(pl)) {
+		if strings.Contains(line, "TYPE=SUBTITLES") && strings.Contains(line, "DEFAULT=YES") {
+			n++
+		}
+	}
+	return n
 }
 
 // A play decides styled subtitles once, as it starts. Prepared ASS is
@@ -2061,6 +2113,101 @@ func TestPreferredIsWhatAPlayStartsWith(t *testing.T) {
 	}
 }
 
+func TestChoosingOnlyAudioLeavesSubtitlesToTheMode(t *testing.T) {
+	f := newFixture(t, 0)
+	series, shows := f.b.Series("Cowboy Bebop"), f.folderOf(catalog.Shows)
+	e1, e2 := f.b.Episode(shows, series, 1, 1), f.b.Episode(shows, series, 1, 2)
+	f.anime(e1.File)
+	f.anime(e2.File)
+	en, smart := "en", users.SubtitlesSmart
+	if err := f.users.EditPreferences(ctx, f.v, users.PreferencesChange{Playback: &users.PlaybackChange{SubtitleLanguage: &en, SubtitleMode: &smart}}); err != nil {
+		t.Fatal(err)
+	}
+	japanese := f.stream(e1.File, 2)
+	if _, err := f.svc.Start(ctx, f.p, f.v, StartRequest{Work: e1.Work, Caps: browser, ClientIP: lan, AudioTrack: &japanese}); err != nil {
+		t.Fatal(err)
+	}
+	// Japanese audio in smart mode shows full English subtitles.
+	if s := f.mustStart(e2.Work); audioOf(s) != f.stream(e2.File, 2) || subtitleOf(s) != f.stream(e2.File, 3) {
+		t.Fatalf("the next episode: audio %v, subtitles %v", audioOf(s), subtitleOf(s))
+	}
+}
+
+func TestChooseTracksSetsTheSeriesChoice(t *testing.T) {
+	f := newFixture(t, 0)
+	series, shows := f.b.Series("Cowboy Bebop"), f.folderOf(catalog.Shows)
+	e1, e2 := f.b.Episode(shows, series, 1, 1), f.b.Episode(shows, series, 1, 2)
+	f.anime(e1.File)
+	f.anime(e2.File)
+	choose := func(pick TrackPick) {
+		t.Helper()
+		if err := f.svc.ChooseTracks(ctx, f.v, e1.Work, pick); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// next returns the second episode's preferred and default tracks as
+	// stream indexes (-1 for none), and whether its series has a choice.
+	next := func() (audio, sub, defAudio, defSub int, remembered bool) {
+		t.Helper()
+		p, err := f.svc.Preferred(ctx, f.v, e2.Work)
+		if err != nil {
+			t.Fatal(err)
+		}
+		index := func(track id.ID) int {
+			for i := range 6 {
+				if f.stream(e2.File, i) == track {
+					return i
+				}
+			}
+			return -1
+		}
+		v, d := p.Versions[e2.Version], p.Defaults[e2.Version]
+		return index(v.Audio), index(v.Subtitle), index(d.Audio), index(d.Subtitle), p.Remembered
+	}
+	check := func(name string, audio, sub int, remembered bool) {
+		t.Helper()
+		a, s, da, ds, r := next()
+		if a != audio || s != sub || da != 1 || ds != 4 || r != remembered {
+			t.Errorf("%s: audio %d, subtitles %d, defaults %d %d, remembered %v", name, a, s, da, ds, r)
+		}
+	}
+	check("no choice", 1, 4, false)
+
+	japanese, sdh, off := f.stream(e1.File, 2), f.stream(e1.File, 5), id.ID{}
+	choose(TrackPick{Audio: &japanese})
+	check("Japanese", 2, -1, true) // forced mode has no forced Japanese track
+	choose(TrackPick{Subtitle: &sdh})
+	check("SDH", 2, 5, true)
+	choose(TrackPick{Subtitle: &off})
+	check("off", 2, -1, true)
+	choose(TrackPick{ForgetAudio: true})
+	check("audio forgotten", 1, -1, true)
+	choose(TrackPick{ForgetSubtitle: true})
+	check("both forgotten", 1, 4, false)
+
+	m := f.b.Movie(f.folder, "Akira", 1988)
+	f.anime(m.File)
+	other := f.stream(m.File, 2)
+	if err := f.svc.ChooseTracks(ctx, f.v, e1.Work, TrackPick{Audio: &other}); err == nil || !isKind(err, fault.Invalid) {
+		t.Errorf("another file's track: %v", err)
+	}
+	if err := f.svc.ChooseTracks(ctx, f.v, m.Work, TrackPick{Audio: &other}); !errors.Is(err, ErrNotFound) {
+		t.Errorf("a movie: %v", err)
+	}
+	if err := f.users.EditPreferences(ctx, f.v, users.PreferencesChange{Playback: &users.PlaybackChange{RememberTracks: new(false)}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.svc.ChooseTracks(ctx, f.v, e1.Work, TrackPick{Audio: &japanese}); !errors.Is(err, ErrNotRemembered) {
+		t.Errorf("not remembering: %v", err)
+	}
+}
+
+// isKind reports whether err's first fault is of kind k.
+func isKind(err error, k fault.Kind) bool {
+	f, ok := fault.Of(err)
+	return ok && f.Kind() == k
+}
+
 func TestAChosenTrackNamesItsVersion(t *testing.T) {
 	f := newFixture(t, 0)
 	m := f.b.Movie(f.folder, "Akira", 1988)
@@ -2191,4 +2338,127 @@ func trackID(f catalog.File, kind media.TrackKind, index int) id.ID {
 		return f.Tracks[i].ID
 	}
 	return id.ID{}
+}
+
+// countingKeys records how many times the transcoder asked for keyframes
+// and returns the configured index.
+type countingKeys struct {
+	mu       sync.Mutex
+	calls    int
+	keys     []media.Keyframe
+	complete bool
+}
+
+func (k *countingKeys) Keyframes(context.Context, string) ([]media.Keyframe, bool, error) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	k.calls++
+	return k.keys, k.complete, nil
+}
+
+func (k *countingKeys) reset(keys []media.Keyframe, complete bool) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	k.calls, k.keys, k.complete = 0, keys, complete
+}
+
+func (k *countingKeys) count() int {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	return k.calls
+}
+
+// TestKeyframesReadOnlyForVideoCopy verifies that container keyframes are
+// only read when the stream decision actually copies video, and that a
+// missing index falls back to encoding with ReasonKeyframeIndexMissing.
+func TestKeyframesReadOnlyForVideoCopy(t *testing.T) {
+	f := newFixture(t, 0)
+	keys := &countingKeys{}
+	tc, err := transcode.New(transcode.Deps{
+		Media: f.media, Keys: keys, Dir: f.tcDir, Downloads: filepath.Join(t.TempDir(), "downloads"),
+	}, transcode.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.tc = tc
+	f.svc = New(f.b.DB, f.deps(discard{}))
+	t.Cleanup(func() { f.svc.endAll(ctx) })
+
+	mp4 := f.movie("Direct", "mp4", 8_000_000)
+	mkv := f.movie("Remux", "mkv", 8_000_000)
+
+	var good []media.Keyframe
+	for at := time.Duration(0); at < 3*time.Hour; at += 7 * time.Second {
+		good = append(good, media.Keyframe{Time: at})
+	}
+
+	// 1. Direct play: 0 keyframe reads.
+	keys.reset(good, true)
+	st, err := f.svc.Start(ctx, f.p, f.v, StartRequest{Work: mp4.Work, Caps: browser, ClientIP: lan})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Decision.Delivery != DeliverFile {
+		t.Fatalf("direct play delivery = %s, want file", st.Decision.Delivery)
+	}
+	if n := keys.count(); n != 0 {
+		t.Errorf("direct play read keyframes %d times, want 0", n)
+	}
+
+	// 2. Encoded video (bitrate cap): 0 keyframe reads.
+	keys.reset(good, true)
+	st, err = f.svc.Start(ctx, f.p, f.v, StartRequest{
+		Work: mkv.Work, Caps: browser, ClientIP: lan,
+		Quality: Quality{Mode: QualityLimit, MaxBitrate: 4_000_000},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v, ok := st.Decision.Selected(media.Video); !ok || !v.Transcoded() {
+		t.Fatalf("capped play video = %+v, want transcoded", v)
+	}
+	if n := keys.count(); n != 0 {
+		t.Errorf("encoded video read keyframes %d times, want 0", n)
+	}
+
+	// 3. Copy with a good index: 1 read, and the keyframes reach the transcode spec.
+	keys.reset(good, true)
+	st, err = f.svc.Start(ctx, f.p, f.v, StartRequest{Work: mkv.Work, Caps: browser, ClientIP: lan})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v, ok := st.Decision.Selected(media.Video); !ok || st.Decision.Delivery != DeliverStream || v.Video == nil || v.Video.Codec != media.Copy {
+		t.Fatalf("remux decision = %s %+v, want stream copy", st.Decision.Delivery, v)
+	}
+	if n := keys.count(); n != 1 {
+		t.Errorf("copy with good index read keyframes %d times, want 1", n)
+	}
+	f.svc.mu.Lock()
+	pl := f.svc.plays[st.ID]
+	f.svc.mu.Unlock()
+	spec, err := f.svc.spec(ctx, &pl.choice)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(spec.Parts) != 1 || !slices.Equal(spec.Parts[0].Keyframes, good) {
+		t.Errorf("transcode spec keyframes len = %d, want %d matching good index", len(spec.Parts[0].Keyframes), len(good))
+	}
+	playlist, err := f.svc.HLS(ctx, st.ID, "main.m3u8")
+	if err != nil || !strings.Contains(string(playlist.Data), "#EXTINF:7.000,") {
+		t.Errorf("remux playlist didn't use 7s keyframe spans: err=%v\n%s", err, playlist.Data)
+	}
+
+	// 4. Copy with no index: 1 read, re-decided as an encode with ReasonKeyframeIndexMissing.
+	keys.reset(nil, false)
+	st, err = f.svc.Start(ctx, f.p, f.v, StartRequest{Work: mkv.Work, Caps: browser, ClientIP: lan})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := keys.count(); n != 1 {
+		t.Errorf("copy with no index read keyframes %d times, want 1", n)
+	}
+	v, ok := st.Decision.Selected(media.Video)
+	if !ok || st.Decision.Delivery != DeliverStream || !v.Transcoded() || v.Reason != ReasonKeyframeIndexMissing {
+		t.Fatalf("copy with no index video = %+v, want transcoded with %s", v, ReasonKeyframeIndexMissing)
+	}
 }

@@ -91,7 +91,7 @@ func FuzzSplitter(f *testing.F) {
 			err  error
 		)
 		n := allocated(func() {
-			s := NewSplitter(bytes.NewReader(data))
+			s := NewSplitter(bytes.NewReader(data), false)
 			for {
 				var seg media.Segment
 				if seg, err = s.Next(); err != nil {

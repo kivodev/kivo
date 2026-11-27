@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -24,6 +25,7 @@ const (
 // notifier is the file-event source. In production it is fsnotify.
 type notifier interface {
 	Add(path string) error
+	Remove(path string) error
 	Events() <-chan fsnotify.Event
 	Errors() <-chan error
 	Close() error
@@ -50,7 +52,7 @@ func newFSNotifier() (notifier, error) {
 //
 // Hitting inotify's watch limit, which every container of the user shares,
 // is reported, not fatal. So is an event overflow. NFS and SMB send no
-// events either, so the rescan every 12 hours is the backstop.
+// events either, so the timed rescan is the backstop.
 func (s *Scanner) Watch(ctx context.Context) error {
 	for {
 		if s.watching() {
@@ -95,9 +97,10 @@ func (s *Scanner) watch(ctx context.Context) error {
 	}
 	defer n.Close()
 
-	w := &watcher{s: s, n: n, ctx: ctx, watched: map[string]bool{}, timers: map[string]timer{}, quiet: make(chan quietDir)}
+	wctx, cancel := context.WithCancel(ctx)
+	w := &watcher{s: s, n: n, ctx: wctx, cancel: cancel, watched: map[string]bool{}, timers: map[string]timer{}, quiet: make(chan quietDir)}
 	defer w.stop()
-	w.sync(ctx)
+	w.sync(wctx)
 	resync := time.NewTicker(resyncDirs)
 	defer resync.Stop()
 	for {
@@ -109,9 +112,9 @@ func (s *Scanner) watch(ctx context.Context) error {
 		case err := <-n.Errors():
 			w.trouble(err)
 		case <-resync.C:
-			w.sync(ctx)
+			w.sync(wctx)
 		case <-s.foldersChanged:
-			w.sync(ctx)
+			w.sync(wctx)
 		case <-s.watchingChanged:
 			if !s.watching() {
 				s.clearProblem("watch")
@@ -127,6 +130,7 @@ type watcher struct {
 	s       *Scanner
 	n       notifier
 	ctx     context.Context
+	cancel  context.CancelFunc
 	folders map[string]id.ID // folder path → folder
 	watched map[string]bool
 	timers  map[string]timer // directories with events, until they go quiet
@@ -184,10 +188,28 @@ func (w *watcher) add(path string) {
 		w.full = true
 		w.s.setProblem("watch", health.Problem{
 			Component: "scan", Code: "watchLimit", Severity: health.Info, RaisedAt: time.Now(),
-			Message: "The file watch limit (fs.inotify.max_user_watches) is reached. Some folders are only checked by the 12-hour rescan.",
+			Message: "The file watch limit (fs.inotify.max_user_watches) is reached. Some folders are only checked by the timed rescan.",
 		})
 	case err == nil:
 		w.watched[path] = true
+	}
+}
+
+// drop forgets watches for path and anything beneath it once path is
+// removed or renamed, so a directory recreated at the same path gets
+// watched again.
+func (w *watcher) drop(path string) {
+	prefix := path + string(filepath.Separator)
+	var removed bool
+	for p := range w.watched {
+		if p == path || strings.HasPrefix(p, prefix) {
+			_ = w.n.Remove(p)
+			delete(w.watched, p)
+			removed = true
+		}
+	}
+	if removed {
+		w.full = false
 	}
 }
 
@@ -196,7 +218,12 @@ func (w *watcher) event(ev fsnotify.Event) {
 		return // skip hidden files and NAS bookkeeping, which scans never catalogue
 	}
 	if ev.Has(fsnotify.Create) {
-		w.add(ev.Name) // a new directory needs its own watch, and Add on a file fails harmlessly
+		if info, err := os.Lstat(ev.Name); err == nil && info.IsDir() {
+			w.add(ev.Name)
+		}
+	}
+	if ev.Has(fsnotify.Remove) || ev.Has(fsnotify.Rename) {
+		w.drop(ev.Name)
 	}
 	// Scan the directory the entry is in, or the entry itself if it is a
 	// library folder.
@@ -248,6 +275,7 @@ func (w *watcher) requestScan(q quietDir) {
 }
 
 func (w *watcher) stop() {
+	w.cancel()
 	for _, t := range w.timers {
 		t.t.Stop()
 	}

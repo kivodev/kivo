@@ -370,7 +370,13 @@ func (s *Service) commitFonts(ctx context.Context, f catalog.File, tmp string, f
 // from the font's bytes. A font whose bytes don't match the recorded hash,
 // for example because the file changed since the probe, is left out.
 func copyFonts(f catalog.File, dir string) (map[string]string, error) {
-	if !slices.ContainsFunc(f.Attachments, func(at catalog.Attachment) bool { return at.Kind == catalog.AttachmentFont }) {
+	var want []int
+	for i, at := range f.Attachments {
+		if at.Kind == catalog.AttachmentFont && validHash(at.SHA256) {
+			want = append(want, i)
+		}
+	}
+	if len(want) == 0 {
 		return nil, nil
 	}
 	src, err := os.Open(f.Path())
@@ -386,17 +392,14 @@ func copyFonts(f catalog.File, dir string) (map[string]string, error) {
 		return nil, err
 	}
 	out := map[string]string{}
-	for i, at := range f.Attachments {
-		if at.Kind != catalog.AttachmentFont || !validHash(at.SHA256) {
-			continue
-		}
+	err = container.CopyAttachments(src, st.Size(), want, func(i int, data io.Reader) error {
 		p := filepath.Join(dir, strconv.Itoa(i))
 		w, err := os.Create(p)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		h := sha256.New()
-		err = container.CopyAttachment(src, st.Size(), i, io.MultiWriter(w, h))
+		_, err = io.Copy(io.MultiWriter(w, h), data)
 		head := make([]byte, 4)
 		if err == nil {
 			if _, err = w.ReadAt(head, 0); errors.Is(err, io.EOF) {
@@ -407,13 +410,18 @@ func copyFonts(f catalog.File, dir string) (map[string]string, error) {
 			err = cerr
 		}
 		if err != nil {
-			return nil, err
+			return err
 		}
+		at := f.Attachments[i]
 		if got := hex.EncodeToString(h.Sum(nil)); got != at.SHA256 {
 			slog.Warn("subtitles: font attachment changed since the file was probed", "file", f.ID, "attachment", i)
-			continue
+			return nil
 		}
 		out[at.SHA256+fontExt(head)] = p
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return out, nil
 }

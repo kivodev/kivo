@@ -36,7 +36,18 @@ type memFS struct {
 	opens int
 	// onList, if set, runs before each listing. A crash test cancels there.
 	onList func(dir string)
+	// broken makes an operation on a path fail, as a share that drops out
+	// does. Its keys are "stat Show", "list Show" and "info Show/a.mkv".
+	broken map[string]error
 }
+
+// brokenEntry is a listed entry that can't be examined.
+type brokenEntry struct {
+	fs.DirEntry
+	err error
+}
+
+func (e brokenEntry) Info() (fs.FileInfo, error) { return nil, e.err }
 
 type node struct {
 	dir   bool
@@ -141,6 +152,9 @@ func (m *memFS) Open(name string) (fs.File, error) {
 func (m *memFS) Stat(name string) (fs.FileInfo, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if err := m.broken["stat "+name]; err != nil {
+		return nil, &fs.PathError{Op: "stat", Path: name, Err: err}
+	}
 	n, ok := m.nodes[name]
 	if !ok {
 		return nil, &fs.PathError{Op: "stat", Path: name, Err: fs.ErrNotExist}
@@ -155,12 +169,19 @@ func (m *memFS) ReadDir(name string) ([]fs.DirEntry, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.lists++
+	if err := m.broken["list "+name]; err != nil {
+		return nil, &fs.PathError{Op: "readdir", Path: name, Err: err}
+	}
 	if n, ok := m.nodes[name]; !ok || !n.dir {
 		return nil, &fs.PathError{Op: "readdir", Path: name, Err: fs.ErrNotExist}
 	}
 	var out []fs.DirEntry
 	for p := range m.kids[name] {
-		out = append(out, fs.FileInfoToDirEntry(info{path.Base(p), m.nodes[p]}))
+		e := fs.FileInfoToDirEntry(info{path.Base(p), m.nodes[p]})
+		if err := m.broken["info "+p]; err != nil {
+			e = brokenEntry{e, err}
+		}
+		out = append(out, e)
 	}
 	slices.SortFunc(out, func(a, b fs.DirEntry) int { return strings.Compare(a.Name(), b.Name()) })
 	return out, nil

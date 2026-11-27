@@ -22,9 +22,15 @@ const shared = fileURLToPath(new URL("../../shared", import.meta.url));
 const tv = process.env.VITE_KIVO_TV === "1";
 
 // The packaged TV app is the TV build with VITE_KIVO_PACKAGED=1
-// as well, written to dist-packaged for clients/tizen/package.sh. It sits
-// beside dist rather than in it, because the server embeds all of dist.
+// as well, written to dist-packaged for clients/tizen/package.sh and
+// clients/webos/package.sh. It sits beside dist rather than in it, because
+// the server embeds all of dist.
 const packaged = process.env.VITE_KIVO_PACKAGED === "1";
+
+// The Samsung package's build is the packaged app with KIVO_TIZEN=1 as well,
+// which adds Samsung's webapis script to its page (packagedPage below). The
+// LG package's build leaves it out.
+const tizen = process.env.KIVO_TIZEN === "1";
 
 // The packaged app's version is its package's, from clients/tizen/config.xml,
 // which Settings › About shows beside the server's (src/tv/versions.ts).
@@ -105,9 +111,9 @@ function replaceOnce(html: string, from: string | RegExp, to: string, plugin = "
 // and no web app manifest or home-screen icons, which only an installed web
 // page uses. Samsung's
 // webapis (the panel's resolution, src/tv/tizen.ts) exist only on a page that
-// loads its script, which the TV resolves to a file of its own; the tag is
-// added after the build so the bundler leaves its path alone, and ahead of
-// the app's script so webapis is there when the app starts.
+// loads its script, which the TV resolves to a file of its own; the Samsung
+// build's tag is added after the build so the bundler leaves its path alone,
+// and ahead of the app's script so webapis is there when the app starts.
 function packagedPage(): Plugin {
   return {
     name: "kivo-packaged-page",
@@ -123,6 +129,7 @@ function packagedPage(): Plugin {
           '<meta charset="UTF-8" />',
           `<meta charset="UTF-8" />\n    <meta http-equiv="Content-Security-Policy" content="${packagedPolicy}" />`,
         );
+        if (!tizen) return page;
         return {
           html: page,
           tags: [{ tag: "script", attrs: { src: "$WEBAPIS/webapis/webapis.js" }, injectTo: "head" }],

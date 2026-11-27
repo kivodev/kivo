@@ -344,6 +344,7 @@ GET /api/v1/works/<id1>
   "remembersTracks": false,
   "sortTitle": "Heatwave Seeded",
   "studios": [],
+  "tracksRemembered": false,
   "versions": [
     {
       "audioTrackId": "<id14>",
@@ -351,6 +352,7 @@ GET /api/v1/works/<id1>
       "bitrateBps": 8000000,
       "chapterCount": 3,
       "container": "mov,mp4,m4a,3gp,3g2,mj2",
+      "defaultAudioTrackId": "<id14>",
       "durationMs": 7200000,
       "id": "<id15>",
       "libraryId": "<id2>",
@@ -477,6 +479,7 @@ PATCH /api/v1/works/<id1>
   "remembersTracks": false,
   "sortTitle": "Heat",
   "studios": [],
+  "tracksRemembered": false,
   "versions": [
     {
       "audioTrackId": "<id14>",
@@ -484,6 +487,7 @@ PATCH /api/v1/works/<id1>
       "bitrateBps": 8000000,
       "chapterCount": 3,
       "container": "mov,mp4,m4a,3gp,3g2,mj2",
+      "defaultAudioTrackId": "<id14>",
       "durationMs": 7200000,
       "id": "<id15>",
       "libraryId": "<id2>",
@@ -575,6 +579,7 @@ PATCH /api/v1/works/<id1>
   "remembersTracks": false,
   "sortTitle": "Heat",
   "studios": [],
+  "tracksRemembered": false,
   "versions": [
     {
       "audioTrackId": "<id14>",
@@ -582,6 +587,7 @@ PATCH /api/v1/works/<id1>
       "bitrateBps": 8000000,
       "chapterCount": 3,
       "container": "mov,mp4,m4a,3gp,3g2,mj2",
+      "defaultAudioTrackId": "<id14>",
       "durationMs": 7200000,
       "id": "<id15>",
       "libraryId": "<id2>",
@@ -690,6 +696,7 @@ PATCH /api/v1/works/<id1>
   "remembersTracks": false,
   "sortTitle": "Heat",
   "studios": [],
+  "tracksRemembered": false,
   "versions": [
     {
       "audioTrackId": "<id14>",
@@ -697,6 +704,7 @@ PATCH /api/v1/works/<id1>
       "bitrateBps": 8000000,
       "chapterCount": 3,
       "container": "mov,mp4,m4a,3gp,3g2,mj2",
+      "defaultAudioTrackId": "<id14>",
       "durationMs": 7200000,
       "id": "<id15>",
       "libraryId": "<id2>",
@@ -793,6 +801,7 @@ PATCH /api/v1/works/<id1>
   "studios": [
     "Warner"
   ],
+  "tracksRemembered": false,
   "versions": [
     {
       "audioTrackId": "<id14>",
@@ -800,6 +809,7 @@ PATCH /api/v1/works/<id1>
       "bitrateBps": 8000000,
       "chapterCount": 3,
       "container": "mov,mp4,m4a,3gp,3g2,mj2",
+      "defaultAudioTrackId": "<id14>",
       "durationMs": 7200000,
       "id": "<id15>",
       "libraryId": "<id2>",
@@ -1016,6 +1026,7 @@ PATCH /api/v1/works/<id19>
   "remembersTracks": true,
   "sortTitle": "Episode 1",
   "studios": [],
+  "tracksRemembered": false,
   "versions": [
     {
       "available": true,
@@ -1119,6 +1130,7 @@ PATCH /api/v1/works/<id5>
   "studios": [
     "Orbit"
   ],
+  "tracksRemembered": false,
   "versions": [
     {
       "available": true,
@@ -1218,6 +1230,7 @@ PATCH /api/v1/works/<id5>
   "remembersTracks": false,
   "sortTitle": "Leviathan Wakes",
   "studios": [],
+  "tracksRemembered": false,
   "versions": [
     {
       "available": true,
@@ -1353,6 +1366,188 @@ PATCH /api/v1/works/<id1>/user-state
 
 
 PATCH /api/v1/works/<id1>/user-state
+404
+{
+  "code": "notFound",
+  "detail": "not found",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+PATCH /api/v1/works/<id19>/user-state/tracks
+400
+{
+  "code": "invalidRequest",
+  "detail": "audioTrackId: a track ID or default",
+  "errors": [
+    {
+      "code": "invalid",
+      "field": "/audioTrackId"
+    }
+  ],
+  "requestId": "<request>",
+  "status": 400,
+  "title": "Bad Request",
+  "type": "about:blank"
+}
+
+
+PATCH /api/v1/works/<id19>/user-state/tracks
+400
+{
+  "code": "invalidRequest",
+  "detail": "not a track of the work's versions",
+  "errors": [
+    {
+      "code": "invalid",
+      "field": "/audioTrackId"
+    }
+  ],
+  "requestId": "<request>",
+  "status": 400,
+  "title": "Bad Request",
+  "type": "about:blank"
+}
+
+
+PATCH /api/v1/works/<id19>/user-state/tracks
+200
+{
+  "addedAt": "<time>",
+  "available": true,
+  "episode": {
+    "airDate": "2001-02-03",
+    "number": 1,
+    "seasonId": "<id9>",
+    "seasonNumber": 1,
+    "seriesId": "<id8>",
+    "seriesTitle": "Seeded Series"
+  },
+  "id": "<id19>",
+  "images": {},
+  "kind": "episode",
+  "libraryId": "<id10>",
+  "matchState": "matched",
+  "title": "Episode 1",
+  "userState": {
+    "played": false
+  },
+  "collections": [],
+  "credits": [],
+  "externalIds": [],
+  "extras": [],
+  "genres": [],
+  "listIds": [],
+  "lockedFields": [
+    "episode.airDate"
+  ],
+  "remembersTracks": true,
+  "sortTitle": "Episode 1",
+  "studios": [],
+  "tracksRemembered": true,
+  "versions": [
+    {
+      "available": true,
+      "durationMs": 0,
+      "id": "<id20>",
+      "libraryId": "<id10>",
+      "markers": [],
+      "name": "Audio",
+      "parts": [
+        {
+          "durationMs": 0,
+          "fileId": "<id21>",
+          "name": "S01E01 3.mkv",
+          "sizeBytes": 1073741824
+        }
+      ],
+      "sizeBytes": 1073741824,
+      "tracks": [],
+      "workIds": [
+        "<id19>"
+      ]
+    }
+  ]
+}
+
+
+PATCH /api/v1/works/<id19>/user-state/tracks
+200
+{
+  "addedAt": "<time>",
+  "available": true,
+  "episode": {
+    "airDate": "2001-02-03",
+    "number": 1,
+    "seasonId": "<id9>",
+    "seasonNumber": 1,
+    "seriesId": "<id8>",
+    "seriesTitle": "Seeded Series"
+  },
+  "id": "<id19>",
+  "images": {},
+  "kind": "episode",
+  "libraryId": "<id10>",
+  "matchState": "matched",
+  "title": "Episode 1",
+  "userState": {
+    "played": false
+  },
+  "collections": [],
+  "credits": [],
+  "externalIds": [],
+  "extras": [],
+  "genres": [],
+  "listIds": [],
+  "lockedFields": [
+    "episode.airDate"
+  ],
+  "remembersTracks": true,
+  "sortTitle": "Episode 1",
+  "studios": [],
+  "tracksRemembered": false,
+  "versions": [
+    {
+      "available": true,
+      "durationMs": 0,
+      "id": "<id20>",
+      "libraryId": "<id10>",
+      "markers": [],
+      "name": "Audio",
+      "parts": [
+        {
+          "durationMs": 0,
+          "fileId": "<id21>",
+          "name": "S01E01 3.mkv",
+          "sizeBytes": 1073741824
+        }
+      ],
+      "sizeBytes": 1073741824,
+      "tracks": [],
+      "workIds": [
+        "<id19>"
+      ]
+    }
+  ]
+}
+
+
+PATCH /api/v1/works/<id1>/user-state/tracks
+404
+{
+  "code": "notFound",
+  "detail": "not found",
+  "requestId": "<request>",
+  "status": 404,
+  "title": "Not Found",
+  "type": "about:blank"
+}
+
+
+PATCH /api/v1/works/<id19>/user-state/tracks
 404
 {
   "code": "notFound",
@@ -1561,6 +1756,7 @@ POST /api/v1/works/<id5>/match
   "remembersTracks": false,
   "sortTitle": "Leviathan Wakes",
   "studios": [],
+  "tracksRemembered": false,
   "versions": [
     {
       "available": true,
@@ -1801,54 +1997,6 @@ GET /api/v1/libraries
       "folders": [
         {
           "id": "<id32>",
-          "path": "<tmp>",
-          "reachable": true
-        }
-      ],
-      "id": "<id2>",
-      "kind": "movies",
-      "markers": "never",
-      "name": "Seeded Films",
-      "pinned": true,
-      "previews": "nightly",
-      "refreshDays": 0,
-      "scan": {
-        "libraryId": "<id2>",
-        "state": "idle"
-      },
-      "subtitles": "nightlyAndAdded",
-      "unmatchedCount": 0,
-      "useLocalMetadata": false,
-      "workCount": 1
-    },
-    {
-      "folders": [
-        {
-          "id": "<id33>",
-          "path": "/media/shows2",
-          "reachable": true
-        }
-      ],
-      "id": "<id10>",
-      "kind": "shows",
-      "markers": "nightlyAndAdded",
-      "name": "shows 2",
-      "pinned": true,
-      "previews": "nightly",
-      "refreshDays": 0,
-      "scan": {
-        "libraryId": "<id10>",
-        "state": "idle"
-      },
-      "subtitles": "nightlyAndAdded",
-      "unmatchedCount": 0,
-      "useLocalMetadata": false,
-      "workCount": 1
-    },
-    {
-      "folders": [
-        {
-          "id": "<id34>",
           "path": "/media/audiobooks4",
           "reachable": true
         }
@@ -1868,6 +2016,54 @@ GET /api/v1/libraries
       "unmatchedCount": 0,
       "useLocalMetadata": false,
       "workCount": 1
+    },
+    {
+      "folders": [
+        {
+          "id": "<id33>",
+          "path": "<tmp>",
+          "reachable": true
+        }
+      ],
+      "id": "<id2>",
+      "kind": "movies",
+      "markers": "never",
+      "name": "Seeded Films",
+      "pinned": true,
+      "previews": "nightly",
+      "refreshDays": 0,
+      "scan": {
+        "libraryId": "<id2>",
+        "state": "idle"
+      },
+      "subtitles": "nightly",
+      "unmatchedCount": 0,
+      "useLocalMetadata": false,
+      "workCount": 1
+    },
+    {
+      "folders": [
+        {
+          "id": "<id34>",
+          "path": "/media/shows2",
+          "reachable": true
+        }
+      ],
+      "id": "<id10>",
+      "kind": "shows",
+      "markers": "nightly",
+      "name": "shows 2",
+      "pinned": true,
+      "previews": "nightly",
+      "refreshDays": 0,
+      "scan": {
+        "libraryId": "<id10>",
+        "state": "idle"
+      },
+      "subtitles": "nightly",
+      "unmatchedCount": 0,
+      "useLocalMetadata": false,
+      "workCount": 1
     }
   ]
 }
@@ -1877,6 +2073,13 @@ GET /api/v1/libraries
 200
 {
   "items": [
+    {
+      "id": "<id6>",
+      "kind": "audiobooks",
+      "name": "audiobooks 4",
+      "pinned": true,
+      "workCount": 1
+    },
     {
       "id": "<id2>",
       "kind": "movies",
@@ -1888,13 +2091,6 @@ GET /api/v1/libraries
       "id": "<id10>",
       "kind": "shows",
       "name": "shows 2",
-      "pinned": true,
-      "workCount": 1
-    },
-    {
-      "id": "<id6>",
-      "kind": "audiobooks",
-      "name": "audiobooks 4",
       "pinned": true,
       "workCount": 1
     }
@@ -1917,54 +2113,6 @@ GET /api/v1/libraries?limit=1&after=bogus
       "folders": [
         {
           "id": "<id32>",
-          "path": "<tmp>",
-          "reachable": true
-        }
-      ],
-      "id": "<id2>",
-      "kind": "movies",
-      "markers": "never",
-      "name": "Seeded Films",
-      "pinned": true,
-      "previews": "nightly",
-      "refreshDays": 0,
-      "scan": {
-        "libraryId": "<id2>",
-        "state": "idle"
-      },
-      "subtitles": "nightlyAndAdded",
-      "unmatchedCount": 0,
-      "useLocalMetadata": false,
-      "workCount": 1
-    },
-    {
-      "folders": [
-        {
-          "id": "<id33>",
-          "path": "/media/shows2",
-          "reachable": true
-        }
-      ],
-      "id": "<id10>",
-      "kind": "shows",
-      "markers": "nightlyAndAdded",
-      "name": "shows 2",
-      "pinned": true,
-      "previews": "nightly",
-      "refreshDays": 0,
-      "scan": {
-        "libraryId": "<id10>",
-        "state": "idle"
-      },
-      "subtitles": "nightlyAndAdded",
-      "unmatchedCount": 0,
-      "useLocalMetadata": false,
-      "workCount": 1
-    },
-    {
-      "folders": [
-        {
-          "id": "<id34>",
           "path": "/media/audiobooks4",
           "reachable": true
         }
@@ -1984,6 +2132,54 @@ GET /api/v1/libraries?limit=1&after=bogus
       "unmatchedCount": 0,
       "useLocalMetadata": false,
       "workCount": 1
+    },
+    {
+      "folders": [
+        {
+          "id": "<id33>",
+          "path": "<tmp>",
+          "reachable": true
+        }
+      ],
+      "id": "<id2>",
+      "kind": "movies",
+      "markers": "never",
+      "name": "Seeded Films",
+      "pinned": true,
+      "previews": "nightly",
+      "refreshDays": 0,
+      "scan": {
+        "libraryId": "<id2>",
+        "state": "idle"
+      },
+      "subtitles": "nightly",
+      "unmatchedCount": 0,
+      "useLocalMetadata": false,
+      "workCount": 1
+    },
+    {
+      "folders": [
+        {
+          "id": "<id34>",
+          "path": "/media/shows2",
+          "reachable": true
+        }
+      ],
+      "id": "<id10>",
+      "kind": "shows",
+      "markers": "nightly",
+      "name": "shows 2",
+      "pinned": true,
+      "previews": "nightly",
+      "refreshDays": 0,
+      "scan": {
+        "libraryId": "<id10>",
+        "state": "idle"
+      },
+      "subtitles": "nightly",
+      "unmatchedCount": 0,
+      "useLocalMetadata": false,
+      "workCount": 1
     }
   ]
 }
@@ -1994,7 +2190,7 @@ GET /api/v1/libraries/<id2>
 {
   "folders": [
     {
-      "id": "<id32>",
+      "id": "<id33>",
       "path": "<tmp>",
       "reachable": true
     }
@@ -2010,7 +2206,7 @@ GET /api/v1/libraries/<id2>
     "libraryId": "<id2>",
     "state": "idle"
   },
-  "subtitles": "nightlyAndAdded",
+  "subtitles": "nightly",
   "unmatchedCount": 0,
   "useLocalMetadata": false,
   "workCount": 1
@@ -2114,7 +2310,7 @@ POST /api/v1/libraries
   ],
   "id": "<id36>",
   "kind": "shows",
-  "markers": "nightlyAndAdded",
+  "markers": "nightly",
   "name": "Shows",
   "pinned": true,
   "previews": "never",
@@ -2123,7 +2319,7 @@ POST /api/v1/libraries
     "libraryId": "<id36>",
     "state": "scanning"
   },
-  "subtitles": "nightlyAndAdded",
+  "subtitles": "nightly",
   "unmatchedCount": 0,
   "useLocalMetadata": true,
   "workCount": 0
@@ -2142,7 +2338,7 @@ PATCH /api/v1/libraries/<id36>
   ],
   "id": "<id36>",
   "kind": "shows",
-  "markers": "nightlyAndAdded",
+  "markers": "nightly",
   "name": "TV",
   "pinned": true,
   "previews": "never",
@@ -2151,7 +2347,7 @@ PATCH /api/v1/libraries/<id36>
     "libraryId": "<id36>",
     "state": "scanning"
   },
-  "subtitles": "nightlyAndAdded",
+  "subtitles": "nightly",
   "unmatchedCount": 0,
   "useLocalMetadata": false,
   "workCount": 0
@@ -2180,7 +2376,7 @@ GET /api/v1/libraries/<id36>
   ],
   "id": "<id36>",
   "kind": "shows",
-  "markers": "nightlyAndAdded",
+  "markers": "nightly",
   "name": "TV",
   "pinned": true,
   "previews": "never",
@@ -2189,7 +2385,7 @@ GET /api/v1/libraries/<id36>
     "libraryId": "<id36>",
     "state": "scanning"
   },
-  "subtitles": "nightlyAndAdded",
+  "subtitles": "nightly",
   "unmatchedCount": 0,
   "useLocalMetadata": false,
   "workCount": 0
@@ -2264,6 +2460,7 @@ GET /api/v1/tasks
 {
   "items": [
     {
+      "everyMinutes": 720,
       "failedCount": 0,
       "id": "scan-libraries",
       "nextRunAt": "<time>",

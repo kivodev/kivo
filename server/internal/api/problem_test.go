@@ -215,7 +215,7 @@ func TestEndpointProblems(t *testing.T) {
 	var limited users.User
 	e.b.Write(func(ctx context.Context, tx *store.Tx) error {
 		var err error
-		limited, err = e.d.Users.CreateUser(ctx, tx, users.NewUser{Username: "limited", Grants: users.Grants{All: true}, Limits: users.Limits{StreamLimit: 1}})
+		limited, err = e.createUser(ctx, tx, users.NewUser{Username: "limited", Grants: users.Grants{All: true}, Limits: users.Limits{StreamLimit: 1}})
 		return err
 	})
 	limitedToken := e.session(limited.ID)

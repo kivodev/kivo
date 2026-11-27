@@ -147,7 +147,7 @@ describe("Movie page", () => {
     expect(screen.queryByRole("heading", { name: "More like this" })).not.toBeInTheDocument();
   });
 
-  it("offers Resume with the time, Play from beginning beside it, the time left and end under it, and the pickers", async () => {
+  it("offers Resume with the time, Play from beginning beside it, nothing under it, and the pickers", async () => {
     serveMockApi();
     const { router, user } = renderApp(`/works/${mockIds.dunePartTwo}`);
     expect(await screen.findByRole("heading", { name: "Dune: Part Two" })).toBeInTheDocument();
@@ -156,7 +156,7 @@ describe("Movie page", () => {
       "href",
       `/watch/${mockIds.dunePartTwo}?version=${dune4K}`,
     );
-    expect(screen.getByText(/^1 hr 34 min left · Ends at \d{1,2}:\d\d/)).toBeInTheDocument();
+    expect(screen.queryByText(/ left|Ends at/)).not.toBeInTheDocument();
     await waitFor(() => expect(document.title).toBe("Dune: Part Two – Kivo"));
     expect(screen.queryByRole("link", { name: /from the start/ })).not.toBeInTheDocument();
     // Nothing played yet, so the first version is selected, and tracks
@@ -274,9 +274,8 @@ describe("Movie page", () => {
     await user.click(screen.getByRole("button", { name: /Version/ }));
     await user.click(await screen.findByRole("option", { name: /^Final Cut · 4K HDR/ }));
     expect(await screen.findByRole("link", { name: "Play" })).toBeInTheDocument();
-    // Started from the beginning, it has no time left to show or start over from, only its end.
+    // Started from the beginning, it has nothing to start over from.
     expect(screen.queryByRole("button", { name: "Play from beginning" })).not.toBeInTheDocument();
-    expect(screen.getByText(/^Ends at \d{1,2}:\d\d/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Version/ }));
     await user.click(await screen.findByRole("option", { name: /^1080p/ }));
     expect(await screen.findByRole("link", { name: /^Resume/ })).toBeInTheDocument();
@@ -487,11 +486,29 @@ describe("Episode page", () => {
       fullName: "English · SRT · External",
       subtitle: { source: "external" },
     });
-    renderApp(`/works/${mockIds.expanseReload}`);
-    expect(await screen.findByRole("button", { name: /Automatic \(Off\)/ })).toBeInTheDocument();
-    expect(screen.getByText("Remembered for this show")).toBeInTheDocument();
+    const { router, user } = renderApp(`/works/${mockIds.expanseReload}`);
+    expect(await screen.findByRole("button", { name: /Default \(Off\)/ })).toBeInTheDocument();
+    expect(screen.queryByText("Remembered for this show")).not.toBeInTheDocument();
     // One audio track, so there's nothing to choose.
     expect(screen.queryByRole("button", { name: /Audio/ })).not.toBeInTheDocument();
+
+    // A pick is kept for the show at once, rather than held for the next
+    // play, so the play asks for no track.
+    await user.click(screen.getByRole("button", { name: /Default \(Off\)/ }));
+    await user.click(await screen.findByRole("option", { name: /^English/ }));
+    expect(await screen.findByText("Remembered for this show")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /English/ })).toBeInTheDocument();
+    expect(router.state.location.search).toEqual({});
+    expect(screen.getByRole("link", { name: "Play" })).toHaveAttribute(
+      "href",
+      `/watch/${mockIds.expanseReload}?version=${api.works[mockIds.expanseReload]?.versions[0]?.id}`,
+    );
+
+    // Default forgets it.
+    await user.click(screen.getByRole("button", { name: /English/ }));
+    await user.click(await screen.findByRole("option", { name: "Default (Off)" }));
+    await waitFor(() => expect(screen.queryByText("Remembered for this show")).not.toBeInTheDocument());
+    expect(screen.getByRole("button", { name: /Default \(Off\)/ })).toBeInTheDocument();
   });
 
   it("falls back to the series backdrop without a still", async () => {

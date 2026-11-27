@@ -6,7 +6,7 @@ import (
 	"github.com/mmcdole/kivo/internal/api/internal/gen"
 	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/query"
-	"github.com/mmcdole/kivo/internal/users"
+	"github.com/mmcdole/kivo/internal/userstate"
 )
 
 // listOf converts a list.
@@ -64,7 +64,7 @@ func (h *handlers) CreateList(ctx context.Context, req gen.CreateListRequestObje
 	if err != nil {
 		return nil, err
 	}
-	listID, err := h.deps.Users.CreateList(ctx, v, req.Body.Name, saved)
+	listID, err := h.deps.Userstate.CreateList(ctx, v, req.Body.Name, saved)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func (h *handlers) UpdateList(ctx context.Context, req gen.UpdateListRequestObje
 		return nil, err
 	}
 	if req.Body.Name != nil || saved != nil || req.Body.Sort != nil {
-		if err := h.deps.Users.UpdateList(ctx, v, req.ID, req.Body.Name, saved, (*users.ListSort)(req.Body.Sort)); err != nil {
+		if err := h.deps.Userstate.UpdateList(ctx, v, req.ID, req.Body.Name, saved, (*userstate.ListSort)(req.Body.Sort)); err != nil {
 			return nil, err
 		}
 	}
@@ -102,7 +102,7 @@ func (h *handlers) UpdateList(ctx context.Context, req gen.UpdateListRequestObje
 }
 
 func (h *handlers) DeleteList(ctx context.Context, req gen.DeleteListRequestObject) (gen.DeleteListResponseObject, error) {
-	if err := h.deps.Users.DeleteList(ctx, callerOf(ctx).viewer, req.ID); err != nil {
+	if err := h.deps.Userstate.DeleteList(ctx, callerOf(ctx).viewer, req.ID); err != nil {
 		return nil, err
 	}
 	return gen.DeleteList204Response{}, nil
@@ -120,7 +120,7 @@ func (h *handlers) ListListWorks(ctx context.Context, req gen.ListListWorksReque
 	if err != nil {
 		return nil, err
 	}
-	sort := users.ListSort(deref(req.Params.Sort))
+	sort := userstate.ListSort(deref(req.Params.Sort))
 	if sort != "" && !sort.Valid() {
 		return nil, invalid("unknown sort", field("sort", "invalid"))
 	}

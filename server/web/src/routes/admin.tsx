@@ -1,3 +1,4 @@
+import type { QueryClient } from "@tanstack/react-query";
 import { createRoute, lazyRouteComponent, notFound } from "@tanstack/react-router";
 import { z } from "zod";
 import { activityQueries } from "@/api/activity";
@@ -7,7 +8,6 @@ import { historyQueries } from "@/api/history";
 import { libraryQueries } from "@/api/libraries";
 import { logQueries } from "@/api/logs";
 import { acceleratorQueries } from "@/api/playback";
-import { problemQueries } from "@/api/problems";
 import { sessionQueries } from "@/api/session";
 import { settingsQueries } from "@/api/settings";
 import { taskQueries } from "@/api/tasks";
@@ -32,7 +32,6 @@ export function createAdminRouteTree() {
   const UnmatchedScreen = lazyRouteComponent(() => import("@/features/admin/UnmatchedScreen"), "UnmatchedScreen");
   const TasksScreen = lazyRouteComponent(() => import("@/features/admin/TasksScreen"), "TasksScreen");
   const TaskScreen = lazyRouteComponent(() => import("@/features/admin/TaskScreen"), "TaskScreen");
-  const ProblemsScreen = lazyRouteComponent(() => import("@/features/admin/ProblemsScreen"), "ProblemsScreen");
   const LogsScreen = lazyRouteComponent(() => import("@/features/admin/LogsScreen"), "LogsScreen");
   const ActivityScreen = lazyRouteComponent(() => import("@/features/admin/ActivityScreen"), "ActivityScreen");
   const ServerHistoryScreen = lazyRouteComponent(
@@ -72,10 +71,7 @@ export function createAdminRouteTree() {
   const overviewRoute = createRoute({
     getParentRoute: () => adminRoute,
     path: "/",
-    loader: ({ context: { queryClient } }) => {
-      void queryClient.prefetchQuery(problemQueries.list());
-      void queryClient.prefetchQuery(activityQueries.latest());
-    },
+    loader: ({ context }) => void context.queryClient.prefetchQuery(activityQueries.latest()),
     component: OverviewScreen,
   });
 
@@ -86,17 +82,29 @@ export function createAdminRouteTree() {
     component: ManageLibrariesScreen,
   });
 
+  // A library's own pages exist only while the library does.
+  const libraryOf = async (queryClient: QueryClient, libraryId: string) => {
+    const libraries = await queryClient.ensureQueryData(libraryQueries.list());
+    if (!libraries.items.some((l) => l.id === libraryId)) throw notFound();
+  };
+
   const missingFilesRoute = createRoute({
     getParentRoute: () => adminRoute,
-    path: "/missing-files",
-    loader: ({ context }) => void context.queryClient.prefetchInfiniteQuery(fileQueries.missing()),
+    path: "/libraries/$libraryId/missing-files",
+    loader: async ({ context: { queryClient }, params }) => {
+      await libraryOf(queryClient, params.libraryId);
+      void queryClient.prefetchInfiniteQuery(fileQueries.missing(params.libraryId));
+    },
     component: MissingFilesScreen,
   });
 
   const unmatchedRoute = createRoute({
     getParentRoute: () => adminRoute,
-    path: "/unmatched",
-    loader: ({ context }) => void context.queryClient.prefetchInfiniteQuery(workQueries.unmatched()),
+    path: "/libraries/$libraryId/unmatched",
+    loader: async ({ context: { queryClient }, params }) => {
+      await libraryOf(queryClient, params.libraryId);
+      void queryClient.prefetchInfiniteQuery(workQueries.unmatched(params.libraryId));
+    },
     component: UnmatchedScreen,
   });
 
@@ -123,13 +131,6 @@ export function createAdminRouteTree() {
       void queryClient.prefetchQuery(taskQueries.failures(task.id));
     },
     component: TaskScreen,
-  });
-
-  const problemsRoute = createRoute({
-    getParentRoute: () => adminRoute,
-    path: "/problems",
-    loader: ({ context }) => void context.queryClient.prefetchQuery(problemQueries.list()),
-    component: ProblemsScreen,
   });
 
   const logsRoute = createRoute({
@@ -236,7 +237,6 @@ export function createAdminRouteTree() {
     unmatchedRoute,
     tasksRoute,
     taskRoute,
-    problemsRoute,
     logsRoute,
     activityRoute,
     serverHistoryRoute,

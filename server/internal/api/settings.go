@@ -8,11 +8,19 @@ import (
 )
 
 func (h *handlers) GetSettings(context.Context, gen.GetSettingsRequestObject) (gen.GetSettingsResponseObject, error) {
-	return gen.GetSettings200JSONResponse(settings(h.deps.Settings.Get())), nil
+	return gen.GetSettings200JSONResponse(h.settings()), nil
 }
 
 func (h *handlers) UpdateSettings(ctx context.Context, req gen.UpdateSettingsRequestObject) (gen.UpdateSettingsResponseObject, error) {
 	b := req.Body
+	// Changed OpenSubtitles credentials are saved only once it accepts them.
+	next := h.deps.Settings.Get()
+	set(&next.OpenSubtitlesKey, b.OpenSubtitlesKey)
+	set(&next.OpenSubtitlesUsername, b.OpenSubtitlesUsername)
+	set(&next.OpenSubtitlesPassword, b.OpenSubtitlesPassword)
+	if err := h.deps.Subtitles.CheckCredentials(ctx, next.OpenSubtitlesKey, next.OpenSubtitlesUsername, next.OpenSubtitlesPassword); err != nil {
+		return nil, err
+	}
 	err := h.deps.Settings.Update(ctx, func(st *config.Settings) error {
 		if b.ServerName != nil {
 			st.ServerName = *b.ServerName
@@ -28,6 +36,7 @@ func (h *handlers) UpdateSettings(ctx context.Context, req gen.UpdateSettingsReq
 		set(&st.OpenSubtitlesUsername, b.OpenSubtitlesUsername)
 		set(&st.OpenSubtitlesPassword, b.OpenSubtitlesPassword)
 		set(&st.FileWatching, b.FileWatching)
+		set(&st.RescanEvery, b.RescanEveryMinutes)
 		if b.LocalNetworks != nil {
 			st.LocalNetworks = *b.LocalNetworks
 		}
@@ -44,15 +53,19 @@ func (h *handlers) UpdateSettings(ctx context.Context, req gen.UpdateSettingsReq
 	if err != nil {
 		return nil, err
 	}
-	return gen.UpdateSettings200JSONResponse(settings(h.deps.Settings.Get())), nil
+	return gen.UpdateSettings200JSONResponse(h.settings()), nil
 }
 
-func settings(st config.Settings) gen.Settings {
+// settings is the saved settings, with what OpenSubtitles refuses of its
+// credentials.
+func (h *handlers) settings() gen.Settings {
+	st := h.deps.Settings.Get()
 	return gen.Settings{
-		ServerName: st.ServerName, MetadataLanguage: st.MetadataLanguage, ContentRatingCountry: st.ContentRatingCountry,
+		OpenSubtitlesRefused: optAs[gen.SettingsOpenSubtitlesRefused](h.deps.Subtitles.Refused()),
+		ServerName:           st.ServerName, MetadataLanguage: st.MetadataLanguage, ContentRatingCountry: st.ContentRatingCountry,
 		PlayedThreshold: st.PlayedThreshold, OpenSubtitlesKey: st.OpenSubtitlesKey,
 		OpenSubtitlesUsername: st.OpenSubtitlesUsername, OpenSubtitlesPasswordSet: st.OpenSubtitlesPassword != "",
-		FileWatching: st.FileWatching, LocalNetworks: nonNil(st.LocalNetworks),
+		FileWatching: st.FileWatching, RescanEveryMinutes: st.RescanEvery, LocalNetworks: nonNil(st.LocalNetworks),
 		Accelerator: st.Accelerator, VideoTranscodeLimit: st.VideoTranscodeLimit,
 		MaintenanceStartHour: st.MaintenanceStart, MaintenanceEndHour: st.MaintenanceEnd, PreviewsAtOnce: st.PreviewsAtOnce, MarkersAtOnce: st.MarkersAtOnce,
 		PublicURL: st.PublicURL, RemoteQualityCapBps: st.RemoteQualityCap,

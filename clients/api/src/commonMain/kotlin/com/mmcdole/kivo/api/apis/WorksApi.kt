@@ -42,6 +42,7 @@ import com.mmcdole.kivo.api.models.NameUpdate
 import com.mmcdole.kivo.api.models.Person
 import com.mmcdole.kivo.api.models.Problem
 import com.mmcdole.kivo.api.models.SearchResults
+import com.mmcdole.kivo.api.models.TracksUpdate
 import com.mmcdole.kivo.api.models.UserState
 import com.mmcdole.kivo.api.models.UserStateUpdate
 import com.mmcdole.kivo.api.models.WorkDetail
@@ -525,13 +526,14 @@ open class WorksApi : ApiClient {
 
     /**
      * List unmatched works
-     * Backs the Unmatched list. Every library&#39;s unmatched items, library by library and each by title, each summary with its &#x60;path&#x60;. A feed, read in order by &#x60;after&#x60;. 
+     * Backs the Unmatched list. The unmatched items of every library, or with &#x60;libraryId&#x60; of one, library by library and each by title, each summary with its &#x60;path&#x60;. A feed, read in order by &#x60;after&#x60;. 
+     * @param libraryId  (optional)
      * @param after The &#x60;next&#x60; cursor from the previous page. (optional)
      * @param limit Page size. The default and the most a page holds depend on the listing. (optional)
      * @return WorkSummaryFeed
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun listUnmatchedWorks(after: kotlin.String? = null, limit: kotlin.Int? = null): HttpResponse<WorkSummaryFeed> {
+    open suspend fun listUnmatchedWorks(libraryId: kotlin.String? = null, after: kotlin.String? = null, limit: kotlin.Int? = null): HttpResponse<WorkSummaryFeed> {
 
         val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
 
@@ -539,6 +541,7 @@ open class WorksApi : ApiClient {
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
+        libraryId?.apply { localVariableQuery["libraryId"] = listOf("$libraryId") }
         after?.apply { localVariableQuery["after"] = listOf("$after") }
         limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
         val localVariableHeaders = mutableMapOf<String, String>()
@@ -1227,6 +1230,40 @@ open class WorksApi : ApiClient {
         val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.PATCH,
             "/api/v1/works/{id}".replace("{" + "id" + "}", "$id"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return jsonRequest(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+
+    /**
+     * Choose tracks for a series
+     * Sets the caller&#39;s audio and subtitle choice for an episode&#39;s series, which every episode&#39;s play then starts with when its request chooses no tracks, as choosing tracks for a play does (&#x60;remembersTracks&#x60;). The choice is kept by language and kind, so it applies to every version and file. A track must be one of the episode&#39;s versions&#39; (&#x60;400&#x60; otherwise). &#x60;default&#x60; forgets that part of the choice, so plays go back to the caller&#39;s preferences for it; forgetting both forgets the series&#39; choice. A part not sent stays as it is. A work that isn&#39;t an episode is &#x60;404&#x60;, and &#x60;409&#x60; when the caller&#39;s &#x60;rememberTracks&#x60; is off. 
+     * @param id 
+     * @param tracksUpdate 
+     * @return WorkDetail
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun updateWorkTracks(id: kotlin.String, tracksUpdate: TracksUpdate): HttpResponse<WorkDetail> {
+
+        val localVariableAuthNames = listOf<String>("cookieAuth", "bearerAuth")
+
+        val localVariableBody = tracksUpdate
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.PATCH,
+            "/api/v1/works/{id}/user-state/tracks".replace("{" + "id" + "}", "$id"),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,

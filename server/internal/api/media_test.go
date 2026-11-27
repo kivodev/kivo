@@ -217,7 +217,7 @@ func TestAdminStopAndWatchHistory(t *testing.T) {
 	var friend users.User
 	e.b.Write(func(ctx context.Context, tx *store.Tx) error {
 		var err error
-		friend, err = e.d.Users.CreateUser(ctx, tx, users.NewUser{Username: "friend", Grants: users.Grants{All: true}})
+		friend, err = e.createUser(ctx, tx, users.NewUser{Username: "friend", Grants: users.Grants{All: true}})
 		return err
 	})
 	token := e.session(friend.ID)
@@ -399,6 +399,7 @@ func TestPlayStartedDialogueBoost(t *testing.T) {
 func TestParseCapabilities(t *testing.T) {
 	raw := json.RawMessage(`{
 		"file": {"containers": ["mkv", "mp4"], "trackSelection": true, "later": 1},
+		"stream": {"muxedAudio": true, "later": 1},
 		"video": [
 			{"codec": "hevc", "delivery": ["file", "stream"], "containers": ["mp4"], "tags": ["hvc1"], "profiles": ["Main 10"],
 			 "maxLevel": 5.1, "maxBitDepth": 10, "maxWidth": 3840, "maxHeight": 2160, "maxFrameRate": 60, "maxBitrateBps": 100000000,
@@ -430,7 +431,8 @@ func TestParseCapabilities(t *testing.T) {
 	caps := parseCapabilities(c)
 	both := []playback.Delivery{playback.DeliverFile, playback.DeliverStream}
 	want := playback.Capabilities{
-		File: &playback.FileCaps{Containers: []string{"mkv", "mp4"}, TrackSelection: true},
+		File:   &playback.FileCaps{Containers: []string{"mkv", "mp4"}, TrackSelection: true},
+		Stream: playback.StreamCaps{MuxedAudio: true},
 		Video: []playback.VideoEntry{
 			{Codec: "hevc", Delivery: both, Containers: []string{"mp4"}, Tags: []string{"hvc1"}, Profiles: []string{"Main 10"},
 				MaxLevel: 5.1, MaxBitDepth: 10, MaxWidth: 3840, MaxHeight: 2160, MaxFramerate: 60, MaxBitrate: 100_000_000, MaxRefFrames: 6,
@@ -454,6 +456,16 @@ func TestParseCapabilities(t *testing.T) {
 	}
 	if !reflect.DeepEqual(caps, want) {
 		t.Errorf("got  %+v\nwant %+v", caps, want)
+	}
+	// Absent, or without muxedAudio, the stream's audio is its own rendition.
+	for _, raw := range []string{`{}`, `{"stream": {}}`} {
+		var c gen.Capabilities
+		if err := json.Unmarshal([]byte(raw), &c); err != nil {
+			t.Fatal(err)
+		}
+		if s := parseCapabilities(c).Stream; s.MuxedAudio {
+			t.Errorf("%s: muxed audio", raw)
+		}
 	}
 	if s := parseSettings(&gen.PlaybackSettings{DirectPlay: ptr(false), BurnSubtitles: ptr(true)}); s != (playback.Settings{DisableDirectPlay: true, BurnSubtitles: true}) {
 		t.Errorf("settings %+v", s)

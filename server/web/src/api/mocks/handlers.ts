@@ -491,11 +491,13 @@ export function createHandlers(api: MockApi) {
     }),
     // The Unmatched list. The mock's cursor is an index.
     http.get("/api/v1/unmatched-works", ({ query, response }) => {
+      const libraryId = query.get("libraryId");
+      const items = api.unmatched.filter((w) => !libraryId || w.libraryId === libraryId);
       const start = Number(query.get("after") ?? 0);
-      const end = start + Number(query.get("limit") ?? api.unmatched.length);
+      const end = start + Number(query.get("limit") ?? items.length);
       return response(200).json({
-        items: api.unmatched.slice(start, end),
-        next: end < api.unmatched.length ? String(end) : undefined,
+        items: items.slice(start, end),
+        next: end < items.length ? String(end) : undefined,
       });
     }),
     http.get("/api/v1/works/{id}", ({ params, response }) => {
@@ -525,6 +527,23 @@ export function createHandlers(api: MockApi) {
       };
       if (played !== undefined && (work.kind === "series" || work.kind === "season")) mark(params.id, played);
       return response(200).json(work.userState);
+    }),
+    // A choice applies to the episode's versions; the mock keeps no
+    // choice for the rest of the show.
+    http.patch("/api/v1/works/{id}/user-state/tracks", async ({ params, request, response }) => {
+      const work = api.works[params.id];
+      if (!work?.remembersTracks) return notFound();
+      const { audioTrackId: audio, subtitleTrackId: subtitle } = await request.json();
+      for (const v of work.versions) {
+        if (audio !== undefined) v.audioTrackId = audio === "default" ? v.defaultAudioTrackId : audio;
+        if (subtitle !== undefined)
+          v.subtitleTrackId =
+            subtitle === "default" ? v.defaultSubtitleTrackId : subtitle === "off" ? undefined : subtitle;
+      }
+      work.tracksRemembered = work.versions.some(
+        (v) => v.audioTrackId !== v.defaultAudioTrackId || v.subtitleTrackId !== v.defaultSubtitleTrackId,
+      );
+      return response(200).json(work);
     }),
     http.post("/api/v1/works/{id}/user-state/remove-from-continue", ({ params, response }) => {
       for (const row of api.home.rows) {
@@ -623,8 +642,6 @@ export function createHandlers(api: MockApi) {
     http.post("/api/v1/tasks/{task}/retry", ({ params, response }) =>
       api.taskFailures[params.task] ? response(204).empty() : notFound(),
     ),
-    http.get("/api/v1/problems", ({ response }) => response(200).json({ items: api.problems })),
-    http.delete("/api/v1/problems/{id}", ({ response }) => response(204).empty()),
     // The cursor is the last event's ID.
     http.get("/api/v1/activity", ({ query, response }) => {
       const group = query.get("group");

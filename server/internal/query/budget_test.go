@@ -20,6 +20,7 @@ import (
 	"github.com/mmcdole/kivo/internal/store"
 	"github.com/mmcdole/kivo/internal/store/storetest"
 	"github.com/mmcdole/kivo/internal/users"
+	"github.com/mmcdole/kivo/internal/userstate"
 )
 
 // The read budgets, at 50k works while a scan is writing. scrollBudget is
@@ -459,6 +460,9 @@ func budgetViewer(t *testing.T, db *store.DB, name string, libs ...id.ID) users.
 		if err != nil {
 			return err
 		}
+		if err := userstate.CreateMyList(ctx, tx, u.ID, u.Created); err != nil {
+			return err
+		}
 		// One statement per call: the driver refuses several with arguments.
 		args := []any{sql.Named("user", user), sql.Named("now", time.Now().UnixMilli())}
 		for _, stmt := range []string{`
@@ -503,14 +507,16 @@ type smartList struct {
 func smartViewer(t *testing.T, db *store.DB, q *query.Service, libs ...id.ID) (users.Viewer, []smartList) {
 	t.Helper()
 	v := budgetViewer(t, db, "smart", libs...)
-	svc := users.New(db, events.NewBus())
+	bus := events.NewBus()
+	svc := users.New(db, bus)
+	state := userstate.New(db, userstate.Deps{Events: bus})
 	var out []smartList
 	for _, d := range smartDefs() {
 		saved, err := d.q.Saved()
 		if err != nil {
 			t.Fatal(err)
 		}
-		list, err := svc.CreateList(ctx, v, d.name, &saved)
+		list, err := state.CreateList(ctx, v, d.name, &saved)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -519,7 +525,7 @@ func smartViewer(t *testing.T, db *store.DB, q *query.Service, libs ...id.ID) (u
 	// Three manual lists, with none, 2 and 200 movies, make ten lists with
 	// Watchlist for the Lists screen.
 	for _, every := range []int{0, 1000, 10} {
-		list, err := svc.CreateList(ctx, v, fmt.Sprintf("manual %d", every), nil)
+		list, err := state.CreateList(ctx, v, fmt.Sprintf("manual %d", every), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -566,12 +572,12 @@ type manualList struct {
 func manualViewer(t *testing.T, db *store.DB, libs ...id.ID) (users.Viewer, []manualList) {
 	t.Helper()
 	v := budgetViewer(t, db, "lists", libs...)
-	svc := users.New(db, events.NewBus())
+	svc := userstate.New(db, userstate.Deps{Events: events.NewBus()})
 	var out []manualList
 	for _, l := range []struct {
 		works int
-		sort  users.ListSort
-	}{{500, users.ListCustom}, {5000, users.ListCustom}, {5000, users.ListTitle}, {5000, users.ListRating}} {
+		sort  userstate.ListSort
+	}{{500, userstate.ListCustom}, {5000, userstate.ListCustom}, {5000, userstate.ListTitle}, {5000, userstate.ListRating}} {
 		name := fmt.Sprintf("manual list, %d titles, %s", l.works, l.sort)
 		list, err := svc.CreateList(ctx, v, name, nil)
 		if err != nil {

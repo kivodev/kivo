@@ -55,9 +55,10 @@ func (tx *Tx) PrepareContext(ctx context.Context, query string) (*sql.Stmt, erro
 
 // Write runs fn in a write transaction (BEGIN IMMEDIATE) on the single
 // writer connection and commits if fn returns nil. Writes are serialized,
-// so keep them short and never do I/O inside fn. Once the transaction
-// commits, Write runs the functions registered with tx.AfterCommit, in
-// order.
+// so keep them short and never do I/O inside fn. A Write waits its turn
+// for the connection until ctx ends. Once the transaction commits and the
+// connection is free for the next Write, Write runs the functions
+// registered with tx.AfterCommit, in order.
 //
 // fn gets a context that marks the write. Pass it on, so that a nested
 // Write returns ErrNestedWrite instead of deadlocking. A nested Write would
@@ -73,20 +74,24 @@ func (db *DB) Write(ctx context.Context, fn func(ctx context.Context, tx *Tx) er
 		return ErrNestedWrite
 	}
 
-	db.writeMu.Lock()
-	held := time.Now()
-	defer func() {
-		db.writeMu.Unlock()
-		if d := time.Since(held); d > slowWrite {
-			_, file, line, _ := runtime.Caller(2)
-			slog.WarnContext(ctx, "store: slow write", "held", d.Round(time.Millisecond), "caller", fmt.Sprintf("%s:%d", file, line))
-		}
-	}()
+	tx, err := db.write(ctx, fn)
+	if err != nil {
+		return err
+	}
+	for _, f := range tx.afterCommit {
+		f()
+	}
+	return nil
+}
 
+// write runs and commits Write's transaction, holding the writer
+// connection only until it commits or rolls back.
+func (db *DB) write(ctx context.Context, fn func(ctx context.Context, tx *Tx) error) (_ *Tx, err error) {
 	sqlTx, err := db.writer.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("begin write: %w", err)
+		return nil, fmt.Errorf("begin write: %w", err)
 	}
+	held := time.Now()
 	defer func() {
 		if p := recover(); p != nil {
 			_ = sqlTx.Rollback()
@@ -95,19 +100,20 @@ func (db *DB) Write(ctx context.Context, fn func(ctx context.Context, tx *Tx) er
 		if err != nil {
 			_ = sqlTx.Rollback()
 		}
+		if d := time.Since(held); d > slowWrite {
+			_, file, line, _ := runtime.Caller(3)
+			slog.WarnContext(ctx, "store: slow write", "held", d.Round(time.Millisecond), "caller", fmt.Sprintf("%s:%d", file, line))
+		}
 	}()
 
 	tx := &Tx{tx: sqlTx}
 	if err = fn(context.WithValue(ctx, writeKey{}, db), tx); err != nil {
-		return err
+		return nil, err
 	}
 	if err = commit(ctx, sqlTx); err != nil {
-		return err
+		return nil, err
 	}
-	for _, f := range tx.afterCommit {
-		f()
-	}
-	return nil
+	return tx, nil
 }
 
 // commit commits a write's transaction.

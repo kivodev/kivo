@@ -95,7 +95,7 @@ func (r *Runner) Tasks(ctx context.Context) ([]Status, error) {
 func (r *Runner) status(ctx context.Context, t *task) (Status, error) {
 	now := time.Now()
 	r.mu.Lock()
-	s := Status{Task: t.Task, Last: t.last, Next: r.nextLocked(t, now)}
+	s := Status{Task: t.Task, Last: t.last, Next: r.nextLocked(t, now), Every: r.every(t)}
 	if t.items == nil {
 		s.Running = t.call != nil || t.open != nil && r.workingLocked(t, now) || t.ending != nil
 		if c := t.call; c != nil {

@@ -1,6 +1,7 @@
 // Leaving Kivo on a TV. The packaged Tizen app (clients/tizen) has Tizen's
-// application exit and uses it. The TV flag's dev server, in a browser, has
-// no Tizen APIs.
+// application exit and uses it. The packaged webOS app (clients/webos) and
+// the TV flag's dev server, in a browser, have no Tizen APIs; closing the
+// window ends the webOS app.
 
 type TvGlobals = {
   tizen?: { application: { getCurrentApplication(): { exit(): void } } };

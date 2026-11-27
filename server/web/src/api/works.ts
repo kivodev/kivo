@@ -136,9 +136,9 @@ export const workQueries = {
     });
   },
 
-  /** The Unmatched list for every library, library by library, one keyset page at a time. */
-  unmatched: () => {
-    const query = { limit: gridPageSize };
+  /** A library's Unmatched list, by title, one keyset page at a time. */
+  unmatched: (libraryId: string) => {
+    const query = { libraryId, limit: gridPageSize };
     return keysetPages(
       ["get", apiPaths.unmatchedWorks, { params: { query } }, "pages"] as const,
       async (after, signal) => {
@@ -255,6 +255,21 @@ export function useUpdateUserState() {
     // Cards everywhere show the state, so it changes in place. A series or
     // season cascades to its episodes, whose views refetch.
     onSuccess: (state, { params }) => applyUserState(queryClient, params.path.id, state),
+  });
+}
+
+/**
+ * Choose the tracks every episode of an episode's show starts with, for
+ * you. The episode's page takes the server's answer, and other episodes'
+ * pages refetch.
+ */
+export function useChooseTracks() {
+  const queryClient = useQueryClient();
+  return $api.useMutation("patch", "/api/v1/works/{id}/user-state/tracks", {
+    onSuccess: (work) => {
+      queryClient.setQueryData(workQueries.detail(work.id).queryKey, work);
+      void invalidatePaths(queryClient, [apiPaths.work]);
+    },
   });
 }
 

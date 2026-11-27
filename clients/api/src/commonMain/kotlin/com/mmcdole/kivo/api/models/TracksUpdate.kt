@@ -23,7 +23,6 @@
 
 package com.mmcdole.kivo.api.models
 
-import com.mmcdole.kivo.api.models.ServerProblem
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
@@ -32,13 +31,18 @@ import kotlinx.serialization.encoding.*
 /**
  * 
  *
- * @param items 
+ * @param audioTrackId An audio track's `id`, or `default`.
+ * @param subtitleTrackId A subtitle track's `id`, `off`, or `default`.
  */
 @Serializable
 
-data class ServerProblemList (
+data class TracksUpdate (
 
-    @SerialName(value = "items") @Required val items: kotlin.collections.List<ServerProblem>
+    /* An audio track's `id`, or `default`. */
+    @SerialName(value = "audioTrackId") val audioTrackId: kotlin.String? = null,
+
+    /* A subtitle track's `id`, `off`, or `default`. */
+    @SerialName(value = "subtitleTrackId") val subtitleTrackId: kotlin.String? = null
 
 ) {
 

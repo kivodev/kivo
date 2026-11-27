@@ -10,7 +10,6 @@ import (
 	"log/slog"
 	"path/filepath"
 	"runtime"
-	"sync"
 	"time"
 
 	"github.com/mmcdole/kivo/internal/health"
@@ -23,10 +22,9 @@ var migrations embed.FS
 // connection, which serializes every write, and a read-only pool for
 // everything else.
 type DB struct {
-	path    string
-	writer  *sql.DB
-	reader  *sql.DB
-	writeMu sync.Mutex // held for the whole of each Write
+	path   string
+	writer *sql.DB
+	reader *sql.DB
 
 	problems []health.Problem
 }
@@ -67,7 +65,11 @@ func open(ctx context.Context, path string, migs fs.FS) (_ *DB, err error) {
 	if db.reader, err = openReader(path); err != nil {
 		return nil, err
 	}
-	db.reader.SetMaxOpenConns(max(4, runtime.NumCPU()))
+	readers := max(4, runtime.NumCPU())
+	db.reader.SetMaxOpenConns(readers)
+	db.reader.SetMaxIdleConns(readers)
+	// Expire idle readers after bursts so WASM connection memory is released.
+	db.reader.SetConnMaxIdleTime(5 * time.Minute)
 
 	// journal_mode is stored in the file, so setting it once is enough.
 	if _, err = db.writer.ExecContext(ctx, `PRAGMA journal_mode = WAL; PRAGMA journal_size_limit = 67108864`); err != nil {

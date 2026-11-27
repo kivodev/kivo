@@ -60,7 +60,7 @@ func scanAndIdentify(t *testing.T, scans, identifies int, scanFor time.Duration)
 	sc := &slow{step: "walk", took: scanFor, limit: scans}
 	ident := &slow{step: "match", took: time.Minute, limit: identifies}
 	h := newHarness(t,
-		Task{Name: "scan", Schedule: Every(12 * time.Hour), Work: sc.items()},
+		Task{Name: "scan", Schedule: Every(fixed(12 * time.Hour)), Work: sc.items()},
 		Task{Name: "identify", Schedule: OnDemand, Work: ident.items(), StepOf: StepOf{Task: "scan", Step: "identify"}},
 	)
 	h.window(6, 2)

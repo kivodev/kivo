@@ -24,7 +24,7 @@ export function TaskProgress({ task }: { task: Task }) {
   const done = formatCount(p.done);
   const total = formatCount(p.total);
   return (
-    <div data-part="task-progress" className="flex flex-col gap-1.5">
+    <div data-part="task-progress" className="flex flex-col gap-1">
       <div className="flex items-baseline justify-between gap-2 whitespace-nowrap text-xs">
         <span>{doing(task)}</span>
         {p.total > 0 && (

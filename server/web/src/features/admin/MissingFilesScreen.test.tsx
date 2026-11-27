@@ -4,22 +4,30 @@ import { renderApp, screen } from "@/test/render";
 import { mockIds, onRequest, sent, serveMockApi } from "@/test/server";
 
 const path = "/mnt/user/Movies/Missing Reel (1999)/Missing Reel.mkv";
+const page = `/admin/libraries/${mockIds.movies}/missing-files`;
 
 describe("Missing files", () => {
-  it("lists each gone file under its library with its title, last path and when it went missing", async () => {
+  it("lists a library's gone files, each with its title, last path and when it went missing", async () => {
     serveMockApi();
-    renderApp("/admin/missing-files");
+    renderApp(page);
     expect(await screen.findByText(path)).toBeInTheDocument();
-    const movies = screen.getByRole("heading", { name: "Movies" }).closest("section") as HTMLElement;
-    expect(within(movies).getByText("Missing Reel")).toBeInTheDocument();
-    expect(within(movies).getByText(/^Missing since /)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Missing files in Movies" })).toBeInTheDocument();
+    expect(screen.getByText("Missing Reel")).toBeInTheDocument();
+    expect(screen.getByText(/^Missing since /)).toBeInTheDocument();
+  });
+
+  it("lists none of another library's", async () => {
+    serveMockApi();
+    renderApp(`/admin/libraries/${mockIds.shows}/missing-files`);
+    expect(await screen.findByRole("heading", { name: "No missing files" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Forget all" })).not.toBeInTheDocument();
   });
 
   it("links a work a library still has", async () => {
     serveMockApi((api) => {
       api.missingFiles = api.missingFiles.map((f) => ({ ...f, workId: mockIds.missingReel }));
     });
-    renderApp("/admin/missing-files");
+    renderApp(page);
     expect(await screen.findByRole("link", { name: "Missing Reel" })).toHaveAttribute(
       "href",
       `/works/${mockIds.missingReel}`,
@@ -32,7 +40,7 @@ describe("Missing files", () => {
     onRequest("delete", "/files/{id}", () => {
       api.missingFiles = [];
     });
-    const { user } = renderApp("/admin/missing-files");
+    const { user } = renderApp(page);
     await user.click(await screen.findByRole("button", { name: `Forget ${path}` }));
     const confirm = await screen.findByRole("alertdialog");
     await user.click(within(confirm).getByRole("button", { name: "Forget" }));
@@ -42,16 +50,17 @@ describe("Missing files", () => {
     );
   });
 
-  it("forgets every missing file after asking", async () => {
+  it("forgets every missing file of the library after asking", async () => {
     const api = serveMockApi();
     onRequest("delete", "/files", () => {
       api.missingFiles = [];
     });
-    const { user } = renderApp("/admin/missing-files");
+    const { user } = renderApp(page);
     await user.click(await screen.findByRole("button", { name: "Forget all" }));
-    const confirm = await screen.findByRole("alertdialog", { name: "Forget every missing file?" });
+    const confirm = await screen.findByRole("alertdialog", { name: "Forget every missing file in Movies?" });
     await user.click(within(confirm).getByRole("button", { name: "Forget all" }));
     expect(await screen.findByRole("heading", { name: "No missing files" })).toBeInTheDocument();
-    expect(sent("DELETE", "/files")[0]?.url.searchParams.get("status")).toBe("gone");
+    const params = sent("DELETE", "/files")[0]?.url.searchParams;
+    expect([params?.get("status"), params?.get("libraryId")]).toEqual(["gone", mockIds.movies]);
   });
 });

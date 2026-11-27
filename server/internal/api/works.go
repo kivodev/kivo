@@ -45,14 +45,14 @@ func (h *handlers) GetCollection(ctx context.Context, req gen.GetCollectionReque
 }
 
 // ListUnmatchedWorks returns a page of the Unmatched list, which holds the
-// unmatched works of every library.
+// unmatched works of one library or of every library.
 func (h *handlers) ListUnmatchedWorks(ctx context.Context, req gen.ListUnmatchedWorksRequestObject) (gen.ListUnmatchedWorksResponseObject, error) {
 	p := req.Params
 	pg, err := pagingOf(p.After, p.Limit)
 	if err != nil {
 		return nil, err
 	}
-	page, err := h.deps.Query.Unmatched(ctx, callerOf(ctx).viewer, query.Cursor(pg.after), pg.limit)
+	page, err := h.deps.Query.Unmatched(ctx, callerOf(ctx).viewer, deref(p.LibraryID), query.Cursor(pg.after), pg.limit)
 	if err != nil {
 		return nil, err
 	}
@@ -147,6 +147,42 @@ func (h *handlers) UpdateWorkUserState(ctx context.Context, req gen.UpdateWorkUs
 		return nil, err
 	}
 	return gen.UpdateWorkUserState200JSONResponse(userState(st)), nil
+}
+
+// UpdateWorkTracks sets the caller's track choice for an episode's
+// series and returns the episode's detail, which now starts with it.
+func (h *handlers) UpdateWorkTracks(ctx context.Context, req gen.UpdateWorkTracksRequestObject) (gen.UpdateWorkTracksResponseObject, error) {
+	var pick playback.TrackPick
+	if a := req.Body.AudioTrackID; a != nil {
+		if *a == "default" {
+			pick.ForgetAudio = true
+		} else {
+			t, err := id.Parse(*a)
+			if err != nil {
+				return nil, invalid("audioTrackId: a track ID or default", field("/audioTrackId", "invalid"))
+			}
+			pick.Audio = &t
+		}
+	}
+	if s := req.Body.SubtitleTrackID; s != nil {
+		if *s == "default" {
+			pick.ForgetSubtitle = true
+		} else {
+			var err error
+			if pick.Subtitle, err = parseSubtitleChoice(s); err != nil {
+				return nil, err
+			}
+		}
+	}
+	v := callerOf(ctx).viewer
+	if err := h.deps.Playback.ChooseTracks(ctx, v, req.ID, pick); err != nil {
+		return nil, err
+	}
+	w, err := h.detail(ctx, v, req.ID)
+	if err != nil {
+		return nil, err
+	}
+	return gen.UpdateWorkTracks200JSONResponse(w), nil
 }
 
 func (h *handlers) RemoveFromContinue(ctx context.Context, req gen.RemoveFromContinueRequestObject) (gen.RemoveFromContinueResponseObject, error) {
@@ -279,7 +315,7 @@ func workDetail(d query.WorkDetail, tracks playback.Preferred, marks map[id.ID][
 	}
 	out.Versions = versions(d, tracks, marks)
 	if len(out.Versions) > 0 {
-		out.RemembersTracks = &tracks.Remembers
+		out.RemembersTracks, out.TracksRemembered = &tracks.Remembers, &tracks.Remembered
 	}
 	if out.Series != nil {
 		out.Series.SeasonCount = &d.Children
@@ -338,6 +374,9 @@ func versions(d query.WorkDetail, tracks playback.Preferred, marks map[id.ID][]m
 		}
 		if t, ok := tracks.Versions[ver.ID]; ok {
 			gv.AudioTrackID, gv.SubtitleTrackID = opt(t.Audio), opt(t.Subtitle)
+		}
+		if t, ok := tracks.Defaults[ver.ID]; ok {
+			gv.DefaultAudioTrackID, gv.DefaultSubtitleTrackID = opt(t.Audio), opt(t.Subtitle)
 		}
 		out = append(out, gv)
 	}

@@ -53,7 +53,7 @@ func (r *Runner) transcode(ctx context.Context, req media.TranscodeRequest, dev 
 	if err != nil {
 		return nil, err
 	}
-	o := &output{op: op, p: p, split: container.NewSplitter(p.stdout)}
+	o := &output{op: op, p: p, split: container.NewSplitter(p.stdout, req.MuxedAudio)}
 	for _, t := range req.Text {
 		o.text = append(o.text, &textFile{path: t.Path})
 	}
@@ -81,14 +81,14 @@ type textFile struct {
 	pending []byte // bytes read that don't yet make a whole cue
 }
 
-func (o *output) Init() ([]byte, error) {
+func (o *output) Init() (media.Init, error) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	b, err := o.split.Init()
 	if err != nil {
-		return nil, o.failure(err)
+		return media.Init{}, o.failure(err)
 	}
-	return b, nil
+	return media.Init{Data: b, Audio: o.split.AudioInit()}, nil
 }
 
 func (o *output) Segments() iter.Seq2[media.Segment, error] {

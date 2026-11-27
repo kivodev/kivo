@@ -198,17 +198,66 @@ var alignments = [9]string{
 	"line:0 align:left", "line:0", "line:0 align:right",
 }
 
-// overrides removes text's ASS override blocks. It returns the cue settings
-// for the last alignment tag in them, if any.
+// overrides removes text's ASS override blocks and any drawing commands
+// while drawing mode (\p greater than 0) is active. It returns the remaining
+// text and the cue settings for the last alignment tag in them, if any.
 func overrides(text string, block *regexp.Regexp) (string, string) {
-	settings := ""
-	text = block.ReplaceAllStringFunc(text, func(b string) string {
+	locs := block.FindAllStringIndex(text, -1)
+	if len(locs) == 0 {
+		return text, ""
+	}
+	var (
+		out      strings.Builder
+		settings string
+		drawing  bool
+		pos      int
+	)
+	out.Grow(len(text))
+	for _, loc := range locs {
+		if !drawing {
+			out.WriteString(text[pos:loc[0]])
+		}
+		b := text[loc[0]+1 : loc[1]-1]
 		if m := alignTag.FindAllStringSubmatch(b, -1); m != nil {
 			settings = alignments[m[len(m)-1][1][0]-'1']
 		}
-		return ""
-	})
-	return text, settings
+		drawing = assDrawing(b, drawing)
+		pos = loc[1]
+	}
+	if !drawing {
+		out.WriteString(text[pos:])
+	}
+	return out.String(), settings
+}
+
+// assDrawing updates ASS drawing mode across the tags in an override block
+// (without its braces). \p<n> with n > 0 enables drawing; \p0, bare \p, and
+// \r turn it off. Other tags starting with \p (such as \pos or \pbo) leave
+// drawing mode unchanged.
+func assDrawing(block string, drawing bool) bool {
+	for _, tag := range strings.Split(block, `\`)[1:] {
+		switch {
+		case strings.HasPrefix(tag, "r"):
+			drawing = false
+		case strings.HasPrefix(tag, "p"):
+			drawing = drawingScale(tag[1:], drawing)
+		}
+	}
+	return drawing
+}
+
+// drawingScale reads what follows a \p tag's p. A scale above 0 starts
+// drawing mode, and 0 or no scale ends it. A longer tag that starts with p,
+// such as \pos, leaves drawing as it was.
+func drawingScale(arg string, drawing bool) bool {
+	digits := len(arg) - len(strings.TrimLeft(arg, "0123456789"))
+	switch {
+	case digits > 0:
+		return strings.TrimLeft(arg[:digits], "0") != ""
+	case arg == "" || arg[0] == ' ' || arg[0] == '\t':
+		return false
+	}
+	return drawing
 }
 
 // cueLines returns text's lines without the blank lines, which WebVTT would

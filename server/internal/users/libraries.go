@@ -18,7 +18,7 @@ type LibraryChoice struct {
 
 // setLibraries replaces the order of the libraries v's user sees, and which
 // of them are pinned. A library left out is pinned after the listed ones,
-// in the server's order. Every library is treated that way until the user
+// A to Z by name. Every library is treated that way until the user
 // first sets the order. A library v doesn't see, or one listed twice,
 // returns ErrUnknownLibrary.
 func setLibraries(ctx context.Context, q *dbq.Queries, v Viewer, libs []LibraryChoice) error {

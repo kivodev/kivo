@@ -52,6 +52,13 @@ export function AdminPage({ page, title, badges, description, actions, parent, n
   );
 }
 
+/**
+ * The look of muted words that open something, such as a library's count
+ * of missing files or a task's schedule: underlined, and brighter under
+ * the pointer.
+ */
+export const mutedLink = "whitespace-nowrap underline underline-offset-2 hover:text-text";
+
 /** One entry of an admin list, as a bordered row with its text and then its actions. */
 export function AdminRow({ part, children, actions }: { part?: string; children: ReactNode; actions?: ReactNode }) {
   return (
@@ -94,7 +101,7 @@ export function AdminListItem({ part, children }: { part?: string; children: Rea
 export function AdminTable({ head, columns, children }: { head?: ReactNode; columns: string[]; children: ReactNode }) {
   return (
     <div className="overflow-x-auto rounded-lg border border-border bg-surface">
-      <table className="w-full min-w-216 table-fixed text-sm">
+      <table className="w-full min-w-215 table-fixed text-sm">
         <colgroup>
           {columns.map((width, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: the columns are fixed.

@@ -252,7 +252,7 @@ extension View {
         frame(minHeight: 44).contentShape(Rectangle())
     }
 
-    /// The list row of a page's actions, under its hero.
+    /// The row of a page's actions, under its hero.
     func actionRowInsets() -> some View {
         detailRow(EdgeInsets(top: 4, leading: 20, bottom: 12, trailing: 20))
     }
