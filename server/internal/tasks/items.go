@@ -312,19 +312,47 @@ func (w *items) fromIdleLocked() {
 	}
 }
 
-// stopLocked cancels an item in flight, removes it from the line, and marks
-// it done for the current pass.
-func (w *items) stopLocked(i id.ID) {
-	if it := w.busy[i]; it != nil {
+// stopAllLocked cancels every item in flight, clears the line in one pass,
+// and marks those items done for the current pass.
+func (w *items) stopAllLocked() {
+	for i, it := range w.busy {
 		it.cancel()
+		if w.pass != nil {
+			w.pass.did[i] = true
+		}
 	}
-	if w.queued[i] {
-		delete(w.queued, i)
-		w.asked = slices.DeleteFunc(w.asked, func(x id.ID) bool { return x == i })
+	for _, i := range w.asked {
+		if w.pass != nil {
+			w.pass.did[i] = true
+		}
 	}
-	delete(w.requeue, i)
-	if w.pass != nil {
-		w.pass.did[i] = true
+	clear(w.queued)
+	w.asked = nil
+	clear(w.requeue)
+}
+
+// stopManyLocked cancels and removes every item in drop in a single pass
+// over w.asked.
+func (w *items) stopManyLocked(drop map[id.ID]bool) {
+	if len(drop) == 0 {
+		return
+	}
+	var removeQueued bool
+	for i := range drop {
+		if it := w.busy[i]; it != nil {
+			it.cancel()
+		}
+		if w.queued[i] {
+			delete(w.queued, i)
+			removeQueued = true
+		}
+		delete(w.requeue, i)
+		if w.pass != nil {
+			w.pass.did[i] = true
+		}
+	}
+	if removeQueued {
+		w.asked = slices.DeleteFunc(w.asked, func(x id.ID) bool { return drop[x] })
 	}
 }
 

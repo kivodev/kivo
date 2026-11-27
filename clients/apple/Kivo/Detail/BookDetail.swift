@@ -2,7 +2,8 @@ import KivoCore
 import KivoUI
 import SwiftUI
 
-/// A book's page: Play, or Resume with the time left, which starts the
+/// A book's page: its primary series and place in it over the title,
+/// opening the series' page; Play, or Resume with the time left, which starts the
 /// book player where the user left off in any app or browser, and Play
 /// from beginning beside it; My List, Mark as Finished and Download; the
 /// overview, the books like it, its authors and narrators, and its
@@ -14,13 +15,14 @@ struct BookDetail: View {
     let page: WorkPageState
     @Environment(ServerModel.self) private var server
     @Environment(\.kivoPalette) private var palette
+    @Environment(\.openWork) private var openWork
 
     private var chapters: BookChapters? {
         page.work?.versions.first.map { BookChapters(version: $0) }
     }
 
     var body: some View {
-        DetailPage(work: work, art: work.images.backdrop ?? work.images.poster, details: details) {
+        DetailPage(work: work, art: work.images.backdrop ?? work.images.poster, eyebrow: eyebrow, details: details) {
             actions
                 .actionRowInsets()
             Overview(text: page.work?.overview)
@@ -39,6 +41,13 @@ struct BookDetail: View {
                 UserStateMenuItems(work: work)
                 GoToLibraryItem(libraryId: work.libraryId)
             }
+        }
+    }
+
+    /// "The First Law · Book 2" over the title, opening the series' page.
+    private var eyebrow: (label: String, open: () -> Void)? {
+        (work.book ?? page.work?.book)?.primarySeries.map { series in
+            (label: series.eyebrow, open: { openWork(WorkRoute(id: series.id, page: .bookSeries)) })
         }
     }
 

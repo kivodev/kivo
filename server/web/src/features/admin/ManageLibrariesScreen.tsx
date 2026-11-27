@@ -1,7 +1,8 @@
 import { Plural, Trans, useLingui } from "@lingui/react/macro";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { fileQueries } from "@/api/files";
 import {
   libraryQueries,
   useDeleteLibrary,
@@ -131,6 +132,9 @@ function LibraryRow({
   added: boolean;
 }) {
   const { t } = useLingui();
+  const navigate = useNavigate();
+  const unmatched = library.unmatchedCount ?? 0;
+  const missing = useQuery(fileQueries.missingCount(library.id)).data ?? 0;
   const scan = useScanLibrary();
   const stop = useStopLibraryScan();
   const refresh = useRefreshLibraryMetadata();
@@ -173,6 +177,29 @@ function LibraryRow({
           <Button aria-label={t`More actions for ${name}`} variant="ghost" size="sm">
             <Icon name="more" />
           </Button>
+          <MenuItem
+            textValue={t`Unmatched`}
+            onAction={() =>
+              void navigate({ to: "/admin/libraries/$libraryId/unmatched", params: { libraryId: library.id } })
+            }
+          >
+            <span className="flex-1">
+              <Trans>Unmatched</Trans>
+            </span>
+            {unmatched > 0 && <span className="text-text-muted tabular-nums">{unmatched}</span>}
+          </MenuItem>
+          <MenuItem
+            textValue={t`Missing files`}
+            onAction={() =>
+              void navigate({ to: "/admin/libraries/$libraryId/missing-files", params: { libraryId: library.id } })
+            }
+          >
+            <span className="flex-1">
+              <Trans>Missing files</Trans>
+            </span>
+            {missing > 0 && <span className="text-text-muted tabular-nums">{missing}</span>}
+          </MenuItem>
+          <MenuSeparator />
           <MenuItem isDisabled={refresh.isPending} onAction={() => setOpen("refresh")}>
             <Trans>Refresh all metadata</Trans>
           </MenuItem>

@@ -43,27 +43,35 @@ func (s *Stream) Playlist(name string) ([]byte, error) {
 	return b, nil
 }
 
-// Segment returns the path of a segment (a video segment, a text segment,
+// Segment returns the path of a segment (a video, audio or text segment,
 // or an init segment) once it's on disk. It returns at once if the segment
 // is already there. It waits if the running job is about to write it. For
 // a far seek, it restarts the job at that segment. The newest request
 // wins: once another request has replaced the job, this one only waits for
 // the running job and doesn't restart it. A job that began at the
 // segment and went past it without writing it fails the request with
-// ErrJobFailed, rather than starting again. Every text track's
-// segment is written along with its video, so text segments behave the
+// ErrJobFailed, rather than starting again. The audio's segment and every
+// text track's are written along with the video's, so they behave the
 // same way.
 func (s *Stream) Segment(ctx context.Context, name string) (string, error) {
 	if p, ok := parseInit(name); ok && p < len(s.spec.Parts) {
-		return s.init(ctx, name, p)
+		return s.init(ctx, name, filepath.Join(s.dir, initName(p)), p)
 	}
-	i, text, ok := parseSegment(name)
-	if !ok || i >= len(s.plan) || text >= len(s.spec.Text) {
+	if p, ok := parseAudioInit(name); ok && p < len(s.spec.Parts) && s.spec.splitAudio() {
+		return s.init(ctx, name, filepath.Join(s.dir, audioInitName(p)), p)
+	}
+	i, r, ok := parseSegment(name)
+	if !ok || i >= len(s.plan) || int(r) >= len(s.spec.Text) || (r == audioRendition && !s.spec.splitAudio()) {
 		return "", fmt.Errorf("%w: segment %s", ErrNotFound, name)
 	}
-	path := s.path(i)
-	if text >= 0 {
-		path = s.textPath(text, i)
+	var path string
+	switch r {
+	case videoRendition:
+		path = s.path(i)
+	case audioRendition:
+		path = s.audioPath(i)
+	default:
+		path = s.textPath(int(r), i)
 	}
 	have := func(serving bool) bool {
 		if serving {
@@ -172,12 +180,12 @@ func (s *Stream) refusedLocked(j *job, i int) error {
 // is cheaper to wait out than to restart.
 const nearSegments = 3
 
-// init returns the path of part p's init segment once it's on disk. If no
-// job is running in the part, it starts one at the part's start. name is
-// the requested segment, which errors name.
-func (s *Stream) init(ctx context.Context, name string, p int) (string, error) {
+// init returns path, part p's init segment for the video or the audio,
+// once it's on disk. If no job is running in the part, it starts one at
+// the part's start. name is the requested segment, which errors name.
+func (s *Stream) init(ctx context.Context, name, path string, p int) (string, error) {
 	have := func(bool) bool { return s.initDone[p] }
-	return s.wait(ctx, name, filepath.Join(s.dir, initName(p)), have, func(j *job) (int, error) {
+	return s.wait(ctx, name, path, have, func(j *job) (int, error) {
 		switch {
 		case j != nil && j.failed():
 			return 0, j.err
@@ -227,6 +235,9 @@ func (s *Stream) Close() {
 
 func (s *Stream) path(i int) string { return filepath.Join(s.dir, segmentName(i)) }
 
+// audioPath is the path of the audio's segment i.
+func (s *Stream) audioPath(i int) string { return filepath.Join(s.dir, audioName(i)) }
+
 // textPath is the path of text track k's segment i.
 func (s *Stream) textPath(k, i int) string { return filepath.Join(s.dir, textName(k, i)) }
 
@@ -255,12 +266,13 @@ func (s *Stream) firstOf(p int) int {
 
 // startLocked replaces the running job with one starting at segment i.
 func (s *Stream) startLocked(i int) *job {
+	prev := s.job
 	s.stopLocked()
 	ctx, cancel := context.WithCancel(context.Background())
 	s.count++
-	j := &job{seq: s.count, from: i, next: i, reading: i, cancel: cancel, began: time.Now()}
+	j := &job{seq: s.count, from: i, next: i, reading: i, cancel: cancel, done: make(chan struct{}), began: time.Now()}
 	s.job = j
-	s.jobs.Go(func() { s.run(ctx, j) })
+	s.jobs.Go(func() { s.run(ctx, j, prev) })
 	return j
 }
 

@@ -18,7 +18,6 @@ import (
 	"github.com/mmcdole/kivo/internal/api/internal/gen"
 	"github.com/mmcdole/kivo/internal/auth"
 	"github.com/mmcdole/kivo/internal/config"
-	"github.com/mmcdole/kivo/internal/release"
 	kivoversion "github.com/mmcdole/kivo/internal/version"
 )
 
@@ -601,7 +600,7 @@ func TestServerInfo(t *testing.T) {
 
 // The newer release is in an admin's server info only.
 func TestServerInfoNewRelease(t *testing.T) {
-	e := newEnv(t, serving{Version: "0.4.0", Newer: release.Release{Version: "0.5.0", URL: "https://github.com/kivodev/kivo/releases/tag/v0.5.0"}})
+	e := newEnv(t, serving{Version: "0.4.0", Newer: kivoversion.Release{Version: "0.5.0", URL: "https://github.com/kivodev/kivo/releases/tag/v0.5.0"}})
 	got := decode[gen.ServerInfo](t, e.do("GET", "/api/v1/server", e.adminToken, nil)).NewRelease
 	if want := (gen.NewRelease{Version: "0.5.0", URL: "https://github.com/kivodev/kivo/releases/tag/v0.5.0"}); got == nil || *got != want {
 		t.Errorf("admin: %+v, want %+v", got, want)

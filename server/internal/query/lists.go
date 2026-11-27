@@ -11,6 +11,7 @@ import (
 	"github.com/mmcdole/kivo/internal/catalog"
 	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/users"
+	"github.com/mmcdole/kivo/internal/userstate"
 )
 
 // List is a list the user keeps. Works counts the works the Viewer sees;
@@ -21,7 +22,7 @@ type List struct {
 	BuiltIn bool
 	Works   int
 	// Sort is the order a manual list is shown in.
-	Sort users.ListSort
+	Sort userstate.ListSort
 	// Smart is a smart list's rules, nil for a manual list.
 	Smart *SmartList
 	// Items are the list's first works, up to a Home row's, in its order.
@@ -36,12 +37,12 @@ type SmartList struct {
 }
 
 // listOrders is the sort key of each order a manual list is shown in.
-var listOrders = map[users.ListSort]string{
-	users.ListCustom:      sortListPosition,
-	users.ListTitle:       "title",
-	users.ListReleaseDate: "releaseDate",
-	users.ListRating:      "rating",
-	users.ListDateAdded:   sortListAddedAt,
+var listOrders = map[userstate.ListSort]string{
+	userstate.ListCustom:      sortListPosition,
+	userstate.ListTitle:       "title",
+	userstate.ListReleaseDate: "releaseDate",
+	userstate.ListRating:      "rating",
+	userstate.ListDateAdded:   sortListAddedAt,
 }
 
 // reads is how a list's works are read: the query to run, and where. A
@@ -103,7 +104,7 @@ func parseSmart(stored string) *SmartList {
 // LogBrokenSmartLists logs a Warn for each saved query that no longer
 // compiles, with its list and problem codes and never its rules. The server
 // runs it once as it starts.
-func LogBrokenSmartLists(ctx context.Context, saved []users.SavedQuery) {
+func LogBrokenSmartLists(ctx context.Context, saved []userstate.SavedQuery) {
 	for _, q := range saved {
 		if problems := parseSmart(q.Query).Errors; len(problems) > 0 {
 			codes := make([]string, len(problems))
@@ -197,7 +198,7 @@ func (s *Service) List(ctx context.Context, v users.Viewer, list id.ID) (List, e
 // in the order it is shown in when sort is empty, a smart list's as its
 // rules select them. It lists those of kinds, or every kind when kinds is
 // empty. The first page, at offset 0, has the Total; a later page's is 0.
-func (s *Service) ListWorks(ctx context.Context, v users.Viewer, list id.ID, kinds []catalog.WorkKind, sort users.ListSort, o GridOptions) (GridPage[WorkSummary], error) {
+func (s *Service) ListWorks(ctx context.Context, v users.Viewer, list id.ID, kinds []catalog.WorkKind, sort userstate.ListSort, o GridOptions) (GridPage[WorkSummary], error) {
 	limit, err := o.limit()
 	if err != nil {
 		return GridPage[WorkSummary]{}, err

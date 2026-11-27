@@ -52,7 +52,7 @@ info:
        A list that isn't paged comes back whole, with neither: an item's
        children and files, a collection's root works, Search, Home, and the
        short lists the server holds whole (libraries, users, sessions,
-       plays, problems, folders, artwork choices and matches). Filters are plain
+       plays, folders, artwork choices and matches). Filters are plain
        query parameters, repeated for several values, a range as its
        `From` and `To`.
     6. **Errors.** Every non-2xx response is `application/problem+json`
@@ -208,7 +208,7 @@ tags:
   - name: events
     description: The live-events WebSocket. Served by a hand-written handler.
   - name: health
-    description: Liveness, the problems page and the server log.
+    description: Liveness and the server log.
 
 paths:
   /healthz:
@@ -2307,12 +2307,15 @@ paths:
       summary: List unmatched works
       description: |
         Backs the Unmatched list.
-        Every library's unmatched items, library by library and each by
-        title, each summary with its `path`. A feed, read in order by
-        `after`.
+        The unmatched items of every library, or with `libraryId` of one,
+        library by library and each by title, each summary with its `path`.
+        A feed, read in order by `after`.
       tags: [works]
       x-kivo-access: admin
       parameters:
+        - name: libraryId
+          in: query
+          schema: {$ref: "#/components/schemas/ID"}
         - {$ref: "#/components/parameters/After"}
         - {$ref: "#/components/parameters/Limit"}
       responses:
@@ -2525,9 +2528,9 @@ paths:
       operationId: deleteMissingFiles
       summary: Delete missing files
       description: |
-        Forgets every gone file and its versions, as `DELETE
-        /api/v1/files/{id}` does one. Works and watch state stay; the disk
-        is never touched.
+        Forgets every gone file and its versions, or with `libraryId` one
+        library's, as `DELETE /api/v1/files/{id}` does one. Works and watch
+        state stay; the disk is never touched.
       tags: [files]
       x-kivo-access: admin
       parameters:
@@ -2538,6 +2541,9 @@ paths:
           schema:
             type: string
             enum: [gone]
+        - name: libraryId
+          in: query
+          schema: {$ref: "#/components/schemas/ID"}
       responses:
         "204":
           description: Deleted.
@@ -2789,46 +2795,6 @@ paths:
         "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
-        default: {$ref: "#/components/responses/Error"}
-
-  /api/v1/problems:
-    get:
-      operationId: listProblems
-      summary: List problems
-      description: |
-        Backs the Problems page. Open problems, newest first. Resolved
-        problems close themselves.
-      tags: [health]
-      x-kivo-access: admin
-      responses:
-        "200":
-          description: Problems.
-          content:
-            application/json:
-              schema: {$ref: "#/components/schemas/ServerProblemList"}
-        "401": {$ref: "#/components/responses/Unauthorized"}
-        "403": {$ref: "#/components/responses/Forbidden"}
-        default: {$ref: "#/components/responses/Error"}
-
-  /api/v1/problems/{id}:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        description: A problem's opaque ID.
-        schema: {type: string}
-    delete:
-      operationId: dismissProblem
-      summary: Dismiss problem
-      description: It stays hidden until it resolves and comes back.
-      tags: [health]
-      x-kivo-access: admin
-      responses:
-        "204":
-          description: Dismissed.
-        "401": {$ref: "#/components/responses/Unauthorized"}
-        "403": {$ref: "#/components/responses/Forbidden"}
-        "404": {$ref: "#/components/responses/NotFound"}
         default: {$ref: "#/components/responses/Error"}
 
   /api/v1/users/me/play-events:
@@ -3097,9 +3063,12 @@ paths:
       summary: Get HLS playlist or segment
       description: |
         Start from `PlayStarted.delivery.url`, the multivariant playlist;
-        playlists refer to the rest with relative URIs. A subtitle the
-        play streams is a subtitle rendition there, with WebVTT segments
-        covering the video's. A segment that isn't ready yet is waited for.
+        playlists refer to the rest with relative URIs. With video, the
+        audio is an audio rendition there, with fragmented MP4 segments of
+        its own covering the video's, unless the client asked for it inside
+        the video's segments (`StreamCapabilities.muxedAudio`). A subtitle the play streams is a
+        subtitle rendition there, with WebVTT segments covering the
+        video's. A segment that isn't ready yet is waited for.
         A segment whose transcode failed is `500` with code
         `transcodeFailed`: report it through the fallback request. Also
         answers `HEAD`.
@@ -4102,9 +4071,9 @@ components:
     Settings:
       type: object
       required: [serverName, metadataLanguage, contentRatingCountry, playedThreshold, openSubtitlesKey,
-        openSubtitlesUsername, openSubtitlesPasswordSet, fileWatching, localNetworks, accelerator,
-        videoTranscodeLimit, maintenanceStartHour, maintenanceEndHour, previewsAtOnce, markersAtOnce, publicUrl,
-        remoteQualityCapBps]
+        openSubtitlesUsername, openSubtitlesPasswordSet, fileWatching, rescanEveryMinutes, localNetworks,
+        accelerator, videoTranscodeLimit, maintenanceStartHour, maintenanceEndHour, previewsAtOnce, markersAtOnce,
+        publicUrl, remoteQualityCapBps]
       properties:
         serverName:
           type: string
@@ -4127,12 +4096,25 @@ components:
         openSubtitlesPasswordSet:
           type: boolean
           description: Whether the OpenSubtitles account has a password; the password itself is never sent.
+        openSubtitlesRefused:
+          type: string
+          enum: [key, account]
+          description: |
+            Set while OpenSubtitles refuses the saved API key, or the saved
+            username or password.
         fileWatching:
           type: boolean
           description: |
             Scan a folder as soon as files in it change. Off, changes are
-            found by the scan of every library every 12 hours, or a scan an
-            admin starts.
+            found by the scan of every library every `rescanEveryMinutes`,
+            or a scan an admin starts.
+        rescanEveryMinutes:
+          type: integer
+          minimum: 15
+          maximum: 1440
+          description: |
+            How often every library is scanned, in minutes. The scan finds
+            the files that file watching misses.
         playedThreshold:
           type: number
           format: double
@@ -4212,6 +4194,7 @@ components:
           type: string
           description: The OpenSubtitles account's password; empty for none.
         fileWatching: {type: boolean}
+        rescanEveryMinutes: {type: integer, minimum: 15, maximum: 1440}
         localNetworks:
           type: array
           items: {type: string}
@@ -4930,10 +4913,10 @@ components:
           description: Default `nightly`.
         markers:
           $ref: "#/components/schemas/ProcessingSchedule"
-          description: Default `nightlyAndAdded`; `never` for a library of any kind but `shows`, whatever is sent.
+          description: Default `nightly`; `never` for a library of any kind but `shows`, whatever is sent.
         subtitles:
           $ref: "#/components/schemas/ProcessingSchedule"
-          description: Default `nightlyAndAdded`; `never` for an `audiobooks` library, whatever is sent.
+          description: Default `nightly`; `never` for an `audiobooks` library, whatever is sent.
         refreshDays:
           $ref: "#/components/schemas/RefreshDays"
           description: Default 30.
@@ -6616,6 +6599,11 @@ components:
         nightly:
           type: boolean
           description: Its runs begin as the maintenance window opens; else every so often.
+        everyMinutes:
+          type: integer
+          description: |
+            How long after a run's end its next begins, for a task that runs
+            every so often. Absent in `onDemand` and for a nightly task.
         nextRunAt:
           type: string
           format: date-time
@@ -6731,38 +6719,10 @@ components:
           description: Why it failed, in words for an admin.
         failedAt: {type: string, format: date-time}
 
-    ServerProblem:
-      type: object
-      description: An open issue on the problems page, such as "library /mnt/tv unreachable for 2 h".
-      required: [id, component, code, message, severity, raisedAt]
-      properties:
-        id:
-          type: string
-          description: Opaque and stable while the problem is open.
-        component:
-          type: string
-          description: The reporting part of the server, such as `scan`.
-        code:
-          type: string
-          description: Stable, for translating and choosing the fix action, such as `folderUnreachable`.
-        message:
-          type: string
-          description: English, written for an admin; shown when the client has no translation for `code`.
-        severity: {$ref: "#/components/schemas/ProblemSeverity"}
-        raisedAt: {type: string, format: date-time}
-
     ProblemSeverity:
       type: string
       description: How much a server problem matters.
       enum: [info, warning, error]
-
-    ServerProblemList:
-      type: object
-      required: [items]
-      properties:
-        items:
-          type: array
-          items: {$ref: "#/components/schemas/ServerProblem"}
 
     LogLine:
       type: object
@@ -6917,6 +6877,9 @@ components:
         file:
           $ref: "#/components/schemas/FileCapabilities"
           description: Files it plays whole, the original or a download. Absent, it plays none.
+        stream:
+          $ref: "#/components/schemas/StreamCapabilities"
+          description: How it plays the HLS stream. Absent, every default applies.
         video:
           type: array
           items: {$ref: "#/components/schemas/VideoEntry"}
@@ -6943,12 +6906,26 @@ components:
             one, so choosing another audio track keeps the file. Default
             false.
 
+    StreamCapabilities:
+      type: object
+      description: |
+        How a client plays the HLS stream. Whether it streams at all is said
+        by its entries with `stream` delivery.
+      properties:
+        muxedAudio:
+          type: boolean
+          description: |
+            It needs the audio inside the video's segments. Otherwise, with
+            video, the audio is a rendition of its own (`EXT-X-MEDIA`).
+            Default false.
+
     CapabilityDelivery:
       type: string
       description: |
         How a track reaches the client: `file` inside the played file;
-        `stream` inside the HLS stream (fragmented MP4, and WebVTT
-        subtitle renditions); `external` a subtitle sent to the client as
+        `stream` inside the HLS stream (fragmented MP4, with the audio a
+        rendition apart from the video unless `StreamCapabilities.muxedAudio`
+        says otherwise, and WebVTT subtitle renditions); `external` a subtitle sent to the client as
         its own file, which the client draws. A track's source, also
         `external` for a subtitle file next to the video, is where it lives,
         not how it's delivered.
@@ -7983,7 +7960,7 @@ components:
       properties:
         id:
           type: string
-          description: The problem's ID, as `GET /api/v1/problems` names it.
+          description: The problem's component and code, such as `scan.folderUnreachable`.
         code: {type: string}
         message: {type: string}
         severity: {$ref: "#/components/schemas/ProblemSeverity"}
@@ -8033,9 +8010,6 @@ components:
           type: string
           enum: [snapshot]
         serverVersion: {type: string}
-        problemCount:
-          type: integer
-          description: Admins only. Open problems, for the dot on Admin.
 
     EventMessage:
       type: object
@@ -8078,8 +8052,6 @@ components:
         - `playsChanged`: admins only. A play started or ended, or a
           heartbeat reported its position; refetch the plays and the play
           events.
-        - `problemsChanged` (`problemCount`): admins only. The open problems
-          changed; refetch them.
         - `logsChanged`: admins only. The server logged lines at Info or
           above; refetch the recent log.
         - `activityChanged`: admins only. An event was recorded; refetch
@@ -8096,7 +8068,6 @@ components:
           items: {$ref: "#/components/schemas/ID"}
         playId: {$ref: "#/components/schemas/ID"}
         message: {type: string}
-        problemCount: {type: integer}
         workIds:
           type: array
           items: {$ref: "#/components/schemas/ID"}
@@ -8105,7 +8076,7 @@ components:
       type: string
       description: What an event says changed. Skip kinds you don't know.
       enum: [workChanged, libraryChanged, userStateChanged, homeChanged, listsChanged, playEnded, downloadsChanged,
-        tasksChanged, playsChanged, problemsChanged, logsChanged, activityChanged]
+        tasksChanged, playsChanged, logsChanged, activityChanged]
 
     ResyncMessage:
       type: object

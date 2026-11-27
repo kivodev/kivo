@@ -54,10 +54,12 @@ func Attachments(r io.ReaderAt, size int64) (out []media.AttachedFile, err error
 	return out, skipped
 }
 
-// CopyAttachment copies to w the bytes of the nth file an MKV carries. n
-// counts from 0 in the order [Attachments] lists them, skipping what
-// [Attachments] skips.
-func CopyAttachment(r io.ReaderAt, size int64, n int, w io.Writer) (err error) {
+// CopyAttachments parses an MKV's attachments once and calls fn for each
+// index in indices, in order, with a reader over that attachment's bytes.
+// Indices count from 0 in the order [Attachments] lists them, skipping what
+// [Attachments] skips. Source read errors from data wrap
+// media.ErrSourceUnreadable.
+func CopyAttachments(r io.ReaderAt, size int64, indices []int, fn func(n int, data io.Reader) error) (err error) {
 	defer func() {
 		if p := recover(); p != nil {
 			err = corrupt("%v", p)
@@ -68,17 +70,35 @@ func CopyAttachment(r io.ReaderAt, size int64, n int, w io.Writer) (err error) {
 		return err
 	}
 	// Attachments that were left out, as reported in err, aren't counted.
-	if n < 0 || n >= len(files) {
-		return corrupt("no attachment %d of %d", n, len(files))
-	}
-	_, data, err := attachedFileFields(r, files[n])
-	if err != nil {
-		return err
-	}
-	if _, err := io.Copy(w, io.NewSectionReader(r, data.data, data.end-data.data)); err != nil {
-		return unreadable(err)
+	for _, n := range indices {
+		if n < 0 || n >= len(files) {
+			return corrupt("no attachment %d of %d", n, len(files))
+		}
+		d := files[n].data
+		if err := fn(n, unreadableReader{io.NewSectionReader(r, d.data, d.end-d.data)}); err != nil {
+			return err
+		}
 	}
 	return nil
+}
+
+// unreadableReader wraps non-EOF read errors with media.ErrSourceUnreadable
+// so callers can distinguish source failures from destination write errors.
+type unreadableReader struct{ r io.Reader }
+
+func (u unreadableReader) Read(p []byte) (int, error) {
+	n, err := u.r.Read(p)
+	if err != nil && !errors.Is(err, io.EOF) {
+		return n, unreadable(err)
+	}
+	return n, err
+}
+
+// parsedAttachment is an AttachedFile whose header fields and FileData
+// range have already been located.
+type parsedAttachment struct {
+	info media.AttachedFile
+	data element
 }
 
 // attachedFiles finds an MKV's well-formed AttachedFile elements, in order.
@@ -88,7 +108,7 @@ func CopyAttachment(r io.ReaderAt, size int64, n int, w io.Writer) (err error) {
 // is reported in the returned error, which wraps media.ErrSourceCorrupt. A
 // failed read returns nothing and an error wrapping
 // media.ErrSourceUnreadable.
-func attachedFiles(r io.ReaderAt, size int64) ([]element, error) {
+func attachedFiles(r io.ReaderAt, size int64) ([]parsedAttachment, error) {
 	if size < 8 {
 		return nil, nil
 	}
@@ -115,7 +135,7 @@ func attachedFiles(r io.ReaderAt, size int64) ([]element, error) {
 		return nil, nil // a stale SeekHead entry
 	}
 	var (
-		out     []element
+		out     []parsedAttachment
 		skipped []error
 	)
 	errFull := corrupt("mkv: more than %d attachments; the rest left out", maxAttachments)
@@ -126,14 +146,14 @@ func attachedFiles(r io.ReaderAt, size int64) ([]element, error) {
 		if len(out) == maxAttachments {
 			return errFull
 		}
-		_, _, err := attachedFileFields(r, f)
+		a, data, err := attachedFileFields(r, f)
 		switch {
 		case errors.Is(err, media.ErrSourceCorrupt):
 			skipped = append(skipped, err)
 		case err != nil:
 			return err
 		default:
-			out = append(out, f)
+			out = append(out, parsedAttachment{info: a, data: data})
 		}
 		return nil
 	})
@@ -146,13 +166,10 @@ func attachedFiles(r io.ReaderAt, size int64) ([]element, error) {
 	return out, errors.Join(skipped...)
 }
 
-// attachedFile reads one AttachedFile's name and declared type. It streams
-// the data rather than loading it, to get its hash, size and kind.
-func attachedFile(r io.ReaderAt, f element) (media.AttachedFile, error) {
-	a, data, err := attachedFileFields(r, f)
-	if err != nil {
-		return a, err
-	}
+// attachedFile hashes and sniffs a parsed AttachedFile's data without
+// loading it all into memory.
+func attachedFile(r io.ReaderAt, f parsedAttachment) (media.AttachedFile, error) {
+	a, data := f.info, f.data
 	a.Size = data.end - data.data
 	h := sha256.New()
 	head := make([]byte, min(a.Size, sniffSize))

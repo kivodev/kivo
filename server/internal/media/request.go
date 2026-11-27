@@ -169,6 +169,9 @@ type TranscodeRequest struct {
 	BurnIn      *SubtitleRef
 	Text        []CuesOut
 	Accelerator Accelerator
+	// MuxedAudio keeps the audio inside the video's segments. Otherwise,
+	// with video, the audio comes out apart from it (Segment.Audio).
+	MuxedAudio bool
 }
 
 // ConvertRequest is one conversion. It reads one file and muxes the video

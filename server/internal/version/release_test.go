@@ -1,4 +1,4 @@
-package release
+package version
 
 import (
 	"context"
@@ -46,17 +46,17 @@ func (g *github) count() int {
 	return g.asked
 }
 
-func checker(opt Options, g *github) *Checker {
-	c := New(opt)
+func checker(opt CheckOptions, g *github) *Checker {
+	c := NewChecker(opt)
 	c.get = g
 	return c
 }
 
-const latest = `{"tag_name": "v0.5.0", "html_url": "https://example.com/elsewhere", "draft": false, "prerelease": false}`
+const latestBody = `{"tag_name": "v0.5.0", "html_url": "https://example.com/elsewhere", "draft": false, "prerelease": false}`
 
 func TestCheck(t *testing.T) {
-	g := &github{body: latest}
-	c := checker(Options{Version: "0.4.0", Check: true}, g)
+	g := &github{body: latestBody}
+	c := checker(CheckOptions{Version: "0.4.0", Check: true}, g)
 	if _, ok := c.Newer(); ok {
 		t.Fatal("newer before any check")
 	}
@@ -83,7 +83,7 @@ func TestCheckKeepsNothing(t *testing.T) {
 		"prerelease":   {body: `{"tag_name": "v0.5.0", "prerelease": true}`},
 		"not a tag":    {body: `{"tag_name": "nightly"}`},
 	} {
-		c := checker(Options{Version: "0.4.0", Check: true}, g)
+		c := checker(CheckOptions{Version: "0.4.0", Check: true}, g)
 		if err := c.check(t.Context()); err != nil {
 			t.Errorf("%s: %v", name, err)
 		}
@@ -100,7 +100,7 @@ func TestCheckFails(t *testing.T) {
 		"no releases":  {status: http.StatusNotFound},
 		"garbled":      {body: "<html>"},
 	} {
-		c := checker(Options{Version: "0.4.0", Check: true}, g)
+		c := checker(CheckOptions{Version: "0.4.0", Check: true}, g)
 		if err := c.check(t.Context()); err == nil {
 			t.Errorf("%s: no error", name)
 		}
@@ -113,8 +113,8 @@ func TestCheckFails(t *testing.T) {
 // TestRun checks a minute after startup and then daily.
 func TestRun(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		g := &github{body: latest}
-		c := checker(Options{Version: "0.4.0", Check: true}, g)
+		g := &github{body: latestBody}
+		c := checker(CheckOptions{Version: "0.4.0", Check: true}, g)
 		ctx, cancel := context.WithCancel(t.Context())
 		done := make(chan error)
 		go func() { done <- c.Run(ctx) }()
@@ -143,12 +143,12 @@ func TestRun(t *testing.T) {
 // TestRunSkips checks that Run returns at once, without asking, for a
 // version that isn't a semantic version and when the check is off.
 func TestRunSkips(t *testing.T) {
-	for name, opt := range map[string]Options{
+	for name, opt := range map[string]CheckOptions{
 		"dev":    {Version: "dev", Check: true},
 		"commit": {Version: "d76b7e0", Check: true},
 		"off":    {Version: "0.4.0", Check: false},
 	} {
-		g := &github{body: latest}
+		g := &github{body: latestBody}
 		if err := checker(opt, g).Run(t.Context()); err != nil {
 			t.Errorf("%s: %v", name, err)
 		}
@@ -163,7 +163,7 @@ func TestRunSkips(t *testing.T) {
 func TestCheckDevBuild(t *testing.T) {
 	for tag, want := range map[string]bool{"v0.3.0": false, "v0.4.0": true} {
 		g := &github{body: `{"tag_name": "` + tag + `"}`}
-		c := checker(Options{Version: "0.3.1-dev+56c0018d", Check: true}, g)
+		c := checker(CheckOptions{Version: "0.3.1-dev+56c0018d", Check: true}, g)
 		if err := c.check(t.Context()); err != nil {
 			t.Fatal(err)
 		}

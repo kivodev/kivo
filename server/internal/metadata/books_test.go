@@ -166,7 +166,8 @@ func TestAcceptBook(t *testing.T) {
 	}{
 		{"closest", "The Martian", []string{"Andy Weir"}, 653, "bray"},
 		{"closest of two in the slack", "The Martian", []string{"Andy Weir"}, 662, "wheaton"},
-		{"the slack is 2% of a long book", "The Martian", []string{"Andy Weir"}, 641, "bray"},
+		{"the slack is 5% of a long book", "The Martian", []string{"Andy Weir"}, 622, "bray"},
+		{"just past the slack", "The Martian", []string{"Andy Weir"}, 620, ""},
 		{"too far from either", "The Martian", []string{"Andy Weir"}, 600, ""},
 		{"another author", "The Martian", []string{"Ray Bradbury"}, 653, ""},
 		{"with its subtitle", "The Martian: Classroom Edition", []string{"Andy Weir"}, 664, "wheaton"},
@@ -190,17 +191,20 @@ func TestAcceptBook(t *testing.T) {
 	}
 }
 
-// Folder and tag values win where present: the description, publisher,
-// release date, narrator and series. The provider fills the rest, which is
-// the genres and the cover the book lacks.
+// Folder and tag values win where present: the publisher, release date,
+// narrator and series. The provider fills the rest, which is the genres and
+// the cover the book lacks, and its description replaces the tag's.
 func TestBookLocalBeatsProvider(t *testing.T) {
 	e := newEnv(t)
 	w := e.book("James S. A. Corey/The Expanse/Book 1 - Leviathan Wakes [B073H9PF2D]/Leviathan Wakes.m4b", map[string]string{
 		"description": "From the tags.", "publisher": "Orbit", "date": "2011", "composer": "Erik Davies",
 	}, 1206*time.Minute)
 	e.mustRefresh(w)
-	if e.column(w, "overview") != "From the tags." || e.publisher(w) != "Orbit" || e.column(w, "release_date") != "2011" {
-		t.Errorf("local values lost: %q %q %q", e.column(w, "overview"), e.publisher(w), e.column(w, "release_date"))
+	if e.publisher(w) != "Orbit" || e.column(w, "release_date") != "2011" {
+		t.Errorf("local values lost: %q %q", e.publisher(w), e.column(w, "release_date"))
+	}
+	if got := e.column(w, "overview"); got != "Humanity has colonized the solar system." {
+		t.Errorf("overview %q", got)
 	}
 	if got := e.credits(w); !reflect.DeepEqual(got, []string{"author:James S. A. Corey", "narrator:Erik Davies"}) {
 		t.Errorf("credits %q", got)
@@ -220,6 +224,37 @@ func TestBookLocalBeatsProvider(t *testing.T) {
 	series = e.strings(`SELECT s.key || ' ' || b.position_label FROM book_series_book b JOIN book_series s ON s.id = b.series_id WHERE b.work_id = ?`, c)
 	if !reflect.DeepEqual(series, []string{"local:James S. A. Corey/The Expanse 2"}) {
 		t.Errorf("provider series %q", series)
+	}
+}
+
+// A wrong description tag in a book's files gives way to the
+// description of the book Match names, and stays out while Audible is down.
+func TestBookMatchDescriptionBeatsTag(t *testing.T) {
+	e := newEnv(t)
+	w := e.book("Andy Weir/The Martian/001 - The Martian.m4b", map[string]string{"description": "Chapter 71", "track": "1/71"}, 524*time.Minute)
+	e.mustRefresh(w)
+	if e.asin(w) != "" || e.column(w, "overview") != "Chapter 71" {
+		t.Fatalf("before Match: ASIN %q, overview %q", e.asin(w), e.column(w, "overview"))
+	}
+	if err := e.s.MatchBook(ctx, w, "B00B5HZGUG"); err != nil {
+		t.Fatal(err)
+	}
+	e.mustRefresh(w)
+	want := "Six days ago, astronaut Mark Watney became one of the first people to walk on Mars."
+	if got := e.column(w, "overview"); got != want {
+		t.Errorf("after Match: overview %q", got)
+	}
+
+	e.b.Write(func(ctx context.Context, tx *store.Tx) error {
+		_, err := tx.ExecContext(ctx, `DELETE FROM provider_cache`)
+		return err
+	})
+	e.fx.set("/books/B00B5HZGUG", 503)
+	if err := e.refresh(w); !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("refresh: %v", err)
+	}
+	if got := e.column(w, "overview"); got != want {
+		t.Errorf("while Audible is down: overview %q", got)
 	}
 }
 

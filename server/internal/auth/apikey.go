@@ -61,7 +61,7 @@ func (s *Service) apiKeyCaller(ctx context.Context, hash tokenHash) (Caller, err
 	if err != nil {
 		return Caller{}, err
 	}
-	s.markUsed(ctx, time.UnixMilli(row.LastUsedAt.Int64), time.Now(), func(ctx context.Context, q *dbq.Queries, used int64) error {
+	s.markUsed(ctx, row.ID, time.UnixMilli(row.LastUsedAt.Int64), time.Now(), func(ctx context.Context, q *dbq.Queries, used int64) error {
 		return q.TouchAPIKey(ctx, dbq.TouchAPIKeyParams{ID: row.ID, Used: used})
 	})
 	return Caller{User: row.CreatedBy, APIKey: row.ID, Name: row.Name}, nil

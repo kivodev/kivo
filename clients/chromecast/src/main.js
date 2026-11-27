@@ -19,6 +19,20 @@ const options = new cf.CastReceiverOptions();
 options.useShakaForHls = true;
 options.customNamespaces = { [NAMESPACE]: cf.system.MessageType.JSON };
 options.playbackConfig = new cf.PlaybackConfig();
+// Shaka's default for HLS, sequence mode, lays each rendition's segments end
+// to end in the order they arrive and ignores their timestamps. Where a
+// segment goes then depends on a one-off "just seeked" flag, and a seek that
+// lands while Shaka is freeing old buffer loses it: the segments at the new
+// position go after the old one, and the player buffers for ever (Shaka 4.15
+// to 5.1). With sequence mode off Shaka places every segment by its own
+// timestamp, which the server's segments carry, so the order they arrive in
+// can't matter. The playlists are exact, so a seek needn't also fetch the
+// segment before the one it lands in.
+// https://github.com/shaka-project/shaka-player/issues/11035
+options.playbackConfig.shakaConfig = {
+  manifest: { hls: { sequenceMode: false } },
+  streaming: { inaccurateManifestTolerance: 0 },
+};
 
 if (log.enabled) await debug();
 

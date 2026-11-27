@@ -1,4 +1,5 @@
 import { Trans, useLingui } from "@lingui/react/macro";
+import { useState } from "react";
 import { Button } from "@/components/Button";
 import { Icon } from "@/components/Icon";
 import { FolderPicker } from "./FolderPicker";
@@ -8,9 +9,13 @@ type Props = {
   onChange: (folders: string[]) => void;
 };
 
-/** A library's folders. It lists the folders chosen, each removable, and the picker to add another. */
+/**
+ * A library's folders. It lists the folders chosen, each removable. Add
+ * folder opens the picker in place, which closes once a folder is chosen.
+ */
 export function FoldersField({ folders, onChange }: Props) {
   const { t } = useLingui();
+  const [browsing, setBrowsing] = useState(false);
   return (
     <div className="flex flex-col gap-2">
       <span className="text-sm font-medium text-text">
@@ -34,7 +39,30 @@ export function FoldersField({ folders, onChange }: Props) {
           ))}
         </ul>
       )}
-      <FolderPicker onPick={(p) => !folders.includes(p) && onChange([...folders, p])} />
+      {!browsing &&
+        (folders.length === 0 ? (
+          <div className="flex items-center justify-between gap-3 rounded-md border border-dashed border-border p-3">
+            <span className="text-sm text-text-muted">
+              <Trans>Choose where this library's files are.</Trans>
+            </span>
+            <Button size="sm" onPress={() => setBrowsing(true)}>
+              <Trans>Add folder</Trans>
+            </Button>
+          </div>
+        ) : (
+          <Button size="sm" variant="ghost" className="self-start" onPress={() => setBrowsing(true)}>
+            <Trans>Add another folder</Trans>
+          </Button>
+        ))}
+      <FolderPicker
+        isOpen={browsing}
+        chosen={folders}
+        onPick={(p) => {
+          onChange([...folders, p]);
+          setBrowsing(false);
+        }}
+        onClose={() => setBrowsing(false)}
+      />
     </div>
   );
 }

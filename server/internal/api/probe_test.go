@@ -187,6 +187,7 @@ func TestProbeForwarded(t *testing.T) {
 		{"relayed from the internet", "10.0.0.1:443", "backend:8484", "203.0.113.5", "kivo.example.com", "kivo.example.com", false},
 		{"relayed through two proxies", "10.0.0.1:443", "backend:8484", "192.168.1.5, 203.0.113.5, 10.0.0.1", "kivo.example.com", "kivo.example.com", false},
 		{"relayed from the LAN", "10.0.0.1:443", "backend:8484", "192.168.1.5", "kivo.lan", "kivo.lan", true},
+		{"appended forwarded host", "10.0.0.1:443", "backend:8484", "203.0.113.5", "evil.example, kivo.example.com", "kivo.example.com", false},
 	} {
 		code, info := probe(t, e, tc.remote, tc.reached, "X-Forwarded-For", tc.xff, "X-Forwarded-Host", tc.xfh)
 		if code != http.StatusOK || info.Proof == nil {

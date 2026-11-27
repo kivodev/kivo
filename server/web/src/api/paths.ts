@@ -33,7 +33,6 @@ export const apiPaths = {
   files: "/api/v1/files",
   tasks: "/api/v1/tasks",
   taskFailures: "/api/v1/tasks/{task}/failures",
-  problems: "/api/v1/problems",
   activity: "/api/v1/activity",
   logs: "/api/v1/logs",
   logFile: "/api/v1/logs/file",

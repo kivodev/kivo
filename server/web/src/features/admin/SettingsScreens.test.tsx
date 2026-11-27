@@ -67,6 +67,51 @@ describe("Admin settings", () => {
     await waitFor(() => expect(password).toHaveValue(""));
   });
 
+  it.each([
+    ["key", "OpenSubtitles API key", "/openSubtitlesKey", "OpenSubtitles refused this key."],
+    ["account", "OpenSubtitles password", "/openSubtitlesPassword", "OpenSubtitles refused this username or password."],
+  ])("General says under the field when OpenSubtitles refused the %s", async (_, label, field, hint) => {
+    const api = serveMockApi();
+    api.settings = { ...api.settings, openSubtitlesUsername: "anna", openSubtitlesPasswordSet: true };
+    server.use(
+      http.patch("/api/v1/settings", () => problem(400, "invalidRequest", { errors: [{ field, code: "invalid" }] })),
+    );
+    const { user } = renderApp("/admin/settings/general");
+    const input = await screen.findByLabelText(label);
+    await user.type(input, "wrong");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText(hint)).toBeInTheDocument();
+    expect(input).toHaveAccessibleDescription(expect.stringContaining(hint));
+    expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+  });
+
+  it("General says under the key that OpenSubtitles refuses the saved one, until it's edited", async () => {
+    const api = serveMockApi();
+    api.settings = { ...api.settings, openSubtitlesKey: "old-key", openSubtitlesRefused: "key" };
+    const { user } = renderApp("/admin/settings/general");
+    const key = await screen.findByRole("textbox", { name: "OpenSubtitles API key" });
+    expect(key).toHaveAccessibleDescription(expect.stringContaining("OpenSubtitles refuses this key."));
+    expect(screen.queryByText("OpenSubtitles refuses this username or password.")).not.toBeInTheDocument();
+    await user.type(key, "2");
+    expect(screen.queryByText("OpenSubtitles refuses this key.")).not.toBeInTheDocument();
+  });
+
+  it("General says under the password that OpenSubtitles refuses the saved account", async () => {
+    const api = serveMockApi();
+    api.settings = {
+      ...api.settings,
+      openSubtitlesUsername: "anna",
+      openSubtitlesPasswordSet: true,
+      openSubtitlesRefused: "account",
+    };
+    renderApp("/admin/settings/general");
+    const password = await screen.findByLabelText("OpenSubtitles password");
+    expect(password).toHaveAccessibleDescription(
+      expect.stringContaining("OpenSubtitles refuses this username or password."),
+    );
+    expect(screen.queryByText("OpenSubtitles refuses this key.")).not.toBeInTheDocument();
+  });
+
   it("shows the save bar only with a change, and Discard puts the saved settings back", async () => {
     serveMockApi();
     const { user } = renderApp("/admin/settings/network");
@@ -102,6 +147,9 @@ describe("Admin settings", () => {
     const { user } = renderApp("/admin/settings/library");
     const watching = await screen.findByRole("switch", { name: "Scan when files change" });
     expect(watching).toBeChecked();
+    expect(watching).toHaveAccessibleDescription(
+      "Network shares may not report changes. All libraries are also scanned every 12 hours.",
+    );
     expect(screen.getByRole("button", { name: /Metadata language/ })).toHaveTextContent("American English");
     expect(screen.getByRole("button", { name: /Certification country/ })).toHaveTextContent("United States");
     expect(screen.getByRole("textbox", { name: "Played threshold" })).toHaveValue("90%");
@@ -119,6 +167,15 @@ describe("Admin settings", () => {
         contentRatingCountry: "US",
         playedThreshold: 0.95,
       }),
+    );
+  });
+
+  it("Library says how often libraries are rescanned, as Schedule on the Tasks page sets it", async () => {
+    const api = serveMockApi();
+    api.settings = { ...api.settings, rescanEveryMinutes: 60 };
+    renderApp("/admin/settings/library");
+    expect(await screen.findByRole("switch", { name: "Scan when files change" })).toHaveAccessibleDescription(
+      "Network shares may not report changes. All libraries are also scanned every hour.",
     );
   });
 

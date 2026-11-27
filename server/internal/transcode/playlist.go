@@ -1,11 +1,14 @@
 package transcode
 
 import (
+	"cmp"
 	"fmt"
 	"math"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/mmcdole/kivo/internal/media"
 )
 
 // Segment and playlist names are produced and parsed only in this file.
@@ -13,15 +16,40 @@ import (
 // flat (no "/"), so each fits in one path segment.
 const (
 	// PlaylistName is a stream's multivariant playlist, where a client
-	// starts. It names the media playlists: the video's, and each text
-	// track's.
+	// starts. It names the media playlists: the video's, the audio's when
+	// it's apart from the video, and each text track's.
 	PlaylistName  = "index.m3u8"
 	videoPlaylist = "main.m3u8"
+	audioPlaylist = "audio.m3u8"
 	segmentExt    = ".m4s"
 	textExt       = ".vtt"
+	// audioPrefix begins the names of the audio's segments and init
+	// segments, which are otherwise named as the video's.
+	audioPrefix = "audio-"
+)
+
+// rendition is one of a stream's media playlists: the video's, the
+// audio's, or text track k's as rendition(k).
+type rendition int
+
+const (
+	videoRendition rendition = -1
+	audioRendition rendition = -2
 )
 
 func segmentName(i int) string { return strconv.Itoa(i) + segmentExt }
+
+// audioName is the name of the audio's segment i, which covers the same
+// span as video segment i: audio-<i>.m4s.
+func audioName(i int) string { return audioPrefix + segmentName(i) }
+
+// IsAudio reports whether a segment's name is the audio's, apart from the
+// video.
+func IsAudio(name string) bool { return strings.HasPrefix(name, audioPrefix) }
+
+// audioInitName is the name of the audio's init segment for part p:
+// audio-init.mp4, then audio-init-1.mp4 and so on.
+func audioInitName(p int) string { return audioPrefix + initName(p) }
 
 // textPlaylist is the name of text track k's media playlist.
 func textPlaylist(k int) string { return "text-" + strconv.Itoa(k) + ".m3u8" }
@@ -59,13 +87,26 @@ func parseInit(name string) (int, bool) {
 	return p, true
 }
 
-// parseSegment returns the index in a segment name, and the text track
-// it's a segment of, or -1 for the video's. ok is false if name isn't a
-// segment name.
-func parseSegment(name string) (i, text int, ok bool) {
+// parseAudioInit returns the part an audio init segment's name is for. It
+// returns false if name isn't an audio init segment's name.
+func parseAudioInit(name string) (int, bool) {
+	n, ok := strings.CutPrefix(name, audioPrefix)
+	if !ok {
+		return 0, false
+	}
+	return parseInit(n)
+}
+
+// parseSegment returns the index in a segment name, and the rendition it's
+// a segment of. ok is false if name isn't a segment name.
+func parseSegment(name string) (i int, r rendition, ok bool) {
 	if n, ok := strings.CutSuffix(name, segmentExt); ok {
+		r := videoRendition
+		if a, ok := strings.CutPrefix(n, audioPrefix); ok {
+			n, r = a, audioRendition
+		}
 		i, ok := index(n)
-		return i, -1, ok
+		return i, r, ok
 	}
 	n, ok := strings.CutSuffix(name, textExt)
 	if !ok {
@@ -77,7 +118,7 @@ func parseSegment(name string) (i, text int, ok bool) {
 	if !ok || !okK || !okI || !strings.HasPrefix(name, "t") {
 		return 0, 0, false
 	}
-	return i, text, true
+	return i, rendition(text), true
 }
 
 // index parses a name's number, written without a sign or leading zeros.
@@ -88,12 +129,16 @@ func index(n string) (int, bool) {
 
 // renderPlaylists writes every playlist of a stream up front, so a client
 // can seek anywhere before far segments exist. Those are the multivariant
-// playlist, the video's media playlist, and each text track's. URIs are
-// relative, which keeps the play's ID out of the playlists.
+// playlist, the video's media playlist, the audio's when it's apart from
+// the video, and each text track's. URIs are relative, which keeps the
+// play's ID out of the playlists.
 func renderPlaylists(s Spec, plan []span) map[string][]byte {
-	out := map[string][]byte{PlaylistName: renderMultivariant(s), videoPlaylist: renderPlaylist(plan, -1)}
+	out := map[string][]byte{PlaylistName: renderMultivariant(s), videoPlaylist: renderPlaylist(plan, videoRendition)}
+	if s.splitAudio() {
+		out[audioPlaylist] = renderPlaylist(plan, audioRendition)
+	}
 	for k := range s.Text {
-		out[textPlaylist(k)] = renderPlaylist(plan, k)
+		out[textPlaylist(k)] = renderPlaylist(plan, rendition(k))
 	}
 	return out
 }
@@ -103,7 +148,8 @@ func renderPlaylists(s Spec, plan []span) map[string][]byte {
 const sdhCharacteristics = "public.accessibility.transcribes-spoken-dialog,public.accessibility.describes-music-and-sound"
 
 // renderMultivariant names the stream's single variant, with its codecs
-// when they're known, and each text track as a subtitle rendition. A
+// when they're known, its audio as an audio rendition when it's apart from
+// the video, and each text track as a subtitle rendition. A subtitle
 // rendition's STABLE-RENDITION-ID is its track's ID, which clients select
 // it by, and only the track the play shows is the default.
 func renderMultivariant(s Spec) []byte {
@@ -112,6 +158,10 @@ func renderMultivariant(s Spec) []byte {
 	inf := "#EXT-X-STREAM-INF:BANDWIDTH=" + strconv.Itoa(s.bandwidth())
 	if c := s.codecs(); c != "" {
 		inf += ",CODECS=" + quoted(c)
+	}
+	if s.splitAudio() {
+		writeAudioRendition(&b, s.Audio[0], s.AudioTitle)
+		inf += `,AUDIO="audio"`
 	}
 	names := map[string]int{}
 	for k, t := range s.Text {
@@ -138,6 +188,24 @@ func renderMultivariant(s Spec) []byte {
 	}
 	b.WriteString(inf + "\n" + videoPlaylist + "\n")
 	return []byte(b.String())
+}
+
+// writeAudioRendition writes the stream's audio as the one rendition of
+// its group, named title.
+func writeAudioRendition(b *strings.Builder, a media.AudioOut, title string) {
+	b.WriteString(`#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME=` + quoted(cmp.Or(title, "Audio")))
+	if a.Language != "" {
+		b.WriteString(",LANGUAGE=" + quoted(a.Language))
+	}
+	b.WriteString(",DEFAULT=YES,AUTOSELECT=YES")
+	channels := a.Out.Channels
+	if a.Out.Codec == media.Copy || channels == 0 {
+		channels = a.SourceChannels
+	}
+	if channels > 0 {
+		b.WriteString(",CHANNELS=" + quoted(strconv.Itoa(channels)))
+	}
+	b.WriteString(",URI=" + quoted(audioPlaylist) + "\n")
 }
 
 func yesNo(b bool) string {
@@ -177,18 +245,25 @@ func (s Spec) bandwidth() int {
 	return max(b, 1)
 }
 
-// renderPlaylist writes a media playlist from the plan. It writes the
-// video's playlist, or text track k's when k isn't -1. All cover the same
-// spans. Each part after the first begins with a discontinuity and, for
-// video, its own init segment.
-func renderPlaylist(plan []span, k int) []byte {
+// renderPlaylist writes rendition r's media playlist from the plan. All
+// cover the same spans. Each part after the first begins with a
+// discontinuity and, for video and audio, its own init segment.
+func renderPlaylist(plan []span, r rendition) []byte {
 	var longest time.Duration
 	for _, s := range plan {
 		longest = max(longest, s.Duration)
 	}
-	name, initMap := segmentName, func(p int) string { return fmt.Sprintf("#EXT-X-MAP:URI=%q\n", initName(p)) }
-	if k >= 0 {
-		name, initMap = func(i int) string { return textName(k, i) }, func(int) string { return "" }
+	mapOf := func(init func(int) string) func(int) string {
+		return func(p int) string { return fmt.Sprintf("#EXT-X-MAP:URI=%q\n", init(p)) }
+	}
+	var name, initMap func(int) string
+	switch r {
+	case videoRendition:
+		name, initMap = segmentName, mapOf(initName)
+	case audioRendition:
+		name, initMap = audioName, mapOf(audioInitName)
+	default:
+		name, initMap = func(i int) string { return textName(int(r), i) }, func(int) string { return "" }
 	}
 	var b strings.Builder
 	b.WriteString("#EXTM3U\n#EXT-X-VERSION:7\n#EXT-X-PLAYLIST-TYPE:VOD\n#EXT-X-INDEPENDENT-SEGMENTS\n")

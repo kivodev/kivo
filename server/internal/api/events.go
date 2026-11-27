@@ -72,6 +72,9 @@ var keepAliveEvery = 25 * time.Second
 
 const (
 	writeTimeout = 10 * time.Second
+	// closeGrace is how long a write in flight when the server stops gets
+	// to finish before it's cut off.
+	closeGrace = time.Second
 	// closeSessionEnded closes a socket whose session no longer
 	// authenticates. Clients respond by signing in again.
 	closeSessionEnded websocket.StatusCode = 4401
@@ -80,10 +83,29 @@ const (
 // stream sends the events c may see on conn until the client leaves, the
 // server stops, or the credential stops authenticating.
 func (s *Server) stream(ctx context.Context, conn *websocket.Conn, c caller) {
+	// sendCtx cuts off a write still in flight closeGrace after the server
+	// stops, so Close doesn't wait out writeTimeout on a stalled socket. A
+	// cancelled write drops the connection, so a write that can finish gets
+	// the grace, and its socket still closes with StatusGoingAway below.
+	sendCtx, cancelSend := context.WithCancel(ctx)
+	defer cancelSend()
+	go func() {
+		select {
+		case <-s.closing:
+			select {
+			case <-time.After(closeGrace):
+				cancelSend()
+			case <-sendCtx.Done():
+			}
+		case <-sendCtx.Done():
+		}
+	}()
+	goAway := func() { _ = conn.Close(websocket.StatusGoingAway, "server stopping") }
+
 	v := c.viewer
 	sub := s.deps.Events.Subscribe(scopeFilter(v))
 	defer func() { sub.Close() }()
-	if s.send(ctx, conn, s.snapshot(ctx, v)) != nil {
+	if s.send(sendCtx, conn, s.snapshot()) != nil {
 		return
 	}
 	// resync starts over with the current Viewer. It opens a new
@@ -92,22 +114,29 @@ func (s *Server) stream(ctx context.Context, conn *websocket.Conn, c caller) {
 	resync := func() bool {
 		sub.Close()
 		sub = s.deps.Events.Subscribe(scopeFilter(v))
-		return s.send(ctx, conn, gen.ResyncMessage{Type: gen.ResyncMessageTypeResync}) == nil &&
-			s.send(ctx, conn, s.snapshot(ctx, v)) == nil
+		return s.send(sendCtx, conn, gen.ResyncMessage{Type: gen.ResyncMessageTypeResync}) == nil &&
+			s.send(sendCtx, conn, s.snapshot()) == nil
 	}
 	tick := time.NewTicker(recheckEvery)
 	defer tick.Stop()
 	alive := time.NewTicker(keepAliveEvery)
 	defer alive.Stop()
 	for {
+		// The server stopping comes before anything else that's ready.
+		select {
+		case <-s.closing:
+			goAway()
+			return
+		default:
+		}
 		select {
 		case <-ctx.Done():
 			return
 		case <-s.closing:
-			_ = conn.Close(websocket.StatusGoingAway, "server stopping")
+			goAway()
 			return
 		case <-alive.C:
-			if s.send(ctx, conn, gen.KeepAliveMessage{Type: gen.KeepAliveMessageTypeKeepAlive}) != nil {
+			if s.send(sendCtx, conn, gen.KeepAliveMessage{Type: gen.KeepAliveMessageTypeKeepAlive}) != nil {
 				return
 			}
 		case <-tick.C:
@@ -130,7 +159,7 @@ func (s *Server) stream(ctx context.Context, conn *websocket.Conn, c caller) {
 				}
 				continue
 			}
-			if msg, ok := eventMessage(e, v); ok && s.send(ctx, conn, msg) != nil {
+			if msg, ok := eventMessage(e, v); ok && s.send(sendCtx, conn, msg) != nil {
 				return
 			}
 		}
@@ -176,12 +205,8 @@ func scopeFilter(v users.Viewer) func(events.Scope) bool {
 	}
 }
 
-func (s *Server) snapshot(ctx context.Context, v users.Viewer) gen.SnapshotMessage {
-	msg := gen.SnapshotMessage{Type: gen.SnapshotMessageTypeSnapshot, ServerVersion: s.deps.Version}
-	if v.Admin() {
-		msg.ProblemCount = ptr(len(s.deps.Problems.Open(ctx)))
-	}
-	return msg
+func (s *Server) snapshot() gen.SnapshotMessage {
+	return gen.SnapshotMessage{Type: gen.SnapshotMessageTypeSnapshot, ServerVersion: s.deps.Version}
 }
 
 // eventMessage is an event on the wire, as v may see it. Kinds without a
@@ -210,12 +235,6 @@ func eventMessage(e events.Event, v users.Viewer) (gen.EventMessage, bool) {
 			return msg, false
 		}
 		msg.PlayID, msg.Message = &d.Play, opt(d.Message)
-	case events.ProblemsChanged:
-		n, ok := e.Data.(int)
-		if !ok {
-			return msg, false
-		}
-		msg.ProblemCount = &n
 	case events.DownloadsChanged, events.PlaysChanged, events.TasksChanged, events.LogsChanged, events.ActivityChanged, events.HomeChanged, events.ListsChanged:
 	default:
 		return msg, false

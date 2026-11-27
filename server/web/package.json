@@ -36,7 +36,7 @@
     "@tanstack/react-virtual": "3.14.14",
     "blurhash": "2.0.5",
     "hls.js": "1.7.3",
-    "jassub": "2.5.16",
+    "jassub": "2.5.38",
     "libpgs": "0.9.0",
     "openapi-fetch": "0.17.0",
     "openapi-react-query": "0.5.4",

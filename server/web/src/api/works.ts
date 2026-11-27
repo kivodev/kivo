@@ -136,9 +136,9 @@ export const workQueries = {
     });
   },
 
-  /** The Unmatched list for every library, library by library, one keyset page at a time. */
-  unmatched: () => {
-    const query = { limit: gridPageSize };
+  /** A library's Unmatched list, by title, one keyset page at a time. */
+  unmatched: (libraryId: string) => {
+    const query = { libraryId, limit: gridPageSize };
     return keysetPages(
       ["get", apiPaths.unmatchedWorks, { params: { query } }, "pages"] as const,
       async (after, signal) => {

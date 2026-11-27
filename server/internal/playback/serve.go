@@ -133,8 +133,11 @@ func (s *Service) HLS(ctx context.Context, sid id.ID, name string) (Media, error
 		return Media{}, err
 	}
 	typ := "video/mp4"
-	if filepath.Ext(p) == ".vtt" {
+	switch {
+	case filepath.Ext(p) == ".vtt":
 		typ = "text/vtt; charset=utf-8"
+	case transcode.IsAudio(name):
+		typ = "audio/mp4"
 	}
 	return Media{Path: p, Type: typ}, nil
 }

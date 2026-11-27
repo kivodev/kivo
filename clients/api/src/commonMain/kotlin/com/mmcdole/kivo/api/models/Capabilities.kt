@@ -25,6 +25,7 @@ package com.mmcdole.kivo.api.models
 
 import com.mmcdole.kivo.api.models.AudioEntry
 import com.mmcdole.kivo.api.models.FileCapabilities
+import com.mmcdole.kivo.api.models.StreamCapabilities
 import com.mmcdole.kivo.api.models.SubtitleEntry
 import com.mmcdole.kivo.api.models.VideoEntry
 
@@ -39,6 +40,7 @@ import kotlinx.serialization.encoding.*
  * @param audio 
  * @param subtitles 
  * @param file Files it plays whole, the original or a download. Absent, it plays none.
+ * @param stream How it plays the HLS stream. Absent, every default applies.
  */
 @Serializable
 
@@ -51,7 +53,10 @@ data class Capabilities (
     @SerialName(value = "subtitles") @Required val subtitles: kotlin.collections.List<SubtitleEntry>,
 
     /* Files it plays whole, the original or a download. Absent, it plays none. */
-    @SerialName(value = "file") val file: FileCapabilities? = null
+    @SerialName(value = "file") val file: FileCapabilities? = null,
+
+    /* How it plays the HLS stream. Absent, every default applies. */
+    @SerialName(value = "stream") val stream: StreamCapabilities? = null
 
 ) {
 

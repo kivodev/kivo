@@ -26,8 +26,9 @@ const playCreate: Keys<PlayCreate> = {
   settings: true,
   dialogueBoost: true,
 };
-const capabilities: Keys<Capabilities> = { file: true, video: true, audio: true, subtitles: true };
+const capabilities: Keys<Capabilities> = { file: true, stream: true, video: true, audio: true, subtitles: true };
 const file: Keys<Schemas["FileCapabilities"]> = { containers: true, trackSelection: true };
+const stream: Keys<Schemas["StreamCapabilities"]> = { muxedAudio: true };
 const video: Keys<VideoEntry> = {
   codec: true,
   delivery: true,
@@ -83,6 +84,7 @@ function problems(body: PlayCreate): string[] {
   const caps = body.capabilities;
   out.push(...strays(caps, capabilities, ["video", "audio", "subtitles"], "capabilities"));
   if (caps.file) out.push(...strays(caps.file, file, ["containers"], "capabilities.file"));
+  if (caps.stream) out.push(...strays(caps.stream, stream, [], "capabilities.stream"));
   const entries = (list: unknown, keys: Record<string, true>, required: string[], path: string) => {
     if (!Array.isArray(list)) return [`${path} is not a list`];
     return list.flatMap((entry, i) => {
@@ -149,13 +151,14 @@ it("finds the shape the server refused: subtitles as strings, capabilities by de
   expect(problems(old)).toEqual([
     "body.quality is not in the spec",
     "body.remoteQuality is not in the spec",
-    "capabilities.stream is not in the spec",
     "capabilities.maxWidth is not in the spec",
     "capabilities.maxHeight is not in the spec",
     "capabilities.video is missing",
     "capabilities.audio is missing",
     "capabilities.file.video is not in the spec",
     "capabilities.file.audio is not in the spec",
+    "capabilities.stream.video is not in the spec",
+    "capabilities.stream.audio is not in the spec",
     "capabilities.video is not a list",
     "capabilities.audio is not a list",
     "capabilities.subtitles[0] is not an object",

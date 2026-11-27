@@ -176,8 +176,6 @@ src/commonMain/kotlin/com/mmcdole/kivo/api/models/SearchResults.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/SeasonInfo.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/SeriesInfo.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/ServerInfo.kt
-src/commonMain/kotlin/com/mmcdole/kivo/api/models/ServerProblem.kt
-src/commonMain/kotlin/com/mmcdole/kivo/api/models/ServerProblemList.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/ServerProof.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/Session.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/SessionCreate.kt
@@ -189,6 +187,7 @@ src/commonMain/kotlin/com/mmcdole/kivo/api/models/SetupState.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/SmartQuery.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/SnapshotMessage.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/SortKey.kt
+src/commonMain/kotlin/com/mmcdole/kivo/api/models/StreamCapabilities.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/SubtitleEntry.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/SubtitleResult.kt
 src/commonMain/kotlin/com/mmcdole/kivo/api/models/SubtitleResultList.kt

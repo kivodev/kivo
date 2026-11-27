@@ -39,17 +39,6 @@ func (q *Queries) AllGrants(ctx context.Context) ([]LibraryGrant, error) {
 	return items, nil
 }
 
-const countLists = `-- name: CountLists :one
-SELECT count(*) FROM list WHERE user_id = ?1
-`
-
-func (q *Queries) CountLists(ctx context.Context, userID id.ID) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countLists, userID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const deleteGrants = `-- name: DeleteGrants :exec
 DELETE FROM library_grant WHERE user_id = ?1
 `
@@ -74,15 +63,6 @@ DELETE FROM user_library WHERE user_id = ?1
 
 func (q *Queries) DeleteLibraryOrder(ctx context.Context, userID id.ID) error {
 	_, err := q.db.ExecContext(ctx, deleteLibraryOrder, userID)
-	return err
-}
-
-const deleteList = `-- name: DeleteList :exec
-DELETE FROM list WHERE id = ?1
-`
-
-func (q *Queries) DeleteList(ctx context.Context, argID id.ID) error {
-	_, err := q.db.ExecContext(ctx, deleteList, argID)
 	return err
 }
 
@@ -120,28 +100,6 @@ func (q *Queries) EnabledAdmins(ctx context.Context) (int64, error) {
 	var count int64
 	err := row.Scan(&count)
 	return count, err
-}
-
-const getList = `-- name: GetList :one
-SELECT id, built_in, query IS NOT NULL AS smart FROM list WHERE id = ?1 AND user_id = ?2
-`
-
-type GetListParams struct {
-	ID     id.ID
-	UserID id.ID
-}
-
-type GetListRow struct {
-	ID      id.ID
-	BuiltIn bool
-	Smart   bool
-}
-
-func (q *Queries) GetList(ctx context.Context, arg GetListParams) (GetListRow, error) {
-	row := q.db.QueryRowContext(ctx, getList, arg.ID, arg.UserID)
-	var i GetListRow
-	err := row.Scan(&i.ID, &i.BuiltIn, &i.Smart)
-	return i, err
 }
 
 const getUser = `-- name: GetUser :one
@@ -258,31 +216,6 @@ func (q *Queries) InsertLibraryOrder(ctx context.Context, arg InsertLibraryOrder
 	return err
 }
 
-const insertList = `-- name: InsertList :exec
-INSERT INTO list (id, user_id, name, built_in, query, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
-`
-
-type InsertListParams struct {
-	ID        id.ID
-	UserID    id.ID
-	Name      string
-	BuiltIn   bool
-	Query     sql.NullString
-	CreatedAt int64
-}
-
-func (q *Queries) InsertList(ctx context.Context, arg InsertListParams) error {
-	_, err := q.db.ExecContext(ctx, insertList,
-		arg.ID,
-		arg.UserID,
-		arg.Name,
-		arg.BuiltIn,
-		arg.Query,
-		arg.CreatedAt,
-	)
-	return err
-}
-
 const insertUser = `-- name: InsertUser :exec
 INSERT INTO user (id, username, admin, all_libraries, stream_limit, remote_quality_cap,
   rating_ceiling, block_unrated, subtitle_mode, invited_by, created_at)
@@ -365,68 +298,6 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 	return items, nil
 }
 
-const movePersonInListQueries = `-- name: MovePersonInListQueries :exec
-UPDATE list SET query = replace(query, CAST(?1 AS TEXT), CAST(?2 AS TEXT))
-WHERE query LIKE '%' || CAST(?1 AS TEXT) || '%'
-`
-
-type MovePersonInListQueriesParams struct {
-	From string
-	Into string
-}
-
-// A person merged into another keeps the rules that name them.
-func (q *Queries) MovePersonInListQueries(ctx context.Context, arg MovePersonInListQueriesParams) error {
-	_, err := q.db.ExecContext(ctx, movePersonInListQueries, arg.From, arg.Into)
-	return err
-}
-
-const renameList = `-- name: RenameList :exec
-UPDATE list SET name = ?1 WHERE id = ?2
-`
-
-type RenameListParams struct {
-	Name string
-	ID   id.ID
-}
-
-func (q *Queries) RenameList(ctx context.Context, arg RenameListParams) error {
-	_, err := q.db.ExecContext(ctx, renameList, arg.Name, arg.ID)
-	return err
-}
-
-const savedListQueries = `-- name: SavedListQueries :many
-SELECT id, query FROM list WHERE query IS NOT NULL
-`
-
-type SavedListQueriesRow struct {
-	ID    id.ID
-	Query sql.NullString
-}
-
-func (q *Queries) SavedListQueries(ctx context.Context) ([]SavedListQueriesRow, error) {
-	rows, err := q.db.QueryContext(ctx, savedListQueries)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []SavedListQueriesRow
-	for rows.Next() {
-		var i SavedListQueriesRow
-		if err := rows.Scan(&i.ID, &i.Query); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const setAdmin = `-- name: SetAdmin :execrows
 UPDATE user SET admin = ?1 WHERE id = ?2
 `
@@ -494,34 +365,6 @@ func (q *Queries) SetLimits(ctx context.Context, arg SetLimitsParams) (int64, er
 		return 0, err
 	}
 	return result.RowsAffected()
-}
-
-const setListQuery = `-- name: SetListQuery :exec
-UPDATE list SET query = ?1 WHERE id = ?2
-`
-
-type SetListQueryParams struct {
-	Query sql.NullString
-	ID    id.ID
-}
-
-func (q *Queries) SetListQuery(ctx context.Context, arg SetListQueryParams) error {
-	_, err := q.db.ExecContext(ctx, setListQuery, arg.Query, arg.ID)
-	return err
-}
-
-const setListSort = `-- name: SetListSort :exec
-UPDATE list SET sort = ?1 WHERE id = ?2
-`
-
-type SetListSortParams struct {
-	Sort string
-	ID   id.ID
-}
-
-func (q *Queries) SetListSort(ctx context.Context, arg SetListSortParams) error {
-	_, err := q.db.ExecContext(ctx, setListSort, arg.Sort, arg.ID)
-	return err
 }
 
 const setParental = `-- name: SetParental :execrows

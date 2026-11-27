@@ -22,12 +22,12 @@ import (
 	"github.com/mmcdole/kivo/internal/metadata"
 	"github.com/mmcdole/kivo/internal/playback"
 	"github.com/mmcdole/kivo/internal/query"
-	"github.com/mmcdole/kivo/internal/release"
 	"github.com/mmcdole/kivo/internal/scan"
 	"github.com/mmcdole/kivo/internal/subtitles"
 	"github.com/mmcdole/kivo/internal/tasks"
 	"github.com/mmcdole/kivo/internal/users"
 	"github.com/mmcdole/kivo/internal/userstate"
+	kivoversion "github.com/mmcdole/kivo/internal/version"
 )
 
 // Deps are the services the handlers call and facts about the server.
@@ -64,7 +64,7 @@ type Deps struct {
 	Version string
 	// Release has the newer release, if one is out, for admins' server info.
 	Release interface {
-		Newer() (release.Release, bool)
+		Newer() (kivoversion.Release, bool)
 	}
 	// BasePath serves everything under a subpath, such as /kivo, behind a
 	// reverse proxy. It is empty for the root. Otherwise it has a leading
@@ -106,13 +106,9 @@ type Server struct {
 	stopping atomic.Bool
 }
 
-// New builds the server. It fails if an operation in the spec has no known
-// x-kivo-access, so a route can never be served without one.
+// New builds the server.
 func New(d Deps, opt Options) (*Server, error) {
-	routes, err := embeddedRoutes()
-	if err != nil {
-		return nil, err
-	}
+	routes := specRoutes
 	if opt.Logger == nil {
 		opt.Logger = slog.Default()
 	}

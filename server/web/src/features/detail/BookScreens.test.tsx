@@ -9,10 +9,14 @@ describe("Book page", () => {
   it("shows the authors, narrators and series as links, the chapters and the files", async () => {
     serveMockApi();
     renderApp(`/works/${bookIds.leviathan}`);
-    expect(await screen.findByRole("heading", { name: "Leviathan Wakes", level: 1 })).toBeInTheDocument();
+    const heading = await screen.findByRole("heading", { name: "Leviathan Wakes", level: 1 });
+    expect(heading).toBeInTheDocument();
+    // The primary series is the eyebrow above the title.
+    const eyebrow = document.querySelector('[data-part="book-series"]');
+    expect(eyebrow).toHaveTextContent("The Expanse · Book 1");
+    expect(eyebrow?.compareDocumentPosition(heading)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(screen.getByRole("link", { name: "James S. A. Corey" })).toHaveAttribute("href", `/people/${bookIds.corey}`);
     expect(screen.getByText(/Narrated by/)).toHaveTextContent("Narrated by Jefferson Mays");
-    expect(screen.getByText(/Book 1 of/)).toHaveTextContent("Book 1 of The Expanse");
     expect(screen.getByRole("link", { name: "The Expanse" })).toHaveAttribute(
       "href",
       `/book-series/${bookIds.expanse}`,
@@ -103,7 +107,7 @@ describe("Person page", () => {
         .getAllByRole("link")
         .map((a) => a.textContent)
         .filter((t) => t?.includes("Wakes") || t?.includes("Churn") || t?.includes("War")),
-    ).toEqual(["Leviathan WakesJames S. A. Corey", "The ChurnJames S. A. Corey", "Caliban's WarJames S. A. Corey"]);
+    ).toEqual(["Book 1Leviathan Wakes", "Book 1.5The Churn", "Book 2Caliban's War"]);
 
     renderApp(`/people/${bookIds.porter}`);
     const narrated = (await screen.findByRole("heading", { name: "Narrated" })).parentElement ?? document.body;
@@ -151,5 +155,7 @@ describe("Series page", () => {
     expect(await screen.findByRole("heading", { name: "The Expanse", level: 1 })).toBeInTheDocument();
     expect(screen.getByText("3 books")).toBeInTheDocument();
     expect(screen.getAllByText(/^Book /).map((p) => p.textContent)).toEqual(["Book 1", "Book 1.5", "Book 2"]);
+    // Every book is by the series' author, so no card names them.
+    expect(screen.queryByText("James S. A. Corey")).not.toBeInTheDocument();
   });
 });

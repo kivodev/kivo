@@ -68,7 +68,7 @@ func TestEndToEnd(t *testing.T) {
 	c.waitHealthy()
 	c.call("POST", "/api/v1/setup", map[string]any{"username": "admin", "password": "correct horse battery"}, http.StatusCreated, nil)
 	var lib struct{ ID string }
-	c.call("POST", "/api/v1/libraries", map[string]any{"name": "Movies", "kind": "movies", "folders": []string{media}, "previews": "nightlyAndAdded"}, http.StatusCreated, &lib)
+	c.call("POST", "/api/v1/libraries", map[string]any{"name": "Movies", "kind": "movies", "folders": []string{media}, "previews": "nightlyAndAdded", "subtitles": "nightlyAndAdded"}, http.StatusCreated, &lib)
 
 	// The scan, the probe and identify's first pass put both films in the
 	// library.
@@ -125,7 +125,7 @@ func TestEndToEnd(t *testing.T) {
 		t.Fatalf("mkv: %+v", short)
 	}
 	base := "/api/v1/" + filepath.Dir(short.URL) + "/"
-	for _, name := range []string{"index.m3u8", "main.m3u8", "init.mp4", "0.m4s", "9.m4s"} {
+	for _, name := range []string{"index.m3u8", "main.m3u8", "init.mp4", "0.m4s", "9.m4s", "audio.m3u8", "audio-init.mp4", "audio-0.m4s", "audio-9.m4s"} {
 		if n := c.fetch(base + name); n == 0 {
 			t.Fatalf("%s is empty", name)
 		}
@@ -243,8 +243,8 @@ func TestEndToEnd(t *testing.T) {
 		t.Fatalf("a video transcode: %+v", enc)
 	}
 	base = "/api/v1/" + filepath.Dir(enc.URL) + "/"
-	for _, name := range []string{"index.m3u8", "main.m3u8", "init.mp4", "0.m4s", "1.m4s", "80.m4s", "81.m4s"} {
-
+	for _, name := range []string{"index.m3u8", "main.m3u8", "init.mp4", "0.m4s", "1.m4s", "80.m4s", "81.m4s",
+		"audio.m3u8", "audio-init.mp4", "audio-0.m4s", "audio-1.m4s", "audio-80.m4s", "audio-81.m4s"} {
 		if n := c.fetch(base + name); n == 0 {
 			t.Fatalf("transcode %s is empty", name)
 		}

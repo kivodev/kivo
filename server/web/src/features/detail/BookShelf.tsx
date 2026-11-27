@@ -2,15 +2,35 @@ import { Trans } from "@lingui/react/macro";
 import type { WorkSummary } from "@/api/schemas";
 import { CardGrid } from "@/components/CardGrid";
 import { WorkCard } from "@/features/browse/WorkCard";
+import { formatTimeLeft } from "@/i18n/format";
+import { commonAuthorId, positionIn } from "./bookSeries";
 
-/** A book's position in a series, as written ("1.5"), or undefined. */
-function positionIn(work: WorkSummary, seriesId: string): string | undefined {
-  return work.book?.series.find((s) => s.id === seriesId)?.position;
+/** A book's place in a series: "Book 1.5". */
+export function BookNumber({ position }: { position: string }) {
+  return <Trans>Book {position}</Trans>;
+}
+
+/** The time left of a book in progress, or undefined. */
+function timeLeft(work: WorkSummary): string | undefined {
+  const position = work.userState?.positionMs;
+  return position !== undefined && work.durationMs ? formatTimeLeft(work.durationMs - position) : undefined;
 }
 
 /**
- * Books as square cards. In a series, each is labelled with its position,
- * such as "Book 1.5", above its cover.
+ * The line under a series book's title: its author when it isn't the one
+ * most of the series' books share, then its time left while in progress.
+ */
+function seriesLine(work: WorkSummary, common: string | undefined): string {
+  const author = work.book?.authors[0];
+  const parts = [author && author.id !== common ? author.name : undefined, timeLeft(work)];
+  return parts.filter(Boolean).join(" · ");
+}
+
+/**
+ * Books as square cards. In a series, each says "Book 1.5" in a small muted
+ * line above its title, and names its author only when it isn't the one
+ * most of the series' books share. Lines some cards leave empty stay as
+ * blank lines, so the cards line up.
  */
 export function BookShelf({
   books,
@@ -25,6 +45,9 @@ export function BookShelf({
   /** Whether its first book is the screen's initial focus on TV. */
   autoFocus?: boolean;
 }) {
+  const common = seriesId ? commonAuthorId(books) : undefined;
+  const positioned = seriesId !== undefined && books.some((w) => positionIn(w, seriesId) !== undefined);
+  const lined = seriesId !== undefined && books.some((w) => seriesLine(w, common) !== "");
   return (
     <CardGrid
       shape="square"
@@ -33,16 +56,16 @@ export function BookShelf({
       items={books}
       itemKey={(w) => w.id}
       renderItem={(w) => {
-        const position = seriesId ? positionIn(w, seriesId) : undefined;
+        if (seriesId === undefined) return <WorkCard work={w} shape="square" />;
+        const position = positionIn(w, seriesId);
+        const line = seriesLine(w, common);
         return (
-          <div className="flex flex-col gap-1">
-            {seriesId && (
-              <p data-part="series-position" className="text-xs font-semibold text-text-muted uppercase">
-                {position ? <Trans>Book {position}</Trans> : <>&nbsp;</>}
-              </p>
-            )}
-            <WorkCard work={w} shape="square" />
-          </div>
+          <WorkCard
+            work={w}
+            shape="square"
+            overline={positioned ? position ? <BookNumber position={position} /> : <>&nbsp;</> : undefined}
+            subtitle={lined ? line || <>&nbsp;</> : null}
+          />
         );
       }}
     />

@@ -17,6 +17,7 @@ import (
 	"github.com/mmcdole/kivo/internal/query"
 	"github.com/mmcdole/kivo/internal/store"
 	"github.com/mmcdole/kivo/internal/users"
+	"github.com/mmcdole/kivo/internal/userstate"
 )
 
 // generatedKinds are the sets of kinds the matrices ask for.
@@ -244,6 +245,9 @@ func newGenerated(t *testing.T, db *store.DB) *generated {
 		err := db.Write(context.Background(), func(ctx context.Context, tx *store.Tx) error {
 			created, err := svc.CreateUser(ctx, tx, u)
 			if err != nil {
+				return err
+			}
+			if err := userstate.CreateMyList(ctx, tx, created.ID, created.Created); err != nil {
 				return err
 			}
 			user = created.ID

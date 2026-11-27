@@ -8,8 +8,6 @@ import (
 	"testing"
 	"testing/synctest"
 	"time"
-
-	"github.com/mmcdole/kivo/internal/events"
 )
 
 var ctx = context.Background()
@@ -32,70 +30,12 @@ func (r *reported) set(ps ...Problem) {
 	r.problems = ps
 }
 
-// problemsTold subscribes to bus. It returns a func that reports the open
-// count carried by each problemsChanged event received so far.
-func problemsTold(t *testing.T, bus *events.Bus) func() []int {
-	sub := bus.Subscribe(func(events.Scope) bool { return true })
-	t.Cleanup(sub.Close)
-	var told []int
-	return func() []int {
-		for {
-			select {
-			case e, ok := <-sub.C():
-				if !ok {
-					return told
-				}
-				if e.Kind == events.ProblemsChanged {
-					told = append(told, e.Data.(int))
-				}
-			default:
-				return told
-			}
-		}
-	}
-}
-
-// problemsChanged is published when a read finds that the open problems
-// changed, not on every read. The test raises a problem, dismisses it,
-// resolves it and raises it again.
-func TestRegistryTellsChanges(t *testing.T) {
-	bus := events.NewBus()
-	told := problemsTold(t, bus)
-	scan := &reported{}
-	r := NewRegistry([]Reporter{scan}, bus, RegistryOptions{})
-	r.Open(ctx) // none open, which is the same as before any read
-	raised := time.Now()
-	scan.problems = []Problem{{Component: "scan", Code: "folderUnreachable", Message: "broken", RaisedAt: raised}}
-	r.Open(ctx)
-	r.Open(ctx)
-	if !slices.Equal(told(), []int{1}) {
-		t.Fatalf("told %v after a problem was raised; want [1]", told())
-	}
-	if r.Dismiss(ctx, "scan.nope") {
-		t.Fatal("dismissed a problem that isn't open")
-	}
-	if !r.Dismiss(ctx, "scan.folderUnreachable") || len(r.Open(ctx)) != 0 || !slices.Equal(told(), []int{1, 0}) {
-		t.Fatalf("after dismissing it: open %v, told %v", r.Open(ctx), told())
-	}
-	scan.problems = nil
-	r.Open(ctx)
-	if len(told()) != 2 {
-		t.Fatalf("told %v when a dismissed problem resolved", told())
-	}
-	scan.problems = []Problem{{Component: "scan", Code: "folderUnreachable", Message: "broken", RaisedAt: raised.Add(time.Minute)}}
-	r.Open(ctx)
-	if open := r.Open(ctx); len(open) != 1 || open[0].ID != "scan.folderUnreachable" || !slices.Equal(told(), []int{1, 0, 1}) {
-		t.Fatalf("raised again: open %v, told %v", open, told())
-	}
-}
-
-// Open lists every component's problems newest first. A dismissal hides
-// the problem only as it was raised at that time.
+// Open lists every component's problems newest first.
 func TestRegistryOpen(t *testing.T) {
 	now := time.Now()
 	a := &reported{problems: []Problem{{Component: "scan", Code: "old", RaisedAt: now.Add(-time.Hour)}}}
 	b := &reported{problems: []Problem{{Component: "metadata", Code: "new", RaisedAt: now}}}
-	r := NewRegistry([]Reporter{a, b}, events.NewBus(), RegistryOptions{})
+	r := NewRegistry([]Reporter{a, b}, RegistryOptions{})
 	ids := func() []string {
 		var out []string
 		for _, p := range r.Open(ctx) {
@@ -106,7 +46,6 @@ func TestRegistryOpen(t *testing.T) {
 	if got := ids(); !slices.Equal(got, []string{"metadata.new", "scan.old"}) {
 		t.Fatalf("open %v", got)
 	}
-	r.Dismiss(ctx, "scan.old")
 	a.problems[0].RaisedAt = now.Add(time.Minute) // raised again
 	if got := ids(); !slices.Equal(got, []string{"scan.old", "metadata.new"}) {
 		t.Fatalf("after it was raised again: open %v", got)
@@ -118,7 +57,7 @@ func TestRegistryOpen(t *testing.T) {
 func TestRegistryTellsRaised(t *testing.T) {
 	var told []string
 	scan := &reported{}
-	r := NewRegistry([]Reporter{scan}, events.NewBus(), RegistryOptions{Raised: func(_ context.Context, raised []OpenProblem) {
+	r := NewRegistry([]Reporter{scan}, RegistryOptions{Raised: func(_ context.Context, raised []OpenProblem) {
 		for _, p := range raised {
 			told = append(told, p.ID)
 		}
@@ -143,10 +82,8 @@ func TestRegistryTellsRaised(t *testing.T) {
 func TestRegistryRechecksEvery30Seconds(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		var raised atomic.Int32
-		bus := events.NewBus()
-		told := problemsTold(t, bus)
 		scan := &reported{}
-		r := NewRegistry([]Reporter{scan}, bus, RegistryOptions{
+		r := NewRegistry([]Reporter{scan}, RegistryOptions{
 			Raised: func(_ context.Context, ps []OpenProblem) { raised.Add(int32(len(ps))) },
 		})
 		ctx, cancel := context.WithCancel(t.Context())
@@ -155,19 +92,13 @@ func TestRegistryRechecksEvery30Seconds(t *testing.T) {
 		scan.set(Problem{Component: "scan", Code: "folderUnreachable", RaisedAt: time.Now()})
 		time.Sleep(recheckEvery - time.Second)
 		synctest.Wait()
-		if len(told()) != 0 {
-			t.Fatal("told before the first recheck")
+		if raised.Load() != 0 {
+			t.Fatal("raised before the first recheck")
 		}
 		time.Sleep(time.Second)
 		synctest.Wait()
-		if len(told()) != 1 || raised.Load() != 1 {
-			t.Fatalf("after 30 seconds told %v, raised %d; want 1 and 1", told(), raised.Load())
-		}
-		scan.set()
-		time.Sleep(recheckEvery)
-		synctest.Wait()
-		if len(told()) != 2 {
-			t.Fatalf("told %v after it resolved; want 2", told())
+		if raised.Load() != 1 {
+			t.Fatalf("after 30 seconds raised %d; want 1", raised.Load())
 		}
 		cancel()
 		if err := <-done; err != nil {
@@ -182,7 +113,7 @@ func TestRegistryChecksOneAtATime(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		var raised atomic.Int32
 		scan := &reported{}
-		r := NewRegistry([]Reporter{scan}, events.NewBus(), RegistryOptions{
+		r := NewRegistry([]Reporter{scan}, RegistryOptions{
 			Raised: func(_ context.Context, ps []OpenProblem) { raised.Add(int32(len(ps))) },
 		})
 		ctx, cancel := context.WithCancel(t.Context())

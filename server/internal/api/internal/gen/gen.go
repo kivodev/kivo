@@ -430,7 +430,6 @@ const (
 	EventKindLogsChanged      EventKind = "logsChanged"
 	EventKindPlayEnded        EventKind = "playEnded"
 	EventKindPlaysChanged     EventKind = "playsChanged"
-	EventKindProblemsChanged  EventKind = "problemsChanged"
 	EventKindTasksChanged     EventKind = "tasksChanged"
 	EventKindUserStateChanged EventKind = "userStateChanged"
 	EventKindWorkChanged      EventKind = "workChanged"
@@ -454,8 +453,6 @@ func (e EventKind) Valid() bool {
 	case EventKindPlayEnded:
 		return true
 	case EventKindPlaysChanged:
-		return true
-	case EventKindProblemsChanged:
 		return true
 	case EventKindTasksChanged:
 		return true
@@ -1302,6 +1299,24 @@ func (e SessionKind) Valid() bool {
 	}
 }
 
+// Defines values for SettingsOpenSubtitlesRefused.
+const (
+	SettingsOpenSubtitlesRefusedAccount SettingsOpenSubtitlesRefused = "account"
+	SettingsOpenSubtitlesRefusedKey     SettingsOpenSubtitlesRefused = "key"
+)
+
+// Valid indicates whether the value is a known member of the SettingsOpenSubtitlesRefused enum.
+func (e SettingsOpenSubtitlesRefused) Valid() bool {
+	switch e {
+	case SettingsOpenSubtitlesRefusedAccount:
+		return true
+	case SettingsOpenSubtitlesRefusedKey:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for SnapshotMessageType.
 const (
 	SnapshotMessageTypeSnapshot SnapshotMessageType = "snapshot"
@@ -1967,7 +1982,7 @@ type ActivityPlay struct {
 type ActivityProblem struct {
 	Code string `json:"code"`
 
-	// ID The problem's ID, as `GET /api/v1/problems` names it.
+	// ID The problem's component and code, such as `scan.folderUnreachable`.
 	ID      string `json:"id"`
 	Message string `json:"message"`
 
@@ -2230,14 +2245,18 @@ type Capabilities struct {
 	Audio []AudioEntry `json:"audio"`
 
 	// File Files it plays whole, the original or a download. Absent, it plays none.
-	File      *FileCapabilities `json:"file,omitempty"`
-	Subtitles []SubtitleEntry   `json:"subtitles"`
-	Video     []VideoEntry      `json:"video"`
+	File *FileCapabilities `json:"file,omitempty"`
+
+	// Stream How it plays the HLS stream. Absent, every default applies.
+	Stream    *StreamCapabilities `json:"stream,omitempty"`
+	Subtitles []SubtitleEntry     `json:"subtitles"`
+	Video     []VideoEntry        `json:"video"`
 }
 
 // CapabilityDelivery How a track reaches the client: `file` inside the played file;
-// `stream` inside the HLS stream (fragmented MP4, and WebVTT
-// subtitle renditions); `external` a subtitle sent to the client as
+// `stream` inside the HLS stream (fragmented MP4, with the audio a
+// rendition apart from the video unless `StreamCapabilities.muxedAudio`
+// says otherwise, and WebVTT subtitle renditions); `external` a subtitle sent to the client as
 // its own file, which the client draws. A track's source, also
 // `external` for a subtitle file next to the video, is where it lives,
 // not how it's delivered.
@@ -2851,8 +2870,6 @@ type EventKind string
 //   - `playsChanged`: admins only. A play started or ended, or a
 //     heartbeat reported its position; refetch the plays and the play
 //     events.
-//   - `problemsChanged` (`problemCount`): admins only. The open problems
-//     changed; refetch them.
 //   - `logsChanged`: admins only. The server logged lines at Info or
 //     above; refetch the recent log.
 //   - `activityChanged`: admins only. An event was recorded; refetch
@@ -2864,9 +2881,8 @@ type EventMessage struct {
 	Message    *string   `json:"message,omitempty"`
 
 	// PlayID A UUIDv7.
-	PlayID       *ID              `json:"playId,omitempty"`
-	ProblemCount *int             `json:"problemCount,omitempty"`
-	Type         EventMessageType `json:"type"`
+	PlayID *ID              `json:"playId,omitempty"`
+	Type   EventMessageType `json:"type"`
 
 	// WorkID A UUIDv7.
 	WorkID  *ID   `json:"workId,omitempty"`
@@ -3200,7 +3216,7 @@ type LibraryCreate struct {
 	// `previews` is `never`, whatever is sent.
 	Kind LibraryKind `json:"kind"`
 
-	// Markers Default `nightlyAndAdded`; `never` for a library of any kind but `shows`, whatever is sent.
+	// Markers Default `nightly`; `never` for a library of any kind but `shows`, whatever is sent.
 	Markers *ProcessingSchedule `json:"markers,omitempty"`
 
 	// MetadataLanguage Empty or absent for the server's.
@@ -3213,7 +3229,7 @@ type LibraryCreate struct {
 	// RefreshDays Default 30.
 	RefreshDays *RefreshDays `json:"refreshDays,omitempty"`
 
-	// Subtitles Default `nightlyAndAdded`; `never` for an `audiobooks` library, whatever is sent.
+	// Subtitles Default `nightly`; `never` for an `audiobooks` library, whatever is sent.
 	Subtitles *ProcessingSchedule `json:"subtitles,omitempty"`
 
 	// UseLocalMetadata Default true.
@@ -4317,30 +4333,6 @@ type ServerInfo struct {
 	Version string `json:"version"`
 }
 
-// ServerProblem An open issue on the problems page, such as "library /mnt/tv unreachable for 2 h".
-type ServerProblem struct {
-	// Code Stable, for translating and choosing the fix action, such as `folderUnreachable`.
-	Code string `json:"code"`
-
-	// Component The reporting part of the server, such as `scan`.
-	Component string `json:"component"`
-
-	// ID Opaque and stable while the problem is open.
-	ID string `json:"id"`
-
-	// Message English, written for an admin; shown when the client has no translation for `code`.
-	Message  string    `json:"message"`
-	RaisedAt time.Time `json:"raisedAt"`
-
-	// Severity How much a server problem matters.
-	Severity ProblemSeverity `json:"severity"`
-}
-
-// ServerProblemList defines model for ServerProblemList.
-type ServerProblemList struct {
-	Items []ServerProblem `json:"items"`
-}
-
 // ServerProof The server's proof of where the app's probe reached it.
 // `signature` is ECDSA P-256 with SHA-256, by the server's identity
 // key, over `kivo-probe-v2`, then the challenge, the server's `id` and
@@ -4437,8 +4429,8 @@ type Settings struct {
 	ContentRatingCountry string `json:"contentRatingCountry"`
 
 	// FileWatching Scan a folder as soon as files in it change. Off, changes are
-	// found by the scan of every library every 12 hours, or a scan an
-	// admin starts.
+	// found by the scan of every library every `rescanEveryMinutes`,
+	// or a scan an admin starts.
 	FileWatching bool `json:"fileWatching"`
 
 	// LocalNetworks CIDR ranges whose clients are local. Empty means private
@@ -4469,6 +4461,10 @@ type Settings struct {
 	// OpenSubtitlesPasswordSet Whether the OpenSubtitles account has a password; the password itself is never sent.
 	OpenSubtitlesPasswordSet bool `json:"openSubtitlesPasswordSet"`
 
+	// OpenSubtitlesRefused Set while OpenSubtitles refuses the saved API key, or the saved
+	// username or password.
+	OpenSubtitlesRefused *SettingsOpenSubtitlesRefused `json:"openSubtitlesRefused,omitempty"`
+
 	// OpenSubtitlesUsername An OpenSubtitles account, which raises the daily download quota; empty for none.
 	OpenSubtitlesUsername string `json:"openSubtitlesUsername"`
 
@@ -4488,12 +4484,20 @@ type Settings struct {
 	// without a remote streaming limit of their own; 0 is no limit.
 	RemoteQualityCapBps int64 `json:"remoteQualityCapBps"`
 
+	// RescanEveryMinutes How often every library is scanned, in minutes. The scan finds
+	// the files that file watching misses.
+	RescanEveryMinutes int `json:"rescanEveryMinutes"`
+
 	// ServerName Shown to clients and on the network.
 	ServerName string `json:"serverName"`
 
 	// VideoTranscodeLimit Simultaneous video transcodes the server runs; 0 is no limit.
 	VideoTranscodeLimit int `json:"videoTranscodeLimit"`
 }
+
+// SettingsOpenSubtitlesRefused Set while OpenSubtitles refuses the saved API key, or the saved
+// username or password.
+type SettingsOpenSubtitlesRefused string
 
 // SettingsUpdate defines model for SettingsUpdate.
 type SettingsUpdate struct {
@@ -4514,6 +4518,7 @@ type SettingsUpdate struct {
 	PreviewsAtOnce        *int     `json:"previewsAtOnce,omitempty"`
 	PublicURL             *string  `json:"publicUrl,omitempty"`
 	RemoteQualityCapBps   *int64   `json:"remoteQualityCapBps,omitempty"`
+	RescanEveryMinutes    *int     `json:"rescanEveryMinutes,omitempty"`
 	ServerName            *string  `json:"serverName,omitempty"`
 	VideoTranscodeLimit   *int     `json:"videoTranscodeLimit,omitempty"`
 }
@@ -4542,8 +4547,6 @@ type SmartQuery struct {
 
 // SnapshotMessage Sent first on every connection and after `resync`. A changed `serverVersion` means the client should offer a reload.
 type SnapshotMessage struct {
-	// ProblemCount Admins only. Open problems, for the dot on Admin.
-	ProblemCount  *int                `json:"problemCount,omitempty"`
 	ServerVersion string              `json:"serverVersion"`
 	Type          SnapshotMessageType `json:"type"`
 }
@@ -4559,6 +4562,15 @@ type SortKey struct {
 	// Direction Skip values you don't know.
 	Direction *SortDirection `json:"direction,omitempty"`
 	Field     string         `json:"field"`
+}
+
+// StreamCapabilities How a client plays the HLS stream. Whether it streams at all is said
+// by its entries with `stream` delivery.
+type StreamCapabilities struct {
+	// MuxedAudio It needs the audio inside the video's segments. Otherwise, with
+	// video, the audio is a rendition of its own (`EXT-X-MEDIA`).
+	// Default false.
+	MuxedAudio *bool `json:"muxedAudio,omitempty"`
 }
 
 // SubtitleEntry A subtitle codec a client shows, and how. The server converts a
@@ -4634,6 +4646,10 @@ type SubtitleTrackInfo struct {
 // Task A row of the Tasks page: "Preview thumbnails · 8 h ago · Nightly ·
 // 14,486 of 32,975 · 2 failed".
 type Task struct {
+	// EveryMinutes How long after a run's end its next begins, for a task that runs
+	// every so often. Absent in `onDemand` and for a nightly task.
+	EveryMinutes *int `json:"everyMinutes,omitempty"`
+
 	// FailedCount Its items that failed for good (`GET
 	// /api/v1/tasks/{task}/failures`). Absent for a task that keeps no
 	// failures.
@@ -5588,7 +5604,8 @@ type ListDirectoriesParams struct {
 // DeleteMissingFilesParams defines parameters for DeleteMissingFiles.
 type DeleteMissingFilesParams struct {
 	// Status The files to delete; only `gone`.
-	Status DeleteMissingFilesParamsStatus `form:"status" json:"status"`
+	Status    DeleteMissingFilesParamsStatus `form:"status" json:"status"`
+	LibraryID *ID                            `form:"libraryId,omitempty" json:"libraryId,omitempty"`
 }
 
 // DeleteMissingFilesParamsStatus defines parameters for DeleteMissingFiles.
@@ -5732,6 +5749,8 @@ type ListSessionsParams struct {
 
 // ListUnmatchedWorksParams defines parameters for ListUnmatchedWorks.
 type ListUnmatchedWorksParams struct {
+	LibraryID *ID `form:"libraryId,omitempty" json:"libraryId,omitempty"`
+
 	// After The `next` cursor from the previous page.
 	After *After `form:"after,omitempty" json:"after,omitempty"`
 
@@ -6299,12 +6318,6 @@ type ServerInterface interface {
 	// StopPlay Stop play
 	// (POST /api/v1/plays/{id}/stop)
 	StopPlay(w http.ResponseWriter, r *http.Request, id ID)
-	// ListProblems List problems
-	// (GET /api/v1/problems)
-	ListProblems(w http.ResponseWriter, r *http.Request)
-	// DismissProblem Dismiss problem
-	// (DELETE /api/v1/problems/{id})
-	DismissProblem(w http.ResponseWriter, r *http.Request, id string)
 	// SearchWorks Search works
 	// (GET /api/v1/search)
 	SearchWorks(w http.ResponseWriter, r *http.Request, params SearchWorksParams)
@@ -7119,6 +7132,19 @@ func (siw *ServerInterfaceWrapper) DeleteMissingFiles(w http.ResponseWriter, r *
 			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "status"})
 		} else {
 			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "status", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "libraryId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "libraryId", r.URL.Query(), &params.LibraryID, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "libraryId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "libraryId", Err: err})
 		}
 		return
 	}
@@ -8466,46 +8492,6 @@ func (siw *ServerInterfaceWrapper) StopPlay(w http.ResponseWriter, r *http.Reque
 	handler.ServeHTTP(w, r)
 }
 
-// ListProblems operation middleware
-func (siw *ServerInterfaceWrapper) ListProblems(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListProblems(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// DismissProblem operation middleware
-func (siw *ServerInterfaceWrapper) DismissProblem(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "id" -------------
-	var id string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "id", r.PathValue("id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: true})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.DismissProblem(w, r, id)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
 // SearchWorks operation middleware
 func (siw *ServerInterfaceWrapper) SearchWorks(w http.ResponseWriter, r *http.Request) {
 
@@ -8953,6 +8939,19 @@ func (siw *ServerInterfaceWrapper) ListUnmatchedWorks(w http.ResponseWriter, r *
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params ListUnmatchedWorksParams
+
+	// ------------- Optional query parameter "libraryId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "libraryId", r.URL.Query(), &params.LibraryID, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "libraryId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "libraryId", Err: err})
+		}
+		return
+	}
 
 	// ------------- Optional query parameter "after" -------------
 
@@ -10002,8 +10001,6 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/tasks/{task}/failures", wrapper.ListTaskFailures)
 	m.HandleFunc(http.MethodPost+" "+options.BaseURL+"/api/v1/tasks/{task}/retry", wrapper.RetryTask)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/activity", wrapper.ListActivity)
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/problems", wrapper.ListProblems)
-	m.HandleFunc(http.MethodDelete+" "+options.BaseURL+"/api/v1/problems/{id}", wrapper.DismissProblem)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/users/me/play-events", wrapper.ListCurrentUserPlayEvents)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/play-events", wrapper.ListPlayEvents)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/api/v1/plays", wrapper.ListPlays)
@@ -16268,157 +16265,6 @@ func (response StopPlaydefaultApplicationProblemPlusJSONResponse) VisitStopPlayR
 	return err
 }
 
-type ListProblemsRequestObject struct {
-}
-
-type ListProblemsResponseObject interface {
-	VisitListProblemsResponse(w http.ResponseWriter) error
-}
-
-type ListProblems200JSONResponse ServerProblemList
-
-func (response ListProblems200JSONResponse) VisitListProblemsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListProblems401ApplicationProblemPlusJSONResponse struct {
-	UnauthorizedApplicationProblemPlusJSONResponse
-}
-
-func (response ListProblems401ApplicationProblemPlusJSONResponse) VisitListProblemsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListProblems403ApplicationProblemPlusJSONResponse struct {
-	ForbiddenApplicationProblemPlusJSONResponse
-}
-
-func (response ListProblems403ApplicationProblemPlusJSONResponse) VisitListProblemsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(403)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListProblemsdefaultApplicationProblemPlusJSONResponse struct {
-	Body       Problem
-	StatusCode int
-}
-
-func (response ListProblemsdefaultApplicationProblemPlusJSONResponse) VisitListProblemsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(response.StatusCode)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type DismissProblemRequestObject struct {
-	ID string `json:"id"`
-}
-
-type DismissProblemResponseObject interface {
-	VisitDismissProblemResponse(w http.ResponseWriter) error
-}
-
-type DismissProblem204Response struct {
-}
-
-func (response DismissProblem204Response) VisitDismissProblemResponse(w http.ResponseWriter) error {
-	w.WriteHeader(204)
-	return nil
-}
-
-type DismissProblem401ApplicationProblemPlusJSONResponse struct {
-	UnauthorizedApplicationProblemPlusJSONResponse
-}
-
-func (response DismissProblem401ApplicationProblemPlusJSONResponse) VisitDismissProblemResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type DismissProblem403ApplicationProblemPlusJSONResponse struct {
-	ForbiddenApplicationProblemPlusJSONResponse
-}
-
-func (response DismissProblem403ApplicationProblemPlusJSONResponse) VisitDismissProblemResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(403)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type DismissProblem404ApplicationProblemPlusJSONResponse struct {
-	NotFoundApplicationProblemPlusJSONResponse
-}
-
-func (response DismissProblem404ApplicationProblemPlusJSONResponse) VisitDismissProblemResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(404)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type DismissProblemdefaultApplicationProblemPlusJSONResponse struct {
-	Body       Problem
-	StatusCode int
-}
-
-func (response DismissProblemdefaultApplicationProblemPlusJSONResponse) VisitDismissProblemResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(response.StatusCode)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
 type SearchWorksRequestObject struct {
 	Params SearchWorksParams
 }
@@ -20794,12 +20640,6 @@ type StrictServerInterface interface {
 	// StopPlay Stop play
 	// (POST /api/v1/plays/{id}/stop)
 	StopPlay(ctx context.Context, request StopPlayRequestObject) (StopPlayResponseObject, error)
-	// ListProblems List problems
-	// (GET /api/v1/problems)
-	ListProblems(ctx context.Context, request ListProblemsRequestObject) (ListProblemsResponseObject, error)
-	// DismissProblem Dismiss problem
-	// (DELETE /api/v1/problems/{id})
-	DismissProblem(ctx context.Context, request DismissProblemRequestObject) (DismissProblemResponseObject, error)
 	// SearchWorks Search works
 	// (GET /api/v1/search)
 	SearchWorks(ctx context.Context, request SearchWorksRequestObject) (SearchWorksResponseObject, error)
@@ -23041,56 +22881,6 @@ func (sh *strictHandler) StopPlay(w http.ResponseWriter, r *http.Request, id ID)
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(StopPlayResponseObject); ok {
 		if err := validResponse.VisitStopPlayResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// ListProblems operation middleware
-func (sh *strictHandler) ListProblems(w http.ResponseWriter, r *http.Request) {
-	var request ListProblemsRequestObject
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.ListProblems(ctx, request.(ListProblemsRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListProblems")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(ListProblemsResponseObject); ok {
-		if err := validResponse.VisitListProblemsResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// DismissProblem operation middleware
-func (sh *strictHandler) DismissProblem(w http.ResponseWriter, r *http.Request, id string) {
-	var request DismissProblemRequestObject
-
-	request.ID = id
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.DismissProblem(ctx, request.(DismissProblemRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "DismissProblem")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(DismissProblemResponseObject); ok {
-		if err := validResponse.VisitDismissProblemResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

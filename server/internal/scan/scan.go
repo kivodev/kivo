@@ -112,8 +112,8 @@ func New(db *store.DB, d Deps, opt Options) *Scanner {
 const (
 	// TaskScanLibraries scans libraries, with each library an item. A scan
 	// walks the library's folders, probes new or changed files, and asks
-	// for their folders to be identified. Every 12 hours the task scans
-	// every library.
+	// for their folders to be identified. As often as the rescan setting
+	// says, the task scans every library.
 	// That timed walk catches what the file watcher can't see (NFS, SMB) or
 	// missed.
 	TaskScanLibraries = "scan-libraries"
@@ -132,11 +132,16 @@ const (
 // task shows no pending count.
 func (s *Scanner) Tasks() []tasks.Task {
 	return []tasks.Task{
-		{Name: TaskScanLibraries, Schedule: tasks.Every(12 * time.Hour), Work: tasks.Items{
+		{Name: TaskScanLibraries, Schedule: tasks.Every(rescanEvery), Work: tasks.Items{
 			Pending: s.libraries, Do: s.scan, Limit: func(config.Settings) int { return 2 },
 			Uncounted: true, Failed: s.failed, Retry: s.retry}},
 		{Name: taskPruneGone, Schedule: tasks.Nightly, Work: tasks.Func(s.pruneGone)},
 	}
+}
+
+// rescanEvery is how long after a run of every library the next begins.
+func rescanEvery(st config.Settings) time.Duration {
+	return time.Duration(st.RescanEvery) * time.Minute
 }
 
 // libraries lists the libraries a run of every library goes through.

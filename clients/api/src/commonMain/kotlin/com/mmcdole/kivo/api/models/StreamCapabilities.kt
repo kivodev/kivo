@@ -23,22 +23,22 @@
 
 package com.mmcdole.kivo.api.models
 
-import com.mmcdole.kivo.api.models.ServerProblem
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
 
 /**
- * 
+ * How a client plays the HLS stream. Whether it streams at all is said by its entries with `stream` delivery. 
  *
- * @param items 
+ * @param muxedAudio It needs the audio inside the video's segments. Otherwise, with video, the audio is a rendition of its own (`EXT-X-MEDIA`). Default false. 
  */
 @Serializable
 
-data class ServerProblemList (
+data class StreamCapabilities (
 
-    @SerialName(value = "items") @Required val items: kotlin.collections.List<ServerProblem>
+    /* It needs the audio inside the video's segments. Otherwise, with video, the audio is a rendition of its own (`EXT-X-MEDIA`). Default false.  */
+    @SerialName(value = "muxedAudio") val muxedAudio: kotlin.Boolean? = null
 
 ) {
 

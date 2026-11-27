@@ -73,6 +73,7 @@ type fakeMedia struct {
 	// jobLimit fails every job after this many have started, so a loop of
 	// restarts ends in failed requests; 0 means no limit.
 	jobLimit int
+	unsplit  bool // the output keeps its audio with its video
 
 	mu       sync.Mutex
 	requests []media.TranscodeRequest
@@ -198,18 +199,29 @@ func (o *fakeOutput) Cues(i int) ([]media.Cue, error) {
 	return out, nil
 }
 
-func (o *fakeOutput) Init() ([]byte, error) {
+// split reports whether the output splits its audio from its video, as
+// the media package does when it has both and isn't asked to keep them
+// muxed.
+func (o *fakeOutput) split() bool {
+	return o.req.Video.Codec != "" && len(o.req.Audio) > 0 && !o.req.MuxedAudio && !o.m.unsplit
+}
+
+func (o *fakeOutput) Init() (media.Init, error) {
 	if o.m.initAfter > 0 {
 		select {
 		case <-o.ctx.Done():
-			return nil, o.ctx.Err()
+			return media.Init{}, o.ctx.Err()
 		case <-time.After(o.m.initAfter):
 		}
 	}
 	if err := o.m.failStart; err != nil {
-		return nil, err
+		return media.Init{}, err
 	}
-	return []byte("init"), nil
+	init := media.Init{Data: []byte("init")}
+	if o.split() {
+		init.Audio = []byte("audio init")
+	}
+	return init, nil
 }
 
 func (o *fakeOutput) Segments() iter.Seq2[media.Segment, error] {
@@ -246,7 +258,11 @@ func (o *fakeOutput) Segments() iter.Seq2[media.Segment, error] {
 				o.read = starts[n+1]
 			}
 			o.mu.Unlock()
-			if !yield(media.Segment{Start: t, Data: []byte(fmt.Sprintf("[%v]", t))}, nil) {
+			seg := media.Segment{Start: t, Data: []byte(fmt.Sprintf("[%v]", t))}
+			if o.split() {
+				seg.Audio = []byte(fmt.Sprintf("(%v)", t))
+			}
+			if !yield(seg, nil) {
 				return
 			}
 		}
@@ -326,6 +342,146 @@ func TestSegmentsAreTheirKeyframesFragments(t *testing.T) {
 		p, err = s.Segment(ctx, "init.mp4")
 		if err != nil || read(t, p) != "init" {
 			t.Fatalf("init %v", err)
+		}
+	})
+}
+
+func TestAudioIsARenditionOfItsOwn(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m := &fakeMedia{}
+		tr, spec := fixture(t, m)
+		spec.Audio = []media.AudioOut{{Track: 1, Source: "eac3", Out: media.AudioRendition{Codec: media.Copy}}}
+		s, err := tr.Open(ctx, spec, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer s.Close()
+		pl, _ := s.Playlist(PlaylistName)
+		if !strings.Contains(string(pl), `TYPE=AUDIO,GROUP-ID="audio"`) || !strings.Contains(string(pl), `AUDIO="audio"`) {
+			t.Fatalf("multivariant playlist:\n%s", pl)
+		}
+		if b, err := s.Playlist(audioPlaylist); err != nil || !strings.Contains(string(b), "audio-1.m4s") {
+			t.Fatalf("audio playlist %v:\n%s", err, b)
+		}
+		// Segment 1's audio is cut from the same fragments as its video.
+		p, err := s.Segment(ctx, "audio-1.m4s")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := read(t, p); got != "(6s)(8s)(10s)" {
+			t.Fatalf("audio segment 1 = %q", got)
+		}
+		if p, err := s.Segment(ctx, "1.m4s"); err != nil || read(t, p) != "[6s][8s][10s]" {
+			t.Fatalf("video segment 1: %v", err)
+		}
+		p, err = s.Segment(ctx, "audio-init.mp4")
+		if err != nil || read(t, p) != "audio init" {
+			t.Fatalf("audio init %v", err)
+		}
+		// A far seek's job writes both again.
+		if p, err := s.Segment(ctx, "audio-50.m4s"); err != nil || read(t, p) != "(5m0s)(5m2s)(5m4s)" {
+			t.Fatalf("audio segment 50: %v", err)
+		}
+		if _, err := s.Segment(ctx, "audio-init-1.mp4"); !errors.Is(err, ErrNotFound) {
+			t.Fatalf("a second part's audio init: %v", err)
+		}
+	})
+}
+
+func TestMuxedAudioStaysInTheVideoSegments(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m := &fakeMedia{}
+		tr, spec := fixture(t, m)
+		spec.Audio = []media.AudioOut{{Track: 1, Source: "eac3", Out: media.AudioRendition{Codec: media.Copy}}}
+		spec.MuxedAudio = true
+		s, err := tr.Open(ctx, spec, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer s.Close()
+		if pl, _ := s.Playlist(PlaylistName); strings.Contains(string(pl), "EXT-X-MEDIA") || strings.Contains(string(pl), "AUDIO") {
+			t.Fatalf("multivariant playlist:\n%s", pl)
+		}
+		if _, err := s.Playlist(audioPlaylist); !errors.Is(err, ErrNotFound) {
+			t.Fatalf("an audio playlist for muxed audio: %v", err)
+		}
+		if p, err := s.Segment(ctx, "init.mp4"); err != nil || read(t, p) != "init" {
+			t.Fatalf("init: %v", err)
+		}
+		if p, err := s.Segment(ctx, "1.m4s"); err != nil || read(t, p) != "[6s][8s][10s]" {
+			t.Fatalf("segment 1: %v", err)
+		}
+		for _, name := range []string{"audio-init.mp4", "audio-1.m4s"} {
+			if _, err := s.Segment(ctx, name); !errors.Is(err, ErrNotFound) {
+				t.Fatalf("%s for muxed audio: %v", name, err)
+			}
+		}
+		m.mu.Lock()
+		defer m.mu.Unlock()
+		for _, r := range m.requests {
+			if !r.MuxedAudio {
+				t.Fatal("a job asked for split audio")
+			}
+		}
+	})
+}
+
+func TestNoAudioNoAudioRendition(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m := &fakeMedia{}
+		tr, spec := fixture(t, m)
+		s, _ := tr.Open(ctx, spec, 0)
+		defer s.Close()
+		if _, err := s.Segment(ctx, "audio-0.m4s"); !errors.Is(err, ErrNotFound) {
+			t.Fatalf("an audio segment without audio: %v", err)
+		}
+		if _, err := s.Segment(ctx, "audio-init.mp4"); !errors.Is(err, ErrNotFound) {
+			t.Fatalf("an audio init without audio: %v", err)
+		}
+		if _, err := s.Playlist(audioPlaylist); !errors.Is(err, ErrNotFound) {
+			t.Fatalf("an audio playlist without audio: %v", err)
+		}
+		if pl, _ := s.Playlist(PlaylistName); strings.Contains(string(pl), "AUDIO") {
+			t.Fatalf("multivariant playlist:\n%s", pl)
+		}
+	})
+}
+
+func TestAudioWithoutVideoIsTheStream(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m := &fakeMedia{}
+		tr, spec := fixture(t, m)
+		spec.Video = media.VideoRendition{}
+		spec.Audio = []media.AudioOut{{Track: 0, Source: media.AAC, Out: media.AudioRendition{Codec: media.AAC}}}
+		if !spec.encoded() {
+			t.Fatal("audio alone is cut on the grid")
+		}
+		s, err := tr.Open(ctx, spec, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer s.Close()
+		if _, err := s.Playlist(audioPlaylist); !errors.Is(err, ErrNotFound) {
+			t.Fatalf("an audio playlist for audio alone: %v", err)
+		}
+		if p, err := s.Segment(ctx, "0.m4s"); err != nil || read(t, p) != "[0s]" {
+			t.Fatalf("segment 0: %v", err)
+		}
+	})
+}
+
+func TestOutputWithoutSplitAudioFailsTheJob(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m := &fakeMedia{unsplit: true}
+		tr, spec := fixture(t, m)
+		spec.Audio = []media.AudioOut{{Track: 1, Source: "eac3", Out: media.AudioRendition{Codec: media.Copy}}}
+		s, err := tr.Open(ctx, spec, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer s.Close()
+		if _, err := s.Segment(ctx, "audio-init.mp4"); !errors.Is(err, ErrJobFailed) || !errors.Is(err, errNoSplitAudio) {
+			t.Fatalf("audio init from an output that doesn't split its audio: %v", err)
 		}
 	})
 }
@@ -1227,10 +1383,11 @@ func TestPlaylistGolden(t *testing.T) {
 		{Time: 12 * time.Second}, {Time: 21 * time.Second}, {Time: 23 * time.Second}, {Time: 29 * time.Second}}
 	plan := planKeyframes(31*time.Second+500*time.Millisecond, keys)
 	spec := Spec{
-		Parts:  []FileRef{{Path: "/m/a.mkv", Duration: 31*time.Second + 500*time.Millisecond, Bitrate: 9_800_000}},
-		Source: media.Track{Kind: media.Video, Codec: media.H264, Profile: "High", Level: 41},
-		Video:  media.VideoRendition{Codec: media.Copy},
-		Audio:  []media.AudioOut{{Track: 1, Source: "eac3", Out: media.AudioRendition{Codec: media.Copy}}},
+		Parts:      []FileRef{{Path: "/m/a.mkv", Duration: 31*time.Second + 500*time.Millisecond, Bitrate: 9_800_000}},
+		Source:     media.Track{Kind: media.Video, Codec: media.H264, Profile: "High", Level: 41},
+		Video:      media.VideoRendition{Codec: media.Copy},
+		Audio:      []media.AudioOut{{Track: 1, Source: "eac3", SourceChannels: 6, Language: "en", Out: media.AudioRendition{Codec: media.Copy}}},
+		AudioTitle: "English 5.1",
 		Text: []TextTrack{
 			{ID: "0190b0a8-0000-7000-8000-000000000003", Track: 3, Title: `English "SDH"`, Language: "en", SDH: true, Default: true},
 			{ID: "0190b0a8-0000-7000-8000-000000000004", Track: 4, Title: "Français", Language: "fr", Forced: true},
@@ -1238,7 +1395,7 @@ func TestPlaylistGolden(t *testing.T) {
 	}
 	playlists := renderPlaylists(spec, plan)
 	var got []byte
-	for _, name := range []string{PlaylistName, videoPlaylist, textPlaylist(0), textPlaylist(1)} {
+	for _, name := range []string{PlaylistName, videoPlaylist, audioPlaylist, textPlaylist(0), textPlaylist(1)} {
 		got = append(append(got, "# "+name+"\n"...), playlists[name]...)
 	}
 	golden := filepath.Join("testdata", "playlist.golden")
@@ -1294,14 +1451,19 @@ func TestCodecs(t *testing.T) {
 }
 
 func TestSegmentNames(t *testing.T) {
-	for name, want := range map[string]struct{ i, text int }{
-		"0.m4s": {0, -1}, "12.m4s": {12, -1}, "t0-12.vtt": {12, 0}, "t3-0.vtt": {0, 3},
+	for name, want := range map[string]struct {
+		i int
+		r rendition
+	}{
+		"0.m4s": {0, videoRendition}, "12.m4s": {12, videoRendition}, "audio-0.m4s": {0, audioRendition}, "audio-12.m4s": {12, audioRendition},
+		"t0-12.vtt": {12, 0}, "t3-0.vtt": {0, 3},
 	} {
-		if i, text, ok := parseSegment(name); !ok || i != want.i || text != want.text {
-			t.Errorf("%s: %d %v %v", name, i, text, ok)
+		if i, r, ok := parseSegment(name); !ok || i != want.i || r != want.r {
+			t.Errorf("%s: %d %v %v", name, i, r, ok)
 		}
 	}
 	for _, bad := range []string{"-1.m4s", "01.m4s", "a.m4s", "1.ts", "../1.m4s", "1.m4s/x", "01.vtt", "1.m4s.vtt",
+		"audio-01.m4s", "audio--1.m4s", "audio-.m4s", "audio-audio-1.m4s", "audio-t1-1.vtt",
 		"12.vtt", "t-1.vtt", "t01-1.vtt", "t1-01.vtt", "t1.vtt", "x1-1.vtt", "t1-1-1.vtt", "tt1-1.vtt"} {
 		if _, _, ok := parseSegment(bad); ok {
 			t.Errorf("%q parsed", bad)
@@ -1724,4 +1886,99 @@ func TestInitNames(t *testing.T) {
 			t.Errorf("%q parsed", bad)
 		}
 	}
+}
+
+// A job that catches up to segments already on disk stops cleanly instead
+// of re-encoding and discarding the rest of the file.
+func TestJobStopsAtExistingSegment(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		m := &fakeMedia{}
+		tr, spec := fixture(t, m)
+		s, err := tr.Open(ctx, encodedSpec(spec, ""), 20*time.Second) // segment 10
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer s.Close()
+		// Seek back before segment 10 (to segment 7 at 14s). The new job
+		// should write 7, 8, 9 and stop once it reaches segment 10.
+		if _, err := s.Segment(ctx, "7.m4s"); err != nil {
+			t.Fatal(err)
+		}
+		time.Sleep(time.Second)
+		synctest.Wait()
+		j := s.Job()
+		if j.State != JobDone || j.Next != 10 {
+			t.Fatalf("job after catching up to segment 10 = %+v, want JobDone at Next=10", j)
+		}
+	})
+}
+
+// Rapid seeks must wait for the previous ffmpeg job to exit before spawning
+// the next one, so at most one encoder session is active per stream.
+func TestSeekWaitsForPreviousJobToExit(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		base := &fakeMedia{}
+		m := &slowCloseMedia{fakeMedia: base, closeDelay: 200 * time.Millisecond}
+		tr, spec := fixture(t, m.fakeMedia)
+		tr.deps.Media = m
+		s, err := tr.Open(ctx, encodedSpec(spec, "nvenc:0"), 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer s.Close()
+
+		// Trigger a far seek that replaces the running job while its Close
+		// takes 200ms.
+		if _, err := s.Segment(ctx, "50.m4s"); err != nil {
+			t.Fatal(err)
+		}
+		m.mu.Lock()
+		peak := m.maxActive
+		m.mu.Unlock()
+		if peak > 1 {
+			t.Fatalf("max concurrent Transcode outputs = %d, want 1", peak)
+		}
+	})
+}
+
+type slowCloseMedia struct {
+	*fakeMedia
+	closeDelay time.Duration
+	mu         sync.Mutex
+	active     int
+	maxActive  int
+}
+
+func (m *slowCloseMedia) Transcode(ctx context.Context, req media.TranscodeRequest) (media.Output, error) {
+	m.mu.Lock()
+	m.active++
+	m.maxActive = max(m.maxActive, m.active)
+	m.mu.Unlock()
+	out, err := m.fakeMedia.Transcode(ctx, req)
+	if err != nil {
+		m.mu.Lock()
+		m.active--
+		m.mu.Unlock()
+		return nil, err
+	}
+	return &slowCloseOutput{Output: out, m: m}, nil
+}
+
+type slowCloseOutput struct {
+	media.Output
+	m      *slowCloseMedia
+	closed bool
+}
+
+func (o *slowCloseOutput) Close() error {
+	if o.closed {
+		return nil
+	}
+	o.closed = true
+	time.Sleep(o.m.closeDelay)
+	err := o.Output.Close()
+	o.m.mu.Lock()
+	o.m.active--
+	o.m.mu.Unlock()
+	return err
 }

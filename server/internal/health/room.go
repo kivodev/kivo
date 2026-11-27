@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"syscall"
 	"time"
 )
 
@@ -58,7 +57,7 @@ func (r *Room) Check() error {
 // Err returns ErrDiskFull wrapping err when err means the disk ran out of
 // space. Otherwise it returns err unchanged.
 func (r *Room) Err(err error) error {
-	if errors.Is(err, syscall.ENOSPC) {
+	if isDiskFull(err) {
 		r.setFull(true)
 		return fmt.Errorf("%w: %w", ErrDiskFull, err)
 	}

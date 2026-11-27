@@ -502,7 +502,6 @@ namespace KivoApi
         downloadsChanged = "downloadsChanged"
         tasksChanged = "tasksChanged"
         playsChanged = "playsChanged"
-        problemsChanged = "problemsChanged"
         logsChanged = "logsChanged"
         activityChanged = "activityChanged"
     end enum
@@ -715,6 +714,7 @@ namespace KivoApi
 
     interface Capabilities
         optional file as KivoApi.FileCapabilities
+        optional stream as KivoApi.StreamCapabilities
         video as KivoApi.VideoEntry[]
         audio as KivoApi.AudioEntry[]
         subtitles as KivoApi.SubtitleEntry[]
@@ -827,6 +827,7 @@ namespace KivoApi
 
     interface DeleteMissingFilesQuery
         status as string
+        optional libraryId as string
     end interface
 
     interface DeleteOtherSessionsQuery
@@ -984,7 +985,6 @@ namespace KivoApi
         optional libraryIds as string[]
         optional playId as string
         optional message as string
-        optional problemCount as integer
         optional workIds as string[]
     end interface
 
@@ -1278,6 +1278,7 @@ namespace KivoApi
     end interface
 
     interface ListUnmatchedWorksQuery
+        optional libraryId as string
         optional after as string
         optional limit as integer
     end interface
@@ -1705,19 +1706,6 @@ namespace KivoApi
         optional newRelease as KivoApi.NewRelease
     end interface
 
-    interface ServerProblem
-        id as string
-        component as string
-        code as string
-        message as string
-        severity as KivoApi.ProblemSeverity
-        raisedAt as string
-    end interface
-
-    interface ServerProblemList
-        items as KivoApi.ServerProblem[]
-    end interface
-
     interface ServerProof
         signature as string
         host as string
@@ -1759,7 +1747,9 @@ namespace KivoApi
         openSubtitlesKey as string
         openSubtitlesUsername as string
         openSubtitlesPasswordSet as boolean
+        optional openSubtitlesRefused as string
         fileWatching as boolean
+        rescanEveryMinutes as integer
         playedThreshold as integer or float or double
         localNetworks as string[]
         accelerator as string
@@ -1781,6 +1771,7 @@ namespace KivoApi
         optional openSubtitlesUsername as string
         optional openSubtitlesPassword as string
         optional fileWatching as boolean
+        optional rescanEveryMinutes as integer
         optional localNetworks as string[]
         optional accelerator as string
         optional videoTranscodeLimit as integer
@@ -1804,12 +1795,15 @@ namespace KivoApi
     interface SnapshotMessage
         type as string
         serverVersion as string
-        optional problemCount as integer
     end interface
 
     interface SortKey
         field as string
         optional direction as KivoApi.SortDirection
+    end interface
+
+    interface StreamCapabilities
+        optional muxedAudio as boolean
     end interface
 
     interface SubtitleEntry
@@ -1841,6 +1835,7 @@ namespace KivoApi
         section as KivoApi.TaskSection
         optional lastRun as KivoApi.TaskRun
         nightly as boolean
+        optional everyMinutes as integer
         optional nextRunAt as string
         optional progress as KivoApi.TaskProgress
         pendingCount as integer

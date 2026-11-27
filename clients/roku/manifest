@@ -4,7 +4,7 @@ subtitle=Your own media server
 major_version=0
 # x-release-please-end
 # x-release-please-start-minor
-minor_version=3
+minor_version=5
 # x-release-please-end
 # x-release-please-start-patch
 build_version=0

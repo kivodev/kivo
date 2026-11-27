@@ -169,6 +169,10 @@
         <item quantity="one">%1$,d book</item>
         <item quantity="other">%1$,d books</item>
     </plurals>
+    <!-- A book's place in a series, over its title on the series' page: "Book 2", "Book 1.5". -->
+    <string name="mobile_book_position">Book %1$s</string>
+    <!-- A book page's line over the title: the series' name, then the book's place in it. -->
+    <string name="mobile_book_series_place">%1$s · Book %2$s</string>
     <plurals name="mobile_count_collections">
         <item quantity="one">%1$,d collection</item>
         <item quantity="other">%1$,d collections</item>

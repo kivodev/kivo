@@ -262,13 +262,14 @@ func (c *Catalog) DeleteMissing(ctx context.Context, file id.ID) error {
 }
 
 // DeleteAllMissing deletes every file that is missing when an admin asks,
-// as DeleteMissing does for one file. It writes one batch at a time. It
-// deletes the files that went missing at or before the moment it's called,
-// including that millisecond.
-func (c *Catalog) DeleteAllMissing(ctx context.Context) error {
+// as DeleteMissing does for one file. It deletes one library's files, or
+// every library's when lib is the zero ID. It writes one batch at a time.
+// It deletes the files that went missing at or before the moment it's
+// called, including that millisecond.
+func (c *Catalog) DeleteAllMissing(ctx context.Context, lib id.ID) error {
 	now := time.Now()
 	err := c.db.Drain(ctx, func(ctx context.Context, tx *store.Tx) (int, error) {
-		return c.PruneGone(ctx, tx, now)
+		return c.pruneGone(ctx, tx, lib, now)
 	})
 	return err
 }
@@ -277,20 +278,30 @@ func (c *Catalog) DeleteAllMissing(ctx context.Context) error {
 // DeleteFiles does, and returns how many it deleted. It is a store.Drain
 // step.
 func (c *Catalog) PruneGone(ctx context.Context, tx *store.Tx, t time.Time) (int, error) {
-	files, err := dbq.New(tx).GoneBatch(ctx, dbq.GoneBatchParams{Before: t.UnixMilli(), Limit: store.BatchSize})
+	return c.pruneGone(ctx, tx, id.ID{}, t)
+}
+
+// pruneGone is PruneGone for one library, or for every library when lib is
+// the zero ID.
+func (c *Catalog) pruneGone(ctx context.Context, tx *store.Tx, lib id.ID, t time.Time) (int, error) {
+	files, err := dbq.New(tx).GoneBatch(ctx, dbq.GoneBatchParams{
+		Before: t.UnixMilli(), AnyLibrary: lib.IsZero(), Library: lib, Limit: store.BatchSize,
+	})
 	if err != nil {
 		return 0, err
 	}
 	return len(files), c.DeleteFiles(ctx, tx, files)
 }
 
-// Relink merges a newly found file into a gone file with the same content.
-// The gone file keeps its ID, and with it its versions and everything
-// attached. It takes the found file's place on disk, and the found file's
-// row is deleted.
-func (c *Catalog) Relink(ctx context.Context, tx *store.Tx, gone, found id.ID) error {
+// Relink merges a newly found file into a missing file with the same
+// content, as long as the missing file is still at from's folder and path
+// (and still gone if from wasn't present). Otherwise it returns ErrStale so
+// a concurrent probe stores found as a new file. The missing file keeps its
+// ID, and with it its versions and everything attached. It takes the found
+// file's place on disk, and the found file's row is deleted.
+func (c *Catalog) Relink(ctx context.Context, tx *store.Tx, from File, found id.ID) error {
 	q := dbq.New(tx)
-	g, err := q.GetFile(ctx, gone)
+	g, err := q.GetFile(ctx, from.ID)
 	if err != nil {
 		return notFound(err)
 	}
@@ -305,10 +316,14 @@ func (c *Catalog) Relink(ctx context.Context, tx *store.Tx, gone, found id.ID) e
 	if len(v) > 0 {
 		return fmt.Errorf("%w: the found file already belongs to a version", ErrInvalid)
 	}
+	if g.MediaFile.FolderID != from.Folder || g.MediaFile.RelPath != from.RelPath ||
+		(!from.Present && FileStatus(g.MediaFile.Status) != FileGone) {
+		return fmt.Errorf("%w: file %s moved or returned", ErrStale, from.ID)
+	}
 	if f.LibraryID != g.LibraryID {
 		// A version's parts stay in one library, so a move across libraries
 		// must not carry versions with other parts along.
-		parts, err := partsWith(ctx, q, gone)
+		parts, err := partsWith(ctx, q, from.ID)
 		if err != nil {
 			return err
 		}
@@ -319,11 +334,11 @@ func (c *Catalog) Relink(ctx context.Context, tx *store.Tx, gone, found id.ID) e
 	if err := q.DeleteFiles(ctx, id.Set(found)); err != nil {
 		return err
 	}
-	err = q.MoveFile(ctx, dbq.MoveFileParams{ID: gone, FolderID: f.MediaFile.FolderID, RelPath: f.MediaFile.RelPath, Size: f.MediaFile.Size, Mtime: f.MediaFile.Mtime})
+	err = q.MoveFile(ctx, dbq.MoveFileParams{ID: from.ID, FolderID: f.MediaFile.FolderID, RelPath: f.MediaFile.RelPath, Size: f.MediaFile.Size, Mtime: f.MediaFile.Mtime})
 	if err != nil {
 		return err
 	}
-	return c.refreshFiles(ctx, tx, []id.ID{gone})
+	return c.refreshFiles(ctx, tx, []id.ID{from.ID})
 }
 
 // partsWith counts the parts of the version a file belongs to.

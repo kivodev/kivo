@@ -68,14 +68,28 @@ fun CollectionScreen(session: ServerSession, id: String, nav: MobileNav) {
     }
 }
 
-/** A book series: its cover, name and count, then its books in order. */
+/**
+ * A book series: its cover, name and count, then its books in order, each
+ * with its "Book 2" over its title and its author only when it isn't the
+ * one most of the books share.
+ */
 @Composable
 fun BookSeriesScreen(session: ServerSession, id: String, nav: MobileNav) {
     val model = viewModel { PageViewModel.bookSeries(session.session, id) }
     val state by model.state.collectAsStateWithLifecycle()
     val series = state.value
     PageFrame(state, model, nav) { openMenu ->
-        WorksGrid(series?.items.orEmpty(), nav, openMenu) {
+        val positions = series?.hasPositions() == true
+        val namesAuthors = series?.namesAuthors() == true
+        val bookPosition = stringResource(R.string.mobile_book_position)
+        WorksGrid(
+            series?.items.orEmpty(),
+            nav,
+            openMenu,
+            captionLines = if (namesAuthors) 2 else 1,
+            overline = { book -> series?.takeIf { positions }?.let { s -> book.book?.positionIn(s.id)?.let { bookPosition.format(it) }.orEmpty() } },
+            detail = { book -> "".takeIf { namesAuthors && series?.byCommonAuthor(book) == true } },
+        ) {
             Heading(series?.name ?: state.name, series?.items?.firstOrNull()?.images?.poster ?: state.image, round = false) {
                 series?.items?.size?.let { pluralStringResource(R.plurals.mobile_count_books, it, it) }
             }
@@ -155,7 +169,15 @@ private fun Heading(name: String?, image: ImageRef?, round: Boolean, detail: @Co
 
 /** Works in a grid of 104 dp cards, under [header]. */
 @Composable
-private fun WorksGrid(works: List<WorkSummary>, nav: MobileNav, openMenu: (WorkMenu) -> Unit, header: @Composable () -> Unit) {
+private fun WorksGrid(
+    works: List<WorkSummary>,
+    nav: MobileNav,
+    openMenu: (WorkMenu) -> Unit,
+    captionLines: Int = 1,
+    overline: (WorkSummary) -> String? = { null },
+    detail: (WorkSummary) -> String? = { null },
+    header: @Composable () -> Unit,
+) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(104.dp),
         modifier = Modifier.fillMaxSize(),
@@ -165,7 +187,17 @@ private fun WorksGrid(works: List<WorkSummary>, nav: MobileNav, openMenu: (WorkM
     ) {
         item(key = "header", span = { GridItemSpan(maxLineSpan) }) { header() }
         items(works, key = { it.id }) { work ->
-            WorkCard(work, shapeOf(work), 120.dp, { nav.openWork(work) }, { openMenu(WorkMenu(work)) }, Modifier.fillMaxWidth(), captionLines = 1)
+            WorkCard(
+                work,
+                shapeOf(work),
+                120.dp,
+                { nav.openWork(work) },
+                { openMenu(WorkMenu(work)) },
+                Modifier.fillMaxWidth(),
+                captionLines = captionLines,
+                overline = overline(work),
+                detail = detail(work),
+            )
         }
     }
 }

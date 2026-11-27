@@ -84,7 +84,7 @@ func (s *Service) sessionCaller(ctx context.Context, hash tokenHash) (Caller, er
 	if expired(SessionKind(row.Kind), stored, now) {
 		return Caller{}, fmt.Errorf("%w: session expired", ErrUnauthenticated)
 	}
-	s.markUsed(ctx, stored, now, func(ctx context.Context, q *dbq.Queries, used int64) error {
+	s.markUsed(ctx, row.ID, stored, now, func(ctx context.Context, q *dbq.Queries, used int64) error {
 		return q.TouchSession(ctx, dbq.TouchSessionParams{ID: row.ID, Used: used})
 	})
 	return Caller{User: row.UserID, Session: row.ID, Name: row.Name, Device: Device{
@@ -299,17 +299,56 @@ func expired(kind SessionKind, used, now time.Time) bool {
 }
 
 // markUsed writes now as a credential's last-used time with touch, when the
-// stored time is more than staleAfter old. A failed write is logged, and the
+// stored time is more than staleAfter old. Concurrent requests for the same
+// credential dedupe in memory so only one takes the database writer per
+// staleAfter window. A failed write releases the claim, is logged, and the
 // request carries on.
-func (s *Service) markUsed(ctx context.Context, stored, now time.Time, touch func(ctx context.Context, q *dbq.Queries, used int64) error) {
+func (s *Service) markUsed(ctx context.Context, key id.ID, stored, now time.Time, touch func(ctx context.Context, q *dbq.Queries, used int64) error) {
 	if now.Sub(stored) <= staleAfter {
+		return
+	}
+	if !s.claimTouch(key, now) {
 		return
 	}
 	err := s.db.Write(ctx, func(ctx context.Context, tx *store.Tx) error {
 		return touch(ctx, dbq.New(tx), now.UnixMilli())
 	})
 	if err != nil {
+		s.releaseTouch(key, now)
 		slog.WarnContext(ctx, "auth: write last-used time", "err", err)
+	}
+}
+
+// claimTouch records now for key if this process hasn't already touched key
+// within staleAfter, returning whether the caller should perform the write.
+func (s *Service) claimTouch(key id.ID, now time.Time) bool {
+	s.touchedMu.Lock()
+	defer s.touchedMu.Unlock()
+	if last, ok := s.touched[key]; ok && now.Sub(last) <= staleAfter {
+		return false
+	}
+	s.touched[key] = now
+	return true
+}
+
+// releaseTouch removes a failed touch claim so a later request retries it.
+func (s *Service) releaseTouch(key id.ID, at time.Time) {
+	s.touchedMu.Lock()
+	defer s.touchedMu.Unlock()
+	if s.touched[key].Equal(at) {
+		delete(s.touched, key)
+	}
+}
+
+// pruneTouched drops touch timestamps older than staleAfter so the map
+// doesn't grow without bound over the life of the process.
+func (s *Service) pruneTouched(now time.Time) {
+	s.touchedMu.Lock()
+	defer s.touchedMu.Unlock()
+	for k, at := range s.touched {
+		if now.Sub(at) > staleAfter {
+			delete(s.touched, k)
+		}
 	}
 }
 
@@ -317,6 +356,7 @@ func (s *Service) markUsed(ctx context.Context, stored, now time.Time, touch fun
 // cast tokens, one batch at a time.
 func (s *Service) dropExpired(ctx context.Context) {
 	now := time.Now()
+	s.pruneTouched(now)
 	before := now.Add(-browserIdle).UnixMilli()
 	err := s.db.Drain(ctx, func(ctx context.Context, tx *store.Tx) (int, error) {
 		n, err := dbq.New(tx).DeleteIdleBrowserSessions(ctx, dbq.DeleteIdleBrowserSessionsParams{Before: before, Limit: store.BatchSize})

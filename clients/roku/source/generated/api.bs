@@ -815,7 +815,7 @@ namespace KivoApi
     end function
 
     ' List unmatched works: GET /api/v1/unmatched-works.
-    ' Query: after, limit.
+    ' Query: libraryId, after, limit.
     function listUnmatchedWorks(query = invalid as KivoApi.ListUnmatchedWorksQuery) as KivoApi.Request
         return { method: "GET", path: "/api/v1/unmatched-works", query: query, body: invalid, contentType: invalid, auth: true }
     end function
@@ -898,7 +898,7 @@ namespace KivoApi
     end function
 
     ' Delete missing files: DELETE /api/v1/files.
-    ' Query: status.
+    ' Query: status, libraryId.
     function deleteMissingFiles(query = invalid as KivoApi.DeleteMissingFilesQuery) as KivoApi.Request
         return { method: "DELETE", path: "/api/v1/files", query: query, body: invalid, contentType: invalid, auth: true }
     end function
@@ -973,21 +973,6 @@ namespace KivoApi
     ' listActivity's answer, as its type.
     function listActivityAnswer(response as object) as KivoApi.ActivityFeed
         return response.body
-    end function
-
-    ' List problems: GET /api/v1/problems.
-    function listProblems() as KivoApi.Request
-        return { method: "GET", path: "/api/v1/problems", query: invalid, body: invalid, contentType: invalid, auth: true }
-    end function
-
-    ' listProblems's answer, as its type.
-    function listProblemsAnswer(response as object) as KivoApi.ServerProblemList
-        return response.body
-    end function
-
-    ' Dismiss problem: DELETE /api/v1/problems/{id}.
-    function dismissProblem(id as string) as KivoApi.Request
-        return { method: "DELETE", path: "/api/v1/problems/" + KivoApi.pathEscape(id), query: invalid, body: invalid, contentType: invalid, auth: true }
     end function
 
     ' List own watch history: GET /api/v1/users/me/play-events.

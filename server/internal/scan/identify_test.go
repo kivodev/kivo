@@ -6,6 +6,7 @@ import (
 	"slices"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/mmcdole/kivo/internal/activity"
@@ -39,6 +40,8 @@ type flow struct {
 	id   *identify.Identifier
 	asks *fakeTasks // what was asked of the runner
 	stop func()
+
+	settings *config.Store // the runner's and the scanner's
 }
 
 func newFlow(t *testing.T) *flow {
@@ -55,6 +58,7 @@ func (f *flow) wire(lost bool) {
 	if err != nil {
 		f.t.Fatal(err)
 	}
+	f.settings = settings
 	f.r = tasks.New(db, settings, events.NewBus(), tasks.Options{})
 	f.asks = &fakeTasks{}
 	var ask identify.Tasks = asking{f.asks, f.r}
@@ -320,4 +324,32 @@ func TestIdentifyResumesAfterRestart(t *testing.T) {
 	if lists, _ := f.fsys.counts(); lists != 0 {
 		t.Errorf("the restart listed %d directories", lists)
 	}
+}
+
+// Every library is scanned as often as the rescan setting says. A saved
+// change moves the next scan without a restart.
+func TestTheRescanFollowsTheSetting(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := newFlow(t)
+		f.start()
+		synctest.Wait()
+		if next := f.scanTask().Next; !next.Equal(time.Now().Add(12 * time.Hour)) {
+			t.Fatalf("next scan %v, want 12 hours after startup", next)
+		}
+		err := f.settings.Update(ctx, func(s *config.Settings) error {
+			s.RescanEvery = 15
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if next := f.scanTask().Next; !next.Equal(time.Now().Add(15 * time.Minute)) {
+			t.Fatalf("next scan %v, want 15 minutes after startup", next)
+		}
+		time.Sleep(15*time.Minute + time.Second)
+		synctest.Wait()
+		if f.scanTask().Last == nil {
+			t.Fatal("no scan of every library 15 minutes after startup")
+		}
+	})
 }

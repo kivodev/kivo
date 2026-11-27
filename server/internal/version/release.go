@@ -1,4 +1,4 @@
-package release
+package version
 
 import (
 	"context"
@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/mmcdole/kivo/internal/egress"
-	"github.com/mmcdole/kivo/internal/version"
 )
 
 // latestURL is GitHub's latest release of Kivo, which leaves out drafts
@@ -28,8 +27,8 @@ const (
 	checkEvery = 24 * time.Hour // after that
 )
 
-// Options say which version is running and whether to check at all.
-type Options struct {
+// CheckOptions say which version is running and whether to check at all.
+type CheckOptions struct {
 	// Version is the running version, such as 0.4.0 or 0.3.1-dev+56c0018d.
 	// One that isn't a semantic version is never checked.
 	Version string
@@ -51,15 +50,15 @@ type getter interface {
 // Checker keeps the newest release it has seen that is newer than the
 // running version.
 type Checker struct {
-	opt Options
+	opt CheckOptions
 	get getter
 
 	mu    sync.Mutex
 	newer *Release
 }
 
-// New returns a checker. It asks nothing until Run.
-func New(opt Options) *Checker {
+// NewChecker returns a release checker. It asks nothing until Run.
+func NewChecker(opt CheckOptions) *Checker {
 	return &Checker{opt: opt, get: egress.New()}
 }
 
@@ -77,7 +76,7 @@ func (c *Checker) Newer() (Release, bool) {
 // ends. It returns at once when the check is off or the running version
 // isn't a semantic version. A failed check is logged and tried again the next day.
 func (c *Checker) Run(ctx context.Context) error {
-	if _, ok := version.Parse(c.opt.Version); !c.opt.Check || !ok {
+	if _, ok := Parse(c.opt.Version); !c.opt.Check || !ok {
 		return nil
 	}
 	t := time.NewTimer(firstCheck)
@@ -88,7 +87,7 @@ func (c *Checker) Run(ctx context.Context) error {
 			return nil
 		case <-t.C:
 			if err := c.check(ctx); err != nil && ctx.Err() == nil {
-				slog.WarnContext(ctx, "release: can't check for a new release", "err", err)
+				slog.WarnContext(ctx, "version: can't check for a new release", "err", err)
 			}
 			t.Reset(checkEvery)
 		}
@@ -113,7 +112,7 @@ func (c *Checker) check(ctx context.Context) error {
 	if err := json.Unmarshal(resp.Body, &r); err != nil {
 		return fmt.Errorf("github's answer: %w", err)
 	}
-	if r.Draft || r.Prerelease || !version.Newer(r.TagName, c.opt.Version) {
+	if r.Draft || r.Prerelease || !Newer(r.TagName, c.opt.Version) {
 		return nil
 	}
 	c.mu.Lock()

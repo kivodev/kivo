@@ -1,7 +1,7 @@
 {
   "name": "kivo-roku",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.5.0",
   "description": "The Roku app: SceneGraph and BrighterScript, compiled to a sideloadable zip.",
   "scripts": {
     "build": "bsc --project bsconfig.json",

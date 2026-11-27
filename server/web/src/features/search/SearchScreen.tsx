@@ -1,14 +1,12 @@
 import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import { useQuery } from "@tanstack/react-query";
-import { getRouteApi, Link } from "@tanstack/react-router";
+import { getRouteApi } from "@tanstack/react-router";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Input, SearchField } from "react-aria-components";
-import { libraryQueries } from "@/api/libraries";
 import { errorCode } from "@/api/problem";
 import type { CollectionSummary, PersonSummary, WorkSummary } from "@/api/schemas";
 import { searchQueries } from "@/api/search";
 import { onSignedOut } from "@/api/session";
-import { useIsAdmin } from "@/api/users";
 import type { ArtworkShape } from "@/components/Artwork";
 import { Button } from "@/components/Button";
 import { useDocumentTitle } from "@/components/documentTitle";
@@ -76,12 +74,10 @@ function useSearchQuery() {
 export function SearchScreen() {
   const { t } = useLingui();
   const [q, setQuery] = useSearchQuery();
-  const isAdmin = useIsAdmin();
   useDocumentTitle(q ? t`Search: ${q}` : t`Search`);
   const [text, setText] = useState(q);
   const query = q.trim();
   const results = useQuery({ ...searchQueries.results(query), enabled: query !== "", placeholderData: (p) => p });
-  const libraries = useQuery({ ...libraryQueries.list(), enabled: isAdmin });
 
   useEffect(() => {
     if (text === q) return;
@@ -101,7 +97,6 @@ export function SearchScreen() {
   const collections = query === "" ? [] : (results.data?.collections ?? []);
   const loading = query !== "" && results.isPlaceholderData;
   const byKind = (kind: string): WorkSummary[] => works.filter((w) => w.kind === kind);
-  const unmatchedLibrary = libraries.data?.items.find((l) => (l.unmatchedCount ?? 0) > 0);
 
   const field = (
     <SearchField
@@ -196,30 +191,17 @@ export function SearchScreen() {
               <EmptyState
                 title={t`No results for “${query}”.`}
                 action={
-                  <div className="flex flex-col items-center gap-3">
-                    <TvControl focusKey="search:clear">
-                      <Button
-                        variant="primary"
-                        onPress={() => {
-                          setText("");
-                          setQuery("");
-                        }}
-                      >
-                        <Trans>Clear search</Trans>
-                      </Button>
-                    </TvControl>
-                    {/* The Match filter is an admin's, and admin is web-only. */}
-                    {isAdmin && !isTv && unmatchedLibrary && (
-                      <Link
-                        to="/libraries/$libraryId"
-                        params={{ libraryId: unmatchedLibrary.id }}
-                        search={{ matchState: "unmatched" }}
-                        className="text-sm text-text-muted hover:text-text"
-                      >
-                        <Trans>View unmatched items</Trans>
-                      </Link>
-                    )}
-                  </div>
+                  <TvControl focusKey="search:clear">
+                    <Button
+                      variant="primary"
+                      onPress={() => {
+                        setText("");
+                        setQuery("");
+                      }}
+                    >
+                      <Trans>Clear search</Trans>
+                    </Button>
+                  </TvControl>
                 }
               />
             )}

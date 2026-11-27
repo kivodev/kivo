@@ -20,6 +20,7 @@ import (
 // unset field is no limit.
 type Capabilities struct {
 	File      *FileCaps       `json:"file,omitempty"` // nil means the client plays no file
+	Stream    StreamCaps      `json:"stream,omitzero"`
 	Video     []VideoEntry    `json:"video,omitempty"`
 	Audio     []AudioEntry    `json:"audio,omitempty"`
 	Subtitles []SubtitleEntry `json:"subtitles,omitempty"`
@@ -31,6 +32,15 @@ type FileCaps struct {
 	// TrackSelection means the client plays any audio track inside a file,
 	// not only the default one.
 	TrackSelection bool `json:"trackSelection,omitempty"`
+}
+
+// StreamCaps say how a client plays the HLS stream. The zero value is the
+// default stream; whether the client streams at all is said by its entries
+// for stream delivery.
+type StreamCaps struct {
+	// MuxedAudio means the client needs the audio inside the video
+	// segments rather than as its own rendition.
+	MuxedAudio bool `json:"muxedAudio,omitempty"`
 }
 
 // VideoEntry is one kind of video a client decodes.

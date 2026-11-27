@@ -1,12 +1,14 @@
 package catalog
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 
 	"github.com/mmcdole/kivo/internal/catalog/dbq"
 	"github.com/mmcdole/kivo/internal/events"
 	"github.com/mmcdole/kivo/internal/fault"
+	"github.com/mmcdole/kivo/internal/id"
 	"github.com/mmcdole/kivo/internal/store"
 )
 
@@ -41,6 +43,8 @@ type Catalog struct {
 	db  *store.DB
 	q   *dbq.Queries
 	bus *events.Bus
+	// personMerged runs in each person merge's transaction.
+	personMerged func(ctx context.Context, tx *store.Tx, from, into id.ID) error
 }
 
 // New returns the catalog over db. Once each write commits, it publishes
@@ -52,6 +56,14 @@ type Catalog struct {
 // as a root work is added, matched, unmatched, moved, gone or deleted.
 func New(db *store.DB, bus *events.Bus) *Catalog {
 	return &Catalog{db: db, q: dbq.New(db.Reader()), bus: bus}
+}
+
+// OnPersonMerge sets fn to run inside the transaction of every merge of
+// one person into another, before the old person is deleted, so records
+// outside the catalog that name a person follow the merge. The server sets
+// it once while it starts.
+func (c *Catalog) OnPersonMerge(fn func(ctx context.Context, tx *store.Tx, from, into id.ID) error) {
+	c.personMerged = fn
 }
 
 func nullString(s string) sql.NullString { return sql.NullString{String: s, Valid: s != ""} }

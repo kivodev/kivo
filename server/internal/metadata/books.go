@@ -110,11 +110,14 @@ func (s *Service) MatchBook(ctx context.Context, work id.ID, asin string) error 
 }
 
 // acceptBook accepts a search result whose running time is within the
-// larger of durationSlack and durationShare of the files' running time. The
-// slack exists because Audible gives running times in whole minutes.
+// larger of durationSlack and durationShare of the files' running time.
+// Audible rounds running times to whole minutes, and releases often pad
+// each chapter file with a few seconds of silence, so a book split into
+// many files runs a few percent long. Abridged and other editions differ
+// by far more.
 const (
 	durationSlack = 3 * time.Minute
-	durationShare = 0.02
+	durationShare = 0.05
 )
 
 // acceptBook picks the search result that is the book. A candidate must
@@ -310,10 +313,12 @@ func currentASIN(w catalog.Work) string {
 }
 
 // fillBook fills the gaps in the description from a book's files with the
-// provider's book b. What the files say wins.
+// provider's book b. What the files say wins, except for the description.
 //
-// The provider's description, publisher and release date fill fields the
-// files leave empty. Its series apply only to a book in no series, and its
+// The provider's description replaces the files' description tag, which in
+// downloaded releases is often missing, wrong or copied between files. Its
+// publisher and release date fill fields the files leave empty. Its series
+// apply only to a book in no series, and its
 // authors and narrators only to a book with none. Authors whose names match
 // the provider's gain the provider's IDs for them. Genres and tags come
 // only from providers, so with no book they are cleared.
@@ -323,7 +328,7 @@ func fillBook(m *catalog.WorkMetadata, b *Book, provider string) {
 		return
 	}
 	bk := m.Book
-	if m.Overview == "" && b.Description != nil {
+	if b.Description != nil && *b.Description != "" {
 		m.Overview = *b.Description
 	}
 	if b.Genres != nil {
@@ -374,7 +379,8 @@ func fillBook(m *catalog.WorkMetadata, b *Book, provider string) {
 const kindAuthor = "author"
 
 // keepBook builds a book's description while its provider is unavailable.
-// What the files say wins. Everything else keeps its current value,
+// What the files say wins, except that a current description beats the
+// files' description tag. Everything else keeps its current value,
 // including the provider's earlier description and cover.
 func (s *Service) keepBook(ctx context.Context, w catalog.Work, out *bookDescription) error {
 	m, bk := out.meta, out.meta.Book
@@ -382,9 +388,7 @@ func (s *Service) keepBook(ctx context.Context, w catalog.Work, out *bookDescrip
 	if err != nil {
 		return err
 	}
-	if m.Overview == "" {
-		m.Overview = cur.Overview.String
-	}
+	m.Overview = cmp.Or(cur.Overview.String, m.Overview)
 	if m.ReleaseDate == "" {
 		m.ReleaseDate, m.Year = cur.ReleaseDate.String, year(cur.ReleaseDate.String)
 	}

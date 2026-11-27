@@ -114,7 +114,7 @@ func (s *Service) castCaller(ctx context.Context, hash tokenHash) (Caller, error
 		expired(SessionKind(row.SessionKind), time.UnixMilli(row.SessionUsedAt), now) {
 		return Caller{}, fmt.Errorf("%w: cast token expired", ErrUnauthenticated)
 	}
-	s.markUsed(ctx, stored, now, func(ctx context.Context, q *dbq.Queries, used int64) error {
+	s.markUsed(ctx, row.ID, stored, now, func(ctx context.Context, q *dbq.Queries, used int64) error {
 		return q.TouchCastToken(ctx, dbq.TouchCastTokenParams{ID: row.ID, Used: used})
 	})
 	return Caller{User: row.UserID, CastToken: row.ID, Name: row.Name}, nil
