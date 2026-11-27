@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { useRef } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { useFocusGlow } from "./focusGlow";
+import { useFocusGlow } from "./useFocusGlow";
 
 // jsdom lays nothing out, so each card sits 300 pixels past the last, in
 // its row.

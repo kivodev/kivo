@@ -5,7 +5,7 @@ import { Button } from "@/components/Button";
 import { Icon } from "@/components/Icon";
 import { SettingsRow, settingsCardClass } from "@/components/SettingsLayout";
 import { Switch } from "@/components/Switch";
-import { useHomeRowTitle } from "@/features/home/rowTitle";
+import { useHomeRowTitle } from "@/features/home/useHomeRowTitle";
 import { TvControl } from "@/tv/forms/TvControl";
 
 type Props = {

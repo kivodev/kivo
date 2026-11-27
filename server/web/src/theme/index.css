@@ -296,7 +296,7 @@
 
   /*
    * A library's grid and each of Home's rows light their focused card with
-   * one glow of their own (tv/focusGlow.tsx) that slides from card to card
+   * one glow of their own (tv/useFocusGlow.tsx) that slides from card to card
    * on the compositor, rather than each card's, which would be rasterized
    * again on each press.
    */

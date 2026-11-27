@@ -120,7 +120,7 @@ function reach(track: HTMLElement, card: HTMLElement, was: number): number {
   return Math.max(0, Math.min(to, furthest(track)));
 }
 
-/** The track's cards, without the shared glow's holder (tv/focusGlow.tsx). */
+/** The track's cards, without the shared glow's holder (tv/useFocusGlow.tsx). */
 const cardsOf = (track: HTMLElement) => track.querySelectorAll<HTMLElement>(":scope > li:not([data-tv-glow-host])");
 
 /** How far the track can move: until its last card ends at its right edge. */
