@@ -1,6 +1,6 @@
 # Publishing the Android app on Google Play
 
-The Android app is one app bundle for phones, tablets and TVs (`com.mmcdole.kivo`). This is the checklist for putting it on Google Play, starting with the internal testing track.
+The Android app is one app bundle for phones, tablets and TVs (`watch.kivo.player`). This is the checklist for putting it on Google Play, starting with the internal testing track.
 
 ## The upload key and the release build
 

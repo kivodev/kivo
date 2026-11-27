@@ -23,7 +23,7 @@ final class Connectivity: Sendable {
             }
             if changed { core.networkChanged(online: now.online, expensive: now.expensive) }
         }
-        monitor.start(queue: DispatchQueue(label: "com.kivo.player.connectivity"))
+        monitor.start(queue: DispatchQueue(label: "watch.kivo.player.connectivity"))
     }
 
     deinit {
