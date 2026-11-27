@@ -2,10 +2,10 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { libraryQueries } from "@/api/libraries";
 import type { Library } from "@/api/schemas";
-import { useDocumentTitle } from "@/components/documentTitle";
 import { Icon } from "@/components/Icon";
 import { LibraryKindIcon } from "@/components/LibraryKindIcon";
 import { settingsCardClass } from "@/components/SettingsLayout";
+import { useDocumentTitle } from "@/components/useDocumentTitle";
 import { TvFocusGroup } from "@/tv/focus";
 import { LibraryRow } from "./LibraryRow";
 

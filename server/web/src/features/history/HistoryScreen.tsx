@@ -14,10 +14,10 @@ import type { PlayEvent, PlayEventFeed } from "@/api/schemas";
 import { userQueries } from "@/api/users";
 import { Artwork } from "@/components/Artwork";
 import { Button } from "@/components/Button";
-import { useDocumentTitle } from "@/components/documentTitle";
 import { EmptyState } from "@/components/EmptyState";
 import { LoadError } from "@/components/LoadError";
 import { Select } from "@/components/Select";
+import { useDocumentTitle } from "@/components/useDocumentTitle";
 import { formatClock, formatDateTime, formatEpisodeCode } from "@/i18n/format";
 import { TvFocusable, TvFocusGroup, useTvEmptyScreen } from "@/tv/focus";
 

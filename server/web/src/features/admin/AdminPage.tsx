@@ -1,5 +1,5 @@
 import { type ReactNode, useId } from "react";
-import { useDocumentTitle } from "@/components/documentTitle";
+import { useDocumentTitle } from "@/components/useDocumentTitle";
 
 type Props = {
   /** Which page, for tests: `overview`, `libraries` and so on. */
