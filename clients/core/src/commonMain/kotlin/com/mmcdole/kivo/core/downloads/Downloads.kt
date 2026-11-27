@@ -28,6 +28,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,6 +44,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.concurrent.Volatile
 import kotlinx.serialization.SerializationException
 import okio.FileSystem
 import okio.Path.Companion.toPath
@@ -86,9 +88,12 @@ import com.mmcdole.kivo.core.downloads.db.Download_file as FileRow
  * At most [MAX_TRANSFERS] downloads come here at once, each the server
  * has ready waiting its turn in the order they were asked for ([inOrder]).
  *
- * Nothing here polls: [invalidated] hears the live events, [network] the
- * device's network, [settingsChanged] the settings, and the app calls
- * [sync] when it reaches the server or returns to the foreground.
+ * [invalidated] hears the live events, [network] the device's network,
+ * [settingsChanged] the settings, and the app calls [sync] when it reaches
+ * the server or returns to the foreground. While the app is in the
+ * foreground, [followPreparing] also asks the server every few seconds
+ * while a download is in line or being prepared there, so its progress
+ * moves even when the live events can't reach the device.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class Downloads(
@@ -103,6 +108,13 @@ internal class Downloads(
     private val q = database.downloadsQueries
     private val fs = FileSystem.SYSTEM
     private val lock = Mutex()
+
+    /** Held while [refresh] runs, so the server's answers are taken in one at a time and in order. */
+    private val refreshing = Mutex()
+
+    /** When [refresh] last asked the server, by [now]. */
+    @Volatile
+    private var refreshedAt = Long.MIN_VALUE
     private val server = MutableStateFlow<DownloadServer?>(null)
 
     /** The works being asked for now, each with the download it's becoming; changed under [lock]. */
@@ -219,6 +231,26 @@ internal class Downloads(
     }
 
     /**
+     * Refreshes while a download of the attached server is in line or
+     * being prepared there and nothing else, such as the live events, has
+     * refreshed for [PREPARING_POLL], until cancelled. The app runs it in
+     * the foreground.
+     */
+    suspend fun followPreparing() {
+        while (true) {
+            delay(PREPARING_POLL)
+            val quiet = now() - refreshedAt >= PREPARING_POLL.inWholeMilliseconds
+            if (quiet && withContext(background) { preparing() }) quietly { refresh() }
+        }
+    }
+
+    /** Whether the attached server has a download in line or being prepared. */
+    private fun preparing(): Boolean {
+        val s = server.value ?: return false
+        return q.downloads(s.connection.serverId).executeAsList().any { it.state == QUEUED || it.state == CONVERTING }
+    }
+
+    /**
      * Everything that needs the server, once it's reached: where the
      * downloads it's preparing are, the transfers waiting to start again
      * after a failure, the progress outbox, the availability check (at
@@ -242,9 +274,9 @@ internal class Downloads(
      * on the server.
      */
     suspend fun startReady(): Boolean {
-        val s = server.value ?: return false
+        if (server.value == null) return false
         quietly { refresh() }
-        return q.downloads(s.connection.serverId).executeAsList().any { it.state == QUEUED || it.state == CONVERTING }
+        return preparing()
     }
 
     /**
@@ -428,12 +460,13 @@ internal class Downloads(
     /**
      * Where the downloads the server is preparing are, from its list; one it
      * has ready starts coming here, and one it no longer has is asked for
-     * again.
+     * again. One runs at a time.
      */
-    suspend fun refresh() {
-        val s = server.value ?: return
+    suspend fun refresh() = refreshing.withLock {
+        val s = server.value ?: return@withLock
         val rows = q.downloads(s.connection.serverId).executeAsList().filter { (it.state == QUEUED || it.state == CONVERTING) && readablePlan(it) != null }
-        if (rows.isEmpty()) return
+        if (rows.isEmpty()) return@withLock
+        refreshedAt = now()
         val listed = s.connection.downloads.listDownloads().result().items.associateBy { it.id }
         for (row in rows) {
             val d = row.remote_id?.let { listed[it] }
@@ -822,6 +855,9 @@ internal class DownloadRefusedException(val reason: String) : Exception("downloa
 
 /** How soon after the one before a show's episode must be asked for to come in season and episode order with it. */
 internal val TOGETHER: Duration = 1.minutes
+
+/** How often the foreground app asks the server about downloads in line or being prepared there. */
+internal val PREPARING_POLL: Duration = 10.seconds
 
 private fun randomId(): String {
     val bytes = kotlin.random.Random.nextBytes(16)

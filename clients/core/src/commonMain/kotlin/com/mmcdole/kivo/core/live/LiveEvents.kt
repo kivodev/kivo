@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -39,10 +40,14 @@ import kotlin.time.Duration.Companion.seconds
  * The socket is at the server's address in use: when it moves, or is no
  * longer trusted with the session, as on a new network, the socket opens
  * again at once, where the token may go, and a socket that can't be kept
- * has the address picked again before the wait.
+ * has the address picked again before the wait. The server sends a
+ * keep-alive every 25 s, so a socket that hears nothing for [silence] is
+ * taken as dropped, as a network that changed or a proxy that cut it off
+ * leaves it half-open with nothing to close it on this side.
  */
 internal class LiveEvents(
     private val connection: ServerConnection,
+    private val silence: Duration = SILENCE,
     private val backoff: (attempt: Int) -> Duration = Backoff(1.seconds, 30.seconds)::wait,
 ) {
     private val mutableInvalidations = MutableSharedFlow<Invalidation>(extraBufferCapacity = 64)
@@ -98,13 +103,15 @@ internal class LiveEvents(
         }
     }
 
-    /** One socket, until it closes: how it closed, or null when it dropped without a close frame. */
+    /** One socket, until it closes: how it closed, or null when it dropped without a close frame or went silent. */
     private suspend fun connect(onOpen: () -> Unit): CloseReason? {
         var reason: CloseReason? = null
         connection.http.webSocket(connection.apiUrl("events").replaceFirst("http", "ws")) {
             onOpen()
             var reconnect = opened
-            for (frame in incoming) {
+            while (true) {
+                val next = withTimeoutOrNull(silence) { incoming.receiveCatching() } ?: return@webSocket
+                val frame = next.getOrNull() ?: break
                 if (frame !is Frame.Text) continue
                 val message = try {
                     kivoJson.decodeFromString(EventStreamMessage.serializer(), frame.readText())
@@ -151,6 +158,9 @@ internal sealed interface Invalidation {
     /** Events may have been missed (a reconnect, a resync, a new server version): refetch everything visible. */
     data object Everything : Invalidation
 }
+
+/** How long the live events may hear nothing, three of the server's keep-alives missed, before the socket is opened again. */
+internal val SILENCE = 75.seconds
 
 /** WebSocket close code for a session that is no longer valid: sign out, don't reconnect. */
 internal const val CLOSE_UNAUTHORIZED: Short = 4401
