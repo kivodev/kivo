@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
@@ -25,6 +26,12 @@ func healthcheck(configPath string) error {
 		scheme = "https"
 	}
 	c := http.Client{Timeout: 5 * time.Second}
+	if boot.TLSCert != "" {
+		// The certificate names the server's public host, not 127.0.0.1,
+		// and may be self-signed. This only asks whether the local process
+		// answers.
+		c.Transport = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+	}
 	resp, err := c.Get(fmt.Sprintf("%s://127.0.0.1:%s%s/healthz", scheme, port, boot.BasePath))
 	if err != nil {
 		return err
