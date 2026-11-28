@@ -91,7 +91,7 @@ import com.mmcdole.kivo.core.downloads.db.Download_file as FileRow
  * [invalidated] hears the live events, [network] the device's network,
  * [settingsChanged] the settings, and the app calls [sync] when it reaches
  * the server or returns to the foreground. While the app is in the
- * foreground, [followPreparing] also asks the server every few seconds
+ * foreground, [followPreparing] also asks the server every 10 seconds
  * while a download is in line or being prepared there, so its progress
  * moves even when the live events can't reach the device.
  */
@@ -112,9 +112,9 @@ internal class Downloads(
     /** Held while [refresh] runs, so the server's answers are taken in one at a time and in order. */
     private val refreshing = Mutex()
 
-    /** When [refresh] last asked the server, by [now]. */
+    /** When [refresh] last asked the server, by [now]; 0 before it has. */
     @Volatile
-    private var refreshedAt = Long.MIN_VALUE
+    private var refreshedAt = 0L
     private val server = MutableStateFlow<DownloadServer?>(null)
 
     /** The works being asked for now, each with the download it's becoming; changed under [lock]. */
@@ -239,7 +239,8 @@ internal class Downloads(
     suspend fun followPreparing() {
         while (true) {
             delay(PREPARING_POLL)
-            val quiet = now() - refreshedAt >= PREPARING_POLL.inWholeMilliseconds
+            // Outside the window also when the clock was set back.
+            val quiet = now() - refreshedAt !in 0 until PREPARING_POLL.inWholeMilliseconds
             if (quiet && withContext(background) { preparing() }) quietly { refresh() }
         }
     }
